@@ -193,6 +193,17 @@ Files must remain:
 - Avoid large or mixed commits.
 - Target one step per commit. Do not bundle multiple unrelated steps.
 - If a diff exceeds 500 lines, stop and split before committing.
+- Counting rule (DECISION F104 D1, 2026-08-08, settling the F103 closure
+  candidate "commit-size counting is undefined"): the 500-line cap counts
+  INSERTIONS only — the `+` column of `git diff --stat` — not
+  insertions+deletions. Every verdict in this repository has silently used
+  that reading; stating it stops the churn reading from arriving as a
+  surprise finding. Exempt entirely: a commit whose diff is the verbatim
+  rewrite of a SINGLE `.agent/**` state file (`last_block.md`,
+  `handoff.md`, `live_review.md`, `plan.md`, `context.md`). Such a save is
+  one indivisible artifact, so the churn reading is unmeetable by
+  construction and splitting it would corrupt the record it exists to
+  preserve. Reverse this decision by deleting this bullet.
 - Exception: a diff over 500 lines is acceptable only when (a) the worker
   declares it in the handback WITH the inseparability reason before
   review, and (b) it is the only such commit in its feature. An

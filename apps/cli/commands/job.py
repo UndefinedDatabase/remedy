@@ -30,6 +30,7 @@ def _cmd_create_job(
     max_total_tokens: str | None = None,
     max_provider_calls: str | None = None,
     max_wall_clock_minutes: str | None = None,
+    max_cost_usd: str | None = None,
     deadline: str | None = None,
 ) -> None:
     from packages.orchestration.run_log import RunLogWriter
@@ -84,6 +85,7 @@ def _cmd_create_job(
             cli_max_total_tokens=max_total_tokens,
             cli_max_provider_calls=max_provider_calls,
             cli_max_wall_clock_minutes=max_wall_clock_minutes,
+            cli_max_cost_usd=max_cost_usd,
             cli_deadline=deadline,
             project_root=_project_repo,
         )
@@ -2044,6 +2046,26 @@ def _cmd_job_fences(job_id_str: str, *, json_output: bool = False) -> None:
                 print(f"    {w}")
 
 
+# Renders a money figure for `remedy job budget`, or says out loud that there is
+# none. An unmeasured figure is NEVER rendered as a measured zero (P6) — the
+# text mirror of the null that `BudgetPrediction.to_json` keeps in JSON.
+def _format_budget_usd(value: float | None) -> str:
+    return "not-measured" if value is None else f"${value:.4f}"
+
+
+# Renders what is left of a money limit. Unknown spend has an unknown remainder;
+# a spend that is only a FLOOR (some calls unpriced) leaves a remainder that is
+# only a CEILING, and says `<= ` for the same reason `cost_description()` says
+# `>= `. Never "$0.0000" for an unmeasured spend — that is the P6 failure this
+# whole feature exists to avoid.
+def _format_remaining_usd(limit_usd: float, counters) -> str:
+    spent = counters.measured_cost_usd
+    if spent is None:
+        return "not-measured"
+    prefix = "<= " if counters.has_unpriced else ""
+    return f"{prefix}${max(0.0, limit_usd - spent):.4f}"
+
+
 def _cmd_job_budget(
     job_id: str,
     *,
@@ -2066,9 +2088,13 @@ def _cmd_job_budget(
     _counter_status = "no_runs"
     _counter_diagnostic = ""
     _found_as = None
+    # The JobPlan the F104 money figures are read from, whichever id form was
+    # given. A Core Job UUID reaches the same plan through _plan_for_core below.
+    _plan = None
 
     job_plan = load_job_plan(job_id)
     if job_plan is not None:
+        _plan = job_plan
         _found_as = "job_plan"
         _job_display_id = job_plan.job_id
         if job_plan.budgets is not None:
@@ -2124,6 +2150,7 @@ def _cmd_job_budget(
             return
 
         _plan_for_core = load_job_plan(_job_display_id)
+        _plan = _plan_for_core
         if _plan_for_core is not None and getattr(_plan_for_core, "budget_actuals", None) is not None:
             from packages.orchestration.budget_guard import (
                 BudgetCounterError,
@@ -2150,6 +2177,102 @@ def _cmd_job_budget(
             print(f"Job {_job_display_id[:8]}: no budgets configured.")
         return
 
+    _has_cost_limit = _budgets is not None and _budgets.max_cost_usd is not None
+
+    # F104 money actuals. The persisted budget-actuals record carries NO cost
+    # field — the F103 ledger is the only place a real provider cost lives — so
+    # a money-limited job reads it here, exactly as run_job's safe point does.
+    # READ-ONLY: `query_cost` never creates a ledger and never writes one, which
+    # is what keeps `remedy job budget` action_class="read_only". Any failure
+    # leaves the cost UNMEASURED (None, never 0.0 — P6) and every other limit
+    # still reports; an inspection command must not fail because a mirror is
+    # unreadable.
+    # R-0227: a read that FAILED and a job nobody priced both leave the cost
+    # UNMEASURED, but only one of them is a broken mirror — and that is the
+    # diagnosis an operator who just hit a cost limit most needs. This holds the
+    # failure so both surfaces can say it out loud; it stays None when the read
+    # succeeded or was never attempted, which is what keeps the two cases apart.
+    _cost_read_error = None
+    if _has_cost_limit and counters is not None and counters.measured_cost_usd is None:
+        try:
+            from dataclasses import replace as _replace
+
+            from packages.orchestration.budget_guard import collect_ledger_cost_for_job
+            from packages.orchestration.job_evidence import (
+                _resolve_job_ledger_project_id,
+            )
+            _ledger_project = _resolve_job_ledger_project_id(_plan)
+            if _ledger_project is not None:
+                _cost, _priced, _unpriced = collect_ledger_cost_for_job(
+                    job_id=_job_display_id, project_id=_ledger_project)
+                counters = _replace(
+                    counters,
+                    measured_cost_usd=_cost,
+                    priced_call_count=_priced,
+                    unpriced_call_count=_unpriced,
+                )
+                evaluation = evaluate_budget(_budgets, counters)
+        except Exception as _cost_exc:
+            # Recorded BEFORE the log call, so a logging subsystem that is itself
+            # broken cannot cost the operator the diagnosis. The displayed cost is
+            # unchanged — still not-measured, never 0.0 (P6).
+            _cost_read_error = f"{type(_cost_exc).__name__}: {_cost_exc}"[:160]
+            try:
+                import logging as _logging
+                _logging.getLogger(__name__).error(
+                    "budget ledger cost read FAILED for job %r; the cost stays "
+                    "unmeasured for this read and the other limits still report "
+                    "(the evidence files remain the source of truth)",
+                    _job_display_id, exc_info=True,
+                )
+            except Exception:
+                # An inspection command never dies because a log handler died.
+                pass
+
+    # F104: what the NEXT task is expected to cost, with the label that says
+    # where the number came from. Computed LIVE and PURELY — both engine
+    # functions are side-effect free and the selection helper only reads the
+    # plan — so nothing here writes, persists or mutates the job. The whole
+    # computation is wrapped for the same reason run_job's predictive block is:
+    # a broken estimate must never take down a healthy read.
+    _prediction = None
+    _prediction_note = ""
+    if _has_cost_limit:
+        try:
+            from packages.orchestration.budget_guard import (
+                BudgetCounters,
+                derive_next_task_token_band,
+                predict_next_task_cost,
+            )
+            from packages.orchestration.budget_resolution import (
+                resolve_predictive_budget_config,
+            )
+            from packages.orchestration.pingpong_job import (
+                select_next_predictable_task,
+            )
+            if _plan is None:
+                _prediction_note = "unavailable (no job plan on disk)"
+            else:
+                _next_task, _prev_summaries = select_next_predictable_task(_plan)
+                if _next_task is None:
+                    _prediction_note = "none (no pending task)"
+                else:
+                    _prediction = predict_next_task_cost(
+                        _budgets,
+                        counters if counters is not None else BudgetCounters(),
+                        band=derive_next_task_token_band(_next_task, _prev_summaries),
+                        config=resolve_predictive_budget_config(
+                            project_root=(getattr(_plan, "repo_path", "") or None)),
+                    )
+        except Exception as _pred_exc:
+            _prediction = None
+            _prediction_note = (
+                f"unavailable ({type(_pred_exc).__name__}: {_pred_exc})"[:160])
+
+    # The arithmetic a predictive stop already recorded, if this job took one.
+    _recorded_prediction = (
+        getattr(_plan, "budget_prediction", None) if _plan is not None else None)
+
     if json_output:
         out: dict = {
             "job_id": _job_display_id,
@@ -2159,6 +2282,13 @@ def _cmd_job_budget(
             "evaluation": evaluation.to_json() if evaluation else None,
             "status": _counter_status,
             "diagnostic": _counter_diagnostic or None,
+            # R-0227: the LEDGER READ's own failure. Deliberately its own key —
+            # `diagnostic` belongs to the counters decode, and one field standing
+            # for two unrelated failures is the defect this fix exists to end.
+            "cost_read_error": _cost_read_error,
+            # Null, never an invented number, when no prediction could be made.
+            "prediction": _prediction.to_json() if _prediction is not None else None,
+            "recorded_prediction": _recorded_prediction,
         }
         print(_json.dumps(out, indent=2))
     else:
@@ -2168,6 +2298,8 @@ def _cmd_job_budget(
                 print(f"  max_total_tokens:      {_budgets.max_total_tokens}")
             if _budgets.max_provider_calls is not None:
                 print(f"  max_provider_calls:    {_budgets.max_provider_calls}")
+            if _budgets.max_cost_usd is not None:
+                print(f"  max_cost_usd:          ${_budgets.max_cost_usd:.4f}")
             if _budgets.max_wall_clock_minutes is not None:
                 print(f"  max_wall_clock_minutes: {_budgets.max_wall_clock_minutes}")
             if _budgets.deadline is not None:
@@ -2176,6 +2308,28 @@ def _cmd_job_budget(
             for k, v in _budgets_dict.items():
                 if v is not None:
                     print(f"  {k}: {v}")
+        if _has_cost_limit and counters is not None:
+            print(f"  spent:                 {counters.cost_description()}")
+            print(f"  remaining:             "
+                  f"{_format_remaining_usd(_budgets.max_cost_usd, counters)}")
+            # Only when a read actually broke. A genuinely unpriced job prints
+            # no such line, which is what keeps the two cases distinguishable.
+            if _cost_read_error:
+                print(f"  cost_read:             unavailable ({_cost_read_error})")
+        if _has_cost_limit:
+            if _prediction is not None:
+                print(f"  next_task_expected:    "
+                      f"{_format_budget_usd(_prediction.expected_cost_usd)}")
+                print(f"  estimate_basis:        {_prediction.estimate_basis}")
+                print(f"  arithmetic:            {_prediction.arithmetic}")
+            elif _prediction_note:
+                print(f"  next_task_expected:    {_prediction_note}")
+        if isinstance(_recorded_prediction, dict):
+            print("  recorded stop prediction:")
+            print(f"    estimate_basis:      "
+                  f"{_recorded_prediction.get('estimate_basis', '')}")
+            print(f"    arithmetic:          "
+                  f"{_recorded_prediction.get('arithmetic', '')}")
         if evaluation is not None:
             print(f"  exhausted:             {evaluation.exhausted}")
             if evaluation.first_exhausted_limit:
@@ -2199,6 +2353,7 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         max_total_tokens=getattr(args, "max_total_tokens", None),
         max_provider_calls=getattr(args, "max_provider_calls", None),
         max_wall_clock_minutes=getattr(args, "max_wall_clock_minutes", None),
+        max_cost_usd=getattr(args, "max_cost_usd", None),
         deadline=getattr(args, "deadline", None),
     ),
     "job.list": lambda args: _cmd_list_jobs(

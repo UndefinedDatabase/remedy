@@ -1,0 +1,63 @@
+F104 R7 — BASE RUN (integration_gate step 2)
+worktree: .remedy-wt/base_gate_f104_r7 on the throwaway BRANCH tmp/base-gate
+          at 94f69b0f (git merge-base main HEAD) — never detached, DECISION D3
+cmd     : REMEDY_UI_NO_AUTO_BUILD=1 python3 -m pytest -n auto -q
+parity  : apps/ui/node_modules and apps/ui/dist COPIED (cp -a) from the
+          primary checkout, never symlinked (F053 R3). Content hash before
+          == after, see dist_hashes.txt.
+log     : written to .remedy-wt/scratch_f104_r7/ OUTSIDE the tracked tree
+          while the suite ran, copied here after exit (R-0176)
+note    : the raw log is 612 lines; the decisive head, ONE full failure
+          excerpt, the FAILED list and the tail are kept.
+
+----- head -----
+bringing up nodes...
+bringing up nodes...
+
+
+----- one failure, verbatim (all six are this same shape) -----
+    
+        t = threading.Thread(target=run, daemon=True)
+        t.start()
+    
+        # Wait for info file
+        for _ in range(50):
+            if Path(info_file).exists():
+                info = json.loads(Path(info_file).read_text())
+                return info["port"], token, t
+            time.sleep(0.1)
+>       pytest.fail("Server did not start in time")
+E       Failed: Server did not start in time
+
+tests/ui_server/test_live_state.py:165: Failed
+----------------------------- Captured stderr call -----------------------------
+
+ERROR: React UI not built.
+
+  To fix, run:
+    cd apps/ui && npm install && npm run build
+
+  Or check npm is installed and retry.
+  Disable auto-build: REMEDY_UI_NO_AUTO_BUILD=1
+
+______________ TestUIServerIntegration.test_url_is_localhost_only ______________
+
+----- tail (raw, verbatim) -----
+
+=========================== short test summary info ============================
+FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_server_starts_and_writes_info
+FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_url_is_localhost_only
+FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_api_invalid_token_403
+FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_api_missing_job_404
+FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_put_rejected
+FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_dashboard_no_raw_leaks
+6 failed, 16125 passed, 19 skipped in 122.66s (0:02:02)
+
+=== EXIT_CODE=1 ===
+=== WALL_SECONDS=123 ===
+
+FAILED lines: 6
+ERROR  lines: 6
+The six ERROR lines are NOT pytest collection or teardown errors: they are
+the captured-stderr banner "ERROR: React UI not built.", one per failing id.
+The summary line carries no error count.

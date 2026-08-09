@@ -1,504 +1,258 @@
-# Live Review — F103 Token ledger (SQLite)
+# Live Review — F104 Hard budget enforcement
 
-Branch: feature/f103-token-ledger
-Feature file: docs/roadmap/features/T2_F103.md
-Tier 2 · depends on F003 and F146 · blocks F074, F115, F116, F150 and
-F158. Claimed per Rule A5 as the first `[ ]` entry in
-docs/roadmap/STATUS.md after F254 was accepted.
-
-Goal & Done, quoted from the feature file: token and cost actuals
-become QUERYABLE — every provider call lands as a row in a per-project
-SQLite ledger, and `remedy stats cost` answers per-job, per-role and
-per-period questions from it. DONE when the writer sits in the provider
-path without slowing it perceptibly, historical file-based actuals can
-be backfilled once, and every cost figure names its basis.
-
-This feature INTRODUCES SQLite to the repository — the first and so far
-only place. The files stay the source of truth; the database is a
-mirror, and a writer failure never fails the run.
-
-Build mode: one-session self-drive
-(docs/agents/self_drive_protocol.md) — planner/reviewer in the main
-session, one delegated worker subagent per round. Session caps declared
-at R1: 8 rounds, ~4 hours wall clock. Reaching a cap with a written
-handoff is a SUCCESS, not a failure.
-
-## Steps
-- R1 (SPLIT): Open PR Gate — no open PRs, nothing to merge — then the
-  STATUS claim, the R-0214 closure-candidate sweep, and the reset of
-  live_review, plan, context and candidates to this feature — PASS.
-- R2 (SPLIT): T001 — schema, migration bootstrap, the `record_call(...)`
-  writer, the never-fail-the-run discipline, miss counting, unit tests —
-  PASS.
-- R3 (SPLIT): T002 data layer — the call site at the actuals seam, plus
-  backfill and reconcile over the evidence tree, idempotent by call_id —
-  PASS.
-- R4 (SPLIT): T003 — the cost aggregation queries plus `remedy stats
-  cost`, `backfill-ledger` and `verify-ledger` in the existing stats
-  group, with basis labeling in both output modes — PASS.
-- R5: integration gate per docs/agents/integration_gate.md — PASS.
-- R6 (SPLIT): wire the live ledger mirror at the task-run evidence seam
-  so a real job yields rows (finding R-0220) — PASS.
-- R7: closure part 1 per docs/roadmap/STATUS_closure_protocol.md — the
-  Built State section, the load-bearing full-suite confirmation run,
-  the evidence job and the FRESH review zip. Closure runs in TWO relays
-  because the STATUS line quotes the evidence job id, the package name
-  and its SHA-256, and the reviewer can only author that line once
-  those values exist (F079 R4/R5 and F254 R11/R12 precedent) — PASS.
-- R8: closure part 2 — the reviewer-authored STATUS `[~]`->`[x]` line
-  and the README capability sync in the SAME commit (R-0154), last on
-  the branch (Rule A4), then `gh pr create`; the PR is NOT merged by
-  the session that creates it.
+> Reviewer: the main session of a one-session self-drive build
+> (docs/agents/self_drive_protocol.md). Worker: one delegated subagent per
+> round. Findings are authored here by the reviewer only; the worker applies
+> them verbatim and marks `Done: R-XXXX` when a fix lands. Only reviewer-
+> authored text sets Resolved.
+> Branch: feature/f104-hard-budget-enforcement. Next free ID: R-0229.
 
 ## Findings
-- R-0218 (Low, R2, reviewer): the ledger's own acceptance criterion —
-  "the writer sits in the provider path without slowing it perceptibly"
-  (feature file, Goal & Done) — has no measurement anywhere. T001 could
-  not have one, because it deliberately adds no call site; but
-  `record_call` opens a connection, runs `PRAGMA journal_mode=WAL` and a
-  schema-version check on EVERY call, and that per-call cost is now
-  fixed by design rather than measured. Not a block condition: at T001
-  the writer is inert, so nothing is slowed yet. Fix: R3 lands the call
-  site, and R5's integration gate carries a real before/after timing of
-  the seam so the criterion is met with a number instead of a claim.
-- R-0219 (Low, R2, reviewer): `record_call` reports True when a row with
-  that `call_id` already exists, even if the record being written
-  differs from the stored one — the presence check asks "is a row
-  there", not "is THIS row there". The documented contract ("True when
-  the row is durable") is honest and duplicate call_ids are a caller
-  bug, so this is not a defect today. It becomes one the moment T002's
-  reconcile has to answer "does the ledger agree with the files": a
-  content-drifted row would be invisible to a presence-only comparison.
-  Fix: R3 must decide explicitly — either pin `call_id` as immutable by
-  construction and say so in the docstring, or have `verify_ledger`
-  compare content rather than presence. Record which, and why.
-- Done: R-0219 — resolved in R3 by CONTENT COMPARISON in `verify_ledger`,
-  which re-derives each row from its own evidence through the same
-  `call_record_from_evidence` the live hook uses and reports field-level
-  mismatches in `drifted_rows`. The reviewer confirmed the fix is
-  load-bearing rather than asserted: reducing the comparison to
-  presence-only in a disposable worktree turned
-  `test_finds_a_content_drifted_row` red. `call_id` is ALSO pinned
-  immutable by construction and documented as such, but that guarantees
-  only the id, never the contents — which is why the stronger option was
-  the right one.
-- Done: R-0218 — CLOSED at R5 against a real number, not a claim. The
-  gate measured the seam itself: `write_evidence_bundle` costs a median
-  0.587 ms with the mirror inert and 1.973 ms with it active, so the
-  mirror adds **+1.386 ms per finalized task run** (+236% of a very
-  small baseline). The reviewer REPRODUCED it independently with its
-  own harness — +1.395 ms median — and the worker's own second run gave
-  +1.506 ms; three runs agree within about 0.1 ms, and a row count of
-  330/330 proves arm B really inserted on every iteration rather than
-  short-circuiting. Judgement: 1.4 ms once per finalized TASK RUN, on a
-  path whose sibling work is a provider call measured in SECONDS, is
-  not "slowing it perceptibly". The criterion is met with a number.
-- R-0220 (Medium, R5, reviewer): the live mirror is never switched on,
-  so the feature's own acceptance criterion — "a fake-provider job
-  yields exactly its calls as rows with correct role/model/basis" — is
-  NOT met by the built system. `write_evidence_bundle`'s four
-  `ledger_*` arguments are the only way to arm the hook, and the ONLY
-  callers that pass them are TESTS: the two production callers,
-  `pingpong_evidence.py:633` and `job_evidence.py:2455`, pass none. A
-  real job therefore writes ZERO rows and the ledger fills only via
-  `remedy stats backfill-ledger`. R3 reviewed the hook and approved its
-  inertness as caller-compatibility, which was true as far as it went;
-  what nobody asked was who ever turns it on. Not a gate blocker — the
-  gate is about regressions and there were none — but a CLOSURE
-  blocker: flipping STATUS to `[x]` and syncing the README now would
-  claim a capability that is wired and switched off. Fix: R6 arms the
-  hook at the task-run seam for real jobs, with a test that drives the
-  PRODUCTION path and passes no `ledger_*` argument by hand, and with
-  the data-root safety of the opt-in preserved.
-- R-0221 (Low, R5, reviewer): `TestAutoBuildBehavior::
-  test_auto_build_runs_by_default`
-  (`tests/ui_server/test_dashboard_contract.py`) pops
-  `REMEDY_UI_NO_AUTO_BUILD` from the environment and calls
-  `_auto_build_frontend()` for real, so it runs `npm install` and
-  `npm run build` in whatever checkout it is running in. The env var
-  cannot suppress a call that deletes it first. This is the R-0169
-  class recurring with a NAMED cause. It costs every integration gate
-  seven phantom base-only failures: `_frontend_is_stale()`
-  (`ui_server.py:2748`) is a pure MTIME comparison, `git worktree add`
-  writes src at checkout time while `cp -a` preserves the older dist
-  mtimes, so a fresh base worktree is stale by construction. The R5
-  gate proved the mechanism with a negative control — moving the dist
-  mtimes back reproduced all seven failures without changing one byte,
-  restoring them made 42 pass. NOT F103's code and NOT this feature's
-  to fix: registered as a closure candidate for the owning feature.
-- Done: R-0220 — CLOSED at R6. The mirror is armed at the task-run seam
-  in `job_evidence.py`, and the reviewer MUTATION RED-PROOFED that the
-  fix is load-bearing rather than tautological: in a disposable
-  worktree under the gitignored `.remedy-wt/`, removed before the
-  verdict, reverting the wiring to the bare
-  `write_evidence_bundle(bundle, str(task_out))` turned **6 of 6**
-  production-path tests red while all four inertness tests stayed
-  green. A fake-provider job now yields its task run as a row through
-  `export_job_evidence` with nobody passing a `ledger_*` argument, so
-  the feature's acceptance criterion is met by the built system rather
-  than by a test that armed the hook itself.
-- Next free ID: R-0222. Open findings: **0**. R-0218, R-0219 and R-0220
-  are closed; R-0221 is carried in `.agent/candidates.md` and is a
-  block condition at the next feature's claim time until registered or
-  resolved.
 
-## Decisions
-- D15 (F254 closure candidate R-0214, resolved inline per
-  docs/agents/planner_reviewer_prompt.md §4 item 7): the AGENTS.md
-  handoff line cap gains a STATED-CAUSE OVERAGE clause; the mandated
-  handback content is NOT shrunk. Chosen because the cap has now been
-  overridden by every handback whose content was entirely mandated —
-  S1+S2 R2, F254 R3 at 119 lines, F254 R4 at 122, F254 R12 at 82 —
-  including one round whose step block explicitly forbade verbatim
-  transcripts, which rules out worker verbosity as the cause. A rule
-  that every compliant handback must break is not a rule. Alternatives
-  considered: shrinking the mandated content, which would delete the
-  evidence set, the pair proofs or the item-status table — the exact
-  artifacts the review loop exists to read, and the F056 candidate loss
-  shows what dropping a carrier costs; or leaving the cap
-  advisory-in-practice, which keeps every future handback nominally
-  non-compliant and teaches agents that stated caps are decorative. How
-  to reverse: delete the added paragraph from the AGENTS.md handoff.md
-  section — it is additive and self-contained, and the original cap
-  sentence is untouched by construction. Landed in its OWN commit,
-  separate from the feature claim, so the rules change stays reviewable
-  apart from F103: the D12 objection to mixing an unrelated fix into a
-  feature branch is answered by commit granularity, and the placement
-  itself is mandated by docs/roadmap/STATUS_closure_protocol.md, which
-  requires the next feature's first reviewed round to resolve the
-  candidate and empty `.agent/candidates.md` in that same round.
-- D16 (row granularity, reviewer, per
-  docs/agents/planner_reviewer_prompt.md §4 item 7): a ledger ROW is one
-  FINALIZED TASK RUN, not one HTTP request, and its `call_id` is the
-  deterministic `"<job_id>:<task_id>"`. Chosen because the feature file
-  says the writer "consumes the same records the actuals feature
-  produces", and what that feature actually puts on disk is
-  `task_runs/<task_id>/provider_evidence.json` — a per-task-run record
-  carrying `provider_call_count` and aggregated usage counters. There is
-  no per-HTTP-request record anywhere on disk to backfill from.
-  Alternatives considered: synthesising one row per counted provider
-  call, which would fabricate `call_id`s, timestamps and a usage split
-  that no file records — exactly the invented data P6 and the F075
-  tokens-unmeasured lesson forbid; or adding a per-request capture at
-  the provider boundary, which is the SECOND CAPTURE PATH the feature
-  file's Orchestrator brief rejects outright. How to reverse: when a
-  per-request evidence record exists on disk, change
-  `call_id_for_task_run` and the backfill scan to read it; the schema
-  already carries `call_id` as the primary key and needs no migration.
-  The feature file is amended in this same round so the built state and
-  the target plan do not disagree.
+- R-0221 (Low, carried from F103 R5 through `.agent/candidates.md`):
+  `TestAutoBuildBehavior::test_auto_build_runs_by_default` in
+  `tests/ui_server/test_dashboard_contract.py` pops `REMEDY_UI_NO_AUTO_BUILD`
+  and runs a real `npm install` + `npm run build` in whatever checkout it runs
+  in, refreshing `apps/ui/dist` mtimes mid-suite. That costs every integration
+  gate six or seven phantom base-only failures — F103 R5 measured seven, the F104
+  R7 gate measured six — through the mtime comparison in
+  `_frontend_is_stale()` (`ui_server.py:2748`).
+  REGISTERED here, deliberately NOT fixed by F104: the code is not this
+  feature's and AGENTS.md Scope Control bars the "while I'm here" edit. It is
+  carried as a documented LOW risk to F104 closure
+  (STATUS_closure_protocol.md precondition 1) and routed to the F252
+  flake-debt follow-up class. The F104 integration gate attributes these six
+  to the pre-existing base-only class per docs/agents/integration_gate.md
+  rather than treating them as new failures.
+  OPEN — the only open finding on this branch.
 
-- D17 (R5, reviewer, per docs/agents/planner_reviewer_prompt.md §4
-  item 7): closure MOVES from R6 to R7 and R6 becomes the round that
-  arms the live ledger mirror. Chosen because R-0220 shows the feature
-  does not meet its own acceptance criterion — a real job produces no
-  rows — and closing on that would be an unverified completion claim,
-  the exact block-condition class the review loop exists to catch.
-  Alternatives considered: closing now and filing the wiring as a
-  follow-up feature, rejected because F103's Goal & Done is explicit
-  that the writer sits in the provider path and every call lands as a
-  row, so the follow-up would be F103 itself under another name; or
-  amending the feature file to declare the mirror deliberately opt-in,
-  rejected because nothing in the file, the design or DECISION D16
-  hints at that intent and the acceptance criterion contradicts it.
-  Reversal: any later relay may drop R6 and go straight to closure by
-  amending the feature file's Acceptance instead — the cost of that
-  choice is that `remedy stats cost` answers only for ledgers someone
-  remembered to backfill by hand.
+- R-0222 (Medium, found in the R1 review): `collect_ledger_cost_for_job` had no
+  production caller, so `measured_cost_usd` was always None at runtime and
+  `--max-cost-usd` could never exhaust in production.
+  Done: R-0222 — fixed in c6994fa8, pinned by
+  `TestLiveSafePointReadsTheLedgerCost` in
+  `tests/orchestration/test_budget_guard.py`, which drives the real `run_job`
+  pre-work safe point rather than grepping source. Reviewer-verified in the R2
+  review: reverting the fix turns 4 of its 5 tests RED, and coercing the null
+  to `0.0` turns the P6 test RED.
 
-## Verdicts
-- R1 (SPLIT) — **PASS**. Reviewed `c1c0fbcb..28781d8f` bottom-up, and
-  the reviewer re-ran every verification command itself instead of
-  reading the worker's numbers. The diff is exactly the mandated
-  13-path set across three commits — no production code, no stray path,
-  `git add -A` never used. AGENTS.md **+11/-0**, purely additive, the
-  clause sitting inside the handoff.md section directly after the cap
-  paragraph with the original cap sentence untouched, so the declared
-  APPEND shape is real and not a rewrite in disguise. STATUS.md 315
-  lines before and after, one line swapped; `[~]` markers in the whole
-  file **1**; F103 appears exactly once. Reviewer-run transport proof:
-  `cmp` of each target against its committed receipt —
-  `.agent/live_review.md`, `.agent/plan.md`, `.agent/context.md`,
-  `.agent/candidates.md` — **exit 0 x4**, and receipts 4, 5 and 6 were
-  read back byte-for-byte against the authored originals.
-  Reviewer-run verification: `tests/docs/` **294 passed**, the
-  state-contract trio (dashboard, test_runner, resource_safety) **142
-  passed**, canary `tests/cli/test_golden_path.py` **42 passed**,
-  `git status --porcelain` empty, branch in sync with
-  `origin/feature/f103-token-ledger`, `gh pr list --state open` still
-  `[]`. Every number matched the handback's, so nothing was taken on
-  trust and nothing had to be corrected. Verification tier: ROUND GATE
-  plus the docs-round gate and the canary — NOT the full suite. No
-  block condition present. The three declared deviations are accepted:
-  the 100-line handoff is the first written under the very clause this
-  round added and drops no section; `.agent/decisions.md` was correctly
-  left alone as outside the path set; and a commit cannot table its own
-  SHA. No finding. Next free ID stays R-0218.
-  LAST_REVIEWED_SHA = `28781d8f`.
-- R2 (SPLIT, T001) — **PASS**. Reviewed `28781d8f..c3a03076` bottom-up.
-  Diff is exactly the 7-path set: the module, its tests, live_review,
-  plan, handoff and two receipts — no stray path, no dependency change
-  (`git diff` over pyproject/requirements/setup is EMPTY), bundled
-  `sqlite3` only, and NO call site, so the no-second-capture-path
-  invariant holds. The mandated docstring sentence is present verbatim:
-  "The file evidence remains the source of truth and the database is a
-  mirror." Migrations are numbered steps keyed off a `meta` row, not an
-  if-ladder; the three covering indexes the feature names all exist;
-  `CallRecord` field order matches `_CALL_COLUMNS` exactly; unmeasured
-  calls land as NULLs with basis `unknown` and `cost_usd` stays NULL, so
-  no price is invented. Reviewer-run verification:
-  `tests/orchestration/test_token_ledger.py` **18 passed**, the
-  state-contract trio plus the canary **184 passed** (142 + 42),
-  `git status --porcelain` empty with no stray `.sqlite`/`-wal`/`-shm`.
-  Every number matched the handback's. MUTATION RED-PROOF, run by the
-  reviewer in a disposable `git worktree` under the gitignored
-  `.remedy-wt/` and removed before this verdict (`git worktree list`
-  shows the primary checkout only): (1) making `record_call` re-raise
-  instead of returning False turned **5 tests red**, so the never-fail
-  rule the Orchestrator brief demands is genuinely pinned and not merely
-  asserted; (2) deleting the `rowcount`/constraint guard turned
-  `test_rejected_basis_is_a_counted_miss_not_a_silent_drop` red, so the
-  worker's `INSERT OR IGNORE` ambiguity fix is load-bearing rather than
-  decorative. The worker's two flagged design points are both accepted:
-  `INSERT OR IGNORE` does swallow CHECK and NOT NULL rejections exactly
-  as it swallows a duplicate key, so asking the table which case
-  occurred is correct and not defensive noise; and `kw_only=True` is
-  what makes the mandated field order expressible with `ts_utc`
-  required. Verification tier: ROUND GATE plus the canary — NOT the full
-  suite. No block condition. The declared deviations are accepted: four
-  commits instead of three is the step block's own instruction (split
-  rather than claim an oversize exception) and no commit exceeded 500
-  lines; the 121-line handoff drops no section and states its cause.
-  Two findings registered, both Low: R-0218 and R-0219.
-  LAST_REVIEWED_SHA = `c3a03076`.
-- R3 (SPLIT, T002 data layer) — **PASS**. Reviewed
-  `c3a03076..d2bc7d8e` bottom-up. Diff is exactly the 10-path set across
-  six commits, no commit over 500 lines, no dependency change, and
-  `token_truth.py` is BYTE-UNCHANGED — the no-second-capture-path
-  invariant holds by import rather than by promise. The reviewer checked
-  the three things a summary could most easily have got wrong, and all
-  three hold: `actual_cache_read_tokens` and
-  `actual_cache_creation_tokens` are the real canonical keys in
-  `token_truth._ACTUAL_ALIASES`, so the cache counters are genuinely
-  mapped and not silently always-None; `_strict_cost` really does return
-  None for an absent figure and raise on a malformed one, so
-  `cost_basis` becomes `provider_reported` only when a real number is
-  present; and the model fallback `("model", "builder_model")`
-  deliberately excludes `builder_configured_model` and
-  `reviewer_configured_model`, so the docstring's claim that a
-  configured model is never used as the model that ran is true of the
-  code. The call site is correct: four keyword-only `ledger_*` arguments
-  all defaulting to None keep every existing caller bit-for-bit
-  unchanged, the hook is inert without a target or ids, it never
-  resolves a project implicitly, it is wrapped so nothing escapes, and
-  it re-reads the file it has just written through the ledger's own
-  builder — one producer, which is exactly what makes content
-  comparison sound. `backfill_ledger`'s
-  `scanned == recorded + skipped + failed` holds on every path,
-  including the defensive one. Reviewer-run verification:
-  `test_token_ledger.py` **50 passed**, `tests/docs/` **294 passed**,
-  the `pingpong or evidence` regression selection **1129 passed, 14926
-  deselected**, the state-contract trio plus the canary **184 passed**,
-  `git status --porcelain` empty with no stray `.sqlite`/`-wal`/`-shm`.
-  Every number matched the handback's. MUTATION RED-PROOF in a
-  disposable worktree under the gitignored `.remedy-wt/`, removed before
-  this verdict: reducing `verify_ledger` to presence-only turned
-  `test_finds_a_content_drifted_row` red, so R-0219's fix is real.
-  DECISION D16 and the feature-file amendment landed together, so the
-  target plan and the built state do not disagree; the amendment is
-  purely additive (+15/-0). Verification tier: ROUND GATE plus the
-  docs-round gate and the canary — NOT the full suite. No block
-  condition. Declared deviations accepted: six commits not five, on the
-  step block's own instruction to split rather than claim an oversize
-  exception; the 152-line handoff drops no section and states its cause.
-  R-0219 closed; R-0218 stays open for R5.
-  LAST_REVIEWED_SHA = `d2bc7d8e`.
-- R4 (SPLIT, T003 + T002 surface) — **PASS**. Reviewed
-  `d2bc7d8e..25c343d0` bottom-up across seven commits, none over 500
-  lines, no dependency change. The P6 rule is the heart of this round
-  and it holds in code, not only in prose: there is no `COALESCE`
-  anywhere in the queries — the single occurrence of the word is a
-  docstring explaining why it is absent — so `SUM()` over all-NULL stays
-  NULL and an unmeasured figure never renders as a measured zero. The
-  reviewer MUTATION RED-PROOFED exactly that, in a disposable worktree
-  under the gitignored `.remedy-wt/`, removed before this verdict:
-  wrapping all seven `SUM(...)` in `COALESCE(..., 0)` turned **7 tests
-  red** across BOTH layers — `test_an_all_unmeasured_bucket_reports_none_not_zero`,
-  `test_an_all_unmeasured_total_reports_none_not_zero`,
-  `test_a_cache_counter_nobody_reported_stays_none`,
-  `test_two_ledgers_add_up_without_inventing_a_zero`, and three
-  basis-labeling tests in the CLI suite. The rule is pinned, not
-  asserted. `_connect_readonly` is the round's best judgement call and
-  it is correct: `mode=rw` plus `PRAGMA query_only=1` refuses to create
-  a database and rejects every write at the driver, while avoiding the
-  `mode=ro` trap where a read that cannot checkpoint the WAL leaves
-  `-wal`/`-shm` sidecars beside every ledger it merely looked at — a
-  read that litters the data root is not read-only. The `COUNT(CASE …)`
-  versus `SUM(…)` asymmetry is right for the same P6 reason: a count of
-  nothing is honestly 0, a sum of nothing is not. Reviewer-run
-  verification: `test_stats_cost.py` + `test_token_ledger.py` **105
-  passed**, the whole `tests/cli` catalog/registry contract guard
-  **1329 passed in 259s**, the state-contract trio plus the canary **184
-  passed**, `git status --porcelain` empty with no stray
-  `.sqlite`/`-wal`/`-shm`. Every number matched the handback's.
-  The one out-of-path-set edit is DECLARED, minimal and correct, so it
-  is not a silent scope change and not a block condition:
-  `tests/cli/test_failure_cmd.py` asserted the `stats` group's EXACT
-  contents (`== ["stats.failures"]`), which no longer holds once the
-  group legitimately grows; it is weakened to a membership assertion
-  with F010's own claim intact and a comment saying why. Leaving it red
-  was not an option the step block allowed. Verification tier: ROUND
-  GATE plus the canary — NOT the full suite; R5 owns that claim. No
-  block condition. Deviations accepted: seven commits rather than five,
-  on the step block's own split-over-oversize instruction; the extra
-  helpers (`merge_cost_reports` and friends) belong in the data layer
-  precisely because the block said the CLI only renders.
-  LAST_REVIEWED_SHA = `25c343d0`.
-- R5 (integration gate) — **PASS**. Reviewed `e984bbab..af91d57b`
-  bottom-up: four commits, none over 500 lines, and the change set is
-  `.agent/` only — no production code and no test file, exactly as the
-  round required. The gate's central claim is REPRODUCED, not accepted:
-  the reviewer re-ran the full suite itself and got **16121 passed, 19
-  skipped, exit 0**, matching the handback's numbers exactly, with zero
-  `FAILED` lines. Branch-only ids: **0**, so nothing can block under
-  integration_gate step 4. Base-only ids: 8, every one attributed by
-  DIRECT evidence — 1 xdist port race (`OSError: Errno 98` in the base
-  log, serial-pass 4 of 4) and 7 sharing one cause. That attribution is
-  the round's best work: it is proved by a NEGATIVE CONTROL, which is
-  what separates evidence from a story. `_frontend_is_stale()`
-  (`ui_server.py:2748`) compares MTIMES; setting the base worktree's
-  dist mtimes back behind `apps/ui/src` reproduced all seven failures
-  with the dist CONTENT hash unmoved, and restoring them turned the
-  file green at 42 passed. The reviewer read both cited sources and
-  confirms the mechanism holds in code. Parity by content holds
-  (`fb68a729…` before == after); the round declares plainly that the
-  neutralization is nonetheless NOT clean and names the writer, rather
-  than claiming a pass — that honesty is registered as R-0221. R-0218
-  is PAID and CLOSED: see the finding entry, including the reviewer's
-  own independent reproduction. Declared deviations accepted: the
-  scratchpad and base worktree sat under the gitignored `.remedy-wt/`
-  rather than `/tmp` because this session's permission policy refuses
-  every write outside the repo — the reviewer HIT THE SAME BLOCK and so
-  corroborates the cause, and R-0176's substance was verified rather
-  than assumed (`git ls-files --others --exclude-standard`, which
-  `run_manifest.py:500` is the digest's untracked input, returns 0
-  hits); three evidence commits rather than two, to stay under the
-  500-line cap without claiming an exception; the 120-line handoff
-  drops no section and states its cause. Verification tier:
-  INTEGRATION GATE — this entry is the one place the "full suite green"
-  claim may be made, and it is made on the reviewer's OWN run. No block
-  condition. The gate did not, however, ask whether the feature's live
-  path is armed at all, which is how R-0220 stayed invisible until this
-  review; that is a lesson about gate scope, not a defect of this round.
-  LAST_REVIEWED_SHA = `af91d57b`.
-- R6 (SPLIT, the live mirror) — **PASS**. Reviewed `af91d57b..7f32dae9`
-  bottom-up across six commits, none over 500 lines, no dependency
-  change. The production diff is 91 lines in ONE file and does exactly
-  what the finding asked: `_resolve_job_ledger_project_id` decides the
-  target ONCE per export and `export_job_evidence` threads it plus the
-  job id into `_write_task_run_evidence`, which passes them on. The
-  reviewer checked the three things that could have gone wrong and all
-  three hold. Resolution is genuinely read-only —
-  `project_registry.resolve_project` is documented "NEVER WRITES" and
-  its body only reads the registry — so exporting evidence cannot
-  mutate project state. The data-root escape the opt-in exists to
-  prevent is closed by construction: an absent `repo_path` returns None
-  instead of letting `Path("")` become the process CWD, which matters
-  because this repository is itself a registered project, and the
-  worker red-proofed that exact hazard by making the resolver fall back
-  to `"."` and watching the test resolve the real project UUID. The
-  three legacy callers of `_write_task_run_evidence` are all tests
-  using the positional three-argument form, so they stay inert, and
-  `pingpong_evidence.py` is byte-unchanged — a caller was added, not a
-  parameter. Reviewer-run verification: the ledger, evidence bundle,
-  job evidence and stats suites together **276 passed**; the canary
-  plus the `.agent` state-contract readers and the docs gate **478
-  passed**; `git status --porcelain` empty with 0 untracked files and
-  no stray `.sqlite`/`-wal`/`-shm`. The mutation red-proof is recorded
-  under R-0220. One correction the WORKER made to the reviewer's own
-  authored text is accepted and credited: the reviewer labelled R5's
-  verdict pair append-shaped, but its TO does not contain its FROM, so
-  it is a rewrite and FROM 0x was the honest count — reporting the
-  instructed 1x would have been a fabricated number, and refusing to
-  fabricate it is the behaviour §4.9 is for. Verification tier: ROUND
-  GATE plus the canary and the state-contract readers — NOT the full
-  suite. No block condition. Deviations accepted: tests live in
-  `test_token_ledger.py` because the behaviour under test is the
-  ledger's; the plan synced at B7 rather than before the code commits,
-  matching this feature's own R5 pattern; the 97-line handoff drops no
-  section and states its cause. NOTE FOR CLOSURE: production code
-  landed AFTER the R5 gate, so the closure protocol's full-suite
-  confirmation run is load-bearing for this feature and may not be
-  treated as a formality.
-  LAST_REVIEWED_SHA = `7f32dae9`.
-- R7 (closure part 1) — **PASS**. Reviewed `f69990a1..09d7ab2d`
-  bottom-up across five commits. The change set is exactly the
-  mandated two-path family — `.agent/**` and
-  `docs/roadmap/features/T2_F103.md` — with STATUS.md, README.md,
-  every source file and every test file untouched, so no part of the
-  closure claim was smuggled in early. Transport is proved
-  disk-to-disk against the REVIEWER'S OWN scratchpad originals rather
-  than by the digest fallback: `cmp` of each of the three
-  `.agent/authored/f103-r7-*.md` files against its original returned
-  **exit 0 x3**. Both `live_review.md` pairs are genuine REWRITES —
-  the reviewer re-parsed the FROM and TO strings out of the committed
-  receipt and confirmed neither TO contains its FROM — and after the
-  edit each is FROM **0x** / TO **1x**. `.agent/plan.md` equals its
-  authored file (`cmp` exit 0). The Built State landing is a PURE
-  APPEND, proved twice over: 5263 B before + 4376 B authored = 9639 B
-  after, `tail -c 4376` byte-identical to the authored file, and
-  `git diff` +69/-0.
-  The load-bearing claim is the one this round existed to make, and
-  the reviewer made it on its OWN run: `python3 -m pytest -n auto -q`
-  → **16131 passed, 19 skipped in 112.64s, exit 0**, matching the
-  handback exactly. The +10 delta against the R5 gate's 16121 is
-  VERIFIED rather than asserted: `test_token_ledger.py` collected
-  **72** tests at the gate head `af91d57b` and collects **82** now, so
-  the entire full-suite delta is R6's live-mirror tests and nothing
-  else moved. R6's production code is therefore covered by full-suite
-  evidence — the debt the R6 verdict recorded is paid.
-  The package was checked by the reviewer, not read from the
-  handback: disk `sha256sum` == `8e967d78…d38ad`; `zipfile.testzip()`
-  reports no corrupt member across 2211 members; the packaged
-  `.review_zip_manifest.json` records `package_status=
-  READY_FOR_REVIEW`, `committed_review_subject` spanning
-  `c1c0fbcb…a05d..65e1eec2…b605` with `base_is_ancestor=true`, 39
-  commits and 51 files, `ready_gate_matrix.ok=true` with
-  `blocking_reasons: []`, an alignment verdict of PASS with zero hash
-  mismatches and zero uncovered source or test files, and
-  `final_verifier_reproducible=true` (`VERIFIED_EQUAL`). All eight
-  closed-schema gates are on disk, so this is a real bundle and not a
-  lone runtime gate. Every named packaging pitfall was checked
-  individually and met: `run_id` `vr-0001`/`vr-0002`, bare 64-hex
-  `output_hash`, `test_files` that are files, and
-  `len(node_ids) == selected` on both runs — and the ids are REAL,
-  not merely well-shaped: the reviewer re-collected both suites and
-  the 115 recorded ids are exactly the 115 collected ids, zero extra
-  and zero missing, which is the F080 BLOCKED_EVIDENCE class closed
-  by evidence. `test_status.passed=115` equals 82+33, so the
-  fail-closed VerificationTests confirmation in
-  `build_review_manifest` is satisfied rather than bypassed. The
-  evidence dir is untracked and ignored and contributes ZERO files to
-  the review subject.
-  Reviewer-run verification: the full suite as above, `tests/docs/`
-  **294 passed**, canary **42 passed**, `integrity check --json`
-  `"passed": true` across 5/5 checks with `relevant_untracked` 0,
-  `git status --porcelain` empty, branch in sync with origin, and
-  `gh pr list --state open` still `[]`. Verification tier: CLOSURE
-  CONFIRMATION — the second and last of this feature's two full-suite
-  runs. No block condition.
-  Declared deviations accepted: the 106-line handoff states its cause
-  and drops no mandated section. One observation the reviewer records
-  rather than hides: commit `68bd9f3f` is +308/-277 = **585 changed
-  lines**, over 500 by the churn reading of AGENTS.md Commit
-  Discipline though under it by the insertions reading every prior
-  verdict in this repository has used. It is a single-file verbatim
-  save of the reviewer's own step block and is inseparable by
-  construction. Accepted under the insertions reading; the ambiguity
-  itself goes to `.agent/candidates.md` as a closure candidate rather
-  than spending an R-id (STATUS_closure_protocol.md,
-  "Closure-candidate findings").
-  LAST_REVIEWED_SHA = `09d7ab2d`.
-- R8: in flight — closure part 2. The STATUS `[~]`->`[x]` line and the
-  README capability sync land in the SAME commit, last on the branch,
-  then the PR — which this session does NOT merge.
+- R-0223 (Low, found in the R1 review): `.agent/last_block.md` held a stale
+  block while a later round executed, so the round's order could not be
+  audited against what was delivered.
+  Done: R-0223 — every self-drive round since R2 saves its own block as its
+  first commit (18b8ca7a, 5e2e242d, 61ba3056).
+
+- R-0224 (Medium, found in the R2 review): R2's ledger bridge fed a COST-side
+  count into a TOKEN-side invariant. `_stop_check` passed the ledger's
+  `unpriced_call_count` into counters whose `provider_calls` is the run
+  accumulator, and `BudgetCounters.__post_init__` raised whenever the former
+  exceeded the latter. The two are counted from different sources and no
+  invariant ties them: the accumulator counts attempts in THIS run and skips
+  the fake provider, while the ledger holds one row per finalized task run
+  across EVERY run of the job. The raise landed inside the ledger read's own
+  broad `except`, so it was swallowed, the counters fell back to the no-cost
+  path, and `--max-cost-usd` silently stopped enforcing for exactly the
+  mixed-priced and resumed jobs the limit exists for.
+  Done: R-0224 — fixed in 76be26d9 per DECISION F104 D5: `BudgetCounters`
+  gains `priced_call_count`, the cross-source check is deleted outright (never
+  clamped — understating the unpriced count would be the P6 failure in mirror
+  image), the surviving contradiction check moves to the cost side, and
+  `_stop_check` stops discarding the ledger's priced count. Pinned by 31a462d3.
+  Reviewer-verified in the R3 review: restoring the deleted
+  `unpriced_call_count > provider_calls` check in a disposable worktree turns
+  exactly three tests RED — the model-level pin, the bridge pin, and
+  `test_ledger_unpriced_count_above_this_runs_calls_still_enforces` at the live
+  safe point — and nothing else.
+
+- R-0225 (High, found in the R4 review): `max_cost_usd` was added to
+  `JobBudgets` by F104 T001 but never added to
+  `run_manifest._BUDGET_ALLOWED_KEYS`, which is a CLOSED schema. Every job
+  carrying a money limit therefore fails its F012 run-manifest write with
+  `ManifestError: manifest.budgets has unknown keys: ['max_cost_usd']`. On the
+  stop path that surfaces as `StopFinalizationError` inside `_stop_job` AFTER
+  `stop_reason` and `stop_source` are set but BEFORE the `JOB_STOPPED`
+  checkpoint, so the job is left in `running` with no manifest and the stop
+  request still pending. The consequence is total: `--max-cost-usd` cannot
+  finalize a stop at all — not the new predictive one, and not the reactive one
+  R2 built either. Reproduced by the reviewer at f9309bfe, with the predictive
+  path fully inert and `budgets={"max_cost_usd": 100.0}` as the only limit.
+  This is F104's own T001 gap, not a foreign defect: the field is this
+  feature's, and a limit that cannot stop a job is not a limit.
+  Done: R-0225 — fixed in 476376f0. `_BUDGET_ALLOWED_KEYS` widened by exactly
+  one field and `max_cost_usd` given its own validation next to the integer
+  loop (bool, str, non-numeric type, `math.isfinite`, strictly positive),
+  mirroring `JobBudgets._validate_budget_fields`. Pinned by 947aad4f and
+  8c8d6507. Reviewer-verified in the R5 review: removing `"max_cost_usd"` from
+  `_BUDGET_ALLOWED_KEYS` in a disposable worktree at 549f2bac turns exactly 11
+  tests RED — the nine schema pins in `TestRunManifestBudgetIdentity` plus BOTH
+  live terminal-state tests, `test_a_predictive_stop_reaches_the_stopped_state`
+  and `test_a_reactive_cost_stop_reaches_the_stopped_state` — and nothing else.
+  The worktree was removed and pruned before the verdict.
+
+- R-0226 (Medium, found in the R4 review): F104's live cost pins stop at the
+  stop SIGNAL and never assert a terminal job state.
+  `TestLiveSafePointReadsTheLedgerCost` in `tests/orchestration/test_budget_guard.py`
+  asserts `signal.reason == "budget_exhausted:max_cost_usd"` and returns; no
+  test in the feature drove a money-limited job to `JOB_STOPPED`. That is
+  exactly why R-0225 — a cost limit that can never finalize — survived two
+  reviewed rounds with green gates. The defect class is the R-0222 class one
+  level up: R-0222 was an engine with no caller, this is a caller whose effect
+  is never observed. A signal-only assertion cannot distinguish a working stop
+  from a stop that raises three frames later.
+  Done: R-0226 — fixed in 8c8d6507. The `strict=True` xfail was retired and the
+  predictive terminal test strengthened to assert `run_manifest_error == ""` and
+  `stop_error == ""` alongside `JOB_STOPPED`, so it proves finalization rather
+  than a status string; a second run-level test now pins the REACTIVE cost stop
+  end to end with the predictive path inert. Reviewer-verified: both tests are
+  among the 11 that go RED when the R-0225 fix is reverted, which is the
+  property their signal-only predecessors lacked. The R5 worker also observed
+  the strict xfail flip to `XPASS(strict)` at 476376f0 — the fix landing before
+  the marker was retired — which is independent evidence the assertion was load
+  bearing rather than decorative.
+
+- R-0227 (Low, found in the R6 review): the F103 ledger cost read that R6 added to
+  `_cmd_job_budget` (`apps/cli/commands/job.py`) is wrapped in a bare
+  `except Exception: pass`. A read that FAILS therefore renders exactly like a job
+  whose provider reported no prices — `spent: not-measured`, `remaining:
+  not-measured` — and nothing in either output says a read broke: the JSON
+  `diagnostic` field belongs to the counters decode and stays null. The silence is
+  an asymmetry inside one function rather than a considered choice: the
+  prediction block twenty lines below reports its own failure as
+  `unavailable (<Type>: <msg>)` and is pinned by
+  `test_a_broken_prediction_degrades_to_one_unavailable_line`, and
+  `run_job._build_budget_counters` — the read this one deliberately mirrors —
+  logs the identical failure at ERROR with `exc_info=True`. The displayed value
+  stays honest, which is why this is Low and not a P6 violation. The cost is that
+  a misconfigured ledger project is indistinguishable from a provider that
+  reports no prices, and that is the one diagnosis an operator who just hit a cost
+  limit most needs to make.
+  Done: R-0227 — fixed in d3fe8011. The ledger read's `except Exception: pass`
+  became a handler that records `f"{type(exc).__name__}: {exc}"`, truncated to 160
+  chars, BEFORE logging at ERROR with `exc_info=True`, and surfaces it as a
+  `cost_read:` text line and a dedicated `cost_read_error` JSON key — deliberately
+  NOT folded into `diagnostic`, which belongs to the counters decode, because one
+  field standing for two unrelated failures is the defect in mirror image. `spent`
+  and `remaining` are unchanged, so a genuinely unpriced job still renders
+  `not-measured` with `cost_read_error` null and stays distinguishable from a broken
+  read. Reviewer-verified in the R7 review: restoring the silent swallow in a
+  disposable worktree at 103a854d turns exactly 2 tests RED —
+  `test_a_failed_ledger_read_prints_a_cost_read_line_naming_the_error` and
+  `test_a_failed_ledger_read_sets_cost_read_error_in_json` — and nothing else. The
+  worktree was removed and pruned before the verdict.
+
+- R-0228 (Low, found in the R9 review, 2026-08-09): the R4 round line under
+  `## Steps` still carried the not-yet-reviewed marker although that review
+  demonstrably happened — R-0225 and R-0226 are both recorded as "found in the R4
+  review", and R5 was the repair round that fixed them. The R9 block set out to
+  stop this branch merging into `main` claiming ungated rounds and cleared R6 and
+  R7, but R4 carried the same stale marker and was missed. Nothing about the code
+  or about any verdict is wrong; the defect is that the record on disk contradicts
+  itself, and `.agent/live_review.md` is the artifact a later reader trusts about
+  which rounds were gated. Registered here rather than swept into
+  `.agent/candidates.md` because the correction is one reviewer-authored entry in
+  the same file and the branch has not merged into `main` yet.
+  Done: R-0228 — fixed in R10: the R4 line now reads PASS and names R-0225 and
+  R-0226 as the findings that review produced. Reviewer-verified from the diff
+  itself — after the repair commit the stale marker occurs zero times in this file,
+  and the R4 line is the only round entry that commit touches.
+
+## Steps
+
+- R1: claim + candidate sweep + T001 — the `max_cost_usd` limit, the ledger
+  cost bridge, the CLI flag and their tests. PASS at fc4929d5.
+- R2: fix R-0222, add the predictive config keys and the pure prediction
+  engine, register R-0222 and R-0223. PASS at 5ffd1178; gates A-D re-run by
+  the reviewer (226 / 163 / 294 / 42) and three mutation red-proofs run in a
+  disposable worktree. R-0224 found in that review.
+- R3: fix R-0224 — the cost-side counter split, DECISION F104 D5. PASS at
+  8b51fa63; gates A-D re-run by the reviewer (233 / 163 / 294 / 42) and the
+  restore-the-invariant red-proof run in a disposable worktree.
+- R4: T002 part 2 — delivered the counters-build refactor, the pure
+  `derive_next_task_token_band` (DECISION F104 D6), the predictive wiring at the
+  task-dispatch safe point with the `predicted_budget_exhausted:max_cost_usd`
+  reason and the persisted `JobPlan.budget_prediction` arithmetic, both
+  acceptance fixtures driven through the real `run_job`, the two inert-path
+  regressions and the A9 seam pin. PASS — that review is what produced R-0225 and
+  R-0226; the stale not-yet-reviewed marker this line carried until R10 is corrected
+  as R-0228. The worker reports a
+  pre-existing blocker it did not fix: `run_manifest._BUDGET_ALLOWED_KEYS`
+  rejects `max_cost_usd`, so a budget stop cannot reach JOB_STOPPED.
+- R5: repair round — fix R-0225 (the manifest budget allowlist) and R-0226
+  (terminal-state coverage), DECISION F104 D7. PASS at 549f2bac; gates A-E
+  re-run by the reviewer (261 with ZERO xfailed / 163 / 294 / 42 / 124) and the
+  revert-the-allowlist red-proof run in a disposable worktree: 11 RED, both
+  terminal-state tests among them.
+- R6: T003 — display and docs. `remedy job budget` gained the money limit, spent,
+  remaining, the live next-task expectation with its `estimate_basis` label and the
+  recorded stop arithmetic; the next-task selection rule was extracted to one helper and
+  pinned against the live safe point; the basis label is pinned grep-style; the ist-doc
+  `docs/system/job-budget-enforcement-v0.md` landed per DECISION F104 D8. PASS — gated in
+  the closing session together with R7 and R8; see the reviewer-gate entry under R8.
+- R7: repair + integration gate — R-0227 registered and fixed (the failed ledger
+  read now logs at ERROR and surfaces `cost_read:` / `cost_read_error`, and a
+  genuinely unpriced job is still distinguishable from a broken read), then the
+  full suite run per docs/agents/integration_gate.md with evidence in
+  `.agent/gate_f104_r7/`. PASS — gated in the closing session together with R6 and R8;
+  see the reviewer-gate entry under R8.
+- R8: CLOSURE per docs/roadmap/STATUS_closure_protocol.md. Final verdict on the
+  feature: **PASS WITH RISKS** — every F104 finding (R-0222, R-0223, R-0224,
+  R-0225, R-0226, R-0227) is Resolved with reviewer-authored text; the single
+  remaining open finding R-0221 is a documented LOW risk that belongs to the F252
+  flake-debt class, is not F104's code to fix under AGENTS.md Scope Control, and
+  was attributed by controlled evidence at the R7 integration gate rather than
+  chased.
+- Reviewer gate on R6+R7+R8 (the closing session, 2026-08-09): PASS. Range
+  `549f2bac..b5a241c3` read as a real diff; gates A-D re-run by the reviewer from the
+  repo root with real exit codes — `tests/docs/` 294 passed, canary 42 passed,
+  `test_job_budgets.py` + `test_predictive_budget.py` 210 passed, and
+  `remedy integrity check --json` passed 5 of 5 — every number equal to the handback's.
+  `cmp .agent/authored/f104-r8-1.md .agent/last_block.md` exit 0. The closure package
+  `remedy-review-20260809-033908-READY_FOR_REVIEW.zip` was re-hashed on disk and its
+  sha256 equals the one written into `docs/roadmap/STATUS.md`. R7's integration-gate
+  evidence was checked directly rather than believed: the branch full-suite run records
+  `EXIT_CODE=0` with an EMPTY `branch_failed.txt`, and `comm_base_only_failures.txt`
+  holds six ids, all in `tests/ui_server/test_live_state.py` — the R-0221 class.
+  Independent mutation red-proof of R6's `select_next_predictable_task`, run in a
+  disposable worktree at b5a241c3 and removed and pruned before this verdict: deleting
+  the `TASK_BLOCKED`/`TASK_FAILED` guard turns exactly two tests RED
+  (`test_a_blocked_first_pending_task_has_no_next_task` and
+  `test_a_failed_first_pending_task_has_no_next_task`) and nothing else, so the guard is
+  load bearing rather than decorative. `LAST_REVIEWED_SHA` advances 549f2bac -> b5a241c3.
+- Reviewer gate on R9 (the closing session's successor, 2026-08-09): PASS. Range
+  `b5a241c3..8e651661` read as a real diff — five `.agent/` files and nothing else;
+  `packages/`, `apps/`, `tests/`, `docs/`, `README.md` and `docs/roadmap/STATUS.md`
+  byte-unchanged. The authored pairs 1, 2, 3, 4a and 4b are applied byte for byte:
+  each TO string occurs exactly once, the superseded `attributes these seven` occurs
+  zero times, and zero trailing-whitespace lines survive. Gates re-run by the
+  reviewer from the repo root with real exit codes: `cmp` of the authored block
+  against `.agent/last_block.md` exit 0, `tests/docs/` 294 passed, the golden-path
+  canary 42 passed, `remedy integrity check --json` `"passed": true` with
+  `"fail_count": 0` over 5 checks, `git status --porcelain` EMPTY, HEAD equal to
+  `origin/feature/f104-hard-budget-enforcement`. R9 delivered exactly its block; the
+  one thing its block did not cover is registered above as R-0228.
+  `LAST_REVIEWED_SHA` advances b5a241c3 -> 8e651661.
+- R10: register R-0228 and correct the stale R4 round marker. `.agent/` state only —
+  no code, test, doc or `docs/roadmap/STATUS.md` byte changed.
+- Reviewer gate on R10 (2026-08-09): PASS. Range `8e651661..16f1c375` read as a real
+  diff — five `.agent/` files, nothing under `packages/`, `apps/`, `tests/`, `docs/`
+  or `README.md`, and `docs/roadmap/STATUS.md` byte-unchanged. The registration commit
+  46be4953 carries pairs 1-3 and contains no `Done:` text; the repair commit fb1daac0
+  carries pairs 4-5 — the finding is registered before its fix is claimed, in that
+  order, in two commits. Gates re-run by the reviewer from the repo root with real
+  exit codes: `cmp .agent/authored/f104-r10-1.md .agent/last_block.md` exit 0,
+  `tests/docs/` 294 passed, the golden-path canary 42 passed,
+  `remedy integrity check --json` `"passed": true` with `"fail_count": 0` over 5
+  checks, `Awaiting review` 0 occurrences in this file, zero trailing-whitespace
+  lines, `git status --porcelain` EMPTY, HEAD equal to origin, and `git worktree list`
+  showing the primary checkout alone. `LAST_REVIEWED_SHA` advances
+  8e651661 -> 16f1c375.
+- Terminating convention for this branch (reviewer, 2026-08-09): an on-disk round log
+  cannot record the gate on the commit that writes it, so R11 — the round that writes
+  this entry — is the LAST round here, and its own verdict is carried by
+  `.agent/handoff.md`, the reviewer's completion report and PR #188 instead. A reader
+  who finds no `Reviewer gate on R11` line below is reading the terminator, not a
+  second instance of R-0228: R-0228 was a line that positively CLAIMED to be awaiting
+  review while its review had demonstrably happened, which is a different defect from
+  a final round whose verdict lives off the round log by construction. Registered as a
+  closure candidate so the convention is written down once in
+  docs/agents/planner_reviewer_prompt.md rather than re-derived on every branch.

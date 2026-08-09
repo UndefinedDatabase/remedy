@@ -32,6 +32,7 @@ import dataclasses
 import errno
 import hashlib
 import json
+import math
 import os
 import platform
 import re
@@ -3492,13 +3493,16 @@ def decode_call_expectation_v1(raw: Any) -> CallExpectationV1:
 
 _BUDGET_ALLOWED_KEYS = {
     "max_total_tokens", "max_provider_calls", "max_wall_clock_minutes", "deadline",
+    "max_cost_usd",
 }
 
 
 def _decode_budgets_field(raw: Any) -> dict[str, Any] | None:
     """F018: validate the closed JobBudgets schema on a budgets dict (or None).
 
-    Rejects zero, negative, bool, float, and unknown keys. Deadline must be a
+    Rejects zero, negative, bool, float, and unknown keys on the INTEGER limits.
+    ``max_cost_usd`` is money and therefore the one fractional limit: it accepts
+    int or float but must be strictly positive and finite. Deadline must be a
     valid timezone-aware ISO-8601 string.
     """
     if raw is None:
@@ -3525,6 +3529,27 @@ def _decode_budgets_field(raw: Any) -> dict[str, Any] | None:
             raise ManifestError(f"manifest.budgets.{k} must be a strictly positive int, got {type(v).__name__}")
         if v <= 0:
             raise ManifestError(f"manifest.budgets.{k} must be strictly positive, got {v}")
+    # R-0225: money is the ONE fractional limit, so it gets its own check instead
+    # of the integer loop above — and admitting it to this CLOSED schema at all is
+    # what lets a job carrying `max_cost_usd` write its manifest and therefore
+    # FINALIZE a budget stop. Rules mirror `JobBudgets._validate_budget_fields`.
+    cost = raw.get("max_cost_usd")
+    if cost is not None:
+        if isinstance(cost, bool):
+            raise ManifestError(
+                "manifest.budgets.max_cost_usd must be a strictly positive number, got bool")
+        if isinstance(cost, str):
+            raise ManifestError(
+                "manifest.budgets.max_cost_usd must be a strictly positive number, got str")
+        if not isinstance(cost, (int, float)):
+            raise ManifestError(
+                f"manifest.budgets.max_cost_usd must be a strictly positive number, "
+                f"got {type(cost).__name__}")
+        if not math.isfinite(cost):
+            raise ManifestError(f"manifest.budgets.max_cost_usd is not finite, got {cost!r}")
+        if cost <= 0:
+            raise ManifestError(
+                f"manifest.budgets.max_cost_usd must be strictly positive, got {cost}")
     dl = raw.get("deadline")
     if dl is not None:
         if not isinstance(dl, str):

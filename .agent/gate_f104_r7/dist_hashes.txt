@@ -1,0 +1,50 @@
+F104 R7 — UI ARTIFACT PARITY FOR THE BASE RUN
+=============================================
+integration_gate.md step 3 (R-0155 amendment) requires either restored
+parity before the base run or a per-id environment attribution. Both were
+done: parity was restored by CONTENT, it was VERIFIED, and the six ids that
+still failed were attributed anyway.
+
+RESTORATION
+  $ cp -a apps/ui/node_modules .remedy-wt/base_gate_f104_r7/apps/ui/node_modules
+  $ cp -a apps/ui/dist         .remedy-wt/base_gate_f104_r7/apps/ui/dist
+  COPIED, never symlinked — the UI auto-build runs npm install and writes
+  THROUGH a symlink back into the primary checkout (F053 R3 evidence).
+  REMEDY_UI_NO_AUTO_BUILD=1 was also set for the base run, and — per the
+  procedure — was NOT trusted on its own.
+
+VERIFICATION (aggregate CONTENT hash of every file under apps/ui/dist)
+  method: find apps/ui/dist -type f -print0 | sort -z | xargs -0 sha256sum | sha256sum
+
+  before the base run : fb68a7293502c79b8ece61d154f5752100a16da1a08a481a7a4c1d79a5a503c0
+  after  the base run : fb68a7293502c79b8ece61d154f5752100a16da1a08a481a7a4c1d79a5a503c0
+  -> IDENTICAL. The parity claim BY CONTENT holds.
+
+WHAT THE HASH DOES NOT COVER, stated rather than hidden
+  It is not a clean neutralization. R-0221's
+  tests/ui_server/test_dashboard_contract.py::TestAutoBuildBehavior::
+  test_auto_build_runs_by_default pops REMEDY_UI_NO_AUTO_BUILD and runs a
+  real npm install + npm run build in whatever checkout it finds, so the
+  dist MTIMES moved mid-run in both checkouts. The build is deterministic,
+  which is why the content hash never moved.
+
+MTIME TIMELINE (the whole cause of the six base-only ids)
+  03:12:10  primary apps/ui/dist/index.html rebuilt DURING the branch run
+            (R-0221's test), branch run ended 03:13:01
+  03:14:06  base worktree created — `git worktree add` stamps every tracked
+            file, including apps/ui/src/**, with the CHECKOUT time
+  03:14:1x  dist copied with `cp -a`, which PRESERVES mtime 03:12:10
+            -> the base worktree's dist is STALE BY CONSTRUCTION
+               (03:12:10 dist < 03:14:06 src) before a single test runs
+  03:14:1x  base run starts; the six TestUIServerIntegration ids run while
+            dist is still stale
+  03:15:20  R-0221's test rebuilds dist INSIDE the base worktree, which is
+            why the same six ids pass on a serial re-run afterwards
+  03:16:18  base run ends
+
+WHY THE BRANCH SIDE NEVER SEES THESE
+  primary apps/ui/src newest mtime : 2026-06-29 19:39:48 (RemedyShell.tsx)
+  primary apps/ui/dist/index.html  : 2026-08-09 03:12:10
+  dist is newer than every source file in the primary checkout, so
+  _frontend_is_stale() is false there and never can be true. The branch did
+  not FIX these six; the branch checkout is simply never mtime-stale.

@@ -1,0 +1,26 @@
+F104 R7 — BRANCH RUN (integration_gate step 1)
+cmd  : REMEDY_UI_NO_AUTO_BUILD=1 python3 -m pytest -n auto -q
+cwd  : /home/decodeux/Repos/remedy (primary checkout), HEAD d3fe8011
+log  : written to .remedy-wt/scratch_f104_r7/ OUTSIDE the tracked tree
+       while the suite ran, copied here after exit (R-0176)
+env  : REMEDY_UI_NO_AUTO_BUILD=1 on BOTH runs, so the branch and base
+       commands stay identical (F103 R5 precedent).
+note : the raw log is 234 lines of xdist dot-progress; only the
+       decisive head and tail are kept (F103 R5 precedent).
+
+----- head -----
+bringing up nodes...
+bringing up nodes...
+
+
+----- tail (raw, verbatim) -----
+........................................................................ [ 99%]
+....................................................                     [100%]
+16305 passed, 19 skipped in 120.14s (0:02:00)
+
+=== EXIT_CODE=0 ===
+=== WALL_SECONDS=121 ===
+
+FAILED lines: 0
+ERROR  lines: 0
+branch_failed.txt is EMPTY (0 bytes) and that empty file is the evidence.

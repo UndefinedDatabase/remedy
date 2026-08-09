@@ -272,6 +272,9 @@ class JobPlan:
     # Planning and waiting time do not count. Resume preserves the original.
     first_running_at: str = ""
     budget_actuals: dict | None = None
+    # F104: the prediction that justified a predictive stop — its arithmetic is
+    # what a human reads to see WHY the job stopped before doing any work.
+    budget_prediction: dict | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -591,6 +594,7 @@ def _export_job(job: JobPlan) -> dict[str, Any]:
         "budgets": job.budgets,
         "first_running_at": job.first_running_at,
         "budget_actuals": job.budget_actuals,
+        "budget_prediction": job.budget_prediction,
         "handoff_coverage": {
             "verdict": job.handoff_coverage_verdict,
             "root_changed_files": job.root_changed_files,
@@ -683,6 +687,8 @@ def _import_job(data: dict[str, Any]) -> JobPlan:
         budgets=data.get("budgets"),
         first_running_at=str(data.get("first_running_at", "") or ""),
         budget_actuals=data.get("budget_actuals"),
+        # Absent in job files written before F104 — loads as None, unchanged.
+        budget_prediction=data.get("budget_prediction"),
     )
     for t in data.get("tasks", []):
         job.tasks.append(TaskEntry(
@@ -1538,6 +1544,52 @@ def _resolve_cfg(cli_val: Any, persisted_val: Any, default: Any) -> tuple[Any, s
     return default, "default"
 
 
+# Answers "which task would run next, and with what prior context" for anyone
+# who needs the F104 prediction WITHOUT running the job — today `remedy job
+# budget`. One function so the read-only inspector and `run_job`'s task-dispatch
+# safe point can never drift into predicting against different tasks.
+def select_next_predictable_task(job) -> tuple[object | None, list]:
+    """Return ``(next_task, previous_summaries)`` for a persisted job plan.
+
+    The rule is EXACTLY the one ``run_job``'s dispatch loop applies:
+
+    * ``previous_summaries`` collects the ``proof_summary`` of every task that
+      is ``TASK_APPLIED`` or ``TASK_PASSED`` and actually carries one, in task
+      order — the same list the loop pre-fills before its first dispatch.
+    * ``next_task`` is the first task the loop would not ``continue`` past, i.e.
+      the first whose status is not applied/passed/skipped. If that task is
+      ``TASK_BLOCKED`` or ``TASK_FAILED`` the loop ``break``s instead of
+      dispatching, so there is no next task and None is returned.
+
+    Pure and NEVER raises: it is read by a read-only CLI over possibly-legacy
+    job files, where a missing attribute must degrade rather than kill an
+    inspection command. Every degradation returns ``(None, [])``.
+    """
+    try:
+        tasks = list(getattr(job, "tasks", None) or ())
+        # Pass 1 — the SAME pre-fill the loop does over EVERY task, not only the
+        # ones before the next pending one: a later completed task still feeds
+        # its proof summary into the context of an earlier pending task.
+        summaries: list = [
+            t.proof_summary for t in tasks
+            if getattr(t, "status", None) in (TASK_APPLIED, TASK_PASSED)
+            and getattr(t, "proof_summary", None)
+        ]
+        # Pass 2 — the first task the loop would not `continue` past. If the loop
+        # would `break` on it instead of dispatching, there is no next task.
+        next_task = None
+        for task in tasks:
+            status = getattr(task, "status", None)
+            if status in (TASK_APPLIED, TASK_PASSED, TASK_SKIPPED):
+                continue
+            if status not in (TASK_BLOCKED, TASK_FAILED):
+                next_task = task
+            break
+        return next_task, summaries
+    except Exception:
+        return None, []
+
+
 # ---------------------------------------------------------------------------
 # Sequential job runner (Steps 4829-4830, 4837-4838, 4857-4869)
 # ---------------------------------------------------------------------------
@@ -1804,6 +1856,30 @@ def run_job(
             _persist_job(job)
             return job
 
+    # F104: the predictive inputs (price basis + class defaults) are OPERATOR
+    # config, so they are read once per run, not once per safe point. Resolved
+    # only when a money limit exists — with no `max_cost_usd` there is nothing
+    # to predict against and every existing path stays byte for byte unchanged.
+    _predictive_config = None
+    if _job_budgets is not None and _job_budgets.max_cost_usd is not None:
+        try:
+            from packages.orchestration.budget_resolution import (
+                resolve_predictive_budget_config as _resolve_predictive_config,
+            )
+            _predictive_config = _resolve_predictive_config(
+                project_root=job.repo_path or None)
+        except Exception:
+            # A config read must never block a healthy job: with no config the
+            # predictive path is inert and the reactive check still enforces.
+            import logging as _logging
+            _logging.getLogger(__name__).error(
+                "predictive budget config read FAILED for job %r; the predictive "
+                "check is disabled for this run and the reactive budget check "
+                "continues to enforce every limit",
+                job.job_id, exc_info=True,
+            )
+            _predictive_config = None
+
     def _on_provider_call(attempt):
         nonlocal _accumulated_provider_calls, _accumulated_tokens
         nonlocal _accumulated_measured, _accumulated_unmeasured
@@ -1820,17 +1896,77 @@ def run_job(
         else:
             _accumulated_unmeasured += 1
 
-    def _stop_check():
+    def _build_budget_counters():
+        """The counters this safe point evaluates against — built ONCE per check.
+
+        Extracted so the reactive check and the F104 predictive check read the
+        same numbers from the same ledger query: two reads could disagree, and a
+        prediction that disagrees with the backstop it is supposed to precede is
+        worse than no prediction.
+        """
         from packages.orchestration.budget_guard import collect_counters_from_actuals
-        counters = collect_counters_from_actuals(
-            {
-                "provider_call_count": _accumulated_provider_calls,
-                "actual_call_count": _accumulated_measured,
-                "total_tokens": _accumulated_tokens,
-            },
-            started_at=_run_started_at,
-            actual_sources=("pingpong_live",) if _accumulated_measured > 0 else (),
-        )
+        _actuals = {
+            "provider_call_count": _accumulated_provider_calls,
+            "actual_call_count": _accumulated_measured,
+            "total_tokens": _accumulated_tokens,
+        }
+        _sources = ("pingpong_live",) if _accumulated_measured > 0 else ()
+        counters = None
+        # F104: a `--max-cost-usd` limit is only enforceable if the guard knows what
+        # the job has really cost, and the F103 ledger is the only place a real
+        # provider cost figure lives. Skipped entirely when no cost limit is set —
+        # a SQLite query per safe point for a limit nobody configured is waste, and
+        # skipping keeps every existing budget path byte for byte unchanged.
+        if _job_budgets is not None and _job_budgets.max_cost_usd is not None:
+            # WHY the swallow: budgets read a MIRROR — the ledger reflects evidence
+            # files that are already the source of truth — and a broken mirror must
+            # never stop a healthy job. Any failure leaves the cost UNMEASURED
+            # (None, never 0.0 — P6) and the token/call/time limits still enforce.
+            try:
+                from packages.orchestration.budget_guard import (
+                    collect_ledger_cost_for_job as _collect_ledger_cost,
+                )
+                from packages.orchestration.job_evidence import (
+                    _resolve_job_ledger_project_id as _resolve_ledger_project,
+                )
+
+                # The SAME resolver the write side uses, so the read and the write
+                # can never disagree about which project's ledger this job owns.
+                _ledger_project = _resolve_ledger_project(job)
+                if _ledger_project is not None:
+                    # All THREE ledger figures travel together: the priced count
+                    # is what the cost side validates against, so discarding it
+                    # is what made R-0224 (DECISION F104 D5).
+                    _ledger_cost, _ledger_priced, _ledger_unpriced = _collect_ledger_cost(
+                        job_id=job.job_id, project_id=_ledger_project)
+                    counters = collect_counters_from_actuals(
+                        _actuals,
+                        started_at=_run_started_at,
+                        actual_sources=_sources,
+                        measured_cost_usd=_ledger_cost,
+                        unpriced_call_count=_ledger_unpriced,
+                        priced_call_count=_ledger_priced,
+                    )
+            except Exception:
+                import logging as _logging
+                _logging.getLogger(__name__).error(
+                    "budget ledger cost read FAILED for job %r; the cost stays "
+                    "unmeasured for this safe point and the run continues (the "
+                    "evidence files remain the source of truth and the remaining "
+                    "budget limits are unaffected)",
+                    job.job_id, exc_info=True,
+                )
+                counters = None
+        if counters is None:
+            counters = collect_counters_from_actuals(
+                _actuals,
+                started_at=_run_started_at,
+                actual_sources=_sources,
+            )
+        return counters
+
+    def _stop_check(*, next_task=None, previous_summaries=()):
+        counters = _build_budget_counters()
         result = _should_stop(
             job.job_id,
             budgets=_job_budgets,
@@ -1838,6 +1974,59 @@ def run_job(
             control_root_path=_control,
         )
         if not result.should_stop:
+            # F104: neither the operator stop nor the REACTIVE budget check fired,
+            # so — and only so — ask whether the NEXT task would breach the money
+            # limit. The predictive check runs LAST on purpose: it never replaces
+            # the backstop, it only ever stops EARLIER than the backstop would.
+            if (
+                next_task is not None
+                and _job_budgets is not None
+                and _job_budgets.max_cost_usd is not None
+                and _predictive_config is not None
+            ):
+                # WHY the swallow: a prediction is an ESTIMATE, and a broken
+                # estimate must never stop a healthy job. Any failure here leaves
+                # the run going with the reactive check still enforcing every limit.
+                try:
+                    from packages.orchestration.budget_guard import (
+                        derive_next_task_token_band as _derive_band,
+                    )
+                    from packages.orchestration.budget_guard import (
+                        predict_next_task_cost as _predict_cost,
+                    )
+                    _prediction = _predict_cost(
+                        _job_budgets,
+                        counters,
+                        band=_derive_band(next_task, previous_summaries),
+                        config=_predictive_config,
+                    )
+                    if _prediction.would_breach:
+                        # The arithmetic is persisted BEFORE the stop so a human
+                        # reading job.json sees WHY no work was done.
+                        job.budget_prediction = _prediction.to_json()
+                        # One possible limit on this path; the reactive path
+                        # derives its name from first_exhausted_limit instead.
+                        _pred_reason = f"predicted_budget_exhausted:{'max_cost_usd'}"
+                        import hashlib as _phl
+                        _pred_episode = getattr(job, "active_episode_id", "") or ""
+                        _pred_id = _phl.sha256(
+                            f"{job.job_id}:{_pred_episode}:{_pred_reason}".encode()
+                        ).hexdigest()[:16]
+                        return _StopSignal(
+                            job_id=job.job_id,
+                            request_id=f"budget_{_pred_id}",
+                            reason=_pred_reason,
+                            source="budget",
+                        )
+                except Exception:
+                    import logging as _logging
+                    _logging.getLogger(__name__).error(
+                        "predictive budget check FAILED for job %r; the run "
+                        "continues and the reactive budget check still enforces "
+                        "every configured limit",
+                        job.job_id, exc_info=True,
+                    )
+                    return None
             return None
         if result.source == "operator":
             return result.operator_signal
@@ -1881,6 +2070,8 @@ def run_job(
     if not job.active_episode_id:
         job.active_episode_id = uuid4().hex[:16]
 
+    # Deliberately argument-free: there is no "next task" before the episode loop,
+    # and inventing one would predict against a task that may never be reached.
     _pre_stop = _stop_check()
     if _pre_stop is not None:
         if not _episode_snapshot_bound_ok(job):
@@ -1989,7 +2180,10 @@ def run_job(
             # SAFE POINT — before dispatching a task. A stop that was requested while the
             # job was not running is consumed HERE, before any work begins: zero provider
             # calls, every task still pending.
-            _stop = _stop_check()
+            # F104: this is also the only place the PREDICTIVE check has a real next
+            # task to predict against, so the task and the summaries that will feed
+            # its context are handed over here and nowhere else.
+            _stop = _stop_check(next_task=task, previous_summaries=previous_summaries)
             if _stop is not None:
                 _persist_budget_actuals()
                 _persist_job(job)

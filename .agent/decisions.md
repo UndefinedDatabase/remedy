@@ -3616,3 +3616,179 @@ diff FILE, not the change: `git status` is clean of any
 at 1. Three assertions pin it there; the new one,
 `test_the_rollout_cap_is_still_one_until_adr_0001_is_applied`, names ADR-0001
 in its docstring so the human applying the ADR finds every pin by grep.
+
+## 2026-08-08: F104 R1 — two decisions taken at the candidate sweep
+
+**F104 D1 — commit-size counting is INSERTIONS.** The F103 closure review
+raised, as a candidate rather than a finding, that AGENTS.md Commit Discipline
+says "If a diff exceeds 500 lines" without saying whether a line is an
+insertion or an insertion-or-deletion. F103 R7's commit `68bd9f3f` was
++308/-277 = 585 changed lines: over the cap by the churn reading, under it by
+the insertions reading. This is not an edge case — every round's
+`.agent/last_block.md` and `.agent/handoff.md` save is a full-file rewrite, so
+the churn reading is unmeetable by construction for a verbatim single-file
+state save.
+
+Chosen: the cap counts INSERTIONS, and a verbatim single-file `.agent/**` state
+rewrite is exempt outright. Applied to AGENTS.md Commit Discipline in this same
+round.
+
+Alternatives considered: (a) count insertions+deletions and grant the state
+files a standing exception — rejected, because it silently re-scores every
+past verdict in this repository as a violation; (b) leave it undefined and
+judge case by case — rejected, that is exactly the ambiguity that cost the F103
+closure a paragraph of argument. Reverse it by deleting the bullet from
+AGENTS.md; nothing else depends on it.
+
+**F104 D2 — the money flag is `--max-cost-usd`.** `docs/roadmap/features/
+T2_F104.md` names the flag `--budget-usd` in its Goal while its own Design
+section names the field `max_cost_usd`, and the three sibling flags already
+shipped are `--max-total-tokens`, `--max-provider-calls` and
+`--max-wall-clock-minutes`.
+
+Chosen: `--max-cost-usd`, and the feature file's Goal line is amended to match
+in this same round. One spelling per concept, and the flag now greps to its own
+field and config key (AGENTS.md Code Discoverability). Alternative considered:
+ship `--budget-usd` as the Goal literally says and let the field keep its own
+name — rejected as synonym drift across a single feature. Reverse it by
+re-amending the feature file and renaming the flag; no released surface depends
+on either name yet.
+
+## DECISION F104 D3 + D4 — predicted cost has a derived band and no invented price (2026-08-09)
+
+Context: T2_F104's Design says expected cost is "band→tokens class default ×
+configured price basis", which reads as though a task carries a band. It does
+not: `JobTask` has no band field, and the only band vocabulary in the repo is
+`TokenBand` (low/medium/high/unknown) in
+`packages/orchestration/token_economy.py`, alongside
+`estimate_task_token_band(task_type, context_estimate)`.
+
+D3 — the band is DERIVED, not stored. The predictive check derives the band at
+the dispatch safe point from `estimate_task_token_band()` over the next task's
+context estimate. Alternatives considered: (a) add a `band` field to `JobTask`
+— rejected, it changes a persisted model and every plan written before it would
+carry a null anyway, which is the same missing-band case with more migration;
+(b) always use the largest class default — rejected as needlessly blunt when a
+context estimate exists. A task whose band cannot be derived takes the feature
+file's own A9 path: the LARGEST class default, with the basis label saying the
+band was missing, because over-stopping beats overspending.
+
+D4 — the price basis has no default. `budget.price_basis_usd_per_1k_tokens` is
+unset unless an operator sets it; with it unset the predictive path is inert and
+labels itself `estimate_basis=no_price_basis`. Alternative considered: ship a
+plausible default price — rejected under P6. A default price is a number nobody
+measured, and every prediction derived from it would be a fabrication wearing an
+honest label. An inert predictor is safe because the reactive check is the
+backstop and is unchanged.
+
+Reverse either decision by deleting its half of this entry and the matching
+lines in `docs/roadmap/features/T2_F104.md`.
+
+## DECISION F104 D5 — cost-side call counts are validated against the cost side (2026-08-09)
+
+Context: finding R-0224. `BudgetCounters` carried a single call-count invariant,
+`unpriced_call_count <= provider_calls`, written when every counter came from one
+source: the run accumulator in `pingpong_job.run_job`. F104's ledger bridge broke
+that assumption by feeding `unpriced_call_count` from the F103 SQLite ledger while
+`provider_calls` kept counting attempts in the current run. The two disagree
+legitimately — the accumulator skips `provider == "fake"` attempts and starts from
+whatever `budget_actuals` were persisted, the ledger holds one row per finalized
+task run across every run of the job — so the invariant fired on healthy data.
+
+D5 — the counter object now carries BOTH cost-side counts, `priced_call_count` and
+`unpriced_call_count`, and the cross-source check is gone. What survives is the
+cost-side contradiction check: a positive `measured_cost_usd` with nothing priced
+to explain it is still an error.
+
+Alternatives considered: (a) clamp the unpriced count to `provider_calls` —
+rejected, it understates how many calls went unpriced, which dresses poorly
+measured data as well measured and is the P6 failure in mirror image; (b) stop
+passing `unpriced_call_count` from the ledger at all — rejected, the unpriced
+notation surviving the trip is an F104 acceptance criterion, and dropping it would
+make `cost_description` claim a precision it does not have; (c) widen
+`provider_calls` to the ledger total — rejected, `provider_calls` is the basis of
+the `max_provider_calls` limit and moving it would change an unrelated F018 limit.
+
+Why it matters beyond the bug: the raise was swallowed by the ledger read's own
+broad `except Exception`, so the failure mode was not a crash but a silent
+downgrade to "no cost known" — the money limit quietly ceasing to enforce for
+exactly the mixed-priced jobs it was added for.
+
+Reverse this decision by restoring the `unpriced_call_count > provider_calls`
+check and dropping `priced_call_count`.
+
+## DECISION F104 D6 — the context estimate is the task text, not the built prompt (2026-08-09)
+
+Context: R4 wires the predictive check into `run_job`'s task-dispatch safe point.
+`predict_next_task_cost` needs a band, DECISION F104 D3 says the band is DERIVED
+there, and deriving it needs a context estimate for the next task. The obvious
+source is the prompt that task will actually run on — `_build_task_prompt(job,
+task, previous_summaries)`, which already computes a `tokens_estimated` figure a
+few lines below the safe point.
+
+D6 — the estimate comes from the task's OWN text (`title`, `body`, `acceptance`)
+plus the `tokens_estimated` of prior task proof summaries, via the pure
+`derive_next_task_token_band` in `budget_guard.py`. The prompt is NOT built.
+
+Alternative considered: build the prompt above the safe point and use its real
+token count. Rejected. The safe point exists to guarantee that a stop is consumed
+BEFORE any work for the next task begins; moving the prompt build above it moves
+work ahead of that guarantee, and the guarantee — not the accuracy of an estimate
+— is the safety property. It would also make the most safety-critical code in the
+loop depend on a builder that can raise.
+
+The cost of the choice is stated rather than hidden: the estimate is a FLOOR. It
+omits whatever the prompt adds around the task text, so it can only UNDER-predict,
+never over-predict. That is the conservative direction here — an under-prediction
+fails to stop early and the reactive check in `evaluate_budget` catches the
+overrun, which is exactly the backstop's job; an over-prediction would stop
+healthy jobs that were never going to breach.
+
+Reverse this decision by moving the `_build_task_prompt` call above the safe point
+and passing its `tokens_estimated` as the context estimate, then deleting the D6
+lines here and in `docs/roadmap/features/T2_F104.md`.
+
+## DECISION F104 D7 — R5 repairs instead of starting T003 (2026-08-09)
+
+Context: the reviewer passed R4 and registered two findings against it — R-0225
+(High: `max_cost_usd` is missing from the CLOSED `run_manifest._BUDGET_ALLOWED_KEYS`,
+so a money-limited job cannot write its F012 manifest and therefore cannot
+FINALIZE a stop) and R-0226 (Medium: no F104 test ever drove a money-limited job
+to a terminal `JOB_STOPPED`, which is how R-0225 survived two reviewed rounds).
+R5 was planned as T003 — display, docs and estimate labels.
+
+D7 — R5 is spent repairing R-0225 and R-0226. T003 moves to R6, the integration
+gate to R7, closure to R8. A display round that renders spent, remaining and the
+next-task expectation out of a stop path that cannot finalize would be polish on
+a broken feature: the numbers would be correct and the limit would still not stop
+anything.
+
+Alternative considered: fold the manifest fix into the T003 round to save a
+relay. Rejected — a change to the shared F012 manifest schema and a user-facing
+display slice in one branch is exactly the mixed diff AGENTS.md bars, and the
+schema change has its own blast radius (the run-manifest gate) that a display
+round would not run.
+
+Reverse this decision by renumbering the remaining rounds; nothing depends on the
+numbering.
+
+## DECISION F104 D8 — an ist-doc IS owed for the job-budget stop path (2026-08-09)
+
+Context: R6 was chartered to decide whether `docs/` owes a document for the job-budget
+stop path. Nothing under `docs/system/` or `docs/guides/` mentions `max_cost_usd`,
+`max_total_tokens` or `remedy job budget` — a grep for all three returns nothing. The
+stop reason `predicted_budget_exhausted:max_cost_usd` therefore lives only in the
+feature file, which is the TARGET plan, and in the code.
+
+D8 — F104 writes `docs/system/job-budget-enforcement-v0.md` and registers it in
+`docs/README.md`. AGENTS.md Documentation Updates requires `docs/` to be updated when a
+feature introduces behavior that is not yet documented, and a limit that silently kills
+a running job is exactly that. The doc is scoped to what F104 built plus the F018 limits
+it extends — it does not attempt to document all of F018.
+
+Alternative considered: extend `docs/system/run-contract-v1.md`. Rejected — the budgets
+named there are the F011-era loop/test/runtime caps of a single run contract, a
+different concept from per-job budget limits, and merging them would make one doc
+describe two unrelated mechanisms.
+
+Reverse this decision by deleting the doc and its two `docs/README.md` rows.

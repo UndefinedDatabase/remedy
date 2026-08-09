@@ -445,6 +445,7 @@ def _cmd_do(
     max_total_tokens: str | None = None,
     max_provider_calls: str | None = None,
     max_wall_clock_minutes: str | None = None,
+    max_cost_usd: str | None = None,
     deadline: str | None = None,
     injected_default: bool = False,
     truly_bare: bool = False,
@@ -468,6 +469,7 @@ def _cmd_do(
             cli_max_total_tokens=max_total_tokens,
             cli_max_provider_calls=max_provider_calls,
             cli_max_wall_clock_minutes=max_wall_clock_minutes,
+            cli_max_cost_usd=max_cost_usd,
             cli_deadline=deadline,
             project_root=repo,
         )
@@ -1214,6 +1216,7 @@ def _cmd_do_job_plan(
     max_total_tokens: str | None = None,
     max_provider_calls: str | None = None,
     max_wall_clock_minutes: str | None = None,
+    max_cost_usd: str | None = None,
     deadline: str | None = None,
     json_output: bool = False,
 ) -> None:
@@ -1230,6 +1233,7 @@ def _cmd_do_job_plan(
             cli_max_total_tokens=max_total_tokens,
             cli_max_provider_calls=max_provider_calls,
             cli_max_wall_clock_minutes=max_wall_clock_minutes,
+            cli_max_cost_usd=max_cost_usd,
             cli_deadline=deadline,
             project_root=repo,
         )
@@ -1294,6 +1298,7 @@ def _cmd_do_job_run(
     max_total_tokens: str | None = None,
     max_provider_calls: str | None = None,
     max_wall_clock_minutes: str | None = None,
+    max_cost_usd: str | None = None,
     deadline: str | None = None,
 ) -> None:
     """Run pending tasks sequentially through the ping-pong loop.
@@ -1347,7 +1352,8 @@ def _cmd_do_job_run(
     # flags.  When no flags are given, the persisted JobPlan budgets are authoritative —
     # do NOT re-read mutable CWD config and silently replace them.
     _has_budget_flags = any(v is not None for v in (
-        max_total_tokens, max_provider_calls, max_wall_clock_minutes, deadline))
+        max_total_tokens, max_provider_calls, max_wall_clock_minutes,
+        max_cost_usd, deadline))
     budgets_dict = None
     if _has_budget_flags:
         # F018: raw budget flags must not silently override a stopped job's limits.
@@ -1367,6 +1373,7 @@ def _cmd_do_job_run(
                 cli_max_total_tokens=max_total_tokens,
                 cli_max_provider_calls=max_provider_calls,
                 cli_max_wall_clock_minutes=max_wall_clock_minutes,
+                cli_max_cost_usd=max_cost_usd,
                 cli_deadline=deadline,
             )
         except (BudgetConfigError, ValueError) as exc:
@@ -2920,6 +2927,7 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         max_total_tokens=getattr(args, "max_total_tokens", None),
         max_provider_calls=getattr(args, "max_provider_calls", None),
         max_wall_clock_minutes=getattr(args, "max_wall_clock_minutes", None),
+        max_cost_usd=getattr(args, "max_cost_usd", None),
         deadline=getattr(args, "deadline", None),
         no_llm=getattr(args, "no_llm", False),
         yes=getattr(args, "yes", False),
@@ -2973,6 +2981,7 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         max_total_tokens=getattr(args, "max_total_tokens", None),
         max_provider_calls=getattr(args, "max_provider_calls", None),
         max_wall_clock_minutes=getattr(args, "max_wall_clock_minutes", None),
+        max_cost_usd=getattr(args, "max_cost_usd", None),
         deadline=getattr(args, "deadline", None),
         json_output=getattr(args, "json", False),
     ),
@@ -2998,6 +3007,7 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         max_total_tokens=getattr(args, "max_total_tokens", None),
         max_provider_calls=getattr(args, "max_provider_calls", None),
         max_wall_clock_minutes=getattr(args, "max_wall_clock_minutes", None),
+        max_cost_usd=getattr(args, "max_cost_usd", None),
         deadline=getattr(args, "deadline", None),
     ),
     "do.job-resume": lambda args: _cmd_do_job_resume(
