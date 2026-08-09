@@ -3817,3 +3817,24 @@ because a one-file verbatim save is indivisible, while block LENGTH is a free ch
 of the author, and an exemption would remove the only pressure keeping blocks short.
 
 Reverse this decision by deleting this entry.
+
+## DECISION F105 D3 (2026-08-09) — the schema tail stays unregistered
+
+The segment manifest F105 T003 records covers the composed BASE prompt only.
+For intake, plan, mission and orchestrator, `run_structured_call` wraps that
+base through `build_schema_prompt` or `native_schema_prompt` and sends the
+wrapped string, so the manifest describes a strict PREFIX of the bytes that
+leave the process. Registering the tail was considered and rejected: the tail
+is generated BELOW every builder, and pulling it into the registry would make
+each builder compose after its own return value, inverting the seam T001 exists
+to provide.
+
+Instead the prefix is made VISIBLE rather than left implicit. Every trace entry
+records `segment_manifest_chars` beside `prompt_chars`, and the gap between
+them IS the unregistered tail, so a reader sees the coverage instead of
+assuming it. The F105 acceptance line "the segment manifest appears in call
+evidence for every role" is therefore true as written and honest about scope.
+Landed in code at R12 (`packages/orchestration/prompt_trace.py`); recorded here
+at R13, the first `.agent/`-only round after it.
+
+Reverse this decision by deleting this entry.
