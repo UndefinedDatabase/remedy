@@ -3838,3 +3838,58 @@ Landed in code at R12 (`packages/orchestration/prompt_trace.py`); recorded here
 at R13, the first `.agent/`-only round after it.
 
 Reverse this decision by deleting this entry.
+
+## DECISION F105 D4 — the mission rules segment is CAP-SCOPED (2026-08-09)
+
+`build_mission_prompt` interpolates `{max_milestones}` into the middle of its
+rules list, and `packages/orchestration/gauntlet_runner.py:505` varies that cap
+per caller (`max_milestones=len(order.milestones) + 1`). Registering the rules
+as a rank-1 CONVENTIONS segment therefore cannot make the F105 acceptance claim
+"identical prefix bytes across consecutive calls within a role" true
+unconditionally. It is true PER CAP VALUE.
+
+A byte-preserving split into a constant head and a parameterised tail was
+considered and rejected: both interpolations sit mid-list, the segment delimiter
+is a plain blank line (DECISION F105 D1), and the rules list contains no blank
+line to split on. Any split reaching them would insert bytes the pre-migration
+prompt does not have — precisely the content change T003 must not make.
+
+D4 — the rules are registered WHOLE as `mission_rules`, and the cap scoping is
+made visible instead of assumed. A one-line WHY comment sits directly above the
+constant, where a reader searches, and
+`tests/orchestration/test_mission_prompt_golden.py` pins the scope: equal caps
+produce an identical `mission_rules` hash, different caps produce different
+`mission_rules` hashes while every other segment hash is unchanged. The claim
+becomes testable rather than hopeful, and its honest limit is on disk.
+
+Reverse this decision by deleting this entry.
+
+## DECISION F105 D5 — the step block is counted once, cap 400 (2026-08-09)
+
+Context: finding R-0243. DECISION F105 D2 caps a step block at 240 lines because
+C1 wrote the block to BOTH `.agent/authored/<round>.md` and
+`.agent/last_block.md` in ONE commit, so N authored lines cost 2N insertions
+against the AGENTS.md 500 cap. But the mandated record content of a reviewed
+round — the gate verdict, the registrations and resolutions, the header pair and
+the verbatim `.agent/plan.md` — costs roughly 150 lines before any feature work
+is described, leaving under 90 for instruction. R14 and R15 both degraded into
+record-only rounds and merged no feature change. The cap had begun doing harm.
+
+D5 — C1 splits in two. C1a commits `.agent/authored/<round>.md` ALONE and its N
+insertions count normally against the 500 cap. C1b rewrites
+`.agent/last_block.md` ALONE, which is the verbatim rewrite of a SINGLE
+`.agent/**` state file named in the AGENTS.md Commit Discipline exemption list,
+and is therefore exempt exactly as written. The step-block cap becomes 400
+authored lines, measured by the reviewer BEFORE delegation and stated in the
+block itself.
+
+This does not revive the alternative D2 rejected. D2 declined to exempt the C1
+PAIR from counting, on the ground that block length is a free authorial choice
+and an exemption would remove the only pressure keeping blocks short. That
+pressure survives in full: C1a still meets the 500-line ceiling and 400 sits 100
+under it. What ends is the DOUBLE counting, an accounting artifact of writing one
+artifact twice in one commit rather than any measure of how long the block is.
+Splitting an oversize commit is also the remedy AGENTS.md prescribes in its own
+words, so no rule is reinterpreted and no exemption is widened.
+
+Reverse this decision by deleting this entry, and restore D2's 240 with it.
