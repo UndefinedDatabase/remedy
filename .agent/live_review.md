@@ -125,19 +125,19 @@
   a misconfigured ledger project is indistinguishable from a provider that
   reports no prices, and that is the one diagnosis an operator who just hit a cost
   limit most needs to make.
-  Done: R-0227 — fixed in d3fe8011. The bare `except Exception: pass` on the
-  ledger read now logs at ERROR with `exc_info=True` in the same voice as
-  `run_job._build_budget_counters`, and records `_cost_read_error`
-  (`<Type>: <msg>`, 160 chars) which surfaces as a `cost_read:` text line
-  printed only when a read really failed and as its own JSON key
-  `cost_read_error`. The counters decode keeps `diagnostic` and
-  `_counter_diagnostic` to itself; `spent` and `remaining` still render
-  `not-measured` for an unpriced job, which now prints no `cost_read:` line at
-  all. Pinned by four tests in `TestJobBudgetCliRendersPredictions` that drive
-  the real `_cmd_job_budget` through capsys: the failed read's text line, its
-  JSON key, the genuinely-unpriced job that must stay distinguishable from it,
-  and a `caplog` assertion that the ERROR record with `exc_info` is really
-  emitted. Awaiting reviewer verification.
+  Done: R-0227 — fixed in d3fe8011. The ledger read's `except Exception: pass`
+  became a handler that records `f"{type(exc).__name__}: {exc}"`, truncated to 160
+  chars, BEFORE logging at ERROR with `exc_info=True`, and surfaces it as a
+  `cost_read:` text line and a dedicated `cost_read_error` JSON key — deliberately
+  NOT folded into `diagnostic`, which belongs to the counters decode, because one
+  field standing for two unrelated failures is the defect in mirror image. `spent`
+  and `remaining` are unchanged, so a genuinely unpriced job still renders
+  `not-measured` with `cost_read_error` null and stays distinguishable from a broken
+  read. Reviewer-verified in the R7 review: restoring the silent swallow in a
+  disposable worktree at 103a854d turns exactly 2 tests RED —
+  `test_a_failed_ledger_read_prints_a_cost_read_line_naming_the_error` and
+  `test_a_failed_ledger_read_sets_cost_read_error_in_json` — and nothing else. The
+  worktree was removed and pruned before the verdict.
 
 ## Steps
 
@@ -173,3 +173,10 @@
   genuinely unpriced job is still distinguishable from a broken read), then the
   full suite run per docs/agents/integration_gate.md with evidence in
   `.agent/gate_f104_r7/`. Awaiting review.
+- R8: CLOSURE per docs/roadmap/STATUS_closure_protocol.md. Final verdict on the
+  feature: **PASS WITH RISKS** — every F104 finding (R-0222, R-0223, R-0224,
+  R-0225, R-0226, R-0227) is Resolved with reviewer-authored text; the single
+  remaining open finding R-0221 is a documented LOW risk that belongs to the F252
+  flake-debt class, is not F104's code to fix under AGENTS.md Scope Control, and
+  was attributed by controlled evidence at the R7 integration gate rather than
+  chased.
