@@ -137,7 +137,12 @@
   part of this finding. Fix: the reviewer counts every block BEFORE emitting it,
   and C1 reports the real count against the cap so the claim is falsifiable by
   the worker instead of discovered at the gate. OPEN.
-  Landed: R-0236 — the R10 block was counted before emission and C1 reports it.
+  Done: R-0236 (2026-08-09) — RESOLVED. The R10 block was counted before it was
+  emitted and C1 reported the real number: 240 lines / 15250 bytes, exactly AT
+  the DECISION F105 D2 cap and not over it. The reviewer re-ran `wc -l -c` on the
+  committed `.agent/authored/f105-r10-1.md` and got the same two numbers, so the
+  claim was falsifiable and was checked rather than taken. C1's commit came in at
+  404 insertions against the 500 cap, where R9 sat at 488.
 - R-0237 (Low, F105 R9, inventory omission): `.agent/t003_inventory.md` closes
   site 4 by arguing that reordering the rules ahead of the mission changes bytes
   and is therefore a content change by the feature file's own definition, and
@@ -150,7 +155,11 @@
   not as content. Left uncited, T003's first builder round either re-derives the
   clause or concludes no golden is possible and invents a weaker one. Fix: cite
   the clause where the inventory raises the tension. OPEN.
-  Landed: R-0237 — site 4 now cites the feature file's modulo-ordering clause.
+  Done: R-0237 (2026-08-09) — RESOLVED. Site 4 of `.agent/t003_inventory.md` now
+  cites the modulo-ordering clause where it raises the tension, so T003's first
+  builder round reads the answer instead of re-deriving it. Spot-checked against
+  the source rather than accepted: `docs/roadmap/features/T2_F105.md:18` does
+  carry the words "modulo ordering", and the inventory quotes them correctly.
 
 ## Steps
 
@@ -349,3 +358,36 @@
   session ends at its DECLARED THREE-ROUND CAP; T003 starts next session. R10
   ends a SESSION, not the branch, so its own gate is OWED and the next session's
   reviewer records it (R-0233's correction to §4.13).
+- Reviewer gate on R10 (2026-08-09): PASS. Range `9b50fafe..9d773b14` read as a
+  real diff by the NEXT session's reviewer: five commits, SIX paths, ALL under
+  `.agent/`. `git diff --name-only 9b50fafe..HEAD -- packages apps tests docs
+  AGENTS.md README.md` returns NOTHING, so the round was read-only on the code
+  exactly as it declared. Per-commit insertions 404, 23, 33, 2 and 95, every one
+  under the 500 cap. Gates re-run from the repo root with real exit codes: `cmp`
+  of the authored block against `.agent/last_block.md` exit 0 and no output; the
+  block 240 lines / 15250 bytes, AT the D2 cap and not over, so R-0236's fix held
+  on its first use; `tests/orchestration/test_test_runner.py -k "live_review or
+  context_md or plan_md"` 4 passed 47 deselected; `tests/docs/` 294 passed;
+  `tests/orchestration/test_role_conventions.py` plus
+  `tests/orchestration/test_prompt_segments.py` 48 passed; the canary
+  `tests/cli/test_golden_path.py` 42 passed; integrity `passed=True`,
+  `fail_count=0` over 5 checks; `git status --porcelain` empty; the primary
+  checkout the only worktree; HEAD equal to origin. Every pair count was
+  re-derived with the needle SLICED out of `.agent/authored/f105-r10-1.md`:
+  rewrites B and C end FROM 0x TO 1x, appends A, D, E and F end FROM 1x with each
+  TO-only addition 1x. One nuance, recorded so no later reader re-finds it as a
+  defect: pair A's TO-only region matches 1x per paragraph but NOT as one
+  contiguous slice, because C5's `Landed: R-0236` line sits between the two
+  paragraphs, exactly where C5 was told to put it. `.agent/plan.md` equals its
+  authored 46-line slice, sha256 241a03e3 on both sides. The R-0237 fix was
+  spot-checked at the source: `docs/roadmap/features/T2_F105.md:18` really does
+  carry "modulo ordering". The declared handoff overage is what D15 permits, and
+  the declared gate-M collision is the F104 R11 "gate quotes its own marker"
+  class, reported rather than fitted. No new finding. `LAST_REVIEWED_SHA`
+  advances 9b50fafe -> 9d773b14.
+- R11: T003 SITE 1 — `packages/orchestration/intake.py::_build_intake_prompt`
+  composes through the prompt-segment registry, under the content-equality
+  golden `tests/orchestration/test_intake_prompt_golden.py`. Composition only:
+  the segment manifest reaches call evidence in R12, split off so each diff is
+  one reviewable idea rather than a migration and an evidence rewiring at once.
+  Sites 2-6 stay untouched.
