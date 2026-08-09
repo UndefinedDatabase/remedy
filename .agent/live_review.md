@@ -474,6 +474,7 @@
   word "builder", and update the two message assertions in
   `tests/orchestration/test_builder_prompt_golden.py::TestDropOneNewlinePerSegmentBoundary`
   in the same commit. Production code, so it needs a SPLIT round. OPEN.
+  Landed: R-0254 — message is role-neutral and the assertion now anchors it, commit bb7b2cdc.
 
 ## Steps
 
