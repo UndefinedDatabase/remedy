@@ -39,3 +39,22 @@ When routed to a cheap/local model (F110), the task prompt carries the
 thinking: explicitly ordered steps, one worked output example, and self-check
 questions ("does every value trace to a source? yes/no + evidence"). Keep
 context short; read files on demand instead of inlining everything.
+
+## Write discoverable code
+
+Agents navigate this repo by text search; names are the reverse index. Applies to
+new code and to code you are already touching — mass renames of untouched code
+are forbidden as their own activity.
+
+- Exported names carry 2-4 words including one domain word
+  (`createStripeClient`, not `create`). A name must grep to its own definition
+  and its real uses only.
+- One spelling per concept repo-wide: no synonym drift (`orgId` vs
+  `organizationId`), no rename-imports of core concepts.
+- Test files are named after the source they cover (`test_x.py` and `x.py`).
+- Use distinct ID/value types where an argument swap is plausible, so a swap
+  becomes a type error.
+- The one-line WHY comment sits directly above the definition — that is where
+  searches land.
+- Document deliberate absences where a reader would search for them ("Remedy
+  deliberately does not X because Y"): text search cannot find absent code.

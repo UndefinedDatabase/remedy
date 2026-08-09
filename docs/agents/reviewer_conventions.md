@@ -42,3 +42,19 @@ Per A2/F005: PASS or FINDINGS (PASS_WITH_RISKS only where the schema allows
 and no block condition is hit). A wrong spec is its own finding routed to
 planning — never a reason to pass non-conforming work. No new feature starts
 while findings are open (A2).
+
+## Discoverability, checked
+
+Remedy's own generated code must stay navigable by the text-search-driven agents
+that will read it, including Remedy. On new or touched code, raise as findings:
+
+- An exported name of one generic word (`create`, `Fence`), or a name that greps
+  to unrelated hits.
+- Two spellings of one concept in the same diff (`orgId` and `organizationId`).
+- A test file whose name does not match the source it covers.
+- A plausible argument swap left untyped where a distinct type would catch it.
+- A non-obvious definition with no one-line WHY comment above it.
+- A deliberate absence the change relies on but never states in prose.
+
+A mass rename of untouched code is itself a finding: the suite is stable and
+churn is the enemy.
