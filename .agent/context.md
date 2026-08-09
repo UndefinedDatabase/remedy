@@ -38,6 +38,8 @@ rules goes through a reviewed diff of those files, not through builder code.
 
 ## Steps
 R1 claim, candidate sweep and state reset → R2 T001 the segment registry,
-compose and the manifest → R3 T002 the conventions loaders and their goldens →
-R4+ T003 one builder per round, each with a content-equality golden → T004 the
-cache stats view → integration gate → closure.
+compose and the manifest → R3 the session terminator of the previous session →
+R4 T002 the conventions loaders and their goldens → R5 the distilled
+discoverability block added to both conventions documents → R6+ T003 one builder
+per round, each with a content-equality golden → T004 the cache stats view →
+integration gate → closure.

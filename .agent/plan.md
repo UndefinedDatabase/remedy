@@ -12,23 +12,21 @@ and `remedy stats cache` shows the cache-read share per role from actuals. Promp
 CONTENT does not change; only its composition.
 
 ## Current Step
-Session ended at its declared FOUR-ROUND CAP with F105 work remaining — a clean
-ending under docs/agents/self_drive_protocol.md G7, not a failure. R1 (claim,
-candidate sweep, state reset) and R2 (T001) are both reviewer-gated **PASS**;
-`LAST_REVIEWED_SHA` is **4d01a40a**. T001 is delivered as
-`packages/orchestration/prompt_segments.py` — rank scale, registry,
-`compose_prompt_segments`, segment manifest, `CONVENTIONS_TOKEN_CAP` — pinned by
-22 tests in `tests/orchestration/test_prompt_segments.py`. The closing round
-recorded both gates in `.agent/live_review.md` and wrote the session-end
-`.agent/handoff.md`. NO PR exists for this branch; one is created at CLOSURE, not
-now. `.agent/candidates.md` is empty.
+R4 — T002 part 1. `packages/orchestration/role_conventions.py` loads the two
+EXISTING conventions documents verbatim as the conventions segment, under the
+`CONVENTIONS_TOKEN_CAP` imported from `prompt_segments` rather than restated, and
+`tests/orchestration/test_role_conventions.py` holds the content-equality
+goldens that prove the loaders changed no rule. R1, R2 and R3 are reviewer-gated
+PASS; `LAST_REVIEWED_SHA` is 1a054862. NO PR exists for this branch; one is
+created at CLOSURE, not now. `.agent/candidates.md` is empty.
 
 ## Next Steps
-- R3 — T002: role loaders for docs/agents/worker_conventions.md and
-  docs/agents/reviewer_conventions.md, importing `CONVENTIONS_TOKEN_CAP` instead
-  of restating it, with content-equality goldens proving extraction changed no
-  rule.
-- R4+ — T003: migrate the prompt builders, ONE builder per round, each with its
+- R5 — T002 part 2, the operator addition of 2026-07-30: a distilled
+  write-discoverable-code block, sourced from the AGENTS.md "Code
+  Discoverability Conventions" section, added to BOTH conventions documents as a
+  reviewed diff of those documents, staying under the cap the R4 loader
+  enforces.
+- R6+ — T003: migrate the prompt builders, ONE builder per round, each with its
   content-equality golden, and wire the segment manifest into call evidence.
 - Then T004, the `remedy stats cache` view over actuals.
 - Then the integration gate, then closure (the PR is created there).
@@ -39,6 +37,8 @@ now. `.agent/candidates.md` is empty.
   land before behaviour moves.
 - No tokenizer here: the conventions cap rides the chars/4 estimator in
   `packages/orchestration/token_economy.py`, so it is an ESTIMATE, documented as
-  one rather than presented as a count.
+  one rather than presented as a count. The headroom is real but small — the
+  worker document estimates 505 tokens and the reviewer document 515 against a
+  cap of 800 — so the R5 block must be distilled, not pasted.
 - R-0221 stays open and will cost the F105 integration gate the same phantom
   base-only failures it cost F103 and F104.
