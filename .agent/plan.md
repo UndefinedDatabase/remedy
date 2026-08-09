@@ -2,7 +2,7 @@
 
 Branch: feature/f105-cache-optimal-prompt-ordering, cut from main at cfda4245
 after PR #188 merged at the Open PR Gate. Build mode: one-session self-drive,
-one delegated worker per round. Next finding ID: R-0239.
+one delegated worker per round. Next finding ID: R-0240.
 
 ## Goal
 Prompt assembly stops being ad hoc. Every prompt composes from REGISTERED
@@ -12,17 +12,21 @@ and `remedy stats cache` shows the cache-read share per role from actuals. Promp
 CONTENT does not change; only its composition.
 
 ## Current Step
-T001 and T002 are DONE and reviewer-gated, and R11 landed T003 SITE 1's
-composition move under `tests/orchestration/test_intake_prompt_golden.py`. R12
-completes site 1 by putting its manifest into call evidence and settles the
-schema tail as DECISION F105 D3: the manifest covers the composed BASE prompt,
-and `segment_manifest_chars` beside `prompt_chars` makes that coverage visible
-instead of implied; D3's ledger entry lands at R13. Open findings: R-0221
-(carried) and R-0238. No PR exists; one is created at CLOSURE.
+The session ended at its DECLARED THREE-ROUND CAP (R11, R12, R13) with F105 work
+remaining — a clean ending under docs/agents/self_drive_protocol.md G7, not a
+failure. T001 and T002 are DONE and gated. T003 SITE 1 is COMPLETE: R11 moved
+`_build_intake_prompt` onto the registry under
+`tests/orchestration/test_intake_prompt_golden.py`, and R12 put its manifest
+into call evidence and settled DECISION F105 D3. `LAST_REVIEWED_SHA` is
+927bfdad. Open findings: R-0221, R-0238 and R-0239. No PR exists; one is created
+at CLOSURE. The candidates file is empty.
 
 ## Next Steps
-- Sites 2-6 in `.agent/t003_inventory.md`'s order, ONE builder per round, each
-  with its golden.
+- Gate R13 over `927bfdad..HEAD` first: R13 ended a SESSION, not the branch, so
+  its gate is owed (R-0233's correction to §4.13).
+- Then T003 sites 2-6 in `.agent/t003_inventory.md`'s order, ONE builder per
+  round, each with its own golden, starting at
+  `packages/orchestration/mission_compiler.py::build_mission_prompt`.
 - Then T004, the `remedy stats cache` view over actuals, reporting "not
   reported" rather than zeros where a provider reports no cache figures.
 - Then the integration gate (docs/agents/integration_gate.md), then closure
