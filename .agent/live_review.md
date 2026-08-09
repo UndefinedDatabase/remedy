@@ -66,7 +66,10 @@
   filed where no reader looks for it, and `## Findings` now reads as though it
   holds two entries that are not findings. Fix: MOVE those bytes to the end of
   `## Steps`, unchanged. OPEN.
-  Landed: R-0231 — the R5 gate and R6 step bytes moved into ## Steps unchanged.
+  Done: R-0231 (2026-08-09) — RESOLVED. The R5 gate record and the R6 step line
+  now sit at the end of `## Steps`, and `## Findings` holds only findings again.
+  Verified as a MOVE, not a retype: the 21-line region was cut and re-inserted
+  with identical bytes, occurring exactly once before and once after.
 - R-0232 (Medium, F105 R6, reviewer-authored defect): this file's header still
   reads `Next free ID: R-0229` while R-0229 and R-0230 are both issued and
   resolved, and `.agent/plan.md` correctly says R-0231. A later reviewer that
@@ -75,7 +78,11 @@
   record. That is the F056 candidate-loss class: a state file that lies quietly
   costs more than one that is missing. Fix: correct the header to the true next
   free ID. OPEN.
-  Landed: R-0232 — header corrected to the true next free ID.
+  Done: R-0232 (2026-08-09) — RESOLVED. The header declares the true next free
+  ID; verified on disk, exactly ONE declaration, FROM 0x and TO 1x. The second
+  `Next free ID` match is the R-0232 text quoting the old value — the F104 R11
+  "gate quotes its own marker" class, which made the R7 count gate J
+  unsatisfiable and put its substance gate J' in J's place.
 - R-0233 (Medium, F105 R7, reviewer-authored defect): the R7 step line invokes
   docs/agents/planner_reviewer_prompt.md §4.13 to declare that R7 "has NO
   on-disk gate entry of its own". §4.13 exempts the last round of a BRANCH, and
@@ -208,3 +215,29 @@
   entry of its own; its verdict lives in `.agent/handoff.md`, the reviewer's
   completion report and, later, the closure PR. That absence is the TERMINATOR,
   not a missing gate, and no repair round is opened to close it.
+- Reviewer gate on R7 (2026-08-09): PASS. Range `c0ce100a..c95db6e7` read as a
+  real diff — five paths, ALL under `.agent/`, exactly the change set the R7
+  block named; no `packages/`, `apps/`, `tests/`, `docs/`, `AGENTS.md` or
+  `.agent/context.md` byte changed. Per-commit insertions 359, 18, 45, 2 and
+  111, every one under the 500 cap. Gates re-run by the NEXT session's reviewer
+  from the repo root with real exit codes: `cmp` of the authored block against
+  `.agent/last_block.md` exit 0 and no output;
+  `tests/orchestration/test_test_runner.py -k "live_review or context_md or
+  plan_md"` 4 passed 47 deselected; `tests/docs/` 294 passed; in
+  `tests/orchestration/`, `test_role_conventions.py` plus
+  `test_prompt_segments.py` 48 passed; the canary 42 passed; integrity
+  `passed=True`, `fail_count=0` over 5 checks; tree clean; the primary checkout
+  the only worktree; HEAD equal to origin.
+  Authored-text application re-proved on disk, not by retype: both finding
+  paragraphs, the R6 gate record, the R7 step line and the pair-C TO header each
+  occur exactly 1x as sliced from `.agent/authored/f105-r7-1.md`, the pair-C
+  FROM 0x, `.agent/plan.md` equals its authored 48-line slice exactly, and each
+  `Landed:` line occurs 1x with no worker-authored `Done:` anywhere. The block
+  is 206 lines / 12802 bytes, no CR, no trailing whitespace, final newline. Both
+  declared deviations are ACCEPTED: gate J was unsatisfiable by construction and
+  was reported rather than fitted, and the overage is what D15 permits. The two
+  defects found are the REVIEWER's own authoring, which is why this round passes;
+  registered as R-0233 and R-0234. `LAST_REVIEWED_SHA` advances -> c95db6e7.
+- R8: the record-integrity round — the R7 gate recorded, R-0231 and R-0232
+  resolved with reviewer-authored text, R-0233 and R-0234 registered and fixed.
+  `.agent/` state only; T003 starts in R9.
