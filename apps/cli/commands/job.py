@@ -2187,6 +2187,12 @@ def _cmd_job_budget(
     # leaves the cost UNMEASURED (None, never 0.0 — P6) and every other limit
     # still reports; an inspection command must not fail because a mirror is
     # unreadable.
+    # R-0227: a read that FAILED and a job nobody priced both leave the cost
+    # UNMEASURED, but only one of them is a broken mirror — and that is the
+    # diagnosis an operator who just hit a cost limit most needs. This holds the
+    # failure so both surfaces can say it out loud; it stays None when the read
+    # succeeded or was never attempted, which is what keeps the two cases apart.
+    _cost_read_error = None
     if _has_cost_limit and counters is not None and counters.measured_cost_usd is None:
         try:
             from dataclasses import replace as _replace
@@ -2206,8 +2212,22 @@ def _cmd_job_budget(
                     unpriced_call_count=_unpriced,
                 )
                 evaluation = evaluate_budget(_budgets, counters)
-        except Exception:
-            pass
+        except Exception as _cost_exc:
+            # Recorded BEFORE the log call, so a logging subsystem that is itself
+            # broken cannot cost the operator the diagnosis. The displayed cost is
+            # unchanged — still not-measured, never 0.0 (P6).
+            _cost_read_error = f"{type(_cost_exc).__name__}: {_cost_exc}"[:160]
+            try:
+                import logging as _logging
+                _logging.getLogger(__name__).error(
+                    "budget ledger cost read FAILED for job %r; the cost stays "
+                    "unmeasured for this read and the other limits still report "
+                    "(the evidence files remain the source of truth)",
+                    _job_display_id, exc_info=True,
+                )
+            except Exception:
+                # An inspection command never dies because a log handler died.
+                pass
 
     # F104: what the NEXT task is expected to cost, with the label that says
     # where the number came from. Computed LIVE and PURELY — both engine
@@ -2262,6 +2282,10 @@ def _cmd_job_budget(
             "evaluation": evaluation.to_json() if evaluation else None,
             "status": _counter_status,
             "diagnostic": _counter_diagnostic or None,
+            # R-0227: the LEDGER READ's own failure. Deliberately its own key —
+            # `diagnostic` belongs to the counters decode, and one field standing
+            # for two unrelated failures is the defect this fix exists to end.
+            "cost_read_error": _cost_read_error,
             # Null, never an invented number, when no prediction could be made.
             "prediction": _prediction.to_json() if _prediction is not None else None,
             "recorded_prediction": _recorded_prediction,
@@ -2288,6 +2312,10 @@ def _cmd_job_budget(
             print(f"  spent:                 {counters.cost_description()}")
             print(f"  remaining:             "
                   f"{_format_remaining_usd(_budgets.max_cost_usd, counters)}")
+            # Only when a read actually broke. A genuinely unpriced job prints
+            # no such line, which is what keeps the two cases distinguishable.
+            if _cost_read_error:
+                print(f"  cost_read:             unavailable ({_cost_read_error})")
         if _has_cost_limit:
             if _prediction is not None:
                 print(f"  next_task_expected:    "

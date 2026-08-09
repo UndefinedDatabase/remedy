@@ -1222,6 +1222,72 @@ class TestJobBudgetCliRendersPredictions:
         assert _line_value(lines, "remaining") is None
         assert _line_value(lines, "next_task_expected") is None
 
+    # -- R-0227: a BROKEN ledger read is not the same as an unpriced job ---
+    def _break_the_ledger_read(self, monkeypatch):
+        """Make the production ledger read raise, leaving everything else real."""
+        from packages.orchestration import budget_guard as _bg
+
+        def _boom(*a, **kw):
+            raise RuntimeError("ledger mirror unreadable")
+
+        monkeypatch.setattr(_bg, "collect_ledger_cost_for_job", _boom)
+
+    def test_a_failed_ledger_read_prints_a_cost_read_line_naming_the_error(
+            self, budget_cli_repo, capsys, monkeypatch):
+        _cli_arm_ledger(monkeypatch)
+        job = _save_budget_job(budget_cli_repo, budgets={"max_cost_usd": 2.0})
+        self._break_the_ledger_read(monkeypatch)
+        lines = self._text(job.job_id, capsys).splitlines()
+        value = _line_value(lines, "cost_read")
+        assert value is not None
+        assert value.startswith("unavailable (")
+        assert "RuntimeError" in value
+        # The displayed cost is unchanged — still unknown, never an invented 0.
+        assert _line_value(lines, "spent") == "not-measured"
+        assert _line_value(lines, "remaining") == "not-measured"
+        # One broken read does not cost the operator the rest of the report.
+        assert _line_value(lines, "max_cost_usd") == "$2.0000"
+
+    def test_a_failed_ledger_read_sets_cost_read_error_in_json(
+            self, budget_cli_repo, capsys, monkeypatch):
+        _cli_arm_ledger(monkeypatch)
+        job = _save_budget_job(budget_cli_repo, budgets={"max_cost_usd": 2.0})
+        self._break_the_ledger_read(monkeypatch)
+        data = self._json(job.job_id, capsys)
+        assert "RuntimeError" in data["cost_read_error"]
+        # The counters decode is a DIFFERENT failure and keeps its own fields.
+        assert data["diagnostic"] is None
+        assert data["status"] == "evaluated"
+        assert data["counters"]["measured_cost_usd"] is None
+
+    def test_a_genuinely_unpriced_job_prints_no_cost_read_line(
+            self, budget_cli_repo, capsys, monkeypatch):
+        # The whole point of R-0227: an unpriced job and a broken read must not
+        # render identically. Nothing broke here, so nothing claims it did.
+        _cli_arm_ledger(monkeypatch)
+        job = _save_budget_job(budget_cli_repo, budgets={"max_cost_usd": 2.0})
+        _cli_record_call(job.job_id, call_id=f"{job.job_id}-u", cost=None)
+        lines = self._text(job.job_id, capsys).splitlines()
+        assert _line_value(lines, "spent") == "not-measured"
+        assert _line_value(lines, "cost_read") is None
+        data = self._json(job.job_id, capsys)
+        assert data["cost_read_error"] is None
+
+    def test_a_failed_ledger_read_is_logged_at_error(
+            self, budget_cli_repo, capsys, monkeypatch, caplog):
+        import logging
+        _cli_arm_ledger(monkeypatch)
+        job = _save_budget_job(budget_cli_repo, budgets={"max_cost_usd": 2.0})
+        self._break_the_ledger_read(monkeypatch)
+        with caplog.at_level(logging.ERROR, logger="apps.cli.commands.job"):
+            self._text(job.job_id, capsys)
+        records = [
+            r for r in caplog.records
+            if r.levelno == logging.ERROR and "ledger cost read FAILED" in r.getMessage()
+        ]
+        assert records, [r.getMessage() for r in caplog.records]
+        assert records[0].exc_info is not None
+
     # -- (c) the next-task expectation ------------------------------------
     def test_the_next_task_expectation_renders_with_its_basis_label(
             self, budget_cli_repo, capsys, monkeypatch):
