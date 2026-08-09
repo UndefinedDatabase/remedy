@@ -3907,10 +3907,20 @@ finding, so it gets a rule or it gets abandoned.
 
 D6 — within one delegated round, `.agent/plan.md` is rewritten in the round's
 LAST commit and the Commit Gate's plan check is satisfied for the round's
-intermediate commits by `.agent/last_block.md`, which carries the round's plan
-verbatim and is committed BEFORE any of them at C1b. The plan of record for an
-in-flight round is the block; `.agent/plan.md` states where the FEATURE stands,
-and mid-round it stands nowhere new yet.
+intermediate commits from C1b onward by `.agent/last_block.md`, which carries
+the round's plan verbatim. C1a is the exception, and it is covered differently
+rather than not at all: it precedes C1b — DECISION D5 split them in that order
+so the block is counted once — and what it commits is
+`.agent/authored/<round>.md`, the block's OWN verbatim copy, so for that one
+commit the plan of record and the commit content are the same bytes and agree
+by construction. The plan of record for an in-flight round is the block;
+`.agent/plan.md` states where the FEATURE stands, and mid-round it stands
+nowhere new yet.
+
+Amended at F105 R20 to fix finding R-0248. The original text said the block is
+"committed BEFORE any of them at C1b", which a reader can falsify with one
+`git log`: C1a comes first. The mechanism was sound; the word "any" overclaimed
+its reach.
 
 The alternative — rewrite `.agent/plan.md` first — was rejected because it
 makes the file claim work that has not landed. A plan that reads "step 3 is
@@ -3923,5 +3933,42 @@ Scope: one round, one worker. It exempts nothing across rounds — a round that
 ends without rewriting `.agent/plan.md` still fails item 1, and D6 is not a
 licence to leave the file stale. Blocks stop declaring the ordering as a
 deviation and cite this entry instead.
+
+Reverse this decision by deleting this entry.
+
+## DECISION F105 D7 — the protocol document is hashed per call (2026-08-09)
+
+Context: `.agent/t003_inventory.md` hands migration-order step 4 an open
+question it calls the read-per-call hashing question.
+`orchestrator_protocol_text` reads `docs/agents/orchestrator_protocol.md` from
+disk on EVERY call to `build_orchestrator_system_prompt`, and the segment
+registry hashes whatever text it is handed. Registering the document as a
+segment therefore re-reads and re-hashes, once per iteration, a file that does
+not change within a run. The alternative was to read and hash it once — at
+import, or at first registration — and reuse the digest for the rest of the
+run.
+
+D7 — the document is read and hashed PER CALL. The manifest has exactly one
+job: to record the bytes that were actually sent. A digest cached at
+registration records the bytes that were sent the FIRST time, so if the
+document is edited mid-run the manifest reports a hash for text that no
+provider ever received. That is the overclaim class the Proof Chain exists to
+prevent, and a manifest that can lie about its own subject is worth less than
+no manifest, because it is believed. What the caching would buy is one read of
+a small file per iteration, set against a loop that already assembles a
+dossier, reads the mission record, reads the stop file and appends a ledger
+entry every iteration.
+
+Worth stating because it is the obvious objection: this costs no cache hits.
+Re-reading unchanged bytes yields the same bytes, so the composed prefix stays
+byte-identical across iterations and the provider cache still hits it. Only a
+genuine edit produces a different hash and a miss, and that miss is CORRECT —
+the prompt really did change, and F105's whole argument is that a miss should
+be explainable rather than mysterious.
+
+Scope: this site. It sets no rule for segments whose source is expensive to
+read. A future segment backed by something costly may cache its digest, and
+when it does it declares the staleness window it is accepting, in its own
+entry.
 
 Reverse this decision by deleting this entry.

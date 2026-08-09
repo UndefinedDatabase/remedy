@@ -355,7 +355,14 @@
   word "any", which overclaims coverage a reader can falsify in one `git log`.
   Fix: D6's sentence names C1b onward, and states that C1a is covered by being
   the block's own verbatim copy rather than by `.agent/last_block.md`. Amend the
-  entry in place, in the round that next touches `.agent/decisions.md`. OPEN.
+  entry in place, in the round that next touches `.agent/decisions.md`.
+  Done: R-0248 — fixed at F105 R20, in the round that next touched
+  `.agent/decisions.md`, exactly as the finding directed. DECISION D6's
+  mechanism sentence now reads "from C1b onward" and states that C1a is covered
+  by committing the block's own verbatim copy, so the coverage claim matches
+  what `git log` shows. The amendment is marked as an amendment inside the
+  entry, naming R-0248 and quoting the phrase that overclaimed, so a later
+  reader can see what changed without diffing. RESOLVED.
 - R-0249 (Low, F105 R19, the plan names a narrower function than the migration
   order does): `.agent/plan.md` sends R20 to "migration-order step 4,
   `orchestrator_loop.py::build_orchestrator_system_prompt`". The migration order
