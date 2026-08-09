@@ -1,124 +1,125 @@
-# Handoff — F105 Cache-optimal prompt ordering, R13 (SESSION TERMINATOR)
+# Handoff — F105 Cache-optimal prompt ordering, R14 (record half of the R13 gate)
 
-Branch: feature/f105-cache-optimal-prompt-ordering. A `.agent/`-only round: no
-builder was migrated and T003 site 2 was NOT started.
+Branch: feature/f105-cache-optimal-prompt-ordering. A `.agent/`-only round: NO
+builder was migrated. R14 is the record half of the split the reviewer made
+under DECISION F105 D2; migration-order step 2 moves to R15.
 
 ## Range
 
-Review of 927bfdad..HEAD — 5 commits. The path list and the count below are
-DERIVED from `git diff --stat 927bfdad..HEAD` at write time (R-0235): SIX
-paths, every one under `.agent/` — `authored/f105-r13-1.md`, `last_block.md`,
-`live_review.md`, `decisions.md`, `plan.md`, `handoff.md`.
+Review of 2d993ed9..HEAD — 4 commits. Path list and count DERIVED from
+`git diff --stat 2d993ed9..HEAD` (C1-C3) plus `git diff --stat` on the working
+tree (C4), both at write time (R-0235): FIVE paths, all under `.agent/` —
+`authored/f105-r14-1.md`, `last_block.md`, `live_review.md`, `plan.md`,
+`handoff.md`.
 
 ## Commits
 
-### 262c84da chore(f105): save the R13 terminator block verbatim
+### a5dbcd31 chore(f105): save the R14 block verbatim
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f105-r13-1.md | +231/-0 | C1, this block verbatim |
-| .agent/last_block.md | +163/-175 | C1, same bytes |
+| .agent/authored/f105-r14-1.md | +231/-0 | C1, this block verbatim |
+| .agent/last_block.md | +176/-176 | C1, same bytes |
 
-394 insertions, under the 500 cap.
+407 insertions, under the 500 cap; from `git log -1 --numstat`.
 
-### dd60c487 chore(f105): register R-0239
+### 05972bb5 chore(f105): resolve R-0238 and register R-0240 and R-0241
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/live_review.md | +17/-0 | C2 pair A: R-0238's amended fix + R-0239 |
+| .agent/live_review.md | +31/-0 | C2 pairs A and B |
 
-17 insertions.
+31 insertions.
 
-### f4df1426 chore(f105): record the R12 gate
+### e3473d5a chore(f105): record the R13 gate
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/live_review.md | +40/-0 | C3 pair B: R12 gate verdict + R13 step line |
+| .agent/live_review.md | +28/-1 | C3 pair C header ID, pair D gate + R14 step line |
 
-40 insertions.
+28 insertions.
 
-### 29c37524 chore(f105): record DECISION F105 D3 on the schema tail
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/decisions.md | +21/-0 | C4 pair C: DECISION F105 D3 |
-
-21 insertions.
-
-### C5 chore(f105): close the session with the R13 handoff
+### C4 chore(f105): record the R14 handback
 Grouped table (R-0149): a handoff cannot table the commit that writes it.
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/plan.md | +14/-10 | C5, rewritten to the authored 41-line slice |
-| .agent/handoff.md | +87/-76 | C5, this file |
+| .agent/plan.md | +26/-18 | C4, authored 49-line slice, block lines 164-212 |
+| .agent/handoff.md | this file | C4, per docs/agents/handback_template.md |
 
-101 insertions, from `git diff --cached --numstat` at stage time.
+C4's insertions come from `git diff --cached --numstat` at stage time and are
+reported in the completion report; this file predates its own commit.
 
 ## External actions
 
-`git push -u origin feature/f105-cache-optimal-prompt-ordering` — result in the
-completion report; this file is written before it runs. No PR created: F105's
-PR is created at CLOSURE. No worktree added, no `gh` command run.
+`git push -u origin feature/f105-cache-optimal-prompt-ordering` — run after the
+C4 commit, real result in the completion report. No PR created: F105's PR comes
+at CLOSURE. No worktree added, no `gh` command run.
 
 ## Verification
 
 | # | Command | Exit | Real trimmed output |
 |---|---|---|---|
-| A | `cmp .agent/authored/f105-r13-1.md .agent/last_block.md` | 0 | (no output) |
-| B | `wc -l .agent/authored/f105-r13-1.md` / `wc -c` | 0 / 0 | `231` / `13795` — 231 lines against DECISION F105 D2's cap of 240, 9 under |
+| A1 | `cmp .remedy-wt/f105-r14-1.block.md .agent/authored/f105-r14-1.md` | 0 | (no output) — transport vs the reviewer's original |
+| A2 | `cmp .agent/authored/f105-r14-1.md .agent/last_block.md` | 0 | (no output) — the save |
+| B | `wc -l` / `wc -c` on `.agent/authored/f105-r14-1.md` | 0 / 0 | `231` / `14237` — 9 under DECISION F105 D2's cap of 240 |
 | C | `python3 -m pytest tests/orchestration/test_test_runner.py -q -k "live_review or context_md or plan_md"` | 0 | `4 passed, 47 deselected in 0.11s` |
-| D | `python3 -m pytest tests/docs/ -q` | 0 | `294 passed in 0.26s` |
-| E | `python3 -m pytest tests/orchestration/test_prompt_trace.py tests/orchestration/test_intake_prompt_golden.py tests/orchestration/test_intake.py -q` | 0 | `79 passed in 0.45s` — 79 before, stayed 79 |
-| F | `python3 -m pytest tests/cli/test_golden_path.py -q` (canary) | 0 | `42 passed in 19.71s` |
-| G | `git worktree list` | 0 | `/home/decodeux/Repos/remedy 29c37524 [feature/f105-cache-optimal-prompt-ordering]` — primary alone. `git status --porcelain` is empty after the C5 commit; confirmed in the completion report, since this file predates that commit |
-| H | `python3 -m apps.cli.grouped integrity check --json` | 0 | `passed= True fail_count= 0 checks= 5` |
-| J | `git diff --stat 927bfdad..HEAD` | 0 | 6 paths, all under `.agent/`; per-commit insertions 394, 17, 40, 21, 101 — each under 500 |
+| D | `python3 -m pytest tests/docs/ -q` | 0 | `294 passed in 0.28s` |
+| E | `python3 -m pytest tests/cli/test_golden_path.py -q` (canary) | 0 | `42 passed in 21.45s` |
+| F | `git worktree list` / `git status --porcelain` | 0 / 0 | `/home/decodeux/Repos/remedy  e3473d5a [feature/f105-cache-optimal-prompt-ordering]` — primary alone; status showed only `M .agent/plan.md` pre-C4, empty after C4 per the completion report |
+| G | `python3 -m apps.cli.grouped integrity check --json` | 0 | `passed= True fail_count= 0 checks= 5` |
+| I | `git diff --stat 2d993ed9..HEAD` | 0 | 3 paths (C1-C3) + 2 (C4) = 5, all under `.agent/`; insertions 407, 31, 28, C4 in the completion report — each under 500 |
 
 ## Authored-text proofs
 
-Every needle was SLICED by line index out of `.agent/authored/f105-r13-1.md` on
-disk after C1; nothing was retyped.
+Every FROM and TO was SLICED by line index out of
+`.agent/authored/f105-r14-1.md` after C1 — A 48 / 51-57, B 61 / 64-89,
+C 97 / 100, D 108-110 / 113-142 — never retyped.
 
-| Pair | Shape | FROM before | FROM after | TO-only addition after |
-|---|---|---|---|---|
-| A (live_review.md) | APPEND | 1x | 1x | 1x |
-| B (live_review.md) | APPEND | 1x | 1x | 1x |
-| C (decisions.md) | APPEND | 1x | 1x | 1x |
+| Pair | Shape | FROM before | FROM after | TO after | TO-only tail after |
+|---|---|---|---|---|---|
+| A (live_review.md) | APPEND | 1x | 1x | 1x | 1x |
+| B (live_review.md) | APPEND | 1x | 1x | 1x | 1x |
+| C (live_review.md) | REWRITE | 1x | 0x | 1x | n/a (disjoint) |
+| D (live_review.md) | APPEND | 1x | 1x | 1x | 1x |
 
-`.agent/plan.md` equals its authored 41-line slice (block lines 172-212):
-sha256 `2ed24940` on both sides.
+`.agent/plan.md` equals its authored 49-line slice (block lines 164-212):
+sha256 `9607d792` both sides.
 
 ## Item status
 
 | Item | Status | Reason |
 |---|---|---|
-| C1 | done | 231 lines / 13795 bytes, `cmp` exit 0 |
-| C2 | done | pair A applied, own commit |
-| C3 | done | pair B applied, own commit |
-| C4 | done | pair C applied, own commit |
-| C5 | done | plan + handoff, one commit, then push |
+| C1 | done | 231 lines / 14237 bytes, both `cmp` exit 0 |
+| C2 | done | pairs A and B, own commit |
+| C3 | done | pairs C and D, own commit |
+| C4 | done | plan + handoff, one commit, then push |
 
 ## Deviations & assumptions
 
-1. Handoff overage, declared under DECISION D15: this file is 124 lines against
-   the 60-line cap. Cause is mandated content only — five per-commit tables,
-   the nine-row verification table, the three-row pair-proof table and the
-   item-status table. No section was dropped, no prose padding added.
-2. Gate A/B/G exit codes: this worker's sandbox rejects compound `cmd; echo $?`
-   forms, so `cmp`, `wc -l` and `wc -c` were run through `subprocess.run` inside
-   a single `python3 -c` and their REAL `returncode` values printed. Same
-   binaries, same arguments, real exit codes — only the transport differs.
-3. Observation, NOT fixed: `.agent/live_review.md:8` still reads "Next free ID:
-   R-0238", which R-0238 and R-0239 have made stale — it should read R-0240.
-   The block authorizes only pairs A and B on that file, so it was left alone
-   rather than silently widened. `.agent/plan.md` carries the correct R-0240.
+1. Handoff overage, declared under DECISION D15: 125 lines / ~1460 tokens
+   against the 60-line and 800-token caps. Cause is mandated content only —
+   four per-commit tables, the nine-row verification table, the four-row
+   pair-proof table, the item-status table. No section dropped, no padding.
+2. Exit-code transport: this sandbox rejects compound `cmd; echo $?` forms, so
+   `cmp`, `wc`, the pytest targets and the integrity check ran through
+   `subprocess.run` in a gitignored scratch script with their REAL `returncode`
+   printed. Same binaries, same arguments — only the transport differs (the
+   deviation the reviewer re-ran and accepted at R13).
+3. `.agent/plan.md` was stale between C1 and C3 — still "Next finding ID:
+   R-0240" after C2 registered R-0240 and R-0241 — because the block places the
+   plan rewrite in C4. Declared, not silently taken.
 
 ## Open findings
 
-3 open: R-0221 (carried), R-0238 (OPEN, fix amended this round, resolves only
-when a block lands at or under 240 — R13's 231 is the first such block), R-0239
-(new this round). Next free ID: R-0240.
+3 open: R-0221 (carried), R-0240 and R-0241 (registered at C2). Both new ones
+have their fixes ON DISK here — R-0240 by pair C's header rewrite to R-0242,
+R-0241 by the authored plan text — but only reviewer-authored `Done:` text sets
+Resolved, so both stay OPEN until the R15 gate. R-0238 was RESOLVED at C2 by
+the reviewer's own `Done:` text. Next free ID: R-0242.
 
 ## Next
 
-The next session gates R13 over `927bfdad..HEAD` FIRST — R13 ended a SESSION,
-not the branch, so its own gate is owed (R-0233's correction to §4.13) — and
-then starts T003 SITE 2,
-`packages/orchestration/mission_compiler.py::build_mission_prompt`, per
-`.agent/t003_inventory.md`.
+R15 gates R14 over `2d993ed9..HEAD` FIRST — R14's own gate is owed — then takes
+migration-order step 2,
+`packages/orchestration/mission_compiler.py::build_mission_prompt`, onto the
+registry under `tests/orchestration/test_mission_prompt_golden.py`, with
+DECISION F105 D4: the mission rules segment is cap-scoped, because
+`gauntlet_runner.py:506` varies `max_milestones`. "Site N" belongs to the
+inventory catalogue's headings only (R-0241).
