@@ -6,7 +6,6 @@ worker per round. The next free finding ID lives in `.agent/live_review.md`
 line 8 and is deliberately not duplicated here (R-0240's root cause).
 
 ## Goal
-
 Prompt assembly stops being ad hoc. Every prompt composes from REGISTERED
 SEGMENTS ordered by stability — system and conventions first, task and steering
 last — every call records a segment manifest (name, rank, hash) into evidence,
@@ -14,33 +13,29 @@ and `remedy stats cache` shows the cache-read share per role from actuals.
 Prompt CONTENT does not change; only its composition.
 
 ## Current Step
-
 T001 and T002 are DONE and gated. T003 counts in the MIGRATION ORDER of
 `.agent/t003_inventory.md`, never that file's catalogue "Site N" headings
 (R-0241). Migration-order steps 1 (`intake.py`), 2 (`mission_compiler.py`),
-3 (`flight_plan.py`) and 4 (`orchestrator_loop.py`) are COMPLETE, each with its
-own golden; step 4 covers `build_orchestrator_prompt` AND its system half
-`build_orchestrator_system_prompt`, and is the only one so far whose golden
-asserts BYTE equality rather than equality modulo ordering, because its
-pre-migration order was already rank-ordered (R-0249). `LAST_REVIEWED_SHA` is
-04a3396d; R20 is ungated. Open findings: R-0221, R-0239, R-0246, R-0247,
-R-0249. No PR; one is created at CLOSURE.
+3 (`flight_plan.py`) and 4 (`orchestrator_loop.py` — BOTH
+`build_orchestrator_prompt` and its system half) are COMPLETE and GATED, each
+with its own golden. `LAST_REVIEWED_SHA` is 9cb128d7. R21 is the session
+terminator: it changed no production file, so only its state and docs are
+ungated. Open findings: R-0221, R-0239, R-0246, R-0247. No PR; one is created
+at CLOSURE.
 
 ## Next Steps
-
-- The next round gates R20 FIRST, then takes migration-order step 5,
-  `pingpong_loop.py::_build_builder_prompt` — twelve conditional parts and a
-  `"\n".join` whose blank-line runs must be reproduced exactly.
+- R22 gates R21 FIRST (state + docs only, no red-proof owed), then takes
+  migration-order step 5, `pingpong_loop.py::_build_builder_prompt` — twelve
+  conditional parts and a `"\n".join` whose blank-line runs must be reproduced
+  exactly. Highest-risk site so far; give it a fresh session.
 - Then step 6, `pingpong_loop.py::_build_reviewer_prompt`, last and highest
-  content-equality risk. One builder per round, each with its own golden.
+  content-equality risk of the six.
 - BEFORE step 5, decide whether the schema tail from `build_schema_prompt` /
-  `native_schema_prompt` becomes a registered rank-4 segment. Until that is
-  settled, every manifest for sites 1-4 describes a strict prefix of the bytes
-  actually sent.
-- ONE later round wires `on_call` for all three sites that lack call evidence —
-  `mission_cmd.py:362` (orchestrator, deferred by R20's block),
-  `mission_cmd.py:187` + `gauntlet_runner.py:505` (mission), and
-  `do_cmd.py:253` + `:2860` (plan) — one recorder pattern, one review.
+  `native_schema_prompt` becomes a registered rank-4 segment. Until then every
+  manifest for sites 1-4 describes a strict prefix of the bytes actually sent.
+- ONE later round wires `on_call` for all three sites lacking call evidence:
+  `mission_cmd.py:362` (orchestrator, deferred by R20), `mission_cmd.py:187` +
+  `gauntlet_runner.py:505` (mission), `do_cmd.py:253` + `:2860` (plan).
 - Fix R-0246 in the round that next touches `mission_compiler.py`.
 - Register the Phase-0 gap the R17 gate records: the protocol gives no
   disposition for a tree a dead session left dirty. Not yet a DECISION.
@@ -49,7 +44,6 @@ R-0249. No PR; one is created at CLOSURE.
   (docs/roadmap/STATUS_closure_protocol.md), where the PR is created.
 
 ## Risks
-
 - R-0221 stays open and will cost the integration gate phantom base-only
   failures.
 - Four of the six migrated builders still reach no call evidence, so F105's
