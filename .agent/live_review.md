@@ -5,7 +5,7 @@
 > round. Findings are authored here by the reviewer only; the worker applies
 > them verbatim and marks `Done: R-XXXX` when a fix lands. Only reviewer-
 > authored text sets Resolved.
-> Branch: feature/f104-hard-budget-enforcement. Next free ID: R-0225.
+> Branch: feature/f104-hard-budget-enforcement. Next free ID: R-0227.
 
 ## Findings
 
@@ -62,6 +62,34 @@
   exactly three tests RED — the model-level pin, the bridge pin, and
   `test_ledger_unpriced_count_above_this_runs_calls_still_enforces` at the live
   safe point — and nothing else.
+
+- R-0225 (High, found in the R4 review): `max_cost_usd` was added to
+  `JobBudgets` by F104 T001 but never added to
+  `run_manifest._BUDGET_ALLOWED_KEYS`, which is a CLOSED schema. Every job
+  carrying a money limit therefore fails its F012 run-manifest write with
+  `ManifestError: manifest.budgets has unknown keys: ['max_cost_usd']`. On the
+  stop path that surfaces as `StopFinalizationError` inside `_stop_job` AFTER
+  `stop_reason` and `stop_source` are set but BEFORE the `JOB_STOPPED`
+  checkpoint, so the job is left in `running` with no manifest and the stop
+  request still pending. The consequence is total: `--max-cost-usd` cannot
+  finalize a stop at all — not the new predictive one, and not the reactive one
+  R2 built either. Reproduced by the reviewer at f9309bfe, with the predictive
+  path fully inert and `budgets={"max_cost_usd": 100.0}` as the only limit.
+  This is F104's own T001 gap, not a foreign defect: the field is this
+  feature's, and a limit that cannot stop a job is not a limit.
+  OPEN.
+
+- R-0226 (Medium, found in the R4 review): F104's live cost pins stop at the
+  stop SIGNAL and never assert a terminal job state.
+  `TestLiveSafePointReadsTheLedgerCost` in `tests/orchestration/test_budget_guard.py`
+  asserts `signal.reason == "budget_exhausted:max_cost_usd"` and returns; no
+  test in the feature drove a money-limited job to `JOB_STOPPED`. That is
+  exactly why R-0225 — a cost limit that can never finalize — survived two
+  reviewed rounds with green gates. The defect class is the R-0222 class one
+  level up: R-0222 was an engine with no caller, this is a caller whose effect
+  is never observed. A signal-only assertion cannot distinguish a working stop
+  from a stop that raises three frames later.
+  OPEN.
 
 ## Steps
 
