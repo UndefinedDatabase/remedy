@@ -91,7 +91,11 @@
   a later reviewer no gate is owed and "no repair round is opened to close it",
   stranding R-0231 and R-0232 on `Landed:` lines forever, because §4.4 reserves
   `Done:` for reviewer text. Fix: state why §4.13 does not apply here. OPEN.
-  Landed: R-0233 — the R7 step line now states why §4.13 does not apply.
+  Done: R-0233 (2026-08-09) — RESOLVED. The R7 step line now states that §4.13
+  exempts the last round of a BRANCH and that R7 ended a SESSION, so its gate
+  was owed; the R7 gate record sits directly below it under `## Steps`. Verified
+  on disk by the reviewer: the four-line terminator claim the finding quoted
+  occurs 0x and the corrected text 1x.
 - R-0234 (Low, F105 R5 and R6, reviewer-authored defect): both the R5 and the R6
   gate records cite `test_test_runner.py` by bare basename, but TWO files carry
   that name — `tests/test_test_runner.py` (43 tests) and
@@ -101,7 +105,10 @@
   number 51 is real and belongs to the orchestration file, so only the citation
   is wrong — but a gate record that cannot reproduce its own result reads as a
   regression. Fix: cite the full path in both records. OPEN.
-  Landed: R-0234 — both gate records now cite the full orchestration path.
+  Done: R-0234 (2026-08-09) — RESOLVED. The R5 and R6 gate records now cite
+  `tests/orchestration/test_role_conventions.py`'s sibling by full path, so
+  re-running either record's own command selects the 51-test file it reports
+  instead of the 43-test one that deselects everything.
 - R-0235 (Low, F105 R8 completion round, worker record defect): the R8 handoff's
   path counts disagree with the real diff. Its gate K row reports the range as
   "5 paths" where `git diff --stat c95db6e7..337ba21f` lists SIX, and its
@@ -259,3 +266,29 @@
 - R8: the record-integrity round — the R7 gate recorded, R-0231 and R-0232
   resolved with reviewer-authored text, R-0233 and R-0234 registered and fixed.
   `.agent/` state only; T003 starts in R9.
+- Reviewer gate on R8 (2026-08-09): PASS. R8 ran across TWO worker sessions —
+  C1-C4, then a completion round after that worker died before C5. Range
+  `c95db6e7..337ba21f` read as a real diff: seven commits, six paths, ALL under
+  `.agent/`; no `packages/`, `apps/`, `tests/`, `docs/`, `AGENTS.md`,
+  `.agent/context.md` or `.agent/decisions.md` byte changed. Per-commit
+  insertions 432, 18, 35, 11, 143, 24 and 80, every one under the 500 cap.
+  Gates re-run by the reviewer from the repo root with real exit codes: `cmp` of
+  the completion block against `.agent/last_block.md` exit 0 and no output;
+  `tests/orchestration/test_test_runner.py -k "live_review or context_md or
+  plan_md"` 4 passed 47 deselected; `tests/docs/` 294 passed;
+  `tests/orchestration/test_role_conventions.py` plus `test_prompt_segments.py`
+  48 passed; the canary `tests/cli/test_golden_path.py` 42 passed; integrity
+  `passed=True`, `fail_count=0` over 5 checks; tree clean; the primary checkout
+  the only worktree; HEAD equal to origin. The interrupted C5 is proved harmless
+  ON DISK, not by report: `.agent/plan.md` as committed equals lines 177-220 of
+  `.agent/authored/f105-r8-1.md` byte for byte, sha256 5a85ee84 on both sides,
+  so the dead worker's uncommitted write was the authored text and nothing else.
+  All ten pair counts were re-derived by the reviewer with every needle sliced
+  out of the authored block: both new finding paragraphs, both `Landed:` lines,
+  the R-0231 and R-0232 `Done:` paragraphs and the R7 gate record 1x each, the
+  pair C, D and F FROM strings 0x each. The declared handoff overage is what D15
+  permits. One record defect found, registered as R-0235.
+  `LAST_REVIEWED_SHA` advances -> 337ba21f.
+- R9: the T003 inventory round — the R8 gate recorded, R-0233 and R-0234
+  resolved, R-0235 registered and fixed, and `.agent/t003_inventory.md` written.
+  READ-ONLY on the code: no builder migrated, no golden written, no test added.
