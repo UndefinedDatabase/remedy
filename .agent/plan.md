@@ -2,7 +2,7 @@
 
 Branch: feature/f105-cache-optimal-prompt-ordering, cut from main at cfda4245
 after PR #188 (the F104 closure) merged at the Open PR Gate. Build mode:
-one-session self-drive, one delegated worker per round. Next finding ID: R-0231.
+one-session self-drive, one delegated worker per round. Next finding ID: R-0233.
 
 ## Goal
 Prompt assembly stops being ad hoc. Every prompt composes from REGISTERED
@@ -12,32 +12,37 @@ and `remedy stats cache` shows the cache-read share per role from actuals. Promp
 CONTENT does not change; only its composition.
 
 ## Current Step
-R6 — T002 part 2. The operator addition of 2026-07-30 lands as a reviewed diff of
-both conventions documents: a distilled write-discoverable-code block in the
-worker document and its checking counterpart in the reviewer document, measured
-by the reviewer at 740 and 703 estimated tokens against the cap of 800. R1, R2,
-R3 and R5 are reviewer-gated PASS, R4 gated FINDINGS and both its findings are
-now RESOLVED, and `LAST_REVIEWED_SHA` is a8e9ab1f. T002 is complete once this
-round gates. NO PR exists for this branch; one is created at CLOSURE, not now.
-`.agent/candidates.md` is empty.
+Session ended at its declared FOUR-ROUND CAP (R4 through R7) with F105 work
+remaining — a clean ending under docs/agents/self_drive_protocol.md G7, not a
+failure. T001 and T002 are both DONE and reviewer-gated: the segment registry,
+compose and manifest in `packages/orchestration/prompt_segments.py`, and the
+conventions loaders in `packages/orchestration/role_conventions.py` reading both
+role documents verbatim under an imported cap, pinned by 22 and 26 tests. The
+operator addition of 2026-07-30 landed as a pure append to both documents.
+`LAST_REVIEWED_SHA` is c0ce100a. R-0229 and R-0230 are RESOLVED; R-0231 and
+R-0232 are FIXED but carry `Landed:` lines only, so the next session's reviewer
+gates R7 and authors their `Done:` text. NO PR exists for this branch; one is
+created at CLOSURE. `.agent/candidates.md` is empty.
 
 ## Next Steps
-- R7 — the session-terminator round: record the R6 gate and write the
-  session-end handoff. This session's declared cap is four rounds, R4 through R7,
-  so T003 starts in the NEXT session.
-- Then T003: migrate the prompt builders, ONE builder per round, each with its
-  content-equality golden, and wire the segment manifest into call evidence.
-- Then T004, the `remedy stats cache` view over actuals, then the integration
-  gate, then closure (the PR is created there).
+- T003, one builder per round: migrate the prompt builders to compose through
+  the registry, each round carrying its own content-equality golden, and wire
+  `manifest_as_dicts()` into call evidence. Inventory the assembly sites first —
+  that inspection is its own small round, because the ground is unknown.
+- Then T004, the `remedy stats cache` view over actuals, reporting "not
+  reported" for providers that report no cache figures rather than zeros.
+- Then the integration gate (docs/agents/integration_gate.md), then closure per
+  docs/roadmap/STATUS_closure_protocol.md, where the PR is created.
 
 ## Risks
 - Roughly twenty assembly sites in three idioms (template `.format`, a `parts`
   join, f-string concatenation). Migration must not change content — goldens
   land before behaviour moves.
-- No tokenizer here: the conventions cap rides the chars/4 estimator in
-  `packages/orchestration/token_economy.py`, so every number is an ESTIMATE. The
-  headroom after R6 is thin — 60 tokens on the worker document and 97 on the
-  reviewer document — so any later addition to either is measured before it is
-  authored, not after.
+- The conventions headroom is thin: 60 estimated tokens on the worker document
+  and 97 on the reviewer document against the cap of 800. Any later addition to
+  either is measured BEFORE it is authored. A mutation red-proof at c0ce100a
+  confirms the cap is enforced — padding past it turns 5 tests RED.
 - R-0221 stays open and will cost the F105 integration gate the same phantom
   base-only failures it cost F103 and F104.
+- DECISION F105 D2 caps step blocks at 240 lines; F105's once-per-feature
+  oversize-commit exception is already spent on `ea48ea89`.
