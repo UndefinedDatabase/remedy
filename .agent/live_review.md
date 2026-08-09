@@ -27,3 +27,26 @@
   the terminating convention), empty `.agent/candidates.md`, and reset the
   `.agent/` state to F105. No `packages/`, `apps/`, `tests/` or `README.md`
   byte changed.
+- Reviewer gate on R1 (2026-08-09): PASS. Range `cfda4245..6b74d7c4` read as a real
+  diff — nine paths, all of them the ones the block named; nothing under
+  `packages/`, `apps/`, `tests/`, no `README.md`, no `ROADMAP.md`. Pairs A, B and C
+  applied byte for byte; the four full-file rewrites match their authored text.
+  `docs/roadmap/STATUS.md` differs from main by exactly one line, the F105 claim.
+  Gates re-run by the reviewer from the repo root with real exit codes:
+  `tests/docs/` 294 passed, the `.agent` contract tests 4 passed, resource safety
+  21 passed, the canary 42 passed, `remedy integrity check --json` `"passed": true`
+  over 5 checks, `.agent/candidates.md` holding `**No open candidates.**` exactly
+  once, working tree clean, HEAD equal to origin.
+- R2: T001 — `packages/orchestration/prompt_segments.py` with the rank scale,
+  the registry, `compose_prompt_segments`, the segment manifest and the
+  conventions token cap, pinned by 22 tests. No builder migrated, no prompt
+  content changed.
+- Reviewer gate on R2 (2026-08-09): PASS. Range `6b74d7c4..4d01a40a` read as a real
+  diff — six files, exactly the change set the block named. Gates re-run by the
+  reviewer: the new suite 22 passed, `test_token_economy.py` 37 passed,
+  `tests/docs/` 294 passed, the canary 42 passed, integrity 5 of 5, tree clean,
+  HEAD equal to origin. THREE independent mutation red-proofs, run in a disposable
+  worktree at 4d01a40a that was removed and pruned before this verdict: dropping
+  the rank from the sort key turns 3 tests RED, giving the delimiter an injected
+  marker turns 5 RED, and disabling the token-cap check turns 1 RED. The guards
+  are load bearing. `LAST_REVIEWED_SHA` advances 6b74d7c4 -> 4d01a40a.
