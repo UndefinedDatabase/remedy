@@ -5,7 +5,7 @@
 > round. Findings are authored here by the reviewer only. A worker marks a
 > landed fix `Landed: R-XXXX`; only reviewer-authored `Done:` text sets
 > Resolved (docs/agents/planner_reviewer_prompt.md §4.4).
-> Branch: feature/f105-cache-optimal-prompt-ordering. Next free ID: R-0235.
+> Branch: feature/f105-cache-optimal-prompt-ordering. Next free ID: R-0236.
 
 ## Findings
 
@@ -102,6 +102,19 @@
   is wrong — but a gate record that cannot reproduce its own result reads as a
   regression. Fix: cite the full path in both records. OPEN.
   Landed: R-0234 — both gate records now cite the full orchestration path.
+- R-0235 (Low, F105 R8 completion round, worker record defect): the R8 handoff's
+  path counts disagree with the real diff. Its gate K row reports the range as
+  "5 paths" where `git diff --stat c95db6e7..337ba21f` lists SIX, and its
+  Deviations section reports "Three paths total" where that round's own three
+  commits touch FOUR. The worker's completion report carried both numbers
+  correctly, so only `.agent/handoff.md` — the sole return channel
+  (docs/agents/planner_reviewer_prompt.md §4.8) — states them wrong. Nothing
+  escaped scope: every path is under `.agent/` and the reviewer re-derived both
+  counts before passing the round. The cost is a later reviewer's: spot-checking
+  "did this round touch only what it declared" compares a declared count against
+  the real one, and a mismatch reads as an undeclared path until a round is
+  spent disproving it. Fix: the next handoff derives every path count from
+  `git diff --stat` at write time and names that command as its source. OPEN.
 
 ## Steps
 
