@@ -1,323 +1,188 @@
-── STEP R23 / F105 — gate R22, close the unsatisfiable-red-proof gap ────────
-Goal:        Put the R22 gate on disk; register R-0251 and R-0252 and fix both
-             in the same round; leave migration-order step 6 to a fresh
-             session with the ground already proved.
-Bundle:      C1a save block · C1b mirror · C2 live_review (next free ID, the two
-             findings, the R22 gate) · C3 the process fix — §3 checklist item 5
-             + DECISION F105 D10 · C4 R-0251's pin · C5 plan.md + handoff.md
-Change:      exactly these paths, nothing else —
-             `.agent/authored/f105-r23-1.md`, `.agent/last_block.md`,
-             `.agent/live_review.md`, `.agent/decisions.md`, `.agent/plan.md`,
-             `.agent/handoff.md`, `docs/agents/planner_reviewer_prompt.md`,
-             `tests/orchestration/test_builder_prompt_golden.py`.
-Constraints: No production file changes. Do NOT touch
-             `packages/orchestration/pingpong_loop.py` — R-0251's fix is a test
-             that pins existing behaviour, never an edit to the behaviour. Do
-             not touch `_build_reviewer_prompt` (that is step 6). Do not edit
-             AGENTS.md or `docs/roadmap/ROADMAP.md`. This round's change set
-             includes `docs/`, so the docs-round gate applies (Done when D).
-Handback:    completion report + rewrite `.agent/handoff.md`. This is the
-             SESSION TERMINATOR: its own gate is owed to the next session's
-             reviewer, per docs/agents/planner_reviewer_prompt.md §4.13. Say so
-             in the handoff and do NOT open a repair round to close it.
-──────────────────────────────────────────────────────────────────────────────
+── STEP T003 migration-order 6/6 — F105 ──────────────────────
+Goal:        Migrate `_build_reviewer_prompt` to registered prompt segments,
+             the last of the six T003 sites, under a content-equality golden.
+Bundle:      C1 save this block · C2 record the R23 gate · C3 capture the
+             frozen renders and add the reviewer golden · C4 the migration
+             itself · C5 plan and handoff.
+Change:      `.agent/authored/f105-r24-1.md`, `.agent/last_block.md`,
+             `.agent/live_review.md`, `tests/orchestration/test_reviewer_prompt_golden.py`
+             (new), `packages/orchestration/pingpong_loop.py`, `.agent/plan.md`,
+             `.agent/handoff.md`. Nothing else.
+Constraints: Prompt CONTENT does not change; only its composition. The two
+             mutually exclusive branches STAY a branch over which segments are
+             REGISTERED — a single unconditional registry would emit both diff
+             shapes and both scope shapes, which is a content change
+             (`.agent/t003_inventory.md` Site 2, "Migration risk").
+             `_build_reviewer_prompt` keeps its exact signature and return type.
+             No caller changes; no evidence wiring in this round.
+             C3 lands BEFORE C4: the renders must be captured from the
+             PRE-migration function.
+Done when:   every gate below is run and its real exit code recorded.
 
-## Commit order
+REVIEWER'S PRE-PROOF — why this spec is known satisfiable
+Before authoring this block the reviewer proved the decomposition below
+byte-exact against the current `_build_reviewer_prompt`, in a disposable
+worktree at 554d9521, over 3584 argument combinations in two passes:
+  pass 1  2048 combinations (1024 without a spec-compliance checklist on disk,
+          1024 with one), 80 distinct segment sets, 0 byte mismatches.
+  pass 2  1536 combinations comparing PRE-MIGRATION registration order against
+          RANK order: 0 per-segment byte differences, 0 changes of
+          last-segment identity, 0 boundaries needing the fallback newline,
+          0 reassembly mismatches.
+Pass 2 is the one that matters for the golden's soundness.
+`_drop_one_newline_per_segment_boundary` runs over the REGISTRATION order, so
+registering in rank order could in principle move which segment keeps its
+trailing newline. It does not: the last segment is always the last rank-5 one
+in both orderings, and every non-last segment already ends in "\n". Segment
+BYTES are therefore invariant under the reorder, which is exactly what lets the
+golden reassemble them in pre-migration order and get the old render back.
 
-### C1a — save the block, ALONE
-Save this block verbatim to `.agent/authored/f105-r23-1.md`, nothing else.
-    git commit -m "chore(f105): save the R23 block verbatim"
+C1 — save this block verbatim, TWO commits
+  C1a `cp` this block to `.agent/authored/f105-r24-1.md`. Commit it ALONE.
+  C1b `cp` the same bytes to `.agent/last_block.md`. Commit separately.
+  Both are `cp` of the received block — never a retype. Verify with
+  `sha256sum` on both plus `cmp`, and record both digests in the handback.
 
-### C1b — mirror to last_block
-`cp .agent/authored/f105-r23-1.md .agent/last_block.md`, commit alone.
-    git commit -m "chore(f105): mirror the R23 block to last_block"
+C2 — record the R23 gate (own commit, FIRST content commit)
+  Slice PAIR_A by its markers from `.agent/authored/f105-r24-1.md` and apply to
+  `.agent/live_review.md`. APPEND-shaped: the TO CONTAINS the FROM verbatim as
+  its prefix. Obligation is FROM exactly 1x and each TO-ONLY line exactly 1x —
+  not "FROM 0x after".
 
-### C2 — live_review: findings persist FIRST
-Apply PAIR_A, PAIR_B, PAIR_C to `.agent/live_review.md`. One commit.
-    git commit -m "chore(f105): record the R22 gate and register R-0251 and R-0252"
-
-### C3 — the process fix for R-0252
-Apply PAIR_D to `docs/agents/planner_reviewer_prompt.md` and PAIR_E to
-`.agent/decisions.md`. One commit — the rule and the DECISION that installs it
-belong together.
-    git commit -m "chore(f105): extend the pre-emission checklist to red-proofs"
-
-### C4 — the pin for R-0251
-Add the pin described under "C4 spec" to
-`tests/orchestration/test_builder_prompt_golden.py`. One commit.
-    git commit -m "test(f105): pin the segment-boundary fallback branch"
-
-### C5 — plan and handoff
-Apply PAIR_F to `.agent/plan.md` (full replacement). Rewrite `.agent/handoff.md`.
-    git commit -m "chore(f105): update the plan and close the session with R23"
-
-Then `git push -u origin feature/f105-cache-optimal-prompt-ordering`.
-
-## C4 spec — pin the fallback branch (R-0251)
-
-`_drop_one_newline_per_segment_boundary` in
-`packages/orchestration/pingpong_loop.py` has three branches. Two are exercised
-by every existing test; the third — "else if the NEXT segment's text starts with
-a newline, drop that leading newline instead" — is UNREACHABLE for today's ten
-segments, so it ships unproven. The reviewer confirmed this directly: replacing
-that branch's body with a `raise` leaves 433 tests green across the golden, the
-three pingpong suites, `test_scope_plan.py` and `test_task_input.py`.
-
-The fix is a pin, NOT a deletion. The branch handles a legal case that no
-segment happens to produce today; deleting it would turn a future segment whose
-text opens with a newline from "composes correctly" into "raises". Import the
-helper directly and call it with synthetic lists — it takes a plain
-`list[str]` and returns one, so no prompt fixture is needed:
-
-1. The trailing branch: `["a\n", "b"]` -> `["a", "b"]`.
-2. The fallback branch, the one nothing reached: `["a", "\nb"]` -> `["a", "b"]`.
-   Assert on BOTH elements — that the first is untouched is half the property.
-3. The illegal boundary: `["a", "b"]` raises `PromptSegmentError`, with
-   `pytest.raises` matching on the message.
-4. A three-segment list mixing branches 1 and 2 at its two boundaries, to pin
-   that the choice is made per boundary and not once for the whole list.
-5. The last element is never trimmed: `["a\n", "b\n"]` -> `["a", "b\n"]`.
-
-Put them in one class in `tests/orchestration/test_builder_prompt_golden.py`
-with a docstring naming R-0251 and saying in one line WHY a directly-called
-helper needs its own test: the composed prompts cannot reach the branch, so no
-prompt-level golden can ever cover it.
-
-## Done when (run every command; record REAL exit codes and real output)
-
-A. `sha256sum .agent/authored/f105-r23-1.md .agent/last_block.md` equal;
-   `cmp` on the pair exits 0.
-B. `wc -l .agent/authored/f105-r23-1.md` — report the number.
-C. Application, per target file:
-   `grep -c '^- R-0251 ' .agent/live_review.md` -> 1
-   `grep -c '^- R-0252 ' .agent/live_review.md` -> 1
-   `grep -c '^- Reviewer gate on R22 ' .agent/live_review.md` -> 1
-   `sed -n '8p' .agent/live_review.md` -> ends `Next free ID: R-0253.`
-   `grep -c '^## DECISION F105 D10 ' .agent/decisions.md` -> 1
-   `grep -c 'Reachable red-proofs only' docs/agents/planner_reviewer_prompt.md` -> 1
-   `grep -c '^===BEGIN\|^===END' .agent/live_review.md .agent/decisions.md .agent/plan.md docs/agents/planner_reviewer_prompt.md` -> 0 for all four
-   `wc -l .agent/plan.md` -> must be < 50. Report the number.
-D. Docs-round gate (this round touches `docs/`):
-   `python3 -m pytest tests/docs/ -q` (baseline 294)
-   `python3 -m pytest tests/ui_server/test_dashboard_contract.py -q` (baseline 70)
-E. Round gate + canary:
-   `python3 -m pytest tests/orchestration/test_builder_prompt_golden.py -q`
-   (baseline 16; report the new number)
-   `python3 -m pytest tests/cli/test_golden_path.py -q` (baseline 42)
-F. Red-proof, in a DISPOSABLE `git worktree` at HEAD, never the primary
-   checkout. ONE mutation, reverted afterwards: in
-   `_drop_one_newline_per_segment_boundary`, delete the `elif` fallback branch
-   so its case falls through to the `raise`. The C4 pin's fallback-branch test
-   and its mixed-boundary test MUST go RED; report which tests failed and their
-   real message. This mutation IS reachable by construction — the pin calls the
-   helper directly with a list the composed prompts cannot produce, which is
-   the whole point of R-0251's fix. Then `git worktree remove`,
-   `git worktree prune`, and show `git worktree list` as the primary alone.
-G. `git status --porcelain` empty after C5; `git log --numstat b35d9d56..HEAD` —
-   report the `+` column per commit, each under 500.
-
-## PAIR shapes, declared at authoring time
-
-| Pair | Target | Shape |
-|---|---|---|
-| A | live_review | REWRITE — the TO changes the ID on the same line |
-| B | live_review | APPEND — TO contains FROM verbatim as its prefix |
-| C | live_review | APPEND — TO contains FROM verbatim as its prefix |
-| D | planner_reviewer_prompt | APPEND — TO contains FROM verbatim as its prefix |
-| E | decisions | APPEND — TO contains FROM verbatim as its prefix |
-| F | plan | full replacement, byte-for-byte equal to the slice |
-
-REWRITE proof: FROM 0x after, TO 1x after. APPEND proof: FROM exactly 1x after,
-each TO-ONLY line at least 1x. Every state/docs commit also reports its stray
-count — added lines tracing to no authored TO slice — which must be 0.
-
-===BEGIN PAIR_A_FROM===
-> Branch: feature/f105-cache-optimal-prompt-ordering. Next free ID: R-0251.
-===END PAIR_A_FROM===
-
-===BEGIN PAIR_A_TO===
-> Branch: feature/f105-cache-optimal-prompt-ordering. Next free ID: R-0253.
-===END PAIR_A_TO===
-
-===BEGIN PAIR_B_FROM===
-  checklist in that file's §3, installed as DECISION F105 D8 in the same round
-  as this entry, so the next reviewer runs the checks off disk instead of
-  remembering them. Fixed and resolved in this same round; the NEXT session's
-  gate verifies the rule is on disk and reads as intended.
-===END PAIR_B_FROM===
-
-===BEGIN PAIR_B_TO===
-  checklist in that file's §3, installed as DECISION F105 D8 in the same round
-  as this entry, so the next reviewer runs the checks off disk instead of
-  remembering them. Fixed and resolved in this same round; the NEXT session's
-  gate verifies the rule is on disk and reads as intended.
-- R-0251 (Low, F105 R22): the fallback branch of
-  `_drop_one_newline_per_segment_boundary` in
-  `packages/orchestration/pingpong_loop.py` ships unproven. The helper has three
-  branches; composition reaches two of them. The third — drop the NEXT segment's
-  leading newline when the earlier one has no trailing newline to give — is
-  unreachable for today's ten segments, because every non-last segment's raw
-  text already ends with a newline. Proven by the reviewer at b35d9d56 in a
-  disposable worktree: replacing that branch's body with a `raise` leaves 433
-  tests green across the golden, the three pingpong suites, `test_scope_plan.py`
-  and `test_task_input.py`. The worker declared exactly this as R22 deviation 1
-  rather than reporting the ordered mutation as red, which is the behaviour the
-  gate exists to reward. Fix: pin the helper directly with synthetic lists — not
-  delete the branch, which handles a legal case a future segment may produce.
-  Done: R-0251 — RESOLVED at R23. The helper now carries its own test class,
-  called directly with lists the composed prompts cannot produce: the trailing
-  branch, the fallback branch, the illegal boundary's `PromptSegmentError`, a
-  mixed three-segment list, and the untouched last element. Re-proved by the
-  reviewer's own red-proof at gate F, where deleting the `elif` turns the
-  fallback and mixed-boundary tests RED where before the pin it turned nothing.
-- R-0252 (Medium, F105 R22, reviewer-authored defect): DECISION F105 D8's
-  pre-emission checklist does not cover the red-proofs a block ORDERS. R22's
-  gate F ordered a mutation — delete the fallback branch, expect red — against
-  a branch no test can reach, so the gate was unsatisfiable exactly as R-0250's
-  four were. That is the SIXTH instance of the class across F104 and F105, and
-  the first the freshly installed checklist did not catch: its four items read
-  the block's own bytes, and reachability is a property of the CODE the block
-  points at. The cost is the same as every earlier instance — a round spends a
-  declared deviation proving a reviewer mistake. Fix: a fifth checklist item in
-  docs/agents/planner_reviewer_prompt.md §3, installed as DECISION F105 D10 in
-  the same round as this entry. Fixed and resolved in this same round; the NEXT
-  session's gate verifies the rule is on disk and reads as intended.
-===END PAIR_B_TO===
-
-===BEGIN PAIR_C_FROM===
-  R-0250's own resolution asked the next gate to verify the rule reached disk
-  and reads as intended. It did: docs/agents/planner_reviewer_prompt.md §3 now
-  carries the four-item pre-emission checklist, and this round's block was
-  written against it — item 1 caught the size before emission and item 2 was run
-  against every zero-gate in Done-when C.
-  `LAST_REVIEWED_SHA` advances 9cb128d7 -> 54049e6b.
-===END PAIR_C_FROM===
-
-===BEGIN PAIR_C_TO===
-  R-0250's own resolution asked the next gate to verify the rule reached disk
-  and reads as intended. It did: docs/agents/planner_reviewer_prompt.md §3 now
-  carries the four-item pre-emission checklist, and this round's block was
-  written against it — item 1 caught the size before emission and item 2 was run
-  against every zero-gate in Done-when C.
-  `LAST_REVIEWED_SHA` advances 9cb128d7 -> 54049e6b.
-- Reviewer gate on R22 (2026-08-10, same session): PASS. Range
-  `54049e6b..HEAD` at b35d9d56, SIX commits, NINE path rows over eight paths,
-  exactly the block's declared change set. Insertions per `git log --numstat`:
-  376, 306, 32, 102, 392, 71 — each under 500.
-  Transport was proved disk to disk, not by retype: the reviewer's authored
-  original and the committed `.agent/authored/f105-r22-1.md` are byte-identical
-  under `cmp`, and all three of original, authored copy and `.agent/last_block.md`
-  hash to `8f5fc0c8bf8bdb67…`.
-  The production claim was checked WITHOUT using the worker's numbers. Before
-  the block was authored the reviewer had already proved the decomposition
-  reproduces the pre-migration render BYTE FOR BYTE in pre-migration order over
-  all 64 combinations of the six optional arguments, so the round was ordered
-  against a spec known to be satisfiable — the R-0250 discipline applied
-  forward for the first time. After the round the golden was re-read and re-run:
-  16 tests, four fixture shapes, and the four frozen renders are `repr()` of the
-  real 54049e6b output rather than retyped prompt text. `compose_prompt_segments`
-  sorts by `(rank, registration index)`, and the worker registers in rank order,
-  so the manifest's ten names and the ranks `(0,2,3,3,3,3,4,4,5,5)` are pinned
-  exactly, not merely as a monotonic sequence.
-  Gates re-run by the reviewer with real exit codes: golden plus segments
-  41 passed — 16 + 25, where 25 is the pre-round 22 plus D9's three pins; the
-  five caller suites 417 passed, unchanged from the pre-round baseline, so the
-  migration added no test to them and removed none; canary 42 passed.
-  TWO mutation red-proofs of the REVIEWER's own choosing, distinct from the
-  worker's, ran in a disposable worktree at HEAD. M3 dropped the bare `"\n"`
-  from `builder_context`'s parts: all 16 golden tests went RED, so the golden
-  really does pin bytes and not only shape. M4b changed `builder_staged_diff`'s
-  rank from JOB_CONTEXT to DOSSIER, which leaves every segment's TEXT identical
-  and the ranks still non-decreasing: exactly one test failed,
-  `test_the_full_shape_registers_the_ten_segments_in_rank_order`, so the golden
-  pins the rank ASSIGNMENT and not just its monotonicity. Both reverted, the
-  worktree removed and pruned, `git status --porcelain` empty and
-  `git worktree list` the primary alone at this verdict.
-  Application was re-measured rather than accepted: pairs A and B APPEND with
-  FROM 1x and TO 1x, PAIR_C's slice and `.agent/plan.md` byte-identical at
-  sha256 `45b21911…`, `.agent/plan.md` 45 lines against the cap of 50, zero
-  BEGIN/END markers in all three targets, and stray added lines recomputed from
-  the authored TO slices against the real diffs: 32 added and 0 stray at C2, 42
-  added and 0 stray at C3.
-  Both declared deviations ACCEPTED, and deviation 1 is charged to the
-  reviewer, not the worker: gate F's M2 ordered a mutation against an
-  unreachable branch. It is registered as R-0251 and R-0252 rather than held
-  against R22. Deviation 2 is the round working as intended — gate H asked for a
-  measured number, the number contradicted the block's guess, and the worker
-  reported the measurement instead of the guess.
+<<<PAIR_A_FROM>>>
   `LAST_REVIEWED_SHA` advances 54049e6b -> b35d9d56.
-===END PAIR_C_TO===
+<<<END_PAIR_A_FROM>>>
 
-===BEGIN PAIR_D_FROM===
-  Why this is on disk and not a habit: item 2 has recurred five times across
-  F104 and F105, and R20 hit all four items in one block. A check that lives
-  only in reviewer session memory is the A1 trap §0 names, and this list is the
-  standing counter-example to it.
-===END PAIR_D_FROM===
+<<<PAIR_A_TO>>>
+  `LAST_REVIEWED_SHA` advances 54049e6b -> b35d9d56.
+- Reviewer gate on R23 (2026-08-10, next session): PASS. Range
+  `b35d9d56..HEAD` at 554d9521, FIVE commits, eight path rows. Insertions per
+  `git log --numstat`: 368, 292, 78, 45, 36 — each under 500, and the 368-line
+  authored save is under DECISION F105 D5's 400.
+  Transport proved disk to disk under the §4.9 DIGEST FALLBACK, stated as
+  required: the previous session's scratchpad originals no longer exist, so the
+  proof is `sha256sum` over the two COMMITTED files plus `cmp`.
+  `.agent/authored/f105-r23-1.md` and `.agent/last_block.md` are byte-identical
+  at `fd3271aedac2f81f…`, 368 lines each.
+  Gates re-run by THIS reviewer, not accepted from the handback: the golden
+  21 passed, `tests/docs/` 294 passed, the canary 42 passed,
+  `test_dashboard_contract.py` 70 passed — every number equal to the worker's.
+  `.agent/plan.md` measured 47 lines against the cap of 50. Zero BEGIN/END
+  transport markers in all four target files; the six `PAIR_` hits in
+  `.agent/live_review.md` were read and are prose inside finding text, not
+  stray marker lines.
+  TWO mutation red-proofs of the REVIEWER's own choosing ran in a disposable
+  worktree at HEAD and BOTH went red, so R-0251's pin is real and not merely
+  present. M1 deleted the `elif` fallback branch of
+  `_drop_one_newline_per_segment_boundary`: exactly two tests failed,
+  `test_the_leading_newline_of_the_later_segment_is_the_fallback` and
+  `test_each_boundary_chooses_its_own_branch`, reproducing the worker's gate F
+  to the test name. M2 replaced the `else: raise` with `pass`: exactly one test
+  failed, `test_a_boundary_with_no_newline_at_all_is_illegal`. Both reverted,
+  the worktree removed and pruned, `git status --porcelain` empty and
+  `git worktree list` the primary alone at this verdict.
+  R-0251 and R-0252 are confirmed RESOLVED against the disk, not the summary:
+  the test class exists with five tests and the red-proof above, and checklist
+  item 5 plus DECISION F105 D10 are on disk and read as intended.
+  Declared deviation 1 ACCEPTED and it is the round working as intended: the
+  worker MEASURED PAIR_D's shape, found the block's word "prefix" wrong where
+  the FROM is the TO's SUFFIX, and reported the measurement instead of the
+  claim. Containment holds either way, so application was unaffected.
+  `LAST_REVIEWED_SHA` advances b35d9d56 -> 554d9521.
+<<<END_PAIR_A_TO>>>
 
-===BEGIN PAIR_D_TO===
-  5. **Reachable red-proofs only.** A block may order a mutation red-proof only
-     when the mutated branch is REACHABLE by the tests that are supposed to go
-     red. Items 1-4 read the block's own bytes; this one reads the code the
-     block points at, which is why it is a separate check and not a sub-point.
-     When reachability is not obvious, order the PROBE instead of the colour:
-     "replace the branch body with a raise and report whether any test fails".
-     A worker who reports an ordered mutation as green is telling the truth
-     about dead code, and it costs that round a declared deviation to prove a
-     reviewer mistake (finding R-0252, DECISION F105 D10).
-  Why this is on disk and not a habit: item 2 has recurred five times across
-  F104 and F105, and R20 hit all four items in one block. A check that lives
-  only in reviewer session memory is the A1 trap §0 names, and this list is the
-  standing counter-example to it.
-===END PAIR_D_TO===
+C3 — the golden, captured mechanically, BEFORE the migration (own commit)
+  New file `tests/orchestration/test_reviewer_prompt_golden.py`, modelled on
+  `tests/orchestration/test_builder_prompt_golden.py` — read that file first
+  and follow its shape; it is the site-5 sibling of this one.
+  Fixture shapes, four, covering BOTH branches:
+    scoped_minimal   scope_packet only
+    scoped_full      scope_packet, scope_contract, prior_findings,
+                     repair_round=2, safe_diff, test_result
+    fallback_minimal no optional argument at all
+    fallback_full    scope_contract, prior_findings, repair_round=2,
+                     task_excerpt (+ task_sha256, task_tokens_estimated),
+                     files_changed, safe_diff, test_result
+  Capture `_FROZEN_RENDERS` MECHANICALLY: `git worktree add --detach` at
+  554d9521, render the four shapes THERE with the pre-migration function, write
+  `repr()` of each render straight into the file. Not one character of prompt
+  text is retyped by hand. Say so in the module docstring, with the SHA, as the
+  sibling file does. Remove and prune the worktree afterwards.
+  `_PRE_MIGRATION_ORDER` — one list serves both branches:
+    reviewer_system, reviewer_goal, reviewer_spec_compliance, reviewer_scope,
+    reviewer_scope_contract, reviewer_repair, reviewer_task_input,
+    reviewer_builder_summary, reviewer_files_changed, reviewer_focused_diff,
+    reviewer_staged_diff, reviewer_test_result
+  Tests, mirroring the sibling:
+    - per shape: segments reassembled in `_PRE_MIGRATION_ORDER` and joined with
+      `PROMPT_SEGMENT_DELIMITER` equal the frozen render; the manifest's
+      sha256 set equals the frozen parts' sha256 set.
+    - the reorder is REAL: `fallback_minimal` is byte-identical to its frozen
+      render, and `scoped_full` and `fallback_full` are NOT.
+    - per shape: manifest ranks are non-decreasing.
+    - `scoped_full` registers exactly, in this order:
+      reviewer_system(0), reviewer_scope(3), reviewer_scope_contract(3),
+      reviewer_goal(4), reviewer_repair(5), reviewer_builder_summary(5),
+      reviewer_focused_diff(5), reviewer_test_result(5)
+    - `fallback_full` registers exactly, in this order:
+      reviewer_system(0), reviewer_scope_contract(3), reviewer_goal(4),
+      reviewer_task_input(4), reviewer_repair(5), reviewer_builder_summary(5),
+      reviewer_files_changed(5), reviewer_staged_diff(5),
+      reviewer_test_result(5)
+    - the inversions are fixed, asserted on the MANIFEST not on string
+      positions: in `scoped_full`, index(reviewer_scope) and
+      index(reviewer_scope_contract) both < index(reviewer_goal); in
+      `fallback_full`, index(reviewer_scope_contract) < index(reviewer_goal)
+      and index(reviewer_task_input) < index(reviewer_repair). Assert the
+      OPPOSITE holds in the frozen renders, so the test proves a change.
+    - `_build_reviewer_prompt` returns `compose_reviewer_prompt(...).text` for
+      all four shapes.
+  This commit is TEST-ONLY and MUST be red against the pre-migration code for
+  the compose_* tests. Write it, run it, RECORD the red, then do C4. Do not
+  combine C3 and C4 into one commit.
 
-===BEGIN PAIR_E_FROM===
-Reverse this decision by deleting this entry; the pin test in
-`tests/orchestration/test_prompt_segments.py` stays useful either way.
-===END PAIR_E_FROM===
+C4 — the migration (own commit)
+  Add `compose_reviewer_prompt` to `packages/orchestration/pingpong_loop.py`
+  next to `compose_builder_prompt`, same shape: build a
+  `list[tuple[str, SegmentStabilityRank, list[str]]]`, hand the joined texts to
+  `_drop_one_newline_per_segment_boundary`, register in RANK order into a
+  `PromptSegmentRegistry`, return `compose_prompt_segments(...)`.
+  Signature identical to `_build_reviewer_prompt`'s, returning `ComposedPrompt`.
+  `_build_reviewer_prompt` becomes a one-line delegation returning `.text`,
+  keeping its docstring updated the way `_build_builder_prompt`'s was.
+  Segment table — names, ranks, conditions, and the parts each carries. Take
+  the parts EXPRESSIONS verbatim from today's function bodies; the reviewer
+  proved these exact groupings byte-exact.
+    reviewer_system            SYSTEM       always   [_REVIEWER_SYSTEM, "\n"]
+    reviewer_goal              TASK         always   ["## Original Goal\n{goal}\n"]
+    reviewer_spec_compliance   JOB_CONTEXT  if the rendered summary is truthy
+    reviewer_scope             JOB_CONTEXT  scope-packet branch, always
+    reviewer_scope_contract    JOB_CONTEXT  if scope_contract
+    reviewer_repair            STEERING     if prior_findings and repair_round>0
+    reviewer_task_input        TASK         fallback branch, if task_excerpt
+    reviewer_builder_summary   STEERING     always
+    reviewer_files_changed     STEERING     fallback branch, if files_changed
+    reviewer_focused_diff      STEERING     scope-packet branch, safe_diff else
+                                            diff_summary — the elif STAYS an elif
+    reviewer_staged_diff       STEERING     fallback branch, same elif
+    reviewer_test_result       STEERING     if test_result
+  The `reviewer_repair` parts list is the header string, then one entry per
+  finding, then a trailing "" — exactly as today, and exactly as
+  `builder_repair` does it.
+  The two diff caps stay distinct: `_REVIEWER_SCOPED_DIFF_CAP` with
+  "\n[FOCUSED DIFF TRUNCATED]" on the scoped branch, `_REVIEWER_DIFF_CAP` with
+  "\n[DIFF TRUNCATED]" on the fallback. Do not unify them.
+  `_load_review_scope_packet` is still consulted when `scope_packet is None`,
+  before the branch is chosen, exactly as today.
+  Add the one-line WHY comment above `compose_reviewer_prompt` naming this as
+  T003 migration site 6 and stating that its golden is equal-modulo-ordering,
+  the way site 5's comment does.
 
-===BEGIN PAIR_E_TO===
-Reverse this decision by deleting this entry; the pin test in
-`tests/orchestration/test_prompt_segments.py` stays useful either way.
+C5 — plan and handoff (own commit)
+  Apply PAIR_B to `.agent/plan.md` as a FULL replacement, then rewrite
+  `.agent/handoff.md`.
 
-## DECISION F105 D10 — red-proofs are ordered only where they can go red (2026-08-10)
-
-Context: finding R-0252. R22's gate F ordered a mutation red-proof against a
-branch of `_drop_one_newline_per_segment_boundary` that no composed prompt can
-reach, so the mutation could only ever come back green. The worker ran it,
-reported green, probed the branch over all 64 optional-argument combinations to
-show WHY, and declared it. Nothing was damaged; a round again spent a declared
-deviation proving a reviewer mistake, and this is the sixth instance of the
-unsatisfiable-gate class across F104 and F105.
-
-What makes it worth its own decision rather than a note under D8 is that D8's
-four items cannot catch it. They are checks on the block's own bytes — count
-the lines, check a zero-gate against the block's own TO slices, count a
-replacement against its file's cap, test whether a TO contains its FROM. All
-four are answerable by reading the block alone. Reachability is a property of
-the CODE the block points at, so it is a different kind of check and belongs as
-its own item.
-
-D10 — §3's checklist gains a fifth item: order a mutation red-proof only where
-the mutated branch is reachable by the tests meant to go red, and when that is
-not obvious, order the PROBE ("replace the branch with a raise, report whether
-anything fails") rather than asserting the colour. The probe is strictly more
-informative than a guess: it returns the same evidence whether the branch is
-live or dead, and it cannot produce a gate the worker has to declare its way
-out of.
-
-The alternative — drop the red-proof when reachability is uncertain — was
-rejected. Red-proofs are the only thing separating a test that pins behaviour
-from a test that merely runs, and F105's own R-0229 was found exactly this way.
-Fewer red-proofs is the wrong direction; better-aimed ones is the right one.
-
-Scope: reviewer-authored blocks, as with D8. It adds no obligation to workers
-and changes no verification tier.
-
-Reverse this decision by deleting this entry and §3 checklist item 5.
-===END PAIR_E_TO===
-
-===BEGIN PAIR_F===
+<<<PAIR_B_PLAN>>>
 # Plan — F105 Cache-optimal prompt ordering
 
 Branch: feature/f105-cache-optimal-prompt-ordering, cut from main at cfda4245
@@ -335,22 +200,15 @@ Prompt CONTENT does not change; only its composition.
 ## Current Step
 T001 and T002 are DONE and gated. T003 counts in the MIGRATION ORDER of
 `.agent/t003_inventory.md`, never that file's catalogue "Site N" headings
-(R-0241). Migration-order steps 1-5 are COMPLETE and GATED, each with its own
-golden; `LAST_REVIEWED_SHA` is b35d9d56. R23 is the session terminator: it
-records the R22 gate, registers and fixes R-0251 and R-0252, and starts no
-migration. Open findings: R-0221, R-0239, R-0246, R-0247. No PR; one is
-created at CLOSURE.
+(R-0241). R23 is GATED; `LAST_REVIEWED_SHA` is 554d9521. R24 takes
+migration-order step 6, `_build_reviewer_prompt`, the LAST of the six, under a
+content-equality golden. Its decomposition was proved byte-exact by the
+reviewer over 3584 argument combinations before the block was authored,
+including the rank-order-vs-registration-order invariance the golden rests on.
+Open findings: R-0221, R-0239, R-0246, R-0247. No PR; one is created at CLOSURE.
 
 ## Next Steps
-- R24 gates R23 (state, docs and one test file — a red-proof IS owed, on the
-  new pin), then takes migration-order step 6,
-  `pingpong_loop.py::_build_reviewer_prompt`, last of the six.
-- Step 6 gets a FRESH session on purpose. Before authoring its block, prove the
-  decomposition byte-exact in pre-migration order over every combination of its
-  optional arguments, as R22 did for step 5 — that proof is what made step 5
-  land without a repair round. Its two mutually exclusive branches and its
-  three reviewer-role strings (base, effective, parse-retry) all reach
-  evidence.
+- R25 gates R24. With step 6 landed, all six T003 migration sites are done.
 - ONE later round wires `on_call` for the three sites lacking call evidence:
   `mission_cmd.py:362` (orchestrator), `mission_cmd.py:187` +
   `gauntlet_runner.py:505` (mission), `do_cmd.py:253` + `:2860` (plan).
@@ -362,7 +220,39 @@ created at CLOSURE.
 ## Risks
 - R-0221 stays open and will cost the integration gate phantom base-only
   failures.
-- The builder prompt's cacheable prefix now dies 24 characters into
-  `builder_staged_state` (R22 gate H measured 467). T004's before/after number
-  should quote that, not the rank order alone.
-===END PAIR_F===
+- The reviewer prompt is the worst-ordered of the six sites, so T004's
+  before/after number should quote its cacheable-prefix gain specifically.
+<<<END_PAIR_B_PLAN>>>
+
+GATES — run every one, record the REAL exit code and the REAL output
+  A transport: `sha256sum` on `.agent/authored/f105-r24-1.md` and
+    `.agent/last_block.md`; `cmp` them. Both digests in the handback.
+  B size: `wc -l .agent/authored/f105-r24-1.md`.
+  C application: FROM/TO occurrence counts for PAIR_A; `cmp` the applied
+    `.agent/plan.md` against the sliced PAIR_B; `wc -l .agent/plan.md` (must be
+    under 50); grep the three marker strings `PAIR_A_FROM`, `PAIR_B_PLAN`,
+    `END_PAIR` in `.agent/live_review.md` and `.agent/plan.md` — each must be 0.
+  D C3 red: run the new golden against the PRE-migration code and record the
+    failure count and the failing test names. This is the ordered RED.
+  E C4 green: `python3 -m pytest tests/orchestration/test_reviewer_prompt_golden.py -q`.
+  F callers unchanged: `python3 -m pytest tests/orchestration/test_pingpong_cli.py
+    tests/orchestration/test_reviewer_prompt_scope.py
+    tests/orchestration/test_builder_prompt_golden.py
+    tests/orchestration/test_prompt_segments.py -q`. Record the count and state
+    whether it equals the pre-round baseline; take that baseline BEFORE C4.
+  G canary: `python3 -m pytest tests/cli/test_golden_path.py -q`.
+  H red-proofs, in a disposable `git worktree` at HEAD, NEVER in the primary
+    checkout. Both mutations are on always-registered segments, so both are
+    reachable in every shape:
+      M1 change `reviewer_goal`'s rank from TASK to SYSTEM. Expect RED on the
+         rank-order and inversion tests. Report the failing test names.
+      M2 drop the bare "\n" from `reviewer_system`'s parts. Expect RED on the
+         frozen-render tests. Report the failing test names.
+    Revert both, `git worktree remove` and `git worktree prune`, then show
+    `git status --porcelain` empty and `git worktree list`.
+  I hygiene: `git status --porcelain` empty; `git log --numstat b35d9d56..HEAD`
+    with the `+` column per commit, each under 500.
+Handback:    completion report + rewrite `.agent/handoff.md` (changed-files
+             table, item-status table, the gate table with REAL exit codes, the
+             transport and pair proofs, open-findings count, next action).
+──────────────────────────────────────────────────────────────
