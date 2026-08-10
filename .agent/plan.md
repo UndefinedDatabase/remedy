@@ -13,27 +13,24 @@ and `remedy stats cache` shows the cache-read share per role from actuals.
 Prompt CONTENT does not change; only its composition.
 
 ## Current Step
-R44 is DONE and GATED-PENDING: the R43 gate record is on disk in
-`.agent/live_review.md` (`LAST_REVIEWED_SHA` -> b0b2d12f), and T004 slice 0/2
-landed — the ledger-reading half of `stats cost` now lives in
-`_load_ledger_reports` in `apps/cli/commands/stats_ledger_cmd.py`, with no
-behaviour change (tests/cli/test_stats_cost.py 33 passed; the mutation probe in
-a disposable worktree failed 19 of those 33, so the helper is reached).
-T001, T002 and T003 are DONE and gated. `.agent/t004_inventory.md` stays the
-ground truth for T004 and DECISION F105 D14 answers its five open questions.
-Open findings: R-0221, R-0239, R-0247, R-0262, R-0265, R-0266 — all six OPEN by
-design, none touched this round. No PR; one is created at CLOSURE.
+R45 is DONE and GATED-PENDING: the R44 gate record is on disk in
+`.agent/live_review.md` (`LAST_REVIEWED_SHA` -> ae1756f8), and T004 slice 1/2
+landed — `remedy stats cache` renders the cache-read share per bucket through
+`_load_ledger_reports`, with `unmeasured` for inputs nobody reported and
+`undefined` for inputs reported as zero (DECISION F105 D15), and the R-0266
+per-role limit named in the output. The catalog entry declares
+supports_json=False and offers no --json arg, so no flag exists that does
+nothing. tests/cli/test_stats_cost.py 39 passed (33 + 6 new). T001-T003 and
+T004 slice 0/2 are DONE and gated; `.agent/t004_inventory.md` stays T004's
+ground truth. Landed: R-0267. Open: R-0221, R-0239, R-0247, R-0262, R-0265,
+R-0266 — all six OPEN by design, none touched. No PR; one is created at CLOSURE.
 
 ## Next Steps
-- R45 = T004 slice 1/2: `remedy stats cache` beside `remedy stats cost` in
-  `apps/cli/commands/stats_ledger_cmd.py`, reading through `_load_ledger_reports`
-  rather than a second copy; plus its command-catalog entry and its own test
-  module. Cache-read share per role from the ledger, `unmeasured` and never `0`
-  where nothing was reported, and output that names the R-0266 limit instead of
-  hiding it. Fixtures take the evidence-tree-backfilled shape
-  (`tests/cli/test_stats_cost.py:121`).
-- Then the before/after comparison note in the feature's evidence, with honest
-  numbers whatever they are (the feature file's T004 line).
+- R46 = T004 slice 2/2: the `--json` mode for `stats cache` (payload version,
+  the share as a number or as its reason word, and the same basis block
+  `stats cost` carries), its catalog `--json` arg with supports_json=True, and
+  its tests; plus the before/after comparison note in the feature's evidence
+  with honest numbers whatever they are (the feature file's T004 line).
 - Then the integration gate (docs/agents/integration_gate.md); R-0221 will
   attribute phantom base-only failures there and that is expected, not new.
 - Then closure (docs/roadmap/STATUS_closure_protocol.md), where the evidence
