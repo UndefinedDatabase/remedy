@@ -1,363 +1,280 @@
-── STEP R27 — F105 ────────────────────────────────────────────
-Goal:        Record the R26 gate, resolve R-0253 and R-0254, register and fix
-             R-0255, then give the flight-plan prompt an `on_call` recorder so
-             its segment manifest reaches call evidence at the one site whose
-             evidence sink already exists.
-Bundle:      C1 save this block · C2 the R26 gate record, the two `Done:` texts
-             and R-0255 · C3 fix R-0255 · C4 the flight-plan call recorder and
-             its `do_cmd` wiring · C5 plan and handoff.
-Change:      `.agent/authored/f105-r27-1.md`, `.agent/last_block.md`,
-             `.agent/live_review.md`, `docs/agents/planner_reviewer_prompt.md`,
-             `packages/orchestration/flight_plan.py`,
+── STEP R28 — F105 ────────────────────────────────────────────
+Goal:        Record the R27 gate, resolve R-0255, register R-0256, and close
+             the last do_cmd evidence gap: give the trace writer an APPEND
+             sibling and wire the replan site with it, so a replan records its
+             flight-plan manifest without truncating the traces the job's first
+             run wrote.
+Bundle:      C1 save this block · C2 the R27 gate record, the `Done:` text and
+             R-0256 · C3 `append_trace_jsonl` and its tests · C4 the replan
+             wiring and its guard · C5 plan and handoff.
+Change:      `.agent/authored/f105-r28-1.md`, `.agent/last_block.md`,
+             `.agent/live_review.md`, `packages/orchestration/prompt_trace.py`,
              `apps/cli/commands/do_cmd.py`,
              `tests/orchestration/test_prompt_trace.py`, `.agent/plan.md`,
              `.agent/handoff.md`. Nothing else.
 Constraints: SPLIT round (docs/agents/planner_reviewer_prompt.md §3, "Round
-             types"): C4 touches production code under `packages/` and `apps/`,
-             so you execute and the reviewer gates. Never self-certify it.
-             Do NOT touch the replan site `apps/cli/commands/do_cmd.py:2859`.
-             `write_trace_jsonl` opens its path with mode `"w"`, so a second
-             write for the same job would TRUNCATE the first run's traces; that
-             site needs a sink decision and gets its own round.
-             Do not touch `make_intake_call_recorder`, the intake composer, or
-             any of the other five migration sites. Do not change the signature
-             of `plan_job_llm` or `_build_plan_prompt`. Do not reflow any line
+             types"): C3 and C4 touch production code under `packages/` and
+             `apps/`, so you execute and the reviewer gates. Never self-certify.
+             Do NOT change `write_trace_jsonl` — its mode "w" is correct for the
+             command that creates the job, and every existing caller depends on
+             it. `append_trace_jsonl` is a new function beside it, not a
+             replacement and not a parameter on the old one.
+             Do not touch the first `plan_job_llm` call site wired at R27, do
+             not touch `make_intake_call_recorder`, and do not reflow any line
              you were not given a pair for.
              A landed fix gets one `Landed: R-XXXX` line and no `Done:` text
-             (docs/agents/planner_reviewer_prompt.md §4.4).
+             (§4.4).
 Done when:   every gate below is run and its REAL exit code recorded.
 
 C1 — save this block verbatim, TWO commits
-  C1a `cp` this block to `.agent/authored/f105-r27-1.md`. Commit it ALONE.
+  C1a `cp` this block to `.agent/authored/f105-r28-1.md`. Commit it ALONE.
   C1b `cp` the same bytes to `.agent/last_block.md`. Commit separately.
-  Both are `cp` of the file on disk — never a retype. `sha256sum` both plus
-  `cmp`, and record the digest in the handback.
+  Both are `cp` of the file on disk. `sha256sum` both plus `cmp`; digest in the
+  handback.
 
-C2 — the R26 gate record, the two resolutions and R-0255 (own commit)
-  Apply PAIR_A, PAIR_B, PAIR_C and PAIR_D to `.agent/live_review.md`.
-  PAIR_A is APPEND-shaped (the TO contains the FROM verbatim as its prefix):
-  prove FROM exactly 1x, then count the TO-only ADDED LINES IN THIS COMMIT'S
-  DIFF (`git show --numstat`) with the stray count. PAIR_B, PAIR_C and PAIR_D
-  are REWRITES (the TO does not contain the FROM): prove FROM 0x after and
-  TO 1x, each grep SCOPED to `.agent/live_review.md`.
+C2 — the R27 gate record, the resolution and R-0256 (own commit)
+  Apply PAIR_A, PAIR_B and PAIR_C to `.agent/live_review.md`. PAIR_A is
+  APPEND-shaped (TO contains FROM verbatim as its prefix): prove FROM exactly
+  1x plus the TO-only ADDED-LINE count from this commit's diff and the stray
+  count. PAIR_B and PAIR_C are REWRITES: prove FROM 0x after and TO 1x, each
+  grep SCOPED to `.agent/live_review.md`.
 
 <<<PAIR_A_FROM>>>
-  `LAST_REVIEWED_SHA` advances df32f595 -> 0341928d.
+  `LAST_REVIEWED_SHA` advances 0341928d -> d0ebba63.
 <<<END_PAIR_A_FROM>>>
 
 <<<PAIR_A_TO>>>
-  `LAST_REVIEWED_SHA` advances df32f595 -> 0341928d.
-- R26: SPLIT repair round — record the R25 gate, fix R-0253 (§4.9 scoped to the
-  diff's ADDED lines plus a sixth D8 checklist item) and R-0254 (the shared
-  boundary helper's builder-only message plus the one assertion that pins it).
-- Reviewer gate on R26 (2026-08-10): PASS. Range `0341928d..d0ebba63`, nine
-  commits, read as a real diff. Every path the block named and no other:
-  `.agent/authored/f105-r26-1.md`, `.agent/last_block.md`,
-  `.agent/live_review.md`, `docs/agents/planner_reviewer_prompt.md`,
-  `packages/orchestration/pingpong_loop.py`,
-  `tests/orchestration/test_builder_prompt_golden.py`, `.agent/plan.md`,
-  `.agent/handoff.md`. Insertions per commit 264, 196, 47, 17, 1, 3, 1, 80, 8 —
-  each under 500, and the authored save is 264 lines against DECISION F105 D5's
-  cap of 400.
-  Transport verified under the §4.9 DIGEST FALLBACK: this reviewer session holds
-  no scratchpad original, so sha256 was recomputed over the COMMITTED files.
-  `.agent/authored/f105-r26-1.md` and `.agent/last_block.md` are both
-  `c249919e7e8d111f9cac38d8593b9f0c67d409ae85530256a0367eac4b1b4a0d`, `cmp`
-  silent, 264 lines each — the digest the handback declared.
-  Application re-measured disk to disk against the COMMITTED authored file with
-  the reviewer's own slicer, never a retype: PAIR_A append-shaped with the
-  prefix property holding literally, FROM 1x; PAIR_B rewrite, FROM 0x after,
-  TO 1x; PAIR_C append-shaped, FROM 1x; PAIR_D rewrite, FROM 0x, TO 1x; PAIR_E
-  rewrite, FROM 0x, TO 1x; PAIR_F byte-equal to `.agent/plan.md` at 41 lines
-  against the cap of 50. Declared shape equals measured shape for all six.
-  R-0253's own new rule was applied for the first time and it holds. `git show
-  --numstat 4c53c746` reads `47 0`, and all 47 ADDED lines are PAIR_A's TO-only
-  lines at exactly 1x, strays 0. `git show --numstat c6ec5d3e` reads `17 2`;
-  PAIR_B's first TO line is diff CONTEXT, so the 17 decompose as 9 (PAIR_B) + 8
-  (PAIR_C TO-only), strays 0, extras 0.
-  Gates re-run by THIS reviewer with real exit codes: the golden suite `21
-  passed`, `tests/docs/` `294 passed`, the dashboard contract `70 passed`, the
-  canary `42 passed`, and `tests/orchestration/` `10498 passed, 7 skipped in
-  672.30s` — the module regression re-run in full, not accepted on the word.
-  Mutation red-proof M1 run by the reviewer in a disposable worktree at
-  d0ebba63: restoring the word "builder" turns exactly one test RED,
-  `TestDropOneNewlinePerSegmentBoundary::test_a_boundary_with_no_newline_at_all_is_illegal`,
-  at `1 failed, 20 passed`. The worktree was removed and pruned; `git status
-  --porcelain` empty and `git worktree list` the primary alone at this verdict.
-  Gate D's redness is charged to the REVIEWER, not to R26. The R26 block's own
-  PAIR_A TO wrote the marker NAMES and a bare `<<<` into `.agent/live_review.md`
-  as prose, and then ordered those strings to count 0 in that same file —
-  DECISION F105 D8 item 2's sixth recurrence, and precisely the class R26's own
-  new item 6 installs. The worker MEASURED it and declared it instead of editing
-  prose to force the count down, which is the correct behaviour and costs R26
-  nothing. The property the gate exists to protect does hold, independently
-  checked: a line-anchored count of marker LINES is 0 in all five targets.
   `LAST_REVIEWED_SHA` advances 0341928d -> d0ebba63.
+- R27: SPLIT round — record the R26 gate, resolve R-0253 and R-0254, register
+  and fix R-0255, and wire `on_call` for the flight-plan prompt at the one
+  `do_cmd` site whose evidence sink already exists.
+- Reviewer gate on R27 (2026-08-10): PASS. Range `d0ebba63..73259d7a`, eight
+  commits, read as a real diff: only the nine paths the block named, and the
+  replan site the block forbade is untouched. Insertions per commit 457, 371,
+  69, 3, 1, 95, 77, 1 — each under 500.
+  Transport under the §4.9 digest fallback: `.agent/authored/f105-r28-1.md`'s
+  predecessor `.agent/authored/f105-r27-1.md` and `.agent/last_block.md` both
+  recompute to `efef62a6c61e08b33682175f034b9ba1441cac7245b6dceca5e05093199fb71a`,
+  `cmp` silent, 457 lines each — the digest the handback declared.
+  All 13 pairs re-sliced from the COMMITTED authored file by the reviewer's own
+  marker-LINE reader and measured disk to disk: declared shape equals measured
+  shape for every one, appends at FROM 1x, rewrites at FROM 0x after and TO 1x,
+  and PAIR_N byte-equal to `.agent/plan.md` at 42 lines against the cap of 50.
+  Diff-scoped accounting per §4.9: `.agent/live_review.md` ADDED 69, fully
+  decomposed, strays 0; `docs/agents/planner_reviewer_prompt.md` ADDED 3,
+  strays 0; `packages/orchestration/flight_plan.py` ADDED 44, strays 0;
+  `tests/orchestration/test_prompt_trace.py` ADDED 25, strays 0;
+  `apps/cli/commands/do_cmd.py` ADDED 26, strays 0. No ADDED line in any file
+  came from outside a TO slice.
+  Gates re-run by THIS reviewer with real exit codes: `tests/orchestration/`
+  `10499 passed, 7 skipped in 627.56s` — one more test than R26's 10499-minus-one
+  baseline, the new guard; `tests/cli/` `1329 passed in 260.89s`;
+  `test_prompt_trace.py` `38 passed`; `tests/docs/` `294 passed`; the dashboard
+  contract `70 passed`; the canary `42 passed`. Mutation red-proof M1 run by the
+  reviewer in a disposable worktree at 73259d7a: removing BOTH the `on_call=`
+  argument and the `make_flight_plan_call_recorder,` import turns exactly one
+  test RED, `TestSegmentManifest::test_the_cli_flight_plan_recorder_passes_the_composed_prompt`,
+  at `1 failed, 37 passed`. Worktree removed and pruned; `git status
+  --porcelain` empty and `git worktree list` the primary alone at this verdict.
+  The 457-line block is charged to the REVIEWER, not to R27. DECISION F105 D5
+  caps a block at 400 and D8 item 1 says to COUNT it on the final bytes; the
+  reviewer estimated instead of counting, and a block must be saved verbatim, so
+  the worker was right to declare the overage rather than trim it. First
+  recurrence of item 1 in this feature. The remedy is mechanical counting before
+  emission, which is what item 1 already prescribes.
+  `LAST_REVIEWED_SHA` advances d0ebba63 -> 73259d7a.
 <<<END_PAIR_A_TO>>>
 
 <<<PAIR_B_FROM>>>
-  Landed: R-0253 — §4.9 scoped to diff-added lines and D8 item 6 added, commit c6ec5d3e.
+  Landed: R-0255 — D8's preamble and closing note now count six, commit f5752809.
 <<<END_PAIR_B_FROM>>>
 
 <<<PAIR_B_TO>>>
-  Done: R-0253 (2026-08-10) — RESOLVED. §4.9 now scopes the TO-only count to the
-  lines that commit's diff ADDS, names `git show --numstat` as the measurement,
-  and D8 carries a sixth item for the whole-file collision. The reviewer
-  re-measured the new rule against its own first use: the C2 commit adds 47
-  lines, all 47 are PAIR_A TO-only lines at exactly 1x, strays 0 — achievable
-  where the whole-file reading was not.
+  Done: R-0255 (2026-08-10) — RESOLVED. The preamble reads "Run all six checks"
+  and the closing note reads "recurred six times ... R20 hit four of them in one
+  block", so the count a reviewer follows now matches the list they must run.
+  Verified by the reviewer against the applied file, not the diff alone.
+- R-0256 (Low, F105 R27): the segment manifest a flight-plan trace carries is
+  composed a SECOND time at the call site. `apps/cli/commands/do_cmd.py` calls
+  `compose_flight_plan_prompt(plan_intake_dict)` for the manifest while
+  `plan_job_llm` composes the bytes it actually sends, and both reach
+  `repo_facts_block()` independently. The trace's `prompt_text` is the effective
+  prompt but its `segment_manifest` describes the reviewer-composed twin, so an
+  audit row can describe bytes that were never sent if the two compositions
+  differ. `make_intake_call_recorder` has the same shape, so the finding covers
+  both sites. Cost today is bounded and visible: `prompt_chars` and
+  `segment_manifest_chars` are both recorded, so a divergence shows up as a
+  mismatch rather than a silent lie. Fix: compose ONCE — have the builder return
+  or accept its `ComposedPrompt` so exactly one composition feeds both the
+  provider and the trace. Needs a signature change on `plan_job_llm` and
+  `run_intake`, so it is its own round. OPEN.
 <<<END_PAIR_B_TO>>>
 
 <<<PAIR_C_FROM>>>
-  Landed: R-0254 — message is role-neutral and the assertion now anchors it, commit bb7b2cdc.
+> Branch: feature/f105-cache-optimal-prompt-ordering. Next free ID: R-0256.
 <<<END_PAIR_C_FROM>>>
 
 <<<PAIR_C_TO>>>
-  Done: R-0254 (2026-08-10) — RESOLVED. The message now reads "prompt segment
-  boundary carries no newline to drop between segments N and N+1", so a
-  reviewer-side boundary fault no longer reports itself as a builder fault, and
-  the one assertion that pins it anchors with `^` and `$`. Re-proved by the
-  reviewer in a disposable worktree at d0ebba63: putting "builder " back turns
-  exactly that test RED, where before R26 the same mutation stayed green.
-- R-0255 (Low, F105 R26): DECISION F105 D8's checklist now holds six items, but
-  its preamble still reads "Run all four checks" and its closing note still
-  reads "item 2 has recurred five times ... R20 hit all four items". Item 5
-  landed at R24 and item 6 at R26; neither round updated the two counts. A
-  reviewer following the preamble literally runs four of six checks — and the
-  two the preamble drops are exactly the two most recently learned. The R26
-  worker spotted this and correctly did NOT act: no pair was given for it and
-  AGENTS.md Scope Control bars the "while I'm here" edit. Fix: the preamble
-  says six, and the closing note says six recurrences and "four of them in one
-  block". OPEN.
+> Branch: feature/f105-cache-optimal-prompt-ordering. Next free ID: R-0257.
 <<<END_PAIR_C_TO>>>
 
+C3 — `append_trace_jsonl` and its tests (own commit)
+  Apply PAIR_D to `packages/orchestration/prompt_trace.py` and PAIR_E to
+  `tests/orchestration/test_prompt_trace.py`. Both are APPEND-shaped (TO
+  contains FROM verbatim as its prefix): prove FROM exactly 1x plus the TO-only
+  ADDED-LINE count from this commit's diff and the stray count, each grep
+  SCOPED to its own file.
+
 <<<PAIR_D_FROM>>>
-> Branch: feature/f105-cache-optimal-prompt-ordering. Next free ID: R-0255.
+def write_trace_jsonl(entries: list[PromptTraceEntry], path: Path) -> None:
+    """Write prompt trace entries as JSONL (one JSON object per line)."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w") as f:
+        for entry in entries:
+            f.write(json.dumps(trace_entry_to_dict(entry)) + "\n")
 <<<END_PAIR_D_FROM>>>
 
 <<<PAIR_D_TO>>>
-> Branch: feature/f105-cache-optimal-prompt-ordering. Next free ID: R-0256.
+def write_trace_jsonl(entries: list[PromptTraceEntry], path: Path) -> None:
+    """Write prompt trace entries as JSONL (one JSON object per line)."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w") as f:
+        for entry in entries:
+            f.write(json.dumps(trace_entry_to_dict(entry)) + "\n")
+
+
+# Two writers, because the trace file is per JOB and not per run:
+# `RunLogWriter.path.parent` is `<runs_root>/<job_id>/`, so a second command
+# against the same job would truncate the first command's traces if it used
+# `write_trace_jsonl`. The command that CREATES a job writes; a command that
+# adds traces to a job that already has some appends (F105 R28).
+def append_trace_jsonl(entries: list[PromptTraceEntry], path: Path) -> None:
+    """Append prompt trace entries to a JSONL file, creating it if absent."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a") as f:
+        for entry in entries:
+            f.write(json.dumps(trace_entry_to_dict(entry)) + "\n")
 <<<END_PAIR_D_TO>>>
 
-C3 — fix R-0255 (own commit)
-  Apply PAIR_E and PAIR_F to `docs/agents/planner_reviewer_prompt.md`. Both are
-  REWRITES: prove FROM 0x after and TO 1x, each grep SCOPED to that file.
-  Then append ONE line to `.agent/live_review.md`, immediately after the line
-  `  block". OPEN.`:
-    `  Landed: R-0255 — D8's preamble and closing note now count six, commit <sha>.`
-  with `<sha>` the short SHA of this commit. No other text.
-
 <<<PAIR_E_FROM>>>
-  four checks mechanically, on the FINAL bytes, after the last edit, before any
+        assert "prompt_traces" in source
 <<<END_PAIR_E_FROM>>>
 
 <<<PAIR_E_TO>>>
-  six checks mechanically, on the FINAL bytes, after the last edit, before any
+        assert "prompt_traces" in source
+
+    def test_appending_traces_keeps_the_earlier_ones(self, tmp_path):
+        """A replan must not truncate the traces its job's first run wrote."""
+        from packages.orchestration.prompt_trace import append_trace_jsonl
+
+        composed = compose_intake_prompt("demo mission")
+        first = build_trace_entry(
+            prompt_text=composed.text, role="intake", composed_prompt=composed,
+        )
+        second = build_trace_entry(
+            prompt_text=composed.text, role="flight_plan", composed_prompt=composed,
+        )
+        path = tmp_path / "prompt_trace.jsonl"
+        write_trace_jsonl([first], path)
+        append_trace_jsonl([second], path)
+        lines = path.read_text().strip().split("\n")
+        assert len(lines) == 2
+        assert [json.loads(x)["role"] for x in lines] == ["intake", "flight_plan"]
+
+    def test_appending_to_a_missing_file_creates_it(self, tmp_path):
+        from packages.orchestration.prompt_trace import append_trace_jsonl
+
+        composed = compose_intake_prompt("demo mission")
+        entry = build_trace_entry(
+            prompt_text=composed.text, role="flight_plan", composed_prompt=composed,
+        )
+        path = tmp_path / "nested" / "prompt_trace.jsonl"
+        append_trace_jsonl([entry], path)
+        assert len(path.read_text().strip().split("\n")) == 1
+
+    def test_the_replan_path_records_and_appends_its_traces(self):
+        """Wiring guard: an unwired or truncating replan fails HERE (F105 R28)."""
+        import apps.cli.commands.do_cmd as do_cmd
+
+        source = inspect.getsource(do_cmd)
+        assert "replan_traces" in source
+        assert "append_trace_jsonl" in source
+        assert source.count("on_call=make_flight_plan_call_recorder(") == 2
 <<<END_PAIR_E_TO>>>
 
+C4 — the replan wiring (own commit)
+  Apply PAIR_F and PAIR_G to `apps/cli/commands/do_cmd.py`. PAIR_F is a
+  REWRITE: prove FROM 0x after and TO 1x. PAIR_G is APPEND-shaped: prove FROM
+  exactly 1x plus the TO-only ADDED-LINE count and the stray count. Both greps
+  SCOPED to `apps/cli/commands/do_cmd.py`.
+  `provider="ollama"` mirrors the two call sites already in this file for the
+  same reason: `make_structured_call_fn` is the ollama provider.
+
 <<<PAIR_F_FROM>>>
-  Why this is on disk and not a habit: item 2 has recurred five times across
-  F104 and F105, and R20 hit all four items in one block. A check that lives
+    from packages.orchestration.flight_plan import (
+        ReplanRejectedError,
+        map_flight_plan_to_tasks,
+        plan_job_llm,
+        replan,
+    )
+
+    fp_result = plan_job_llm(intake, call_fn)
 <<<END_PAIR_F_FROM>>>
 
 <<<PAIR_F_TO>>>
-  Why this is on disk and not a habit: item 2 has recurred six times across
-  F104 and F105, and R20 hit four of them in one block. A check that lives
+    from packages.orchestration.flight_plan import (
+        ReplanRejectedError,
+        compose_flight_plan_prompt,
+        make_flight_plan_call_recorder,
+        map_flight_plan_to_tasks,
+        plan_job_llm,
+        replan,
+    )
+
+    replan_traces: list = []
+    replan_composed = compose_flight_plan_prompt(intake)
+    fp_result = plan_job_llm(
+        intake,
+        call_fn,
+        on_call=make_flight_plan_call_recorder(
+            replan_traces,
+            replan_composed,
+            provider="ollama",
+            provider_kind="ollama",
+        ),
+    )
 <<<END_PAIR_F_TO>>>
 
-C4 — the flight-plan call recorder and its wiring (own commit)
-  Apply PAIR_G and PAIR_H to `packages/orchestration/flight_plan.py`, then
-  PAIR_I, PAIR_J, PAIR_K and PAIR_L to `apps/cli/commands/do_cmd.py`, then
-  PAIR_M to `tests/orchestration/test_prompt_trace.py`. All in ONE commit: the
-  recorder, its only caller and the test that fails when the wiring is removed
-  are one unit, and splitting them lands a commit whose guard test is red.
-  PAIR_G is APPEND-shaped (the TO contains the FROM verbatim as its SUFFIX).
-  PAIR_H and PAIR_M are APPEND-shaped (TO contains FROM as its PREFIX).
-  PAIR_I, PAIR_J, PAIR_K and PAIR_L are REWRITES.
-  For every APPEND pair prove FROM exactly 1x plus the TO-only ADDED-LINE count
-  from this commit's diff with the stray count; for every REWRITE prove FROM 0x
-  after and TO 1x. Every grep is SCOPED to the one file the pair targets.
-  `provider="ollama"` mirrors the intake call site in the same function, which
-  hardcodes the same value for the same reason: `make_provider_call_fn()` is
-  the ollama provider.
-
 <<<PAIR_G_FROM>>>
-from packages.orchestration.schemas.models import (
+    new_fp_dict["_normalization"] = fp_result.transformations
+    job.flight_plan = new_fp_dict
+    job.tasks = map_flight_plan_to_tasks(fp_result.plan)
+    save_job(job)
 <<<END_PAIR_G_FROM>>>
 
 <<<PAIR_G_TO>>>
-from packages.orchestration.prompt_trace import build_trace_entry
-from packages.orchestration.schemas.models import (
+    new_fp_dict["_normalization"] = fp_result.transformations
+    job.flight_plan = new_fp_dict
+    job.tasks = map_flight_plan_to_tasks(fp_result.plan)
+    save_job(job)
+
+    # APPEND, never write: this job's first run already left its intake and
+    # flight-plan traces in the same per-job file (F105 R28).
+    if replan_traces:
+        from packages.orchestration.prompt_trace import append_trace_jsonl
+        from packages.orchestration.run_log import RunLogWriter
+        log = RunLogWriter(job_id=job.id)
+        try:
+            append_trace_jsonl(replan_traces, log.path.parent / "prompt_trace.jsonl")
+        except OSError:
+            pass
 <<<END_PAIR_G_TO>>>
 
-<<<PAIR_H_FROM>>>
-    return compose_flight_plan_prompt(intake_dict, project_facts=project_facts).text
-<<<END_PAIR_H_FROM>>>
-
-<<<PAIR_H_TO>>>
-    return compose_flight_plan_prompt(intake_dict, project_facts=project_facts).text
-
-
-# The recorder lives beside the composer, in this module, so the manifest and
-# the prompt it describes cannot drift apart: whoever changes flight-plan
-# composition sees the evidence writer in the same file (F105 T003 site 5, the
-# same reason `make_intake_call_recorder` sits in `intake.py`).
-def make_flight_plan_call_recorder(
-    traces: list[Any],
-    composed: ComposedPrompt,
-    *,
-    provider: str = "",
-    provider_kind: str = "",
-) -> Callable[[int, str, bool, str], None]:
-    """Build the ``on_call`` recorder ``plan_job_llm`` expects.
-
-    Every provider invocation appends one prompt trace entry to ``traces``,
-    carrying ``composed``'s segment manifest so call evidence records which
-    named segments produced the prompt.
-
-    The role is ``flight_plan``, deliberately NOT ``planner``: the ``planner``
-    traces belong to the OTHER planner path
-    (``packages/orchestration/structured_planner.py`` over ``PlannerPlan``), and
-    one spelling per concept is what keeps a per-role cache report from summing
-    two different prompts into one row.
-    """
-    def _record(
-        attempt: int, schema_v: str, is_parse_retry: bool, effective_prompt: str,
-    ) -> None:
-        kind = "flight-plan-retry" if is_parse_retry else "flight-plan"
-        traces.append(build_trace_entry(
-            prompt_text=effective_prompt,
-            role="flight_plan",
-            provider=provider,
-            provider_kind=provider_kind,
-            prompt_kind=kind,
-            schema_v=schema_v,
-            phase=kind,
-            transport_attempt=attempt,
-            is_transport_retry=False,
-            composed_prompt=composed,
-        ))
-
-    return _record
-<<<END_PAIR_H_TO>>>
-
-<<<PAIR_I_FROM>>>
-    intake_traces: list = []
-<<<END_PAIR_I_FROM>>>
-
-<<<PAIR_I_TO>>>
-    # One list, one write: it carries every prompt trace this command produces,
-    # intake and flight plan alike, because `write_trace_jsonl` opens its path
-    # with mode "w" and a second write would truncate the first.
-    prompt_traces: list = []
-<<<END_PAIR_I_TO>>>
-
-<<<PAIR_J_FROM>>>
-                on_call=make_intake_call_recorder(
-                    intake_traces,
-<<<END_PAIR_J_FROM>>>
-
-<<<PAIR_J_TO>>>
-                on_call=make_intake_call_recorder(
-                    prompt_traces,
-<<<END_PAIR_J_TO>>>
-
-<<<PAIR_K_FROM>>>
-    if intake_traces:
-        from packages.orchestration.prompt_trace import write_trace_jsonl
-        from packages.orchestration.run_log import RunLogWriter
-        log = RunLogWriter(job_id=job.id)
-        try:
-            write_trace_jsonl(intake_traces, log.path.parent / "prompt_trace.jsonl")
-<<<END_PAIR_K_FROM>>>
-
-<<<PAIR_K_TO>>>
-    if prompt_traces:
-        from packages.orchestration.prompt_trace import write_trace_jsonl
-        from packages.orchestration.run_log import RunLogWriter
-        log = RunLogWriter(job_id=job.id)
-        try:
-            write_trace_jsonl(prompt_traces, log.path.parent / "prompt_trace.jsonl")
-<<<END_PAIR_K_TO>>>
-
-<<<PAIR_L_FROM>>>
-        from packages.orchestration.flight_plan import (
-            apply_plan_budgets,
-            apply_plan_fences,
-            map_flight_plan_to_tasks,
-            plan_job_llm,
-            write_plan_md,
-        )
-        fp_result = plan_job_llm(intake_result.value.model_dump(), plan_call_fn)
-<<<END_PAIR_L_FROM>>>
-
-<<<PAIR_L_TO>>>
-        from packages.orchestration.flight_plan import (
-            apply_plan_budgets,
-            apply_plan_fences,
-            compose_flight_plan_prompt,
-            make_flight_plan_call_recorder,
-            map_flight_plan_to_tasks,
-            plan_job_llm,
-            write_plan_md,
-        )
-        plan_intake_dict = intake_result.value.model_dump()
-        # The manifest is composed here and the bytes are built again inside
-        # `plan_job_llm`; both go through `compose_flight_plan_prompt`, so the
-        # trace carries `prompt_chars` from the effective prompt and
-        # `segment_manifest_chars` from this composition and a divergence stays
-        # visible rather than silent.
-        plan_composed = compose_flight_plan_prompt(plan_intake_dict)
-        fp_result = plan_job_llm(
-            plan_intake_dict,
-            plan_call_fn,
-            on_call=make_flight_plan_call_recorder(
-                prompt_traces,
-                plan_composed,
-                provider="ollama",
-                provider_kind="ollama",
-            ),
-        )
-<<<END_PAIR_L_TO>>>
-
-<<<PAIR_M_FROM>>>
-        assert "make_intake_call_recorder" in inspect.getsource(do_cmd)
-<<<END_PAIR_M_FROM>>>
-
-<<<PAIR_M_TO>>>
-        assert "make_intake_call_recorder" in inspect.getsource(do_cmd)
-
-    def test_the_cli_flight_plan_recorder_passes_the_composed_prompt(self):
-        """Wiring guard: an unwired flight-plan manifest fails HERE (F105 R27)."""
-        import apps.cli.commands.do_cmd as do_cmd
-        from packages.orchestration.flight_plan import (
-            compose_flight_plan_prompt,
-            make_flight_plan_call_recorder,
-        )
-
-        traces: list = []
-        composed = compose_flight_plan_prompt(
-            {"goal": "demo"}, project_facts="pinned facts"
-        )
-        recorder = make_flight_plan_call_recorder(
-            traces, composed, provider="ollama", provider_kind="ollama"
-        )
-        recorder(1, "fp1", False, composed.text)
-        assert len(traces) == 1
-        assert traces[0].role == "flight_plan"
-        assert traces[0].prompt_kind == "flight-plan"
-        assert len(traces[0].segment_manifest) == 5
-
-        source = inspect.getsource(do_cmd)
-        assert "make_flight_plan_call_recorder" in source
-        assert "prompt_traces" in source
-<<<END_PAIR_M_TO>>>
-
 C5 — plan and handoff (own commit)
-  Apply PAIR_N to `.agent/plan.md` as a FULL replacement, then rewrite
+  Apply PAIR_H to `.agent/plan.md` as a FULL replacement, then rewrite
   `.agent/handoff.md`.
 
-<<<PAIR_N_PLAN>>>
+<<<PAIR_H_PLAN>>>
 # Plan — F105 Cache-optimal prompt ordering
 
 Branch: feature/f105-cache-optimal-prompt-ordering, cut from main at cfda4245
@@ -374,22 +291,21 @@ Prompt CONTENT does not change; only its composition.
 
 ## Current Step
 T001 and T002 are DONE and gated. T003's six migration sites are all migrated,
-each under its own golden. R26 is GATED; `LAST_REVIEWED_SHA` is d0ebba63.
-R27 is a SPLIT round: it records the R26 gate, resolves R-0253 and R-0254,
-registers and fixes R-0255 (D8's preamble counts four checks over a six-item
-list), and wires `on_call` for the flight-plan prompt at
-`apps/cli/commands/do_cmd.py` — the one evidence gap whose sink already exists.
-Open findings: R-0221, R-0239, R-0246, R-0247, R-0255.
+each under its own golden. R27 is GATED; `LAST_REVIEWED_SHA` is 73259d7a.
+R28 is a SPLIT round: it records the R27 gate, resolves R-0255, registers
+R-0256, and closes the last `do_cmd` evidence gap by adding
+`append_trace_jsonl` beside `write_trace_jsonl` and wiring the replan site with
+it — the per-job trace file must not be truncated by a second command.
+Open findings: R-0221, R-0239, R-0246, R-0247, R-0256.
 No PR; one is created at CLOSURE.
 
 ## Next Steps
-- The replan site `apps/cli/commands/do_cmd.py:2859` needs a sink DECISION
-  first: `write_trace_jsonl` opens with mode `"w"`, so a second write for the
-  same job truncates the first run's traces.
-- Then `on_call` for the mission and orchestrator prompts —
-  `mission_cmd.py:187`, `mission_cmd.py:362`, `gauntlet_runner.py:505` — none
-  of which has an evidence sink today.
+- `on_call` for the mission and orchestrator prompts — `mission_cmd.py:187`,
+  `mission_cmd.py:362`, `gauntlet_runner.py:505`. None has an evidence sink
+  today, so each needs its sink named before it is wired.
 - Fix R-0246 in the round that next touches `mission_compiler.py`.
+- R-0256 (compose once, not twice) needs a signature change on `plan_job_llm`
+  and `run_intake`, so it is its own round.
 - Then T004, `remedy stats cache` over actuals; then the integration gate
   (docs/agents/integration_gate.md); then closure
   (docs/roadmap/STATUS_closure_protocol.md), where the PR is created.
@@ -400,58 +316,53 @@ No PR; one is created at CLOSURE.
 - The reviewer prompt was the worst-ordered of the six sites and 1824 of 2048
   measured renders reorder, so T004's before/after number should quote its
   cacheable-prefix gain specifically.
-<<<END_PAIR_N_PLAN>>>
+<<<END_PAIR_H_PLAN>>>
 
 GATES — run every one, record the REAL exit code and the REAL output
-  A transport: `sha256sum` on `.agent/authored/f105-r27-1.md` and
+  A transport: `sha256sum` on `.agent/authored/f105-r28-1.md` and
     `.agent/last_block.md`; `cmp` them. Digest in the handback.
-  B size: `wc -l .agent/authored/f105-r27-1.md`.
+  B size: `wc -l .agent/authored/f105-r28-1.md`. Report the number even if it
+    is under the cap.
   C application, each grep SCOPED to the named file:
-    REWRITES, prove FROM 0x after and TO 1x — PAIR_B, PAIR_C, PAIR_D in
-    `.agent/live_review.md`; PAIR_E, PAIR_F in
-    `docs/agents/planner_reviewer_prompt.md`; PAIR_I, PAIR_J, PAIR_K, PAIR_L in
-    `apps/cli/commands/do_cmd.py`.
-    APPENDS, prove FROM exactly 1x — PAIR_A in `.agent/live_review.md`;
-    PAIR_G, PAIR_H in `packages/orchestration/flight_plan.py`; PAIR_M in
-    `tests/orchestration/test_prompt_trace.py`.
-    For EVERY append pair also give the TO-only ADDED-LINE count from
-    `git show --numstat <commit> -- <path>` plus the stray count, per §4.9 as
-    R26 amended it. Do NOT use whole-file counts for an append pair.
-    PAIR_N: `cmp` the applied `.agent/plan.md` against the sliced PAIR_N;
+    REWRITES, prove FROM 0x after and TO 1x — PAIR_B, PAIR_C in
+    `.agent/live_review.md`; PAIR_F in `apps/cli/commands/do_cmd.py`.
+    APPENDS, prove FROM exactly 1x plus the TO-only ADDED-LINE count from
+    `git show --numstat <commit> -- <path>` and the stray count — PAIR_A in
+    `.agent/live_review.md`; PAIR_D in `packages/orchestration/prompt_trace.py`;
+    PAIR_E in `tests/orchestration/test_prompt_trace.py`; PAIR_G in
+    `apps/cli/commands/do_cmd.py`. Do NOT use whole-file counts for an append.
+    PAIR_H: `cmp` the applied `.agent/plan.md` against the sliced PAIR_H;
     `wc -l .agent/plan.md` must be under 50.
   D marker leakage, LINE-anchored: `grep -c -E '^<<<'` in
     `.agent/live_review.md`, `.agent/plan.md`,
-    `docs/agents/planner_reviewer_prompt.md`,
-    `packages/orchestration/flight_plan.py`, `apps/cli/commands/do_cmd.py` and
-    `tests/orchestration/test_prompt_trace.py` — each count must be 0. The
-    count is over marker LINES on purpose: pair bodies in this block quote
-    marker names and a bare `<<<` in prose, and a substring count over those
-    files would be counting this block's own text (DECISION F105 D8 item 2).
+    `packages/orchestration/prompt_trace.py`, `apps/cli/commands/do_cmd.py` and
+    `tests/orchestration/test_prompt_trace.py` — each count must be 0. The count
+    is over marker LINES on purpose: pair bodies quote marker names in prose and
+    a substring count would be counting this block's own text (D8 item 2).
   E the touched suite: `python3 -m pytest tests/orchestration/test_prompt_trace.py -q`.
   F red-proof M1, in a DISPOSABLE `git worktree` at HEAD and nowhere else:
-    in `apps/cli/commands/do_cmd.py` delete BOTH the
-    `on_call=make_flight_plan_call_recorder(...)` argument (restoring the bare
-    two-argument `plan_job_llm` call) AND the `make_flight_plan_call_recorder,`
-    import line, then run
+    change `append_trace_jsonl`'s `path.open("a")` to `path.open("w")` and run
     `python3 -m pytest tests/orchestration/test_prompt_trace.py -q`. It MUST go
-    RED. Report the exit code and the failing test NAME. Then remove and prune
-    the worktree. If it comes out GREEN, do NOT edit anything to force a red —
-    report the green as a declared deviation, because a green there means the
-    guard does not pin the wiring and the reviewer needs to know that, not a
-    repaired number.
-  G module regression: `python3 -m pytest tests/orchestration/ -q` and
-    `python3 -m pytest tests/cli/ -q`. Production code changed in both trees.
-  H contract tests: `python3 -m pytest tests/docs/ -q` and
-    `python3 -m pytest tests/ui_server/test_dashboard_contract.py -q`.
-  I canary: `python3 -m pytest tests/cli/test_golden_path.py -q`.
+    RED on `test_appending_traces_keeps_the_earlier_ones`.
+  G red-proof M2, in the SAME disposable worktree, after reverting M1: delete
+    the `on_call=make_flight_plan_call_recorder(...)` argument from the REPLAN
+    call only, leaving the R27 site untouched, and re-run the same file. It MUST
+    go RED on `test_the_replan_path_records_and_appends_its_traces`. Then remove
+    and prune the worktree. For either red-proof, if it comes out GREEN do NOT
+    edit anything to force a red — report the green as a declared deviation.
+  H module regression: `python3 -m pytest tests/orchestration/ -q` and
+    `python3 -m pytest tests/cli/ -q`.
+  I contract tests and canary: `python3 -m pytest tests/docs/ -q`,
+    `python3 -m pytest tests/ui_server/test_dashboard_contract.py -q`, and
+    `python3 -m pytest tests/cli/test_golden_path.py -q`.
   J hygiene: `git status --porcelain` empty; `git worktree list` the primary
-    alone; `git log --numstat d0ebba63..HEAD` with the `+` column per commit.
+    alone; `git log --numstat 73259d7a..HEAD` with the `+` column per commit.
 Handback:    completion report + rewrite `.agent/handoff.md` (changed-files
              table one row per path, item-status table over
              C1a/C1b/C2/C3/C4/C5, the gate table with REAL exit codes and REAL
-             output, transport and pair proofs, the red-proof result,
-             open-findings count, next action). Keep it under 60 lines, or
-             carry a DECISION D15 "Deviations, declared" line naming the real
-             count and the mandated content that caused the overage. Then push.
-             Do NOT create a PR.
+             output, transport and pair proofs, both red-proof results,
+             open-findings count, next action). Keep it under 60 lines, or carry
+             a DECISION D15 "Deviations, declared" line naming the real count
+             and the mandated content that caused the overage. Then push. Do NOT
+             create a PR.
 ──────────────────────────────────────────────────────────────
