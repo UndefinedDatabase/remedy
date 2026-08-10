@@ -1,80 +1,75 @@
-# Handoff — F105 R37: record the R36 gate, resolve R-0259/R-0260, fix R-0261
+# Handoff — F105 R38: record the R37 gate, resolve R-0261, register R-0262
 
-Branch: feature/f105-cache-optimal-prompt-ordering. Review of 25e6326a..HEAD.
-Commits in order: 3cb60a80 (C1a), 4431344b (C1b), 02d14f35 (C2), 82cbb3e5 (C3),
-plus this C4 commit. No production code: the two test edits change COMMENT and
-DOCSTRING text only, so NO mutation red-proof was ordered or run (D8 item 5,
-DECISION F105 D10) — the block explicitly ordered none.
+Branch: feature/f105-cache-optimal-prompt-ordering. State-only round over
+`c30b365e..HEAD`. Commits in order: ff537f4a (C1a), c5421db4 (C1b),
+8f7105fe (C2), plus this C3 commit. Nothing under `packages/`, `apps/`,
+`tests/` or `docs/` was touched this round. No mutation red-proof was ordered
+and none was run: nothing executable changed (D8 item 5, DECISION F105 D10).
 
 ## Changed files
 | Path | Commit | +/- | Reason |
 |---|---|---|---|
-| .agent/authored/f105-r37-1.md | 3cb60a80 | +339/-0 | the block, byte-identical to the original |
-| .agent/last_block.md | 4431344b | +281/-205 | the same 339 lines |
-| .agent/live_review.md | 02d14f35 | +101/-3 | PAIR_V/W/X/Y/Z — ID bump, both `Done:` texts, R-0261, the R36 gate record |
-| tests/orchestration/test_mission_compiler.py | 82cbb3e5 | +5/-2 | PAIR_F2, comment text only |
-| tests/orchestration/test_orchestrator_loop.py | 82cbb3e5 | +4/-2 | PAIR_G2, docstring text only |
-| .agent/plan.md | C4 | +8/-7 | PAIR_P_PLAN verbatim, 42 lines |
-| .agent/handoff.md | C4 | rewritten | this file |
+| .agent/authored/f105-r38-1.md | ff537f4a | +230/-0 | the block, byte-identical to the scratch original |
+| .agent/last_block.md | c5421db4 | +156/-265 | the same 230 lines |
+| .agent/live_review.md | 8f7105fe | +62/-1 | PAIR_A ID bump, PAIR_B the R-0261 `Done:` plus R-0262, PAIR_C the R37 gate record |
+| .agent/plan.md | C3 | +20/-13 | PAIR_P_PLAN verbatim, 49 lines |
+| .agent/handoff.md | C3 | rewritten | this file |
 
 ## Items
 | Item | Status | Reason |
 |---|---|---|
 | C1a | done | |
 | C1b | done | |
-| C2 | deviated | five pairs applied byte for byte; the `Landed: R-0261` marker was NOT written — see Deviations |
+| C2 | done | |
 | C3 | done | |
-| C4 | done | |
 
 ## Verification (real exit codes, real output)
 | Gate | Exit | Output |
 |---|---|---|
-| A transport | 0 / 0 / 0 | all three files `0fc0c2c7…`; `cmp` scratch-vs-authored and authored-vs-last_block both silent |
-| B size | 0 | `339 .agent/authored/f105-r37-1.md` — cap 400 (D5) |
-| C pair shapes | 0 | declared == measured for all 8 — see proofs below |
-| D reconciliation | 0 | C2 is `101 3`; STRAY ADDED 0, STRAY REMOVED 0 |
-| E markers | 1 (grep no-match) | `^<<<` count `0` in all five written targets |
-| F state files | 0 / 0 | `tests/docs/` `294 passed in 0.30s`; dashboard `70 passed in 4.27s`; plan keeps `## Goal` 1x and `Steps` 1x, live_review keeps `## Steps` 1x |
-| G scoped | 0 | compiler + loop `317 passed in 1.66s` |
-| H number gone | 1 (grep no-match) | `test_mission_compiler.py:0`, `test_orchestrator_loop.py:0` |
-| I comments only | 0 | 13 changed lines in C3, `NOT a comment line and NOT docstring prose: 0`; AST with docstrings blanked IDENTICAL before/after in BOTH files |
-| J canary | 0 | golden path `42 passed in 20.86s` |
-| K hygiene | 0 | `git status --porcelain` empty; `git worktree list` the primary alone; insertions 339, 281, 101, 9, 62 — each under 500 |
+| A transport | 0 / 0 / 0 | all three files `d746b069…`; both `cmp` runs silent |
+| B size | 0 | `230 .agent/authored/f105-r38-1.md` — cap 400 (D5) |
+| C pair shapes | 0 | declared == measured for all four — see proofs below |
+| D reconciliation | 0 | C2 `ADDED 62 REMOVED 1`; STRAY ADDED 0, STRAY REMOVED 0 |
+| E markers | 1 (grep no-match) | `^<<<` count `0` in live_review.md, plan.md and handoff.md |
+| F state files | 0 / 0 | `tests/docs/` `294 passed in 0.30s`; dashboard `70 passed in 4.16s`; plan keeps `## Goal` 1x and `Steps` 1x; live_review keeps `## Steps` 1x |
+| G no prod drift | 1 | RED as worded — see Deviations; green over the round's own range |
+| H canary | 0 | golden path `42 passed in 19.55s` |
+| I hygiene | 0 | `git status --porcelain` empty; `git worktree list` the primary alone; insertions 230, 156, 62, 70 — each under 500 |
 
 ## Authored-text proofs
-Transport digest, all three files, 339 lines:
-`0fc0c2c71e800ac650febcf24dec1cc1a5733fc3998537ea8865b0ef9f99ef5a`. PRIMARY
-shape, not the digest fallback: the scratch original still exists and `cmp`
-against it is silent. Every pair was sliced from the COMMITTED authored file by
-a whole-line marker reader and never retyped. DECLARED == MEASURED for all
-eight: PAIR_V, PAIR_W, PAIR_X, PAIR_F2, PAIR_G2 REWRITE at FROM 1x before and
-FROM 0x / TO 1x after; PAIR_Y and PAIR_Z CONTAINS-FROM at FROM 1x before and
-FROM 1x / TO 1x after; PAIR_P_PLAN a full replacement proved by `cmp` silent
-against the slice, 42 lines against the cap of 50. PAIR_Y's TO carried its blank
-line verbatim; nothing was added to any slice.
+Transport digest, all three files, 230 lines:
+`d746b069f3954dada7f39dbc1b24a15fba7d5911f2cf671f66b828dc160ee46a`. PRIMARY
+shape, not the digest fallback: the scratch original `.remedy-wt/f105-r38-1.block.md`
+still exists and `cmp` against it is silent. Every pair was sliced out of the
+COMMITTED authored file by a whole-line marker reader and never retyped.
+DECLARED == MEASURED for all four. PAIR_A REWRITE: FROM 1x before, FROM 0x and
+TO 1x after. PAIR_B and PAIR_C CONTAINS-FROM: FROM 1x before, FROM 1x and TO 1x
+after. PAIR_P_PLAN a full replacement, `cmp` against the slice silent, 49 lines
+against the cap of 50. No `Done:` and no `Landed:` line of the worker's own was
+written; the block's authored text carries this round's only `Done:`.
 
 ## External actions
-`git push` after C4. No PR — one is created at CLOSURE. No worktree created.
+`git push` after C3. No PR — one is created at CLOSURE. No worktree created.
 
 ## Deviations, declared
-Content: ONE deviation, declared not repaired. The round brief asked for a
-`Landed: R-0261 — <one line>` marker in `.agent/live_review.md` for the fix C3
-lands. The step block orders no such line — C2 names exactly PAIR_V/W/X/Y/Z, and
-its own gate D mandates ZERO stray added lines against those five TOs. Writing
-the marker would have made gate D red; the block is authoritative for what to
-change and improvising authored text is forbidden, so the marker was omitted and
-is reported here instead. R-0261 therefore reads OPEN on disk with no landing
-marker, which under-claims rather than over-claims: `.agent/plan.md` (reviewer
-text) already records that the fix lands this round and awaits the `Done:`.
-Either accept 82cbb3e5 as the landing record or order the line next block.
-Length (DECISION D15): 80 lines, over 60. Cause, mandated content only: the
-7-row changed-files table, the 5-row item-status table, the 11-row gate table
-and the pair proofs. No section was dropped.
+Gate G is RED exactly as the block words it; the cause is its base SHA, not the
+round. `git diff --name-only 25e6326a..HEAD` spans R37 too, so it lists eight
+paths, two under `tests/` — `test_mission_compiler.py` and
+`test_orchestrator_loop.py`, the comment-only edits of 82cbb3e5 that the
+reviewer already gated PASS at R37. Over this round's own range,
+`c30b365e..HEAD`, the list is `.agent/authored/f105-r38-1.md`,
+`.agent/last_block.md`, `.agent/live_review.md` plus this commit's
+`.agent/plan.md` and `.agent/handoff.md` — `.agent/` only, which is what the
+gate meant to assert. Reported, not repaired: the block is authoritative and I
+do not rewrite its gates. Base gate G on the previous LAST_REVIEWED_SHA next.
+Length (DECISION D15): 75 lines, over 60. Cause, mandated content only: the
+5-row changed-files table, the 4-row item-status table, the 11-row gate table,
+the pair and transport proofs, and this declared deviation. No section dropped.
 
-Open findings: 5 — R-0221, R-0239, R-0247 and R-0256 fully open; R-0261 is
-registered and OPEN, its fix landed at 82cbb3e5, awaiting the reviewer's
-`Done:`. R-0259 and R-0260 are now RESOLVED by reviewer-authored `Done:` text.
+Open findings: 5 — R-0221, R-0239, R-0247, R-0256 and R-0262 are OPEN. R-0261
+is now RESOLVED by reviewer-authored `Done:` text landed this round.
 
 ## Next
-Gate R37 over `25e6326a..HEAD`. Then the R-0256 round — compose once, not twice,
-a signature change on `plan_job_llm` and `run_intake`, its own round (R38).
+Gate R38 over `c30b365e..HEAD`, then run R39 per the plan's Next Steps — the
+R-0256 fix: a keyword-only `composed=` on `plan_job_llm` and `run_intake` plus
+the three `do_cmd.py` call sites, two tests, each red-proofed.

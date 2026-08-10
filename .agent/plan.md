@@ -14,22 +14,29 @@ Prompt CONTENT does not change; only its composition.
 
 ## Current Step
 T001 and T002 are DONE and gated. T003's six migration sites are all migrated.
-R36 is GATED; `LAST_REVIEWED_SHA` is 25e6326a. Call evidence reaches four
-prompts: both `do_cmd` flight-plan sites, `remedy mission plan`, and the
-orchestrator loop, whose sink lives inside `run_mission` so both callers inherit
-it (DECISION D11). `remedy mission run` names its provider; the gauntlet's stays
-unlabelled on purpose (DECISION D13).
-R37 is the state round: it records the R36 gate, resolves R-0259 and R-0260
-with reviewer-authored `Done:` text, and registers plus fixes R-0261 — the
-cross-site character distance both guard comments attach to the wrong anchor.
-No production code.
-Open findings: R-0221, R-0239, R-0247, R-0256 — plus R-0261, whose fix lands
-this round and awaits the reviewer's `Done:`.
+R37 is GATED; `LAST_REVIEWED_SHA` is c30b365e. R38 is a state-only round: it
+records the R37 gate, resolves R-0261 and registers R-0262.
+Open findings: R-0221, R-0239, R-0247, R-0256, R-0262.
 No PR; one is created at CLOSURE.
 
 ## Next Steps
-- R-0256 (compose once, not twice) needs a signature change on `plan_job_llm`
-  and `run_intake`, so it is its own round — R38, the next one.
+- R39 fixes R-0256, the next round and a SPLIT one: give `plan_job_llm`
+  (`packages/orchestration/flight_plan.py`) and `run_intake`
+  (`packages/orchestration/intake.py`) a keyword-only
+  `composed: ComposedPrompt | None = None`, used as
+  `composed.text if composed is not None else <the existing builder call>`.
+  `ComposedPrompt` is already imported in both modules. In `run_intake` the
+  expression MUST stay the argument inside the `try` (R-0257); in
+  `plan_job_llm` it stays exactly where it is (R-0262 is not fixed there).
+  Then pass `composed=` at the three `apps/cli/commands/do_cmd.py` call sites
+  that already build one: the intake site, the flight-plan site (whose comment
+  about the second composition goes stale and must be replaced) and the replan
+  site. Two tests, one per module: build a ComposedPrompt with a sentinel,
+  pass a DIFFERENT mission/facts to the function, assert the provider saw
+  exactly `composed.text`. Red-proof each by reverting the function to its
+  unconditional builder call — both branches are reachable from those tests.
+  Prompt CONTENT must not change: digest `compose_*_prompt(...).text` for a
+  fixed input before and after and show the two are equal.
 - Then T004, `remedy stats cache` over actuals; then the integration gate
   (docs/agents/integration_gate.md); then closure
   (docs/roadmap/STATUS_closure_protocol.md), where the PR is created.
