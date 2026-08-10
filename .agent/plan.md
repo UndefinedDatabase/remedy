@@ -14,21 +14,22 @@ Prompt CONTENT does not change; only its composition.
 
 ## Current Step
 T001 and T002 are DONE and gated. T003's six migration sites are all migrated.
-R33 is GATED; `LAST_REVIEWED_SHA` is af35adbc. Call evidence reaches four
+R34 is GATED; `LAST_REVIEWED_SHA` is 28fe51c3. Call evidence reaches four
 prompts: both `do_cmd` flight-plan sites, `remedy mission plan`, and the
 orchestrator loop, whose sink lives inside `run_mission` so both callers inherit
-it (DECISION D11).
-R34 repairs what blocked R33: the file-wide source guard becomes a per-call-site
-assertion (R-0258), §3 gains checklist item 7, `remedy mission run` names its
-provider, and the gauntlet's absence of a label is documented as deliberate
-(DECISION D13) rather than left as a pending one-line round.
-Open findings: R-0221, R-0239, R-0247, R-0256, R-0259.
+it (DECISION D11). `remedy mission run` names its provider; the gauntlet's stays
+unlabelled on purpose (DECISION D13).
+R35 is the session-close round: it records the R34 gate, resolves R-0258,
+registers R-0260 and writes the handoff. By construction it carries no gate
+entry on itself (§4.13) — the next session gates it over `28fe51c3..HEAD`.
+Open findings: R-0221, R-0239, R-0247, R-0256, R-0259, R-0260.
 No PR; one is created at CLOSURE.
 
 ## Next Steps
-- R-0259: MOVE the misfiled R-0257 block (live_review.md 1528-1554) to the end
-  of `## Findings`, bytes unchanged, so the R30 gate record closes with its own
-  `LAST_REVIEWED_SHA` line. A state-file round of its own.
+- R-0259: MOVE the misfiled R-0257 block to the end of `## Findings`, bytes
+  unchanged, so the R30 gate record closes with its own `LAST_REVIEWED_SHA`
+  line. Bundle R-0260's window fix with it — both are small and neither touches
+  production code.
 - R-0256 (compose once, not twice) needs a signature change on `plan_job_llm`
   and `run_intake`, so it is its own round.
 - Then T004, `remedy stats cache` over actuals; then the integration gate
