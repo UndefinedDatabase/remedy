@@ -46,6 +46,7 @@ from packages.orchestration.mission_compiler import (
     resolve_milestone_cap,
     compile_milestone_dod,
     compile_mission_plan,
+    compose_mission_prompt,
     deterministic_mission_plan,
     milestone_flight_plan,
     milestones_in_progress,
@@ -1077,3 +1078,66 @@ def test_the_cap_never_loosens_the_dag_discipline() -> None:
                       milestone("M002", depends_on=["M001"]))
     result = compile_mission_plan("ship it", replaying(body), max_milestones=2)
     assert result.source == "deterministic"
+
+
+# ---------------------------------------------------------------------------
+# F105 T003 — the mission-plan prompt's segment manifest, composed once
+# ---------------------------------------------------------------------------
+
+
+class TestMissionPlanCallEvidence:
+    """One composition feeds both the provider bytes and the trace manifest."""
+
+    def test_the_manifest_describes_the_bytes_that_were_sent(
+            self, planned_mission):
+        """Compose-once, proved from the prompt the provider actually got."""
+        mission, replay = planned_mission
+        traces: list = []
+        sent: list[str] = []
+
+        def call_fn(prompt: str, attempt: int) -> str:
+            sent.append(prompt)
+            return replay(prompt, attempt)
+
+        compile_mission_plan(mission.goal, call_fn, traces=traces,
+                             provider="ollama", provider_kind="ollama",
+                             project_facts="FACTS")
+
+        composed = compose_mission_prompt(mission.goal, project_facts="FACTS")
+        assert len(traces) == 1
+        entry = traces[0]
+        assert entry.role == "mission_plan"
+        assert entry.provider == "ollama"
+        assert entry.prompt_kind == "mission-plan"
+        # The manifest covers the composed text, and that text is a PREFIX of
+        # what was sent. Any remainder is the schema tail `run_structured_call`
+        # appends outside every builder, which F105 does not register
+        # (DECISION F105 D3) — recording both numbers keeps that gap visible.
+        assert entry.segment_manifest_chars == len(composed.text)
+        assert sent[0].startswith(composed.text)
+        assert [row["name"] for row in entry.segment_manifest] == [
+            "mission_system", "mission_rules", "mission_repo_facts",
+            "mission_goal", "mission_schema_directive"]
+
+    def test_a_manifest_row_carries_its_rank_and_hash(self, planned_mission):
+        """A name alone would not let an auditor re-derive the ordering."""
+        mission, call_fn = planned_mission
+        traces: list = []
+
+        compile_mission_plan(mission.goal, call_fn, traces=traces,
+                             project_facts="FACTS")
+
+        row = traces[0].segment_manifest[0]
+        assert row["name"] == "mission_system"
+        assert row["rank"] == 0
+        assert len(row["sha256"]) == 64
+
+    def test_no_provider_records_no_call(self, planned_mission):
+        """The deterministic fallback contacts nobody, so it traces nobody."""
+        mission, _call_fn = planned_mission
+        traces: list = []
+
+        result = compile_mission_plan(mission.goal, None, traces=traces)
+
+        assert result.source == "deterministic"
+        assert traces == []
