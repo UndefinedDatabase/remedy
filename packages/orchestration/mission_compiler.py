@@ -58,6 +58,7 @@ from packages.orchestration.prompt_segments import (
     SegmentStabilityRank,
     compose_prompt_segments,
 )
+from packages.orchestration.prompt_trace import build_trace_entry
 from packages.orchestration.schemas.models import FLIGHT_PLAN_SCHEMA_V, FlightPlan
 from packages.orchestration.storage import _atomic_write_job as _atomic_write
 from packages.orchestration.structured_outputs import StructuredOutcome, run_structured_call
@@ -200,7 +201,10 @@ def build_mission_prompt(goal: str, *, project_facts: str = "",
     knows the project's shape passes it instead of paying for a second listing.
 
     ``max_milestones`` (R-0197) lowers the milestone ceiling the prompt states.
-    ``None`` reproduces today's prompt byte for byte.
+    ``None`` reproduces the pre-R-0197 milestone CEILING — not the pre-migration
+    byte SEQUENCE. F105 T003 reordered these segments while leaving their bytes
+    unchanged, so the composed order differs from the old template at every
+    value of ``max_milestones``, ``None`` included (R-0246).
     """
     return compose_mission_prompt(
         goal, project_facts=project_facts, max_milestones=max_milestones).text
@@ -245,6 +249,48 @@ def compose_mission_prompt(goal: str, *, project_facts: str = "",
             schema_v=MISSION_PLAN_DRAFT_SCHEMA_V),
     )
     return compose_prompt_segments(registry.registered_segments())
+
+
+# The recorder lives beside the composer, in this module, so the manifest and
+# the prompt it describes cannot drift apart — the same reason
+# `make_flight_plan_call_recorder` sits in `flight_plan.py` and
+# `make_intake_call_recorder` in `intake.py` (F105 T003 site 2).
+def make_mission_plan_call_recorder(
+    traces: list[Any],
+    composed: ComposedPrompt,
+    *,
+    provider: str = "",
+    provider_kind: str = "",
+) -> Callable[[int, str, bool, str], None]:
+    """Build the ``on_call`` recorder ``compile_mission_plan`` wires.
+
+    Every provider invocation appends one prompt trace entry to ``traces``,
+    carrying ``composed``'s segment manifest so call evidence records which
+    named segments produced the prompt.
+
+    The role is ``mission_plan``, deliberately NOT ``mission``: the mission
+    DOSSIER compression in ``mission_dossier.py`` is a different prompt against
+    the same mission, and one spelling per concept is what keeps a per-role
+    cache report from summing two prompts into one row.
+    """
+    def _record(
+        attempt: int, schema_v: str, is_parse_retry: bool, effective_prompt: str,
+    ) -> None:
+        kind = "mission-plan-retry" if is_parse_retry else "mission-plan"
+        traces.append(build_trace_entry(
+            prompt_text=effective_prompt,
+            role="mission_plan",
+            provider=provider,
+            provider_kind=provider_kind,
+            prompt_kind=kind,
+            schema_v=schema_v,
+            phase=kind,
+            transport_attempt=attempt,
+            is_transport_retry=False,
+            composed_prompt=composed,
+        ))
+
+    return _record
 
 
 def _capped_draft_model(cap: int) -> type[MissionPlanDraft]:
@@ -303,6 +349,9 @@ def compile_mission_plan(
     call_fn: Callable[[str, int], str] | None = None,
     *,
     on_call: Callable[[int, str, bool, str], None] | None = None,
+    traces: list[Any] | None = None,
+    provider: str = "",
+    provider_kind: str = "",
     project_facts: str = "",
     max_milestones: int | None = None,
 ) -> MissionCompileResult:
@@ -331,12 +380,24 @@ def compile_mission_plan(
     if call_fn is None:
         return _fallback(goal, hint="no provider")
 
+    # Composed ONCE. The same ComposedPrompt supplies the bytes that go to the
+    # provider and the manifest the trace records, so an audit row can never
+    # describe a twin composition the provider never saw. That failure mode is
+    # real and open elsewhere — R-0256, the flight-plan and intake sites, where
+    # the caller composes a second time because it has to build the recorder
+    # before the builder runs. It is not reproduced here.
+    composed = compose_mission_prompt(goal, project_facts=project_facts,
+                                      max_milestones=max_milestones)
+    if traces is not None:
+        # The sink wins over a caller-supplied ``on_call``: only code INSIDE
+        # this function holds the ComposedPrompt that was actually sent.
+        on_call = make_mission_plan_call_recorder(
+            traces, composed, provider=provider, provider_kind=provider_kind)
     try:
         outcome: StructuredOutcome = run_structured_call(
             MissionPlanDraft if max_milestones is None
             else _capped_draft_model(resolve_milestone_cap(max_milestones)),
-            build_mission_prompt(goal, project_facts=project_facts,
-                                 max_milestones=max_milestones),
+            composed.text,
             call_fn,
             on_call=on_call,
             allow_parse_retry=True,
