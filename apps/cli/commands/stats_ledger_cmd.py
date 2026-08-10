@@ -320,6 +320,108 @@ def _cmd_stats_cost(*, since: str = "", job: str = "", by: str | None = None,
             report, ledgers_read=ledgers_read, scope_label=scope_label))
 
 
+#: What a share prints when its inputs WERE reported and are both zero. That is
+#: NOT "nobody reported it": it is a real bucket that read nothing at all, and a
+#: share of nothing has no value. Calling that `unmeasured` would blame a
+#: provider for a figure it did report, and `0.0%` would invent a measurement.
+UNDEFINED_SHARE = "undefined"
+
+#: What a role split cannot tell a reader yet, printed in the output instead of
+#: buried in a docstring. Every ledger row a live run writes carries one
+#: hardcoded role, so a role split of production data has exactly one bucket;
+#: further buckets come from hand-written accounting files. Remedy names the
+#: limit rather than presenting one bucket as a breakdown.
+_ROLE_LIMIT_NOTE = (
+    "Per-role limit: every row a live run writes carries one hardcoded role "
+    "today, so a role split of production data shows a single bucket. Any "
+    "further bucket here came from a hand-written accounting file, not from "
+    "the orchestrator."
+)
+
+
+def _cache_read_share(row) -> float | str:
+    """The bucket's cache-read share, or the word saying why it has none.
+
+    The share is ``cache_read / (tokens_in + cache_read)``: of everything fed
+    into the model, how much came from cache. BOTH inputs must be measured — an
+    unmeasured input makes the share unmeasured too, because substituting a 0
+    for a figure nobody reported is the same lie one layer up.
+    """
+    cache_read, tokens_in = row.cache_read, row.tokens_in
+    if cache_read is None or tokens_in is None:
+        return UNMEASURED
+    total_input = tokens_in + cache_read
+    if total_input == 0:
+        return UNDEFINED_SHARE
+    return cache_read / total_input
+
+
+def _share_text(share) -> str:
+    """One share as a table cell: a percentage, or the word standing in for it."""
+    return share if isinstance(share, str) else f"{share * 100:.1f}%"
+
+
+def _render_cache_human(report, *, ledgers_read: list[str], scope_label: str) -> str:
+    """A share table in which no missing share can be mistaken for 0 %."""
+    lines = [f"Cache-read share from the token ledger — {scope_label}, "
+             f"{len(ledgers_read)} ledger(s) read"]
+    lines.append("Filters: " + "  ".join(f"{name}={value}" for name, value in (
+        ("since", report.since or "-"),
+        ("job", report.job_id or "-"),
+        ("by", report.by or "-"),
+    )))
+
+    if not report.ledger_exists:
+        lines.append("")
+        lines.append("No ledger on disk for this scope — nothing has been recorded yet.")
+        lines.append("Run 'remedy stats backfill-ledger <evidence-dir>' to mirror "
+                     "existing evidence.")
+        return "\n".join(lines)
+
+    headers = ["Bucket", "Calls", "Tokens in", "Cache read", "Cache share", "Basis"]
+    labelled = [(row.bucket if row.bucket is not None else "(unnamed)", row)
+                for row in report.rows] + [("TOTAL", report.total)]
+    body = [
+        [
+            label,
+            str(row.calls),
+            _figure(row.tokens_in),
+            _figure(row.cache_read),
+            _share_text(_cache_read_share(row)),
+            f"{_row_basis(row)} ({row.measured_calls}/{row.calls})",
+        ]
+        for label, row in labelled
+    ]
+    widths = [max(len(headers[i]), *(len(r[i]) for r in body)) for i in range(len(headers))]
+    lines.append("")
+    lines.append("  ".join(h.ljust(w) for h, w in zip(headers, widths)).rstrip())
+    for row in body:
+        lines.append("  ".join(cell.ljust(w) for cell, w in zip(row, widths)).rstrip())
+
+    total = report.total
+    lines.append("")
+    lines.append("Share = cache_read / (tokens_in + cache_read).")
+    lines.append(f"'{UNMEASURED}' means nobody reported the inputs; "
+                 f"'{UNDEFINED_SHARE}' means they were reported and were zero.")
+    lines.append(
+        f"Basis: {total.measured_calls} of {total.calls} call(s) reported usage "
+        f"(provider_reported); {total.unmeasured_calls} reported none (unknown)."
+    )
+    if report.by == "role":
+        lines.append(_ROLE_LIMIT_NOTE)
+    return "\n".join(lines)
+
+
+def _cmd_stats_cache(*, since: str = "", job: str = "", by: str | None = None,
+                     project: str | None = None,
+                     all_projects: bool = False) -> None:
+    report, ledgers_read, scope_label = _load_ledger_reports(
+        since=since, job=job, by=by, project=project,
+        all_projects=all_projects, json_output=False)
+    print(_render_cache_human(
+        report, ledgers_read=ledgers_read, scope_label=scope_label))
+
+
 def _cmd_stats_backfill_ledger(*, evidence_dir: str = "",
                                project: str | None = None,
                                all_projects: bool = False,
@@ -402,6 +504,13 @@ COMMAND_HANDLERS = {
         project=getattr(args, "project", None),
         all_projects=getattr(args, "all_projects", False),
         json_output=getattr(args, "json", False),
+    ),
+    "stats.cache": lambda args: _cmd_stats_cache(
+        since=getattr(args, "since", "") or "",
+        job=getattr(args, "job", "") or "",
+        by=getattr(args, "by", None),
+        project=getattr(args, "project", None),
+        all_projects=getattr(args, "all_projects", False),
     ),
     "stats.backfill-ledger": lambda args: _cmd_stats_backfill_ledger(
         evidence_dir=getattr(args, "evidence_dir", "") or "",
