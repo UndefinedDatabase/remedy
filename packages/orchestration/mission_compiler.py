@@ -715,7 +715,8 @@ def plan_mission(
     call_fn: Callable[[str, int], str] | None = None,
     *,
     root: Path | None = None,
-    on_call: Callable[[int, str, bool, str], None] | None = None,
+    provider: str = "",
+    provider_kind: str = "",
     max_milestones: int | None = None,
 ) -> MissionPlanOutcome:
     """Compile (or recompile) a mission's plan, persist it, render it.
@@ -750,9 +751,18 @@ def plan_mission(
             f"Start a new mission for a different route, or achieve/abandon "
             f"this one (remedy mission achieve|abandon {mission.id[:12]}).")
 
-    result = compile_mission_plan(mission, call_fn, on_call=on_call,
+    prompt_traces: list[Any] = []
+    result = compile_mission_plan(mission, call_fn, traces=prompt_traces,
+                                  provider=provider,
+                                  provider_kind=provider_kind,
                                   max_milestones=max_milestones)
     evidence_dir = mission_evidence_dir(project_id, mission.id, root)
+    if prompt_traces:
+        # APPEND, never write: the trace file is per MISSION and a recompile is
+        # a SECOND command against the same mission, so a write would destroy
+        # the first compile's evidence. Same reasoning as the F105 R28 replan.
+        from packages.orchestration.prompt_trace import append_trace_jsonl
+        append_trace_jsonl(prompt_traces, evidence_dir / "prompt_trace.jsonl")
     plan = attach_milestone_dods(
         result.plan, goal=mission.goal, evidence_dir=evidence_dir,
         call_fn=call_fn)
