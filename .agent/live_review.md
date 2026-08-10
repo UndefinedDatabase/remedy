@@ -5,7 +5,7 @@
 > round. Findings are authored here by the reviewer only. A worker marks a
 > landed fix `Landed: R-XXXX`; only reviewer-authored `Done:` text sets
 > Resolved (docs/agents/planner_reviewer_prompt.md §4.4).
-> Branch: feature/f105-cache-optimal-prompt-ordering. Next free ID: R-0262.
+> Branch: feature/f105-cache-optimal-prompt-ordering. Next free ID: R-0263.
 
 ## Findings
 
@@ -662,6 +662,32 @@
   already say. The per-site overshoots — 71 and 27 — stay: those describe each
   guard's OWN window against its OWN call, which is what R-0260 asked for and
   what a reader of that line needs. OPEN.
+  Done: R-0261 (2026-08-10) — RESOLVED at F105 R37, commit 82cbb3e5. Neither
+  comment quotes a cross-site character distance any more; both state what the
+  guard holds and why no number is given. Verified by this reviewer against the
+  applied files rather than the handback: `grep -c 7335` is 0 in both test
+  files, while `.agent/live_review.md` keeps the number in this finding's own
+  text, which is where a stale figure costs nothing. The per-site overshoots —
+  71 and 27 — survive untouched, as R-0260's resolution requires, and the 317
+  tests of the two modules stay green with the constant 200 and both
+  `source.index` anchors unchanged.
+
+- R-0262 (Low, F105 R38, pre-existing, registered NOT fixed): `plan_job_llm`
+  composes its prompt OUTSIDE the `try` that turns a provider failure into
+  `FlightPlanResult(plan=None, error_hint=...)`. In
+  `packages/orchestration/flight_plan.py` the line
+  `prompt = _build_plan_prompt(intake)` sits directly above `try:`, so a
+  raising composer escapes the function instead of becoming a result the
+  caller can render. That is the R-0257 shape in the function R-0257 did not
+  cover. `run_intake` has the opposite, correct shape — its composition is an
+  ARGUMENT inside the `try`. Registered rather than fixed, for two reasons
+  worth stating: it is pre-existing and outside the R-0256 change set, and
+  fixing the function ALONE would not save the CLI, because
+  `apps/cli/commands/do_cmd.py` composes at its own call site outside any
+  `try` as well. The honest fix is one round covering the function and both
+  call sites together, pinned by a test that makes the composer raise. Cost
+  today: a composer bug surfaces as a traceback instead of the deterministic
+  skeleton. OPEN.
 
 ## Steps
 
@@ -1936,3 +1962,38 @@
   beneath it, and it is deliberately NOT a finding — from R-0259 and R-0260
   onward the `Done:` text replaces the `Landed:` line as §4.4 prescribes.
   `LAST_REVIEWED_SHA` advances bcfb12e3 -> 25e6326a.
+- R37: state round — record the R36 gate, resolve R-0259 and R-0260, register
+  and fix R-0261. No production code.
+- Reviewer gate on R37 (2026-08-10): PASS. Range `25e6326a..c30b365e` = five
+  commits, seven paths; `git diff --stat` lists exactly the seven the block
+  named, nothing under `packages/` or `apps/`. Insertions per commit 339, 281,
+  101, 9 and 62, each far under 500.
+  Transport by the PRIMARY shape, not the §4.9 fallback: the reviewer's scratch
+  original `.remedy-wt/f105-r37-1.block.md`, the committed
+  `.agent/authored/f105-r37-1.md` and `.agent/last_block.md` all three hash to
+  `0fc0c2c71e800ac650febcf24dec1cc1a5733fc3998537ea8865b0ef9f99ef5a`
+  at 339 lines, against DECISION F105 D5's cap of 400.
+  All eight pairs re-sliced from the COMMITTED authored file by this reviewer's
+  own marker reader: declared equals measured for every one. PAIR_V, PAIR_W,
+  PAIR_X, PAIR_F2 and PAIR_G2 are REWRITEs at FROM 0x / TO 1x; PAIR_Y and
+  PAIR_Z are CONTAINS-FROM at FROM 1x; PAIR_P is byte-equal to the applied
+  `.agent/plan.md` at 42 lines against the cap of 50. C2's four live_review
+  pairs reconcile together against `+101/-3` with 0 strays in both directions.
+  Gates re-run by THIS reviewer, none taken from the handback: `tests/docs/`
+  plus the dashboard contract `364 passed in 4.36s`; the scoped pair
+  `317 passed in 1.41s`; the canary `42 passed in 19.73s`; `grep -c 7335` is 0
+  in both test files; zero `^<<<` lines in all five written targets;
+  `git status --porcelain` empty and `git worktree list` the primary alone at
+  this verdict. No red-proof was ordered or run: nothing executable changed,
+  which the worker proved by AST equality with docstrings blanked (D8 item 5).
+  One deviation, DECLARED by the worker and ACCEPTED as correct: no
+  `Landed: R-0261` line was written. The reviewer's worker brief asked for one
+  while the block's own gate D mandated zero stray added lines in C2, and no TO
+  contained such a line — so the block had no legal slot for it, and the worker
+  chose the under-claiming side over a deliberately red gate. That judgement is
+  right and the defect is the reviewer's: a block that registers AND fixes a
+  finding in the same round must reserve the marker's slot inside a TO. The
+  cost was nil, because the `Done:` text lands one round later either way,
+  which is why this is recorded as a lesson rather than registered as a
+  finding.
+  `LAST_REVIEWED_SHA` advances 25e6326a -> c30b365e.
