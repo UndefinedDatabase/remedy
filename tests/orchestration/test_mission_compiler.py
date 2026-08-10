@@ -32,6 +32,7 @@ from pathlib import Path
 
 import pytest
 
+from packages.orchestration import mission_compiler
 from packages.orchestration.data_paths import jobs_dir
 from packages.orchestration.dod_compiler import DoDCompileResult
 from packages.orchestration.dod_schema import DOD_SCHEMA_V, DoD
@@ -1141,3 +1142,69 @@ class TestMissionPlanCallEvidence:
 
         assert result.source == "deterministic"
         assert traces == []
+
+    def test_a_failing_composer_still_yields_the_fallback(
+            self, planned_mission, monkeypatch):
+        """R-0257: composition failure degrades, it does not reach the CLI."""
+        mission, call_fn = planned_mission
+
+        def boom(*_a, **_k):
+            raise RuntimeError("composition blew up")
+
+        monkeypatch.setattr(mission_compiler, "compose_mission_prompt", boom)
+
+        result = compile_mission_plan(mission.goal, call_fn)
+
+        assert result.source == "deterministic"
+        assert "composition blew up" in result.error_hint
+
+
+class TestMissionPlanEvidenceSink:
+    """`plan_mission` owns the evidence dir, so it owns the trace file."""
+
+    def test_planning_writes_the_trace_into_the_evidence_dir(
+            self, planned_mission):
+        mission, call_fn = planned_mission
+
+        outcome = plan_mission("proj", mission.id, call_fn,
+                               provider="ollama", provider_kind="ollama")
+
+        rows = [json.loads(line) for line
+                in (outcome.evidence_dir / "prompt_trace.jsonl")
+                .read_text().splitlines() if line]
+        assert len(rows) == 1
+        assert rows[0]["role"] == "mission_plan"
+        assert rows[0]["provider"] == "ollama"
+        assert rows[0]["segment_manifest"]
+
+    def test_a_recompile_appends_rather_than_truncating(self, planned_mission):
+        """A second `remedy mission plan` must not erase the first's evidence."""
+        mission, call_fn = planned_mission
+
+        plan_mission("proj", mission.id, call_fn)
+        outcome = plan_mission("proj", mission.id, call_fn)
+
+        rows = [line for line
+                in (outcome.evidence_dir / "prompt_trace.jsonl")
+                .read_text().splitlines() if line]
+        assert len(rows) == 2
+
+    def test_no_provider_leaves_no_trace_file(self, planned_mission):
+        """Nothing was sent, so there is no evidence file pretending it was."""
+        mission, _call_fn = planned_mission
+
+        outcome = plan_mission("proj", mission.id, None)
+
+        assert not (outcome.evidence_dir / "prompt_trace.jsonl").exists()
+
+    def test_the_cli_names_the_provider_it_planned_with(self):
+        """A source guard, because an unwired CLI leaves every gate green.
+
+        The tests above drive `plan_mission` directly, so they stay green even
+        if `remedy mission plan` stops passing the provider. This pins the one
+        line they cannot reach. Formatting-sensitive by nature — the F105 R28
+        `on_call=` guard precedent, and the same trade-off.
+        """
+        source = (Path(__file__).resolve().parents[2]
+                  / "apps" / "cli" / "commands" / "mission_cmd.py").read_text()
+        assert source.count('provider_kind="ollama"') == 1
