@@ -17,6 +17,9 @@ What is asserted:
   * `verify-ledger` exits 0 on a clean reconcile and NON-ZERO on injected drift,
     which is what makes it usable as a check;
   * `backfill-ledger` is idempotent: a second invocation adds no row.
+  * `stats cache` renders the cache-read share over the SAME rows, with two
+    distinct words for its two distinct absences, and refuses to answer at all
+    when the ledger cannot be read.
 """
 from __future__ import annotations
 
@@ -458,3 +461,54 @@ class TestNothingTouchesTheRealDataRoot:
         capsys.readouterr()
 
         assert sorted(p.name for p in filled_ledger.parent.iterdir()) == before
+
+
+class TestStatsCacheView:
+    """`remedy stats cache` — the share view over the same ledger rows."""
+
+    def test_the_command_is_in_the_catalog_and_has_a_handler(self):
+        entry = get_command("stats.cache")
+
+        assert entry is not None
+        assert entry.action_class == "read_only"
+        assert "stats.cache" in collect_all_handlers()
+
+    def test_a_measured_bucket_renders_a_percentage(self, filled_ledger,
+                                                    project_id, capsys):
+        CMD._cmd_stats_cache(project=project_id, by="role")
+
+        assert _table_row(capsys.readouterr().out, "builder")[2:5] == [
+            "1000", "64", "6.0%"]
+
+    def test_a_bucket_nobody_reported_says_so_instead_of_showing_zero(
+        self, filled_ledger, project_id, capsys
+    ):
+        CMD._cmd_stats_cache(project=project_id, by="role")
+        out = capsys.readouterr().out
+
+        assert _table_row(out, "reviewer")[2:5] == ["unmeasured"] * 3
+        assert "0.0%" not in out
+
+    def test_a_role_split_names_the_limit_it_cannot_show(self, filled_ledger,
+                                                         project_id, capsys):
+        CMD._cmd_stats_cache(project=project_id, by="role")
+
+        assert "Per-role limit" in capsys.readouterr().out
+
+    def test_reported_zeros_are_undefined_and_not_unmeasured(self):
+        from packages.orchestration.token_ledger import CostRow
+
+        assert CMD._cache_read_share(
+            CostRow(calls=1, tokens_in=0, cache_read=0)) == "undefined"
+        assert CMD._cache_read_share(CostRow(calls=1)) == "unmeasured"
+
+    def test_an_unreadable_ledger_exits_instead_of_reporting_zero(
+        self, filled_ledger, project_id, capsys
+    ):
+        filled_ledger.write_bytes(b"this is not a database")
+
+        with pytest.raises(SystemExit) as exc:
+            CMD._cmd_stats_cache(project=project_id)
+
+        assert exc.value.code == CMD.EXIT_ERROR
+        assert "cannot read the token ledger" in capsys.readouterr().err
