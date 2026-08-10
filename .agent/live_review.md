@@ -1458,3 +1458,30 @@
   that count. The worker flagged this itself rather than letting the next round
   discover it.
   `LAST_REVIEWED_SHA` advances 73259d7a -> 55550615.
+- R29: session-close round — record the R28 gate, sync the plan, write the
+  session-ending handoff. State files only.
+- Reviewer gate on R29 (2026-08-10): PASS. Range `55550615..HEAD` = five commits
+  (9e497810, aa056f36, 0b431989, 9d7511e5, 0c8932e3) read as a real diff: five
+  paths, every one under `.agent/`; insertions 165, 109, 48, 49, 9 — each under
+  500. C4 (0c8932e3) is a declared deviation, not in the block: gate rows G and H
+  can only carry real post-C3 numbers once C3 exists (the R28 C5 precedent), and
+  the handoff declares it. Transport re-proved disk to disk —
+  `.agent/authored/f105-r29-1.md` and `.agent/last_block.md` both recompute to
+  `fdf4d7f6f05273c26b055f436675144954f241330b26a7d6f2414c2a5d04c179`, `cmp`
+  silent, 165 lines each against DECISION F105 D5's cap of 400. Both pairs
+  re-sliced from the COMMITTED authored file by the reviewer's own whole-line
+  marker reader: PAIR_A is APPEND-shaped as declared — the TO's first line IS
+  the FROM — at FROM 1x, and 0b431989 ADDS exactly 48 lines against 48 TO-only
+  lines, in order, 0 removals and 0 strays; PAIR_B is byte-equal to
+  `.agent/plan.md` at 43 lines against the cap of 50.
+  Gates re-run by THIS reviewer, real exit codes: `grep -c -E '^<<<'` = 0 in
+  `.agent/live_review.md` and `.agent/plan.md`; `tests/docs/` `294 passed in
+  0.27s`; dashboard contract `70 passed in 4.16s`; canary `42 passed in 19.52s`;
+  `git status --porcelain` empty; `git worktree list` the primary alone. Open
+  findings recounted from the file rather than from the handoff: R-0221, R-0239,
+  R-0246, R-0247, R-0256 — five, as declared. No mutation red-proof: the diff
+  names nothing executable, so there is no branch to mutate (D10, D8 item 5).
+  `remedy plan status` and `remedy plan next` were NOT run — the command sits
+  outside this session's command allowlist and every attempt was denied;
+  `docs/roadmap/STATUS.md` was read directly and carries exactly one `[~]`, F105.
+  `LAST_REVIEWED_SHA` advances 55550615 -> 0c8932e3.
