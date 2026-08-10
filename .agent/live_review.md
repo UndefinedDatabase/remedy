@@ -520,6 +520,7 @@
   or accept its `ComposedPrompt` so exactly one composition feeds both the
   provider and the trace. Needs a signature change on `plan_job_llm` and
   `run_intake`, so it is its own round. OPEN.
+  Landed: R-0256 — 3e2fa6bc passes composed= at all three do_cmd.py call sites.
 
 - R-0258 (Medium, F105 R33, reviewer-authored defect): the R33 block ordered
   `provider="ollama", provider_kind="ollama"` onto the `run_mission` call in
@@ -706,6 +707,7 @@
   disposable worktree at R39: with `assert seen[0].startswith(composed.text)`
   both tests pass at `68 passed`, and reverting either ternary red-proofs its
   own test. Whoever runs R40 lands that corrected form. OPEN.
+  Landed: R-0263 — 398c7752 lands both tests in the corrected startswith form.
 
 - R-0264 (Low, F105 R40, reviewer-authored defect): the R40 step line applies
   §4.13 — "the LAST round of a BRANCH has no on-disk gate entry" — to the last
