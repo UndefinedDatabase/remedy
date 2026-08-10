@@ -1209,8 +1209,11 @@ class TestMissionPlanEvidenceSink:
                   / "apps" / "cli" / "commands" / "mission_cmd.py").read_text()
         # Scoped to THIS call site rather than counted over the whole file: a
         # SECOND labelled call in the same module is correct and must not turn
-        # this red (R-0258, which cost F105 R33 two items). The window is the
-        # call expression itself, so a label that drifts to another call no
-        # longer satisfies the guard.
+        # this red (R-0258, which cost F105 R33 two items). The window is 200
+        # characters from the call's start, which is the call plus 71
+        # characters of what follows it — measured, not the call expression
+        # exactly (R-0260). That is enough for the job the guard has: the run
+        # site's label sits 7335 characters away, far outside this window, so a
+        # label that drifts to that call no longer satisfies this one.
         planned = source.index("outcome = plan_mission(")
         assert 'provider_kind="ollama"' in source[planned:planned + 200]

@@ -2490,7 +2490,11 @@ class TestOrchestratorEvidenceSink:
 
         Scoped to THIS call site, never a file-wide count: the plan call in the
         same module carries its own label, and a count would make one of the two
-        guards unsatisfiable (checklist item 7, finding R-0258).
+        guards unsatisfiable (checklist item 7, finding R-0258). The window is
+        200 characters from the call's start, which is the call plus 27
+        characters of what follows it — measured, not the call expression
+        exactly (R-0260). It stays 7335 characters clear of the plan call's
+        label, which is the property this guard exists to hold.
         """
         source = (Path(__file__).resolve().parents[2]
                   / "apps" / "cli" / "commands" / "mission_cmd.py").read_text()
