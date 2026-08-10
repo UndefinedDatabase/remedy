@@ -295,6 +295,44 @@ class TestSegmentManifest:
         assert "make_flight_plan_call_recorder" in source
         assert "prompt_traces" in source
 
+    def test_appending_traces_keeps_the_earlier_ones(self, tmp_path):
+        """A replan must not truncate the traces its job's first run wrote."""
+        from packages.orchestration.prompt_trace import append_trace_jsonl
+
+        composed = compose_intake_prompt("demo mission")
+        first = build_trace_entry(
+            prompt_text=composed.text, role="intake", composed_prompt=composed,
+        )
+        second = build_trace_entry(
+            prompt_text=composed.text, role="flight_plan", composed_prompt=composed,
+        )
+        path = tmp_path / "prompt_trace.jsonl"
+        write_trace_jsonl([first], path)
+        append_trace_jsonl([second], path)
+        lines = path.read_text().strip().split("\n")
+        assert len(lines) == 2
+        assert [json.loads(x)["role"] for x in lines] == ["intake", "flight_plan"]
+
+    def test_appending_to_a_missing_file_creates_it(self, tmp_path):
+        from packages.orchestration.prompt_trace import append_trace_jsonl
+
+        composed = compose_intake_prompt("demo mission")
+        entry = build_trace_entry(
+            prompt_text=composed.text, role="flight_plan", composed_prompt=composed,
+        )
+        path = tmp_path / "nested" / "prompt_trace.jsonl"
+        append_trace_jsonl([entry], path)
+        assert len(path.read_text().strip().split("\n")) == 1
+
+    def test_the_replan_path_records_and_appends_its_traces(self):
+        """Wiring guard: an unwired or truncating replan fails HERE (F105 R28)."""
+        import apps.cli.commands.do_cmd as do_cmd
+
+        source = inspect.getsource(do_cmd)
+        assert "replan_traces" in source
+        assert "append_trace_jsonl" in source
+        assert source.count("on_call=make_flight_plan_call_recorder(") == 2
+
 
 # ---------------------------------------------------------------------------
 # Step 5088: next_approve_command unit tests

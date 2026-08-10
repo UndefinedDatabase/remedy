@@ -197,6 +197,19 @@ def write_trace_jsonl(entries: list[PromptTraceEntry], path: Path) -> None:
             f.write(json.dumps(trace_entry_to_dict(entry)) + "\n")
 
 
+# Two writers, because the trace file is per JOB and not per run:
+# `RunLogWriter.path.parent` is `<runs_root>/<job_id>/`, so a second command
+# against the same job would truncate the first command's traces if it used
+# `write_trace_jsonl`. The command that CREATES a job writes; a command that
+# adds traces to a job that already has some appends (F105 R28).
+def append_trace_jsonl(entries: list[PromptTraceEntry], path: Path) -> None:
+    """Append prompt trace entries to a JSONL file, creating it if absent."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a") as f:
+        for entry in entries:
+            f.write(json.dumps(trace_entry_to_dict(entry)) + "\n")
+
+
 def build_trace_summary(entries: list[PromptTraceEntry]) -> dict[str, Any]:
     """Build an aggregate summary of prompt trace entries."""
     builder_count = sum(1 for e in entries if e.role == "builder")
