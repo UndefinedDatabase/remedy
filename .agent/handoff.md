@@ -1,9 +1,9 @@
 # Handoff — F105 R29 (session close)
 
 Branch: feature/f105-cache-optimal-prompt-ordering. Base of this round: 55550615.
-Commits, in order: 9e497810 (C1a), aa056f36 (C1b), 0b431989 (C2), plus this C3
-commit and one follow-up commit that fills the post-C3 rows G and H below.
-State files only: no production code, no tests, no docs changed this round.
+Commits, in order: 9e497810 (C1a), aa056f36 (C1b), 0b431989 (C2), 9d7511e5 (C3),
+plus this C4 commit, which only fills the post-C3 rows G and H below. State files
+only: no production code, no tests, no docs changed this round.
 
 ## Changed files
 | Path | What |
@@ -21,6 +21,7 @@ State files only: no production code, no tests, no docs changed this round.
 | C1b | done | |
 | C2 | done | |
 | C3 | done | |
+| C4 | deviated | not in the block; the G/H rows can only carry real post-C3 numbers after C3 exists (R28 C5 precedent) |
 
 ## Gates (real exit codes, real output)
 | Gate | Exit | Output |
@@ -33,17 +34,15 @@ State files only: no production code, no tests, no docs changed this round.
 | E tests/docs | 0 | 294 passed in 0.30s |
 | E dashboard contract | 0 | 70 passed in 4.20s |
 | F canary | 0 | 42 passed in 19.57s |
-| G no-code | 0 | at 0b431989: `git diff --stat 55550615..HEAD` names only `.agent/authored/f105-r29-1.md`, `.agent/last_block.md`, `.agent/live_review.md` — non-`.agent` path count 0. Final tip figure in the follow-up commit |
-| H hygiene | 0 | at 0b431989: porcelain empty apart from the staged C3 edit, `git worktree list` the primary alone, insertions per commit 165, 109, 48 — each under 500. Final tip figure in the follow-up commit |
+| G no-code | 0 | at 9d7511e5: `git diff --stat 55550615..HEAD` names five paths, all under `.agent/` (authored block, last_block, live_review, plan, handoff) — non-`.agent` path count 0 |
+| H hygiene | 0 | at 9d7511e5: `git status --porcelain` empty, `git worktree list` the primary alone, insertions per commit 165, 109, 48, 49 — each under 500. This C4 commit touches `.agent/handoff.md` alone |
 
 No mutation red-proof was ordered or run: nothing executable changed, so there is
-no branch to mutate (DECISION F105 D10, D8 checklist item 5). Gate G is the proof
-that the round stayed inside `.agent/`.
+no branch to mutate (DECISION F105 D10, D8 item 5); gate G is the proof.
 
 Pairs were sliced from the COMMITTED `.agent/authored/f105-r29-1.md` by a reader
-that treats a line as a marker only when the whole line matches `^<<<[A-Z0-9_]+>>>$`:
-PAIR_A_FROM 1 line, PAIR_A_TO 49 lines (the FROM is its verbatim first line, so
-48 TO-only), PAIR_B_PLAN 43 lines.
+treating a line as a marker only on a whole-line `^<<<[A-Z0-9_]+>>>$` match:
+PAIR_A_FROM 1 line, PAIR_A_TO 49 (first line = the FROM, so 48 TO-only), PAIR_B 43.
 
 Open findings: 5 — R-0221, R-0239, R-0246, R-0247, R-0256.
 
