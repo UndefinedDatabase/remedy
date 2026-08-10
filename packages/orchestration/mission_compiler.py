@@ -386,14 +386,19 @@ def compile_mission_plan(
     # real and open elsewhere — R-0256, the flight-plan and intake sites, where
     # the caller composes a second time because it has to build the recorder
     # before the builder runs. It is not reproduced here.
-    composed = compose_mission_prompt(goal, project_facts=project_facts,
-                                      max_milestones=max_milestones)
-    if traces is not None:
-        # The sink wins over a caller-supplied ``on_call``: only code INSIDE
-        # this function holds the ComposedPrompt that was actually sent.
-        on_call = make_mission_plan_call_recorder(
-            traces, composed, provider=provider, provider_kind=provider_kind)
     try:
+        # Composition sits INSIDE the try because it CAN fail —
+        # ``repo_facts_block`` reads the filesystem — and this function's
+        # contract is that a failure degrades to the deterministic fallback
+        # rather than raising into the caller (R-0257).
+        composed = compose_mission_prompt(goal, project_facts=project_facts,
+                                          max_milestones=max_milestones)
+        if traces is not None:
+            # The sink wins over a caller-supplied ``on_call``: only code
+            # INSIDE this function holds the ComposedPrompt actually sent.
+            on_call = make_mission_plan_call_recorder(
+                traces, composed, provider=provider,
+                provider_kind=provider_kind)
         outcome: StructuredOutcome = run_structured_call(
             MissionPlanDraft if max_milestones is None
             else _capped_draft_model(resolve_milestone_cap(max_milestones)),

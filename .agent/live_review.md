@@ -1536,4 +1536,5 @@
   repairing it, which was right: the defect is the reviewer's, and a worker that
   silently fixes authored text hides the mistake instead of pricing it. Fix:
   compose inside the try, pinned by a test that makes the composer raise. OPEN.
+  Landed: R-0257 — composition moved back inside the try at C3 of R31.
   `LAST_REVIEWED_SHA` advances 0c8932e3 -> 0ba30611.
