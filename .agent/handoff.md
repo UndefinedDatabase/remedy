@@ -66,8 +66,8 @@ d2ba6a21 (C4), fbc01401 (C5), plus this C6 commit.
 | G state files | 0 | `tests/docs/` `294 passed in 0.29s`; dashboard `70 passed in 4.37s` |
 | H canary | 0 | golden path `42 passed in 20.57s` |
 | I red-proofs | 0 | M1 `2 failed, 1 passed` (tests 1+2 RED, as ordered); M2 `1 failed, 2 passed` (test 2 RED, test 1 GREEN, as ordered); M3 NOT runnable — `provider="ollama"` was never added. Worker substitute, not ordered: dropping the label inside `run_mission` gives `1 failed, 2 passed`, test 1 RED, so the label is pinned — the CLI's passing of it is not. Disposable worktree at HEAD, `PYTHONDONTWRITEBYTECODE=1`, each revert proved by an empty `git diff --stat`, worktree removed and pruned |
-| J hygiene | 0 | insertions 293, 232, 79, 27, 55 — each under 500; `git status --porcelain` empty; `git worktree list` the primary alone |
-| K scope | 0 | six paths, all on the Change line; `mission_cmd.py` absent by declared deviation |
+| J hygiene | 0 | insertions 293, 232, 79, 27, 55, 105 — each under 500; `git status --porcelain` empty; `git worktree list` the primary alone |
+| K scope | 0 | eight paths, all on the Change line; `mission_cmd.py` absent by declared deviation. J and K re-measured AFTER C6: a commit cannot state its own stat |
 
 ## Authored-text proofs
 All three transport files carry
