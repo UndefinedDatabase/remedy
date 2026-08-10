@@ -5,7 +5,7 @@
 > round. Findings are authored here by the reviewer only. A worker marks a
 > landed fix `Landed: R-XXXX`; only reviewer-authored `Done:` text sets
 > Resolved (docs/agents/planner_reviewer_prompt.md §4.4).
-> Branch: feature/f105-cache-optimal-prompt-ordering. Next free ID: R-0257.
+> Branch: feature/f105-cache-optimal-prompt-ordering. Next free ID: R-0258.
 
 ## Findings
 
@@ -1485,3 +1485,55 @@
   outside this session's command allowlist and every attempt was denied;
   `docs/roadmap/STATUS.md` was read directly and carries exactly one `[~]`, F105.
   `LAST_REVIEWED_SHA` advances 55550615 -> 0c8932e3.
+- R30: SPLIT round — `compile_mission_plan` composes ONCE and hands that one
+  ComposedPrompt to a `mission_plan` recorder, plus the R-0246 docstring fix.
+  No sink, no CLI: those are R31.
+- Reviewer gate on R30 (2026-08-10): PASS, with R-0257 registered against the
+  reviewer's own authored text. Range `0c8932e3..0ba30611` = six commits, read
+  as a real diff: seven paths, exactly the ones the block named; insertions per
+  commit 399, 349, 27, 64, 64, 57 — each under 500.
+  Transport re-proved disk to disk against the reviewer's surviving original:
+  `.remedy-wt/f105-r30-1.block.md`, `.agent/authored/f105-r30-1.md` and
+  `.agent/last_block.md` all three
+  `691c21a6b9717c160379291f63e6f45318e412f0e2714e590afb8ec7f8e14afa`, both
+  `cmp` runs silent, 399 lines against DECISION F105 D5's cap of 400. This is
+  the primary proof shape, not the §4.9 digest fallback: in-session the
+  reviewer's original never left the disk.
+  All seven pairs re-sliced from the COMMITTED authored file by the reviewer's
+  own whole-line marker reader; declared shape equals measured shape for every
+  one. PAIR_A FROM 1x with 27 TO-only lines against 27 ADDED and 0 removed;
+  PAIR_G FROM 1x with 63 TO-only against 64 ADDED — the one extra is the
+  `    compose_mission_prompt,` import line C4 explicitly ordered, so strays 0;
+  PAIR_D FROM 1x with 42 TO-only. PAIR_B, C, E and F all FROM 0x after and
+  TO 1x. Across the whole C3 commit (64 added, 3 removed) no ADDED line comes
+  from outside a TO and no REMOVED line from outside a FROM. PAIR_H is
+  byte-equal to `.agent/plan.md` at 45 lines against the cap of 50.
+  Gates re-run by THIS reviewer with real exit codes: `grep -c -E '^<<<'` = 0 in
+  all four targets; `test_mission_compiler.py` + `test_mission_prompt_golden.py`
+  `121 passed in 0.49s`; the three caller suites `78 passed in 1.42s`;
+  `tests/docs/` `294 passed in 0.30s`; the dashboard contract `70 passed in
+  4.09s`; the canary `42 passed in 19.47s`; `git status --porcelain` empty and
+  `git worktree list` the primary alone at this verdict.
+  Red-proof M1 reproduced by the reviewer in a disposable worktree at ccb128f0
+  with `PYTHONDONTWRITEBYTECODE=1`: deleting `composed_prompt=composed,` from
+  `make_mission_plan_call_recorder` turns exactly the two named tests RED at
+  `2 failed, 114 passed in 0.61s`. Reverted, worktree removed and pruned.
+- R-0257 (Medium, F105 R30, reviewer-authored defect): the R30 block lifted
+  composition OUT of the try/except that turns any failure into the
+  deterministic fallback. `compile_mission_plan` used to build its prompt as an
+  ARGUMENT to `run_structured_call` inside `try:`, so a raising composer became
+  `_fallback(goal, hint=f"provider error: {exc}")`; PAIR_F put
+  `composed = compose_mission_prompt(...)` above the `try:`, so it now escapes
+  the function. Proved by the reviewer in a disposable worktree with the
+  composer monkeypatched to raise: at 39da9b61^ the call returns
+  `source="deterministic"` and `error_hint="provider error: composition blew
+  up"`; at 39da9b61 the `RuntimeError` propagates out. No test covers it, which
+  is exactly why every gate was green — the module docstring's promise that
+  "any provider failure, or an unparseable answer" yields the fallback "rather
+  than an exception" is what regressed, and `remedy mission plan` would
+  traceback where it used to degrade. The realistic trigger is a filesystem
+  failure inside `repo_facts_block()`. The R30 worker DECLARED this rather than
+  repairing it, which was right: the defect is the reviewer's, and a worker that
+  silently fixes authored text hides the mistake instead of pricing it. Fix:
+  compose inside the try, pinned by a test that makes the composer raise. OPEN.
+  `LAST_REVIEWED_SHA` advances 0c8932e3 -> 0ba30611.
