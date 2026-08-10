@@ -55,6 +55,7 @@ from packages.orchestration.prompt_segments import (
     SegmentStabilityRank,
     compose_prompt_segments,
 )
+from packages.orchestration.prompt_trace import build_trace_entry
 
 # ---------------------------------------------------------------------------
 # The protocol document — read, never written
@@ -888,6 +889,47 @@ def build_orchestrator_prompt(context: OrchestratorContext,
     return compose_orchestrator_prompt(context, repo_root).text
 
 
+# The recorder lives beside the composer, in this module, so the manifest and
+# the prompt it describes cannot drift apart — the same reason
+# `make_mission_plan_call_recorder` sits in `mission_compiler.py` and
+# `make_flight_plan_call_recorder` in `flight_plan.py` (F105 T003 site 4).
+def make_orchestrator_call_recorder(
+    traces: list[Any],
+    composed: ComposedPrompt,
+    *,
+    provider: str = "",
+    provider_kind: str = "",
+) -> Callable[[int, str, bool, str], None]:
+    """Build the ``on_call`` recorder :func:`run_mission` wires per iteration.
+
+    Every provider invocation appends one prompt trace entry to ``traces``,
+    carrying ``composed``'s segment manifest so call evidence records which
+    named segments produced the prompt.
+
+    The role is ``orchestrator``, the same spelling the ledger and the protocol
+    document use, so a per-role cache report has one row for this prompt rather
+    than two that must be summed.
+    """
+    def _record(
+        attempt: int, schema_v: str, is_parse_retry: bool, effective_prompt: str,
+    ) -> None:
+        kind = "orchestrator-retry" if is_parse_retry else "orchestrator"
+        traces.append(build_trace_entry(
+            prompt_text=effective_prompt,
+            role="orchestrator",
+            provider=provider,
+            provider_kind=provider_kind,
+            prompt_kind=kind,
+            schema_v=schema_v,
+            phase=kind,
+            transport_attempt=attempt,
+            is_transport_retry=False,
+            composed_prompt=composed,
+        ))
+
+    return _record
+
+
 def run_mission(
     mission_id: str,
     limits: LoopLimits | None = None,
@@ -905,6 +947,8 @@ def run_mission(
     control_root_path: Path | None = None,
     repo_root: Path | None = None,
     on_call: Callable[[int, str, bool, str], None] | None = None,
+    provider: str = "",
+    provider_kind: str = "",
     now: datetime | None = None,
 ) -> MissionRunResult:
     """Run one mission until it terminates, its limits run out, or it is stopped.
@@ -936,6 +980,12 @@ def run_mission(
       ``last_report``     the account of the most recent dispatched job
       ``call_fn``         the orchestrator provider call; ``None`` means there
                           is no provider, which is a terminal, not an exception
+      ``on_call``         an ADDITIONAL per-call observer, chained AFTER this
+                          loop's own prompt-trace recorder rather than
+                          replacing it
+      ``provider`` /      how the call's provider is LABELLED in the prompt
+      ``provider_kind``   trace; empty means the caller did not name it, which
+                          is recorded as unlabelled rather than guessed
 
     Every iteration leaves a ledger entry — including the ones that end the
     run — so the audit trail has no gaps where a decision used to be.
@@ -1069,11 +1119,36 @@ def run_mission(
                 result.terminal, result.detail = TERMINAL_NO_PROVIDER, outcome.detail
                 return result
 
+            # Composed ONCE per iteration: the same object supplies the bytes
+            # that are sent AND the manifest that describes them. The
+            # JOB_CONTEXT segment changes every iteration, so the recorder is
+            # rebuilt from THIS iteration's `composed` — one hoisted out of the
+            # loop would label iteration N's bytes with iteration 1's manifest.
+            composed = compose_orchestrator_prompt(context, repo_root)
+            iteration_traces: list[Any] = []
+            record_trace = make_orchestrator_call_recorder(
+                iteration_traces, composed, provider=provider,
+                provider_kind=provider_kind)
+
+            def _observe_call(attempt: int, schema_v: str, is_parse_retry: bool,
+                              effective_prompt: str) -> None:
+                """Record the call, then let the caller's observer see it too.
+
+                A documented seam that is silently ignored is a defect even
+                while no production caller passes one, so ``on_call`` is
+                CHAINED rather than replaced. Defined per iteration and called
+                only within it, so it closes over THIS iteration's recorder.
+                """
+                record_trace(attempt, schema_v, is_parse_retry,
+                             effective_prompt)
+                if on_call is not None:
+                    on_call(attempt, schema_v, is_parse_retry, effective_prompt)
+
             call = run_structured_call(
                 OrchestratorMove,
-                build_orchestrator_prompt(context, repo_root),
+                composed.text,
                 call_fn,
-                on_call=on_call,
+                on_call=_observe_call,
                 allow_parse_retry=True)
             cost = measure_call_cost(call)
 
