@@ -262,10 +262,20 @@ def _render_cost_human(report, *, ledgers_read: list[str], scope_label: str) -> 
     return "\n".join(lines)
 
 
-def _cmd_stats_cost(*, since: str = "", job: str = "", by: str | None = None,
-                    project: str | None = None,
-                    all_projects: bool = False,
-                    json_output: bool = False) -> None:
+# Every read a ledger VIEW needs, in one place, so renderers stay renderers.
+def _load_ledger_reports(*, since: str, job: str, by: str | None,
+                         project: str | None, all_projects: bool,
+                         json_output: bool):
+    """Validate the filters, query every ledger in scope, and merge the answers.
+
+    Views over this ledger ask it the SAME question and differ only in what they
+    render from the answer, so the reading lives here once. Returns the merged
+    report, the ledger paths actually READ, and the scope label, in that order.
+
+    An unreadable ledger EXITS here instead of returning an empty report: a
+    database error does not mean zero, and rendering it as zero would be the
+    exact lie the basis labeling exists to prevent.
+    """
     import sqlite3
 
     from apps.cli.commands.failure_stats_cmd import _validate_since
@@ -282,8 +292,6 @@ def _cmd_stats_cost(*, since: str = "", job: str = "", by: str | None = None,
             for path in ledgers
         ]
     except sqlite3.Error as exc:
-        # An unreadable ledger is not "zero cost". Saying so would be the exact
-        # lie the basis labeling exists to prevent.
         if json_output:
             print(_json.dumps({"ok": False, "error": str(exc)}, indent=2))
         else:
@@ -294,6 +302,16 @@ def _cmd_stats_cost(*, since: str = "", job: str = "", by: str | None = None,
     # What was actually READ, not what was looked for: a project whose ledger does
     # not exist yet contributes no file and no figure.
     ledgers_read = [r.ledger_path for r in reports if r.ledger_exists and r.ledger_path]
+    return report, ledgers_read, scope_label
+
+
+def _cmd_stats_cost(*, since: str = "", job: str = "", by: str | None = None,
+                    project: str | None = None,
+                    all_projects: bool = False,
+                    json_output: bool = False) -> None:
+    report, ledgers_read, scope_label = _load_ledger_reports(
+        since=since, job=job, by=by, project=project,
+        all_projects=all_projects, json_output=json_output)
     if json_output:
         print(_json.dumps(_cost_payload(
             report, ledgers_read=ledgers_read, scope_label=scope_label), indent=2))
