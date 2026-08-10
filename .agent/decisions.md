@@ -4158,3 +4158,47 @@ searching for the missing label finds the reason instead of a gap.
 
 Reverse this decision by threading the label through `GauntletDeps` and passing
 it at that call site.
+
+D14 — T004 renders the cache-read share the ledger ACTUALLY carries, names the
+gap, and does not fix the producer. This answers all five open questions at the
+end of `.agent/t004_inventory.md`, which the R42 investigation raised and which
+no later round should re-derive.
+
+Q1, the role column: NO, T004 does not fix
+`packages/orchestration/pingpong_loop.py:3970` first. F105's goal is prompt
+COMPOSITION; rewriting who writes a role into token accounting is a different
+feature's change and would put an unreviewed producer edit under a prompt
+feature's PR. The view therefore reports per role over what the ledger holds and
+states, in its own output, that production rows currently carry one role. A
+reader learns the truth including its limit — which is this repository's rule for
+every figure it prints.
+
+Q2, one row per task run: MOOT under Q1 and deliberately left so. No row splits,
+no role becomes a list, and the view does NOT reach into
+`token_accounting.json`'s `by_role` behind the ledger's back. The ledger is the
+mirror this surface reads (stats_ledger_cmd's own stated contract); adding a
+second, richer path for one subcommand would give the same question two answers.
+
+Q3, fixtures: the evidence-tree-backfilled shape
+(`tests/cli/test_stats_cost.py:121`), NOT the directly-written ledger
+(`tests/orchestration/test_token_ledger.py:909`). Only the first exercises the
+producer path, and a fixture that skips the producer would render green over
+exactly the gap R-0266 names.
+
+Q4, the measured-zero collapse: YES, a finding against the actuals feature —
+registered as R-0265, not worked around inside T004. A workaround inside the
+view would be a second place where "reported 0" and "not reported" are guessed
+apart, and the guess would be invisible.
+
+Q5, vocabulary: the EXISTING word `unmeasured`
+(`apps/cli/commands/stats_ledger_cmd.py:44`). One spelling per concept
+(AGENTS.md, Code Discoverability Conventions); the feature file's phrase "not
+reported" is prose describing that word, not a second one to introduce.
+
+The alternative considered and rejected for now: fix the producer inside T004 so
+the per-role figure is real. It is the RIGHT eventual fix and R-0266 records it
+as such; it is rejected HERE because it is a token-accounting change that would
+ride into a prompt-composition PR unreviewed by anyone reading that PR's title.
+
+Reverse this decision by deleting this entry and re-scoping T004 to include the
+producer fix, with R-0266 closed in the same round.
