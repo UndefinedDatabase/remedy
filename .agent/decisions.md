@@ -4202,3 +4202,20 @@ ride into a prompt-composition PR unreviewed by anyone reading that PR's title.
 
 Reverse this decision by deleting this entry and re-scoping T004 to include the
 producer fix, with R-0266 closed in the same round.
+
+D15 — a cache-read share needs TWO words for "no number here", not one.
+DECISION D14 Q5 ruled that a figure nobody reported prints the existing word
+`unmeasured`, and that stands. But a SHARE has a second way to have no value:
+a bucket whose inputs WERE reported and are both zero divides 0 by 0. Printing
+`unmeasured` there would blame a provider for a figure it did in fact report —
+the P6 lie pointing the other way — and printing `0.0%` would invent a
+measurement. That case prints `undefined`, defined beside `UNMEASURED` in
+`apps/cli/commands/stats_ledger_cmd.py` with the reason above it.
+
+The alternative considered and rejected: one word for both, on the "one
+spelling per concept" rule (AGENTS.md). Rejected because they are two
+concepts, not one spelling of one — "nobody measured this" and "this measured
+to nothing" differ exactly where a reader's next action differs.
+
+Reverse this decision by deleting `UNDEFINED_SHARE` and returning `UNMEASURED`
+for the zero-denominator case, with the test that pins the two words dropped.
