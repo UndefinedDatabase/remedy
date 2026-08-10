@@ -2872,12 +2872,25 @@ def _cmd_do_replan(
 
     from packages.orchestration.flight_plan import (
         ReplanRejectedError,
+        compose_flight_plan_prompt,
+        make_flight_plan_call_recorder,
         map_flight_plan_to_tasks,
         plan_job_llm,
         replan,
     )
 
-    fp_result = plan_job_llm(intake, call_fn)
+    replan_traces: list = []
+    replan_composed = compose_flight_plan_prompt(intake)
+    fp_result = plan_job_llm(
+        intake,
+        call_fn,
+        on_call=make_flight_plan_call_recorder(
+            replan_traces,
+            replan_composed,
+            provider="ollama",
+            provider_kind="ollama",
+        ),
+    )
     if fp_result.plan is None:
         print(
             f"Error: replan failed: {fp_result.error_hint or 'parse failure'}",
@@ -2900,6 +2913,17 @@ def _cmd_do_replan(
     job.flight_plan = new_fp_dict
     job.tasks = map_flight_plan_to_tasks(fp_result.plan)
     save_job(job)
+
+    # APPEND, never write: this job's first run already left its intake and
+    # flight-plan traces in the same per-job file (F105 R28).
+    if replan_traces:
+        from packages.orchestration.prompt_trace import append_trace_jsonl
+        from packages.orchestration.run_log import RunLogWriter
+        log = RunLogWriter(job_id=job.id)
+        try:
+            append_trace_jsonl(replan_traces, log.path.parent / "prompt_trace.jsonl")
+        except OSError:
+            pass
 
     if json_output:
         print(json.dumps({
