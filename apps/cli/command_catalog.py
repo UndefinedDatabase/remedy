@@ -2932,7 +2932,7 @@ CATALOG: tuple[CommandEntry, ...] = (
             "it cannot show (read-only)."
         ),
         action_class="read_only",
-        supports_json=False,
+        supports_json=True,
         related=("stats.cost", "stats.backfill-ledger"),
         args=(
             ArgDef("--since", "Only calls at or after this ISO-8601 timestamp", required=False, is_option=True),
@@ -2940,6 +2940,7 @@ CATALOG: tuple[CommandEntry, ...] = (
             ArgDef("--by", "Group the shares by role, model or day (default: grand total only)", required=False, is_option=True),
             _PROJECT_SCOPE_OPT,
             _ALL_PROJECTS_FLAG,
+            _JSON_OPT,
         ),
         may_mutate_repo=False,
         may_execute_commands=False,
