@@ -361,6 +361,45 @@ def _share_text(share) -> str:
     return share if isinstance(share, str) else f"{share * 100:.1f}%"
 
 
+def _cache_row_payload(row) -> dict:
+    """One cache row as JSON: the share is a number, or null carrying its reason.
+
+    A consumer that only reads ``cache_read_share`` sees ``null`` and knows the
+    figure is absent; one that needs to know WHY reads ``share_basis``, which
+    carries the same word the table prints. The two absences never collapse
+    into one, and neither ever becomes a 0.
+    """
+    share = _cache_read_share(row)
+    return {
+        "bucket": row.bucket,
+        "calls": row.calls,
+        "tokens_in": row.tokens_in,
+        "cache_read": row.cache_read,
+        "cache_read_share": None if isinstance(share, str) else round(share, 6),
+        "share_basis": share if isinstance(share, str) else "measured",
+        "measured_calls": row.measured_calls,
+        "unmeasured_calls": row.unmeasured_calls,
+        "basis": _row_basis(row),
+    }
+
+
+def _cache_payload(report, *, ledgers_read: list[str], scope_label: str) -> dict:
+    """The `--json` document for the cache view, carrying its own limits."""
+    return {
+        "version": COST_OUTPUT_VERSION,
+        "scope": scope_label,
+        "ledgers_read": ledgers_read,
+        "filters": {"since": report.since or "", "job": report.job_id or "",
+                    "by": report.by},
+        "share_formula": "cache_read / (tokens_in + cache_read)",
+        "note": ("a null share was never measurable and is not a zero share; "
+                 "share_basis names which of the two reasons applies"),
+        "role_limit": _ROLE_LIMIT_NOTE,
+        "total": _cache_row_payload(report.total),
+        "rows": [_cache_row_payload(row) for row in report.rows],
+    }
+
+
 def _render_cache_human(report, *, ledgers_read: list[str], scope_label: str) -> str:
     """A share table in which no missing share can be mistaken for 0 %."""
     lines = [f"Cache-read share from the token ledger — {scope_label}, "
@@ -414,12 +453,17 @@ def _render_cache_human(report, *, ledgers_read: list[str], scope_label: str) ->
 
 def _cmd_stats_cache(*, since: str = "", job: str = "", by: str | None = None,
                      project: str | None = None,
-                     all_projects: bool = False) -> None:
+                     all_projects: bool = False,
+                     json_output: bool = False) -> None:
     report, ledgers_read, scope_label = _load_ledger_reports(
         since=since, job=job, by=by, project=project,
-        all_projects=all_projects, json_output=False)
-    print(_render_cache_human(
-        report, ledgers_read=ledgers_read, scope_label=scope_label))
+        all_projects=all_projects, json_output=json_output)
+    if json_output:
+        print(_json.dumps(_cache_payload(
+            report, ledgers_read=ledgers_read, scope_label=scope_label), indent=2))
+    else:
+        print(_render_cache_human(
+            report, ledgers_read=ledgers_read, scope_label=scope_label))
 
 
 def _cmd_stats_backfill_ledger(*, evidence_dir: str = "",
@@ -511,6 +555,7 @@ COMMAND_HANDLERS = {
         by=getattr(args, "by", None),
         project=getattr(args, "project", None),
         all_projects=getattr(args, "all_projects", False),
+        json_output=getattr(args, "json", False),
     ),
     "stats.backfill-ledger": lambda args: _cmd_stats_backfill_ledger(
         evidence_dir=getattr(args, "evidence_dir", "") or "",
