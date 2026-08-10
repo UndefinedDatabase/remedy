@@ -5,7 +5,7 @@
 > round. Findings are authored here by the reviewer only. A worker marks a
 > landed fix `Landed: R-XXXX`; only reviewer-authored `Done:` text sets
 > Resolved (docs/agents/planner_reviewer_prompt.md §4.4).
-> Branch: feature/f105-cache-optimal-prompt-ordering. Next free ID: R-0267.
+> Branch: feature/f105-cache-optimal-prompt-ordering. Next free ID: R-0268.
 
 ## Findings
 
@@ -2301,3 +2301,49 @@
   of `stats cost` into `_load_ledger_reports`, with no behaviour change, so a
   second view has one code path to read the ledger through rather than a copy
   of one. Production code, so the round is SPLIT by §3.
+- R-0267 (Low, F105 R44, pre-existing, registered AND fixed in R45): the
+  `sqlite3.Error` branch that turns an unreadable ledger into a usage error
+  has no test. `grep -rn 'cannot read the token ledger' tests/` returns
+  nothing, so the one path that stops a database fault from being rendered as
+  "zero cost" was never exercised. It is pre-existing — R44 moved it verbatim
+  out of `_cmd_stats_cost` — but R44 also widened its blast radius, because
+  the branch now sits in `_load_ledger_reports` and every view built on that
+  helper inherits it. A silent regression there would print a confident zero
+  over a corrupt file, which is the exact P6 failure the basis vocabulary
+  exists to prevent. Cheap to close while a test class is being written
+  anyway, so R45 closes it rather than carrying it.
+- Reviewer gate on R44 (2026-08-10): PASS. Range `b0b2d12f..ae1756f8` = five
+  commits, exactly the six paths the block named; one production file, nothing
+  under `packages/`, `tests/` or `docs/`. Insertions per commit 233, 226, 37,
+  24 and 94, each far under 500.
+  Transport by the PRIMARY shape: `.remedy-wt/f105-r44-1.block.md`, the
+  committed `.agent/authored/f105-r44-1.md` and `.agent/last_block.md` all
+  three hash to
+  `8944f6e563a74b11d104dc671b702b46ef49397f2b29227cf5fec48b6b987c24`
+  at 233 lines against D5's cap of 400; both `cmp` runs silent, and the head
+  and tail of the committed file are the reviewer's own emitted bytes.
+  Reconciled by machine: C2 37 added / 0 stray / 0 removed; C3 24 added / 0
+  stray / 6 removed, and all six removals are FROM text. `.agent/plan.md`
+  carries 17 stray lines, which is NOT a finding — this block made that file
+  worker-authored for the round and said so in its C4.
+  Gates re-run by THIS reviewer, none taken from the handback:
+  `tests/cli/test_stats_cost.py` `33 passed in 0.34s`; the two catalog suites
+  `41 passed in 0.49s`; the canary `42 passed in 19.60s`; `py_compile` exit 0;
+  `.agent/plan.md` 48 lines against the cap of 50 with `## Goal` and a `Steps`
+  substring; `.agent/live_review.md` exactly one `## Steps` heading; `^<<<` 0
+  in all four touched text files; `git status --porcelain` empty and the
+  primary worktree alone.
+  The C3 diff was read line by line against the authored TO and is
+  byte-identical to it, including the two comment lines it deletes because the
+  new docstring absorbed them. `query_cost(path=path` now appears exactly 1x
+  in the module: one read path, which is what the extraction was for.
+  The worker's ordered PROBE reported 19 of 33 tests failing when the helper's
+  body raises — a number, not a colour, and it proves the helper is reached.
+  The declared handoff overage (114 lines, DECISION D15 line present) is
+  ACCEPTED. R-0267 above comes from a reviewer spot-check the block did not
+  order and is the only thing this round leaves behind.
+  `LAST_REVIEWED_SHA` advances b0b2d12f -> ae1756f8.
+- R45: SPLIT round — add `remedy stats cache` over the helper R44 extracted,
+  render the share with two distinct words for its two distinct absences
+  (DECISION F105 D15), name the R-0266 per-role limit in the output, and close
+  R-0267 with the error-path test the shared branch never had.
