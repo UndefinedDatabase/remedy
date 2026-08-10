@@ -1997,3 +1997,40 @@
   which is why this is recorded as a lesson rather than registered as a
   finding.
   `LAST_REVIEWED_SHA` advances 25e6326a -> c30b365e.
+- R38: state round — record the R37 gate, resolve R-0261, register R-0262.
+  No production code.
+- Reviewer gate on R38 (2026-08-10): PASS. Range `c30b365e..5ca4debd` = four
+  commits, five paths, every one under `.agent/`. Insertions per commit 230,
+  156, 62 and 70, each far under 500.
+  Transport by the PRIMARY shape, not the §4.9 fallback: the scratch original
+  `.remedy-wt/f105-r38-1.block.md`, the committed
+  `.agent/authored/f105-r38-1.md` and `.agent/last_block.md` all three hash to
+  `d746b069f3954dada7f39dbc1b24a15fba7d5911f2cf671f66b828dc160ee46a`
+  at 230 lines against D5's cap of 400; both `cmp` runs silent.
+  All four pairs re-sliced from the COMMITTED authored file by this reviewer's
+  own whole-line marker reader, never retyped: DECLARED equals MEASURED for
+  every one, every FROM 1x before its write. PAIR_A REWRITE at FROM 0x / TO 1x
+  after; PAIR_B and PAIR_C CONTAINS-FROM at FROM 1x / TO 1x. PAIR_P_PLAN is
+  byte-equal to the applied `.agent/plan.md` at 49 lines against the cap of 50.
+  C2 reconciles against `+62/-1` with 0 strays in both directions.
+  Gates re-run by THIS reviewer, none taken from the handback: `tests/docs/`
+  `294 passed in 0.30s`; the dashboard contract `70 passed in 4.06s`; the
+  canary `42 passed in 19.81s`; `^<<<` count 0 in all three written targets;
+  `^## Steps` exactly 1x in live_review, `## Goal` exactly 1x in plan;
+  `grep -c 7335` 0 in both test files, which is the R-0261 resolution this
+  round records; `git status --porcelain` empty and `git worktree list` the
+  primary alone at this verdict. R-0262 was checked against source rather than
+  accepted: `packages/orchestration/flight_plan.py:454` holds
+  `prompt = _build_plan_prompt(intake)` directly above the `try:` at 455.
+  One deviation, DECLARED and ACCEPTED: the block's gate G named base
+  `25e6326a`, one round stale, so its no-drift list spanned R37 too and showed
+  two `tests/` paths already gated PASS at R37. Over the round's OWN range the
+  list is `.agent/` only, so the gate's intent held. The defect is the
+  reviewer's, not the round's: a gate G base must be the CURRENT
+  `LAST_REVIEWED_SHA`. A lesson, not a finding — the call R37 made for its own
+  reviewer-side defect, and the cost here was likewise nil.
+  `LAST_REVIEWED_SHA` advances c30b365e -> 5ca4debd.
+- R39: SPLIT round — record the R38 gate and take the first half of R-0256: a
+  keyword-only `composed` on `run_intake` and `plan_job_llm`, one test each,
+  both red-proofed. The three `do_cmd.py` call sites are R40's, split out
+  because one block carrying both would have broken the D5 cap.
