@@ -1,120 +1,114 @@
-# Handoff — F105 R43 (SESSION CLOSE)
+# Handoff — F105 R44 (T004 slice 0/2)
 
-Branch: feature/f105-cache-optimal-prompt-ordering. Base 1fc4c62c.
-Commits: f89094dd (C1a), c8c3f8e5 (C1b), 12499968 (C2), fc15b18d (C3),
+Branch: feature/f105-cache-optimal-prompt-ordering. Base b0b2d12f.
+Commits: 9ecccec8 (C1a), d56c11da (C1b), a24b8fa0 (C2), 90ac7adb (C3),
 C4 = HEAD (this commit).
-State-only closing round: no production code, no test files, no `docs/`.
-Nothing executable changed, so no mutation red-proof was ordered and none was
-run (DECISION F105 D10). `.agent/STOP` is ABSENT and was not created. No PR was
-created, nothing was merged, `main` was not touched, no force-push, no worktree.
+SPLIT round: production code landed in C3 and in C3 alone. No test module, no
+catalog entry, no `docs/`. `.agent/STOP` is ABSENT and was not created. No PR
+was created, nothing was merged, `main` was not touched, no force-push.
 
 ## Changed files
 | Path | Commit | +/- |
 |---|---|---|
-| .agent/authored/f105-r43-1.md | C1a f89094dd | +297/-0 (new file) |
-| .agent/last_block.md | C1b c8c3f8e5 | +208/-191 |
-| .agent/live_review.md | C2 12499968 | +64/-1 |
-| .agent/decisions.md | C3 fc15b18d | +44/-0 |
-| .agent/plan.md | C4 HEAD | full replacement (PAIR_P_PLAN) |
+| .agent/authored/f105-r44-1.md | C1a 9ecccec8 | +233/-0 (new file) |
+| .agent/last_block.md | C1b d56c11da | +226/-290 |
+| .agent/live_review.md | C2 a24b8fa0 | +37/-0 |
+| apps/cli/commands/stats_ledger_cmd.py | C3 90ac7adb | +24/-6 |
+| .agent/plan.md | C4 HEAD | full rewrite, 48 lines |
 | .agent/handoff.md | C4 HEAD | full rewrite |
 
-Counts derived from `git log --numstat 1fc4c62c..HEAD` at write time (R-0235).
+Counts from `git log --numstat b0b2d12f..HEAD` at write time.
 
 ## Item status
 | Item | Status | Reason |
 |---|---|---|
-| C1a | done | block copied to .agent/authored/f105-r43-1.md, committed alone |
-| C1b | done | same bytes mirrored to .agent/last_block.md, separate commit |
-| C2 | done | PAIR_ID, PAIR_F, PAIR_S — one path, one commit, reconciled together |
-| C3 | done | PAIR_DEC appended at the END of .agent/decisions.md (DECISION D14) |
-| C4 | done | PAIR_P_PLAN applied as a full replacement + this handoff |
+| C1a | done | block written to .agent/authored/f105-r44-1.md, committed alone |
+| C1b | done | same bytes copied to .agent/last_block.md, separate commit |
+| C2 | done | PAIR_LR applied CONTAINS-FROM; R43 gate record + R44 step line |
+| C3 | done | PAIR_COST applied as a REWRITE; `_load_ledger_reports` extracted |
+| C4 | done | plan.md rewritten (48 lines) + this handoff, then push |
 
 ## Gates — real exit codes
 | Gate | Command | Exit | Result |
 |---|---|---|---|
 | A | sha256sum block/authored/last_block | 0 | all three EQUAL (digest below) |
 | A | cmp block↔authored; cmp block↔last_block | 0, 0 | both silent |
-| B | wc -l .agent/authored/f105-r43-1.md | 0 | 297 vs D5 cap 400 |
-| C | pair shapes, measured (table below) | 0 | declared == measured, all 4 |
-| C | cmp .agent/plan.md vs PAIR_P_PLAN slice | 0 | silent — byte-for-byte |
-| C | wc -l .agent/plan.md | 0 | 42 vs cap 50 |
-| D | git show -U0 12499968 (C2) | 0 | +64/-1, strays 0 added / 0 removed |
-| D | git show -U0 fc15b18d (C3) | 0 | +44/-0, strays 0 added / 0 removed |
-| E | grep -c '^<<<' over the 4 touched text files | 1,1,1,1 | counts 0, 0, 0, 0 |
-| F | pytest tests/docs/ -q | 0 | 294 passed in 0.26s |
-| F | pytest tests/ui_server/test_dashboard_contract.py -q | 0 | 70 passed in 4.05s |
-| F | plan `## Goal` 1x, `Steps` 1x; live_review `## Steps` 1x | 0,0,0 | 1, 1, 1 |
-| G | git diff --name-only 1fc4c62c..HEAD | 0 | exactly the 6 named paths |
-| H | pytest tests/cli/test_golden_path.py -q | 0 | 42 passed in 19.83s |
-| I | git status --porcelain | 0 | EMPTY |
-| I | git worktree list | 0 | primary ALONE |
-| I | ls .agent/STOP | 2 | absent, as required |
-| I | insertions per commit (git show --numstat) | 0 | 297, 208, 64, 44, C4 — all < 500 |
-| J | deliberately NOT run — see the section below | n/a | no R43 gate record on disk |
+| B | wc -l .agent/authored/f105-r44-1.md | 0 | 233 vs D5 cap 400 |
+| C | pair shapes, measured (table below) | 0 | declared == measured, both |
+| D | stray reconcile a24b8fa0 live_review.md | 0 | +37 added, 0 strays |
+| D | stray reconcile 90ac7adb stats_ledger_cmd.py | 0 | +24 added, 0 strays |
+| E | grep -c '^<<<' over the 4 touched files | 1,1,1,1 | counts 0, 0, 0, 0 |
+| F | pytest tests/cli/test_stats_cost.py -q | 0 | 33 passed in 0.34s |
+| G | pytest test_command_catalog.py x2 -q | 0 | 41 passed in 0.50s |
+| H | pytest tests/cli/test_golden_path.py -q | 0 | 42 passed in 19.98s |
+| I | PROBE in disposable worktree, then removed | 1 | 19 failed, 14 passed in 0.62s |
+| J | git status --porcelain | 0 | EMPTY |
+| J | git worktree list | 0 | primary ALONE (probe removed + pruned) |
+| J | insertions per commit | 0 | 233, 226, 37, 24, C4 — all < 500 |
+| K | git diff --name-only b0b2d12f..HEAD | 0 | exactly the 6 named paths |
 
 Gate E note: `grep -c` exits 1 when the pattern is absent, which is the PASS
-condition here; the recorded numbers are the counts, all zero. Files checked for
-`^<<<`: live_review, decisions, plan, handoff.
-Paths in 1fc4c62c..HEAD: `.agent/authored/f105-r43-1.md`, `.agent/last_block.md`,
-`.agent/live_review.md`, `.agent/decisions.md`, `.agent/plan.md`,
-`.agent/handoff.md`. Nothing under `packages/`, `apps/`, `tests/` or `docs/`.
+condition; the recorded numbers are the counts, all zero. Files checked for
+`^<<<`: live_review.md, plan.md, handoff.md, stats_ledger_cmd.py.
+Also run before C3's commit: `python3 -m py_compile` on the edited module, exit 0.
 
-## Gate J — the missing R43 gate record is DELIBERATE
-`.agent/live_review.md` carries the R43 STEP line but NO R43 gate record, on this
-block's explicit instruction. R43 is the last round of a SESSION, not of a
-BRANCH, so planner_reviewer_prompt.md §4.13's terminator does not apply — that is
-the R-0264 distinction. R43's verdict lives in this handoff and in the session
-completion report, and the NEXT session gates it as an ordinary handback. Do not
-read the absence as an oversight and do not open a repair round for it.
+## Gate I — the probe, reported as a number and not a colour
+A disposable worktree at HEAD under `.remedy-wt/r44probe` had the whole body of
+`_load_ledger_reports` replaced by `raise RuntimeError("probe")`. Against that
+mutation `tests/cli/test_stats_cost.py` reports `19 failed, 14 passed in 0.62s`:
+19 of 33 tests reach the extracted helper, so it is not dead code. The worktree
+was removed with `git worktree remove --force` and `git worktree prune`; the
+primary checkout is alone at verdict time. The primary was never mutated.
 
 ## Transport proof
-`.remedy-wt/f105-r43-1.block.md`, `.agent/authored/f105-r43-1.md` and
+`.remedy-wt/f105-r44-1.block.md`, `.agent/authored/f105-r44-1.md` and
 `.agent/last_block.md` all three hash to
-`2c19254ead411e32b8247e54d7917aa1f411b63d2838b95f52e8f820881f71ad`,
-297 lines. Both `cmp` runs silent. Every pair was SLICED from the COMMITTED
-`.agent/authored/f105-r43-1.md` by `.remedy-wt/r43_slice.py`, a whole-line
-marker reader that refuses any marker not present exactly 1x; nothing was
-retyped. Scratch lives in the gitignored `.remedy-wt/`, never `/tmp`.
+`8944f6e563a74b11d104dc671b702b46ef49397f2b29227cf5fec48b6b987c24`,
+233 lines. Both `cmp` runs silent. Both pairs were SLICED from the COMMITTED
+`.agent/authored/f105-r44-1.md` by `.remedy-wt/r44_slice.py`, a whole-line marker
+reader that refuses any marker not present exactly 1x, and applied by
+`.remedy-wt/r44_apply.py`, which refuses to write unless FROM==1 and TO==0.
+Nothing was retyped. Scratch lives in the gitignored `.remedy-wt/`, never `/tmp`.
 
 ## Pair proof — declared vs MEASURED
 | Pair | Declared | FROM before | FROM after | TO after |
 |---|---|---|---|---|
-| PAIR_ID | REWRITE | 1 | 0 | 1 |
-| PAIR_F | CONTAINS-FROM | 1 | 1 | 1 |
-| PAIR_S | CONTAINS-FROM | 1 | 1 | 1 |
-| PAIR_DEC | CONTAINS-FROM | 1 | 1 | 1 |
-| PAIR_P_PLAN | full replacement | n/a | n/a | cmp silent, 42 lines |
+| PAIR_LR | CONTAINS-FROM | 1 | 1 | 1 |
+| PAIR_COST | REWRITE | 1 | 0 | 1 |
 
-All four FROMs were counted in their targets BEFORE the first write — each 1x,
-each TO 0x — and the writer refuses to run otherwise. No pair wrote into another
-pair's TO: the three `.agent/live_review.md` regions are disjoint (header line 8,
-end of `## Findings` at old line 757, end of file at old line 2203).
+Both FROMs were counted in their targets BEFORE the first write — each 1x, each
+TO 0x. The PAIR_COST FROM was counted as the WHOLE contiguous 38-line text, not
+by its first line: the `def _cmd_stats_cost` signature survives inside the TO.
+
+## Behaviour proof for the extraction
+Only the READ moved; both renderers keep the same three values. The proof is
+`tests/cli/test_stats_cost.py` at 33 passed, not a reading of the diff. One
+comment moved with its code: the "an unreadable ledger is not zero cost" note is
+now the helper docstring's third paragraph (authored text, 0 strays).
 
 ## Open findings: 6
-R-0221, R-0239, R-0247, R-0262, R-0265, R-0266. R-0265 and R-0266 are REGISTERED
-this round and deliberately NOT fixed — both pre-existing, both belonging to
-token accounting rather than to prompt composition. No finding was resolved this
-round and the worker authored no `Done:` paragraph of its own (§4.4).
+R-0221, R-0239, R-0247, R-0262, R-0265, R-0266 — all six OPEN by design and
+untouched this round. No finding was resolved, and no `Done:` paragraph was
+authored by this worker (planner_reviewer_prompt.md §4.4).
 
 ## PR #189 — untouched, stop-and-report
-`docs/amend0810-clerical` -> `main`, open, not a draft. It does NOT originate
-from a `feature/*` branch, so the AGENTS.md Open PR Gate makes it
-stop-and-report: this session did not merge it, comment on it, or modify it in
-any way. It blocks no further work on THIS branch, but it MUST be resolved by the
-operator before any NEW branch is cut.
+`docs/amend0810-clerical` -> `main`, open, not a draft, NOT from a `feature/*`
+branch, so the AGENTS.md Open PR Gate makes it stop-and-report. This round did
+not merge, comment on, or modify it. It blocks no work on THIS branch but must
+be resolved by the operator before any NEW branch is cut.
 
 ## Next expected action
-The next session opens by gating R43 as an ordinary handback: read
-`git diff 1fc4c62c..HEAD`, re-run every gate in the table above, then advance
-`LAST_REVIEWED_SHA` from 1fc4c62c and write the R43 gate record into
-`.agent/live_review.md` under `## Steps`. The first WORK action after that
-verdict is T004 slice 1 exactly as `.agent/plan.md` "Next Steps" scopes it under
-DECISION F105 D14, with `.agent/t004_inventory.md` as ground truth. D14 already
-answers all five of that inventory's open questions — do not re-derive them.
+Gate R44 as an ordinary handback: `git diff b0b2d12f..HEAD`, re-run every gate
+above, advance `LAST_REVIEWED_SHA` from b0b2d12f, and write the R44 gate record
+into `.agent/live_review.md` under `## Steps`. The next WORK action is R45 =
+T004 slice 1/2 exactly as `.agent/plan.md` "Next Steps" scopes it: the
+`stats cache` command reading through `_load_ledger_reports`, its catalog entry,
+and its own test module, under DECISION F105 D14 with `.agent/t004_inventory.md`
+as ground truth.
 
-Deviations, declared (DECISION D15): this handoff is 120 lines against the
-60-line cap. The cause is mandated content only — the 19-row gate table with its
+Deviations, declared (DECISION D15): this handoff is 114 lines against the
+60-line cap. The cause is mandated content only — the 15-row gate table with its
 real exit codes, the changed-files table, the item-status table, the transport
-and pair proofs, the PR #189 state, and the gate-J absence this round is
-explicitly required to state. No section was dropped and no prose was added to
-reach that length.
+and pair proofs, the ordered gate-I probe report, the behaviour proof for the
+extraction, and the PR #189 state. No section was dropped and no prose was added
+to reach that length.

@@ -13,19 +13,25 @@ and `remedy stats cache` shows the cache-read share per role from actuals.
 Prompt CONTENT does not change; only its composition.
 
 ## Current Step
-SESSION CLOSED at R43, cleanly and not against a STOP file. T001, T002 and T003
-are DONE and gated. R42 is GATED PASS; `LAST_REVIEWED_SHA` is 1fc4c62c. T004 is
-the only slice left and is now fully scoped: `.agent/t004_inventory.md` is its
-ground truth and DECISION F105 D14 answers all five of its open questions.
-Open findings: R-0221, R-0239, R-0247, R-0262, R-0265, R-0266.
-No PR; one is created at CLOSURE.
+R44 is DONE and GATED-PENDING: the R43 gate record is on disk in
+`.agent/live_review.md` (`LAST_REVIEWED_SHA` -> b0b2d12f), and T004 slice 0/2
+landed — the ledger-reading half of `stats cost` now lives in
+`_load_ledger_reports` in `apps/cli/commands/stats_ledger_cmd.py`, with no
+behaviour change (tests/cli/test_stats_cost.py 33 passed; the mutation probe in
+a disposable worktree failed 19 of those 33, so the helper is reached).
+T001, T002 and T003 are DONE and gated. `.agent/t004_inventory.md` stays the
+ground truth for T004 and DECISION F105 D14 answers its five open questions.
+Open findings: R-0221, R-0239, R-0247, R-0262, R-0265, R-0266 — all six OPEN by
+design, none touched this round. No PR; one is created at CLOSURE.
 
 ## Next Steps
-- T004 slice 1 under D14: `remedy stats cache` beside `remedy stats cost` in
-  `apps/cli/commands/stats_ledger_cmd.py`, cache-read share per role read from
-  the ledger, `unmeasured` and never `0` where nothing was reported, and output
-  that names the R-0266 limit instead of hiding it. Fixtures take the
-  evidence-tree-backfilled shape (`tests/cli/test_stats_cost.py:121`).
+- R45 = T004 slice 1/2: `remedy stats cache` beside `remedy stats cost` in
+  `apps/cli/commands/stats_ledger_cmd.py`, reading through `_load_ledger_reports`
+  rather than a second copy; plus its command-catalog entry and its own test
+  module. Cache-read share per role from the ledger, `unmeasured` and never `0`
+  where nothing was reported, and output that names the R-0266 limit instead of
+  hiding it. Fixtures take the evidence-tree-backfilled shape
+  (`tests/cli/test_stats_cost.py:121`).
 - Then the before/after comparison note in the feature's evidence, with honest
   numbers whatever they are (the feature file's T004 line).
 - Then the integration gate (docs/agents/integration_gate.md); R-0221 will
