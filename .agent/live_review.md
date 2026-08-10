@@ -5,7 +5,7 @@
 > round. Findings are authored here by the reviewer only. A worker marks a
 > landed fix `Landed: R-XXXX`; only reviewer-authored `Done:` text sets
 > Resolved (docs/agents/planner_reviewer_prompt.md §4.4).
-> Branch: feature/f105-cache-optimal-prompt-ordering. Next free ID: R-0261.
+> Branch: feature/f105-cache-optimal-prompt-ordering. Next free ID: R-0262.
 
 ## Findings
 
@@ -571,7 +571,18 @@
   MOVE and not a retype, the block occurring exactly 1x before and 1x after.
   Registered here, fixed in its own round: doing it inside this commit would
   bury this round's real diff under a 27-line relocation. OPEN.
-  Landed: R-0259 — the R-0257 block moved to the end of Findings, C2 of R36.
+  Done: R-0259 (2026-08-10) — RESOLVED at F105 R36, commit 78891cd7. The
+  27-line R-0257 block now sits at the END of `## Findings`, so the R30 gate
+  record closes with its own ``LAST_REVIEWED_SHA` advances 0c8932e3 ->
+  0ba30611.` line and no reader can attribute that advance to R-0257's
+  resolution text. Proved a MOVE and not a retype by the strongest measure
+  available, re-run by this reviewer rather than read from the handback: the
+  SORTED file digest is
+  `9412ed6e2ad347f614e0024a29dc15d9123a6494ce0b1446ca669765060ab920`
+  both before and after the commit, so the line multiset is
+  identical and nothing was added, dropped or reflowed — only reordered. The
+  block occurs exactly 1x before and 1x after, and the commit's numstat is
+  `27 27`, one file.
 - R-0260 (Low, F105 R34, reviewer-authored defect): the two per-call-site guard
   comments claim more precision than the code has. The authored comment says
   "The window is the call expression itself", and the run-site test repeats the
@@ -589,7 +600,19 @@
   Fix: bound each window at its call's closing parenthesis instead of a magic
   200, or correct both comments to say "200 characters from the call's start,
   which covers the call and a little after". OPEN.
-  Landed: R-0260 — both guard comments now describe the real window, C4 of R36.
+  Done: R-0260 (2026-08-10) — RESOLVED at F105 R36, commit a9408174. Both
+  comments now state the window the code actually takes: 200 characters from
+  the call's start, which is the call plus 71 characters at the plan site and
+  the call plus 27 at the run site. Re-measured by this reviewer against
+  `apps/cli/commands/mission_cmd.py` at 25e6326a rather than taken from the
+  handback: the plan call spans 129 characters from `outcome = plan_mission(`
+  and the run call 173 from `result = run_mission(`, so 200 leaves exactly 71
+  and 27 characters of overshoot, and each label still falls inside its own
+  window. The constant 200 was deliberately not retuned, which was the right
+  call: the guarded property was already proved by the R34 mutations, and this
+  finding was about a comment that promised more than the code checked.
+  The residual imprecision the repair itself introduced is registered
+  separately as R-0261 and does not reopen this one.
 - R-0257 (Medium, F105 R30, reviewer-authored defect): the R30 block lifted
   composition OUT of the try/except that turns any failure into the
   deterministic fallback. `compile_mission_plan` used to build its prompt as an
@@ -617,6 +640,28 @@
   `error_hint="provider error: composition blew up"` — the pre-R30 behaviour
   exactly. `test_a_failing_composer_still_yields_the_fallback` now pins it, so
   the regression cannot return silently the way it arrived.
+
+- R-0261 (Low, F105 R36, reviewer-authored defect): both repaired guard
+  comments attach a real number to the wrong anchor. The compiler comment says
+  "the run site's label sits 7335 characters away" and the loop docstring says
+  "It stays 7335 characters clear of the plan call's label", but 7335 is the
+  distance between the two CALL STARTS, not between a window and a label.
+  Measured by the reviewer against `apps/cli/commands/mission_cmd.py` at
+  25e6326a: `outcome = plan_mission(` starts at 6911 and `result = run_mission(`
+  at 14246, a gap of exactly 7335; the run site's LABEL starts at 14396, which
+  is 7485 characters from the plan call's start and 7285 past the end of its
+  200-character window, while the run window starts 7229 characters after the
+  plan label. R-0260's own text used 7335 correctly — "the call sites are 7335
+  characters apart" — and the repair re-attributed it to labels. No test is
+  wrong and every margin is over 7000 against a 200-character window, so the
+  guarded property is untouched; this is a third consecutive round spent on the
+  prose of the same two comments. Fix: DELETE the character figure from both
+  comments rather than correct it. A cross-site distance is a fact about
+  `mission_cmd.py` that no assertion pins, so it goes stale on the next edit to
+  that file and buys nothing the phrase "far outside this window" does not
+  already say. The per-site overshoots — 71 and 27 — stay: those describe each
+  guard's OWN window against its OWN call, which is what R-0260 asked for and
+  what a reader of that line needs. OPEN.
 
 ## Steps
 
@@ -1838,3 +1883,56 @@
   omission: the round changed nothing executable, so there is no branch to
   mutate (D8 checklist item 5, DECISION F105 D10).
   `LAST_REVIEWED_SHA` advances 28fe51c3 -> bcfb12e3.
+- R36: housekeeping round — MOVE the misfiled R-0257 block (R-0259), make both
+  guard-window comments state the real window (R-0260), record the R35 gate.
+  No production code.
+- Reviewer gate on R36 (2026-08-10): PASS, by the reviewer of the FOLLOWING
+  session — the third session of this branch. R36 was the last round of a
+  SESSION, not of the branch, so §4.13's terminator clause does not apply and
+  it does get an on-disk entry; its handoff correctly named this gate as the
+  next action instead of claiming a verdict on itself.
+  Range `bcfb12e3..25e6326a` = six commits, seven paths. `git diff --stat`
+  lists exactly the seven the block named — five under `.agent/` and the two
+  named test files — nothing under `packages/`, `apps/`, `docs/` or the rest
+  of `tests/`. Insertions per commit 263, 210, 27, 40, 11 and 58, each far
+  under 500; the 210/189 one is the single-state-file verbatim rewrite
+  AGENTS.md exempts from the churn reading anyway.
+  Transport by the §4.9 DIGEST FALLBACK, stated as such because the primary
+  proof was unavailable: the R36 session's scratchpad original
+  `.remedy-wt/f105-r36-1.block.md` no longer exists on disk, so no
+  cmp-against-original was possible at this gate. Both COMMITTED copies —
+  `.agent/authored/f105-r36-1.md` and `.agent/last_block.md` — were re-hashed
+  by this reviewer at
+  `21faa61ece190293dcacc2509581b5f9bd4cace5e382c4a699e5aab183f5f3c8`,
+  `cmp` silent between them, 263 lines against DECISION F105 D5's
+  cap of 400, and that digest equals the one the R36 handback recorded.
+  All four pairs re-sliced from the COMMITTED authored file by this reviewer's
+  own whole-line marker reader, never retyped: declared shape equals measured
+  shape for every one. PAIR_S is CONTAINS-FROM at FROM 1x / TO 1x; PAIR_F and
+  PAIR_G are REWRITEs at FROM 0x / TO 1x; PAIR_P is byte-equal to the applied
+  `.agent/plan.md` at 41 lines against the cap of 50. C2's order-only claim is
+  proved independently by the sorted-file digest, recorded in R-0259's `Done:`
+  text above.
+  Gates re-run by THIS reviewer with real exit codes, none taken from the
+  handback: `tests/docs/` `294 passed in 0.30s`; the dashboard contract
+  `70 passed in 4.31s`; the scoped pair `tests/orchestration/
+  test_mission_compiler.py` plus `test_orchestrator_loop.py` `317 passed in
+  1.43s`; the canary `42 passed in 19.47s`; zero `^<<<` marker lines in all
+  five written targets; `git status --porcelain` empty and `git worktree list`
+  the primary alone at this verdict.
+  No red-proof was ordered or run, and that is correct rather than an omission:
+  every added and removed line of a9408174 is a `#` comment or docstring prose,
+  checked line by line over `git show -U0`, so the round changed nothing
+  executable and there is no branch to mutate (D8 checklist item 5, DECISION
+  F105 D10).
+  The arithmetic the two comments now assert was re-derived independently, not
+  accepted: the plan call spans 129 characters and the run call 173, so a
+  200-character window overshoots by 71 and 27 respectively, and both labels
+  fall inside their own windows. Those figures are right. The cross-site figure
+  is not, and is registered as R-0261 — a Low prose defect that changes no
+  assertion, so it does not turn this verdict.
+  Noted so a later round does not re-derive it: the R-0257 block carries BOTH a
+  `Landed:` and a `Done:` line. That is historical, the `Done:` sits directly
+  beneath it, and it is deliberately NOT a finding — from R-0259 and R-0260
+  onward the `Done:` text replaces the `Landed:` line as §4.4 prescribes.
+  `LAST_REVIEWED_SHA` advances bcfb12e3 -> 25e6326a.
