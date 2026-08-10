@@ -14,22 +14,21 @@ Prompt CONTENT does not change; only its composition.
 
 ## Current Step
 T001 and T002 are DONE and gated. T003's six migration sites are all migrated,
-each under its own golden. R26 is GATED; `LAST_REVIEWED_SHA` is d0ebba63.
-R27 is a SPLIT round: it records the R26 gate, resolves R-0253 and R-0254,
-registers and fixes R-0255 (D8's preamble counts four checks over a six-item
-list), and wires `on_call` for the flight-plan prompt at
-`apps/cli/commands/do_cmd.py` — the one evidence gap whose sink already exists.
-Open findings: R-0221, R-0239, R-0246, R-0247, R-0255.
+each under its own golden. R27 is GATED; `LAST_REVIEWED_SHA` is 73259d7a.
+R28 is a SPLIT round: it records the R27 gate, resolves R-0255, registers
+R-0256, and closes the last `do_cmd` evidence gap by adding
+`append_trace_jsonl` beside `write_trace_jsonl` and wiring the replan site with
+it — the per-job trace file must not be truncated by a second command.
+Open findings: R-0221, R-0239, R-0246, R-0247, R-0256.
 No PR; one is created at CLOSURE.
 
 ## Next Steps
-- The replan site `apps/cli/commands/do_cmd.py:2859` needs a sink DECISION
-  first: `write_trace_jsonl` opens with mode `"w"`, so a second write for the
-  same job truncates the first run's traces.
-- Then `on_call` for the mission and orchestrator prompts —
-  `mission_cmd.py:187`, `mission_cmd.py:362`, `gauntlet_runner.py:505` — none
-  of which has an evidence sink today.
+- `on_call` for the mission and orchestrator prompts — `mission_cmd.py:187`,
+  `mission_cmd.py:362`, `gauntlet_runner.py:505`. None has an evidence sink
+  today, so each needs its sink named before it is wired.
 - Fix R-0246 in the round that next touches `mission_compiler.py`.
+- R-0256 (compose once, not twice) needs a signature change on `plan_job_llm`
+  and `run_intake`, so it is its own round.
 - Then T004, `remedy stats cache` over actuals; then the integration gate
   (docs/agents/integration_gate.md); then closure
   (docs/roadmap/STATUS_closure_protocol.md), where the PR is created.
