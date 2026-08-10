@@ -207,6 +207,18 @@ end the response with:
      Items 1-4 read the block, item 5 reads the code the block points at, and
      this one reads the file the block writes into — three different places, so
      three separate checks (finding R-0253).
+  7. **Source guards the block never names.** Before ordering a change that ADDS
+     a string to a file, grep the suite for tests that COUNT that string over
+     that WHOLE file (`rg -l '<basename>' tests/`, then read every `count(` and
+     `== 1` assertion in what it returns). An existing
+     `source.count('...') == 1` guard makes a correct SECOND call site
+     unsatisfiable, and the worker cannot repair it without leaving its change
+     set — so the round loses the item and spends a deviation proving a reviewer
+     mistake. Items 1-4 read the block, item 5 the code the block points at,
+     item 6 the file the block writes into, and this one the tests that already
+     guard that file: four different places, four checks (finding R-0258).
+     Such guards are worth keeping — they pin CLI wiring no behavioural test
+     reaches — so scope them to their call site rather than deleting them.
   Why this is on disk and not a habit: item 2 has recurred six times across
   F104 and F105, and R20 hit four of them in one block. A check that lives
   only in reviewer session memory is the A1 trap §0 names, and this list is the
