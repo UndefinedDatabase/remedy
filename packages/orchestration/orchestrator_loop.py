@@ -55,7 +55,10 @@ from packages.orchestration.prompt_segments import (
     SegmentStabilityRank,
     compose_prompt_segments,
 )
-from packages.orchestration.prompt_trace import build_trace_entry
+from packages.orchestration.prompt_trace import (
+    append_trace_jsonl,
+    build_trace_entry,
+)
 
 # ---------------------------------------------------------------------------
 # The protocol document — read, never written
@@ -1144,12 +1147,29 @@ def run_mission(
                 if on_call is not None:
                     on_call(attempt, schema_v, is_parse_retry, effective_prompt)
 
-            call = run_structured_call(
-                OrchestratorMove,
-                composed.text,
-                call_fn,
-                on_call=_observe_call,
-                allow_parse_retry=True)
+            try:
+                call = run_structured_call(
+                    OrchestratorMove,
+                    composed.text,
+                    call_fn,
+                    on_call=_observe_call,
+                    allow_parse_retry=True)
+            finally:
+                # Per ITERATION, as soon as the call has returned OR raised —
+                # the boundary `except Exception` below turns a provider fault
+                # into a terminal and must not swallow the evidence of a call
+                # that was really made. Same durability rule as the ledger
+                # entry a few lines away (DECISION F105 D11).
+                # APPEND, never write: the mission-plan traces are already in
+                # this file (`mission_compiler.plan_mission`) and every run is
+                # another command against the same mission, so a write would
+                # destroy both records. An iteration that made no call records
+                # nothing, so the no-provider terminal leaves no file behind.
+                if iteration_traces:
+                    append_trace_jsonl(
+                        iteration_traces,
+                        mission_evidence_dir(pid, mission_id, root)
+                        / "prompt_trace.jsonl")
             cost = measure_call_cost(call)
 
             if not call.ok:
