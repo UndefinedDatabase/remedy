@@ -1,17 +1,18 @@
-# Handoff — F105 R29 (session close)
+# Handoff — F105 R30 (compose once, record the manifest)
 
-Branch: feature/f105-cache-optimal-prompt-ordering. Base of this round: 55550615.
-Commits, in order: 9e497810 (C1a), aa056f36 (C1b), 0b431989 (C2), 9d7511e5 (C3),
-plus this C4 commit, which only fills the post-C3 rows G and H below. State files
-only: no production code, no tests, no docs changed this round.
+Branch: feature/f105-cache-optimal-prompt-ordering. Base of this round: 0c8932e3.
+Commits, in order: e96dc47c (C1a), b2b269a4 (C1b), 1a3c01ee (C2), 39da9b61 (C3),
+ccb128f0 (C4), plus this C5 commit (plan + handoff).
 
 ## Changed files
 | Path | What |
 |---|---|
-| .agent/authored/f105-r29-1.md | R29 block saved verbatim (new, 165 lines) |
-| .agent/last_block.md | the same 165 bytes-for-bytes lines, mirrored |
-| .agent/live_review.md | R28 gate record appended; LAST_REVIEWED_SHA 73259d7a -> 55550615 |
-| .agent/plan.md | PAIR_B full replacement, 43 lines |
+| .agent/authored/f105-r30-1.md | R30 block saved verbatim (new, 399 lines) |
+| .agent/last_block.md | the same 399 lines, mirrored |
+| .agent/live_review.md | PAIR_A: R29 round line + PASS; LAST_REVIEWED_SHA 55550615 -> 0c8932e3 |
+| packages/orchestration/mission_compiler.py | PAIR_B/C/D/E/F: compose once, the mission_plan recorder, the R-0246 docstring |
+| tests/orchestration/test_mission_compiler.py | PAIR_G plus the one mandated import line |
+| .agent/plan.md | PAIR_H full replacement, 45 lines |
 | .agent/handoff.md | this file |
 
 ## Items
@@ -21,39 +22,39 @@ only: no production code, no tests, no docs changed this round.
 | C1b | done | |
 | C2 | done | |
 | C3 | done | |
-| C4 | deviated | not in the block; the G/H rows can only carry real post-C3 numbers after C3 exists (R28 C5 precedent) |
+| C4 | done | |
+| C5 | done | |
 
 ## Gates (real exit codes, real output)
 | Gate | Exit | Output |
 |---|---|---|
-| A transport | 0 | both files `fdf4d7f6f05273c26b055f436675144954f241330b26a7d6f2414c2a5d04c179`; `cmp` silent |
-| B size | 0 | 165 lines — under DECISION F105 D5's cap of 400 |
-| C PAIR_A | 0 | APPEND-shaped: FROM 1x before, FROM 1x + TO 1x after; `git show --numstat 0b431989` = 48/0, and all 48 ADDED lines are the 48 TO-only lines — strays 0 |
-| C PAIR_B | 0 | `cmp .agent/plan.md` vs the sliced text silent; `wc -l` = 43 < 50 |
-| D markers | 1 (grep no-match) | `grep -c -E '^<<<'` = 0 in `.agent/live_review.md` and = 0 in `.agent/plan.md` |
-| E tests/docs | 0 | 294 passed in 0.30s |
-| E dashboard contract | 0 | 70 passed in 4.20s |
-| F canary | 0 | 42 passed in 19.57s |
-| G no-code | 0 | at 9d7511e5: `git diff --stat 55550615..HEAD` names five paths, all under `.agent/` (authored block, last_block, live_review, plan, handoff) — non-`.agent` path count 0 |
-| H hygiene | 0 | at 9d7511e5: `git status --porcelain` empty, `git worktree list` the primary alone, insertions per commit 165, 109, 48, 49 — each under 500. This C4 commit touches `.agent/handoff.md` alone |
+| A transport | 0 | reviewer original, authored copy and last_block all `691c21a6b9717c160379291f63e6f45318e412f0e2714e590afb8ec7f8e14afa`; three `cmp` runs silent |
+| B size | 0 | 399 lines — under DECISION F105 D5's cap of 400 |
+| C application | 0 | per-pair proofs below |
+| D markers | 1 (grep no-match) | `grep -c -E '^<<<'` = 0 in `.agent/live_review.md`, `mission_compiler.py`, `test_mission_compiler.py`, `.agent/plan.md` |
+| E touched suite | 0 | 121 passed in 0.50s |
+| F callers | 0 | 78 passed in 1.20s |
+| G red-proof M1 | 0 | worktree at ccb128f0, `PYTHONDONTWRITEBYTECODE=1`: unmutated `2 passed in 0.24s`; with `composed_prompt=composed,` deleted `2 failed in 0.23s` — both named tests RED (IndexError / manifest_chars 0); whole file `2 failed, 114 passed in 0.65s`; worktree removed and pruned |
+| H state files | 0 | `tests/docs/` 294 passed in 0.25s; dashboard contract 70 passed in 3.93s |
+| I canary | 0 | 42 passed in 19.69s |
+| J hygiene | 0 | `git status --porcelain` empty; `git worktree list` the primary alone; insertions 399, 349, 27, 64, 64 and 57 for this C5 commit — each under 500 |
 
-No mutation red-proof was ordered or run: nothing executable changed, so there is
-no branch to mutate (DECISION F105 D10, D8 item 5); gate G is the proof.
+## Pair proofs (sliced from the COMMITTED authored file, whole-line markers only)
+APPEND pairs, FROM 1x before AND after, TO 1x: PAIR_A (TO 28 lines, 27 TO-only;
+1a3c01ee is +27/-0, strays 0), PAIR_D (TO 43, 42 TO-only), PAIR_G (TO 69, 63
+TO-only). REWRITE pairs PAIR_B/C/E/F: FROM 0x after, TO 1x each, in that file.
+39da9b61 is +64/-3 and the five pairs' own LCS deltas sum to exactly +64/-3
+(B +1/-0, C +4/-1, D +42/-0, E +3/-0, F +14/-2), strays 0. ccb128f0 is +64/-0 =
+PAIR_G's 63 plus the mandated `compose_mission_prompt,` import, strays 0.
+PAIR_H: `cmp .agent/plan.md` against the sliced text silent; `wc -l` = 45 < 50.
 
-Pairs were sliced from the COMMITTED `.agent/authored/f105-r29-1.md` by a reader
-treating a line as a marker only on a whole-line `^<<<[A-Z0-9_]+>>>$` match:
-PAIR_A_FROM 1 line, PAIR_A_TO 49 (first line = the FROM, so 48 TO-only), PAIR_B 43.
+Open findings: 5 — R-0221, R-0239, R-0246, R-0247, R-0256. R-0246's fix landed in
+39da9b61; no `Landed:` line went into `.agent/live_review.md`, the block authored
+none for it and a worker authors none itself.
 
-Open findings: 5 — R-0221, R-0239, R-0246, R-0247, R-0256.
+Declared, not repaired: PAIR_F moves the composition ABOVE the `try:`, so a
+raising composer escapes instead of becoming the deterministic fallback the old
+in-try `build_mission_prompt` produced. Applied byte for byte; reviewer's call.
 
-R29 carries NO on-disk gate entry of its own, by construction. It is the round
-that WRITES the gate record, so it cannot record a verdict on itself
-(docs/agents/planner_reviewer_prompt.md §4.13). That absence is the terminator,
-not a missing gate: no repair round is opened for it, and it must not be read as
-a round line claiming to await a review that never comes.
-
-Next expected action, next session: gate R29 over the real diff
-`55550615..HEAD`, then run the round that wires `on_call` for the mission and
-orchestrator prompts (`mission_cmd.py:187`, `mission_cmd.py:362`,
-`gauntlet_runner.py:505` — each needs its evidence sink named first). Branch
-pushed. No PR created; one is created at CLOSURE.
+Next: gate R30 over `0c8932e3..HEAD`, then R31 — name the mission-plan sink in
+`plan_mission`, wire `mission_cmd.py:187`. Pushed; no PR, one at CLOSURE.

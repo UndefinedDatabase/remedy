@@ -13,22 +13,24 @@ and `remedy stats cache` shows the cache-read share per role from actuals.
 Prompt CONTENT does not change; only its composition.
 
 ## Current Step
-T001 and T002 are DONE and gated. T003's six migration sites are all migrated,
-each under its own golden, and both `do_cmd` flight-plan call sites now reach
-call evidence — the first through `write_trace_jsonl`, the replan through
-`append_trace_jsonl`, which exists because the trace file is per JOB and a
-second command would otherwise truncate the first.
-R28 is GATED; `LAST_REVIEWED_SHA` is 55550615. R29 is the session-close round:
-it records the R28 gate and writes the handoff, and by construction carries no
-gate entry on itself (§4.13) — the next session gates it.
-Open findings: R-0221, R-0239, R-0246, R-0247, R-0256.
+T001 and T002 are DONE and gated. T003's six migration sites are all migrated.
+Call evidence reaches both `do_cmd` flight-plan sites — the first through
+`write_trace_jsonl`, the replan through `append_trace_jsonl`.
+R29 is GATED; `LAST_REVIEWED_SHA` is 0c8932e3. R30 is in review: it makes
+`compile_mission_plan` compose ONCE and hands that one composition to a
+`mission_plan` recorder, so the mission manifest exists at the layer that owns
+the bytes. R30 names no sink and touches no CLI — that is R31.
+Open findings: R-0221, R-0239, R-0247, R-0256. R-0246 lands with R30.
 No PR; one is created at CLOSURE.
 
 ## Next Steps
-- `on_call` for the mission and orchestrator prompts — `mission_cmd.py:187`,
-  `mission_cmd.py:362`, `gauntlet_runner.py:505`. None has an evidence sink
-  today, so each needs its sink named before it is wired.
-- Fix R-0246 in the round that next touches `mission_compiler.py`.
+- R31: name the mission-plan sink. `plan_mission` owns the evidence dir, so it
+  owns the traces list and appends to `<evidence_dir>/prompt_trace.jsonl`
+  (APPEND, because a recompile is a second command against the same mission);
+  `mission_cmd.py:187` passes the provider label; evidence tests plus the CLI
+  wiring guard.
+- Then the orchestrator prompt — `mission_cmd.py:362` into `run_mission`, then
+  `gauntlet_runner.py:505`. Neither has a sink today either.
 - R-0256 (compose once, not twice) needs a signature change on `plan_job_llm`
   and `run_intake`, so it is its own round.
 - Then T004, `remedy stats cache` over actuals; then the integration gate
