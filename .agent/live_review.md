@@ -495,6 +495,7 @@
   AGENTS.md Scope Control bars the "while I'm here" edit. Fix: the preamble
   says six, and the closing note says six recurrences and "four of them in one
   block". OPEN.
+  Landed: R-0255 — D8's preamble and closing note now count six, commit f5752809.
 
 ## Steps
 
