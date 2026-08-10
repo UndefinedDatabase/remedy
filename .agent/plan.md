@@ -14,21 +14,21 @@ Prompt CONTENT does not change; only its composition.
 
 ## Current Step
 T001 and T002 are DONE and gated. T003's six migration sites are all migrated.
-Call evidence now reaches three prompts: both `do_cmd` flight-plan sites — the
-first through `write_trace_jsonl`, the replan through `append_trace_jsonl` — and
-`remedy mission plan`, composed ONCE inside `compile_mission_plan` and appended
-to the mission's evidence dir.
-R31 is GATED; `LAST_REVIEWED_SHA` is 9bd3a3e7. R32 is the session-close round:
-it records the R31 gate, resolves R-0246 and R-0257, and writes the handoff. By
-construction it carries no gate entry on itself (§4.13) — the next session gates
-it over `9bd3a3e7..HEAD`.
+R32 is GATED; `LAST_REVIEWED_SHA` is cab89962.
+R33 gives the ORCHESTRATOR prompt its call evidence: a per-iteration recorder
+in `orchestrator_loop.py` carrying the segment manifest, and the sink appending
+to the mission's `prompt_trace.jsonl` from INSIDE `run_mission` rather than
+from a caller (DECISION F105 D11), so both callers —
+`mission_cmd.py:366` and `gauntlet_runner.py:514` — inherit it.
+Call evidence then reaches four prompts: both `do_cmd` flight-plan sites,
+`remedy mission plan`, and the orchestrator loop.
 Open findings: R-0221, R-0239, R-0247, R-0256.
 No PR; one is created at CLOSURE.
 
 ## Next Steps
-- The orchestrator prompt — `mission_cmd.py:362` into `run_mission`, then
-  `gauntlet_runner.py:505`. Neither has an evidence sink today; R30 and R31 are
-  the shape to copy, in that order: manifest first, sink second.
+- Name the gauntlet's provider at `gauntlet_runner.py:514`: its orchestrator
+  rows reach evidence from R33 on but carry an empty label. One line, not a
+  wiring round (DECISION F105 D11).
 - R-0256 (compose once, not twice) needs a signature change on `plan_job_llm`
   and `run_intake`, so it is its own round.
 - Then T004, `remedy stats cache` over actuals; then the integration gate
