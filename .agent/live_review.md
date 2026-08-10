@@ -329,6 +329,13 @@
   `None` cap reproduces the pre-R-0197 milestone ceiling, while the composed
   ORDER differs from the pre-migration template and the segment bytes do not.
   OPEN.
+  Done: R-0246 (2026-08-10) — RESOLVED at F105 R30, commit 39da9b61. The
+  docstring now says "reproduces the pre-R-0197 milestone CEILING — not the
+  pre-migration byte SEQUENCE", and states that the composed order differs at
+  every value of `max_milestones`, `None` included. Verified by the reviewer
+  against the real diff, not the handback: the sentence a reader searching for
+  "did the migration change the prompt?" lands on can no longer be read as a
+  claim about byte order.
 - R-0247 (Low, F105 R17, reviewer-authored defect in a finding's own citation):
   R-0245 opens "`.agent/handoff.md` is 101 lines". The file is 100:
   `git show efd66b68:.agent/handoff.md | wc -l` returns 100 and the blob ends in
@@ -1537,4 +1544,51 @@
   silently fixes authored text hides the mistake instead of pricing it. Fix:
   compose inside the try, pinned by a test that makes the composer raise. OPEN.
   Landed: R-0257 — composition moved back inside the try at C3 of R31.
+  Done: R-0257 (2026-08-10) — RESOLVED at F105 R31, commit 3d37567f.
+  `compose_mission_prompt` and the recorder wiring both sit inside the `try`
+  again, so a composition failure returns to being `_fallback(goal,
+  hint=f"provider error: {exc}")`. Re-proved by the reviewer at 9bd3a3e7 with
+  the composer monkeypatched to raise: `source="deterministic"`,
+  `error_hint="provider error: composition blew up"` — the pre-R30 behaviour
+  exactly. `test_a_failing_composer_still_yields_the_fallback` now pins it, so
+  the regression cannot return silently the way it arrived.
   `LAST_REVIEWED_SHA` advances 0c8932e3 -> 0ba30611.
+- R31: SPLIT round — fix R-0257, name the mission-plan evidence sink in
+  `plan_mission`, label the provider from `remedy mission plan`, and pin all of
+  it with `TestMissionPlanEvidenceSink`.
+- Reviewer gate on R31 (2026-08-10): PASS. Range `0ba30611..9bd3a3e7` = seven
+  commits, read as a real diff: eight paths, exactly the ones the block named;
+  insertions per commit 384, 257, 53, 13, 17, 67, 58 — each under 500.
+  Transport disk to disk against the reviewer's surviving original:
+  `.remedy-wt/f105-r31-1.block.md`, `.agent/authored/f105-r31-1.md` and
+  `.agent/last_block.md` all three
+  `8833261bcf731bec965fbcd52ff7aa8339141a5ae076397cfeee41232f307003`, both
+  `cmp` runs silent, 384 lines against DECISION F105 D5's cap of 400.
+  All eight pairs re-sliced from the COMMITTED authored file by the reviewer's
+  own whole-line marker reader; declared shape equals measured shape for every
+  one. PAIR_A FROM 1x with 52 TO-only lines; C2 ADDS 53 and REMOVES 1, the
+  extra add and the single removal both PAIR_B's, so strays 0 in both
+  directions. PAIR_C, D, E and F all FROM 0x after and TO 1x, with C3's 12
+  added / 7 removed and C4's 12 added / 2 removed on the compiler and 5 added
+  on the CLI all accounted for by their TOs. PAIR_G FROM 1x with 66 TO-only
+  against 67 ADDED. PAIR_H byte-equal to `.agent/plan.md` at 42 lines against
+  the cap of 50. Exactly two additions sit outside a TO in the whole round and
+  the block named both in advance: the `Landed: R-0257` line and the
+  `from packages.orchestration import mission_compiler` test import.
+  Gates re-run by THIS reviewer with real exit codes: `grep -c -E '^<<<'` = 0
+  in all five targets; `test_mission_compiler.py` + `test_mission_prompt_golden.py`
+  `126 passed in 0.65s`; the three caller suites `78 passed in 1.23s`;
+  `tests/cli/` `1329 passed in 261.30s`; `tests/docs/` `294 passed in 0.30s`;
+  the dashboard contract `70 passed in 4.31s`; the canary `42 passed in 19.46s`;
+  `git status --porcelain` empty and `git worktree list` the primary alone.
+  BOTH red-proofs reproduced by the reviewer in a disposable worktree at
+  db3bdef3 with `PYTHONDONTWRITEBYTECODE=1`. M1: `append_trace_jsonl` swapped
+  for `write_trace_jsonl` in `plan_mission`'s import AND call turns exactly one
+  test RED, `test_a_recompile_appends_rather_than_truncating`, at
+  `1 failed, 120 passed in 0.60s`. M2: after reverting M1 — `git diff --stat`
+  empty, so the revert is proved — deleting `traces=prompt_traces,` turns
+  exactly two RED, `test_planning_writes_the_trace_into_the_evidence_dir` and
+  the recompile test, at `2 failed, 119 passed in 0.74s`. Worktree removed and
+  pruned. The handback's 71-line handoff carries its DECISION D15 stated-cause
+  line and drops no mandated section, which is the rule, not an exception.
+  `LAST_REVIEWED_SHA` advances 0ba30611 -> 9bd3a3e7.
