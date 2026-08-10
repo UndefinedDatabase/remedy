@@ -2479,3 +2479,20 @@ class TestOrchestratorEvidenceSink:
 
         assert result.terminal == TERMINAL_NO_PROVIDER
         assert not self._trace_path(mission, tmp_path).exists()
+
+    def test_the_cli_names_the_provider_it_runs_with(self):
+        """A source guard, because an unwired CLI leaves every gate green.
+
+        The tests above drive `run_mission` directly, so they stay green even if
+        `remedy mission run` stops passing the provider. This pins the one line
+        they cannot reach. Formatting-sensitive by nature — the same declared
+        trade-off as `test_the_cli_names_the_provider_it_planned_with`.
+
+        Scoped to THIS call site, never a file-wide count: the plan call in the
+        same module carries its own label, and a count would make one of the two
+        guards unsatisfiable (checklist item 7, finding R-0258).
+        """
+        source = (Path(__file__).resolve().parents[2]
+                  / "apps" / "cli" / "commands" / "mission_cmd.py").read_text()
+        ran = source.index("result = run_mission(")
+        assert 'provider_kind="ollama"' in source[ran:ran + 200]
