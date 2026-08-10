@@ -1,127 +1,108 @@
-# Handoff — F105 R41
+# Handoff — F105 R42
 
-Branch: feature/f105-cache-optimal-prompt-ordering. Base 7f622b7f.
-Commits: ab16abf0 (C1a), 68722d66 (C1b), 3682dac9 (C2), 398c7752 (C3),
-3e2fa6bc (C4), C5 = HEAD (this commit).
+Branch: feature/f105-cache-optimal-prompt-ordering. Base 87ef21d9.
+Commits: 9dc313f7 (C1a), c73f9b9b (C1b), 5e38bade (C2), 55779302 (C3),
+C4 = HEAD (this commit).
+State and investigation round: nothing executable changed, so no mutation
+red-proof was ordered and none was run (DECISION F105 D10).
 `.agent/STOP` is ABSENT and was not created. No PR was created; no merge; no
-force-push; `main` untouched. Every red-proof ran in a disposable worktree only.
+force-push; `main` untouched; no worktree was created.
 
 ## Changed files
 | Path | Commit | +/- |
 |---|---|---|
-| .agent/authored/f105-r41-1.md | C1a ab16abf0 | +383/-0 |
-| .agent/last_block.md | C1b 68722d66 | +299/-136 |
-| .agent/live_review.md | C2 3682dac9, C5 HEAD | +43/-1, then +2/-0 |
-| tests/orchestration/test_intake.py | C3 398c7752 | +21/-0 |
-| tests/orchestration/test_flight_plan.py | C3 398c7752 | +23/-0 |
-| apps/cli/commands/do_cmd.py | C4 3e2fa6bc | +7/-5 |
-| tests/orchestration/test_prompt_trace.py | C4 3e2fa6bc | +9/-0 |
-| .agent/plan.md | C5 HEAD | full replacement (PAIR_P_PLAN) |
-| .agent/handoff.md | C5 HEAD | full rewrite |
+| .agent/authored/f105-r42-1.md | C1a 9dc313f7 | +280/-0 |
+| .agent/last_block.md | C1b c73f9b9b | +198/-301 |
+| .agent/live_review.md | C2 5e38bade | +70/-2 |
+| .agent/t004_inventory.md | C3 55779302 | +259/-0 (new file) |
+| .agent/plan.md | C4 HEAD | full replacement (PAIR_P_PLAN) |
+| .agent/handoff.md | C4 HEAD | full rewrite |
 
 ## Item status
 | Item | Status | Reason |
 |---|---|---|
-| C1a | done | block copied to .agent/authored/f105-r41-1.md, committed alone |
+| C1a | done | block copied to .agent/authored/f105-r42-1.md, committed alone |
 | C1b | done | same bytes mirrored to .agent/last_block.md, separate commit |
-| C2 | done | PAIR_ID, PAIR_F, PAIR_S — one path, one commit, reconciled together |
-| C3 | done | PAIR_TI + PAIR_TF, the corrected `startswith` form (R-0263) |
-| C4 | done | PAIR_DO1/DO2/DO3 + PAIR_GUARD; recorder count still 2 |
-| C5 | done | two worker-authored `Landed:` lines, PAIR_P_PLAN, this handoff |
+| C2 | done | PAIR_D1, D2, D3, S — one path, one commit, reconciled together |
+| C3 | done | .agent/t004_inventory.md, read-only, 259 lines, 81 cited pointers |
+| C4 | done | PAIR_P_PLAN applied as a full replacement + this handoff |
 
 ## Gates — real exit codes
 | Gate | Command | Exit | Result |
 |---|---|---|---|
 | A | sha256sum block/authored/last_block | 0 | all three EQUAL (digest below) |
 | A | cmp block↔authored; cmp authored↔last_block | 0, 0 | both silent |
-| B | wc -l .agent/authored/f105-r41-1.md | 0 | 383 vs D5 cap 400 |
-| C | pair shapes, measured (table below) | 0 | declared == measured, all 9 |
+| B | wc -l .agent/authored/f105-r42-1.md | 0 | 280 vs D5 cap 400 |
+| C | pair shapes, measured (table below) | 0 | declared == measured, all 5 |
 | C | cmp .agent/plan.md vs PAIR_P_PLAN slice | 0 | silent — byte-for-byte |
-| C | wc -l .agent/plan.md | 0 | 37 vs cap 50 |
-| D | git show -U0 for 3682dac9, 398c7752, 3e2fa6bc | 0 | strays 0/0 in all three |
-| E | grep '^<<<' over the 7 touched text files | 0 counts | 0,0,0,0,0,0,0 |
-| F | pytest tests/docs/ -q | 0 | 294 passed in 0.26s |
-| F | pytest tests/ui_server/test_dashboard_contract.py -q | 0 | 70 passed in 3.91s |
+| C | wc -l .agent/plan.md | 0 | 42 vs cap 50 |
+| D | git show -U0 5e38bade -- .agent/live_review.md | 0 | +70/-2, strays 0/0 |
+| E | grep -c '^<<<' over the 4 touched text files | counts | 0, 0, 0, 0 |
+| F | pytest tests/docs/ -q | 0 | 294 passed in 0.31s |
+| F | pytest tests/ui_server/test_dashboard_contract.py -q | 0 | 70 passed in 3.95s |
 | F | plan `## Goal` 1x, `Steps` 1x; live_review `## Steps` 1x | 0 | 1, 1, 1 |
-| G | git diff --name-only 7f622b7f..HEAD | 0 | 9 paths (below), 0 under packages/ or docs/ |
-| H | pytest intake+flight_plan+prompt_trace+do_cmd_cli_path -q | 0 | 119 passed in 0.95s |
-| I | pytest tests/cli/test_golden_path.py -q | 0 | 42 passed in 19.79s |
-| J | three mutation red-proofs in a disposable worktree | 1, 1, 1 | all three RED (below) |
+| G | git diff --name-only 87ef21d9..HEAD | 0 | exactly the 6 named paths |
+| H | grep -c 'Landed: R-0256' / 'Landed: R-0263' | 1, 1 | 0 and 0 — no survivors |
+| I | pytest tests/cli/test_golden_path.py -q | 0 | 42 passed in 19.89s |
+| J | every cited path:line opened and read | 0 | 81 pointers, 0 bad (3 below) |
 | K | git status --porcelain | 0 | EMPTY |
-| K | git worktree list | 0 | primary ALONE; `.agent/STOP` absent |
-| K | insertions per commit (git show --numstat) | 0 | 383, 299, 43, 44, 16, C5 — all < 500 |
+| K | git worktree list | 0 | primary ALONE |
+| K | insertions per commit (git show --numstat) | 0 | 280, 198, 70, 259, C4 — all < 500 |
 
-Gate E note: `grep -c` exits 1 when a pattern is absent, which is the PASS
-condition here; the recorded numbers are the counts, all zero.
-Paths in 7f622b7f..HEAD: `.agent/authored/f105-r41-1.md`, `.agent/last_block.md`,
-`.agent/live_review.md`, `.agent/plan.md`, `.agent/handoff.md`,
-`tests/orchestration/test_intake.py`, `tests/orchestration/test_flight_plan.py`,
-`tests/orchestration/test_prompt_trace.py`, `apps/cli/commands/do_cmd.py`.
+Gate E and gate H note: `grep -c` exits 1 when the pattern is absent, which is
+the PASS condition for both; the recorded numbers are the counts, all zero.
+Files checked for `^<<<`: live_review, t004_inventory, plan, handoff.
+Paths in 87ef21d9..HEAD: `.agent/authored/f105-r42-1.md`, `.agent/last_block.md`,
+`.agent/live_review.md`, `.agent/t004_inventory.md`, `.agent/plan.md`,
+`.agent/handoff.md`. Nothing under `packages/`, `apps/`, `tests/` or `docs/`.
 
 ## Transport proof
-`.remedy-wt/f105-r41-1.block.md`, `.agent/authored/f105-r41-1.md` and
+`.remedy-wt/f105-r42-1.block.md`, `.agent/authored/f105-r42-1.md` and
 `.agent/last_block.md` all three hash to
-`58b153128ab2711982bfed1163a80f6286ab2f9c0716d060390594b155773baf`
-at 383 lines; both `cmp` runs silent. PRIMARY shape, not the §4.9 fallback.
+`dc7dd7021699a9b83601c38a25ecfb6c1be906bb8bd1121cc23fd64e545431a4`,
+280 lines. Both `cmp` runs silent. Every pair was SLICED from the COMMITTED
+`.agent/authored/f105-r42-1.md` by `.remedy-wt/r42_slice.py`, a whole-line
+marker reader that refuses any marker not present exactly 1x; nothing was
+retyped. Scratch lives in the gitignored `.remedy-wt/`, never `/tmp`.
 
-## Pair proof
-Every pair SLICED from the COMMITTED authored file by a whole-line marker reader
-(`.remedy-wt/r41_slice.py`, gitignored); nothing retyped. Every FROM verified 1x
-in its target BEFORE its write (`.remedy-wt/r41_precheck.py`); reconciliation by
-`.remedy-wt/r41_reconcile.py`.
-| Pair | Declared | Measured | Before | After |
+## Pair proof — declared vs MEASURED
+| Pair | Declared | FROM before | FROM after | TO after |
 |---|---|---|---|---|
-| PAIR_ID | REWRITE | REWRITE | FROM 1x | FROM 0x / TO 1x |
-| PAIR_F | CONTAINS-FROM | CONTAINS-FROM | FROM 1x | FROM 1x / TO 1x at C2 (see note) |
-| PAIR_S | CONTAINS-FROM | CONTAINS-FROM | FROM 1x | FROM 1x / TO 1x |
-| PAIR_TI | CONTAINS-FROM | CONTAINS-FROM | FROM 1x | FROM 1x / TO 1x |
-| PAIR_TF | CONTAINS-FROM | CONTAINS-FROM | FROM 1x | FROM 1x / TO 1x |
-| PAIR_DO1 | REWRITE | REWRITE | FROM 1x | FROM 0x / TO 1x |
-| PAIR_DO2 | REWRITE | REWRITE | FROM 1x | FROM 0x / TO 1x |
-| PAIR_DO3 | REWRITE | REWRITE | FROM 1x | FROM 0x / TO 1x |
-| PAIR_GUARD | CONTAINS-FROM | CONTAINS-FROM | FROM 1x | FROM 1x / TO 1x |
-| PAIR_P_PLAN | FULL REPLACEMENT | FULL REPLACEMENT | n/a | cmp silent, 37 lines |
+| PAIR_D1 | REWRITE | 1 | 0 | 1 |
+| PAIR_D2 | REWRITE | 1 | 0 | 1 |
+| PAIR_D3 | CONTAINS-FROM | 1 | 1 | 1 |
+| PAIR_S | CONTAINS-FROM | 1 | 1 | 1 |
+| PAIR_P_PLAN | full replacement | n/a | n/a | cmp silent, 42 lines |
 
-PAIR_F note, measured not assumed: at C2 the whole TO occurred 1x. At C5 the
-block's own instruction put `Landed: R-0263` directly below the last line of the
-R-0263 entry — which IS PAIR_F's FROM and PAIR_F's first TO line — so the TO is
-no longer one contiguous run in the final file: the FROM line occurs 1x, the
-remaining 14 TO lines occur 1x, and the whole-block count is 0. The R-0264 entry
-itself is byte-intact; only contiguity was broken, by design. Every other pair
-still measures its declared shape in the FINAL committed files
-(`.remedy-wt/r41_postcheck.py`).
+All four FROMs were counted in `.agent/live_review.md` BEFORE the first write
+(`.remedy-wt/r42_precheck.py`, all 1x); no pair wrote into another pair's TO.
 
-## Red-proofs (gate J) — worktree `.remedy-wt/r41-red` at 3e2fa6bc, since removed
-| # | Mutation | Outcome |
-|---|---|---|
-| J1 | `intake.py`: ternary → `_build_intake_prompt(mission),` | RED — `test_intake.py::TestRunIntakeAcceptsAComposedPrompt::test_composed_text_is_the_prefix_the_provider_sees`, 1 failed 67 passed |
-| J2 | `flight_plan.py`: ternary → `prompt = _build_plan_prompt(intake)` | RED — `test_flight_plan.py::TestPlanJobLlmAcceptsAComposedPrompt::test_composed_text_is_the_prefix_the_provider_sees`, 1 failed 67 passed |
-| J3 | `do_cmd.py`: delete `composed=plan_composed,` | RED — `test_prompt_trace.py::TestSegmentManifest::test_every_cli_call_site_hands_its_composition_down`, 1 failed 41 passed |
-Each mutation was reverted before the next; the worktree was removed with
-`git worktree remove --force` and `git worktree prune`. The primary checkout was
-never mutated and is `git status --porcelain` EMPTY.
+## Gate J — three spot-reported inventory pointers
+| Pointer | The line it points at |
+|---|---|
+| packages/orchestration/token_ledger.py:1017 | `role=_first_string(accounting, ("role",)),` |
+| packages/orchestration/pingpong_loop.py:3970 | `"role": "builder",` |
+| apps/cli/commands/stats_ledger_cmd.py:44 | `UNMEASURED = "unmeasured"` |
 
-## Deviations, declared
-1. This file is 127 lines, over the 60-line cap (DECISION D15 stated-cause
-   overage). Cause: the mandated content — the nine-row changed-files table, the
-   six-row item-status table, the eighteen-row gate table with real exit codes,
-   the ten-row pair-shape proof, the transport proof and the three red-proof
-   rows. No section was dropped and no prose was added to pad it.
-2. None other. Every C item landed as specified; no block instruction turned out
-   unsatisfiable and no gate came back a colour the block did not expect.
+## Inventory conclusion in one line
+NO join key exists between a prompt trace's `role` and a ledger row for five of
+the seven trace roles: the ledger's `role` comes only from
+`token_accounting.json`, whose producer hardcodes `"builder"`, and
+`intake`/`flight_plan`/`orchestrator`/`mission_plan` calls produce no ledger row
+at all. Detail, with 81 `path:line` pointers, in `.agent/t004_inventory.md`.
 
-## Open findings
-5 — R-0221, R-0239, R-0247, R-0262, R-0264 (registered this round).
-R-0256 and R-0263 carry worker `Landed:` lines only; per §4.4 only the reviewer's
-`Done:` text resolves them. `LAST_REVIEWED_SHA` is 7f622b7f — R40 is GATED PASS
-and that gate is now on disk in `.agent/live_review.md`.
+## Open findings: 4
+R-0221, R-0239, R-0247, R-0262. R-0256, R-0263 and R-0264 are RESOLVED this
+round with reviewer-authored `Done:` text applied verbatim; the worker authored
+no `Done:` paragraph of its own.
 
 ## Next expected action
-1. Reviewer gates R41 over `git diff 7f622b7f..HEAD` and re-runs gates A-K
-   itself; on PASS `LAST_REVIEWED_SHA` advances 7f622b7f -> HEAD and R-0256,
-   R-0263 and R-0264 get their `Done:` text.
-2. Then T004: `remedy stats cache` over actuals.
-3. Then the integration gate (docs/agents/integration_gate.md) — R-0221 will
-   attribute phantom base-only failures there, expected, not new.
-4. Then closure (docs/roadmap/STATUS_closure_protocol.md), where the evidence
-   job, the FRESH review zip, the STATUS line and the PR all land.
+Reviewer gates R42 against `git diff 87ef21d9..HEAD`, re-running every gate
+above independently, and rules on the five open questions at the end of
+`.agent/t004_inventory.md` before T004 slice 1 is authored.
+
+Deviations, declared (DECISION D15): this handoff is 108 lines against the
+60-line cap. The cause is mandated content only — the gate table with 19 real
+exit codes, the transport proof, the pair-shape table, the changed-files table,
+the item-status table and the three gate-J pointers gate J itself requires.
+No section was dropped and no prose was added to reach that length.
