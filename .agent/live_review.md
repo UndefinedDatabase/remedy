@@ -5,7 +5,7 @@
 > round. Findings are authored here by the reviewer only. A worker marks a
 > landed fix `Landed: R-XXXX`; only reviewer-authored `Done:` text sets
 > Resolved (docs/agents/planner_reviewer_prompt.md §4.4).
-> Branch: feature/f105-cache-optimal-prompt-ordering. Next free ID: R-0255.
+> Branch: feature/f105-cache-optimal-prompt-ordering. Next free ID: R-0256.
 
 ## Findings
 
@@ -460,7 +460,12 @@
   collision to D8 as the check that catches it before emission. Note for
   whoever fixes it: prose that repeats an earlier gate's sentence is normal and
   desirable in this file, so the rule must bend, not the text. OPEN.
-  Landed: R-0253 — §4.9 scoped to diff-added lines and D8 item 6 added, commit c6ec5d3e.
+  Done: R-0253 (2026-08-10) — RESOLVED. §4.9 now scopes the TO-only count to the
+  lines that commit's diff ADDS, names `git show --numstat` as the measurement,
+  and D8 carries a sixth item for the whole-file collision. The reviewer
+  re-measured the new rule against its own first use: the C2 commit adds 47
+  lines, all 47 are PAIR_A TO-only lines at exactly 1x, strays 0 — achievable
+  where the whole-file reading was not.
 - R-0254 (Low, F105 R24): `_drop_one_newline_per_segment_boundary` in
   `packages/orchestration/pingpong_loop.py` raises `PromptSegmentError` with
   the text "builder prompt segment boundary carries no newline to drop between
@@ -474,7 +479,22 @@
   word "builder", and update the two message assertions in
   `tests/orchestration/test_builder_prompt_golden.py::TestDropOneNewlinePerSegmentBoundary`
   in the same commit. Production code, so it needs a SPLIT round. OPEN.
-  Landed: R-0254 — message is role-neutral and the assertion now anchors it, commit bb7b2cdc.
+  Done: R-0254 (2026-08-10) — RESOLVED. The message now reads "prompt segment
+  boundary carries no newline to drop between segments N and N+1", so a
+  reviewer-side boundary fault no longer reports itself as a builder fault, and
+  the one assertion that pins it anchors with `^` and `$`. Re-proved by the
+  reviewer in a disposable worktree at d0ebba63: putting "builder " back turns
+  exactly that test RED, where before R26 the same mutation stayed green.
+- R-0255 (Low, F105 R26): DECISION F105 D8's checklist now holds six items, but
+  its preamble still reads "Run all four checks" and its closing note still
+  reads "item 2 has recurred five times ... R20 hit all four items". Item 5
+  landed at R24 and item 6 at R26; neither round updated the two counts. A
+  reviewer following the preamble literally runs four of six checks — and the
+  two the preamble drops are exactly the two most recently learned. The R26
+  worker spotted this and correctly did NOT act: no pair was given for it and
+  AGENTS.md Scope Control bars the "while I'm here" edit. Fix: the preamble
+  says six, and the closing note says six recurrences and "four of them in one
+  block". OPEN.
 
 ## Steps
 
@@ -1288,3 +1308,49 @@
   assertion to the whole message instead, which turns the wording into
   something a mutation can prove red.
   `LAST_REVIEWED_SHA` advances df32f595 -> 0341928d.
+- R26: SPLIT repair round — record the R25 gate, fix R-0253 (§4.9 scoped to the
+  diff's ADDED lines plus a sixth D8 checklist item) and R-0254 (the shared
+  boundary helper's builder-only message plus the one assertion that pins it).
+- Reviewer gate on R26 (2026-08-10): PASS. Range `0341928d..d0ebba63`, nine
+  commits, read as a real diff. Every path the block named and no other:
+  `.agent/authored/f105-r26-1.md`, `.agent/last_block.md`,
+  `.agent/live_review.md`, `docs/agents/planner_reviewer_prompt.md`,
+  `packages/orchestration/pingpong_loop.py`,
+  `tests/orchestration/test_builder_prompt_golden.py`, `.agent/plan.md`,
+  `.agent/handoff.md`. Insertions per commit 264, 196, 47, 17, 1, 3, 1, 80, 8 —
+  each under 500, and the authored save is 264 lines against DECISION F105 D5's
+  cap of 400.
+  Transport verified under the §4.9 DIGEST FALLBACK: this reviewer session holds
+  no scratchpad original, so sha256 was recomputed over the COMMITTED files.
+  `.agent/authored/f105-r26-1.md` and `.agent/last_block.md` are both
+  `c249919e7e8d111f9cac38d8593b9f0c67d409ae85530256a0367eac4b1b4a0d`, `cmp`
+  silent, 264 lines each — the digest the handback declared.
+  Application re-measured disk to disk against the COMMITTED authored file with
+  the reviewer's own slicer, never a retype: PAIR_A append-shaped with the
+  prefix property holding literally, FROM 1x; PAIR_B rewrite, FROM 0x after,
+  TO 1x; PAIR_C append-shaped, FROM 1x; PAIR_D rewrite, FROM 0x, TO 1x; PAIR_E
+  rewrite, FROM 0x, TO 1x; PAIR_F byte-equal to `.agent/plan.md` at 41 lines
+  against the cap of 50. Declared shape equals measured shape for all six.
+  R-0253's own new rule was applied for the first time and it holds. `git show
+  --numstat 4c53c746` reads `47 0`, and all 47 ADDED lines are PAIR_A's TO-only
+  lines at exactly 1x, strays 0. `git show --numstat c6ec5d3e` reads `17 2`;
+  PAIR_B's first TO line is diff CONTEXT, so the 17 decompose as 9 (PAIR_B) + 8
+  (PAIR_C TO-only), strays 0, extras 0.
+  Gates re-run by THIS reviewer with real exit codes: the golden suite `21
+  passed`, `tests/docs/` `294 passed`, the dashboard contract `70 passed`, the
+  canary `42 passed`, and `tests/orchestration/` `10498 passed, 7 skipped in
+  672.30s` — the module regression re-run in full, not accepted on the word.
+  Mutation red-proof M1 run by the reviewer in a disposable worktree at
+  d0ebba63: restoring the word "builder" turns exactly one test RED,
+  `TestDropOneNewlinePerSegmentBoundary::test_a_boundary_with_no_newline_at_all_is_illegal`,
+  at `1 failed, 20 passed`. The worktree was removed and pruned; `git status
+  --porcelain` empty and `git worktree list` the primary alone at this verdict.
+  Gate D's redness is charged to the REVIEWER, not to R26. The R26 block's own
+  PAIR_A TO wrote the marker NAMES and a bare `<<<` into `.agent/live_review.md`
+  as prose, and then ordered those strings to count 0 in that same file —
+  DECISION F105 D8 item 2's sixth recurrence, and precisely the class R26's own
+  new item 6 installs. The worker MEASURED it and declared it instead of editing
+  prose to force the count down, which is the correct behaviour and costs R26
+  nothing. The property the gate exists to protect does hold, independently
+  checked: a line-anchored count of marker LINES is 0 in all five targets.
+  `LAST_REVIEWED_SHA` advances 0341928d -> d0ebba63.
