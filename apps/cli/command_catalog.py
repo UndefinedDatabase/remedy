@@ -2923,6 +2923,28 @@ CATALOG: tuple[CommandEntry, ...] = (
         may_execute_commands=False,
     ),
     CommandEntry(
+        command_id="stats.cache",
+        group_id="stats",
+        subcommand="cache",
+        description=(
+            "Cache-read share per bucket from the ledger. A share nobody could "
+            "measure prints a word, never 0 %, and a role split names the limit "
+            "it cannot show (read-only)."
+        ),
+        action_class="read_only",
+        supports_json=False,
+        related=("stats.cost", "stats.backfill-ledger"),
+        args=(
+            ArgDef("--since", "Only calls at or after this ISO-8601 timestamp", required=False, is_option=True),
+            ArgDef("--job", "Only this job's calls", required=False, is_option=True),
+            ArgDef("--by", "Group the shares by role, model or day (default: grand total only)", required=False, is_option=True),
+            _PROJECT_SCOPE_OPT,
+            _ALL_PROJECTS_FLAG,
+        ),
+        may_mutate_repo=False,
+        may_execute_commands=False,
+    ),
+    CommandEntry(
         command_id="stats.backfill-ledger",
         group_id="stats",
         subcommand="backfill-ledger",
