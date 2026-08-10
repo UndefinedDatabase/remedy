@@ -41,7 +41,7 @@ e795fe5a (C4), plus this C5 commit.
 | I tests/docs | 0 | 294 passed in 0.25s |
 | I dashboard | 0 | 70 passed in 3.94s |
 | I canary | 0 | 42 passed in 19.48s |
-| J hygiene | 0 | at e795fe5a: porcelain empty, `git worktree list` primary alone; insertions per commit 368, 263, 57, 51, 25 — each under 500 |
+| J hygiene | 0 | at 8f5979fb: porcelain empty, `git worktree list` primary alone; insertions per commit 368, 263, 57, 51, 25, 63 — each under 500 |
 
 ## Pair proofs (each grep scoped to the named file)
 | Pair | Shape (declared = measured) | Proof |
