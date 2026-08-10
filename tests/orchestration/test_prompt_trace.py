@@ -333,6 +333,15 @@ class TestSegmentManifest:
         assert "append_trace_jsonl" in source
         assert source.count("on_call=make_flight_plan_call_recorder(") == 2
 
+    def test_every_cli_call_site_hands_its_composition_down(self):
+        """R-0256 wiring guard: a site that composes twice fails HERE."""
+        import apps.cli.commands.do_cmd as do_cmd
+
+        source = inspect.getsource(do_cmd)
+        assert "composed=intake_composed," in source
+        assert "composed=plan_composed," in source
+        assert "composed=replan_composed," in source
+
 
 # ---------------------------------------------------------------------------
 # Step 5088: next_approve_command unit tests

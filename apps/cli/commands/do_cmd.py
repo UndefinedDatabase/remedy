@@ -214,6 +214,7 @@ def _cmd_do_mission(
             intake_result = run_intake(
                 mission,
                 call_fn,
+                composed=intake_composed,
                 on_call=make_intake_call_recorder(
                     prompt_traces,
                     intake_composed,
@@ -255,15 +256,15 @@ def _cmd_do_mission(
             write_plan_md,
         )
         plan_intake_dict = intake_result.value.model_dump()
-        # The manifest is composed here and the bytes are built again inside
-        # `plan_job_llm`; both go through `compose_flight_plan_prompt`, so the
-        # trace carries `prompt_chars` from the effective prompt and
-        # `segment_manifest_chars` from this composition and a divergence stays
-        # visible rather than silent.
+        # Composed exactly ONCE here and handed to `plan_job_llm`, so the bytes
+        # the provider receives and the manifest the trace records come from the
+        # same composition — `prompt_chars` and `segment_manifest_chars` can no
+        # longer describe two different prompts (R-0256).
         plan_composed = compose_flight_plan_prompt(plan_intake_dict)
         fp_result = plan_job_llm(
             plan_intake_dict,
             plan_call_fn,
+            composed=plan_composed,
             on_call=make_flight_plan_call_recorder(
                 prompt_traces,
                 plan_composed,
@@ -2884,6 +2885,7 @@ def _cmd_do_replan(
     fp_result = plan_job_llm(
         intake,
         call_fn,
+        composed=replan_composed,
         on_call=make_flight_plan_call_recorder(
             replan_traces,
             replan_composed,
