@@ -1,126 +1,264 @@
-── STEP R40 (SESSION CLOSE) — F105 ───────────────────────────
-Goal:        Persist the R39 reviewer gate, register R-0263 (the reviewer's own
-             unsatisfiable test assertion, which cost R39 its C4 item), correct
-             the R39 step line that C2 landed before the blocker was known, and
-             close the session against `.agent/STOP`.
-Bundle:      C1 save this block · C2 every `.agent/live_review.md` edit ·
-             C3 plan and handoff.
-Change:      `.agent/authored/f105-r40-1.md`, `.agent/last_block.md`,
-             `.agent/live_review.md`, `.agent/plan.md`, `.agent/handoff.md`.
-             Nothing else. NO production code, NO test files: state only.
-Constraints: `.agent/STOP` is present. This is a CLOSING round: apply these
-             pairs, commit, push, and stop. Do NOT start R40's real work (the
-             three `do_cmd.py` call sites), do NOT re-land R39's C4 tests, do
-             NOT delete or move `.agent/STOP` — it is the operator's file. Do
-             not touch `packages/`, `apps/`, `tests/` or `docs/`. Write no
-             `Done:` paragraph of your own (§4.4).
+── STEP R41 — F105 ───────────────────────────────────────────
+Goal:        Persist the R40 reviewer gate, register R-0264 (the §4.13
+             session-versus-branch misreading that left R40's four commits
+             ungated), land R39's two tests in their CORRECTED form so R-0263
+             is fixed, and finish R-0256 by handing the composition down at all
+             three `apps/cli/commands/do_cmd.py` call sites.
+Bundle:      C1 save this block · C2 every `.agent/live_review.md` gate edit ·
+             C3 the two orchestration tests · C4 the three CLI call sites plus
+             their wiring guard · C5 the two `Landed:` lines, plan and handoff.
+Change:      `.agent/authored/f105-r41-1.md`, `.agent/last_block.md`,
+             `.agent/live_review.md`, `tests/orchestration/test_intake.py`,
+             `tests/orchestration/test_flight_plan.py`,
+             `apps/cli/commands/do_cmd.py`,
+             `tests/orchestration/test_prompt_trace.py`, `.agent/plan.md`,
+             `.agent/handoff.md`. Nothing else — no `docs/`, no `packages/`.
+Constraints: `.agent/STOP` is ABSENT and stays that way; do not create it. The
+             three CLI keywords go on their OWN line each: the suite counts
+             `on_call=make_flight_plan_call_recorder(` over the WHOLE of
+             `do_cmd.py` and that count must stay 2. Write no `Done:` paragraph
+             of your own — `Landed:` only (§4.4). Every red-proof runs ONLY
+             inside a disposable `git worktree`; the primary checkout is
+             `git status --porcelain` EMPTY at the handback.
 Done when:   every gate below is run and its REAL exit code recorded.
 
 C1 — save this block verbatim, TWO commits
-  C1a `cp /home/decodeux/Repos/remedy/.remedy-wt/f105-r40-1.block.md`
-      `.agent/authored/f105-r40-1.md`. Commit it ALONE.
+  C1a `cp /home/decodeux/Repos/remedy/.remedy-wt/f105-r41-1.block.md`
+      `.agent/authored/f105-r41-1.md`. Commit it ALONE.
   C1b `cp` the same bytes to `.agent/last_block.md`. Commit separately.
   `sha256sum` all three plus `cmp`; digest in the handback.
 
 C2 — `.agent/live_review.md`, ONE commit
   Apply PAIR_ID (REWRITE, the header's next-free-ID line), PAIR_F
-  (CONTAINS-FROM, R-0263 appended at the end of `## Findings`) and PAIR_S
-  (REWRITE, the R39 step line corrected plus the R39 gate record, at the END of
-  the file). All three share ONE path in ONE commit: reconcile them TOGETHER
+  (CONTAINS-FROM, R-0264 appended at the end of `## Findings`) and PAIR_S
+  (CONTAINS-FROM, the R40 gate record plus the R41 step line at the END of the
+  file). All three share ONE path in ONE commit: reconcile them TOGETHER
   against that commit's `git show -U0`.
 
-C3 — plan and handoff, ONE commit
-  Apply PAIR_P_PLAN to `.agent/plan.md` as a FULL replacement, then rewrite
-  `.agent/handoff.md` in your own words per AGENTS.md as the SESSION-CLOSING
-  handoff: it names the STOP file, the last reviewed SHA, the open findings,
-  and the exact next action for whoever resumes.
+C3 — the two tests, ONE commit
+  Apply PAIR_TI and PAIR_TF, CONTAINS-FROM appends at the END of their files.
+  These are R39's C4 items in the form R-0263 proved correct: the assertion is
+  `startswith`, not equality, because `run_structured_call` hands `call_fn` the
+  schema-decorated prompt and not `base_prompt` itself.
+
+C4 — the three CLI call sites plus their guard, ONE commit
+  Apply PAIR_DO1, PAIR_DO2 and PAIR_DO3 to `apps/cli/commands/do_cmd.py`
+  (REWRITEs — each inserts one keyword line INSIDE its FROM, so the FROM string
+  no longer occurs afterwards) and PAIR_GUARD to
+  `tests/orchestration/test_prompt_trace.py` (CONTAINS-FROM). PAIR_DO2 also
+  replaces the comment that describes the second composition, which this commit
+  makes false.
+
+C5 — markers, plan and handoff, ONE commit
+  In `.agent/live_review.md`, directly BELOW the last line of the R-0263 entry
+  and directly BELOW the last line of the R-0256 entry, append ONE line each in
+  YOUR OWN words, of the form `  Landed: R-XXXX — <what changed, which commit>`.
+  Two lines total, nothing more; no `Done:` paragraph (§4.4). Then apply
+  PAIR_P_PLAN to `.agent/plan.md` as a FULL replacement and rewrite
+  `.agent/handoff.md` in your own words per AGENTS.md.
 
 <<<PAIR_ID_FROM>>>
-> Branch: feature/f105-cache-optimal-prompt-ordering. Next free ID: R-0263.
+> Branch: feature/f105-cache-optimal-prompt-ordering. Next free ID: R-0264.
 <<<END_PAIR_ID_FROM>>>
 
 <<<PAIR_ID_TO>>>
-> Branch: feature/f105-cache-optimal-prompt-ordering. Next free ID: R-0264.
+> Branch: feature/f105-cache-optimal-prompt-ordering. Next free ID: R-0265.
 <<<END_PAIR_ID_TO>>>
 
 <<<PAIR_F_FROM>>>
-  today: a composer bug surfaces as a traceback instead of the deterministic
-  skeleton. OPEN.
+  own test. Whoever runs R40 lands that corrected form. OPEN.
 <<<END_PAIR_F_FROM>>>
 
 <<<PAIR_F_TO>>>
-  today: a composer bug surfaces as a traceback instead of the deterministic
-  skeleton. OPEN.
-
-- R-0263 (Medium, F105 R39, reviewer-authored defect): the R39 block ordered
-  two tests whose central assertion, `assert seen == [composed.text]`, cannot
-  hold for ANY implementation of the function under test. `run_structured_call`
-  does not hand its `base_prompt` to `call_fn`; it hands
-  `build_schema_prompt(model_cls, base_prompt, carry)`, which appends a schema
-  instruction — 1489 further characters for `JobIntake`. The worker applied the
-  pairs, measured `2 failed, 66 passed`, reverted them rather than commit a
-  knowingly-red suite, and declared it. That judgement is right and the defect
-  is entirely the reviewer's: the block asserted a property of a helper whose
-  contract it never read. This is the D8 item-5 class — "reads the code the
-  block points at" — widened from mutation reachability to ANY authored
-  assertion about a callee's contract, and it is registered as a finding rather
-  than a lesson because it cost a real item (C4) and left `composed=` shipping
-  untested on its new branch. The fix is known and already proved in a
-  disposable worktree at R39: with `assert seen[0].startswith(composed.text)`
-  both tests pass at `68 passed`, and reverting either ternary red-proofs its
   own test. Whoever runs R40 lands that corrected form. OPEN.
+
+- R-0264 (Low, F105 R40, reviewer-authored defect): the R40 step line applies
+  §4.13 — "the LAST round of a BRANCH has no on-disk gate entry" — to the last
+  round of a SESSION. The two are not the same boundary. A session that ends
+  mid-branch against `.agent/STOP` leaves a round that the NEXT session can and
+  must gate, and R40 left four commits (4149021f, 0dd0b104, 7f3b0ba5, 7f622b7f)
+  carrying a line that tells the next reader no gate entry is coming. The next
+  session nearly skipped them on exactly that reading. §4.13's terminator
+  applies once per BRANCH, at closure, where no later round exists to write the
+  record; every other unreviewed round is an ordinary handback. Cost so far:
+  nil — this round gates R40 — but the line would have cost a real gate on any
+  branch resumed by a reader who trusted it. Fix: the R40 line says the session
+  closed with its own round ungated and awaiting the next session, and the
+  gate below supplies it. OPEN.
 <<<END_PAIR_F_TO>>>
 
 <<<PAIR_S_FROM>>>
-- R39: SPLIT round — record the R38 gate and take the first half of R-0256: a
-  keyword-only `composed` on `run_intake` and `plan_job_llm`, one test each,
-  both red-proofed. The three `do_cmd.py` call sites are R40's, split out
-  because one block carrying both would have broken the D5 cap.
+  lives in `.agent/handoff.md` and the session's completion report.
 <<<END_PAIR_S_FROM>>>
 
 <<<PAIR_S_TO>>>
-- R39: SPLIT round — record the R38 gate and take the first half of R-0256: a
-  keyword-only `composed` on `run_intake` and `plan_job_llm`. The three
-  `do_cmd.py` call sites were split out to R40 because one block carrying both
-  would have broken the D5 cap. The two tests this line originally promised did
-  NOT land; the reason is R-0263, registered above.
-- Reviewer gate on R39 (2026-08-10): PASS, with two deviations declared by the
-  worker and both ACCEPTED. Range `5ca4debd..c44a582c` = five commits, seven
-  paths; `apps/cli/commands/do_cmd.py` is absent, as the block required.
-  Insertions per commit 347, 281, 37, 21 and 141, each far under 500.
-  Transport by the PRIMARY shape: the scratch original
-  `.remedy-wt/f105-r39-1.block.md`, the committed
-  `.agent/authored/f105-r39-1.md` and `.agent/last_block.md` all three hash to
-  `377d8c5e6ffaa18a7d98f17e6dab2ab630e50132417c4109f199022e28bf345b`
-  at 347 lines against D5's cap of 400; both `cmp` runs silent.
-  All six pairs re-sliced from the COMMITTED authored file: DECLARED equals
-  MEASURED for every one, every FROM 1x before its write. PAIR_INTAKE, PAIR_FP
-  and PAIR_FP2 REWRITEs at FROM 0x / TO 1x; PAIR_LR CONTAINS-FROM at FROM 1x /
-  TO 1x. C2 and C3 reconcile with 0 strays in both directions.
-  Gates re-run by THIS reviewer, none taken from the handback: the scoped pair
-  `66 passed in 0.67s`; the canary `42 passed in 23.37s`; the C3 diff read line
-  by line against the two authored TOs and byte-identical to them. The blocker
-  was reproduced independently rather than believed: `run_intake` called with a
-  sentinel `composed` sends the provider a prompt that is NOT equal to
-  `composed.text` but DOES start with it, 1489 characters longer, carrying
-  `SENTINEL` and not the mission argument. So the FEATURE is correct and the
-  reviewer's ASSERTION was wrong — registered as R-0263.
-  Deviation 1, C4 skipped: ACCEPTED. Landing a knowingly-red pair to satisfy a
-  block would be the fabrication the block conditions exist to stop.
-  Deviation 2, `.agent/plan.md` not byte-for-byte PAIR_P_PLAN: ACCEPTED. The
-  slice claimed "one test each, both red-proofed", which C4 did not deliver;
-  AGENTS.md requires plan.md to reflect the current state and carry the exact
-  blocker, and AGENTS.md outranks a reviewer's block. The worker applied the
-  slice, corrected only the three statements C4 falsified, and declared each.
-  Gate I was vacuous as written and the worker said so instead of reporting a
-  colour it could not have measured — the R-0252 lesson, applied correctly by a
-  worker for once rather than discovered by a reviewer.
-  `LAST_REVIEWED_SHA` advances 5ca4debd -> c44a582c.
-- R40: SESSION CLOSE — persist this gate, register R-0263, correct the R39 step
-  line, and stop against `.agent/STOP`. No production code. This round is the
-  last of the session, so by §4.13 its own verdict has no on-disk gate entry: it
   lives in `.agent/handoff.md` and the session's completion report.
+  That reading was wrong and is registered as R-0264: R40 ended a SESSION, not
+  the BRANCH, so the round stayed gateable and the next session gated it below.
+- Reviewer gate on R40 (2026-08-10, by the session that resumed the branch):
+  PASS. Range `c44a582c..7f622b7f` = four commits, five paths, every one under
+  `.agent/`; nothing under `packages/`, `apps/`, `tests/` or `docs/`.
+  Insertions per commit 220, 145, 59 and 82, each far under 500.
+  Transport by the PRIMARY shape: `.remedy-wt/f105-r40-1.block.md`, the
+  committed `.agent/authored/f105-r40-1.md` and `.agent/last_block.md` all
+  three hash to
+  `dd655c7b424259199977a4b402e2a52ea40e2ca4dd78f31f083c554e6995376e`
+  at 220 lines against D5's cap of 400; the `cmp` run is silent.
+  Content re-read against the applied file, not the handback: the ID line
+  reads R-0264, the R-0263 entry is present and OPEN, and the R39 step line
+  carries its correction. The commit removes exactly four lines, all of them
+  FROM text, so both stray counts are 0.
+  Gates re-run by THIS reviewer, none taken from the handback: `tests/docs/`
+  `294 passed in 0.26s`; `test_dashboard_contract.py` `70 passed in 4.44s`;
+  the canary `42 passed in 19.86s`. `.agent/plan.md` is 41 lines against the
+  cap of 50 and keeps `## Goal` and a `Steps` substring; `.agent/live_review.md`
+  keeps exactly one `## Steps` heading; `^<<<` is 0 in live_review, plan and
+  handoff. `.agent/handoff.md` is 97 lines and carries its DECISION D15
+  stated-cause line, so the overage is declared, not silent.
+  `LAST_REVIEWED_SHA` advances c44a582c -> 7f622b7f.
+- R41: SPLIT round — record the R40 gate, register R-0264, and land BOTH halves
+  of the work R39 and R40 left open: the two corrected tests that fix R-0263,
+  and the three `do_cmd.py` call sites plus a wiring guard that fix R-0256.
+  Both changes were red-proofed by the reviewer in disposable worktrees at
+  7f622b7f before this block was authored.
 <<<END_PAIR_S_TO>>>
+
+<<<PAIR_TI_FROM>>>
+        fn("test prompt", 0)
+        assert captured["chat_kwargs"]["model"] == "intake-test-model"
+<<<END_PAIR_TI_FROM>>>
+
+<<<PAIR_TI_TO>>>
+        fn("test prompt", 0)
+        assert captured["chat_kwargs"]["model"] == "intake-test-model"
+
+
+class TestRunIntakeAcceptsAComposedPrompt:
+    """R-0256: one composition feeds the provider AND the trace manifest."""
+
+    def test_composed_text_is_the_prefix_the_provider_sees(self):
+        from packages.orchestration.intake import compose_intake_prompt
+
+        composed = compose_intake_prompt("SENTINEL-INTAKE-MISSION")
+        seen: list[str] = []
+
+        def _call(prompt: str, attempt: int) -> str:
+            seen.append(prompt)
+            return json.dumps(_VALID_INTAKE)
+
+        run_intake("a completely different mission", _call, composed=composed)
+
+        assert len(seen) == 1
+        assert seen[0].startswith(composed.text)
+        assert "SENTINEL-INTAKE-MISSION" in seen[0]
+        assert "a completely different mission" not in seen[0]
+<<<END_PAIR_TI_TO>>>
+
+<<<PAIR_TF_FROM>>>
+        with pytest.raises(ReplanRejectedError, match="Cannot replan"):
+            replan(fp1.model_dump(), fp2, tmp_path, any_task_completed=True)
+<<<END_PAIR_TF_FROM>>>
+
+<<<PAIR_TF_TO>>>
+        with pytest.raises(ReplanRejectedError, match="Cannot replan"):
+            replan(fp1.model_dump(), fp2, tmp_path, any_task_completed=True)
+
+
+class TestPlanJobLlmAcceptsAComposedPrompt:
+    """R-0256: one composition feeds the provider AND the trace manifest."""
+
+    def test_composed_text_is_the_prefix_the_provider_sees(self):
+        from packages.orchestration.flight_plan import compose_flight_plan_prompt
+
+        composed = compose_flight_plan_prompt(
+            {"goal": "SENTINEL-PLAN-GOAL"}, project_facts="pinned facts",
+        )
+        seen: list[str] = []
+
+        def _call(prompt: str, attempt: int) -> str:
+            seen.append(prompt)
+            return _valid_plan_json(3)
+
+        plan_job_llm(_fake_intake(), _call, composed=composed)
+
+        assert len(seen) == 1
+        assert seen[0].startswith(composed.text)
+        assert "SENTINEL-PLAN-GOAL" in seen[0]
+        assert "Add a login page" not in seen[0]
+<<<END_PAIR_TF_TO>>>
+
+<<<PAIR_DO1_FROM>>>
+            intake_result = run_intake(
+                mission,
+                call_fn,
+                on_call=make_intake_call_recorder(
+<<<END_PAIR_DO1_FROM>>>
+
+<<<PAIR_DO1_TO>>>
+            intake_result = run_intake(
+                mission,
+                call_fn,
+                composed=intake_composed,
+                on_call=make_intake_call_recorder(
+<<<END_PAIR_DO1_TO>>>
+
+<<<PAIR_DO2_FROM>>>
+        # The manifest is composed here and the bytes are built again inside
+        # `plan_job_llm`; both go through `compose_flight_plan_prompt`, so the
+        # trace carries `prompt_chars` from the effective prompt and
+        # `segment_manifest_chars` from this composition and a divergence stays
+        # visible rather than silent.
+        plan_composed = compose_flight_plan_prompt(plan_intake_dict)
+        fp_result = plan_job_llm(
+            plan_intake_dict,
+            plan_call_fn,
+            on_call=make_flight_plan_call_recorder(
+<<<END_PAIR_DO2_FROM>>>
+
+<<<PAIR_DO2_TO>>>
+        # Composed exactly ONCE here and handed to `plan_job_llm`, so the bytes
+        # the provider receives and the manifest the trace records come from the
+        # same composition — `prompt_chars` and `segment_manifest_chars` can no
+        # longer describe two different prompts (R-0256).
+        plan_composed = compose_flight_plan_prompt(plan_intake_dict)
+        fp_result = plan_job_llm(
+            plan_intake_dict,
+            plan_call_fn,
+            composed=plan_composed,
+            on_call=make_flight_plan_call_recorder(
+<<<END_PAIR_DO2_TO>>>
+
+<<<PAIR_DO3_FROM>>>
+    fp_result = plan_job_llm(
+        intake,
+        call_fn,
+        on_call=make_flight_plan_call_recorder(
+<<<END_PAIR_DO3_FROM>>>
+
+<<<PAIR_DO3_TO>>>
+    fp_result = plan_job_llm(
+        intake,
+        call_fn,
+        composed=replan_composed,
+        on_call=make_flight_plan_call_recorder(
+<<<END_PAIR_DO3_TO>>>
+
+<<<PAIR_GUARD_FROM>>>
+        assert source.count("on_call=make_flight_plan_call_recorder(") == 2
+<<<END_PAIR_GUARD_FROM>>>
+
+<<<PAIR_GUARD_TO>>>
+        assert source.count("on_call=make_flight_plan_call_recorder(") == 2
+
+    def test_every_cli_call_site_hands_its_composition_down(self):
+        """R-0256 wiring guard: a site that composes twice fails HERE."""
+        import apps.cli.commands.do_cmd as do_cmd
+
+        source = inspect.getsource(do_cmd)
+        assert "composed=intake_composed," in source
+        assert "composed=plan_composed," in source
+        assert "composed=replan_composed," in source
+<<<END_PAIR_GUARD_TO>>>
 
 <<<PAIR_P_PLAN>>>
 # Plan — F105 Cache-optimal prompt ordering
@@ -138,26 +276,22 @@ and `remedy stats cache` shows the cache-read share per role from actuals.
 Prompt CONTENT does not change; only its composition.
 
 ## Current Step
-SESSION CLOSED against `.agent/STOP`. T001 and T002 are DONE and gated; T003's
-six migration sites are all migrated. R39 is GATED PASS; `LAST_REVIEWED_SHA` is
-c44a582c. R-0256 is HALF fixed: `run_intake` and `plan_job_llm` accept a
-keyword-only `composed`, landed and gated, with no test on the new branch yet.
-Open findings: R-0221, R-0239, R-0247, R-0256, R-0262, R-0263.
+R41 landed. T001 and T002 are DONE and gated; T003's six migration sites are
+all migrated. R40 is GATED PASS; `LAST_REVIEWED_SHA` is 7f622b7f. R-0256 and
+R-0263 are FIXED and marked `Landed:`, awaiting the reviewer's `Done:` text at
+the R41 gate: one composition now feeds both the provider and the trace at all
+three CLI sites, pinned by two orchestration tests and one wiring guard.
+Open findings: R-0221, R-0239, R-0247, R-0262, R-0264.
 No PR; one is created at CLOSURE.
 
 ## Next Steps
-- Resume by landing R39's two tests with `seen[0].startswith(composed.text)`,
-  which fixes R-0263. Proved in a worktree at R39: 68 passed, and reverting
-  either ternary red-proofs its own test.
-- Then finish R-0256: pass `composed=` at the three
-  `apps/cli/commands/do_cmd.py` sites that already build one — intake,
-  flight-plan (whose comment about the second composition goes stale and must
-  be replaced) and replan. The new keyword goes on its OWN line: the suite
-  counts `on_call=make_flight_plan_call_recorder(` over the WHOLE file
-  (tests/orchestration/test_prompt_trace.py, `== 2`).
-- Then T004, `remedy stats cache` over actuals; then the integration gate
-  (docs/agents/integration_gate.md); then closure
-  (docs/roadmap/STATUS_closure_protocol.md), where the PR is created.
+- Await the R41 gate, which resolves R-0256, R-0263 and R-0264.
+- Then T004: `remedy stats cache` over actuals — the cache-read share per role
+  read from recorded calls, not from an estimate.
+- Then the integration gate (docs/agents/integration_gate.md); R-0221 will
+  attribute phantom base-only failures there and that is expected, not new.
+- Then closure (docs/roadmap/STATUS_closure_protocol.md), where the evidence
+  job, the FRESH review zip, the STATUS line and the PR all land.
 
 ## Risks
 - R-0221 stays open and will cost the integration gate phantom base-only
@@ -169,52 +303,81 @@ No PR; one is created at CLOSURE.
 GATES — run every one, record the REAL exit code in the handback
 
 A transport
-  `sha256sum .remedy-wt/f105-r40-1.block.md .agent/authored/f105-r40-1.md
+  `sha256sum .remedy-wt/f105-r41-1.block.md .agent/authored/f105-r41-1.md
   .agent/last_block.md` — all three EQUAL; two `cmp` runs, both silent.
 
 B size
-  `wc -l .agent/authored/f105-r40-1.md` against the cap of 400 (D5).
+  `wc -l .agent/authored/f105-r41-1.md` against the cap of 400 (D5).
 
 C pair shapes, MEASURED not assumed
-  Slice every pair from the COMMITTED `.agent/authored/f105-r40-1.md` with a
+  Slice every pair from the COMMITTED `.agent/authored/f105-r41-1.md` with a
   whole-line marker reader; never retype. Verify FIRST that every FROM occurs
-  exactly 1x in its target before the write, and STOP if one does not. Then:
-  PAIR_ID and PAIR_S are REWRITEs — FROM 0x, TO 1x after the write. PAIR_F is
-  CONTAINS-FROM — FROM 1x, TO 1x. PAIR_P_PLAN: `cmp` the applied
-  `.agent/plan.md` against the slice, `wc -l` against the cap of 50.
+  exactly 1x in its target before its write, and STOP if one does not. Then:
+  PAIR_ID, PAIR_DO1, PAIR_DO2 and PAIR_DO3 are REWRITEs — FROM 0x, TO 1x after
+  the write. PAIR_F, PAIR_S, PAIR_TI, PAIR_TF and PAIR_GUARD are CONTAINS-FROM
+  — FROM 1x, TO 1x. PAIR_P_PLAN: `cmp` the applied `.agent/plan.md` against the
+  slice, `wc -l` against the cap of 50.
   A declared shape that does not equal the measured shape is a STOP.
 
-D added-line reconciliation for C2
-  `git show -U0 <C2> -- .agent/live_review.md`: every ADDED line appears in some
-  TO, every REMOVED line is a FROM. Both stray counts must be 0.
+D added-line reconciliation for C2, C3 and C4
+  For each of those three commits run `git show -U0 <commit>`: every ADDED line
+  appears in some TO of that commit, every REMOVED line is a FROM. Both stray
+  counts must be 0 for all three.
 
 E marker leakage
-  `^<<<` line count is 0 in `.agent/live_review.md`, `.agent/plan.md` and
-  `.agent/handoff.md`. Report the numbers, not the word.
+  `^<<<` line count is 0 in `.agent/live_review.md`, `.agent/plan.md`,
+  `.agent/handoff.md`, `apps/cli/commands/do_cmd.py` and all three touched test
+  files. Report the numbers, not the word.
 
 F state-file contracts
   `python3 -m pytest tests/docs/ -q` and
   `python3 -m pytest tests/ui_server/test_dashboard_contract.py -q`.
   `.agent/plan.md` keeps `## Goal` and a `Steps` substring;
-  `.agent/live_review.md` keeps its `## Steps` heading.
+  `.agent/live_review.md` keeps exactly one `## Steps` heading.
 
-G no production drift
-  `git diff --name-only c44a582c..HEAD` lists ONLY paths under `.agent/`.
-  Report the list. Nothing under `packages/`, `apps/`, `tests/` or `docs/`.
+G scope
+  `git diff --name-only 7f622b7f..HEAD` lists EXACTLY these nine paths and no
+  others: the two `.agent/authored`/`last_block` saves, `.agent/live_review.md`,
+  `.agent/plan.md`, `.agent/handoff.md`, `tests/orchestration/test_intake.py`,
+  `tests/orchestration/test_flight_plan.py`,
+  `tests/orchestration/test_prompt_trace.py`, `apps/cli/commands/do_cmd.py`.
+  Report the list. Nothing under `packages/` or `docs/`.
 
-H canary
+H scoped suite, after C4
+  `python3 -m pytest tests/orchestration/test_intake.py
+  tests/orchestration/test_flight_plan.py tests/orchestration/test_prompt_trace.py
+  tests/cli/test_do_cmd_cli_path.py -q`. Report the count and the time.
+
+I canary
   `python3 -m pytest tests/cli/test_golden_path.py -q`.
 
-I hygiene
-  `git status --porcelain` shows `?? .agent/STOP` and NOTHING else — that file
-  stays. `git worktree list` shows the primary ALONE. Per-commit insertions each
-  under 500 via `git show --numstat`.
+J red-proofs, THREE of them, in a DISPOSABLE worktree only
+  `git worktree add .remedy-wt/r41-red HEAD` after C4. Inside that worktree,
+  one at a time and reverting between them, report the FAILED test name each
+  time — three separate runs of the scoped pair
+  `tests/orchestration/test_intake.py tests/orchestration/test_flight_plan.py`
+  or `tests/orchestration/test_prompt_trace.py` as appropriate:
+  J1 in `packages/orchestration/intake.py`, replace
+     `composed.text if composed is not None else _build_intake_prompt(mission),`
+     with `_build_intake_prompt(mission),` — expect the new intake test RED.
+  J2 in `packages/orchestration/flight_plan.py`, replace
+     `prompt = composed.text if composed is not None else _build_plan_prompt(intake)`
+     with `prompt = _build_plan_prompt(intake)` — expect the new flight-plan
+     test RED.
+  J3 in `apps/cli/commands/do_cmd.py`, DELETE the line `composed=plan_composed,`
+     — expect `test_every_cli_call_site_hands_its_composition_down` RED.
+  Then `git worktree remove .remedy-wt/r41-red --force` and `git worktree prune`.
+  If any of the three comes back GREEN, that is a STOP and a declared
+  deviation, not something to fix by editing the test.
 
-No mutation red-proof is ordered and none is to be run: nothing executable
-changes, so there is no branch to mutate (D8 item 5, DECISION F105 D10).
+K hygiene
+  `git status --porcelain` EMPTY — `.agent/STOP` is gone and must not return.
+  `git worktree list` shows the primary ALONE. Per-commit insertions each under
+  500 via `git show --numstat`.
 
 Handback: completion report + rewrite `.agent/handoff.md` (changed-files table,
-item-status table for C1a/C1b/C2/C3, the gate table with real exit codes, the
-transport and pair proofs, open-findings count, and the next action for the
-session that resumes). Then `git push` and STOP — no further rounds, no PR.
+item-status table for C1a/C1b/C2/C3/C4/C5, the gate table with real exit codes,
+the transport and pair proofs, the three red-proof results, open-findings count,
+and the next expected action). Then `git push`. Do NOT create a PR — the PR is
+created at CLOSURE only.
 ──────────────────────────────────────────────────────────────
