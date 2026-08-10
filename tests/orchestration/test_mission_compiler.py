@@ -1213,7 +1213,10 @@ class TestMissionPlanEvidenceSink:
         # characters from the call's start, which is the call plus 71
         # characters of what follows it — measured, not the call expression
         # exactly (R-0260). That is enough for the job the guard has: the run
-        # site's label sits 7335 characters away, far outside this window, so a
-        # label that drifts to that call no longer satisfies this one.
+        # site's label lies far outside this window, so a label that drifts to
+        # that call no longer satisfies this one. No character distance is
+        # quoted here on purpose (R-0261): the gap between the two call sites
+        # is a fact about mission_cmd.py that no assertion pins, so a number
+        # here would go stale on the next edit to that file.
         planned = source.index("outcome = plan_mission(")
         assert 'provider_kind="ollama"' in source[planned:planned + 200]

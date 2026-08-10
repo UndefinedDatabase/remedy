@@ -2493,8 +2493,10 @@ class TestOrchestratorEvidenceSink:
         guards unsatisfiable (checklist item 7, finding R-0258). The window is
         200 characters from the call's start, which is the call plus 27
         characters of what follows it — measured, not the call expression
-        exactly (R-0260). It stays 7335 characters clear of the plan call's
-        label, which is the property this guard exists to hold.
+        exactly (R-0260). It stays clear of the plan call's label by thousands
+        of characters, which is the property this guard exists to hold. The
+        exact gap is deliberately not quoted (R-0261): no assertion pins it,
+        so a number here would go stale on the next edit to mission_cmd.py.
         """
         source = (Path(__file__).resolve().parents[2]
                   / "apps" / "cli" / "commands" / "mission_cmd.py").read_text()
