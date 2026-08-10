@@ -229,12 +229,22 @@ def run_intake(
     call_fn: Callable[[str, int], str],
     *,
     on_call: Callable[[int, str, bool, str], None] | None = None,
+    composed: ComposedPrompt | None = None,
 ) -> IntakeResult:
-    """LLM-backed intake with heuristic fallback on failure."""
+    """LLM-backed intake with heuristic fallback on failure.
+
+    ``composed`` lets a caller that ALREADY composed this prompt — the CLI, for
+    its trace manifest — hand those exact bytes over, so one composition feeds
+    both the provider and the evidence row and a manifest can no longer
+    describe bytes that were never sent (R-0256). Omitted, this function
+    composes for itself as it always has. The expression stays the ARGUMENT
+    inside the ``try``: a raising composer becomes the heuristic fallback,
+    never an escape (R-0257).
+    """
     try:
         outcome: StructuredOutcome = run_structured_call(
             JobIntake,
-            _build_intake_prompt(mission),
+            composed.text if composed is not None else _build_intake_prompt(mission),
             call_fn,
             on_call=on_call,
             allow_parse_retry=True,

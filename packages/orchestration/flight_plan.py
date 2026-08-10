@@ -439,6 +439,7 @@ def plan_job_llm(
     *,
     on_call: Callable[[int, str, bool, str], None] | None = None,
     granularity: GranularityConfig | None = None,
+    composed: ComposedPrompt | None = None,
 ) -> FlightPlanResult:
     """Generate a FlightPlan from a job's intake via LLM.
 
@@ -446,12 +447,19 @@ def plan_job_llm(
     Returns a FlightPlanResult; on failure, plan is None and error_hint
     describes the failure class.
 
+    ``composed`` lets a caller that ALREADY composed this prompt — the CLI, for
+    its trace manifest — hand those exact bytes over, so one composition feeds
+    both the provider and the evidence row (R-0256). Omitted, this function
+    composes for itself as it always has. The composition deliberately stays
+    ABOVE the ``try``: moving it inside is R-0262, which needs this function
+    and the CLI's call sites in one round and is NOT fixed here.
+
     The validated plan then passes through F016 task-granularity
     normalization — the single insertion point for it — and the result
     carries the transformation record. Finally the intake's open questions
     are carried into the plan (F034) so the approval gate can bundle them.
     """
-    prompt = _build_plan_prompt(intake)
+    prompt = composed.text if composed is not None else _build_plan_prompt(intake)
     try:
         outcome: StructuredOutcome = run_structured_call(
             FlightPlan,
