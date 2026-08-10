@@ -1,230 +1,396 @@
-── STEP T004 slice 0/2 — F105 R44 ────────────────────────────
-Goal:        Persist the R43 gate, then extract the ledger-reading half of
-             `stats cost` into one helper, with no behaviour change, so the
-             cache view in R45 reads through that helper instead of a copy.
-Bundle:      C1a save this block verbatim · C1b mirror it into last_block ·
-             C2 the R43 gate record and the R44 step line · C3 the extraction
-             (production code, own commit) · C4 plan + handoff.
-Change:      .agent/authored/f105-r44-1.md (new), .agent/last_block.md,
-             .agent/live_review.md, apps/cli/commands/stats_ledger_cmd.py,
-             .agent/plan.md, .agent/handoff.md. NOTHING else — no catalog
-             entry, no new command, no new test module, no docs/ this round.
+── STEP T004 slice 1/2 — F105 R45 ────────────────────────────
+Goal:        Add `remedy stats cache`: the cache-read share per bucket over the
+             ledger rows that already exist, with `unmeasured` never rendered
+             as a zero, and with the per-role limit named in the output.
+Bundle:      C1a save block · C1b mirror · C2 R44 gate + R-0267 + R45 step ·
+             C3 DECISION F105 D15 · C4 the view and its handler · C5 the
+             catalog entry · C6 the tests · C7 plan + handoff.
+Change:      .agent/authored/f105-r45-1.md (new), .agent/last_block.md,
+             .agent/live_review.md, .agent/decisions.md,
+             apps/cli/commands/stats_ledger_cmd.py, apps/cli/command_catalog.py,
+             tests/cli/test_stats_cost.py, .agent/plan.md, .agent/handoff.md.
+             NOTHING else. No new test module, no docs/, no packages/.
 Constraints: AGENTS.md in full: self-review before every commit, one logical
              step per commit, plan.md current, clean tree, push at the end.
-             Never `main`, never force-push, no PR this round. Do not touch
-             packages/orchestration/**, tests/**, docs/**. The extraction must
-             not change one byte of what `stats cost` prints — the existing
-             suite is the proof of that, not your reading of the diff.
-             Apply every pair below BYTE FOR BYTE. If a FROM is not found
-             exactly once, STOP and report; do not retype it from memory.
-Done when:   every gate below records a REAL exit code, and the diff touches
-             exactly the six paths named above.
+             Never `main`, never force-push, no PR. `--json` is deliberately
+             NOT part of this round: the command ships human-rendered only and
+             the catalog entry therefore declares supports_json=False and
+             offers no --json arg, so no flag ever exists that does nothing.
+Done when:   every gate records a REAL exit code and the diff touches exactly
+             the nine paths named above.
 Handback:    completion report + rewrite .agent/handoff.md
 ──────────────────────────────────────────────────────────────
 
-C1a — save this block verbatim
-  Write this ENTIRE block, from the STEP header line to the last line of this
-  block, to `.agent/authored/f105-r44-1.md` byte for byte. Commit it ALONE.
+C1a — write this ENTIRE block to `.agent/authored/f105-r45-1.md` byte for
+  byte and commit it ALONE.
+C1b — `cp` that file over `.agent/last_block.md`, never retype, commit alone,
+  then `cmp` the two: silent.
 
-C1b — mirror
-  `cp` that exact file over `.agent/last_block.md` — never retype it — and
-  commit it alone. `cmp` the two afterwards: silent.
+C2 — .agent/live_review.md. PAIR_ID is a REWRITE (FROM 0x after, TO 1x after).
+  PAIR_LR is CONTAINS-FROM: its TO repeats its FROM verbatim and adds after it.
 
-C2 — the R43 gate record and the R44 step line (.agent/live_review.md)
-  PAIR_LR is CONTAINS-FROM: the TO repeats the FROM verbatim and adds lines
-  after it. The FROM must be found exactly 1x before the write.
+<<<PAIR_ID_FROM>>>
+> Branch: feature/f105-cache-optimal-prompt-ordering. Next free ID: R-0267.
+<<<END_PAIR_ID_FROM>>>
+
+<<<PAIR_ID_TO>>>
+> Branch: feature/f105-cache-optimal-prompt-ordering. Next free ID: R-0268.
+<<<END_PAIR_ID_TO>>>
 
 <<<PAIR_LR_FROM>>>
-  T004 unstarted but fully scoped; the next session opens with T004 slice 1.
+  of one. Production code, so the round is SPLIT by §3.
 <<<END_PAIR_LR_FROM>>>
 
 <<<PAIR_LR_TO>>>
-  T004 unstarted but fully scoped; the next session opens with T004 slice 1.
-- Reviewer gate on R43 (2026-08-10, by the session that resumed the branch):
-  PASS. Range `1fc4c62c..b0b2d12f` = five commits, six paths, every one under
-  `.agent/`; nothing under `packages/`, `apps/`, `tests/` or `docs/`.
-  Insertions per commit 297, 208, 64, 44 and 94, each far under 500.
-  Transport by the PRIMARY shape: `.remedy-wt/f105-r43-1.block.md`, the
-  committed `.agent/authored/f105-r43-1.md` and `.agent/last_block.md` all
-  three hash to
-  `2c19254ead411e32b8247e54d7917aa1f411b63d2838b95f52e8f820881f71ad`
-  at 297 lines against D5's cap of 400; both `cmp` runs silent.
-  Reconciled by machine rather than by eye: every line C2 and C3 ADD appears
-  in the committed authored file — 64 added and 44 added, 0 strays each — and
-  of C4's 94 added lines the 14 in `.agent/plan.md` are 0-stray while the 80
-  in `.agent/handoff.md` are worker-authored by design. `cmp` of the applied
-  `.agent/plan.md` against the PAIR_P_PLAN slice is silent at 42 lines.
-  Gates re-run by THIS reviewer, none taken from the handback: `tests/docs/`
-  `294 passed in 0.26s`; `test_dashboard_contract.py` `70 passed in 3.96s`;
-  the canary `42 passed in 19.85s`; `^<<<` 0 in all four touched text files;
-  `.agent/plan.md` 42 lines against the cap of 50 and keeping `## Goal` and a
-  `Steps` substring; `.agent/live_review.md` exactly one `## Steps` heading;
-  `git status --porcelain` empty and the primary worktree alone.
-  Spot-checks of the REVIEWER's choosing, not ordered by the block: the three
-  source pointers under R-0265 and R-0266 were opened independently —
-  `token_actuals.py:110` is the `or 0` collapse, `pingpong_loop.py:3970` is
-  the hardcoded builder role constant, and `token_ledger.py:1017` is the
-  `role=_first_string(accounting, ("role",))` line. All three read as
-  registered, so neither finding rests on the inventory's word.
-  Gate J, the deliberately absent R43 gate record, was the correct call and is
-  closed by this entry: R43 ended a SESSION and not the BRANCH, so §4.13's
-  terminator never applied and the round stayed gateable — the R-0264 reading,
-  applied correctly for the first time by the round that produced it.
-  The declared handoff overage (120 lines, DECISION D15 line present) is
-  ACCEPTED: the mandated tables account for it and no section was dropped.
-  `LAST_REVIEWED_SHA` advances 1fc4c62c -> b0b2d12f.
-- R44: SPLIT round — persist the R43 gate and extract the ledger-reading half
-  of `stats cost` into `_load_ledger_reports`, with no behaviour change, so a
-  second view has one code path to read the ledger through rather than a copy
   of one. Production code, so the round is SPLIT by §3.
+- R-0267 (Low, F105 R44, pre-existing, registered AND fixed in R45): the
+  `sqlite3.Error` branch that turns an unreadable ledger into a usage error
+  has no test. `grep -rn 'cannot read the token ledger' tests/` returns
+  nothing, so the one path that stops a database fault from being rendered as
+  "zero cost" was never exercised. It is pre-existing — R44 moved it verbatim
+  out of `_cmd_stats_cost` — but R44 also widened its blast radius, because
+  the branch now sits in `_load_ledger_reports` and every view built on that
+  helper inherits it. A silent regression there would print a confident zero
+  over a corrupt file, which is the exact P6 failure the basis vocabulary
+  exists to prevent. Cheap to close while a test class is being written
+  anyway, so R45 closes it rather than carrying it.
+- Reviewer gate on R44 (2026-08-10): PASS. Range `b0b2d12f..ae1756f8` = five
+  commits, exactly the six paths the block named; one production file, nothing
+  under `packages/`, `tests/` or `docs/`. Insertions per commit 233, 226, 37,
+  24 and 94, each far under 500.
+  Transport by the PRIMARY shape: `.remedy-wt/f105-r44-1.block.md`, the
+  committed `.agent/authored/f105-r44-1.md` and `.agent/last_block.md` all
+  three hash to
+  `8944f6e563a74b11d104dc671b702b46ef49397f2b29227cf5fec48b6b987c24`
+  at 233 lines against D5's cap of 400; both `cmp` runs silent, and the head
+  and tail of the committed file are the reviewer's own emitted bytes.
+  Reconciled by machine: C2 37 added / 0 stray / 0 removed; C3 24 added / 0
+  stray / 6 removed, and all six removals are FROM text. `.agent/plan.md`
+  carries 17 stray lines, which is NOT a finding — this block made that file
+  worker-authored for the round and said so in its C4.
+  Gates re-run by THIS reviewer, none taken from the handback:
+  `tests/cli/test_stats_cost.py` `33 passed in 0.34s`; the two catalog suites
+  `41 passed in 0.49s`; the canary `42 passed in 19.60s`; `py_compile` exit 0;
+  `.agent/plan.md` 48 lines against the cap of 50 with `## Goal` and a `Steps`
+  substring; `.agent/live_review.md` exactly one `## Steps` heading; `^<<<` 0
+  in all four touched text files; `git status --porcelain` empty and the
+  primary worktree alone.
+  The C3 diff was read line by line against the authored TO and is
+  byte-identical to it, including the two comment lines it deletes because the
+  new docstring absorbed them. `query_cost(path=path` now appears exactly 1x
+  in the module: one read path, which is what the extraction was for.
+  The worker's ordered PROBE reported 19 of 33 tests failing when the helper's
+  body raises — a number, not a colour, and it proves the helper is reached.
+  The declared handoff overage (114 lines, DECISION D15 line present) is
+  ACCEPTED. R-0267 above comes from a reviewer spot-check the block did not
+  order and is the only thing this round leaves behind.
+  `LAST_REVIEWED_SHA` advances b0b2d12f -> ae1756f8.
+- R45: SPLIT round — add `remedy stats cache` over the helper R44 extracted,
+  render the share with two distinct words for its two distinct absences
+  (DECISION F105 D15), name the R-0266 per-role limit in the output, and close
+  R-0267 with the error-path test the shared branch never had.
 <<<END_PAIR_LR_TO>>>
 
-C3 — extract the ledger read (apps/cli/commands/stats_ledger_cmd.py)
-  PAIR_COST is a REWRITE: after the write its FROM is found 0x and its TO 1x.
-  Count the FROM as the WHOLE contiguous text, never by its first line — the
-  `def _cmd_stats_cost` signature legitimately survives inside the TO.
+C3 — .agent/decisions.md. PAIR_DEC is CONTAINS-FROM, appended at the END.
 
-<<<PAIR_COST_FROM>>>
-def _cmd_stats_cost(*, since: str = "", job: str = "", by: str | None = None,
-                    project: str | None = None,
-                    all_projects: bool = False,
-                    json_output: bool = False) -> None:
-    import sqlite3
+<<<PAIR_DEC_FROM>>>
+producer fix, with R-0266 closed in the same round.
+<<<END_PAIR_DEC_FROM>>>
 
-    from apps.cli.commands.failure_stats_cmd import _validate_since
-    from packages.orchestration.token_ledger import merge_cost_reports, query_cost
+<<<PAIR_DEC_TO>>>
+producer fix, with R-0266 closed in the same round.
 
-    # One spelling of "what is a valid --since", shared with `stats failures`.
-    since = _validate_since(since)
-    by = _validate_by(by)
-    ledgers, scope_label = _ledger_paths_for_scope(project, all_projects)
+D15 — a cache-read share needs TWO words for "no number here", not one.
+DECISION D14 Q5 ruled that a figure nobody reported prints the existing word
+`unmeasured`, and that stands. But a SHARE has a second way to have no value:
+a bucket whose inputs WERE reported and are both zero divides 0 by 0. Printing
+`unmeasured` there would blame a provider for a figure it did in fact report —
+the P6 lie pointing the other way — and printing `0.0%` would invent a
+measurement. That case prints `undefined`, defined beside `UNMEASURED` in
+`apps/cli/commands/stats_ledger_cmd.py` with the reason above it.
 
-    try:
-        reports = [
-            query_cost(path=path, since=since or None, job_id=job or None, by=by)
-            for path in ledgers
-        ]
-    except sqlite3.Error as exc:
-        # An unreadable ledger is not "zero cost". Saying so would be the exact
-        # lie the basis labeling exists to prevent.
-        if json_output:
-            print(_json.dumps({"ok": False, "error": str(exc)}, indent=2))
-        else:
-            print(f"Error: cannot read the token ledger: {exc}", file=sys.stderr)
-        raise SystemExit(EXIT_ERROR) from None
+The alternative considered and rejected: one word for both, on the "one
+spelling per concept" rule (AGENTS.md). Rejected because they are two
+concepts, not one spelling of one — "nobody measured this" and "this measured
+to nothing" differ exactly where a reader's next action differs.
 
-    report = reports[0] if len(reports) == 1 else merge_cost_reports(reports)
-    # What was actually READ, not what was looked for: a project whose ledger does
-    # not exist yet contributes no file and no figure.
-    ledgers_read = [r.ledger_path for r in reports if r.ledger_exists and r.ledger_path]
-    if json_output:
-        print(_json.dumps(_cost_payload(
-            report, ledgers_read=ledgers_read, scope_label=scope_label), indent=2))
+Reverse this decision by deleting `UNDEFINED_SHARE` and returning `UNMEASURED`
+for the zero-denominator case, with the test that pins the two words dropped.
+<<<END_PAIR_DEC_TO>>>
+
+C4 — apps/cli/commands/stats_ledger_cmd.py. Two CONTAINS-FROM pairs, ONE
+  commit. PAIR_VIEW appends the view after `_cmd_stats_cost`; PAIR_HANDLER
+  inserts the handler entry before the backfill-ledger one.
+
+<<<PAIR_VIEW_FROM>>>
     else:
         print(_render_cost_human(
             report, ledgers_read=ledgers_read, scope_label=scope_label))
-<<<END_PAIR_COST_FROM>>>
+<<<END_PAIR_VIEW_FROM>>>
 
-<<<PAIR_COST_TO>>>
-# Every read a ledger VIEW needs, in one place, so renderers stay renderers.
-def _load_ledger_reports(*, since: str, job: str, by: str | None,
-                         project: str | None, all_projects: bool,
-                         json_output: bool):
-    """Validate the filters, query every ledger in scope, and merge the answers.
+<<<PAIR_VIEW_TO>>>
+    else:
+        print(_render_cost_human(
+            report, ledgers_read=ledgers_read, scope_label=scope_label))
 
-    Views over this ledger ask it the SAME question and differ only in what they
-    render from the answer, so the reading lives here once. Returns the merged
-    report, the ledger paths actually READ, and the scope label, in that order.
 
-    An unreadable ledger EXITS here instead of returning an empty report: a
-    database error does not mean zero, and rendering it as zero would be the
-    exact lie the basis labeling exists to prevent.
+#: What a share prints when its inputs WERE reported and are both zero. That is
+#: NOT "nobody reported it": it is a real bucket that read nothing at all, and a
+#: share of nothing has no value. Calling that `unmeasured` would blame a
+#: provider for a figure it did report, and `0.0%` would invent a measurement.
+UNDEFINED_SHARE = "undefined"
+
+#: What a role split cannot tell a reader yet, printed in the output instead of
+#: buried in a docstring. Every ledger row a live run writes carries one
+#: hardcoded role, so a role split of production data has exactly one bucket;
+#: further buckets come from hand-written accounting files. Remedy names the
+#: limit rather than presenting one bucket as a breakdown.
+_ROLE_LIMIT_NOTE = (
+    "Per-role limit: every row a live run writes carries one hardcoded role "
+    "today, so a role split of production data shows a single bucket. Any "
+    "further bucket here came from a hand-written accounting file, not from "
+    "the orchestrator."
+)
+
+
+def _cache_read_share(row) -> float | str:
+    """The bucket's cache-read share, or the word saying why it has none.
+
+    The share is ``cache_read / (tokens_in + cache_read)``: of everything fed
+    into the model, how much came from cache. BOTH inputs must be measured — an
+    unmeasured input makes the share unmeasured too, because substituting a 0
+    for a figure nobody reported is the same lie one layer up.
     """
-    import sqlite3
+    cache_read, tokens_in = row.cache_read, row.tokens_in
+    if cache_read is None or tokens_in is None:
+        return UNMEASURED
+    total_input = tokens_in + cache_read
+    if total_input == 0:
+        return UNDEFINED_SHARE
+    return cache_read / total_input
 
-    from apps.cli.commands.failure_stats_cmd import _validate_since
-    from packages.orchestration.token_ledger import merge_cost_reports, query_cost
 
-    # One spelling of "what is a valid --since", shared with `stats failures`.
-    since = _validate_since(since)
-    by = _validate_by(by)
-    ledgers, scope_label = _ledger_paths_for_scope(project, all_projects)
+def _share_text(share) -> str:
+    """One share as a table cell: a percentage, or the word standing in for it."""
+    return share if isinstance(share, str) else f"{share * 100:.1f}%"
 
-    try:
-        reports = [
-            query_cost(path=path, since=since or None, job_id=job or None, by=by)
-            for path in ledgers
+
+def _render_cache_human(report, *, ledgers_read: list[str], scope_label: str) -> str:
+    """A share table in which no missing share can be mistaken for 0 %."""
+    lines = [f"Cache-read share from the token ledger — {scope_label}, "
+             f"{len(ledgers_read)} ledger(s) read"]
+    lines.append("Filters: " + "  ".join(f"{name}={value}" for name, value in (
+        ("since", report.since or "-"),
+        ("job", report.job_id or "-"),
+        ("by", report.by or "-"),
+    )))
+
+    if not report.ledger_exists:
+        lines.append("")
+        lines.append("No ledger on disk for this scope — nothing has been recorded yet.")
+        lines.append("Run 'remedy stats backfill-ledger <evidence-dir>' to mirror "
+                     "existing evidence.")
+        return "\n".join(lines)
+
+    headers = ["Bucket", "Calls", "Tokens in", "Cache read", "Cache share", "Basis"]
+    labelled = [(row.bucket if row.bucket is not None else "(unnamed)", row)
+                for row in report.rows] + [("TOTAL", report.total)]
+    body = [
+        [
+            label,
+            str(row.calls),
+            _figure(row.tokens_in),
+            _figure(row.cache_read),
+            _share_text(_cache_read_share(row)),
+            f"{_row_basis(row)} ({row.measured_calls}/{row.calls})",
         ]
-    except sqlite3.Error as exc:
-        if json_output:
-            print(_json.dumps({"ok": False, "error": str(exc)}, indent=2))
-        else:
-            print(f"Error: cannot read the token ledger: {exc}", file=sys.stderr)
-        raise SystemExit(EXIT_ERROR) from None
+        for label, row in labelled
+    ]
+    widths = [max(len(headers[i]), *(len(r[i]) for r in body)) for i in range(len(headers))]
+    lines.append("")
+    lines.append("  ".join(h.ljust(w) for h, w in zip(headers, widths)).rstrip())
+    for row in body:
+        lines.append("  ".join(cell.ljust(w) for cell, w in zip(row, widths)).rstrip())
 
-    report = reports[0] if len(reports) == 1 else merge_cost_reports(reports)
-    # What was actually READ, not what was looked for: a project whose ledger does
-    # not exist yet contributes no file and no figure.
-    ledgers_read = [r.ledger_path for r in reports if r.ledger_exists and r.ledger_path]
-    return report, ledgers_read, scope_label
+    total = report.total
+    lines.append("")
+    lines.append("Share = cache_read / (tokens_in + cache_read).")
+    lines.append(f"'{UNMEASURED}' means nobody reported the inputs; "
+                 f"'{UNDEFINED_SHARE}' means they were reported and were zero.")
+    lines.append(
+        f"Basis: {total.measured_calls} of {total.calls} call(s) reported usage "
+        f"(provider_reported); {total.unmeasured_calls} reported none (unknown)."
+    )
+    if report.by == "role":
+        lines.append(_ROLE_LIMIT_NOTE)
+    return "\n".join(lines)
 
 
-def _cmd_stats_cost(*, since: str = "", job: str = "", by: str | None = None,
-                    project: str | None = None,
-                    all_projects: bool = False,
-                    json_output: bool = False) -> None:
+def _cmd_stats_cache(*, since: str = "", job: str = "", by: str | None = None,
+                     project: str | None = None,
+                     all_projects: bool = False) -> None:
     report, ledgers_read, scope_label = _load_ledger_reports(
         since=since, job=job, by=by, project=project,
-        all_projects=all_projects, json_output=json_output)
-    if json_output:
-        print(_json.dumps(_cost_payload(
-            report, ledgers_read=ledgers_read, scope_label=scope_label), indent=2))
-    else:
-        print(_render_cost_human(
-            report, ledgers_read=ledgers_read, scope_label=scope_label))
-<<<END_PAIR_COST_TO>>>
+        all_projects=all_projects, json_output=False)
+    print(_render_cache_human(
+        report, ledgers_read=ledgers_read, scope_label=scope_label))
+<<<END_PAIR_VIEW_TO>>>
 
-C4 — plan and handoff
-  Rewrite `.agent/plan.md` yourself to the post-round state: UNDER 50 lines,
-  keeping a `## Goal` heading and a `## Next Steps` heading, naming R44 as
-  gated-pending, the six open findings, and R45 — the `stats cache` command,
-  its catalog entry and its test module — as the next step. This file is NOT
-  reviewer-authored this round; the block budget went to the pairs. Write it
-  against the current disk state, which AGENTS.md requires it to reflect.
-  Then rewrite `.agent/handoff.md`: feature and round, branch, commit SHAs,
-  changed-files table, item-status table, every gate below with its REAL exit
-  code, open-findings count, next expected action. Under 60 lines, or over it
-  with a DECISION D15 "Deviations, declared" line naming the actual count and
-  the mandated content that caused it.
-  Commit C4, then push the branch. Create NO pull request.
+<<<PAIR_HANDLER_FROM>>>
+    "stats.backfill-ledger": lambda args: _cmd_stats_backfill_ledger(
+<<<END_PAIR_HANDLER_FROM>>>
+
+<<<PAIR_HANDLER_TO>>>
+    "stats.cache": lambda args: _cmd_stats_cache(
+        since=getattr(args, "since", "") or "",
+        job=getattr(args, "job", "") or "",
+        by=getattr(args, "by", None),
+        project=getattr(args, "project", None),
+        all_projects=getattr(args, "all_projects", False),
+    ),
+    "stats.backfill-ledger": lambda args: _cmd_stats_backfill_ledger(
+<<<END_PAIR_HANDLER_TO>>>
+
+C5 — apps/cli/command_catalog.py. PAIR_CAT is CONTAINS-FROM: the new entry is
+  inserted before the backfill-ledger entry.
+
+<<<PAIR_CAT_FROM>>>
+    CommandEntry(
+        command_id="stats.backfill-ledger",
+<<<END_PAIR_CAT_FROM>>>
+
+<<<PAIR_CAT_TO>>>
+    CommandEntry(
+        command_id="stats.cache",
+        group_id="stats",
+        subcommand="cache",
+        description=(
+            "Cache-read share per bucket from the ledger. A share nobody could "
+            "measure prints a word, never 0 %, and a role split names the limit "
+            "it cannot show (read-only)."
+        ),
+        action_class="read_only",
+        supports_json=False,
+        related=("stats.cost", "stats.backfill-ledger"),
+        args=(
+            ArgDef("--since", "Only calls at or after this ISO-8601 timestamp", required=False, is_option=True),
+            ArgDef("--job", "Only this job's calls", required=False, is_option=True),
+            ArgDef("--by", "Group the shares by role, model or day (default: grand total only)", required=False, is_option=True),
+            _PROJECT_SCOPE_OPT,
+            _ALL_PROJECTS_FLAG,
+        ),
+        may_mutate_repo=False,
+        may_execute_commands=False,
+    ),
+    CommandEntry(
+        command_id="stats.backfill-ledger",
+<<<END_PAIR_CAT_TO>>>
+
+C6 — tests/cli/test_stats_cost.py. Two CONTAINS-FROM pairs, ONE commit.
+
+<<<PAIR_TDOC_FROM>>>
+  * `backfill-ledger` is idempotent: a second invocation adds no row.
+<<<END_PAIR_TDOC_FROM>>>
+
+<<<PAIR_TDOC_TO>>>
+  * `backfill-ledger` is idempotent: a second invocation adds no row.
+  * `stats cache` renders the cache-read share over the SAME rows, with two
+    distinct words for its two distinct absences, and refuses to answer at all
+    when the ledger cannot be read.
+<<<END_PAIR_TDOC_TO>>>
+
+<<<PAIR_TEST_FROM>>>
+        assert sorted(p.name for p in filled_ledger.parent.iterdir()) == before
+<<<END_PAIR_TEST_FROM>>>
+
+<<<PAIR_TEST_TO>>>
+        assert sorted(p.name for p in filled_ledger.parent.iterdir()) == before
+
+
+class TestStatsCacheView:
+    """`remedy stats cache` — the share view over the same ledger rows."""
+
+    def test_the_command_is_in_the_catalog_and_has_a_handler(self):
+        entry = get_command("stats.cache")
+
+        assert entry is not None
+        assert entry.action_class == "read_only"
+        assert "stats.cache" in collect_all_handlers()
+
+    def test_a_measured_bucket_renders_a_percentage(self, filled_ledger,
+                                                    project_id, capsys):
+        CMD._cmd_stats_cache(project=project_id, by="role")
+
+        assert _table_row(capsys.readouterr().out, "builder")[2:5] == [
+            "1000", "64", "6.0%"]
+
+    def test_a_bucket_nobody_reported_says_so_instead_of_showing_zero(
+        self, filled_ledger, project_id, capsys
+    ):
+        CMD._cmd_stats_cache(project=project_id, by="role")
+        out = capsys.readouterr().out
+
+        assert _table_row(out, "reviewer")[2:5] == ["unmeasured"] * 3
+        assert "0.0%" not in out
+
+    def test_a_role_split_names_the_limit_it_cannot_show(self, filled_ledger,
+                                                         project_id, capsys):
+        CMD._cmd_stats_cache(project=project_id, by="role")
+
+        assert "Per-role limit" in capsys.readouterr().out
+
+    def test_reported_zeros_are_undefined_and_not_unmeasured(self):
+        from packages.orchestration.token_ledger import CostRow
+
+        assert CMD._cache_read_share(
+            CostRow(calls=1, tokens_in=0, cache_read=0)) == "undefined"
+        assert CMD._cache_read_share(CostRow(calls=1)) == "unmeasured"
+
+    def test_an_unreadable_ledger_exits_instead_of_reporting_zero(
+        self, filled_ledger, project_id, capsys
+    ):
+        filled_ledger.write_bytes(b"this is not a database")
+
+        with pytest.raises(SystemExit) as exc:
+            CMD._cmd_stats_cache(project=project_id)
+
+        assert exc.value.code == CMD.EXIT_ERROR
+        assert "cannot read the token ledger" in capsys.readouterr().err
+<<<END_PAIR_TEST_TO>>>
+
+C7 — plan and handoff. Rewrite `.agent/plan.md` yourself: UNDER 50 lines, a
+  `## Goal` heading and a `## Next Steps` heading, R45 gated-pending, the
+  findings still open, and R46 (the `--json` mode for `stats cache` plus the
+  before/after comparison note) as the next step. Then rewrite
+  `.agent/handoff.md`: feature and round, branch, commit SHAs, changed-files
+  table, item-status table, every gate with its REAL exit code, open-findings
+  count, next expected action. Under 60 lines, or over it with a DECISION D15
+  "Deviations, declared" line naming the count and its mandated causes.
+  Commit C7, push the branch, create NO pull request.
 
 Gates — run every one, record its REAL exit code, never the word "green"
-  A  sha256sum + cmp across the block file, `.agent/authored/f105-r44-1.md`
-     and `.agent/last_block.md`: all three equal, both `cmp` runs silent.
-  B  wc -l `.agent/authored/f105-r44-1.md`, reported against D5's cap of 400.
-  C  Pair shapes MEASURED, not asserted: PAIR_LR FROM 1x before and 1x after,
-     its TO 1x after; PAIR_COST FROM 1x before and 0x after, its TO 1x after.
-  D  Stray reconcile for C2 and C3 — `git show -U0 <sha> -- <path>`, then
-     check that every ADDED line appears in `.agent/authored/f105-r44-1.md`.
-     Report both added counts and both stray counts.
-  E  grep -c '^<<<' over live_review.md, plan.md, handoff.md and
-     stats_ledger_cmd.py — all four 0. `grep -c` exits 1 when the pattern is
-     absent, and that is the PASS condition here; record the counts.
-  F  python3 -m pytest tests/cli/test_stats_cost.py -q — the extraction's own
-     gate: this suite drives `stats cost` end to end, so it is what proves the
-     behaviour did not move.
-  G  python3 -m pytest tests/test_command_catalog.py tests/cli/test_command_catalog.py -q
+  A  sha256sum + cmp across block file, authored file and last_block: all
+     three equal, both `cmp` runs silent. B  wc -l the authored file vs cap 400.
+  C  Pair shapes MEASURED: PAIR_ID FROM 1x before / 0x after, TO 1x after.
+     PAIR_LR, PAIR_DEC, PAIR_VIEW, PAIR_HANDLER, PAIR_CAT, PAIR_TDOC and
+     PAIR_TEST are all CONTAINS-FROM: FROM 1x before and 1x after, TO 1x after.
+  D  Stray reconcile for C2, C3, C4, C5 and C6: `git show -U0 <sha> -- <path>`,
+     then check every ADDED line appears in the authored file. Report added and
+     stray counts for each.
+  E  grep -c '^<<<' over all seven touched text files — every count 0.
+  F  python3 -m pytest tests/cli/test_stats_cost.py -q — must include the six
+     new tests. Report the total.
+  G  python3 -m pytest tests/test_command_catalog.py tests/cli/test_command_catalog.py tests/cli/test_product_spine.py -q
   H  Canary: python3 -m pytest tests/cli/test_golden_path.py -q
-  I  PROBE, not a colour, and ONLY inside a DISPOSABLE `git worktree` at HEAD,
-     never the primary checkout: replace the body of `_load_ledger_reports`
-     with `raise RuntimeError("probe")` and run tests/cli/test_stats_cost.py.
-     REPORT HOW MANY TESTS FAIL. Do not assert a colour — if the number is 0
-     the extraction is unreached, which is a finding about the code and not a
-     failure of yours. Remove the worktree and `git worktree prune` before the
-     handback, so the primary checkout is alone again at verdict time.
+  I  python3 -m py_compile on both changed production files.
   J  git status --porcelain EMPTY; git worktree list shows the primary ALONE;
      insertions per commit from `git show --numstat`, each under 500.
-  K  git diff --name-only b0b2d12f..HEAD — exactly the six paths named above.
+  K  git diff --name-only ae1756f8..HEAD — exactly the nine paths named above.
+
+If gate F or G comes back RED, do NOT improvise a fix that leaves this change
+set. Report the exact failure output and stop: a reviewer mistake in an
+authored slice is mine to repair, and a round that halts honestly costs less
+than one that invents its way past a red gate.
 
 Do not: touch `main`, force-push, create `.agent/STOP`, merge anything, widen
 the change set, or fix R-0221, R-0239, R-0247, R-0262, R-0265 or R-0266 — all
