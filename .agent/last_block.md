@@ -1,131 +1,212 @@
-── STEP R32 (session close) — F105 ────────────────────────────
-Goal:        Record the R31 reviewer gate on disk, resolve the two findings
-             whose fixes have landed and been verified, and end the session
-             with a handoff that names exactly where the next one starts.
-Bundle:      C1 save this block · C2 the R31 gate record and the two
-             resolutions · C3 plan and the session-ending handoff.
-Change:      `.agent/authored/f105-r32-1.md`, `.agent/last_block.md`,
-             `.agent/live_review.md`, `.agent/plan.md`, `.agent/handoff.md`.
-             Nothing else. No production code, no tests, no docs this round.
-Constraints: State-file-only round. Do not touch `packages/`, `apps/`, `tests/`
-             or `docs/`. Do not reflow any line you were not given a pair for.
+── STEP R33 — F105 ───────────────────────────────────────────
+Goal:        Give the ORCHESTRATOR prompt the call evidence the other three
+             migrated sites already have: a per-iteration recorder that carries
+             the segment manifest, and a sink that appends every provider call
+             to the mission's `prompt_trace.jsonl` from INSIDE `run_mission`.
+Bundle:      C1 save this block · C2 the R32 gate record and DECISION D11 ·
+             C3 the recorder and compose-once · C4 the sink and the CLI provider
+             label · C5 the tests · C6 plan and handback.
+Change:      `.agent/authored/f105-r33-1.md`, `.agent/last_block.md`,
+             `.agent/live_review.md`, `.agent/decisions.md`, `.agent/plan.md`,
+             `.agent/handoff.md`, `packages/orchestration/orchestrator_loop.py`,
+             `apps/cli/commands/mission_cmd.py`,
+             `tests/orchestration/test_orchestrator_loop.py`. Nothing else.
+Constraints: Prompt BYTES do not change — `test_orchestrator_prompt_golden.py`
+             asserts `==` against the frozen render and must stay green.
+             Do NOT remove or re-sign `build_orchestrator_prompt`; two test
+             modules import it. Do NOT touch `gauntlet_runner.py` this round.
+             Do NOT introduce a shared constant for `"prompt_trace.jsonl"`:
+             ten sites already spell it inline and a repo-wide rename is
+             forbidden churn (AGENTS.md Code Discoverability, FORWARD-LOOKING).
 Done when:   every gate below is run and its REAL exit code recorded.
 
 C1 — save this block verbatim, TWO commits
-  C1a `cp /home/decodeux/Repos/remedy/.remedy-wt/f105-r32-1.block.md`
-      `.agent/authored/f105-r32-1.md`. Commit it ALONE.
+  C1a `cp /home/decodeux/Repos/remedy/.remedy-wt/f105-r33-1.block.md`
+      `.agent/authored/f105-r33-1.md`. Commit it ALONE.
   C1b `cp` the same bytes to `.agent/last_block.md`. Commit separately.
   `sha256sum` all three plus `cmp`; digest in the handback.
 
-C2 — the R31 gate record and the two resolutions (own commit)
-  Three pairs against `.agent/live_review.md`, all in this one commit.
-  PAIR_A is APPEND-shaped — prove FROM exactly 1x plus the TO-only ADDED-LINE
-  count over this commit's diff. PAIR_B and PAIR_C are also APPEND-shaped (each
-  TO opens with its FROM verbatim). Do NOT use a whole-file count for any of
-  them; scope every count to this commit's ADDED lines (§4.9). Report the total
-  stray count across all three.
+C2 — the R32 gate record and DECISION D11 (own commit, two files)
+  PAIR_A appends to `.agent/live_review.md`; PAIR_B appends to
+  `.agent/decisions.md`. Both are APPEND-shaped: each TO opens with its FROM
+  verbatim. For each, prove FROM exactly 1x in its target and count the
+  TO-only ADDED lines over THIS commit's diff FOR THAT PATH
+  (`git show --numstat a-commit -- path`), never a whole-file count (§4.9).
+  Report the stray count per path, both directions.
 
 <<<PAIR_A_FROM>>>
-  `LAST_REVIEWED_SHA` advances 0c8932e3 -> 0ba30611.
+  `LAST_REVIEWED_SHA` advances 0ba30611 -> 9bd3a3e7.
 <<<END_PAIR_A_FROM>>>
 
 <<<PAIR_A_TO>>>
-  `LAST_REVIEWED_SHA` advances 0c8932e3 -> 0ba30611.
-- R31: SPLIT round — fix R-0257, name the mission-plan evidence sink in
-  `plan_mission`, label the provider from `remedy mission plan`, and pin all of
-  it with `TestMissionPlanEvidenceSink`.
-- Reviewer gate on R31 (2026-08-10): PASS. Range `0ba30611..9bd3a3e7` = seven
-  commits, read as a real diff: eight paths, exactly the ones the block named;
-  insertions per commit 384, 257, 53, 13, 17, 67, 58 — each under 500.
-  Transport disk to disk against the reviewer's surviving original:
-  `.remedy-wt/f105-r31-1.block.md`, `.agent/authored/f105-r31-1.md` and
-  `.agent/last_block.md` all three
-  `8833261bcf731bec965fbcd52ff7aa8339141a5ae076397cfeee41232f307003`, both
-  `cmp` runs silent, 384 lines against DECISION F105 D5's cap of 400.
-  All eight pairs re-sliced from the COMMITTED authored file by the reviewer's
-  own whole-line marker reader; declared shape equals measured shape for every
-  one. PAIR_A FROM 1x with 52 TO-only lines; C2 ADDS 53 and REMOVES 1, the
-  extra add and the single removal both PAIR_B's, so strays 0 in both
-  directions. PAIR_C, D, E and F all FROM 0x after and TO 1x, with C3's 12
-  added / 7 removed and C4's 12 added / 2 removed on the compiler and 5 added
-  on the CLI all accounted for by their TOs. PAIR_G FROM 1x with 66 TO-only
-  against 67 ADDED. PAIR_H byte-equal to `.agent/plan.md` at 42 lines against
-  the cap of 50. Exactly two additions sit outside a TO in the whole round and
-  the block named both in advance: the `Landed: R-0257` line and the
-  `from packages.orchestration import mission_compiler` test import.
-  Gates re-run by THIS reviewer with real exit codes: `grep -c -E '^<<<'` = 0
-  in all five targets; `test_mission_compiler.py` + `test_mission_prompt_golden.py`
-  `126 passed in 0.65s`; the three caller suites `78 passed in 1.23s`;
-  `tests/cli/` `1329 passed in 261.30s`; `tests/docs/` `294 passed in 0.30s`;
-  the dashboard contract `70 passed in 4.31s`; the canary `42 passed in 19.46s`;
-  `git status --porcelain` empty and `git worktree list` the primary alone.
-  BOTH red-proofs reproduced by the reviewer in a disposable worktree at
-  db3bdef3 with `PYTHONDONTWRITEBYTECODE=1`. M1: `append_trace_jsonl` swapped
-  for `write_trace_jsonl` in `plan_mission`'s import AND call turns exactly one
-  test RED, `test_a_recompile_appends_rather_than_truncating`, at
-  `1 failed, 120 passed in 0.60s`. M2: after reverting M1 — `git diff --stat`
-  empty, so the revert is proved — deleting `traces=prompt_traces,` turns
-  exactly two RED, `test_planning_writes_the_trace_into_the_evidence_dir` and
-  the recompile test, at `2 failed, 119 passed in 0.74s`. Worktree removed and
-  pruned. The handback's 71-line handoff carries its DECISION D15 stated-cause
-  line and drops no mandated section, which is the rule, not an exception.
   `LAST_REVIEWED_SHA` advances 0ba30611 -> 9bd3a3e7.
+- R32: session-close round — record the R31 gate, resolve R-0246 and R-0257,
+  write the session-ending handoff. State files only.
+- Reviewer gate on R32 (2026-08-10): PASS. Range `9bd3a3e7..cab89962` = four
+  commits, read as a real diff: five paths, every one under `.agent/`, exactly
+  the ones the block named; insertions per commit 196, 129, 54, 47 — each under
+  500. Transport disk to disk against the reviewer's surviving original:
+  `.remedy-wt/f105-r32-1.block.md`, `.agent/authored/f105-r32-1.md` and
+  `.agent/last_block.md` all three
+  `56173ae6acaf147af639b03200b9398df3158598b086dc686df68e34131cb78f`, all three
+  `cmp` runs silent, 196 lines against DECISION F105 D5's cap of 400.
+  All three C2 pairs re-sliced from the COMMITTED authored file by the
+  reviewer's own whole-line marker reader: declared shape equals measured shape
+  for every one — each TO opens with its FROM verbatim, so all three are APPEND
+  as declared. FROM exactly 1x in the target both before and after the write,
+  TO exactly 1x after. TO-only lines 39 + 7 + 8 = 54; the commit ADDS 54 and
+  REMOVES 0 over `.agent/live_review.md`, so strays are 0 in both directions
+  and no added line sits outside a TO. PAIR_D byte-equal to the applied
+  `.agent/plan.md` at 43 lines against the cap of 50; the handoff is 59 lines
+  against the cap of 60.
+  Gates re-run by THIS reviewer with real exit codes: `grep -c -E '^<<<'`
+  prints `0` in `.agent/live_review.md` and `0` in `.agent/plan.md` (rc 1, the
+  honest no-match); `tests/docs/` `294 passed in 0.30s`; the dashboard contract
+  `70 passed in 4.11s`; the canary `42 passed in 19.44s`; `git status
+  --porcelain` empty and `git worktree list` the primary alone. Gate H is
+  re-measured here AFTER the C3 commit the handback could not measure itself,
+  and it is clean — the declared D15 deviation was a timing statement, not a
+  gap. No mutation red-proof: nothing executable changed, so there is no branch
+  to mutate (DECISION F105 D10).
+  The record's own claims were spot-checked against git rather than read: the
+  R31 gate line's "seven commits, eight paths" and its per-commit insertions
+  384, 257, 53, 13, 17, 67, 58 are exact, and both resolution commits it names
+  exist and touch the file it says they do — 39da9b61 for R-0246, 3d37567f for
+  R-0257.
+  The open-findings count of 4 was re-derived, not accepted: R-0221, R-0239,
+  R-0247 and R-0256 carry no resolution. Four further entries also carry no
+  `Done: R-XXXX` line of their own and are nevertheless closed — R-0240 and
+  R-0241 share one `Done:` paragraph filed under R-0241, and R-0250 and R-0252
+  were resolved inline as DECISIONs D8 and D10. Both of those deferred their
+  proof to "the NEXT session's gate", which is this one: §3 of
+  docs/agents/planner_reviewer_prompt.md carries the checklist as items 1-6,
+  including item 5's reachability rule (D10) and item 6's target-content rule,
+  and it reads as intended. Both are therefore closed on evidence, not on
+  assertion. A mechanical `Done:`-grep undercounts resolutions by four; that is
+  a property of this file's format, not a defect of R32, and it is recorded
+  here so no later reader re-derives it as a finding.
+  `LAST_REVIEWED_SHA` advances 9bd3a3e7 -> cab89962.
 <<<END_PAIR_A_TO>>>
 
 <<<PAIR_B_FROM>>>
-  `None` cap reproduces the pre-R-0197 milestone ceiling, while the composed
-  ORDER differs from the pre-migration template and the segment bytes do not.
-  OPEN.
+Reverse this decision by deleting this entry and §3 checklist item 5.
 <<<END_PAIR_B_FROM>>>
 
 <<<PAIR_B_TO>>>
-  `None` cap reproduces the pre-R-0197 milestone ceiling, while the composed
-  ORDER differs from the pre-migration template and the segment bytes do not.
-  OPEN.
-  Done: R-0246 (2026-08-10) — RESOLVED at F105 R30, commit 39da9b61. The
-  docstring now says "reproduces the pre-R-0197 milestone CEILING — not the
-  pre-migration byte SEQUENCE", and states that the composed order differs at
-  every value of `max_milestones`, `None` included. Verified by the reviewer
-  against the real diff, not the handback: the sentence a reader searching for
-  "did the migration change the prompt?" lands on can no longer be read as a
-  claim about byte order.
+Reverse this decision by deleting this entry and §3 checklist item 5.
+
+D11 — the orchestrator prompt's evidence sink lives INSIDE `run_mission`, not
+in `remedy mission run`. The mission-plan site put its sink in `plan_mission`,
+a package function, and `.agent/plan.md` carried the orchestrator site as two
+rounds: `mission_cmd.py` first, `gauntlet_runner.py` second. Reading the
+callers dissolved the second round. `run_mission` has TWO production callers —
+`apps/cli/commands/mission_cmd.py:366` and `packages/orchestration/
+gauntlet_runner.py:514` through `deps.run_mission` — and it already owns the
+mission's evidence directory, because `append_ledger_entry` writes the ledger
+into it every iteration. A sink in the CLI would have left every gauntlet run
+with no orchestrator prompt evidence at all, and the gate would have been green
+the whole time: the F104 R-0220 class, where the caller is the thing nobody
+checked.
+
+Placing it in `run_mission` also settles WHEN the write happens. The loop has
+several return paths and a boundary that turns a raise into a terminal, so a
+single flush after the loop would lose the calls a crashed or stopped run had
+already made. The append therefore happens per iteration, immediately after the
+provider call, exactly as the ledger entry does a few lines away — one
+durability rule for both records of the same iteration.
+
+The alternative — flush once from each caller, copying `plan_mission` literally
+— was rejected on both counts: it duplicates the sink per caller and it trades
+the ledger's durability for a shape that only looks consistent.
+
+Consequence, stated so it is not mistaken for an omission: the gauntlet's
+orchestrator rows land in evidence from this round on, but carry an EMPTY
+provider label until `gauntlet_runner.py:514` names it. Unlabeled is honest;
+mislabeled would not be. That is a one-line round, no longer a wiring round.
+
+Reverse this decision by deleting this entry, dropping the append from
+`run_mission`, and flushing a caller-owned `traces` list in each of the two
+callers instead.
 <<<END_PAIR_B_TO>>>
 
-<<<PAIR_C_FROM>>>
-  Landed: R-0257 — composition moved back inside the try at C3 of R31.
-<<<END_PAIR_C_FROM>>>
+C3 — the recorder and compose-once (own commit, orchestrator_loop.py)
+  1. Add `make_orchestrator_call_recorder(traces, composed, *, provider="",
+     provider_kind="")` beside `compose_orchestrator_prompt`, returning the
+     `Callable[[int, str, bool, str], None]` that `run_structured_call`'s
+     `on_call` seam expects. Copy `make_mission_plan_call_recorder`
+     (`mission_compiler.py:258`) exactly: one `build_trace_entry` per call,
+     `composed_prompt=composed` so the manifest travels, `role="orchestrator"`,
+     `prompt_kind`/`phase` = `"orchestrator-retry"` when `is_parse_retry` else
+     `"orchestrator"`, `transport_attempt=attempt`,
+     `is_transport_retry=False`. `build_trace_entry` comes from
+     `packages.orchestration.prompt_trace`; `ComposedPrompt` is ALREADY
+     imported at module level (line 52) — do not re-import it.
+     The one-line WHY above the definition says why the recorder lives in this
+     module: the manifest and the prompt it describes cannot drift apart.
+  2. At the provider call inside the loop (currently
+     `build_orchestrator_prompt(context, repo_root)` at line 1074) compose
+     ONCE per iteration instead: `composed = compose_orchestrator_prompt(
+     context, repo_root)` and pass `composed.text`. The JOB_CONTEXT segment
+     changes every iteration, so the recorder is rebuilt every iteration from
+     THAT iteration's `composed` — a recorder hoisted out of the loop would
+     label iteration N's bytes with iteration 1's manifest.
+  3. `run_mission` gains `provider: str = ""` and `provider_kind: str = ""`
+     keyword-only parameters, documented in the existing Seams docstring.
+  4. The caller's `on_call` is NOT dropped. Chain: the recorder fires first,
+     then the caller's `on_call` if it is not None. A silently ignored
+     documented parameter is a defect even when no caller passes it today.
 
-<<<PAIR_C_TO>>>
-  Landed: R-0257 — composition moved back inside the try at C3 of R31.
-  Done: R-0257 (2026-08-10) — RESOLVED at F105 R31, commit 3d37567f.
-  `compose_mission_prompt` and the recorder wiring both sit inside the `try`
-  again, so a composition failure returns to being `_fallback(goal,
-  hint=f"provider error: {exc}")`. Re-proved by the reviewer at 9bd3a3e7 with
-  the composer monkeypatched to raise: `source="deterministic"`,
-  `error_hint="provider error: composition blew up"` — the pre-R30 behaviour
-  exactly. `test_a_failing_composer_still_yields_the_fallback` now pins it, so
-  the regression cannot return silently the way it arrived.
-<<<END_PAIR_C_TO>>>
+C4 — the sink and the CLI provider label (own commit, two files)
+  1. In `run_mission`, per iteration: collect that iteration's entries in a
+     fresh list and `append_trace_jsonl` them to
+     `mission_evidence_dir(pid, mission_id, root) / "prompt_trace.jsonl"`
+     as soon as the provider call has returned OR raised — the boundary
+     `except Exception` must not swallow the evidence of a call that was
+     really made. `mission_evidence_dir` is already imported at line 47;
+     `append_trace_jsonl` comes from `packages.orchestration.prompt_trace`.
+     APPEND, never write: the mission-plan traces are already in that file
+     (`mission_compiler.py:765`) and every run is another command against the
+     same mission. A write would destroy both.
+  2. Nothing is written when no call was made. The `call_fn is None` terminal
+     must leave no trace file behind, the same rule the plan site's
+     `test_no_provider_leaves_no_trace_file` pins.
+  3. `apps/cli/commands/mission_cmd.py:366`: pass `provider="ollama",
+     provider_kind="ollama"` to `run_mission`, with the one-line WHY the plan
+     site already carries at line 187 — `make_structured_call_fn` is
+     Ollama-backed, and under `--no-llm` there is no call and so no trace to
+     label.
 
-C3 — plan and the session-ending handoff (own commit)
-  Apply PAIR_D to `.agent/plan.md` as a FULL replacement, then rewrite
-  `.agent/handoff.md` as the SESSION-ENDING handoff. It must state, in its own
-  words and with real numbers: the feature and round (F105 R32, session close);
-  the branch; this round's commit SHAs; a changed-files table with one row per
-  path; the item-status table over C1a/C1b/C2/C3; the gate table with REAL exit
-  codes and REAL output; the open-findings count and their IDs; and the next
-  expected action for the next session, which is: gate R32 over
-  `9bd3a3e7..HEAD`, then the round that wires `on_call` for the orchestrator
-  prompt at `mission_cmd.py:362` into `run_mission`.
-  It must also say plainly that R32 itself carries NO on-disk gate entry by
-  construction — it is the round that writes the record, so it cannot record a
-  verdict on itself (docs/agents/planner_reviewer_prompt.md §4.13). That
-  absence is the terminator; the next session gates it and no repair round is
-  opened for it. Keep the handoff under 60 lines, or carry a DECISION D15
+C5 — the tests (own commit, test_orchestrator_loop.py)
+  Add `TestOrchestratorEvidenceSink`, copying the shape of
+  `TestMissionPlanEvidenceSink` (`tests/orchestration/test_mission_compiler.py:
+  1162`). Use the existing module `mission` fixture and its `tmp_path` root;
+  read the rows back from
+  `mission_evidence_dir(PROJECT, mission.id, tmp_path) / "prompt_trace.jsonl"`.
+  Four tests, no more:
+  1. one run with a provider writes one row per call, and that row carries
+     `role == "orchestrator"`, the provider label, and a NON-EMPTY
+     `segment_manifest`;
+  2. a SECOND run against the same mission APPENDS — the row count grows and
+     the first run's rows survive. This is the test that pins the writer
+     choice, so it must genuinely make two calls;
+  3. `call_fn=None` leaves NO trace file: the no-provider terminal invents no
+     evidence;
+  4. a source guard that `remedy mission run` names its provider, copying
+     `test_the_cli_names_the_provider_it_planned_with` and its declared
+     formatting-sensitivity trade-off. It exists because tests 1-3 drive
+     `run_mission` directly and stay green if the CLI stops passing the label.
+
+C6 — plan and handback (own commit)
+  Apply PAIR_C to `.agent/plan.md` as a FULL replacement, then rewrite
+  `.agent/handoff.md` per docs/agents/handback_template.md: feature and round,
+  branch, this round's commit SHAs, a changed-files table with one row per
+  path, the item-status table over C1a/C1b/C2/C3/C4/C5/C6, the gate table with
+  REAL exit codes and REAL output, the open-findings count with their IDs, and
+  the next expected action. Under 60 lines, or carry a DECISION D15
   "Deviations, declared" line naming the real count and the mandated content
   that caused it.
 
-<<<PAIR_D_PLAN>>>
+<<<PAIR_C_PLAN>>>
 # Plan — F105 Cache-optimal prompt ordering
 
 Branch: feature/f105-cache-optimal-prompt-ordering, cut from main at cfda4245
@@ -142,21 +223,21 @@ Prompt CONTENT does not change; only its composition.
 
 ## Current Step
 T001 and T002 are DONE and gated. T003's six migration sites are all migrated.
-Call evidence now reaches three prompts: both `do_cmd` flight-plan sites — the
-first through `write_trace_jsonl`, the replan through `append_trace_jsonl` — and
-`remedy mission plan`, composed ONCE inside `compile_mission_plan` and appended
-to the mission's evidence dir.
-R31 is GATED; `LAST_REVIEWED_SHA` is 9bd3a3e7. R32 is the session-close round:
-it records the R31 gate, resolves R-0246 and R-0257, and writes the handoff. By
-construction it carries no gate entry on itself (§4.13) — the next session gates
-it over `9bd3a3e7..HEAD`.
+R32 is GATED; `LAST_REVIEWED_SHA` is cab89962.
+R33 gives the ORCHESTRATOR prompt its call evidence: a per-iteration recorder
+in `orchestrator_loop.py` carrying the segment manifest, and the sink appending
+to the mission's `prompt_trace.jsonl` from INSIDE `run_mission` rather than
+from a caller (DECISION F105 D11), so both callers —
+`mission_cmd.py:366` and `gauntlet_runner.py:514` — inherit it.
+Call evidence then reaches four prompts: both `do_cmd` flight-plan sites,
+`remedy mission plan`, and the orchestrator loop.
 Open findings: R-0221, R-0239, R-0247, R-0256.
 No PR; one is created at CLOSURE.
 
 ## Next Steps
-- The orchestrator prompt — `mission_cmd.py:362` into `run_mission`, then
-  `gauntlet_runner.py:505`. Neither has an evidence sink today; R30 and R31 are
-  the shape to copy, in that order: manifest first, sink second.
+- Name the gauntlet's provider at `gauntlet_runner.py:514`: its orchestrator
+  rows reach evidence from R33 on but carry an empty label. One line, not a
+  wiring round (DECISION F105 D11).
 - R-0256 (compose once, not twice) needs a signature change on `plan_job_llm`
   and `run_intake`, so it is its own round.
 - Then T004, `remedy stats cache` over actuals; then the integration gate
@@ -169,28 +250,44 @@ No PR; one is created at CLOSURE.
 - The reviewer prompt was the worst-ordered of the six sites and 1824 of 2048
   measured renders reorder, so T004's before/after number should quote its
   cacheable-prefix gain specifically.
-<<<END_PAIR_D_PLAN>>>
+<<<END_PAIR_C_PLAN>>>
 
 GATES — run every one, record the REAL exit code and the REAL output
   A transport: `sha256sum` on the reviewer original in `.remedy-wt/`,
-    `.agent/authored/f105-r32-1.md` and `.agent/last_block.md`; `cmp` all three.
-  B size: `wc -l .agent/authored/f105-r32-1.md`. Cap 400 (DECISION F105 D5).
-  C application: PAIR_A, PAIR_B and PAIR_C are all APPEND — FROM exactly 1x
-    each, plus the TO-only ADDED-LINE count from `git show --numstat` and the
-    stray count over this commit's ADDED lines. PAIR_D: `cmp` the applied
-    `.agent/plan.md` against the sliced text; `wc -l` must be under 50.
-  D marker leakage, LINE-anchored: `grep -c -E '^<<<'` in `.agent/live_review.md`
-    and `.agent/plan.md` — 0 each.
-  E state-file contract tests: `python3 -m pytest tests/docs/ -q` and
+    `.agent/authored/f105-r33-1.md` and `.agent/last_block.md`; `cmp` all three.
+  B size: `wc -l .agent/authored/f105-r33-1.md`. Cap 400 (DECISION F105 D5).
+  C application: PAIR_A and PAIR_B are APPEND, in DIFFERENT files, both in C2 —
+    FROM exactly 1x in its own target, plus the TO-only ADDED-line count from
+    `git show --numstat <C2> -- <path>` and the stray count over that path's
+    ADDED lines in that commit. PAIR_C: `cmp` the applied `.agent/plan.md`
+    against the sliced text; `wc -l` must be under 50.
+  D marker leakage, LINE-anchored: `grep -c -E '^<<<'` in
+    `.agent/live_review.md`, `.agent/decisions.md` and `.agent/plan.md` — 0 each.
+  E scoped round gate: `python3 -m pytest tests/orchestration/
+    test_orchestrator_loop.py tests/orchestration/test_orchestrator_prompt_golden.py -q`.
+    The golden is in the gate because the prompt BYTES must not move.
+  F caller suites: `python3 -m pytest tests/cli/test_mission_cmd.py
+    tests/orchestration/test_gauntlet_runner.py
+    tests/orchestration/test_mission_e2e.py -q`.
+  G state-file contract: `python3 -m pytest tests/docs/ -q` and
     `python3 -m pytest tests/ui_server/test_dashboard_contract.py -q`.
-  F canary: `python3 -m pytest tests/cli/test_golden_path.py -q`.
-  G no-code proof: `git diff --stat 9bd3a3e7..HEAD` must show paths under
-    `.agent/` ONLY. NO mutation red-proof is ordered or run this round: nothing
-    executable changes, so there is no branch to mutate (DECISION F105 D10,
-    D8 checklist item 5).
-  H hygiene: `git status --porcelain` empty; `git worktree list` the primary
-    alone; `git log --numstat 9bd3a3e7..HEAD` with the `+` column per commit,
+  H canary: `python3 -m pytest tests/cli/test_golden_path.py -q`.
+  I red-proofs — ONLY in a disposable `git worktree` at HEAD, with
+    `PYTHONDONTWRITEBYTECODE=1`, removed and pruned before the handback, and
+    each one reverted (`git diff --stat` empty) before the next is applied:
+    M1 delete the `append_trace_jsonl` call in `run_mission` — expect test 1
+       and test 2 of C5 RED; report the exact counts.
+    M2 swap `append_trace_jsonl` for `write_trace_jsonl` — expect C5 test 2
+       RED and test 1 GREEN; report the exact counts.
+    M3 delete `provider="ollama"` from the `run_mission` call in
+       `mission_cmd.py` — expect C5 test 4 RED.
+    If any mutation comes back GREEN, report the real colour and STOP the
+    round there. A green mutation is evidence about the test, not a nuisance.
+  J hygiene: `git status --porcelain` empty; `git worktree list` the primary
+    alone; `git log --numstat <base>..HEAD` with the `+` column per commit,
     each under 500.
-Handback:    completion report + the session-ending `.agent/handoff.md`
-             described in C3. Then push. Do NOT create a PR.
+  K no scope drift: `git diff --name-only <base>..HEAD` lists exactly the nine
+    paths the Change line names, and nothing else.
+Handback:    completion report + the rewritten `.agent/handoff.md` described in
+             C6. Then push. Do NOT create a PR.
 ──────────────────────────────────────────────────────────────
