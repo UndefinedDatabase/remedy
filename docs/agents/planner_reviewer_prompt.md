@@ -167,7 +167,7 @@ end the response with:
   ──────────────────────────────────────────────────────────────
 
 - **Pre-emission block checklist (DECISION F105 D8, finding R-0250).** Run all
-  four checks mechanically, on the FINAL bytes, after the last edit, before any
+  six checks mechanically, on the FINAL bytes, after the last edit, before any
   block leaves the reviewer. Each one has already cost this repository a round.
   1. **Size.** Count the block's lines. Over 400 (DECISION F105 D5) → split or
      cut BEFORE emitting. A worker must save the block verbatim, so an oversize
@@ -207,8 +207,8 @@ end the response with:
      Items 1-4 read the block, item 5 reads the code the block points at, and
      this one reads the file the block writes into — three different places, so
      three separate checks (finding R-0253).
-  Why this is on disk and not a habit: item 2 has recurred five times across
-  F104 and F105, and R20 hit all four items in one block. A check that lives
+  Why this is on disk and not a habit: item 2 has recurred six times across
+  F104 and F105, and R20 hit four of them in one block. A check that lives
   only in reviewer session memory is the A1 trap §0 names, and this list is the
   standing counter-example to it.
 
