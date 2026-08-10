@@ -14,11 +14,13 @@ Prompt CONTENT does not change; only its composition.
 
 ## Current Step
 T001 and T002 are DONE and gated. T003's six migration sites are all migrated,
-each under its own golden. R27 is GATED; `LAST_REVIEWED_SHA` is 73259d7a.
-R28 is a SPLIT round: it records the R27 gate, resolves R-0255, registers
-R-0256, and closes the last `do_cmd` evidence gap by adding
-`append_trace_jsonl` beside `write_trace_jsonl` and wiring the replan site with
-it — the per-job trace file must not be truncated by a second command.
+each under its own golden, and both `do_cmd` flight-plan call sites now reach
+call evidence — the first through `write_trace_jsonl`, the replan through
+`append_trace_jsonl`, which exists because the trace file is per JOB and a
+second command would otherwise truncate the first.
+R28 is GATED; `LAST_REVIEWED_SHA` is 55550615. R29 is the session-close round:
+it records the R28 gate and writes the handoff, and by construction carries no
+gate entry on itself (§4.13) — the next session gates it.
 Open findings: R-0221, R-0239, R-0246, R-0247, R-0256.
 No PR; one is created at CLOSURE.
 
