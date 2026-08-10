@@ -42,3 +42,20 @@ Per A2/F005: PASS or FINDINGS (PASS_WITH_RISKS only where the schema allows
 and no block condition is hit). A wrong spec is its own finding routed to
 planning — never a reason to pass non-conforming work. No new feature starts
 while findings are open (A2).
+
+## Inline clerical correction
+
+Inline clerical correction: a Low-severity defect made BY the
+planner/reviewer or worker IN an ephemeral coordination artifact —
+.agent/handoff.md, .agent/plan.md, the wording of an .agent/live_review.md
+entry, or an authored step block none of whose parts has been applied yet —
+MAY be corrected in the same round without spending a finding ID, provided
+ALL of: (1) the correction lands in that round's own commit; (2) the round
+record carries one line: 'inline clerical fix: <what>'; (3) nothing about
+product code, tests, evidence files, gate results, or an AGENTS.md rule is
+involved — those ALWAYS take a finding ID; (4) the defect was caught before
+anything downstream consumed the artifact. Finding IDs measure substance.
+Precedents: the F254 closure reviewer's stale-pointer weighing; the inline
+DECISION path for closure candidates (planner_reviewer_prompt.md §4 item 7).
+Motivation: F105, where 30 of 35 findings were clerical self-administration
+(2026-08-10).
