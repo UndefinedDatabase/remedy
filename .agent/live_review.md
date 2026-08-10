@@ -5,7 +5,7 @@
 > round. Findings are authored here by the reviewer only. A worker marks a
 > landed fix `Landed: R-XXXX`; only reviewer-authored `Done:` text sets
 > Resolved (docs/agents/planner_reviewer_prompt.md §4.4).
-> Branch: feature/f105-cache-optimal-prompt-ordering. Next free ID: R-0265.
+> Branch: feature/f105-cache-optimal-prompt-ordering. Next free ID: R-0267.
 
 ## Findings
 
@@ -755,6 +755,42 @@
   a session limit is an ordinary handback and the next session gates it. Nothing
   in §4.13 needed changing — it already says "branch" — so no amendment was
   authored and none should be.
+
+- R-0265 (Medium, F105 R42, pre-existing, registered NOT fixed): a provider that
+  reports usage but no cache field is recorded as a measured ZERO, not as
+  "nothing reported". `packages/orchestration/token_actuals.py:110` reads
+  `int(usage.get("cache_read_input_tokens", 0) or 0)`, so an absent key and a
+  reported 0 land in the same int, and everything downstream — the ledger, and
+  any `remedy stats cache` view built on it — loses the distinction the whole
+  `unmeasured` vocabulary exists to preserve
+  (`apps/cli/commands/stats_ledger_cmd.py:44`). This repository's own rule is
+  that a bucket nobody reported prints a WORD and never the digit 0; here the
+  digit is manufactured one layer below the printer, so the printer cannot obey
+  it. Verified by the reviewer against source, not the inventory: the `or 0`
+  collapse is on that line as described. Registered rather than fixed because
+  it is pre-existing, it belongs to the token-actuals feature and not to prompt
+  composition, and fixing it means changing a field's type from `int` to
+  `int | None` with every reader audited — a round of its own, and not one F105
+  should absorb. Cost today: bounded and invisible, which is what makes it
+  worth writing down. OPEN.
+
+- R-0266 (Medium, F105 R42, pre-existing, registered NOT fixed): the ledger's
+  `role` column cannot distinguish roles today. It is populated from exactly one
+  key (`packages/orchestration/token_ledger.py:1017`,
+  `role=_first_string(accounting, ("role",))`) and its only production producer
+  writes the constant `"role": "builder"`
+  (`packages/orchestration/pingpong_loop.py:3970`), so every real row says
+  `builder` whatever ran; the `reviewer` bucket a grouped view can show exists
+  only in hand-written test fixtures. Compounding it, the `intake`,
+  `flight_plan`, `orchestrator` and `mission_plan` trace sites pass no
+  `job_id`/`task_id` and produce NO ledger row at all, because rows are built
+  only from `task_runs/<task_id>/provider_evidence.json`. A genuine per-role
+  cache-read aggregate IS computed (`pingpong_loop.py:3598-3698`, `by_role`) but
+  reaches `token_accounting.json` only and is never copied into
+  `provider_evidence.json`. Verified by the reviewer against source at three of
+  those pointers, not accepted from the inventory. This is the gap DECISION D14
+  rules on: T004 renders what the ledger carries and NAMES the gap rather than
+  inventing a role for a call. OPEN.
 
 ## Steps
 
@@ -2201,3 +2237,30 @@
 - R42: state and investigation round — record the R41 gate, resolve R-0256,
   R-0263 and R-0264, and produce the read-only `.agent/t004_inventory.md` that
   T004 needs before any `remedy stats cache` code exists. No production code.
+- Reviewer gate on R42 (2026-08-10): PASS, no deviation beyond the declared
+  handoff overage. Range `87ef21d9..1fc4c62c` = five commits, six paths, every
+  one under `.agent/`; nothing under `packages/`, `apps/`, `tests/` or `docs/`,
+  which is what an investigation round must prove about itself.
+  Insertions per commit 280, 198, 70, 259 and 90, each far under 500.
+  Transport by the PRIMARY shape: `.remedy-wt/f105-r42-1.block.md`, the
+  committed `.agent/authored/f105-r42-1.md` and `.agent/last_block.md` all
+  three hash to
+  `dc7dd7021699a9b83601c38a25ecfb6c1be906bb8bd1121cc23fd64e545431a4`
+  at 280 lines against D5's cap of 400; both `cmp` runs silent.
+  The three authored `Done:` texts were read line by line in the applied file
+  and are byte-identical to their slices; both worker-authored unreviewed-fix
+  markers are gone, counted at 0 and 0, so none survived its own resolution.
+  Gates re-run by THIS reviewer, none taken from the handback: `tests/docs/`
+  `294 passed in 0.25s`; `test_dashboard_contract.py` `70 passed in 3.91s`; the
+  canary `42 passed in 19.94s`; the transport marker count 0 in all four
+  touched text files; `.agent/plan.md` 42 lines against the cap of 50.
+  The inventory was NOT accepted on its own word: three of its `path:line`
+  pointers were opened and read independently — `token_ledger.py:1017` is the
+  `role=_first_string(accounting, ("role",))` line, `pingpong_loop.py:3970` is
+  the hardcoded `"role": "builder",`, and `token_actuals.py:110` is the
+  `or 0` cache-read collapse. All three say what the inventory says they say.
+  Those readings are now registered as R-0265 and R-0266.
+  `LAST_REVIEWED_SHA` advances 87ef21d9 -> 1fc4c62c.
+- R43: SESSION CLOSE — persist the R42 gate, register R-0265 and R-0266, record
+  DECISION F105 D14, and stop. No production code. This session ends here with
+  T004 unstarted but fully scoped; the next session opens with T004 slice 1.
