@@ -1,310 +1,174 @@
-── STEP R34 — F105 ───────────────────────────────────────────
-Goal:        Unblock and finish what R33 could not: repair the file-wide source
-             guard that made a correct second call site unsatisfiable, label the
-             CLI's orchestrator provider, document why the gauntlet's stays
-             unlabelled, and put the missing check on disk so the class stops
-             recurring.
-Bundle:      C1 save this block · C2 the R33 gate record, findings R-0258 and
-             R-0259, DECISIONs D12 and D13 · C3 checklist item 7 · C4 the guard
-             repair · C5 the CLI label and the gauntlet's declared absence ·
-             C6 the source guard for the run command · C7 plan and handback.
-Change:      `.agent/authored/f105-r34-1.md`, `.agent/last_block.md`,
-             `.agent/live_review.md`, `.agent/decisions.md`, `.agent/plan.md`,
-             `.agent/handoff.md`, `docs/agents/planner_reviewer_prompt.md`,
-             `tests/orchestration/test_mission_compiler.py`,
-             `apps/cli/commands/mission_cmd.py`,
-             `packages/orchestration/gauntlet_runner.py`,
-             `tests/orchestration/test_orchestrator_loop.py`. Nothing else.
-Constraints: Do NOT move the misfiled R-0257 block this round — R-0259 is
-             REGISTERED here and fixed in its own round, so this round's
-             live_review diff stays readable.
-             Do NOT change `run_mission`, the recorder, or the sink: R33 gated
-             PASS and its behaviour is settled.
-             The guard repair must be GREEN at C4, before the label lands at C5.
-             Commit in the stated order for that reason.
+── STEP R35 (session close) — F105 ───────────────────────────
+Goal:        Record the R34 reviewer gate on disk, resolve R-0258, register the
+             one Low finding R34 surfaced, and end the session with a handoff
+             that names exactly where the next one starts.
+Bundle:      C1 save this block · C2 the R34 gate record, the R-0258 resolution
+             and R-0260 · C3 plan and the session-ending handoff.
+Change:      `.agent/authored/f105-r35-1.md`, `.agent/last_block.md`,
+             `.agent/live_review.md`, `.agent/plan.md`, `.agent/handoff.md`.
+             Nothing else. No production code, no tests, no docs this round.
+Constraints: State-file-only round. Do not touch `packages/`, `apps/`, `tests/`
+             or `docs/`. Do not reflow any line you were not given a pair for.
+             Do NOT move the misfiled R-0257 block: R-0259 stays OPEN and is
+             fixed in its own round, next session.
 Done when:   every gate below is run and its REAL exit code recorded.
 
 C1 — save this block verbatim, TWO commits
-  C1a `cp /home/decodeux/Repos/remedy/.remedy-wt/f105-r34-1.block.md`
-      `.agent/authored/f105-r34-1.md`. Commit it ALONE.
+  C1a `cp /home/decodeux/Repos/remedy/.remedy-wt/f105-r35-1.block.md`
+      `.agent/authored/f105-r35-1.md`. Commit it ALONE.
   C1b `cp` the same bytes to `.agent/last_block.md`. Commit separately.
   `sha256sum` all three plus `cmp`; digest in the handback.
 
-C2 — the R33 gate record, two findings, two decisions (own commit, two files)
-  Four pairs. PAIR_A, PAIR_B and PAIR_C target `.agent/live_review.md`;
-  PAIR_D targets `.agent/decisions.md`. Declared shapes, to be MEASURED not
-  assumed: PAIR_A REWRITE, PAIR_B REWRITE, PAIR_C CONTAINS-FROM (append),
-  PAIR_D CONTAINS-FROM (append). For each rewrite prove FROM 0x and TO 1x
-  after the write; for each append prove FROM exactly 1x and count the TO-only
-  ADDED lines over THIS commit's diff FOR THAT PATH
-  (`git show --numstat <C2> -- <path>`). Report strays per path, both
-  directions. PAIR_A and PAIR_B both edit live_review.md, so that path's added
-  and removed counts must reconcile against BOTH pairs together, not one.
+C2 — the R34 gate record, the R-0258 resolution, R-0260 (own commit, one file)
+  Four pairs, all against `.agent/live_review.md`, all in this one commit.
+  Declared shapes, to be MEASURED not assumed: PAIR_A REWRITE, PAIR_B
+  CONTAINS-FROM, PAIR_C REWRITE, PAIR_D CONTAINS-FROM. For each rewrite prove
+  FROM 0x and TO 1x after the write; for each CONTAINS-FROM prove FROM exactly
+  1x. All four touch ONE path in ONE commit, so reconcile that path's ADDED and
+  REMOVED counts against ALL FOUR pairs together (§4.9) — and count a line that
+  appears in both a FROM and its TO as diff CONTEXT, not as an add and a
+  remove: git emits only changed lines, so expecting otherwise manufactures
+  phantom strays (the reviewer hit exactly that on R34 and it was the
+  measurement, not the round).
 
 <<<PAIR_A_FROM>>>
-> Branch: feature/f105-cache-optimal-prompt-ordering. Next free ID: R-0258.
+> Branch: feature/f105-cache-optimal-prompt-ordering. Next free ID: R-0260.
 <<<END_PAIR_A_FROM>>>
 
 <<<PAIR_A_TO>>>
-> Branch: feature/f105-cache-optimal-prompt-ordering. Next free ID: R-0260.
+> Branch: feature/f105-cache-optimal-prompt-ordering. Next free ID: R-0261.
 <<<END_PAIR_A_TO>>>
 
 <<<PAIR_B_FROM>>>
-  `run_intake`, so it is its own round. OPEN.
-
-## Steps
+  into a per-call-site assertion so a second labelled call site is allowed.
+  OPEN.
 <<<END_PAIR_B_FROM>>>
 
 <<<PAIR_B_TO>>>
-  `run_intake`, so it is its own round. OPEN.
-
-- R-0258 (Medium, F105 R33, reviewer-authored defect): the R33 block ordered
-  `provider="ollama", provider_kind="ollama"` onto the `run_mission` call in
-  `apps/cli/commands/mission_cmd.py` while
-  `tests/orchestration/test_mission_compiler.py:1210` already asserted
-  `source.count('provider_kind="ollama"') == 1` over the WHOLE of that file. The
-  second label is CORRECT and makes the count 2, so the ordered change and the
-  existing suite could not both hold. The R33 worker applied the edit, measured
-  `assert 2 == 1`, reverted it and declared the deviation rather than landing a
-  red test or editing a file outside its change set — which was right on both
-  counts. Reproduced by the reviewer in a disposable worktree at af35adbc: the
-  edit applied verbatim yields exactly that failure and
-  `grep -c 'provider_kind="ollama"'` prints 2. Cost: C4 item 3 and C5 test 4 of
-  R33 unlanded, and both `run_mission` callers still writing unlabelled rows.
-  This is the SEVENTH instance of the unsatisfiable-gate class across F104 and
-  F105 and the first whose counting gate lives in a test file the block never
-  names: DECISION F105 D8's items 1-4 read the block, item 5 the code it points
-  at, item 6 the file it writes into, and none of them reads the TESTS that
-  already guard that file. Fix: a seventh checklist item, and repair the guard
   into a per-call-site assertion so a second labelled call site is allowed.
   OPEN.
-- R-0259 (Medium, F105 R31, reviewer-authored defect): the R-0257 finding block
-  sits at lines 1528-1554 of `.agent/live_review.md`, under `## Steps` instead
-  of under `## Findings` — the R-0231 class in the mirror direction, and the
-  second instance of it on this branch. It is worse than misplacement: the block
-  was inserted INSIDE the R30 gate record, so that record's concluding
-  ``LAST_REVIEWED_SHA` advances 0c8932e3 -> 0ba30611.` line is orphaned at 1555,
-  27 lines below the record it belongs to and directly beneath R-0257's
-  resolution text. A reader parsing the round history attributes R30's advance
-  to R-0257's `Done:` paragraph. R-0231's own resolution claimed "`## Findings`
-  holds only findings again", and that invariant is broken again in the other
-  direction. Fix: MOVE lines 1528-1554 to the end of `## Findings`, bytes
-  unchanged, so the R30 record closes with its own advance line — proved as a
-  MOVE and not a retype, the block occurring exactly 1x before and 1x after.
+  Done: R-0258 (2026-08-10) — RESOLVED at F105 R34, commits 3c651516 and
+  083a42d3. §3 of docs/agents/planner_reviewer_prompt.md now carries a SEVENTH
+  pre-emission item: grep the suite for tests that COUNT a string over a whole
+  file before ordering a change that adds that string. The guard that caused
+  this is repaired in the same feature — `test_the_cli_names_the_provider_it_
+  planned_with` asserts the label inside a window anchored at its own call site
+  instead of `source.count(...) == 1` over all of `mission_cmd.py`. Verified by
+  the reviewer against the real diff and by measurement, not from the handback:
+  the file-wide count of `provider_kind="ollama"` is now 2 and the suite is
+  green, which is precisely the state the old guard made impossible. The two
+  call sites are 7335 characters apart, so neither window can see the other's
+  label, and both R34 mutations went red as ordered — M1 taking only the run
+  guard down while the plan guard stayed green, which is the property "scoped to
+  its own call site" means. The remaining imprecision is registered separately
+  as R-0260 and does not reopen this one.
+<<<END_PAIR_B_TO>>>
+
+<<<PAIR_C_FROM>>>
   Registered here, fixed in its own round: doing it inside this commit would
   bury this round's real diff under a 27-line relocation. OPEN.
 
 ## Steps
-<<<END_PAIR_B_TO>>>
-
-<<<PAIR_C_FROM>>>
-  `LAST_REVIEWED_SHA` advances 9bd3a3e7 -> cab89962.
 <<<END_PAIR_C_FROM>>>
 
 <<<PAIR_C_TO>>>
-  `LAST_REVIEWED_SHA` advances 9bd3a3e7 -> cab89962.
-- R33: SPLIT round — the orchestrator prompt's call evidence: a per-iteration
-  recorder carrying the segment manifest, and the sink appending to the
-  mission's `prompt_trace.jsonl` from inside `run_mission` (DECISION D11).
-- Reviewer gate on R33 (2026-08-10): PASS, with one declared deviation accepted
-  and its cause registered as R-0258 against the REVIEWER, not the worker.
-  Range `cab89962..af35adbc` = eight commits, read as a real diff: eight paths,
-  every one on the block's Change line, `mission_cmd.py` absent by the declared
-  deviation; insertions per commit 293, 232, 79, 27, 55, 105, 2 — each under
-  500. Transport disk to disk against the reviewer's surviving original: all
-  three of `.remedy-wt/f105-r33-1.block.md`, `.agent/authored/f105-r33-1.md`
-  and `.agent/last_block.md` carry
-  `d6d9d2a8e0d03d646021ed101d7c5b83dacce65b66dc75c74e5ea92306f40d80`, every
-  `cmp` silent, 293 lines against D5's cap of 400.
-  The code was read bottom-up rather than taken from the report. The append sits
-  in a `finally`, so a call that RAISES still leaves its evidence before the
-  boundary turns the fault into a terminal — the ledger's durability, which a
-  single flush after the loop would not have given. The recorder is rebuilt per
-  iteration from that iteration's `ComposedPrompt`, and `_observe_call` is
-  defined and consumed inside the same iteration, so no manifest can describe
-  earlier bytes and the closure has no late-binding hazard. `on_call` is CHAINED
-  rather than replaced. The two new module-level imports introduce no cycle:
-  `prompt_trace` imports only `prompt_segments`.
-  Gates re-run by THIS reviewer with real exit codes: the scoped gate
-  `201 passed in 1.15s` including the frozen prompt golden, so the composed
-  BYTES did not move; the three caller suites `152 passed in 38.12s`;
-  `tests/docs/` `294 passed in 0.30s`; the dashboard contract
-  `70 passed in 3.96s`; the canary `42 passed in 19.46s`; `git status
-  --porcelain` empty and `git worktree list` the primary alone.
-  All three red-proofs reproduced by the reviewer in a disposable worktree at
-  af35adbc with `PYTHONDONTWRITEBYTECODE=1`, each reverted and the revert proved
-  by an empty `git diff --stat`, worktree removed and pruned. Baseline
-  `3 passed in 0.33s`. M1, deleting the `append_trace_jsonl` call:
-  `2 failed, 1 passed`, the two named tests RED. M2,
-  `append_trace_jsonl` -> `write_trace_jsonl`: `1 failed, 2 passed`, only
-  `test_a_second_run_appends_rather_than_truncating` RED — so the append is
-  pinned as the writer, not merely used. M3 as ORDERED was unrunnable and the
-  worker said so; the reviewer applied the ordered edit anyway to test the
-  worker's account of WHY, and it failed exactly as reported.
-  The handback's own corrections hold: the R-0149 self-reference exception it
-  cites for the trailing bookkeeping commit is really in
-  docs/agents/handback_template.md, and its note that D11 and PAIR_C's Next
-  Steps understate the gap by one caller is correct — both reviewer-authored,
-  applied verbatim, and this round repairs the substance, not the wording.
-  `LAST_REVIEWED_SHA` advances cab89962 -> af35adbc.
+  Registered here, fixed in its own round: doing it inside this commit would
+  bury this round's real diff under a 27-line relocation. OPEN.
+- R-0260 (Low, F105 R34, reviewer-authored defect): the two per-call-site guard
+  comments claim more precision than the code has. The authored comment says
+  "The window is the call expression itself", and the run-site test repeats the
+  shape, but a 200-character window from `outcome = plan_mission(` overshoots
+  that call by 71 characters — measured, not estimated — spilling into
+  `except MissionPlanInProgressError as exc:` and the first characters of the
+  next `print(`; the run site overshoots its 173-character call by 27. The
+  guarded PROPERTY holds and was proved to hold: the call sites are 7335
+  characters apart, so no window reaches the other's label, and both mutations
+  went red. So this is an inaccurate claim on disk, not a broken test — but it
+  is a comment written to teach the next reader what the guard pins, landed by
+  the very round whose subject was guards that promise more than they check.
+  The R34 worker measured the overshoot and declared it rather than silently
+  tightening the constant, which was right: the wording is the reviewer's.
+  Fix: bound each window at its call's closing parenthesis instead of a magic
+  200, or correct both comments to say "200 characters from the call's start,
+  which covers the call and a little after". OPEN.
+
+## Steps
 <<<END_PAIR_C_TO>>>
 
 <<<PAIR_D_FROM>>>
-`run_mission`, and flushing a caller-owned `traces` list in each of the two
-callers instead.
+  `LAST_REVIEWED_SHA` advances cab89962 -> af35adbc.
 <<<END_PAIR_D_FROM>>>
 
 <<<PAIR_D_TO>>>
-`run_mission`, and flushing a caller-owned `traces` list in each of the two
-callers instead.
-
-D12 — §3's pre-emission checklist gains a SEVENTH item: before ordering a change
-that ADDS a string to a file, grep the suite for tests that COUNT that string
-over that whole file. R33 lost two of its items to a guard nobody looked at:
-`test_mission_compiler.py` asserted `source.count('provider_kind="ollama"') == 1`
-over all of `mission_cmd.py`, so a correct second call site could not land
-(finding R-0258, the seventh instance of the unsatisfiable-gate class).
-
-The four earlier items read the block's own bytes, item 5 reads the code the
-block points at, item 6 reads the file the block writes into. This one reads the
-TESTS that already guard that file — a fourth place, which is why it is a
-seventh item and not a clause bolted onto item 6.
-
-The alternative — forbid file-wide `source.count(...)` guards outright — was
-rejected: they are the only cheap way to pin a CLI wiring line no behavioural
-test reaches (F105 R28 introduced them deliberately). The defect is the SCOPE,
-not the technique, so the rule is "scope the guard to its call site".
-
-Reverse this decision by deleting this entry and §3 checklist item 7.
-
-D13 — Remedy deliberately does NOT label the provider on the gauntlet's
-`run_mission` call. D11 left it as "a one-line round"; reading the call site
-retires that plan. `apps/cli/commands/mission_cmd.py` can honestly name Ollama
-because `_orchestrator_call_fn` is unconditionally `make_structured_call_fn`.
-The gauntlet's call_fn arrives through `deps.move_call_fn()`, a substitutable
-seam whose default is Ollama but whose whole purpose is being replaced, so a
-hardcoded label there would write a guess into evidence every time a caller
-substituted the seam.
-
-An EMPTY label already means "the caller did not name it", which `run_mission`'s
-docstring states, and which is exactly true of the gauntlet. Unlabelled is
-honest; mislabelled is not, and this repository records unmeasured cost as
-unmeasured rather than estimating it into the record.
-
-The alternative — thread a provider label through the deps object so the
-gauntlet reports the provider it actually used — is the RIGHT fix and is not
-rejected, only deferred: it is a deps-shape change, not a one-liner, and F105 is
-about prompt composition. The absence is documented at the call site so a reader
-searching for the missing label finds the reason instead of a gap.
-
-Reverse this decision by threading the label through `GauntletDeps` and passing
-it at that call site.
+  `LAST_REVIEWED_SHA` advances cab89962 -> af35adbc.
+- R34: SPLIT round — repair the file-wide source guard into a per-call-site
+  assertion, install §3 checklist item 7, label the provider on
+  `remedy mission run`, and document the gauntlet's absent label as deliberate.
+- Reviewer gate on R34 (2026-08-10): PASS. Range `af35adbc..28fe51c3` = eight
+  commits, read as a real diff: eleven paths, exactly the ones the block named;
+  insertions per commit 398, 334, 123, 12, 7, 14, 17, 85 — each under 500.
+  Transport disk to disk against the reviewer's surviving original: all three of
+  `.remedy-wt/f105-r34-1.block.md`, `.agent/authored/f105-r34-1.md` and
+  `.agent/last_block.md` carry
+  `6d816a6434c6d98cdaafca3df7654580d2c5985abdef65398c9eccb8fb97c14e`, every
+  `cmp` silent, 398 lines against D5's cap of 400.
+  All eight FROM/TO pairs re-sliced from the COMMITTED authored file by the
+  reviewer's own whole-line marker reader: declared shape equals measured shape
+  for every one, four REWRITEs at FROM 0x / TO 1x and four CONTAINS-FROM at
+  FROM 1x / TO 1x. PAIR_I byte-equal to the applied `.agent/plan.md` at 43 lines
+  against the cap of 50. Strays 0 in both directions on all five written paths
+  once the accounting is right: PAIR_H is a PREPEND, so its TO-only lines are
+  the LEADING seven, and a line carried unchanged through a REWRITE is diff
+  CONTEXT rather than an add plus a remove. The reviewer's first pass modelled
+  both wrongly and reported three phantom strays against a round that had none;
+  the corrected pass reconciles `+81/-1` on live_review.md, `+42/-0` on
+  decisions.md, `+12/-0` on the prompt doc, `+7/-1` on the compiler test,
+  `+7/-1` on the CLI and `+7/-0` on the gauntlet exactly.
+  Gates re-run by THIS reviewer with real exit codes: the scoped gate
+  `323 passed in 1.69s`, the frozen prompt golden inside it, so the composed
+  BYTES still have not moved; the three caller suites `152 passed in 38.17s`;
+  `tests/docs/` `294 passed in 0.25s`; the dashboard contract
+  `70 passed in 3.92s`; the canary `42 passed in 19.55s`; `grep -c -E '^<<<'`
+  prints 0 in all four written targets; `git status --porcelain` empty and
+  `git worktree list` the primary alone.
+  Both red-proofs reproduced by the reviewer in a disposable worktree at
+  28fe51c3 with `PYTHONDONTWRITEBYTECODE=1`, each reverted and the revert proved
+  by an empty `git diff --stat`, worktree removed and pruned. Baseline
+  `2 passed in 0.39s`. M1, deleting the label from the `run_mission` call: the
+  run guard RED and the plan guard GREEN — the two guards watch different call
+  sites, which is the whole point of the repair. M2, moving the label onto the
+  `plan_mission` call: the run guard RED, so the repaired guard is per-call-site
+  and not a disguised count.
+  The block's own C4-before-C5 ordering was honoured and matters: the repaired
+  guard was green at 083a42d3, BEFORE the second label landed at f3968dfd, so
+  the suite was never red between two commits of this round.
+  The worker's declared deviation is ACCEPTED and is not a defect of the round:
+  the 200-character window overshoots its call, the worker measured that instead
+  of quietly shrinking the constant, and the wording is the reviewer's. It is
+  registered as R-0260 rather than absorbed. The 120-line handoff carries its
+  DECISION D15 stated-cause line and drops no mandated section, which is the
+  rule and not an exception.
+  `LAST_REVIEWED_SHA` advances af35adbc -> 28fe51c3.
 <<<END_PAIR_D_TO>>>
 
-C3 — checklist item 7 (own commit, docs/agents/planner_reviewer_prompt.md)
-  PAIR_E, CONTAINS-FROM (append after item 6, before the "Why this is on disk"
-  paragraph). This is the R-0258 fix. Prove FROM 1x and count TO-only added
-  lines over this commit's diff.
-
-<<<PAIR_E_FROM>>>
-     three separate checks (finding R-0253).
-<<<END_PAIR_E_FROM>>>
-
-<<<PAIR_E_TO>>>
-     three separate checks (finding R-0253).
-  7. **Source guards the block never names.** Before ordering a change that ADDS
-     a string to a file, grep the suite for tests that COUNT that string over
-     that WHOLE file (`rg -l '<basename>' tests/`, then read every `count(` and
-     `== 1` assertion in what it returns). An existing
-     `source.count('...') == 1` guard makes a correct SECOND call site
-     unsatisfiable, and the worker cannot repair it without leaving its change
-     set — so the round loses the item and spends a deviation proving a reviewer
-     mistake. Items 1-4 read the block, item 5 the code the block points at,
-     item 6 the file the block writes into, and this one the tests that already
-     guard that file: four different places, four checks (finding R-0258).
-     Such guards are worth keeping — they pin CLI wiring no behavioural test
-     reaches — so scope them to their call site rather than deleting them.
-<<<END_PAIR_E_TO>>>
-
-C4 — the guard repair (own commit, tests/orchestration/test_mission_compiler.py)
-  PAIR_F, REWRITE. This commit must be GREEN on its own: run
-  `python3 -m pytest tests/orchestration/test_mission_compiler.py -q` BEFORE
-  moving on, and record the count. The window is 200 characters, which covers
-  the plan call's own two lines and nothing after them.
-
-<<<PAIR_F_FROM>>>
-        assert source.count('provider_kind="ollama"') == 1
-<<<END_PAIR_F_FROM>>>
-
-<<<PAIR_F_TO>>>
-        # Scoped to THIS call site rather than counted over the whole file: a
-        # SECOND labelled call in the same module is correct and must not turn
-        # this red (R-0258, which cost F105 R33 two items). The window is the
-        # call expression itself, so a label that drifts to another call no
-        # longer satisfies the guard.
-        planned = source.index("outcome = plan_mission(")
-        assert 'provider_kind="ollama"' in source[planned:planned + 200]
-<<<END_PAIR_F_TO>>>
-
-C5 — the CLI label and the gauntlet's declared absence (own commit, two files)
-  PAIR_G, REWRITE, against `apps/cli/commands/mission_cmd.py`. PAIR_H,
-  CONTAINS-FROM, against `packages/orchestration/gauntlet_runner.py`.
-
-<<<PAIR_G_FROM>>>
-    result = run_mission(mission.id, limits, project_id=project_id,
-                         call_fn=call_fn)
-<<<END_PAIR_G_FROM>>>
-
-<<<PAIR_G_TO>>>
-    # `_orchestrator_call_fn` is unconditionally `make_structured_call_fn`,
-    # which is Ollama-backed, so the provider is named here exactly as the plan
-    # site above names it. Under `--no-llm` there is no call and so no trace to
-    # label. The label reaches the prompt trace through `run_mission`'s own
-    # per-iteration recorder (DECISION F105 D11).
-    result = run_mission(mission.id, limits, project_id=project_id,
-                         call_fn=call_fn,
-                         provider="ollama", provider_kind="ollama")
-<<<END_PAIR_G_TO>>>
-
-<<<PAIR_H_FROM>>>
-            result = deps.run_mission(
-<<<END_PAIR_H_FROM>>>
-
-<<<PAIR_H_TO>>>
-            # Remedy deliberately does NOT name the provider here, so these
-            # rows reach evidence unlabelled (DECISION F105 D13). The CLI site
-            # can name Ollama because its call_fn is always
-            # `make_structured_call_fn`; this call_fn arrives through `deps`, a
-            # seam whose purpose is being substituted, so a hardcoded label
-            # would write a guess into evidence. An empty label already means
-            # "the caller did not name it", which is what happened.
-            result = deps.run_mission(
-<<<END_PAIR_H_TO>>>
-
-C6 — the source guard for the run command (own commit,
-     tests/orchestration/test_orchestrator_loop.py)
-  Add a fourth test to `TestOrchestratorEvidenceSink`, the one R33 could not
-  write. It reads `apps/cli/commands/mission_cmd.py` and asserts that
-  `provider_kind="ollama"` appears WITHIN the `result = run_mission(` call
-  expression — scoped to that call site, per checklist item 7, never a file-wide
-  count. Docstring: it exists because tests 1-3 drive `run_mission` directly and
-  stay green if the CLI stops passing the label, and it is formatting-sensitive
-  by nature, the same declared trade-off as
-  `test_the_cli_names_the_provider_it_planned_with`.
-  Do NOT assert anything about `gauntlet_runner.py`: its absence of a label is
-  deliberate (D13) and pinning an absence would freeze a decision that is meant
-  to be reversible.
-
-C7 — plan and handback (own commit)
-  Apply PAIR_I to `.agent/plan.md` as a FULL replacement, then rewrite
-  `.agent/handoff.md` per docs/agents/handback_template.md: feature and round,
-  branch, this round's commit SHAs, a changed-files table with one row per path,
-  the item-status table over C1a/C1b/C2/C3/C4/C5/C6/C7, the gate table with REAL
-  exit codes and REAL output, the open-findings count with their IDs, and the
-  next expected action. Under 60 lines, or carry a DECISION D15 "Deviations,
+C3 — plan and the session-ending handoff (own commit)
+  Apply PAIR_E to `.agent/plan.md` as a FULL replacement, then rewrite
+  `.agent/handoff.md` as the SESSION-ENDING handoff. It must state, in its own
+  words and with real numbers: the feature and round (F105 R35, session close);
+  the branch; this round's commit SHAs; a changed-files table with one row per
+  path; the item-status table over C1a/C1b/C2/C3; the gate table with REAL exit
+  codes and REAL output; the open-findings count and their IDs; and the next
+  expected action for the next session, which is: gate R35 over
+  `28fe51c3..HEAD`, then the R-0259 relocation round.
+  It must also say plainly that R35 itself carries NO on-disk gate entry by
+  construction — it is the round that writes the record, so it cannot record a
+  verdict on itself (docs/agents/planner_reviewer_prompt.md §4.13). That absence
+  is the terminator of this session, not an omission; the next session gates it
+  and no repair round is opened for it.
+  Keep the handoff under 60 lines, or carry a DECISION D15 "Deviations,
   declared" line naming the real count and the mandated content that caused it.
 
-<<<PAIR_I_PLAN>>>
+<<<PAIR_E_PLAN>>>
 # Plan — F105 Cache-optimal prompt ordering
 
 Branch: feature/f105-cache-optimal-prompt-ordering, cut from main at cfda4245
@@ -321,21 +185,22 @@ Prompt CONTENT does not change; only its composition.
 
 ## Current Step
 T001 and T002 are DONE and gated. T003's six migration sites are all migrated.
-R33 is GATED; `LAST_REVIEWED_SHA` is af35adbc. Call evidence reaches four
+R34 is GATED; `LAST_REVIEWED_SHA` is 28fe51c3. Call evidence reaches four
 prompts: both `do_cmd` flight-plan sites, `remedy mission plan`, and the
 orchestrator loop, whose sink lives inside `run_mission` so both callers inherit
-it (DECISION D11).
-R34 repairs what blocked R33: the file-wide source guard becomes a per-call-site
-assertion (R-0258), §3 gains checklist item 7, `remedy mission run` names its
-provider, and the gauntlet's absence of a label is documented as deliberate
-(DECISION D13) rather than left as a pending one-line round.
-Open findings: R-0221, R-0239, R-0247, R-0256, R-0259.
+it (DECISION D11). `remedy mission run` names its provider; the gauntlet's stays
+unlabelled on purpose (DECISION D13).
+R35 is the session-close round: it records the R34 gate, resolves R-0258,
+registers R-0260 and writes the handoff. By construction it carries no gate
+entry on itself (§4.13) — the next session gates it over `28fe51c3..HEAD`.
+Open findings: R-0221, R-0239, R-0247, R-0256, R-0259, R-0260.
 No PR; one is created at CLOSURE.
 
 ## Next Steps
-- R-0259: MOVE the misfiled R-0257 block (live_review.md 1528-1554) to the end
-  of `## Findings`, bytes unchanged, so the R30 gate record closes with its own
-  `LAST_REVIEWED_SHA` line. A state-file round of its own.
+- R-0259: MOVE the misfiled R-0257 block to the end of `## Findings`, bytes
+  unchanged, so the R30 gate record closes with its own `LAST_REVIEWED_SHA`
+  line. Bundle R-0260's window fix with it — both are small and neither touches
+  production code.
 - R-0256 (compose once, not twice) needs a signature change on `plan_job_llm`
   and `run_intake`, so it is its own round.
 - Then T004, `remedy stats cache` over actuals; then the integration gate
@@ -348,51 +213,30 @@ No PR; one is created at CLOSURE.
 - The reviewer prompt was the worst-ordered of the six sites and 1824 of 2048
   measured renders reorder, so T004's before/after number should quote its
   cacheable-prefix gain specifically.
-<<<END_PAIR_I_PLAN>>>
+<<<END_PAIR_E_PLAN>>>
 
 GATES — run every one, record the REAL exit code and the REAL output
   A transport: `sha256sum` on the reviewer original in `.remedy-wt/`,
-    `.agent/authored/f105-r34-1.md` and `.agent/last_block.md`; `cmp` all three.
-  B size: `wc -l .agent/authored/f105-r34-1.md`. Cap 400 (DECISION F105 D5).
-  C application: per-pair, with the DECLARED shape MEASURED — PAIR_A, PAIR_B,
-    PAIR_F and PAIR_G are REWRITEs (FROM 0x after, TO 1x after); PAIR_C, PAIR_D,
-    PAIR_E and PAIR_H are CONTAINS-FROM (FROM 1x, plus the TO-only ADDED-line
-    count from `git show --numstat <commit> -- <path>` and the stray count over
-    that path's ADDED lines in that commit). PAIR_I: `cmp` the applied
-    `.agent/plan.md` against the sliced text; `wc -l` must be under 50.
-  D marker leakage, LINE-anchored: `grep -c -E '^<<<'` in `.agent/live_review.md`,
-    `.agent/decisions.md`, `.agent/plan.md` and
-    `docs/agents/planner_reviewer_prompt.md` — 0 each.
-  E the guard repair alone, AT C4 before the label lands:
-    `python3 -m pytest tests/orchestration/test_mission_compiler.py -q`.
-  F scoped round gate, after C6: `python3 -m pytest
-    tests/orchestration/test_mission_compiler.py
-    tests/orchestration/test_orchestrator_loop.py
-    tests/orchestration/test_orchestrator_prompt_golden.py -q`.
-  G caller suites: `python3 -m pytest tests/cli/test_mission_cmd.py
-    tests/orchestration/test_gauntlet_runner.py
-    tests/orchestration/test_mission_e2e.py -q`.
-  H docs and state contract: `python3 -m pytest tests/docs/ -q` and
+    `.agent/authored/f105-r35-1.md` and `.agent/last_block.md`; `cmp` all three.
+  B size: `wc -l .agent/authored/f105-r35-1.md`. Cap 400 (DECISION F105 D5).
+  C application: PAIR_A and PAIR_C are REWRITEs (FROM 0x after, TO 1x after);
+    PAIR_B and PAIR_D are CONTAINS-FROM (FROM 1x). All four land in ONE commit
+    against ONE path, so reconcile that commit's ADDED and REMOVED counts
+    against all four together, treating a line unchanged across a FROM/TO as
+    context. PAIR_E: `cmp` the applied `.agent/plan.md` against the sliced
+    text; `wc -l` must be under 50.
+  D marker leakage, LINE-anchored: `grep -c -E '^<<<'` in
+    `.agent/live_review.md` and `.agent/plan.md` — 0 each.
+  E state-file contract tests: `python3 -m pytest tests/docs/ -q` and
     `python3 -m pytest tests/ui_server/test_dashboard_contract.py -q`.
-    `docs/` changes this round, so the docs gate is not optional.
-  I canary: `python3 -m pytest tests/cli/test_golden_path.py -q`.
-  J red-proofs — ONLY in a disposable `git worktree` at HEAD, with
-    `PYTHONDONTWRITEBYTECODE=1`, each reverted and the revert proved by an empty
-    `git diff --stat` before the next, worktree removed and pruned:
-    M1 delete `provider="ollama", provider_kind="ollama"` from the
-       `run_mission` call in `mission_cmd.py` — expect the C6 test RED and
-       `test_the_cli_names_the_provider_it_planned_with` GREEN, which together
-       prove the two guards are scoped to different call sites.
-    M2 move the label from the `run_mission` call to the `plan_mission` call, so
-       the file-wide count is 2 either way — expect the C6 test RED. This is the
-       proof the repaired guard is per-call-site and not a disguised count.
-    If a mutation comes back GREEN, report the real colour and STOP the round
-    there.
-  K hygiene: `git status --porcelain` empty; `git worktree list` the primary
-    alone; `git log --numstat <base>..HEAD` with the `+` column per commit, each
-    under 500.
-  L no scope drift: `git diff --name-only <base>..HEAD` lists exactly the eleven
-    paths the Change line names, and nothing else.
-Handback:    completion report + the rewritten `.agent/handoff.md` described in
-             C7. Then push. Do NOT create a PR.
+  F canary: `python3 -m pytest tests/cli/test_golden_path.py -q`.
+  G no-code proof: `git diff --stat 28fe51c3..HEAD` must show paths under
+    `.agent/` ONLY. NO mutation red-proof is ordered or run this round: nothing
+    executable changes, so there is no branch to mutate (DECISION F105 D10,
+    D8 checklist item 5).
+  H hygiene: `git status --porcelain` empty; `git worktree list` the primary
+    alone; `git log --numstat 28fe51c3..HEAD` with the `+` column per commit,
+    each under 500.
+Handback:    completion report + the session-ending `.agent/handoff.md`
+             described in C3. Then push. Do NOT create a PR.
 ──────────────────────────────────────────────────────────────
