@@ -1410,3 +1410,51 @@
   recurrence of item 1 in this feature. The remedy is mechanical counting before
   emission, which is what item 1 already prescribes.
   `LAST_REVIEWED_SHA` advances d0ebba63 -> 73259d7a.
+- R28: SPLIT round — record the R27 gate, resolve R-0255, register R-0256, add
+  `append_trace_jsonl` beside the per-job trace writer and wire the replan site
+  with it so a replan records its flight-plan manifest without truncating the
+  traces the job's first run wrote.
+- Reviewer gate on R28 (2026-08-10): PASS. Range `73259d7a..55550615`, seven
+  commits, read as a real diff: only the eight paths the block named.
+  `write_trace_jsonl` is untouched, as the block required — the new function is
+  a sibling, not a parameter on the old one. Insertions per commit 368, 263, 57,
+  51, 25, 63, 1 — each under 500, and the authored block is 368 lines against
+  DECISION F105 D5's cap of 400, counted this time rather than estimated.
+  Transport under the §4.9 digest fallback: `.agent/authored/f105-r28-1.md` and
+  `.agent/last_block.md` both recompute to
+  `c323410875ab8da7313a988a79d6f74e0976ba3320721b0d8f0ad35808df7fe2`, `cmp`
+  silent, 368 lines each — the digest the handback declared.
+  All seven pairs re-sliced from the COMMITTED authored file by the reviewer's
+  own marker-LINE reader and measured disk to disk: declared shape equals
+  measured shape for every one, appends at FROM 1x, rewrites at FROM 0x after
+  and TO 1x, and PAIR_H byte-equal to `.agent/plan.md` at 41 lines against the
+  cap of 50. Diff-scoped accounting per §4.9: `.agent/live_review.md` ADDED 57,
+  `packages/orchestration/prompt_trace.py` ADDED 13,
+  `tests/orchestration/test_prompt_trace.py` ADDED 38,
+  `apps/cli/commands/do_cmd.py` ADDED 25 — strays 0 in all four. No ADDED line
+  came from outside a TO slice.
+  Gates re-run by THIS reviewer with real exit codes: `tests/orchestration/`
+  `10502 passed, 7 skipped in 703.66s` — three more than R27's 10499, the three
+  tests this round adds; `tests/cli/` `1329 passed in 261.91s`;
+  `test_prompt_trace.py` `41 passed`; `tests/docs/` `294 passed`; the dashboard
+  contract `70 passed`; the canary `42 passed`.
+  BOTH red-proofs reproduced by the reviewer in a disposable worktree at
+  55550615, with `PYTHONDONTWRITEBYTECODE=1` because the worker's own first
+  attempt showed CPython's `(mtime, size)` `.pyc` validation accepting a stale
+  cache when a same-length revert lands in the same clock second — a real
+  diagnosis, honestly declared, and worth remembering for every future
+  same-length mutation. M1: `append_trace_jsonl`'s `path.open("a")` changed to
+  `path.open("w")` turns exactly one test RED,
+  `test_appending_traces_keeps_the_earlier_ones`, at `1 failed, 40 passed`. M2:
+  after reverting M1, deleting the `on_call=` argument from the REPLAN call only
+  turns exactly one test RED, `test_the_replan_path_records_and_appends_its_traces`,
+  at `1 failed, 40 passed`, with `git diff --stat` showing
+  `apps/cli/commands/do_cmd.py` alone — so M1 was genuinely reverted and the two
+  mutants are independent. Worktree removed and pruned; `git status
+  --porcelain` empty and `git worktree list` the primary alone at this verdict.
+  Noted, not held against the round: the replan guard asserts
+  `source.count("on_call=make_flight_plan_call_recorder(") == 2`, so it pins BOTH
+  wiring sites and any future round that intentionally rewires either must update
+  that count. The worker flagged this itself rather than letting the next round
+  discover it.
+  `LAST_REVIEWED_SHA` advances 73259d7a -> 55550615.
