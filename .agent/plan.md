@@ -13,18 +13,19 @@ and `remedy stats cache` shows the cache-read share per role from actuals.
 Prompt CONTENT does not change; only its composition.
 
 ## Current Step
-R42 landed. T001, T002 and T003 are DONE and gated: every builder composes via
-the registry and one composition now feeds both the provider and the trace at
-all three CLI sites. R41 is GATED PASS; `LAST_REVIEWED_SHA` is 87ef21d9.
-R-0256, R-0263 and R-0264 are RESOLVED with reviewer-authored `Done:` text.
-Open findings: R-0221, R-0239, R-0247, R-0262.
-T004 is the only slice left; `.agent/t004_inventory.md` is its ground truth.
+SESSION CLOSED at R43, cleanly and not against a STOP file. T001, T002 and T003
+are DONE and gated. R42 is GATED PASS; `LAST_REVIEWED_SHA` is 1fc4c62c. T004 is
+the only slice left and is now fully scoped: `.agent/t004_inventory.md` is its
+ground truth and DECISION F105 D14 answers all five of its open questions.
+Open findings: R-0221, R-0239, R-0247, R-0262, R-0265, R-0266.
 No PR; one is created at CLOSURE.
 
 ## Next Steps
-- T004 slice 1, scoped from the inventory: `remedy stats cache` over actuals,
-  cache-read share per role, `unmeasured` and never `0` where no provider
-  reported — the discipline `remedy stats cost` already applies.
+- T004 slice 1 under D14: `remedy stats cache` beside `remedy stats cost` in
+  `apps/cli/commands/stats_ledger_cmd.py`, cache-read share per role read from
+  the ledger, `unmeasured` and never `0` where nothing was reported, and output
+  that names the R-0266 limit instead of hiding it. Fixtures take the
+  evidence-tree-backfilled shape (`tests/cli/test_stats_cost.py:121`).
 - Then the before/after comparison note in the feature's evidence, with honest
   numbers whatever they are (the feature file's T004 line).
 - Then the integration gate (docs/agents/integration_gate.md); R-0221 will
@@ -33,10 +34,9 @@ No PR; one is created at CLOSURE.
   job, the FRESH review zip, the STATUS line and the PR all land.
 
 ## Risks
-- T004 may find no join key between a trace's `role` and a ledger row. If so
-  the honest first slice reports per-role only where the join exists and says
-  "not reported" elsewhere — it never invents a role for a call.
+- PR #189 (`docs/amend0810-clerical` -> `main`) is open and is NOT a `feature/*`
+  branch, so the Open PR Gate makes it stop-and-report. It blocks no work on
+  this branch but must be resolved by the operator before a NEW branch is cut.
 - R-0221 stays open and will cost the integration gate phantom base-only
   failures.
-- R-0262 stays OPEN and out of scope: it needs the composition moved inside the
-  `try` in `plan_job_llm` AND at the CLI sites, pinned by a raising composer.
+- R-0262, R-0265 and R-0266 stay OPEN and out of scope for F105 by design.
