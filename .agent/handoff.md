@@ -1,7 +1,8 @@
 # Handoff — F105 R47 (STOP-triggered session close)
 
 Branch: feature/f105-cache-optimal-prompt-ordering. Base aad00eee.
-Commits: dde6118b (C1a), e2441178 (C1b), b49d2ad4 (C2), C3 = HEAD (this one).
+Commits: dde6118b (C1a), e2441178 (C1b), b49d2ad4 (C2), 4d5a2096 (C3), plus
+C3b = HEAD, a one-file correction filling in C3's own insertion count.
 State only: no production code, no tests, no docs, no catalog. No PR was
 created, nothing was merged, `main` was not touched, no force-push, no new
 worktree. The BRANCH stays open and F105 is NOT closed.
@@ -33,6 +34,7 @@ its handoff and ends without starting work until the operator removes it.
 | C1b | done | same bytes copied to .agent/last_block.md, separate commit |
 | C2 | done | PAIR_ID rewrite + PAIR_LR contains-from: R-0268, R46 gate, R47 line |
 | C3 | done | plan.md rewritten (47 lines) + this handoff, then push, no PR |
+| C3b | deviated | extra commit: C3 could not state its own insertion count |
 
 ## Gates — real exit codes
 | Gate | Command | Exit | Result |
@@ -50,7 +52,7 @@ its handoff and ends without starting work until the operator removes it.
 | I | git log --stat aad00eee..HEAD | 0 | no STOP path in any commit |
 | I | git status --porcelain | 0 | `?? .agent/STOP` only — see the note above |
 | J | git worktree list | 0 | primary ALONE |
-| J | insertions per commit | 0 | 140, 126, 58, C3 — all < 500 |
+| J | insertions per commit | 0 | 140, 126, 58, 102 — all < 500 |
 | J | git diff --name-only aad00eee..HEAD | 0 | exactly the 5 named paths |
 
 Gate E note: `grep -c` exits 1 when the pattern is absent, and absence IS the
@@ -102,7 +104,14 @@ handoff and ends without starting work. Once the operator removes it, resume at
 integration gate (docs/agents/integration_gate.md), then closure
 (docs/roadmap/STATUS_closure_protocol.md), with PR #189 resolved first.
 
-Deviations, declared (DECISION D15): this handoff is 111 lines against the
+Deviations, declared: ONE structural deviation, C3b. The block's bundle names
+C1a/C1b/C2/C3; a fifth commit exists because gate J's "insertions per commit"
+row cannot contain C3's own count until C3 exists. Rather than leave a
+placeholder in a gate row, the number was filled in afterwards. C3b touches
+only `.agent/handoff.md`, a path the block already names, adds no new path,
+and changes no gate outcome.
+
+Deviations, declared (DECISION D15): this handoff is 120 lines against the
 60-line cap. The cause is mandated content only — the 15-row gate table with
 its real exit codes, the changed-files table, the item-status table, the
 transport proof, the pair proof, and the three sections the block explicitly
