@@ -2264,3 +2264,40 @@
 - R43: SESSION CLOSE — persist the R42 gate, register R-0265 and R-0266, record
   DECISION F105 D14, and stop. No production code. This session ends here with
   T004 unstarted but fully scoped; the next session opens with T004 slice 1.
+- Reviewer gate on R43 (2026-08-10, by the session that resumed the branch):
+  PASS. Range `1fc4c62c..b0b2d12f` = five commits, six paths, every one under
+  `.agent/`; nothing under `packages/`, `apps/`, `tests/` or `docs/`.
+  Insertions per commit 297, 208, 64, 44 and 94, each far under 500.
+  Transport by the PRIMARY shape: `.remedy-wt/f105-r43-1.block.md`, the
+  committed `.agent/authored/f105-r43-1.md` and `.agent/last_block.md` all
+  three hash to
+  `2c19254ead411e32b8247e54d7917aa1f411b63d2838b95f52e8f820881f71ad`
+  at 297 lines against D5's cap of 400; both `cmp` runs silent.
+  Reconciled by machine rather than by eye: every line C2 and C3 ADD appears
+  in the committed authored file — 64 added and 44 added, 0 strays each — and
+  of C4's 94 added lines the 14 in `.agent/plan.md` are 0-stray while the 80
+  in `.agent/handoff.md` are worker-authored by design. `cmp` of the applied
+  `.agent/plan.md` against the PAIR_P_PLAN slice is silent at 42 lines.
+  Gates re-run by THIS reviewer, none taken from the handback: `tests/docs/`
+  `294 passed in 0.26s`; `test_dashboard_contract.py` `70 passed in 3.96s`;
+  the canary `42 passed in 19.85s`; `^<<<` 0 in all four touched text files;
+  `.agent/plan.md` 42 lines against the cap of 50 and keeping `## Goal` and a
+  `Steps` substring; `.agent/live_review.md` exactly one `## Steps` heading;
+  `git status --porcelain` empty and the primary worktree alone.
+  Spot-checks of the REVIEWER's choosing, not ordered by the block: the three
+  source pointers under R-0265 and R-0266 were opened independently —
+  `token_actuals.py:110` is the `or 0` collapse, `pingpong_loop.py:3970` is
+  the hardcoded builder role constant, and `token_ledger.py:1017` is the
+  `role=_first_string(accounting, ("role",))` line. All three read as
+  registered, so neither finding rests on the inventory's word.
+  Gate J, the deliberately absent R43 gate record, was the correct call and is
+  closed by this entry: R43 ended a SESSION and not the BRANCH, so §4.13's
+  terminator never applied and the round stayed gateable — the R-0264 reading,
+  applied correctly for the first time by the round that produced it.
+  The declared handoff overage (120 lines, DECISION D15 line present) is
+  ACCEPTED: the mandated tables account for it and no section was dropped.
+  `LAST_REVIEWED_SHA` advances 1fc4c62c -> b0b2d12f.
+- R44: SPLIT round — persist the R43 gate and extract the ledger-reading half
+  of `stats cost` into `_load_ledger_reports`, with no behaviour change, so a
+  second view has one code path to read the ledger through rather than a copy
+  of one. Production code, so the round is SPLIT by §3.
