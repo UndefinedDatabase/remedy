@@ -13,21 +13,22 @@ and `remedy stats cache` shows the cache-read share per role from actuals.
 Prompt CONTENT does not change; only its composition.
 
 ## Current Step
-T001 and T002 are DONE and gated. T003's MIGRATION ORDER
-(`.agent/t003_inventory.md`, never that file's catalogue "Site N" headings —
-R-0241) is COMPLETE: all six sites are migrated, each under its own golden.
-R25 is GATED; `LAST_REVIEWED_SHA` is 0341928d. R26 is a SPLIT repair round: it
-records the R25 gate, then fixes R-0253 (§4.9 scoped to diff-added lines, plus
-a sixth D8 checklist item) and R-0254 (the shared boundary helper's
-builder-only error text, plus the one assertion that must pin it).
-Open findings: R-0221, R-0239, R-0246, R-0247, R-0253, R-0254 — the last two
-land in R26 and are Resolved by the reviewer at the R26 gate.
+T001 and T002 are DONE and gated. T003's six migration sites are all migrated,
+each under its own golden. R26 is GATED; `LAST_REVIEWED_SHA` is d0ebba63.
+R27 is a SPLIT round: it records the R26 gate, resolves R-0253 and R-0254,
+registers and fixes R-0255 (D8's preamble counts four checks over a six-item
+list), and wires `on_call` for the flight-plan prompt at
+`apps/cli/commands/do_cmd.py` — the one evidence gap whose sink already exists.
+Open findings: R-0221, R-0239, R-0246, R-0247, R-0255.
 No PR; one is created at CLOSURE.
 
 ## Next Steps
-- ONE round wires `on_call` for the three sites lacking call evidence:
-  `mission_cmd.py:362` (orchestrator), `mission_cmd.py:187` +
-  `gauntlet_runner.py:505` (mission), `do_cmd.py:253` + `:2860` (plan).
+- The replan site `apps/cli/commands/do_cmd.py:2859` needs a sink DECISION
+  first: `write_trace_jsonl` opens with mode `"w"`, so a second write for the
+  same job truncates the first run's traces.
+- Then `on_call` for the mission and orchestrator prompts —
+  `mission_cmd.py:187`, `mission_cmd.py:362`, `gauntlet_runner.py:505` — none
+  of which has an evidence sink today.
 - Fix R-0246 in the round that next touches `mission_compiler.py`.
 - Then T004, `remedy stats cache` over actuals; then the integration gate
   (docs/agents/integration_gate.md); then closure
