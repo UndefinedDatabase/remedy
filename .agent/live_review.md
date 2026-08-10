@@ -588,6 +588,33 @@
   Fix: bound each window at its call's closing parenthesis instead of a magic
   200, or correct both comments to say "200 characters from the call's start,
   which covers the call and a little after". OPEN.
+- R-0257 (Medium, F105 R30, reviewer-authored defect): the R30 block lifted
+  composition OUT of the try/except that turns any failure into the
+  deterministic fallback. `compile_mission_plan` used to build its prompt as an
+  ARGUMENT to `run_structured_call` inside `try:`, so a raising composer became
+  `_fallback(goal, hint=f"provider error: {exc}")`; PAIR_F put
+  `composed = compose_mission_prompt(...)` above the `try:`, so it now escapes
+  the function. Proved by the reviewer in a disposable worktree with the
+  composer monkeypatched to raise: at 39da9b61^ the call returns
+  `source="deterministic"` and `error_hint="provider error: composition blew
+  up"`; at 39da9b61 the `RuntimeError` propagates out. No test covers it, which
+  is exactly why every gate was green — the module docstring's promise that
+  "any provider failure, or an unparseable answer" yields the fallback "rather
+  than an exception" is what regressed, and `remedy mission plan` would
+  traceback where it used to degrade. The realistic trigger is a filesystem
+  failure inside `repo_facts_block()`. The R30 worker DECLARED this rather than
+  repairing it, which was right: the defect is the reviewer's, and a worker that
+  silently fixes authored text hides the mistake instead of pricing it. Fix:
+  compose inside the try, pinned by a test that makes the composer raise. OPEN.
+  Landed: R-0257 — composition moved back inside the try at C3 of R31.
+  Done: R-0257 (2026-08-10) — RESOLVED at F105 R31, commit 3d37567f.
+  `compose_mission_prompt` and the recorder wiring both sit inside the `try`
+  again, so a composition failure returns to being `_fallback(goal,
+  hint=f"provider error: {exc}")`. Re-proved by the reviewer at 9bd3a3e7 with
+  the composer monkeypatched to raise: `source="deterministic"`,
+  `error_hint="provider error: composition blew up"` — the pre-R30 behaviour
+  exactly. `test_a_failing_composer_still_yields_the_fallback` now pins it, so
+  the regression cannot return silently the way it arrived.
 
 ## Steps
 
@@ -1593,33 +1620,6 @@
   with `PYTHONDONTWRITEBYTECODE=1`: deleting `composed_prompt=composed,` from
   `make_mission_plan_call_recorder` turns exactly the two named tests RED at
   `2 failed, 114 passed in 0.61s`. Reverted, worktree removed and pruned.
-- R-0257 (Medium, F105 R30, reviewer-authored defect): the R30 block lifted
-  composition OUT of the try/except that turns any failure into the
-  deterministic fallback. `compile_mission_plan` used to build its prompt as an
-  ARGUMENT to `run_structured_call` inside `try:`, so a raising composer became
-  `_fallback(goal, hint=f"provider error: {exc}")`; PAIR_F put
-  `composed = compose_mission_prompt(...)` above the `try:`, so it now escapes
-  the function. Proved by the reviewer in a disposable worktree with the
-  composer monkeypatched to raise: at 39da9b61^ the call returns
-  `source="deterministic"` and `error_hint="provider error: composition blew
-  up"`; at 39da9b61 the `RuntimeError` propagates out. No test covers it, which
-  is exactly why every gate was green — the module docstring's promise that
-  "any provider failure, or an unparseable answer" yields the fallback "rather
-  than an exception" is what regressed, and `remedy mission plan` would
-  traceback where it used to degrade. The realistic trigger is a filesystem
-  failure inside `repo_facts_block()`. The R30 worker DECLARED this rather than
-  repairing it, which was right: the defect is the reviewer's, and a worker that
-  silently fixes authored text hides the mistake instead of pricing it. Fix:
-  compose inside the try, pinned by a test that makes the composer raise. OPEN.
-  Landed: R-0257 — composition moved back inside the try at C3 of R31.
-  Done: R-0257 (2026-08-10) — RESOLVED at F105 R31, commit 3d37567f.
-  `compose_mission_prompt` and the recorder wiring both sit inside the `try`
-  again, so a composition failure returns to being `_fallback(goal,
-  hint=f"provider error: {exc}")`. Re-proved by the reviewer at 9bd3a3e7 with
-  the composer monkeypatched to raise: `source="deterministic"`,
-  `error_hint="provider error: composition blew up"` — the pre-R30 behaviour
-  exactly. `test_a_failing_composer_still_yields_the_fallback` now pins it, so
-  the regression cannot return silently the way it arrived.
   `LAST_REVIEWED_SHA` advances 0c8932e3 -> 0ba30611.
 - R31: SPLIT round — fix R-0257, name the mission-plan evidence sink in
   `plan_mission`, label the provider from `remedy mission plan`, and pin all of
