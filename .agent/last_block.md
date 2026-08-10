@@ -1,184 +1,223 @@
-── STEP R36 — F105 ───────────────────────────
-Goal:        Relocate the misfiled R-0257 block so the R30 gate record closes
-             with its own advance line (R-0259), correct the two guard-window
-             comments that claim more precision than the code has (R-0260),
-             and record the R35 reviewer gate.
-Bundle:      C1 save this block · C2 the byte-preserving MOVE · C3 the R35 gate
-             record plus both `Landed:` lines · C4 the two comment fixes ·
-             C5 plan and handoff.
-Change:      `.agent/authored/f105-r36-1.md`, `.agent/last_block.md`,
+── STEP R37 — F105 ───────────────────────────
+Goal:        Record the R36 reviewer gate, resolve R-0259 and R-0260 with
+             reviewer-authored `Done:` text, and register plus fix R-0261 —
+             the character distance both guard comments attach to the wrong
+             anchor.
+Bundle:      C1 save this block · C2 every `.agent/live_review.md` edit, the
+             findings-first commit · C3 the two comment corrections ·
+             C4 plan and handoff.
+Change:      `.agent/authored/f105-r37-1.md`, `.agent/last_block.md`,
              `.agent/live_review.md`, `.agent/plan.md`, `.agent/handoff.md`,
              `tests/orchestration/test_mission_compiler.py`,
              `tests/orchestration/test_orchestrator_loop.py`. Nothing else.
              No production code: the two test edits change COMMENT and
-             DOCSTRING TEXT only — no executable line moves.
-Constraints: Do not touch `packages/`, `apps/` or `docs/`. Do not reflow any
-             line you were not given a pair for. C2 changes the ORDER of lines
-             in `.agent/live_review.md` and NOTHING else: no `Landed:` line, no
-             wording fix, no whitespace change may ride in that commit, or its
-             multiset proof is void. Do not change the number 200 in either
-             guard — R-0260 is fixed by making the comments true, not by
-             retuning a window whose guarded property is already proved.
+             DOCSTRING TEXT only — no executable line moves, no constant
+             changes.
+Constraints: Do not touch `packages/`, `apps/`, `docs/` or `tests/` beyond the
+             two named test files. Do not change the number 200, the
+             `source.index(...)` anchors, or any `assert` in either test.
+             Do not reflow any line you were not given a pair for. Do not
+             touch the `Landed:`/`Done:` pair on the R-0257 block: it is
+             historical, its `Done:` sits directly beneath it, and editing it
+             is outside this change set.
 Done when:   every gate below is run and its REAL exit code recorded.
 
 C1 — save this block verbatim, TWO commits
-  C1a `cp /home/decodeux/Repos/remedy/.remedy-wt/f105-r36-1.block.md`
-      `.agent/authored/f105-r36-1.md`. Commit it ALONE.
+  C1a `cp /home/decodeux/Repos/remedy/.remedy-wt/f105-r37-1.block.md`
+      `.agent/authored/f105-r37-1.md`. Commit it ALONE.
   C1b `cp` the same bytes to `.agent/last_block.md`. Commit separately.
   `sha256sum` all three plus `cmp`; digest in the handback.
 
-C2 — MOVE the misfiled R-0257 block (own commit, one file, order-only)
-  The block is 27 lines. It BEGINS at the whole line in ANCHOR_BLOCK_FIRST and
-  ENDS at the whole line in ANCHOR_BLOCK_LAST — measured unique in
-  `.agent/live_review.md`, 1x each, at lines 1596 and 1622.
-  Remove those 27 lines from where they sit under `## Steps` and re-insert
-  them, BYTES UNCHANGED and in the same order, directly AFTER the whole line in
-  ANCHOR_DEST_AFTER — measured unique, line 590, the last line of R-0260 and
-  therefore the last line of `## Findings`.
-  Do it with a script under `.remedy-wt/`, never by retyping: match all three
-  anchors as WHOLE lines, assert each occurs exactly 1x BEFORE the edit, and
-  fail loudly rather than guess if any count is not 1.
-  Why this matters: the block was inserted INSIDE the R30 gate record, so that
-  record's ``LAST_REVIEWED_SHA` advances 0c8932e3 -> 0ba30611.` line is
-  orphaned 27 lines below the record it closes, directly under a `Done:`
-  paragraph it does not belong to. After the move, that advance line follows
-  its own gate record again and `## Findings` holds only findings.
+C2 — every `.agent/live_review.md` edit, ONE commit, findings first
+  Apply PAIR_V, PAIR_W, PAIR_X, PAIR_Y and PAIR_Z to `.agent/live_review.md`.
+  Declared shapes, to be MEASURED not assumed:
+    PAIR_V REWRITE — the header's next-free-ID line.
+    PAIR_W REWRITE — R-0259's `Landed:` line becomes the reviewer's `Done:`
+      text. §4.4 of docs/agents/planner_reviewer_prompt.md says the `Done:`
+      text REPLACES the `Landed:` line, so the line does not survive.
+    PAIR_X REWRITE — the same for R-0260.
+    PAIR_Y CONTAINS-FROM — registers R-0261 at the END of `## Findings`.
+    PAIR_Z CONTAINS-FROM — the R36 step line and the R36 gate record at the
+      END of the file, under `## Steps`.
+  All five share ONE path in ONE commit, so reconcile them TOGETHER against
+  `git show --numstat` for that commit: every added line comes from a TO, and
+  every removed line is a FROM.
 
-<<<ANCHOR_BLOCK_FIRST>>>
-- R-0257 (Medium, F105 R30, reviewer-authored defect): the R30 block lifted
-<<<END_ANCHOR_BLOCK_FIRST>>>
+C3 — the two comment corrections, ONE commit, comment text only
+  Apply PAIR_F2 to `tests/orchestration/test_mission_compiler.py` and PAIR_G2
+  to `tests/orchestration/test_orchestrator_loop.py`. Both REWRITEs.
+  Every added and removed line in this commit is a `#` comment line or a line
+  of docstring prose. If any line you are about to write is not, STOP and
+  declare it instead of applying it.
 
-<<<ANCHOR_BLOCK_LAST>>>
+C4 — plan and handoff, ONE commit
+  Apply PAIR_P to `.agent/plan.md` as a FULL replacement, then rewrite
+  `.agent/handoff.md` in your own words per AGENTS.md.
+
+<<<PAIR_V_FROM>>>
+> Branch: feature/f105-cache-optimal-prompt-ordering. Next free ID: R-0261.
+<<<END_PAIR_V_FROM>>>
+
+<<<PAIR_V_TO>>>
+> Branch: feature/f105-cache-optimal-prompt-ordering. Next free ID: R-0262.
+<<<END_PAIR_V_TO>>>
+
+<<<PAIR_W_FROM>>>
+  Landed: R-0259 — the R-0257 block moved to the end of Findings, C2 of R36.
+<<<END_PAIR_W_FROM>>>
+
+<<<PAIR_W_TO>>>
+  Done: R-0259 (2026-08-10) — RESOLVED at F105 R36, commit 78891cd7. The
+  27-line R-0257 block now sits at the END of `## Findings`, so the R30 gate
+  record closes with its own ``LAST_REVIEWED_SHA` advances 0c8932e3 ->
+  0ba30611.` line and no reader can attribute that advance to R-0257's
+  resolution text. Proved a MOVE and not a retype by the strongest measure
+  available, re-run by this reviewer rather than read from the handback: the
+  SORTED file digest is
+  `9412ed6e2ad347f614e0024a29dc15d9123a6494ce0b1446ca669765060ab920`
+  both before and after the commit, so the line multiset is
+  identical and nothing was added, dropped or reflowed — only reordered. The
+  block occurs exactly 1x before and 1x after, and the commit's numstat is
+  `27 27`, one file.
+<<<END_PAIR_W_TO>>>
+
+<<<PAIR_X_FROM>>>
+  Landed: R-0260 — both guard comments now describe the real window, C4 of R36.
+<<<END_PAIR_X_FROM>>>
+
+<<<PAIR_X_TO>>>
+  Done: R-0260 (2026-08-10) — RESOLVED at F105 R36, commit a9408174. Both
+  comments now state the window the code actually takes: 200 characters from
+  the call's start, which is the call plus 71 characters at the plan site and
+  the call plus 27 at the run site. Re-measured by this reviewer against
+  `apps/cli/commands/mission_cmd.py` at 25e6326a rather than taken from the
+  handback: the plan call spans 129 characters from `outcome = plan_mission(`
+  and the run call 173 from `result = run_mission(`, so 200 leaves exactly 71
+  and 27 characters of overshoot, and each label still falls inside its own
+  window. The constant 200 was deliberately not retuned, which was the right
+  call: the guarded property was already proved by the R34 mutations, and this
+  finding was about a comment that promised more than the code checked.
+  The residual imprecision the repair itself introduced is registered
+  separately as R-0261 and does not reopen this one.
+<<<END_PAIR_X_TO>>>
+
+<<<PAIR_Y_FROM>>>
   the regression cannot return silently the way it arrived.
-<<<END_ANCHOR_BLOCK_LAST>>>
+<<<END_PAIR_Y_FROM>>>
 
-<<<ANCHOR_DEST_AFTER>>>
-  which covers the call and a little after". OPEN.
-<<<END_ANCHOR_DEST_AFTER>>>
+<<<PAIR_Y_TO>>>
+  the regression cannot return silently the way it arrived.
 
-C3 — the R35 gate record and both `Landed:` lines (own commit, one file)
-  Apply PAIR_S to `.agent/live_review.md`. Declared shape, to be MEASURED not
-  assumed: CONTAINS-FROM — the TO opens with the FROM line verbatim and appends
-  below it. Prove FROM exactly 1x after the write.
-  Then add, in the SAME commit, two `Landed:` lines you author yourself
-  (§4.4: a worker marks a landed fix `Landed: R-XXXX — <one line: what
-  changed, which commit>` and never writes a `Done:` paragraph):
-    · directly AFTER the whole line in ANCHOR_R0259_TAIL, one line for R-0259
-      naming the C2 commit;
-    · directly AFTER the whole line in ANCHOR_DEST_AFTER, one line for R-0260
-      naming the C4 commit.
-  Both anchors are measured unique. Note the ordering consequence and check it
-  after the write: ANCHOR_DEST_AFTER is also C2's insertion point, so R-0260's
-  `Landed:` line lands BETWEEN R-0260's `OPEN.` line and the block C2 moved
-  there. That is the correct position — the line belongs to R-0260.
-  Because you author these two lines, they are NOT hash-stamped; they are also
-  the only text in this round you may word yourself.
+- R-0261 (Low, F105 R36, reviewer-authored defect): both repaired guard
+  comments attach a real number to the wrong anchor. The compiler comment says
+  "the run site's label sits 7335 characters away" and the loop docstring says
+  "It stays 7335 characters clear of the plan call's label", but 7335 is the
+  distance between the two CALL STARTS, not between a window and a label.
+  Measured by the reviewer against `apps/cli/commands/mission_cmd.py` at
+  25e6326a: `outcome = plan_mission(` starts at 6911 and `result = run_mission(`
+  at 14246, a gap of exactly 7335; the run site's LABEL starts at 14396, which
+  is 7485 characters from the plan call's start and 7285 past the end of its
+  200-character window, while the run window starts 7229 characters after the
+  plan label. R-0260's own text used 7335 correctly — "the call sites are 7335
+  characters apart" — and the repair re-attributed it to labels. No test is
+  wrong and every margin is over 7000 against a 200-character window, so the
+  guarded property is untouched; this is a third consecutive round spent on the
+  prose of the same two comments. Fix: DELETE the character figure from both
+  comments rather than correct it. A cross-site distance is a fact about
+  `mission_cmd.py` that no assertion pins, so it goes stale on the next edit to
+  that file and buys nothing the phrase "far outside this window" does not
+  already say. The per-site overshoots — 71 and 27 — stay: those describe each
+  guard's OWN window against its OWN call, which is what R-0260 asked for and
+  what a reader of that line needs. OPEN.
+<<<END_PAIR_Y_TO>>>
 
-<<<ANCHOR_R0259_TAIL>>>
-  bury this round's real diff under a 27-line relocation. OPEN.
-<<<END_ANCHOR_R0259_TAIL>>>
-
-<<<PAIR_S_FROM>>>
-  `LAST_REVIEWED_SHA` advances af35adbc -> 28fe51c3.
-<<<END_PAIR_S_FROM>>>
-
-<<<PAIR_S_TO>>>
-  `LAST_REVIEWED_SHA` advances af35adbc -> 28fe51c3.
-- R35: session-close round — record the R34 gate, resolve R-0258 with
-  reviewer-authored text, register R-0260, and write the session-ending
-  handoff. State-file-only; no mutation red-proof ordered or run.
-- Reviewer gate on R35 (2026-08-10): PASS, by the reviewer of the FOLLOWING
-  session. R35 was the last round of a SESSION, not of the branch, so it does
-  get an on-disk entry: §4.13's terminator clause covers the last round of a
-  BRANCH, and R35's own handoff correctly named this gate as the next action
-  rather than claiming a verdict on itself.
-  Range `28fe51c3..bcfb12e3` = four commits, five paths, every one under
-  `.agent/` — `git diff --name-only` lists exactly the five the block named,
-  nothing under `packages/`, `apps/`, `tests/` or `docs/`. Insertions per
-  commit 242, 168, 81 and 61, each under 500; the 168/324 one is the
-  single-state-file verbatim rewrite AGENTS.md exempts from the churn reading
-  anyway.
-  Transport disk to disk against the reviewer's surviving original — the
-  PRIMARY proof shape, not the §4.9 digest fallback:
-  `.remedy-wt/f105-r35-1.block.md`, `.agent/authored/f105-r35-1.md` and
-  `.agent/last_block.md` all three carry
-  `b14899d9c8b57331e26b27546ece4352a4b33ebac6831aa4d2f2ed98195ddc96`, both
-  `cmp` runs silent, 242 lines against DECISION F105 D5's cap of 400.
-  All five pairs re-sliced from the COMMITTED authored file by this reviewer's
-  own whole-line marker reader: declared shape equals measured shape for every
-  one. PAIR_A and PAIR_C are REWRITEs at FROM 0x / TO 1x; PAIR_B and PAIR_D are
-  CONTAINS-FROM at FROM 1x; PAIR_E is byte-equal to the applied
-  `.agent/plan.md` at 44 lines against the cap of 50. The four live_review
-  pairs share ONE path in ONE commit and so reconcile TOGETHER against
-  `+81/-1`: of the 81 added lines not one comes from outside a TO, and the
-  single removed line is PAIR_A's FROM. Strays 0 in both directions, line
-  multisets taken against `git show -U0`.
-  Gates re-run by THIS reviewer with real exit codes: `grep -c -E '^<<<'`
-  prints 0 in both written targets; `tests/docs/` `294 passed in 0.25s`; the
-  dashboard contract `70 passed in 4.14s`; the canary `42 passed in 19.64s`;
-  `git status --porcelain` empty and `git worktree list` the primary alone at
-  this verdict.
-  No red-proof was ordered or run, and that is the correct call rather than an
-  omission: the round changed nothing executable, so there is no branch to
-  mutate (D8 checklist item 5, DECISION F105 D10).
+<<<PAIR_Z_FROM>>>
   `LAST_REVIEWED_SHA` advances 28fe51c3 -> bcfb12e3.
-<<<END_PAIR_S_TO>>>
+<<<END_PAIR_Z_FROM>>>
 
-C4 — the two guard-window comments (own commit, two files)
-  PAIR_F against `tests/orchestration/test_mission_compiler.py` and PAIR_G
-  against `tests/orchestration/test_orchestrator_loop.py`. Declared shapes, to
-  be MEASURED not assumed: both REWRITE. Prove FROM 0x and TO 1x after each
-  write. Comment and docstring text only — no executable line changes, so no
-  mutation red-proof is ordered this round either (D8 checklist item 5): the
-  guards' behaviour is deliberately identical before and after, and both were
-  already proved red-on-mutation at R34.
+<<<PAIR_Z_TO>>>
+  `LAST_REVIEWED_SHA` advances 28fe51c3 -> bcfb12e3.
+- R36: housekeeping round — MOVE the misfiled R-0257 block (R-0259), make both
+  guard-window comments state the real window (R-0260), record the R35 gate.
+  No production code.
+- Reviewer gate on R36 (2026-08-10): PASS, by the reviewer of the FOLLOWING
+  session — the third session of this branch. R36 was the last round of a
+  SESSION, not of the branch, so §4.13's terminator clause does not apply and
+  it does get an on-disk entry; its handoff correctly named this gate as the
+  next action instead of claiming a verdict on itself.
+  Range `bcfb12e3..25e6326a` = six commits, seven paths. `git diff --stat`
+  lists exactly the seven the block named — five under `.agent/` and the two
+  named test files — nothing under `packages/`, `apps/`, `docs/` or the rest
+  of `tests/`. Insertions per commit 263, 210, 27, 40, 11 and 58, each far
+  under 500; the 210/189 one is the single-state-file verbatim rewrite
+  AGENTS.md exempts from the churn reading anyway.
+  Transport by the §4.9 DIGEST FALLBACK, stated as such because the primary
+  proof was unavailable: the R36 session's scratchpad original
+  `.remedy-wt/f105-r36-1.block.md` no longer exists on disk, so no
+  cmp-against-original was possible at this gate. Both COMMITTED copies —
+  `.agent/authored/f105-r36-1.md` and `.agent/last_block.md` — were re-hashed
+  by this reviewer at
+  `21faa61ece190293dcacc2509581b5f9bd4cace5e382c4a699e5aab183f5f3c8`,
+  `cmp` silent between them, 263 lines against DECISION F105 D5's
+  cap of 400, and that digest equals the one the R36 handback recorded.
+  All four pairs re-sliced from the COMMITTED authored file by this reviewer's
+  own whole-line marker reader, never retyped: declared shape equals measured
+  shape for every one. PAIR_S is CONTAINS-FROM at FROM 1x / TO 1x; PAIR_F and
+  PAIR_G are REWRITEs at FROM 0x / TO 1x; PAIR_P is byte-equal to the applied
+  `.agent/plan.md` at 41 lines against the cap of 50. C2's order-only claim is
+  proved independently by the sorted-file digest, recorded in R-0259's `Done:`
+  text above.
+  Gates re-run by THIS reviewer with real exit codes, none taken from the
+  handback: `tests/docs/` `294 passed in 0.30s`; the dashboard contract
+  `70 passed in 4.31s`; the scoped pair `tests/orchestration/
+  test_mission_compiler.py` plus `test_orchestrator_loop.py` `317 passed in
+  1.43s`; the canary `42 passed in 19.47s`; zero `^<<<` marker lines in all
+  five written targets; `git status --porcelain` empty and `git worktree list`
+  the primary alone at this verdict.
+  No red-proof was ordered or run, and that is correct rather than an omission:
+  every added and removed line of a9408174 is a `#` comment or docstring prose,
+  checked line by line over `git show -U0`, so the round changed nothing
+  executable and there is no branch to mutate (D8 checklist item 5, DECISION
+  F105 D10).
+  The arithmetic the two comments now assert was re-derived independently, not
+  accepted: the plan call spans 129 characters and the run call 173, so a
+  200-character window overshoots by 71 and 27 respectively, and both labels
+  fall inside their own windows. Those figures are right. The cross-site figure
+  is not, and is registered as R-0261 — a Low prose defect that changes no
+  assertion, so it does not turn this verdict.
+  Noted so a later round does not re-derive it: the R-0257 block carries BOTH a
+  `Landed:` and a `Done:` line. That is historical, the `Done:` sits directly
+  beneath it, and it is deliberately NOT a finding — from R-0259 and R-0260
+  onward the `Done:` text replaces the `Landed:` line as §4.4 prescribes.
+  `LAST_REVIEWED_SHA` advances bcfb12e3 -> 25e6326a.
+<<<END_PAIR_Z_TO>>>
 
-<<<PAIR_F_FROM>>>
-        # Scoped to THIS call site rather than counted over the whole file: a
-        # SECOND labelled call in the same module is correct and must not turn
-        # this red (R-0258, which cost F105 R33 two items). The window is the
-        # call expression itself, so a label that drifts to another call no
-        # longer satisfies the guard.
-<<<END_PAIR_F_FROM>>>
-
-<<<PAIR_F_TO>>>
-        # Scoped to THIS call site rather than counted over the whole file: a
-        # SECOND labelled call in the same module is correct and must not turn
-        # this red (R-0258, which cost F105 R33 two items). The window is 200
-        # characters from the call's start, which is the call plus 71
-        # characters of what follows it — measured, not the call expression
+<<<PAIR_F2_FROM>>>
         # exactly (R-0260). That is enough for the job the guard has: the run
         # site's label sits 7335 characters away, far outside this window, so a
         # label that drifts to that call no longer satisfies this one.
-<<<END_PAIR_F_TO>>>
+<<<END_PAIR_F2_FROM>>>
 
-<<<PAIR_G_FROM>>>
-        Scoped to THIS call site, never a file-wide count: the plan call in the
-        same module carries its own label, and a count would make one of the two
-        guards unsatisfiable (checklist item 7, finding R-0258).
-<<<END_PAIR_G_FROM>>>
+<<<PAIR_F2_TO>>>
+        # exactly (R-0260). That is enough for the job the guard has: the run
+        # site's label lies far outside this window, so a label that drifts to
+        # that call no longer satisfies this one. No character distance is
+        # quoted here on purpose (R-0261): the gap between the two call sites
+        # is a fact about mission_cmd.py that no assertion pins, so a number
+        # here would go stale on the next edit to that file.
+<<<END_PAIR_F2_TO>>>
 
-<<<PAIR_G_TO>>>
-        Scoped to THIS call site, never a file-wide count: the plan call in the
-        same module carries its own label, and a count would make one of the two
-        guards unsatisfiable (checklist item 7, finding R-0258). The window is
-        200 characters from the call's start, which is the call plus 27
-        characters of what follows it — measured, not the call expression
+<<<PAIR_G2_FROM>>>
         exactly (R-0260). It stays 7335 characters clear of the plan call's
         label, which is the property this guard exists to hold.
-<<<END_PAIR_G_TO>>>
+<<<END_PAIR_G2_FROM>>>
 
-C5 — plan and handoff (own commit)
-  Apply PAIR_P to `.agent/plan.md` as a FULL replacement, then rewrite
-  `.agent/handoff.md`. The handoff states, in your own words and with real
-  numbers: feature and round (F105 R36); the branch; this round's commit SHAs;
-  a changed-files table with one row per path; the item-status table over
-  C1a/C1b/C2/C3/C4/C5; the gate table with REAL exit codes and REAL output;
-  the open-findings count and their IDs; and the next expected action, which
-  is: gate R36 over `bcfb12e3..HEAD`, then the R-0256 round (compose once, not
-  twice — a signature change on `plan_job_llm` and `run_intake`).
-  Keep it under 60 lines, or carry a DECISION D15 "Deviations, declared" line
-  naming the real count and the mandated content that caused it.
+<<<PAIR_G2_TO>>>
+        exactly (R-0260). It stays clear of the plan call's label by thousands
+        of characters, which is the property this guard exists to hold. The
+        exact gap is deliberately not quoted (R-0261): no assertion pins it,
+        so a number here would go stale on the next edit to mission_cmd.py.
+<<<END_PAIR_G2_TO>>>
 
 <<<PAIR_P_PLAN>>>
 # Plan — F105 Cache-optimal prompt ordering
@@ -197,21 +236,22 @@ Prompt CONTENT does not change; only its composition.
 
 ## Current Step
 T001 and T002 are DONE and gated. T003's six migration sites are all migrated.
-R35 is GATED; `LAST_REVIEWED_SHA` is bcfb12e3. Call evidence reaches four
+R36 is GATED; `LAST_REVIEWED_SHA` is 25e6326a. Call evidence reaches four
 prompts: both `do_cmd` flight-plan sites, `remedy mission plan`, and the
 orchestrator loop, whose sink lives inside `run_mission` so both callers inherit
 it (DECISION D11). `remedy mission run` names its provider; the gauntlet's stays
 unlabelled on purpose (DECISION D13).
-R36 is the housekeeping round: it MOVES the misfiled R-0257 block to the end of
-`## Findings` (R-0259), makes both guard-window comments say what the code
-actually does (R-0260), and records the R35 gate. No production code.
-Open findings: R-0221, R-0239, R-0247, R-0256 — plus R-0259 and R-0260, whose
-fixes land this round and await the reviewer's `Done:` text.
+R37 is the state round: it records the R36 gate, resolves R-0259 and R-0260
+with reviewer-authored `Done:` text, and registers plus fixes R-0261 — the
+cross-site character distance both guard comments attach to the wrong anchor.
+No production code.
+Open findings: R-0221, R-0239, R-0247, R-0256 — plus R-0261, whose fix lands
+this round and awaits the reviewer's `Done:`.
 No PR; one is created at CLOSURE.
 
 ## Next Steps
 - R-0256 (compose once, not twice) needs a signature change on `plan_job_llm`
-  and `run_intake`, so it is its own round — the next one.
+  and `run_intake`, so it is its own round — R38, the next one.
 - Then T004, `remedy stats cache` over actuals; then the integration gate
   (docs/agents/integration_gate.md); then closure
   (docs/roadmap/STATUS_closure_protocol.md), where the PR is created.
@@ -224,40 +264,76 @@ No PR; one is created at CLOSURE.
   cacheable-prefix gain specifically.
 <<<END_PAIR_P_PLAN>>>
 
-GATES — run every one, record the REAL exit code and the REAL output
-  A transport: `sha256sum` on the reviewer original in `.remedy-wt/`,
-    `.agent/authored/f105-r36-1.md` and `.agent/last_block.md`; `cmp` all three.
-  B size: `wc -l .agent/authored/f105-r36-1.md`. Cap 400 (DECISION F105 D5).
-  C application, four parts:
-    C2 the MOVE, three proofs together — `git show --numstat <C2> --
-      .agent/live_review.md` is 27 added and 27 removed; the file's LINE
-      MULTISET is unchanged, proved by comparing
-      `git show <C2>^:.agent/live_review.md | sort | sha256sum` against
-      `git show <C2>:.agent/live_review.md | sort | sha256sum` — the two
-      digests must be EQUAL, which is what "bytes unchanged, order only" means;
-      and `grep -c '^- R-0257 (Medium'` in `.agent/live_review.md` is 1 both
-      before and after.
-    PAIR_S CONTAINS-FROM: FROM exactly 1x after the write.
-    PAIR_F and PAIR_G REWRITE: FROM 0x and TO 1x after each write.
+GATES — run every one, record the REAL exit code in the handback
+
+A transport
+  `sha256sum .remedy-wt/f105-r37-1.block.md .agent/authored/f105-r37-1.md
+  .agent/last_block.md` — all three EQUAL; `cmp` the authored file against the
+  scratch original and against `last_block.md`, both silent. This is the
+  PRIMARY proof shape, not the digest fallback: the original exists.
+
+B size
+  `wc -l .agent/authored/f105-r37-1.md` — report it against the cap of 400
+  (DECISION F105 D5).
+
+C pair shapes, MEASURED not assumed
+  Slice every pair from the COMMITTED `.agent/authored/f105-r37-1.md` with a
+  whole-line marker reader. Never retype a slice. PAIR_Y's TO opens with its
+  FROM line followed by a BLANK line; PAIR_Z's TO opens with its FROM line and
+  continues directly. Both are therefore literally CONTAINS-FROM — write each
+  TO exactly as sliced, blank line included, and add nothing.
+  For each pair print declared vs measured and the counts:
+    PAIR_V, PAIR_W, PAIR_X, PAIR_F2, PAIR_G2 REWRITE: FROM 0x and TO 1x in the
+      target after the write.
+    PAIR_Y and PAIR_Z CONTAINS-FROM: FROM exactly 1x after the write.
     PAIR_P: `cmp` the applied `.agent/plan.md` against the sliced text; `wc -l`
-      must be under 50.
-  D marker leakage, LINE-anchored: `grep -c -E '^<<<'` in
-    `.agent/live_review.md`, `.agent/plan.md`,
-    `tests/orchestration/test_mission_compiler.py` and
-    `tests/orchestration/test_orchestrator_loop.py` — 0 each.
-  E state-file contract tests: `python3 -m pytest tests/docs/ -q` and
-    `python3 -m pytest tests/ui_server/test_dashboard_contract.py -q`.
-  F scoped round gate: `python3 -m pytest
-    tests/orchestration/test_mission_compiler.py
-    tests/orchestration/test_orchestrator_loop.py -q`.
-  G canary: `python3 -m pytest tests/cli/test_golden_path.py -q`.
-  H comments-only proof for C4: `git show <C4> -- <both test files>` and show
-    that every added and removed line begins, after its indentation, with `#`
-    or is docstring prose inside the existing docstring — no `assert`, no
-    `source.index`, no `200` changed. Paste the real diff lines.
-  I hygiene: `git status --porcelain` empty; `git worktree list` the primary
-    alone; `git log --numstat bcfb12e3..HEAD` with the `+` column per commit,
-    each under 500.
-Handback:    completion report + the rewritten `.agent/handoff.md` described in
-             C5. Then push. Do NOT create a PR.
+      against the cap of 50.
+  A declared shape that does not equal the measured shape is a STOP: report it,
+  do not apply it.
+
+D added-line reconciliation for C2
+  The five live_review pairs share one path in one commit. Take
+  `git show -U0 <C2> -- .agent/live_review.md`: every ADDED line must appear in
+  some TO, and every REMOVED line must be a FROM. Report the two stray counts;
+  both must be 0.
+
+E marker leakage
+  In all five written targets — `.agent/live_review.md`, `.agent/plan.md`,
+  `.agent/handoff.md` and the two test files — the count of lines beginning
+  `<<<` must be 0. Report the number, not the word.
+
+F state-file contracts
+  `python3 -m pytest tests/docs/ -q` and
+  `python3 -m pytest tests/ui_server/test_dashboard_contract.py -q`.
+  `.agent/plan.md` must keep `## Goal` and a `Steps` substring;
+  `.agent/live_review.md` must keep its `## Steps` heading.
+
+G scoped
+  `python3 -m pytest tests/orchestration/test_mission_compiler.py
+  tests/orchestration/test_orchestrator_loop.py -q` — both guard tests still
+  pass, unchanged in behaviour.
+
+H the number is gone
+  `grep -c 7335 tests/orchestration/test_mission_compiler.py
+  tests/orchestration/test_orchestrator_loop.py` — 0 in BOTH. Scoped to the two
+  test files on purpose: `.agent/live_review.md` records the number in R-0261's
+  own text and must keep it.
+
+I comments only
+  Over `git show -U0 <C3>`, every added and removed line is a `#` comment line
+  or docstring prose. Print the added and removed lines that are NOT — the list
+  must be EMPTY. No mutation red-proof is ordered for this round and none is to
+  be run: nothing executable changes (D8 item 5, DECISION F105 D10).
+
+J canary
+  `python3 -m pytest tests/cli/test_golden_path.py -q`.
+
+K hygiene
+  `git status --porcelain` empty at handback; `git worktree list` shows the
+  primary alone; per-commit insertions each under 500 via `git show --numstat`.
+
+Handback: completion report + rewrite `.agent/handoff.md` (changed-files table,
+item-status table for C1a/C1b/C2/C3/C4, the real gate table with exit codes,
+the transport and pair proofs, open-findings count, next expected action).
+Then `git push`. No PR — one is created at CLOSURE.
 ──────────────────────────────────────────────────────────────
