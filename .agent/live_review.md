@@ -571,6 +571,7 @@
   MOVE and not a retype, the block occurring exactly 1x before and 1x after.
   Registered here, fixed in its own round: doing it inside this commit would
   bury this round's real diff under a 27-line relocation. OPEN.
+  Landed: R-0259 — the R-0257 block moved to the end of Findings, C2 of R36.
 - R-0260 (Low, F105 R34, reviewer-authored defect): the two per-call-site guard
   comments claim more precision than the code has. The authored comment says
   "The window is the call expression itself", and the run-site test repeats the
@@ -588,6 +589,7 @@
   Fix: bound each window at its call's closing parenthesis instead of a magic
   200, or correct both comments to say "200 characters from the call's start,
   which covers the call and a little after". OPEN.
+  Landed: R-0260 — both guard comments now describe the real window, C4 of R36.
 - R-0257 (Medium, F105 R30, reviewer-authored defect): the R30 block lifted
   composition OUT of the try/except that turns any failure into the
   deterministic fallback. `compile_mission_plan` used to build its prompt as an
@@ -1798,3 +1800,41 @@
   DECISION D15 stated-cause line and drops no mandated section, which is the
   rule and not an exception.
   `LAST_REVIEWED_SHA` advances af35adbc -> 28fe51c3.
+- R35: session-close round — record the R34 gate, resolve R-0258 with
+  reviewer-authored text, register R-0260, and write the session-ending
+  handoff. State-file-only; no mutation red-proof ordered or run.
+- Reviewer gate on R35 (2026-08-10): PASS, by the reviewer of the FOLLOWING
+  session. R35 was the last round of a SESSION, not of the branch, so it does
+  get an on-disk entry: §4.13's terminator clause covers the last round of a
+  BRANCH, and R35's own handoff correctly named this gate as the next action
+  rather than claiming a verdict on itself.
+  Range `28fe51c3..bcfb12e3` = four commits, five paths, every one under
+  `.agent/` — `git diff --name-only` lists exactly the five the block named,
+  nothing under `packages/`, `apps/`, `tests/` or `docs/`. Insertions per
+  commit 242, 168, 81 and 61, each under 500; the 168/324 one is the
+  single-state-file verbatim rewrite AGENTS.md exempts from the churn reading
+  anyway.
+  Transport disk to disk against the reviewer's surviving original — the
+  PRIMARY proof shape, not the §4.9 digest fallback:
+  `.remedy-wt/f105-r35-1.block.md`, `.agent/authored/f105-r35-1.md` and
+  `.agent/last_block.md` all three carry
+  `b14899d9c8b57331e26b27546ece4352a4b33ebac6831aa4d2f2ed98195ddc96`, both
+  `cmp` runs silent, 242 lines against DECISION F105 D5's cap of 400.
+  All five pairs re-sliced from the COMMITTED authored file by this reviewer's
+  own whole-line marker reader: declared shape equals measured shape for every
+  one. PAIR_A and PAIR_C are REWRITEs at FROM 0x / TO 1x; PAIR_B and PAIR_D are
+  CONTAINS-FROM at FROM 1x; PAIR_E is byte-equal to the applied
+  `.agent/plan.md` at 44 lines against the cap of 50. The four live_review
+  pairs share ONE path in ONE commit and so reconcile TOGETHER against
+  `+81/-1`: of the 81 added lines not one comes from outside a TO, and the
+  single removed line is PAIR_A's FROM. Strays 0 in both directions, line
+  multisets taken against `git show -U0`.
+  Gates re-run by THIS reviewer with real exit codes: `grep -c -E '^<<<'`
+  prints 0 in both written targets; `tests/docs/` `294 passed in 0.25s`; the
+  dashboard contract `70 passed in 4.14s`; the canary `42 passed in 19.64s`;
+  `git status --porcelain` empty and `git worktree list` the primary alone at
+  this verdict.
+  No red-proof was ordered or run, and that is the correct call rather than an
+  omission: the round changed nothing executable, so there is no branch to
+  mutate (D8 checklist item 5, DECISION F105 D10).
+  `LAST_REVIEWED_SHA` advances 28fe51c3 -> bcfb12e3.
