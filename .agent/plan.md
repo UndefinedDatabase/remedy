@@ -14,21 +14,22 @@ Prompt CONTENT does not change; only its composition.
 
 ## Current Step
 T001 and T002 are DONE and gated. T003's six migration sites are all migrated.
-R35 is GATED; `LAST_REVIEWED_SHA` is bcfb12e3. Call evidence reaches four
+R36 is GATED; `LAST_REVIEWED_SHA` is 25e6326a. Call evidence reaches four
 prompts: both `do_cmd` flight-plan sites, `remedy mission plan`, and the
 orchestrator loop, whose sink lives inside `run_mission` so both callers inherit
 it (DECISION D11). `remedy mission run` names its provider; the gauntlet's stays
 unlabelled on purpose (DECISION D13).
-R36 is the housekeeping round: it MOVES the misfiled R-0257 block to the end of
-`## Findings` (R-0259), makes both guard-window comments say what the code
-actually does (R-0260), and records the R35 gate. No production code.
-Open findings: R-0221, R-0239, R-0247, R-0256 — plus R-0259 and R-0260, whose
-fixes land this round and await the reviewer's `Done:` text.
+R37 is the state round: it records the R36 gate, resolves R-0259 and R-0260
+with reviewer-authored `Done:` text, and registers plus fixes R-0261 — the
+cross-site character distance both guard comments attach to the wrong anchor.
+No production code.
+Open findings: R-0221, R-0239, R-0247, R-0256 — plus R-0261, whose fix lands
+this round and awaits the reviewer's `Done:`.
 No PR; one is created at CLOSURE.
 
 ## Next Steps
 - R-0256 (compose once, not twice) needs a signature change on `plan_job_llm`
-  and `run_intake`, so it is its own round — the next one.
+  and `run_intake`, so it is its own round — R38, the next one.
 - Then T004, `remedy stats cache` over actuals; then the integration gate
   (docs/agents/integration_gate.md); then closure
   (docs/roadmap/STATUS_closure_protocol.md), where the PR is created.
