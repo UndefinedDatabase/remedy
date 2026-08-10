@@ -5,7 +5,7 @@
 > round. Findings are authored here by the reviewer only. A worker marks a
 > landed fix `Landed: R-XXXX`; only reviewer-authored `Done:` text sets
 > Resolved (docs/agents/planner_reviewer_prompt.md §4.4).
-> Branch: feature/f105-cache-optimal-prompt-ordering. Next free ID: R-0258.
+> Branch: feature/f105-cache-optimal-prompt-ordering. Next free ID: R-0260.
 
 ## Findings
 
@@ -520,6 +520,42 @@
   or accept its `ComposedPrompt` so exactly one composition feeds both the
   provider and the trace. Needs a signature change on `plan_job_llm` and
   `run_intake`, so it is its own round. OPEN.
+
+- R-0258 (Medium, F105 R33, reviewer-authored defect): the R33 block ordered
+  `provider="ollama", provider_kind="ollama"` onto the `run_mission` call in
+  `apps/cli/commands/mission_cmd.py` while
+  `tests/orchestration/test_mission_compiler.py:1210` already asserted
+  `source.count('provider_kind="ollama"') == 1` over the WHOLE of that file. The
+  second label is CORRECT and makes the count 2, so the ordered change and the
+  existing suite could not both hold. The R33 worker applied the edit, measured
+  `assert 2 == 1`, reverted it and declared the deviation rather than landing a
+  red test or editing a file outside its change set — which was right on both
+  counts. Reproduced by the reviewer in a disposable worktree at af35adbc: the
+  edit applied verbatim yields exactly that failure and
+  `grep -c 'provider_kind="ollama"'` prints 2. Cost: C4 item 3 and C5 test 4 of
+  R33 unlanded, and both `run_mission` callers still writing unlabelled rows.
+  This is the SEVENTH instance of the unsatisfiable-gate class across F104 and
+  F105 and the first whose counting gate lives in a test file the block never
+  names: DECISION F105 D8's items 1-4 read the block, item 5 the code it points
+  at, item 6 the file it writes into, and none of them reads the TESTS that
+  already guard that file. Fix: a seventh checklist item, and repair the guard
+  into a per-call-site assertion so a second labelled call site is allowed.
+  OPEN.
+- R-0259 (Medium, F105 R31, reviewer-authored defect): the R-0257 finding block
+  sits at lines 1528-1554 of `.agent/live_review.md`, under `## Steps` instead
+  of under `## Findings` — the R-0231 class in the mirror direction, and the
+  second instance of it on this branch. It is worse than misplacement: the block
+  was inserted INSIDE the R30 gate record, so that record's concluding
+  ``LAST_REVIEWED_SHA` advances 0c8932e3 -> 0ba30611.` line is orphaned at 1555,
+  27 lines below the record it belongs to and directly beneath R-0257's
+  resolution text. A reader parsing the round history attributes R30's advance
+  to R-0257's `Done:` paragraph. R-0231's own resolution claimed "`## Findings`
+  holds only findings again", and that invariant is broken again in the other
+  direction. Fix: MOVE lines 1528-1554 to the end of `## Findings`, bytes
+  unchanged, so the R30 record closes with its own advance line — proved as a
+  MOVE and not a retype, the block occurring exactly 1x before and 1x after.
+  Registered here, fixed in its own round: doing it inside this commit would
+  bury this round's real diff under a 27-line relocation. OPEN.
 
 ## Steps
 
@@ -1638,3 +1674,47 @@
   a property of this file's format, not a defect of R32, and it is recorded
   here so no later reader re-derives it as a finding.
   `LAST_REVIEWED_SHA` advances 9bd3a3e7 -> cab89962.
+- R33: SPLIT round — the orchestrator prompt's call evidence: a per-iteration
+  recorder carrying the segment manifest, and the sink appending to the
+  mission's `prompt_trace.jsonl` from inside `run_mission` (DECISION D11).
+- Reviewer gate on R33 (2026-08-10): PASS, with one declared deviation accepted
+  and its cause registered as R-0258 against the REVIEWER, not the worker.
+  Range `cab89962..af35adbc` = eight commits, read as a real diff: eight paths,
+  every one on the block's Change line, `mission_cmd.py` absent by the declared
+  deviation; insertions per commit 293, 232, 79, 27, 55, 105, 2 — each under
+  500. Transport disk to disk against the reviewer's surviving original: all
+  three of `.remedy-wt/f105-r33-1.block.md`, `.agent/authored/f105-r33-1.md`
+  and `.agent/last_block.md` carry
+  `d6d9d2a8e0d03d646021ed101d7c5b83dacce65b66dc75c74e5ea92306f40d80`, every
+  `cmp` silent, 293 lines against D5's cap of 400.
+  The code was read bottom-up rather than taken from the report. The append sits
+  in a `finally`, so a call that RAISES still leaves its evidence before the
+  boundary turns the fault into a terminal — the ledger's durability, which a
+  single flush after the loop would not have given. The recorder is rebuilt per
+  iteration from that iteration's `ComposedPrompt`, and `_observe_call` is
+  defined and consumed inside the same iteration, so no manifest can describe
+  earlier bytes and the closure has no late-binding hazard. `on_call` is CHAINED
+  rather than replaced. The two new module-level imports introduce no cycle:
+  `prompt_trace` imports only `prompt_segments`.
+  Gates re-run by THIS reviewer with real exit codes: the scoped gate
+  `201 passed in 1.15s` including the frozen prompt golden, so the composed
+  BYTES did not move; the three caller suites `152 passed in 38.12s`;
+  `tests/docs/` `294 passed in 0.30s`; the dashboard contract
+  `70 passed in 3.96s`; the canary `42 passed in 19.46s`; `git status
+  --porcelain` empty and `git worktree list` the primary alone.
+  All three red-proofs reproduced by the reviewer in a disposable worktree at
+  af35adbc with `PYTHONDONTWRITEBYTECODE=1`, each reverted and the revert proved
+  by an empty `git diff --stat`, worktree removed and pruned. Baseline
+  `3 passed in 0.33s`. M1, deleting the `append_trace_jsonl` call:
+  `2 failed, 1 passed`, the two named tests RED. M2,
+  `append_trace_jsonl` -> `write_trace_jsonl`: `1 failed, 2 passed`, only
+  `test_a_second_run_appends_rather_than_truncating` RED — so the append is
+  pinned as the writer, not merely used. M3 as ORDERED was unrunnable and the
+  worker said so; the reviewer applied the ordered edit anyway to test the
+  worker's account of WHY, and it failed exactly as reported.
+  The handback's own corrections hold: the R-0149 self-reference exception it
+  cites for the trailing bookkeeping commit is really in
+  docs/agents/handback_template.md, and its note that D11 and PAIR_C's Next
+  Steps understate the gap by one caller is correct — both reviewer-authored,
+  applied verbatim, and this round repairs the substance, not the wording.
+  `LAST_REVIEWED_SHA` advances cab89962 -> af35adbc.

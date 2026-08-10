@@ -4116,3 +4116,45 @@ mislabeled would not be. That is a one-line round, no longer a wiring round.
 Reverse this decision by deleting this entry, dropping the append from
 `run_mission`, and flushing a caller-owned `traces` list in each of the two
 callers instead.
+
+D12 — §3's pre-emission checklist gains a SEVENTH item: before ordering a change
+that ADDS a string to a file, grep the suite for tests that COUNT that string
+over that whole file. R33 lost two of its items to a guard nobody looked at:
+`test_mission_compiler.py` asserted `source.count('provider_kind="ollama"') == 1`
+over all of `mission_cmd.py`, so a correct second call site could not land
+(finding R-0258, the seventh instance of the unsatisfiable-gate class).
+
+The four earlier items read the block's own bytes, item 5 reads the code the
+block points at, item 6 reads the file the block writes into. This one reads the
+TESTS that already guard that file — a fourth place, which is why it is a
+seventh item and not a clause bolted onto item 6.
+
+The alternative — forbid file-wide `source.count(...)` guards outright — was
+rejected: they are the only cheap way to pin a CLI wiring line no behavioural
+test reaches (F105 R28 introduced them deliberately). The defect is the SCOPE,
+not the technique, so the rule is "scope the guard to its call site".
+
+Reverse this decision by deleting this entry and §3 checklist item 7.
+
+D13 — Remedy deliberately does NOT label the provider on the gauntlet's
+`run_mission` call. D11 left it as "a one-line round"; reading the call site
+retires that plan. `apps/cli/commands/mission_cmd.py` can honestly name Ollama
+because `_orchestrator_call_fn` is unconditionally `make_structured_call_fn`.
+The gauntlet's call_fn arrives through `deps.move_call_fn()`, a substitutable
+seam whose default is Ollama but whose whole purpose is being replaced, so a
+hardcoded label there would write a guess into evidence every time a caller
+substituted the seam.
+
+An EMPTY label already means "the caller did not name it", which `run_mission`'s
+docstring states, and which is exactly true of the gauntlet. Unlabelled is
+honest; mislabelled is not, and this repository records unmeasured cost as
+unmeasured rather than estimating it into the record.
+
+The alternative — thread a provider label through the deps object so the
+gauntlet reports the provider it actually used — is the RIGHT fix and is not
+rejected, only deferred: it is a deps-shape change, not a one-liner, and F105 is
+about prompt composition. The absence is documented at the call site so a reader
+searching for the missing label finds the reason instead of a gap.
+
+Reverse this decision by threading the label through `GauntletDeps` and passing
+it at that call site.
