@@ -5,7 +5,7 @@
 > round. Findings are authored here by the reviewer only. A worker marks a
 > landed fix `Landed: R-XXXX`; only reviewer-authored `Done:` text sets
 > Resolved (docs/agents/planner_reviewer_prompt.md §4.4).
-> Branch: feature/f105-cache-optimal-prompt-ordering. Next free ID: R-0256.
+> Branch: feature/f105-cache-optimal-prompt-ordering. Next free ID: R-0257.
 
 ## Findings
 
@@ -495,7 +495,24 @@
   AGENTS.md Scope Control bars the "while I'm here" edit. Fix: the preamble
   says six, and the closing note says six recurrences and "four of them in one
   block". OPEN.
-  Landed: R-0255 — D8's preamble and closing note now count six, commit f5752809.
+  Done: R-0255 (2026-08-10) — RESOLVED. The preamble reads "Run all six checks"
+  and the closing note reads "recurred six times ... R20 hit four of them in one
+  block", so the count a reviewer follows now matches the list they must run.
+  Verified by the reviewer against the applied file, not the diff alone.
+- R-0256 (Low, F105 R27): the segment manifest a flight-plan trace carries is
+  composed a SECOND time at the call site. `apps/cli/commands/do_cmd.py` calls
+  `compose_flight_plan_prompt(plan_intake_dict)` for the manifest while
+  `plan_job_llm` composes the bytes it actually sends, and both reach
+  `repo_facts_block()` independently. The trace's `prompt_text` is the effective
+  prompt but its `segment_manifest` describes the reviewer-composed twin, so an
+  audit row can describe bytes that were never sent if the two compositions
+  differ. `make_intake_call_recorder` has the same shape, so the finding covers
+  both sites. Cost today is bounded and visible: `prompt_chars` and
+  `segment_manifest_chars` are both recorded, so a divergence shows up as a
+  mismatch rather than a silent lie. Fix: compose ONCE — have the builder return
+  or accept its `ComposedPrompt` so exactly one composition feeds both the
+  provider and the trace. Needs a signature change on `plan_job_llm` and
+  `run_intake`, so it is its own round. OPEN.
 
 ## Steps
 
@@ -1355,3 +1372,41 @@
   nothing. The property the gate exists to protect does hold, independently
   checked: a line-anchored count of marker LINES is 0 in all five targets.
   `LAST_REVIEWED_SHA` advances 0341928d -> d0ebba63.
+- R27: SPLIT round — record the R26 gate, resolve R-0253 and R-0254, register
+  and fix R-0255, and wire `on_call` for the flight-plan prompt at the one
+  `do_cmd` site whose evidence sink already exists.
+- Reviewer gate on R27 (2026-08-10): PASS. Range `d0ebba63..73259d7a`, eight
+  commits, read as a real diff: only the nine paths the block named, and the
+  replan site the block forbade is untouched. Insertions per commit 457, 371,
+  69, 3, 1, 95, 77, 1 — each under 500.
+  Transport under the §4.9 digest fallback: `.agent/authored/f105-r28-1.md`'s
+  predecessor `.agent/authored/f105-r27-1.md` and `.agent/last_block.md` both
+  recompute to `efef62a6c61e08b33682175f034b9ba1441cac7245b6dceca5e05093199fb71a`,
+  `cmp` silent, 457 lines each — the digest the handback declared.
+  All 13 pairs re-sliced from the COMMITTED authored file by the reviewer's own
+  marker-LINE reader and measured disk to disk: declared shape equals measured
+  shape for every one, appends at FROM 1x, rewrites at FROM 0x after and TO 1x,
+  and PAIR_N byte-equal to `.agent/plan.md` at 42 lines against the cap of 50.
+  Diff-scoped accounting per §4.9: `.agent/live_review.md` ADDED 69, fully
+  decomposed, strays 0; `docs/agents/planner_reviewer_prompt.md` ADDED 3,
+  strays 0; `packages/orchestration/flight_plan.py` ADDED 44, strays 0;
+  `tests/orchestration/test_prompt_trace.py` ADDED 25, strays 0;
+  `apps/cli/commands/do_cmd.py` ADDED 26, strays 0. No ADDED line in any file
+  came from outside a TO slice.
+  Gates re-run by THIS reviewer with real exit codes: `tests/orchestration/`
+  `10499 passed, 7 skipped in 627.56s` — one more test than R26's 10499-minus-one
+  baseline, the new guard; `tests/cli/` `1329 passed in 260.89s`;
+  `test_prompt_trace.py` `38 passed`; `tests/docs/` `294 passed`; the dashboard
+  contract `70 passed`; the canary `42 passed`. Mutation red-proof M1 run by the
+  reviewer in a disposable worktree at 73259d7a: removing BOTH the `on_call=`
+  argument and the `make_flight_plan_call_recorder,` import turns exactly one
+  test RED, `TestSegmentManifest::test_the_cli_flight_plan_recorder_passes_the_composed_prompt`,
+  at `1 failed, 37 passed`. Worktree removed and pruned; `git status
+  --porcelain` empty and `git worktree list` the primary alone at this verdict.
+  The 457-line block is charged to the REVIEWER, not to R27. DECISION F105 D5
+  caps a block at 400 and D8 item 1 says to COUNT it on the final bytes; the
+  reviewer estimated instead of counting, and a block must be saved verbatim, so
+  the worker was right to declare the overage rather than trim it. First
+  recurrence of item 1 in this feature. The remedy is mechanical counting before
+  emission, which is what item 1 already prescribes.
+  `LAST_REVIEWED_SHA` advances d0ebba63 -> 73259d7a.
