@@ -14,21 +14,21 @@ Prompt CONTENT does not change; only its composition.
 
 ## Current Step
 T001 and T002 are DONE and gated. T003's six migration sites are all migrated.
-R32 is GATED; `LAST_REVIEWED_SHA` is cab89962.
-R33 gives the ORCHESTRATOR prompt its call evidence: a per-iteration recorder
-in `orchestrator_loop.py` carrying the segment manifest, and the sink appending
-to the mission's `prompt_trace.jsonl` from INSIDE `run_mission` rather than
-from a caller (DECISION F105 D11), so both callers —
-`mission_cmd.py:366` and `gauntlet_runner.py:514` — inherit it.
-Call evidence then reaches four prompts: both `do_cmd` flight-plan sites,
-`remedy mission plan`, and the orchestrator loop.
-Open findings: R-0221, R-0239, R-0247, R-0256.
+R33 is GATED; `LAST_REVIEWED_SHA` is af35adbc. Call evidence reaches four
+prompts: both `do_cmd` flight-plan sites, `remedy mission plan`, and the
+orchestrator loop, whose sink lives inside `run_mission` so both callers inherit
+it (DECISION D11).
+R34 repairs what blocked R33: the file-wide source guard becomes a per-call-site
+assertion (R-0258), §3 gains checklist item 7, `remedy mission run` names its
+provider, and the gauntlet's absence of a label is documented as deliberate
+(DECISION D13) rather than left as a pending one-line round.
+Open findings: R-0221, R-0239, R-0247, R-0256, R-0259.
 No PR; one is created at CLOSURE.
 
 ## Next Steps
-- Name the gauntlet's provider at `gauntlet_runner.py:514`: its orchestrator
-  rows reach evidence from R33 on but carry an empty label. One line, not a
-  wiring round (DECISION F105 D11).
+- R-0259: MOVE the misfiled R-0257 block (live_review.md 1528-1554) to the end
+  of `## Findings`, bytes unchanged, so the R30 gate record closes with its own
+  `LAST_REVIEWED_SHA` line. A state-file round of its own.
 - R-0256 (compose once, not twice) needs a signature change on `plan_job_llm`
   and `run_intake`, so it is its own round.
 - Then T004, `remedy stats cache` over actuals; then the integration gate
