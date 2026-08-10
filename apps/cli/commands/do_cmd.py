@@ -199,7 +199,10 @@ def _cmd_do_mission(
 
     call_fn = None
     intake_result = None
-    intake_traces: list = []
+    # One list, one write: it carries every prompt trace this command produces,
+    # intake and flight plan alike, because `write_trace_jsonl` opens its path
+    # with mode "w" and a second write would truncate the first.
+    prompt_traces: list = []
     intake_fallback_reason = ""
     if no_llm:
         intake_result = heuristic_intake(mission)
@@ -212,7 +215,7 @@ def _cmd_do_mission(
                 mission,
                 call_fn,
                 on_call=make_intake_call_recorder(
-                    intake_traces,
+                    prompt_traces,
                     intake_composed,
                     provider="ollama",
                     provider_kind="ollama",
@@ -245,11 +248,29 @@ def _cmd_do_mission(
         from packages.orchestration.flight_plan import (
             apply_plan_budgets,
             apply_plan_fences,
+            compose_flight_plan_prompt,
+            make_flight_plan_call_recorder,
             map_flight_plan_to_tasks,
             plan_job_llm,
             write_plan_md,
         )
-        fp_result = plan_job_llm(intake_result.value.model_dump(), plan_call_fn)
+        plan_intake_dict = intake_result.value.model_dump()
+        # The manifest is composed here and the bytes are built again inside
+        # `plan_job_llm`; both go through `compose_flight_plan_prompt`, so the
+        # trace carries `prompt_chars` from the effective prompt and
+        # `segment_manifest_chars` from this composition and a divergence stays
+        # visible rather than silent.
+        plan_composed = compose_flight_plan_prompt(plan_intake_dict)
+        fp_result = plan_job_llm(
+            plan_intake_dict,
+            plan_call_fn,
+            on_call=make_flight_plan_call_recorder(
+                prompt_traces,
+                plan_composed,
+                provider="ollama",
+                provider_kind="ollama",
+            ),
+        )
         if fp_result.plan is not None:
             fp_dict = fp_result.plan.model_dump()
             fp_dict["_approval"] = "pending"
@@ -352,12 +373,12 @@ def _cmd_do_mission(
         job = plan_result.job
         save_job(job)
 
-    if intake_traces:
+    if prompt_traces:
         from packages.orchestration.prompt_trace import write_trace_jsonl
         from packages.orchestration.run_log import RunLogWriter
         log = RunLogWriter(job_id=job.id)
         try:
-            write_trace_jsonl(intake_traces, log.path.parent / "prompt_trace.jsonl")
+            write_trace_jsonl(prompt_traces, log.path.parent / "prompt_trace.jsonl")
         except OSError:
             pass
 

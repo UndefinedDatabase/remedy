@@ -270,6 +270,31 @@ class TestSegmentManifest:
 
         assert "make_intake_call_recorder" in inspect.getsource(do_cmd)
 
+    def test_the_cli_flight_plan_recorder_passes_the_composed_prompt(self):
+        """Wiring guard: an unwired flight-plan manifest fails HERE (F105 R27)."""
+        import apps.cli.commands.do_cmd as do_cmd
+        from packages.orchestration.flight_plan import (
+            compose_flight_plan_prompt,
+            make_flight_plan_call_recorder,
+        )
+
+        traces: list = []
+        composed = compose_flight_plan_prompt(
+            {"goal": "demo"}, project_facts="pinned facts"
+        )
+        recorder = make_flight_plan_call_recorder(
+            traces, composed, provider="ollama", provider_kind="ollama"
+        )
+        recorder(1, "fp1", False, composed.text)
+        assert len(traces) == 1
+        assert traces[0].role == "flight_plan"
+        assert traces[0].prompt_kind == "flight-plan"
+        assert len(traces[0].segment_manifest) == 5
+
+        source = inspect.getsource(do_cmd)
+        assert "make_flight_plan_call_recorder" in source
+        assert "prompt_traces" in source
+
 
 # ---------------------------------------------------------------------------
 # Step 5088: next_approve_command unit tests

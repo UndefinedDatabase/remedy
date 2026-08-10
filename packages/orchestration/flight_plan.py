@@ -20,6 +20,7 @@ from packages.orchestration.prompt_segments import (
     SegmentStabilityRank,
     compose_prompt_segments,
 )
+from packages.orchestration.prompt_trace import build_trace_entry
 from packages.orchestration.schemas.models import (
     _LARGE_PLAN_THRESHOLD,
     FlightPlan,
@@ -148,6 +149,49 @@ def _build_plan_prompt(intake_dict: dict[str, Any], *,
     directory.
     """
     return compose_flight_plan_prompt(intake_dict, project_facts=project_facts).text
+
+
+# The recorder lives beside the composer, in this module, so the manifest and
+# the prompt it describes cannot drift apart: whoever changes flight-plan
+# composition sees the evidence writer in the same file (F105 T003 site 5, the
+# same reason `make_intake_call_recorder` sits in `intake.py`).
+def make_flight_plan_call_recorder(
+    traces: list[Any],
+    composed: ComposedPrompt,
+    *,
+    provider: str = "",
+    provider_kind: str = "",
+) -> Callable[[int, str, bool, str], None]:
+    """Build the ``on_call`` recorder ``plan_job_llm`` expects.
+
+    Every provider invocation appends one prompt trace entry to ``traces``,
+    carrying ``composed``'s segment manifest so call evidence records which
+    named segments produced the prompt.
+
+    The role is ``flight_plan``, deliberately NOT ``planner``: the ``planner``
+    traces belong to the OTHER planner path
+    (``packages/orchestration/structured_planner.py`` over ``PlannerPlan``), and
+    one spelling per concept is what keeps a per-role cache report from summing
+    two different prompts into one row.
+    """
+    def _record(
+        attempt: int, schema_v: str, is_parse_retry: bool, effective_prompt: str,
+    ) -> None:
+        kind = "flight-plan-retry" if is_parse_retry else "flight-plan"
+        traces.append(build_trace_entry(
+            prompt_text=effective_prompt,
+            role="flight_plan",
+            provider=provider,
+            provider_kind=provider_kind,
+            prompt_kind=kind,
+            schema_v=schema_v,
+            phase=kind,
+            transport_attempt=attempt,
+            is_transport_retry=False,
+            composed_prompt=composed,
+        ))
+
+    return _record
 
 
 # ---------------------------------------------------------------------------
