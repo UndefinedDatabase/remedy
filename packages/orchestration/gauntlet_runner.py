@@ -511,6 +511,13 @@ def run_order(order: GauntletOrder, *, campaign_root: Path, real_data_root: Path
                 update_dossier=deps.update_dossier_fn(),
             )
             injectors = seams.injectors
+            # Remedy deliberately does NOT name the provider here, so these
+            # rows reach evidence unlabelled (DECISION F105 D13). The CLI site
+            # can name Ollama because its call_fn is always
+            # `make_structured_call_fn`; this call_fn arrives through `deps`, a
+            # seam whose purpose is being substituted, so a hardcoded label
+            # would write a guess into evidence. An empty label already means
+            # "the caller did not name it", which is what happened.
             result = deps.run_mission(
                 mission.id,
                 LoopLimits(max_iterations=order.budget["max_iterations"]),

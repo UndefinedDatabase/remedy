@@ -363,8 +363,14 @@ def _cmd_mission_run_loop(mission_id: str, *, project: str | None = None,
         sys.exit(EXIT_USAGE)
 
     call_fn = None if no_llm else _orchestrator_call_fn()
+    # `_orchestrator_call_fn` is unconditionally `make_structured_call_fn`,
+    # which is Ollama-backed, so the provider is named here exactly as the plan
+    # site above names it. Under `--no-llm` there is no call and so no trace to
+    # label. The label reaches the prompt trace through `run_mission`'s own
+    # per-iteration recorder (DECISION F105 D11).
     result = run_mission(mission.id, limits, project_id=project_id,
-                         call_fn=call_fn)
+                         call_fn=call_fn,
+                         provider="ollama", provider_kind="ollama")
     entries = read_ledger(project_id, mission.id)
 
     if json_output:
