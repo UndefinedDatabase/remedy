@@ -41,7 +41,7 @@ Commits, in order: 19837409 (C1a), 477030f0 (C1b), c9555983 (C2), f5752809 (C3),
 | H tests/docs | 0 | 294 passed in 0.25s |
 | H dashboard | 0 | 70 passed in 3.90s |
 | I canary | 0 | 42 passed in 19.23s |
-| J hygiene | 0 | `git status --porcelain` empty, `git worktree list` primary alone; insertions per commit 457, 371, 69, 3, 1, 95 |
+| J hygiene | 0 | at d53db4fd: `git status --porcelain` empty, `git worktree list` primary alone; insertions per commit 457, 371, 69, 3, 1, 95, 77 — each under 500 |
 
 ## Pair proofs (each grep scoped to the named file)
 | Pair | Shape (declared = measured) | Proof |
