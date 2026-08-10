@@ -520,7 +520,20 @@
   or accept its `ComposedPrompt` so exactly one composition feeds both the
   provider and the trace. Needs a signature change on `plan_job_llm` and
   `run_intake`, so it is its own round. OPEN.
-  Landed: R-0256 — 3e2fa6bc passes composed= at all three do_cmd.py call sites.
+  Done: R-0256 (2026-08-10) — RESOLVED. One composition now feeds both the
+  provider and the trace at every site. `run_intake` and `plan_job_llm` take a
+  keyword-only `composed` (R39, gated at c44a582c) and all three
+  `apps/cli/commands/do_cmd.py` sites hand theirs down (3e2fa6bc): intake at
+  217, flight-plan at 267, replan at 2888. The comment that described the
+  second composition was replaced in the same commit rather than left to rot.
+  Verified by the reviewer against the applied files, not the diff alone:
+  `composed=` occurs 3x in `do_cmd.py` and
+  `on_call=make_flight_plan_call_recorder(` still occurs 2x, so the existing
+  wiring guard is intact. Red-proof by the reviewer in a disposable worktree at
+  87ef21d9, a mutation the round did NOT order: deleting
+  `composed=intake_composed,` alone turns
+  `test_every_cli_call_site_hands_its_composition_down` RED, so the guard
+  discriminates per site and not only on the one site R41 mutated.
 
 - R-0258 (Medium, F105 R33, reviewer-authored defect): the R33 block ordered
   `provider="ollama", provider_kind="ollama"` onto the `run_mission` call in
@@ -707,7 +720,17 @@
   disposable worktree at R39: with `assert seen[0].startswith(composed.text)`
   both tests pass at `68 passed`, and reverting either ternary red-proofs its
   own test. Whoever runs R40 lands that corrected form. OPEN.
-  Landed: R-0263 — 398c7752 lands both tests in the corrected startswith form.
+  Done: R-0263 (2026-08-10) — RESOLVED. Both tests landed in the form this
+  finding proved correct: `assert len(seen) == 1` plus
+  `assert seen[0].startswith(composed.text)`, never equality, because
+  `run_structured_call` hands `call_fn` the schema-decorated prompt. The
+  length pin keeps what the old list-equality assertion also asserted, so
+  nothing was traded away for the fix. Verified by the reviewer: the scoped
+  suite is `119 passed in 0.97s` re-run independently, and both mutations
+  reproduce RED — reverting the `intake.py` ternary reddens only the intake
+  test, reverting the `flight_plan.py` ternary only the flight-plan test. The
+  finding's own root cause — an authored assertion about a callee's contract
+  the block never read — stays on disk as the D8 item-5 widening.
 
 - R-0264 (Low, F105 R40, reviewer-authored defect): the R40 step line applies
   §4.13 — "the LAST round of a BRANCH has no on-disk gate entry" — to the last
@@ -722,6 +745,16 @@
   branch resumed by a reader who trusted it. Fix: the R40 line says the session
   closed with its own round ungated and awaiting the next session, and the
   gate below supplies it. OPEN.
+  Done: R-0264 (2026-08-10) — RESOLVED. The R40 step line now carries the
+  correction ("That reading was wrong ... the round stayed gateable and the
+  next session gated it below", 3682dac9) and the R40 gate record sits directly
+  beneath it, so the disk no longer tells a resuming reader that no gate is
+  coming. The distinction this finding names is the durable part: §4.13's
+  terminator is a property of a BRANCH at closure, where no later round exists
+  to write the record. A session boundary is not that; a round left ungated by
+  a session limit is an ordinary handback and the next session gates it. Nothing
+  in §4.13 needed changing — it already says "branch" — so no amendment was
+  authored and none should be.
 
 ## Steps
 
@@ -2133,3 +2166,38 @@
   and the three `do_cmd.py` call sites plus a wiring guard that fix R-0256.
   Both changes were red-proofed by the reviewer in disposable worktrees at
   7f622b7f before this block was authored.
+- Reviewer gate on R41 (2026-08-10): PASS, with one deviation declared by the
+  worker and ACCEPTED. Range `7f622b7f..87ef21d9` = six commits, nine paths,
+  exactly the nine the block named; nothing under `packages/` or `docs/`.
+  Insertions per commit 383, 299, 43, 44, 16 and 111, each far under 500.
+  Transport by the PRIMARY shape: `.remedy-wt/f105-r41-1.block.md`, the
+  committed `.agent/authored/f105-r41-1.md` and `.agent/last_block.md` all
+  three hash to
+  `58b153128ab2711982bfed1163a80f6286ab2f9c0716d060390594b155773baf`
+  at 383 lines against D5's cap of 400; both `cmp` runs silent.
+  The two production diffs were read line by line against the authored TOs and
+  are byte-identical to them: three keyword lines added to `do_cmd.py`, one
+  stale comment replaced, two test classes appended, one wiring guard appended.
+  Gates re-run by THIS reviewer, none taken from the handback: the scoped suite
+  `119 passed in 0.97s`; `tests/docs/` `294 passed in 0.25s`;
+  `test_dashboard_contract.py` `70 passed in 3.99s`; the canary
+  `42 passed in 19.92s`. `composed=` 3x and
+  `on_call=make_flight_plan_call_recorder(` 2x in `do_cmd.py`; the transport
+  marker count is 0 in all seven touched text files; `.agent/plan.md` is 37
+  lines against the cap of 50.
+  One spot-check the block did NOT order, run in a disposable worktree at
+  87ef21d9 and removed after: deleting `composed=intake_composed,` alone turns
+  the wiring guard RED, so it discriminates per site.
+  The deviation, ACCEPTED: `.agent/handoff.md` at 127 lines with its DECISION
+  D15 stated-cause line. The mandated tables account for it and no section was
+  dropped.
+  One reviewer-side lesson, not a finding, because it cost nothing: the block's
+  C5 instruction placed a `Landed:` line inside PAIR_F's TO region, which broke
+  that TO's contiguity in the final file. The worker measured the post-state,
+  declared it and did not hide it. A block that orders a later insertion into an
+  earlier pair's TO should say so at authoring time, in the pair's own shape
+  declaration.
+  `LAST_REVIEWED_SHA` advances 7f622b7f -> 87ef21d9.
+- R42: state and investigation round — record the R41 gate, resolve R-0256,
+  R-0263 and R-0264, and produce the read-only `.agent/t004_inventory.md` that
+  T004 needs before any `remedy stats cache` code exists. No production code.
