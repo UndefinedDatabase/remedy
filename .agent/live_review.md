@@ -5,7 +5,7 @@
 > round. Findings are authored here by the reviewer only. A worker marks a
 > landed fix `Landed: R-XXXX`; only reviewer-authored `Done:` text sets
 > Resolved (docs/agents/planner_reviewer_prompt.md §4.4).
-> Branch: feature/f105-cache-optimal-prompt-ordering. Next free ID: R-0260.
+> Branch: feature/f105-cache-optimal-prompt-ordering. Next free ID: R-0261.
 
 ## Findings
 
@@ -541,6 +541,21 @@
   already guard that file. Fix: a seventh checklist item, and repair the guard
   into a per-call-site assertion so a second labelled call site is allowed.
   OPEN.
+  Done: R-0258 (2026-08-10) — RESOLVED at F105 R34, commits 3c651516 and
+  083a42d3. §3 of docs/agents/planner_reviewer_prompt.md now carries a SEVENTH
+  pre-emission item: grep the suite for tests that COUNT a string over a whole
+  file before ordering a change that adds that string. The guard that caused
+  this is repaired in the same feature — `test_the_cli_names_the_provider_it_
+  planned_with` asserts the label inside a window anchored at its own call site
+  instead of `source.count(...) == 1` over all of `mission_cmd.py`. Verified by
+  the reviewer against the real diff and by measurement, not from the handback:
+  the file-wide count of `provider_kind="ollama"` is now 2 and the suite is
+  green, which is precisely the state the old guard made impossible. The two
+  call sites are 7335 characters apart, so neither window can see the other's
+  label, and both R34 mutations went red as ordered — M1 taking only the run
+  guard down while the plan guard stayed green, which is the property "scoped to
+  its own call site" means. The remaining imprecision is registered separately
+  as R-0260 and does not reopen this one.
 - R-0259 (Medium, F105 R31, reviewer-authored defect): the R-0257 finding block
   sits at lines 1528-1554 of `.agent/live_review.md`, under `## Steps` instead
   of under `## Findings` — the R-0231 class in the mirror direction, and the
@@ -556,6 +571,23 @@
   MOVE and not a retype, the block occurring exactly 1x before and 1x after.
   Registered here, fixed in its own round: doing it inside this commit would
   bury this round's real diff under a 27-line relocation. OPEN.
+- R-0260 (Low, F105 R34, reviewer-authored defect): the two per-call-site guard
+  comments claim more precision than the code has. The authored comment says
+  "The window is the call expression itself", and the run-site test repeats the
+  shape, but a 200-character window from `outcome = plan_mission(` overshoots
+  that call by 71 characters — measured, not estimated — spilling into
+  `except MissionPlanInProgressError as exc:` and the first characters of the
+  next `print(`; the run site overshoots its 173-character call by 27. The
+  guarded PROPERTY holds and was proved to hold: the call sites are 7335
+  characters apart, so no window reaches the other's label, and both mutations
+  went red. So this is an inaccurate claim on disk, not a broken test — but it
+  is a comment written to teach the next reader what the guard pins, landed by
+  the very round whose subject was guards that promise more than they check.
+  The R34 worker measured the overshoot and declared it rather than silently
+  tightening the constant, which was right: the wording is the reviewer's.
+  Fix: bound each window at its call's closing parenthesis instead of a magic
+  200, or correct both comments to say "200 characters from the call's start,
+  which covers the call and a little after". OPEN.
 
 ## Steps
 
@@ -1718,3 +1750,51 @@
   Steps understate the gap by one caller is correct — both reviewer-authored,
   applied verbatim, and this round repairs the substance, not the wording.
   `LAST_REVIEWED_SHA` advances cab89962 -> af35adbc.
+- R34: SPLIT round — repair the file-wide source guard into a per-call-site
+  assertion, install §3 checklist item 7, label the provider on
+  `remedy mission run`, and document the gauntlet's absent label as deliberate.
+- Reviewer gate on R34 (2026-08-10): PASS. Range `af35adbc..28fe51c3` = eight
+  commits, read as a real diff: eleven paths, exactly the ones the block named;
+  insertions per commit 398, 334, 123, 12, 7, 14, 17, 85 — each under 500.
+  Transport disk to disk against the reviewer's surviving original: all three of
+  `.remedy-wt/f105-r34-1.block.md`, `.agent/authored/f105-r34-1.md` and
+  `.agent/last_block.md` carry
+  `6d816a6434c6d98cdaafca3df7654580d2c5985abdef65398c9eccb8fb97c14e`, every
+  `cmp` silent, 398 lines against D5's cap of 400.
+  All eight FROM/TO pairs re-sliced from the COMMITTED authored file by the
+  reviewer's own whole-line marker reader: declared shape equals measured shape
+  for every one, four REWRITEs at FROM 0x / TO 1x and four CONTAINS-FROM at
+  FROM 1x / TO 1x. PAIR_I byte-equal to the applied `.agent/plan.md` at 43 lines
+  against the cap of 50. Strays 0 in both directions on all five written paths
+  once the accounting is right: PAIR_H is a PREPEND, so its TO-only lines are
+  the LEADING seven, and a line carried unchanged through a REWRITE is diff
+  CONTEXT rather than an add plus a remove. The reviewer's first pass modelled
+  both wrongly and reported three phantom strays against a round that had none;
+  the corrected pass reconciles `+81/-1` on live_review.md, `+42/-0` on
+  decisions.md, `+12/-0` on the prompt doc, `+7/-1` on the compiler test,
+  `+7/-1` on the CLI and `+7/-0` on the gauntlet exactly.
+  Gates re-run by THIS reviewer with real exit codes: the scoped gate
+  `323 passed in 1.69s`, the frozen prompt golden inside it, so the composed
+  BYTES still have not moved; the three caller suites `152 passed in 38.17s`;
+  `tests/docs/` `294 passed in 0.25s`; the dashboard contract
+  `70 passed in 3.92s`; the canary `42 passed in 19.55s`; `grep -c -E '^<<<'`
+  prints 0 in all four written targets; `git status --porcelain` empty and
+  `git worktree list` the primary alone.
+  Both red-proofs reproduced by the reviewer in a disposable worktree at
+  28fe51c3 with `PYTHONDONTWRITEBYTECODE=1`, each reverted and the revert proved
+  by an empty `git diff --stat`, worktree removed and pruned. Baseline
+  `2 passed in 0.39s`. M1, deleting the label from the `run_mission` call: the
+  run guard RED and the plan guard GREEN — the two guards watch different call
+  sites, which is the whole point of the repair. M2, moving the label onto the
+  `plan_mission` call: the run guard RED, so the repaired guard is per-call-site
+  and not a disguised count.
+  The block's own C4-before-C5 ordering was honoured and matters: the repaired
+  guard was green at 083a42d3, BEFORE the second label landed at f3968dfd, so
+  the suite was never red between two commits of this round.
+  The worker's declared deviation is ACCEPTED and is not a defect of the round:
+  the 200-character window overshoots its call, the worker measured that instead
+  of quietly shrinking the constant, and the wording is the reviewer's. It is
+  registered as R-0260 rather than absorbed. The 120-line handoff carries its
+  DECISION D15 stated-cause line and drops no mandated section, which is the
+  rule and not an exception.
+  `LAST_REVIEWED_SHA` advances af35adbc -> 28fe51c3.
