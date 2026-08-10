@@ -4083,3 +4083,36 @@ Scope: reviewer-authored blocks, as with D8. It adds no obligation to workers
 and changes no verification tier.
 
 Reverse this decision by deleting this entry and §3 checklist item 5.
+
+D11 — the orchestrator prompt's evidence sink lives INSIDE `run_mission`, not
+in `remedy mission run`. The mission-plan site put its sink in `plan_mission`,
+a package function, and `.agent/plan.md` carried the orchestrator site as two
+rounds: `mission_cmd.py` first, `gauntlet_runner.py` second. Reading the
+callers dissolved the second round. `run_mission` has TWO production callers —
+`apps/cli/commands/mission_cmd.py:366` and `packages/orchestration/
+gauntlet_runner.py:514` through `deps.run_mission` — and it already owns the
+mission's evidence directory, because `append_ledger_entry` writes the ledger
+into it every iteration. A sink in the CLI would have left every gauntlet run
+with no orchestrator prompt evidence at all, and the gate would have been green
+the whole time: the F104 R-0220 class, where the caller is the thing nobody
+checked.
+
+Placing it in `run_mission` also settles WHEN the write happens. The loop has
+several return paths and a boundary that turns a raise into a terminal, so a
+single flush after the loop would lose the calls a crashed or stopped run had
+already made. The append therefore happens per iteration, immediately after the
+provider call, exactly as the ledger entry does a few lines away — one
+durability rule for both records of the same iteration.
+
+The alternative — flush once from each caller, copying `plan_mission` literally
+— was rejected on both counts: it duplicates the sink per caller and it trades
+the ledger's durability for a shape that only looks consistent.
+
+Consequence, stated so it is not mistaken for an omission: the gauntlet's
+orchestrator rows land in evidence from this round on, but carry an EMPTY
+provider label until `gauntlet_runner.py:514` names it. Unlabeled is honest;
+mislabeled would not be. That is a one-line round, no longer a wiring round.
+
+Reverse this decision by deleting this entry, dropping the append from
+`run_mission`, and flushing a caller-owned `traces` list in each of the two
+callers instead.

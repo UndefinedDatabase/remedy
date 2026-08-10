@@ -1592,3 +1592,49 @@
   pruned. The handback's 71-line handoff carries its DECISION D15 stated-cause
   line and drops no mandated section, which is the rule, not an exception.
   `LAST_REVIEWED_SHA` advances 0ba30611 -> 9bd3a3e7.
+- R32: session-close round — record the R31 gate, resolve R-0246 and R-0257,
+  write the session-ending handoff. State files only.
+- Reviewer gate on R32 (2026-08-10): PASS. Range `9bd3a3e7..cab89962` = four
+  commits, read as a real diff: five paths, every one under `.agent/`, exactly
+  the ones the block named; insertions per commit 196, 129, 54, 47 — each under
+  500. Transport disk to disk against the reviewer's surviving original:
+  `.remedy-wt/f105-r32-1.block.md`, `.agent/authored/f105-r32-1.md` and
+  `.agent/last_block.md` all three
+  `56173ae6acaf147af639b03200b9398df3158598b086dc686df68e34131cb78f`, all three
+  `cmp` runs silent, 196 lines against DECISION F105 D5's cap of 400.
+  All three C2 pairs re-sliced from the COMMITTED authored file by the
+  reviewer's own whole-line marker reader: declared shape equals measured shape
+  for every one — each TO opens with its FROM verbatim, so all three are APPEND
+  as declared. FROM exactly 1x in the target both before and after the write,
+  TO exactly 1x after. TO-only lines 39 + 7 + 8 = 54; the commit ADDS 54 and
+  REMOVES 0 over `.agent/live_review.md`, so strays are 0 in both directions
+  and no added line sits outside a TO. PAIR_D byte-equal to the applied
+  `.agent/plan.md` at 43 lines against the cap of 50; the handoff is 59 lines
+  against the cap of 60.
+  Gates re-run by THIS reviewer with real exit codes: `grep -c -E '^<<<'`
+  prints `0` in `.agent/live_review.md` and `0` in `.agent/plan.md` (rc 1, the
+  honest no-match); `tests/docs/` `294 passed in 0.30s`; the dashboard contract
+  `70 passed in 4.11s`; the canary `42 passed in 19.44s`; `git status
+  --porcelain` empty and `git worktree list` the primary alone. Gate H is
+  re-measured here AFTER the C3 commit the handback could not measure itself,
+  and it is clean — the declared D15 deviation was a timing statement, not a
+  gap. No mutation red-proof: nothing executable changed, so there is no branch
+  to mutate (DECISION F105 D10).
+  The record's own claims were spot-checked against git rather than read: the
+  R31 gate line's "seven commits, eight paths" and its per-commit insertions
+  384, 257, 53, 13, 17, 67, 58 are exact, and both resolution commits it names
+  exist and touch the file it says they do — 39da9b61 for R-0246, 3d37567f for
+  R-0257.
+  The open-findings count of 4 was re-derived, not accepted: R-0221, R-0239,
+  R-0247 and R-0256 carry no resolution. Four further entries also carry no
+  `Done: R-XXXX` line of their own and are nevertheless closed — R-0240 and
+  R-0241 share one `Done:` paragraph filed under R-0241, and R-0250 and R-0252
+  were resolved inline as DECISIONs D8 and D10. Both of those deferred their
+  proof to "the NEXT session's gate", which is this one: §3 of
+  docs/agents/planner_reviewer_prompt.md carries the checklist as items 1-6,
+  including item 5's reachability rule (D10) and item 6's target-content rule,
+  and it reads as intended. Both are therefore closed on evidence, not on
+  assertion. A mechanical `Done:`-grep undercounts resolutions by four; that is
+  a property of this file's format, not a defect of R32, and it is recorded
+  here so no later reader re-derives it as a finding.
+  `LAST_REVIEWED_SHA` advances 9bd3a3e7 -> cab89962.
