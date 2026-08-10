@@ -512,3 +512,23 @@ class TestStatsCacheView:
 
         assert exc.value.code == CMD.EXIT_ERROR
         assert "cannot read the token ledger" in capsys.readouterr().err
+
+    def test_the_json_share_carries_its_reason_and_never_a_zero(
+        self, filled_ledger, project_id, capsys
+    ):
+        CMD._cmd_stats_cache(project=project_id, by="role", json_output=True)
+        rows = {row["bucket"]: row
+                for row in json.loads(capsys.readouterr().out)["rows"]}
+
+        assert rows["builder"]["cache_read_share"] == pytest.approx(0.0601, abs=1e-4)
+        assert rows["builder"]["share_basis"] == "measured"
+        assert rows["reviewer"]["cache_read_share"] is None
+        assert rows["reviewer"]["share_basis"] == "unmeasured"
+
+    def test_the_json_document_states_the_role_limit(self, filled_ledger,
+                                                     project_id, capsys):
+        CMD._cmd_stats_cache(project=project_id, json_output=True)
+        payload = json.loads(capsys.readouterr().out)
+
+        assert "hardcoded role" in payload["role_limit"]
+        assert payload["share_formula"] == "cache_read / (tokens_in + cache_read)"
