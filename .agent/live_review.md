@@ -2347,3 +2347,43 @@
   render the share with two distinct words for its two distinct absences
   (DECISION F105 D15), name the R-0266 per-role limit in the output, and close
   R-0267 with the error-path test the shared branch never had.
+  Done: R-0267 — closed at R45 by the new
+  `TestStatsCacheView::test_an_unreadable_ledger_exits_instead_of_reporting_zero`,
+  which corrupts the ledger file on disk and asserts BOTH the exit code and the
+  message on stderr, so the branch cannot regress into a confident zero without
+  a red test. The reviewer re-ran the suite (39 passed) and read the test
+  against the branch it covers rather than accepting the handback. RESOLVED.
+- Reviewer gate on R45 (2026-08-10): PASS. Range `ae1756f8..c7510403` = eight
+  commits, exactly the nine paths the block named. Insertions per commit 399,
+  363, 47, 17, 109, 22, 54 and 98, each far under 500.
+  Transport by the PRIMARY shape: `.remedy-wt/f105-r45-1.block.md`, the
+  committed `.agent/authored/f105-r45-1.md` and `.agent/last_block.md` all
+  three hash to
+  `87f65221d35d613fdb70265fd670060ccc174c77c84fa4640eefa288a6058ad8`
+  at 399 lines; both `cmp` runs silent.
+  Stray reconcile over all FIVE authored commits: 47/0, 17/0, 109/0, 22/0 and
+  54/0 added/stray — zero strays anywhere, and the single removal is the
+  PAIR_ID FROM line its own REWRITE replaces.
+  Gates re-run by THIS reviewer, none taken from the handback:
+  `tests/cli/test_stats_cost.py` `39 passed in 0.39s` (33 + the 6 new); the
+  catalog and spine suites `113 passed in 0.57s`; the canary
+  `42 passed in 19.81s`; `py_compile` exit 0 on both production files;
+  `.agent/plan.md` 45 lines with both mandated headings; `.agent/live_review.md`
+  exactly one `## Steps` heading; the ID line reads R-0268; `^<<<` 0 in all
+  seven touched files; `git status --porcelain` empty, primary worktree alone.
+  The view was not accepted on its tests' word: the reviewer called
+  `_render_cache_human` directly on a synthetic three-bucket report and read
+  the output. A measured bucket printed `6.0%`, an unreported bucket printed
+  `unmeasured` in all three figure columns, a bucket whose inputs were reported
+  as zero printed `undefined`, and the role split printed the R-0266 limit
+  line. The two words of DECISION D15 are therefore distinguishable in the
+  rendered bytes, which is the only place the distinction matters.
+  One reviewer-side lesson, not a finding, because the worker did nothing
+  wrong: the block measured 399 lines against a cap of 400. One line is not a
+  margin. Block budgets get counted before the prose is written, not after.
+  `LAST_REVIEWED_SHA` advances ae1756f8 -> c7510403.
+- R46: SPLIT round — add the `--json` mode for `stats cache`, so the machine
+  document carries the same share, the same two absence words and the same
+  per-role limit the table already states. Closes the flag R45 deliberately
+  withheld rather than shipping one that did nothing. LAST round of the
+  session; the branch continues.
