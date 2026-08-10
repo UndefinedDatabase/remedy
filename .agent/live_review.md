@@ -5,7 +5,7 @@
 > round. Findings are authored here by the reviewer only. A worker marks a
 > landed fix `Landed: R-XXXX`; only reviewer-authored `Done:` text sets
 > Resolved (docs/agents/planner_reviewer_prompt.md §4.4).
-> Branch: feature/f105-cache-optimal-prompt-ordering. Next free ID: R-0263.
+> Branch: feature/f105-cache-optimal-prompt-ordering. Next free ID: R-0264.
 
 ## Findings
 
@@ -688,6 +688,24 @@
   call sites together, pinned by a test that makes the composer raise. Cost
   today: a composer bug surfaces as a traceback instead of the deterministic
   skeleton. OPEN.
+
+- R-0263 (Medium, F105 R39, reviewer-authored defect): the R39 block ordered
+  two tests whose central assertion, `assert seen == [composed.text]`, cannot
+  hold for ANY implementation of the function under test. `run_structured_call`
+  does not hand its `base_prompt` to `call_fn`; it hands
+  `build_schema_prompt(model_cls, base_prompt, carry)`, which appends a schema
+  instruction — 1489 further characters for `JobIntake`. The worker applied the
+  pairs, measured `2 failed, 66 passed`, reverted them rather than commit a
+  knowingly-red suite, and declared it. That judgement is right and the defect
+  is entirely the reviewer's: the block asserted a property of a helper whose
+  contract it never read. This is the D8 item-5 class — "reads the code the
+  block points at" — widened from mutation reachability to ANY authored
+  assertion about a callee's contract, and it is registered as a finding rather
+  than a lesson because it cost a real item (C4) and left `composed=` shipping
+  untested on its new branch. The fix is known and already proved in a
+  disposable worktree at R39: with `assert seen[0].startswith(composed.text)`
+  both tests pass at `68 passed`, and reverting either ternary red-proofs its
+  own test. Whoever runs R40 lands that corrected form. OPEN.
 
 ## Steps
 
@@ -2031,6 +2049,43 @@
   reviewer-side defect, and the cost here was likewise nil.
   `LAST_REVIEWED_SHA` advances c30b365e -> 5ca4debd.
 - R39: SPLIT round — record the R38 gate and take the first half of R-0256: a
-  keyword-only `composed` on `run_intake` and `plan_job_llm`, one test each,
-  both red-proofed. The three `do_cmd.py` call sites are R40's, split out
-  because one block carrying both would have broken the D5 cap.
+  keyword-only `composed` on `run_intake` and `plan_job_llm`. The three
+  `do_cmd.py` call sites were split out to R40 because one block carrying both
+  would have broken the D5 cap. The two tests this line originally promised did
+  NOT land; the reason is R-0263, registered above.
+- Reviewer gate on R39 (2026-08-10): PASS, with two deviations declared by the
+  worker and both ACCEPTED. Range `5ca4debd..c44a582c` = five commits, seven
+  paths; `apps/cli/commands/do_cmd.py` is absent, as the block required.
+  Insertions per commit 347, 281, 37, 21 and 141, each far under 500.
+  Transport by the PRIMARY shape: the scratch original
+  `.remedy-wt/f105-r39-1.block.md`, the committed
+  `.agent/authored/f105-r39-1.md` and `.agent/last_block.md` all three hash to
+  `377d8c5e6ffaa18a7d98f17e6dab2ab630e50132417c4109f199022e28bf345b`
+  at 347 lines against D5's cap of 400; both `cmp` runs silent.
+  All six pairs re-sliced from the COMMITTED authored file: DECLARED equals
+  MEASURED for every one, every FROM 1x before its write. PAIR_INTAKE, PAIR_FP
+  and PAIR_FP2 REWRITEs at FROM 0x / TO 1x; PAIR_LR CONTAINS-FROM at FROM 1x /
+  TO 1x. C2 and C3 reconcile with 0 strays in both directions.
+  Gates re-run by THIS reviewer, none taken from the handback: the scoped pair
+  `66 passed in 0.67s`; the canary `42 passed in 23.37s`; the C3 diff read line
+  by line against the two authored TOs and byte-identical to them. The blocker
+  was reproduced independently rather than believed: `run_intake` called with a
+  sentinel `composed` sends the provider a prompt that is NOT equal to
+  `composed.text` but DOES start with it, 1489 characters longer, carrying
+  `SENTINEL` and not the mission argument. So the FEATURE is correct and the
+  reviewer's ASSERTION was wrong — registered as R-0263.
+  Deviation 1, C4 skipped: ACCEPTED. Landing a knowingly-red pair to satisfy a
+  block would be the fabrication the block conditions exist to stop.
+  Deviation 2, `.agent/plan.md` not byte-for-byte PAIR_P_PLAN: ACCEPTED. The
+  slice claimed "one test each, both red-proofed", which C4 did not deliver;
+  AGENTS.md requires plan.md to reflect the current state and carry the exact
+  blocker, and AGENTS.md outranks a reviewer's block. The worker applied the
+  slice, corrected only the three statements C4 falsified, and declared each.
+  Gate I was vacuous as written and the worker said so instead of reporting a
+  colour it could not have measured — the R-0252 lesson, applied correctly by a
+  worker for once rather than discovered by a reviewer.
+  `LAST_REVIEWED_SHA` advances 5ca4debd -> c44a582c.
+- R40: SESSION CLOSE — persist this gate, register R-0263, correct the R39 step
+  line, and stop against `.agent/STOP`. No production code. This round is the
+  last of the session, so by §4.13 its own verdict has no on-disk gate entry: it
+  lives in `.agent/handoff.md` and the session's completion report.
