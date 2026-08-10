@@ -5,7 +5,7 @@
 > round. Findings are authored here by the reviewer only. A worker marks a
 > landed fix `Landed: R-XXXX`; only reviewer-authored `Done:` text sets
 > Resolved (docs/agents/planner_reviewer_prompt.md §4.4).
-> Branch: feature/f105-cache-optimal-prompt-ordering. Next free ID: R-0264.
+> Branch: feature/f105-cache-optimal-prompt-ordering. Next free ID: R-0265.
 
 ## Findings
 
@@ -706,6 +706,20 @@
   disposable worktree at R39: with `assert seen[0].startswith(composed.text)`
   both tests pass at `68 passed`, and reverting either ternary red-proofs its
   own test. Whoever runs R40 lands that corrected form. OPEN.
+
+- R-0264 (Low, F105 R40, reviewer-authored defect): the R40 step line applies
+  §4.13 — "the LAST round of a BRANCH has no on-disk gate entry" — to the last
+  round of a SESSION. The two are not the same boundary. A session that ends
+  mid-branch against `.agent/STOP` leaves a round that the NEXT session can and
+  must gate, and R40 left four commits (4149021f, 0dd0b104, 7f3b0ba5, 7f622b7f)
+  carrying a line that tells the next reader no gate entry is coming. The next
+  session nearly skipped them on exactly that reading. §4.13's terminator
+  applies once per BRANCH, at closure, where no later round exists to write the
+  record; every other unreviewed round is an ordinary handback. Cost so far:
+  nil — this round gates R40 — but the line would have cost a real gate on any
+  branch resumed by a reader who trusted it. Fix: the R40 line says the session
+  closed with its own round ungated and awaiting the next session, and the
+  gate below supplies it. OPEN.
 
 ## Steps
 
@@ -2089,3 +2103,31 @@
   line, and stop against `.agent/STOP`. No production code. This round is the
   last of the session, so by §4.13 its own verdict has no on-disk gate entry: it
   lives in `.agent/handoff.md` and the session's completion report.
+  That reading was wrong and is registered as R-0264: R40 ended a SESSION, not
+  the BRANCH, so the round stayed gateable and the next session gated it below.
+- Reviewer gate on R40 (2026-08-10, by the session that resumed the branch):
+  PASS. Range `c44a582c..7f622b7f` = four commits, five paths, every one under
+  `.agent/`; nothing under `packages/`, `apps/`, `tests/` or `docs/`.
+  Insertions per commit 220, 145, 59 and 82, each far under 500.
+  Transport by the PRIMARY shape: `.remedy-wt/f105-r40-1.block.md`, the
+  committed `.agent/authored/f105-r40-1.md` and `.agent/last_block.md` all
+  three hash to
+  `dd655c7b424259199977a4b402e2a52ea40e2ca4dd78f31f083c554e6995376e`
+  at 220 lines against D5's cap of 400; the `cmp` run is silent.
+  Content re-read against the applied file, not the handback: the ID line
+  reads R-0264, the R-0263 entry is present and OPEN, and the R39 step line
+  carries its correction. The commit removes exactly four lines, all of them
+  FROM text, so both stray counts are 0.
+  Gates re-run by THIS reviewer, none taken from the handback: `tests/docs/`
+  `294 passed in 0.26s`; `test_dashboard_contract.py` `70 passed in 4.44s`;
+  the canary `42 passed in 19.86s`. `.agent/plan.md` is 41 lines against the
+  cap of 50 and keeps `## Goal` and a `Steps` substring; `.agent/live_review.md`
+  keeps exactly one `## Steps` heading; `^<<<` is 0 in live_review, plan and
+  handoff. `.agent/handoff.md` is 97 lines and carries its DECISION D15
+  stated-cause line, so the overage is declared, not silent.
+  `LAST_REVIEWED_SHA` advances c44a582c -> 7f622b7f.
+- R41: SPLIT round — record the R40 gate, register R-0264, and land BOTH halves
+  of the work R39 and R40 left open: the two corrected tests that fix R-0263,
+  and the three `do_cmd.py` call sites plus a wiring guard that fix R-0256.
+  Both changes were red-proofed by the reviewer in disposable worktrees at
+  7f622b7f before this block was authored.
