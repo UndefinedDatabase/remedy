@@ -1207,4 +1207,10 @@ class TestMissionPlanEvidenceSink:
         """
         source = (Path(__file__).resolve().parents[2]
                   / "apps" / "cli" / "commands" / "mission_cmd.py").read_text()
-        assert source.count('provider_kind="ollama"') == 1
+        # Scoped to THIS call site rather than counted over the whole file: a
+        # SECOND labelled call in the same module is correct and must not turn
+        # this red (R-0258, which cost F105 R33 two items). The window is the
+        # call expression itself, so a label that drifts to another call no
+        # longer satisfies the guard.
+        planned = source.index("outcome = plan_mission(")
+        assert 'provider_kind="ollama"' in source[planned:planned + 200]
