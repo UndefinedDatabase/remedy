@@ -1,0 +1,29 @@
+cwd=/home/decodeux/Repos/remedy
+utc_start=2026-08-12T17:16:19Z
+== worktree add (throwaway BRANCH tmp/base-gate, never detached: DECISION D3) ==
+$ git worktree add -b tmp/base-gate .remedy-wt/base-gate 2e4142c3
+Preparing worktree (new branch 'tmp/base-gate')
+HEAD is now at 2e4142c3 Merge pull request #191 from UndefinedDatabase/feature/amend0810-solo-split
+exit=0
+== identity checks ==
+$ git -C /home/decodeux/Repos/remedy/.remedy-wt/base-gate rev-parse HEAD
+2e4142c3ac72042ac4d704da252db263e48dcba3
+exit=0
+$ git -C /home/decodeux/Repos/remedy/.remedy-wt/base-gate branch --show-current
+tmp/base-gate
+exit=0
+$ git -C $W status --porcelain  (expect 0 lines)
+exit=0 porcelain_lines=0
+== UI parity restored BY COPY, never symlink (F053 R3) ==
+$ cp -a /home/decodeux/Repos/remedy/apps/ui/node_modules /home/decodeux/Repos/remedy/.remedy-wt/base-gate/apps/ui/node_modules
+exit=0
+$ cp -a /home/decodeux/Repos/remedy/apps/ui/dist /home/decodeux/Repos/remedy/.remedy-wt/base-gate/apps/ui/dist
+exit=0
+== make every dist entry newer than the fresh-checkout sources (R13 lesson) ==
+$ find /home/decodeux/Repos/remedy/.remedy-wt/base-gate/apps/ui/dist -exec touch {} +
+exit=0
+== copy sanity (counts, not a substitute for the content hash) ==
+base_node_modules_entries=209 exit=0
+base_dist_files=3 exit=0
+prim_dist_files=3 exit=0
+utc_end=2026-08-12T17:16:24Z
