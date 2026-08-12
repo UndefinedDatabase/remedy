@@ -18,7 +18,8 @@ line in .agent/live_review.md, committed with C5.
 | C4   | 3af97f23 | chore(f107): advance plan to R7 repair                   | 9/9     |
 | C5   | 027f13fd | fix(f107): render signatures at the compiled line cap    | 16/5    |
 | C6   | d8beb79f | test(f107): the rendering matches the cap it was compiled at | 113/0 |
-| C7   | self-ref | chore(f107): rewrite handoff for R7                      | see log |
+| C7   | ec2da616 | chore(f107): rewrite handoff for R7                      | 75/70   |
+| C8   | self-ref | chore(f107): correct the grep line number in the handoff | see log |
 
 ## Changed files
 
@@ -58,8 +59,9 @@ g. `git status --porcelain` → empty; `git worktree list` → primary alone;
 h. `git diff --name-only 861eb371..HEAD` → exit 0 → exactly the seven paths of
    the Changed files table, nothing else. `grep -rn "CompiledContext("
    packages/ tests/ apps/` → exit 0 → ONE line,
-   packages/orchestration/context_compiler.py:875, the single construction
-   site. `python3 -m ruff check packages/orchestration/context_compiler.py
+   packages/orchestration/context_compiler.py:878, the single construction
+   site (:875 before C5 added the field; C8 corrects that stale number).
+   `python3 -m ruff check packages/orchestration/context_compiler.py
    tests/orchestration/test_context_compiler.py` → exit 0 → "All checks
    passed!", 0 errors.
 i. Step 7, disposable worktree .remedy-wt/f107_r7_mut at d8beb79f only, both
@@ -92,13 +94,20 @@ i. Step 7, disposable worktree .remedy-wt/f107_r7_mut at d8beb79f only, both
 | C4   | done   | plan.md sha256 == PLAN6 marker digest, 28L, cmp silent        |
 | C5   | done   | three FIX CONTRACT edits + the `Landed: R-0273` line          |
 | C6   | done   | 3 tests appended, no existing test edited, 55 passed          |
-| C7   | done   | this file; self-ref: its own SHA is not writable into itself  |
+| C7   | done   | handoff rewrite at ec2da616                                   |
+| C8   | deviated | eighth commit, same path: gate h's grep line number was stale |
 
-Deviations, declared (1). This file is 105 lines — over the block's 60 and over
-the AGENTS.md D15 100-line ceiling. Cause is mandated content: two seven-row
-tables, the nine-gate block whose gate i carries BOTH step-7 transcripts with
-their failing test names and assertion texts, and the seven-row item-status
-table. No section was dropped to fit.
+Deviations, declared (2). (1) This file is 114 lines — over the block's 60 and
+over the AGENTS.md D15 100-line ceiling. Cause is mandated content: two
+eight-row tables, the nine-gate block whose gate i carries BOTH step-7
+transcripts with their failing test names and assertion texts, and the
+eight-row item-status table. No section was dropped to fit. (2) The block's
+bundle is C1–C7; C8 is an eighth commit, touching only .agent/handoff.md, a
+path the Change line already names. Cause: gate h recorded the
+`grep -rn "CompiledContext("` hit at :875, the line it sat on when the grep was
+run BEFORE C5, while after C5 it is :878. Leaving a stale counted value in the
+return channel is the worse error, so it was corrected in its own commit rather
+than by amending C7.
 
 Next expected action: R8 = T004 part 2 — the `remedy job context` CLI view, an
 end-to-end fixture task solved by the fake provider, and the size comparison in
