@@ -30,9 +30,10 @@ Around that scope the compiler assigns every candidate file a tier:
 | 3 | dependencies one hop further out | signatures only |
 | 4 | everything else | omitted, with a reason |
 
-Selection stops at two graph hops. Every candidate path appears exactly once, either
+Selection stops at two graph hops. Every candidate path is accounted for: it appears
 under `Included` or under `Omissions` with a reason (`distance`, `budget`, `size`,
-`binary`) — so "why did the task not see file X" always has a written answer.
+`binary`, `unparseable`) — and a file demoted rather than dropped appears under
+both — so "why did the task not see file X" always has a written answer.
 
 ## How `--task` resolves
 
