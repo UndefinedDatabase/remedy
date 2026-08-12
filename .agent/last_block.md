@@ -1,240 +1,243 @@
-── STEP R1/~12 — F111 Diff-only repair ───────────────────────────────────────
-Goal:        Claim F111, reset the session state files, and carry the 22 open
-             F107 findings forward. No production code this round.
-Bundle:      Branch creation; C1 authored-block save; C2 last_block mirror;
-             C3 STATUS claim; C4 live_review reset; C5 plan rewrite;
-             C6 context rewrite; C7 handoff rewrite; push after EVERY commit.
+── STEP R2/~12 — F111 Diff-only repair ───────────────────────────────────────
+Goal:        Record the R1 gate and DECISION F111 D1, amend the feature file
+             with the seam D1 picks, and build T001's hunk selection helper
+             with its unit tests.
+Bundle:      C1 block save; C2 last_block mirror; C3 live_review append;
+             C4 feature-file append; C5 T001 helper + tests; C6 plan rewrite;
+             C7 handoff. Push after EVERY commit.
 Change:      EXACTLY these paths and nothing else:
-             docs/roadmap/STATUS.md (one line, SFROM->STO below),
-             .agent/authored/f111-r1-1.md (new),
-             .agent/last_block.md, .agent/live_review.md,
-             .agent/plan.md, .agent/context.md,
-             .agent/handoff.md (your handback rewrite).
-             Do NOT touch .agent/candidates.md (already empty, verified by the
-             reviewer), .agent/decisions.md, or any file under packages/,
-             apps/ or tests/.
-Constraints: AGENTS.md in full — self-review loop before every commit, small
-             commits, no leading-slash tokens or absolute paths in commit
-             subjects. Do NOT create a PR. Do NOT merge. Never touch main.
-             Never write a `Done:` line in live_review (reviewer-only text).
-             Never force-push. Apply every authored slice by COPYING the
-             verified scratch file — never retype authored text, never
-             reflow it. If a sha256 does not match, STOP and hand back the
-             mismatch. Scratch stays under .remedy-wt/ and is never
-             committed.
+             .agent/authored/f111-r2-1.md (new), .agent/last_block.md,
+             .agent/live_review.md, .agent/plan.md, .agent/handoff.md,
+             docs/roadmap/features/T2_F111.md,
+             packages/orchestration/diff_repair.py (new),
+             tests/orchestration/test_diff_repair.py (new).
+             Do NOT touch pingpong_loop.py, builder_bridge.py,
+             repair_context.py, source_apply.py, review_scope.py or any other
+             existing production file this round — T001 is a NEW pure module
+             with no call sites yet; wiring is a later round.
+Constraints: AGENTS.md in full. Apply authored slices by COPYING the verified
+             scratch file; never retype or reflow authored text. Do NOT
+             create a PR, do NOT merge, never touch main, never force-push.
+             Never write a `Done:` line in live_review. Reuse, do not
+             duplicate: `review_scope._parse_diff` already turns a unified
+             diff into per-file line ranges and `source_apply._apply_hunks`
+             is already a strict hunk applier — this round adds NEITHER a
+             diff parser NOR a diff applier, and a new `@@` regex anywhere in
+             the change set is a defect. Scratch stays under .remedy-wt/.
 
 AUTHORED SLICES — already on disk, written by the reviewer:
-  .remedy-wt/f111r1/SFROM  sha256=6c498f9cda12cfb5ba8f4665570575d9e9f7d9cbc49b55df406056b7933ca307  lines=1
-  .remedy-wt/f111r1/STO    sha256=ee7930206fc3754b459dfdbd02116aea300e61598604e0946e5aa26ae63e6fc2  lines=1
-  .remedy-wt/f111r1/LR     sha256=1e9458ff50519853258df7789fd48d5a93e2351e98e089c0e11c901bf10fde18  lines=111
-  .remedy-wt/f111r1/PLAN   sha256=b2bf03236f9a1b5e93c230c49120363d41ca8d44ab93ea587e58f351ae86a030  lines=37
-  .remedy-wt/f111r1/CTX    sha256=3994fc02270c2457cbf3981c083f5ded75e7b8b3ce48fc27f9c9acd704fdc9d8  lines=45
-  .remedy-wt/f111r1/BLOCK  = this entire step block, byte for byte
+  .remedy-wt/f111r2/LRG   sha256=acef0bc3f01616e7c6b05831d6262c12fa23bf0b32f8197d3690c42f427ab4a7  append to .agent/live_review.md
+  .remedy-wt/f111r2/FF    sha256=81a907957dd70df10a37c84226d1047d903e3ff190e71be35c0217d82edc66a6  append to docs/roadmap/features/T2_F111.md
+  .remedy-wt/f111r2/PLAN  sha256=c7982c61b653ec97632c2bec7f40608cd19901afa2028763f9d37aa14519c5f6  replaces .agent/plan.md
+  .remedy-wt/f111r2/BLOCK = this entire step block, byte for byte
 
 PROCEDURE (in order; commit AND push at every numbered item):
 
-0. Preconditions. `git status --porcelain` empty; `git branch --show-current`
-   is main; `git log -1 --format=%h` is 4e0b762e. If any differs, STOP and
-   hand back — do not "fix" it. Then verify all six scratch digests with
-   `sha256sum -c` style comparison against the table above. Any mismatch =>
-   STOP. Then: `git checkout -b feature/f111-diff-only-repair`
+0. Preconditions: `git status --porcelain` empty; branch is
+   feature/f111-diff-only-repair; `git log -1 --format=%h` is b0ab8e09.
+   Verify all four scratch digests. Any mismatch => STOP and hand back.
 
-1. C1 — `cp .remedy-wt/f111r1/BLOCK .agent/authored/f111-r1-1.md`, then
-   `cmp .remedy-wt/f111r1/BLOCK .agent/authored/f111-r1-1.md` (must be
-   silent, exit 0). Commit: chore(f111): save the R1 claim step block
-   verbatim   -> push
+1. C1 — `cp .remedy-wt/f111r2/BLOCK .agent/authored/f111-r2-1.md`; `cmp`
+   silent. Commit: chore(f111): save the R2 step block verbatim   -> push
 
-2. C2 — `cp .agent/authored/f111-r1-1.md .agent/last_block.md`, then
-   `cmp .agent/authored/f111-r1-1.md .agent/last_block.md` silent.
-   Commit: chore(f111): mirror the R1 block into last block   -> push
+2. C2 — `cp .agent/authored/f111-r2-1.md .agent/last_block.md`; `cmp` silent.
+   Commit: chore(f111): mirror the R2 block into last block   -> push
 
-3. C3 — STATUS claim, REWRITE shape (SFROM and STO are disjoint single
-   lines). In docs/roadmap/STATUS.md replace the single line whose bytes
-   equal SFROM with the bytes of STO. Apply from the scratch files, not by
-   retyping. Proofs, all recorded: SFROM 0x and STO 1x in the file after the
-   edit, and `git show --numstat HEAD -- docs/roadmap/STATUS.md` reads `1 1`.
-   Gate in this same commit's tree: `python3 -m pytest tests/docs/ -q`
-   exit 0. Commit: chore(f111): claim F111 in the ledger   -> push
+3. C3 — APPEND slice LRG to the END of .agent/live_review.md:
+   `cat .remedy-wt/f111r2/LRG >> .agent/live_review.md`
+   This is a PURE APPEND: the proof is
+   `git show --numstat <C3> -- .agent/live_review.md` reading `51 0` — 51
+   added, 0 deleted. A nonzero delete column means the file was rewritten
+   instead of appended: STOP and hand back.
+   Commit: chore(f111): record the R1 gate and DECISION D1   -> push
 
-4. C4 — `cp .remedy-wt/f111r1/LR .agent/live_review.md`, then `cmp` silent.
-   This reset carries the 22 open F107 findings and sets Next free ID
-   R-0298. Commit: chore(f111): reset live review for F111   -> push
+4. C4 — APPEND slice FF to the END of docs/roadmap/features/T2_F111.md:
+   `cat .remedy-wt/f111r2/FF >> docs/roadmap/features/T2_F111.md`
+   Proof: `git show --numstat <C4> -- docs/roadmap/features/T2_F111.md`
+   reads `17 0`. Gate in this same commit's tree:
+   `python3 -m pytest tests/docs/ -q` exit 0.
+   Commit: chore(f111): amend the feature file with the D1 seam   -> push
 
-5. C5 — `cp .remedy-wt/f111r1/PLAN .agent/plan.md`, then `cmp` silent.
-   Commit: chore(f111): rewrite the plan for F111   -> push
+5. C5 — T001. Create packages/orchestration/diff_repair.py, a PURE module
+   with no imports from pingpong_loop, builder_bridge or source_apply.
+   Put a one-line WHY comment directly above each definition (AGENTS.md
+   Code Discoverability). Public API, exactly:
 
-6. C6 — `cp .remedy-wt/f111r1/CTX .agent/context.md`, then `cmp` silent.
-   Commit: chore(f111): rewrite the context for F111   -> push
+     @dataclass(frozen=True)
+     class RepairHunk:
+         path: str        # repo-relative, exactly as the caller gave it
+         start_line: int  # 1-based inclusive, AFTER margin expansion
+         end_line: int    # 1-based inclusive, AFTER margin expansion
+         text: str        # the exact source lines, newline-joined
 
-7. C7 — rewrite .agent/handoff.md YOURSELF (your own text, not authored):
-   <=60 lines, containing feature+round (F111 R1), branch, a per-commit SHA
-   table (C1-C7; C7 marks itself self-referential), a changed-files table,
-   the real gate results from "Done when" below (command + real exit code +
-   the counted value, no verdict words), the open-findings count (22) with
-   next free ID R-0298, an item-status table over C1-C7 with every item
-   present exactly once, and next expected action: R2 = the repair-path
-   DECISION plus T001 hunk selection.
-   Commit: chore(f111): rewrite the handoff for R1   -> push
+     @dataclass(frozen=True)
+     class RepairHunkSelection:
+         hunks: tuple[RepairHunk, ...]
+         omitted: tuple[tuple[str, str], ...]  # (path, reason)
+         total_chars: int
 
-Done when (run each; record the command, its real exit code, and the counted
-value — never the word "green"):
-  a. sha256sum of each of the six scratch files equals the table above;
-     cmp BLOCK vs .agent/authored/f111-r1-1.md silent; cmp authored vs
-     .agent/last_block.md silent.
-  b. `grep -c -F -x -- '- [~] F111 — Diff-only repair' docs/roadmap/STATUS.md`
-     -> 1
-     `grep -c -F -x -- '- [ ] F111 — Diff-only repair' docs/roadmap/STATUS.md`
-     -> 0 (grep exit 1 IS the pass here)
-     `git show --numstat <C3> -- docs/roadmap/STATUS.md` -> `1 1`
-  c. cmp silent for each: live_review vs LR, plan vs PLAN, context vs CTX.
-  d. `grep -c '^## Steps' .agent/live_review.md` -> 1
-     `grep -c '^- R-0' .agent/live_review.md` -> 22
-     `grep -c '^<<<'` -> 0 on EACH of .agent/live_review.md, .agent/plan.md,
-     .agent/context.md, .agent/handoff.md, docs/roadmap/STATUS.md
-     (grep exit 1 is the pass; the authored file and last_block are NOT
-     counted — they legitimately carry the block's own text)
-     `wc -l < .agent/plan.md` -> 37 (cap 50)
-     `wc -l < .agent/context.md` -> 45
-  e. `python3 -m pytest tests/docs/ -q` -> exit 0 (run at C3, rerun at HEAD)
+     def select_repair_hunks(
+         repo_root: Path,
+         changed_line_ranges: Mapping[str, Sequence[Sequence[int]]],
+         *,
+         margin_lines: int = 3,
+         max_total_chars: int = 20000,
+     ) -> RepairHunkSelection:
+
+   Behaviour contract, each clause pinned by its own test:
+   (1) Each [start, end] expands to [max(1, start - margin_lines),
+       min(<last line>, end + margin_lines)] — always clamped, never out of
+       bounds.
+   (2) Within one file, expanded ranges that overlap OR are adjacent merge
+       into a single hunk, so no source line is carried twice.
+   (3) Hunks are sorted by (path, start_line) — deterministic output.
+   (4) A file whose bytes contain a NUL or that fails UTF-8 decoding is
+       omitted with reason "binary" and never raises.
+   (5) A path that does not exist under repo_root is omitted with reason
+       "missing".
+   (6) Hunks are admitted in sorted order while total_chars stays within
+       max_total_chars; anything not admitted is omitted with reason
+       "budget". total_chars is the sum of the admitted hunks' text lengths
+       and never exceeds the cap.
+   (7) margin_lines=0 returns exactly the requested lines.
+   (8) A path whose range list is empty is omitted with reason "no_ranges".
+
+   Create tests/orchestration/test_diff_repair.py covering clauses 1-8, one
+   test per clause minimum, plus a test asserting a hunk's `text` equals the
+   exact source lines. Use bare `tmp_path` as repo_root — no `git init`, no
+   fixtures beyond tmp_path, matching tests/orchestration/test_fences.py.
+   Commit: feat(f111): add the repair hunk selection helper   -> push
+
+6. C6 — `cp .remedy-wt/f111r2/PLAN .agent/plan.md`; `cmp` silent.
+   Commit: chore(f111): rewrite the plan for R2   -> push
+
+7. C7 — rewrite .agent/handoff.md yourself (your own text): <=60 lines,
+   feature+round (F111 R2), branch, per-commit SHA table (C1-C7, C7
+   self-referential), changed-files table, the real gate results below
+   (command + real exit code + counted value), open findings 22 / next free
+   ID R-0298, an item-status table over C1-C7 with each item exactly once,
+   and next expected action: R3 = wire the selected hunks into the repair
+   context. Commit: chore(f111): rewrite the handoff for R2   -> push
+
+MUTATION RED-PROOF (run AFTER C7, inside a disposable worktree ONLY — never
+in the primary checkout, AGENTS.md/protocol G5):
+  `git worktree add .remedy-wt/r2mut HEAD`
+  In that worktree only, change the clamp in select_repair_hunks from
+  `max(1, start - margin_lines)` to `start - margin_lines`, then run
+  `python3 -m pytest tests/orchestration/test_diff_repair.py -q` there.
+  The start-of-file clamp test MUST go RED. Record the real exit code and
+  the failing test id. Then `git worktree remove --force .remedy-wt/r2mut`
+  and `git worktree prune`. Report `git worktree list` afterwards and
+  confirm `git status --porcelain` in the primary checkout is still empty.
+  If the mutation does NOT go red, say so plainly — that is a real finding
+  about the test, not something to massage.
+
+Done when (record command + real exit code + counted value; never the word
+"green"):
+  a. four scratch digests match; cmp BLOCK vs authored silent; cmp authored
+     vs last_block silent.
+  b. `git show --numstat <C3> -- .agent/live_review.md` -> `51 0`
+     `git show --numstat <C4> -- docs/roadmap/features/T2_F111.md` -> `17 0`
+  c. `grep -c '^### DECISION F111 D1' .agent/live_review.md` -> 1
+     `grep -c '^### R1 — PASS' .agent/live_review.md` -> 1
+     `grep -c '^- R-0' .agent/live_review.md` -> 22 (unchanged; this round
+     registers no finding)
+     `grep -c '^Done:' .agent/live_review.md` -> 0 (exit 1 is the pass)
+  d. `python3 -m pytest tests/orchestration/test_diff_repair.py -q` -> exit 0;
+     report the number of tests collected and passed.
+  e. `python3 -m pytest tests/docs/ -q` -> exit 0 (run at C4, rerun at HEAD)
   f. `python3 -m pytest tests/cli/test_golden_path.py -q` -> exit 0 (canary)
-  g. `git status --porcelain` -> empty output
-     `git rev-list --left-right --count origin/feature/f111-diff-only-repair...HEAD`
-     -> `0 0`
-  h. per-commit insertions from `git log --numstat`: report each; each must
-     be < 500. The single-file .agent state rewrites are exempt by AGENTS.md
-     DECISION F104 D1 but report their numbers anyway.
-Handback:    completion report in your final message (tables + the raw gate
-             results above) and .agent/handoff.md rewritten as C7. Do not
-             merge, do not open a PR, do not touch .agent/decisions.md or
-             .agent/candidates.md this round.
+  g. `rg -c '@@' packages/orchestration/diff_repair.py` -> 0 (exit 1 is the
+     pass: this round adds no diff parser)
+     `rg -n 'import' packages/orchestration/diff_repair.py` -> must NOT name
+     pingpong_loop, builder_bridge, source_apply or review_scope
+  h. mutation red-proof result as specified above, plus `git worktree list`
+     and `git status --porcelain` empty.
+  i. `git rev-list --left-right --count origin/feature/f111-diff-only-repair...HEAD`
+     -> `0 0`; per-commit insertions each < 500.
+Handback:    completion report (tables + raw gate results) and
+             .agent/handoff.md rewritten as C7. Do not merge, do not open a
+             PR, do not touch .agent/candidates.md or .agent/decisions.md.
 
-<<<BEGIN SLICE SFROM sha256=6c498f9cda12cfb5ba8f4665570575d9e9f7d9cbc49b55df406056b7933ca307 lines=1>>>
-- [ ] F111 — Diff-only repair
-<<<END SLICE SFROM>>>
+<<<BEGIN SLICE LRG sha256=acef0bc3f01616e7c6b05831d6262c12fa23bf0b32f8197d3690c42f427ab4a7 lines=51>>>
 
-<<<BEGIN SLICE STO sha256=ee7930206fc3754b459dfdbd02116aea300e61598604e0946e5aa26ae63e6fc2 lines=1>>>
-- [~] F111 — Diff-only repair
-<<<END SLICE STO>>>
+## Round gates
 
-<<<BEGIN SLICE LR sha256=1e9458ff50519853258df7789fd48d5a93e2351e98e089c0e11c901bf10fde18 lines=111>>>
-# Live Review — F111 Diff-only repair
+### R1 — PASS (2026-08-13)
+Reviewed by the main session over d956be2f..b0ab8e09, base 4e0b762e. Every
+number below was produced by the reviewer re-running the command, not read
+off the handback. `python3 -m pytest tests/docs/ -q` exit 0, 294 passed.
+`python3 -m pytest tests/cli/test_golden_path.py -q` exit 0, 42 passed.
+Transport: the PRIMARY cmp proof holds, no digest fallback was needed —
+`.remedy-wt/f111r1/BLOCK` and `.agent/authored/f111-r1-1.md` are
+byte-identical at sha256 348f4541705097eb..., and `.agent/live_review.md`,
+`.agent/plan.md` and `.agent/context.md` are byte-identical to their
+scratchpad originals LR, PLAN and CTX. Scope: `git diff --name-only
+main...HEAD` lists exactly the seven ordered paths and nothing else. STATUS:
+claim commit b1017248 reads `1 1`; the `[~]` line occurs 1x and the `[ ]`
+line 0x. No `Done:` and no `Landed:` line was written this round, and no
+marker line leaked into live_review, plan, context, handoff or STATUS.
+Per-commit insertions 319/293/1/96/30/27/50, each under the 500 cap. Tree
+clean; remote comparison `0 0`. No finding: next free ID stays R-0298.
 
-> Reviewer: the main session of a one-session self-drive build
-> (docs/agents/self_drive_protocol.md). Worker: one delegated subagent per
-> round. Findings are authored here by the reviewer only. A worker marks a
-> landed fix `Landed: R-XXXX`; only reviewer-authored `Done:` text sets
-> Resolved (docs/agents/planner_reviewer_prompt.md §4.4).
-> Branch: feature/f111-diff-only-repair. Next free ID: R-0298.
+## Decisions
 
-## Findings
+### DECISION F111 D1 — where the diff channel attaches (2026-08-13)
+Chosen: F111's prompt side and response side attach to two DIFFERENT existing
+seams, because no single seam carries both today.
+- Response side (T002): `packages/orchestration/builder_bridge.py`. Its
+  `bridge_builder_output_to_repo` already parses a `BuilderOutput` into a
+  `StructuredPatch` (stage 1, `parse_builder_patch`) and lands it through
+  `apply_structured_patch` (stage 3) — the fenced, snapshot-backed applicator
+  whose `_apply_hunks` is already strict and already returns None on any
+  context mismatch. The versioned unified-diff response schema, the fence
+  pre-check and the conflict fallback belong there, where a model response is
+  ALREADY treated as a patch.
+- Prompt side (T001): the repair context built by
+  `packages/orchestration/repair_context.py` and fed to the next `build_fn`
+  call by `builder_bridge.run_bounded_repair_loop`.
+- OUT of scope, deliberately: `packages/orchestration/pingpong_loop.py`. Its
+  builder is an agentic CLI that edits the staging tree itself; `BuilderOutput`
+  carries no patch field on that path and no applicator is invoked there.
+  Giving it a diff-shaped response would mean inventing a new provider
+  contract and changing applicator semantics — both barred by the feature
+  file's Do not touch.
+Alternatives considered. (a) Put both sides in `pingpong_loop`: rejected, it
+has no response-side patch seam at all, so T002 would have nothing to attach
+to. (b) Build a second applicator for the diff path: rejected outright, the
+feature file names the existing applicator as the ONLY way changes land.
+(c) Defer F111 until ping-pong grows a patch contract: rejected, the
+measurable win the feature asks for is reachable today on the bridge path.
+How to reverse: delete this DECISION and the amendment it adds to
+docs/roadmap/features/T2_F111.md, then re-scope T002 to the preferred seam.
+No code depends on it yet.
+<<<END SLICE LRG>>>
 
-Twenty-two findings carry forward from F107, all OPEN, none above Medium,
-each accepted as a risk at the F107 closure. Every entry below is compacted
-to its substance; the full text of all of them lives in
-`.agent/live_review.md` at commit 3c017c4e, merged to main as 4e0b762e,
-which is the archive of record.
+<<<BEGIN SLICE FF sha256=81a907957dd70df10a37c84226d1047d903e3ff190e71be35c0217d82edc66a6 lines=17>>>
 
-- R-0221 (Low, from F103 via F104 and F105):
-  `TestAutoBuildBehavior::test_auto_build_runs_by_default` in
-  `tests/ui_server/test_dashboard_contract.py` runs a real `npm install` and
-  `npm run build` mid-suite, refreshing `apps/ui/dist` mtimes and costing
-  every integration gate phantom base-only failures through
-  `_frontend_is_stale()`. Routed to the F252 flake class. OPEN.
-- R-0239 (Low, from F105): a reviewer-authored gate citation named a path
-  that does not exist. The worker ran the real path and declared the
-  correction, so nothing was skipped; kept as the citation-accuracy record.
-  OPEN.
-- R-0247 (Low, from F105): a reviewer-authored finding cited a line count of
-  101 where the file was 100. Same class as R-0239. OPEN.
-- R-0262 (Low, from F105): `plan_job_llm` composes its prompt OUTSIDE the
-  `try` that turns a provider failure into a renderable result, so a raising
-  composer escapes the function. OPEN.
-- R-0265 (Medium, from F105): a provider that reports usage but no cache
-  field leaves a measured-looking `0` the token ledger cannot distinguish
-  from a real zero. The fix belongs to the actuals producer. OPEN.
-- R-0266 (Medium, from F105): the token ledger's `role` is a hardcoded
-  `builder` in production data, so a per-role split of production rows is one
-  bucket. Producer change. OPEN.
-- R-0268 (Low, from F105): a `.agent/STOP` file carries no provenance —
-  nothing distinguishes an operator stop from any other writer. Belongs to
-  the self-drive protocol. OPEN.
-- R-0270 (Medium, F107 R1): `scripts/make_review_zip.sh` sweeps the work tree
-  with `find` and never consults `.gitignore`, so the review zip packages the
-  gitignored scratch tree `.remedy-wt/` — 1091 of 3646 members at one
-  measured build, a prior feature's whole evidence bundle included. OPEN.
-- R-0272 (Low, F107 R5): a reviewer-authored contract named an
-  `ImportNeighbors.files` field that does not exist — the real neighbour
-  tuple is `resolved`. The worker implemented the correct one. OPEN.
-- R-0274 (Low, F107 R7): the R7 block contradicted itself about which commit
-  carries a `Landed:` line, and asked for a commit's own SHA inside that
-  commit. The worker applied the safe reading and disclosed both. OPEN.
-- R-0280 (Medium, F107 R10): the R10 block contradicted itself about which
-  commit carries two `docs/README.md` pairs; the losing reading would have
-  committed three commits on a RED docs suite. The worker took the safe one.
-  OPEN.
-- R-0282 (Low, F107 R11): the R11 block said "exactly these nine paths" over
-  a list of eight. Reviewer arithmetic, paid for with a declared deviation.
-  OPEN.
-- R-0284 (Low, F107 R11): two line citations in the R11 block were wrong.
-  Citation-accuracy class. OPEN.
-- R-0285 (Low, F107 R12): the R12 block's zero-gate on `^Landed:` made the
-  protocol's own marker unwritable in the one round that landed a fix. The
-  rule: such a zero-gate is safe only in a round that lands no fix. OPEN.
-- R-0286 (Medium, F107 R13 integration gate): the full suite is RED at the
-  merge base with five ids — every `[reviewer]` parametrization in
-  `tests/orchestration/test_role_conventions.py` — because
-  `docs/agents/reviewer_conventions.md` estimates 954 tokens against the
-  800-token cap declared in `packages/orchestration/role_conventions.py`, so
-  composing the segment raises `PromptSegmentError` before any assertion
-  runs. Pre-existing, not branch-introduced; expect the same five at this
-  feature's gate. OPEN.
-- R-0287 (Low, F107 R13): `docs/agents/planner_reviewer_prompt.md` §4.4
-  routes every severity decision to "the canonical scale in
-  review_protocol.md", but no `docs/agents/review_protocol.md` exists on
-  disk, so every severity here is assigned from precedent. OPEN.
-- R-0289 (Medium, F107 R16): the R16 block ordered its ONLY push at its last
-  commit; the session died after C4 and twelve commits sat on local disk
-  alone. Rule, forward-looking and applied throughout this feature: a round
-  pushes after EVERY commit. OPEN.
-- R-0290 (Medium, F107 R18): not one of the six Phase 0 probe commands in
-  `docs/agents/self_drive_protocol.md` can see a feature branch that is not
-  checked out, and a completed-but-unclosed feature has by design no open PR
-  — so Rule A5 can re-claim a feature already deep on a branch. Fix: Phase 0
-  gains a `feature/*` branch sweep and Phase 1 a pending-feature rule that
-  outranks A5. This session ran that sweep by hand before claiming F111.
-  OPEN.
-- R-0294 (Low, F107 R19): the R18 block was emitted without the §3
-  pre-emission checklist run on its final bytes — 407 lines against the cap
-  of 400, plus a self-counting zero-gate. Registered against the reviewer
-  role. OPEN.
-- R-0295 (Medium, F107 R21): `scripts/make_review_zip.sh:218-259` collects
-  with a hardcoded `find` prune list that predates the `.remedy-wt/` scratch
-  convention, and the post-publication scan at `:509` then rejects the
-  package for the `/.data/` and `/.git/` components it just published —
-  closure blocked by construction, and a leak surface for any scratch holding
-  a `.env` or a log. The durable fix is one prune entry, owned by a
-  follow-up. OPEN.
-- R-0296 (Low, F107 R21, flake class):
-  `tests/orchestration/test_product_smoke.py::test_no_zombie_processes_after_every_outcome`
-  is load-sensitive and fails intermittently under `-n auto`; two runs of the
-  same head disagreed. Routed to F252. OPEN.
-- R-0297 (Low, F107 R22): the R21 block made a filesystem path OUTSIDE the
-  repository load-bearing without probing it first — every path outside
-  `/home/decodeux/Repos/remedy` is denied by this environment — and the round
-  lost its second half. The filesystem twin of §3 checklist item 5. OPEN.
+## Built State — scope amendment (DECISION F111 D1, 2026-08-13)
+The repair loop this feature changes is the BOUNDED REPAIR LOOP in
+`packages/orchestration/builder_bridge.py` (`run_bounded_repair_loop`), whose
+cycle is build → bridge → test → repair-context → rebuild. Its bridge already
+parses a `BuilderOutput` into a `StructuredPatch` and applies it through
+`apply_structured_patch`, so the response-side diff channel attaches there and
+flows through the existing fenced applicator exactly as "How it fits"
+requires. The prompt-side hunk selection attaches to the repair context built
+by `packages/orchestration/repair_context.py`.
+`packages/orchestration/pingpong_loop.py` is explicitly NOT in scope: its
+builder is an agentic CLI that edits the staging tree itself, `BuilderOutput`
+carries no patch field on that path, and no applicator is invoked there.
+Giving it a diff-shaped response would require a new provider contract and a
+change to applicator semantics, both listed under Do not touch. Remedy
+deliberately does not route ping-pong repairs through the diff channel in v1
+for that reason.
+<<<END SLICE FF>>>
 
-## Steps
-R1 claim, state reset and carry-forward · R2 the repair-path DECISION plus
-T001 hunk selection · T002 response schema, fence pre-check and
-apply-with-conflict fallback · T003 wiring, mode and token evidence ·
-integration gate · closure.
-<<<END SLICE LR>>>
-
-<<<BEGIN SLICE PLAN sha256=b2bf03236f9a1b5e93c230c49120363d41ca8d44ab93ea587e58f351ae86a030 lines=37>>>
+<<<BEGIN SLICE PLAN sha256=c7982c61b653ec97632c2bec7f40608cd19901afa2028763f9d37aa14519c5f6 lines=38>>>
 # Plan — F111 Diff-only repair
 
 Branch: feature/f111-diff-only-repair, cut from main at 4e0b762e.
-Next free finding ID: R-0298. Last reviewed SHA: none yet (R1 in flight).
+Next free finding ID: R-0298. Last reviewed SHA: b0ab8e09 (R1 PASS).
 
 ## Goal
 Repairs stop resending whole files: a repair round carries only the
@@ -245,75 +248,28 @@ today's full-file round with the reason recorded
 (docs/roadmap/features/T2_F111.md).
 
 ## Current Step
-R1 — claim F111, reset the session state files, and carry the 22 open F107
-findings forward. No production code this round: which repair path owns the
-response-side diff channel is not yet settled, and R2 opens with that
-DECISION rather than guessing.
+R2 — record the R1 gate and DECISION F111 D1, amend the feature file with the
+seam the DECISION picks, and build T001: the hunk selection helper in the new
+`packages/orchestration/diff_repair.py` with unit tests. D1 settles that the
+response side attaches to `builder_bridge` (which already applies a parsed
+patch through the fenced applicator) and the prompt side to
+`repair_context`; `pingpong_loop` is out of scope and the feature file now
+says so.
 
 ## Next Steps
-1. R2 — the repair-path DECISION, its feature-file amendment, and T001: the
-   hunk selection helper plus unit tests.
-2. T002 — response schema, fence pre-check, strict apply with conflict
-   fallback.
-3. T003 — wiring into repair rounds, mode and token evidence, a fixture
-   comparison recording both modes' token counts.
+1. T001 rest — wire the selected hunks into the repair context the bounded
+   repair loop feeds to the next build call.
+2. T002 — versioned unified-diff response schema, fence pre-check before any
+   apply, strict apply with an all-or-nothing conflict fallback.
+3. T003 — mode and token evidence per repair round, plus a fixture comparison
+   recording both modes' token counts.
 4. Integration gate, then closure.
 
 ## Risks
-- The ping-pong repair round's builder is an agentic CLI that edits staging
-  itself: `BuilderOutput` carries no patch field and `apply_structured_patch`
-  is never called from `pingpong_loop.py`. The prompt-side saving is
-  reachable there; the response-side diff channel is not. R2 settles this as
-  a recorded DECISION, never as a silent re-plan.
 - The full suite is RED at the merge base with five known ids (R-0286), so
-  the integration gate must compare base against branch, not read absolute
+  the integration gate must compare base against branch, never read absolute
   green.
+- `review_scope._parse_diff` and `source_apply._apply_hunks` already exist and
+  must be reused, not duplicated — a third `@@` regex in the tree would be a
+  finding.
 <<<END SLICE PLAN>>>
-
-<<<BEGIN SLICE CTX sha256=3994fc02270c2457cbf3981c083f5ded75e7b8b3ce48fc27f9c9acd704fdc9d8 lines=45>>>
-# Context — F111 Diff-only repair
-
-## Active Branch
-feature/f111-diff-only-repair, cut from main at 4e0b762e after PR #193 was
-merged at the Open PR Gate. F111 is claimed `[~]` under Rule A5 as the first
-`[ ]` line of docs/roadmap/STATUS.md (Package 1 Self-Use, Tier 2).
-
-## Scope
-In: what a repair round SENDS and ACCEPTS — a hunk selection helper
-(line-range slicing with a configurable context margin), a versioned
-unified-diff response schema, a fence pre-check before any apply, strict
-apply with an all-or-nothing conflict fallback to the full-file round, and
-per-round mode and token evidence. Tests under
-tests/orchestration/test_diff_repair.py.
-
-Out, per the feature file's Do-not-touch: repair round counts and policy,
-applicator semantics, and session resume. No fuzzy diff application — v1
-requires exact context matches, and no implementation may shell out to
-`patch` or `git apply` with fuzz enabled. Deletions stay on the full-file
-path in v1; new-file creation inside a diff is allowed if the path passes
-fences.
-
-## Constraints
-- SPLIT rounds are mandatory: this feature touches packages/, and production
-  code never merges self-certified
-  (docs/agents/planner_reviewer_prompt.md §3).
-- The main session writes nothing in the work tree; a delegated worker
-  subagent makes every commit (docs/agents/self_drive_protocol.md).
-- Merges only at the Open PR Gate; never force-push; never touch main.
-- A round pushes after EVERY commit, not once at its last step (R-0289).
-- Verification is pytest, scoped per round, plus the canary
-  tests/cli/test_golden_path.py. A round touching docs/roadmap/ also runs
-  tests/docs/. The full suite runs only at the integration gate, with
-  `-n auto`. Destructive and mutation checks run only inside a disposable
-  git worktree, so resource safety stays intact and no background pytest
-  process is ever left running.
-- Build on what exists, do not duplicate it: `review_scope._parse_diff`
-  already parses a unified diff into per-file new-file line ranges, and
-  `source_apply._apply_hunks` is already a strict, non-fuzzy hunk applier
-  that returns None on any context mismatch.
-
-## Steps
-R1 claim and state reset → R2 repair-path DECISION plus T001 hunk selection →
-T002 response schema, fence pre-check and apply fallback → T003 wiring, mode
-and token evidence → integration gate → closure.
-<<<END SLICE CTX>>>
