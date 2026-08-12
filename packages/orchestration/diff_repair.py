@@ -1,0 +1,159 @@
+"""Repair hunk selection for diff-only repair (F111 T001).
+
+Picks the exact source lines a repair round should carry, so a repair
+prompt sends only the failure-relevant hunks with a context margin
+instead of whole files.
+
+This module is pure: it reads files under a repo root and returns data.
+It holds no unified-diff parser and no applier, on purpose. `review_scope`
+already turns a unified diff into per-file line ranges (this module
+consumes exactly that shape, `{path: [[start, end], ...]}`) and
+`source_apply` is already the strict hunk applier that lands changes.
+Remedy deliberately does not add a third place that understands
+unified-diff syntax.
+
+Public API::
+
+    select_repair_hunks(repo_root, changed_line_ranges, *,
+                        margin_lines=3, max_total_chars=20000)
+        -> RepairHunkSelection
+
+Omission reasons reported in ``RepairHunkSelection.omitted`` are
+``missing``, ``binary``, ``no_ranges`` and ``budget``.
+"""
+
+from __future__ import annotations
+
+from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
+from pathlib import Path
+
+
+# One contiguous block of source a repair prompt carries verbatim.
+@dataclass(frozen=True)
+class RepairHunk:
+    """A single repair hunk: one file, one line span, the exact lines."""
+
+    path: str  # repo-relative, exactly as the caller gave it
+    start_line: int  # 1-based inclusive, AFTER margin expansion
+    end_line: int  # 1-based inclusive, AFTER margin expansion
+    text: str  # the exact source lines, newline-joined
+
+
+# The whole answer of one selection pass: what is carried, what is not, how big.
+@dataclass(frozen=True)
+class RepairHunkSelection:
+    """Selected hunks plus the per-path reasons anything was left out."""
+
+    hunks: tuple[RepairHunk, ...]
+    omitted: tuple[tuple[str, str], ...]  # (path, reason)
+    total_chars: int
+
+
+# Reading is split out so every failure mode becomes a reason, never an exception.
+def _read_source_lines(repo_root: Path, path: str) -> tuple[list[str] | None, str]:
+    """Return one file's lines, or (None, reason) when it cannot be carried."""
+    try:
+        raw = (repo_root / path).read_bytes()
+    except (OSError, ValueError):
+        return None, "missing"
+    if b"\x00" in raw:
+        return None, "binary"
+    try:
+        text = raw.decode("utf-8")
+    except UnicodeDecodeError:
+        return None, "binary"
+    lines = text.split("\n")
+    if lines and lines[-1] == "":
+        lines.pop()  # a trailing newline ends the last line, it is not a new one
+    return lines, ""
+
+
+# Margin expansion and merging live together: merging is only correct after clamping.
+def _expand_and_merge_ranges(
+    ranges: Sequence[Sequence[int]],
+    line_count: int,
+    margin_lines: int,
+) -> list[tuple[int, int]]:
+    """Clamp each range to the file, then fuse overlapping or adjacent spans."""
+    spans: list[tuple[int, int]] = []
+    for raw_range in ranges:
+        if not raw_range:
+            continue
+        start = max(1, int(raw_range[0]) - margin_lines)
+        end = min(line_count, int(raw_range[-1]) + margin_lines)
+        if start > end:
+            continue  # the range selects no line that exists in this file
+        spans.append((start, end))
+    spans.sort()
+    merged: list[tuple[int, int]] = []
+    for start, end in spans:
+        if merged and start <= merged[-1][1] + 1:  # +1 fuses adjacent spans too
+            previous_start, previous_end = merged[-1]
+            merged[-1] = (previous_start, max(previous_end, end))
+        else:
+            merged.append((start, end))
+    return merged
+
+
+# The entry point F111's prompt side calls instead of attaching whole files.
+def select_repair_hunks(
+    repo_root: Path,
+    changed_line_ranges: Mapping[str, Sequence[Sequence[int]]],
+    *,
+    margin_lines: int = 3,
+    max_total_chars: int = 20000,
+) -> RepairHunkSelection:
+    """Select the margin-expanded source hunks for the given changed lines.
+
+    Paths are visited in sorted order and hunks come back sorted by
+    ``(path, start_line)``, so the same input always yields the same
+    prompt. Admission stops at the first hunk that would push
+    ``total_chars`` past ``max_total_chars``; every path with a hunk left
+    behind is reported once with reason ``budget``.
+    """
+    candidates: list[RepairHunk] = []
+    omitted: list[tuple[str, str]] = []
+
+    for path in sorted(changed_line_ranges):
+        ranges = changed_line_ranges[path]
+        if not ranges:
+            omitted.append((path, "no_ranges"))
+            continue
+        lines, reason = _read_source_lines(repo_root, path)
+        if lines is None:
+            omitted.append((path, reason))
+            continue
+        spans = _expand_and_merge_ranges(ranges, len(lines), margin_lines)
+        if not spans:
+            omitted.append((path, "no_ranges"))
+            continue
+        for start, end in spans:
+            candidates.append(
+                RepairHunk(
+                    path=path,
+                    start_line=start,
+                    end_line=end,
+                    text="\n".join(lines[start - 1 : end]),
+                )
+            )
+
+    candidates.sort(key=lambda hunk: (hunk.path, hunk.start_line))
+    admitted: list[RepairHunk] = []
+    total_chars = 0
+    over_budget_paths: list[str] = []
+    for index, hunk in enumerate(candidates):
+        if total_chars + len(hunk.text) > max_total_chars:
+            for dropped in candidates[index:]:
+                if dropped.path not in over_budget_paths:
+                    over_budget_paths.append(dropped.path)
+            break
+        admitted.append(hunk)
+        total_chars += len(hunk.text)
+    omitted.extend((path, "budget") for path in over_budget_paths)
+
+    return RepairHunkSelection(
+        hunks=tuple(admitted),
+        omitted=tuple(omitted),
+        total_chars=total_chars,
+    )
