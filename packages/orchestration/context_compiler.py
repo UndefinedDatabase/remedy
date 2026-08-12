@@ -1,12 +1,14 @@
 """
-Context compiler — import-neighbor graphs (F107 T001).
+Context compiler — import-neighbor graphs (T001) and signatures (T002), F107.
 
 The context compiler stops handing tasks whole files regardless of relevance:
 it selects fenced-path files, their direct import neighbors, and only
 signatures of distant dependencies (docs/roadmap/features/T2_F107.md). This
-module is the GRAPH layer of that compiler: given a repo root and a set of
-repo-relative files, it answers "which files does this file import" per file,
-in both languages that matter now — Python and TypeScript-ish frontends.
+module carries two of that compiler's layers. The GRAPH layer answers "which
+files does this file import" per file, in both languages that matter now —
+Python and TypeScript-ish frontends. The SIGNATURE layer answers "what does
+this file declare", rendering a file down to headers and docstring first
+lines so a distant dependency costs a few lines instead of its whole body.
 
 Python neighbors come from ``ast``: real parsing, absolute and relative
 imports resolved against the importing file's package, ``from pkg import
@@ -23,13 +25,17 @@ import/export/require lines, it does not parse. Documented v1 limitations:
   - commented-out imports ARE matched — the scanner cannot tell a comment
     from code.
 A real TS parser is a later upgrade, not a hidden dependency now (the feature
-file's orchestrator brief rejects any diff adding one).
+file's orchestrator brief rejects any diff adding one). The TS SIGNATURE
+scanner shares those line-level heuristic limitations: it too reads one line
+at a time, so a multi-line export statement contributes only its first line
+and a commented-out ``export`` is rendered like real code.
 
 This module is PURE per-file computation: it never follows a neighbor's own
 imports, so cyclic imports terminate by construction, and it never calls a
 provider, touches the network, or writes evidence. Stdlib only. Determinism:
-every output is a sorted, deduplicated tuple of repo-relative POSIX paths —
-the same tree always yields the same graph.
+every graph output is a sorted, deduplicated tuple of repo-relative POSIX
+paths and every signature output is a source-ordered tuple of rendered lines —
+the same tree always yields the same graph and the same signatures.
 
 Public API::
 
@@ -37,6 +43,11 @@ Public API::
     python_import_neighbors(root, rel_path)     -> ImportNeighbors
     typescript_import_neighbors(root, rel_path) -> ImportNeighbors
     build_import_neighbor_graph(root, rel_paths) -> dict[str, ImportNeighbors]
+    FileSignatures                     — one file's rendered signature lines
+    fits_inline_size_cap(root, rel_path)        -> bool
+    python_file_signatures(root, rel_path)      -> FileSignatures
+    typescript_file_signatures(root, rel_path)  -> FileSignatures
+    extract_file_signatures(root, rel_path)     -> FileSignatures
 """
 
 from __future__ import annotations
@@ -65,6 +76,33 @@ _TS_LINE_PATTERNS = (
     _TS_EXPORT_FROM_RE,
     _TS_REQUIRE_RE,
 )
+
+# A TS/JS declaration counts as a signature only when the line's FIRST
+# non-space characters are the word `export` — a mid-line `export` is not a
+# declaration head, and `exports.x` is not the keyword (no word boundary).
+_TS_EXPORT_LINE_RE = re.compile(r"^\s*export\b")
+
+# Tier 2 of the F107 tier table (direct import neighbors) is inlined in full
+# only up to this per-file size, then demoted to signatures. 16 KiB is roughly
+# 4k tokens of source — one neighbor may not eat a whole context budget.
+DEFAULT_INLINE_SIZE_CAP_BYTES = 16384
+
+# A rendered signature list is itself capped, so one generated or vendored
+# giant cannot flood the context that signatures exist to shrink.
+DEFAULT_SIGNATURE_LINE_CAP = 200
+
+# Python nodes that produce a signature header, at any nesting depth.
+_PYTHON_SIGNATURE_NODES = (ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)
+
+# Statement-list fields of compound statements, in source order — walked so a
+# `def` nested in an `if`/`try`/`match` is still found.
+_PYTHON_BODY_FIELDS = ("body", "handlers", "orelse", "finalbody", "cases")
+
+# Three double-quotes, the wrapper a rendered docstring line carries.
+_DOCSTRING_FENCE = '"""'
+
+# One nesting level of rendered indentation.
+_SIGNATURE_INDENT = "    "
 
 
 # One file's direct import neighbors, split into files found under root and
@@ -300,3 +338,200 @@ def build_import_neighbor_graph(
         else:
             graph[rel_path] = ImportNeighbors(parse_failed=True)
     return graph
+
+
+# --------------------------------------------------------------------------
+# Signatures (F107 T002) — what a file DECLARES, without its bodies
+# --------------------------------------------------------------------------
+
+
+# One file rendered down to declaration headers and docstring first lines,
+# which is what tiers 2 and 3 of the F107 tier table send instead of content.
+@dataclass(frozen=True)
+class FileSignatures:
+    """A single file's rendered signature lines, in source order.
+
+    ``lines`` holds the rendered lines; ``truncated`` is True when the line
+    cap cut the rendering short, so the caller knows the list is partial;
+    ``parse_failed`` is True when the source could not be read or parsed —
+    the caller decides what tier an unrenderable file lands in.
+    """
+
+    lines: tuple[str, ...] = ()
+    truncated: bool = False
+    parse_failed: bool = False
+
+
+def _capped_signatures(lines: list[str], line_cap: int) -> FileSignatures:
+    """Freeze the rendered lines, keeping the FIRST ``line_cap`` of them."""
+    if len(lines) > line_cap:
+        return FileSignatures(tuple(lines[:line_cap]), truncated=True)
+    return FileSignatures(tuple(lines))
+
+
+def fits_inline_size_cap(
+    root: Path, rel_path: str, cap_bytes: int = DEFAULT_INLINE_SIZE_CAP_BYTES
+) -> bool:
+    """The tier-2 demotion switch: may this file be inlined in full?
+
+    True when the path is a file under root whose size in BYTES is at most
+    ``cap_bytes`` — a file exactly at the cap fits. A path that is not a file
+    is False, because nothing that does not exist can be inlined. This
+    function decides nothing else; the selector demotes to signatures.
+    """
+    target = root / rel_path
+    try:
+        if not target.is_file():
+            return False
+        return target.stat().st_size <= cap_bytes
+    except OSError:
+        return False
+
+
+# --------------------------------------------------------------------------
+# Python signatures (ast-based)
+# --------------------------------------------------------------------------
+
+
+def _docstring_signature_line(node: ast.AST) -> str | None:
+    """Render a node's docstring as its first NON-EMPTY line inside triple
+    quotes — None when there is no docstring or it is entirely blank."""
+    try:
+        raw = ast.get_docstring(node, clean=False)
+    except TypeError:
+        return None
+    if raw is None:
+        return None
+    for line in raw.splitlines():
+        stripped = line.strip()
+        if stripped:
+            return _DOCSTRING_FENCE + stripped + _DOCSTRING_FENCE
+    return None
+
+
+def _render_python_signature_header(node: ast.AST) -> str:
+    """Reconstruct one declaration header FROM THE AST, never from the source,
+    so a signature spread over several source lines collapses to one line."""
+    if isinstance(node, ast.ClassDef):
+        # Bases only, per the T002 contract: no empty parentheses when there
+        # are none, and class keywords (metaclass=…) are deliberately absent.
+        bases = ", ".join(ast.unparse(base) for base in node.bases)
+        return f"class {node.name}({bases}):" if bases else f"class {node.name}:"
+    prefix = "async def " if isinstance(node, ast.AsyncFunctionDef) else "def "
+    header = f"{prefix}{node.name}({ast.unparse(node.args)})"
+    if node.returns is not None:
+        header += f" -> {ast.unparse(node.returns)}"
+    return header + ":"
+
+
+def _python_child_statements(node: ast.AST) -> list[ast.AST]:
+    """Statement lists nested inside one compound statement, in source order."""
+    nested: list[ast.AST] = []
+    for field in _PYTHON_BODY_FIELDS:
+        nested.extend(getattr(node, field, None) or [])
+    return nested
+
+
+def _collect_python_signature_lines(
+    nodes: Iterable[ast.AST], depth: int, out: list[str]
+) -> None:
+    """Append rendered lines for every declaration in ``nodes``, recursing so
+    declarations at ANY nesting depth appear, indented one level per depth."""
+    for node in nodes:
+        if isinstance(node, _PYTHON_SIGNATURE_NODES):
+            indent = _SIGNATURE_INDENT * depth
+            out.append(indent + _render_python_signature_header(node))
+            docstring_line = _docstring_signature_line(node)
+            if docstring_line is not None:
+                out.append(indent + _SIGNATURE_INDENT + docstring_line)
+            _collect_python_signature_lines(node.body, depth + 1, out)
+        else:
+            nested = _python_child_statements(node)
+            if nested:
+                # Not a declaration, so the depth does not grow.
+                _collect_python_signature_lines(nested, depth, out)
+
+
+def python_file_signatures(
+    root: Path, rel_path: str, line_cap: int = DEFAULT_SIGNATURE_LINE_CAP
+) -> FileSignatures:
+    """Signature lines of one Python file under root, via ``ast``.
+
+    Renders, in source order: the module docstring's first non-empty line;
+    every class/def/async def header at any nesting depth, indented four
+    spaces per level; and directly after each header that node's docstring
+    first non-empty line, four spaces deeper again. Decorators, bodies,
+    imports and assignments never appear. Unreadable source or a SyntaxError
+    yields ``parse_failed=True`` with empty lines; more than ``line_cap``
+    rendered lines keeps the first ``line_cap`` and sets ``truncated=True``.
+    """
+    try:
+        source = (root / rel_path).read_text(encoding="utf-8")
+        tree = ast.parse(source)
+    except (OSError, SyntaxError, ValueError):
+        return FileSignatures(parse_failed=True)
+
+    lines: list[str] = []
+    module_docstring_line = _docstring_signature_line(tree)
+    if module_docstring_line is not None:
+        lines.append(module_docstring_line)
+    _collect_python_signature_lines(tree.body, 0, lines)
+    return _capped_signatures(lines, line_cap)
+
+
+# --------------------------------------------------------------------------
+# TypeScript / JavaScript signatures (line-level heuristic)
+# --------------------------------------------------------------------------
+
+
+def _render_typescript_signature_line(line: str) -> str:
+    """Deliberately minimal so the rendering stays predictable: strip both
+    ends, then drop a TRAILING ``{`` and the whitespace before it. Nothing
+    else is rewritten — no mid-line cutting, no semicolon removal."""
+    stripped = line.strip()
+    if stripped.endswith("{"):
+        stripped = stripped[:-1].rstrip()
+    return stripped
+
+
+def typescript_file_signatures(
+    root: Path, rel_path: str, line_cap: int = DEFAULT_SIGNATURE_LINE_CAP
+) -> FileSignatures:
+    """Signature lines of one TS/JS file, via the line-level export scanner.
+
+    One entry per source line whose first non-space characters are the word
+    ``export``, in source order — so non-exported declarations and a line
+    where ``export`` appears mid-line contribute nothing. An unreadable file
+    yields ``parse_failed=True``. Same ``line_cap`` and ``truncated``
+    semantics as the Python extractor. Its heuristic limitations are the
+    line-level ones the module docstring already documents.
+    """
+    try:
+        source = (root / rel_path).read_text(encoding="utf-8")
+    except (OSError, ValueError):
+        return FileSignatures(parse_failed=True)
+
+    lines = [
+        _render_typescript_signature_line(line)
+        for line in source.splitlines()
+        if _TS_EXPORT_LINE_RE.match(line)
+    ]
+    return _capped_signatures(lines, line_cap)
+
+
+def extract_file_signatures(
+    root: Path, rel_path: str, line_cap: int = DEFAULT_SIGNATURE_LINE_CAP
+) -> FileSignatures:
+    """Signature lines for one file, dispatching on suffix.
+
+    Same dispatch as ``build_import_neighbor_graph``: .py → the ast
+    extractor, .ts/.tsx/.js/.jsx → the export scanner, anything else →
+    ``parse_failed=True`` with empty lines, because no extractor claims it.
+    Determinism: the same file always renders to the same tuple.
+    """
+    suffix = PurePosixPath(rel_path).suffix
+    if suffix == ".py":
+        return python_file_signatures(root, rel_path, line_cap)
+    if suffix in _TS_SUFFIXES:
+        return typescript_file_signatures(root, rel_path, line_cap)
+    return FileSignatures(parse_failed=True)
