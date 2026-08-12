@@ -1,0 +1,89 @@
+F107 R16 — INTEGRATION GATE ATTRIBUTION
+=======================================
+Procedure: docs/agents/integration_gate.md, steps 3 and 4.
+Merge base: 2e4142c3ac72042ac4d704da252db263e48dcba3
+Branch HEAD at the branch run: d94b0c9771d859ad36e310d716800b8d678bd211
+                               (feature/f107-context-compiler-v2)
+Third attempt at this gate: R13, R14 and R15 each lost their session mid-step.
+Both suites here ran DETACHED with their exit codes redirected to files as they
+ran, so no number in this file exists only in a terminal (R-0288).
+
+HEADLINE NUMBERS
+  BRANCH run  python3 -m pytest -n auto -q
+              16533 passed, 19 skipped, 5 failed — exit 1 — 221 s wall
+              (log line: "5 failed, 16533 passed, 19 skipped in 220.85s")
+  BASE   run  REMEDY_UI_NO_AUTO_BUILD=1 python3 -m pytest -n auto -q
+              16457 passed, 19 skipped, 5 failed — exit 1 — 155 s wall
+              (log line: "5 failed, 16457 passed, 19 skipped in 154.75s")
+
+  COLLECTED-TEST DELTA. Branch collects 16557 (16533+19+5), base collects 16481
+  (16457+19+5) — the branch collects 76 more. That delta is F107's own new
+  tests, and it was measured rather than assumed:
+    git diff --name-only --diff-filter=A 2e4142c3..HEAD -- tests
+      tests/cli/test_job_context_cmd.py
+      tests/orchestration/test_context_compiler.py
+      tests/orchestration/test_context_compiler_e2e.py
+    python3 -m pytest --collect-only -q <those three files>  ->  76 tests
+  76 added == 76 delta, exactly. It is not a selection difference.
+
+UI PARITY (the step R13's base run lacked and R15 could not prove)
+  All four aggregate CONTENT hashes of apps/ui/dist are the same value
+  fb68a7293502c79b8ece61d154f5752100a16da1a08a481a7a4c1d79a5a503c0 — base
+  before, base after, primary before, primary after (dist_hashes.txt). So the
+  base worktree's dist was byte-identical to the primary checkout's, nothing
+  wrote through into the primary checkout during the base run, and the parity
+  claim is not voided.
+  Mtime ordering in the base worktree before the run, after
+  `find .remedy-wt/base-gate/apps/ui/dist -exec touch {} +`:
+    newest apps/ui/src   2026-08-12 19:16:20.093338266  (git worktree add stamp)
+    newest apps/ui/dist  2026-08-12 19:16:24.130353593
+    oldest apps/ui/dist  2026-08-12 19:16:24.130353593
+  dist is newer than src, so _frontend_is_stale() is False and the
+  REMEDY_UI_NO_AUTO_BUILD=1 refusal path is never reached. The consequence is
+  visible in the result: the seven-id tests/ui_server/test_live_state.py
+  environment class (R-0221) that appeared at F104 R7, F105 R49 and F107 R13
+  DOES NOT APPEAR in this gate at all. base_failed.txt contains no ui_server id.
+
+COMPARISON
+  comm -13 base_failed.txt branch_failed.txt  (BRANCH-ONLY) : 0 ids — EMPTY
+  comm -23 base_failed.txt branch_failed.txt  (BASE-ONLY)   : 0 ids — EMPTY
+  comm -12 base_failed.txt branch_failed.txt  (COMMON)      : 5 ids
+  Both comm files are committed at zero length, created either way.
+
+PER-ID VERDICT TABLE — every id from BOTH comm files, none silently absent
+  The table is EMPTY BY CONSTRUCTION: both comm files contain zero ids, so
+  there is no id to attribute on either side. Stated explicitly rather than
+  omitted, because an absent table and an empty one are not the same claim.
+    BRANCH-ONLY ids: none. No serial re-run was needed or run; there is no
+      xdist-flake class to record and no candidate for the integration_gate.md
+      step 4 BLOCKER, since a reproducible branch-only failure coupled to F107
+      code cannot exist when the branch and base failure sets are identical.
+    BASE-ONLY ids: none. No environment-class attribution is owed, because the
+      environment was restored before the run rather than attributed after it.
+
+COMMON FAILURES: 5 ids, R-0286, NOT CHARGED TO F107
+  These five fail in BOTH runs and are why BOTH runs exit 1. A common failure
+  appears in NEITHER comm file and does not block the gate verdict.
+    tests/orchestration/test_role_conventions.py::TestRoleConventionsContentEquality::test_document_estimate_is_positive_and_under_the_cap[reviewer]
+    tests/orchestration/test_role_conventions.py::TestRoleConventionsMappings::test_segment_name_mapping_holds_the_expected_literal[reviewer-reviewer_conventions]
+    tests/orchestration/test_role_conventions.py::TestRoleConventionsRegistration::test_composing_one_conventions_segment_yields_exactly_the_document[reviewer]
+    tests/orchestration/test_role_conventions.py::TestRoleConventionsRegistration::test_registered_segment_carries_the_documented_name_and_rank[reviewer]
+    tests/orchestration/test_role_conventions.py::TestRoleConventionsRegistration::test_registration_mutates_no_text[reviewer]
+  Mechanism, from the branch run's own traceback (branch_run.txt raw tail):
+    PromptSegmentError: prompt segment 'reviewer_conventions' is over its token
+    cap: 954 tokens estimated, cap 800
+  raised at packages/orchestration/prompt_segments.py:160 before any assertion
+  in those tests runs. docs/agents/reviewer_conventions.md estimates 954 tokens
+  against the 800-token cap packages/orchestration/role_conventions.py declares.
+  Pre-existing, registered as R-0286 at F107 R13: the same five ids fail at the
+  merge base, where no F107 commit exists. F107 does not repair it — AGENTS.md
+  Core Workflow bars mixing an unrelated fix into a feature branch.
+
+WALL CLOCK
+  branch 221 s, base 155 s. Both under the ~5 min budget in integration_gate.md
+  step 5, so no perf pass is indicated. The branch is the slower of the two by
+  66 s, consistent with the 76 additional tests it collects.
+
+VERDICT IS NOT ISSUED HERE
+  integration_gate.md step 5: only the reviewer issues the gate verdict. This
+  file records what was run and what it measured, and nothing more.

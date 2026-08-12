@@ -1,0 +1,18 @@
+utc=2026-08-12T17:19:20Z
+$ git worktree remove --force .remedy-wt/base-gate
+exit=0
+$ git worktree prune
+exit=0
+$ git branch -D tmp/base-gate
+Deleted branch tmp/base-gate (was 2e4142c3).
+exit=0
+== proof ==
+$ git worktree list
+/home/decodeux/Repos/remedy  d94b0c97 [feature/f107-context-compiler-v2]
+exit=0
+$ git branch --list 'tmp/*'  (expect EMPTY)
+exit=0 tmp_branch_lines=0
+$ git status --porcelain  (expect 0 lines)
+exit=0 porcelain_lines=0
+$ test -e .remedy-wt/base-gate
+exit=1 (1 == path is gone)

@@ -1,0 +1,22 @@
+# F107 R16 — apps/ui/dist parity proof. Aggregate CONTENT hash:
+#   find apps/ui/dist -type f -print0 | sort -z | xargs -0 sha256sum | sha256sum
+
+== BEFORE the base run ==
+BASE_DIST_HASH_BEFORE=fb68a7293502c79b8ece61d154f5752100a16da1a08a481a7a4c1d79a5a503c0  - exit=0
+PRIM_DIST_HASH_BEFORE=fb68a7293502c79b8ece61d154f5752100a16da1a08a481a7a4c1d79a5a503c0  - exit=0
+
+== mtime ordering in the BASE worktree before the run ==
+== (dist must be NEWER than src, else the staleness check fires and
+==  REMEDY_UI_NO_AUTO_BUILD=1 refuses the rebuild it just asked for) ==
+BASE_SRC_MTIME_NEWEST=2026-08-12 19:16:20.0933382660 /home/decodeux/Repos/remedy/.remedy-wt/base-gate/apps/ui/src/types/react-force-graph-2d.d.ts exit=0
+BASE_DIST_MTIME_NEWEST=2026-08-12 19:16:24.1303535930 /home/decodeux/Repos/remedy/.remedy-wt/base-gate/apps/ui/dist/index.html exit=0
+BASE_DIST_MTIME_OLDEST=2026-08-12 19:16:24.1303535930 /home/decodeux/Repos/remedy/.remedy-wt/base-gate/apps/ui/dist exit=0
+
+== AFTER the base run ==
+BASE_DIST_HASH_AFTER=fb68a7293502c79b8ece61d154f5752100a16da1a08a481a7a4c1d79a5a503c0  - exit=0
+PRIM_DIST_HASH_AFTER=fb68a7293502c79b8ece61d154f5752100a16da1a08a481a7a4c1d79a5a503c0  - exit=0
+
+== VERDICT ON PARITY (computed, not asserted) ==
+BASE_HASH_UNCHANGED=yes
+PRIM_HASH_UNCHANGED=yes
+BASE_EQUALS_PRIMARY_BEFORE=yes

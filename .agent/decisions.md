@@ -4246,3 +4246,121 @@ commit on it survive untouched.
 Operator note, not a blocker: PR #189 and this branch both modify
 `docs/agents/reviewer_conventions.md`, so whichever merges second may need a
 conflict resolution.
+
+## DECISION F107 D1 (2026-08-12) — two Design bullets are DEFERRED, on the record
+
+Context: finding R-0291. The feature file's Design promises that the compiled
+context "becomes a registry segment with its manifest hash in evidence", and
+defines tier 1 as the files_hint AND the fence allow scope. Neither holds on
+disk. `register_compiled_context_segment` exists and is unit-tested but has no
+production caller; the run path in `pingpong_loop.py` passes a rendered context
+string and a category label, not a registered segment, and writes no manifest
+into evidence. The CLI's tier 1 is the files_hint alone. Both gaps are
+deliberate and documented at the source — `context_compiler.py:66-68` states
+the deferral outright — but a deferral recorded only in a module docstring is
+invisible to the operator, and §4.7 requires a spec deviation to be loud,
+persisted and reversible.
+
+Chosen: DEFER both, close F107 on its DONE sentence, and record the deferral
+here and in the feature file's Built State. F107's DONE sentence is about
+selection, shrink and the omissions record — all three are built, tested and
+reviewed. Wiring the manifest into run evidence belongs with the evidence
+schema, and merging fence allow-globs into tier 1 belongs with F017's fence
+semantics; each is a round of its own with its own gate.
+
+Alternatives considered: (a) wire both inside F107 — rejected, it widens a
+feature already at seventeen rounds and drags F017 semantics into a context
+feature; (b) amend the Design bullets to match the code — rejected, that edits
+the target plan to fit what was built, which is exactly backwards, and the
+capability is wanted, only later.
+
+Reverse this decision by wiring `register_compiled_context_segment` into the
+run path with its manifest recorded in evidence, and by merging the fence allow
+scope into the CLI's tier-1 seed; the Design bullets then need no change,
+because they already describe the intended end state.
+
+## DECISION F107 D2 (2026-08-12) — the omission vocabulary gains a fifth reason
+
+Context: finding R-0292. The Design enumerates the omission reasons as
+`budget|distance|binary|size`. None of the four honestly describes a file that
+decodes cleanly but cannot be parsed: it is not binary, not distant, not over a
+size cap and not budget-demoted, yet its signature rendering is empty and the
+record must say why.
+
+Chosen: add `unparseable` as a fifth reason and amend the Design enumeration in
+the same round as the code, so the plan and the disk never disagree. The word
+appears in the feature file, the user guide and the module, and is pinned by
+the vocabulary test that already guards the other four.
+
+Alternatives considered: (a) reuse `binary` — rejected as dishonest, the file
+decodes fine; (b) drop the file entirely instead of recording it — rejected, an
+unparseable file's path and existence are still context the model can use, and
+dropping it would lose more than it explains.
+
+Reverse this decision by removing the constant and its three tests; the
+Edge-cases clause "signature-skipped with reason" would then have no carrier
+again, which is the state R-0292 recorded.
+
+## DECISION F107 D3 (2026-08-12) — the blocked package is unblocked by MOVING scratch, not by editing the packager and not by deleting evidence
+
+Context: finding R-0295. F107's closure needs a review zip; the build published
+one and then rejected it, exit 1, because 1834 of its 10534 members came from
+two scratch trees under `.remedy-wt/` that carry `.data/` and `.git/` path
+components. The review subject itself is correct. Three ways out existed and
+they are not equally safe.
+
+Chosen: MOVE `.remedy-wt/r11gate` and `.remedy-wt/r9gate` to
+`/home/decodeux/remedy-scratch-archive/f107/`, outside the repository, then
+rebuild the evidence bundle and the zip at the round's final head. This changes
+no tracked file, destroys nothing, and is reversed by moving the two
+directories back. The scratch stays on the same machine and stays readable, so
+the R-0288 rule that a gate's raw records remain re-derivable still holds — the
+path changes, the record does not.
+
+Alternatives considered: (a) add `-path './.remedy-wt'` to the packager's prune
+list — the correct DURABLE fix and the one R-0295 names, rejected HERE because
+`scripts/make_review_zip.sh` is not F107's code: a packaging change made inside
+a context-compiler feature is exactly the scope drift AGENTS.md forbids, and it
+would ship a production change whose own tests and gate this feature never
+planned. (b) delete the two scratch trees — rejected outright: deletion is
+irreversible, it destroys the raw records of F107's own R9 and R11 gates, and
+no closure is worth trading evidence for convenience.
+
+Reverse this decision by moving both directories back from the archive. The
+follow-up that owns the packager should then apply alternative (a), after which
+neither the move nor this decision is needed again.
+
+## DECISION F107 D3a (2026-08-12) — the D3 archive moves INSIDE the repo, to a path the packager already prunes
+
+Context: finding R-0297. D3 chose to move the two offending scratch trees to
+`/home/decodeux/remedy-scratch-archive/`, outside the repository. That path is
+unreachable: this session's permission layer denies every filesystem access
+outside `/home/decodeux/Repos/remedy`, for the worker and for the reviewer
+alike. D3's REASONING survives intact — move rather than delete, and do not
+edit a packager this feature does not own — only its destination was wrong.
+
+Chosen: archive to `.remedy-wt/.cache/f107-archive/` instead. The path is
+inside the repository, so it is reachable; `.gitignore:235` already ignores all
+of `.remedy-wt/`, so nothing enters the review subject; and the packager's own
+prune list matches it — `scripts/make_review_zip.sh:236` prunes
+`-path './*/.cache'`, which `./.remedy-wt/.cache` satisfies, so `find` never
+descends into it and the 1834 unsafe members never reach the archive. Both
+properties were verified by the reviewer against the disk before this block was
+emitted, which is exactly what R-0297 says should have happened the first time.
+This is strictly better than D3's original target for the R-0288 rule as well:
+the raw gate records stay inside the repo's own scratch directory, where the
+protocol says scratch lives, rather than migrating to a private sibling path
+that a later reader would have no reason to look in.
+
+Alternatives considered: (a) `.data/remedy-scratch-archive/` — pruned and
+ignored too, rejected because `.data` is the application's data root and agent
+scratch does not belong in it; (b) widen the session sandbox to reach the
+original path — rejected, a permission boundary is not an obstacle to route
+around, and nothing about this feature justifies loosening one; (c) delete the
+trees — rejected for the same reason D3 rejected it, and the reason has not
+weakened: they are F107's own R9 and R11 raw gate records.
+
+Reverse this decision by moving the two directories back from
+`.remedy-wt/.cache/f107-archive/` to `.remedy-wt/`. The durable fix R-0295
+names — one `-path './.remedy-wt'` line in the packager's prune list — retires
+D3, this amendment and the move together.

@@ -1,0 +1,46 @@
+F107 R16 — INTEGRATION GATE, BASE RUN
+=====================================
+Procedure: docs/agents/integration_gate.md step 2.
+
+cwd                 /home/decodeux/Repos/remedy/.remedy-wt/base-gate
+git rev-parse HEAD  2e4142c3ac72042ac4d704da252db263e48dcba3   (merge base 2e4142c3)
+branch              tmp/base-gate   (throwaway, never detached: DECISION D3)
+tree before the run git status --porcelain = 0 lines
+command             REMEDY_UI_NO_AUTO_BUILD=1 python3 -m pytest -n auto -q
+start_utc           2026-08-12T17:16:29Z
+end_utc             2026-08-12T17:19:04Z
+
+--- RAW TAIL of the run log (last 25 lines) ---
+_ TestRoleConventionsContentEquality.test_document_estimate_is_positive_and_under_the_cap[reviewer] _
+[gw5] linux -- Python 3.10.12 /usr/bin/python3
+
+self = <tests.orchestration.test_role_conventions.TestRoleConventionsContentEquality object at 0x7ff0163253f0>
+role = <ConventionsRole.REVIEWER: 'reviewer'>
+
+    @pytest.mark.parametrize("role", ROLES)
+    def test_document_estimate_is_positive_and_under_the_cap(self, role):
+        estimated = estimate_text_tokens(role_conventions_text(role))
+        assert estimated > 0, f"{role.value}: ESTIMATE is {estimated}"
+>       assert estimated <= CONVENTIONS_TOKEN_CAP, (
+            f"{role.value}: ESTIMATE {estimated} tokens (chars/4, never a count) "
+            f"exceeds the cap {CONVENTIONS_TOKEN_CAP}"
+        )
+E       AssertionError: reviewer: ESTIMATE 954 tokens (chars/4, never a count) exceeds the cap 800
+E       assert 954 <= 800
+
+tests/orchestration/test_role_conventions.py:68: AssertionError
+=========================== short test summary info ============================
+FAILED tests/orchestration/test_role_conventions.py::TestRoleConventionsRegistration::test_registered_segment_carries_the_documented_name_and_rank[reviewer]
+FAILED tests/orchestration/test_role_conventions.py::TestRoleConventionsRegistration::test_registration_mutates_no_text[reviewer]
+FAILED tests/orchestration/test_role_conventions.py::TestRoleConventionsRegistration::test_composing_one_conventions_segment_yields_exactly_the_document[reviewer]
+FAILED tests/orchestration/test_role_conventions.py::TestRoleConventionsMappings::test_segment_name_mapping_holds_the_expected_literal[reviewer-reviewer_conventions]
+FAILED tests/orchestration/test_role_conventions.py::TestRoleConventionsContentEquality::test_document_estimate_is_positive_and_under_the_cap[reviewer]
+5 failed, 16457 passed, 19 skipped in 154.75s (0:02:34)
+--- END RAW TAIL ---
+
+PYTEST_EXIT_CODE=1
+wall_clock_seconds=155
+FAILED_id_count=5   (see base_failed.txt)
+
+The full 16k-test log stays in the gitignored scratch dir
+.remedy-wt/gate-scratch/f107-r16/base_full.txt; only this tail is evidence.
