@@ -5,7 +5,7 @@
 > round. Findings are authored here by the reviewer only. A worker marks a
 > landed fix `Landed: R-XXXX`; only reviewer-authored `Done:` text sets
 > Resolved (docs/agents/planner_reviewer_prompt.md §4.4).
-> Branch: feature/f107-context-compiler-v2. Next free ID: R-0286.
+> Branch: feature/f107-context-compiler-v2. Next free ID: R-0288.
 
 ## Findings
 
@@ -217,6 +217,34 @@
   the right call, and the fifth reviewer-block defect this feature has taxed a
   worker with (R-0274, R-0277, R-0280, R-0282). The rule the next block follows:
   a zero-gate over `^Landed:` is safe only in a round that lands no fix. OPEN.
+
+- R-0286 (Medium, F107 R13 integration gate): the full suite is RED at the merge
+  base 2e4142c3 and on this branch with the SAME five ids — every `[reviewer]`
+  parametrization in `tests/orchestration/test_role_conventions.py` — because
+  `docs/agents/reviewer_conventions.md` estimates 954 tokens against the 800-token
+  cap `packages/orchestration/role_conventions.py` declares, so composing the
+  segment raises `PromptSegmentError` before any assertion in those tests runs.
+  It is pre-existing and not F107's: the document last changed at merge a85e82f5
+  ("keep both sections", +17 lines), an ancestor of the merge base, and
+  `git diff 2e4142c3..HEAD` touches neither that document nor
+  `role_conventions.py` nor `prompt_segments.py`. F107 does not repair it —
+  AGENTS.md Core Workflow bars mixing an unrelated fix into a feature branch —
+  and the gate verdict is unaffected, because ids failing in BOTH runs are
+  common failures and appear in neither comm file. The severity is Medium and
+  not High deliberately: a High finding sets `high_blockers_open`, which blocks
+  `remedy integrity check`, the review zip and therefore this feature's closure,
+  charging F107 for a defect that landed on `main` before the branch was cut.
+  The reviewer prompt-segment path stays broken in production until a follow-up
+  trims the document under its cap or raises the cap on purpose. OPEN.
+- R-0287 (Low, F107 R13 integration gate): `docs/agents/planner_reviewer_prompt.md`
+  §4.4 routes every severity decision to "the canonical scale in
+  review_protocol.md", but no `docs/agents/review_protocol.md` exists on disk.
+  The repository's severity scale therefore has no carrier, and every Low,
+  Medium and High in this file was assigned from precedent rather than from a
+  written rule. Same citation-accuracy class as R-0239 and R-0247, one level up:
+  the dangling pointer sits in a governing document instead of in a round's
+  block. Recorded, not repaired here — editing an agent-governance document is
+  outside this feature's change set. OPEN.
 
 ## Steps
 
