@@ -802,7 +802,7 @@ def test_export_omitted_context_json_carries_exactly_four_keys_in_record_order(t
 
 
 def test_write_omitted_context_json_creates_its_parent_and_round_trips(tmp_path: Path) -> None:
-    """The one writing function: it creates the directory, returns the path it
+    """One of the two writing functions: it creates the directory, returns the path it
     wrote, and what lands on disk reads back equal to the exported list."""
     _selector_tree(tmp_path)
     compiled = compile_task_context(
