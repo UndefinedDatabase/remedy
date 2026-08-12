@@ -66,6 +66,12 @@
   a candidate and not a closure blocker. The fix belongs to
   `scripts/make_review_zip.sh` and docs/agents/self_drive_protocol.md
   together — it is neither F107's code nor F107's scope. OPEN.
+- R-0271 (Low, F107 R3): `packages/orchestration/context_compiler.py` imports
+  `Iterable` from `typing`, which ruff reports as UP035. The repo's ruff
+  baseline already carries 24 other errors, so no gate turns red and nothing
+  is blocked — but this one is F107's own new code, it is one line, and the
+  module is open for editing in R4 anyway, so it is cheaper to clear than to
+  carry. OPEN.
 
 ## Steps
 
@@ -131,3 +137,35 @@ docs/roadmap/STATUS_closure_protocol.md.
   where the R2 block asked for 60, which AGENTS.md permits outright for a
   per-commit table of more than five commits, and this one has six.
   `LAST_REVIEWED_SHA` advances d2b962af -> 5a9951d5.
+
+- Reviewer gate on R3 (2026-08-12): PASS. Range 5a9951d5..ef64cf72 = six
+  commits touching exactly the six paths the R3 block named. Transport by the
+  primary shape: `cmp` of the reviewer original `.remedy-wt/f107-r3-1.block.md`
+  against the committed `.agent/authored/f107-r3-1.md` silent, and the authored
+  copy against `.agent/last_block.md` silent, all 232 lines; both slice bodies
+  recompute to their BEGIN-marker digests, PLAN2 is byte-equal to
+  `.agent/plan.md` and LR2 is the verbatim tail of this file. The LR2 pair was
+  APPEND-shaped and `git show --numstat 0dbdaa83` reads `37 0` — zero
+  deletions. No worker-authored `Done:` line exists in this file. Gates were
+  RE-RUN by the reviewer rather than read from the handback: the T001 gate
+  `python3 -m pytest tests/orchestration/test_context_compiler.py -q` returns
+  16 passed, the canary returns 42 passed, `.agent/plan.md` is 29 lines, the
+  Steps heading count is 1, `git status --porcelain` is empty and
+  `git worktree list` shows the primary checkout alone. Insertions per commit
+  232, 189, 37, 7, 274, 63 — each under 500. The 16 test functions carry all
+  26 numbered obligations of the R3 contract, each as an equality assertion on
+  real values rather than a truthiness check, and the deliberate external
+  renderings ('os', 'typing.Iterable', '...x', '../../escape', 'react') are
+  pinned verbatim. The reviewer ran TWO independent mutation probes in a
+  disposable worktree at ef64cf72, one of them deliberately different from the
+  worker's: removing the self-discard line reddens exactly
+  `test_python_file_importing_its_own_module_name_does_not_list_itself`, and
+  swapping the TS candidate order reproduces the worker's reported failure
+  `AssertionError: assert ('x/index.ts',) == ('x.ts',)` in
+  `test_typescript_suffix_candidate_beats_index_file_candidate` — so the
+  handback's probe evidence is confirmed true and the goldens bite. That
+  worktree was removed and pruned before this verdict. The 75-line handoff is
+  a declared stated-cause overage carrying its mandated tables, which
+  AGENTS.md permits for a per-commit table of more than five commits. T001 is
+  now test-covered on the branch and the R2 ungated-module caveat is
+  discharged. `LAST_REVIEWED_SHA` advances 5a9951d5 -> ef64cf72.
