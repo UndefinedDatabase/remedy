@@ -3,7 +3,8 @@
 Covers the eight pinned clauses of select_repair_hunks: margin clamping at
 both file edges, overlap/adjacency merging, deterministic sort order,
 binary omission, missing-path omission, the char budget, margin_lines=0,
-empty range lists — plus exact-text fidelity of a carried hunk.
+empty range lists — plus exact-text fidelity of a carried hunk and the
+out-of-bounds omission reason that R-0299 split off from `no_ranges`.
 
 repo_root is a bare tmp_path: no git init, no fixtures beyond tmp_path,
 matching tests/orchestration/test_fences.py.
@@ -224,6 +225,37 @@ class TestNoRanges:
         assert result.hunks == ()
         assert result.omitted == (("a.txt", "no_ranges"),)
         assert result.total_chars == 0
+
+    def test_single_empty_range_entry_is_still_no_ranges(self, tmp_path):
+        _write(tmp_path, "a.txt", 5)
+        result = select_repair_hunks(tmp_path, {"a.txt": [[]]})
+        assert result.hunks == ()
+        assert result.omitted == (("a.txt", "no_ranges"),)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# R-0299 — ranges that name lines the file does not have are 'out_of_bounds'
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class TestOutOfBounds:
+    """Lines were asked for, none exist: a stale range, not an absent one."""
+
+    def test_range_past_eof_is_out_of_bounds(self, tmp_path):
+        _write(tmp_path, "a.txt", 5)
+        result = select_repair_hunks(tmp_path, {"a.txt": [[50, 51]]})
+        assert result.omitted == (("a.txt", "out_of_bounds"),)
+        assert [h.path for h in result.hunks] == []
+        assert result.total_chars == 0
+
+    def test_out_of_bounds_path_does_not_block_present_one(self, tmp_path):
+        _write(tmp_path, "a.txt", 5)
+        _write(tmp_path, "b.txt", 5)
+        result = select_repair_hunks(
+            tmp_path, {"a.txt": [[50, 51]], "b.txt": [[2, 2]]}, margin_lines=0
+        )
+        assert [h.path for h in result.hunks] == ["b.txt"]
+        assert result.omitted == (("a.txt", "out_of_bounds"),)
 
 
 # ═══════════════════════════════════════════════════════════════════════════

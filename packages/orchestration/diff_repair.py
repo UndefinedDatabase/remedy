@@ -19,7 +19,11 @@ Public API::
         -> RepairHunkSelection
 
 Omission reasons reported in ``RepairHunkSelection.omitted`` are
-``missing``, ``binary``, ``no_ranges`` and ``budget``.
+``missing``, ``binary``, ``no_ranges``, ``out_of_bounds`` and ``budget``.
+``no_ranges`` means nothing was asked for; ``out_of_bounds`` means lines
+WERE asked for but none of them exist in the file, which is how a stale
+diff — one whose line numbers no longer match the file on disk — becomes
+visible instead of being swallowed (finding R-0299).
 """
 
 from __future__ import annotations
@@ -96,6 +100,12 @@ def _expand_and_merge_ranges(
     return merged
 
 
+# Empty entries ask for no line, so only a non-empty one can land out of bounds.
+def _has_non_empty_range(ranges: Sequence[Sequence[int]]) -> bool:
+    """True when at least one entry names lines, so an empty result is clamping."""
+    return any(bool(raw_range) for raw_range in ranges)
+
+
 # The entry point F111's prompt side calls instead of attaching whole files.
 def select_repair_hunks(
     repo_root: Path,
@@ -126,7 +136,9 @@ def select_repair_hunks(
             continue
         spans = _expand_and_merge_ranges(ranges, len(lines), margin_lines)
         if not spans:
-            omitted.append((path, "no_ranges"))
+            # Lines were named yet none survived clamping: they lie outside the file.
+            reason = "out_of_bounds" if _has_non_empty_range(ranges) else "no_ranges"
+            omitted.append((path, reason))
             continue
         for start, end in spans:
             candidates.append(
