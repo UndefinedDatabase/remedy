@@ -1,10 +1,11 @@
 """
-Context compiler — graphs (T001), signatures (T002), tiered selection (T003).
+Context compiler — graphs (T001), signatures (T002), selection (T003),
+segments (T004 part 1).
 
 The context compiler stops handing tasks whole files regardless of relevance:
 it selects fenced-path files, their direct import neighbors, and only
 signatures of distant dependencies (docs/roadmap/features/T2_F107.md). This
-module carries three of that compiler's layers. The GRAPH layer answers "which
+module carries four of that compiler's layers. The GRAPH layer answers "which
 files does this file import" per file, in both languages that matter now —
 Python and TypeScript-ish frontends. The SIGNATURE layer answers "what does
 this file declare", rendering a file down to headers and docstring first
@@ -13,7 +14,13 @@ The SELECTOR layer answers "what does this task actually get": it assigns
 every candidate path a tier, renders each tier, enforces a total token budget
 by DEMOTING files rather than truncating any of them mid-content, and records
 every demotion and omission with a reason — so "why didn't the model see X"
-always has a written answer.
+always has a written answer. The SEGMENT layer answers "how does that
+selection enter a prompt": it renders the compiled context into segment text
+and registers it into a ``PromptSegmentRegistry`` at rank ``JOB_CONTEXT``, so
+the context arrives as a NAMED, RANKED segment the way F105 says prompts are
+built, instead of as ad hoc concatenation. Composition stays where it already
+lives: that registry owns ordering and the manifest, this feature owns
+SELECTION.
 
 Python neighbors come from ``ast``: real parsing, absolute and relative
 imports resolved against the importing file's package, ``from pkg import
@@ -41,11 +48,24 @@ selector walks exactly TWO graph hops (fenced files, then their neighbors) and
 never more, so it terminates for the same reason. Nothing here calls a
 provider or touches the network, and nothing writes evidence EXCEPT
 ``write_omitted_context_json``, which writes the omissions record exactly
-where its caller points it. Stdlib only, plus one intra-repo import — the
-repo's named token estimator ``estimate_text_tokens``, reused rather than
-respelled. Determinism: every graph output is a sorted, deduplicated tuple of
+where its caller points it. Stdlib only, plus two intra-repo imports — the
+repo's named token estimator ``estimate_text_tokens`` and the prompt segment
+types of ``prompt_segments``, both reused rather than respelled. That second
+import points ONE WAY only: ``prompt_segments`` imports nothing from here.
+Determinism: every graph output is a sorted, deduplicated tuple of
 repo-relative POSIX paths, every signature output is a source-ordered tuple of
-rendered lines, and the same inputs always compile to the same context.
+rendered lines, and the same inputs always compile to the same context — which
+the segment rendering inherits by walking ``included`` in its existing order.
+
+Scope boundary — deliberate absences (a reader searching here should find this
+rather than conclude the wiring was forgotten):
+  - No builder prompt is migrated here. This module renders the compiled
+    context into segment text and registers it at rank ``JOB_CONTEXT``; WHICH
+    role's prompt carries that segment is T004 part 2 and later rounds.
+  - The segment manifest is not written into evidence here. Composition and
+    ``manifest_as_dicts()`` belong to ``prompt_segments``; wiring the manifest
+    and the size comparison into run evidence is a later round.
+  - There is no CLI view here. ``remedy job context`` is T004 part 2.
 
 Public API::
 
@@ -64,6 +84,12 @@ Public API::
     compile_task_context(root, fenced_paths, repo_paths) -> CompiledContext
     export_omitted_context_json(compiled)       -> list[dict]
     write_omitted_context_json(compiled, target_path) -> Path
+    COMPILED_CONTEXT_SEGMENT_NAME      — the segment's name, spelled once
+    OMITTED_CONTEXT_FILENAME           — the omissions filename, spelled once
+    render_compiled_context_text(root, compiled) -> str
+    register_compiled_context_segment(registry, root, compiled) -> PromptSegment
+    ContextSizeComparison              — whole-files baseline vs compiled cost
+    compare_context_size(root, repo_paths, compiled) -> ContextSizeComparison
 """
 
 from __future__ import annotations
@@ -75,6 +101,11 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 
+from packages.orchestration.prompt_segments import (
+    PromptSegment,
+    PromptSegmentRegistry,
+    SegmentStabilityRank,
+)
 from packages.orchestration.token_economy import estimate_text_tokens
 
 # Resolution order is part of the T001 contract: exact file, then these
@@ -878,3 +909,127 @@ def write_omitted_context_json(compiled: CompiledContext, target_path: Path) -> 
     payload = json.dumps(export_omitted_context_json(compiled), indent=2)
     target.write_text(payload + "\n", encoding="utf-8")
     return target
+
+
+# --------------------------------------------------------------------------
+# Segments (F107 T004 part 1) — the compiled context as a ranked prompt segment
+# --------------------------------------------------------------------------
+
+
+#: The name the compiled context registers under. One spelling, so the segment,
+#: its manifest row and every test that looks for it agree by construction.
+COMPILED_CONTEXT_SEGMENT_NAME = "compiled_context"
+
+#: The omissions record's filename, named ONCE so the writer, the future CLI
+#: view and every test spell it the same way. It is a BARE FILENAME and never a
+#: path: where the file sits is the caller's decision, and
+#: ``write_omitted_context_json`` already takes the full target path.
+OMITTED_CONTEXT_FILENAME = "omitted_context.json"
+
+
+def render_compiled_context_text(root: Path, compiled: CompiledContext) -> str:
+    """The compiled context as prompt-segment text: one block per included file.
+
+    Blocks follow ``compiled.included`` order — already sorted by
+    ``(tier, rel_path)``, so this rendering INHERITS the selector's determinism
+    instead of inventing an order of its own — and are joined by a blank line.
+    Each block is a header line ``# <rel_path> — tier <n> (<rendering>)``
+    followed by the body: the file's full decoded text when ``rendering`` is
+    ``"full"``, and the signature lines joined by newlines when it is
+    ``"signatures"``. Trailing newlines are stripped from each body so that
+    blank line stays the ONLY separator between blocks and the text does not
+    depend on whether a file happens to end in a newline.
+
+    An OMITTED file contributes NOTHING here — not its content and not its
+    path. The omissions record is where those live, and keeping the two apart
+    is exactly the separation the debugging view depends on. An empty
+    ``included`` renders to the empty string.
+
+    PURE READ: it opens the included files and nothing else, never walks a tree
+    and never writes. Signature bodies are re-rendered at the module default
+    line cap, so a context compiled with a custom ``line_cap`` renders its
+    signature blocks at that default.
+    """
+    blocks: list[str] = []
+    for selected in compiled.included:
+        path = selected.rel_path
+        if selected.rendering == _RENDERING_SIGNATURES:
+            body = _signature_render_text(root, path, DEFAULT_SIGNATURE_LINE_CAP)
+        else:
+            text = _read_utf8_text(root, path)
+            body = text if text is not None else ""
+        header = f"# {path} — tier {selected.tier} ({selected.rendering})"
+        blocks.append(header + "\n" + body.rstrip("\n"))
+    return "\n\n".join(blocks)
+
+
+def register_compiled_context_segment(
+    registry: PromptSegmentRegistry, root: Path, compiled: CompiledContext
+) -> PromptSegment:
+    """Register the compiled context into ``registry`` at rank ``JOB_CONTEXT``.
+
+    ``JOB_CONTEXT`` is the rank because the compiled context IS the job/task
+    context of a prompt: it composes after the stable system and conventions
+    prefixes a provider cache wants byte-identical, and before the volatile
+    task and steering tails. The choice is pinned by a test, so a silent move
+    to another rank is red rather than invisible.
+
+    This function adds NO discipline of its own. A second call against the same
+    registry raises the registry's own ``PromptSegmentError`` — the duplicate
+    rule lives in ``prompt_segments`` and is inherited here, never
+    re-implemented and never prevented in advance.
+    """
+    return registry.register(
+        COMPILED_CONTEXT_SEGMENT_NAME,
+        SegmentStabilityRank.JOB_CONTEXT,
+        render_compiled_context_text(root, compiled),
+    )
+
+
+# What whole-file context would have cost against what the compiled context
+# costs — the measurement the feature's Done condition rests on.
+@dataclass(frozen=True)
+class ContextSizeComparison:
+    """The compiled context's saving against a whole-files baseline.
+
+    ``saved_tokens`` MAY BE NEGATIVE and is reported as it falls: a selection
+    that grew the context has to show that, and clamping it to zero would hide
+    the one number the comparison exists to expose. ``saved_ratio`` is exactly
+    ``0.0`` when ``whole_file_tokens`` is 0, because a zero baseline has no
+    ratio and inventing one would be a fabricated number.
+    """
+
+    whole_file_tokens: int
+    compiled_tokens: int
+    saved_tokens: int
+    saved_ratio: float
+
+
+def compare_context_size(
+    root: Path, repo_paths: Iterable[str], compiled: CompiledContext
+) -> ContextSizeComparison:
+    """Measure the compiled context against sending ``repo_paths`` whole.
+
+    ``whole_file_tokens`` sums ``estimate_text_tokens`` over the full text of
+    every path in ``repo_paths`` that both exists under root and decodes as
+    UTF-8. A missing path and a path whose bytes are not UTF-8 each contribute
+    0 and never raise: the baseline is "what whole files would have cost", and
+    a file that could not be inlined either way costs nothing either way.
+    ``compiled_tokens`` is ``compiled.estimated_tokens`` READ, never recomputed,
+    so the two sides of the comparison cannot drift apart.
+
+    PURE: it reads files and writes nothing.
+    """
+    whole_file_tokens = 0
+    for rel_path in repo_paths:
+        text = _read_utf8_text(root, rel_path)
+        if text is not None:
+            whole_file_tokens += estimate_text_tokens(text)
+    compiled_tokens = compiled.estimated_tokens
+    saved_tokens = whole_file_tokens - compiled_tokens
+    return ContextSizeComparison(
+        whole_file_tokens=whole_file_tokens,
+        compiled_tokens=compiled_tokens,
+        saved_tokens=saved_tokens,
+        saved_ratio=saved_tokens / whole_file_tokens if whole_file_tokens else 0.0,
+    )
