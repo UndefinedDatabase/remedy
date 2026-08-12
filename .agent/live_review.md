@@ -109,3 +109,54 @@ R1 claim, state reset and carry-forward · R2 the repair-path DECISION plus
 T001 hunk selection · T002 response schema, fence pre-check and
 apply-with-conflict fallback · T003 wiring, mode and token evidence ·
 integration gate · closure.
+
+## Round gates
+
+### R1 — PASS (2026-08-13)
+Reviewed by the main session over d956be2f..b0ab8e09, base 4e0b762e. Every
+number below was produced by the reviewer re-running the command, not read
+off the handback. `python3 -m pytest tests/docs/ -q` exit 0, 294 passed.
+`python3 -m pytest tests/cli/test_golden_path.py -q` exit 0, 42 passed.
+Transport: the PRIMARY cmp proof holds, no digest fallback was needed —
+`.remedy-wt/f111r1/BLOCK` and `.agent/authored/f111-r1-1.md` are
+byte-identical at sha256 348f4541705097eb..., and `.agent/live_review.md`,
+`.agent/plan.md` and `.agent/context.md` are byte-identical to their
+scratchpad originals LR, PLAN and CTX. Scope: `git diff --name-only
+main...HEAD` lists exactly the seven ordered paths and nothing else. STATUS:
+claim commit b1017248 reads `1 1`; the `[~]` line occurs 1x and the `[ ]`
+line 0x. No `Done:` and no `Landed:` line was written this round, and no
+marker line leaked into live_review, plan, context, handoff or STATUS.
+Per-commit insertions 319/293/1/96/30/27/50, each under the 500 cap. Tree
+clean; remote comparison `0 0`. No finding: next free ID stays R-0298.
+
+## Decisions
+
+### DECISION F111 D1 — where the diff channel attaches (2026-08-13)
+Chosen: F111's prompt side and response side attach to two DIFFERENT existing
+seams, because no single seam carries both today.
+- Response side (T002): `packages/orchestration/builder_bridge.py`. Its
+  `bridge_builder_output_to_repo` already parses a `BuilderOutput` into a
+  `StructuredPatch` (stage 1, `parse_builder_patch`) and lands it through
+  `apply_structured_patch` (stage 3) — the fenced, snapshot-backed applicator
+  whose `_apply_hunks` is already strict and already returns None on any
+  context mismatch. The versioned unified-diff response schema, the fence
+  pre-check and the conflict fallback belong there, where a model response is
+  ALREADY treated as a patch.
+- Prompt side (T001): the repair context built by
+  `packages/orchestration/repair_context.py` and fed to the next `build_fn`
+  call by `builder_bridge.run_bounded_repair_loop`.
+- OUT of scope, deliberately: `packages/orchestration/pingpong_loop.py`. Its
+  builder is an agentic CLI that edits the staging tree itself; `BuilderOutput`
+  carries no patch field on that path and no applicator is invoked there.
+  Giving it a diff-shaped response would mean inventing a new provider
+  contract and changing applicator semantics — both barred by the feature
+  file's Do not touch.
+Alternatives considered. (a) Put both sides in `pingpong_loop`: rejected, it
+has no response-side patch seam at all, so T002 would have nothing to attach
+to. (b) Build a second applicator for the diff path: rejected outright, the
+feature file names the existing applicator as the ONLY way changes land.
+(c) Defer F111 until ping-pong grows a patch contract: rejected, the
+measurable win the feature asks for is reachable today on the bridge path.
+How to reverse: delete this DECISION and the amendment it adds to
+docs/roadmap/features/T2_F111.md, then re-scope T002 to the preferred seam.
+No code depends on it yet.
