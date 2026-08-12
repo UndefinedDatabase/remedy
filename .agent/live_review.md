@@ -5,7 +5,7 @@
 > round. Findings are authored here by the reviewer only. A worker marks a
 > landed fix `Landed: R-XXXX`; only reviewer-authored `Done:` text sets
 > Resolved (docs/agents/planner_reviewer_prompt.md §4.4).
-> Branch: feature/f107-context-compiler-v2. Next free ID: R-0271.
+> Branch: feature/f107-context-compiler-v2. Next free ID: R-0277.
 
 ## Findings
 
@@ -113,6 +113,28 @@
   Fourth entry in the contract-accuracy class after R-0239, R-0247 and R-0272:
   a reviewer-authored block must not contradict itself and must not order a
   value that cannot exist. OPEN.
+- R-0275 (Low, F107 R8-close): the R8 handoff reported commit C2's `+/-` column
+  as the file's before/after LINE COUNTS, `218/328`, where
+  `git show --numstat 627ca2c9 -- .agent/last_block.md` returns `169	279`; gate
+  g then repeated the same 218 in its per-commit insertion list. Nothing rests
+  on the error — both readings are far under 500, and a verbatim rewrite of a
+  single `.agent/**` state file is cap-exempt outright (AGENTS.md Commit
+  Discipline, DECISION F104 D1) — but a `+/-` column is a counted value and the
+  counting rule names one measure, the `+` column of the diff. Worker-side
+  member of the contract-accuracy class after R-0239, R-0247, R-0272 and
+  R-0274: every number in the return channel is the output of the command it
+  claims to come from. OPEN.
+- R-0276 (Medium, F107 R8-close): this file's own header line 8 reads
+  `Next free ID: R-0271` while R-0271, R-0272, R-0273 and R-0274 all exist in
+  the Findings section above it — stale since R3 registered R-0271.
+  `.agent/plan.md` and `.agent/handoff.md` both carry the correct R-0275, so
+  the one carrier that OWNS the sequence is the one that is wrong, and it is
+  the carrier a reviewer reads to allocate an ID
+  (docs/agents/planner_reviewer_prompt.md §4.4, "IDs continue
+  monotonically"). A session that trusted the header would reuse R-0271 and
+  silently overwrite a live finding. Fixed in this round: the header now reads
+  R-0277, allocated past the two findings this gate registers. OPEN until the
+  reviewer confirms the applied value.
 
 ## Steps
 
@@ -404,15 +426,54 @@ docs/roadmap/STATUS_closure_protocol.md.
   block's own self-contradiction. `LAST_REVIEWED_SHA` advances 861eb371 ->
   6acb3f04.
 
+- Reviewer gate on R8-close (2026-08-12, first gate of a NEW session; the
+  round it certifies was the terminating round of the previous one, so per
+  docs/agents/planner_reviewer_prompt.md §4.13 its verdict had lived only in
+  `.agent/handoff.md` until now): PASS. Range 6acb3f04..7acb406d = five commits
+  touching exactly the five paths the R8 block named — no production code, no
+  test module, no docs. Transport by the PRIMARY shape: the reviewer original
+  `.remedy-wt/f107-r8-1.block.md` survived the session boundary, `cmp` against
+  `.agent/authored/f107-r8-1.md` and against `.agent/last_block.md` is silent,
+  and all three sha256 to 607d240a3a067a4c… at 218 lines. All five slice bodies
+  recompute to their BEGIN-marker digests at their declared lengths (LRF4FROM
+  d129628f… 1 line, LRF4TO b36108ed… 13, LR7FROM cdc1e3cf… 1, LR7TO 47bc40dd…
+  48, PLAN7 a065b87c… 28), and `sha256sum .agent/plan.md` returns that same
+  PLAN7 digest over 28 lines. Both C3 pairs were APPEND-shaped and proven as
+  such rather than asserted: `git show --numstat 3e704610 -- .agent/live_review.md`
+  reads `59  0` — ZERO deletions, so neither anchor was edited — each FROM
+  occurs exactly 1x in the file, each of the 12 LRF4TO and 47 LR7TO TO-only
+  lines occurs exactly 1x among the 59 added lines, and 0 added lines belong to
+  neither body. Every scoped gate was RE-RUN by this reviewer rather than read
+  from the handback: `python3 -m pytest tests/orchestration/test_context_compiler.py -q`
+  returns 55 passed, the canary `python3 -m pytest tests/cli/test_golden_path.py -q`
+  returns 42 passed, `grep -c '^## Steps'` is 1, `grep -c '^- R-0274'` is 1,
+  `grep -c '^Done:'` is 1 and `grep -c '^Landed:'` is 1, the stray-marker count
+  is 0 across the three state files, `git status --porcelain` is empty,
+  `git worktree list` shows the primary checkout alone, and HEAD equals
+  `origin/feature/f107-context-compiler-v2`. One counted value in the handback
+  did NOT survive re-measurement and is registered above as R-0275: C2's real
+  numstat is `169 279`, not the reported `218/328`. The verdict is PASS anyway
+  and deliberately so — the error is in the report of a commit that is
+  cap-exempt by construction, every other figure re-measured true, and the
+  round's substance (transport, application, gates) is verified correct. The
+  stale next-free-ID header this gate also found is R-0276. `LAST_REVIEWED_SHA`
+  advances 6acb3f04 -> 7acb406d.
+
 Done: R-0271 — RESOLVED. `packages/orchestration/context_compiler.py` now reads
 `from collections.abc import Iterable` (commit b52b1c3c, numstat `1 1`), and the
 reviewer's own re-run of `python3 -m ruff check` over that module and its test
 file returns exit 0 with "All checks passed!" — zero errors, where the same
 command reported UP035 before the fix. Open findings 9 -> 8.
 
-Landed: R-0273 — `CompiledContext` gained a fifth field `line_cap`, set by
-`compile_task_context` from the caller's cap, and `render_compiled_context_text`
-now renders signature bodies at `compiled.line_cap` instead of
-`DEFAULT_SIGNATURE_LINE_CAP` (commit "fix(f107): render signatures at the
-compiled line cap", C5 of R7 — its own SHA is not writable into itself). Stays
-OPEN: only reviewer-authored text resolves a finding.
+Done: R-0273 — RESOLVED. `CompiledContext` carries a fifth field `line_cap`,
+`compile_task_context` sets it from the caller's cap, and
+`render_compiled_context_text` renders signature bodies at `compiled.line_cap`
+instead of `DEFAULT_SIGNATURE_LINE_CAP` (commit e0f0a0d1 "fix(f107): render
+signatures at the compiled line cap", C5 of R7). The fix was MEASURED, not
+read: on the same three-file fixture at `line_cap=3` that produced the finding,
+the rendered text's estimate falls from 128 tokens to 46 against an
+`estimated_tokens` of 25, so the 5.1x divergence is gone, and two mutation
+probes in a disposable worktree put the module back to red (1 failed / 3
+failed) — the regression test genuinely bites. The residual 21-token gap is the
+one header line the renderer adds per included file, uniform at every cap and
+not drift. Open findings 11 -> 10.
