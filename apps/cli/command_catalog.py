@@ -162,6 +162,11 @@ _JOB_ID = ArgDef("job_id", "UUID of the job")
 _PROJECT_ID = ArgDef("project_id", "UUID or name of the project")
 _INTENT_ID = ArgDef("intent_id", "Intent ID (integer)")
 _JSON_OPT = ArgDef("--json", "Output as JSON", required=False, is_option=True, default="false")
+#: F107: names ONE task of a job — its planned id (`T001`) or a prefix of its
+#: task UUID. A valued option, never a flag, and never defaulted to a guess.
+_TASK_OPT = ArgDef(
+    "--task", "Task to select: planned id (T001) or task-id prefix",
+    required=False, is_option=True)
 _REASON_OPT = ArgDef("--reason", "Reason text", required=False, is_option=True)
 _ANSWER_OPT = ArgDef(
     "--answer",
@@ -456,6 +461,18 @@ CATALOG: tuple[CommandEntry, ...] = (
         args=(_JOB_ID, _JSON_OPT),
         supports_json=True,
         related=("job.status", "job.show"),
+    ),
+
+    CommandEntry(
+        command_id="job.context",
+        group_id="job",
+        subcommand="context",
+        description=("Show the compiled context for one task — what it "
+                     "receives and what was omitted (F107)."),
+        action_class="read_only",
+        args=(_JOB_ID, _TASK_OPT, _JSON_OPT),
+        supports_json=True,
+        related=("job.fences", "job.show"),
     ),
 
     CommandEntry(
