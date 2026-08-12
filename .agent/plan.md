@@ -1,7 +1,9 @@
 # Plan — F107 Context compiler v2
 
 Branch: feature/f107-context-compiler-v2, cut from main at 2e4142c3.
-Next free finding ID: R-0295. R18 reviewed PASS at 6e1970c4.
+Next free finding ID: R-0298. R19 reviewed PASS at 65723390; R20 and R21 are
+gated on their committed items, each having stopped short on an environment
+wall rather than route around one.
 
 ## Goal
 The context compiler selects fenced-path files, their direct import neighbors,
@@ -13,19 +15,19 @@ omissions record explains every exclusion
 (docs/roadmap/features/T2_F107.md).
 
 ## Current Step
-R19 — the last round before closure. The R18 gate is recorded, R-0291 and
-R-0292 are resolved, R-0293 (the budget-demotion path shared the unparseable
-blind spot) is registered and repaired with one test, R-0294 records the
-reviewer-side pre-emission checklist miss, and the feature file now carries the
-`## Built State` section closure precondition 4 requires. T001-T004 are
-complete and reviewed; the integration gate ran at R16 and is GREEN, with its
-evidence committed under `.agent/gate_f107_r16/`.
+R22 — the package, finally built. R-0297 records that R21's block named an
+unreachable path; DECISION F107 D3a moves the archive inside the repository to
+`.remedy-wt/.cache/f107-archive/`, which is gitignored and which the packager
+prunes, so the 1834 unsafe members never reach the zip. The evidence bundle and
+the package are rebuilt at this round's head and the package is verified by
+opening it. Preconditions 1-5 otherwise hold: 22 open findings, none above
+Medium, full suite re-confirmed twice, integrity check passed, Built State
+current, tree clean and pushed.
 
 ## Next Steps
-1. R20 — closure per docs/roadmap/STATUS_closure_protocol.md: evidence job, a
-   FRESH review zip, the reviewer-authored STATUS line, the README capability
-   sync in the same commit, then the PR. The five pre-existing `[reviewer]`
-   failures (R-0286) are carried as a documented risk, so the closure verdict is
-   PASS_WITH_RISKS.
+1. R23 — the closure commit: the reviewer-authored STATUS `[x]` line, the
+   README capability sync in the SAME commit (R-0154), the final `.agent/`
+   state, then the PR. Verdict PASS_WITH_RISKS for the five pre-existing
+   R-0286 `[reviewer]` failures plus the R-0296 flake.
 2. The closure PR is never merged in the session that creates it; it merges at
    the next feature's start via the AGENTS.md Open PR Gate.
