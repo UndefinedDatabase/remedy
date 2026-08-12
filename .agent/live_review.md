@@ -5,7 +5,7 @@
 > round. Findings are authored here by the reviewer only. A worker marks a
 > landed fix `Landed: R-XXXX`; only reviewer-authored `Done:` text sets
 > Resolved (docs/agents/planner_reviewer_prompt.md §4.4).
-> Branch: feature/f107-context-compiler-v2. Next free ID: R-0280.
+> Branch: feature/f107-context-compiler-v2. Next free ID: R-0282.
 
 ## Findings
 
@@ -163,6 +163,24 @@
   docs when a feature introduces new behaviour, so the omission is the
   REVIEWER's: the worker flagged the absence in its handoff instead of widening
   scope, which is exactly right. R10 C6 fixes it. OPEN.
+- R-0280 (Medium, F107 R10): the R10 block contradicted itself about which
+  commit carries the two `docs/README.md` pairs — its Bundle line and Change
+  list put that file in C6, while PROCEDURE step 3 and gate c put all six pairs
+  in C3. Applied as step 3 read it, C3 would have added an index row pointing at
+  a guide that only C6 creates, and
+  `tests/docs/test_docs_consistency.py:276` (`TestPrimaryDocLinksResolve`)
+  asserts every relative link in `docs/README.md` resolves — so C3, C4 and C5
+  would each have been committed on a RED docs suite. The worker took the safe
+  reading, put the rows in C6, and declared both readings. Same class as
+  R-0274: a block that says two different things costs the round a deviation to
+  prove the reviewer wrong. OPEN.
+- R-0281 (Low, F107 R10): `tests/orchestration/test_context_compiler.py:801`
+  still calls `write_omitted_context_json` "The one writing function", which
+  stopped being true when C4 added `write_context_size_comparison_json`. C4
+  corrected the same stale absolute claim in two module docstrings; the test's
+  copy survived because C5's own constraint was append-only, so the worker
+  flagged it instead of editing outside its instruction. The stale-claim class
+  is worth one line: the next reader trusts it. Fixed in this round's C6. OPEN.
 
 ## Steps
 
@@ -524,6 +542,42 @@ docs/roadmap/STATUS_closure_protocol.md.
   docs gap the worker flagged rather than silently fixed is R-0279.
   `LAST_REVIEWED_SHA` advances 7acb406d -> f86bda87.
 
+- Reviewer gate on R10 (2026-08-12): PASS. Range f86bda87..c50080e0 = eight
+  commits touching exactly the nine paths the R10 block named. Transport by the
+  PRIMARY shape: the reviewer original `.remedy-wt/f107-r10-1.block.md` is 312
+  lines, its first 311 lines are byte-identical to BOTH
+  `.agent/authored/f107-r11-1.md`'s predecessor `.agent/authored/f107-r10-1.md`
+  and `.agent/last_block.md`, and all three sha256 to
+  d0117326ae081a8d… — the value the original's own trailer declares. All
+  thirteen slice bodies recompute to their BEGIN-marker digests at their
+  declared lengths, and `sha256sum .agent/plan.md` returns the PLAN10 digest
+  fd7a81e4… over 28 lines. Pair shapes were proven, not asserted: `git show
+  --numstat 58742979 -- .agent/live_review.md` reads `79  1` — the single
+  deletion being HDRFROM, the only REWRITE targeting that file — while LRF6, LR9
+  and LRD2 each keep their FROM exactly 1x and their 28, 37 and 13 TO-only lines
+  each occur exactly 1x among the 79 added lines; the only lines that fail an
+  exactly-1x count are BLANK lines, which is the R-0253 case where whole-file
+  and whole-diff counting bends rather than the text. 0 added lines belong to no
+  TO body, and the same holds for `docs/README.md`, whose two rows arrive in C6
+  with numstat `2  0`. Every scoped gate was RE-RUN by this reviewer: 61 passed
+  on the compiler suite (55 before, +6), 9 passed on the CLI view, 42 passed on
+  the canary, 294 passed on `tests/docs/`, `ruff check` "All checks passed!",
+  tree clean, primary worktree alone, HEAD == origin. GATE j WAS RE-RUN, not
+  read: compiling the same five-file fixture repo and calling
+  `write_context_size_comparison_json` reproduces the handoff's file byte for
+  byte — `whole_file_tokens` 215, `compiled_tokens` 164, `saved_tokens` 51,
+  `saved_ratio` 0.2372093023255814 — the compiled figure equals the 164 the
+  shipped CLI view prints, and the writer created its missing parent. The
+  reviewer also ran TWO mutation probes the block did not order, in a disposable
+  worktree at c50080e0, removed and pruned before this verdict: fabricating a
+  1.0 ratio for a zero baseline gives `2 failed, 59 passed`, and clamping a
+  negative saving to 0 gives `2 failed, 59 passed` — the new tests genuinely
+  bite. The deviation that matters is the block's own self-contradiction over
+  where the `docs/README.md` rows land, registered above as R-0280; the worker's
+  reading was correct and its declaration is exactly the wanted behaviour. The
+  stale claim it flagged rather than silently fixed is R-0281.
+  `LAST_REVIEWED_SHA` advances f86bda87 -> c50080e0.
+
 Done: R-0271 — RESOLVED. `packages/orchestration/context_compiler.py` now reads
 `from collections.abc import Iterable` (commit b52b1c3c, numstat `1 1`), and the
 reviewer's own re-run of `python3 -m ruff check` over that module and its test
@@ -555,3 +609,26 @@ R-0277.` at f86bda87, measured line-scoped so that the finding's own quotation o
 the stale string cannot pollute the count: `grep -c '^> Branch:.*Next free ID:
 R-0271'` is 0 and the R-0277 form is 1. The one carrier that owns the ID sequence
 is correct again, and this round allocates past it. Open findings 14 -> 13.
+
+Done: R-0277 — RESOLVED. The R10 block's procedure step 1 no longer says
+"below": it names the trailer line of `.remedy-wt/f107-r10-1.block.md` as the
+digest's home and says in the same sentence that the trailer sits one line PAST
+the saved region. The worker met the gate against that artifact without a
+correction of its own, and this reviewer re-derived it independently — the
+original's first 311 lines hash to d0117326ae081a8d…, which is what its line 312
+declares. Open findings 15 -> 14.
+
+Done: R-0278 — RESOLVED. Every zero-gate in the R10 block was anchored to the
+line it is about rather than to the whole file, and the gate that used to be
+unmeetable now measures what it means: `grep -c '^> Branch:.*Next free ID:
+R-0277'` is 0 and `'^> Branch:.*Next free ID: R-0280'` is 1, both re-run by this
+reviewer, while `.agent/live_review.md` still legitimately contains the string
+`R-0277` inside R-0277's own body. The self-counting-gate class has a written
+counter-measure that a block now demonstrably follows. Open findings 14 -> 13.
+
+Done: R-0279 — RESOLVED. `remedy job context` is documented:
+`docs/guides/job-context-view-user-guide-v0.md` exists at 184 lines and the
+`docs/README.md` index carries its two rows (quick-find and guides table),
+landing in C6 with numstat `2  0`. `python3 -m pytest tests/docs/ -q` returns
+294 passed under this reviewer's own re-run, including the link-resolution check
+that made the ordering matter. Open findings 13 -> 12.
