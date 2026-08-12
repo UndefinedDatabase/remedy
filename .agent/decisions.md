@@ -4246,3 +4246,57 @@ commit on it survive untouched.
 Operator note, not a blocker: PR #189 and this branch both modify
 `docs/agents/reviewer_conventions.md`, so whichever merges second may need a
 conflict resolution.
+
+## DECISION F107 D1 (2026-08-12) — two Design bullets are DEFERRED, on the record
+
+Context: finding R-0291. The feature file's Design promises that the compiled
+context "becomes a registry segment with its manifest hash in evidence", and
+defines tier 1 as the files_hint AND the fence allow scope. Neither holds on
+disk. `register_compiled_context_segment` exists and is unit-tested but has no
+production caller; the run path in `pingpong_loop.py` passes a rendered context
+string and a category label, not a registered segment, and writes no manifest
+into evidence. The CLI's tier 1 is the files_hint alone. Both gaps are
+deliberate and documented at the source — `context_compiler.py:66-68` states
+the deferral outright — but a deferral recorded only in a module docstring is
+invisible to the operator, and §4.7 requires a spec deviation to be loud,
+persisted and reversible.
+
+Chosen: DEFER both, close F107 on its DONE sentence, and record the deferral
+here and in the feature file's Built State. F107's DONE sentence is about
+selection, shrink and the omissions record — all three are built, tested and
+reviewed. Wiring the manifest into run evidence belongs with the evidence
+schema, and merging fence allow-globs into tier 1 belongs with F017's fence
+semantics; each is a round of its own with its own gate.
+
+Alternatives considered: (a) wire both inside F107 — rejected, it widens a
+feature already at seventeen rounds and drags F017 semantics into a context
+feature; (b) amend the Design bullets to match the code — rejected, that edits
+the target plan to fit what was built, which is exactly backwards, and the
+capability is wanted, only later.
+
+Reverse this decision by wiring `register_compiled_context_segment` into the
+run path with its manifest recorded in evidence, and by merging the fence allow
+scope into the CLI's tier-1 seed; the Design bullets then need no change,
+because they already describe the intended end state.
+
+## DECISION F107 D2 (2026-08-12) — the omission vocabulary gains a fifth reason
+
+Context: finding R-0292. The Design enumerates the omission reasons as
+`budget|distance|binary|size`. None of the four honestly describes a file that
+decodes cleanly but cannot be parsed: it is not binary, not distant, not over a
+size cap and not budget-demoted, yet its signature rendering is empty and the
+record must say why.
+
+Chosen: add `unparseable` as a fifth reason and amend the Design enumeration in
+the same round as the code, so the plan and the disk never disagree. The word
+appears in the feature file, the user guide and the module, and is pinned by
+the vocabulary test that already guards the other four.
+
+Alternatives considered: (a) reuse `binary` — rejected as dishonest, the file
+decodes fine; (b) drop the file entirely instead of recording it — rejected, an
+unparseable file's path and existence are still context the model can use, and
+dropping it would lose more than it explains.
+
+Reverse this decision by removing the constant and its three tests; the
+Edge-cases clause "signature-skipped with reason" would then have no carrier
+again, which is the state R-0292 recorded.
