@@ -1,303 +1,371 @@
-── STEP R4/~10 — F107 Context compiler v2 — T002 signature extractors ────────
-Goal:        Add the signature layer to the context compiler: Python via ast,
-             TS/JS via the exported-line scanner, plus the per-file size cap
-             that decides full content against signatures, with goldens per
-             language. Record the R3 gate and clear finding R-0271.
+── STEP R5/~10 — F107 Context compiler v2 — T003 tiered selector ─────────────
+Goal:        Add the SELECTOR layer: assign every candidate path a tier, render
+             tier 1/2 full and tier 2/3 as signatures, enforce a total token
+             budget by demotion (never by mid-file truncation), and record every
+             demotion and omission with a reason. Record the R4 gate and resolve
+             finding R-0271.
 Bundle:      C1 authored-block save; C2 last_block mirror; C3 the two authored
-             live_review slices (LRF registers R-0271 under Findings, LR3
-             appends the R3 gate); C4 plan rewrite; C5 the R-0271 lint fix;
-             C6 the T002 code; C7 the tests and goldens; C8 handoff rewrite;
-             push; handback.
+             live_review pairs (FIX1 flips the R-0271 bullet to RESOLVED, LR4
+             replaces the Landed line with the reviewer `Done:` text plus the R4
+             gate entry); C4 plan rewrite; C5 the T003 code; C6 the tests;
+             C7 handoff rewrite; push; handback.
 Change:      EXACTLY these paths and nothing else:
-             .agent/authored/f107-r4-1.md (new), .agent/last_block.md,
-             .agent/live_review.md (authored pairs LRF and LR3 in C3, plus
-             your own one-line Landed marker in C5),
-             .agent/plan.md (full replacement PLAN3),
+             .agent/authored/f107-r5-1.md (new), .agent/last_block.md,
+             .agent/live_review.md (authored pairs FIX1 and LR4 in C3 only),
+             .agent/plan.md (full replacement PLAN4),
              packages/orchestration/context_compiler.py,
              tests/orchestration/test_context_compiler.py,
              .agent/handoff.md (your handback rewrite).
-Constraints: AGENTS.md in full. The T001 layer is FROZEN: ImportNeighbors,
-             python_import_neighbors, typescript_import_neighbors and
-             build_import_neighbor_graph keep their current behavior and their
-             existing 16 tests keep passing unchanged. You ADD to the module;
-             you do not restructure it. STDLIB ONLY (ast, re, pathlib,
-             dataclasses, collections.abc) — a diff adding a TS parser or any
-             other dependency is rejected by the feature file's orchestrator
-             brief. Do not touch prompt composition, the segment registry, or
-             any other module. Never write a `Done:` line in live_review —
-             only the `Landed:` line C5 specifies. Do NOT create a PR. Never
-             touch main. Scratch only under .remedy-wt/, uncommitted. Apply
-             authored slices byte for byte after sha256 verification; on
-             mismatch STOP.
+Constraints: AGENTS.md in full. T001 AND T002 ARE FROZEN: ImportNeighbors,
+             python_import_neighbors, typescript_import_neighbors,
+             build_import_neighbor_graph, FileSignatures, fits_inline_size_cap,
+             python_file_signatures, typescript_file_signatures and
+             extract_file_signatures keep their current behavior and their
+             existing 29 tests keep passing UNCHANGED. You ADD to the module;
+             you do not restructure it and you do not edit one existing test.
+             Stdlib only, plus exactly ONE intra-repo import:
+             `from packages.orchestration.token_economy import
+             estimate_text_tokens` — reuse the repo's named token estimator
+             rather than inventing a second spelling of the same concept
+             (AGENTS.md Code Discoverability Conventions, "one spelling per
+             concept"; that function is ceil(chars/4), estimates-only, and its
+             module makes no provider, network or subprocess call). A diff
+             adding a TS parser or any third-party dependency is rejected by
+             the feature file's orchestrator brief. Do not touch prompt
+             composition, the segment registry, or any other module. Never
+             write a `Done:` line — C3's Done text is reviewer-authored and you
+             apply it byte for byte; you author no resolution of your own. Do
+             NOT create a PR. Never touch main. Scratch only under .remedy-wt/,
+             uncommitted. Apply authored slices byte for byte after sha256
+             verification; on mismatch STOP.
 
-TIER TABLE (the feature contract — T002 builds the signature rendering the
-tiers demote to): (1) files matched by the task's files_hint and fence allow
-scope — full content; (2) direct import neighbors of tier 1 — full content up
-to a per-file size cap, else signatures; (3) transitive dependencies —
-signatures only; (4) everything else — omitted.
+TIER TABLE (the feature contract, verbatim — the tiers ARE the contract):
+(1) files matched by the task's files_hint and fence allow scope — full
+content; (2) direct import neighbors of tier 1 — full content up to a per-file
+size cap, else signatures; (3) transitive dependencies — signatures only;
+(4) everything else — omitted.
 
-T002 CONTRACT (public names; Code Discoverability Conventions apply).
-In this contract TQ means three double-quote characters in a row.
+T003 CONTRACT (public names; Code Discoverability Conventions apply).
 
   Module constants:
-    DEFAULT_INLINE_SIZE_CAP_BYTES = 16384
-    DEFAULT_SIGNATURE_LINE_CAP = 200
+    DEFAULT_CONTEXT_TOKEN_BUDGET = 24000
+    TIER_FENCED = 1
+    TIER_NEIGHBOR = 2
+    TIER_DISTANT = 3
+    TIER_OMITTED = 4
+    OMISSION_REASON_BUDGET = "budget"
+    OMISSION_REASON_DISTANCE = "distance"
+    OMISSION_REASON_BINARY = "binary"
+    OMISSION_REASON_SIZE = "size"
 
-  @dataclass(frozen=True) FileSignatures:
-    lines: tuple[str, ...] = ()   # rendered signature lines, in source order
-    truncated: bool = False       # True when the line cap cut the rendering
-    parse_failed: bool = False    # source unreadable or unparseable
+  @dataclass(frozen=True) SelectedFile:
+    rel_path: str
+    tier: int
+    rendering: str          # "full" or "signatures"
+    estimated_tokens: int
 
-  fits_inline_size_cap(root, rel_path, cap_bytes=DEFAULT_INLINE_SIZE_CAP_BYTES)
-      -> bool. True when the file exists and its size in BYTES is <= cap_bytes
-      (equal to the cap fits). A path that is not a file is False — it cannot
-      be inlined. This is the tier-2 demotion switch, nothing more.
+  @dataclass(frozen=True) OmissionRecord:
+    rel_path: str
+    tier: int               # the tier the file HELD when the decision was made
+    reason: str             # one of the four OMISSION_REASON_* values
+    outcome: str            # "omitted" or "signatures"
 
-  python_file_signatures(root, rel_path, line_cap=DEFAULT_SIGNATURE_LINE_CAP)
-      -> FileSignatures. ast-based, source order, one rendered line per entry:
-      * the module docstring's first non-empty line, wrapped in TQ on each
-        side, when the module has a docstring;
-      * every ClassDef, FunctionDef and AsyncFunctionDef at ANY nesting depth,
-        rendered as a header line ending in a colon, indented four spaces per
-        level of nesting below module level;
-      * directly after each such header, that node's docstring first non-empty
-        line wrapped in TQ on each side, indented four spaces deeper than its
-        own header.
-      Header rendering is RECONSTRUCTED from the ast, never copied from the
-      source, so a signature spread over several source lines collapses to
-      one: `class Name(Base1, Base2):`, or `class Name:` when there are no
-      bases (no empty parentheses); `def name(<args>) -> <ret>:` and
-      `async def name(<args>) -> <ret>:`, with ` -> <ret>` omitted when there
-      is no return annotation. Render `<args>` with `ast.unparse` of the
-      node's arguments node, and `<ret>` with `ast.unparse` of the annotation.
-      Decorators, bodies, imports and assignments NEVER appear.
-      Unreadable source or SyntaxError → parse_failed=True with empty lines.
-      When the rendering exceeds line_cap lines, keep the FIRST line_cap of
-      them and set truncated=True.
+  @dataclass(frozen=True) CompiledContext:
+    included: tuple[SelectedFile, ...]      # sorted by (tier, rel_path)
+    omissions: tuple[OmissionRecord, ...]   # sorted by (tier, rel_path)
+    estimated_tokens: int                   # sum over `included`
+    budget_tokens: int
+    over_budget: bool       # True when tier 1 alone still exceeds the budget
 
-  typescript_file_signatures(root, rel_path, line_cap=DEFAULT_SIGNATURE_LINE_CAP)
-      -> FileSignatures. Line-level regex, source order, one entry per source
-      line whose FIRST non-space characters are the word `export` (so
-      `export function`, `export default`, `export const|let|var`,
-      `export class`, `export abstract class`, `export async function`,
-      `export interface`, `export type`, `export {…} from …` and
-      `export * from …` all match, while a non-exported declaration and a line
-      where `export` appears mid-line do not).
-      Rendering, deliberately minimal so it stays predictable: strip leading
-      and trailing whitespace, then remove a TRAILING `{` together with any
-      whitespace before it. Nothing else is rewritten — no cutting mid-line,
-      no trailing semicolon removal. Unreadable file → parse_failed=True.
-      Same line_cap and truncated semantics as the Python extractor.
+  compile_task_context(root, fenced_paths, repo_paths, *,
+      token_budget=DEFAULT_CONTEXT_TOKEN_BUDGET,
+      inline_cap_bytes=DEFAULT_INLINE_SIZE_CAP_BYTES,
+      line_cap=DEFAULT_SIGNATURE_LINE_CAP) -> CompiledContext
 
-  extract_file_signatures(root, rel_path, line_cap=DEFAULT_SIGNATURE_LINE_CAP)
-      -> FileSignatures. Dispatches on suffix exactly like
-      build_import_neighbor_graph does: .py → Python, .ts/.tsx/.js/.jsx →
-      TS/JS, anything else → FileSignatures(parse_failed=True).
+  `fenced_paths` is the task's declared write scope (files_hint + fence allow
+  scope, already resolved by the caller). `repo_paths` is the candidate
+  listing the caller walked — this module stays PURE and never walks a tree
+  itself. Both are iterables of repo-relative POSIX strings; both are
+  deduplicated and order-insensitive on input.
 
-  Determinism: same file → same rendered tuple, always.
-  Update the module docstring's Public API list with the new names, and say in
-  it that the TS signature scanner shares the line-level heuristic limitations
-  already documented there.
+  ASSIGNMENT, in this order:
+   * tier 1 = every path in `fenced_paths`. Tier 1 is included in FULL and is
+     NEVER demoted and NEVER omitted — not for size, not for budget. An
+     unparseable or oversized tier-1 file is still included whole ("better
+     safe", the feature file's Edge cases). A tier-1 path that does not exist
+     under root is dropped silently — it is not a candidate at all.
+   * tier 2 = `build_import_neighbor_graph(root, tier-1 paths)` → every
+     `files` entry, minus anything already tier 1. Full content when
+     `fits_inline_size_cap(root, path, inline_cap_bytes)`, else rendered as
+     signatures with an OmissionRecord(tier 2, reason "size",
+     outcome "signatures").
+   * tier 3 = the same graph call over the TIER-2 paths → every `files` entry,
+     minus tiers 1 and 2. Signatures only, always. No record: signatures are
+     tier 3's normal rendering, not a demotion.
+   * tier 4 = every remaining path in `repo_paths`, omitted with
+     OmissionRecord(tier 4, reason "distance", outcome "omitted").
+   * BINARY: any tier-1, tier-2 or tier-3 path whose bytes are not valid UTF-8
+     is omitted entirely with OmissionRecord(its tier, reason "binary",
+     outcome "omitted") — this is the ONE case that removes a tier-1 file,
+     because a binary blob cannot be inlined at all.
 
-TEST CONTRACT (C7) — append to tests/orchestration/test_context_compiler.py,
-leaving every existing test untouched. Goldens are module-level string
-constants in that file, compared with exact tuple equality — the repo's
-in-test golden convention (tests/orchestration/test_builder_prompt_golden.py).
+  BUDGET, applied after assignment, in exactly these three phases, each
+  repeating while the total still exceeds `token_budget`:
+   A. demote the tier-2 file with the LARGEST estimated_tokens from full to
+      signatures → OmissionRecord(2, "budget", "signatures");
+   B. omit the tier-3 file with the LARGEST estimated_tokens →
+      OmissionRecord(3, "budget", "omitted");
+   C. omit the tier-2 file with the LARGEST estimated_tokens →
+      OmissionRecord(2, "budget", "omitted").
+  Ties in estimated_tokens break by rel_path ASCENDING, so the choice is
+  deterministic. A file is never truncated mid-content — only demoted or
+  dropped whole. When all three phases are exhausted and tier 1 alone still
+  exceeds the budget, stop and set over_budget=True: report the overflow
+  honestly rather than cutting the declared write scope.
 
-  Python goldens and behavior:
-   1. One golden fixture source exercising, in one file: a module docstring,
-      a decorated top-level `def` with annotated args and a return annotation,
-      an `async def`, a `class` with a base and a docstring, a method nested
-      in that class, a signature written across THREE source lines, a
-      module-level assignment and an import. Assert `lines` equals the golden
-      tuple exactly. The golden therefore pins: decorators absent, assignment
-      and import absent, the three-line signature collapsed to one, and the
-      four-space indentation of the nested method and of docstring lines.
-   2. A class with no bases renders `class Name:` — no empty parentheses.
-   3. A def with no return annotation renders without ` -> `.
-   4. A docstring whose first source line is blank contributes its first
-      NON-EMPTY line.
-   5. A file with no docstrings anywhere renders headers only.
-   6. SyntaxError → parse_failed=True and empty lines; a missing path → the
-      same.
-   7. line_cap: a file rendering more than the cap returns exactly `line_cap`
-      lines with truncated=True, and those are the FIRST ones; the same file
-      under a generous cap returns truncated=False.
+  ESTIMATES: `estimated_tokens` is `estimate_text_tokens(rendered_text)`,
+  where rendered_text is the file's full text for "full" and
+  "\n".join(signature lines) for "signatures".
 
-  TS/JS goldens and behavior:
-   8. One golden fixture source exercising `export function` with a trailing
-      `{`, `export default`, `export const`, `export class X extends Y {`,
-      `export interface`, `export type`, `export async function`,
-      `export * from './x';`, `export {a, b} from './y';`, an INDENTED
-      `  export const nested = 1;`, a non-exported `function hidden() {`, and
-      a line where the word `export` appears mid-line. Assert `lines` equals
-      the golden tuple exactly — pinning that the trailing `{` is removed, the
-      trailing semicolon is kept, indentation is stripped, and neither the
-      non-exported line nor the mid-line `export` appears.
-   9. A missing path → parse_failed=True.
-  10. The TS extractor honors line_cap and truncated the same way.
+  export_omitted_context_json(compiled) -> list[dict]. PURE. One dict per
+  OmissionRecord in `omissions` order, with exactly the keys "path", "tier",
+  "reason", "outcome". No absolute paths ever appear — `rel_path` is already
+  repo-relative.
 
-  Size cap and dispatch:
-  11. fits_inline_size_cap is True below the cap, True at EXACTLY the cap,
-      False above it, and False for a path that does not exist. Size the
-      fixtures in bytes and pass an explicit small cap_bytes.
-  12. DEFAULT_INLINE_SIZE_CAP_BYTES and DEFAULT_SIGNATURE_LINE_CAP are the
-      documented defaults (assert the values, so a silent change is a red
-      test).
-  13. extract_file_signatures dispatches .py to the Python extractor, .ts and
-      .jsx to the TS one, and an unknown suffix (.md) to
-      FileSignatures(parse_failed=True) — assert the dispatch by comparing
-      against the direct call on the same fixture.
+  write_omitted_context_json(compiled, target_path) -> Path. The ONLY function
+  in this module that touches disk for writing: it creates the parent
+  directory, writes `export_omitted_context_json(compiled)` as JSON with
+  `indent=2` and a trailing newline, and returns the path it wrote.
+
+  Determinism: same inputs → same CompiledContext, always.
+  Update the module docstring: add the new names to the Public API list, and
+  amend the "never writes evidence" sentence — it is now accurate only of
+  everything EXCEPT write_omitted_context_json, which writes exactly where the
+  caller points it.
+
+DECISION D-F107-1, recorded here because it amends the feature file: the
+feature file's Design names the omissions entry as {path, tier, reason}. That
+shape cannot distinguish a file DEMOTED to signatures from one OMITTED
+entirely, and T004's debugging view ("why didn't the model see X") needs the
+difference. Chosen: add the fourth key "outcome". Alternative considered and
+rejected: two separate lists, which duplicates the reason vocabulary. Reverse
+by deleting the key and the tests that assert it.
+
+TEST CONTRACT (C6) — append to tests/orchestration/test_context_compiler.py,
+leaving every existing test untouched. Build fixture trees with the existing
+`_write_tree` helper and pass `tmp_path` as root, as every test there does.
+
+   1. Tier assignment on one fixture tree: `app.py` (fenced) imports `lib.py`,
+      `lib.py` imports `deep.py`, and `unrelated.py` is imported by nobody.
+      Assert the included tiers exactly: app.py tier 1 "full", lib.py tier 2
+      "full", deep.py tier 3 "signatures"; and that unrelated.py is NOT in
+      `included` but IS in `omissions` with tier 4, reason "distance",
+      outcome "omitted".
+   2. A tier-2 file over `inline_cap_bytes` is included with rendering
+      "signatures" and carries an OmissionRecord(2, "size", "signatures") —
+      pass a small explicit cap so the fixture stays readable.
+   3. Budget squeeze demotes TIER 2 FIRST, LARGEST FIRST. The fixture MUST
+      carry TWO tier-2 files of clearly different sizes (say lib_big.py and
+      lib_small.py, both imported by the fenced file) so that WHICH one is
+      demoted is observable. With a budget that forces exactly one demotion,
+      assert that lib_big.py flipped to "signatures" with reason "budget",
+      that lib_small.py is STILL "full", and that the tier-3 file is still
+      present. Without the second tier-2 file this test cannot see the
+      ordering rule at all, which is why the sizes are part of the contract.
+   4. A tighter budget then omits the tier-3 file (phase B) while tier 2
+      remains present as signatures; a tighter one still omits tier 2
+      (phase C). Assert the phase order by asserting WHICH files survive.
+   5. Tier 1 is never demoted or omitted by budget: with `token_budget=1`, the
+      fenced file is still `included` with rendering "full", and
+      `over_budget` is True.
+   6. A binary tier-2 file (write bytes that are not valid UTF-8) is omitted
+      with reason "binary", outcome "omitted", and does not appear in
+      `included`.
+   7. A fenced path that does not exist under root appears in neither
+      `included` nor `omissions`.
+   8. Determinism: two calls with the SAME inputs in a DIFFERENT input order
+      return equal CompiledContext values.
+   9. `estimated_tokens` equals the sum of the included files'
+      `estimated_tokens`, and each one equals
+      `estimate_text_tokens` of that file's rendered text — assert against a
+      direct call, never against a hand-copied number.
+  10. `export_omitted_context_json` returns dicts with exactly the four keys
+      {"path", "tier", "reason", "outcome"} (assert `set(entry) == {...}`) in
+      the same order as `compiled.omissions`.
+  11. `write_omitted_context_json` writes a file that `json.loads` reads back
+      equal to `export_omitted_context_json(compiled)`, creating a missing
+      parent directory, and returns that path.
+  12. `DEFAULT_CONTEXT_TOKEN_BUDGET == 24000` and the four
+      OMISSION_REASON_* constants equal "budget", "distance", "binary" and
+      "size" — a silent change is a red test.
+  13. Completeness, the feature's own Acceptance wording: every path in
+      `repo_paths` appears EXACTLY ONCE across `included` plus `omissions`
+      for a tree where all paths exist and none is a duplicate. Assert it by
+      comparing sorted path lists, so a path that silently vanishes is red.
 
 IF THE CODE AND THIS CONTRACT DISAGREE while you are writing the tests, the
-contract wins and you change the code you wrote in C6 — it is yours this
+contract wins and you change the code you wrote in C5 — it is yours this
 round. What you must NOT do is weaken an assertion to match a rendering you
-find convenient, or change any T001 behavior to make a new test pass.
+find convenient, or change any T001/T002 behavior to make a new test pass.
 
 PROCEDURE (in order, one commit per item):
-0. Preconditions: branch feature/f107-context-compiler-v2, HEAD ef64cf72,
+0. Preconditions: branch feature/f107-context-compiler-v2, HEAD 2c75bddf,
    `git status --porcelain` empty (else STOP and hand back).
-1. C1 — `cp .remedy-wt/f107-r4-1.block.md .agent/authored/f107-r4-1.md`,
-   cmp silent; extract ALL THREE slices (LRF, LR3, PLAN3) with a helper under
-   .remedy-wt/ and verify each body's sha256 against its marker digest before
-   applying anything.
-   Commit: chore(f107): save the R4 step block verbatim
-2. C2 — copy the same file over .agent/last_block.md, cmp silent.
-   Commit: chore(f107): mirror the R4 block into last_block
-3. C3 — apply BOTH live_review slices in this one commit. Each is an
-   anchor-preserving insertion: the slice's FIRST line already exists in the
-   file (the FROM) and the slice's TO contains it verbatim, so you replace
-   that one line with the whole slice body and touch nothing else.
-     * LRF — its FROM is the LAST line of the `## Findings` list, so R-0271
-       is registered as a finding among the findings, not in the gate log.
-     * LR3 — its FROM is the file's current LAST non-empty line, so the R3
-       gate entry lands at the end of the gate log.
-   Apply LRF first, then LR3; each FROM occurs exactly once in the file both
-   before and after the edit. Proof: after the commit, each of the two FROM
-   lines occurs exactly 1x in the file, every TO-only line of both slices
-   occurs exactly 1x among the lines this commit's diff ADDS, and
-   `git show --numstat HEAD -- .agent/live_review.md` reads `<n> 0` — zero
-   deletions is what proves both anchors unedited. Report n.
-   Commit: chore(f107): record the R3 gate and register R-0271
-4. C4 — replace .agent/plan.md entirely with slice PLAN3 (cp+cmp).
-   Commit: chore(f107): advance plan to R4 T002
-5. C5 — fix finding R-0271: in packages/orchestration/context_compiler.py
-   replace the `Iterable` import from `typing` with an import from
-   `collections.abc` (ruff UP035), leaving every other line alone. Keep the
-   import block sorted the way ruff's isort rules want it. Then append to
-   .agent/live_review.md, as the file's new last line, exactly one line of
-   your own authorship in this form — no other text, no `Done:`:
-     Landed: R-0271 — Iterable now imports from collections.abc (this commit).
-   Commit: fix(f107): import Iterable from collections abc
-6. C6 — extend packages/orchestration/context_compiler.py with the T002
+1. C1 — copy .remedy-wt/f107-r5-1.block.md to .agent/authored/f107-r5-1.md and
+   prove byte identity (`cmp` if your permission layer allows it, otherwise
+   `sha256sum` of both — say which you used). Extract ALL THREE slice bodies
+   (FIX1TO, LR4TO, PLAN4) and verify each body's sha256 against its BEGIN
+   marker digest BEFORE applying anything. On any mismatch STOP.
+   Commit: chore(f107): save the R5 step block verbatim
+2. C2 — copy the same file over .agent/last_block.md, prove byte identity.
+   Commit: chore(f107): mirror the R5 block into last_block
+3. C3 — apply BOTH live_review pairs in this ONE commit. Both are REWRITES:
+   the TO does NOT contain the FROM, so the proof shape is "FROM 0x, TO 1x".
+     * FIX1 — replace the single line held in slice FIX1FROM with the body of
+       slice FIX1TO. This flips the R-0271 bullet from OPEN to RESOLVED.
+     * LR4 — replace the single line held in slice LR4FROM with the body of
+       slice LR4TO: the reviewer-authored `Done:` resolution followed by the
+       R4 gate entry.
+   Apply FIX1 first, then LR4. Proof after the commit: each FROM string occurs
+   0x in the file; every line of both TO bodies occurs exactly 1x among the
+   lines this commit's diff ADDS; report `git show --numstat HEAD --
+   .agent/live_review.md` as `<added> <deleted>` (deleted is 2 — one line per
+   rewritten anchor). Also: `grep -c '^## Steps' .agent/live_review.md` → 1,
+   and `grep -c '^Done: R-0271' .agent/live_review.md` → 1.
+   Commit: chore(f107): record the R4 gate and resolve R-0271
+4. C4 — replace .agent/plan.md entirely with slice PLAN4; prove byte identity.
+   Commit: chore(f107): advance plan to R5 T003
+5. C5 — extend packages/orchestration/context_compiler.py with the T003
    contract above. Read the whole file first; self-review loop before commit.
-   Commit: feat(f107): signature extractors and the inline size cap
-7. C7 — extend tests/orchestration/test_context_compiler.py per the test
-   contract above. Commit: test(f107): golden signature rendering per language
-8. MUTATION PROBE (after C7 is committed, before C8). Destructive checks run
+   Commit: feat(f107): tiered context selector with budget demotion
+6. C6 — extend tests/orchestration/test_context_compiler.py per the test
+   contract above. Commit: test(f107): tier assignment budget demotion and
+   omissions
+7. MUTATION PROBE (after C6 is committed, before C7). Destructive checks run
    ONLY in a disposable worktree — never in the checkout:
-     git worktree add .remedy-wt/f107_r4_mut HEAD
-   In that worktree only, make the TS renderer STOP removing the trailing `{`
-   (leave the stripped line as it is). Then run
+     git worktree add .remedy-wt/f107_r5_mut HEAD
+   In that worktree only, make budget phase A pick the SMALLEST tier-2 file
+   instead of the largest. Then run, from inside the worktree,
      python3 -m pytest tests/orchestration/test_context_compiler.py -q
-   from inside the worktree and REPORT the real result: exit code and which
-   tests failed. If NOTHING fails, say so plainly — a true report about a
-   golden that does not bite is worth more than a colour. Then:
-     git worktree remove --force .remedy-wt/f107_r4_mut
+   and REPORT the real result: exit code and which tests failed. If NOTHING
+   fails, say so plainly — a true report about a test that does not bite is
+   worth more than a colour. Then:
+     git worktree remove --force .remedy-wt/f107_r5_mut
      git worktree prune
    and confirm `git worktree list` shows the primary checkout alone.
-9. C8 — rewrite .agent/handoff.md yourself: feature+round (F107 R4), branch,
-   per-commit table C1–C8, changed-files table, the real gate results below
+8. C7 — rewrite .agent/handoff.md yourself: feature+round (F107 R5), branch,
+   per-commit table C1–C7, changed-files table, the real gate results below
    (command + exit code + counted value), the mutation-probe result, open
-   findings count and next free ID (R-0271 is registered by C3 and landed by
-   C5, but only the reviewer's `Done:` text resolves it, so it stays OPEN:
-   9 open, next free R-0272), item-status table, next expected action:
-   R5 = T003 tiered selector with budget demotion and the omissions writer.
+   findings count and next free ID (R-0271 is RESOLVED by C3, so: 8 open,
+   next free R-0272), item-status table, next expected action: R6 = T004
+   segment integration and the `remedy job context` CLI view.
    Cap: 60 lines, or up to 100 if the per-commit table needs it (AGENTS.md
    handoff.md rule) — never drop a mandated section to fit; if you exceed 60,
    carry the stated-cause line naming the actual count and the mandated
    content that caused it.
-   Commit: chore(f107): rewrite handoff for R4
+   Commit: chore(f107): rewrite handoff for R5
    Then: git push (branch already tracks origin)
 
 Done when (run each, record command + real exit code + counted value):
-  a. sha256 of all three extracted slice bodies == their marker digests; cmp
-     of .agent/authored/f107-r4-1.md against .remedy-wt/f107-r4-1.block.md and
-     against .agent/last_block.md both silent.
-  b. the C3 proof from step 3 (both FROM lines 1x; every TO-only line 1x among
-     added lines; numstat reported). grep -c '^## Steps' .agent/live_review.md
-     → 1.
-  c. cmp .agent/plan.md against the verified PLAN3 bytes → silent;
-     wc -l < .agent/plan.md → 29.
+  a. all three slice bodies' sha256 == their marker digests; the R5 block,
+     .agent/authored/f107-r5-1.md and .agent/last_block.md are byte-identical
+     (name the tool you used).
+  b. the C3 proof from step 3: both FROM strings 0x, every TO line 1x among
+     the added lines, numstat reported, '^## Steps' → 1, '^Done: R-0271' → 1.
+  c. .agent/plan.md byte-identical to the verified PLAN4 bytes;
+     wc -l < .agent/plan.md → 28 (PLAN4 is 28 lines).
   d. python3 -m pytest tests/orchestration/test_context_compiler.py -q
-     → exit 0 (report the passed count, which includes the 16 T001 tests).
+     → exit 0 (report the passed count; it includes the 29 frozen tests).
   e. python3 -m pytest tests/cli/test_golden_path.py -q → exit 0 (report the
      passed count).
   f. grep -c '^<<<' on .agent/live_review.md, .agent/plan.md and
      .agent/handoff.md → 0 each (grep exit 1 is the pass).
   g. git status --porcelain → empty; git worktree list → primary only;
      HEAD == origin/feature/f107-context-compiler-v2; insertions per commit
-     (git log --numstat ef64cf72..HEAD) each < 500.
-  h. git diff --name-only ef64cf72..HEAD → exactly the seven paths the Change
+     (git log --numstat 2c75bddf..HEAD) each < 500.
+  h. git diff --name-only 2c75bddf..HEAD → exactly the seven paths the Change
      line names, nothing else.
   i. python3 -m ruff check packages/orchestration/context_compiler.py
      tests/orchestration/test_context_compiler.py → exit 0, zero errors
-     (this is what closes R-0271; report the real output).
-  j. the mutation-probe result from step 8, reported as run.
+     (report the real output).
+  j. the mutation-probe result from step 7, reported as run.
 Handback:    completion report (tables + raw gate results a–j + deviations)
-             — .agent/handoff.md rewritten as C8.
+             — .agent/handoff.md rewritten as C7.
 
-<<<BEGIN SLICE LRF sha256=fac600cb0c03ce265017a2eeda5336fe617bbb2acecf99764bc87c37b98ab5c2 lines=7>>>
-  together — it is neither F107's code nor F107's scope. OPEN.
-- R-0271 (Low, F107 R3): `packages/orchestration/context_compiler.py` imports
-  `Iterable` from `typing`, which ruff reports as UP035. The repo's ruff
-  baseline already carries 24 other errors, so no gate turns red and nothing
-  is blocked — but this one is F107's own new code, it is one line, and the
-  module is open for editing in R4 anyway, so it is cheaper to clear than to
+<<<BEGIN SLICE FIX1FROM sha256=06f8ce67627c5bb95ceff870b5292e2fa0bc7c24a95ab12e5db2190bb7078ab8 lines=1>>>
   carry. OPEN.
-<<<END SLICE LRF>>>
+<<<END SLICE FIX1FROM>>>
 
-<<<BEGIN SLICE LR3 sha256=1dc20c0b9bc0fed30d125f077c3dc004a097a278b9240dadeb8eb6b179f272da lines=33>>>
-  `LAST_REVIEWED_SHA` advances d2b962af -> 5a9951d5.
+<<<BEGIN SLICE FIX1TO sha256=547f5a527a519022b2d58ab2594d6608c5d1bc6d24b827afc16a5c64a097a06d lines=2>>>
+  carry. RESOLVED at the R4 gate (2026-08-12) — the `Done:` text closing it is
+  the last entry of this file.
+<<<END SLICE FIX1TO>>>
 
-- Reviewer gate on R3 (2026-08-12): PASS. Range 5a9951d5..ef64cf72 = six
-  commits touching exactly the six paths the R3 block named. Transport by the
-  primary shape: `cmp` of the reviewer original `.remedy-wt/f107-r3-1.block.md`
-  against the committed `.agent/authored/f107-r3-1.md` silent, and the authored
-  copy against `.agent/last_block.md` silent, all 232 lines; both slice bodies
-  recompute to their BEGIN-marker digests, PLAN2 is byte-equal to
-  `.agent/plan.md` and LR2 is the verbatim tail of this file. The LR2 pair was
-  APPEND-shaped and `git show --numstat 0dbdaa83` reads `37 0` — zero
-  deletions. No worker-authored `Done:` line exists in this file. Gates were
-  RE-RUN by the reviewer rather than read from the handback: the T001 gate
-  `python3 -m pytest tests/orchestration/test_context_compiler.py -q` returns
-  16 passed, the canary returns 42 passed, `.agent/plan.md` is 29 lines, the
-  Steps heading count is 1, `git status --porcelain` is empty and
-  `git worktree list` shows the primary checkout alone. Insertions per commit
-  232, 189, 37, 7, 274, 63 — each under 500. The 16 test functions carry all
-  26 numbered obligations of the R3 contract, each as an equality assertion on
-  real values rather than a truthiness check, and the deliberate external
-  renderings ('os', 'typing.Iterable', '...x', '../../escape', 'react') are
-  pinned verbatim. The reviewer ran TWO independent mutation probes in a
-  disposable worktree at ef64cf72, one of them deliberately different from the
-  worker's: removing the self-discard line reddens exactly
-  `test_python_file_importing_its_own_module_name_does_not_list_itself`, and
-  swapping the TS candidate order reproduces the worker's reported failure
-  `AssertionError: assert ('x/index.ts',) == ('x.ts',)` in
-  `test_typescript_suffix_candidate_beats_index_file_candidate` — so the
-  handback's probe evidence is confirmed true and the goldens bite. That
-  worktree was removed and pruned before this verdict. The 75-line handoff is
-  a declared stated-cause overage carrying its mandated tables, which
-  AGENTS.md permits for a per-commit table of more than five commits. T001 is
-  now test-covered on the branch and the R2 ungated-module caveat is
-  discharged. `LAST_REVIEWED_SHA` advances 5a9951d5 -> ef64cf72.
-<<<END SLICE LR3>>>
+<<<BEGIN SLICE LR4FROM sha256=3541d8ff965f5809997d59862f7ace48550d292d79b37742f27610050eb7246f lines=1>>>
+Landed: R-0271 — Iterable now imports from collections.abc (this commit).
+<<<END SLICE LR4FROM>>>
 
-<<<BEGIN SLICE PLAN3 sha256=4b98f1085f506a5f5d26710b978ae5498a682b1c31300c32f1706331dfb86149 lines=29>>>
+<<<BEGIN SLICE LR4TO sha256=b07a255e54acd9226b412710bef122fba8db574b7dbaa100f1c42ff4ee8ba243 lines=53>>>
+- Reviewer gate on R4 (2026-08-12): PASS. Range ef64cf72..2c75bddf = eight
+  commits touching exactly the seven paths the R4 block named. Transport by the
+  PRIMARY shape, the reviewer original having survived the session boundary:
+  `sha256sum` of `.remedy-wt/f107-r4-1.block.md`, of the committed
+  `.agent/authored/f107-r4-1.md` and of `.agent/last_block.md` returns
+  7cf9a5f065db… for all three. This session's permission layer denies `cmp`,
+  so byte identity was proven by digest instead — strictly stronger than the
+  ordered check, never weaker. All three slice bodies recompute to their
+  BEGIN-marker digests at their declared lengths (LRF fac600cb… 7 lines, LR3
+  1dc20c0b… 33 lines, PLAN3 4b98f108… 29 lines), and `sha256sum
+  .agent/plan.md` returns that same PLAN3 digest: the plan on disk IS the
+  authored slice, not a retype of it. The C3 pair was ANCHOR-PRESERVING and
+  `git show --numstat 657b98fb -- .agent/live_review.md` reads `38  0` — zero
+  deletions; both FROM lines occur exactly 1x in the file and 0x among the 38
+  added lines, and every TO-only line of both slices occurs exactly 1x among
+  those added lines, with no strays. Every scoped gate was RE-RUN by the
+  reviewer rather than read from the handback: `python3 -m pytest
+  tests/orchestration/test_context_compiler.py -q` returns 29 passed (the 16
+  frozen T001 tests plus 13 new), the canary `python3 -m pytest
+  tests/cli/test_golden_path.py -q` returns 42 passed, `python3 -m ruff check`
+  over the module and its test file returns "All checks passed!" — which is
+  what closes R-0271 — `.agent/plan.md` is 29 lines, the Steps heading count
+  is 1, `grep -c '^<<<'` is 0 across all three state files, `git status
+  --porcelain` is empty, HEAD equals `origin/feature/f107-context-compiler-v2`
+  and `git worktree list` shows the primary checkout alone. Insertions per
+  commit 326, 280, 38, 2, 11, 242, 271, 80 — each under 500. The 13 test
+  functions carry all 13 numbered obligations of the R4 contract as exact
+  tuple equalities rather than truthiness checks, and the goldens are
+  mechanically captured rather than hand-written — `limit: int=10` is
+  `ast.unparse` spacing, which no human would type on purpose. The reviewer
+  ran THREE mutation probes in a disposable worktree at 2c75bddf, two of them
+  deliberately different from the worker's: turning the size cap's `<=` into
+  `<` reddens exactly `test_fits_inline_size_cap_is_inclusive_at_the_cap_and`
+  `_false_when_absent` with `AssertionError: assert False is True`, and
+  deleting the nested-declaration recursion line reddens exactly the Python
+  whole-file golden and
+  `test_python_file_without_any_docstring_renders_headers_only`. The worker's
+  own probe reproduces verbatim — `1 failed, 28 passed`, failing
+  `test_typescript_signature_golden_renders_exported_lines_only` on
+  `'export function renderWidget(id: string): void {' !=` the same line
+  without its brace — so the handback's probe evidence is confirmed TRUE
+  rather than taken on trust. That worktree was removed and pruned before this
+  verdict and `git worktree list` shows the primary alone. The 96-line handoff
+  is a declared stated-cause overage carrying its mandated tables, which
+  AGENTS.md DECISION D15 permits; both declared deviations are accurate and
+  neither weakens a proof. No new findings this round.
+  `LAST_REVIEWED_SHA` advances ef64cf72 -> 2c75bddf.
+
+Done: R-0271 — RESOLVED. `packages/orchestration/context_compiler.py` now reads
+`from collections.abc import Iterable` (commit b52b1c3c, numstat `1 1`), and the
+reviewer's own re-run of `python3 -m ruff check` over that module and its test
+file returns exit 0 with "All checks passed!" — zero errors, where the same
+command reported UP035 before the fix. Open findings 9 -> 8.
+<<<END SLICE LR4TO>>>
+
+<<<BEGIN SLICE PLAN4 sha256=320c489005c5aafce40a1c0e2aca14ab1e30d464b7c199fc4eb6a93cfb202722 lines=28>>>
 # Plan — F107 Context compiler v2
 
 Branch: feature/f107-context-compiler-v2, cut from main at 2e4142c3.
-Next free finding ID: R-0272. R3 reviewed PASS at ef64cf72.
+Next free finding ID: R-0272. R4 reviewed PASS at 2c75bddf.
 
 ## Goal
 The context compiler selects fenced-path files, their direct import
@@ -309,18 +377,17 @@ solvable by the fake provider, and the omissions record explains every
 exclusion (docs/roadmap/features/T2_F107.md).
 
 ## Current Step
-R4 — T002 signature extractors: Python headers and docstring first lines via
-ast, TS/JS exported-line rendering, the per-file inline size cap that decides
-full content against signatures, and a suffix dispatcher, all added to
-packages/orchestration/context_compiler.py with per-language goldens in
-tests/orchestration/test_context_compiler.py. The T001 layer is frozen. The
-round also clears finding R-0271 (ruff UP035 in the same module).
+R5 — T003 tiered selector: assign tiers 1-4 from the fenced paths outward,
+render tier 1/2 full and tier 2/3 as signatures, enforce a total token budget
+by demoting tier 2 first and never truncating mid-file, and record every
+demotion and omission with a reason and an outcome, all added to
+packages/orchestration/context_compiler.py with fixture-tree tests in
+tests/orchestration/test_context_compiler.py. T001 and T002 are frozen. The
+round also resolves finding R-0271.
 
 ## Next Steps
-1. T003 — tiered selector + budget demotion + omissions writer +
-   integration on a fixture repo.
-2. T004 — segment integration + the `remedy job context` CLI view +
+1. T004 — segment integration + the `remedy job context` CLI view +
    an end-to-end fixture task with a size comparison in evidence.
-3. Integration gate per docs/agents/integration_gate.md.
-4. Closure per docs/roadmap/STATUS_closure_protocol.md.
-<<<END SLICE PLAN3>>>
+2. Integration gate per docs/agents/integration_gate.md.
+3. Closure per docs/roadmap/STATUS_closure_protocol.md.
+<<<END SLICE PLAN4>>>
