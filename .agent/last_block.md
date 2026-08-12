@@ -1,265 +1,319 @@
-── STEP R23/23 — F107 Context compiler v2 — CLOSURE ─────────────
-Goal:        Close F107. Record the R20, R21 and R22 gates and the closure
-             verdict, apply the reviewer-authored STATUS `[x]` line with the
-             README capability sync in the SAME commit, and open the PR. The PR
-             is NOT merged in this session.
-Bundle:      C1 save block · C2 mirror · C3 gates and closure verdict persist
-             FIRST · C4 the closure commit · C5 the PR.
-Change:      `.agent/authored/f107-r23-1.md` (new) · `.agent/last_block.md` ·
-             `.agent/live_review.md` · `docs/roadmap/STATUS.md` · `README.md` ·
-             `.agent/plan.md` · `.agent/handoff.md`. SEVEN paths, nothing else.
-             No production code, no tests, no feature file.
-Constraints: AGENTS.md in full. Rule A4: the STATUS edit is the LAST commit on
-             the branch, and README ships in that same commit (R-0154) so the
-             ledger cross-check never sees them disagree. Insertions per commit
-             under 500. Push after every commit. Never merge the PR. Never
-             force-push. Nothing is deleted.
-Done when:   gates A-H below are executed and their REAL results recorded.
-Handback:    completion report + rewrite `.agent/handoff.md` (<= 60 lines, or a
-             "Deviations, declared" line naming the real count and the mandated
-             content, per AGENTS.md DECISION D15), carrying the PR number and
-             URL, the closure values, and the open-findings count.
+── STEP R1/~12 — F111 Diff-only repair ───────────────────────────────────────
+Goal:        Claim F111, reset the session state files, and carry the 22 open
+             F107 findings forward. No production code this round.
+Bundle:      Branch creation; C1 authored-block save; C2 last_block mirror;
+             C3 STATUS claim; C4 live_review reset; C5 plan rewrite;
+             C6 context rewrite; C7 handoff rewrite; push after EVERY commit.
+Change:      EXACTLY these paths and nothing else:
+             docs/roadmap/STATUS.md (one line, SFROM->STO below),
+             .agent/authored/f111-r1-1.md (new),
+             .agent/last_block.md, .agent/live_review.md,
+             .agent/plan.md, .agent/context.md,
+             .agent/handoff.md (your handback rewrite).
+             Do NOT touch .agent/candidates.md (already empty, verified by the
+             reviewer), .agent/decisions.md, or any file under packages/,
+             apps/ or tests/.
+Constraints: AGENTS.md in full — self-review loop before every commit, small
+             commits, no leading-slash tokens or absolute paths in commit
+             subjects. Do NOT create a PR. Do NOT merge. Never touch main.
+             Never write a `Done:` line in live_review (reviewer-only text).
+             Never force-push. Apply every authored slice by COPYING the
+             verified scratch file — never retype authored text, never
+             reflow it. If a sha256 does not match, STOP and hand back the
+             mismatch. Scratch stays under .remedy-wt/ and is never
+             committed.
 
-C1 — the block was handed to you as `.remedy-wt/f107-r23-1.block.md`. Copy it,
-do not retype it: `cp .remedy-wt/f107-r23-1.block.md .agent/authored/f107-r23-1.md`,
-then `cmp` the two (silent, exit 0). Record `wc -l` and `sha256sum`. Commit
-alone, then push:
-  chore(f107): save the R23 step block verbatim
+AUTHORED SLICES — already on disk, written by the reviewer:
+  .remedy-wt/f111r1/SFROM  sha256=6c498f9cda12cfb5ba8f4665570575d9e9f7d9cbc49b55df406056b7933ca307  lines=1
+  .remedy-wt/f111r1/STO    sha256=ee7930206fc3754b459dfdbd02116aea300e61598604e0946e5aa26ae63e6fc2  lines=1
+  .remedy-wt/f111r1/LR     sha256=1e9458ff50519853258df7789fd48d5a93e2351e98e089c0e11c901bf10fde18  lines=111
+  .remedy-wt/f111r1/PLAN   sha256=b2bf03236f9a1b5e93c230c49120363d41ca8d44ab93ea587e58f351ae86a030  lines=37
+  .remedy-wt/f111r1/CTX    sha256=3994fc02270c2457cbf3981c083f5ded75e7b8b3ce48fc27f9c9acd704fdc9d8  lines=45
+  .remedy-wt/f111r1/BLOCK  = this entire step block, byte for byte
 
-C2 — `cp .agent/authored/f107-r23-1.md .agent/last_block.md`, then `cmp` the
-two (silent, exit 0). Commit alone, then push:
-  chore(f107): mirror the R23 block into last block
+PROCEDURE (in order; commit AND push at every numbered item):
 
-C3 — GATES AND CLOSURE VERDICT PERSIST FIRST (planner_reviewer_prompt.md §4.4)
-No finding is registered this round: the header line stays at R-0298.
+0. Preconditions. `git status --porcelain` empty; `git branch --show-current`
+   is main; `git log -1 --format=%h` is 4e0b762e. If any differs, STOP and
+   hand back — do not "fix" it. Then verify all six scratch digests with
+   `sha256sum -c` style comparison against the table above. Any mismatch =>
+   STOP. Then: `git checkout -b feature/f111-diff-only-repair`
 
-PAIR_LRG is an APPEND: the TO's first line IS the FROM, the last line of the
-R19 gate entry. The three new gate entries go directly beneath it.
-<<<BEGIN PAIR_LRG_FROM>>>
-  `LAST_REVIEWED_SHA` advances 6e1970c4 -> 65723390.
-<<<END PAIR_LRG_FROM>>>
-<<<BEGIN PAIR_LRG_TO>>>
-  `LAST_REVIEWED_SHA` advances 6e1970c4 -> 65723390.
-- Reviewer gate on R20 (2026-08-12): PASS on the three commits it made; its C6
-  was blocked and its C7 correctly skipped. Range `65723390..ca8e36ab` = three
-  commits over three `.agent/` paths, 242/0, 188/325 and 53/0. Transport by the
-  PRIMARY shape: `.remedy-wt/f107-r20-1.block.md` and the saved copy are
-  byte-identical, as are the saved copy and `.agent/last_block.md`, and both
-  authored payloads were searched for as whole strings in the target and occur
-  exactly 1x each. `^Done:` is 13 and `^Landed:` 0. The round stopped at the
-  review-zip build, which published a package and then rejected it, exit 1: the
-  worker recorded the raw error, refused to delete anything to make it pass and
-  refused to write a plan asserting a rebuild that had not happened. That
-  refusal is the correct behaviour and cost the round nothing but time. The
-  reviewer re-ran closure precondition 2 independently and got a DIFFERENT
-  result from the handback — six failures against five — which is registered as
-  R-0296 rather than rounded to the expected number. Precondition 3 re-confirmed
-  by the worker: integrity `passed: true`, 5 of 5 checks, untracked 0.
-  `LAST_REVIEWED_SHA` advances 65723390 -> ca8e36ab.
-- Reviewer gate on R21 (2026-08-12): PASS on the four commits it made; C5 and
-  C6 blocked. Range `ca8e36ab..56ee7dc1` = four commits over four `.agent/`
-  paths, 275/0, 219/186, 50/1 and 29/0. Both payload pairs verified verbatim in
-  their targets, the D3 anchor adjacency holds, `^<<<` is 0 across the four
-  state files. The round could not run because the block named a path outside
-  the repository and the permission layer denies every such path; the worker
-  proved it was the path rather than the command with a probe directory, then
-  declined both the override flag and a subagent detour. That is the second
-  consecutive worker to stop clean at a wall instead of routing around one, and
-  it is the behaviour these rules exist to produce. The defect is the
-  reviewer's and is registered as R-0297.
-  `LAST_REVIEWED_SHA` advances ca8e36ab -> 56ee7dc1.
-- Reviewer gate on R22 (2026-08-12): PASS, and the package exists. Range
-  `56ee7dc1..9aacd70d` = five commits over the six `.agent/` paths the Change
-  line names, 251/0, 149/173, 21/1, 35/0 and the C6 pair, each far under 500.
-  Transport primary and silent both ways. Payloads verbatim: PAIR_HDR_TO,
-  PAIR_LRF_TO and the D3a append each occur exactly 1x in their target,
-  `.agent/plan.md` equals PAYLOAD_PLAN byte for byte, and `^## DECISION F107
-  D3 ` is still 1 — the original decision was amended in the open, not
-  rewritten. The package was verified by this reviewer opening it rather than
-  by reading the handback: `sha256sum` returns
-  4497c8e1bdb54ac3a0c5069dffcb9184303ceaa85f6c075ba81c09a14927ff8d, matching
-  the worker's value; the archive holds 4096 members of which 0 match the
-  packager's own rejection regex, 0 match its local-path leak regex and 0 come
-  from `.remedy-wt/.cache`, which proves the D3a prune held; and the manifest's
-  committed_review_subject reads base 2e4142c3 with head b823dff9. All four
-  archived items survive under `.remedy-wt/.cache/f107-archive/` — nothing was
-  deleted to make a package build. Gate F's wording that the package head must
-  equal the round's final HEAD was the reviewer's error and the worker was right
-  to flag it: the closure protocol builds the zip before the final state commit
-  BY DESIGN, so the accepted HEAD is the manifest's head and this is exactly the
-  shape every prior closure has.
-  `LAST_REVIEWED_SHA` advances 56ee7dc1 -> 9aacd70d.
-<<<END PAIR_LRG_TO>>>
+1. C1 — `cp .remedy-wt/f111r1/BLOCK .agent/authored/f111-r1-1.md`, then
+   `cmp .remedy-wt/f111r1/BLOCK .agent/authored/f111-r1-1.md` (must be
+   silent, exit 0). Commit: chore(f111): save the R1 claim step block
+   verbatim   -> push
 
-PAIR_CLOSE is an APPEND at the END of the file: the TO's first line IS the
-FROM, the current last line of `.agent/live_review.md`.
-<<<BEGIN PAIR_CLOSE_FROM>>>
-signatures. Open findings 20 -> 19.
-<<<END PAIR_CLOSE_FROM>>>
-<<<BEGIN PAIR_CLOSE_TO>>>
-signatures. Open findings 20 -> 19.
+2. C2 — `cp .agent/authored/f111-r1-1.md .agent/last_block.md`, then
+   `cmp .agent/authored/f111-r1-1.md .agent/last_block.md` silent.
+   Commit: chore(f111): mirror the R1 block into last block   -> push
 
-## Closure verdict — F107 Context compiler v2 (2026-08-12)
+3. C3 — STATUS claim, REWRITE shape (SFROM and STO are disjoint single
+   lines). In docs/roadmap/STATUS.md replace the single line whose bytes
+   equal SFROM with the bytes of STO. Apply from the scratch files, not by
+   retyping. Proofs, all recorded: SFROM 0x and STO 1x in the file after the
+   edit, and `git show --numstat HEAD -- docs/roadmap/STATUS.md` reads `1 1`.
+   Gate in this same commit's tree: `python3 -m pytest tests/docs/ -q`
+   exit 0. Commit: chore(f111): claim F111 in the ledger   -> push
 
-PASS_WITH_RISKS. The DONE sentence is met and proved: a fixture task's context
-shrinks measurably against whole-files while the fake provider still reaches
-`staged_review_passed`, with the reported length pinned to the exact bytes the
-compiler produces so a run that bypassed compilation cannot pass by being
-smaller for an unrelated reason, and every candidate path is accounted for in
-`included` or in an omissions record naming one of five reasons.
+4. C4 — `cp .remedy-wt/f111r1/LR .agent/live_review.md`, then `cmp` silent.
+   This reset carries the 22 open F107 findings and sets Next free ID
+   R-0298. Commit: chore(f111): reset live review for F111   -> push
 
-Preconditions, each checked against the disk rather than a summary. (1) Every
-step has a PASS round; 35 findings registered, 13 resolved, 22 open, NONE above
-Medium, each carried below as a documented risk. (2) Full suite re-confirmed
-after the R16 integration gate: `5 failed, 16537 passed, 19 skipped` in the
-worker's run and `6 failed, 16536 passed, 19 skipped` in the reviewer's own
-re-run of the same head — both recorded, never collapsed, the difference being
-R-0296. (3) `integrity check` passes, 5 of 5, untracked 0. (4) Built State is
-current in the feature file. (5) Tree clean, branch pushed.
+5. C5 — `cp .remedy-wt/f111r1/PLAN .agent/plan.md`, then `cmp` silent.
+   Commit: chore(f111): rewrite the plan for F111   -> push
 
-Risks accepted, all Medium or Low: R-0286, the five pre-existing `[reviewer]`
-role-convention failures that predate this branch and fail identically on it;
-R-0296, a load-sensitive smoke test that passes alone and belongs to F252's
-flake paydown; R-0295, the packager publishing local scratch before rejecting
-its own package, whose one-line durable fix belongs to a follow-up that owns
-`scripts/make_review_zip.sh`; R-0290 and R-0297, two reviewer-side protocol
-defects whose fixes edit `docs/agents/` and so sit outside this feature's change
-set; R-0291's two Design deferrals, recorded as DECISION F107 D1; and fifteen
-older Low and Medium items carried from F103, F104, F105 and this feature's
-earlier rounds. No risk touches the DONE sentence, and none is a defect in the
-code this feature ships.
+6. C6 — `cp .remedy-wt/f111r1/CTX .agent/context.md`, then `cmp` silent.
+   Commit: chore(f111): rewrite the context for F111   -> push
 
-Evidence job f107-closure, verdict PASS_WITH_RISKS over 416 passing tests in
-four recorded runs. Package
-remedy-review-20260812-235227-READY_FOR_REVIEW.zip, SHA-256
-4497c8e1bdb54ac3a0c5069dffcb9184303ceaa85f6c075ba81c09a14927ff8d, accepted HEAD
-b823dff9b4711ec3cc3505b496589cd02e219fc4, verified open by the reviewer at 4096
-members with zero unsafe entries. This round's own gate has no entry above it
-by construction (§4.13): it lives in the handoff and the PR.
-<<<END PAIR_CLOSE_TO>>>
-Commit, then push:
-  chore(f107): record the R20 to R22 gates and the closure verdict
+7. C7 — rewrite .agent/handoff.md YOURSELF (your own text, not authored):
+   <=60 lines, containing feature+round (F111 R1), branch, a per-commit SHA
+   table (C1-C7; C7 marks itself self-referential), a changed-files table,
+   the real gate results from "Done when" below (command + real exit code +
+   the counted value, no verdict words), the open-findings count (22) with
+   next free ID R-0298, an item-status table over C1-C7 with every item
+   present exactly once, and next expected action: R2 = the repair-path
+   DECISION plus T001 hunk selection.
+   Commit: chore(f111): rewrite the handoff for R1   -> push
 
-C4 — THE CLOSURE COMMIT. STATUS, README, plan and handoff in ONE commit, and it
-is the LAST commit on this branch (Rule A4, R-0154). Four replacement pairs,
-each unique in its file.
+Done when (run each; record the command, its real exit code, and the counted
+value — never the word "green"):
+  a. sha256sum of each of the six scratch files equals the table above;
+     cmp BLOCK vs .agent/authored/f111-r1-1.md silent; cmp authored vs
+     .agent/last_block.md silent.
+  b. `grep -c -F -x -- '- [~] F111 — Diff-only repair' docs/roadmap/STATUS.md`
+     -> 1
+     `grep -c -F -x -- '- [ ] F111 — Diff-only repair' docs/roadmap/STATUS.md`
+     -> 0 (grep exit 1 IS the pass here)
+     `git show --numstat <C3> -- docs/roadmap/STATUS.md` -> `1 1`
+  c. cmp silent for each: live_review vs LR, plan vs PLAN, context vs CTX.
+  d. `grep -c '^## Steps' .agent/live_review.md` -> 1
+     `grep -c '^- R-0' .agent/live_review.md` -> 22
+     `grep -c '^<<<'` -> 0 on EACH of .agent/live_review.md, .agent/plan.md,
+     .agent/context.md, .agent/handoff.md, docs/roadmap/STATUS.md
+     (grep exit 1 is the pass; the authored file and last_block are NOT
+     counted — they legitimately carry the block's own text)
+     `wc -l < .agent/plan.md` -> 37 (cap 50)
+     `wc -l < .agent/context.md` -> 45
+  e. `python3 -m pytest tests/docs/ -q` -> exit 0 (run at C3, rerun at HEAD)
+  f. `python3 -m pytest tests/cli/test_golden_path.py -q` -> exit 0 (canary)
+  g. `git status --porcelain` -> empty output
+     `git rev-list --left-right --count origin/feature/f111-diff-only-repair...HEAD`
+     -> `0 0`
+  h. per-commit insertions from `git log --numstat`: report each; each must
+     be < 500. The single-file .agent state rewrites are exempt by AGENTS.md
+     DECISION F104 D1 but report their numbers anyway.
+Handback:    completion report in your final message (tables + the raw gate
+             results above) and .agent/handoff.md rewritten as C7. Do not
+             merge, do not open a PR, do not touch .agent/decisions.md or
+             .agent/candidates.md this round.
 
-PAIR_STATUS is a REWRITE. In `docs/roadmap/STATUS.md` replace the one line:
-<<<BEGIN PAIR_STATUS_FROM>>>
-- [~] F107 — Context compiler v2
-<<<END PAIR_STATUS_FROM>>>
-<<<BEGIN PAIR_STATUS_TO>>>
-- [x] F107 — Context compiler v2 (T001–T004 complete; accepted 2026-08-12 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f107-closure · package remedy-review-20260812-235227-READY_FOR_REVIEW.zip · SHA-256 4497c8e1bdb54ac3a0c5069dffcb9184303ceaa85f6c075ba81c09a14927ff8d · accepted HEAD b823dff9b4711ec3cc3505b496589cd02e219fc4)
-<<<END PAIR_STATUS_TO>>>
+<<<BEGIN SLICE SFROM sha256=6c498f9cda12cfb5ba8f4665570575d9e9f7d9cbc49b55df406056b7933ca307 lines=1>>>
+- [ ] F111 — Diff-only repair
+<<<END SLICE SFROM>>>
 
-PAIR_RM1 is a REWRITE. In `README.md` replace the one line:
-<<<BEGIN PAIR_RM1_FROM>>>
-42 of 255 registered items accepted. Next: F107 (Context compiler v2).
-<<<END PAIR_RM1_FROM>>>
-<<<BEGIN PAIR_RM1_TO>>>
-43 of 255 registered items accepted. Next: F111 (Diff-only repair).
-<<<END PAIR_RM1_TO>>>
+<<<BEGIN SLICE STO sha256=ee7930206fc3754b459dfdbd02116aea300e61598604e0946e5aa26ae63e6fc2 lines=1>>>
+- [~] F111 — Diff-only repair
+<<<END SLICE STO>>>
 
-PAIR_RM2 is a REWRITE. In `README.md` replace the one line:
-<<<BEGIN PAIR_RM2_FROM>>>
-| 2 | Minimal Self-Build Runtime | 4 | 14 |
-<<<END PAIR_RM2_FROM>>>
-<<<BEGIN PAIR_RM2_TO>>>
-| 2 | Minimal Self-Build Runtime | 5 | 14 |
-<<<END PAIR_RM2_TO>>>
+<<<BEGIN SLICE LR sha256=1e9458ff50519853258df7789fd48d5a93e2351e98e089c0e11c901bf10fde18 lines=111>>>
+# Live Review — F111 Diff-only repair
 
-PAIR_RM3 is a REWRITE. In `README.md` replace the one line:
-<<<BEGIN PAIR_RM3_FROM>>>
-F105 cache-optimal prompt ordering.
-<<<END PAIR_RM3_FROM>>>
-<<<BEGIN PAIR_RM3_TO>>>
-F105 cache-optimal prompt ordering, F107 context compiler v2.
-<<<END PAIR_RM3_TO>>>
+> Reviewer: the main session of a one-session self-drive build
+> (docs/agents/self_drive_protocol.md). Worker: one delegated subagent per
+> round. Findings are authored here by the reviewer only. A worker marks a
+> landed fix `Landed: R-XXXX`; only reviewer-authored `Done:` text sets
+> Resolved (docs/agents/planner_reviewer_prompt.md §4.4).
+> Branch: feature/f111-diff-only-repair. Next free ID: R-0298.
 
-Then replace `.agent/plan.md` ENTIRELY with:
-<<<BEGIN PAYLOAD_PLAN>>>
-# Plan — F107 Context compiler v2 — CLOSED
+## Findings
 
-Branch: feature/f107-context-compiler-v2, cut from main at 2e4142c3.
-Next free finding ID: R-0298. Last reviewed SHA 9aacd70d (R22 PASS).
+Twenty-two findings carry forward from F107, all OPEN, none above Medium,
+each accepted as a risk at the F107 closure. Every entry below is compacted
+to its substance; the full text of all of them lives in
+`.agent/live_review.md` at commit 3c017c4e, merged to main as 4e0b762e,
+which is the archive of record.
+
+- R-0221 (Low, from F103 via F104 and F105):
+  `TestAutoBuildBehavior::test_auto_build_runs_by_default` in
+  `tests/ui_server/test_dashboard_contract.py` runs a real `npm install` and
+  `npm run build` mid-suite, refreshing `apps/ui/dist` mtimes and costing
+  every integration gate phantom base-only failures through
+  `_frontend_is_stale()`. Routed to the F252 flake class. OPEN.
+- R-0239 (Low, from F105): a reviewer-authored gate citation named a path
+  that does not exist. The worker ran the real path and declared the
+  correction, so nothing was skipped; kept as the citation-accuracy record.
+  OPEN.
+- R-0247 (Low, from F105): a reviewer-authored finding cited a line count of
+  101 where the file was 100. Same class as R-0239. OPEN.
+- R-0262 (Low, from F105): `plan_job_llm` composes its prompt OUTSIDE the
+  `try` that turns a provider failure into a renderable result, so a raising
+  composer escapes the function. OPEN.
+- R-0265 (Medium, from F105): a provider that reports usage but no cache
+  field leaves a measured-looking `0` the token ledger cannot distinguish
+  from a real zero. The fix belongs to the actuals producer. OPEN.
+- R-0266 (Medium, from F105): the token ledger's `role` is a hardcoded
+  `builder` in production data, so a per-role split of production rows is one
+  bucket. Producer change. OPEN.
+- R-0268 (Low, from F105): a `.agent/STOP` file carries no provenance —
+  nothing distinguishes an operator stop from any other writer. Belongs to
+  the self-drive protocol. OPEN.
+- R-0270 (Medium, F107 R1): `scripts/make_review_zip.sh` sweeps the work tree
+  with `find` and never consults `.gitignore`, so the review zip packages the
+  gitignored scratch tree `.remedy-wt/` — 1091 of 3646 members at one
+  measured build, a prior feature's whole evidence bundle included. OPEN.
+- R-0272 (Low, F107 R5): a reviewer-authored contract named an
+  `ImportNeighbors.files` field that does not exist — the real neighbour
+  tuple is `resolved`. The worker implemented the correct one. OPEN.
+- R-0274 (Low, F107 R7): the R7 block contradicted itself about which commit
+  carries a `Landed:` line, and asked for a commit's own SHA inside that
+  commit. The worker applied the safe reading and disclosed both. OPEN.
+- R-0280 (Medium, F107 R10): the R10 block contradicted itself about which
+  commit carries two `docs/README.md` pairs; the losing reading would have
+  committed three commits on a RED docs suite. The worker took the safe one.
+  OPEN.
+- R-0282 (Low, F107 R11): the R11 block said "exactly these nine paths" over
+  a list of eight. Reviewer arithmetic, paid for with a declared deviation.
+  OPEN.
+- R-0284 (Low, F107 R11): two line citations in the R11 block were wrong.
+  Citation-accuracy class. OPEN.
+- R-0285 (Low, F107 R12): the R12 block's zero-gate on `^Landed:` made the
+  protocol's own marker unwritable in the one round that landed a fix. The
+  rule: such a zero-gate is safe only in a round that lands no fix. OPEN.
+- R-0286 (Medium, F107 R13 integration gate): the full suite is RED at the
+  merge base with five ids — every `[reviewer]` parametrization in
+  `tests/orchestration/test_role_conventions.py` — because
+  `docs/agents/reviewer_conventions.md` estimates 954 tokens against the
+  800-token cap declared in `packages/orchestration/role_conventions.py`, so
+  composing the segment raises `PromptSegmentError` before any assertion
+  runs. Pre-existing, not branch-introduced; expect the same five at this
+  feature's gate. OPEN.
+- R-0287 (Low, F107 R13): `docs/agents/planner_reviewer_prompt.md` §4.4
+  routes every severity decision to "the canonical scale in
+  review_protocol.md", but no `docs/agents/review_protocol.md` exists on
+  disk, so every severity here is assigned from precedent. OPEN.
+- R-0289 (Medium, F107 R16): the R16 block ordered its ONLY push at its last
+  commit; the session died after C4 and twelve commits sat on local disk
+  alone. Rule, forward-looking and applied throughout this feature: a round
+  pushes after EVERY commit. OPEN.
+- R-0290 (Medium, F107 R18): not one of the six Phase 0 probe commands in
+  `docs/agents/self_drive_protocol.md` can see a feature branch that is not
+  checked out, and a completed-but-unclosed feature has by design no open PR
+  — so Rule A5 can re-claim a feature already deep on a branch. Fix: Phase 0
+  gains a `feature/*` branch sweep and Phase 1 a pending-feature rule that
+  outranks A5. This session ran that sweep by hand before claiming F111.
+  OPEN.
+- R-0294 (Low, F107 R19): the R18 block was emitted without the §3
+  pre-emission checklist run on its final bytes — 407 lines against the cap
+  of 400, plus a self-counting zero-gate. Registered against the reviewer
+  role. OPEN.
+- R-0295 (Medium, F107 R21): `scripts/make_review_zip.sh:218-259` collects
+  with a hardcoded `find` prune list that predates the `.remedy-wt/` scratch
+  convention, and the post-publication scan at `:509` then rejects the
+  package for the `/.data/` and `/.git/` components it just published —
+  closure blocked by construction, and a leak surface for any scratch holding
+  a `.env` or a log. The durable fix is one prune entry, owned by a
+  follow-up. OPEN.
+- R-0296 (Low, F107 R21, flake class):
+  `tests/orchestration/test_product_smoke.py::test_no_zombie_processes_after_every_outcome`
+  is load-sensitive and fails intermittently under `-n auto`; two runs of the
+  same head disagreed. Routed to F252. OPEN.
+- R-0297 (Low, F107 R22): the R21 block made a filesystem path OUTSIDE the
+  repository load-bearing without probing it first — every path outside
+  `/home/decodeux/Repos/remedy` is denied by this environment — and the round
+  lost its second half. The filesystem twin of §3 checklist item 5. OPEN.
+
+## Steps
+R1 claim, state reset and carry-forward · R2 the repair-path DECISION plus
+T001 hunk selection · T002 response schema, fence pre-check and
+apply-with-conflict fallback · T003 wiring, mode and token evidence ·
+integration gate · closure.
+<<<END SLICE LR>>>
+
+<<<BEGIN SLICE PLAN sha256=b2bf03236f9a1b5e93c230c49120363d41ca8d44ab93ea587e58f351ae86a030 lines=37>>>
+# Plan — F111 Diff-only repair
+
+Branch: feature/f111-diff-only-repair, cut from main at 4e0b762e.
+Next free finding ID: R-0298. Last reviewed SHA: none yet (R1 in flight).
 
 ## Goal
-The context compiler selects fenced-path files, their direct import neighbors,
-and only SIGNATURES of distant dependencies, under a total context token budget
-with tier demotion — and writes an omissions record naming everything it left
-out and why. DONE, and closed at PASS_WITH_RISKS: the fixture task's context
-shrinks measurably against whole-files, the fake provider still solves it, and
-the omissions record explains every exclusion
-(docs/roadmap/features/T2_F107.md).
+Repairs stop resending whole files: a repair round carries only the
+failure-relevant hunks with a configurable context margin, the model answers
+with a schema-enforced unified diff that is fence-checked and applied
+strictly, and ANY hunk conflict discards the attempt whole and falls back to
+today's full-file round with the reason recorded
+(docs/roadmap/features/T2_F111.md).
 
 ## Current Step
-R23 — closure. The R20, R21 and R22 gates and the closure verdict are recorded,
-`docs/roadmap/STATUS.md` carries the `[x]` line with the README capability sync
-in the same commit, and the PR is open. 22 findings remain open, none above
-Medium, each named as an accepted risk in the closure verdict.
+R1 — claim F111, reset the session state files, and carry the 22 open F107
+findings forward. No production code this round: which repair path owns the
+response-side diff channel is not yet settled, and R2 opens with that
+DECISION rather than guessing.
 
 ## Next Steps
-1. The PR is NOT merged by this session. It merges at the next feature's start
-   via the AGENTS.md Open PR Gate — that gap is the operator's manual-review
-   window, and the operator may merge manually at any time instead.
-2. The next session claims the next feature under Rule A5: F111 Diff-only
-   repair, the first `[ ]` line of docs/roadmap/STATUS.md.
-3. Owed follow-ups, all registered: R-0295 the packager prune, R-0296 the flake
-   routed to F252, R-0290 and R-0297 the two self-drive protocol gaps.
-<<<END PAYLOAD_PLAN>>>
+1. R2 — the repair-path DECISION, its feature-file amendment, and T001: the
+   hunk selection helper plus unit tests.
+2. T002 — response schema, fence pre-check, strict apply with conflict
+   fallback.
+3. T003 — wiring into repair rounds, mode and token evidence, a fixture
+   comparison recording both modes' token counts.
+4. Integration gate, then closure.
 
-Then rewrite `.agent/handoff.md` (you author it) with feature, round, branch,
-the C1-C4 SHAs, a changed-files table, the C1-C5 item-status table, the REAL
-results of gates A-H, the closure values, the open-findings count and the PR
-number. The state block repeats the operator brief's Fortschritt line verbatim:
-  Fortschritt: 100 % (T001-T004 ✅ · Integration Gate ✅ · Built State ✅ · Evidence + Zip ✅ · STATUS [x] ✅ · PR offen, ungemergt) — Schätzung
-Commit all of C4 TOGETHER, then push:
-  docs(f107): close F107 in the status ledger and sync the readme
+## Risks
+- The ping-pong repair round's builder is an agentic CLI that edits staging
+  itself: `BuilderOutput` carries no patch field and `apply_structured_patch`
+  is never called from `pingpong_loop.py`. The prompt-side saving is
+  reachable there; the response-side diff channel is not. R2 settles this as
+  a recorded DECISION, never as a silent re-plan.
+- The full suite is RED at the merge base with five known ids (R-0286), so
+  the integration gate must compare base against branch, not read absolute
+  green.
+<<<END SLICE PLAN>>>
 
-C5 — the PR. Create it, do NOT merge it, do not mark it draft:
-  gh pr create --base main --head feature/f107-context-compiler-v2
-Title:
-  F107 Context compiler v2 — tiered selection, budget demotion, omissions record
-The description carries, per AGENTS.md and STATUS_closure_protocol.md step 5:
-what changed and why; the key decisions (F107 D1 the two Design deferrals, D2
-the fifth omission reason, D3 and D3a the scratch archive); how to review
-(the scoped suites and the canary, named with their commands); a changed-files
-table for `2e4142c3..HEAD`; the latest verdict PASS_WITH_RISKS with the risk
-list; the open-findings count 22 with none above Medium; and runtime actuals —
-23 rounds, evidence job f107-closure, package
-remedy-review-20260812-235227-READY_FOR_REVIEW.zip, wall clock and token cost
-`not-measured` for the rounds before this session rather than guessed. Record
-the PR number and URL. Then STOP: this session does not merge.
+<<<BEGIN SLICE CTX sha256=3994fc02270c2457cbf3981c083f5ded75e7b8b3ce48fc27f9c9acd704fdc9d8 lines=45>>>
+# Context — F111 Diff-only repair
 
-GATES — run every one, record the real output and the real exit code
-A transport: `cmp` scratch against `.agent/authored/f107-r23-1.md` (silent,
-  exit 0), its `wc -l` and `sha256sum`, and the C2 `cmp` (silent, exit 0).
-B block cap: the gate-A line count against the cap of 400.
-C pairs after C3, in `.agent/live_review.md`: `Reviewer gate on R20`,
-  `Reviewer gate on R21`, `Reviewer gate on R22` and `^## Closure verdict` are
-  each 1; `^Done:` is still 13; `^Landed:` is 0; `^> Branch:.*Next free ID:
-  R-0298` is 1. Both pairs are APPEND-shaped: each FROM stays exactly 1x and
-  every non-blank TO-ONLY line occurs exactly 1x among the lines C3's own diff
-  adds. Report `git show --numstat <C3> -- .agent/live_review.md` and the count
-  of added lines in no TO body (must be 0).
-D closure commit: `grep -c -F -- '- [x] F107 —' docs/roadmap/STATUS.md` is 1
-  and `- [~] F107` is 0; `grep -c '^43 of 255 registered items accepted'
-  README.md` is 1 and the `42 of 255` line is 0; the tier-2 row reads `| 5 |`;
-  `grep -c -F 'F107 context compiler v2.' README.md` is 1. Prove STATUS and
-  README moved in the SAME commit: `git show --name-only <C4>` lists both.
-E ledger pins, the docs-round gate (this round touches docs/roadmap/**):
-  `python3 -m pytest tests/docs/ -q` — exit code and pass count. The README
-  accepted-count pin and the STATUS cross-check live here, so a mismatch
-  between the two files turns this red.
-F canary: `python3 -m pytest tests/cli/test_golden_path.py -q`.
-G marker leak: `grep -c '^<<<'` is 0 in `.agent/live_review.md`,
-  `.agent/plan.md`, `.agent/handoff.md`, `docs/roadmap/STATUS.md` and
-  `README.md`.
-H tree, push, scope and PR: `git status --porcelain` empty, `git worktree list`
-  the primary checkout alone, `git rev-list --left-right --count
-  origin/feature/f107-context-compiler-v2...HEAD` is `0 0` after the last push,
-  `git diff --name-only 9aacd70d..HEAD` lists exactly the seven paths the
-  Change line names, insertions per commit each under 500, and `gh pr list
-  --state open` now returns EXACTLY ONE PR — this one, not a draft, from
-  `feature/f107-context-compiler-v2` into `main`. Report its number and URL.
-── END OF BLOCK ─────────────
+## Active Branch
+feature/f111-diff-only-repair, cut from main at 4e0b762e after PR #193 was
+merged at the Open PR Gate. F111 is claimed `[~]` under Rule A5 as the first
+`[ ]` line of docs/roadmap/STATUS.md (Package 1 Self-Use, Tier 2).
+
+## Scope
+In: what a repair round SENDS and ACCEPTS — a hunk selection helper
+(line-range slicing with a configurable context margin), a versioned
+unified-diff response schema, a fence pre-check before any apply, strict
+apply with an all-or-nothing conflict fallback to the full-file round, and
+per-round mode and token evidence. Tests under
+tests/orchestration/test_diff_repair.py.
+
+Out, per the feature file's Do-not-touch: repair round counts and policy,
+applicator semantics, and session resume. No fuzzy diff application — v1
+requires exact context matches, and no implementation may shell out to
+`patch` or `git apply` with fuzz enabled. Deletions stay on the full-file
+path in v1; new-file creation inside a diff is allowed if the path passes
+fences.
+
+## Constraints
+- SPLIT rounds are mandatory: this feature touches packages/, and production
+  code never merges self-certified
+  (docs/agents/planner_reviewer_prompt.md §3).
+- The main session writes nothing in the work tree; a delegated worker
+  subagent makes every commit (docs/agents/self_drive_protocol.md).
+- Merges only at the Open PR Gate; never force-push; never touch main.
+- A round pushes after EVERY commit, not once at its last step (R-0289).
+- Verification is pytest, scoped per round, plus the canary
+  tests/cli/test_golden_path.py. A round touching docs/roadmap/ also runs
+  tests/docs/. The full suite runs only at the integration gate, with
+  `-n auto`. Destructive and mutation checks run only inside a disposable
+  git worktree, so resource safety stays intact and no background pytest
+  process is ever left running.
+- Build on what exists, do not duplicate it: `review_scope._parse_diff`
+  already parses a unified diff into per-file new-file line ranges, and
+  `source_apply._apply_hunks` is already a strict, non-fuzzy hunk applier
+  that returns None on any context mismatch.
+
+## Steps
+R1 claim and state reset → R2 repair-path DECISION plus T001 hunk selection →
+T002 response schema, fence pre-check and apply fallback → T003 wiring, mode
+and token evidence → integration gate → closure.
+<<<END SLICE CTX>>>
