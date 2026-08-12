@@ -212,7 +212,7 @@ held. Two Low findings registered below; neither blocks the round.
   reading and declared it in the handback. Fix ordered in R3: a distinct
   `out_of_bounds` reason with its own test. OPEN.
 
-Landed: R-0299 — a range naming lines the file does not have is now omitted as `out_of_bounds` instead of `no_ranges`, with three new tests; commit "feat(f111): report out of bounds ranges distinctly".
+Done: R-0299 — the `out_of_bounds` reason ships and is pinned. Verified at the R3 gate above: `_expand_and_merge_ranges` is unchanged, the discrimination happens at the call site, and the reviewer's own mutation red-proof in a disposable worktree turned exactly the two `TestOutOfBounds` tests red when the reason was reverted to a bare `no_ranges`. RESOLVED.
 
 ### R3 — PASS (2026-08-13)
 Reviewed by the main session over 1bf62e2f..4717ce8c. Re-run by the reviewer,
