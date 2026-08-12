@@ -166,6 +166,10 @@ end the response with:
   Handback:    completion report + rewrite .agent/handoff.md
   ──────────────────────────────────────────────────────────────
 
+  The handoff's state block repeats the operator brief's Fortschritt line
+  verbatim (estimate label included), so the current progress estimate
+  always exists on disk, not only in the chat brief.
+
 - **Pre-emission block checklist (DECISION F105 D8, finding R-0250).** Run all
   six checks mechanically, on the FINAL bytes, after the last edit, before any
   block leaves the reviewer. Each one has already cost this repository a round.
