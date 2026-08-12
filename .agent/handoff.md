@@ -2,7 +2,7 @@
 
 Branch: feature/f105-cache-optimal-prompt-ordering. Base 9c80cf59.
 Commits: abab5427 (C1), 381b51c9 (C2), 7623d625 (C3), a8b6f66e (C4),
-4064a6ed (C5), HEAD (C6).
+4064a6ed (C5), 06868be1 (C6), HEAD (C6b, the gate-J fill-in).
 No production code under `packages/` or `apps/` and no test module was edited:
 a gate that repairs what it measures is not a gate. No PR was created, nothing
 was merged, `main` was not touched, no force-push.
@@ -88,7 +88,7 @@ to be real directories.
 | H | canary, pytest tests/cli/test_golden_path.py -q | 0 | 42 passed in 19.51s |
 | I | git worktree list / git branch --list 'tmp/\*' | 0 | primary ALONE; tmp branch list EMPTY |
 | I | git status --porcelain | 0 | empty |
-| J | insertions per commit | 0 | 209, 181, 69, 15, 268 — all < 500 |
+| J | insertions per commit | 0 | 209, 181, 69, 15, 268, 149 (C6) — all < 500 |
 | J | git diff --name-only 9c80cf59..HEAD | 0 | exactly the 15 paths named by the block |
 
 Gate E note: `grep -c` exits 1 when the pattern is absent, and absence IS the
@@ -137,14 +137,20 @@ verdict — step 5 of the procedure reserves that verdict for the reviewer, so
 this handoff records what was measured and claims no verdict. Then closure per
 `docs/roadmap/STATUS_closure_protocol.md`, with PR #189 resolved first.
 
-Deviations, declared: ONE, and it is a naming limit rather than a scope change.
-C4's mandated `Landed:` line must name "which commit", but it is committed
+Deviations, declared: TWO, both self-reference limits rather than scope changes.
+(1) C4's mandated `Landed:` line must name "which commit", but it is committed
 TOGETHER with the doc change, so the SHA cannot exist when the line is written.
 Rather than add a second commit or leave a placeholder, the line names "this
-round C4 commit"; C4 is a8b6f66e per the table above. Nothing else deviates:
-the diff touches exactly the paths the block named, and no gate outcome changes.
+round C4 commit"; C4 is a8b6f66e per the table above.
+(2) Gate J's "insertions per commit" row cannot carry C6's own count until C6
+exists, so a tiny follow-up commit C6b fills that one number in — the R47 C3b
+shape the reviewer accepted then, chosen over a placeholder in an evidence
+table. C6b touches only `.agent/handoff.md`, a path the block already names,
+and its whole diff is that number plus this declaration — 14 insertions.
+Nothing else deviates: the diff touches exactly the paths the block named, and
+no gate outcome changes.
 
-Deviations, declared (DECISION D15): this handoff is 154 lines against the
+Deviations, declared (DECISION D15): this handoff is 160 lines against the
 60-line cap. The cause is mandated content only — the 16-row gate table with
 its real exit codes, the changed-files table, the item-status table, the
 transport proof, and above all the block's explicit requirement that this file
