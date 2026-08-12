@@ -15,8 +15,10 @@ from __future__ import annotations
 from packages.orchestration.diff_repair import (
     RepairHunk,
     RepairHunkSelection,
+    changed_line_ranges_from_patch,
     select_repair_hunks,
 )
+from packages.orchestration.structured_patch import FileOp, StructuredPatch, UnifiedDiff
 
 
 def _write(tmp_path, name: str, line_count: int) -> list[str]:
@@ -280,3 +282,123 @@ class TestHunkText:
         assert isinstance(result, RepairHunkSelection)
         assert isinstance(result.hunks[0], RepairHunk)
         assert isinstance(result.hunks, tuple)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# R-0300 — a range against a file with no lines at all
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class TestEmptyFileRanges:
+    """A zero-line file has no line the range could name, so it is stale too."""
+
+    def test_empty_file_with_a_non_empty_range_is_out_of_bounds(self, tmp_path):
+        (tmp_path / "empty.txt").write_text("", encoding="utf-8")
+        result = select_repair_hunks(tmp_path, {"empty.txt": [[1, 1]]})
+        assert result.omitted == (("empty.txt", "out_of_bounds"),)
+        assert result.hunks == ()
+        assert result.total_chars == 0
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# The range source — a builder patch becomes the ranges selection consumes
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+_ONE_HUNK_DIFF = """--- a/a.py
++++ b/a.py
+@@ -1,3 +1,4 @@
+ one
++two
+ three
+"""
+
+_TWO_HUNK_DIFF = """--- a/a.py
++++ b/a.py
+@@ -1,2 +1,2 @@
+ one
+-two
++TWO
+@@ -20,3 +20,4 @@
+ twenty
++extra
+"""
+
+
+class TestChangedLineRangesFromPatch:
+    """Ranges come from the applied patch, never from a timeline event."""
+
+    def test_one_hunk_yields_its_new_file_span(self):
+        patch = StructuredPatch(
+            intent_kind="unified_diff",
+            unified_diffs=(UnifiedDiff(path="a.py", diff=_ONE_HUNK_DIFF),),
+        )
+        assert changed_line_ranges_from_patch(patch) == {"a.py": [[1, 4]]}
+
+    def test_two_hunks_yield_two_spans_in_order(self):
+        patch = StructuredPatch(
+            intent_kind="unified_diff",
+            unified_diffs=(UnifiedDiff(path="a.py", diff=_TWO_HUNK_DIFF),),
+        )
+        assert changed_line_ranges_from_patch(patch) == {"a.py": [[1, 2], [20, 23]]}
+
+    def test_two_diffs_yield_both_paths(self):
+        patch = StructuredPatch(
+            intent_kind="unified_diff",
+            unified_diffs=(
+                UnifiedDiff(path="a.py", diff=_ONE_HUNK_DIFF),
+                UnifiedDiff(
+                    path="b.py",
+                    diff=_ONE_HUNK_DIFF.replace("a/a.py", "a/b.py").replace(
+                        "b/a.py", "b/b.py"
+                    ),
+                ),
+            ),
+        )
+        assert changed_line_ranges_from_patch(patch) == {
+            "a.py": [[1, 4]],
+            "b.py": [[1, 4]],
+        }
+
+    def test_declared_path_without_a_hunk_header_survives_as_empty(self):
+        patch = StructuredPatch(
+            intent_kind="unified_diff",
+            unified_diffs=(UnifiedDiff(path="lonely.py", diff=""),),
+        )
+        assert changed_line_ranges_from_patch(patch) == {"lonely.py": []}
+
+    def test_file_ops_paths_carry_no_lines(self):
+        patch = StructuredPatch(
+            intent_kind="file_ops",
+            file_ops=(
+                FileOp(path="new.py", action="create", content="x\n"),
+                FileOp(path="old.py", action="delete"),
+            ),
+        )
+        assert changed_line_ranges_from_patch(patch) == {"new.py": [], "old.py": []}
+
+    def test_markdown_patch_yields_nothing(self):
+        patch = StructuredPatch(intent_kind="markdown", markdown_proposal="prose")
+        assert changed_line_ranges_from_patch(patch) == {}
+
+    def test_ranges_feed_selection_end_to_end(self, tmp_path):
+        lines = _write(tmp_path, "a.txt", 20)
+        diff = "--- a/a.txt\n+++ b/a.txt\n@@ -5,3 +5,3 @@\n line005\n-line006\n+x\n line007\n"
+        patch = StructuredPatch(
+            intent_kind="unified_diff",
+            unified_diffs=(UnifiedDiff(path="a.txt", diff=diff),),
+        )
+        ranges = changed_line_ranges_from_patch(patch)
+        result = select_repair_hunks(tmp_path, ranges, margin_lines=0)
+        assert (result.hunks[0].start_line, result.hunks[0].end_line) == (5, 7)
+        assert result.hunks[0].text == "\n".join(lines[4:7])
+
+    def test_a_file_ops_path_is_reported_as_no_ranges_by_selection(self, tmp_path):
+        _write(tmp_path, "a.txt", 5)
+        patch = StructuredPatch(
+            intent_kind="file_ops",
+            file_ops=(FileOp(path="a.txt", action="modify", content="x\n"),),
+        )
+        result = select_repair_hunks(tmp_path, changed_line_ranges_from_patch(patch))
+        assert result.hunks == ()
+        assert result.omitted == (("a.txt", "no_ranges"),)

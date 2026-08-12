@@ -125,6 +125,17 @@ def _parse_diff(diff_text: str) -> dict[str, dict[str, Any]]:
     return files
 
 
+# The public seam repair-hunk selection reads: the ranges, without the risk analysis.
+def parse_diff_line_ranges(diff_text: str) -> dict[str, list[list[int]]]:
+    """Return ``{path: [[start, end], ...]}`` in NEW-file line numbers.
+
+    The single shared reading of unified-diff hunk headers: ``diff_repair``
+    consumes exactly this shape, so no second module in this repository
+    grows a hunk-header parser of its own.
+    """
+    return {path: info["ranges"] for path, info in _parse_diff(diff_text).items()}
+
+
 def _detect_symbols(added_lines: list[str]) -> list[str]:
     """Detect defined symbols by matching anchored patterns on stripped lines.
 

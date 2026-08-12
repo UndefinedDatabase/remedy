@@ -17,6 +17,7 @@ Public API::
     select_repair_hunks(repo_root, changed_line_ranges, *,
                         margin_lines=3, max_total_chars=20000)
         -> RepairHunkSelection
+    changed_line_ranges_from_patch(patch) -> {path: [[start, end], ...]}
 
 Omission reasons reported in ``RepairHunkSelection.omitted`` are
 ``missing``, ``binary``, ``no_ranges``, ``out_of_bounds`` and ``budget``.
@@ -31,6 +32,9 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
+
+from packages.orchestration.review_scope import parse_diff_line_ranges
+from packages.orchestration.structured_patch import StructuredPatch
 
 
 # One contiguous block of source a repair prompt carries verbatim.
@@ -169,3 +173,30 @@ def select_repair_hunks(
         omitted=tuple(omitted),
         total_chars=total_chars,
     )
+
+
+# The bridge holds the patch it applied; this turns it into what selection consumes.
+def changed_line_ranges_from_patch(patch: StructuredPatch) -> dict[str, list[list[int]]]:
+    """Map an applied builder patch to the ranges ``select_repair_hunks`` takes.
+
+    Only ``unified_diffs`` carry line numbers, and they are read through
+    ``review_scope.parse_diff_line_ranges`` so hunk headers keep exactly one
+    reading in this repository. A declared path whose diff text yields no
+    hunk header still appears, with an EMPTY range list, and so does every
+    ``file_ops`` path: an empty list comes back from ``select_repair_hunks``
+    as ``no_ranges``, which a reader can see, whereas dropping the path
+    would leave nothing to see. Remedy deliberately does not reconstruct
+    ranges by re-diffing ``file_ops`` content against disk in v1 — that
+    would be a second differ, and the full-file repair path already covers
+    the case.
+    """
+    ranges: dict[str, list[list[int]]] = {}
+    for entry in patch.unified_diffs:
+        parsed = parse_diff_line_ranges(entry.diff)
+        for path, spans in parsed.items():
+            ranges.setdefault(path, []).extend(spans)
+        if entry.path and entry.path not in parsed:
+            ranges.setdefault(entry.path, [])
+    for file_op in patch.file_ops:
+        ranges.setdefault(file_op.path, [])
+    return ranges
