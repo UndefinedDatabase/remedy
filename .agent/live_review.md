@@ -75,3 +75,22 @@ extractors + size caps + goldens → T003 tiered selector + budget demotion +
 omissions writer → T004 segment integration + `remedy job context` CLI view +
 end-to-end fixture task → integration gate → closure per
 docs/roadmap/STATUS_closure_protocol.md.
+
+- Reviewer gate on R1 (2026-08-12): PASS. Range 2e4142c3..d2b962af = eight
+  commits touching exactly the eight paths the R1 block named — no production
+  code, no test module, no docs beyond the one STATUS.md line. Transport by
+  the primary shape: `cmp` of every applied state file against the reviewer's
+  surviving `.remedy-wt/` originals silent; the block original, the committed
+  `.agent/authored/f107-r1-1.md` and `.agent/last_block.md` byte-identical at
+  274 lines. The claim commit's numstat for STATUS.md reads `1 1`, the TO line
+  counts 1x and the FROM 0x after the edit. Every scoped gate was RE-RUN by
+  the reviewer instead of read from the handback: `python3 -m pytest
+  tests/docs/ -q` returns 294 passed, the canary
+  `python3 -m pytest tests/cli/test_golden_path.py -q` returns 42 passed,
+  `grep -c '^## Steps'` is 1 and `grep -c '^<<<'` is 0 across the five state
+  files, `.agent/plan.md` is 29 lines, `git status --porcelain` is empty,
+  `git worktree list` shows the primary checkout alone, and HEAD equals
+  `origin/feature/f107-context-compiler-v2`. Insertions per commit 274, 265,
+  1, 62, 2, 22, 30, 53 — each under 500. R-0270 is registered and
+  `.agent/candidates.md` is empty, so the feature-claim block condition is
+  discharged. `LAST_REVIEWED_SHA` advances 2e4142c3 -> d2b962af.
