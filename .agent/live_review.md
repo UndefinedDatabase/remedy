@@ -5,7 +5,7 @@
 > round. Findings are authored here by the reviewer only. A worker marks a
 > landed fix `Landed: R-XXXX`; only reviewer-authored `Done:` text sets
 > Resolved (docs/agents/planner_reviewer_prompt.md §4.4).
-> Branch: feature/f105-cache-optimal-prompt-ordering. Next free ID: R-0269.
+> Branch: feature/f105-cache-optimal-prompt-ordering. Next free ID: R-0270.
 
 ## Findings
 
@@ -2482,3 +2482,71 @@
   provider-side cache-read share stays UNMEASURED and the note says so: no
   `ledger.sqlite` exists anywhere in this checkout, so there are no actuals to
   read and any number there would be invented.
+- R-0269 (Low, F105 R48, registered at R49): the note
+  `docs/system/cache-optimal-prompt-ordering-v1.md` states correctly that the
+  measurement module's only numeric assertion is the directional
+  `after_prefix >= before_prefix`, but it does not state what that guard cannot
+  catch — and the reviewer's R48 probe measured exactly that. With every
+  segment forced to a single rank, five of the six roles do not move at all,
+  because their registration order already equals rank order, and `plan`
+  collapses from 1463 to 227, which is precisely its own `before_prefix`, so
+  the assertion still passes on a prompt whose ordering advantage has been
+  destroyed. The module is NOT vacuous: reversing the sort key fails five of
+  six roles, `orchestrator` at `after_prefix 37 < before_prefix 3872`. The
+  point is narrower and worth durable words — the module is a REGRESSION guard
+  on the ordering's VALUE, not a proof that the registry SORTS, and what proves
+  the sort is the T003 goldens' rank assertions. That distinction currently
+  lives only in `.agent/handoff.md`, which is rewritten every round, while the
+  note is the durable home for it. OPEN.
+- Reviewer gate on R48 (2026-08-12): PASS. Range `5e55669d..9c80cf59` = seven
+  commits, exactly the nine paths the block named, and no production code under
+  `packages/` or `apps/` among them. Insertions per commit 191, 172, 38, 322,
+  177, 43 and 131, each far under 500.
+  Transport by the PRIMARY shape: `.remedy-wt/f105-r48-1.block.md`, the
+  committed `.agent/authored/f105-r48-1.md` and `.agent/last_block.md` all
+  three hash to
+  `c6c7d4549d10470888aa7806f92790038060b735a60cff2ea48b97c00ecb4fae`
+  at 191 lines; both `cmp` runs silent.
+  Stray reconcile over C3: 38 added, 0 removed, 0 stray. PAIR_LR measured
+  CONTAINS-FROM exactly as declared, FROM 1x before and 1x after; the ID line
+  correctly did NOT move, because R48 registered nothing.
+  Gates re-run by THIS reviewer, none taken from the handback:
+  `python3 -m pytest tests/docs/ -q` `294 passed in 0.30s`;
+  `test_prompt_cache_prefix.py` `16 passed in 0.20s`; the goldens, segments and
+  conventions selection `109 passed, 10431 deselected in 2.53s`; the canary
+  `42 passed in 21.57s`; one `^## Steps` heading; `^<<<` 0 in every written
+  file; `git worktree list` primary ALONE and `git status --porcelain` empty.
+  The numbers were not accepted on the module's word. The reviewer ran
+  `python3 -m tests.orchestration.test_prompt_cache_prefix` and reproduced the
+  note's six rows character for character, then checked the note's riskiest
+  claims against the CODE rather than the report: the quoted `remedy stats
+  cache` output is REAL (reproduced through `python3 -m apps.cli.grouped`,
+  since `remedy` on PATH is sandbox-blocked here), `--json` really returns
+  `"cache_read_share": null` with `"share_basis": "unmeasured"` and a
+  `role_limit` line, `UNMEASURED` and `UNDEFINED_SHARE` both exist in
+  `stats_ledger_cmd.py`, and `SegmentStabilityRank` really is the 0-5 scale the
+  note documents. Nothing in the note is asserted that the code does not say.
+  The measurement module earns its place: it reads every pre-migration form
+  from the T003 goldens instead of retyping one, and carries three faithfulness
+  guards plus a non-vacuity guard, which is what makes its numbers evidence
+  rather than output.
+  GATE J, re-run by the reviewer in a disposable worktree and then removed and
+  pruned: the worker's report is TRUE and reproducible in both halves. The
+  mutation this reviewer ORDERED — every segment forced to one rank — leaves
+  the module at `16 passed`, for the measured reason recorded in R-0269. The
+  worker's stronger second mutation, reversing the sort key, gives
+  `5 failed, 11 passed`. Ordering the colour as a PROBE rather than as an
+  expected result is exactly what §3 checklist item 5 exists for, and the probe
+  did its job: it bought a true statement about what the guard proves instead
+  of a false one. That the worker ran the second mutation unprompted, and
+  reported the first as green rather than quietly reaching for a mutation that
+  would look better, is why this round is trusted.
+  One inaccuracy, noted and NOT a finding: the handoff justifies C7's size by
+  DECISION F104 D1's single-file exemption, but C7 touches two `.agent/**`
+  files, so that exemption does not apply. It does not need to — C7 inserts 131
+  lines against a cap of 500.
+  `LAST_REVIEWED_SHA` advances 5e55669d -> 9c80cf59.
+- R49: SPLIT round — register R-0269 and fix it in the note, then run the
+  feature's integration gate per docs/agents/integration_gate.md. R-0221 is
+  known and will attribute phantom base-only failures through the UI auto-build
+  mechanism; that is expected, not new.
