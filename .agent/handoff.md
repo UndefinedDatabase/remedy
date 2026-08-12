@@ -1,8 +1,8 @@
 # Handoff — F111 R3 — R2 gate persisted, R-0299 fixed
 
-Branch feature/f111-diff-only-repair, cut from main at 4e0b762e, round base
-5d8d8c56. No PR, no merge, main untouched; pushed after every commit (R-0289).
-Findings 24 open, next free ID R-0300 — this round registers none and lands one.
+Branch feature/f111-diff-only-repair, round base 5d8d8c56, from main 4e0b762e.
+No PR, no merge, main untouched, pushed after every commit (R-0289). Findings
+24 open, next free ID R-0300 — none registered this round, one landed.
 
 ## Commits (insertions from `git log --shortstat`; each < 500)
 | Item | SHA | Path | Ins |
@@ -41,7 +41,7 @@ f. `python3 -m pytest tests/orchestration/test_test_runner.py -q -k 'plan_md or
    context_md'` -> exit 0, 3 passed, 48 deselected
 g. mutation red-proof runs AFTER this commit in disposable worktree .remedy-wt/r3mut
    only; exit code, failing test id, worktree list, clean-tree recheck: in handback
-h. `git rev-list --left-right --count origin/<branch>...HEAD` -> in handback after
+h. `git rev-list --left-right --count origin/<branch>...HEAD` -> in handback, after
    this commit is pushed; insertions 225/182/51/47/2/20, each below the 500 cap
 
 ## Item status
@@ -54,9 +54,8 @@ h. `git rev-list --left-right --count origin/<branch>...HEAD` -> in handback aft
 | C5 | done | |
 | C6 | done | |
 | C7 | done | |
-Deviations, declared: none. C4 carries one test beyond the three ordered
-(`test_out_of_bounds_path_does_not_block_present_one`), mirroring the existing
-missing-path pair; no ordered test was dropped or weakened.
+Deviations, declared: C4 adds one test beyond the three ordered, none weakened;
+this file needed a second commit to come back under its own 60-line cap.
 
 ## Next expected action
 R4 — settle where the hunk line ranges come from, then wire them in.
