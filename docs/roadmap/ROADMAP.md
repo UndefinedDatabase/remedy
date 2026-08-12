@@ -4,6 +4,7 @@
 > **Replaces:** ROADMAP.md v3.0 (F001–F150, German) and ROADMAP_151_250.md v1.0 (F151–F250, German).
 > **Location in repo:** `docs/roadmap/ROADMAP.md` · **Execution state:** `docs/roadmap/STATUS.md`
 > **Feature detail files:** `docs/roadmap/features/T{tier}_F{nnn}.md` (one per feature)
+> **Amendment 2026-08-10 (operator decision):** STATUS.md is organized in two packages — Package 1 "Self-Use" (the active execution order) and Package 2 "Parked: Product & Governance". See rule A5 and Part C.
 
 **Prime objective of this reordering:** reach *self-build capability* as fast as
 possible. Tier 0 and Tier 1 are built conventionally (human + coding agent).
@@ -33,7 +34,10 @@ Applies to whoever orchestrates (a web GPT today, Remedy itself from Tier 2).
   PR. Nothing else counts as done.
 - **A5 Execution order.** The next feature is the FIRST unchecked entry in
   STATUS.md, top to bottom. STATUS.md lists features grouped by tier in the
-  order of this document. (This replaces the old lowest-F-number rule.)
+  order of this document. Since the amendment of 2026-08-10 the file is
+  organized in two packages (Part C) and the tier-block order inside Package 1
+  is itself the operator-decided execution order — it no longer mirrors the
+  tier numbering of Part F. (This replaces the old lowest-F-number rule.)
 - **A6 Meta-work freeze.** No new gates, taxonomies, manifest formats or
   evidence schemas unless a feature explicitly says so. Reuse what exists.
 - **A7 Self-dissolution clause.** Once Tier 1 is DONE and the F075 gauntlet has
@@ -94,6 +98,14 @@ States: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked.
 Rules: exactly one `[~]` at a time per executor; a `[x]` line MUST carry a PR
 or evidence reference; STATUS.md is updated in the same PR as the work (A4);
 the file is parsed by F080 — do not change the grammar without updating F080.
+
+**Packages (amendment 2026-08-10).** STATUS.md is organized in two package
+sections. Package 1 'Self-Use' is the active execution order; Package 2
+'Parked: Product & Governance' holds registered features deliberately
+scheduled last, so Rule A5 never selects them while Package 1 has open lines.
+Both packages use the identical line grammar, every registered feature appears
+exactly once in the file (the docs suite pins this), and parking or unparking
+is an operator decision executed as a reviewed docs round.
 
 ## PART D — PRINCIPLES
 
@@ -1151,6 +1163,14 @@ long-term consolidation into a sourced project handbook (F250).*
 | M14 | "Product" | Tier 14 | A stranger installs from an official channel and reaches a first signed certificate without support |
 | M15 | "Sharper" | Tier 15+16 | Best-of-N wins a measured quality delta; cockpit v2 at 2000 nodes 60 fps or a documented non-need |
 | M16 | "Flywheel" | Tier 17 | Remedy completes a Tier-17 feature fully itself AND a public benchmark report is published |
+
+Self-Use amendment (2026-08-10): milestones whose proofs depend on parked
+features rest with the parked package — M9 (scoreboard F159), M10 (Tier 9
+largely parked), M11 (Tier 10 parked), M13 (PR train F207), M14 (Tier 14
+parked) and the public-benchmark half of M16 (F243). They resume when the
+relevant lines are unparked. The milestone R1 marker in STATUS.md Tier 2 is
+redefined from 'first public release cut' to 'Remedy as the daily tool':
+Tier 2 complete with F086 as the self-install/update vehicle.
 
 ## PART H — KEY DEPENDENCIES (excerpt)
 
