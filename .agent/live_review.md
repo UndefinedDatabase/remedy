@@ -5,7 +5,7 @@
 > round. Findings are authored here by the reviewer only. A worker marks a
 > landed fix `Landed: R-XXXX`; only reviewer-authored `Done:` text sets
 > Resolved (docs/agents/planner_reviewer_prompt.md §4.4).
-> Branch: feature/f107-context-compiler-v2. Next free ID: R-0282.
+> Branch: feature/f107-context-compiler-v2. Next free ID: R-0285.
 
 ## Findings
 
@@ -181,6 +181,32 @@
   copy survived because C5's own constraint was append-only, so the worker
   flagged it instead of editing outside its instruction. The stale-claim class
   is worth one line: the next reader trusts it. Fixed in this round's C6. OPEN.
+- R-0282 (Low, F107 R11): the R11 block's Change line said "exactly these nine
+  paths" and gate l repeated "nine", while the list under it enumerates EIGHT.
+  The worker measured 8, touched nothing outside the list, and declared the
+  discrepancy. Reviewer arithmetic, costing a deviation on a round that did
+  nothing wrong — the same tax R-0274, R-0277 and R-0280 record. OPEN.
+- R-0283 (Medium, F107 R11): `test_compiled_run_shrinks_the_context_and_still`
+  `_solves_the_task` — the test that stands for the FEATURE'S DONE CONDITION —
+  passes with the entire compiled path disabled. The reviewer measured it rather
+  than reading the disclosure: setting `use_compiled_context = False` in a
+  disposable worktree at 04154822 turns the e2e module to `3 failed, 3 passed`
+  and that test is among the THREE THAT STILL PASS. The cause is that the
+  baseline run passes `mentioned_files` while the fall-through compiled run
+  passes none, so its context is smaller for a reason that has nothing to do
+  with F107. A shrink assertion that a bypass satisfies pins nothing. The worker
+  found this itself, reported it, and deliberately did NOT repair it after
+  measuring, which would have made its own probe self-fulfilling — that is
+  exactly right, and it is why this is a finding against the round's test
+  strength and not against its honesty. Fixed in R12 C4 by pinning the compiled
+  run's `context_chars` to the length of `render_compiled_context_text` over the
+  same fixture, which no fall-through can satisfy. OPEN.
+- R-0284 (Low, F107 R11): two line citations in the R11 block were wrong —
+  `build_scope_contract_for_builder` sits at pingpong_loop.py:2741, not :2694,
+  and the stale "one writing function" string sat at
+  test_context_compiler.py:805, not :801. Both were declared, neither cost
+  anything but the declaring, and both are the reviewer-citation class the
+  block's own constraint tells workers to expect. OPEN.
 
 ## Steps
 
@@ -578,6 +604,37 @@ docs/roadmap/STATUS_closure_protocol.md.
   stale claim it flagged rather than silently fixed is R-0281.
   `LAST_REVIEWED_SHA` advances f86bda87 -> c50080e0.
 
+- Reviewer gate on R11 (2026-08-12): PASS — and this is the round that makes
+  F107's DONE condition real. Range c50080e0..04154822 = eight commits touching
+  the EIGHT paths the R11 block enumerated (its prose said nine; that is
+  R-0282). Transport by the PRIMARY shape: the reviewer original
+  `.remedy-wt/f107-r11-1.block.md` survives, its body is byte-identical to
+  `.agent/authored/f107-r11-1.md` and `.agent/last_block.md`, all three sha256
+  to 121401148a1ec2f1… at 314 lines, and all nine slice bodies recompute to
+  their BEGIN-marker digests. `git show --numstat 815e4294 --
+  .agent/live_review.md` reads `78  1` — one deletion, HDR2 being the only
+  REWRITE — and the anchored greps return exactly their specified values
+  (R-0282 header 1, R-0280 header 0, `^- R-0280` 1, `^- R-0281` 1, `^Done:` 7,
+  `^Landed:` 0). Every gate was RE-RUN by this reviewer: 6 passed on the new
+  end-to-end module, 61 on the compiler suite, 42 on the canary, `ruff check`
+  "All checks passed!", and THE REGRESSION GATE HELD — `test_pingpong.py` plus
+  `test_pingpong_integration.py` return 43 passed, the same 43 measured before
+  C4 touched the loop every job runs through. The C4 diff was read line by line:
+  three keyword-only parameters that default to today's behaviour, one
+  all-or-nothing branch, a local import inside that branch, records written only
+  where the caller points, and `build_repo_context` reached unchanged in every
+  other case — the default path does not move. GATE j WAS RE-RUN, not read: the
+  fixture repo runs twice through `run_pingpong` with `FakeProvider`, and BOTH
+  runs reach `staged_review_passed` while `context_chars` falls 4613 -> 899 and
+  the size record reads whole_file_tokens 1067, compiled_tokens 195,
+  saved_tokens 872, saved_ratio 0.817244611059044, with `src/invoice_report.py`
+  omitted for `distance`. A fixture task is solved by the fake provider on a
+  context 81.7% smaller, and the omissions record explains the exclusion: that
+  is the feature file's Done sentence, measured. All ten declared deviations
+  re-measured accurate; the substantive one is registered as R-0283 after the
+  reviewer reproduced it independently, and the two citation errors are R-0284.
+  `LAST_REVIEWED_SHA` advances c50080e0 -> 04154822.
+
 Done: R-0271 — RESOLVED. `packages/orchestration/context_compiler.py` now reads
 `from collections.abc import Iterable` (commit b52b1c3c, numstat `1 1`), and the
 reviewer's own re-run of `python3 -m ruff check` over that module and its test
@@ -632,3 +689,10 @@ Done: R-0279 — RESOLVED. `remedy job context` is documented:
 landing in C6 with numstat `2  0`. `python3 -m pytest tests/docs/ -q` returns
 294 passed under this reviewer's own re-run, including the link-resolution check
 that made the ordering matter. Open findings 13 -> 12.
+
+Done: R-0281 — RESOLVED. `tests/orchestration/test_context_compiler.py` no
+longer calls `write_omitted_context_json` "the one writing function" (commit
+b4e9d423, numstat `1 1` — one line changed and nothing else in the file), and
+the reviewer's own re-run of that module returns 61 passed. The stale-absolute
+claim class now has no live instance in this feature's files. Open findings
+15 -> 14.
