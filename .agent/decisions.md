@@ -4329,3 +4329,38 @@ no closure is worth trading evidence for convenience.
 Reverse this decision by moving both directories back from the archive. The
 follow-up that owns the packager should then apply alternative (a), after which
 neither the move nor this decision is needed again.
+
+## DECISION F107 D3a (2026-08-12) — the D3 archive moves INSIDE the repo, to a path the packager already prunes
+
+Context: finding R-0297. D3 chose to move the two offending scratch trees to
+`/home/decodeux/remedy-scratch-archive/`, outside the repository. That path is
+unreachable: this session's permission layer denies every filesystem access
+outside `/home/decodeux/Repos/remedy`, for the worker and for the reviewer
+alike. D3's REASONING survives intact — move rather than delete, and do not
+edit a packager this feature does not own — only its destination was wrong.
+
+Chosen: archive to `.remedy-wt/.cache/f107-archive/` instead. The path is
+inside the repository, so it is reachable; `.gitignore:235` already ignores all
+of `.remedy-wt/`, so nothing enters the review subject; and the packager's own
+prune list matches it — `scripts/make_review_zip.sh:236` prunes
+`-path './*/.cache'`, which `./.remedy-wt/.cache` satisfies, so `find` never
+descends into it and the 1834 unsafe members never reach the archive. Both
+properties were verified by the reviewer against the disk before this block was
+emitted, which is exactly what R-0297 says should have happened the first time.
+This is strictly better than D3's original target for the R-0288 rule as well:
+the raw gate records stay inside the repo's own scratch directory, where the
+protocol says scratch lives, rather than migrating to a private sibling path
+that a later reader would have no reason to look in.
+
+Alternatives considered: (a) `.data/remedy-scratch-archive/` — pruned and
+ignored too, rejected because `.data` is the application's data root and agent
+scratch does not belong in it; (b) widen the session sandbox to reach the
+original path — rejected, a permission boundary is not an obstacle to route
+around, and nothing about this feature justifies loosening one; (c) delete the
+trees — rejected for the same reason D3 rejected it, and the reason has not
+weakened: they are F107's own R9 and R11 raw gate records.
+
+Reverse this decision by moving the two directories back from
+`.remedy-wt/.cache/f107-archive/` to `.remedy-wt/`. The durable fix R-0295
+names — one `-path './.remedy-wt'` line in the packager's prune list — retires
+D3, this amendment and the move together.
