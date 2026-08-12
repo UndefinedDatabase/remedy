@@ -2,6 +2,11 @@
 
 > Grammar: see ROADMAP.md Part C. States: `[ ]` todo · `[~]` in progress · `[x]` done (PR/evidence ref REQUIRED) · `[!]` blocked (reason).
 > Rule A5: the next feature is the first unchecked line, top to bottom. Update this file in the same PR as the work (A4).
+> Packages (operator decision 2026-08-10): Package 1 "Self-Use" below is the active execution order. Package 2 "Parked: Product & Governance" holds registered features deliberately scheduled last, so Rule A5 never selects them while Package 1 has open lines. Every registered feature appears exactly once in this file; parking or unparking a feature means moving its line between the packages by operator decision, in a reviewed docs round. New registrations land in Package 1 (Self-Use) by default, at the operator-chosen position or, absent one, at the end of the matching tier block; registering directly into Package 2 requires an explicit parking note in the registration commit. Grammar is identical in both packages; F080 parses this file unchanged.
+
+## Package 1 — Self-Use (active execution order)
+
+The tier-block order below is the operator-decided Self-Use sequence of 2026-08-10; it intentionally no longer mirrors the numeric tier order of ROADMAP.md Part F. Rule A5 reads this file top to bottom, so this order IS the strategy.
 
 ## Tier 0 — Foundation & Trust Core
 
@@ -49,8 +54,6 @@
 
 ## Tier 2 — Minimal Self-Build Runtime
 
-Milestone R1 — first public release cut: Tier 2 complete (F086 is the release vehicle). Build-first ends here; show-first begins.
-
 - [x] F103 — Token ledger (SQLite) (T001–T003 complete; accepted 2026-08-08 · live review PASS — ACCEPTED · Evidence job f103-closure · package remedy-review-20260808-210612-READY_FOR_REVIEW.zip · SHA-256 8e967d78e57fa97641365b4baa91ca884f6322bc855f678d1daeb146c9dd38ad · accepted HEAD 65e1eec25e61c1d0fe78539adeb890d3426cb605)
 - [x] F104 — Hard budget enforcement (T001–T003 complete; accepted 2026-08-09 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f104-closure · package remedy-review-20260809-033908-READY_FOR_REVIEW.zip · SHA-256 6117b6b02ca6f641f0ef3bfebe7518d0eaf705e609e17e8ee9493e6d7fd8bb6a · accepted HEAD 68a7412019e92232a880625b7fce4e48c7198744)
 - [x] F105 — Cache-optimal prompt ordering (T001–T004 complete; accepted 2026-08-12 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f105-closure · package remedy-review-20260812-092055-READY_FOR_REVIEW.zip · SHA-256 23b21bc171b0de493ca4db50c472ecb2797b58b5c870ff9aa5d9b5da71536840 · accepted HEAD b928a0c691dc0a2b86c149a5e732ea07ac03176e)
@@ -65,6 +68,51 @@ Milestone R1 — first public release cut: Tier 2 complete (F086 is the release 
 - [ ] F085 — Sandbox hardening (stage 1)
 - [x] F254 — Model alias table & dead-model doctor check (R1–R12 complete; accepted 2026-08-07 · live review PASS — ACCEPTED · Evidence job f254-closure · package remedy-review-20260807-204305-READY_FOR_REVIEW.zip · SHA-256 1b4995fa9e3ab76f7be8398be66ed69ec47e99f6e825d16cc97aa826a95a05c0 · accepted HEAD b71c9bdd93cbeb21d4b98842cdf6baa998c3ac26)
 - [ ] F086 — Release capability
+
+Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-install/update vehicle). Build-first ends here; use-first begins — from here the order follows the Self-Use sequence below.
+
+## Tier 5 — Operator Cockpit (parallel human track)
+
+- [ ] F255 — Teacher role (evidence-grounded live explainer & learn-along tutor)
+- [ ] F008 — SSE event stream
+- [ ] F009 — The single write channel
+- [ ] F021 — Live activity feed + "agent is doing now"
+- [ ] F022 — Live cost ticker
+- [ ] F031 — Decision inbox
+- [ ] F032 — Approval with the evidence triple
+- [ ] F037 — Rendered diff viewer
+- [ ] F033 — Hunk-level diff approval
+- [ ] F040 — Completion/return digest
+- [ ] F015 — Interactive plan editing
+- [ ] F019 — Live node materialization
+- [ ] F020 — Node lifecycle & glyph language
+- [ ] F023 — Semantic zoom L0–L3
+- [ ] F024 — Phase timeline with scrubber
+- [ ] F025 — Pause/resume (global & per node)
+- [ ] F026 — Task edit at runtime
+- [ ] F027 — Task veto
+- [ ] F028 — Task injection
+- [ ] F029 — Subtree rerun
+- [ ] F030 — Steering messages
+- [ ] F035 — Ownership ledger
+- [ ] F036 — Guided result tour
+- [ ] F038 — Grounded chat & intent dispatch
+- [ ] F039 — Story/replay mode
+- [ ] F041 — Artifact preview
+- [ ] F042 — Multi-project cockpit
+- [ ] F043 — Explanation layer
+- [ ] F044 — Command palette, keyboard, performance budget
+
+## Tier 12 — Observability & Operations
+
+- [ ] F200 — Daemon mode (remedy serve)
+- [ ] F201 — Remote access & mobile view
+- [ ] F199 — Self-health & crash reports
+- [ ] F203 — Structured logging & correlation
+- [ ] F202 — Backup/restore & schema migrations
+- [ ] F198 — Prometheus metrics endpoint
+- [ ] F204 — Update channel & change transparency
+- [ ] F253 — Headless API contract
 
 ## Tier 3 — Full Token Economy & Autonomy Extension
 
@@ -114,37 +162,23 @@ Milestone R1 — first public release cut: Tier 2 complete (F086 is the release 
 - [ ] F149 — remedy study (initial analysis as a card draw)
 - [ ] F150 — Card value & exploration chance
 
-## Tier 5 — Operator Cockpit (parallel human track)
+## Tier 7 — Quality & Trust
 
-- [ ] F008 — SSE event stream
-- [ ] F009 — The single write channel
-- [ ] F015 — Interactive plan editing
-- [ ] F019 — Live node materialization
-- [ ] F020 — Node lifecycle & glyph language
-- [ ] F021 — Live activity feed + "agent is doing now"
-- [ ] F022 — Live cost ticker
-- [ ] F023 — Semantic zoom L0–L3
-- [ ] F024 — Phase timeline with scrubber
-- [ ] F025 — Pause/resume (global & per node)
-- [ ] F026 — Task edit at runtime
-- [ ] F027 — Task veto
-- [ ] F028 — Task injection
-- [ ] F029 — Subtree rerun
-- [ ] F030 — Steering messages
-- [ ] F031 — Decision inbox
-- [ ] F032 — Approval with the evidence triple
-- [ ] F037 — Rendered diff viewer
-- [ ] F033 — Hunk-level diff approval
-- [ ] F035 — Ownership ledger
-- [ ] F036 — Guided result tour
-- [ ] F038 — Grounded chat & intent dispatch
-- [ ] F039 — Story/replay mode
-- [ ] F040 — Completion/return digest
-- [ ] F041 — Artifact preview
-- [ ] F042 — Multi-project cockpit
-- [ ] F043 — Explanation layer
-- [ ] F044 — Command palette, keyboard, performance budget
-- [ ] F255 — Teacher role (evidence-grounded live explainer & learn-along tutor)
+- [ ] F129 — TDD gate (optional per job)
+- [ ] F130 — Mutation sampling
+- [ ] F131 — Adversarial second review
+- [ ] F132 — Review tournament
+- [ ] F133 — Provider trust score
+- [ ] F134 — Security gate
+- [ ] F135 — Flaky detector
+- [ ] F136 — Time-travel checkpoints
+- [ ] F137 — Shadow mode
+- [ ] F138 — ADR automation
+- [ ] F139 — Code churn metric
+- [ ] F140 — Bit-exact evidence replay
+- [ ] F141 — Permission matrix per autonomy level
+- [ ] F142 — Trust dashboard
+- [ ] F143 — Genesis run: one prompt → one product
 
 ## Tier 6 — Design-to-Code
 
@@ -165,23 +199,18 @@ Milestone R1 — first public release cut: Tier 2 complete (F086 is the release 
 - [ ] F101 — Reference fidelity rule
 - [ ] F102 — Long-run × design
 
-## Tier 7 — Quality & Trust
+## Tier 11 — Verification v2
 
-- [ ] F129 — TDD gate (optional per job)
-- [ ] F130 — Mutation sampling
-- [ ] F131 — Adversarial second review
-- [ ] F132 — Review tournament
-- [ ] F133 — Provider trust score
-- [ ] F134 — Security gate
-- [ ] F135 — Flaky detector
-- [ ] F136 — Time-travel checkpoints
-- [ ] F137 — Shadow mode
-- [ ] F138 — ADR automation
-- [ ] F139 — Code churn metric
-- [ ] F140 — Bit-exact evidence replay
-- [ ] F141 — Permission matrix per autonomy level
-- [ ] F142 — Trust dashboard
-- [ ] F143 — Genesis run: one prompt → one product
+- [ ] F187 — Property-based test generator
+- [ ] F188 — API compatibility guard
+- [ ] F189 — Service contract tests
+- [ ] F190 — Test environment provisioning
+- [ ] F191 — Migration safety
+- [ ] F192 — Performance budgets for product code
+- [ ] F193 — Accessibility gate
+- [ ] F194 — i18n checks
+- [ ] F195 — Budgeted fuzzing
+- [ ] F196 — Flake-resistant E2E discipline
 
 ## Tier 8 — Worker Ecosystem & Neutrality
 
@@ -190,25 +219,70 @@ Milestone R1 — first public release cut: Tier 2 complete (F086 is the release 
 - [ ] F153 — Codex CLI adapter
 - [ ] F154 — Gemini CLI adapter
 - [ ] F155 — Local full builder
-- [ ] F156 — Worker certification suite
 - [ ] F157 — Capability matrix & honest degradation
 - [ ] F158 — Cost normalization & price catalog
-- [ ] F159 — Cross-vendor benchmark & scoreboard
-- [ ] F160 — Cross-vendor failover v2
 - [ ] F161 — MCP passthrough with policy
 - [ ] F162 — Sandbox profiles per adapter
 
 ## Tier 9 — Evidence & Compliance Product
 
-- [ ] F163 — Prompt->code lineage (audit trail v2)
 - [ ] F164 — AI labeling in commits (standard)
+- [ ] F171 — Secret hygiene v2 & vault
+
+## Tier 15 — Intelligence v2
+
+- [ ] F223 — Best-of-N builds
+- [ ] F224 — Repo archaeology as a context source
+- [ ] F225 — Reverse-DoD from legacy
+- [ ] F226 — Classic risk prediction
+- [ ] F227 — Prompt regression tests
+- [ ] F228 — Counterfactual cost replay
+- [ ] F229 — Adaptive task-size recommendation
+- [ ] F230 — Mission portfolio optimizer
+- [ ] F231 — Playbooks v2 with value ranking
+- [ ] F232 — Model upgrade playbook
+
+## Tier 13 — Multi-Repo & Organization
+
+- [ ] F205 — Multi-repo missions
+- [ ] F206 — Repo dependency catalog
+- [ ] F208 — Monorepo workspaces
+
+## Tier 16 — Cockpit v2
+
+- [ ] F233 — Growing Brain stage 2 (GPU renderer)
+- [ ] F235 — Diff ghosting on the timeline
+- [ ] F236 — Live output stream in the node
+- [ ] F237 — Embedded runtime console
+- [ ] F240 — Power keyboard & vim navigation
+- [ ] F241 — Story export as video
+- [ ] F242 — Accessibility of the cockpit itself
+
+## Tier 17 — Self-Improvement & Ecosystem
+
+- [ ] F244 — Security self-audit routine
+- [ ] F248 — Remedy builds Remedy: the full loop
+- [ ] F250 — Long-term consolidation into a project handbook
+
+## Package 2 — Parked: Product & Governance
+
+Registered, counted and tier-assigned like every other feature — deliberately last. These lines exist for the product path (teams, sales, compliance-as-product, ecosystem APIs) and rest until an operator decision moves them back into Package 1. Known product-scoped dependencies of scheduled features into this package: F201 depends on F176, F236 depends on F174, and F232 depends on F156/F159; the Self-Use rounds for those substitute a local mechanism by operator ruling at claim time (for F232: the F082 self-benchmark stands in for certification and scoreboard), documented in the feature round itself.
+
+## Tier 8 — Worker Ecosystem & Neutrality
+
+- [ ] F156 — Worker certification suite
+- [ ] F159 — Cross-vendor benchmark & scoreboard
+- [ ] F160 — Cross-vendor failover v2
+
+## Tier 9 — Evidence & Compliance Product
+
+- [ ] F163 — Prompt->code lineage (audit trail v2)
 - [ ] F165 — Signed certificates
 - [ ] F166 — Retention & archive export
 - [ ] F167 — SIEM / audit event export
 - [ ] F169 — Human-oversight proof
 - [ ] F168 — Technical dossier generator
 - [ ] F170 — License & SBOM gate
-- [ ] F171 — Secret hygiene v2 & vault
 - [ ] F172 — Policy packs
 - [ ] F173 — Air-gap mode
 - [ ] F174 — Data classification in the context compiler
@@ -228,37 +302,13 @@ Milestone R1 — first public release cut: Tier 2 complete (F086 is the release 
 - [ ] F185 — Per-project permissions
 - [ ] F186 — Human-to-human handoff package
 
-## Tier 11 — Verification v2
-
-- [ ] F187 — Property-based test generator
-- [ ] F188 — API compatibility guard
-- [ ] F189 — Service contract tests
-- [ ] F190 — Test environment provisioning
-- [ ] F191 — Migration safety
-- [ ] F192 — Performance budgets for product code
-- [ ] F193 — Accessibility gate
-- [ ] F194 — i18n checks
-- [ ] F195 — Budgeted fuzzing
-- [ ] F196 — Flake-resistant E2E discipline
-
 ## Tier 12 — Observability & Operations
 
 - [ ] F197 — OpenTelemetry export (GenAI conventions)
-- [ ] F198 — Prometheus metrics endpoint
-- [ ] F199 — Self-health & crash reports
-- [ ] F200 — Daemon mode (remedy serve)
-- [ ] F201 — Remote access & mobile view
-- [ ] F202 — Backup/restore & schema migrations
-- [ ] F203 — Structured logging & correlation
-- [ ] F204 — Update channel & change transparency
-- [ ] F253 — Headless API contract
 
 ## Tier 13 — Multi-Repo & Organization
 
-- [ ] F205 — Multi-repo missions
-- [ ] F206 — Repo dependency catalog
 - [ ] F207 — Coordinated PR trains
-- [ ] F208 — Monorepo workspaces
 - [ ] F209 — Org conventions with inheritance
 - [ ] F210 — Organization dashboard
 - [ ] F211 — Card federation
@@ -277,39 +327,16 @@ Milestone R1 — first public release cut: Tier 2 complete (F086 is the release 
 - [ ] F221 — Release quality gate & channels
 - [ ] F222 — Customer cost calculator
 
-## Tier 15 — Intelligence v2
-
-- [ ] F223 — Best-of-N builds
-- [ ] F224 — Repo archaeology as a context source
-- [ ] F225 — Reverse-DoD from legacy
-- [ ] F226 — Classic risk prediction
-- [ ] F227 — Prompt regression tests
-- [ ] F228 — Counterfactual cost replay
-- [ ] F229 — Adaptive task-size recommendation
-- [ ] F230 — Mission portfolio optimizer
-- [ ] F231 — Playbooks v2 with value ranking
-- [ ] F232 — Model upgrade playbook
-
 ## Tier 16 — Cockpit v2
 
-- [ ] F233 — Growing Brain stage 2 (GPU renderer)
 - [ ] F234 — Organism overview (L-1)
-- [ ] F235 — Diff ghosting on the timeline
-- [ ] F236 — Live output stream in the node
-- [ ] F237 — Embedded runtime console
 - [ ] F238 — Cockpit plugin API
 - [ ] F239 — Theming & white-label
-- [ ] F240 — Power keyboard & vim navigation
-- [ ] F241 — Story export as video
-- [ ] F242 — Accessibility of the cockpit itself
 
 ## Tier 17 — Self-Improvement & Ecosystem
 
 - [ ] F243 — Public benchmark participation
-- [ ] F244 — Security self-audit routine
 - [ ] F245 — Evidence schema registry & versioning
 - [ ] F246 — Verification gate plugin API
 - [ ] F247 — Community import with provenance
-- [ ] F248 — Remedy builds Remedy: the full loop
 - [ ] F249 — Anonymized research exports
-- [ ] F250 — Long-term consolidation into a project handbook
