@@ -5,7 +5,7 @@
 > round. Findings are authored here by the reviewer only. A worker marks a
 > landed fix `Landed: R-XXXX`; only reviewer-authored `Done:` text sets
 > Resolved (docs/agents/planner_reviewer_prompt.md §4.4).
-> Branch: feature/f107-context-compiler-v2. Next free ID: R-0289.
+> Branch: feature/f107-context-compiler-v2. Next free ID: R-0290.
 
 ## Findings
 
@@ -262,6 +262,20 @@
   only record is a terminal is a step that did not happen. R16 re-runs the
   whole gate from a rebuilt base worktree rather than transcribe a
   half-provable one. OPEN.
+- R-0289 (Medium, F107 R16): the R16 block ordered its ONLY push at C6, the
+  last commit of the round. The session died after C4, so twelve commits — the
+  entire committed output of R13, R14, R15 and R16, the complete
+  integration-gate evidence included — sat on local disk alone, invisible to
+  the operator and one disk failure from gone. AGENTS.md Push Discipline reads
+  "After committing: git push -u origin <branch>", not "after the last commit
+  of the round". Four consecutive sessions have now died mid-round, which makes
+  the tail of a round the least likely part to run and therefore the worst
+  possible home for the only durability step a round has. The R16 block was
+  otherwise careful — it redirected every gate value to a file precisely
+  because a session might die — and then staked the survival of all of it on
+  reaching its own last step. Rule, forward-looking: a round pushes after EVERY
+  commit; a block that names a single push at its last step is authoring the
+  loss it will later have to report. OPEN.
 
 ## Steps
 
@@ -755,6 +769,46 @@ docs/roadmap/STATUS_closure_protocol.md.
   never committed and now superseded; R16 moves it out of the repository
   rather than delete it, so the dead session's raw record stays readable.
   `LAST_REVIEWED_SHA` advances d7dd12b6 -> 513a8c58.
+- Reviewer gate on R16 (2026-08-12): PASS, and the F107 INTEGRATION GATE IS
+  GREEN. Range 513a8c58..5c808a59 = four commits over thirteen paths, every one
+  under `.agent/`: `git diff --stat 513a8c58..5c808a59 -- packages apps tests
+  docs` is EMPTY. Transport re-run here rather than quoted:
+  `.agent/authored/f107-r16-1.md` and `.agent/last_block.md` both sha256
+  39e6cb447d679ff3777e162f9832c489a49e72a5ab02aa60b7fde14db9650963 at 369
+  lines — the value the surviving original `.remedy-wt/f107-r16-1.block.md`
+  declares on the trailer one line past its saved region — and `cmp` between
+  them exits 0 and silent. All seven slice bodies recompute to their
+  BEGIN-marker digests at their declared line counts: SLICES=7 MISMATCH=0. C3
+  is byte-exact, checked by extracting both sides from the diff and comparing
+  the lists: its 49 added lines equal HDR16TO plus the TO-only tails of LRF16
+  and LRG16 exactly, and its single deleted line is HDR16FROM.
+  THE GATE ITSELF. Branch run at d94b0c97, `python3 -m pytest -n auto -q` ->
+  exit 1, 5 failed / 16533 passed / 19 skipped, 221 s. Base run at the merge
+  base 2e4142c3 in a rebuilt `tmp/base-gate` worktree,
+  `REMEDY_UI_NO_AUTO_BUILD=1 python3 -m pytest -n auto -q` -> exit 1, 5 failed
+  / 16457 passed / 19 skipped, 155 s. This reviewer recomputed the decisive
+  comparison from the RAW scratch logs instead of the trimmed evidence:
+  `grep -c '^FAILED'` is 5 in both `.remedy-wt/gate-scratch/f107-r16/
+  branch_full.txt` and `base_full.txt`, the two committed FAILED lists are
+  byte-identical (md5 cbf4dd9c85afafaf20aba2e38f940cee each), and therefore
+  branch-only 0, base-only 0, common 5. The five common ids are R-0286's
+  `[reviewer]` parametrizations, failing at a merge base where no F107 commit
+  exists — not charged to F107, and the reason both runs exit 1. UI parity
+  holds: four identical `apps/ui/dist` aggregate content hashes
+  fb68a7293502c79b8ece61d154f5752100a16da1a08a481a7a4c1d79a5a503c0 (base and
+  primary, before and after) with dist mtimes newer than src, so the seven-id
+  `tests/ui_server/test_live_state.py` environment class of R-0221 does not
+  appear in this gate at all. The collected-test delta 16557 - 16481 = 76
+  equals the 76 tests `--collect-only` counts across the three test files F107
+  adds, so it is F107's own coverage and not a selection difference. Wall clock
+  221 s and 155 s, both inside the ~5 min budget, so no perf pass is indicated.
+  Per docs/agents/integration_gate.md step 5 the verdict is the reviewer's and
+  it is PASS, the five R-0286 ids carried as a documented risk.
+  WHAT DID NOT LAND: C5 (`.agent/plan.md`) and C6 (`.agent/handoff.md` and the
+  push). The session died after C4. Both files still describe R12 and the
+  branch stood twelve commits ahead of origin at review time — registered here
+  as R-0289. R17 lands that tail and nothing else.
+  `LAST_REVIEWED_SHA` advances 513a8c58 -> 5c808a59.
 
 Done: R-0271 — RESOLVED. `packages/orchestration/context_compiler.py` now reads
 `from collections.abc import Iterable` (commit b52b1c3c, numstat `1 1`), and the
@@ -827,3 +881,20 @@ in a disposable worktree — turns the module from `3 failed, 3 passed` at
 04154822, where the test PASSED, to `4 failed, 2 passed` at d7dd12b6, where it
 fails on `assert 265 == 899`. A bypass can no longer satisfy the feature's Done
 sentence. Open findings 14 -> 13.
+
+Done: R-0288 — RESOLVED. The parity proof R15 could not show exists on disk for
+R16, and this reviewer read the files rather than the summary that describes
+them. `.agent/gate_f107_r16/base_worktree.txt` records the `git worktree add -b
+tmp/base-gate`, both `cp -a` copies, the `find ... -exec touch {} +` and the
+three identity checks, each with its real exit code; `dist_hashes.txt` carries
+the four aggregate `apps/ui/dist` content hashes — base before, base after,
+primary before, primary after, all
+fb68a7293502c79b8ece61d154f5752100a16da1a08a481a7a4c1d79a5a503c0 — plus the
+newest-src, newest-dist and oldest-dist mtimes that prove the ordering the R13
+base run lacked. Ten of the ten mandated evidence files are committed, where
+R15 left five and no `attribution.txt`. The forward-looking rule the finding
+states held in practice: every number in those ten files also exists in the
+gitignored raw record at `.remedy-wt/gate-scratch/f107-r16/`, which is why this
+reviewer could re-derive the gate's decisive comparison from `branch_full.txt`
+and `base_full.txt` directly instead of trusting the trimmed copies. Open
+findings 18 -> 17.
