@@ -213,3 +213,46 @@ held. Two Low findings registered below; neither blocks the round.
   `out_of_bounds` reason with its own test. OPEN.
 
 Landed: R-0299 — a range naming lines the file does not have is now omitted as `out_of_bounds` instead of `no_ranges`, with three new tests; commit "feat(f111): report out of bounds ranges distinctly".
+
+### R3 — PASS (2026-08-13)
+Reviewed by the main session over 1bf62e2f..4717ce8c. Re-run by the reviewer,
+not read off the handback: `python3 -m pytest
+tests/orchestration/test_diff_repair.py -q` exit 0, 21 passed (18 before this
+round); `python3 -m pytest tests/cli/test_golden_path.py -q` exit 0, 42
+passed. The mutation red-proof was RE-RUN INDEPENDENTLY by the reviewer in
+its own disposable worktree: reverting the call-site reason to a bare
+`no_ranges` turns exactly two tests red,
+`TestOutOfBounds::test_range_past_eof_is_out_of_bounds` and
+`TestOutOfBounds::test_out_of_bounds_path_does_not_block_present_one`, at
+2 failed / 19 passed — matching the worker's report. That worktree was
+removed and pruned; `git worktree list` shows only the primary checkout.
+Transport: primary cmp proof, no digest fallback — `.remedy-wt/f111r3/BLOCK`
+and `.agent/authored/f111-r3-1.md` byte-identical at sha256 a5088325...,
+`.agent/last_block.md` equal to both, `.agent/plan.md` equal to its original,
+and the 51-line findings slice sits verbatim inside `.agent/live_review.md`.
+Append purity by numstat: `51 0` for the findings commit, `2 0` for the
+Landed line. Scope: exactly the seven ordered paths. The findings-first
+ordering held — C3 persisted R-0298 and R-0299 BEFORE any code commit.
+Markers: 24 `- R-0` entries, exactly 1 `Landed:`, 0 `Done:`, and the Landed
+line names its commit by SUBJECT rather than by a SHA it could not contain
+(R-0274). The fix is minimal: `_expand_and_merge_ranges` is unchanged and the
+discrimination happens at the call site. Deviation ACCEPTED: C7 took three
+commits because the first handoff came in at 62 lines against its own 60-line
+cap; the worker trimmed forward rather than force-pushing — the correct order
+of preferences — and declared it. One finding registered below.
+
+- R-0300 (Low, F111 R3, uncovered behaviour change, self-declared by the
+  worker in its handback): the R-0299 fix also changes what a range against a
+  ZERO-LINE file reports. `_expand_and_merge_ranges` clamps `end` to
+  `min(line_count, ...)`, which is 0 for an empty file, while `start` is at
+  least 1 — so every span is dropped, and the new call-site discrimination at
+  `packages/orchestration/diff_repair.py:136-141` then reports
+  `out_of_bounds` where the pre-fix code reported `no_ranges`. The new reading
+  is the correct one under the round's own definition (lines were named and
+  none of them exist in that file), so nothing on disk is wrong. It is
+  registered because it is a SECOND behaviour change beyond the past-EOF case
+  the round was ordered to make, and no test pins it — an unpinned behaviour
+  is one refactor away from silently reverting. The worker found it in its own
+  diff and declared it rather than leaving it for a reader, which is the
+  behaviour these rounds are supposed to produce. Fix, one test: an empty file
+  with a non-empty range reports `out_of_bounds`. OPEN.
