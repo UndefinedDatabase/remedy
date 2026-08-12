@@ -991,6 +991,43 @@ docs/roadmap/STATUS_closure_protocol.md.
   the selector's third signature path showed the R18 repair reached two of
   three, which is R-0293 above, so the registered count returns to 20 open.
   `LAST_REVIEWED_SHA` advances 54d05e37 -> 6e1970c4.
+- Reviewer gate on R19 (2026-08-12): PASS. Range `6e1970c4..65723390` = six
+  commits over exactly the eight paths the R19 Change line names; `git diff
+  --numstat` reads 379/0, 293/321, 96/1, 14/2 and 28/0, 67/0, 10/12 and
+  103/99, so every commit stands far under the 500 cap. Transport by the
+  PRIMARY shape, restored after R18 could not offer it: the reviewer's own
+  original survives at `.remedy-wt/f107-r19-1.block.md`, and `cmp` against
+  `.agent/authored/f107-r19-1.md` is silent at exit 0, as is `cmp` of that file
+  against `.agent/last_block.md`. Stronger than the counts: every authored
+  payload was extracted from the reviewer's original and searched for as a
+  whole string in its target — PAIR_HDR_TO, PAIR_LRF_TO, PAIR_LRG_TO and
+  PAIR_DONE_TO each occur exactly 1x in `.agent/live_review.md`, PAIR_BS_TO
+  exactly 1x in `docs/roadmap/features/T2_F107.md`, and `.agent/plan.md` equals
+  PAYLOAD_PLAN byte for byte. Nothing was retyped and nothing drifted. The
+  block was 379 lines against the 400 cap, so R-0294's first instance did not
+  recur. Append shapes: C3 adds 96 and removes 1, and 35 + 35 + 25 TO-only
+  lines plus the one-line header rewrite account for all 96; the worker's
+  qualifier that two of those TO-only lines are blank is correct and is the
+  R-0253 exception this file already records. Gates RE-RUN here rather than
+  read: 80 passed across `test_context_compiler.py` (65, up from 64),
+  `test_context_compiler_e2e.py` (6) and `tests/cli/test_job_context_cmd.py`
+  (9), `tests/docs/` 294 passed, the canary 42 passed in 20.06s, `ruff` "All
+  checks passed!", `^Done:` 12 and `^Landed:` 0, `^<<<` 0 across all six
+  touched files, `^## Built State` 1 in the feature file with zero deletions in
+  that commit. The red-proof was re-run INDEPENDENTLY by this reviewer in a
+  disposable worktree at HEAD: removing only the phase-A `parse_failed` append
+  turns the new test red with `Right contains one more item: ('unparseable',
+  'signatures')`, and the worktree was removed and pruned, leaving the primary
+  checkout clean and alone. This reviewer's own probe, written before the
+  repair existed, now reports the `unparseable` record where it reported none —
+  the fix is confirmed against evidence that predates it. The two declared
+  substitutions are accepted: `remedy` is unavailable to this session's shell
+  and both plan probes ran through `python3 -m apps.cli.grouped`, the same
+  entry point the R17 gate used, with real output pasted; and the 119-line
+  handoff is a DECISION D15 stated-cause overage carrying every mandated
+  section. `git status --porcelain` empty, one worktree, `0 0` against the
+  remote, `gh pr list --state open` empty. R-0293 is resolved below.
+  `LAST_REVIEWED_SHA` advances 6e1970c4 -> 65723390.
 
 Done: R-0271 — RESOLVED. `packages/orchestration/context_compiler.py` now reads
 `from collections.abc import Iterable` (commit b52b1c3c, numstat `1 1`), and the
@@ -1105,3 +1142,19 @@ none — and the suite this reviewer re-ran collects 64 where it collected 61.
 The fifth reason reached the vocabulary test, the feature file's Design
 enumeration and the user guide in the same round as the code, so no reader
 meets a word the plan does not carry. Open findings 19 -> 18.
+
+Done: R-0293 — RESOLVED. Phase A of `compile_task_context` now takes the
+`FileSignatures` object once through `extract_file_signatures`, estimates from
+its own rendered lines, and appends an `unparseable` record beside the existing
+`budget` one when `parse_failed` is set, so the third and last signature path
+stops blaming the budget for a blank the budget did not cause. Verified three
+ways by this reviewer rather than once: the diff reads as specified with the
+budget record unchanged; the probe that FOUND the gap, written before any fix
+existed, now reports `('broken.py', 2, 'unparseable', 'signatures')` where it
+reported only the budget record; and the new test, run in a disposable worktree
+with only that append removed, fails with `Right contains one more item:
+('unparseable', 'signatures')` — it bites the exact line it names.
+`_signature_render_text` survives for `render_compiled_context_text`, unchanged.
+The suite collects 65 where it collected 64, and the Edge-cases clause
+"signature-skipped WITH REASON otherwise" now holds on every path that renders
+signatures. Open findings 20 -> 19.
