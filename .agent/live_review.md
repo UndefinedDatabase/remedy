@@ -5,7 +5,7 @@
 > round. Findings are authored here by the reviewer only. A worker marks a
 > landed fix `Landed: R-XXXX`; only reviewer-authored `Done:` text sets
 > Resolved (docs/agents/planner_reviewer_prompt.md §4.4).
-> Branch: feature/f107-context-compiler-v2. Next free ID: R-0295.
+> Branch: feature/f107-context-compiler-v2. Next free ID: R-0297.
 
 ## Findings
 
@@ -390,6 +390,55 @@
   role, not the worker. Forward-looking fix, already applied to THIS block:
   count the lines and re-read every zero-gate against every TO in the same
   block before emission, mechanically, on the final bytes.
+- R-0295 (Medium, F107 R21, found by the R20 zip build failing): the review-zip
+  packager publishes local scratch it was never taught about, and then rejects
+  its own package for containing it — so closure is blocked by construction on
+  any machine where a gate round left a nested `.data/` or `.git/` in scratch.
+  Mechanism, read off the script rather than inferred: the collector at
+  `scripts/make_review_zip.sh:218-259` is a filesystem `find .` with a
+  HARDCODED prune list (`.git`, `.data`, `node_modules`, the cache dirs, the
+  top-level `remedy-job-evidence-*` dirs) plus a few `! -name` filters. That
+  list predates the `.remedy-wt/` convention this project adopted for agent
+  scratch, and `.gitignore` has no bearing on a `find` — so every scratch tree
+  is swept in. The post-publication scan at `:509` then greps the published
+  listing for path components including `/.data/` and `/.git/`, finds them, and
+  exits 1 without deleting the package. R20's build is the instance: this
+  reviewer's own scan of
+  `remedy-review-20260812-232923-READY_FOR_REVIEW.zip` counts 10534 members of
+  which exactly 1834 are unsafe — 1804 under `.remedy-wt/r11gate/realrun`,
+  whose staged pingpong artifacts carry a `.data/` component, and 30 under
+  `.remedy-wt/r9gate/demo_repo`, a fixture git repo carrying `.git/`. NOTHING
+  from the review subject is implicated: the manifest's
+  committed_review_subject reads base 2e4142c3 and head ca8e36ab exactly as
+  ordered, and zero local paths leaked. The defect is real beyond this feature
+  — the scan also implies any scratch holding a `.env`, a `.log` or a coverage
+  file would publish it before rejecting it, which is a leak surface as much as
+  a packaging bug. Registered NOT fixed here: `scripts/make_review_zip.sh` is
+  not F107's code, and a packaging change needs its own round, its own tests
+  and its own gate — the same boundary R-0287 and R-0290 respect. DECISION F107
+  D3 records what this round does instead. The durable fix is one line, adding
+  `-path './.remedy-wt'` to that prune list, and it belongs to a follow-up that
+  owns the packager. OPEN.
+- R-0296 (Low, F107 R21, flake class, found by the reviewer re-running closure
+  precondition 2): `tests/orchestration/test_product_smoke.py::test_no_zombie_
+  processes_after_every_outcome` is LOAD-SENSITIVE and fails intermittently in
+  a full `-n auto` run. Evidence is two runs of the SAME head, ca8e36ab: the
+  R20 worker's run reported `5 failed, 16537 passed, 19 skipped in 143.59s`
+  with all five in the pre-existing R-0286 `[reviewer]` class, and this
+  reviewer's own run minutes later reported `6 failed, 16536 passed, 19 skipped
+  in 143.86s` — the same five plus this test. Run alone it passes in 0.91s.
+  Same commit, same machine, different outcome, so this is flakiness by
+  definition and not a regression: F107's change set touches
+  `context_compiler.py` and its tests only, while this test asserts process
+  hygiene after a smoke run and is exactly the kind that other concurrent
+  processes on the machine can perturb. Recorded rather than waved through,
+  because closure precondition 2 is a reviewer re-run and this reviewer's run
+  is the one that disagreed with the handback — a discrepancy silently rounded
+  down to "the expected five" would be a false completion claim. Carried as a
+  documented Low risk at closure and routed to F252 flake paydown, which owns
+  this class; not fixed here, because a timing-sensitive smoke test belongs to
+  the feature that owns the suite's stability, not to the context compiler.
+  OPEN.
 
 ## Steps
 
