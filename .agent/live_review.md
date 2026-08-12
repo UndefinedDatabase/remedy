@@ -256,3 +256,62 @@ of preferences — and declared it. One finding registered below.
   diff and declared it rather than leaving it for a reader, which is the
   behaviour these rounds are supposed to produce. Fix, one test: an empty file
   with a non-empty range reports `out_of_bounds`. OPEN.
+
+### R4 — PASS (2026-08-13)
+Reviewed by the main session over 4717ce8c..c9064b17, a state-only round. Every
+gate was RE-RUN by the reviewer rather than read off the handback: `python3 -m
+pytest tests/orchestration/test_diff_repair.py -q` exit 0, 21 passed; `python3
+-m pytest tests/cli/test_golden_path.py -q` exit 0, 42 passed; `python3 -m
+pytest tests/orchestration/test_test_runner.py -q -k 'plan_md or context_md'`
+exit 0, 3 passed and 48 deselected. Transport: PRIMARY cmp proof, no digest
+fallback — the scratch originals survived the session boundary, so
+`.remedy-wt/f111r4/BLOCK` and `.agent/authored/f111-r4-1.md` are byte-identical
+at sha256 70625e3e..., `.agent/last_block.md` equals both, `.agent/plan.md`
+equals its original, and the LRG slice (sha256 9892593c..., matching the digest
+the block stated) is byte-identical to the last 43 lines of
+`.agent/live_review.md`. Append purity by numstat: `43 0` for C3, delete column
+0. Scope: exactly the five ordered paths — no code, no test, no doc. Markers:
+25 `- R-0`, exactly 1 `Landed:`, 0 `Done:`, 1 `### R3 — PASS`. Caps:
+`.agent/plan.md` 40 lines, `.agent/handoff.md` 60 lines, per-commit insertions
+174/127/43/19/38, each under 500. `git status --porcelain` empty and
+`git worktree list` a single entry at the verdict; remote comparison `0 0`.
+Two findings are registered below. Both are against the reviewer's OWN earlier
+planning text, and both were found by reading the code that text named — which
+is what the round the plan ordered ("settle this by reading code, never by
+assuming") was for.
+
+- R-0301 (Medium, F111 R2, planning defect — a spec name that resolves to
+  nothing): DECISION F111 D1, written into `docs/roadmap/features/T2_F111.md`
+  under "Built State", names the bounded repair loop
+  `packages/orchestration/builder_bridge.py` (`run_bounded_repair_loop`). No
+  such symbol exists anywhere in the repository:
+  `grep -rn "run_bounded_repair_loop" packages/ apps/ tests/` returns no hits.
+  The real function is `run_builder_bridge_loop`
+  (`packages/orchestration/builder_bridge.py:264`), whose own docstring reads
+  "Run bounded repair loop: build -> bridge -> test -> repair -> rebuild" — so
+  D1 chose the RIGHT seam and recorded the WRONG name for it. AGENTS.md "Code
+  Discoverability Conventions" requires that a name grep to its own definition;
+  a spec name with zero hits sends the next worker looking for code that is not
+  there, and the whole point of writing the seam into the feature file was to
+  spare that search. Fix ordered this round as DECISION F111 D2: the feature
+  file carries the real name. OPEN.
+
+- R-0302 (Medium, F111 R4, planning defect — a hypothesis the named code
+  disproves): `.agent/plan.md` Next Steps 1 proposed that T001's line ranges
+  come from `review_scope._parse_diff` applied to "the diff of the
+  `source_patch_applied` event", and told the next round to confirm that the
+  event carries a diff. It does not.
+  `packages/orchestration/source_apply.py:355-362` emits `source_patch_applied`
+  with exactly `apply_id`, `snapshot_id`, `snapshot_verified`, `success`,
+  `files_modified`, `files_created` and `error_count` — no diff text and no
+  line numbers — and `build_repair_context` reads only the file LISTS back out
+  of it (`packages/orchestration/repair_context.py:56-72`). The ranges must
+  come from the patch that was applied, which the loop already holds in memory:
+  `run_builder_bridge_loop` keeps every cycle's `bridge_result`
+  (`packages/orchestration/builder_bridge.py:325`), and
+  `BridgeResult.parse_result.patch` is a `StructuredPatch` whose
+  `unified_diffs` entries carry per-path diff text
+  (`packages/orchestration/structured_patch.py:37-56`). This is registered as a
+  finding instead of being re-planned quietly because a written plan step was
+  disproved by the code it pointed at, and the next reader deserves the reason
+  on disk. Fix ordered this round as DECISION F111 D3. OPEN.
