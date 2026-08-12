@@ -2643,3 +2643,61 @@
   this round: PR #189 is open from a non-`feature/*` branch, which the
   AGENTS.md Open PR Gate makes stop-and-report, and only the operator can
   resolve it. F105 stays `[~]`.
+- Reviewer gate on R50 (2026-08-12): PASS. Range `5786967b..470fb776` = five
+  commits touching exactly the five `.agent/` paths the block named — no
+  production code, no test module, no docs, no STATUS.md, no README.md.
+  Insertions per commit 202, 181, 93, 170 and 1, each far under 500.
+  Transport by the PRIMARY shape, because the reviewer's original survived on
+  disk: `.remedy-wt/f105-r50-1.block.md`, the committed
+  `.agent/authored/f105-r50-1.md` and `.agent/last_block.md` all three hash to
+  `8686cf90d6a60f52b4665d7024f944496930257a295e33355b752f1437b642fd`
+  at 202 lines, and both `cmp` runs are silent.
+  PAIR_DONE measured as a REWRITE rather than asserted: the TO does not
+  contain the FROM, the `Landed:` line reads 1x before and 0x after, and
+  every TO-only line occurs exactly 1x among the 93 lines the C3 diff adds.
+  Stray reconcile over that same commit: 93 added, 1 removed, 0 stray.
+  Every scoped gate was RE-RUN by the reviewer instead of read from the
+  handback: `python3 -m pytest tests/docs/ -q` returns 294 passed, the canary
+  `python3 -m pytest tests/cli/test_golden_path.py -q` returns 42 passed,
+  `grep -c '^<<<'` is 0 in all three state files, `## Steps` is exactly 1,
+  `git status --porcelain` is empty and `git worktree list` shows the primary
+  checkout alone.
+  The closure artifacts were checked as artifacts, never as claims. The
+  package `remedy-review-20260812-092055-READY_FOR_REVIEW.zip` hashes to the
+  recorded `23b21bc171b0de493ca4db50c472ecb2797b58b5c870ff9aa5d9b5da71536840`,
+  `zipfile.testzip()` returns None over its 3646 members, its manifest reads
+  `package_status: READY_FOR_REVIEW` with `committed_review_subject`
+  cfda4245..b928a0c6 and `source_root_containment: PASS`, and neither the zip
+  nor the evidence directory is tracked — the zip is ignored at
+  `.gitignore` line 223.
+  Both declared deviations are ACCEPTED. C6's two attempts are the honest
+  record of a producer pitfall found and repaired at authoring time with the
+  production scrubber, on the same producer; C7b is the self-reference limit
+  this branch has already accepted twice, since a gate row counting
+  insertions per commit cannot count the commit that writes it.
+  `LAST_REVIEWED_SHA` advances 5786967b -> 470fb776.
+- R51 CLOSURE (2026-08-12): F105 closes as PASS_WITH_RISKS — ACCEPTED.
+  The five closure preconditions were re-verified by the reviewer at HEAD
+  470fb776, not carried forward from an earlier round. Every step has a PASS
+  round and the seven open findings are exactly the documented Low/Medium
+  residual set recorded above. The full suite, run by the reviewer itself,
+  returns `16462 passed, 19 skipped in 132.94s` at exit 0 with zero failures.
+  `python3 -m apps.cli.grouped integrity check --json` returns
+  `"passed": true` with 5 of 5 checks passing, `relevant_untracked` at 0 and
+  `high_blockers_open` clean. The feature file's Built State already
+  describes T001-T004 as built. The tree is clean and HEAD equals
+  `origin/feature/f105-cache-optimal-prompt-ordering`.
+  The review zip is deliberately NOT rebuilt for this round. Every commit
+  between the accepted HEAD b928a0c6 and the closure commit changes `.agent/`
+  state only, and the closure commit's own STATUS and README edits follow the
+  READY zip by construction, exactly as the protocol's build order requires.
+  This is the F104 R9 shape, ratified there in the same words.
+  This is the LAST round of the branch, so by construction it records no gate
+  on itself (planner_reviewer_prompt.md §4.13). Its verdict lives in
+  `.agent/handoff.md`, the completion report and the pull request, and that
+  absence is the terminator rather than a missing gate.
+  One closure CANDIDATE was raised and spends no R-id: the review zip
+  packages the gitignored `.remedy-wt/` scratch tree. It is written to
+  `.agent/candidates.md` under the disk-vehicle rule, so the next feature's
+  first reviewed round registers or resolves it. The next free finding ID
+  stays R-0270.

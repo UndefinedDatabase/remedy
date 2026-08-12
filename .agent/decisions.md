@@ -4219,3 +4219,30 @@ to nothing" differ exactly where a reader's next action differs.
 
 Reverse this decision by deleting `UNDEFINED_SHARE` and returning `UNMEASURED`
 for the zero-denominator case, with the test that pins the two words dropped.
+
+## DECISION F105 D16 (2026-08-12) — the Open PR Gate does not block a
+## closure PR
+
+Chosen: PR #189 (`docs/amend0810-clerical` -> `main`) is stop-and-report and
+stays untouched — not merged, not commented on, not modified — because it
+does not originate from a `feature/*` branch. It does NOT block creating the
+F105 closure pull request. The AGENTS.md Open PR Gate fires "before creating
+a new feature branch or starting a new unrelated task"; closing F105 is
+neither, it is the completion of the branch already in hand. The closure
+protocol already leaves the closure PR unmerged until the next feature's
+start, where the gate will see both PRs and correctly stop-and-report.
+
+Alternatives considered. (a) Wait for the operator before closing: rejected —
+from 2026-08-13 the operator reaches this machine only over SSH from a phone
+(docs/agents/self_drive_protocol.md), so a finished feature would stall
+indefinitely on an action the operator must take for #189 either way, and
+every later session would re-derive F105's state from scratch. (b) Merge #189
+to clear the gate: FORBIDDEN — a non-`feature/*` PR is stop-and-report and
+merging it is outside any agent's authority here.
+
+Reverse this decision by closing the F105 pull request; the branch and every
+commit on it survive untouched.
+
+Operator note, not a blocker: PR #189 and this branch both modify
+`docs/agents/reviewer_conventions.md`, so whichever merges second may need a
+conflict resolution.
