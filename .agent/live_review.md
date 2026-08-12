@@ -160,3 +160,54 @@ measurable win the feature asks for is reachable today on the bridge path.
 How to reverse: delete this DECISION and the amendment it adds to
 docs/roadmap/features/T2_F111.md, then re-scope T002 to the preferred seam.
 No code depends on it yet.
+
+### R2 — PASS (2026-08-13)
+Reviewed by the main session over f71ebc06..5d8d8c56. Every number below the
+reviewer produced by re-running the command, not by reading the handback.
+`python3 -m pytest tests/orchestration/test_diff_repair.py -q` exit 0, 18
+passed. `python3 -m pytest tests/docs/ -q` exit 0, 294 passed. `python3 -m
+pytest tests/cli/test_golden_path.py -q` exit 0, 42 passed. The mutation
+red-proof was RE-RUN INDEPENDENTLY by the reviewer in its own disposable
+worktree: removing the `max(1, ...)` clamp turns exactly two tests red,
+`TestMarginClamping::test_start_of_file_clamps_to_line_1` and
+`TestMarginClamping::test_margin_wider_than_file_yields_whole_file`, at
+2 failed / 16 passed — matching the worker's report. That worktree was
+removed and pruned; `git worktree list` shows only the primary checkout and
+`git status --porcelain` is empty. Transport: primary cmp proof, no digest
+fallback — `.remedy-wt/f111r2/BLOCK` and `.agent/authored/f111-r2-1.md` are
+byte-identical at sha256 85e49d42..., `.agent/plan.md` matches its original,
+and both appends sit verbatim at their targets' tails. Append purity proved
+by numstat: `51 0` for live_review, `17 0` for the feature file. Scope:
+exactly the eight ordered paths. `packages/orchestration/diff_repair.py`
+imports only `__future__`, `collections.abc`, `dataclasses` and `pathlib`,
+holds no `@@` and neither parses nor applies a diff — the reuse constraint
+held. Two Low findings registered below; neither blocks the round.
+
+- R-0298 (Low, F111 R2, reviewer-side authoring defect): step 0 of the R2
+  block ordered the worker to "verify all four scratch digests", while the
+  block's slice table states digests for only three — LRG, FF and PLAN. The
+  fourth entry, BLOCK, is defined as "this entire step block, byte for byte"
+  and cannot carry its own digest by construction: a file cannot state the
+  hash of bytes that include the statement itself. The worker verified 3 of
+  3, pinned BLOCK by the C1 `cmp` instead, and DECLARED the gap rather than
+  inventing a fourth number — the wanted behaviour, and the reason this cost
+  the round nothing. Same unmeetable-by-construction class as R-0282 and
+  R-0285. Forward-looking fix, applied from R3 on: the slice table names how
+  many digests it STATES, then BLOCK separately as pinned by the C1 cmp, and
+  step 0 counts only the stated ones — the count is whatever that round has,
+  never a number carried over from another round. OPEN.
+- R-0299 (Low, F111 R2, spec gap in T001): `select_repair_hunks` reports the
+  reason `no_ranges` for two different situations. One is a path whose range
+  list is genuinely empty (`diff_repair.py:120-122`). The other is a path
+  whose ranges ALL clamp away because they point outside the file:
+  `_expand_and_merge_ranges` drops every span at `diff_repair.py:85-86` when
+  `start > end`, and the caller then reports `no_ranges` at `:129`. The
+  second case is a different and load-bearing signal — line numbers past EOF
+  mean the ranges came from a diff that no longer matches the file on disk,
+  which is exactly the staleness a repair round must not swallow silently.
+  This feature's omissions record exists to name what was left out AND why,
+  so two causes sharing one reason buys a wrong answer in a later debugging
+  session. NOT a worker defect: the eight clauses the R2 block specified did
+  not cover the out-of-bounds case, and the worker chose the conservative
+  reading and declared it in the handback. Fix ordered in R3: a distinct
+  `out_of_bounds` reason with its own test. OPEN.
