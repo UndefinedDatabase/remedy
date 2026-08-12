@@ -5,7 +5,7 @@
 > round. Findings are authored here by the reviewer only. A worker marks a
 > landed fix `Landed: R-XXXX`; only reviewer-authored `Done:` text sets
 > Resolved (docs/agents/planner_reviewer_prompt.md §4.4).
-> Branch: feature/f107-context-compiler-v2. Next free ID: R-0297.
+> Branch: feature/f107-context-compiler-v2. Next free ID: R-0298.
 
 ## Findings
 
@@ -439,6 +439,26 @@
   this class; not fixed here, because a timing-sensitive smoke test belongs to
   the feature that owns the suite's stability, not to the context compiler.
   OPEN.
+- R-0297 (Low, F107 R22, reviewer-side authoring defect): the R21 block ordered
+  an action this environment forbids, and cost the round its second half. C5.1
+  told the worker to `mkdir -p /home/decodeux/remedy-scratch-archive/f107` and
+  move two scratch trees there. Every path outside `/home/decodeux/Repos/remedy`
+  is denied by the session's permission layer — the worker proved it was the
+  PATH and not the command by creating and removing a probe directory inside
+  the repo with the same `mkdir`, and it correctly refused both the
+  sandbox-override flag and a subagent detour, since an agent-authored block
+  cannot grant permission the permission system withholds. The reviewer
+  confirmed the same denial against its own shell before authoring this block.
+  Four commits landed and C5/C6 did not, so the round is half-spent, not
+  wrong. The authoring error is narrow and worth naming precisely: the block
+  made a filesystem PATH load-bearing without probing that path first, the same
+  class as §3's checklist item 5, which already says a block may order only
+  what it has checked is reachable — item 5 speaks of code branches, and this
+  is its filesystem twin. Forward-looking fix, applied in THIS block: the
+  archive target is inside the repository, and the reviewer verified before
+  emission both that it is gitignored and that the packager prunes it. Not a
+  worker finding: two consecutive workers stopped clean at a wall rather than
+  route around it, which is the behaviour the rules ask for. OPEN.
 
 ## Steps
 
