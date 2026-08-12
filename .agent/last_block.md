@@ -1,251 +1,265 @@
-── STEP R22/23 — F107 Context compiler v2 ─────────────
-Goal:        Amend DECISION F107 D3 to an archive path this environment can
-             actually reach, register the reviewer error that cost R21 its
-             second half, then complete the relocation, the rebuild and the
-             package verification D3 always intended.
-Bundle:      C1 save block · C2 mirror · C3 the finding persists FIRST ·
-             C4 the D3 amendment · C5 relocate, rebuild, verify · C6 plan and
-             handoff.
-Change:      `.agent/authored/f107-r22-1.md` (new) · `.agent/last_block.md` ·
-             `.agent/live_review.md` · `.agent/decisions.md` · `.agent/plan.md` ·
-             `.agent/handoff.md`. SIX paths, all under `.agent/`, nothing else.
-             No production code, no tests, no docs, no STATUS.md, no README.md,
-             and NO edit to `scripts/make_review_zip.sh`.
-Constraints: AGENTS.md in full. Insertions per commit under 500. Push after
-             every commit. No PR this round. No merge. NOTHING IS DELETED: the
-             scratch trees are MOVED, and a `mv` that fails is reported, never
-             forced and never replaced by `rm`. Do NOT use any sandbox-override
-             flag: if a path is denied, that is a finding, not an obstacle.
-Done when:   gates A-G below are executed and their REAL results recorded.
+── STEP R23/23 — F107 Context compiler v2 — CLOSURE ─────────────
+Goal:        Close F107. Record the R20, R21 and R22 gates and the closure
+             verdict, apply the reviewer-authored STATUS `[x]` line with the
+             README capability sync in the SAME commit, and open the PR. The PR
+             is NOT merged in this session.
+Bundle:      C1 save block · C2 mirror · C3 gates and closure verdict persist
+             FIRST · C4 the closure commit · C5 the PR.
+Change:      `.agent/authored/f107-r23-1.md` (new) · `.agent/last_block.md` ·
+             `.agent/live_review.md` · `docs/roadmap/STATUS.md` · `README.md` ·
+             `.agent/plan.md` · `.agent/handoff.md`. SEVEN paths, nothing else.
+             No production code, no tests, no feature file.
+Constraints: AGENTS.md in full. Rule A4: the STATUS edit is the LAST commit on
+             the branch, and README ships in that same commit (R-0154) so the
+             ledger cross-check never sees them disagree. Insertions per commit
+             under 500. Push after every commit. Never merge the PR. Never
+             force-push. Nothing is deleted.
+Done when:   gates A-H below are executed and their REAL results recorded.
 Handback:    completion report + rewrite `.agent/handoff.md` (<= 60 lines, or a
              "Deviations, declared" line naming the real count and the mandated
-             content that caused it, per AGENTS.md DECISION D15), carrying the
-             six closure values: evidence job id, package filename, package
-             SHA-256, final verifier verdict, BOTH full-suite counts lines
-             (R20's and the reviewer's, never collapsed — R-0296), and the
-             integrity-check verdict.
+             content, per AGENTS.md DECISION D15), carrying the PR number and
+             URL, the closure values, and the open-findings count.
 
-C1 — the block you are executing was handed to you as
-`.remedy-wt/f107-r22-1.block.md`. Copy it, do not retype it:
-`cp .remedy-wt/f107-r22-1.block.md .agent/authored/f107-r22-1.md`, then
-`cmp .remedy-wt/f107-r22-1.block.md .agent/authored/f107-r22-1.md` (silent,
-exit 0). Record `wc -l` and `sha256sum` of the saved file. Commit alone, push:
-  chore(f107): save the R22 step block verbatim
+C1 — the block was handed to you as `.remedy-wt/f107-r23-1.block.md`. Copy it,
+do not retype it: `cp .remedy-wt/f107-r23-1.block.md .agent/authored/f107-r23-1.md`,
+then `cmp` the two (silent, exit 0). Record `wc -l` and `sha256sum`. Commit
+alone, then push:
+  chore(f107): save the R23 step block verbatim
 
-C2 — `cp .agent/authored/f107-r22-1.md .agent/last_block.md`, then
-`cmp .agent/authored/f107-r22-1.md .agent/last_block.md` (silent, exit 0).
-Commit alone, then push:
-  chore(f107): mirror the R22 block into last block
+C2 — `cp .agent/authored/f107-r23-1.md .agent/last_block.md`, then `cmp` the
+two (silent, exit 0). Commit alone, then push:
+  chore(f107): mirror the R23 block into last block
 
-C3 — THE FINDING PERSISTS FIRST (planner_reviewer_prompt.md §4.4)
-PAIR_HDR is a REWRITE. In `.agent/live_review.md` replace the one line:
-<<<BEGIN PAIR_HDR_FROM>>>
-> Branch: feature/f107-context-compiler-v2. Next free ID: R-0297.
-<<<END PAIR_HDR_FROM>>>
-<<<BEGIN PAIR_HDR_TO>>>
-> Branch: feature/f107-context-compiler-v2. Next free ID: R-0298.
-<<<END PAIR_HDR_TO>>>
+C3 — GATES AND CLOSURE VERDICT PERSIST FIRST (planner_reviewer_prompt.md §4.4)
+No finding is registered this round: the header line stays at R-0298.
 
-PAIR_LRF is an APPEND: the TO's first three lines ARE the FROM, the last three
-lines of the R-0296 entry. The new entry goes directly beneath them.
-<<<BEGIN PAIR_LRF_FROM>>>
-  this class; not fixed here, because a timing-sensitive smoke test belongs to
-  the feature that owns the suite's stability, not to the context compiler.
-  OPEN.
-<<<END PAIR_LRF_FROM>>>
-<<<BEGIN PAIR_LRF_TO>>>
-  this class; not fixed here, because a timing-sensitive smoke test belongs to
-  the feature that owns the suite's stability, not to the context compiler.
-  OPEN.
-- R-0297 (Low, F107 R22, reviewer-side authoring defect): the R21 block ordered
-  an action this environment forbids, and cost the round its second half. C5.1
-  told the worker to `mkdir -p /home/decodeux/remedy-scratch-archive/f107` and
-  move two scratch trees there. Every path outside `/home/decodeux/Repos/remedy`
-  is denied by the session's permission layer — the worker proved it was the
-  PATH and not the command by creating and removing a probe directory inside
-  the repo with the same `mkdir`, and it correctly refused both the
-  sandbox-override flag and a subagent detour, since an agent-authored block
-  cannot grant permission the permission system withholds. The reviewer
-  confirmed the same denial against its own shell before authoring this block.
-  Four commits landed and C5/C6 did not, so the round is half-spent, not
-  wrong. The authoring error is narrow and worth naming precisely: the block
-  made a filesystem PATH load-bearing without probing that path first, the same
-  class as §3's checklist item 5, which already says a block may order only
-  what it has checked is reachable — item 5 speaks of code branches, and this
-  is its filesystem twin. Forward-looking fix, applied in THIS block: the
-  archive target is inside the repository, and the reviewer verified before
-  emission both that it is gitignored and that the packager prunes it. Not a
-  worker finding: two consecutive workers stopped clean at a wall rather than
-  route around it, which is the behaviour the rules ask for. OPEN.
-<<<END PAIR_LRF_TO>>>
+PAIR_LRG is an APPEND: the TO's first line IS the FROM, the last line of the
+R19 gate entry. The three new gate entries go directly beneath it.
+<<<BEGIN PAIR_LRG_FROM>>>
+  `LAST_REVIEWED_SHA` advances 6e1970c4 -> 65723390.
+<<<END PAIR_LRG_FROM>>>
+<<<BEGIN PAIR_LRG_TO>>>
+  `LAST_REVIEWED_SHA` advances 6e1970c4 -> 65723390.
+- Reviewer gate on R20 (2026-08-12): PASS on the three commits it made; its C6
+  was blocked and its C7 correctly skipped. Range `65723390..ca8e36ab` = three
+  commits over three `.agent/` paths, 242/0, 188/325 and 53/0. Transport by the
+  PRIMARY shape: `.remedy-wt/f107-r20-1.block.md` and the saved copy are
+  byte-identical, as are the saved copy and `.agent/last_block.md`, and both
+  authored payloads were searched for as whole strings in the target and occur
+  exactly 1x each. `^Done:` is 13 and `^Landed:` 0. The round stopped at the
+  review-zip build, which published a package and then rejected it, exit 1: the
+  worker recorded the raw error, refused to delete anything to make it pass and
+  refused to write a plan asserting a rebuild that had not happened. That
+  refusal is the correct behaviour and cost the round nothing but time. The
+  reviewer re-ran closure precondition 2 independently and got a DIFFERENT
+  result from the handback — six failures against five — which is registered as
+  R-0296 rather than rounded to the expected number. Precondition 3 re-confirmed
+  by the worker: integrity `passed: true`, 5 of 5 checks, untracked 0.
+  `LAST_REVIEWED_SHA` advances 65723390 -> ca8e36ab.
+- Reviewer gate on R21 (2026-08-12): PASS on the four commits it made; C5 and
+  C6 blocked. Range `ca8e36ab..56ee7dc1` = four commits over four `.agent/`
+  paths, 275/0, 219/186, 50/1 and 29/0. Both payload pairs verified verbatim in
+  their targets, the D3 anchor adjacency holds, `^<<<` is 0 across the four
+  state files. The round could not run because the block named a path outside
+  the repository and the permission layer denies every such path; the worker
+  proved it was the path rather than the command with a probe directory, then
+  declined both the override flag and a subagent detour. That is the second
+  consecutive worker to stop clean at a wall instead of routing around one, and
+  it is the behaviour these rules exist to produce. The defect is the
+  reviewer's and is registered as R-0297.
+  `LAST_REVIEWED_SHA` advances ca8e36ab -> 56ee7dc1.
+- Reviewer gate on R22 (2026-08-12): PASS, and the package exists. Range
+  `56ee7dc1..9aacd70d` = five commits over the six `.agent/` paths the Change
+  line names, 251/0, 149/173, 21/1, 35/0 and the C6 pair, each far under 500.
+  Transport primary and silent both ways. Payloads verbatim: PAIR_HDR_TO,
+  PAIR_LRF_TO and the D3a append each occur exactly 1x in their target,
+  `.agent/plan.md` equals PAYLOAD_PLAN byte for byte, and `^## DECISION F107
+  D3 ` is still 1 — the original decision was amended in the open, not
+  rewritten. The package was verified by this reviewer opening it rather than
+  by reading the handback: `sha256sum` returns
+  4497c8e1bdb54ac3a0c5069dffcb9184303ceaa85f6c075ba81c09a14927ff8d, matching
+  the worker's value; the archive holds 4096 members of which 0 match the
+  packager's own rejection regex, 0 match its local-path leak regex and 0 come
+  from `.remedy-wt/.cache`, which proves the D3a prune held; and the manifest's
+  committed_review_subject reads base 2e4142c3 with head b823dff9. All four
+  archived items survive under `.remedy-wt/.cache/f107-archive/` — nothing was
+  deleted to make a package build. Gate F's wording that the package head must
+  equal the round's final HEAD was the reviewer's error and the worker was right
+  to flag it: the closure protocol builds the zip before the final state commit
+  BY DESIGN, so the accepted HEAD is the manifest's head and this is exactly the
+  shape every prior closure has.
+  `LAST_REVIEWED_SHA` advances 56ee7dc1 -> 9aacd70d.
+<<<END PAIR_LRG_TO>>>
+
+PAIR_CLOSE is an APPEND at the END of the file: the TO's first line IS the
+FROM, the current last line of `.agent/live_review.md`.
+<<<BEGIN PAIR_CLOSE_FROM>>>
+signatures. Open findings 20 -> 19.
+<<<END PAIR_CLOSE_FROM>>>
+<<<BEGIN PAIR_CLOSE_TO>>>
+signatures. Open findings 20 -> 19.
+
+## Closure verdict — F107 Context compiler v2 (2026-08-12)
+
+PASS_WITH_RISKS. The DONE sentence is met and proved: a fixture task's context
+shrinks measurably against whole-files while the fake provider still reaches
+`staged_review_passed`, with the reported length pinned to the exact bytes the
+compiler produces so a run that bypassed compilation cannot pass by being
+smaller for an unrelated reason, and every candidate path is accounted for in
+`included` or in an omissions record naming one of five reasons.
+
+Preconditions, each checked against the disk rather than a summary. (1) Every
+step has a PASS round; 35 findings registered, 13 resolved, 22 open, NONE above
+Medium, each carried below as a documented risk. (2) Full suite re-confirmed
+after the R16 integration gate: `5 failed, 16537 passed, 19 skipped` in the
+worker's run and `6 failed, 16536 passed, 19 skipped` in the reviewer's own
+re-run of the same head — both recorded, never collapsed, the difference being
+R-0296. (3) `integrity check` passes, 5 of 5, untracked 0. (4) Built State is
+current in the feature file. (5) Tree clean, branch pushed.
+
+Risks accepted, all Medium or Low: R-0286, the five pre-existing `[reviewer]`
+role-convention failures that predate this branch and fail identically on it;
+R-0296, a load-sensitive smoke test that passes alone and belongs to F252's
+flake paydown; R-0295, the packager publishing local scratch before rejecting
+its own package, whose one-line durable fix belongs to a follow-up that owns
+`scripts/make_review_zip.sh`; R-0290 and R-0297, two reviewer-side protocol
+defects whose fixes edit `docs/agents/` and so sit outside this feature's change
+set; R-0291's two Design deferrals, recorded as DECISION F107 D1; and fifteen
+older Low and Medium items carried from F103, F104, F105 and this feature's
+earlier rounds. No risk touches the DONE sentence, and none is a defect in the
+code this feature ships.
+
+Evidence job f107-closure, verdict PASS_WITH_RISKS over 416 passing tests in
+four recorded runs. Package
+remedy-review-20260812-235227-READY_FOR_REVIEW.zip, SHA-256
+4497c8e1bdb54ac3a0c5069dffcb9184303ceaa85f6c075ba81c09a14927ff8d, accepted HEAD
+b823dff9b4711ec3cc3505b496589cd02e219fc4, verified open by the reviewer at 4096
+members with zero unsafe entries. This round's own gate has no entry above it
+by construction (§4.13): it lives in the handoff and the PR.
+<<<END PAIR_CLOSE_TO>>>
 Commit, then push:
-  chore(f107): register R-0297, a block ordering an unreachable path
+  chore(f107): record the R20 to R22 gates and the closure verdict
 
-C4 — the D3 amendment. PAIR_DEC is an APPEND whose anchor is the current LAST
-non-empty line of `.agent/decisions.md`; that anchor must remain exactly 1x and
-must immediately precede the payload. The payload's first line is blank. D3
-itself is NOT edited — a decision that was acted on is amended in the open, not
-rewritten, so the record shows what was chosen and what the world refused.
-<<<BEGIN PAIR_DEC_ANCHOR>>>
-neither the move nor this decision is needed again.
-<<<END PAIR_DEC_ANCHOR>>>
-<<<BEGIN PAIR_DEC_TO_APPEND>>>
+C4 — THE CLOSURE COMMIT. STATUS, README, plan and handoff in ONE commit, and it
+is the LAST commit on this branch (Rule A4, R-0154). Four replacement pairs,
+each unique in its file.
 
-## DECISION F107 D3a (2026-08-12) — the D3 archive moves INSIDE the repo, to a path the packager already prunes
+PAIR_STATUS is a REWRITE. In `docs/roadmap/STATUS.md` replace the one line:
+<<<BEGIN PAIR_STATUS_FROM>>>
+- [~] F107 — Context compiler v2
+<<<END PAIR_STATUS_FROM>>>
+<<<BEGIN PAIR_STATUS_TO>>>
+- [x] F107 — Context compiler v2 (T001–T004 complete; accepted 2026-08-12 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f107-closure · package remedy-review-20260812-235227-READY_FOR_REVIEW.zip · SHA-256 4497c8e1bdb54ac3a0c5069dffcb9184303ceaa85f6c075ba81c09a14927ff8d · accepted HEAD b823dff9b4711ec3cc3505b496589cd02e219fc4)
+<<<END PAIR_STATUS_TO>>>
 
-Context: finding R-0297. D3 chose to move the two offending scratch trees to
-`/home/decodeux/remedy-scratch-archive/`, outside the repository. That path is
-unreachable: this session's permission layer denies every filesystem access
-outside `/home/decodeux/Repos/remedy`, for the worker and for the reviewer
-alike. D3's REASONING survives intact — move rather than delete, and do not
-edit a packager this feature does not own — only its destination was wrong.
+PAIR_RM1 is a REWRITE. In `README.md` replace the one line:
+<<<BEGIN PAIR_RM1_FROM>>>
+42 of 255 registered items accepted. Next: F107 (Context compiler v2).
+<<<END PAIR_RM1_FROM>>>
+<<<BEGIN PAIR_RM1_TO>>>
+43 of 255 registered items accepted. Next: F111 (Diff-only repair).
+<<<END PAIR_RM1_TO>>>
 
-Chosen: archive to `.remedy-wt/.cache/f107-archive/` instead. The path is
-inside the repository, so it is reachable; `.gitignore:235` already ignores all
-of `.remedy-wt/`, so nothing enters the review subject; and the packager's own
-prune list matches it — `scripts/make_review_zip.sh:236` prunes
-`-path './*/.cache'`, which `./.remedy-wt/.cache` satisfies, so `find` never
-descends into it and the 1834 unsafe members never reach the archive. Both
-properties were verified by the reviewer against the disk before this block was
-emitted, which is exactly what R-0297 says should have happened the first time.
-This is strictly better than D3's original target for the R-0288 rule as well:
-the raw gate records stay inside the repo's own scratch directory, where the
-protocol says scratch lives, rather than migrating to a private sibling path
-that a later reader would have no reason to look in.
+PAIR_RM2 is a REWRITE. In `README.md` replace the one line:
+<<<BEGIN PAIR_RM2_FROM>>>
+| 2 | Minimal Self-Build Runtime | 4 | 14 |
+<<<END PAIR_RM2_FROM>>>
+<<<BEGIN PAIR_RM2_TO>>>
+| 2 | Minimal Self-Build Runtime | 5 | 14 |
+<<<END PAIR_RM2_TO>>>
 
-Alternatives considered: (a) `.data/remedy-scratch-archive/` — pruned and
-ignored too, rejected because `.data` is the application's data root and agent
-scratch does not belong in it; (b) widen the session sandbox to reach the
-original path — rejected, a permission boundary is not an obstacle to route
-around, and nothing about this feature justifies loosening one; (c) delete the
-trees — rejected for the same reason D3 rejected it, and the reason has not
-weakened: they are F107's own R9 and R11 raw gate records.
+PAIR_RM3 is a REWRITE. In `README.md` replace the one line:
+<<<BEGIN PAIR_RM3_FROM>>>
+F105 cache-optimal prompt ordering.
+<<<END PAIR_RM3_FROM>>>
+<<<BEGIN PAIR_RM3_TO>>>
+F105 cache-optimal prompt ordering, F107 context compiler v2.
+<<<END PAIR_RM3_TO>>>
 
-Reverse this decision by moving the two directories back from
-`.remedy-wt/.cache/f107-archive/` to `.remedy-wt/`. The durable fix R-0295
-names — one `-path './.remedy-wt'` line in the packager's prune list — retires
-D3, this amendment and the move together.
-<<<END PAIR_DEC_TO_APPEND>>>
-Commit, then push:
-  chore(f107): amend DECISION F107 D3 with a reachable archive path
-
-C5 — relocate, rebuild, verify. NOTHING here is committed and NOTHING is
-deleted. Run in this order and record the real output of each step.
-1. Archive the two offending trees and the rejected package:
-     mkdir -p .remedy-wt/.cache/f107-archive
-     mv .remedy-wt/r11gate .remedy-wt/.cache/f107-archive/r11gate
-     mv .remedy-wt/r9gate .remedy-wt/.cache/f107-archive/r9gate
-     mv remedy-review-20260812-232923-READY_FOR_REVIEW.zip .remedy-wt/.cache/f107-archive/rejected-remedy-review-20260812-232923.zip
-   Prove each landed with `ls -d` on the two directories and `ls -l` on the
-   zip, and prove the sources are gone from `.remedy-wt/` with `ls .remedy-wt`.
-   If any `mv` fails, STOP. Do not force it, do not delete, do not override.
-2. `git status --porcelain` — still empty; the move touches no tracked file.
-3. Move the R20 evidence bundle aside rather than overwrite it, then refresh
-   the four `-v` logs so the head they record matches the head the new bundle
-   will carry:
-     mv .remedy-wt/f107_closure_evidence .remedy-wt/.cache/f107-archive/f107_closure_evidence_r20
-     python3 -m pytest tests/orchestration/test_context_compiler.py -v
-       -> .remedy-wt/r20_logs/vr0001.txt          (expect 65 passed)
-     python3 -m pytest tests/orchestration/test_context_compiler_e2e.py
-       tests/cli/test_job_context_cmd.py -v
-       -> .remedy-wt/r20_logs/vr0002.txt          (expect 15 passed)
-     python3 -m pytest tests/docs/ -v
-       -> .remedy-wt/r20_logs/vr0003.txt          (expect 294 passed)
-     python3 -m pytest tests/cli/test_golden_path.py -v
-       -> .remedy-wt/r20_logs/vr0004.txt          (expect 42 passed)
-   Each MUST end 0 failed and 0 skipped; the producer asserts exactly that.
-4. Rebuild the evidence bundle at the current head:
-     python3 .remedy-wt/r20_build_evidence.py
-   Record the four run lines, the final verifier verdict and the job id.
-5. Rebuild the package from the clean tree:
-     bash scripts/make_review_zip.sh --evidence-dir
-       .remedy-wt/f107_closure_evidence/remedy-job-evidence-f107-closure
-   Record the printed package filename, the script's REAL exit code, the
-   package_status, and `sha256sum` of the file computed by YOU.
-6. Verify the package yourself. Write a short read-only python script under
-   `.remedy-wt/` that opens the new zip with `zipfile` and reports: the member
-   count; the count of members matching the packager's own rejection regex from
-   `scripts/make_review_zip.sh:509` (MUST be 0); the count of members whose
-   path starts with `.remedy-wt/.cache` (MUST be 0, proving the prune held);
-   and the manifest's committed_review_subject base and head. Base MUST be
-   2e4142c3ac72042ac4d704da252db263e48dcba3 and head MUST be this round's HEAD.
-7. If the build fails again, record the FULL raw error and the offending paths
-   and STOP. Never delete to make it pass, never substitute NO_EVIDENCE.
-
-C6 — plan and handoff. Replace `.agent/plan.md` ENTIRELY with:
+Then replace `.agent/plan.md` ENTIRELY with:
 <<<BEGIN PAYLOAD_PLAN>>>
-# Plan — F107 Context compiler v2
+# Plan — F107 Context compiler v2 — CLOSED
 
 Branch: feature/f107-context-compiler-v2, cut from main at 2e4142c3.
-Next free finding ID: R-0298. R19 reviewed PASS at 65723390; R20 and R21 are
-gated on their committed items, each having stopped short on an environment
-wall rather than route around one.
+Next free finding ID: R-0298. Last reviewed SHA 9aacd70d (R22 PASS).
 
 ## Goal
 The context compiler selects fenced-path files, their direct import neighbors,
 and only SIGNATURES of distant dependencies, under a total context token budget
 with tier demotion — and writes an omissions record naming everything it left
-out and why. DONE when a fixture repo's task context shrinks measurably versus
-whole-files with the fixture task still solvable by the fake provider, and the
-omissions record explains every exclusion
+out and why. DONE, and closed at PASS_WITH_RISKS: the fixture task's context
+shrinks measurably against whole-files, the fake provider still solves it, and
+the omissions record explains every exclusion
 (docs/roadmap/features/T2_F107.md).
 
 ## Current Step
-R22 — the package, finally built. R-0297 records that R21's block named an
-unreachable path; DECISION F107 D3a moves the archive inside the repository to
-`.remedy-wt/.cache/f107-archive/`, which is gitignored and which the packager
-prunes, so the 1834 unsafe members never reach the zip. The evidence bundle and
-the package are rebuilt at this round's head and the package is verified by
-opening it. Preconditions 1-5 otherwise hold: 22 open findings, none above
-Medium, full suite re-confirmed twice, integrity check passed, Built State
-current, tree clean and pushed.
+R23 — closure. The R20, R21 and R22 gates and the closure verdict are recorded,
+`docs/roadmap/STATUS.md` carries the `[x]` line with the README capability sync
+in the same commit, and the PR is open. 22 findings remain open, none above
+Medium, each named as an accepted risk in the closure verdict.
 
 ## Next Steps
-1. R23 — the closure commit: the reviewer-authored STATUS `[x]` line, the
-   README capability sync in the SAME commit (R-0154), the final `.agent/`
-   state, then the PR. Verdict PASS_WITH_RISKS for the five pre-existing
-   R-0286 `[reviewer]` failures plus the R-0296 flake.
-2. The closure PR is never merged in the session that creates it; it merges at
-   the next feature's start via the AGENTS.md Open PR Gate.
+1. The PR is NOT merged by this session. It merges at the next feature's start
+   via the AGENTS.md Open PR Gate — that gap is the operator's manual-review
+   window, and the operator may merge manually at any time instead.
+2. The next session claims the next feature under Rule A5: F111 Diff-only
+   repair, the first `[ ]` line of docs/roadmap/STATUS.md.
+3. Owed follow-ups, all registered: R-0295 the packager prune, R-0296 the flake
+   routed to F252, R-0290 and R-0297 the two self-drive protocol gaps.
 <<<END PAYLOAD_PLAN>>>
 
-Then rewrite `.agent/handoff.md` (you author it) with: feature and round,
-branch, the commit SHAs of C1-C4, a changed-files table, the item-status table
-for C1-C6, the REAL results of gates A-G, the six closure values, the
-open-findings count, and the next expected action. The state block repeats the
-operator brief's Fortschritt line verbatim:
-  Fortschritt: ~98 % (T001-T004 ✅ · Integration Gate ✅ · Built State ✅ · Evidence + Zip ✅ · STATUS-Zeile + PR offen) — Schätzung
-Commit, then push:
-  chore(f107): rewrite the plan and handoff for R22
+Then rewrite `.agent/handoff.md` (you author it) with feature, round, branch,
+the C1-C4 SHAs, a changed-files table, the C1-C5 item-status table, the REAL
+results of gates A-H, the closure values, the open-findings count and the PR
+number. The state block repeats the operator brief's Fortschritt line verbatim:
+  Fortschritt: 100 % (T001-T004 ✅ · Integration Gate ✅ · Built State ✅ · Evidence + Zip ✅ · STATUS [x] ✅ · PR offen, ungemergt) — Schätzung
+Commit all of C4 TOGETHER, then push:
+  docs(f107): close F107 in the status ledger and sync the readme
+
+C5 — the PR. Create it, do NOT merge it, do not mark it draft:
+  gh pr create --base main --head feature/f107-context-compiler-v2
+Title:
+  F107 Context compiler v2 — tiered selection, budget demotion, omissions record
+The description carries, per AGENTS.md and STATUS_closure_protocol.md step 5:
+what changed and why; the key decisions (F107 D1 the two Design deferrals, D2
+the fifth omission reason, D3 and D3a the scratch archive); how to review
+(the scoped suites and the canary, named with their commands); a changed-files
+table for `2e4142c3..HEAD`; the latest verdict PASS_WITH_RISKS with the risk
+list; the open-findings count 22 with none above Medium; and runtime actuals —
+23 rounds, evidence job f107-closure, package
+remedy-review-20260812-235227-READY_FOR_REVIEW.zip, wall clock and token cost
+`not-measured` for the rounds before this session rather than guessed. Record
+the PR number and URL. Then STOP: this session does not merge.
 
 GATES — run every one, record the real output and the real exit code
-A transport: `cmp` of the scratch original against `.agent/authored/f107-r22-1.md`
-  (silent, exit 0), that file's `wc -l` and `sha256sum`, and the C2 `cmp`
-  against `.agent/last_block.md` (silent, exit 0).
-B block cap: the gate-A line count against the cap of 400 (DECISION F105 D5).
-C pairs, after C3, in `.agent/live_review.md`: `^> Branch:.*Next free ID:
-  R-0297` is 0, `^> Branch:.*Next free ID: R-0298` is 1, `^- R-0297` is 1,
-  `^Done:` is still 13 and `^Landed:` is 0. PAIR_LRF is APPEND-shaped: its
-  three-line FROM stays exactly 1x and every non-blank TO-ONLY line occurs
-  exactly 1x AMONG THE LINES C3's OWN DIFF ADDS. Report added/removed from
-  `git show --numstat <C3> -- .agent/live_review.md` and the count of added
-  lines belonging to no TO body (must be 0).
-D decisions: `grep -c '^## DECISION F107 D3a' .agent/decisions.md` is 1, the
-  anchor line is still 1x, `^## DECISION F107 D3 ` is still 1 (the original is
-  NOT edited), and the payload's first non-blank line directly follows the
-  anchor. Report `git show --numstat <C4> -- .agent/decisions.md`.
-E marker leak: `grep -c '^<<<'` is 0 in `.agent/live_review.md`,
-  `.agent/decisions.md`, `.agent/plan.md` and `.agent/handoff.md`.
-F artifacts: the archive proof (both directories and the zip at their new
-  paths, and `.remedy-wt` no longer holding the originals), the four refreshed
-  run lines, the final verifier verdict, the job id, the new package filename,
-  its SHA-256 computed by you, the package_status, the script's exit code, the
-  member count, the unsafe count (0), the `.remedy-wt/.cache` member count (0)
-  and the manifest's committed_review_subject base and head.
-G tree, push and scope: `git status --porcelain` empty, `git worktree list` the
-  primary checkout alone, `git rev-list --left-right --count
+A transport: `cmp` scratch against `.agent/authored/f107-r23-1.md` (silent,
+  exit 0), its `wc -l` and `sha256sum`, and the C2 `cmp` (silent, exit 0).
+B block cap: the gate-A line count against the cap of 400.
+C pairs after C3, in `.agent/live_review.md`: `Reviewer gate on R20`,
+  `Reviewer gate on R21`, `Reviewer gate on R22` and `^## Closure verdict` are
+  each 1; `^Done:` is still 13; `^Landed:` is 0; `^> Branch:.*Next free ID:
+  R-0298` is 1. Both pairs are APPEND-shaped: each FROM stays exactly 1x and
+  every non-blank TO-ONLY line occurs exactly 1x among the lines C3's own diff
+  adds. Report `git show --numstat <C3> -- .agent/live_review.md` and the count
+  of added lines in no TO body (must be 0).
+D closure commit: `grep -c -F -- '- [x] F107 —' docs/roadmap/STATUS.md` is 1
+  and `- [~] F107` is 0; `grep -c '^43 of 255 registered items accepted'
+  README.md` is 1 and the `42 of 255` line is 0; the tier-2 row reads `| 5 |`;
+  `grep -c -F 'F107 context compiler v2.' README.md` is 1. Prove STATUS and
+  README moved in the SAME commit: `git show --name-only <C4>` lists both.
+E ledger pins, the docs-round gate (this round touches docs/roadmap/**):
+  `python3 -m pytest tests/docs/ -q` — exit code and pass count. The README
+  accepted-count pin and the STATUS cross-check live here, so a mismatch
+  between the two files turns this red.
+F canary: `python3 -m pytest tests/cli/test_golden_path.py -q`.
+G marker leak: `grep -c '^<<<'` is 0 in `.agent/live_review.md`,
+  `.agent/plan.md`, `.agent/handoff.md`, `docs/roadmap/STATUS.md` and
+  `README.md`.
+H tree, push, scope and PR: `git status --porcelain` empty, `git worktree list`
+  the primary checkout alone, `git rev-list --left-right --count
   origin/feature/f107-context-compiler-v2...HEAD` is `0 0` after the last push,
-  `git diff --name-only 56ee7dc1..HEAD` lists exactly the six `.agent/` paths
-  the Change line names and NOTHING else, insertions per commit each under 500,
-  and `gh pr list --state open` still returns an empty list.
+  `git diff --name-only 9aacd70d..HEAD` lists exactly the seven paths the
+  Change line names, insertions per commit each under 500, and `gh pr list
+  --state open` now returns EXACTLY ONE PR — this one, not a draft, from
+  `feature/f107-context-compiler-v2` into `main`. Report its number and URL.
 ── END OF BLOCK ─────────────
