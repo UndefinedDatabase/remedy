@@ -73,6 +73,15 @@
   module is open for editing in R4 anyway, so it is cheaper to clear than to
   carry. RESOLVED at the R4 gate (2026-08-12) — the `Done:` text closing it is
   the last entry of this file.
+- R-0272 (Low, F107 R5): the R5 step block specified tier 2 as
+  `build_import_neighbor_graph(...)` yielding "every `files` entry", but
+  `ImportNeighbors` has no `files` field — its neighbor tuple is named
+  `resolved` (the T001 dataclass in
+  `packages/orchestration/context_compiler.py`). The worker implemented
+  `resolved`, which is correct, so nothing on disk is wrong and no work is
+  outstanding. Registered as the record of the citation-accuracy lesson, the
+  same class as R-0239 and R-0247: a reviewer-authored contract must name
+  fields that exist. OPEN.
 
 ## Steps
 
@@ -217,6 +226,56 @@ docs/roadmap/STATUS_closure_protocol.md.
   AGENTS.md DECISION D15 permits; both declared deviations are accurate and
   neither weakens a proof. No new findings this round.
   `LAST_REVIEWED_SHA` advances ef64cf72 -> 2c75bddf.
+- Reviewer gate on R5 (2026-08-12): PASS. Range 2c75bddf..54bc56c2 = seven
+  commits touching exactly the seven paths the R5 block named. The round spanned
+  TWO worker sessions: a prior worker committed C1-C6 and ended before PROCEDURE
+  step 7, and this session's worker ran the mutation probe, re-verified the disk
+  state and committed C7 alone. The single-writer rule held throughout — the
+  reviewer wrote nothing, and no existing commit was amended, rebased, reverted
+  or reordered. Transport by the PRIMARY shape: `cmp` of
+  `.remedy-wt/f107-r5-1.block.md` against `.agent/authored/f107-r5-1.md`, and of
+  that copy against `.agent/last_block.md`, is silent, and all three sha256 to
+  220d64ec8aa4… at 393 lines each. All five slice bodies recompute to their
+  BEGIN-marker digests at their declared lengths (FIX1FROM 06f8ce67… 1 line,
+  FIX1TO 547f5a52… 2, LR4FROM 3541d8ff… 1, LR4TO b07a255e… 53, PLAN4 320c4890…
+  28), and `cmp .agent/plan.md` against the extracted PLAN4 body is silent: the
+  plan on disk IS the authored slice, not a retype of it. Both C3 pairs were
+  REWRITES and `git show --numstat 4860115e -- .agent/live_review.md` reads
+  `55  2` — both FROM strings now occur 0x, each of the 2 FIX1TO and 53 LR4TO
+  lines occurs exactly 1x among the 55 added lines, and 0 added lines belong to
+  neither body. Every scoped gate was RE-RUN by the reviewer rather than read
+  from the handback: `python3 -m pytest
+  tests/orchestration/test_context_compiler.py -q` returns 42 passed (the 29
+  frozen T001+T002 tests plus 13 new T003 tests), the canary `python3 -m pytest
+  tests/cli/test_golden_path.py -q` returns 42 passed, `python3 -m ruff check`
+  over the module and its test file returns "All checks passed!",
+  `.agent/plan.md` is 28 lines, the Steps heading count is 1, the stray-marker
+  count is 0 across the three state files, `git status --porcelain` is empty,
+  HEAD equals `origin/feature/f107-context-compiler-v2`, and `git worktree list`
+  shows the primary checkout alone. Insertions per commit 393, 322, 55, 11, 351,
+  284, 76 — each under 500. The 13 new test functions carry all 13 numbered
+  obligations of the R5 contract as exact equality assertions on real values,
+  and every token figure is asserted against a direct `estimate_text_tokens`
+  call rather than against a hand-copied number. The reviewer ran THREE mutation
+  probes in a disposable worktree at 54bc56c2, two of them deliberately
+  different from the worker's: pointing budget phase B at TIER_NEIGHBOR instead
+  of TIER_DISTANT reddens exactly
+  `test_budget_omits_tier_three_before_it_omits_tier_two` and
+  `test_tier_one_is_never_cut_by_the_budget_and_the_overflow_is_reported`, while
+  suppressing the tier-4 distance records reddens exactly the tier-assignment
+  test, the export-keys test and the completeness test. The worker's own probe
+  reproduces verbatim — `1 failed, 41 passed`, failing
+  `test_budget_demotes_the_largest_tier_two_file_first` on `At index 1 diff:`
+  the big neighbor rendering `full` where the test requires `signatures` — so
+  the handback's probe evidence is confirmed TRUE rather than taken on trust.
+  That worktree was removed and pruned before this verdict. The 95-line handoff
+  is a declared stated-cause overage carrying its mandated tables, which
+  AGENTS.md DECISION D15 permits. One new finding, R-0272, is registered above.
+  Recorded as an observation and NOT as a finding: `context_compiler.py` still
+  has no caller outside its own test module, because T003 is a library layer by
+  design and T004 is the round that wires it — a green gate here is not yet a
+  working feature, and no verdict in this file claims otherwise.
+  `LAST_REVIEWED_SHA` advances 2c75bddf -> 54bc56c2.
 
 Done: R-0271 — RESOLVED. `packages/orchestration/context_compiler.py` now reads
 `from collections.abc import Iterable` (commit b52b1c3c, numstat `1 1`), and the
