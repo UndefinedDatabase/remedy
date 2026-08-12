@@ -1,14 +1,19 @@
 """
-Context compiler — import-neighbor graphs (T001) and signatures (T002), F107.
+Context compiler — graphs (T001), signatures (T002), tiered selection (T003).
 
 The context compiler stops handing tasks whole files regardless of relevance:
 it selects fenced-path files, their direct import neighbors, and only
 signatures of distant dependencies (docs/roadmap/features/T2_F107.md). This
-module carries two of that compiler's layers. The GRAPH layer answers "which
+module carries three of that compiler's layers. The GRAPH layer answers "which
 files does this file import" per file, in both languages that matter now —
 Python and TypeScript-ish frontends. The SIGNATURE layer answers "what does
 this file declare", rendering a file down to headers and docstring first
 lines so a distant dependency costs a few lines instead of its whole body.
+The SELECTOR layer answers "what does this task actually get": it assigns
+every candidate path a tier, renders each tier, enforces a total token budget
+by DEMOTING files rather than truncating any of them mid-content, and records
+every demotion and omission with a reason — so "why didn't the model see X"
+always has a written answer.
 
 Python neighbors come from ``ast``: real parsing, absolute and relative
 imports resolved against the importing file's package, ``from pkg import
@@ -30,12 +35,17 @@ scanner shares those line-level heuristic limitations: it too reads one line
 at a time, so a multi-line export statement contributes only its first line
 and a commented-out ``export`` is rendered like real code.
 
-This module is PURE per-file computation: it never follows a neighbor's own
-imports, so cyclic imports terminate by construction, and it never calls a
-provider, touches the network, or writes evidence. Stdlib only. Determinism:
-every graph output is a sorted, deduplicated tuple of repo-relative POSIX
-paths and every signature output is a source-ordered tuple of rendered lines —
-the same tree always yields the same graph and the same signatures.
+The graph and signature layers are PURE per-file computation: neither follows
+a neighbor's own imports, so cyclic imports terminate by construction. The
+selector walks exactly TWO graph hops (fenced files, then their neighbors) and
+never more, so it terminates for the same reason. Nothing here calls a
+provider or touches the network, and nothing writes evidence EXCEPT
+``write_omitted_context_json``, which writes the omissions record exactly
+where its caller points it. Stdlib only, plus one intra-repo import — the
+repo's named token estimator ``estimate_text_tokens``, reused rather than
+respelled. Determinism: every graph output is a sorted, deduplicated tuple of
+repo-relative POSIX paths, every signature output is a source-ordered tuple of
+rendered lines, and the same inputs always compile to the same context.
 
 Public API::
 
@@ -48,15 +58,24 @@ Public API::
     python_file_signatures(root, rel_path)      -> FileSignatures
     typescript_file_signatures(root, rel_path)  -> FileSignatures
     extract_file_signatures(root, rel_path)     -> FileSignatures
+    SelectedFile                       — one file the context WILL carry
+    OmissionRecord                     — one decision that left something out
+    CompiledContext                    — one task's whole selection
+    compile_task_context(root, fenced_paths, repo_paths) -> CompiledContext
+    export_omitted_context_json(compiled)       -> list[dict]
+    write_omitted_context_json(compiled, target_path) -> Path
 """
 
 from __future__ import annotations
 
 import ast
+import json
 import re
 from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
+
+from packages.orchestration.token_economy import estimate_text_tokens
 
 # Resolution order is part of the T001 contract: exact file, then these
 # suffixes appended, then <spec>/index.<suffix> — first hit wins.
@@ -535,3 +554,327 @@ def extract_file_signatures(
     if suffix in _TS_SUFFIXES:
         return typescript_file_signatures(root, rel_path, line_cap)
     return FileSignatures(parse_failed=True)
+
+
+# --------------------------------------------------------------------------
+# Selector (F107 T003) — tiers, budget demotion, the omissions record
+# --------------------------------------------------------------------------
+
+
+# The whole context one task may cost, in estimated tokens. 24k sits under the
+# 32k context floor in packages/orchestration/token_economy.py, leaving room
+# for the prompt around the files and for the generation itself.
+DEFAULT_CONTEXT_TOKEN_BUDGET = 24000
+
+# The F107 tier table, which IS the selection contract: (1) files in the
+# task's declared write scope — full content; (2) their direct import
+# neighbors — full up to the per-file size cap, else signatures;
+# (3) transitive dependencies — signatures only; (4) everything else — gone.
+TIER_FENCED = 1
+TIER_NEIGHBOR = 2
+TIER_DISTANT = 3
+TIER_OMITTED = 4
+
+# Why a file is not carried in full. Every OmissionRecord names exactly one.
+OMISSION_REASON_BUDGET = "budget"
+OMISSION_REASON_DISTANCE = "distance"
+OMISSION_REASON_BINARY = "binary"
+OMISSION_REASON_SIZE = "size"
+
+# The two renderings a selected file can have, and the two outcomes an
+# omission decision can have — "signatures" is both, because a demotion to
+# signatures IS the outcome that keeps the file present in reduced form.
+_RENDERING_FULL = "full"
+_RENDERING_SIGNATURES = "signatures"
+_OUTCOME_OMITTED = "omitted"
+_OUTCOME_SIGNATURES = "signatures"
+
+
+# One file the compiled context WILL carry, and in which rendering.
+@dataclass(frozen=True)
+class SelectedFile:
+    """A single included file: its tier, its rendering, its estimated cost.
+
+    ``rendering`` is ``"full"`` (the file's whole text) or ``"signatures"``
+    (its rendered signature lines). ``estimated_tokens`` is
+    ``estimate_text_tokens`` of whichever of those two texts will be sent, so
+    the sum over the included files is the context's estimated cost.
+    """
+
+    rel_path: str
+    tier: int
+    rendering: str
+    estimated_tokens: int
+
+
+# One decision that kept a file, or part of one, out of the context. This is
+# the record that answers "why didn't the model see X" after the fact.
+@dataclass(frozen=True)
+class OmissionRecord:
+    """A single exclusion decision, with the tier it was made at.
+
+    ``tier`` is the tier the file HELD when the decision was made — a tier-2
+    neighbor demoted by the budget records tier 2, not tier 4. ``reason`` is
+    one of the four ``OMISSION_REASON_*`` values; ``outcome`` is ``"omitted"``
+    (gone entirely) or ``"signatures"`` (still present, in reduced form), a
+    distinction the reason alone cannot carry.
+    """
+
+    rel_path: str
+    tier: int
+    reason: str
+    outcome: str
+
+
+# One task's whole selection: what is carried, what is not, and the budget it
+# was measured against.
+@dataclass(frozen=True)
+class CompiledContext:
+    """The compiled context for one task.
+
+    ``included`` and ``omissions`` are both sorted by ``(tier, rel_path)``.
+    ``estimated_tokens`` is the sum over ``included``. ``over_budget`` is True
+    when every demotion phase is exhausted and the declared write scope alone
+    still exceeds ``budget_tokens`` — the compiler reports that overflow
+    rather than cutting the files the task must edit.
+    """
+
+    included: tuple[SelectedFile, ...]
+    omissions: tuple[OmissionRecord, ...]
+    estimated_tokens: int
+    budget_tokens: int
+    over_budget: bool
+
+
+def _read_utf8_text(root: Path, rel_path: str) -> str | None:
+    """The file's decoded text, or None when it is unreadable or not UTF-8.
+
+    This IS the binary test the selector uses: a file whose bytes do not
+    decode cannot be inlined at all, so it is decided by decoding rather than
+    by sniffing an extension.
+    """
+    try:
+        return (root / rel_path).read_bytes().decode("utf-8")
+    except (OSError, ValueError):
+        return None
+
+
+def _signature_render_text(root: Path, rel_path: str, line_cap: int) -> str:
+    """Exactly the text a "signatures" rendering sends: the extractor's lines
+    joined by newlines. Estimates are taken from this, never from the file."""
+    return "\n".join(extract_file_signatures(root, rel_path, line_cap).lines)
+
+
+def _import_neighbor_files(root: Path, rel_paths: Iterable[str]) -> set[str]:
+    """Every file the given files import, unioned — one graph hop outward.
+
+    Only ``resolved`` entries appear: an external specifier resolves to no
+    file under root, so there is nothing to select.
+    """
+    graph = build_import_neighbor_graph(root, rel_paths)
+    return {
+        neighbor
+        for neighbors in graph.values()
+        for neighbor in neighbors.resolved
+    }
+
+
+def _largest_tokens_first(
+    chosen: dict[str, SelectedFile], tier: int, rendering: str | None
+) -> str | None:
+    """The budget's victim rule in ONE place: within a tier (and optionally
+    one rendering), the largest ``estimated_tokens`` is picked, ties broken by
+    ``rel_path`` ascending. None when the tier holds no such file left."""
+    candidates = [
+        selected
+        for selected in chosen.values()
+        if selected.tier == tier
+        and (rendering is None or selected.rendering == rendering)
+    ]
+    if not candidates:
+        return None
+    return min(candidates, key=lambda s: (-s.estimated_tokens, s.rel_path)).rel_path
+
+
+def compile_task_context(
+    root: Path,
+    fenced_paths: Iterable[str],
+    repo_paths: Iterable[str],
+    *,
+    token_budget: int = DEFAULT_CONTEXT_TOKEN_BUDGET,
+    inline_cap_bytes: int = DEFAULT_INLINE_SIZE_CAP_BYTES,
+    line_cap: int = DEFAULT_SIGNATURE_LINE_CAP,
+) -> CompiledContext:
+    """Select and render one task's context under a total token budget.
+
+    ``fenced_paths`` is the task's declared write scope (files_hint + fence
+    allow scope, already resolved by the caller); ``repo_paths`` is the
+    candidate listing the caller walked — this function never walks a tree
+    itself. Both are order-insensitive and deduplicated on input.
+
+    Tiers, in order: tier 1 is every fenced path that exists under root,
+    always carried in FULL and never demoted or dropped for size or budget; a
+    fenced path with no file under root is not a candidate at all and is
+    dropped silently. Tier 2 is the direct import neighbors of tier 1, full
+    when ``fits_inline_size_cap`` allows and signatures otherwise. Tier 3 is
+    one hop further out, signatures always — that is tier 3's normal
+    rendering, not a demotion, so it carries no record. Tier 4 is every
+    remaining candidate, omitted for distance. A tier-1, tier-2 or tier-3 file
+    whose bytes are not valid UTF-8 is omitted outright — the one case that
+    removes a fenced file, because a binary blob cannot be inlined.
+
+    Over budget, three phases run in order, each repeating while the total
+    still exceeds ``token_budget``: (A) demote the largest full tier-2 file to
+    signatures, (B) omit the largest tier-3 file, (C) omit the largest tier-2
+    file. Nothing is ever truncated mid-content. When all three are exhausted
+    and tier 1 alone still exceeds the budget, the overflow is reported as
+    ``over_budget=True`` instead of cutting the declared write scope.
+    """
+    omissions: list[OmissionRecord] = []
+    chosen: dict[str, SelectedFile] = {}
+
+    fenced = {rel_path for rel_path in set(fenced_paths) if (root / rel_path).is_file()}
+    neighbors = _import_neighbor_files(root, fenced) - fenced
+    distant = _import_neighbor_files(root, neighbors) - fenced - neighbors
+    remaining = set(repo_paths) - fenced - neighbors - distant
+
+    for rel_path in sorted(fenced):
+        text = _read_utf8_text(root, rel_path)
+        if text is None:
+            omissions.append(
+                OmissionRecord(
+                    rel_path, TIER_FENCED, OMISSION_REASON_BINARY, _OUTCOME_OMITTED
+                )
+            )
+            continue
+        chosen[rel_path] = SelectedFile(
+            rel_path, TIER_FENCED, _RENDERING_FULL, estimate_text_tokens(text)
+        )
+
+    for rel_path in sorted(neighbors):
+        text = _read_utf8_text(root, rel_path)
+        if text is None:
+            omissions.append(
+                OmissionRecord(
+                    rel_path, TIER_NEIGHBOR, OMISSION_REASON_BINARY, _OUTCOME_OMITTED
+                )
+            )
+            continue
+        if fits_inline_size_cap(root, rel_path, inline_cap_bytes):
+            chosen[rel_path] = SelectedFile(
+                rel_path, TIER_NEIGHBOR, _RENDERING_FULL, estimate_text_tokens(text)
+            )
+            continue
+        rendered = _signature_render_text(root, rel_path, line_cap)
+        chosen[rel_path] = SelectedFile(
+            rel_path,
+            TIER_NEIGHBOR,
+            _RENDERING_SIGNATURES,
+            estimate_text_tokens(rendered),
+        )
+        omissions.append(
+            OmissionRecord(
+                rel_path, TIER_NEIGHBOR, OMISSION_REASON_SIZE, _OUTCOME_SIGNATURES
+            )
+        )
+
+    for rel_path in sorted(distant):
+        if _read_utf8_text(root, rel_path) is None:
+            omissions.append(
+                OmissionRecord(
+                    rel_path, TIER_DISTANT, OMISSION_REASON_BINARY, _OUTCOME_OMITTED
+                )
+            )
+            continue
+        rendered = _signature_render_text(root, rel_path, line_cap)
+        chosen[rel_path] = SelectedFile(
+            rel_path, TIER_DISTANT, _RENDERING_SIGNATURES, estimate_text_tokens(rendered)
+        )
+
+    for rel_path in sorted(remaining):
+        omissions.append(
+            OmissionRecord(
+                rel_path, TIER_OMITTED, OMISSION_REASON_DISTANCE, _OUTCOME_OMITTED
+            )
+        )
+
+    # Phase A — a full neighbor becomes signatures before anything is dropped.
+    while sum(s.estimated_tokens for s in chosen.values()) > token_budget:
+        victim = _largest_tokens_first(chosen, TIER_NEIGHBOR, _RENDERING_FULL)
+        if victim is None:
+            break
+        rendered = _signature_render_text(root, victim, line_cap)
+        chosen[victim] = SelectedFile(
+            victim, TIER_NEIGHBOR, _RENDERING_SIGNATURES, estimate_text_tokens(rendered)
+        )
+        omissions.append(
+            OmissionRecord(
+                victim, TIER_NEIGHBOR, OMISSION_REASON_BUDGET, _OUTCOME_SIGNATURES
+            )
+        )
+
+    # Phase B — then the distant files go, being the least relevant.
+    while sum(s.estimated_tokens for s in chosen.values()) > token_budget:
+        victim = _largest_tokens_first(chosen, TIER_DISTANT, None)
+        if victim is None:
+            break
+        del chosen[victim]
+        omissions.append(
+            OmissionRecord(
+                victim, TIER_DISTANT, OMISSION_REASON_BUDGET, _OUTCOME_OMITTED
+            )
+        )
+
+    # Phase C — only then do neighbors leave entirely. Tier 1 never does.
+    while sum(s.estimated_tokens for s in chosen.values()) > token_budget:
+        victim = _largest_tokens_first(chosen, TIER_NEIGHBOR, None)
+        if victim is None:
+            break
+        del chosen[victim]
+        omissions.append(
+            OmissionRecord(
+                victim, TIER_NEIGHBOR, OMISSION_REASON_BUDGET, _OUTCOME_OMITTED
+            )
+        )
+
+    included = tuple(
+        sorted(chosen.values(), key=lambda s: (s.tier, s.rel_path))
+    )
+    total_tokens = sum(selected.estimated_tokens for selected in included)
+    return CompiledContext(
+        included=included,
+        omissions=tuple(sorted(omissions, key=lambda o: (o.tier, o.rel_path))),
+        estimated_tokens=total_tokens,
+        budget_tokens=token_budget,
+        over_budget=total_tokens > token_budget,
+    )
+
+
+def export_omitted_context_json(compiled: CompiledContext) -> list[dict]:
+    """The omissions record as JSON-ready dicts, in ``compiled.omissions``
+    order, one per record, with exactly the keys path/tier/reason/outcome.
+    PURE: touches no disk, and carries no absolute path — ``rel_path`` is
+    already repo-relative."""
+    return [
+        {
+            "path": record.rel_path,
+            "tier": record.tier,
+            "reason": record.reason,
+            "outcome": record.outcome,
+        }
+        for record in compiled.omissions
+    ]
+
+
+def write_omitted_context_json(compiled: CompiledContext, target_path: Path) -> Path:
+    """Write the omissions record to ``target_path`` and return that path.
+
+    The ONLY writing function in this module: it creates the parent directory,
+    writes ``export_omitted_context_json(compiled)`` as JSON with ``indent=2``
+    and a trailing newline, and writes nowhere but where the caller pointed.
+    """
+    target = Path(target_path)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    payload = json.dumps(export_omitted_context_json(compiled), indent=2)
+    target.write_text(payload + "\n", encoding="utf-8")
+    return target
