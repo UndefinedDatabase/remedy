@@ -53,7 +53,7 @@ Milestone R1 — first public release cut: Tier 2 complete (F086 is the release 
 
 - [x] F103 — Token ledger (SQLite) (T001–T003 complete; accepted 2026-08-08 · live review PASS — ACCEPTED · Evidence job f103-closure · package remedy-review-20260808-210612-READY_FOR_REVIEW.zip · SHA-256 8e967d78e57fa97641365b4baa91ca884f6322bc855f678d1daeb146c9dd38ad · accepted HEAD 65e1eec25e61c1d0fe78539adeb890d3426cb605)
 - [x] F104 — Hard budget enforcement (T001–T003 complete; accepted 2026-08-09 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f104-closure · package remedy-review-20260809-033908-READY_FOR_REVIEW.zip · SHA-256 6117b6b02ca6f641f0ef3bfebe7518d0eaf705e609e17e8ee9493e6d7fd8bb6a · accepted HEAD 68a7412019e92232a880625b7fce4e48c7198744)
-- [ ] F105 — Cache-optimal prompt ordering
+- [x] F105 — Cache-optimal prompt ordering (T001–T004 complete; accepted 2026-08-12 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f105-closure · package remedy-review-20260812-092055-READY_FOR_REVIEW.zip · SHA-256 23b21bc171b0de493ca4db50c472ecb2797b58b5c870ff9aa5d9b5da71536840 · accepted HEAD b928a0c691dc0a2b86c149a5e732ea07ac03176e)
 - [ ] F107 — Context compiler v2
 - [ ] F111 — Diff-only repair
 - [ ] F115 — Prompt breakdown & cost report

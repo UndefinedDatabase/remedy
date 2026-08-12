@@ -1,106 +1,84 @@
-# Handoff — F104 Hard budget enforcement, R11 (round-log terminator)
+# Handoff — F105 R51 (CLOSURE)
 
-Feature F104, round **R11 — the LAST round on this branch**, branch
-`feature/f104-hard-budget-enforcement`, one-session self-drive, one delegated
-worker. `.agent/` state ONLY. Review range `16f1c375..HEAD` (HEAD = the commit
-that writes this file). **Nothing merged, no PR created or edited — #188 exists
-and is the reviewer's to merge at the Open PR Gate.**
+Branch: feature/f105-cache-optimal-prompt-ordering. This round CLOSES F105.
+Verdict of record: PASS_WITH_RISKS — ACCEPTED (reviewer, R51 live_review entry).
+Open findings: 7 (R-0221, R-0239, R-0247, R-0262, R-0268 Low; R-0265, R-0266
+Medium). No High open. Next free finding ID: R-0270.
 
-## Commits
+Closure values — accepted HEAD b928a0c691dc0a2b86c149a5e732ea07ac03176e ·
+evidence job f105-closure · package
+remedy-review-20260812-092055-READY_FOR_REVIEW.zip · SHA-256
+23b21bc171b0de493ca4db50c472ecb2797b58b5c870ff9aa5d9b5da71536840.
 
-### 59037f57 chore(f104): save the R11 round-log terminator block verbatim
-| Path | +/- | Reason |
+## Commits this round
+| SHA | Item | Subject |
 |---|---|---|
-| .agent/authored/f104-r11-1.md | +107 | the R11 block + authored pairs A, B, C, verbatim |
-| .agent/last_block.md | +77/-84 | same bytes; replaces the R10 block |
+| f1df9154 | C1 | save the R51 closure step block verbatim |
+| 03e6f4a0 | C2 | mirror the R51 block into last_block |
+| 828b817e | C3 | record the R50 gate, the R51 closure entry and D16 |
+| self-ref | C4 | close F105: STATUS, README, candidates, plan, handoff |
 
-### 644bcb89 chore(f104): record the R10 gate and the terminating convention
-| Path | +/- | Reason |
+C4 is the LAST commit on the branch by instruction and cannot cite its own
+SHA; `git log -1` on the branch resolves it.
+
+## Changed files
+| Path | Change | Item |
 |---|---|---|
-| .agent/live_review.md | +26/-1 | pair A narrows the `Done: R-0228` sentence; pair B appends the R10 round line, the R10 reviewer gate and the terminating convention |
+| .agent/authored/f105-r51-1.md | new, block verbatim, 422 lines | C1 |
+| .agent/last_block.md | mirror of C1, cmp silent | C2 |
+| .agent/live_review.md | append: R50 gate entry + R51 closure entry | C3 |
+| .agent/decisions.md | append: DECISION F105 D16 | C3 |
+| docs/roadmap/STATUS.md | F105 `[~]` -> `[x]`, one line, nothing else | C4 |
+| README.md | accepted count, Tier-2 row, Tier-2 accepted list | C4 |
+| .agent/candidates.md | full rewrite: one closure candidate | C4 |
+| .agent/plan.md | full rewrite, 46 lines | C4 |
+| .agent/handoff.md | this file | C4 |
 
-### 1322726a chore(f104): register the terminating-convention closure candidate
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/candidates.md | +10 | pair C adds the second F104 closure candidate |
-
-### (this commit) chore(f104): close out R11 in the plan and hand back
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/plan.md | rewrite, 49 lines | R1-R11; gated through 16f1c375; R11 is last and its gate is off-log; TWO candidates owed to F105 |
-| .agent/handoff.md | rewrite | this file (template self-reference exception) |
-
-`docs/`, `README.md`, `packages/`, `apps/`, `tests/`, `docs/roadmap/STATUS.md`:
-byte-unchanged — `git diff 16f1c375..HEAD --name-only` lists four `.agent/`
-paths and nothing else.
-
-## External actions
-`git push -u origin feature/f104-hard-budget-enforcement` after this commit;
-result in the completion report. No merge, force-push, PR create/edit, branch
-switch or worktree change.
-
-## Verification
-Run by me from the repo root via `subprocess`, real exit codes:
-
-| Gate | Command | Exit | Result |
-|---|---|---|---|
-| A | `cmp .agent/authored/f104-r11-1.md .agent/last_block.md` | **0** | no output — byte-identical |
-| B | `python3 -m pytest tests/docs/ -q` | **0** | 294 passed in 0.30s |
-| C | `python3 -m pytest tests/cli/test_golden_path.py -q` (canary) | **0** | 42 passed in 19.32s |
-| D | `remedy integrity check --json` | **0** | `"passed": true, "fail_count": 0, "check_count": 5` |
-| E | `Awaiting review` count in `.agent/live_review.md` | — | **1** — see D3, it is inside pair B's own text |
-| F | candidate bullets in `.agent/candidates.md` | — | **2**, as required |
-| G | `git status --porcelain` | **0** | EMPTY (before this commit; re-checked after) |
-
-## Authored-text proofs
-Gate A exit **0**; both files sha256
-`cce3078a303405bd8cf45e14d24373803b7d4b8aab047f070f0afb0a41d95c2d`. Each pair
-was sliced out of the authored file, never retyped. FROM count **1** for A, B, C
-before their edits; after, TO count **1** each, A's FROM **0**. B and C are
-append-shaped: FROM survives at **1**, TO-ONLY lines **1x**. No trailing ws.
-
-## Deviations & assumptions — declared
-- **D1 (restated).** These commits land AFTER the F104 closure commit,
-  deviating from Rule A4. Deliberate, same class as the accepted b5a241c3 and
-  the R9/R10 commits: `.agent/` state ONLY; the accepted HEAD in STATUS
-  (68a7412019e92232a880625b7fce4e48c7198744) and the package predate them.
-- **D2.** The block offers the AGENTS.md commit-size exemption for 59037f57; it
-  was not needed — 184 insertions, under the 500 cap. Nothing was waived.
-- **D3 (BLOCK SELF-CONFLICT — reviewer decision needed).** The done-when says
-  `Awaiting review` occurs ZERO times in `.agent/live_review.md`. It occurs
-  **once**, line 245, and that occurrence IS authored pair B: "checks,
-  `Awaiting review` 0 occurrences in this file". Count was 0 before my edit, 1
-  after, produced solely by the mandated text; I applied it byte for byte. No
-  round entry claims to await review — it is a quoted marker name in pair B.
-- **D4 (label only).** Pair B's header says "then 28 added lines"; the authored
-  TO carries the FROM line plus **25** added lines, 26 total. Applied byte for
-  byte; nothing invented, nothing dropped. A and C match their labels.
-- **D5.** `remedy` on PATH is not invocable here; gate D ran through
-  `python3 -c "from apps.cli.grouped import main"`, the console-script entry
-  point in `pyproject.toml`. Real exit code.
-- **D6.** `.agent/plan.md` was refreshed in this last commit, not before
-  59037f57, because the block orders the block-save commit to carry its two
-  files alone. Same shape as the accepted 04889d8d (R9) and 16f1c375 (R10).
-- **This handoff is 106 lines** (AGENTS.md D15 stated cause): four per-commit
-  changed-files tables, the seven-row gate table, the pair-shape proofs, the
-  item-status table and six declared deviations. No section dropped.
-
-## Item status
+## Items
 | Item | Status | Reason |
 |---|---|---|
-| 1 save the block | done | 59037f57; cmp exit 0 |
-| 2 apply pairs A + B (live_review) | done | 644bcb89; FROM 1x each before, TO 1x each after |
-| 3 apply pair C (candidates) | done | 1322726a, a separate commit; file now holds 2 bullets |
-| 4 plan + handoff + push | done | this commit; push result in the completion report |
+| C1 | done | |
+| C2 | done | |
+| C3 | done | |
+| C4 | done | |
+| C5 | done | push + `gh pr create`; PR is UNMERGED, not approved |
 
-## Open findings
-**1** — R-0221 (Low, carried, F252 flake-debt class, not F104's code to fix).
-R-0222 … R-0228 all Resolved with reviewer-authored text. Next free ID **R-0229**.
-`.agent/candidates.md` now carries **TWO** open F104 closure candidates for the
-next feature's first reviewed round.
+## Gates — real exit codes, no verdict words
+| Gate | Result |
+|---|---|
+| A transport | `wc -l` 422; sha256 c1cc501b06cecec81efa5e673be76078306f5cd57fc888e8af9aef9650f900e5; `cmp` exit 0, silent. One-session self-drive: the reviewer writes no file, so NO reviewer scratchpad original exists; this proves C1 == C2 and the reviewer's own read of the committed file is the transport proof |
+| B block cap | `wc -l` 422 against the cap of 400 — RED by 22 lines. See Deviations |
+| C pairs | PAIR_GATE: TO[0] == FROM, FROM 1x in file after edit, all 58 TO-only lines 1x among the 58 lines the C3 diff adds. PAIR_DEC: FROM 1x after edit and immediately precedes the payload, all 22 non-blank payload lines 1x among the 27 added; the 5 blank payload lines are 5 of 5 added blanks |
+| D stray | live_review.md added 58 / removed 0 / stray 0; decisions.md added 27 / removed 0 / stray 0 |
+| E marker leak | `grep -c '^<<<'` = 0 in live_review, decisions, candidates, plan, handoff, STATUS.md, README.md (7 of 7; `grep -c` exits 1 on absence, which is the pass) |
+| F headings | `grep -c '^## Steps' .agent/live_review.md` = 1 |
+| G STATUS | `^- \[x\] F105 — ` 1x, `^- \[~\]` 0x, C4 numstat for STATUS.md exactly 1 1, applied line byte-identical to PAIR_STATUS_TO by `grep -c -F` = 1 |
+| H README | the 3 FROM texts 0x, the 3 TO texts 1x; `python3 -m pytest tests/docs/ -q` exit 0, 294 passed |
+| I canary | `python3 -m pytest tests/cli/test_golden_path.py -q` exit 0, 42 passed |
+| J tree/push | measured after C4 by construction (push follows the last commit); the completion report carries `git status --porcelain`, `git worktree list` and the HEAD/origin comparison |
+| K scope/size | insertions C1 422, C2 416, C3 85, C4 136 — all under 500. `git diff --name-only 470fb776..HEAD` = exactly the paths the Change line names: no production code, no tests, no feature file, no other docs page |
+| L open PRs | measured after C5 by construction; #189 is open and was NOT merged, commented on or modified, and NOTHING was merged |
 
-## Next
-Nothing is owed on this branch and no further round belongs here. The reviewer
-confirms `16f1c375..HEAD`, rules on D3, ends the session; R11's own gate lives
-here, in the reviewer's report and in PR **#188**, which merges at the NEXT
-feature's start via the Open PR Gate — then F105.
+## Deviations, declared (DECISION D15)
+This file runs 84 lines against the ≤60 target. Cause, all mandated: the
+12-row gate table with its per-gate measurements, the changed-files table, the
+item-status table and the closure values. No section was dropped.
+1. Gate B is RED: the delivered block is 422 lines against DECISION D5's cap of
+   400. Reviewer-side authoring overrun, unfixable here — C1 mandates a
+   byte-for-byte save. Same class as the R20 overrun that produced D8.
+2. PAIR_DEC ships only `PAIR_DEC_TO_APPEND`, an append payload whose first line
+   is blank, so gate C's "the TO contains the FROM as its first line" is
+   unsatisfiable by construction. Measured instead: the FROM is the file's real
+   last non-empty line, it stays 1x, and the payload lands directly after it.
+3. Gate K says "the eight paths this block names"; the Change line names NINE.
+   Off-by-one in the block; the diff carries exactly those nine.
+4. C4 self-reference: it cannot carry its own SHA, and the PR number and gates
+   J and L are post-commit by construction. C4's own insertion count above is a
+   verified fixed point (staged, measured, substituted, re-measured).
+
+## Next expected action
+The closure PR is UNMERGED BY DESIGN — its number is in the completion report
+and `gh pr list --head feature/f105-cache-optimal-prompt-ordering` resolves it.
+It merges at the NEXT feature's start via the Open PR Gate; that gap is the
+operator's manual-review window and the operator may merge it manually at any
+time. PR #189 stays the operator's. Next feature by Rule A5: F107.

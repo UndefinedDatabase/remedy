@@ -187,13 +187,22 @@ def _cmd_do_mission(
         sys.exit(3)
 
     from packages.core.models import Job, RunState
-    from packages.orchestration.intake import heuristic_intake, make_provider_call_fn, run_intake
+    from packages.orchestration.intake import (
+        compose_intake_prompt,
+        heuristic_intake,
+        make_intake_call_recorder,
+        make_provider_call_fn,
+        run_intake,
+    )
     from packages.orchestration.job_runner import plan_job
     from packages.orchestration.storage import save_job
 
     call_fn = None
     intake_result = None
-    intake_traces: list = []
+    # One list, one write: it carries every prompt trace this command produces,
+    # intake and flight plan alike, because `write_trace_jsonl` opens its path
+    # with mode "w" and a second write would truncate the first.
+    prompt_traces: list = []
     intake_fallback_reason = ""
     if no_llm:
         intake_result = heuristic_intake(mission)
@@ -201,24 +210,18 @@ def _cmd_do_mission(
     else:
         call_fn = make_provider_call_fn()
         if call_fn is not None:
-            from packages.orchestration.prompt_trace import build_trace_entry
-
-            def _record_intake_call(
-                attempt: int, schema_v: str, is_parse_retry: bool, effective_prompt: str,
-            ) -> None:
-                intake_traces.append(build_trace_entry(
-                    prompt_text=effective_prompt,
-                    role="intake",
+            intake_composed = compose_intake_prompt(mission)
+            intake_result = run_intake(
+                mission,
+                call_fn,
+                composed=intake_composed,
+                on_call=make_intake_call_recorder(
+                    prompt_traces,
+                    intake_composed,
                     provider="ollama",
                     provider_kind="ollama",
-                    prompt_kind="intake-retry" if is_parse_retry else "intake",
-                    schema_v=schema_v,
-                    phase="intake-retry" if is_parse_retry else "intake",
-                    transport_attempt=attempt,
-                    is_transport_retry=False,
-                ))
-
-            intake_result = run_intake(mission, call_fn, on_call=_record_intake_call)
+                ),
+            )
             if intake_result.source == "heuristic":
                 intake_fallback_reason = "provider_error"
 
@@ -246,11 +249,29 @@ def _cmd_do_mission(
         from packages.orchestration.flight_plan import (
             apply_plan_budgets,
             apply_plan_fences,
+            compose_flight_plan_prompt,
+            make_flight_plan_call_recorder,
             map_flight_plan_to_tasks,
             plan_job_llm,
             write_plan_md,
         )
-        fp_result = plan_job_llm(intake_result.value.model_dump(), plan_call_fn)
+        plan_intake_dict = intake_result.value.model_dump()
+        # Composed exactly ONCE here and handed to `plan_job_llm`, so the bytes
+        # the provider receives and the manifest the trace records come from the
+        # same composition — `prompt_chars` and `segment_manifest_chars` can no
+        # longer describe two different prompts (R-0256).
+        plan_composed = compose_flight_plan_prompt(plan_intake_dict)
+        fp_result = plan_job_llm(
+            plan_intake_dict,
+            plan_call_fn,
+            composed=plan_composed,
+            on_call=make_flight_plan_call_recorder(
+                prompt_traces,
+                plan_composed,
+                provider="ollama",
+                provider_kind="ollama",
+            ),
+        )
         if fp_result.plan is not None:
             fp_dict = fp_result.plan.model_dump()
             fp_dict["_approval"] = "pending"
@@ -353,12 +374,12 @@ def _cmd_do_mission(
         job = plan_result.job
         save_job(job)
 
-    if intake_traces:
+    if prompt_traces:
         from packages.orchestration.prompt_trace import write_trace_jsonl
         from packages.orchestration.run_log import RunLogWriter
         log = RunLogWriter(job_id=job.id)
         try:
-            write_trace_jsonl(intake_traces, log.path.parent / "prompt_trace.jsonl")
+            write_trace_jsonl(prompt_traces, log.path.parent / "prompt_trace.jsonl")
         except OSError:
             pass
 
@@ -2852,12 +2873,26 @@ def _cmd_do_replan(
 
     from packages.orchestration.flight_plan import (
         ReplanRejectedError,
+        compose_flight_plan_prompt,
+        make_flight_plan_call_recorder,
         map_flight_plan_to_tasks,
         plan_job_llm,
         replan,
     )
 
-    fp_result = plan_job_llm(intake, call_fn)
+    replan_traces: list = []
+    replan_composed = compose_flight_plan_prompt(intake)
+    fp_result = plan_job_llm(
+        intake,
+        call_fn,
+        composed=replan_composed,
+        on_call=make_flight_plan_call_recorder(
+            replan_traces,
+            replan_composed,
+            provider="ollama",
+            provider_kind="ollama",
+        ),
+    )
     if fp_result.plan is None:
         print(
             f"Error: replan failed: {fp_result.error_hint or 'parse failure'}",
@@ -2880,6 +2915,17 @@ def _cmd_do_replan(
     job.flight_plan = new_fp_dict
     job.tasks = map_flight_plan_to_tasks(fp_result.plan)
     save_job(job)
+
+    # APPEND, never write: this job's first run already left its intake and
+    # flight-plan traces in the same per-job file (F105 R28).
+    if replan_traces:
+        from packages.orchestration.prompt_trace import append_trace_jsonl
+        from packages.orchestration.run_log import RunLogWriter
+        log = RunLogWriter(job_id=job.id)
+        try:
+            append_trace_jsonl(replan_traces, log.path.parent / "prompt_trace.jsonl")
+        except OSError:
+            pass
 
     if json_output:
         print(json.dumps({

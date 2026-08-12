@@ -52,6 +52,13 @@ from packages.orchestration.mission_plan_schema import (
     MissionPlanDraft,
 )
 from packages.orchestration.prompt_facts import repo_facts_block
+from packages.orchestration.prompt_segments import (
+    ComposedPrompt,
+    PromptSegmentRegistry,
+    SegmentStabilityRank,
+    compose_prompt_segments,
+)
+from packages.orchestration.prompt_trace import build_trace_entry
 from packages.orchestration.schemas.models import FLIGHT_PLAN_SCHEMA_V, FlightPlan
 from packages.orchestration.storage import _atomic_write_job as _atomic_write
 from packages.orchestration.structured_outputs import StructuredOutcome, run_structured_call
@@ -74,16 +81,31 @@ _FALLBACK_GOAL_TEMPLATE = "The mission goal is met in full: {goal}"
 #: How much of the goal a draft outline's title carries.
 _MAX_TITLE_CHARS = 80
 
-_MISSION_PROMPT_TEMPLATE = """\
+#: Rank-0 SYSTEM segment: what the provider is being asked to do. It never
+#: varies, so it composes first and the cacheable prefix starts at byte 0.
+_MISSION_SYSTEM_SEGMENT = """\
 You are compiling a mission plan. A MISSION is a long-lived goal that outlives
-any single job. Break the goal below into the ordered milestones that reach it.
+any single job. Break the goal below into the ordered milestones that reach it."""
 
+#: Rank-4 TASK segment, the volatile one: `{goal}` is the mission's own prose,
+#: different on every call, so it composes after everything stable.
+_MISSION_GOAL_TEMPLATE = """\
 ## Mission Goal
-{goal}
+{goal}"""
 
+#: Rank-2 DOSSIER segment: the SHARED repo-facts block. Stable while the repo
+#: is, which is longer than one call and shorter than the conventions.
+_MISSION_REPO_FACTS_TEMPLATE = """\
 ## Repo Facts
-{repo_facts}
+{repo_facts}"""
 
+# Rank-1 CONVENTIONS segment, and it is CAP-SCOPED (DECISION F105 D4):
+# `{max_milestones}` sits mid-list, so these bytes are byte-stable PER CAP
+# VALUE, not per role — `gauntlet_runner.py` varies the cap per caller, and
+# two calls at different caps legitimately miss each other's cached prefix.
+# The `{{` / `}}` escapes stand as they did: this constant is `.format`ted on
+# its own now, not as part of one whole-prompt template.
+_MISSION_RULES_TEMPLATE = """\
 ## Rules
 - A milestone is an OUTCOME, not a step: state what is TRUE once it is
   reached ("the payments API stays releasable"), never the actions taken to
@@ -102,8 +124,12 @@ any single job. Break the goal below into the ordered milestones that reach it.
 - risks lists what could make this mission fail.
 - assumptions lists what you decided on your own because the goal did not say.
   Prefer conservative choices: an assumption keeps existing behavior or does
-  nothing; it never deletes, overwrites or migrates.
+  nothing; it never deletes, overwrites or migrates."""
 
+#: Rank-5 STEERING segment. Its TRAILING NEWLINE is load bearing: the
+#: pre-migration template ended with one and `compose_prompt_segments` adds
+#: none, so dropping it is a one-byte CONTENT change, not a formatting nit.
+_MISSION_SCHEMA_DIRECTIVE_TEMPLATE = """\
 Return ONLY a JSON object matching the {schema_v} schema.
 """
 
@@ -175,15 +201,96 @@ def build_mission_prompt(goal: str, *, project_facts: str = "",
     knows the project's shape passes it instead of paying for a second listing.
 
     ``max_milestones`` (R-0197) lowers the milestone ceiling the prompt states.
-    ``None`` reproduces today's prompt byte for byte.
+    ``None`` reproduces the pre-R-0197 milestone CEILING — not the pre-migration
+    byte SEQUENCE. F105 T003 reordered these segments while leaving their bytes
+    unchanged, so the composed order differs from the old template at every
+    value of ``max_milestones``, ``None`` included (R-0246).
     """
-    return _MISSION_PROMPT_TEMPLATE.format(
-        goal=str(goal).strip(),
-        repo_facts=project_facts or repo_facts_block(),
-        max_milestones=resolve_milestone_cap(max_milestones),
-        max_draft_jobs=MAX_MILESTONE_DRAFT_JOBS,
-        schema_v=MISSION_PLAN_DRAFT_SCHEMA_V,
+    return compose_mission_prompt(
+        goal, project_facts=project_facts, max_milestones=max_milestones).text
+
+
+# Rank order puts the never-changing system line and the rules block AHEAD of
+# the repo facts and the goal, so the cacheable prefix runs to the end of the
+# rules instead of stopping at the first goal character (F105 T003 site 2). The
+# segment BYTES are unchanged from the pre-migration template — only their ORDER
+# differs, which is the "modulo ordering" content-equality F105 requires. The
+# rules' stability is CAP-SCOPED; see DECISION F105 D4 above that constant.
+def compose_mission_prompt(goal: str, *, project_facts: str = "",
+                           max_milestones: int | None = None) -> ComposedPrompt:
+    """Compose the mission prompt from registered segments, with its manifest."""
+    registry = PromptSegmentRegistry()
+    registry.register(
+        "mission_system", SegmentStabilityRank.SYSTEM, _MISSION_SYSTEM_SEGMENT
     )
+    registry.register(
+        "mission_rules",
+        SegmentStabilityRank.CONVENTIONS,
+        _MISSION_RULES_TEMPLATE.format(
+            max_milestones=resolve_milestone_cap(max_milestones),
+            max_draft_jobs=MAX_MILESTONE_DRAFT_JOBS,
+        ),
+    )
+    registry.register(
+        "mission_repo_facts",
+        SegmentStabilityRank.DOSSIER,
+        _MISSION_REPO_FACTS_TEMPLATE.format(
+            repo_facts=project_facts or repo_facts_block()),
+    )
+    registry.register(
+        "mission_goal",
+        SegmentStabilityRank.TASK,
+        _MISSION_GOAL_TEMPLATE.format(goal=str(goal).strip()),
+    )
+    registry.register(
+        "mission_schema_directive",
+        SegmentStabilityRank.STEERING,
+        _MISSION_SCHEMA_DIRECTIVE_TEMPLATE.format(
+            schema_v=MISSION_PLAN_DRAFT_SCHEMA_V),
+    )
+    return compose_prompt_segments(registry.registered_segments())
+
+
+# The recorder lives beside the composer, in this module, so the manifest and
+# the prompt it describes cannot drift apart — the same reason
+# `make_flight_plan_call_recorder` sits in `flight_plan.py` and
+# `make_intake_call_recorder` in `intake.py` (F105 T003 site 2).
+def make_mission_plan_call_recorder(
+    traces: list[Any],
+    composed: ComposedPrompt,
+    *,
+    provider: str = "",
+    provider_kind: str = "",
+) -> Callable[[int, str, bool, str], None]:
+    """Build the ``on_call`` recorder ``compile_mission_plan`` wires.
+
+    Every provider invocation appends one prompt trace entry to ``traces``,
+    carrying ``composed``'s segment manifest so call evidence records which
+    named segments produced the prompt.
+
+    The role is ``mission_plan``, deliberately NOT ``mission``: the mission
+    DOSSIER compression in ``mission_dossier.py`` is a different prompt against
+    the same mission, and one spelling per concept is what keeps a per-role
+    cache report from summing two prompts into one row.
+    """
+    def _record(
+        attempt: int, schema_v: str, is_parse_retry: bool, effective_prompt: str,
+    ) -> None:
+        kind = "mission-plan-retry" if is_parse_retry else "mission-plan"
+        traces.append(build_trace_entry(
+            prompt_text=effective_prompt,
+            role="mission_plan",
+            provider=provider,
+            provider_kind=provider_kind,
+            prompt_kind=kind,
+            schema_v=schema_v,
+            phase=kind,
+            transport_attempt=attempt,
+            is_transport_retry=False,
+            composed_prompt=composed,
+        ))
+
+    return _record
 
 
 def _capped_draft_model(cap: int) -> type[MissionPlanDraft]:
@@ -242,6 +349,9 @@ def compile_mission_plan(
     call_fn: Callable[[str, int], str] | None = None,
     *,
     on_call: Callable[[int, str, bool, str], None] | None = None,
+    traces: list[Any] | None = None,
+    provider: str = "",
+    provider_kind: str = "",
     project_facts: str = "",
     max_milestones: int | None = None,
 ) -> MissionCompileResult:
@@ -270,12 +380,29 @@ def compile_mission_plan(
     if call_fn is None:
         return _fallback(goal, hint="no provider")
 
+    # Composed ONCE. The same ComposedPrompt supplies the bytes that go to the
+    # provider and the manifest the trace records, so an audit row can never
+    # describe a twin composition the provider never saw. That failure mode is
+    # real and open elsewhere — R-0256, the flight-plan and intake sites, where
+    # the caller composes a second time because it has to build the recorder
+    # before the builder runs. It is not reproduced here.
     try:
+        # Composition sits INSIDE the try because it CAN fail —
+        # ``repo_facts_block`` reads the filesystem — and this function's
+        # contract is that a failure degrades to the deterministic fallback
+        # rather than raising into the caller (R-0257).
+        composed = compose_mission_prompt(goal, project_facts=project_facts,
+                                          max_milestones=max_milestones)
+        if traces is not None:
+            # The sink wins over a caller-supplied ``on_call``: only code
+            # INSIDE this function holds the ComposedPrompt actually sent.
+            on_call = make_mission_plan_call_recorder(
+                traces, composed, provider=provider,
+                provider_kind=provider_kind)
         outcome: StructuredOutcome = run_structured_call(
             MissionPlanDraft if max_milestones is None
             else _capped_draft_model(resolve_milestone_cap(max_milestones)),
-            build_mission_prompt(goal, project_facts=project_facts,
-                                 max_milestones=max_milestones),
+            composed.text,
             call_fn,
             on_call=on_call,
             allow_parse_retry=True,
@@ -588,7 +715,8 @@ def plan_mission(
     call_fn: Callable[[str, int], str] | None = None,
     *,
     root: Path | None = None,
-    on_call: Callable[[int, str, bool, str], None] | None = None,
+    provider: str = "",
+    provider_kind: str = "",
     max_milestones: int | None = None,
 ) -> MissionPlanOutcome:
     """Compile (or recompile) a mission's plan, persist it, render it.
@@ -623,9 +751,18 @@ def plan_mission(
             f"Start a new mission for a different route, or achieve/abandon "
             f"this one (remedy mission achieve|abandon {mission.id[:12]}).")
 
-    result = compile_mission_plan(mission, call_fn, on_call=on_call,
+    prompt_traces: list[Any] = []
+    result = compile_mission_plan(mission, call_fn, traces=prompt_traces,
+                                  provider=provider,
+                                  provider_kind=provider_kind,
                                   max_milestones=max_milestones)
     evidence_dir = mission_evidence_dir(project_id, mission.id, root)
+    if prompt_traces:
+        # APPEND, never write: the trace file is per MISSION and a recompile is
+        # a SECOND command against the same mission, so a write would destroy
+        # the first compile's evidence. Same reasoning as the F105 R28 replan.
+        from packages.orchestration.prompt_trace import append_trace_jsonl
+        append_trace_jsonl(prompt_traces, evidence_dir / "prompt_trace.jsonl")
     plan = attach_milestone_dods(
         result.plan, goal=mission.goal, evidence_dir=evidence_dir,
         call_fn=call_fn)

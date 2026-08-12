@@ -14,6 +14,13 @@ from typing import Any
 
 from packages.core.models import AcceptanceCheck, RunState, Task
 from packages.orchestration.prompt_facts import repo_facts_block
+from packages.orchestration.prompt_segments import (
+    ComposedPrompt,
+    PromptSegmentRegistry,
+    SegmentStabilityRank,
+    compose_prompt_segments,
+)
+from packages.orchestration.prompt_trace import build_trace_entry
 from packages.orchestration.schemas.models import (
     _LARGE_PLAN_THRESHOLD,
     FlightPlan,
@@ -36,17 +43,29 @@ class FlightPlanResult:
     transformations: list[dict[str, Any]] = field(default_factory=list)
 
 
-_PLAN_PROMPT_TEMPLATE = """\
+#: Rank-0 SYSTEM segment: what the provider is being asked to do. It never
+#: varies, so it composes first and the cacheable prefix starts at byte 0.
+_PLAN_SYSTEM_SEGMENT = """\
 You are a project planner. Given the intake and repo facts below, produce
 a flight plan: a DAG of tasks with goals, acceptance criteria, dependencies,
-and token band estimates.
+and token band estimates."""
 
+#: Rank-4 TASK segment, the volatile one: the intake JSON is different on every
+#: call, so it composes after everything stable.
+_PLAN_INTAKE_TEMPLATE = """\
 ## Intake
-{intake_json}
+{intake_json}"""
 
+#: Rank-2 DOSSIER segment: the SHARED repo-facts block. Stable while the repo
+#: is, which is longer than one call and shorter than the conventions.
+_PLAN_REPO_FACTS_TEMPLATE = """\
 ## Repo Facts
-{repo_facts}
+{repo_facts}"""
 
+#: Rank-1 CONVENTIONS segment: these bytes carry NO caller-varied parameter, so
+#: they are byte-identical across every planner call and the cacheable prefix
+#: runs to the end of them. A plain constant — never `.format`ted, no braces.
+_PLAN_RULES_SEGMENT = """\
 ## Rules
 - Each task needs a unique id (e.g. "T001", "T002").
 - depends_on lists task ids that must complete first.
@@ -66,8 +85,12 @@ and token band estimates.
 - Every clarification needs a conservative default_answer and an impact
   line. A default keeps existing behavior or does nothing; it never
   deletes, overwrites, migrates, or otherwise takes a destructive path.
-  If the safe choice is "change nothing", that is the default.
+  If the safe choice is "change nothing", that is the default."""
 
+#: Rank-5 STEERING segment. Its TRAILING NEWLINE is load bearing: the
+#: pre-migration template ended with one and `compose_prompt_segments` adds
+#: none, so dropping it is a one-byte CONTENT change, not a formatting nit.
+_PLAN_SCHEMA_DIRECTIVE_SEGMENT = """\
 Return ONLY a JSON object matching the flight_plan_v1 schema.
 """
 
@@ -80,11 +103,95 @@ Return ONLY a JSON object matching the flight_plan_v1 schema.
 #   choices — humans can, explicitly.
 
 
-def _build_plan_prompt(intake_dict: dict[str, Any]) -> str:
-    return _PLAN_PROMPT_TEMPLATE.format(
-        intake_json=json.dumps(intake_dict, indent=2),
-        repo_facts=repo_facts_block(),
+# Rank order puts the never-changing system line and the rules block AHEAD of
+# the repo facts and the intake, so the cacheable prefix runs to the end of the
+# rules instead of stopping at the first intake character (F105 T003 site 3).
+# The segment BYTES are unchanged from the pre-migration template — only their
+# ORDER differs, which is the "modulo ordering" content-equality F105 requires.
+def compose_flight_plan_prompt(
+    intake_dict: dict[str, Any], *, project_facts: str = "",
+) -> ComposedPrompt:
+    """Compose the flight-plan prompt from registered segments, with its manifest."""
+    registry = PromptSegmentRegistry()
+    registry.register(
+        "plan_system", SegmentStabilityRank.SYSTEM, _PLAN_SYSTEM_SEGMENT
     )
+    registry.register(
+        "plan_intake",
+        SegmentStabilityRank.TASK,
+        _PLAN_INTAKE_TEMPLATE.format(intake_json=json.dumps(intake_dict, indent=2)),
+    )
+    registry.register(
+        "plan_repo_facts",
+        SegmentStabilityRank.DOSSIER,
+        _PLAN_REPO_FACTS_TEMPLATE.format(
+            repo_facts=project_facts or repo_facts_block()),
+    )
+    registry.register(
+        "plan_rules", SegmentStabilityRank.CONVENTIONS, _PLAN_RULES_SEGMENT
+    )
+    registry.register(
+        "plan_schema_directive",
+        SegmentStabilityRank.STEERING,
+        _PLAN_SCHEMA_DIRECTIVE_SEGMENT,
+    )
+    return compose_prompt_segments(registry.registered_segments())
+
+
+def _build_plan_prompt(intake_dict: dict[str, Any], *,
+                       project_facts: str = "") -> str:
+    """The provider prompt for one job intake.
+
+    ``project_facts`` defaults to the SHARED repo-facts block — the same one
+    the mission compiler puts in front of its provider. A caller that already
+    knows the project's shape passes it instead of paying for a second listing,
+    and a test passes it to keep the rendered prompt independent of the working
+    directory.
+    """
+    return compose_flight_plan_prompt(intake_dict, project_facts=project_facts).text
+
+
+# The recorder lives beside the composer, in this module, so the manifest and
+# the prompt it describes cannot drift apart: whoever changes flight-plan
+# composition sees the evidence writer in the same file (F105 T003 site 5, the
+# same reason `make_intake_call_recorder` sits in `intake.py`).
+def make_flight_plan_call_recorder(
+    traces: list[Any],
+    composed: ComposedPrompt,
+    *,
+    provider: str = "",
+    provider_kind: str = "",
+) -> Callable[[int, str, bool, str], None]:
+    """Build the ``on_call`` recorder ``plan_job_llm`` expects.
+
+    Every provider invocation appends one prompt trace entry to ``traces``,
+    carrying ``composed``'s segment manifest so call evidence records which
+    named segments produced the prompt.
+
+    The role is ``flight_plan``, deliberately NOT ``planner``: the ``planner``
+    traces belong to the OTHER planner path
+    (``packages/orchestration/structured_planner.py`` over ``PlannerPlan``), and
+    one spelling per concept is what keeps a per-role cache report from summing
+    two different prompts into one row.
+    """
+    def _record(
+        attempt: int, schema_v: str, is_parse_retry: bool, effective_prompt: str,
+    ) -> None:
+        kind = "flight-plan-retry" if is_parse_retry else "flight-plan"
+        traces.append(build_trace_entry(
+            prompt_text=effective_prompt,
+            role="flight_plan",
+            provider=provider,
+            provider_kind=provider_kind,
+            prompt_kind=kind,
+            schema_v=schema_v,
+            phase=kind,
+            transport_attempt=attempt,
+            is_transport_retry=False,
+            composed_prompt=composed,
+        ))
+
+    return _record
 
 
 # ---------------------------------------------------------------------------
@@ -332,6 +439,7 @@ def plan_job_llm(
     *,
     on_call: Callable[[int, str, bool, str], None] | None = None,
     granularity: GranularityConfig | None = None,
+    composed: ComposedPrompt | None = None,
 ) -> FlightPlanResult:
     """Generate a FlightPlan from a job's intake via LLM.
 
@@ -339,12 +447,19 @@ def plan_job_llm(
     Returns a FlightPlanResult; on failure, plan is None and error_hint
     describes the failure class.
 
+    ``composed`` lets a caller that ALREADY composed this prompt — the CLI, for
+    its trace manifest — hand those exact bytes over, so one composition feeds
+    both the provider and the evidence row (R-0256). Omitted, this function
+    composes for itself as it always has. The composition deliberately stays
+    ABOVE the ``try``: moving it inside is R-0262, which needs this function
+    and the CLI's call sites in one round and is NOT fixed here.
+
     The validated plan then passes through F016 task-granularity
     normalization — the single insertion point for it — and the result
     carries the transformation record. Finally the intake's open questions
     are carried into the plan (F034) so the approval gate can bundle them.
     """
-    prompt = _build_plan_prompt(intake)
+    prompt = composed.text if composed is not None else _build_plan_prompt(intake)
     try:
         outcome: StructuredOutcome = run_structured_call(
             FlightPlan,

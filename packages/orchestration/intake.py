@@ -19,6 +19,13 @@ from typing import Any
 
 from pydantic import BaseModel
 
+from packages.orchestration.prompt_segments import (
+    ComposedPrompt,
+    PromptSegmentRegistry,
+    SegmentStabilityRank,
+    compose_prompt_segments,
+)
+from packages.orchestration.prompt_trace import build_trace_entry
 from packages.orchestration.schemas import JOB_INTAKE_SCHEMA_V, JobIntake, to_json_schema
 from packages.orchestration.structured_outputs import StructuredOutcome, run_structured_call
 
@@ -26,12 +33,19 @@ MAX_CLARIFICATIONS = 5
 _MAX_PROMPT_MISSION_CHARS = 8000
 _TRUNCATION_MARKER = "\n[...mission truncated...]"
 
-_INTAKE_PROMPT_TEMPLATE = """\
-Analyze this mission and produce a structured job intake.
+#: Rank-0 SYSTEM segment: the one-line task statement, first in every
+#: composition so the cacheable prefix starts at byte 0.
+_INTAKE_SYSTEM_SEGMENT = "Analyze this mission and produce a structured job intake."
 
+#: Rank-4 TASK segment, the only volatile part: `{mission}` is the caller's
+#: mission text after `_truncate_mission`.
+_INTAKE_MISSION_TEMPLATE = """\
 Mission:
-{mission}
+{mission}"""
 
+#: Rank-1 CONVENTIONS segment: the output-field rules. Never varies per
+#: call, so composing it ahead of the mission keeps it inside the prefix.
+_INTAKE_RULES_SEGMENT = """\
 Rules:
 - goal: one clear sentence stating the objective
 - context_refs: file paths, URLs, or identifiers mentioned
@@ -70,10 +84,68 @@ def _truncate_mission(mission: str) -> tuple[str, bool]:
     return mission[:_MAX_PROMPT_MISSION_CHARS] + _TRUNCATION_MARKER, True
 
 
+# Rank order puts the never-changing rules block AHEAD of the mission text, so
+# the cacheable prefix runs to the end of the rules instead of stopping at the
+# first mission character (F105 T003 site 1). The segment BYTES are unchanged
+# from the pre-migration template — only their ORDER differs, which is the
+# "modulo ordering" content-equality the F105 feature file requires.
+def compose_intake_prompt(mission: str) -> ComposedPrompt:
+    """Compose the intake prompt from registered segments, with its manifest."""
+    prompt_mission, _ = _truncate_mission(mission)
+    registry = PromptSegmentRegistry()
+    registry.register(
+        "intake_system", SegmentStabilityRank.SYSTEM, _INTAKE_SYSTEM_SEGMENT
+    )
+    registry.register(
+        "intake_rules", SegmentStabilityRank.CONVENTIONS, _INTAKE_RULES_SEGMENT
+    )
+    registry.register(
+        "intake_mission",
+        SegmentStabilityRank.TASK,
+        _INTAKE_MISSION_TEMPLATE.format(mission=prompt_mission),
+    )
+    return compose_prompt_segments(registry.registered_segments())
+
+
 def _build_intake_prompt(mission: str) -> str:
     """Build the intake prompt from mission text."""
-    prompt_mission, _ = _truncate_mission(mission)
-    return _INTAKE_PROMPT_TEMPLATE.format(mission=prompt_mission)
+    return compose_intake_prompt(mission).text
+
+
+# The recorder lives beside the composer, in this module, so the manifest and
+# the prompt it describes cannot drift apart: whoever changes intake composition
+# sees the evidence writer in the same file (F105 T003 site 1).
+def make_intake_call_recorder(
+    traces: list[Any],
+    composed: ComposedPrompt,
+    *,
+    provider: str = "",
+    provider_kind: str = "",
+) -> Callable[[int, str, bool, str], None]:
+    """Build the ``on_call`` recorder ``run_intake`` expects.
+
+    Every provider invocation appends one prompt trace entry to ``traces``,
+    carrying ``composed``'s segment manifest so call evidence records which
+    named segments produced the prompt.
+    """
+    def _record(
+        attempt: int, schema_v: str, is_parse_retry: bool, effective_prompt: str,
+    ) -> None:
+        kind = "intake-retry" if is_parse_retry else "intake"
+        traces.append(build_trace_entry(
+            prompt_text=effective_prompt,
+            role="intake",
+            provider=provider,
+            provider_kind=provider_kind,
+            prompt_kind=kind,
+            schema_v=schema_v,
+            phase=kind,
+            transport_attempt=attempt,
+            is_transport_retry=False,
+            composed_prompt=composed,
+        ))
+
+    return _record
 
 
 def _first_sentence(text: str) -> str:
@@ -157,12 +229,22 @@ def run_intake(
     call_fn: Callable[[str, int], str],
     *,
     on_call: Callable[[int, str, bool, str], None] | None = None,
+    composed: ComposedPrompt | None = None,
 ) -> IntakeResult:
-    """LLM-backed intake with heuristic fallback on failure."""
+    """LLM-backed intake with heuristic fallback on failure.
+
+    ``composed`` lets a caller that ALREADY composed this prompt — the CLI, for
+    its trace manifest — hand those exact bytes over, so one composition feeds
+    both the provider and the evidence row and a manifest can no longer
+    describe bytes that were never sent (R-0256). Omitted, this function
+    composes for itself as it always has. The expression stays the ARGUMENT
+    inside the ``try``: a raising composer becomes the heuristic fallback,
+    never an escape (R-0257).
+    """
     try:
         outcome: StructuredOutcome = run_structured_call(
             JobIntake,
-            _build_intake_prompt(mission),
+            composed.text if composed is not None else _build_intake_prompt(mission),
             call_fn,
             on_call=on_call,
             allow_parse_retry=True,

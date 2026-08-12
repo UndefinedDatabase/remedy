@@ -1,49 +1,46 @@
-# Plan — F104 Hard budget enforcement — CLOSED AND REVIEWER-GATED
+# Plan — F105 Cache-optimal prompt ordering (CLOSED)
 
-Branch: feature/f104-hard-budget-enforcement, cut from main at 94f69b0f after
-PR #187 was merged at the Open PR Gate. Build mode: one-session self-drive
-(docs/agents/self_drive_protocol.md), one delegated worker per round.
-R1-R11 executed; F104 closed, reviewer-gated through 16f1c375; next ID R-0229.
+Branch: feature/f105-cache-optimal-prompt-ordering, cut from main at cfda4245.
+Next free finding ID: R-0270.
 
 ## Goal
-Budgets grow teeth and foresight. A money limit `max_cost_usd` joins the F018
-limits under the same precedence rules; the counters read real cost actuals out
-of the F103 SQLite ledger with the unpriced notation surviving the trip; and a
-PREDICTIVE check at the task-dispatch safe point stops BEFORE a task that would
-breach it, recording the arithmetic. The reactive backstop is unchanged.
+Every prompt composes from REGISTERED SEGMENTS ordered by stability — system
+and conventions first, task and steering last — every call records a segment
+manifest (name, rank, hash) into evidence, and `remedy stats cache` shows the
+cache-read share per role from actuals. Prompt CONTENT does not change.
+REACHED: T001, T002, T003 and T004 are ALL DONE.
 
 ## Current Step
-R11 — DONE, and it is the LAST round on this branch. R10 recorded the gate on
-R9 but nothing recorded the gate on R10, and each further round would inherit
-that gap. R11 appended the reviewer's PASS gate on R10 (`LAST_REVIEWED_SHA`
-advances 8e651661 -> 16f1c375), stated the TERMINATING CONVENTION inline — an
-on-disk round log cannot record the gate on the commit that writes it, so the
-final round's verdict is carried by `.agent/handoff.md`, the reviewer's report
-and PR #188 instead, a terminator and not a second R-0228 — narrowed one
-over-broad sentence in the `Done: R-0228` text, and registered the convention
-as the SECOND closure candidate. No code, test, doc or `docs/roadmap/STATUS.md`
-byte changed — F104 stays accepted `[x]`.
+F105 is CLOSED. `docs/roadmap/STATUS.md` carries the `[x] F105` line, accepted
+2026-08-12 as PASS_WITH_RISKS — ACCEPTED, and README.md agrees with the ledger.
+
+- Accepted HEAD: b928a0c691dc0a2b86c149a5e732ea07ac03176e
+- Evidence job: f105-closure
+- Package: remedy-review-20260812-092055-READY_FOR_REVIEW.zip
+- SHA-256: 23b21bc171b0de493ca4db50c472ecb2797b58b5c870ff9aa5d9b5da71536840
+
+The reviewer re-ran verification ITSELF rather than reading a handback: the
+full suite returns 16462 passed, 19 skipped, 0 failed, and
+`python3 -m apps.cli.grouped integrity check --json` returns `"passed": true`
+with 5 of 5 checks.
+
+Seven residual risks stay OPEN — the documented set F105 closes on: R-0221,
+R-0239, R-0247, R-0262, R-0268 (Low); R-0265, R-0266 (Medium). No High finding
+is open. R-0262/0265/0266/0268 are producer- or protocol-side, not F105's, and
+R-0221 will cost any future gate the same phantom base-only failures.
+
+One closure CANDIDATE is recorded in `.agent/candidates.md`: the review zip
+packages the gitignored `.remedy-wt/` scratch tree. The next feature's first
+reviewed round must register or resolve it.
+
+DECISION D16 records why the AGENTS.md Open PR Gate does not block this
+closure PR.
 
 ## Next Steps
-- F104 is CLOSED and reviewer-gated through 16f1c375. Nothing further is owed
-  on this branch, and no further round belongs here. R11's own gate is carried
-  by `.agent/handoff.md`, the reviewer's completion report and PR **#188** — by
-  construction, not by omission.
-- PR **#188** is merged by the REVIEWER at the Open PR Gate, never by the
-  worker — the operator's window (closure protocol step 6).
-- Next feature per Rule A5: **F105 — Cache-optimal prompt ordering**, in a
-  fresh session, after PR #188 is merged. Its first reviewed round MUST
-  register or resolve BOTH entries now in `.agent/candidates.md` — the
-  worker-authored `Done:` text that preceded the reviewer's (F104 R7) and the
-  terminating convention above — and empty the file.
-
-## Risks
-- R-0221 stays OPEN: the UI auto-build test refreshes `apps/ui/dist` mtimes
-  mid-suite. Documented LOW, F252 flake-debt class, not F104's code to fix
-  (Scope Control). It cost the R7 gate six phantom base-only failures, each
-  attributed by controlled evidence.
-- The band estimate is a FLOOR (DECISION F104 D6): it can only under-predict,
-  which is why the reactive backstop must stay exactly as it is.
-- Cost is NULLABLE by design (P6): an unpriced call stays None everywhere.
-- The manifest budget schema is SHARED F012 surface; any further budget field
-  owes the same run-manifest gate before it is believed.
+1. The closure PR is UNMERGED BY DESIGN. It merges at the NEXT feature's start
+   via the Open PR Gate; that gap is the operator's manual-review window. The
+   operator may merge it manually at any time.
+2. PR #189 (`docs/amend0810-clerical` -> `main`) remains the OPERATOR's: it is
+   non-`feature/*`, therefore stop-and-report. Not merged, not commented on,
+   not modified.
+3. The next feature by Rule A5 is F107 — Context compiler v2.

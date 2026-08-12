@@ -3792,3 +3792,457 @@ different concept from per-job budget limits, and merging them would make one do
 describe two unrelated mechanisms.
 
 Reverse this decision by deleting the doc and its two `docs/README.md` rows.
+
+## DECISION F105 D2 — step blocks are capped at 240 lines (2026-08-09)
+
+Context: F105 R4's commit `ea48ea89` carried 523 insertions, 23 over the AGENTS.md
+cap. The cause was not the work: C1 mandates writing the step block to BOTH
+`.agent/authored/<round>.md` and `.agent/last_block.md`, so a block of N lines costs
+2N insertions in one inseparable commit. The R4 block was 263 lines. It was declared
+with its inseparability reason and verified to be the only oversize commit in F105
+(previous maximum 486, `5d7b9fce`), so it is accepted under the AGENTS.md exception —
+which by construction may be used at most ONCE per feature. F105's allowance is now
+spent, and a second oversize commit on this branch would be a Medium finding.
+
+D2 — every F105 step block from R5 on is at most 240 authored lines, so block plus
+`last_block.md` clears 500 insertions with room to spare. The cause and the fix both
+sit with the reviewer's authoring, not with the worker: when a round needs more
+authored content than that, it is split into two rounds instead of one long block.
+R5 and R6 are exactly that split — the repair and the discoverability block, which
+together would have overrun the cap.
+
+Alternative considered: exempt the C1 pair from the counting rule the way AGENTS.md
+exempts a SINGLE `.agent/**` state-file rewrite. Rejected — the exemption exists
+because a one-file verbatim save is indivisible, while block LENGTH is a free choice
+of the author, and an exemption would remove the only pressure keeping blocks short.
+
+Reverse this decision by deleting this entry.
+
+## DECISION F105 D3 (2026-08-09) — the schema tail stays unregistered
+
+The segment manifest F105 T003 records covers the composed BASE prompt only.
+For intake, plan, mission and orchestrator, `run_structured_call` wraps that
+base through `build_schema_prompt` or `native_schema_prompt` and sends the
+wrapped string, so the manifest describes a strict PREFIX of the bytes that
+leave the process. Registering the tail was considered and rejected: the tail
+is generated BELOW every builder, and pulling it into the registry would make
+each builder compose after its own return value, inverting the seam T001 exists
+to provide.
+
+Instead the prefix is made VISIBLE rather than left implicit. Every trace entry
+records `segment_manifest_chars` beside `prompt_chars`, and the gap between
+them IS the unregistered tail, so a reader sees the coverage instead of
+assuming it. The F105 acceptance line "the segment manifest appears in call
+evidence for every role" is therefore true as written and honest about scope.
+Landed in code at R12 (`packages/orchestration/prompt_trace.py`); recorded here
+at R13, the first `.agent/`-only round after it.
+
+Reverse this decision by deleting this entry.
+
+## DECISION F105 D4 — the mission rules segment is CAP-SCOPED (2026-08-09)
+
+`build_mission_prompt` interpolates `{max_milestones}` into the middle of its
+rules list, and `packages/orchestration/gauntlet_runner.py:505` varies that cap
+per caller (`max_milestones=len(order.milestones) + 1`). Registering the rules
+as a rank-1 CONVENTIONS segment therefore cannot make the F105 acceptance claim
+"identical prefix bytes across consecutive calls within a role" true
+unconditionally. It is true PER CAP VALUE.
+
+A byte-preserving split into a constant head and a parameterised tail was
+considered and rejected: both interpolations sit mid-list, the segment delimiter
+is a plain blank line (DECISION F105 D1), and the rules list contains no blank
+line to split on. Any split reaching them would insert bytes the pre-migration
+prompt does not have — precisely the content change T003 must not make.
+
+D4 — the rules are registered WHOLE as `mission_rules`, and the cap scoping is
+made visible instead of assumed. A one-line WHY comment sits directly above the
+constant, where a reader searches, and
+`tests/orchestration/test_mission_prompt_golden.py` pins the scope: equal caps
+produce an identical `mission_rules` hash, different caps produce different
+`mission_rules` hashes while every other segment hash is unchanged. The claim
+becomes testable rather than hopeful, and its honest limit is on disk.
+
+Reverse this decision by deleting this entry.
+
+## DECISION F105 D5 — the step block is counted once, cap 400 (2026-08-09)
+
+Context: finding R-0243. DECISION F105 D2 caps a step block at 240 lines because
+C1 wrote the block to BOTH `.agent/authored/<round>.md` and
+`.agent/last_block.md` in ONE commit, so N authored lines cost 2N insertions
+against the AGENTS.md 500 cap. But the mandated record content of a reviewed
+round — the gate verdict, the registrations and resolutions, the header pair and
+the verbatim `.agent/plan.md` — costs roughly 150 lines before any feature work
+is described, leaving under 90 for instruction. R14 and R15 both degraded into
+record-only rounds and merged no feature change. The cap had begun doing harm.
+
+D5 — C1 splits in two. C1a commits `.agent/authored/<round>.md` ALONE and its N
+insertions count normally against the 500 cap. C1b rewrites
+`.agent/last_block.md` ALONE, which is the verbatim rewrite of a SINGLE
+`.agent/**` state file named in the AGENTS.md Commit Discipline exemption list,
+and is therefore exempt exactly as written. The step-block cap becomes 400
+authored lines, measured by the reviewer BEFORE delegation and stated in the
+block itself.
+
+This does not revive the alternative D2 rejected. D2 declined to exempt the C1
+PAIR from counting, on the ground that block length is a free authorial choice
+and an exemption would remove the only pressure keeping blocks short. That
+pressure survives in full: C1a still meets the 500-line ceiling and 400 sits 100
+under it. What ends is the DOUBLE counting, an accounting artifact of writing one
+artifact twice in one commit rather than any measure of how long the block is.
+Splitting an oversize commit is also the remedy AGENTS.md prescribes in its own
+words, so no rule is reinterpreted and no exemption is widened.
+
+Reverse this decision by deleting this entry, and restore D2's 240 with it.
+
+## DECISION F105 D6 — the plan rewrite closes a round (2026-08-09)
+
+Context: finding R-0242, open since R14 and declared as a deviation by every
+worker since. AGENTS.md's Commit Gate item 1 verifies `.agent/plan.md` against
+the current work before EVERY commit. Every block on this branch rewrites
+`.agent/plan.md` in its LAST commit, so the intermediate commits of a round
+carry the PREVIOUS round's plan. Read literally, each of those commits fails
+item 1; read as the branch has actually run for eighteen rounds, none of them
+does. An unpersisted convention is exactly the class this loop registers as a
+finding, so it gets a rule or it gets abandoned.
+
+D6 — within one delegated round, `.agent/plan.md` is rewritten in the round's
+LAST commit and the Commit Gate's plan check is satisfied for the round's
+intermediate commits from C1b onward by `.agent/last_block.md`, which carries
+the round's plan verbatim. C1a is the exception, and it is covered differently
+rather than not at all: it precedes C1b — DECISION D5 split them in that order
+so the block is counted once — and what it commits is
+`.agent/authored/<round>.md`, the block's OWN verbatim copy, so for that one
+commit the plan of record and the commit content are the same bytes and agree
+by construction. The plan of record for an in-flight round is the block;
+`.agent/plan.md` states where the FEATURE stands, and mid-round it stands
+nowhere new yet.
+
+Amended at F105 R20 to fix finding R-0248. The original text said the block is
+"committed BEFORE any of them at C1b", which a reader can falsify with one
+`git log`: C1a comes first. The mechanism was sound; the word "any" overclaimed
+its reach.
+
+The alternative — rewrite `.agent/plan.md` first — was rejected because it
+makes the file claim work that has not landed. A plan that reads "step 3 is
+complete" in the commit before step 3 is written is a worse record than one
+that is a round behind, and it would resolve R-0242 by manufacturing the
+overclaim class this repository's Proof Chain exists to prevent. Being one
+round behind is visible and honest; being one round ahead is not.
+
+Scope: one round, one worker. It exempts nothing across rounds — a round that
+ends without rewriting `.agent/plan.md` still fails item 1, and D6 is not a
+licence to leave the file stale. Blocks stop declaring the ordering as a
+deviation and cite this entry instead.
+
+Reverse this decision by deleting this entry.
+
+## DECISION F105 D7 — the protocol document is hashed per call (2026-08-09)
+
+Context: `.agent/t003_inventory.md` hands migration-order step 4 an open
+question it calls the read-per-call hashing question.
+`orchestrator_protocol_text` reads `docs/agents/orchestrator_protocol.md` from
+disk on EVERY call to `build_orchestrator_system_prompt`, and the segment
+registry hashes whatever text it is handed. Registering the document as a
+segment therefore re-reads and re-hashes, once per iteration, a file that does
+not change within a run. The alternative was to read and hash it once — at
+import, or at first registration — and reuse the digest for the rest of the
+run.
+
+D7 — the document is read and hashed PER CALL. The manifest has exactly one
+job: to record the bytes that were actually sent. A digest cached at
+registration records the bytes that were sent the FIRST time, so if the
+document is edited mid-run the manifest reports a hash for text that no
+provider ever received. That is the overclaim class the Proof Chain exists to
+prevent, and a manifest that can lie about its own subject is worth less than
+no manifest, because it is believed. What the caching would buy is one read of
+a small file per iteration, set against a loop that already assembles a
+dossier, reads the mission record, reads the stop file and appends a ledger
+entry every iteration.
+
+Worth stating because it is the obvious objection: this costs no cache hits.
+Re-reading unchanged bytes yields the same bytes, so the composed prefix stays
+byte-identical across iterations and the provider cache still hits it. Only a
+genuine edit produces a different hash and a miss, and that miss is CORRECT —
+the prompt really did change, and F105's whole argument is that a miss should
+be explainable rather than mysterious.
+
+Scope: this site. It sets no rule for segments whose source is expensive to
+read. A future segment backed by something costly may cache its digest, and
+when it does it declares the staleness window it is accepting, in its own
+entry.
+
+Reverse this decision by deleting this entry.
+
+## DECISION F105 D8 — the pre-emission block checklist (2026-08-09)
+
+Context: finding R-0250. Round 20's authored block carried four defects, every
+one of them mechanical and every one of them catchable by looking at the block's
+own bytes before sending it: it ran 471 lines against DECISION D5's 400-line
+cap; its `.agent/plan.md` replacement ran 56 lines against AGENTS.md's <50; one
+of its done-when gates required a grep to return 0 for a phrase the same block
+deliberately wrote into that same file; and one pair was declared APPEND when
+its TO edits the FROM line. The worker caught all four, declared all four, and
+worked around them correctly — the round was not damaged. What it cost was a
+round's worth of deviations spent proving reviewer mistakes, and the
+zero-gate defect was the fifth of its kind across F104 and F105.
+
+D8 — the four checks become a numbered checklist in
+docs/agents/planner_reviewer_prompt.md §3, run mechanically on a block's final
+bytes before it is emitted. Recurrence, not severity, is the argument: no single
+instance of these justifies a rule, and five instances of one of them do. The
+checks are cheap — three counts and one substring test — and they are the kind
+of thing a reviewer is certain it will remember and then does not.
+
+The alternative, a validator script that lints a block before emission, was
+rejected FOR NOW rather than on the merits. It would be strictly better, and it
+would also be production code written by the reviewer role to police the
+reviewer role, which the split workflow does not currently have a shape for. If
+the checklist proves insufficient, that script is the next move and this entry
+is where it should be argued.
+
+Scope: reviewer-authored blocks. It adds no obligation to workers and changes
+no verification tier. It is a pre-flight check on text the reviewer is about to
+send, nothing more.
+
+Reverse this decision by deleting this entry and the §3 checklist it installs.
+
+## DECISION F105 D9 — the schema tail stays outside the registry (2026-08-09)
+
+Context: `.agent/plan.md` has carried, since R17, an open question that step 5
+was not allowed to start without: does the schema tail appended by
+`packages/orchestration/structured_outputs.py` — `build_schema_prompt` in
+legacy mode, `native_schema_prompt` in native mode — become a registered rank-4
+segment? Until it is answered, every T003 manifest describes fewer bytes than
+the call actually sent, which sounds like an overclaim.
+
+D9 — it does NOT become a registered segment during T003. Three reasons, in
+order of weight.
+
+1. It is appended by `run_structured_call`, shared infrastructure that every
+   structured caller in the repository reaches, not by any of the six builders.
+   Registering it there widens T003's change set from one builder per round to
+   every structured call site, which AGENTS.md Scope Control bars.
+2. It cannot affect the property T003 exists to create. The tail is a SUFFIX
+   joined with exactly `PROMPT_SEGMENT_DELIMITER`, so the composed text is a
+   strict PREFIX of the bytes sent and the cacheable prefix is byte-identical
+   either way.
+3. Its bytes are attempt-dependent — the parse-retry hint is part of them — so
+   its honest rank is 5 STEERING, which sorts last. Registering it would move
+   nothing.
+
+What the decision COSTS is the honesty of the manifest, and that is paid in the
+same round rather than deferred: the C3 pin turns reason 2 from a claim into a
+test. A manifest that is a proven strict prefix is a true statement about the
+call; an unproven one is the overclaim the plan was right to flag.
+
+Rejected alternative: register the tail now at the structured-call layer. It is
+the correct end state and it is where a follow-up should put it — but it is a
+different feature's change set, and doing it inside a per-builder migration
+round would mix a refactor of shared infrastructure with a feature step, which
+AGENTS.md Commit Discipline forbids in one commit and Scope Control forbids in
+one round.
+
+Scope: T003 only. It adds no obligation to workers, changes no verification
+tier, and leaves the tail exactly where it is today.
+
+Reverse this decision by deleting this entry; the pin test in
+`tests/orchestration/test_prompt_segments.py` stays useful either way.
+
+## DECISION F105 D10 — red-proofs are ordered only where they can go red (2026-08-10)
+
+Context: finding R-0252. R22's gate F ordered a mutation red-proof against a
+branch of `_drop_one_newline_per_segment_boundary` that no composed prompt can
+reach, so the mutation could only ever come back green. The worker ran it,
+reported green, probed the branch over all 64 optional-argument combinations to
+show WHY, and declared it. Nothing was damaged; a round again spent a declared
+deviation proving a reviewer mistake, and this is the sixth instance of the
+unsatisfiable-gate class across F104 and F105.
+
+What makes it worth its own decision rather than a note under D8 is that D8's
+four items cannot catch it. They are checks on the block's own bytes — count
+the lines, check a zero-gate against the block's own TO slices, count a
+replacement against its file's cap, test whether a TO contains its FROM. All
+four are answerable by reading the block alone. Reachability is a property of
+the CODE the block points at, so it is a different kind of check and belongs as
+its own item.
+
+D10 — §3's checklist gains a fifth item: order a mutation red-proof only where
+the mutated branch is reachable by the tests meant to go red, and when that is
+not obvious, order the PROBE ("replace the branch with a raise, report whether
+anything fails") rather than asserting the colour. The probe is strictly more
+informative than a guess: it returns the same evidence whether the branch is
+live or dead, and it cannot produce a gate the worker has to declare its way
+out of.
+
+The alternative — drop the red-proof when reachability is uncertain — was
+rejected. Red-proofs are the only thing separating a test that pins behaviour
+from a test that merely runs, and F105's own R-0229 was found exactly this way.
+Fewer red-proofs is the wrong direction; better-aimed ones is the right one.
+
+Scope: reviewer-authored blocks, as with D8. It adds no obligation to workers
+and changes no verification tier.
+
+Reverse this decision by deleting this entry and §3 checklist item 5.
+
+D11 — the orchestrator prompt's evidence sink lives INSIDE `run_mission`, not
+in `remedy mission run`. The mission-plan site put its sink in `plan_mission`,
+a package function, and `.agent/plan.md` carried the orchestrator site as two
+rounds: `mission_cmd.py` first, `gauntlet_runner.py` second. Reading the
+callers dissolved the second round. `run_mission` has TWO production callers —
+`apps/cli/commands/mission_cmd.py:366` and `packages/orchestration/
+gauntlet_runner.py:514` through `deps.run_mission` — and it already owns the
+mission's evidence directory, because `append_ledger_entry` writes the ledger
+into it every iteration. A sink in the CLI would have left every gauntlet run
+with no orchestrator prompt evidence at all, and the gate would have been green
+the whole time: the F104 R-0220 class, where the caller is the thing nobody
+checked.
+
+Placing it in `run_mission` also settles WHEN the write happens. The loop has
+several return paths and a boundary that turns a raise into a terminal, so a
+single flush after the loop would lose the calls a crashed or stopped run had
+already made. The append therefore happens per iteration, immediately after the
+provider call, exactly as the ledger entry does a few lines away — one
+durability rule for both records of the same iteration.
+
+The alternative — flush once from each caller, copying `plan_mission` literally
+— was rejected on both counts: it duplicates the sink per caller and it trades
+the ledger's durability for a shape that only looks consistent.
+
+Consequence, stated so it is not mistaken for an omission: the gauntlet's
+orchestrator rows land in evidence from this round on, but carry an EMPTY
+provider label until `gauntlet_runner.py:514` names it. Unlabeled is honest;
+mislabeled would not be. That is a one-line round, no longer a wiring round.
+
+Reverse this decision by deleting this entry, dropping the append from
+`run_mission`, and flushing a caller-owned `traces` list in each of the two
+callers instead.
+
+D12 — §3's pre-emission checklist gains a SEVENTH item: before ordering a change
+that ADDS a string to a file, grep the suite for tests that COUNT that string
+over that whole file. R33 lost two of its items to a guard nobody looked at:
+`test_mission_compiler.py` asserted `source.count('provider_kind="ollama"') == 1`
+over all of `mission_cmd.py`, so a correct second call site could not land
+(finding R-0258, the seventh instance of the unsatisfiable-gate class).
+
+The four earlier items read the block's own bytes, item 5 reads the code the
+block points at, item 6 reads the file the block writes into. This one reads the
+TESTS that already guard that file — a fourth place, which is why it is a
+seventh item and not a clause bolted onto item 6.
+
+The alternative — forbid file-wide `source.count(...)` guards outright — was
+rejected: they are the only cheap way to pin a CLI wiring line no behavioural
+test reaches (F105 R28 introduced them deliberately). The defect is the SCOPE,
+not the technique, so the rule is "scope the guard to its call site".
+
+Reverse this decision by deleting this entry and §3 checklist item 7.
+
+D13 — Remedy deliberately does NOT label the provider on the gauntlet's
+`run_mission` call. D11 left it as "a one-line round"; reading the call site
+retires that plan. `apps/cli/commands/mission_cmd.py` can honestly name Ollama
+because `_orchestrator_call_fn` is unconditionally `make_structured_call_fn`.
+The gauntlet's call_fn arrives through `deps.move_call_fn()`, a substitutable
+seam whose default is Ollama but whose whole purpose is being replaced, so a
+hardcoded label there would write a guess into evidence every time a caller
+substituted the seam.
+
+An EMPTY label already means "the caller did not name it", which `run_mission`'s
+docstring states, and which is exactly true of the gauntlet. Unlabelled is
+honest; mislabelled is not, and this repository records unmeasured cost as
+unmeasured rather than estimating it into the record.
+
+The alternative — thread a provider label through the deps object so the
+gauntlet reports the provider it actually used — is the RIGHT fix and is not
+rejected, only deferred: it is a deps-shape change, not a one-liner, and F105 is
+about prompt composition. The absence is documented at the call site so a reader
+searching for the missing label finds the reason instead of a gap.
+
+Reverse this decision by threading the label through `GauntletDeps` and passing
+it at that call site.
+
+D14 — T004 renders the cache-read share the ledger ACTUALLY carries, names the
+gap, and does not fix the producer. This answers all five open questions at the
+end of `.agent/t004_inventory.md`, which the R42 investigation raised and which
+no later round should re-derive.
+
+Q1, the role column: NO, T004 does not fix
+`packages/orchestration/pingpong_loop.py:3970` first. F105's goal is prompt
+COMPOSITION; rewriting who writes a role into token accounting is a different
+feature's change and would put an unreviewed producer edit under a prompt
+feature's PR. The view therefore reports per role over what the ledger holds and
+states, in its own output, that production rows currently carry one role. A
+reader learns the truth including its limit — which is this repository's rule for
+every figure it prints.
+
+Q2, one row per task run: MOOT under Q1 and deliberately left so. No row splits,
+no role becomes a list, and the view does NOT reach into
+`token_accounting.json`'s `by_role` behind the ledger's back. The ledger is the
+mirror this surface reads (stats_ledger_cmd's own stated contract); adding a
+second, richer path for one subcommand would give the same question two answers.
+
+Q3, fixtures: the evidence-tree-backfilled shape
+(`tests/cli/test_stats_cost.py:121`), NOT the directly-written ledger
+(`tests/orchestration/test_token_ledger.py:909`). Only the first exercises the
+producer path, and a fixture that skips the producer would render green over
+exactly the gap R-0266 names.
+
+Q4, the measured-zero collapse: YES, a finding against the actuals feature —
+registered as R-0265, not worked around inside T004. A workaround inside the
+view would be a second place where "reported 0" and "not reported" are guessed
+apart, and the guess would be invisible.
+
+Q5, vocabulary: the EXISTING word `unmeasured`
+(`apps/cli/commands/stats_ledger_cmd.py:44`). One spelling per concept
+(AGENTS.md, Code Discoverability Conventions); the feature file's phrase "not
+reported" is prose describing that word, not a second one to introduce.
+
+The alternative considered and rejected for now: fix the producer inside T004 so
+the per-role figure is real. It is the RIGHT eventual fix and R-0266 records it
+as such; it is rejected HERE because it is a token-accounting change that would
+ride into a prompt-composition PR unreviewed by anyone reading that PR's title.
+
+Reverse this decision by deleting this entry and re-scoping T004 to include the
+producer fix, with R-0266 closed in the same round.
+
+D15 — a cache-read share needs TWO words for "no number here", not one.
+DECISION D14 Q5 ruled that a figure nobody reported prints the existing word
+`unmeasured`, and that stands. But a SHARE has a second way to have no value:
+a bucket whose inputs WERE reported and are both zero divides 0 by 0. Printing
+`unmeasured` there would blame a provider for a figure it did in fact report —
+the P6 lie pointing the other way — and printing `0.0%` would invent a
+measurement. That case prints `undefined`, defined beside `UNMEASURED` in
+`apps/cli/commands/stats_ledger_cmd.py` with the reason above it.
+
+The alternative considered and rejected: one word for both, on the "one
+spelling per concept" rule (AGENTS.md). Rejected because they are two
+concepts, not one spelling of one — "nobody measured this" and "this measured
+to nothing" differ exactly where a reader's next action differs.
+
+Reverse this decision by deleting `UNDEFINED_SHARE` and returning `UNMEASURED`
+for the zero-denominator case, with the test that pins the two words dropped.
+
+## DECISION F105 D16 (2026-08-12) — the Open PR Gate does not block a
+## closure PR
+
+Chosen: PR #189 (`docs/amend0810-clerical` -> `main`) is stop-and-report and
+stays untouched — not merged, not commented on, not modified — because it
+does not originate from a `feature/*` branch. It does NOT block creating the
+F105 closure pull request. The AGENTS.md Open PR Gate fires "before creating
+a new feature branch or starting a new unrelated task"; closing F105 is
+neither, it is the completion of the branch already in hand. The closure
+protocol already leaves the closure PR unmerged until the next feature's
+start, where the gate will see both PRs and correctly stop-and-report.
+
+Alternatives considered. (a) Wait for the operator before closing: rejected —
+from 2026-08-13 the operator reaches this machine only over SSH from a phone
+(docs/agents/self_drive_protocol.md), so a finished feature would stall
+indefinitely on an action the operator must take for #189 either way, and
+every later session would re-derive F105's state from scratch. (b) Merge #189
+to clear the gate: FORBIDDEN — a non-`feature/*` PR is stop-and-report and
+merging it is outside any agent's authority here.
+
+Reverse this decision by closing the F105 pull request; the branch and every
+commit on it survive untouched.
+
+Operator note, not a blocker: PR #189 and this branch both modify
+`docs/agents/reviewer_conventions.md`, so whichever merges second may need a
+conflict resolution.

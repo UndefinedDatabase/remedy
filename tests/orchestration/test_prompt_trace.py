@@ -5,8 +5,10 @@ complete builder/reviewer metadata.
 """
 from __future__ import annotations
 
+import inspect
 import json
 
+from packages.orchestration.intake import compose_intake_prompt, make_intake_call_recorder
 from packages.orchestration.prompt_trace import (
     build_trace_entry,
     build_trace_summary,
@@ -197,6 +199,148 @@ class TestPromptTraceCompleteness:
         )
         assert "sk-secret" not in entry.prompt_text_redacted
         assert "[REDACTED]" in entry.prompt_text_redacted
+
+
+# ---------------------------------------------------------------------------
+# F105 T003 site 1: the composed-prompt segment manifest in call evidence
+# ---------------------------------------------------------------------------
+
+
+class TestSegmentManifest:
+    def test_entry_without_a_composed_prompt_carries_no_manifest(self):
+        entry = build_trace_entry(prompt_text="plain prompt", role="builder")
+        assert entry.segment_manifest == []
+        assert entry.segment_manifest_chars == 0
+
+    def test_composed_prompt_fills_the_manifest_rows(self):
+        composed = compose_intake_prompt("demo mission")
+        entry = build_trace_entry(
+            prompt_text=composed.text,
+            role="intake",
+            composed_prompt=composed,
+        )
+        assert [row["name"] for row in entry.segment_manifest] == [
+            "intake_system",
+            "intake_rules",
+            "intake_mission",
+        ]
+        assert [row["sha256"] for row in entry.segment_manifest] == [
+            m.sha256 for m in composed.manifest
+        ]
+        assert entry.segment_manifest_chars == len(composed.text)
+
+    def test_manifest_chars_fall_short_of_a_schema_wrapped_prompt(self):
+        """The gap is expected: DECISION F105 D3 leaves the schema tail
+        `run_structured_call` appends outside every builder UNREGISTERED, so the
+        manifest covers the composed base prompt only. Recording both numbers is
+        what makes that coverage gap visible instead of implied."""
+        composed = compose_intake_prompt("demo mission")
+        entry = build_trace_entry(
+            prompt_text=composed.text + "\n\nSCHEMA TAIL",
+            role="intake",
+            composed_prompt=composed,
+        )
+        assert entry.segment_manifest_chars < entry.prompt_chars
+
+    def test_manifest_survives_the_jsonl_round_trip(self, tmp_path):
+        composed = compose_intake_prompt("demo mission")
+        entry = build_trace_entry(
+            prompt_text=composed.text,
+            role="intake",
+            composed_prompt=composed,
+        )
+        path = tmp_path / "trace.jsonl"
+        write_trace_jsonl([entry], path)
+        loaded = json.loads(path.read_text().strip())
+        assert loaded["segment_manifest"] == entry.segment_manifest
+        assert loaded["segment_manifest_chars"] == entry.segment_manifest_chars
+
+    def test_the_cli_recorder_passes_the_composed_prompt(self):
+        """Wiring guard: a manifest field the CLI never fills fails HERE."""
+        import apps.cli.commands.do_cmd as do_cmd
+
+        traces: list = []
+        composed = compose_intake_prompt("demo mission")
+        recorder = make_intake_call_recorder(
+            traces, composed, provider="ollama", provider_kind="ollama"
+        )
+        recorder(1, "ji1", False, composed.text)
+        assert len(traces) == 1
+        assert len(traces[0].segment_manifest) == 3
+
+        assert "make_intake_call_recorder" in inspect.getsource(do_cmd)
+
+    def test_the_cli_flight_plan_recorder_passes_the_composed_prompt(self):
+        """Wiring guard: an unwired flight-plan manifest fails HERE (F105 R27)."""
+        import apps.cli.commands.do_cmd as do_cmd
+        from packages.orchestration.flight_plan import (
+            compose_flight_plan_prompt,
+            make_flight_plan_call_recorder,
+        )
+
+        traces: list = []
+        composed = compose_flight_plan_prompt(
+            {"goal": "demo"}, project_facts="pinned facts"
+        )
+        recorder = make_flight_plan_call_recorder(
+            traces, composed, provider="ollama", provider_kind="ollama"
+        )
+        recorder(1, "fp1", False, composed.text)
+        assert len(traces) == 1
+        assert traces[0].role == "flight_plan"
+        assert traces[0].prompt_kind == "flight-plan"
+        assert len(traces[0].segment_manifest) == 5
+
+        source = inspect.getsource(do_cmd)
+        assert "make_flight_plan_call_recorder" in source
+        assert "prompt_traces" in source
+
+    def test_appending_traces_keeps_the_earlier_ones(self, tmp_path):
+        """A replan must not truncate the traces its job's first run wrote."""
+        from packages.orchestration.prompt_trace import append_trace_jsonl
+
+        composed = compose_intake_prompt("demo mission")
+        first = build_trace_entry(
+            prompt_text=composed.text, role="intake", composed_prompt=composed,
+        )
+        second = build_trace_entry(
+            prompt_text=composed.text, role="flight_plan", composed_prompt=composed,
+        )
+        path = tmp_path / "prompt_trace.jsonl"
+        write_trace_jsonl([first], path)
+        append_trace_jsonl([second], path)
+        lines = path.read_text().strip().split("\n")
+        assert len(lines) == 2
+        assert [json.loads(x)["role"] for x in lines] == ["intake", "flight_plan"]
+
+    def test_appending_to_a_missing_file_creates_it(self, tmp_path):
+        from packages.orchestration.prompt_trace import append_trace_jsonl
+
+        composed = compose_intake_prompt("demo mission")
+        entry = build_trace_entry(
+            prompt_text=composed.text, role="flight_plan", composed_prompt=composed,
+        )
+        path = tmp_path / "nested" / "prompt_trace.jsonl"
+        append_trace_jsonl([entry], path)
+        assert len(path.read_text().strip().split("\n")) == 1
+
+    def test_the_replan_path_records_and_appends_its_traces(self):
+        """Wiring guard: an unwired or truncating replan fails HERE (F105 R28)."""
+        import apps.cli.commands.do_cmd as do_cmd
+
+        source = inspect.getsource(do_cmd)
+        assert "replan_traces" in source
+        assert "append_trace_jsonl" in source
+        assert source.count("on_call=make_flight_plan_call_recorder(") == 2
+
+    def test_every_cli_call_site_hands_its_composition_down(self):
+        """R-0256 wiring guard: a site that composes twice fails HERE."""
+        import apps.cli.commands.do_cmd as do_cmd
+
+        source = inspect.getsource(do_cmd)
+        assert "composed=intake_composed," in source
+        assert "composed=plan_composed," in source
+        assert "composed=replan_composed," in source
 
 
 # ---------------------------------------------------------------------------

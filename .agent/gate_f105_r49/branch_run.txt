@@ -1,0 +1,16 @@
+=== BRANCH RUN — F105 R49 integration gate ===
+cwd: /home/decodeux/Repos/remedy
+HEAD: a8b6f66e2dd071f84d3b705523d6ee9b37d1ac05
+branch: feature/f105-cache-optimal-prompt-ordering
+command: python3 -m pytest -n auto -q
+start_epoch: 1786517604
+start_utc: 2026-08-12T06:53:24Z
+bringing up nodes...
+........................................................................ [ 99%]
+........................................................................ [ 99%]
+.................................................................        [100%]
+16462 passed, 19 skipped in 98.39s (0:01:38)
+PYTEST_EXIT_CODE: 0
+end_epoch: 1786517703
+end_utc: 2026-08-12T06:55:03Z
+wall_clock_seconds: 99

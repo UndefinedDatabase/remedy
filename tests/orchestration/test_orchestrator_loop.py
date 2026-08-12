@@ -2424,3 +2424,81 @@ class TestTheBoundaryContinuesOnRetryableFailures:
             with pytest.raises(stopper):
                 run_mission(mission.id, LoopLimits(max_iterations=4),
                             project_id=PROJECT, root=tmp_path, call_fn=raising)
+
+
+class TestOrchestratorEvidenceSink:
+    """`run_mission` owns the mission's evidence dir, so it owns the trace file.
+
+    The sink lives in the loop rather than in a caller (DECISION F105 D11), so
+    both production callers inherit it. Shape copied from
+    `TestMissionPlanEvidenceSink` in `test_mission_compiler.py`.
+    """
+
+    def _trace_path(self, mission, tmp_path):
+        return (mission_evidence_dir(PROJECT, mission.id, tmp_path)
+                / "prompt_trace.jsonl")
+
+    def _run_once(self, tmp_path, mission, dispatched, **kwargs):
+        return run_mission(
+            mission.id, LoopLimits(max_iterations=1), project_id=PROJECT,
+            call_fn=_scripted(_move_json("wait_on_decisions")), root=tmp_path,
+            dispatch=dispatched, execute=_executed,
+            control_root_path=tmp_path / "control", **kwargs)
+
+    def test_a_run_writes_one_labelled_row_per_call(self, tmp_path, mission,
+                                                    dispatched):
+        self._run_once(tmp_path, mission, dispatched,
+                       provider="ollama", provider_kind="ollama")
+
+        rows = [json.loads(line) for line
+                in self._trace_path(mission, tmp_path).read_text().splitlines()
+                if line]
+        assert len(rows) == 1
+        assert rows[0]["role"] == "orchestrator"
+        assert rows[0]["provider"] == "ollama"
+        assert rows[0]["segment_manifest"]
+
+    def test_a_second_run_appends_rather_than_truncating(self, tmp_path,
+                                                         mission, dispatched):
+        """A second `remedy mission run` must not erase the first's evidence."""
+        self._run_once(tmp_path, mission, dispatched)
+        first = self._trace_path(mission, tmp_path).read_text()
+        self._run_once(tmp_path, mission, dispatched)
+
+        body = self._trace_path(mission, tmp_path).read_text()
+        assert len([line for line in body.splitlines() if line]) == 2
+        assert body.startswith(first), "the first run's row survived"
+
+    def test_no_provider_leaves_no_trace_file(self, tmp_path, mission,
+                                             dispatched):
+        """Nothing was sent, so there is no evidence file pretending it was."""
+        result = run_mission(
+            mission.id, LoopLimits(max_iterations=1), project_id=PROJECT,
+            call_fn=None, root=tmp_path, dispatch=dispatched, execute=_executed,
+            control_root_path=tmp_path / "control")
+
+        assert result.terminal == TERMINAL_NO_PROVIDER
+        assert not self._trace_path(mission, tmp_path).exists()
+
+    def test_the_cli_names_the_provider_it_runs_with(self):
+        """A source guard, because an unwired CLI leaves every gate green.
+
+        The tests above drive `run_mission` directly, so they stay green even if
+        `remedy mission run` stops passing the provider. This pins the one line
+        they cannot reach. Formatting-sensitive by nature — the same declared
+        trade-off as `test_the_cli_names_the_provider_it_planned_with`.
+
+        Scoped to THIS call site, never a file-wide count: the plan call in the
+        same module carries its own label, and a count would make one of the two
+        guards unsatisfiable (checklist item 7, finding R-0258). The window is
+        200 characters from the call's start, which is the call plus 27
+        characters of what follows it — measured, not the call expression
+        exactly (R-0260). It stays clear of the plan call's label by thousands
+        of characters, which is the property this guard exists to hold. The
+        exact gap is deliberately not quoted (R-0261): no assertion pins it,
+        so a number here would go stale on the next edit to mission_cmd.py.
+        """
+        source = (Path(__file__).resolve().parents[2]
+                  / "apps" / "cli" / "commands" / "mission_cmd.py").read_text()
+        ran = source.index("result = run_mission(")
+        assert 'provider_kind="ollama"' in source[ran:ran + 200]

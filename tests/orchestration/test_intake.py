@@ -292,3 +292,24 @@ class TestMakeProviderCallFn:
         assert fn is not None
         fn("test prompt", 0)
         assert captured["chat_kwargs"]["model"] == "intake-test-model"
+
+
+class TestRunIntakeAcceptsAComposedPrompt:
+    """R-0256: one composition feeds the provider AND the trace manifest."""
+
+    def test_composed_text_is_the_prefix_the_provider_sees(self):
+        from packages.orchestration.intake import compose_intake_prompt
+
+        composed = compose_intake_prompt("SENTINEL-INTAKE-MISSION")
+        seen: list[str] = []
+
+        def _call(prompt: str, attempt: int) -> str:
+            seen.append(prompt)
+            return json.dumps(_VALID_INTAKE)
+
+        run_intake("a completely different mission", _call, composed=composed)
+
+        assert len(seen) == 1
+        assert seen[0].startswith(composed.text)
+        assert "SENTINEL-INTAKE-MISSION" in seen[0]
+        assert "a completely different mission" not in seen[0]

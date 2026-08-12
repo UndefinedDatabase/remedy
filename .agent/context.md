@@ -1,24 +1,25 @@
-# Context — F104 Hard budget enforcement
+# Context — F105 Cache-optimal prompt ordering
 
 ## Active Branch
-feature/f104-hard-budget-enforcement, cut from main at 94f69b0f after PR #187 —
-the F103 closure — was merged at the Open PR Gate. F104 was claimed `[~]` under
-Rule A5 as the first `[ ]` entry after F103 and is now accepted `[x]` in
-docs/roadmap/STATUS.md; the closure PR is open and unmerged by design.
+feature/f105-cache-optimal-prompt-ordering, cut from main at cfda4245 after
+PR #188 — the F104 closure — was merged at the Open PR Gate. F105 is claimed
+`[~]` under Rule A5 as the first `[ ]` entry after F104 in
+docs/roadmap/STATUS.md.
 
 ## Scope
-In: `max_cost_usd` as an additive `JobBudgets` field with the F018 precedence
-rules (CLI flag > env > project TOML > no limit); budget counters that read
-cost actuals from the F103 per-project SQLite ledger through `query_cost`; the
-unpriced notation propagating into every budget figure; a predictive stop at
-the task-dispatch safe point with the reason `predicted_budget_exhausted:
-<limit>` and a decision entry carrying spent, expected and basis; `remedy job
-budget` showing spent, remaining and the next-task expectation with its basis
-label.
+In: a registered-segment prompt registry with a documented stability rank
+scale; `compose()` producing byte-stable ordering per role plus a segment
+manifest (name, rank, hash) recorded into call evidence; role loaders for the
+existing docs/agents/worker_conventions.md and docs/agents/reviewer_conventions.md
+under a token cap that fails loudly; migration of the existing prompt builders
+to compose through the registry, each with a content-equality golden; and
+`remedy stats cache`, which reports cache-read share per role from actuals the
+system already captures.
 
-Out, per the feature file's Do-not-touch: calibration from history,
-per-task-class caps, burn-rate anomaly detection. Prices are never invented — a
-cost figure exists only where a provider reported one.
+Out, per the feature file's Do-not-touch: model-routing policy content,
+provider-side cache configuration, and prompt CONTENT beyond composition. The
+two conventions files are LOADED here, never re-authored — any change to their
+rules goes through a reviewed diff of those files, not through builder code.
 
 ## Constraints
 - SPLIT rounds are mandatory: this feature touches packages/ and apps/, and
@@ -28,18 +29,18 @@ cost figure exists only where a provider reported one.
   makes every commit (docs/agents/self_drive_protocol.md).
 - Merges only at the Open PR Gate; never force-push; never touch main.
 - Verification is pytest, scoped per round, plus the canary
-  tests/cli/test_golden_path.py. A round touching docs/roadmap/ also runs
-  tests/docs/. The full suite runs only at the integration gate, with
-  `-n auto`. Destructive and mutation checks run only inside a disposable git
-  worktree, so resource safety stays intact and no background pytest process is
-  ever left running.
-- An unmeasured or unpriced figure is NULL and prints as such; a measured zero
-  and an unknown are never the same value (P6).
+  tests/cli/test_golden_path.py. A round touching docs/ also runs tests/docs/.
+  The full suite runs only at the integration gate, with `-n auto`. Destructive
+  and mutation checks run only inside a disposable git worktree, so resource
+  safety stays intact and no background pytest process is ever left running.
+- A cache figure no provider reported prints as "not reported", never as a zero
+  pretending to be a measurement (A9).
 
 ## Steps
-Renumbered by DECISION F104 D7 after R5 became a repair round: R1 claim +
-candidate sweep + T001 usd limit and ledger bridge → R2 T002 predictive engine
-(fix R-0222) → R3 fix R-0224, the cost-side counter split → R4 T002 part 2, the
-predictive stop wired at the live safe point → R5 fix R-0225/R-0226, the F012
-manifest budget schema and the terminal-state pins → R6 T003 display, docs and
-estimate labels → R7 integration gate → R8 closure (done).
+R1 claim, candidate sweep and state reset → R2 T001 the segment registry,
+compose and the manifest → R3 the session terminator of the previous session →
+R4 T002 the conventions loaders and their goldens → R5 the repair of R-0229 and
+R-0230 → R6 the distilled discoverability block added to both conventions
+documents → R7 the session terminator → T003 one builder per round, each with a
+content-equality golden → T004 the cache stats view → integration gate →
+closure.

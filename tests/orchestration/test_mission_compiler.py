@@ -32,6 +32,7 @@ from pathlib import Path
 
 import pytest
 
+from packages.orchestration import mission_compiler
 from packages.orchestration.data_paths import jobs_dir
 from packages.orchestration.dod_compiler import DoDCompileResult
 from packages.orchestration.dod_schema import DOD_SCHEMA_V, DoD
@@ -46,6 +47,7 @@ from packages.orchestration.mission_compiler import (
     resolve_milestone_cap,
     compile_milestone_dod,
     compile_mission_plan,
+    compose_mission_prompt,
     deterministic_mission_plan,
     milestone_flight_plan,
     milestones_in_progress,
@@ -1077,3 +1079,144 @@ def test_the_cap_never_loosens_the_dag_discipline() -> None:
                       milestone("M002", depends_on=["M001"]))
     result = compile_mission_plan("ship it", replaying(body), max_milestones=2)
     assert result.source == "deterministic"
+
+
+# ---------------------------------------------------------------------------
+# F105 T003 — the mission-plan prompt's segment manifest, composed once
+# ---------------------------------------------------------------------------
+
+
+class TestMissionPlanCallEvidence:
+    """One composition feeds both the provider bytes and the trace manifest."""
+
+    def test_the_manifest_describes_the_bytes_that_were_sent(
+            self, planned_mission):
+        """Compose-once, proved from the prompt the provider actually got."""
+        mission, replay = planned_mission
+        traces: list = []
+        sent: list[str] = []
+
+        def call_fn(prompt: str, attempt: int) -> str:
+            sent.append(prompt)
+            return replay(prompt, attempt)
+
+        compile_mission_plan(mission.goal, call_fn, traces=traces,
+                             provider="ollama", provider_kind="ollama",
+                             project_facts="FACTS")
+
+        composed = compose_mission_prompt(mission.goal, project_facts="FACTS")
+        assert len(traces) == 1
+        entry = traces[0]
+        assert entry.role == "mission_plan"
+        assert entry.provider == "ollama"
+        assert entry.prompt_kind == "mission-plan"
+        # The manifest covers the composed text, and that text is a PREFIX of
+        # what was sent. Any remainder is the schema tail `run_structured_call`
+        # appends outside every builder, which F105 does not register
+        # (DECISION F105 D3) — recording both numbers keeps that gap visible.
+        assert entry.segment_manifest_chars == len(composed.text)
+        assert sent[0].startswith(composed.text)
+        assert [row["name"] for row in entry.segment_manifest] == [
+            "mission_system", "mission_rules", "mission_repo_facts",
+            "mission_goal", "mission_schema_directive"]
+
+    def test_a_manifest_row_carries_its_rank_and_hash(self, planned_mission):
+        """A name alone would not let an auditor re-derive the ordering."""
+        mission, call_fn = planned_mission
+        traces: list = []
+
+        compile_mission_plan(mission.goal, call_fn, traces=traces,
+                             project_facts="FACTS")
+
+        row = traces[0].segment_manifest[0]
+        assert row["name"] == "mission_system"
+        assert row["rank"] == 0
+        assert len(row["sha256"]) == 64
+
+    def test_no_provider_records_no_call(self, planned_mission):
+        """The deterministic fallback contacts nobody, so it traces nobody."""
+        mission, _call_fn = planned_mission
+        traces: list = []
+
+        result = compile_mission_plan(mission.goal, None, traces=traces)
+
+        assert result.source == "deterministic"
+        assert traces == []
+
+    def test_a_failing_composer_still_yields_the_fallback(
+            self, planned_mission, monkeypatch):
+        """R-0257: composition failure degrades, it does not reach the CLI."""
+        mission, call_fn = planned_mission
+
+        def boom(*_a, **_k):
+            raise RuntimeError("composition blew up")
+
+        monkeypatch.setattr(mission_compiler, "compose_mission_prompt", boom)
+
+        result = compile_mission_plan(mission.goal, call_fn)
+
+        assert result.source == "deterministic"
+        assert "composition blew up" in result.error_hint
+
+
+class TestMissionPlanEvidenceSink:
+    """`plan_mission` owns the evidence dir, so it owns the trace file."""
+
+    def test_planning_writes_the_trace_into_the_evidence_dir(
+            self, planned_mission):
+        mission, call_fn = planned_mission
+
+        outcome = plan_mission("proj", mission.id, call_fn,
+                               provider="ollama", provider_kind="ollama")
+
+        rows = [json.loads(line) for line
+                in (outcome.evidence_dir / "prompt_trace.jsonl")
+                .read_text().splitlines() if line]
+        assert len(rows) == 1
+        assert rows[0]["role"] == "mission_plan"
+        assert rows[0]["provider"] == "ollama"
+        assert rows[0]["segment_manifest"]
+
+    def test_a_recompile_appends_rather_than_truncating(self, planned_mission):
+        """A second `remedy mission plan` must not erase the first's evidence."""
+        mission, call_fn = planned_mission
+
+        plan_mission("proj", mission.id, call_fn)
+        outcome = plan_mission("proj", mission.id, call_fn)
+
+        rows = [line for line
+                in (outcome.evidence_dir / "prompt_trace.jsonl")
+                .read_text().splitlines() if line]
+        assert len(rows) == 2
+
+    def test_no_provider_leaves_no_trace_file(self, planned_mission):
+        """Nothing was sent, so there is no evidence file pretending it was."""
+        mission, _call_fn = planned_mission
+
+        outcome = plan_mission("proj", mission.id, None)
+
+        assert not (outcome.evidence_dir / "prompt_trace.jsonl").exists()
+
+    def test_the_cli_names_the_provider_it_planned_with(self):
+        """A source guard, because an unwired CLI leaves every gate green.
+
+        The tests above drive `plan_mission` directly, so they stay green even
+        if `remedy mission plan` stops passing the provider. This pins the one
+        line they cannot reach. Formatting-sensitive by nature — the F105 R28
+        `on_call=` guard precedent, and the same trade-off.
+        """
+        source = (Path(__file__).resolve().parents[2]
+                  / "apps" / "cli" / "commands" / "mission_cmd.py").read_text()
+        # Scoped to THIS call site rather than counted over the whole file: a
+        # SECOND labelled call in the same module is correct and must not turn
+        # this red (R-0258, which cost F105 R33 two items). The window is 200
+        # characters from the call's start, which is the call plus 71
+        # characters of what follows it — measured, not the call expression
+        # exactly (R-0260). That is enough for the job the guard has: the run
+        # site's label lies far outside this window, so a label that drifts to
+        # that call no longer satisfies this one. No character distance is
+        # quoted here on purpose (R-0261): the gap between the two call sites
+        # is a fact about mission_cmd.py that no assertion pins, so a number
+        # here would go stale on the next edit to that file.
+        planned = source.index("outcome = plan_mission(")
+        assert 'provider_kind="ollama"' in source[planned:planned + 200]

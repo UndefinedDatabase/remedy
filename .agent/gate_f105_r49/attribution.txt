@@ -1,0 +1,91 @@
+F105 R49 — INTEGRATION GATE ATTRIBUTION
+=======================================
+Procedure: docs/agents/integration_gate.md, steps 3 and 4.
+Merge base: cfda4245b106aa17f2a7d846629dd1ab806766c7
+Branch HEAD at the branch run: a8b6f66e2dd071f84d3b705523d6ee9b37d1ac05
+                               (feature/f105-cache-optimal-prompt-ordering)
+
+HEADLINE NUMBERS
+  BRANCH run  python3 -m pytest -n auto -q
+              16462 passed, 19 skipped, 0 failed — exit 0 — 99 s wall
+  BASE   run  REMEDY_UI_NO_AUTO_BUILD=1 python3 -m pytest -n auto -q
+              16298 passed, 19 skipped, 7 failed — exit 1 — 144 s wall
+
+  The branch collects 157 more tests than the base (16462+19 = 16481 against
+  16298+19+7 = 16324). That delta is F105's own new tests, added across
+  T001-T004 on this branch; it is not a selection difference.
+
+COMPARISON
+  comm -13 base_failed.txt branch_failed.txt  (BRANCH-ONLY) : 0 ids — EMPTY
+  comm -23 base_failed.txt branch_failed.txt  (BASE-ONLY)   : 7 ids
+
+BRANCH-ONLY FAILURES: NONE
+  branch_failed.txt is empty, so step 4 has no id to attribute on the branch
+  side. There is no BLOCKER: a reproducible branch-only failure coupled to
+  F105 code cannot exist when the branch suite has zero failures.
+  Flake-class count for this gate: 0 branch-only failures, well under the 10
+  the step block set as the flake-debt alarm.
+
+BASE-ONLY FAILURES: 7, ALL ONE ID CLASS, ALL ATTRIBUTED
+  All seven are tests/ui_server/test_live_state.py::TestUIServerIntegration.
+  None is a failure the branch FIXED and none is a genuine base failure.
+
+  Class: R-0221 / the UI mtime-staleness environment class (integration_gate.md
+  step 3, R-0155 amendment). Direct evidence, three independent kinds:
+
+  (a) THE FAILURE TEXT NAMES THE CAUSE. Every one of the seven fails inside
+      _start_server() with "Server did not start in time", and the captured
+      stderr is "ERROR: React UI not built." — the message
+      packages/orchestration/ui_server.py prints when it declines to serve.
+
+  (b) THE PREDICATE IS MTIME, AND THE MTIMES WERE MEASURED.
+      _frontend_is_stale() (ui_server.py:2748) returns True when ANY file under
+      apps/ui/src is newer than apps/ui/dist/index.html. In the base worktree
+      before the run: dist 08:54:33 (preserved by `cp -a`) vs newest src
+      08:55:15 (stamped by `git worktree add`) -> stale by construction. In the
+      primary checkout: dist 08:54:33 vs newest src 2026-06-29 19:39:48 -> never
+      stale. Full timeline and hashes in dist_hashes.txt.
+
+  (c) SERIAL RE-RUN AT THE MERGE BASE PASSES, ONE ID AT A TIME.
+      Run in the base worktree AFTER R-0221's test had rebuilt dist there at
+      08:57:07, i.e. with the mtime condition removed and nothing else changed:
+
+      test_api_invalid_token_403          1 passed in 0.19s
+      test_api_missing_job_404            1 passed in 0.24s
+      test_app_shell_served_without_token 1 passed in 0.18s
+      test_brain_endpoint                 1 passed in 0.20s
+      test_dashboard_no_raw_leaks         1 passed in 0.28s
+      test_put_rejected                   1 passed in 0.18s
+      test_server_starts_and_writes_info  1 passed in 0.17s
+      (command, per id, from .remedy-wt/base-gate:
+       REMEDY_UI_NO_AUTO_BUILD=1 python3 -m pytest <id> -q)
+
+  PER-ID VERDICT — every base-only id, none silently absent:
+    tests/ui_server/test_live_state.py::TestUIServerIntegration::test_api_invalid_token_403          ENVIRONMENT (R-0221 mtime), serial-pass at base
+    tests/ui_server/test_live_state.py::TestUIServerIntegration::test_api_missing_job_404            ENVIRONMENT (R-0221 mtime), serial-pass at base
+    tests/ui_server/test_live_state.py::TestUIServerIntegration::test_app_shell_served_without_token ENVIRONMENT (R-0221 mtime), serial-pass at base
+    tests/ui_server/test_live_state.py::TestUIServerIntegration::test_brain_endpoint                 ENVIRONMENT (R-0221 mtime), serial-pass at base
+    tests/ui_server/test_live_state.py::TestUIServerIntegration::test_dashboard_no_raw_leaks         ENVIRONMENT (R-0221 mtime), serial-pass at base
+    tests/ui_server/test_live_state.py::TestUIServerIntegration::test_put_rejected                   ENVIRONMENT (R-0221 mtime), serial-pass at base
+    tests/ui_server/test_live_state.py::TestUIServerIntegration::test_server_starts_and_writes_info  ENVIRONMENT (R-0221 mtime), serial-pass at base
+
+  Not reported as a discovery: R-0221 is already OPEN and the step block named
+  this mechanism in advance. F104 R7's gate saw SIX ids of the same class. The
+  membership is not identical and that is itself expected rather than alarming:
+  F104 R7 had test_url_is_localhost_only and did NOT have
+  test_app_shell_served_without_token or test_brain_endpoint. All three methods
+  exist in the base worktree's own test_live_state.py (lines 178, 188 and 290),
+  so nothing appeared or vanished. Which ids land in the window is decided by
+  xdist scheduling — every id in TestUIServerIntegration that happens to run
+  BEFORE R-0221's test rebuilds dist mid-run fails, and every id that runs after
+  it passes. The class is stable; its membership is a race, and the count moved
+  six -> seven for that reason and not because a defect grew.
+
+WALL CLOCK
+  branch 99 s, base 144 s. Both under the ~5 min budget in step 5, so no perf
+  pass is indicated. The base is slower because seven ids each burn the full
+  5 s server-start wait before failing.
+
+VERDICT IS NOT ISSUED HERE
+  integration_gate.md step 5: only the reviewer issues the gate verdict. This
+  file records what was run and what it measured.

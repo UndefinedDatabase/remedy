@@ -1,0 +1,31 @@
+F105 R49 — BASE WORKTREE CLEANUP
+================================
+The base worktree was created ON A THROWAWAY BRANCH, never detached:
+  $ git worktree add -b tmp/base-gate .remedy-wt/base-gate cfda4245b106aa17f2a7d846629dd1ab806766c7
+  Preparing worktree (new branch 'tmp/base-gate')
+  HEAD is now at cfda4245 Merge pull request #188 from ...
+A detached base worktree fails the self-dogfood branch guard by design
+(DECISION D3, F053 R2 review).
+
+BEFORE removal
+  $ git worktree list
+  /home/decodeux/Repos/remedy                       a8b6f66e [feature/f105-cache-optimal-prompt-ordering]
+  /home/decodeux/Repos/remedy/.remedy-wt/base-gate  cfda4245 [tmp/base-gate]
+  $ git branch --list 'tmp/*'
+  + tmp/base-gate
+
+REMOVAL (--force: the worktree carries the copied, untracked
+apps/ui/node_modules and apps/ui/dist)
+  git worktree remove --force .remedy-wt/base-gate -> exit 0
+  git worktree prune -> exit 0
+Deleted branch tmp/base-gate (was cfda4245).
+  git branch -D tmp/base-gate -> exit 0
+
+AFTER removal
+  $ git worktree list
+  /home/decodeux/Repos/remedy  a8b6f66e [feature/f105-cache-optimal-prompt-ordering]
+  $ git branch --list 'tmp/*'   (no output = empty)
+  $ ls -d .remedy-wt/base-gate  (no such path = gone)
+  ls: cannot access '.remedy-wt/base-gate': No such file or directory
+  $ git status --porcelain      (evidence dir still unstaged here)
+  ?? .agent/gate_f105_r49/

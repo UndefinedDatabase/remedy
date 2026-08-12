@@ -14,6 +14,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from packages.orchestration.prompt_segments import ComposedPrompt
+
 _PROMPT_TEXT_CAP = 50_000
 
 _SECRET_PATTERNS: list[re.Pattern[str]] = [
@@ -68,6 +70,17 @@ class PromptTraceEntry:
     prompt_sha256: str = ""
     prompt_chars: int = 0
     prompt_tokens_estimated: int = 0
+    #: F105: the composed-prompt segment manifest — one row per registered
+    #: segment with name, rank, sha256, chars and tokens_estimated, in
+    #: composition order. Empty means this prompt was NOT composed through the
+    #: prompt-segment registry, not that composition produced no segments.
+    segment_manifest: list[dict[str, str | int]] = field(default_factory=list)
+    #: F105: the character count ``segment_manifest`` ACCOUNTS FOR — the
+    #: composed base prompt. The gap to ``prompt_chars`` is the schema tail
+    #: ``run_structured_call`` appends outside every builder, which F105
+    #: deliberately does NOT register (DECISION F105 D3); recording both numbers
+    #: makes that coverage gap visible instead of implied.
+    segment_manifest_chars: int = 0
     context_categories: list[str] = field(default_factory=list)
     changed_files: list[str] = field(default_factory=list)
     safe_diff_files: list[str] = field(default_factory=list)
@@ -110,8 +123,16 @@ def build_trace_entry(
     phase: str = "",
     transport_attempt: int = 0,
     is_transport_retry: bool = False,
+    composed_prompt: ComposedPrompt | None = None,
 ) -> PromptTraceEntry:
-    """Build a redacted, capped prompt trace entry."""
+    """Build a redacted, capped prompt trace entry.
+
+    ``composed_prompt`` is the F105 seam: BOTH ``segment_manifest`` and
+    ``segment_manifest_chars`` are derived from it, so the manifest and the
+    character count it covers can never disagree. Passing the two separately is
+    deliberately NOT offered — a caller that could set them independently could
+    describe one prompt with another prompt's manifest.
+    """
     raw_sha = hashlib.sha256(prompt_text.encode()).hexdigest()
     redacted = redact_prompt_text(prompt_text)
     capped, truncated = _cap_text(redacted)
@@ -130,6 +151,12 @@ def build_trace_entry(
         prompt_sha256=raw_sha,
         prompt_chars=len(prompt_text),
         prompt_tokens_estimated=len(prompt_text) // 4,
+        segment_manifest=(
+            composed_prompt.manifest_as_dicts() if composed_prompt is not None else []
+        ),
+        segment_manifest_chars=(
+            len(composed_prompt.text) if composed_prompt is not None else 0
+        ),
         context_categories=list(context_categories or []),
         changed_files=list(changed_files or []),
         safe_diff_files=list(safe_diff_files or []),
@@ -166,6 +193,19 @@ def write_trace_jsonl(entries: list[PromptTraceEntry], path: Path) -> None:
     """Write prompt trace entries as JSONL (one JSON object per line)."""
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w") as f:
+        for entry in entries:
+            f.write(json.dumps(trace_entry_to_dict(entry)) + "\n")
+
+
+# Two writers, because the trace file is per JOB and not per run:
+# `RunLogWriter.path.parent` is `<runs_root>/<job_id>/`, so a second command
+# against the same job would truncate the first command's traces if it used
+# `write_trace_jsonl`. The command that CREATES a job writes; a command that
+# adds traces to a job that already has some appends (F105 R28).
+def append_trace_jsonl(entries: list[PromptTraceEntry], path: Path) -> None:
+    """Append prompt trace entries to a JSONL file, creating it if absent."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a") as f:
         for entry in entries:
             f.write(json.dumps(trace_entry_to_dict(entry)) + "\n")
 

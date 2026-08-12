@@ -362,3 +362,26 @@ class TestReplan:
 
         with pytest.raises(ReplanRejectedError, match="Cannot replan"):
             replan(fp1.model_dump(), fp2, tmp_path, any_task_completed=True)
+
+
+class TestPlanJobLlmAcceptsAComposedPrompt:
+    """R-0256: one composition feeds the provider AND the trace manifest."""
+
+    def test_composed_text_is_the_prefix_the_provider_sees(self):
+        from packages.orchestration.flight_plan import compose_flight_plan_prompt
+
+        composed = compose_flight_plan_prompt(
+            {"goal": "SENTINEL-PLAN-GOAL"}, project_facts="pinned facts",
+        )
+        seen: list[str] = []
+
+        def _call(prompt: str, attempt: int) -> str:
+            seen.append(prompt)
+            return _valid_plan_json(3)
+
+        plan_job_llm(_fake_intake(), _call, composed=composed)
+
+        assert len(seen) == 1
+        assert seen[0].startswith(composed.text)
+        assert "SENTINEL-PLAN-GOAL" in seen[0]
+        assert "Add a login page" not in seen[0]

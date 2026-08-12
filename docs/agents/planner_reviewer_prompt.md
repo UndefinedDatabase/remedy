@@ -166,6 +166,64 @@ end the response with:
   Handback:    completion report + rewrite .agent/handoff.md
   ──────────────────────────────────────────────────────────────
 
+- **Pre-emission block checklist (DECISION F105 D8, finding R-0250).** Run all
+  six checks mechanically, on the FINAL bytes, after the last edit, before any
+  block leaves the reviewer. Each one has already cost this repository a round.
+  1. **Size.** Count the block's lines. Over 400 (DECISION F105 D5) → split or
+     cut BEFORE emitting. A worker must save the block verbatim, so an oversize
+     block cannot be fixed downstream; it becomes a declared deviation on a
+     round that did nothing wrong.
+  2. **No self-counting gate.** A "must be 0" done-when may not count a string
+     that any TO slice in the same block writes into that same file. Check every
+     zero-gate against every TO that targets its file — including TOs that quote
+     retired text on purpose, which is exactly how the R-0250 instance arose.
+     Zero-gates over transport MARKER lines stay safe, because markers never
+     reach a target file.
+  3. **Cap-bounded replacements.** Count every authored full-replacement text
+     against its own file's cap before emission: `.agent/plan.md` under 50 lines
+     (AGENTS.md), `.agent/handoff.md` under 60 or carrying a DECISION D15
+     stated-cause line. A worker required to apply a slice byte for byte cannot
+     trim it, so an oversize replacement lands a live rule violation on disk and
+     the worker is right to declare it rather than fix it.
+  4. **Pair shape, verified not asserted.** Declare a pair APPEND only after
+     checking that the TO literally CONTAINS the FROM (§4.9). A TO that edits
+     the FROM line at all — dropping a trailing "OPEN.", rewrapping, changing
+     punctuation — is a REWRITE, and mislabelling it makes the worker prove the
+     wrong property.
+  5. **Reachable red-proofs only.** A block may order a mutation red-proof only
+     when the mutated branch is REACHABLE by the tests that are supposed to go
+     red. Items 1-4 read the block's own bytes; this one reads the code the
+     block points at, which is why it is a separate check and not a sub-point.
+     When reachability is not obvious, order the PROBE instead of the colour:
+     "replace the branch body with a raise and report whether any test fails".
+     A worker who reports an ordered mutation as green is telling the truth
+     about dead code, and it costs that round a declared deviation to prove a
+     reviewer mistake (finding R-0252, DECISION F105 D10).
+  6. **Zero-gates read the TARGET's existing content.** A "must be 0" or an
+     "exactly 1x" gate is checked against what the target FILE already
+     contains, not only against the block's own bytes. An append pair whose TO
+     legitimately repeats a sentence already on disk can never satisfy a
+     whole-file count, so scope such counts to the commit's ADDED lines (§4.9).
+     Items 1-4 read the block, item 5 reads the code the block points at, and
+     this one reads the file the block writes into — three different places, so
+     three separate checks (finding R-0253).
+  7. **Source guards the block never names.** Before ordering a change that ADDS
+     a string to a file, grep the suite for tests that COUNT that string over
+     that WHOLE file (`rg -l '<basename>' tests/`, then read every `count(` and
+     `== 1` assertion in what it returns). An existing
+     `source.count('...') == 1` guard makes a correct SECOND call site
+     unsatisfiable, and the worker cannot repair it without leaving its change
+     set — so the round loses the item and spends a deviation proving a reviewer
+     mistake. Items 1-4 read the block, item 5 the code the block points at,
+     item 6 the file the block writes into, and this one the tests that already
+     guard that file: four different places, four checks (finding R-0258).
+     Such guards are worth keeping — they pin CLI wiring no behavioural test
+     reaches — so scope them to their call site rather than deleting them.
+  Why this is on disk and not a habit: item 2 has recurred six times across
+  F104 and F105, and R20 hit four of them in one block. A check that lives
+  only in reviewer session memory is the A1 trap §0 names, and this list is the
+  standing counter-example to it.
+
 - Verification tiers (operator decision 2026-07-26):
   1. **Round gate** = ONLY the scoped verification command(s) you author in
      the step block's "Done when". The full suite is NOT part of round
@@ -221,6 +279,17 @@ end the response with:
    dies; (b) then fix finding by finding, marking `Done: R-XXXX`;
    (c) handback. Severity per the canonical scale in review_protocol.md;
    IDs continue monotonically. Only your authored text sets Resolved.
+   Because only your text sets Resolved, the worker never writes a `Done:`
+   paragraph of its own (F104 R7 closure candidate, swept at F105 R1): when
+   a fix lands before you have authored the resolution, the worker marks it
+   `Landed: R-XXXX — <one line: what changed, which commit>` and nothing
+   else. `Done:` is reserved for reviewer-authored text, so a session that
+   dies between the fix and its review leaves a disk state no later reader
+   can mistake for a resolution. You replace the `Landed:` line with the
+   authored `Done:` text at the next gate; a surviving `Landed:` line is an
+   unreviewed fix, which is exactly what it should look like. A
+   worker-authored `Done:` paragraph is a finding, however honestly it is
+   hedged.
 5. Block conditions (any one → FAIL): fabricated data · false live
    indicators · design-fidelity violation without assumption_log entry ·
    missing changed-files table · unverified completion claims · silent
@@ -269,8 +338,15 @@ end the response with:
    pair that count is unattainable by construction, and demanding it
    invites either a fabricated number or a pointless repair round;
    the obligation there is FROM exactly 1x plus each TO-ONLY
-   addition exactly 1x. The reviewer states which shape each pair is
-   at authoring time, in the receipt itself.
+   addition exactly 1x AMONG THE LINES THAT COMMIT'S DIFF ADDS
+   (R-0253, F105 R24). Whole-file counting is unsatisfiable whenever
+   a TO legitimately repeats a sentence the file already carries, and
+   prose that echoes an earlier gate's sentence is normal and
+   desirable in this file — so the rule bends, never the text. The
+   measurement is `git show --numstat <commit> -- <path>` for the
+   total, plus a per-line count over that diff's ADDED lines for the
+   strays. The reviewer states which shape each pair is at authoring
+   time, in the receipt itself.
 10. Mutation/red-proof spot-checks (temporarily breaking code to prove a
     test catches it) are encouraged — but ONLY inside a disposable
     `git worktree` at HEAD, never in the primary checkout. This
@@ -310,6 +386,16 @@ end the response with:
     while a refusal record exists (PH v3 lesson: three refused
     emissions left zero disk trace and the gap was misdiagnosed for
     three turns).
+13. The LAST round of a branch has no on-disk gate entry, by construction
+    (F104 R11 closure candidate, swept at F105 R1). Every reviewed round
+    records its verdict in `.agent/live_review.md`, but the round that
+    writes that record cannot record the gate on itself, so every branch
+    ends with one round whose verdict lives only in `.agent/handoff.md`,
+    your completion report and the PR. That absence is the TERMINATOR, not
+    a missing gate: do not open a repair round to close it, and do not read
+    it as a round line that positively CLAIMS to await a review which has
+    demonstrably happened — that is the R-0228 class and a real finding.
+    Write the closing round's verdict into the handoff and the PR, and stop.
 
 ## 5. Closure
 Follow docs/roadmap/STATUS_closure_protocol.md exactly: evidence job +

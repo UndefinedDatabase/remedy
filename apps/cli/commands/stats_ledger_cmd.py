@@ -262,10 +262,20 @@ def _render_cost_human(report, *, ledgers_read: list[str], scope_label: str) -> 
     return "\n".join(lines)
 
 
-def _cmd_stats_cost(*, since: str = "", job: str = "", by: str | None = None,
-                    project: str | None = None,
-                    all_projects: bool = False,
-                    json_output: bool = False) -> None:
+# Every read a ledger VIEW needs, in one place, so renderers stay renderers.
+def _load_ledger_reports(*, since: str, job: str, by: str | None,
+                         project: str | None, all_projects: bool,
+                         json_output: bool):
+    """Validate the filters, query every ledger in scope, and merge the answers.
+
+    Views over this ledger ask it the SAME question and differ only in what they
+    render from the answer, so the reading lives here once. Returns the merged
+    report, the ledger paths actually READ, and the scope label, in that order.
+
+    An unreadable ledger EXITS here instead of returning an empty report: a
+    database error does not mean zero, and rendering it as zero would be the
+    exact lie the basis labeling exists to prevent.
+    """
     import sqlite3
 
     from apps.cli.commands.failure_stats_cmd import _validate_since
@@ -282,8 +292,6 @@ def _cmd_stats_cost(*, since: str = "", job: str = "", by: str | None = None,
             for path in ledgers
         ]
     except sqlite3.Error as exc:
-        # An unreadable ledger is not "zero cost". Saying so would be the exact
-        # lie the basis labeling exists to prevent.
         if json_output:
             print(_json.dumps({"ok": False, "error": str(exc)}, indent=2))
         else:
@@ -294,11 +302,167 @@ def _cmd_stats_cost(*, since: str = "", job: str = "", by: str | None = None,
     # What was actually READ, not what was looked for: a project whose ledger does
     # not exist yet contributes no file and no figure.
     ledgers_read = [r.ledger_path for r in reports if r.ledger_exists and r.ledger_path]
+    return report, ledgers_read, scope_label
+
+
+def _cmd_stats_cost(*, since: str = "", job: str = "", by: str | None = None,
+                    project: str | None = None,
+                    all_projects: bool = False,
+                    json_output: bool = False) -> None:
+    report, ledgers_read, scope_label = _load_ledger_reports(
+        since=since, job=job, by=by, project=project,
+        all_projects=all_projects, json_output=json_output)
     if json_output:
         print(_json.dumps(_cost_payload(
             report, ledgers_read=ledgers_read, scope_label=scope_label), indent=2))
     else:
         print(_render_cost_human(
+            report, ledgers_read=ledgers_read, scope_label=scope_label))
+
+
+#: What a share prints when its inputs WERE reported and are both zero. That is
+#: NOT "nobody reported it": it is a real bucket that read nothing at all, and a
+#: share of nothing has no value. Calling that `unmeasured` would blame a
+#: provider for a figure it did report, and `0.0%` would invent a measurement.
+UNDEFINED_SHARE = "undefined"
+
+#: What a role split cannot tell a reader yet, printed in the output instead of
+#: buried in a docstring. Every ledger row a live run writes carries one
+#: hardcoded role, so a role split of production data has exactly one bucket;
+#: further buckets come from hand-written accounting files. Remedy names the
+#: limit rather than presenting one bucket as a breakdown.
+_ROLE_LIMIT_NOTE = (
+    "Per-role limit: every row a live run writes carries one hardcoded role "
+    "today, so a role split of production data shows a single bucket. Any "
+    "further bucket here came from a hand-written accounting file, not from "
+    "the orchestrator."
+)
+
+
+def _cache_read_share(row) -> float | str:
+    """The bucket's cache-read share, or the word saying why it has none.
+
+    The share is ``cache_read / (tokens_in + cache_read)``: of everything fed
+    into the model, how much came from cache. BOTH inputs must be measured — an
+    unmeasured input makes the share unmeasured too, because substituting a 0
+    for a figure nobody reported is the same lie one layer up.
+    """
+    cache_read, tokens_in = row.cache_read, row.tokens_in
+    if cache_read is None or tokens_in is None:
+        return UNMEASURED
+    total_input = tokens_in + cache_read
+    if total_input == 0:
+        return UNDEFINED_SHARE
+    return cache_read / total_input
+
+
+def _share_text(share) -> str:
+    """One share as a table cell: a percentage, or the word standing in for it."""
+    return share if isinstance(share, str) else f"{share * 100:.1f}%"
+
+
+def _cache_row_payload(row) -> dict:
+    """One cache row as JSON: the share is a number, or null carrying its reason.
+
+    A consumer that only reads ``cache_read_share`` sees ``null`` and knows the
+    figure is absent; one that needs to know WHY reads ``share_basis``, which
+    carries the same word the table prints. The two absences never collapse
+    into one, and neither ever becomes a 0.
+    """
+    share = _cache_read_share(row)
+    return {
+        "bucket": row.bucket,
+        "calls": row.calls,
+        "tokens_in": row.tokens_in,
+        "cache_read": row.cache_read,
+        "cache_read_share": None if isinstance(share, str) else round(share, 6),
+        "share_basis": share if isinstance(share, str) else "measured",
+        "measured_calls": row.measured_calls,
+        "unmeasured_calls": row.unmeasured_calls,
+        "basis": _row_basis(row),
+    }
+
+
+def _cache_payload(report, *, ledgers_read: list[str], scope_label: str) -> dict:
+    """The `--json` document for the cache view, carrying its own limits."""
+    return {
+        "version": COST_OUTPUT_VERSION,
+        "scope": scope_label,
+        "ledgers_read": ledgers_read,
+        "filters": {"since": report.since or "", "job": report.job_id or "",
+                    "by": report.by},
+        "share_formula": "cache_read / (tokens_in + cache_read)",
+        "note": ("a null share was never measurable and is not a zero share; "
+                 "share_basis names which of the two reasons applies"),
+        "role_limit": _ROLE_LIMIT_NOTE,
+        "total": _cache_row_payload(report.total),
+        "rows": [_cache_row_payload(row) for row in report.rows],
+    }
+
+
+def _render_cache_human(report, *, ledgers_read: list[str], scope_label: str) -> str:
+    """A share table in which no missing share can be mistaken for 0 %."""
+    lines = [f"Cache-read share from the token ledger — {scope_label}, "
+             f"{len(ledgers_read)} ledger(s) read"]
+    lines.append("Filters: " + "  ".join(f"{name}={value}" for name, value in (
+        ("since", report.since or "-"),
+        ("job", report.job_id or "-"),
+        ("by", report.by or "-"),
+    )))
+
+    if not report.ledger_exists:
+        lines.append("")
+        lines.append("No ledger on disk for this scope — nothing has been recorded yet.")
+        lines.append("Run 'remedy stats backfill-ledger <evidence-dir>' to mirror "
+                     "existing evidence.")
+        return "\n".join(lines)
+
+    headers = ["Bucket", "Calls", "Tokens in", "Cache read", "Cache share", "Basis"]
+    labelled = [(row.bucket if row.bucket is not None else "(unnamed)", row)
+                for row in report.rows] + [("TOTAL", report.total)]
+    body = [
+        [
+            label,
+            str(row.calls),
+            _figure(row.tokens_in),
+            _figure(row.cache_read),
+            _share_text(_cache_read_share(row)),
+            f"{_row_basis(row)} ({row.measured_calls}/{row.calls})",
+        ]
+        for label, row in labelled
+    ]
+    widths = [max(len(headers[i]), *(len(r[i]) for r in body)) for i in range(len(headers))]
+    lines.append("")
+    lines.append("  ".join(h.ljust(w) for h, w in zip(headers, widths)).rstrip())
+    for row in body:
+        lines.append("  ".join(cell.ljust(w) for cell, w in zip(row, widths)).rstrip())
+
+    total = report.total
+    lines.append("")
+    lines.append("Share = cache_read / (tokens_in + cache_read).")
+    lines.append(f"'{UNMEASURED}' means nobody reported the inputs; "
+                 f"'{UNDEFINED_SHARE}' means they were reported and were zero.")
+    lines.append(
+        f"Basis: {total.measured_calls} of {total.calls} call(s) reported usage "
+        f"(provider_reported); {total.unmeasured_calls} reported none (unknown)."
+    )
+    if report.by == "role":
+        lines.append(_ROLE_LIMIT_NOTE)
+    return "\n".join(lines)
+
+
+def _cmd_stats_cache(*, since: str = "", job: str = "", by: str | None = None,
+                     project: str | None = None,
+                     all_projects: bool = False,
+                     json_output: bool = False) -> None:
+    report, ledgers_read, scope_label = _load_ledger_reports(
+        since=since, job=job, by=by, project=project,
+        all_projects=all_projects, json_output=json_output)
+    if json_output:
+        print(_json.dumps(_cache_payload(
+            report, ledgers_read=ledgers_read, scope_label=scope_label), indent=2))
+    else:
+        print(_render_cache_human(
             report, ledgers_read=ledgers_read, scope_label=scope_label))
 
 
@@ -378,6 +542,14 @@ def _cmd_stats_verify_ledger(*, evidence_dir: str = "",
 
 COMMAND_HANDLERS = {
     "stats.cost": lambda args: _cmd_stats_cost(
+        since=getattr(args, "since", "") or "",
+        job=getattr(args, "job", "") or "",
+        by=getattr(args, "by", None),
+        project=getattr(args, "project", None),
+        all_projects=getattr(args, "all_projects", False),
+        json_output=getattr(args, "json", False),
+    ),
+    "stats.cache": lambda args: _cmd_stats_cache(
         since=getattr(args, "since", "") or "",
         job=getattr(args, "job", "") or "",
         by=getattr(args, "by", None),
