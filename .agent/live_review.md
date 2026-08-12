@@ -5,7 +5,7 @@
 > round. Findings are authored here by the reviewer only. A worker marks a
 > landed fix `Landed: R-XXXX`; only reviewer-authored `Done:` text sets
 > Resolved (docs/agents/planner_reviewer_prompt.md §4.4).
-> Branch: feature/f107-context-compiler-v2. Next free ID: R-0293.
+> Branch: feature/f107-context-compiler-v2. Next free ID: R-0295.
 
 ## Findings
 
@@ -355,6 +355,41 @@
   Fixed in THIS round rather than deferred: this is F107's own module
   contradicting F107's own Edge-cases clause, so AGENTS.md Scope Control does
   not bar the repair.
+- R-0293 (Medium, F107 R19, found at the R18 gate by probing the code the R18
+  block did not name): the unparseable blind spot R-0292 recorded lives in
+  THREE selector paths, and R18 closed two. The budget path — phase A of
+  `compile_task_context`, `packages/orchestration/context_compiler.py:866-880`
+  — demotes the largest FULL tier-2 file to signatures, calls
+  `_signature_render_text`, and appends only an `OMISSION_REASON_BUDGET` /
+  `_OUTCOME_SIGNATURES` record. When that file cannot be parsed, its signature
+  rendering is `""` exactly as in R-0292, and the record blames the budget for
+  a blank the budget did not cause: the file would have rendered empty under an
+  infinite budget too. Reachable, and probed rather than argued — a root with
+  `app.py` (tier 1, padded) importing `broken.py` (tier 2, small, `def broken(:`)
+  compiled at a budget one token under the unconstrained total puts
+  `('broken.py', 2, 'signatures', 0)` in `included` with exactly one record,
+  `('broken.py', 2, 'budget', 'signatures')`, and no `unparseable` record. The
+  same reviewer-side omission produced this gap and R-0292's repair scope: the
+  R18 block named the tier-2 over-cap path and the tier-3 path from a reading
+  of the module, without enumerating every call site that renders signatures.
+  Fixed in THIS round, on the same ground R-0292 was: F107's own module against
+  F107's own Edge-cases clause.
+- R-0294 (Low, F107 R19, reviewer-side process defect): the R18 block was
+  emitted without the §3 pre-emission checklist being run on its final bytes,
+  and two of the seven items caught it after the fact rather than before.
+  Item 1, size: the block is 407 lines against the cap of 400 (DECISION F105
+  D5), so the worker had to apply an oversize block byte for byte and declare
+  gate B RED on a round that did nothing wrong. Item 2, no self-counting gate:
+  gate C ordered `Next free ID: R-0290` to be 0x in `.agent/live_review.md`
+  while the block's own PAIR_LRG_TO writes that string into that same file at
+  line 905, quoting the R17 gate's own marker as evidence — unmeetable by
+  construction, and the sixth recurrence of that item's class across F104,
+  F105 and F107. Neither cost a repair round, because the worker reported both
+  RED honestly instead of massaging a number; that honesty is what kept a
+  process defect from becoming a data defect. Registered against the reviewer
+  role, not the worker. Forward-looking fix, already applied to THIS block:
+  count the lines and re-read every zero-gate against every TO in the same
+  block before emission, mechanically, on the final bytes.
 
 ## Steps
 
@@ -921,6 +956,41 @@ docs/roadmap/STATUS_closure_protocol.md.
   session's own start and the roadmap's Design bullets against the disk, the
   third by reading the selector's treatment of `parse_failed`.
   `LAST_REVIEWED_SHA` advances 5c808a59 -> 54d05e37.
+- Reviewer gate on R18 (2026-08-12): PASS. Range `54d05e37..6e1970c4` = seven
+  commits over the ten paths the R18 Change line names and no others; `git diff
+  --numstat` reads 407/0, 381/259, 113/1, 33/6 and 70/0, 3/2 and 1/1, 54/0,
+  23/19 and 113/124, so every commit's insertions stand far under 500.
+  Transport, shape stated because it is NOT the primary one: no reviewer
+  scratch original for R18 survives — `.remedy-wt/` holds F105-era block files
+  only — and the saved block carries no BEGIN-marker digest, so neither the
+  cmp-against-scratchpad proof nor the §4.9 digest fallback was available to
+  this reviewer. What IS proved: `.agent/authored/f107-r18-1.md` and
+  `.agent/last_block.md` are byte-identical at 407 lines, both hashing to
+  6d1ea116f1f33c97682e5cf26267ef28304c4b7c1bb64a520763d9f22425dd39, and this
+  reviewer read the saved block against the disk item by item rather than
+  trusting the handback. Two gates were RED and are accepted as declared, both
+  now registered as R-0294: the block's 407 lines against the 400 cap, and gate
+  C's first clause, whose string the block's own gate text writes at line 905.
+  The append shapes are exact: C3 adds 113 and removes 1, and PAIR_LRF_TO's 79
+  TO-only lines plus PAIR_LRG_TO's 33 plus the one-line header rewrite account
+  for all 113, leaving no stray. Every remaining gate was RE-RUN here, not
+  read: `test_context_compiler.py` collects 64 and passes, up from the 61 the
+  R17 gate recorded, `test_context_compiler_e2e.py` and
+  `tests/cli/test_job_context_cmd.py` pass 15 together, `tests/docs/` passes
+  294, the canary `python3 -m pytest tests/cli/test_golden_path.py -q` returns
+  42 passed in 19.66s, and `python3 -m ruff check` over the two changed Python
+  files returns "All checks passed!". The vocabulary edits hold on disk: the
+  old reason list is 0x and the new one 1x in the feature file, the old guide
+  clause is 0x and the new one 1x, DECISION F107 D1 and D2 each occur once with
+  D1's heading immediately after its anchor at `.agent/decisions.md:4248-4250`,
+  and `^<<<` is 0 across all eight touched files. `git status --porcelain` is
+  empty, `git worktree list` shows the primary checkout alone, `git rev-list
+  --left-right --count` against the remote is `0 0`, and `gh pr list --state
+  open` returns an empty list. R-0291 and R-0292 are resolved below. One new
+  code finding came out of this gate rather than out of the handback: probing
+  the selector's third signature path showed the R18 repair reached two of
+  three, which is R-0293 above, so the registered count returns to 20 open.
+  `LAST_REVIEWED_SHA` advances 54d05e37 -> 6e1970c4.
 
 Done: R-0271 — RESOLVED. `packages/orchestration/context_compiler.py` now reads
 `from collections.abc import Iterable` (commit b52b1c3c, numstat `1 1`), and the
@@ -1010,3 +1080,28 @@ gitignored raw record at `.remedy-wt/gate-scratch/f107-r16/`, which is why this
 reviewer could re-derive the gate's decisive comparison from `branch_full.txt`
 and `base_full.txt` directly instead of trusting the trimmed copies. Open
 findings 18 -> 17.
+
+Done: R-0291 — RESOLVED. The finding asked for the operator-visible record
+§4.7 requires of a spec deviation, not for the deferred code. That record is on
+disk: `.agent/decisions.md:4250` carries `## DECISION F107 D1 (2026-08-12) —
+two Design bullets are DEFERRED, on the record`, naming both gaps — no
+production caller for `register_compiled_context_segment`, and a CLI tier 1
+that is the files_hint alone — with the chosen option, the two alternatives
+that were rejected and the concrete reversal condition. This reviewer read the
+committed text rather than the handback's summary of it, and confirmed the
+heading sits immediately after its anchor with one blank line between. The
+deferral is now visible where an operator looks instead of only in a module
+docstring. Open findings 20 -> 19.
+
+Done: R-0292 — RESOLVED for the two paths it names, with the third split out as
+R-0293 rather than folded in silently. `OMISSION_REASON_UNPARSEABLE` exists
+beside the other four constants; the tier-2 over-cap path and the tier-3 path
+both obtain the `FileSignatures` object once, estimate from its own rendered
+lines, and append an `unparseable` record when `parse_failed` is set, while
+tier 1 stays exempt. Three tests pin exactly that — the tier-3 file carried
+empty with one record, the over-cap tier-2 file carrying both `size` and
+`unparseable` and no others, and the unparseable tier-1 file carried whole with
+none — and the suite this reviewer re-ran collects 64 where it collected 61.
+The fifth reason reached the vocabulary test, the feature file's Design
+enumeration and the user guide in the same round as the code, so no reader
+meets a word the plan does not carry. Open findings 19 -> 18.
