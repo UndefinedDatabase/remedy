@@ -101,7 +101,7 @@ member is present, and no stale root `remedy-job-evidence-*` dir is inside.
 | I | git status --porcelain | 0 | empty |
 | I | git worktree list | 0 | the primary ALONE |
 | I | git ls-files, this round's artifacts | 0 | `f105_closure_evidence` 0, `remedy-review-20260812*` 0 — neither is tracked |
-| J | insertions per commit | 0 | 202, 181, 93, C7 filled by C7b — all < 500 |
+| J | insertions per commit | 0 | 202, 181, 93, 170 (C7) — all < 500 |
 | J | git diff --name-only 5786967b..HEAD | 0 | exactly the five `.agent/` paths |
 
 Gate E note: `grep -c` exits 1 when the pattern is absent, and absence IS the
