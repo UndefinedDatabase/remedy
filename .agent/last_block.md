@@ -1,140 +1,191 @@
-── STEP session-stop — F105 R47 (STOP-triggered close) ───────
-Goal:        Record, durably, that `.agent/STOP` appeared and that this session
-             ended on it — plus the one finding that observation is worth.
-Bundle:      C1a save block · C1b mirror · C2 register R-0268 and advance the
-             ID · C3 plan and handoff.
-Change:      .agent/authored/f105-r47-1.md (new), .agent/last_block.md,
-             .agent/live_review.md, .agent/plan.md, .agent/handoff.md. NOTHING
-             else. No production code, no tests, no docs, no catalog.
-Constraints: `.agent/STOP` is NOT touched, NOT staged, NOT deleted. No PR, no
-             merge, no `main`, no force-push, no new worktree.
-Done when:   the diff touches exactly the five paths above and every gate below
-             carries a real exit code.
+── STEP T004-note/1 — F105 R48 (before/after comparison note) ─
+Goal:        Close T004's remaining half: measure the cacheable-prefix change
+             per role from the goldens' own frozen pre-migration forms, and
+             document it honestly — including that the provider-side
+             cache-read share is UNMEASURED because no ledger exists on disk.
+Bundle:      C1 save block · C2 mirror · C3 record the R47 gate · C4 the
+             measurement module · C5 the ist-doc + index row · C6 the feature
+             file's Built State · C7 plan, handoff, push.
+Change:      .agent/authored/f105-r48-1.md (new), .agent/last_block.md,
+             .agent/live_review.md,
+             tests/orchestration/test_prompt_cache_prefix.py (new),
+             docs/system/cache-optimal-prompt-ordering-v1.md (new),
+             docs/README.md, docs/roadmap/features/T2_F105.md,
+             .agent/plan.md, .agent/handoff.md. NOTHING else.
+Constraints: No production code under packages/ or apps/ is edited — this
+             round only MEASURES what T001-T003 already built. No frozen
+             golden template constant is edited for any reason. No PR, no
+             merge, no `main`, no force-push. Any destructive probe runs ONLY
+             in a disposable git worktree removed before handback.
+Done when:   the diff touches exactly the nine paths above, the note carries
+             REAL measured numbers, and every gate below carries a real exit
+             code.
 Handback:    completion report + rewrite .agent/handoff.md
 ──────────────────────────────────────────────────────────────
 
-C1a — write this ENTIRE block to `.agent/authored/f105-r47-1.md` byte for
+C1 — write this ENTIRE block to `.agent/authored/f105-r48-1.md` byte for
   byte, commit it ALONE.
-C1b — `cp` it over `.agent/last_block.md`, commit alone, `cmp` silent.
+C2 — `cp` it over `.agent/last_block.md`, commit alone, `cmp` silent.
 
-C2 — .agent/live_review.md. PAIR_ID is a REWRITE; PAIR_LR is CONTAINS-FROM.
-
-<<<PAIR_ID_FROM>>>
-> Branch: feature/f105-cache-optimal-prompt-ordering. Next free ID: R-0268.
-<<<END_PAIR_ID_FROM>>>
-
-<<<PAIR_ID_TO>>>
-> Branch: feature/f105-cache-optimal-prompt-ordering. Next free ID: R-0269.
-<<<END_PAIR_ID_TO>>>
+C3 — .agent/live_review.md. PAIR_LR is CONTAINS-FROM (the TO contains the
+  FROM verbatim as its first line, then appends). No ID advance this round:
+  no new finding is registered, so the next free ID stays R-0269.
 
 <<<PAIR_LR_FROM>>>
-  session; the branch continues.
+  point of the file.
 <<<END_PAIR_LR_FROM>>>
 
 <<<PAIR_LR_TO>>>
-  session; the branch continues.
-- R-0268 (Low, F105 R46, registered NOT fixed): a `.agent/STOP` file appeared
-  during R46 and this session could not establish who created it. The file is
-  empty and untracked, with an mtime of 17:50:27 — 59 seconds AFTER the R46
-  handoff was written (17:49:28) and about three minutes after `.agent/plan.md`
-  (17:47:54). The R46 handback states that `.agent/STOP` is absent and was not
-  created, and that statement was true when it was written; the file appeared
-  afterwards. Two readings fit the evidence equally — the operator dropped the
-  file asynchronously, which is exactly the mechanism G6 exists to serve, or
-  the worker created it after writing its report. Nothing on disk separates
-  them, and this entry deliberately does NOT accuse: it records the gap. What
-  IS certain is that the timestamps are the only evidence a later session will
-  have, which is the finding — a stop signal carries no author, no timestamp of
-  intent and no reason, so the one control input allowed to interrupt a build
-  is also the least auditable thing in the repository. Worth fixing where the
-  signal is defined, not here: a STOP file that carried one line of provenance
-  would have made this entry unnecessary. Registered against F105 because that
-  is where it surfaced; it belongs to the self-drive protocol, not to prompt
-  composition. OPEN.
-- Reviewer gate on R46 (2026-08-10): PASS. Range `c7510403..aad00eee` = seven
-  commits, exactly the eight paths the block named. Insertions per commit 298,
-  230, 40, 49, 2, 20 and 131, each far under 500.
-  Transport by the PRIMARY shape: `.remedy-wt/f105-r46-1.block.md`, the
-  committed `.agent/authored/f105-r46-1.md` and `.agent/last_block.md` all
-  three hash to
-  `b1c6eff1420194b5c02efc623cf7cb0084c2cab6891340a1e87a23b93649a165`
-  at 298 lines; both `cmp` runs silent.
-  Stray reconcile over all four authored commits: 40/0, 49/0, 2/0 and 20/0
-  added/stray — zero strays anywhere.
-  Gates re-run by THIS reviewer, none taken from the handback:
-  `tests/cli/test_stats_cost.py` `41 passed in 0.39s`; the catalog and spine
-  suites `113 passed in 0.57s`; the canary `42 passed in 19.95s`; `py_compile`
-  exit 0 on both production files; `.agent/plan.md` 45 lines with both mandated
-  headings; one `## Steps` heading; the ID line read R-0268; `^<<<` 0 in all
-  six touched files.
-  The payload was not accepted on its tests' word: the reviewer called
-  `_cache_payload` directly on a synthetic three-bucket report. `builder` came
-  back `0.06015` with `share_basis` `measured`, `reviewer` came back `null`
-  with `unmeasured`, and `empty` came back `null` with `undefined`. The two
-  absences stay distinguishable in the JSON exactly as they are in the table,
-  and neither is ever a 0.
-  The worker's THREE declared pair-shape deviations are ACCEPTED, and all three
-  are the REVIEWER's authoring errors, verified against the files rather than
-  taken from the declaration. PAIR_H and PAIR_ARG each insert a line INSIDE
-  their FROM, so the TO cannot contain the FROM contiguously — both were
-  REWRITEs mislabelled CONTAINS-FROM, the §3 checklist item 4 failure.
-  PAIR_FLAG's TO triple already existed 1x on the `stats.verify-ledger` entry
-  (measured 1x before, 2x after), so the ordered "TO 0x before" proof was
-  unmeetable by construction — checklist item 6. Every FROM was unique, so all
-  three edits landed once and in the right place; the cost was three deviation
-  declarations on a round that executed correctly.
-  `LAST_REVIEWED_SHA` advances c7510403 -> aad00eee.
-- R47: STOP-triggered session close. `.agent/STOP` appeared, so guardrail G6
-  ends the session here. State only: this gate, R-0268, the plan and the
-  handoff. The branch is NOT closed and no PR exists; the next session reads
-  the STOP file FIRST and, per Phase 1 rule 1, writes its handoff and ends
-  without starting work until the operator removes it — which is the whole
   point of the file.
+- Reviewer gate on R47 (2026-08-12): PASS. Range `aad00eee..5e55669d` = five
+  commits, exactly the five paths the block named. Insertions per commit 140,
+  126, 58, 102 and 12, each far under 500.
+  Transport by the PRIMARY shape: `.remedy-wt/f105-r47-1.block.md`, the
+  committed `.agent/authored/f105-r47-1.md` and `.agent/last_block.md` all
+  three hash to
+  `318a9c5d57188d45ea659ba8c25c0e54df99971070eaca5051c63531baa39fec`
+  at 140 lines; both `cmp` runs silent.
+  Stray reconcile over C2: 58 added, 1 removed, 0 stray — the single removal
+  is the PAIR_ID FROM line its own REWRITE replaces.
+  Pair shapes MEASURED, both exactly as declared: PAIR_ID a rewrite, the ID
+  line now reading R-0269 1x and R-0268 0x; PAIR_LR contains-from, appended at
+  its unique tail anchor.
+  Gates re-run by THIS reviewer, none taken from the handback:
+  `python3 -m pytest tests/docs/ -q` `294 passed in 0.26s`;
+  `tests/ui_server/test_dashboard_contract.py` `70 passed in 4.44s`; the canary
+  `42 passed in 19.58s`; `.agent/plan.md` 47 lines carrying both mandated
+  headings; exactly one `^## Steps` heading in this file; `^<<<` 0 in all three
+  written state files; `git worktree list` shows the primary ALONE.
+  `.agent/STOP` is GONE at review time. The operator removed it between the
+  sessions — which is precisely the mechanism G6 exists to serve, and the
+  reason work resumes here. `git status --porcelain` is empty.
+  The handoff's ONE declared structural deviation, C3b, is ACCEPTED: a gate row
+  reporting insertions per commit cannot carry its own commit's count until
+  that commit exists, so filling it in afterwards beats leaving a placeholder
+  in an evidence table. It touches only a path the block already named.
+  The R-0268 placement note is ACCEPTED as honest disclosure, and the placement
+  is the REVIEWER's doing, not the worker's: PAIR_LR's only anchor was the tail
+  step line, so the finding landed inside `## Steps` rather than under
+  `## Findings`. The worker executed the authored bytes exactly. It costs
+  nothing but this sentence.
+  `LAST_REVIEWED_SHA` advances aad00eee -> 5e55669d.
+- R48: SPLIT round — T004's remaining half. The cacheable prefix per role is
+  measured before and after the migration, from the goldens' own frozen
+  pre-migration forms, and the honest note lands in a new ist-doc. The
+  provider-side cache-read share stays UNMEASURED and the note says so: no
+  `ledger.sqlite` exists anywhere in this checkout, so there are no actuals to
+  read and any number there would be invented.
 <<<END_PAIR_LR_TO>>>
 
-C3 — plan and handoff
+C4 — `tests/orchestration/test_prompt_cache_prefix.py` (new). This module
+  MEASURES; it does not re-pin prompt content.
+
+  The six migrated roles, each with the golden that already freezes its
+  PRE-migration form:
+    intake        tests/orchestration/test_intake_prompt_golden.py
+    plan          tests/orchestration/test_plan_prompt_golden.py
+    mission       tests/orchestration/test_mission_prompt_golden.py
+    builder       tests/orchestration/test_builder_prompt_golden.py
+    reviewer      tests/orchestration/test_reviewer_prompt_golden.py
+    orchestrator  tests/orchestration/test_orchestrator_prompt_golden.py
+  READ each golden FIRST and reuse its existing frozen form and its existing
+  builder-invocation shape. Never retype a frozen template: import it, or
+  slice it exactly as that golden already does.
+
+  For each role, build TWO renders that differ ONLY in volatile input — the
+  per-task/per-round content that ranks last (task, steering) — and are
+  otherwise identical. Measure, in characters:
+    before_prefix   longest common prefix of the two PRE-migration renders
+    after_prefix    longest common prefix of the two COMPOSED renders
+    before_total    length of the first PRE-migration render
+    after_total     length of the first composed render
+  Assert, per role, `after_prefix >= before_prefix`. That is the feature's
+  DIRECTIONAL acceptance and the ONLY assertion this module makes about the
+  numbers. Do NOT assert exact byte counts: a legitimate later prompt change
+  would then break a test that is not about content.
+  Expose the table through one module-level function `measure_cacheable_prefixes()`
+  returning a mapping of role -> the four numbers, so the doc's figures and the
+  test's figures cannot drift. Find an invocation that actually WORKS from the
+  repo root, verify it, and record that exact command plus its raw output in
+  the handback; the doc cites the same command.
+  If a role genuinely cannot be measured this way, SKIP it with a reason naming
+  what is missing, and record the skip in the doc. An honest gap beats an
+  invented number.
+
+C5 — `docs/system/cache-optimal-prompt-ordering-v1.md` (new) AND its
+  `docs/README.md` index row, in the SAME commit — `tests/docs/` asserts that
+  every relative link in `docs/README.md` resolves, so a row without its file
+  is red. Register it in BOTH places the index uses: the quick-find table near
+  the other `system` rows, and the system-category list.
+  This doc is WORKER-AUTHORED from the REAL measurements: the reviewer does not
+  supply its text because the reviewer does not know the numbers. It states:
+  - what F105 changed about composition (registry, stability ranks, segment
+    manifest) and that prompt CONTENT did not change, only its order;
+  - the before/after cacheable-prefix table, per role, with the four measured
+    numbers and the exact command that reproduces them;
+  - plainly, that the provider-side cache-read share is NOT measured: no
+    `ledger.sqlite` exists in this checkout, so `remedy stats cache` has no
+    actuals to read and renders `unmeasured` rather than a 0. Give both words
+    their meanings — `unmeasured` = nothing was reported, `undefined` = inputs
+    were reported as zero — because that distinction is the whole point of the
+    view;
+  - the two known seams already inventoried in `.agent/t004_inventory.md` §1
+    and §3: a provider that reports usage but no cache field leaves a
+    measured-looking `0` the ledger cannot tell from a real zero, and the
+    ledger's `role` is a hardcoded `builder` in production data, so a per-role
+    breakdown from the ledger alone would be a single bucket. State them; do
+    not work around them.
+  Open the neighbouring `docs/system/*.md` files and match their existing
+  status-banner shape rather than inventing one.
+
+C6 — `docs/roadmap/features/T2_F105.md`: append a `## Built State` section in
+  the shape `docs/roadmap/features/T2_F104.md:93` already uses — one italic
+  "as built and reviewed on branch" line, then bullets covering T001-T004 that
+  name the real modules (`packages/orchestration/prompt_segments.py`,
+  `packages/orchestration/role_conventions.py`, the six migrated builders, and
+  `remedy stats cache` with its `--json` mode), plus a pointer to the new
+  ist-doc for the numbers. Do NOT restate the measured numbers here: one
+  source, and the ist-doc is it.
+
+C7 — plan and handoff.
   Rewrite `.agent/plan.md` (UNDER 50 lines, keeping a `## Goal` heading and a
-  `## Next Steps` heading). It must state: the session ENDED ON `.agent/STOP`
-  at R47, not at its round cap; `LAST_REVIEWED_SHA` is aad00eee with R46 GATED
-  PASS; T004's view half is DONE (`remedy stats cache`, table and `--json`);
-  the open findings are R-0221, R-0239, R-0247, R-0262, R-0265, R-0266 and
-  R-0268; and that NO work may start in the next session while `.agent/STOP`
-  exists. Next Steps, in order, for after the operator clears the STOP: the
-  T004 before/after comparison note with honest numbers whatever they are; the
-  integration gate per docs/agents/integration_gate.md; closure per
-  docs/roadmap/STATUS_closure_protocol.md; and PR #189, which the operator must
-  resolve before F105's closure PR is cut.
+  `## Next Steps` heading). It must state: `LAST_REVIEWED_SHA` is 5e55669d with
+  R47 GATED PASS; T004 is now COMPLETE, view and note; the open findings are
+  R-0221, R-0239, R-0247, R-0262, R-0265, R-0266 and R-0268, all seven still
+  OPEN and none touched this round; and the next free finding ID stays R-0269.
+  Next Steps, in order: the integration gate per docs/agents/integration_gate.md;
+  closure per docs/roadmap/STATUS_closure_protocol.md; and PR #189, which the
+  OPERATOR must resolve before F105's closure PR is cut.
   Then rewrite `.agent/handoff.md` (UNDER 60 lines, or over with a DECISION D15
-  "Deviations, declared" line naming the count and its mandated causes). It
-  carries: feature and round, branch, the commit SHAs of THIS round, a
-  changed-files table, an item-status table, the gates below with real exit
-  codes, the open-findings count, and the next expected action. It MUST state
-  in its own section that `.agent/STOP` EXISTS, is empty and untracked, was NOT
-  removed by this round, and that its presence — not a round cap and not a
-  failure — is why the session ended. It must also state that
-  `.agent/live_review.md` carries the R47 step line and no R47 gate record,
-  deliberately, per the R-0264 distinction.
-  Commit C3, push the branch, create NO pull request.
+  "Deviations, declared" line naming the real count and the mandated content
+  that caused it). It carries: feature and round, branch, this round's commit
+  SHAs, a changed-files table, an item-status table covering C1-C7, the gates
+  below with real exit codes, the open-findings count, and the next expected
+  action. It MUST also carry the measured before/after table and the exact
+  command that produced it, and the gate-J probe outcome in words.
+  Commit C7, push the branch, create NO pull request.
 
 Gates — real exit codes, never the word "green"
-  A  sha256sum + cmp across block file, authored file and last_block: equal,
-     both cmp silent.  B  wc -l the authored file against the cap of 400.
-  C  PAIR_ID measured FROM 1x before / 0x after, TO 1x after. PAIR_LR measured
-     FROM 1x before and 1x after, TO 1x after.
-  D  Stray reconcile for C2: every ADDED line appears in the authored file.
+  A  sha256sum + cmp across the scratch block file, `.agent/authored/f105-r48-1.md`
+     and `.agent/last_block.md`: all three equal, both cmp silent.
+  B  wc -l the authored file against the cap of 400.
+  C  PAIR_LR is CONTAINS-FROM: measure FROM 1x before and 1x after, and each
+     TO-ONLY added line exactly 1x AMONG THE LINES C3's OWN DIFF ADDS.
+  D  Stray reconcile for C3: every ADDED line appears in the authored file.
      Report added, removed and stray counts.
-  E  grep -c '^<<<' over live_review.md, plan.md and handoff.md — all 0.
-  F  python3 -m pytest tests/docs/ -q
-  G  python3 -m pytest tests/ui_server/test_dashboard_contract.py -q
-  H  Canary: python3 -m pytest tests/cli/test_golden_path.py -q
-  I  `ls -la .agent/STOP` — it MUST still exist, empty, and MUST NOT appear in
-     `git diff --cached` or in any commit. Prove it: `git log --stat` for this
-     round names no STOP path, and `git status --porcelain` still shows it as
-     untracked `?? .agent/STOP`.
-  J  git worktree list shows the primary ALONE; insertions per commit under
-     500; git diff --name-only aad00eee..HEAD is exactly the five paths named.
-
-Note on gate I: `git status --porcelain` will NOT be empty this round, and that
-is CORRECT rather than a violation — the untracked STOP file is a control
-signal, not a work artifact, and committing it to make the tree look clean
-would be the one thing this round must never do.
+  E  grep -c '^<<<' over live_review.md, plan.md, handoff.md, the new ist-doc,
+     docs/README.md and T2_F105.md — all 0.
+  F  python3 -m pytest tests/docs/ -q     (docs-round gate; roadmap is touched)
+  G  python3 -m pytest tests/orchestration/test_prompt_cache_prefix.py -q
+  H  python3 -m pytest tests/orchestration/ -q -k "prompt_golden or prompt_segments or role_conventions"
+     — the goldens must still pass; this round must not have moved them.
+  I  Canary: python3 -m pytest tests/cli/test_golden_path.py -q
+  J  PROBE — non-vacuousness of C4, in a DISPOSABLE git worktree at HEAD ONLY:
+     defeat the stability ordering there (e.g. give every registered segment
+     the same rank) and report whether gate G goes RED. Report the REAL outcome
+     whatever it is: a green result means the new test proves less than it
+     appears to, and that is a finding worth having, not a failure to hide.
+     Remove and prune the worktree before handback, so `git worktree list` then
+     shows the primary ALONE and `git status --porcelain` is empty.
+  K  insertions per commit under 500; `git diff --name-only 5e55669d..HEAD` is
+     exactly the nine paths named above.
