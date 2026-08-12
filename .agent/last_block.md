@@ -1,204 +1,188 @@
-── STEP closure — F105 R51 (CLOSURE) ─────────────────────────
-Goal:        Record the R50 gate, register DECISION D16, then CLOSE F105 —
-             the STATUS `[x]` line and the README capability sync in ONE
-             final commit, the closure PR created, NOTHING merged.
-Bundle:      C1 save block · C2 mirror · C3 the R50 gate entry, the closure
-             entry and D16 · C4 the closure commit (STATUS, README,
-             candidates, plan, handoff) · C5 push and open the PR.
-Change:      .agent/authored/f105-r51-1.md (new), .agent/last_block.md,
-             .agent/live_review.md, .agent/decisions.md,
-             docs/roadmap/STATUS.md, README.md, .agent/candidates.md,
-             .agent/plan.md, .agent/handoff.md. NOTHING else. No production
-             code, no test module, no feature file, no docs/ page. The
-             review zip is NOT rebuilt — see C3's closure entry for why.
-Constraints: No merge of ANY pull request, #189 above all: it is open from a
-             non-`feature/*` branch, so the AGENTS.md Open PR Gate is
-             stop-and-report and only the operator resolves it. Do not
-             comment on it, do not modify it. No `main`, no force-push, no
-             branch deletion. The C4 closure commit is the LAST commit on
-             the branch. Touch no STATUS line but F105's.
-Done when:   STATUS carries the authored `[x] F105` line byte for byte,
-             README agrees with the ledger, the PR exists and is UNMERGED,
-             and every gate below has a real exit code.
-Handback:    completion report + rewrite .agent/handoff.md
-──────────────────────────────────────────────────────────────
+── STEP R1/~10 — F107 Context compiler v2 ────────────────────────────────────
+Goal:        Claim F107, sweep the closure candidate into finding R-0270, and
+             reset the session state files. No production code this round.
+Bundle:      Branch creation; C1 authored-block save; C2 last_block mirror;
+             C3 STATUS claim; C4 live_review reset (registers R-0270);
+             C5 candidates sweep; C6 plan rewrite; C7 context rewrite;
+             C8 handoff rewrite; push; handback.
+Change:      EXACTLY these paths and nothing else:
+             docs/roadmap/STATUS.md (one line, FROM→TO below),
+             .agent/authored/f107-r1-1.md (new),
+             .agent/last_block.md, .agent/live_review.md,
+             .agent/candidates.md, .agent/plan.md, .agent/context.md,
+             .agent/handoff.md (your handback rewrite).
+Constraints: AGENTS.md in full — self-review loop before every commit, small
+             commits, no leading-slash tokens or absolute paths in commit
+             subjects. Do NOT create a PR. Never touch main. Never write a
+             `Done:` line in live_review (reviewer-only text). Apply every
+             authored slice byte for byte after verifying its sha256; if a
+             hash does not match, STOP and hand back the mismatch — never
+             retype or repair authored text. Scratch files go under
+             .remedy-wt/ only (never /tmp), and are never committed.
 
-C1 — write this ENTIRE block to `.agent/authored/f105-r51-1.md` byte for
-  byte, commit it ALONE.
+PROCEDURE (in order, one commit per item):
 
-C2 — `cp` it over `.agent/last_block.md`, commit alone, `cmp` silent.
+0. Preconditions: `git status --porcelain` empty; `git branch --show-current`
+   is main; `git log -1 --format=%h` is 2e4142c3 (else `git pull --ff-only`
+   first; if it still differs, STOP and hand back).
+   Then: `git checkout -b feature/f107-context-compiler-v2`
 
-C3 — .agent/live_review.md and .agent/decisions.md, ONE commit.
+1. C1 — save THIS ENTIRE step block, from the "── STEP" line above through
+   the final line of this block, byte for byte, as .agent/authored/f107-r1-1.md.
+   Then verify every slice against its marker digest before anything is
+   applied. Extraction recipe for slice NAME:
+     sed -n '/^<<<BEGIN SLICE NAME /,/^<<<END SLICE NAME>>>$/p' \
+       .agent/authored/f107-r1-1.md | sed '1d;$d' > .remedy-wt/f107-r1-NAME.check
+     sha256sum .remedy-wt/f107-r1-NAME.check   # must equal the marker digest
+   All six slices must verify (LR, CAND, PLAN, CTX, SFROM, STO).
+   Commit: chore(f107): save the R1 claim step block verbatim
 
-  PAIR_GATE targets `.agent/live_review.md` and is APPEND-shaped: the TO
-  CONTAINS the FROM verbatim as its first line. Do not run a whole-file
-  "FROM 0x" proof on it — that is unattainable by construction here. The
-  obligation is FROM exactly 1x in the file after the edit, plus each
-  TO-ONLY added line exactly 1x AMONG THE LINES THIS COMMIT'S OWN DIFF ADDS.
+2. C2 — copy .agent/authored/f107-r1-1.md over .agent/last_block.md;
+   `cmp .agent/authored/f107-r1-1.md .agent/last_block.md` must be silent.
+   Commit: chore(f107): mirror the R1 block into last_block
 
-<<<PAIR_GATE_FROM>>>
-  resolve it. F105 stays `[~]`.
-<<<END_PAIR_GATE_FROM>>>
+3. C3 — STATUS claim, REWRITE shape (FROM and TO are disjoint single lines).
+   In docs/roadmap/STATUS.md replace the exact line SFROM with the exact
+   line STO (both verified by hash in step 1; apply from the .check files,
+   not by retyping). Proof: FROM 0x and TO 1x in the file after the edit;
+   `git show --numstat HEAD -- docs/roadmap/STATUS.md` reads `1 1`.
+   Gate (same commit's tree): `python3 -m pytest tests/docs/ -q` exit 0.
+   Commit: chore(f107): claim F107 in the ledger
 
-<<<PAIR_GATE_TO>>>
-  resolve it. F105 stays `[~]`.
-- Reviewer gate on R50 (2026-08-12): PASS. Range `5786967b..470fb776` = five
-  commits touching exactly the five `.agent/` paths the block named — no
-  production code, no test module, no docs, no STATUS.md, no README.md.
-  Insertions per commit 202, 181, 93, 170 and 1, each far under 500.
-  Transport by the PRIMARY shape, because the reviewer's original survived on
-  disk: `.remedy-wt/f105-r50-1.block.md`, the committed
-  `.agent/authored/f105-r50-1.md` and `.agent/last_block.md` all three hash to
-  `8686cf90d6a60f52b4665d7024f944496930257a295e33355b752f1437b642fd`
-  at 202 lines, and both `cmp` runs are silent.
-  PAIR_DONE measured as a REWRITE rather than asserted: the TO does not
-  contain the FROM, the `Landed:` line reads 1x before and 0x after, and
-  every TO-only line occurs exactly 1x among the 93 lines the C3 diff adds.
-  Stray reconcile over that same commit: 93 added, 1 removed, 0 stray.
-  Every scoped gate was RE-RUN by the reviewer instead of read from the
-  handback: `python3 -m pytest tests/docs/ -q` returns 294 passed, the canary
-  `python3 -m pytest tests/cli/test_golden_path.py -q` returns 42 passed,
-  `grep -c '^<<<'` is 0 in all three state files, `## Steps` is exactly 1,
-  `git status --porcelain` is empty and `git worktree list` shows the primary
-  checkout alone.
-  The closure artifacts were checked as artifacts, never as claims. The
-  package `remedy-review-20260812-092055-READY_FOR_REVIEW.zip` hashes to the
-  recorded `23b21bc171b0de493ca4db50c472ecb2797b58b5c870ff9aa5d9b5da71536840`,
-  `zipfile.testzip()` returns None over its 3646 members, its manifest reads
-  `package_status: READY_FOR_REVIEW` with `committed_review_subject`
-  cfda4245..b928a0c6 and `source_root_containment: PASS`, and neither the zip
-  nor the evidence directory is tracked — the zip is ignored at
-  `.gitignore` line 223.
-  Both declared deviations are ACCEPTED. C6's two attempts are the honest
-  record of a producer pitfall found and repaired at authoring time with the
-  production scrubber, on the same producer; C7b is the self-reference limit
-  this branch has already accepted twice, since a gate row counting
-  insertions per commit cannot count the commit that writes it.
-  `LAST_REVIEWED_SHA` advances 5786967b -> 470fb776.
-- R51 CLOSURE (2026-08-12): F105 closes as PASS_WITH_RISKS — ACCEPTED.
-  The five closure preconditions were re-verified by the reviewer at HEAD
-  470fb776, not carried forward from an earlier round. Every step has a PASS
-  round and the seven open findings are exactly the documented Low/Medium
-  residual set recorded above. The full suite, run by the reviewer itself,
-  returns `16462 passed, 19 skipped in 132.94s` at exit 0 with zero failures.
-  `python3 -m apps.cli.grouped integrity check --json` returns
-  `"passed": true` with 5 of 5 checks passing, `relevant_untracked` at 0 and
-  `high_blockers_open` clean. The feature file's Built State already
-  describes T001-T004 as built. The tree is clean and HEAD equals
-  `origin/feature/f105-cache-optimal-prompt-ordering`.
-  The review zip is deliberately NOT rebuilt for this round. Every commit
-  between the accepted HEAD b928a0c6 and the closure commit changes `.agent/`
-  state only, and the closure commit's own STATUS and README edits follow the
-  READY zip by construction, exactly as the protocol's build order requires.
-  This is the F104 R9 shape, ratified there in the same words.
-  This is the LAST round of the branch, so by construction it records no gate
-  on itself (planner_reviewer_prompt.md §4.13). Its verdict lives in
-  `.agent/handoff.md`, the completion report and the pull request, and that
-  absence is the terminator rather than a missing gate.
-  One closure CANDIDATE was raised and spends no R-id: the review zip
-  packages the gitignored `.remedy-wt/` scratch tree. It is written to
-  `.agent/candidates.md` under the disk-vehicle rule, so the next feature's
-  first reviewed round registers or resolves it. The next free finding ID
-  stays R-0270.
-<<<END_PAIR_GATE_TO>>>
+4. C4 — replace .agent/live_review.md ENTIRELY with slice LR:
+   `cp .remedy-wt/f107-r1-LR.check .agent/live_review.md`
+   `cmp .remedy-wt/f107-r1-LR.check .agent/live_review.md` silent.
+   This reset registers R-0270 and carries the seven open F105 findings.
+   Commit: chore(f107): reset live_review and register R-0270
 
-  PAIR_DEC targets `.agent/decisions.md` and is APPEND-shaped in the same
-  way: the TO contains the FROM as its first line. The FROM is the CURRENT
-  LAST NON-EMPTY LINE of `.agent/decisions.md`. Read that file's tail first,
-  confirm the FROM matches it exactly, and if it does NOT match, STOP, do not
-  guess, and report the real last line in the handback. If the file ends
-  with a trailing blank line, append after it and keep the file's existing
-  final-newline convention.
+5. C5 — replace .agent/candidates.md ENTIRELY with slice CAND (same cp+cmp
+   pattern). Commit: chore(f107): empty candidates after the R-0270 sweep
 
-<<<PAIR_DEC_TO_APPEND>>>
+6. C6 — replace .agent/plan.md ENTIRELY with slice PLAN (cp+cmp).
+   Commit: chore(f107): rewrite plan for F107
 
-## DECISION F105 D16 (2026-08-12) — the Open PR Gate does not block a
-## closure PR
+7. C7 — replace .agent/context.md ENTIRELY with slice CTX (cp+cmp).
+   Commit: chore(f107): rewrite context for F107
 
-Chosen: PR #189 (`docs/amend0810-clerical` -> `main`) is stop-and-report and
-stays untouched — not merged, not commented on, not modified — because it
-does not originate from a `feature/*` branch. It does NOT block creating the
-F105 closure pull request. The AGENTS.md Open PR Gate fires "before creating
-a new feature branch or starting a new unrelated task"; closing F105 is
-neither, it is the completion of the branch already in hand. The closure
-protocol already leaves the closure PR unmerged until the next feature's
-start, where the gate will see both PRs and correctly stop-and-report.
+8. C8 — rewrite .agent/handoff.md yourself (your text, not authored): ≤60
+   lines, containing feature+round (F107 R1), branch, a per-commit SHA table
+   (C1–C8; C8 marks itself self-ref), a changed-files table, the real gate
+   results from "Done when" below (command + exit code + the counted number,
+   no verdict words), the open-findings count (8) with next free ID R-0271,
+   an item-status table over C1–C8, and next expected action: R2 = T001
+   import-neighbor graphs. Commit: chore(f107): rewrite handoff for R1
+   Then push: `git push -u origin feature/f107-context-compiler-v2`
 
-Alternatives considered. (a) Wait for the operator before closing: rejected —
-from 2026-08-13 the operator reaches this machine only over SSH from a phone
-(docs/agents/self_drive_protocol.md), so a finished feature would stall
-indefinitely on an action the operator must take for #189 either way, and
-every later session would re-derive F105's state from scratch. (b) Merge #189
-to clear the gate: FORBIDDEN — a non-`feature/*` PR is stop-and-report and
-merging it is outside any agent's authority here.
+Done when (run each, record command + real exit code + counted value):
+  a. sha256sum over all six .check files — each equals its marker digest;
+     cmp of authored vs last_block silent.
+  b. grep -c -F -- '- [~] F107 — Context compiler v2' docs/roadmap/STATUS.md → 1
+     grep -c -F -- '- [ ] F107' docs/roadmap/STATUS.md → 0 (exit 1 is the pass)
+  c. cmp silent for each of: live_review vs LR.check, candidates vs
+     CAND.check, plan vs PLAN.check, context vs CTX.check.
+  d. grep -c '^## Steps' .agent/live_review.md → 1
+     grep -c '^<<<' on each of live_review.md, candidates.md, plan.md,
+     context.md, handoff.md → 0 each (grep exit 1 is the pass; the authored
+     file and last_block legitimately contain markers and are NOT counted)
+     wc -l < .agent/plan.md → 29 (< 50)
+  e. python3 -m pytest tests/docs/ -q → exit 0 (run at C3; rerun at HEAD)
+  f. python3 -m pytest tests/cli/test_golden_path.py -q → exit 0
+  g. git status --porcelain → empty; HEAD == origin/feature/f107-context-compiler-v2
+  h. insertions per commit (git log --numstat): each < 500; the single-file
+     .agent state rewrites are exempt by AGENTS.md D1 but report the numbers.
+Handback:    completion report in your final message (tables + raw gate
+             results) — .agent/handoff.md rewritten as C8. Do not merge,
+             do not open a PR, do not touch .agent/decisions.md this round.
 
-Reverse this decision by closing the F105 pull request; the branch and every
-commit on it survive untouched.
+<<<BEGIN SLICE SFROM sha256=a113d2c3c2fa799564e1d9af51607ec04087281a6ca0c340638cfb62b309d6d3 lines=1>>>
+- [ ] F107 — Context compiler v2
+<<<END SLICE SFROM>>>
 
-Operator note, not a blocker: PR #189 and this branch both modify
-`docs/agents/reviewer_conventions.md`, so whichever merges second may need a
-conflict resolution.
-<<<END_PAIR_DEC_TO_APPEND>>>
+<<<BEGIN SLICE STO sha256=ddd72c5d2947bfb02c067d78e0b3b082af0cf63a6346500394dde1af9625c8a7 lines=1>>>
+- [~] F107 — Context compiler v2
+<<<END SLICE STO>>>
 
-C4 — the CLOSURE COMMIT. ONE commit, and it is the LAST commit on the
-  branch. It touches exactly: `docs/roadmap/STATUS.md`, `README.md`,
-  `.agent/candidates.md`, `.agent/plan.md`, `.agent/handoff.md`.
+<<<BEGIN SLICE LR sha256=0241279cef46d4c52a0a806e49eb58ec2bfd1ab2b8552cb5c4cf003bfe079343 lines=77>>>
+# Live Review — F107 Context compiler v2
 
-  PAIR_STATUS targets `docs/roadmap/STATUS.md` and is a REWRITE. Replace the
-  single line; touch no other line in the file.
+> Reviewer: the main session of a one-session self-drive build
+> (docs/agents/self_drive_protocol.md). Worker: one delegated subagent per
+> round. Findings are authored here by the reviewer only. A worker marks a
+> landed fix `Landed: R-XXXX`; only reviewer-authored `Done:` text sets
+> Resolved (docs/agents/planner_reviewer_prompt.md §4.4).
+> Branch: feature/f107-context-compiler-v2. Next free ID: R-0271.
 
-<<<PAIR_STATUS_FROM>>>
-- [~] F105 — Cache-optimal prompt ordering
-<<<END_PAIR_STATUS_FROM>>>
+## Findings
 
-<<<PAIR_STATUS_TO>>>
-- [x] F105 — Cache-optimal prompt ordering (T001–T004 complete; accepted 2026-08-12 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f105-closure · package remedy-review-20260812-092055-READY_FOR_REVIEW.zip · SHA-256 23b21bc171b0de493ca4db50c472ecb2797b58b5c870ff9aa5d9b5da71536840 · accepted HEAD b928a0c691dc0a2b86c149a5e732ea07ac03176e)
-<<<END_PAIR_STATUS_TO>>>
+- R-0221 (Low, carried from F103 through F104 and F105):
+  `TestAutoBuildBehavior::test_auto_build_runs_by_default` in
+  `tests/ui_server/test_dashboard_contract.py` pops `REMEDY_UI_NO_AUTO_BUILD`
+  and runs a real `npm install` + `npm run build` in whatever checkout it runs
+  in, refreshing `apps/ui/dist` mtimes mid-suite — costing every integration
+  gate phantom base-only failures through `_frontend_is_stale()` (exactly
+  seven at the F105 R49 gate, all attributed). Not this feature's code;
+  AGENTS.md Scope Control bars the "while I'm here" edit; routed to the F252
+  flake-debt class. OPEN.
+- R-0239 (Low, carried from F105): a reviewer-authored gate citation named a
+  path that does not exist. The worker caught it, ran the real path and
+  declared the correction, so nothing was skipped and no number is wrong. It
+  stays open as the record of the citation-accuracy lesson, not as
+  outstanding work. OPEN.
+- R-0247 (Low, carried from F105): a reviewer-authored finding cited a line
+  count of 101 where the file was 100. The substance was untouched and the
+  finding's own subject was fixed. Same class as R-0239, same reason for
+  staying open. OPEN.
+- R-0262 (Low, carried from F105): `plan_job_llm` composes its prompt OUTSIDE
+  the `try` that turns a provider failure into a renderable result, so a
+  raising composer escapes the function. Pre-existing, real, and deliberately
+  outside F105's change set — F105 moved composition, it did not own error
+  handling. OPEN.
+- R-0265 (Medium, carried from F105): a provider that reports usage but no
+  cache field leaves a measured-looking `0` the token ledger cannot
+  distinguish from a real zero. Documented in
+  `docs/system/cache-optimal-prompt-ordering-v1.md` rather than worked
+  around; the fix belongs to the actuals producer. OPEN.
+- R-0266 (Medium, carried from F105): the token ledger's `role` is a
+  hardcoded `builder` in production data, so a per-role split of production
+  rows is one bucket. `remedy stats cache` prints that limit in its own
+  output instead of burying it. The fix is a producer change. OPEN.
+- R-0268 (Low, carried from F105): a `.agent/STOP` file carries no
+  provenance — nothing distinguishes an operator stop from any other writer.
+  Belongs to the self-drive protocol, not to prompt composition. OPEN.
+- R-0270 (Medium, F107 R1, registered from `.agent/candidates.md` per
+  STATUS_closure_protocol.md "Closure-candidate findings"): the review zip
+  packages the gitignored scratch tree `.remedy-wt/`.
+  `scripts/make_review_zip.sh` prunes `.git`, `.data`, caches and root-level
+  `remedy-job-evidence-*` directories, but it sweeps the working tree with
+  `find` and never consults `.gitignore` — measured at the F105 R50 gate:
+  1091 of the 3646 members of
+  `remedy-review-20260812-092055-READY_FOR_REVIEW.zip` come from
+  `.remedy-wt/`. Three measured consequences. (1) A PRIOR feature's complete
+  evidence bundle ships inside the package — 114 members under
+  `.remedy-wt/f104_closure_evidence/remedy-job-evidence-f104-closure/` —
+  which is exactly what the root-level exclusion exists to prevent; nesting
+  one level deeper evades it. (2) The current bundle is packaged twice: 339
+  authoritative members under `evidence/current/` plus 334 raw copies under
+  `.remedy-wt/f105_closure_evidence/`. (3) 244 packaged scratch members
+  contain the literal local path `/home/decodeux` while the manifest reports
+  `external_paths_detected: []` — the local-path scanner reads evidence
+  fields, not packaged tree members. The package itself stayed valid
+  (`package_status` READY_FOR_REVIEW, alignment PASS), which is why this was
+  a candidate and not a closure blocker. The fix belongs to
+  `scripts/make_review_zip.sh` and docs/agents/self_drive_protocol.md
+  together — it is neither F107's code nor F107's scope. OPEN.
 
-  PAIR_RM_COUNT targets `README.md` and is a REWRITE of one line.
+## Steps
 
-<<<PAIR_RM_COUNT_FROM>>>
-41 of 255 registered items accepted. Next: F105 (Cache-optimal prompt ordering).
-<<<END_PAIR_RM_COUNT_FROM>>>
+R1 claim, candidate sweep and state reset → R2 T001 import-neighbor graphs
+(Python via ast, TS/JS via the documented line scanner) → T002 signature
+extractors + size caps + goldens → T003 tiered selector + budget demotion +
+omissions writer → T004 segment integration + `remedy job context` CLI view +
+end-to-end fixture task → integration gate → closure per
+docs/roadmap/STATUS_closure_protocol.md.
+<<<END SLICE LR>>>
 
-<<<PAIR_RM_COUNT_TO>>>
-42 of 255 registered items accepted. Next: F107 (Context compiler v2).
-<<<END_PAIR_RM_COUNT_TO>>>
-
-  PAIR_RM_TIER targets `README.md` and is a REWRITE of one table row.
-
-<<<PAIR_RM_TIER_FROM>>>
-| 2 | Minimal Self-Build Runtime | 3 | 14 |
-<<<END_PAIR_RM_TIER_FROM>>>
-
-<<<PAIR_RM_TIER_TO>>>
-| 2 | Minimal Self-Build Runtime | 4 | 14 |
-<<<END_PAIR_RM_TIER_TO>>>
-
-  PAIR_RM_LIST targets `README.md` and is a REWRITE of two lines into three.
-  It adds F104 alongside F105. That is NOT scope creep and NOT a silent
-  correction: F104 is `[x]` in the ledger and on `main`, the Tier-2 table row
-  already counts it as done, and only this prose list omitted it. The
-  cross-check pin only verifies that README-listed features ARE accepted, so
-  the omission stayed green. Since this commit exists precisely to stop
-  README and STATUS disagreeing (R-0154), leaving a known-wrong list while
-  editing that very list would be dishonest. Declare it in the handback and
-  the PR description.
-
-<<<PAIR_RM_LIST_FROM>>>
-F254 model alias table & dead-model doctor check,
-F103 token ledger (SQLite).
-<<<END_PAIR_RM_LIST_FROM>>>
-
-<<<PAIR_RM_LIST_TO>>>
-F254 model alias table & dead-model doctor check,
-F103 token ledger (SQLite), F104 hard budget enforcement,
-F105 cache-optimal prompt ordering.
-<<<END_PAIR_RM_LIST_TO>>>
-
-  CANDIDATES — replace `.agent/candidates.md` ENTIRELY with this text.
-
-<<<CANDIDATES_FULL>>>
+<<<BEGIN SLICE CAND sha256=38210869c250cd821ca8c6fd8a3975058e6e8b98567150bbb045cdce6d31e26f lines=11>>>
 # Closure Candidates — carrier of record
 
 > Written at closure per docs/roadmap/STATUS_closure_protocol.md
@@ -208,215 +192,83 @@ F105 cache-optimal prompt ordering.
 > candidate: description · source feature · date. Any entry present
 > at feature-claim time is a block condition.
 
-- The review zip packages the gitignored scratch tree `.remedy-wt/` · source
-  feature: F105 · date: 2026-08-12 — measured by the reviewer at the R50 gate
-  against `remedy-review-20260812-092055-READY_FOR_REVIEW.zip`: 1091 of its
-  3646 members come from `.remedy-wt/`. `scripts/make_review_zip.sh` prunes
-  `.git`, `.data`, caches and ROOT-LEVEL `remedy-job-evidence-*` directories,
-  but it sweeps the working tree with `find` and never consults `.gitignore`.
-  Three measured consequences. (1) A PRIOR feature's complete evidence bundle
-  ships inside the package — 114 members under
-  `.remedy-wt/f104_closure_evidence/remedy-job-evidence-f104-closure/` —
-  which is exactly what the root-level exclusion exists to prevent; nesting
-  one level deeper evades it. (2) The current bundle is packaged twice: 339
-  authoritative members under `evidence/current/` plus 334 raw copies under
-  `.remedy-wt/f105_closure_evidence/`. (3) 244 packaged scratch members
-  contain the literal local path `/home/decodeux`, while the manifest reports
-  `external_paths_detected: []` — the local-path scanner reads evidence
-  fields, not packaged tree members, so the same class of leak that packaged
-  the FIRST R50 zip attempt as BLOCKED_EVIDENCE rides undetected in the
-  second. The package itself remains valid and authoritative:
-  `package_status` is READY_FOR_REVIEW, `packaged_evidence_job_id` is
-  `f105-closure`, and `review_subject_evidence_alignment` is PASS — which is
-  why this is a candidate and not a closure blocker. It is neither F105's
-  code nor F105's scope: `.remedy-wt/` exists only because self-drive scratch
-  cannot be written to `/tmp` on this machine, so the fix belongs to
-  `scripts/make_review_zip.sh` and docs/agents/self_drive_protocol.md
-  together.
-<<<END_CANDIDATES_FULL>>>
+(empty — the single F105 candidate was registered as finding R-0270 in
+`.agent/live_review.md` at F107 R1, 2026-08-12.)
+<<<END SLICE CAND>>>
 
-  PLAN — rewrite `.agent/plan.md` completely, UNDER 50 lines, keeping a
-  `## Goal` heading and a `## Next Steps` heading (the `.agent` contract
-  tests assert both). Compose the text yourself; it must state, accurately:
-  F105 is CLOSED, `[x]` in STATUS.md, accepted 2026-08-12 as PASS_WITH_RISKS;
-  the accepted HEAD b928a0c6, the package name and its SHA-256, evidence job
-  `f105-closure`; that the reviewer re-ran the full suite itself
-  (16462 passed, 19 skipped, 0 failed) and the integrity check (5 of 5);
-  T001-T004 all done; seven residual Low/Medium risks open (R-0221, R-0239,
-  R-0247, R-0262, R-0268 Low; R-0265, R-0266 Medium) and next free ID R-0270;
-  one closure candidate in `.agent/candidates.md`; DECISION D16. Next Steps:
-  the closure PR is UNMERGED by design and merges at the next feature's start
-  via the Open PR Gate, the operator may merge manually at any time, the
-  operator still owns PR #189, and the next feature by Rule A5 is F107.
+<<<BEGIN SLICE PLAN sha256=f2a55d555164a3a7474c315f26486114109342b532cf443d06213c8a46fdada7 lines=29>>>
+# Plan — F107 Context compiler v2
 
-  HANDOFF — rewrite `.agent/handoff.md` completely. Target under 60 lines; if
-  the MANDATED content genuinely does not fit, go over and carry a
-  "Deviations, declared (DECISION D15)" line naming the real line count and
-  the specific mandated content that caused it. Never drop a section to meet
-  the cap. It must carry: feature and round; branch; this round's commit
-  SHAs; a changed-files table; an item-status table covering C1 through C5
-  with `done` / `skipped` / `deviated` and a reason for anything not `done`;
-  the gate table below with REAL exit codes, never the word "green"; the open
-  findings count (7) and the next free ID (R-0270); the closure values
-  (accepted HEAD, evidence job, package name, SHA-256); the PR number and the
-  fact that it is UNMERGED; the statement that PR #189 was not touched; and
-  the next expected action.
+Branch: feature/f107-context-compiler-v2, cut from main at 2e4142c3.
+Next free finding ID: R-0271.
 
-C5 — push and open the PR. `git push`, then `gh pr create` with this title
-  and this body, byte for byte.
+## Goal
+The context compiler selects fenced-path files, their direct import
+neighbors, and only SIGNATURES of distant dependencies, under a total
+context token budget with tier demotion — and writes an omissions record
+naming everything it left out and why. DONE when a fixture repo's task
+context shrinks measurably versus whole-files with the fixture task still
+solvable by the fake provider, and the omissions record explains every
+exclusion (docs/roadmap/features/T2_F107.md).
 
-<<<PR_TITLE>>>
-F105 — Cache-optimal prompt ordering (closure)
-<<<END_PR_TITLE>>>
+## Current Step
+R1 (this round): claim F107 `[~]` in docs/roadmap/STATUS.md, reset
+.agent/live_review.md, register R-0270 from .agent/candidates.md and
+empty that file, rewrite plan and context. No production code this round.
 
-<<<PR_BODY>>>
-## What changed
+## Next Steps
+1. R2 — T001 import-neighbor graphs: Python via ast, TS/JS via the
+   documented line-level scanner; unit tests on fixture trees (cycles,
+   relative imports, index files).
+2. T002 — signature extractors for both languages + size caps + goldens.
+3. T003 — tiered selector + budget demotion + omissions writer +
+   integration on a fixture repo.
+4. T004 — segment integration + the `remedy job context` CLI view +
+   an end-to-end fixture task with a size comparison in evidence.
+5. Integration gate, then closure per STATUS_closure_protocol.md.
+<<<END SLICE PLAN>>>
 
-Every prompt in Remedy now composes from REGISTERED SEGMENTS ordered by
-stability — system and conventions first, task and steering last — instead of
-from hand-written string concatenation. Prompt CONTENT is unchanged; only the
-ordering and the bookkeeping are new.
+<<<BEGIN SLICE CTX sha256=ac1e6c049350f70ee03063ac9f07e67a32c8149c7ba408e96839aad34a809eda lines=42>>>
+# Context — F107 Context compiler v2
 
-- **T001 — the registry.** `packages/orchestration/prompt_segments.py`:
-  `PromptSegmentRegistry` collects named segments and rejects duplicates,
-  `SegmentStabilityRank` is the documented 0-5 scale, and
-  `compose_prompt_segments` sorts by `(rank, registration index)` so
-  composition is deterministic rather than dependent on iteration order. It
-  returns a `ComposedPrompt(text, manifest)` whose rows carry name, rank,
-  sha256, chars and estimated tokens.
-- **T002 — the conventions loaders.** `role_conventions.py` loads
-  `docs/agents/worker_conventions.md` and `docs/agents/reviewer_conventions.md`
-  VERBATIM and registers each as the `CONVENTIONS`-ranked segment. Remedy
-  deliberately provides no writer for either document: those rules change
-  through a reviewed diff of the documents themselves.
-- **T003 — six builders migrated**, each in its own commit under its own
-  content-equality golden: intake, flight plan, mission, orchestrator (prompt
-  and system prompt), builder and reviewer.
-- **T004 — the measurement.** `remedy stats cache` is a read-only view over
-  ledger rows that already exist, with a `--json` mode. It renders
-  `unmeasured` when nobody reported the inputs and `undefined` when they were
-  reported as zero — never a `0` standing in for either.
+## Active Branch
+feature/f107-context-compiler-v2, cut from main at 2e4142c3 after PR #191
+was merged at the Open PR Gate. F107 is claimed `[~]` under Rule A5 as the
+first `[ ]` line of docs/roadmap/STATUS.md (Package 1 Self-Use, Tier 2).
 
-## Why
+## Scope
+In: packages/orchestration/context_compiler.py — import-neighbor graphs
+(Python via ast, TS/JS via a documented line-level import scanner),
+signature extractors, the tiered selector (the tier table of
+docs/roadmap/features/T2_F107.md is the contract), budget demotion,
+omitted_context.json, segment integration and the `remedy job context`
+debugging view. Tests under tests/orchestration/test_context_compiler.py.
 
-Cache-optimal ordering is only worth anything if it is provable. The manifest
-reaches evidence through `PromptTraceEntry.segment_manifest`, derived from the
-composed prompt at ONE seam, so a manifest can never describe a different
-prompt than the one that was sent.
+Out, per the feature file's Do-not-touch: prompt composition (the segment
+registry owns it), retrieval/embedding approaches, repo-map features.
+No TS parser dependency — reject any diff adding one; the line scanner is
+an honestly documented heuristic.
 
-## Key decisions
+## Constraints
+- SPLIT rounds are mandatory: this feature touches packages/ and apps/,
+  and production code never merges self-certified
+  (docs/agents/planner_reviewer_prompt.md §3).
+- The main session writes nothing in the work tree; a delegated worker
+  subagent makes every commit (docs/agents/self_drive_protocol.md).
+- Merges only at the Open PR Gate; never force-push; never touch main.
+- Verification is pytest, scoped per round, plus the canary
+  tests/cli/test_golden_path.py. A round touching docs/ also runs
+  tests/docs/. The full suite runs only at the integration gate, with
+  `-n auto`. Destructive and mutation checks run only inside a disposable
+  git worktree, so resource safety stays intact and no background pytest
+  process is ever left running.
+- Dynamic imports and string-based requires are invisible to v1 — a
+  documented limitation with the files_hint escape hatch (A9 defaults in
+  the feature file).
 
-- **D1** — segments join with a plain blank line and nothing else.
-- **D16** — the AGENTS.md Open PR Gate fires before a NEW branch or a new
-  task, so open PR #189 (`docs/amend0810-clerical`, not a `feature/*` branch,
-  therefore stop-and-report) does not block this closure PR. #189 was not
-  merged, commented on or modified.
-- The README capability sync also adds **F104**, which was accepted and on
-  `main` but missing from the Tier-2 prose list while the Tier-2 table row
-  already counted it. Declared, not silent.
-
-## How to review
-
-- `python3 -m pytest -n auto -q` — full suite.
-- `python3 -m pytest tests/orchestration/test_prompt_segments.py tests/orchestration/test_role_conventions.py tests/orchestration/test_prompt_cache_prefix.py tests/orchestration/test_prompt_trace.py -q`
-- The six prompt goldens under `tests/orchestration/`.
-- `docs/system/cache-optimal-prompt-ordering-v1.md` carries the measured
-  before/after cacheable-prefix table and the command that reproduces it.
-
-## Verdict and evidence
-
-Latest live review: **PASS_WITH_RISKS — ACCEPTED** (R50 gated PASS; R51 is the
-closing round and by construction records no gate on itself).
-
-The reviewer re-ran verification itself rather than reading the handback:
-full suite `16462 passed, 19 skipped in 132.94s`, exit 0, zero failures;
-`integrity check --json` `"passed": true`, 5 of 5 checks.
-
-- Evidence job `f105-closure`
-- Package `remedy-review-20260812-092055-READY_FOR_REVIEW.zip`
-- SHA-256 `23b21bc171b0de493ca4db50c472ecb2797b58b5c870ff9aa5d9b5da71536840`
-- Accepted HEAD `b928a0c691dc0a2b86c149a5e732ea07ac03176e`
-
-## Open findings: 7
-
-All Low or Medium, all documented, none inside F105's change set, no High
-open: R-0221, R-0239, R-0247, R-0262, R-0268 (Low); R-0265, R-0266 (Medium).
-One closure candidate is recorded in `.agent/candidates.md`: the review zip
-packages the gitignored `.remedy-wt/` scratch tree (1091 of 3646 members),
-which the next feature's first reviewed round must register or resolve.
-
-## Changed files
-
-104 files across 278 commits, 2026-08-09 to 2026-08-12. 35 of them are
-outside `.agent/`:
-
-| Area | Files |
-|---|---|
-| production | `packages/orchestration/` prompt_segments, role_conventions, prompt_trace, intake, flight_plan, mission_compiler, orchestrator_loop, pingpong_loop, gauntlet_runner; `apps/cli/` command_catalog, do_cmd, mission_cmd, stats_ledger_cmd |
-| tests | 15 modules under `tests/orchestration/` and `tests/cli/` |
-| docs | `docs/system/cache-optimal-prompt-ordering-v1.md`, `docs/README.md`, `docs/agents/planner_reviewer_prompt.md`, `docs/agents/worker_conventions.md`, `docs/agents/reviewer_conventions.md`, `docs/roadmap/features/T2_F105.md`, `docs/roadmap/STATUS.md`, `README.md` |
-
-## Runtime actuals
-
-51 rounds over 4 days (2026-08-09 to 2026-08-12), 278 commits. Models and
-token/cost figures: `not-measured` — the ledger's `role` column is a
-hardcoded `builder` in production data (open finding R-0266), so no honest
-per-role split of this branch's own spend exists.
-
-## Merge
-
-Do NOT merge as part of this session. Per the closure protocol this PR merges
-at the next feature's start via the Open PR Gate; that gap is the operator's
-manual-review window. The operator may merge manually at any time. Note that
-PR #189 also modifies `docs/agents/reviewer_conventions.md`, so whichever of
-the two merges second may need a conflict resolution.
-<<<END_PR_BODY>>>
-
-  Do NOT merge the PR. Do NOT approve it. Record its number.
-
-Gates — run every one, record REAL exit codes, never the word "green"
-  A  Transport, one-session shape. `wc -l` and `sha256sum`
-     `.agent/authored/f105-r51-1.md`, and `cmp` it against
-     `.agent/last_block.md` — silent. State plainly in the handback that no
-     reviewer scratchpad original exists in a one-session self-drive build,
-     because the reviewer writes nothing, so this gate proves C1 == C2 and
-     the reviewer's own read of the committed file is the transport proof.
-  B  `wc -l .agent/authored/f105-r51-1.md` against the cap of 400.
-  C  PAIR_GATE and PAIR_DEC are APPEND-shaped. For each: prove the TO
-     CONTAINS the FROM verbatim, the FROM occurs exactly 1x in the target
-     file after the edit, and each TO-ONLY added line occurs exactly 1x
-     AMONG THE LINES THAT COMMIT'S OWN DIFF ADDS.
-  D  Stray reconcile for C3, per file: every ADDED line appears in
-     `.agent/authored/f105-r51-1.md`. Report added, removed and stray counts.
-  E  `grep -c '^<<<'` over `.agent/live_review.md`, `.agent/decisions.md`,
-     `.agent/candidates.md`, `.agent/plan.md`, `.agent/handoff.md`,
-     `docs/roadmap/STATUS.md` and `README.md` — all 0. `grep -c` exits 1 when
-     the pattern is absent and absence IS the pass condition; record the
-     counts, not the exit code alone.
-  F  `grep -c '^## Steps' .agent/live_review.md` — exactly 1. This round adds
-     no new `##` heading to that file.
-  G  STATUS: `grep -c '^- \[x\] F105 — ' docs/roadmap/STATUS.md` is 1,
-     `grep -c '^- \[~\]' docs/roadmap/STATUS.md` is 0, and
-     `git diff --numstat` for STATUS.md in the C4 commit is exactly
-     `1	1`. Then prove the applied line is byte-identical to PAIR_STATUS_TO
-     by `grep -c -F` on the authored file's own copy of it.
-  H  README: each of the three FROM texts occurs 0x after the edit and each
-     of the three TO texts occurs 1x. Then
-     `python3 -m pytest tests/docs/ -q` — this round changes README.md and
-     docs/roadmap/**, so the docs gate is mandatory alongside the canary.
-  I  Canary: `python3 -m pytest tests/cli/test_golden_path.py -q`.
-  J  `git status --porcelain` empty, `git worktree list` shows the primary
-     checkout ALONE, and `git rev-parse HEAD` equals
-     `git rev-parse origin/feature/f105-cache-optimal-prompt-ordering`
-     after the push.
-  K  Insertions per commit under 500. `git diff --name-only 470fb776..HEAD`
-     is exactly the eight paths this block names — no production code, no
-     tests, no feature file, no other docs page.
-  L  `gh pr list --state open --json number,headRefName,baseRefName,isDraft`
-     shows PR #189 still open and untouched PLUS the new closure PR. Nothing
-     was merged. Record the raw JSON.
-
-If any gate comes back red, or anything in this block contradicts what you
-find on disk: STOP, do not guess, do not widen scope to route around it,
-commit whatever valid portion already stands, and say so plainly in the
-handback with the raw error. A round that stops honestly is a success.
+## Steps
+R1 claim, candidate sweep and state reset → R2 T001 import-neighbor
+graphs → T002 signature extractors → T003 tiered selector + budget
+demotion + omissions writer → T004 segment integration + CLI view +
+end-to-end fixture → integration gate → closure.
+<<<END SLICE CTX>>>
