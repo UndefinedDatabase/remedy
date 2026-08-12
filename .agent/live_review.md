@@ -71,7 +71,8 @@
   baseline already carries 24 other errors, so no gate turns red and nothing
   is blocked — but this one is F107's own new code, it is one line, and the
   module is open for editing in R4 anyway, so it is cheaper to clear than to
-  carry. OPEN.
+  carry. RESOLVED at the R4 gate (2026-08-12) — the `Done:` text closing it is
+  the last entry of this file.
 
 ## Steps
 
@@ -169,4 +170,56 @@ docs/roadmap/STATUS_closure_protocol.md.
   AGENTS.md permits for a per-commit table of more than five commits. T001 is
   now test-covered on the branch and the R2 ungated-module caveat is
   discharged. `LAST_REVIEWED_SHA` advances 5a9951d5 -> ef64cf72.
-Landed: R-0271 — Iterable now imports from collections.abc (this commit).
+- Reviewer gate on R4 (2026-08-12): PASS. Range ef64cf72..2c75bddf = eight
+  commits touching exactly the seven paths the R4 block named. Transport by the
+  PRIMARY shape, the reviewer original having survived the session boundary:
+  `sha256sum` of `.remedy-wt/f107-r4-1.block.md`, of the committed
+  `.agent/authored/f107-r4-1.md` and of `.agent/last_block.md` returns
+  7cf9a5f065db… for all three. This session's permission layer denies `cmp`,
+  so byte identity was proven by digest instead — strictly stronger than the
+  ordered check, never weaker. All three slice bodies recompute to their
+  BEGIN-marker digests at their declared lengths (LRF fac600cb… 7 lines, LR3
+  1dc20c0b… 33 lines, PLAN3 4b98f108… 29 lines), and `sha256sum
+  .agent/plan.md` returns that same PLAN3 digest: the plan on disk IS the
+  authored slice, not a retype of it. The C3 pair was ANCHOR-PRESERVING and
+  `git show --numstat 657b98fb -- .agent/live_review.md` reads `38  0` — zero
+  deletions; both FROM lines occur exactly 1x in the file and 0x among the 38
+  added lines, and every TO-only line of both slices occurs exactly 1x among
+  those added lines, with no strays. Every scoped gate was RE-RUN by the
+  reviewer rather than read from the handback: `python3 -m pytest
+  tests/orchestration/test_context_compiler.py -q` returns 29 passed (the 16
+  frozen T001 tests plus 13 new), the canary `python3 -m pytest
+  tests/cli/test_golden_path.py -q` returns 42 passed, `python3 -m ruff check`
+  over the module and its test file returns "All checks passed!" — which is
+  what closes R-0271 — `.agent/plan.md` is 29 lines, the Steps heading count
+  is 1, `grep -c '^<<<'` is 0 across all three state files, `git status
+  --porcelain` is empty, HEAD equals `origin/feature/f107-context-compiler-v2`
+  and `git worktree list` shows the primary checkout alone. Insertions per
+  commit 326, 280, 38, 2, 11, 242, 271, 80 — each under 500. The 13 test
+  functions carry all 13 numbered obligations of the R4 contract as exact
+  tuple equalities rather than truthiness checks, and the goldens are
+  mechanically captured rather than hand-written — `limit: int=10` is
+  `ast.unparse` spacing, which no human would type on purpose. The reviewer
+  ran THREE mutation probes in a disposable worktree at 2c75bddf, two of them
+  deliberately different from the worker's: turning the size cap's `<=` into
+  `<` reddens exactly `test_fits_inline_size_cap_is_inclusive_at_the_cap_and`
+  `_false_when_absent` with `AssertionError: assert False is True`, and
+  deleting the nested-declaration recursion line reddens exactly the Python
+  whole-file golden and
+  `test_python_file_without_any_docstring_renders_headers_only`. The worker's
+  own probe reproduces verbatim — `1 failed, 28 passed`, failing
+  `test_typescript_signature_golden_renders_exported_lines_only` on
+  `'export function renderWidget(id: string): void {' !=` the same line
+  without its brace — so the handback's probe evidence is confirmed TRUE
+  rather than taken on trust. That worktree was removed and pruned before this
+  verdict and `git worktree list` shows the primary alone. The 96-line handoff
+  is a declared stated-cause overage carrying its mandated tables, which
+  AGENTS.md DECISION D15 permits; both declared deviations are accurate and
+  neither weakens a proof. No new findings this round.
+  `LAST_REVIEWED_SHA` advances ef64cf72 -> 2c75bddf.
+
+Done: R-0271 — RESOLVED. `packages/orchestration/context_compiler.py` now reads
+`from collections.abc import Iterable` (commit b52b1c3c, numstat `1 1`), and the
+reviewer's own re-run of `python3 -m ruff check` over that module and its test
+file returns exit 0 with "All checks passed!" — zero errors, where the same
+command reported UP035 before the fix. Open findings 9 -> 8.
