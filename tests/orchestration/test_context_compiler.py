@@ -1,5 +1,6 @@
 """Tests for the context compiler: import-neighbor graphs (F107 T001),
-signature extraction (F107 T002) and tiered selection (F107 T003).
+signature extraction (F107 T002), tiered selection (F107 T003) and the
+prompt-segment layer (F107 T004 part 1).
 
 Every fixture tree is built under pytest's ``tmp_path`` and that tmp_path is
 passed as ``root`` — nothing here reads the checkout, so the code under test
@@ -12,12 +13,14 @@ rendering updates them in its own reviewed diff, with the change declared.
 
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
 
 import pytest
 
 from packages.orchestration.context_compiler import (
+    COMPILED_CONTEXT_SEGMENT_NAME,
     DEFAULT_CONTEXT_TOKEN_BUDGET,
     DEFAULT_INLINE_SIZE_CAP_BYTES,
     DEFAULT_SIGNATURE_LINE_CAP,
@@ -25,19 +28,29 @@ from packages.orchestration.context_compiler import (
     OMISSION_REASON_BUDGET,
     OMISSION_REASON_DISTANCE,
     OMISSION_REASON_SIZE,
+    OMITTED_CONTEXT_FILENAME,
     FileSignatures,
     ImportNeighbors,
     OmissionRecord,
     build_import_neighbor_graph,
+    compare_context_size,
     compile_task_context,
     export_omitted_context_json,
     extract_file_signatures,
     fits_inline_size_cap,
     python_file_signatures,
     python_import_neighbors,
+    register_compiled_context_segment,
+    render_compiled_context_text,
     typescript_file_signatures,
     typescript_import_neighbors,
     write_omitted_context_json,
+)
+from packages.orchestration.prompt_segments import (
+    PromptSegmentError,
+    PromptSegmentRegistry,
+    SegmentStabilityRank,
+    compose_prompt_segments,
 )
 from packages.orchestration.token_economy import estimate_text_tokens
 
@@ -823,3 +836,179 @@ def test_every_candidate_path_is_accounted_for_exactly_once(tmp_path: Path) -> N
         [s.rel_path for s in compiled.included] + [r.rel_path for r in compiled.omissions]
     )
     assert accounted == sorted(_SELECTOR_REPO_PATHS)
+
+
+# --------------------------------------------------------------------------
+# Segments — rendering, registration, size comparison (F107 T004 part 1)
+# --------------------------------------------------------------------------
+
+
+def _selector_compiled(root: Path, **kwargs):
+    """The fixture tree compiled the way every segment test below needs it."""
+    _selector_tree(root)
+    return compile_task_context(root, ["app.py"], _SELECTOR_REPO_PATHS, **kwargs)
+
+
+def test_render_compiled_context_text_builds_one_block_per_included_file(tmp_path: Path) -> None:
+    """The expected text is BUILT here from the fixture's own file texts and
+    from the extractor's own lines — never pasted — so the assertion measures
+    the rendering rather than a snapshot someone could have refreshed."""
+    compiled = _selector_compiled(tmp_path)
+    app_text = (tmp_path / "app.py").read_text(encoding="utf-8").rstrip("\n")
+    big_text = (tmp_path / "lib_big.py").read_text(encoding="utf-8").rstrip("\n")
+    small_text = (tmp_path / "lib_small.py").read_text(encoding="utf-8").rstrip("\n")
+    deep_lines = "\n".join(extract_file_signatures(tmp_path, "deep.py").lines)
+
+    rendered = render_compiled_context_text(tmp_path, compiled)
+
+    assert rendered == "\n\n".join(
+        (
+            "# app.py — tier 1 (full)\n" + app_text,
+            "# lib_big.py — tier 2 (full)\n" + big_text,
+            "# lib_small.py — tier 2 (full)\n" + small_text,
+            "# deep.py — tier 3 (signatures)\n" + deep_lines,
+        )
+    )
+    # The blocks follow `compiled.included`, and every header reads exactly
+    # "# <path> — tier <n> (<rendering>)" — asserted by position, because a
+    # file body may itself contain blank lines.
+    headers = [
+        "# app.py — tier 1 (full)",
+        "# lib_big.py — tier 2 (full)",
+        "# lib_small.py — tier 2 (full)",
+        "# deep.py — tier 3 (signatures)",
+    ]
+    assert [s.rel_path for s in compiled.included] == [
+        "app.py",
+        "lib_big.py",
+        "lib_small.py",
+        "deep.py",
+    ]
+    rendered_lines = rendered.split("\n")
+    for header in headers:
+        assert rendered_lines.count(header) == 1
+    positions = [rendered_lines.index(header) for header in headers]
+    assert positions == sorted(positions)
+
+
+def test_an_omitted_file_contributes_neither_its_path_nor_its_content(tmp_path: Path) -> None:
+    """The separation the debugging view rests on: what was left out lives in
+    the omissions record, and nothing of it leaks into the segment text."""
+    compiled = _selector_compiled(tmp_path)
+
+    rendered = render_compiled_context_text(tmp_path, compiled)
+
+    assert "unrelated.py" not in rendered
+    assert "UNRELATED = 1" not in rendered
+    assert "import lib_big" in rendered
+
+
+def test_register_compiled_context_segment_names_and_ranks_the_segment(tmp_path: Path) -> None:
+    """JOB_CONTEXT is pinned here: a silent move to another rank is red."""
+    compiled = _selector_compiled(tmp_path)
+    registry = PromptSegmentRegistry()
+
+    segment = register_compiled_context_segment(registry, tmp_path, compiled)
+
+    assert segment.name == COMPILED_CONTEXT_SEGMENT_NAME
+    assert segment.rank == SegmentStabilityRank.JOB_CONTEXT
+    assert segment.text == render_compiled_context_text(tmp_path, compiled)
+    assert registry.registered_segments() == (segment,)
+
+
+def test_the_registered_segment_composes_into_a_one_row_manifest(tmp_path: Path) -> None:
+    """Composition stays the registry's job: the compiled context arrives as
+    one auditable manifest row whose digest is recomputed here, not trusted."""
+    compiled = _selector_compiled(tmp_path)
+    registry = PromptSegmentRegistry()
+    segment = register_compiled_context_segment(registry, tmp_path, compiled)
+
+    composed = compose_prompt_segments(registry.registered_segments())
+
+    assert len(composed.manifest) == 1
+    entry = composed.manifest[0]
+    assert entry.name == COMPILED_CONTEXT_SEGMENT_NAME
+    assert entry.rank == int(SegmentStabilityRank.JOB_CONTEXT)
+    assert entry.sha256 == hashlib.sha256(segment.text.encode("utf-8")).hexdigest()
+    assert composed.text == segment.text
+
+
+def test_registering_the_compiled_context_twice_raises_the_registry_error(tmp_path: Path) -> None:
+    """The duplicate rule is INHERITED from the registry, not re-implemented
+    here and not prevented in advance."""
+    compiled = _selector_compiled(tmp_path)
+    registry = PromptSegmentRegistry()
+    register_compiled_context_segment(registry, tmp_path, compiled)
+
+    with pytest.raises(PromptSegmentError):
+        register_compiled_context_segment(registry, tmp_path, compiled)
+
+
+def test_rendering_the_same_tree_twice_produces_the_same_text(tmp_path: Path) -> None:
+    """The rendering inherits the selector's determinism instead of adding an
+    ordering of its own, so the same tree always gives the same bytes."""
+    _selector_tree(tmp_path)
+    first = compile_task_context(tmp_path, ["app.py"], _SELECTOR_REPO_PATHS)
+    second = compile_task_context(tmp_path, ["app.py"], _SELECTOR_REPO_PATHS)
+
+    assert render_compiled_context_text(tmp_path, first) == render_compiled_context_text(
+        tmp_path, second
+    )
+
+
+def test_the_omissions_filename_constant_is_what_the_writer_writes(tmp_path: Path) -> None:
+    """One spelling of the omissions filename, used by the writer and by every
+    caller that will later look for it — the constant IS the contract."""
+    compiled = _selector_compiled(tmp_path, inline_cap_bytes=200)
+    target = tmp_path / "task_runs" / "t1" / OMITTED_CONTEXT_FILENAME
+
+    written = write_omitted_context_json(compiled, target)
+
+    assert OMITTED_CONTEXT_FILENAME == "omitted_context.json"
+    assert written == target
+    assert json.loads(target.read_text(encoding="utf-8")) == export_omitted_context_json(
+        compiled
+    )
+
+
+def test_compare_context_size_reports_the_saving_against_whole_files(tmp_path: Path) -> None:
+    """The feature's Done condition, measured: the baseline is summed here over
+    the five fixture files, and the saving must actually be positive."""
+    compiled = _selector_compiled(tmp_path)
+    expected_whole = sum(_full_tokens(tmp_path, path) for path in _SELECTOR_REPO_PATHS)
+
+    comparison = compare_context_size(tmp_path, _SELECTOR_REPO_PATHS, compiled)
+
+    assert comparison.whole_file_tokens == expected_whole
+    assert comparison.compiled_tokens == compiled.estimated_tokens
+    assert comparison.saved_tokens == expected_whole - compiled.estimated_tokens
+    assert comparison.saved_ratio == comparison.saved_tokens / expected_whole
+    assert comparison.saved_tokens > 0
+
+
+def test_compare_context_size_reports_no_ratio_for_a_zero_baseline(tmp_path: Path) -> None:
+    """A zero baseline has no ratio: 0.0 exactly, never a fabricated number and
+    never a ZeroDivisionError. The saving itself is reported as it falls."""
+    compiled = _selector_compiled(tmp_path)
+
+    comparison = compare_context_size(tmp_path, (), compiled)
+
+    assert comparison.whole_file_tokens == 0
+    assert comparison.saved_ratio == 0.0
+    assert comparison.saved_tokens == -compiled.estimated_tokens
+
+
+def test_compare_context_size_charges_nothing_for_missing_or_binary_paths(tmp_path: Path) -> None:
+    """A path with no file and a file whose bytes are not UTF-8 each contribute
+    0 instead of raising: what could not be inlined either way costs nothing
+    either way, so the junk run equals the clean one exactly."""
+    compiled = _selector_compiled(tmp_path)
+    (tmp_path / "blob.bin").write_bytes(b"\xff\xfe\x00\x01 not utf-8\n")
+
+    clean = compare_context_size(tmp_path, _SELECTOR_REPO_PATHS, compiled)
+    with_junk = compare_context_size(
+        tmp_path, _SELECTOR_REPO_PATHS + ("ghost.py", "blob.bin"), compiled
+    )
+
+    assert with_junk == clean
+    assert with_junk.whole_file_tokens == clean.whole_file_tokens
