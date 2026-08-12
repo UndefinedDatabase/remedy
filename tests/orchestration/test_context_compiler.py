@@ -1,5 +1,5 @@
-"""Tests for the context compiler: import-neighbor graphs (F107 T001) and
-signature extraction (F107 T002).
+"""Tests for the context compiler: import-neighbor graphs (F107 T001),
+signature extraction (F107 T002) and tiered selection (F107 T003).
 
 Every fixture tree is built under pytest's ``tmp_path`` and that tmp_path is
 passed as ``root`` — nothing here reads the checkout, so the code under test
@@ -12,23 +12,34 @@ rendering updates them in its own reviewed diff, with the change declared.
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pytest
 
 from packages.orchestration.context_compiler import (
+    DEFAULT_CONTEXT_TOKEN_BUDGET,
     DEFAULT_INLINE_SIZE_CAP_BYTES,
     DEFAULT_SIGNATURE_LINE_CAP,
+    OMISSION_REASON_BINARY,
+    OMISSION_REASON_BUDGET,
+    OMISSION_REASON_DISTANCE,
+    OMISSION_REASON_SIZE,
     FileSignatures,
     ImportNeighbors,
+    OmissionRecord,
     build_import_neighbor_graph,
+    compile_task_context,
+    export_omitted_context_json,
     extract_file_signatures,
     fits_inline_size_cap,
     python_file_signatures,
     python_import_neighbors,
     typescript_file_signatures,
     typescript_import_neighbors,
+    write_omitted_context_json,
 )
+from packages.orchestration.token_economy import estimate_text_tokens
 
 pytestmark = pytest.mark.unit
 
@@ -541,3 +552,274 @@ def test_extract_file_signatures_dispatches_on_suffix(tmp_path: Path) -> None:
         tmp_path, "golden.jsx"
     )
     assert extract_file_signatures(tmp_path, "notes.md") == FileSignatures(parse_failed=True)
+
+
+# --------------------------------------------------------------------------
+# Selector — tiers, budget demotion, omissions (F107 T003)
+# --------------------------------------------------------------------------
+
+
+#: Padding that makes `lib_big.py` unmistakably the largest file in the
+#: fixture. WHICH tier-2 file the budget demotes is only observable when two
+#: of them differ in size, so the sizes are part of the contract, not decor.
+_SELECTOR_PADDING = "".join(f'    value_{index} = "padding padding"\n' for index in range(40))
+
+_SELECTOR_LIB_BIG = 'import deep\n\n\ndef big_one():\n    """Big one."""\n' + _SELECTOR_PADDING
+
+#: The candidate listing a caller would have walked — every path in the tree.
+_SELECTOR_REPO_PATHS = (
+    "app.py",
+    "deep.py",
+    "lib_big.py",
+    "lib_small.py",
+    "unrelated.py",
+)
+
+
+def _selector_tree(root: Path) -> None:
+    """One fenced file importing TWO tier-2 neighbors of very different size,
+    one tier-3 dependency behind the big one, and one file nobody imports."""
+    _write_tree(
+        root,
+        {
+            "app.py": "import lib_big\nimport lib_small\n",
+            "lib_big.py": _SELECTOR_LIB_BIG,
+            "lib_small.py": 'def small_one():\n    """Small one."""\n    return 1\n',
+            "deep.py": 'def deep_one():\n    """Deep one."""\n    return 2\n',
+            "unrelated.py": "UNRELATED = 1\n",
+        },
+    )
+
+
+def _full_tokens(root: Path, rel_path: str) -> int:
+    """The estimate a "full" rendering must carry — computed, never copied."""
+    return estimate_text_tokens((root / rel_path).read_text(encoding="utf-8"))
+
+
+def _signature_tokens(root: Path, rel_path: str) -> int:
+    """The estimate a "signatures" rendering must carry — computed, never copied."""
+    return estimate_text_tokens("\n".join(extract_file_signatures(root, rel_path).lines))
+
+
+def _tiering(compiled) -> tuple[tuple[str, int, str], ...]:
+    """(path, tier, rendering) per included file, which is what the tier table
+    actually promises — the token numbers are asserted separately."""
+    return tuple((s.rel_path, s.tier, s.rendering) for s in compiled.included)
+
+
+def test_selector_assigns_tiers_one_two_three_and_omits_the_unimported_file(tmp_path: Path) -> None:
+    """The tier table itself: fenced full, neighbors full, distant signatures,
+    and the file nobody imports omitted for distance rather than included."""
+    _selector_tree(tmp_path)
+
+    compiled = compile_task_context(tmp_path, ["app.py"], _SELECTOR_REPO_PATHS)
+
+    assert _tiering(compiled) == (
+        ("app.py", 1, "full"),
+        ("lib_big.py", 2, "full"),
+        ("lib_small.py", 2, "full"),
+        ("deep.py", 3, "signatures"),
+    )
+    assert compiled.omissions == (OmissionRecord("unrelated.py", 4, "distance", "omitted"),)
+
+
+def test_tier_two_file_over_the_inline_cap_renders_as_signatures_with_a_size_record(tmp_path: Path) -> None:
+    """A small explicit cap keeps the fixture readable: only the big neighbor
+    trips it, and the demotion is recorded rather than left silent."""
+    _selector_tree(tmp_path)
+
+    compiled = compile_task_context(
+        tmp_path, ["app.py"], _SELECTOR_REPO_PATHS, inline_cap_bytes=200
+    )
+
+    assert _tiering(compiled) == (
+        ("app.py", 1, "full"),
+        ("lib_big.py", 2, "signatures"),
+        ("lib_small.py", 2, "full"),
+        ("deep.py", 3, "signatures"),
+    )
+    assert OmissionRecord("lib_big.py", 2, "size", "signatures") in compiled.omissions
+
+
+def test_budget_demotes_the_largest_tier_two_file_first(tmp_path: Path) -> None:
+    """Phase A, with the ordering made observable: a budget one token under
+    the unconstrained total demotes lib_big.py and leaves lib_small.py full."""
+    _selector_tree(tmp_path)
+    unconstrained = compile_task_context(tmp_path, ["app.py"], _SELECTOR_REPO_PATHS)
+
+    compiled = compile_task_context(
+        tmp_path,
+        ["app.py"],
+        _SELECTOR_REPO_PATHS,
+        token_budget=unconstrained.estimated_tokens - 1,
+    )
+
+    assert _tiering(compiled) == (
+        ("app.py", 1, "full"),
+        ("lib_big.py", 2, "signatures"),
+        ("lib_small.py", 2, "full"),
+        ("deep.py", 3, "signatures"),
+    )
+    assert OmissionRecord("lib_big.py", 2, "budget", "signatures") in compiled.omissions
+    assert compiled.over_budget is False
+
+
+def test_budget_omits_tier_three_before_it_omits_tier_two(tmp_path: Path) -> None:
+    """Phase B then phase C, asserted by WHICH files survive: one token under
+    the all-signatures total drops only the distant file, while a budget equal
+    to tier 1 alone drops both neighbors too and tier 1 still stands."""
+    _selector_tree(tmp_path)
+    all_signatures_total = (
+        _full_tokens(tmp_path, "app.py")
+        + _signature_tokens(tmp_path, "lib_big.py")
+        + _signature_tokens(tmp_path, "lib_small.py")
+        + _signature_tokens(tmp_path, "deep.py")
+    )
+
+    phase_b = compile_task_context(
+        tmp_path, ["app.py"], _SELECTOR_REPO_PATHS, token_budget=all_signatures_total - 1
+    )
+    phase_c = compile_task_context(
+        tmp_path,
+        ["app.py"],
+        _SELECTOR_REPO_PATHS,
+        token_budget=_full_tokens(tmp_path, "app.py"),
+    )
+
+    assert _tiering(phase_b) == (
+        ("app.py", 1, "full"),
+        ("lib_big.py", 2, "signatures"),
+        ("lib_small.py", 2, "signatures"),
+    )
+    assert OmissionRecord("deep.py", 3, "budget", "omitted") in phase_b.omissions
+    assert _tiering(phase_c) == (("app.py", 1, "full"),)
+    assert OmissionRecord("lib_big.py", 2, "budget", "omitted") in phase_c.omissions
+    assert OmissionRecord("lib_small.py", 2, "budget", "omitted") in phase_c.omissions
+    assert phase_c.over_budget is False
+
+
+def test_tier_one_is_never_cut_by_the_budget_and_the_overflow_is_reported(tmp_path: Path) -> None:
+    """The declared write scope survives a budget of 1; the overflow is
+    reported honestly instead of being hidden by a truncated fenced file."""
+    _selector_tree(tmp_path)
+
+    compiled = compile_task_context(
+        tmp_path, ["app.py"], _SELECTOR_REPO_PATHS, token_budget=1
+    )
+
+    assert _tiering(compiled) == (("app.py", 1, "full"),)
+    assert compiled.budget_tokens == 1
+    assert compiled.over_budget is True
+
+
+def test_a_binary_tier_two_file_is_omitted_entirely(tmp_path: Path) -> None:
+    """Bytes that are not valid UTF-8 cannot be inlined at all, so the file is
+    dropped with reason "binary" rather than rendered as anything."""
+    _write_tree(tmp_path, {"app.py": "import blob\n"})
+    (tmp_path / "blob.py").write_bytes(b"\xff\xfe\x00\x01 not utf-8\n")
+
+    compiled = compile_task_context(tmp_path, ["app.py"], ["app.py", "blob.py"])
+
+    assert _tiering(compiled) == (("app.py", 1, "full"),)
+    assert compiled.omissions == (OmissionRecord("blob.py", 2, "binary", "omitted"),)
+
+
+def test_a_fenced_path_with_no_file_under_root_is_not_a_candidate_at_all(tmp_path: Path) -> None:
+    """It is neither included nor omitted: nothing that does not exist can be."""
+    _write_tree(tmp_path, {"app.py": "VALUE = 1\n"})
+
+    compiled = compile_task_context(tmp_path, ["app.py", "ghost.py"], ["app.py"])
+
+    assert _tiering(compiled) == (("app.py", 1, "full"),)
+    assert compiled.omissions == ()
+
+
+def test_compilation_is_deterministic_across_input_orderings(tmp_path: Path) -> None:
+    """Same inputs, both iterables reversed: the compiled contexts are equal."""
+    _selector_tree(tmp_path)
+    fenced = ("app.py", "unrelated.py")
+
+    first = compile_task_context(tmp_path, fenced, _SELECTOR_REPO_PATHS)
+    second = compile_task_context(
+        tmp_path, tuple(reversed(fenced)), tuple(reversed(_SELECTOR_REPO_PATHS))
+    )
+
+    assert first == second
+
+
+def test_estimated_tokens_come_from_the_estimator_over_the_rendered_text(tmp_path: Path) -> None:
+    """Each estimate is asserted against a direct `estimate_text_tokens` call
+    on the text that rendering sends, and the total is their sum."""
+    _selector_tree(tmp_path)
+
+    compiled = compile_task_context(tmp_path, ["app.py"], _SELECTOR_REPO_PATHS)
+
+    expected = {
+        "app.py": _full_tokens(tmp_path, "app.py"),
+        "lib_big.py": _full_tokens(tmp_path, "lib_big.py"),
+        "lib_small.py": _full_tokens(tmp_path, "lib_small.py"),
+        "deep.py": _signature_tokens(tmp_path, "deep.py"),
+    }
+    assert {s.rel_path: s.estimated_tokens for s in compiled.included} == expected
+    assert compiled.estimated_tokens == sum(expected.values())
+    assert compiled.budget_tokens == DEFAULT_CONTEXT_TOKEN_BUDGET
+
+
+def test_export_omitted_context_json_carries_exactly_four_keys_in_record_order(tmp_path: Path) -> None:
+    """The exported shape is the debugging view's contract: path, tier, reason
+    and outcome, one dict per record, in `compiled.omissions` order."""
+    _selector_tree(tmp_path)
+    compiled = compile_task_context(
+        tmp_path, ["app.py"], _SELECTOR_REPO_PATHS, inline_cap_bytes=200
+    )
+
+    exported = export_omitted_context_json(compiled)
+
+    assert [entry["path"] for entry in exported] == [r.rel_path for r in compiled.omissions]
+    assert len(exported) == 2
+    for entry, record in zip(exported, compiled.omissions):
+        assert set(entry) == {"path", "tier", "reason", "outcome"}
+        assert entry["tier"] == record.tier
+        assert entry["reason"] == record.reason
+        assert entry["outcome"] == record.outcome
+
+
+def test_write_omitted_context_json_creates_its_parent_and_round_trips(tmp_path: Path) -> None:
+    """The one writing function: it creates the directory, returns the path it
+    wrote, and what lands on disk reads back equal to the exported list."""
+    _selector_tree(tmp_path)
+    compiled = compile_task_context(
+        tmp_path, ["app.py"], _SELECTOR_REPO_PATHS, inline_cap_bytes=200
+    )
+    target = tmp_path / "evidence" / "nested" / "omitted_context.json"
+
+    written = write_omitted_context_json(compiled, target)
+
+    assert written == target
+    assert target.is_file()
+    written_text = target.read_text(encoding="utf-8")
+    assert json.loads(written_text) == export_omitted_context_json(compiled)
+    assert written_text.endswith("\n")
+
+
+def test_selector_defaults_and_reason_vocabulary_are_the_documented_values() -> None:
+    """A silent change to the budget or to any reason word is a red test."""
+    assert DEFAULT_CONTEXT_TOKEN_BUDGET == 24000
+    assert OMISSION_REASON_BUDGET == "budget"
+    assert OMISSION_REASON_DISTANCE == "distance"
+    assert OMISSION_REASON_BINARY == "binary"
+    assert OMISSION_REASON_SIZE == "size"
+
+
+def test_every_candidate_path_is_accounted_for_exactly_once(tmp_path: Path) -> None:
+    """The feature's own Acceptance wording, on a tree where nothing is
+    demoted — so no path can carry both an included entry and a record, and a
+    path that silently vanished would show up as a shorter list."""
+    _selector_tree(tmp_path)
+
+    compiled = compile_task_context(tmp_path, ["app.py"], _SELECTOR_REPO_PATHS)
+
+    accounted = sorted(
+        [s.rel_path for s in compiled.included] + [r.rel_path for r in compiled.omissions]
+    )
+    assert accounted == sorted(_SELECTOR_REPO_PATHS)
