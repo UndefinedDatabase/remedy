@@ -36,6 +36,7 @@
 | model defaults / dead models | [model-defaults-and-dead-model-check-v0.md](system/model-defaults-and-dead-model-check-v0.md) | system |
 | project scoping | [project-scoping-v0.md](system/project-scoping-v0.md) | system |
 | plan / roadmap mirror | [roadmap-mirror-v1.md](system/roadmap-mirror-v1.md) | system |
+| prompt cache ordering | [cache-optimal-prompt-ordering-v1.md](system/cache-optimal-prompt-ordering-v1.md) | system |
 | proof chain | [proof-chain.md](system/proof-chain.md) | system |
 | provider trust | [provider-trust-gate-v0.md](system/provider-trust-gate-v0.md) | system |
 | provider trust | [provider-trust-verification-v1.md](system/provider-trust-verification-v1.md) | system |
@@ -70,6 +71,7 @@ Specifications and design documents for the built system.
 | [agent-tooling-audit.md](system/agent-tooling-audit.md) | Audit of agent tooling (Pi.dev, Claude Code, VS Code MCP) |
 | [architecture.md](system/architecture.md) | High-level Remedy architecture |
 | [bounded-overnight-executor-v0.md](system/bounded-overnight-executor-v0.md) | Bounded overnight executor *(overnight superseded)* |
+| [cache-optimal-prompt-ordering-v1.md](system/cache-optimal-prompt-ordering-v1.md) | Ranked prompt-segment composition, the measured before/after cacheable prefix, and why the provider-side cache share is unmeasured |
 | [candidate-quality-evaluation-v1.md](system/candidate-quality-evaluation-v1.md) | Scoring and evaluation of candidate patches |
 | [context-inspector.md](system/context-inspector.md) | Context window inspection and debugging |
 | [controlled-claude-code-operator-path-v0.md](system/controlled-claude-code-operator-path-v0.md) | Controlled operator path for Claude Code sessions |
