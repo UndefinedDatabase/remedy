@@ -2430,6 +2430,9 @@ def run_pingpong(
     timeout_profile: str = "",
     max_output_chars: int = 50000,
     mentioned_files: list[str] | None = None,
+    compiled_context_paths: list[str] | None = None,
+    compiled_context_candidates: list[str] | None = None,
+    context_record_dir: str | Path | None = None,
     test_command: str = "",
     keep_staging: bool = False,
     claude_cli_write_mode: str = "none",
@@ -2649,10 +2652,48 @@ def run_pingpong(
             return _fail_early(exc)
 
     # Build context
+    # F107: the COMPILED context replaces the whole-file context pack's SELECTION —
+    # never its formatting — and only when the caller hands in BOTH the task's fenced
+    # scope and the repo's candidate listing; one list alone is a caller mistake and
+    # must not silently half-compile, so it stays on the default path.
+    # Deliberately absent here: ``run_pingpong`` does NOT list the repo itself and does
+    # NOT read a task's ``files_hint``. Both are the caller's, which is what keeps this
+    # path opt-in and keeps ``packages/`` free of a second tree walk.
+    use_compiled_context = bool(compiled_context_paths) and bool(compiled_context_candidates)
     try:
-        context, categories = build_repo_context(
-            repo_path, goal, mentioned_files=mentioned_files,
-        )
+        if use_compiled_context:
+            # Imported inside the branch, the way ``build_scope_contract_for_builder`` is
+            # imported locally below, so the default path's import cost does not change.
+            from packages.orchestration.context_compiler import (
+                COMPILED_CONTEXT_SEGMENT_NAME,
+                CONTEXT_SIZE_FILENAME,
+                OMITTED_CONTEXT_FILENAME,
+                compare_context_size,
+                compile_task_context,
+                render_compiled_context_text,
+                write_context_size_comparison_json,
+                write_omitted_context_json,
+            )
+
+            compiled_root = Path(repo_path)
+            compiled = compile_task_context(
+                compiled_root, compiled_context_paths, compiled_context_candidates,
+            )
+            context = render_compiled_context_text(compiled_root, compiled)
+            categories = [COMPILED_CONTEXT_SEGMENT_NAME]
+            if context_record_dir:
+                record_dir = Path(context_record_dir)
+                write_omitted_context_json(compiled, record_dir / OMITTED_CONTEXT_FILENAME)
+                write_context_size_comparison_json(
+                    compare_context_size(
+                        compiled_root, compiled_context_candidates, compiled,
+                    ),
+                    record_dir / CONTEXT_SIZE_FILENAME,
+                )
+        else:
+            context, categories = build_repo_context(
+                repo_path, goal, mentioned_files=mentioned_files,
+            )
     except Exception as exc:
         # Context construction owns no result, but it DOES own a live worktree.
         result.final_status = "context_error"
