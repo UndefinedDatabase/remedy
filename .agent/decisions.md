@@ -4300,3 +4300,32 @@ dropping it would lose more than it explains.
 Reverse this decision by removing the constant and its three tests; the
 Edge-cases clause "signature-skipped with reason" would then have no carrier
 again, which is the state R-0292 recorded.
+
+## DECISION F107 D3 (2026-08-12) — the blocked package is unblocked by MOVING scratch, not by editing the packager and not by deleting evidence
+
+Context: finding R-0295. F107's closure needs a review zip; the build published
+one and then rejected it, exit 1, because 1834 of its 10534 members came from
+two scratch trees under `.remedy-wt/` that carry `.data/` and `.git/` path
+components. The review subject itself is correct. Three ways out existed and
+they are not equally safe.
+
+Chosen: MOVE `.remedy-wt/r11gate` and `.remedy-wt/r9gate` to
+`/home/decodeux/remedy-scratch-archive/f107/`, outside the repository, then
+rebuild the evidence bundle and the zip at the round's final head. This changes
+no tracked file, destroys nothing, and is reversed by moving the two
+directories back. The scratch stays on the same machine and stays readable, so
+the R-0288 rule that a gate's raw records remain re-derivable still holds — the
+path changes, the record does not.
+
+Alternatives considered: (a) add `-path './.remedy-wt'` to the packager's prune
+list — the correct DURABLE fix and the one R-0295 names, rejected HERE because
+`scripts/make_review_zip.sh` is not F107's code: a packaging change made inside
+a context-compiler feature is exactly the scope drift AGENTS.md forbids, and it
+would ship a production change whose own tests and gate this feature never
+planned. (b) delete the two scratch trees — rejected outright: deletion is
+irreversible, it destroys the raw records of F107's own R9 and R11 gates, and
+no closure is worth trading evidence for convenience.
+
+Reverse this decision by moving both directories back from the archive. The
+follow-up that owns the packager should then apply alternative (a), after which
+neither the move nor this decision is needed again.
