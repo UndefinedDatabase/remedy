@@ -13,29 +13,27 @@ and `remedy stats cache` shows the cache-read share per role from actuals.
 Prompt CONTENT does not change; only its composition.
 
 ## Current Step
-SESSION ENDED ON `.agent/STOP` at R47 — on the guardrail G6 signal, NOT at a
-round cap and NOT on a failure. That file still exists, empty and untracked,
-and was deliberately not removed. NO WORK MAY START in the next session while
-it exists: per self_drive_protocol Phase 1 rule 1 the next session writes its
-handoff and ends. The BRANCH stays open, F105 is NOT closed, no PR exists.
-`LAST_REVIEWED_SHA` is aad00eee — R46 was GATED PASS this session and that
-record sits in `.agent/live_review.md`. R47 itself carries a step line and NO
-gate record, deliberately (the R-0264 distinction).
-T001-T003 are DONE and T004's VIEW half is DONE: `remedy stats cache` renders
-the human table, and `--json` emits the same share, the same two absence words
-and the R-0266 per-role limit. `.agent/t004_inventory.md` stays T004's ground
-truth. Open findings: R-0221, R-0239, R-0247, R-0262, R-0265, R-0266 and the
-new R-0268 — seven, all OPEN by design, none touched this round.
+`LAST_REVIEWED_SHA` is 5e55669d — R47 was GATED PASS and that record sits in
+`.agent/live_review.md`. The operator removed `.agent/STOP` between sessions, so
+work resumed at R48.
+T001, T002, T003 and now T004 are all DONE. T004's view half is `remedy stats
+cache` with its `--json` mode; T004's note half landed this round as
+`docs/system/cache-optimal-prompt-ordering-v1.md`, backed by the measurement
+module `tests/orchestration/test_prompt_cache_prefix.py`, and the feature file
+carries a `## Built State` section. `.agent/t004_inventory.md` stays T004's
+ground truth.
+The provider-side cache-read share is UNMEASURED and the note says so: no
+`ledger.sqlite` exists anywhere in this checkout, so there are no actuals.
+Open findings: R-0221, R-0239, R-0247, R-0262, R-0265, R-0266 and R-0268 —
+seven, all OPEN by design, none touched this round. The next free finding ID
+stays R-0269: R48 registered nothing.
 
 ## Next Steps
-Nothing below may begin until the operator removes `.agent/STOP`.
-1. The T004 before/after comparison note in the feature's evidence, with honest
-   numbers whatever they turn out to be (the feature file's T004 line).
-2. The integration gate per `docs/agents/integration_gate.md`; R-0221 will
+1. The integration gate per `docs/agents/integration_gate.md`; R-0221 will
    attribute phantom base-only failures there — expected, not new.
-3. Closure per `docs/roadmap/STATUS_closure_protocol.md`, where the evidence
+2. Closure per `docs/roadmap/STATUS_closure_protocol.md`, where the evidence
    job, the FRESH review zip, the STATUS line and the PR all land.
-4. PR #189 (`docs/amend0810-clerical` -> `main`), which the OPERATOR must
+3. PR #189 (`docs/amend0810-clerical` -> `main`), which the OPERATOR must
    resolve before F105's closure PR is cut.
 
 ## Risks
