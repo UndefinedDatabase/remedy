@@ -1012,3 +1012,116 @@ def test_compare_context_size_charges_nothing_for_missing_or_binary_paths(tmp_pa
 
     assert with_junk == clean
     assert with_junk.whole_file_tokens == clean.whole_file_tokens
+
+
+# --------------------------------------------------------------------------
+# The rendered cap (F107 R-0273) — the rendering matches the compiled cap
+# --------------------------------------------------------------------------
+
+
+#: A cap far below what the fixture's tier-3 file declares, so a rendering at
+#: the module default is unmistakably longer than a rendering at this cap.
+_CAPPED_LINE_CAP = 2
+
+#: Six top-level functions, each with a docstring: twelve signature lines
+#: against a cap of two, so the cap cannot pass unnoticed.
+_CAPPED_DEEP = "".join(
+    f'def deep_{index}():\n    """Deep {index}."""\n    return {index}\n\n\n' for index in range(6)
+)
+
+_CAPPED_REPO_PATHS = ("app.py", "deep.py", "lib.py")
+
+
+def _capped_tree(root: Path) -> None:
+    """One fenced file, one tier-2 neighbor, and a tier-3 file behind it that
+    declares far more than the cap the tests below compile at."""
+    _write_tree(
+        root,
+        {
+            "app.py": "import lib\n",
+            "lib.py": 'import deep\n\n\ndef lib_one():\n    """Lib one."""\n    return 1\n',
+            "deep.py": _CAPPED_DEEP,
+        },
+    )
+
+
+def _rendered_bodies(rendered: str, compiled) -> dict[str, str]:
+    """Split the rendered text back into {rel_path: body} by walking the header
+    lines in `compiled.included` order — never by splitting on blank lines,
+    because a file body may contain them. The body runs from the line after its
+    header to the line before the blank separator that precedes the next one."""
+    lines = rendered.split("\n")
+    starts: list[int] = []
+    cursor = 0
+    for selected in compiled.included:
+        header = f"# {selected.rel_path} — tier {selected.tier} ({selected.rendering})"
+        cursor = lines.index(header, cursor)
+        starts.append(cursor)
+        cursor += 1
+    bodies: dict[str, str] = {}
+    for position, selected in enumerate(compiled.included):
+        start = starts[position] + 1
+        end = starts[position + 1] - 1 if position + 1 < len(starts) else len(lines)
+        bodies[selected.rel_path] = "\n".join(lines[start:end])
+    return bodies
+
+
+def test_the_compiled_context_carries_the_line_cap_it_was_compiled_at(tmp_path: Path) -> None:
+    """The cap travels ON the context: compiling without the argument records
+    the module default, and an explicit cap records exactly that value."""
+    _selector_tree(tmp_path)
+
+    defaulted = compile_task_context(tmp_path, ["app.py"], _SELECTOR_REPO_PATHS)
+    capped = compile_task_context(
+        tmp_path, ["app.py"], _SELECTOR_REPO_PATHS, line_cap=_CAPPED_LINE_CAP
+    )
+
+    assert defaulted.line_cap == DEFAULT_SIGNATURE_LINE_CAP
+    assert capped.line_cap == _CAPPED_LINE_CAP
+
+
+def test_signature_blocks_render_at_the_cap_the_context_was_compiled_at(tmp_path: Path) -> None:
+    """R-0273, both halves of the invariant: every signatures body in the
+    rendered text is the CAPPED rendering, not the module-default one, and its
+    estimate is the very number the budget was enforced against — so
+    `estimated_tokens` and the text that would be sent describe the same bytes.
+    Every expected value is computed here from the extractor and the estimator."""
+    _capped_tree(tmp_path)
+
+    compiled = compile_task_context(
+        tmp_path, ["app.py"], _CAPPED_REPO_PATHS, line_cap=_CAPPED_LINE_CAP
+    )
+    rendered = render_compiled_context_text(tmp_path, compiled)
+    bodies = _rendered_bodies(rendered, compiled)
+
+    signature_files = [s for s in compiled.included if s.rendering == "signatures"]
+    # A fixture that produced no signatures file would make the loop vacuous.
+    assert signature_files
+    for selected in signature_files:
+        expected_body = "\n".join(
+            extract_file_signatures(tmp_path, selected.rel_path, _CAPPED_LINE_CAP).lines
+        )
+        assert bodies[selected.rel_path] == expected_body
+        assert estimate_text_tokens(expected_body) == selected.estimated_tokens
+    # The cap is doing real work here: the default rendering is much longer.
+    uncapped_lines = extract_file_signatures(tmp_path, "deep.py").lines
+    assert len(uncapped_lines) > _CAPPED_LINE_CAP
+
+
+def test_two_contexts_compiled_at_the_same_custom_cap_stay_equal(tmp_path: Path) -> None:
+    """The new field does not cost determinism: same tree, same cap, equal
+    contexts and byte-equal renderings."""
+    _capped_tree(tmp_path)
+
+    first = compile_task_context(
+        tmp_path, ["app.py"], _CAPPED_REPO_PATHS, line_cap=_CAPPED_LINE_CAP
+    )
+    second = compile_task_context(
+        tmp_path, ["app.py"], _CAPPED_REPO_PATHS, line_cap=_CAPPED_LINE_CAP
+    )
+
+    assert first == second
+    assert first.line_cap == _CAPPED_LINE_CAP
+    assert render_compiled_context_text(tmp_path, first) == render_compiled_context_text(
+        tmp_path, second
+    )
