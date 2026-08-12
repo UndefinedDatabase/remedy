@@ -5,7 +5,7 @@
 > round. Findings are authored here by the reviewer only. A worker marks a
 > landed fix `Landed: R-XXXX`; only reviewer-authored `Done:` text sets
 > Resolved (docs/agents/planner_reviewer_prompt.md §4.4).
-> Branch: feature/f107-context-compiler-v2. Next free ID: R-0288.
+> Branch: feature/f107-context-compiler-v2. Next free ID: R-0289.
 
 ## Findings
 
@@ -245,6 +245,23 @@
   the dangling pointer sits in a governing document instead of in a round's
   block. Recorded, not repaired here — editing an agent-governance document is
   outside this feature's change set. OPEN.
+- R-0288 (Medium, F107 R15 integration gate): the R15 gate ran BOTH suites to
+  completion in `.remedy-wt/gate-scratch/f107-r15/` and then lost its session
+  before the evidence reached the repository. Its scalar outputs survived —
+  exit codes, wall clocks, UTC stamps, the two full logs and the three comm
+  lists — because the run drivers redirected them into files. The three parity
+  steps did not survive: `mtimes.sh`, `touch_dist.sh` and `dist_hash.sh`
+  printed to stdout only. Their output was the SOLE proof that the base
+  worktree's `apps/ui/dist` was byte-identical to the primary checkout's and
+  mtime-newer than its own sources, so `base_worktree.txt` and
+  `dist_hashes.txt` became unrecoverable the moment the session died and the
+  worktree was removed. A base run whose parity cannot be shown is not a
+  comparison, and an empty `comm -23` proves parity only if you already trust
+  the run that produced it. Rule, forward-looking: every gate step that
+  produces evidence redirects it to its scratch file AS IT RUNS — a step whose
+  only record is a terminal is a step that did not happen. R16 re-runs the
+  whole gate from a rebuilt base worktree rather than transcribe a
+  half-provable one. OPEN.
 
 ## Steps
 
@@ -707,6 +724,37 @@ docs/roadmap/STATUS_closure_protocol.md.
   declared deviations re-measured accurate; deviation 4 becomes R-0285 because
   the conflict it declared was the block's, not the worker's.
   `LAST_REVIEWED_SHA` advances 04154822 -> d7dd12b6.
+- Reviewer gate on R13, R14 and R15 (2026-08-12): PASS on all three, gated
+  together by the reviewer of a NEW session because not one of them survived
+  to write a handback. Range d7dd12b6..513a8c58 = eight commits over exactly
+  four `.agent/` paths and nothing else: `git diff --stat 43e05108..HEAD --
+  packages apps tests docs` is EMPTY and `git diff --name-only 43e05108..HEAD`
+  returns `.agent/authored/f107-r15-1.md` and `.agent/last_block.md` alone.
+  Transport by the PRIMARY shape, re-run here against the surviving
+  `.remedy-wt/` originals rather than read from any summary:
+  `.agent/authored/f107-r13-1.md` sha256 5fd436727e378348a182b30d459753cd… at
+  280 lines, `f107-r14-1.md` cfb52b3917f3fed9639ceeb32b946373… at 278,
+  `f107-r15-1.md` b1c8acaca006e1aa149814bdd12337cb… at 208 — each the value its
+  own original's BLOCK_SHA256 trailer declares — and `cmp
+  .agent/authored/f107-r15-1.md .agent/last_block.md` exits 0 and silent.
+  `git show --numstat 43e05108 -- .agent/live_review.md` reads `29  1`, the
+  single deletion being the header rewrite, and every anchored count holds on
+  disk under this reviewer's own run: `^> Branch:.*Next free ID: R-0288` 1,
+  `^- R-0286` 1, `^- R-0287` 1, `^Done:` 9, `^Landed:` 0, `^## Steps` 1,
+  `^<<<` 0. Insertions per commit 280, 223, 56, 278, 156, 29, 208 and 147 —
+  each under 500.
+  WHAT DID NOT LAND, stated plainly because three rounds of state commits with
+  no gate behind them is exactly what a false-progress record looks like: NO
+  GATE EVIDENCE EXISTS. R13 and R14 died before their gate ran. R15's gate DID
+  run — both suites, to completion — but died while copying its trimmed
+  evidence into the repository, leaving five of the ten mandated files and no
+  `attribution.txt`. Two of the missing five cannot be reconstructed at all
+  (R-0288), so this reviewer treats R15's C3 as NOT DONE rather than as
+  evidence to transcribe, and R16 re-runs the gate against a rebuilt base
+  worktree. The surviving `.agent/gate_f107_r15/` is untracked partial output,
+  never committed and now superseded; R16 moves it out of the repository
+  rather than delete it, so the dead session's raw record stays readable.
+  `LAST_REVIEWED_SHA` advances d7dd12b6 -> 513a8c58.
 
 Done: R-0271 — RESOLVED. `packages/orchestration/context_compiler.py` now reads
 `from collections.abc import Iterable` (commit b52b1c3c, numstat `1 1`), and the
