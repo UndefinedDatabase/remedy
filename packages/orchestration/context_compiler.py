@@ -43,9 +43,9 @@ from __future__ import annotations
 
 import ast
 import re
+from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
-from typing import Iterable
 
 # Resolution order is part of the T001 contract: exact file, then these
 # suffixes appended, then <spec>/index.<suffix> — first hit wins.

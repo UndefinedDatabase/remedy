@@ -169,3 +169,4 @@ docs/roadmap/STATUS_closure_protocol.md.
   AGENTS.md permits for a per-commit table of more than five commits. T001 is
   now test-covered on the branch and the R2 ungated-module caveat is
   discharged. `LAST_REVIEWED_SHA` advances 5a9951d5 -> ef64cf72.
+Landed: R-0271 — Iterable now imports from collections.abc (this commit).
