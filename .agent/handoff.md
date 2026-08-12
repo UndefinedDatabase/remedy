@@ -1,54 +1,55 @@
-# Handoff — F107 Context compiler v2 — R9 (T004 part 2a, the first caller)
+# Handoff — F107 Context compiler v2 — R10 (T004 part 2b-i, the size record + the docs)
 
-Branch: feature/f107-context-compiler-v2. C1..C7 were made by a previous worker in
-this round and were not touched; I did steps 6 and 7 only. Nothing amended,
-rebased, reverted, reordered or force-pushed. main untouched. No PR exists.
-`packages/orchestration/context_compiler.py` was NOT edited — it stays frozen.
-Open findings: 12 (R-0221/0239/0247/0262/0265/0266/0268/0270/0272/0274/0275/0276).
-Next free finding ID: R-0277. No `Done:` and no `Landed:` line was written: R9 adds
-a CALLER and fixes no finding.
+Branch: feature/f107-context-compiler-v2. Nothing amended, rebased, reverted, reordered
+or force-pushed. main untouched. No PR exists. The SELECTION behaviour is unchanged:
+`compile_task_context`, the tiering, the budget demotion and `compare_context_size` were
+not edited — C4 only ADDS a constant, an export and a writer.
+Open findings: 13 (R-0221/0239/0247/0262/0265/0266/0268/0270/0272/0274/0277/0278/0279).
+Next free finding ID: R-0280. I wrote no `Done:` and no `Landed:` line: of the four in
+`.agent/live_review.md`, two arrived with this round's reviewer slice LRD2TO (R-0275,
+R-0276) and two were already on disk from earlier rounds.
 
 ## Range
 
-Review of 7acb406d..HEAD — 8 commits, C1..C8.
+Review of f86bda87..HEAD — 8 commits, C1..C8.
 
 ## Commits
 
-### 65da6bfb chore(f107): save the R9 step block verbatim
+### 2841b6a9 chore(f107): save the R10 step block verbatim
 | Path | +/- | Reason |
 |------|-----|--------|
-| .agent/authored/f107-r9-1.md | 276/0 | C1 verbatim block save |
+| .agent/authored/f107-r10-1.md | 311/0 | C1 verbatim block save |
 
-### 7f66ccad chore(f107): mirror the R9 block into last_block
+### 30aaaa8e chore(f107): mirror the R10 block into last_block
 | Path | +/- | Reason |
 |------|-----|--------|
-| .agent/last_block.md | 253/195 | C2 byte-copy of the block |
+| .agent/last_block.md | 249/214 | C2 byte-copy of the block |
 
-### 61adb419 chore(f107): record the R8-close gate and register R-0275 and R-0276
+### 58742979 chore(f107): record the R9 PASS gate and register R-0277 through R-0279
 | Path | +/- | Reason |
 |------|-----|--------|
-| .agent/live_review.md | 68/7 | C3 the four authored pairs |
+| .agent/live_review.md | 79/1 | C3 the four pairs targeting this file |
 
-### 7664b677 feat(f107): add the job context CLI view module
+### 4ea02ff0 feat(f107): add the context size record export and writer
 | Path | +/- | Reason |
 |------|-----|--------|
-| apps/cli/commands/job_context_cmd.py | 273/0 | C4 new read-only view |
+| packages/orchestration/context_compiler.py | 60/5 | C4 constant + export + writer + docstrings |
 
-### 6a56fe81 feat(f107): register the job context command in the catalog
+### 96a6bd66 test(f107): cover the context size export and writer
 | Path | +/- | Reason |
 |------|-----|--------|
-| apps/cli/command_catalog.py | 17/0 | C5 one CommandEntry job.context |
-| apps/cli/commands/__init__.py | 2/1 | C5 import + module tuple |
+| tests/orchestration/test_context_compiler.py | 132/0 | C5 six appended cases + 4 import lines |
 
-### f92a0359 test(f107): cover the job context CLI view end to end
+### f7d4551f docs(f107): document the job context view and index it
 | Path | +/- | Reason |
 |------|-----|--------|
-| tests/cli/test_job_context_cmd.py | 231/0 | C6 nine runtime cases |
+| docs/guides/job-context-view-user-guide-v0.md | 184/0 | C6 new guide, written from the code |
+| docs/README.md | 2/0 | C6 the IDXQ and IDXG rows |
 
-### b5575a88 chore(f107): advance plan to R9 T004 part 2a
+### a6c56679 chore(f107): advance plan to R10 T004 part 2b-i
 | Path | +/- | Reason |
 |------|-----|--------|
-| .agent/plan.md | 12/12 | C7 slice PLAN9, full replacement |
+| .agent/plan.md | 9/9 | C7 slice PLAN10, full replacement |
 
 ### C8 — self-reference, a handoff cannot table its own SHA
 | Path | +/- | Reason |
@@ -57,201 +58,140 @@ Review of 7acb406d..HEAD — 8 commits, C1..C8.
 
 ## External actions
 
-`git push -u origin feature/f107-context-compiler-v2` after C8 (Verification i).
-No `git worktree add`/`remove` ran, no gh command ran, no PR created/edited/merged.
-Gate h scratch is under the gitignored `.remedy-wt/r9gate/` with `REMEDY_DATA_DIR`
-pointed there, so no job state reached a tracked path.
+`git worktree add --detach .remedy-wt/r10probe HEAD` → exit 0, then
+`git worktree remove --force` → exit 0 and `git worktree prune` (gate i).
+`git push -u origin feature/f107-context-compiler-v2` after C8 (Verification k).
+No gh command ran, no PR created/edited/merged. Gate i and gate j scratch live under the
+gitignored `.remedy-wt/`; the primary checkout was never mutated.
 
 ## Verification
 
-a. `cmp .agent/authored/f107-r9-1.md .agent/last_block.md` → exit 0, silent.
-   `sha256sum` both → f8e42fd684fe23673b38f63799894cb976ac20d5c6be049986c60ae1a4fdbb81,
-   276 lines each; that digest EQUALS BLOCK_SHA256 (Authored-text proofs).
-   CORRECTION, declared: no BLOCK_SHA256 line exists inside the saved block —
-   `grep -n BLOCK_SHA256 .agent/last_block.md` returns only lines 221 and 242, the
-   two prose references. The value lives on line 277 of the reviewer original, one
-   line PAST the block body, so gate a is met against that trailer.
-b. Nine slice bodies recompute to their BEGIN-marker digests at their declared
-   line counts → SLICES=9 MISMATCH=0, exit 0: HDRFROM dfab3095… 1L, HDRTO
-   969938db… 1L, LRF5FROM 21a6a3f6… 1L, LRF5TO 21a8b66c… 23L, LR8FROM 686e2302…
-   1L, LR8TO 4894b692… 34L, LRDFROM 62450c77… 6L, LRDTO 39b40890… 12L, PLAN9
-   33ad2144… 28L. `sha256sum .agent/plan.md` → 33ad21444aed… == PLAN9, 28 lines.
-c. `git show --numstat 61adb419 -- .agent/live_review.md` → exit 0 → `68  7`:
-   deletion column exactly 7 = HDRFROM 1 + LRDFROM 6, as specified. Greps on
-   .agent/live_review.md: `^Landed:` → 0; `^Done:` → 2; `Next free ID: R-0277` → 1;
-   `^- R-0275` → 1; `^- R-0276` → 1; `^## Steps` → 1; `^<<<` → 0 (also 0 in
-   plan.md, 0 in handoff.md). ONE SUB-CHECK MISSED ITS SPECIFIED VALUE:
-   `grep -c 'Next free ID: R-0271'` → 1, not 0. Unmeetable by construction, not a
-   defect: the single hit is line 128, inside the reviewer's own R-0276 finding
-   body (slice LRF5TO, digest-verified in b), which QUOTES the stale value it
-   reports. The header the gate is about is correct — line-scoped,
-   `grep -c '^> Branch:.*Next free ID: R-0271'` → 0 and the R-0277 form → 1, and
-   line 8 reads `> Branch: feature/f107-context-compiler-v2. Next free ID: R-0277.`
-   The known "gate quotes its own marker" class. Reported, not repaired: I edited
-   nothing to turn this number green.
-d. `python3 -m pytest tests/cli/test_job_context_cmd.py -q` → exit 0 → 9 passed, 2.60s.
-e. `python3 -m pytest tests/test_command_catalog.py tests/test_grouped_cli.py -q`
-   → exit 0 → 505 passed, 36.87s.
-f. `python3 -m pytest tests/cli/test_golden_path.py -q` → exit 0 → 42 passed, 19.80s.
-g. `python3 -m ruff check apps/cli/commands/job_context_cmd.py
-   tests/cli/test_job_context_cmd.py apps/cli/command_catalog.py` → exit 0,
-   "All checks passed!".
-h. THE REAL RUN — a user invocation, not a test. Entry point: the installed console
-   script `remedy` (/home/decodeux/.local/bin/remedy; pyproject
-   `remedy = "apps.cli.grouped:main"`), so the forms below are literally typed.
-   Setup, all through the repo's own CLI: `remedy init` → exit 0 (project
-   demo-repo cc42fd01); `remedy job create "Harden the payment gateway retry path"`
-   → exit 0 → 994eb8d1-5ce5-4fd8-a150-2121bf391d07; `remedy job attach-repo
-   994eb8d1… <demo_repo>` → exit 0 → `Job 994eb8d1-… | repo=…/r9gate/demo_repo`.
-   Target repo: a REAL git checkout of 5 committed files under
-   .remedy-wt/r9gate/demo_repo — src/payment_gateway.py imports src/retry_policy.py
-   imports src/clock_source.py, while src/invoice_report.py and README.md are
-   imported by nothing. Task construction: Deviations 2.
-   FULL stdout of `remedy job context 994eb8d1-5ce5-4fd8-a150-2121bf391d07
-   --task T001`, exit 0:
-
-    Task context for job 994eb8d1 task T001 (52c783f1)
-      Fenced paths (1):
-        src/payment_gateway.py
-      Candidates: 5 (git ls-files)
-      Budget: 164 / 24000 tokens
-      Included (3):
-        Tier 1:
-          src/payment_gateway.py  full  73 tokens
-        Tier 2:
-          src/retry_policy.py  full  63 tokens
-        Tier 3:
-          src/clock_source.py  signatures  28 tokens
-      Omissions (2):
-        README.md  tier 4  distance  omitted
-        src/invoice_report.py  tier 4  distance  omitted
-
-   FULL stdout of the same command plus `--json`, exit 0:
+a. `cmp .agent/authored/f107-r10-1.md .agent/last_block.md` → exit 0, silent. `sha256sum`
+   both → d0117326ae081a8dfdbed793b4f791d9e321fcf2e1f78437cfd4c59f2514ef60, 311 lines
+   each — the value the reviewer original's trailer (its line 312) declares.
+b. Thirteen slice bodies recompute to their BEGIN-marker digests at their declared line
+   counts → SLICES=13 MISMATCH=0, exit 0: HDRFROM 969938db… 1L, HDRTO 9e0d720d… 1L,
+   LRF6FROM 01fa41b1… 1L, LRF6TO 32d977f8… 29L, LR9FROM 4abc6ab4… 1L, LR9TO fc6bc0db…
+   38L, LRD2FROM c87e031c… 1L, LRD2TO 7662036b… 14L, IDXQFROM 8b420a66… 1L, IDXQTO
+   6876d1e0… 2L, IDXGFROM 4e4f9bb9… 1L, IDXGTO cca85dad… 2L, PLAN10 fd7a81e4… 28L.
+   `sha256sum .agent/plan.md` → fd7a81e4…, 28 lines == PLAN10.
+c. `git show --numstat 58742979 -- .agent/live_review.md` → exit 0 → `79  1`: deletion
+   column exactly 1, HDR being the only REWRITE. `git show --numstat 58742979 --
+   docs/README.md` → exit 0, EMPTY: the index rows are in C6, not C3 (Deviation 1); at
+   C6, `git show --numstat f7d4551f -- docs/README.md` → `2  0`, deletion column 0 as
+   the gate specifies. Line-anchored greps on `.agent/live_review.md`:
+   `^> Branch:.*Next free ID: R-0280` → 1; `…R-0277` → 0; `^- R-0277` → 1; `^- R-0278`
+   → 1; `^- R-0279` → 1; `^Done:` → 4; `^Landed:` → 0; `^## Steps` → 1; `^<<<` → 0 —
+   and `^<<<` → 0 in .agent/plan.md, .agent/handoff.md and docs/README.md too. Every
+   sub-check met its specified value; nothing was edited to move a number.
+d. `python3 -m pytest tests/orchestration/test_context_compiler.py -q` → exit 0 → 61
+   passed, 0.17s (55 before this round; C5 adds 6).
+e. `python3 -m pytest tests/cli/test_job_context_cmd.py -q` → exit 0 → 9 passed, 2.56s.
+f. `python3 -m pytest tests/cli/test_golden_path.py -q` → exit 0 → 42 passed, 19.70s.
+g. `python3 -m pytest tests/docs/ -q` → exit 0 → 294 passed, 0.25s.
+h. `python3 -m ruff check packages/orchestration/context_compiler.py
+   tests/orchestration/test_context_compiler.py` → exit 0, "All checks passed!".
+i. PROBE, inside the disposable worktree `.remedy-wt/r10probe` at HEAD a6c56679 and
+   nowhere else: `target.write_text(payload + "\n")` → `target.write_text(payload)`
+   (numstat `1 1`). RED, which is the wanted answer:
+   `python3 -m pytest tests/orchestration/test_context_compiler.py -q` → exit 1 →
+   1 failed, 60 passed —
+   `test_write_context_size_comparison_json_creates_its_parent_and_round_trips` on
+   `assert written_text.endswith("\n")`. Worktree removed and pruned; `git worktree
+   list` is the primary checkout alone and `git status --porcelain` 0 lines after it.
+j. THE REAL RUN, not a test: `.remedy-wt/r10gate/gate_j_realrun.py` over the real
+   5-file git checkout `.remedy-wt/r9gate/demo_repo`, candidates from its own
+   `git ls-files -z` (README.md, src/clock_source.py, src/invoice_report.py,
+   src/payment_gateway.py, src/retry_policy.py), fenced `src/payment_gateway.py`.
+   `compare_context_size` → ContextSizeComparison(whole_file_tokens=215,
+   compiled_tokens=164, saved_tokens=51, saved_ratio=0.2372093023255814);
+   `write_context_size_comparison_json` created the missing parent and returned
+   `.remedy-wt/r10gate/realrun/context_size.json`. That file, VERBATIM:
 
     {
-      "job_id": "994eb8d1-5ce5-4fd8-a150-2121bf391d07",
-      "task_id": "52c783f1-815a-4bfb-a307-d2335de3e18e",
-      "task_label": "T001",
-      "fenced_paths": [
-        "src/payment_gateway.py"
-      ],
-      "candidate_count": 5,
-      "candidate_source": "git ls-files",
-      "estimated_tokens": 164,
-      "budget_tokens": 24000,
-      "over_budget": false,
-      "line_cap": 200,
-      "included": [
-        {
-          "path": "src/payment_gateway.py",
-          "tier": 1,
-          "rendering": "full",
-          "estimated_tokens": 73
-        },
-        {
-          "path": "src/retry_policy.py",
-          "tier": 2,
-          "rendering": "full",
-          "estimated_tokens": 63
-        },
-        {
-          "path": "src/clock_source.py",
-          "tier": 3,
-          "rendering": "signatures",
-          "estimated_tokens": 28
-        }
-      ],
-      "omissions": [
-        {
-          "path": "README.md",
-          "tier": 4,
-          "reason": "distance",
-          "outcome": "omitted"
-        },
-        {
-          "path": "src/invoice_report.py",
-          "tier": 4,
-          "reason": "distance",
-          "outcome": "omitted"
-        }
-      ]
+      "whole_file_tokens": 215,
+      "compiled_tokens": 164,
+      "saved_tokens": 51,
+      "saved_ratio": 0.2372093023255814
     }
 
-   Third run, decisive on "never guess a task": `remedy job context 994eb8d1…
-   --task T999` → exit 3, stderr exactly `Error: no task matches --task 'T999'` —
-   it names nothing it did not find. F107 now has a caller outside its own tests.
-i. `git status --porcelain` → exit 0 → 0 lines. `git worktree list` → the primary
-   checkout alone. HEAD == origin/feature/f107-context-compiler-v2 after the push;
-   before it, origin stood at 7acb406d, 7 commits behind — the branch had never
-   been pushed this round. Insertions per commit (`git show --numstat` summed):
-   65da6bfb 276, 7f66ccad 253, 61adb419 68, 7664b677 273, 6a56fe81 19,
-   f92a0359 231, b5575a88 12, C8 this file — each < 500.
-j. `git diff --name-only 7acb406d..HEAD` → exit 0 → exactly the nine Change-list
-   paths, nothing else: .agent/authored/f107-r9-1.md, .agent/last_block.md,
-   .agent/live_review.md, .agent/plan.md, .agent/handoff.md,
-   apps/cli/command_catalog.py, apps/cli/commands/__init__.py,
-   apps/cli/commands/job_context_cmd.py, tests/cli/test_job_context_cmd.py.
-   Measured at C1..C7 it returned 8; .agent/handoff.md is the ninth and arrives
-   with C8, so the count is 9 only from C8 onward.
+   whole_file_tokens = 215, compiled_tokens = 164. The 164 is the same number
+   `remedy job context … --task T001` prints for that repo, so the record and the
+   shipped view agree on the same selection.
+k. `git status --porcelain` → exit 0 → 0 lines. `git worktree list` → the primary
+   checkout alone. HEAD == origin/feature/f107-context-compiler-v2 after the push
+   (before it, origin stood at f86bda87). Insertions per commit: 2841b6a9 311,
+   30aaaa8e 249, 58742979 79, 4ea02ff0 60, 96a6bd66 132, f7d4551f 186, a6c56679 9,
+   C8 this file — each < 500.
+l. `git diff --name-only f86bda87..HEAD` → exit 0 → the Change list and nothing else:
+   .agent/authored/f107-r10-1.md, .agent/last_block.md, .agent/live_review.md,
+   .agent/plan.md, docs/README.md, docs/guides/job-context-view-user-guide-v0.md,
+   packages/orchestration/context_compiler.py,
+   tests/orchestration/test_context_compiler.py. Measured at C1..C7 that is 8 paths;
+   .agent/handoff.md is the ninth and arrives with C8, so the count is 9 only from C8 on.
 
 ## Authored-text proofs
 
-The reviewer original `.remedy-wt/f107-r9-1.block.md` survives on disk: 277 lines,
-17966 bytes, line 277 being the trailer `BLOCK_SHA256 (bytes above this line) =
-f8e42fd684fe23673b38f63799894cb976ac20d5c6be049986c60ae1a4fdbb81`. Its first
-17862 bytes (the block body) `cmp` exit 0 and silent against BOTH
-.agent/authored/f107-r9-1.md and .agent/last_block.md, and all three sha256 to
-f8e42fd6…bb81 at 276 lines — the declared BLOCK_SHA256 is met exactly. The four
-applied pairs are proven by the nine digest recomputations in b and the C3
-numstat `68 7` in c.
+The reviewer original `.remedy-wt/f107-r10-1.block.md` survives on disk: 312 lines,
+20764 bytes, line 312 the trailer `BLOCK_SHA256 (bytes above this line) = d0117326…`.
+Its first 20660 bytes (the block body, 311 lines) `cmp` exit 0 and silent against BOTH
+`.agent/authored/f107-r10-1.md` and `.agent/last_block.md`, and all three sha256 to
+d0117326ae081a8dfdbed793b4f791d9e321fcf2e1f78437cfd4c59f2514ef60. The six applied pairs
+are proven by the thirteen digest recomputations in b, by the C3 numstat `79 1` and the
+C6 numstat `2 0` in c, and by the pre-apply shape check: each FROM occurred exactly 1x
+in its target before replacement, HDR's TO disjoint from its FROM (the one REWRITE) and
+the other five TOs each literally containing their FROM (APPENDS).
 
 ## Deviations & assumptions
 
-1. Two block-text corrections, measured not repaired: gate a's BLOCK_SHA256
-   reference (Verification a) and gate c's `Next free ID: R-0271` → 0 sub-check
-   (Verification c). No file was edited to move either number.
-2. Gate h task construction. `remedy job plan` is the only CLI path that writes
-   `inputs["flight"]`, and it hard-requires a live Ollama planner
-   (apps/cli/commands/job.py:209 `OllamaPlanner()`), absent here. I did NOT
-   hand-write job JSON: I built a real validated
-   `FlightPlan(schema_v="flight_plan_v1", tasks=[PlannedTask(id="T001", …,
-   files_hint=["src/payment_gateway.py"])])` and passed it through the repo's own
-   `packages.orchestration.flight_plan.map_flight_plan_to_tasks` — the function
-   the block cites at flight_plan.py:513 — then `save_job`. Reload proves it:
-   task.id 52c783f1-815a-4bfb-a307-d2335de3e18e, planned_id T001, files_hint
-   ['src/payment_gateway.py'], target_repo …/.remedy-wt/r9gate/demo_repo.
-   Script: .remedy-wt/r9gate/gate_h_plan.py.
-3. Gate h target repo is a purpose-built 5-file git checkout rather than a large
-   existing one, because the block orders the FULL stdout pasted verbatim and a
-   large repo's tier-4 omission list runs to thousands of lines. The files are
-   real and committed, and are shaped so all four tiers appear at once.
-4. Line count: this file is 257 lines, over the block's 60 and over the AGENTS.md
-   100-line ceiling, declared under DECISION D15. Cause is mandated content, each
-   piece counted: the two verbatim gate-h stdout transcripts the block orders =
-   15 + 48 = 63 lines; the Commits section's eight per-commit changed-files tables,
-   which the handback template orders, = 44 lines; the item-status table = 10
-   lines. 117 of the 257 are those three blocks alone. No section was dropped to
-   fit and no transcript was padded.
-5. `docs/` was NOT updated for the new `remedy job context` command even though
-   AGENTS.md orders docs for new behaviour: the block's Change list is nine paths
-   "and nothing else", none under docs/. Flagged here so the reviewer can order it
-   in R10 or at closure rather than discover the absence then.
+1. docs/README.md is in C6, not C3. The block says both: PROCEDURE step 3 puts all six
+   pairs in C3 and gate c measures `docs/README.md` at C3, while the Bundle line ("C6
+   the user guide + the two index rows") and the Change list ("docs/README.md (C6, the
+   IDXQ and IDXG pairs ONLY)") put them in C6. I took C6, because
+   `tests/docs/test_docs_consistency.py::TestPrimaryDocLinksResolve` asserts every
+   relative link in docs/README.md resolves: an index row landing in C3 points at a
+   guide that does not exist until C6, so C3, C4 and C5 would each be a RED tree. Both
+   readings are reported in Verification c.
+2. C4 corrected a THIRD stale absolute claim the block does not name: the module
+   docstring (context_compiler.py:49-51) said "nothing writes evidence EXCEPT
+   `write_omitted_context_json`", which C4 makes false exactly like the two function
+   docstrings the block does name. Same reason, same fix.
+3. C4 added `from typing import Any` — the block's ordered signature
+   `-> dict[str, Any]` needs it and the module had no typing import.
+4. C5 is "append only" plus 4 lines inside the existing import block (CONTEXT_SIZE_
+   FILENAME, ContextSizeComparison, export_…, write_…): the appended cases cannot
+   reference the new names otherwise. No existing test line was changed.
+5. NOT fixed, flagged instead: `tests/orchestration/test_context_compiler.py:801`
+   still calls `write_omitted_context_json` "The one writing function" in a test
+   docstring — the same stale absolute claim class as Deviation 2, but editing it is
+   not an append, so the block's C5 constraint forbids it. A one-line fix for R11.
+6. Every block-cited line number was checked and all were correct: OMITTED_CONTEXT_
+   FILENAME at 931, write_omitted_context_json at 904 with the "ONLY writing function"
+   sentence at 907, the dataclass docstring at 997, compare_context_size at 1012, the
+   Public API list at 70-93, and the omissions-filename test at 963. No citation error
+   this round.
+7. Line count: this file is 197 lines, over the 60 of the block and over the AGENTS.md
+   100-line ceiling, declared under DECISION D15. Cause is mandated content, counted
+   mechanically: the Commits section's eight per-commit changed-files tables = 43
+   lines, the Verification section's twelve gates a-l with their real values including
+   gate j's verbatim JSON = 66 lines, the item-status table = 13 lines. 122 of the 197
+   are those three blocks. No section was dropped to fit; no transcript was padded.
 
 ## Item status
 
-| Item | Status | Reason                                                        |
-|------|--------|---------------------------------------------------------------|
-| C1   | done   | cmp exit 0, sha256 f8e42fd6… == BLOCK_SHA256, 276 lines        |
-| C2   | done   | cmp exit 0 silent against both the authored copy and original  |
-| C3   | done   | numstat `68 7`, deletions exactly 7 as specified               |
-| C4   | done   | 273 insertions; the module renders all four tiers in gate h    |
-| C5   | done   | job.context registered; catalog + grouped CLI 505 passed       |
-| C6   | done   | 9 passed, 2.60s                                                |
-| C7   | done   | plan.md sha256 == PLAN9 digest 33ad2144…, 28 lines             |
-| C8   | done   | this rewrite; pushed immediately after, gate i re-measured     |
+| Item | Status   | Reason                                                          |
+|------|----------|-----------------------------------------------------------------|
+| C1   | done     | cmp exit 0, sha256 d0117326… == BLOCK_SHA256, 311 lines           |
+| C2   | done     | cmp exit 0 silent against the authored copy and the original      |
+| C3   | done     | numstat `79 1`, deletion column exactly 1 (HDR, the one REWRITE)  |
+| C4   | done     | 60 insertions; constant + export + writer, selection untouched    |
+| C5   | done     | 61 passed (55 → 61); the probe in gate i is RED, so C5 bites      |
+| C6   | deviated | the two index rows land here, not in C3 — Deviation 1             |
+| C7   | done     | plan.md sha256 == PLAN10 digest fd7a81e4…, 28 lines               |
+| C8   | done     | this rewrite; pushed immediately after, gate k re-measured        |
 
 ## Next
 
-Reviewer gate on R9, range 7acb406d..HEAD. Then R10 = T004 part 2b: the end-to-end
-fixture task solved by the fake provider using the compiled context, plus the
-whole-file size comparison via `compare_context_size`.
+Reviewer gate on R10, range f86bda87..HEAD. Then R11 = T004 part 2b-ii: the fixture task
+solved by the fake provider with the compiled context as its JOB_CONTEXT segment, writing
+both records into the task's evidence directory.
