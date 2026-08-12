@@ -1,8 +1,7 @@
 # Handoff — F111 R3 — R2 gate persisted, R-0299 fixed
 
 Branch feature/f111-diff-only-repair, round base 5d8d8c56, from main 4e0b762e.
-No PR, no merge, main untouched, pushed after every commit (R-0289). Findings
-24 open, next free ID R-0300 — none registered this round, one landed.
+No PR, no merge, main untouched, pushed every commit. Findings 24 open, next R-0300.
 
 ## Commits (insertions from `git log --shortstat`; each < 500)
 | Item | SHA | Path | Ins |
@@ -55,7 +54,7 @@ h. `git rev-list --left-right --count origin/<branch>...HEAD` -> in handback, af
 | C6 | done | |
 | C7 | done | |
 Deviations, declared: C4 adds one test beyond the three ordered, none weakened;
-this file needed a second commit to come back under its own 60-line cap.
+this file needed two follow-up commits to come back under its own 60-line cap.
 
 ## Next expected action
 R4 — settle where the hunk line ranges come from, then wire them in.
