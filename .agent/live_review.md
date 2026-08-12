@@ -2550,3 +2550,4 @@
   feature's integration gate per docs/agents/integration_gate.md. R-0221 is
   known and will attribute phantom base-only failures through the UI auto-build
   mechanism; that is expected, not new.
+  Landed: R-0269 — the note now states what the directional guard proves and what it cannot catch, one paragraph in the measurement section of docs/system/cache-optimal-prompt-ordering-v1.md, in this round C4 commit.

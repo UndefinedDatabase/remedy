@@ -92,6 +92,20 @@ file asks for, `after_prefix >= before_prefix`, per role. Exact byte counts are
 deliberately not asserted: a legitimate later prompt change would then break a
 test that is not about content, and the goldens already own content.
 
+What that directional guard proves — and what it does not — was measured, not
+assumed. It proves a REGRESSION property: composition never orders a role's
+prompt WORSE than the hand-written original. It does not prove that the registry
+sorts at all. Force every registered segment to a single rank and the module
+stays fully green: five of the six roles do not move, because their registration
+order already equals rank order, and `plan` collapses to 227 — precisely its own
+`before_prefix` — so `>=` still holds on a prompt whose ordering advantage has
+been destroyed. The guard is not vacuous either: reverse the sort key and five
+of six roles fail, `orchestrator` at `after_prefix` 37 against `before_prefix`
+3872. What proves the SORT is the T003 goldens' rank assertions
+(`test_manifest_names_and_ranks`, `test_manifest_ranks_are_non_decreasing`);
+this module measures the ordering's VALUE. The two are complementary, and
+neither substitutes for the other.
+
 For `builder` and `reviewer` the goldens freeze RENDERS rather than templates,
 so the pre-migration render for a varied fixture is reassembled from the
 composed segments in the golden's own `_PRE_MIGRATION_ORDER`. That reassembly is
