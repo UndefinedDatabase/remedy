@@ -2550,4 +2550,96 @@
   feature's integration gate per docs/agents/integration_gate.md. R-0221 is
   known and will attribute phantom base-only failures through the UI auto-build
   mechanism; that is expected, not new.
-  Landed: R-0269 — the note now states what the directional guard proves and what it cannot catch, one paragraph in the measurement section of docs/system/cache-optimal-prompt-ordering-v1.md, in this round C4 commit.
+  Done: R-0269 — RESOLVED at R49 C4 (a8b6f66e). The note now carries, in its
+  measurement section, both halves of the truth: the directional guard proves a
+  REGRESSION property — composition never orders a role's prompt worse than the
+  hand-written original — and does NOT prove that the registry sorts, since
+  forcing every segment to one rank leaves `plan` at exactly its own
+  `before_prefix` of 227 with the assertion still passing, while reversing the
+  sort key does fail five of six roles. It names the T003 goldens' rank
+  assertions as the proof of the sort. Verified by the reviewer against the
+  committed diff, not the report: the paragraph's numbers match the reviewer's
+  own R48 worktree probe exactly, and both cited test names
+  (`test_manifest_names_and_ranks`, `test_manifest_ranks_are_non_decreasing`)
+  were confirmed to exist in the goldens. The durable doc now carries what only
+  a rewritten handoff carried before, which was the whole finding.
+- Reviewer gate on R49 (2026-08-12): PASS — and this is the INTEGRATION GATE
+  entry for F105, the one entry permitted to claim the full suite.
+  Range `9c80cf59..5786967b` = seven commits, exactly the fifteen paths the
+  block named, no production code and no test module among them. Insertions per
+  commit 209, 181, 69, 15, 268, 149 and 14, each far under 500.
+  Transport by the PRIMARY shape: `.remedy-wt/f105-r49-1.block.md`, the
+  committed `.agent/authored/f105-r49-1.md` and `.agent/last_block.md` all
+  three hash to
+  `2a191709a351799e814c69fb3754d8206660e08cb26c36d922903859336efba4`
+  at 209 lines; both `cmp` runs silent.
+  Stray reconcile over C3: 69 added, 1 removed, 0 stray. PAIR_ID measured as a
+  REWRITE, the ID line reading R-0270 1x and R-0269 0x; PAIR_LR measured
+  CONTAINS-FROM, FROM 1x before and 1x after.
+  THE FULL SUITE WAS RE-RUN BY THIS REVIEWER, not taken from the handback:
+  `python3 -m pytest -n auto -q` on the branch returns
+  `16462 passed, 19 skipped in 114.17s`, exit 0 — the same 16462/19/0 the
+  worker recorded at 99s, reproduced independently. Zero failures on the
+  branch, so `comm -13` is empty by construction and no branch-only id exists
+  to attribute. There is no BLOCKER.
+  The seven base-only ids are all
+  `tests/ui_server/test_live_state.py::TestUIServerIntegration::*` and all
+  belong to the R-0221 environment class. The attribution is the strongest this
+  branch has produced: the failure text names the cause (`Server did not start
+  in time`, stderr `ERROR: React UI not built.`), the predicate was MEASURED
+  rather than assumed (base dist 08:54:33 against newest base src 08:55:15 —
+  stale by construction, because `cp -a` preserves the dist mtime while
+  `git worktree add` stamps the sources fresh), and each of the seven passes on
+  a serial re-run at the merge base once R-0221's own test rebuilds dist there.
+  The reviewer confirmed `_frontend_is_stale()` reads exactly that predicate.
+  The parity claim was proved by CONTENT, not by trusting the env var: one
+  aggregate `apps/ui/dist` hash across all four readings, and the primary's
+  dist mtime unmoved, so nothing wrote through into the primary checkout. The
+  base worktree ran on the throwaway branch `tmp/base-gate` per DECISION D3,
+  and was removed, pruned and deleted with proof.
+  Membership of the class differs from F104 R7's six ids; the worker's reading
+  — xdist scheduling deciding which ids run before the mid-run rebuild, not a
+  growing defect — is consistent with all three methods existing at base. Flake
+  debt is NOT growing: zero branch-only failures this gate, against an alarm
+  threshold of ten.
+  Both declared deviations are ACCEPTED and both are self-reference limits, not
+  scope changes: a `Landed:` line committed with its own fix cannot name a
+  later SHA, and a gate row counting insertions per commit cannot count the
+  commit that writes it (C6b, the R47 C3b shape already accepted).
+  `LAST_REVIEWED_SHA` advances 9c80cf59 -> 5786967b.
+- Residual risks F105 closes on. Seven findings stay OPEN, every one Low or
+  Medium, none inside F105's own change set, none blocking acceptance — the
+  "listed as a documented Medium/Low risk" branch of
+  STATUS_closure_protocol.md precondition 1. No High finding is open, so the
+  `high_blockers_open` condition does not apply.
+  - R-0221 (Low) — the UI auto-build test rebuilds `apps/ui/dist` mid-suite and
+    costs every integration gate phantom base-only failures; exactly seven at
+    the R49 gate, all attributed. Not F105's code; routed to the F252
+    flake-debt class.
+  - R-0239 (Low) — a reviewer-authored gate citation named a path that does not
+    exist. The worker caught it, ran the real path and declared the correction,
+    so nothing was skipped and no number is wrong. It stays open as the record
+    of the citation-accuracy lesson, not as outstanding work.
+  - R-0247 (Low) — a reviewer-authored finding cited a line count of 101 where
+    the file was 100. The substance was untouched and the finding's own subject
+    was fixed. Same class as R-0239, same reason for staying open.
+  - R-0262 (Low) — `plan_job_llm` composes its prompt OUTSIDE the `try` that
+    turns a provider failure into a renderable result, so a raising composer
+    escapes the function. Pre-existing, real, and deliberately outside F105's
+    change set: F105 moved composition, it did not own error handling.
+  - R-0265 (Medium) — a provider that reports usage but no cache field leaves a
+    measured-looking `0` the ledger cannot distinguish from a real zero.
+    Documented in `docs/system/cache-optimal-prompt-ordering-v1.md` rather than
+    worked around; the fix belongs to the actuals producer.
+  - R-0266 (Medium) — the ledger's `role` is a hardcoded `builder` in
+    production data, so a per-role split of production rows is one bucket.
+    `remedy stats cache` prints that limit in its own output instead of burying
+    it. The fix is a producer change, out of scope here.
+  - R-0268 (Low) — a `.agent/STOP` file carries no provenance. Belongs to the
+    self-drive protocol, not to prompt composition.
+- R50: closure PREPARATION, not closure. The resolution above, this risk
+  register, the integrity check, the evidence bundle and a fresh review zip.
+  The STATUS line, the README sync and the closure PR are deliberately NOT in
+  this round: PR #189 is open from a non-`feature/*` branch, which the
+  AGENTS.md Open PR Gate makes stop-and-report, and only the operator can
+  resolve it. F105 stays `[~]`.
