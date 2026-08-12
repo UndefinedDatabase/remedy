@@ -1,155 +1,195 @@
-── STEP repair + close / F107 R12 — pin the DONE test, close the session ──
-Goal:        The end-to-end test that stands for F107's DONE condition is
-             pinned to the compiler's own output so disabling the compiled path
-             can no longer satisfy it (finding R-0283), the R11 verdict and its
-             three findings reach disk, and the handoff closes this session.
+── STEP integration gate / F107 R13 — full suite, branch and base ──
+Goal:        The integration gate runs for the first and only pre-closure time:
+             the full suite on this branch and at the merge base 2e4142c3, every
+             branch-only failure attributed by direct evidence, the whole run
+             committed as evidence under `.agent/gate_f107_r13/`. The R12 PASS
+             verdict, the resolution of R-0283 and the new finding R-0285 reach
+             `.agent/live_review.md` FIRST, so nothing is lost if this session
+             dies mid-suite.
 Bundle:      C1 save this block · C2 mirror it · C3 apply the four authored
-             live_review pairs · C4 the R-0283 test fix · C5 plan · C6 handoff.
+             live_review pairs · C4 the gate runs + their evidence dir · C5 plan
+             · C6 handoff.
 Change:      exactly these SIX paths, nothing else:
-             .agent/authored/f107-r12-1.md (new, C1)
+             .agent/authored/f107-r13-1.md (new, C1)
              .agent/last_block.md (C2)
              .agent/live_review.md (C3, the four pairs below ONLY)
-             tests/orchestration/test_context_compiler_e2e.py (C4)
-             .agent/plan.md (C5, full replacement by slice PLAN12)
+             .agent/gate_f107_r13/** (new dir, C4)
+             .agent/plan.md (C5, full replacement by slice PLAN13)
              .agent/handoff.md (C6)
 
 Constraints:
  - AGENTS.md is the highest authority. Self-review loop before every commit, one
    logical step per commit, push after the last one, clean tree at handback.
-   Never work on main, never force-push, never amend, rebase or revert.
- - NO PRODUCTION CODE MOVES THIS ROUND. `packages/` and `apps/` are frozen:
-   `packages/orchestration/pingpong_loop.py` and
-   `packages/orchestration/context_compiler.py` must be byte-identical at the
-   end of this round to what they are at its start. C4 touches ONE test file.
- - Do NOT run the integration gate and do NOT create a PR. Both belong to the
-   next session, and the handoff says so.
+   Never work on main, never force-push, never amend, rebase, revert or delete a
+   branch other than the throwaway `tmp/base-gate` this block creates.
+ - NO PRODUCTION CODE, NO TEST CODE MOVES THIS ROUND. `packages/`, `apps/` and
+   `tests/` are frozen: `git diff --stat d7dd12b6..HEAD -- packages apps tests`
+   must be EMPTY at handback. This round measures; it does not repair.
+ - A red integration gate is NOT repaired here. If a branch-only failure is
+   reproducible and coupled to F107 code, STOP after C4, record it, and hand
+   back — the fix is its own reviewer-gated round (integration_gate.md step 4).
+ - Do NOT create a PR, do NOT run the closure evidence job or the review zip,
+   do NOT edit docs/roadmap/STATUS.md. Closure is the next round.
+ - Do NOT write a `Done:` or `Landed:` line of your own anywhere.
  - Verify every claim against the file before you write it. If anything below
-   names a symbol, line or field that does not exist, STOP that item, do the
-   safe thing, and DECLARE the correction in the handback.
+   names a symbol, line, path or count that does not exist, STOP that item, do
+   the safe thing, and DECLARE the correction in the handback. A declared
+   deviation costs nothing; an undeclared one costs the round.
 
-Detail for C4 — the R-0283 fix, in
-tests/orchestration/test_context_compiler_e2e.py:
- The failing property is that
- `test_compiled_run_shrinks_the_context_and_still_solves_the_task` (at
- test_context_compiler_e2e.py:152) keeps passing when the compiled path is
- bypassed entirely, because a fall-through run without `mentioned_files` also
- produces a smaller context. Add to THAT test — keeping every assertion already
- in it — a pin that no fall-through can satisfy:
-   - compile the same fixture with `compile_task_context` and render it with
-     `render_compiled_context_text`, using the same fenced paths and candidate
-     list the test already passes to the run, and
-   - assert the compiled run's `context_chars` EQUALS `len(<that rendered
-     text>)` as a real number, not a bound.
- That ties the number the run reports to the bytes the compiler produced, so
- disabling the wiring changes the value and reddens the test. Import the two
- functions the way this module already imports from the compiler. Change no
- other test in the file and change no production code.
+Detail for C4 — the gate, per docs/agents/integration_gate.md. Read that file
+first; it governs, and what follows only pins this feature's specifics.
+ - Run logs are written OUTSIDE the repo worktree while a suite runs and copied
+   into `.agent/gate_f107_r13/` only after the run exits (R-0176: a log growing
+   inside the repo changes the worktree digest mid-run and reddens the
+   manifest-identity ids as false positives). Use `$HOME/.cache/remedy-gate/
+   f107-r13/` as the scratch dir. If writing there is refused, fall back to the
+   gitignored `.remedy-wt/gate-scratch/` and DECLARE the fallback.
+ - Evidence file names end in `.txt`, never `.log` (R-0169: `.gitignore` drops
+   `*.log` and the review-zip guard rejects any `\.log$` member).
+ 1. BRANCH RUN, from the repo root with a clean tree at the C3 head:
+    `python3 -m pytest -n auto -q`. Record in `branch_run.txt`: cwd, HEAD sha,
+    branch, the exact command, start/end UTC, the raw TAIL (last ~25 lines),
+    `PYTEST_EXIT_CODE` and wall_clock_seconds. Then
+    `grep '^FAILED' <log> | sort > .agent/gate_f107_r13/branch_failed.txt`
+    (an empty file if there are none — create it either way).
+ 2. BASE RUN. `git worktree add -b tmp/base-gate .remedy-wt/base-gate 2e4142c3`
+    — on a THROWAWAY BRANCH, never detached: the self-dogfood branch guard
+    refuses a detached HEAD by design (DECISION D3). Restore UI parity BY COPY,
+    never by symlink (the auto-build writes THROUGH a symlink into the primary
+    checkout): `cp -a apps/ui/node_modules` and `cp -a apps/ui/dist` into the
+    base worktree. Set `REMEDY_UI_NO_AUTO_BUILD=1` for the base run but do NOT
+    trust it alone. VERIFY the neutralization: record in `dist_hashes.txt` the
+    aggregate CONTENT hash of `apps/ui/dist` BEFORE and AFTER the base run, for
+    BOTH the base worktree and the primary checkout, by
+    `find apps/ui/dist -type f -print0 | sort -z | xargs -0 sha256sum |
+    sha256sum`. A changed PRIMARY hash means something wrote through — stop and
+    report it. A changed BASE hash voids the parity claim and forces per-id
+    attribution instead. Same command as step 1; record `base_run.txt` and
+    `base_failed.txt` the same way.
+ 3. COMPARE, into `comm_branch_only_failures.txt` (`comm -13 base_failed.txt
+    branch_failed.txt`) and `comm_base_only_failures.txt` (`comm -23`). Both
+    files are created even when empty.
+ 4. ATTRIBUTE, into `attribution.txt`, following the shape of the accepted
+    `.agent/gate_f105_r49/attribution.txt` (read it — it is the precedent, not a
+    template to copy blindly). It carries: the headline numbers for both runs
+    with real exit codes and wall clock; the collected-test delta between branch
+    and base with its cause; the two `comm` counts; and a PER-ID verdict table
+    in which EVERY id from BOTH comm files appears exactly once, none silently
+    absent. For every BRANCH-ONLY id: serial re-run of the exact node id —
+    serial-pass means the xdist-flake class (record, not a blocker); serial-fail
+    means reproduce it at the merge base before blaming F107. For every
+    BASE-ONLY id: name the missing artifact or the mechanism per id by direct
+    evidence, or it counts as a genuine base failure and blocks the verdict.
+    End the file with the line `VERDICT IS NOT ISSUED HERE` and the reason
+    (integration_gate.md step 5: only the reviewer issues the gate verdict).
+ 5. CLEAN UP, into `worktree_cleanup.txt`: `git worktree remove --force
+    .remedy-wt/base-gate`, `git worktree prune`, `git branch -D tmp/base-gate`,
+    then `git worktree list` and `git branch --list 'tmp/*'` as proof, with the
+    real exit codes. The primary checkout satisfies `git status --porcelain`
+    empty afterwards.
+ 6. Keep each evidence file small: TAILS and lists, never a full 16k-test log.
+    If any single evidence file would exceed 400 lines, trim it to the head and
+    tail with an explicit `[... N lines elided ...]` marker.
 
 Detail for C5 and C6:
- - Replace `.agent/plan.md` entirely with slice PLAN12.
- - Rewrite `.agent/handoff.md` as the SESSION-CLOSING handoff. It must state:
-   the rounds this session closed (R9, R10 and R11, all three reviewed PASS by
-   the in-session reviewer, plus this R12), `LAST_REVIEWED_SHA` standing at
-   04154822 with R12 itself awaiting review by construction
-   (docs/agents/planner_reviewer_prompt.md §4.13 — the last round of a session
-   has no on-disk gate entry and that absence is the TERMINATOR, not a missing
-   gate), the open-findings count and their IDs, that no PR exists and none was
-   created, that main is untouched, and that the next expected action is the
-   integration gate per docs/agents/integration_gate.md followed by closure.
+ - Replace `.agent/plan.md` entirely with slice PLAN13; `cmp` and `sha256sum`
+   against the marker.
+ - Rewrite `.agent/handoff.md` per docs/agents/handback_template.md. It must
+   carry: feature and round, branch, the per-commit changed-files table for
+   C1-C6, the verification table below with REAL exit codes and counted values,
+   BOTH gate headline numbers, the branch-only and base-only counts, the open
+   findings count and IDs, and the next expected action (closure per
+   docs/roadmap/STATUS_closure_protocol.md). Keep it under 100 lines; if the
+   mandated content genuinely does not fit, exceed the cap and carry the
+   DECISION D15 "Deviations, declared" line naming the real line count and the
+   specific mandated content that caused it. Never drop a section to fit.
 
-<<<BEGIN SLICE HDR3FROM sha256=f538e69d732216c02a2cbbe84f580095a5bb066fb2b1812babc020f96f1384f0 lines=1>>>
-> Branch: feature/f107-context-compiler-v2. Next free ID: R-0282.
-<<<END SLICE HDR3FROM>>>
-<<<BEGIN SLICE HDR3TO sha256=293430f9f6eda011d5a107e9dc689a9c59bd4de652c38a9588dffedc345ad444 lines=1>>>
+<<<BEGIN SLICE HDR4FROM sha256=293430f9f6eda011d5a107e9dc689a9c59bd4de652c38a9588dffedc345ad444 lines=1>>>
 > Branch: feature/f107-context-compiler-v2. Next free ID: R-0285.
-<<<END SLICE HDR3TO>>>
-<<<BEGIN SLICE LRF8FROM sha256=76c285627b795cf5a3df39f545e314f749823c92867bde2a931999298131e924 lines=1>>>
-  is worth one line: the next reader trusts it. Fixed in this round's C6. OPEN.
-<<<END SLICE LRF8FROM>>>
-<<<BEGIN SLICE LRF8TO sha256=a915e97199d94f9ca09930b53b2757b78efcdcf10d2f387557c194341db7016b lines=27>>>
-  is worth one line: the next reader trusts it. Fixed in this round's C6. OPEN.
-- R-0282 (Low, F107 R11): the R11 block's Change line said "exactly these nine
-  paths" and gate l repeated "nine", while the list under it enumerates EIGHT.
-  The worker measured 8, touched nothing outside the list, and declared the
-  discrepancy. Reviewer arithmetic, costing a deviation on a round that did
-  nothing wrong — the same tax R-0274, R-0277 and R-0280 record. OPEN.
-- R-0283 (Medium, F107 R11): `test_compiled_run_shrinks_the_context_and_still`
-  `_solves_the_task` — the test that stands for the FEATURE'S DONE CONDITION —
-  passes with the entire compiled path disabled. The reviewer measured it rather
-  than reading the disclosure: setting `use_compiled_context = False` in a
-  disposable worktree at 04154822 turns the e2e module to `3 failed, 3 passed`
-  and that test is among the THREE THAT STILL PASS. The cause is that the
-  baseline run passes `mentioned_files` while the fall-through compiled run
-  passes none, so its context is smaller for a reason that has nothing to do
-  with F107. A shrink assertion that a bypass satisfies pins nothing. The worker
-  found this itself, reported it, and deliberately did NOT repair it after
-  measuring, which would have made its own probe self-fulfilling — that is
-  exactly right, and it is why this is a finding against the round's test
-  strength and not against its honesty. Fixed in R12 C4 by pinning the compiled
-  run's `context_chars` to the length of `render_compiled_context_text` over the
-  same fixture, which no fall-through can satisfy. OPEN.
-- R-0284 (Low, F107 R11): two line citations in the R11 block were wrong —
-  `build_scope_contract_for_builder` sits at pingpong_loop.py:2741, not :2694,
-  and the stale "one writing function" string sat at
-  test_context_compiler.py:805, not :801. Both were declared, neither cost
-  anything but the declaring, and both are the reviewer-citation class the
+<<<END SLICE HDR4FROM>>>
+<<<BEGIN SLICE HDR4TO sha256=7e5c39d424ecde0c939bc254410e6ce2a3e7381f8df9c5313ac0319b928ee8c5 lines=1>>>
+> Branch: feature/f107-context-compiler-v2. Next free ID: R-0286.
+<<<END SLICE HDR4TO>>>
+<<<BEGIN SLICE LRF9FROM sha256=d4f14311bc105b46cd8d63a4d1028643cfbceb8a0e28a30c0d863e9c023f6615 lines=1>>>
   block's own constraint tells workers to expect. OPEN.
-<<<END SLICE LRF8TO>>>
-<<<BEGIN SLICE LR11FROM sha256=a0092d07a90fe1fce25c7b51fb4bc412c73de8eda9348efe42b8ef692eaf1fca lines=1>>>
-  `LAST_REVIEWED_SHA` advances f86bda87 -> c50080e0.
-<<<END SLICE LR11FROM>>>
-<<<BEGIN SLICE LR11TO sha256=7350212ff4331a36801bec89967102c8eaa34a2048e53001bf79e30805af91e5 lines=32>>>
-  `LAST_REVIEWED_SHA` advances f86bda87 -> c50080e0.
-
-- Reviewer gate on R11 (2026-08-12): PASS — and this is the round that makes
-  F107's DONE condition real. Range c50080e0..04154822 = eight commits touching
-  the EIGHT paths the R11 block enumerated (its prose said nine; that is
-  R-0282). Transport by the PRIMARY shape: the reviewer original
-  `.remedy-wt/f107-r11-1.block.md` survives, its body is byte-identical to
-  `.agent/authored/f107-r11-1.md` and `.agent/last_block.md`, all three sha256
-  to 121401148a1ec2f1… at 314 lines, and all nine slice bodies recompute to
-  their BEGIN-marker digests. `git show --numstat 815e4294 --
-  .agent/live_review.md` reads `78  1` — one deletion, HDR2 being the only
-  REWRITE — and the anchored greps return exactly their specified values
-  (R-0282 header 1, R-0280 header 0, `^- R-0280` 1, `^- R-0281` 1, `^Done:` 7,
-  `^Landed:` 0). Every gate was RE-RUN by this reviewer: 6 passed on the new
-  end-to-end module, 61 on the compiler suite, 42 on the canary, `ruff check`
-  "All checks passed!", and THE REGRESSION GATE HELD — `test_pingpong.py` plus
-  `test_pingpong_integration.py` return 43 passed, the same 43 measured before
-  C4 touched the loop every job runs through. The C4 diff was read line by line:
-  three keyword-only parameters that default to today's behaviour, one
-  all-or-nothing branch, a local import inside that branch, records written only
-  where the caller points, and `build_repo_context` reached unchanged in every
-  other case — the default path does not move. GATE j WAS RE-RUN, not read: the
-  fixture repo runs twice through `run_pingpong` with `FakeProvider`, and BOTH
-  runs reach `staged_review_passed` while `context_chars` falls 4613 -> 899 and
-  the size record reads whole_file_tokens 1067, compiled_tokens 195,
-  saved_tokens 872, saved_ratio 0.817244611059044, with `src/invoice_report.py`
-  omitted for `distance`. A fixture task is solved by the fake provider on a
-  context 81.7% smaller, and the omissions record explains the exclusion: that
-  is the feature file's Done sentence, measured. All ten declared deviations
-  re-measured accurate; the substantive one is registered as R-0283 after the
-  reviewer reproduced it independently, and the two citation errors are R-0284.
+<<<END SLICE LRF9FROM>>>
+<<<BEGIN SLICE LRF9TO sha256=f9fbc76db0379359d58ea731e672fc4517f96b643bcd2c46f7eecb01e10f9604 lines=11>>>
+  block's own constraint tells workers to expect. OPEN.
+- R-0285 (Low, F107 R12): the R12 block's gate c ordered `grep -c '^Landed:'` ->
+  0 over `.agent/live_review.md` in the one round whose C4 LANDED a fix for
+  R-0283, and its Change line confined that file to the four authored pairs.
+  docs/agents/planner_reviewer_prompt.md §4.4 tells a worker to mark exactly
+  that case `Landed: R-XXXX` in this file, so the block's own zero-gate made the
+  protocol's marker unwritable. The worker obeyed the gate, put the landed note
+  in the handoff header instead, and declared the conflict as its deviation 4 —
+  the right call, and the fifth reviewer-block defect this feature has taxed a
+  worker with (R-0274, R-0277, R-0280, R-0282). The rule the next block follows:
+  a zero-gate over `^Landed:` is safe only in a round that lands no fix. OPEN.
+<<<END SLICE LRF9TO>>>
+<<<BEGIN SLICE LR12FROM sha256=3d16eef41d6b61b3c0822acb5c9f086bc294fca82be5bc1b521880c1747311d3 lines=1>>>
   `LAST_REVIEWED_SHA` advances c50080e0 -> 04154822.
-<<<END SLICE LR11TO>>>
-<<<BEGIN SLICE LRD4FROM sha256=55be908927376fe34b1bb62554ba38db2fadd9cdbdc5afc9829a4e09567ffc14 lines=1>>>
-that made the ordering matter. Open findings 13 -> 12.
-<<<END SLICE LRD4FROM>>>
-<<<BEGIN SLICE LRD4TO sha256=d1bbafad03b72039a82ace9c68beabe85877e239c9de8377542eb2ed84692f39 lines=8>>>
-that made the ordering matter. Open findings 13 -> 12.
+<<<END SLICE LR12FROM>>>
+<<<BEGIN SLICE LR12TO sha256=3151e03906add1042ef8db1ba087aea57fe5b8877621ff50c7c607a04fe88b5d lines=36>>>
+  `LAST_REVIEWED_SHA` advances c50080e0 -> 04154822.
 
-Done: R-0281 — RESOLVED. `tests/orchestration/test_context_compiler.py` no
-longer calls `write_omitted_context_json` "the one writing function" (commit
-b4e9d423, numstat `1 1` — one line changed and nothing else in the file), and
-the reviewer's own re-run of that module returns 61 passed. The stale-absolute
+- Reviewer gate on R12 (2026-08-12): PASS, and the round's decisive claim was
+  reproduced in BOTH directions rather than read. Range 04154822..d7dd12b6 = six
+  commits over exactly the six paths the R12 block enumerated, `git diff
+  --name-only` returning that set and nothing else. Transport by the PRIMARY
+  shape: `cmp .agent/authored/f107-r12-1.md .agent/last_block.md` exits 0 and
+  silent under this reviewer's own run, both files sha256 to
+  edc2563b00979927cd17d8837a3887d1b17620ea0fcf5844cbb20b9f92bbac54 at 242 lines
+  — the value the R12 block's BLOCK_SHA256 trailer declares — and
+  `.agent/plan.md` hashes to a949117f430008cc… as slice PLAN12 specified.
+  `git show --numstat e7c700fc -- .agent/live_review.md` reads `65  1`: one
+  deletion, HDR3 the only REWRITE. The anchored counts hold on disk now —
+  `^Done:` 8, `^Landed:` 0, `^## Steps` 1, and `^<<<` 0 in live_review.md,
+  plan.md and handoff.md alike.
+  THE PROBE WAS RE-RUN BY THIS REVIEWER, twice, inside the disposable worktree
+  `.remedy-wt/r13probe` and nowhere else, with the same one-line mutation
+  `use_compiled_context = False` at pingpong_loop.py:2662 (`git diff --numstat`
+  `1  1` each time). At 04154822 the e2e module returns 3 failed, 3 passed and
+  `test_compiled_run_shrinks_the_context_and_still_solves_the_task` is among the
+  THREE THAT STILL PASS — R-0283 reproduced independently, not quoted. At
+  d7dd12b6 the same mutation returns 4 failed, 2 passed and that same test is
+  now among the failures, on the new pin, verbatim `assert
+  compiled.context_chars == len(expected_compiled_text)` -> `E assert 265 ==
+  899`. 265 is the fall-through pack, 899 the compiler's own rendered bytes: the
+  test that stands for F107's DONE condition finally bites the wiring it names.
+  The worktree was removed and pruned; `git worktree list` is the primary
+  checkout alone and `git status --porcelain` is empty. Every other gate re-run
+  green by this reviewer: 6 passed on the e2e module, 43 on `test_pingpong.py`
+  plus `test_pingpong_integration.py` — the same 43 R11 measured, so the loop
+  every job runs through did not move — 42 on the canary, `ruff check` "All
+  checks passed!", `git diff --stat 04154822..HEAD -- packages apps` EMPTY, and
+  each commit's insertion column under 500 (242, 177, 65, 12, 8, 112). All six
+  declared deviations re-measured accurate; deviation 4 becomes R-0285 because
+  the conflict it declared was the block's, not the worker's.
+  `LAST_REVIEWED_SHA` advances 04154822 -> d7dd12b6.
+<<<END SLICE LR12TO>>>
+<<<BEGIN SLICE LRD5FROM sha256=04f58aa97661534430c6bf142337ebd148a6fc083f7b7338154b6e3f8edafb0e lines=2>>>
 claim class now has no live instance in this feature's files. Open findings
 15 -> 14.
-<<<END SLICE LRD4TO>>>
-<<<BEGIN SLICE PLAN12 sha256=a949117f430008cca4e2dd7dfcbbf9e43b576314f2f09947c4b228f89c5b095b lines=27>>>
+<<<END SLICE LRD5FROM>>>
+<<<BEGIN SLICE LRD5TO sha256=858484d44f4f018b1e17b5fa6ec486658123dea86e9eb5818f161eaf051e3e23 lines=12>>>
+claim class now has no live instance in this feature's files. Open findings
+15 -> 14.
+
+Done: R-0283 — RESOLVED. The end-to-end test that stands for F107's DONE
+condition no longer passes with the compiled path disabled. Commit 0df94864
+(numstat `12  0`, one test file, no production byte moved) pins the compiled
+run's `context_chars` to `len(render_compiled_context_text(...))` over the same
+fixture, and this reviewer's own mutation probe — `use_compiled_context = False`
+in a disposable worktree — turns the module from `3 failed, 3 passed` at
+04154822, where the test PASSED, to `4 failed, 2 passed` at d7dd12b6, where it
+fails on `assert 265 == 899`. A bypass can no longer satisfy the feature's Done
+sentence. Open findings 14 -> 13.
+<<<END SLICE LRD5TO>>>
+<<<BEGIN SLICE PLAN13 sha256=4434ae2d39625ad4a555b7c4adc9f759123563c5c41906e78f928db8971d0e63 lines=27>>>
 # Plan — F107 Context compiler v2
 
 Branch: feature/f107-context-compiler-v2, cut from main at 2e4142c3.
-Next free finding ID: R-0285. R11 reviewed PASS at 04154822.
+Next free finding ID: R-0286. R12 reviewed PASS at d7dd12b6.
 
 ## Goal
 The context compiler selects fenced-path files, their direct import
@@ -161,82 +201,80 @@ solvable by the fake provider, and the omissions record explains every
 exclusion (docs/roadmap/features/T2_F107.md).
 
 ## Current Step
-R12 — repair and session close: the DONE-condition end-to-end test is pinned to
-the compiler's own output so a bypass can no longer satisfy it (finding
-R-0283), the R11 verdict and three findings are persisted, and the handoff
-closes the session. T004 is complete: the CLI view, the records and the
-end-to-end run all exist and were re-measured by the reviewer.
+R13 — the integration gate per docs/agents/integration_gate.md: the full
+suite on the branch and at the merge base 2e4142c3, every branch-only
+failure attributed by direct evidence, the evidence committed under
+`.agent/gate_f107_r13/`. The R12 PASS verdict, its finding R-0285 and the
+resolution of R-0283 land in the same round. T001-T004 are complete and
+reviewed; no production code moves here.
 
 ## Next Steps
-1. Integration gate per docs/agents/integration_gate.md — the full suite, the
-   first of the two runs a feature gets.
-2. Closure per docs/roadmap/STATUS_closure_protocol.md: evidence job, a FRESH
-   review zip, the authored STATUS line, then the PR. The branch has no PR yet
-   and it is never merged in the session that creates it.
-<<<END SLICE PLAN12>>>
+1. Closure per docs/roadmap/STATUS_closure_protocol.md: evidence job, a FRESH
+   review zip, the reviewer-authored STATUS line, then the PR.
+2. The closure PR is never merged in the session that creates it; it merges at
+   the next feature's start via the AGENTS.md Open PR Gate.
+<<<END SLICE PLAN13>>>
 
 PROCEDURE — in this order, one commit per numbered step:
  1. Save this ENTIRE block, byte for byte, from the `── STEP` line to the last
-    line of this procedure, to `.agent/authored/f107-r12-1.md`. The expected
-    digest is the BLOCK_SHA256 line that the reviewer original
-    `.remedy-wt/f107-r12-1.block.md` carries as its LAST line; that trailer sits
+    line of this procedure, to `.agent/authored/f107-r13-1.md`. The expected
+    digest is the BLOCK_SHA256 line the reviewer original
+    `.remedy-wt/f107-r13-1.block.md` carries as its LAST line; that trailer sits
     one line PAST the region you save and is not part of the saved bytes. Verify
     BEFORE anything else; on mismatch STOP and report, never repair bytes.
     Commit C1.
  2. Copy that file over `.agent/last_block.md`; `cmp` the two, exit 0 and
     silent. Commit C2.
  3. Apply the four pairs to `.agent/live_review.md` by exact-string replacement
-    of the FROM body with the TO body, verifying each slice's sha256 BEFORE use.
-    HDR3 is a REWRITE (FROM and TO are disjoint); LRF8, LR11 and LRD4 are
-    APPENDS (each TO literally contains its FROM). Commit C3 alone.
- 4. C4, its own commit, self-review loop before it.
- 5. Replace `.agent/plan.md` entirely with slice PLAN12; `cmp` and `sha256sum`
-    against the marker. Commit C5.
+    of the FROM body with the TO body, verifying each slice's sha256 BEFORE use
+    and checking that each FROM occurs exactly 1x before you replace it. HDR4 is
+    a REWRITE (FROM and TO are disjoint); LRF9, LR12 and LRD5 are APPENDS (each
+    TO literally CONTAINS its FROM). Commit C3 alone. Do not touch this file
+    again for the rest of the round.
+ 4. Run the gate exactly as Detail-C4 prescribes, then commit the evidence dir
+    as C4. The branch run happens at the C3 head with a clean tree.
+ 5. Replace `.agent/plan.md` entirely with slice PLAN13. Commit C5.
  6. Run every gate in Done-when, record the REAL exit code and counted value of
-    each, then rewrite `.agent/handoff.md` and commit C6. Push.
- 7. Do NOT write a `Done:` line of your own.
+    each, then rewrite `.agent/handoff.md` and commit C6. Push the branch.
 
 Done when — run each, record exit code AND counted value:
- a. `cmp .agent/authored/f107-r12-1.md .agent/last_block.md` → exit 0, silent;
+ a. `cmp .agent/authored/f107-r13-1.md .agent/last_block.md` -> exit 0, silent;
     `sha256sum` of both == the BLOCK_SHA256 trailer named in step 1.
  b. Each of the nine slice bodies recomputes to its BEGIN-marker digest at its
     declared line count.
- c. `git show --numstat <C3> -- .agent/live_review.md` → the deletion column is
-    exactly 1, HDR3 being the only REWRITE. Then, LINE-ANCHORED (finding
-    R-0278): `grep -c '^> Branch:.*Next free ID: R-0285'` → 1;
-    `grep -c '^> Branch:.*Next free ID: R-0282'` → 0; `grep -c '^- R-0282'` → 1;
-    `grep -c '^- R-0283'` → 1; `grep -c '^- R-0284'` → 1; `grep -c '^Done:'` →
-    8; `grep -c '^Landed:'` → 0; `grep -c '^## Steps'` → 1; `grep -c '^<<<'` → 0
-    (also 0 in `.agent/plan.md` and `.agent/handoff.md`).
- d. `python3 -m pytest tests/orchestration/test_context_compiler_e2e.py -q` →
-    exit 0, 6 passed.
- e. THE PROBE THAT DECIDES THIS ROUND, inside a disposable `git worktree` at
-    HEAD and nowhere else: set `use_compiled_context = False` in
-    `packages/orchestration/pingpong_loop.py` — the same mutation that produced
-    `3 failed, 3 passed` at 04154822 — re-run the e2e module, and report the
-    exact counts and the names of the failing tests. The fix is proven only if
-    `test_compiled_run_shrinks_the_context_and_still_solves_the_task` is now
-    AMONG THE FAILURES. Remove and prune the worktree, then confirm
-    `git status --porcelain` is empty and the mutated file is unchanged in the
-    primary checkout.
- f. Regression, because the e2e module exercises the loop:
-    `python3 -m pytest tests/orchestration/test_pingpong.py
-    tests/orchestration/test_pingpong_integration.py -q` → exit 0, 43 passed.
- g. Canary: `python3 -m pytest tests/cli/test_golden_path.py -q` → exit 0, 42
-    passed.
- h. `python3 -m ruff check tests/orchestration/test_context_compiler_e2e.py` →
-    exit 0.
- i. `git diff --stat 04154822..HEAD -- packages apps` → EMPTY output: no
-    production file moved this round.
- j. `git status --porcelain` → empty; `git worktree list` → primary checkout
-    alone; HEAD == origin/feature/f107-context-compiler-v2; insertions per
+ c. `git show --numstat <C3> -- .agent/live_review.md` -> the deletion column is
+    exactly 1, HDR4 being the only REWRITE. Then, LINE-ANCHORED:
+    `grep -c '^> Branch:.*Next free ID: R-0286'` -> 1;
+    `grep -c '^> Branch:.*Next free ID: R-0285'` -> 0; `grep -c '^- R-0285'` ->
+    1; `grep -c '^Done:'` -> 9; `grep -c '^Landed:'` -> 0;
+    `grep -c '^## Steps'` -> 1; `grep -c '^<<<'` -> 0 (also 0 in
+    `.agent/plan.md` and `.agent/handoff.md`).
+ d. THE GATE ITSELF. Report, as raw values, for BOTH runs: the exact command,
+    the passed/skipped/failed counts, the pytest exit code and the wall clock.
+    Report the two comm counts. Report, per branch-only id, its serial re-run
+    result. The gate is GREEN for the reviewer only if every branch-only id is
+    either absent or attributed to the xdist-flake class by a serial pass, and
+    every base-only id is attributed to the environment class by named direct
+    evidence.
+ e. `sha256sum .agent/plan.md` == the PLAN13 marker digest; `cmp` against the
+    extracted slice -> exit 0, silent; the file is 27 lines.
+ f. Canary, in the primary checkout after the worktree is gone:
+    `python3 -m pytest tests/cli/test_golden_path.py -q` -> exit 0, 42 passed.
+ g. `git diff --stat d7dd12b6..HEAD -- packages apps tests` -> EMPTY output.
+ h. `git status --porcelain` -> empty; `git worktree list` -> the primary
+    checkout ALONE; `git branch --list 'tmp/*'` -> empty; HEAD ==
+    origin/feature/f107-context-compiler-v2 after the push; insertions per
     commit, each < 500.
- k. `git diff --name-only 04154822..HEAD` → exactly the six paths of the Change
-    list, nothing else.
+ i. `git diff --name-only d7dd12b6..HEAD` -> exactly the paths of the Change
+    list and nothing else (the sixth, `.agent/handoff.md`, arrives with C6, so
+    a measurement taken before C6 legitimately shows five plus the gate dir —
+    say which you measured).
+ j. `remedy integrity check --json` -> record the verdict verbatim. This is a
+    closure precondition (STATUS_closure_protocol.md precondition 3) and the
+    next round needs the value; a non-PASS is reported, not repaired here.
 
 Handback: completion report + rewrite `.agent/handoff.md` per
 docs/agents/handback_template.md, with the changed-files table, the item-status
 table covering C1-C6, and every gate above with its real exit code and counted
-value. Declare any deviation; a declared deviation costs nothing, an undeclared
-one costs the round.
+value. Declare any deviation.
 ──────────────────────────────────────────────────────────────
