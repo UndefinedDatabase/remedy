@@ -382,3 +382,53 @@ disclosed by the round itself rather than found at a gate.
   this is registered at the round where it was noticed rather than backdated.
   Fix: every future block's handback item names the Fortschritt line as
   mandated content. OPEN.
+
+### R6 — PASS (2026-08-13)
+Reviewed by the main session over d0952432..b1e5cc7e, a state-only round. Every
+gate was re-run by the reviewer, not read off the handback: `python3 -m pytest
+tests/orchestration/test_diff_repair.py tests/orchestration/test_test_runner.py
+-q` exit 0, 81 passed (30 unchanged plus 51); `python3 -m pytest
+tests/cli/test_golden_path.py -q` exit 0, 42 passed (canary). Transport:
+PRIMARY cmp proof, no digest fallback — `.remedy-wt/f111r7` aside,
+`.remedy-wt/f111r6/BLOCK`, `.agent/authored/f111-r6-1.md` and
+`.agent/last_block.md` are byte-identical, and both content slices occur
+EXACTLY ONCE in `.agent/live_review.md` by `str.count` against the originals.
+Append purity by numstat: `63 0` for the findings commit and `4 3` for the
+resolution commit, the delete column matching the three `Landed:` lines that
+became `Done:` text. Markers: 29 `- R-0`, 4 `Done:`, 0 `Landed:` (exit 1, the
+pass), 1 `### R5 — PASS`. Caps: `.agent/plan.md` 46 lines; per-commit
+insertions 116/94/63/4/21/59, each under 500. `git status --porcelain` empty,
+`git worktree list` one entry, remote comparison `0 0`. Scope: exactly the five
+ordered paths, no production, test or docs file touched.
+
+Deviation ACCEPTED: C5 kept two Risks entries where the block said "the two
+existing Risks entries" and `.agent/plan.md` in fact carried THREE. The worker
+kept the two durable ones and dropped the stale third — the note saying the R4
+`source_patch_applied` hypothesis "is deleted here", which R-0302's resolution
+retires — and declared the deviation rather than guessing silently. That is the
+correct call on the merits; the arithmetic error is the reviewer's and is
+registered as R-0305 below.
+
+- R-0305 (Low, F111 R6, reviewer-side arithmetic in an authored block): the R6
+  step block instructed "Keep the two existing Risks entries" against a
+  `.agent/plan.md` whose Risks section held three bullets. A worker told to
+  keep two of three must either drop one on its own judgement or stop, and this
+  one dropped the correct bullet and declared it — but the block put it in that
+  position for no reason. Same class as R-0282 (a block naming nine paths over
+  a list of eight): counts inside authored blocks are asserted from memory
+  instead of measured against the file the block is about. The rule that
+  follows: any count an authored block states about an EXISTING file is read
+  off that file at authoring time, the way section 3 checklist item 6 already
+  requires for zero-gates. OPEN.
+
+- R-0306 (Low, F111 R6, incomplete handoff): the R6 handback declared C5
+  `deviated` with its reason, but `.agent/handoff.md` records C5 as plain
+  `done` with an empty Reason cell, so the deviation exists only in the chat
+  handback and not on disk. AGENTS.md "Completion Report — Item-Status Table"
+  requires the status values `done`, `skipped` and `deviated` with reasons, and
+  docs/agents/planner_reviewer_prompt.md section 4.8 makes the handoff the only
+  return channel — an outcome absent from it is a finding by construction. The
+  round itself is unaffected: the deviation was disclosed, reviewed and
+  accepted at this gate, and this entry is what puts it on disk. Fix: the
+  item-status table in the handoff carries the same status the handback
+  declares, always. OPEN.
