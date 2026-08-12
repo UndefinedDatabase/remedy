@@ -2444,3 +2444,41 @@
   the STOP file FIRST and, per Phase 1 rule 1, writes its handoff and ends
   without starting work until the operator removes it — which is the whole
   point of the file.
+- Reviewer gate on R47 (2026-08-12): PASS. Range `aad00eee..5e55669d` = five
+  commits, exactly the five paths the block named. Insertions per commit 140,
+  126, 58, 102 and 12, each far under 500.
+  Transport by the PRIMARY shape: `.remedy-wt/f105-r47-1.block.md`, the
+  committed `.agent/authored/f105-r47-1.md` and `.agent/last_block.md` all
+  three hash to
+  `318a9c5d57188d45ea659ba8c25c0e54df99971070eaca5051c63531baa39fec`
+  at 140 lines; both `cmp` runs silent.
+  Stray reconcile over C2: 58 added, 1 removed, 0 stray — the single removal
+  is the PAIR_ID FROM line its own REWRITE replaces.
+  Pair shapes MEASURED, both exactly as declared: PAIR_ID a rewrite, the ID
+  line now reading R-0269 1x and R-0268 0x; PAIR_LR contains-from, appended at
+  its unique tail anchor.
+  Gates re-run by THIS reviewer, none taken from the handback:
+  `python3 -m pytest tests/docs/ -q` `294 passed in 0.26s`;
+  `tests/ui_server/test_dashboard_contract.py` `70 passed in 4.44s`; the canary
+  `42 passed in 19.58s`; `.agent/plan.md` 47 lines carrying both mandated
+  headings; exactly one `^## Steps` heading in this file; `^<<<` 0 in all three
+  written state files; `git worktree list` shows the primary ALONE.
+  `.agent/STOP` is GONE at review time. The operator removed it between the
+  sessions — which is precisely the mechanism G6 exists to serve, and the
+  reason work resumes here. `git status --porcelain` is empty.
+  The handoff's ONE declared structural deviation, C3b, is ACCEPTED: a gate row
+  reporting insertions per commit cannot carry its own commit's count until
+  that commit exists, so filling it in afterwards beats leaving a placeholder
+  in an evidence table. It touches only a path the block already named.
+  The R-0268 placement note is ACCEPTED as honest disclosure, and the placement
+  is the REVIEWER's doing, not the worker's: PAIR_LR's only anchor was the tail
+  step line, so the finding landed inside `## Steps` rather than under
+  `## Findings`. The worker executed the authored bytes exactly. It costs
+  nothing but this sentence.
+  `LAST_REVIEWED_SHA` advances aad00eee -> 5e55669d.
+- R48: SPLIT round — T004's remaining half. The cacheable prefix per role is
+  measured before and after the migration, from the goldens' own frozen
+  pre-migration forms, and the honest note lands in a new ist-doc. The
+  provider-side cache-read share stays UNMEASURED and the note says so: no
+  `ledger.sqlite` exists anywhere in this checkout, so there are no actuals to
+  read and any number there would be invented.
