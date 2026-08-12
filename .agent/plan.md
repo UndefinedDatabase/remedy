@@ -1,8 +1,8 @@
 # Plan — F111 Diff-only repair
 
 Branch: feature/f111-diff-only-repair, cut from main at 4e0b762e, unmerged.
-Last reviewed SHA: d0952432 (R5 PASS). Next free finding ID: R-0305.
-Open findings: 25, none above Medium.
+Last reviewed SHA: b1e5cc7e (R6 PASS). Next free finding ID: R-0307.
+Open findings: 27, none above Medium.
 
 ## Goal
 Repairs stop resending whole files: a repair round carries only the
