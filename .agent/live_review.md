@@ -101,6 +101,18 @@
   custom cap today, so nothing on disk is wrong yet — but T004 part 2 is the
   first caller and must not inherit it. Fixed in R7 per DECISION D-F107-2.
   OPEN.
+- R-0274 (Low, F107 R7): the R7 step block CONTRADICTED ITSELF about where the
+  `Landed: R-0273` line belongs. Its Change line scoped `.agent/live_review.md`
+  to "authored pairs LRF3 and LR6 in C3 only", while PROCEDURE step 8 directed
+  the worker to write the `Landed:` line and carry it in commit C5. The same
+  step also asked for "which commit" INSIDE the very commit that writes the
+  line, which no commit can satisfy: a commit cannot contain its own SHA. The
+  worker read both, applied the safe reading, named the commit by subject
+  instead of by SHA, and DISCLOSED both points in its handback rather than
+  guessing silently — the wanted behavior, and the reason neither cost a round.
+  Fourth entry in the contract-accuracy class after R-0239, R-0247 and R-0272:
+  a reviewer-authored block must not contradict itself and must not order a
+  value that cannot exist. OPEN.
 
 ## Steps
 
@@ -344,6 +356,53 @@ docs/roadmap/STATUS_closure_protocol.md.
   not a finding: `context_compiler.py` still has no caller outside its own
   test module, so F107 remains a library that is not yet wired to anything a
   user can run. `LAST_REVIEWED_SHA` advances 54bc56c2 -> 861eb371.
+- Reviewer gate on R7 (2026-08-12): PASS. Range 861eb371..6acb3f04 = eight
+  commits touching exactly the seven paths the R7 block named. Transport by the
+  PRIMARY shape: `cmp` of `.remedy-wt/f107-r7-1.block.md` against
+  `.agent/authored/f107-r7-1.md` and against `.agent/last_block.md` is silent,
+  all three at 328 lines, and all five slice bodies recompute to their
+  BEGIN-marker digests at their declared lengths (LRF3FROM 4ad9497d… 1 line,
+  LRF3TO e3fdd106… 20, LR6FROM d85c84ac… 1, LR6TO dac43442… 50, PLAN6
+  047fcc7a… 28); `sha256sum .agent/plan.md` returns that same PLAN6 digest.
+  Both C3 pairs were APPEND-shaped and proven as such: `git show --numstat
+  4909b1b1 -- .agent/live_review.md` reads `68  0` — ZERO deletions — each FROM
+  still occurs exactly 1x, each of the 19 LRF3TO and 49 LR6TO TO-only lines
+  occurs exactly 1x among the 68 added lines, and 0 added lines belong to
+  neither body. Every scoped gate was RE-RUN by the reviewer: the module suite
+  returns 55 passed (the 52 frozen tests plus 3 new), the canary returns 42
+  passed, `python3 -m ruff check` returns "All checks passed!", `.agent/plan.md`
+  is 28 lines, the Steps heading count is 1, `grep -c '^- R-0273'` is 1, the
+  stray-marker count is 0 across the three state files, `git status
+  --porcelain` is empty, HEAD equals `origin/feature/f107-context-compiler-v2`
+  and `git worktree list` shows the primary checkout alone. Insertions per
+  commit 328, 255, 68, 9, 16, 113, 75, 18 — each under 500. THE FIX WAS
+  MEASURED, not read: the reviewer re-ran the same three-file fixture at
+  `line_cap=3` that produced the R-0273 numbers, and the rendered text's
+  estimate falls from 128 tokens to 46 against an `estimated_tokens` of 25 —
+  the 5.1x divergence is gone. The residual 21-token gap is the block HEADER
+  lines the renderer adds, it is the same ~20 tokens at the default cap, and it
+  is therefore uniform overhead rather than cap drift; it is recorded here as
+  an observation for R8's evidence work, NOT as a finding, because
+  `estimated_tokens` is documented as a sum over file contents and the headers
+  are one bounded line per included file. The reviewer ran TWO probes in a
+  disposable worktree at 6acb3f04 and both reproduce the worker's numbers
+  verbatim: putting the renderer back on the module default gives `1 failed, 54
+  passed` on `test_signature_blocks_render_at_the_cap_the_context_was_compiled`
+  `_at`, and storing the default in the constructor instead of the caller's cap
+  gives `3 failed, 52 passed` — so the regression test genuinely bites and the
+  handback's evidence is confirmed TRUE rather than taken on trust. That
+  worktree was removed and pruned before this verdict. Both declared deviations
+  are accepted. The 114-line handoff exceeds even the D15 100-line ceiling, and
+  the cause is mandated content this reviewer ORDERED — gate i was required to
+  carry both step-7 transcripts with failing test names and assertion texts —
+  so it is a stated-cause overage and not verbosity; no section was dropped.
+  The eighth commit is the right call and not a scope breach: it corrects a
+  stale grep line number in the handoff, touches only a path the Change line
+  already names, and was made in its own commit because amending C7 is
+  forbidden — leaving a false counted value in the return channel would have
+  been the worse error. One new finding, R-0274, is registered above for the
+  block's own self-contradiction. `LAST_REVIEWED_SHA` advances 861eb371 ->
+  6acb3f04.
 
 Done: R-0271 — RESOLVED. `packages/orchestration/context_compiler.py` now reads
 `from collections.abc import Iterable` (commit b52b1c3c, numstat `1 1`), and the
