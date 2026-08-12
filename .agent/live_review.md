@@ -5,7 +5,7 @@
 > round. Findings are authored here by the reviewer only. A worker marks a
 > landed fix `Landed: R-XXXX`; only reviewer-authored `Done:` text sets
 > Resolved (docs/agents/planner_reviewer_prompt.md §4.4).
-> Branch: feature/f107-context-compiler-v2. Next free ID: R-0277.
+> Branch: feature/f107-context-compiler-v2. Next free ID: R-0280.
 
 ## Findings
 
@@ -135,6 +135,34 @@
   silently overwrite a live finding. Fixed in this round: the header now reads
   R-0277, allocated past the two findings this gate registers. OPEN until the
   reviewer confirms the applied value.
+- R-0277 (Low, F107 R9): the R9 block's procedure step 1 ordered the saved bytes
+  verified "against BLOCK_SHA256 below", but no such line exists inside the
+  region that same step orders saved — `grep -n BLOCK_SHA256
+  .agent/last_block.md` returns only the two prose references at lines 221 and
+  242. The digest lives on line 277 of the reviewer original
+  `.remedy-wt/f107-r9-1.block.md`, one line PAST the block body, so the gate was
+  meetable only against an artifact the block never names. The worker met it
+  there and DECLARED the correction, which is the wanted behaviour. Fixed
+  forward: the R10 block states where the digest lives instead of saying
+  "below". OPEN until a reviewer confirms the new wording landed.
+- R-0278 (Medium, F107 R9): gate c ordered `grep -c 'Next free ID: R-0271'` -> 0
+  over `.agent/live_review.md` while slice LRF5TO of the SAME block wrote that
+  exact string into that same file, inside R-0276's body, which quotes the stale
+  value it reports. The gate was unmeetable by construction; the worker reported
+  the real 1 and edited nothing to move it, which is correct under the block's
+  own "verify every claim" constraint. Seventh recurrence of the
+  self-counting-gate class that docs/agents/planner_reviewer_prompt.md §3
+  pre-emission checklist item 2 exists to stop, and the first inside F107. The
+  standing fix is the one the R10 block uses: a zero-gate over a string any TO
+  slice writes is scoped to the ANCHOR LINE (`^> Branch:.*R-0271`), never to the
+  whole file. OPEN.
+- R-0279 (Medium, F107 R9): `remedy job context` shipped as user-facing
+  behaviour with no entry anywhere under `docs/` — no guide, no row in the
+  `docs/README.md` index — because the R9 block's Change list was nine paths
+  "and nothing else", none under docs/. AGENTS.md Documentation Updates orders
+  docs when a feature introduces new behaviour, so the omission is the
+  REVIEWER's: the worker flagged the absence in its handoff instead of widening
+  scope, which is exactly right. R10 C6 fixes it. OPEN.
 
 ## Steps
 
@@ -459,6 +487,43 @@ docs/roadmap/STATUS_closure_protocol.md.
   stale next-free-ID header this gate also found is R-0276. `LAST_REVIEWED_SHA`
   advances 6acb3f04 -> 7acb406d.
 
+- Reviewer gate on R9 (2026-08-12): PASS. Range 7acb406d..f86bda87 = eight
+  commits touching exactly the nine paths the R9 block named. C1-C7 were made by
+  the previous session's worker and C8 by this session's; the handoff says so and
+  it changes nothing about the evidence. Transport by the PRIMARY shape: the
+  reviewer original `.remedy-wt/f107-r9-1.block.md` survives at 277 lines, its
+  first 17862 bytes `cmp` silent against BOTH `.agent/authored/f107-r9-1.md` and
+  `.agent/last_block.md`, and all three sha256 to f8e42fd684fe2367… at 276 lines
+  — the value the original's own trailer declares. All nine slice bodies
+  recompute to their BEGIN-marker digests at their declared lengths (HDRFROM
+  dfab3095… 1L, HDRTO 969938db… 1L, LRF5FROM 21a6a3f6… 1L, LRF5TO 21a8b66c… 23L,
+  LR8FROM 686e2302… 1L, LR8TO 4894b692… 34L, LRDFROM 62450c77… 6L, LRDTO
+  39b40890… 12L, PLAN9 33ad2144… 28L), and `sha256sum .agent/plan.md` returns
+  that PLAN9 digest over 28 lines. Each pair was proven by ITS OWN shape rather
+  than asserted: `git show --numstat 61adb419 -- .agent/live_review.md` reads
+  `68  7`, the seven deletions being HDRFROM's 1 line plus LRDFROM's 6 — both
+  REWRITES, whose FROM lines now occur 0x and whose TO lines occur 1x — while the
+  two APPENDS keep their FROM exactly 1x and their 22 and 33 TO-only lines each
+  occur exactly 1x among the 68 added lines, with 0 added lines belonging to no
+  TO body. Every scoped gate was RE-RUN by this reviewer rather than read from
+  the handback: 9 passed on the new CLI test module, 505 passed on the catalog
+  and grouped-CLI suites, 42 passed on the canary, `ruff check` "All checks
+  passed!", `git status --porcelain` empty, `git worktree list` the primary
+  checkout alone, HEAD == origin/feature/f107-context-compiler-v2, and insertions
+  per commit 276, 253, 68, 273, 19, 231, 12, 254 — each under 500. GATE h WAS
+  RE-RUN, not read: with `REMEDY_DATA_DIR` pointed at the worker's scratch data
+  root, `remedy job context 994eb8d1-… --task T001` reproduces the handoff's
+  stdout line for line (164/24000 tokens; tier 1 src/payment_gateway.py full,
+  tier 2 src/retry_policy.py full, tier 3 src/clock_source.py signatures;
+  README.md and src/invoice_report.py omitted for distance), `--json` reproduces
+  the same values, `--task T999` exits 3 with `Error: no task matches --task
+  'T999'`, and a spot-check the block did not order — resolving the same task by
+  its UUID prefix `52c783f1` — reaches the identical task. F107 HAS A CALLER and
+  is no longer a library. All five declared deviations re-measured accurate, and
+  TWO of them are reviewer errors, registered above as R-0277 and R-0278; the
+  docs gap the worker flagged rather than silently fixed is R-0279.
+  `LAST_REVIEWED_SHA` advances 7acb406d -> f86bda87.
+
 Done: R-0271 — RESOLVED. `packages/orchestration/context_compiler.py` now reads
 `from collections.abc import Iterable` (commit b52b1c3c, numstat `1 1`), and the
 reviewer's own re-run of `python3 -m ruff check` over that module and its test
@@ -477,3 +542,16 @@ probes in a disposable worktree put the module back to red (1 failed / 3
 failed) — the regression test genuinely bites. The residual 21-token gap is the
 one header line the renderer adds per included file, uniform at every cap and
 not drift. Open findings 11 -> 10.
+
+Done: R-0275 — RESOLVED. The R8 handoff text that carried the wrong `218/328` no
+longer exists on disk (C8 of R9 rewrote the file), and the class did not recur:
+this reviewer re-measured every `+/-` cell of the R9 handoff against `git show
+--numstat` and all eight agree — 276/0, 253/195, 68/7, 273/0, 17/0 plus 2/1,
+231/0, 12/12 and C8's own 254/94 — with the insertion column, not a line count,
+in every cell. Open findings 15 -> 14.
+
+Done: R-0276 — RESOLVED. `.agent/live_review.md` line 8 read `Next free ID:
+R-0277.` at f86bda87, measured line-scoped so that the finding's own quotation of
+the stale string cannot pollute the count: `grep -c '^> Branch:.*Next free ID:
+R-0271'` is 0 and the R-0277 form is 1. The one carrier that owns the ID sequence
+is correct again, and this round allocates past it. Open findings 14 -> 13.
