@@ -1,7 +1,7 @@
 # Plan — F111 Diff-only repair
 
 Branch: feature/f111-diff-only-repair, cut from main at 4e0b762e.
-Next free finding ID: R-0298. Last reviewed SHA: none yet (R1 in flight).
+Next free finding ID: R-0298. Last reviewed SHA: b0ab8e09 (R1 PASS).
 
 ## Goal
 Repairs stop resending whole files: a repair round carries only the
@@ -12,26 +12,27 @@ today's full-file round with the reason recorded
 (docs/roadmap/features/T2_F111.md).
 
 ## Current Step
-R1 — claim F111, reset the session state files, and carry the 22 open F107
-findings forward. No production code this round: which repair path owns the
-response-side diff channel is not yet settled, and R2 opens with that
-DECISION rather than guessing.
+R2 — record the R1 gate and DECISION F111 D1, amend the feature file with the
+seam the DECISION picks, and build T001: the hunk selection helper in the new
+`packages/orchestration/diff_repair.py` with unit tests. D1 settles that the
+response side attaches to `builder_bridge` (which already applies a parsed
+patch through the fenced applicator) and the prompt side to
+`repair_context`; `pingpong_loop` is out of scope and the feature file now
+says so.
 
 ## Next Steps
-1. R2 — the repair-path DECISION, its feature-file amendment, and T001: the
-   hunk selection helper plus unit tests.
-2. T002 — response schema, fence pre-check, strict apply with conflict
-   fallback.
-3. T003 — wiring into repair rounds, mode and token evidence, a fixture
-   comparison recording both modes' token counts.
+1. T001 rest — wire the selected hunks into the repair context the bounded
+   repair loop feeds to the next build call.
+2. T002 — versioned unified-diff response schema, fence pre-check before any
+   apply, strict apply with an all-or-nothing conflict fallback.
+3. T003 — mode and token evidence per repair round, plus a fixture comparison
+   recording both modes' token counts.
 4. Integration gate, then closure.
 
 ## Risks
-- The ping-pong repair round's builder is an agentic CLI that edits staging
-  itself: `BuilderOutput` carries no patch field and `apply_structured_patch`
-  is never called from `pingpong_loop.py`. The prompt-side saving is
-  reachable there; the response-side diff channel is not. R2 settles this as
-  a recorded DECISION, never as a silent re-plan.
 - The full suite is RED at the merge base with five known ids (R-0286), so
-  the integration gate must compare base against branch, not read absolute
+  the integration gate must compare base against branch, never read absolute
   green.
+- `review_scope._parse_diff` and `source_apply._apply_hunks` already exist and
+  must be reused, not duplicated — a third `@@` regex in the tree would be a
+  finding.
