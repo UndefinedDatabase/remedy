@@ -94,3 +94,40 @@ docs/roadmap/STATUS_closure_protocol.md.
   1, 62, 2, 22, 30, 53 — each under 500. R-0270 is registered and
   `.agent/candidates.md` is empty, so the feature-claim block condition is
   discharged. `LAST_REVIEWED_SHA` advances 2e4142c3 -> d2b962af.
+
+- Reviewer gate on R2 (2026-08-12): PASS, partial round — `.agent/STOP`
+  truncated it after the module commit and the worker declared the truncation
+  (guardrail G6, docs/agents/self_drive_protocol.md). Range d2b962af..5a9951d5
+  is six commits touching six of the seven paths the R2 block named; the
+  seventh, tests/orchestration/test_context_compiler.py, is the declared skip.
+  Transport by the primary shape: `cmp` of the surviving reviewer original
+  `.remedy-wt/f107-r2-1.block.md` against the committed
+  `.agent/authored/f107-r2-1.md` is silent, and so is the authored copy
+  against `.agent/last_block.md` — all three 182 lines. Both slice bodies
+  recompute to their BEGIN-marker digests, the PLAN body is byte-equal to
+  `.agent/plan.md`, and the LRAPP body is the verbatim tail of this file. That
+  pair was APPEND-shaped and `git show --numstat 72d79079` reads `19 0`: zero
+  deletions, which proves the FROM line was never edited. Every scoped gate
+  was RE-RUN by the reviewer instead of read from the handback — the canary
+  `python3 -m pytest tests/cli/test_golden_path.py -q` returns 42 passed,
+  `grep -c` for the Steps heading is 1, `.agent/plan.md` is 28 lines,
+  `git status --porcelain` is empty, `git worktree list` shows the primary
+  checkout alone, and HEAD equals `origin/feature/f107-context-compiler-v2`.
+  Insertions per commit 182, 155, 19, 10, 302, 49 — each under 500. Gate d
+  could not run at all, because the round's own test module is the missing
+  seventh path: `packages/orchestration/context_compiler.py` is REVIEWED AND
+  PROBED BUT NOT GATED. The reviewer probe, on a throwaway fixture tree under
+  `.remedy-wt/`, reproduced every case the T001 contract names — absolute
+  import, from-module against from-symbol, single- and double-dot relative,
+  two-file cycle terminating, stdlib to external, SyntaxError and missing file
+  to parse_failed, no self-listing, './x' beating an x/index.ts sibling,
+  './dir' to dir/index.ts, export-from, require(), .tsx and .jsx, 'react'
+  external, an escaping specifier external, and a graph that is sorted,
+  deduplicated, twice-equal and parse_failed on an unknown suffix — but a
+  reviewer probe is not committed evidence and this file does not treat it as
+  any. R3 commits that test module and R3's gate d is what certifies the
+  module; until it is green, no verdict here claims T001 is test-covered.
+  Recorded as an observation and not a finding: the R2 handoff is 62 lines
+  where the R2 block asked for 60, which AGENTS.md permits outright for a
+  per-commit table of more than five commits, and this one has six.
+  `LAST_REVIEWED_SHA` advances d2b962af -> 5a9951d5.
