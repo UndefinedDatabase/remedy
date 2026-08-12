@@ -1,100 +1,105 @@
-# Handoff — F107 R6 (T004 part 1, the segment layer) — COMPLETE
+# Handoff — F107 R7 (repair round for R-0273) — COMPLETE
 
-Branch: feature/f107-context-compiler-v2. R5 reviewed PASS at 54bc56c2. One
+Branch: feature/f107-context-compiler-v2. R6 reviewed PASS at 861eb371. One
 worker session, C1–C7. No commit amended/rebased/reverted/reordered, no PR
-created, main never touched. Open findings: 9 (R-0221/0239/0247/0262/0265/
-0266/0268/0270 + R-0272, which C3 REGISTERS and which stays OPEN). Next free:
-R-0273. T001+T002+T003 frozen: their 42 tests pass unchanged inside the 52.
-No `Done:` line was written; no fix landed, so no `Landed:` line either.
+created, main never touched, no existing test edited. Open findings: 10
+(R-0221/0239/0247/0262/0265/0266/0268/0270/0272 + R-0273, which C3 REGISTERS
+and C5 LANDS — only reviewer text resolves it, so it stays OPEN). Next free:
+R-0274. No `Done:` line was written; the fix carries a single `Landed: R-0273`
+line in .agent/live_review.md, committed with C5.
 
 ## Commits
 
-| Item | SHA      | Subject                                                    | +/-     |
-|------|----------|------------------------------------------------------------|---------|
-| C1   | a28bd227 | chore(f107): save the R6 step block verbatim               | 364/0   |
-| C2   | 46f151dd | chore(f107): mirror the R6 block into last_block           | 285/314 |
-| C3   | 2afec22b | chore(f107): record the R5 gate and register R-0272        | 59/0    |
-| C4   | 6b4b8b45 | chore(f107): advance plan to R6 T004 part 1                | 10/10   |
-| C5   | a6604871 | feat(f107): compiled context as a ranked prompt segment    | 162/7   |
-| C6   | f5b654d3 | test(f107): segment rendering registration and size comparison | 190/1 |
-| C7   | self-ref | chore(f107): rewrite handoff for R6                        | see log |
+| Item | SHA      | Subject                                                  | +/-     |
+|------|----------|----------------------------------------------------------|---------|
+| C1   | db8bcbd5 | chore(f107): save the R7 step block verbatim             | 328/0   |
+| C2   | b92e8182 | chore(f107): mirror the R7 block into last_block         | 255/291 |
+| C3   | 4909b1b1 | chore(f107): record the R6 gate and register R-0273      | 68/0    |
+| C4   | 3af97f23 | chore(f107): advance plan to R7 repair                   | 9/9     |
+| C5   | 027f13fd | fix(f107): render signatures at the compiled line cap    | 16/5    |
+| C6   | d8beb79f | test(f107): the rendering matches the cap it was compiled at | 113/0 |
+| C7   | self-ref | chore(f107): rewrite handoff for R7                      | see log |
 
 ## Changed files
 
 | File                                         | Change                           |
 |----------------------------------------------|----------------------------------|
-| .agent/authored/f107-r6-1.md                 | new; byte-copy of the R6 block   |
-| .agent/last_block.md                         | byte-copy of the R6 block        |
-| .agent/live_review.md                        | slices LRF2 + LR5 (C3)           |
-| .agent/plan.md                               | slice PLAN5 (full replacement)   |
-| packages/orchestration/context_compiler.py   | T004-P1 segment layer (C5)       |
-| tests/orchestration/test_context_compiler.py | 10 T004-P1 tests appended (C6)   |
+| .agent/authored/f107-r7-1.md                 | new; byte-copy of the R7 block   |
+| .agent/last_block.md                         | byte-copy of the R7 block        |
+| .agent/live_review.md                        | slices LRF3 + LR6 (C3); Landed (C5) |
+| .agent/plan.md                               | slice PLAN6 (full replacement)   |
+| packages/orchestration/context_compiler.py   | the three FIX CONTRACT edits (C5)|
+| tests/orchestration/test_context_compiler.py | 3 tests appended (C6)            |
 | .agent/handoff.md                            | this rewrite (C7)                |
 
 ## Gate results (command → real exit → counted value)
 
 a. All five slice bodies recompute to their BEGIN-marker digests at their
-   declared lengths → exit 0 → LRF2FROM 2bb66673… 1L, LRF2TO 830262c1… 10L,
-   LR5FROM b96097af… 1L, LR5TO 98b340c5… 51L, PLAN5 27f9c8ef… 28L. 0 MISMATCH.
-   TOOL USED: `cmp` (available this session) plus `sha256sum`. `cmp` of the R6
-   block against .agent/authored/f107-r6-1.md and against .agent/last_block.md
-   → exit 0 both, silent; all three sha256 to c263869d44448b24…, 364 lines.
-b. C3 append proof → `git show --numstat 2afec22b -- .agent/live_review.md`
-   → exit 0 → `59  0`: 0 DELETIONS, so neither anchor line was edited. Each
-   FROM string still occurs exactly 1x in the file. TO-only lines: 9 (LRF2TO)
-   + 50 (LR5TO) = 59, each occurring exactly 1x among the 59 added lines;
-   0 added lines belong to neither TO body. `grep -c '^## Steps'` → 1;
-   `grep -c '^- R-0272'` → 1.
-c. `cmp` extracted PLAN5 body against .agent/plan.md → exit 0, silent;
-   `sha256sum .agent/plan.md` → 27f9c8efd656f92a… == the marker digest;
+   declared lengths → 0 MISMATCH: LRF3FROM 4ad9497d… 1L, LRF3TO e3fdd106… 20L,
+   LR6FROM d85c84ac… 1L, LR6TO dac43442… 50L, PLAN6 047fcc7a… 28L. TOOL: `cmp`
+   (available) plus `sha256sum`. `cmp` of .remedy-wt/f107-r7-1.block.md against
+   .agent/authored/f107-r7-1.md and against .agent/last_block.md → exit 0 both,
+   silent; all three sha256 to ce03b5df0205be2a…, 328 lines.
+b. C3 append proof → `git show --numstat 4909b1b1 -- .agent/live_review.md` →
+   exit 0 → `68  0`: 0 DELETIONS, so neither anchor line was edited. Each FROM
+   still occurs exactly 1x in the file. TO-only lines 19 (LRF3TO) + 49 (LR6TO)
+   = 68, each exactly 1x among the 68 added lines; 0 added lines belong to
+   neither body. `grep -c '^## Steps'` → 1; `grep -c '^- R-0273'` → 1.
+c. `cmp` extracted PLAN6 body against .agent/plan.md → exit 0, silent;
+   `sha256sum .agent/plan.md` → 047fcc7a691f9589… == the marker digest;
    `wc -l < .agent/plan.md` → exit 0 → 28.
 d. `python3 -m pytest tests/orchestration/test_context_compiler.py -q` →
-   exit 0 → 52 passed (42 frozen T001+T002+T003 + 10 new T004-P1).
-e. `python3 -m pytest tests/orchestration/test_prompt_segments.py -q` →
-   exit 0 → 25 passed (the module this round imports for the first time).
-f. `python3 -m pytest tests/cli/test_golden_path.py -q` → exit 0 → 42 passed.
-g. `grep -c '^<<<'` → live_review.md 0, plan.md 0, handoff.md 0 (grep exit 1).
-h. `git status --porcelain` → empty; `git worktree list` → primary alone;
-   HEAD == origin/feature/f107-context-compiler-v2 after push; insertions per
-   commit 364, 285, 59, 10, 162, 190, C7 — each < 500.
-i. `git diff --name-only 54bc56c2..HEAD` → exit 0 → exactly the seven paths of
-   the Changed files table, nothing else. `python3 -m ruff check
-   packages/orchestration/context_compiler.py
+   exit 0 → 55 passed (the 52 frozen tests unchanged + 3 new).
+e. `python3 -m pytest tests/cli/test_golden_path.py -q` → exit 0 → 42 passed.
+f. `grep -c '^<<<'` → live_review.md 0, plan.md 0, handoff.md 0 (grep exit 1).
+g. `git status --porcelain` → empty; `git worktree list` → primary alone;
+   HEAD == origin/feature/f107-context-compiler-v2 after the push; insertions
+   per commit 328, 255, 68, 9, 16, 113, C7 — each < 500.
+h. `git diff --name-only 861eb371..HEAD` → exit 0 → exactly the seven paths of
+   the Changed files table, nothing else. `grep -rn "CompiledContext("
+   packages/ tests/ apps/` → exit 0 → ONE line,
+   packages/orchestration/context_compiler.py:875, the single construction
+   site. `python3 -m ruff check packages/orchestration/context_compiler.py
    tests/orchestration/test_context_compiler.py` → exit 0 → "All checks
    passed!", 0 errors.
-j. MUTATION PROBE, disposable worktree .remedy-wt/f107_r6_mut at f5b654d3 only:
-   the rank passed by `register_compiled_context_segment` became
-   `SegmentStabilityRank.TASK`. `python3 -m pytest
-   tests/orchestration/test_context_compiler.py -q` → exit 1 → 2 failed, 50
-   passed: `test_register_compiled_context_segment_names_and_ranks_the_segment`
-   on `assert <SegmentStabilityRank.TASK: 4> ==
-   <SegmentStabilityRank.JOB_CONTEXT: 3>`, and
-   `test_the_registered_segment_composes_into_a_one_row_manifest` on
-   `AssertionError: assert 4 == 3`. The rank bites at both the segment and the
-   manifest row. Worktree removed and pruned; `git worktree list` → primary
-   alone.
+i. Step 7, disposable worktree .remedy-wt/f107_r7_mut at d8beb79f only, both
+   checks run there and never in the checkout:
+   (i) RED-PROOF — edit 3 alone reverted to `DEFAULT_SIGNATURE_LINE_CAP` in
+   `render_compiled_context_text`, field and constructor left in place.
+   `python3 -m pytest tests/orchestration/test_context_compiler.py -q` →
+   exit 1 → 1 failed, 54 passed:
+   `test_signature_blocks_render_at_the_cap_the_context_was_compiled_at` on
+   `assert bodies[selected.rel_path] == expected_body` →
+   `assert 'def deep_0()..."""Deep 5."""' == 'def deep_0()..."""Deep 0."""'`.
+   The regression test BITES.
+   (ii) file restored with `git checkout --`, then a DIFFERENT mutation:
+   `compile_task_context` stores `line_cap=DEFAULT_SIGNATURE_LINE_CAP` instead
+   of the caller's value. Same command → exit 1 → 3 failed, 52 passed:
+   `test_the_compiled_context_carries_the_line_cap_it_was_compiled_at` on
+   `AssertionError: assert 200 == 2`, the regression test on the same body
+   assertion as above, and
+   `test_two_contexts_compiled_at_the_same_custom_cap_stay_equal` on
+   `AssertionError: assert 200 == 2`. Worktree removed and pruned;
+   `git worktree list` → primary alone.
 
 ## Item status
 
 | Item | Status | Reason                                                       |
 |------|--------|--------------------------------------------------------------|
-| C1   | done   | cmp + sha256 identical to the R6 block, 364 lines             |
+| C1   | done   | cmp + sha256 identical to the R7 block, 328 lines             |
 | C2   | done   | cmp + sha256 identical to block and authored copy             |
-| C3   | done   | append pair, numstat `59 0`, both FROM still 1x               |
-| C4   | done   | plan.md sha256 == PLAN5 marker digest, 28L, cmp silent        |
-| C5   | done   | segment layer appended; T001-T003 untouched, gates d/i green  |
-| C6   | done   | 10 tests appended, no existing test edited, 52 passed         |
+| C3   | done   | append pair, numstat `68 0`, both FROM still 1x               |
+| C4   | done   | plan.md sha256 == PLAN6 marker digest, 28L, cmp silent        |
+| C5   | done   | three FIX CONTRACT edits + the `Landed: R-0273` line          |
+| C6   | done   | 3 tests appended, no existing test edited, 55 passed          |
 | C7   | done   | this file; self-ref: its own SHA is not writable into itself  |
 
-Deviations, declared (2). (1) This file is 100 lines — over the block's 60, at
-its stated 100 ceiling exactly and not past it. Cause is mandated content: two
-seven-row tables, the ten-gate block with the mutation-probe transcript detail
-and the seven-row item-status table (AGENTS.md D15). No section dropped.
-(2) `render_compiled_context_text` strips ALL trailing newlines from a body
-rather than exactly one, because the contract states the blank line must be the
-ONLY separator between blocks; on a file ending in a single newline — every
-fixture file — the two readings are byte-identical. Stated in its docstring.
+Deviations, declared (1). This file is 105 lines — over the block's 60 and over
+the AGENTS.md D15 100-line ceiling. Cause is mandated content: two seven-row
+tables, the nine-gate block whose gate i carries BOTH step-7 transcripts with
+their failing test names and assertion texts, and the seven-row item-status
+table. No section was dropped to fit.
 
-Next expected action: R7 = T004 part 2 — the `remedy job context` CLI view, an
+Next expected action: R8 = T004 part 2 — the `remedy job context` CLI view, an
 end-to-end fixture task solved by the fake provider, and the size comparison in
 evidence.
