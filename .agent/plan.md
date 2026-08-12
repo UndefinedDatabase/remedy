@@ -1,7 +1,7 @@
 # Plan — F107 Context compiler v2
 
 Branch: feature/f107-context-compiler-v2, cut from main at 2e4142c3.
-Next free finding ID: R-0285. R11 reviewed PASS at 04154822.
+Next free finding ID: R-0290. R16 reviewed PASS at 5c808a59.
 
 ## Goal
 The context compiler selects fenced-path files, their direct import
@@ -13,15 +13,17 @@ solvable by the fake provider, and the omissions record explains every
 exclusion (docs/roadmap/features/T2_F107.md).
 
 ## Current Step
-R12 — repair and session close: the DONE-condition end-to-end test is pinned to
-the compiler's own output so a bypass can no longer satisfy it (finding
-R-0283), the R11 verdict and three findings are persisted, and the handoff
-closes the session. T004 is complete: the CLI view, the records and the
-end-to-end run all exist and were re-measured by the reviewer.
+R17 — land the tail R16 never reached: the reviewer's R16 PASS gate and the
+F107 integration-gate verdict, finding R-0289, this plan and the handoff, and
+push the branch. T001-T004 are complete and reviewed. The integration gate ran
+at R16 and is GREEN — branch and base fail the same five R-0286 ids, zero
+branch-only, zero base-only — with its evidence committed under
+`.agent/gate_f107_r16/`. No production, test, docs or roadmap file moves here.
 
 ## Next Steps
-1. Integration gate per docs/agents/integration_gate.md — the full suite, the
-   first of the two runs a feature gets.
-2. Closure per docs/roadmap/STATUS_closure_protocol.md: evidence job, a FRESH
-   review zip, the authored STATUS line, then the PR. The branch has no PR yet
-   and it is never merged in the session that creates it.
+1. Closure per docs/roadmap/STATUS_closure_protocol.md: evidence job, a FRESH
+   review zip, the reviewer-authored STATUS line, then the PR. The five
+   pre-existing `[reviewer]` failures (R-0286) are carried as a documented
+   risk, so the closure verdict is PASS_WITH_RISKS.
+2. The closure PR is never merged in the session that creates it; it merges at
+   the next feature's start via the AGENTS.md Open PR Gate.
