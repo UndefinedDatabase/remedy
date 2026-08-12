@@ -22,6 +22,7 @@ from packages.orchestration.context_compiler import (
     CONTEXT_SIZE_FILENAME,
     OMITTED_CONTEXT_FILENAME,
     compile_task_context,
+    render_compiled_context_text,
 )
 from packages.orchestration.pingpong_loop import build_repo_context, run_pingpong
 from packages.orchestration.pingpong_provider import FakeProvider
@@ -166,6 +167,17 @@ class TestCompiledContextEndToEnd:
         assert baseline.context_chars > 0
         assert compiled.context_chars > 0
         assert compiled.context_chars < baseline.context_chars
+
+        # R-0283: "smaller" ALONE is satisfied by a run that never compiled at all —
+        # bypassing the compiled branch falls through to a context that is also
+        # smaller, for a reason that has nothing to do with F107. So pin the number
+        # the run REPORTS to the bytes the compiler itself produced over the same
+        # fixture: an exact length no fall-through can hit by accident.
+        expected_compiled_text = render_compiled_context_text(
+            compiled_fixture_repo,
+            compile_task_context(compiled_fixture_repo, _FENCED_PATHS, _CANDIDATES),
+        )
+        assert compiled.context_chars == len(expected_compiled_text)
 
     def test_compiled_run_reports_the_compiled_category(
         self, isolate_data_root, compiled_fixture_repo
