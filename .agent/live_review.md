@@ -5,7 +5,7 @@
 > round. Findings are authored here by the reviewer only. A worker marks a
 > landed fix `Landed: R-XXXX`; only reviewer-authored `Done:` text sets
 > Resolved (docs/agents/planner_reviewer_prompt.md §4.4).
-> Branch: feature/f107-context-compiler-v2. Next free ID: R-0285.
+> Branch: feature/f107-context-compiler-v2. Next free ID: R-0286.
 
 ## Findings
 
@@ -207,6 +207,16 @@
   test_context_compiler.py:805, not :801. Both were declared, neither cost
   anything but the declaring, and both are the reviewer-citation class the
   block's own constraint tells workers to expect. OPEN.
+- R-0285 (Low, F107 R12): the R12 block's gate c ordered `grep -c '^Landed:'` ->
+  0 over `.agent/live_review.md` in the one round whose C4 LANDED a fix for
+  R-0283, and its Change line confined that file to the four authored pairs.
+  docs/agents/planner_reviewer_prompt.md §4.4 tells a worker to mark exactly
+  that case `Landed: R-XXXX` in this file, so the block's own zero-gate made the
+  protocol's marker unwritable. The worker obeyed the gate, put the landed note
+  in the handoff header instead, and declared the conflict as its deviation 4 —
+  the right call, and the fifth reviewer-block defect this feature has taxed a
+  worker with (R-0274, R-0277, R-0280, R-0282). The rule the next block follows:
+  a zero-gate over `^Landed:` is safe only in a round that lands no fix. OPEN.
 
 ## Steps
 
@@ -635,6 +645,41 @@ docs/roadmap/STATUS_closure_protocol.md.
   reviewer reproduced it independently, and the two citation errors are R-0284.
   `LAST_REVIEWED_SHA` advances c50080e0 -> 04154822.
 
+- Reviewer gate on R12 (2026-08-12): PASS, and the round's decisive claim was
+  reproduced in BOTH directions rather than read. Range 04154822..d7dd12b6 = six
+  commits over exactly the six paths the R12 block enumerated, `git diff
+  --name-only` returning that set and nothing else. Transport by the PRIMARY
+  shape: `cmp .agent/authored/f107-r12-1.md .agent/last_block.md` exits 0 and
+  silent under this reviewer's own run, both files sha256 to
+  edc2563b00979927cd17d8837a3887d1b17620ea0fcf5844cbb20b9f92bbac54 at 242 lines
+  — the value the R12 block's BLOCK_SHA256 trailer declares — and
+  `.agent/plan.md` hashes to a949117f430008cc… as slice PLAN12 specified.
+  `git show --numstat e7c700fc -- .agent/live_review.md` reads `65  1`: one
+  deletion, HDR3 the only REWRITE. The anchored counts hold on disk now —
+  `^Done:` 8, `^Landed:` 0, `^## Steps` 1, and `^<<<` 0 in live_review.md,
+  plan.md and handoff.md alike.
+  THE PROBE WAS RE-RUN BY THIS REVIEWER, twice, inside the disposable worktree
+  `.remedy-wt/r13probe` and nowhere else, with the same one-line mutation
+  `use_compiled_context = False` at pingpong_loop.py:2662 (`git diff --numstat`
+  `1  1` each time). At 04154822 the e2e module returns 3 failed, 3 passed and
+  `test_compiled_run_shrinks_the_context_and_still_solves_the_task` is among the
+  THREE THAT STILL PASS — R-0283 reproduced independently, not quoted. At
+  d7dd12b6 the same mutation returns 4 failed, 2 passed and that same test is
+  now among the failures, on the new pin, verbatim `assert
+  compiled.context_chars == len(expected_compiled_text)` -> `E assert 265 ==
+  899`. 265 is the fall-through pack, 899 the compiler's own rendered bytes: the
+  test that stands for F107's DONE condition finally bites the wiring it names.
+  The worktree was removed and pruned; `git worktree list` is the primary
+  checkout alone and `git status --porcelain` is empty. Every other gate re-run
+  green by this reviewer: 6 passed on the e2e module, 43 on `test_pingpong.py`
+  plus `test_pingpong_integration.py` — the same 43 R11 measured, so the loop
+  every job runs through did not move — 42 on the canary, `ruff check` "All
+  checks passed!", `git diff --stat 04154822..HEAD -- packages apps` EMPTY, and
+  each commit's insertion column under 500 (242, 177, 65, 12, 8, 112). All six
+  declared deviations re-measured accurate; deviation 4 becomes R-0285 because
+  the conflict it declared was the block's, not the worker's.
+  `LAST_REVIEWED_SHA` advances 04154822 -> d7dd12b6.
+
 Done: R-0271 — RESOLVED. `packages/orchestration/context_compiler.py` now reads
 `from collections.abc import Iterable` (commit b52b1c3c, numstat `1 1`), and the
 reviewer's own re-run of `python3 -m ruff check` over that module and its test
@@ -696,3 +741,13 @@ b4e9d423, numstat `1 1` — one line changed and nothing else in the file), and
 the reviewer's own re-run of that module returns 61 passed. The stale-absolute
 claim class now has no live instance in this feature's files. Open findings
 15 -> 14.
+
+Done: R-0283 — RESOLVED. The end-to-end test that stands for F107's DONE
+condition no longer passes with the compiled path disabled. Commit 0df94864
+(numstat `12  0`, one test file, no production byte moved) pins the compiled
+run's `context_chars` to `len(render_compiled_context_text(...))` over the same
+fixture, and this reviewer's own mutation probe — `use_compiled_context = False`
+in a disposable worktree — turns the module from `3 failed, 3 passed` at
+04154822, where the test PASSED, to `4 failed, 2 passed` at d7dd12b6, where it
+fails on `assert 265 == 899`. A bypass can no longer satisfy the feature's Done
+sentence. Open findings 14 -> 13.
