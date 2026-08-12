@@ -318,3 +318,66 @@ assuming") was for.
 Landed: R-0300 — a zero-line file whose range names line 1 is now pinned as `out_of_bounds` by `TestEmptyFileRanges::test_empty_file_with_a_non_empty_range_is_out_of_bounds`; commit "feat(f111): derive repair line ranges from the applied patch".
 Landed: R-0301 — DECISION F111 D1 in `docs/roadmap/features/T2_F111.md` now names `run_builder_bridge_loop`, the symbol that exists; `run_bounded_repair_loop` occurs 0x in the file; commit "docs(f111): correct the loop name and record the range source".
 Landed: R-0302 — the range source is `changed_line_ranges_from_patch`, which reads the applied `StructuredPatch` through the shared `review_scope.parse_diff_line_ranges` instead of the diffless `source_patch_applied` event; commits "feat(f111): derive repair line ranges from the applied patch" and "docs(f111): correct the loop name and record the range source" (DECISION F111 D3).
+
+### R5 — PASS (2026-08-13)
+Reviewed by the main session over c9064b17..d0952432. Every number was produced
+by the reviewer re-running the command, never read off the handback:
+`python3 -m pytest tests/orchestration/test_diff_repair.py
+tests/orchestration/test_review_scope.py -q` exit 0, 62 passed (30 + 32, 21 + 32
+before); `python3 -m pytest tests/docs/ -q` exit 0, 294 passed (docs-round gate,
+this round touched docs/roadmap/**); `python3 -m pytest
+tests/cli/test_golden_path.py -q` exit 0, 42 passed (canary); `python3 -m ruff
+check` over the three touched files exit 0. The MUTATION RED-PROOF was re-run
+INDEPENDENTLY by the reviewer in its own disposable worktree: deleting the two
+`for file_op in patch.file_ops:` lines from `changed_line_ranges_from_patch`
+turns exactly `test_file_ops_paths_carry_no_lines` and
+`test_a_file_ops_path_is_reported_as_no_ranges_by_selection` red at 2 failed /
+28 passed — the worker's numbers reproduce. That worktree was removed and
+pruned; `git worktree list` shows only the primary checkout. Transport: PRIMARY
+cmp proof, no digest fallback — `.remedy-wt/f111r6` aside, `.remedy-wt/f111r5/BLOCK`,
+`.agent/authored/f111-r5-1.md` and `.agent/last_block.md` are byte-identical,
+and all five content slices occur EXACTLY ONCE in their target files by
+`str.count` against the originals. Append purity by numstat: `59 0` for the
+findings commit, `1 1` for the R-0299 resolution, `3 0` for the landed lines.
+Scope: exactly the nine ordered paths — no production file outside
+`diff_repair.py` and `review_scope.py` was touched, and `builder_bridge.py`,
+`repair_context.py`, `source_apply.py` and `pingpong_loop.py` are unchanged as
+ordered. Markers before this round's own commits: 27 `- R-0`, 3 `Landed:`, 1
+`Done:`, 1 `### R4 — PASS`. Caps: `.agent/plan.md` 47 lines; per-commit
+insertions 200/185/59/1/164/20/3/26, each under 500. `git status --porcelain`
+empty and remote comparison `0 0` at the verdict.
+
+Deviation ACCEPTED, not a precedent: `.agent/handoff.md` came in at 78 lines
+against the 60-line cap, with a DECISION D15 "Deviations, declared" line naming
+the measured count and the mandated content that caused it — a nine-row commit
+table, a nine-row changed-files table, an eight-gate verification table and a
+nine-row item-status table. No section was dropped and there is no padding, so
+the overage is the block's own doing: a nine-commit round cannot report itself
+in sixty lines. The worker also corrected its own first draft when `wc -l` gave
+78 against an estimated 74, which is the right order of operations.
+
+The round's honesty is worth recording: `.agent/plan.md` and the handoff BOTH
+state that T001 now has its selector and its range source and STILL HAS NO CALL
+SITE, so a green suite here is not a working feature. That is the R-0220 class
+disclosed by the round itself rather than found at a gate.
+
+- R-0303 (Low, F111 R5, reviewer-side authoring defect): the R5 block gated the
+  landed-marker commit with `git show --numstat` exactly `3 0`, which forbids
+  the blank separator line this file uses everywhere else, so the three
+  `Landed:` lines landed flush against the last line of the R-0302 paragraph
+  and render as part of that list item. Same class as R-0285: an exact-count
+  gate that makes the correct formatting unwritable in the one commit that
+  needs it. The worker applied the block as written and flagged it in the
+  handback instead of quietly improving it, which is the behaviour these rounds
+  are supposed to produce. Fixed in this round's resolution commit, which
+  rewrites those three lines with the separator restored. OPEN.
+
+- R-0304 (Low, F111 R4 and R5, reviewer-side omission):
+  docs/agents/planner_reviewer_prompt.md section 3 requires the handoff's state
+  block to repeat the operator brief's "Fortschritt" line verbatim, estimate
+  label included, so the progress estimate always exists on disk and not only
+  in the chat brief. Neither the R4 block nor the R5 block ordered that line,
+  and neither handoff carries one. The R4 gate passed without catching it, so
+  this is registered at the round where it was noticed rather than backdated.
+  Fix: every future block's handback item names the Fortschritt line as
+  mandated content. OPEN.
