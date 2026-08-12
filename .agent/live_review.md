@@ -211,3 +211,5 @@ held. Two Low findings registered below; neither blocks the round.
   not cover the out-of-bounds case, and the worker chose the conservative
   reading and declared it in the handback. Fix ordered in R3: a distinct
   `out_of_bounds` reason with its own test. OPEN.
+
+Landed: R-0299 — a range naming lines the file does not have is now omitted as `out_of_bounds` instead of `no_ranges`, with three new tests; commit "feat(f111): report out of bounds ranges distinctly".
