@@ -1,47 +1,48 @@
-# Handoff — F111 R1 — claim, state reset, carry-forward
+# Handoff — F111 R2 — R1 gate, DECISION D1, T001 hunk selection
 
-Branch: feature/f111-diff-only-repair, cut from main at 4e0b762e. No PR, no
-merge, main untouched; pushed after every commit (R-0289). Open findings: 22,
-next free ID R-0298. No fix landed this round, so neither marker was written.
+Branch feature/f111-diff-only-repair, cut from main at 4e0b762e, round base
+b0ab8e09. No PR, no merge, main untouched; pushed after every commit (R-0289).
+Findings 22 open, next free ID R-0298 — this round registers none.
 
-## Commits (insertions from `git log --numstat`; each < 500)
+## Commits (insertions from `git log --shortstat`; each < 500)
 | Item | SHA | Path | Ins |
 |---|---|---|---|
-| C1 | d956be2f | .agent/authored/f111-r1-1.md | 319 |
-| C2 | b8398d5b | .agent/last_block.md | 293 |
-| C3 | b1017248 | docs/roadmap/STATUS.md | 1 |
-| C4 | db016f0b | .agent/live_review.md | 96 |
-| C5 | 581fb90b | .agent/plan.md | 30 |
-| C6 | e3abe7a4 | .agent/context.md | 27 |
+| C1 | f71ebc06 | .agent/authored/f111-r2-1.md | 275 |
+| C2 | 80aa231b | .agent/last_block.md | 231 |
+| C3 | 6683dad8 | .agent/live_review.md | 51 |
+| C4 | a8c211b0 | docs/roadmap/features/T2_F111.md | 17 |
+| C5 | b8a1846e | diff_repair.py + test_diff_repair.py | 409 |
+| C6 | c817a094 | .agent/plan.md | 18 |
 | C7 | self-referential (this commit) | .agent/handoff.md | see git show |
 
 ## Changed files
 | File | Change |
 |---|---|
-| .agent/authored/f111-r1-1.md | new; the R1 block, byte for byte |
+| .agent/authored/f111-r2-1.md | new; the R2 block, byte for byte |
 | .agent/last_block.md | rewritten from the authored copy |
-| docs/roadmap/STATUS.md | F111 line `[ ]` to `[~]`, one line |
-| .agent/live_review.md | reset to F111; 22 findings carried from F107 |
-| .agent/plan.md | rewritten for F111 |
-| .agent/context.md | rewritten for F111 |
+| .agent/live_review.md | pure append: R1 PASS gate + DECISION F111 D1 |
+| docs/roadmap/features/T2_F111.md | pure append: the D1 scope amendment |
+| packages/orchestration/diff_repair.py | new; pure selection helper, no call sites |
+| tests/orchestration/test_diff_repair.py | new; 18 tests over clauses 1-8 |
+| .agent/plan.md | rewritten for R2 |
 | .agent/handoff.md | this file |
 
 ## Gates — command, real exit code, counted value
-a. `sha256sum` of SFROM STO LR PLAN CTX -> exit 0; 5 of 5 equal the block table
-a. `cmp` BLOCK/authored -> exit 0 silent; `cmp` authored/last_block -> exit 0 silent
-b. `grep -c -F -x '- [~] F111 — Diff-only repair' STATUS.md` -> exit 0, value 1
-b. `grep -c -F -x '- [ ] F111 — Diff-only repair' STATUS.md` -> exit 1, value 0 (exit 1 is the pass)
-b. `git show --numstat b1017248 -- docs/roadmap/STATUS.md` -> exit 0, reads `1 1`
-c. `cmp` LR/live_review, PLAN/plan, CTX/context -> exit 0 silent, all three
-d. `grep -c '^## Steps' .agent/live_review.md` -> exit 0, value 1
-d. `grep -c '^- R-0' .agent/live_review.md` -> exit 0, value 22
-d. `grep -c '^<<<'` on live_review, plan, context, handoff, STATUS -> exit 1, value 0 each (exit 1 is the pass)
-d. `wc -l < .agent/plan.md` -> exit 0, value 37 (cap 50); `wc -l < .agent/context.md` -> exit 0, value 45
-e. `python3 -m pytest tests/docs/ -q` -> exit 0, 294 passed (run at C3, rerun at HEAD)
-f. `python3 -m pytest tests/cli/test_golden_path.py -q` -> exit 0, 42 passed
-g. `git status --porcelain` -> exit 0, zero lines of output
-g. `git rev-list --left-right --count origin/feature/f111-diff-only-repair...HEAD` -> exit 0, reads `0 0`
-h. insertions 319, 293, 1, 96, 30, 27 -> each below the 500 cap
+a. `sha256sum` LRG/FF/PLAN -> exit 0, 3 of 3 match the block (BLOCK carries no
+   stated digest there, being self-referential; it is pinned by cmp, sha 85e49d42).
+   `cmp` BLOCK/authored, authored/last_block, PLAN/plan.md -> exit 0 silent, 3 of 3
+b. `git show --numstat` C3 live_review.md -> exit 0 `51 0`; C4 T2_F111.md -> exit 0
+   `17 0` — delete column 0 in both, so both were pure appends
+c. `grep -c` live_review.md: `^### DECISION F111 D1` exit 0 = 1; `^### R1 — PASS`
+   exit 0 = 1; `^- R-0` exit 0 = 22 (unchanged); `^Done:` exit 1 = 0 (exit 1 passes)
+d/e/f. `python3 -m pytest -q`: test_diff_repair.py exit 0, 18 collected/18 passed;
+   tests/docs/ exit 0, 294 passed (at C4 and at HEAD); test_golden_path.py exit 0, 42
+g. `grep -c '@@' diff_repair.py` -> exit 1, value 0 (exit 1 is the pass; no diff
+   parser added); its 4 imports are __future__, collections.abc, dataclasses and
+   pathlib — not pingpong_loop/builder_bridge/source_apply/review_scope
+h. mutation red-proof runs AFTER this commit in disposable worktree .remedy-wt/r2mut
+   only; exit code, failing test id, worktree list, clean-tree recheck: in handback
+i. `git rev-list --left-right --count origin/<branch>...HEAD` -> exit 0 `0 0`; insertions 275/231/51/17/409/18, each below the 500 cap
 
 ## Item status
 | Item | Status | Reason |
@@ -56,4 +57,4 @@ h. insertions 319, 293, 1, 96, 30, 27 -> each below the 500 cap
 Deviations, declared: none.
 
 ## Next expected action
-R2 — the repair-path DECISION plus T001 hunk selection.
+R3 — wire the selected hunks into the repair context.
