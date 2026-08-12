@@ -21,6 +21,7 @@ import pytest
 
 from packages.orchestration.context_compiler import (
     COMPILED_CONTEXT_SEGMENT_NAME,
+    CONTEXT_SIZE_FILENAME,
     DEFAULT_CONTEXT_TOKEN_BUDGET,
     DEFAULT_INLINE_SIZE_CAP_BYTES,
     DEFAULT_SIGNATURE_LINE_CAP,
@@ -29,12 +30,14 @@ from packages.orchestration.context_compiler import (
     OMISSION_REASON_DISTANCE,
     OMISSION_REASON_SIZE,
     OMITTED_CONTEXT_FILENAME,
+    ContextSizeComparison,
     FileSignatures,
     ImportNeighbors,
     OmissionRecord,
     build_import_neighbor_graph,
     compare_context_size,
     compile_task_context,
+    export_context_size_comparison_json,
     export_omitted_context_json,
     extract_file_signatures,
     fits_inline_size_cap,
@@ -44,6 +47,7 @@ from packages.orchestration.context_compiler import (
     render_compiled_context_text,
     typescript_file_signatures,
     typescript_import_neighbors,
+    write_context_size_comparison_json,
     write_omitted_context_json,
 )
 from packages.orchestration.prompt_segments import (
@@ -1125,3 +1129,131 @@ def test_two_contexts_compiled_at_the_same_custom_cap_stay_equal(tmp_path: Path)
     assert render_compiled_context_text(tmp_path, first) == render_compiled_context_text(
         tmp_path, second
     )
+
+
+# --------------------------------------------------------------------------
+# The size record (F107 T004 part 2b-i) — the comparison as an exported and
+# written artifact, beside the omissions record it is the sibling of
+# --------------------------------------------------------------------------
+
+
+#: A comparison written out by hand, so every assertion below can name the four
+#: figures LITERALLY instead of recomputing them with the code's own
+#: expression. 900 - 250 = 650 and 650 / 900 is not a round number, which is
+#: exactly why it is here: a silently rounded ratio would show.
+_SIZE_FIXTURE = ContextSizeComparison(
+    whole_file_tokens=900,
+    compiled_tokens=250,
+    saved_tokens=650,
+    saved_ratio=650 / 900,
+)
+
+
+def test_export_context_size_comparison_json_carries_the_four_real_figures() -> None:
+    """The exported record IS the four fields, spelled out: no extra key, no
+    missing key, and each value the one the comparison carries."""
+    exported = export_context_size_comparison_json(_SIZE_FIXTURE)
+
+    assert exported == {
+        "whole_file_tokens": 900,
+        "compiled_tokens": 250,
+        "saved_tokens": 650,
+        "saved_ratio": 650 / 900,
+    }
+    assert list(exported) == [
+        "whole_file_tokens",
+        "compiled_tokens",
+        "saved_tokens",
+        "saved_ratio",
+    ]
+    assert isinstance(exported["saved_tokens"], int)
+    assert isinstance(exported["saved_ratio"], float)
+
+
+def test_a_negative_saving_survives_the_export_unclamped() -> None:
+    """A selection that GREW the context has to show that. Clamping the number
+    to zero would hide the one figure the comparison exists to expose."""
+    grew = ContextSizeComparison(
+        whole_file_tokens=40,
+        compiled_tokens=100,
+        saved_tokens=-60,
+        saved_ratio=-1.5,
+    )
+
+    exported = export_context_size_comparison_json(grew)
+
+    assert exported["saved_tokens"] == -60
+    assert exported["saved_ratio"] == -1.5
+    assert exported["whole_file_tokens"] == 40
+    assert exported["compiled_tokens"] == 100
+
+
+def test_a_zero_baseline_exports_a_ratio_of_exactly_zero(tmp_path: Path) -> None:
+    """A zero baseline has no ratio. The export must carry the 0.0 the dataclass
+    documents and never a ratio of its own invention."""
+    compiled = _selector_compiled(tmp_path)
+
+    exported = export_context_size_comparison_json(compare_context_size(tmp_path, (), compiled))
+
+    assert exported["whole_file_tokens"] == 0
+    assert exported["saved_ratio"] == 0.0
+    assert exported["compiled_tokens"] == compiled.estimated_tokens
+    assert exported["saved_tokens"] == -compiled.estimated_tokens
+    assert exported["saved_tokens"] < 0
+
+
+def test_write_context_size_comparison_json_creates_its_parent_and_round_trips(
+    tmp_path: Path,
+) -> None:
+    """The second writing function: it creates the directory nobody made for it,
+    and what lands on disk reads back as the same four figures."""
+    target = tmp_path / "evidence" / "nested" / "context_size.json"
+    assert not target.parent.exists()
+
+    written = write_context_size_comparison_json(_SIZE_FIXTURE, target)
+
+    assert written == target
+    assert target.is_file()
+    written_text = target.read_text(encoding="utf-8")
+    assert json.loads(written_text) == {
+        "whole_file_tokens": 900,
+        "compiled_tokens": 250,
+        "saved_tokens": 650,
+        "saved_ratio": 650 / 900,
+    }
+    assert written_text.endswith("\n")
+    assert written_text.startswith('{\n  "whole_file_tokens": 900,\n')
+
+
+def test_the_size_record_filename_constant_is_what_the_writer_writes(tmp_path: Path) -> None:
+    """One spelling of the size record's filename, used by the writer and by
+    every caller that will later look for it — the constant IS the contract."""
+    target = tmp_path / "task_runs" / "t1" / CONTEXT_SIZE_FILENAME
+
+    written = write_context_size_comparison_json(_SIZE_FIXTURE, target)
+
+    assert CONTEXT_SIZE_FILENAME == "context_size.json"
+    assert written == target
+    assert written.name == "context_size.json"
+    assert json.loads(target.read_text(encoding="utf-8")) == export_context_size_comparison_json(
+        _SIZE_FIXTURE
+    )
+
+
+def test_the_written_size_record_reports_the_fixture_repo_saving(tmp_path: Path) -> None:
+    """The record over a REAL compiled context, not a hand-built dataclass: the
+    five-file fixture tree, whose whole-file baseline is summed here rather than
+    read back from the comparison."""
+    compiled = _selector_compiled(tmp_path)
+    expected_whole = sum(_full_tokens(tmp_path, path) for path in _SELECTOR_REPO_PATHS)
+    comparison = compare_context_size(tmp_path, _SELECTOR_REPO_PATHS, compiled)
+    target = tmp_path / "runs" / CONTEXT_SIZE_FILENAME
+
+    write_context_size_comparison_json(comparison, target)
+
+    record = json.loads(target.read_text(encoding="utf-8"))
+    assert record["whole_file_tokens"] == expected_whole
+    assert record["compiled_tokens"] == compiled.estimated_tokens
+    assert record["saved_tokens"] == expected_whole - compiled.estimated_tokens
+    assert record["saved_tokens"] > 0
+    assert 0.0 < record["saved_ratio"] < 1.0
