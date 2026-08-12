@@ -1,0 +1,48 @@
+=== BASE RUN — F105 R49 integration gate ===
+cwd: /home/decodeux/Repos/remedy/.remedy-wt/base-gate
+HEAD: cfda4245b106aa17f2a7d846629dd1ab806766c7
+branch: tmp/base-gate
+command: REMEDY_UI_NO_AUTO_BUILD=1 python3 -m pytest -n auto -q
+start_epoch: 1786517759
+start_utc: 2026-08-12T06:55:59Z
+bringing up nodes...
+... [trimmed: the full log is 685 lines and lives outside the repo]
+
+--- one failure verbatim, as the CAUSE of all seven (the other six are identical) ---
+__________ TestUIServerIntegration.test_server_starts_and_writes_info __________
+[gw13] linux -- Python 3.10.12 /usr/bin/python3
+
+self = <tests.ui_server.test_live_state.TestUIServerIntegration object at 0x77f2b05f4430>
+
+    def test_server_starts_and_writes_info(self):
+>       port, token, t = self._start_server()
+
+            time.sleep(0.1)
+>       pytest.fail("Server did not start in time")
+E       Failed: Server did not start in time
+
+tests/ui_server/test_live_state.py:165: Failed
+----------------------------- Captured stderr call -----------------------------
+
+ERROR: React UI not built.
+
+  To fix, run:
+    cd apps/ui && npm install && npm run build
+
+  Or check npm is installed and retry.
+  Disable auto-build: REMEDY_UI_NO_AUTO_BUILD=1
+
+--- tail ---
+=========================== short test summary info ============================
+FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_server_starts_and_writes_info
+FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_app_shell_served_without_token
+FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_api_invalid_token_403
+FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_api_missing_job_404
+FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_put_rejected
+FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_dashboard_no_raw_leaks
+FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_brain_endpoint
+7 failed, 16298 passed, 19 skipped in 143.00s (0:02:23)
+PYTEST_EXIT_CODE: 1
+end_epoch: 1786517903
+end_utc: 2026-08-12T06:58:23Z
+wall_clock_seconds: 144
