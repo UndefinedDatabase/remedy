@@ -315,3 +315,6 @@ assuming") was for.
   finding instead of being re-planned quietly because a written plan step was
   disproved by the code it pointed at, and the next reader deserves the reason
   on disk. Fix ordered this round as DECISION F111 D3. OPEN.
+Landed: R-0300 — a zero-line file whose range names line 1 is now pinned as `out_of_bounds` by `TestEmptyFileRanges::test_empty_file_with_a_non_empty_range_is_out_of_bounds`; commit "feat(f111): derive repair line ranges from the applied patch".
+Landed: R-0301 — DECISION F111 D1 in `docs/roadmap/features/T2_F111.md` now names `run_builder_bridge_loop`, the symbol that exists; `run_bounded_repair_loop` occurs 0x in the file; commit "docs(f111): correct the loop name and record the range source".
+Landed: R-0302 — the range source is `changed_line_ranges_from_patch`, which reads the applied `StructuredPatch` through the shared `review_scope.parse_diff_line_ranges` instead of the diffless `source_patch_applied` event; commits "feat(f111): derive repair line ranges from the applied patch" and "docs(f111): correct the loop name and record the range source" (DECISION F111 D3).
