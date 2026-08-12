@@ -82,6 +82,25 @@
   outstanding. Registered as the record of the citation-accuracy lesson, the
   same class as R-0239 and R-0247: a reviewer-authored contract must name
   fields that exist. OPEN.
+- R-0273 (Medium, F107 R6): a CompiledContext compiled with a NON-DEFAULT
+  `line_cap` is RENDERED at the module default, so the budget's numbers stop
+  describing the text that would actually be sent.
+  `render_compiled_context_text` calls `_signature_render_text(root, path,
+  DEFAULT_SIGNATURE_LINE_CAP)` unconditionally, while `compile_task_context`
+  estimated every signatures file at the CALLER's `line_cap`
+  (`packages/orchestration/context_compiler.py`). Measured by the reviewer on
+  a three-file fixture at `line_cap=3`: `compiled.estimated_tokens` reads 25
+  while the rendered text estimates at 128 — 5.1x — and `compare_context_size`
+  reports `saved_ratio=0.84`, a saving that does not exist. Both the budget
+  enforcement and the size comparison therefore rest on a figure that does not
+  describe the segment. The cause is the R6 step block, which fixed the
+  rendering signature at `(root, compiled)` with no cap; the worker followed
+  that contract and DISCLOSED the consequence in its handback instead of
+  widening scope, which is exactly the right worker behavior and is why this
+  is a finding against the contract, not against the round. No caller passes a
+  custom cap today, so nothing on disk is wrong yet — but T004 part 2 is the
+  first caller and must not inherit it. Fixed in R7 per DECISION D-F107-2.
+  OPEN.
 
 ## Steps
 
@@ -276,6 +295,55 @@ docs/roadmap/STATUS_closure_protocol.md.
   design and T004 is the round that wires it — a green gate here is not yet a
   working feature, and no verdict in this file claims otherwise.
   `LAST_REVIEWED_SHA` advances 2c75bddf -> 54bc56c2.
+- Reviewer gate on R6 (2026-08-12): PASS, with one new finding. Range
+  54bc56c2..861eb371 = seven commits touching exactly the seven paths the R6
+  block named. Transport by the PRIMARY shape: `cmp` of
+  `.remedy-wt/f107-r6-1.block.md` against `.agent/authored/f107-r6-1.md`, and
+  of that copy against `.agent/last_block.md`, is silent, and all three sha256
+  to c263869d4444… at 364 lines each. All five slice bodies recompute to their
+  BEGIN-marker digests at their declared lengths (LRF2FROM 2bb66673… 1 line,
+  LRF2TO 830262c1… 10, LR5FROM b96097af… 1, LR5TO 98b340c5… 51, PLAN5
+  27f9c8ef… 28), and `sha256sum .agent/plan.md` returns that same PLAN5
+  digest. Both C3 pairs were APPEND-shaped and were proven as such rather than
+  as rewrites: `git show --numstat 2afec22b -- .agent/live_review.md` reads
+  `59  0` — ZERO deletions, which is what proves neither anchor line was
+  edited — each FROM still occurs exactly 1x in the file, each of the 9 LRF2TO
+  and 50 LR5TO TO-only lines occurs exactly 1x among the 59 added lines, and 0
+  added lines belong to neither body. Every scoped gate was RE-RUN by the
+  reviewer rather than read from the handback: `python3 -m pytest
+  tests/orchestration/test_context_compiler.py -q` returns 52 passed (the 42
+  frozen tests plus 10 new), `tests/orchestration/test_prompt_segments.py`
+  returns 25 passed — that module's suite was gated because this round imports
+  from it for the first time — the canary `tests/cli/test_golden_path.py`
+  returns 42 passed, `python3 -m ruff check` over the module and its test file
+  returns "All checks passed!", `.agent/plan.md` is 28 lines, the Steps
+  heading count is 1, `grep -c '^- R-0272'` is 1, the stray-marker count is 0
+  across the three state files, `git status --porcelain` is empty, HEAD equals
+  `origin/feature/f107-context-compiler-v2` and `git worktree list` shows the
+  primary checkout alone. Insertions per commit 364, 285, 59, 10, 162, 190, 75
+  — each under 500. The reviewer ran FOUR mutation probes in a disposable
+  worktree at 861eb371, three of them deliberately different from the
+  worker's: collapsing the block separator from a blank line to a single
+  newline and dropping the tier number from the header line each redden
+  exactly `test_render_compiled_context_text_builds_one_block_per_included`
+  `_file`, and making the zero-baseline ratio guard return a fabricated 1.0
+  reddens exactly `test_compare_context_size_reports_no_ratio_for_a_zero`
+  `_baseline`. The worker's own probe reproduces verbatim — moving the
+  registered rank from JOB_CONTEXT to TASK gives `2 failed, 50 passed`,
+  reddening the segment-rank test and the manifest-row test — so the
+  handback's probe evidence is confirmed TRUE rather than taken on trust. That
+  worktree was removed and pruned before this verdict. All three declared
+  deviations are accurate: the 100-line handoff sits exactly at the AGENTS.md
+  D15 ceiling with its stated cause, the greedy `rstrip` is the reading that
+  actually delivers the stated invariant, and the two docstring header updates
+  are inside files the change set already names. What the round did NOT do is
+  the finding: the worker's third disclosure — that a custom `line_cap` is
+  rendered at the module default — is real, is larger than the note implied,
+  and was MEASURED by the reviewer rather than accepted as written. It is
+  registered above as R-0273 and R7 fixes it. Recorded as an observation and
+  not a finding: `context_compiler.py` still has no caller outside its own
+  test module, so F107 remains a library that is not yet wired to anything a
+  user can run. `LAST_REVIEWED_SHA` advances 54bc56c2 -> 861eb371.
 
 Done: R-0271 — RESOLVED. `packages/orchestration/context_compiler.py` now reads
 `from collections.abc import Iterable` (commit b52b1c3c, numstat `1 1`), and the
