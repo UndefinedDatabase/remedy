@@ -1,55 +1,53 @@
-# Handoff — F107 Context compiler v2 — R10 (T004 part 2b-i, the size record + the docs)
+# Handoff — F107 Context compiler v2 — R11 (T004 part 2b-ii, the DONE condition)
 
-Branch: feature/f107-context-compiler-v2. Nothing amended, rebased, reverted, reordered
-or force-pushed. main untouched. No PR exists. The SELECTION behaviour is unchanged:
-`compile_task_context`, the tiering, the budget demotion and `compare_context_size` were
-not edited — C4 only ADDS a constant, an export and a writer.
-Open findings: 13 (R-0221/0239/0247/0262/0265/0266/0268/0270/0272/0274/0277/0278/0279).
-Next free finding ID: R-0280. I wrote no `Done:` and no `Landed:` line: of the four in
-`.agent/live_review.md`, two arrived with this round's reviewer slice LRD2TO (R-0275,
-R-0276) and two were already on disk from earlier rounds.
+Branch: feature/f107-context-compiler-v2. Nothing amended, rebased, reverted, reordered or
+force-pushed. main untouched. No PR exists. `packages/orchestration/context_compiler.py` was
+NOT edited: R11 only consumes it. `packages/` still imports nothing from `apps/`.
+Open findings: 12 (R-0221/0239/0247/0262/0265/0266/0268/0270/0272/0274/0280/0281).
+Next free finding ID: R-0282. I wrote no `Done:` line; the 7 in `.agent/live_review.md` are
+reviewer-authored, 3 of them arriving with this round's slice LRD3TO.
+Landed: R-0281 — C6 replaced the stale "The one writing function" docstring claim.
 
 ## Range
 
-Review of f86bda87..HEAD — 8 commits, C1..C8.
+Review of c50080e0..HEAD — 8 commits, C1..C8.
 
 ## Commits
 
-### 2841b6a9 chore(f107): save the R10 step block verbatim
+### c0b11b5f chore(f107): save the R11 step block verbatim
 | Path | +/- | Reason |
 |------|-----|--------|
-| .agent/authored/f107-r10-1.md | 311/0 | C1 verbatim block save |
+| .agent/authored/f107-r11-1.md | 314/0 | C1 verbatim block save |
 
-### 30aaaa8e chore(f107): mirror the R10 block into last_block
+### faab1eb7 chore(f107): mirror the R11 block into last_block
 | Path | +/- | Reason |
 |------|-----|--------|
-| .agent/last_block.md | 249/214 | C2 byte-copy of the block |
+| .agent/last_block.md | 243/240 | C2 byte-copy of the block |
 
-### 58742979 chore(f107): record the R9 PASS gate and register R-0277 through R-0279
+### 815e4294 chore(f107): record the R10 PASS gate and register R-0280 and R-0281
 | Path | +/- | Reason |
 |------|-----|--------|
-| .agent/live_review.md | 79/1 | C3 the four pairs targeting this file |
+| .agent/live_review.md | 78/1 | C3 the four pairs, HDR2 the one REWRITE |
 
-### 4ea02ff0 feat(f107): add the context size record export and writer
+### faf92266 feat(f107): add the opt-in compiled context path to run_pingpong
 | Path | +/- | Reason |
 |------|-----|--------|
-| packages/orchestration/context_compiler.py | 60/5 | C4 constant + export + writer + docstrings |
+| packages/orchestration/pingpong_loop.py | 44/3 | C4 three kw-only params + the compiled branch |
 
-### 96a6bd66 test(f107): cover the context size export and writer
+### c61a3b5e test(f107): cover the compiled context end to end in the loop
 | Path | +/- | Reason |
 |------|-----|--------|
-| tests/orchestration/test_context_compiler.py | 132/0 | C5 six appended cases + 4 import lines |
+| tests/orchestration/test_context_compiler_e2e.py | 265/0 | C5 new module, 6 cases |
 
-### f7d4551f docs(f107): document the job context view and index it
+### b4e9d423 test(f107): correct the stale one-writer claim in the omissions test
 | Path | +/- | Reason |
 |------|-----|--------|
-| docs/guides/job-context-view-user-guide-v0.md | 184/0 | C6 new guide, written from the code |
-| docs/README.md | 2/0 | C6 the IDXQ and IDXG rows |
+| tests/orchestration/test_context_compiler.py | 1/1 | C6 the R-0281 one-line fix |
 
-### a6c56679 chore(f107): advance plan to R10 T004 part 2b-i
+### 28eebc29 chore(f107): advance plan to R11 T004 part 2b-ii
 | Path | +/- | Reason |
 |------|-----|--------|
-| .agent/plan.md | 9/9 | C7 slice PLAN10, full replacement |
+| .agent/plan.md | 11/12 | C7 slice PLAN11, full replacement |
 
 ### C8 — self-reference, a handoff cannot table its own SHA
 | Path | +/- | Reason |
@@ -58,140 +56,157 @@ Review of f86bda87..HEAD — 8 commits, C1..C8.
 
 ## External actions
 
-`git worktree add --detach .remedy-wt/r10probe HEAD` → exit 0, then
-`git worktree remove --force` → exit 0 and `git worktree prune` (gate i).
-`git push -u origin feature/f107-context-compiler-v2` after C8 (Verification k).
-No gh command ran, no PR created/edited/merged. Gate i and gate j scratch live under the
-gitignored `.remedy-wt/`; the primary checkout was never mutated.
+`git worktree add --detach .remedy-wt/r11probe HEAD` → exit 0; `git worktree remove --force
+.remedy-wt/r11probe` + `git worktree prune` → exit 0 (gate i). `git push -u origin
+feature/f107-context-compiler-v2` after C8 (Verification k). No gh command, no PR
+created/edited/merged. Gate i and gate j scratch live under the gitignored `.remedy-wt/`;
+the primary checkout was never mutated.
 
 ## Verification
 
-a. `cmp .agent/authored/f107-r10-1.md .agent/last_block.md` → exit 0, silent. `sha256sum`
-   both → d0117326ae081a8dfdbed793b4f791d9e321fcf2e1f78437cfd4c59f2514ef60, 311 lines
-   each — the value the reviewer original's trailer (its line 312) declares.
-b. Thirteen slice bodies recompute to their BEGIN-marker digests at their declared line
-   counts → SLICES=13 MISMATCH=0, exit 0: HDRFROM 969938db… 1L, HDRTO 9e0d720d… 1L,
-   LRF6FROM 01fa41b1… 1L, LRF6TO 32d977f8… 29L, LR9FROM 4abc6ab4… 1L, LR9TO fc6bc0db…
-   38L, LRD2FROM c87e031c… 1L, LRD2TO 7662036b… 14L, IDXQFROM 8b420a66… 1L, IDXQTO
-   6876d1e0… 2L, IDXGFROM 4e4f9bb9… 1L, IDXGTO cca85dad… 2L, PLAN10 fd7a81e4… 28L.
-   `sha256sum .agent/plan.md` → fd7a81e4…, 28 lines == PLAN10.
-c. `git show --numstat 58742979 -- .agent/live_review.md` → exit 0 → `79  1`: deletion
-   column exactly 1, HDR being the only REWRITE. `git show --numstat 58742979 --
-   docs/README.md` → exit 0, EMPTY: the index rows are in C6, not C3 (Deviation 1); at
-   C6, `git show --numstat f7d4551f -- docs/README.md` → `2  0`, deletion column 0 as
-   the gate specifies. Line-anchored greps on `.agent/live_review.md`:
-   `^> Branch:.*Next free ID: R-0280` → 1; `…R-0277` → 0; `^- R-0277` → 1; `^- R-0278`
-   → 1; `^- R-0279` → 1; `^Done:` → 4; `^Landed:` → 0; `^## Steps` → 1; `^<<<` → 0 —
-   and `^<<<` → 0 in .agent/plan.md, .agent/handoff.md and docs/README.md too. Every
-   sub-check met its specified value; nothing was edited to move a number.
-d. `python3 -m pytest tests/orchestration/test_context_compiler.py -q` → exit 0 → 61
-   passed, 0.17s (55 before this round; C5 adds 6).
-e. `python3 -m pytest tests/cli/test_job_context_cmd.py -q` → exit 0 → 9 passed, 2.56s.
-f. `python3 -m pytest tests/cli/test_golden_path.py -q` → exit 0 → 42 passed, 19.70s.
-g. `python3 -m pytest tests/docs/ -q` → exit 0 → 294 passed, 0.25s.
-h. `python3 -m ruff check packages/orchestration/context_compiler.py
+a. `cmp .agent/authored/f107-r11-1.md .agent/last_block.md` → exit 0, silent. `sha256sum`
+   both → 121401148a1ec2f1b487e9c60cac1e32ec98ed08b80467ff70e8de7aa06911d6, 314 lines each
+   — the value the reviewer original's trailer (its line 315) declares.
+b. Nine slice bodies recompute to their BEGIN-marker digests at their declared line counts
+   → SLICES=9 MISMATCH=0, exit 0: HDR2FROM 9e0d720d… 1L, HDR2TO f538e69d… 1L, LRF7FROM
+   bfec9b2c… 1L, LRF7TO 89279b5d… 19L, LR10FROM a837f435… 1L, LR10TO 7a8aa26e… 37L,
+   LRD3FROM 36e9a076… 1L, LRD3TO ff528af9… 24L, PLAN11 1b01d7c9… 27L. `sha256sum
+   .agent/plan.md` → 1b01d7c9…, 27 lines == PLAN11; `cmp` against the extracted slice exit
+   0, silent.
+c. `git show --numstat 815e4294 -- .agent/live_review.md` → exit 0 → `78  1`: deletion
+   column exactly 1, HDR2 the only REWRITE. Line-anchored greps on `.agent/live_review.md`:
+   `^> Branch:.*Next free ID: R-0282` → 1; `…R-0280` → 0; `^- R-0280` → 1; `^- R-0281` → 1;
+   `^Done:` → 7; `^Landed:` → 0; `^## Steps` → 1; `^<<<` → 0 — and `^<<<` → 0 in
+   .agent/plan.md and .agent/handoff.md too. Every value is the specified one; nothing was
+   edited to move a number.
+d. `python3 -m pytest tests/orchestration/test_context_compiler_e2e.py -q` → exit 0 → 6
+   passed, 0.29s (new module).
+e. `python3 -m pytest tests/orchestration/test_context_compiler.py -q` → exit 0 → 61
+   passed, 0.14s.
+f. REGRESSION GATE. `python3 -m pytest tests/orchestration/test_pingpong.py
+   tests/orchestration/test_pingpong_integration.py -q` → exit 0 → 43 passed, 1.38s. I also
+   measured it BEFORE C4 on this branch: 43 passed, exit 0. Unchanged, as required.
+g. `python3 -m pytest tests/cli/test_golden_path.py -q` → exit 0 → 42 passed, 21.66s.
+h. `python3 -m ruff check packages/orchestration/pingpong_loop.py
+   tests/orchestration/test_context_compiler_e2e.py
    tests/orchestration/test_context_compiler.py` → exit 0, "All checks passed!".
-i. PROBE, inside the disposable worktree `.remedy-wt/r10probe` at HEAD a6c56679 and
-   nowhere else: `target.write_text(payload + "\n")` → `target.write_text(payload)`
-   (numstat `1 1`). RED, which is the wanted answer:
-   `python3 -m pytest tests/orchestration/test_context_compiler.py -q` → exit 1 →
-   1 failed, 60 passed —
-   `test_write_context_size_comparison_json_creates_its_parent_and_round_trips` on
-   `assert written_text.endswith("\n")`. Worktree removed and pruned; `git worktree
-   list` is the primary checkout alone and `git status --porcelain` 0 lines after it.
-j. THE REAL RUN, not a test: `.remedy-wt/r10gate/gate_j_realrun.py` over the real
-   5-file git checkout `.remedy-wt/r9gate/demo_repo`, candidates from its own
-   `git ls-files -z` (README.md, src/clock_source.py, src/invoice_report.py,
-   src/payment_gateway.py, src/retry_policy.py), fenced `src/payment_gateway.py`.
-   `compare_context_size` → ContextSizeComparison(whole_file_tokens=215,
-   compiled_tokens=164, saved_tokens=51, saved_ratio=0.2372093023255814);
-   `write_context_size_comparison_json` created the missing parent and returned
-   `.remedy-wt/r10gate/realrun/context_size.json`. That file, VERBATIM:
+i. PROBE, inside the disposable worktree `.remedy-wt/r11probe` at HEAD 28eebc29 and nowhere
+   else: `use_compiled_context = bool(paths) and bool(candidates)` → `= False and
+   bool(candidates)` (numstat `1 1`), i.e. the compiled branch always falls through to
+   `build_repo_context`. RED: `pytest test_context_compiler_e2e.py test_pingpong.py
+   test_pingpong_integration.py -q` → exit 1 → 3 failed, 46 passed. Failing:
+   `test_compiled_run_reports_the_compiled_category`,
+   `test_records_are_written_with_real_values`, `test_no_record_dir_writes_neither_file`.
+   GAP, reported not repaired (Deviation 8): the DONE-condition case
+   `test_compiled_run_shrinks_the_context_and_still_solves_the_task` stays GREEN under the
+   mutation, because the fallthrough pack (265 chars) is also smaller than the whole-file
+   baseline. The categories assertion in the neighbouring case is what makes the module
+   bite. Worktree removed and pruned; `git worktree list` is the primary checkout alone.
+j. THE REAL RUN, not a test module: `.remedy-wt/r11gate/gate_j_realrun.py` built the
+   five-file fixture on real disk under `.remedy-wt/r11gate/realrun/repo` and called
+   `run_pingpong` TWICE. Verbatim:
+
+    RUN 1 baseline  final_status = 'staged_review_passed'
+    RUN 1 baseline  context_chars = 4613
+    RUN 1 baseline  context_categories = ['goal', 'file_tree', 'mentioned_files']
+    RUN 2 compiled  final_status = 'staged_review_passed'
+    RUN 2 compiled  context_chars = 899
+    RUN 2 compiled  context_categories = ['compiled_context']
+    shrink: compiled < baseline = True
+
+   `.remedy-wt/r11gate/realrun/records/context_size.json`, VERBATIM:
 
     {
-      "whole_file_tokens": 215,
-      "compiled_tokens": 164,
-      "saved_tokens": 51,
-      "saved_ratio": 0.2372093023255814
+      "whole_file_tokens": 1067,
+      "compiled_tokens": 195,
+      "saved_tokens": 872,
+      "saved_ratio": 0.817244611059044
     }
 
-   whole_file_tokens = 215, compiled_tokens = 164. The 164 is the same number
-   `remedy job context … --task T001` prints for that repo, so the record and the
-   shipped view agree on the same selection.
-k. `git status --porcelain` → exit 0 → 0 lines. `git worktree list` → the primary
-   checkout alone. HEAD == origin/feature/f107-context-compiler-v2 after the push
-   (before it, origin stood at f86bda87). Insertions per commit: 2841b6a9 311,
-   30aaaa8e 249, 58742979 79, 4ea02ff0 60, 96a6bd66 132, f7d4551f 186, a6c56679 9,
-   C8 this file — each < 500.
-l. `git diff --name-only f86bda87..HEAD` → exit 0 → the Change list and nothing else:
-   .agent/authored/f107-r10-1.md, .agent/last_block.md, .agent/live_review.md,
-   .agent/plan.md, docs/README.md, docs/guides/job-context-view-user-guide-v0.md,
-   packages/orchestration/context_compiler.py,
-   tests/orchestration/test_context_compiler.py. Measured at C1..C7 that is 8 paths;
-   .agent/handoff.md is the ninth and arrives with C8, so the count is 9 only from C8 on.
+   The omissions record has 2 entries; the unrelated module's, VERBATIM:
+
+    {"path": "src/invoice_report.py", "tier": 4, "reason": "distance", "outcome": "omitted"}
+
+   The fixture task is still SOLVED — the same literal `staged_review_passed` both runs —
+   on a context that fell 4613 → 899 chars and 1067 → 195 estimated tokens.
+k. `git status --porcelain` → exit 0 → 0 lines. `git worktree list` → the primary checkout
+   alone. HEAD == origin/feature/f107-context-compiler-v2 after the push (before it, origin
+   stood at c50080e0). Insertions per commit: c0b11b5f 314, faab1eb7 243, 815e4294 78,
+   faf92266 44, c61a3b5e 265, b4e9d423 1, 28eebc29 11, C8 this file — each < 500.
+l. `git diff --name-only c50080e0..HEAD` → exit 0 → exactly the Change list and nothing
+   else: .agent/authored/f107-r11-1.md, .agent/last_block.md, .agent/live_review.md,
+   .agent/plan.md, packages/orchestration/pingpong_loop.py,
+   tests/orchestration/test_context_compiler.py,
+   tests/orchestration/test_context_compiler_e2e.py — 7 paths at C1..C7, 8 from C8 on with
+   .agent/handoff.md. The Change list enumerates EIGHT paths, not nine (Deviation 1).
 
 ## Authored-text proofs
 
-The reviewer original `.remedy-wt/f107-r10-1.block.md` survives on disk: 312 lines,
-20764 bytes, line 312 the trailer `BLOCK_SHA256 (bytes above this line) = d0117326…`.
-Its first 20660 bytes (the block body, 311 lines) `cmp` exit 0 and silent against BOTH
-`.agent/authored/f107-r10-1.md` and `.agent/last_block.md`, and all three sha256 to
-d0117326ae081a8dfdbed793b4f791d9e321fcf2e1f78437cfd4c59f2514ef60. The six applied pairs
-are proven by the thirteen digest recomputations in b, by the C3 numstat `79 1` and the
-C6 numstat `2 0` in c, and by the pre-apply shape check: each FROM occurred exactly 1x
-in its target before replacement, HDR's TO disjoint from its FROM (the one REWRITE) and
-the other five TOs each literally containing their FROM (APPENDS).
+The reviewer original `.remedy-wt/f107-r11-1.block.md` survives on disk: 315 lines, its line
+315 the trailer `BLOCK_SHA256 (bytes above this line) = 121401148a1ec2f1…`. Its first 314
+lines `cmp` exit 0 and silent against BOTH `.agent/authored/f107-r11-1.md` and
+`.agent/last_block.md`, and all three sha256 to
+121401148a1ec2f1b487e9c60cac1e32ec98ed08b80467ff70e8de7aa06911d6. The four applied pairs are
+proven by the nine digest recomputations in b, by the C3 numstat `78 1` in c, and by the
+pre-apply shape check the applier printed: each FROM occurred exactly 1x before replacement,
+HDR2's TO disjoint from its FROM (the one REWRITE), LRF7/LR10/LRD3 each literally containing
+their FROM (APPENDS).
 
 ## Deviations & assumptions
 
-1. docs/README.md is in C6, not C3. The block says both: PROCEDURE step 3 puts all six
-   pairs in C3 and gate c measures `docs/README.md` at C3, while the Bundle line ("C6
-   the user guide + the two index rows") and the Change list ("docs/README.md (C6, the
-   IDXQ and IDXG pairs ONLY)") put them in C6. I took C6, because
-   `tests/docs/test_docs_consistency.py::TestPrimaryDocLinksResolve` asserts every
-   relative link in docs/README.md resolves: an index row landing in C3 points at a
-   guide that does not exist until C6, so C3, C4 and C5 would each be a RED tree. Both
-   readings are reported in Verification c.
-2. C4 corrected a THIRD stale absolute claim the block does not name: the module
-   docstring (context_compiler.py:49-51) said "nothing writes evidence EXCEPT
-   `write_omitted_context_json`", which C4 makes false exactly like the two function
-   docstrings the block does name. Same reason, same fix.
-3. C4 added `from typing import Any` — the block's ordered signature
-   `-> dict[str, Any]` needs it and the module had no typing import.
-4. C5 is "append only" plus 4 lines inside the existing import block (CONTEXT_SIZE_
-   FILENAME, ContextSizeComparison, export_…, write_…): the appended cases cannot
-   reference the new names otherwise. No existing test line was changed.
-5. NOT fixed, flagged instead: `tests/orchestration/test_context_compiler.py:801`
-   still calls `write_omitted_context_json` "The one writing function" in a test
-   docstring — the same stale absolute claim class as Deviation 2, but editing it is
-   not an append, so the block's C5 constraint forbids it. A one-line fix for R11.
-6. Every block-cited line number was checked and all were correct: OMITTED_CONTEXT_
-   FILENAME at 931, write_omitted_context_json at 904 with the "ONLY writing function"
-   sentence at 907, the dataclass docstring at 997, compare_context_size at 1012, the
-   Public API list at 70-93, and the omissions-filename test at 963. No citation error
-   this round.
-7. Line count: this file is 197 lines, over the 60 of the block and over the AGENTS.md
-   100-line ceiling, declared under DECISION D15. Cause is mandated content, counted
-   mechanically: the Commits section's eight per-commit changed-files tables = 43
-   lines, the Verification section's twelve gates a-l with their real values including
-   gate j's verbatim JSON = 66 lines, the item-status table = 13 lines. 122 of the 197
-   are those three blocks. No section was dropped to fit; no transcript was padded.
+1. The block says "exactly these nine paths" and then enumerates EIGHT (block lines 11-18);
+   gate l repeats "the nine paths". Measured: 8 paths from C8 on. Nothing outside the list
+   was touched. Same class as R-0274/R-0280 — a block that says two different things.
+2. `compile_task_context`, `render_compiled_context_text` and `compare_context_size` all
+   take `root: Path` and do `root / rel_path`. The block's `compile_task_context(repo_path,
+   …)` passes a `str`, which would raise `TypeError`. C4 binds `compiled_root =
+   Path(repo_path)` once and passes that.
+3. C4 sets `categories = [COMPILED_CONTEXT_SEGMENT_NAME]`, not the literal
+   `["compiled_context"]` the block wrote. Identical value (context_compiler.py:936); the
+   constant exists so segment, record and tests agree by construction.
+4. Block citation error: `build_scope_contract_for_builder` is imported locally at
+   pingpong_loop.py:2741 before C4 (2782 after), not :2694 — line 2694 sat inside
+   `_finalize_call`. Every OTHER cited line was correct: build_repo_context 694,
+   `builder_context` at JOB_CONTEXT 878, run_pingpong 2418, the try block 2651-2665, the
+   `build_repo_context` call 2653, `result.context_categories/chars` 2664-2665.
+5. Block citation error: the stale "The one writing function" string is at
+   tests/orchestration/test_context_compiler.py:805, not :801 (:801 is an assert). C6
+   changed that one line and nothing else.
+6. C4 guards the records with `if context_record_dir:` rather than `is not None`, so an
+   EMPTY string is treated as unset instead of resolving to the process cwd. Writing outside
+   the caller's directory is never correct.
+7. THE BASELINE IS `mentioned_files`, and this is the round's substantive reading.
+   `build_repo_context` inlines file contents ONLY for paths handed to `mentioned_files`;
+   with it unset the pack is goal + file tree + README = 265 chars, which is SMALLER than
+   the 899-char compiled context. F107's DONE condition is "shrinks versus WHOLE-FILES", so
+   both gate j's baseline run and C5's baseline helper pass the same candidate listing as
+   `mentioned_files` (the three NEW parameters stay unset). Both numbers are reported rather
+   than the flattering one alone: vs whole-files 4613 → 899; vs the tree-only pack the
+   compiled context is larger.
+8. Gate i found a real GAP in C5 and I did NOT repair it after measuring: the DONE-condition
+   case survives the fallthrough mutation (see i). Editing C5 after the probe would make the
+   probe self-fulfilling. Flagging it is the honest move and the reviewer may register it.
+9. `.agent/plan.md` advances at C7 per PROCEDURE step 5, so C1..C6 were committed while
+   plan.md still read R10. That is the block's ordering, not a choice of mine.
+10. Line count: this file is 212 lines, over 60 and over the AGENTS.md 100-line ceiling,
+   declared under DECISION D15. Cause is mandated content: eight per-commit changed-files
+   tables, the twelve gates a-l with real values including gate j's verbatim transcript and
+   both JSON records, and the item-status table. No section was dropped; no prose padding.
 
 ## Item status
 
-| Item | Status   | Reason                                                          |
-|------|----------|-----------------------------------------------------------------|
-| C1   | done     | cmp exit 0, sha256 d0117326… == BLOCK_SHA256, 311 lines           |
-| C2   | done     | cmp exit 0 silent against the authored copy and the original      |
-| C3   | done     | numstat `79 1`, deletion column exactly 1 (HDR, the one REWRITE)  |
-| C4   | done     | 60 insertions; constant + export + writer, selection untouched    |
-| C5   | done     | 61 passed (55 → 61); the probe in gate i is RED, so C5 bites      |
-| C6   | deviated | the two index rows land here, not in C3 — Deviation 1             |
-| C7   | done     | plan.md sha256 == PLAN10 digest fd7a81e4…, 28 lines               |
-| C8   | done     | this rewrite; pushed immediately after, gate k re-measured        |
+| Item | Status   | Reason                                                             |
+|------|----------|--------------------------------------------------------------------|
+| C1   | done     | cmp exit 0, sha256 12140114… == BLOCK_SHA256, 314 lines             |
+| C2   | done     | cmp exit 0 silent against the authored copy and the original        |
+| C3   | done     | numstat `78 1`, deletion column exactly 1 (HDR2, the one REWRITE)   |
+| C4   | deviated | Path(repo_path) and the name constant — Deviations 2, 3, 6          |
+| C5   | done     | 6 passed; probe RED at 3 failed / 46 passed, with the gap in 8      |
+| C6   | done     | R-0281 landed; the cited line was 805, not 801 — Deviation 5        |
+| C7   | done     | plan.md sha256 == PLAN11 digest 1b01d7c9…, 27 lines                 |
+| C8   | done     | this rewrite; pushed immediately after, gate k re-measured          |
 
 ## Next
 
-Reviewer gate on R10, range f86bda87..HEAD. Then R11 = T004 part 2b-ii: the fixture task
-solved by the fake provider with the compiled context as its JOB_CONTEXT segment, writing
-both records into the task's evidence directory.
+Reviewer gate on R11, range c50080e0..HEAD. Then the integration gate per
+docs/agents/integration_gate.md — the full suite, first of the two runs.
