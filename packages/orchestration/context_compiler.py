@@ -46,8 +46,9 @@ The graph and signature layers are PURE per-file computation: neither follows
 a neighbor's own imports, so cyclic imports terminate by construction. The
 selector walks exactly TWO graph hops (fenced files, then their neighbors) and
 never more, so it terminates for the same reason. Nothing here calls a
-provider or touches the network, and nothing writes evidence EXCEPT
-``write_omitted_context_json``, which writes the omissions record exactly
+provider or touches the network, and nothing writes evidence EXCEPT the two
+writers ``write_omitted_context_json`` and
+``write_context_size_comparison_json``, each of which writes its record exactly
 where its caller points it. Stdlib only, plus two intra-repo imports — the
 repo's named token estimator ``estimate_text_tokens`` and the prompt segment
 types of ``prompt_segments``, both reused rather than respelled. That second
@@ -86,10 +87,13 @@ Public API::
     write_omitted_context_json(compiled, target_path) -> Path
     COMPILED_CONTEXT_SEGMENT_NAME      — the segment's name, spelled once
     OMITTED_CONTEXT_FILENAME           — the omissions filename, spelled once
+    CONTEXT_SIZE_FILENAME              — the size-record filename, spelled once
     render_compiled_context_text(root, compiled) -> str
     register_compiled_context_segment(registry, root, compiled) -> PromptSegment
     ContextSizeComparison              — whole-files baseline vs compiled cost
     compare_context_size(root, repo_paths, compiled) -> ContextSizeComparison
+    export_context_size_comparison_json(comparison) -> dict[str, Any]
+    write_context_size_comparison_json(comparison, target_path) -> Path
 """
 
 from __future__ import annotations
@@ -100,6 +104,7 @@ import re
 from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
+from typing import Any
 
 from packages.orchestration.prompt_segments import (
     PromptSegment,
@@ -904,9 +909,11 @@ def export_omitted_context_json(compiled: CompiledContext) -> list[dict]:
 def write_omitted_context_json(compiled: CompiledContext, target_path: Path) -> Path:
     """Write the omissions record to ``target_path`` and return that path.
 
-    The ONLY writing function in this module: it creates the parent directory,
-    writes ``export_omitted_context_json(compiled)`` as JSON with ``indent=2``
-    and a trailing newline, and writes nowhere but where the caller pointed.
+    ONE OF THE TWO writing functions in this module — the other is
+    ``write_context_size_comparison_json`` — and NEITHER of them picks its own
+    location. It creates the parent directory, writes
+    ``export_omitted_context_json(compiled)`` as JSON with ``indent=2`` and a
+    trailing newline, and writes nowhere but where the caller pointed.
     """
     target = Path(target_path)
     target.parent.mkdir(parents=True, exist_ok=True)
@@ -929,6 +936,13 @@ COMPILED_CONTEXT_SEGMENT_NAME = "compiled_context"
 #: path: where the file sits is the caller's decision, and
 #: ``write_omitted_context_json`` already takes the full target path.
 OMITTED_CONTEXT_FILENAME = "omitted_context.json"
+
+#: The size comparison's filename, named ONCE so the writer, the evidence
+#: wiring and every test spell it the same way. Like its omissions sibling it is
+#: a BARE FILENAME and never a path: where the file sits is the caller's
+#: decision, and ``write_context_size_comparison_json`` already takes the full
+#: target path.
+CONTEXT_SIZE_FILENAME = "context_size.json"
 
 
 def render_compiled_context_text(root: Path, compiled: CompiledContext) -> str:
@@ -1037,3 +1051,44 @@ def compare_context_size(
         saved_tokens=saved_tokens,
         saved_ratio=saved_tokens / whole_file_tokens if whole_file_tokens else 0.0,
     )
+
+
+def export_context_size_comparison_json(comparison: ContextSizeComparison) -> dict[str, Any]:
+    """The size comparison as one JSON-ready dict of exactly four fields.
+
+    Carries ``whole_file_tokens``, ``compiled_tokens``, ``saved_tokens`` and
+    ``saved_ratio`` as plain JSON types, READ off the dataclass and never
+    rounded, clamped or recomputed. A NEGATIVE ``saved_tokens`` therefore
+    reaches the record unchanged — a selection that grew the context has to show
+    that — and ``saved_ratio`` is exactly ``0.0`` only where the zero baseline
+    already put it, never a ratio this function invented. An export that
+    quietly disagreed with ``ContextSizeComparison`` would turn the written
+    record into a second, wrong source of truth.
+
+    PURE: touches no disk, and carries no absolute path.
+    """
+    return {
+        "whole_file_tokens": comparison.whole_file_tokens,
+        "compiled_tokens": comparison.compiled_tokens,
+        "saved_tokens": comparison.saved_tokens,
+        "saved_ratio": comparison.saved_ratio,
+    }
+
+
+def write_context_size_comparison_json(
+    comparison: ContextSizeComparison, target_path: Path
+) -> Path:
+    """Write the size comparison to ``target_path`` and return that path.
+
+    The SECOND of this module's two writing functions — the other is
+    ``write_omitted_context_json`` — and like it, it picks no location of its
+    own. It creates the parent directory, writes
+    ``export_context_size_comparison_json(comparison)`` as JSON with
+    ``indent=2`` and a trailing newline, and writes nowhere but where the caller
+    pointed.
+    """
+    target = Path(target_path)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    payload = json.dumps(export_context_size_comparison_json(comparison), indent=2)
+    target.write_text(payload + "\n", encoding="utf-8")
+    return target
