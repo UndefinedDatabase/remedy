@@ -350,3 +350,10 @@ Done: R-0271 — RESOLVED. `packages/orchestration/context_compiler.py` now read
 reviewer's own re-run of `python3 -m ruff check` over that module and its test
 file returns exit 0 with "All checks passed!" — zero errors, where the same
 command reported UP035 before the fix. Open findings 9 -> 8.
+
+Landed: R-0273 — `CompiledContext` gained a fifth field `line_cap`, set by
+`compile_task_context` from the caller's cap, and `render_compiled_context_text`
+now renders signature bodies at `compiled.line_cap` instead of
+`DEFAULT_SIGNATURE_LINE_CAP` (commit "fix(f107): render signatures at the
+compiled line cap", C5 of R7 — its own SHA is not writable into itself). Stays
+OPEN: only reviewer-authored text resolves a finding.

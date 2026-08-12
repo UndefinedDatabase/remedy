@@ -667,7 +667,9 @@ class CompiledContext:
     ``estimated_tokens`` is the sum over ``included``. ``over_budget`` is True
     when every demotion phase is exhausted and the declared write scope alone
     still exceeds ``budget_tokens`` — the compiler reports that overflow
-    rather than cutting the files the task must edit.
+    rather than cutting the files the task must edit. ``line_cap`` is the
+    signature line cap this context was compiled at, carried so a rendering
+    cannot drift from the estimate the budget was enforced against.
     """
 
     included: tuple[SelectedFile, ...]
@@ -675,6 +677,7 @@ class CompiledContext:
     estimated_tokens: int
     budget_tokens: int
     over_budget: bool
+    line_cap: int
 
 
 def _read_utf8_text(root: Path, rel_path: str) -> str | None:
@@ -878,6 +881,7 @@ def compile_task_context(
         estimated_tokens=total_tokens,
         budget_tokens=token_budget,
         over_budget=total_tokens > token_budget,
+        line_cap=line_cap,
     )
 
 
@@ -946,15 +950,15 @@ def render_compiled_context_text(root: Path, compiled: CompiledContext) -> str:
     ``included`` renders to the empty string.
 
     PURE READ: it opens the included files and nothing else, never walks a tree
-    and never writes. Signature bodies are re-rendered at the module default
-    line cap, so a context compiled with a custom ``line_cap`` renders its
-    signature blocks at that default.
+    and never writes. Signature bodies are rendered at ``compiled.line_cap``,
+    the cap the context was compiled at, so the rendered text and
+    ``estimated_tokens`` describe the same bytes.
     """
     blocks: list[str] = []
     for selected in compiled.included:
         path = selected.rel_path
         if selected.rendering == _RENDERING_SIGNATURES:
-            body = _signature_render_text(root, path, DEFAULT_SIGNATURE_LINE_CAP)
+            body = _signature_render_text(root, path, compiled.line_cap)
         else:
             text = _read_utf8_text(root, path)
             body = text if text is not None else ""
