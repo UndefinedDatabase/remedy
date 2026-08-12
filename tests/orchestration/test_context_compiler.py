@@ -810,6 +810,34 @@ def test_an_unparseable_tier_one_file_is_included_whole_with_no_record(
     assert compiled.omissions == ()
 
 
+def test_a_budget_demoted_tier_two_file_that_cannot_be_parsed_carries_both_records(
+    tmp_path: Path,
+) -> None:
+    """Phase A's own blind spot: the budget demoted the file AND nothing can
+    parse it, so the budget record alone would blame the budget for a blank the
+    budget did not cause — an infinite budget renders it just as empty."""
+    _write_tree(
+        tmp_path,
+        {
+            "app.py": "import broken\n" + "PADDING = 'padding line'\n" * 40,
+            "broken.py": "def broken(:\n    return 1\n",
+        },
+    )
+    unconstrained = compile_task_context(tmp_path, ["app.py"], ["app.py", "broken.py"])
+
+    compiled = compile_task_context(
+        tmp_path,
+        ["app.py"],
+        ["app.py", "broken.py"],
+        token_budget=unconstrained.estimated_tokens - 1,
+    )
+
+    assert ("broken.py", 2, "signatures") in _tiering(compiled)
+    assert sorted(
+        (r.reason, r.outcome) for r in compiled.omissions if r.rel_path == "broken.py"
+    ) == [("budget", "signatures"), ("unparseable", "signatures")]
+
+
 def test_a_fenced_path_with_no_file_under_root_is_not_a_candidate_at_all(tmp_path: Path) -> None:
     """It is neither included nor omitted: nothing that does not exist can be."""
     _write_tree(tmp_path, {"app.py": "VALUE = 1\n"})

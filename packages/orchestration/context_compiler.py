@@ -869,15 +869,27 @@ def compile_task_context(
         victim = _largest_tokens_first(chosen, TIER_NEIGHBOR, _RENDERING_FULL)
         if victim is None:
             break
-        rendered = _signature_render_text(root, victim, line_cap)
+        signatures = extract_file_signatures(root, victim, line_cap)
         chosen[victim] = SelectedFile(
-            victim, TIER_NEIGHBOR, _RENDERING_SIGNATURES, estimate_text_tokens(rendered)
+            victim,
+            TIER_NEIGHBOR,
+            _RENDERING_SIGNATURES,
+            estimate_text_tokens("\n".join(signatures.lines)),
         )
         omissions.append(
             OmissionRecord(
                 victim, TIER_NEIGHBOR, OMISSION_REASON_BUDGET, _OUTCOME_SIGNATURES
             )
         )
+        if signatures.parse_failed:
+            omissions.append(
+                OmissionRecord(
+                    victim,
+                    TIER_NEIGHBOR,
+                    OMISSION_REASON_UNPARSEABLE,
+                    _OUTCOME_SIGNATURES,
+                )
+            )
 
     # Phase B — then the distant files go, being the least relevant.
     while sum(s.estimated_tokens for s in chosen.values()) > token_budget:
