@@ -1,7 +1,7 @@
 # Plan — F111 Diff-only repair
 
 Branch: feature/f111-diff-only-repair, cut from main at 4e0b762e.
-Next free finding ID: R-0298. Last reviewed SHA: b0ab8e09 (R1 PASS).
+Next free finding ID: R-0300. Last reviewed SHA: 5d8d8c56 (R2 PASS).
 
 ## Goal
 Repairs stop resending whole files: a repair round carries only the
@@ -12,27 +12,29 @@ today's full-file round with the reason recorded
 (docs/roadmap/features/T2_F111.md).
 
 ## Current Step
-R2 — record the R1 gate and DECISION F111 D1, amend the feature file with the
-seam the DECISION picks, and build T001: the hunk selection helper in the new
-`packages/orchestration/diff_repair.py` with unit tests. D1 settles that the
-response side attaches to `builder_bridge` (which already applies a parsed
-patch through the fenced applicator) and the prompt side to
-`repair_context`; `pingpong_loop` is out of scope and the feature file now
-says so.
+R3 — persist the R2 gate and findings R-0298 and R-0299, then fix R-0299 by
+giving the omissions record a distinct `out_of_bounds` reason. T001's helper
+`select_repair_hunks` exists and is tested but has NO call site yet; wiring
+is the next round's work, deliberately separated so a green gate is never
+mistaken for a working feature.
 
 ## Next Steps
-1. T001 rest — wire the selected hunks into the repair context the bounded
-   repair loop feeds to the next build call.
+1. R4 — wire the selected hunks into the repair payload. OPEN QUESTION the
+   next session must settle FIRST, by reading code and not by assuming:
+   `repair_context.build_repair_context(job_id, test_run_event, events)`
+   carries `affected_files` (paths only), takes no repo_root and has no line
+   ranges, so the hunk ranges must come from somewhere else — most likely
+   `review_scope._parse_diff` over the diff of the `source_patch_applied`
+   event. Confirm the event actually carries a diff before designing.
 2. T002 — versioned unified-diff response schema, fence pre-check before any
-   apply, strict apply with an all-or-nothing conflict fallback.
-3. T003 — mode and token evidence per repair round, plus a fixture comparison
-   recording both modes' token counts.
+   apply, strict apply with an all-or-nothing conflict fallback, on the
+   `builder_bridge` seam DECISION F111 D1 selected.
+3. T003 — mode and token evidence per repair round, plus a fixture
+   comparison recording both modes' token counts.
 4. Integration gate, then closure.
 
 ## Risks
 - The full suite is RED at the merge base with five known ids (R-0286), so
-  the integration gate must compare base against branch, never read absolute
-  green.
-- `review_scope._parse_diff` and `source_apply._apply_hunks` already exist and
-  must be reused, not duplicated — a third `@@` regex in the tree would be a
-  finding.
+  the integration gate compares base against branch, never absolute green.
+- `review_scope._parse_diff` and `source_apply._apply_hunks` already exist
+  and must be reused, never duplicated.
