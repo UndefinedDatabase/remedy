@@ -616,6 +616,8 @@ OMISSION_REASON_BUDGET = "budget"
 OMISSION_REASON_DISTANCE = "distance"
 OMISSION_REASON_BINARY = "binary"
 OMISSION_REASON_SIZE = "size"
+# Its bytes decode but no extractor could parse it: signatures render EMPTY.
+OMISSION_REASON_UNPARSEABLE = "unparseable"
 
 # The two renderings a selected file can have, and the two outcomes an
 # omission decision can have — "signatures" is both, because a demotion to
@@ -651,7 +653,7 @@ class OmissionRecord:
 
     ``tier`` is the tier the file HELD when the decision was made — a tier-2
     neighbor demoted by the budget records tier 2, not tier 4. ``reason`` is
-    one of the four ``OMISSION_REASON_*`` values; ``outcome`` is ``"omitted"``
+    one of the five ``OMISSION_REASON_*`` values; ``outcome`` is ``"omitted"``
     (gone entirely) or ``"signatures"`` (still present, in reduced form), a
     distinction the reason alone cannot carry.
     """
@@ -760,7 +762,11 @@ def compile_task_context(
     rendering, not a demotion, so it carries no record. Tier 4 is every
     remaining candidate, omitted for distance. A tier-1, tier-2 or tier-3 file
     whose bytes are not valid UTF-8 is omitted outright — the one case that
-    removes a fenced file, because a binary blob cannot be inlined.
+    removes a fenced file, because a binary blob cannot be inlined. A
+    non-tier-1 file that decodes but that no extractor can parse is still
+    carried, yet its signature rendering is EMPTY, so it also records an
+    ``unparseable`` omission — that record is what explains the blank. Tier 1
+    is exempt: an unparseable fenced file is carried whole and records nothing.
 
     Over budget, three phases run in order, each repeating while the total
     still exceeds ``token_budget``: (A) demote the largest full tier-2 file to
@@ -804,18 +810,27 @@ def compile_task_context(
                 rel_path, TIER_NEIGHBOR, _RENDERING_FULL, estimate_text_tokens(text)
             )
             continue
-        rendered = _signature_render_text(root, rel_path, line_cap)
+        signatures = extract_file_signatures(root, rel_path, line_cap)
         chosen[rel_path] = SelectedFile(
             rel_path,
             TIER_NEIGHBOR,
             _RENDERING_SIGNATURES,
-            estimate_text_tokens(rendered),
+            estimate_text_tokens("\n".join(signatures.lines)),
         )
         omissions.append(
             OmissionRecord(
                 rel_path, TIER_NEIGHBOR, OMISSION_REASON_SIZE, _OUTCOME_SIGNATURES
             )
         )
+        if signatures.parse_failed:
+            omissions.append(
+                OmissionRecord(
+                    rel_path,
+                    TIER_NEIGHBOR,
+                    OMISSION_REASON_UNPARSEABLE,
+                    _OUTCOME_SIGNATURES,
+                )
+            )
 
     for rel_path in sorted(distant):
         if _read_utf8_text(root, rel_path) is None:
@@ -825,10 +840,22 @@ def compile_task_context(
                 )
             )
             continue
-        rendered = _signature_render_text(root, rel_path, line_cap)
+        signatures = extract_file_signatures(root, rel_path, line_cap)
         chosen[rel_path] = SelectedFile(
-            rel_path, TIER_DISTANT, _RENDERING_SIGNATURES, estimate_text_tokens(rendered)
+            rel_path,
+            TIER_DISTANT,
+            _RENDERING_SIGNATURES,
+            estimate_text_tokens("\n".join(signatures.lines)),
         )
+        if signatures.parse_failed:
+            omissions.append(
+                OmissionRecord(
+                    rel_path,
+                    TIER_DISTANT,
+                    OMISSION_REASON_UNPARSEABLE,
+                    _OUTCOME_SIGNATURES,
+                )
+            )
 
     for rel_path in sorted(remaining):
         omissions.append(

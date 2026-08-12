@@ -29,6 +29,7 @@ from packages.orchestration.context_compiler import (
     OMISSION_REASON_BUDGET,
     OMISSION_REASON_DISTANCE,
     OMISSION_REASON_SIZE,
+    OMISSION_REASON_UNPARSEABLE,
     OMITTED_CONTEXT_FILENAME,
     ContextSizeComparison,
     FileSignatures,
@@ -741,6 +742,74 @@ def test_a_binary_tier_two_file_is_omitted_entirely(tmp_path: Path) -> None:
     assert compiled.omissions == (OmissionRecord("blob.py", 2, "binary", "omitted"),)
 
 
+def test_an_unparseable_tier_three_file_is_carried_empty_with_an_unparseable_record(
+    tmp_path: Path,
+) -> None:
+    """The Edge-cases clause "signature-skipped WITH REASON otherwise": the
+    file decodes fine, so it is not binary, but nothing parses it — it stays in
+    the context with an EMPTY signature rendering and the record says why."""
+    _write_tree(
+        tmp_path,
+        {
+            "app.py": "import lib\n",
+            "lib.py": "import broken\n",
+            "broken.py": "def broken(:\n    return 1\n",
+        },
+    )
+
+    compiled = compile_task_context(
+        tmp_path, ["app.py"], ["app.py", "lib.py", "broken.py"]
+    )
+
+    assert ("broken.py", 3, "signatures") in _tiering(compiled)
+    assert extract_file_signatures(tmp_path, "broken.py").parse_failed is True
+    assert "\n".join(extract_file_signatures(tmp_path, "broken.py").lines) == ""
+    assert [r for r in compiled.omissions if r.rel_path == "broken.py"] == [
+        OmissionRecord("broken.py", 3, "unparseable", "signatures")
+    ]
+
+
+def test_a_tier_two_file_over_the_cap_and_unparseable_carries_both_records(
+    tmp_path: Path,
+) -> None:
+    """Two independent facts about one file, so two records: the size cap
+    demoted it, and the demotion bought nothing because it does not parse."""
+    _write_tree(
+        tmp_path,
+        {
+            "app.py": "import bigbroken\n",
+            "bigbroken.py": "def bigbroken(:\n" + "# padding for the size cap\n" * 20,
+        },
+    )
+
+    compiled = compile_task_context(
+        tmp_path, ["app.py"], ["app.py", "bigbroken.py"], inline_cap_bytes=200
+    )
+
+    assert ("bigbroken.py", 2, "signatures") in _tiering(compiled)
+    assert sorted(
+        (r.tier, r.reason, r.outcome)
+        for r in compiled.omissions
+        if r.rel_path == "bigbroken.py"
+    ) == [(2, "size", "signatures"), (2, "unparseable", "signatures")]
+    assert compiled.omissions == tuple(
+        r for r in compiled.omissions if r.rel_path == "bigbroken.py"
+    )
+
+
+def test_an_unparseable_tier_one_file_is_included_whole_with_no_record(
+    tmp_path: Path,
+) -> None:
+    """Tier 1 is "better safe": the declared write scope is carried in FULL
+    whether or not an extractor can read it, so there is nothing to record."""
+    _write_tree(tmp_path, {"broken.py": "def broken(:\n    return 1\n"})
+
+    compiled = compile_task_context(tmp_path, ["broken.py"], ["broken.py"])
+
+    assert _tiering(compiled) == (("broken.py", 1, "full"),)
+    assert compiled.omissions == ()
+
+
 def test_a_fenced_path_with_no_file_under_root_is_not_a_candidate_at_all(tmp_path: Path) -> None:
     """It is neither included nor omitted: nothing that does not exist can be."""
     _write_tree(tmp_path, {"app.py": "VALUE = 1\n"})
@@ -826,6 +895,7 @@ def test_selector_defaults_and_reason_vocabulary_are_the_documented_values() -> 
     assert OMISSION_REASON_DISTANCE == "distance"
     assert OMISSION_REASON_BINARY == "binary"
     assert OMISSION_REASON_SIZE == "size"
+    assert OMISSION_REASON_UNPARSEABLE == "unparseable"
 
 
 def test_every_candidate_path_is_accounted_for_exactly_once(tmp_path: Path) -> None:
