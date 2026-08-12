@@ -1,7 +1,7 @@
 # Plan — F107 Context compiler v2
 
 Branch: feature/f107-context-compiler-v2, cut from main at 2e4142c3.
-Next free finding ID: R-0280. R9 reviewed PASS at f86bda87.
+Next free finding ID: R-0282. R10 reviewed PASS at c50080e0.
 
 ## Goal
 The context compiler selects fenced-path files, their direct import
@@ -13,16 +13,15 @@ solvable by the fake provider, and the omissions record explains every
 exclusion (docs/roadmap/features/T2_F107.md).
 
 ## Current Step
-R10 — T004 part 2b-i: the size comparison gets the writer its omissions
-sibling already has (`write_context_size_comparison_json`), and the
-`remedy job context` view shipped in R9 gets the docs AGENTS.md requires —
-a user guide plus its two rows in the `docs/README.md` index (finding
-R-0279). No behaviour of the compiler's selection changes this round.
+R11 — T004 part 2b-ii, the feature's DONE condition: `run_pingpong` gains an
+OPT-IN compiled-context path, default off and byte-identical when unused, so a
+fixture task runs on the compiled selection instead of the whole-file context
+pack; the end-to-end test proves the fake provider still solves it and that the
+context measurably shrank, and both records are written where the caller points.
 
 ## Next Steps
-1. R11 — T004 part 2b-ii: the end-to-end fixture task solved by the fake
-   provider with the compiled context as its JOB_CONTEXT segment, writing
-   both records into the task's evidence directory.
-2. Integration gate per docs/agents/integration_gate.md.
-3. Closure per docs/roadmap/STATUS_closure_protocol.md; the branch has no PR
-   yet, it is created at closure and never merged in the same session.
+1. Integration gate per docs/agents/integration_gate.md — the full suite, twice
+   per feature, this being the first of the two.
+2. Closure per docs/roadmap/STATUS_closure_protocol.md: evidence job, a FRESH
+   review zip, the authored STATUS line, then the PR. The branch has no PR yet
+   and it is never merged in the session that creates it.
