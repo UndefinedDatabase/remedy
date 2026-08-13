@@ -21,7 +21,8 @@ No PR by design. Never force-pushed, never on main.
 | d52518f6 | chore(f111): register R-0319 | 13 |
 | 863b3d3e | chore(f111): record the R20 gate and resolve R-0318 | 47 |
 | e5ecdfbb | chore(f111): record the F111 integration gate | 348 |
-| (this commit) | chore(f111): refresh the plan and write the R21 handoff | see below |
+| 036e41b2 | chore(f111): refresh the plan and write the R21 handoff | 78 |
+| (this commit) | chore(f111): record the gate m values in the R21 handoff | 6 |
 
 ## Changed files
 | Path | Change |
@@ -47,11 +48,11 @@ i. Confirmed by READING base_failed.txt: exactly 5 failures, all in tests/orches
 j. `git worktree remove --force`, `git worktree prune`, `git branch -D tmp/base-gate` all exit 0. After: `git worktree list` = 1 entry (the primary checkout), `git branch --list 'tmp/*'` = 0 lines, `.remedy-wt/base-gate` absent, `git status --porcelain` = 0 lines.
 k. `wc -l .agent/plan.md` = 44, below the 50 cap. The file is byte-identical to the TEXT-D slice of the committed authored file.
 l. Canary `tests/cli/test_golden_path.py -q`: 42 passed, exit 0.
-m. Recorded below after the final push.
+m. `git status --porcelain` empty. `git diff --name-only 1e90e89f..HEAD` = the 16 ordered paths and nothing else (12 of them the gate_f111_r21 evidence files). `git rev-list --left-right --count origin/feature/f111-diff-only-repair...HEAD` = `0	0` after the final push.
 
 ## Deviations, declared
-This handoff is 72 lines, over the 60-line cap, under AGENTS.md DECISION D15.
-Cause: the mandated six-row item-status table, the six-row commit table, the
+This handoff is 77 lines, over the 60-line cap, under AGENTS.md DECISION D15.
+Cause: the mandated six-row item-status table, the seven-row commit table, the
 six-row changed-files table and the thirteen-item a-m verification block, none
 of which was dropped or abbreviated.
 1. Gate (c) demands `grep -c 'are byte-identical'` = 0. The true value is 16 and
@@ -63,7 +64,11 @@ of which was dropped or abbreviated.
 2. The `Landed: R-0319` line cannot name its own commit SHA: the fix and the
    line ship in the same commit, C3, so the SHA does not exist when the bytes are
    written. The line names the commit by its subject and says so in parentheses.
-3. Nothing else deviated. No `Done:` paragraph was authored by the worker.
+3. C5 landed in TWO commits, not one. The first wrote gate (m) as a forward
+   reference because the values are only true after the push; the second replaces
+   that reference with the measured values. Both touch only ordered paths. A
+   dangling reference in the handback record is worse than an extra commit.
+4. Nothing else deviated. No `Done:` paragraph was authored by the worker.
 
 ## Next expected action
 Reviewer gates R21. Then closure per docs/roadmap/STATUS_closure_protocol.md.
