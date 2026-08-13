@@ -1037,3 +1037,74 @@ Alternative considered and rejected for v1: a settings record read from disk,
 which would add a new contract, a new file format and new tests to a slice
 whose whole job is wiring. Reverse this decision by moving the two arguments
 into a settings record and deleting this paragraph.
+
+### R16 — PASS (2026-08-13)
+Reviewed by the main session over d457219a..c0ed5dd1. Every gate was re-run by
+the reviewer on this machine; nothing was read off the handback. Transport:
+`.agent/authored/f111-r16-1.md` and `.agent/last_block.md` are byte-identical
+under `cmp`, 18501 bytes, 316 lines, sha256
+c361c291408ccbc09c051ccedc08859de0111c70c3a43189670cccd5945a880a, and no line
+carries trailing whitespace. `.agent/plan.md` was compared against the TEXT-D
+slice extracted from the committed authored file and is identical at 42 lines,
+under the 50-line cap. Each authored text occurs exactly once in
+`.agent/live_review.md`. Markers counted: eleven resolution paragraphs, 42
+registered findings, one R15 gate heading, zero unreviewed-fix markers. Scope:
+exactly the seven ordered paths. Per-commit insertions 316/287/82/70/142/102,
+each under 500. `git status --porcelain` empty, one worktree, and 0 ahead and
+0 behind the remote.
+
+Tests re-run by the reviewer: 9 for the repair loop (was 6), 71 for the three
+diff-repair files — unmoved — and 42 for the golden-path canary. The new
+module-level `diff_repair` import was checked for fallout across the nine test
+files that import `builder_bridge`: 137 passed, 1 skipped, no cycle. The
+helper resolves to exactly two hits, the def at line 269 and the single call
+site at line 412.
+
+The reviewer ran an INDEPENDENT value probe the block did not order, on a
+margin the tests never assert: driving the loop with `diff_margin_lines=1` over
+a patch naming line 3 only returns `repair_mode` `diff` with `start_line` 2 and
+`end_line` 4, and the carried text is post-apply SOURCE, not diff text. So the
+margin argument is genuinely plumbed and not merely defaulted. The emitted
+metadata was read directly and carries `cycle`, `mode`, `hunk_count`,
+`total_chars` and `omitted` — counts only, no hunk text, exactly as the block's
+deliberate absence claims.
+
+A second reviewer mutation, also unordered, ran inside a disposable git
+worktree that was removed before this verdict: flipping the `diff_mode` default
+from True to False fails two of the three new tests. The feature file's
+"Config: repair.diff_mode (default on)" is therefore pinned by the suite rather
+than only asserted in prose. The worker's own ordered mutation is confirmed as
+reported — neutralising the helper fails five tests, three of them pre-existing
+ones that now traverse the default-on path, and the diff-mode-off test stays
+green, which is the correct signature.
+
+The declared handoff overage is upheld: 105 lines with the DECISION D15
+stated-cause line naming the mandated content, no section dropped. The ordered
+pre-C4 key-set check was performed and reported with its real result (32 hits,
+none pinning an exact key set), which is the shape §4.8 asks for.
+
+DECISION F111 D8 (2026-08-13, reviewer, authored for R17) — the apply-side diff
+channel attaches INSIDE `run_builder_bridge`, as a branch in Stage 1 and Stage
+3 only, and not as a second pipeline in the loop. The loop decodes the answer
+and passes a `DiffRepairResponse` in; the bridge converts it with
+`diff_repair_response_to_patch` into the same `StructuredPatch` shape Stage 1
+already produces, so the approval gate, the intent creation, the test stage and
+DECISION F111 D3's range source all keep exactly one implementation. Only the
+applicator call differs. Alternatives considered and rejected: routing the diff
+through `apply_structured_patch` after conversion, which would bypass
+`apply_diff_repair`'s fence precheck and its named fallback reasons; and
+running a parallel apply-and-test path in the loop, which would duplicate the
+approval gate and the test stage. Reverse this decision by deleting the
+`diff_response` argument and moving the branch into the loop.
+
+DECISION F111 D9 (2026-08-13, reviewer, authored for R17) — "token actuals" are
+recorded as PAYLOAD CHARACTER COUNTS in v1, never as token numbers. This
+repository has no tokenizer: a search of `packages/` for a token-counting
+function returns nothing, so any field named `tokens` would carry a fabricated
+number, which is a block condition under §4.5. `select_repair_hunks` already
+returns `total_chars`, and the R18 comparison test records
+`diff_payload_chars` against `full_file_payload_chars`. The names say chars
+because the values are chars. Alternative considered and rejected for v1:
+adding a tokenizer dependency, which would put a new third-party contract into
+a wiring slice. Reverse this decision by wiring a real tokenizer and renaming
+the fields in the same commit — never renaming them alone.
