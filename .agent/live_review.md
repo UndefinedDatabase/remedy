@@ -605,3 +605,5 @@ semantic of the applicator, it is a defect in it: the all-or-nothing contract,
 the fence preflight, the snapshot gate and the rollback path are untouched by
 this fix. Reverse by reverting R10's C4 commit; the tests it adds name the
 behaviour precisely enough that a reverter knows what they are giving up.
+
+Landed: R-0311 — `_apply_hunks` now splices each hunk's new block over the range it consumed; six order tests added and the weak substring assertion strengthened, commit C4 of R10.
