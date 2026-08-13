@@ -60,7 +60,7 @@ The tier-block order below is the operator-decided Self-Use sequence of 2026-08-
 - [x] F107 — Context compiler v2 (T001–T004 complete; accepted 2026-08-12 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f107-closure · package remedy-review-20260812-235227-READY_FOR_REVIEW.zip · SHA-256 4497c8e1bdb54ac3a0c5069dffcb9184303ceaa85f6c075ba81c09a14927ff8d · accepted HEAD b823dff9b4711ec3cc3505b496589cd02e219fc4)
 - [x] F111 — Diff-only repair (T001–T003 complete; accepted 2026-08-13 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f111-closure · package remedy-review-20260813-060242-READY_FOR_REVIEW.zip · SHA-256 c44b4a12a5715a66bf3abd55633fc86a77351b0018fab930f374e707458d79e6 · accepted HEAD a2fe520bd16773e4f1536035caeec76e880bbdde)
 - [x] F115 — Prompt breakdown & cost report (T001–T003 complete; accepted 2026-08-13 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f115-closure · package remedy-review-20260813-142842-READY_FOR_REVIEW.zip · SHA-256 bf28ae9dfebc9ef9d2e3f57a7ad9d76155cfe35a0cc5e2b7090426aa6f7a447e · accepted HEAD 705feeb19c871db6313828d76ad4e1d9e0cc4d58)
-- [ ] F045 — Loop definitions
+- [~] F045 — Loop definitions
 - [ ] F057 — Rate-limit-aware scheduler
 - [ ] F077 — Autonomy watchdog
 - [ ] F082 — Self-benchmark
