@@ -15,25 +15,28 @@ standard pipeline unchanged, and an invalid spec fails validation with precise
 messages before anything runs (docs/roadmap/features/T2_F045.md).
 
 ## Current Step
-R5 reviewed PASS. The action dispatch is built: `run_loop` routes on
-`action.kind` across the job and mission kinds, `_materialize_loop_job` is the
-one place both paths build a loop's job, the inert trigger yields
-`INERT_TRIGGER_NOTICE` instead of pretending it fired, and `last_run_for_loop`
-reads the most recent run out of the job store. DECISION F045 D5 (`loop_ref`
-rides on the JOB) is pinned by a test that goes red if provenance moves onto
-the `Mission` record. R-0348 and R-0349 are resolved with `Done:` lines
-verified against the disk. R-0350, R-0351, R-0352 and R-0353 are open: a
-review finding the R4 block asserted without measuring, the two dispatch
-defects the R5 review found, and the citation gap that halted R6 once.
+R7 handed back, awaiting the reviewer's verdict. R-0351 and R-0352 are fixed in
+code and pinned by tests that read the STORE: `_materialize_loop_job` now takes
+`mission` and `root`, sets the mission text in the `Job(...)` constructor so the
+PERSISTED record carries it, and its default save calls
+`storage.save_job(job, root)`; `loop_to_job` and both `run_loop` branches thread
+`root`; the post-hoc `job.mission = mission.goal` assignment is deleted.
+DECISION F045 D6 records that an explicit `save` overrides `root` and is still
+called with the job alone. The red-proof ran in a disposable worktree at the
+pre-fix SHA and the three new tests failed there.
+
+Open findings stay 4. R-0351 and R-0352 are repaired but NOT marked resolved:
+only the reviewer writes a `Done:` line, and `.agent/live_review.md` was
+deliberately left untouched this round so the fix is not self-certified.
+R-0350 is untouched; R-0353's counter-measure was applied by the block author
+at emission and all 12 of its citations resolved on disk.
 
 ## Next Steps
-1. R7 fixes R-0351 and R-0352 FIRST — the persisted job must carry both the
-   mission text and the caller's `root` before `_materialize_loop_job` saves.
-2. Then the CLI: `remedy loop list`, `remedy loop validate`,
+1. R8 is the CLI: `remedy loop list`, `remedy loop validate`,
    `remedy loop run <name> [--yes]`, the last-run display, and the end-to-end
    fixture loop.
-3. Then the integration gate, then closure per
-   docs/roadmap/STATUS_closure_protocol.md.
+2. Then the integration gate.
+3. Then closure per docs/roadmap/STATUS_closure_protocol.md.
 
 ## Risks
 - Loops are parsed from a config file that does not exist in this repo (no
@@ -42,8 +45,5 @@ defects the R5 review found, and the citation gap that halted R6 once.
 - Schedule and event triggers are parsed and validated but INERT until the
   scheduler feature. Running one must say so honestly, never silently behave
   like a manual trigger.
-- The mission path persists jobs and missions through two different root
-  resolutions until R-0352 is fixed, so no caller may rely on `root` isolating
-  a whole run.
 
 Fortschritt: ~60 % (T001 ✅ · T002 ✅ · T003 läuft) — Schätzung
