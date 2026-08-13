@@ -432,3 +432,39 @@ registered as R-0305 below.
   accepted at this gate, and this entry is what puts it on disk. Fix: the
   item-status table in the handoff carries the same status the handback
   declares, always. OPEN.
+
+### R7 — PASS (2026-08-13)
+Reviewed by the main session of the next self-drive session over
+b1e5cc7e..023e8d9d, a state-only round. Section 4.13 does not apply here: a
+new session CAN gate the round that closed the previous one, and this entry is
+that gate. Every command was re-run by the reviewer, never read off the
+handback. Transport: PRIMARY cmp proof, no digest fallback —
+`.remedy-wt/f111r7/BLOCK` and `.agent/authored/f111-r7-1.md` are
+byte-identical, that file and `.agent/last_block.md` are byte-identical,
+`sha256sum .remedy-wt/f111r7/LRG` reproduces the stated digest ending
+d49c182, and a `str.count` of that slice against `.agent/live_review.md`
+prints 1. Append purity by numstat: `50 0` for the findings commit and `2 2`
+for the plan pair. Markers on the final file: 31 `- R-0`, 4 `Done:`, 0
+`Landed:` (exit 1, the pass), 1 `### R6 — PASS`. Plan: the retired id 0x
+(exit 1, the pass), `Next free finding ID: R-0307` 1x, `Open findings: 27`
+1x, 46 lines. Handoff: 76 lines carrying the DECISION D15 stated-cause line
+that names 76, and 1 `^Fortschritt: ` line. Tests: `python3 -m pytest
+tests/orchestration/test_test_runner.py -q -k 'plan_md or context_md'` exit 0,
+3 passed 48 deselected; `python3 -m pytest tests/cli/test_golden_path.py
+tests/orchestration/test_diff_repair.py -q` exit 0, 72 passed — the 42 canary
+plus the 30 T001 tests, unchanged, as a round that touches no code requires.
+Hygiene: `git status --porcelain` empty, `git worktree list` one entry,
+per-commit insertions 109/71/50/2/45 each under 500, `git rev-list
+--left-right --count origin/feature/f111-diff-only-repair...HEAD` prints
+`0 0`. Scope: exactly the five ordered paths; no production, test or docs
+file was touched.
+
+- R-0307 (Low, F111 R7, stale live-looking header): the header of
+  `.agent/live_review.md` names a next-free finding id that the body has long
+  overtaken — the findings below it run past it by four — so the file's own
+  header contradicts its body, and a reader who trusts it would reuse ids
+  already allocated. It was true when the file was reset and nothing updates
+  it, which is the R-0228 class: a line that positively CLAIMS a live value it
+  does not track. The fix is not to refresh the number, because the next round
+  would stale it again, but to stop the header carrying a counter at all —
+  `.agent/plan.md` already holds it and is rewritten every round. OPEN.
