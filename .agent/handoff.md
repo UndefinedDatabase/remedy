@@ -1,109 +1,109 @@
-# Handoff — F111 Diff-only repair, R13 (T002 apply half)
+# Handoff — F111 Diff-only repair, R14 (T002 close, R-0313)
 
 Branch: feature/f111-diff-only-repair (unmerged, no PR by design).
-Base for this round: 34319061. Exactly one production commit: C5.
+Base for this round: 9a17fad2. Exactly one production commit: C4.
 
-Deviations, declared (DECISION D15): this handoff is 109 lines. The overage is
-caused by the mandated per-commit table, the changed-files table, the nine gate
-results a-i with their commands and counted values, the item-status table and
-the blocker note below. No section was dropped.
+Deviations, declared (DECISION D15): this handoff is over the 60-line cap. The
+overage is caused by the mandated per-commit table, the changed-files table,
+the nine gate results a-i with their counted values, the item-status table and
+the block-contradiction note below. No section was dropped.
 
-BLOCKER, declared — gate a items 1 and 3 were NOT run. This worker's permission
-system refuses every bash command that names a path under `.remedy-wt/`, and it
-refuses `cmp` outright (three attempts, all denied before execution). The
-transport rule was still honoured in full: `.agent/authored/f111-r13-1.md` and
-`.agent/last_block.md` were both typed from the prompt's bytes, and no file
-under `.remedy-wt/` was read, copied or opened at any point. The reviewer must
-run `cmp .remedy-wt/f111r13/BLOCK .agent/authored/f111-r13-1.md` and
-`cmp .remedy-wt/f111r13/PLAN .agent/plan.md` itself.
+DEVIATION, declared — C5 case 3. The block ordered the input
+`DIFF_ONE_FILE + "\n" + second section of DIFF_TWO_FILES` with the assertion
+"output equals input". That assertion CANNOT hold under the C4 algorithm the
+same block ordered, and the two are inconsistent by measurement, not by
+opinion: `DIFF_ONE_FILE` declares `@@ -1,3 +1,3 @@` over a body that spends
+only two old and two new lines, so at the separator blank the hunk still has
+`old_remaining=1, new_remaining=1` and step 4 fires exactly as written. Real
+output on that input:
+`'…+value = 2\n \n--- a/src/util.py…'` — the separator became " ".
+Safe reading applied (precedent R-0274, R-0280): the PRODUCTION algorithm was
+implemented verbatim, unweakened, and case 3 proves the ordered PROPERTY with a
+first section whose header matches its body (`@@ -1,2 +1,2 @@`), where the
+separator is provably out of budget and is left untouched. The measurement and
+the reason are written into that test's own docstring. Reviewer decides whether
+`DIFF_ONE_FILE`'s inflated header is itself worth a finding: a model that
+over-declares a hunk count now gets a separator blank silently converted.
 
 ## Commits
 
 | Item | SHA         | Subject                                             | Ins |
 |------|-------------|-----------------------------------------------------|-----|
-| C1   | 886c9063    | chore(f111): save the R13 step block verbatim       | 320 |
-| C2   | edfb0fe1    | chore(f111): mirror the R13 block into last block   | 299 |
-| C3   | 310b1086    | chore(f111): record DECISION F111 D6 for R-0315     |  18 |
-| C4   | 0071e97c    | docs(f111): amend A9 and record D6 built state      |  19 |
-| C5   | 25b0770c    | feat(f111): add the diff repair apply seam          | 174 |
-| C6   | f644f86b    | test(f111): pin apply fallback and fence behaviour  | 262 |
-| C7   | this commit | chore(f111): refresh plan and write the R13 handoff | ≤148 |
+| C1   | 8ff44b05    | chore(f111): save the R14 step block verbatim       | 293 |
+| C2   | 66c97c74    | chore(f111): mirror the R14 block into last block   | 224 |
+| C3   | f3e99b1f    | chore(f111): resolve R-0315, register R-0316, gate  |  70 |
+| C4   | 0b554660    | feat(f111): restore stripped blank context lines    |  96 |
+| C5   | 23f0019f    | test(f111): pin blank context normalisation, apply  | 102 |
+| C6   | this commit | chore(f111): refresh plan and write the R14 handoff | see |
 
-C7's own insertion count cannot be written inside C7 — R12 landed a false one
-that way. Its two files are 43 and 109 lines, so its insertions are at most 152,
-far under 500; the exact number is in `git show --numstat` and in the handback.
+C6's own insertion count is NOT written inside C6 — R12 landed a false one that
+way and R13 was faulted for guessing a bound instead. The real number is in
+`git show --numstat` and is stated in the handback.
 
 ## Changed files
 
-| Path                                          | Item |
-|-----------------------------------------------|------|
-| .agent/authored/f111-r13-1.md (new)           | C1   |
-| .agent/last_block.md                          | C2   |
-| .agent/live_review.md                         | C3, C4 |
-| docs/roadmap/features/T2_F111.md              | C4   |
-| packages/orchestration/diff_repair_apply.py (new) | C5 |
-| packages/orchestration/diff_repair_response.py | C5  |
-| tests/orchestration/test_diff_repair_apply.py (new) | C6 |
-| .agent/plan.md                                | C7   |
-| .agent/handoff.md                             | C7   |
+| Path                                            | Item |
+|-------------------------------------------------|------|
+| .agent/authored/f111-r14-1.md (new)             | C1   |
+| .agent/last_block.md                            | C2   |
+| .agent/live_review.md                           | C3   |
+| packages/orchestration/diff_repair_response.py  | C4   |
+| tests/orchestration/test_diff_repair_response.py| C5   |
+| tests/orchestration/test_diff_repair_apply.py   | C5   |
+| .agent/plan.md                                  | C6   |
+| .agent/handoff.md                               | C6   |
 
 ## Gates (command -> real exit code, counted value)
 
-a. `cmp` is DENIED by the permission system, so no cmp exit code exists.
-   Items 1 and 3 additionally need `.remedy-wt/`, which is denied — see the
-   blocker above. Item 2 was proved by hash instead: `sha256sum` on
-   `.agent/authored/f111-r13-1.md` and `.agent/last_block.md` -> exit 0, both
-   `f35907a250068b81c3c5b6216b2fcd68220674d997aadb40d3ce869fadc622f0`, so the
-   two files are byte-identical.
-b. `grep -c 'creation inside a diff is allowed' docs/roadmap/features/T2_F111.md`
-   -> printed 0, exit 1 (the ordered pass);
-   `grep -c 'creation and deletions BOTH require' …` -> exit 0, 1;
-   `grep -c '^## Built State — new-file creation stays' …` -> exit 0, 1.
-c. `grep -c 'the apply-and-fallback half attaches to the'
-   packages/orchestration/diff_repair_response.py` -> printed 0, exit 1 (the
-   ordered pass); `grep -c 'diff_repair_apply.apply_diff_repair' …` -> exit 0, 1.
-d. on `.agent/live_review.md`: `grep -c '^### DECISION F111 D6'` -> exit 0, 1;
-   `grep -c '^Landed: R-0315'` -> exit 0, 1; `grep -c '^Done:'` -> exit 0, 7,
-   unchanged from R12.
-e. `python3 -m pytest tests/orchestration/test_diff_repair_apply.py
-   tests/orchestration/test_diff_repair_response.py
-   tests/orchestration/test_source_apply_transaction.py -q` -> exit 0,
-   54 passed.
-f. `python3 -m pytest tests/docs/ -q` -> exit 0, 294 passed.
-g. `python3 -m pytest tests/cli/test_golden_path.py -q` -> exit 0, 42 passed.
-h. `grep -rn 'diff_repair_apply' packages/ apps/ --include='*.py' | grep -v
-   '^packages/orchestration/diff_repair_apply.py'` -> exit 0, exactly ONE line:
-   `packages/orchestration/diff_repair_response.py:30`, the PAIR-E docstring
-   pointer. No call site was added.
-i. `git status --porcelain` -> exit 0, empty after C7.
-   `git diff --name-only 34319061..HEAD` -> exit 0, exactly the nine ordered
-   paths, no others. Per-commit insertions by `git log --numstat`:
-   320 / 299 / 18 / 19 / 174 / 262 / C7, each under 500.
+a. `sha256sum .agent/authored/f111-r14-1.md .agent/last_block.md` -> exit 0,
+   both `1113f75d07f29bd2bb1218a1f793a5917636c0dd55f2d0a3291bc4af8a9ddaaf`.
+   No path under `.remedy-wt/` was read, listed or copied at any point; the
+   two files were typed from the prompt bytes. The reviewer runs its own cmp.
+b. on `.agent/live_review.md`: `grep -c '^Landed:'` -> printed 0, exit 1 (the
+   ordered pass); `grep -c '^Done:'` -> exit 0, 8; `grep -c '^- R-0'` -> exit
+   0, 41; `grep -c '^### R13 — PASS'` -> exit 0, 1.
+c. `grep -c 'def normalize_diff_blank_context' …/diff_repair_response.py`
+   -> exit 0, 1; `grep -c 'split_diff_by_path(normalize_diff_blank_context' …`
+   -> exit 0, 1.
+d. VALUE PROBE -> exit 0, printed exactly
+   `'@@ -1,3 +1,3 @@\n a\n \n-b\n+B\n'`.
+e. VALUE PROBE -> exit 0, printed exactly `'a\n\nB\n'`. The same call without
+   `n()` printed `None` before this round, measured on this machine at C4.
+f. `pytest test_diff_repair_response.py test_diff_repair_apply.py
+   test_diff_repair.py -q` -> exit 0, 68 passed (was 62 before C5).
+g. `pytest test_source_apply.py test_source_apply_transaction.py -q` -> exit 0,
+   55 passed. The applier is untouched and the number did not move.
+h. `pytest tests/cli/test_golden_path.py -q` -> exit 0, 42 passed.
+i. `git status --porcelain` -> exit 0, empty after C6.
+   `git diff --name-only 9a17fad2..HEAD` -> exit 0, exactly the eight ordered
+   paths, no others; `source_apply.py` and `diff_repair_apply.py` untouched.
+   Per-commit insertions from `git log --numstat`: 293 / 224 / 70 / 96 / 102 /
+   C6, each under 500.
    `git rev-list --left-right --count origin/feature/f111-diff-only-repair...HEAD`
    -> exit 0, `0	0` after the final push.
 
-Open findings: 33 (R-0315 is settled by DECISION F111 D6; the reviewer writes
-the `Done:` paragraph). Next free id: R-0316.
+Open findings: 33 (R-0315 resolved by the reviewer-authored `Done:` text;
+R-0313 fixed here and awaiting the reviewer's `Done:`; R-0316 registered and
+OPEN for R15). Next free id: R-0317.
 
-Fortschritt: ~68 % (T001 ✅ · T002 ✅ Record+Split+Schema+Fence+Apply · T003 offen · R-0315 entschieden, R-0313 offen für R14) — Schätzung
+Fortschritt: ~72 % (T001 ✅ · T002 ✅ komplett · T003 offen · R-0315 ✅ · R-0313 ✅ · R-0316 offen für R15) — Schätzung
 
 ## Item status
 
-| Item | Status | Reason |
-|------|--------|--------|
-| C1   | done   |        |
-| C2   | done   |        |
-| C3   | done   |        |
-| C4   | done   |        |
-| C5   | done   |        |
-| C6   | done   |        |
-| C7   | done   |        |
+| Item | Status   | Reason                                                |
+|------|----------|-------------------------------------------------------|
+| C1   | done     |                                                       |
+| C2   | done     |                                                       |
+| C3   | done     |                                                       |
+| C4   | done     | algorithm implemented verbatim, unweakened            |
+| C5   | deviated | case 3's ordered input contradicts C4; see above      |
+| C6   | done     |                                                       |
 
 ## Next expected action
 
-- Reviewer gates R13 against the real diff and runs the two `cmp` calls this
-  worker was not permitted to run.
-- `apply_diff_repair` has NO call site by design. R15/T003 wires it into
-  `run_builder_bridge_loop`; a green suite over an unreferenced module is not
-  a working feature.
-- R14 owns R-0313, the response-side blank-context normalisation, untouched here.
+- Reviewer gates R14 against the real diff, runs its own transport cmp, and
+  rules on the C5 case-3 contradiction — the block's own defect, not a scope
+  drift, and disclosed rather than routed around.
+- `normalize_diff_blank_context` is reached only through
+  `diff_repair_response_to_patch`. `apply_diff_repair` still has NO call site;
+  R15/T003 wires it into `run_builder_bridge_loop` and fixes R-0316 there.
