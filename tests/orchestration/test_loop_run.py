@@ -2,9 +2,11 @@
 
 Every test writes its OWN remedy.toml under ``tmp_path`` and loads it with
 ``loop_spec.load_loop_specs``, so the real spec path is exercised rather than a
-hand-built model. Every call passes an explicit ``save`` callable that appends
-to a list, so no test touches the real job store, and an explicit ``date``, so
-nothing here depends on the clock.
+hand-built model. Every call passes an explicit ``date``, so nothing here
+depends on the clock. MOST calls also pass an explicit ``save`` callable that
+appends to a list; the three store tests at the end pass NONE and isolate
+through ``root`` instead, because reaching the real store through ``root`` is
+the very property they exist to prove.
 
 R-0344 counter-measure: no assertion in this file matches against a string that
 carries a filesystem path. Every expected value is computed from the spec or
@@ -337,3 +339,44 @@ def test_last_run_for_loop_ignores_another_loops_run(tmp_path: Path) -> None:
     assert found is not None
     assert found.id == mine.id
     assert found.metadata[LOOP_REF_METADATA_KEY] == "nightly-tidy"
+
+
+def test_mission_run_persists_the_mission_text_on_the_stored_job(
+        tmp_path: Path) -> None:
+    """R-0351: the STORED record carries the mission text, not only the object.
+
+    Asserting against ``outcome.job`` would pass either way — reading the
+    in-memory object is exactly the defect — so this reads the job back.
+    """
+    spec = _mission_loop(tmp_path)
+
+    outcome = run_loop(spec, project_id="remedy", date="2026-08-13", root=tmp_path)
+
+    expected_goal = render_goal_template(spec.action.mission, project="remedy",
+                                         date="2026-08-13")
+    stored = storage.load_job(outcome.job.id, tmp_path)
+    assert stored.mission == expected_goal
+
+
+def test_run_loop_root_isolates_the_job_store_on_the_mission_path(
+        tmp_path: Path) -> None:
+    """R-0352: run with ``root``, find that same run with the SAME ``root``."""
+    spec = _mission_loop(tmp_path)
+
+    outcome = run_loop(spec, project_id="remedy", date="2026-08-13", root=tmp_path)
+
+    found = last_run_for_loop(spec.name, root=tmp_path)
+    assert found is not None
+    assert found.id == outcome.job.id
+
+
+def test_run_loop_root_isolates_the_job_store_on_the_job_path(
+        tmp_path: Path) -> None:
+    """R-0352 for the JOB action kind: both paths honour the caller's root."""
+    spec = _job_loop(tmp_path)
+
+    outcome = run_loop(spec, project_id="remedy", date="2026-08-13", root=tmp_path)
+
+    found = last_run_for_loop(spec.name, root=tmp_path)
+    assert found is not None
+    assert found.id == outcome.job.id
