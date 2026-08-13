@@ -6,6 +6,7 @@ import warnings
 
 import pytest
 
+from packages.orchestration.model_aliases import resolve_model_alias
 from packages.orchestration.role_config import (
     DEFAULT_EFFORT,
     DEFAULT_MODEL,
@@ -22,7 +23,7 @@ class TestDefaults:
         cfg = resolve_role_config("builder")
         assert cfg.role == "builder"
         assert cfg.provider == DEFAULT_PROVIDER == "ollama"
-        assert cfg.model == DEFAULT_MODEL == "qwen3-coder-next"
+        assert cfg.model == DEFAULT_MODEL == resolve_model_alias("ollama-default")
         assert cfg.effort == DEFAULT_EFFORT == "medium"
 
     def test_defaults_with_empty_sources(self):
@@ -167,9 +168,9 @@ class TestProviderAwareDefaults:
         cfg = resolve_role_config("builder", cli_args={"provider": "claude"})
         assert cfg.model == "claude-opus-4-20250514"
 
-    def test_ollama_defaults_to_qwen(self):
+    def test_ollama_defaults_to_the_alias_default(self):
         cfg = resolve_role_config("builder", cli_args={"provider": "ollama"})
-        assert cfg.model == "qwen3-coder-next"
+        assert cfg.model == resolve_model_alias("ollama-default")
 
     def test_fake_provider_default(self):
         cfg = resolve_role_config("builder", cli_args={"provider": "fake"})
@@ -196,7 +197,7 @@ class TestProviderAwareDefaults:
     def test_default_model_for_provider_helper(self):
         assert default_model_for_provider("claude-cli") == "claude-opus-4-20250514"
         assert default_model_for_provider("claude") == "claude-opus-4-20250514"
-        assert default_model_for_provider("ollama") == "qwen3-coder-next"
+        assert default_model_for_provider("ollama") == resolve_model_alias("ollama-default")
         assert default_model_for_provider("unknown") == DEFAULT_MODEL
 
     def test_provider_from_config_model_from_cli(self):

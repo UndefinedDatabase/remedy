@@ -118,7 +118,7 @@ Current roles:
 REMEDY_OLLAMA_PLANNER_MODEL  ←  planner role (highest priority)
 REMEDY_OLLAMA_BUILDER_MODEL  ←  builder role (highest priority)
 REMEDY_OLLAMA_MODEL          ←  generic fallback (any role, backward compat)
-built-in default             ←  qwen3-coder-next
+built-in default             ←  the ollama-default alias (packages/orchestration/model_aliases.py)
 ```
 
 Generation parameters follow the same pattern per role:

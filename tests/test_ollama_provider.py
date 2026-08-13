@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import pytest
 
+from packages.orchestration.model_aliases import resolve_model_alias
+
 # ---------------------------------------------------------------------------
 # Model resolution precedence (_resolve_model)
 # ---------------------------------------------------------------------------
@@ -41,7 +43,7 @@ def test_fallback_to_default_when_no_env_vars(monkeypatch):
     monkeypatch.delenv("REMEDY_OLLAMA_MODEL", raising=False)
     from packages.providers.ollama_planner.provider import OllamaPlanner
     planner = OllamaPlanner()
-    assert planner.model == "qwen3-coder-next"
+    assert planner.model == resolve_model_alias("ollama-default")
 
 
 # ---------------------------------------------------------------------------

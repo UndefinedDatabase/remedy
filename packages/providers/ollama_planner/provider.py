@@ -16,7 +16,7 @@ Precedence for model selection:
   1. Constructor argument `model`
   2. REMEDY_OLLAMA_PLANNER_MODEL
   3. REMEDY_OLLAMA_MODEL
-  4. Built-in default (qwen3-coder-next)
+  4. Built-in default (resolved from the `ollama-default` alias)
 
 The `ollama` Python package is required at runtime but is NOT a hard dependency
 of the remedy package. Install it separately:

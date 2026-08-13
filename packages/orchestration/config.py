@@ -831,15 +831,15 @@ def write_toml_template(path: Path) -> None:
 
 [remedy.ollama]
 # host = "http://localhost:11434"
-# model = "qwen3-coder-next"
+# model = "<your-ollama-model>"
 
 # [remedy.ollama.builder]
-# model = "qwen3-coder-next"
+# model = "<your-ollama-model>"
 # temperature = 0.3
 # num_predict = 4096
 
 # [remedy.ollama.planner]
-# model = "qwen3-coder-next"
+# model = "<your-ollama-model>"
 # temperature = 0.2
 # num_predict = 4096
 

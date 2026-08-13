@@ -8,7 +8,7 @@ def test_basic_binding_shape_and_keys():
     binding = build_task_actor_binding(
         "T002",
         builder_provider="ollama",
-        builder_model="qwen3-coder-next",
+        builder_model="local-builder-model",
         reviewer_provider="ollama",
         reviewer_model="qwen2.5:7b",
     )
@@ -100,14 +100,14 @@ def test_identity_recording():
     binding = build_task_actor_binding(
         "T002",
         builder_provider="ollama",
-        builder_model="qwen3-coder-next",
+        builder_model="local-builder-model",
         reviewer_provider="claude",
         reviewer_model="opus",
     )
-    assert binding["builder_identity"] == "ollama:qwen3-coder-next"
+    assert binding["builder_identity"] == "ollama:local-builder-model"
     assert binding["reviewer_identity"] == "claude:opus"
     assert binding["builder_provider"] == "ollama"
-    assert binding["builder_model_configured"] == "qwen3-coder-next"
+    assert binding["builder_model_configured"] == "local-builder-model"
 
 
 def test_identity_none_when_both_absent():
@@ -130,9 +130,9 @@ def test_multiple_repair_rounds_sticky():
     binding = build_task_actor_binding(
         "T002",
         builder_provider="ollama",
-        builder_model="qwen3-coder-next",
+        builder_model="local-model",
         reviewer_provider="ollama",
-        reviewer_model="qwen3-coder-next",
+        reviewer_model="local-model",
         rounds=4,
         repair_rounds=3,
         findings_by_round=[5, 3, 1, 0],

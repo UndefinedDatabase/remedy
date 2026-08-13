@@ -23,6 +23,7 @@ from packages.orchestration.config import (
     validate_config,
     write_toml_template,
 )
+from packages.orchestration.model_aliases import resolve_model_alias
 
 
 class TestConfigSource:
@@ -137,7 +138,7 @@ class TestLoadConfig:
             user_path=Path("/nonexistent/user.toml"),
         )
         assert config.get("ollama.host") == "http://localhost:11434"
-        assert config.get("ollama.model") == "qwen3-coder-next"
+        assert config.get("ollama.model") == resolve_model_alias("ollama-default")
         assert config.get("data_dir") is None
         assert config.get_source("ollama.host") == ConfigSource.DEFAULT
 

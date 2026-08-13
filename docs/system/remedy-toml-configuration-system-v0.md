@@ -43,7 +43,7 @@ env var  >  project config  >  user config  >  built-in default
 |-----|------|---------|---------|----------|
 | `data_dir` | path | `REMEDY_DATA_DIR` | `<repo>/.data` | no |
 | `ollama.host` | url | `REMEDY_OLLAMA_HOST` | `http://localhost:11434` | no |
-| `ollama.model` | string | `REMEDY_OLLAMA_MODEL` | `qwen3-coder-next` | no |
+| `ollama.model` | string | `REMEDY_OLLAMA_MODEL` | the `ollama-default` alias | no |
 | `ollama.builder.model` | string | `REMEDY_OLLAMA_BUILDER_MODEL` | (falls back to `ollama.model`) | no |
 | `ollama.builder.temperature` | float | `REMEDY_OLLAMA_BUILDER_TEMPERATURE` | (none) | no |
 | `ollama.builder.num_predict` | int | `REMEDY_OLLAMA_BUILDER_NUM_PREDICT` | (none) | no |
@@ -89,14 +89,14 @@ data_dir = ".data"
 
 [remedy.ollama]
 host = "http://localhost:11434"
-model = "qwen3-coder-next"
+model = "<your-ollama-model>"
 
 [remedy.ollama.builder]
-model = "qwen3-coder-next"
+model = "<your-ollama-model>"
 temperature = 0.3
 
 [remedy.ollama.planner]
-model = "qwen3-coder-next"
+model = "<your-ollama-model>"
 temperature = 0.2
 ```
 
