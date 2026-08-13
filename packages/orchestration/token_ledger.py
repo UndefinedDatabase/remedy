@@ -57,16 +57,19 @@ Public API::
     SCHEMA_VERSION_KEY / LEDGER_FILENAME / BUSY_TIMEOUT_MS
     COST_BASIS_PROVIDER_REPORTED / COST_BASIS_PRICE_TABLE / COST_BASIS_UNKNOWN
     COST_BASES: frozenset[str]
-    CallRecord / BackfillResult / ReconcileResult
+    CallRecord / CallSegmentRow / BackfillResult / ReconcileResult
     CostRow / CostReport / COST_GROUP_KEYS
     token_ledger_path_for(project_id, root=None) -> Path
     open_ledger(path) -> sqlite3.Connection
     record_call(record, *, project_id=None, path=None) -> bool
+    record_call_segments(rows, *, project_id=None, path=None) -> bool
     ledger_miss_count() -> int
     reset_ledger_miss_count() -> None
     call_id_for_task_run(job_id, task_id) -> str
     job_id_for_evidence_dir(evidence_dir) -> str
     call_record_from_evidence(evidence_dir, job_id, task_id) -> CallRecord | None
+    segment_rows_from_trace_file(trace_path, *, call_id, task_id)
+        -> list[CallSegmentRow]
     backfill_ledger(evidence_dir, *, project_id=None, path=None) -> BackfillResult
     verify_ledger(evidence_dir, *, project_id=None, path=None) -> ReconcileResult
     query_cost(*, project_id=None, path=None, since=None, job_id=None, by=None)
@@ -714,6 +717,67 @@ def segment_rows_from_trace_file(
     return rows
 
 
+# Records one task run's segment rows; a failure is a counted miss, never a raise.
+def record_call_segments(
+    rows: list[CallSegmentRow],
+    *,
+    project_id: UUID | str | None = None,
+    path: Path | str | None = None,
+) -> bool:
+    """Persist ``rows`` into ``call_segments``. NEVER raises; failure is a miss.
+
+    ``record_call``'s discipline, applied to the segment table: one statement,
+    one commit, the connection closed in a ``finally``, and a failure that logs
+    at ERROR, counts a ledger miss and returns False without ever failing the
+    run. The evidence files remain the source of truth, so a lost segment row is
+    a reconcilable defect rather than lost data.
+
+    IDEMPOTENT BY THE TABLE'S OWN PRIMARY KEY (``call_id``, ``trace_seq``,
+    ``segment_name``): ``INSERT OR IGNORE`` turns a repeat pass into a no-op
+    that still reports the rows as durable, which is what makes a second
+    ``backfill_ledger`` over unchanged evidence add nothing here either.
+
+    An EMPTY ``rows`` returns True WITHOUT opening the ledger: a task run whose
+    trace carries no manifest must not be the thing that creates a database.
+
+    Give either ``path`` (explicit file) or ``project_id``, exactly as
+    ``record_call`` does; giving neither is a failure like any other.
+    """
+    if not rows:
+        return True
+    conn: sqlite3.Connection | None = None
+    try:
+        target = _resolve_ledger_path(project_id=project_id, path=path)
+        conn = open_ledger(target)
+        placeholders = ", ".join("?" for _ in _CALL_SEGMENT_COLUMNS)
+        columns = ", ".join(_CALL_SEGMENT_COLUMNS)
+        conn.executemany(
+            f"INSERT OR IGNORE INTO call_segments ({columns}) VALUES ({placeholders})",
+            [
+                tuple(getattr(row, name) for name in _CALL_SEGMENT_COLUMNS)
+                for row in rows
+            ],
+        )
+        conn.commit()
+        return True
+    except Exception:
+        _count_ledger_miss()
+        logger.error(
+            "token ledger segment write FAILED for call_id=%r (%d row(s); miss "
+            "counted, run continues; the evidence files remain the source of "
+            "truth and a later backfill can heal this)",
+            getattr(rows[0], "call_id", None), len(rows),
+            exc_info=True,
+        )
+        return False
+    finally:
+        if conn is not None:
+            try:
+                conn.close()
+            except Exception:  # pragma: no cover - close() failing is not actionable
+                logger.error("token ledger connection close failed", exc_info=True)
+
+
 # Mirrors a whole evidence tree into rows; idempotent, and never raises.
 def backfill_ledger(
     evidence_dir: Path | str,
@@ -753,6 +817,24 @@ def backfill_ledger(
                 continue
             if record_call(record, project_id=project_id, path=path):
                 result.recorded += 1
+                # BACKFILL IS THE ONLY WIRED PATH, deliberately: the live hook
+                # at the actuals seam fires BEFORE the exporter copies
+                # prompt_trace.jsonl into the task-run directory
+                # (``pingpong_evidence.py:517-525`` vs ``:527-536``), so this is
+                # the only place the file demonstrably exists. NO BackfillResult
+                # COUNTER MOVES either way — the return value is deliberately
+                # not branched on, because a segment read or write that fails is
+                # a counted ledger miss and nothing else, and `calls` mirroring
+                # must stay exactly as measurable as it was before F115.
+                record_call_segments(
+                    segment_rows_from_trace_file(
+                        task_dir / _PROMPT_TRACE_FILENAME,
+                        call_id=record.call_id,
+                        task_id=task_dir.name,
+                    ),
+                    project_id=project_id,
+                    path=path,
+                )
             else:
                 result.failed += 1
         except Exception:  # pragma: no cover - defence in depth; nothing below raises
