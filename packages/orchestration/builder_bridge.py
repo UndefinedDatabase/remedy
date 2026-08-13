@@ -376,8 +376,9 @@ def _attach_diff_repair_hunks(
     ]
     repair_ctx["diff_hunks_omitted"] = [list(entry) for entry in selection.omitted]
     # Remedy deliberately does not put hunk TEXT in this metadata — counts only
-    # (`hunk_count`, `total_chars`, `omitted`) — because `build_repair_context`'s
-    # contract is that its dict is safe to log; source text belongs in the prompt.
+    # (`hunk_count`, `total_chars`, `full_file_chars`, `omitted`) — because
+    # `build_repair_context`'s contract is that its dict is safe to log; source
+    # text belongs in the prompt.
     # The pair the saving is read from: `total_chars` is what the diff path SENT,
     # `full_file_chars` is what the full-file path WOULD have sent for the same
     # paths. Remedy deliberately does not record a derived `chars_saved` field —
