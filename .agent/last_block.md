@@ -1,237 +1,224 @@
-── STEP R9/4 — F111 Diff-only repair — T002b: the per-path diff split ────────
-Goal:        Persist the R8 gate, resolve R-0307 and register R-0308, then
-             build the conversion the apply half needs: a per-path split of a
-             multi-file unified diff, living INSIDE `review_scope` where the
-             repository's single reading of hunk headers already lives, and a
-             `DiffRepairResponse` -> `StructuredPatch` conversion built on it.
-             The apply-and-fallback half is R10 and is NOT in this round.
-Bundle:      C1 block save; C2 last_block mirror; C3 gate+finding append;
-             C4 resolve R-0307; C5 review_scope split + tests;
-             C6 response-to-patch conversion + tests; C7 plan + handoff.
-             Commit AND push at every item.
+── STEP R10/4 — F111 Diff-only repair — SESSION CLOSE, applier order fix ─────
+Goal:        Persist the R9 gate and findings R-0309, R-0310 and R-0311, fix
+             R-0311 — `source_apply._apply_hunks` inserts every added line at
+             the hunk's START instead of at its position, silently reordering
+             any file whose hunk adds below its first line — and close the
+             session. The apply-and-fallback function of T002 is R11 and is
+             NOT in this round.
+Bundle:      C1 block save; C2 last_block mirror; C3 gate+findings append;
+             C4 the applier fix + tests; C5 the Landed line; C6 plan and
+             closing handoff. Commit AND push at every item.
 Change:      EXACTLY these paths and nothing else:
-             .agent/authored/f111-r9-1.md (new), .agent/last_block.md,
+             .agent/authored/f111-r10-1.md (new), .agent/last_block.md,
              .agent/live_review.md, .agent/plan.md, .agent/handoff.md,
-             packages/orchestration/review_scope.py,
-             packages/orchestration/diff_repair_response.py,
-             tests/orchestration/test_review_scope.py,
-             tests/orchestration/test_diff_repair_response.py.
+             packages/orchestration/source_apply.py,
+             tests/orchestration/test_source_apply_transaction.py.
 Constraints: AGENTS.md in full. Apply every authored slice by READING ITS
              SCRATCH FILE (`cat` / `cp`) — never retype, never reflow.
              Do NOT touch `.agent/candidates.md` or `.agent/decisions.md`.
-             Do NOT touch `diff_repair.py`, `source_apply.py`,
-             `structured_patch.py`, `builder_bridge.py`, `repair_context.py`
-             or `pingpong_loop.py`.
-             Write no `Done:` and no `Landed:` line of your own: the ONE
-             `Done:` text C4 applies is reviewer-authored and is given to you
-             verbatim (docs/agents/planner_reviewer_prompt.md §4.4).
+             Do NOT touch `diff_repair.py`, `diff_repair_response.py`,
+             `review_scope.py`, `structured_patch.py`, `builder_bridge.py`,
+             `repair_context.py` or `pingpong_loop.py`.
+             Change NOTHING in `source_apply.py` outside `_apply_hunks`.
+             Write no `Done:` line: only reviewer-authored text sets Resolved
+             (docs/agents/planner_reviewer_prompt.md §4.4). The ONE `Landed:`
+             line C5 orders is the worker's correct marker.
+             This is the LAST round of the session — after C6, stop and hand
+             back. Do not start R11.
 
 PROCEDURE (in order; commit AND push at every numbered item):
 
 0. Preconditions: `git status --porcelain` empty; branch is
-   feature/f111-diff-only-repair; `git log -1 --format=%h` is 456a25e9.
-   Any mismatch => STOP and hand back.  `mkdir -p .remedy-wt/f111r9`.
+   feature/f111-diff-only-repair; `git log -1 --format=%h` is 33f408b2.
+   Any mismatch => STOP and hand back.  `mkdir -p .remedy-wt/f111r10`.
 
-1. C1 — Save this ENTIRE step block (from the `── STEP R9/4` line through the
-   final `Handback:` line, byte for byte) to `.remedy-wt/f111r9/BLOCK`, then
-   `cp .remedy-wt/f111r9/BLOCK .agent/authored/f111-r9-1.md`; `cmp` silent.
-   Commit: chore(f111): save the R9 step block verbatim   -> push
+1. C1 — Save this ENTIRE step block (from the `── STEP R10/4` line through the
+   final `Handback:` line, byte for byte) to `.remedy-wt/f111r10/BLOCK`, then
+   `cp .remedy-wt/f111r10/BLOCK .agent/authored/f111-r10-1.md`; `cmp` silent.
+   Commit: chore(f111): save the R10 step block verbatim   -> push
 
-2. C2 — `cp .agent/authored/f111-r9-1.md .agent/last_block.md`; `cmp` silent.
-   Commit: chore(f111): mirror the R9 block into last block   -> push
+2. C2 — `cp .agent/authored/f111-r10-1.md .agent/last_block.md`; `cmp` silent.
+   Commit: chore(f111): mirror the R10 block into last block   -> push
 
-3. C3 — GATE AND FINDING FIRST. Write the slice delimited by `<<<LRG_BEGIN`
-   and `<<<LRG_END` (marker lines excluded) to `.remedy-wt/f111r9/LRG`, then
-   `cat .remedy-wt/f111r9/LRG >> .agent/live_review.md`.
+3. C3 — FINDINGS FIRST. Write the slice delimited by `<<<LRG_BEGIN` and
+   `<<<LRG_END` (marker lines excluded) to `.remedy-wt/f111r10/LRG`, then
+   `cat .remedy-wt/f111r10/LRG >> .agent/live_review.md`.
    PURE APPEND: in `git show --numstat <C3> -- .agent/live_review.md` the
-   DELETE column must be exactly `0`; report the real insertion count rather
-   than matching a number stated from memory. A nonzero delete column means a
-   rewrite: STOP and hand back.
-   Commit: chore(f111): record the R8 gate and finding R-0308   -> push
+   DELETE column must be exactly `0`; report the real insertion count.
+   Commit: chore(f111): record the R9 gate and findings R-0309 to R-0311 -> push
 
 <<<LRG_BEGIN
 
-### R8 — PASS (2026-08-13)
-Reviewed by the main session over 023e8d9d..456a25e9. Every ordered gate was
-re-run by the reviewer, and the new module was additionally probed live, never
-read off the handback. Transport: PRIMARY cmp proof, no digest fallback —
-`.remedy-wt/f111r8/BLOCK`, `.agent/authored/f111-r8-1.md` and
-`.agent/last_block.md` are byte-identical, `.remedy-wt/f111r8/PLAN` and
-`.agent/plan.md` are byte-identical, and a `str.count` of the appended slice
-against `.agent/live_review.md` prints 1. Append purity by numstat: `36 0` for
-the gate commit and `4 1` for the header pair, the single deletion being the
-retired counter line and nothing else. Markers on the final file: 32 `- R-0`,
-4 `Done:`, 1 `Landed:`, 1 `### R7 — PASS`. Caps: the plan is 48 lines and
-carries `## Goal` and `## Next Steps`; the step block is 356 lines, under the
-DECISION F105 D5 limit of 400; per-commit insertions 356/341/36/4/50/439/111,
+### R9 — PASS (2026-08-13)
+Reviewed by the main session over 456a25e9..33f408b2. Every ordered gate was
+re-run by the reviewer, and the new split was probed live against the real
+applier rather than read off the handback. Transport: PRIMARY cmp proof, no
+digest fallback — `.remedy-wt/f111r9/BLOCK`, `.agent/authored/f111-r9-1.md`
+and `.agent/last_block.md` are byte-identical, `.remedy-wt/f111r9/PLAN` and
+`.agent/plan.md` are byte-identical, and `str.count` of both the LRG and the
+DONE slice against `.agent/live_review.md` prints 1. Numstat purity: `50 0`
+for the gate append and `5 1` for the R-0307 resolution, the single deletion
+being the retired `Landed:` line. Markers: 33 `- R-0`, 5 `Done:`, 0 `Landed:`
+(exit 1, the pass), 1 `### R8 — PASS`. Caps: the block is 330 lines, under the
+DECISION F105 D5 limit of 400; per-commit insertions 330/262/50/5/139/110/93,
 each under 500. Tests: `python3 -m pytest
+tests/orchestration/test_review_scope.py
 tests/orchestration/test_diff_repair_response.py
 tests/orchestration/test_diff_repair.py tests/cli/test_golden_path.py -q` exit
-0, 95 passed — 23 new, the 30 T001 tests unchanged, 42 canary; `python3 -m
-pytest tests/orchestration/test_source_apply.py
-tests/orchestration/test_source_apply_transaction.py
-tests/orchestration/test_fence_e2e.py tests/test_path_utils.py
-tests/test_data_paths.py -q` exit 0, 225 passed — the 174 behaviour pin the
-reviewer measured BEFORE the round, unchanged, plus the 51 repo-wide guards
-that rglob every `packages/**/*.py` and therefore already reach the new module.
-Reviewer's own probe, beyond the ordered gates: a two-file diff declared with
-one path returned exactly `diff touches undeclared path: src/b.py`; a ghost
-declaration returned exactly `declared path not touched by the diff:
-src/ghost.py`; `precheck_diff_repair_fences` denied `remedy.toml` with reason
-`denied:builtin:project config file`, and denied a path lying outside a job
-allow glob. The C5 reuse is real, not nominal: the three path-safety message
-strings moved into `unsafe_path_issues` unchanged and `validate_structured_patch`
-now calls it. Hygiene: `git status --porcelain` empty, `git worktree list` one
-entry, remote comparison `0 0`. Scope: exactly the eight ordered paths.
+0, 138 passed — 39 (32 before, 7 new), 27 (23 before, 4 new), 30 unchanged, 42
+canary; `python3 -m pytest tests/orchestration/test_final_verifier.py
+tests/orchestration/test_reviewer_prompt_scope.py
+tests/orchestration/test_pingpong.py tests/test_path_utils.py
+tests/test_data_paths.py -q` exit 0, 197 passed — the 146 `_parse_diff`
+consumer pin the reviewer measured BEFORE the round, unchanged, plus the 51
+repo-wide guards. Hygiene: `git status --porcelain` empty, `git worktree list`
+one entry, remote comparison `0 0`. Scope: exactly the nine ordered paths.
 
-Deviation ACCEPTED: C4's `Landed:` line names `commit C4 of R8` instead of its
-own short sha. A commit cannot carry its own sha without amending, the block
-named that fallback explicitly, and the handoff's item-status table declares
-C4 `deviated` with that reason — finding R-0306 repaired on its first occasion
-after being registered.
+Deviation ACCEPTED: C7 applied a 47-line PLAN slice where the block said 46.
+The worker applied the authored bytes verbatim and declared the mismatch
+rather than reflowing text to hit a number, which is the correct call — the
+error is the reviewer's and is registered as R-0309 below.
 
-- R-0308 (Low, F111 R8, unreachable defensive branch): `parse_diff_repair_response`
-  returns `not_an_object` for a decoded value that is not a dict, and that
-  branch cannot execute today: `extract_json_object` only ever returns text
-  starting with `{`, so a successful `json.loads` always yields a dict. The
-  worker disclosed it rather than writing a test that could not pass honestly,
-  which is DECISION F105 D10 working as designed. Registered so the branch is
-  never later mistaken for tested behaviour. It stays for now — it becomes
-  reachable the moment `extract_json_object` learns to return array text — and
-  the decision to keep or delete it belongs to the closure round, not to a
-  repair. OPEN.
+- R-0309 (Low, F111 R9, reviewer-side arithmetic in an authored block): the R9
+  block stated its PLAN slice was 46 lines and gated `wc -l` on that number;
+  the slice is 47 lines. Third instance of the class after R-0282 and R-0305,
+  and the second in three rounds, so the rule R-0305 stated is not being
+  applied: any count an authored block asserts about a file — including a file
+  the block itself carries — is MEASURED before emission, never recalled. The
+  reviewer cannot measure its own not-yet-written slice with a shell, so the
+  standing fix is different in kind: gate authored slices on `cmp` against the
+  applied file, which proves byte identity, and never on a line count, which
+  proves nothing the `cmp` does not already prove. OPEN.
+
+- R-0310 (Low, F111 R9, cosmetic residue in a correct function):
+  `split_diff_by_path` drops preamble before the FIRST `---` line, so in a
+  git-style multi-file diff the `diff --git` and `index` lines introducing
+  file N+1 stay at the TAIL of file N's section. The worker disclosed this
+  instead of writing a test that would have to pass dishonestly. The reviewer
+  proved the residue harmless: `_apply_hunks` breaks its hunk body on any line
+  starting with `diff `, and its outer loop skips every line that is not a
+  hunk header, so both sections of a two-file git diff applied to the right
+  content in a live probe. Kept for v1 as a cosmetic wart, not a correctness
+  defect; a section is still a standalone applicable diff. OPEN.
+
+- R-0311 (High, F111 R9, pre-existing silent file corruption in the
+  applicator): `source_apply._apply_hunks` collects each addition WITH its
+  position, then throws those positions away and inserts every added line at
+  `insert_at = orig_start + offset` — the start of the hunk. Any hunk whose
+  additions are not on its first line therefore writes them to the wrong
+  place. On the repository's own test input, `original = "alpha\nbeta\ngamma\n"`
+  with `@@ -1,3 +1,3 @@\n alpha\n-beta\n+BETA\n gamma\n`, the function returns
+  `alpha\ngamma\nBETA\n` where the diff says `alpha\nBETA\ngamma\n`. The
+  existing guard `TestHunkValidation::test_correct_context_applies` passes only
+  because it asserts `"BETA" in result` and never checks order, which is how
+  this survived. Every `intent_kind="unified_diff"` patch in Remedy lands
+  through this function, and F111's Done criterion is literally that no repair
+  path can silently corrupt a file, so the diff channel cannot ship over it.
+  Fixed in R10 per DECISION F111 D4. OPEN.
+
+### DECISION F111 D4 (2026-08-13) — the applier order fix is in scope
+Chosen: repair `_apply_hunks` inside F111, in R10, scoped to hunk application
+order and nothing else. Alternatives considered: (a) route it to a new feature
+and ship F111's diff channel over a corrupting applier — rejected, because the
+feature's own Done criterion forbids exactly that; (b) work around it in
+`diff_repair_response` — rejected, because it would be a second applier, which
+this feature has refused twice already. The feature file's Do-not-touch names
+"applicator semantics", and an off-by-one in where a line lands is not a
+semantic of the applicator, it is a defect in it: the all-or-nothing contract,
+the fence preflight, the snapshot gate and the rollback path are untouched by
+this fix. Reverse by reverting R10's C4 commit; the tests it adds name the
+behaviour precisely enough that a reverter knows what they are giving up.
 <<<LRG_END
 
-4. C4 — ONE rewrite in `.agent/live_review.md`, nothing else in that file.
-   The FROM line occurs EXACTLY 1x today; it is the last non-empty line of
-   the file before C3's append. REWRITE (FROM and TO are disjoint).
-   FROM (one line):
-Landed: R-0307 — the live_review header no longer carries a finding-id counter, commit C4 of R8.
-   TO (five lines), written to `.remedy-wt/f111r9/DONE` first and applied
-   from that file:
-Done: R-0307 — the header no longer names a next-free finding id; it points at
-`.agent/plan.md`, which is rewritten every round and is the one place the
-counter lives. Verified at the R8 gate: `sed -n '8,9p'` matches the authored
-two-line replacement byte for byte, and the retired line is the single
-deletion in commit ea0d63b3's `4 1` numstat. Resolved.
-   In `git show --numstat <C4> -- .agent/live_review.md` the DELETE column
-   must be exactly `1`; report the real insertion count.
-   Commit: chore(f111): resolve R-0307 at the R8 gate   -> push
+4. C4 — fix `packages/orchestration/source_apply.py`, function `_apply_hunks`
+   ONLY, plus tests in `tests/orchestration/test_source_apply_transaction.py`.
+   Rewrite the per-hunk application as a SPLICE, keeping every validation
+   the function performs today, byte for byte in behaviour on rejection:
+     - `orig_start = int(m.group(1)) - 1`, as today;
+     - walk the hunk body exactly as today, keeping the SAME break condition
+       (`@@`, `diff `, `---`, `+++`) and the SAME strict checks: a `-` or a
+       ` ` line whose index is out of range, or whose content does not equal
+       `lines[actual_idx]`, still returns None immediately;
+     - while walking, build `new_block`: append `line[1:]` for a ` ` line and
+       for a `+` line, append nothing for a `-` line; and count `old_len` as
+       the number of ` ` and `-` lines the hunk consumed;
+     - after the body, splice:
+       `result_lines[orig_start + offset : orig_start + offset + old_len] = new_block`
+       then `offset += len(new_block) - old_len`;
+     - a line inside a hunk body that is none of ` `, `+`, `-` (in practice
+       `\ No newline at end of file`) is IGNORED: it neither consumes an
+       original line nor contributes to `new_block`. This is a deliberate
+       change from today's `pos += 1`, which made such a marker swallow a
+       line. Declare it in the handback.
+   Delete the now-unused `removals`/`additions` bookkeeping and the
+   `insert_at` block. Update the function's docstring to say that a hunk is
+   applied by splicing its new block over the exact original range it
+   consumed, and that context and removal lines are still validated against
+   real file content before anything is written.
+   TESTS in `tests/orchestration/test_source_apply_transaction.py`,
+   class `TestHunkValidation`:
+     - STRENGTHEN the existing `test_correct_context_applies` to assert the
+       FULL expected string `"alpha\nBETA\ngamma\n"` instead of the
+       substring check `"BETA" in result`. Its weakness is why R-0311
+       survived; leaving it weak leaves the hole open.
+     - add: an addition in the MIDDLE of a hunk lands between its neighbours
+       (`"a\nb\nc\nd\n"` with `@@ -1,3 +1,4 @@\n a\n b\n+NEW\n c\n` ->
+       `"a\nb\nNEW\nc\nd\n"`);
+     - add: an addition at the END of a hunk lands last, not first;
+     - add: TWO hunks in one diff both land correctly, proving the running
+       `offset` is right after a splice that changes length;
+     - add: a pure deletion hunk removes exactly its line and nothing else;
+     - add: a `\ No newline at end of file` marker inside a hunk body does not
+       swallow the following line;
+     - keep every existing rejection test passing UNCHANGED: wrong context,
+       wrong removal, context out of range, removal out of range, empty diff.
+   Commit: fix(f111): apply each diff hunk at its own position   -> push
 
-5. C5 — `packages/orchestration/review_scope.py`. Teach the EXISTING single
-   walk to keep each file's raw diff lines, then expose them. No second
-   parser, no second walk.
-   (i) In `_parse_diff`, add `"lines": []` to the dict passed to
-       `files.setdefault(...)`, alongside the existing keys. Every current
-       consumer reads named keys only (`review_scope` lines 136 and 397,
-       `pingpong_loop` line 1099), so this is additive.
-   (ii) Capture the raw lines in that same walk:
-        - track the `--- ` line itself in a `pending_old_line` variable
-          (initialised `""` next to `pending_old_path`);
-        - in the `+++ ` branch, after `current` is bound, append
-          `pending_old_line` to `current["lines"]` ONLY if it is non-empty,
-          then append the `+++ ` line, then reset `pending_old_line = ""`;
-        - immediately after the `if current is None: continue` guard, and
-          BEFORE the `@@` branch, append the raw line to `current["lines"]`
-          so hunk headers, context lines, additions, removals and any
-          "\ No newline at end of file" marker are all kept verbatim.
-   (iii) Add a public
-         `split_diff_by_path(diff_text: str) -> dict[str, str]` directly
-         below `parse_diff_line_ranges`, returning
-         `{path: "\n".join(info["lines"])}` over `_parse_diff(diff_text)`.
-         One-line WHY comment directly above the definition (AGENTS.md Code
-         Discoverability). Its docstring states: that it is the same single
-         walk `parse_diff_line_ranges` uses; that a section runs from its
-         `---`/`+++` header pair to the line before the next file header, so
-         each value is a standalone diff the applicator can take on its own;
-         that a path appearing twice in one diff gets its sections
-         concatenated; and that any preamble before the first `---`
-         (`diff --git`, `index`) belongs to no file and is dropped, because
-         the applicator reads hunk headers and body lines only.
-   Add tests to `tests/orchestration/test_review_scope.py` covering at least:
-   a single-file diff round trip; a two-file diff where each returned section
-   starts with its own `--- ` line and does NOT contain the other file's path;
-   a diff carrying `diff --git` and `index` preamble lines, asserting they are
-   absent from every section; the same path appearing twice, asserting both
-   hunk headers survive in one section; an empty string in, `{}` out; and that
-   `parse_diff_line_ranges` returns exactly what it returned before for the
-   same two-file input, so the added key changed no existing reading.
-   Commit: feat(f111): split a unified diff into per path sections -> push
+5. C5 — APPEND at the very end of `.agent/live_review.md`: one blank line,
+   then exactly one line, written to `.remedy-wt/f111r10/LANDED` first and
+   applied from that file:
+Landed: R-0311 — `_apply_hunks` now splices each hunk's new block over the range it consumed; six order tests added and the weak substring assertion strengthened, commit C4 of R10.
+   In `git show --numstat <C5> -- .agent/live_review.md` the DELETE column
+   must be exactly `0` and the insertion count exactly `2`.
+   Commit: chore(f111): mark the applier order fix as landed   -> push
 
-6. C6 — `packages/orchestration/diff_repair_response.py` plus tests in
-   `tests/orchestration/test_diff_repair_response.py`, in ONE commit.
-   (i) Add `diff_repair_response_to_patch(response: DiffRepairResponse)
-       -> StructuredPatch`, built on `review_scope.split_diff_by_path`. One
-       `structured_patch.UnifiedDiff` per DECLARED path, in
-       `response.files` order, each carrying ONLY that path's section;
-       `intent_kind="unified_diff"`, `target_paths=tuple(response.files)`,
-       `applicability="applicable"`, `requires_approval=True`.
-       A declared path with no section gets an EMPTY diff string on purpose:
-       `structured_patch.validate_structured_patch` then rejects it with
-       `unified_diff <path>: empty diff`, so the failure is fail-closed and
-       named instead of a silent no-op apply. The docstring says exactly that,
-       and says callers run `validate_diff_repair_response` FIRST. One-line
-       WHY comment directly above the definition.
-   (ii) REWRITE the module-docstring paragraph that declares the conversion
-        absent. FROM occurs EXACTLY 1x (it is lines 24-29 of the file today):
-Remedy deliberately does not convert a ``DiffRepairResponse`` into a
-``StructuredPatch`` in this half. ``structured_patch.UnifiedDiff`` pairs ONE
-path with ONE diff text, so a ``files`` list longer than one entry has no
-correct conversion yet — handing every declared path the whole diff would try to
-apply every hunk to every file. The per-path diff split is designed together
-with the apply half (R9), and the conversion lands there.
-        TO (seven lines), written to `.remedy-wt/f111r9/DOC` first and applied
-        from that file:
-``structured_patch.UnifiedDiff`` pairs ONE path with ONE diff text, so a
-``files`` list longer than one entry is split per path before conversion:
-handing every declared path the whole diff would try to apply every hunk to
-every file. The splitter is ``review_scope.split_diff_by_path``, the same
-single walk that reads hunk headers. Remedy deliberately does not APPLY the
-converted patch from this module — the apply-and-fallback half attaches to the
-bridge, where the job, the approved intent and the snapshot already live.
-   (iii) Add to the `Public API::` block, on its own line, directly below the
-         `validate_diff_repair_response(response) -> list[str]` line:
-    diff_repair_response_to_patch(response) -> StructuredPatch
-   Tests to add, each its own test: a single-file response converts to one
-   `UnifiedDiff` whose path and section are right and whose `intent_kind`,
-   `target_paths`, `applicability` and `requires_approval` are as specified;
-   a two-file response yields two entries, each containing only its own path;
-   a declared path the diff never touches yields an empty diff string AND
-   `validate_structured_patch` on the converted patch reports exactly
-   `unified_diff <path>: empty diff`; and a valid response converts to a patch
-   `validate_structured_patch` accepts with `[]`.
-   Commit: feat(f111): convert a diff repair response to a patch -> push
-
-7. C7 — `.agent/plan.md` FULL REPLACEMENT with the slice delimited by
+6. C6 — `.agent/plan.md` FULL REPLACEMENT with the slice delimited by
    `<<<PLAN_BEGIN` and `<<<PLAN_END` (marker lines excluded). Write it to
-   `.remedy-wt/f111r9/PLAN` first, then `cp .remedy-wt/f111r9/PLAN
-   .agent/plan.md`; `cmp` silent. It is 46 lines — do not reflow it.
-   Then rewrite `.agent/handoff.md` in YOUR OWN text. COUNT THE LINES BEFORE
-   COMMITTING (`wc -l`): 60 or fewer, or carry a DECISION D15 "Deviations,
-   declared" line naming the REAL measured count and the mandated content
-   that caused it. Mandated content: feature and round (F111 R9); the branch;
-   a per-commit SHA table for C1-C7 with insertions; a changed-files table;
-   the real gate results below with commands and real exit codes; open
-   findings 28 with next free id R-0309; an item-status table over C1-C7
-   whose Status cells carry the SAME status you declare in the handback —
-   `done`, `skipped` with reason, or `deviated` with reason (finding R-0306);
-   this line verbatim, on its own line (finding R-0304):
-Fortschritt: ~60 % (T001 ✅ · T002 fast: Record + Split ✅, Apply+Fallback offen · T003 offen) — Schätzung
+   `.remedy-wt/f111r10/PLAN` first, then `cp .remedy-wt/f111r10/PLAN
+   .agent/plan.md`; `cmp` silent. Do NOT gate it on a line count and do NOT
+   reflow it: the `cmp` is the proof (finding R-0309).
+   Then rewrite `.agent/handoff.md` in YOUR OWN text as the SESSION-CLOSING
+   handoff. COUNT THE LINES BEFORE COMMITTING (`wc -l`): 60 or fewer, or
+   carry a DECISION D15 "Deviations, declared" line naming the REAL measured
+   count and the mandated content that caused it. Mandated content: feature
+   and round (F111 R10, SESSION CLOSE); the branch; a per-commit SHA table
+   for C1-C6 with insertions; a changed-files table; the real gate results
+   below with commands and real exit codes; open findings 30 with next free
+   id R-0312; an item-status table over C1-C6 whose Status cells carry the
+   SAME status you declare in the handback (finding R-0306); this line
+   verbatim, on its own line (finding R-0304):
+Fortschritt: ~60 % (T001 ✅ · T002: Record + Split ✅, Apply+Fallback offen · T003 offen · Applier-Fix R-0311 ✅) — Schätzung
    and a NEXT SESSION block stating, in this order: that the branch is
-   UNMERGED and has NO PR by design; that the next action is R10, the apply
-   and fallback half of T002; and that NOTHING imports `diff_repair.py` or
-   `diff_repair_response.py` yet — both are seams and T003 wires them.
-   Keep the handoff to mandated content: prose padding is a finding at any
-   length (AGENTS.md, DECISION D15).
+   UNMERGED and has NO PR by design, so the Open PR Gate does not apply and
+   Phase 0 must sweep `feature/*` branches (finding R-0290) to see it; what
+   this session completed (the R7, R8 and R9 gates; T002's record,
+   validation, fence pre-check, per-path split and conversion; and the
+   R-0311 applier fix under DECISION F111 D4); that the next action is R11,
+   the apply-and-fallback half of T002; and that NOTHING imports
+   `diff_repair.py` or `diff_repair_response.py` yet — both are seams, T003
+   wires them, and a green suite over an unreferenced module is not a
+   working feature. Keep to mandated content: prose padding is a finding at
+   any length (AGENTS.md, DECISION D15).
    plan.md and handoff.md land in ONE commit.
-   Commit: chore(f111): rewrite the plan and handoff for R9   -> push
+   Commit: chore(f111): write the session closing handoff   -> push
 
 <<<PLAN_BEGIN
 # Plan — F111 Diff-only repair
 
 Branch: feature/f111-diff-only-repair, cut from main at 4e0b762e,
-unmerged. Last reviewed SHA: 456a25e9 (R8 PASS). Next free finding
-ID: R-0309. Open findings: 28, none above Medium.
+unmerged. Last reviewed SHA: 33f408b2 (R9 PASS). Next free finding
+ID: R-0312. Open findings: 30, one High (R-0311, fixed in R10,
+awaiting the reviewer's Done text), the rest Low or Medium.
 
 ## Goal
 Repairs stop resending whole files: a repair round carries only the
@@ -242,24 +229,22 @@ and falls back to today's full-file round with the reason recorded
 (docs/roadmap/features/T2_F111.md).
 
 ## Current Step
-T002 is all but the apply, and still has NO CALL SITE. On disk in
-`diff_repair_response.py`: the versioned `{format, version, diff,
-files}` record, its parse, the validation that cross-checks the
-declared `files` list against the paths the diff really touches,
-`precheck_diff_repair_fences` — the non-raising fence decision that
-rejects an out-of-fence path before the applicator — and now
-`diff_repair_response_to_patch`, which converts a validated response
-into the `StructuredPatch` the existing applicator already takes.
-The per-path split it needs is `review_scope.split_diff_by_path`,
-placed inside the module that owns hunk-header reading so no second
-walk exists. Nothing imports any of it: T001 and T002 are seams.
+R10 fixed `source_apply._apply_hunks`, which inserted every added
+line at the hunk's START instead of at its position, so any hunk
+whose additions were not on its first line silently reordered the
+file it applied to (finding R-0311, DECISION F111 D4). The applier
+now splices each hunk's new block over the exact original range it
+consumed. T002 otherwise stands at record, validation, fence
+pre-check, split and conversion — all on disk in
+`diff_repair_response.py` and `review_scope.split_diff_by_path`, and
+all still WITHOUT a call site.
 
 ## Next Steps
-1. R10 — the apply half: run the converted patch through
-   `apply_structured_patch` with its snapshot and approval gates, and
-   on ANY hunk conflict discard the attempt whole, record
-   `fallback_reason`, report mode `full_fallback`, and prove every
-   touched file byte-identical to its pre-attempt state.
+1. R11 — the apply half of T002: run a converted patch through
+   `apply_structured_patch`, and on ANY hunk conflict discard the
+   attempt whole, record `fallback_reason`, report mode
+   `full_fallback`, and prove every touched file byte-identical to
+   its pre-attempt state.
 2. T003 — wire `changed_line_ranges_from_patch` and the response
    channel into `run_builder_bridge_loop`, emit mode and token
    evidence per repair round, add the fixture token comparison.
@@ -268,63 +253,70 @@ walk exists. Nothing imports any of it: T001 and T002 are seams.
 ## Risks
 - The full suite is RED at the merge base with five known ids
   (R-0286): the integration gate compares base against branch.
-- `source_apply._apply_hunks` is the strict applier and must be
-  reused, never duplicated. `review_scope` is now the only module
-  that reads hunk headers OR splits a diff by path.
+- R-0311 was live for the whole life of the structured unified-diff
+  path. Any earlier evidence claiming a clean diff apply predates
+  this fix and cannot be trusted about line ORDER.
+- `review_scope` is now the only module that reads hunk headers or
+  splits a diff by path; `source_apply._apply_hunks` is the only
+  applier. Neither may be duplicated.
 - A green suite over unreferenced modules is not a working feature.
-  T003 is the round that makes F111 real, and until it lands the
-  Fortschritt figure is about code written, not behaviour shipped.
+  T003 is the round that makes F111 real.
 <<<PLAN_END
 
 Done when (record command + real exit code + counted value; never the word
 "green"):
-  a. `cmp .remedy-wt/f111r9/BLOCK .agent/authored/f111-r9-1.md` silent;
-     `cmp .agent/authored/f111-r9-1.md .agent/last_block.md` silent;
-     `cmp .remedy-wt/f111r9/PLAN .agent/plan.md` silent.
+  a. `cmp .remedy-wt/f111r10/BLOCK .agent/authored/f111-r10-1.md` silent;
+     `cmp .agent/authored/f111-r10-1.md .agent/last_block.md` silent;
+     `cmp .remedy-wt/f111r10/PLAN .agent/plan.md` silent.
   b. `git show --numstat <C3> -- .agent/live_review.md` -> delete column `0`;
-     `git show --numstat <C4> -- .agent/live_review.md` -> delete column `1`.
-     Report both real insertion counts.
+     `git show --numstat <C5> -- .agent/live_review.md` -> `2 0` exactly.
+     Report C3's real insertion count.
   c. on the final `.agent/live_review.md`:
-     `grep -c '^- R-0'` -> 33 ; `grep -c '^Done:'` -> 5
-     `grep -c '^Landed:'` -> 0 (exit 1 is the pass)
-     `grep -c '^### R8 — PASS'` -> 1
-     python3 -c "import pathlib;print(pathlib.Path('.agent/live_review.md').read_text().count(pathlib.Path('.remedy-wt/f111r9/LRG').read_text()))"
+     `grep -c '^- R-0'` -> 36 ; `grep -c '^Done:'` -> 5
+     `grep -c '^Landed:'` -> 1 ; `grep -c '^### R9 — PASS'` -> 1
+     `grep -c '^### DECISION F111 D4'` -> 1
+     python3 -c "import pathlib;print(pathlib.Path('.agent/live_review.md').read_text().count(pathlib.Path('.remedy-wt/f111r10/LRG').read_text()))"
      -> exit 0, printed count 1
-     python3 -c "import pathlib;print(pathlib.Path('.agent/live_review.md').read_text().count(pathlib.Path('.remedy-wt/f111r9/DONE').read_text()))"
-     -> exit 0, printed count 1
-  d. on `.agent/plan.md`: `wc -l` -> 46 ; `grep -c '^## Goal'` -> 1 ;
-     `grep -c '^## Next Steps'` -> 1 ; `grep -c 'R-0309'` -> 1.
-     `wc -l < .agent/handoff.md` -> the real number, 60 or fewer unless the
-     D15 line declares it; `grep -c '^Fortschritt: ' .agent/handoff.md` -> 1
-  e. behaviour pin for C5 — the `_parse_diff` consumers this round does NOT
-     touch: `python3 -m pytest tests/orchestration/test_final_verifier.py
-     tests/orchestration/test_reviewer_prompt_scope.py
-     tests/orchestration/test_pingpong.py -q` -> exit 0, 146 passed, the SAME
-     count this reviewer measured at HEAD before the round.
-  f. `python3 -m pytest tests/orchestration/test_review_scope.py -q` -> exit 0,
-     at least 32 passed (32 is the pre-round count; report the real number).
-     `python3 -m pytest tests/orchestration/test_diff_repair_response.py -q`
-     -> exit 0, at least 23 passed; report the real number.
-     `python3 -m pytest tests/orchestration/test_diff_repair.py -q` -> exit 0,
-     30 passed, unchanged.
-     `python3 -m pytest tests/cli/test_golden_path.py -q` -> exit 0, 42 passed
-     (canary). Do NOT run tests/ui_server/test_dashboard_contract.py
+  d. `grep -c '^## Goal' .agent/plan.md` -> 1 ;
+     `grep -c '^## Next Steps' .agent/plan.md` -> 1 ;
+     `grep -c 'R-0312' .agent/plan.md` -> 1 ; report `wc -l` as a fact, not
+     as a gate. `wc -l < .agent/handoff.md` -> the real number, 60 or fewer
+     unless the D15 line declares it; `grep -c '^Fortschritt: '` -> 1
+  e. THE FIX, proved by value and not by colour. Run and paste the real
+     output of:
+     python3 -c "from packages.orchestration.source_apply import _apply_hunks; print(repr(_apply_hunks('alpha\nbeta\ngamma\n', '@@ -1,3 +1,3 @@\n alpha\n-beta\n+BETA\n gamma\n')))"
+     -> exit 0, and the printed value MUST be 'alpha\nBETA\ngamma\n'.
+     Before your fix this same command printed 'alpha\ngamma\nBETA\n'.
+  f. `python3 -m pytest tests/orchestration/test_source_apply_transaction.py
+     tests/orchestration/test_source_apply.py
+     tests/orchestration/test_fence_e2e.py -q` -> exit 0, at least 174 passed
+     (174 is the pre-round count the reviewer measured; report the real one).
+  g. `python3 -m pytest tests/orchestration/test_diff_repair.py
+     tests/orchestration/test_diff_repair_response.py
+     tests/orchestration/test_review_scope.py -q` -> exit 0, 96 passed
+     (30 + 27 + 39), unchanged: this round touches none of those modules.
+     `python3 -m pytest tests/cli/test_golden_path.py -q` -> exit 0, 42
+     passed (canary). Do NOT run tests/ui_server/test_dashboard_contract.py
      (R-0221: it runs a real npm build).
-  g. `python3 -m pytest tests/test_path_utils.py tests/test_data_paths.py -q`
-     -> exit 0, report the real count: these rglob every `packages/**/*.py`.
-  h. red-proof, inside a DISPOSABLE `git worktree` at HEAD and nowhere else:
-     in that worktree only, make `split_diff_by_path` return the WHOLE
-     `diff_text` for every path instead of that path's section, run
-     `python3 -m pytest tests/orchestration/test_review_scope.py
-     tests/orchestration/test_diff_repair_response.py -q` and record the real
-     exit code and the failing test ids; then remove and prune the worktree.
-     If the mutation does NOT go red, say so plainly — a true report about an
-     unreachable branch is worth more than a colour.
-  i. `git status --porcelain` -> empty; `git worktree list` -> one entry;
+  h. the applier's OTHER consumers, which this fix could regress:
+     `python3 -m pytest tests/test_patch_apply.py
+     tests/orchestration/test_autonomy.py
+     tests/orchestration/test_fence_production_e2e.py -q` -> report the real
+     exit code and count. If any of these was ALREADY failing at 33f408b2,
+     check that by running the same command in a disposable worktree at
+     33f408b2 and say so — a pre-existing red is not this round's regression,
+     but an undeclared one is a finding.
+  i. red-proof, inside a DISPOSABLE `git worktree` at HEAD and nowhere else:
+     in that worktree only, revert the splice to the old
+     `insert_at = orig_start + offset` insertion, run
+     `python3 -m pytest tests/orchestration/test_source_apply_transaction.py -q`
+     and record the real exit code and the failing test ids; then remove and
+     prune the worktree. If it does NOT go red, say so plainly.
+  j. `git status --porcelain` -> empty; `git worktree list` -> one entry;
      per-commit insertions each < 500;
      `git rev-list --left-right --count origin/feature/f111-diff-only-repair...HEAD`
      -> `0 0` after the final push.
 Handback:    completion report (per-commit table, changed-files table,
-             item-status table over C1-C7 with real statuses, raw gate
-             results a-i with real exit codes) and `.agent/handoff.md`
-             rewritten as C7. Do not merge, do not open a PR.
+             item-status table over C1-C6 with real statuses, raw gate
+             results a-j with real exit codes) and `.agent/handoff.md`
+             rewritten as C6. Do not merge, do not open a PR.
