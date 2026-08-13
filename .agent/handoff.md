@@ -46,8 +46,22 @@ numstat `2 0`. `tests/docs/` 294 passed (baseline 294); canary 42 passed
 (baseline 42); `test_cost_report.py` + `test_stats_report.py` 32 passed — the
 run that binds the guide's example to the live renderer. `wc -l .agent/plan.md`
 42, `0 0` against origin, no `remedy-wt` path in the change set,
-`git worktree list` one line. `git status --porcelain` carries exactly one
-line, `?? .agent/STOP`.
+`git worktree list` one line. At the moment of the verdict
+`git status --porcelain` carried exactly one line, `?? .agent/STOP`.
+
+## The work tree is dirty, and no agent of this session made it so
+`git status --porcelain` NOW carries two lines: `?? .agent/STOP` (zero bytes,
+mtime 11:59:11) and ` M scripts/make_review_zip.sh` (mtime 12:03:06). The
+second is a one-line addition to that script's `find` prune list,
+`-path './.remedy-wt' -o \`, which excludes the gitignored worktree scratch
+directory from the review zip. It appeared AFTER the reviewer's own
+post-R18 status check, which showed only `?? .agent/STOP`, and no commit of
+this session touches the file — `git log 0d6c97aa..HEAD -- scripts/make_review_zip.sh`
+is empty. It was neither committed nor reverted, deliberately: committing
+another actor's unreviewed change into a feature branch and destroying their
+uncommitted work are both worse than reporting it. Read it as operator work
+in progress, alongside the STOP file that arrived four minutes earlier, and
+confirm with the operator before touching it.
 
 ## Findings
 Open: **12** — R-0320, R-0322, R-0323, R-0324, R-0327, R-0328, R-0331,
@@ -65,7 +79,7 @@ R-0338 is the only one with an on-disk fix pending.
 The Open PR Gate has nothing to merge, so it does not block this resume.
 Clear `.agent/STOP` only on the operator's instruction.
 
-Deviations, declared: this handoff is 74 lines against the 60-line cap
+Deviations, declared: this handoff is 88 lines against the 60-line cap
 (AGENTS.md DECISION D15). The cause is mandated content — the per-commit
 table, the item-status table, the changed-files table and the re-run
 verification values — and no section was dropped to meet the cap.
