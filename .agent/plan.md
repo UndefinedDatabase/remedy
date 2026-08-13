@@ -1,10 +1,10 @@
 # Plan — F115 Prompt breakdown & cost report
 
 Branch: feature/f115-prompt-cost-report, cut from main at 0d6c97aa after
-PR #194 merged at the Open PR Gate. Last reviewed SHA: cc635159 (R2 PASS).
-Next free finding ID: R-0323. Open findings: 3 — R-0320 (Low, carried
-from F111), R-0321 (Low, fixed in R3, awaiting the reviewer's Done),
-R-0322 (Medium, inherited suite red, not an F115 defect).
+PR #194 merged at the Open PR Gate. Last reviewed SHA: 8601e276 (R3 PASS).
+Next free finding ID: R-0323. Open findings: 2 — R-0320 (Low, carried
+from F111), R-0322 (Medium, inherited suite red, not an F115 defect).
+R-0321 was resolved at the R4 gate.
 
 ## Goal
 Costs stop being an opaque total: `remedy stats report` shows WHERE
@@ -14,18 +14,18 @@ traceable to a ledger row, and a period with missing data reported as
 missing instead of interpolated (docs/roadmap/features/T2_F115.md).
 
 ## Current Step
-R3 done — housekeeping only. T001a wired the BUILDER call site through
-`compose_builder_prompt` (DECISION F115 D1), proved the sent bytes
-unchanged, and pinned it with a behaviour test plus an
-`inspect.getsource` wiring guard whose red-proof really goes red.
+R4 done — the REVIEWER call site now composes through
+`compose_reviewer_prompt` and hands the composition to its trace entry,
+so reviewer traces carry a real segment manifest. The manifest covers
+the composed BASE; the native-schema tail stays uncovered by design
+(F105 D3), which `segment_manifest_chars < prompt_chars` records.
 
 ## Next Steps
-1. The reviewer call site. Decide first: its traced text is
-   `_reviewer_effective_prompt(...)`, which appends the native-schema
-   tail unconditionally in structured mode, so the manifest covers the
-   composed BASE and `segment_manifest_chars < prompt_chars` records the
-   gap — the F105 D3 precedent already covers this shape. Then the
-   planner site at `apps/cli/commands/job.py:236`.
+1. The PLANNER call site (`apps/cli/commands/job.py:236`). It does NOT
+   compose locally — the prompt arrives through `llm_planner` and
+   `make_structured_planner` as `effective_prompt`, so the composition
+   has to be threaded down from where it is built. Inspect that path
+   before ordering the wiring.
 2. T001 proper — persist the manifest, or a reference to it, alongside
    the ledger row, additively, with backfill tolerance: old rows render
    as "unattributed", never guessed.
@@ -40,4 +40,4 @@ unchanged, and pinned it with a behaviour test plus an
   in the feature file; F115 must report "no data", never a fake bucket.
 - R-0322 will meet F115's integration gate as five pre-existing reds.
 
-Fortschritt: 20 % (R1 ✅ · T001a ✅ · Reviewer-Site · T001 · T002 · T003 offen) — Schätzung
+Fortschritt: 30 % (R1 ✅ · T001a ✅ · Reviewer-Site ✅ · Planner-Site · T001 · T002 · T003 offen) — Schätzung
