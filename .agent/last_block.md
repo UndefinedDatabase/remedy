@@ -1,112 +1,251 @@
-── STEP R14 — F115 · register R-0334 and close the session ────────────────────
-Goal:        Persist the last finding of the session and R13's verdict, then
-             end with the record complete and nothing carried only in memory.
+── STEP T003a/4 — F115 Prompt breakdown & cost report · Round 15 ─────────────
+Goal:        Give the report period a SECOND end. `query_cost` and
+             `query_segment_shares` learn `until`, both renderers print it,
+             and the two goldens move by exactly the lines that surface adds
+             — in the same commit, argued.
 
-Bundle:      C1a save this block · C1b mirror it · C2 findings and verdict text
-             (own commit, FIRST) · C3 plan + handoff.
+Bundle:      This is the ONLY ordering statement in this block. Every later
+             clause defers to it and none of them restates an order.
+  C1  Findings first. Append the two authored paragraphs of SLICE A to
+      `.agent/live_review.md`. OWN commit, and the FIRST commit of the round.
+  C2  Save this whole block verbatim to `.agent/authored/f115-r15-1.md`.
+  C3  Mirror the same bytes into `.agent/last_block.md`.
+  C4  `packages/orchestration/token_ledger.py` — the `until` filter, its two
+      dataclass fields, merge propagation, plus tests.
+  C5  `packages/orchestration/cost_report.py` — `until` in `_same_question`,
+      in the markdown filter line and in the json filters; the version bump;
+      the two golden files moved in THIS SAME commit; plus tests.
+  C6  Append the authored DECISION F115 D5 of SLICE B to `.agent/decisions.md`.
+  C7  Replace `.agent/plan.md` with SLICE C, then rewrite `.agent/handoff.md`.
 
-Change:      Exactly these paths: .agent/authored/f115-r14-1.md (new),
-             .agent/last_block.md, .agent/live_review.md, .agent/plan.md,
-             .agent/handoff.md. No code, no tests, no docs/.
+Change:
+  C4 — packages/orchestration/token_ledger.py
+    * `_cost_filters(*, since, until, job_id)` gains an `until` keyword. Its
+      clause is `ts_utc < ?`, STRICTLY less-than, and it sits between the
+      `since` clause and the `job_id` clause so the WHERE reads in period
+      order. One added docstring sentence names the half-open reading and
+      points at DECISION F115 D5.
+    * `CostReport` gains `until: str | None = None` immediately after `since`.
+      `SegmentShareReport` gains the same field in the same position. Both
+      dataclasses are keyword-constructed at all five existing call sites, so
+      the insertion moves no positional argument; do not add `kw_only`.
+    * `query_cost` gains `until: str | None = None` immediately after `since`
+      in its signature, passes it to `CostReport(...)` and to `_cost_filters`.
+      Its docstring gains one sentence: `until` is EXCLUSIVE, so the period is
+      `[since, until)` and two adjacent periods concatenate without counting a
+      boundary call twice.
+    * `query_segment_shares` gets the identical treatment — same parameter
+      position, same forwarding, same one-sentence docstring addition.
+    * `merge_cost_reports` carries `until=reports[0].until if reports else
+      None` into its `CostReport(...)`, beside the existing `since=`. Without
+      it a merged report and a shares report over the same arguments disagree
+      on `until` and `_same_question` refuses a legitimate pair — write the
+      one-line WHY above or beside it.
+    * NO validation at this layer. `since` is unvalidated here too; the CLI
+      owns `--until` validation and the CLI is not in this round.
+    * Tests, in `tests/orchestration/test_token_ledger.py`, beside the
+      existing query tests and using the existing fixture ledgers:
+        - one test in which a call at exactly `until` is EXCLUDED while a call
+          at exactly `since` is INCLUDED — both boundaries, one test;
+        - one test that `query_segment_shares(until=...)` narrows the same way
+          `query_cost(until=...)` does;
+        - one test that `merge_cost_reports` carries `until` from its inputs.
 
-── C2 — .agent/live_review.md, OWN COMMIT, FIRST ──────────────────────────────
-APPEND both texts below to the END of the file, in this order, each separated
-from its neighbour and from the current last line by one blank line. The file
-currently ends with the R-0333 entry's "design and R12's verdict stands as
-PASS. OPEN." line. Edit, re-wrap or renumber NOTHING that is already there.
-
-Done: R-0333 — REGISTERED, not resolved, and it stays OPEN by construction: the block that carried the wrong prediction is committed verbatim by design, so there is nothing on disk to correct. Recorded here only to close the R13 round that registered it. The R13 round as a whole is PASS. The reviewer re-ran every gate itself: cmp exit 0 with sha256 7e9a5b81683e7eb6a09a1199f8c4b332f0ec04f146acee9b67f4b2d867c716a1 over both copies, `wc -lc` 106 9465, the live-review counts 6 / 14 / 1 / 0 for `^Done:`, `^- R-0`, `^## Steps` and `^Landed:`, `git show --numstat 9d2b638d -- .agent/live_review.md` reporting 28 insertions and ZERO deletions — which is the append-only property measured rather than asserted — `wc -l .agent/plan.md` 42, canary `42 passed`, `15 passed` unmoved by a state-only round, `99 passed`, an empty porcelain, 0/0 against origin, and 36 changed paths with no `.remedy-wt/**` among them. The declared handoff overage (80 lines against the 60-line cap) is ACCEPTED under AGENTS.md DECISION D15: the cause is mandated content, the file names its own real line count, and no section was dropped to meet the cap.
-
-- R-0334 — Low — reviewer block self-contradiction, second instance, recurring
-  in the VERY NEXT block after its class was registered. R-0331 recorded that
-  the R11 block's "Change:" clause disagreed with its own "Constraints:"
-  clause. The R13 delegation then told its worker "Commit 1 saves those bytes
-  verbatim to `.agent/authored/f115-r13-1.md`; commit 2 mirrors the identical
-  bytes" while the same block's Constraints clause said "C2 is its own commit
-  and comes first". Two clauses of one instruction ordered two different commit
-  sequences. The worker resolved it correctly and by the governing rule rather
-  than by proximity: it landed the findings commit first
-  (`9d2b638d`, before `4b149bfd` and `ab1b7e9b`), which is what
-  docs/agents/planner_reviewer_prompt.md §4 item 4 requires — findings persist
-  FIRST so nothing is lost if a session dies — and the block-save ordinals were
-  the throwaway half. What makes this worth its own id rather than a tally mark
-  under R-0331 is the interval: the class was registered, its lesson written
-  out at length, and it recurred in the next block the same reviewer authored,
-  in the same session. That is evidence the counter-measure is missing rather
-  than merely unapplied. The gap is nameable: the standing pre-emission
-  checklist sends the reviewer to the block's own bytes (items 1-4), to the
-  code it points at (item 5), to the file it writes into (item 6), to the tests
-  guarding that file (item 7) and to the code producing a gated value (item 8) —
-  five different places, and not one of them is the block's own OTHER clause.
-  Both instances are the same shape: a clause written early and a clause
-  written late, never read against each other. The remedy a later round should
-  weigh is a ninth checklist item — read the Change clause, the Constraints
-  clause and the ordering statements against one another as a final pass — and
-  it belongs to whichever round next has a legitimate reason to open
-  `docs/agents/planner_reviewer_prompt.md`, since AGENTS.md bars mixing an
-  unrelated doc change into a feature branch. Registered here so the pair is
-  countable and the counter-measure is findable when that round comes. Eighth
-  of the reviewer-arithmetic and self-contradiction family after R-0282,
-  R-0321, R-0323, R-0324, R-0327, R-0328, R-0331 and R-0333. No on-disk fix.
-  OPEN.
-
-── C3 — state ────────────────────────────────────────────────────────────────
-Rewrite `.agent/plan.md` (under 50 lines, keep "## Goal" and "## Next Steps").
-Update ONLY what this round changes and keep everything else it already says:
-last reviewed SHA becomes 954d0ea2 (R13 PASS); next free finding ID becomes
-R-0335; open findings become 9 — R-0320, R-0322, R-0323, R-0324, R-0327,
-R-0328, R-0331, R-0333, R-0334. Next Steps stay as they are: T003 first, then
-the integration gate, then closure. End with the Fortschritt line below,
-verbatim.
-
-Rewrite `.agent/handoff.md` per AGENTS.md with the mandated tables and real
-values. It must state: that the session ran FOUR rounds (R11, R12, R13, R14)
-against a stated cap of three, that the fourth was a deliberate, stated
-one-round extension taken for a single reason — a known finding left
-unregistered at session end is the exact loss `.agent/live_review.md` exists to
-prevent — and that the extension was announced before it was taken, not
-discovered afterwards; that R11, R12 and R13 are all reviewed and all PASS,
-with R14's own verdict living only in the handoff and the completion report by
-construction (docs/agents/planner_reviewer_prompt.md §4 item 13 — the last
-round of a branch has no on-disk gate entry, and that absence is the
-terminator, not a missing gate); and that the next session resumes at T003 on
-this same branch, with no PR open and therefore nothing for the Open PR Gate to
-merge. If the file exceeds 60 lines, carry a "Deviations, declared" line naming
-its real line count and the mandated content that caused the overage
-(AGENTS.md DECISION D15); never drop a section to meet the cap.
-Repeat this line verbatim as the last line of BOTH files:
-Fortschritt: 80 % (T001 ✅ · T002 ✅ · T003 offen) — Schätzung
+  C5 — packages/orchestration/cost_report.py
+    * `_same_question`'s first comparison becomes
+      `(cost.since, cost.until, cost.job_id) != (shares.since, shares.until,
+      shares.job_id)` and its ValueError message names `until=` on both sides.
+      Its docstring gains one sentence: a period's END is a filter like any
+      other, so two halves covering two different periods are two questions.
+    * `render_cost_report_markdown`'s filter tuple gains
+      `("until", cost.until or "-")` between the `since` entry and the `job`
+      entry.
+    * `cost_report_json`'s `filters` dict gains `"until": cost.until or ""`.
+    * `COST_REPORT_VERSION` becomes 2. The constant's own comment already says
+      it is bumped when the payload shape changes, and a new key in `filters`
+      is that change.
+    * BOTH golden files move in THIS commit, not a later one:
+      `tests/orchestration/fixtures/cost_report/golden/cost_report.md` and
+      `.../cost_report.json`. The goldens are DATA, never regenerated by a
+      test. Gate (d) states the exact diff shape this change should produce.
+      If the real diff is larger, STOP, do not re-bless, and report the full
+      `git diff` of both goldens with your reading of why they moved further.
+    * Tests, in `tests/orchestration/test_cost_report.py`:
+        - one test that a pair whose two halves cover two DIFFERENT periods is
+          refused by both renderers — the R-0332 shape, for `until`;
+        - one test that both renderings carry the `until` the report holds.
 
 Constraints:
- - C2 is its own commit and lands FIRST, before C1a and C1b.
- - Append only in C2: zero deleted lines for `.agent/live_review.md`.
- - Write no `Done:` paragraph of your own; C2's text is reviewer-authored.
- - No code, no test, no docs/ file is touched.
+  * AGENTS.md is the highest authority; nothing here weakens it.
+  * Every commit is pushed before the next one begins (finding R-0289).
+  * Each commit stays under the 500-insertion cap (AGENTS.md counting rule:
+    the `+` column only).
+  * Commit subjects carry no leading-slash token, no absolute path, no
+    secret-like string.
+  * Do NOT touch: the CLI, `apps/cli/command_catalog.py`, `stats_ledger_cmd.py`,
+    the prior-period comparison, `docs/`, `docs/roadmap/`, pricing, calibration.
+    Those are later rounds of T003. No "while I'm here" edits.
+  * The three authored slices are applied BYTE FOR BYTE. You may not reword,
+    rewrap, retitle or trim them. If a slice cannot be applied as given, apply
+    nothing, and report the exact obstacle in the handback.
+  * SLICE A is an APPEND to the end of `.agent/live_review.md`. SLICE B is an
+    APPEND to the end of `.agent/decisions.md`. SLICE C is a FULL REPLACEMENT
+    of `.agent/plan.md`.
+  * Destructive verification — gate (i) — runs ONLY inside a disposable
+    `git worktree` under the gitignored `.remedy-wt/`, never in the primary
+    checkout. Remove and prune it before the handback.
+  * `git status --porcelain` is empty at handback.
 
-Done when — run every command and record its REAL output and exit code:
- (a) cmp .agent/authored/f115-r14-1.md .agent/last_block.md  → exit 0; report
-     sha256sum of both and `wc -lc` of one.
- (b) In .agent/live_review.md after C2:
-       grep -c '^Done:'     → 7   (six before this round, plus the R-0333 line)
-       grep -c '^- R-0'     → 15  (fourteen before, plus R-0334)
-       grep -c '^## Steps'  → 1
-       grep -c '^Landed:'   → 0
-     scoped to that commit's ADDED lines, each of `^+Done: R-0333` and
-     `^+- R-0334` exactly 1x; and
-     `git show --numstat <sha> -- .agent/live_review.md` must report ZERO
-     deleted lines.
- (c) Confirm the commit ORDER on disk: `git log --oneline 954d0ea2..HEAD`
-     must show the C2 findings commit as the OLDEST of this round's commits.
-     Quote the log.
- (d) python3 -m pytest tests/cli/test_golden_path.py -q   → 42 passed (canary).
- (e) python3 -m pytest tests/orchestration/test_cost_report.py -q → 15 passed.
- (f) wc -l .agent/plan.md                                  → under 50
- (g) git status --porcelain                                → empty
- (h) git rev-list --left-right --count origin/feature/f115-prompt-cost-report...HEAD
-                                                           → 0  0
- (i) git diff --name-only 0d6c97aa..HEAD | wc -l  → report the number and
-     confirm no `.remedy-wt/**` path is among them.
+Done when: every value below is REAL and recorded in the handback with the
+command that produced it. "Green" as a word is not a result. Where a gate says
+"report the real number", report it — do not aim at one.
+  (a) `cmp .agent/authored/f115-r15-1.md .agent/last_block.md` exits 0.
+      Report the sha256 of BOTH files and `wc -lc .agent/last_block.md`.
+  (b) Scoped to the ADDED lines of C1's own commit:
+      `git show <C1> -- .agent/live_review.md` shows `^+Done: R-0334` exactly
+      once and `^+- R-0335` exactly once, and `git show --numstat <C1>`
+      reports ZERO deleted lines. Whole-file after C1: `^Done:` 8, `^- R-0`
+      16, `^## Steps` 1, `^Landed:` 0.
+  (c) `git log --oneline 5c7f5159..HEAD` lists C1 LAST, i.e. it is the oldest
+      commit of the round.
+  (d) `git show --numstat <C5> -- tests/orchestration/fixtures/cost_report/golden/cost_report.md`
+      reports `1  1` — the filter line replaced. And
+      `git show --numstat <C5> -- tests/orchestration/fixtures/cost_report/golden/cost_report.json`
+      reports `2  1` — the `report_version` line changed plus one added
+      `"until"` line, which `sort_keys=True` places after `"timezone"`.
+      Report the real pair. A larger diff is the STOP in C5, not a re-bless.
+  (e) `python3 -m ruff check packages/orchestration/token_ledger.py
+      packages/orchestration/cost_report.py
+      tests/orchestration/test_token_ledger.py
+      tests/orchestration/test_cost_report.py` prints `All checks passed!`
+      and exits 0.
+  (f) `python3 -m pytest tests/orchestration/test_token_ledger.py
+      tests/orchestration/test_cost_report.py -q` — the pre-round baselines
+      are 99 and 15. Every one of those 114 stays green and the count rises by
+      the tests C4 and C5 add. Report the real total.
+  (g) `python3 -m pytest tests/cli/test_stats_cost.py -q` — baseline 41,
+      untouched by this round. Report the real number.
+  (h) Canary: `python3 -m pytest tests/cli/test_golden_path.py -q` — baseline
+      42. Report the real number.
+  (i) Two probes, both inside one disposable worktree under `.remedy-wt/`:
+        P1 delete the `until` clause from `_cost_filters` so the parameter
+           becomes inert, run the C4 and C5 test files, and report the NAMES
+           of every test that fails.
+        P2 restore that, then remove `until` from `_same_question`'s tuple,
+           re-run, and report the NAMES of every test that fails.
+      Report NAMES, not counts, and do not predict either. Then remove and
+      prune the worktree and show that `git worktree list` is back to one line.
+  (j) `wc -l .agent/plan.md` is under 50.
+  (k) `git status --porcelain` is empty, and
+      `git rev-list --left-right --count origin/feature/f115-prompt-cost-report...HEAD`
+      is `0  0` after the last push.
+  (l) `git diff --name-only 0d6c97aa..HEAD` contains no path matching
+      `remedy-wt`.
 
-Handback:    completion report with the item-status table + rewrite
-             .agent/handoff.md.
-──────────────────────────────────────────────────────────────────────────────
+═══ SLICE A — APPEND to .agent/live_review.md ═══════════════════════════════
+
+Done: R-0334 — REGISTERED, not resolved, and it stays OPEN by construction: the block that carried the contradiction is committed verbatim by design, so there is nothing on disk to correct. Recorded here to close the R14 round that registered it. The R14 round as a whole is PASS, and this gate was written by a NEW session's reviewer that re-ran every value itself rather than reading them out of the handoff: `cmp .agent/authored/f115-r14-1.md .agent/last_block.md` exit 0 with sha256 460cbfd6ec9814ea577aa907f02b0e8bc6fbf1463270985b62456508bba6c5ad over both copies, `wc -lc .agent/last_block.md` 112 8551, the live-review counts 7 / 15 / 1 / 0 for `^Done:`, `^- R-0`, `^## Steps` and `^Landed:`, `git show --numstat 24e6fb62` reporting 35 insertions and ZERO deletions, `git log --oneline 954d0ea2..HEAD` listing `24e6fb62` as the OLDEST of the four so the findings commit did land first, `git diff --name-only 954d0ea2..HEAD` naming five paths all under `.agent/`, `wc -l .agent/plan.md` 42, canary `pytest tests/cli/test_golden_path.py -q` 42 passed, `pytest tests/orchestration/test_cost_report.py -q` 15 passed, an empty `git status --porcelain`, 0 0 against origin, and 37 changed paths since 0d6c97aa with no `remedy-wt` among them. The declared handoff overage — 85 lines against the 60-line cap — is ACCEPTED under AGENTS.md DECISION D15: the cause is mandated content, the file names its own real line count, and no section was dropped.
+
+- R-0335 — Low — the R14 handoff claimed the §4 item-13 branch terminator for a round that ended a SESSION, not a branch. Item 13 excuses the missing on-disk gate entry of the LAST round of a BRANCH, because the round that would record that verdict is the round being recorded. R14 ended neither the branch nor the feature: no PR exists, T003 was unstarted, and the handoff's own "Resume here" section says the next session continues on THIS SAME branch. The consequence is not cosmetic. `.agent/live_review.md` is append-only and durable; `.agent/handoff.md` is REWRITTEN at every handback. R14's verdict lived only in the file that the very next handback overwrites, so a session that resumed and handed back would have erased the only record that R14 was ever reviewed — the exact loss the findings-first rule of §4 item 4 exists to prevent, arriving through the one door item 13 holds open. The fix is the paragraph above: this round's findings-first commit writes the R14 gate entry where it belongs, and the entry states that its values were re-measured rather than copied. The rule to carry forward: item 13's terminator is claimable only when the round really is the last of the BRANCH — a PR exists, or is created in that same round — and a session that merely runs out of budget records its verdict in `.agent/live_review.md` like any other round. Ninth of the reviewer-arithmetic and self-contradiction family after R-0282, R-0321, R-0323, R-0324, R-0327, R-0328, R-0331, R-0333 and R-0334. No source fix. OPEN.
+
+═══ SLICE B — APPEND to .agent/decisions.md ═════════════════════════════════
+
+## DECISION F115 D5 — `until` is EXCLUSIVE, so a period is half-open (2026-08-13)
+
+`--until` is the second end of the report period T003 needs, and its boundary
+reading is a real choice with a real failure mode. It is settled as EXCLUSIVE:
+`_cost_filters` emits `ts_utc < ?`, so a period is `[since, until)`.
+
+Why exclusive. The prior-period comparison the feature file asks for is the
+equal-length window immediately before `since` — that is, `[since - d, since)`
+where `d = until - since`. Two adjacent windows must partition the calls
+between them exactly once. With an INCLUSIVE end, a call whose `ts_utc` equals
+the shared boundary falls into BOTH windows: it is added to the current period
+and to the one it is being compared against, and the comparison then reports a
+difference that is an artifact of the boundary rather than a fact about the
+run. That is the same class of defect P6 forbids elsewhere in this feature —
+a number a reader cannot tell apart from a measurement.
+
+It also matches `since`, which is already `>=`. One end closed and one end
+open is the only pairing under which concatenating periods is lossless and
+duplicate-free, and it is the reading every calendar-period query in the
+report will inherit.
+
+Alternatives considered. (a) Inclusive `<=` — rejected above; it would also
+make `--until 2026-08-09` mean "through the instant 2026-08-09T00:00:00" and
+nothing later that day, which is a boundary users misread in the opposite
+direction. (b) Day-granular truncation of `until`, so `--until 2026-08-09`
+means "through the end of that day" — rejected because it would give `until` a
+different comparison shape than `since`, which is a plain lexicographic
+`ts_utc` compare, and two filters on one column that parse their arguments
+differently is a trap this module has no reason to set.
+
+Scope: the QUERY LAYER only. Nothing validates an `until` string at this
+layer, exactly as nothing validates `since` here; the CLI owns that, and the
+CLI is not in this round. The prior-period comparison this decision exists to
+serve is also not in this round — it is the next one.
+
+Reverse by changing `ts_utc < ?` to `ts_utc <= ?` in `_cost_filters`, deleting
+the half-open sentence from the two query docstrings, and updating the
+boundary test that names the excluded call. Nothing else depends on the
+reading.
+
+═══ SLICE C — FULL REPLACEMENT of .agent/plan.md ════════════════════════════
+
+# Plan — F115 Prompt breakdown & cost report
+
+Branch: feature/f115-prompt-cost-report, cut from main at 0d6c97aa after
+PR #194 merged. Last reviewed SHA: 5c7f5159 (R14 PASS, gated on disk at
+R15). Next free finding ID: R-0336. Open findings: 10 — R-0320, R-0322,
+R-0323, R-0324, R-0327, R-0328, R-0331, R-0333, R-0334, R-0335. No PR
+exists and closure has not started.
+
+## Goal
+Costs stop being an opaque total: `remedy stats report` shows WHERE
+tokens go — by segment kind, by role, by task class — plus a cost curve
+and a prior-period comparison, as markdown and json, every number
+traceable to a ledger row, and a period with missing data reported as
+missing instead of interpolated (docs/roadmap/features/T2_F115.md).
+
+## Current Step
+T003 has begun. The period now has TWO ends: `query_cost` and
+`query_segment_shares` both take `until`, `_cost_filters` renders it as a
+half-open `ts_utc < until` (DECISION F115 D5), `merge_cost_reports`
+carries it, and `_same_question` refuses a pair whose two halves cover
+two different periods. Both renderers print it, `COST_REPORT_VERSION` is
+2, and the two goldens moved by exactly the lines that surface added. No
+CLI is wired; the prior-period comparison has no code yet.
+
+## Next Steps
+1. T003b — the prior-period comparison over the half-open period: the
+   equal-length window immediately before `since`, and "no comparison
+   data" where that window holds nothing — never zeros.
+2. T003c — the `remedy stats report` CLI, markdown and `--json`, with its
+   catalog entry; `stats_ledger_cmd.UNMEASURED` becomes an import of
+   `COST_UNMEASURED_LABEL` so the concept keeps one spelling.
+3. T003d — the docs page the new user-visible behaviour needs.
+4. Integration gate (docs/agents/integration_gate.md).
+5. Closure per docs/roadmap/STATUS_closure_protocol.md.
+
+## Risks
+- Per-role has one bucket until `role` stops being hardcoded, and
+  per-task-class has no source at all: report "no data", never a bucket.
+- R-0322 will meet F115's integration gate as five pre-existing reds.
+- The goldens are DATA: no test may regenerate them. A renderer change
+  that moves the bytes must move the files in the same, argued commit.
+
+Fortschritt: 84 % (T001 ✅ · T002 ✅ · T003 läuft) — Schätzung
+
+═════════════════════════════════════════════════════════════════════════════
+
+Handback:    A completion report plus a rewritten `.agent/handoff.md`. The
+             handoff carries: feature and round, branch, the per-commit table,
+             the changed-files table, the item-status table covering C1..C7
+             with `done`/`skipped`/`deviated` and a reason for anything not
+             `done`, every gate value (a)..(l) as a real measured value, the
+             open-findings count, and the next expected action. It repeats the
+             Fortschritt line of SLICE C verbatim. Cap is 60 lines; exceed it
+             only with a DECISION D15 "Deviations, declared" line naming the
+             real line count and the mandated content that caused the overage.
+             Never drop a section to meet the cap.
+─────────────────────────────────────────────────────────────────────────────
