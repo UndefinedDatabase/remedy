@@ -1,0 +1,24 @@
+===== SERIAL (merge base 0d6c97aa) tests/test_run_log_cli.py::TestPlanJobLocalRunLog::test_plan_job_local_output_includes_log_path =====
+.                                                                        [100%]
+1 passed in 0.10s
+----- exit=0 -----
+===== SERIAL (merge base 0d6c97aa) tests/test_run_log_cli.py::TestPlanJobLocalRunLog::test_planning_completed_noop_outcome =====
+.                                                                        [100%]
+1 passed in 0.10s
+----- exit=0 -----
+===== SERIAL (merge base 0d6c97aa) tests/test_run_log_cli.py::TestPlanJobLocalRunLog::test_planning_completed_outcome_changed =====
+.                                                                        [100%]
+1 passed in 0.10s
+----- exit=0 -----
+===== SERIAL (merge base 0d6c97aa) tests/test_run_log_cli.py::TestPlanJobLocalRunLog::test_planning_started_includes_provider_role_model =====
+.                                                                        [100%]
+1 passed in 0.10s
+----- exit=0 -----
+===== SERIAL (merge base 0d6c97aa) tests/test_run_log_cli.py::TestPlanJobLocalRunLog::test_writes_planning_completed_on_success =====
+.                                                                        [100%]
+1 passed in 0.10s
+----- exit=0 -----
+===== SERIAL (merge base 0d6c97aa) tests/test_run_log_cli.py::TestPlanJobLocalRunLog::test_writes_planning_started =====
+.                                                                        [100%]
+1 passed in 0.10s
+----- exit=0 -----

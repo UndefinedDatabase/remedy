@@ -1,0 +1,5 @@
+== git worktree list ==
+/home/decodeux/Repos/remedy  ce812bc0 [feature/f115-prompt-cost-report]
+== git branch --list tmp/base-gate ==
+== base worktree path present? ==
+ABSENT

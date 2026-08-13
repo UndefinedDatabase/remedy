@@ -1,0 +1,51 @@
+===== SERIAL (branch) tests/test_run_log_cli.py::TestPlanJobLocalRunLog::test_plan_job_local_output_includes_log_path =====
+F                                                                        [100%]
+=================================== FAILURES ===================================
+_____ TestPlanJobLocalRunLog.test_plan_job_local_output_includes_log_path ______
+
+[... 235 lines of pytest source context elided; the full serial log is
+     .remedy-wt/.cache/gate_r20/serial_branch.txt, hashed in
+     full_log_provenance.txt ...]
+
+    
+        def _persist_plan_traces() -> None:
+            if _plan_traces:
+                try:
+                    write_trace_jsonl(_plan_traces, log.path.parent / "prompt_trace.jsonl")
+                except OSError:
+                    pass
+    
+        start = time.monotonic()
+        try:
+            result: PlanJobResult = plan_job_with_llm(
+                job, call_planner, on_prompt_composed=_plan_compositions.append,
+            )
+        except StructuredParseError as exc:
+            _persist_plan_traces()
+            # F005/F010: parse exhaustion is the stable class ``parse``, not the
+            # exception's class name.
+            log.log("planning_failed", provider="ollama", role="planner", model=planner.model,
+                    outcome="error", message=str(exc), error_category="parse")
+            print(f"Error: planner structured output invalid after one retry: {exc}", file=sys.stderr)
+            sys.exit(1)
+        except ImportError as exc:
+            _persist_plan_traces()
+            log.log("planning_failed", provider="ollama", role="planner", model=planner.model,
+                    outcome="error", message="planning failed", error_category=type(exc).__name__)
+            print(f"Error: {exc}", file=sys.stderr)
+            sys.exit(1)
+        except Exception as exc:
+            _persist_plan_traces()
+            log.log("planning_failed", provider="ollama", role="planner", model=planner.model,
+                    outcome="error", message="planning failed", error_category=type(exc).__name__)
+            print(f"Error: Ollama planning failed: {exc}", file=sys.stderr)
+>           sys.exit(1)
+E           SystemExit: 1
+
+apps/cli/commands/job.py:309: SystemExit
+----------------------------- Captured stderr call -----------------------------
+Error: Ollama planning failed: TestPlanJobLocalRunLog._make_mock_planner.<locals>.fake_plan_job_with_llm() got an unexpected keyword argument 'on_prompt_composed'
+=========================== short test summary info ============================
+FAILED tests/test_run_log_cli.py::TestPlanJobLocalRunLog::test_plan_job_local_output_includes_log_path
+1 failed in 0.20s
+----- exit=1 -----

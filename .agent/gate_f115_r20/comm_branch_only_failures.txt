@@ -1,0 +1,6 @@
+FAILED tests/test_run_log_cli.py::TestPlanJobLocalRunLog::test_plan_job_local_output_includes_log_path
+FAILED tests/test_run_log_cli.py::TestPlanJobLocalRunLog::test_planning_completed_noop_outcome
+FAILED tests/test_run_log_cli.py::TestPlanJobLocalRunLog::test_planning_completed_outcome_changed
+FAILED tests/test_run_log_cli.py::TestPlanJobLocalRunLog::test_planning_started_includes_provider_role_model
+FAILED tests/test_run_log_cli.py::TestPlanJobLocalRunLog::test_writes_planning_completed_on_success
+FAILED tests/test_run_log_cli.py::TestPlanJobLocalRunLog::test_writes_planning_started
