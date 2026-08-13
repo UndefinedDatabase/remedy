@@ -42,3 +42,21 @@ integration gate → closure.
   because a wrong total in an inventory is exactly the kind of number a later
   round quotes without re-counting. Fix: change "eight" to "seven" in that
   sentence and nothing else. OPEN.
+
+- R-0322 — Medium — the suite is RED at this branch's merge base. Five ids in
+  `tests/orchestration/test_role_conventions.py` fail, every one a
+  `[reviewer]` parametrization, each raising `PromptSegmentError: prompt
+  segment 'reviewer_conventions' is over its token cap: 954 tokens estimated,
+  cap 800` before any assertion in the test runs. Measured by the reviewer at
+  the R2 gate: `5 failed, 21 passed in 0.14s`. It is NOT an F115 defect —
+  `docs/agents/reviewer_conventions.md` was last touched at a85e82f5 on
+  2026-08-12, before this branch existed, and
+  `git diff --name-only 0d6c97aa..HEAD` over that path and over
+  `prompt_facts.py` is empty. It is the same class F111 recorded as R-0286 and
+  attributed at its integration gate in both trees. It is registered here
+  rather than inherited silently because F115's own integration gate will meet
+  it, and a gate that has to rediscover a known red spends a round proving
+  something already known. It is deliberately NOT fixed on this branch:
+  AGENTS.md bars mixing an unrelated fix into a feature branch. The fix
+  belongs to a round that legitimately opens the conventions document or the
+  cap. OPEN.
