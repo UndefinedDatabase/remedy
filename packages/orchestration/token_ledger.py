@@ -120,6 +120,11 @@ _PROVIDER_EVIDENCE_FILENAME = "provider_evidence.json"
 _TOKEN_ACCOUNTING_FILENAME = "token_accounting.json"
 _JOB_MANIFEST_FILENAME = "manifest.json"
 
+# The prompt trace the evidence exporter COPIES into the task-run directory
+# beside provider_evidence.json (``pingpong_evidence.py:533``); it is the only
+# place a finalized task run publishes its per-call segment manifests.
+_PROMPT_TRACE_FILENAME = "prompt_trace.jsonl"
+
 # Timestamp fields the evidence may carry, most specific first; else the file mtime.
 _TIMESTAMP_FIELDS = ("ts_utc", "finished_at", "started_at")
 
@@ -249,6 +254,47 @@ class CallRecord:
     cost_usd: float | None = None
     cost_basis: str = COST_BASIS_UNKNOWN
     evidence_ref: str | None = None
+
+
+# Column order restated once, exactly as migration step 2 declares it, so the
+# INSERT and every later SELECT are built from ONE source and cannot drift.
+_CALL_SEGMENT_COLUMNS = (
+    "call_id",
+    "trace_seq",
+    "segment_name",
+    "segment_rank",
+    "segment_sha256",
+    "chars",
+    "tokens_estimated",
+)
+
+# The manifest keys a trace entry publishes, in the order the columns above take
+# them. Named once so a missing key is detected rather than defaulted to zero.
+_MANIFEST_KEYS = ("name", "rank", "sha256", "chars", "tokens_estimated")
+
+
+@dataclass(frozen=True)
+class CallSegmentRow:
+    """One segment of one composed prompt, as the ledger stores it.
+
+    Mirrors ``ComposedPrompt.manifest_as_dicts()`` one field per key
+    (``prompt_segments.py:107-121``) plus two identity columns: the ledger row's
+    ``call_id``, and ``trace_seq`` — the zero-based position of the trace line
+    among THAT TASK RUN's entries, which is what makes a re-read of the same
+    static file produce the same keys and a repeat backfill a no-op.
+
+    A trace entry whose ``segment_manifest`` is empty produces NO row at all.
+    That absence is what the report renders as unattributed; it is never a zero,
+    and no row is ever invented to stand in for it.
+    """
+
+    call_id: str
+    trace_seq: int
+    segment_name: str
+    segment_rank: int
+    segment_sha256: str
+    chars: int
+    tokens_estimated: int
 
 
 # What one backfill pass did, in counts a caller can report without re-scanning.
@@ -604,6 +650,68 @@ def call_record_from_evidence(
             task, evidence_path, exc_info=True,
         )
         return None
+
+
+# One task run's segment rows, read out of the prompt trace copied beside it.
+def segment_rows_from_trace_file(
+    trace_path: Path | str,
+    *,
+    call_id: str,
+    task_id: str,
+) -> list[CallSegmentRow]:
+    """Read ``prompt_trace.jsonl`` into the ``call_segments`` rows of one task run.
+
+    PURE AND READ-ONLY: it opens nothing but ``trace_path``, writes nothing and
+    never brings a database into existence. NEVER RAISES for any input either —
+    an absent or unreadable file yields ``[]``, and a line that is not valid
+    JSON is skipped while the scan continues, because one corrupt line must not
+    cost every other segment its row.
+
+    ``task_id`` is LOAD-BEARING, not defensive: the trace copied beside the
+    evidence is the WHOLE JOB's file — ``prompt_trace.append_trace_jsonl`` keeps
+    one per job, not one per task run — so the other task runs' entries sit in
+    it and would otherwise be attributed to this ``call_id``.
+
+    ``trace_seq`` is the zero-based index AMONG THE KEPT entries, assigned in
+    file order. An entry whose ``segment_manifest`` is empty produces no row but
+    STILL CONSUMES its index: the number means "position among this task run's
+    provider calls", so it stays stable once a later round makes more of those
+    calls carry a manifest. A blank line is not an entry and consumes nothing.
+
+    A manifest dict missing any of ``_MANIFEST_KEYS`` is SKIPPED rather than
+    defaulted — a figure nobody published must not land as a measured zero (P6).
+    """
+    source = Path(trace_path)
+    rows: list[CallSegmentRow] = []
+    try:
+        raw = source.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
+        # No trace beside the evidence is the NORMAL pre-F115 case, not a fault.
+        return rows
+    wanted = str(task_id)
+    trace_seq = 0
+    for line in raw.splitlines():
+        if not line.strip():
+            continue
+        try:
+            entry = strict_loads(line, where=str(source), require_object=True)
+        except StrictJsonError:
+            logger.warning(
+                "token ledger skips an unreadable prompt-trace line in %s; the "
+                "scan continues so one corrupt line costs no other row",
+                source, exc_info=True,
+            )
+            continue
+        if entry.get("task_id") != wanted:
+            continue
+        manifest = entry.get("segment_manifest")
+        if isinstance(manifest, list):
+            for item in manifest:
+                row = _call_segment_row(item, call_id=call_id, trace_seq=trace_seq)
+                if row is not None:
+                    rows.append(row)
+        trace_seq += 1
+    return rows
 
 
 # Mirrors a whole evidence tree into rows; idempotent, and never raises.
@@ -1051,6 +1159,37 @@ def _call_record_from_parts(
             COST_BASIS_PROVIDER_REPORTED if cost_usd is not None else COST_BASIS_UNKNOWN
         ),
         evidence_ref=evidence_ref,
+    )
+
+
+def _call_segment_row(
+    manifest_entry: Any,
+    *,
+    call_id: str,
+    trace_seq: int,
+) -> CallSegmentRow | None:
+    """One manifest dict as a row, or None when it does not carry all five keys.
+
+    A dict missing a key is SKIPPED rather than completed with 0 or "": the
+    values are taken verbatim from ``_MANIFEST_KEYS`` and nothing here invents,
+    coerces or defaults one. An unpublished figure must never become a measured
+    zero (P6), and a partial manifest row would be exactly that.
+    """
+    if not isinstance(manifest_entry, dict):
+        return None
+    if any(key not in manifest_entry for key in _MANIFEST_KEYS):
+        return None
+    name, rank, sha256, chars, tokens_estimated = (
+        manifest_entry[key] for key in _MANIFEST_KEYS
+    )
+    return CallSegmentRow(
+        call_id=call_id,
+        trace_seq=trace_seq,
+        segment_name=name,
+        segment_rank=rank,
+        segment_sha256=sha256,
+        chars=chars,
+        tokens_estimated=tokens_estimated,
     )
 
 
