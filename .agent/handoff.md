@@ -1,121 +1,73 @@
-# Handback — F115 · R26 (CLOSURE) — CLOSED
+# Handoff — F045 Loop definitions · R1 (claim + T001)
 
-## Range
-0fc9c051..HEAD on feature/f115-prompt-cost-report. Three commits: C0, ITEM A,
-the closure commit. ITEM B was NOT re-ordered (landed R25 at 0fc9c051).
+Branch: `feature/f045-loop-definitions`, cut from main at `cb3ef34f`. Pushed
+after every commit. No PR opened, nothing merged. Open findings: 0.
 
 ## Commits
-### 9150dfcc chore(f115): save the R26 closure block verbatim
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/authored/f115-r26-1.md | +71/-0 | block verbatim, 71 lines, 0 trailing-ws |
-| .agent/last_block.md | rewrite | cmp exit 0; both sha256 c920497d6bfbd246… |
+| SHA | Subject | Files (+/-) |
+|-----|---------|-------------|
+| `106239a9` | chore(f045): save the R1 block verbatim | `.agent/authored/f045-r1-1.md` 316/0 · `.agent/last_block.md` 316/71 |
+| `8e44d980` | docs(f045): claim F045 and reset the round state | `.agent/context.md` 21/20 · `.agent/live_review.md` 12/357 · `.agent/plan.md` 26/39 · `docs/roadmap/STATUS.md` 1/1 |
+| `9d415caf` | feat(f045): loop spec model with config loading and validation | `packages/orchestration/loop_spec.py` 331/0 |
+| `5528a569` | test(f045): unit tests for loop spec loading and validation | `tests/orchestration/test_loop_spec.py` 268/0 |
 
-### 705feeb1 docs(f115): register R-0343, the Built State claim defects
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/live_review.md | +2/-0 | R-0343 appended at EOF, byte-identical |
+## Gates (real exit codes and output)
+| Gate | Command | Exit | Output |
+|------|---------|------|--------|
+| a | `cmp .agent/authored/f045-r1-1.md .agent/last_block.md` | 0 | (none) |
+| b | `grep -c "^- \[~\] F045 — Loop definitions" docs/roadmap/STATUS.md` | 0 | `1` |
+| c | `grep -c "^- \[ \] F045 — Loop definitions" docs/roadmap/STATUS.md` | 1 | `0` (grep exits 1 on zero matches; the required VALUE is 0) |
+| d | `grep -c "^## Steps" .agent/live_review.md` | 0 | `1` |
+| e | `python3 -m pytest tests/docs/ -q` | 0 | `294 passed in 0.25s` |
+| f | `python3 -m pytest tests/ui_server/test_dashboard_contract.py tests/orchestration/test_test_runner.py tests/regression/test_resource_safety.py -q` | 0 | `142 passed in 18.85s` |
+| g | `python3 -m pytest tests/orchestration/test_loop_spec.py -q` | 0 | `13 passed in 0.11s` |
+| h | `python3 -m pytest tests/cli/test_golden_path.py -q` (canary) | 0 | `42 passed in 20.32s` |
+| i | `python3 -m ruff check packages/orchestration/loop_spec.py tests/orchestration/test_loop_spec.py` | 0 | `All checks passed!` |
+| j | `git status --porcelain` | 0 | (empty) |
 
-### <this commit> docs(f115): close F115 in the roadmap ledger
-| Path | +/- | Reason |
-|---|---|---|
-| docs/roadmap/STATUS.md | +1/-1 | the authored `[x]` line, line 62 only |
-| README.md | +2/-2 | 45 of 255; Tier 2 Done 5 → 6 |
-| .agent/plan.md | rewrite | CLOSED state, 49 lines |
-| .agent/handoff.md | rewrite | this file |
+Open PR Gate raw output at ITEM 0: `[]`. PR #195 MERGED 2026-08-13T15:23:43Z,
+PR #196 MERGED 2026-08-13T15:23:55Z.
 
-## Closure values
-- Evidence job `f115-closure` — `create_manual_completion_bundle(
-  review_feature_id="f115")`, verdict PASS_WITH_RISKS, authority 21 files,
-  partition 7/7/7, 149 commits, total_passed 93.
-- package `remedy-review-20260813-142842-READY_FOR_REVIEW.zip`
-- SHA-256 `bf28ae9dfebc9ef9d2e3f57a7ad9d76155cfe35a0cc5e2b7090426aa6f7a447e`
-  (re-derived with `sha256sum` on disk, equal to the builder's own value)
-- accepted HEAD `705feeb19c871db6313828d76ad4e1d9e0cc4d58`
-- manifest `committed_review_subject`: base `0d6c97aa06e65bea966b5210f1569de45d503845`
-  → head `705feeb19c871db6313828d76ad4e1d9e0cc4d58`, 89 files;
-  `review_subject_alignment=PASS`, `evidence_authoritative=true`,
-  5044 members, 0 symlinks, `ZipFile.testzip()` None.
-
-## Verification (raw)
-- (a) `cmp .agent/authored/f115-r26-1.md .agent/last_block.md` → no output, exit 0.
-- (b) `grep -c "^- R-0343 — Low" .agent/live_review.md` → 1 ·
-  `grep -c "^## Steps" .agent/live_review.md` → 1 ·
-  `grep -c "git stash list non-empty" .agent/authored/f115-r23-1.md` → 1
-  (line 131) · `grep -c "must contain" .agent/authored/f115-r24-1.md` → 1
-  (line 106). The entry's attribution matches both files on disk.
-- (c) integrity check → `"passed": true, "fail_count": 0`, 5/5 pass; re-run
-  after the plan rewrite, same result.
-- (d) `git stash list | head -1` → `stash@{0}: On f115-prompt-cost-report:
-  f115-closure: operator's make_review_zip.sh prune-list edit`;
-  `git status --porcelain` → EMPTY. Both before the zip. NOT popped.
-- (f) `pytest tests/docs/ -q` → `294 passed in 0.26s`;
-  `pytest tests/cli/test_golden_path.py -q` → `42 passed in 20.79s`.
-- (g) `grep -c "^- \[x\] F115 — " docs/roadmap/STATUS.md` → 1 ·
-  `grep -c "^- \[~\] F115" docs/roadmap/STATUS.md` → 0.
-- (h) `grep -c "45 of 255 registered items accepted" README.md` → 1.
-- Byte-identity: the applied STATUS line equals the authored ITEM 6 (a) TO
-  template with only the four angle-bracket slots substituted (assert `<`/`>`
-  absent); the applied R-0343 line equals the authored one, sha256
-  `b35ddcefbcd98f85c345cd9405bd5bcccdc68d1037c03a1bf73f92e516dd2ccf` on both.
-
-## Artifact-build attempts (all recorded)
-1. Bundle attempt 1 — FAILED, `ValueError: T002: safe-diff path set does not
-   match the task partition`. Cause: the tree was still dirty, so
-   `resolve_review_subject` pulled the uncommitted `scripts/make_review_zip.sh`
-   into the authority set, where it has no BASE..HEAD diff.
-2. Zip attempt 1 — FAILED, exit 2, `REVIEW_ZIP_ERROR: symlink
-   '.remedy-wt/r12/tmpB/…current' target '…' points outside the repository`.
-3. Zip attempts 2 and 3 — BLOCKED_EVIDENCE.
-   `validate_evidence_candidate` → `verification_tests.json field
-   verification_tests.runs[1].stdout_summary carries a local absolute path`
-   (the pytest header `-- /usr/bin/python3` in the one log short enough to keep
-   its header inside the 2000-char tail).
-4. Bundle attempt 2 + zip attempt 4 — READY_FOR_REVIEW, values above.
-   The two BLOCKED zips were deleted; only the READY one remains.
-
-## Item status
+## Items
 | Item | Status | Reason |
-|---|---|---|
-| C0 | done | 9150dfcc, cmp exit 0 |
-| ITEM A | done | 705feeb1, both gates 1, both attribution checks 1 |
-| ITEM 3 | done | integrity PASS; porcelain ` M scripts/make_review_zip.sh`; 0/2 |
-| ITEM 4 | done | job `f115-closure`; deviations 1 and 3 below |
-| ITEM 5 | done | stash pushed, tree clean, pushed, zip READY; deviation 2 |
-| ITEM 6 | done | this commit; tests/docs 294, canary 42 |
-| ITEM 7 | done | PR opened after this commit; URL in the completion report |
+|------|--------|--------|
+| ITEM 0 | done | |
+| ITEM 1 | done | |
+| ITEM 2 | done | |
+| ITEM 3 | deviated | C2 split into two commits — see Deviations |
+| ITEM 4 | done | |
 
-Deviations, declared (5):
-1. ITEM 4 ordered `tests/orchestration/test_stats_report.py`. No such file.
-   The real path is `tests/cli/test_stats_report.py` (10 passed) — used.
-2. ITEM 5 steps 1-3 (the D7 stash) ran BEFORE ITEM 4, not after. Forced:
-   `resolve_review_subject` reads the WORKING TREE, so with the packager edit
-   unstashed the bundle cannot be built at all (attempt 1 above). The protocol
-   requires a clean tree for the package; this only extends it to the bundle.
-3. `_tail` in the scratch bundle builder applies a SECOND redaction pass,
-   `packages.common.path_redaction.scrub_paths`, after
-   `job_evidence._scrub_paths`. Without it the interpreter's own absolute path
-   in pytest's header line packages BLOCKED_EVIDENCE. Redaction, not
-   truncation: nothing else in the summary changed.
-4. Six pytest `*current` convenience SYMLINKS under the gitignored
-   `.remedy-wt/` were deleted so the packager's symlink guard passes. They are
-   auto-generated basetemp links; every numbered target directory is intact.
-   The durable fix is the operator's own stashed prune-list edit (R-0295,
-   DECISION F107 D3a), which this feature does not own.
-5. `.agent/plan.md` does not carry the PR number. It cannot: the closure
-   commit is by rule the LAST commit, and the number does not exist until
-   after it. It is in the completion report and the PR itself.
+## Deviations, declared
+0. This handoff is 73 lines, over the ≤60 cap. Cause: the mandated per-commit
+   changed-files table (4 commits), the mandated ten-row gate table carrying
+   each gate's real exit code and output, and the mandated item-status table.
+   No section was dropped to meet the cap.
+1. ITEM 3's single commit C2 would have been 599 insertions (331 module + 268
+   tests), over the AGENTS.md 500-insertion cap. The two files are separable,
+   so declaring inseparability would have been false; C2 was split into
+   `9d415caf` (module, 331) and `5528a569` (tests, 268). The block's mandated
+   subject is carried by `9d415caf`.
+2. Gate (i) ran as `python3 -m ruff check` — the bare `ruff` binary is refused
+   by this worker's sandbox. Same tool, same arguments, exit 0.
+3. Test 13 asserts on the KEY each `load_config` warning names, not on the
+   whole warning string: pytest's `tmp_path` embeds the test name, so that
+   directory literally contains "loop" and a whole-string scan matched an
+   unrelated warning. Red-proof run out of tree: moving the table to
+   `[[remedy.loop]]` makes `load_config` emit
+   `Unknown key in <path>: loop`, so the assertion still goes red on D1's
+   reversal. `user_path` is also pinned at a non-existent file so the test does
+   not read the operator's `~/.config/remedy/remedy.toml`.
+4. `validate_loop_specs` returns file-level errors (unparseable TOML, a `loop`
+   key that is not an array of tables) as messages rather than raising, so
+   `remedy loop validate` can report a broken config instead of crashing. The
+   block only required that it never raise for a SPEC-level error; this is
+   strictly weaker in raising and is stated in the function docstring.
+5. `.agent/decisions.md` untouched: the block scoped the change set, and
+   DECISION D1 and D2 are recorded in prose in the `loop_spec.py` module
+   docstring, which is where a reader searches for them.
 
-Deviations, declared — length: this file is 121 lines against the 60-line cap
-(AGENTS.md DECISION D15). Cause is mandated content only: three per-commit
-tables, the closure values, the eight-line verification transcript, the
-artifact-build attempt log (every attempt including the failures, required
-explicitly), the seven-row item-status table and the five block deviations. No
-section was dropped and no prose was padded.
+## Next expected action
+Reviewer re-runs (a)-(j) against `5528a569`, then plans R2 = T002 (run
+materialization, `loop_ref` provenance, approval-semantics tests).
 
-## Next
-Open PR Gate at the next feature's start merges the PR; the operator may merge
-manually at any time. Next feature per Rule A5: F045 — Loop definitions.
-`.agent/candidates.md` is `(empty)` and was not touched. Open findings 15,
-next free ID R-0344. `stash@{0}` stays in place — reversing it is the
-operator's call.
+Fortschritt: ~5 % (R1 läuft · T001 offen · T002 offen · T003 offen) — Schätzung
