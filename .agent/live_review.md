@@ -708,3 +708,5 @@ exists to make repairs smaller, so refusing them would defeat its purpose while
 leaving the `@@ -0,0` splice-at-minus-one path reachable anyway. Reverse by
 reverting R11's C4 commit; the tests it adds name the behaviour precisely enough
 that a reverter knows what they are giving up.
+
+Landed: R-0312 — a hunk whose old count is 0 now splices after the line its header names, a contradicting header and a negative index are rejected, and the new cases are pinned by tests, commit C4 of R11.
