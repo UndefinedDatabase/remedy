@@ -1,322 +1,449 @@
-── STEP R10/n — F115 Prompt breakdown & cost report · Round 10 ───────
-Goal:        T002 part one — the aggregation query that joins `calls` to
-             `call_segments` and reports per-segment shares with attributed and
-             unattributed calls counted separately, plus the type guard that
-             keeps an unpublishable manifest value out of the sums it would
-             otherwise become a silent zero in.
-Bundle:      C1a save block · C1b mirror · C2 register R-0329 ·
-             C3 the manifest type guard and its test · C4 the aggregation query ·
-             C5 tests · C6 plan + handback
-Change:      EXACTLY these paths, nothing else:
-               .agent/authored/f115-r10-1.md              (new, C1a)
-               .agent/last_block.md                       (rewrite, C1b)
-               .agent/live_review.md                      (C2: append)
-               packages/orchestration/token_ledger.py     (C3, C4)
-               tests/orchestration/test_token_ledger.py   (C3, C5: append)
-               .agent/plan.md                             (C6: full replace)
-               .agent/handoff.md                          (C6: rewrite)
+── STEP T002-Renderer / R11 — F115 ────────────────────────────────────────────
+Goal:        Turn the answered cost question and the answered segment-share
+             question into one report a human and a UI can read — a pure,
+             byte-deterministic function over the two report dataclasses — and
+             close R-0330 in the module it already touches.
+
+Bundle:      C1a save this block · C1b mirror it · C2 R-0330 docstring fix ·
+             C3 new packages/orchestration/cost_report.py · C4 new
+             tests/orchestration/test_cost_report.py · C5 plan + handoff.
+
+Change:      Exactly these five paths and nothing else:
+             .agent/authored/f115-r11-1.md (new), .agent/last_block.md,
+             packages/orchestration/token_ledger.py (ONE docstring line),
+             packages/orchestration/cost_report.py (new),
+             tests/orchestration/test_cost_report.py (new),
+             .agent/plan.md, .agent/handoff.md.
+             NO CLI, NO golden files, NO migration, NO change to any query.
+
+── C2 — R-0330, one line, a REWRITE pair ──────────────────────────────────────
+In packages/orchestration/token_ledger.py, line 1098, replace exactly:
+
+FROM:
+    """Aggregate ``call_segments`` into a ``SegmentShareReport``. READ-ONLY, never raises.
+
+TO:
+    """Aggregate ``call_segments`` into a ``SegmentShareReport``. READ-ONLY, and never raises on absence.
+
+Nothing else in that docstring or that file changes. The narrower sentence is
+the true one: both functions resolve their target through
+``_resolve_ledger_path``, which raises ValueError when given neither
+``project_id`` nor ``path``, and ``query_cost`` (line 1004) already scopes the
+claim this exact way.
+
+── C3 — packages/orchestration/cost_report.py, NEW FILE, verbatim ─────────────
+"""F115 T002 — the cost report: where the tokens went, in two formats.
+
+``query_cost`` answers "what did this period cost" and ``query_segment_shares``
+answers "where did its prompt tokens go". This module is the PURE FUNCTION that
+turns that PAIR into something a human or a UI can read: markdown for people,
+json for the later UI section. It queries nothing, opens nothing, and computes
+no price.
+
+**The bytes are deterministic for a given pair of reports.** No clock, no
+absolute path, no registry UUID, no dict-iteration order. That is why neither
+``ledger_path`` nor ``project_id`` is rendered even though both reports carry
+them: the first is a ``tmp_path`` under test and a data-root path in
+production, the second is a UUID minted per machine, so either one would make
+the same ledger render differently on two machines and a golden comparison
+would decay into a re-blessing ritual. Provenance travels as ``label``, which
+the caller states — the same choice ``gauntlet_matrix.py`` made for its
+evidence directory, and for the same reason.
+
+**Two absences, two words, and neither is a zero.** A figure nobody reported is
+UNMEASURED — ``CostRow``'s nulls exist to carry it, and P6 forbids printing a 0
+in its place. A call whose prompt was never traced is UNATTRIBUTED: it is
+counted once, by name, and given no share of any segment kind.
+
+Remedy deliberately does not compute a missing price here, and deliberately
+does not fill an unattributed call's segments by re-splitting its prompt after
+the fact: both would turn "we do not know" into a number a reader cannot tell
+apart from a measurement.
+"""
+from __future__ import annotations
+
+import json
+from typing import Any
+
+from packages.orchestration.token_ledger import (
+    CostReport,
+    CostRow,
+    SegmentShareReport,
+)
+
+#: Report schema version. Bumped when the payload shape changes, so a reader
+#: never has to guess which shape it is holding.
+COST_REPORT_VERSION = 1
+
+#: The report file names, written side by side when T003 puts them on disk.
+COST_REPORT_MARKDOWN_FILENAME = "cost_report.md"
+COST_REPORT_JSON_FILENAME = "cost_report.json"
+
+#: What a figure nobody reported prints as. ``stats_ledger_cmd.UNMEASURED`` is
+#: the same word for the same thing; T003 makes that module import this one so
+#: the concept keeps ONE spelling (AGENTS.md, Code Discoverability).
+COST_UNMEASURED_LABEL = "unmeasured"
+
+#: What a bucket whose group column is NULL prints as — a call whose role the
+#: evidence never named. The spelling the ledger CLI already prints.
+COST_UNNAMED_BUCKET_LABEL = "(unnamed)"
+
+#: What the header says when the caller named no scope.
+COST_DEFAULT_LABEL = "(unlabelled)"
+
+#: The cost table's figure columns, in render order.
+COST_FIGURE_COLUMNS = (
+    ("tokens_in", "tokens in"),
+    ("tokens_out", "tokens out"),
+    ("cache_read", "cache read"),
+    ("cache_write", "cache write"),
+    ("cost_usd", "cost usd"),
+)
+
+#: The share table's columns, in render order.
+SHARE_TABLE_HEADER = ("segment", "calls", "segments", "chars", "tokens est.", "share")
+
+
+def _figure(value: int | float | None) -> str:
+    """One measurement, or the word — a 0 never stands in for nobody-reported."""
+    if value is None:
+        return COST_UNMEASURED_LABEL
+    if isinstance(value, float):
+        return f"{value:.4f}"
+    return str(value)
+
+
+def _share_percent(part: int, whole: int) -> str:
+    """A share of the attributed total, or a dash when there is no denominator."""
+    if whole <= 0:
+        return "-"
+    return f"{100.0 * part / whole:.1f}%"
+
+
+def _same_question(cost: CostReport, shares: SegmentShareReport) -> None:
+    """Refuse a pair that answers two different questions.
+
+    Both queries take the same ``since`` and ``job_id`` and run them through the
+    same ``_cost_filters`` clause, so a MATCHED pair describes one set of calls
+    by construction. An unmatched pair does not, and rendering it would publish
+    the breakdown of one period beside the total of another — silently
+    answering a different question than the one asked, which ``query_cost``
+    already refuses to do for its own ``by`` argument.
+    """
+    if (cost.since, cost.job_id) != (shares.since, shares.job_id):
+        raise ValueError(
+            "a cost report needs one question, not two: "
+            f"query_cost(since={cost.since!r}, job_id={cost.job_id!r}) does not "
+            f"match query_segment_shares(since={shares.since!r}, "
+            f"job_id={shares.job_id!r})"
+        )
+
+
+def _cost_row_payload(row: CostRow) -> dict[str, Any]:
+    """One bucket as json: every figure as a number or null, never coerced."""
+    return {
+        "bucket": row.bucket,
+        "calls": row.calls,
+        "tokens_in": row.tokens_in,
+        "tokens_out": row.tokens_out,
+        "cache_read": row.cache_read,
+        "cache_write": row.cache_write,
+        "cost_usd": row.cost_usd,
+        "measured_calls": row.measured_calls,
+        "unmeasured_calls": row.unmeasured_calls,
+        "fully_measured": row.fully_measured,
+    }
+
+
+def cost_report_json(
+    cost: CostReport,
+    shares: SegmentShareReport,
+    *,
+    label: str | None = None,
+) -> dict[str, Any]:
+    """The machine-readable report. Deterministic for a given pair of reports."""
+    _same_question(cost, shares)
+    return {
+        "report_version": COST_REPORT_VERSION,
+        "label": label if label is not None else COST_DEFAULT_LABEL,
+        "filters": {
+            "since": cost.since or "",
+            "job": cost.job_id or "",
+            "by": cost.by,
+            "timezone": "UTC",
+        },
+        "ledger_exists": cost.ledger_exists,
+        "unmeasured_notation": "null",
+        "note": (
+            "a null figure was never reported — it is not a zero; "
+            "no price is ever computed"
+        ),
+        "total": _cost_row_payload(cost.total),
+        "buckets": [_cost_row_payload(row) for row in cost.rows],
+        "segments": {
+            "attributed_calls": shares.attributed_calls,
+            "unattributed_calls": shares.unattributed_calls,
+            "total_segments": shares.total_segments,
+            "total_chars": shares.total_chars,
+            "total_tokens_estimated": shares.total_tokens_estimated,
+            "rows": [
+                {
+                    "segment_name": row.segment_name,
+                    "calls": row.calls,
+                    "segments": row.segments,
+                    "chars": row.chars,
+                    "tokens_estimated": row.tokens_estimated,
+                }
+                for row in shares.rows
+            ],
+        },
+    }
+
+
+def cost_report_json_bytes(
+    cost: CostReport,
+    shares: SegmentShareReport,
+    *,
+    label: str | None = None,
+) -> str:
+    """The json report as the exact text a caller writes to disk."""
+    return json.dumps(
+        cost_report_json(cost, shares, label=label),
+        indent=2,
+        sort_keys=True,
+        ensure_ascii=False,
+    ) + "\n"
+
+
+def _table(header: tuple[str, ...], rows: list[tuple[str, ...]]) -> list[str]:
+    """A markdown table. The twin of ``gauntlet_matrix._table``, kept local so
+    a report module never depends on the campaign gate."""
+    lines = [
+        "| " + " | ".join(header) + " |",
+        "| " + " | ".join("---" for _ in header) + " |",
+    ]
+    lines += ["| " + " | ".join(row) + " |" for row in rows]
+    return lines
+
+
+def _cost_section(cost: CostReport) -> list[str]:
+    total = cost.total
+    header = ("bucket", "calls", *(label for _, label in COST_FIGURE_COLUMNS), "basis")
+    rows = [
+        (
+            row.bucket if row.bucket is not None else COST_UNNAMED_BUCKET_LABEL,
+            str(row.calls),
+            *(_figure(getattr(row, name)) for name, _ in COST_FIGURE_COLUMNS),
+            f"{row.measured_calls}/{row.calls} measured",
+        )
+        for row in cost.rows
+    ]
+    rows.append(
+        (
+            "TOTAL",
+            str(total.calls),
+            *(_figure(getattr(total, name)) for name, _ in COST_FIGURE_COLUMNS),
+            f"{total.measured_calls}/{total.calls} measured",
+        )
+    )
+    lines = ["## Cost", ""]
+    lines += _table(header, rows)
+    lines.append("")
+    # In words, because a partial total that LOOKS complete is the exact mistake
+    # this feature exists to prevent.
+    if total.calls and total.measured_calls == 0:
+        lines.append(
+            f"FULLY UNMEASURED: not one of these {total.calls} call(s) reported "
+            "usage or cost. Every figure above is unknown, not zero."
+        )
+    elif total.calls and not total.fully_measured:
+        lines.append(
+            f"PARTLY UNMEASURED: these figures cover only the "
+            f"{total.measured_calls} call(s) whose provider reported them; the "
+            f"{total.unmeasured_calls} unmeasured call(s) contribute nothing to "
+            "any figure above."
+        )
+    lines.append(
+        "No price is computed: a cost appears only where a provider reported one."
+    )
+    lines.append("")
+    return lines
+
+
+def _segment_section(shares: SegmentShareReport) -> list[str]:
+    lines = ["## Where the tokens went", ""]
+    if not shares.rows:
+        lines.append(
+            "No call in this period carries a segment manifest, so there is "
+            "nothing to break down. That is an absence, not a set of zero shares."
+        )
+    else:
+        whole = shares.total_tokens_estimated
+        rows = [
+            (
+                row.segment_name,
+                str(row.calls),
+                str(row.segments),
+                str(row.chars),
+                str(row.tokens_estimated),
+                _share_percent(row.tokens_estimated, whole),
+            )
+            for row in shares.rows
+        ]
+        # The TOTAL row's calls cell is a dash on purpose: one call can own
+        # several segment kinds, so a column of per-kind call counts does not
+        # add up to a number of calls and printing a sum would invent one.
+        rows.append(
+            (
+                "TOTAL",
+                "-",
+                str(shares.total_segments),
+                str(shares.total_chars),
+                str(shares.total_tokens_estimated),
+                _share_percent(whole, whole),
+            )
+        )
+        lines += _table(SHARE_TABLE_HEADER, rows)
+    lines.append("")
+    lines.append(
+        f"Attribution: {shares.attributed_calls} call(s) carry a segment "
+        f"manifest, {shares.unattributed_calls} do not. An unattributed call is "
+        "one whose prompt was never traced; it is counted here and given no "
+        "share of any segment kind."
+    )
+    lines.append("")
+    return lines
+
+
+def render_cost_report_markdown(
+    cost: CostReport,
+    shares: SegmentShareReport,
+    *,
+    label: str | None = None,
+) -> str:
+    """The human-readable report. Same facts as the json, same bytes twice."""
+    _same_question(cost, shares)
+    name = label if label is not None else COST_DEFAULT_LABEL
+    lines = [f"# Cost report — {name}", ""]
+    filters = "  ".join(
+        f"{key}={value}"
+        for key, value in (
+            ("since", cost.since or "-"),
+            ("job", cost.job_id or "-"),
+            ("by", cost.by or "-"),
+        )
+    )
+    lines.append(f"Filters: {filters} · all timestamps UTC")
+    lines.append("")
+    # A ledger that was never READ is not a ledger that holds nothing, and a
+    # table of zeros for it would be the P6 lie in another dress.
+    if not cost.ledger_exists:
+        lines.append(
+            "No ledger on disk for this scope — nothing has been recorded yet. "
+            "Run 'remedy stats backfill-ledger <evidence-dir>' to mirror "
+            "existing evidence."
+        )
+        return "\n".join(lines).rstrip("\n") + "\n"
+    lines += _cost_section(cost)
+    lines += _segment_section(shares)
+    return "\n".join(lines).rstrip("\n") + "\n"
+
+── C4 — tests/orchestration/test_cost_report.py, NEW FILE ─────────────────────
+Write a module docstring naming F115 T002 and stating that determinism is the
+property under test. Build the pairs by hand from CostReport / CostRow /
+SegmentShareReport / SegmentShareRow — this round reads NO ledger and NO
+fixture tree. Exactly these ten tests, with these names and these values:
+
+ 1. test_markdown_bytes_are_identical_across_two_renders
+ 2. test_json_bytes_are_identical_across_two_renders
+ 3. test_an_unmeasured_figure_prints_the_word_and_never_a_zero
+    cost_usd=None and cache_read=None on the total → the markdown contains
+    "unmeasured"; the json's total["cost_usd"] and total["cache_read"] are
+    both None (assert `is None`, not falsiness).
+ 4. test_neither_rendering_carries_the_ledger_path_or_the_project_id
+    build with ledger_path="/tmp/machine-specific/ledger.sqlite" and
+    project_id="11111111-2222-3333-4444-555555555555"; assert neither string
+    occurs in the markdown or in the json bytes.
+ 5. test_a_mismatched_pair_is_refused_by_both_renderers
+    cost.since="2026-08-01", shares.since="2026-08-05" → pytest.raises(
+    ValueError) around render_cost_report_markdown AND around
+    cost_report_json_bytes.
+ 6. test_a_missing_ledger_renders_the_absence_and_no_table
+    ledger_exists=False → "No ledger on disk for this scope" is in the
+    markdown, no line of it starts with "|", and the json's "ledger_exists"
+    is False.
+ 7. test_an_unattributed_call_is_counted_and_given_no_share
+    attributed_calls=2, unattributed_calls=1 → both numbers appear in the
+    Attribution sentence, and the json's segments["unattributed_calls"] == 1.
+ 8. test_the_share_column_uses_the_attributed_total_as_its_denominator
+    three rows with tokens_estimated 100, 100 and 30 and
+    total_tokens_estimated=230 → the markdown contains "43.5%" twice,
+    "13.0%" once, and the TOTAL row's cell is "100.0%".
+ 9. test_an_empty_share_report_says_absence_rather_than_zero_percent
+    shares.rows=[] → "nothing to break down" is in the markdown and "0.0%"
+    is not.
+10. test_the_json_and_the_markdown_agree_on_the_segment_total
+    json["segments"]["total_tokens_estimated"] == 230 and "230" appears in
+    the markdown's TOTAL row.
+
+── C5 — state ─────────────────────────────────────────────────────────────────
+Rewrite .agent/plan.md (under 50 lines; keep the "## Goal" and "## Next Steps"
+headings; Next Steps 1 becomes "R12 — the golden PAIR on disk over the fixture
+ledger, following gauntlet_matrix.py and the share_ledger fixture at
+tests/orchestration/test_token_ledger.py:1845-1867"). Rewrite .agent/handoff.md
+per AGENTS.md (item-status table, commit table, changed-files table, real gate
+values, open findings, next expected action; repeat the Fortschritt line
+verbatim: `Fortschritt: 72 % (T001 ✅ · T002-Query ✅ · T002-Renderer ✅ ·
+T002-Goldens · T003 offen) — Schätzung`).
+
 Constraints:
-  - TEXT-A and TEXT-B are AUTHORED text: apply byte for byte, sliced out of the
-    saved `.agent/authored/f115-r10-1.md`. Everything else in C3-C5 you author
-    yourself to the contracts below, in the file's existing idiom.
-  - Do NOT write a `Done:` paragraph and do NOT mark anything resolved
-    (docs/agents/planner_reviewer_prompt.md §4.4). TEXT-A registers ONE open
-    finding. When you have fixed R-0329 in C3, the only permitted line is
-    `Landed: R-0329 — <one line: what changed, which commit>`, appended in C6.
-  - Do NOT fix R-0320, R-0322, R-0323, R-0324, R-0327 or R-0328.
-  - Do NOT touch `calls`, `CallRecord`, `_CALL_COLUMNS`, `record_call`,
-    `call_record_from_evidence`, `backfill_ledger`, `verify_ledger`,
-    `query_cost`, `merge_cost_reports`, `CostRow`, `CostReport`,
-    `SCHEMA_VERSION`, `_MIGRATIONS` or ANY existing migration statement. The
-    schema is FINAL this round: no migration step is added, edited or bumped.
-  - Do NOT touch `segment_rows_from_trace_file`, `record_call_segments` or the
-    `CallSegmentRow` field set. C3 opens `_call_segment_row` and the
-    `_MANIFEST_KEYS` definition and NOTHING else in the reader.
-  - NO RENDERER and NO CLI this round. Markdown, json, goldens and
-    `remedy stats report` are R11 and T003. Do not create
-    `packages/orchestration/cost_report.py`.
-  - REUSE the module's existing query plumbing; do not write a second one.
-    `_resolve_ledger_path`, `_connect_readonly` and `_cost_filters` already
-    exist and the new query uses all three. `_cost_filters` emits UNQUALIFIED
-    `ts_utc >= ?` and `job_id = ?`; both columns live only on `calls` and the
-    only column name the two tables share is `call_id`, which `_cost_filters`
-    never names — so it is safe verbatim inside the join, and you must not
-    fork, qualify or duplicate it.
-  - NEVER RAISE and NEVER CREATE. The new query, like `query_cost`, opens
-    read-only, returns an EMPTY report for a ledger file that does not exist,
-    and must never bring a database into being or migrate one.
-  - Push after EVERY commit. Do NOT create a pull request.
-  - The primary checkout satisfies `git status --porcelain` == empty at
-    handback. The gate (f) probes run ONLY inside a disposable git worktree
-    under `.remedy-wt/`, which you remove and prune before the handback.
+ - Do-not-touch (T2_F115.md): pricing tables, calibration, UI rendering,
+   scheduled reporting. No CLI wiring this round.
+ - packages/ never imports from apps/. The renderer imports only from
+   token_ledger and the stdlib.
+ - No query, no schema, no migration, no writer changes. C2 is the ONLY edit
+   to token_ledger.py and it is one line.
+ - Open findings stay open: R-0320, R-0322, R-0323, R-0324, R-0327, R-0328
+   are NOT fixed here. Do not write any `Done:` paragraph in
+   .agent/live_review.md — that text is the reviewer's alone. If R-0330's fix
+   lands before its review, mark it `Landed: R-0330 — <one line, which commit>`
+   and nothing else.
+ - Destructive checks only inside a disposable worktree under .remedy-wt/.
 
-C2 — append TEXT-A to `.agent/live_review.md`, one paragraph, after the last
-existing line. Its own commit, FIRST after C1b.
+Done when — run every command and record its REAL output and exit code:
+ (a) cmp .agent/authored/f115-r11-1.md .agent/last_block.md      → exit 0
+     also report sha256sum of both and `wc -lc` of one.
+ (b) grep -c 'READ-ONLY, never raises\.' packages/orchestration/token_ledger.py
+       → 0
+     grep -c 'READ-ONLY, and never raises on absence\.' packages/orchestration/token_ledger.py
+       → 2  (query_cost's own sentence at :1004 plus the fixed one — two is
+             the correct value, not one)
+     git show --numstat <the C2 commit> -- packages/orchestration/token_ledger.py
+       → 1 insertion, 1 deletion
+ (c) python3 -m ruff check packages/orchestration/cost_report.py packages/orchestration/token_ledger.py tests/orchestration/test_cost_report.py
+       → All checks passed!
+ (d) python3 -c "import packages.orchestration.cost_report"      → exit 0
+ (e) python3 -m pytest tests/orchestration/test_cost_report.py -q → report the
+     exact passed count; 10 tests are ordered.
+ (f) python3 -m pytest tests/orchestration/test_token_ledger.py -q → 99 passed,
+     unchanged by C2.
+ (g) python3 -m pytest tests/cli/test_golden_path.py -q          → 42 passed
+     (canary).
+ (h) PROBE 1, in a disposable worktree at HEAD under .remedy-wt/: replace the
+     body of `_same_question` with a bare `return`. Test 5 asserts that raise
+     directly, so it MUST fail. Report the exact failed/passed counts and the
+     failing test ids you measured — do not adjust the mutation to reach a
+     number.
+ (i) PROBE 2, same worktree discipline: change `_figure`'s `None` branch to
+     `return "0"`. Test 3 asserts that word directly, so it MUST fail. Report
+     the exact counts and ids you measured, including any test that stayed
+     green and why that is right.
+     Remove and prune both worktrees; `git worktree list` must end at one line.
+ (j) wc -l .agent/plan.md                                         → under 50
+ (k) git status --porcelain                                       → empty
+ (l) git rev-list --left-right --count origin/feature/f115-prompt-cost-report...HEAD
+                                                                  → 0  0
 
-===== TEXT-A BEGIN =====
-- R-0329 — Low — a manifest value of the wrong TYPE becomes a measured zero in
-  the sums T002 is about to build, which is the exact outcome the helper's own
-  docstring says it prevents. `_call_segment_row` (`token_ledger.py:1247-1276`)
-  checks only that the five `_MANIFEST_KEYS` are PRESENT and then takes their
-  values VERBATIM, so a trace line carrying `"chars": "not-a-number"` yields a
-  `CallSegmentRow` whose `chars` is that string. SQLite then accepts it:
-  `chars INTEGER NOT NULL` is an AFFINITY, not a constraint, so a string that
-  does not look like a number is stored AS TEXT and the NOT NULL is satisfied.
-  Measured by the reviewer at the R9 gate against a scratch in-memory database:
-  `typeof(chars)` prints `text`, and `SUM(chars)` over that row plus one real
-  row of 10 prints `10.0`. Both halves of that result matter. The bad row
-  contributed 0, which is precisely the "unpublished figure must never become a
-  measured zero (P6)" the docstring four lines above the defect forbids; and
-  the sum came back a FLOAT, which would move the bytes of any markdown golden
-  that renders the same figure as an integer everywhere else — so R11's goldens
-  would be pinned to a shape one malformed input can change. It is NOT
-  reachable from Remedy's own composer, which publishes real ints through
-  `manifest_as_dicts()`; it is registered anyway because the reader's entire
-  contract is that it survives ARBITRARY file content, and "our producer is
-  well behaved" is not the guarantee that contract makes. Fixed in R10 rather
-  than deferred: R10 is the slice that starts SUMming those two columns and is
-  therefore the round with a legitimate reason to open that helper, so fixing
-  it here mixes nothing that does not already belong to the change. The R9
-  round as a whole is PASS. The reviewer re-ran gates (a) through (i) and every
-  value matched the handback: cmp exit 0 with sha256
-  c5c5bc40c103ce743a81156078a727231460fe321be65e87613e2dc0265244b6 over both
-  copies, the five live-review counts 1/1/9/3/1, the six `token_ledger.py`
-  counts 1/1/1/4/2/3, ruff `All checks passed!` and the import exit 0, zero
-  changed lines assigning a `BackfillResult` counter and zero inside its class
-  body, `92 passed` and `41 passed`, canary `42 passed`, `wc -l .agent/plan.md`
-  38, an empty porcelain, 28 changed paths with no `.remedy-wt/**` among them,
-  and 0/0 against origin. The red-proof was RE-RUN INDEPENDENTLY by the
-  reviewer in its own disposable worktree rather than accepted from the report:
-  mutating `segment_rows_from_trace_file` to `return []` reproduced `5 failed,
-  87 passed` and the same five test ids the handback names, and the worktree
-  was removed and pruned with `git worktree list` left showing one line. OPEN.
-===== TEXT-A END =====
-
-C3 — `packages/orchestration/token_ledger.py`, the type guard. One commit,
-together with the ONE test named at the end of this item.
-
-  (i) REWRITE pair. FROM, the three lines at `token_ledger.py:274-276`:
-
-===== TEXT-B-FROM BEGIN =====
-# The manifest keys a trace entry publishes, in the order the columns above take
-# them. Named once so a missing key is detected rather than defaulted to zero.
-_MANIFEST_KEYS = ("name", "rank", "sha256", "chars", "tokens_estimated")
-===== TEXT-B-FROM END =====
-
-      TO, applied byte for byte:
-
-===== TEXT-B BEGIN =====
-# The manifest keys a trace entry publishes, in the order the columns above take
-# them, each mapped to the type it must ALREADY be. Presence was never enough:
-# ``chars INTEGER NOT NULL`` is a SQLite AFFINITY rather than a constraint, so a
-# string that does not look like a number is stored as TEXT, satisfies NOT NULL,
-# and then counts as 0 in every SUM over that column — the measured zero this
-# module exists to refuse (R-0329). ``bool`` is excluded from ``int`` explicitly
-# because it is a subclass of it and no manifest ever publishes a flag as a size.
-_MANIFEST_KEY_TYPES: dict[str, type] = {
-    "name": str,
-    "rank": int,
-    "sha256": str,
-    "chars": int,
-    "tokens_estimated": int,
-}
-
-# Derived, never restated: one spelling of the key order for the whole module.
-_MANIFEST_KEYS = tuple(_MANIFEST_KEY_TYPES)
-===== TEXT-B END =====
-
-  (ii) REWRITE pair inside `_call_segment_row`. FROM, the two lines at
-       `token_ledger.py:1262-1263`:
-
-===== TEXT-C-FROM BEGIN =====
-    if any(key not in manifest_entry for key in _MANIFEST_KEYS):
-        return None
-===== TEXT-C-FROM END =====
-
-       TO, applied byte for byte:
-
-===== TEXT-C BEGIN =====
-    for key, expected in _MANIFEST_KEY_TYPES.items():
-        if key not in manifest_entry:
-            return None
-        value = manifest_entry[key]
-        if expected is int and isinstance(value, bool):
-            return None
-        if not isinstance(value, expected):
-            return None
-===== TEXT-C END =====
-
-  (iii) Extend that helper's docstring so it states the TYPE rule as well as the
-        presence rule, in your own words and the file's idiom: a value of the
-        wrong type is skipped exactly like a missing key, and nothing is ever
-        coerced. Keep the existing P6 sentence. This is the only prose you
-        author in C3.
-
-  (iv) ONE test appended to the existing `TestCallSegmentsWriter` class in
-       `tests/orchestration/test_token_ledger.py`: a manifest dict whose `chars`
-       is the string `"not-a-number"` is SKIPPED while a well-formed sibling in
-       the same manifest survives, and a dict whose `tokens_estimated` is `True`
-       is skipped too. Drive the real `segment_rows_from_trace_file` over a real
-       JSONL file, as the class's existing tests do. Nothing raises.
-
-C4 — `packages/orchestration/token_ledger.py`, the aggregation query. One
-commit. Place it directly after `merge_cost_reports` so the query surface stays
-in one region of the file.
-
-  (i) `@dataclass class SegmentShareRow` — one segment kind's share:
-      `segment_name: str`, `calls: int`, `segments: int`, `chars: int`,
-      `tokens_estimated: int`. Its docstring states WHY these are plain ints and
-      not the nullable figures `CostRow` carries: every value column of
-      `call_segments` is declared NOT NULL, so a row that EXISTS always has a
-      real figure, and the absence this feature has to report is the absence of
-      the ROW — which is what `unattributed_calls` counts. That is a different
-      shape of honesty from `CostRow`'s, not a departure from it.
-
-  (ii) `@dataclass class SegmentShareReport` — `rows: list[SegmentShareRow]`,
-       `attributed_calls: int`, `unattributed_calls: int`, `total_segments: int`,
-       `total_chars: int`, `total_tokens_estimated: int`, plus the same
-       provenance echo `CostReport` carries: `since`, `job_id`, `project_id`,
-       `ledger_path`, `ledger_exists`. All counters default to 0 and `rows` to
-       an empty list.
-
-  (iii) `query_segment_shares(*, project_id=None, path=None, since=None,
-        job_id=None) -> SegmentShareReport`. Contract, all of which C5 pins:
-        - READ-ONLY through `_connect_readonly`, target through
-          `_resolve_ledger_path`, filters through `_cost_filters`. It never
-          creates a database, never migrates one, and returns an empty report
-          with `ledger_exists=False` when the file is absent.
-        - TWO statements, both under the SAME `_cost_filters` clause and params.
-          Statement one groups the join `calls` → `call_segments` on `call_id`
-          by `segment_name`, selecting `COUNT(DISTINCT call_id)`, `COUNT(*)`,
-          `SUM(chars)` and `SUM(tokens_estimated)`. Statement two counts
-          attribution over `calls` LEFT JOINed to
-          `(SELECT DISTINCT call_id FROM call_segments)`: `COUNT(*)` is every
-          call in the period and `COUNT(<the joined call_id>)` is the attributed
-          subset, because COUNT ignores NULLs. Use COUNT and not SUM for both,
-          for the reason `_cost_bucket_rows`'s docstring already gives: a count
-          of nothing IS 0, while a sum of nothing is NULL.
-        - `unattributed_calls` is the difference of those two counts.
-        - ROW ORDER IS DETERMINISTIC, because R11 pins golden bytes against it:
-          `tokens_estimated` DESC, then `segment_name` ASC as the tie-break.
-        - The three totals are computed IN PYTHON as sums over `rows`, not by a
-          third statement. State the reason in the docstring: it makes the
-          Acceptance property "segment shares sum to the attributed total" true
-          BY CONSTRUCTION instead of by two statements that could drift.
-        - A one-line WHY comment sits directly above the definition.
-
-  (iv) Add the three new public names to the `Public API::` block in the module
-       docstring, in the file's existing style, beside `query_cost`.
-
-C5 — append SIX test functions to `tests/orchestration/test_token_ledger.py` in
-ONE new class, in the file's existing idiom, reusing its tmp-path ledger and
-evidence fixtures; never touch the user's data root. Exactly six functions, no
-`parametrize`. Build ledger state by running the REAL `backfill_ledger` over a
-real evidence tree wherever a call row is needed — do not hand-write ledger rows
-with raw SQL. What each must prove:
-  1. Shares group by `segment_name` over a ledger holding more than one segment
-     kind, in the ordered sequence (`tokens_estimated` DESC, `segment_name`
-     ASC), with each row's four figures equal to the values the fixture
-     published. Assert the full list of rows, not a length.
-  2. A call that owns NO segment rows — the pre-F115 shape — is counted in
-     `unattributed_calls` and contributes nothing to any share row, while a call
-     that owns them is counted in `attributed_calls`.
-  3. INTERNAL CONSISTENCY, the feature's own Acceptance line: the sums of
-     `segments`, `chars` and `tokens_estimated` across `rows` equal the report's
-     three totals, AND `attributed_calls + unattributed_calls` equals
-     `query_cost(...).total.calls` over the SAME filters.
-  4. `since` and `job_id` narrow the share rows AND the two attribution counts
-     together — a call filtered out of the period is in neither.
-  5. A ledger file that does not exist yields `ledger_exists` False, empty
-     `rows`, zero counters, and NO file is created at that path.
-  6. READ-ONLY, the Acceptance's "report generation touches nothing": capture
-     the ledger file's bytes before the call and assert they are identical
-     after, and assert that no `-wal` or `-shm` file is left beside it.
-Each test's name says what it proves, in the file's naming idiom. Own commit.
-
-C6 — rewrite `.agent/plan.md` in full and rewrite `.agent/handoff.md`, and
-append the `Landed: R-0329` line to `.agent/live_review.md`. One commit.
-`.agent/plan.md` keeps `## Goal` and `## Next Steps`, stays under 50 lines, and
-its Next Steps read: (1) R11 — the pure renderer over `query_segment_shares` and
-`query_cost`, markdown and json, with the golden PAIR on disk following
-`packages/orchestration/gauntlet_matrix.py`; (2) T003 — `remedy stats report`
-CLI, `--until`, prior-period comparison, json schema, and the docs page the new
-user-visible behaviour will need; (3) integration gate
-(docs/agents/integration_gate.md); (4) closure per
-docs/roadmap/STATUS_closure_protocol.md. Last reviewed SHA is 22f3e716 (R9
-PASS). Next free finding ID: R-0330. Open findings: 6 — R-0320, R-0322, R-0323,
-R-0324, R-0327, R-0328, with R-0329 landed and awaiting the R10 gate. The
-Fortschritt line, verbatim, as the file's last line:
-
-Fortschritt: 66 % (T001 ✅ · T002-Query ✅ · T002-Renderer · T003 offen) — Schätzung
-
-Done when: every command RUN for real, its TRUE output recorded — a guessed,
-           expected or remembered value is a finding. Record exit codes.
-  a. `cmp .agent/authored/f115-r10-1.md .agent/last_block.md` exits 0; record
-     `sha256sum` of both and `wc -lc` of the authored file. Then prove the three
-     authored slices were applied and not retyped: for TEXT-A, TEXT-B and
-     TEXT-C, extract the slice from the SAVED authored file and `cmp` it against
-     the corresponding region of the file it was applied to. Record each exit
-     code. A proof computed against a retyped copy is a false verification claim.
-  b. After C2, over `.agent/live_review.md`: `grep -c '^- R-0329'` = 1 ·
-     `grep -c '^- R-0'` = 10 (was 9) · `grep -c '^Done:'` = 3 (UNCHANGED) ·
-     `grep -c '^## Steps'` = 1.
-  c. After C3 and C4, over `packages/orchestration/token_ledger.py`, report the
-     REAL number for each: `grep -c '_MANIFEST_KEY_TYPES'` (at least 3 — the
-     definition, the derived tuple, the loop) · `grep -c '_MANIFEST_KEYS'`
-     (at least 3 — the derived definition and its two uses) ·
-     `grep -c 'class SegmentShareRow'` = 1 · `grep -c 'class SegmentShareReport'`
-     = 1 · `grep -c 'def query_segment_shares'` = 1 ·
-     `grep -c '_cost_filters'` (at least 3 — the definition and one use in each
-     query) · `grep -c '_connect_readonly'` (at least 3). Then
-     `python3 -m ruff check packages/orchestration/token_ledger.py
-     tests/orchestration/test_token_ledger.py` prints `All checks passed!` exit
-     0, and `python3 -c "import packages.orchestration.token_ledger"` exits 0.
-  d. Prove the frozen surface did not move, against the code and not by
-     assertion: in `git diff 22f3e716..HEAD -- packages/orchestration/token_ledger.py`
-     there is NO changed line inside `def query_cost`, `def record_call`,
-     `def backfill_ledger`, `def segment_rows_from_trace_file`,
-     `def record_call_segments` or the `_MIGRATIONS` literal. Report how you
-     established that, and paste the `_call_segment_row` hunk into the handoff
-     so the reviewer reads the guard rather than a claim about it.
-  e. `python3 -m pytest tests/orchestration/test_token_ledger.py -q` — the
-     measured R9 baseline is `92 passed`; C3 adds one function and C5 adds six,
-     so `99 passed` is the derived expectation. Report the REAL number. Then
-     `python3 -m pytest tests/cli/test_stats_cost.py -q` — measured baseline
-     `41 passed`, and this round adds no test there, so 41 must not move. If
-     either real number differs, report the REAL number with the full failure
-     output and change nothing to meet a number.
-  f. TWO PROBES, in a DISPOSABLE WORKTREE ONLY, after C5 is committed and
-     pushed: `git worktree add .remedy-wt/r10-probe HEAD --detach`, and inside
-     that worktree ONLY. Probe 1: revert the C3 guard to a presence-only check
-     (the TEXT-C-FROM two lines). Probe 2, after undoing probe 1: replace the
-     body of `query_segment_shares` with `return SegmentShareReport()`. Run
-     `python3 -m pytest tests/orchestration/test_token_ledger.py -q` after each
-     and record exactly WHICH test ids failed and HOW MANY, whatever the numbers
-     are. These are PROBES, not predictions: do NOT adjust a mutation to reach a
-     count, and report a green probe as green — that is a real result about the
-     tests, not a failure of the round. Then
-     `git worktree remove --force .remedy-wt/r10-probe` and `git worktree
-     prune`, and record `git worktree list` afterwards. The primary checkout is
-     never mutated for this.
-  g. Canary `python3 -m pytest tests/cli/test_golden_path.py -q` — the measured
-     baseline is `42 passed`; it must not move.
-  h. `wc -l .agent/plan.md` prints a number BELOW 50 — record the real one.
-  i. `git status --porcelain` empty ·
-     `git diff --name-only 0d6c97aa..HEAD | wc -l` — the TWENTY-EIGHT paths
-     present after R9 plus ONE new one (`.agent/authored/f115-r10-1.md`); every
-     other path this round touches is already among the 28, so 29 is expected.
-     If it is not 29, report the real number and the actual list and change
-     nothing. No `.remedy-wt/**` path may appear. Finally
-     `git rev-list --left-right --count origin/feature/f115-prompt-cost-report...HEAD`
-     prints 0 and 0.
-Handback:  completion report + rewrite `.agent/handoff.md`: item-status table
-           (C1a, C1b, C2, C3, C4, C5, C6 — each exactly once, status done /
-           skipped / deviated with a reason), commit table with real SHAs and
-           real insertion counts, changed-files table, every result a-i as a
-           REAL measured value including gate (d)'s pasted hunk and gate (f)'s
-           two probe results, the open-findings count, the next expected action,
-           and the Fortschritt line verbatim. Over 60 lines ⇒ add a
-           "Deviations, declared" line naming the real count and the mandated
-           content that caused it (AGENTS.md DECISION D15). Declare any command
-           you had to rewrite for a shell restriction.
-──────────────────────────────────────────────────────────────
+Handback:    completion report with the item-status table + rewrite
+             .agent/handoff.md.
+──────────────────────────────────────────────────────────────────────────────
