@@ -804,5 +804,73 @@ said — rejected on the three reasons above; (b) leave the contradiction on dis
 and let T003 discover it — rejected, that is how R-0315 was born. Reverse this
 decision by deleting the D6 section of docs/roadmap/features/T2_F111.md and
 restoring the A9 sentence.
-Landed: R-0315 — T2_F111.md A9 sentence rewritten and the D6 Built State
-section appended; the applicator guard is unchanged by decision.
+Done: R-0315 — the feature file no longer allows what the applicator refuses.
+DECISION F111 D6 keeps `_apply_unified_diff`'s file-existence guard and amends
+the A9 sentence instead, so creation and deletion now take the same full-file
+route in v1. Verified at the R13 gate BY VALUE: a `--- /dev/null` answer with
+`@@ -0,0 +1,2 @@` returns mode `full_fallback` and `fallback_reason` exactly
+`apply_failed:new.py: file not found for diff`, with no file created — so the
+mechanism that fires is the guard the amended A9 sentence names, not a snapshot
+block, which would have made that text wrong. Pinned by test_diff_repair_apply
+::test_new_file_creation_diff_falls_back_instead_of_creating. Resolved.
+
+- R-0316 (Medium, F111 R13, a fallback reports a clean tree it cannot
+  guarantee): `diff_repair_apply.apply_diff_repair` returns `files_modified=0`
+  on every `apply_failed:` path, and its docstring states that the durable
+  snapshot restores "every touched file when a hunk conflicts". Both hold only
+  while the rollback SUCCEEDS. `source_apply._rollback_from_snapshot` catches
+  OSError per entry and, when a blob cannot be read or a target cannot be
+  written, appends `rollback_incomplete (N file(s)): …` to the errors and
+  leaves those files half-restored; `result.success` is already False, so
+  nothing else marks the difference. A caller then reads `applied=False,
+  files_modified=0` and concludes the tree is untouched while it is not —
+  the exact failure class this feature's Done criterion names. The information
+  is not lost, the string rides in `errors`, but the summary field contradicts
+  it and T003 will emit that field as per-round evidence. Reviewer-caused: the
+  R13 step block ordered `files_modified=0` unconditionally, so this is a
+  defect of the spec, not of the round that executed it faithfully. Fix
+  direction: carry the rollback outcome as its own field, or refuse to zero
+  `files_modified` when an error names `rollback_incomplete` — never by
+  widening `_apply_hunks`. OPEN.
+
+### R13 — PASS (2026-08-13)
+Reviewed by the main session over 34319061..9a17fad2. Every ordered gate was
+re-run by the reviewer on this machine; nothing was read off the handback.
+Transport: the worker's permission layer refused `cmp` and refused every
+command naming `.remedy-wt/`, so it declared the gap instead of faking a result
+and the reviewer ran the comparison itself. `.remedy-wt/f111r13/BLOCK`,
+`.agent/authored/f111-r13-1.md` and `.agent/last_block.md` are all three
+byte-identical at 18502 bytes, sha256
+f35907a250068b81c3c5b6216b2fcd68220674d997aadb40d3ce869fadc622f0;
+`.remedy-wt/f111r13/PLAN` and `.agent/plan.md` identical at 2124 bytes. Both
+authored appends landed verbatim and exactly once each. Scope: exactly the nine
+ordered paths, `source_apply.py` untouched, R-0313 untouched, and no call site
+added — `grep -rn diff_repair_apply packages/ apps/` returns one line, the
+docstring pointer.
+
+The all-or-nothing claim proved BY MUTATION, not by colour. In a disposable
+worktree at HEAD the reviewer replaced the body of `_rollback_from_snapshot`
+with an immediate `return` and re-ran the new test file:
+`test_conflicting_hunk_falls_back_and_leaves_both_files_untouched` FAILED with
+`assert b'LINE1\nline2\n' == b'line1\nline2\n'` while the other five passed. So
+the first file really is written before the second hunk conflicts, and the
+rollback really is what restores it — the test is load-bearing, not vacuously
+green. Worktree removed and pruned before this verdict.
+
+DECISION D6 was checked against behaviour rather than against its own prose: a
+creation diff returns `apply_failed:new.py: file not found for diff` with a
+non-empty snapshot id and no file created, so the guard the amended A9 sentence
+names is the mechanism that actually fires.
+
+Tests, each re-run by the reviewer: 54 for the three scoped files, 294 for
+tests/docs/ (the docs-round gate this change set requires), 42 for the
+golden-path canary. Markers: 1 D6 heading, 1 landed marker, `Done:` still 7 on
+the file the round handed back. Caps: per-commit insertions
+320/299/18/19/174/262/108, each under 500; `.agent/plan.md` 43 lines under the
+50 cap; `.agent/handoff.md` 109 lines over the 60 cap and carrying the DECISION
+D15 stated-cause line, which is the sanctioned shape. `git status --porcelain`
+empty, one worktree, `0	0` against the remote. The handback stated C7's own
+insertions as a bound rather than a count, twice and with two different bounds
+(`≤148` and "at most 152"); both are true of the real 108 and neither is a
+false claim, so it is noted here and not registered. One finding registered:
+R-0316, and it is the reviewer's own spec defect, not the worker's.
