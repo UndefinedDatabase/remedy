@@ -1,78 +1,75 @@
-# Handoff — F045 Loop definitions · R2 (findings + T002)
+# Handoff — F045 Loop definitions · session close after R2
 
-Branch: `feature/f045-loop-definitions`, cut from main at `cb3ef34f`. Pushed
-after every commit. No PR opened, nothing merged. Open findings: 3 (R-0344,
-R-0345, R-0346 — all OPEN in `.agent/live_review.md`).
+Session type: one-session self-drive (docs/agents/self_drive_protocol.md).
+Planner/reviewer and two delegated workers, one per round. Ended at the
+session's stated round/context limit with both rounds gated — a clean stop,
+not a failure (G7).
+
+## State
+Branch `feature/f045-loop-definitions`, cut from main at `cb3ef34f`. Pushed.
+No PR opened, nothing merged, main untouched, no force-push, no worktrees left.
+LAST_REVIEWED_SHA = `3f92fbcd`. Open findings: 3. Next free finding ID: R-0347.
+STATUS.md carries `- [~] F045 — Loop definitions`.
+
+## Rounds
+| Round | Scope | Verdict | Reviewed at |
+|---|---|---|---|
+| R1 | claim + state reset + T001 spec/loading/validation | PASS | `fbd5168b` |
+| R2 | R1 findings + decisions D1-D3 + T002 materialization | PASS | `3f92fbcd` |
 
 ## Commits
-| SHA | Subject | Files (+/-) |
-|-----|---------|-------------|
-| `f99a3407` | chore(f045): save the R2 block verbatim | `.agent/authored/f045-r2-1.md` 252/0 · `.agent/last_block.md` 239/303 |
-| `10301253` | docs(f045): register R-0344 to R-0346, the R1 block defects | `.agent/live_review.md` 5/1 |
-| `7e2c94ec` | docs(f045): record decisions D1 to D3 | `.agent/decisions.md` 59/0 |
-| `6794e7f0` | feat(f045): materialize a loop as a planned job with loop_ref | `packages/orchestration/loop_run.py` 168/0 |
-| `5d613f49` | test(f045): pin loop_ref provenance and approval semantics | `tests/orchestration/test_loop_run.py` 182/0 |
-| (this) | docs(f045): update the plan and handoff for R2 | `.agent/plan.md` · `.agent/handoff.md` |
+R1: `106239a9` block · `8e44d980` claim+reset · `9d415caf` loop_spec.py ·
+`5528a569` its tests · `fbd5168b` handoff.
+R2: `f99a3407` block · `10301253` findings · `7e2c94ec` decisions ·
+`6794e7f0` loop_run.py · `5d613f49` its tests · `3f92fbcd` plan+handoff.
 
-Insertion budget ordered by the block vs. observed: C0 ≈ block size / 491;
-C1 ≤ 30 / 5; C2 ≤ 90 / 59; C3 ≤ 190 / 168; C4 ≤ 240 / 182. No commit bundled a
-new module with its test file. No commit exceeded 500 insertions.
+## Verification RE-RUN BY THE REVIEWER (not the workers' numbers)
+At `fbd5168b`: cmp authored/last_block exit 0 · STATUS `[~]` 1 / `[ ]` 0 ·
+live_review `## Steps` 1 · tests/docs + test_loop_spec 307 passed · dashboard
+contract + test_runner + resource_safety + canary 184 passed · ruff clean ·
+porcelain empty. TEXT B/C/D each `cmp`-identical to the committed authored
+block.
+At `3f92fbcd`: cmp exit 0 (both files 252 lines) · R-0344/R-0345/R-0346 each 1
+· `(none yet on this branch)` 0 · `## Steps` 1 · `## DECISION F045 D` 3 ·
+test_loop_run + test_loop_spec + tests/docs 317 passed · canary 42 passed ·
+ruff clean · porcelain empty. The untested default path was proved separately:
+`loop_run`'s `plan_job` / `save_job` imports resolve, and the import line is
+identical to the `queued_entry_to_job` precedent it mirrors.
 
-## Gates (real exit codes and output)
-| Gate | Command | Exit | Output |
-|------|---------|------|--------|
-| a | `cmp .agent/authored/f045-r2-1.md .agent/last_block.md` | 0 | (none) |
-| b | `grep -c "^- R-0344 — Medium" .agent/live_review.md` | 0 | `1` |
-| c | `grep -c "^- R-0345 — Low" .agent/live_review.md` | 0 | `1` |
-| d | `grep -c "^- R-0346 — Low" .agent/live_review.md` | 0 | `1` |
-| e | `grep -c "^(none yet on this branch)" .agent/live_review.md` | 1 | `0` (grep exits 1 on zero matches; the required VALUE is 0) |
-| f | `grep -c "^## Steps" .agent/live_review.md` | 0 | `1` |
-| g | `grep -c "^## DECISION F045 D" .agent/decisions.md` | 0 | `3` |
-| h | `python3 -m pytest tests/orchestration/test_loop_run.py tests/orchestration/test_loop_spec.py -q` | 0 | `23 passed in 0.16s` |
-| i | `python3 -m pytest tests/docs/ -q` | 0 | `294 passed in 0.25s` |
-| j | `python3 -m pytest tests/cli/test_golden_path.py -q` (canary) | 0 | `42 passed in 20.40s` |
-| k | `python3 -m ruff check packages/orchestration/loop_run.py tests/orchestration/test_loop_run.py` | 0 | `All checks passed!` |
-| l | `git status --porcelain` | 0 | (empty; run before C5, re-run after C5 — see below) |
-
-Gates (a)-(k) ran at `5d613f49`, before the C5 plan/handoff commit; (l) is
-re-run after C5 and its post-commit result is reported in the handback.
-
-## Items
+## Item status
 | Item | Status | Reason |
-|------|--------|--------|
-| ITEM 1 | done | |
-| ITEM 2 | done | |
-| ITEM 3 | done | |
-| ITEM 4 | deviated | two additions beyond the ordered semantics — see Deviations 2 and 3 |
-| ITEM 5 | done | |
-| ITEM 6 | done | |
-| ITEM 7 | done | |
+|---|---|---|
+| T001 | done | spec model, config loading, validation, 13 tests |
+| T002 | done | `loop_to_job`, loop_ref provenance, approval pin, 10 tests |
+| T003 | not started | next session — see below |
+| Integration gate | not started | after T003 |
+| Closure | not started | after the integration gate |
 
-## Deviations, declared
-0. This handoff is 78 lines, over the ≤60 cap. Cause: the mandated per-commit
-   changed-files table (6 commits), the mandated twelve-row gate table carrying
-   each gate's real exit code and output, and the mandated seven-row item-status
-   table. No section was dropped to meet the cap.
-1. Gate (k) ran as `python3 -m ruff check` — the bare `ruff` binary is refused
-   by this worker's sandbox. Same tool, same arguments, exit 0.
-2. `loop_to_job` also raises `LoopRunError` when a job-action spec has an empty
-   `goal_template`. The block did not order it. `loop_spec` already refuses
-   that combination, so the branch is unreachable via `load_loop_specs`; without
-   it a hand-built spec would leak a stdlib `TypeError` out of `re.findall`,
-   which is the failure mode the block's "no `KeyError` from deep inside the
-   stdlib" rule exists to prevent. No test asserts on it.
-3. `loop_budgets_to_job_budgets` raises `LoopRunError` if `datetime.fromisoformat`
-   rejects the deadline string. Also unreachable through `load_loop_specs`
-   (`loop_spec` validates the deadline), and it re-validates no range — it only
-   refuses to let a stdlib `ValueError` escape the mapper.
-4. `.agent/plan.md` still said "Current Step: R1" during C0-C4 and was rewritten
-   at C5, as the block's change set requires. Flagged because AGENTS.md's commit
-   gate item 1 wants the plan current at EVERY commit; the block scopes each
-   commit's change set, and widening it would have been the larger violation.
+## Open findings (all in .agent/live_review.md, all against the REVIEWER's blocks)
+R-0344 Medium — an ordered gate decided by the pytest fixture path, not by the
+code under test. R-0345 Low — a block ordered one 599-insertion commit, over
+the AGENTS.md cap. R-0346 Low — a block carried DECISIONs but omitted
+`.agent/decisions.md` from its change set. Counter-measures for all three are
+stated in the finding text and were applied in the R2 block.
 
-## Next expected action
-Reviewer re-runs (a)-(l) against the C5 commit, then plans R3 = T003 (`remedy
-loop list | validate | run`, `run_loop` action dispatch including the mission
-path per DECISION F045 D3, last-run display, end-to-end fixture loop).
+## Next session starts here
+R3 = T003: `remedy loop list | validate | run [--yes]`, last-run display from
+evidence, and an end-to-end fixture loop through the fake-provider pipeline.
+Inventory already done, so do not redo it:
+- Action dispatch across kinds is `run_loop`'s, in T003, by DECISION F045 D3.
+  T002 deliberately makes no claim about the mission action.
+- The materialization precedent to mirror is
+  `long_run_executor.queued_entry_to_job` (lines 445-466).
+- CLI wiring: every command has exactly one entry in
+  `apps/cli/command_catalog.py` (`CATALOG`, `GROUPS`, `GroupDef`, `ArgDef`,
+  `ActionClass`); `apps/cli/grouped.py` consumes it to build the argparse tree.
+  `tests/test_grouped_cli.py` reads the catalog — check its assertions BEFORE
+  authoring the entries.
+- There is no `remedy.toml` in this repo and no `loop` group in the catalog
+  yet; both are greenfield.
+- A round touching docs/roadmap/ also gates with `python3 -m pytest tests/docs/ -q`.
+
+First action of the next session: Phase 0 state probe, then the Open PR Gate —
+this branch has NO PR yet, so R3 continues on it rather than merging anything.
 
 Fortschritt: ~35 % (T001 ✅ · T002 ✅ · T003 offen) — Schätzung
