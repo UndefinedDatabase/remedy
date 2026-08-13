@@ -182,6 +182,27 @@ def validate_diff_repair_response(response: DiffRepairResponse) -> list[str]:
 _DIFF_HUNK_HEADER_RE = re.compile(r"^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@")
 
 
+# The lookahead that tells a blank HUNK BODY line from a blank line that merely
+# SEPARATES two file sections — the budget alone cannot, see finding R-0317.
+def _blank_line_is_hunk_body(lines: list[str], start: int) -> bool:
+    """Whether a bare "" at ``start - 1`` is still hunk body.
+
+    Scans ``lines`` from ``start`` for the first entry that is not ``""``.
+    Returns False when there is none — the blank sits at end of input, where
+    nothing identifies it as body — and False when that entry opens a new file
+    section (``---``, ``+++``, ``diff ``). True otherwise.
+
+    Scanning PAST consecutive blanks is deliberate: two blank context lines in a
+    row are ordinary, so the run is classified by what FOLLOWS it, not by its
+    own length.
+    """
+    for entry in lines[start:]:
+        if entry == "":
+            continue
+        return not entry.startswith(("---", "+++", "diff "))
+    return False
+
+
 # A blank context line whose single leading space was stripped in transport is
 # repaired HERE, the one place the hunk's own budget can tell body from tail.
 def normalize_diff_blank_context(diff_text: str) -> str:
@@ -204,6 +225,17 @@ def normalize_diff_blank_context(diff_text: str) -> str:
     repaired only while the hunk has BOTH an old and a new line left to spend,
     and ``splitlines()`` never produces the phantom in the first place.
 
+    The budget alone is NOT sufficient, and assuming it was is finding R-0317. A
+    hunk header may declare more lines than its body actually spends, and this
+    repository treats that as routine — see the DECISION F111 D5 note in
+    ``.agent/live_review.md`` on why the applier does not cross-check declared
+    counts against consumed ones. An over-declared hunk therefore still has
+    budget left at the blank line SEPARATING two file sections, and the budget
+    rule alone would convert that separator into a trailing context line of the
+    FIRST file. ``_blank_line_is_hunk_body`` is the lookahead that keeps both a
+    file separator and an end-of-input blank out of the rewrite: a ``""`` is
+    body only when the next NON-BLANK line is body too.
+
     Remedy deliberately does not reconstruct a blank context line that would be
     the diff's FINAL line when the diff does not end in a newline: such a line
     leaves no trace in the text at all, so nothing distinguishes it from a body
@@ -219,7 +251,7 @@ def normalize_diff_blank_context(diff_text: str) -> str:
     old_remaining = 0
     new_remaining = 0
 
-    for line in lines:
+    for index, line in enumerate(lines):
         header = _DIFF_HUNK_HEADER_RE.match(line)
         if header:
             old_remaining = 1 if header.group(2) is None else int(header.group(2))
@@ -237,7 +269,12 @@ def normalize_diff_blank_context(diff_text: str) -> str:
         if line.startswith(("---", "+++", "diff ")):
             hunk_open = False
             out.append(line)
-        elif line == "" and old_remaining > 0 and new_remaining > 0:
+        elif (
+            line == ""
+            and old_remaining > 0
+            and new_remaining > 0
+            and _blank_line_is_hunk_body(lines, index + 1)
+        ):
             out.append(" ")
             old_remaining -= 1
             new_remaining -= 1
@@ -252,7 +289,7 @@ def normalize_diff_blank_context(diff_text: str) -> str:
             new_remaining -= 1
             out.append(line)
         else:
-            # In practice "\\ No newline at end of file": it consumes no line on
+            # In practice "\ No newline at end of file": it consumes no line on
             # either side, so it is carried through without touching the budget.
             out.append(line)
 
