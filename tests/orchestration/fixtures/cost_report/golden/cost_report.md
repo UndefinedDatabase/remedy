@@ -24,3 +24,7 @@ No price is computed: a cost appears only where a provider reported one.
 | TOTAL | - | 3 | 580 | 230 | 100.0% |
 
 Attribution: 2 call(s) carry a segment manifest, 2 do not. An unattributed call is one whose prompt was never traced; it is counted here and given no share of any segment kind.
+
+## Compared to the previous period
+
+No previous period: this report has no start or no end, and an open-ended period has no length to mirror.

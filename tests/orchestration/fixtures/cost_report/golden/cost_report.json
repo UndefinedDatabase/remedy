@@ -37,6 +37,19 @@
       "unmeasured_calls": 1
     }
   ],
+  "comparison": {
+    "available": false,
+    "deltas": {
+      "cache_read": null,
+      "cache_write": null,
+      "calls": null,
+      "cost_usd": null,
+      "tokens_in": null,
+      "tokens_out": null
+    },
+    "prior": null,
+    "reason": "No previous period: this report has no start or no end, and an open-ended period has no length to mirror."
+  },
   "filters": {
     "by": "day",
     "job": "",
@@ -47,7 +60,7 @@
   "label": "f115-golden",
   "ledger_exists": true,
   "note": "a null figure was never reported — it is not a zero; no price is ever computed",
-  "report_version": 2,
+  "report_version": 3,
   "segments": {
     "attributed_calls": 2,
     "rows": [

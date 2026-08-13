@@ -25,6 +25,12 @@ Remedy deliberately does not compute a missing price here, and deliberately
 does not fill an unattributed call's segments by re-splitting its prompt after
 the fact: both would turn "we do not know" into a number a reader cannot tell
 apart from a measurement.
+
+Remedy deliberately does not print a PERCENTAGE change in the comparison
+section either. A prior figure of 0 has no denominator, and a percentage of an
+unmeasured figure is not a measurement but a number wearing one's clothes. The
+SIGNED DIFFERENCE is the only change this module can state without inventing
+something, so it is the only change it states.
 """
 from __future__ import annotations
 
@@ -39,7 +45,7 @@ from packages.orchestration.token_ledger import (
 
 #: Report schema version. Bumped when the payload shape changes, so a reader
 #: never has to guess which shape it is holding.
-COST_REPORT_VERSION = 2
+COST_REPORT_VERSION = 3
 
 #: The report file names, written side by side when T003 puts them on disk.
 COST_REPORT_MARKDOWN_FILENAME = "cost_report.md"
@@ -69,6 +75,32 @@ COST_FIGURE_COLUMNS = (
 #: The share table's columns, in render order.
 SHARE_TABLE_HEADER = ("segment", "calls", "segments", "chars", "tokens est.", "share")
 
+#: The comparison table's columns, in render order.
+COMPARISON_TABLE_HEADER = ("figure", "this period", "previous", "change")
+
+#: The comparison's rows, in render order: every cost figure, then the call
+#: count. ONE spelling for the markdown rows and the json ``deltas`` keys, so
+#: the table and the payload cannot come to disagree about what was compared.
+COMPARISON_ROW_KEYS: tuple[tuple[str, str], ...] = COST_FIGURE_COLUMNS + (
+    ("calls", "calls"),
+)
+
+#: What the comparison section says when no prior report was handed in and the
+#: caller named no reason of its own.
+COST_NO_COMPARISON_DEFAULT = (
+    "No previous period was read, so there is nothing to compare against. "
+    "That is an absence, not a period that cost nothing."
+)
+
+#: What it says when the prior window WAS read and held no call at all. The P6
+#: distinction between "we did not look" and "we looked and there was nothing":
+#: a table of zeros here would report the second as if it were a measurement.
+COST_EMPTY_COMPARISON = (
+    "The previous period was read and holds no call at all, so there is "
+    "nothing to compare against. That is an empty window, not a period that "
+    "cost zero."
+)
+
 
 def _figure(value: int | float | None) -> str:
     """One measurement, or the word — a 0 never stands in for nobody-reported."""
@@ -86,7 +118,49 @@ def _share_percent(part: int, whole: int) -> str:
     return f"{100.0 * part / whole:.1f}%"
 
 
-def _same_question(cost: CostReport, shares: SegmentShareReport) -> None:
+def _delta_value(
+    current: int | float | None, previous: int | float | None
+) -> int | float | None:
+    """The signed change, or None — NO arithmetic is attempted across an absence.
+
+    Subtracting an unmeasured figure would read the missing side as a zero and
+    publish the whole of the other side as the change. That is the P6 lie the
+    nulls exist to prevent, so one absent side makes the change itself absent.
+    """
+    if current is None or previous is None:
+        return None
+    return current - previous
+
+
+def _delta_cell(current: int | float | None, previous: int | float | None) -> str:
+    """One change cell: a signed difference, or the word — never a bare 0."""
+    change = _delta_value(current, previous)
+    if change is None:
+        return COST_UNMEASURED_LABEL
+    rendered = _figure(change)
+    return f"+{rendered}" if change > 0 else rendered
+
+
+def _no_comparison_sentence(
+    prior: CostReport | None, no_comparison_reason: str | None
+) -> str:
+    """Why there is no comparison, in words the report can print.
+
+    A prior report that EXISTS but holds zero calls gets its own sentence rather
+    than the caller's: the caller said why it could not look, while this says it
+    looked and found nothing, and those are two different facts about the same
+    empty space.
+    """
+    if prior is not None:
+        return COST_EMPTY_COMPARISON
+    return no_comparison_reason or COST_NO_COMPARISON_DEFAULT
+
+
+def _same_question(
+    cost: CostReport,
+    shares: SegmentShareReport,
+    prior: CostReport | None = None,
+) -> None:
     """Refuse a pair that answers two different questions.
 
     Both queries take the same ``since`` and ``job_id`` and run them through the
@@ -108,6 +182,13 @@ def _same_question(cost: CostReport, shares: SegmentShareReport) -> None:
     ``ledger_path`` of None on BOTH sides is the ``merge_cost_reports`` case, a
     cross-project total that belongs to no single file, and it compares equal
     to itself as it should.
+
+    A PRIOR REPORT IS CHECKED THE SAME WAY, when one is given at all: it must be
+    the prior of THIS period — ``prior.until == cost.since``, the abutment
+    ``prior_report_period`` builds (DECISION F115 D6) — and it must come from
+    the same ledger. Publishing some other window as "the previous period" is
+    the same defect the two paragraphs above refuse, so it is refused the same
+    way rather than rendered with a caveat.
     """
     if (cost.since, cost.until, cost.job_id) != (
         shares.since,
@@ -131,6 +212,23 @@ def _same_question(cost: CostReport, shares: SegmentShareReport) -> None:
             f"query_segment_shares read {shares.ledger_path!r} "
             f"(exists={shares.ledger_exists})"
         )
+    if prior is None:
+        return
+    if prior.until != cost.since:
+        raise ValueError(
+            "a comparison needs THIS period's prior, not another window: the "
+            f"prior report ends at until={prior.until!r} while this report "
+            f"starts at since={cost.since!r}; the two must abut"
+        )
+    if (prior.ledger_path, prior.ledger_exists) != (
+        cost.ledger_path,
+        cost.ledger_exists,
+    ):
+        raise ValueError(
+            "a comparison needs one ledger, not two: the prior report read "
+            f"{prior.ledger_path!r} (exists={prior.ledger_exists}) and this "
+            f"report read {cost.ledger_path!r} (exists={cost.ledger_exists})"
+        )
 
 
 def _cost_row_payload(row: CostRow) -> dict[str, Any]:
@@ -149,14 +247,51 @@ def _cost_row_payload(row: CostRow) -> dict[str, Any]:
     }
 
 
+def _comparison_payload(
+    cost: CostReport,
+    prior: CostReport | None,
+    no_comparison_reason: str | None,
+) -> dict[str, Any]:
+    """The comparison as json: the prior total and the signed deltas, or the reason.
+
+    An unavailable comparison keeps the SHAPE — every delta key present and
+    null — so a reader never has to branch on whether a key exists to find out
+    that a figure is unknown.
+    """
+    if prior is None or prior.total.calls == 0:
+        return {
+            "available": False,
+            "reason": _no_comparison_sentence(prior, no_comparison_reason),
+            "prior": None,
+            "deltas": {name: None for name, _ in COMPARISON_ROW_KEYS},
+        }
+    return {
+        "available": True,
+        "reason": "",
+        "prior": {
+            "since": prior.since,
+            "until": prior.until,
+            "total": _cost_row_payload(prior.total),
+        },
+        "deltas": {
+            name: _delta_value(
+                getattr(cost.total, name), getattr(prior.total, name)
+            )
+            for name, _ in COMPARISON_ROW_KEYS
+        },
+    }
+
+
 def cost_report_json(
     cost: CostReport,
     shares: SegmentShareReport,
     *,
     label: str | None = None,
+    prior: CostReport | None = None,
+    no_comparison_reason: str | None = None,
 ) -> dict[str, Any]:
     """The machine-readable report. Deterministic for a given pair of reports."""
-    _same_question(cost, shares)
+    _same_question(cost, shares, prior)
     return {
         "report_version": COST_REPORT_VERSION,
         "label": label if label is not None else COST_DEFAULT_LABEL,
@@ -192,6 +327,7 @@ def cost_report_json(
                 for row in shares.rows
             ],
         },
+        "comparison": _comparison_payload(cost, prior, no_comparison_reason),
     }
 
 
@@ -200,10 +336,18 @@ def cost_report_json_bytes(
     shares: SegmentShareReport,
     *,
     label: str | None = None,
+    prior: CostReport | None = None,
+    no_comparison_reason: str | None = None,
 ) -> str:
     """The json report as the exact text a caller writes to disk."""
     return json.dumps(
-        cost_report_json(cost, shares, label=label),
+        cost_report_json(
+            cost,
+            shares,
+            label=label,
+            prior=prior,
+            no_comparison_reason=no_comparison_reason,
+        ),
         indent=2,
         sort_keys=True,
         ensure_ascii=False,
@@ -310,14 +454,49 @@ def _segment_section(shares: SegmentShareReport) -> list[str]:
     return lines
 
 
+def _comparison_section(
+    cost: CostReport,
+    prior: CostReport | None,
+    no_comparison_reason: str | None,
+) -> list[str]:
+    lines = ["## Compared to the previous period", ""]
+    # A window nobody read and a window that held nothing are BOTH absences, and
+    # neither is a column of zeros; they differ only in which sentence is true.
+    if prior is None or prior.total.calls == 0:
+        lines.append(_no_comparison_sentence(prior, no_comparison_reason))
+        lines.append("")
+        return lines
+    rows = [
+        (
+            label,
+            _figure(getattr(cost.total, name)),
+            _figure(getattr(prior.total, name)),
+            _delta_cell(getattr(cost.total, name), getattr(prior.total, name)),
+        )
+        for name, label in COMPARISON_ROW_KEYS
+    ]
+    lines += _table(COMPARISON_TABLE_HEADER, rows)
+    lines.append("")
+    # WHICH window "previous" was: a comparison that does not name its own
+    # baseline is a number the reader cannot check against anything.
+    lines.append(
+        f"Previous period: since={prior.since or '-'}  until={prior.until or '-'} "
+        f"· {prior.total.calls} call(s)."
+    )
+    lines.append("")
+    return lines
+
+
 def render_cost_report_markdown(
     cost: CostReport,
     shares: SegmentShareReport,
     *,
     label: str | None = None,
+    prior: CostReport | None = None,
+    no_comparison_reason: str | None = None,
 ) -> str:
     """The human-readable report. Same facts as the json, same bytes twice."""
-    _same_question(cost, shares)
+    _same_question(cost, shares, prior)
     name = label if label is not None else COST_DEFAULT_LABEL
     lines = [f"# Cost report — {name}", ""]
     filters = "  ".join(
@@ -342,4 +521,5 @@ def render_cost_report_markdown(
         return "\n".join(lines).rstrip("\n") + "\n"
     lines += _cost_section(cost)
     lines += _segment_section(shares)
+    lines += _comparison_section(cost, prior, no_comparison_reason)
     return "\n".join(lines).rstrip("\n") + "\n"

@@ -28,6 +28,11 @@ What it proves, one property per test:
     and given no share of any segment kind;
   * every share is a share of the attributed total, and an empty breakdown says
     so in words instead of printing 0.0%;
+  * a prior period renders as SIGNED changes, a change across an unmeasured
+    side is the word and never a number, and a prior window that was read and
+    held nothing says exactly that instead of printing a table of zeros;
+  * a prior that is not THIS period's prior — a stray window, or one from
+    another ledger — is refused by both renderers;
   * the bytes of both reports over a real backfilled ledger are the bytes of
     the two golden files, and those files state the numbers that ledger holds.
 """
@@ -49,6 +54,7 @@ from packages.orchestration.token_ledger import (
     SegmentShareReport,
     SegmentShareRow,
     backfill_ledger,
+    prior_report_period,
     query_cost,
     query_segment_shares,
 )
@@ -113,6 +119,43 @@ def _default_total() -> CostRow:
         cost_usd=0.125,
         measured_calls=2,
         unmeasured_calls=1,
+    )
+
+
+def _prior(*, total=None, **kwargs) -> CostReport:
+    """The report of the window immediately BEFORE ``_cost``'s period.
+
+    Its ``until`` is ``_cost``'s ``since`` and its ledger is the same one, which
+    is exactly what ``_same_question``'s third guard demands of a comparison.
+    """
+    defaults = dict(
+        by="model",
+        since="2026-07-31",
+        until="2026-08-01",
+        job_id="job-abc",
+        project_id=PROJECT_ID,
+        ledger_path=LEDGER_PATH,
+        ledger_exists=True,
+    )
+    defaults.update(kwargs)
+    return CostReport(
+        rows=[],
+        total=total if total is not None else _prior_total(),
+        **defaults,
+    )
+
+
+def _prior_total() -> CostRow:
+    return CostRow(
+        bucket=None,
+        calls=2,
+        tokens_in=1000,
+        tokens_out=400,
+        cache_read=None,
+        cache_write=None,
+        cost_usd=0.5,
+        measured_calls=2,
+        unmeasured_calls=0,
     )
 
 
@@ -302,6 +345,99 @@ def test_an_empty_share_report_says_absence_rather_than_zero_percent():
     assert "0.0%" not in markdown
 
 
+def test_a_comparison_renders_in_both_formats():
+    cost, shares, prior = _cost(), _shares(), _prior()
+
+    markdown = render_cost_report_markdown(cost, shares, label="R16", prior=prior)
+    assert "## Compared to the previous period" in markdown
+    assert "| tokens in | 1200 | 1000 | +200 |" in markdown
+    assert "| tokens out | 300 | 400 | -100 |" in markdown
+    assert "| cost usd | 0.1250 | 0.5000 | -0.3750 |" in markdown
+    assert "| calls | 3 | 2 | +1 |" in markdown
+    assert (
+        "Previous period: since=2026-07-31  until=2026-08-01 · 2 call(s)."
+        in markdown
+    )
+    # The signed difference is the whole change: no percentage is printed.
+    assert "%" not in markdown.split("## Compared to the previous period")[1]
+
+    comparison = cost_report_json(cost, shares, label="R16", prior=prior)["comparison"]
+    assert comparison["available"] is True
+    assert comparison["reason"] == ""
+    assert comparison["prior"]["since"] == "2026-07-31"
+    assert comparison["prior"]["until"] == "2026-08-01"
+    assert comparison["prior"]["total"]["calls"] == 2
+    assert comparison["deltas"]["tokens_in"] == 200
+    assert comparison["deltas"]["tokens_out"] == -100
+    assert comparison["deltas"]["calls"] == 1
+    assert comparison["deltas"]["cost_usd"] == pytest.approx(-0.375)
+
+
+def test_a_change_cell_is_unmeasured_when_either_side_is_none():
+    """No arithmetic across an absence: a missing side is never read as a zero."""
+    prior = _prior(
+        total=CostRow(calls=2, tokens_in=1000, tokens_out=None, cost_usd=None,
+                      measured_calls=1, unmeasured_calls=1)
+    )
+    markdown = render_cost_report_markdown(_cost(), _shares(), label="R16", prior=prior)
+
+    # This period measured 300; the previous one measured nothing there, so the
+    # change is unknown rather than the whole of this period's figure.
+    assert "| tokens out | 300 | unmeasured | unmeasured |" in markdown
+    assert "| cache read | unmeasured | unmeasured | unmeasured |" in markdown
+    assert "| cost usd | 0.1250 | unmeasured | unmeasured |" in markdown
+
+    deltas = cost_report_json(
+        _cost(), _shares(), label="R16", prior=prior
+    )["comparison"]["deltas"]
+    assert deltas["tokens_out"] is None
+    assert deltas["cache_read"] is None
+    assert deltas["cost_usd"] is None
+    assert deltas["tokens_in"] == 200
+
+
+def test_an_empty_prior_window_says_so_rather_than_printing_zeros():
+    """The P6 split: "we looked and found nothing" is not "it cost nothing"."""
+    empty = _prior(total=CostRow(calls=0))
+    markdown = render_cost_report_markdown(_cost(), _shares(), label="R16", prior=empty)
+
+    section = markdown.split("## Compared to the previous period")[1]
+    assert "The previous period was read and holds no call at all" in section
+    assert "|" not in section, "an empty window is not a table of zeros"
+    assert " 0 " not in section
+
+    comparison = cost_report_json(
+        _cost(), _shares(), label="R16", prior=empty
+    )["comparison"]
+    assert comparison["available"] is False
+    assert comparison["prior"] is None
+    assert set(comparison["deltas"].values()) == {None}
+
+    # Contrast: nobody looked at all, which is a different fact and says so.
+    unread = render_cost_report_markdown(_cost(), _shares(), label="R16")
+    assert "No previous period was read" in unread
+
+
+def test_a_prior_that_is_not_this_periods_prior_is_refused_by_both_renderers():
+    """A comparison's baseline must ABUT this period; any other window is a lie."""
+    stray = _prior(since="2026-07-01", until="2026-07-08")
+
+    with pytest.raises(ValueError):
+        render_cost_report_markdown(_cost(), _shares(), label="R16", prior=stray)
+    with pytest.raises(ValueError):
+        cost_report_json_bytes(_cost(), _shares(), label="R16", prior=stray)
+
+
+def test_a_prior_from_a_different_ledger_is_refused_by_both_renderers():
+    """One ledger per question — a prior included."""
+    other = _prior(ledger_path="/data/b/ledger.sqlite")
+
+    with pytest.raises(ValueError):
+        render_cost_report_markdown(_cost(), _shares(), label="R16", prior=other)
+    with pytest.raises(ValueError):
+        cost_report_json_bytes(_cost(), _shares(), label="R16", prior=other)
+
+
 def test_the_json_and_the_markdown_agree_on_the_segment_total():
     cost, shares = _cost(), _shares()
     payload = json.loads(cost_report_json_bytes(cost, shares, label="R11"))
@@ -449,17 +585,38 @@ def _golden_pair(ledger):
     return query_cost(path=ledger, by="day"), query_segment_shares(path=ledger)
 
 
+def _golden_no_comparison_reason(cost):
+    """The REAL sentence for the golden's period, from the code that produces it.
+
+    The golden pair covers an OPEN-ENDED period, so it exercises the first
+    unavailable case of ``prior_report_period``. Asking that function for the
+    sentence is what makes the golden pin the real text; a paraphrase typed in
+    here would pin the paraphrase and let the real one drift away from it.
+    """
+    return prior_report_period(cost.since, cost.until).unavailable_reason
+
+
 def test_the_golden_markdown_matches_the_fixture_ledger(golden_ledger):
     """A golden re-blessed on every change checks nothing, so this one never is."""
+    cost, shares = _golden_pair(golden_ledger)
     rendered = render_cost_report_markdown(
-        *_golden_pair(golden_ledger), label=GOLDEN_LABEL
+        cost,
+        shares,
+        label=GOLDEN_LABEL,
+        no_comparison_reason=_golden_no_comparison_reason(cost),
     )
     assert rendered == (GOLDEN_DIR / GOLDEN_MARKDOWN_NAME).read_text(encoding="utf-8")
 
 
 def test_the_golden_json_matches_the_fixture_ledger(golden_ledger):
     """A golden re-blessed on every change checks nothing, so this one never is."""
-    rendered = cost_report_json_bytes(*_golden_pair(golden_ledger), label=GOLDEN_LABEL)
+    cost, shares = _golden_pair(golden_ledger)
+    rendered = cost_report_json_bytes(
+        cost,
+        shares,
+        label=GOLDEN_LABEL,
+        no_comparison_reason=_golden_no_comparison_reason(cost),
+    )
     assert rendered == (GOLDEN_DIR / GOLDEN_JSON_NAME).read_text(encoding="utf-8")
 
 
