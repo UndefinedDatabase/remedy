@@ -1,10 +1,10 @@
 # Plan — F115 Prompt breakdown & cost report
 
 Branch: feature/f115-prompt-cost-report, cut from main at 0d6c97aa after
-PR #194 merged at the Open PR Gate. Last reviewed SHA: 8601e276 (R3 PASS).
-Next free finding ID: R-0323. Open findings: 2 — R-0320 (Low, carried
-from F111), R-0322 (Medium, inherited suite red, not an F115 defect).
-R-0321 was resolved at the R4 gate.
+PR #194 merged at the Open PR Gate. Last reviewed SHA: 19b59ccc (R4 PASS).
+Next free finding ID: R-0324. Open findings: 3 — R-0320 (Low, carried
+from F111), R-0322 (Medium, inherited suite red, not an F115 defect),
+R-0323 (Low, reviewer gate arithmetic, no fix possible on disk).
 
 ## Goal
 Costs stop being an opaque total: `remedy stats report` shows WHERE
@@ -14,18 +14,15 @@ traceable to a ledger row, and a period with missing data reported as
 missing instead of interpolated (docs/roadmap/features/T2_F115.md).
 
 ## Current Step
-R4 done — the REVIEWER call site now composes through
-`compose_reviewer_prompt` and hands the composition to its trace entry,
-so reviewer traces carry a real segment manifest. The manifest covers
-the composed BASE; the native-schema tail stays uncovered by design
-(F105 D3), which `segment_manifest_chars < prompt_chars` records.
+R5 done — housekeeping only, no source or test file touched. R-0323 is
+registered and the planner call site's shape is on disk as DECISION
+F115 D2, so the next round orders its wiring from the record.
 
 ## Next Steps
-1. The PLANNER call site (`apps/cli/commands/job.py:236`). It does NOT
-   compose locally — the prompt arrives through `llm_planner` and
-   `make_structured_planner` as `effective_prompt`, so the composition
-   has to be threaded down from where it is built. Inspect that path
-   before ordering the wiring.
+1. The PLANNER call site, per DECISION F115 D2: build
+   `compose_planner_prompt` in `llm_planner.py` over the two existing
+   parts, thread the `ComposedPrompt` to `_record_plan_call` through an
+   optional hook, and gate on byte-identity of the sent prompt FIRST.
 2. T001 proper — persist the manifest, or a reference to it, alongside
    the ledger row, additively, with backfill tolerance: old rows render
    as "unattributed", never guessed.

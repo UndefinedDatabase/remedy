@@ -1,8 +1,20 @@
-# Handoff — F115 Prompt breakdown & cost report · Round 4
+# Handoff — F115 Prompt breakdown & cost report · Round 5 (LAST OF SESSION)
 
-Branch: feature/f115-prompt-cost-report · head eed27fb0 (+ this C5 commit).
-Block: `.agent/authored/f115-r4-1.md`. Open findings: 2 — R-0320, R-0322.
-R-0321 resolved at the R4 gate. No PR created, as the block ordered.
+Branch: feature/f115-prompt-cost-report · head = the C4 commit in the table
+below (parent 151efc4c; `git log -1` names the tip). Last reviewed SHA:
+19b59ccc (R4 PASS). Block: `.agent/authored/f115-r5-1.md`. Housekeeping only:
+no source file and no test file touched. No PR created, as the block ordered.
+
+Open findings: 3, all OPEN. Next free finding ID: R-0324.
+- R-0320 Low — carried from F111: `stale_diff_context` is a stop reason no code
+  can emit. Not an F115 defect.
+- R-0322 Medium — inherited suite red at the merge base: 5 `[reviewer]` ids in
+  `tests/orchestration/test_role_conventions.py` over the 800-token cap.
+  Deliberately NOT fixed here — AGENTS.md bars an unrelated fix on a feature
+  branch. F115's integration gate will meet it as five pre-existing reds.
+- R-0323 Low — registered this round (C2): the R4 block's gate (f) ordered
+  SEVENTEEN paths where only SIXTEEN were reachable. No fix possible on disk;
+  registered so the reviewer-arithmetic pattern stays countable.
 
 ## Items
 
@@ -13,76 +25,61 @@ R-0321 resolved at the R4 gate. No PR created, as the block ordered.
 | C2   | done   | |
 | C3   | done   | |
 | C4   | done   | |
-| C5   | done   | |
 
 ## Commits
 
 | SHA | Subject | Ins |
 |-----|---------|-----|
-| 991222c7 | chore(f115): save the R4 step block verbatim | 282 |
-| 7ffe2c90 | chore(f115): mirror the R4 block into last_block | 222 |
-| 781c995d | chore(f115): resolve R-0321 with the reviewer verdict | 1 |
-| 53094b97 | feat(f115): give the reviewer trace entry its segment manifest | 7 |
-| eed27fb0 | test(f115): pin the reviewer trace manifest and its wiring | 75 |
-| (C5) | chore(f115): refresh the plan and write the R4 handoff | see log |
+| 186db9ed | chore(f115): save the R5 step block verbatim | 213 |
+| 22fb8973 | chore(f115): mirror the R5 block into last_block | 167 |
+| 5133fd4c | chore(f115): register R-0323 for the R4 gate arithmetic | 24 |
+| 151efc4c | docs(f115): record the planner call site shape as DECISION D2 | 53 |
+| (C4, this commit) | chore(f115): refresh the plan and write the R5 handoff | see log |
 
 ## Changed files
 
 | Path | Change |
 |------|--------|
-| .agent/authored/f115-r4-1.md | new, block verbatim |
-| .agent/last_block.md | mirror of the block |
-| .agent/live_review.md | R-0321 Landed → Done |
-| packages/orchestration/pingpong_loop.py | TEXT-B/C/D, reviewer call site composes |
-| tests/orchestration/test_prompt_trace.py | TEXT-E, two new tests |
-| .agent/plan.md | TEXT-F in full |
-| .agent/handoff.md | this file |
+| .agent/authored/f115-r5-1.md | new, block verbatim (C1a) |
+| .agent/last_block.md | mirror of the block (C1b) |
+| .agent/live_review.md | TEXT-A appended, R-0323 OPEN (C2) |
+| .agent/decisions.md | TEXT-B appended, DECISION F115 D2 (C3) |
+| .agent/plan.md | TEXT-C in full (C4) |
+| .agent/handoff.md | this file (C4) |
 
 ## Gates (real measured values)
 
-a. `cmp` exit 0. sha256 both files
-   `b9af81cb17ee479f84ed8107d93565ebe09067f7f2bfa72f24ec355b93f72801`.
-   `wc -lc` authored: `282 16043`.
-b. `^Done: R-0321` = 1 · `^Landed:` = 0 · `^- R-0` = 3.
-c. `reviewer_composed = compose_reviewer_prompt(` = 1 ·
-   `reviewer_prompt = reviewer_composed.text` = 1 ·
-   `composed_prompt=reviewer_composed,` = 1 ·
-   `reviewer_prompt = _build_reviewer_prompt` = 0.
-d. `48 passed in 0.29s`, exit 0 — no golden moved.
-e. `46 passed in 0.25s`, exit 0 (44 + the two new tests).
-f. RED-PROOF in worktree `.remedy-wt/f115r4`, wiring line deleted:
-   `1 failed, 1 passed, 44 deselected in 0.24s`, exit 1.
-   FAILED `test_the_reviewer_call_site_hands_its_composition_down`;
-   PASSED `test_the_reviewer_composition_traces_a_real_segment_manifest`
-   — exactly the expected split; the guard is alive. After removal + prune,
-   `git worktree list` = one line: `/home/decodeux/Repos/remedy  eed27fb0
-   [feature/f115-prompt-cost-report]`.
-g. `303 passed in 2.63s`, exit 0.
-h. `tests/cli/test_golden_path.py` → `42 passed in 19.93s`, exit 0 ·
-   `tests/docs/` → `294 passed in 0.25s`, exit 0.
-i. `wc -l .agent/plan.md` = 43.
-j. `git status --porcelain` empty. `git diff --name-only 0d6c97aa..HEAD` =
-   SIXTEEN paths, not seventeen — see the deviation below.
-   `git rev-list --left-right --count origin/...HEAD` = `0	0`.
+a. `cmp` exit 0 · sha256 identical for both files,
+   `7d36e6af2eb8b7e901a4117b3b3c3c40877097942fa8568f557f25108124d08f` ·
+   `wc -lc` authored: `213 12895`.
+b. `^- R-0323` = 1 · `^- R-0` = 4 (was 3) · `^Done:` = 1 · `^## Steps` = 1.
+c. `^## DECISION F115 D2` = 1.
+d. `tests/cli/test_golden_path.py` → `42 passed in 19.76s`, exit 0 ·
+   `tests/docs/` → `294 passed in 0.25s`, exit 0. Neither baseline moved.
+e. `wc -l .agent/plan.md` = 40.
+f. `git status --porcelain` empty · `git diff --name-only 0d6c97aa..HEAD | wc -l`
+   = 18, matching the block; no `.remedy-wt/**` path appears ·
+   `git rev-list --left-right --count origin/feature/f115-prompt-cost-report...HEAD`
+   = `0	0` after the final push.
 
-## Deviation, gate (j) arithmetic
+## Resume here
 
-Gate (j) says seventeen paths: fifteen from R1-R3 plus
-`.agent/authored/f115-r4-1.md` and `tests/orchestration/test_prompt_trace.py`.
-`tests/orchestration/test_prompt_trace.py` is ALREADY one of the fifteen —
-`git diff --name-only 0d6c97aa..8601e276` lists it (R2 added the builder
-behaviour test and its wiring guard there). Only ONE path is new this round,
-so the reachable total is SIXTEEN. Nothing was changed to meet the number; the
-real value is reported (planner_reviewer_prompt.md §checklist item 8). No
-`.remedy-wt/**` path appears; `pingpong_loop.py` is in the fifteen as stated.
+Next work is the PLANNER call site, the last of the three unwired
+`build_trace_entry` sites. Its shape is already on disk as DECISION F115 D2 in
+`.agent/decisions.md`: build `compose_planner_prompt` in
+`packages/orchestration/llm_planner.py` over the two parts that already exist
+(job prompt at TASK rank, recalled memory at JOB_CONTEXT rank), thread the
+`ComposedPrompt` out to `_record_plan_call` (`apps/cli/commands/job.py:236`)
+through an explicit optional hook on `plan_job_with_llm`, and gate FIRST on
+byte-identity of the sent prompt. If that identity fails, the round stops
+rather than changing what the planner sends. Then T001 → T002 → T003 as
+`.agent/plan.md` lists them.
 
-Next expected action: the PLANNER call site (`apps/cli/commands/job.py:236`),
-whose prompt arrives through `llm_planner` / `make_structured_planner`.
-
-Deviations, declared: this handoff is 88 lines. The cause is the mandated
-content — item-status table, per-commit table for six commits, changed-files
-table, and ten gate results a-j reported as real measured values, plus the
-gate (j) arithmetic deviation that must be stated rather than silently met
+Deviations, declared: this handoff is 85 lines. The cause is the mandated
+content — the item-status table, the per-commit table, the changed-files table,
+six gate results a-f as real measured values, and the block's own requirement
+that this last-of-session handoff carry the branch, head, last reviewed SHA,
+every open finding with its state, and the resumable next action
 (AGENTS.md DECISION D15).
 
 Fortschritt: 30 % (R1 ✅ · T001a ✅ · Reviewer-Site ✅ · Planner-Site · T001 · T002 · T003 offen) — Schätzung
