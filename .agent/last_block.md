@@ -1,243 +1,284 @@
-── STEP R7/n — F115 Prompt breakdown & cost report · Round 7 ─────────
-Goal:        Clear the two Low findings the R6 gate produced, then put the T001
-             persistence FACTS on disk — the ledger row is one finalized task
-             run while a manifest is per call, so the next session decides that
-             mapping from a record instead of re-deriving it mid-flight.
-Bundle:      C1a save block · C1b mirror · C2 register R-0325 + R-0326 ·
-             C3 fix R-0325 · C4 fix R-0326 · C5 T001 inventory · C6 plan + handback
-Change:      EXACTLY these paths:
-               .remedy-wt/f115-r7-1.md      (source, gitignored, NOT committed)
-               .agent/authored/f115-r7-1.md (new, C1a)
-               .agent/last_block.md         (rewrite, C1b)
-               .agent/live_review.md        (C2: append)
-               tests/test_llm_planner.py    (C3)
-               packages/orchestration/llm_planner.py (C4)
-               .agent/f115_inventory.md     (C5: append)
-               .agent/plan.md               (C6: full replace)
-               .agent/handoff.md            (C6: rewrite)
+── STEP R8/n — F115 Prompt breakdown & cost report · Round 8 ─────────
+Goal:        Decide T001's persistence SHAPE from the R7 inventory and land it as
+             SCHEMA ONLY: a per-call `call_segments` table added as migration
+             step 2, with `calls`, `CallRecord` and `_CALL_COLUMNS` untouched, so
+             pre-F115 rows stay unattributed by construction and no existing row
+             can read as ledger drift.
+Bundle:      C1a save block · C1b mirror · C2 resolve R-0325 + R-0326 ·
+             C3 DECISION F115 D4 into decisions.md · C4 D4 into the feature file ·
+             C5 the migration itself · C6 its tests · C7 plan + handback
+Change:      EXACTLY these paths, nothing else:
+               .remedy-wt/f115-r8-1.md                    (source, gitignored, NOT committed)
+               .agent/authored/f115-r8-1.md               (new, C1a)
+               .agent/last_block.md                       (rewrite, C1b)
+               .agent/live_review.md                      (C2: append)
+               .agent/decisions.md                        (C3: append)
+               docs/roadmap/features/T2_F115.md           (C4: append)
+               packages/orchestration/token_ledger.py     (C5)
+               tests/orchestration/test_token_ledger.py   (C6: append)
+               .agent/plan.md                             (C7: full replace)
+               .agent/handoff.md                          (C7: rewrite)
 Constraints:
-  - TEXT-A … TEXT-E are AUTHORED text: apply byte for byte, no rewording,
-    rewrapping or re-punctuation, and no slots to substitute.
-  - C5 records FACTS ONLY. Do not decide the persistence shape, do not design a
-    column, do not write code. Every answer carries a `path:line` citation you
-    read yourself; an answer you cannot cite is written as "not found" with the
-    command you ran. A guessed answer is a finding against this round.
-  - Do NOT write a `Done:` paragraph and do NOT mark anything resolved
-    (docs/agents/planner_reviewer_prompt.md §4.4). C3 and C4 land the fixes; the
-    reviewer authors their `Done:` text at the next gate. If you want to record
-    that a fix landed, the only permitted line is
+  - TEXT-A … TEXT-F are AUTHORED text: apply byte for byte, no rewording, no
+    rewrapping, no re-punctuation, no slots to substitute. C6's tests are the one
+    item you author yourself, to the exact assertions specified.
+  - Do NOT write a `Done:` paragraph of your own and do NOT mark anything
+    resolved (docs/agents/planner_reviewer_prompt.md §4.4). TEXT-A IS the
+    reviewer's resolution text; applying it is C2. If a later fix lands with no
+    authored resolution, the only permitted line is
     `Landed: R-XXXX — <one line: what changed, which commit>`.
   - Do NOT fix R-0320, R-0322, R-0323 or R-0324. The first two predate this
     branch; the last two are reviewer-arithmetic records with no on-disk fix.
-  - Do NOT touch `apps/cli/commands/job.py`, `prompt_segments.py`,
-    `prompt_trace.py`, `token_ledger.py` or any test beyond the one C3 names.
+  - Do NOT touch `calls`, `CallRecord`, `_CALL_COLUMNS`, `record_call`,
+    `call_record_from_evidence`, `verify_ledger`, `query_cost` or ANY existing
+    migration statement. Migration step 1 is never rewritten — that is the whole
+    point of the numbered-step mechanism (`token_ledger.py:166-168`).
+  - Nothing WRITES to `call_segments` this round. The table is inert until the
+    next round's writer. Do not add a writer, a dataclass, a reader or a CLI flag.
+  - Do NOT touch `pingpong_evidence.py`, `prompt_trace.py`, `prompt_segments.py`,
+    `pingpong_loop.py`, `apps/cli/**`, or any test beyond the one C6 names.
   - Never force-push. Never commit on main. Push after EVERY commit (R-0289).
   - Do NOT create a pull request this round.
+  - The primary checkout must satisfy `git status --porcelain` == empty at
+    handback. The gate (g) red-proof runs ONLY inside a disposable git worktree
+    under `.remedy-wt/`, which you remove and prune before the handback.
+
+C2 — append TEXT-A to `.agent/live_review.md`, as two paragraphs separated by a
+blank line, after the last existing line. Its own commit, FIRST after C1b.
+
+===== TEXT-A BEGIN =====
+Done: R-0325 — RESOLVED at the R7 gate. Verified against the disk, not the report: `python3 -m ruff check tests/test_llm_planner.py` prints `All checks passed!` with exit 0 at f20f172a, and `git show dd7feebd` shows the fix is exactly one moved line — the `planner_models` import now sits ABOVE the `prompt_segments` block, one insertion and one deletion in that file and no other file touched. `python3 -m pytest tests/test_llm_planner.py -q` prints `38 passed`, the R6 baseline unmoved, so the reorder changed no behaviour. The four-file ruff sweep the block also ordered prints `All checks passed!` with exit 0.
+
+Done: R-0326 — RESOLVED at the R7 gate. Verified against the RENDERED docstring rather than the source line, because the source line was never the defect: `compose_planner_prompt.__doc__` now contains no backslash-n sequence at all and its sentence reads intact, naming `PROMPT_SEGMENT_DELIMITER` as "the same blank-line separator this module concatenated by hand". `git show cbe38b90` confines the change to that docstring, four insertions and three deletions in `packages/orchestration/llm_planner.py`. The R7 round as a whole is PASS: the reviewer re-ran gates (a) through (i) and every value matched the handback — cmp exit 0 with sha256 c6ab0e7d25c42144af766401daf7a90309dae3736c6c0ba8285a0a6b9942ea00 over both copies, the five live-review counts 1/1/7/1/1, ruff clean over all four files, `38 passed`, the inventory's 1/6/6, canary `42 passed`, `wc -l .agent/plan.md` = 38, an empty `git status --porcelain`, and 24 changed paths with no `.remedy-wt/**` among them. The R7 diff touched only the eight paths its block declared, and the C5 inventory's load-bearing claims were spot-checked against source: thirteen `calls` columns with exactly three NOT NULL and no DEFAULT clause, `grep -rn "ALTER TABLE" --include=*.py .` zero matches, `grep -rn "unattributed" --include=*.py .` zero matches.
+===== TEXT-A END =====
+
+C3 — append TEXT-B to `.agent/decisions.md`, after the last existing line,
+separated from it by one blank line. Its own commit.
+
+===== TEXT-B BEGIN =====
+## DECISION F115 D4 — the manifest gets its own table, not a ledger column (2026-08-13)
+
+Context, from `.agent/f115_inventory.md` section "## T001 persistence inventory
+(R7)", every citation re-read by the reviewer at the R8 gate: a `calls` row is
+ONE FINALIZED TASK RUN keyed `"<job_id>:<task_id>"` (`token_ledger.py:178-192`,
+DECISION F103 D16), while a segment manifest belongs to ONE PROVIDER CALL
+(`prompt_trace.py:74-83`). The mapping is one-to-many. Three constraints then
+decide the shape rather than merely colour it:
+
+1. `verify_ledger` compares a stored row against a record re-derived from
+   evidence by WHOLE-DATACLASS EQUALITY (`token_ledger.py:688-701`), so any
+   column added to `_CALL_COLUMNS` must be reproducible by
+   `call_record_from_evidence` — or every row reads as drift.
+2. The live ledger hook fires BEFORE `prompt_trace.jsonl` is copied into
+   `task_runs/<task_id>/`: `_record_finalized_call_in_ledger` at
+   `pingpong_evidence.py:517-525`, the copy at `:527-536`. A later backfill
+   reads that same tree WITH the file present. An evidence-derived manifest
+   column would therefore be NULL live and non-NULL on backfill, which is
+   constraint 1 firing on every row the feature cares about.
+3. `record_call` writes `INSERT OR IGNORE` (`token_ledger.py:425-428`), which
+   never UPDATEs, so a manifest cannot be attached to an existing row later.
+
+Chosen: a NEW table `call_segments`, added as migration step 2, with
+`SCHEMA_VERSION` bumped to 2. One row per segment of one composed prompt, its
+value columns mirroring `ComposedPrompt.manifest_as_dicts()` one for one
+(`prompt_segments.py:107-121` — name, rank, sha256, chars, tokens_estimated),
+keyed by the ledger row's `call_id` plus `trace_seq`, the zero-based position of
+the trace line within that task run's entries. `calls`, `CallRecord` and
+`_CALL_COLUMNS` are not touched, so constraint 1 cannot fire and no existing
+row's verify result moves. Backfill tolerance is STRUCTURAL rather than coded: a
+pre-F115 row simply has no `call_segments` rows, and "no rows" is what the
+report renders as unattributed — never guessed, and never a fabricated zero.
+
+Alternatives considered. (a) An aggregate manifest column on `calls` — rejected
+by constraints 1 and 2, and it would squash a one-to-many relation into a single
+value, losing exactly the per-segment detail the feature exists to show. (b) A
+reference to the trace file — rejected because the row ALREADY carries one:
+`evidence_ref` is `"task_runs/<task_id>"` (`token_ledger.py:547-549`), which is
+exactly the directory the trace file is copied into (`pingpong_evidence.py:533`),
+so the option adds no information the row lacks; and a JSONL path cannot be
+aggregated in SQL, which is precisely what T002's queries need.
+
+Scope: this decision lands SCHEMA ONLY. Nothing writes to `call_segments` yet —
+the writer is the next round. An inert table is what makes this a separately
+reviewable commit rather than a schema change smuggled in beside its consumer.
+
+Reverse by deleting the `2:` entry from `_MIGRATIONS`, restoring the version
+constant to 1, and dropping the docstring bullet that names the table. A ledger
+already migrated keeps an empty unused table, which no code reads.
+===== TEXT-B END =====
+
+C4 — append TEXT-C to `docs/roadmap/features/T2_F115.md`, after the last
+existing line, separated by one blank line. Its own commit.
+
+===== TEXT-C BEGIN =====
+## T001 persistence shape — DECISION F115 D4 (2026-08-13)
+
+T001's "persist the manifest reference (or the compact manifest itself)
+alongside the ledger row" is settled as a SEPARATE TABLE, not a column on
+`calls`. A ledger row is one finalized task run; a manifest is one provider
+call, so the relation is one-to-many, and `verify_ledger`'s whole-dataclass
+equality plus the hook's ordering against the trace-file copy make an
+evidence-derived column read as drift on every row. Full reasoning, citations
+and the reversal recipe: `.agent/decisions.md`, "DECISION F115 D4".
+
+Consequence for this file's Design section: "Ledger extension (additive
+column/table)" resolves to the TABLE reading. The backfill tolerance the same
+bullet asks for is structural — a pre-F115 row owns no `call_segments` rows,
+and the report renders that absence as unattributed rather than guessing.
+===== TEXT-C END =====
+
+C5 — `packages/orchestration/token_ledger.py`. Three authored pairs, ONE commit.
+Apply each by locating the FROM bytes exactly once and replacing them with the
+TO bytes. Before committing, re-read the whole file and confirm it still parses
+(`python3 -c "import packages.orchestration.token_ledger"`).
+
+PAIR 1 — REWRITE (the TO does not contain the FROM).
+===== TEXT-D FROM BEGIN =====
+SCHEMA_VERSION = 1
+===== TEXT-D FROM END =====
+===== TEXT-D TO BEGIN =====
+SCHEMA_VERSION = 2
+===== TEXT-D TO END =====
+
+PAIR 2 — REWRITE (the TO does not contain the FROM: `}` no longer follows
+`    ),` directly).
+===== TEXT-E FROM BEGIN =====
+        "CREATE INDEX IF NOT EXISTS idx_calls_role_model ON calls (role, model)",
+    ),
+}
+===== TEXT-E FROM END =====
+===== TEXT-E TO BEGIN =====
+        "CREATE INDEX IF NOT EXISTS idx_calls_role_model ON calls (role, model)",
+    ),
+    # F115 D4: the segment manifest is per PROVIDER CALL while a `calls` row is
+    # one finalized TASK RUN, so it gets its own table instead of a column. The
+    # value columns mirror ComposedPrompt.manifest_as_dicts() one for one, so a
+    # writer never has to invent or rename a field.
+    2: (
+        """
+        CREATE TABLE IF NOT EXISTS call_segments (
+            call_id          TEXT NOT NULL,
+            trace_seq        INTEGER NOT NULL,
+            segment_name     TEXT NOT NULL,
+            segment_rank     INTEGER NOT NULL,
+            segment_sha256   TEXT NOT NULL,
+            chars            INTEGER NOT NULL,
+            tokens_estimated INTEGER NOT NULL,
+            PRIMARY KEY (call_id, trace_seq, segment_name)
+        )
+        """,
+        "CREATE INDEX IF NOT EXISTS idx_call_segments_call_id ON call_segments (call_id)",
+    ),
+}
+===== TEXT-E TO END =====
+
+PAIR 3 — APPEND-shaped (the TO CONTAINS the FROM verbatim as its opening bytes).
+===== TEXT-F FROM BEGIN =====
+  finest record the actuals feature puts on disk, and a per-request row would
+  have to invent ids, timestamps and a usage split no file records.
+===== TEXT-F FROM END =====
+===== TEXT-F TO BEGIN =====
+  finest record the actuals feature puts on disk, and a per-request row would
+  have to invent ids, timestamps and a usage split no file records. F115 D4 adds
+  ``call_segments`` BESIDE it rather than widening it — one row per segment of
+  one composed prompt, keyed by the row's ``call_id`` plus the trace line's
+  position — so the per-call breakdown lives in its own table and ``calls``
+  keeps its one-row-per-task-run identity untouched.
+===== TEXT-F END =====
+
+C6 — append FOUR test functions to `tests/orchestration/test_token_ledger.py`,
+in the file's existing style (follow the surrounding class/fixture conventions
+and reuse whatever tmp-path ledger fixture the file already has; do NOT touch
+the user's data root). Exactly four functions, no `parametrize`. Their required
+assertions, which you must satisfy without weakening:
+
+  1. A FRESH ledger carries the table: `open_ledger` on a tmp path, then
+     `SELECT name FROM sqlite_master WHERE type='table' AND name='call_segments'`
+     returns a row, and the `meta` row for `SCHEMA_VERSION_KEY` reads `"2"`.
+  2. A v1 ledger UPGRADES IN PLACE: open a ledger, then in the same file
+     `DROP TABLE call_segments` and set the `meta` `schema_version` value back to
+     `"1"`, commit and close; reopen with `open_ledger`; assert the table is
+     present again AND the stored version reads `"2"`. This is the test that
+     proves the numbered-step mechanism works past step 1 — it has never run
+     before in this repository.
+  3. The COLUMNS mirror the manifest: `PRAGMA table_info(call_segments)` yields
+     exactly the seven names, in this order: `call_id`, `trace_seq`,
+     `segment_name`, `segment_rank`, `segment_sha256`, `chars`,
+     `tokens_estimated`. Assert the list equality, not a membership check.
+  4. BACKFILL TOLERANCE is structural: record one ordinary call through the
+     existing `record_call` path into a tmp ledger, then
+     `SELECT COUNT(*) FROM call_segments WHERE call_id = ?` for that row's id
+     returns 0, while the row itself is present in `calls`. Its docstring states
+     in one line that no-rows is what the report renders as unattributed.
+
+Each test's name says what it proves, in the file's existing naming idiom. Its
+own commit.
+
+C7 — rewrite `.agent/plan.md` in full and rewrite `.agent/handoff.md`. One
+commit. `.agent/plan.md` keeps `## Goal` and `## Next Steps` headings, stays
+under 50 lines, and its Next Steps read: (1) the `call_segments` WRITER —
+populate from the copied `prompt_trace.jsonl` on the backfill path, where the
+file exists, since the live hook runs before the copy; (2) T002 aggregation
+queries plus the pure renderer with goldens; (3) T003 CLI, period comparison and
+json schema; (4) integration gate, then closure. Last reviewed SHA is f20f172a
+(R7 PASS). Next free finding ID: R-0327. Open findings: 4 — R-0320, R-0322,
+R-0323, R-0324 (R-0325 and R-0326 are resolved by TEXT-A this round). The
+Fortschritt line, verbatim, as the file's last line:
+
+Fortschritt: 50 % (R1 ✅ · T001a ✅ · alle drei Call-Sites ✅ · T001-Shape-Inventar ✅ · T001-Persistenz läuft · T002 · T003 offen) — Schätzung
+
 Done when: every command RUN for real, its TRUE output recorded — a guessed,
-           expected or remembered value is a finding.
-  a. `cmp .agent/authored/f115-r7-1.md .agent/last_block.md` exits 0; record
+           expected or remembered value is a finding. Record exit codes.
+  a. `cmp .agent/authored/f115-r8-1.md .agent/last_block.md` exits 0; record
      `sha256sum` of both and `wc -lc` of the authored file.
-  b. After C2, over `.agent/live_review.md`: `grep -c '^- R-0325'` = 1 ·
-     `grep -c '^- R-0326'` = 1 · `grep -c '^- R-0'` = 7 (was 5) ·
-     `grep -c '^Done:'` = 1 (unchanged) · `grep -c '^## Steps'` = 1.
-  c. After C3: `python3 -m ruff check tests/test_llm_planner.py` prints
-     `All checks passed!` with exit 0 — measured before the fix it reports
-     `Found 1 error.` (I001, un-sorted import block, line 7). Also run
-     `python3 -m ruff check packages/orchestration/llm_planner.py apps/cli/commands/job.py tests/orchestration/test_structured_planner_cli.py`
-     and record its real output; those three measured clean at R6.
-  d. After C4: `grep -c 'this module$' packages/orchestration/llm_planner.py` = 0
-     — measured before the fix it is 1, and line 7 of that file also contains
-     "this module" but does not END with it, so the count reaches 0 exactly when
-     the retired docstring line is gone. Then
-     `grep -c 'the same blank-line separator' packages/orchestration/llm_planner.py`
+  b. After C2, over `.agent/live_review.md`: `grep -c '^Done:'` = 3 (was 1) ·
+     `grep -c '^- R-0'` = 7 (UNCHANGED — TEXT-A registers no new finding) ·
+     `grep -c '^## Steps'` = 1.
+  c. After C3: `grep -c '^## DECISION F115 D4' .agent/decisions.md` = 1.
+  d. After C4: `grep -c '^## T001 persistence shape' docs/roadmap/features/T2_F115.md`
      = 1.
-  e. After C4: `python3 -m pytest tests/test_llm_planner.py -q` — measured
-     baseline at R6 `38 passed`; C3 and C4 add no test, so 38 is expected.
-  f. After C5: `grep -c '^## T001 persistence inventory (R7)' .agent/f115_inventory.md`
-     = 1 · `grep -c '^Q[1-6]\.' .agent/f115_inventory.md` = 6.
-  g. Canary `python3 -m pytest tests/cli/test_golden_path.py -q` — measured baseline `42 passed`, must not move.
-  h. `wc -l .agent/plan.md` prints a number BELOW 50 — record the real one.
-  i. `git status --porcelain` empty; `git diff --name-only 0d6c97aa..HEAD | wc -l`
-     — the TWENTY-THREE paths present after R6 plus ONE new one
-     (`.agent/authored/f115-r7-1.md`); every other path this round touches is
-     already among the 23, so 24 is expected. If it is not 24, report the real
-     number and the actual list and change nothing; `.remedy-wt/**` must NOT
-     appear. Finally
+  e. After C5, over `packages/orchestration/token_ledger.py`:
+     `grep -c '^SCHEMA_VERSION = 2'` = 1 · `grep -c '^SCHEMA_VERSION = 1'` = 0 ·
+     `grep -c 'CREATE TABLE IF NOT EXISTS call_segments'` = 1 ·
+     `grep -c 'idx_call_segments_call_id'` = 1 · `grep -c '        2: ('` = 1.
+     Then `python3 -m ruff check packages/orchestration/token_ledger.py` prints
+     `All checks passed!` with exit 0, and
+     `python3 -c "import packages.orchestration.token_ledger"` exits 0.
+  f. After C6: `python3 -m pytest tests/orchestration/test_token_ledger.py -q`.
+     The measured R7 baseline is `82 passed in 6.12s`; four added functions make
+     `86 passed` the expected line. If the real number differs, report the REAL
+     number and the full failure output and change nothing to meet the number.
+  g. RED-PROOF, in a DISPOSABLE WORKTREE ONLY. After C6 is committed and pushed:
+     `git worktree add .remedy-wt/r8-redproof HEAD`, and inside that worktree
+     ONLY, delete the whole `2: (...)` entry from `_MIGRATIONS`, then run
+     `python3 -m pytest tests/orchestration/test_token_ledger.py -q` there and
+     record the real output. Tests 1, 2 and 3 assert the table exists, so they
+     MUST fail; record which ids failed and how many. Then
+     `git worktree remove --force .remedy-wt/r8-redproof` and
+     `git worktree prune`, and record `git worktree list` afterwards. The
+     primary checkout is never mutated for this.
+  h. DOCS-ROUND GATE (this round's change set includes docs/roadmap/**):
+     `python3 -m pytest tests/docs/ -q` — record the real line and exit code.
+  i. Canary `python3 -m pytest tests/cli/test_golden_path.py -q` — the measured
+     baseline is `42 passed`; it must not move.
+  j. `wc -l .agent/plan.md` prints a number BELOW 50 — record the real one.
+  k. `git status --porcelain` empty ·
+     `git diff --name-only 0d6c97aa..HEAD | wc -l` — the TWENTY-FOUR paths
+     present after R7 plus THREE new ones (`.agent/authored/f115-r8-1.md`,
+     `packages/orchestration/token_ledger.py`,
+     `tests/orchestration/test_token_ledger.py`); every other path this round
+     touches is already among the 24, so 27 is expected. If it is not 27, report
+     the real number and the actual list and change nothing. No `.remedy-wt/**`
+     path may appear. Finally
      `git rev-list --left-right --count origin/feature/f115-prompt-cost-report...HEAD`
      prints 0 and 0.
 Handback:  completion report + rewrite `.agent/handoff.md`: item-status table
-           (C1a, C1b, C2, C3, C4, C5, C6 — each exactly once), commit table with
-           real SHAs and insertions, changed-files table, every result a-i as a
-           REAL value, the Fortschritt line verbatim. Over 60 lines ⇒ a
-           "Deviations, declared" line naming the count and the mandated content
-           that caused it (AGENTS.md DECISION D15).
-
-           THIS IS THE LAST ROUND OF THE SESSION. The handoff is the only return
-           channel: name the branch, the head SHA, the last reviewed SHA
-           (139b5c48, R6 PASS), every open finding with its state, and that the
-           next work is T001's persistence shape, decided from the C5 inventory.
-           Do NOT create a PR.
-──────────────────────────────────────────────────────────────────────
-
-PROCEDURE
-
-C1a `chore(f115): save the R7 step block verbatim` — copy the reviewer's
-    scratchpad original `.remedy-wt/f115-r7-1.md` to
-    `.agent/authored/f115-r7-1.md`. Copy the FILE; do not retype it.
-C1b `chore(f115): mirror the R7 block into last_block` — copy that same file to
-    `.agent/last_block.md`. Run gate (a).
-
-C2 `chore(f115): register R-0325 and R-0326 from the R6 gate`
-    Append TEXT-A to the END of `.agent/live_review.md`. Run gate (b).
-
-C3 `fix(f115): sort the planner test imports`
-    Apply the TEXT-B pair to `tests/test_llm_planner.py`. Run gate (c).
-
-C4 `docs(f115): keep the composer docstring free of an escape`
-    Apply the TEXT-C pair to `packages/orchestration/llm_planner.py`. Run gates
-    (d) and (e).
-
-C5 `docs(f115): inventory the T001 persistence facts`
-    Append TEXT-D to the END of `.agent/f115_inventory.md`, then answer Q1-Q6
-    IN THAT FILE, each directly under its question, in prose with `path:line`
-    citations. Read the code; do not infer from names. Run gate (f).
-
-C6 `chore(f115): refresh the plan and write the R7 handoff`
-    `.agent/plan.md` ← TEXT-E in full, then rewrite `.agent/handoff.md`.
-    Run gates (g), (h) and (i).
-
-TEXT-A — append to the END of .agent/live_review.md
-
-- R-0325 — Low — the R6 authored import block left `tests/test_llm_planner.py`
-  ruff-dirty. TEXT-G placed `from packages.orchestration.prompt_segments import
-  (...)` ABOVE the existing `planner_models` import, so the block is no longer
-  alphabetically sorted and `python3 -m ruff check tests/test_llm_planner.py`
-  reports `I001` (un-sorted import block) at line 7 — measured by the reviewer
-  at the R6 gate, against a file that printed `All checks passed!` one commit
-  earlier. `I` is an enabled rule class (`pyproject.toml:50`), so this is a real
-  regression this branch introduced, not a pre-existing style debt; it is Low
-  because no suite test and no CI workflow runs ruff (the repository has no
-  `.github/workflows/`), so nothing turns red today. The worker was right to
-  report it rather than edit an authored slice to fix it. Fix: move the
-  `prompt_segments` import below `planner_models`. OPEN.
-
-- R-0326 — Low — the R6 authored docstring carries a live escape sequence. The
-  `compose_planner_prompt` docstring is a normal (non-raw) string containing the
-  characters backslash-n twice, so Python turns them into two real newlines and
-  the rendered `__doc__` breaks its own sentence mid-clause — the text meant to
-  NAME the delimiter instead BECOMES it. The source file reads correctly and
-  ruff stays silent (backslash-n is a valid escape, so no W605), which is why
-  the R6 gate did not catch it; `help(compose_planner_prompt)` is where it
-  shows. Reviewer-authoring defect, same class as R-0325: the authored bytes
-  were correct as bytes and wrong as Python. Fix: name the delimiter in words
-  instead of spelling it. OPEN.
-
-TEXT-B — REWRITE pair for tests/test_llm_planner.py
-
-FROM:
-from packages.orchestration.prompt_segments import (
-    PROMPT_SEGMENT_DELIMITER,
-    SegmentStabilityRank,
-)
-from packages.orchestration.planner_models import PlannerOutput, ProposedTask
-TO:
-from packages.orchestration.planner_models import PlannerOutput, ProposedTask
-from packages.orchestration.prompt_segments import (
-    PROMPT_SEGMENT_DELIMITER,
-    SegmentStabilityRank,
-)
-
-TEXT-C — REWRITE pair for packages/orchestration/llm_planner.py
-
-FROM:
-    Byte identity with the pre-F115 concatenation is the whole contract: the
-    join string is `PROMPT_SEGMENT_DELIMITER`, which IS the `\n\n` this module
-    used by hand, and an absent memory section registers NO segment rather than
-    an empty one — so a one-segment composition is the bare job prompt.
-TO:
-    Byte identity with the pre-F115 concatenation is the whole contract: the
-    join string is `PROMPT_SEGMENT_DELIMITER`, the same blank-line separator
-    this module concatenated by hand, and an absent memory section registers NO
-    segment rather than an empty one — so one segment composes to the bare job
-    prompt, with no separator anywhere in it.
-
-TEXT-D — append to the END of .agent/f115_inventory.md
-
-## T001 persistence inventory (R7)
-
-Facts only, each with a `path:line` citation read at this round. The shape
-question T001 has to answer is already visible: `token_ledger.py` documents that
-A ROW IS ONE FINALIZED TASK RUN keyed `"<job_id>:<task_id>"` (DECISION F103
-D16), while a segment manifest belongs to ONE PROVIDER CALL — so "the manifest
-alongside the ledger row" is a one-to-many mapping, not a column copy. Answer
-each question directly below it; write "not found" plus the command you ran
-rather than an inference.
-
-Q1. The ledger row: every column of the table a task run writes, taken from the
-CREATE TABLE statement itself, with its `path:line`. Name which columns are
-NULLable and which carry a default.
-
-Q2. The write path: the ONE call site the module names
-(`pingpong_evidence.write_evidence_bundle`) — its `path:line`, what it receives,
-and specifically whether the prompt-trace entries (or anything carrying a
-`segment_manifest`) are in scope AT THAT POINT or only reachable from disk.
-
-Q3. The trace file: the exact path pattern `prompt_trace.jsonl` is written to,
-its writer's `path:line`, and whether anything deletes, rotates or truncates it
-after a run — quote the code you checked, or state that a search found no
-deleter and name the search.
-
-Q4. Schema versioning: how the module versions its schema (the `meta` row), its
-`path:line`, and whether an ADDITIVE column has ever been migrated there before.
-If yes, cite that migration; if no, say so — that absence is the fact T001 needs.
-
-Q5. Readers: every place that SELECTs from the ledger today, with `path:line`,
-and how each behaves when a column is NULL or a row is missing. Note any
-existing "unattributed"/"no data" rendering precedent.
-
-Q6. Correlation: whether a prompt-trace entry can be tied to a ledger row from
-the data alone — check which of `job_id`, `task_id`, `run_id` a trace entry
-actually carries at the planner, builder and reviewer call sites (a field that
-exists in the dataclass but is left empty at a call site is NOT a correlation
-key; cite the call site).
-
-TEXT-E — the complete new .agent/plan.md
-
-# Plan — F115 Prompt breakdown & cost report
-
-Branch: feature/f115-prompt-cost-report, cut from main at 0d6c97aa after
-PR #194 merged. Last reviewed SHA: 139b5c48 (R6 PASS). Next free finding
-ID: R-0327. Open findings: 6 — R-0320 (Low, from F111), R-0322 (Medium,
-inherited suite red), R-0323 + R-0324 (Low, reviewer arithmetic),
-R-0325 + R-0326 (Low, R6 authoring defects, fixed this round, awaiting
-the reviewer's resolution text).
-
-## Goal
-Costs stop being an opaque total: `remedy stats report` shows WHERE
-tokens go — by segment kind, by role, by task class — plus a cost curve
-and a prior-period comparison, as markdown and json, every number
-traceable to a ledger row, and a period with missing data reported as
-missing instead of interpolated (docs/roadmap/features/T2_F115.md).
-
-## Current Step
-R7 cleared the two R6 authoring defects and put the T001 persistence
-facts on disk in `.agent/f115_inventory.md`: a ledger row is one
-finalized task run, a manifest is one provider call, so T001 has a
-one-to-many mapping to decide before it writes anything.
-
-## Next Steps
-1. T001 — decide the manifest-to-row mapping from the R7 inventory
-   (aggregate column vs trace reference vs per-call table), record it as
-   a DECISION, then persist additively with backfill tolerance: old rows
-   render "unattributed", never guessed.
-2. T002 — aggregation queries plus the pure renderer, with goldens;
-   follow `gauntlet_matrix.py` and `tests/cli/test_stats_cost.py:49-128`.
-3. T003 — CLI, prior-period comparison, json schema.
-4. Integration gate (docs/agents/integration_gate.md), then closure.
-
-## Risks
-- Per-role has one bucket until `role` stops being hardcoded, and
-  per-task-class has no source at all: report "no data", never a bucket.
-- R-0322 will meet F115's integration gate as five pre-existing reds.
-
-Fortschritt: 45 % (R1 ✅ · T001a ✅ · alle drei Call-Sites ✅ · T001-Shape ✅ · T001 · T002 · T003 offen) — Schätzung
+           (C1a, C1b, C2, C3, C4, C5, C6, C7 — each exactly once, status done /
+           skipped / deviated with a reason), commit table with real SHAs and
+           real insertion counts, changed-files table, every result a-k as a
+           REAL measured value, the open-findings count, the next expected
+           action, and the Fortschritt line verbatim. Over 60 lines ⇒ add a
+           "Deviations, declared" line naming the real count and the mandated
+           content that caused it (AGENTS.md DECISION D15). Declare any command
+           you had to rewrite for the `$` restriction.
+──────────────────────────────────────────────────────────────
