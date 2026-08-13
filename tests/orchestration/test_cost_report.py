@@ -418,3 +418,59 @@ def golden_ledger(tmp_path):
 def _golden_pair(ledger):
     """The pair the goldens were rendered from: the day buckets and the shares."""
     return query_cost(path=ledger, by="day"), query_segment_shares(path=ledger)
+
+
+def test_the_golden_markdown_matches_the_fixture_ledger(golden_ledger):
+    """A golden re-blessed on every change checks nothing, so this one never is."""
+    rendered = render_cost_report_markdown(
+        *_golden_pair(golden_ledger), label=GOLDEN_LABEL
+    )
+    assert rendered == (GOLDEN_DIR / GOLDEN_MARKDOWN_NAME).read_text(encoding="utf-8")
+
+
+def test_the_golden_json_matches_the_fixture_ledger(golden_ledger):
+    """A golden re-blessed on every change checks nothing, so this one never is."""
+    rendered = cost_report_json_bytes(*_golden_pair(golden_ledger), label=GOLDEN_LABEL)
+    assert rendered == (GOLDEN_DIR / GOLDEN_JSON_NAME).read_text(encoding="utf-8")
+
+
+def test_the_golden_files_state_the_numbers_the_ledger_holds():
+    """The FILES, not the renderer: this is what stops a golden being a snapshot."""
+    payload = json.loads((GOLDEN_DIR / GOLDEN_JSON_NAME).read_text(encoding="utf-8"))
+    total = payload["total"]
+    assert total["calls"] == 4
+    assert total["tokens_in"] == 4000
+    assert total["tokens_out"] == 800
+    assert total["cache_read"] == 64
+    assert total["cache_write"] == 32
+    assert total["cost_usd"] == 0.25
+    assert total["measured_calls"] == 1
+    assert total["unmeasured_calls"] == 3
+    assert [row["bucket"] for row in payload["buckets"]] == [
+        "2026-08-01",
+        "2026-08-05",
+        "2026-08-09",
+    ]
+    segments = payload["segments"]
+    assert [row["segment_name"] for row in segments["rows"]] == [
+        "diff",
+        "schema_tail",
+        "task_brief",
+    ]
+    assert segments["total_tokens_estimated"] == 230
+    assert segments["attributed_calls"] == 2
+    assert segments["unattributed_calls"] == 2
+
+    markdown = (GOLDEN_DIR / GOLDEN_MARKDOWN_NAME).read_text(encoding="utf-8")
+    for stated in ("PARTLY UNMEASURED", "unmeasured", "0.2500", "43.5%", "13.0%"):
+        assert stated in markdown
+
+
+def test_the_golden_json_agrees_with_the_golden_markdown():
+    """Two files, one set of facts — a drift between them is a defect in both."""
+    payload = json.loads((GOLDEN_DIR / GOLDEN_JSON_NAME).read_text(encoding="utf-8"))
+    markdown = (GOLDEN_DIR / GOLDEN_MARKDOWN_NAME).read_text(encoding="utf-8")
+
+    for row in payload["segments"]["rows"]:
+        assert row["segment_name"] in markdown
+    assert f"| {payload['segments']['total_tokens_estimated']} |" in markdown
