@@ -167,3 +167,40 @@ Done: R-0326 — RESOLVED at the R7 gate. Verified against the RENDERED docstrin
   by-product of the over-shoot: `test_schema_version_matches_the_last_migration_step`
   already pins `SCHEMA_VERSION` to the highest `_MIGRATIONS` key, so a version
   bump without its step, or a step without its bump, cannot pass today. OPEN.
+
+- R-0329 — Low — a manifest value of the wrong TYPE becomes a measured zero in
+  the sums T002 is about to build, which is the exact outcome the helper's own
+  docstring says it prevents. `_call_segment_row` (`token_ledger.py:1247-1276`)
+  checks only that the five `_MANIFEST_KEYS` are PRESENT and then takes their
+  values VERBATIM, so a trace line carrying `"chars": "not-a-number"` yields a
+  `CallSegmentRow` whose `chars` is that string. SQLite then accepts it:
+  `chars INTEGER NOT NULL` is an AFFINITY, not a constraint, so a string that
+  does not look like a number is stored AS TEXT and the NOT NULL is satisfied.
+  Measured by the reviewer at the R9 gate against a scratch in-memory database:
+  `typeof(chars)` prints `text`, and `SUM(chars)` over that row plus one real
+  row of 10 prints `10.0`. Both halves of that result matter. The bad row
+  contributed 0, which is precisely the "unpublished figure must never become a
+  measured zero (P6)" the docstring four lines above the defect forbids; and
+  the sum came back a FLOAT, which would move the bytes of any markdown golden
+  that renders the same figure as an integer everywhere else — so R11's goldens
+  would be pinned to a shape one malformed input can change. It is NOT
+  reachable from Remedy's own composer, which publishes real ints through
+  `manifest_as_dicts()`; it is registered anyway because the reader's entire
+  contract is that it survives ARBITRARY file content, and "our producer is
+  well behaved" is not the guarantee that contract makes. Fixed in R10 rather
+  than deferred: R10 is the slice that starts SUMming those two columns and is
+  therefore the round with a legitimate reason to open that helper, so fixing
+  it here mixes nothing that does not already belong to the change. The R9
+  round as a whole is PASS. The reviewer re-ran gates (a) through (i) and every
+  value matched the handback: cmp exit 0 with sha256
+  c5c5bc40c103ce743a81156078a727231460fe321be65e87613e2dc0265244b6 over both
+  copies, the five live-review counts 1/1/9/3/1, the six `token_ledger.py`
+  counts 1/1/1/4/2/3, ruff `All checks passed!` and the import exit 0, zero
+  changed lines assigning a `BackfillResult` counter and zero inside its class
+  body, `92 passed` and `41 passed`, canary `42 passed`, `wc -l .agent/plan.md`
+  38, an empty porcelain, 28 changed paths with no `.remedy-wt/**` among them,
+  and 0/0 against origin. The red-proof was RE-RUN INDEPENDENTLY by the
+  reviewer in its own disposable worktree rather than accepted from the report:
+  mutating `segment_rows_from_trace_file` to `return []` reproduced `5 failed,
+  87 passed` and the same five test ids the handback names, and the worktree
+  was removed and pruned with `git worktree list` left showing one line. OPEN.
