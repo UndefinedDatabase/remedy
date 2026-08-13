@@ -1,105 +1,85 @@
-# Handoff — F111 Diff-only repair, R16 (T003 prompt half)
+# Handoff — F111 Diff-only repair, Round 17 (T003, apply half)
 
-Branch: feature/f111-diff-only-repair (unmerged, no PR by design). Base for
-this round: d457219a (R15 PASS, recorded in C3). One production commit (C4),
-one test commit (C5). Before C4 nothing imported the T001/T002 modules.
-
-Deviations, declared (DECISION D15): 105 lines, over the cap, caused by the
-mandated per-commit table, changed-files table, ten gate results a-j,
-item-status table and next-action block. No section dropped. No other
-deviation: TEXT-A..TEXT-D were applied byte for byte, extracted from the
-authored file rather than retyped.
-
-Ordered pre-C4 check, result: `rg -n 'repair_ctx\[|repair_context' tests/` ->
-32 hits, NONE asserting an exact key set. The closest,
-`test_build_repair_context_basic`, asserts individual keys plus
-`"stdout" not in json.dumps(rc)`; the new keys carry no such token.
-
-## Commits
-
-| Item | SHA         | Subject                                              | Ins |
-|------|-------------|------------------------------------------------------|-----|
-| C1   | b2c98e27    | chore(f111): save the R16 step block verbatim        | 316 |
-| C2   | 94c31599    | chore(f111): mirror the R16 block into last_block    | 287 |
-| C3   | 987ce642    | docs(f111): record the R15 verdict and resolve R-0316 and R-0317 |  82 |
-| C4   | b5b35d16    | feat(f111): carry margin-expanded repair hunks in the repair context |  70 |
-| C5   | 9ac2a399    | test(f111): pin diff mode, the margin, and the visible full-file reason | 142 |
-| C6   | this commit | chore(f111): refresh plan and write the R16 handoff  | see |
-
-C6's own insertion count is NOT written inside C6. The real number is in
-`git show --numstat` and is stated in the handback.
-
-## Changed files
-
-| Path                                             | Item |
-|--------------------------------------------------|------|
-| .agent/authored/f111-r16-1.md (new)              | C1   |
-| .agent/last_block.md                             | C2   |
-| .agent/live_review.md                            | C3   |
-| packages/orchestration/builder_bridge.py         | C4   |
-| tests/orchestration/test_builder_repair_loop.py  | C5   |
-| .agent/plan.md                                   | C6   |
-| .agent/handoff.md                                | C6   |
-
-## Gates (command -> real exit code, counted value)
-
-a. `sha256sum .agent/authored/f111-r16-1.md .agent/last_block.md` -> exit 0,
-   both `c361c291408ccbc09c051ccedc08859de0111c70c3a43189670cccd5945a880a`,
-   18501 bytes, 316 lines (< 400), no trailing whitespace. `cmp` -> exit 0.
-   `.agent/last_block.md` was copied from the authored file.
-b. on `.agent/live_review.md`: `grep -c '^Done:'` -> exit 0, 11 (was 9);
-   `grep -c '^- R-0'` -> exit 0, 42 (unchanged); `grep -c '^### R15 — PASS'`
-   -> exit 0, 1; `grep -c '^Landed:'` -> printed 0, exit 1 (the ordered pass).
-c. `grep -n '_attach_diff_repair_hunks' …/builder_bridge.py` -> exit 0, exactly
-   2 hits: line 269 (def) and line 412 (the single call site).
-   `grep -c 'repair_mode_selected' …/builder_bridge.py` -> exit 0, 1.
-d. VALUE PROBE, diff mode on -> exit 0, printed exactly:
-   `repair_mode: diff`, `path: calc.py`, `start_line: 1`, `end_line: 6`.
-   The patch names line 3 only; start_line 1 is the margin, not the selection.
-e. VALUE PROBE, diff mode off -> exit 0, printed exactly `full_file` and
-   `False` for `'diff_hunks' in repair_ctx`.
-f. `pytest tests/orchestration/test_builder_repair_loop.py -q` -> exit 0,
-   9 passed (was 6).
-g. `pytest test_diff_repair.py test_diff_repair_response.py
-   test_diff_repair_apply.py -q` -> exit 0, 71 passed, unmoved.
-h. CANARY `pytest tests/cli/test_golden_path.py -q` -> exit 0, 42 passed.
-i. MUTATION PROBE, in worktree `.remedy-wt/r16mut` (detached at 9ac2a399,
-   removed before this handback): with the body of `_attach_diff_repair_hunks`
-   replaced by `raise AssertionError("mutant")` -> exit 1, 5 failed, 4 passed.
-   Failing: `test_succeeds_on_second_cycle`, `test_stops_at_max_cycles`,
-   `test_repair_context_passed_to_builder` (the three pre-existing tests that
-   now traverse the default-on path), plus the two new ones,
-   `…attaches_margin_expanded_hunks…` and `…without_line_ranges…`. The new
-   `…diff_mode_off…` test stays green, which is right: mode off must not reach
-   the helper. `git worktree list` -> one entry, the primary checkout.
-j. `git status --porcelain` -> exit 0, empty after C6.
-   `git diff --name-only d457219a..HEAD` -> exit 0, exactly the seven scoped
-   paths, no others. Per-commit insertions from `git log --numstat`:
-   316 / 287 / 82 / 70 / 142 / C6, each under 500.
-   `git rev-list --left-right --count origin/feature/f111-diff-only-repair...HEAD`
-   -> exit 0, `0	0` after the final push.
-
-Open findings: 31 (42 registered minus 11 resolved; R-0316 and R-0317 closed by
-the reviewer-authored `Done:` texts in C3). Next free id: R-0318. None is High.
-
-Fortschritt: ~80 % (T001 ✅ · T002 ✅ · T003 Prompt-Hälfte in dieser Runde ·
-T003 Apply-Hälfte offen · R-0316 ✅ · R-0317 ✅) — Schätzung
+Branch: feature/f111-diff-only-repair, base c0ed5dd1 (R16 PASS), no PR by design.
+Commits: 7506d5cc (C1), 4c6a4fbe (C2), bda7e81e (C3), 71319adc (C4),
+19797836 (C5), this commit (C6).
 
 ## Item status
+| Item | Status | Reason |
+|------|--------|--------|
+| C1 authored block | done | 366 lines saved verbatim |
+| C2 last_block mirror | done | byte-identical to C1 |
+| C3 live_review TEXT-A | done | R16 verdict + DECISIONS D8, D9 appended |
+| C4 diff channel | done | 4 edits; module-level imports, NO cycle |
+| C5 three loop tests | done | see Deviations for the byte-comparison reading |
+| C6 plan + handoff | done | plan.md is TEXT-B verbatim, 44 lines |
 
-| Item | Status   | Reason                                                 |
-|------|----------|--------------------------------------------------------|
-| C1   | done     |                                                        |
-| C2   | done     |                                                        |
-| C3   | done     | TEXT-A, TEXT-B, TEXT-C appended in that order          |
-| C4   | done     | no contradiction found; no test pins the ctx key set   |
-| C5   | done     | three tests added, the six existing ones untouched     |
-| C6   | done     |                                                        |
+## Changed files
+| Path | Commit | + / - |
+|------|--------|-------|
+| .agent/authored/f111-r17-1.md | 7506d5cc | 366 / 0 |
+| .agent/last_block.md | 4c6a4fbe | 305 / 255 |
+| .agent/live_review.md | bda7e81e | 71 / 0 |
+| packages/orchestration/builder_bridge.py | 71319adc | 95 / 15 |
+| tests/orchestration/test_builder_repair_loop.py | 19797836 | 164 / 0 |
+| .agent/plan.md, .agent/handoff.md | C6 | this commit |
 
-## Next expected action
+## Gates (all commands run for real)
+a. TRANSPORT: `cmp` exit 0, both digests
+   a21506ddee38218bba4c6fb0f051c6b175d1eeaadffe8c476af3096598a07332,
+   20623 bytes, 366 lines (< 400), zero trailing-whitespace lines.
+b. live_review: `^Done:` 11; `^- R-0` 42; `^### R16 — PASS` 1; `^Landed:` 0.
+c. builder_bridge.py: `diff_repair_fell_back` 2, `diff_repair_applied` 1,
+   `diff_response` 10.
+d. VALUE PROBE, diff lands: mode = diff, applied = True, files_modified = 1,
+   loop.success = True. calc.py after the loop:
+   '# MARGIN_ANCHOR_TOP: no hunk in these tests names this line\ndef add(a, b):
+   \n    return a + b\n\n\ndef unchanged_helper():\n    return 1\n' — the
+   untouched neighbours prove a hunk landed, not a whole-file rewrite.
+e. VALUE PROBE, conflict: mode = full_fallback, fallback_reason =
+   'apply_failed:calc.py: diff hunks did not apply cleanly', files_modified = 0,
+   rollback_incomplete = False, calc.py bytes unchanged across the attempt =
+   True. The reason is `apply_failed:`, so the diff reached the applicator and
+   was rejected there — the discard is not a cheap validation-stage skip.
+f. `pytest tests/orchestration/test_builder_repair_loop.py -q` -> 12 passed
+   (was 9).
+g. three diff-repair files -> 71 passed, unmoved.
+h. IMPORT FALLOUT, nine files -> 137 passed, 1 skipped. No drop.
+i. CANARY `tests/cli/test_golden_path.py -q` -> 42 passed.
+j. MUTATION PROBE in a disposable worktree (removed; `git worktree list` shows
+   the primary checkout only): making the rejected diff set
+   `result.apply_success = True` without returning gives 1 failed, 11 passed —
+   `test_a_conflicting_diff_is_discarded_whole_and_the_round_falls_back` fails
+   at the missing `repair_round_fell_back_to_full_file` event. No OTHER suite
+   catches it (test_diff_repair_apply / test_builder_bridge / test_stop_reasons
+   / test_repair_loop_hardened: 36 passed), so the conflict path is pinned by
+   the new test alone.
+k. `git status --porcelain` empty at every commit; `git diff --name-only
+   c0ed5dd1..HEAD` = exactly the seven scoped paths; per-commit insertions
+   366 / 305 / 71 / 95 / 164 for C1-C5, each under 500;
+   `git rev-list --left-right --count origin/...HEAD` -> 0 and 0 after the
+   final push.
 
-- Reviewer gates R16 against the real diff, re-running probes and mutation.
-- Then R17 — T003's apply half: route the builder's diff answer through
-  `apply_diff_repair`, emit the apply-side mode (`full_fallback`) and token
-  actuals, add the fixture token comparison. Hunk TEXT lives in the repair
-  context only; counts only in the timeline, and R17 must keep it that way.
+## Deviations, declared
+- 85 lines, over the 60-line base cap and inside the ≤100 allowance: the
+  mandated six-row item-status table, the six-row changed-files table and the
+  eleven ordered gate results a-k are what exceed it. No section dropped.
+- C5, "read calc.py before the loop and compare bytes": cycle 1 must apply a
+  patch for a diff-mode repair context to exist at all, so the bytes taken
+  BEFORE the loop are not the bytes the discarded attempt started from. The
+  test records both: `pre_loop_bytes` is asserted equal to what cycle 1 found,
+  and the acceptance line compares what cycle 2 found against what cycle 3
+  found — the true pre- and post-attempt bytes. Reading it literally would
+  have made the assertion measure cycle 1's legitimate write.
+- No import cycle appeared, so all three new symbols are module-level imports
+  beside the R16 `diff_repair` import, as the block preferred.
+
+Open findings: 31 (42 registered minus 11 resolved). None is High. Next free
+finding ID: R-0318. No finding was resolved this round.
+
+Next expected action: reviewer verdict on R17, then R18 — the measurement
+(payload character counts per repair round plus the fixture comparison test,
+DECISION F111 D9), which is the feature's DONE line.
+
+Fortschritt: ~86 % (T001 ✅ · T002 ✅ · T003 Prompt-Hälfte ✅ · T003
+Apply-Hälfte in dieser Runde · Messung offen) — Schätzung
