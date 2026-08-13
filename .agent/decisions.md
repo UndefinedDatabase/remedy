@@ -4538,3 +4538,48 @@ Reverse by changing `ts_utc < ?` to `ts_utc <= ?` in `_cost_filters`, deleting
 the half-open sentence from the two query docstrings, and updating the
 boundary test that names the excluded call. Nothing else depends on the
 reading.
+
+## DECISION F115 D6 — the prior period reuses the current period's `since` STRING (2026-08-13)
+
+The prior-period comparison needs the equal-length window immediately before
+`[since, until)`. The arithmetic is obvious; the SERIALISATION is not, and it
+is where this would have gone wrong.
+
+The prior window is `[parsed_since - d, since)` where `d = until - since`. Its
+opening bound is computed and must be serialised. Its CLOSING bound is not
+computed at all: it is the ORIGINAL `since` string, byte for byte, passed
+through untouched.
+
+Why that matters. `_cost_filters` compares `ts_utc` LEXICOGRAPHICALLY — that is
+the whole reason `ts_utc` is TEXT rather than an epoch number, and `query_cost`
+says so in its own docstring. Two windows abut correctly only if the boundary
+they share is the SAME STRING on both sides. Round-tripping it through
+`fromisoformat` and `.isoformat()` does not guarantee that: `"2026-08-01"`
+comes back as `"2026-08-01T00:00:00"`, and `"...+00:00"` and `"...Z"` are the
+same instant in two spellings. Every one of those round-trips still happens to
+order correctly against a well-formed `ts_utc`, which is precisely the danger —
+it would work by formatting luck, and the first ledger written in a different
+ISO-8601 shape would silently double-count or drop the boundary call. Passing
+the original bytes through makes the partition property of DECISION F115 D5
+hold by construction instead.
+
+Four cases yield no prior window at all, and each states its own reason rather
+than returning a bare None: an open-ended period has no length to mirror; an
+unparseable end is never guessed at; a naive end paired with an aware one is a
+`TypeError` from `datetime`, and inventing an offset to avoid it would be
+fabricating the user's timezone; and a period whose end is at or before its
+start has an empty or inverted prior window. A fifth case is not an error but
+still not a comparison: a prior window that EXISTS and holds zero calls. It is
+reported as "read, and empty", which is the P6 distinction between not having
+looked and having looked and found nothing.
+
+Alternatives considered. (a) Return `None` for every unavailable case —
+rejected because the report must print WHY there is no comparison, and a bare
+None cannot say. (b) Normalise both ends to a canonical UTC spelling before
+comparing — rejected as a larger change with a wider blast radius: it would
+alter how `since` itself filters, which is pinned by existing tests and by both
+goldens, for a benefit this feature does not need.
+
+Reverse by deleting `PriorReportPeriod` and `prior_report_period` and dropping
+the two comparison parameters from the renderers. Nothing else reads them: the
+CLI that will call them is a later round.
