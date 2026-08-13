@@ -63,6 +63,13 @@ the active feature file under `docs/roadmap/features/`.
 ## Phase 2 — the round loop
 Each round is: author → delegate → review → verdict.
 
+Before AUTHORING each round the reviewer re-reads `.agent/STOP` from disk.
+Phase 0 runs once at session start, G6 binds at any point, and a sentinel that
+appears mid-session is otherwise invisible until an unrelated gate trips over
+it (finding R-0347). Every block's gate list therefore also keeps a
+`git status --porcelain` gate, and every handoff that names the next session's
+first action names Phase 1 rule 1 before rule 2.
+
 1. **Author.** The main session writes the step block (goal, bundle,
    exact change set, constraints, done-when with the literal verification
    commands) and any finding text, exactly as
