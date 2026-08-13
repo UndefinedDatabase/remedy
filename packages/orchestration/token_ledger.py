@@ -272,8 +272,22 @@ _CALL_SEGMENT_COLUMNS = (
 )
 
 # The manifest keys a trace entry publishes, in the order the columns above take
-# them. Named once so a missing key is detected rather than defaulted to zero.
-_MANIFEST_KEYS = ("name", "rank", "sha256", "chars", "tokens_estimated")
+# them, each mapped to the type it must ALREADY be. Presence was never enough:
+# ``chars INTEGER NOT NULL`` is a SQLite AFFINITY rather than a constraint, so a
+# string that does not look like a number is stored as TEXT, satisfies NOT NULL,
+# and then counts as 0 in every SUM over that column — the measured zero this
+# module exists to refuse (R-0329). ``bool`` is excluded from ``int`` explicitly
+# because it is a subclass of it and no manifest ever publishes a flag as a size.
+_MANIFEST_KEY_TYPES: dict[str, type] = {
+    "name": str,
+    "rank": int,
+    "sha256": str,
+    "chars": int,
+    "tokens_estimated": int,
+}
+
+# Derived, never restated: one spelling of the key order for the whole module.
+_MANIFEST_KEYS = tuple(_MANIFEST_KEY_TYPES)
 
 
 @dataclass(frozen=True)
@@ -1250,17 +1264,32 @@ def _call_segment_row(
     call_id: str,
     trace_seq: int,
 ) -> CallSegmentRow | None:
-    """One manifest dict as a row, or None when it does not carry all five keys.
+    """One manifest dict as a row, or None unless all five keys are there AND typed.
 
     A dict missing a key is SKIPPED rather than completed with 0 or "": the
     values are taken verbatim from ``_MANIFEST_KEYS`` and nothing here invents,
     coerces or defaults one. An unpublished figure must never become a measured
     zero (P6), and a partial manifest row would be exactly that.
+
+    A value of the WRONG TYPE is skipped by exactly the same rule, because it
+    reaches the same end by a longer route: ``chars INTEGER NOT NULL`` is a
+    SQLite affinity rather than a constraint, so a non-numeric string is stored
+    as TEXT, satisfies NOT NULL, and then counts as 0 in every SUM over that
+    column. ``_MANIFEST_KEY_TYPES`` names the type each key must ALREADY be, and
+    a value that is not it makes the whole dict a skip. Nothing is cast on the
+    way past: a figure this module cannot verify is one it declines to store,
+    not one it repairs.
     """
     if not isinstance(manifest_entry, dict):
         return None
-    if any(key not in manifest_entry for key in _MANIFEST_KEYS):
-        return None
+    for key, expected in _MANIFEST_KEY_TYPES.items():
+        if key not in manifest_entry:
+            return None
+        value = manifest_entry[key]
+        if expected is int and isinstance(value, bool):
+            return None
+        if not isinstance(value, expected):
+            return None
     name, rank, sha256, chars, tokens_estimated = (
         manifest_entry[key] for key in _MANIFEST_KEYS
     )

@@ -1770,3 +1770,30 @@ class TestCallSegmentsWriter:
         assert counters == (without_trace.scanned, without_trace.recorded,
                             without_trace.skipped, without_trace.failed)
         assert counters == (4, 2, 1, 1)
+
+    def test_a_wrongly_typed_manifest_value_is_skipped_like_a_missing_key(self, tmp_path):
+        """R-0329: a string ``chars`` would be stored as TEXT and SUM to 0."""
+        text_chars = _manifest_entry("diff", 20, "a" * 64, "not-a-number", 5)
+        flag_tokens = _manifest_entry("schema_tail", 30, "b" * 64, 33, True)
+        sibling = _manifest_entry("task_brief", 10, "c" * 64, 120, 30)
+        # The fixture derives ``segment_manifest_chars`` by summing the entries,
+        # which a non-numeric ``chars`` cannot survive; the manifest is swapped
+        # in afterwards so the file on disk carries exactly the bad values.
+        entry = _trace_entry(SEGMENT_TASK, [sibling])
+        entry["segment_manifest"] = [text_chars, sibling, flag_tokens]
+        trace = tmp_path / "prompt_trace.jsonl"
+        _write_trace_file(trace, [entry])
+
+        rows = segment_rows_from_trace_file(
+            trace, call_id="job-7:T001", task_id=SEGMENT_TASK
+        )
+
+        # Both bad dicts are gone and the well-formed sibling is untouched, so
+        # nothing that reaches the ledger can become a measured zero later.
+        assert rows == [
+            CallSegmentRow(
+                call_id="job-7:T001", trace_seq=0, segment_name="task_brief",
+                segment_rank=10, segment_sha256="c" * 64, chars=120,
+                tokens_estimated=30,
+            ),
+        ]
