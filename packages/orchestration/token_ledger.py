@@ -60,6 +60,7 @@ Public API::
     CallRecord / CallSegmentRow / BackfillResult / ReconcileResult
     CostRow / CostReport / COST_GROUP_KEYS
     SegmentShareRow / SegmentShareReport
+    PriorReportPeriod
     token_ledger_path_for(project_id, root=None) -> Path
     open_ledger(path) -> sqlite3.Connection
     record_call(record, *, project_id=None, path=None) -> bool
@@ -75,6 +76,7 @@ Public API::
     verify_ledger(evidence_dir, *, project_id=None, path=None) -> ReconcileResult
     query_cost(*, project_id=None, path=None, since=None, until=None,
                job_id=None, by=None) -> CostReport
+    prior_report_period(since, until) -> PriorReportPeriod
     merge_cost_reports(reports) -> CostReport
     query_segment_shares(*, project_id=None, path=None, since=None, until=None,
                          job_id=None) -> SegmentShareReport
@@ -86,7 +88,7 @@ import logging
 import sqlite3
 import threading
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 from uuid import UUID
@@ -1065,6 +1067,117 @@ def query_cost(
     return report
 
 
+# The four honest answers to "why is there no previous period to compare with".
+# They are SENTENCES rather than codes because the report PRINTS them: a code
+# would have to be translated into these very words by every renderer, and the
+# second translation is where the two would start to disagree.
+_PRIOR_REASON_OPEN_ENDED = (
+    "No previous period: this report has no start or no end, and an open-ended "
+    "period has no length to mirror."
+)
+_PRIOR_REASON_UNPARSEABLE = (
+    "No previous period: one end of this period is not an ISO-8601 timestamp, "
+    "so its length cannot be measured and nothing is guessed at."
+)
+_PRIOR_REASON_MIXED_AWARENESS = (
+    "No previous period: one end of this period carries a UTC offset and the "
+    "other does not, so their difference is undefined and no offset is invented."
+)
+_PRIOR_REASON_EMPTY_PERIOD = (
+    "No previous period: this period ends at or before it starts, so it has no "
+    "length and its prior window would have none either."
+)
+
+
+# The window a report compares itself against — or the stated reason there is none.
+@dataclass(frozen=True)
+class PriorReportPeriod:
+    """The equal-length window before a report period, or why there is not one.
+
+    EITHER the pair of bounds is set OR ``unavailable_reason`` is — never both
+    and never neither. That invariant is the whole point of the class: "no
+    comparison data" has to be a STATEMENT the report can print rather than a
+    silence a renderer has to guess at, and a bare ``None`` cannot say why it is
+    None. ``__post_init__`` enforces it, so an unavailable period without a
+    reason cannot be constructed at all.
+
+    ``since`` and ``until`` are the prior window's own half-open bounds
+    ``[since, until)``, in the same ISO-8601 spelling ``_cost_filters`` compares
+    lexicographically. ``until`` is the ORIGINAL period's ``since`` string
+    passed through byte for byte, which is what makes the two windows abut
+    (DECISION F115 D6).
+    """
+
+    since: str | None = None
+    until: str | None = None
+    unavailable_reason: str | None = None
+
+    def __post_init__(self) -> None:
+        stated = self.unavailable_reason is not None
+        if self.available == stated:
+            raise ValueError(
+                "a PriorReportPeriod states either a window or the reason there "
+                f"is none, never both and never neither: since={self.since!r} "
+                f"until={self.until!r} reason={self.unavailable_reason!r}"
+            )
+        if stated and (self.since is not None or self.until is not None):
+            raise ValueError(
+                "an unavailable PriorReportPeriod carries no half of a window: "
+                f"since={self.since!r} until={self.until!r} "
+                f"reason={self.unavailable_reason!r}"
+            )
+
+    # One question every caller asks; spelled once here so it cannot drift.
+    @property
+    def available(self) -> bool:
+        """True when a prior window was placed, i.e. both bounds are set."""
+        return self.since is not None and self.until is not None
+
+
+# The equal-length window immediately BEFORE ``[since, until)`` — pure, no ledger.
+def prior_report_period(since: str | None, until: str | None) -> PriorReportPeriod:
+    """Place the equal-length window immediately before ``[since, until)``.
+
+    PURE: no ledger, no clock, no I/O — two strings in, one value out. It NEVER
+    RAISES either: "there is nothing to compare against" is an answer the report
+    has to print, not an error the caller has to catch, so each of the four
+    cases that yield no window returns its own reason sentence instead.
+
+    THE ARITHMETIC. Both ends are parsed with ``datetime.fromisoformat`` (with
+    ``Z`` read as ``+00:00``), ``d = until - since``, and the prior window is
+    ``[since - d, since)``. Its opening bound is serialised with
+    ``.isoformat()``, which reproduces the awareness of the input it came from;
+    its closing bound is the caller's own ``since`` STRING, untouched.
+
+    THE FOUR UNAVAILABLE CASES, each with its own sentence: an open-ended period
+    has no length to mirror; an end that is not ISO-8601 is never guessed at; a
+    naive end paired with an aware one has an undefined difference and no offset
+    is invented for it; and a period ending at or before it starts has an empty
+    or inverted prior window.
+    """
+    if not since or not until:
+        return PriorReportPeriod(unavailable_reason=_PRIOR_REASON_OPEN_ENDED)
+    try:
+        parsed_since = _parse_period_bound(since)
+        parsed_until = _parse_period_bound(until)
+    except ValueError:
+        return PriorReportPeriod(unavailable_reason=_PRIOR_REASON_UNPARSEABLE)
+    try:
+        length = parsed_until - parsed_since
+    except TypeError:
+        # Subtracting an offset-naive datetime from an aware one is a TypeError
+        # by design; inventing an offset here would be fabricating a timezone.
+        return PriorReportPeriod(unavailable_reason=_PRIOR_REASON_MIXED_AWARENESS)
+    if length <= timedelta(0):
+        return PriorReportPeriod(unavailable_reason=_PRIOR_REASON_EMPTY_PERIOD)
+    # WHY the ORIGINAL ``since`` string and never a re-serialisation of it:
+    # ``_cost_filters`` compares ``ts_utc`` LEXICOGRAPHICALLY, so the two windows
+    # abut only if the boundary they share is the SAME STRING on both sides — a
+    # round-trip turns "2026-08-01" into "2026-08-01T00:00:00" and "Z" into
+    # "+00:00", and a partition that survives that does so by formatting luck.
+    return PriorReportPeriod(since=(parsed_since - length).isoformat(), until=since)
+
+
 # Folds several project reports into one, which is what ``--all-projects`` is.
 def merge_cost_reports(reports: list[CostReport]) -> CostReport:
     """Combine per-project reports into one, keeping every NULL a NULL.
@@ -1260,6 +1373,17 @@ def _connect_readonly(path: Path) -> sqlite3.Connection:
         conn.close()
         raise
     return conn
+
+
+def _parse_period_bound(text: str) -> datetime:
+    """One ISO-8601 period bound as a ``datetime``; a trailing ``Z`` is UTC.
+
+    ``fromisoformat`` accepted no trailing ``Z`` before Python 3.11 while the
+    ledger's own timestamps carry an explicit ``+00:00``, so the replacement is
+    what lets a caller spell the same instant either way. Raises ``ValueError``
+    on anything else, which ``prior_report_period`` turns into a stated reason.
+    """
+    return datetime.fromisoformat(text.replace("Z", "+00:00"))
 
 
 def _cost_filters(

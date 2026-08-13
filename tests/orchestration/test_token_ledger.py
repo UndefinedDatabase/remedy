@@ -73,6 +73,7 @@ import logging
 import os
 import sqlite3
 import subprocess
+from datetime import datetime
 from pathlib import Path
 from uuid import UUID, uuid4
 
@@ -89,6 +90,7 @@ from packages.orchestration.token_ledger import (
     BackfillResult,
     CallRecord,
     CallSegmentRow,
+    PriorReportPeriod,
     SegmentShareRow,
     backfill_ledger,
     call_id_for_task_run,
@@ -97,6 +99,7 @@ from packages.orchestration.token_ledger import (
     ledger_miss_count,
     merge_cost_reports,
     open_ledger,
+    prior_report_period,
     query_cost,
     query_segment_shares,
     record_call,
@@ -1172,6 +1175,126 @@ class TestMergeCostReports:
         assert merged.total.calls == 2
         # No input, no period: the empty fold invents no end either.
         assert merge_cost_reports([]).until is None
+
+
+class TestPriorReportPeriod:
+    """DECISION F115 D6: the window before ``[since, until)``, or why there is none."""
+
+    def test_the_prior_window_of_a_bare_date_pair(self):
+        prior = prior_report_period("2026-08-08", "2026-08-15")
+
+        assert prior.available is True
+        assert prior.since == "2026-08-01T00:00:00"
+        assert prior.until == "2026-08-08"
+        assert prior.unavailable_reason is None
+
+    def test_the_prior_window_of_an_offset_aware_pair(self):
+        """The opening bound reproduces the awareness of the input it came from."""
+        prior = prior_report_period(
+            "2026-08-08T00:00:00+00:00", "2026-08-09T06:00:00+00:00"
+        )
+
+        assert prior.available is True
+        assert prior.since == "2026-08-06T18:00:00+00:00"
+        assert prior.until == "2026-08-08T00:00:00+00:00"
+
+    def test_the_prior_until_is_the_original_since_string_byte_for_byte(self):
+        """A re-serialisation would break the abutment by formatting luck alone.
+
+        ``_cost_filters`` compares ``ts_utc`` lexicographically, so the boundary
+        the two windows share has to be the SAME STRING on both sides. Both
+        spellings below round-trip to something ELSE, which is exactly why the
+        caller's own bytes are passed through instead.
+        """
+        for spelling, end in (
+            ("2026-08-08T00:00:00Z", "2026-08-09T00:00:00Z"),
+            ("2026-08-08", "2026-08-09"),
+        ):
+            prior = prior_report_period(spelling, end)
+
+            assert prior.until == spelling
+            round_tripped = datetime.fromisoformat(
+                spelling.replace("Z", "+00:00")
+            ).isoformat()
+            assert round_tripped != spelling, "the spelling must not survive a round-trip"
+
+    def test_an_open_ended_period_has_no_prior_window(self):
+        for since, until in ((None, "2026-08-15"), ("2026-08-08", None), (None, None)):
+            prior = prior_report_period(since, until)
+
+            assert prior.available is False
+            assert prior.since is None and prior.until is None
+            assert "open-ended" in prior.unavailable_reason
+
+    def test_an_unparseable_end_is_never_guessed_at(self):
+        for since, until in (("last tuesday", "2026-08-15"), ("2026-08-08", "soon")):
+            prior = prior_report_period(since, until)
+
+            assert prior.available is False
+            assert "ISO-8601" in prior.unavailable_reason
+
+    def test_a_naive_end_beside_an_aware_one_invents_no_offset(self):
+        prior = prior_report_period("2026-08-08T00:00:00+00:00", "2026-08-15T00:00:00")
+
+        assert prior.available is False
+        assert "offset" in prior.unavailable_reason
+
+    def test_an_empty_or_inverted_period_has_no_prior_window_either(self):
+        for since, until in (
+            ("2026-08-08", "2026-08-08"),
+            ("2026-08-15", "2026-08-08"),
+        ):
+            prior = prior_report_period(since, until)
+
+            assert prior.available is False
+            assert "ends at or before it starts" in prior.unavailable_reason
+
+    def test_each_unavailable_case_states_its_own_reason(self):
+        """Four different failures, four different sentences — never one catch-all."""
+        reasons = {
+            prior_report_period(None, "2026-08-15").unavailable_reason,
+            prior_report_period("nope", "2026-08-15").unavailable_reason,
+            prior_report_period(
+                "2026-08-08T00:00:00+00:00", "2026-08-15T00:00:00"
+            ).unavailable_reason,
+            prior_report_period("2026-08-15", "2026-08-08").unavailable_reason,
+        }
+        assert len(reasons) == 4
+
+    def test_a_window_or_a_reason_but_never_both_and_never_neither(self):
+        with pytest.raises(ValueError):
+            PriorReportPeriod()
+        with pytest.raises(ValueError):
+            PriorReportPeriod(since="2026-08-01", until="2026-08-08",
+                              unavailable_reason="both halves")
+        with pytest.raises(ValueError):
+            PriorReportPeriod(since="2026-08-01")
+        with pytest.raises(ValueError):
+            PriorReportPeriod(since="2026-08-01", unavailable_reason="half a window")
+
+    def test_the_prior_and_the_current_window_partition_the_ledger(self, cost_ledger):
+        """The partition property of DECISION F115 D5, over a real ledger.
+
+        The prior window plus the current one cover ``[prior.since, until)``
+        exactly once: no boundary call is counted twice and none is dropped.
+        """
+        since, until = "2026-08-02T00:00:00+00:00", "2026-08-03T00:00:00+00:00"
+        prior = prior_report_period(since, until)
+        assert prior.available is True
+
+        before = query_cost(path=cost_ledger, since=prior.since,
+                            until=prior.until).total
+        current = query_cost(path=cost_ledger, since=since, until=until).total
+        whole = query_cost(path=cost_ledger, since=prior.since, until=until).total
+
+        assert (before.calls, current.calls, whole.calls) == (2, 2, 4)
+        assert before.calls + current.calls == whole.calls
+        assert before.measured_calls + current.measured_calls == whole.measured_calls
+        # The two measured calls sit in the PRIOR window; the current one holds
+        # only unmeasured rows, so its share of the total stays None, not 0.
+        assert before.tokens_in == 1500
+        assert current.tokens_in is None
+        assert whole.tokens_in == 1500
 
 
 # ---------------------------------------------------------------------------
