@@ -558,7 +558,7 @@ CATALOG: tuple[CommandEntry, ...] = (
         subcommand="list",
         description="List the loops in remedy.toml: name, trigger, action and last run.",
         action_class="read_only",
-        related=("loop.validate",),
+        related=("loop.validate", "loop.run"),
     ),
     CommandEntry(
         command_id="loop.validate",
@@ -566,7 +566,24 @@ CATALOG: tuple[CommandEntry, ...] = (
         subcommand="validate",
         description="Check every loop spec. Reports EVERY error and exits non-zero on any.",
         action_class="read_only",
-        related=("loop.list",),
+        related=("loop.list", "loop.run"),
+    ),
+    CommandEntry(
+        command_id="loop.run",
+        group_id="loop",
+        subcommand="run",
+        # write_metadata, not an execution class: it persists a PLANNED job and
+        # stops there (DECISION F045 D7), so may_execute_commands stays False.
+        description="Materialize a loop as a planned job or mission and stop. Nothing runs.",
+        action_class="write_metadata",
+        args=(
+            ArgDef("name", "Name of the loop to materialize"),
+            ArgDef("--yes", "Skip the confirmation prompt. It approves the "
+                            "materialization only, never execution.",
+                   required=False, is_option=True, is_flag=True),
+            _PROJECT_SCOPE_OPT,
+        ),
+        related=("loop.list", "loop.validate"),
     ),
 
     # ── project ──────────────────────────────────────────────────────────

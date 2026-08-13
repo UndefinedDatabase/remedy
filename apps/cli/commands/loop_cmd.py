@@ -1,11 +1,13 @@
-"""`remedy loop` — read-only views over the declarative loops (F045 T003).
+"""`remedy loop` — the operator's surface over the declarative loops (F045 T003).
 
 A LOOP is user-authored configuration in the project's ``remedy.toml``
-(``[[loop]]``, DECISION F045 D1). This module SHOWS loops and CHECKS them; it
-materializes nothing. ``remedy loop run`` is the write half and lives in its own
-round — a reader of this file who is looking for it will not find it here.
+(``[[loop]]``, DECISION F045 D1). ``list`` and ``validate`` only READ. ``run``
+is the one write in this module: it materializes a loop through
+``loop_run.run_loop`` and STOPS at a planned job. DECISION F045 D7 — ``--yes``
+skips the confirmation prompt and approves NOTHING else. Nothing here executes
+a task, and Remedy deliberately offers no flag that would make it.
 
-Both commands read the config exactly where
+All three commands read the config exactly where
 :mod:`packages.orchestration.loop_spec` already looks: they call
 ``load_loop_specs()`` / ``validate_loop_specs()`` with NO path argument, so the
 default ``remedy.toml`` relative to the working directory is the one config
@@ -31,6 +33,13 @@ if TYPE_CHECKING:
 #: The same "the command refused" code `remedy queue` uses, so a caller
 #: scripting the CLI does not need a per-group exit table.
 EXIT_ERROR = 1
+
+#: The same "you invoked it wrongly" code `remedy queue add` uses.
+EXIT_USAGE = 2
+
+#: The contract's exit code for "no project" — the same one `job create`,
+#: `queue add` and `mission start` use.
+EXIT_NO_PROJECT = 3
 
 #: What the LAST RUN column says when the job store holds no run for a loop.
 NEVER_RAN = "never"
@@ -106,7 +115,103 @@ def _cmd_loop_validate() -> None:
     print(f"{len(load_loop_specs())} loop(s) validated; no errors.")
 
 
+# WHY: the one project a run belongs to, resolved the way every other command
+# group resolves it. Deliberately a THIRD private copy of the same six lines
+# rather than a shared helper: `mission_cmd` and `queue_cmd` each define their
+# own, and extracting one would be a refactor across three command modules
+# riding along with a feature, which AGENTS.md forbids in the same commit.
+def _resolve_project_id(project_flag: str | None) -> str:
+    """The one project this run belongs to, or exit 3 with the same wording as job create."""
+    from packages.orchestration.project_registry import (
+        ProjectNotFoundError,
+        select_project,
+    )
+
+    try:
+        project, _source = select_project(project_flag, ".")
+    except ProjectNotFoundError:
+        print(
+            "Error: no project found. Run: remedy init\n"
+            "  or pass --project <slug-or-id>",
+            file=sys.stderr,
+        )
+        sys.exit(EXIT_NO_PROJECT)
+    return str(project.id)
+
+
+# WHY: its own function so the confirmation path is steerable in a test without
+# reaching into a captured stdin object.
+def _stdin_is_a_tty() -> bool:
+    """Whether there is an operator on the other end who could answer a prompt."""
+    return sys.stdin.isatty()
+
+
+def _confirm_materialization(spec: Any) -> bool:
+    """Ask before creating work; REFUSE rather than block when nobody can answer.
+
+    A non-TTY stdin gets an error and the name of the flag, never a prompt:
+    ``input()`` under a pipe or a non-interactive SSH session would hang the run
+    forever, and this feature exists to be driven exactly that way.
+    """
+    if not _stdin_is_a_tty():
+        print(f"Error: stdin is not a terminal, so there is nobody to confirm. "
+              f"Pass --yes to materialize loop '{spec.name}' without a prompt.",
+              file=sys.stderr)
+        sys.exit(EXIT_USAGE)
+    print(f"Loop '{spec.name}' will create one planned {spec.action.kind}. "
+          f"Nothing will run.")
+    return input("Continue? [y/N] ").strip().lower() in ("y", "yes")
+
+
+def _cmd_loop_run(name: str, *, project: str | None = None, yes: bool = False) -> None:
+    """Materialize the named loop and STOP; the job it creates is planned, not run.
+
+    DECISION F045 D7: ``--yes`` skips the confirmation and approves nothing
+    else. The job reaches the operator's approval gate exactly like a typed
+    goal, so the last line printed names the command that would start it.
+    """
+    from packages.orchestration.loop_run import run_loop
+    from packages.orchestration.loop_spec import LoopSpecError, load_loop_specs
+
+    project_id = _resolve_project_id(project)
+
+    try:
+        specs = load_loop_specs()
+    except LoopSpecError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(EXIT_ERROR)
+
+    spec = next((candidate for candidate in specs if candidate.name == name), None)
+    if spec is None:
+        # Naming what DOES exist is the whole fix for a typo'd loop name.
+        defined = ", ".join(candidate.name for candidate in specs) or "(none)"
+        print(f"Error: no loop named '{name}'. Defined loops: {defined}",
+              file=sys.stderr)
+        sys.exit(EXIT_ERROR)
+
+    if not yes and not _confirm_materialization(spec):
+        print("Cancelled. Nothing was created.")
+        return
+
+    outcome = run_loop(spec, project_id=project_id)
+
+    state = getattr(outcome.job.state, "value", outcome.job.state)
+    print(f"job {outcome.job.id}  {state}")
+    if outcome.mission_id:
+        print(f"mission {outcome.mission_id}")
+    if outcome.notice:
+        # The OUTCOME knows whether this run was inert; the display must not
+        # re-derive that from a constant (finding R-0355).
+        print(outcome.notice)
+    print(f"Nothing has run yet. Start it with: remedy job run {outcome.job.id}")
+
+
 COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "loop.list": lambda args: _cmd_loop_list(),
     "loop.validate": lambda args: _cmd_loop_validate(),
+    "loop.run": lambda args: _cmd_loop_run(
+        args.name,
+        project=getattr(args, "project", None),
+        yes=getattr(args, "yes", False),
+    ),
 }
