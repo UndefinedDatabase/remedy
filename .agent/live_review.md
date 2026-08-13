@@ -786,3 +786,21 @@ is the sole available signal.
   decides: either implement creation behind the fence check as the feature file
   says, or amend the feature file to match v1 reality under §4.7 and say why.
   Do not let R13 pick silently. OPEN.
+
+### DECISION F111 D6 (2026-08-13) — new-file creation stays on the full-file path
+Chosen for finding R-0315: amend the feature file to match v1 reality rather
+than lift the applicator's file-existence guard. `_apply_unified_diff` keeps
+requiring `full.is_file()`, so a creation diff fails the apply and the round
+falls back to the full-file path — the route deletions already take. Three
+reasons. The feature file lists applicator semantics under Do not touch, and
+teaching the diff applicator to create files is exactly a semantics change.
+A creation diff carries no existing content for the strict context check to
+validate against, so the one guarantee this applier sells — every context and
+removal line compared against the real file — buys nothing on that path. And
+the full-file path already creates files through `_apply_file_op`'s `create`
+action, under the same durable snapshot and the same rollback. Alternatives
+considered: (a) implement creation behind the fence check, as the A9 sentence
+said — rejected on the three reasons above; (b) leave the contradiction on disk
+and let T003 discover it — rejected, that is how R-0315 was born. Reverse this
+decision by deleting the D6 section of docs/roadmap/features/T2_F111.md and
+restoring the A9 sentence.
