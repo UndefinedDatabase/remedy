@@ -39,6 +39,7 @@ Public API::
     parse_diff_repair_response(raw_output)
         -> tuple[DiffRepairResponse | None, str]
     validate_diff_repair_response(response) -> list[str]
+    normalize_diff_blank_context(diff_text) -> str
     diff_repair_response_to_patch(response) -> StructuredPatch
     precheck_diff_repair_fences(repo_root, response, *, job_fences=None)
         -> DiffFencePrecheck
@@ -47,6 +48,7 @@ Public API::
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -174,6 +176,92 @@ def validate_diff_repair_response(response: DiffRepairResponse) -> list[str]:
     return issues
 
 
+# A hunk header read for its LINE BUDGET only — never for paths, which stay
+# ``review_scope``'s single reading. The old and new counts are what decide
+# whether a bare "" line is still hunk body or already the text after it.
+_DIFF_HUNK_HEADER_RE = re.compile(r"^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@")
+
+
+# A blank context line whose single leading space was stripped in transport is
+# repaired HERE, the one place the hunk's own budget can tell body from tail.
+def normalize_diff_blank_context(diff_text: str) -> str:
+    """Give a stripped blank context line its leading space back.
+
+    An UNCHANGED empty line inside a hunk is spelled as a single space and
+    nothing else. Editors, chat transports and models routinely strip that lone
+    trailing space, so the line arrives as ``""``. ``source_apply._apply_hunks``
+    then reads it as neither context, removal nor addition, consumes no original
+    line for it, and compares the next removal line against the wrong original
+    index — a correct answer becomes a rejected one and the repair round falls
+    back to resending whole files (finding R-0313).
+
+    The applicator is RIGHT to reject that input, and this repair deliberately
+    does NOT live there. ``_apply_hunks`` splits its diff with ``split("\\n")``,
+    which appends a phantom ``""`` to every diff that ends in a newline; turning
+    ``""`` into a context line at that layer would make the LAST hunk consume
+    one original line too many — a safe rejection traded for a silent
+    corruption. Here the hunk's declared counts are still known, so a ``""`` is
+    repaired only while the hunk has BOTH an old and a new line left to spend,
+    and ``splitlines()`` never produces the phantom in the first place.
+
+    Remedy deliberately does not reconstruct a blank context line that would be
+    the diff's FINAL line when the diff does not end in a newline: such a line
+    leaves no trace in the text at all, so nothing distinguishes it from a body
+    that was truncated in transfer, and the safe direction for a truncated body
+    is the applicator's existing rejection rather than a guessed context line.
+
+    Byte-identity on any diff that needs no repair, so a caller may normalise
+    unconditionally.
+    """
+    lines = diff_text.splitlines()
+    out: list[str] = []
+    hunk_open = False
+    old_remaining = 0
+    new_remaining = 0
+
+    for line in lines:
+        header = _DIFF_HUNK_HEADER_RE.match(line)
+        if header:
+            old_remaining = 1 if header.group(2) is None else int(header.group(2))
+            new_remaining = 1 if header.group(4) is None else int(header.group(4))
+            hunk_open = True
+            out.append(line)
+            continue
+
+        if not hunk_open:
+            out.append(line)
+            continue
+
+        # Checked BEFORE the "-" and "+" cases: a file header starts with one
+        # of those characters and must close the hunk, not spend its budget.
+        if line.startswith(("---", "+++", "diff ")):
+            hunk_open = False
+            out.append(line)
+        elif line == "" and old_remaining > 0 and new_remaining > 0:
+            out.append(" ")
+            old_remaining -= 1
+            new_remaining -= 1
+        elif line.startswith(" "):
+            old_remaining -= 1
+            new_remaining -= 1
+            out.append(line)
+        elif line.startswith("-"):
+            old_remaining -= 1
+            out.append(line)
+        elif line.startswith("+"):
+            new_remaining -= 1
+            out.append(line)
+        else:
+            # In practice "\\ No newline at end of file": it consumes no line on
+            # either side, so it is carried through without touching the budget.
+            out.append(line)
+
+    normalized = "\n".join(out)
+    if diff_text.endswith("\n"):
+        normalized += "\n"
+    return normalized
+
+
 # The one bridge from a repair answer to the shape the existing applicator takes:
 # one UnifiedDiff per DECLARED path, each carrying only that path's diff section.
 def diff_repair_response_to_patch(response: DiffRepairResponse) -> StructuredPatch:
@@ -183,13 +271,20 @@ def diff_repair_response_to_patch(response: DiffRepairResponse) -> StructuredPat
     order, each carrying ONLY that path's section as cut by
     ``review_scope.split_diff_by_path``.
 
+    The diff is run through ``normalize_diff_blank_context`` FIRST and the
+    NORMALISED text is what gets split, so a blank context line that lost its
+    leading space in transport reaches the applicator as body instead of
+    rejecting the whole answer. ``validate_diff_repair_response`` keeps reading
+    the RAW diff: blank body lines do not affect the header parse, and
+    validation must judge what the model actually sent.
+
     Callers run ``validate_diff_repair_response`` FIRST: this function converts,
     it does not judge. A declared path the diff never touches therefore gets an
     EMPTY diff string on purpose — ``structured_patch.validate_structured_patch``
     then rejects it with ``unified_diff <path>: empty diff``, so the failure is
     fail-closed and named instead of a silent no-op apply.
     """
-    sections = split_diff_by_path(response.diff)
+    sections = split_diff_by_path(normalize_diff_blank_context(response.diff))
     diffs = tuple(
         UnifiedDiff(path=path, diff=sections.get(path, ""))
         for path in response.files
