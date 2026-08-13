@@ -4364,3 +4364,56 @@ Reverse this decision by moving the two directories back from
 `.remedy-wt/.cache/f107-archive/` to `.remedy-wt/`. The durable fix R-0295
 names — one `-path './.remedy-wt'` line in the packager's prune list — retires
 D3, this amendment and the move together.
+
+## DECISION F115 D2 (2026-08-13) — the planner call site needs a COMPOSER built, not a composition threaded
+
+Context: F115 D1 committed to wiring the three unwired `build_trace_entry` call
+sites through the prompt-segment registry so live ledger rows stop resolving to
+an empty manifest. Two are done — the builder at `pingpong_loop.py:2795` (R2)
+and the reviewer at `pingpong_loop.py:2987` (R4). Both were mechanical: a
+`compose_*_prompt` function already existed beside the call site, the legacy
+`_build_*_prompt` wrapper already returned `compose_*_prompt(...).text`, and
+the round only had to compose at the call site and hand the `ComposedPrompt`
+to the trace entry. The sent bytes could not change, and the goldens proved it.
+
+The planner site is NOT that shape, and this is recorded before it is ordered
+so no round discovers it mid-flight. The facts, read at the F115 R5 gate:
+
+* The trace entry is built at `apps/cli/commands/job.py:236`, inside the
+  `_record_plan_call` callback, from an `effective_prompt` STRING.
+* That string arrives through `make_structured_planner`
+  (`packages/orchestration/structured_planner.py:59`), whose contract is
+  `on_call(attempt, schema_v, is_parse_retry, effective_prompt)`
+  (`structured_planner.py:68`) — a string, by design, because the engine is
+  provider-agnostic and driven by an injected `call_fn`.
+* The prompt itself is built in `plan_job_with_llm` at
+  `packages/orchestration/llm_planner.py:107-109`: `prompt = job.user_prompt or
+  job.name`, then `prompt = f"{prompt}\n\n{memory_section}"` when recalled
+  memory exists. It is two concatenated parts and nothing else.
+* There is NO composer to reuse: `grep -c 'ComposedPrompt'
+  packages/orchestration/llm_planner.py` prints 0. Unlike the builder and the
+  reviewer, no registry-backed function exists to call.
+
+Chosen: a later round BUILDS `compose_planner_prompt` in `llm_planner.py` over
+the two parts that already exist — the job prompt at TASK rank and the recalled
+memory section at JOB_CONTEXT rank — and threads the resulting `ComposedPrompt`
+out to `_record_plan_call` through an explicit optional hook on
+`plan_job_with_llm`, leaving `call_planner` still receiving the same string.
+The sent bytes stay identical because `compose_prompt_segments` joins with the
+two-character `PROMPT_SEGMENT_DELIMITER` (`prompt_segments.py:188`), which is
+exactly the `\n\n` the current concatenation already uses — that identity is
+the round's first gate, not an assumption, and if it does not hold the round
+stops rather than changing what the planner sends.
+
+Alternatives considered: (a) widen `on_call` to carry a `ComposedPrompt` —
+rejected, it changes a provider-agnostic engine contract for one caller's
+telemetry; (b) compose in `job.py` instead, duplicating the prompt assembly at
+the CLI — rejected, two places would build the planner prompt and could drift,
+which is the exact failure `_build_reviewer_prompt` was collapsed into
+`compose_reviewer_prompt` to prevent; (c) accept a permanently empty planner
+manifest and report those rows "unattributed" — rejected as the default, but it
+remains the honest fallback if the byte-identity gate fails, and F115 already
+owes "unattributed" rendering for historical rows regardless.
+
+Reverse this decision by deleting this entry. Nothing in the tree depends on it
+yet: it is a plan for a round that has not run.
