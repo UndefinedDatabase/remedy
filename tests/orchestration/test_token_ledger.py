@@ -34,8 +34,9 @@ What T002 adds proof of, against a real on-disk evidence tree:
 
 What T003 adds proof of, over a ledger written row by row:
 
-  * ``query_cost`` groups by role, by model and by day, filters on ``since`` and
-    on ``job_id``, and reports a grand total over the same filters;
+  * ``query_cost`` groups by role, by model and by day, filters on ``since``, on
+    the EXCLUSIVE ``until`` and on ``job_id``, and reports a grand total over the
+    same filters;
   * a bucket in which NOTHING was measured reports ``tokens_in is None`` and
     ``cost_usd is None`` — never 0 — with ``unmeasured_calls`` equal to its own
     row count, which is the P6 rule this feature exists to keep;
@@ -1026,6 +1027,28 @@ class TestQueryCostFilters:
         report = query_cost(path=cost_ledger, job_id=COST_JOB_UNMEASURED, by="role")
         assert [row.bucket for row in report.rows] == ["reviewer"]
 
+    def test_a_call_at_exactly_until_is_out_while_one_at_exactly_since_is_in(
+        self, cost_ledger
+    ):
+        """DECISION F115 D5: the period is the half-open ``[since, until)``.
+
+        ONE instant read as both boundaries. The 09:00 call on 08-02 is INSIDE
+        the window that starts there and OUTSIDE the window that ends there, so
+        the two adjacent windows partition the four rows exactly once between
+        them — no row counted twice, none dropped.
+        """
+        boundary = "2026-08-02T09:00:00+00:00"
+
+        opened = query_cost(path=cost_ledger, since=boundary)
+        closed = query_cost(path=cost_ledger, until=boundary, by="day")
+
+        assert opened.total.calls == 2
+        assert closed.total.calls == 2
+        assert [row.bucket for row in closed.rows] == ["2026-08-01"]
+        assert closed.until == boundary
+        assert (opened.total.calls + closed.total.calls
+                == query_cost(path=cost_ledger).total.calls)
+
 
 class TestUnmeasuredIsNeverAZero:
     """The P6 rule: SUM over all-NULL stays NULL, so nothing renders as 0."""
@@ -1128,6 +1151,27 @@ class TestMergeCostReports:
         assert merged.rows == []
         assert merged.total.calls == 0
         assert merged.total.cost_usd is None
+
+    def test_the_merge_carries_the_period_end_of_its_inputs(self, cost_ledger,
+                                                            tmp_path):
+        """A merged report that forgot ``until`` would not match its own shares.
+
+        ``cost_report._same_question`` compares the period on both halves, so a
+        cross-project total that dropped its end would be refused beside a
+        legitimate ``query_segment_shares`` over the very same arguments.
+        """
+        boundary = "2026-08-02T09:00:00+00:00"
+
+        merged = merge_cost_reports([
+            query_cost(path=cost_ledger, until=boundary, by="role"),
+            query_cost(path=tmp_path / "b" / LEDGER_FILENAME, until=boundary,
+                       by="role"),
+        ])
+
+        assert merged.until == boundary
+        assert merged.total.calls == 2
+        # No input, no period: the empty fold invents no end either.
+        assert merge_cost_reports([]).until is None
 
 
 # ---------------------------------------------------------------------------
@@ -1947,6 +1991,25 @@ class TestQuerySegmentShares:
         assert both.rows == since.rows
         assert (both.attributed_calls, both.unattributed_calls) == (1, 0)
         assert (both.since, both.job_id) == ("2026-08-05", SHARE_JOB_TRACED)
+
+    def test_until_narrows_the_shares_exactly_as_it_narrows_the_cost(
+        self, share_ledger
+    ):
+        """ONE ``_cost_filters`` clause, so the pair cannot disagree on the period.
+
+        The boundary is the traced 08-05 call's own timestamp, so the EXCLUSIVE
+        end drops it together with the untraced 08-09 one and leaves only the
+        08-01 call — whose two segment kinds are the whole breakdown.
+        """
+        boundary = "2026-08-05T10:00:00+00:00"
+
+        shares = query_segment_shares(path=share_ledger, until=boundary)
+        cost = query_cost(path=share_ledger, until=boundary)
+
+        assert [row.segment_name for row in shares.rows] == ["diff", "task_brief"]
+        assert (shares.attributed_calls, shares.unattributed_calls) == (1, 0)
+        assert shares.attributed_calls + shares.unattributed_calls == cost.total.calls
+        assert shares.until == boundary == cost.until
 
     def test_a_missing_ledger_yields_an_empty_report_and_creates_nothing(self, tmp_path):
         """Asking where the tokens went must not be what brings a ledger into being."""

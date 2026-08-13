@@ -73,11 +73,11 @@ Public API::
         -> list[CallSegmentRow]
     backfill_ledger(evidence_dir, *, project_id=None, path=None) -> BackfillResult
     verify_ledger(evidence_dir, *, project_id=None, path=None) -> ReconcileResult
-    query_cost(*, project_id=None, path=None, since=None, job_id=None, by=None)
-        -> CostReport
+    query_cost(*, project_id=None, path=None, since=None, until=None,
+               job_id=None, by=None) -> CostReport
     merge_cost_reports(reports) -> CostReport
-    query_segment_shares(*, project_id=None, path=None, since=None, job_id=None)
-        -> SegmentShareReport
+    query_segment_shares(*, project_id=None, path=None, since=None, until=None,
+                         job_id=None) -> SegmentShareReport
 """
 
 from __future__ import annotations
@@ -432,6 +432,7 @@ class CostReport:
     total: CostRow = field(default_factory=CostRow)
     by: str | None = None
     since: str | None = None
+    until: str | None = None
     job_id: str | None = None
     project_id: str | None = None
     ledger_path: str | None = None
@@ -487,6 +488,7 @@ class SegmentShareReport:
     total_chars: int = 0
     total_tokens_estimated: int = 0
     since: str | None = None
+    until: str | None = None
     job_id: str | None = None
     project_id: str | None = None
     ledger_path: str | None = None
@@ -998,6 +1000,7 @@ def query_cost(
     project_id: UUID | str | None = None,
     path: Path | str | None = None,
     since: str | None = None,
+    until: str | None = None,
     job_id: str | None = None,
     by: str | None = None,
 ) -> CostReport:
@@ -1013,6 +1016,10 @@ def query_cost(
     exactly why ``ts_utc`` is stored as TEXT instead of an epoch number. The
     comparison is only sound between timestamps written in the same ISO-8601 UTC
     shape, which is the only shape this module ever writes.
+
+    ``until`` is EXCLUSIVE, so the period is ``[since, until)`` and two
+    adjacent periods concatenate without counting a boundary call twice
+    (DECISION F115 D5).
 
     ``job_id`` filters to one job. ``"day"`` buckets by the first 10 characters
     of ``ts_utc``, i.e. its calendar day in UTC.
@@ -1036,6 +1043,7 @@ def query_cost(
     report = CostReport(
         by=by,
         since=since,
+        until=until,
         job_id=job_id,
         project_id=None if project_id is None else str(project_id),
         ledger_path=str(target),
@@ -1044,7 +1052,7 @@ def query_cost(
     if not report.ledger_exists:
         return report
 
-    where, where_params = _cost_filters(since=since, job_id=job_id)
+    where, where_params = _cost_filters(since=since, until=until, job_id=job_id)
     conn = _connect_readonly(target)
     try:
         report.total = _cost_bucket_rows(conn, where, where_params, group_expr=None)[0]
@@ -1074,6 +1082,10 @@ def merge_cost_reports(reports: list[CostReport]) -> CostReport:
     merged = CostReport(
         by=reports[0].by if reports else None,
         since=reports[0].since if reports else None,
+        # Carried, not dropped: a merged report that forgot its period END would
+        # disagree with a shares report over the same arguments, and
+        # ``cost_report._same_question`` would refuse that legitimate pair.
+        until=reports[0].until if reports else None,
         job_id=reports[0].job_id if reports else None,
         ledger_exists=any(r.ledger_exists for r in reports),
     )
@@ -1093,15 +1105,20 @@ def query_segment_shares(
     project_id: UUID | str | None = None,
     path: Path | str | None = None,
     since: str | None = None,
+    until: str | None = None,
     job_id: str | None = None,
 ) -> SegmentShareReport:
     """Aggregate ``call_segments`` into a ``SegmentShareReport``. READ-ONLY, and never raises on absence.
 
-    ``since`` and ``job_id`` filter the CALLS, through the very same
+    ``since``, ``until`` and ``job_id`` filter the CALLS, through the very same
     ``_cost_filters`` clause ``query_cost`` uses. Both columns live only on
     ``calls``, so the clause is sound verbatim inside the join, and a breakdown
     and a cost report over the same arguments describe the same set of calls by
     construction rather than by two clauses that happen to agree today.
+
+    ``until`` is EXCLUSIVE, so the period is ``[since, until)`` and two
+    adjacent periods concatenate without counting a boundary call twice
+    (DECISION F115 D5).
 
     TWO STATEMENTS run under that one clause. The first joins ``calls`` to
     ``call_segments`` on ``call_id`` and groups by ``segment_name``. The second
@@ -1133,6 +1150,7 @@ def query_segment_shares(
     target = _resolve_ledger_path(project_id=project_id, path=path)
     report = SegmentShareReport(
         since=since,
+        until=until,
         job_id=job_id,
         project_id=None if project_id is None else str(project_id),
         ledger_path=str(target),
@@ -1141,7 +1159,7 @@ def query_segment_shares(
     if not report.ledger_exists:
         return report
 
-    where, where_params = _cost_filters(since=since, job_id=job_id)
+    where, where_params = _cost_filters(since=since, until=until, job_id=job_id)
     shares_sql = (
         "SELECT call_segments.segment_name, "
         "COUNT(DISTINCT call_segments.call_id), COUNT(*), "
@@ -1244,13 +1262,23 @@ def _connect_readonly(path: Path) -> sqlite3.Connection:
     return conn
 
 
-def _cost_filters(*, since: str | None, job_id: str | None) -> tuple[str, list[Any]]:
-    """The shared WHERE clause, so the buckets and the grand total cannot diverge."""
+def _cost_filters(
+    *, since: str | None, until: str | None, job_id: str | None
+) -> tuple[str, list[Any]]:
+    """The shared WHERE clause, so the buckets and the grand total cannot diverge.
+
+    ``until`` is STRICTLY less-than while ``since`` is ``>=``, so a period is
+    the half-open ``[since, until)`` and two adjacent periods concatenate
+    without counting a boundary call twice (DECISION F115 D5).
+    """
     clauses: list[str] = []
     params: list[Any] = []
     if since:
         clauses.append("ts_utc >= ?")
         params.append(since)
+    if until:
+        clauses.append("ts_utc < ?")
+        params.append(until)
     if job_id:
         clauses.append("job_id = ?")
         params.append(job_id)
