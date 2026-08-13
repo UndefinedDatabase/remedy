@@ -1,13 +1,10 @@
 # Plan — F115 Prompt breakdown & cost report
 
 Branch: feature/f115-prompt-cost-report, cut from main at 0d6c97aa after
-PR #194 merged. Last reviewed SHA: fbaab57f. R20's gate verdict was FAIL, on
-the single ground that High finding R-0340 was open; R20's execution was
-correct and its evidence is what made the failure legible. Next free finding
-ID: R-0342. Open findings: 13 — R-0320, R-0322, R-0323, R-0324, R-0327,
-R-0328, R-0331, R-0333, R-0334, R-0336, R-0337, R-0339, R-0341. R-0340 is
-landed and awaits the reviewer's `Done:`. No PR exists; closure has not
-started. `.agent/STOP` is gone.
+PR #194 merged. Last reviewed SHA: 7bc57cd1. R21's verdict is PASS; the
+integration gate is green. Next free finding ID: R-0343. Open findings: 14 —
+R-0320, R-0322, R-0323, R-0324, R-0327, R-0328, R-0331, R-0333, R-0334,
+R-0336, R-0337, R-0339, R-0341, R-0342 — all Medium/Low. No PR exists.
 
 ## Goal
 Costs stop being an opaque total: `remedy stats report` shows WHERE
@@ -17,32 +14,35 @@ traceable to a ledger row, and a period with missing data reported as
 missing instead of interpolated (docs/roadmap/features/T2_F115.md).
 
 ## Current Step
-R21 persisted the R20 verdict with findings R-0340 and R-0341, then repaired
-R-0340 with one signature line: the double at `tests/test_run_log_cli.py:78`
-now mirrors `plan_job_with_llm`'s keyword-only `on_prompt_composed`. No
-assertion moved. The branch side of the gate was re-run against the unmoved
-merge base; `comm -13` is EMPTY, so the six branch-only failures are gone and
-nothing replaced them. Evidence in `.agent/gate_f115_r21/`.
+R23 HALTED at ITEM B (the Built State), a second time, on stop-on-false-claim.
+ITEM A landed: R-0342 is registered. The R23 Built State text carries two
+claims that do not hold against source, so it was NOT written to
+docs/roadmap/features/T2_F115.md:
+1. "`prior_report_period` needs BOTH bounds (`token_ledger.py:1160-1161`)" —
+   the both-bounds guard is at 1158-1159; 1160-1161 are `try:` and the first
+   `_parse_period_bound` call.
+2. "Three vocabulary decisions are load-bearing and pinned by tests" —
+   only `COST_UNMEASURED_LABEL` is. `"(unlabelled)"` and `"(unnamed)"`, and
+   their constant names, appear NOWHERE under `tests/` in any form.
+51 of 54 checked claims verified TRUE. Third, minor: `_cmd_stats_report` is
+cited as 509-568; its AST span is 509-566 (567-568 blank).
 
 ## Next Steps
-1. Reviewer gates R21 and issues the verdict on the repair and the re-run.
+1. Reviewer re-authors the Built State with those two claims corrected, then
+   re-orders the closure from that item. ITEM A must NOT be re-applied.
 2. Closure per docs/roadmap/STATUS_closure_protocol.md: evidence job, a FRESH
    review zip, the authored STATUS line committed last, then the PR.
 
 ## Risks
 - The work tree carries ` M scripts/make_review_zip.sh`, made by no agent
-  of this session. DECISION F115 D7 (which the R20 block called D4 — that
-  ID was already taken) leaves it untouched now and stashes it in the
-  closure round only. Every commit stages explicit paths.
+  of this session. DECISION F115 D7 leaves it untouched until the closure
+  round stashes it. Every commit stages explicit paths.
 - Per-role has one bucket until `role` stops being hardcoded, and
-  per-task-class has no source at all: report "no data", never a bucket.
-- R-0322 met the gate as five pre-existing reds, in both failed lists and
-  in neither comm output, exactly as predicted.
+  per-task-class has no source at all: the USER GUIDE states both limits;
+  `remedy stats report` prints neither.
 - The goldens are DATA: no test may regenerate them.
-- R-0340's lesson: F115's cover for that call site,
-  `tests/orchestration/test_structured_planner_cli.py:302`, asserts the SOURCE
-  TEXT of `job.py`, so it can prove the wiring was written and can never prove
-  it runs — it cannot catch a stale test double. Any further call-site wiring
-  on this branch needs a test that EXECUTES the call.
+- R-0342's lesson: authored prose that attributes an OUTPUT to a COMMAND, or
+  a PROPERTY to a symbol, must ship with a per-claim verification naming the
+  enclosing function. Two rounds have now been spent on the same defect class.
 
-Fortschritt: 98 % (T001 ✅ · T002 ✅ · T003 ✅ · Integration-Gate rot→repariert — Closure offen) — Schätzung
+Fortschritt: 98 % (T001 ✅ · T002 ✅ · T003 ✅ · Integration-Gate ✅ — Closure offen) — Schätzung
