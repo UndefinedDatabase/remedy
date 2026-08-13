@@ -289,3 +289,38 @@ Done: R-0332 — RESOLVED at the R12 gate. Verified against the code and a live 
   reviewer-arithmetic family overall, after R-0282, R-0321, R-0323, R-0324,
   R-0327, R-0328 and R-0331. No on-disk fix: the block is committed verbatim by
   design and R12's verdict stands as PASS. OPEN.
+
+Done: R-0333 — REGISTERED, not resolved, and it stays OPEN by construction: the block that carried the wrong prediction is committed verbatim by design, so there is nothing on disk to correct. Recorded here only to close the R13 round that registered it. The R13 round as a whole is PASS. The reviewer re-ran every gate itself: cmp exit 0 with sha256 7e9a5b81683e7eb6a09a1199f8c4b332f0ec04f146acee9b67f4b2d867c716a1 over both copies, `wc -lc` 106 9465, the live-review counts 6 / 14 / 1 / 0 for `^Done:`, `^- R-0`, `^## Steps` and `^Landed:`, `git show --numstat 9d2b638d -- .agent/live_review.md` reporting 28 insertions and ZERO deletions — which is the append-only property measured rather than asserted — `wc -l .agent/plan.md` 42, canary `42 passed`, `15 passed` unmoved by a state-only round, `99 passed`, an empty porcelain, 0/0 against origin, and 36 changed paths with no `.remedy-wt/**` among them. The declared handoff overage (80 lines against the 60-line cap) is ACCEPTED under AGENTS.md DECISION D15: the cause is mandated content, the file names its own real line count, and no section was dropped to meet the cap.
+
+- R-0334 — Low — reviewer block self-contradiction, second instance, recurring
+  in the VERY NEXT block after its class was registered. R-0331 recorded that
+  the R11 block's "Change:" clause disagreed with its own "Constraints:"
+  clause. The R13 delegation then told its worker "Commit 1 saves those bytes
+  verbatim to `.agent/authored/f115-r13-1.md`; commit 2 mirrors the identical
+  bytes" while the same block's Constraints clause said "C2 is its own commit
+  and comes first". Two clauses of one instruction ordered two different commit
+  sequences. The worker resolved it correctly and by the governing rule rather
+  than by proximity: it landed the findings commit first
+  (`9d2b638d`, before `4b149bfd` and `ab1b7e9b`), which is what
+  docs/agents/planner_reviewer_prompt.md §4 item 4 requires — findings persist
+  FIRST so nothing is lost if a session dies — and the block-save ordinals were
+  the throwaway half. What makes this worth its own id rather than a tally mark
+  under R-0331 is the interval: the class was registered, its lesson written
+  out at length, and it recurred in the next block the same reviewer authored,
+  in the same session. That is evidence the counter-measure is missing rather
+  than merely unapplied. The gap is nameable: the standing pre-emission
+  checklist sends the reviewer to the block's own bytes (items 1-4), to the
+  code it points at (item 5), to the file it writes into (item 6), to the tests
+  guarding that file (item 7) and to the code producing a gated value (item 8) —
+  five different places, and not one of them is the block's own OTHER clause.
+  Both instances are the same shape: a clause written early and a clause
+  written late, never read against each other. The remedy a later round should
+  weigh is a ninth checklist item — read the Change clause, the Constraints
+  clause and the ordering statements against one another as a final pass — and
+  it belongs to whichever round next has a legitimate reason to open
+  `docs/agents/planner_reviewer_prompt.md`, since AGENTS.md bars mixing an
+  unrelated doc change into a feature branch. Registered here so the pair is
+  countable and the counter-measure is findable when that round comes. Eighth
+  of the reviewer-arithmetic and self-contradiction family after R-0282,
+  R-0321, R-0323, R-0324, R-0327, R-0328, R-0331 and R-0333. No on-disk fix.
+  OPEN.
