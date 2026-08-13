@@ -26,7 +26,7 @@ honestly is the CLI's job in T003, not a silent behaviour change here.
 from __future__ import annotations
 
 import re
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from datetime import datetime, timezone
 
 from packages.core.models import Job, JobBudgets, RunState
@@ -116,6 +116,40 @@ def loop_budgets_to_job_budgets(budgets: LoopBudgets | None) -> JobBudgets | Non
     return JobBudgets(deadline=parsed_deadline, **fields)
 
 
+# WHY: one place builds a loop's job, so the job and mission paths cannot drift
+# apart in what provenance they record.
+def _materialize_loop_job(spec: LoopSpec, prompt: str, project_id: str, *,
+                          extra_metadata: Mapping[str, object] | None = None,
+                          save: Callable[[Job], None] | None = None) -> Job:
+    """Build, plan and persist the job a loop firing produces.
+
+    The three metadata keys T002 established are written first; *extra_metadata*
+    is merged AFTER them, which is how the mission path adds its own link keys
+    without either path re-implementing the provenance record.
+    """
+    from packages.orchestration.job_runner import plan_job
+    from packages.orchestration.storage import save_job as _save_job
+
+    metadata: dict[str, object] = {
+        "project_id": project_id,
+        LOOP_REF_METADATA_KEY: spec.name,
+        LOOP_UNATTENDED_METADATA_KEY: spec.unattended,
+    }
+    if extra_metadata:
+        metadata.update(extra_metadata)
+    job = Job(
+        name=prompt[:50],
+        user_prompt=prompt,
+        state=RunState.PENDING,
+        metadata=metadata,
+        project_id=project_id,
+        budgets=loop_budgets_to_job_budgets(spec.budgets),
+    )
+    plan_job(job)
+    (save or _save_job)(job)
+    return job
+
+
 # WHY: the single entry point from a declarative loop to the normal job
 # pipeline; every loop_ref in evidence originates here.
 def loop_to_job(spec: LoopSpec, *, project_id: str, date: str | None = None,
@@ -136,9 +170,6 @@ def loop_to_job(spec: LoopSpec, *, project_id: str, date: str | None = None,
     Raises :class:`LoopRunError` for any action kind other than ``job``:
     dispatch across kinds is ``run_loop``'s in T003 (DECISION F045 D3).
     """
-    from packages.orchestration.job_runner import plan_job
-    from packages.orchestration.storage import save_job as _save_job
-
     if spec.action.kind != "job":
         raise LoopRunError(
             f"loop '{spec.name}': loop_to_job materializes a job action, got "
@@ -151,18 +182,4 @@ def loop_to_job(spec: LoopSpec, *, project_id: str, date: str | None = None,
     run_date = date if date is not None else datetime.now(timezone.utc).strftime("%Y-%m-%d")
     prompt = render_goal_template(spec.action.goal_template,
                                   project=project_id, date=run_date)
-    job = Job(
-        name=prompt[:50],
-        user_prompt=prompt,
-        state=RunState.PENDING,
-        metadata={
-            "project_id": project_id,
-            LOOP_REF_METADATA_KEY: spec.name,
-            LOOP_UNATTENDED_METADATA_KEY: spec.unattended,
-        },
-        project_id=project_id,
-        budgets=loop_budgets_to_job_budgets(spec.budgets),
-    )
-    plan_job(job)
-    (save or _save_job)(job)
-    return job
+    return _materialize_loop_job(spec, prompt, project_id, save=save)
