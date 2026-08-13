@@ -1,0 +1,107 @@
+{
+  "buckets": [
+    {
+      "bucket": "2026-08-01",
+      "cache_read": null,
+      "cache_write": null,
+      "calls": 1,
+      "cost_usd": null,
+      "fully_measured": false,
+      "measured_calls": 0,
+      "tokens_in": 1000,
+      "tokens_out": 200,
+      "unmeasured_calls": 1
+    },
+    {
+      "bucket": "2026-08-05",
+      "cache_read": null,
+      "cache_write": null,
+      "calls": 1,
+      "cost_usd": null,
+      "fully_measured": false,
+      "measured_calls": 0,
+      "tokens_in": 1000,
+      "tokens_out": 200,
+      "unmeasured_calls": 1
+    },
+    {
+      "bucket": "2026-08-09",
+      "cache_read": 64,
+      "cache_write": 32,
+      "calls": 2,
+      "cost_usd": 0.25,
+      "fully_measured": false,
+      "measured_calls": 1,
+      "tokens_in": 2000,
+      "tokens_out": 400,
+      "unmeasured_calls": 1
+    }
+  ],
+  "comparison": {
+    "available": false,
+    "deltas": {
+      "cache_read": null,
+      "cache_write": null,
+      "calls": null,
+      "cost_usd": null,
+      "tokens_in": null,
+      "tokens_out": null
+    },
+    "prior": null,
+    "reason": "No previous period: this report has no start or no end, and an open-ended period has no length to mirror."
+  },
+  "filters": {
+    "by": "day",
+    "job": "",
+    "since": "",
+    "timezone": "UTC",
+    "until": ""
+  },
+  "label": "f115-golden",
+  "ledger_exists": true,
+  "note": "a null figure was never reported — it is not a zero; no price is ever computed",
+  "report_version": 3,
+  "segments": {
+    "attributed_calls": 2,
+    "rows": [
+      {
+        "calls": 1,
+        "chars": 400,
+        "segment_name": "diff",
+        "segments": 1,
+        "tokens_estimated": 100
+      },
+      {
+        "calls": 1,
+        "chars": 60,
+        "segment_name": "schema_tail",
+        "segments": 1,
+        "tokens_estimated": 100
+      },
+      {
+        "calls": 1,
+        "chars": 120,
+        "segment_name": "task_brief",
+        "segments": 1,
+        "tokens_estimated": 30
+      }
+    ],
+    "total_chars": 580,
+    "total_segments": 3,
+    "total_tokens_estimated": 230,
+    "unattributed_calls": 2
+  },
+  "total": {
+    "bucket": null,
+    "cache_read": 64,
+    "cache_write": 32,
+    "calls": 4,
+    "cost_usd": 0.25,
+    "fully_measured": false,
+    "measured_calls": 1,
+    "tokens_in": 4000,
+    "tokens_out": 800,
+    "unmeasured_calls": 3
+  },
+  "unmeasured_notation": "null"
+}

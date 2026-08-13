@@ -1,0 +1,10 @@
+== dist/index.html mtime BEFORE base run 2 ==
+2026-08-13 12:57:29.934371957 +0200  /home/decodeux/Repos/remedy/.remedy-wt/.cache/base_r20/apps/ui/dist/index.html
+== newest apps/ui/src mtime BEFORE base run 2 ==
+2026-08-13 12:56:01.1019720680  /home/decodeux/Repos/remedy/.remedy-wt/.cache/base_r20/apps/ui/src/types/react-force-graph-2d.d.ts
+== dist/index.html mtime AFTER base run 2 ==
+2026-08-13 13:03:20.185657368 +0200  /home/decodeux/Repos/remedy/.remedy-wt/.cache/base_r20/apps/ui/dist/index.html
+== newest apps/ui/src mtime AFTER base run 2 ==
+2026-08-13 12:56:01.1019720680  /home/decodeux/Repos/remedy/.remedy-wt/.cache/base_r20/apps/ui/src/types/react-force-graph-2d.d.ts
+EXIT_CODE=1
+WALL_SECONDS=136

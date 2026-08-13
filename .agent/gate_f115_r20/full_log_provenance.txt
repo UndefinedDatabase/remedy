@@ -1,0 +1,21 @@
+PROVENANCE OF THE FULL RUN LOGS
+The four full logs below were written to the gitignored scratch dir
+.remedy-wt/.cache/gate_r20/ during their runs and are NOT committed:
+committing them would put a single commit ~5.6k insertions over the
+AGENTS.md 500-insertion cap. What is committed is what
+docs/agents/integration_gate.md step 1 names -- raw tail, full FAILED
+list, exit code, wall time -- plus the decisive tail of one blocker
+traceback (blocker_traceback.txt, itself elided in the middle, marked
+inline, and taken verbatim from serial_branch.txt below).
+Line counts and hashes so the trim is auditable:
+
+  2132 .remedy-wt/.cache/gate_r20/branch_run.txt
+   981 .remedy-wt/.cache/gate_r20/base_run.txt
+   508 .remedy-wt/.cache/gate_r20/base_run2.txt
+  1684 .remedy-wt/.cache/gate_r20/serial_branch.txt
+  5305 total
+
+f7329c11dff43c947b531914a6978e80a30708570e63e7b2d6fa9207dde442ff  .remedy-wt/.cache/gate_r20/branch_run.txt
+c458276e5f03708f55b5fb991276c3a1e06d984a470b00f545f3d5ccbfec6575  .remedy-wt/.cache/gate_r20/base_run.txt
+883584b232289948c85b56343ad3e4943ed7d7809b9f703381a837aaa7a6143b  .remedy-wt/.cache/gate_r20/base_run2.txt
+03aca109f9a042cbce5cbd27bdd8394db016b91385ec31e69246c63f2d1ca727  .remedy-wt/.cache/gate_r20/serial_branch.txt

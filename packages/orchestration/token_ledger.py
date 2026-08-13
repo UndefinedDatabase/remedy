@@ -38,7 +38,11 @@ does not exist:
   FINALIZED TASK RUN, keyed ``"<job_id>:<task_id>"`` (DECISION D16, recorded on
   the feature file): ``task_runs/<task_id>/provider_evidence.json`` is the
   finest record the actuals feature puts on disk, and a per-request row would
-  have to invent ids, timestamps and a usage split no file records.
+  have to invent ids, timestamps and a usage split no file records. F115 D4 adds
+  ``call_segments`` BESIDE it rather than widening it — one row per segment of
+  one composed prompt, keyed by the row's ``call_id`` plus the trace line's
+  position — so the per-call breakdown lives in its own table and ``calls``
+  keeps its one-row-per-task-run identity untouched.
 * Remedy deliberately does NOT invent prices. ``cost_usd`` stays NULL unless a
   caller supplies a real figure together with the basis it came from, and a
   call with no reported usage produces NULL counts with basis ``unknown``
@@ -53,21 +57,29 @@ Public API::
     SCHEMA_VERSION_KEY / LEDGER_FILENAME / BUSY_TIMEOUT_MS
     COST_BASIS_PROVIDER_REPORTED / COST_BASIS_PRICE_TABLE / COST_BASIS_UNKNOWN
     COST_BASES: frozenset[str]
-    CallRecord / BackfillResult / ReconcileResult
+    CallRecord / CallSegmentRow / BackfillResult / ReconcileResult
     CostRow / CostReport / COST_GROUP_KEYS
+    SegmentShareRow / SegmentShareReport
+    PriorReportPeriod
     token_ledger_path_for(project_id, root=None) -> Path
     open_ledger(path) -> sqlite3.Connection
     record_call(record, *, project_id=None, path=None) -> bool
+    record_call_segments(rows, *, project_id=None, path=None) -> bool
     ledger_miss_count() -> int
     reset_ledger_miss_count() -> None
     call_id_for_task_run(job_id, task_id) -> str
     job_id_for_evidence_dir(evidence_dir) -> str
     call_record_from_evidence(evidence_dir, job_id, task_id) -> CallRecord | None
+    segment_rows_from_trace_file(trace_path, *, call_id, task_id)
+        -> list[CallSegmentRow]
     backfill_ledger(evidence_dir, *, project_id=None, path=None) -> BackfillResult
     verify_ledger(evidence_dir, *, project_id=None, path=None) -> ReconcileResult
-    query_cost(*, project_id=None, path=None, since=None, job_id=None, by=None)
-        -> CostReport
+    query_cost(*, project_id=None, path=None, since=None, until=None,
+               job_id=None, by=None) -> CostReport
+    prior_report_period(since, until) -> PriorReportPeriod
     merge_cost_reports(reports) -> CostReport
+    query_segment_shares(*, project_id=None, path=None, since=None, until=None,
+                         job_id=None) -> SegmentShareReport
 """
 
 from __future__ import annotations
@@ -76,7 +88,7 @@ import logging
 import sqlite3
 import threading
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 from uuid import UUID
@@ -99,7 +111,7 @@ logger = logging.getLogger(__name__)
 
 
 # The on-disk schema generation; bump it only together with a new migration step.
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 # The meta key carrying SCHEMA_VERSION, so a future reader can tell old DBs apart.
 SCHEMA_VERSION_KEY = "schema_version"
@@ -115,6 +127,11 @@ _TASK_RUNS_DIRNAME = "task_runs"
 _PROVIDER_EVIDENCE_FILENAME = "provider_evidence.json"
 _TOKEN_ACCOUNTING_FILENAME = "token_accounting.json"
 _JOB_MANIFEST_FILENAME = "manifest.json"
+
+# The prompt trace the evidence exporter COPIES into the task-run directory
+# beside provider_evidence.json (``pingpong_evidence.py:533``); it is the only
+# place a finalized task run publishes its per-call segment manifests.
+_PROMPT_TRACE_FILENAME = "prompt_trace.jsonl"
 
 # Timestamp fields the evidence may carry, most specific first; else the file mtime.
 _TIMESTAMP_FIELDS = ("ts_utc", "finished_at", "started_at")
@@ -196,6 +213,25 @@ _MIGRATIONS: dict[int, tuple[str, ...]] = {
         "CREATE INDEX IF NOT EXISTS idx_calls_ts_utc ON calls (ts_utc)",
         "CREATE INDEX IF NOT EXISTS idx_calls_role_model ON calls (role, model)",
     ),
+    # F115 D4: the segment manifest is per PROVIDER CALL while a `calls` row is
+    # one finalized TASK RUN, so it gets its own table instead of a column. The
+    # value columns mirror ComposedPrompt.manifest_as_dicts() one for one, so a
+    # writer never has to invent or rename a field.
+    2: (
+        """
+        CREATE TABLE IF NOT EXISTS call_segments (
+            call_id          TEXT NOT NULL,
+            trace_seq        INTEGER NOT NULL,
+            segment_name     TEXT NOT NULL,
+            segment_rank     INTEGER NOT NULL,
+            segment_sha256   TEXT NOT NULL,
+            chars            INTEGER NOT NULL,
+            tokens_estimated INTEGER NOT NULL,
+            PRIMARY KEY (call_id, trace_seq, segment_name)
+        )
+        """,
+        "CREATE INDEX IF NOT EXISTS idx_call_segments_call_id ON call_segments (call_id)",
+    ),
 }
 
 
@@ -226,6 +262,61 @@ class CallRecord:
     cost_usd: float | None = None
     cost_basis: str = COST_BASIS_UNKNOWN
     evidence_ref: str | None = None
+
+
+# Column order restated once, exactly as migration step 2 declares it, so the
+# INSERT and every later SELECT are built from ONE source and cannot drift.
+_CALL_SEGMENT_COLUMNS = (
+    "call_id",
+    "trace_seq",
+    "segment_name",
+    "segment_rank",
+    "segment_sha256",
+    "chars",
+    "tokens_estimated",
+)
+
+# The manifest keys a trace entry publishes, in the order the columns above take
+# them, each mapped to the type it must ALREADY be. Presence was never enough:
+# ``chars INTEGER NOT NULL`` is a SQLite AFFINITY rather than a constraint, so a
+# string that does not look like a number is stored as TEXT, satisfies NOT NULL,
+# and then counts as 0 in every SUM over that column — the measured zero this
+# module exists to refuse (R-0329). ``bool`` is excluded from ``int`` explicitly
+# because it is a subclass of it and no manifest ever publishes a flag as a size.
+_MANIFEST_KEY_TYPES: dict[str, type] = {
+    "name": str,
+    "rank": int,
+    "sha256": str,
+    "chars": int,
+    "tokens_estimated": int,
+}
+
+# Derived, never restated: one spelling of the key order for the whole module.
+_MANIFEST_KEYS = tuple(_MANIFEST_KEY_TYPES)
+
+
+@dataclass(frozen=True)
+class CallSegmentRow:
+    """One segment of one composed prompt, as the ledger stores it.
+
+    Mirrors ``ComposedPrompt.manifest_as_dicts()`` one field per key
+    (``prompt_segments.py:107-121``) plus two identity columns: the ledger row's
+    ``call_id``, and ``trace_seq`` — the zero-based position of the trace line
+    among THAT TASK RUN's entries, which is what makes a re-read of the same
+    static file produce the same keys and a repeat backfill a no-op.
+
+    A trace entry whose ``segment_manifest`` is empty produces NO row at all.
+    That absence is what the report renders as unattributed; it is never a zero,
+    and no row is ever invented to stand in for it.
+    """
+
+    call_id: str
+    trace_seq: int
+    segment_name: str
+    segment_rank: int
+    segment_sha256: str
+    chars: int
+    tokens_estimated: int
 
 
 # What one backfill pass did, in counts a caller can report without re-scanning.
@@ -343,6 +434,63 @@ class CostReport:
     total: CostRow = field(default_factory=CostRow)
     by: str | None = None
     since: str | None = None
+    until: str | None = None
+    job_id: str | None = None
+    project_id: str | None = None
+    ledger_path: str | None = None
+    ledger_exists: bool = False
+
+
+# One segment kind's share of a period, over rows that ALWAYS carry a figure.
+@dataclass
+class SegmentShareRow:
+    """One segment kind's share of the composed prompts in a period.
+
+    Every figure here is a PLAIN INT, not the nullable one ``CostRow`` carries.
+    That is a different shape of the same honesty, not a departure from it: every
+    value column of ``call_segments`` is declared NOT NULL, so a row that EXISTS
+    always states a real ``chars`` and a real ``tokens_estimated`` and there is no
+    "measured or not" question left to answer about it. Nothing here can be a
+    coerced zero, because there is nothing here to coerce.
+
+    The absence this feature has to report is therefore not a NULL figure but a
+    MISSING ROW — a call whose prompt was never traced. It is counted once, by
+    ``SegmentShareReport.unattributed_calls``, instead of being smeared across
+    five columns that do not describe it.
+    """
+
+    segment_name: str
+    calls: int = 0
+    segments: int = 0
+    chars: int = 0
+    tokens_estimated: int = 0
+
+
+# One answered breakdown question: the shares, the attribution split, the totals.
+@dataclass
+class SegmentShareReport:
+    """The result of one ``query_segment_shares`` call.
+
+    ``rows`` are the segment kinds in the contract's order. ``attributed_calls``
+    and ``unattributed_calls`` split every call in the period by whether it owns
+    segment rows at all, and they sum to the same call count ``query_cost``
+    reports over the same filters.
+
+    The three totals are sums over ``rows``, so a renderer's percentages have a
+    denominator that cannot disagree with its numerators. The remaining fields
+    echo the question back exactly as ``CostReport`` does, ``ledger_exists``
+    included: "no ledger yet" is not the same answer as "a ledger with nothing
+    in it".
+    """
+
+    rows: list[SegmentShareRow] = field(default_factory=list)
+    attributed_calls: int = 0
+    unattributed_calls: int = 0
+    total_segments: int = 0
+    total_chars: int = 0
+    total_tokens_estimated: int = 0
+    since: str | None = None
+    until: str | None = None
     job_id: str | None = None
     project_id: str | None = None
     ledger_path: str | None = None
@@ -583,6 +731,129 @@ def call_record_from_evidence(
         return None
 
 
+# One task run's segment rows, read out of the prompt trace copied beside it.
+def segment_rows_from_trace_file(
+    trace_path: Path | str,
+    *,
+    call_id: str,
+    task_id: str,
+) -> list[CallSegmentRow]:
+    """Read ``prompt_trace.jsonl`` into the ``call_segments`` rows of one task run.
+
+    PURE AND READ-ONLY: it opens nothing but ``trace_path``, writes nothing and
+    never brings a database into existence. NEVER RAISES for any input either —
+    an absent or unreadable file yields ``[]``, and a line that is not valid
+    JSON is skipped while the scan continues, because one corrupt line must not
+    cost every other segment its row.
+
+    ``task_id`` is LOAD-BEARING, not defensive: the trace copied beside the
+    evidence is the WHOLE JOB's file — ``prompt_trace.append_trace_jsonl`` keeps
+    one per job, not one per task run — so the other task runs' entries sit in
+    it and would otherwise be attributed to this ``call_id``.
+
+    ``trace_seq`` is the zero-based index AMONG THE KEPT entries, assigned in
+    file order. An entry whose ``segment_manifest`` is empty produces no row but
+    STILL CONSUMES its index: the number means "position among this task run's
+    provider calls", so it stays stable once a later round makes more of those
+    calls carry a manifest. A blank line is not an entry and consumes nothing.
+
+    A manifest dict missing any of ``_MANIFEST_KEYS`` is SKIPPED rather than
+    defaulted — a figure nobody published must not land as a measured zero (P6).
+    """
+    source = Path(trace_path)
+    rows: list[CallSegmentRow] = []
+    try:
+        raw = source.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
+        # No trace beside the evidence is the NORMAL pre-F115 case, not a fault.
+        return rows
+    wanted = str(task_id)
+    trace_seq = 0
+    for line in raw.splitlines():
+        if not line.strip():
+            continue
+        try:
+            entry = strict_loads(line, where=str(source), require_object=True)
+        except StrictJsonError:
+            logger.warning(
+                "token ledger skips an unreadable prompt-trace line in %s; the "
+                "scan continues so one corrupt line costs no other row",
+                source, exc_info=True,
+            )
+            continue
+        if entry.get("task_id") != wanted:
+            continue
+        manifest = entry.get("segment_manifest")
+        if isinstance(manifest, list):
+            for item in manifest:
+                row = _call_segment_row(item, call_id=call_id, trace_seq=trace_seq)
+                if row is not None:
+                    rows.append(row)
+        trace_seq += 1
+    return rows
+
+
+# Records one task run's segment rows; a failure is a counted miss, never a raise.
+def record_call_segments(
+    rows: list[CallSegmentRow],
+    *,
+    project_id: UUID | str | None = None,
+    path: Path | str | None = None,
+) -> bool:
+    """Persist ``rows`` into ``call_segments``. NEVER raises; failure is a miss.
+
+    ``record_call``'s discipline, applied to the segment table: one statement,
+    one commit, the connection closed in a ``finally``, and a failure that logs
+    at ERROR, counts a ledger miss and returns False without ever failing the
+    run. The evidence files remain the source of truth, so a lost segment row is
+    a reconcilable defect rather than lost data.
+
+    IDEMPOTENT BY THE TABLE'S OWN PRIMARY KEY (``call_id``, ``trace_seq``,
+    ``segment_name``): ``INSERT OR IGNORE`` turns a repeat pass into a no-op
+    that still reports the rows as durable, which is what makes a second
+    ``backfill_ledger`` over unchanged evidence add nothing here either.
+
+    An EMPTY ``rows`` returns True WITHOUT opening the ledger: a task run whose
+    trace carries no manifest must not be the thing that creates a database.
+
+    Give either ``path`` (explicit file) or ``project_id``, exactly as
+    ``record_call`` does; giving neither is a failure like any other.
+    """
+    if not rows:
+        return True
+    conn: sqlite3.Connection | None = None
+    try:
+        target = _resolve_ledger_path(project_id=project_id, path=path)
+        conn = open_ledger(target)
+        placeholders = ", ".join("?" for _ in _CALL_SEGMENT_COLUMNS)
+        columns = ", ".join(_CALL_SEGMENT_COLUMNS)
+        conn.executemany(
+            f"INSERT OR IGNORE INTO call_segments ({columns}) VALUES ({placeholders})",
+            [
+                tuple(getattr(row, name) for name in _CALL_SEGMENT_COLUMNS)
+                for row in rows
+            ],
+        )
+        conn.commit()
+        return True
+    except Exception:
+        _count_ledger_miss()
+        logger.error(
+            "token ledger segment write FAILED for call_id=%r (%d row(s); miss "
+            "counted, run continues; the evidence files remain the source of "
+            "truth and a later backfill can heal this)",
+            getattr(rows[0], "call_id", None), len(rows),
+            exc_info=True,
+        )
+        return False
+    finally:
+        if conn is not None:
+            try:
+                conn.close()
+            except Exception:  # pragma: no cover - close() failing is not actionable
+                logger.error("token ledger connection close failed", exc_info=True)
+
+
 # Mirrors a whole evidence tree into rows; idempotent, and never raises.
 def backfill_ledger(
     evidence_dir: Path | str,
@@ -622,6 +893,24 @@ def backfill_ledger(
                 continue
             if record_call(record, project_id=project_id, path=path):
                 result.recorded += 1
+                # BACKFILL IS THE ONLY WIRED PATH, deliberately: the live hook
+                # at the actuals seam fires BEFORE the exporter copies
+                # prompt_trace.jsonl into the task-run directory
+                # (``pingpong_evidence.py:517-525`` vs ``:527-536``), so this is
+                # the only place the file demonstrably exists. NO BackfillResult
+                # COUNTER MOVES either way — the return value is deliberately
+                # not branched on, because a segment read or write that fails is
+                # a counted ledger miss and nothing else, and `calls` mirroring
+                # must stay exactly as measurable as it was before F115.
+                record_call_segments(
+                    segment_rows_from_trace_file(
+                        task_dir / _PROMPT_TRACE_FILENAME,
+                        call_id=record.call_id,
+                        task_id=task_dir.name,
+                    ),
+                    project_id=project_id,
+                    path=path,
+                )
             else:
                 result.failed += 1
         except Exception:  # pragma: no cover - defence in depth; nothing below raises
@@ -713,6 +1002,7 @@ def query_cost(
     project_id: UUID | str | None = None,
     path: Path | str | None = None,
     since: str | None = None,
+    until: str | None = None,
     job_id: str | None = None,
     by: str | None = None,
 ) -> CostReport:
@@ -728,6 +1018,10 @@ def query_cost(
     exactly why ``ts_utc`` is stored as TEXT instead of an epoch number. The
     comparison is only sound between timestamps written in the same ISO-8601 UTC
     shape, which is the only shape this module ever writes.
+
+    ``until`` is EXCLUSIVE, so the period is ``[since, until)`` and two
+    adjacent periods concatenate without counting a boundary call twice
+    (DECISION F115 D5).
 
     ``job_id`` filters to one job. ``"day"`` buckets by the first 10 characters
     of ``ts_utc``, i.e. its calendar day in UTC.
@@ -751,6 +1045,7 @@ def query_cost(
     report = CostReport(
         by=by,
         since=since,
+        until=until,
         job_id=job_id,
         project_id=None if project_id is None else str(project_id),
         ledger_path=str(target),
@@ -759,7 +1054,7 @@ def query_cost(
     if not report.ledger_exists:
         return report
 
-    where, where_params = _cost_filters(since=since, job_id=job_id)
+    where, where_params = _cost_filters(since=since, until=until, job_id=job_id)
     conn = _connect_readonly(target)
     try:
         report.total = _cost_bucket_rows(conn, where, where_params, group_expr=None)[0]
@@ -770,6 +1065,117 @@ def query_cost(
     finally:
         conn.close()
     return report
+
+
+# The four honest answers to "why is there no previous period to compare with".
+# They are SENTENCES rather than codes because the report PRINTS them: a code
+# would have to be translated into these very words by every renderer, and the
+# second translation is where the two would start to disagree.
+_PRIOR_REASON_OPEN_ENDED = (
+    "No previous period: this report has no start or no end, and an open-ended "
+    "period has no length to mirror."
+)
+_PRIOR_REASON_UNPARSEABLE = (
+    "No previous period: one end of this period is not an ISO-8601 timestamp, "
+    "so its length cannot be measured and nothing is guessed at."
+)
+_PRIOR_REASON_MIXED_AWARENESS = (
+    "No previous period: one end of this period carries a UTC offset and the "
+    "other does not, so their difference is undefined and no offset is invented."
+)
+_PRIOR_REASON_EMPTY_PERIOD = (
+    "No previous period: this period ends at or before it starts, so it has no "
+    "length and its prior window would have none either."
+)
+
+
+# The window a report compares itself against — or the stated reason there is none.
+@dataclass(frozen=True)
+class PriorReportPeriod:
+    """The equal-length window before a report period, or why there is not one.
+
+    EITHER the pair of bounds is set OR ``unavailable_reason`` is — never both
+    and never neither. That invariant is the whole point of the class: "no
+    comparison data" has to be a STATEMENT the report can print rather than a
+    silence a renderer has to guess at, and a bare ``None`` cannot say why it is
+    None. ``__post_init__`` enforces it, so an unavailable period without a
+    reason cannot be constructed at all.
+
+    ``since`` and ``until`` are the prior window's own half-open bounds
+    ``[since, until)``, in the same ISO-8601 spelling ``_cost_filters`` compares
+    lexicographically. ``until`` is the ORIGINAL period's ``since`` string
+    passed through byte for byte, which is what makes the two windows abut
+    (DECISION F115 D6).
+    """
+
+    since: str | None = None
+    until: str | None = None
+    unavailable_reason: str | None = None
+
+    def __post_init__(self) -> None:
+        stated = self.unavailable_reason is not None
+        if self.available == stated:
+            raise ValueError(
+                "a PriorReportPeriod states either a window or the reason there "
+                f"is none, never both and never neither: since={self.since!r} "
+                f"until={self.until!r} reason={self.unavailable_reason!r}"
+            )
+        if stated and (self.since is not None or self.until is not None):
+            raise ValueError(
+                "an unavailable PriorReportPeriod carries no half of a window: "
+                f"since={self.since!r} until={self.until!r} "
+                f"reason={self.unavailable_reason!r}"
+            )
+
+    # One question every caller asks; spelled once here so it cannot drift.
+    @property
+    def available(self) -> bool:
+        """True when a prior window was placed, i.e. both bounds are set."""
+        return self.since is not None and self.until is not None
+
+
+# The equal-length window immediately BEFORE ``[since, until)`` — pure, no ledger.
+def prior_report_period(since: str | None, until: str | None) -> PriorReportPeriod:
+    """Place the equal-length window immediately before ``[since, until)``.
+
+    PURE: no ledger, no clock, no I/O — two strings in, one value out. It NEVER
+    RAISES either: "there is nothing to compare against" is an answer the report
+    has to print, not an error the caller has to catch, so each of the four
+    cases that yield no window returns its own reason sentence instead.
+
+    THE ARITHMETIC. Both ends are parsed with ``datetime.fromisoformat`` (with
+    ``Z`` read as ``+00:00``), ``d = until - since``, and the prior window is
+    ``[since - d, since)``. Its opening bound is serialised with
+    ``.isoformat()``, which reproduces the awareness of the input it came from;
+    its closing bound is the caller's own ``since`` STRING, untouched.
+
+    THE FOUR UNAVAILABLE CASES, each with its own sentence: an open-ended period
+    has no length to mirror; an end that is not ISO-8601 is never guessed at; a
+    naive end paired with an aware one has an undefined difference and no offset
+    is invented for it; and a period ending at or before it starts has an empty
+    or inverted prior window.
+    """
+    if not since or not until:
+        return PriorReportPeriod(unavailable_reason=_PRIOR_REASON_OPEN_ENDED)
+    try:
+        parsed_since = _parse_period_bound(since)
+        parsed_until = _parse_period_bound(until)
+    except ValueError:
+        return PriorReportPeriod(unavailable_reason=_PRIOR_REASON_UNPARSEABLE)
+    try:
+        length = parsed_until - parsed_since
+    except TypeError:
+        # Subtracting an offset-naive datetime from an aware one is a TypeError
+        # by design; inventing an offset here would be fabricating a timezone.
+        return PriorReportPeriod(unavailable_reason=_PRIOR_REASON_MIXED_AWARENESS)
+    if length <= timedelta(0):
+        return PriorReportPeriod(unavailable_reason=_PRIOR_REASON_EMPTY_PERIOD)
+    # WHY the ORIGINAL ``since`` string and never a re-serialisation of it:
+    # ``_cost_filters`` compares ``ts_utc`` LEXICOGRAPHICALLY, so the two windows
+    # abut only if the boundary they share is the SAME STRING on both sides — a
+    # round-trip turns "2026-08-01" into "2026-08-01T00:00:00" and "Z" into
+    # "+00:00", and a partition that survives that does so by formatting luck.
+    return PriorReportPeriod(since=(parsed_since - length).isoformat(), until=since)
 
 
 # Folds several project reports into one, which is what ``--all-projects`` is.
@@ -789,6 +1195,10 @@ def merge_cost_reports(reports: list[CostReport]) -> CostReport:
     merged = CostReport(
         by=reports[0].by if reports else None,
         since=reports[0].since if reports else None,
+        # Carried, not dropped: a merged report that forgot its period END would
+        # disagree with a shares report over the same arguments, and
+        # ``cost_report._same_question`` would refuse that legitimate pair.
+        until=reports[0].until if reports else None,
         job_id=reports[0].job_id if reports else None,
         ledger_exists=any(r.ledger_exists for r in reports),
     )
@@ -800,6 +1210,109 @@ def merge_cost_reports(reports: list[CostReport]) -> CostReport:
     ordered = sorted(buckets.items(), key=lambda item: (item[0] is not None, item[0] or ""))
     merged.rows = [_combine_cost_rows(rows, bucket=bucket) for bucket, rows in ordered]
     return merged
+
+
+# WHERE the tokens went: each segment kind's share of one period's prompts.
+def query_segment_shares(
+    *,
+    project_id: UUID | str | None = None,
+    path: Path | str | None = None,
+    since: str | None = None,
+    until: str | None = None,
+    job_id: str | None = None,
+) -> SegmentShareReport:
+    """Aggregate ``call_segments`` into a ``SegmentShareReport``. READ-ONLY, and never raises on absence.
+
+    ``since``, ``until`` and ``job_id`` filter the CALLS, through the very same
+    ``_cost_filters`` clause ``query_cost`` uses. Both columns live only on
+    ``calls``, so the clause is sound verbatim inside the join, and a breakdown
+    and a cost report over the same arguments describe the same set of calls by
+    construction rather than by two clauses that happen to agree today.
+
+    ``until`` is EXCLUSIVE, so the period is ``[since, until)`` and two
+    adjacent periods concatenate without counting a boundary call twice
+    (DECISION F115 D5).
+
+    TWO STATEMENTS run under that one clause. The first joins ``calls`` to
+    ``call_segments`` on ``call_id`` and groups by ``segment_name``. The second
+    counts attribution over ``calls`` LEFT JOINed to the distinct ``call_id``s
+    that have segments: ``COUNT(*)`` is every call in the period and the count of
+    the joined column is the attributed subset, because ``COUNT`` ignores NULLs.
+    Both use ``COUNT`` rather than ``SUM`` for the reason ``_cost_bucket_rows``
+    already gives — a count of nothing IS 0, while a sum of nothing is NULL — and
+    ``unattributed_calls`` is simply their difference.
+
+    AN UNATTRIBUTED CALL IS NOT A ZERO SHARE. A call whose prompt was never
+    traced — every call this ledger recorded before F115 — owns no segment row,
+    and it is reported as one unattributed call rather than folded into a segment
+    kind or given a 0 of one. That is the P6 rule ``CostRow``'s NULLs keep, said
+    in the shape a NOT NULL table needs.
+
+    ROW ORDER IS PART OF THE CONTRACT: ``tokens_estimated`` descending, then
+    ``segment_name`` ascending as the tie-break. The renderer's goldens will pin
+    bytes against it, so it is decided here once and never left to SQLite.
+
+    The three totals are summed IN PYTHON over ``rows`` rather than asked of a
+    third statement. That makes the Acceptance property "the segment shares sum
+    to the attributed total" true BY CONSTRUCTION; a third aggregation could only
+    ever agree with the first one, and would be free to stop agreeing.
+
+    A ledger file that does not exist yields an EMPTY report with
+    ``ledger_exists=False``: not an error, and NOT a created database.
+    """
+    target = _resolve_ledger_path(project_id=project_id, path=path)
+    report = SegmentShareReport(
+        since=since,
+        until=until,
+        job_id=job_id,
+        project_id=None if project_id is None else str(project_id),
+        ledger_path=str(target),
+        ledger_exists=target.is_file(),
+    )
+    if not report.ledger_exists:
+        return report
+
+    where, where_params = _cost_filters(since=since, until=until, job_id=job_id)
+    shares_sql = (
+        "SELECT call_segments.segment_name, "
+        "COUNT(DISTINCT call_segments.call_id), COUNT(*), "
+        "SUM(call_segments.chars), SUM(call_segments.tokens_estimated) "
+        "FROM calls JOIN call_segments "
+        f"ON call_segments.call_id = calls.call_id{where} "
+        "GROUP BY call_segments.segment_name "
+        "ORDER BY SUM(call_segments.tokens_estimated) DESC, "
+        "call_segments.segment_name ASC"
+    )
+    attribution_sql = (
+        "SELECT COUNT(*), COUNT(attributed.call_id) "
+        "FROM calls LEFT JOIN "
+        "(SELECT DISTINCT call_id FROM call_segments) AS attributed "
+        f"ON attributed.call_id = calls.call_id{where}"
+    )
+    conn = _connect_readonly(target)
+    try:
+        report.rows = [
+            SegmentShareRow(
+                segment_name=str(row[0]),
+                calls=int(row[1]),
+                segments=int(row[2]),
+                chars=int(row[3]),
+                tokens_estimated=int(row[4]),
+            )
+            for row in conn.execute(shares_sql, where_params).fetchall()
+        ]
+        period_calls, attributed_calls = conn.execute(
+            attribution_sql, where_params
+        ).fetchone()
+    finally:
+        conn.close()
+
+    report.attributed_calls = int(attributed_calls)
+    report.unattributed_calls = int(period_calls) - int(attributed_calls)
+    report.total_segments = sum(row.segments for row in report.rows)
+    report.total_chars = sum(row.chars for row in report.rows)
+    report.total_tokens_estimated = sum(row.tokens_estimated for row in report.rows)
+    return report
 
 
 # How many ledger writes have failed in this process — surfaced by verify-ledger.
@@ -862,13 +1375,34 @@ def _connect_readonly(path: Path) -> sqlite3.Connection:
     return conn
 
 
-def _cost_filters(*, since: str | None, job_id: str | None) -> tuple[str, list[Any]]:
-    """The shared WHERE clause, so the buckets and the grand total cannot diverge."""
+def _parse_period_bound(text: str) -> datetime:
+    """One ISO-8601 period bound as a ``datetime``; a trailing ``Z`` is UTC.
+
+    ``fromisoformat`` accepted no trailing ``Z`` before Python 3.11 while the
+    ledger's own timestamps carry an explicit ``+00:00``, so the replacement is
+    what lets a caller spell the same instant either way. Raises ``ValueError``
+    on anything else, which ``prior_report_period`` turns into a stated reason.
+    """
+    return datetime.fromisoformat(text.replace("Z", "+00:00"))
+
+
+def _cost_filters(
+    *, since: str | None, until: str | None, job_id: str | None
+) -> tuple[str, list[Any]]:
+    """The shared WHERE clause, so the buckets and the grand total cannot diverge.
+
+    ``until`` is STRICTLY less-than while ``since`` is ``>=``, so a period is
+    the half-open ``[since, until)`` and two adjacent periods concatenate
+    without counting a boundary call twice (DECISION F115 D5).
+    """
     clauses: list[str] = []
     params: list[Any] = []
     if since:
         clauses.append("ts_utc >= ?")
         params.append(since)
+    if until:
+        clauses.append("ts_utc < ?")
+        params.append(until)
     if job_id:
         clauses.append("job_id = ?")
         params.append(job_id)
@@ -1028,6 +1562,52 @@ def _call_record_from_parts(
             COST_BASIS_PROVIDER_REPORTED if cost_usd is not None else COST_BASIS_UNKNOWN
         ),
         evidence_ref=evidence_ref,
+    )
+
+
+def _call_segment_row(
+    manifest_entry: Any,
+    *,
+    call_id: str,
+    trace_seq: int,
+) -> CallSegmentRow | None:
+    """One manifest dict as a row, or None unless all five keys are there AND typed.
+
+    A dict missing a key is SKIPPED rather than completed with 0 or "": the
+    values are taken verbatim from ``_MANIFEST_KEYS`` and nothing here invents,
+    coerces or defaults one. An unpublished figure must never become a measured
+    zero (P6), and a partial manifest row would be exactly that.
+
+    A value of the WRONG TYPE is skipped by exactly the same rule, because it
+    reaches the same end by a longer route: ``chars INTEGER NOT NULL`` is a
+    SQLite affinity rather than a constraint, so a non-numeric string is stored
+    as TEXT, satisfies NOT NULL, and then counts as 0 in every SUM over that
+    column. ``_MANIFEST_KEY_TYPES`` names the type each key must ALREADY be, and
+    a value that is not it makes the whole dict a skip. Nothing is cast on the
+    way past: a figure this module cannot verify is one it declines to store,
+    not one it repairs.
+    """
+    if not isinstance(manifest_entry, dict):
+        return None
+    for key, expected in _MANIFEST_KEY_TYPES.items():
+        if key not in manifest_entry:
+            return None
+        value = manifest_entry[key]
+        if expected is int and isinstance(value, bool):
+            return None
+        if not isinstance(value, expected):
+            return None
+    name, rank, sha256, chars, tokens_estimated = (
+        manifest_entry[key] for key in _MANIFEST_KEYS
+    )
+    return CallSegmentRow(
+        call_id=call_id,
+        trace_seq=trace_seq,
+        segment_name=name,
+        segment_rank=rank,
+        segment_sha256=sha256,
+        chars=chars,
+        tokens_estimated=tokens_estimated,
     )
 
 

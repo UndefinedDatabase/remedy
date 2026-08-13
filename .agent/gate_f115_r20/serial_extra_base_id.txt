@@ -1,0 +1,8 @@
+===== SERIAL (merge base) tests/cli/test_review_bundle_runtime.py::TestSubprocessCleanup::test_timeout_raises_with_cleanup =====
+.                                                                        [100%]
+1 passed in 0.16s
+----- exit=0 -----
+===== SERIAL (branch) tests/cli/test_review_bundle_runtime.py::TestSubprocessCleanup::test_timeout_raises_with_cleanup =====
+.                                                                        [100%]
+1 passed in 0.18s
+----- exit=0 -----

@@ -1,0 +1,15 @@
+== base worktree: apps/ui/dist/index.html mtime ==
+2026-08-13 12:57:29.934371957 +0200  .remedy-wt/.cache/base_r20/apps/ui/dist/index.html
+== base worktree: newest file under apps/ui/src (checkout stamp) ==
+1786618561.1019720680 2026-08-13 12:56:01.1019720680  .remedy-wt/.cache/base_r20/apps/ui/src/types/react-force-graph-2d.d.ts
+1786618561.1019341100 2026-08-13 12:56:01.1019341100  .remedy-wt/.cache/base_r20/apps/ui/src/types/css-modules.d.ts
+1786618561.1019341100 2026-08-13 12:56:01.1019341100  .remedy-wt/.cache/base_r20/apps/ui/src/styles/tokens.css
+== primary checkout: apps/ui/dist/index.html mtime ==
+2026-08-13 12:54:08.455880850 +0200  apps/ui/dist/index.html
+== primary checkout: newest file under apps/ui/src ==
+1782754788.0429603870 2026-06-29 19:39:48.0429603870  apps/ui/src/components/shell/RemedyShell.tsx
+1782754788.0428837060 2026-06-29 19:39:48.0428837060  apps/ui/src/components/prompt/promptTraceLens.test.ts
+1782754788.0427811520 2026-06-29 19:39:48.0427811520  apps/ui/src/components/prompt/PromptTracePanel.tsx
+== conclusion probe: _frontend_is_stale() at each root ==
+base worktree : FRESH
+primary       : FRESH

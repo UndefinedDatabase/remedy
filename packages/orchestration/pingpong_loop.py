@@ -2789,7 +2789,10 @@ def run_pingpong(
                 if prev_rd.test_summary:
                     prev_test_result = prev_rd.test_summary
 
-            builder_prompt = _build_builder_prompt(
+            # F115 D1: compose instead of calling `_build_builder_prompt`, so the
+            # trace entry below carries a real segment manifest. The sent bytes are
+            # unchanged — `_build_builder_prompt` returns this same `.text`.
+            builder_composed = compose_builder_prompt(
                 effective_goal, context,
                 round_number=round_num,
                 findings=findings if is_repair else None,
@@ -2799,6 +2802,7 @@ def run_pingpong(
                 scope_contract=scope_contract_text,
                 test_result=prev_test_result,
             )
+            builder_prompt = builder_composed.text
             # SAFE POINT 2 — immediately before the Builder provider call. A stop observed
             # here means the call NEVER STARTS: no ProviderAttempt, no prompt trace of a
             # call that did not happen, no repair round counted, no retry budget spent. The
@@ -2837,6 +2841,7 @@ def run_pingpong(
                 changed_files=list(result.staged_files),
                 task_excerpt_sha256=task_input.sha256 if task_input else "",
                 configured_model=builder_model,
+                composed_prompt=builder_composed,
             ))
 
             _begin_stream_call(builder_provider, round_num, "attempt")
@@ -2979,7 +2984,10 @@ def run_pingpong(
                 repair_rounds=result.repair_rounds_used,
             )
 
-            reviewer_prompt = _build_reviewer_prompt(
+            # F115 D1: compose instead of calling `_build_reviewer_prompt`, so the
+            # trace entries below carry a real segment manifest. The sent bytes are
+            # unchanged — `_build_reviewer_prompt` returns this same `.text`.
+            reviewer_composed = compose_reviewer_prompt(
                 effective_goal,
                 builder_out.summary,
                 diff_summary=diff_summary,
@@ -2994,6 +3002,8 @@ def run_pingpong(
                 repair_round=result.repair_rounds_used if is_repair else 0,
                 scope_packet=runtime_scope_packet,
             )
+
+            reviewer_prompt = reviewer_composed.text
 
             # Track reviewer prompt size
             result.reviewer_prompt_chars += len(reviewer_prompt)
@@ -3024,6 +3034,7 @@ def run_pingpong(
                         safe_diff_files=list(result.safe_diff_files),
                         task_excerpt_sha256=task_input.sha256 if task_input else "",
                         configured_model=reviewer_model,
+                        composed_prompt=reviewer_composed,
                         schema_v=_reviewer_schema_v(),
                         phase=phase,
                         transport_attempt=transport_attempt,

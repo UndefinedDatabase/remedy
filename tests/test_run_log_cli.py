@@ -75,7 +75,10 @@ class TestPlanJobLocalRunLog:
 
         job_holder: list[Job] = []
 
-        def fake_plan_job_with_llm(job, _call_planner):
+        # Mirrors plan_job_with_llm's real signature (llm_planner.py:105): F115
+        # added the keyword-only on_prompt_composed hook, and a double that drops
+        # it turns the CLI call into a TypeError that job.py swallows as exit 1.
+        def fake_plan_job_with_llm(job, _call_planner, *, on_prompt_composed=None):
             if changed:
                 from packages.core.models import Task
 

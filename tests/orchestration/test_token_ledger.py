@@ -34,8 +34,9 @@ What T002 adds proof of, against a real on-disk evidence tree:
 
 What T003 adds proof of, over a ledger written row by row:
 
-  * ``query_cost`` groups by role, by model and by day, filters on ``since`` and
-    on ``job_id``, and reports a grand total over the same filters;
+  * ``query_cost`` groups by role, by model and by day, filters on ``since``, on
+    the EXCLUSIVE ``until`` and on ``job_id``, and reports a grand total over the
+    same filters;
   * a bucket in which NOTHING was measured reports ``tokens_in is None`` and
     ``cost_usd is None`` — never 0 — with ``unmeasured_calls`` equal to its own
     row count, which is the P6 rule this feature exists to keep;
@@ -72,6 +73,7 @@ import logging
 import os
 import sqlite3
 import subprocess
+from datetime import datetime
 from pathlib import Path
 from uuid import UUID, uuid4
 
@@ -87,6 +89,9 @@ from packages.orchestration.token_ledger import (
     SCHEMA_VERSION_KEY,
     BackfillResult,
     CallRecord,
+    CallSegmentRow,
+    PriorReportPeriod,
+    SegmentShareRow,
     backfill_ledger,
     call_id_for_task_run,
     call_record_from_evidence,
@@ -94,9 +99,13 @@ from packages.orchestration.token_ledger import (
     ledger_miss_count,
     merge_cost_reports,
     open_ledger,
+    prior_report_period,
     query_cost,
+    query_segment_shares,
     record_call,
+    record_call_segments,
     reset_ledger_miss_count,
+    segment_rows_from_trace_file,
     token_ledger_path_for,
     verify_ledger,
 )
@@ -1021,6 +1030,28 @@ class TestQueryCostFilters:
         report = query_cost(path=cost_ledger, job_id=COST_JOB_UNMEASURED, by="role")
         assert [row.bucket for row in report.rows] == ["reviewer"]
 
+    def test_a_call_at_exactly_until_is_out_while_one_at_exactly_since_is_in(
+        self, cost_ledger
+    ):
+        """DECISION F115 D5: the period is the half-open ``[since, until)``.
+
+        ONE instant read as both boundaries. The 09:00 call on 08-02 is INSIDE
+        the window that starts there and OUTSIDE the window that ends there, so
+        the two adjacent windows partition the four rows exactly once between
+        them — no row counted twice, none dropped.
+        """
+        boundary = "2026-08-02T09:00:00+00:00"
+
+        opened = query_cost(path=cost_ledger, since=boundary)
+        closed = query_cost(path=cost_ledger, until=boundary, by="day")
+
+        assert opened.total.calls == 2
+        assert closed.total.calls == 2
+        assert [row.bucket for row in closed.rows] == ["2026-08-01"]
+        assert closed.until == boundary
+        assert (opened.total.calls + closed.total.calls
+                == query_cost(path=cost_ledger).total.calls)
+
 
 class TestUnmeasuredIsNeverAZero:
     """The P6 rule: SUM over all-NULL stays NULL, so nothing renders as 0."""
@@ -1123,6 +1154,147 @@ class TestMergeCostReports:
         assert merged.rows == []
         assert merged.total.calls == 0
         assert merged.total.cost_usd is None
+
+    def test_the_merge_carries_the_period_end_of_its_inputs(self, cost_ledger,
+                                                            tmp_path):
+        """A merged report that forgot ``until`` would not match its own shares.
+
+        ``cost_report._same_question`` compares the period on both halves, so a
+        cross-project total that dropped its end would be refused beside a
+        legitimate ``query_segment_shares`` over the very same arguments.
+        """
+        boundary = "2026-08-02T09:00:00+00:00"
+
+        merged = merge_cost_reports([
+            query_cost(path=cost_ledger, until=boundary, by="role"),
+            query_cost(path=tmp_path / "b" / LEDGER_FILENAME, until=boundary,
+                       by="role"),
+        ])
+
+        assert merged.until == boundary
+        assert merged.total.calls == 2
+        # No input, no period: the empty fold invents no end either.
+        assert merge_cost_reports([]).until is None
+
+
+class TestPriorReportPeriod:
+    """DECISION F115 D6: the window before ``[since, until)``, or why there is none."""
+
+    def test_the_prior_window_of_a_bare_date_pair(self):
+        prior = prior_report_period("2026-08-08", "2026-08-15")
+
+        assert prior.available is True
+        assert prior.since == "2026-08-01T00:00:00"
+        assert prior.until == "2026-08-08"
+        assert prior.unavailable_reason is None
+
+    def test_the_prior_window_of_an_offset_aware_pair(self):
+        """The opening bound reproduces the awareness of the input it came from."""
+        prior = prior_report_period(
+            "2026-08-08T00:00:00+00:00", "2026-08-09T06:00:00+00:00"
+        )
+
+        assert prior.available is True
+        assert prior.since == "2026-08-06T18:00:00+00:00"
+        assert prior.until == "2026-08-08T00:00:00+00:00"
+
+    def test_the_prior_until_is_the_original_since_string_byte_for_byte(self):
+        """A re-serialisation would break the abutment by formatting luck alone.
+
+        ``_cost_filters`` compares ``ts_utc`` lexicographically, so the boundary
+        the two windows share has to be the SAME STRING on both sides. Both
+        spellings below round-trip to something ELSE, which is exactly why the
+        caller's own bytes are passed through instead.
+        """
+        for spelling, end in (
+            ("2026-08-08T00:00:00Z", "2026-08-09T00:00:00Z"),
+            ("2026-08-08", "2026-08-09"),
+        ):
+            prior = prior_report_period(spelling, end)
+
+            assert prior.until == spelling
+            round_tripped = datetime.fromisoformat(
+                spelling.replace("Z", "+00:00")
+            ).isoformat()
+            assert round_tripped != spelling, "the spelling must not survive a round-trip"
+
+    def test_an_open_ended_period_has_no_prior_window(self):
+        for since, until in ((None, "2026-08-15"), ("2026-08-08", None), (None, None)):
+            prior = prior_report_period(since, until)
+
+            assert prior.available is False
+            assert prior.since is None and prior.until is None
+            assert "open-ended" in prior.unavailable_reason
+
+    def test_an_unparseable_end_is_never_guessed_at(self):
+        for since, until in (("last tuesday", "2026-08-15"), ("2026-08-08", "soon")):
+            prior = prior_report_period(since, until)
+
+            assert prior.available is False
+            assert "ISO-8601" in prior.unavailable_reason
+
+    def test_a_naive_end_beside_an_aware_one_invents_no_offset(self):
+        prior = prior_report_period("2026-08-08T00:00:00+00:00", "2026-08-15T00:00:00")
+
+        assert prior.available is False
+        assert "offset" in prior.unavailable_reason
+
+    def test_an_empty_or_inverted_period_has_no_prior_window_either(self):
+        for since, until in (
+            ("2026-08-08", "2026-08-08"),
+            ("2026-08-15", "2026-08-08"),
+        ):
+            prior = prior_report_period(since, until)
+
+            assert prior.available is False
+            assert "ends at or before it starts" in prior.unavailable_reason
+
+    def test_each_unavailable_case_states_its_own_reason(self):
+        """Four different failures, four different sentences — never one catch-all."""
+        reasons = {
+            prior_report_period(None, "2026-08-15").unavailable_reason,
+            prior_report_period("nope", "2026-08-15").unavailable_reason,
+            prior_report_period(
+                "2026-08-08T00:00:00+00:00", "2026-08-15T00:00:00"
+            ).unavailable_reason,
+            prior_report_period("2026-08-15", "2026-08-08").unavailable_reason,
+        }
+        assert len(reasons) == 4
+
+    def test_a_window_or_a_reason_but_never_both_and_never_neither(self):
+        with pytest.raises(ValueError):
+            PriorReportPeriod()
+        with pytest.raises(ValueError):
+            PriorReportPeriod(since="2026-08-01", until="2026-08-08",
+                              unavailable_reason="both halves")
+        with pytest.raises(ValueError):
+            PriorReportPeriod(since="2026-08-01")
+        with pytest.raises(ValueError):
+            PriorReportPeriod(since="2026-08-01", unavailable_reason="half a window")
+
+    def test_the_prior_and_the_current_window_partition_the_ledger(self, cost_ledger):
+        """The partition property of DECISION F115 D5, over a real ledger.
+
+        The prior window plus the current one cover ``[prior.since, until)``
+        exactly once: no boundary call is counted twice and none is dropped.
+        """
+        since, until = "2026-08-02T00:00:00+00:00", "2026-08-03T00:00:00+00:00"
+        prior = prior_report_period(since, until)
+        assert prior.available is True
+
+        before = query_cost(path=cost_ledger, since=prior.since,
+                            until=prior.until).total
+        current = query_cost(path=cost_ledger, since=since, until=until).total
+        whole = query_cost(path=cost_ledger, since=prior.since, until=until).total
+
+        assert (before.calls, current.calls, whole.calls) == (2, 2, 4)
+        assert before.calls + current.calls == whole.calls
+        assert before.measured_calls + current.measured_calls == whole.measured_calls
+        # The two measured calls sit in the PRIOR window; the current one holds
+        # only unmeasured rows, so its share of the total stays None, not 0.
+        assert before.tokens_in == 1500
+        assert current.tokens_in is None
+        assert whole.tokens_in == 1500
 
 
 # ---------------------------------------------------------------------------
@@ -1423,3 +1595,569 @@ class TestTheMirrorStaysInertWithoutAProject:
             repo_path = str(tmp_path / "gone")
 
         assert _resolve_job_ledger_project_id(_Job()) is None
+
+
+class TestCallSegmentsSchema:
+    """F115 D4 — the per-call segment manifest lands in its own table.
+
+    A ``calls`` row is one finalized task run while a manifest belongs to one
+    provider call, so the manifest gets ``call_segments`` beside the ledger row
+    rather than a column on it. This round adds the SCHEMA ONLY: nothing writes
+    to the table yet, so what is provable here is its shape, its arrival on a
+    fresh ledger, its arrival on an already-migrated one, and the structural
+    backfill tolerance the empty table gives every pre-F115 row.
+    """
+
+    def test_a_fresh_ledger_carries_the_call_segments_table(self, ledger_path):
+        conn = open_ledger(ledger_path)
+        try:
+            table = conn.execute(
+                "SELECT name FROM sqlite_master "
+                "WHERE type='table' AND name='call_segments'"
+            ).fetchone()
+            assert table is not None
+            stored = conn.execute(
+                "SELECT value FROM meta WHERE key = ?", (SCHEMA_VERSION_KEY,)
+            ).fetchone()
+            assert stored[0] == "2"
+        finally:
+            conn.close()
+
+    def test_a_version_one_ledger_gains_the_table_on_reopen(self, ledger_path):
+        """Migration step 2 must reach a ledger that already stopped at step 1.
+
+        This is the first time the numbered-step mechanism runs past step 1, so
+        the upgrade path is proven here rather than assumed from its comment.
+        """
+        conn = open_ledger(ledger_path)
+        try:
+            conn.execute("DROP TABLE call_segments")
+            conn.execute(
+                "INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)",
+                (SCHEMA_VERSION_KEY, "1"),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
+        downgraded = sqlite3.connect(str(ledger_path))
+        try:
+            assert downgraded.execute(
+                "SELECT name FROM sqlite_master "
+                "WHERE type='table' AND name='call_segments'"
+            ).fetchone() is None
+        finally:
+            downgraded.close()
+
+        upgraded = open_ledger(ledger_path)
+        try:
+            assert upgraded.execute(
+                "SELECT name FROM sqlite_master "
+                "WHERE type='table' AND name='call_segments'"
+            ).fetchone() is not None
+            stored = upgraded.execute(
+                "SELECT value FROM meta WHERE key = ?", (SCHEMA_VERSION_KEY,)
+            ).fetchone()
+            assert stored[0] == "2"
+        finally:
+            upgraded.close()
+
+    def test_call_segments_columns_mirror_the_manifest(self, ledger_path):
+        """The value columns are ``manifest_as_dicts()``'s keys, in its order."""
+        conn = open_ledger(ledger_path)
+        try:
+            columns = [
+                row[1]
+                for row in conn.execute("PRAGMA table_info(call_segments)")
+            ]
+        finally:
+            conn.close()
+
+        assert columns == [
+            "call_id",
+            "trace_seq",
+            "segment_name",
+            "segment_rank",
+            "segment_sha256",
+            "chars",
+            "tokens_estimated",
+        ]
+
+    def test_a_pre_f115_call_owns_no_segment_rows(self, ledger_path):
+        """No rows is what the report renders as unattributed, never a guess."""
+        record = CallRecord(call_id="call-unattributed", ts_utc="2026-08-08T12:00:00Z")
+        assert record_call(record, path=ledger_path) is True
+
+        conn = open_ledger(ledger_path)
+        try:
+            segments = conn.execute(
+                "SELECT COUNT(*) FROM call_segments WHERE call_id = ?",
+                (record.call_id,),
+            ).fetchone()[0]
+            calls = conn.execute(
+                "SELECT COUNT(*) FROM calls WHERE call_id = ?", (record.call_id,)
+            ).fetchone()[0]
+        finally:
+            conn.close()
+
+        assert segments == 0
+        assert calls == 1
+
+
+# The task run whose trace carries a manifest in the fixtures below; it is the
+# evidence tree's own full-actuals run, so the end-to-end test writes its trace
+# beside the very provider_evidence.json the ledger row is built from.
+SEGMENT_TASK = TASK_FULL
+
+
+def _manifest_entry(name, rank, sha256, chars, tokens_estimated):
+    """One ``ComposedPrompt.manifest_as_dicts()`` row, key for key."""
+    return {
+        "name": name,
+        "rank": rank,
+        "sha256": sha256,
+        "chars": chars,
+        "tokens_estimated": tokens_estimated,
+    }
+
+
+def _trace_entry(task_id, manifest, *, role="builder"):
+    """One prompt-trace entry in the shape ``prompt_trace.py`` writes on disk.
+
+    A real JSONL object, not a private helper's output: the ledger reads this
+    file as bytes, so the fixture has to be bytes the tracer could have written.
+    """
+    return {
+        "run_id": "run-ledger-fixture",
+        "job_id": FIXTURE_JOB_ID,
+        "task_id": task_id,
+        "round": 1,
+        "role": role,
+        "provider": "fake",
+        "prompt_kind": "initial",
+        "prompt_sha256": "0" * 64,
+        "prompt_chars": 1234,
+        "prompt_tokens_estimated": 308,
+        "segment_manifest": list(manifest),
+        "segment_manifest_chars": sum(m.get("chars", 0) for m in manifest),
+        "created_at": "2026-08-08T09:00:00+00:00",
+    }
+
+
+def _write_trace_file(path, entries):
+    """Write real JSONL — one JSON object per line — as ``prompt_trace.py`` does."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        "".join(json.dumps(entry) + "\n" for entry in entries), encoding="utf-8"
+    )
+
+
+def _segment_rows(ledger_path):
+    conn = open_ledger(ledger_path)
+    try:
+        conn.row_factory = sqlite3.Row
+        return [
+            dict(row)
+            for row in conn.execute(
+                "SELECT * FROM call_segments ORDER BY trace_seq, segment_rank"
+            )
+        ]
+    finally:
+        conn.close()
+
+
+def _segment_count(ledger_path):
+    conn = open_ledger(ledger_path)
+    try:
+        return conn.execute("SELECT COUNT(*) FROM call_segments").fetchone()[0]
+    finally:
+        conn.close()
+
+
+class TestCallSegmentsWriter:
+    """F115 T001-Writer — the manifests reach ``call_segments`` on the backfill path.
+
+    The trace file is the WHOLE JOB's, copied beside the evidence by the
+    exporter, so the reader has to filter by ``task_id`` and number the entries
+    it keeps. Everything below drives the real functions over real files: no
+    private tracer helper is imported and no manifest is mocked.
+
+    ``BackfillResult`` is FROZEN BEHAVIOUR here. The end-to-end test asserts the
+    four counters against the SAME tree backfilled without a trace file, so a
+    segment write that ever started moving one would be visible immediately.
+    """
+
+    def test_two_entries_yield_their_rows_in_file_order(self, tmp_path):
+        brief = _manifest_entry("task_brief", 10, "a" * 64, 120, 30)
+        diff = _manifest_entry("diff", 20, "b" * 64, 400, 100)
+        tail = _manifest_entry("schema_tail", 30, "c" * 64, 60, 15)
+        trace = tmp_path / "prompt_trace.jsonl"
+        _write_trace_file(trace, [
+            _trace_entry(SEGMENT_TASK, [brief, diff]),
+            _trace_entry(SEGMENT_TASK, [tail]),
+        ])
+
+        rows = segment_rows_from_trace_file(
+            trace, call_id="job-7:T001", task_id=SEGMENT_TASK
+        )
+
+        assert rows == [
+            CallSegmentRow(
+                call_id="job-7:T001", trace_seq=0, segment_name="task_brief",
+                segment_rank=10, segment_sha256="a" * 64, chars=120,
+                tokens_estimated=30,
+            ),
+            CallSegmentRow(
+                call_id="job-7:T001", trace_seq=0, segment_name="diff",
+                segment_rank=20, segment_sha256="b" * 64, chars=400,
+                tokens_estimated=100,
+            ),
+            CallSegmentRow(
+                call_id="job-7:T001", trace_seq=1, segment_name="schema_tail",
+                segment_rank=30, segment_sha256="c" * 64, chars=60,
+                tokens_estimated=15,
+            ),
+        ]
+
+    def test_an_empty_manifest_yields_no_row_but_still_consumes_its_index(self, tmp_path):
+        """The index counts PROVIDER CALLS, so it cannot shift when one is empty."""
+        carried = _manifest_entry("task_brief", 10, "d" * 64, 88, 22)
+        trace = tmp_path / "prompt_trace.jsonl"
+        _write_trace_file(trace, [
+            _trace_entry(SEGMENT_TASK, []),
+            _trace_entry(SEGMENT_TASK, [carried]),
+        ])
+
+        rows = segment_rows_from_trace_file(
+            trace, call_id="job-7:T001", task_id=SEGMENT_TASK
+        )
+
+        assert [row.trace_seq for row in rows] == [1]
+        assert rows[0].segment_name == "task_brief"
+
+    def test_another_task_runs_entries_are_ignored(self, tmp_path):
+        """The copied file is the whole job's trace, not this task run's."""
+        mine = _manifest_entry("task_brief", 10, "e" * 64, 11, 2)
+        theirs = _manifest_entry("other_task_brief", 10, "f" * 64, 99, 24)
+        trace = tmp_path / "prompt_trace.jsonl"
+        _write_trace_file(trace, [
+            _trace_entry("T099", [theirs]),
+            _trace_entry(SEGMENT_TASK, [mine]),
+            _trace_entry("T099", [theirs]),
+        ])
+
+        rows = segment_rows_from_trace_file(
+            trace, call_id="job-7:T001", task_id=SEGMENT_TASK
+        )
+
+        assert [(row.trace_seq, row.segment_name) for row in rows] == [
+            (0, "task_brief")
+        ]
+
+    def test_absent_malformed_and_partial_inputs_never_raise(self, tmp_path):
+        """A missing file, a corrupt line and a partial manifest dict, all survivable."""
+        assert segment_rows_from_trace_file(
+            tmp_path / "nowhere" / "prompt_trace.jsonl",
+            call_id="job-7:T001", task_id=SEGMENT_TASK,
+        ) == []
+
+        brief = _manifest_entry("task_brief", 10, "e" * 64, 11, 2)
+        partial = _manifest_entry("diff", 20, "f" * 64, 22, 5)
+        del partial["tokens_estimated"]
+        sibling = _manifest_entry("schema_tail", 30, "9" * 64, 33, 8)
+        trace = tmp_path / "prompt_trace.jsonl"
+        trace.write_text(
+            json.dumps(_trace_entry(SEGMENT_TASK, [brief])) + "\n"
+            + "{not json at all\n"
+            + json.dumps(_trace_entry(SEGMENT_TASK, [partial, sibling])) + "\n",
+            encoding="utf-8",
+        )
+
+        rows = segment_rows_from_trace_file(
+            trace, call_id="job-7:T001", task_id=SEGMENT_TASK
+        )
+
+        # The corrupt line consumed no index, and the partial dict was SKIPPED
+        # rather than completed with a zero its sibling would then be summed with.
+        assert [(row.trace_seq, row.segment_name) for row in rows] == [
+            (0, "task_brief"), (1, "schema_tail")
+        ]
+
+    def test_recording_the_same_segments_twice_leaves_one_row_each(
+        self, ledger_path, tmp_path
+    ):
+        rows = [
+            CallSegmentRow(
+                call_id="job-7:T001", trace_seq=0, segment_name="task_brief",
+                segment_rank=10, segment_sha256="a" * 64, chars=120,
+                tokens_estimated=30,
+            ),
+            CallSegmentRow(
+                call_id="job-7:T001", trace_seq=0, segment_name="diff",
+                segment_rank=20, segment_sha256="b" * 64, chars=400,
+                tokens_estimated=100,
+            ),
+        ]
+        assert record_call_segments(rows, path=ledger_path) is True
+        assert record_call_segments(rows, path=ledger_path) is True
+        assert _segment_count(ledger_path) == len(rows)
+
+        # Nothing to store must not be the thing that creates a database.
+        untouched = tmp_path / "no-ledger-here" / LEDGER_FILENAME
+        assert record_call_segments([], path=untouched) is True
+        assert not untouched.exists()
+        assert not untouched.parent.exists()
+
+    def test_backfill_writes_the_segment_rows_and_moves_no_counter(
+        self, evidence_tree, ledger_path, tmp_path
+    ):
+        """End to end, against the frozen ``BackfillResult`` of the same tree."""
+        without_trace = backfill_ledger(
+            evidence_tree, path=tmp_path / "baseline" / LEDGER_FILENAME
+        )
+
+        brief = _manifest_entry("task_brief", 10, "a" * 64, 120, 30)
+        _write_trace_file(
+            evidence_tree / "task_runs" / SEGMENT_TASK / "prompt_trace.jsonl",
+            [_trace_entry(SEGMENT_TASK, [brief])],
+        )
+        with_trace = backfill_ledger(evidence_tree, path=ledger_path)
+
+        assert _segment_rows(ledger_path) == [{
+            "call_id": f"{FIXTURE_JOB_ID}:{SEGMENT_TASK}",
+            "trace_seq": 0,
+            "segment_name": "task_brief",
+            "segment_rank": 10,
+            "segment_sha256": "a" * 64,
+            "chars": 120,
+            "tokens_estimated": 30,
+        }]
+        assert _row(ledger_path, f"{FIXTURE_JOB_ID}:{SEGMENT_TASK}") is not None
+
+        counters = (with_trace.scanned, with_trace.recorded,
+                    with_trace.skipped, with_trace.failed)
+        assert counters == (without_trace.scanned, without_trace.recorded,
+                            without_trace.skipped, without_trace.failed)
+        assert counters == (4, 2, 1, 1)
+
+    def test_a_wrongly_typed_manifest_value_is_skipped_like_a_missing_key(self, tmp_path):
+        """R-0329: a string ``chars`` would be stored as TEXT and SUM to 0."""
+        text_chars = _manifest_entry("diff", 20, "a" * 64, "not-a-number", 5)
+        flag_tokens = _manifest_entry("schema_tail", 30, "b" * 64, 33, True)
+        sibling = _manifest_entry("task_brief", 10, "c" * 64, 120, 30)
+        # The fixture derives ``segment_manifest_chars`` by summing the entries,
+        # which a non-numeric ``chars`` cannot survive; the manifest is swapped
+        # in afterwards so the file on disk carries exactly the bad values.
+        entry = _trace_entry(SEGMENT_TASK, [sibling])
+        entry["segment_manifest"] = [text_chars, sibling, flag_tokens]
+        trace = tmp_path / "prompt_trace.jsonl"
+        _write_trace_file(trace, [entry])
+
+        rows = segment_rows_from_trace_file(
+            trace, call_id="job-7:T001", task_id=SEGMENT_TASK
+        )
+
+        # Both bad dicts are gone and the well-formed sibling is untouched, so
+        # nothing that reaches the ledger can become a measured zero later.
+        assert rows == [
+            CallSegmentRow(
+                call_id="job-7:T001", trace_seq=0, segment_name="task_brief",
+                segment_rank=10, segment_sha256="c" * 64, chars=120,
+                tokens_estimated=30,
+            ),
+        ]
+
+
+# ── F115 T002: the per-segment share aggregation ─────────────────────────────
+# Two evidence trees backfilled into ONE ledger by the REAL backfill: a job whose
+# two task runs carry a copied prompt trace, and a job whose single task run does
+# not. That shape is what lets one fixture pin the grouping, the pinned row
+# order, both filters, the totals and — the point of the feature — a call the
+# tracer never covered, which is an absence rather than a zero share.
+
+SHARE_JOB_TRACED = "job-traced"
+SHARE_JOB_BARE = "job-bare"
+
+
+def _share_evidence_tree(base, job_id, task_runs):
+    """An evidence tree for ``job_id``; ``task_runs`` is ``(task_id, ts_utc, manifest)``.
+
+    A ``manifest`` of None leaves that task run WITHOUT a ``prompt_trace.jsonl``,
+    which is the pre-F115 shape on disk. Nothing here is mocked: these are the
+    files the exporter writes, read back by the real backfill.
+    """
+    _write_json_file(base / "manifest.json",
+                     {"bundle_type": "job_evidence", "job_id": job_id})
+    for task_id, ts_utc, manifest in task_runs:
+        run = base / "task_runs" / task_id
+        _write_json_file(run / "provider_evidence.json", {
+            "schema_version": "1.0.0",
+            "task_id": task_id,
+            "execution_mode": "provider_backed",
+            "provider_call_count": 1,
+            "actual_call_count": 1,
+            "cost_call_count": 1,
+            "actual_prompt_tokens": 1000,
+            "actual_completion_tokens": 200,
+            "ts_utc": ts_utc,
+        })
+        _write_json_file(run / "token_accounting.json", {"role": "builder"})
+        if manifest is not None:
+            entry = _trace_entry(task_id, manifest)
+            entry["job_id"] = job_id
+            _write_trace_file(run / "prompt_trace.jsonl", [entry])
+    return base
+
+
+@pytest.fixture
+def share_ledger(ledger_path, tmp_path):
+    """Three calls: two traced ones in one job, one untraced one in another.
+
+    ``diff`` and ``schema_tail`` publish the SAME ``tokens_estimated`` on purpose,
+    so the fixture pins the tie-break of the row order and not only its direction.
+    """
+    brief = _manifest_entry("task_brief", 10, "a" * 64, 120, 30)
+    diff = _manifest_entry("diff", 20, "b" * 64, 400, 100)
+    tail = _manifest_entry("schema_tail", 30, "c" * 64, 60, 100)
+
+    traced = _share_evidence_tree(
+        tmp_path / "evidence" / SHARE_JOB_TRACED, SHARE_JOB_TRACED,
+        [("T001", "2026-08-01T10:00:00+00:00", [brief, diff]),
+         ("T002", "2026-08-05T10:00:00+00:00", [tail])],
+    )
+    bare = _share_evidence_tree(
+        tmp_path / "evidence" / SHARE_JOB_BARE, SHARE_JOB_BARE,
+        [("T001", "2026-08-09T10:00:00+00:00", None)],
+    )
+    assert backfill_ledger(traced, path=ledger_path).recorded == 2
+    assert backfill_ledger(bare, path=ledger_path).recorded == 1
+    return ledger_path
+
+
+class TestQuerySegmentShares:
+    """F115 T002-Query — where the tokens went, and how much of that we know.
+
+    The whole class reads a ledger the real ``backfill_ledger`` wrote from real
+    files; no row here was hand-inserted with SQL, so a writer that stopped
+    producing these rows would fail these tests rather than pass them.
+    """
+
+    def test_shares_group_by_segment_name_in_the_pinned_row_order(self, share_ledger):
+        """``tokens_estimated`` DESC, then ``segment_name`` ASC — R11 pins bytes on it."""
+        report = query_segment_shares(path=share_ledger)
+
+        assert report.rows == [
+            SegmentShareRow(segment_name="diff", calls=1, segments=1,
+                            chars=400, tokens_estimated=100),
+            SegmentShareRow(segment_name="schema_tail", calls=1, segments=1,
+                            chars=60, tokens_estimated=100),
+            SegmentShareRow(segment_name="task_brief", calls=1, segments=1,
+                            chars=120, tokens_estimated=30),
+        ]
+        assert report.ledger_exists is True
+
+    def test_a_call_without_segment_rows_is_unattributed_and_in_no_share_row(
+        self, share_ledger
+    ):
+        """The pre-F115 shape is reported as a missing row, never as a 0 share."""
+        everything = query_segment_shares(path=share_ledger)
+        traced_only = query_segment_shares(path=share_ledger, job_id=SHARE_JOB_TRACED)
+        bare_only = query_segment_shares(path=share_ledger, job_id=SHARE_JOB_BARE)
+
+        assert (everything.attributed_calls, everything.unattributed_calls) == (2, 1)
+        assert (traced_only.attributed_calls, traced_only.unattributed_calls) == (2, 0)
+        assert (bare_only.attributed_calls, bare_only.unattributed_calls) == (0, 1)
+
+        # The untraced call moves nothing: the shares are identical with and
+        # without it in the period, so it was counted and not distributed.
+        assert bare_only.rows == []
+        assert everything.rows == traced_only.rows
+
+    def test_the_shares_sum_to_the_totals_and_the_calls_match_query_cost(
+        self, share_ledger
+    ):
+        """The Acceptance line: nothing in the report may disagree with itself."""
+        report = query_segment_shares(path=share_ledger)
+
+        assert sum(row.segments for row in report.rows) == report.total_segments
+        assert sum(row.chars for row in report.rows) == report.total_chars
+        assert sum(
+            row.tokens_estimated for row in report.rows
+        ) == report.total_tokens_estimated
+        assert (report.total_segments, report.total_chars,
+                report.total_tokens_estimated) == (3, 580, 230)
+
+        assert report.attributed_calls + report.unattributed_calls == query_cost(
+            path=share_ledger).total.calls
+        narrowed = query_segment_shares(path=share_ledger, since="2026-08-05")
+        assert narrowed.attributed_calls + narrowed.unattributed_calls == query_cost(
+            path=share_ledger, since="2026-08-05").total.calls
+
+    def test_since_and_job_id_narrow_the_rows_and_both_attribution_counts(
+        self, share_ledger
+    ):
+        """A call outside the period is in neither the shares nor either count."""
+        since = query_segment_shares(path=share_ledger, since="2026-08-05")
+        assert since.rows == [
+            SegmentShareRow(segment_name="schema_tail", calls=1, segments=1,
+                            chars=60, tokens_estimated=100),
+        ]
+        assert (since.attributed_calls, since.unattributed_calls) == (1, 1)
+
+        job = query_segment_shares(path=share_ledger, job_id=SHARE_JOB_TRACED)
+        assert [row.segment_name for row in job.rows] == [
+            "diff", "schema_tail", "task_brief"]
+        assert (job.attributed_calls, job.unattributed_calls) == (2, 0)
+
+        both = query_segment_shares(
+            path=share_ledger, since="2026-08-05", job_id=SHARE_JOB_TRACED)
+        assert both.rows == since.rows
+        assert (both.attributed_calls, both.unattributed_calls) == (1, 0)
+        assert (both.since, both.job_id) == ("2026-08-05", SHARE_JOB_TRACED)
+
+    def test_until_narrows_the_shares_exactly_as_it_narrows_the_cost(
+        self, share_ledger
+    ):
+        """ONE ``_cost_filters`` clause, so the pair cannot disagree on the period.
+
+        The boundary is the traced 08-05 call's own timestamp, so the EXCLUSIVE
+        end drops it together with the untraced 08-09 one and leaves only the
+        08-01 call — whose two segment kinds are the whole breakdown.
+        """
+        boundary = "2026-08-05T10:00:00+00:00"
+
+        shares = query_segment_shares(path=share_ledger, until=boundary)
+        cost = query_cost(path=share_ledger, until=boundary)
+
+        assert [row.segment_name for row in shares.rows] == ["diff", "task_brief"]
+        assert (shares.attributed_calls, shares.unattributed_calls) == (1, 0)
+        assert shares.attributed_calls + shares.unattributed_calls == cost.total.calls
+        assert shares.until == boundary == cost.until
+
+    def test_a_missing_ledger_yields_an_empty_report_and_creates_nothing(self, tmp_path):
+        """Asking where the tokens went must not be what brings a ledger into being."""
+        absent = tmp_path / "projects" / str(uuid4()) / LEDGER_FILENAME
+
+        report = query_segment_shares(path=absent, since="2026-08-01")
+
+        assert report.ledger_exists is False
+        assert report.rows == []
+        assert (report.attributed_calls, report.unattributed_calls) == (0, 0)
+        assert (report.total_segments, report.total_chars,
+                report.total_tokens_estimated) == (0, 0, 0)
+        assert not absent.exists()
+        assert not absent.parent.exists(), "a query created a project directory"
+
+    def test_the_report_changes_no_byte_and_leaves_no_wal_beside_the_ledger(
+        self, share_ledger
+    ):
+        """Report generation touches nothing — measured on the bytes themselves."""
+        before = share_ledger.read_bytes()
+
+        query_segment_shares(path=share_ledger)
+        query_segment_shares(path=share_ledger, since="2026-08-01",
+                             job_id=SHARE_JOB_TRACED)
+
+        assert share_ledger.read_bytes() == before
+        assert sorted(p.name for p in share_ledger.parent.iterdir()) == [
+            LEDGER_FILENAME]

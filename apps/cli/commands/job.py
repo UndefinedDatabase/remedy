@@ -226,6 +226,10 @@ def _cmd_plan_job_local(job_id_str: str) -> None:
     )
 
     _plan_traces: list = []
+    # F115: `plan_job_with_llm` appends the ComposedPrompt it is about to send,
+    # so the recorder below can name the segments of the exact prompt it traces
+    # instead of rebuilding a second composition that could drift from it.
+    _plan_compositions: list = []
 
     def _record_plan_call(
         attempt: int, schema_v: str, is_parse_retry: bool, effective_prompt: str,
@@ -245,6 +249,7 @@ def _cmd_plan_job_local(job_id_str: str) -> None:
             phase="plan-retry" if is_parse_retry else "plan",
             transport_attempt=attempt,
             is_transport_retry=False,
+            composed_prompt=_plan_compositions[-1] if _plan_compositions else None,
         ))
 
     _structured_planner = planner_structured_enabled()
@@ -279,7 +284,9 @@ def _cmd_plan_job_local(job_id_str: str) -> None:
 
     start = time.monotonic()
     try:
-        result: PlanJobResult = plan_job_with_llm(job, call_planner)
+        result: PlanJobResult = plan_job_with_llm(
+            job, call_planner, on_prompt_composed=_plan_compositions.append,
+        )
     except StructuredParseError as exc:
         _persist_plan_traces()
         # F005/F010: parse exhaustion is the stable class ``parse``, not the

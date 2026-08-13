@@ -4364,3 +4364,261 @@ Reverse this decision by moving the two directories back from
 `.remedy-wt/.cache/f107-archive/` to `.remedy-wt/`. The durable fix R-0295
 names — one `-path './.remedy-wt'` line in the packager's prune list — retires
 D3, this amendment and the move together.
+
+## DECISION F115 D2 (2026-08-13) — the planner call site needs a COMPOSER built, not a composition threaded
+
+Context: F115 D1 committed to wiring the three unwired `build_trace_entry` call
+sites through the prompt-segment registry so live ledger rows stop resolving to
+an empty manifest. Two are done — the builder at `pingpong_loop.py:2795` (R2)
+and the reviewer at `pingpong_loop.py:2987` (R4). Both were mechanical: a
+`compose_*_prompt` function already existed beside the call site, the legacy
+`_build_*_prompt` wrapper already returned `compose_*_prompt(...).text`, and
+the round only had to compose at the call site and hand the `ComposedPrompt`
+to the trace entry. The sent bytes could not change, and the goldens proved it.
+
+The planner site is NOT that shape, and this is recorded before it is ordered
+so no round discovers it mid-flight. The facts, read at the F115 R5 gate:
+
+* The trace entry is built at `apps/cli/commands/job.py:236`, inside the
+  `_record_plan_call` callback, from an `effective_prompt` STRING.
+* That string arrives through `make_structured_planner`
+  (`packages/orchestration/structured_planner.py:59`), whose contract is
+  `on_call(attempt, schema_v, is_parse_retry, effective_prompt)`
+  (`structured_planner.py:68`) — a string, by design, because the engine is
+  provider-agnostic and driven by an injected `call_fn`.
+* The prompt itself is built in `plan_job_with_llm` at
+  `packages/orchestration/llm_planner.py:107-109`: `prompt = job.user_prompt or
+  job.name`, then `prompt = f"{prompt}\n\n{memory_section}"` when recalled
+  memory exists. It is two concatenated parts and nothing else.
+* There is NO composer to reuse: `grep -c 'ComposedPrompt'
+  packages/orchestration/llm_planner.py` prints 0. Unlike the builder and the
+  reviewer, no registry-backed function exists to call.
+
+Chosen: a later round BUILDS `compose_planner_prompt` in `llm_planner.py` over
+the two parts that already exist — the job prompt at TASK rank and the recalled
+memory section at JOB_CONTEXT rank — and threads the resulting `ComposedPrompt`
+out to `_record_plan_call` through an explicit optional hook on
+`plan_job_with_llm`, leaving `call_planner` still receiving the same string.
+The sent bytes stay identical because `compose_prompt_segments` joins with the
+two-character `PROMPT_SEGMENT_DELIMITER` (`prompt_segments.py:188`), which is
+exactly the `\n\n` the current concatenation already uses — that identity is
+the round's first gate, not an assumption, and if it does not hold the round
+stops rather than changing what the planner sends.
+
+Alternatives considered: (a) widen `on_call` to carry a `ComposedPrompt` —
+rejected, it changes a provider-agnostic engine contract for one caller's
+telemetry; (b) compose in `job.py` instead, duplicating the prompt assembly at
+the CLI — rejected, two places would build the planner prompt and could drift,
+which is the exact failure `_build_reviewer_prompt` was collapsed into
+`compose_reviewer_prompt` to prevent; (c) accept a permanently empty planner
+manifest and report those rows "unattributed" — rejected as the default, but it
+remains the honest fallback if the byte-identity gate fails, and F115 already
+owes "unattributed" rendering for historical rows regardless.
+
+Reverse this decision by deleting this entry. Nothing in the tree depends on it
+yet: it is a plan for a round that has not run.
+
+## DECISION F115 D3 (2026-08-13) — the planner segments rank so composition reproduces the sent order
+
+Supersedes the RANK ASSIGNMENT in DECISION F115 D2 and nothing else in it: the
+composer, the optional hook, the untouched `on_call` contract and the
+byte-identity-first gate all stand as D2 recorded them.
+
+Context: `compose_prompt_segments` sorts by `(int(rank), registration index)`
+ascending, and `SegmentStabilityRank.JOB_CONTEXT` is 3 against TASK's 4, so D2's
+ranks compose the memory section BEFORE the job prompt. The sent bytes are the
+other order: `llm_planner.py:107-109` builds `prompt` from `job.user_prompt or
+job.name`, then appends `f"\n\n{memory_section}"`. D2's ranks and D2's identity
+gate contradict each other; the gate is the load-bearing half.
+
+Chosen: `planner_job_prompt` at `SegmentStabilityRank.TASK` and
+`planner_memory_context` at `SegmentStabilityRank.STEERING` — the only pair of
+DISTINCT ranks that reproduces the existing order. The scale's declared meaning
+is cache stability, "stable prefixes first, volatile tails last"
+(`prompt_segments.py:52`), and a per-job memory recall already sitting in the
+prompt's tail belongs there on both readings.
+
+Alternatives: (a) both segments at TASK rank, letting the registration-index
+tie-break carry the order — rejected, it makes a tie-break load-bearing where a
+rank states the same thing explicitly; (b) memory at DOSSIER or CONVENTIONS —
+rejected, both are below TASK and reverse the order as JOB_CONTEXT does;
+(c) keep D2's ranks and let the sent bytes change — rejected outright, F115 D1
+is that the manifest describes what was sent, and a telemetry feature may not
+edit the prompt it measures.
+
+Reverse by deleting this entry and restoring D2's ranks — which also means
+accepting a changed planner prompt, so the two are one decision.
+
+## DECISION F115 D4 — the manifest gets its own table, not a ledger column (2026-08-13)
+
+Context, from `.agent/f115_inventory.md` section "## T001 persistence inventory
+(R7)", every citation re-read by the reviewer at the R8 gate: a `calls` row is
+ONE FINALIZED TASK RUN keyed `"<job_id>:<task_id>"` (`token_ledger.py:178-192`,
+DECISION F103 D16), while a segment manifest belongs to ONE PROVIDER CALL
+(`prompt_trace.py:74-83`). The mapping is one-to-many. Three constraints then
+decide the shape rather than merely colour it:
+
+1. `verify_ledger` compares a stored row against a record re-derived from
+   evidence by WHOLE-DATACLASS EQUALITY (`token_ledger.py:688-701`), so any
+   column added to `_CALL_COLUMNS` must be reproducible by
+   `call_record_from_evidence` — or every row reads as drift.
+2. The live ledger hook fires BEFORE `prompt_trace.jsonl` is copied into
+   `task_runs/<task_id>/`: `_record_finalized_call_in_ledger` at
+   `pingpong_evidence.py:517-525`, the copy at `:527-536`. A later backfill
+   reads that same tree WITH the file present. An evidence-derived manifest
+   column would therefore be NULL live and non-NULL on backfill, which is
+   constraint 1 firing on every row the feature cares about.
+3. `record_call` writes `INSERT OR IGNORE` (`token_ledger.py:425-428`), which
+   never UPDATEs, so a manifest cannot be attached to an existing row later.
+
+Chosen: a NEW table `call_segments`, added as migration step 2, with
+`SCHEMA_VERSION` bumped to 2. One row per segment of one composed prompt, its
+value columns mirroring `ComposedPrompt.manifest_as_dicts()` one for one
+(`prompt_segments.py:107-121` — name, rank, sha256, chars, tokens_estimated),
+keyed by the ledger row's `call_id` plus `trace_seq`, the zero-based position of
+the trace line within that task run's entries. `calls`, `CallRecord` and
+`_CALL_COLUMNS` are not touched, so constraint 1 cannot fire and no existing
+row's verify result moves. Backfill tolerance is STRUCTURAL rather than coded: a
+pre-F115 row simply has no `call_segments` rows, and "no rows" is what the
+report renders as unattributed — never guessed, and never a fabricated zero.
+
+Alternatives considered. (a) An aggregate manifest column on `calls` — rejected
+by constraints 1 and 2, and it would squash a one-to-many relation into a single
+value, losing exactly the per-segment detail the feature exists to show. (b) A
+reference to the trace file — rejected because the row ALREADY carries one:
+`evidence_ref` is `"task_runs/<task_id>"` (`token_ledger.py:547-549`), which is
+exactly the directory the trace file is copied into (`pingpong_evidence.py:533`),
+so the option adds no information the row lacks; and a JSONL path cannot be
+aggregated in SQL, which is precisely what T002's queries need.
+
+Scope: this decision lands SCHEMA ONLY. Nothing writes to `call_segments` yet —
+the writer is the next round. An inert table is what makes this a separately
+reviewable commit rather than a schema change smuggled in beside its consumer.
+
+Reverse by deleting the `2:` entry from `_MIGRATIONS`, restoring the version
+constant to 1, and dropping the docstring bullet that names the table. A ledger
+already migrated keeps an empty unused table, which no code reads.
+
+## DECISION F115 D5 — `until` is EXCLUSIVE, so a period is half-open (2026-08-13)
+
+`--until` is the second end of the report period T003 needs, and its boundary
+reading is a real choice with a real failure mode. It is settled as EXCLUSIVE:
+`_cost_filters` emits `ts_utc < ?`, so a period is `[since, until)`.
+
+Why exclusive. The prior-period comparison the feature file asks for is the
+equal-length window immediately before `since` — that is, `[since - d, since)`
+where `d = until - since`. Two adjacent windows must partition the calls
+between them exactly once. With an INCLUSIVE end, a call whose `ts_utc` equals
+the shared boundary falls into BOTH windows: it is added to the current period
+and to the one it is being compared against, and the comparison then reports a
+difference that is an artifact of the boundary rather than a fact about the
+run. That is the same class of defect P6 forbids elsewhere in this feature —
+a number a reader cannot tell apart from a measurement.
+
+It also matches `since`, which is already `>=`. One end closed and one end
+open is the only pairing under which concatenating periods is lossless and
+duplicate-free, and it is the reading every calendar-period query in the
+report will inherit.
+
+Alternatives considered. (a) Inclusive `<=` — rejected above; it would also
+make `--until 2026-08-09` mean "through the instant 2026-08-09T00:00:00" and
+nothing later that day, which is a boundary users misread in the opposite
+direction. (b) Day-granular truncation of `until`, so `--until 2026-08-09`
+means "through the end of that day" — rejected because it would give `until` a
+different comparison shape than `since`, which is a plain lexicographic
+`ts_utc` compare, and two filters on one column that parse their arguments
+differently is a trap this module has no reason to set.
+
+Scope: the QUERY LAYER only. Nothing validates an `until` string at this
+layer, exactly as nothing validates `since` here; the CLI owns that, and the
+CLI is not in this round. The prior-period comparison this decision exists to
+serve is also not in this round — it is the next one.
+
+Reverse by changing `ts_utc < ?` to `ts_utc <= ?` in `_cost_filters`, deleting
+the half-open sentence from the two query docstrings, and updating the
+boundary test that names the excluded call. Nothing else depends on the
+reading.
+
+## DECISION F115 D6 — the prior period reuses the current period's `since` STRING (2026-08-13)
+
+The prior-period comparison needs the equal-length window immediately before
+`[since, until)`. The arithmetic is obvious; the SERIALISATION is not, and it
+is where this would have gone wrong.
+
+The prior window is `[parsed_since - d, since)` where `d = until - since`. Its
+opening bound is computed and must be serialised. Its CLOSING bound is not
+computed at all: it is the ORIGINAL `since` string, byte for byte, passed
+through untouched.
+
+Why that matters. `_cost_filters` compares `ts_utc` LEXICOGRAPHICALLY — that is
+the whole reason `ts_utc` is TEXT rather than an epoch number, and `query_cost`
+says so in its own docstring. Two windows abut correctly only if the boundary
+they share is the SAME STRING on both sides. Round-tripping it through
+`fromisoformat` and `.isoformat()` does not guarantee that: `"2026-08-01"`
+comes back as `"2026-08-01T00:00:00"`, and `"...+00:00"` and `"...Z"` are the
+same instant in two spellings. Every one of those round-trips still happens to
+order correctly against a well-formed `ts_utc`, which is precisely the danger —
+it would work by formatting luck, and the first ledger written in a different
+ISO-8601 shape would silently double-count or drop the boundary call. Passing
+the original bytes through makes the partition property of DECISION F115 D5
+hold by construction instead.
+
+Four cases yield no prior window at all, and each states its own reason rather
+than returning a bare None: an open-ended period has no length to mirror; an
+unparseable end is never guessed at; a naive end paired with an aware one is a
+`TypeError` from `datetime`, and inventing an offset to avoid it would be
+fabricating the user's timezone; and a period whose end is at or before its
+start has an empty or inverted prior window. A fifth case is not an error but
+still not a comparison: a prior window that EXISTS and holds zero calls. It is
+reported as "read, and empty", which is the P6 distinction between not having
+looked and having looked and found nothing.
+
+Alternatives considered. (a) Return `None` for every unavailable case —
+rejected because the report must print WHY there is no comparison, and a bare
+None cannot say. (b) Normalise both ends to a canonical UTC spelling before
+comparing — rejected as a larger change with a wider blast radius: it would
+alter how `since` itself filters, which is pinned by existing tests and by both
+goldens, for a benefit this feature does not need.
+
+Reverse by deleting `PriorReportPeriod` and `prior_report_period` and dropping
+the two comparison parameters from the renderers. Nothing else reads them: the
+CLI that will call them is a later round.
+
+## DECISION F115 D7 (2026-08-13) — the packager edit this session did not make is neither committed nor destroyed; it is stashed at closure, not now
+
+ID note, declared deviation: the R20 block ordered this entry as DECISION
+F115 D4. That ID has been taken since the R8 gate by "the manifest gets its
+own table, not a ledger column" (this file, above). Two different decisions
+under one ID would corrupt the ledger and break every citation of the older
+one, so this entry takes the next free ID, D7. Wherever the R20 block text and
+the R19 verdict entry in `.agent/live_review.md` say "DECISION F115 D4" about
+`scripts/make_review_zip.sh`, they mean this entry. The body below is the
+block's, verbatim.
+
+Context: `git status --porcelain` has carried ` M scripts/make_review_zip.sh`
+since 12:03 on 2026-08-13. The change is one line, `-path './.remedy-wt' -o \`,
+added to the `find` prune list — precisely the durable fix finding R-0295 named
+and DECISION F107 D3a deferred to "the follow-up that owns the packager". No
+commit of this session touches the file and no agent of this session wrote it.
+
+Chosen: leave it untouched through the integration gate, then, in the closure
+round and only there, `git stash push -m "f115-closure: operator's make_review_zip.sh prune-list edit" -- scripts/make_review_zip.sh`
+immediately before the review zip is built, and leave the stash in place. Three
+facts force this. The closure protocol's precondition 5 requires a clean tree
+and its zip rule says a package built from a dirty tree is INVALID, so closure
+cannot proceed around it. Committing it onto this branch is the scope drift
+DECISION F107 D3 already rejected in writing — a packaging change inside a
+feature that does not own the packager. And discarding it destroys another
+actor's uncommitted work, which no closure is worth. A stash is none of the
+three: the bytes survive intact, no tracked file and no history changes, and
+one command puts it back.
+
+Alternatives considered: (a) commit it here — rejected, F107 D3's reasoning has
+not weakened; (b) `git checkout --` it — rejected outright, irreversible
+destruction of work this session did not author; (c) stash it NOW — rejected,
+the gate does not need a clean tree and every hour it stays visible is another
+hour the operator can claim it; (d) close with a dirty tree — rejected, it
+produces an invalid package and a false closure record.
+
+Reverse this decision with `git stash pop`, or by dropping the stash after the
+packager's owning feature lands the same line.

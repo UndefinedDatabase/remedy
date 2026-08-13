@@ -1,1387 +1,363 @@
-# Live Review — F111 Diff-only repair
+# Live Review — F115 Prompt breakdown & cost report
 
-> Reviewer: the main session of a one-session self-drive build
-> (docs/agents/self_drive_protocol.md). Worker: one delegated subagent per
-> round. Findings are authored here by the reviewer only. A worker marks a
-> landed fix `Landed: R-XXXX`; only reviewer-authored `Done:` text sets
-> Resolved (docs/agents/planner_reviewer_prompt.md §4.4).
-> Branch: feature/f111-diff-only-repair. The next free finding ID is not
-> tracked in this header: `.agent/plan.md` holds it and is rewritten each round.
+> Round-by-round review record for F115, reset at the feature claim. The F111
+> record is preserved in git history at its closure commit 98a49b5c. Finding
+> IDs continue monotonically across features and are never renumbered.
+
+## Steps
+R1 claim, state reset and shape inventory → T001 manifest-alongside-actuals
+persistence with backfill tolerance → T002 aggregation queries, the pure
+renderer and its goldens → T003 CLI, period comparison and json schema →
+integration gate → closure.
 
 ## Findings
 
-Twenty-two findings carry forward from F107, all OPEN, none above Medium,
-each accepted as a risk at the F107 closure. Every entry below is compacted
-to its substance; the full text of all of them lives in
-`.agent/live_review.md` at commit 3c017c4e, merged to main as 4e0b762e,
-which is the archive of record.
+- R-0320 — Low — carried forward from the F111 closure-candidates file under
+  the disk-vehicle rule (docs/roadmap/STATUS_closure_protocol.md,
+  "Closure-candidate findings"). A stop reason no code can ever emit:
+  `STOP_REASONS` in `packages/orchestration/builder_bridge.py` declares
+  `stale_diff_context`, and a repo-wide grep over every `.py` file finds that
+  string in exactly one place — the frozenset itself. Nothing raises it,
+  nothing tests it, nothing reads it. It predates the F111 branch (it is
+  present at the merge base 4e0b762e), so it was not an F111 defect and was
+  deliberately not fixed there. It is not fixed in F115 either: AGENTS.md bars
+  mixing an unrelated fix into a feature branch, and F115 opens the token
+  ledger and the report renderer, not the builder bridge. The remedy — wire it
+  to the condition it names, or delete it — is a one-commit change that
+  belongs to whichever feature next has a legitimate reason to open
+  `builder_bridge.py`. Recording it here keeps it findable after
+  `.agent/candidates.md` is emptied, which is the whole point of the
+  carry-forward rule. OPEN.
 
-- R-0221 (Low, from F103 via F104 and F105):
-  `TestAutoBuildBehavior::test_auto_build_runs_by_default` in
-  `tests/ui_server/test_dashboard_contract.py` runs a real `npm install` and
-  `npm run build` mid-suite, refreshing `apps/ui/dist` mtimes and costing
-  every integration gate phantom base-only failures through
-  `_frontend_is_stale()`. Routed to the F252 flake class. OPEN.
-- R-0239 (Low, from F105): a reviewer-authored gate citation named a path
-  that does not exist. The worker ran the real path and declared the
-  correction, so nothing was skipped; kept as the citation-accuracy record.
-  OPEN.
-- R-0247 (Low, from F105): a reviewer-authored finding cited a line count of
-  101 where the file was 100. Same class as R-0239. OPEN.
-- R-0262 (Low, from F105): `plan_job_llm` composes its prompt OUTSIDE the
-  `try` that turns a provider failure into a renderable result, so a raising
-  composer escapes the function. OPEN.
-- R-0265 (Medium, from F105): a provider that reports usage but no cache
-  field leaves a measured-looking `0` the token ledger cannot distinguish
-  from a real zero. The fix belongs to the actuals producer. OPEN.
-- R-0266 (Medium, from F105): the token ledger's `role` is a hardcoded
-  `builder` in production data, so a per-role split of production rows is one
-  bucket. Producer change. OPEN.
-- R-0268 (Low, from F105): a `.agent/STOP` file carries no provenance —
-  nothing distinguishes an operator stop from any other writer. Belongs to
-  the self-drive protocol. OPEN.
-- R-0270 (Medium, F107 R1): `scripts/make_review_zip.sh` sweeps the work tree
-  with `find` and never consults `.gitignore`, so the review zip packages the
-  gitignored scratch tree `.remedy-wt/` — 1091 of 3646 members at one
-  measured build, a prior feature's whole evidence bundle included. OPEN.
-- R-0272 (Low, F107 R5): a reviewer-authored contract named an
-  `ImportNeighbors.files` field that does not exist — the real neighbour
-  tuple is `resolved`. The worker implemented the correct one. OPEN.
-- R-0274 (Low, F107 R7): the R7 block contradicted itself about which commit
-  carries a `Landed:` line, and asked for a commit's own SHA inside that
-  commit. The worker applied the safe reading and disclosed both. OPEN.
-- R-0280 (Medium, F107 R10): the R10 block contradicted itself about which
-  commit carries two `docs/README.md` pairs; the losing reading would have
-  committed three commits on a RED docs suite. The worker took the safe one.
-  OPEN.
-- R-0282 (Low, F107 R11): the R11 block said "exactly these nine paths" over
-  a list of eight. Reviewer arithmetic, paid for with a declared deviation.
-  OPEN.
-- R-0284 (Low, F107 R11): two line citations in the R11 block were wrong.
-  Citation-accuracy class. OPEN.
-- R-0285 (Low, F107 R12): the R12 block's zero-gate on `^Landed:` made the
-  protocol's own marker unwritable in the one round that landed a fix. The
-  rule: such a zero-gate is safe only in a round that lands no fix. OPEN.
-- R-0286 (Medium, F107 R13 integration gate): the full suite is RED at the
-  merge base with five ids — every `[reviewer]` parametrization in
-  `tests/orchestration/test_role_conventions.py` — because
-  `docs/agents/reviewer_conventions.md` estimates 954 tokens against the
-  800-token cap declared in `packages/orchestration/role_conventions.py`, so
-  composing the segment raises `PromptSegmentError` before any assertion
-  runs. Pre-existing, not branch-introduced; expect the same five at this
-  feature's gate. OPEN.
-- R-0287 (Low, F107 R13): `docs/agents/planner_reviewer_prompt.md` §4.4
-  routes every severity decision to "the canonical scale in
-  review_protocol.md", but no `docs/agents/review_protocol.md` exists on
-  disk, so every severity here is assigned from precedent. OPEN.
-- R-0289 (Medium, F107 R16): the R16 block ordered its ONLY push at its last
-  commit; the session died after C4 and twelve commits sat on local disk
-  alone. Rule, forward-looking and applied throughout this feature: a round
-  pushes after EVERY commit. OPEN.
-- R-0290 (Medium, F107 R18): not one of the six Phase 0 probe commands in
-  `docs/agents/self_drive_protocol.md` can see a feature branch that is not
-  checked out, and a completed-but-unclosed feature has by design no open PR
-  — so Rule A5 can re-claim a feature already deep on a branch. Fix: Phase 0
-  gains a `feature/*` branch sweep and Phase 1 a pending-feature rule that
-  outranks A5. This session ran that sweep by hand before claiming F111.
-  OPEN.
-- R-0294 (Low, F107 R19): the R18 block was emitted without the §3
-  pre-emission checklist run on its final bytes — 407 lines against the cap
-  of 400, plus a self-counting zero-gate. Registered against the reviewer
-  role. OPEN.
-- R-0295 (Medium, F107 R21): `scripts/make_review_zip.sh:218-259` collects
-  with a hardcoded `find` prune list that predates the `.remedy-wt/` scratch
-  convention, and the post-publication scan at `:509` then rejects the
-  package for the `/.data/` and `/.git/` components it just published —
-  closure blocked by construction, and a leak surface for any scratch holding
-  a `.env` or a log. The durable fix is one prune entry, owned by a
-  follow-up. OPEN.
-- R-0296 (Low, F107 R21, flake class):
-  `tests/orchestration/test_product_smoke.py::test_no_zombie_processes_after_every_outcome`
-  is load-sensitive and fails intermittently under `-n auto`; two runs of the
-  same head disagreed. Routed to F252. OPEN.
-- R-0297 (Low, F107 R22): the R21 block made a filesystem path OUTSIDE the
-  repository load-bearing without probing it first — every path outside
-  `/home/decodeux/Repos/remedy` is denied by this environment — and the round
-  lost its second half. The filesystem twin of §3 checklist item 5. OPEN.
+- R-0321 — Low — `.agent/f115_inventory.md` says "only four of the eight
+  `build_trace_entry` call sites pass `composed_prompt`". The count of
+  non-test call sites is SEVEN, not eight: `intake.py:135`,
+  `flight_plan.py:181`, `orchestrator_loop.py:920`, `mission_compiler.py:280`,
+  `pingpong_loop.py:2824`, `pingpong_loop.py:3010` and
+  `apps/cli/commands/job.py:236`. The inventory's own enumeration names four
+  that pass and three that do not, which is seven, so the number contradicts
+  the list directly above it. Every individual citation is correct and the
+  round's conclusion is unaffected — this is an arithmetic slip in prose, not
+  a bad reading of the source, and it is registered rather than waved through
+  because a wrong total in an inventory is exactly the kind of number a later
+  round quotes without re-counting. Fix: change "eight" to "seven" in that
+  sentence and nothing else. OPEN.
 
-## Steps
-R1 claim, state reset and carry-forward · R2 the repair-path DECISION plus
-T001 hunk selection · T002 response schema, fence pre-check and
-apply-with-conflict fallback · T003 wiring, mode and token evidence ·
-integration gate · closure.
+- R-0322 — Medium — the suite is RED at this branch's merge base. Five ids in
+  `tests/orchestration/test_role_conventions.py` fail, every one a
+  `[reviewer]` parametrization, each raising `PromptSegmentError: prompt
+  segment 'reviewer_conventions' is over its token cap: 954 tokens estimated,
+  cap 800` before any assertion in the test runs. Measured by the reviewer at
+  the R2 gate: `5 failed, 21 passed in 0.14s`. It is NOT an F115 defect —
+  `docs/agents/reviewer_conventions.md` was last touched at a85e82f5 on
+  2026-08-12, before this branch existed, and
+  `git diff --name-only 0d6c97aa..HEAD` over that path and over
+  `prompt_facts.py` is empty. It is the same class F111 recorded as R-0286 and
+  attributed at its integration gate in both trees. It is registered here
+  rather than inherited silently because F115's own integration gate will meet
+  it, and a gate that has to rediscover a known red spends a round proving
+  something already known. It is deliberately NOT fixed on this branch:
+  AGENTS.md bars mixing an unrelated fix into a feature branch. The fix
+  belongs to a round that legitimately opens the conventions document or the
+  cap. OPEN.
 
-## Round gates
+Done: R-0321 — RESOLVED at the R4 gate. Verified against the disk, not the report: `grep -c 'four of the eight' .agent/f115_inventory.md` prints 0 and `grep -c 'four of the seven'` prints 1, the enumeration below that sentence still names four wired call sites and three unwired, and `git show --numstat 8412f20c` shows the C3 commit of R3 changed exactly one line of that file. The R3 round as a whole is PASS: gates (a)-(g) were re-run by the reviewer and every value matched the handback, and the R3 diff touched only `.agent/**` and `docs/agents/planner_reviewer_prompt.md`, as its block declared.
 
-### R1 — PASS (2026-08-13)
-Reviewed by the main session over d956be2f..b0ab8e09, base 4e0b762e. Every
-number below was produced by the reviewer re-running the command, not read
-off the handback. `python3 -m pytest tests/docs/ -q` exit 0, 294 passed.
-`python3 -m pytest tests/cli/test_golden_path.py -q` exit 0, 42 passed.
-Transport: the PRIMARY cmp proof holds, no digest fallback was needed —
-`.remedy-wt/f111r1/BLOCK` and `.agent/authored/f111-r1-1.md` are
-byte-identical at sha256 348f4541705097eb..., and `.agent/live_review.md`,
-`.agent/plan.md` and `.agent/context.md` are byte-identical to their
-scratchpad originals LR, PLAN and CTX. Scope: `git diff --name-only
-main...HEAD` lists exactly the seven ordered paths and nothing else. STATUS:
-claim commit b1017248 reads `1 1`; the `[~]` line occurs 1x and the `[ ]`
-line 0x. No `Done:` and no `Landed:` line was written this round, and no
-marker line leaked into live_review, plan, context, handoff or STATUS.
-Per-commit insertions 319/293/1/96/30/27/50, each under the 500 cap. Tree
-clean; remote comparison `0 0`. No finding: next free ID stays R-0298.
+- R-0323 — Low — reviewer gate arithmetic, self-registered. The R4 block's gate
+  (f) demanded that `git diff --name-only 0d6c97aa..HEAD` list SEVENTEEN paths
+  — "the fifteen of R1-R3 plus this round's two new ones
+  (`.agent/authored/f115-r4-1.md`, `tests/orchestration/test_prompt_trace.py`)".
+  `tests/orchestration/test_prompt_trace.py` was ALREADY one of those fifteen:
+  R2 added the builder behaviour test and its wiring guard to that same file,
+  and `git diff --name-only 0d6c97aa..8601e276` lists it. Only one path was new
+  in R4, so the reachable total was SIXTEEN and the ordered seventeen was
+  unmeetable by construction. The worker measured 16, reported it, changed
+  nothing to meet the number, and declared the deviation — the correct
+  behaviour, and the round cost one declared deviation to prove a reviewer
+  slip. Same class as R-0282 (F107 R11, "exactly these nine paths" over a list
+  of eight) and R-0321 (F115 R1, "four of the eight" over a list of seven);
+  three instances now, all of them a count stated in prose that the reviewer
+  never re-derived from the list beside it. The standing counter-measure is
+  already on disk as checklist item 8
+  (`docs/agents/planner_reviewer_prompt.md`, added at 43763bf4) — it says to
+  compute a gate's expected value from the source that PRODUCES it. A path
+  count's source is the previous round's own `git diff --name-only` output,
+  which the reviewer had already run in that same session and did not re-read.
+  No fix is possible on disk: the block is committed verbatim by design and
+  R4's verdict already stands as PASS. It is registered so the pattern is
+  countable rather than forgotten. OPEN.
 
-## Decisions
+- R-0324 — Low — reviewer spec arithmetic, self-registered, caught before the
+  round it would have broken. DECISION F115 D2 (R5) fixed the planner segment
+  ranks as "the job prompt at TASK rank, the recalled memory section at
+  JOB_CONTEXT rank". Composition sorts by rank ASCENDING
+  (`compose_prompt_segments`, `prompt_segments.py:182-188`) and JOB_CONTEXT is 3
+  against TASK's 4, so that assignment composes the MEMORY SECTION FIRST, while
+  the code it must reproduce concatenates the other way round —
+  `prompt = f"{prompt}\n\n{memory_section}"`, `llm_planner.py:107-109`. D2's own
+  byte-identity gate, the one it calls the round's first gate, was therefore
+  unmeetable by construction — reading the rank names as semantic labels rather
+  than as the sort key they are is what produced the slip. Corrected before
+  emission as DECISION F115 D3, by checklist item 8
+  (`docs/agents/planner_reviewer_prompt.md`) — compute a gate's expected value
+  from the code that PRODUCES it. Fourth of the reviewer-arithmetic class after
+  R-0282, R-0321 and R-0323, and the first caught before a worker paid. OPEN.
 
-### DECISION F111 D1 — where the diff channel attaches (2026-08-13)
-Chosen: F111's prompt side and response side attach to two DIFFERENT existing
-seams, because no single seam carries both today.
-- Response side (T002): `packages/orchestration/builder_bridge.py`. Its
-  `bridge_builder_output_to_repo` already parses a `BuilderOutput` into a
-  `StructuredPatch` (stage 1, `parse_builder_patch`) and lands it through
-  `apply_structured_patch` (stage 3) — the fenced, snapshot-backed applicator
-  whose `_apply_hunks` is already strict and already returns None on any
-  context mismatch. The versioned unified-diff response schema, the fence
-  pre-check and the conflict fallback belong there, where a model response is
-  ALREADY treated as a patch.
-- Prompt side (T001): the repair context built by
-  `packages/orchestration/repair_context.py` and fed to the next `build_fn`
-  call by `builder_bridge.run_bounded_repair_loop`.
-- OUT of scope, deliberately: `packages/orchestration/pingpong_loop.py`. Its
-  builder is an agentic CLI that edits the staging tree itself; `BuilderOutput`
-  carries no patch field on that path and no applicator is invoked there.
-  Giving it a diff-shaped response would mean inventing a new provider
-  contract and changing applicator semantics — both barred by the feature
-  file's Do not touch.
-Alternatives considered. (a) Put both sides in `pingpong_loop`: rejected, it
-has no response-side patch seam at all, so T002 would have nothing to attach
-to. (b) Build a second applicator for the diff path: rejected outright, the
-feature file names the existing applicator as the ONLY way changes land.
-(c) Defer F111 until ping-pong grows a patch contract: rejected, the
-measurable win the feature asks for is reachable today on the bridge path.
-How to reverse: delete this DECISION and the amendment it adds to
-docs/roadmap/features/T2_F111.md, then re-scope T002 to the preferred seam.
-No code depends on it yet.
+- R-0325 — Low — the R6 authored import block left `tests/test_llm_planner.py`
+  ruff-dirty. TEXT-G placed `from packages.orchestration.prompt_segments import
+  (...)` ABOVE the existing `planner_models` import, so the block is no longer
+  alphabetically sorted and `python3 -m ruff check tests/test_llm_planner.py`
+  reports `I001` (un-sorted import block) at line 7 — measured by the reviewer
+  at the R6 gate, against a file that printed `All checks passed!` one commit
+  earlier. `I` is an enabled rule class (`pyproject.toml:50`), so this is a real
+  regression this branch introduced, not a pre-existing style debt; it is Low
+  because no suite test and no CI workflow runs ruff (the repository has no
+  `.github/workflows/`), so nothing turns red today. The worker was right to
+  report it rather than edit an authored slice to fix it. Fix: move the
+  `prompt_segments` import below `planner_models`. OPEN.
 
-### R2 — PASS (2026-08-13)
-Reviewed by the main session over f71ebc06..5d8d8c56. Every number below the
-reviewer produced by re-running the command, not by reading the handback.
-`python3 -m pytest tests/orchestration/test_diff_repair.py -q` exit 0, 18
-passed. `python3 -m pytest tests/docs/ -q` exit 0, 294 passed. `python3 -m
-pytest tests/cli/test_golden_path.py -q` exit 0, 42 passed. The mutation
-red-proof was RE-RUN INDEPENDENTLY by the reviewer in its own disposable
-worktree: removing the `max(1, ...)` clamp turns exactly two tests red,
-`TestMarginClamping::test_start_of_file_clamps_to_line_1` and
-`TestMarginClamping::test_margin_wider_than_file_yields_whole_file`, at
-2 failed / 16 passed — matching the worker's report. That worktree was
-removed and pruned; `git worktree list` shows only the primary checkout and
-`git status --porcelain` is empty. Transport: primary cmp proof, no digest
-fallback — `.remedy-wt/f111r2/BLOCK` and `.agent/authored/f111-r2-1.md` are
-byte-identical at sha256 85e49d42..., `.agent/plan.md` matches its original,
-and both appends sit verbatim at their targets' tails. Append purity proved
-by numstat: `51 0` for live_review, `17 0` for the feature file. Scope:
-exactly the eight ordered paths. `packages/orchestration/diff_repair.py`
-imports only `__future__`, `collections.abc`, `dataclasses` and `pathlib`,
-holds no `@@` and neither parses nor applies a diff — the reuse constraint
-held. Two Low findings registered below; neither blocks the round.
+- R-0326 — Low — the R6 authored docstring carries a live escape sequence. The
+  `compose_planner_prompt` docstring is a normal (non-raw) string containing the
+  characters backslash-n twice, so Python turns them into two real newlines and
+  the rendered `__doc__` breaks its own sentence mid-clause — the text meant to
+  NAME the delimiter instead BECOMES it. The source file reads correctly and
+  ruff stays silent (backslash-n is a valid escape, so no W605), which is why
+  the R6 gate did not catch it; `help(compose_planner_prompt)` is where it
+  shows. Reviewer-authoring defect, same class as R-0325: the authored bytes
+  were correct as bytes and wrong as Python. Fix: name the delimiter in words
+  instead of spelling it. OPEN.
 
-- R-0298 (Low, F111 R2, reviewer-side authoring defect): step 0 of the R2
-  block ordered the worker to "verify all four scratch digests", while the
-  block's slice table states digests for only three — LRG, FF and PLAN. The
-  fourth entry, BLOCK, is defined as "this entire step block, byte for byte"
-  and cannot carry its own digest by construction: a file cannot state the
-  hash of bytes that include the statement itself. The worker verified 3 of
-  3, pinned BLOCK by the C1 `cmp` instead, and DECLARED the gap rather than
-  inventing a fourth number — the wanted behaviour, and the reason this cost
-  the round nothing. Same unmeetable-by-construction class as R-0282 and
-  R-0285. Forward-looking fix, applied from R3 on: the slice table names how
-  many digests it STATES, then BLOCK separately as pinned by the C1 cmp, and
-  step 0 counts only the stated ones — the count is whatever that round has,
-  never a number carried over from another round. OPEN.
-- R-0299 (Low, F111 R2, spec gap in T001): `select_repair_hunks` reports the
-  reason `no_ranges` for two different situations. One is a path whose range
-  list is genuinely empty (`diff_repair.py:120-122`). The other is a path
-  whose ranges ALL clamp away because they point outside the file:
-  `_expand_and_merge_ranges` drops every span at `diff_repair.py:85-86` when
-  `start > end`, and the caller then reports `no_ranges` at `:129`. The
-  second case is a different and load-bearing signal — line numbers past EOF
-  mean the ranges came from a diff that no longer matches the file on disk,
-  which is exactly the staleness a repair round must not swallow silently.
-  This feature's omissions record exists to name what was left out AND why,
-  so two causes sharing one reason buys a wrong answer in a later debugging
-  session. NOT a worker defect: the eight clauses the R2 block specified did
-  not cover the out-of-bounds case, and the worker chose the conservative
-  reading and declared it in the handback. Fix ordered in R3: a distinct
-  `out_of_bounds` reason with its own test. OPEN.
+Done: R-0325 — RESOLVED at the R7 gate. Verified against the disk, not the report: `python3 -m ruff check tests/test_llm_planner.py` prints `All checks passed!` with exit 0 at f20f172a, and `git show dd7feebd` shows the fix is exactly one moved line — the `planner_models` import now sits ABOVE the `prompt_segments` block, one insertion and one deletion in that file and no other file touched. `python3 -m pytest tests/test_llm_planner.py -q` prints `38 passed`, the R6 baseline unmoved, so the reorder changed no behaviour. The four-file ruff sweep the block also ordered prints `All checks passed!` with exit 0.
 
-Done: R-0299 — the `out_of_bounds` reason ships and is pinned. Verified at the R3 gate above: `_expand_and_merge_ranges` is unchanged, the discrimination happens at the call site, and the reviewer's own mutation red-proof in a disposable worktree turned exactly the two `TestOutOfBounds` tests red when the reason was reverted to a bare `no_ranges`. RESOLVED.
+Done: R-0326 — RESOLVED at the R7 gate. Verified against the RENDERED docstring rather than the source line, because the source line was never the defect: `compose_planner_prompt.__doc__` now contains no backslash-n sequence at all and its sentence reads intact, naming `PROMPT_SEGMENT_DELIMITER` as "the same blank-line separator this module concatenated by hand". `git show cbe38b90` confines the change to that docstring, four insertions and three deletions in `packages/orchestration/llm_planner.py`. The R7 round as a whole is PASS: the reviewer re-ran gates (a) through (i) and every value matched the handback — cmp exit 0 with sha256 c6ab0e7d25c42144af766401daf7a90309dae3736c6c0ba8285a0a6b9942ea00 over both copies, the five live-review counts 1/1/7/1/1, ruff clean over all four files, `38 passed`, the inventory's 1/6/6, canary `42 passed`, `wc -l .agent/plan.md` = 38, an empty `git status --porcelain`, and 24 changed paths with no `.remedy-wt/**` among them. The R7 diff touched only the eight paths its block declared, and the C5 inventory's load-bearing claims were spot-checked against source: thirteen `calls` columns with exactly three NOT NULL and no DEFAULT clause, `grep -rn "ALTER TABLE" --include=*.py .` zero matches, `grep -rn "unattributed" --include=*.py .` zero matches.
 
-### R3 — PASS (2026-08-13)
-Reviewed by the main session over 1bf62e2f..4717ce8c. Re-run by the reviewer,
-not read off the handback: `python3 -m pytest
-tests/orchestration/test_diff_repair.py -q` exit 0, 21 passed (18 before this
-round); `python3 -m pytest tests/cli/test_golden_path.py -q` exit 0, 42
-passed. The mutation red-proof was RE-RUN INDEPENDENTLY by the reviewer in
-its own disposable worktree: reverting the call-site reason to a bare
-`no_ranges` turns exactly two tests red,
-`TestOutOfBounds::test_range_past_eof_is_out_of_bounds` and
-`TestOutOfBounds::test_out_of_bounds_path_does_not_block_present_one`, at
-2 failed / 19 passed — matching the worker's report. That worktree was
-removed and pruned; `git worktree list` shows only the primary checkout.
-Transport: primary cmp proof, no digest fallback — `.remedy-wt/f111r3/BLOCK`
-and `.agent/authored/f111-r3-1.md` byte-identical at sha256 a5088325...,
-`.agent/last_block.md` equal to both, `.agent/plan.md` equal to its original,
-and the 51-line findings slice sits verbatim inside `.agent/live_review.md`.
-Append purity by numstat: `51 0` for the findings commit, `2 0` for the
-Landed line. Scope: exactly the seven ordered paths. The findings-first
-ordering held — C3 persisted R-0298 and R-0299 BEFORE any code commit.
-Markers: 24 `- R-0` entries, exactly 1 `Landed:`, 0 `Done:`, and the Landed
-line names its commit by SUBJECT rather than by a SHA it could not contain
-(R-0274). The fix is minimal: `_expand_and_merge_ranges` is unchanged and the
-discrimination happens at the call site. Deviation ACCEPTED: C7 took three
-commits because the first handoff came in at 62 lines against its own 60-line
-cap; the worker trimmed forward rather than force-pushing — the correct order
-of preferences — and declared it. One finding registered below.
+- R-0327 — Low — reviewer gate arithmetic, fifth of its class. R8's gate (e)
+  demanded `grep -c` of the literal `        2: (` with EIGHT leading spaces.
+  `_MIGRATIONS` is a dict whose KEYS sit at FOUR spaces — `1: (` at
+  `token_ledger.py:170` is the shape the reviewer had already read in that same
+  session — and the block's own TEXT-E, authored by the reviewer, places `2: (`
+  at four spaces too. Real values: the eight-space pattern counts 0, the
+  four-space one counts 1, at `token_ledger.py:207`. The eight-space indent
+  belongs to the STATEMENT lines INSIDE the tuple, not to the key that opens it.
+  The worker measured both, reported the real numbers and changed nothing to
+  meet the ordered one — the correct behaviour, and it cost the round nothing
+  because the gate asked for real values. Nothing on disk is wrong, so there is
+  no fix; it is registered so the class stays countable. After R-0282, R-0321,
+  R-0323 and R-0324. The standing counter-measure is already on disk as
+  checklist item 8 (`docs/agents/planner_reviewer_prompt.md`): compute a gate's
+  expected value from the code that PRODUCES it. Here that code was the block's
+  OWN authored replacement text, four lines below the gate that miscounted it —
+  the shortest distance any instance of this class has yet had. OPEN.
 
-- R-0300 (Low, F111 R3, uncovered behaviour change, self-declared by the
-  worker in its handback): the R-0299 fix also changes what a range against a
-  ZERO-LINE file reports. `_expand_and_merge_ranges` clamps `end` to
-  `min(line_count, ...)`, which is 0 for an empty file, while `start` is at
-  least 1 — so every span is dropped, and the new call-site discrimination at
-  `packages/orchestration/diff_repair.py:136-141` then reports
-  `out_of_bounds` where the pre-fix code reported `no_ranges`. The new reading
-  is the correct one under the round's own definition (lines were named and
-  none of them exist in that file), so nothing on disk is wrong. It is
-  registered because it is a SECOND behaviour change beyond the past-EOF case
-  the round was ordered to make, and no test pins it — an unpinned behaviour
-  is one refactor away from silently reverting. The worker found it in its own
-  diff and declared it rather than leaving it for a reader, which is the
-  behaviour these rounds are supposed to produce. Fix, one test: an empty file
-  with a non-empty range reports `out_of_bounds`. OPEN.
+- R-0328 — Low — the R8 red-proof under-predicted its own blast radius. Gate (g)
+  stated "Tests 1, 2 and 3 assert the table exists, so they MUST fail". The real
+  result, with migration step 2 deleted in a disposable worktree, was `8 failed,
+  78 passed`: all FOUR new tests — the fourth,
+  `test_a_pre_f115_call_owns_no_segment_rows`, on `sqlite3.OperationalError: no
+  such table: call_segments`, because its assertion SELECTs from that very table
+  and the same block authored that assertion — plus four pre-existing
+  `TestOpenLedger` tests that pin the version constant against the last
+  migration step. The ordered COLOUR was right and the round went red exactly as
+  required; what was wrong was the COUNT. An under-counted red-proof invites a
+  worker either to doubt a correct result or to trim the mutation until the
+  prediction fits, and neither is a thing a gate should tempt anyone into.
+  Checklist item 5 governs a red-proof's REACHABILITY; this is its arithmetic
+  sibling and the first recorded instance. No on-disk fix: the round's evidence
+  is correct and more complete than the gate that asked for it. A welcome
+  by-product of the over-shoot: `test_schema_version_matches_the_last_migration_step`
+  already pins `SCHEMA_VERSION` to the highest `_MIGRATIONS` key, so a version
+  bump without its step, or a step without its bump, cannot pass today. OPEN.
 
-### R4 — PASS (2026-08-13)
-Reviewed by the main session over 4717ce8c..c9064b17, a state-only round. Every
-gate was RE-RUN by the reviewer rather than read off the handback: `python3 -m
-pytest tests/orchestration/test_diff_repair.py -q` exit 0, 21 passed; `python3
--m pytest tests/cli/test_golden_path.py -q` exit 0, 42 passed; `python3 -m
-pytest tests/orchestration/test_test_runner.py -q -k 'plan_md or context_md'`
-exit 0, 3 passed and 48 deselected. Transport: PRIMARY cmp proof, no digest
-fallback — the scratch originals survived the session boundary, so
-`.remedy-wt/f111r4/BLOCK` and `.agent/authored/f111-r4-1.md` are byte-identical
-at sha256 70625e3e..., `.agent/last_block.md` equals both, `.agent/plan.md`
-equals its original, and the LRG slice (sha256 9892593c..., matching the digest
-the block stated) is byte-identical to the last 43 lines of
-`.agent/live_review.md`. Append purity by numstat: `43 0` for C3, delete column
-0. Scope: exactly the five ordered paths — no code, no test, no doc. Markers:
-25 `- R-0`, exactly 1 `Landed:`, 0 `Done:`, 1 `### R3 — PASS`. Caps:
-`.agent/plan.md` 40 lines, `.agent/handoff.md` 60 lines, per-commit insertions
-174/127/43/19/38, each under 500. `git status --porcelain` empty and
-`git worktree list` a single entry at the verdict; remote comparison `0 0`.
-Two findings are registered below. Both are against the reviewer's OWN earlier
-planning text, and both were found by reading the code that text named — which
-is what the round the plan ordered ("settle this by reading code, never by
-assuming") was for.
+- R-0329 — Low — a manifest value of the wrong TYPE becomes a measured zero in
+  the sums T002 is about to build, which is the exact outcome the helper's own
+  docstring says it prevents. `_call_segment_row` (`token_ledger.py:1247-1276`)
+  checks only that the five `_MANIFEST_KEYS` are PRESENT and then takes their
+  values VERBATIM, so a trace line carrying `"chars": "not-a-number"` yields a
+  `CallSegmentRow` whose `chars` is that string. SQLite then accepts it:
+  `chars INTEGER NOT NULL` is an AFFINITY, not a constraint, so a string that
+  does not look like a number is stored AS TEXT and the NOT NULL is satisfied.
+  Measured by the reviewer at the R9 gate against a scratch in-memory database:
+  `typeof(chars)` prints `text`, and `SUM(chars)` over that row plus one real
+  row of 10 prints `10.0`. Both halves of that result matter. The bad row
+  contributed 0, which is precisely the "unpublished figure must never become a
+  measured zero (P6)" the docstring four lines above the defect forbids; and
+  the sum came back a FLOAT, which would move the bytes of any markdown golden
+  that renders the same figure as an integer everywhere else — so R11's goldens
+  would be pinned to a shape one malformed input can change. It is NOT
+  reachable from Remedy's own composer, which publishes real ints through
+  `manifest_as_dicts()`; it is registered anyway because the reader's entire
+  contract is that it survives ARBITRARY file content, and "our producer is
+  well behaved" is not the guarantee that contract makes. Fixed in R10 rather
+  than deferred: R10 is the slice that starts SUMming those two columns and is
+  therefore the round with a legitimate reason to open that helper, so fixing
+  it here mixes nothing that does not already belong to the change. The R9
+  round as a whole is PASS. The reviewer re-ran gates (a) through (i) and every
+  value matched the handback: cmp exit 0 with sha256
+  c5c5bc40c103ce743a81156078a727231460fe321be65e87613e2dc0265244b6 over both
+  copies, the five live-review counts 1/1/9/3/1, the six `token_ledger.py`
+  counts 1/1/1/4/2/3, ruff `All checks passed!` and the import exit 0, zero
+  changed lines assigning a `BackfillResult` counter and zero inside its class
+  body, `92 passed` and `41 passed`, canary `42 passed`, `wc -l .agent/plan.md`
+  38, an empty porcelain, 28 changed paths with no `.remedy-wt/**` among them,
+  and 0/0 against origin. The red-proof was RE-RUN INDEPENDENTLY by the
+  reviewer in its own disposable worktree rather than accepted from the report:
+  mutating `segment_rows_from_trace_file` to `return []` reproduced `5 failed,
+  87 passed` and the same five test ids the handback names, and the worktree
+  was removed and pruned with `git worktree list` left showing one line. OPEN.
 
-- R-0301 (Medium, F111 R2, planning defect — a spec name that resolves to
-  nothing): DECISION F111 D1, written into `docs/roadmap/features/T2_F111.md`
-  under "Built State", names the bounded repair loop
-  `packages/orchestration/builder_bridge.py` (`run_bounded_repair_loop`). No
-  such symbol exists anywhere in the repository:
-  `grep -rn "run_bounded_repair_loop" packages/ apps/ tests/` returns no hits.
-  The real function is `run_builder_bridge_loop`
-  (`packages/orchestration/builder_bridge.py:264`), whose own docstring reads
-  "Run bounded repair loop: build -> bridge -> test -> repair -> rebuild" — so
-  D1 chose the RIGHT seam and recorded the WRONG name for it. AGENTS.md "Code
-  Discoverability Conventions" requires that a name grep to its own definition;
-  a spec name with zero hits sends the next worker looking for code that is not
-  there, and the whole point of writing the seam into the feature file was to
-  spare that search. Fix ordered this round as DECISION F111 D2: the feature
-  file carries the real name. OPEN.
+Done: R-0329 — RESOLVED at the R10 gate. Verified against the code and a live probe, not the report: `_MANIFEST_KEY_TYPES` now names the type each of the five manifest keys must ALREADY be, `_MANIFEST_KEYS` is derived from it so the key order still has one spelling, and `_call_segment_row` skips a dict whose value is of the wrong type by the same rule that skips a missing key — bool excluded from int explicitly. The reviewer re-ran the round's own probe class: reverting the guard to the presence-only check makes `test_a_wrongly_typed_manifest_value_is_skipped_like_a_missing_key` fail and nothing else, so the test genuinely catches the regression rather than passing alongside it. The R10 round as a whole is PASS: gates (a) through (i) were re-run by the reviewer and every value matched the handback — cmp exit 0 with sha256 93a5a6347496a811cb9887d64f9d2312c42824537df592cd1ad6a846fc5f8731 over both copies, `wc -lc` 322 20573, the live-review counts 1/10/3/1, the seven token_ledger counts 4/4/1/1/1/4/3, ruff `All checks passed!` and the import exit 0, `99 passed` and `41 passed` (140 in one run), canary `42 passed`, `wc -l .agent/plan.md` 41, 29 changed paths with no `.remedy-wt/**` among them, and 0/0 against origin. Both declared deviations are accepted: the C3 fixture swap keeps the bad bytes on disk while sparing a shared helper, and the C4 placement puts the two dataclasses where this module already keeps every result type, which is better than the block ordered. `git status --porcelain` is NOT empty — it carries `?? .agent/STOP`, the operator signal that ended the session — and that is the one gate value the round could not meet, correctly reported rather than routed around.
 
-- R-0302 (Medium, F111 R4, planning defect — a hypothesis the named code
-  disproves): `.agent/plan.md` Next Steps 1 proposed that T001's line ranges
-  come from `review_scope._parse_diff` applied to "the diff of the
-  `source_patch_applied` event", and told the next round to confirm that the
-  event carries a diff. It does not.
-  `packages/orchestration/source_apply.py:355-362` emits `source_patch_applied`
-  with exactly `apply_id`, `snapshot_id`, `snapshot_verified`, `success`,
-  `files_modified`, `files_created` and `error_count` — no diff text and no
-  line numbers — and `build_repair_context` reads only the file LISTS back out
-  of it (`packages/orchestration/repair_context.py:56-72`). The ranges must
-  come from the patch that was applied, which the loop already holds in memory:
-  `run_builder_bridge_loop` keeps every cycle's `bridge_result`
-  (`packages/orchestration/builder_bridge.py:325`), and
-  `BridgeResult.parse_result.patch` is a `StructuredPatch` whose
-  `unified_diffs` entries carry per-path diff text
-  (`packages/orchestration/structured_patch.py:37-56`). This is registered as a
-  finding instead of being re-planned quietly because a written plan step was
-  disproved by the code it pointed at, and the next reader deserves the reason
-  on disk. Fix ordered this round as DECISION F111 D3. OPEN.
+- R-0330 — Low — `query_segment_shares` promises more than it delivers in the
+  first line of its own docstring. It says "READ-ONLY, never raises", flat,
+  while `query_cost` — the function it is modelled on, twenty lines above it in
+  the same module — scopes the identical claim precisely: "READ-ONLY, and never
+  raises on absence". The narrower wording is the true one. Both functions
+  resolve their target through `_resolve_ledger_path`, which raises
+  `ValueError("a ledger target needs either project_id or path")` when given
+  neither `project_id` nor `path`. Measured by the reviewer at the R10 gate:
+  calling each with no arguments raises that exact `ValueError` from both, so
+  the two docstrings describe the same behaviour and only one of them describes
+  it correctly. The behaviour is right and no caller is misled today, which is
+  why this is Low and not a defect of the round: what is wrong is a promise a
+  reader can check and find false, in a module whose entire style is that a
+  claim is measured before it is written. Fix: scope the sentence the way
+  `query_cost` already scopes it — "never raises on absence" — and change
+  nothing else. It belongs to R11, which opens this region for the renderer
+  anyway. OPEN.
 
-Done: R-0300 — a zero-line file whose range names lines it does not have now reports `out_of_bounds`, pinned by `TestEmptyFileRanges::test_empty_file_with_a_non_empty_range_is_out_of_bounds`. Verified at the R5 gate: the reviewer re-ran the file at 30 passed and read the test, which asserts the reason, the empty hunk tuple and `total_chars == 0`. RESOLVED.
-Done: R-0301 — `docs/roadmap/features/T2_F111.md` now names `run_builder_bridge_loop`, the symbol that exists. Verified at the R5 gate by the reviewer's own greps over that file: `run_bounded_repair_loop` 0x, `run_builder_bridge_loop` 2x, and `grep -rn` over packages/ apps/ tests/ resolves the new name to `packages/orchestration/builder_bridge.py:264`. RESOLVED.
-Done: R-0302 — the range source is `changed_line_ranges_from_patch`, which reads the applied `StructuredPatch` through the single shared parser `review_scope.parse_diff_line_ranges` rather than the diffless `source_patch_applied` event, and DECISION F111 D3 records why on disk. Verified at the R5 gate: nine new tests, the reviewer's independent mutation red-proof, and the expected range values confirmed against the real `_parse_diff` before the block was emitted. RESOLVED.
+Done: R-0330 — RESOLVED at the R11 gate. Verified against the disk and the behaviour, not the report: `grep -c 'READ-ONLY, never raises\.' packages/orchestration/token_ledger.py` prints 0, and the scoped sentence counts 2 — `query_cost`'s own at :1004 and `query_segment_shares`'s at :1098. Two is the CORRECT value, not a miscount: the fix makes the two docstrings agree, it does not make one of them unique. `git show --numstat a74e0668` changes exactly one line of one file. The claim is now true of the behaviour it describes — both functions still raise `ValueError` from `_resolve_ledger_path` when given neither `project_id` nor `path`, and neither raises on a ledger that is merely absent. The R11 round as a whole is PASS. The reviewer re-ran every gate itself: cmp exit 0 with sha256 431da8edba356a9521f58fec5be40f182cd7223addac54f1895a7799034dba74 over both copies, `wc -lc` 449 20234, ruff `All checks passed!`, the import exit 0, `10 passed` and `99 passed` and canary `42 passed` (151 in one run), `wc -l .agent/plan.md` 46, an empty porcelain, and 0/0 against origin. The authored C3 slice was compared DISK TO DISK against the applied file — 315 lines each, byte-identical — rather than against a reviewer retype, which is the R-0147 class this project has paid for before. Both mutation probes were RE-RUN INDEPENDENTLY in the reviewer's own disposable worktree rather than accepted from the handback: neutering `_same_question` fails exactly `test_a_mismatched_pair_is_refused_by_both_renderers` and nothing else, and changing `_figure`'s None branch to `return "0"` fails exactly `test_an_unmeasured_figure_prints_the_word_and_never_a_zero`; the worktree was removed and pruned with `git worktree list` left showing one line. The worker's fixture-design note was CHECKED rather than believed, and it is correct: rendering the DEFAULT pair under the second mutation still prints the word, from the "PARTLY UNMEASURED" sentence, so the fully-measured total in that one test is what makes the probe discriminating instead of decorative. That is a worker catch the block did not order, and it improved the round.
 
-### R5 — PASS (2026-08-13)
-Reviewed by the main session over c9064b17..d0952432. Every number was produced
-by the reviewer re-running the command, never read off the handback:
-`python3 -m pytest tests/orchestration/test_diff_repair.py
-tests/orchestration/test_review_scope.py -q` exit 0, 62 passed (30 + 32, 21 + 32
-before); `python3 -m pytest tests/docs/ -q` exit 0, 294 passed (docs-round gate,
-this round touched docs/roadmap/**); `python3 -m pytest
-tests/cli/test_golden_path.py -q` exit 0, 42 passed (canary); `python3 -m ruff
-check` over the three touched files exit 0. The MUTATION RED-PROOF was re-run
-INDEPENDENTLY by the reviewer in its own disposable worktree: deleting the two
-`for file_op in patch.file_ops:` lines from `changed_line_ranges_from_patch`
-turns exactly `test_file_ops_paths_carry_no_lines` and
-`test_a_file_ops_path_is_reported_as_no_ranges_by_selection` red at 2 failed /
-28 passed — the worker's numbers reproduce. That worktree was removed and
-pruned; `git worktree list` shows only the primary checkout. Transport: PRIMARY
-cmp proof, no digest fallback — `.remedy-wt/f111r6` aside, `.remedy-wt/f111r5/BLOCK`,
-`.agent/authored/f111-r5-1.md` and `.agent/last_block.md` are byte-identical,
-and all five content slices occur EXACTLY ONCE in their target files by
-`str.count` against the originals. Append purity by numstat: `59 0` for the
-findings commit, `1 1` for the R-0299 resolution, `3 0` for the landed lines.
-Scope: exactly the nine ordered paths — no production file outside
-`diff_repair.py` and `review_scope.py` was touched, and `builder_bridge.py`,
-`repair_context.py`, `source_apply.py` and `pingpong_loop.py` are unchanged as
-ordered. Markers before this round's own commits: 27 `- R-0`, 3 `Landed:`, 1
-`Done:`, 1 `### R4 — PASS`. Caps: `.agent/plan.md` 47 lines; per-commit
-insertions 200/185/59/1/164/20/3/26, each under 500. `git status --porcelain`
-empty and remote comparison `0 0` at the verdict.
+- R-0331 — Low — reviewer block self-contradiction, self-registered. The R11
+  block's "Change:" clause named SEVEN paths and said "nothing else", while its
+  own "Constraints:" clause ordered a `Landed: R-0330` line into an EIGHTH,
+  `.agent/live_review.md`. The two halves of one block disagreed about that
+  block's own change set. The worker resolved it the right way: it wrote the
+  line the constraint demanded and listed all eight paths in its handback,
+  rather than dropping a mandated write to satisfy a file list. Sixth of the
+  reviewer-arithmetic class after R-0282, R-0321, R-0323, R-0324 and R-0327,
+  and the first whose two contradicting halves sat inside the SAME block — the
+  earlier five were numbers the reviewer never re-derived from a list beside
+  them, this one is a list the reviewer never re-derived from its own
+  instructions four lines below. The standing checklist
+  (`docs/agents/planner_reviewer_prompt.md`) sends the reviewer to the block's
+  bytes, to the code it points at, to the file it writes into and to the tests
+  that guard that file; it does not yet send the reviewer to the block's own
+  other clause. No on-disk fix is possible — the block is committed verbatim by
+  design and R11's verdict stands as PASS. Registered so the class stays
+  countable rather than forgotten. OPEN.
 
-Deviation ACCEPTED, not a precedent: `.agent/handoff.md` came in at 78 lines
-against the 60-line cap, with a DECISION D15 "Deviations, declared" line naming
-the measured count and the mandated content that caused it — a nine-row commit
-table, a nine-row changed-files table, an eight-gate verification table and a
-nine-row item-status table. No section was dropped and there is no padding, so
-the overage is the block's own doing: a nine-commit round cannot report itself
-in sixty lines. The worker also corrected its own first draft when `wc -l` gave
-78 against an estimated 74, which is the right order of operations.
+- R-0332 — Low — `_same_question` guards the filters but not the ledger, so the
+  one thing it exists to prevent can still happen. `cost_report.py` refuses a
+  pair whose `since` or `job_id` disagree, on the stated ground that publishing
+  the breakdown of one period beside the total of another silently answers a
+  question nobody asked. Two reports drawn from DIFFERENT LEDGERS with
+  identical filters pass that check unexamined, and the result is the same
+  defect in a better disguise: a share table from one project rendered under
+  another project's total, with no filter mismatch anywhere to betray it. Both
+  dataclasses already carry `ledger_path` and `ledger_exists`, so the evidence
+  needed to catch it was in hand and simply not read. It is Low because no
+  caller exists yet — nothing outside the tests renders a report until T003
+  wires the CLI — and that is also precisely why it should close before that
+  caller is written rather than after. Reviewer-authoring defect: the guard was
+  authored in the R11 block, so this is the R11 slice's own gap, found at its
+  own gate. Fixed in R12, which opens that module for the goldens anyway. OPEN.
 
-The round's honesty is worth recording: `.agent/plan.md` and the handoff BOTH
-state that T001 now has its selector and its range source and STILL HAS NO CALL
-SITE, so a green suite here is not a working feature. That is the R-0220 class
-disclosed by the round itself rather than found at a gate.
+Done: R-0332 — RESOLVED at the R12 gate. Verified against the code and a live probe, not the report: `_same_question` now compares `(ledger_path, ledger_exists)` as well as `(since, job_id)`, and the reviewer re-ran the probe class itself — deleting the whole ledger guard in a disposable worktree fails exactly `test_a_pair_from_two_different_ledgers_is_refused_by_both_renderers` and nothing else, so the test catches the regression rather than passing alongside it. The docstring now states WHY the None/None case is not a hole: `merge_cost_reports` deliberately clears `ledger_path` for a cross-project total, so two merged reports compare equal to each other and to nothing else. The R12 round as a whole is PASS. The reviewer re-ran every gate itself: cmp exit 0 with sha256 a3106079f0a10af038120b60380b35c46ceac247c8e66dbb90de15fde38560ca over both copies, `wc -lc` 276 19049, the live-review counts 0/5/13/1, ruff `All checks passed!` and the import exit 0, `15 passed` and `99 passed` and canary `42 passed` (156 in one run), `wc -l .agent/plan.md` 43, an empty porcelain, 0/0 against origin, and 35 changed paths with no `.remedy-wt/**` among them. Determinism was re-established independently rather than accepted: the fifteen tests were re-run under two separate `--basetemp` roots and passed both times, so the golden bytes do not depend on where the fixture ledger was built. A THIRD probe, of the reviewer's own choosing and not ordered by the block, settled the question a golden pair actually has to answer — whether it binds the ledger or only the renderer: inserting `report.rows = []` into `query_segment_shares` turns BOTH goldens red, so the pair tests the query-to-renderer seam end to end and is not a snapshot of the formatter alone. One ordered-but-absent detail, deliberately NOT registered as a finding: the block offered a `Landed: R-0332` marker if the fix outran its review, and none was written. The marker exists so a session dying between a fix and its gate leaves an unambiguous disk state, and here the reviewer-authored R-0332 entry already said "Fixed in R12" in the same file, so the marker would have restated a fact the record already carried. The worker's one unordered edit is likewise correct and was declared: C4 made the test module's docstring claim "this module reads no ledger" false, and scoping that sentence to the property tests was better than preserving a false claim to keep a diff narrow.
 
-- R-0303 (Low, F111 R5, reviewer-side authoring defect): the R5 block gated the
-  landed-marker commit with `git show --numstat` exactly `3 0`, which forbids
-  the blank separator line this file uses everywhere else, so the three
-  `Landed:` lines landed flush against the last line of the R-0302 paragraph
-  and render as part of that list item. Same class as R-0285: an exact-count
-  gate that makes the correct formatting unwritable in the one commit that
-  needs it. The worker applied the block as written and flagged it in the
-  handback instead of quietly improving it, which is the behaviour these rounds
-  are supposed to produce. Fixed in this round's resolution commit, which
-  rewrites those three lines with the separator restored. OPEN.
+- R-0333 — Low — reviewer red-proof arithmetic, self-registered, second of the
+  over-prediction sibling class after R-0328. R12's gate (j) ordered the
+  `_share_percent` mutation with the words "Both golden byte-comparisons MUST
+  fail." Only the markdown one can. `cost_report_json` renders no percentage at
+  all — the share cell is a markdown-only presentation computed over raw ints,
+  and the json carries `tokens_estimated` unformatted — so `_share_percent` is
+  unreachable from the json path and its golden cannot move when the format
+  string does. Measured by the reviewer at the R12 gate: `grep -c '%'` over
+  `tests/orchestration/fixtures/cost_report/golden/cost_report.json` prints 0,
+  and the re-run mutation gives `2 failed, 13 passed` —
+  `test_the_share_column_uses_the_attributed_total_as_its_denominator` and
+  `test_the_golden_markdown_matches_the_fixture_ledger`, not the json golden.
+  The worker measured both, reported the real numbers, declared the deviation
+  and adjusted nothing to reach the ordered count — the correct behaviour, and
+  the round paid one declared deviation for a reviewer's arithmetic again.
+  Checklist item 5 governs a red-proof's REACHABILITY and item 8 the VALUE a
+  gate asserts; this class is the blast RADIUS, and the standing counter-measure
+  is the one item 5 already names — order the PROBE, not the colour, whenever
+  the mutated branch's reach is not obvious. Here it was not obvious for a
+  reason worth recording: the two goldens are rendered from ONE pair of reports
+  by two functions that do not share a formatting path, so "the golden pair"
+  reads as one artifact and behaves as two. Seventh instance of the
+  reviewer-arithmetic family overall, after R-0282, R-0321, R-0323, R-0324,
+  R-0327, R-0328 and R-0331. No on-disk fix: the block is committed verbatim by
+  design and R12's verdict stands as PASS. OPEN.
 
-- R-0304 (Low, F111 R4 and R5, reviewer-side omission):
-  docs/agents/planner_reviewer_prompt.md section 3 requires the handoff's state
-  block to repeat the operator brief's "Fortschritt" line verbatim, estimate
-  label included, so the progress estimate always exists on disk and not only
-  in the chat brief. Neither the R4 block nor the R5 block ordered that line,
-  and neither handoff carries one. The R4 gate passed without catching it, so
-  this is registered at the round where it was noticed rather than backdated.
-  Fix: every future block's handback item names the Fortschritt line as
-  mandated content. OPEN.
+Done: R-0333 — REGISTERED, not resolved, and it stays OPEN by construction: the block that carried the wrong prediction is committed verbatim by design, so there is nothing on disk to correct. Recorded here only to close the R13 round that registered it. The R13 round as a whole is PASS. The reviewer re-ran every gate itself: cmp exit 0 with sha256 7e9a5b81683e7eb6a09a1199f8c4b332f0ec04f146acee9b67f4b2d867c716a1 over both copies, `wc -lc` 106 9465, the live-review counts 6 / 14 / 1 / 0 for `^Done:`, `^- R-0`, `^## Steps` and `^Landed:`, `git show --numstat 9d2b638d -- .agent/live_review.md` reporting 28 insertions and ZERO deletions — which is the append-only property measured rather than asserted — `wc -l .agent/plan.md` 42, canary `42 passed`, `15 passed` unmoved by a state-only round, `99 passed`, an empty porcelain, 0/0 against origin, and 36 changed paths with no `.remedy-wt/**` among them. The declared handoff overage (80 lines against the 60-line cap) is ACCEPTED under AGENTS.md DECISION D15: the cause is mandated content, the file names its own real line count, and no section was dropped to meet the cap.
 
-### R6 — PASS (2026-08-13)
-Reviewed by the main session over d0952432..b1e5cc7e, a state-only round. Every
-gate was re-run by the reviewer, not read off the handback: `python3 -m pytest
-tests/orchestration/test_diff_repair.py tests/orchestration/test_test_runner.py
--q` exit 0, 81 passed (30 unchanged plus 51); `python3 -m pytest
-tests/cli/test_golden_path.py -q` exit 0, 42 passed (canary). Transport:
-PRIMARY cmp proof, no digest fallback — `.remedy-wt/f111r7` aside,
-`.remedy-wt/f111r6/BLOCK`, `.agent/authored/f111-r6-1.md` and
-`.agent/last_block.md` are byte-identical, and both content slices occur
-EXACTLY ONCE in `.agent/live_review.md` by `str.count` against the originals.
-Append purity by numstat: `63 0` for the findings commit and `4 3` for the
-resolution commit, the delete column matching the three `Landed:` lines that
-became `Done:` text. Markers: 29 `- R-0`, 4 `Done:`, 0 `Landed:` (exit 1, the
-pass), 1 `### R5 — PASS`. Caps: `.agent/plan.md` 46 lines; per-commit
-insertions 116/94/63/4/21/59, each under 500. `git status --porcelain` empty,
-`git worktree list` one entry, remote comparison `0 0`. Scope: exactly the five
-ordered paths, no production, test or docs file touched.
-
-Deviation ACCEPTED: C5 kept two Risks entries where the block said "the two
-existing Risks entries" and `.agent/plan.md` in fact carried THREE. The worker
-kept the two durable ones and dropped the stale third — the note saying the R4
-`source_patch_applied` hypothesis "is deleted here", which R-0302's resolution
-retires — and declared the deviation rather than guessing silently. That is the
-correct call on the merits; the arithmetic error is the reviewer's and is
-registered as R-0305 below.
-
-- R-0305 (Low, F111 R6, reviewer-side arithmetic in an authored block): the R6
-  step block instructed "Keep the two existing Risks entries" against a
-  `.agent/plan.md` whose Risks section held three bullets. A worker told to
-  keep two of three must either drop one on its own judgement or stop, and this
-  one dropped the correct bullet and declared it — but the block put it in that
-  position for no reason. Same class as R-0282 (a block naming nine paths over
-  a list of eight): counts inside authored blocks are asserted from memory
-  instead of measured against the file the block is about. The rule that
-  follows: any count an authored block states about an EXISTING file is read
-  off that file at authoring time, the way section 3 checklist item 6 already
-  requires for zero-gates. OPEN.
-
-- R-0306 (Low, F111 R6, incomplete handoff): the R6 handback declared C5
-  `deviated` with its reason, but `.agent/handoff.md` records C5 as plain
-  `done` with an empty Reason cell, so the deviation exists only in the chat
-  handback and not on disk. AGENTS.md "Completion Report — Item-Status Table"
-  requires the status values `done`, `skipped` and `deviated` with reasons, and
-  docs/agents/planner_reviewer_prompt.md section 4.8 makes the handoff the only
-  return channel — an outcome absent from it is a finding by construction. The
-  round itself is unaffected: the deviation was disclosed, reviewed and
-  accepted at this gate, and this entry is what puts it on disk. Fix: the
-  item-status table in the handoff carries the same status the handback
-  declares, always. OPEN.
-
-### R7 — PASS (2026-08-13)
-Reviewed by the main session of the next self-drive session over
-b1e5cc7e..023e8d9d, a state-only round. Section 4.13 does not apply here: a
-new session CAN gate the round that closed the previous one, and this entry is
-that gate. Every command was re-run by the reviewer, never read off the
-handback. Transport: PRIMARY cmp proof, no digest fallback —
-`.remedy-wt/f111r7/BLOCK` and `.agent/authored/f111-r7-1.md` are
-byte-identical, that file and `.agent/last_block.md` are byte-identical,
-`sha256sum .remedy-wt/f111r7/LRG` reproduces the stated digest ending
-d49c182, and a `str.count` of that slice against `.agent/live_review.md`
-prints 1. Append purity by numstat: `50 0` for the findings commit and `2 2`
-for the plan pair. Markers on the final file: 31 `- R-0`, 4 `Done:`, 0
-`Landed:` (exit 1, the pass), 1 `### R6 — PASS`. Plan: the retired id 0x
-(exit 1, the pass), `Next free finding ID: R-0307` 1x, `Open findings: 27`
-1x, 46 lines. Handoff: 76 lines carrying the DECISION D15 stated-cause line
-that names 76, and 1 `^Fortschritt: ` line. Tests: `python3 -m pytest
-tests/orchestration/test_test_runner.py -q -k 'plan_md or context_md'` exit 0,
-3 passed 48 deselected; `python3 -m pytest tests/cli/test_golden_path.py
-tests/orchestration/test_diff_repair.py -q` exit 0, 72 passed — the 42 canary
-plus the 30 T001 tests, unchanged, as a round that touches no code requires.
-Hygiene: `git status --porcelain` empty, `git worktree list` one entry,
-per-commit insertions 109/71/50/2/45 each under 500, `git rev-list
---left-right --count origin/feature/f111-diff-only-repair...HEAD` prints
-`0 0`. Scope: exactly the five ordered paths; no production, test or docs
-file was touched.
-
-- R-0307 (Low, F111 R7, stale live-looking header): the header of
-  `.agent/live_review.md` names a next-free finding id that the body has long
-  overtaken — the findings below it run past it by four — so the file's own
-  header contradicts its body, and a reader who trusts it would reuse ids
-  already allocated. It was true when the file was reset and nothing updates
-  it, which is the R-0228 class: a line that positively CLAIMS a live value it
-  does not track. The fix is not to refresh the number, because the next round
-  would stale it again, but to stop the header carrying a counter at all —
-  `.agent/plan.md` already holds it and is rewritten every round. OPEN.
-
-Done: R-0307 — the header no longer names a next-free finding id; it points at
-`.agent/plan.md`, which is rewritten every round and is the one place the
-counter lives. Verified at the R8 gate: `sed -n '8,9p'` matches the authored
-two-line replacement byte for byte, and the retired line is the single
-deletion in commit ea0d63b3's `4 1` numstat. Resolved.
-
-### R8 — PASS (2026-08-13)
-Reviewed by the main session over 023e8d9d..456a25e9. Every ordered gate was
-re-run by the reviewer, and the new module was additionally probed live, never
-read off the handback. Transport: PRIMARY cmp proof, no digest fallback —
-`.remedy-wt/f111r8/BLOCK`, `.agent/authored/f111-r8-1.md` and
-`.agent/last_block.md` are byte-identical, `.remedy-wt/f111r8/PLAN` and
-`.agent/plan.md` are byte-identical, and a `str.count` of the appended slice
-against `.agent/live_review.md` prints 1. Append purity by numstat: `36 0` for
-the gate commit and `4 1` for the header pair, the single deletion being the
-retired counter line and nothing else. Markers on the final file: 32 `- R-0`,
-4 `Done:`, 1 `Landed:`, 1 `### R7 — PASS`. Caps: the plan is 48 lines and
-carries `## Goal` and `## Next Steps`; the step block is 356 lines, under the
-DECISION F105 D5 limit of 400; per-commit insertions 356/341/36/4/50/439/111,
-each under 500. Tests: `python3 -m pytest
-tests/orchestration/test_diff_repair_response.py
-tests/orchestration/test_diff_repair.py tests/cli/test_golden_path.py -q` exit
-0, 95 passed — 23 new, the 30 T001 tests unchanged, 42 canary; `python3 -m
-pytest tests/orchestration/test_source_apply.py
-tests/orchestration/test_source_apply_transaction.py
-tests/orchestration/test_fence_e2e.py tests/test_path_utils.py
-tests/test_data_paths.py -q` exit 0, 225 passed — the 174 behaviour pin the
-reviewer measured BEFORE the round, unchanged, plus the 51 repo-wide guards
-that rglob every `packages/**/*.py` and therefore already reach the new module.
-Reviewer's own probe, beyond the ordered gates: a two-file diff declared with
-one path returned exactly `diff touches undeclared path: src/b.py`; a ghost
-declaration returned exactly `declared path not touched by the diff:
-src/ghost.py`; `precheck_diff_repair_fences` denied `remedy.toml` with reason
-`denied:builtin:project config file`, and denied a path lying outside a job
-allow glob. The C5 reuse is real, not nominal: the three path-safety message
-strings moved into `unsafe_path_issues` unchanged and `validate_structured_patch`
-now calls it. Hygiene: `git status --porcelain` empty, `git worktree list` one
-entry, remote comparison `0 0`. Scope: exactly the eight ordered paths.
-
-Deviation ACCEPTED: C4's `Landed:` line names `commit C4 of R8` instead of its
-own short sha. A commit cannot carry its own sha without amending, the block
-named that fallback explicitly, and the handoff's item-status table declares
-C4 `deviated` with that reason — finding R-0306 repaired on its first occasion
-after being registered.
-
-- R-0308 (Low, F111 R8, unreachable defensive branch): `parse_diff_repair_response`
-  returns `not_an_object` for a decoded value that is not a dict, and that
-  branch cannot execute today: `extract_json_object` only ever returns text
-  starting with `{`, so a successful `json.loads` always yields a dict. The
-  worker disclosed it rather than writing a test that could not pass honestly,
-  which is DECISION F105 D10 working as designed. Registered so the branch is
-  never later mistaken for tested behaviour. It stays for now — it becomes
-  reachable the moment `extract_json_object` learns to return array text — and
-  the decision to keep or delete it belongs to the closure round, not to a
-  repair. OPEN.
-
-### R9 — PASS (2026-08-13)
-Reviewed by the main session over 456a25e9..33f408b2. Every ordered gate was
-re-run by the reviewer, and the new split was probed live against the real
-applier rather than read off the handback. Transport: PRIMARY cmp proof, no
-digest fallback — `.remedy-wt/f111r9/BLOCK`, `.agent/authored/f111-r9-1.md`
-and `.agent/last_block.md` are byte-identical, `.remedy-wt/f111r9/PLAN` and
-`.agent/plan.md` are byte-identical, and `str.count` of both the LRG and the
-DONE slice against `.agent/live_review.md` prints 1. Numstat purity: `50 0`
-for the gate append and `5 1` for the R-0307 resolution, the single deletion
-being the retired `Landed:` line. Markers: 33 `- R-0`, 5 `Done:`, 0 `Landed:`
-(exit 1, the pass), 1 `### R8 — PASS`. Caps: the block is 330 lines, under the
-DECISION F105 D5 limit of 400; per-commit insertions 330/262/50/5/139/110/93,
-each under 500. Tests: `python3 -m pytest
-tests/orchestration/test_review_scope.py
-tests/orchestration/test_diff_repair_response.py
-tests/orchestration/test_diff_repair.py tests/cli/test_golden_path.py -q` exit
-0, 138 passed — 39 (32 before, 7 new), 27 (23 before, 4 new), 30 unchanged, 42
-canary; `python3 -m pytest tests/orchestration/test_final_verifier.py
-tests/orchestration/test_reviewer_prompt_scope.py
-tests/orchestration/test_pingpong.py tests/test_path_utils.py
-tests/test_data_paths.py -q` exit 0, 197 passed — the 146 `_parse_diff`
-consumer pin the reviewer measured BEFORE the round, unchanged, plus the 51
-repo-wide guards. Hygiene: `git status --porcelain` empty, `git worktree list`
-one entry, remote comparison `0 0`. Scope: exactly the nine ordered paths.
-
-Deviation ACCEPTED: C7 applied a 47-line PLAN slice where the block said 46.
-The worker applied the authored bytes verbatim and declared the mismatch
-rather than reflowing text to hit a number, which is the correct call — the
-error is the reviewer's and is registered as R-0309 below.
-
-- R-0309 (Low, F111 R9, reviewer-side arithmetic in an authored block): the R9
-  block stated its PLAN slice was 46 lines and gated `wc -l` on that number;
-  the slice is 47 lines. Third instance of the class after R-0282 and R-0305,
-  and the second in three rounds, so the rule R-0305 stated is not being
-  applied: any count an authored block asserts about a file — including a file
-  the block itself carries — is MEASURED before emission, never recalled. The
-  reviewer cannot measure its own not-yet-written slice with a shell, so the
-  standing fix is different in kind: gate authored slices on `cmp` against the
-  applied file, which proves byte identity, and never on a line count, which
-  proves nothing the `cmp` does not already prove. OPEN.
-
-- R-0310 (Low, F111 R9, cosmetic residue in a correct function):
-  `split_diff_by_path` drops preamble before the FIRST `---` line, so in a
-  git-style multi-file diff the `diff --git` and `index` lines introducing
-  file N+1 stay at the TAIL of file N's section. The worker disclosed this
-  instead of writing a test that would have to pass dishonestly. The reviewer
-  proved the residue harmless: `_apply_hunks` breaks its hunk body on any line
-  starting with `diff `, and its outer loop skips every line that is not a
-  hunk header, so both sections of a two-file git diff applied to the right
-  content in a live probe. Kept for v1 as a cosmetic wart, not a correctness
-  defect; a section is still a standalone applicable diff. OPEN.
-
-- R-0311 (High, F111 R9, pre-existing silent file corruption in the
-  applicator): `source_apply._apply_hunks` collects each addition WITH its
-  position, then throws those positions away and inserts every added line at
-  `insert_at = orig_start + offset` — the start of the hunk. Any hunk whose
-  additions are not on its first line therefore writes them to the wrong
-  place. On the repository's own test input, `original = "alpha\nbeta\ngamma\n"`
-  with `@@ -1,3 +1,3 @@\n alpha\n-beta\n+BETA\n gamma\n`, the function returns
-  `alpha\ngamma\nBETA\n` where the diff says `alpha\nBETA\ngamma\n`. The
-  existing guard `TestHunkValidation::test_correct_context_applies` passes only
-  because it asserts `"BETA" in result` and never checks order, which is how
-  this survived. Every `intent_kind="unified_diff"` patch in Remedy lands
-  through this function, and F111's Done criterion is literally that no repair
-  path can silently corrupt a file, so the diff channel cannot ship over it.
-  Fixed in R10 per DECISION F111 D4. OPEN.
-
-### DECISION F111 D4 (2026-08-13) — the applier order fix is in scope
-Chosen: repair `_apply_hunks` inside F111, in R10, scoped to hunk application
-order and nothing else. Alternatives considered: (a) route it to a new feature
-and ship F111's diff channel over a corrupting applier — rejected, because the
-feature's own Done criterion forbids exactly that; (b) work around it in
-`diff_repair_response` — rejected, because it would be a second applier, which
-this feature has refused twice already. The feature file's Do-not-touch names
-"applicator semantics", and an off-by-one in where a line lands is not a
-semantic of the applicator, it is a defect in it: the all-or-nothing contract,
-the fence preflight, the snapshot gate and the rollback path are untouched by
-this fix. Reverse by reverting R10's C4 commit; the tests it adds name the
-behaviour precisely enough that a reverter knows what they are giving up.
-
-### R10 — PASS (2026-08-13)
-Reviewed by the main session over 33f408b2..8644def9. Every ordered gate was
-re-run by the reviewer on this machine; nothing was read off the handback.
-Transport: PRIMARY cmp proof — `.agent/authored/f111-r10-1.md` and
-`.agent/last_block.md` are byte-identical. Numstat purity: `80 0` for the gate
-append and `2 0` for the `Landed:` line, both pure appends as ordered. Markers
-on the final file: 36 registered ids, 5 resolutions, 1 landed marker, 1 R9 pass
-heading, 1 D4 heading. The fix proved BY VALUE, not by colour:
-`_apply_hunks('alpha\nbeta\ngamma\n', '@@ -1,3 +1,3 @@\n alpha\n-beta\n+BETA\n gamma\n')`
-printed `'alpha\nBETA\ngamma\n'` at exit 0. Tests, each re-run by the reviewer:
-179 passed for the source-apply tier, 138 for the untouched modules plus the
-golden-path canary, 225 for the applier's other consumers. Red-proof: in a
-disposable worktree at HEAD with `source_apply.py` checked out from 33f408b2,
-`pytest tests/orchestration/test_source_apply_transaction.py -q` exited 1 with
-5 failed / 10 passed — exactly the five ids the handback named, and
-`test_pure_deletion_hunk_removes_only_its_line` passes on the old code, as the
-handback declared. Worktree removed and pruned; `git status --porcelain` empty,
-`git worktree list` one entry. Scope: exactly the seven ordered paths.
-
-Deviation ACCEPTED: C5's authored `Landed:` line says "six order tests added";
-C4 adds five new tests and strengthens one existing assertion. The worker
-applied the authored bytes verbatim and declared the mismatch instead of
-reflowing text to match a number, which is the correct call — the error is the
-reviewer's and is registered as R-0314 below.
-
-Done: R-0311 — `_apply_hunks` no longer collects a hunk's additions and dumps
-them at the hunk's start; it splices the hunk's new block over the exact
-original range the hunk consumed, so an added line lands at its own position.
-Proved by value at the R10 gate and pinned by five new order tests plus the
-strengthened `test_correct_context_applies`, which now asserts the full result
-string instead of a substring. Resolved. The header-side placement defect found
-while gating this fix is a SEPARATE finding, R-0312 below, not a reopening.
-
-- R-0312 (High, F111 R10, hunk-header off-by-one in the applicator, the same
-  Done-criterion class as R-0311): `_apply_hunks` computes every hunk's 0-based
-  start as `int(m.group(1)) - 1`. That is correct only for a hunk that consumes
-  at least one original line. A unified-diff hunk whose OLD COUNT is 0 is a pure
-  insertion, and its header names the line AFTER which the content goes, so its
-  0-based index is the line number ITSELF. Confirmed against real `git diff
-  -U0`, not from memory: inserting `X` between `a` and `b` in `a\nb\nc\n` emits
-  `@@ -1,0 +2 @@`, prepending emits `@@ -0,0 +1 @@`, appending emits
-  `@@ -3,0 +4 @@`. Measured on the R10 applier against `'a\nb\nc\n'`:
-  `@@ -1,0 +2 @@\n+X\n` returned `'X\na\nb\nc\n'` where the diff says
-  `'a\nX\nb\nc\n'`; `@@ -3,0 +4 @@\n+X\n` returned `'a\nb\nX\nc\n'` where the
-  diff says `'a\nb\nc\nX\n'`; and `@@ -0,0 +1 @@\n+X\n` returned
-  `'a\nb\nc\nX\n'` — `orig_start` is -1 there, so `result_lines[-1:-1]` inserts
-  before the trailing element and a PREPEND silently becomes an APPEND. The
-  same three values were measured on the PRE-R10 applier, so this is not an R10
-  regression: it is the older half of the same defect, and R-0311's fix could
-  not reach it because every test in that round used hunks with context. No
-  validation fires on any of these inputs — a pure-insertion hunk has no context
-  and no removal line to check — so the file is written wrong and reported as
-  applied, which is exactly the failure this feature's Done criterion names.
+- R-0334 — Low — reviewer block self-contradiction, second instance, recurring
+  in the VERY NEXT block after its class was registered. R-0331 recorded that
+  the R11 block's "Change:" clause disagreed with its own "Constraints:"
+  clause. The R13 delegation then told its worker "Commit 1 saves those bytes
+  verbatim to `.agent/authored/f115-r13-1.md`; commit 2 mirrors the identical
+  bytes" while the same block's Constraints clause said "C2 is its own commit
+  and comes first". Two clauses of one instruction ordered two different commit
+  sequences. The worker resolved it correctly and by the governing rule rather
+  than by proximity: it landed the findings commit first
+  (`9d2b638d`, before `4b149bfd` and `ab1b7e9b`), which is what
+  docs/agents/planner_reviewer_prompt.md §4 item 4 requires — findings persist
+  FIRST so nothing is lost if a session dies — and the block-save ordinals were
+  the throwaway half. What makes this worth its own id rather than a tally mark
+  under R-0331 is the interval: the class was registered, its lesson written
+  out at length, and it recurred in the next block the same reviewer authored,
+  in the same session. That is evidence the counter-measure is missing rather
+  than merely unapplied. The gap is nameable: the standing pre-emission
+  checklist sends the reviewer to the block's own bytes (items 1-4), to the
+  code it points at (item 5), to the file it writes into (item 6), to the tests
+  guarding that file (item 7) and to the code producing a gated value (item 8) —
+  five different places, and not one of them is the block's own OTHER clause.
+  Both instances are the same shape: a clause written early and a clause
+  written late, never read against each other. The remedy a later round should
+  weigh is a ninth checklist item — read the Change clause, the Constraints
+  clause and the ordering statements against one another as a final pass — and
+  it belongs to whichever round next has a legitimate reason to open
+  `docs/agents/planner_reviewer_prompt.md`, since AGENTS.md bars mixing an
+  unrelated doc change into a feature branch. Registered here so the pair is
+  countable and the counter-measure is findable when that round comes. Eighth
+  of the reviewer-arithmetic and self-contradiction family after R-0282,
+  R-0321, R-0323, R-0324, R-0327, R-0328, R-0331 and R-0333. No on-disk fix.
   OPEN.
 
-- R-0313 (Medium, F111 R10, acceptance narrowed by the body-walk rewrite):
-  R10 changed a hunk-body line that is none of ` `, `+`, `-` from `pos += 1` to
-  ignored. The block declared that for `\ No newline at end of file`, which is
-  right, but it also covers a case the block did not name: a BLANK context line
-  whose single leading space was stripped in transport arrives as `""`. The old
-  applier consumed it as context; the new one ignores it, `old_len` runs one
-  short, and the next `-` or context line then validates against the wrong
-  original index and returns None. Measured both sides on this machine:
-  `'a\n\nb\n'` with `@@ -1,3 +1,3 @@\n a\n\n-b\n+B\n` returned `'a\n\nB\n'`
-  before R10 and returns None after it. The direction is SAFE — an
-  all-or-nothing rejection that falls back, never a corrupted file — so this is
-  not a corruption finding. It matters because F111 exists to apply
-  MODEL-generated diffs, and stripping the trailing space off a blank line is
-  among the most common things a model or a transport does, so the diff channel
-  will fall back on a class of otherwise-valid answers. The fix does NOT belong
-  in `_apply_hunks`: `diff_text.split("\n")` also yields a trailing `""` for any
-  diff ending in a newline, so treating `""` as context there would make the
-  last hunk consume one original line too many — trading a safe rejection for a
-  silent corruption. Normalise on the response side, where the diff's own line
-  structure is known. Deferred to T002/T003 by decision, not fixed in R11. OPEN.
+Done: R-0334 — REGISTERED, not resolved, and it stays OPEN by construction: the block that carried the contradiction is committed verbatim by design, so there is nothing on disk to correct. Recorded here to close the R14 round that registered it. The R14 round as a whole is PASS, and this gate was written by a NEW session's reviewer that re-ran every value itself rather than reading them out of the handoff: `cmp .agent/authored/f115-r14-1.md .agent/last_block.md` exit 0 with sha256 460cbfd6ec9814ea577aa907f02b0e8bc6fbf1463270985b62456508bba6c5ad over both copies, `wc -lc .agent/last_block.md` 112 8551, the live-review counts 7 / 15 / 1 / 0 for `^Done:`, `^- R-0`, `^## Steps` and `^Landed:`, `git show --numstat 24e6fb62` reporting 35 insertions and ZERO deletions, `git log --oneline 954d0ea2..HEAD` listing `24e6fb62` as the OLDEST of the four so the findings commit did land first, `git diff --name-only 954d0ea2..HEAD` naming five paths all under `.agent/`, `wc -l .agent/plan.md` 42, canary `pytest tests/cli/test_golden_path.py -q` 42 passed, `pytest tests/orchestration/test_cost_report.py -q` 15 passed, an empty `git status --porcelain`, 0 0 against origin, and 37 changed paths since 0d6c97aa with no `remedy-wt` among them. The declared handoff overage — 85 lines against the 60-line cap — is ACCEPTED under AGENTS.md DECISION D15: the cause is mandated content, the file names its own real line count, and no section was dropped.
 
-- R-0314 (Low, F111 R10, fourth instance of an unmeasured count in authored
-  text): the R10 block's authored `Landed:` line asserted "six order tests
-  added"; C4 adds five and strengthens one. R-0282, R-0305 and R-0309 are the
-  same class. R-0309's standing fix — gate authored slices on `cmp`, never on a
-  line count — was applied to R10's slices and worked; the count that broke was
-  embedded in authored PROSE, which a `cmp` gate cannot catch by construction.
-  Widened rule, applied from R11 onward: an authored text states a number about
-  the change set only when that number is already measured on disk, and when it
-  cannot be — because the change does not exist yet — the text names the thing
-  without a count. OPEN.
+- R-0335 — Low — the R14 handoff claimed the §4 item-13 branch terminator for a round that ended a SESSION, not a branch. Item 13 excuses the missing on-disk gate entry of the LAST round of a BRANCH, because the round that would record that verdict is the round being recorded. R14 ended neither the branch nor the feature: no PR exists, T003 was unstarted, and the handoff's own "Resume here" section says the next session continues on THIS SAME branch. The consequence is not cosmetic. `.agent/live_review.md` is append-only and durable; `.agent/handoff.md` is REWRITTEN at every handback. R14's verdict lived only in the file that the very next handback overwrites, so a session that resumed and handed back would have erased the only record that R14 was ever reviewed — the exact loss the findings-first rule of §4 item 4 exists to prevent, arriving through the one door item 13 holds open. The fix is the paragraph above: this round's findings-first commit writes the R14 gate entry where it belongs, and the entry states that its values were re-measured rather than copied. The rule to carry forward: item 13's terminator is claimable only when the round really is the last of the BRANCH — a PR exists, or is created in that same round — and a session that merely runs out of budget records its verdict in `.agent/live_review.md` like any other round. Ninth of the reviewer-arithmetic and self-contradiction family after R-0282, R-0321, R-0323, R-0324, R-0327, R-0328, R-0331, R-0333 and R-0334. No source fix. OPEN.
 
-### DECISION F111 D5 (2026-08-13) — the header off-by-one is in scope too
-Chosen: fix R-0312 inside F111, in R11, scoped to the hunk-header start
-computation and nothing else. This extends DECISION F111 D4 by the same
-reasoning: the feature's Done criterion is that no repair path can silently
-corrupt a file, and a pure-insertion hunk that lands its content at the wrong
-index — or turns a prepend into an append — is that criterion failing, not an
-"applicator semantic" the Do-not-touch list protects. Alternatives considered:
-(a) ship the diff channel and file the header bug against a later feature —
-rejected, it is the same defect class the round before this one just refused to
-ship over; (b) reject every zero-old-count hunk instead of placing it correctly
-— rejected, `-U0` diffs are the SMALLEST diffs a model can send and this feature
-exists to make repairs smaller, so refusing them would defeat its purpose while
-leaving the `@@ -0,0` splice-at-minus-one path reachable anyway. Reverse by
-reverting R11's C4 commit; the tests it adds name the behaviour precisely enough
-that a reverter knows what they are giving up.
+Done: R-0335 — RESOLVED at the R15 gate, and resolved in the only way it could be: the R14 verdict it said was missing from disk now IS on disk, written by R15's findings-first commit `f77554bf` and re-measured rather than copied out of the handoff. The R15 round as a whole is PASS. The reviewer re-ran every gate itself: `cmp .agent/authored/f115-r15-1.md .agent/last_block.md` exit 0 — the reviewer's sandbox allows `cmp` even though the worker's refused it, so the worker's sha256-plus-byte-compare substitute was corroborated by the primary proof rather than merely accepted — with sha256 `e3a1ea5706f77fccdb2953ab1db9c35a32cf493c598a6981cb4bc02d05d5d39b` over both copies, `wc -lc` 251 18389, the live-review counts 8 / 16 / 1 / 0, `git show --numstat f77554bf` 4 insertions and ZERO deletions, C1 the oldest commit of `5c7f5159..HEAD`, ruff `All checks passed!` over all four files, 119 passed against a 119 baseline of 114 plus five new tests, 83 passed over the canary and the untouched CLI cost tests, `wc -l .agent/plan.md` 43, an empty porcelain, 0 0 against origin, and 38 changed paths with no `remedy-wt` among them. The three authored slices were compared DISK TO DISK against the committed `.agent/authored/f115-r15-1.md` rather than against a reviewer retype — 43 of 43 plan lines, 39 decision lines, 3 live-review lines, all byte-identical — which is the R-0147 class this project has paid for before. Both declared deviations are ACCEPTED: refreshing the two `Public API::` signature lines and the test-module docstring was right, because leaving them would have left a false claim on disk beside a changed signature, and the gate (d) json number was the reviewer's error and not the worker's, registered below. A THIRD probe of the reviewer's own choosing, which the block did not order, settled the question the ordered probes could not: deleting the `until` clause only proves the filter is WIRED, while flipping `ts_utc < ?` to `ts_utc <= ?` proves it is HALF-OPEN, which is the whole content of DECISION F115 D5. That mutation fails exactly `test_a_call_at_exactly_until_is_out_while_one_at_exactly_since_is_in`, `test_the_merge_carries_the_period_end_of_its_inputs` and `test_until_narrows_the_shares_exactly_as_it_narrows_the_cost` and nothing else, so the three new tests bind the boundary reading and not merely the presence of a parameter. The probe ran in a disposable worktree under `.remedy-wt/`, which was removed and pruned; `git worktree list` shows one line.
 
-### R11 — PASS (2026-08-13)
-Reviewed by the main session over 8644def9..06e85a11. Every ordered gate was
-re-run by the reviewer on this machine; nothing was read off the handback.
-Transport: PRIMARY cmp proof — `.agent/authored/f111-r11-1.md` and
-`.agent/last_block.md` are byte-identical. Numstat purity: `102 1` for the gate
-commit, the single deletion being the retired R-0311 marker line the reviewer
-replaced with authored text, and `2 0` for the new marker line. Markers on the
-final file: 39 registered ids, 6 resolutions, 1 landed marker, 1 R10 pass
-heading, 1 D5 heading. Scope: exactly the seven ordered paths, no more.
+- R-0336 — Low — reviewer gate arithmetic, tenth of its class, self-registered. R15's gate (d) predicted that the golden `cost_report.json` would move by `2 1`: one changed `report_version` line plus one added `"until"` line. The real diff is `3 2`. The prediction is not merely off, it is arithmetically unreachable, and the reason is a fact about the format rather than about the change: `json.dumps(sort_keys=True)` placed the new `"until"` key AFTER `"timezone"`, which is the last key of the `filters` object, so the `"timezone": "UTC"` line had to gain a trailing comma. Git counts that as one deletion plus one addition on top of the added line. The worker was right, did not stop the round on it, said plainly that the prediction forgot the comma, and proved by reading the diff that no figure, bucket or segment row had moved — which is exactly the judgement gate (d)'s STOP clause exists to invite rather than to suppress. What makes this its own id rather than a tally mark under R-0327 is that it is a NEW subclass. The standing pre-emission checklist's item 8 sends the reviewer to the code that PRODUCES a gated value, and the reviewer did go there: `sort_keys=True` was read, and the alphabetical position of `until` after `timezone` was derived correctly. What went unread is the SERIALISER'S PUNCTUATION — that a key appended after the last one perturbs the line before it. Item 8 covers the value; nothing covers the FORMAT the value is embedded in. The counter-measure is already applied in the next block rather than deferred: R16's gate (d) orders NO line-count prediction at all and replaces it with a structural proof — load both goldens and assert that every DATA key is equal, so the gate constrains what actually matters (that no figure moved) instead of a line count the reviewer keeps mis-deriving. That is the general repair for this family: when a gate's value depends on a formatter, gate the SEMANTICS and report the arithmetic, never predict the arithmetic. Tenth of the reviewer-arithmetic and self-contradiction family after R-0282, R-0321, R-0323, R-0324, R-0327, R-0328, R-0331, R-0333, R-0334 and R-0335. No source fix. OPEN.
 
-The fix proved BY VALUE, not by colour. Against `'a\nb\nc\n'`, the reviewer ran
-the three zero-count headers real `git diff -U0` emits for an insert-in-middle,
-a prepend and an append: `@@ -1,0 +2 @@`, `@@ -0,0 +1 @@` and `@@ -3,0 +4 @@`,
-each with a single `+X` body. They now return `'a\nX\nb\nc\n'`, `'X\na\nb\nc\n'`
-and `'a\nb\nc\nX\n'`. On the R10 applier the same three returned
-`'X\na\nb\nc\n'`, `'a\nb\nc\nX\n'` and `'a\nb\nX\nc\n'` — every one placed
-wrong, and the prepend silently appended. Both rejections were exercised
-directly: `@@ -0,1 +0,2 @@\n+X\n` on `'a\nb\n'` returned `'a\nb\nX\n'` before
-and returns None now, and `@@ -1,0 +2 @@\n a\n+X\n` on `'a\na\nb\n'` — chosen
-because its context line still MATCHES at the shifted index, so only the new
-contradiction check can reject it — returns None. R10's own fix still holds:
-the `alpha/BETA/gamma` probe still prints `'alpha\nBETA\ngamma\n'`.
+Done: R-0336 — REGISTERED, not resolved, and it stays OPEN by construction: the block that carried the wrong prediction is committed verbatim by design, so there is nothing on disk to correct. Its counter-measure, however, was applied immediately rather than deferred, and it worked: R16's gate (d) predicted no line count at all and ordered a structural proof instead, the worker returned real numstats of `14 1` and `4 0` together with a key-by-key comparison, and the reviewer re-ran that comparison independently — `buckets`, `segments`, `total`, `label`, `filters`, `ledger_exists` and `note` all equal, added keys exactly `['comparison']`, removed none, changed exactly `['report_version']` 2 to 3. No figure, bucket or segment row moved. The R16 round as a whole is PASS. The reviewer re-ran every gate itself: `cmp .agent/authored/f115-r16-1.md .agent/last_block.md` exit 0 — again the reviewer's sandbox allows `cmp` where the worker's refuses it, so the worker's sha256-plus-byte-compare substitute was corroborated by the primary proof rather than accepted — with sha256 `24984348f53494604bcbf924b9b91238a9d0c53b33faadf53f71d724ce7b009b` over both copies, `wc -lc` 298 23248, the live-review counts 9 / 17 / 1 / 0, `git show --numstat aa1a6cfb` 4 insertions and ZERO deletions, C1 the oldest commit of `6752841a..HEAD`, ruff `All checks passed!` over all four files, 134 passed against a 119 baseline, 83 passed over the canary and the untouched CLI cost tests, `wc -l .agent/plan.md` 43, an empty porcelain, 0 0 against origin, and 39 changed paths with no `remedy-wt` among them. Both authored slices were compared DISK TO DISK against the committed `.agent/authored/f115-r16-1.md` — 43 of 43 plan lines and 44 decision lines, byte-identical. The C5 deviation is ACCEPTED and is an improvement the block did not ask for: a comparison that does not name its own baseline is a number the reader cannot check against anything, so the `Previous period: since=… until=… · N call(s).` provenance line belongs there. A PROBE of the reviewer's own choosing settled what the two ordered probes could not. P1 removed the subtraction, which only proves the window is displaced; neither probe touched the load-bearing claim of DECISION F115 D6 — that the prior window's `until` is the caller's own `since` STRING and never a re-serialisation of it. Replacing `until=since` with `until=parsed_since.isoformat()` in a disposable worktree fails exactly `TestPriorReportPeriod::test_the_prior_window_of_a_bare_date_pair` and `TestPriorReportPeriod::test_the_prior_until_is_the_original_since_string_byte_for_byte`, and nothing else, so the byte-reuse rule is pinned by a test named for it rather than merely described in a docstring. The worktree was removed and pruned; `git worktree list` shows one line. One inaccuracy is recorded here WITHOUT being registered as a finding, because it moved no evidence: the R16 handback attributed the json golden's single deleted line to a trailing comma gained by the `buckets` array, when the diff shows that line unchanged and the deletion is simply the `report_version` line being rewritten. The number reported was correct, the structural proof was correct and independently reproduced, and the wrong aside sits in a handback sentence rather than in a gate value — registering it would cost a round more than the error costs the record.
 
-Tests, each re-run by the reviewer: 185 passed for the source-apply tier, 179
-before the round plus the 6 new cases; 138 for the untouched modules plus the
-golden-path canary, unchanged; 225 for the applier's other consumers,
-unchanged, so the header change regressed no existing consumer. Red-proof: in a
-disposable worktree at HEAD with `source_apply.py` checked out from 8644def9 —
-which reverts exactly C4 and nothing else —
-`pytest tests/orchestration/test_source_apply_transaction.py -q` exited 1 with
-6 failed / 15 passed, the six failures being exactly the six tests C4 adds,
-with every pre-existing test still passing on the old applier. Worktree removed
-and pruned; `git status --porcelain` empty, `git worktree list` one entry,
-`git rev-list --left-right --count` against the remote `0 0`. Caps: per-commit
-insertions 355/266/102/71/2/99, each under 500; `.agent/plan.md` 49 lines,
-under the AGENTS.md limit of 50; `.agent/handoff.md` 95 lines, over the 60 cap
-and carrying the DECISION D15 stated-cause line, which is the sanctioned shape.
-No deviations were declared and the reviewer found none.
+- R-0337 — Low — a mutation probe whose IMPORT PATH is not proven is not a probe. R17's ordered probe mutated `apps/cli/commands/stats_ledger_cmd.py` inside a disposable worktree, but the worker's sandbox refused `cd`, so pytest was invoked from the PRIMARY checkout against the worktree's test path. That arrangement does not establish which copy of `apps/` was imported: the repo root carries a `conftest.py` and lands on `sys.path`, so the unmutated primary module was a live candidate, and a probe that silently exercises unmutated code reports GREEN and is read as "the test does not catch this" when the truth is "the test was never run against the mutation". Here the conclusion happened to be sound — the run went RED, and only mutated code can turn a passing test red, so the mutated copy demonstrably was the one imported — and the reviewer re-ran the probe from INSIDE the worktree and reproduced exactly `TestPriorPeriodComparison::test_a_job_filter_narrows_the_prior_query_too` and nothing else. The finding is the METHOD, not this result. A red outcome is self-proving; a GREEN one under the same arrangement would have proved nothing at all, and green is the outcome a probe most needs to be able to trust, because green is what retires a suspicion. The counter-measure is cheap and does not need `cd`: the probe asserts its own provenance by printing the imported module's `__file__` and confirming the path lies under the worktree, before reading anything into the colour. G5 was NOT breached — the mutation stayed inside the worktree and the primary checkout's `git status --porcelain` was empty throughout — so this is a proof-strength finding and not a safety one. First of its class. No source fix. OPEN.
 
-Done: R-0312 — a hunk whose OLD COUNT is 0 now splices AFTER the line its
-header names instead of one line before it, so a pure-insertion hunk lands
-where the diff says and `@@ -0,0 +1 @@` prepends instead of silently appending.
-A header that declares a pure insertion while its body consumes original lines
-is rejected outright, and a negative splice index can no longer be reached. The
-absent-count short form `@@ -2 +1,0 @@` still means a count of 1 and is
-unchanged. Proved by value at the R11 gate in both directions and pinned by six
-new tests, all six of which fail on the pre-fix applier. Resolved.
+Done: R-0337 — REGISTERED, not resolved, and it stays OPEN by construction: it names a method to apply in future rounds, and there is nothing on disk to correct. Recorded here to close the R17 round that registered it. The R17 round as a whole is PASS. The reviewer re-ran every gate itself rather than reading the handback: `cmp .agent/authored/f115-r17-1.md .agent/last_block.md` exit 0 with sha256 `86e36a908de1a25dd126a96849407636fb952d8e39e4a87407ea0ab4502c70a9` over both copies, `wc -lc` 228 17476, the live-review counts 10 / 17 / 1 / 0, `git show --numstat 7899fdb0` 2 insertions and ZERO deletions with C1 the oldest commit of `aa7ad8df..HEAD`, ruff `All checks passed!` over all three touched files, 93 passed across `test_stats_report.py`, `test_stats_cost.py` and the canary — 10 plus 41 plus 42, so the new command's tests are additive and neither the CLI cost view nor the canary moved — 505 passed across the catalog and grouped-CLI contract tests against a 505 baseline, `wc -l .agent/plan.md` 41, an empty porcelain, 0 0 against origin, and 43 changed paths with no `remedy-wt` among them. The change set is exactly the eight paths the block declared. Both authored slices were compared DISK TO DISK against the committed `.agent/authored/f115-r17-1.md` — 41 of 41 plan lines and the single live-review paragraph, byte-identical. Both declared deviations are ACCEPTED: the module docstring said "Three commands" and never named `stats cache`, so adding a fifth under a false count would have left a wrong claim on disk beside new code, and the four registration tests are the only honest way to meet a gate that ordered the wiring proven "the way the suite does" while the `remedy` binary itself is refused by this sandbox. The catalog entry states the absence of `--all-projects` in its DESCRIPTION rather than only in a comment, which is what `remedy stats --help` prints, and that is the AGENTS.md rule about documenting a deliberate absence where a reader will search for it.
 
-With R-0311 and R-0312 both closed, `_apply_hunks` places a hunk's content
-correctly in both axes it can get wrong: WHERE inside the hunk an added line
-goes, and WHERE in the file the hunk itself starts. Remedy deliberately does
-not cross-check a hunk header's declared old count against the number of lines
-its body actually consumes when that count is 1 or more: models routinely
-miscount headers while quoting content exactly, and this applier's strictness
-is deliberately spent on CONTENT — every context and removal line is compared
-against the real file — rather than on arithmetic a wrong-but-harmless header
-would fail. The count is read only to decide the zero-insertion case, where it
-is the sole available signal.
+- R-0338 — Medium — the R18 guide states a false attribution, and the reviewer wrote it. `docs/guides/cost-report-user-guide-v0.md` tells a reader that the per-role limit is already visible in the existing CLI: "The existing `remedy stats cost` view already prints that limit in its own output." It does not. `_ROLE_LIMIT_NOTE` (`apps/cli/commands/stats_ledger_cmd.py:373`) has exactly two use sites, `_cache_payload:436` and `_render_cache_human:489`, and both belong to `remedy stats cache`; `_render_cost_human` (lines 236-304) never mentions role at all, and `grep -c role packages/orchestration/cost_report.py` is 1 — a comment about a NULL group column, not the note. So the sentence sends a reader to a command that will not show them the thing it promises, and it also hides the sharper fact: `remedy stats report` itself never prints the limit, which is why the guide has to state it in prose. The true sentence is `remedy stats cache --by role`. This is a reviewer-authoring defect of the R-0325/R-0326 class — authored text applied verbatim by a worker who was explicitly told to stop on a false claim — but it is Medium rather than Low because unlike those two it LANDED, on a user-facing page, and a doc that misdirects a reader is worse than a doc that omits. The worker's own claim-verification pass did check the note: it reported "`_ROLE_LIMIT_NOTE` at :373, printed at line 489 when `report.by == 'role'`" — true line, wrong owner, because it read the line and not the function the line sits in. That is the standing gate-scope blind spot in miniature: existence was verified, attribution was not, and only the reviewer's own probe closed the gap. The counter-measure for the next block of this class: when authored prose names a COMMAND as the source of an output string, the gate must resolve the string to its enclosing function and name that function, never just grep the constant. Fix in the next round: replace the sentence with the `stats cache` reading and say plainly that `stats report` does not print the note. OPEN.
+Done: R-0338 — RESOLVED at the R19 gate, verified against the disk and not against the handback. The false sentence is gone: `grep -c "The existing"` and `grep -c "remedy stats cost"` over `docs/guides/cost-report-user-guide-v0.md` both print 0, `grep -c "remedy stats cache --by role"`, `grep -c "does not print that limit"` and `grep -c "role_limit"` each print 1, and the file is 144 lines against 142 before. The reviewer re-read the new bullet's five lines out of the committed `.agent/authored/f115-r19-1.md` and found them byte-identical to the five lines now in the guide, so the text was applied and not retyped; `cmp .agent/authored/f115-r19-1.md .agent/last_block.md` exits 0 with sha256 `dbd9a399c6b5fff416190dc9fd0318f5d967e3c4a2f81f21c2600dbb73794e1e` over both copies and `wc -lc` 140 8155. The guide's fenced example is still embedded verbatim, sha256 `ba48c81cda785847647e01de1dff12dd9bae5a6abf5eac426b272ad057da138d`, unchanged from R18 — the repair moved prose and left the DATA alone, which is what the goldens rule demands. `tests/docs/` 294 passed against a 294 baseline and the canary 42 passed against 42, both re-run by the reviewer. The claim itself was re-derived from source a third time before this resolution was written: `_ROLE_LIMIT_NOTE` at `apps/cli/commands/stats_ledger_cmd.py:373` is read at line 436 inside `_cache_payload` (425-441) and at line 489 inside `_render_cache_human` (442-492), both reached only from `_cmd_stats_cache` (493), registered as `"stats.cache"`; `_render_cost_human` (236-304) and `_cmd_stats_report` (509) never touch it. The guide now says exactly that.
 
-- R-0315 (Medium, F111 R11, feature file allows what the applicator refuses):
-  `docs/roadmap/features/T2_F111.md` states under "Edge cases & assumption
-  defaults (A9)" that new-file creation inside a diff is ALLOWED if the path
-  passes fences, and that only deletions require the full-file path in v1. The
-  code disagrees: `_apply_unified_diff` returns early with
-  `f"{diff.path}: file not found for diff"` and sets `success = False` whenever
-  `full.is_file()` is false, so a diff that creates a file can never apply, and
-  a model that correctly answers a repair with a new-file hunk gets a failed
-  apply rather than a created file. Found by the reviewer while gating R11, not
-  by a test. Note the interaction with R-0312: a new-file diff is exactly the
-  `@@ -0,0 +1,N @@` shape whose placement R11 just fixed, so the two would meet
-  in the same code path the moment the file-existence guard is lifted. This is
-  NOT a defect R11 introduced and NOT one R11 should have fixed — its change
-  set was the header computation — but T002's apply half runs straight into it,
-  so it is registered before that round rather than discovered during it. R13
-  decides: either implement creation behind the fence check as the feature file
-  says, or amend the feature file to match v1 reality under §4.7 and say why.
-  Do not let R13 pick silently. OPEN.
+Gate: R18 — PASS WITH RISKS (.agent/review_protocol.md, verdict table: only Medium/Low open, documented as a known risk). This entry is written by the session that reviewed the round rather than by the next one, because `.agent/STOP` appeared during R18's final gate run and R-0335 forbids leaving a reviewed round's verdict in a file the next handback overwrites. The reviewer re-ran every gate itself rather than reading the handback. `cmp .agent/authored/f115-r18-1.md .agent/last_block.md` exit 0 with sha256 `2a93345b696dffc6768ac45ab5bcbb7287b6b0e154ca203bfd1cbb9efad17940` over both copies and `wc -lc` 350 19149. The guide's fenced example is BYTE-IDENTICAL to `tests/orchestration/fixtures/cost_report/golden/cost_report.md` — 30 lines each, sha256 `ba48c81cda785847647e01de1dff12dd9bae5a6abf5eac426b272ad057da138d` over both — and SLICE A of the block equals the committed guide byte for byte, so the doc was applied and not retyped. The ordered `diff <(awk ...)` was refused by the worker's sandbox for process substitution; the worker replicated the same state machine in python and the reviewer reproduced the comparison a third way, in-process, without writing a file. The catalog entry's args are `['--since', '--until', '--job', '--by', '--label', '--project', '--json']` with `--all-projects` absent, matching the guide's flag list exactly; the export is named `CATALOG`, not `COMMAND_CATALOG` as the block's gate (d) guessed, and the worker found and reported the real name instead of reporting a failure. The golden json's top-level keys are the ten the guide lists in the spelling it lists them, `report_version` 3 and `unmeasured_notation` `'null'`. `COST_DEFAULT_LABEL = "(unlabelled)"` at `cost_report.py:64`, as the guide states. `grep -c cost-report-user-guide-v0.md docs/README.md` is 2 and C4's numstat is `2 0`, so both index rows are append-shaped with nothing else in that file touched. `tests/docs/ -q` 294 passed against a 294 baseline; canary 42 passed against 42; and `test_cost_report.py` plus `test_stats_report.py` 32 passed — the run that matters most here, because it is what binds the golden to the live renderer and therefore makes the guide's example a real rendering rather than a plausible one. `wc -l .agent/plan.md` 42, `0 0` against origin, no `remedy-wt` path in the change set, `git worktree list` one line. The change set is exactly the six paths the block declared, and `.agent/live_review.md` is correctly absent from it: R17's `Done: R-0337` was already on disk at `0fa1e40a`, so R18 owed no findings-first commit and the block said so in advance rather than leaving the absence to be read as a miss. `git status --porcelain` is NOT empty — it carries exactly `?? .agent/STOP`, the operator signal that ended the session — and that is the one gate value the round could not meet, correctly reported rather than routed around, exactly as at the R10 gate. Two facts belong in this entry beyond the values. First, the worker checked the guide's substantive claims against source BEFORE committing and reported the check; that pass is why only one claim was wrong, and it is worth more than the round it cost nothing. Second, the one it missed is R-0338 above, found by a reviewer probe the block did not order: resolving `_ROLE_LIMIT_NOTE`'s use sites to their enclosing functions rather than to their line numbers. The round is PASS WITH RISKS and not FAIL because no block condition of §4 item 5 is met — no fabricated data, no unverified completion claim, no silent scope change, and the defect originates in reviewer-authored text rather than in the worker's execution of it.
 
-### DECISION F111 D6 (2026-08-13) — new-file creation stays on the full-file path
-Chosen for finding R-0315: amend the feature file to match v1 reality rather
-than lift the applicator's file-existence guard. `_apply_unified_diff` keeps
-requiring `full.is_file()`, so a creation diff fails the apply and the round
-falls back to the full-file path — the route deletions already take. Three
-reasons. The feature file lists applicator semantics under Do not touch, and
-teaching the diff applicator to create files is exactly a semantics change.
-A creation diff carries no existing content for the strict context check to
-validate against, so the one guarantee this applier sells — every context and
-removal line compared against the real file — buys nothing on that path. And
-the full-file path already creates files through `_apply_file_op`'s `create`
-action, under the same durable snapshot and the same rollback. Alternatives
-considered: (a) implement creation behind the fence check, as the A9 sentence
-said — rejected on the three reasons above; (b) leave the contradiction on disk
-and let T003 discover it — rejected, that is how R-0315 was born. Reverse this
-decision by deleting the D6 section of docs/roadmap/features/T2_F111.md and
-restoring the A9 sentence.
-Done: R-0315 — the feature file no longer allows what the applicator refuses.
-DECISION F111 D6 keeps `_apply_unified_diff`'s file-existence guard and amends
-the A9 sentence instead, so creation and deletion now take the same full-file
-route in v1. Verified at the R13 gate BY VALUE: a `--- /dev/null` answer with
-`@@ -0,0 +1,2 @@` returns mode `full_fallback` and `fallback_reason` exactly
-`apply_failed:new.py: file not found for diff`, with no file created — so the
-mechanism that fires is the guard the amended A9 sentence names, not a snapshot
-block, which would have made that text wrong. Pinned by test_diff_repair_apply
-::test_new_file_creation_diff_falls_back_instead_of_creating. Resolved.
+- R-0339 — Low — reviewer gate arithmetic, self-registered, seventh of its class. The R19 block's gate (h) ordered `git show --numstat <C1> -- docs/guides/cost-report-user-guide-v0.md` to print `5 3`. The real value is `4 2`, and no correct edit could have produced `5 3`: the authored FROM and TO share their FIRST line byte for byte, so git keeps that line as context and the diff is two deletions against four insertions. `5 3` is the FROM/TO LINE COUNT, not a diff — the reviewer wrote down the shape of its own slice and labelled it a numstat. The worker measured `4 2`, changed nothing to meet the number, showed that gate (g) — 142 lines to 144 — agrees with -2/+4 and therefore contradicts (h), and declared the deviation. That is the correct behaviour and the round cost one declared deviation to prove a reviewer slip, exactly as R-0323 did. What makes this one worse than its predecessors is that its counter-measure was already on disk and already written by this same reviewer: R-0336 says never to predict a serialized artifact's numstat and to assert data equality instead, and checklist item 8 of `docs/agents/planner_reviewer_prompt.md` says to compute a gate's expected value from the source that PRODUCES it. The source that produces a numstat is git's own diff algorithm over the FROM/TO pair, including its shared-prefix handling, and the reviewer did not run it. The class is now R-0282, R-0321, R-0323, R-0324, R-0336 and this one. The durable counter-measure is narrower than "be careful": a numstat is never a gate. Order the semantic gates — the FROM at 0x, the TO at 1x, the file's line count — and order the numstat to be REPORTED rather than asserted, so the arithmetic lands in the record without being able to fail a correct round. No fix is possible on disk: the R19 block is committed verbatim by design and R19's verdict stands as PASS. OPEN.
 
-- R-0316 (Medium, F111 R13, a fallback reports a clean tree it cannot
-  guarantee): `diff_repair_apply.apply_diff_repair` returns `files_modified=0`
-  on every `apply_failed:` path, and its docstring states that the durable
-  snapshot restores "every touched file when a hunk conflicts". Both hold only
-  while the rollback SUCCEEDS. `source_apply._rollback_from_snapshot` catches
-  OSError per entry and, when a blob cannot be read or a target cannot be
-  written, appends `rollback_incomplete (N file(s)): …` to the errors and
-  leaves those files half-restored; `result.success` is already False, so
-  nothing else marks the difference. A caller then reads `applied=False,
-  files_modified=0` and concludes the tree is untouched while it is not —
-  the exact failure class this feature's Done criterion names. The information
-  is not lost, the string rides in `errors`, but the summary field contradicts
-  it and T003 will emit that field as per-round evidence. Reviewer-caused: the
-  R13 step block ordered `files_modified=0` unconditionally, so this is a
-  defect of the spec, not of the round that executed it faithfully. Fix
-  direction: carry the rollback outcome as its own field, or refuse to zero
-  `files_modified` when an error names `rollback_incomplete` — never by
-  widening `_apply_hunks`. OPEN.
+Gate: R19 — PASS. Every value in this entry was re-run by the reviewer against the disk; none of it is copied from the handback. `cmp .agent/authored/f115-r19-1.md .agent/last_block.md` exit 0, sha256 `dbd9a399c6b5fff416190dc9fd0318f5d967e3c4a2f81f21c2600dbb73794e1e` over both, `wc -lc` 140 8155. The guide's content gates: `The existing` 0, `remedy stats cost` 0, `remedy stats cache --by role` 1, `does not print that limit` 1, `role_limit` 1, `wc -l` 144. The golden `tests/orchestration/fixtures/cost_report/golden/cost_report.md` hashes `ba48c81cda785847647e01de1dff12dd9bae5a6abf5eac426b272ad057da138d` and is still embedded verbatim in the guide, so the round moved prose and left the data untouched. `tests/docs/` 294 passed, canary 42 passed. `wc -l .agent/plan.md` 42, `0 0` against origin, `git worktree list` one line, and the change set of `b047aa38..HEAD` is eight paths — R18's two close-out authored files plus the six this round declared — with no `remedy-wt` path among them. `git status --porcelain` is NOT empty: it carries exactly ` M scripts/make_review_zip.sh`, a modification no agent of this session made, left untouched under DECISION F115 D7 (`.agent/decisions.md`; the R20 block ordered it as D4, an ID taken since R8, and the worker correctly reassigned it and recorded the mapping) and correctly reported rather than routed around. The one ordered gate the round did not meet is (h), and it failed because the reviewer's expected value was wrong, not because the work was — that is finding R-0339 above. The verdict is PASS and not PASS WITH RISKS for the round itself: R-0338 is resolved, no block condition of §4 item 5 is met, and the worker's pre-commit claim check independently re-derived the note's owning FUNCTIONS rather than its line numbers, which is precisely the counter-measure R-0338 asked for.
 
-### R13 — PASS (2026-08-13)
-Reviewed by the main session over 34319061..9a17fad2. Every ordered gate was
-re-run by the reviewer on this machine; nothing was read off the handback.
-Transport: the worker's permission layer refused `cmp` and refused every
-command naming `.remedy-wt/`, so it declared the gap instead of faking a result
-and the reviewer ran the comparison itself. `.remedy-wt/f111r13/BLOCK`,
-`.agent/authored/f111-r13-1.md` and `.agent/last_block.md` are all three
-byte-identical at 18502 bytes, sha256
-f35907a250068b81c3c5b6216b2fcd68220674d997aadb40d3ce869fadc622f0;
-`.remedy-wt/f111r13/PLAN` and `.agent/plan.md` identical at 2124 bytes. Both
-authored appends landed verbatim and exactly once each. Scope: exactly the nine
-ordered paths, `source_apply.py` untouched, R-0313 untouched, and no call site
-added — `grep -rn diff_repair_apply packages/ apps/` returns one line, the
-docstring pointer.
+- R-0340 — High — F115 broke six tests it never opened, and only the integration gate could see it. Commit `cb17024a` added the keyword argument `on_prompt_composed=_plan_compositions.append` to the `plan_job_with_llm(...)` call at `apps/cli/commands/job.py:287-289`. The test double that stands in for that function, `fake_plan_job_with_llm` at `tests/test_run_log_cli.py:78`, still declares `(job, _call_planner)`. `git log 0d6c97aa..HEAD -- tests/test_run_log_cli.py` is empty: the branch moved the call site and never the stub that mirrors it. The result is a `TypeError`, which `job.py:305` catches under a broad `except Exception` and converts into `sys.exit(1)`, so the six ids of `TestPlanJobLocalRunLog` fail with `SystemExit: 1` and the real cause survives only in captured stderr — `got an unexpected keyword argument 'on_prompt_composed'`. Reproduced by the reviewer at HEAD `fbaab57f`: `python3 -m pytest tests/test_run_log_cli.py -q` gives `6 failed, 55 passed in 0.79s`. The gate's own attribution is sound: serial on branch 6/6 FAIL, serial at the merge base 6/6 PASS, so the class is reproducible and branch-introduced, not xdist flake. What matters more than the fix is why every earlier round was green. F115's cover for that call site is `tests/orchestration/test_structured_planner_cli.py:302`, which asserts the SOURCE TEXT of `job.py` contains the wiring; it reads the file instead of executing the call, so it can prove the argument was written and can never prove the argument works. Every scoped round gate passed because none of them ran the file that consumes it. That is the gate-scope blind spot exactly: a green scoped gate says the ordered thing was done, never that the system still runs, and the integration gate exists to be the one place that difference is caught. It did its job. The fix is one line — mirror the real keyword-only parameter in the double — and it belongs in its own reviewed round, per docs/agents/integration_gate.md step 4. OPEN.
 
-The all-or-nothing claim proved BY MUTATION, not by colour. In a disposable
-worktree at HEAD the reviewer replaced the body of `_rollback_from_snapshot`
-with an immediate `return` and re-ran the new test file:
-`test_conflicting_hunk_falls_back_and_leaves_both_files_untouched` FAILED with
-`assert b'LINE1\nline2\n' == b'line1\nline2\n'` while the other five passed. So
-the first file really is written before the second hunk conflicts, and the
-rollback really is what restores it — the test is load-bearing, not vacuously
-green. Worktree removed and pruned before this verdict.
+- R-0341 — Low — `REMEDY_UI_NO_AUTO_BUILD=1` was set for the R20 base run and a build ran anyway. `.agent/gate_f115_r20/base_run2_env.txt` records `apps/ui/dist/index.html` moving from 12:57:29 to 13:03:20 DURING the second base run, inside a worktree where the flag was exported. This is the R-0169 class returning — a spawned build path that never reads the flag — and docs/agents/integration_gate.md already anticipates it, which is why it tells the gate to hash `apps/ui/dist` before and after rather than trust the flag alone. Here the hashes matched and the parity claim survives, so nothing in the R20 attribution is weakened; the finding is about the harness, not about this gate's conclusion. It is NOT charged to F115: the branch touches neither `packages/orchestration/ui_server.py` nor `apps/ui`, and `git diff 0d6c97aa HEAD` over both paths is empty. It is registered rather than mentioned in passing because the flag's failure is silent, the hash check that catches it is the only thing standing between it and a false parity claim, and a future gate that trims the hash check as redundant would have no record of why it is not. Fix belongs to whichever round legitimately opens the UI auto-build path. OPEN.
 
-DECISION D6 was checked against behaviour rather than against its own prose: a
-creation diff returns `apply_failed:new.py: file not found for diff` with a
-non-empty snapshot id and no file created, so the guard the amended A9 sentence
-names is the mechanism that actually fires.
+Gate: R20 — FAIL. The verdict is FAIL because a High finding is open (`.agent/review_protocol.md`, verdict table), and for no other reason: the round that ran the gate did everything it was told, in the right order, and its evidence is what made the failure legible. The distinction matters and is recorded here so no later reader misreads it — R20's execution was correct, R20's GATE is red, and the redness belongs to code this branch shipped in an earlier round. The reviewer re-ran the decisive parts itself rather than reading the handback. `python3 -m pytest tests/test_run_log_cli.py -q` at HEAD `fbaab57f` reproduces `6 failed, 55 passed in 0.79s`, and reading `tests/test_run_log_cli.py:78` against `packages/orchestration/llm_planner.py:105-110` confirms the cause is a two-parameter double standing in for a function whose real signature is `(job, call_planner, *, on_prompt_composed=None)`. The C1 gates were re-measured on disk: `Landed: R-0338` 0, `^Done: R-0338` 1, `^- R-0339 — Low` 1, `^Gate: R19 — PASS` 1, `^## Steps` 1. `git worktree list` is one line and `git branch --list tmp/base-gate` is empty, so the base worktree was removed, pruned and its throwaway branch deleted as ordered. `wc -l .agent/plan.md` 42 then 46, both under the cap. `git status --porcelain` carries exactly ` M scripts/make_review_zip.sh`, untouched. R-0322's five `reviewer_conventions` token-cap reds appear in BOTH failed lists and in NEITHER comm output, which is what the block predicted and what makes the six branch-only ids trustworthy as a signal. Both declared deviations are ACCEPTED. The evidence trim is right: four full logs totalling 5305 lines would have put one commit roughly 5.6k insertions over the AGENTS.md 500-insertion cap, and the round committed what `docs/agents/integration_gate.md` step 1 actually names — raw tails, full FAILED lists, exit codes, wall times — plus `full_log_provenance.txt` carrying each uncommitted log's line count and sha256, so the trim is auditable rather than merely asserted. The D4→D7 reassignment is right for the stronger reason: applying an authored ID verbatim over a live one would have put two different decisions under one identifier and broken every citation of the older, and the worker recorded the mapping instead of silently obeying — which is the behaviour a verbatim-application rule is supposed to produce when the authored text is wrong. The unordered second base run is also accepted: comparing branch-only ids against the UNION of two base runs makes a single-run base artifact unable to masquerade as a branch regression, and it is the reason the eight `ui_server` ids could be attributed to a missing build rather than argued about.
 
-Tests, each re-run by the reviewer: 54 for the three scoped files, 294 for
-tests/docs/ (the docs-round gate this change set requires), 42 for the
-golden-path canary. Markers: 1 D6 heading, 1 landed marker, `Done:` still 7 on
-the file the round handed back. Caps: per-commit insertions
-320/299/18/19/174/262/108, each under 500; `.agent/plan.md` 43 lines under the
-50 cap; `.agent/handoff.md` 109 lines over the 60 cap and carrying the DECISION
-D15 stated-cause line, which is the sanctioned shape. `git status --porcelain`
-empty, one worktree, `0	0` against the remote. The handback stated C7's own
-insertions as a bound rather than a count, twice and with two different bounds
-(`≤148` and "at most 152"); both are true of the real 108 and neither is a
-false claim, so it is noted here and not registered. One finding registered:
-R-0316, and it is the reviewer's own spec defect, not the worker's.
+Done: R-0340 — RESOLVED at the R21 gate, verified by the reviewer's own runs and not by the handback. The repair is one signature line: `tests/test_run_log_cli.py:81` now reads `def fake_plan_job_with_llm(job, _call_planner, *, on_prompt_composed=None):`, mirroring the real declaration at `packages/orchestration/llm_planner.py:105-110`, with a three-line WHY comment directly above it naming the hook and the exit-1 failure mode — which is where AGENTS.md says a reader will search for it. No assertion moved: `git show --numstat c64016c1 -- tests/test_run_log_cli.py` is `4 1`, one line out and four in, all four inside the double's own definition. `python3 -m pytest tests/test_run_log_cli.py -q` gives `61 passed in 0.46s` re-run by the reviewer, against `6 failed, 55 passed` at the parent commit. The gate question was re-derived independently as well: `comm -13 .agent/gate_f115_r20/base_failed_union.txt .agent/gate_f115_r21/branch_failed.txt` prints NOTHING, with `sort -c` exit 0 on both inputs and both files carrying pytest's `FAILED ` prefix, so the two alphabets really are comparable — the worker's own first pass stripped that prefix, produced a false all-branch-only result, caught it against R20's committed format and rebuilt without the `sed`, which is the self-review loop doing exactly what it exists for. Most decisive: the reviewer ran the whole suite itself at HEAD `a43110ca` — `5 failed, 16706 passed, 19 skipped in 152.89s` — and the five are precisely R-0322's pre-existing `reviewer_conventions` token-cap ids, present at the merge base. F115's integration gate is therefore GREEN in the only sense the gate defines: zero branch-only failures.
 
-Done: R-0313 — a blank context line stripped to "" no longer rejects an
-otherwise valid diff. `normalize_diff_blank_context` gives the space back on
-the RESPONSE side, where the hunk's declared budget still distinguishes body
-from tail, and `diff_repair_response_to_patch` splits the normalised text.
-`_apply_hunks` is unchanged, so the trailing-"" trap that would have made the
-last hunk over-consume is structurally out of reach: the walk uses
-`splitlines()`, which never produces the phantom. Verified at the R14 gate by
-value, in both directions: `_apply_hunks('a\n\nb\n', diff)` returns None on the
-raw stripped diff and 'a\n\nB\n' on the normalised one, and the normaliser is
-byte-identity on a diff that needs no repair. Resolved — with the separator
-defect it introduced registered separately as R-0317.
+Gate: R21 — PASS. The integration gate is green and the branch carries no High or Blocker finding. Every value here was re-measured by the reviewer against the disk. `cmp .agent/authored/f115-r21-1.md .agent/last_block.md` exit 0. The six C1 gates: `DECISION F115 D4 below` 0, `DECISION F115 D7` 1, `^- R-0340 — High` 1, `^- R-0341 — Low` 1, `^Gate: R20 — FAIL` 1, `^## Steps` 1. The four C2 gates: the old two-parameter `def` line 0, the new keyword-only one 1, `ruff check tests/test_run_log_cli.py` `All checks passed!`, and the file's own suite `61 passed`, exit 0. The reviewer's independent full run at `a43110ca` reproduced the worker's numbers within run-to-run noise — `5 failed, 16706 passed, 19 skipped in 152.89s` against `5 failed, 16706 passed, 19 skipped in 129.05s` — with an identical FAILED list, and `comm -13` empty when re-derived from the committed evidence files. `git status --porcelain` carries exactly ` M scripts/make_review_zip.sh`, untouched under DECISION F115 D7; `git worktree list` is one line, `git branch --list tmp/base-gate` is empty, `wc -l .agent/plan.md` is 48, and the branch is `0 0` against origin. `git diff --name-only 0d6c97aa..HEAD -- packages/ apps/` is seven production paths, none of them `ui_server.py` or under `apps/ui`, which is what makes the nine base-only ids un-chargeable to this feature. Two things in this round deserve to be named rather than merely passed. The worker caught its own `comm` alphabet bug by checking R20's committed file format instead of trusting its pipeline, and it committed a comment recording why the `FAILED ` prefix must stay — a false blocker that would have cost a whole round died in the self-review loop. And the round declared no deviation from the block, which after R19's and R20's is worth stating plainly: the block was right this time because R-0339's lesson was applied to it, and no count was asserted in advance anywhere in it.
 
-- R-0317 (Medium, F111 R14, the blank-context fix eats a file separator):
-  `normalize_diff_blank_context` treats a bare "" as a blank context line
-  whenever the open hunk still has an old AND a new line left to spend. A model
-  that OVER-DECLARES its hunk counts — which this file already records as
-  routine, in the D5 note on why the applier does not cross-check headers —
-  leaves budget unspent at the end of its body, so the BLANK LINE SEPARATING
-  TWO FILE SECTIONS is converted to " " and rides into
-  `split_diff_by_path` as a trailing context line of the FIRST file. Measured
-  at the R15 gate on the repository's own `DIFF_ONE_FILE` shape
-  (`@@ -1,3 +1,3 @@` over a body spending two old and two new lines): the raw
-  first section applies to 'import os\nvalue = 1\nmore = 3\n' and returns
-  'import os\nvalue = 2\nmore = 3\n', while the normalised section returns
-  None. So R14 closed R-0313 and opened a new instance of the same class — a
-  valid multi-file answer rejected — for every first file whose hunk is not at
-  end of file. Direction is SAFE (rejection, never corruption), and where the
-  hunk IS at EOF both forms still apply identically, which is why no test
-  caught it. The R14 worker found the contradiction while writing the ordered
-  case 3, refused to assert a false property, implemented the production code
-  unweakened and declared the deviation — correct on every count. Reviewer-
-  caused: the R14 step block specified the budget rule and nothing else. Fix
-  direction: a "" is body only when the next NON-BLANK line is also body — not
-  a `---`/`+++`/`diff ` header and not end of input — so a separator and a
-  trailing artifact both stay untouched. OPEN.
+- R-0342 — Low — the same reviewer defect as R-0338, in the same feature, caught this time before it landed. The R22 closure block's authored Built State said of the two missing breakdowns: "Deliberately NOT built, and the report says so rather than faking it". The report says nothing of the kind. `_cmd_stats_report` (`apps/cli/commands/stats_ledger_cmd.py:509-568`) contains no `_ROLE_LIMIT_NOTE`, no `role_limit` and no task-class text anywhere in its body; the role note's only two consumers are `_cache_payload` (def :425, read at :436) and `_render_cache_human` (def :442, read at :489), both owned by `remedy stats cache`. The document that states both limits is `docs/guides/cost-report-user-guide-v0.md:109-116` — the very page R19 repaired for the identical mistake. So the reviewer, four rounds after registering R-0338, wrote the same wrong sentence about the same constant into a roadmap page. The same block also carried a smaller error of the same shape: it described `cost_report_json` as returning text, where `cost_report.py:292` declares `-> dict[str, Any]` and only `cost_report_json_bytes` (:341) and `render_cost_report_markdown` (:497) return `str`. Both were found by the WORKER, before either reached disk, because the block ordered a per-claim verification and the worker resolved each string to its enclosing FUNCTION rather than grepping the module — which is precisely the counter-measure R-0338 asked for. That is the finding's real content: the reviewer's authoring did not improve, and the round survived anyway because the check was ordered explicitly and executed honestly. The durable counter-measure is therefore not another note to the reviewer but the ordering itself: any authored prose that attributes an OUTPUT to a COMMAND ships with a per-claim verification gate naming the enclosing function, every time, and a block that omits it is incomplete. Twenty-one of the block's twenty-two claims verified TRUE, which is the other half of the record. OPEN.
 
-### R14 — PASS (2026-08-13)
-Reviewed by the main session over 9a17fad2..48c6340e. Every gate was re-run by
-the reviewer on this machine; nothing was read off the handback. Transport:
-`.remedy-wt/f111r14/BLOCK`, `.agent/authored/f111-r14-1.md` and
-`.agent/last_block.md` are byte-identical at 17418 bytes, sha256
-1113f75d07f29bd2bb1218a1f793a5917636c0dd55f2d0a3291bc4af8a9ddaaf, and
-`.remedy-wt/f111r14/PLAN` matches `.agent/plan.md` at 2008 bytes. Markers:
-`^Landed:` 0, `^Done:` 8, `^- R-0` 41, `^### R13 — PASS` 1. Scope: exactly the
-eight ordered paths; `source_apply.py` and `diff_repair_apply.py` untouched.
-
-R-0313 proved closed BY VALUE, both directions: `_apply_hunks('a\n\nb\n', …)`
-returns None on the raw stripped diff and 'a\n\nB\n' on the normalised one, and
-`normalize_diff_blank_context(DIFF_ONE_FILE)` is byte-identical to its input.
-Tests re-run by the reviewer: 68 for the three diff-repair files, 55 for the
-applier tier — unmoved, as the applier was not touched — and 42 for the
-golden-path canary. Per-commit insertions 293/224/70/96/102/104, each under
-500. `git status --porcelain` empty, one worktree, `0	0` against the remote.
-
-The declared deviation is UPHELD and is the round's best work. The block
-ordered a case-3 test asserting that
-`DIFF_ONE_FILE + "\n" + <second section>` normalises to itself. The reviewer
-re-measured it: it does not — the separator "" becomes " " — because
-`DIFF_ONE_FILE` declares `@@ -1,3 +1,3 @@` over a body that spends only two old
-and two new lines, so the hunk still has budget at the separator and the
-ordered step-4 rule fires exactly as written. The worker implemented the
-production code verbatim and unweakened, proved the ordered PROPERTY with a
-first section whose header matches its body, wrote the measurement into that
-test's docstring and escalated for a ruling instead of quietly changing either
-side. That is the response the split workflow exists to produce.
-
-Registered from it: R-0317. The reviewer measured its real cost — the raw
-first section applies to a file that continues past the hunk and returns
-'import os\nvalue = 2\nmore = 3\n', while the normalised section returns None —
-so R14 closed one instance of "a valid answer rejected" and opened another.
-Safe direction, no corruption, and invisible to any test whose first hunk sits
-at end of file, which is why it survived a green round. It is the reviewer's
-spec defect, not the worker's, and R15 repairs it.
-
-Also noted, not registered: the `#` comment above the fall-through branch in
-`diff_repair_response.py` writes `"\\ No newline at end of file"` with a
-doubled backslash, where a comment needs one — `source_apply.py` writes it
-correctly. The worker reported it and declined to add an unordered seventh
-commit that would have broken the mandated C1-C6 item-status shape; that
-judgement was right, and R15 carries the fix as an ordered item.
-
-Done: R-0316 — the diff-repair seam no longer reports a clean tree it cannot
-guarantee. `apply_diff_repair` reads the applicator's own error strings for
-`rollback_incomplete`, carries the flag on `DiffRepairApplyResult`, and passes
-`apply_result.files_modified` through instead of a hardcoded 0 when the restore
-did not finish. Verified at the R16 gate by mutation, inside a disposable
-worktree that was removed before the verdict: reverting that one expression to
-`files_modified=0` fails exactly
-`test_incomplete_rollback_reports_the_real_count_not_a_clean_tree` with
-`assert 0 == 1`, so the test pins the behaviour rather than describing it. The
-complete-rollback direction is pinned in the same round by the two assertions
-added to `test_conflicting_hunk_falls_back_and_leaves_both_files_untouched`
-(`rollback_incomplete is False`, `files_modified == 0`), so "always report a
-count" cannot satisfy the pair. Noted, not registered: the count is the
-applicator's total for the attempt, not the number of files whose restore
-actually failed, so it over-reports rather than under-reports — the safe
-direction for a seam whose whole purpose is to stop under-claiming damage.
-Resolved.
-
-Done: R-0317 — the blank-context repair no longer eats a file separator.
-`_blank_line_is_hunk_body` scans forward from the blank for the first non-blank
-entry and returns False at `---`, `+++`, `diff ` or end of input, so the
-rewrite branch now needs the lookahead as well as the budget. Verified at the
-R16 gate by value and by mutation, both re-run by the reviewer on this machine:
-`normalize_diff_blank_context` is byte-identity on the two-file over-declared
-shape, `split_diff_by_path` returns both sections, and the first section
-applies to 'import os\nvalue = 1\nmore = 3\n' returning
-'import os\nvalue = 2\nmore = 3\n' — where before the fix it returned None.
-Deleting the `_blank_line_is_hunk_body(lines, index + 1)` conjunct in a
-disposable worktree fails exactly the three tests R15 added for it and nothing
-else. R-0313 stays closed under the same probe: 'a\n\nB\n'. Resolved.
-
-### R15 — PASS (2026-08-13)
-Reviewed by the main session over 48c6340e..d457219a. Every gate was re-run by
-the reviewer on this machine; nothing was read off the handback. Transport is
-the PRIMARY cmp proof, not the digest fallback: the previous session's
-scratchpad originals survived in `.remedy-wt/f111r15/`, and
-`cmp .remedy-wt/f111r15/BLOCK .agent/authored/f111-r15-1.md`,
-`cmp .remedy-wt/f111r15/BLOCK .agent/last_block.md` and
-`cmp .remedy-wt/f111r15/PLAN .agent/plan.md` all exit 0. The three live_review
-appends each occur exactly once in the file, in the ordered sequence. Markers
-counted: nine `Done:` lines, 42 registered findings, one R14 gate heading, zero
-unreviewed `Landed:` lines. Scope: exactly the nine ordered paths. Per-commit
-insertions 341/266/81/40/49/91/92, each under 500. `git status --porcelain`
-empty, one worktree, and 0 ahead and 0 behind the remote.
-
-Tests re-run by the reviewer: 71 for the three diff-repair files (was 68), 55
-for the applier tier — unmoved, as the applier was not touched — and 42 for the
-golden-path canary. Both value probes reproduce exactly: the normaliser is
-byte-identity on the two-file over-declared shape and its first section applies
-to 'import os\nvalue = 2\nmore = 3\n', and R-0313 still yields 'a\n\nB\n'.
-Mutation red-proofs ran inside a disposable git worktree, which was removed
-before this verdict: deleting the `_blank_line_is_hunk_body` conjunct fails
-exactly the three R-0317 tests, and reverting `files_modified` to a hardcoded 0
-fails exactly the one R-0316 test. Both fixes are pinned, not merely present.
-
-Both of the round's declared notes are upheld. The "Nine proofs" docstring line
-was a sentence this round's own edits falsified, and correcting it inside a
-file the block already ordered is right. The block did say "EXACTLY these eight
-paths" over an enumeration of nine; the enumeration was operative and the
-worker read it that way. That is a defect in the R15 block, which the reviewer
-wrote, and it is noted here rather than registered because the round lost
-nothing to it.
-
-Also noted, not registered: R15 fixed R-0316 and R-0317 without the unreviewed-
-fix marker §4.4 describes, because the R15 block itself gated that marker to
-zero. The property §4.4 protects is that an unreviewed fix must never read as
-resolved; leaving both entries at OPEN under-claims rather than over-claims, so
-the property held, and the information the marker carries was in the handoff.
-The rule stands unchanged for the next round that lands a fix ahead of its
-verdict.
-
-DECISION F111 D7 (2026-08-13, reviewer, authored for R16) — the repair-mode
-knobs are keyword arguments on `run_builder_bridge_loop`, not a new config
-module. The feature file asks for "Config: repair.diff_mode (default on),
-context margin lines". This repository has no `packages/config`, and the loop
-already takes its bounds as keyword arguments (`max_cycles`, `autonomy_level`),
-so `diff_mode: bool = True` and `diff_margin_lines: int = 3` join them there.
-Alternative considered and rejected for v1: a settings record read from disk,
-which would add a new contract, a new file format and new tests to a slice
-whose whole job is wiring. Reverse this decision by moving the two arguments
-into a settings record and deleting this paragraph.
-
-### R16 — PASS (2026-08-13)
-Reviewed by the main session over d457219a..c0ed5dd1. Every gate was re-run by
-the reviewer on this machine; nothing was read off the handback. Transport:
-`.agent/authored/f111-r16-1.md` and `.agent/last_block.md` are byte-identical
-under `cmp`, 18501 bytes, 316 lines, sha256
-c361c291408ccbc09c051ccedc08859de0111c70c3a43189670cccd5945a880a, and no line
-carries trailing whitespace. `.agent/plan.md` was compared against the TEXT-D
-slice extracted from the committed authored file and is identical at 42 lines,
-under the 50-line cap. Each authored text occurs exactly once in
-`.agent/live_review.md`. Markers counted: eleven resolution paragraphs, 42
-registered findings, one R15 gate heading, zero unreviewed-fix markers. Scope:
-exactly the seven ordered paths. Per-commit insertions 316/287/82/70/142/102,
-each under 500. `git status --porcelain` empty, one worktree, and 0 ahead and
-0 behind the remote.
-
-Tests re-run by the reviewer: 9 for the repair loop (was 6), 71 for the three
-diff-repair files — unmoved — and 42 for the golden-path canary. The new
-module-level `diff_repair` import was checked for fallout across the nine test
-files that import `builder_bridge`: 137 passed, 1 skipped, no cycle. The
-helper resolves to exactly two hits, the def at line 269 and the single call
-site at line 412.
-
-The reviewer ran an INDEPENDENT value probe the block did not order, on a
-margin the tests never assert: driving the loop with `diff_margin_lines=1` over
-a patch naming line 3 only returns `repair_mode` `diff` with `start_line` 2 and
-`end_line` 4, and the carried text is post-apply SOURCE, not diff text. So the
-margin argument is genuinely plumbed and not merely defaulted. The emitted
-metadata was read directly and carries `cycle`, `mode`, `hunk_count`,
-`total_chars` and `omitted` — counts only, no hunk text, exactly as the block's
-deliberate absence claims.
-
-A second reviewer mutation, also unordered, ran inside a disposable git
-worktree that was removed before this verdict: flipping the `diff_mode` default
-from True to False fails two of the three new tests. The feature file's
-"Config: repair.diff_mode (default on)" is therefore pinned by the suite rather
-than only asserted in prose. The worker's own ordered mutation is confirmed as
-reported — neutralising the helper fails five tests, three of them pre-existing
-ones that now traverse the default-on path, and the diff-mode-off test stays
-green, which is the correct signature.
-
-The declared handoff overage is upheld: 105 lines with the DECISION D15
-stated-cause line naming the mandated content, no section dropped. The ordered
-pre-C4 key-set check was performed and reported with its real result (32 hits,
-none pinning an exact key set), which is the shape §4.8 asks for.
-
-DECISION F111 D8 (2026-08-13, reviewer, authored for R17) — the apply-side diff
-channel attaches INSIDE `run_builder_bridge`, as a branch in Stage 1 and Stage
-3 only, and not as a second pipeline in the loop. The loop decodes the answer
-and passes a `DiffRepairResponse` in; the bridge converts it with
-`diff_repair_response_to_patch` into the same `StructuredPatch` shape Stage 1
-already produces, so the approval gate, the intent creation, the test stage and
-DECISION F111 D3's range source all keep exactly one implementation. Only the
-applicator call differs. Alternatives considered and rejected: routing the diff
-through `apply_structured_patch` after conversion, which would bypass
-`apply_diff_repair`'s fence precheck and its named fallback reasons; and
-running a parallel apply-and-test path in the loop, which would duplicate the
-approval gate and the test stage. Reverse this decision by deleting the
-`diff_response` argument and moving the branch into the loop.
-
-DECISION F111 D9 (2026-08-13, reviewer, authored for R17) — "token actuals" are
-recorded as PAYLOAD CHARACTER COUNTS in v1, never as token numbers. This
-repository has no tokenizer: a search of `packages/` for a token-counting
-function returns nothing, so any field named `tokens` would carry a fabricated
-number, which is a block condition under §4.5. `select_repair_hunks` already
-returns `total_chars`, and the R18 comparison test records
-`diff_payload_chars` against `full_file_payload_chars`. The names say chars
-because the values are chars. Alternative considered and rejected for v1:
-adding a tokenizer dependency, which would put a new third-party contract into
-a wiring slice. Reverse this decision by wiring a real tokenizer and renaming
-the fields in the same commit — never renaming them alone.
-
-### R17 — PASS (2026-08-13)
-Reviewed by the main session over c0ed5dd1..6a93ee1c. Every gate was re-run by
-the reviewer on this machine; nothing was read off the handback. Transport:
-`.agent/authored/f111-r17-1.md` and `.agent/last_block.md` are byte-identical
-under `cmp`, 20623 bytes, 366 lines, sha256
-a21506ddee38218bba4c6fb0f051c6b175d1eeaadffe8c476af3096598a07332, no line
-carrying trailing whitespace. `.agent/plan.md` was compared against the TEXT-B
-slice extracted from the committed authored file and is identical at 44 lines,
-under the 50-line cap. Markers counted: eleven resolution paragraphs, 42
-registered findings, one R16 gate heading, zero unreviewed-fix markers. Greps:
-`diff_repair_fell_back` 2, `diff_repair_applied` 1, `diff_response` 10. Scope:
-exactly the seven ordered paths. Per-commit insertions 366/305/71/95/164/101,
-each under 500. `git status --porcelain` empty, one worktree, and 0 ahead and
-0 behind the remote.
-
-Tests re-run by the reviewer: 12 for the repair loop (was 9), 71 for the three
-diff-repair files — unmoved — 137 passed and 1 skipped across the nine files
-that import `builder_bridge`, and 42 for the golden-path canary. The three new
-module-level diff-repair imports introduced no cycle.
-
-The reviewer ran an INDEPENDENT conflict probe using a different conflicting
-diff than the test uses — a rewritten function-signature context line rather
-than an added parameter — and it reproduces the ordered behaviour exactly:
-mode `full_fallback`, `fallback_reason`
-`apply_failed:calc.py: diff hunks did not apply cleanly`, `files_modified` 0,
-`rollback_incomplete` False, the file's bytes IDENTICAL across the attempt, the
-next repair context back on `full_file` carrying that reason, and the loop
-still succeeding on the following cycle through the full-file path. The
-`apply_failed:` prefix is the load-bearing detail: the diff reached the
-applicator and was rejected there, so this is the strict-apply guarantee being
-exercised and not a cheap short-circuit at the validation stage.
-
-A second reviewer mutation, unordered, ran inside a disposable git worktree
-removed before this verdict: deleting the `repair_ctx["repair_mode"] =
-"full_file"` line after a discard fails
-`test_a_conflicting_diff_is_discarded_whole_and_the_round_falls_back` with
-`KeyError: 'repair_mode'`. So the return to the full-file path is pinned, not
-merely written. The worker's own ordered mutation is confirmed as reported: a
-rejected diff made to look applied fails exactly that one test, and the worker
-correctly reported that no other suite catches it rather than implying broader
-cover.
-
-The declared C5 deviation is UPHELD and is the round's best work. The block
-said to read calc.py "before the loop" and compare bytes; read literally that
-would have measured cycle 1's own legitimate write, because a diff-mode repair
-context cannot exist until a first patch has landed. The worker recorded the
-file as each cycle FOUND it and compared the bytes the discarded attempt
-started from against the bytes the next cycle found — the true pre- and
-post-attempt state — while keeping the literal pre-loop comparison as an extra
-assertion. That is the correct reading of a reviewer instruction that was
-imprecise, implemented without weakening the property and declared rather than
-quietly substituted. The handoff overage at 85 lines is inside the DECISION D15
-allowance with its cause named, and no section was dropped.
-
-- R-0318 (Low, F111 R18, a counts-only comment that no longer lists all the
-  counts): the comment above the diff-branch return in
-  `_attach_diff_repair_hunks` states that the emitted metadata is "counts only
-  (`hunk_count`, `total_chars`, `omitted`)". R18 added a fourth key,
-  `full_file_chars`, directly beneath it, and the enumeration was not extended.
-  The claim the comment protects is still TRUE — no hunk text reaches the
-  timeline, and `full_file_chars` is a count like the others — so nothing is
-  mis-stated about behaviour. What is wrong is the reading: an auditor checking
-  whether source text can leak into evidence reads that parenthesis as the
-  whole contents of the dict, and it is now one key short of it. A comment that
-  enumerates is a comment that must be maintained, which is exactly why the
-  next reader should either complete the list or stop enumerating. The R18
-  worker found this and declined to fix it because the block said "Change
-  NOTHING else" — the correct call, and it is registered here rather than held
-  in a session that is about to end. Fix direction: extend the enumeration in
-  the next round that touches `builder_bridge.py` for another reason; do not
-  open a round for it alone. OPEN.
-
-- R-0319 (Low, F111 R20 gate, a dated record written in the present tense): the
-  `### R19 — PASS` entry states that `.agent/authored/f111-r19-1.md` and
-  `.agent/last_block.md` "are byte-identical". That was true when the value was
-  measured, at the start of the R20 session, and false as soon as R20's own C1b
-  overwrote `last_block.md` with the R20 block — which the same round then did,
-  as every round does. A gate entry records a moment, so its transport sentence
-  has to read as one; this one invites a later reader to re-run the `cmp`, find
-  a mismatch, and doubt a proof that was sound. The reviewer authored the tense,
-  so the fault is the reviewer's and not the R20 worker's, who applied the
-  ordered bytes verbatim and flagged the drift in the handback — exactly the
-  behaviour this workflow exists to produce. Fix direction: state the past tense
-  and say why the file has moved on. OPEN.
-
-### R18 — PASS (2026-08-13)
-Reviewed by the main session over 6a93ee1c..916b997e. Every gate was re-run by
-the reviewer on this machine; nothing was read off the handback. Transport:
-`.agent/authored/f111-r18-1.md` and `.agent/last_block.md` are byte-identical
-under `cmp`, 15283 bytes, 261 lines, sha256
-948da87e9dcde37d50aca36e15a7072ae1f1302dcea7becf7ef9cabe8264654c, no line
-carrying trailing whitespace. `.agent/plan.md` matches the TEXT-B slice
-extracted from the committed authored file at 45 lines, under the cap. Markers:
-eleven resolution paragraphs, 42 registered findings at gate time, one R17 gate
-heading, zero unreviewed-fix markers. Scope: exactly the seven ordered paths.
-Per-commit insertions 261/176/54/24/151/98, each under 500. `git status
---porcelain` empty, one worktree, and 0 ahead and 0 behind the remote.
-
-Tests re-run by the reviewer: 14 for the repair loop (was 12), 71 for the three
-diff-repair files — unmoved — 137 passed and 1 skipped across the nine files
-that import `builder_bridge`, and 42 for the golden-path canary.
-
-The measurement was verified INDEPENDENTLY, on a fixture the block never named:
-a 120-line file whose repaired function sits at line 40. The recorded pair is
-`total_chars` 106 against `full_file_chars` 1824, a ratio of 17.2, and
-`full_file_chars` equals the real character length of the file at the moment
-the repair context was built. The worker's own fixture recorded 58 against 768,
-a ratio of 13.2. Two different files, two different denominators, each equal to
-its own file's real size — so the number is measured and not constant, which is
-the property the ordered mutation probe also confirms: pinning
-`_repair_payload_chars` to a constant 1 fails both new tests and nothing else
-in 208 other passing tests. That is the feature's "measured, recorded" DONE
-line satisfied by value, in characters per DECISION F111 D9.
-
-Deviation 1 is UPHELD and the fault is the reviewer's, not the worker's. The
-R18 block ordered a comment ending "Per DECISION F111 D9 both are CHARACTERS,
-never tokens" and, in the same block, a gate requiring `grep -c 'tokens'` over
-that same file to print 0. That is precisely the self-counting gate that
-DECISION F105 D8 item 2 exists to prevent — a "must be 0" gate over a string
-the block's own TO writes into the target file — and it is the seventh
-recurrence of that class in this repository. The worker kept the ordered text,
-reported the real count of 1, and said why: rewording a comment to make a
-number come out right would have been the worse failure. The reviewer confirmed
-by measurement that the word `tokens` occurs exactly once in
-`builder_bridge.py`, that the occurrence is the ordered comment, and that no
-field, key or identifier is named `tokens` — so the substance the gate protects
-holds. No finding is registered for it: the countermeasure already exists on
-disk as the §3 pre-emission checklist, and registering a finding would only
-re-register a rule that is already written down and was not run.
-
-Deviation 2 is upheld: one new fixture builder was added and cycle 1's output is
-built inline from a module-level constant, which is what "ONE new fixture
-builder" asks for. Deviation 3 is upheld and registered as R-0318 above — the
-worker declined to fix an unordered defect and reported it instead, which is the
-behaviour this workflow is built to produce. The handoff at 100 lines sits at
-the DECISION D15 allowance with its cause named and no section dropped.
-
-### R19 — PASS (2026-08-13)
-
-Reviewed by the main session over 916b997e..ed7eaeef. This gate was recorded one
-round late, and deliberately: R19 was the last round of its session, so by
-docs/agents/planner_reviewer_prompt.md §4.13 its verdict lived only in
-`.agent/handoff.md` until a later round could carry it. R20 is that round. The
-absence was the terminator, not a missing gate, and nothing was reopened to
-produce this entry.
-
-Every value below was re-run by the reviewer on this machine at the start of
-the R20 session; none was read off the handback. Transport:
-`.agent/authored/f111-r19-1.md` and `.agent/last_block.md` WERE byte-identical
-at the R19 gate — `last_block.md` carries whichever round's block is newest, so
-this sentence records a moment and is not a claim about the file today — under
-`cmp`, 11951 bytes, 198 lines, sha256
-48441002284c61d6ab0a28ed94b6253091bf0d59a30d4bd1f6f49cb608084acb, and no line
-in the authored file carries trailing whitespace. Markers at the R19 gate:
-eleven resolution paragraphs, 43 registered findings, one R18 gate heading, zero
-unreviewed-fix markers, and `R-0318` twice — its registration and the
-back-reference to it. `.agent/plan.md` is 45 lines, under the AGENTS.md cap.
-Scope: exactly the five `.agent` paths the block ordered, with per-commit
-insertions 198, 153 and 70 plus the handoff commit, each far under 500. The
-canary re-ran at 42 passed, exit 0, and `git status --porcelain` is empty.
-
-R19 wrote no production code, and the defect it registered was still present at
-review time: the reviewer read
-`packages/orchestration/builder_bridge.py` and confirmed the comment enumerated
-three keys while the dict beneath it returned four. That is R-0318 exactly as
-registered, and R20 fixes it.
-
-Done: R-0318 — the diff-metadata comment now enumerates all four keys the dict actually returns. Verified at the R20 gate by the reviewer's own reading of the full `git diff ed7eaeef..d81b0b69 -- packages/orchestration/builder_bridge.py`: three comment lines replace two, no identifier, signature or behaviour moved, the stale three-key parenthesis counts 0 and the four-key one counts 1, `ruff check` prints "All checks passed!", and the 14 repair-loop tests are unmoved. RESOLVED.
-
-### R20 — PASS (2026-08-13)
-
-Reviewed by the main session over ed7eaeef..1e90e89f, seven commits. Every gate
-was re-run by the reviewer on this machine; nothing was read off the handback.
-Transport: `.agent/authored/f111-r20-1.md` and `.agent/last_block.md` WERE
-byte-identical at this gate under `cmp`, 17746 bytes, 329 lines, sha256
-9c7497d0e5a849ee2a30de9fc063db37c38b20da45422e1bc14c22db21d43560, with no line
-carrying trailing whitespace.
-
-The ist-doc was proved by EXTRACTION, not by retype: slicing the
-`<<<BEGIN TEXT-A …>>>` region out of the COMMITTED authored file and comparing
-it byte for byte against `docs/system/diff-only-repair-v1.md` prints MATCH. That
-doc is 108 lines, carries no trailing whitespace, and is registered twice in
-`docs/README.md` — the quick-find row and the system-list row, each in its
-alphabetical place.
-
-Scope: exactly the eight ordered paths. The single production commit, d81b0b69,
-changes three comment lines and nothing else; the reviewer read that diff in
-full rather than its summary. Markers at gate time: eleven resolution
-paragraphs, one unreviewed-fix marker, 43 registered findings, one R19 gate
-heading. Tests re-run by the reviewer: 350 passed, exit 0 — `tests/docs/` 294,
-`test_builder_repair_loop.py` 14 (unmoved from R18), the golden-path canary 42 —
-and `ruff check` on the touched module prints "All checks passed!". `git status
---porcelain` empty, one worktree, 0 ahead and 0 behind the remote.
-
-Four deviations were declared and all four are upheld. (1) C1 was split in two
-because one commit measured 623 insertions against the AGENTS.md cap of 500. The
-worker cited DECISION F105 D5 and applied it; AGENTS.md outranking the block's
-"one commit per item" line is the correct reading, and this block orders the
-split up front. (2) The block's length gate demanded 44 lines of
-`.agent/plan.md` and the authored text was 43. The worker applied the bytes and
-reported the true count rather than padding a file to make a reviewer's
-arithmetic come out — the right call, the fault is the reviewer's miscount, and
-the file was under its 50-line cap throughout. The countermeasure is in this
-block: a length gate now asks for the real number under the cap instead of a
-number counted by hand. (3) is registered above as R-0319, the reviewer's own
-defect. (4) The 100-line handoff carries its DECISION D15 stated-cause line
-naming the seven-commit table and the a-l verification block, with no section
-dropped.
-
-Done: R-0319 — the `### R19 — PASS` transport sentence now reads "WERE byte-identical at the R19 gate" and says why `last_block.md` has moved on, so a later reader cannot mistake a dated record for a live claim about a file every round rewrites. Verified at the R21 gate by the reviewer's own scoped greps over that entry alone: `are byte-identical` 0 times inside it, `WERE byte-identical` once, and the sha256, byte count and line count the sentence carries all unchanged. The scope is deliberate: fifteen EARLIER gate entries carry the same present-tense phrasing and are left exactly as they are, because each sits under its own dated heading and rewriting the archive of record to correct a tense would be churn against the file this repository trusts most. RESOLVED.
-
-### R21 — PASS (2026-08-13) — INTEGRATION GATE
-
-Reviewed by the main session over 1e90e89f..35329dec: seven commits, sixteen
-paths, not one of them source, test or doc. Transport:
-`.agent/authored/f111-r21-1.md` and `.agent/last_block.md` WERE byte-identical
-at this gate under `cmp`, 16911 bytes, 273 lines, sha256
-42ba3e6e0480b28c64959023ff1fd9e6397661fec293f5c992ff8268382e041b. Markers at
-gate time: twelve resolution paragraphs, one unreviewed-fix marker, 44
-registered findings, one R20 gate heading, and `.agent/plan.md` at 44 lines.
-
-THE GATE. The suite ran twice for the gate and a third time for the reviewer.
-  BRANCH  (worker, at 863b3d3e)   5 failed, 16634 passed, 19 skipped in 134.16s
-  BASE    (worker, at 4e0b762e)   5 failed, 16537 passed, 19 skipped in 153.37s
-  BRANCH  (reviewer, at 35329dec) 5 failed, 16634 passed, 19 skipped in 180.78s
-`comm -13` branch-only failures: ZERO. `comm -23` base-only failures: ZERO. The
-same five ids fail in both trees — every `[reviewer]` parametrization in
-`tests/orchestration/test_role_conventions.py`, each raising
-`PromptSegmentError: prompt segment 'reviewer_conventions' is over its token
-cap: 954 tokens estimated, cap 800` before any assertion in the test runs. That
-is R-0286 unchanged; it fails at the merge base, where no F111 commit exists,
-and F111 correctly does not repair it, because AGENTS.md bars mixing an
-unrelated fix into a feature branch. No branch-only id existed, so no serial
-re-run was needed — and the worker recorded that step as not-needed rather than
-omitting it, which is the difference between a gate and a summary.
-
-The reviewer's third run has a specific job. The worker's branch run was taken
-at 863b3d3e, and two later commits rewrote `.agent/plan.md` and
-`.agent/handoff.md` — files the `.agent` contract tests actually read — so that
-run did not cover the head being closed. The reviewer re-ran the whole suite at
-35329dec and measured the same 5 failed, 16634 passed, 19 skipped and the same
-five ids. The gap is closed by measurement, not by argument.
-
-COLLECTED-TEST DELTA. Branch collects 16658, base 16561: a delta of 97 with an
-empty base-only side, so pure addition — no id renamed, moved or dropped. All 97
-branch-only ids live in the six F111 test files (32 + 30 + 11 + 9 + 8 + 7 = 97),
-the inverse grep against the permitted patterns returns zero, and both
-`--collect-only` totals equal their own run's passed+skipped+failed arithmetic,
-so this is a real test delta and not a selection difference.
-
-UI PARITY. All four aggregate content hashes of `apps/ui/dist` are the same
-value fb68a7293502c79b8ece61d154f5752100a16da1a08a481a7a4c1d79a5a503c0 — base
-before and after, primary before and after — with `cp -a` restoration, zero
-symlinks and dist newer than src. Nothing wrote through into the primary
-checkout during the base run. Wall clock 135 s and 154 s, both inside the
-five-minute budget, so no perf pass is indicated. Cleanup is proven rather than
-asserted: one worktree, no `tmp/*` branch, `.remedy-wt/base-gate` absent, and a
-clean tree.
-
-Four deviations were declared and all four are upheld. (1) Gate (c) was
-unmeetable as the reviewer wrote it: `grep -c 'are byte-identical'` over the
-WHOLE file counts 16, because fifteen earlier gate entries carry the phrase and
-the R-0319 bullet quotes it deliberately. That is the DECISION F105 D8 item 6
-class — a count scoped to a file when it should have been scoped to the change —
-and the error is the reviewer's, not the worker's, who applied the ordered bytes,
-met the second clause, and reported the true number instead of a convenient one.
-No finding is registered: the countermeasure already exists on disk as the §3
-pre-emission checklist and was simply not run, and re-registering a written rule
-teaches nothing. The closure block replaces it with a gate scoped to the R19
-entry, which is what it should have said. (2) The `Landed: R-0319` line could
-not name its own SHA, because the fix and the line ship in one commit; naming
-the commit by subject was the only honest form available. (3) C5 landed in two
-commits: the first carried gate (m) as a forward reference, the second replaced
-it with measured values — a correction made visible rather than quietly. (4) The
-77-line handoff carries its DECISION D15 stated-cause line with no section
-dropped.
+- R-0343 — Low — four consecutive closure rounds halted on false claims in reviewer-authored text, and every one was caught by a worker before it reached disk. R23 cited the wrong two lines for the both-bounds guard in `prior_report_period`, and called three cost-report vocabulary constants "pinned by tests" when a search over `tests/` for `unlabelled`, `COST_DEFAULT_LABEL`, `COST_UNNAMED_BUCKET_LABEL` and `(unnamed)` returns nothing at all, goldens included — only the `unmeasured` word is pinned. R24 then removed every line number, kept the prose, and failed the same way twice more: it claimed the `--all-projects` rationale is printed by `remedy stats --help`, when `apps/cli/help_renderer.py` truncates each Commands row at `BOX_WIDTH = 78` with an ellipsis and only `remedy stats report --help` prints the description in full; and it listed `_PRIOR_REASON_EMPTY_PERIOD` as the "we looked and found nothing" case, when that constant's own text is about a period that ends at or before it starts, and the read-but-empty sentence is `COST_EMPTY_COMPARISON` in `cost_report.py`. R25 then halted on this very finding, whose draft misattributed a gate defect to the wrong round. The reviewer confirmed every refutation against the disk. The R24 worker named the pattern more precisely than the reviewer had: line numbers were never the failing ingredient — attributing a BEHAVIOUR to a NAME without executing the thing is, and R24 proved it by dropping the coordinates, keeping the attributions and failing identically. The `--help` claim came from copying a stale source comment above the catalog entry that asserts what `remedy stats --help` prints; the reviewer trusted the comment instead of running the command. So the counter-measure is a scope rule, now applied and demonstrated: a Built State section records NAMES, FILES and LITERAL VALUES the author read, and nothing about what a command emits — that belongs in a user guide, written against real output. Narrowed to exactly that, the R25 section verified 30 claims out of 30 and landed. Recorded separately because it was a real gate defect rather than a claim: R22's ITEM 5 ordered `git stash list` non-empty as a closure gate and R23's block inherited it, which cannot fail here because the repo already carries five unrelated stashes; the R23 worker found it by reading the gate against the machine rather than against the block's assumption, and R24 carried the corrected gate, which matches the new entry's message. OPEN.

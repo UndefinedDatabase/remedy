@@ -1,0 +1,157 @@
+F115 · R20 INTEGRATION GATE — ATTRIBUTION
+=========================================
+Merge base : 0d6c97aa06e65bea966b5210f1569de45d503845
+Branch HEAD: ce812bc0 (feature/f115-prompt-cost-report), at gate time
+Command    : python3 -m pytest -n auto -q  (identical at branch and base)
+
+RUN LEDGER
+----------
+branch run    : 11 failed, 16700 passed, 19 skipped, 166.52s, exit 1
+base run 1    : 13 failed, 16626 passed, 19 skipped, 128.26s, exit 1
+base run 2    :  6 failed, 16633 passed, 19 skipped, 136s wall, exit 1
+Base failures are compared as run 1 UNION run 2 (14 ids), so no branch-only
+id can be an artifact of a single base run.
+
+A. comm -13 — BRANCH-ONLY FAILURES — 6 ids — BLOCKER
+----------------------------------------------------
+All six live in tests/test_run_log_cli.py::TestPlanJobLocalRunLog:
+  test_plan_job_local_output_includes_log_path
+  test_planning_completed_noop_outcome
+  test_planning_completed_outcome_changed
+  test_planning_started_includes_provider_role_model
+  test_writes_planning_completed_on_success
+  test_writes_planning_started
+
+Serial re-run, exact node id, branch checkout : 6/6 FAIL (exit 1 each).
+  => NOT the xdist-flake class. Deterministic.
+Serial re-run, exact node id, merge base 0d6c97aa : 6/6 PASS (exit 0 each).
+  => Does not reproduce at the merge base. Introduced by this branch.
+
+Classification per docs/agents/integration_gate.md step 4:
+  serial-fail + does not reproduce at merge base + coupled to feature code
+  = BLOCKER. Handed back unfixed; the fix is its own reviewer-gated round.
+
+Root cause, derived from source and not from the message alone:
+  Error text (captured stderr, branch run and serial):
+    Error: Ollama planning failed:
+    TestPlanJobLocalRunLog._make_mock_planner.<locals>.fake_plan_job_with_llm()
+    got an unexpected keyword argument 'on_prompt_composed'
+
+  tests/test_run_log_cli.py:78 defines the stub that the tests patch over
+  packages.orchestration.llm_planner.plan_job_with_llm:
+      def fake_plan_job_with_llm(job, _call_planner):
+  It accepts exactly two positional parameters and no keyword parameters.
+
+  F115 commit cb17024a ("feat(f115): give the planner trace entry its segment
+  manifest") changed the production call site, apps/cli/commands/job.py:288:
+      result: PlanJobResult = plan_job_with_llm(
+          job, call_planner, on_prompt_composed=_plan_compositions.append,
+      )
+  The keyword lands on the stub, raises TypeError, and _cmd_plan_job_local's
+  broad `except Exception` at apps/cli/commands/job.py:305-309 turns it into
+  log("planning_failed", ...) + sys.exit(1). The six tests then assert on
+  run-log events that were never written, or on stdout that never printed.
+
+  The real parameter exists and is correct: packages/orchestration/llm_planner.py:109
+  declares `on_prompt_composed: Callable[[ComposedPrompt], None] | None = None`
+  (added by F115 commit 920e1e72). The production code is consistent; only the
+  test double was never widened.
+
+  `git log --oneline 0d6c97aa..HEAD -- tests/test_run_log_cli.py` is EMPTY:
+  the branch changed the call site and never touched the stub that mirrors it.
+
+  Why F115's own tests stayed green: the branch's coverage of this call site is
+  a SOURCE-TEXT assertion, tests/orchestration/test_structured_planner_cli.py:302
+      assert "on_prompt_composed=_plan_compositions.append" in source
+  which reads the file rather than executing the call, so it cannot see a stub
+  whose signature no longer matches.
+
+  Scope of the fix (for the follow-up round, NOT applied here): widen the stub
+  at tests/test_run_log_cli.py:78 to accept the keyword, e.g.
+      def fake_plan_job_with_llm(job, _call_planner, **_kwargs):
+  One test file, one signature. No production change is implied.
+
+B. comm -23 — BASE-ONLY FAILURES — 9 ids (union of both base runs)
+------------------------------------------------------------------
+B1. 8 ids in tests/ui_server/test_live_state.py::TestUIServerIntegration
+      test_api_invalid_token_403, test_api_requires_token,
+      test_app_shell_served_without_token, test_brain_endpoint,
+      test_dashboard_no_raw_leaks, test_put_rejected,
+      test_readiness_endpoint, test_server_starts_and_writes_info
+
+    Named missing artifact: apps/ui/dist/index.html usable by the base
+    worktree's UI server at server-start time.
+    Direct evidence: base run 1 captured stderr carries
+      "ERROR: React UI not built."
+    exactly 8 times — once per failing id (grep -c = 8). The emitter is
+    packages/orchestration/ui_server.py:2848-2860 inside _load_frontend, which
+    is reached only when _get_frontend_dist() (line 2739, requires
+    apps/ui/dist/index.html to be a file) and _auto_build_frontend() (line
+    2764, returns None immediately under REMEDY_UI_NO_AUTO_BUILD=1) both yield
+    None. It then calls sys.exit(1) in the server thread, so the test's
+    "wait for info file" loop times out with "Server did not start in time"
+    at tests/ui_server/test_live_state.py:165.
+
+    Not a genuine base failure — three independent proofs:
+      1. Serial re-run of all 8 ids in the SAME base worktree, same merge
+         base, dist in place: 8/8 PASS (serial_base_only.txt).
+      2. Parallel re-run of the whole file in the SAME base worktree under
+         -n auto: 42 passed, exit 0 (base_only_reprobe.txt).
+      3. Full base run 2, same worktree, same command: 0 ui_server failures
+         (base_failed_run2.txt).
+    Cross-check that no branch code can be implicated in either direction:
+      `git diff 0d6c97aa HEAD --stat -- packages/orchestration/ui_server.py apps/ui`
+    is EMPTY. The branch touches neither the UI server nor the UI.
+
+    Parity bookkeeping: apps/ui/node_modules and apps/ui/dist were COPIED
+    (cp -a, never symlinked) into the base worktree before base run 1, and
+    REMEDY_UI_NO_AUTO_BUILD=1 was set for every base run. dist_hashes.txt
+    shows the aggregate content hash unchanged across base run 1, in the base
+    worktree (c7c847f9... before and after) and in the primary checkout
+    (856780f4... before and after) — no build wrote through, so R-0169's
+    write-through class did not recur in run 1.
+    Reported, not explained away: base_run2_env.txt shows the base worktree's
+    apps/ui/dist/index.html MTIME moving from 12:57:29 to 13:03:20 across base
+    run 2 while apps/ui/src stayed at 12:56:01. Something in the base worktree
+    rewrote dist during run 2 despite REMEDY_UI_NO_AUTO_BUILD=1 — the R-0169
+    "spawned build path ignored the flag" class. It is recorded here as an
+    observation about the gate harness, not attributed to F115, and it does
+    not affect the branch-only set, which is identical under both base runs.
+
+B2. 1 id: tests/cli/test_review_bundle_runtime.py::TestSubprocessCleanup::test_timeout_raises_with_cleanup
+    Appeared in base run 2 only; absent from base run 1 and from the branch run.
+    Serial re-run at the merge base : PASS (exit 0).
+    Serial re-run on the branch     : PASS (exit 0).
+    Class: xdist/timing flake at the base, name and body unchanged by this
+    branch (`git diff 0d6c97aa HEAD -- tests/cli/test_review_bundle_runtime.py`
+    is empty). Recorded, not blocking, and not a genuine base failure.
+
+C. R-0322's FIVE PRE-EXISTING REDS — as the block predicted
+-----------------------------------------------------------
+  tests/orchestration/test_role_conventions.py, all five [reviewer]
+  parametrizations, every one raising
+    PromptSegmentError: prompt segment 'reviewer_conventions' is over its
+    token cap: 954 tokens estimated, cap 800
+  Present in branch_failed.txt (5/5), in base_failed.txt (5/5) and in
+  base_failed_run2.txt (5/5); present in NEITHER comm output. Exactly the
+  behaviour the block's EXPECTED paragraph required.
+
+D. VERDICT INPUT (the reviewer issues the verdict, not the worker)
+-------------------------------------------------------------------
+  One BLOCKER: section A, six reproducible branch-only failures coupled to
+  F115 feature code (commit cb17024a). Per step 4 of the canonical procedure
+  the round STOPPED, committed the evidence, and handed back without a fix.
+  Wall clock: branch 166.52s, base 128.26s and 136s — all under the ~5 min
+  budget, so no perf pass is indicated.
+
+E. WHAT IS AND IS NOT IN THIS DIRECTORY (declared)
+---------------------------------------------------
+  The four full run logs total 5305 lines; committing them would put this
+  single commit ~5.6k insertions over the AGENTS.md 500-insertion cap. This
+  directory therefore holds what docs/agents/integration_gate.md step 1
+  actually names -- raw tail, full FAILED list, exit code, wall time -- for
+  every run, every comm output in full, every serial re-run result, and the
+  decisive tail of one blocker traceback. full_log_provenance.txt records the
+  line count and sha256 of each uncommitted full log. Nothing was regenerated,
+  re-run to a better number, or edited: every committed line is a verbatim
+  slice of a log that a run wrote. The trim is declared in the R20 handback.
