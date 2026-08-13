@@ -4498,3 +4498,43 @@ reviewable commit rather than a schema change smuggled in beside its consumer.
 Reverse by deleting the `2:` entry from `_MIGRATIONS`, restoring the version
 constant to 1, and dropping the docstring bullet that names the table. A ledger
 already migrated keeps an empty unused table, which no code reads.
+
+## DECISION F115 D5 — `until` is EXCLUSIVE, so a period is half-open (2026-08-13)
+
+`--until` is the second end of the report period T003 needs, and its boundary
+reading is a real choice with a real failure mode. It is settled as EXCLUSIVE:
+`_cost_filters` emits `ts_utc < ?`, so a period is `[since, until)`.
+
+Why exclusive. The prior-period comparison the feature file asks for is the
+equal-length window immediately before `since` — that is, `[since - d, since)`
+where `d = until - since`. Two adjacent windows must partition the calls
+between them exactly once. With an INCLUSIVE end, a call whose `ts_utc` equals
+the shared boundary falls into BOTH windows: it is added to the current period
+and to the one it is being compared against, and the comparison then reports a
+difference that is an artifact of the boundary rather than a fact about the
+run. That is the same class of defect P6 forbids elsewhere in this feature —
+a number a reader cannot tell apart from a measurement.
+
+It also matches `since`, which is already `>=`. One end closed and one end
+open is the only pairing under which concatenating periods is lossless and
+duplicate-free, and it is the reading every calendar-period query in the
+report will inherit.
+
+Alternatives considered. (a) Inclusive `<=` — rejected above; it would also
+make `--until 2026-08-09` mean "through the instant 2026-08-09T00:00:00" and
+nothing later that day, which is a boundary users misread in the opposite
+direction. (b) Day-granular truncation of `until`, so `--until 2026-08-09`
+means "through the end of that day" — rejected because it would give `until` a
+different comparison shape than `since`, which is a plain lexicographic
+`ts_utc` compare, and two filters on one column that parse their arguments
+differently is a trap this module has no reason to set.
+
+Scope: the QUERY LAYER only. Nothing validates an `until` string at this
+layer, exactly as nothing validates `since` here; the CLI owns that, and the
+CLI is not in this round. The prior-period comparison this decision exists to
+serve is also not in this round — it is the next one.
+
+Reverse by changing `ts_utc < ?` to `ts_utc <= ?` in `_cost_filters`, deleting
+the half-open sentence from the two query docstrings, and updating the
+boundary test that names the excluded call. Nothing else depends on the
+reading.
