@@ -14,20 +14,24 @@ standard pipeline unchanged, and an invalid spec fails validation with precise
 messages before anything runs (docs/roadmap/features/T2_F045.md).
 
 ## Current Step
-R5 done. The action dispatch is built: `run_loop` routes on `action.kind`
-across the job and mission kinds, `_materialize_loop_job` is the one place both
-paths build a loop's job, the inert trigger yields `INERT_TRIGGER_NOTICE`
-instead of pretending it fired, and `last_run_for_loop` reads the most recent
-run out of the job store. DECISION F045 D5 (`loop_ref` rides on the JOB) is
-pinned by a test that goes red if provenance moves onto the `Mission` record.
-R-0348 and R-0349 are resolved with `Done:` lines verified against the disk;
-R-0350 (a size claim the R4 block asserted without measuring) is registered.
+R6 (bookkeeping) HALTED on a block/disk contradiction before its first commit.
+Block `f045-r6-1` ITEM 2 orders R-0351's paragraph written VERBATIM, and that
+paragraph places `(save or _save_job)(job)` at
+`packages/orchestration/loop_run.py:157`. On disk at `1a86c36d` line 157 is the
+closing `)` of the `Job(...)` call; `grep -n "save or _save_job"` puts the save
+at line 159. Writing the ordered bytes would put a citation into the durable
+review record that does not resolve on the disk — the R-0342/R-0349 family the
+block's own counter-measure exists to prevent — so nothing was registered.
+Every other claim in ITEM 2 was checked against the disk and holds. Only this
+halt record changed; R5 stands reviewed PASS at `1a86c36d`.
 
 ## Next Steps
-1. R6 = the CLI: `remedy loop list`, `remedy loop validate`,
-   `remedy loop run <name> [--yes]`, the last-run display, and the end-to-end
-   fixture loop.
-2. Then the integration gate, then closure.
+1. Re-emit the R6 block with `loop_run.py:159` in R-0351's paragraph; nothing
+   else in it needs to change.
+2. Then R6 as ordered: register R-0351 and R-0352, fix them FIRST (thread the
+   mission text and `root` into `_materialize_loop_job` so the PERSISTED job
+   carries both), then the CLI (`remedy loop list | validate | run`).
+3. Then the integration gate, then closure per STATUS_closure_protocol.md.
 
 ## Risks
 - Loops are parsed from a config file that does not exist in this repo (no
@@ -36,7 +40,10 @@ R-0350 (a size claim the R4 block asserted without measuring) is registered.
 - Schedule and event triggers are parsed and validated but INERT until the
   scheduler feature. Running one must say so honestly, never silently behave
   like a manual trigger.
-- The mission path writes real mission records, so every test touching it
-  passes an explicit `root`.
+- The mission path persists jobs and missions through two different root
+  resolutions: `run_loop(root=X)` reaches `create_mission`/`link_job_to_mission`
+  but not `_materialize_loop_job`, whose default save resolves the process-wide
+  jobs dir. No caller may rely on `root` isolating a whole run until that is
+  fixed. Verified on disk; not yet a registered finding — see the halt above.
 
 Fortschritt: ~60 % (T001 ✅ · T002 ✅ · T003 läuft) — Schätzung
