@@ -87,6 +87,7 @@ from packages.orchestration.token_ledger import (
     SCHEMA_VERSION_KEY,
     BackfillResult,
     CallRecord,
+    CallSegmentRow,
     backfill_ledger,
     call_id_for_task_run,
     call_record_from_evidence,
@@ -96,7 +97,9 @@ from packages.orchestration.token_ledger import (
     open_ledger,
     query_cost,
     record_call,
+    record_call_segments,
     reset_ledger_miss_count,
+    segment_rows_from_trace_file,
     token_ledger_path_for,
     verify_ledger,
 )
@@ -1530,3 +1533,240 @@ class TestCallSegmentsSchema:
 
         assert segments == 0
         assert calls == 1
+
+
+# The task run whose trace carries a manifest in the fixtures below; it is the
+# evidence tree's own full-actuals run, so the end-to-end test writes its trace
+# beside the very provider_evidence.json the ledger row is built from.
+SEGMENT_TASK = TASK_FULL
+
+
+def _manifest_entry(name, rank, sha256, chars, tokens_estimated):
+    """One ``ComposedPrompt.manifest_as_dicts()`` row, key for key."""
+    return {
+        "name": name,
+        "rank": rank,
+        "sha256": sha256,
+        "chars": chars,
+        "tokens_estimated": tokens_estimated,
+    }
+
+
+def _trace_entry(task_id, manifest, *, role="builder"):
+    """One prompt-trace entry in the shape ``prompt_trace.py`` writes on disk.
+
+    A real JSONL object, not a private helper's output: the ledger reads this
+    file as bytes, so the fixture has to be bytes the tracer could have written.
+    """
+    return {
+        "run_id": "run-ledger-fixture",
+        "job_id": FIXTURE_JOB_ID,
+        "task_id": task_id,
+        "round": 1,
+        "role": role,
+        "provider": "fake",
+        "prompt_kind": "initial",
+        "prompt_sha256": "0" * 64,
+        "prompt_chars": 1234,
+        "prompt_tokens_estimated": 308,
+        "segment_manifest": list(manifest),
+        "segment_manifest_chars": sum(m.get("chars", 0) for m in manifest),
+        "created_at": "2026-08-08T09:00:00+00:00",
+    }
+
+
+def _write_trace_file(path, entries):
+    """Write real JSONL — one JSON object per line — as ``prompt_trace.py`` does."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        "".join(json.dumps(entry) + "\n" for entry in entries), encoding="utf-8"
+    )
+
+
+def _segment_rows(ledger_path):
+    conn = open_ledger(ledger_path)
+    try:
+        conn.row_factory = sqlite3.Row
+        return [
+            dict(row)
+            for row in conn.execute(
+                "SELECT * FROM call_segments ORDER BY trace_seq, segment_rank"
+            )
+        ]
+    finally:
+        conn.close()
+
+
+def _segment_count(ledger_path):
+    conn = open_ledger(ledger_path)
+    try:
+        return conn.execute("SELECT COUNT(*) FROM call_segments").fetchone()[0]
+    finally:
+        conn.close()
+
+
+class TestCallSegmentsWriter:
+    """F115 T001-Writer — the manifests reach ``call_segments`` on the backfill path.
+
+    The trace file is the WHOLE JOB's, copied beside the evidence by the
+    exporter, so the reader has to filter by ``task_id`` and number the entries
+    it keeps. Everything below drives the real functions over real files: no
+    private tracer helper is imported and no manifest is mocked.
+
+    ``BackfillResult`` is FROZEN BEHAVIOUR here. The end-to-end test asserts the
+    four counters against the SAME tree backfilled without a trace file, so a
+    segment write that ever started moving one would be visible immediately.
+    """
+
+    def test_two_entries_yield_their_rows_in_file_order(self, tmp_path):
+        brief = _manifest_entry("task_brief", 10, "a" * 64, 120, 30)
+        diff = _manifest_entry("diff", 20, "b" * 64, 400, 100)
+        tail = _manifest_entry("schema_tail", 30, "c" * 64, 60, 15)
+        trace = tmp_path / "prompt_trace.jsonl"
+        _write_trace_file(trace, [
+            _trace_entry(SEGMENT_TASK, [brief, diff]),
+            _trace_entry(SEGMENT_TASK, [tail]),
+        ])
+
+        rows = segment_rows_from_trace_file(
+            trace, call_id="job-7:T001", task_id=SEGMENT_TASK
+        )
+
+        assert rows == [
+            CallSegmentRow(
+                call_id="job-7:T001", trace_seq=0, segment_name="task_brief",
+                segment_rank=10, segment_sha256="a" * 64, chars=120,
+                tokens_estimated=30,
+            ),
+            CallSegmentRow(
+                call_id="job-7:T001", trace_seq=0, segment_name="diff",
+                segment_rank=20, segment_sha256="b" * 64, chars=400,
+                tokens_estimated=100,
+            ),
+            CallSegmentRow(
+                call_id="job-7:T001", trace_seq=1, segment_name="schema_tail",
+                segment_rank=30, segment_sha256="c" * 64, chars=60,
+                tokens_estimated=15,
+            ),
+        ]
+
+    def test_an_empty_manifest_yields_no_row_but_still_consumes_its_index(self, tmp_path):
+        """The index counts PROVIDER CALLS, so it cannot shift when one is empty."""
+        carried = _manifest_entry("task_brief", 10, "d" * 64, 88, 22)
+        trace = tmp_path / "prompt_trace.jsonl"
+        _write_trace_file(trace, [
+            _trace_entry(SEGMENT_TASK, []),
+            _trace_entry(SEGMENT_TASK, [carried]),
+        ])
+
+        rows = segment_rows_from_trace_file(
+            trace, call_id="job-7:T001", task_id=SEGMENT_TASK
+        )
+
+        assert [row.trace_seq for row in rows] == [1]
+        assert rows[0].segment_name == "task_brief"
+
+    def test_another_task_runs_entries_are_ignored(self, tmp_path):
+        """The copied file is the whole job's trace, not this task run's."""
+        mine = _manifest_entry("task_brief", 10, "e" * 64, 11, 2)
+        theirs = _manifest_entry("other_task_brief", 10, "f" * 64, 99, 24)
+        trace = tmp_path / "prompt_trace.jsonl"
+        _write_trace_file(trace, [
+            _trace_entry("T099", [theirs]),
+            _trace_entry(SEGMENT_TASK, [mine]),
+            _trace_entry("T099", [theirs]),
+        ])
+
+        rows = segment_rows_from_trace_file(
+            trace, call_id="job-7:T001", task_id=SEGMENT_TASK
+        )
+
+        assert [(row.trace_seq, row.segment_name) for row in rows] == [
+            (0, "task_brief")
+        ]
+
+    def test_absent_malformed_and_partial_inputs_never_raise(self, tmp_path):
+        """A missing file, a corrupt line and a partial manifest dict, all survivable."""
+        assert segment_rows_from_trace_file(
+            tmp_path / "nowhere" / "prompt_trace.jsonl",
+            call_id="job-7:T001", task_id=SEGMENT_TASK,
+        ) == []
+
+        brief = _manifest_entry("task_brief", 10, "e" * 64, 11, 2)
+        partial = _manifest_entry("diff", 20, "f" * 64, 22, 5)
+        del partial["tokens_estimated"]
+        sibling = _manifest_entry("schema_tail", 30, "9" * 64, 33, 8)
+        trace = tmp_path / "prompt_trace.jsonl"
+        trace.write_text(
+            json.dumps(_trace_entry(SEGMENT_TASK, [brief])) + "\n"
+            + "{not json at all\n"
+            + json.dumps(_trace_entry(SEGMENT_TASK, [partial, sibling])) + "\n",
+            encoding="utf-8",
+        )
+
+        rows = segment_rows_from_trace_file(
+            trace, call_id="job-7:T001", task_id=SEGMENT_TASK
+        )
+
+        # The corrupt line consumed no index, and the partial dict was SKIPPED
+        # rather than completed with a zero its sibling would then be summed with.
+        assert [(row.trace_seq, row.segment_name) for row in rows] == [
+            (0, "task_brief"), (1, "schema_tail")
+        ]
+
+    def test_recording_the_same_segments_twice_leaves_one_row_each(
+        self, ledger_path, tmp_path
+    ):
+        rows = [
+            CallSegmentRow(
+                call_id="job-7:T001", trace_seq=0, segment_name="task_brief",
+                segment_rank=10, segment_sha256="a" * 64, chars=120,
+                tokens_estimated=30,
+            ),
+            CallSegmentRow(
+                call_id="job-7:T001", trace_seq=0, segment_name="diff",
+                segment_rank=20, segment_sha256="b" * 64, chars=400,
+                tokens_estimated=100,
+            ),
+        ]
+        assert record_call_segments(rows, path=ledger_path) is True
+        assert record_call_segments(rows, path=ledger_path) is True
+        assert _segment_count(ledger_path) == len(rows)
+
+        # Nothing to store must not be the thing that creates a database.
+        untouched = tmp_path / "no-ledger-here" / LEDGER_FILENAME
+        assert record_call_segments([], path=untouched) is True
+        assert not untouched.exists()
+        assert not untouched.parent.exists()
+
+    def test_backfill_writes_the_segment_rows_and_moves_no_counter(
+        self, evidence_tree, ledger_path, tmp_path
+    ):
+        """End to end, against the frozen ``BackfillResult`` of the same tree."""
+        without_trace = backfill_ledger(
+            evidence_tree, path=tmp_path / "baseline" / LEDGER_FILENAME
+        )
+
+        brief = _manifest_entry("task_brief", 10, "a" * 64, 120, 30)
+        _write_trace_file(
+            evidence_tree / "task_runs" / SEGMENT_TASK / "prompt_trace.jsonl",
+            [_trace_entry(SEGMENT_TASK, [brief])],
+        )
+        with_trace = backfill_ledger(evidence_tree, path=ledger_path)
+
+        assert _segment_rows(ledger_path) == [{
+            "call_id": f"{FIXTURE_JOB_ID}:{SEGMENT_TASK}",
+            "trace_seq": 0,
+            "segment_name": "task_brief",
+            "segment_rank": 10,
+            "segment_sha256": "a" * 64,
+            "chars": 120,
+            "tokens_estimated": 30,
+        }]
+        assert _row(ledger_path, f"{FIXTURE_JOB_ID}:{SEGMENT_TASK}") is not None
+
+        counters = (with_trace.scanned, with_trace.recorded,
+                    with_trace.skipped, with_trace.failed)
+        assert counters == (without_trace.scanned, without_trace.recorded,
+                            without_trace.skipped, without_trace.failed)
+        assert counters == (4, 2, 1, 1)
