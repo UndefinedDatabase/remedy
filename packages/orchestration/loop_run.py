@@ -1,4 +1,4 @@
-"""F045 T002 — materialize a loop as an ordinary job carrying ``loop_ref``.
+"""F045 T002/T003 — materialize a loop as work carrying ``loop_ref``.
 
 A loop is declarative configuration (:mod:`packages.orchestration.loop_spec`,
 T001). This module turns one into a NORMAL job — the same shape
@@ -19,18 +19,28 @@ the mission action at all: dispatch across action kinds belongs to ``run_loop``
 in T003, together with the CLI, the last-run display and the end-to-end
 fixture. See ``.agent/decisions.md``.
 
+F045 T003 — that dispatch lives HERE, in :func:`run_loop`, which routes on
+``action.kind``. :func:`loop_to_job` stays exactly the job-kind path it always
+was. DECISION F045 D5 governs the mission path's provenance: ``loop_ref`` rides
+on the JOB, never on the ``Mission`` record, and the mission stays reachable
+from that same job through ``metadata["mission_id"]``.
+
 Remedy deliberately does not schedule, watch or repeat loops here. A loop whose
-trigger is inert (``LoopSpec.is_inert``) still materializes on demand; saying so
-honestly is the CLI's job in T003, not a silent behaviour change here.
+trigger is inert (``LoopSpec.is_inert``) still materializes on demand;
+:func:`run_loop` says so through ``loop_spec.INERT_TRIGGER_NOTICE`` rather than
+pretending the trigger fired. Displaying it is the CLI's job in T003.
 """
 from __future__ import annotations
 
 import re
 from collections.abc import Callable, Mapping
+from dataclasses import dataclass
 from datetime import datetime, timezone
+from pathlib import Path
 
 from packages.core.models import Job, JobBudgets, RunState
 from packages.orchestration.loop_spec import (
+    INERT_TRIGGER_NOTICE,
     LOOP_TEMPLATE_VARS,
     LoopBudgets,
     LoopSpec,
@@ -183,3 +193,95 @@ def loop_to_job(spec: LoopSpec, *, project_id: str, date: str | None = None,
     prompt = render_goal_template(spec.action.goal_template,
                                   project=project_id, date=run_date)
     return _materialize_loop_job(spec, prompt, project_id, save=save)
+
+
+# WHY: one firing produces a job, maybe a mission, and maybe an honest notice;
+# returning all three keeps the caller from re-deriving any of them.
+@dataclass(frozen=True)
+class LoopRunOutcome:
+    """What one loop firing produced.
+
+    ``mission_id`` is ``None`` for a job-action loop; ``notice`` is ``None``
+    unless the trigger is inert, in which case it is ``INERT_TRIGGER_NOTICE``.
+    """
+
+    job: Job
+    mission_id: str | None = None
+    notice: str | None = None
+
+
+# WHY: the one dispatch point from a declarative loop to real work; every action
+# kind is routed here and nowhere else.
+def run_loop(spec: LoopSpec, *, project_id: str, date: str | None = None,
+             save: Callable[[Job], None] | None = None,
+             root: Path | None = None) -> LoopRunOutcome:
+    """Materialize *spec* according to its ``action.kind``.
+
+    APPROVAL SEMANTICS, unchanged from T002 and load-bearing: BOTH paths stop at
+    PLANNED. Nothing here executes a task, approves a plan or implies ``--yes``,
+    and ``spec.unattended`` is still only RECORDED — a loop reaches the
+    operator's approval gate exactly like a typed goal, whichever kind it is.
+
+    The run date is computed ONCE — *date* when given, else today's UTC date as
+    ``YYYY-MM-DD``, the same default :func:`loop_to_job` uses — and passed down,
+    so the job and the mission goal can never be rendered against two dates.
+
+    An inert trigger (``LoopSpec.is_inert``) blocks nothing: the loop still
+    materializes on demand and the outcome carries ``INERT_TRIGGER_NOTICE``, so
+    a caller can say so honestly instead of pretending the trigger fired.
+
+    Raises :class:`LoopRunError` for an action kind this module does not know,
+    and for a mission action with no ``action.mission`` template.
+    """
+    run_date = date if date is not None else datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    notice = INERT_TRIGGER_NOTICE if spec.is_inert else None
+
+    if spec.action.kind == "job":
+        job = loop_to_job(spec, project_id=project_id, date=run_date, save=save)
+        return LoopRunOutcome(job=job, mission_id=None, notice=notice)
+
+    if spec.action.kind == "mission":
+        # DECISION F045 D5: loop_ref rides on the JOB, not on the Mission.
+        from packages.orchestration.mission_state import (
+            MISSION_ROLE_INITIAL,
+            create_mission,
+            link_job_to_mission,
+        )
+
+        if not spec.action.mission:
+            raise LoopRunError(
+                f"loop '{spec.name}': action.mission is required for a mission action")
+        goal = render_goal_template(spec.action.mission,
+                                    project=project_id, date=run_date)
+        mission = create_mission(project_id, goal, root=root)
+        job = _materialize_loop_job(
+            spec, goal, project_id,
+            extra_metadata={"mission_id": mission.id,
+                            "mission_role": MISSION_ROLE_INITIAL},
+            save=save)
+        job.mission = mission.goal
+        link_job_to_mission(project_id, mission.id, str(job.id),
+                            MISSION_ROLE_INITIAL, root=root)
+        return LoopRunOutcome(job=job, mission_id=mission.id, notice=notice)
+
+    raise LoopRunError(
+        f"loop '{spec.name}': unsupported action.kind='{spec.action.kind}'")
+
+
+# WHY: the last-run display reads provenance out of the job store, so the scan
+# for a loop's own runs lives next to the key that records them.
+def last_run_for_loop(name: str, *, root: Path | None = None) -> Job | None:
+    """The most recent job carrying ``loop_ref == name``, or ``None``.
+
+    Reads the store through ``storage.list_jobs_safe``, which ALREADY sorts by
+    ``created_at`` descending, so the FIRST match is the most recent — no
+    ``max()`` and no re-sort. That helper SKIPS unreadable job files, so a loop
+    whose only run will not parse reports ``None`` rather than a wrong run.
+    """
+    from packages.orchestration.storage import list_jobs_safe
+
+    jobs, _degraded, _skipped = list_jobs_safe(root)
+    for job in jobs:
+        if job.metadata.get(LOOP_REF_METADATA_KEY) == name:
+            return job
+    return None
