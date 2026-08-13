@@ -407,6 +407,81 @@ class TestSegmentManifest:
         assert "prompt_text=builder_prompt," in site
         assert "composed_prompt=builder_composed," in site
 
+    def test_the_reviewer_composition_traces_a_real_segment_manifest(self, monkeypatch):
+        """F115 D1 behaviour, reviewer half: the manifest covers the composed BASE.
+
+        The reviewer's traced text is `_reviewer_effective_prompt(...)`, which in
+        structured mode appends the native-schema tail the registry deliberately
+        does NOT cover (DECISION F105 D3). So `segment_manifest_chars` records the
+        composed base and stays strictly BELOW `prompt_chars`, and that gap IS the
+        coverage gap — recorded instead of implied. Structured mode is forced on
+        here so the assertion cannot depend on the ambient environment.
+        """
+        from packages.orchestration.prompt_segments import PROMPT_SEGMENT_DELIMITER
+        from packages.orchestration.pingpong_loop import (
+            _reviewer_effective_prompt,
+            compose_reviewer_prompt,
+        )
+
+        monkeypatch.delenv("REMEDY_REVIEWER_FREETEXT", raising=False)
+        composed = compose_reviewer_prompt(
+            "implement feature X",
+            "builder did the thing",
+            diff_summary="M  a.py",
+            test_result="2 passed",
+            files_changed=["a.py"],
+            task_excerpt="detailed task body",
+            task_sha256="abc",
+            task_tokens_estimated=7,
+            scope_contract="scope contract text",
+        )
+        entry = build_trace_entry(
+            prompt_text=_reviewer_effective_prompt(composed.text),
+            role="reviewer",
+            composed_prompt=composed,
+        )
+        assert entry.segment_manifest != []
+        assert [row["name"] for row in entry.segment_manifest] == [
+            "reviewer_system",
+            "reviewer_scope_contract",
+            "reviewer_goal",
+            "reviewer_task_input",
+            "reviewer_builder_summary",
+            "reviewer_files_changed",
+            "reviewer_staged_diff",
+            "reviewer_test_result",
+        ]
+        for row in entry.segment_manifest:
+            assert set(row) == {"name", "rank", "sha256", "chars", "tokens_estimated"}
+            assert len(row["sha256"]) == 64
+            assert row["chars"] > 0
+        rows = entry.segment_manifest
+        boundaries = len(rows) - 1
+        assert entry.segment_manifest_chars == len(composed.text)
+        assert entry.segment_manifest_chars == sum(
+            int(row["chars"]) for row in rows
+        ) + boundaries * len(PROMPT_SEGMENT_DELIMITER)
+        assert entry.segment_manifest_chars < entry.prompt_chars
+
+    def test_the_reviewer_call_site_hands_its_composition_down(self):
+        """F115 D1 wiring guard: an unwired reviewer trace entry fails HERE.
+
+        The behaviour test above passes even when this call site is unwired,
+        because it never touches `pingpong_loop` — which is why this guard
+        exists. Index [2] is the reviewer's `build_trace_entry` append; [1] is
+        the builder's, guarded by the test above it.
+        """
+        import packages.orchestration.pingpong_loop as pingpong_loop
+
+        source = inspect.getsource(pingpong_loop)
+        assert source.count("reviewer_composed = compose_reviewer_prompt(") == 1
+        assert "reviewer_prompt = reviewer_composed.text" in source
+        site = source.split("result.prompt_traces.append(build_trace_entry(")[2]
+        site = site.split("))")[0]
+        assert 'role="reviewer",' in site
+        assert "prompt_text=prompt_text," in site
+        assert "composed_prompt=reviewer_composed," in site
+
 
 # ---------------------------------------------------------------------------
 # Step 5088: next_approve_command unit tests
