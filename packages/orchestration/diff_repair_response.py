@@ -26,8 +26,9 @@ a validation rejection the caller can report, rather than a
 handing every declared path the whole diff would try to apply every hunk to
 every file. The splitter is ``review_scope.split_diff_by_path``, the same
 single walk that reads hunk headers. Remedy deliberately does not APPLY the
-converted patch from this module — the apply-and-fallback half attaches to the
-bridge, where the job, the approved intent and the snapshot already live.
+converted patch from this module — that is
+``diff_repair_apply.apply_diff_repair``, which the bridge calls in T003 because
+the job, the approved intent and the snapshot already live there.
 
 Public API::
 
