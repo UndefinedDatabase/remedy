@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import pytest
 
+from packages.orchestration.model_aliases import resolve_model_alias
+
 # ---------------------------------------------------------------------------
 # Model resolution precedence
 # ---------------------------------------------------------------------------
@@ -17,7 +19,7 @@ def test_default_model(monkeypatch):
     monkeypatch.delenv("REMEDY_OLLAMA_MODEL", raising=False)
     from packages.providers.ollama_builder.provider import OllamaBuilder
     builder = OllamaBuilder()
-    assert builder.model == "qwen3-coder-next"
+    assert builder.model == resolve_model_alias("ollama-default")
 
 
 def test_builder_env_var(monkeypatch):

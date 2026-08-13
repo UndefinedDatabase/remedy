@@ -22,6 +22,7 @@ from apps.cli.commands import collect_all_handlers
 from apps.cli.commands.do_cmd import COMMAND_HANDLERS
 from apps.cli.grouped import build_parser
 from apps.cli.grouped import main as grouped_main
+from packages.orchestration.model_aliases import resolve_model_alias
 
 COMMAND_ID = "do.job-flow"
 
@@ -2162,7 +2163,7 @@ class TestRoleOverrideResolver:
         for role in ("builder", "reviewer", "repair"):
             assert cfgs[role] == {
                 "provider": "ollama",
-                "model": "qwen3-coder-next",
+                "model": resolve_model_alias("ollama-default"),
                 "effort": "medium",
             }
 
@@ -2329,9 +2330,9 @@ class TestCliRoleFlags:
     def test_job_flow_reviewer_model(self) -> None:
         ns = self._parse([
             "do", "job-flow", "--job-file", "x.md",
-            "--reviewer-model", "qwen3-coder-next",
+            "--reviewer-model", "custom-reviewer-model",
         ])
-        assert ns.reviewer_model == "qwen3-coder-next"
+        assert ns.reviewer_model == "custom-reviewer-model"
 
     def test_job_flow_reviewer_effort(self) -> None:
         ns = self._parse([
