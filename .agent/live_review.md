@@ -804,3 +804,5 @@ said — rejected on the three reasons above; (b) leave the contradiction on dis
 and let T003 discover it — rejected, that is how R-0315 was born. Reverse this
 decision by deleting the D6 section of docs/roadmap/features/T2_F111.md and
 restoring the A9 sentence.
+Landed: R-0315 — T2_F111.md A9 sentence rewritten and the D6 Built State
+section appended; the applicator guard is unchanged by decision.
