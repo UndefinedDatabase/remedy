@@ -276,3 +276,211 @@ shared reader and the two-mode output are all in place
 (`stats_ledger_cmd.py:266-320`, `command_catalog.py:2920-2941`); adding
 `stats report` is largely a fourth entry in the same two established patterns,
 plus `--until` and the prior-period comparison, which are genuinely new.
+
+## T001 persistence inventory (R7)
+
+Facts only, each with a `path:line` citation read at this round. The shape
+question T001 has to answer is already visible: `token_ledger.py` documents that
+A ROW IS ONE FINALIZED TASK RUN keyed `"<job_id>:<task_id>"` (DECISION F103
+D16), while a segment manifest belongs to ONE PROVIDER CALL — so "the manifest
+alongside the ledger row" is a one-to-many mapping, not a column copy. Answer
+each question directly below it; write "not found" plus the command you ran
+rather than an inference.
+
+Q1. The ledger row: every column of the table a task run writes, taken from the
+CREATE TABLE statement itself, with its `path:line`. Name which columns are
+NULLable and which carry a default.
+
+A1. The row is one entry in the `calls` table, created by migration step 1 at
+`packages/orchestration/token_ledger.py:178-192`. Thirteen columns, in this
+order: `call_id TEXT PRIMARY KEY NOT NULL`, `job_id TEXT`, `task_id TEXT`,
+`role TEXT`, `model TEXT`, `ts_utc TEXT NOT NULL`, `tokens_in INTEGER`,
+`tokens_out INTEGER`, `cache_read INTEGER`, `cache_write INTEGER`,
+`cost_usd REAL`, `cost_basis TEXT NOT NULL CHECK (cost_basis IN (...))` and
+`evidence_ref TEXT`. NOT NULL: exactly three — `call_id`, `ts_utc`,
+`cost_basis`. NULLable: the other ten, `job_id` and `task_id` among them.
+NO column carries a SQL DEFAULT: the CREATE TABLE statement has no DEFAULT
+clause anywhere (`token_ledger.py:178-192`). Defaults exist only in Python, on
+`CallRecord` (`token_ledger.py:203-228`), where every field except `call_id`
+and `ts_utc` defaults to `None` and `cost_basis` defaults to
+`COST_BASIS_UNKNOWN` = `"unknown"` (`token_ledger.py:129`). The CHECK list is
+generated from `COST_BASES` (`token_ledger.py:132-134`, `:153`), so the schema
+and the constant cannot drift apart. The same migration step creates
+`meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)` (`:172-175`) and three
+indexes, on `job_id`, on `ts_utc` and on `(role, model)` (`:195-197`). The
+column order is restated once as `_CALL_COLUMNS` (`:137-151`), which both the
+INSERT (`:422-428`) and `verify_ledger`'s SELECT (`:688-692`) build from.
+
+Q2. The write path: the ONE call site the module names
+(`pingpong_evidence.write_evidence_bundle`) — its `path:line`, what it receives,
+and specifically whether the prompt-trace entries (or anything carrying a
+`segment_manifest`) are in scope AT THAT POINT or only reachable from disk.
+
+A2. `write_evidence_bundle` is `packages/orchestration/pingpong_evidence.py:442`
+(body through `:538`). Its one ARMED caller is `_write_task_run_evidence`, which
+passes the ledger target at `packages/orchestration/job_evidence.py:2536-2542`
+(`ledger_project_id=`, `ledger_job_id=job_id`, `ledger_task_id=task.task_id`);
+the project id is resolved once, higher up, at `job_evidence.py:216-221`. What
+the function RECEIVES is `bundle`, a plain dict built by
+`build_evidence_bundle(run_data, promotion_data)` (`job_evidence.py:2523`), plus
+`bundle["prompt_trace_jsonl_path"]` — a PATH STRING, set at
+`job_evidence.py:2526-2530` only when that file exists (the same assignment
+appears at `pingpong_evidence.py:629-631`). No `PromptTraceEntry` object travels
+in the bundle, so nothing carrying a `segment_manifest` is in scope at that
+point. The hook is tighter still: `_record_finalized_call_in_ledger`
+(`pingpong_evidence.py:546`) is called at `pingpong_evidence.py:517-525`,
+immediately after `provider_evidence.json` is written and BEFORE the trace file
+is copied into the bundle at `pingpong_evidence.py:527-536`; and it re-reads
+only `provider_evidence.json` and `token_accounting.json` from disk, through
+`call_record_from_evidence` (`pingpong_evidence.py:574-589`,
+`token_ledger.py:513-583`). A manifest is therefore reachable ONLY from disk,
+and at hook time only from the run-dir source path — the bundle-local
+`task_runs/<task_id>/prompt_trace.jsonl` does not exist yet.
+
+Q3. The trace file: the exact path pattern `prompt_trace.jsonl` is written to,
+its writer's `path:line`, and whether anything deletes, rotates or truncates it
+after a run — quote the code you checked, or state that a search found no
+deleter and name the search.
+
+A3. Two path families, both live.
+(1) `<remedy_data_root>/pingpong_runs/<run_id>/prompt_trace.jsonl`, written by
+`_persist_run` at `packages/orchestration/pingpong_loop.py:3492`, the directory
+coming from `_pingpong_runs_dir` (`pingpong_loop.py:3473-3476`). This is the
+file the exporter copies into the evidence tree as
+`task_runs/<task_id>/prompt_trace.jsonl` — the path is handed over at
+`job_evidence.py:2526-2530` and the copy happens at
+`pingpong_evidence.py:528-536`.
+(2) `<runs_root>/<job_id>/prompt_trace.jsonl`: `log.path.parent` is
+`<runs_root>/<job_id>/` per `packages/orchestration/run_log.py:97` and
+`:115-117`. The planner writes there (`apps/cli/commands/job.py:281`), `remedy
+do` writes there (`apps/cli/commands/do_cmd.py:382`) and appends there
+(`do_cmd.py:2926`); `orchestrator_loop.py:1169-1172` appends, and
+`mission_compiler.py:765` appends to `evidence_dir / "prompt_trace.jsonl"`.
+Truncation: YES — by the writer itself, not by any cleanup job.
+`write_trace_jsonl` opens its path in mode `"w"`: `with path.open("w") as f`
+(`packages/orchestration/prompt_trace.py:195`). The comment above
+`append_trace_jsonl` states the consequence in full: "Two writers, because the
+trace file is per JOB and not per run: `RunLogWriter.path.parent` is
+`<runs_root>/<job_id>/`, so a second command against the same job would truncate
+the first command's traces if it used `write_trace_jsonl`."
+(`prompt_trace.py:200-204`). `do_cmd.py:202-205` repeats it as the reason that
+command collects one list and writes once. `append_trace_jsonl`
+(`prompt_trace.py:205-210`) is the non-truncating writer.
+Deleter or rotation: NOT FOUND. Search run:
+`grep -rn "prompt_trace" --include=*.py packages/ apps/ scripts/ | grep -i
+"unlink\|remove\|rmtree\|delete\|truncate\|rotate"` — zero matches. A wider
+`grep -rn "unlink()\|rmtree(" --include=*.py packages/orchestration/` returns
+only staging, snapshot, worktree, checkpoint, patch-revert and job-promote
+paths; none of them touches a runs or `pingpong_runs` trace file.
+
+Q4. Schema versioning: how the module versions its schema (the `meta` row), its
+`path:line`, and whether an ADDITIVE column has ever been migrated there before.
+If yes, cite that migration; if no, say so — that absence is the fact T001 needs.
+
+A4. `SCHEMA_VERSION = 1` (`packages/orchestration/token_ledger.py:102`) is
+stored in the `meta` table under the key `"schema_version"`
+(`SCHEMA_VERSION_KEY`, `:105`; the table at `:172-175`). Migrations are NUMBERED
+STEPS in `_MIGRATIONS: dict[int, tuple[str, ...]]` (`:169-199`), applied by
+`_migrate_to_current` (`:1072-1089`): it reads the stored version, runs every
+version above it in numeric order, and commits each version's statements
+together with its own meta bump, so a ledger never claims a version it does not
+have. `_read_schema_version` returns 0 when the `meta` table or the key is
+absent (`:1054-1069`), and `open_ledger` runs the migration on every open
+(`:373-394`).
+Has an ADDITIVE column ever been migrated? NO. `_MIGRATIONS` holds exactly one
+key, `1` (`:170`), and its statements are CREATE TABLE / CREATE INDEX only
+(`:171-197`). `grep -rn "ALTER TABLE" --include=*.py .` returns no match
+anywhere in the repository, and
+`git log --oneline -S "_MIGRATIONS" -- packages/orchestration/token_ledger.py`
+names a single commit, `b00ffa41 feat(f103): add the SQLite token ledger schema
+and writer`. The mechanism exists and has never been exercised past its first
+step.
+
+Q5. Readers: every place that SELECTs from the ledger today, with `path:line`,
+and how each behaves when a column is NULL or a row is missing. Note any
+existing "unattributed"/"no data" rendering precedent.
+
+A5. Four SELECTs exist, all of them inside `token_ledger.py`:
+- `record_call`'s disambiguation probe, `token_ledger.py:437-439`. After an
+  `INSERT OR IGNORE` (`:425-428`) reported `rowcount == 0`, it asks
+  `SELECT 1 FROM calls WHERE call_id = ?`. A row present means an idempotent
+  re-record and the call returns True; NO row means a constraint rejected the
+  write, so it raises (`:441-445`), is caught at `:447-455`, counts a miss and
+  returns False. Fact for T001: `INSERT OR IGNORE` never UPDATEs, so a second
+  write for the same `call_id` cannot add anything to a row already present.
+- `verify_ledger`, `token_ledger.py:688-692`: selects `_CALL_COLUMNS` for one
+  `job_id` and rebuilds a `CallRecord` per row. A missing row lands in
+  `missing_rows` (`:696-699`); a row that differs from the record re-derived
+  from evidence lands in `drifted_rows` (`:700-701`), and the comparison is
+  whole-dataclass equality, so any column the evidence side cannot reproduce
+  would make every existing row read as drift. A row with no matching evidence
+  is an orphan (`:703-706`). Nothing is ever corrected (`:644-648`).
+- `_cost_bucket_rows`, `token_ledger.py:896-903`, the statement behind
+  `query_cost` (`:711-772`). NULLs are preserved: the measurement columns are
+  `SUM`med, so an all-NULL bucket stays `None` (`:885-891`, `:735-739`); the two
+  basis columns are `COUNT`ed, because zero IS the honest value for a count; a
+  NULL group column becomes `bucket=None` (`:908-921`, and `CostRow`'s own
+  docstring at `:285-307`). A ledger file that does not exist yields an EMPTY
+  report with `ledger_exists=False` rather than an error, and does not create
+  the database (`:741-743`, `:757-760`).
+- `_read_schema_version`, `token_ledger.py:1056-1063`, covered in A4.
+Downstream readers: `apps/cli/commands/stats_ledger_cmd.py:266-301`
+(`_load_ledger_reports`, feeding `stats cost` and `stats cache` via `query_cost`
+at `:291` and `merge_cost_reports` at `:301`), `:469-477`
+(`stats backfill-ledger`), `:499-507` (`stats verify-ledger`), and
+`packages/orchestration/budget_guard.py:645-671`
+(`collect_ledger_cost_for_job`), which is called from the run safe point
+(`packages/orchestration/pingpong_job.py:1926-1941`) and from `remedy job
+budget` (`apps/cli/commands/job.py:2207-2221`). Both budget callers swallow
+every exception and leave the cost `None` — never 0.0
+(`pingpong_job.py:1949-1958`, `job.py:2222-2237`).
+Rendering precedent for "no data": strong, and the established spelling is
+UNMEASURED, not "unattributed". `UNMEASURED = "unmeasured"`
+(`stats_ledger_cmd.py:44`) is what `_figure` prints for any `None`
+(`:188-194`, and again in the cache view at `:352`); a NULL group column prints
+as `"(unnamed)"` (`:220` and `:421`); an absent ledger prints "No ledger on disk
+for this scope — nothing has been recorded yet." (`:210-215`); and a partly or
+fully unmeasured total gets a sentence in words rather than a silent number
+(`:249-261`). The json surface carries `"unmeasured_notation": "null"` beside
+the note "a null figure was never reported — it is not a zero; no price is ever
+computed" (`:173-182`). The word "unattributed" does not occur in any Python
+file: `grep -rn "unattributed" --include=*.py .` returns nothing.
+
+Q6. Correlation: whether a prompt-trace entry can be tied to a ledger row from
+the data alone — check which of `job_id`, `task_id`, `run_id` a trace entry
+actually carries at the planner, builder and reviewer call sites (a field that
+exists in the dataclass but is left empty at a call site is NOT a correlation
+key; cite the call site).
+
+A6. The dataclass carries all three fields — `run_id`, `job_id`, `task_id`, each
+defaulting to `""` (`packages/orchestration/prompt_trace.py:60-62`) — and
+`build_trace_entry` passes them straight through (`:104-172`, assignment at
+`:141-143`). What the call sites actually FILL:
+- PLANNER, `apps/cli/commands/job.py:240-252`: `job_id=str(job.id)` and nothing
+  else. `task_id` and `run_id` are not passed at all, so both stay `""`.
+- BUILDER, `packages/orchestration/pingpong_loop.py:2828-2845`:
+  `run_id=result.run_id`, `job_id=result.job_id`, `task_id=result.task_id`
+  (`:2831-2833`).
+- REVIEWER, `packages/orchestration/pingpong_loop.py:3020-3041`: the same three
+  (`:3023-3025`).
+But `result.job_id` / `result.task_id` are only as full as the caller of
+`run_pingpong` made them: the parameters default to `""`
+(`pingpong_loop.py:2446-2447`), are copied onto the result at `:2493-2494`, and
+the field itself defaults to `""` on `PingPongResult`
+(`pingpong_loop.py:103`). The JOB path fills them —
+`packages/orchestration/pingpong_job.py:2255-2256` passes
+`job_id=job.job_id, task_id=task.task_id`. The standalone `remedy do` path does
+NOT: `apps/cli/commands/do_cmd.py:800-820` passes neither, so builder and
+reviewer traces produced by that command carry an empty `job_id` and `task_id`.
+Against the row: the ledger identity is `"<job_id>:<task_id>"`
+(`call_id_for_task_run`, `token_ledger.py:465-489`, which REFUSES an empty
+half), and there is no `run_id` column on the row at all (`_CALL_COLUMNS`,
+`token_ledger.py:137-151`). So, from the data alone: builder and reviewer trace
+entries written through the job path DO carry both halves of a `call_id` and can
+be tied to a row; planner trace entries CANNOT — no `task_id`, and no ledger row
+is written for planning in any case, since rows are derived only from
+`task_runs/<task_id>/provider_evidence.json` (`token_ledger.py:513-583`); and
+`remedy do` traces cannot, both halves being empty. One id-free path also
+exists: `evidence_ref` on the row is `"task_runs/<task_id>"`
+(`token_ledger.py:547-549`, assigned at `:573`), which is exactly the directory
+the trace file is copied into (`pingpong_evidence.py:533`).
