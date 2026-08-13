@@ -46,7 +46,7 @@ data_dir = "/path/to/data"
 
 [remedy.ollama]
 host = "http://localhost:11434"
-model = "qwen3-coder-next"
+model = "<your-ollama-model>"
 
 [remedy.ollama.builder]
 model = "codellama"
@@ -54,7 +54,7 @@ temperature = 0.3
 num_predict = 4096
 
 [remedy.ollama.planner]
-model = "qwen3-coder-next"
+model = "<your-ollama-model>"
 temperature = 0.2
 ```
 
@@ -64,7 +64,7 @@ temperature = 0.2
 |-----|---------|------|---------|-------------|
 | `data_dir` | `REMEDY_DATA_DIR` | path | `<repo>/.data` | Root directory for Remedy data |
 | `ollama.host` | `REMEDY_OLLAMA_HOST` | url | `http://localhost:11434` | Ollama server URL |
-| `ollama.model` | `REMEDY_OLLAMA_MODEL` | string | `qwen3-coder-next` | Default model for all Ollama roles |
+| `ollama.model` | `REMEDY_OLLAMA_MODEL` | string | the `ollama-default` alias | Default model for all Ollama roles |
 | `ollama.builder.model` | `REMEDY_OLLAMA_BUILDER_MODEL` | string | (falls back to `ollama.model`) | Model for builder role |
 | `ollama.builder.temperature` | `REMEDY_OLLAMA_BUILDER_TEMPERATURE` | float | (none) | Sampling temperature for builder |
 | `ollama.builder.num_predict` | `REMEDY_OLLAMA_BUILDER_NUM_PREDICT` | int | (none) | Max tokens for builder |
