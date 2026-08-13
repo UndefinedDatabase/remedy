@@ -62,3 +62,27 @@ integration gate → closure.
   cap. OPEN.
 
 Done: R-0321 — RESOLVED at the R4 gate. Verified against the disk, not the report: `grep -c 'four of the eight' .agent/f115_inventory.md` prints 0 and `grep -c 'four of the seven'` prints 1, the enumeration below that sentence still names four wired call sites and three unwired, and `git show --numstat 8412f20c` shows the C3 commit of R3 changed exactly one line of that file. The R3 round as a whole is PASS: gates (a)-(g) were re-run by the reviewer and every value matched the handback, and the R3 diff touched only `.agent/**` and `docs/agents/planner_reviewer_prompt.md`, as its block declared.
+
+- R-0323 — Low — reviewer gate arithmetic, self-registered. The R4 block's gate
+  (f) demanded that `git diff --name-only 0d6c97aa..HEAD` list SEVENTEEN paths
+  — "the fifteen of R1-R3 plus this round's two new ones
+  (`.agent/authored/f115-r4-1.md`, `tests/orchestration/test_prompt_trace.py`)".
+  `tests/orchestration/test_prompt_trace.py` was ALREADY one of those fifteen:
+  R2 added the builder behaviour test and its wiring guard to that same file,
+  and `git diff --name-only 0d6c97aa..8601e276` lists it. Only one path was new
+  in R4, so the reachable total was SIXTEEN and the ordered seventeen was
+  unmeetable by construction. The worker measured 16, reported it, changed
+  nothing to meet the number, and declared the deviation — the correct
+  behaviour, and the round cost one declared deviation to prove a reviewer
+  slip. Same class as R-0282 (F107 R11, "exactly these nine paths" over a list
+  of eight) and R-0321 (F115 R1, "four of the eight" over a list of seven);
+  three instances now, all of them a count stated in prose that the reviewer
+  never re-derived from the list beside it. The standing counter-measure is
+  already on disk as checklist item 8
+  (`docs/agents/planner_reviewer_prompt.md`, added at 43763bf4) — it says to
+  compute a gate's expected value from the source that PRODUCES it. A path
+  count's source is the previous round's own `git diff --name-only` output,
+  which the reviewer had already run in that same session and did not re-read.
+  No fix is possible on disk: the block is committed verbatim by design and
+  R4's verdict already stands as PASS. It is registered so the pattern is
+  countable rather than forgotten. OPEN.
