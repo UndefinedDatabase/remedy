@@ -525,3 +525,83 @@ after being registered.
   reachable the moment `extract_json_object` learns to return array text — and
   the decision to keep or delete it belongs to the closure round, not to a
   repair. OPEN.
+
+### R9 — PASS (2026-08-13)
+Reviewed by the main session over 456a25e9..33f408b2. Every ordered gate was
+re-run by the reviewer, and the new split was probed live against the real
+applier rather than read off the handback. Transport: PRIMARY cmp proof, no
+digest fallback — `.remedy-wt/f111r9/BLOCK`, `.agent/authored/f111-r9-1.md`
+and `.agent/last_block.md` are byte-identical, `.remedy-wt/f111r9/PLAN` and
+`.agent/plan.md` are byte-identical, and `str.count` of both the LRG and the
+DONE slice against `.agent/live_review.md` prints 1. Numstat purity: `50 0`
+for the gate append and `5 1` for the R-0307 resolution, the single deletion
+being the retired `Landed:` line. Markers: 33 `- R-0`, 5 `Done:`, 0 `Landed:`
+(exit 1, the pass), 1 `### R8 — PASS`. Caps: the block is 330 lines, under the
+DECISION F105 D5 limit of 400; per-commit insertions 330/262/50/5/139/110/93,
+each under 500. Tests: `python3 -m pytest
+tests/orchestration/test_review_scope.py
+tests/orchestration/test_diff_repair_response.py
+tests/orchestration/test_diff_repair.py tests/cli/test_golden_path.py -q` exit
+0, 138 passed — 39 (32 before, 7 new), 27 (23 before, 4 new), 30 unchanged, 42
+canary; `python3 -m pytest tests/orchestration/test_final_verifier.py
+tests/orchestration/test_reviewer_prompt_scope.py
+tests/orchestration/test_pingpong.py tests/test_path_utils.py
+tests/test_data_paths.py -q` exit 0, 197 passed — the 146 `_parse_diff`
+consumer pin the reviewer measured BEFORE the round, unchanged, plus the 51
+repo-wide guards. Hygiene: `git status --porcelain` empty, `git worktree list`
+one entry, remote comparison `0 0`. Scope: exactly the nine ordered paths.
+
+Deviation ACCEPTED: C7 applied a 47-line PLAN slice where the block said 46.
+The worker applied the authored bytes verbatim and declared the mismatch
+rather than reflowing text to hit a number, which is the correct call — the
+error is the reviewer's and is registered as R-0309 below.
+
+- R-0309 (Low, F111 R9, reviewer-side arithmetic in an authored block): the R9
+  block stated its PLAN slice was 46 lines and gated `wc -l` on that number;
+  the slice is 47 lines. Third instance of the class after R-0282 and R-0305,
+  and the second in three rounds, so the rule R-0305 stated is not being
+  applied: any count an authored block asserts about a file — including a file
+  the block itself carries — is MEASURED before emission, never recalled. The
+  reviewer cannot measure its own not-yet-written slice with a shell, so the
+  standing fix is different in kind: gate authored slices on `cmp` against the
+  applied file, which proves byte identity, and never on a line count, which
+  proves nothing the `cmp` does not already prove. OPEN.
+
+- R-0310 (Low, F111 R9, cosmetic residue in a correct function):
+  `split_diff_by_path` drops preamble before the FIRST `---` line, so in a
+  git-style multi-file diff the `diff --git` and `index` lines introducing
+  file N+1 stay at the TAIL of file N's section. The worker disclosed this
+  instead of writing a test that would have to pass dishonestly. The reviewer
+  proved the residue harmless: `_apply_hunks` breaks its hunk body on any line
+  starting with `diff `, and its outer loop skips every line that is not a
+  hunk header, so both sections of a two-file git diff applied to the right
+  content in a live probe. Kept for v1 as a cosmetic wart, not a correctness
+  defect; a section is still a standalone applicable diff. OPEN.
+
+- R-0311 (High, F111 R9, pre-existing silent file corruption in the
+  applicator): `source_apply._apply_hunks` collects each addition WITH its
+  position, then throws those positions away and inserts every added line at
+  `insert_at = orig_start + offset` — the start of the hunk. Any hunk whose
+  additions are not on its first line therefore writes them to the wrong
+  place. On the repository's own test input, `original = "alpha\nbeta\ngamma\n"`
+  with `@@ -1,3 +1,3 @@\n alpha\n-beta\n+BETA\n gamma\n`, the function returns
+  `alpha\ngamma\nBETA\n` where the diff says `alpha\nBETA\ngamma\n`. The
+  existing guard `TestHunkValidation::test_correct_context_applies` passes only
+  because it asserts `"BETA" in result` and never checks order, which is how
+  this survived. Every `intent_kind="unified_diff"` patch in Remedy lands
+  through this function, and F111's Done criterion is literally that no repair
+  path can silently corrupt a file, so the diff channel cannot ship over it.
+  Fixed in R10 per DECISION F111 D4. OPEN.
+
+### DECISION F111 D4 (2026-08-13) — the applier order fix is in scope
+Chosen: repair `_apply_hunks` inside F111, in R10, scoped to hunk application
+order and nothing else. Alternatives considered: (a) route it to a new feature
+and ship F111's diff channel over a corrupting applier — rejected, because the
+feature's own Done criterion forbids exactly that; (b) work around it in
+`diff_repair_response` — rejected, because it would be a second applier, which
+this feature has refused twice already. The feature file's Do-not-touch names
+"applicator semantics", and an off-by-one in where a line lands is not a
+semantic of the applicator, it is a defect in it: the all-or-nothing contract,
+the fence preflight, the snapshot gate and the rollback path are untouched by
+this fix. Reverse by reverting R10's C4 commit; the tests it adds name the
+behaviour precisely enough that a reverter knows what they are giving up.
