@@ -195,6 +195,17 @@ def test_a_mismatched_pair_is_refused_by_both_renderers():
         cost_report_json_bytes(cost, shares, label="R11")
 
 
+def test_a_pair_from_two_different_ledgers_is_refused_by_both_renderers():
+    """Identical filters over two different ledgers are still two questions."""
+    cost = _cost(ledger_path="/data/a/ledger.sqlite")
+    shares = _shares(ledger_path="/data/b/ledger.sqlite")
+
+    with pytest.raises(ValueError):
+        render_cost_report_markdown(cost, shares, label="R12")
+    with pytest.raises(ValueError):
+        cost_report_json_bytes(cost, shares, label="R12")
+
+
 def test_a_missing_ledger_renders_the_absence_and_no_table():
     cost = _cost(ledger_exists=False)
     shares = _shares(ledger_exists=False)

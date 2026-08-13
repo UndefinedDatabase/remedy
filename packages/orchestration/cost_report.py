@@ -95,6 +95,15 @@ def _same_question(cost: CostReport, shares: SegmentShareReport) -> None:
     the breakdown of one period beside the total of another — silently
     answering a different question than the one asked, which ``query_cost``
     already refuses to do for its own ``by`` argument.
+
+    THE LEDGER IS PART OF THE QUESTION, not only the filters. Two reports with
+    identical filters drawn from two DIFFERENT ledgers describe two different
+    sets of calls, and rendering them together would publish one project's
+    breakdown under another's total with no filter mismatch to betray it — the
+    same defect the paragraph above refuses, wearing a better disguise. A
+    ``ledger_path`` of None on BOTH sides is the ``merge_cost_reports`` case, a
+    cross-project total that belongs to no single file, and it compares equal
+    to itself as it should.
     """
     if (cost.since, cost.job_id) != (shares.since, shares.job_id):
         raise ValueError(
@@ -102,6 +111,16 @@ def _same_question(cost: CostReport, shares: SegmentShareReport) -> None:
             f"query_cost(since={cost.since!r}, job_id={cost.job_id!r}) does not "
             f"match query_segment_shares(since={shares.since!r}, "
             f"job_id={shares.job_id!r})"
+        )
+    if (cost.ledger_path, cost.ledger_exists) != (
+        shares.ledger_path,
+        shares.ledger_exists,
+    ):
+        raise ValueError(
+            "a cost report needs one ledger, not two: query_cost read "
+            f"{cost.ledger_path!r} (exists={cost.ledger_exists}) and "
+            f"query_segment_shares read {shares.ledger_path!r} "
+            f"(exists={shares.ledger_exists})"
         )
 
 
