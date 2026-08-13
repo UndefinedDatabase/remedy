@@ -3,19 +3,24 @@
 Branch: feature/f111-diff-only-repair (unmerged, no PR by design).
 Base for this round: 06e85a11. R12 changed no production code.
 
-Deviations, declared (DECISION D15): this handoff is 89 lines. The overage is
+Deviations, declared (DECISION D15): this handoff is 97 lines. The overage is
 caused by the mandated per-commit table, the changed-files table, the six gate
 results a-f with their commands and exit codes, the item-status table and the
-NEXT SESSION block. No section was dropped.
+NEXT SESSION block. No section was dropped. Second deviation: item C4 landed in
+two commits — e90a33a3 wrote this file with a false C2 insertion count of 250,
+taken from git's rewrite-detected commit output, and C4b corrects it to the 176
+that `git show --stat` and `--numstat` both report. No path outside the ordered
+five was touched.
 
 ## Commits
 
 | Item | SHA      | Subject                                           | Ins |
 |------|----------|---------------------------------------------------|-----|
 | C1   | d92c6a0a | chore(f111): save the R12 step block verbatim     | 250 |
-| C2   | 595f3768 | chore(f111): mirror the R12 block into last block | 250 |
+| C2   | 595f3768 | chore(f111): mirror the R12 block into last block | 176 |
 | C3   | e270ef96 | chore(f111): record the R11 gate and finding R-0315 | 77 |
-| C4   | this commit | chore(f111): write the session closing handoff |  78 |
+| C4   | e90a33a3 | chore(f111): write the session closing handoff    |  78 |
+| C4b  | this commit | chore(f111): correct the C2 insertion count    |  17 |
 
 ## Changed files
 
@@ -25,7 +30,7 @@ NEXT SESSION block. No section was dropped.
 | .agent/last_block.md                | C2   |
 | .agent/live_review.md               | C3   |
 | .agent/plan.md                      | C4   |
-| .agent/handoff.md                   | C4   |
+| .agent/handoff.md                   | C4, C4b |
 
 ## Gates (command -> real exit code, counted value)
 
@@ -42,7 +47,7 @@ c. on `.agent/live_review.md`: `grep -c '^- R-0'` -> exit 0, 40;
 d. on `.agent/plan.md`: `grep -c '^## Goal'` -> exit 0, 1;
    `grep -c '^## Next Steps'` -> exit 0, 1; `grep -c 'R-0316'` -> exit 0, 1;
    `wc -l .agent/plan.md` -> 46, reported as a fact, not as a gate.
-   `wc -l < .agent/handoff.md` -> 89; `grep -c '^Fortschritt: '` -> exit 0, 1.
+   `wc -l < .agent/handoff.md` -> 97; `grep -c '^Fortschritt: '` -> exit 0, 1.
 e. `git diff --name-only 06e85a11..HEAD` -> exit 0, exactly five paths, all
    under `.agent/`: authored/f111-r12-1.md, handoff.md, last_block.md,
    live_review.md, plan.md. The applier is untouched, so both value probes
@@ -51,9 +56,11 @@ e. `git diff --name-only 06e85a11..HEAD` -> exit 0, exactly five paths, all
    `python3 -m pytest tests/orchestration/test_source_apply_transaction.py
    tests/cli/test_golden_path.py -q` -> exit 0, 63 passed.
 f. `git status --porcelain` -> exit 0, empty; `git worktree list` -> 1 entry;
-   per-commit insertions 250 / 250 / 77 / 78, each under 500;
+   per-commit insertions by `git show --stat` 250 / 176 / 77 / 78, each under
+   500 (commit-time output prints a rewrite-detected 250 for C2; the `git
+   diff --stat` reading AGENTS.md names is 176);
    `git rev-list --left-right --count origin/feature/f111-diff-only-repair...HEAD`
-   -> `0  0` after the C4 push.
+   -> `0  0` after the final push.
 
 Open findings: 33. Next free id: R-0316.
 
@@ -66,7 +73,8 @@ Fortschritt: ~62 % (T001 ✅ · T002: Record + Split ✅, Apply+Fallback offen �
 | C1   | done   |        |
 | C2   | done   |        |
 | C3   | done   |        |
-| C4   | done   |        |
+| C4   | deviated | landed in two commits: e90a33a3 wrote the handoff, C4b |
+|      |          | corrected a false C2 insertion count inside it          |
 
 ## NEXT SESSION
 
