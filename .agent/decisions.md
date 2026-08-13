@@ -4681,3 +4681,61 @@ feature does support.
 
 Reverse this decision by moving dispatch into T002 and reducing T003 to the
 CLI surface.
+
+## DECISION F045 D4 (2026-08-13) — `action.mission` is a GOAL TEMPLATE, validated like `goal_template`
+
+`LoopAction.mission` carries a mission's GOAL as operator-authored text, not a
+mission id and not a reference to an already-stored mission. A loop that named
+an id could not be versioned in the config file this feature requires: the id
+does not exist until the mission is created, and it differs per machine. The
+text therefore accepts the same `{project}` and `{date}` placeholders as
+`action.goal_template`, and `loop_spec._semantic_errors` rejects any OTHER
+placeholder at VALIDATION time, mirroring the goal_template rule directly above
+it. The feature file's A9 line — "Goal templates may reference simple variables
+(project slug, date); undefined variables fail validation, not runtime" — is
+written about goal templates; applying it to only one of the two
+operator-authored templates in the same table would be an accident, not a
+design.
+
+Alternatives considered: (a) `action.mission` names a stored mission id —
+rejected, ids are per-machine runtime values and cannot live in versioned
+config; (b) leave the mission text unvalidated — rejected, an undefined
+placeholder would then reach run time, which A9 forbids for the sibling field.
+
+Reverse this decision by deleting the `action.mission` branch in
+`_semantic_errors` and treating the field as an opaque string.
+
+## DECISION F045 D5 (2026-08-13) — a mission-action loop records `loop_ref` on the JOB, not on the Mission
+
+A loop firing produces one JOB. A `Mission` is a persistent goal whose chain
+GROWS: `mission_state.continue_mission` (`mission_state.py:893`) appends
+follow-up jobs that have nothing to do with any loop. A `loop_ref` on the
+mission record would therefore claim an entire growing chain came from one
+loop, and would stop being true the first time an operator types a follow-up.
+The job is the unit that actually came from the loop, evidence and reports are
+job-shaped, and the feature's Acceptance line asks for `loop_ref` visible in
+evidence and report. So the provenance stays on the job, under the
+`LOOP_REF_METADATA_KEY` metadata key T002 established, and the mission remains
+reachable from that same job through `metadata["mission_id"]` and through
+`mission_state.mission_for_job`. `mission_state.py` is not touched at all.
+
+Explicitly NOT the reason: schema cost. `Mission`'s own class docstring records
+the F069 precedent — `mission_plan` is "ADDITIVE and OPTIONAL", "which is why
+:data:`MISSION_SCHEMA_VERSION` does NOT move for it" — so a `loop_ref: str = ""`
+field could have been added without a bump. This paragraph exists because the
+first draft of this decision asserted the opposite and was refused at the R3
+gate (finding R-0348). The decision rests on where provenance is TRUE, not on
+what recording it elsewhere would cost.
+
+Alternatives considered: (a) add an additive optional `loop_ref` to `Mission` —
+rejected, it attributes a whole chain to one firing and edits another feature's
+module from inside this branch; (b) record nothing on the mission path —
+rejected, Acceptance requires `loop_ref` in evidence.
+
+Reverse this decision by adding `loop_ref: str = ""` to `Mission` as an
+additive optional field — no version bump, per the `mission_plan` precedent —
+and writing it in the mission path; the job-side key stays either way, because
+evidence reads the job. Do NOT reverse it by bumping
+`MISSION_SCHEMA_VERSION`: `Mission.from_json` raises `unknown mission schema
+version` for any value but the current one, so a bump invalidates every mission
+already stored.
