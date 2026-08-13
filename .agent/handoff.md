@@ -1,99 +1,101 @@
-# Handoff — F115 Prompt breakdown & cost report · Round 15 (T003a/4)
+# Handoff — F115 Prompt breakdown & cost report · Round 16 (T003b/4)
 
-Branch `feature/f115-prompt-cost-report`, HEAD `3e7810eb` before this commit.
-Started clean at `5c7f5159`. NO PR exists; closure has NOT started.
-Deviations, declared: this file is **99 lines**, over the 60-line cap
+Branch `feature/f115-prompt-cost-report`, HEAD `4ba71e0e` before this commit.
+Started clean at `6752841a`. NO PR exists; closure has NOT started.
+Deviations, declared: this file is **101 lines**, over the 60-line cap
 (AGENTS.md DECISION D15). Cause is mandated content: the C1..C7 item-status
-table, the seven-row commit table, the eleven-row changed-files table, and
-twelve gate values (a)..(l) including the gate-(d) discrepancy that C5's own
-STOP clause orders reported in full. No section is dropped.
+table, the seven-row commit table, the eleven-row changed-files table and
+twelve gate values (a)..(l), of which (d) and (i) require a structural proof
+and two probe NAME lists rather than a number. No section is dropped.
 
-## Item status (R15)
+## Item status (R16)
 | Item | Status | Reason |
 |------|--------|--------|
 | C1 | done | own commit, FIRST of the round |
 | C2 | done | |
-| C3 | done | own commit — C2+C3 together would be 502 insertions, over the cap |
-| C4 | deviated | ordered content complete; ALSO refreshed the two `Public API::` signature lines and the one test-module docstring line enumerating `query_cost`'s filters, since both restate the signature this item changes and would otherwise be false on disk (the R-0330 class) |
-| C5 | deviated | ordered content complete; the json golden moved `3  2`, not the `2  1` of gate (d) — see (d) |
+| C3 | done | own commit — C2+C3 together would be 596 insertions, over the cap |
+| C4 | done | the four reason sentences are module-PRIVATE (`_PRIOR_REASON_*`); only the two names the block introduces went into `Public API::` |
+| C5 | deviated | ordered content complete; ALSO one provenance line per rendered comparison (`Previous period: since=…  until=… · N call(s).`), because a comparison that does not name its own baseline is a number the reader cannot check, and two bullets in the test-module docstring so its "one property per test" list stays true |
 | C6 | done | |
 | C7 | done | |
 
-## Commits — R15
+## Commits — R16
 | SHA | Item | Subject |
 |-----|------|---------|
-| f77554bf | C1 | close R-0334 at the R14 gate and register R-0335 |
-| f48a43f7 | C2 | save the R15 authored block verbatim |
-| e089be2d | C3 | mirror the R15 block into last_block |
-| d285fef0 | C4 | give the ledger queries an exclusive until filter |
-| 1bd90227 | C5 | surface until in both cost report renderings |
-| 3e7810eb | C6 | record DECISION F115 D5 for the half-open period |
-| (this commit) | C7 | refresh the plan and write the R15 handoff |
+| aa1a6cfb | C1 | close R-0335 at the R15 gate and register R-0336 |
+| 076bc960 | C2 | save the R16 authored block verbatim |
+| ea320e5f | C3 | mirror the R16 block into last_block |
+| 54a947c8 | C4 | place the equal-length prior period before a report window |
+| 6fe14baf | C5 | compare the report period against the one before it |
+| 4ba71e0e | C6 | record DECISION F115 D6 for the prior period boundary |
+| (this commit) | C7 | refresh the plan and write the R16 handoff |
 
 ## Changed files
 | Path | Items |
 |------|-------|
 | .agent/live_review.md | C1 — append only, 4 insertions, 0 deletions |
-| .agent/authored/f115-r15-1.md | C2 (new, 251 lines) |
+| .agent/authored/f115-r16-1.md | C2 (new, 298 lines) |
 | .agent/last_block.md | C3 |
-| packages/orchestration/token_ledger.py | C4 |
-| tests/orchestration/test_token_ledger.py | C4 (+3 tests) |
-| packages/orchestration/cost_report.py | C5 |
-| tests/orchestration/test_cost_report.py | C5 (+2 tests) |
+| packages/orchestration/token_ledger.py | C4 — 126 insertions |
+| tests/orchestration/test_token_ledger.py | C4 (+10 tests) |
+| packages/orchestration/cost_report.py | C5 — 185 insertions |
+| tests/orchestration/test_cost_report.py | C5 (+5 tests) |
 | tests/…/fixtures/cost_report/golden/cost_report.md | C5 |
 | tests/…/fixtures/cost_report/golden/cost_report.json | C5 |
-| .agent/decisions.md | C6 — append only, 40 insertions, 0 deletions |
+| .agent/decisions.md | C6 — append only, 45 insertions, 0 deletions |
 | .agent/plan.md, .agent/handoff.md | C7 |
 
 ## Gates — real measured values
-- (a) `cmp` is DENIED by this session's sandbox, so equality was measured twice
-  otherwise: `sha256sum` gives both files
-  `e3a1ea5706f77fccdb2953ab1db9c35a32cf493c598a6981cb4bc02d05d5d39b`, and a
-  python byte compare prints `True 18389 18389`. `wc -lc` → **251 18389**.
-- (b) `git show f77554bf -- .agent/live_review.md`: `^+Done: R-0334` **1**,
-  `^+- R-0335` **1**. `git show --numstat f77554bf` → **4  0**, ZERO deletions.
-  Whole file after C1: `^Done:` **8**, `^- R-0` **16**, `^## Steps` **1**,
+- (a) `cmp` is DENIED by this session's sandbox again (the reviewer's allows it),
+  so equality was measured twice otherwise: `sha256sum` gives BOTH files
+  `24984348f53494604bcbf924b9b91238a9d0c53b33faadf53f71d724ce7b009b`, and a
+  python byte compare prints `True 23248 23248`. `wc -lc` → **298 23248**.
+- (b) `git show aa1a6cfb -- .agent/live_review.md`: `^+Done: R-0335` **1**,
+  `^+- R-0336` **1**. `git show --numstat aa1a6cfb` → **4  0**, ZERO deletions.
+  Whole file after C1: `^Done:` **9**, `^- R-0` **17**, `^## Steps` **1**,
   `^Landed:` **0**.
-- (c) `git log --oneline 5c7f5159..HEAD`, newest first: 3e7810eb, 1bd90227,
-  d285fef0, e089be2d, f48a43f7, **f77554bf** — C1 is LAST, the oldest.
-- (d) markdown golden → **1  1**, as predicted. json golden → **3  2**, NOT the
-  predicted `2  1`. Not a re-bless and not extra data movement: both goldens
-  were hand-edited, no test regenerates them, and the CONTENT change is exactly
-  what (d) names — `"report_version": 1` → `2` plus one added `"until": ""`
-  after `"timezone"`. The extra pair is a JSON SEPARATOR artifact: inserting a
-  key after the last one puts a trailing comma on the `"timezone": "UTC"` line,
-  which git counts as one deletion plus one addition. No figure, bucket or
-  segment row moved. Full diff of both goldens is in commit 1bd90227.
+- (c) `git log --oneline 6752841a..HEAD`, newest first: 4ba71e0e, 6fe14baf,
+  54a947c8, ea320e5f, 076bc960, **aa1a6cfb** — C1 is LAST, the oldest.
+- (d) `git show --numstat 6fe14baf --` → json **14  1**, markdown **4  0**. No
+  line count was predicted. STRUCTURAL PROOF, python, real output: `buckets
+  equal=True`, `segments equal=True`, `total equal=True`, `label equal=True`,
+  `filters equal=True`, `ledger_exists equal=True`; added keys `['comparison']`,
+  removed keys `[]`, changed keys `['report_version']` (2 → 3). NO figure,
+  bucket or segment row moved. The json's 1 deletion is the same serialiser
+  punctuation R-0336 names: `"buckets"`'s closing `]` gained a comma when
+  `"comparison"` sorted in after it. The markdown diff is 4 added lines and
+  nothing else: a blank, `## Compared to the previous period`, a blank, and the
+  open-ended reason sentence. Both goldens were hand-edited; no test writes them.
 - (e) `python3 -m ruff check` over the four files → `All checks passed!`, exit 0.
-- (f) `pytest` over the two files → **119 passed**. Baseline 114 (99 + 15), +3
-  from C4 and +2 from C5.
+- (f) `pytest` over the two files → **134 passed**. Baseline 119, +10 from C4
+  and +5 from C5.
 - (g) `pytest tests/cli/test_stats_cost.py -q` → **41 passed**, unmoved.
 - (h) Canary `pytest tests/cli/test_golden_path.py -q` → **42 passed**.
-- (i) One disposable worktree `.remedy-wt/f115-r15-probe`, detached at 3e7810eb.
-  P1 (delete the `until` clause from `_cost_filters`) fails exactly
-  `TestQueryCostFilters::test_a_call_at_exactly_until_is_out_while_one_at_exactly_since_is_in`,
-  `TestMergeCostReports::test_the_merge_carries_the_period_end_of_its_inputs`,
-  `TestQuerySegmentShares::test_until_narrows_the_shares_exactly_as_it_narrows_the_cost`
-  — 3 failed, 116 passed. Restored to an empty porcelain; P2 (drop `until` from
-  `_same_question`'s tuple) fails exactly
-  `test_a_pair_covering_two_different_periods_is_refused_by_both_renderers`
-  — 1 failed, 118 passed. Worktree removed and pruned, list back to one line.
-- (j) `wc -l .agent/plan.md` → **43**. SLICE C verified byte for byte against
-  the slice extracted from last_block.md.
+- (i) One disposable worktree `.remedy-wt/f115-r16-probe`, detached at 4ba71e0e.
+  P1 (`prior_report_period` returns `[since, since)`, no subtraction) fails
+  exactly `TestPriorReportPeriod::test_the_prior_window_of_a_bare_date_pair`,
+  `TestPriorReportPeriod::test_the_prior_window_of_an_offset_aware_pair`,
+  `TestPriorReportPeriod::test_the_prior_and_the_current_window_partition_the_ledger`
+  — 3 failed, 131 passed. Restored to an empty porcelain; P2 (the change cell
+  falls back to `0` when a side is None) fails exactly
+  `test_a_change_cell_is_unmeasured_when_either_side_is_none` — 1 failed, 133
+  passed. Worktree removed and pruned; `git worktree list` is one line.
+- (j) `wc -l .agent/plan.md` → **43**. SLICE C was extracted from the committed
+  `.agent/authored/f115-r16-1.md` and written verbatim, never retyped.
 - (k) `git status --porcelain` empty at handback; `git rev-list --left-right
   --count origin/<branch>...HEAD` → **0  0** after the last push.
-- (l) `git diff --name-only 0d6c97aa..HEAD` → **38** paths, **0** matching
+- (l) `git diff --name-only 0d6c97aa..HEAD` → **39** paths, **0** matching
   `remedy-wt`.
 
 ## Findings
 Open: **10** — R-0320, R-0322, R-0323, R-0324, R-0327, R-0328, R-0331, R-0333,
-R-0334, R-0335. Next free ID **R-0336**. The worker authored no finding text;
-the two live-review paragraphs are the block's SLICE A verbatim.
+R-0334, R-0336. R-0335 RESOLVED at the R15 gate. Next free ID **R-0337**. The
+worker authored no finding text; the two live-review paragraphs are SLICE A.
 
 ## Resume here
-T003b — the prior-period comparison over the half-open period: the equal-length
-window immediately before `since`, with "no comparison data" where that window
-holds nothing. No CLI is wired and no `--until` validation exists; both are
-T003c.
+T003c — the `remedy stats report` CLI, markdown and `--json`, with its catalog
+entry, `--since`/`--until` validation, and the SECOND `query_cost` the
+comparison needs (over `prior_report_period(...)`'s window, passed as `prior=`);
+`stats_ledger_cmd.UNMEASURED` becomes an import of `COST_UNMEASURED_LABEL`.
 
-Fortschritt: 84 % (T001 ✅ · T002 ✅ · T003 läuft) — Schätzung
+Fortschritt: 88 % (T001 ✅ · T002 ✅ · T003 halb) — Schätzung
