@@ -1,11 +1,12 @@
 # Plan — F045 Loop definitions
 
 Branch: feature/f045-loop-definitions, cut from main at cb3ef34f. No PR open;
-nothing merged this round. Next free finding ID: R-0356. Open findings: 4 —
-R-0350, R-0353, R-0354 and R-0355, each named explicitly rather than by
-position (R-0354's counter-measure) and each still carrying `OPEN.` with no
-`Done:` line in `.agent/live_review.md`. R-0344..R-0349, R-0351 and R-0352 are
-resolved there. The 15 carried from F115 live in git history at 57a24947.
+nothing merged this round. Next free finding ID: R-0357. Open findings: 5 —
+R-0350, R-0353, R-0354, R-0355 and R-0356 — RECOMPUTED from
+`.agent/live_review.md` this round (every `^- R-\d+ — ` paragraph minus every
+`^Done: R-\d+ — ` line) rather than carried forward, which is what R-0356 is
+about. R-0344..R-0349, R-0351 and R-0352 are resolved there; the 15 carried
+from F115 live in git history at 57a24947.
 
 ## Goal
 Recurring work gets a declarative, versionable form: a LOOP defines trigger,
@@ -16,33 +17,33 @@ standard pipeline unchanged, and an invalid spec fails validation with precise
 messages before anything runs (docs/roadmap/features/T2_F045.md).
 
 ## Current Step
-R9, a REPAIR round: the reviewer FAILED R8 on one defect, now registered as
-R-0355 and fixed. `remedy loop list` printed `loop_spec.INERT_TRIGGER_NOTICE`
-("scheduler not yet available; ran on demand") as a legend, so a row reading
-`last run: never` was followed one line later by a claim that the loop ran.
-The listing now has its own `INERT_TRIGGER_LEGEND` in
-`apps/cli/commands/loop_cmd.py`, saying only what a listing can know: the
-trigger cannot fire until the scheduler exists, so such a loop has to be run
-manually. `INERT_TRIGGER_NOTICE` is untouched and stays `remedy loop run`'s to
-display off `LoopRunOutcome.notice`. The test pins both directions — the legend
-appears, and the run notice appears NOWHERE in a listing. The rest of R8
-(wiring, catalog, validate, last-run display) was verified correct, not reopened.
+R10: the T003 CLI is COMPLETE — `loop list`, `loop validate` and now
+`loop run <name> [--yes]`. `run` resolves the project the way every other
+command group does, selects the named spec, confirms (and REFUSES to prompt
+when stdin is not a terminal, so a piped run cannot hang), materializes through
+`loop_run.run_loop` and STOPS: the job is PLANNED and the last line printed
+names `remedy job run <id>`, so the stop is visible instead of implied.
+DECISION F045 D7 records that `--yes` confirms the MATERIALIZATION
+and approves nothing else. The inert-run notice is printed off
+`outcome.notice`, never off the constant — R-0355's shape. A loop now reaches
+a planned job through an operator-visible path, so loop_ref provenance is
+exercised end to end for the first time. The feature is NOT closed.
 
 ## Next Steps
-1. R10 is `remedy loop run <name> [--yes]`, where `INERT_TRIGGER_NOTICE` is
-   displayed for real off `LoopRunOutcome.notice`, plus the end-to-end fixture
-   loop through the fake-provider pipeline.
-2. Then the integration gate.
-3. Then closure per docs/roadmap/STATUS_closure_protocol.md.
+1. R11 applies the on-disk counter-measures for R-0353 and R-0356 to
+   `docs/agents/planner_reviewer_prompt.md` §3 and writes the session-closing
+   handoff.
+2. AFTER this session: the end-to-end fixture loop through the fake-provider
+   pipeline, then the integration gate, then closure per
+   docs/roadmap/STATUS_closure_protocol.md.
 
 ## Risks
 - Loops are parsed from a config file that does not exist in this repo (no
-  ./remedy.toml). Every test builds its own tmp config path; nothing may
-  depend on a repo-level config file appearing.
+  ./remedy.toml). Every test builds its own tmp config; nothing may depend on
+  a repo-level config file appearing.
 - Schedule and event triggers are parsed and validated but INERT until the
-  scheduler feature. Running one must say so honestly, never silently behave
-  like a manual trigger.
-- The CLI's read-only half is landed but `loop run` is not, so no
-  operator-visible path yet exercises the loop_ref provenance end to end.
+  scheduler feature. `loop run` says so off `LoopRunOutcome.notice`.
+- `loop run` writes to the REAL job store by design (it passes no `root`), so
+  every test isolates through `REMEDY_DATA_DIR`; the real-store gate proves it.
 
 Fortschritt: ~60 % (T001 ✅ · T002 ✅ · T003 läuft) — Schätzung
