@@ -4761,3 +4761,40 @@ them slower and none of them stricter.
 Reverse this decision by changing `save`'s annotation from
 `Callable[[Job], None]` to one that also takes the root, and updating every
 caller in `tests/orchestration/test_loop_run.py`.
+
+## DECISION F045 D7 (2026-08-14) — `remedy loop run --yes` confirms MATERIALIZATION, never execution
+
+WHAT: `remedy loop run <name>` materializes the named loop through
+`loop_run.run_loop` and stops. The job it produces is PLANNED. `--yes` skips
+the interactive confirmation and NOTHING else: it does not approve execution,
+it does not change the job's state, and it does not run a task.
+
+WHY this reading and not the other. The feature file lists the surface as
+`run <name> [--yes]` (`docs/roadmap/features/T2_F045.md`, the CLI bullet) and
+never says what `--yes` approves, so the flag's meaning is decided here. The
+module the command calls has already decided it. From
+`packages/orchestration/loop_run.py`'s module docstring, read at the
+definition: "APPROVAL SEMANTICS, the load-bearing part of T002: the job stops
+at PLANNED. Nothing here executes a task, approves a plan, or implies
+``--yes``. ``LoopSpec.unattended`` is RECORDED in metadata so it is auditable,
+and it changes NOTHING about the job's state — a loop reaches the operator's
+approval gate exactly like a typed goal." A `--yes` that approved EXECUTION
+would contradict that sentence from the caller's side while the callee kept
+honouring it. Of the two readings, "confirm the materialization" is the one
+the repository's own rules already select, and it is the smaller change: it
+adds a prompt, not an execution path. (R-0348's counter-measure: a decision
+that states what another module requires quotes the sentence that establishes
+it instead of paraphrasing it.)
+
+CONSEQUENCE for the operator: after `loop run` the job exists, is planned, and
+is theirs to start. Nothing was executed and no provider was called. The
+command says so itself — its last line names the command that would start the
+job, with that job's id in it, so the stop-at-PLANNED contract is visible
+rather than implied.
+
+HOW TO REVERSE: if `--yes` should ever mean "and run it", it must go through
+the same approval path a typed goal uses, and it must REFUSE for a loop whose
+spec is not `unattended`. Changing this command alone would let a config file
+start execution — a `[[loop]]` table written once could then run work without
+ever reaching the operator's approval gate — which is exactly what the current
+semantics exist to prevent.
