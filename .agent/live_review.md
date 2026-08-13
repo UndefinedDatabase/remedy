@@ -1318,4 +1318,70 @@ defect. (4) The 100-line handoff carries its DECISION D15 stated-cause line
 naming the seven-commit table and the a-l verification block, with no section
 dropped.
 
-Landed: R-0319 — the R19 gate entry's transport sentence now reads in the past tense and says why `last_block.md` has moved on, in this round's C3 commit `chore(f111): record the R20 gate and resolve R-0318` (SHA unknowable before the commit that carries this line).
+Done: R-0319 — the `### R19 — PASS` transport sentence now reads "WERE byte-identical at the R19 gate" and says why `last_block.md` has moved on, so a later reader cannot mistake a dated record for a live claim about a file every round rewrites. Verified at the R21 gate by the reviewer's own scoped greps over that entry alone: `are byte-identical` 0 times inside it, `WERE byte-identical` once, and the sha256, byte count and line count the sentence carries all unchanged. The scope is deliberate: fifteen EARLIER gate entries carry the same present-tense phrasing and are left exactly as they are, because each sits under its own dated heading and rewriting the archive of record to correct a tense would be churn against the file this repository trusts most. RESOLVED.
+
+### R21 — PASS (2026-08-13) — INTEGRATION GATE
+
+Reviewed by the main session over 1e90e89f..35329dec: seven commits, sixteen
+paths, not one of them source, test or doc. Transport:
+`.agent/authored/f111-r21-1.md` and `.agent/last_block.md` WERE byte-identical
+at this gate under `cmp`, 16911 bytes, 273 lines, sha256
+42ba3e6e0480b28c64959023ff1fd9e6397661fec293f5c992ff8268382e041b. Markers at
+gate time: twelve resolution paragraphs, one unreviewed-fix marker, 44
+registered findings, one R20 gate heading, and `.agent/plan.md` at 44 lines.
+
+THE GATE. The suite ran twice for the gate and a third time for the reviewer.
+  BRANCH  (worker, at 863b3d3e)   5 failed, 16634 passed, 19 skipped in 134.16s
+  BASE    (worker, at 4e0b762e)   5 failed, 16537 passed, 19 skipped in 153.37s
+  BRANCH  (reviewer, at 35329dec) 5 failed, 16634 passed, 19 skipped in 180.78s
+`comm -13` branch-only failures: ZERO. `comm -23` base-only failures: ZERO. The
+same five ids fail in both trees — every `[reviewer]` parametrization in
+`tests/orchestration/test_role_conventions.py`, each raising
+`PromptSegmentError: prompt segment 'reviewer_conventions' is over its token
+cap: 954 tokens estimated, cap 800` before any assertion in the test runs. That
+is R-0286 unchanged; it fails at the merge base, where no F111 commit exists,
+and F111 correctly does not repair it, because AGENTS.md bars mixing an
+unrelated fix into a feature branch. No branch-only id existed, so no serial
+re-run was needed — and the worker recorded that step as not-needed rather than
+omitting it, which is the difference between a gate and a summary.
+
+The reviewer's third run has a specific job. The worker's branch run was taken
+at 863b3d3e, and two later commits rewrote `.agent/plan.md` and
+`.agent/handoff.md` — files the `.agent` contract tests actually read — so that
+run did not cover the head being closed. The reviewer re-ran the whole suite at
+35329dec and measured the same 5 failed, 16634 passed, 19 skipped and the same
+five ids. The gap is closed by measurement, not by argument.
+
+COLLECTED-TEST DELTA. Branch collects 16658, base 16561: a delta of 97 with an
+empty base-only side, so pure addition — no id renamed, moved or dropped. All 97
+branch-only ids live in the six F111 test files (32 + 30 + 11 + 9 + 8 + 7 = 97),
+the inverse grep against the permitted patterns returns zero, and both
+`--collect-only` totals equal their own run's passed+skipped+failed arithmetic,
+so this is a real test delta and not a selection difference.
+
+UI PARITY. All four aggregate content hashes of `apps/ui/dist` are the same
+value fb68a7293502c79b8ece61d154f5752100a16da1a08a481a7a4c1d79a5a503c0 — base
+before and after, primary before and after — with `cp -a` restoration, zero
+symlinks and dist newer than src. Nothing wrote through into the primary
+checkout during the base run. Wall clock 135 s and 154 s, both inside the
+five-minute budget, so no perf pass is indicated. Cleanup is proven rather than
+asserted: one worktree, no `tmp/*` branch, `.remedy-wt/base-gate` absent, and a
+clean tree.
+
+Four deviations were declared and all four are upheld. (1) Gate (c) was
+unmeetable as the reviewer wrote it: `grep -c 'are byte-identical'` over the
+WHOLE file counts 16, because fifteen earlier gate entries carry the phrase and
+the R-0319 bullet quotes it deliberately. That is the DECISION F105 D8 item 6
+class — a count scoped to a file when it should have been scoped to the change —
+and the error is the reviewer's, not the worker's, who applied the ordered bytes,
+met the second clause, and reported the true number instead of a convenient one.
+No finding is registered: the countermeasure already exists on disk as the §3
+pre-emission checklist and was simply not run, and re-registering a written rule
+teaches nothing. The closure block replaces it with a gate scoped to the R19
+entry, which is what it should have said. (2) The `Landed: R-0319` line could
+not name its own SHA, because the fix and the line ship in one commit; naming
+the commit by subject was the only honest form available. (3) C5 landed in two
+commits: the first carried gate (m) as a forward reference, the second replaced
+it with measured values — a correction made visible rather than quietly. (4) The
+77-line handoff carries its DECISION D15 stated-cause line with no section
+dropped.
