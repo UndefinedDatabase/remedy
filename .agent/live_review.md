@@ -955,3 +955,85 @@ doubled backslash, where a comment needs one — `source_apply.py` writes it
 correctly. The worker reported it and declined to add an unordered seventh
 commit that would have broken the mandated C1-C6 item-status shape; that
 judgement was right, and R15 carries the fix as an ordered item.
+
+Done: R-0316 — the diff-repair seam no longer reports a clean tree it cannot
+guarantee. `apply_diff_repair` reads the applicator's own error strings for
+`rollback_incomplete`, carries the flag on `DiffRepairApplyResult`, and passes
+`apply_result.files_modified` through instead of a hardcoded 0 when the restore
+did not finish. Verified at the R16 gate by mutation, inside a disposable
+worktree that was removed before the verdict: reverting that one expression to
+`files_modified=0` fails exactly
+`test_incomplete_rollback_reports_the_real_count_not_a_clean_tree` with
+`assert 0 == 1`, so the test pins the behaviour rather than describing it. The
+complete-rollback direction is pinned in the same round by the two assertions
+added to `test_conflicting_hunk_falls_back_and_leaves_both_files_untouched`
+(`rollback_incomplete is False`, `files_modified == 0`), so "always report a
+count" cannot satisfy the pair. Noted, not registered: the count is the
+applicator's total for the attempt, not the number of files whose restore
+actually failed, so it over-reports rather than under-reports — the safe
+direction for a seam whose whole purpose is to stop under-claiming damage.
+Resolved.
+
+Done: R-0317 — the blank-context repair no longer eats a file separator.
+`_blank_line_is_hunk_body` scans forward from the blank for the first non-blank
+entry and returns False at `---`, `+++`, `diff ` or end of input, so the
+rewrite branch now needs the lookahead as well as the budget. Verified at the
+R16 gate by value and by mutation, both re-run by the reviewer on this machine:
+`normalize_diff_blank_context` is byte-identity on the two-file over-declared
+shape, `split_diff_by_path` returns both sections, and the first section
+applies to 'import os\nvalue = 1\nmore = 3\n' returning
+'import os\nvalue = 2\nmore = 3\n' — where before the fix it returned None.
+Deleting the `_blank_line_is_hunk_body(lines, index + 1)` conjunct in a
+disposable worktree fails exactly the three tests R15 added for it and nothing
+else. R-0313 stays closed under the same probe: 'a\n\nB\n'. Resolved.
+
+### R15 — PASS (2026-08-13)
+Reviewed by the main session over 48c6340e..d457219a. Every gate was re-run by
+the reviewer on this machine; nothing was read off the handback. Transport is
+the PRIMARY cmp proof, not the digest fallback: the previous session's
+scratchpad originals survived in `.remedy-wt/f111r15/`, and
+`cmp .remedy-wt/f111r15/BLOCK .agent/authored/f111-r15-1.md`,
+`cmp .remedy-wt/f111r15/BLOCK .agent/last_block.md` and
+`cmp .remedy-wt/f111r15/PLAN .agent/plan.md` all exit 0. The three live_review
+appends each occur exactly once in the file, in the ordered sequence. Markers
+counted: nine `Done:` lines, 42 registered findings, one R14 gate heading, zero
+unreviewed `Landed:` lines. Scope: exactly the nine ordered paths. Per-commit
+insertions 341/266/81/40/49/91/92, each under 500. `git status --porcelain`
+empty, one worktree, and 0 ahead and 0 behind the remote.
+
+Tests re-run by the reviewer: 71 for the three diff-repair files (was 68), 55
+for the applier tier — unmoved, as the applier was not touched — and 42 for the
+golden-path canary. Both value probes reproduce exactly: the normaliser is
+byte-identity on the two-file over-declared shape and its first section applies
+to 'import os\nvalue = 2\nmore = 3\n', and R-0313 still yields 'a\n\nB\n'.
+Mutation red-proofs ran inside a disposable git worktree, which was removed
+before this verdict: deleting the `_blank_line_is_hunk_body` conjunct fails
+exactly the three R-0317 tests, and reverting `files_modified` to a hardcoded 0
+fails exactly the one R-0316 test. Both fixes are pinned, not merely present.
+
+Both of the round's declared notes are upheld. The "Nine proofs" docstring line
+was a sentence this round's own edits falsified, and correcting it inside a
+file the block already ordered is right. The block did say "EXACTLY these eight
+paths" over an enumeration of nine; the enumeration was operative and the
+worker read it that way. That is a defect in the R15 block, which the reviewer
+wrote, and it is noted here rather than registered because the round lost
+nothing to it.
+
+Also noted, not registered: R15 fixed R-0316 and R-0317 without the unreviewed-
+fix marker §4.4 describes, because the R15 block itself gated that marker to
+zero. The property §4.4 protects is that an unreviewed fix must never read as
+resolved; leaving both entries at OPEN under-claims rather than over-claims, so
+the property held, and the information the marker carries was in the handoff.
+The rule stands unchanged for the next round that lands a fix ahead of its
+verdict.
+
+DECISION F111 D7 (2026-08-13, reviewer, authored for R16) — the repair-mode
+knobs are keyword arguments on `run_builder_bridge_loop`, not a new config
+module. The feature file asks for "Config: repair.diff_mode (default on),
+context margin lines". This repository has no `packages/config`, and the loop
+already takes its bounds as keyword arguments (`max_cycles`, `autonomy_level`),
+so `diff_mode: bool = True` and `diff_margin_lines: int = 3` join them there.
+Alternative considered and rejected for v1: a settings record read from disk,
+which would add a new contract, a new file format and new tests to a slice
+whose whole job is wiring. Reverse this decision by moving the two arguments
+into a settings record and deleting this paragraph.
