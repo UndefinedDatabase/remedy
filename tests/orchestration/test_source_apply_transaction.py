@@ -139,7 +139,53 @@ class TestHunkValidation:
         diff = "@@ -1,3 +1,3 @@\n alpha\n-beta\n+BETA\n gamma\n"
         result = _apply_hunks(original, diff)
         assert result is not None
-        assert "BETA" in result
+        # Full string, not a substring: a substring check cannot see the added
+        # line landing in the wrong place (finding R-0311).
+        assert result == "alpha\nBETA\ngamma\n"
+
+    def test_addition_in_middle_of_hunk_lands_between_neighbours(self):
+        """An added line lands at its own position, not at the hunk start."""
+        original = "a\nb\nc\nd\n"
+        diff = "@@ -1,3 +1,4 @@\n a\n b\n+NEW\n c\n"
+        result = _apply_hunks(original, diff)
+        assert result == "a\nb\nNEW\nc\nd\n"
+
+    def test_addition_at_end_of_hunk_lands_last(self):
+        """An added line at the end of a hunk lands last, not first."""
+        original = "a\nb\nc\n"
+        diff = "@@ -1,2 +1,3 @@\n a\n b\n+NEW\n"
+        result = _apply_hunks(original, diff)
+        assert result == "a\nb\nNEW\nc\n"
+
+    def test_two_hunks_both_land_correctly(self):
+        """The running offset stays right after a splice that changes length."""
+        original = "a\nb\nc\nd\ne\nf\n"
+        diff = (
+            "@@ -1,2 +1,3 @@\n a\n+X\n b\n"
+            "@@ -5,2 +6,3 @@\n e\n+Y\n f\n"
+        )
+        result = _apply_hunks(original, diff)
+        assert result == "a\nX\nb\nc\nd\ne\nY\nf\n"
+
+    def test_pure_deletion_hunk_removes_only_its_line(self):
+        original = "a\nb\nc\n"
+        diff = "@@ -2,1 +2,0 @@\n-b\n"
+        result = _apply_hunks(original, diff)
+        assert result == "a\nc\n"
+
+    def test_no_newline_marker_does_not_swallow_following_line(self):
+        """`\\ No newline at end of file` consumes no original line."""
+        original = "a\nb\nc\n"
+        diff = (
+            "@@ -1,3 +1,3 @@\n"
+            " a\n"
+            "-b\n"
+            "+B\n"
+            "\\ No newline at end of file\n"
+            " c\n"
+        )
+        result = _apply_hunks(original, diff)
+        assert result == "a\nB\nc\n"
 
     def test_wrong_context_line_rejects(self):
         original = "alpha\nbeta\ngamma\n"
