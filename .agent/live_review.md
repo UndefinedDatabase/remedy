@@ -261,3 +261,31 @@ Done: R-0330 — RESOLVED at the R11 gate. Verified against the disk and the beh
   caller is written rather than after. Reviewer-authoring defect: the guard was
   authored in the R11 block, so this is the R11 slice's own gap, found at its
   own gate. Fixed in R12, which opens that module for the goldens anyway. OPEN.
+
+Done: R-0332 — RESOLVED at the R12 gate. Verified against the code and a live probe, not the report: `_same_question` now compares `(ledger_path, ledger_exists)` as well as `(since, job_id)`, and the reviewer re-ran the probe class itself — deleting the whole ledger guard in a disposable worktree fails exactly `test_a_pair_from_two_different_ledgers_is_refused_by_both_renderers` and nothing else, so the test catches the regression rather than passing alongside it. The docstring now states WHY the None/None case is not a hole: `merge_cost_reports` deliberately clears `ledger_path` for a cross-project total, so two merged reports compare equal to each other and to nothing else. The R12 round as a whole is PASS. The reviewer re-ran every gate itself: cmp exit 0 with sha256 a3106079f0a10af038120b60380b35c46ceac247c8e66dbb90de15fde38560ca over both copies, `wc -lc` 276 19049, the live-review counts 0/5/13/1, ruff `All checks passed!` and the import exit 0, `15 passed` and `99 passed` and canary `42 passed` (156 in one run), `wc -l .agent/plan.md` 43, an empty porcelain, 0/0 against origin, and 35 changed paths with no `.remedy-wt/**` among them. Determinism was re-established independently rather than accepted: the fifteen tests were re-run under two separate `--basetemp` roots and passed both times, so the golden bytes do not depend on where the fixture ledger was built. A THIRD probe, of the reviewer's own choosing and not ordered by the block, settled the question a golden pair actually has to answer — whether it binds the ledger or only the renderer: inserting `report.rows = []` into `query_segment_shares` turns BOTH goldens red, so the pair tests the query-to-renderer seam end to end and is not a snapshot of the formatter alone. One ordered-but-absent detail, deliberately NOT registered as a finding: the block offered a `Landed: R-0332` marker if the fix outran its review, and none was written. The marker exists so a session dying between a fix and its gate leaves an unambiguous disk state, and here the reviewer-authored R-0332 entry already said "Fixed in R12" in the same file, so the marker would have restated a fact the record already carried. The worker's one unordered edit is likewise correct and was declared: C4 made the test module's docstring claim "this module reads no ledger" false, and scoping that sentence to the property tests was better than preserving a false claim to keep a diff narrow.
+
+- R-0333 — Low — reviewer red-proof arithmetic, self-registered, second of the
+  over-prediction sibling class after R-0328. R12's gate (j) ordered the
+  `_share_percent` mutation with the words "Both golden byte-comparisons MUST
+  fail." Only the markdown one can. `cost_report_json` renders no percentage at
+  all — the share cell is a markdown-only presentation computed over raw ints,
+  and the json carries `tokens_estimated` unformatted — so `_share_percent` is
+  unreachable from the json path and its golden cannot move when the format
+  string does. Measured by the reviewer at the R12 gate: `grep -c '%'` over
+  `tests/orchestration/fixtures/cost_report/golden/cost_report.json` prints 0,
+  and the re-run mutation gives `2 failed, 13 passed` —
+  `test_the_share_column_uses_the_attributed_total_as_its_denominator` and
+  `test_the_golden_markdown_matches_the_fixture_ledger`, not the json golden.
+  The worker measured both, reported the real numbers, declared the deviation
+  and adjusted nothing to reach the ordered count — the correct behaviour, and
+  the round paid one declared deviation for a reviewer's arithmetic again.
+  Checklist item 5 governs a red-proof's REACHABILITY and item 8 the VALUE a
+  gate asserts; this class is the blast RADIUS, and the standing counter-measure
+  is the one item 5 already names — order the PROBE, not the colour, whenever
+  the mutated branch's reach is not obvious. Here it was not obvious for a
+  reason worth recording: the two goldens are rendered from ONE pair of reports
+  by two functions that do not share a formatting path, so "the golden pair"
+  reads as one artifact and behaves as two. Seventh instance of the
+  reviewer-arithmetic family overall, after R-0282, R-0321, R-0323, R-0324,
+  R-0327, R-0328 and R-0331. No on-disk fix: the block is committed verbatim by
+  design and R12's verdict stands as PASS. OPEN.
