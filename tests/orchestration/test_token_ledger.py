@@ -1423,3 +1423,110 @@ class TestTheMirrorStaysInertWithoutAProject:
             repo_path = str(tmp_path / "gone")
 
         assert _resolve_job_ledger_project_id(_Job()) is None
+
+
+class TestCallSegmentsSchema:
+    """F115 D4 — the per-call segment manifest lands in its own table.
+
+    A ``calls`` row is one finalized task run while a manifest belongs to one
+    provider call, so the manifest gets ``call_segments`` beside the ledger row
+    rather than a column on it. This round adds the SCHEMA ONLY: nothing writes
+    to the table yet, so what is provable here is its shape, its arrival on a
+    fresh ledger, its arrival on an already-migrated one, and the structural
+    backfill tolerance the empty table gives every pre-F115 row.
+    """
+
+    def test_a_fresh_ledger_carries_the_call_segments_table(self, ledger_path):
+        conn = open_ledger(ledger_path)
+        try:
+            table = conn.execute(
+                "SELECT name FROM sqlite_master "
+                "WHERE type='table' AND name='call_segments'"
+            ).fetchone()
+            assert table is not None
+            stored = conn.execute(
+                "SELECT value FROM meta WHERE key = ?", (SCHEMA_VERSION_KEY,)
+            ).fetchone()
+            assert stored[0] == "2"
+        finally:
+            conn.close()
+
+    def test_a_version_one_ledger_gains_the_table_on_reopen(self, ledger_path):
+        """Migration step 2 must reach a ledger that already stopped at step 1.
+
+        This is the first time the numbered-step mechanism runs past step 1, so
+        the upgrade path is proven here rather than assumed from its comment.
+        """
+        conn = open_ledger(ledger_path)
+        try:
+            conn.execute("DROP TABLE call_segments")
+            conn.execute(
+                "INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)",
+                (SCHEMA_VERSION_KEY, "1"),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
+        downgraded = sqlite3.connect(str(ledger_path))
+        try:
+            assert downgraded.execute(
+                "SELECT name FROM sqlite_master "
+                "WHERE type='table' AND name='call_segments'"
+            ).fetchone() is None
+        finally:
+            downgraded.close()
+
+        upgraded = open_ledger(ledger_path)
+        try:
+            assert upgraded.execute(
+                "SELECT name FROM sqlite_master "
+                "WHERE type='table' AND name='call_segments'"
+            ).fetchone() is not None
+            stored = upgraded.execute(
+                "SELECT value FROM meta WHERE key = ?", (SCHEMA_VERSION_KEY,)
+            ).fetchone()
+            assert stored[0] == "2"
+        finally:
+            upgraded.close()
+
+    def test_call_segments_columns_mirror_the_manifest(self, ledger_path):
+        """The value columns are ``manifest_as_dicts()``'s keys, in its order."""
+        conn = open_ledger(ledger_path)
+        try:
+            columns = [
+                row[1]
+                for row in conn.execute("PRAGMA table_info(call_segments)")
+            ]
+        finally:
+            conn.close()
+
+        assert columns == [
+            "call_id",
+            "trace_seq",
+            "segment_name",
+            "segment_rank",
+            "segment_sha256",
+            "chars",
+            "tokens_estimated",
+        ]
+
+    def test_a_pre_f115_call_owns_no_segment_rows(self, ledger_path):
+        """No rows is what the report renders as unattributed, never a guess."""
+        record = CallRecord(call_id="call-unattributed", ts_utc="2026-08-08T12:00:00Z")
+        assert record_call(record, path=ledger_path) is True
+
+        conn = open_ledger(ledger_path)
+        try:
+            segments = conn.execute(
+                "SELECT COUNT(*) FROM call_segments WHERE call_id = ?",
+                (record.call_id,),
+            ).fetchone()[0]
+            calls = conn.execute(
+                "SELECT COUNT(*) FROM calls WHERE call_id = ?", (record.call_id,)
+            ).fetchone()[0]
+        finally:
+            conn.close()
+
+        assert segments == 0
+        assert calls == 1
