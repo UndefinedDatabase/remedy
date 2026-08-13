@@ -1,192 +1,232 @@
-BEGIN BLOCK f045-r9
-── STEP T003d/5 — F045 Loop definitions · ROUND 9 (repair) ───────────────
+BEGIN BLOCK f045-r10
+── STEP T003e/6 — F045 Loop definitions · ROUND 10 ───────────────────────
 
-Goal:        Repair the R8 defect: `remedy loop list` prints the RUN notice as
-             a legend, telling the operator a loop "ran on demand" on the same
-             screen where that loop's row says `last run: never`. Register the
-             finding FIRST, in its own commit, then fix the listing and the
-             test that pinned the wrong text.
-Bundle:      ITEM 1 C0a+C0b save block · ITEM 2 C1 register R-0355 · ITEM 3 C2
-             the listing legend · ITEM 4 C3 the test · ITEM 5 C4 plan +
-             handoff · ITEM 6 gates.
-Change:      .agent/authored/f045-r9.md · .agent/last_block.md ·
-             .agent/live_review.md · apps/cli/commands/loop_cmd.py ·
+Goal:        Land `remedy loop run <name>`, the write half of the T003 CLI and
+             the first operator-visible path that exercises loop_ref
+             provenance end to end. It MATERIALIZES and stops; it never
+             executes. Register R-0356 first.
+Bundle:      ITEM 1 C0a+C0b save block · ITEM 2 C1 register R-0356 · ITEM 3 C2
+             DECISION F045 D7 · ITEM 4 C3 the command and its catalog entry ·
+             ITEM 5 C4 tests · ITEM 6 C5 plan + handoff · ITEM 7 gates.
+Change:      .agent/authored/f045-r10.md · .agent/last_block.md ·
+             .agent/live_review.md · .agent/decisions.md ·
+             apps/cli/commands/loop_cmd.py · apps/cli/command_catalog.py ·
              tests/cli/test_loop_cmd.py · .agent/plan.md · .agent/handoff.md.
-             Seven files, nothing else. Do NOT touch
-             `packages/orchestration/loop_spec.py`: `INERT_TRIGGER_NOTICE` is
-             CORRECT where it is and is still what `remedy loop run` will
-             display in R10 — the defect is the LISTING borrowing it, not the
-             constant. Do NOT write `remedy loop run` this round. Do NOT
-             touch `apps/cli/command_catalog.py` or
-             `apps/cli/commands/__init__.py`: the wiring was verified correct.
-Constraints: Never work on main; never force-push; no PR; merge nothing. The
+             Nine files, nothing else. Do NOT touch
+             `packages/orchestration/loop_run.py` or `loop_spec.py`: `run_loop`
+             already does everything this command needs and is reviewed and
+             passed. Do NOT touch `apps/cli/commands/__init__.py` — `loop_cmd`
+             is already registered there and the new handler joins its existing
+             `COMMAND_HANDLERS` dict.
+Constraints: Never work on main; never force-push; no PR; merge nothing. Any
              red-proof runs ONLY in a disposable worktree under `.remedy-wt/`
-             (gitignored at .gitignore:235). The commit order is fixed: the
-             finding is registered BEFORE the repair lands, so the record
-             shows the defect existing rather than only its fix
-             (docs/agents/self_drive_protocol.md Phase 2 step 4).
+             (gitignored at .gitignore:235). No test may read or write the
+             operator's real job store; gate (m) checks it did not.
 Insertion budget, per commit: C0a and C0b ≈ block size (single `.agent/**`
              state-file rewrites, cap-exempt by DECISION F104 D1) · C1 ≤ 4 ·
-             C2 ≤ 30 · C3 ≤ 20 · C4 ≤ 130.
-Done when:   every gate in ITEM 6 has been RUN and its real output recorded.
+             C2 ≤ 45 · C3 ≤ 130 · C4 ≤ 190 · C5 ≤ 130. C4 is the largest
+             because eight tests need eight configs and fixtures; it is still
+             far under the AGENTS.md 500-insertion cap.
+Done when:   every gate in ITEM 7 has been RUN and its real output recorded.
 Handback:    completion report + rewrite .agent/handoff.md
 
-Facts, measured by the reviewer at emission — check each before relying on it:
-  `INERT_TRIGGER_NOTICE = "scheduler not yet available; ran on demand"` is at
-  `packages/orchestration/loop_spec.py:68`.
-  `packages/orchestration/loop_run.py`'s module docstring says `run_loop`
-  "says so through ``loop_spec.INERT_TRIGGER_NOTICE`` rather than pretending
-  the trigger fired", and the notice travels on `LoopRunOutcome.notice`.
-  `docs/roadmap/features/T2_F045.md` Acceptance binds that sentence to
-  RUNNING: "Schedule-trigger loops run manually with the honest 'scheduler not
-  yet available; ran on demand' line."
-  The reviewer ran the wired `loop.list` handler on a config holding one
-  schedule loop and one manual loop and observed exactly this output:
-      weekly-sweep              schedule (inert)      job       last run: never
-      nightly-tidy              manual                job       last run: never
-        (inert: scheduler not yet available; ran on demand)
+TWO CHECKS BEFORE YOU WRITE CODE — report both findings in your handback:
+  CHECK 1. `apps/cli/commands/queue_cmd.py` defines a private
+  `_resolve_project_id(project_flag)` that calls
+  `project_registry.select_project(project_flag, ".")` and exits with its
+  `EXIT_NO_PROJECT = 3` on `ProjectNotFoundError`. Grep how many command
+  modules under `apps/cli/commands/` define their own `_resolve_project_id`.
+  If several already do, MIRROR that pattern in `loop_cmd.py` and do NOT
+  extract a shared helper — extracting one would be a refactor riding along
+  with a feature, which AGENTS.md forbids in the same commit, and the suite
+  was stabilized recently. If `loop_cmd.py` would be the SECOND definition
+  only, still mirror it and say so; the extraction is someone's later call,
+  not this round's.
+  CHECK 2. Find how existing CLI tests obtain a project so `select_project`
+  resolves — read `tests/cli/test_mission_cmd.py` and one other CLI test that
+  needs a project. REUSE that fixture pattern verbatim in spirit. Do NOT
+  invent a new way to register a project, and do NOT reach into the registry's
+  internals if the tests already have a supported route.
 
 ═══ ITEM 1 · C0a and C0b — save this block verbatim ═══
 C0a: write the block bytes (BEGIN..END markers included) to
-`.agent/authored/f045-r9.md`. No trailing whitespace on any line.
-Commit subject: `chore(f045): save the R9 block verbatim`
-C0b: copy that file over `.agent/last_block.md`, replacing the R8 block.
-Commit subject: `chore(f045): point last_block at the R9 block`
-Prove it: cmp .agent/authored/f045-r9.md .agent/last_block.md → exit 0
+`.agent/authored/f045-r10.md`. No trailing whitespace on any line.
+Commit subject: `chore(f045): save the R10 block verbatim`
+C0b: copy that file over `.agent/last_block.md`, replacing the R9 block.
+Commit subject: `chore(f045): point last_block at the R10 block`
+Prove it: cmp .agent/authored/f045-r10.md .agent/last_block.md → exit 0
 
-═══ ITEM 2 · C1 — register R-0355, BEFORE any repair ═══
+═══ ITEM 2 · C1 — register R-0356, before anything else ═══
 File `.agent/live_review.md`. APPEND at the END of the `## Findings` section,
-after R-0354's paragraph, one blank line between paragraphs. This is the
-reviewer's text; apply it EXACTLY, do not reword and do not renumber. If it
-contradicts the disk, STOP and report rather than correcting it yourself.
+after R-0355's paragraph, one blank line between paragraphs. Reviewer's text;
+apply it EXACTLY, do not reword, do not renumber.
 
-- R-0355 — Medium — a listing borrowed the RUN notice and so asserted a run that never happened. `remedy loop list` prints `INERT_TRIGGER_NOTICE` as a legend under the table whenever any listed loop is inert. That constant is `scheduler not yet available; ran on demand` (`packages/orchestration/loop_spec.py`), whose second clause is a claim about a RUN. The reviewer ran the wired handler on a config with one schedule loop and one manual loop and read the output: a row `weekly-sweep  schedule (inert)  job  last run: never`, followed one line later by `(inert: scheduler not yet available; ran on demand)` — a loop reported as never having run, told on the next line that it ran on demand. The feature file binds that sentence to RUNNING, not to listing ("Schedule-trigger loops run manually with the honest 'scheduler not yet available; ran on demand' line", `docs/roadmap/features/T2_F045.md`, Acceptance), and `packages/orchestration/loop_run.py`'s module docstring states that `run_loop` "says so through `loop_spec.INERT_TRIGGER_NOTICE` rather than pretending the trigger fired" — the notice rides on `LoopRunOutcome.notice`, which a listing never produces. This is the one thing the feature's design exists to prevent, inverted: the honest-notice string used to make a dishonest statement. The R8 block ordered only that an inert trigger be "marked in that row as inert" and never ordered the notice; the worker added the legend and then pinned it with `assert INERT_TRIGGER_NOTICE in out` in `tests/cli/test_loop_cmd.py`, so a test protected the wrong text — the R-0344 shape at the display layer, where the assertion agreed with the code instead of with the requirement. Fix by giving the listing its own legend saying only what a listing can know: the trigger cannot fire until the scheduler exists, so the loop must be run manually. `INERT_TRIGGER_NOTICE` stays untouched and stays `remedy loop run`'s to display. OPEN.
+- R-0356 — Low — the reviewer applied R-0354's counter-measure and still got the open-finding set wrong, twice. R-0354 ordered that a block name findings explicitly instead of by position. The R8 block did exactly that — "the open findings as exactly two, R-0350 and R-0354" — and the R9 block did it again with three, "R-0350, R-0354 and R-0355". The disk says four: re-deriving the set mechanically from `.agent/live_review.md`, every `^- R-\d+ — ` paragraph minus every `^Done: R-\d+ — ` line, yields R-0350, R-0353, R-0354 and R-0355. R-0353 has carried no `Done:` line since it was registered at R6 and its paragraph still ends `OPEN.`; it was dropped from the count at R8 and stayed dropped. Naming items explicitly removes the ambiguity R-0354 was about and does nothing about the COUNT, because both blocks carried the set forward from the previous block instead of re-deriving it from the record. The R9 worker re-derived it, wrote the accurate four into `.agent/plan.md` and declared the deviation rather than copying the block's number — the third round running in which a worker corrected the reviewer's own bookkeeping. Nothing landed wrong. Counter-measure, to be applied ON DISK rather than in reviewer habit, which is what finally closed R-0347: the pre-emission checklist in `docs/agents/planner_reviewer_prompt.md` §3 gains a step requiring the open-finding set to be RECOMPUTED from `.agent/live_review.md` at emission and never carried forward from the previous block. That edit is R11's, together with R-0353's own on-disk counter-measure. OPEN.
 
-Commit subject: `docs(f045): register R-0355, the listing that borrowed the run notice`
+Commit subject: `docs(f045): register R-0356, the open-set miscount`
 
-═══ ITEM 3 · C2 — apps/cli/commands/loop_cmd.py ═══
-Replace the legend line that prints `INERT_TRIGGER_NOTICE` with the listing's
-OWN text, defined as a module-level constant next to `INERT_MARK` so a reader
-finds it where the other display strings live. Write the words yourself. The
-constraints on it:
-- it states that such a trigger cannot fire until the scheduler exists, and
-  that the loop therefore has to be run manually;
-- it makes NO claim about whether anything ran — no past tense about a run;
-- it does not contain the string `ran on demand`.
-Remove the now-unused `INERT_TRIGGER_NOTICE` import from this module. Keep the
-per-row `(inert)` mark exactly as it is: that part was correct.
+═══ ITEM 3 · C2 — .agent/decisions.md, DECISION F045 D7 ═══
+Append after D6, same heading shape as the six F045 decisions already there:
+`## DECISION F045 D7 (2026-08-14) — `remedy loop run --yes` confirms MATERIALIZATION, never execution`
 
-Above the new constant put the one-line WHY comment this repository's
-discoverability convention asks for, recording the deliberate absence a reader
-would otherwise search for — that the listing deliberately does NOT reuse
-`loop_spec.INERT_TRIGGER_NOTICE`, because that sentence reports a RUN and a
-listing has not run anything. A reader who greps `INERT_TRIGGER_NOTICE` and
-finds it missing here must land on the reason.
+Write the body yourself, covering exactly these points:
+- WHAT: `remedy loop run <name>` materializes the loop through `run_loop` and
+  stops. The job it produces is PLANNED. `--yes` skips the interactive
+  confirmation and NOTHING else: it does not approve execution, does not
+  change the job's state, and does not run a task.
+- WHY this reading and not the other: `docs/roadmap/features/T2_F045.md` lists
+  the surface as `run <name> [--yes]` without saying what `--yes` approves,
+  while `packages/orchestration/loop_run.py`'s module docstring makes the
+  approval semantics load-bearing — the job stops at PLANNED, nothing
+  "executes a task, approves a plan, or implies ``--yes``", and
+  `LoopSpec.unattended` is RECORDED and "changes NOTHING about the job's
+  state". Quote the docstring sentence you rely on, having read it, rather
+  than paraphrasing it (this is R-0348's counter-measure: a decision that
+  states what another module requires quotes the sentence that establishes it).
+  Of the two readings, "confirm the materialization" is the one the repository's
+  own rules already select, and it is the smaller change.
+- The consequence for the operator: after `loop run`, the job is theirs to
+  start, and the command says so by naming the next command.
+- HOW TO REVERSE: if `--yes` should ever mean "and run it", it must go through
+  the same approval path a typed goal uses and must refuse for a loop whose
+  spec is not `unattended`; changing this command alone would let a config
+  file start execution, which is what the current semantics exist to prevent.
+Commit subject: `docs(f045): record DECISION F045 D7 on what loop run --yes means`
 
-Commit subject: `fix(f045): give the loop listing its own inert legend`
+═══ ITEM 4 · C3 — the command and its catalog entry ═══
+(1) `apps/cli/commands/loop_cmd.py` gains `_cmd_loop_run` and a third entry in
+    the existing `COMMAND_HANDLERS` dict, `"loop.run"`. Semantics:
+    - Resolve the project exactly as CHECK 1 concluded.
+    - Load the specs with `load_loop_specs()`; `LoopSpecError` prints
+      `Error: {exc}` on stderr and exits `EXIT_ERROR`.
+    - Select the spec whose `name` matches the argument. No match: print an
+      error naming the requested loop AND the names that do exist, on stderr,
+      and exit `EXIT_ERROR`. Nothing is created.
+    - Confirmation. When `--yes` was NOT given: if stdin is not a TTY, do NOT
+      prompt — print an error telling the operator to pass `--yes`, exit
+      `EXIT_USAGE`, and create nothing. A command that blocks on `input()`
+      under a pipe or over a non-interactive SSH session would hang a run
+      forever, and this feature exists to be driven that way. If stdin IS a
+      TTY, prompt with what will be created and let the operator decline;
+      declining creates nothing and exits 0.
+    - Materialize with `run_loop(spec, project_id=project_id)` — no `date`, no
+      `root`, no `save`, so it uses today's date and the real store, which is
+      exactly what an operator invocation should do.
+    - Report: the job id, its state, the mission id when the outcome carries
+      one, and — when `outcome.notice` is set — that notice. Print
+      `outcome.notice` itself; do NOT import `INERT_TRIGGER_NOTICE` and print
+      the constant. The outcome is what knows whether a run was inert, and
+      finding R-0355 is exactly what happens when display code reaches for the
+      constant instead of the value it was given.
+    - Finally print the next command the operator needs, naming the job id, so
+      the stop-at-PLANNED contract is visible instead of implied.
+    - It never executes anything.
+(2) `apps/cli/command_catalog.py`: one `CommandEntry`, `loop.run`, in the
+    existing `# ── loop (F045)` section. `action_class="write_metadata"` — it
+    persists a job and does NOT execute, so `may_execute_commands` stays
+    False. Args: the loop name, a `--yes` FLAG (`is_flag=True`, it takes no
+    value), and the shared `_PROJECT_SCOPE_OPT` already defined in that file.
+    Add `loop.run` to the `related` tuples of the two existing loop entries
+    and give it theirs.
+Commit subject: `feat(f045): add the loop run command, materialize and stop`
 
-═══ ITEM 4 · C3 — tests/cli/test_loop_cmd.py ═══
-In `test_a_schedule_trigger_loop_is_listed_and_marked_inert`, replace
-`assert INERT_TRIGGER_NOTICE in out` with BOTH of these:
-- a positive assertion that the listing's own legend constant appears in the
-  output — import it from `apps.cli.commands.loop_cmd`, so the test reads the
-  expected value out of the module under test rather than restating it;
-- a NEGATIVE assertion that `INERT_TRIGGER_NOTICE` does NOT appear anywhere in
-  the listing output. This one is the actual pin: it is what goes red if
-  anybody reintroduces the run notice into a listing, and without it the
-  repair is only a rename.
-Keep `INERT_TRIGGER_NOTICE` imported for that negative assertion. Change
-nothing else in this file — the other five tests were verified correct.
+═══ ITEM 5 · C4 — tests/cli/test_loop_cmd.py ═══
+Append to the existing file, reusing its `project` fixture and its `_dispatch`
+helper. `_dispatch` currently passes an empty `argparse.Namespace`; extend it,
+or add a sibling, so a namespace with attributes can be dispatched — the
+command reads its arguments off that namespace exactly as the real CLI builds
+it. Isolation is unchanged and mandatory: chdir plus `REMEDY_DATA_DIR`, plus
+whatever CHECK 2 established for the project registry.
 
-Commit subject: `test(f045): pin that a listing never prints the run notice`
+Eight tests:
+(1) `--yes` on a manual job loop materializes: the store holds a job whose
+    `loop_ref` metadata is the loop's name, its state is PLANNED, and the
+    printed output contains that job's id. Read the job back through the
+    STORE, not out of the printed text alone.
+(2) the same run prints the next command naming that job id.
+(3) an unknown loop name exits non-zero, names the requested loop and the
+    existing one, and leaves the store empty.
+(4) no `--yes` with a non-TTY stdin exits non-zero and creates nothing.
+(5) a TTY stdin answering yes materializes — monkeypatch the TTY check and
+    `input`.
+(6) a TTY stdin declining creates nothing and does NOT raise SystemExit.
+(7) an inert (schedule-trigger) loop run with `--yes` prints the run notice —
+    assert against `loop_spec.INERT_TRIGGER_NOTICE`, which HERE is correct
+    because a run really did happen — and the job is still PLANNED, which is
+    the "a loop never implies --yes" pin for this command.
+(8) `loop.run` is in `collect_all_handlers()` and in `CATALOG`.
+Assert states through the model's own enum value rather than a hard-coded
+string. R-0344 still binds: no assertion may match a string carrying a
+filesystem path.
+Commit subject: `test(f045): pin loop run materializing and stopping`
 
-═══ ITEM 5 · C4 — .agent/plan.md and .agent/handoff.md ═══
+═══ ITEM 6 · C5 — .agent/plan.md and .agent/handoff.md ═══
 Rewrite `.agent/plan.md` (under 50 lines, keeping `## Goal`, `## Current Step`,
-`## Next Steps`, `## Risks`). Current Step becomes R9 — R8 was FAILED by the
-reviewer on one defect, R-0355 is registered and repaired, and the read-only
-CLI half now says only what a listing can know. Open findings are exactly
-three: R-0350, R-0354 and R-0355 — name all three explicitly, never by
-position (R-0354's counter-measure). Next free finding ID becomes R-0356. Next
-Steps become: R10 is `remedy loop run <name> [--yes]`, which is where
-`INERT_TRIGGER_NOTICE` is displayed for real off `LoopRunOutcome.notice`, plus
-the end-to-end fixture loop through the fake-provider pipeline; then the
-integration gate; then closure per docs/roadmap/STATUS_closure_protocol.md.
-Keep both existing risks and add a third: the CLI's read-only half is landed
-but `loop run` is not, so no operator-visible path yet exercises the
-loop_ref provenance end to end. Keep the Fortschritt line
+`## Next Steps`, `## Risks`). RECOMPUTE the open-finding set from
+`.agent/live_review.md` — every `^- R-\d+ — ` paragraph minus every
+`^Done: R-\d+ — ` line — and write what you actually measure, naming each one.
+Do not copy a count from this block; this block deliberately gives you none,
+because R-0356 is exactly the failure of carrying one forward. Current Step
+becomes R10 — the T003 CLI is complete (`list`, `validate`, `run`) and a loop
+now reaches a planned job through an operator-visible path. Next Steps: R11
+applies the on-disk counter-measures for R-0353 and R-0356 to
+`docs/agents/planner_reviewer_prompt.md` §3 and writes the session-closing
+handoff; the end-to-end fixture loop through the fake-provider pipeline, the
+integration gate and closure per docs/roadmap/STATUS_closure_protocol.md
+remain AFTER this session. Say plainly that the feature is NOT closed. Keep
+the Fortschritt line
 `Fortschritt: ~60 % (T001 ✅ · T002 ✅ · T003 läuft) — Schätzung` verbatim.
 
 Then rewrite `.agent/handoff.md` per the AGENTS.md handoff contract (≤60 lines,
 or a "Deviations, declared" line naming the real count and the mandated content
 that caused it; sections are NEVER dropped). It carries: feature + round and
-branch, and the fact that this was a REPAIR round after a FAIL verdict on R8;
-every commit SHA of this round with its changed files; the ITEM 6 gate table
-with REAL exit codes and REAL output, every test result as a COLOUR first; the
-open-findings count with R-0350, R-0354 and R-0355 named; an item-status table
-with one row per ITEM 1-6; the statement that no PR is open, nothing was
-merged, main was never touched, no force-push occurred and no worktree was left
-behind; the next expected action, naming Phase 1 rule 1 (read `.agent/STOP`
-from disk) BEFORE rule 2 (the Open PR Gate), then R10; and the Fortschritt line.
-Commit subject: `docs(f045): hand back the R9 repair of the loop listing`
+branch; both CHECK results; every commit SHA with its changed files; the ITEM 7
+gate table with REAL exit codes and REAL output, every test result as a COLOUR
+first; the recomputed open-finding count with each finding named; an
+item-status table with one row per ITEM 1-7; the statement that no PR is open,
+nothing was merged, main was never touched, no force-push occurred and no
+worktree was left behind; the next expected action, naming Phase 1 rule 1 (read
+`.agent/STOP` from disk) BEFORE rule 2 (the Open PR Gate), then R11; and the
+Fortschritt line.
+Commit subject: `docs(f045): hand back R10 with the loop run command`
 
-═══ ITEM 6 · gates ═══
-Run every command. Record the REAL exit code and REAL output. Report every
-count as OBSERVED. For any test command report the COLOUR first; the count is
-a note, never the assertion.
+═══ ITEM 7 · gates ═══
+Run every command. Record REAL exit codes and REAL output. Report every count
+as OBSERVED. For any test command report the COLOUR first.
 
-(a) cmp .agent/authored/f045-r9.md .agent/last_block.md
-(b) grep -c "^- R-0355 — Medium" .agent/live_review.md
-(c) grep -n "INERT_TRIGGER_NOTICE" apps/cli/commands/loop_cmd.py
-    → must return NOTHING except, if you wrote it that way, the WHY comment
-      naming the deliberate absence. It must NOT appear in any print or import.
-(d) the real output, which is what the finding was written from. Run the wired
-    handler on a two-loop config and PASTE the actual lines:
+(a) cmp .agent/authored/f045-r10.md .agent/last_block.md
+(b) grep -c "^- R-0356 — Low" .agent/live_review.md
+(c) the recomputed open set, which is a MEASUREMENT, not a restatement:
     python3 -c "
-    import os, sys, pathlib, shutil, argparse
-    s = pathlib.Path('.remedy-wt/r9_probe')
-    shutil.rmtree(s, ignore_errors=True); s.mkdir(parents=True)
-    (s/'remedy.toml').write_text('''
-    [[loop]]
-    name = \"weekly-sweep\"
-    [loop.trigger]
-    kind = \"schedule\"
-    schedule = \"0 3 * * 1\"
-    [loop.action]
-    kind = \"job\"
-    goal_template = \"sweep {project}\"
-
-    [[loop]]
-    name = \"nightly-tidy\"
-    [loop.action]
-    kind = \"job\"
-    goal_template = \"tidy {project} on {date}\"
-    ''')
-    repo = os.getcwd(); os.environ['REMEDY_DATA_DIR'] = str((s/'data').resolve())
-    os.chdir(s); sys.path.insert(0, repo)
-    from apps.cli.commands import collect_all_handlers
-    collect_all_handlers()['loop.list'](argparse.Namespace())"
-    Mind the TOML indentation when you write this — dedent the heredoc content
-    so the file is valid TOML. Delete `.remedy-wt/r9_probe` afterwards.
-    → the pasted output must contain no past-tense claim about a run.
+    import re, pathlib
+    t = pathlib.Path('.agent/live_review.md').read_text()
+    o = re.findall(r'^- (R-\d+) — ', t, re.M); d = re.findall(r'^Done: (R-\d+) — ', t, re.M)
+    print('OPEN', [x for x in o if x not in d])"
+(d) grep -n "INERT_TRIGGER_NOTICE" apps/cli/commands/loop_cmd.py
+    → must still show only the WHY comment from R9. The run path prints
+      `outcome.notice`, so this module still must not import the constant.
 (e) python3 -m pytest tests/cli/test_loop_cmd.py -q
 (f) python3 -m pytest tests/cli/test_command_catalog.py tests/orchestration/test_loop_run.py tests/orchestration/test_loop_spec.py -q
 (g) python3 -m pytest tests/cli/test_golden_path.py -q            (canary)
-(h) python3 -m ruff check apps/cli/commands/loop_cmd.py tests/cli/test_loop_cmd.py
-(i) RED-PROOF, ONLY in a disposable worktree (guardrail G5). After C2 and C3
-    are committed:
-      git worktree add .remedy-wt/f045_r9 0d9c67f7
-      python3 -c "import shutil; shutil.copyfile('tests/cli/test_loop_cmd.py', '.remedy-wt/f045_r9/tests/cli/test_loop_cmd.py')"
-      cd .remedy-wt/f045_r9
+(h) python3 -m ruff check apps/cli/commands/loop_cmd.py apps/cli/command_catalog.py tests/cli/test_loop_cmd.py
+(i) reachability through the REAL table:
+    python3 -c "from apps.cli.commands import collect_all_handlers as c; t=c(); print({k: k in t for k in ('loop.list','loop.validate','loop.run')})"
+    → all three True.
+(j) RED-PROOF, ONLY in a disposable worktree (G5). After C3 and C4 are
+    committed:
+      git worktree add .remedy-wt/f045_r10 3be5ab8b
+      python3 -c "import shutil; shutil.copyfile('tests/cli/test_loop_cmd.py', '.remedy-wt/f045_r10/tests/cli/test_loop_cmd.py')"
+      cd .remedy-wt/f045_r10
       python3 -c "import apps.cli.commands.loop_cmd as m; print(m.__file__)"
-        → MUST print a path UNDER .remedy-wt/f045_r9, else the probe would be
-          importing the REPAIRED module and would prove nothing (R-0337): STOP.
-      python3 -c "import os,sys; os.environ['REMEDY_DATA_DIR']=os.getcwd()+'/.scratch_data'; sys.path.insert(0,os.getcwd()); import pytest; print('RC', pytest.main(['tests/cli/test_loop_cmd.py','-k','inert','-q','--no-header','-p','no:cacheprovider']))"
-        → the inert test must FAIL there, because the pre-repair module prints
-          the run notice and has no legend constant. Report the COLOUR.
-      leave the worktree, then: git worktree remove .remedy-wt/f045_r9 --force
-(j) git diff --name-only 0d9c67f7..HEAD  → exactly the seven Change files
-(k) git status --porcelain               → EMPTY
-(l) git worktree list                    → ONE line, after the removal
+        → MUST print a path UNDER .remedy-wt/f045_r10, else the probe imports
+          the finished module and proves nothing (R-0337): STOP.
+      python3 -c "import os,sys; os.environ['REMEDY_DATA_DIR']=os.getcwd()+'/.scratch_data'; sys.path.insert(0,os.getcwd()); import pytest; print('RC', pytest.main(['tests/cli/test_loop_cmd.py','-k','run','-q','--no-header','-p','no:cacheprovider']))"
+        → the new run tests must FAIL there. Report the COLOUR. If any of them
+          PASSES against a tree with no `loop run`, that test does not pin what
+          it claims: STOP and report.
+      leave the worktree, then: git worktree remove .remedy-wt/f045_r10 --force
+(k) git diff --name-only 3be5ab8b..HEAD  → exactly the nine Change files
+(l) git status --porcelain               → EMPTY
 (m) real-store safety, AFTER the test gates:
     python3 -c "
     import json
@@ -198,11 +238,13 @@ a note, never the assertion.
             except Exception: continue
             if 'loop_ref' in (j.get('metadata') or {}): n += 1
     print('REAL_STORE_LOOP_REF_JOBS', n)"
-    → must print 0.
+    → must print 0. A non-zero here means a test ran the command against the
+      operator's real store: report it as a blocker, do not delete the jobs.
+(n) git worktree list                    → ONE line, after the removal
 
 Push after EVERY commit: `git push origin feature/f045-loop-definitions`.
 Do NOT open a PR and do NOT merge anything.
 
 If any gate is RED, or anything here contradicts AGENTS.md or the disk: STOP,
 commit nothing further, and report the exact blocker with its raw output.
-END BLOCK f045-r9
+END BLOCK f045-r10
