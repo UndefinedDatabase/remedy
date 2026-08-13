@@ -223,6 +223,23 @@ end the response with:
      guard that file: four different places, four checks (finding R-0258).
      Such guards are worth keeping — they pin CLI wiring no behavioural test
      reaches — so scope them to their call site rather than deleting them.
+  8. **Gates whose expected VALUE the code contradicts.** A done-when may not
+     assert a number, an equality or an identity that the source makes
+     impossible. Before ordering one, read the code that PRODUCES the value and
+     compute the expected result from it — do not derive it from what the field
+     is named or from what it obviously ought to be. The F115 R2 instance: a
+     gate demanded `segment_manifest_chars == sum(row["chars"])`, but
+     `build_trace_entry` sets that field to `len(composed_prompt.text)`
+     (`prompt_trace.py:157-158`) and `compose_prompt_segments` joins segments
+     with a two-character delimiter, so the composed text is exactly
+     `2*(N-1)` characters longer than the row sum and the equality is
+     unreachable for every multi-segment prompt. Items 1-4 read the block,
+     item 5 the code the block points at, item 6 the file the block writes
+     into, item 7 the tests that already guard that file — and this one the
+     code that computes the number the gate asserts. A worker who meets such a
+     gate has either fabricated the number or changed the code to suit it;
+     both are worse outcomes than the declared deviation an honest worker is
+     forced into, and the round pays for the reviewer's arithmetic either way.
   Why this is on disk and not a habit: item 2 has recurred six times across
   F104 and F105, and R20 hit four of them in one block. A check that lives
   only in reviewer session memory is the A1 trap §0 names, and this list is the
