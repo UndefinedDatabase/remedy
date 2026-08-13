@@ -61,4 +61,4 @@ integration gate → closure.
   belongs to a round that legitimately opens the conventions document or the
   cap. OPEN.
 
-Landed: R-0321 — the inventory's "eight" is now "seven" in the LOAD-BEARING GAP sentence of `.agent/f115_inventory.md`; the enumeration below it was already correct at four wired plus three unwired. Fixed in the C3 commit of R3.
+Done: R-0321 — RESOLVED at the R4 gate. Verified against the disk, not the report: `grep -c 'four of the eight' .agent/f115_inventory.md` prints 0 and `grep -c 'four of the seven'` prints 1, the enumeration below that sentence still names four wired call sites and three unwired, and `git show --numstat 8412f20c` shows the C3 commit of R3 changed exactly one line of that file. The R3 round as a whole is PASS: gates (a)-(g) were re-run by the reviewer and every value matched the handback, and the R3 diff touched only `.agent/**` and `docs/agents/planner_reviewer_prompt.md`, as its block declared.
