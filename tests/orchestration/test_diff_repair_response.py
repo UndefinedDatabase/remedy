@@ -1,10 +1,11 @@
 """Tests for diff_repair_response.py (F111 T002, response half).
 
-Covers the four public entry points: the wrapper decode with its named
+Covers the five public entry points: the wrapper decode with its named
 rejection reasons, the validation with its declared-files/touched-paths
 cross-check and its delegated path-safety messages, the non-raising fence
-pre-check that answers with data rather than an exception, and the conversion
-into the ``StructuredPatch`` the existing applicator takes.
+pre-check that answers with data rather than an exception, the blank-context
+normalisation that survives a transport stripping a lone trailing space, and
+the conversion into the ``StructuredPatch`` the existing applicator takes.
 
 The path-safety assertions deliberately name the exact message strings
 `structured_patch.unsafe_path_issues` produces, so a future reword of those
@@ -23,6 +24,7 @@ from packages.orchestration.diff_repair_response import (
     DIFF_REPAIR_RESPONSE_VERSION,
     DiffRepairResponse,
     diff_repair_response_to_patch,
+    normalize_diff_blank_context,
     parse_diff_repair_response,
     precheck_diff_repair_fences,
     validate_diff_repair_response,
@@ -251,6 +253,64 @@ class TestPrecheckDiffRepairFences:
         )
         assert precheck.allowed is False
         assert precheck.denied_paths == ("docs/guide.md",)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# normalize_diff_blank_context — the stripped blank context line (R-0313)
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class TestNormalizeDiffBlankContext:
+    """A blank context line stripped to "" is body only while the budget says so."""
+
+    def test_blank_context_line_inside_a_hunk_regains_its_space(self):
+        # The R-0313 input: `_apply_hunks` returns None on the left-hand text
+        # and applies cleanly on the right-hand one.
+        assert normalize_diff_blank_context(
+            "@@ -1,3 +1,3 @@\n a\n\n-b\n+B\n"
+        ) == "@@ -1,3 +1,3 @@\n a\n \n-b\n+B\n"
+
+    def test_diff_needing_no_repair_is_byte_identical(self):
+        # Byte-identity, not merely equality of content: the trailing newline
+        # must survive, because `diff_repair_response_to_patch` splits the
+        # NORMALISED text and the section assertions below compare exact bytes.
+        assert normalize_diff_blank_context(DIFF_ONE_FILE) == DIFF_ONE_FILE
+
+    def test_blank_line_between_two_file_sections_is_untouched(self):
+        """A separator between file sections is not hunk body, so it keeps no space.
+
+        The first section's header is written to MATCH its body (`-1,2 +1,2`),
+        and that is what makes the separator provably out of budget. Reusing the
+        shared DIFF_ONE_FILE constant here would NOT prove the property: it
+        declares `-1,3 +1,3` over a body that spends only two old and two new
+        lines, so at the separator the hunk still has one of each left and the
+        blank IS converted. Measured at the R14 gate, not assumed.
+        """
+        first = (
+            "--- a/src/app.py\n"
+            "+++ b/src/app.py\n"
+            "@@ -1,2 +1,2 @@\n"
+            " import os\n"
+            "-value = 1\n"
+            "+value = 2\n"
+        )
+        second = (
+            "--- a/src/util.py\n"
+            "+++ b/src/util.py\n"
+            "@@ -10,2 +10,2 @@\n"
+            "-helper = 1\n"
+            "+helper = 2\n"
+        )
+        between = first + "\n" + second
+        assert normalize_diff_blank_context(between) == between
+
+    def test_blank_after_the_hunk_budget_is_spent_stays_blank(self):
+        # The counters reach zero at "+B", so the "" that follows is the text
+        # AFTER the hunk and is left exactly as the model sent it.
+        spent = "@@ -1,2 +1,2 @@\n a\n-b\n+B\n\n"
+        result = normalize_diff_blank_context(spent)
+        assert result == spent
+        assert result.splitlines()[-1] == ""
 
 
 # ═══════════════════════════════════════════════════════════════════════════

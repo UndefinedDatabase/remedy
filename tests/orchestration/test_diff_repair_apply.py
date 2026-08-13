@@ -1,10 +1,11 @@
 """Tests for diff_repair_apply.py (F111 T002, apply half).
 
-Six proofs, one per behaviour the feature file names: a clean diff lands, a
+Seven proofs, one per behaviour the feature file names: a clean diff lands, a
 conflicting hunk falls back with BOTH files byte-identical to their pre-attempt
 state, a fence-denied path never reaches the applicator, a validation rejection
 short-circuits, a creation diff falls back instead of creating (DECISION F111
-D6), and the job's own fences are used when the caller passes none.
+D6), a blank context line stripped in transport still lands (R-0313), and the
+job's own fences are used when the caller passes none.
 
 The approved-job scaffolding is the one
 tests/orchestration/test_source_apply_transaction.py already uses: a real Job
@@ -225,6 +226,42 @@ def test_new_file_creation_diff_falls_back_instead_of_creating(
     assert result.applied is False
     assert result.fallback_reason.startswith("apply_failed:")
     assert (repo / "new.py").exists() is False
+
+
+def test_stripped_blank_context_line_lands_instead_of_falling_back(
+    tmp_path, monkeypatch
+):
+    """R-0313: a blank context line that lost its space no longer costs the round.
+
+    This EXACT input returned mode `full_fallback` before
+    `diff_repair_response.normalize_diff_blank_context` existed: the applicator
+    read the bare "" as neither context, removal nor addition, so `-b` was
+    compared against the wrong original line and every hunk was rejected. The
+    applicator is unchanged; the response half now hands it a repaired diff.
+    """
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    (repo / "c.py").write_text("a\n\nb\n")
+
+    job, intent_id = _make_approved_job(tmp_path, monkeypatch)
+    response = DiffRepairResponse(
+        diff=(
+            "--- a/c.py\n"
+            "+++ b/c.py\n"
+            "@@ -1,3 +1,3 @@\n"
+            " a\n"
+            "\n"
+            "-b\n"
+            "+B\n"
+        ),
+        files=("c.py",),
+    )
+
+    result = apply_diff_repair(response, repo, job=job, intent_id=intent_id)
+
+    assert result.mode == DIFF_REPAIR_MODE_DIFF
+    assert result.applied is True
+    assert (repo / "c.py").read_text() == "a\n\nB\n"
 
 
 def test_job_fences_are_derived_when_the_caller_passes_none(tmp_path, monkeypatch):
