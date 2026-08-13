@@ -314,6 +314,24 @@ class LoopResult:
     stop_reason: str = ""
 
 
+# The full-file DENOMINATOR for one repair round: what the old path would send.
+def _repair_payload_chars(repo_root: Path, paths: list[str]) -> int:
+    """Characters the FULL-FILE path would have sent for these paths.
+
+    Unreadable and missing paths contribute nothing rather than raising:
+    this number exists to be compared, and a measurement that can crash
+    the repair loop is worse than one that undercounts a file it cannot
+    read.
+    """
+    total = 0
+    for rel in paths:
+        try:
+            total += len((repo_root / rel).read_text(encoding="utf-8"))
+        except (OSError, UnicodeDecodeError):
+            continue
+    return total
+
+
 # The PROMPT-side hunk choice for one repair round: what the next prompt carries.
 def _attach_diff_repair_hunks(
     repair_ctx: dict[str, Any],
@@ -360,10 +378,16 @@ def _attach_diff_repair_hunks(
     # Remedy deliberately does not put hunk TEXT in this metadata — counts only
     # (`hunk_count`, `total_chars`, `omitted`) — because `build_repair_context`'s
     # contract is that its dict is safe to log; source text belongs in the prompt.
+    # The pair the saving is read from: `total_chars` is what the diff path SENT,
+    # `full_file_chars` is what the full-file path WOULD have sent for the same
+    # paths. Remedy deliberately does not record a derived `chars_saved` field —
+    # a derived number can disagree with its own inputs, and the reader subtracts.
+    # Per DECISION F111 D9 both are CHARACTERS, never tokens.
     return {
         "mode": "diff",
         "hunk_count": len(selection.hunks),
         "total_chars": selection.total_chars,
+        "full_file_chars": _repair_payload_chars(repo_path, sorted(ranges)),
         "omitted": [list(entry) for entry in selection.omitted],
     }
 
