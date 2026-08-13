@@ -1095,7 +1095,7 @@ def query_segment_shares(
     since: str | None = None,
     job_id: str | None = None,
 ) -> SegmentShareReport:
-    """Aggregate ``call_segments`` into a ``SegmentShareReport``. READ-ONLY, never raises.
+    """Aggregate ``call_segments`` into a ``SegmentShareReport``. READ-ONLY, and never raises on absence.
 
     ``since`` and ``job_id`` filter the CALLS, through the very same
     ``_cost_filters`` clause ``query_cost`` uses. Both columns live only on
