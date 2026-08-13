@@ -1,9 +1,9 @@
 # Plan — F111 Diff-only repair
 
 Branch: feature/f111-diff-only-repair, cut from main at 4e0b762e,
-unmerged, no PR by design. Last reviewed SHA: 48c6340e (R14 PASS).
-Next free finding ID: R-0318. Open findings: 33 — 42 registered minus
-9 resolved. None is High.
+unmerged, no PR by design. Last reviewed SHA: d457219a (R15 PASS).
+Next free finding ID: R-0318. Open findings: 31 — 42 registered minus
+11 resolved. None is High.
 
 ## Goal
 Repairs stop resending whole files: a repair round carries only the
@@ -14,28 +14,29 @@ and falls back to today's full-file round with the reason recorded
 (docs/roadmap/features/T2_F111.md).
 
 ## Current Step
-R15 closes the two reviewer-caused spec defects in T002 so T003 starts
-from a clean seam. R-0317: a "" is hunk body only when the next
-non-blank line is body too, so a blank line separating two file
-sections stops becoming a context line. R-0316: a failed rollback no
-longer reports a clean tree — the seam carries `rollback_incomplete`
-and stops zeroing `files_modified` when the applicator says restore
-failed. T002 is otherwise complete.
+R16 is T003's prompt half and the round that makes F111 real: until
+this commit nothing imported the T001/T002 modules.
+`run_builder_bridge_loop` maps the patch it just applied to changed
+line ranges, selects margin-expanded hunks, carries them in the
+repair context, and emits `repair_mode_selected` with counts only.
+`diff_mode` and `diff_margin_lines` are keyword arguments per
+DECISION F111 D7. T001 and T002 are complete and repaired.
 
 ## Next Steps
-1. R16 — T003: wire `select_repair_hunks`,
-   `changed_line_ranges_from_patch` and `apply_diff_repair` into
-   `run_builder_bridge_loop`, emit mode and token evidence per repair
-   round, add the fixture token comparison. NOTHING imports the three
-   T001/T002 modules yet; R16 is the round that makes F111 real.
+1. R17 — T003's apply half: route the builder's diff answer through
+   `apply_diff_repair`, emit the apply-side mode and token actuals,
+   and add the fixture comparison test that records both modes'
+   token counts (the feature's DONE condition).
 2. Integration gate, then closure.
 
 ## Risks
 - The full suite is RED at the merge base with five known ids
   (R-0286): the integration gate compares base against branch.
-- Two rounds running, the defect came from the reviewer's authored
-  algorithm, not the worker's execution. Any further algorithm spec
-  is measured against this repository's own fixtures BEFORE emission,
-  not only against a hand-built example.
+- The prompt side now carries hunk TEXT in the repair context. Only
+  counts go into the timeline; any later change that logs the whole
+  context would leak source into evidence.
 - All-or-nothing rests entirely on source_apply's durable snapshot;
   `apply_diff_repair` adds no rollback of its own.
+
+Fortschritt: ~80 % (T001 ✅ · T002 ✅ · T003 Prompt-Hälfte in dieser Runde ·
+T003 Apply-Hälfte offen · R-0316 ✅ · R-0317 ✅) — Schätzung
