@@ -1,0 +1,24 @@
+utc=2026-08-13T03:43:36Z
+== before ==
+$ git worktree list
+/home/decodeux/Repos/remedy                       863b3d3e [feature/f111-diff-only-repair]
+/home/decodeux/Repos/remedy/.remedy-wt/base-gate  4e0b762e [tmp/base-gate]
+exit=0
+== remove ==
+$ git worktree remove --force /home/decodeux/Repos/remedy/.remedy-wt/base-gate
+exit=0
+$ git worktree prune
+exit=0
+$ git branch -D tmp/base-gate
+Deleted branch tmp/base-gate (was 4e0b762e).
+exit=0
+== proof ==
+$ git worktree list
+/home/decodeux/Repos/remedy  863b3d3e [feature/f111-diff-only-repair]
+exit=0
+$ git branch --list 'tmp/*'   (expect empty)
+exit=0 lines=0
+$ test -e /home/decodeux/Repos/remedy/.remedy-wt/base-gate  (expect absent)
+base_worktree_path_present=no
+$ git status --porcelain   (expect empty)
+exit=0 lines=0

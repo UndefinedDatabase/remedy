@@ -1,0 +1,57 @@
+F111 R21 — COLLECTED-TEST DELTA, MEASURED IN BOTH TREES
+======================================================
+Procedure: the R21 block, gate (h). Nothing here is inferred from the run
+summaries; both numbers come from a `--collect-only` run that was executed and
+whose output was written to a file as it ran.
+
+COMMANDS
+  branch  cd /home/decodeux/Repos/remedy
+          python3 -m pytest --collect-only -q
+          exit=0   log line: "16658 tests collected in 3.58s"
+  base    cd /home/decodeux/Repos/remedy/.remedy-wt/base-gate    (merge base
+          4e0b762e, throwaway branch tmp/base-gate, since removed)
+          REMEDY_UI_NO_AUTO_BUILD=1 python3 -m pytest --collect-only -q
+          exit=0   log line: "16561 tests collected in 3.22s"
+
+NODE-ID LISTS, SORTED AND COMPARED
+  branch_ids.txt   16658 ids
+  base_ids.txt     16561 ids
+  comm -13 base_ids.txt branch_ids.txt  (BRANCH-ONLY)  : 97 ids
+  comm -23 base_ids.txt branch_ids.txt  (BASE-ONLY)    :  0 ids
+  16658 - 16561 = 97, and the branch-only list is 97 long with an empty
+  base-only list, so the delta is entirely ADDITION. No id was renamed, moved
+  or dropped; a rename would have shown as a pair, one on each side.
+
+CROSS-CHECK AGAINST THE TWO SUITE RUNS (independent arithmetic)
+  branch run  16634 passed + 19 skipped + 5 failed = 16658
+  base   run  16537 passed + 19 skipped + 5 failed = 16561
+  Both equal their `--collect-only` totals exactly, so the suite ran everything
+  it collected in both trees and the 97 is not a selection difference.
+
+FILE BREAKDOWN OF THE 97 BRANCH-ONLY IDS
+   32  tests/orchestration/test_diff_repair_response.py
+   30  tests/orchestration/test_diff_repair.py
+   11  tests/orchestration/test_source_apply_transaction.py
+    9  tests/orchestration/test_diff_repair_apply.py
+    8  tests/orchestration/test_builder_repair_loop.py
+    7  tests/orchestration/test_review_scope.py
+   ---
+   97  total
+
+EVERY ID LIVES IN AN F111 TEST FILE — CHECKED, NOT ASSUMED
+  The gate names four permitted patterns: tests/orchestration/test_diff_repair*.py,
+  test_builder_repair_loop.py, test_review_scope.py, test_source_apply_transaction.py.
+  Inverse grep of the branch-only list against those patterns:
+    outside_count=0
+  So no id was added anywhere else, and there is no finding under gate (h).
+
+  The three test_diff_repair*.py files are new on the branch and the other three
+  were modified, which `git diff --name-status 4e0b762e..HEAD -- tests` confirms
+  independently of the collection:
+    M  tests/orchestration/test_builder_repair_loop.py
+    A  tests/orchestration/test_diff_repair.py
+    A  tests/orchestration/test_diff_repair_apply.py
+    A  tests/orchestration/test_diff_repair_response.py
+    M  tests/orchestration/test_review_scope.py
+    M  tests/orchestration/test_source_apply_transaction.py
+  Six files changed under tests/, six files in the breakdown, same six names.

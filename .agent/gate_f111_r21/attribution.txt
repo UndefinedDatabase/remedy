@@ -1,0 +1,105 @@
+F111 R21 — INTEGRATION GATE ATTRIBUTION
+======================================
+Procedure: docs/agents/integration_gate.md, steps 1 through 4.
+Merge base: 4e0b762e48cf29672eee979f74c282b10136f59c
+            (git merge-base main HEAD, run, not remembered)
+Branch HEAD at the branch run: 863b3d3e074dd4d4063491be956c194394dba1f8
+                               (feature/f111-diff-only-repair, the C3 head)
+Both suites ran DETACHED from the terminal with their stdout AND their exit
+codes redirected to files in the gitignored scratch dir .remedy-wt/f111r21/ as
+they ran, so no number in this file exists only in a terminal (R-0288). The
+tails were copied into this directory only after each run had exited (R-0176).
+
+HEADLINE NUMBERS
+  BRANCH run  python3 -m pytest -n auto -q
+              16634 passed, 19 skipped, 5 failed — exit 1 — 135 s wall
+              (log line: "5 failed, 16634 passed, 19 skipped in 134.16s")
+  BASE   run  REMEDY_UI_NO_AUTO_BUILD=1 python3 -m pytest -n auto -q
+              16537 passed, 19 skipped, 5 failed — exit 1 — 154 s wall
+              (log line: "5 failed, 16537 passed, 19 skipped in 153.37s")
+
+COLLECTED-TEST DELTA (full working in collect_delta.txt)
+  Branch collects 16658, base collects 16561 — the branch collects 97 more, and
+  the base-only side is empty, so the delta is pure addition. All 97 branch-only
+  node ids live in the six F111 test files; the inverse grep against the four
+  permitted patterns returns outside_count=0. Both `--collect-only` totals equal
+  their own run's passed+skipped+failed arithmetic exactly, so this is a real
+  test delta and not a selection difference.
+
+UI PARITY (integration_gate.md step 3, verified rather than trusted)
+  All four aggregate CONTENT hashes of apps/ui/dist are the same value
+  fb68a7293502c79b8ece61d154f5752100a16da1a08a481a7a4c1d79a5a503c0 — base
+  before, base after, primary before, primary after (dist_hashes.txt). So the
+  base worktree's dist was byte-identical to the primary checkout's, nothing
+  wrote through into the primary checkout during the base run, and the parity
+  claim is not voided. apps/ui/node_modules and apps/ui/dist were restored BY
+  COPY (`cp -a`), never symlinked (F053 R3): base_worktree.txt records
+  base_dist_symlinks=0 and base_node_modules_symlinks_to_primary=0.
+  Mtime ordering in the base worktree before the run, after
+  `find .remedy-wt/base-gate/apps/ui/dist -exec touch {} +`:
+    newest apps/ui/src   2026-08-13 05:40:19.134196511  (git worktree add stamp)
+    newest apps/ui/dist  2026-08-13 05:40:23.164089052
+    oldest apps/ui/dist  2026-08-13 05:40:23.164089052
+  dist is newer than src, so the staleness check is False and the
+  REMEDY_UI_NO_AUTO_BUILD=1 refusal path is never reached. The consequence is
+  visible in the result: the tests/ui_server/test_live_state.py environment
+  class (R-0221) does not appear in this gate at all — base_failed.txt contains
+  no ui_server id.
+
+COMPARISON
+  comm -13 base_failed.txt branch_failed.txt  (BRANCH-ONLY) : 0 ids — EMPTY
+  comm -23 base_failed.txt branch_failed.txt  (BASE-ONLY)   : 0 ids — EMPTY
+  comm -12 base_failed.txt branch_failed.txt  (COMMON)      : 5 ids
+  Both comm files are committed at zero length, created either way, because an
+  absent file and an empty one are not the same claim.
+
+PER-ID VERDICT TABLE — every id from BOTH comm files, none silently absent
+  The table is EMPTY BY CONSTRUCTION: both comm files contain zero ids, so
+  there is no id to attribute on either side.
+    BRANCH-ONLY ids: none. No serial re-run was needed or run; there is no
+      xdist-flake class to record and no candidate for the integration_gate.md
+      step 4 BLOCKER, since a reproducible branch-only failure coupled to F111
+      code cannot exist when the branch and base failure sets are identical.
+      The branch adds 97 tests and every one of them passes.
+    BASE-ONLY ids: none. No environment-class attribution is owed, because the
+      environment was restored before the run rather than attributed after it.
+      Nothing the branch did FIXED a base failure either — the branch neither
+      introduces nor repairs a failure relative to the merge base.
+
+COMMON FAILURES: 5 ids, R-0286, NOT CHARGED TO F111
+  These five fail in BOTH runs and are why BOTH runs exit 1. A common failure
+  appears in NEITHER comm file and does not block the gate verdict. The ids
+  below were READ OUT of base_failed.txt, not assumed from the R-0286 note:
+    tests/orchestration/test_role_conventions.py::TestRoleConventionsContentEquality::test_document_estimate_is_positive_and_under_the_cap[reviewer]
+    tests/orchestration/test_role_conventions.py::TestRoleConventionsMappings::test_segment_name_mapping_holds_the_expected_literal[reviewer-reviewer_conventions]
+    tests/orchestration/test_role_conventions.py::TestRoleConventionsRegistration::test_composing_one_conventions_segment_yields_exactly_the_document[reviewer]
+    tests/orchestration/test_role_conventions.py::TestRoleConventionsRegistration::test_registered_segment_carries_the_documented_name_and_rank[reviewer]
+    tests/orchestration/test_role_conventions.py::TestRoleConventionsRegistration::test_registration_mutates_no_text[reviewer]
+  Count 5, file 1, and every id carries a [reviewer] parametrization — exactly
+  the set gate (i) predicted, confirmed by reading rather than by memory.
+  Mechanism, from both runs' own tracebacks (see the raw tails):
+    PromptSegmentError: prompt segment 'reviewer_conventions' is over its token
+    cap: 954 tokens estimated, cap 800
+  raised at packages/orchestration/prompt_segments.py:160 before any assertion
+  in those tests runs. docs/agents/reviewer_conventions.md estimates 954 tokens
+  against the 800-token cap packages/orchestration/role_conventions.py declares.
+  Pre-existing, registered as R-0286: the same five ids fail at the merge base,
+  where no F111 commit exists. F111 does not repair it — AGENTS.md Core Workflow
+  bars mixing an unrelated fix into a feature branch.
+
+WALL CLOCK
+  branch 135 s, base 154 s. Both under the ~5 min budget in integration_gate.md
+  step 5, so no perf pass is indicated. The branch is the FASTER of the two by
+  19 s despite collecting 97 more tests; xdist scheduling and a warm cache in
+  the primary checkout account for that comfortably, and neither direction is
+  read as a signal here.
+
+CLEANUP
+  worktree_cleanup.txt: `git worktree remove --force`, `git worktree prune` and
+  `git branch -D tmp/base-gate` all exit 0; afterwards `git worktree list` shows
+  the primary checkout alone, `git branch --list 'tmp/*'` prints 0 lines,
+  .remedy-wt/base-gate is absent, and `git status --porcelain` prints 0 lines.
+
+VERDICT IS NOT ISSUED HERE
+  integration_gate.md step 5: only the reviewer issues the gate verdict. This
+  file records what was run and what it measured, and nothing more.
