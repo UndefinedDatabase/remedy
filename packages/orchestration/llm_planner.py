@@ -16,6 +16,12 @@ from packages.core.models import Artifact, ArtifactKind, Job, RunState, Task
 from packages.orchestration.artifact_index import planning_artifact
 from packages.orchestration.job_runner import PlanJobResult
 from packages.orchestration.planner_models import PlannerOutput, ProposedTask
+from packages.orchestration.prompt_segments import (
+    ComposedPrompt,
+    PromptSegmentRegistry,
+    SegmentStabilityRank,
+    compose_prompt_segments,
+)
 
 
 def _deduplicate_task_types(proposed_tasks: list[ProposedTask]) -> list[Task]:
@@ -75,9 +81,31 @@ def _recall_memory_for_planning(job: Job) -> tuple[str, dict]:
         return "", {}
 
 
+# Named segments for the planner prompt, so a ledger row can say WHERE its
+# tokens went. Ranks are the composition sort key, not a semantic label: TASK
+# before STEERING is what reproduces the byte order already sent (DECISION D3).
+def compose_planner_prompt(job_prompt: str, memory_section: str = "") -> ComposedPrompt:
+    """Compose the planner prompt from registered segments, with its manifest.
+
+    Byte identity with the pre-F115 concatenation is the whole contract: the
+    join string is `PROMPT_SEGMENT_DELIMITER`, which IS the `\n\n` this module
+    used by hand, and an absent memory section registers NO segment rather than
+    an empty one — so a one-segment composition is the bare job prompt.
+    """
+    registry = PromptSegmentRegistry()
+    registry.register("planner_job_prompt", SegmentStabilityRank.TASK, job_prompt)
+    if memory_section:
+        registry.register(
+            "planner_memory_context", SegmentStabilityRank.STEERING, memory_section
+        )
+    return compose_prompt_segments(registry.registered_segments())
+
+
 def plan_job_with_llm(
     job: Job,
     call_planner: Callable[[str], PlannerOutput],
+    *,
+    on_prompt_composed: Callable[[ComposedPrompt], None] | None = None,
 ) -> PlanJobResult:
     """Plan a job using an injected LLM planner callable.
 
@@ -91,6 +119,9 @@ def plan_job_with_llm(
       - deduplicating task_type values to avoid ambiguous downstream execution
       - NOT mutating the job through the provider
       - injecting approved project memory context when available
+      - handing the composed prompt to ``on_prompt_composed``, when given,
+        immediately before the provider call, so a caller can trace the
+        segment manifest of the bytes it is about to send
 
     Caller must persist result.job after this call returns.
 
@@ -104,9 +135,13 @@ def plan_job_with_llm(
     # Recall approved memory (safe, bounded, no raw content)
     memory_section, memory_meta = _recall_memory_for_planning(job)
 
-    prompt = job.user_prompt or job.name
-    if memory_section:
-        prompt = f"{prompt}\n\n{memory_section}"
+    # F115 D1/D3: compose instead of concatenating, so the caller's trace entry
+    # carries a real segment manifest. The sent bytes are unchanged — the
+    # composer joins with the same delimiter this concatenation used.
+    composed = compose_planner_prompt(job.user_prompt or job.name, memory_section)
+    prompt = composed.text
+    if on_prompt_composed is not None:
+        on_prompt_composed(composed)
 
     output: PlannerOutput = call_planner(prompt)
 
