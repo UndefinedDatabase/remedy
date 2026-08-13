@@ -310,6 +310,14 @@ def _semantic_errors(spec: LoopSpec, label: str) -> list[LoopSpecError]:
             fail(f"goal_template references undefined variable '{var}'",
                  "action.goal_template")
 
+    # DECISION F045 D4: action.mission is an operator-authored goal TEMPLATE
+    # too, so the same placeholders fail VALIDATION here rather than surfacing
+    # as a run-time error (feature file, A9).
+    if spec.action.mission:
+        for var in _undefined_template_vars(spec.action.mission):
+            fail(f"action.mission references undefined variable '{var}'",
+                 "action.mission")
+
     return errors
 
 
