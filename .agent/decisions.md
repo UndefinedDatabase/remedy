@@ -4583,3 +4583,42 @@ goldens, for a benefit this feature does not need.
 Reverse by deleting `PriorReportPeriod` and `prior_report_period` and dropping
 the two comparison parameters from the renderers. Nothing else reads them: the
 CLI that will call them is a later round.
+
+## DECISION F115 D7 (2026-08-13) — the packager edit this session did not make is neither committed nor destroyed; it is stashed at closure, not now
+
+ID note, declared deviation: the R20 block ordered this entry as DECISION
+F115 D4. That ID has been taken since the R8 gate by "the manifest gets its
+own table, not a ledger column" (this file, above). Two different decisions
+under one ID would corrupt the ledger and break every citation of the older
+one, so this entry takes the next free ID, D7. Wherever the R20 block text and
+the R19 verdict entry in `.agent/live_review.md` say "DECISION F115 D4" about
+`scripts/make_review_zip.sh`, they mean this entry. The body below is the
+block's, verbatim.
+
+Context: `git status --porcelain` has carried ` M scripts/make_review_zip.sh`
+since 12:03 on 2026-08-13. The change is one line, `-path './.remedy-wt' -o \`,
+added to the `find` prune list — precisely the durable fix finding R-0295 named
+and DECISION F107 D3a deferred to "the follow-up that owns the packager". No
+commit of this session touches the file and no agent of this session wrote it.
+
+Chosen: leave it untouched through the integration gate, then, in the closure
+round and only there, `git stash push -m "f115-closure: operator's make_review_zip.sh prune-list edit" -- scripts/make_review_zip.sh`
+immediately before the review zip is built, and leave the stash in place. Three
+facts force this. The closure protocol's precondition 5 requires a clean tree
+and its zip rule says a package built from a dirty tree is INVALID, so closure
+cannot proceed around it. Committing it onto this branch is the scope drift
+DECISION F107 D3 already rejected in writing — a packaging change inside a
+feature that does not own the packager. And discarding it destroys another
+actor's uncommitted work, which no closure is worth. A stash is none of the
+three: the bytes survive intact, no tracked file and no history changes, and
+one command puts it back.
+
+Alternatives considered: (a) commit it here — rejected, F107 D3's reasoning has
+not weakened; (b) `git checkout --` it — rejected outright, irreversible
+destruction of work this session did not author; (c) stash it NOW — rejected,
+the gate does not need a clean tree and every hour it stays visible is another
+hour the operator can claim it; (d) close with a dirty tree — rejected, it
+produces an invalid package and a false closure record.
+
+Reverse this decision with `git stash pop`, or by dropping the stash after the
+packager's owning feature lands the same line.

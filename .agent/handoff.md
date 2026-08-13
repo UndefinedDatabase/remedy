@@ -1,85 +1,100 @@
-# Handback — F115 Prompt breakdown & cost report · Round 19 (repair)
+# Handoff — F115 · R20 (integration gate)
 
-Branch: feature/f115-prompt-cost-report. Open findings: 12 — R-0338 landed,
-not resolved; the reviewer authors its `Done:`.
-Deviations, declared: this file is 85 lines against the 60-line cap. Cause: the
-four mandated per-commit tables (22 lines), the 13-line raw verification
-transcript the block ordered, the transport + claim-check proofs, and the gate
-(h) deviation record. No section is dropped (AGENTS.md DECISION D15).
-
-Fortschritt: 97 % (T001 ✅ · T002 ✅ · T003 ✅ — Integration-Gate und Closure offen) — Schätzung
+Deviations, declared: 100 lines against the 60-line cap (AGENTS.md DECISION D15). The cause is
+mandated content, not prose — the R20 block ordered eleven gates a–k whose raw transcripts carry
+two full `comm` outputs and per-id attribution for all 15 ids, plus four per-commit tables and the
+authored-text proofs. No section is dropped.
 
 ## Range
-
-Review of b047aa38..HEAD, 10 commits; the first six (29d9ed44, f80c49bd,
-025f27d7, 5c756122, 2e082d24, 07bd70fe) are R18's close-out, tabled at 07bd70fe.
+Review of e7127c63..HEAD (branch feature/f115-prompt-cost-report).
 
 ## Commits
-
-### 8411913c chore(f115): save the R19 repair block verbatim
+### 182e1625 chore(f115): save the R20 integration-gate block verbatim
 | Path | +/- | Reason |
-| --- | --- | --- |
-| .agent/authored/f115-r19-1.md | +140/-0 | C0 — block saved verbatim |
-| .agent/last_block.md | +113/-323 | C0 — same bytes mirrored |
+|---|---|---|
+| .agent/authored/f115-r20-1.md | +164/-0 | R20 block, BEGIN..END inclusive |
+| .agent/last_block.md | +158/-134 | same bytes, cmp exit 0 |
 
-### e19c68ad docs(f115): name the real owner of the per-role limit note
+### ce812bc0 docs(f115): record the R19 verdict, resolve R-0338, register R-0339
 | Path | +/- | Reason |
-| --- | --- | --- |
-| docs/guides/cost-report-user-guide-v0.md | +4/-2 | C1 — R-0338 repair |
+|---|---|---|
+| .agent/live_review.md | +5/-1 | PAIR 1 rewrite + PAIR 2 append, committed BEFORE the gate ran |
 
-### fdce0a1b chore(f115): record R-0338 as landed
+### 8081982f chore(f115): commit the R20 integration-gate evidence
 | Path | +/- | Reason |
-| --- | --- | --- |
-| .agent/live_review.md | +1/-0 | C2 — worker `Landed:` line only |
+|---|---|---|
+| .agent/gate_f115_r20/ | +497/-0 | 25 .txt files: run tails, failed lists, comm outputs, serial re-runs, dist hashes, attribution, cleanup proof |
 
-### C3, this commit — chore(f115): refresh the plan and write the R19 handoff
+### this commit — chore(f115): refresh the plan and write the R20 handoff
 | Path | +/- | Reason |
-| --- | --- | --- |
-| .agent/plan.md | rewrite | C3 — R19 state, 42 lines |
-| .agent/handoff.md | rewrite | C3 — this file (self-reference) |
+|---|---|---|
+| .agent/plan.md | rewrite | R19 PASS, R20 ran, blocker named, 12 open findings, next ID R-0340 |
+| .agent/decisions.md | append | packager decision, registered as D7 (D4 was taken) |
+| .agent/handoff.md | rewrite | this file |
 
 ## External actions
-
-`git push -u origin feature/f115-prompt-cost-report` after C3. No PR, no merge,
-no gh command, no worktree add/remove.
+`git worktree add -b tmp/base-gate .remedy-wt/.cache/base_r20 0d6c97aa` → created, on a branch.
+`git worktree remove --force` + `prune` + `git branch -D tmp/base-gate` → "Deleted branch tmp/base-gate (was 0d6c97aa)".
+`git push -u origin feature/f115-prompt-cost-report` → run after the last commit. No PR, no merge, no other gh call.
 
 ## Verification
-
-    cmp .agent/authored/f115-r19-1.md .agent/last_block.md  → exit 0
-    grep -c "The existing" G                                → 0
-    grep -c "remedy stats cost" G                           → 0
-    grep -c "remedy stats cache --by role" G                → 1
-    grep -c "does not print that limit" G                   → 1
-    grep -c "role_limit" G                                  → 1
-    wc -l G                                                 → 144
-    git show --numstat e19c68ad -- G                        → 4  2  (deviation)
-    wc -l .agent/plan.md                                    → 42
-    python3 -m pytest tests/docs/ -q                        → 294 passed in 0.31s
-    python3 -m pytest tests/cli/test_golden_path.py -q      → 42 passed in 20.42s
-    git status --porcelain                                  → ` M scripts/make_review_zip.sh`
-    git worktree list                                       → 1 line, /home/decodeux/Repos/remedy
-
-G = docs/guides/cost-report-user-guide-v0.md.
+(a) `cmp .agent/authored/f115-r20-1.md .agent/last_block.md` → exit 0, no output.
+(b) C1 gates raw: `Landed: R-0338` 0 · `^Done: R-0338` 1 · `^- R-0339 — Low` 1 · `^Gate: R19 — PASS` 1 · `^## Steps` 1.
+(c) BRANCH, repo root, `python3 -m pytest -n auto -q`: `11 failed, 16700 passed, 19 skipped in 166.52s (0:02:46)`, EXIT_CODE=1, WALL 167s.
+    FAILED = 5× test_role_conventions[reviewer] (R-0322) + 6× test_run_log_cli::TestPlanJobLocalRunLog.
+(d) BASE at 0d6c97aa on tmp/base-gate, `REMEDY_UI_NO_AUTO_BUILD=1`: `13 failed, 16626 passed, 19 skipped in 128.26s`, EXIT_CODE=1, WALL 129s.
+    `apps/ui/dist` aggregate hash before = after: base worktree `c7c847f9…`, primary `856780f4…` — no write-through in run 1.
+    BASE run 2, same worktree, dist in place: `6 failed, 16633 passed`, exit 1, 136s.
+(e) `comm -13` branch-only = 6, identical against base run1 and run1∪run2, all in
+    `tests/test_run_log_cli.py::TestPlanJobLocalRunLog::` — test_plan_job_local_output_includes_log_path,
+    test_planning_completed_noop_outcome, test_planning_completed_outcome_changed,
+    test_planning_started_includes_provider_role_model, test_writes_planning_completed_on_success, test_writes_planning_started.
+    `comm -23` base-only (union) = 9: 8 in `tests/ui_server/test_live_state.py::TestUIServerIntegration::` — test_api_invalid_token_403,
+    test_api_requires_token, test_app_shell_served_without_token, test_brain_endpoint, test_dashboard_no_raw_leaks, test_put_rejected,
+    test_readiness_endpoint, test_server_starts_and_writes_info — plus
+    `tests/cli/test_review_bundle_runtime.py::TestSubprocessCleanup::test_timeout_raises_with_cleanup`.
+    R-0322's five are in BOTH failed lists and NEITHER comm output, exactly as the block predicted.
+(f) Attribution of all 15 ids — `.agent/gate_f115_r20/attribution.txt`:
+    · branch-only 6: serial on branch 6/6 FAIL (exit 1); serial at merge base 6/6 PASS (exit 0) ⇒ reproducible,
+      not xdist-flake, introduced here. **BLOCKER — no fix attempted.** Cause: cb17024a put
+      `on_prompt_composed=_plan_compositions.append` on the call at apps/cli/commands/job.py:288 while the stub at
+      tests/test_run_log_cli.py:78 is `def fake_plan_job_with_llm(job, _call_planner)`; TypeError → broad
+      `except Exception` → sys.exit(1) at job.py:309. `git log 0d6c97aa..HEAD -- tests/test_run_log_cli.py` is EMPTY.
+      F115's cover for that call site is a source-TEXT assert (test_structured_planner_cli.py:302) that reads the file
+      instead of executing it, so it could not see the stale stub.
+    · base-only 8: "ERROR: React UI not built" ×8 in the raw base log (ui_server.py:2848). Pass serially 8/8, pass under
+      `-n auto` (42 passed), gone in base run 2 once apps/ui/dist is in place;
+      `git diff 0d6c97aa HEAD -- packages/orchestration/ui_server.py apps/ui` is EMPTY.
+    · base-only 1: passes serially at base AND on branch ⇒ base-side timing flake. No unattributed id remains.
+(g) `git worktree list` → `/home/decodeux/Repos/remedy  ce812bc0 [feature/f115-prompt-cost-report]`, ONE line;
+    `git branch --list tmp/base-gate` empty; base worktree path ABSENT.
+(h) `ls .agent/gate_f115_r20/` → 25 files, all `.txt`, no `.log`; 497 lines total.   (i) `wc -l .agent/plan.md` → 46.
+(j) `git status --porcelain` → VERBATIM, exactly one line: ` M scripts/make_review_zip.sh`.
+(k) `git log --oneline e7127c63..HEAD` → the four commits tabled above.
 
 ## Authored-text proofs
-
-Block f115-r19-1: `cmp` exit 0, sha256
-`dbd9a399c6b5fff416190dc9fd0318f5d967e3c4a2f81f21c2600dbb73794e1e` over both
-copies, `wc -lc` 140 8155. C1's TO text applied verbatim.
-Claim check before C1: `_ROLE_LIMIT_NOTE` (stats_ledger_cmd.py:373) is printed
-by `_render_cache_human:489` under `report.by == "role"` and keyed `role_limit`
-by `_cache_payload:436`; both are reached only from `_cmd_stats_cache`,
-registered as `stats.cache`. The new sentence is true against source.
+R20 block: `cmp` exit 0; sha256 of both copies `e3a5535fe489cf89bfdee071c7f6a28fde755c7ac5817fcc4d94dc76c6d71d1d`; `wc -lc` 164 14809 both;
+zero trailing-whitespace lines; first line `BEGIN BLOCK f115-r20-1`, last `END BLOCK f115-r20-1`.
+PAIR 1's TO line, PAIR 2's R-0339 bullet and PAIR 2's `Gate: R19` line were EXTRACTED from the committed authored file and inserted
+unmodified: each occurs exactly 1× in `.agent/live_review.md` and 1× in `.agent/authored/f115-r20-1.md`. PAIR 1's FROM occurs 0×.
+DECISION D7's body is the block's decision text verbatim; only the heading and the ID note differ.
 
 ## Deviations & assumptions
-
-Gate (h) expected numstat `5 3`; the real value is `4 2`. FROM and TO share
-their first line byte-identically, so git keeps it as context: -2/+4. `5 3` is
-the FROM/TO line count, not a diff, and forcing it would mean editing that
-shared line — which the block's Change clause forbids. Gate (g) 142→144 agrees
-with -2/+4, and content gates (b)-(g) all hold: the repair is as ordered.
-R-0336 class — a predicted numstat rather than a semantic assertion.
+1. **Decision ID.** The block ordered `DECISION F115 D4`; that ID has been taken since R8 ("the manifest gets its own table, not a
+   ledger column"). A second D4 would corrupt the ledger, so the entry landed as **DECISION F115 D7** with an explicit ID note mapping
+   the block's and the R19 verdict's "D4" onto it. Body verbatim; plan.md names D7.
+2. **Gate evidence trimmed to procedure shape.** The four full run logs total 5305 lines; committing them would put one commit ~5.6k
+   insertions over the AGENTS.md 500 cap. Committed is what integration_gate.md step 1 names — raw tail, full FAILED list, exit code,
+   wall time — plus every comm output and serial result in full and the decisive tail of one blocker traceback.
+   `full_log_provenance.txt` records each full log's line count and sha256. Nothing was re-run to a better number; every committed line
+   is a verbatim slice. The commit is 497 insertions.
+3. **A second base run was added** (not ordered) so base run 1's 8 ui_server reds could be shown non-genuine instead of explained away.
+   Base failures are compared as run1 ∪ run2 — the conservative direction, which can only shrink the branch-only set. It did not: same
+   6 ids. REPORTED, not charged to F115: `base_run2_env.txt` shows the base worktree's `apps/ui/dist/index.html` mtime moving
+   12:57:29 → 13:03:20 during run 2 despite `REMEDY_UI_NO_AUTO_BUILD=1` — the R-0169 flag-ignored-by-a-spawned-build class, an
+   observation about the gate harness.
+No pass/fail count was predicted anywhere; every number above was measured after the fact.
 
 ## Next
-
-Reviewer gates R19 and authors `Done: R-0338`; then the integration gate.
+Reviewer gates R20 and issues the gate verdict. The gate's finding is a BLOCKER: the repair — widening the stub at
+tests/test_run_log_cli.py:78 — is its own reviewer-gated round, not this one.
