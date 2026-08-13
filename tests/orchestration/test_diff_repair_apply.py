@@ -1,11 +1,14 @@
 """Tests for diff_repair_apply.py (F111 T002, apply half).
 
-Seven proofs, one per behaviour the feature file names: a clean diff lands, a
+Nine proofs, one per behaviour the feature file names: a clean diff lands, a
 conflicting hunk falls back with BOTH files byte-identical to their pre-attempt
-state, a fence-denied path never reaches the applicator, a validation rejection
-short-circuits, a creation diff falls back instead of creating (DECISION F111
-D6), a blank context line stripped in transport still lands (R-0313), and the
-job's own fences are used when the caller passes none.
+state, a rollback the applicator could not finish is reported instead of being
+summarised as a clean tree (R-0316), a fence-denied path never reaches the
+applicator, a validation rejection short-circuits, a creation diff falls back
+instead of creating (DECISION F111 D6), a blank context line stripped in
+transport still lands (R-0313), a two-file answer whose first file continues
+past its hunk lands (R-0317), and the job's own fences are used when the caller
+passes none.
 
 The approved-job scaffolding is the one
 tests/orchestration/test_source_apply_transaction.py already uses: a real Job
@@ -25,6 +28,7 @@ from packages.orchestration.diff_repair_apply import (
     apply_diff_repair,
 )
 from packages.orchestration.diff_repair_response import DiffRepairResponse
+from packages.orchestration.source_apply import ApplyResult
 
 
 def _make_approved_job(tmp_path, monkeypatch):
@@ -129,6 +133,65 @@ def test_conflicting_hunk_falls_back_and_leaves_both_files_untouched(
     assert result.fallback_reason.startswith("apply_failed:")
     assert (repo / "a.py").read_bytes() == a_before
     assert (repo / "b.py").read_bytes() == b_before
+    # The other half of R-0316: a rollback that DID finish reports a clean tree,
+    # so the honest-count path below cannot be satisfied by always reporting one.
+    assert result.rollback_incomplete is False
+    assert result.files_modified == 0
+
+
+def test_incomplete_rollback_reports_the_real_count_not_a_clean_tree(
+    tmp_path, monkeypatch
+):
+    """R-0316: a rollback that did not finish is never summarised as 0 files.
+
+    `source_apply._rollback_from_snapshot` catches OSError per entry and appends
+    `rollback_incomplete (N file(s)): …` to the errors, leaving those files
+    half-restored. That OSError cannot be provoked from outside the applicator,
+    so the applicator is stubbed with the exact result shape it produces: what
+    is under test is THIS seam's reading of that error string, not the rollback.
+    """
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    (repo / "a.py").write_text("line1\nline2\n")
+
+    job, intent_id = _make_approved_job(tmp_path, monkeypatch)
+
+    def _apply_with_failed_rollback(*args, **kwargs):
+        return ApplyResult(
+            apply_id="x",
+            success=False,
+            files_modified=1,
+            files_created=0,
+            errors=[
+                "a.py: diff hunks did not apply cleanly",
+                "rollback_incomplete (1 file(s)): a.py",
+            ],
+            snapshot_id="s",
+            snapshot_verified=True,
+        )
+
+    monkeypatch.setattr(
+        "packages.orchestration.diff_repair_apply.apply_structured_patch",
+        _apply_with_failed_rollback,
+    )
+    response = DiffRepairResponse(
+        diff=(
+            "--- a/a.py\n"
+            "+++ b/a.py\n"
+            "@@ -1,2 +1,2 @@\n"
+            "-line1\n"
+            "+LINE1\n"
+            " line2\n"
+        ),
+        files=("a.py",),
+    )
+
+    result = apply_diff_repair(response, repo, job=job, intent_id=intent_id)
+
+    assert result.mode == DIFF_REPAIR_MODE_FULL_FALLBACK
+    assert result.applied is False
+    assert result.rollback_incomplete is True
+    assert result.files_modified == 1
 
 
 def test_fence_denied_path_never_reaches_the_applicator(tmp_path, monkeypatch):

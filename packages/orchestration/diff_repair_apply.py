@@ -10,10 +10,17 @@ reports the outcome as a mode — ``diff`` or ``full_fallback`` — with a NAMED
 This module implements NO rollback and NO diff parsing of its own. The
 all-or-nothing guarantee is ``source_apply``'s durable snapshot: created and
 verified before any mutation, and restoring every touched file when a hunk
-conflicts. So a partially applied patch never reaches the caller — what reaches
-it is ``full_fallback`` plus the applicator's own error strings. Remedy
-deliberately does not add a second applier, a second rollback, or a second
-reading of unified-diff syntax here.
+conflicts AND the restore itself succeeds. So a partially applied patch never
+reaches the caller — what reaches it is ``full_fallback`` plus the applicator's
+own error strings. Remedy deliberately does not add a second applier, a second
+rollback, or a second reading of unified-diff syntax here.
+
+When the restore does NOT succeed, the applicator says so: it catches OSError
+per entry and appends ``rollback_incomplete (N file(s)): …`` to its errors,
+leaving those files half-restored. This module refuses to summarise that as a
+clean tree (finding R-0316): ``rollback_incomplete`` is then True and
+``files_modified`` carries the applicator's real count instead of a reassuring
+zero. A zero here means the tree is untouched by fact, not by convention.
 
 A fence-denied path is rejected BEFORE the applicator runs, not by it. The
 applicator's own ``enforce_change_set`` raises, and a raise mid-apply is not a
@@ -79,6 +86,9 @@ class DiffRepairApplyResult:
     snapshot_id: str
     files_modified: int
     errors: tuple[str, ...]
+    # True only when the applicator reported that its own rollback failed, so
+    # the tree is neither the pre-attempt state nor the patched one (R-0316).
+    rollback_incomplete: bool = False
 
 
 # The single entry point from a validated repair answer to the repository: it
@@ -158,14 +168,20 @@ def apply_diff_repair(
             errors=(),
         )
 
-    # A failed apply already rolled back from the durable snapshot inside
-    # source_apply, so files_modified is 0 by fact and not by convention.
+    # A failed apply normally rolled back from the durable snapshot inside
+    # source_apply, so files_modified is 0 by fact and not by convention. When
+    # the rollback ITSELF failed the applicator names it, and reporting 0 would
+    # be a claim this seam cannot make (R-0316): the real count goes out instead.
+    rollback_incomplete = any(
+        "rollback_incomplete" in error for error in apply_result.errors
+    )
     return DiffRepairApplyResult(
         mode=DIFF_REPAIR_MODE_FULL_FALLBACK,
         applied=False,
         fallback_reason="apply_failed:" + "; ".join(apply_result.errors[:3]),
         apply_id=apply_result.apply_id,
         snapshot_id=apply_result.snapshot_id,
-        files_modified=0,
+        files_modified=apply_result.files_modified if rollback_incomplete else 0,
         errors=tuple(apply_result.errors),
+        rollback_incomplete=rollback_incomplete,
     )
