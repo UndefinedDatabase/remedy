@@ -88,9 +88,10 @@ def compose_planner_prompt(job_prompt: str, memory_section: str = "") -> Compose
     """Compose the planner prompt from registered segments, with its manifest.
 
     Byte identity with the pre-F115 concatenation is the whole contract: the
-    join string is `PROMPT_SEGMENT_DELIMITER`, which IS the `\n\n` this module
-    used by hand, and an absent memory section registers NO segment rather than
-    an empty one — so a one-segment composition is the bare job prompt.
+    join string is `PROMPT_SEGMENT_DELIMITER`, the same blank-line separator
+    this module concatenated by hand, and an absent memory section registers NO
+    segment rather than an empty one — so one segment composes to the bare job
+    prompt, with no separator anywhere in it.
     """
     registry = PromptSegmentRegistry()
     registry.register("planner_job_prompt", SegmentStabilityRank.TASK, job_prompt)
