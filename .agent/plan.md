@@ -1,7 +1,7 @@
 # Plan — F111 Diff-only repair
 
 Branch: feature/f111-diff-only-repair, cut from main at 4e0b762e,
-unmerged, no PR by design. Last reviewed SHA: 916b997e (R18 PASS).
+unmerged, no PR by design. Last reviewed SHA: ed7eaeef (R19 PASS).
 Next free finding ID: R-0319. Open findings: 32 — 43 registered minus
 11 resolved. None is High.
 
@@ -14,20 +14,16 @@ and falls back to today's full-file round with the reason recorded
 (docs/roadmap/features/T2_F111.md).
 
 ## Current Step
-T001, T002 and T003 are complete and gated. The build is done; what
-remains is proving it against the whole repository and closing it.
-R19 registered R-0318 and recorded the R18 gate so no finding lives
-only in a session that has ended.
+T001, T002 and T003 are complete and gated. R20 shipped the feature's
+ist-doc `docs/system/diff-only-repair-v1.md`, registered it in
+docs/README.md, cleared R-0318 and recorded the R19 gate. What remains
+is proving the build against the whole repository and closing it.
 
 ## Next Steps
-1. Resolve R-0318 in the next round that touches builder_bridge.py
-   for another reason. Do not open a round for it alone.
-2. Integration gate per docs/agents/integration_gate.md: full suite
+1. Integration gate per docs/agents/integration_gate.md: full suite
    with `-n auto`, base against branch, every branch-only failure
    attributed rather than assumed (R-0286: five known base failures).
-3. The feature's documentation update, registered in docs/README.md
-   in the same PR.
-4. Closure per docs/roadmap/STATUS_closure_protocol.md: evidence job,
+2. Closure per docs/roadmap/STATUS_closure_protocol.md: evidence job,
    FRESH review zip, the authored STATUS line committed last, the PR
    created and NOT merged in that session.
 
@@ -40,6 +36,8 @@ only in a session that has ended.
 - All-or-nothing rests entirely on source_apply's durable snapshot;
   `apply_diff_repair` adds no rollback of its own, and R-0316's fix
   means a failed rollback is now reported rather than hidden.
+- 32 findings stay open at closure, none above Medium, each carried
+  as an accepted risk exactly as F107 carried its own.
 
-Fortschritt: ~93 % (T001 ✅ · T002 ✅ · T003 ✅ · Integration Gate offen ·
-Doku offen · Closure offen) — Schätzung
+Fortschritt: ~95 % (T001 ✅ · T002 ✅ · T003 ✅ · Doku ✅ ·
+Integration Gate offen · Closure offen) — Schätzung
