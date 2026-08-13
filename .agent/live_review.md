@@ -1181,6 +1181,19 @@ allowance with its cause named, and no section was dropped.
   the next round that touches `builder_bridge.py` for another reason; do not
   open a round for it alone. OPEN.
 
+- R-0319 (Low, F111 R20 gate, a dated record written in the present tense): the
+  `### R19 — PASS` entry states that `.agent/authored/f111-r19-1.md` and
+  `.agent/last_block.md` "are byte-identical". That was true when the value was
+  measured, at the start of the R20 session, and false as soon as R20's own C1b
+  overwrote `last_block.md` with the R20 block — which the same round then did,
+  as every round does. A gate entry records a moment, so its transport sentence
+  has to read as one; this one invites a later reader to re-run the `cmp`, find
+  a mismatch, and doubt a proof that was sound. The reviewer authored the tense,
+  so the fault is the reviewer's and not the R20 worker's, who applied the
+  ordered bytes verbatim and flagged the drift in the handback — exactly the
+  behaviour this workflow exists to produce. Fix direction: state the past tense
+  and say why the file has moved on. OPEN.
+
 ### R18 — PASS (2026-08-13)
 Reviewed by the main session over 6a93ee1c..916b997e. Every gate was re-run by
 the reviewer on this machine; nothing was read off the handback. Transport:
