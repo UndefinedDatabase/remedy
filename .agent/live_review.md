@@ -224,3 +224,5 @@ Done: R-0329 — RESOLVED at the R10 gate. Verified against the code and a live 
   `query_cost` already scopes it — "never raises on absence" — and change
   nothing else. It belongs to R11, which opens this region for the renderer
   anyway. OPEN.
+
+Landed: R-0330 — a74e0668 rewrote the one docstring line to "READ-ONLY, and never raises on absence."; awaiting review.
