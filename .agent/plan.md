@@ -1,10 +1,10 @@
 # Plan — F115 Prompt breakdown & cost report
 
 Branch: feature/f115-prompt-cost-report, cut from main at 0d6c97aa after
-PR #194 merged. Last reviewed SHA: 6752841a (R15 PASS). Next free finding
+PR #194 merged. Last reviewed SHA: aa7ad8df (R16 PASS). Next free finding
 ID: R-0337. Open findings: 10 — R-0320, R-0322, R-0323, R-0324, R-0327,
-R-0328, R-0331, R-0333, R-0334, R-0336. R-0335 was RESOLVED at the R15
-gate. No PR exists and closure has not started.
+R-0328, R-0331, R-0333, R-0334, R-0336. No PR exists and closure has not
+started.
 
 ## Goal
 Costs stop being an opaque total: `remedy stats report` shows WHERE
@@ -14,24 +14,20 @@ traceable to a ledger row, and a period with missing data reported as
 missing instead of interpolated (docs/roadmap/features/T2_F115.md).
 
 ## Current Step
-T003 is half built. The period has two ends and the comparison now has
-its arithmetic: `prior_report_period` places the equal-length window
-before `[since, until)`, reusing the current `since` STRING as the prior's
-exclusive end so the two windows abut under the same lexicographic
-compare (DECISION F115 D6). Four cases yield no window and each states
-its reason; a window that exists but is empty says so rather than
-rendering zeros. Both renderers print the comparison, `_same_question`
-refuses a prior that is not this period's prior, and
-`COST_REPORT_VERSION` is 3. No CLI is wired.
+T003 is wired to a user. `remedy stats report` resolves one project's
+ledger, runs the cost and share queries over `[since, until)`, places the
+prior window with `prior_report_period` and queries it under the SAME job
+filter, then renders markdown or json. `--all-projects` is deliberately
+absent: there is no cross-project merge for the segment breakdown, so an
+all-projects report would publish one project's breakdown under a
+multi-project total. `stats_ledger_cmd.UNMEASURED` is now an import of
+`COST_UNMEASURED_LABEL`, so the word has one spelling.
 
 ## Next Steps
-1. T003c — the `remedy stats report` CLI, markdown and `--json`, with its
-   catalog entry, `--since`/`--until` validation and the second query the
-   comparison needs; `stats_ledger_cmd.UNMEASURED` becomes an import of
-   `COST_UNMEASURED_LABEL` so the concept keeps one spelling.
-2. T003d — the docs page the new user-visible behaviour needs.
-3. Integration gate (docs/agents/integration_gate.md).
-4. Closure per docs/roadmap/STATUS_closure_protocol.md.
+1. T003d — the docs page the new user-visible behaviour needs, registered
+   in the `docs/README.md` index in the same PR.
+2. Integration gate (docs/agents/integration_gate.md).
+3. Closure per docs/roadmap/STATUS_closure_protocol.md.
 
 ## Risks
 - Per-role has one bucket until `role` stops being hardcoded, and
@@ -39,5 +35,7 @@ refuses a prior that is not this period's prior, and
 - R-0322 will meet F115's integration gate as five pre-existing reds.
 - The goldens are DATA: no test may regenerate them. A renderer change
   that moves the bytes must move the files in the same, argued commit.
+- The `remedy` binary is refused in this session's sandbox, so CLI wiring
+  is proven through the suite and never through a pasted `--help`.
 
-Fortschritt: 88 % (T001 ✅ · T002 ✅ · T003 halb) — Schätzung
+Fortschritt: 93 % (T001 ✅ · T002 ✅ · T003 fast fertig) — Schätzung
