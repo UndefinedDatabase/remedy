@@ -59,6 +59,7 @@ Public API::
     COST_BASES: frozenset[str]
     CallRecord / CallSegmentRow / BackfillResult / ReconcileResult
     CostRow / CostReport / COST_GROUP_KEYS
+    SegmentShareRow / SegmentShareReport
     token_ledger_path_for(project_id, root=None) -> Path
     open_ledger(path) -> sqlite3.Connection
     record_call(record, *, project_id=None, path=None) -> bool
@@ -75,6 +76,8 @@ Public API::
     query_cost(*, project_id=None, path=None, since=None, job_id=None, by=None)
         -> CostReport
     merge_cost_reports(reports) -> CostReport
+    query_segment_shares(*, project_id=None, path=None, since=None, job_id=None)
+        -> SegmentShareReport
 """
 
 from __future__ import annotations
@@ -428,6 +431,61 @@ class CostReport:
     rows: list[CostRow] = field(default_factory=list)
     total: CostRow = field(default_factory=CostRow)
     by: str | None = None
+    since: str | None = None
+    job_id: str | None = None
+    project_id: str | None = None
+    ledger_path: str | None = None
+    ledger_exists: bool = False
+
+
+# One segment kind's share of a period, over rows that ALWAYS carry a figure.
+@dataclass
+class SegmentShareRow:
+    """One segment kind's share of the composed prompts in a period.
+
+    Every figure here is a PLAIN INT, not the nullable one ``CostRow`` carries.
+    That is a different shape of the same honesty, not a departure from it: every
+    value column of ``call_segments`` is declared NOT NULL, so a row that EXISTS
+    always states a real ``chars`` and a real ``tokens_estimated`` and there is no
+    "measured or not" question left to answer about it. Nothing here can be a
+    coerced zero, because there is nothing here to coerce.
+
+    The absence this feature has to report is therefore not a NULL figure but a
+    MISSING ROW — a call whose prompt was never traced. It is counted once, by
+    ``SegmentShareReport.unattributed_calls``, instead of being smeared across
+    five columns that do not describe it.
+    """
+
+    segment_name: str
+    calls: int = 0
+    segments: int = 0
+    chars: int = 0
+    tokens_estimated: int = 0
+
+
+# One answered breakdown question: the shares, the attribution split, the totals.
+@dataclass
+class SegmentShareReport:
+    """The result of one ``query_segment_shares`` call.
+
+    ``rows`` are the segment kinds in the contract's order. ``attributed_calls``
+    and ``unattributed_calls`` split every call in the period by whether it owns
+    segment rows at all, and they sum to the same call count ``query_cost``
+    reports over the same filters.
+
+    The three totals are sums over ``rows``, so a renderer's percentages have a
+    denominator that cannot disagree with its numerators. The remaining fields
+    echo the question back exactly as ``CostReport`` does, ``ledger_exists``
+    included: "no ledger yet" is not the same answer as "a ledger with nothing
+    in it".
+    """
+
+    rows: list[SegmentShareRow] = field(default_factory=list)
+    attributed_calls: int = 0
+    unattributed_calls: int = 0
+    total_segments: int = 0
+    total_chars: int = 0
+    total_tokens_estimated: int = 0
     since: str | None = None
     job_id: str | None = None
     project_id: str | None = None
@@ -1027,6 +1085,103 @@ def merge_cost_reports(reports: list[CostReport]) -> CostReport:
     ordered = sorted(buckets.items(), key=lambda item: (item[0] is not None, item[0] or ""))
     merged.rows = [_combine_cost_rows(rows, bucket=bucket) for bucket, rows in ordered]
     return merged
+
+
+# WHERE the tokens went: each segment kind's share of one period's prompts.
+def query_segment_shares(
+    *,
+    project_id: UUID | str | None = None,
+    path: Path | str | None = None,
+    since: str | None = None,
+    job_id: str | None = None,
+) -> SegmentShareReport:
+    """Aggregate ``call_segments`` into a ``SegmentShareReport``. READ-ONLY, never raises.
+
+    ``since`` and ``job_id`` filter the CALLS, through the very same
+    ``_cost_filters`` clause ``query_cost`` uses. Both columns live only on
+    ``calls``, so the clause is sound verbatim inside the join, and a breakdown
+    and a cost report over the same arguments describe the same set of calls by
+    construction rather than by two clauses that happen to agree today.
+
+    TWO STATEMENTS run under that one clause. The first joins ``calls`` to
+    ``call_segments`` on ``call_id`` and groups by ``segment_name``. The second
+    counts attribution over ``calls`` LEFT JOINed to the distinct ``call_id``s
+    that have segments: ``COUNT(*)`` is every call in the period and the count of
+    the joined column is the attributed subset, because ``COUNT`` ignores NULLs.
+    Both use ``COUNT`` rather than ``SUM`` for the reason ``_cost_bucket_rows``
+    already gives — a count of nothing IS 0, while a sum of nothing is NULL — and
+    ``unattributed_calls`` is simply their difference.
+
+    AN UNATTRIBUTED CALL IS NOT A ZERO SHARE. A call whose prompt was never
+    traced — every call this ledger recorded before F115 — owns no segment row,
+    and it is reported as one unattributed call rather than folded into a segment
+    kind or given a 0 of one. That is the P6 rule ``CostRow``'s NULLs keep, said
+    in the shape a NOT NULL table needs.
+
+    ROW ORDER IS PART OF THE CONTRACT: ``tokens_estimated`` descending, then
+    ``segment_name`` ascending as the tie-break. The renderer's goldens will pin
+    bytes against it, so it is decided here once and never left to SQLite.
+
+    The three totals are summed IN PYTHON over ``rows`` rather than asked of a
+    third statement. That makes the Acceptance property "the segment shares sum
+    to the attributed total" true BY CONSTRUCTION; a third aggregation could only
+    ever agree with the first one, and would be free to stop agreeing.
+
+    A ledger file that does not exist yields an EMPTY report with
+    ``ledger_exists=False``: not an error, and NOT a created database.
+    """
+    target = _resolve_ledger_path(project_id=project_id, path=path)
+    report = SegmentShareReport(
+        since=since,
+        job_id=job_id,
+        project_id=None if project_id is None else str(project_id),
+        ledger_path=str(target),
+        ledger_exists=target.is_file(),
+    )
+    if not report.ledger_exists:
+        return report
+
+    where, where_params = _cost_filters(since=since, job_id=job_id)
+    shares_sql = (
+        "SELECT call_segments.segment_name, "
+        "COUNT(DISTINCT call_segments.call_id), COUNT(*), "
+        "SUM(call_segments.chars), SUM(call_segments.tokens_estimated) "
+        "FROM calls JOIN call_segments "
+        f"ON call_segments.call_id = calls.call_id{where} "
+        "GROUP BY call_segments.segment_name "
+        "ORDER BY SUM(call_segments.tokens_estimated) DESC, "
+        "call_segments.segment_name ASC"
+    )
+    attribution_sql = (
+        "SELECT COUNT(*), COUNT(attributed.call_id) "
+        "FROM calls LEFT JOIN "
+        "(SELECT DISTINCT call_id FROM call_segments) AS attributed "
+        f"ON attributed.call_id = calls.call_id{where}"
+    )
+    conn = _connect_readonly(target)
+    try:
+        report.rows = [
+            SegmentShareRow(
+                segment_name=str(row[0]),
+                calls=int(row[1]),
+                segments=int(row[2]),
+                chars=int(row[3]),
+                tokens_estimated=int(row[4]),
+            )
+            for row in conn.execute(shares_sql, where_params).fetchall()
+        ]
+        period_calls, attributed_calls = conn.execute(
+            attribution_sql, where_params
+        ).fetchone()
+    finally:
+        conn.close()
+
+    report.attributed_calls = int(attributed_calls)
+    report.unattributed_calls = int(period_calls) - int(attributed_calls)
+    report.total_segments = sum(row.segments for row in report.rows)
+    report.total_chars = sum(row.chars for row in report.rows)
+    report.total_tokens_estimated = sum(row.tokens_estimated for row in report.rows)
+    return report
 
 
 # How many ledger writes have failed in this process — surfaced by verify-ledger.
