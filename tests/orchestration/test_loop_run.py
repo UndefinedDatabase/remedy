@@ -9,23 +9,37 @@ nothing here depends on the clock.
 R-0344 counter-measure: no assertion in this file matches against a string that
 carries a filesystem path. Every expected value is computed from the spec or
 from the module under test, never from a fixture directory's name.
+
+The two ``last_run_for_loop`` tests are the one deliberate exception to the
+"spec comes from a real remedy.toml" rule: their subject is the job-store scan
+and its ORDERING, so they hand-build jobs with distinct ``created_at`` values —
+two jobs materialized inside one test would share a clock reading too closely
+for "most recent" to mean anything. Everything touching mission state or the
+job store passes an explicit ``root``, so no test reads or writes a real store.
 """
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
 
 from packages.core.models import Job, RunState
+from packages.orchestration import mission_state, storage
 from packages.orchestration.loop_run import (
     LOOP_REF_METADATA_KEY,
     LOOP_UNATTENDED_METADATA_KEY,
     LoopRunError,
+    last_run_for_loop,
     loop_to_job,
     render_goal_template,
+    run_loop,
 )
-from packages.orchestration.loop_spec import LoopSpec, load_loop_specs
+from packages.orchestration.loop_spec import (
+    INERT_TRIGGER_NOTICE,
+    LoopSpec,
+    load_loop_specs,
+)
 
 DEADLINE_ISO = "2026-09-01T00:00:00+00:00"
 
@@ -180,3 +194,146 @@ def test_unknown_placeholder_raises_loop_run_error_not_key_error() -> None:
 
     assert "repo" in str(excinfo.value)
     assert not isinstance(excinfo.value, KeyError)
+
+
+def _mission_loop(tmp_path: Path, *, template: str = "review {project} for {date}",
+                  unattended: bool = False, trigger: str = "") -> LoopSpec:
+    return _spec(tmp_path, f"""
+[[loop]]
+name = "weekly-review"
+unattended = {str(unattended).lower()}
+{trigger}
+[loop.action]
+kind = "mission"
+mission = "{template}"
+""")
+
+
+def _stored_job(name: str, *, loop_ref: str, created_at: datetime) -> Job:
+    """A job built by hand so its ``created_at`` is explicit, not a clock read."""
+    return Job(name=name, user_prompt=name, state=RunState.PLANNED,
+               created_at=created_at, metadata={LOOP_REF_METADATA_KEY: loop_ref})
+
+
+def test_run_loop_on_a_job_action_returns_a_planned_job_without_a_mission(
+        tmp_path: Path) -> None:
+    spec = _job_loop(tmp_path)
+    saved: list[Job] = []
+
+    outcome = run_loop(spec, project_id="remedy", date="2026-08-13",
+                       save=saved.append, root=tmp_path)
+
+    assert outcome.job.state is RunState.PLANNED
+    assert outcome.job.metadata[LOOP_REF_METADATA_KEY] == spec.name
+    assert outcome.mission_id is None
+
+
+def test_run_loop_on_a_mission_action_creates_a_mission_with_the_rendered_goal(
+        tmp_path: Path) -> None:
+    spec = _mission_loop(tmp_path, template="review {project} for {date}")
+    saved: list[Job] = []
+
+    outcome = run_loop(spec, project_id="remedy", date="2026-08-13",
+                       save=saved.append, root=tmp_path)
+
+    assert outcome.mission_id is not None
+    mission = mission_state.load_mission("remedy", outcome.mission_id, root=tmp_path)
+    assert mission.goal == "review remedy for 2026-08-13"
+    assert outcome.mission_id == mission.id
+
+
+def test_mission_path_records_provenance_on_the_job_not_on_the_mission(
+        tmp_path: Path) -> None:
+    """DECISION F045 D5: loop_ref rides on the JOB; the mission stays reachable."""
+    spec = _mission_loop(tmp_path)
+    saved: list[Job] = []
+
+    outcome = run_loop(spec, project_id="remedy", date="2026-08-13",
+                       save=saved.append, root=tmp_path)
+
+    assert outcome.job.metadata[LOOP_REF_METADATA_KEY] == spec.name
+    assert outcome.job.metadata["mission_id"] == outcome.mission_id
+    mission = mission_state.load_mission("remedy", outcome.mission_id, root=tmp_path)
+    assert hasattr(mission, "loop_ref") is False
+
+
+def test_mission_job_is_the_missions_initial_link(tmp_path: Path) -> None:
+    spec = _mission_loop(tmp_path)
+    saved: list[Job] = []
+
+    outcome = run_loop(spec, project_id="remedy", date="2026-08-13",
+                       save=saved.append, root=tmp_path)
+
+    mission = mission_state.load_mission("remedy", outcome.mission_id, root=tmp_path)
+    (link,) = mission.job_links
+    assert link.job_id == str(outcome.job.id)
+    assert link.role == mission_state.MISSION_ROLE_INITIAL
+
+
+def test_unattended_mission_loop_is_recorded_and_still_stops_at_planned(
+        tmp_path: Path) -> None:
+    """The 'a loop never implies --yes' pin for the mission path."""
+    attended = _mission_loop(tmp_path / "off", unattended=False)
+    unattended = _mission_loop(tmp_path / "on", unattended=True)
+    saved: list[Job] = []
+
+    attended_out = run_loop(attended, project_id="remedy", date="2026-08-13",
+                            save=saved.append, root=tmp_path / "off")
+    unattended_out = run_loop(unattended, project_id="remedy", date="2026-08-13",
+                              save=saved.append, root=tmp_path / "on")
+
+    assert attended_out.job.metadata[LOOP_UNATTENDED_METADATA_KEY] is False
+    assert unattended_out.job.metadata[LOOP_UNATTENDED_METADATA_KEY] is True
+    assert unattended_out.job.state == attended_out.job.state
+    assert unattended_out.job.state is RunState.PLANNED
+
+
+def test_inert_trigger_yields_the_notice_and_still_produces_a_planned_job(
+        tmp_path: Path) -> None:
+    spec = _mission_loop(tmp_path, trigger='\n[loop.trigger]\nkind = "schedule"\n'
+                                           'schedule = "0 9 * * 1"')
+    saved: list[Job] = []
+
+    outcome = run_loop(spec, project_id="remedy", date="2026-08-13",
+                       save=saved.append, root=tmp_path)
+
+    assert spec.is_inert is True
+    assert outcome.notice == INERT_TRIGGER_NOTICE
+    assert outcome.job.state is RunState.PLANNED
+
+
+def test_manual_trigger_yields_no_notice(tmp_path: Path) -> None:
+    spec = _job_loop(tmp_path)
+    saved: list[Job] = []
+
+    outcome = run_loop(spec, project_id="remedy", date="2026-08-13",
+                       save=saved.append, root=tmp_path)
+
+    assert spec.is_inert is False
+    assert outcome.notice is None
+
+
+def test_last_run_for_loop_returns_the_most_recent_run_or_none(tmp_path: Path) -> None:
+    older = _stored_job("older run", loop_ref="nightly-tidy",
+                        created_at=datetime(2026, 8, 11, tzinfo=timezone.utc))
+    newer = _stored_job("newer run", loop_ref="nightly-tidy",
+                        created_at=datetime(2026, 8, 13, tzinfo=timezone.utc))
+    storage.save_job(older, tmp_path)
+    storage.save_job(newer, tmp_path)
+
+    assert last_run_for_loop("nightly-tidy", root=tmp_path).id == newer.id
+    assert last_run_for_loop("never-ran", root=tmp_path) is None
+
+
+def test_last_run_for_loop_ignores_another_loops_run(tmp_path: Path) -> None:
+    mine = _stored_job("mine", loop_ref="nightly-tidy",
+                       created_at=datetime(2026, 8, 11, tzinfo=timezone.utc))
+    theirs = _stored_job("theirs", loop_ref="weekly-review",
+                         created_at=datetime(2026, 8, 13, tzinfo=timezone.utc))
+    storage.save_job(mine, tmp_path)
+    storage.save_job(theirs, tmp_path)
+
+    found = last_run_for_loop("nightly-tidy", root=tmp_path)
+    assert found is not None
+    assert found.id == mine.id
+    assert found.metadata[LOOP_REF_METADATA_KEY] == "nightly-tidy"
