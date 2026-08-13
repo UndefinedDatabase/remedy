@@ -11,7 +11,15 @@ from pydantic import ValidationError
 
 from packages.core.models import Artifact, Job, RunState, Task
 from packages.orchestration.job_runner import PlanJobResult
-from packages.orchestration.llm_planner import annotate_planning_result, plan_job_with_llm
+from packages.orchestration.llm_planner import (
+    annotate_planning_result,
+    compose_planner_prompt,
+    plan_job_with_llm,
+)
+from packages.orchestration.prompt_segments import (
+    PROMPT_SEGMENT_DELIMITER,
+    SegmentStabilityRank,
+)
 from packages.orchestration.planner_models import PlannerOutput, ProposedTask
 
 # ---------------------------------------------------------------------------
@@ -358,3 +366,53 @@ def test_dedup_preserves_task_descriptions():
     result = plan_job_with_llm(job, _stub_planner(output))
     descriptions = [t.description for t in result.job.tasks]
     assert descriptions == ["Unit tests.", "Integration tests."]
+
+# F115 — the planner prompt is composed, and composing it changes no byte.
+
+_MEMORY_SECTION = "## Project Memory\n- prefer small commits"
+
+
+def test_compose_planner_prompt_without_memory_is_the_bare_job_prompt():
+    """One segment composes to itself: no delimiter, no header, no marker."""
+    composed = compose_planner_prompt("Fix the bug")
+    assert composed.text == "Fix the bug"
+    assert [e.name for e in composed.manifest] == ["planner_job_prompt"]
+    assert [e.rank for e in composed.manifest] == [int(SegmentStabilityRank.TASK)]
+
+
+def test_compose_planner_prompt_with_memory_keeps_the_legacy_byte_order():
+    """The pre-F115 concatenation, byte for byte: job prompt first, memory last."""
+    composed = compose_planner_prompt("Fix the bug", _MEMORY_SECTION)
+    assert composed.text == f"Fix the bug{PROMPT_SEGMENT_DELIMITER}{_MEMORY_SECTION}"
+    assert [e.name for e in composed.manifest] == [
+        "planner_job_prompt",
+        "planner_memory_context",
+    ]
+    assert [e.rank for e in composed.manifest] == [
+        int(SegmentStabilityRank.TASK),
+        int(SegmentStabilityRank.STEERING),
+    ]
+
+
+def test_compose_planner_prompt_manifest_accounts_for_every_character():
+    """Row chars plus one delimiter per join is the composed length, exactly."""
+    composed = compose_planner_prompt("Fix the bug", _MEMORY_SECTION)
+    rows = composed.manifest
+    joined = sum(e.chars for e in rows) + len(PROMPT_SEGMENT_DELIMITER) * (len(rows) - 1)
+    assert joined == len(composed.text)
+
+
+def test_plan_job_with_llm_hands_down_the_composition_it_sends():
+    """The hook sees the ComposedPrompt whose `.text` is the prompt sent."""
+    seen: list = []
+    sent: list = []
+
+    def _capture(prompt: str) -> PlannerOutput:
+        sent.append(prompt)
+        return _make_output()
+
+    job = Job(name="test-job", user_prompt="Fix the bug")
+    plan_job_with_llm(job, _capture, on_prompt_composed=seen.append)
+    assert len(seen) == 1
+    assert sent == [seen[0].text]
+    assert seen[0].manifest[0].name == "planner_job_prompt"
