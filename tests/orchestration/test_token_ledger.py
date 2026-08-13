@@ -88,6 +88,7 @@ from packages.orchestration.token_ledger import (
     BackfillResult,
     CallRecord,
     CallSegmentRow,
+    SegmentShareRow,
     backfill_ledger,
     call_id_for_task_run,
     call_record_from_evidence,
@@ -96,6 +97,7 @@ from packages.orchestration.token_ledger import (
     merge_cost_reports,
     open_ledger,
     query_cost,
+    query_segment_shares,
     record_call,
     record_call_segments,
     reset_ledger_miss_count,
@@ -1797,3 +1799,179 @@ class TestCallSegmentsWriter:
                 tokens_estimated=30,
             ),
         ]
+
+
+# ── F115 T002: the per-segment share aggregation ─────────────────────────────
+# Two evidence trees backfilled into ONE ledger by the REAL backfill: a job whose
+# two task runs carry a copied prompt trace, and a job whose single task run does
+# not. That shape is what lets one fixture pin the grouping, the pinned row
+# order, both filters, the totals and — the point of the feature — a call the
+# tracer never covered, which is an absence rather than a zero share.
+
+SHARE_JOB_TRACED = "job-traced"
+SHARE_JOB_BARE = "job-bare"
+
+
+def _share_evidence_tree(base, job_id, task_runs):
+    """An evidence tree for ``job_id``; ``task_runs`` is ``(task_id, ts_utc, manifest)``.
+
+    A ``manifest`` of None leaves that task run WITHOUT a ``prompt_trace.jsonl``,
+    which is the pre-F115 shape on disk. Nothing here is mocked: these are the
+    files the exporter writes, read back by the real backfill.
+    """
+    _write_json_file(base / "manifest.json",
+                     {"bundle_type": "job_evidence", "job_id": job_id})
+    for task_id, ts_utc, manifest in task_runs:
+        run = base / "task_runs" / task_id
+        _write_json_file(run / "provider_evidence.json", {
+            "schema_version": "1.0.0",
+            "task_id": task_id,
+            "execution_mode": "provider_backed",
+            "provider_call_count": 1,
+            "actual_call_count": 1,
+            "cost_call_count": 1,
+            "actual_prompt_tokens": 1000,
+            "actual_completion_tokens": 200,
+            "ts_utc": ts_utc,
+        })
+        _write_json_file(run / "token_accounting.json", {"role": "builder"})
+        if manifest is not None:
+            entry = _trace_entry(task_id, manifest)
+            entry["job_id"] = job_id
+            _write_trace_file(run / "prompt_trace.jsonl", [entry])
+    return base
+
+
+@pytest.fixture
+def share_ledger(ledger_path, tmp_path):
+    """Three calls: two traced ones in one job, one untraced one in another.
+
+    ``diff`` and ``schema_tail`` publish the SAME ``tokens_estimated`` on purpose,
+    so the fixture pins the tie-break of the row order and not only its direction.
+    """
+    brief = _manifest_entry("task_brief", 10, "a" * 64, 120, 30)
+    diff = _manifest_entry("diff", 20, "b" * 64, 400, 100)
+    tail = _manifest_entry("schema_tail", 30, "c" * 64, 60, 100)
+
+    traced = _share_evidence_tree(
+        tmp_path / "evidence" / SHARE_JOB_TRACED, SHARE_JOB_TRACED,
+        [("T001", "2026-08-01T10:00:00+00:00", [brief, diff]),
+         ("T002", "2026-08-05T10:00:00+00:00", [tail])],
+    )
+    bare = _share_evidence_tree(
+        tmp_path / "evidence" / SHARE_JOB_BARE, SHARE_JOB_BARE,
+        [("T001", "2026-08-09T10:00:00+00:00", None)],
+    )
+    assert backfill_ledger(traced, path=ledger_path).recorded == 2
+    assert backfill_ledger(bare, path=ledger_path).recorded == 1
+    return ledger_path
+
+
+class TestQuerySegmentShares:
+    """F115 T002-Query — where the tokens went, and how much of that we know.
+
+    The whole class reads a ledger the real ``backfill_ledger`` wrote from real
+    files; no row here was hand-inserted with SQL, so a writer that stopped
+    producing these rows would fail these tests rather than pass them.
+    """
+
+    def test_shares_group_by_segment_name_in_the_pinned_row_order(self, share_ledger):
+        """``tokens_estimated`` DESC, then ``segment_name`` ASC — R11 pins bytes on it."""
+        report = query_segment_shares(path=share_ledger)
+
+        assert report.rows == [
+            SegmentShareRow(segment_name="diff", calls=1, segments=1,
+                            chars=400, tokens_estimated=100),
+            SegmentShareRow(segment_name="schema_tail", calls=1, segments=1,
+                            chars=60, tokens_estimated=100),
+            SegmentShareRow(segment_name="task_brief", calls=1, segments=1,
+                            chars=120, tokens_estimated=30),
+        ]
+        assert report.ledger_exists is True
+
+    def test_a_call_without_segment_rows_is_unattributed_and_in_no_share_row(
+        self, share_ledger
+    ):
+        """The pre-F115 shape is reported as a missing row, never as a 0 share."""
+        everything = query_segment_shares(path=share_ledger)
+        traced_only = query_segment_shares(path=share_ledger, job_id=SHARE_JOB_TRACED)
+        bare_only = query_segment_shares(path=share_ledger, job_id=SHARE_JOB_BARE)
+
+        assert (everything.attributed_calls, everything.unattributed_calls) == (2, 1)
+        assert (traced_only.attributed_calls, traced_only.unattributed_calls) == (2, 0)
+        assert (bare_only.attributed_calls, bare_only.unattributed_calls) == (0, 1)
+
+        # The untraced call moves nothing: the shares are identical with and
+        # without it in the period, so it was counted and not distributed.
+        assert bare_only.rows == []
+        assert everything.rows == traced_only.rows
+
+    def test_the_shares_sum_to_the_totals_and_the_calls_match_query_cost(
+        self, share_ledger
+    ):
+        """The Acceptance line: nothing in the report may disagree with itself."""
+        report = query_segment_shares(path=share_ledger)
+
+        assert sum(row.segments for row in report.rows) == report.total_segments
+        assert sum(row.chars for row in report.rows) == report.total_chars
+        assert sum(
+            row.tokens_estimated for row in report.rows
+        ) == report.total_tokens_estimated
+        assert (report.total_segments, report.total_chars,
+                report.total_tokens_estimated) == (3, 580, 230)
+
+        assert report.attributed_calls + report.unattributed_calls == query_cost(
+            path=share_ledger).total.calls
+        narrowed = query_segment_shares(path=share_ledger, since="2026-08-05")
+        assert narrowed.attributed_calls + narrowed.unattributed_calls == query_cost(
+            path=share_ledger, since="2026-08-05").total.calls
+
+    def test_since_and_job_id_narrow_the_rows_and_both_attribution_counts(
+        self, share_ledger
+    ):
+        """A call outside the period is in neither the shares nor either count."""
+        since = query_segment_shares(path=share_ledger, since="2026-08-05")
+        assert since.rows == [
+            SegmentShareRow(segment_name="schema_tail", calls=1, segments=1,
+                            chars=60, tokens_estimated=100),
+        ]
+        assert (since.attributed_calls, since.unattributed_calls) == (1, 1)
+
+        job = query_segment_shares(path=share_ledger, job_id=SHARE_JOB_TRACED)
+        assert [row.segment_name for row in job.rows] == [
+            "diff", "schema_tail", "task_brief"]
+        assert (job.attributed_calls, job.unattributed_calls) == (2, 0)
+
+        both = query_segment_shares(
+            path=share_ledger, since="2026-08-05", job_id=SHARE_JOB_TRACED)
+        assert both.rows == since.rows
+        assert (both.attributed_calls, both.unattributed_calls) == (1, 0)
+        assert (both.since, both.job_id) == ("2026-08-05", SHARE_JOB_TRACED)
+
+    def test_a_missing_ledger_yields_an_empty_report_and_creates_nothing(self, tmp_path):
+        """Asking where the tokens went must not be what brings a ledger into being."""
+        absent = tmp_path / "projects" / str(uuid4()) / LEDGER_FILENAME
+
+        report = query_segment_shares(path=absent, since="2026-08-01")
+
+        assert report.ledger_exists is False
+        assert report.rows == []
+        assert (report.attributed_calls, report.unattributed_calls) == (0, 0)
+        assert (report.total_segments, report.total_chars,
+                report.total_tokens_estimated) == (0, 0, 0)
+        assert not absent.exists()
+        assert not absent.parent.exists(), "a query created a project directory"
+
+    def test_the_report_changes_no_byte_and_leaves_no_wal_beside_the_ledger(
+        self, share_ledger
+    ):
+        """Report generation touches nothing — measured on the bytes themselves."""
+        before = share_ledger.read_bytes()
+
+        query_segment_shares(path=share_ledger)
+        query_segment_shares(path=share_ledger, since="2026-08-01",
+                             job_id=SHARE_JOB_TRACED)
+
+        assert share_ledger.read_bytes() == before
+        assert sorted(p.name for p in share_ledger.parent.iterdir()) == [
+            LEDGER_FILENAME]
