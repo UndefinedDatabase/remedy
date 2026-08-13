@@ -39,7 +39,7 @@ from packages.orchestration.token_ledger import (
 
 #: Report schema version. Bumped when the payload shape changes, so a reader
 #: never has to guess which shape it is holding.
-COST_REPORT_VERSION = 1
+COST_REPORT_VERSION = 2
 
 #: The report file names, written side by side when T003 puts them on disk.
 COST_REPORT_MARKDOWN_FILENAME = "cost_report.md"
@@ -96,6 +96,10 @@ def _same_question(cost: CostReport, shares: SegmentShareReport) -> None:
     answering a different question than the one asked, which ``query_cost``
     already refuses to do for its own ``by`` argument.
 
+    A PERIOD'S END IS A FILTER LIKE ANY OTHER, so ``until`` is compared beside
+    ``since``: two halves covering two different periods are two questions,
+    even when they start on the same day.
+
     THE LEDGER IS PART OF THE QUESTION, not only the filters. Two reports with
     identical filters drawn from two DIFFERENT ledgers describe two different
     sets of calls, and rendering them together would publish one project's
@@ -105,12 +109,17 @@ def _same_question(cost: CostReport, shares: SegmentShareReport) -> None:
     cross-project total that belongs to no single file, and it compares equal
     to itself as it should.
     """
-    if (cost.since, cost.job_id) != (shares.since, shares.job_id):
+    if (cost.since, cost.until, cost.job_id) != (
+        shares.since,
+        shares.until,
+        shares.job_id,
+    ):
         raise ValueError(
             "a cost report needs one question, not two: "
-            f"query_cost(since={cost.since!r}, job_id={cost.job_id!r}) does not "
-            f"match query_segment_shares(since={shares.since!r}, "
-            f"job_id={shares.job_id!r})"
+            f"query_cost(since={cost.since!r}, until={cost.until!r}, "
+            f"job_id={cost.job_id!r}) does not match "
+            f"query_segment_shares(since={shares.since!r}, "
+            f"until={shares.until!r}, job_id={shares.job_id!r})"
         )
     if (cost.ledger_path, cost.ledger_exists) != (
         shares.ledger_path,
@@ -153,6 +162,7 @@ def cost_report_json(
         "label": label if label is not None else COST_DEFAULT_LABEL,
         "filters": {
             "since": cost.since or "",
+            "until": cost.until or "",
             "job": cost.job_id or "",
             "by": cost.by,
             "timezone": "UTC",
@@ -314,6 +324,7 @@ def render_cost_report_markdown(
         f"{key}={value}"
         for key, value in (
             ("since", cost.since or "-"),
+            ("until", cost.until or "-"),
             ("job", cost.job_id or "-"),
             ("by", cost.by or "-"),
         )

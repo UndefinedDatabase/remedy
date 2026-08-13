@@ -207,6 +207,35 @@ def test_a_mismatched_pair_is_refused_by_both_renderers():
         cost_report_json_bytes(cost, shares, label="R11")
 
 
+def test_a_pair_covering_two_different_periods_is_refused_by_both_renderers():
+    """A period's END is a filter like any other, so two ends are two questions."""
+    cost = _cost(until="2026-08-09")
+    shares = _shares(until="2026-08-12")
+
+    with pytest.raises(ValueError):
+        render_cost_report_markdown(cost, shares, label="R15")
+    with pytest.raises(ValueError):
+        cost_report_json_bytes(cost, shares, label="R15")
+
+
+def test_both_renderings_carry_the_until_the_report_holds():
+    """The second end of the period is stated, not silently applied."""
+    markdown = render_cost_report_markdown(
+        _cost(until="2026-08-09"), _shares(until="2026-08-09"), label="R15"
+    )
+    assert "until=2026-08-09" in markdown
+
+    payload = cost_report_json(
+        _cost(until="2026-08-09"), _shares(until="2026-08-09"), label="R15"
+    )
+    assert payload["filters"]["until"] == "2026-08-09"
+
+    # An OPEN-ENDED period says so in both formats rather than printing a date
+    # nobody asked for: the dash in markdown, the empty string in json.
+    assert "until=-" in render_cost_report_markdown(_cost(), _shares(), label="R15")
+    assert cost_report_json(_cost(), _shares(), label="R15")["filters"]["until"] == ""
+
+
 def test_a_pair_from_two_different_ledgers_is_refused_by_both_renderers():
     """Identical filters over two different ledgers are still two questions."""
     cost = _cost(ledger_path="/data/a/ledger.sqlite")

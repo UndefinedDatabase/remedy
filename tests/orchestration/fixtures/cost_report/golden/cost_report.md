@@ -1,6 +1,6 @@
 # Cost report — f115-golden
 
-Filters: since=-  job=-  by=day · all timestamps UTC
+Filters: since=-  until=-  job=-  by=day · all timestamps UTC
 
 ## Cost
 

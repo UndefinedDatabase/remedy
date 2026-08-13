@@ -41,12 +41,13 @@
     "by": "day",
     "job": "",
     "since": "",
-    "timezone": "UTC"
+    "timezone": "UTC",
+    "until": ""
   },
   "label": "f115-golden",
   "ledger_exists": true,
   "note": "a null figure was never reported — it is not a zero; no price is ever computed",
-  "report_version": 1,
+  "report_version": 2,
   "segments": {
     "attributed_calls": 2,
     "rows": [
