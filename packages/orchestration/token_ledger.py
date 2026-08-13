@@ -38,7 +38,11 @@ does not exist:
   FINALIZED TASK RUN, keyed ``"<job_id>:<task_id>"`` (DECISION D16, recorded on
   the feature file): ``task_runs/<task_id>/provider_evidence.json`` is the
   finest record the actuals feature puts on disk, and a per-request row would
-  have to invent ids, timestamps and a usage split no file records.
+  have to invent ids, timestamps and a usage split no file records. F115 D4 adds
+  ``call_segments`` BESIDE it rather than widening it — one row per segment of
+  one composed prompt, keyed by the row's ``call_id`` plus the trace line's
+  position — so the per-call breakdown lives in its own table and ``calls``
+  keeps its one-row-per-task-run identity untouched.
 * Remedy deliberately does NOT invent prices. ``cost_usd`` stays NULL unless a
   caller supplies a real figure together with the basis it came from, and a
   call with no reported usage produces NULL counts with basis ``unknown``
@@ -99,7 +103,7 @@ logger = logging.getLogger(__name__)
 
 
 # The on-disk schema generation; bump it only together with a new migration step.
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 # The meta key carrying SCHEMA_VERSION, so a future reader can tell old DBs apart.
 SCHEMA_VERSION_KEY = "schema_version"
@@ -195,6 +199,25 @@ _MIGRATIONS: dict[int, tuple[str, ...]] = {
         "CREATE INDEX IF NOT EXISTS idx_calls_job_id ON calls (job_id)",
         "CREATE INDEX IF NOT EXISTS idx_calls_ts_utc ON calls (ts_utc)",
         "CREATE INDEX IF NOT EXISTS idx_calls_role_model ON calls (role, model)",
+    ),
+    # F115 D4: the segment manifest is per PROVIDER CALL while a `calls` row is
+    # one finalized TASK RUN, so it gets its own table instead of a column. The
+    # value columns mirror ComposedPrompt.manifest_as_dicts() one for one, so a
+    # writer never has to invent or rename a field.
+    2: (
+        """
+        CREATE TABLE IF NOT EXISTS call_segments (
+            call_id          TEXT NOT NULL,
+            trace_seq        INTEGER NOT NULL,
+            segment_name     TEXT NOT NULL,
+            segment_rank     INTEGER NOT NULL,
+            segment_sha256   TEXT NOT NULL,
+            chars            INTEGER NOT NULL,
+            tokens_estimated INTEGER NOT NULL,
+            PRIMARY KEY (call_id, trace_seq, segment_name)
+        )
+        """,
+        "CREATE INDEX IF NOT EXISTS idx_call_segments_call_id ON call_segments (call_id)",
     ),
 }
 
