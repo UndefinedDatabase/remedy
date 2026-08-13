@@ -111,7 +111,7 @@ def resolve_role_config(
 
     When the provider is resolved but no model is explicitly set, the model
     defaults to the provider-specific default (e.g. Opus for claude-cli,
-    qwen3-coder-next for ollama).
+    the configured local default for ollama).
 
     Args:
         role: The role name (see :data:`KNOWN_ROLES`).
