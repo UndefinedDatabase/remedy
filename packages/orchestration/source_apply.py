@@ -445,6 +445,10 @@ def _apply_hunks(original: str, diff_text: str) -> str | None:
     hunk consumed. An added line therefore lands at its own position inside the
     hunk, never at the hunk's start.
 
+    A hunk whose OLD COUNT is 0 is a pure insertion whose content goes AFTER
+    the line its header names, so its 0-based start is that line number itself;
+    every other hunk starts AT the named line, one less.
+
     Context and removal lines are still validated against real file content
     before anything is written: a mismatch, or an index outside the original
     file, rejects the whole patch.
@@ -466,7 +470,14 @@ def _apply_hunks(original: str, diff_text: str) -> str | None:
             i += 1
             continue
 
-        orig_start = int(m.group(1)) - 1  # 0-indexed
+        # An absent old count is the "@@ -2 +1,0 @@" short form, meaning 1.
+        old_count = 1 if m.group(2) is None else int(m.group(2))
+        if old_count == 0:
+            # Pure insertion: the header names the line the content goes AFTER,
+            # so the 0-based splice index is that line number itself.
+            orig_start = int(m.group(1))
+        else:
+            orig_start = int(m.group(1)) - 1  # 0-indexed
         i += 1
 
         new_block: list[str] = []
@@ -500,7 +511,17 @@ def _apply_hunks(original: str, diff_text: str) -> str | None:
             # is ignored: it consumes no original line and contributes none.
             i += 1
 
+        if old_count == 0 and old_len != 0:
+            # The header declared a pure insertion but the body consumed
+            # original lines. Guessing which one is right is how fuzzy apply
+            # starts; this repository applies diffs strictly.
+            return None
+
         splice_at = orig_start + offset
+        if splice_at < 0:
+            # Reachable from a malformed "@@ -0,N @@" with N >= 1 whose body
+            # adds lines without consuming any. No splice runs at index -1.
+            return None
         result_lines[splice_at:splice_at + old_len] = new_block
         offset += len(new_block) - old_len
 

@@ -187,6 +187,55 @@ class TestHunkValidation:
         result = _apply_hunks(original, diff)
         assert result == "a\nB\nc\n"
 
+    def test_zero_count_hunk_inserts_after_its_header_line(self):
+        """`@@ -1,0 +2 @@` is git's own header for inserting between a and b."""
+        original = "a\nb\nc\n"
+        diff = "@@ -1,0 +2 @@\n+X\n"
+        result = _apply_hunks(original, diff)
+        assert result == "a\nX\nb\nc\n"
+
+    def test_zero_count_hunk_at_line_zero_prepends(self):
+        """`@@ -0,0 +1 @@` is a PREPEND that silently became an APPEND.
+
+        `orig_start` was -1, so `result_lines[-1:-1]` spliced before the
+        trailing element and the line landed at the end of the file (R-0312).
+        """
+        original = "a\nb\nc\n"
+        diff = "@@ -0,0 +1 @@\n+X\n"
+        result = _apply_hunks(original, diff)
+        assert result == "X\na\nb\nc\n"
+
+    def test_zero_count_hunk_past_last_line_appends(self):
+        original = "a\nb\nc\n"
+        diff = "@@ -3,0 +4 @@\n+X\n"
+        result = _apply_hunks(original, diff)
+        assert result == "a\nb\nc\nX\n"
+
+    def test_two_zero_count_hunks_both_land_correctly(self):
+        """The running offset survives a splice that consumes no original line."""
+        original = "a\nb\nc\n"
+        diff = "@@ -1,0 +2 @@\n+X\n@@ -2,0 +4 @@\n+Y\n"
+        result = _apply_hunks(original, diff)
+        assert result == "a\nX\nb\nY\nc\n"
+
+    def test_zero_count_header_with_consuming_body_rejects(self):
+        """A header contradicting its own body is rejected, not guessed at.
+
+        The repeated `a` makes the context line MATCH at the shifted index, so
+        this proves the old-count rejection and not the context validation.
+        """
+        original = "a\na\nb\n"
+        diff = "@@ -1,0 +2 @@\n a\n+X\n"
+        result = _apply_hunks(original, diff)
+        assert result is None
+
+    def test_negative_splice_index_rejects(self):
+        """`@@ -0,1 @@` names line 0 with a non-zero old count: index -1."""
+        original = "a\nb\n"
+        diff = "@@ -0,1 +0,2 @@\n+X\n"
+        result = _apply_hunks(original, diff)
+        assert result is None
+
     def test_wrong_context_line_rejects(self):
         original = "alpha\nbeta\ngamma\n"
         diff = "@@ -1,3 +1,3 @@\n WRONG\n-beta\n+BETA\n gamma\n"
