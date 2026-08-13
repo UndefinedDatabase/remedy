@@ -1,75 +1,82 @@
-# Handoff — F045 Loop definitions · session close after R2
+# Handoff — F045 Loop definitions · ROUND 3 HALTED on an operator STOP sentinel
 
-Session type: one-session self-drive (docs/agents/self_drive_protocol.md).
-Planner/reviewer and two delegated workers, one per round. Ended at the
-session's stated round/context limit with both rounds gated — a clean stop,
-not a failure (G7).
+A session that ends at a guardrail with a written handoff is a success (G7/G6),
+not a failure. Session type: one-session self-drive
+(docs/agents/self_drive_protocol.md).
+
+Deviations, declared: 82 lines, over the 60-line cap. Cause: the mandated
+item-status table (one row per R3 block ITEM 1-8) plus the mandated STOP-fact
+and verification sections. No section is dropped.
 
 ## State
-Branch `feature/f045-loop-definitions`, cut from main at `cb3ef34f`. Pushed.
-No PR opened, nothing merged, main untouched, no force-push, no worktrees left.
-LAST_REVIEWED_SHA = `3f92fbcd`. Open findings: 3. Next free finding ID: R-0347.
-STATUS.md carries `- [~] F045 — Loop definitions`.
+Branch `feature/f045-loop-definitions`, cut from main at `cb3ef34f`. No PR open,
+nothing merged, main untouched, no force-push, no worktrees left.
+LAST_REVIEWED_SHA = `3f92fbcd`, unchanged — R3 produced nothing to review.
+HEAD is `85609016`, also unchanged by R3. `docs/roadmap/STATUS.md` still carries
+`- [~] F045 — Loop definitions`. Open findings: 4. Next free finding ID: R-0348.
+
+## The STOP fact
+`.agent/STOP` is present on disk, untracked and empty, with an mtime LATER than
+the last commit and later than this session's Phase 0 probe, which had found the
+tree clean and the file absent. It was deliberately NOT deleted and NOT
+committed — removing an operator sentinel is the operator's decision.
+`git status --porcelain` therefore reports `?? .agent/STOP`, and that is the
+expected end state, not a dirty tree.
 
 ## Rounds
-| Round | Scope | Verdict | Reviewed at |
-|---|---|---|---|
-| R1 | claim + state reset + T001 spec/loading/validation | PASS | `fbd5168b` |
-| R2 | R1 findings + decisions D1-D3 + T002 materialization | PASS | `3f92fbcd` |
+| Round | Verdict | Reviewed at |
+|---|---|---|
+| R1 | PASS | `fbd5168b` |
+| R2 | PASS | `3f92fbcd` |
+| R3 | HALTED — no commits, no verdict | — |
 
-## Commits
-R1: `106239a9` block · `8e44d980` claim+reset · `9d415caf` loop_spec.py ·
-`5528a569` its tests · `fbd5168b` handoff.
-R2: `f99a3407` block · `10301253` findings · `7e2c94ec` decisions ·
-`6794e7f0` loop_run.py · `5d613f49` its tests · `3f92fbcd` plan+handoff.
+## Commits this session
+None beyond this handoff commit itself: `docs(f045): halt round 3 on the
+operator stop sentinel`. Its SHA is this commit; git history carries it.
 
-## Verification RE-RUN BY THE REVIEWER (not the workers' numbers)
-At `fbd5168b`: cmp authored/last_block exit 0 · STATUS `[~]` 1 / `[ ]` 0 ·
-live_review `## Steps` 1 · tests/docs + test_loop_spec 307 passed · dashboard
-contract + test_runner + resource_safety + canary 184 passed · ruff clean ·
-porcelain empty. TEXT B/C/D each `cmp`-identical to the committed authored
-block.
-At `3f92fbcd`: cmp exit 0 (both files 252 lines) · R-0344/R-0345/R-0346 each 1
-· `(none yet on this branch)` 0 · `## Steps` 1 · `## DECISION F045 D` 3 ·
-test_loop_run + test_loop_spec + tests/docs 317 passed · canary 42 passed ·
-ruff clean · porcelain empty. The untested default path was proved separately:
-`loop_run`'s `plan_job` / `save_job` imports resolve, and the import line is
-identical to the `queued_entry_to_job` precedent it mirrors.
+## Verification actually run this round
+The R3 worker ran `git status --porcelain` and got `?? .agent/STOP` — RED
+against the block's gate (m). The reviewer independently re-ran
+`git status --porcelain`, `ls -l .agent/STOP`, `git log --oneline -n 3` and a
+check that no `.agent/authored/f045-r3-*.md` exists. All four agree. No other
+gate from the R3 block was executed, so no colour is reported for any of them.
 
-## Item status
+## Item status (R3 block)
 | Item | Status | Reason |
 |---|---|---|
-| T001 | done | spec model, config loading, validation, 13 tests |
-| T002 | done | `loop_to_job`, loop_ref provenance, approval pin, 10 tests |
-| T003 | not started | next session — see below |
-| Integration gate | not started | after T003 |
-| Closure | not started | after the integration gate |
+| ITEM 1 | skipped | halted on the operator STOP sentinel before the first commit |
+| ITEM 2 | skipped | halted on the operator STOP sentinel before the first commit |
+| ITEM 3 | skipped | halted on the operator STOP sentinel before the first commit |
+| ITEM 4 | skipped | halted on the operator STOP sentinel before the first commit |
+| ITEM 5 | skipped | halted on the operator STOP sentinel before the first commit |
+| ITEM 6 | skipped | halted on the operator STOP sentinel before the first commit |
+| ITEM 7 | skipped | halted on the operator STOP sentinel before the first commit |
+| ITEM 8 | deviated | only gate (m) was run; it was RED, and no in-scope action could turn it green |
 
-## Open findings (all in .agent/live_review.md, all against the REVIEWER's blocks)
-R-0344 Medium — an ordered gate decided by the pytest fixture path, not by the
-code under test. R-0345 Low — a block ordered one 599-insertion commit, over
-the AGENTS.md cap. R-0346 Low — a block carried DECISIONs but omitted
-`.agent/decisions.md` from its change set. Counter-measures for all three are
-stated in the finding text and were applied in the R2 block.
+## Open findings (all four in `.agent/live_review.md`)
+R-0344 Medium, R-0345 Low, R-0346 Low — all still OPEN; the R3 block would have
+resolved them and never ran. R-0347 Medium — new: the STOP sentinel has no
+re-check point, and the R2 handoff named Phase 1 rule 2 while omitting rule 1.
 
 ## Next session starts here
-R3 = T003: `remedy loop list | validate | run [--yes]`, last-run display from
-evidence, and an end-to-end fixture loop through the fake-provider pipeline.
-Inventory already done, so do not redo it:
-- Action dispatch across kinds is `run_loop`'s, in T003, by DECISION F045 D3.
-  T002 deliberately makes no claim about the mission action.
-- The materialization precedent to mirror is
-  `long_run_executor.queued_entry_to_job` (lines 445-466).
-- CLI wiring: every command has exactly one entry in
-  `apps/cli/command_catalog.py` (`CATALOG`, `GROUPS`, `GroupDef`, `ArgDef`,
-  `ActionClass`); `apps/cli/grouped.py` consumes it to build the argparse tree.
-  `tests/test_grouped_cli.py` reads the catalog — check its assertions BEFORE
-  authoring the entries.
-- There is no `remedy.toml` in this repo and no `loop` group in the catalog
-  yet; both are greenfield.
-- A round touching docs/roadmap/ also gates with `python3 -m pytest tests/docs/ -q`.
+FIRST action is Phase 1 rule 1 — read `.agent/STOP` from disk. While it exists,
+do nothing but hand off. If the operator has removed it, the R3 work is fully
+specified and unchanged and resumes as: resolve R-0344..R-0346; land DECISION
+F045 D4 (`action.mission` carries the same `{project}`/`{date}` placeholders as
+`goal_template`, validated not runtime) and D5 (a mission-action loop records
+`loop_ref` on the JOB, because `Mission` is a frozen dataclass with no metadata
+map and a provenance field would move `MISSION_SCHEMA_VERSION`, which is F056's
+schema); then build `run_loop` dispatch plus `last_run_for_loop`; then the CLI
+round; then the integration gate; then closure.
 
-First action of the next session: Phase 0 state probe, then the Open PR Gate —
-this branch has NO PR yet, so R3 continues on it rather than merging anything.
+Three source facts verified this session — do not re-derive them:
+- `storage.list_jobs_safe` already sorts by `created_at` DESCENDING, so "most
+  recent" is the first match rather than a `max()`.
+- `mission_state.create_mission(project_id, goal, *, now=None, root=None)` and
+  `link_job_to_mission(project_id, mission_id, job_id, role=MISSION_ROLE_FOLLOW_UP,
+  *, now=None, root=None)` have `root` keyword-only.
+- `loop_spec._semantic_errors` already emits `action.mission is required for a
+  mission action`, and its `goal_template` undefined-variable loop sits at the
+  tail of that function — the insertion point for the D4 mirror branch.
 
 Fortschritt: ~35 % (T001 ✅ · T002 ✅ · T003 offen) — Schätzung
