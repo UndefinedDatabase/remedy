@@ -266,3 +266,27 @@ budgets = { max_total_tokens = 100 }
     assert LOOP_TABLE_KEY == "loop"
     # The same file still parses as one valid loop for this module.
     assert [s.name for s in load_loop_specs(path)] == ["nightly-tidy"]
+
+
+def test_mission_template_accepts_the_defined_variables(tmp_path: Path) -> None:
+    """DECISION D4: action.mission is a goal TEMPLATE, so {project}/{date} pass."""
+    path = _write(tmp_path, """
+[[loop]]
+name = "weekly-review"
+action = { kind = "mission", mission = "review {project} for the week of {date}" }
+""")
+    assert validate_loop_specs(path) == []
+    (spec,) = load_loop_specs(path)
+    assert spec.action.mission == "review {project} for the week of {date}"
+
+
+def test_undefined_mission_template_variable_fails_validation(tmp_path: Path) -> None:
+    """DECISION D4: an undefined placeholder fails VALIDATION, not run time (A9)."""
+    path = _write(tmp_path, """
+[[loop]]
+name = "bad-mission"
+action = { kind = "mission", mission = "review {sprint}" }
+""")
+    assert validate_loop_specs(path) == [
+        "loop 'bad-mission': action.mission references undefined variable 'sprint'"
+    ]
