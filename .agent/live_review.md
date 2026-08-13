@@ -1232,3 +1232,33 @@ builder" asks for. Deviation 3 is upheld and registered as R-0318 above — the
 worker declined to fix an unordered defect and reported it instead, which is the
 behaviour this workflow is built to produce. The handoff at 100 lines sits at
 the DECISION D15 allowance with its cause named and no section dropped.
+
+### R19 — PASS (2026-08-13)
+
+Reviewed by the main session over 916b997e..ed7eaeef. This gate was recorded one
+round late, and deliberately: R19 was the last round of its session, so by
+docs/agents/planner_reviewer_prompt.md §4.13 its verdict lived only in
+`.agent/handoff.md` until a later round could carry it. R20 is that round. The
+absence was the terminator, not a missing gate, and nothing was reopened to
+produce this entry.
+
+Every value below was re-run by the reviewer on this machine at the start of
+the R20 session; none was read off the handback. Transport:
+`.agent/authored/f111-r19-1.md` and `.agent/last_block.md` are byte-identical
+under `cmp`, 11951 bytes, 198 lines, sha256
+48441002284c61d6ab0a28ed94b6253091bf0d59a30d4bd1f6f49cb608084acb, and no line
+in the authored file carries trailing whitespace. Markers at the R19 gate:
+eleven resolution paragraphs, 43 registered findings, one R18 gate heading, zero
+unreviewed-fix markers, and `R-0318` twice — its registration and the
+back-reference to it. `.agent/plan.md` is 45 lines, under the AGENTS.md cap.
+Scope: exactly the five `.agent` paths the block ordered, with per-commit
+insertions 198, 153 and 70 plus the handoff commit, each far under 500. The
+canary re-ran at 42 passed, exit 0, and `git status --porcelain` is empty.
+
+R19 wrote no production code, and the defect it registered was still present at
+review time: the reviewer read
+`packages/orchestration/builder_bridge.py` and confirmed the comment enumerated
+three keys while the dict beneath it returned four. That is R-0318 exactly as
+registered, and R20 fixes it.
+
+Landed: R-0318 — the diff-metadata comment in `packages/orchestration/builder_bridge.py` now enumerates all four keys including `full_file_chars`, in commit d81b0b69.
