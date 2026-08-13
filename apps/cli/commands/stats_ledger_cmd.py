@@ -1,7 +1,12 @@
-"""`remedy stats cost` / `backfill-ledger` / `verify-ledger` — the token ledger's surface (F103).
+"""`remedy stats cost` / `cache` / `report` / `backfill-ledger` / `verify-ledger` (F103, F115).
 
-Three commands over the per-project SQLite ledger: query it, mirror the evidence
-into it, and check that the mirror still matches the files.
+Five commands over the per-project SQLite ledger: query it three ways, mirror the
+evidence into it, and check that the mirror still matches the files. `report`
+(F115) is the widest of the three reads — the cost table, where the prompt tokens
+went, and the equal-length period before this one — and it is deliberately the
+only one WITHOUT `--all-projects`: cost folds across projects but the segment
+breakdown does not, so an all-projects report would publish one project's
+breakdown under a multi-project total.
 
 EVERY COST FIGURE NAMES ITS BASIS. That is the feature's own acceptance
 criterion (P6) and it is the reason this module is longer than a table printer
@@ -27,6 +32,8 @@ import json as _json
 import sys
 from pathlib import Path
 
+from packages.orchestration.cost_report import COST_UNMEASURED_LABEL
+
 EXIT_USAGE = 2
 EXIT_ERROR = 1
 
@@ -40,8 +47,11 @@ COST_OUTPUT_VERSION = 1
 
 #: What an unmeasured figure prints as. Never `0`, never blank: a reader must be
 #: able to tell "nobody reported this" from "it was zero", and only a WORD does
-#: that in a column of numbers.
-UNMEASURED = "unmeasured"
+#: that in a column of numbers. THE SPELLING NOW LIVES IN ONE PLACE — the word is
+#: defined by `cost_report.COST_UNMEASURED_LABEL` and imported here, so this
+#: module's tables and the report renderer cannot come to print two different
+#: words for the same absence (AGENTS.md, Code Discoverability).
+UNMEASURED = COST_UNMEASURED_LABEL
 
 #: The measurement columns of a cost row, in render order, with their headers.
 _FIGURE_COLUMNS = (
@@ -67,6 +77,35 @@ def _validate_by(raw: str | None) -> str | None:
             file=sys.stderr,
         )
         raise SystemExit(EXIT_USAGE)
+    return text
+
+
+# One end of a report period, validated under ITS OWN FLAG NAME.
+def _validate_period_bound(raw: str | None, *, flag: str) -> str:
+    """`--since` or `--until` as an ISO-8601 timestamp, or a usage error NAMING it.
+
+    `flag` is a parameter rather than a hardcoded word because this validator
+    runs twice per invocation: a message that always says `--since` would send a
+    reader to the flag they typed correctly while the wrong one stays wrong. Only
+    `stats report` uses this — `stats cost` and `stats cache` keep the
+    single-bound `_validate_since` they already share with `stats failures`.
+    """
+    from datetime import datetime
+
+    text = (raw or "").strip()
+    if not text:
+        return ""
+    try:
+        # `Z` for UTC is the same spelling `token_ledger._parse_period_bound`
+        # accepts, so a bound this command takes is one the query can compare.
+        datetime.fromisoformat(text.replace("Z", "+00:00"))
+    except ValueError:
+        print(
+            f"Error: {flag} {raw!r} is not an ISO-8601 timestamp "
+            f"(e.g. 2026-07-13 or 2026-07-13T12:00:00+00:00)",
+            file=sys.stderr,
+        )
+        raise SystemExit(EXIT_USAGE) from None
     return text
 
 
@@ -466,6 +505,67 @@ def _cmd_stats_cache(*, since: str = "", job: str = "", by: str | None = None,
             report, ledgers_read=ledgers_read, scope_label=scope_label))
 
 
+# The widest read: the cost table, the segment breakdown and the period before.
+def _cmd_stats_report(*, since: str = "", until: str = "", job: str = "",
+                      by: str | None = None, label: str | None = None,
+                      project: str | None = None,
+                      json_output: bool = False) -> None:
+    """Render `cost_report` over ONE project's ledger, markdown or json.
+
+    EXACTLY ONE PROJECT, and no `--all-projects`: `merge_cost_reports` folds cost
+    across projects but nothing folds the segment breakdown, so an all-projects
+    report would publish one project's breakdown under a multi-project total —
+    the very mismatch `cost_report._same_question` exists to refuse.
+    """
+    import sqlite3
+
+    from packages.orchestration.cost_report import (
+        cost_report_json_bytes,
+        render_cost_report_markdown,
+    )
+    from packages.orchestration.token_ledger import (
+        prior_report_period,
+        query_cost,
+        query_segment_shares,
+    )
+
+    since = _validate_period_bound(since, flag="--since")
+    until = _validate_period_bound(until, flag="--until")
+    by = _validate_by(by)
+    ledger = _one_project_ledger(project, False, action="stats report")
+
+    period = prior_report_period(since or None, until or None)
+    try:
+        cost = query_cost(path=ledger, since=since or None, until=until or None,
+                          job_id=job or None, by=by)
+        shares = query_segment_shares(path=ledger, since=since or None,
+                                      until=until or None, job_id=job or None)
+        prior = None
+        if period.available:
+            # THE SAME `job` FILTER, deliberately. A period filtered to one job
+            # compared against a previous window holding every job is two
+            # questions, not one — the defect `_same_question` refuses a layer
+            # up, and the CLI must not be the thing that constructs it.
+            prior = query_cost(path=ledger, since=period.since, until=period.until,
+                               job_id=job or None, by=None)
+    except sqlite3.Error as exc:
+        # A database error is not a zero, so this refuses to render rather than
+        # publishing an empty report — the same choice `_load_ledger_reports`
+        # makes, for the same reason.
+        if json_output:
+            print(_json.dumps({"ok": False, "error": str(exc)}, indent=2))
+        else:
+            print(f"Error: cannot read the token ledger: {exc}", file=sys.stderr)
+        raise SystemExit(EXIT_ERROR) from None
+
+    rendered = (cost_report_json_bytes if json_output else render_cost_report_markdown)(
+        cost, shares, label=label, prior=prior,
+        no_comparison_reason=None if period.available else period.unavailable_reason,
+    )
+    # Both renderers already end in exactly one newline; print must not add a second.
+    print(rendered, end="")
+
+
 def _cmd_stats_backfill_ledger(*, evidence_dir: str = "",
                                project: str | None = None,
                                all_projects: bool = False,
@@ -555,6 +655,15 @@ COMMAND_HANDLERS = {
         by=getattr(args, "by", None),
         project=getattr(args, "project", None),
         all_projects=getattr(args, "all_projects", False),
+        json_output=getattr(args, "json", False),
+    ),
+    "stats.report": lambda args: _cmd_stats_report(
+        since=getattr(args, "since", "") or "",
+        until=getattr(args, "until", "") or "",
+        job=getattr(args, "job", "") or "",
+        by=getattr(args, "by", None),
+        label=getattr(args, "label", None),
+        project=getattr(args, "project", None),
         json_output=getattr(args, "json", False),
     ),
     "stats.backfill-ledger": lambda args: _cmd_stats_backfill_ledger(
