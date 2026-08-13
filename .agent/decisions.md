@@ -4622,3 +4622,62 @@ produces an invalid package and a false closure record.
 
 Reverse this decision with `git stash pop`, or by dropping the stash after the
 packager's owning feature lands the same line.
+
+## DECISION F045 D1 (2026-08-13) — loops live in a TOP-LEVEL `[[loop]]` table, not under `[remedy]`
+
+`[[loop]]` is a top-level array of tables in `remedy.toml`, never
+`[[remedy.loop]]` and never a new dotted directory convention. `load_config`
+in `packages/orchestration/config.py` reads only `parsed["remedy"]`
+(`_extract_remedy_table`), flattens that table to dotted keys and appends
+`"Unknown key in <path>: <key>"` to `load_report.warnings` for every key absent
+from `_KEY_SPEC_MAP`. `_flatten_toml` does not recurse into lists, so
+`[[remedy.loop]]` would arrive as the flat key `loop` and make every config
+load emit a spurious unknown-key warning. Top-level keeps the existing config
+system byte-for-byte unchanged and lets `loop_spec.py` own its own table.
+
+Alternatives considered: (a) `[[remedy.loop]]` — rejected, the warning above;
+(b) a `.remedy/loops/` directory — rejected, the feature file's Orchestrator
+brief explicitly forbids inventing a second config location; (c) a separate
+loops file — rejected for the same reason, and configuration that is
+versionable in one file is the feature's stated point.
+
+Reverse this decision by moving the table key and teaching `config.py` to
+ignore it. `tests/orchestration/test_loop_spec.py` pins it with a test that
+goes red if the table moves under `[remedy]`.
+
+## DECISION F045 D2 (2026-08-13) — the deadline contract is mirrored, not imported
+
+`LoopBudgets.deadline` is validated in `loop_spec.py` by
+`datetime.fromisoformat` plus a REQUIRED `tzinfo`, deliberately mirroring the
+contract of the private `budget_resolution._parse_deadline` instead of
+importing a private helper or widening `budget_resolution.py`, which belongs to
+F018/F104 and which this feature does not own.
+
+Alternatives considered: (a) import the private helper — rejected, a private
+name is not an API and the coupling would be invisible to its owner;
+(b) promote it to public API here — rejected, that is a change to another
+feature's module inside this feature's branch.
+
+Reverse this decision by promoting that helper to public API in a round that
+legitimately opens `budget_resolution.py`, then calling it from both places.
+
+## DECISION F045 D3 (2026-08-13) — T002 materializes the JOB action; action dispatch is T003's
+
+T002 delivers `loop_to_job`, which takes a loop whose action kind is `job` and
+produces an ordinary PLANNED job with `loop_ref` provenance. It does not
+dispatch across action kinds, so it makes no claim about the mission action at
+all — no user-visible "not supported yet" limit is invented. Dispatch belongs
+to `run_loop` in T003, which is where the CLI, the last-run display and the
+end-to-end fixture live, and which is the round that legitimately reads the
+Mission model's provenance surface. The feature's Acceptance line is
+job-shaped ("Fixture loop runs as a normal job with loop_ref visible in
+evidence and report"), so nothing in Acceptance waits on this.
+
+Alternatives considered: (a) dispatch both kinds in T002 — rejected, it would
+require reading and extending the Mission provenance surface in a round scoped
+to job materialization; (b) raise a "mission actions are not materialized yet"
+error — rejected, that is a fabricated limit shipped to users for a path the
+feature does support.
+
+Reverse this decision by moving dispatch into T002 and reducing T003 to the
+CLI surface.
