@@ -1,0 +1,18 @@
+PROVENANCE OF THE FULL RUN LOG
+The branch run log below was written to the gitignored scratch dir
+.remedy-wt/.cache/gate_r21/ and is NOT committed: committing it would
+put this commit far over the AGENTS.md 500-insertion cap. What is
+committed is what docs/agents/integration_gate.md step 1 names -- raw
+tail, full FAILED list, exit code, wall time.
+The base side is NOT re-run this round: the merge base has not moved,
+so comm reuses the committed .agent/gate_f115_r20/base_failed_union.txt
+and no base worktree was created.
+Line count and hash so the trim is auditable:
+
+478 .remedy-wt/.cache/gate_r21/branch_run.txt
+
+b4c910bfe68b1623ca10a703abaa959ab5cf5cf47236f8567e7099d3986d2c1c  .remedy-wt/.cache/gate_r21/branch_run.txt
+
+Reused base input (committed, unchanged this round):
+14 .agent/gate_f115_r20/base_failed_union.txt
+1e8a87707673419e492b5978c2eaa102d72681df38f4fa2de796080d5d6e7c6d  .agent/gate_f115_r20/base_failed_union.txt

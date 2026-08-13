@@ -1,0 +1,37 @@
+R21 INTEGRATION-GATE RE-RUN — BRANCH SIDE ONLY
+Head under test: c64016c1 (C2, the R-0340 repair)
+Merge base:      0d6c97aa (unmoved since R20, so the R20 base side stands)
+
+== The gate's question: comm -13 base_failed_union branch_failed ==
+EMPTY. Zero branch-only failing ids. The six TestPlanJobLocalRunLog ids that
+R-0340 named (SystemExit: 1 from a TypeError swallowed at job.py:305) are gone;
+nothing else moved into the branch-only set in their place.
+
+== comm -23, base-only: 9 ids, all the known environment class ==
+8x tests/ui_server/test_live_state.py::TestUIServerIntegration::*
+   The R20 base worktree had no built apps/ui/dist, so the UI server integration
+   ids failed there and pass here. The branch touches neither
+   packages/orchestration/ui_server.py nor apps/ui -- git diff --name-only
+   0d6c97aa..HEAD over both paths is empty -- so these cannot be branch effects.
+   Same attribution R20 recorded in base_env_attribution.txt.
+1x tests/cli/test_review_bundle_runtime.py::TestSubprocessCleanup::
+   test_timeout_raises_with_cleanup
+   Subprocess-timeout timing id; load-sensitive, base-run-only, and untouched by
+   this branch. R20 attributed it to the same class.
+Base-only ids are by construction NOT a branch regression: they are failures the
+merge base had and the branch does not.
+
+== The five ids present in BOTH lists, and therefore in NEITHER comm output ==
+The reviewer_conventions token-cap reds of finding R-0322 (954 tokens estimated,
+cap 800). Pre-existing at the merge base, untouched by F115, and the reason the
+branch run still exits 1. That exit code is the expected outcome, not the gate:
+the gate is comm -13, which is empty.
+
+== Cross-check: the repaired file, run on its own ==
+python3 -m pytest tests/test_run_log_cli.py -q -> 61 passed, exit 0.
+Before the C2 repair the same command gave 6 failed, 55 passed.
+
+== Worktree hygiene ==
+No base worktree was created this round; the base side was reused from committed
+R20 evidence. git worktree list is one line and git branch --list tmp/base-gate
+is empty, unchanged from the state R20 left behind.
