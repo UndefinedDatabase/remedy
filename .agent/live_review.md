@@ -1257,8 +1257,10 @@ produce this entry.
 
 Every value below was re-run by the reviewer on this machine at the start of
 the R20 session; none was read off the handback. Transport:
-`.agent/authored/f111-r19-1.md` and `.agent/last_block.md` are byte-identical
-under `cmp`, 11951 bytes, 198 lines, sha256
+`.agent/authored/f111-r19-1.md` and `.agent/last_block.md` WERE byte-identical
+at the R19 gate — `last_block.md` carries whichever round's block is newest, so
+this sentence records a moment and is not a claim about the file today — under
+`cmp`, 11951 bytes, 198 lines, sha256
 48441002284c61d6ab0a28ed94b6253091bf0d59a30d4bd1f6f49cb608084acb, and no line
 in the authored file carries trailing whitespace. Markers at the R19 gate:
 eleven resolution paragraphs, 43 registered findings, one R18 gate heading, zero
@@ -1274,4 +1276,46 @@ review time: the reviewer read
 three keys while the dict beneath it returned four. That is R-0318 exactly as
 registered, and R20 fixes it.
 
-Landed: R-0318 — the diff-metadata comment in `packages/orchestration/builder_bridge.py` now enumerates all four keys including `full_file_chars`, in commit d81b0b69.
+Done: R-0318 — the diff-metadata comment now enumerates all four keys the dict actually returns. Verified at the R20 gate by the reviewer's own reading of the full `git diff ed7eaeef..d81b0b69 -- packages/orchestration/builder_bridge.py`: three comment lines replace two, no identifier, signature or behaviour moved, the stale three-key parenthesis counts 0 and the four-key one counts 1, `ruff check` prints "All checks passed!", and the 14 repair-loop tests are unmoved. RESOLVED.
+
+### R20 — PASS (2026-08-13)
+
+Reviewed by the main session over ed7eaeef..1e90e89f, seven commits. Every gate
+was re-run by the reviewer on this machine; nothing was read off the handback.
+Transport: `.agent/authored/f111-r20-1.md` and `.agent/last_block.md` WERE
+byte-identical at this gate under `cmp`, 17746 bytes, 329 lines, sha256
+9c7497d0e5a849ee2a30de9fc063db37c38b20da45422e1bc14c22db21d43560, with no line
+carrying trailing whitespace.
+
+The ist-doc was proved by EXTRACTION, not by retype: slicing the
+`<<<BEGIN TEXT-A …>>>` region out of the COMMITTED authored file and comparing
+it byte for byte against `docs/system/diff-only-repair-v1.md` prints MATCH. That
+doc is 108 lines, carries no trailing whitespace, and is registered twice in
+`docs/README.md` — the quick-find row and the system-list row, each in its
+alphabetical place.
+
+Scope: exactly the eight ordered paths. The single production commit, d81b0b69,
+changes three comment lines and nothing else; the reviewer read that diff in
+full rather than its summary. Markers at gate time: eleven resolution
+paragraphs, one unreviewed-fix marker, 43 registered findings, one R19 gate
+heading. Tests re-run by the reviewer: 350 passed, exit 0 — `tests/docs/` 294,
+`test_builder_repair_loop.py` 14 (unmoved from R18), the golden-path canary 42 —
+and `ruff check` on the touched module prints "All checks passed!". `git status
+--porcelain` empty, one worktree, 0 ahead and 0 behind the remote.
+
+Four deviations were declared and all four are upheld. (1) C1 was split in two
+because one commit measured 623 insertions against the AGENTS.md cap of 500. The
+worker cited DECISION F105 D5 and applied it; AGENTS.md outranking the block's
+"one commit per item" line is the correct reading, and this block orders the
+split up front. (2) The block's length gate demanded 44 lines of
+`.agent/plan.md` and the authored text was 43. The worker applied the bytes and
+reported the true count rather than padding a file to make a reviewer's
+arithmetic come out — the right call, the fault is the reviewer's miscount, and
+the file was under its 50-line cap throughout. The countermeasure is in this
+block: a length gate now asks for the real number under the cap instead of a
+number counted by hand. (3) is registered above as R-0319, the reviewer's own
+defect. (4) The 100-line handoff carries its DECISION D15 stated-cause line
+naming the seven-commit table and the a-l verification block, with no section
+dropped.
+
+Landed: R-0319 — the R19 gate entry's transport sentence now reads in the past tense and says why `last_block.md` has moved on, in this round's C3 commit `chore(f111): record the R20 gate and resolve R-0318` (SHA unknowable before the commit that carries this line).
