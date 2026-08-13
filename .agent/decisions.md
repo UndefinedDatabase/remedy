@@ -4739,3 +4739,25 @@ evidence reads the job. Do NOT reverse it by bumping
 `MISSION_SCHEMA_VERSION`: `Mission.from_json` raises `unknown mission schema
 version` for any value but the current one, so a bump invalidates every mission
 already stored.
+
+## DECISION F045 D6 (2026-08-14) — an explicit save callable overrides root; root steers only the DEFAULT save
+
+`_materialize_loop_job` takes both `save` and `root`. When `save` is given it is
+called with the job ALONE and `root` is not consulted at all; only the default
+save reaches `storage.save_job(job, root)`. So a caller chooses one of two
+things — where the job goes, or that it goes nowhere — and never both.
+
+`save` exists so a caller can capture the job without a store behind it at all,
+and every current caller passes a one-argument list-appender. Giving `save` a
+second, root parameter would break all of them, and it would ask a test double
+to honour a path it has no store behind. The annotation
+`Callable[[Job], None]` is therefore load-bearing, not incidental.
+
+Alternative considered and rejected: drop `save` entirely and make every test
+pass `root`. Rejected because the store round-trip is the subject of only three
+tests; forcing the other twenty through a real store would make every one of
+them slower and none of them stricter.
+
+Reverse this decision by changing `save`'s annotation from
+`Callable[[Job], None]` to one that also takes the root, and updating every
+caller in `tests/orchestration/test_loop_run.py`.
