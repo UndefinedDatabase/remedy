@@ -130,3 +130,40 @@ Done: R-0321 — RESOLVED at the R4 gate. Verified against the disk, not the rep
 Done: R-0325 — RESOLVED at the R7 gate. Verified against the disk, not the report: `python3 -m ruff check tests/test_llm_planner.py` prints `All checks passed!` with exit 0 at f20f172a, and `git show dd7feebd` shows the fix is exactly one moved line — the `planner_models` import now sits ABOVE the `prompt_segments` block, one insertion and one deletion in that file and no other file touched. `python3 -m pytest tests/test_llm_planner.py -q` prints `38 passed`, the R6 baseline unmoved, so the reorder changed no behaviour. The four-file ruff sweep the block also ordered prints `All checks passed!` with exit 0.
 
 Done: R-0326 — RESOLVED at the R7 gate. Verified against the RENDERED docstring rather than the source line, because the source line was never the defect: `compose_planner_prompt.__doc__` now contains no backslash-n sequence at all and its sentence reads intact, naming `PROMPT_SEGMENT_DELIMITER` as "the same blank-line separator this module concatenated by hand". `git show cbe38b90` confines the change to that docstring, four insertions and three deletions in `packages/orchestration/llm_planner.py`. The R7 round as a whole is PASS: the reviewer re-ran gates (a) through (i) and every value matched the handback — cmp exit 0 with sha256 c6ab0e7d25c42144af766401daf7a90309dae3736c6c0ba8285a0a6b9942ea00 over both copies, the five live-review counts 1/1/7/1/1, ruff clean over all four files, `38 passed`, the inventory's 1/6/6, canary `42 passed`, `wc -l .agent/plan.md` = 38, an empty `git status --porcelain`, and 24 changed paths with no `.remedy-wt/**` among them. The R7 diff touched only the eight paths its block declared, and the C5 inventory's load-bearing claims were spot-checked against source: thirteen `calls` columns with exactly three NOT NULL and no DEFAULT clause, `grep -rn "ALTER TABLE" --include=*.py .` zero matches, `grep -rn "unattributed" --include=*.py .` zero matches.
+
+- R-0327 — Low — reviewer gate arithmetic, fifth of its class. R8's gate (e)
+  demanded `grep -c` of the literal `        2: (` with EIGHT leading spaces.
+  `_MIGRATIONS` is a dict whose KEYS sit at FOUR spaces — `1: (` at
+  `token_ledger.py:170` is the shape the reviewer had already read in that same
+  session — and the block's own TEXT-E, authored by the reviewer, places `2: (`
+  at four spaces too. Real values: the eight-space pattern counts 0, the
+  four-space one counts 1, at `token_ledger.py:207`. The eight-space indent
+  belongs to the STATEMENT lines INSIDE the tuple, not to the key that opens it.
+  The worker measured both, reported the real numbers and changed nothing to
+  meet the ordered one — the correct behaviour, and it cost the round nothing
+  because the gate asked for real values. Nothing on disk is wrong, so there is
+  no fix; it is registered so the class stays countable. After R-0282, R-0321,
+  R-0323 and R-0324. The standing counter-measure is already on disk as
+  checklist item 8 (`docs/agents/planner_reviewer_prompt.md`): compute a gate's
+  expected value from the code that PRODUCES it. Here that code was the block's
+  OWN authored replacement text, four lines below the gate that miscounted it —
+  the shortest distance any instance of this class has yet had. OPEN.
+
+- R-0328 — Low — the R8 red-proof under-predicted its own blast radius. Gate (g)
+  stated "Tests 1, 2 and 3 assert the table exists, so they MUST fail". The real
+  result, with migration step 2 deleted in a disposable worktree, was `8 failed,
+  78 passed`: all FOUR new tests — the fourth,
+  `test_a_pre_f115_call_owns_no_segment_rows`, on `sqlite3.OperationalError: no
+  such table: call_segments`, because its assertion SELECTs from that very table
+  and the same block authored that assertion — plus four pre-existing
+  `TestOpenLedger` tests that pin the version constant against the last
+  migration step. The ordered COLOUR was right and the round went red exactly as
+  required; what was wrong was the COUNT. An under-counted red-proof invites a
+  worker either to doubt a correct result or to trim the mutation until the
+  prediction fits, and neither is a thing a gate should tempt anyone into.
+  Checklist item 5 governs a red-proof's REACHABILITY; this is its arithmetic
+  sibling and the first recorded instance. No on-disk fix: the round's evidence
+  is correct and more complete than the gate that asked for it. A welcome
+  by-product of the over-shoot: `test_schema_version_matches_the_last_migration_step`
+  already pins `SCHEMA_VERSION` to the highest `_MIGRATIONS` key, so a version
+  bump without its step, or a step without its bump, cannot pass today. OPEN.
