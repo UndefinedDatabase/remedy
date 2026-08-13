@@ -1,10 +1,10 @@
 # Plan — F115 Prompt breakdown & cost report
 
 Branch: feature/f115-prompt-cost-report, cut from main at 0d6c97aa after
-PR #194 merged. Last reviewed SHA: a228feb9 (R12 PASS). Next free finding
-ID: R-0334. Open findings: 8 — R-0320, R-0322, R-0323, R-0324, R-0327,
-R-0328, R-0331, R-0333. R-0329, R-0330 and R-0332 were each RESOLVED at
-their gates. No PR exists and closure has not started.
+PR #194 merged. Last reviewed SHA: 954d0ea2 (R13 PASS). Next free finding
+ID: R-0335. Open findings: 9 — R-0320, R-0322, R-0323, R-0324, R-0327,
+R-0328, R-0331, R-0333, R-0334. R-0329, R-0330 and R-0332 were each
+RESOLVED at their gates. No PR exists and closure has not started.
 
 ## Goal
 Costs stop being an opaque total: `remedy stats report` shows WHERE
