@@ -12,8 +12,8 @@ finds, AND ``REMEDY_DATA_DIR`` points at ``tmp_path``, so the last-run lookup
 reads a job store under it. The second is not optional — the chdir alone would
 leave that lookup pointed at the operator's real store.
 
-``apps.cli.commands.loop_cmd`` is imported INSIDE the one test that needs its
-exit constant rather than at module level, so that against a tree where the
+``apps.cli.commands.loop_cmd`` is imported INSIDE the tests that need its own
+constants rather than at module level, so that against a tree where the
 module does not exist yet each test fails on its own assertion instead of the
 whole file dying at collection.
 
@@ -113,6 +113,8 @@ def test_a_manual_loop_lists_its_name_trigger_action_and_never(project, capsys):
 
 
 def test_a_schedule_trigger_loop_is_listed_and_marked_inert(project, capsys):
+    from apps.cli.commands.loop_cmd import INERT_TRIGGER_LEGEND
+
     _write_config(project, SCHEDULE_JOB_LOOP)
 
     _dispatch("loop.list")
@@ -121,7 +123,10 @@ def test_a_schedule_trigger_loop_is_listed_and_marked_inert(project, capsys):
     row = _row(out, "weekly-sweep")
     assert "schedule" in row
     assert "inert" in row
-    assert INERT_TRIGGER_NOTICE in out
+    assert INERT_TRIGGER_LEGEND in out
+    # The actual pin: a listing has run nothing, so the RUN notice — whose text
+    # claims a loop "ran on demand" — must never appear anywhere in a listing.
+    assert INERT_TRIGGER_NOTICE not in out
 
 
 def test_after_one_real_firing_the_row_shows_that_run(project, capsys):
