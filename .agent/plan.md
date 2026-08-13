@@ -1,42 +1,39 @@
-# Plan — F111 Diff-only repair (CLOSED)
+# Plan — F115 Prompt breakdown & cost report
 
-Branch: feature/f111-diff-only-repair, cut from main at 4e0b762e.
-Last reviewed SHA: 35329dec (R21 PASS, integration gate). Next free
-finding ID: R-0320. Open findings: 32 — 44 registered minus 12
-resolved. None is High; each is an accepted risk at closure.
+Branch: feature/f115-prompt-cost-report, cut from main after PR #194
+(F111 closure) merged at the Open PR Gate. Last reviewed SHA: none yet,
+R1 is the first round. Next free finding ID: R-0321. Open findings: 1
+(R-0320, Low, carried forward from F111 — not an F115 defect).
 
 ## Goal
-Repairs stop resending whole files: a repair round carries only the
-failure-relevant hunks with a configurable context margin, the model
-answers with a schema-enforced unified diff that is fence-checked and
-applied strictly, and ANY hunk conflict discards the attempt whole
-and falls back to today's full-file round with the reason recorded
-(docs/roadmap/features/T2_F111.md). DONE.
+Costs stop being an opaque total: `remedy stats report` shows WHERE
+tokens go — by segment kind, by role, by task class — plus a cost curve
+and a prior-period comparison, as markdown and json, every number
+traceable to a ledger row, and a period with missing data reported as
+missing instead of interpolated (docs/roadmap/features/T2_F115.md).
 
 ## Current Step
-Closed. T001, T002 and T003 are complete and gated; the ist-doc
-`docs/system/diff-only-repair-v1.md` is registered in docs/README.md;
-the integration gate in `.agent/gate_f111_r21/` shows zero branch-only
-failures against the merge base; STATUS.md carries the `[x]` line and
-the closure PR is open and UNMERGED by design.
+R1 — claim F115, reset the round state, and inventory the CURRENT shape
+of the token ledger and the prompt-segment registry before any code is
+written. The feature file demands that inspection first: F115 is
+aggregation and presentation only, so the join it needs must be found
+in what exists, not invented.
 
 ## Next Steps
-1. The closure PR merges at the NEXT feature's start via the AGENTS.md
-   Open PR Gate — that gap is the operator's manual-review window. The
-   operator may also merge it manually at any time.
-2. Next feature per Rule A5 and STATUS order: F115 — Prompt breakdown
-   & cost report. New session, new branch, nothing carried over but
-   `.agent/candidates.md`.
-3. That first reviewed round MUST register or resolve every entry in
-   `.agent/candidates.md` and empty the file
-   (docs/roadmap/STATUS_closure_protocol.md).
+1. T001 — persist the segment manifest, or a reference to it, alongside
+   the ledger row, additively, with backfill tolerance: old rows render
+   as "unattributed", never guessed.
+2. T002 — aggregation queries plus the pure renderer, with goldens over
+   a fixture ledger covering mixed roles, mixed task classes, missing
+   manifests and unpriced calls.
+3. T003 — the CLI, the prior-period comparison and the json schema; an
+   empty prior period reads "no comparison data", not zeros.
+4. Integration gate, then closure per STATUS_closure_protocol.md.
 
 ## Risks
-- The suite is RED at the merge base with five known ids (R-0286),
-  unrelated to F111 and unfixed here on purpose.
-- The saving is measured in CHARACTERS, not tokens (DECISION F111 D9).
-- All-or-nothing rests entirely on source_apply's durable snapshot;
-  a failed rollback is reported, not hidden (R-0316).
+- The join may not exist yet. If the ledger writer stores no manifest
+  reference at all, T001 grows and the R1 inventory must say so plainly.
+- Report generation must touch nothing (read-only, state snapshot equal);
+  an aggregation path that writes is an acceptance failure, not a nit.
 
-Fortschritt: 100 % (T001 ✅ · T002 ✅ · T003 ✅ · Doku ✅ ·
-Integration Gate ✅ · Closure ✅) — Schätzung
+Fortschritt: 5 % (R1 Inventar läuft · T001 · T002 · T003 offen) — Schätzung
