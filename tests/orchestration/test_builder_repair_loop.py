@@ -466,3 +466,154 @@ class TestRepairLoopDiffChannel:
         assert not [e for e in events if e["event"] == "diff_repair_applied"]
         assert result.success is True
         assert result.final_result.stage == "proof_collected"
+
+
+# Where `add` sits in `_LARGE_CALC_SOURCE`. The hunk headers below are built
+# from these numbers, so the fixture's shape and the diffs cannot drift apart.
+_LARGE_CALC_DEF_LINE = 41
+_LARGE_CALC_BODY_LINE = 42
+
+_LARGE_CALC_SOURCE = (
+    "".join(f"def helper_top_{i}():\n    return {i}\n\n\n" for i in range(1, 11))
+    + "def add(a, b):\n"
+    + "    return 0\n"
+    + "\n"
+    + "\n"
+    + "".join(f"def helper_bottom_{i}():\n    return {i}\n\n\n" for i in range(1, 11))
+)
+
+# Cycle 1's wrong fix over the large fixture: one changed line, in the middle.
+_LARGE_WRONG_FIX_PATCH_TEXT = json.dumps({
+    "unified_diffs": [{
+        "path": "calc.py",
+        "diff": (
+            "--- a/calc.py\n"
+            "+++ b/calc.py\n"
+            f"@@ -{_LARGE_CALC_BODY_LINE},1 +{_LARGE_CALC_BODY_LINE},1 @@\n"
+            "-    return 0\n"
+            "+    return a - b\n"
+        ),
+    }],
+})
+
+# Cycle 2's repair of that wrong fix, in the diff-repair answer wrapper.
+_LARGE_LANDING_DIFF = (
+    "--- a/calc.py\n"
+    "+++ b/calc.py\n"
+    f"@@ -{_LARGE_CALC_DEF_LINE},2 +{_LARGE_CALC_DEF_LINE},2 @@\n"
+    " def add(a, b):\n"
+    "-    return a - b\n"
+    "+    return a + b\n"
+)
+
+
+def _write_large_diff_repo(tmp_path) -> None:
+    """Lay down an 84-line calc.py whose `add` sits in the MIDDLE.
+
+    The file SIZE is the point of this fixture, not incidental. A margin-3
+    hunk around one changed line carries about seven lines, so only a file
+    much longer than that makes "the diff payload is a fraction of the full
+    file" a measurable claim at all. The 7-line `_DIFF_CALC_SOURCE` the other
+    diff tests use is smaller than one margin-expanded hunk, so it cannot
+    demonstrate a fraction of anything.
+    """
+    (tmp_path / "calc.py").write_text(_LARGE_CALC_SOURCE)
+    (tmp_path / "tests").mkdir()
+    (tmp_path / "tests" / "test_calc.py").write_text(
+        "from calc import add\n\ndef test_add():\n    assert add(2, 3) == 5\n"
+    )
+
+
+class TestRepairPayloadMeasurement:
+    """F111 T003, closing half: what a diff round SENT against what it saved."""
+
+    def test_the_diff_payload_is_a_fraction_of_the_full_file_payload(
+        self, tmp_path, monkeypatch,
+    ):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from packages.orchestration.builder_bridge import run_builder_bridge_loop
+        from packages.orchestration.timeline import load_run_events
+
+        _write_large_diff_repo(tmp_path)
+        call_count = [0]
+
+        def build_fn(repair_ctx):
+            call_count[0] += 1
+            if call_count[0] == 1:
+                return BuilderOutput(
+                    summary="Fix calc",
+                    proposed_changes=["Fix calc"],
+                    structured_patch_text=_LARGE_WRONG_FIX_PATCH_TEXT,
+                    structured_patch_format="json",
+                )
+            assert repair_ctx["repair_mode"] == "diff"
+            return _make_diff_repair_answer(_LARGE_LANDING_DIFF)
+
+        job = Job(name="test")
+        result = run_builder_bridge_loop(
+            build_fn, tmp_path, job=job, data_dir=tmp_path, max_cycles=2,
+        )
+        assert result.success is True
+
+        events = load_run_events(tmp_path, job.id)
+        selected = [e for e in events if e["event"] == "repair_mode_selected"]
+        assert len(selected) == 1
+        meta = selected[0]["metadata"]
+        assert meta["mode"] == "diff"
+        assert "total_chars" in meta
+        assert "full_file_chars" in meta
+        assert meta["full_file_chars"] > 0
+        # This is the feature file's "measured, recorded" DONE line: the round
+        # records what the diff path SENT against what the full-file path WOULD
+        # have sent, and the saving has to be a real fraction, not merely "less
+        # than". Per DECISION F111 D9 both numbers are CHARACTERS — this
+        # repository has no tokenizer, so a token count would be fabricated.
+        assert meta["total_chars"] * 4 < meta["full_file_chars"], (
+            f"diff sent {meta['total_chars']} chars, full file would have sent "
+            f"{meta['full_file_chars']} chars"
+        )
+
+    def test_the_full_file_denominator_is_the_bytes_actually_on_disk(
+        self, tmp_path, monkeypatch,
+    ):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from packages.orchestration.builder_bridge import run_builder_bridge_loop
+        from packages.orchestration.timeline import load_run_events
+
+        _write_large_diff_repo(tmp_path)
+        call_count = [0]
+        # calc.py as it stands when the repair context is built: nothing writes
+        # between `_attach_diff_repair_hunks` and cycle 2's call to `build_fn`.
+        measured: dict[str, int] = {}
+
+        def build_fn(repair_ctx):
+            call_count[0] += 1
+            if call_count[0] == 1:
+                return BuilderOutput(
+                    summary="Fix calc",
+                    proposed_changes=["Fix calc"],
+                    structured_patch_text=_LARGE_WRONG_FIX_PATCH_TEXT,
+                    structured_patch_format="json",
+                )
+            measured["chars"] = len(
+                (tmp_path / "calc.py").read_text(encoding="utf-8")
+            )
+            return _make_diff_repair_answer(_LARGE_LANDING_DIFF)
+
+        job = Job(name="test")
+        run_builder_bridge_loop(
+            build_fn, tmp_path, job=job, data_dir=tmp_path, max_cycles=2,
+        )
+        assert call_count[0] == 2
+
+        events = load_run_events(tmp_path, job.id)
+        selected = [e for e in events if e["event"] == "repair_mode_selected"]
+        assert len(selected) == 1
+        meta = selected[0]["metadata"]
+        # The denominator is measured, not estimated — which is the only thing
+        # that makes the ratio in the test above mean anything.
+        assert measured["chars"] > 0
+        assert meta["full_file_chars"] == measured["chars"], (
+            f"recorded {meta['full_file_chars']} chars, "
+            f"calc.py holds {measured['chars']} chars"
+        )
