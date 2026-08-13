@@ -1,9 +1,10 @@
 """Tests for diff_repair_response.py (F111 T002, response half).
 
-Covers the three public entry points: the wrapper decode with its named
+Covers the four public entry points: the wrapper decode with its named
 rejection reasons, the validation with its declared-files/touched-paths
-cross-check and its delegated path-safety messages, and the non-raising fence
-pre-check that answers with data rather than an exception.
+cross-check and its delegated path-safety messages, the non-raising fence
+pre-check that answers with data rather than an exception, and the conversion
+into the ``StructuredPatch`` the existing applicator takes.
 
 The path-safety assertions deliberately name the exact message strings
 `structured_patch.unsafe_path_issues` produces, so a future reword of those
@@ -21,10 +22,12 @@ from packages.orchestration.diff_repair_response import (
     DIFF_REPAIR_RESPONSE_FORMAT,
     DIFF_REPAIR_RESPONSE_VERSION,
     DiffRepairResponse,
+    diff_repair_response_to_patch,
     parse_diff_repair_response,
     precheck_diff_repair_fences,
     validate_diff_repair_response,
 )
+from packages.orchestration.structured_patch import validate_structured_patch
 
 # One file, one hunk — the smallest well-formed repair diff.
 DIFF_ONE_FILE = (
@@ -248,3 +251,64 @@ class TestPrecheckDiffRepairFences:
         )
         assert precheck.allowed is False
         assert precheck.denied_paths == ("docs/guide.md",)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# diff_repair_response_to_patch — one UnifiedDiff per declared path
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class TestDiffRepairResponseToPatch:
+    """The conversion the applicator consumes: per-path sections, never the whole diff."""
+
+    def test_single_file_response_converts_to_one_unified_diff(self):
+        response = DiffRepairResponse(diff=DIFF_ONE_FILE, files=("src/app.py",))
+        patch = diff_repair_response_to_patch(response)
+
+        assert patch.intent_kind == "unified_diff"
+        assert patch.target_paths == ("src/app.py",)
+        assert patch.applicability == "applicable"
+        assert patch.requires_approval is True
+
+        assert len(patch.unified_diffs) == 1
+        only = patch.unified_diffs[0]
+        assert only.path == "src/app.py"
+        assert only.diff == DIFF_ONE_FILE.rstrip("\n")
+
+    def test_two_file_response_gives_each_path_only_its_own_section(self):
+        response = DiffRepairResponse(
+            diff=DIFF_TWO_FILES, files=("src/app.py", "src/util.py")
+        )
+        patch = diff_repair_response_to_patch(response)
+
+        assert [d.path for d in patch.unified_diffs] == ["src/app.py", "src/util.py"]
+        app_diff, util_diff = (d.diff for d in patch.unified_diffs)
+
+        assert "src/util.py" not in app_diff
+        assert "helper" not in app_diff
+        assert "src/app.py" not in util_diff
+        assert "value = 2" not in util_diff
+        assert app_diff.startswith("--- a/src/app.py\n")
+        assert util_diff.startswith("--- a/src/util.py\n")
+
+    def test_declared_path_the_diff_never_touches_is_an_empty_diff(self):
+        # Fail-closed by construction: the empty section is what
+        # validate_structured_patch names, instead of a silent no-op apply.
+        response = DiffRepairResponse(
+            diff=DIFF_ONE_FILE, files=("src/app.py", "src/ghost.py")
+        )
+        patch = diff_repair_response_to_patch(response)
+
+        ghost = [d for d in patch.unified_diffs if d.path == "src/ghost.py"]
+        assert len(ghost) == 1
+        assert ghost[0].diff == ""
+        assert validate_structured_patch(patch) == [
+            "unified_diff src/ghost.py: empty diff"
+        ]
+
+    def test_valid_response_converts_to_a_patch_the_validator_accepts(self):
+        response = DiffRepairResponse(
+            diff=DIFF_TWO_FILES, files=("src/app.py", "src/util.py")
+        )
+        assert validate_diff_repair_response(response) == []
+        assert validate_structured_patch(diff_repair_response_to_patch(response)) == []

@@ -21,12 +21,13 @@ out-of-fence path comes back as a ``DiffFencePrecheck`` with ``allowed=False``,
 a validation rejection the caller can report, rather than a
 ``FenceViolationError`` thrown out of the middle of an apply.
 
-Remedy deliberately does not convert a ``DiffRepairResponse`` into a
-``StructuredPatch`` in this half. ``structured_patch.UnifiedDiff`` pairs ONE
-path with ONE diff text, so a ``files`` list longer than one entry has no
-correct conversion yet — handing every declared path the whole diff would try to
-apply every hunk to every file. The per-path diff split is designed together
-with the apply half (R9), and the conversion lands there.
+``structured_patch.UnifiedDiff`` pairs ONE path with ONE diff text, so a
+``files`` list longer than one entry is split per path before conversion:
+handing every declared path the whole diff would try to apply every hunk to
+every file. The splitter is ``review_scope.split_diff_by_path``, the same
+single walk that reads hunk headers. Remedy deliberately does not APPLY the
+converted patch from this module — the apply-and-fallback half attaches to the
+bridge, where the job, the approved intent and the snapshot already live.
 
 Public API::
 
@@ -37,6 +38,7 @@ Public API::
     parse_diff_repair_response(raw_output)
         -> tuple[DiffRepairResponse | None, str]
     validate_diff_repair_response(response) -> list[str]
+    diff_repair_response_to_patch(response) -> StructuredPatch
     precheck_diff_repair_fences(repo_root, response, *, job_fences=None)
         -> DiffFencePrecheck
 """
@@ -47,13 +49,18 @@ import json
 from dataclasses import dataclass
 from pathlib import Path
 
-from packages.orchestration.review_scope import parse_diff_line_ranges
+from packages.orchestration.review_scope import (
+    parse_diff_line_ranges,
+    split_diff_by_path,
+)
 from packages.orchestration.scope_fences import (
     TouchedPath,
     check_change_set,
     resolve_fence_spec_effective,
 )
 from packages.orchestration.structured_patch import (
+    StructuredPatch,
+    UnifiedDiff,
     extract_json_object,
     unsafe_path_issues,
 )
@@ -164,6 +171,35 @@ def validate_diff_repair_response(response: DiffRepairResponse) -> list[str]:
         issues.append(f"diff touches undeclared path: {path}")
 
     return issues
+
+
+# The one bridge from a repair answer to the shape the existing applicator takes:
+# one UnifiedDiff per DECLARED path, each carrying only that path's diff section.
+def diff_repair_response_to_patch(response: DiffRepairResponse) -> StructuredPatch:
+    """Convert a repair response into the ``StructuredPatch`` the applicator takes.
+
+    One ``structured_patch.UnifiedDiff`` per DECLARED path, in ``response.files``
+    order, each carrying ONLY that path's section as cut by
+    ``review_scope.split_diff_by_path``.
+
+    Callers run ``validate_diff_repair_response`` FIRST: this function converts,
+    it does not judge. A declared path the diff never touches therefore gets an
+    EMPTY diff string on purpose — ``structured_patch.validate_structured_patch``
+    then rejects it with ``unified_diff <path>: empty diff``, so the failure is
+    fail-closed and named instead of a silent no-op apply.
+    """
+    sections = split_diff_by_path(response.diff)
+    diffs = tuple(
+        UnifiedDiff(path=path, diff=sections.get(path, ""))
+        for path in response.files
+    )
+    return StructuredPatch(
+        intent_kind="unified_diff",
+        unified_diffs=diffs,
+        target_paths=tuple(response.files),
+        applicability="applicable",
+        requires_approval=True,
+    )
 
 
 # The fence question asked BEFORE the applicator opens a file, and answered as a
