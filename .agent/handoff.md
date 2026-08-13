@@ -1,100 +1,72 @@
-# Handback — F111 Diff-only repair · Round 20 (worker)
+# Handoff — F111 Diff-only repair · R21 (integration gate)
 
-## Range
-Review of ed7eaeef..HEAD — 7 commits on feature/f111-diff-only-repair.
+Branch: feature/f111-diff-only-repair. Base at 1e90e89f, HEAD after C5.
+No PR by design. Never force-pushed, never on main.
 
 ## Item status
 | Item | Status | Reason |
-|---|---|---|
-| C1 | deviated | split C1a/C1b — deviation 1 |
-| C2 | done | |
-| C3 | done | |
-| C4 | done | |
-| C5 | done | |
-| C6 | deviated | plan is 43 lines, gate (g) says 44 — deviation 2 |
+|------|--------|--------|
+| C1a  | done   | |
+| C1b  | done   | |
+| C2   | done   | |
+| C3   | done   | applied verbatim; see deviations 1 and 2 |
+| C4   | done   | gate is GREEN relative to base: 0 branch-only failures |
+| C5   | done   | |
 
 ## Commits
-### 57a1572f chore(f111): save the R20 step block verbatim
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/authored/f111-r20-1.md | +329 | block saved verbatim (C1a) |
+| SHA | Subject | Insertions |
+|-----|---------|-----------|
+| 88ff9dda | chore(f111): save the R21 step block verbatim | 273 |
+| b0b16564 | chore(f111): mirror the R21 block into last_block | 234 |
+| d52518f6 | chore(f111): register R-0319 | 13 |
+| 863b3d3e | chore(f111): record the R20 gate and resolve R-0318 | 47 |
+| e5ecdfbb | chore(f111): record the F111 integration gate | 348 |
+| (this commit) | chore(f111): refresh the plan and write the R21 handoff | see below |
 
-### 700a76c5 chore(f111): mirror the R20 block into last_block
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/last_block.md | +294/-163 | byte copy (C1b, single-state-file exemption) |
+## Changed files
+| Path | Change |
+|------|--------|
+| .agent/authored/f111-r21-1.md | new, the R21 block verbatim |
+| .agent/last_block.md | rewritten to the R21 block |
+| .agent/live_review.md | R-0319 registered; R-0318 resolved; R20 gate entry; R19 tense fixed |
+| .agent/gate_f111_r21/*.txt | 11 new evidence files |
+| .agent/plan.md | full rewrite (TEXT-D) |
+| .agent/handoff.md | full rewrite |
+No source file, no test and no doc was touched.
 
-### 7a7099f0 docs(f111): document the diff-only repair path
-| Path | +/- | Reason |
-|---|---|---|
-| docs/system/diff-only-repair-v1.md | +108 | TEXT-A, sliced programmatically (C2) |
+## Results a-m, real values
+a. `cmp` exit 0. sha256 of BOTH files 42ba3e6e0480b28c64959023ff1fd9e6397661fec293f5c992ff8268382e041b. `wc -lc` 273 16911. No line carries trailing whitespace.
+b. `^Done:` 12 · `^Landed:` 1 · `^### R20 — PASS` 1 · `^- R-0` 44.
+c. `WERE byte-identical` 1. `are byte-identical` 16, NOT 0 — deviation 1.
+d. BRANCH `python3 -m pytest -n auto -q`: exit 1, wall 135 s, log line `5 failed, 16634 passed, 19 skipped in 134.16s (0:02:14)`, branch_failed.txt 5 ids.
+e. BASE at 4e0b762e in tmp/base-gate: exit 1, wall 154 s, log line `5 failed, 16537 passed, 19 skipped in 153.37s (0:02:33)`. All FOUR apps/ui/dist content hashes identical: fb68a7293502c79b8ece61d154f5752100a16da1a08a481a7a4c1d79a5a503c0 (base before/after, primary before/after). Parity holds; node_modules and dist were copied with `cp -a`, 0 symlinks.
+f. `comm -13` (branch-only) 0 ids. `comm -23` (base-only) 0 ids. `comm -12` (common) 5 ids. Nothing is owed an environment-class attribution and nothing was fixed relative to base.
+g. No branch-only id exists, so no serial re-run was needed or run. No xdist-flake class, no BLOCKER candidate. Stated rather than omitted.
+h. Collected: branch 16658, base 16561, delta 97, base-only 0 — pure addition. Both totals equal their own run's passed+skipped+failed. Breakdown: test_diff_repair_response.py 32, test_diff_repair.py 30, test_source_apply_transaction.py 11, test_diff_repair_apply.py 9, test_builder_repair_loop.py 8, test_review_scope.py 7. Ids outside the four permitted F111 patterns: 0.
+i. Confirmed by READING base_failed.txt: exactly 5 failures, all in tests/orchestration/test_role_conventions.py, every one a `[reviewer]` parametrization, cause `PromptSegmentError: prompt segment 'reviewer_conventions' is over its token cap: 954 tokens estimated, cap 800` at prompt_segments.py:160. That is R-0286 unchanged.
+j. `git worktree remove --force`, `git worktree prune`, `git branch -D tmp/base-gate` all exit 0. After: `git worktree list` = 1 entry (the primary checkout), `git branch --list 'tmp/*'` = 0 lines, `.remedy-wt/base-gate` absent, `git status --porcelain` = 0 lines.
+k. `wc -l .agent/plan.md` = 44, below the 50 cap. The file is byte-identical to the TEXT-D slice of the committed authored file.
+l. Canary `tests/cli/test_golden_path.py -q`: 42 passed, exit 0.
+m. Recorded below after the final push.
 
-### ad2e1fe1 docs(f111): register the diff-only repair doc in the index
-| Path | +/- | Reason |
-|---|---|---|
-| docs/README.md | +2 | TEXT-B pairs B1, B2 (C3) |
+## Deviations, declared
+This handoff is 72 lines, over the 60-line cap, under AGENTS.md DECISION D15.
+Cause: the mandated six-row item-status table, the six-row commit table, the
+six-row changed-files table and the thirteen-item a-m verification block, none
+of which was dropped or abbreviated.
+1. Gate (c) demands `grep -c 'are byte-identical'` = 0. The true value is 16 and
+   the gate is unmeetable as written: the phrase occurs in fifteen earlier gate
+   entries that TEXT-C does not touch, plus once inside the R-0319 bullet that
+   TEXT-A itself orders, where it is a QUOTATION of the defect. TEXT-C removed
+   exactly the one occurrence it targets — the R19 entry — and the second clause,
+   `WERE byte-identical` = 1, passes. Applied verbatim, true value reported.
+2. The `Landed: R-0319` line cannot name its own commit SHA: the fix and the
+   line ship in the same commit, C3, so the SHA does not exist when the bytes are
+   written. The line names the commit by its subject and says so in parentheses.
+3. Nothing else deviated. No `Done:` paragraph was authored by the worker.
 
-### d81b0b69 fix(f111): complete the metadata enumeration in the diff comment
-| Path | +/- | Reason |
-|---|---|---|
-| packages/orchestration/builder_bridge.py | +3/-2 | TEXT-C, comment only; R-0318 (C4) |
+## Next expected action
+Reviewer gates R21. Then closure per docs/roadmap/STATUS_closure_protocol.md.
 
-### ee4d9de1 chore(f111): record the R19 gate in the live review
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/live_review.md | +30 | TEXT-D plus one `Landed:` line (C5) |
-
-### C6 — plan + handoff (grouped, R-0149 self-reference)
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/plan.md | rewrite | TEXT-E verbatim, 43 lines |
-| .agent/handoff.md | rewrite | this file |
-
-## External actions
-`git push origin feature/f111-diff-only-repair` after C6. No PR, no merge, no
-force-push, no worktree; scratch under gitignored `.remedy-wt/`.
-
-## Verification
-a. `cmp` authored vs last_block → exit 0; sha256 of both
-   `9c7497d0e5a849ee2a30de9fc063db37c38b20da45422e1bc14c22db21d43560`;
-   `wc -lc` authored → `329 17746`.
-b. doc extraction proof → `MATCH`.
-c. `grep -c 'diff-only-repair-v1.md' docs/README.md` → `2`.
-d. old enumeration → `0`; new enumeration → `1`. Run as
-   `subprocess.run(['grep','-cF',…])` — this shell refuses backticks.
-e. builder_bridge diff: one hunk at line 376, 2 comment lines out, 3 in,
-   nothing else (full diff in the round report).
-f. `^Done:` 11, `^Landed:` 1, `^### R19 — PASS` 1, `^- R-0` 43.
-g. `wc -l .agent/plan.md` → **43**, not 44 (deviation 2).
-h. `pytest tests/docs/ -q` → `294 passed in 0.30s`, exit 0.
-i. `pytest tests/orchestration/test_builder_repair_loop.py -q` →
-   `14 passed in 4.45s`, exit 0 (unchanged).
-j. canary `tests/cli/test_golden_path.py -q` → `42 passed in 19.66s`, exit 0.
-k. `ruff check packages/orchestration/builder_bridge.py` → `All checks
-   passed!`, exit 0.
-l. `git status --porcelain` empty; `git diff --name-only ed7eaeef..HEAD` = the
-   eight ordered paths; rev-list vs origin → `0 0` after the push.
-
-## Authored-text proofs
-TEXT-A, TEXT-D, TEXT-E sliced from the authored file by marker index, never
-retyped; TEXT-A re-read and compared → `MATCH`. TEXT-B, TEXT-C applied as
-FROM→TO pairs, each FROM unique before the edit. No written line has trailing
-whitespace.
-
-## Deviations & assumptions
-1. C1 split in two: 623 insertions in one commit breaks the 500 cap, and
-   DECISION F105 D5 prescribes this exact split.
-2. Gate (g) expects 44 lines; TEXT-E is 43. Bytes applied verbatim and the
-   count reported as found — the Constraints forbid "improving" authored text.
-3. TEXT-D calls `last_block.md` identical to `f111-r19-1.md`; true at session
-   start, before C1b overwrote it. Applied verbatim, noted here.
-Deviations, declared: 100 lines, over the 60-line cap and over the 800-token
-thrift target — per-commit tables for 7 commits plus the mandated a-l block.
-The ≤100 allowance for >5 commits applies; no section was dropped.
-
-Fortschritt: ~95 % (T001 ✅ · T002 ✅ · T003 ✅ · Doku ✅ ·
-Integration Gate offen · Closure offen) — Schätzung
-
-## Next
-Main-session review of ed7eaeef..HEAD, then the integration gate
-(docs/agents/integration_gate.md).
+Fortschritt: ~98 % (T001 ✅ · T002 ✅ · T003 ✅ · Doku ✅ ·
+Integration Gate ✅ · Closure offen) — Schätzung

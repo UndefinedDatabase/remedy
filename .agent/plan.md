@@ -1,9 +1,9 @@
 # Plan — F111 Diff-only repair
 
 Branch: feature/f111-diff-only-repair, cut from main at 4e0b762e,
-unmerged, no PR by design. Last reviewed SHA: ed7eaeef (R19 PASS).
-Next free finding ID: R-0319. Open findings: 32 — 43 registered minus
-11 resolved. None is High.
+unmerged, no PR by design. Last reviewed SHA: 1e90e89f (R20 PASS).
+Next free finding ID: R-0320. Open findings: 32 — 44 registered minus
+12 resolved. None is High.
 
 ## Goal
 Repairs stop resending whole files: a repair round carries only the
@@ -14,22 +14,23 @@ and falls back to today's full-file round with the reason recorded
 (docs/roadmap/features/T2_F111.md).
 
 ## Current Step
-T001, T002 and T003 are complete and gated. R20 shipped the feature's
-ist-doc `docs/system/diff-only-repair-v1.md`, registered it in
-docs/README.md, cleared R-0318 and recorded the R19 gate. What remains
-is proving the build against the whole repository and closing it.
+T001, T002 and T003 are complete and gated, and the ist-doc
+`docs/system/diff-only-repair-v1.md` is registered in docs/README.md.
+R21 ran the integration gate: the full suite on the branch against the
+full suite at the merge base, with every branch-only failure attributed
+by evidence in `.agent/gate_f111_r21/`.
 
 ## Next Steps
-1. Integration gate per docs/agents/integration_gate.md: full suite
-   with `-n auto`, base against branch, every branch-only failure
-   attributed rather than assumed (R-0286: five known base failures).
-2. Closure per docs/roadmap/STATUS_closure_protocol.md: evidence job,
-   FRESH review zip, the authored STATUS line committed last, the PR
-   created and NOT merged in that session.
+1. Closure per docs/roadmap/STATUS_closure_protocol.md: the evidence
+   job, a FRESH review zip (a zip failure is a closure blocker), the
+   reviewer-authored STATUS line committed LAST on the branch, then
+   the PR — which is NOT merged in that session.
+2. Nothing else. Any new work is a new feature and a new branch.
 
 ## Risks
 - The full suite is RED at the merge base with five known ids
-  (R-0286): the integration gate compares base against branch.
+  (R-0286), so the gate compares base against branch and never reads
+  a red branch run as a branch defect on its own.
 - The saving is measured in CHARACTERS, not tokens (DECISION F111
   D9). Any doc, STATUS line or PR body calling them tokens turns an
   honest measurement into a fabricated one.
@@ -39,5 +40,5 @@ is proving the build against the whole repository and closing it.
 - 32 findings stay open at closure, none above Medium, each carried
   as an accepted risk exactly as F107 carried its own.
 
-Fortschritt: ~95 % (T001 ✅ · T002 ✅ · T003 ✅ · Doku ✅ ·
-Integration Gate offen · Closure offen) — Schätzung
+Fortschritt: ~98 % (T001 ✅ · T002 ✅ · T003 ✅ · Doku ✅ ·
+Integration Gate ✅ · Closure offen) — Schätzung
