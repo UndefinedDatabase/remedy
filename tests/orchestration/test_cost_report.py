@@ -1,10 +1,16 @@
 """F115 T002 — the cost report renderer: determinism is the property under test.
 
 ``cost_report.py`` is a PURE FUNCTION over the two report dataclasses, so every
-pair below is built BY HAND from ``CostReport`` / ``CostRow`` /
-``SegmentShareReport`` / ``SegmentShareRow``. This module reads no ledger, opens
-no fixture tree and starts no clock: what it pins is that the same pair of
+PROPERTY pair below is built BY HAND from ``CostReport`` / ``CostRow`` /
+``SegmentShareReport`` / ``SegmentShareRow``. Those tests read no ledger, open
+no fixture tree and start no clock: what they pin is that the same pair of
 reports renders to the same bytes, twice and on any machine.
+
+The GOLDEN section at the bottom is the other half of that proof and works the
+other way round: it builds a real evidence tree, runs the REAL
+``backfill_ledger`` over it, asks the REAL queries for the pair, and compares
+the rendered bytes against two files committed on disk. Nothing regenerates
+those files — a golden a test re-blesses on mismatch checks nothing.
 
 What it proves, one property per test:
 
@@ -21,11 +27,14 @@ What it proves, one property per test:
   * an unattributed call — one whose prompt was never traced — is counted once
     and given no share of any segment kind;
   * every share is a share of the attributed total, and an empty breakdown says
-    so in words instead of printing 0.0%.
+    so in words instead of printing 0.0%;
+  * the bytes of both reports over a real backfilled ledger are the bytes of
+    the two golden files, and those files state the numbers that ledger holds.
 """
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 import pytest
 
@@ -39,6 +48,9 @@ from packages.orchestration.token_ledger import (
     CostRow,
     SegmentShareReport,
     SegmentShareRow,
+    backfill_ledger,
+    query_cost,
+    query_segment_shares,
 )
 
 LEDGER_PATH = "/tmp/machine-specific/ledger.sqlite"
@@ -271,3 +283,138 @@ def test_the_json_and_the_markdown_agree_on_the_segment_total():
         line for line in markdown.splitlines() if line.startswith("| TOTAL |")
     ][-1]
     assert "| 230 |" in total_row
+
+
+# ── The golden pair, over a ledger the REAL backfill wrote ──────────────────
+#
+# The fixture is built HERE rather than imported from ``test_token_ledger.py``:
+# a golden whose input a reader cannot see in the same file is a golden that
+# gets re-blessed instead of argued with. Everything below writes real evidence
+# files, hands them to the real ``backfill_ledger`` and asks the real queries —
+# no row is hand-inserted with SQL, so a writer that stopped producing these
+# rows would fail these tests rather than pass them.
+
+GOLDEN_DIR = Path(__file__).parent / "fixtures" / "cost_report" / "golden"
+GOLDEN_LABEL = "f115-golden"
+GOLDEN_MARKDOWN_NAME = "cost_report.md"
+GOLDEN_JSON_NAME = "cost_report.json"
+
+
+def _write_json(path, payload):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+
+
+def _manifest_entry(name, rank, sha256, chars, tokens_estimated):
+    """One ``ComposedPrompt.manifest_as_dicts()`` row, key for key."""
+    return {
+        "name": name,
+        "rank": rank,
+        "sha256": sha256,
+        "chars": chars,
+        "tokens_estimated": tokens_estimated,
+    }
+
+
+def _trace_entry(job_id, task_id, manifest):
+    """One prompt-trace object in the shape ``prompt_trace.py`` writes on disk."""
+    return {
+        "run_id": "run-golden",
+        "job_id": job_id,
+        "task_id": task_id,
+        "round": 1,
+        "role": "builder",
+        "provider": "fake",
+        "prompt_kind": "initial",
+        "prompt_sha256": "0" * 64,
+        "prompt_chars": 1234,
+        "prompt_tokens_estimated": 308,
+        "segment_manifest": list(manifest),
+        "segment_manifest_chars": sum(m["chars"] for m in manifest),
+        "created_at": "2026-08-08T09:00:00+00:00",
+    }
+
+
+def _evidence_tree(root, job_id, runs):
+    """A job-evidence tree in the shape the exporter writes it.
+
+    Each run is ``(task_id, ts_utc, manifest, extra)``: ``manifest`` None means
+    the pre-F115 shape, a call whose prompt was never traced, and ``extra``
+    carries whatever usage the provider reported beyond the base counters.
+    """
+    _write_json(
+        root / "manifest.json", {"bundle_type": "job_evidence", "job_id": job_id}
+    )
+    for task_id, ts_utc, manifest, extra in runs:
+        run = root / "task_runs" / task_id
+        evidence = {
+            "schema_version": "1.0.0",
+            "task_id": task_id,
+            "execution_mode": "provider_backed",
+            "provider_call_count": 1,
+            "actual_call_count": 1,
+            "cost_call_count": 1,
+            "actual_prompt_tokens": 1000,
+            "actual_completion_tokens": 200,
+            "ts_utc": ts_utc,
+        }
+        evidence.update(extra)
+        _write_json(run / "provider_evidence.json", evidence)
+        _write_json(run / "token_accounting.json", {"role": "builder"})
+        if manifest is not None:
+            (run / "prompt_trace.jsonl").write_text(
+                json.dumps(_trace_entry(job_id, task_id, manifest)) + "\n",
+                encoding="utf-8",
+            )
+    return root
+
+
+@pytest.fixture
+def golden_ledger(tmp_path):
+    """Four calls over three days: two traced, two not, one of them measured.
+
+    ``diff`` and ``schema_tail`` publish the SAME ``tokens_estimated`` on
+    purpose, so the goldens pin the tie-break of the row order and not only its
+    direction. Only the last call reports cost and cache figures, so the total
+    is PARTLY measured and the report has to say so in words.
+    """
+    brief = _manifest_entry("task_brief", 10, "a" * 64, 120, 30)
+    diff = _manifest_entry("diff", 20, "b" * 64, 400, 100)
+    tail = _manifest_entry("schema_tail", 30, "c" * 64, 60, 100)
+
+    traced = _evidence_tree(
+        tmp_path / "evidence" / "job-traced",
+        "job-traced",
+        [
+            ("T001", "2026-08-01T10:00:00+00:00", [brief, diff], {}),
+            ("T002", "2026-08-05T10:00:00+00:00", [tail], {}),
+        ],
+    )
+    bare = _evidence_tree(
+        tmp_path / "evidence" / "job-bare",
+        "job-bare",
+        [
+            ("T001", "2026-08-09T10:00:00+00:00", None, {}),
+            (
+                "T002",
+                "2026-08-09T11:00:00+00:00",
+                None,
+                {
+                    "total_cost_usd": 0.25,
+                    "actual_cache_read_tokens": 64,
+                    "actual_cache_creation_tokens": 32,
+                    "actual_model_verified": True,
+                    "builder_actual_model": "claude-opus-5",
+                },
+            ),
+        ],
+    )
+    ledger = tmp_path / "ledger.sqlite"
+    assert backfill_ledger(traced, path=ledger).recorded == 2
+    assert backfill_ledger(bare, path=ledger).recorded == 2
+    return ledger
+
+
+def _golden_pair(ledger):
+    """The pair the goldens were rendered from: the day buckets and the shares."""
+    return query_cost(path=ledger, by="day"), query_segment_shares(path=ledger)
