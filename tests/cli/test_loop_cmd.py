@@ -1,4 +1,4 @@
-"""F045 T003 — `remedy loop list` and `remedy loop validate`, through the real table.
+"""F045 T003 — `remedy loop list`, `validate` and `run`, through the real table.
 
 Every test dispatches through ``collect_all_handlers()`` with an
 ``argparse.Namespace`` and never by importing a ``_cmd_*`` function directly:
@@ -17,6 +17,14 @@ constants rather than at module level, so that against a tree where the
 module does not exist yet each test fails on its own assertion instead of the
 whole file dying at collection.
 
+``loop run`` WRITES, so its tests add one more isolation layer: they register
+their own project with ``project_registry.save_project`` under the same
+``REMEDY_DATA_DIR``, which is the supported route the CLI tests already use
+(``tests/cli/test_stats_cost.py``, ``tests/cli/test_project_current.py``), and
+they pass that project's id on the namespace. The command is then invoked with
+no ``root``, exactly as an operator invokes it, and every job it writes still
+lands under ``tmp_path`` — the operator's real store is never reached.
+
 R-0344 counter-measure: no assertion here matches a string that carries a
 filesystem path. ``tmp_path`` is used for the chdir, for the environment
 variable and as a ``root`` argument, and never inside an expected value.
@@ -30,8 +38,9 @@ import pytest
 
 from apps.cli.command_catalog import CATALOG
 from apps.cli.commands import collect_all_handlers
+from packages.core.models import RunState
 from packages.orchestration import storage
-from packages.orchestration.loop_run import run_loop
+from packages.orchestration.loop_run import LOOP_REF_METADATA_KEY, run_loop
 from packages.orchestration.loop_spec import INERT_TRIGGER_NOTICE, load_loop_specs
 
 LOOP_COMMANDS = ("loop.list", "loop.validate")
@@ -86,9 +95,36 @@ def _write_config(root: Path, body: str) -> None:
     (root / "remedy.toml").write_text(body, encoding="utf-8")
 
 
+@pytest.fixture
+def registered_project(project: Path, monkeypatch: pytest.MonkeyPatch) -> str:
+    """A registered project id inside the isolated data root, so `select_project` resolves.
+
+    The supported route the CLI tests already use: build a ``RemyProject`` and
+    ``save_project`` it under ``REMEDY_DATA_DIR``. No registry internal is
+    touched. ``REMEDY_PROJECT`` is cleared so only the explicit id decides.
+    """
+    from packages.orchestration.project_registry import RemyProject, save_project
+
+    monkeypatch.delenv("REMEDY_PROJECT", raising=False)
+    record = RemyProject(name="Loop Run Test", slug="loop-run-test")
+    save_project(record)
+    return str(record.id)
+
+
 def _dispatch(command_id: str) -> None:
     """Run the command the way the CLI does: registered handler, argparse namespace."""
     collect_all_handlers()[command_id](argparse.Namespace())
+
+
+def _dispatch_with(command_id: str, **attributes: object) -> None:
+    """The same dispatch, with the attributes argparse would have parsed onto the namespace."""
+    collect_all_handlers()[command_id](argparse.Namespace(**attributes))
+
+
+def _stored_jobs() -> list:
+    """Every job actually PERSISTED, read back through the store the command wrote to."""
+    jobs, _degraded, _skipped = storage.list_jobs_safe()
+    return jobs
 
 
 def _row(text: str, name: str) -> str:
@@ -175,3 +211,113 @@ def test_both_commands_are_registered_and_in_the_catalog():
     for command_id in LOOP_COMMANDS:
         assert command_id in handlers
         assert command_id in catalog_ids
+
+
+def test_run_with_yes_materializes_a_planned_job_carrying_the_loop_ref(
+        project, registered_project, capsys):
+    _write_config(project, MANUAL_JOB_LOOP)
+
+    _dispatch_with("loop.run", name="nightly-tidy", project=registered_project, yes=True)
+
+    out = capsys.readouterr().out
+    (stored,) = _stored_jobs()          # read back through the STORE, not the text
+    assert stored.metadata[LOOP_REF_METADATA_KEY] == "nightly-tidy"
+    assert stored.state == RunState.PLANNED
+    assert str(stored.id) in out
+
+
+def test_run_prints_the_next_command_naming_the_job_it_just_created(
+        project, registered_project, capsys):
+    _write_config(project, MANUAL_JOB_LOOP)
+
+    _dispatch_with("loop.run", name="nightly-tidy", project=registered_project, yes=True)
+
+    out = capsys.readouterr().out
+    (stored,) = _stored_jobs()
+    assert f"remedy job run {stored.id}" in out
+
+
+def test_an_unknown_loop_name_is_refused_and_names_the_loops_that_exist(
+        project, registered_project, capsys):
+    from apps.cli.commands import loop_cmd
+
+    _write_config(project, MANUAL_JOB_LOOP)
+
+    with pytest.raises(SystemExit) as exc:
+        _dispatch_with("loop.run", name="midday-tidy", project=registered_project, yes=True)
+
+    assert exc.value.code == loop_cmd.EXIT_ERROR
+    assert exc.value.code != 0
+    err = capsys.readouterr().err
+    assert "midday-tidy" in err          # what was asked for
+    assert "nightly-tidy" in err         # what actually exists
+    assert _stored_jobs() == []
+
+
+def test_without_yes_a_non_tty_stdin_is_refused_rather_than_prompted(
+        project, registered_project, monkeypatch, capsys):
+    from apps.cli.commands import loop_cmd
+
+    _write_config(project, MANUAL_JOB_LOOP)
+    monkeypatch.setattr(loop_cmd, "_stdin_is_a_tty", lambda: False)
+
+    with pytest.raises(SystemExit) as exc:
+        _dispatch_with("loop.run", name="nightly-tidy", project=registered_project, yes=False)
+
+    assert exc.value.code == loop_cmd.EXIT_USAGE
+    assert exc.value.code != 0
+    assert "--yes" in capsys.readouterr().err
+    assert _stored_jobs() == []
+
+
+def test_a_tty_stdin_answering_yes_materializes(
+        project, registered_project, monkeypatch, capsys):
+    from apps.cli.commands import loop_cmd
+
+    _write_config(project, MANUAL_JOB_LOOP)
+    monkeypatch.setattr(loop_cmd, "_stdin_is_a_tty", lambda: True)
+    monkeypatch.setattr("builtins.input", lambda prompt="": "y")
+
+    _dispatch_with("loop.run", name="nightly-tidy", project=registered_project, yes=False)
+
+    (stored,) = _stored_jobs()
+    assert stored.state == RunState.PLANNED
+    assert str(stored.id) in capsys.readouterr().out
+
+
+def test_a_tty_stdin_declining_creates_nothing_and_does_not_raise(
+        project, registered_project, monkeypatch, capsys):
+    from apps.cli.commands import loop_cmd
+
+    _write_config(project, MANUAL_JOB_LOOP)
+    monkeypatch.setattr(loop_cmd, "_stdin_is_a_tty", lambda: True)
+    monkeypatch.setattr("builtins.input", lambda prompt="": "n")
+
+    # No pytest.raises: declining is a normal, successful return.
+    _dispatch_with("loop.run", name="nightly-tidy", project=registered_project, yes=False)
+
+    assert _stored_jobs() == []
+    assert "Cancelled" in capsys.readouterr().out
+
+
+def test_running_an_inert_loop_prints_the_run_notice_and_still_stops_at_planned(
+        project, registered_project, capsys):
+    _write_config(project, SCHEDULE_JOB_LOOP)
+
+    _dispatch_with("loop.run", name="weekly-sweep", project=registered_project, yes=True)
+
+    out = capsys.readouterr().out
+    # Correct HERE and wrong in a listing (R-0355): a run really did happen.
+    assert INERT_TRIGGER_NOTICE in out
+    # The "a loop never implies --yes" pin: an inert trigger changes nothing
+    # about where the job stops.
+    (stored,) = _stored_jobs()
+    assert stored.state == RunState.PLANNED
+
+
+def test_loop_run_is_registered_and_in_the_catalog():
+    handlers = collect_all_handlers()
+    catalog_ids = {entry.command_id for entry in CATALOG}
+
+    assert "loop.run" in handlers
+    assert "loop.run" in catalog_ids
