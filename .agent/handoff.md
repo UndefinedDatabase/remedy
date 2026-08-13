@@ -1,8 +1,8 @@
-# Handoff — F115 Prompt breakdown & cost report · R8
+# Handoff — F115 Prompt breakdown & cost report · Round 9 (SESSION END)
 
-Branch: feature/f115-prompt-cost-report · no PR this round. Goal: settle T001's
-shape (DECISION F115 D4) and land it SCHEMA ONLY — `call_segments` as migration
-step 2, `calls`/`CallRecord`/`_CALL_COLUMNS` untouched.
+Branch: feature/f115-prompt-cost-report · HEAD after C6 pushed · no PR exists.
+Last reviewed SHA: 8615259b (R8 PASS). Open findings: 6 — R-0320, R-0322,
+R-0323, R-0324, R-0327, R-0328. Next free finding ID: R-0329.
 
 ## Item status
 
@@ -10,93 +10,139 @@ step 2, `calls`/`CallRecord`/`_CALL_COLUMNS` untouched.
 |------|--------|--------|
 | C1a  | done   | |
 | C1b  | done   | |
-| C2   | done   | TEXT-A applied verbatim; no `Done:` text authored here |
-| C3   | done   | TEXT-B appended to `.agent/decisions.md` |
-| C4   | done   | TEXT-C appended to `docs/roadmap/features/T2_F115.md` |
-| C5   | done   | three authored pairs, each FROM matched exactly once |
-| C6   | done   | four tests, one class, no parametrize |
-| C7   | done   | plan rewritten, this handoff rewritten |
+| C2   | done   | TEXT-A appended byte for byte, sliced out of the saved block |
+| C3   | done   | constant + TEXT-B verbatim + reader + its private row builder |
+| C4   | done   | writer, backfill wiring, three Public API lines |
+| C5   | done   | six tests in one new class, plus four module-level helpers |
+| C6   | done   | |
 
 ## Commits
 
 | SHA | Subject | Insertions |
 |-----|---------|-----------|
-| 8d3397f8 | chore(f115): save the R8 step block verbatim | 284 |
-| 04880fd6 | chore(f115): mirror the R8 block into last_block | 272 (−231) |
-| 24e1c46d | docs(f115): record the R7 resolutions for R-0325 and R-0326 | 4 |
-| d43dcc4a | docs(f115): decide the T001 persistence shape as DECISION D4 | 50 |
-| 1e121370 | docs(f115): record the T001 table shape in the feature file | 15 |
-| d84b4f8f | feat(f115): add the call_segments table as migration step 2 | 25 (−2) |
-| 0e02933d | test(f115): prove the call_segments schema and its upgrade path | 107 |
-| (C7)     | chore(f115): refresh the plan and write the R8 handoff | see git |
+| 701e0f3b | chore(f115): save the R9 step block as authored text | 308 |
+| e071c79a | chore(f115): mirror the R9 block into last_block | 262 |
+| e2f73262 | docs(f115): register R-0327 and R-0328 from the R8 gate | 37 |
+| 6b8305e6 | feat(f115): read segment manifests out of the copied prompt trace | 139 |
+| 8632bb16 | feat(f115): write call_segments rows on the backfill path | 83 |
+| 35ca075f | test(f115): pin the segment reader, writer and backfill seam | 240 |
+| C6       | chore(f115): refresh the plan and write the R9 handoff | see git |
 
-## Changed files this round
+## Changed files
 
 | Path | Change |
 |------|--------|
-| .agent/authored/f115-r8-1.md | new, the R8 block verbatim |
-| .agent/last_block.md | rewrite, byte-identical mirror |
-| .agent/live_review.md | +4 (TEXT-A, two paragraphs) |
-| .agent/decisions.md | +50 (DECISION F115 D4) |
-| docs/roadmap/features/T2_F115.md | +15 (T001 persistence shape) |
-| packages/orchestration/token_ledger.py | +25 −2 (SCHEMA_VERSION 2, step 2, docstring) |
-| tests/orchestration/test_token_ledger.py | +107 (four tests) |
-| .agent/plan.md | full replace |
-| .agent/handoff.md | rewrite |
+| .agent/authored/f115-r9-1.md | new, 308 lines |
+| .agent/last_block.md | rewritten, identical bytes |
+| .agent/live_review.md | +37, two OPEN findings |
+| packages/orchestration/token_ledger.py | +222 / -1 over C3+C4 |
+| tests/orchestration/test_token_ledger.py | +240 |
+| .agent/plan.md | full replace, 38 lines |
+| .agent/handoff.md | rewritten (this file) |
 
-## Results (all measured, exit codes recorded)
+`.remedy-wt/f115-r9-1.md` is the gitignored source and is NOT committed
+(`git check-ignore` confirms `.gitignore:235`).
 
-- a. `cmp` rc=0. sha256 of BOTH copies
-  `db01e5cd2eb0e006d22a9ab238381e520c39f53b63b29f8b03d17970b32fe2ad`.
-  `wc -lc .agent/authored/f115-r8-1.md` = `284 18965`.
-- b. `.agent/live_review.md`: `^Done:` = 3 · `^- R-0` = 7 · `^## Steps` = 1.
-- c. `^## DECISION F115 D4` in `.agent/decisions.md` = 1.
-- d. `^## T001 persistence shape` in `docs/roadmap/features/T2_F115.md` = 1.
-- e. `^SCHEMA_VERSION = 2` = 1 · `^SCHEMA_VERSION = 1` = 0 ·
-  `CREATE TABLE IF NOT EXISTS call_segments` = 1 · `idx_call_segments_call_id` = 1 ·
-  the block's literal `'        2: ('` (EIGHT leading spaces) = **0**; the entry is
-  written at the dict's four-space indent, so `'    2: ('` = 1. Reported as
-  measured, nothing changed to meet the number. ruff rc=0 `All checks passed!`;
-  `python3 -c "import packages.orchestration.token_ledger"` rc=0.
-- f. `pytest tests/orchestration/test_token_ledger.py -q` rc=0 → `86 passed in 6.28s`
-  (R7 baseline 82 + 4). Matches the expected `86 passed`.
-- g. RED-PROOF in `.remedy-wt/r8-redproof` (detached at 0e02933d), step 2 deleted:
-  `8 failed, 78 passed in 6.96s`. All FOUR new tests failed
-  (`test_a_fresh_ledger_carries_the_call_segments_table`,
-  `test_a_version_one_ledger_gains_the_table_on_reopen`,
-  `test_call_segments_columns_mirror_the_manifest`,
-  `test_a_pre_f115_call_owns_no_segment_rows` — the fourth fails too, on
-  `sqlite3.OperationalError: no such table: call_segments`, one more than the
-  block predicted). Four PRE-EXISTING tests also failed, because deleting step 2
-  while `SCHEMA_VERSION` stays 2 desynchronises them: `TestOpenLedger`'s
-  `test_creates_file_meta_wal_and_indexes`, `test_open_is_idempotent`,
-  `test_schema_version_matches_the_last_migration_step`,
-  `test_meta_holds_exactly_one_version_row`. Worktree removed with
-  `--force` and pruned; `git worktree list` now prints exactly one line:
-  `/home/decodeux/Repos/remedy  0e02933d [feature/f115-prompt-cost-report]`.
-  The primary checkout was never mutated.
-- h. `pytest tests/docs/ -q` rc=0 → `294 passed in 0.25s`.
-- i. Canary `pytest tests/cli/test_golden_path.py -q` rc=0 → `42 passed in 19.61s`.
-- j. `wc -l .agent/plan.md` = 35 (below 50).
-- k. `git status --porcelain` empty · `git diff --name-only 0d6c97aa..HEAD | wc -l`
-  = 27 (24 from R7 + `.agent/authored/f115-r8-1.md`,
-  `packages/orchestration/token_ledger.py`,
-  `tests/orchestration/test_token_ledger.py`); no `.remedy-wt/**` path present ·
-  `git rev-list --left-right --count origin/feature/f115-prompt-cost-report...HEAD`
-  = `0 0`.
+## Results, all measured
 
-Open findings: 4 — R-0320, R-0322, R-0323, R-0324. Next free ID: R-0327.
-Next expected action: the `call_segments` WRITER, populating from the copied
-`prompt_trace.jsonl` on the backfill path (the live hook runs before the copy).
+a. `cmp` exits 0 (CMP_EXIT_0 printed). sha256 of BOTH copies:
+   `c5c5bc40c103ce743a81156078a727231460fe321be65e87613e2dc0265244b6`.
+   `wc -lc .agent/authored/f115-r9-1.md` = `308 19369`. No trailing whitespace
+   on any line (checked mechanically, 0 offending lines).
+b. `.agent/live_review.md`: `^- R-0327` = 1 · `^- R-0328` = 1 · `^- R-0` = 9 ·
+   `^Done:` = 3 (unchanged) · `^## Steps` = 1. All five as ordered.
+c. `token_ledger.py`: `class CallSegmentRow` = 1 · `def
+   segment_rows_from_trace_file` = 1 · `def record_call_segments` = 1 ·
+   `_CALL_SEGMENT_COLUMNS` = 4 (definition, two uses in the INSERT builder, one
+   in the row tuple comprehension) · `_PROMPT_TRACE_FILENAME` = 2 (constant +
+   backfill use) · `record_call_segments` = 3 (definition, docstring API line,
+   backfill call). `ruff check` printed `All checks passed!` exit 0;
+   `python3 -c "import packages.orchestration.token_ledger"` exit 0.
+d. `git diff 8615259b..HEAD -- packages/orchestration/token_ledger.py`: 223
+   changed lines, of which lines assigning `result.scanned` / `result.recorded`
+   / `result.skipped` / `result.failed` = 0, and changed lines inside the
+   `class BackfillResult` body = 0. The only changed lines naming
+   `BackfillResult` are the Public API line and a comment. The seam hunk:
 
-Shell restriction declared: the sandbox refuses any command whose arguments
-contain a dollar sign, so every exit code was captured through a small
-`subprocess` runner instead of echoing the shell status variable; no grep
-pattern this round needed one.
+```
+@@ -645,6 +817,24 @@ def backfill_ledger(
+                 continue
+             if record_call(record, project_id=project_id, path=path):
+                 result.recorded += 1
++                # BACKFILL IS THE ONLY WIRED PATH, deliberately: the live hook
++                # at the actuals seam fires BEFORE the exporter copies
++                # prompt_trace.jsonl into the task-run directory
++                # (``pingpong_evidence.py:517-525`` vs ``:527-536``), so this is
++                # the only place the file demonstrably exists. NO BackfillResult
++                # COUNTER MOVES either way — the return value is deliberately
++                # not branched on, because a segment read or write that fails is
++                # a counted ledger miss and nothing else, and `calls` mirroring
++                # must stay exactly as measurable as it was before F115.
++                record_call_segments(
++                    segment_rows_from_trace_file(
++                        task_dir / _PROMPT_TRACE_FILENAME,
++                        call_id=record.call_id,
++                        task_id=task_dir.name,
++                    ),
++                    project_id=project_id,
++                    path=path,
++                )
+             else:
+                 result.failed += 1
+         except Exception:  # pragma: no cover - defence in depth; nothing below raises
+```
 
-Deviations, declared: 102 lines. The mandated content — item-status table,
-commit table (8 commits), changed-files table and eleven lettered results
-including the multi-line red-proof breakdown — does not fit in 60
-(AGENTS.md DECISION D15).
+e. `pytest tests/orchestration/test_token_ledger.py -q` → `92 passed in 6.35s`
+   (R8 baseline 86, six added). `pytest tests/cli/test_stats_cost.py -q` →
+   `41 passed in 0.46s`, unmoved.
+f. RED-PROOF, disposable worktree `.remedy-wt/r9-redproof` at 35ca075f detached,
+   body of `segment_rows_from_trace_file` replaced by `return []` (diff: 1
+   insertion, 31 deletions, that function only). Result: **5 failed, 87 passed
+   in 6.81s**. The five ids, all in `TestCallSegmentsWriter`:
+   `test_two_entries_yield_their_rows_in_file_order`,
+   `test_an_empty_manifest_yields_no_row_but_still_consumes_its_index`,
+   `test_another_task_runs_entries_are_ignored`,
+   `test_absent_malformed_and_partial_inputs_never_raise`,
+   `test_backfill_writes_the_segment_rows_and_moves_no_counter`. The sixth new
+   test, `test_recording_the_same_segments_twice_leaves_one_row_each`, passes by
+   design: it drives `record_call_segments` directly and never calls the reader.
+   Mutation not adjusted. Worktree removed and pruned; `git worktree list`
+   afterwards shows exactly one line, the primary checkout at 35ca075f.
+g. Canary `pytest tests/cli/test_golden_path.py -q` → `42 passed in 19.62s`,
+   unmoved.
+h. `wc -l .agent/plan.md` = 38 (below 50).
+i. `git status --porcelain` empty · `git diff --name-only 0d6c97aa..HEAD | wc -l`
+   = 28, exactly the 27 from R8 plus `.agent/authored/f115-r9-1.md`; no
+   `.remedy-wt/**` path among them ·
+   `git rev-list --left-right --count origin/...HEAD` → see the closing line
+   below, re-measured after the C6 push.
 
-Fortschritt: 50 % (R1 ✅ · T001a ✅ · alle drei Call-Sites ✅ · T001-Shape-Inventar ✅ · T001-Persistenz läuft · T002 · T003 offen) — Schätzung
+## Shell rewrites declared
+
+The sandboxed shell refuses any command containing `$`. Rewritten: exit-code
+capture (`echo CMP_EXIT_0` on success instead of `echo "$?"`), the five
+`grep -c` counts (five separate greps instead of a `for p in ... "$p"` loop),
+and the trailing-whitespace / diff-scanning checks (`python3` heredocs instead
+of `grep ' $'`). Every gate value above is a real measured output.
+
+## Resume here
+
+Next work is **T002**: aggregation queries over `calls` joined to
+`call_segments`, plus the pure renderer emitting markdown and json. Follow
+`packages/orchestration/gauntlet_matrix.py` with its golden PAIR at
+`tests/orchestration/fixtures/gauntlet/golden/matrix.{json,md}`, and the
+fixture-ledger pattern at `tests/cli/test_stats_cost.py:49-128` — both already
+inventoried in `.agent/f115_inventory.md` section "## Q7". The ledger is now
+readable end to end: a backfilled tree carries the segment rows.
+
+NO PR EXISTS on this branch and CLOSURE HAS NOT STARTED. Do not assume either.
+The live hook remains deliberately unwired (it fires before the trace copy);
+that is a design decision, not an omission.
+
+Deviations, declared: this handoff is over 60 lines because AGENTS.md DECISION
+D15's mandated content does not fit — the item-status table, the commit table,
+the changed-files table, nine measured gate results including gate (d)'s pasted
+`backfill_ledger` hunk and gate (f)'s five failing test ids, the shell-rewrite
+declaration, and the session-end "Resume here" section.
+
+Fortschritt: 58 % (T001-Schema ✅ · T001-Writer ✅ · T002 · T003 offen) — Schätzung
