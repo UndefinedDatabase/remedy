@@ -130,12 +130,22 @@ def loop_budgets_to_job_budgets(budgets: LoopBudgets | None) -> JobBudgets | Non
 # apart in what provenance they record.
 def _materialize_loop_job(spec: LoopSpec, prompt: str, project_id: str, *,
                           extra_metadata: Mapping[str, object] | None = None,
-                          save: Callable[[Job], None] | None = None) -> Job:
+                          mission: str | None = None,
+                          save: Callable[[Job], None] | None = None,
+                          root: Path | None = None) -> Job:
     """Build, plan and persist the job a loop firing produces.
 
     The three metadata keys T002 established are written first; *extra_metadata*
     is merged AFTER them, which is how the mission path adds its own link keys
     without either path re-implementing the provenance record.
+
+    *mission* is set in the ``Job(...)`` constructor, so it is in place before
+    ``plan_job`` and before the save and the PERSISTED record carries it — not
+    only the in-memory object the caller happens to hold.
+
+    An explicit *save* overrides *root* entirely and is called with the job
+    alone, because such a caller has taken responsibility for where the job
+    goes; only the DEFAULT save consults *root* (DECISION F045 D6).
     """
     from packages.orchestration.job_runner import plan_job
     from packages.orchestration.storage import save_job as _save_job
@@ -150,20 +160,25 @@ def _materialize_loop_job(spec: LoopSpec, prompt: str, project_id: str, *,
     job = Job(
         name=prompt[:50],
         user_prompt=prompt,
+        mission=mission,
         state=RunState.PENDING,
         metadata=metadata,
         project_id=project_id,
         budgets=loop_budgets_to_job_budgets(spec.budgets),
     )
     plan_job(job)
-    (save or _save_job)(job)
+    if save is not None:
+        save(job)
+    else:
+        _save_job(job, root)
     return job
 
 
 # WHY: the single entry point from a declarative loop to the normal job
 # pipeline; every loop_ref in evidence originates here.
 def loop_to_job(spec: LoopSpec, *, project_id: str, date: str | None = None,
-                save: Callable[[Job], None] | None = None) -> Job:
+                save: Callable[[Job], None] | None = None,
+                root: Path | None = None) -> Job:
     """Turn a job-action loop into a NORMAL job, planned and persisted.
 
     Deliberately the same shape as
@@ -176,6 +191,9 @@ def loop_to_job(spec: LoopSpec, *, project_id: str, date: str | None = None,
 
     *date* defaults to today's UTC date as ``YYYY-MM-DD``. Callers that must be
     clock-independent (every test here) pass it explicitly.
+
+    *root* isolates the JOB STORE this firing writes to, so the job action path
+    isolates exactly as the mission path already does.
 
     Raises :class:`LoopRunError` for any action kind other than ``job``:
     dispatch across kinds is ``run_loop``'s in T003 (DECISION F045 D3).
@@ -192,7 +210,7 @@ def loop_to_job(spec: LoopSpec, *, project_id: str, date: str | None = None,
     run_date = date if date is not None else datetime.now(timezone.utc).strftime("%Y-%m-%d")
     prompt = render_goal_template(spec.action.goal_template,
                                   project=project_id, date=run_date)
-    return _materialize_loop_job(spec, prompt, project_id, save=save)
+    return _materialize_loop_job(spec, prompt, project_id, save=save, root=root)
 
 
 # WHY: one firing produces a job, maybe a mission, and maybe an honest notice;
@@ -226,6 +244,9 @@ def run_loop(spec: LoopSpec, *, project_id: str, date: str | None = None,
     ``YYYY-MM-DD``, the same default :func:`loop_to_job` uses — and passed down,
     so the job and the mission goal can never be rendered against two dates.
 
+    *root* isolates the WHOLE run — the job store, the mission record and the
+    job-to-mission link all land under it, so no half of a firing escapes it.
+
     An inert trigger (``LoopSpec.is_inert``) blocks nothing: the loop still
     materializes on demand and the outcome carries ``INERT_TRIGGER_NOTICE``, so
     a caller can say so honestly instead of pretending the trigger fired.
@@ -237,7 +258,8 @@ def run_loop(spec: LoopSpec, *, project_id: str, date: str | None = None,
     notice = INERT_TRIGGER_NOTICE if spec.is_inert else None
 
     if spec.action.kind == "job":
-        job = loop_to_job(spec, project_id=project_id, date=run_date, save=save)
+        job = loop_to_job(spec, project_id=project_id, date=run_date, save=save,
+                          root=root)
         return LoopRunOutcome(job=job, mission_id=None, notice=notice)
 
     if spec.action.kind == "mission":
@@ -258,8 +280,8 @@ def run_loop(spec: LoopSpec, *, project_id: str, date: str | None = None,
             spec, goal, project_id,
             extra_metadata={"mission_id": mission.id,
                             "mission_role": MISSION_ROLE_INITIAL},
-            save=save)
-        job.mission = mission.goal
+            mission=mission.goal,
+            save=save, root=root)
         link_job_to_mission(project_id, mission.id, str(job.id),
                             MISSION_ROLE_INITIAL, root=root)
         return LoopRunOutcome(job=job, mission_id=mission.id, notice=notice)
