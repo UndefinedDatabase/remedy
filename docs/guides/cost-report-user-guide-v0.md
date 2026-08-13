@@ -107,8 +107,10 @@ The roadmap asks for a per-role and a per-task-class breakdown. Remedy
 deliberately does not fake either one:
 
 - `--by role` has ONE bucket today, because a task run's `role` is recorded as
-  `"builder"` for the whole run. The existing `remedy stats cost` view already
-  prints that limit in its own output.
+  `"builder"` for the whole run. `remedy stats report` does not print that limit
+  itself — this page is where a reader meets it. The note has one owner,
+  `remedy stats cache --by role`, which appends it under the human table and
+  carries it as the `role_limit` key in the `--json` document.
 - There is no per-task-class breakdown at all: no ledger row carries a task
   class, so there is nothing to aggregate. The report stays silent rather than
   inventing a bucket.
