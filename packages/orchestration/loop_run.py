@@ -1,0 +1,168 @@
+"""F045 T002 — materialize a loop as an ordinary job carrying ``loop_ref``.
+
+A loop is declarative configuration (:mod:`packages.orchestration.loop_spec`,
+T001). This module turns one into a NORMAL job — the same shape
+``remedy job create`` + ``remedy job plan`` produce, and the same shape
+``long_run_executor.queued_entry_to_job`` produces for a queue entry. That
+similarity is the point: a loop-materialized job must be indistinguishable from
+a queue-materialized one except for its provenance.
+
+APPROVAL SEMANTICS, the load-bearing part of T002: the job stops at PLANNED.
+Nothing here executes a task, approves a plan, or implies ``--yes``.
+``LoopSpec.unattended`` is RECORDED in metadata so it is auditable, and it
+changes NOTHING about the job's state — a loop reaches the operator's approval
+gate exactly like a typed goal.
+
+DECISION F045 D3 — T002 materializes the JOB action; action dispatch is T003's.
+:func:`loop_to_job` requires ``action.kind == "job"``. It makes no claim about
+the mission action at all: dispatch across action kinds belongs to ``run_loop``
+in T003, together with the CLI, the last-run display and the end-to-end
+fixture. See ``.agent/decisions.md``.
+
+Remedy deliberately does not schedule, watch or repeat loops here. A loop whose
+trigger is inert (``LoopSpec.is_inert``) still materializes on demand; saying so
+honestly is the CLI's job in T003, not a silent behaviour change here.
+"""
+from __future__ import annotations
+
+import re
+from collections.abc import Callable
+from datetime import datetime, timezone
+
+from packages.core.models import Job, JobBudgets, RunState
+from packages.orchestration.loop_spec import (
+    LOOP_TEMPLATE_VARS,
+    LoopBudgets,
+    LoopSpec,
+)
+
+#: Metadata key carrying the originating loop's name — the provenance line that
+#: makes a loop-materialized job traceable in evidence and reports.
+LOOP_REF_METADATA_KEY = "loop_ref"
+
+#: Metadata key recording the loop's ``unattended`` flag for audit. It is a
+#: RECORD only: it never approves anything and never changes the job's state.
+LOOP_UNATTENDED_METADATA_KEY = "loop_unattended"
+
+#: Matches one ``{placeholder}`` at a time; nested braces are not a template.
+#: Mirrors ``loop_spec._TEMPLATE_VAR_RE`` so both ends agree on what a
+#: placeholder IS without importing a private name across modules.
+_TEMPLATE_VAR_RE = re.compile(r"\{([^{}]*)\}")
+
+
+class LoopRunError(ValueError):
+    """Materializing a loop failed. ``str()`` is the full, user-facing message."""
+
+
+# WHY: templates are operator-authored text, so rendering must never leak a
+# stdlib exception; only the two documented variables are substituted.
+def render_goal_template(template: str, *, project: str, date: str) -> str:
+    """Substitute ONLY ``{project}`` and ``{date}`` in *template*.
+
+    Any other placeholder is already a VALIDATION failure in
+    :mod:`packages.orchestration.loop_spec`, so reaching one here is a
+    programming error: this raises :class:`LoopRunError` naming the variable
+    rather than emitting a half-rendered prompt.
+
+    ``str.format`` is deliberately not used — a stray brace in an operator's
+    template must not raise ``KeyError`` from deep inside the stdlib.
+    """
+    values = {"project": project, "date": date}
+    unknown = [var for var in _TEMPLATE_VAR_RE.findall(template)
+               if var not in LOOP_TEMPLATE_VARS]
+    if unknown:
+        raise LoopRunError(
+            f"goal_template references undefined variable '{unknown[0]}'; "
+            f"only {sorted(LOOP_TEMPLATE_VARS)} are substituted")
+    return _TEMPLATE_VAR_RE.sub(lambda m: values[m.group(1)], template)
+
+
+# WHY: the loop and job budget field names are identical on purpose; this is the
+# one place the deadline's string/datetime difference is bridged.
+def loop_budgets_to_job_budgets(budgets: LoopBudgets | None) -> JobBudgets | None:
+    """Map a ``LoopBudgets`` onto :class:`packages.core.models.JobBudgets`.
+
+    The four numeric field names are IDENTICAL on both sides and are copied
+    straight across. The one difference: ``LoopBudgets.deadline`` is a validated
+    tz-aware ISO string while ``JobBudgets.deadline`` is a ``datetime``.
+
+    Returns ``None`` when the loop has no budgets, and ``None`` when every field
+    is ``None``, so a budget-less loop produces a job whose ``budgets`` is
+    ``None`` exactly as ``remedy job create`` does.
+
+    Ranges are NOT re-validated here: ``loop_spec`` already refused
+    non-positive values and ``JobBudgets`` has its own validator. A third copy
+    would be exactly the drift DECISION F045 D2 avoids.
+    """
+    if budgets is None:
+        return None
+    fields = {
+        "max_total_tokens": budgets.max_total_tokens,
+        "max_provider_calls": budgets.max_provider_calls,
+        "max_wall_clock_minutes": budgets.max_wall_clock_minutes,
+        "max_cost_usd": budgets.max_cost_usd,
+    }
+    deadline = budgets.deadline
+    if all(value is None for value in fields.values()) and deadline is None:
+        return None
+    if deadline is not None:
+        try:
+            parsed_deadline = datetime.fromisoformat(deadline.strip())
+        except (AttributeError, TypeError, ValueError) as exc:
+            raise LoopRunError(f"budgets.deadline is not an ISO 8601 timestamp: "
+                               f"{deadline!r}") from exc
+    else:
+        parsed_deadline = None
+    return JobBudgets(deadline=parsed_deadline, **fields)
+
+
+# WHY: the single entry point from a declarative loop to the normal job
+# pipeline; every loop_ref in evidence originates here.
+def loop_to_job(spec: LoopSpec, *, project_id: str, date: str | None = None,
+                save: Callable[[Job], None] | None = None) -> Job:
+    """Turn a job-action loop into a NORMAL job, planned and persisted.
+
+    Deliberately the same shape as
+    ``long_run_executor.queued_entry_to_job``, and deliberately no further: the
+    job stops at PLANNED. Nothing here executes a task, approves a plan or
+    implies ``--yes``. ``spec.unattended`` is recorded under
+    :data:`LOOP_UNATTENDED_METADATA_KEY` so it is auditable, and it changes
+    NOTHING about the job's state — a loop reaches the operator's approval gate
+    exactly like a typed goal.
+
+    *date* defaults to today's UTC date as ``YYYY-MM-DD``. Callers that must be
+    clock-independent (every test here) pass it explicitly.
+
+    Raises :class:`LoopRunError` for any action kind other than ``job``:
+    dispatch across kinds is ``run_loop``'s in T003 (DECISION F045 D3).
+    """
+    from packages.orchestration.job_runner import plan_job
+    from packages.orchestration.storage import save_job as _save_job
+
+    if spec.action.kind != "job":
+        raise LoopRunError(
+            f"loop '{spec.name}': loop_to_job materializes a job action, got "
+            f"action.kind='{spec.action.kind}'; action dispatch is run_loop's "
+            f"(DECISION F045 D3)")
+    if not spec.action.goal_template:
+        raise LoopRunError(
+            f"loop '{spec.name}': action.goal_template is required for a job action")
+
+    run_date = date if date is not None else datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    prompt = render_goal_template(spec.action.goal_template,
+                                  project=project_id, date=run_date)
+    job = Job(
+        name=prompt[:50],
+        user_prompt=prompt,
+        state=RunState.PENDING,
+        metadata={
+            "project_id": project_id,
+            LOOP_REF_METADATA_KEY: spec.name,
+            LOOP_UNATTENDED_METADATA_KEY: spec.unattended,
+        },
+        project_id=project_id,
+        budgets=loop_budgets_to_job_budgets(spec.budgets),
+    )
+    plan_job(job)
+    (save or _save_job)(job)
+    return job
