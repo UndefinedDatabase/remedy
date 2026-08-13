@@ -102,3 +102,27 @@ Done: R-0321 — RESOLVED at the R4 gate. Verified against the disk, not the rep
   (`docs/agents/planner_reviewer_prompt.md`) — compute a gate's expected value
   from the code that PRODUCES it. Fourth of the reviewer-arithmetic class after
   R-0282, R-0321 and R-0323, and the first caught before a worker paid. OPEN.
+
+- R-0325 — Low — the R6 authored import block left `tests/test_llm_planner.py`
+  ruff-dirty. TEXT-G placed `from packages.orchestration.prompt_segments import
+  (...)` ABOVE the existing `planner_models` import, so the block is no longer
+  alphabetically sorted and `python3 -m ruff check tests/test_llm_planner.py`
+  reports `I001` (un-sorted import block) at line 7 — measured by the reviewer
+  at the R6 gate, against a file that printed `All checks passed!` one commit
+  earlier. `I` is an enabled rule class (`pyproject.toml:50`), so this is a real
+  regression this branch introduced, not a pre-existing style debt; it is Low
+  because no suite test and no CI workflow runs ruff (the repository has no
+  `.github/workflows/`), so nothing turns red today. The worker was right to
+  report it rather than edit an authored slice to fix it. Fix: move the
+  `prompt_segments` import below `planner_models`. OPEN.
+
+- R-0326 — Low — the R6 authored docstring carries a live escape sequence. The
+  `compose_planner_prompt` docstring is a normal (non-raw) string containing the
+  characters backslash-n twice, so Python turns them into two real newlines and
+  the rendered `__doc__` breaks its own sentence mid-clause — the text meant to
+  NAME the delimiter instead BECOMES it. The source file reads correctly and
+  ruff stays silent (backslash-n is a valid escape, so no W605), which is why
+  the R6 gate did not catch it; `help(compose_planner_prompt)` is where it
+  shows. Reviewer-authoring defect, same class as R-0325: the authored bytes
+  were correct as bytes and wrong as Python. Fix: name the delimiter in words
+  instead of spelling it. OPEN.
