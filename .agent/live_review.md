@@ -470,7 +470,11 @@ file was touched.
   would stale it again, but to stop the header carrying a counter at all —
   `.agent/plan.md` already holds it and is rewritten every round. OPEN.
 
-Landed: R-0307 — the live_review header no longer carries a finding-id counter, commit C4 of R8.
+Done: R-0307 — the header no longer names a next-free finding id; it points at
+`.agent/plan.md`, which is rewritten every round and is the one place the
+counter lives. Verified at the R8 gate: `sed -n '8,9p'` matches the authored
+two-line replacement byte for byte, and the retired line is the single
+deletion in commit ea0d63b3's `4 1` numstat. Resolved.
 
 ### R8 — PASS (2026-08-13)
 Reviewed by the main session over 023e8d9d..456a25e9. Every ordered gate was
