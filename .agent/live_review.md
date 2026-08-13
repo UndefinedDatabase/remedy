@@ -471,3 +471,53 @@ file was touched.
   `.agent/plan.md` already holds it and is rewritten every round. OPEN.
 
 Landed: R-0307 — the live_review header no longer carries a finding-id counter, commit C4 of R8.
+
+### R8 — PASS (2026-08-13)
+Reviewed by the main session over 023e8d9d..456a25e9. Every ordered gate was
+re-run by the reviewer, and the new module was additionally probed live, never
+read off the handback. Transport: PRIMARY cmp proof, no digest fallback —
+`.remedy-wt/f111r8/BLOCK`, `.agent/authored/f111-r8-1.md` and
+`.agent/last_block.md` are byte-identical, `.remedy-wt/f111r8/PLAN` and
+`.agent/plan.md` are byte-identical, and a `str.count` of the appended slice
+against `.agent/live_review.md` prints 1. Append purity by numstat: `36 0` for
+the gate commit and `4 1` for the header pair, the single deletion being the
+retired counter line and nothing else. Markers on the final file: 32 `- R-0`,
+4 `Done:`, 1 `Landed:`, 1 `### R7 — PASS`. Caps: the plan is 48 lines and
+carries `## Goal` and `## Next Steps`; the step block is 356 lines, under the
+DECISION F105 D5 limit of 400; per-commit insertions 356/341/36/4/50/439/111,
+each under 500. Tests: `python3 -m pytest
+tests/orchestration/test_diff_repair_response.py
+tests/orchestration/test_diff_repair.py tests/cli/test_golden_path.py -q` exit
+0, 95 passed — 23 new, the 30 T001 tests unchanged, 42 canary; `python3 -m
+pytest tests/orchestration/test_source_apply.py
+tests/orchestration/test_source_apply_transaction.py
+tests/orchestration/test_fence_e2e.py tests/test_path_utils.py
+tests/test_data_paths.py -q` exit 0, 225 passed — the 174 behaviour pin the
+reviewer measured BEFORE the round, unchanged, plus the 51 repo-wide guards
+that rglob every `packages/**/*.py` and therefore already reach the new module.
+Reviewer's own probe, beyond the ordered gates: a two-file diff declared with
+one path returned exactly `diff touches undeclared path: src/b.py`; a ghost
+declaration returned exactly `declared path not touched by the diff:
+src/ghost.py`; `precheck_diff_repair_fences` denied `remedy.toml` with reason
+`denied:builtin:project config file`, and denied a path lying outside a job
+allow glob. The C5 reuse is real, not nominal: the three path-safety message
+strings moved into `unsafe_path_issues` unchanged and `validate_structured_patch`
+now calls it. Hygiene: `git status --porcelain` empty, `git worktree list` one
+entry, remote comparison `0 0`. Scope: exactly the eight ordered paths.
+
+Deviation ACCEPTED: C4's `Landed:` line names `commit C4 of R8` instead of its
+own short sha. A commit cannot carry its own sha without amending, the block
+named that fallback explicitly, and the handoff's item-status table declares
+C4 `deviated` with that reason — finding R-0306 repaired on its first occasion
+after being registered.
+
+- R-0308 (Low, F111 R8, unreachable defensive branch): `parse_diff_repair_response`
+  returns `not_an_object` for a decoded value that is not a dict, and that
+  branch cannot execute today: `extract_json_object` only ever returns text
+  starting with `{`, so a successful `json.loads` always yields a dict. The
+  worker disclosed it rather than writing a test that could not pass honestly,
+  which is DECISION F105 D10 working as designed. Registered so the branch is
+  never later mistaken for tested behaviour. It stays for now — it becomes
+  reachable the moment `extract_json_object` learns to return array text — and
+  the decision to keep or delete it belongs to the closure round, not to a
+  repair. OPEN.
