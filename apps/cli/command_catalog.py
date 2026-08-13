@@ -2962,6 +2962,37 @@ CATALOG: tuple[CommandEntry, ...] = (
         may_mutate_repo=False,
         may_execute_commands=False,
     ),
+    # ── stats — the cost report (F115) ───────────────────────────────────
+    # Deliberately NO --all-projects, and the description says so where a
+    # reader looks for it: `remedy stats --help` prints the description, and a
+    # deliberate absence nobody can find is indistinguishable from an omission.
+    CommandEntry(
+        command_id="stats.report",
+        group_id="stats",
+        subcommand="report",
+        description=(
+            "Cost report over ONE project's ledger: the cost table, where the "
+            "prompt tokens went, and the equal-length period before this one, as "
+            "markdown or json (read-only). There is deliberately no "
+            "--all-projects: cost folds across projects but the segment "
+            "breakdown does not, so an all-projects report would publish one "
+            "project's breakdown under a multi-project total."
+        ),
+        action_class="read_only",
+        supports_json=True,
+        related=("stats.cost", "stats.cache"),
+        args=(
+            ArgDef("--since", "Period start: only calls at or after this ISO-8601 timestamp", required=False, is_option=True),
+            ArgDef("--until", "Period end, EXCLUSIVE: only calls before this ISO-8601 timestamp", required=False, is_option=True),
+            ArgDef("--job", "Only this job's calls, in this period and in the one before it", required=False, is_option=True),
+            ArgDef("--by", "Group the cost table by role, model or day (default: grand total only)", required=False, is_option=True),
+            ArgDef("--label", "Name the scope this report covers, printed in its header", required=False, is_option=True),
+            _PROJECT_SCOPE_OPT,
+            _JSON_OPT,
+        ),
+        may_mutate_repo=False,
+        may_execute_commands=False,
+    ),
     CommandEntry(
         command_id="stats.backfill-ledger",
         group_id="stats",
