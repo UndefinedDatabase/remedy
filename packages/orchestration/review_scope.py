@@ -74,19 +74,24 @@ def _parse_diff(diff_text: str) -> dict[str, dict[str, Any]]:
     """Parse a unified diff into per-file analysis.
 
     Returns ``{path: {"ranges": [[s, e], ...], "added_lines": [...],
-    "import_change": bool, "new_file": bool}}`` where ranges use the *new-file*
-    line numbers from each hunk header. ``new_file`` is true when the old-file
-    header is ``--- /dev/null`` or the first hunk header matches ``@@ -0,0 +...``.
+    "import_change": bool, "new_file": bool, "lines": [...]}}`` where ranges use
+    the *new-file* line numbers from each hunk header. ``new_file`` is true when
+    the old-file header is ``--- /dev/null`` or the first hunk header matches
+    ``@@ -0,0 +...``. ``lines`` holds that file's raw diff lines verbatim, from
+    its ``---``/``+++`` header pair onwards, so a per-path split needs no second
+    walk (see ``split_diff_by_path``).
     """
     files: dict[str, dict[str, Any]] = {}
     current: dict[str, Any] | None = None
     pending_old_path = ""
+    pending_old_line = ""
     pending_old_is_devnull = False
 
     for line in diff_text.splitlines():
         if line.startswith("--- "):
             old = line[4:].strip()
             pending_old_path = _strip_diff_prefix(old)
+            pending_old_line = line
             pending_old_is_devnull = old == "/dev/null"
             continue
         if line.startswith("+++ "):
@@ -94,13 +99,18 @@ def _parse_diff(diff_text: str) -> dict[str, dict[str, Any]]:
             path = pending_old_path if new_path == "/dev/null" else _strip_diff_prefix(new_path)
             current = files.setdefault(
                 path,
-                {"ranges": [], "added_lines": [], "import_change": False, "new_file": False},
+                {"ranges": [], "added_lines": [], "import_change": False, "new_file": False, "lines": []},
             )
+            if pending_old_line:
+                current["lines"].append(pending_old_line)
+            current["lines"].append(line)
+            pending_old_line = ""
             if pending_old_is_devnull:
                 current["new_file"] = True
             continue
         if current is None:
             continue
+        current["lines"].append(line)
         if line.startswith("@@"):
             m = _HUNK_RE.match(line)
             if m:
@@ -134,6 +144,25 @@ def parse_diff_line_ranges(diff_text: str) -> dict[str, list[list[int]]]:
     grows a hunk-header parser of its own.
     """
     return {path: info["ranges"] for path, info in _parse_diff(diff_text).items()}
+
+
+# The public seam the diff applicator reads: one standalone diff per path, cut by
+# the same walk that reads hunk headers, so no second diff splitter exists.
+def split_diff_by_path(diff_text: str) -> dict[str, str]:
+    """Return ``{path: diff_section}`` for a multi-file unified diff.
+
+    The same single walk ``parse_diff_line_ranges`` uses — ``_parse_diff`` keeps
+    each file's raw lines while it reads the hunk headers, and this function only
+    joins them.
+
+    A section runs from its ``---``/``+++`` header pair to the line before the
+    next file header, so each value is a standalone diff the applicator can take
+    on its own. A path appearing twice in one diff gets its sections
+    concatenated under that one key. Any preamble before the first ``---``
+    (``diff --git``, ``index``) belongs to no file and is dropped, because the
+    applicator reads hunk headers and body lines only.
+    """
+    return {path: "\n".join(info["lines"]) for path, info in _parse_diff(diff_text).items()}
 
 
 def _detect_symbols(added_lines: list[str]) -> list[str]:

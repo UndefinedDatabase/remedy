@@ -7,7 +7,9 @@ from pathlib import Path
 from packages.orchestration.review_scope import (
     SCHEMA_VERSION,
     build_review_scope_packet,
+    parse_diff_line_ranges,
     render_scope_markdown,
+    split_diff_by_path,
     write_review_scope_packet,
 )
 
@@ -523,3 +525,107 @@ def test_fallback_config_change_without_diff(tmp_path):
     pkt = build_review_scope_packet(task, tmp_path, ev)
     assert "config_change" in pkt["risk_tags"]["package.json"]
     assert "test_change" in pkt["risk_tags"]["tests/test_x.py"]
+
+
+# ---------------------------------------------------------------------------
+# F111 T002b: split_diff_by_path — one standalone diff section per path
+# ---------------------------------------------------------------------------
+
+TWO_FILE_DIFF = """--- a/src/a.py
++++ b/src/a.py
+@@ -1,2 +1,3 @@
+ keep_a
++added_a
+--- a/src/b.py
++++ b/src/b.py
+@@ -10,2 +10,2 @@
+-old_b
++new_b
+"""
+
+
+def test_split_diff_by_path_single_file_round_trip():
+    sections = split_diff_by_path(SINGLE_FILE_DIFF)
+    path = "packages/orchestration/ui_server.py"
+    assert list(sections) == [path]
+    # The section is the whole diff back again, minus the trailing newline that
+    # ``splitlines`` consumed.
+    assert sections[path] == SINGLE_FILE_DIFF.rstrip("\n")
+
+
+def test_split_diff_by_path_two_files_are_disjoint():
+    sections = split_diff_by_path(TWO_FILE_DIFF)
+    assert sorted(sections) == ["src/a.py", "src/b.py"]
+
+    assert sections["src/a.py"].startswith("--- a/src/a.py\n")
+    assert sections["src/b.py"].startswith("--- a/src/b.py\n")
+    assert "src/b.py" not in sections["src/a.py"]
+    assert "src/a.py" not in sections["src/b.py"]
+    assert "added_a" in sections["src/a.py"]
+    assert "new_b" in sections["src/b.py"]
+    assert "new_b" not in sections["src/a.py"]
+
+
+def test_split_diff_by_path_drops_preamble_before_first_header():
+    diff = (
+        "diff --git a/src/a.py b/src/a.py\n"
+        "index 1111111..2222222 100644\n"
+        "--- a/src/a.py\n"
+        "+++ b/src/a.py\n"
+        "@@ -1,2 +1,3 @@\n"
+        " keep_a\n"
+        "+added_a\n"
+    )
+    sections = split_diff_by_path(diff)
+    assert list(sections) == ["src/a.py"]
+    for section in sections.values():
+        assert "diff --git" not in section
+        assert "index 1111111" not in section
+    assert sections["src/a.py"].startswith("--- a/src/a.py\n")
+
+
+def test_split_diff_by_path_concatenates_repeated_path():
+    diff = (
+        "--- a/src/a.py\n"
+        "+++ b/src/a.py\n"
+        "@@ -1,2 +1,3 @@\n"
+        " keep_a\n"
+        "+first\n"
+        "--- a/src/a.py\n"
+        "+++ b/src/a.py\n"
+        "@@ -40,2 +41,3 @@\n"
+        " keep_more\n"
+        "+second\n"
+    )
+    sections = split_diff_by_path(diff)
+    assert list(sections) == ["src/a.py"]
+    section = sections["src/a.py"]
+    assert "@@ -1,2 +1,3 @@" in section
+    assert "@@ -40,2 +41,3 @@" in section
+    assert section.count("--- a/src/a.py") == 2
+
+
+def test_split_diff_by_path_keeps_no_newline_marker():
+    diff = (
+        "--- a/src/a.py\n"
+        "+++ b/src/a.py\n"
+        "@@ -1 +1 @@\n"
+        "-old\n"
+        "+new\n"
+        "\\ No newline at end of file\n"
+    )
+    section = split_diff_by_path(diff)["src/a.py"]
+    assert section.endswith("\\ No newline at end of file")
+
+
+def test_split_diff_by_path_empty_input():
+    assert split_diff_by_path("") == {}
+
+
+def test_split_diff_by_path_leaves_line_ranges_unchanged():
+    # The added ``lines`` key is additive: the existing reading of hunk headers
+    # returns exactly what it returned before the split was introduced.
+    assert parse_diff_line_ranges(TWO_FILE_DIFF) == {
+        "src/a.py": [[1, 3]],
+        "src/b.py": [[10, 11]],
+    }
