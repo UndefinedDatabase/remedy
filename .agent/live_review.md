@@ -606,4 +606,105 @@ the fence preflight, the snapshot gate and the rollback path are untouched by
 this fix. Reverse by reverting R10's C4 commit; the tests it adds name the
 behaviour precisely enough that a reverter knows what they are giving up.
 
-Landed: R-0311 — `_apply_hunks` now splices each hunk's new block over the range it consumed; six order tests added and the weak substring assertion strengthened, commit C4 of R10.
+### R10 — PASS (2026-08-13)
+Reviewed by the main session over 33f408b2..8644def9. Every ordered gate was
+re-run by the reviewer on this machine; nothing was read off the handback.
+Transport: PRIMARY cmp proof — `.agent/authored/f111-r10-1.md` and
+`.agent/last_block.md` are byte-identical. Numstat purity: `80 0` for the gate
+append and `2 0` for the `Landed:` line, both pure appends as ordered. Markers
+on the final file: 36 registered ids, 5 resolutions, 1 landed marker, 1 R9 pass
+heading, 1 D4 heading. The fix proved BY VALUE, not by colour:
+`_apply_hunks('alpha\nbeta\ngamma\n', '@@ -1,3 +1,3 @@\n alpha\n-beta\n+BETA\n gamma\n')`
+printed `'alpha\nBETA\ngamma\n'` at exit 0. Tests, each re-run by the reviewer:
+179 passed for the source-apply tier, 138 for the untouched modules plus the
+golden-path canary, 225 for the applier's other consumers. Red-proof: in a
+disposable worktree at HEAD with `source_apply.py` checked out from 33f408b2,
+`pytest tests/orchestration/test_source_apply_transaction.py -q` exited 1 with
+5 failed / 10 passed — exactly the five ids the handback named, and
+`test_pure_deletion_hunk_removes_only_its_line` passes on the old code, as the
+handback declared. Worktree removed and pruned; `git status --porcelain` empty,
+`git worktree list` one entry. Scope: exactly the seven ordered paths.
+
+Deviation ACCEPTED: C5's authored `Landed:` line says "six order tests added";
+C4 adds five new tests and strengthens one existing assertion. The worker
+applied the authored bytes verbatim and declared the mismatch instead of
+reflowing text to match a number, which is the correct call — the error is the
+reviewer's and is registered as R-0314 below.
+
+Done: R-0311 — `_apply_hunks` no longer collects a hunk's additions and dumps
+them at the hunk's start; it splices the hunk's new block over the exact
+original range the hunk consumed, so an added line lands at its own position.
+Proved by value at the R10 gate and pinned by five new order tests plus the
+strengthened `test_correct_context_applies`, which now asserts the full result
+string instead of a substring. Resolved. The header-side placement defect found
+while gating this fix is a SEPARATE finding, R-0312 below, not a reopening.
+
+- R-0312 (High, F111 R10, hunk-header off-by-one in the applicator, the same
+  Done-criterion class as R-0311): `_apply_hunks` computes every hunk's 0-based
+  start as `int(m.group(1)) - 1`. That is correct only for a hunk that consumes
+  at least one original line. A unified-diff hunk whose OLD COUNT is 0 is a pure
+  insertion, and its header names the line AFTER which the content goes, so its
+  0-based index is the line number ITSELF. Confirmed against real `git diff
+  -U0`, not from memory: inserting `X` between `a` and `b` in `a\nb\nc\n` emits
+  `@@ -1,0 +2 @@`, prepending emits `@@ -0,0 +1 @@`, appending emits
+  `@@ -3,0 +4 @@`. Measured on the R10 applier against `'a\nb\nc\n'`:
+  `@@ -1,0 +2 @@\n+X\n` returned `'X\na\nb\nc\n'` where the diff says
+  `'a\nX\nb\nc\n'`; `@@ -3,0 +4 @@\n+X\n` returned `'a\nb\nX\nc\n'` where the
+  diff says `'a\nb\nc\nX\n'`; and `@@ -0,0 +1 @@\n+X\n` returned
+  `'a\nb\nc\nX\n'` — `orig_start` is -1 there, so `result_lines[-1:-1]` inserts
+  before the trailing element and a PREPEND silently becomes an APPEND. The
+  same three values were measured on the PRE-R10 applier, so this is not an R10
+  regression: it is the older half of the same defect, and R-0311's fix could
+  not reach it because every test in that round used hunks with context. No
+  validation fires on any of these inputs — a pure-insertion hunk has no context
+  and no removal line to check — so the file is written wrong and reported as
+  applied, which is exactly the failure this feature's Done criterion names.
+  OPEN.
+
+- R-0313 (Medium, F111 R10, acceptance narrowed by the body-walk rewrite):
+  R10 changed a hunk-body line that is none of ` `, `+`, `-` from `pos += 1` to
+  ignored. The block declared that for `\ No newline at end of file`, which is
+  right, but it also covers a case the block did not name: a BLANK context line
+  whose single leading space was stripped in transport arrives as `""`. The old
+  applier consumed it as context; the new one ignores it, `old_len` runs one
+  short, and the next `-` or context line then validates against the wrong
+  original index and returns None. Measured both sides on this machine:
+  `'a\n\nb\n'` with `@@ -1,3 +1,3 @@\n a\n\n-b\n+B\n` returned `'a\n\nB\n'`
+  before R10 and returns None after it. The direction is SAFE — an
+  all-or-nothing rejection that falls back, never a corrupted file — so this is
+  not a corruption finding. It matters because F111 exists to apply
+  MODEL-generated diffs, and stripping the trailing space off a blank line is
+  among the most common things a model or a transport does, so the diff channel
+  will fall back on a class of otherwise-valid answers. The fix does NOT belong
+  in `_apply_hunks`: `diff_text.split("\n")` also yields a trailing `""` for any
+  diff ending in a newline, so treating `""` as context there would make the
+  last hunk consume one original line too many — trading a safe rejection for a
+  silent corruption. Normalise on the response side, where the diff's own line
+  structure is known. Deferred to T002/T003 by decision, not fixed in R11. OPEN.
+
+- R-0314 (Low, F111 R10, fourth instance of an unmeasured count in authored
+  text): the R10 block's authored `Landed:` line asserted "six order tests
+  added"; C4 adds five and strengthens one. R-0282, R-0305 and R-0309 are the
+  same class. R-0309's standing fix — gate authored slices on `cmp`, never on a
+  line count — was applied to R10's slices and worked; the count that broke was
+  embedded in authored PROSE, which a `cmp` gate cannot catch by construction.
+  Widened rule, applied from R11 onward: an authored text states a number about
+  the change set only when that number is already measured on disk, and when it
+  cannot be — because the change does not exist yet — the text names the thing
+  without a count. OPEN.
+
+### DECISION F111 D5 (2026-08-13) — the header off-by-one is in scope too
+Chosen: fix R-0312 inside F111, in R11, scoped to the hunk-header start
+computation and nothing else. This extends DECISION F111 D4 by the same
+reasoning: the feature's Done criterion is that no repair path can silently
+corrupt a file, and a pure-insertion hunk that lands its content at the wrong
+index — or turns a prepend into an append — is that criterion failing, not an
+"applicator semantic" the Do-not-touch list protects. Alternatives considered:
+(a) ship the diff channel and file the header bug against a later feature —
+rejected, it is the same defect class the round before this one just refused to
+ship over; (b) reject every zero-old-count hunk instead of placing it correctly
+— rejected, `-U0` diffs are the SMALLEST diffs a model can send and this feature
+exists to make repairs smaller, so refusing them would defeat its purpose while
+leaving the `@@ -0,0` splice-at-minus-one path reachable anyway. Reverse by
+reverting R11's C4 commit; the tests it adds name the behaviour precisely enough
+that a reverter knows what they are giving up.
