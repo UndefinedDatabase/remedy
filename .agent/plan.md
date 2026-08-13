@@ -1,9 +1,9 @@
-# Plan — F111 Diff-only repair
+# Plan — F111 Diff-only repair (CLOSED)
 
-Branch: feature/f111-diff-only-repair, cut from main at 4e0b762e,
-unmerged, no PR by design. Last reviewed SHA: 1e90e89f (R20 PASS).
-Next free finding ID: R-0320. Open findings: 32 — 44 registered minus
-12 resolved. None is High.
+Branch: feature/f111-diff-only-repair, cut from main at 4e0b762e.
+Last reviewed SHA: 35329dec (R21 PASS, integration gate). Next free
+finding ID: R-0320. Open findings: 32 — 44 registered minus 12
+resolved. None is High; each is an accepted risk at closure.
 
 ## Goal
 Repairs stop resending whole files: a repair round carries only the
@@ -11,34 +11,32 @@ failure-relevant hunks with a configurable context margin, the model
 answers with a schema-enforced unified diff that is fence-checked and
 applied strictly, and ANY hunk conflict discards the attempt whole
 and falls back to today's full-file round with the reason recorded
-(docs/roadmap/features/T2_F111.md).
+(docs/roadmap/features/T2_F111.md). DONE.
 
 ## Current Step
-T001, T002 and T003 are complete and gated, and the ist-doc
-`docs/system/diff-only-repair-v1.md` is registered in docs/README.md.
-R21 ran the integration gate: the full suite on the branch against the
-full suite at the merge base, with every branch-only failure attributed
-by evidence in `.agent/gate_f111_r21/`.
+Closed. T001, T002 and T003 are complete and gated; the ist-doc
+`docs/system/diff-only-repair-v1.md` is registered in docs/README.md;
+the integration gate in `.agent/gate_f111_r21/` shows zero branch-only
+failures against the merge base; STATUS.md carries the `[x]` line and
+the closure PR is open and UNMERGED by design.
 
 ## Next Steps
-1. Closure per docs/roadmap/STATUS_closure_protocol.md: the evidence
-   job, a FRESH review zip (a zip failure is a closure blocker), the
-   reviewer-authored STATUS line committed LAST on the branch, then
-   the PR — which is NOT merged in that session.
-2. Nothing else. Any new work is a new feature and a new branch.
+1. The closure PR merges at the NEXT feature's start via the AGENTS.md
+   Open PR Gate — that gap is the operator's manual-review window. The
+   operator may also merge it manually at any time.
+2. Next feature per Rule A5 and STATUS order: F115 — Prompt breakdown
+   & cost report. New session, new branch, nothing carried over but
+   `.agent/candidates.md`.
+3. That first reviewed round MUST register or resolve every entry in
+   `.agent/candidates.md` and empty the file
+   (docs/roadmap/STATUS_closure_protocol.md).
 
 ## Risks
-- The full suite is RED at the merge base with five known ids
-  (R-0286), so the gate compares base against branch and never reads
-  a red branch run as a branch defect on its own.
-- The saving is measured in CHARACTERS, not tokens (DECISION F111
-  D9). Any doc, STATUS line or PR body calling them tokens turns an
-  honest measurement into a fabricated one.
+- The suite is RED at the merge base with five known ids (R-0286),
+  unrelated to F111 and unfixed here on purpose.
+- The saving is measured in CHARACTERS, not tokens (DECISION F111 D9).
 - All-or-nothing rests entirely on source_apply's durable snapshot;
-  `apply_diff_repair` adds no rollback of its own, and R-0316's fix
-  means a failed rollback is now reported rather than hidden.
-- 32 findings stay open at closure, none above Medium, each carried
-  as an accepted risk exactly as F107 carried its own.
+  a failed rollback is reported, not hidden (R-0316).
 
-Fortschritt: ~98 % (T001 ✅ · T002 ✅ · T003 ✅ · Doku ✅ ·
-Integration Gate ✅ · Closure offen) — Schätzung
+Fortschritt: 100 % (T001 ✅ · T002 ✅ · T003 ✅ · Doku ✅ ·
+Integration Gate ✅ · Closure ✅) — Schätzung

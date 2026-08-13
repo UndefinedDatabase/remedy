@@ -16,7 +16,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-43 of 255 registered items accepted. Next: F111 (Diff-only repair).
+44 of 255 registered items accepted. Next: F115 (Prompt breakdown & cost report).
 
 | Tier | Name | Done | Total |
 |------|------|-----:|------:|
