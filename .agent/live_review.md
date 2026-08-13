@@ -5,7 +5,8 @@
 > round. Findings are authored here by the reviewer only. A worker marks a
 > landed fix `Landed: R-XXXX`; only reviewer-authored `Done:` text sets
 > Resolved (docs/agents/planner_reviewer_prompt.md §4.4).
-> Branch: feature/f111-diff-only-repair. Next free ID: R-0298.
+> Branch: feature/f111-diff-only-repair. The next free finding ID is not
+> tracked in this header: `.agent/plan.md` holds it and is rewritten each round.
 
 ## Findings
 
@@ -468,3 +469,5 @@ file was touched.
   does not track. The fix is not to refresh the number, because the next round
   would stale it again, but to stop the header carrying a counter at all —
   `.agent/plan.md` already holds it and is rewritten every round. OPEN.
+
+Landed: R-0307 — the live_review header no longer carries a finding-id counter, commit C4 of R8.
