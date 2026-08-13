@@ -1,295 +1,238 @@
-── STEP T-DOC/1 — F111 Diff-only repair · Round 20 ───────────────────
-Goal:        Ship the feature's ist-doc, register it in the docs index, and
-             clear finding R-0318 — the last content work before the
-             integration gate.
-Bundle:      C1 save this block · C2 create the ist-doc · C3 register it in
-             docs/README.md · C4 fix R-0318 in builder_bridge.py ·
-             C5 record the R19 gate in live_review · C6 plan + handoff
+── STEP T-GATE/1 — F111 Diff-only repair · Round 21 ──────────────────
+Goal:        Prove this branch against the WHOLE repository: full suite on the
+             branch, full suite at the merge base, every branch-only failure
+             attributed by evidence rather than assumed.
+Bundle:      C1a save this block · C1b mirror it · C2 register R-0319 ·
+             C3 record the R20 gate, resolve R-0318, fix the R19 tense ·
+             C4 the integration gate + its evidence · C5 plan + handoff
 Change:      EXACTLY these paths, nothing else:
-               .agent/authored/f111-r20-1.md   (new, C1)
-               .agent/last_block.md            (rewrite, C1)
-               docs/system/diff-only-repair-v1.md (new, C2)
-               docs/README.md                  (two added rows, C3)
-               packages/orchestration/builder_bridge.py (comment only, C4)
-               .agent/live_review.md           (append only, C5)
-               .agent/plan.md                  (full rewrite, C6)
-               .agent/handoff.md               (full rewrite, C6)
+               .agent/authored/f111-r21-1.md   (new, C1a)
+               .agent/last_block.md            (rewrite, C1b)
+               .agent/live_review.md           (C2 append, C3 append + 2 pairs)
+               .agent/gate_f111_r21/*.txt      (new evidence, C4)
+               .agent/plan.md                  (full rewrite, C5)
+               .agent/handoff.md               (full rewrite, C5)
+             NO source file, NO test, NO doc changes this round.
 Constraints:
-  - TEXT-A, TEXT-B, TEXT-C, TEXT-D and TEXT-E are AUTHORED text. Apply them
-    byte for byte. Do not reword, rewrap, re-punctuate, or "improve" them.
-    If an authored text looks wrong, apply it anyway and report it as a
-    declared deviation in the handback — do not silently fix it.
-  - C4 changes a COMMENT only. No behaviour, no identifier, no signature, no
-    test may change. If you find yourself editing anything else in
-    builder_bridge.py, stop and report.
-  - Do NOT write a `Done:` paragraph in .agent/live_review.md. `Done:` is
-    reserved for reviewer-authored text
-    (docs/agents/planner_reviewer_prompt.md §4.4). For C4 you write exactly
-    ONE line, at column 0, in the shape
-    `Landed: R-0318 — <one line: what changed, which commit>`
-    appended after TEXT-D, and nothing else of your own in that file.
-  - No line in any file you create may carry trailing whitespace.
-  - Do not touch docs/roadmap/**, tests/, or any other package.
-  - Six commits, one per C-item. Each stays far below the 500-insertion cap.
-Done when: every command below has been RUN for real and its true output
-           recorded in the handback. A guessed or expected value is a finding.
-  a. `cmp .agent/authored/f111-r20-1.md .agent/last_block.md` exits 0.
-     Record `sha256sum` of both, and `wc -lc` of the authored file.
-  b. Extraction proof for the doc — run exactly this and record the word it
-     prints:
-       python3 - <<'PY'
-       from pathlib import Path
-       src = Path('.agent/authored/f111-r20-1.md').read_text(encoding='utf-8').split('\n')
-       b = src.index('<<<BEGIN TEXT-A docs/system/diff-only-repair-v1.md>>>')
-       e = src.index('<<<END TEXT-A>>>')
-       extracted = '\n'.join(src[b+1:e]) + '\n'
-       target = Path('docs/system/diff-only-repair-v1.md').read_text(encoding='utf-8')
-       print('MATCH' if extracted == target else 'MISMATCH')
-       PY
-     It must print MATCH. MISMATCH means the doc is not what was authored:
-     fix the doc, never the proof.
-  c. `grep -c 'diff-only-repair-v1.md' docs/README.md` prints exactly 2
-     (one quick-find row, one system-list row; it was 0 before this round).
-  d. `grep -cF '(\`hunk_count\`, \`total_chars\`, \`omitted\`)' packages/orchestration/builder_bridge.py`
-     prints 0, and
-     `grep -cF '(\`hunk_count\`, \`total_chars\`, \`full_file_chars\`, \`omitted\`)' packages/orchestration/builder_bridge.py`
-     prints 1.
-  e. `git diff ed7eaeef..HEAD -- packages/orchestration/builder_bridge.py`
-     shows ONLY comment lines changed. Paste that diff in the handback in
-     full — it is short.
-  f. In `.agent/live_review.md`: `grep -c '^Done:'` prints 11 (unchanged),
-     `grep -c '^Landed:'` prints 1, `grep -c '^### R19 — PASS'` prints 1,
-     `grep -c '^- R-0'` prints 43 (unchanged — this round registers nothing).
-  g. `wc -l .agent/plan.md` prints 44.
-  h. `python3 -m pytest tests/docs/ -q` — record the tail and exit code.
-  i. `python3 -m pytest tests/orchestration/test_builder_repair_loop.py -q` —
-     record the count and exit code (it was 14 passed at the R18 gate).
-  j. `python3 -m pytest tests/cli/test_golden_path.py -q` — the canary; it was
-     42 passed at R19.
-  k. `python3 -m ruff check packages/orchestration/builder_bridge.py` — record
-     the real output and exit code. If ruff is not installed, say so; do not
-     substitute another tool silently.
-  l. `git status --porcelain` is empty, `git diff --name-only ed7eaeef..HEAD`
-     lists exactly the eight paths above, and
+  - TEXT-A, TEXT-B, TEXT-C and TEXT-D are AUTHORED text. Apply them byte for
+    byte. Do not reword, rewrap or re-punctuate. If an authored text looks
+    wrong, apply it anyway and report it as a declared deviation.
+  - Do NOT write a `Done:` paragraph of your own. For R-0319 you append exactly
+    ONE line at column 0 after TEXT-B, in the shape
+    `Landed: R-0319 — <one line: what changed, which commit>`.
+  - C1 is SPLIT into two commits on purpose: the authored file alone (C1a), then
+    `.agent/last_block.md` alone (C1b). Combined they would exceed the
+    AGENTS.md 500-insertion cap; split, each is a single-state-file save.
+  - G5 isolation: the base suite runs ONLY inside a disposable `git worktree`.
+    The primary checkout must satisfy `git status --porcelain` == empty at the
+    handback. Scratch and the base worktree live under `.remedy-wt/`, which is
+    gitignored (line 235 of .gitignore) — never `/tmp` (writes there are denied
+    on this machine) and never an untracked path inside the tracked tree.
+  - Evidence files are `.txt`, never `.log`: `.gitignore` drops `*.log` and the
+    review-zip guard rejects any `\.log$` member (R-0169).
+  - Every suite writes its output to a file under `.remedy-wt/` AS IT RUNS and
+    its exit code to a file too, so no number in the evidence exists only in a
+    terminal (R-0288). Copy them into `.agent/gate_f111_r21/` only AFTER the run
+    has exited (R-0176: a log growing inside the repo mid-run breaks the
+    manifest-identity ids).
+  - `git worktree add -b tmp/base-gate …` — the base worktree runs on a
+    throwaway BRANCH, never a detached HEAD: the self-dogfood guard refuses a
+    detached HEAD by design (DECISION D3). Deleting that one throwaway branch at
+    cleanup is ordered by docs/agents/integration_gate.md step 2 and is the only
+    branch deletion permitted in this round.
+Done when: every command has been RUN for real and its TRUE output recorded. A
+           guessed, expected or remembered value is a finding. If the gate finds
+           a reproducible branch-only failure coupled to feature code, STOP at
+           that point, do not attempt a fix, and hand back — the fix is its own
+           reviewer-gated round (integration_gate.md step 4).
+  a. `cmp .agent/authored/f111-r21-1.md .agent/last_block.md` exits 0; record
+     `sha256sum` of both and `wc -lc` of the authored file.
+  b. In `.agent/live_review.md` after C3: `grep -c '^Done:'` prints 12,
+     `grep -c '^Landed:'` prints 1 (yours for R-0319; R-0318's was replaced),
+     `grep -c '^### R20 — PASS'` prints 1, `grep -c '^- R-0'` prints 44.
+  c. The R19 gate entry no longer claims the present tense:
+     `grep -c 'are byte-identical'` over `.agent/live_review.md` prints 0, and
+     `grep -c 'WERE byte-identical'` prints 1.
+  d. BRANCH run: `python3 -m pytest -n auto -q`. Record raw tail, exit code,
+     wall time, and `grep '^FAILED' | sort > branch_failed.txt`.
+  e. BASE run at merge base 4e0b762e in the throwaway worktree, same command,
+     with UI parity restored per integration_gate.md step 3 (COPY
+     `apps/ui/node_modules` and `apps/ui/dist` — `cp -a`, never a symlink) and
+     `REMEDY_UI_NO_AUTO_BUILD=1` set but NOT trusted alone: hash the aggregate
+     CONTENT of `apps/ui/dist` in BOTH the base worktree and the primary
+     checkout, before and after the base run, and record all four values. A
+     changed hash voids the parity claim and forces per-id attribution.
+  f. `comm -13 base_failed.txt branch_failed.txt` = branch-only failures;
+     `comm -23` = failures the branch FIXED. Report both. Every `comm -23` id
+     must be attributed to the environment class by direct evidence or it counts
+     as a genuine base failure and blocks the verdict.
+  g. Attribution for EVERY branch-only id: serial re-run of the exact node id.
+     serial-pass ⇒ xdist-flake class, recorded, not a blocker. serial-fail ⇒
+     reproduce at the merge base before blaming the feature. A reproducible
+     branch-only failure coupled to F111 code ⇒ BLOCKER, stop and hand back.
+  h. COLLECTED-TEST DELTA, measured and not assumed. Run
+     `python3 -m pytest --collect-only -q` in both trees, sort the node-id
+     lists, and `comm` them. Every branch-only node id must live in an F111
+     test file (`tests/orchestration/test_diff_repair*.py`,
+     `test_builder_repair_loop.py`, `test_review_scope.py`,
+     `test_source_apply_transaction.py`). An added id anywhere else is a finding.
+     Record the counts and the file breakdown.
+  i. Expected at BASE, per finding R-0286: five failures, every `[reviewer]`
+     parametrization in `tests/orchestration/test_role_conventions.py`, because
+     `docs/agents/reviewer_conventions.md` estimates 954 tokens against an
+     800-token cap. Confirm the count and the ids by reading them out of
+     `base_failed.txt` — do NOT assume them. If base shows a different set, say
+     so plainly; that is information, not a problem to hide.
+  j. Cleanup, with proof: `git worktree remove --force`, `git worktree prune`,
+     `git branch -D tmp/base-gate`, then `git worktree list`,
+     `git branch --list 'tmp/*'` (expect empty), `git status --porcelain`
+     (expect empty), and a test that `.remedy-wt/base-gate` is gone.
+  k. `wc -l .agent/plan.md` prints a number BELOW 50 — record the real number.
+     Do not pad or trim the authored text to hit any particular count.
+  l. `python3 -m pytest tests/cli/test_golden_path.py -q` — the canary.
+  m. `git status --porcelain` empty, `git diff --name-only 1e90e89f..HEAD`
+     lists only the ordered paths, and
      `git rev-list --left-right --count origin/feature/f111-diff-only-repair...HEAD`
      prints 0 and 0 after the final push.
-Handback:  a completion report + rewrite `.agent/handoff.md`
-           (docs/agents/handback_template.md). It carries the item-status
-           table (C1-C6, every item exactly once), the commit table with real
-           SHAs and insertion counts, the changed-files table, and every
-           result a-l as a REAL value. It repeats the Fortschritt line
-           verbatim. If it exceeds 60 lines, carry a "Deviations, declared"
-           line naming the count and the mandated content that caused it
-           (AGENTS.md DECISION D15).
+Handback:  completion report + rewrite `.agent/handoff.md`. Item-status table
+           (C1a, C1b, C2, C3, C4, C5 — each exactly once), commit table with
+           real SHAs and insertions, changed-files table, and every result a-m
+           as a REAL value. Repeat the Fortschritt line verbatim. Over 60 lines
+           ⇒ carry a "Deviations, declared" line naming the count and the
+           mandated content that caused it (AGENTS.md DECISION D15).
 ──────────────────────────────────────────────────────────────────────
 
 PROCEDURE
 
-C1 — commit `chore(f111): save the R20 step block verbatim`
-  Save the block bytes to `.agent/authored/f111-r20-1.md`, then copy that file
-  to `.agent/last_block.md` (a copy, so the bytes cannot drift). Run gate (a).
+C1a — `chore(f111): save the R21 step block verbatim`
+  Save the block bytes to `.agent/authored/f111-r21-1.md`.
+C1b — `chore(f111): mirror the R21 block into last_block`
+  Copy that file to `.agent/last_block.md`. Run gate (a).
 
-C2 — commit `docs(f111): document the diff-only repair path`
-  Create `docs/system/diff-only-repair-v1.md` from TEXT-A: every line strictly
-  between the `<<<BEGIN TEXT-A …>>>` and `<<<END TEXT-A>>>` marker lines, with
-  a single trailing newline at end of file and no other change. The marker
-  lines themselves are transport only and never appear in the doc. Run gate (b).
+C2 — `chore(f111): register R-0319`
+  Apply the TEXT-A pair to `.agent/live_review.md`. APPEND-shaped: the TO
+  contains the two FROM lines verbatim, followed by the new finding bullet.
+  This commit exists on its own so the finding survives a dead session
+  (docs/agents/planner_reviewer_prompt.md §4.4).
 
-C3 — commit `docs(f111): register the diff-only repair doc in the index`
-  Apply the two TEXT-B pairs to `docs/README.md`. Both are APPEND-shaped: each
-  TO contains its FROM verbatim as its first line, followed by one new row.
-  Insert nothing anywhere else; the surrounding rows keep their order. Run
-  gate (c).
+C3 — `chore(f111): record the R20 gate and resolve R-0318`
+  Three edits to `.agent/live_review.md`, in this order:
+    1. TEXT-B pair — REWRITE: the single `Landed: R-0318 …` line at the end of
+       the file is replaced by the authored `Done: R-0318 …` line.
+    2. Append the TEXT-B gate entry after it, then your own single
+       `Landed: R-0319 — …` line at the very end.
+    3. TEXT-C pair — REWRITE inside the `### R19 — PASS` entry: two lines out,
+       four lines in. This is the R-0319 fix.
+  Run gates (b) and (c).
 
-C4 — commit `fix(f111): complete the metadata enumeration in the diff comment`
-  Apply the TEXT-C pair to `packages/orchestration/builder_bridge.py`. It is a
-  REWRITE: the two FROM lines are replaced by the three TO lines. Nothing else
-  in the file changes. Run gates (d), (e), (i), (k).
+C4 — `chore(f111): record the F111 integration gate`
+  Follow `docs/agents/integration_gate.md` end to end. Write
+  `.agent/gate_f111_r21/` with these files, mirroring the F107 R16 gate in
+  `.agent/gate_f107_r16/` which is a good worked example of the format:
+    branch_run.txt · branch_failed.txt · base_run.txt · base_failed.txt ·
+    base_worktree.txt · comm_branch_only_failures.txt ·
+    comm_base_only_failures.txt · dist_hashes.txt · collect_delta.txt ·
+    attribution.txt · worktree_cleanup.txt
+  `attribution.txt` opens with the procedure pointer, the merge base, the branch
+  HEAD, the headline numbers for both runs with their real log lines, then the
+  collected-test delta, the UI parity proof, and one paragraph per branch-only
+  id. Run gates (d) through (j).
 
-C5 — commit `chore(f111): record the R19 gate in the live review`
-  Append TEXT-D to the END of `.agent/live_review.md`, then append your own
-  single `Landed: R-0318 — …` line after it as the Constraints describe. Run
-  gate (f).
+C5 — `chore(f111): refresh the plan and write the R21 handoff`
+  Replace `.agent/plan.md` with TEXT-D in full. Rewrite `.agent/handoff.md`.
+  Run gates (k), (l), (m), then push.
 
-C6 — commit `chore(f111): refresh the plan and write the R20 handoff`
-  Replace `.agent/plan.md` with TEXT-E in full. Rewrite `.agent/handoff.md`
-  yourself per the Handback line. Run gates (g), (h), (j), (l), then push.
+TEXT-A — one APPEND pair for .agent/live_review.md
 
-<<<BEGIN TEXT-A docs/system/diff-only-repair-v1.md>>>
-# Diff-Only Repair v1
+  FROM (2 lines, occurs exactly once, two leading spaces on each):
+  the next round that touches `builder_bridge.py` for another reason; do not
+  open a round for it alone. OPEN.
+  TO (the same 2 lines, then a blank line, then the new bullet):
+  the next round that touches `builder_bridge.py` for another reason; do not
+  open a round for it alone. OPEN.
 
-> Built state of F111 (`docs/roadmap/features/T2_F111.md`, Tier 2). A repair
-> round in the BOUNDED repair loop sends only the failure-relevant hunks and
-> accepts a unified diff back, falling back to the full-file round on any doubt.
+- R-0319 (Low, F111 R20 gate, a dated record written in the present tense): the
+  `### R19 — PASS` entry states that `.agent/authored/f111-r19-1.md` and
+  `.agent/last_block.md` "are byte-identical". That was true when the value was
+  measured, at the start of the R20 session, and false as soon as R20's own C1b
+  overwrote `last_block.md` with the R20 block — which the same round then did,
+  as every round does. A gate entry records a moment, so its transport sentence
+  has to read as one; this one invites a later reader to re-run the `cmp`, find
+  a mismatch, and doubt a proof that was sound. The reviewer authored the tense,
+  so the fault is the reviewer's and not the R20 worker's, who applied the
+  ordered bytes verbatim and flagged the drift in the handback — exactly the
+  behaviour this workflow exists to produce. Fix direction: state the past tense
+  and say why the file has moved on. OPEN.
 
-## Where this applies — and where it deliberately does not
+TEXT-B — the Done line, then the gate entry
 
-The path is `run_builder_bridge_loop` in
-`packages/orchestration/builder_bridge.py`: the bounded
-build → bridge → test → repair-context → rebuild cycle, whose bridge already
-applies a `StructuredPatch` through the fenced applicator in
-`packages/orchestration/source_apply.py`.
+  PAIR (REWRITE): the FROM is the single last line of the file, the TO is one
+  line. FROM (1 line):
+Landed: R-0318 — the diff-metadata comment in `packages/orchestration/builder_bridge.py` now enumerates all four keys including `full_file_chars`, in commit d81b0b69.
+  TO (1 line):
+Done: R-0318 — the diff-metadata comment now enumerates all four keys the dict actually returns. Verified at the R20 gate by the reviewer's own reading of the full `git diff ed7eaeef..d81b0b69 -- packages/orchestration/builder_bridge.py`: three comment lines replace two, no identifier, signature or behaviour moved, the stale three-key parenthesis counts 0 and the four-key one counts 1, `ruff check` prints "All checks passed!", and the 14 repair-loop tests are unmoved. RESOLVED.
 
-`packages/orchestration/pingpong_loop.py` is NOT on this path (DECISION F111
-D1). Its builder is an agentic CLI that edits the staging tree itself, its
-`BuilderOutput` carries no patch, and no applicator is invoked there — so there
-is no seam for a diff channel to attach to. Remedy deliberately does not route
-ping-pong repairs through the diff channel in v1.
+  Then append, after that line:
 
-## Knobs
+### R20 — PASS (2026-08-13)
 
-| Parameter of `run_builder_bridge_loop` | Default | Effect |
-|---|---|---|
-| `diff_mode` | `True` | `False` ⇒ every repair round is full-file, reason `diff_mode_off` |
-| `diff_margin_lines` | `3` | context lines added on each side of every selected range |
+Reviewed by the main session over ed7eaeef..1e90e89f, seven commits. Every gate
+was re-run by the reviewer on this machine; nothing was read off the handback.
+Transport: `.agent/authored/f111-r20-1.md` and `.agent/last_block.md` WERE
+byte-identical at this gate under `cmp`, 17746 bytes, 329 lines, sha256
+9c7497d0e5a849ee2a30de9fc063db37c38b20da45422e1bc14c22db21d43560, with no line
+carrying trailing whitespace.
 
-## Prompt side — what a repair round carries
+The ist-doc was proved by EXTRACTION, not by retype: slicing the
+`<<<BEGIN TEXT-A …>>>` region out of the COMMITTED authored file and comparing
+it byte for byte against `docs/system/diff-only-repair-v1.md` prints MATCH. That
+doc is 108 lines, carries no trailing whitespace, and is registered twice in
+`docs/README.md` — the quick-find row and the system-list row, each in its
+alphabetical place.
 
-`packages/orchestration/diff_repair.py` selects the source a repair prompt
-sends:
+Scope: exactly the eight ordered paths. The single production commit, d81b0b69,
+changes three comment lines and nothing else; the reviewer read that diff in
+full rather than its summary. Markers at gate time: eleven resolution
+paragraphs, one unreviewed-fix marker, 43 registered findings, one R19 gate
+heading. Tests re-run by the reviewer: 350 passed, exit 0 — `tests/docs/` 294,
+`test_builder_repair_loop.py` 14 (unmoved from R18), the golden-path canary 42 —
+and `ruff check` on the touched module prints "All checks passed!". `git status
+--porcelain` empty, one worktree, 0 ahead and 0 behind the remote.
 
-    select_repair_hunks(repo_root, changed_line_ranges, *,
-                        margin_lines=3, max_total_chars=20000)
+Four deviations were declared and all four are upheld. (1) C1 was split in two
+because one commit measured 623 insertions against the AGENTS.md cap of 500. The
+worker cited DECISION F105 D5 and applied it; AGENTS.md outranking the block's
+"one commit per item" line is the correct reading, and this block orders the
+split up front. (2) The block's length gate demanded 44 lines of
+`.agent/plan.md` and the authored text was 43. The worker applied the bytes and
+reported the true count rather than padding a file to make a reviewer's
+arithmetic come out — the right call, the fault is the reviewer's miscount, and
+the file was under its 50-line cap throughout. The countermeasure is in this
+block: a length gate now asks for the real number under the cap instead of a
+number counted by hand. (3) is registered above as R-0319, the reviewer's own
+defect. (4) The 100-line handoff carries its DECISION D15 stated-cause line
+naming the seven-commit table and the a-l verification block, with no section
+dropped.
 
-The line ranges come from the PATCH THAT WAS APPLIED, through
-`changed_line_ranges_from_patch` → `review_scope.parse_diff_line_ranges` — not
-from the `source_patch_applied` timeline event, whose metadata carries file
-lists and no line numbers at all (DECISION F111 D3).
+TEXT-C — one REWRITE pair for .agent/live_review.md (the R-0319 fix)
 
-Selected hunks reach the repair context as `diff_hunks`; every path that
-carried none reaches it as `diff_hunks_omitted` with a reason — `missing`,
-`binary`, `no_ranges`, `out_of_bounds` or `budget`. `out_of_bounds` is the
-load-bearing one: lines WERE requested but none of them exist in the file,
-which is how a stale diff becomes visible instead of being swallowed.
-
-The prompt-side choice is recorded as `repair_mode`: `diff`, or `full_file`
-with a reason (`no_patch`, `no_ranges`, `no_hunks_selected`, `diff_mode_off`).
-
-## Response side
-
-`packages/orchestration/diff_repair_response.py` accepts one versioned record:
-
-    {"format": "unified_diff", "diff": "<unified diff>", "files": ["<path>"]}
-
-`validate_diff_repair_response` rejects a diff touching any file outside the
-declared `files` list, and `precheck_diff_repair_fences` asks the job's fences
-BEFORE any file is opened — so a diff aimed at a fence-denied path never
-reaches the applicator by construction, rather than by an exception raised
-mid-apply. `diff_repair_response_to_patch` then converts the accepted answer
-into the `StructuredPatch` the existing applicator already takes.
-
-## Apply side — all-or-nothing, or full fallback
-
-`apply_diff_repair` (`packages/orchestration/diff_repair_apply.py`) reports a
-mode as data, never as an exception:
-
-| Mode | Meaning |
-|---|---|
-| `diff` | the unified diff landed; the full-file round was skipped |
-| `full_fallback` | nothing landed; `fallback_reason` names why |
-
-`fallback_reason` is prefixed by the stage that refused: `validation:`,
-`fence_denied:` or `apply_failed:`. Context matching is STRICT — no fuzz, no
-offset search, and nothing shells out to `patch` or `git apply`.
-
-All-or-nothing is `source_apply`'s durable snapshot, created and verified
-before any mutation; this path adds no rollback and no second reading of
-unified-diff syntax of its own. When the applicator's own restore fails it says
-so — `rollback_incomplete (N file(s)): …` — and the result then carries
-`rollback_incomplete=True` plus the real `files_modified` count instead of a
-reassuring zero.
-
-New-file creation and deletion both stay on the full-file path in v1 (DECISION
-F111 D6): the applicator requires the target file to exist, so a creation diff
-fails the apply and the round falls back, and the full-file round creates the
-file under the same durable snapshot.
-
-## Evidence
-
-Timeline events on this path: `repair_mode_selected` (the prompt-side choice
-plus the size pair below), `diff_repair_not_used` (the answer was not a valid
-diff record), `diff_repair_applied` (mode, `fallback_reason`, `files_modified`,
-`rollback_incomplete`) and `repair_round_fell_back_to_full_file`. The bridge
-stop reason for a discarded attempt is `diff_repair_fell_back`.
-
-`repair_mode_selected` carries the pair the saving is read from: `total_chars`,
-what the diff path SENT, and `full_file_chars`, what the full-file path WOULD
-have sent for the same paths. Both are CHARACTERS, never tokens (DECISION F111
-D9) — calling them tokens turns a real measurement into a fabricated one.
-Remedy deliberately does not record a derived `chars_saved` field: a derived
-number can disagree with its own inputs, and the reader can subtract.
-
-## Related
-
-- [repair-loop-v1.md](repair-loop-v1.md) — the approval-gated repair PROPOSAL
-  path. A different loop: it never applies code and never calls a provider.
-- `docs/roadmap/features/T2_F111.md` — the target spec and its decisions.
-<<<END TEXT-A>>>
-
-TEXT-B — two APPEND pairs for docs/README.md
-
-  PAIR B1 (quick-find table)
-  FROM (1 line, occurs exactly once):
-| context | [context-inspector.md](system/context-inspector.md) | system |
-  TO (2 lines):
-| context | [context-inspector.md](system/context-inspector.md) | system |
-| diff-only repair | [diff-only-repair-v1.md](system/diff-only-repair-v1.md) | system |
-
-  PAIR B2 (system file list)
-  FROM (1 line, occurs exactly once):
-| [development-artifact-boundary-v0.md](system/development-artifact-boundary-v0.md) | Boundaries between dev artifacts and production |
-  TO (2 lines):
-| [development-artifact-boundary-v0.md](system/development-artifact-boundary-v0.md) | Boundaries between dev artifacts and production |
-| [diff-only-repair-v1.md](system/diff-only-repair-v1.md) | Diff-only repair: hunk selection, unified-diff response, strict apply, full-file fallback |
-
-TEXT-C — one REWRITE pair for packages/orchestration/builder_bridge.py
-
-  FROM (2 lines, occurs exactly once, four leading spaces on each):
-    # (`hunk_count`, `total_chars`, `omitted`) — because `build_repair_context`'s
-    # contract is that its dict is safe to log; source text belongs in the prompt.
-  TO (3 lines, four leading spaces on each):
-    # (`hunk_count`, `total_chars`, `full_file_chars`, `omitted`) — because
-    # `build_repair_context`'s contract is that its dict is safe to log; source
-    # text belongs in the prompt.
-
-TEXT-D — append verbatim to the END of .agent/live_review.md
-
-### R19 — PASS (2026-08-13)
-
-Reviewed by the main session over 916b997e..ed7eaeef. This gate was recorded one
-round late, and deliberately: R19 was the last round of its session, so by
-docs/agents/planner_reviewer_prompt.md §4.13 its verdict lived only in
-`.agent/handoff.md` until a later round could carry it. R20 is that round. The
-absence was the terminator, not a missing gate, and nothing was reopened to
-produce this entry.
-
-Every value below was re-run by the reviewer on this machine at the start of
-the R20 session; none was read off the handback. Transport:
+  FROM (2 lines, occurs exactly once):
 `.agent/authored/f111-r19-1.md` and `.agent/last_block.md` are byte-identical
 under `cmp`, 11951 bytes, 198 lines, sha256
-48441002284c61d6ab0a28ed94b6253091bf0d59a30d4bd1f6f49cb608084acb, and no line
-in the authored file carries trailing whitespace. Markers at the R19 gate:
-eleven resolution paragraphs, 43 registered findings, one R18 gate heading, zero
-unreviewed-fix markers, and `R-0318` twice — its registration and the
-back-reference to it. `.agent/plan.md` is 45 lines, under the AGENTS.md cap.
-Scope: exactly the five `.agent` paths the block ordered, with per-commit
-insertions 198, 153 and 70 plus the handoff commit, each far under 500. The
-canary re-ran at 42 passed, exit 0, and `git status --porcelain` is empty.
+  TO (4 lines):
+`.agent/authored/f111-r19-1.md` and `.agent/last_block.md` WERE byte-identical
+at the R19 gate — `last_block.md` carries whichever round's block is newest, so
+this sentence records a moment and is not a claim about the file today — under
+`cmp`, 11951 bytes, 198 lines, sha256
 
-R19 wrote no production code, and the defect it registered was still present at
-review time: the reviewer read
-`packages/orchestration/builder_bridge.py` and confirmed the comment enumerated
-three keys while the dict beneath it returned four. That is R-0318 exactly as
-registered, and R20 fixes it.
-
-TEXT-E — the complete new .agent/plan.md (44 lines)
+TEXT-D — the complete new .agent/plan.md
 
 # Plan — F111 Diff-only repair
 
 Branch: feature/f111-diff-only-repair, cut from main at 4e0b762e,
-unmerged, no PR by design. Last reviewed SHA: ed7eaeef (R19 PASS).
-Next free finding ID: R-0319. Open findings: 32 — 43 registered minus
-11 resolved. None is High.
+unmerged, no PR by design. Last reviewed SHA: 1e90e89f (R20 PASS).
+Next free finding ID: R-0320. Open findings: 32 — 44 registered minus
+12 resolved. None is High.
 
 ## Goal
 Repairs stop resending whole files: a repair round carries only the
@@ -300,22 +243,23 @@ and falls back to today's full-file round with the reason recorded
 (docs/roadmap/features/T2_F111.md).
 
 ## Current Step
-T001, T002 and T003 are complete and gated. R20 shipped the feature's
-ist-doc `docs/system/diff-only-repair-v1.md`, registered it in
-docs/README.md, cleared R-0318 and recorded the R19 gate. What remains
-is proving the build against the whole repository and closing it.
+T001, T002 and T003 are complete and gated, and the ist-doc
+`docs/system/diff-only-repair-v1.md` is registered in docs/README.md.
+R21 ran the integration gate: the full suite on the branch against the
+full suite at the merge base, with every branch-only failure attributed
+by evidence in `.agent/gate_f111_r21/`.
 
 ## Next Steps
-1. Integration gate per docs/agents/integration_gate.md: full suite
-   with `-n auto`, base against branch, every branch-only failure
-   attributed rather than assumed (R-0286: five known base failures).
-2. Closure per docs/roadmap/STATUS_closure_protocol.md: evidence job,
-   FRESH review zip, the authored STATUS line committed last, the PR
-   created and NOT merged in that session.
+1. Closure per docs/roadmap/STATUS_closure_protocol.md: the evidence
+   job, a FRESH review zip (a zip failure is a closure blocker), the
+   reviewer-authored STATUS line committed LAST on the branch, then
+   the PR — which is NOT merged in that session.
+2. Nothing else. Any new work is a new feature and a new branch.
 
 ## Risks
 - The full suite is RED at the merge base with five known ids
-  (R-0286): the integration gate compares base against branch.
+  (R-0286), so the gate compares base against branch and never reads
+  a red branch run as a branch defect on its own.
 - The saving is measured in CHARACTERS, not tokens (DECISION F111
   D9). Any doc, STATUS line or PR body calling them tokens turns an
   honest measurement into a fabricated one.
@@ -325,5 +269,5 @@ is proving the build against the whole repository and closing it.
 - 32 findings stay open at closure, none above Medium, each carried
   as an accepted risk exactly as F107 carried its own.
 
-Fortschritt: ~95 % (T001 ✅ · T002 ✅ · T003 ✅ · Doku ✅ ·
-Integration Gate offen · Closure offen) — Schätzung
+Fortschritt: ~98 % (T001 ✅ · T002 ✅ · T003 ✅ · Doku ✅ ·
+Integration Gate ✅ · Closure offen) — Schätzung
