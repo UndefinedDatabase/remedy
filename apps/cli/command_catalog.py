@@ -99,6 +99,7 @@ GROUPS: dict[str, GroupDef] = {
     "init": GroupDef("init", "Init", "Initialize a Remedy project in a git repo."),
     "job": GroupDef("job", "Job", "Create, inspect, and manage jobs."),
     "queue": GroupDef("queue", "Queue", "Queue goals for unattended execution."),
+    "loop": GroupDef("loop", "Loop", "Declarative recurring work defined in remedy.toml."),
     "project": GroupDef("project", "Project", "Create, inspect, and manage projects."),
     "ui": GroupDef("ui", "UI", "Open the local UI."),
     "doctor": GroupDef("doctor", "Doctor", "Check Remedy health."),
@@ -548,6 +549,24 @@ CATALOG: tuple[CommandEntry, ...] = (
             _PROJECT_SCOPE_OPT,
         ),
         related=("queue.list",),
+    ),
+
+    # ── loop (F045) ──────────────────────────────────────────────────────
+    CommandEntry(
+        command_id="loop.list",
+        group_id="loop",
+        subcommand="list",
+        description="List the loops in remedy.toml: name, trigger, action and last run.",
+        action_class="read_only",
+        related=("loop.validate",),
+    ),
+    CommandEntry(
+        command_id="loop.validate",
+        group_id="loop",
+        subcommand="validate",
+        description="Check every loop spec. Reports EVERY error and exits non-zero on any.",
+        action_class="read_only",
+        related=("loop.list",),
     ),
 
     # ── project ──────────────────────────────────────────────────────────
