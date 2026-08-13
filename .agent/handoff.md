@@ -1,73 +1,78 @@
-# Handoff — F045 Loop definitions · R1 (claim + T001)
+# Handoff — F045 Loop definitions · R2 (findings + T002)
 
 Branch: `feature/f045-loop-definitions`, cut from main at `cb3ef34f`. Pushed
-after every commit. No PR opened, nothing merged. Open findings: 0.
+after every commit. No PR opened, nothing merged. Open findings: 3 (R-0344,
+R-0345, R-0346 — all OPEN in `.agent/live_review.md`).
 
 ## Commits
 | SHA | Subject | Files (+/-) |
 |-----|---------|-------------|
-| `106239a9` | chore(f045): save the R1 block verbatim | `.agent/authored/f045-r1-1.md` 316/0 · `.agent/last_block.md` 316/71 |
-| `8e44d980` | docs(f045): claim F045 and reset the round state | `.agent/context.md` 21/20 · `.agent/live_review.md` 12/357 · `.agent/plan.md` 26/39 · `docs/roadmap/STATUS.md` 1/1 |
-| `9d415caf` | feat(f045): loop spec model with config loading and validation | `packages/orchestration/loop_spec.py` 331/0 |
-| `5528a569` | test(f045): unit tests for loop spec loading and validation | `tests/orchestration/test_loop_spec.py` 268/0 |
+| `f99a3407` | chore(f045): save the R2 block verbatim | `.agent/authored/f045-r2-1.md` 252/0 · `.agent/last_block.md` 239/303 |
+| `10301253` | docs(f045): register R-0344 to R-0346, the R1 block defects | `.agent/live_review.md` 5/1 |
+| `7e2c94ec` | docs(f045): record decisions D1 to D3 | `.agent/decisions.md` 59/0 |
+| `6794e7f0` | feat(f045): materialize a loop as a planned job with loop_ref | `packages/orchestration/loop_run.py` 168/0 |
+| `5d613f49` | test(f045): pin loop_ref provenance and approval semantics | `tests/orchestration/test_loop_run.py` 182/0 |
+| (this) | docs(f045): update the plan and handoff for R2 | `.agent/plan.md` · `.agent/handoff.md` |
+
+Insertion budget ordered by the block vs. observed: C0 ≈ block size / 491;
+C1 ≤ 30 / 5; C2 ≤ 90 / 59; C3 ≤ 190 / 168; C4 ≤ 240 / 182. No commit bundled a
+new module with its test file. No commit exceeded 500 insertions.
 
 ## Gates (real exit codes and output)
 | Gate | Command | Exit | Output |
 |------|---------|------|--------|
-| a | `cmp .agent/authored/f045-r1-1.md .agent/last_block.md` | 0 | (none) |
-| b | `grep -c "^- \[~\] F045 — Loop definitions" docs/roadmap/STATUS.md` | 0 | `1` |
-| c | `grep -c "^- \[ \] F045 — Loop definitions" docs/roadmap/STATUS.md` | 1 | `0` (grep exits 1 on zero matches; the required VALUE is 0) |
-| d | `grep -c "^## Steps" .agent/live_review.md` | 0 | `1` |
-| e | `python3 -m pytest tests/docs/ -q` | 0 | `294 passed in 0.25s` |
-| f | `python3 -m pytest tests/ui_server/test_dashboard_contract.py tests/orchestration/test_test_runner.py tests/regression/test_resource_safety.py -q` | 0 | `142 passed in 18.85s` |
-| g | `python3 -m pytest tests/orchestration/test_loop_spec.py -q` | 0 | `13 passed in 0.11s` |
-| h | `python3 -m pytest tests/cli/test_golden_path.py -q` (canary) | 0 | `42 passed in 20.32s` |
-| i | `python3 -m ruff check packages/orchestration/loop_spec.py tests/orchestration/test_loop_spec.py` | 0 | `All checks passed!` |
-| j | `git status --porcelain` | 0 | (empty) |
+| a | `cmp .agent/authored/f045-r2-1.md .agent/last_block.md` | 0 | (none) |
+| b | `grep -c "^- R-0344 — Medium" .agent/live_review.md` | 0 | `1` |
+| c | `grep -c "^- R-0345 — Low" .agent/live_review.md` | 0 | `1` |
+| d | `grep -c "^- R-0346 — Low" .agent/live_review.md` | 0 | `1` |
+| e | `grep -c "^(none yet on this branch)" .agent/live_review.md` | 1 | `0` (grep exits 1 on zero matches; the required VALUE is 0) |
+| f | `grep -c "^## Steps" .agent/live_review.md` | 0 | `1` |
+| g | `grep -c "^## DECISION F045 D" .agent/decisions.md` | 0 | `3` |
+| h | `python3 -m pytest tests/orchestration/test_loop_run.py tests/orchestration/test_loop_spec.py -q` | 0 | `23 passed in 0.16s` |
+| i | `python3 -m pytest tests/docs/ -q` | 0 | `294 passed in 0.25s` |
+| j | `python3 -m pytest tests/cli/test_golden_path.py -q` (canary) | 0 | `42 passed in 20.40s` |
+| k | `python3 -m ruff check packages/orchestration/loop_run.py tests/orchestration/test_loop_run.py` | 0 | `All checks passed!` |
+| l | `git status --porcelain` | 0 | (empty; run before C5, re-run after C5 — see below) |
 
-Open PR Gate raw output at ITEM 0: `[]`. PR #195 MERGED 2026-08-13T15:23:43Z,
-PR #196 MERGED 2026-08-13T15:23:55Z.
+Gates (a)-(k) ran at `5d613f49`, before the C5 plan/handoff commit; (l) is
+re-run after C5 and its post-commit result is reported in the handback.
 
 ## Items
 | Item | Status | Reason |
 |------|--------|--------|
-| ITEM 0 | done | |
 | ITEM 1 | done | |
 | ITEM 2 | done | |
-| ITEM 3 | deviated | C2 split into two commits — see Deviations |
-| ITEM 4 | done | |
+| ITEM 3 | done | |
+| ITEM 4 | deviated | two additions beyond the ordered semantics — see Deviations 2 and 3 |
+| ITEM 5 | done | |
+| ITEM 6 | done | |
+| ITEM 7 | done | |
 
 ## Deviations, declared
-0. This handoff is 73 lines, over the ≤60 cap. Cause: the mandated per-commit
-   changed-files table (4 commits), the mandated ten-row gate table carrying
-   each gate's real exit code and output, and the mandated item-status table.
-   No section was dropped to meet the cap.
-1. ITEM 3's single commit C2 would have been 599 insertions (331 module + 268
-   tests), over the AGENTS.md 500-insertion cap. The two files are separable,
-   so declaring inseparability would have been false; C2 was split into
-   `9d415caf` (module, 331) and `5528a569` (tests, 268). The block's mandated
-   subject is carried by `9d415caf`.
-2. Gate (i) ran as `python3 -m ruff check` — the bare `ruff` binary is refused
+0. This handoff is 78 lines, over the ≤60 cap. Cause: the mandated per-commit
+   changed-files table (6 commits), the mandated twelve-row gate table carrying
+   each gate's real exit code and output, and the mandated seven-row item-status
+   table. No section was dropped to meet the cap.
+1. Gate (k) ran as `python3 -m ruff check` — the bare `ruff` binary is refused
    by this worker's sandbox. Same tool, same arguments, exit 0.
-3. Test 13 asserts on the KEY each `load_config` warning names, not on the
-   whole warning string: pytest's `tmp_path` embeds the test name, so that
-   directory literally contains "loop" and a whole-string scan matched an
-   unrelated warning. Red-proof run out of tree: moving the table to
-   `[[remedy.loop]]` makes `load_config` emit
-   `Unknown key in <path>: loop`, so the assertion still goes red on D1's
-   reversal. `user_path` is also pinned at a non-existent file so the test does
-   not read the operator's `~/.config/remedy/remedy.toml`.
-4. `validate_loop_specs` returns file-level errors (unparseable TOML, a `loop`
-   key that is not an array of tables) as messages rather than raising, so
-   `remedy loop validate` can report a broken config instead of crashing. The
-   block only required that it never raise for a SPEC-level error; this is
-   strictly weaker in raising and is stated in the function docstring.
-5. `.agent/decisions.md` untouched: the block scoped the change set, and
-   DECISION D1 and D2 are recorded in prose in the `loop_spec.py` module
-   docstring, which is where a reader searches for them.
+2. `loop_to_job` also raises `LoopRunError` when a job-action spec has an empty
+   `goal_template`. The block did not order it. `loop_spec` already refuses
+   that combination, so the branch is unreachable via `load_loop_specs`; without
+   it a hand-built spec would leak a stdlib `TypeError` out of `re.findall`,
+   which is the failure mode the block's "no `KeyError` from deep inside the
+   stdlib" rule exists to prevent. No test asserts on it.
+3. `loop_budgets_to_job_budgets` raises `LoopRunError` if `datetime.fromisoformat`
+   rejects the deadline string. Also unreachable through `load_loop_specs`
+   (`loop_spec` validates the deadline), and it re-validates no range — it only
+   refuses to let a stdlib `ValueError` escape the mapper.
+4. `.agent/plan.md` still said "Current Step: R1" during C0-C4 and was rewritten
+   at C5, as the block's change set requires. Flagged because AGENTS.md's commit
+   gate item 1 wants the plan current at EVERY commit; the block scopes each
+   commit's change set, and widening it would have been the larger violation.
 
 ## Next expected action
-Reviewer re-runs (a)-(j) against `5528a569`, then plans R2 = T002 (run
-materialization, `loop_ref` provenance, approval-semantics tests).
+Reviewer re-runs (a)-(l) against the C5 commit, then plans R3 = T003 (`remedy
+loop list | validate | run`, `run_loop` action dispatch including the mission
+path per DECISION F045 D3, last-run display, end-to-end fixture loop).
 
-Fortschritt: ~5 % (R1 läuft · T001 offen · T002 offen · T003 offen) — Schätzung
+Fortschritt: ~35 % (T001 ✅ · T002 ✅ · T003 offen) — Schätzung

@@ -1,9 +1,9 @@
 # Plan — F045 Loop definitions
 
-Branch: feature/f045-loop-definitions, cut from main at cb3ef34f. No PR was
-open at the Open PR Gate — the F115 closure PR #195 and the amend0813 PR #196
-were both already merged. Next free finding ID: R-0344. Open findings: 0 on
-this branch; the 15 carried from F115 live in git history at 57a24947.
+Branch: feature/f045-loop-definitions, cut from main at cb3ef34f. No PR open;
+nothing merged this round. Next free finding ID: R-0347. Open findings: 3 on
+this branch (R-0344, R-0345, R-0346, all OPEN in `.agent/live_review.md`); the
+15 carried from F115 live in git history at 57a24947.
 
 ## Goal
 Recurring work gets a declarative, versionable form: a LOOP defines trigger,
@@ -14,16 +14,18 @@ standard pipeline unchanged, and an invalid spec fails validation with precise
 messages before anything runs (docs/roadmap/features/T2_F045.md).
 
 ## Current Step
-R1 — claim, state reset and T001: the spec model, config loading and
-validation in packages/orchestration/loop_spec.py plus its unit tests.
+R2 done — the R1 block's three findings registered, DECISIONs F045 D1-D3
+landed in `.agent/decisions.md`, and T002 built:
+`packages/orchestration/loop_run.py` materializes a job-action loop as an
+ordinary PLANNED job carrying `loop_ref` provenance, with
+`tests/orchestration/test_loop_run.py` pinning the approval semantics.
+R3 = T003.
 
 ## Next Steps
-1. T002 — run materialization, loop_ref provenance, approval-semantics tests
-   (a loop never implies --yes; an explicit spec flag is audited like the CLI
-   flag).
-2. T003 — `remedy loop list | validate | run`, last-run display from evidence,
-   and an end-to-end fixture loop through the fake-provider pipeline.
-3. Integration gate, then closure per docs/roadmap/STATUS_closure_protocol.md.
+1. T003 — `remedy loop list | validate | run`, action dispatch (`run_loop`,
+   including the mission path per DECISION F045 D3), last-run display from
+   evidence, and an end-to-end fixture loop through the fake-provider pipeline.
+2. Integration gate, then closure per docs/roadmap/STATUS_closure_protocol.md.
 
 ## Risks
 - Loops are parsed from a config file that does not exist in this repo (there
@@ -32,5 +34,9 @@ validation in packages/orchestration/loop_spec.py plus its unit tests.
 - Schedule and event triggers are parsed and validated but INERT until the
   scheduler feature. Running one must say so honestly rather than silently
   behaving like a manual trigger.
+- Action dispatch and the mission path deliberately do NOT exist yet:
+  `loop_to_job` refuses any action kind other than `job` and both land in T003
+  per DECISION F045 D3. Until then no caller may treat `loop_to_job` as the
+  general loop entry point.
 
-Fortschritt: ~5 % (R1 läuft · T001 offen · T002 offen · T003 offen) — Schätzung
+Fortschritt: ~35 % (T001 ✅ · T002 ✅ · T003 offen) — Schätzung
