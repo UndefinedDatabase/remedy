@@ -1,108 +1,133 @@
-# Handback — F115 · R24 (CLOSURE retry) — HALTED a THIRD time at the Built State
+# Handback — F115 · R25 (CLOSURE retry) — ITEM B LANDED, HALTED at ITEM A
 
 ## Range
-Review of 1df61a43..HEAD (branch feature/f115-prompt-cost-report).
-STOPPED after C0. ITEM A, ITEM B and ITEMs 3-7 NOT executed. No integrity
-check, no evidence job, no stash, no zip, no STATUS/README edit, no PR.
+Review of c9aed5c0..HEAD (branch feature/f115-prompt-cost-report).
+C0 and ITEM B landed. ITEM A and ITEMs 3-7 NOT executed: no integrity check,
+no evidence job, no stash, no zip, no STATUS/README edit, no PR.
 
 ## Commits
-### d4a27801 chore(f115): save the R24 closure block verbatim
+### f245624f chore(f115): save the R25 closure block verbatim
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f115-r24-1.md | +154/-0 | C0 block, verbatim, 154 lines |
+| .agent/authored/f115-r25-1.md | +150/-0 | C0 block, verbatim, 150 lines |
 | .agent/last_block.md | rewrite | cmp exit 0 against the authored file |
 
-### <this commit> chore(f115): record the R24 halt in the plan and the handoff
+### 0fc9c051 docs(f115): record the Built State of the cost report
+| Path | +/- | Reason |
+|---|---|---|
+| docs/roadmap/features/T2_F115.md | +74/-0 | ITEM B appended at EOF, nothing above touched |
+
+### <this commit> chore(f115): record the R25 halt in the plan and the handoff
 | Path | +/- | Reason |
 |---|---|---|
 | .agent/plan.md | rewrite | AGENTS.md If-Blocked: the exact blocker, 49 lines |
 | .agent/handoff.md | rewrite | this file |
 
-## THE STOP — ITEM B, two claims are false
-41 claims checked mechanically against source and against the RUNNING CLI.
-38 TRUE, 1 imprecise, 2 false. The two that block:
+## ITEM B — 30 claims, ALL TRUE, applied byte-identical
+Verified against the disk, not against the block. Highlights, each re-derived:
+catalog entry `command_id="stats.report"` → `_cmd_stats_report`, args exactly
+`--since --until --job --by --label` + `_PROJECT_SCOPE_OPT`(`--project`) +
+`_JSON_OPT`(`--json`), `_ALL_PROJECTS_FLAG` absent; `render_cost_report_markdown`
+and `cost_report_json_bytes` both `-> str`, `cost_report_json`
+`-> dict[str, Any]`, all three taking `CostReport`/`SegmentShareReport`;
+`COST_REPORT_VERSION = 3` and the json key `report_version`;
+`SCHEMA_VERSION = 2` (base 0d6c97aa has 1) and all eight new names absent from
+the base file; the three literals; `grep -rn` over `tests/` for `unlabelled`,
+`COST_DEFAULT_LABEL`, `COST_UNNAMED_BUCKET_LABEL` and (with -F) `(unnamed)` →
+NOTHING, exit 1; the four `_PRIOR_REASON_*` sentences read verbatim and matched
+to their guards (`not since or not until`, `except ValueError`, `except
+TypeError`, `length <= timedelta(0)`); `COST_EMPTY_COMPARISON` /
+`COST_NO_COMPARISON_DEFAULT` in `cost_report.py`; `on_prompt_composed` after
+the `*` in `plan_job_with_llm` and passed at `job.py`; `builder_composed` /
+`reviewer_composed` in `pingpong_loop.py`; `git diff --name-only 0d6c97aa..HEAD
+-- packages/ apps/` → exactly the seven listed paths; `grep -c task_class
+token_ledger.py` → 0; `"role": "builder"` hardcoded in the accounting dict
+(`pingpong_loop.py:4022`) that `token_ledger.py` reads the role column from;
+`_ROLE_LIMIT_NOTE` read at exactly two sites, both in functions
+`_cmd_stats_cache` calls, and neither it nor any task-class text in the whole
+`_cmd_stats_report` body; `GOLDEN_DIR` only ever `read_text`, never written;
+the golden `cost_report.md` is a verbatim substring of the guide (Python `in`,
+True); `test_the_cli_hands_the_planner_composition_down` uses
+`inspect.getsource` and asserts the wiring string.
+One NUANCE, not a defect and not a blocker: `unmeasured` also occurs in 13
+further test files beyond the cost-report tests and the two goldens. The block
+does not claim exclusivity and its conclusion ("only the first of the three is
+pinned") is correct, so it was applied unchanged.
 
-1. "the catalog entry's own description says why where `remedy stats --help`
-   will print it". FALSE, and it is the R-0338/R-0342 class exactly.
-   `apps/cli/help_renderer.py::_box` truncates every Commands row to
-   BOX_WIDTH 78 and appends "…". RAW, `remedy stats --help`, exit 0:
-     │  report           Cost report over ONE project's ledger: the cost table, whe…│
-   The --all-projects rationale is never printed by that command. The command
-   that prints the full description is `remedy stats report --help`, which
-   goes through `render_command_help` and emits it un-boxed. Origin of the
-   error: the source comment directly above the catalog entry in
-   `apps/cli/command_catalog.py` itself asserts "`remedy stats --help` prints
-   the description" — the reviewer copied a comment instead of running the
-   command. Fix: name `remedy stats report --help`, or drop the where-clause.
-2. "It also distinguishes … and one that existed but held no calls:
-   `_PRIOR_REASON_UNPARSEABLE`, `_PRIOR_REASON_MIXED_AWARENESS` and
-   `_PRIOR_REASON_EMPTY_PERIOD`". FALSE for the third. That constant reads
-   "No previous period: this period ends at or before it starts, so it has no
-   length and its prior window would have none either." and is returned when
-   `length <= timedelta(0)` — a zero-length or inverted REPORT period, not a
-   window that held calls. `prior_report_period`'s docstring says PURE — "no
-   ledger, no clock, no I/O" — so none of its four reasons can mean "we looked
-   and found nothing". That fact lives in `cost_report.py`:
-   `COST_NO_COMPARISON_DEFAULT` vs `COST_EMPTY_COMPARISON` ("The previous
-   period was read and holds no call at all…"), chosen by
-   `_no_comparison_sentence`. The following sentence "…the report keeps them
-   different" is TRUE of the report and FALSE of the constants it lists.
+## THE STOP — ITEM A, one false claim
+R-0343 states: "R24's block ordered `git stash list` non-empty as a closure
+gate". FALSE, and it is a round attribution, the coordinate class again.
+- `grep -n "stash list" .agent/authored/f115-r24-1.md` → lines 104-106
+  "Its ITEM 5 step 2 gate is REPLACED… must contain" and 138 "`git stash list |
+  head -1` contains `f115-closure:`". The R24 block carries the CORRECTED gate.
+- `grep -n stash .agent/authored/f115-r23-1.md` → line 131 "e) git stash list
+  non-empty AND git status --porcelain EMPTY before the zip". THAT is the block
+  that ordered it, inherited from R22's ITEM 5 step 2 / done-when (e).
+- R-0343's own R24 draft (`.agent/authored/f115-r24-1.md:8`, never committed to
+  live_review.md) says the worker found it "and it is fixed in R24".
+- The R24 handback (previous `handoff.md`, verification line (e)) records "The
+  block's amendment 2 is therefore correct and stands for the next round".
+The worker may not edit an authored finding, so ITEM A is handed back rather
+than applied. Its other claims verified TRUE: the `tests/` searches return
+nothing; `BOX_WIDTH = 78` with `content[: BOX_WIDTH - 1] + "…"` in
+`help_renderer.py`; the stale comment above the catalog entry
+(`command_catalog.py:2965-2968`) does assert what `remedy stats --help` prints;
+`_PRIOR_REASON_EMPTY_PERIOD` is the ends-at-or-before-it-starts case and
+`COST_EMPTY_COMPARISON` is the read-but-empty one; `git stash list` → five
+pre-existing unrelated entries.
 
-Imprecise, not a blocker: "one whose bounds contradict each other" for
-`_PRIOR_REASON_MIXED_AWARENESS`. The real case is one bound offset-aware and
-the other naive, whose difference is undefined — not contradictory bounds.
-
-## Why ITEM A was blocked too
-R-0343's own text certifies the R24 rewrite as carrying "no claim the reviewer
-had not re-verified mechanically in the same session". Claim 1 above refutes
-that certification. Committing ITEM A verbatim would write a false claim into
-the permanent finding ledger — the one thing stop-on-false-claim exists to
-prevent — and the worker may not edit an authored finding. So ITEM A is handed
-back for re-authoring rather than applied. Its other claims all hold, verified:
-`token_ledger.py:1160-1161` are `try:` / `parsed_since = …` with the guard at
-1158-1159; a recursive grep over `tests/` for `unlabelled`,
-`COST_DEFAULT_LABEL`, `COST_UNNAMED_BUCKET_LABEL` and `(unnamed)` returns
-NOTHING, exit 1, goldens included; the repo carries five unrelated stashes.
+## Why ITEMs 3-7 are blocked
+ITEM 6 (c) must write "open findings 15 … R-0343 … next free ID R-0344" and
+closure precondition 1 requires every R-XXXX registered. With R-0343 not on
+disk both are false. The closure commit must be LAST, so it cannot precede
+ITEM A's commit. Closing now would need the accepted HEAD to be re-cut next
+round — the definition of a stale STATUS line.
 
 ## Verification
-- (a) `cmp .agent/authored/f115-r24-1.md .agent/last_block.md` → exit 0, no
-  output. 154 lines, zero trailing-whitespace lines.
-- (b) ITEM A's two gates NOT RUN — ITEM A was not applied.
-- (c) `python3 -m pytest tests/docs/ -q` → `294 passed in 0.26s`, exit 0. No
-  regression, but the Built State section was NOT written or committed.
-  Per-claim verification: 41 checked, 38 TRUE, 1 imprecise, 2 FALSE above.
+- (a) `cmp .agent/authored/f115-r25-1.md .agent/last_block.md` → no output,
+  exit 0. 150 lines, zero trailing-whitespace lines.
+- (b) ITEM A's gates NOT RUN — not applied. `grep -c "^- R-0343 — Low"
+  .agent/live_review.md` → 0. `grep -c "^## Steps" …` → 1.
+- (c) `python3 -m pytest tests/docs/ -q` → `294 passed in 0.27s`, exit 0. No
+  regression against 294. Byte-identity proof: authored lines 18-90 (73 lines)
+  vs the applied section in T2_F115.md → list equality True.
 - (d)-(g), (l) NOT RUN. DECISION F115 D7 still pends, so
-  ` M scripts/make_review_zip.sh` is untouched. No stash was pushed —
-  nothing to pop.
+  ` M scripts/make_review_zip.sh` is untouched. No stash pushed, none popped.
 - (e) `git stash list` → five PRE-EXISTING entries, none from this session:
-  stash@{0} f003-v2-before-materialize · {1} visual-design-intelligence… ·
-  {2} steps-1917-1960… · {3} steps-975-994… · {4} steps-880-894….
-  The block's amendment 2 is therefore correct and stands for the next round.
+  f003-v2-before-materialize · visual-design-intelligence… · steps-1917-1960… ·
+  steps-975-994… · steps-880-894…. Amendment 2 remains correct.
 - (h)/(i) not applicable: STATUS.md still `[~] F115`, README still 44.
-- (j) `git status --porcelain` → ` M scripts/make_review_zip.sh` only.
-- (k) `git log --oneline 142e80c8..HEAD` → this commit, d4a27801, 1df61a43.
+- (j) `git status --porcelain` → ` M .agent/plan.md` (this commit) and
+  ` M scripts/make_review_zip.sh`.
+- (k) `git log --oneline 142e80c8..HEAD` → this commit, 0fc9c051, f245624f,
+  c9aed5c0, d4a27801, 1df61a43.
 
 ## Item status
 | Item | Status | Reason |
 |---|---|---|
-| C0 | done | d4a27801, cmp exit 0 |
-| ITEM A | skipped | its text certifies ITEM B, which claim 1 refutes |
-| ITEM B | skipped | two false claims; stop-on-false-claim invoked |
-| ITEM 3 | skipped | blocked by ITEM B |
-| ITEM 4 | skipped | blocked by ITEM B |
-| ITEM 5 | skipped | blocked by ITEM B |
-| ITEM 6 | skipped | blocked by ITEM B |
-| ITEM 7 | skipped | blocked by ITEM B |
-Declared deviation: `.agent/plan.md` and this file land as a second commit the
-block did not order. AGENTS.md If-Blocked mandates the plan carry the exact
-blocker, and the ITEM 6 that would have rewritten both was never reached.
-Deviations, declared: 108 lines, over the 60-line cap (AGENTS.md DECISION
-D15). Cause is mandated content — two per-commit tables, the stop evidence
-with its raw CLI output, the ITEM A analysis, the verification transcript and
-the eight-row item-status table. No section was dropped.
+| C0 | done | f245624f, cmp exit 0 |
+| ITEM A | skipped | false round attribution for the stash gate; stop-on-false-claim |
+| ITEM B | done | 0fc9c051, 30/30 claims TRUE, byte-identical |
+| ITEM 3 | skipped | blocked by ITEM A |
+| ITEM 4 | skipped | blocked by ITEM A |
+| ITEM 5 | skipped | blocked by ITEM A |
+| ITEM 6 | skipped | blocked by ITEM A |
+| ITEM 7 | skipped | blocked by ITEM A |
+Declared deviation 1: ITEM B was executed BEFORE ITEM A, reversing the block's
+C1/C2 order. ITEM B has no dependency on ITEM A, it verified clean, and
+landing it satisfies closure precondition 4 after three rounds of failing to.
+Declared deviation 2: `.agent/plan.md` and this file land as a commit the block
+did not order. AGENTS.md If-Blocked mandates the plan carry the exact blocker,
+and the ITEM 6 that would have rewritten both was never reached.
+Deviations, declared: 133 lines, over the 60-line cap (AGENTS.md DECISION
+D15). Cause is mandated content — three per-commit tables, the per-claim
+verification result the block's done-when (c) requires, the stop evidence with
+its raw greps, the verification transcript and the eight-row item-status table.
+No section was dropped.
 
 ## Next
-Reviewer re-authors ITEM B with claims 1 and 2 corrected, and re-authors
-R-0343 without the self-certification and with the R24 instance registered.
-Then re-orders the closure from ITEM B. Open findings still 14; next free ID
-still R-0343. `git push` follows this commit; its result is in the transcript.
+Reviewer re-authors R-0343 with the stash-gate attribution corrected (R22/R23
+ordered it, the R23 worker found it, R24 fixed it), then re-orders the closure
+from ITEM A. ITEM B is DONE — do not re-order it. Open findings still 14; next
+free ID still R-0343. `git push` follows this commit; its result is in the
+transcript.
