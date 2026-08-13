@@ -4417,3 +4417,34 @@ owes "unattributed" rendering for historical rows regardless.
 
 Reverse this decision by deleting this entry. Nothing in the tree depends on it
 yet: it is a plan for a round that has not run.
+
+## DECISION F115 D3 (2026-08-13) — the planner segments rank so composition reproduces the sent order
+
+Supersedes the RANK ASSIGNMENT in DECISION F115 D2 and nothing else in it: the
+composer, the optional hook, the untouched `on_call` contract and the
+byte-identity-first gate all stand as D2 recorded them.
+
+Context: `compose_prompt_segments` sorts by `(int(rank), registration index)`
+ascending, and `SegmentStabilityRank.JOB_CONTEXT` is 3 against TASK's 4, so D2's
+ranks compose the memory section BEFORE the job prompt. The sent bytes are the
+other order: `llm_planner.py:107-109` builds `prompt` from `job.user_prompt or
+job.name`, then appends `f"\n\n{memory_section}"`. D2's ranks and D2's identity
+gate contradict each other; the gate is the load-bearing half.
+
+Chosen: `planner_job_prompt` at `SegmentStabilityRank.TASK` and
+`planner_memory_context` at `SegmentStabilityRank.STEERING` — the only pair of
+DISTINCT ranks that reproduces the existing order. The scale's declared meaning
+is cache stability, "stable prefixes first, volatile tails last"
+(`prompt_segments.py:52`), and a per-job memory recall already sitting in the
+prompt's tail belongs there on both readings.
+
+Alternatives: (a) both segments at TASK rank, letting the registration-index
+tie-break carry the order — rejected, it makes a tie-break load-bearing where a
+rank states the same thing explicitly; (b) memory at DOSSIER or CONVENTIONS —
+rejected, both are below TASK and reverse the order as JOB_CONTEXT does;
+(c) keep D2's ranks and let the sent bytes change — rejected outright, F115 D1
+is that the manifest describes what was sent, and a telemetry feature may not
+edit the prompt it measures.
+
+Reverse by deleting this entry and restoring D2's ranks — which also means
+accepting a changed planner prompt, so the two are one decision.
