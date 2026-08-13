@@ -1108,3 +1108,57 @@ because the values are chars. Alternative considered and rejected for v1:
 adding a tokenizer dependency, which would put a new third-party contract into
 a wiring slice. Reverse this decision by wiring a real tokenizer and renaming
 the fields in the same commit — never renaming them alone.
+
+### R17 — PASS (2026-08-13)
+Reviewed by the main session over c0ed5dd1..6a93ee1c. Every gate was re-run by
+the reviewer on this machine; nothing was read off the handback. Transport:
+`.agent/authored/f111-r17-1.md` and `.agent/last_block.md` are byte-identical
+under `cmp`, 20623 bytes, 366 lines, sha256
+a21506ddee38218bba4c6fb0f051c6b175d1eeaadffe8c476af3096598a07332, no line
+carrying trailing whitespace. `.agent/plan.md` was compared against the TEXT-B
+slice extracted from the committed authored file and is identical at 44 lines,
+under the 50-line cap. Markers counted: eleven resolution paragraphs, 42
+registered findings, one R16 gate heading, zero unreviewed-fix markers. Greps:
+`diff_repair_fell_back` 2, `diff_repair_applied` 1, `diff_response` 10. Scope:
+exactly the seven ordered paths. Per-commit insertions 366/305/71/95/164/101,
+each under 500. `git status --porcelain` empty, one worktree, and 0 ahead and
+0 behind the remote.
+
+Tests re-run by the reviewer: 12 for the repair loop (was 9), 71 for the three
+diff-repair files — unmoved — 137 passed and 1 skipped across the nine files
+that import `builder_bridge`, and 42 for the golden-path canary. The three new
+module-level diff-repair imports introduced no cycle.
+
+The reviewer ran an INDEPENDENT conflict probe using a different conflicting
+diff than the test uses — a rewritten function-signature context line rather
+than an added parameter — and it reproduces the ordered behaviour exactly:
+mode `full_fallback`, `fallback_reason`
+`apply_failed:calc.py: diff hunks did not apply cleanly`, `files_modified` 0,
+`rollback_incomplete` False, the file's bytes IDENTICAL across the attempt, the
+next repair context back on `full_file` carrying that reason, and the loop
+still succeeding on the following cycle through the full-file path. The
+`apply_failed:` prefix is the load-bearing detail: the diff reached the
+applicator and was rejected there, so this is the strict-apply guarantee being
+exercised and not a cheap short-circuit at the validation stage.
+
+A second reviewer mutation, unordered, ran inside a disposable git worktree
+removed before this verdict: deleting the `repair_ctx["repair_mode"] =
+"full_file"` line after a discard fails
+`test_a_conflicting_diff_is_discarded_whole_and_the_round_falls_back` with
+`KeyError: 'repair_mode'`. So the return to the full-file path is pinned, not
+merely written. The worker's own ordered mutation is confirmed as reported: a
+rejected diff made to look applied fails exactly that one test, and the worker
+correctly reported that no other suite catches it rather than implying broader
+cover.
+
+The declared C5 deviation is UPHELD and is the round's best work. The block
+said to read calc.py "before the loop" and compare bytes; read literally that
+would have measured cycle 1's own legitimate write, because a diff-mode repair
+context cannot exist until a first patch has landed. The worker recorded the
+file as each cycle FOUND it and compared the bytes the discarded attempt
+started from against the bytes the next cycle found — the true pre- and
+post-attempt state — while keeping the literal pre-loop comparison as an extra
+assertion. That is the correct reading of a reviewer instruction that was
+imprecise, implemented without weakening the property and declared rather than
+quietly substituted. The handoff overage at 85 lines is inside the DECISION D15
+allowance with its cause named, and no section was dropped.
