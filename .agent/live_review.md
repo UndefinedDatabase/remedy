@@ -709,4 +709,80 @@ leaving the `@@ -0,0` splice-at-minus-one path reachable anyway. Reverse by
 reverting R11's C4 commit; the tests it adds name the behaviour precisely enough
 that a reverter knows what they are giving up.
 
-Landed: R-0312 — a hunk whose old count is 0 now splices after the line its header names, a contradicting header and a negative index are rejected, and the new cases are pinned by tests, commit C4 of R11.
+### R11 — PASS (2026-08-13)
+Reviewed by the main session over 8644def9..06e85a11. Every ordered gate was
+re-run by the reviewer on this machine; nothing was read off the handback.
+Transport: PRIMARY cmp proof — `.agent/authored/f111-r11-1.md` and
+`.agent/last_block.md` are byte-identical. Numstat purity: `102 1` for the gate
+commit, the single deletion being the retired R-0311 marker line the reviewer
+replaced with authored text, and `2 0` for the new marker line. Markers on the
+final file: 39 registered ids, 6 resolutions, 1 landed marker, 1 R10 pass
+heading, 1 D5 heading. Scope: exactly the seven ordered paths, no more.
+
+The fix proved BY VALUE, not by colour. Against `'a\nb\nc\n'`, the reviewer ran
+the three zero-count headers real `git diff -U0` emits for an insert-in-middle,
+a prepend and an append: `@@ -1,0 +2 @@`, `@@ -0,0 +1 @@` and `@@ -3,0 +4 @@`,
+each with a single `+X` body. They now return `'a\nX\nb\nc\n'`, `'X\na\nb\nc\n'`
+and `'a\nb\nc\nX\n'`. On the R10 applier the same three returned
+`'X\na\nb\nc\n'`, `'a\nb\nc\nX\n'` and `'a\nb\nX\nc\n'` — every one placed
+wrong, and the prepend silently appended. Both rejections were exercised
+directly: `@@ -0,1 +0,2 @@\n+X\n` on `'a\nb\n'` returned `'a\nb\nX\n'` before
+and returns None now, and `@@ -1,0 +2 @@\n a\n+X\n` on `'a\na\nb\n'` — chosen
+because its context line still MATCHES at the shifted index, so only the new
+contradiction check can reject it — returns None. R10's own fix still holds:
+the `alpha/BETA/gamma` probe still prints `'alpha\nBETA\ngamma\n'`.
+
+Tests, each re-run by the reviewer: 185 passed for the source-apply tier, 179
+before the round plus the 6 new cases; 138 for the untouched modules plus the
+golden-path canary, unchanged; 225 for the applier's other consumers,
+unchanged, so the header change regressed no existing consumer. Red-proof: in a
+disposable worktree at HEAD with `source_apply.py` checked out from 8644def9 —
+which reverts exactly C4 and nothing else —
+`pytest tests/orchestration/test_source_apply_transaction.py -q` exited 1 with
+6 failed / 15 passed, the six failures being exactly the six tests C4 adds,
+with every pre-existing test still passing on the old applier. Worktree removed
+and pruned; `git status --porcelain` empty, `git worktree list` one entry,
+`git rev-list --left-right --count` against the remote `0 0`. Caps: per-commit
+insertions 355/266/102/71/2/99, each under 500; `.agent/plan.md` 49 lines,
+under the AGENTS.md limit of 50; `.agent/handoff.md` 95 lines, over the 60 cap
+and carrying the DECISION D15 stated-cause line, which is the sanctioned shape.
+No deviations were declared and the reviewer found none.
+
+Done: R-0312 — a hunk whose OLD COUNT is 0 now splices AFTER the line its
+header names instead of one line before it, so a pure-insertion hunk lands
+where the diff says and `@@ -0,0 +1 @@` prepends instead of silently appending.
+A header that declares a pure insertion while its body consumes original lines
+is rejected outright, and a negative splice index can no longer be reached. The
+absent-count short form `@@ -2 +1,0 @@` still means a count of 1 and is
+unchanged. Proved by value at the R11 gate in both directions and pinned by six
+new tests, all six of which fail on the pre-fix applier. Resolved.
+
+With R-0311 and R-0312 both closed, `_apply_hunks` places a hunk's content
+correctly in both axes it can get wrong: WHERE inside the hunk an added line
+goes, and WHERE in the file the hunk itself starts. Remedy deliberately does
+not cross-check a hunk header's declared old count against the number of lines
+its body actually consumes when that count is 1 or more: models routinely
+miscount headers while quoting content exactly, and this applier's strictness
+is deliberately spent on CONTENT — every context and removal line is compared
+against the real file — rather than on arithmetic a wrong-but-harmless header
+would fail. The count is read only to decide the zero-insertion case, where it
+is the sole available signal.
+
+- R-0315 (Medium, F111 R11, feature file allows what the applicator refuses):
+  `docs/roadmap/features/T2_F111.md` states under "Edge cases & assumption
+  defaults (A9)" that new-file creation inside a diff is ALLOWED if the path
+  passes fences, and that only deletions require the full-file path in v1. The
+  code disagrees: `_apply_unified_diff` returns early with
+  `f"{diff.path}: file not found for diff"` and sets `success = False` whenever
+  `full.is_file()` is false, so a diff that creates a file can never apply, and
+  a model that correctly answers a repair with a new-file hunk gets a failed
+  apply rather than a created file. Found by the reviewer while gating R11, not
+  by a test. Note the interaction with R-0312: a new-file diff is exactly the
+  `@@ -0,0 +1,N @@` shape whose placement R11 just fixed, so the two would meet
+  in the same code path the moment the file-existence guard is lifted. This is
+  NOT a defect R11 introduced and NOT one R11 should have fixed — its change
+  set was the header computation — but T002's apply half runs straight into it,
+  so it is registered before that round rather than discovered during it. R13
+  decides: either implement creation behind the fence check as the feature file
+  says, or amend the feature file to match v1 reality under §4.7 and say why.
+  Do not let R13 pick silently. OPEN.
