@@ -874,3 +874,84 @@ insertions as a bound rather than a count, twice and with two different bounds
 (`≤148` and "at most 152"); both are true of the real 108 and neither is a
 false claim, so it is noted here and not registered. One finding registered:
 R-0316, and it is the reviewer's own spec defect, not the worker's.
+
+Done: R-0313 — a blank context line stripped to "" no longer rejects an
+otherwise valid diff. `normalize_diff_blank_context` gives the space back on
+the RESPONSE side, where the hunk's declared budget still distinguishes body
+from tail, and `diff_repair_response_to_patch` splits the normalised text.
+`_apply_hunks` is unchanged, so the trailing-"" trap that would have made the
+last hunk over-consume is structurally out of reach: the walk uses
+`splitlines()`, which never produces the phantom. Verified at the R14 gate by
+value, in both directions: `_apply_hunks('a\n\nb\n', diff)` returns None on the
+raw stripped diff and 'a\n\nB\n' on the normalised one, and the normaliser is
+byte-identity on a diff that needs no repair. Resolved — with the separator
+defect it introduced registered separately as R-0317.
+
+- R-0317 (Medium, F111 R14, the blank-context fix eats a file separator):
+  `normalize_diff_blank_context` treats a bare "" as a blank context line
+  whenever the open hunk still has an old AND a new line left to spend. A model
+  that OVER-DECLARES its hunk counts — which this file already records as
+  routine, in the D5 note on why the applier does not cross-check headers —
+  leaves budget unspent at the end of its body, so the BLANK LINE SEPARATING
+  TWO FILE SECTIONS is converted to " " and rides into
+  `split_diff_by_path` as a trailing context line of the FIRST file. Measured
+  at the R15 gate on the repository's own `DIFF_ONE_FILE` shape
+  (`@@ -1,3 +1,3 @@` over a body spending two old and two new lines): the raw
+  first section applies to 'import os\nvalue = 1\nmore = 3\n' and returns
+  'import os\nvalue = 2\nmore = 3\n', while the normalised section returns
+  None. So R14 closed R-0313 and opened a new instance of the same class — a
+  valid multi-file answer rejected — for every first file whose hunk is not at
+  end of file. Direction is SAFE (rejection, never corruption), and where the
+  hunk IS at EOF both forms still apply identically, which is why no test
+  caught it. The R14 worker found the contradiction while writing the ordered
+  case 3, refused to assert a false property, implemented the production code
+  unweakened and declared the deviation — correct on every count. Reviewer-
+  caused: the R14 step block specified the budget rule and nothing else. Fix
+  direction: a "" is body only when the next NON-BLANK line is also body — not
+  a `---`/`+++`/`diff ` header and not end of input — so a separator and a
+  trailing artifact both stay untouched. OPEN.
+
+### R14 — PASS (2026-08-13)
+Reviewed by the main session over 9a17fad2..48c6340e. Every gate was re-run by
+the reviewer on this machine; nothing was read off the handback. Transport:
+`.remedy-wt/f111r14/BLOCK`, `.agent/authored/f111-r14-1.md` and
+`.agent/last_block.md` are byte-identical at 17418 bytes, sha256
+1113f75d07f29bd2bb1218a1f793a5917636c0dd55f2d0a3291bc4af8a9ddaaf, and
+`.remedy-wt/f111r14/PLAN` matches `.agent/plan.md` at 2008 bytes. Markers:
+`^Landed:` 0, `^Done:` 8, `^- R-0` 41, `^### R13 — PASS` 1. Scope: exactly the
+eight ordered paths; `source_apply.py` and `diff_repair_apply.py` untouched.
+
+R-0313 proved closed BY VALUE, both directions: `_apply_hunks('a\n\nb\n', …)`
+returns None on the raw stripped diff and 'a\n\nB\n' on the normalised one, and
+`normalize_diff_blank_context(DIFF_ONE_FILE)` is byte-identical to its input.
+Tests re-run by the reviewer: 68 for the three diff-repair files, 55 for the
+applier tier — unmoved, as the applier was not touched — and 42 for the
+golden-path canary. Per-commit insertions 293/224/70/96/102/104, each under
+500. `git status --porcelain` empty, one worktree, `0	0` against the remote.
+
+The declared deviation is UPHELD and is the round's best work. The block
+ordered a case-3 test asserting that
+`DIFF_ONE_FILE + "\n" + <second section>` normalises to itself. The reviewer
+re-measured it: it does not — the separator "" becomes " " — because
+`DIFF_ONE_FILE` declares `@@ -1,3 +1,3 @@` over a body that spends only two old
+and two new lines, so the hunk still has budget at the separator and the
+ordered step-4 rule fires exactly as written. The worker implemented the
+production code verbatim and unweakened, proved the ordered PROPERTY with a
+first section whose header matches its body, wrote the measurement into that
+test's docstring and escalated for a ruling instead of quietly changing either
+side. That is the response the split workflow exists to produce.
+
+Registered from it: R-0317. The reviewer measured its real cost — the raw
+first section applies to a file that continues past the hunk and returns
+'import os\nvalue = 2\nmore = 3\n', while the normalised section returns None —
+so R14 closed one instance of "a valid answer rejected" and opened another.
+Safe direction, no corruption, and invisible to any test whose first hunk sits
+at end of file, which is why it survived a green round. It is the reviewer's
+spec defect, not the worker's, and R15 repairs it.
+
+Also noted, not registered: the `#` comment above the fall-through branch in
+`diff_repair_response.py` writes `"\\ No newline at end of file"` with a
+doubled backslash, where a comment needs one — `source_apply.py` writes it
+correctly. The worker reported it and declined to add an unordered seventh
+commit that would have broken the mandated C1-C6 item-status shape; that
+judgement was right, and R15 carries the fix as an ordered item.
