@@ -40,7 +40,12 @@ reader searching for one lands. Declared rather than assumed.
 | fa0a39bb | C3 | type-check manifest values before they become ledger rows | 61 |
 | 2008a2cb | C4 | add the per-segment share aggregation query | 155 |
 | 665432b3 | C5 | pin the segment share query, its order and its honesty | 178 |
-| (C6) | C6 | plan, handoff and the Landed line | see git |
+| 5b1e0bea | C6 | refresh the plan and write the R10 handoff | 191 |
+| (this one) | C6 | fill C6's own SHA into the table above | ~2 |
+
+The last row is a SEVENTH commit, declared: C6's own SHA cannot exist inside
+C6, and the block mandates real SHAs in this table. It touches only
+`.agent/handoff.md`, a C6 path, and rewrites no history.
 
 ## Changed files
 | Path | Items |
