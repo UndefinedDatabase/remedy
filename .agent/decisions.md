@@ -4448,3 +4448,53 @@ edit the prompt it measures.
 
 Reverse by deleting this entry and restoring D2's ranks — which also means
 accepting a changed planner prompt, so the two are one decision.
+
+## DECISION F115 D4 — the manifest gets its own table, not a ledger column (2026-08-13)
+
+Context, from `.agent/f115_inventory.md` section "## T001 persistence inventory
+(R7)", every citation re-read by the reviewer at the R8 gate: a `calls` row is
+ONE FINALIZED TASK RUN keyed `"<job_id>:<task_id>"` (`token_ledger.py:178-192`,
+DECISION F103 D16), while a segment manifest belongs to ONE PROVIDER CALL
+(`prompt_trace.py:74-83`). The mapping is one-to-many. Three constraints then
+decide the shape rather than merely colour it:
+
+1. `verify_ledger` compares a stored row against a record re-derived from
+   evidence by WHOLE-DATACLASS EQUALITY (`token_ledger.py:688-701`), so any
+   column added to `_CALL_COLUMNS` must be reproducible by
+   `call_record_from_evidence` — or every row reads as drift.
+2. The live ledger hook fires BEFORE `prompt_trace.jsonl` is copied into
+   `task_runs/<task_id>/`: `_record_finalized_call_in_ledger` at
+   `pingpong_evidence.py:517-525`, the copy at `:527-536`. A later backfill
+   reads that same tree WITH the file present. An evidence-derived manifest
+   column would therefore be NULL live and non-NULL on backfill, which is
+   constraint 1 firing on every row the feature cares about.
+3. `record_call` writes `INSERT OR IGNORE` (`token_ledger.py:425-428`), which
+   never UPDATEs, so a manifest cannot be attached to an existing row later.
+
+Chosen: a NEW table `call_segments`, added as migration step 2, with
+`SCHEMA_VERSION` bumped to 2. One row per segment of one composed prompt, its
+value columns mirroring `ComposedPrompt.manifest_as_dicts()` one for one
+(`prompt_segments.py:107-121` — name, rank, sha256, chars, tokens_estimated),
+keyed by the ledger row's `call_id` plus `trace_seq`, the zero-based position of
+the trace line within that task run's entries. `calls`, `CallRecord` and
+`_CALL_COLUMNS` are not touched, so constraint 1 cannot fire and no existing
+row's verify result moves. Backfill tolerance is STRUCTURAL rather than coded: a
+pre-F115 row simply has no `call_segments` rows, and "no rows" is what the
+report renders as unattributed — never guessed, and never a fabricated zero.
+
+Alternatives considered. (a) An aggregate manifest column on `calls` — rejected
+by constraints 1 and 2, and it would squash a one-to-many relation into a single
+value, losing exactly the per-segment detail the feature exists to show. (b) A
+reference to the trace file — rejected because the row ALREADY carries one:
+`evidence_ref` is `"task_runs/<task_id>"` (`token_ledger.py:547-549`), which is
+exactly the directory the trace file is copied into (`pingpong_evidence.py:533`),
+so the option adds no information the row lacks; and a JSONL path cannot be
+aggregated in SQL, which is precisely what T002's queries need.
+
+Scope: this decision lands SCHEMA ONLY. Nothing writes to `call_segments` yet —
+the writer is the next round. An inert table is what makes this a separately
+reviewable commit rather than a schema change smuggled in beside its consumer.
+
+Reverse by deleting the `2:` entry from `_MIGRATIONS`, restoring the version
+constant to 1, and dropping the docstring bullet that names the table. A ledger
+already migrated keeps an empty unused table, which no code reads.
