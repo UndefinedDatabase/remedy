@@ -23,6 +23,10 @@ from packages.orchestration.builder_models import (
     BuilderPatchResult,
     parse_builder_patch,
 )
+from packages.orchestration.diff_repair import (
+    changed_line_ranges_from_patch,
+    select_repair_hunks,
+)
 
 STOP_REASONS = frozenset({
     "structured_patch_parse_failed",
@@ -261,6 +265,60 @@ class LoopResult:
     stop_reason: str = ""
 
 
+# The PROMPT-side hunk choice for one repair round: what the next prompt carries.
+def _attach_diff_repair_hunks(
+    repair_ctx: dict[str, Any],
+    bridge_result: BridgeResult,
+    repo_path: Path,
+    *,
+    margin_lines: int,
+) -> dict[str, Any]:
+    """Select margin-expanded hunks for the applied patch and carry them.
+
+    Returns the round's evidence metadata and mutates ``repair_ctx`` only on
+    the diff path: every full-file answer names the reason it took that path.
+    """
+    # Remedy deliberately does not report `full_fallback` here: `mode` is `diff`
+    # or `full_file`, the PROMPT-side choice, while `full_fallback` is the
+    # APPLY-side outcome `diff_repair_apply` names and the apply half wires.
+    parse_result = bridge_result.parse_result
+    patch = getattr(parse_result, "patch", None)
+    if parse_result is None or not patch:
+        return {"mode": "full_file", "reason": "no_patch"}
+
+    ranges = changed_line_ranges_from_patch(patch)
+    if not ranges:
+        return {"mode": "full_file", "reason": "no_ranges"}
+
+    selection = select_repair_hunks(repo_path, ranges, margin_lines=margin_lines)
+    if not selection.hunks:
+        return {
+            "mode": "full_file",
+            "reason": "no_hunks_selected",
+            "omitted": [list(entry) for entry in selection.omitted],
+        }
+
+    repair_ctx["diff_hunks"] = [
+        {
+            "path": hunk.path,
+            "start_line": hunk.start_line,
+            "end_line": hunk.end_line,
+            "text": hunk.text,
+        }
+        for hunk in selection.hunks
+    ]
+    repair_ctx["diff_hunks_omitted"] = [list(entry) for entry in selection.omitted]
+    # Remedy deliberately does not put hunk TEXT in this metadata — counts only
+    # (`hunk_count`, `total_chars`, `omitted`) — because `build_repair_context`'s
+    # contract is that its dict is safe to log; source text belongs in the prompt.
+    return {
+        "mode": "diff",
+        "hunk_count": len(selection.hunks),
+        "total_chars": selection.total_chars,
+        "omitted": [list(entry) for entry in selection.omitted],
+    }
+
+
 def run_builder_bridge_loop(
     build_fn: Any,
     repo_path: Path,
@@ -269,6 +327,8 @@ def run_builder_bridge_loop(
     data_dir: str | Path,
     autonomy_level: int = 4,
     max_cycles: int = 3,
+    diff_mode: bool = True,
+    diff_margin_lines: int = 3,
 ) -> LoopResult:
     """Run bounded repair loop: build → bridge → test → repair → rebuild.
 
@@ -347,6 +407,16 @@ def run_builder_bridge_loop(
             test_event = {"metadata": {"exit_code": 1, "passed": False, "cycle": cycle}}
             repair_ctx = build_repair_context(job.id, test_event, events)
             loop_result.repair_contexts.append(repair_ctx)
+
+            if diff_mode:
+                mode_meta = _attach_diff_repair_hunks(
+                    repair_ctx, bridge_result, repo_path,
+                    margin_lines=diff_margin_lines,
+                )
+            else:
+                mode_meta = {"mode": "full_file", "reason": "diff_mode_off"}
+            repair_ctx["repair_mode"] = mode_meta["mode"]
+            _emit(data_dir, job.id, "repair_mode_selected", {"cycle": cycle, **mode_meta})
 
             _emit(data_dir, job.id, "repair_context_created", {
                 "cycle": cycle,
