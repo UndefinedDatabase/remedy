@@ -204,3 +204,7 @@ Done: R-0326 — RESOLVED at the R7 gate. Verified against the RENDERED docstrin
   mutating `segment_rows_from_trace_file` to `return []` reproduced `5 failed,
   87 passed` and the same five test ids the handback names, and the worktree
   was removed and pruned with `git worktree list` left showing one line. OPEN.
+
+Landed: R-0329 — `_MANIFEST_KEY_TYPES` now types every manifest key, so a
+wrongly typed value is skipped exactly like a missing one and can never be
+summed as a measured zero (commit fa0a39bb).
