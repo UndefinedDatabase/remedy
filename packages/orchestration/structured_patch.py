@@ -10,6 +10,8 @@ Public API::
 
     parse_structured_patch(raw_output: str) -> StructuredPatch
     validate_structured_patch(patch: StructuredPatch) -> list[str]
+    extract_json_object(raw_output: str) -> str | None
+    unsafe_path_issues(paths: Iterable[str]) -> list[str]
     StructuredPatch, FileOp, UnifiedDiff
 """
 
@@ -17,6 +19,7 @@ from __future__ import annotations
 
 import json
 import re
+from collections.abc import Iterable
 from dataclasses import dataclass
 from typing import Any, Literal
 
@@ -56,6 +59,11 @@ class StructuredPatch:
     requires_approval: bool = True
 
 
+# The repository's one reading of a ```json fenced block: hoisted out of
+# parse_structured_patch so extract_json_object shares it and the two cannot drift.
+_JSON_FENCE_RE = re.compile(r"```(?:json)?\s*\n(\{[\s\S]*?\})\s*\n```")
+
+
 def parse_structured_patch(raw_output: str) -> StructuredPatch:
     """Parse builder output into a structured patch.
 
@@ -63,7 +71,7 @@ def parse_structured_patch(raw_output: str) -> StructuredPatch:
     unified diff detection.
     """
     # Try JSON fenced block
-    json_match = re.search(r"```(?:json)?\s*\n(\{[\s\S]*?\})\s*\n```", raw_output)
+    json_match = _JSON_FENCE_RE.search(raw_output)
     if json_match:
         try:
             data = json.loads(json_match.group(1))
@@ -125,6 +133,26 @@ def _extract_first_json_object(text: str) -> str | None:
             depth -= 1
             if depth == 0:
                 return text[:i + 1]
+    return None
+
+
+# The single answer to "where is the JSON object in this model output" — every
+# schema-specific parser reuses it instead of growing a second wrapper scan.
+def extract_json_object(raw_output: str) -> str | None:
+    """Return the TEXT of the first JSON object in ``raw_output``, or None.
+
+    Prefers a fenced ```json block, then a bare object at the start of the
+    stripped text (with any trailing prose cut off). Returns TEXT rather than a
+    parsed value, so each caller decides what schema that object must satisfy.
+    """
+    fenced = _JSON_FENCE_RE.search(raw_output)
+    if fenced:
+        return fenced.group(1)
+
+    stripped = raw_output.strip()
+    if stripped.startswith("{"):
+        return _extract_first_json_object(stripped) or stripped
+
     return None
 
 
@@ -238,6 +266,26 @@ def _parse_diff_output(text: str) -> StructuredPatch:
     )
 
 
+# The single statement of which paths a patch may never write, message strings
+# included — every patch-shaped validator calls this instead of restating the rules.
+def unsafe_path_issues(paths: Iterable[str]) -> list[str]:
+    """Return one issue string per path-safety violation (empty = every path safe).
+
+    Three checks, in order, per path: absolute path, ``..`` traversal, and the
+    sensitive-suffix set. The message strings are part of the contract.
+    """
+    issues: list[str] = []
+    for p in paths:
+        if p.startswith("/") or p.startswith("\\"):
+            issues.append(f"absolute path not allowed: {p}")
+        if ".." in p:
+            issues.append(f"path traversal not allowed: {p}")
+        lower = p.lower()
+        if lower.endswith((".env", ".pem", ".key", ".p12")):
+            issues.append(f"sensitive file not allowed: {p}")
+    return issues
+
+
 def validate_structured_patch(patch: StructuredPatch) -> list[str]:
     """Validate a structured patch. Returns list of issues (empty = valid)."""
     issues: list[str] = []
@@ -259,14 +307,6 @@ def validate_structured_patch(patch: StructuredPatch) -> list[str]:
                 issues.append(f"unified_diff {d.path}: empty diff")
 
     # Path safety checks
-    all_paths = list(patch.target_paths)
-    for p in all_paths:
-        if p.startswith("/") or p.startswith("\\"):
-            issues.append(f"absolute path not allowed: {p}")
-        if ".." in p:
-            issues.append(f"path traversal not allowed: {p}")
-        lower = p.lower()
-        if lower.endswith((".env", ".pem", ".key", ".p12")):
-            issues.append(f"sensitive file not allowed: {p}")
+    issues.extend(unsafe_path_issues(patch.target_paths))
 
     return issues
