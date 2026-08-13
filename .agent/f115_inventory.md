@@ -106,7 +106,7 @@ the job's trace file is copied into the evidence bundle as
 `prompt_trace.jsonl` at `pingpong_evidence.py:527-536`, sourced from
 `job_evidence.py:2528`.
 
-LOAD-BEARING GAP: only four of the eight `build_trace_entry` call sites pass
+LOAD-BEARING GAP: only four of the seven `build_trace_entry` call sites pass
 `composed_prompt`, so only those four produce a non-empty manifest —
 `flight_plan.py:191`, `intake.py:145`, `orchestrator_loop.py:930`,
 `mission_compiler.py:290`. The three call sites that produce the prompts of a

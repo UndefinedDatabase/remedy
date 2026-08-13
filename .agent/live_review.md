@@ -60,3 +60,5 @@ integration gate → closure.
   AGENTS.md bars mixing an unrelated fix into a feature branch. The fix
   belongs to a round that legitimately opens the conventions document or the
   cap. OPEN.
+
+Landed: R-0321 — the inventory's "eight" is now "seven" in the LOAD-BEARING GAP sentence of `.agent/f115_inventory.md`; the enumeration below it was already correct at four wired plus three unwired. Fixed in the C3 commit of R3.
