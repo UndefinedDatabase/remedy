@@ -2984,7 +2984,10 @@ def run_pingpong(
                 repair_rounds=result.repair_rounds_used,
             )
 
-            reviewer_prompt = _build_reviewer_prompt(
+            # F115 D1: compose instead of calling `_build_reviewer_prompt`, so the
+            # trace entries below carry a real segment manifest. The sent bytes are
+            # unchanged — `_build_reviewer_prompt` returns this same `.text`.
+            reviewer_composed = compose_reviewer_prompt(
                 effective_goal,
                 builder_out.summary,
                 diff_summary=diff_summary,
@@ -2999,6 +3002,8 @@ def run_pingpong(
                 repair_round=result.repair_rounds_used if is_repair else 0,
                 scope_packet=runtime_scope_packet,
             )
+
+            reviewer_prompt = reviewer_composed.text
 
             # Track reviewer prompt size
             result.reviewer_prompt_chars += len(reviewer_prompt)
@@ -3029,6 +3034,7 @@ def run_pingpong(
                         safe_diff_files=list(result.safe_diff_files),
                         task_excerpt_sha256=task_input.sha256 if task_input else "",
                         configured_model=reviewer_model,
+                        composed_prompt=reviewer_composed,
                         schema_v=_reviewer_schema_v(),
                         phase=phase,
                         transport_attempt=transport_attempt,
