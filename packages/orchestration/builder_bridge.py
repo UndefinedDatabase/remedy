@@ -27,6 +27,11 @@ from packages.orchestration.diff_repair import (
     changed_line_ranges_from_patch,
     select_repair_hunks,
 )
+from packages.orchestration.diff_repair_apply import apply_diff_repair
+from packages.orchestration.diff_repair_response import (
+    diff_repair_response_to_patch,
+    parse_diff_repair_response,
+)
 
 STOP_REASONS = frozenset({
     "structured_patch_parse_failed",
@@ -41,6 +46,7 @@ STOP_REASONS = frozenset({
     "approval_required",
     "permission_denied",
     "source_apply_failed",
+    "diff_repair_fell_back",
     "test_failed_after_apply",
     "repair_budget_exhausted",
     "repeated_patch_detected",
@@ -77,6 +83,10 @@ class BridgeResult:
     test_passed: bool | None = None
     error: str = ""
     events: list[dict[str, Any]] = field(default_factory=list)
+    # Which applicator ran: `diff` or `full_fallback` from `apply_diff_repair`.
+    diff_repair_mode: str = ""        # "" when the round used no diff channel
+    # The NAMED reason a diff attempt was discarded whole — empty when none was.
+    diff_fallback_reason: str = ""
 
 
 def run_builder_bridge(
@@ -86,6 +96,7 @@ def run_builder_bridge(
     job: Any,
     data_dir: str | Path,
     autonomy_level: int = 2,
+    diff_response: Any = None,
 ) -> BridgeResult:
     """Run the full builder bridge pipeline.
 
@@ -102,7 +113,23 @@ def run_builder_bridge(
     result = BridgeResult()
 
     # Stage 1: Parse
-    parse_result = parse_builder_patch(output)
+    if diff_response is None:
+        parse_result = parse_builder_patch(output)
+    else:
+        # `risk` and `requires_approval` keep their model defaults on purpose:
+        # risk classification lives in the structured-patch parser, and Remedy
+        # deliberately does not compute a second risk level on the diff channel
+        # in v1.
+        import hashlib
+
+        raw = output.structured_patch_text or ""
+        parse_result = BuilderPatchResult(
+            parse_success=True,
+            patch=diff_repair_response_to_patch(diff_response),
+            target_paths=list(diff_response.files),
+            output_hash=hashlib.sha256(raw.encode()).hexdigest()[:16],
+            output_length=len(raw),
+        )
     result.parse_result = parse_result
 
     stop_reason_for_parse = _map_error_kind_to_stop_reason(parse_result.error_kind) if not parse_result.parse_success else ""
@@ -145,20 +172,42 @@ def run_builder_bridge(
     from packages.orchestration.permissions import Capability, set_permission
     set_permission(job, Capability.repo_generated_write, allow=True)
 
-    apply_result = apply_structured_patch(
-        patch, repo_path,
-        data_dir=str(data_dir), job_id=job.id, job=job,
-        intent_id=intent_id,
-    )
-    result.apply_success = apply_result.success
+    if diff_response is None:
+        apply_result = apply_structured_patch(
+            patch, repo_path,
+            data_dir=str(data_dir), job_id=job.id, job=job,
+            intent_id=intent_id,
+        )
+        result.apply_success = apply_result.success
 
-    if not apply_result.success:
-        result.stage = "apply_failed"
-        result.stop_reason = "source_apply_failed"
-        result.error = "; ".join(apply_result.errors[:3])
-        return result
+        if not apply_result.success:
+            result.stage = "apply_failed"
+            result.stop_reason = "source_apply_failed"
+            result.error = "; ".join(apply_result.errors[:3])
+            return result
 
-    result.stage = "applied"
+        result.stage = "applied"
+    else:
+        diff_result = apply_diff_repair(
+            diff_response, repo_path,
+            job=job, intent_id=intent_id, data_dir=data_dir,
+        )
+        result.diff_repair_mode = diff_result.mode
+        result.diff_fallback_reason = diff_result.fallback_reason
+        _emit(data_dir, job.id, "diff_repair_applied", {
+            "mode": diff_result.mode,
+            "applied": diff_result.applied,
+            "fallback_reason": diff_result.fallback_reason,
+            "files_modified": diff_result.files_modified,
+            "rollback_incomplete": diff_result.rollback_incomplete,
+            "error_count": len(diff_result.errors),
+        })
+        if not diff_result.applied:
+            result.stage = "diff_fallback"
+            result.stop_reason = "diff_repair_fell_back"
+            return result
+        result.apply_success = True
+        result.stage = "applied"
 
     # Stage 4: Test (if autonomy >= 4)
     if autonomy_level >= 4:
@@ -376,13 +425,44 @@ def run_builder_bridge_loop(
             "patch_hash": patch_hash,
         })
 
+        diff_response = None
+        if diff_mode and repair_ctx is not None and repair_ctx.get("repair_mode") == "diff":
+            diff_response, decode_reason = parse_diff_repair_response(
+                output.structured_patch_text or ""
+            )
+            if diff_response is None:
+                _emit(data_dir, job.id, "diff_repair_not_used", {
+                    "cycle": cycle, "reason": decode_reason,
+                })
+
         # Run bridge
         bridge_result = run_builder_bridge(
             output, repo_path,
             job=job, data_dir=data_dir,
             autonomy_level=autonomy_level,
+            diff_response=diff_response,
         )
         loop_result.final_result = bridge_result
+
+        # A discarded diff attempt is not a dead end and not an applied patch, so
+        # the round continues on the full-file path with the reason recorded, and
+        # Remedy deliberately does not retry the SAME answer in full-file mode —
+        # the answer was diff-shaped, so the next prompt has to ask for a full file.
+        if bridge_result.stage == "diff_fallback":
+            _emit(data_dir, job.id, "repair_round_fell_back_to_full_file", {
+                "cycle": cycle,
+                "reason": bridge_result.diff_fallback_reason,
+            })
+            if cycle < max_cycles:
+                repair_ctx = build_repair_context(
+                    job.id,
+                    {"metadata": {"exit_code": 1, "passed": False, "cycle": cycle}},
+                    load_run_events(data_dir, job.id),
+                )
+                repair_ctx["repair_mode"] = "full_file"
+                repair_ctx["full_file_reason"] = bridge_result.diff_fallback_reason
+                loop_result.repair_contexts.append(repair_ctx)
+            continue
 
         # Check outcomes
         if bridge_result.stage in ("parse_failed", "apply_failed"):
