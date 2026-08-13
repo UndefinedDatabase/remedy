@@ -1,100 +1,92 @@
-# Handoff — F115 · R20 (integration gate)
-
-Deviations, declared: 100 lines against the 60-line cap (AGENTS.md DECISION D15). The cause is
-mandated content, not prose — the R20 block ordered eleven gates a–k whose raw transcripts carry
-two full `comm` outputs and per-id attribution for all 15 ids, plus four per-commit tables and the
-authored-text proofs. No section is dropped.
+# Handback — F115 · R21 (blocker repair + gate re-run)
 
 ## Range
-Review of e7127c63..HEAD (branch feature/f115-prompt-cost-report).
+Review of fbaab57f..28dddb5c (branch feature/f115-prompt-cost-report).
 
 ## Commits
-### 182e1625 chore(f115): save the R20 integration-gate block verbatim
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/authored/f115-r20-1.md | +164/-0 | R20 block, BEGIN..END inclusive |
-| .agent/last_block.md | +158/-134 | same bytes, cmp exit 0 |
 
-### ce812bc0 docs(f115): record the R19 verdict, resolve R-0338, register R-0339
+### d3e21942 chore(f115): save the R21 repair block verbatim
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/live_review.md | +5/-1 | PAIR 1 rewrite + PAIR 2 append, committed BEFORE the gate ran |
+| .agent/authored/f115-r21-1.md | +156/-0 | C0 block, verbatim |
+| .agent/last_block.md | +136/-144 | same bytes, cmp exit 0 |
 
-### 8081982f chore(f115): commit the R20 integration-gate evidence
+### 7a21ac5c docs(f115): record the R20 gate FAIL and findings R-0340, R-0341
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/gate_f115_r20/ | +497/-0 | 25 .txt files: run tails, failed lists, comm outputs, serial re-runs, dist hashes, attribution, cleanup proof |
+| .agent/live_review.md | +7/-1 | D4→D7 rewrite; R-0340, R-0341, `Gate: R20 — FAIL` |
 
-### this commit — chore(f115): refresh the plan and write the R20 handoff
+### c64016c1 test(f115): mirror the on_prompt_composed hook in the plan-job double
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/plan.md | rewrite | R19 PASS, R20 ran, blocker named, 12 open findings, next ID R-0340 |
-| .agent/decisions.md | append | packager decision, registered as D7 (D4 was taken) |
-| .agent/handoff.md | rewrite | this file |
+| tests/test_run_log_cli.py | +4/-1 | double takes `*, on_prompt_composed=None`; no assertion moved |
+
+### 28dddb5c chore(f115): commit the R21 integration-gate re-run evidence
+| Path | +/- | Reason |
+|---|---|---|
+| .agent/gate_f115_r21/ | +96/-0 | 7 files: tail, FAILED list, meta, both comm outputs, attribution, provenance |
 
 ## External actions
-`git worktree add -b tmp/base-gate .remedy-wt/.cache/base_r20 0d6c97aa` → created, on a branch.
-`git worktree remove --force` + `prune` + `git branch -D tmp/base-gate` → "Deleted branch tmp/base-gate (was 0d6c97aa)".
-`git push -u origin feature/f115-prompt-cost-report` → run after the last commit. No PR, no merge, no other gh call.
+`git push -u origin feature/f115-prompt-cost-report` after the C4 commit; its raw
+output is in the completion report. No worktree add/remove — the base side was
+reused from committed R20 evidence. No gh, no PR, no merge.
 
 ## Verification
-(a) `cmp .agent/authored/f115-r20-1.md .agent/last_block.md` → exit 0, no output.
-(b) C1 gates raw: `Landed: R-0338` 0 · `^Done: R-0338` 1 · `^- R-0339 — Low` 1 · `^Gate: R19 — PASS` 1 · `^## Steps` 1.
-(c) BRANCH, repo root, `python3 -m pytest -n auto -q`: `11 failed, 16700 passed, 19 skipped in 166.52s (0:02:46)`, EXIT_CODE=1, WALL 167s.
-    FAILED = 5× test_role_conventions[reviewer] (R-0322) + 6× test_run_log_cli::TestPlanJobLocalRunLog.
-(d) BASE at 0d6c97aa on tmp/base-gate, `REMEDY_UI_NO_AUTO_BUILD=1`: `13 failed, 16626 passed, 19 skipped in 128.26s`, EXIT_CODE=1, WALL 129s.
-    `apps/ui/dist` aggregate hash before = after: base worktree `c7c847f9…`, primary `856780f4…` — no write-through in run 1.
-    BASE run 2, same worktree, dist in place: `6 failed, 16633 passed`, exit 1, 136s.
-(e) `comm -13` branch-only = 6, identical against base run1 and run1∪run2, all in
-    `tests/test_run_log_cli.py::TestPlanJobLocalRunLog::` — test_plan_job_local_output_includes_log_path,
-    test_planning_completed_noop_outcome, test_planning_completed_outcome_changed,
-    test_planning_started_includes_provider_role_model, test_writes_planning_completed_on_success, test_writes_planning_started.
-    `comm -23` base-only (union) = 9: 8 in `tests/ui_server/test_live_state.py::TestUIServerIntegration::` — test_api_invalid_token_403,
-    test_api_requires_token, test_app_shell_served_without_token, test_brain_endpoint, test_dashboard_no_raw_leaks, test_put_rejected,
-    test_readiness_endpoint, test_server_starts_and_writes_info — plus
-    `tests/cli/test_review_bundle_runtime.py::TestSubprocessCleanup::test_timeout_raises_with_cleanup`.
-    R-0322's five are in BOTH failed lists and NEITHER comm output, exactly as the block predicted.
-(f) Attribution of all 15 ids — `.agent/gate_f115_r20/attribution.txt`:
-    · branch-only 6: serial on branch 6/6 FAIL (exit 1); serial at merge base 6/6 PASS (exit 0) ⇒ reproducible,
-      not xdist-flake, introduced here. **BLOCKER — no fix attempted.** Cause: cb17024a put
-      `on_prompt_composed=_plan_compositions.append` on the call at apps/cli/commands/job.py:288 while the stub at
-      tests/test_run_log_cli.py:78 is `def fake_plan_job_with_llm(job, _call_planner)`; TypeError → broad
-      `except Exception` → sys.exit(1) at job.py:309. `git log 0d6c97aa..HEAD -- tests/test_run_log_cli.py` is EMPTY.
-      F115's cover for that call site is a source-TEXT assert (test_structured_planner_cli.py:302) that reads the file
-      instead of executing it, so it could not see the stale stub.
-    · base-only 8: "ERROR: React UI not built" ×8 in the raw base log (ui_server.py:2848). Pass serially 8/8, pass under
-      `-n auto` (42 passed), gone in base run 2 once apps/ui/dist is in place;
-      `git diff 0d6c97aa HEAD -- packages/orchestration/ui_server.py apps/ui` is EMPTY.
-    · base-only 1: passes serially at base AND on branch ⇒ base-side timing flake. No unattributed id remains.
-(g) `git worktree list` → `/home/decodeux/Repos/remedy  ce812bc0 [feature/f115-prompt-cost-report]`, ONE line;
-    `git branch --list tmp/base-gate` empty; base worktree path ABSENT.
-(h) `ls .agent/gate_f115_r20/` → 25 files, all `.txt`, no `.log`; 497 lines total.   (i) `wc -l .agent/plan.md` → 46.
-(j) `git status --porcelain` → VERBATIM, exactly one line: ` M scripts/make_review_zip.sh`.
-(k) `git log --oneline e7127c63..HEAD` → the four commits tabled above.
+- (a) `cmp .agent/authored/f115-r21-1.md .agent/last_block.md` → exit 0, no output.
+- (b) C1 gates: `DECISION F115 D4 below` 0 · `DECISION F115 D7` 1 · `^- R-0340 — High` 1 ·
+  `^- R-0341 — Low` 1 · `^Gate: R20 — FAIL` 1 · `^## Steps` 1. Six of six as ordered.
+- (c) C2 gates: old `def` line 0 · new `def` line 1 · `ruff check tests/test_run_log_cli.py`
+  → `All checks passed!` · `pytest tests/test_run_log_cli.py -q` → `61 passed in 0.30s`,
+  EXIT 0. Before the repair the same file gave `6 failed, 55 passed`.
+- (d) `python3 -m pytest -n auto -q` → EXIT_CODE=1, WALL_SECONDS=129, tail
+  `5 failed, 16706 passed, 19 skipped in 129.05s`. The five are R-0322's
+  `reviewer_conventions` token-cap reds, present at the merge base too, so exit 1 is
+  the expected outcome and not the gate.
+- (e) `comm -13 base_failed_union branch_failed` → EMPTY, 0 lines. Zero branch-only
+  failures: R-0340's six ids are gone and nothing replaced them.
+- (f) `comm -23` → 9 lines: 8× `tests/ui_server/test_live_state.py::TestUIServerIntegration::*`
+  (R20's base worktree had no built `apps/ui/dist`; this branch touches neither
+  `ui_server.py` nor `apps/ui`) + 1× `test_review_bundle_runtime.py::TestSubprocessCleanup::`
+  `test_timeout_raises_with_cleanup` (load-sensitive timing). Both are R20's known
+  environment class; base-only ids cannot be branch regressions by construction.
+  Both comm inputs verified sorted (`sort -c` exit 0) and in one line format —
+  pytest's leading `FAILED ` token kept, matching the committed R20 file.
+- (g) `ls .agent/gate_f115_r21/` → attribution.txt, branch_failed.txt, branch_meta.txt,
+  branch_run_tail.txt, comm_base_only_failures.txt, comm_branch_only_failures.txt,
+  full_log_provenance.txt.
+- (h) `git worktree list` → one line. `git branch --list tmp/base-gate` → empty.
+- (i) `wc -l .agent/plan.md` → 48.
+- (j) `git status --porcelain` → ` M scripts/make_review_zip.sh`, and nothing else.
+- (k) `git log --oneline fbaab57f..HEAD` → the four commits tabled above.
+- (l) `git diff --name-only 0d6c97aa..HEAD -- packages/ apps/` → 7 paths:
+  `apps/cli/command_catalog.py`, `apps/cli/commands/job.py`,
+  `apps/cli/commands/stats_ledger_cmd.py`, `packages/orchestration/cost_report.py`,
+  `packages/orchestration/llm_planner.py`, `packages/orchestration/pingpong_loop.py`,
+  `packages/orchestration/token_ledger.py`.
 
 ## Authored-text proofs
-R20 block: `cmp` exit 0; sha256 of both copies `e3a5535fe489cf89bfdee071c7f6a28fde755c7ac5817fcc4d94dc76c6d71d1d`; `wc -lc` 164 14809 both;
-zero trailing-whitespace lines; first line `BEGIN BLOCK f115-r20-1`, last `END BLOCK f115-r20-1`.
-PAIR 1's TO line, PAIR 2's R-0339 bullet and PAIR 2's `Gate: R19` line were EXTRACTED from the committed authored file and inserted
-unmodified: each occurs exactly 1× in `.agent/live_review.md` and 1× in `.agent/authored/f115-r20-1.md`. PAIR 1's FROM occurs 0×.
-DECISION D7's body is the block's decision text verbatim; only the heading and the ID note differ.
+`.agent/authored/f115-r21-1.md` vs `.agent/last_block.md`: `cmp` exit 0, 156 lines, no
+trailing whitespace on any line. PAIR 1 applied as a substring rewrite (FROM 0x, TO 1x).
+PAIR 2 was appended by slicing the committed authored file itself, so the appended
+bytes ARE the authored bytes. The C2 FROM/TO pair applied as written.
 
 ## Deviations & assumptions
-1. **Decision ID.** The block ordered `DECISION F115 D4`; that ID has been taken since R8 ("the manifest gets its own table, not a
-   ledger column"). A second D4 would corrupt the ledger, so the entry landed as **DECISION F115 D7** with an explicit ID note mapping
-   the block's and the R19 verdict's "D4" onto it. Body verbatim; plan.md names D7.
-2. **Gate evidence trimmed to procedure shape.** The four full run logs total 5305 lines; committing them would put one commit ~5.6k
-   insertions over the AGENTS.md 500 cap. Committed is what integration_gate.md step 1 names — raw tail, full FAILED list, exit code,
-   wall time — plus every comm output and serial result in full and the decisive tail of one blocker traceback.
-   `full_log_provenance.txt` records each full log's line count and sha256. Nothing was re-run to a better number; every committed line
-   is a verbatim slice. The commit is 497 insertions.
-3. **A second base run was added** (not ordered) so base run 1's 8 ui_server reds could be shown non-genuine instead of explained away.
-   Base failures are compared as run1 ∪ run2 — the conservative direction, which can only shrink the branch-only set. It did not: same
-   6 ids. REPORTED, not charged to F115: `base_run2_env.txt` shows the base worktree's `apps/ui/dist/index.html` mtime moving
-   12:57:29 → 13:03:20 during run 2 despite `REMEDY_UI_NO_AUTO_BUILD=1` — the R-0169 flag-ignored-by-a-spawned-build class, an
-   observation about the gate harness.
-No pass/fail count was predicted anywhere; every number above was measured after the fact.
+| Item | Status | Reason |
+|---|---|---|
+| C0 | done | |
+| C1 | done | |
+| C2 | done | |
+| C3 | done | |
+| C4 | done | |
+No deviation from the block. The 478-line branch log stays uncommitted under the
+500-insertion cap; its line count and sha256 are in `full_log_provenance.txt`, in the
+R20 shape. Assumption: the merge base 0d6c97aa is unmoved, so reusing R20's
+`base_failed_union.txt` is sound — the block states it and no base run was ordered.
+Deviations, declared: this handoff is 92 lines, over the 60-line cap (AGENTS.md
+DECISION D15). Cause is mandated content — four per-commit tables, raw transcripts for
+all twelve ordered gates (a)-(l), the authored-text proofs and the item-status table.
+No section was dropped.
 
 ## Next
-Reviewer gates R20 and issues the gate verdict. The gate's finding is a BLOCKER: the repair — widening the stub at
-tests/test_run_log_cli.py:78 — is its own reviewer-gated round, not this one.
+Reviewer gates R21 and issues its verdict; then closure per
+docs/roadmap/STATUS_closure_protocol.md.
