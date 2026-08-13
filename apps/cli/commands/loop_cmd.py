@@ -38,6 +38,11 @@ NEVER_RAN = "never"
 #: How an inert trigger is marked in its own row (LoopSpec.is_inert).
 INERT_MARK = "inert"
 
+#: A listing deliberately does NOT reuse ``loop_spec.INERT_TRIGGER_NOTICE``: that
+#: sentence reports a RUN, and a listing runs nothing, so it may say only what an
+#: unfired trigger means. ``remedy loop run`` is where the notice belongs.
+INERT_TRIGGER_LEGEND = "cannot fire until the scheduler exists; run such a loop manually"
+
 
 def _last_run_label(name: str) -> str:
     """``never``, or the STORED run's creation time and state.
@@ -65,11 +70,7 @@ def _trigger_label(spec: Any) -> str:
 
 def _cmd_loop_list() -> None:
     """List every loop: name, trigger, action, last run. Reads, never writes."""
-    from packages.orchestration.loop_spec import (
-        INERT_TRIGGER_NOTICE,
-        LoopSpecError,
-        load_loop_specs,
-    )
+    from packages.orchestration.loop_spec import LoopSpecError, load_loop_specs
 
     try:
         specs = load_loop_specs()
@@ -86,7 +87,7 @@ def _cmd_loop_list() -> None:
               f"{spec.action.kind:<8}  last run: {_last_run_label(spec.name)}")
 
     if any(spec.is_inert for spec in specs):
-        print(f"  ({INERT_MARK}: {INERT_TRIGGER_NOTICE})")
+        print(f"  ({INERT_MARK}: {INERT_TRIGGER_LEGEND})")
 
 
 def _cmd_loop_validate() -> None:
