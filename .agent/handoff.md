@@ -1,88 +1,85 @@
-# Handoff — F115 Prompt breakdown & cost report · R18 (T003d) · STOP-ENDED
+# Handback — F115 Prompt breakdown & cost report · Round 19 (repair)
 
-Branch `feature/f115-prompt-cost-report`; HEAD is the commit carrying this
-file. NO PR exists; closure has NOT started. `.agent/STOP` is on disk (zero
-bytes, mtime 2026-08-13 11:59, created by neither planner nor worker), so this
-session ended at guardrail G6 of docs/agents/self_drive_protocol.md. A session
-that ends at a stop signal with a written handoff is a SUCCESS.
+Branch: feature/f115-prompt-cost-report. Open findings: 12 — R-0338 landed,
+not resolved; the reviewer authors its `Done:`.
+Deviations, declared: this file is 85 lines against the 60-line cap. Cause: the
+four mandated per-commit tables (22 lines), the 13-line raw verification
+transcript the block ordered, the transport + claim-check proofs, and the gate
+(h) deviation record. No section is dropped (AGENTS.md DECISION D15).
 
-## Rounds this session
-| Round | Slice | Commits | Verdict |
-|-------|-------|---------|---------|
-| R18 | T003d/4 | `aff20fa3..b047aa38` (8682c987…b047aa38) | PASS WITH RISKS |
-| close-out | — | `b047aa38..HEAD`, `.agent/**` only | state only, not a round |
+Fortschritt: 97 % (T001 ✅ · T002 ✅ · T003 ✅ — Integration-Gate und Closure offen) — Schätzung
 
-The R18 verdict is on disk in `.agent/live_review.md` as the `Gate: R18` entry,
-not only in this file — which every handback overwrites (R-0335).
+## Range
 
-## Item status (R18)
-| Item | Status | Reason |
-|------|--------|--------|
-| C1 | done | |
-| C2 | done | |
-| C3 | done | applied verbatim; the REVIEWER's own text carried one false claim, registered as R-0338 |
-| C4 | done | |
-| C5 | done | |
+Review of b047aa38..HEAD, 10 commits; the first six (29d9ed44, f80c49bd,
+025f27d7, 5c756122, 2e082d24, 07bd70fe) are R18's close-out, tabled at 07bd70fe.
 
-## Changed files (R18)
-| Path | Change |
-|------|--------|
-| `.agent/authored/f115-r18-1.md` | new, 350 lines |
-| `.agent/last_block.md` | replaced, byte mirror of the block |
-| `docs/guides/cost-report-user-guide-v0.md` | new, 142 lines |
-| `docs/README.md` | +2 rows, -0 |
-| `.agent/plan.md` | replaced, 42 lines |
-| `.agent/handoff.md` | rewritten |
+## Commits
 
-## Verification — re-run by the reviewer, not copied
-cmp authored↔last_block exit 0, sha256 `2a93345b…d17940` over both, `wc -lc`
-350 19149. The guide's fenced example is byte-identical to the T002 golden,
-sha256 `ba48c81c…da138d` over both, 30 lines each; SLICE A equals the committed
-guide. Catalog args `['--since','--until','--job','--by','--label','--project','--json']`,
-`--all-projects` absent. Golden json: the ten keys the guide lists,
-`report_version` 3, `unmeasured_notation` `'null'`. `COST_DEFAULT_LABEL =
-"(unlabelled)"`. `grep -c cost-report-user-guide-v0.md docs/README.md` 2, C4
-numstat `2 0`. `tests/docs/` 294 passed (baseline 294); canary 42 passed
-(baseline 42); `test_cost_report.py` + `test_stats_report.py` 32 passed — the
-run that binds the guide's example to the live renderer. `wc -l .agent/plan.md`
-42, `0 0` against origin, no `remedy-wt` path in the change set,
-`git worktree list` one line. At the moment of the verdict
-`git status --porcelain` carried exactly one line, `?? .agent/STOP`.
+### 8411913c chore(f115): save the R19 repair block verbatim
+| Path | +/- | Reason |
+| --- | --- | --- |
+| .agent/authored/f115-r19-1.md | +140/-0 | C0 — block saved verbatim |
+| .agent/last_block.md | +113/-323 | C0 — same bytes mirrored |
 
-## The work tree is dirty, and no agent of this session made it so
-`git status --porcelain` NOW carries two lines: `?? .agent/STOP` (zero bytes,
-mtime 11:59:11) and ` M scripts/make_review_zip.sh` (mtime 12:03:06). The
-second is a one-line addition to that script's `find` prune list,
-`-path './.remedy-wt' -o \`, which excludes the gitignored worktree scratch
-directory from the review zip. It appeared AFTER the reviewer's own
-post-R18 status check, which showed only `?? .agent/STOP`, and no commit of
-this session touches the file — `git log 0d6c97aa..HEAD -- scripts/make_review_zip.sh`
-is empty. It was neither committed nor reverted, deliberately: committing
-another actor's unreviewed change into a feature branch and destroying their
-uncommitted work are both worse than reporting it. Read it as operator work
-in progress, alongside the STOP file that arrived four minutes earlier, and
-confirm with the operator before touching it.
+### e19c68ad docs(f115): name the real owner of the per-role limit note
+| Path | +/- | Reason |
+| --- | --- | --- |
+| docs/guides/cost-report-user-guide-v0.md | +4/-2 | C1 — R-0338 repair |
 
-## Findings
-Open: **12** — R-0320, R-0322, R-0323, R-0324, R-0327, R-0328, R-0331,
-R-0333, R-0334, R-0336, R-0337, R-0338. Next free ID **R-0339**.
-R-0338 is the only one with an on-disk fix pending.
+### fdce0a1b chore(f115): record R-0338 as landed
+| Path | +/- | Reason |
+| --- | --- | --- |
+| .agent/live_review.md | +1/-0 | C2 — worker `Landed:` line only |
 
-## Resume here — repair FIRST, on THIS branch
-1. R-0338: `docs/guides/cost-report-user-guide-v0.md` says "The existing
-   `remedy stats cost` view already prints that limit in its own output." The
-   note is `_ROLE_LIMIT_NOTE`, emitted only by `_render_cache_human`
-   (`apps/cli/commands/stats_ledger_cmd.py:489`) and `_cache_payload:436` —
-   `remedy stats cache --by role`. `stats report` never prints it.
-2. Integration gate (docs/agents/integration_gate.md), full suite `-n auto`.
-3. Closure per docs/roadmap/STATUS_closure_protocol.md.
-The Open PR Gate has nothing to merge, so it does not block this resume.
-Clear `.agent/STOP` only on the operator's instruction.
+### C3, this commit — chore(f115): refresh the plan and write the R19 handoff
+| Path | +/- | Reason |
+| --- | --- | --- |
+| .agent/plan.md | rewrite | C3 — R19 state, 42 lines |
+| .agent/handoff.md | rewrite | C3 — this file (self-reference) |
 
-Deviations, declared: this handoff is 88 lines against the 60-line cap
-(AGENTS.md DECISION D15). The cause is mandated content — the per-commit
-table, the item-status table, the changed-files table and the re-run
-verification values — and no section was dropped to meet the cap.
+## External actions
 
-Fortschritt: 96 % (T001 ✅ · T002 ✅ · T003 ✅ — R-0338-Repair,
-Integration-Gate und Closure offen) — Schätzung
+`git push -u origin feature/f115-prompt-cost-report` after C3. No PR, no merge,
+no gh command, no worktree add/remove.
+
+## Verification
+
+    cmp .agent/authored/f115-r19-1.md .agent/last_block.md  → exit 0
+    grep -c "The existing" G                                → 0
+    grep -c "remedy stats cost" G                           → 0
+    grep -c "remedy stats cache --by role" G                → 1
+    grep -c "does not print that limit" G                   → 1
+    grep -c "role_limit" G                                  → 1
+    wc -l G                                                 → 144
+    git show --numstat e19c68ad -- G                        → 4  2  (deviation)
+    wc -l .agent/plan.md                                    → 42
+    python3 -m pytest tests/docs/ -q                        → 294 passed in 0.31s
+    python3 -m pytest tests/cli/test_golden_path.py -q      → 42 passed in 20.42s
+    git status --porcelain                                  → ` M scripts/make_review_zip.sh`
+    git worktree list                                       → 1 line, /home/decodeux/Repos/remedy
+
+G = docs/guides/cost-report-user-guide-v0.md.
+
+## Authored-text proofs
+
+Block f115-r19-1: `cmp` exit 0, sha256
+`dbd9a399c6b5fff416190dc9fd0318f5d967e3c4a2f81f21c2600dbb73794e1e` over both
+copies, `wc -lc` 140 8155. C1's TO text applied verbatim.
+Claim check before C1: `_ROLE_LIMIT_NOTE` (stats_ledger_cmd.py:373) is printed
+by `_render_cache_human:489` under `report.by == "role"` and keyed `role_limit`
+by `_cache_payload:436`; both are reached only from `_cmd_stats_cache`,
+registered as `stats.cache`. The new sentence is true against source.
+
+## Deviations & assumptions
+
+Gate (h) expected numstat `5 3`; the real value is `4 2`. FROM and TO share
+their first line byte-identically, so git keeps it as context: -2/+4. `5 3` is
+the FROM/TO line count, not a diff, and forcing it would mean editing that
+shared line — which the block's Change clause forbids. Gate (g) 142→144 agrees
+with -2/+4, and content gates (b)-(g) all hold: the repair is as ordered.
+R-0336 class — a predicted numstat rather than a semantic assertion.
+
+## Next
+
+Reviewer gates R19 and authors `Done: R-0338`; then the integration gate.
