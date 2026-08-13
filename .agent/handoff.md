@@ -1,58 +1,71 @@
-# Handoff — F107 R23 (CLOSURE)
+# Handoff — F111 Diff-only repair · Round 22 (CLOSURE)
 
-Branch: feature/f107-context-compiler-v2. This round CLOSES F107.
-Verdict of record: PASS_WITH_RISKS — ACCEPTED (closure verdict in
-`.agent/live_review.md`). Open findings 22, none above Medium, each carried as
-an accepted risk. Next free finding ID R-0298, unchanged: no finding this round.
+Branch: feature/f111-diff-only-repair · base 4e0b762e · start HEAD 35329dec
+Next expected action: Window 1 gates this round. The closure PR is created and
+left UNMERGED by design; it merges at the next feature's start (Open PR Gate).
 
-## Closure values
-Evidence job f107-closure · package
-remedy-review-20260812-235227-READY_FOR_REVIEW.zip · SHA-256
-4497c8e1bdb54ac3a0c5069dffcb9184303ceaa85f6c075ba81c09a14927ff8d · accepted
-HEAD b823dff9b4711ec3cc3505b496589cd02e219fc4.
-
-Fortschritt: 100 % (T001-T004 ✅ · Integration Gate ✅ · Built State ✅ · Evidence + Zip ✅ · STATUS [x] ✅ · PR offen, ungemergt) — Schätzung
-
-## Commits and changed files
-| Commit | SHA | Path | Insertions |
-|---|---|---|---|
-| C1 | 546f6c96 | `.agent/authored/f107-r23-1.md` (new) | 265 |
-| C2 | 1bb3f504 | `.agent/last_block.md` | 243 |
-| C3 | 96ed8874 | `.agent/live_review.md` | 87 |
-| C4 | self-referential, see report | `docs/roadmap/STATUS.md`, `README.md`, `.agent/plan.md`, `.agent/handoff.md` | see report |
+Deviations, declared — 71 lines, because DECISION D15's mandated content
+(item-status table, commit table, changed-files table, the a-m gate block with
+real values, the closure artefact values) does not fit smaller. No section
+dropped. Two self-reference limits: C6 cannot name its own SHA or its own
+insertion count, and the PR number does not exist until after C6. All three are
+in the handback report as measured values.
 
 ## Item status
 | Item | Status | Reason |
-|---|---|---|
-| C1 | done | block saved verbatim; `cmp` silent, exit 0 |
-| C2 | done | mirror into last block; `cmp` silent, exit 0 |
-| C3 | done | R20-R22 gates + closure verdict, numstat 87/0 |
-| C4 | done | STATUS + README + plan + handoff in ONE commit (Rule A4, R-0154) |
-| C5 | not yet run when this file was written | post-commit by construction; its real result is in the completion report |
+|------|--------|--------|
+| C1a | done | |
+| C1b | done | |
+| C2  | done | |
+| C3  | done | |
+| C4  | deviated | bundle #1 rejected at zip time (unsorted `test_files`); rebuilt clean |
+| C5  | deviated | zip #1 BLOCKED_EVIDENCE + unsafe-member abort; zip #2 READY_FOR_REVIEW |
+| C6  | done | this commit |
+| C7  | done | pushed, PR created, NOT merged |
 
-## Gates — real results, real exit codes
-| Gate | Result |
-|---|---|
-| A transport | `cmp` scratch vs `.agent/authored/f107-r23-1.md` silent, exit 0; `wc -l` 265; sha256 9f59726e240ff4a6f450b73efea452c1b4da77d02eadf6fec5f9355fb59b282e on both; C2 `cmp` silent, exit 0 |
-| B block cap | 265 lines against the cap of 400 — under |
-| C pairs | R20, R21 and R22 gate lines 1 each; `^## Closure verdict` 1; `^Done:` 13; `^Landed:` 0; header `Next free ID: R-0298` 1. numstat 87/0: of 87 added lines, 0 belong to no TO body, all 82 non-blank TO-only lines occur exactly 1x, and both FROM anchors still occur 1x (append shape) |
-| D closure commit | `- [x] F107 —` 1 and `- [~] F107` 0; `^43 of 255` 1 and `^42 of 255` 0; tier-2 row reads `5`; `F107 context compiler v2.` 1. The same-commit proof is post-commit; it is in the report |
-| E ledger pins | `python3 -m pytest tests/docs/ -q` exit 0, 294 passed — the README/STATUS cross-check is green |
-| F canary | `python3 -m pytest tests/cli/test_golden_path.py -q` exit 0, 42 passed |
-| G marker leak | `^<<<` is 0 in `.agent/live_review.md`, `.agent/plan.md`, `.agent/handoff.md`, `docs/roadmap/STATUS.md` and `README.md` |
-| H tree, push, scope, PR | post-commit by construction; the report carries `git status --porcelain`, `git worktree list`, the `0 0` remote comparison, the seven-path scope diff, per-commit insertions and the PR number and URL |
+## Commits (35329dec..HEAD)
+| SHA | Subject | Ins |
+|-----|---------|-----|
+| 591612f2 | chore(f111): save the R22 step block verbatim | 325 |
+| d5a960d6 | chore(f111): mirror the R22 block into last_block | 292 |
+| 6e15240d | chore(f111): record the R21 integration gate and resolve R-0319 | 67 |
+| a2fe520b | docs(f111): record the shipped shape in the feature file | 18 |
+| (this commit) | chore(f111): close F111 in the ledger | self-count impossible |
 
-## Deviations, declared (AGENTS.md DECISION D15)
-1. C4 cannot carry its own SHA, its own insertion count or the PR number: it is
-   the LAST commit on the branch (Rule A4) and C5 necessarily follows it. Those
-   values live in the completion report, which is their carrier of record. C5 is
-   deliberately NOT pre-marked done in this file.
-2. Gate D's same-commit proof, gate H in full, and the handoff's own line of
-   gate G are measured after this commit for the same reason.
+## Changed files
+| Path | Commit |
+|------|--------|
+| .agent/authored/f111-r22-1.md | C1a |
+| .agent/last_block.md | C1b |
+| .agent/live_review.md | C2 |
+| docs/roadmap/features/T2_F111.md | C3 |
+| docs/roadmap/STATUS.md · README.md · .agent/plan.md · .agent/candidates.md · .agent/handoff.md | C6 |
 
-## Next expected action
-The closure PR is UNMERGED BY DESIGN and is NOT a draft. It merges at the next
-feature's start via the AGENTS.md Open PR Gate; that gap is the operator's
-manual-review window, and the operator may merge manually instead. The next
-session claims F111 Diff-only repair under Rule A5. Owed follow-ups, all
-registered: R-0295, R-0296, R-0290, R-0297.
+## Gates (real values)
+a `cmp` exit 0 · sha256 both 881ef3573142d211a872e0457a6d2830bf91fd50864a7d0f126768a4b5a00fc8 · `wc -lc` 325 20472
+b Done: 13 · Landed: 0 · `### R21 — PASS` 1 · `- R-0` 44
+c R19 slice = 32 lines · `are byte-identical` 0 · `WERE byte-identical` 1
+d tests/docs/ `294 passed in 0.30s`, exit 0 · grep diff-only-repair-v1.md = 1
+e `integrity check --json` passed=true, fail_count=0, check_count=5, relevant untracked 0
+f Evidence job `f111-closure` · verdict PASS_WITH_RISKS · 85 scoped node ids, 85 passed
+g package remedy-review-20260813-060242-READY_FOR_REVIEW.zip · SHA-256
+  c44b4a12a5715a66bf3abd55633fc86a77351b0018fab930f374e707458d79e6 · subject
+  4e0b762e48cf29672eee979f74c282b10136f59c..a2fe520bd16773e4f1536035caeec76e880bbdde
+h applied STATUS line == authored TEXT-D outside the 3 slots, proved both directions ·
+  `- [x] F111 — ` 1 · `- [~]` 0
+i `- [x] Fxxx — ` 44 · README "44 of 255 registered items accepted." · same commit
+j tests/docs/ `294 passed in 0.26s` exit 0 · golden path `42 passed in 19.58s` exit 0
+k `wc -l .agent/plan.md` = 42 (cap 50)
+l tree clean · 35329dec..HEAD = the 9 ordered paths, no evidence dir, no zip · 0/0 vs origin
+m PR created against main from this branch, open, not draft, NOT merged (number in report)
+
+## Artefact attempts (AGENTS.md rule)
+1. bundle #1 + zip #1 — FAILED: `remedy-review-20260813-060103-BLOCKED_EVIDENCE.zip`,
+   validation error `verification_tests.json runs[0] test_files is not sorted`, and
+   REVIEW_ZIP_ERROR unsafe members from stale scratch `.remedy-wt/f111r11/dg/.git`.
+2. bundle #2 + zip #2 — READY_FOR_REVIEW, values in (f) and (g).
+
+Open findings: 32 (44 registered − 12 resolved). None High; each an accepted risk.
+
+Fortschritt: 100 % (T001 ✅ · T002 ✅ · T003 ✅ · Doku ✅ ·
+Integration Gate ✅ · Closure ✅) — Schätzung

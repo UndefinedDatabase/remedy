@@ -440,7 +440,18 @@ def _apply_unified_diff(diff: UnifiedDiff, repo_root: Path, result: ApplyResult)
 def _apply_hunks(original: str, diff_text: str) -> str | None:
     """Apply unified diff hunks to original text.
 
-    Validates context and removal lines against actual file content.
+    A hunk is applied by SPLICING its new block — the context and added lines
+    in the exact order the hunk states them — over the exact original range the
+    hunk consumed. An added line therefore lands at its own position inside the
+    hunk, never at the hunk's start.
+
+    A hunk whose OLD COUNT is 0 is a pure insertion whose content goes AFTER
+    the line its header names, so its 0-based start is that line number itself;
+    every other hunk starts AT the named line, one less.
+
+    Context and removal lines are still validated against real file content
+    before anything is written: a mismatch, or an index outside the original
+    file, rejects the whole patch.
     Returns None if any hunk fails to apply.
     """
     import re
@@ -459,11 +470,18 @@ def _apply_hunks(original: str, diff_text: str) -> str | None:
             i += 1
             continue
 
-        orig_start = int(m.group(1)) - 1  # 0-indexed
+        # An absent old count is the "@@ -2 +1,0 @@" short form, meaning 1.
+        old_count = 1 if m.group(2) is None else int(m.group(2))
+        if old_count == 0:
+            # Pure insertion: the header names the line the content goes AFTER,
+            # so the 0-based splice index is that line number itself.
+            orig_start = int(m.group(1))
+        else:
+            orig_start = int(m.group(1)) - 1  # 0-indexed
         i += 1
 
-        removals: list[int] = []
-        additions: list[tuple[int, str]] = []
+        new_block: list[str] = []
+        old_len = 0  # original lines this hunk consumes (context + removals)
         pos = orig_start
 
         while i < len(diff_lines):
@@ -476,30 +494,36 @@ def _apply_hunks(original: str, diff_text: str) -> str | None:
                     return None
                 if lines[actual_idx] != line[1:]:
                     return None
-                removals.append(pos + offset)
+                old_len += 1
                 pos += 1
             elif line.startswith("+"):
-                additions.append((pos + offset, line[1:]))
+                new_block.append(line[1:])
             elif line.startswith(" "):
                 actual_idx = pos
                 if actual_idx < 0 or actual_idx >= len(lines):
                     return None
                 if lines[actual_idx] != line[1:]:
                     return None
+                new_block.append(line[1:])
+                old_len += 1
                 pos += 1
-            else:
-                pos += 1
+            # Any other body line — in practice "\ No newline at end of file" —
+            # is ignored: it consumes no original line and contributes none.
             i += 1
 
-        for idx in sorted(removals, reverse=True):
-            if 0 <= idx < len(result_lines):
-                result_lines.pop(idx)
-                offset -= 1
+        if old_count == 0 and old_len != 0:
+            # The header declared a pure insertion but the body consumed
+            # original lines. Guessing which one is right is how fuzzy apply
+            # starts; this repository applies diffs strictly.
+            return None
 
-        insert_at = orig_start + offset
-        for j, (_, content) in enumerate(additions):
-            result_lines.insert(insert_at + j, content)
-            offset += 1
+        splice_at = orig_start + offset
+        if splice_at < 0:
+            # Reachable from a malformed "@@ -0,N @@" with N >= 1 whose body
+            # adds lines without consuming any. No splice runs at index -1.
+            return None
+        result_lines[splice_at:splice_at + old_len] = new_block
+        offset += len(new_block) - old_len
 
     return "\n".join(result_lines)
 

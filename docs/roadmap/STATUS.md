@@ -58,7 +58,7 @@ The tier-block order below is the operator-decided Self-Use sequence of 2026-08-
 - [x] F104 — Hard budget enforcement (T001–T003 complete; accepted 2026-08-09 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f104-closure · package remedy-review-20260809-033908-READY_FOR_REVIEW.zip · SHA-256 6117b6b02ca6f641f0ef3bfebe7518d0eaf705e609e17e8ee9493e6d7fd8bb6a · accepted HEAD 68a7412019e92232a880625b7fce4e48c7198744)
 - [x] F105 — Cache-optimal prompt ordering (T001–T004 complete; accepted 2026-08-12 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f105-closure · package remedy-review-20260812-092055-READY_FOR_REVIEW.zip · SHA-256 23b21bc171b0de493ca4db50c472ecb2797b58b5c870ff9aa5d9b5da71536840 · accepted HEAD b928a0c691dc0a2b86c149a5e732ea07ac03176e)
 - [x] F107 — Context compiler v2 (T001–T004 complete; accepted 2026-08-12 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f107-closure · package remedy-review-20260812-235227-READY_FOR_REVIEW.zip · SHA-256 4497c8e1bdb54ac3a0c5069dffcb9184303ceaa85f6c075ba81c09a14927ff8d · accepted HEAD b823dff9b4711ec3cc3505b496589cd02e219fc4)
-- [ ] F111 — Diff-only repair
+- [x] F111 — Diff-only repair (T001–T003 complete; accepted 2026-08-13 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f111-closure · package remedy-review-20260813-060242-READY_FOR_REVIEW.zip · SHA-256 c44b4a12a5715a66bf3abd55633fc86a77351b0018fab930f374e707458d79e6 · accepted HEAD a2fe520bd16773e4f1536035caeec76e880bbdde)
 - [ ] F115 — Prompt breakdown & cost report
 - [ ] F045 — Loop definitions
 - [ ] F057 — Rate-limit-aware scheduler

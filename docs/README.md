@@ -25,6 +25,7 @@
 | candidate gen | [local-candidate-generator-v0.md](system/local-candidate-generator-v0.md) | system |
 | cockpit | [operator-cockpit-v1.md](system/operator-cockpit-v1.md) | system |
 | context | [context-inspector.md](system/context-inspector.md) | system |
+| diff-only repair | [diff-only-repair-v1.md](system/diff-only-repair-v1.md) | system |
 | do continue | [do-continue-v1.md](guides/do-continue-v1.md) | guide |
 | do run | [do-run-v1.md](guides/do-run-v1.md) | guide |
 | dogfood | [dogfood-run-user-guide.md](guides/dogfood-run-user-guide.md) | guide |
@@ -78,6 +79,7 @@ Specifications and design documents for the built system.
 | [controlled-claude-code-operator-path-v0.md](system/controlled-claude-code-operator-path-v0.md) | Controlled operator path for Claude Code sessions |
 | [core-product-spine-v0.md](system/core-product-spine-v0.md) | Core product architecture spine |
 | [development-artifact-boundary-v0.md](system/development-artifact-boundary-v0.md) | Boundaries between dev artifacts and production |
+| [diff-only-repair-v1.md](system/diff-only-repair-v1.md) | Diff-only repair: hunk selection, unified-diff response, strict apply, full-file fallback |
 | [execution-approval-policy-v0.md](system/execution-approval-policy-v0.md) | Human approval gates for execution |
 | [expensive-builder-routing-v0.md](system/expensive-builder-routing-v0.md) | Local-first routing to expensive external builders |
 | [external-builder-sandbox-v0.md](system/external-builder-sandbox-v0.md) | Sandbox for external builder execution |

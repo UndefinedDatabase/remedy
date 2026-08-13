@@ -1,0 +1,50 @@
+F111 R21 — INTEGRATION GATE, BRANCH RUN
+=======================================
+Procedure: docs/agents/integration_gate.md step 1.
+
+cwd                 /home/decodeux/Repos/remedy
+git rev-parse HEAD  863b3d3e074dd4d4063491be956c194394dba1f8   (the C3 head)
+branch              feature/f111-diff-only-repair
+tree at the run     NOT captured as a file at run start, so it is not claimed
+                    as a measured value here. Every tracked change of this round
+                    up to C3 was committed and pushed before the run was
+                    launched, and `git status --porcelain` = 0 lines at
+                    2026-08-13T03:43:36Z (worktree_cleanup.txt).
+command             python3 -m pytest -n auto -q
+start_utc           2026-08-13T03:37:46Z
+end_utc             2026-08-13T03:40:01Z
+
+--- RAW TAIL of the run log (last 25 lines) ---
+        if name in self._names:
+            raise PromptSegmentError(f"duplicate prompt segment name: {name!r}")
+        try:
+            resolved_rank = SegmentStabilityRank(rank)
+        except ValueError as exc:
+            raise PromptSegmentError(
+                f"prompt segment {name!r} has an unknown stability rank: {rank!r}"
+            ) from exc
+        if token_cap is not None:
+            estimated = estimate_text_tokens(text)
+            if estimated > token_cap:
+>               raise PromptSegmentError(
+                    f"prompt segment {name!r} is over its token cap: "
+                    f"{estimated} tokens estimated, cap {token_cap}"
+                )
+E               packages.orchestration.prompt_segments.PromptSegmentError: prompt segment 'reviewer_conventions' is over its token cap: 954 tokens estimated, cap 800
+
+packages/orchestration/prompt_segments.py:160: PromptSegmentError
+=========================== short test summary info ============================
+FAILED tests/orchestration/test_role_conventions.py::TestRoleConventionsContentEquality::test_document_estimate_is_positive_and_under_the_cap[reviewer]
+FAILED tests/orchestration/test_role_conventions.py::TestRoleConventionsRegistration::test_registered_segment_carries_the_documented_name_and_rank[reviewer]
+FAILED tests/orchestration/test_role_conventions.py::TestRoleConventionsRegistration::test_registration_mutates_no_text[reviewer]
+FAILED tests/orchestration/test_role_conventions.py::TestRoleConventionsRegistration::test_composing_one_conventions_segment_yields_exactly_the_document[reviewer]
+FAILED tests/orchestration/test_role_conventions.py::TestRoleConventionsMappings::test_segment_name_mapping_holds_the_expected_literal[reviewer-reviewer_conventions]
+5 failed, 16634 passed, 19 skipped in 134.16s (0:02:14)
+--- END RAW TAIL ---
+
+PYTEST_EXIT_CODE=1
+wall_clock_seconds=135
+FAILED_id_count=5   (see branch_failed.txt)
+
+The full 16k-test log stays in the gitignored scratch dir
+.remedy-wt/f111r21/branch_run.txt; only this tail is evidence.
