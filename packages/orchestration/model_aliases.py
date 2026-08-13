@@ -28,8 +28,9 @@ Deliberate absences:
     a static table plus accessors.
   * Remedy deliberately does not modernise the ids here as a side effect of
     relocating them.  Choosing NEW ids is F232's job (the model upgrade
-    playbook); this table's values are exactly the strings the repo already
-    shipped.
+    playbook); at relocation time this table's values were exactly the strings
+    the repo already shipped.  Operator decisions since then repoint entries
+    in place — see the dated comments in the table.
 """
 
 from __future__ import annotations
@@ -43,7 +44,8 @@ MODEL_ALIASES: dict[str, str] = {
     # Mid-tier Claude model: the built-in default for the direct-API provider.
     "claude-workhorse": "claude-sonnet-4-20250514",
     # The local Ollama default, and Remedy's global default model.
-    "ollama-default": "qwen3-coder-next",
+    # Operator decision 2026-08-13: Muse Glimmer is the local default.
+    "ollama-default": "muse-glimmer:latest",
     # Deterministic test providers — no network, no cost.
     "fake": "fake-model",
     "fixture": "fixture-model",
