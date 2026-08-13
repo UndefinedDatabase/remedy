@@ -225,4 +225,39 @@ Done: R-0329 — RESOLVED at the R10 gate. Verified against the code and a live 
   nothing else. It belongs to R11, which opens this region for the renderer
   anyway. OPEN.
 
-Landed: R-0330 — a74e0668 rewrote the one docstring line to "READ-ONLY, and never raises on absence."; awaiting review.
+Done: R-0330 — RESOLVED at the R11 gate. Verified against the disk and the behaviour, not the report: `grep -c 'READ-ONLY, never raises\.' packages/orchestration/token_ledger.py` prints 0, and the scoped sentence counts 2 — `query_cost`'s own at :1004 and `query_segment_shares`'s at :1098. Two is the CORRECT value, not a miscount: the fix makes the two docstrings agree, it does not make one of them unique. `git show --numstat a74e0668` changes exactly one line of one file. The claim is now true of the behaviour it describes — both functions still raise `ValueError` from `_resolve_ledger_path` when given neither `project_id` nor `path`, and neither raises on a ledger that is merely absent. The R11 round as a whole is PASS. The reviewer re-ran every gate itself: cmp exit 0 with sha256 431da8edba356a9521f58fec5be40f182cd7223addac54f1895a7799034dba74 over both copies, `wc -lc` 449 20234, ruff `All checks passed!`, the import exit 0, `10 passed` and `99 passed` and canary `42 passed` (151 in one run), `wc -l .agent/plan.md` 46, an empty porcelain, and 0/0 against origin. The authored C3 slice was compared DISK TO DISK against the applied file — 315 lines each, byte-identical — rather than against a reviewer retype, which is the R-0147 class this project has paid for before. Both mutation probes were RE-RUN INDEPENDENTLY in the reviewer's own disposable worktree rather than accepted from the handback: neutering `_same_question` fails exactly `test_a_mismatched_pair_is_refused_by_both_renderers` and nothing else, and changing `_figure`'s None branch to `return "0"` fails exactly `test_an_unmeasured_figure_prints_the_word_and_never_a_zero`; the worktree was removed and pruned with `git worktree list` left showing one line. The worker's fixture-design note was CHECKED rather than believed, and it is correct: rendering the DEFAULT pair under the second mutation still prints the word, from the "PARTLY UNMEASURED" sentence, so the fully-measured total in that one test is what makes the probe discriminating instead of decorative. That is a worker catch the block did not order, and it improved the round.
+
+- R-0331 — Low — reviewer block self-contradiction, self-registered. The R11
+  block's "Change:" clause named SEVEN paths and said "nothing else", while its
+  own "Constraints:" clause ordered a `Landed: R-0330` line into an EIGHTH,
+  `.agent/live_review.md`. The two halves of one block disagreed about that
+  block's own change set. The worker resolved it the right way: it wrote the
+  line the constraint demanded and listed all eight paths in its handback,
+  rather than dropping a mandated write to satisfy a file list. Sixth of the
+  reviewer-arithmetic class after R-0282, R-0321, R-0323, R-0324 and R-0327,
+  and the first whose two contradicting halves sat inside the SAME block — the
+  earlier five were numbers the reviewer never re-derived from a list beside
+  them, this one is a list the reviewer never re-derived from its own
+  instructions four lines below. The standing checklist
+  (`docs/agents/planner_reviewer_prompt.md`) sends the reviewer to the block's
+  bytes, to the code it points at, to the file it writes into and to the tests
+  that guard that file; it does not yet send the reviewer to the block's own
+  other clause. No on-disk fix is possible — the block is committed verbatim by
+  design and R11's verdict stands as PASS. Registered so the class stays
+  countable rather than forgotten. OPEN.
+
+- R-0332 — Low — `_same_question` guards the filters but not the ledger, so the
+  one thing it exists to prevent can still happen. `cost_report.py` refuses a
+  pair whose `since` or `job_id` disagree, on the stated ground that publishing
+  the breakdown of one period beside the total of another silently answers a
+  question nobody asked. Two reports drawn from DIFFERENT LEDGERS with
+  identical filters pass that check unexamined, and the result is the same
+  defect in a better disguise: a share table from one project rendered under
+  another project's total, with no filter mismatch anywhere to betray it. Both
+  dataclasses already carry `ledger_path` and `ledger_exists`, so the evidence
+  needed to catch it was in hand and simply not read. It is Low because no
+  caller exists yet — nothing outside the tests renders a report until T003
+  wires the CLI — and that is also precisely why it should close before that
+  caller is written rather than after. Reviewer-authoring defect: the guard was
+  authored in the R11 block, so this is the R11 slice's own gap, found at its
+  own gate. Fixed in R12, which opens that module for the goldens anyway. OPEN.
