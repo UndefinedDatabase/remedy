@@ -264,6 +264,42 @@ def test_stripped_blank_context_line_lands_instead_of_falling_back(
     assert (repo / "c.py").read_text() == "a\n\nB\n"
 
 
+def test_two_file_answer_whose_first_file_continues_past_its_hunk_lands(
+    tmp_path, monkeypatch
+):
+    """R-0317: a blank line between two file sections is no longer eaten.
+
+    Before the R-0317 fix this EXACT input returned mode `full_fallback`: the
+    first hunk declares `@@ -1,3 +1,3 @@` over a body that spends only two old
+    and two new lines, so the separator blank still fell inside the declared
+    budget, was rewritten to " " and rode into `split_diff_by_path` as a
+    trailing context line of app.py — which the applicator then compared against
+    `more = 3` and rejected. The applicator is unchanged; the normaliser now
+    classifies that blank by what FOLLOWS it.
+    """
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    (repo / "app.py").write_text("import os\nvalue = 1\nmore = 3\n")
+    (repo / "util.py").write_text("helper = 1\n")
+
+    job, intent_id = _make_approved_job(tmp_path, monkeypatch)
+    response = DiffRepairResponse(
+        diff=(
+            "--- a/app.py\n+++ b/app.py\n@@ -1,3 +1,3 @@\n import os\n-value = 1\n"
+            "+value = 2\n\n--- a/util.py\n+++ b/util.py\n@@ -1,1 +1,1 @@\n"
+            "-helper = 1\n+helper = 2\n"
+        ),
+        files=("app.py", "util.py"),
+    )
+
+    result = apply_diff_repair(response, repo, job=job, intent_id=intent_id)
+
+    assert result.mode == DIFF_REPAIR_MODE_DIFF
+    assert result.applied is True
+    assert (repo / "app.py").read_text() == "import os\nvalue = 2\nmore = 3\n"
+    assert (repo / "util.py").read_text() == "helper = 2\n"
+
+
 def test_job_fences_are_derived_when_the_caller_passes_none(tmp_path, monkeypatch):
     """No `job_fences` argument means the JOB's fences, not the default spec.
 

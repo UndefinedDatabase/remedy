@@ -279,21 +279,12 @@ class TestNormalizeDiffBlankContext:
     def test_blank_line_between_two_file_sections_is_untouched(self):
         """A separator between file sections is not hunk body, so it keeps no space.
 
-        The first section's header is written to MATCH its body (`-1,2 +1,2`),
-        and that is what makes the separator provably out of budget. Reusing the
-        shared DIFF_ONE_FILE constant here would NOT prove the property: it
-        declares `-1,3 +1,3` over a body that spends only two old and two new
-        lines, so at the separator the hunk still has one of each left and the
-        blank IS converted. Measured at the R14 gate, not assumed.
+        R-0317: the shared DIFF_ONE_FILE constant declares `@@ -1,3 +1,3 @@`
+        over a body that spends only two old and two new lines, so it is exactly
+        the over-declared shape whose leftover budget used to convert the
+        separator into a context line, and asserting identity on it is the
+        regression pin.
         """
-        first = (
-            "--- a/src/app.py\n"
-            "+++ b/src/app.py\n"
-            "@@ -1,2 +1,2 @@\n"
-            " import os\n"
-            "-value = 1\n"
-            "+value = 2\n"
-        )
         second = (
             "--- a/src/util.py\n"
             "+++ b/src/util.py\n"
@@ -301,8 +292,15 @@ class TestNormalizeDiffBlankContext:
             "-helper = 1\n"
             "+helper = 2\n"
         )
-        between = first + "\n" + second
+        between = DIFF_ONE_FILE + "\n" + second
         assert normalize_diff_blank_context(between) == between
+
+    def test_blank_with_unspent_budget_at_end_of_input_stays_blank(self):
+        # The header still has one old and one new line left at the final "",
+        # but nothing follows it, so nothing identifies it as body: the safe
+        # reading leaves it alone rather than guessing a context line (R-0317).
+        trailing = "@@ -1,3 +1,3 @@\n a\n-b\n+B\n\n"
+        assert normalize_diff_blank_context(trailing) == trailing
 
     def test_blank_after_the_hunk_budget_is_spent_stays_blank(self):
         # The counters reach zero at "+B", so the "" that follows is the text
