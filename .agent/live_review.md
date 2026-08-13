@@ -205,6 +205,22 @@ Done: R-0326 — RESOLVED at the R7 gate. Verified against the RENDERED docstrin
   87 passed` and the same five test ids the handback names, and the worktree
   was removed and pruned with `git worktree list` left showing one line. OPEN.
 
-Landed: R-0329 — `_MANIFEST_KEY_TYPES` now types every manifest key, so a
-wrongly typed value is skipped exactly like a missing one and can never be
-summed as a measured zero (commit fa0a39bb).
+Done: R-0329 — RESOLVED at the R10 gate. Verified against the code and a live probe, not the report: `_MANIFEST_KEY_TYPES` now names the type each of the five manifest keys must ALREADY be, `_MANIFEST_KEYS` is derived from it so the key order still has one spelling, and `_call_segment_row` skips a dict whose value is of the wrong type by the same rule that skips a missing key — bool excluded from int explicitly. The reviewer re-ran the round's own probe class: reverting the guard to the presence-only check makes `test_a_wrongly_typed_manifest_value_is_skipped_like_a_missing_key` fail and nothing else, so the test genuinely catches the regression rather than passing alongside it. The R10 round as a whole is PASS: gates (a) through (i) were re-run by the reviewer and every value matched the handback — cmp exit 0 with sha256 93a5a6347496a811cb9887d64f9d2312c42824537df592cd1ad6a846fc5f8731 over both copies, `wc -lc` 322 20573, the live-review counts 1/10/3/1, the seven token_ledger counts 4/4/1/1/1/4/3, ruff `All checks passed!` and the import exit 0, `99 passed` and `41 passed` (140 in one run), canary `42 passed`, `wc -l .agent/plan.md` 41, 29 changed paths with no `.remedy-wt/**` among them, and 0/0 against origin. Both declared deviations are accepted: the C3 fixture swap keeps the bad bytes on disk while sparing a shared helper, and the C4 placement puts the two dataclasses where this module already keeps every result type, which is better than the block ordered. `git status --porcelain` is NOT empty — it carries `?? .agent/STOP`, the operator signal that ended the session — and that is the one gate value the round could not meet, correctly reported rather than routed around.
+
+- R-0330 — Low — `query_segment_shares` promises more than it delivers in the
+  first line of its own docstring. It says "READ-ONLY, never raises", flat,
+  while `query_cost` — the function it is modelled on, twenty lines above it in
+  the same module — scopes the identical claim precisely: "READ-ONLY, and never
+  raises on absence". The narrower wording is the true one. Both functions
+  resolve their target through `_resolve_ledger_path`, which raises
+  `ValueError("a ledger target needs either project_id or path")` when given
+  neither `project_id` nor `path`. Measured by the reviewer at the R10 gate:
+  calling each with no arguments raises that exact `ValueError` from both, so
+  the two docstrings describe the same behaviour and only one of them describes
+  it correctly. The behaviour is right and no caller is misled today, which is
+  why this is Low and not a defect of the round: what is wrong is a promise a
+  reader can check and find false, in a module whose entire style is that a
+  claim is measured before it is written. Fix: scope the sentence the way
+  `query_cost` already scopes it — "never raises on absence" — and change
+  nothing else. It belongs to R11, which opens this region for the renderer
+  anyway. OPEN.
