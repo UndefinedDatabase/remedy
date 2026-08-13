@@ -342,6 +342,71 @@ class TestSegmentManifest:
         assert "composed=plan_composed," in source
         assert "composed=replan_composed," in source
 
+    def test_the_builder_composition_traces_a_real_segment_manifest(self):
+        """F115 D1 behaviour: a composed builder prompt traces with real rows.
+
+        DECLARED DEVIATION from the F115 R2 block, gate (e1), which asks that
+        `segment_manifest_chars` equal the SUM of the rows' `chars`. It cannot:
+        `build_trace_entry` sets it to `len(composed_prompt.text)`
+        (`prompt_trace.py:157-158`) and `compose_prompt_segments` joins segments
+        with the two-character `PROMPT_SEGMENT_DELIMITER`, so a composed text of
+        N segments is exactly 2*(N-1) characters longer than the sum of its
+        segments. The gate's equality is unreachable for any multi-segment
+        prompt, so the true accounting identity is pinned here instead.
+        """
+        from packages.orchestration.prompt_segments import PROMPT_SEGMENT_DELIMITER
+        from packages.orchestration.pingpong_loop import compose_builder_prompt
+
+        composed = compose_builder_prompt(
+            "implement feature X",
+            "job context",
+            round_number=1,
+            task_body="detailed task body",
+            scope_contract="scope contract text",
+        )
+        entry = build_trace_entry(
+            prompt_text=composed.text,
+            role="builder",
+            composed_prompt=composed,
+        )
+        assert entry.segment_manifest != []
+        assert [row["name"] for row in entry.segment_manifest] == [
+            "builder_system",
+            "builder_scope_contract",
+            "builder_context",
+            "builder_task",
+            "builder_task_body",
+            "builder_directive",
+        ]
+        for row in entry.segment_manifest:
+            assert set(row) == {"name", "rank", "sha256", "chars", "tokens_estimated"}
+            assert len(row["sha256"]) == 64
+            assert row["chars"] > 0
+        rows = entry.segment_manifest
+        boundaries = len(rows) - 1
+        assert entry.segment_manifest_chars == len(composed.text)
+        assert entry.segment_manifest_chars == sum(
+            int(row["chars"]) for row in rows
+        ) + boundaries * len(PROMPT_SEGMENT_DELIMITER)
+
+    def test_the_builder_call_site_hands_its_composition_down(self):
+        """F115 D1 wiring guard: an unwired builder trace entry fails HERE.
+
+        The behaviour test above passes even when this call site is unwired,
+        because it never touches `pingpong_loop` — which is why this guard
+        exists. Same `inspect.getsource` pattern as the CLI guards above.
+        """
+        import packages.orchestration.pingpong_loop as pingpong_loop
+
+        source = inspect.getsource(pingpong_loop)
+        assert source.count("builder_composed = compose_builder_prompt(") == 1
+        assert "builder_prompt = builder_composed.text" in source
+        site = source.split("result.prompt_traces.append(build_trace_entry(")[1]
+        site = site.split("))")[0]
+        assert 'role="builder",' in site
+        assert "prompt_text=builder_prompt," in site
+        assert "composed_prompt=builder_composed," in site
+
 
 # ---------------------------------------------------------------------------
 # Step 5088: next_approve_command unit tests
