@@ -270,3 +270,34 @@ class TestPlannerTracedBeforeCall:
         with _patch_planner(_NoRawPlanner()), pytest.raises(SystemExit):
             _run(job.id)
         assert _plan_traces(tmp_path, job.id) == [], "no provider call -> no trace"
+
+
+class TestPlannerTraceCarriesItsSegmentManifest:
+    """F115 wiring guard: a planner trace with an empty manifest fails HERE."""
+
+    def test_every_plan_trace_names_the_segments_it_sent(self, tmp_path, monkeypatch):
+        from packages.orchestration.prompt_segments import SegmentStabilityRank
+
+        job = _make_job(tmp_path, monkeypatch)
+        planner = _FakePlanner(["bad", VALID_PLAN])
+        with _patch_planner(planner):
+            _run(job.id)
+        traces = _plan_traces(tmp_path, job.id)
+        assert len(traces) == 2
+        for trace in traces:
+            assert trace["segment_manifest"], "planner trace carries no manifest"
+            first = trace["segment_manifest"][0]
+            assert first["name"] == "planner_job_prompt"
+            assert first["rank"] == int(SegmentStabilityRank.TASK)
+            # The schema tail sits outside the registry (DECISION F105 D9): the
+            # manifest covers a strict prefix of the prompt actually sent.
+            assert 0 < trace["segment_manifest_chars"] < trace["prompt_chars"]
+
+    def test_the_cli_hands_the_planner_composition_down(self):
+        import inspect
+
+        import apps.cli.commands.job as job_cmd
+
+        source = inspect.getsource(job_cmd)
+        assert "on_prompt_composed=_plan_compositions.append" in source
+        assert "composed_prompt=_plan_compositions[-1]" in source
