@@ -86,3 +86,19 @@ Done: R-0321 — RESOLVED at the R4 gate. Verified against the disk, not the rep
   No fix is possible on disk: the block is committed verbatim by design and
   R4's verdict already stands as PASS. It is registered so the pattern is
   countable rather than forgotten. OPEN.
+
+- R-0324 — Low — reviewer spec arithmetic, self-registered, caught before the
+  round it would have broken. DECISION F115 D2 (R5) fixed the planner segment
+  ranks as "the job prompt at TASK rank, the recalled memory section at
+  JOB_CONTEXT rank". Composition sorts by rank ASCENDING
+  (`compose_prompt_segments`, `prompt_segments.py:182-188`) and JOB_CONTEXT is 3
+  against TASK's 4, so that assignment composes the MEMORY SECTION FIRST, while
+  the code it must reproduce concatenates the other way round —
+  `prompt = f"{prompt}\n\n{memory_section}"`, `llm_planner.py:107-109`. D2's own
+  byte-identity gate, the one it calls the round's first gate, was therefore
+  unmeetable by construction — reading the rank names as semantic labels rather
+  than as the sort key they are is what produced the slip. Corrected before
+  emission as DECISION F115 D3, by checklist item 8
+  (`docs/agents/planner_reviewer_prompt.md`) — compute a gate's expected value
+  from the code that PRODUCES it. Fourth of the reviewer-arithmetic class after
+  R-0282, R-0321 and R-0323, and the first caught before a worker paid. OPEN.
