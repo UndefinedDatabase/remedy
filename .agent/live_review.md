@@ -28,3 +28,17 @@ integration gate → closure.
   `builder_bridge.py`. Recording it here keeps it findable after
   `.agent/candidates.md` is emptied, which is the whole point of the
   carry-forward rule. OPEN.
+
+- R-0321 — Low — `.agent/f115_inventory.md` says "only four of the eight
+  `build_trace_entry` call sites pass `composed_prompt`". The count of
+  non-test call sites is SEVEN, not eight: `intake.py:135`,
+  `flight_plan.py:181`, `orchestrator_loop.py:920`, `mission_compiler.py:280`,
+  `pingpong_loop.py:2824`, `pingpong_loop.py:3010` and
+  `apps/cli/commands/job.py:236`. The inventory's own enumeration names four
+  that pass and three that do not, which is seven, so the number contradicts
+  the list directly above it. Every individual citation is correct and the
+  round's conclusion is unaffected — this is an arithmetic slip in prose, not
+  a bad reading of the source, and it is registered rather than waved through
+  because a wrong total in an inventory is exactly the kind of number a later
+  round quotes without re-counting. Fix: change "eight" to "seven" in that
+  sentence and nothing else. OPEN.
