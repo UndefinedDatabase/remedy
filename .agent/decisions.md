@@ -5313,3 +5313,37 @@ removal at the `run_mission` call site — which was never removed, so reversing
 this decision is a change, not a revert. Any such attempt must first answer the
 safe-point path this decision names, because that path is what made D10 unsafe
 independently of whether its invariant existed.
+
+## DECISION F077 D12 (2026-08-14) — the trip leads `mission show`, not `mission report`
+
+CONTEXT. The feature file's T003 reads "the manual CLI + report surfacing (a
+paused-by-watchdog mission's report leads with the trip) + tests", and the
+obvious reading is `remedy mission report`. The R13 inventory measured that
+surface and it is not what the name suggests: `mission.report`'s handler is
+`_cmd_mission_report` in `apps/cli/commands/worker_facade_cmd.py`, its catalog
+entry takes a RUN id rather than a mission id, and its renderer
+`build_mission_morning_report` fills a `MissionMorningReport` from a
+`DogfoodRun` without ever importing `mission_state`, calling `load_mission` or
+reading a ledger. Its `mission_status` field is a false friend — the dogfood
+contract's verdict, never one of the four `MISSION_STATUS_*` constants — so it
+can never read `paused`. There is no insertion point there for a trip.
+
+CHOSEN. The paused-by-watchdog trip leads `remedy mission show`, the
+mission-facing surface that already loads the Mission, and `remedy mission
+watchdog` prints the full evidence triple on demand. `mission report` is left
+exactly as it is. R14 builds the watchdog command and the resume verb; R15
+adds the lead block to `_cmd_mission_show` and its tests. The feature file is
+NOT amended: its sentence says "a mission's report", not "the `mission report`
+command", and `mission show` is that report for a mission.
+
+ALTERNATIVES CONSIDERED. Giving `_cmd_mission_report` the resolve-or-facade
+branch that `_cmd_mission_run` already carries would satisfy the literal
+reading, but it puts mission-facing code in the worker facade and turns two
+green exact-set guards red in the same commit (inventory Q6). Leading the
+run-loop summary instead reaches only whoever runs the loop, never the human
+who asks about the mission afterwards, which is the case the pause exists for.
+Dropping the report surface entirely would leave T003's own sentence unmet.
+
+HOW TO REVERSE. Delete the lead block from `_cmd_mission_show` and its tests;
+nothing else depends on it. The `mission watchdog` command is independent of
+this decision and survives its reversal.

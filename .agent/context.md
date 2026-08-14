@@ -25,8 +25,14 @@ F077 D11, which withdraws D10 unimplemented and resolves R-0388 as a
 misdiagnosis). R12 repaired the one test that had encoded the imagined
 invariant, so `tests/orchestration/test_orchestrator_loop.py` is `196 passed`
 and the branch is green. R13 then inventoried T003's surface read-only and
-touched no product file. Open findings after R13: TWENTY-THREE, next free id
-R-0393.
+touched no product file. R14 built the first half of T003 and widened the
+in-scope set to `watchdog.evaluate_mission` — the read-only twin
+`watchdog_pass` now routes through — plus the two mission verbs
+`mission watchdog` (read-only) and `mission resume` (D4-scoped to the status),
+and with them `apps/cli/command_catalog.py`, `apps/cli/commands/mission_cmd.py`
+and `tests/cli/test_mission_cmd.py`. `apps/cli/commands/worker_facade_cmd.py`
+stays OUT: two exact-set guards live there (inventory Q6). Open findings after
+R14: TWENTY-THREE, next free id R-0393.
 
 Out: repair logic, class-expectation anomaly detection and loop policy — the
 F077 feature file's Do-not-touch list. The watchdog never modifies plans, jobs
@@ -74,6 +80,9 @@ misdiagnosis and R-0390, decide DECISION F077 D11 and repair the one red test �
 no production file touched (its own verdict lands in R13) → R13 record the R12
 PASS, register R-0392 and INVENTORY T003 read-only — the mission-verb wiring,
 the side-effect-free evaluator, the dedup's real home, the report surface, the
-guards and the paused-mission pass → R14 build T003 against that inventory: the
-manual `mission watchdog` CLI, `mission resume` and the report surface → R15
-integration gate then closure.
+guards and the paused-mission pass → R14 record the R13 PASS, decide DECISION
+F077 D12 and build the first half of T003 against the inventory: the read-only
+`watchdog.evaluate_mission`, the manual `mission watchdog` CLI and the
+`mission resume` verb, report surface deferred → R15 record the R14 verdict and
+build that report surface — the trip lead in `_cmd_mission_show` under D12 →
+R16 integration gate then closure.
