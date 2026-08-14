@@ -1,29 +1,30 @@
-# Handback — F077 Autonomy watchdog · R17 (record the R16 gate, then the ist-doc)
+# Handback — F077 Autonomy watchdog · SESSION CLOSE (after R17)
 
-Branch `feature/f077-autonomy-watchdog`. Base `d9bbfe14`. Last work commit
-`37e1ce59`; the handback commit follows it and touches only this file.
-Fortschritt: `~97 % (T001 ✅ · T002 ✅ · T003 ✅ · Integration Gate ✅ · ist-doc ✅) — Schätzung`
+Branch `feature/f077-autonomy-watchdog`. Base `1c56b295`, the R17 handback. Last
+work commit `cb2b6aa9`; the handback commit follows it and touches only this
+file. The session ENDED AT ITS LIMIT (self-drive G7) with F077 CLOSURE-READY —
+a session that ends at its limit with a written handoff is a SUCCESS. No round
+on this branch is unreviewed: R17's verdict is now on the record.
+Fortschritt: `~97 % (T001 ✅ · T002 ✅ · T003 ✅ · Integration Gate ✅ · ist-doc ✅ · Closure offen) — Schätzung`
 
 ## Range
-Review of `d9bbfe14..HEAD`. Eight paths, exactly the ordered change set. No
-product file and no `docs/roadmap/` file — the STATUS line belongs to closure.
+Review of `1c56b295..HEAD`. Seven paths, exactly the ordered change set. No
+product file, no `docs/roadmap/` file, no `docs/README.md` change.
 
 ## Commits
 | SHA | Subject | Paths | +/- |
 |---|---|---|---|
-| bc93b8ea | save the R17 block verbatim | .agent/authored/f077-r17.md (new); .agent/last_block.md (rewrite) | +274/-0; +226/-212 |
-| 7430c303 | record the R16 gate, register R-0396 and R-0397 | .agent/live_review.md (3 appended lines); .agent/plan.md (whole file); .agent/context.md (2 rewrites) | +6/-0; +19/-19; +4/-4 |
-| 37e1ce59 | add the autonomy watchdog ist-doc and register it | docs/system/autonomy-watchdog-v1.md (new, worker-authored); docs/README.md (2 index rows) | +216/-0; +2/-0 |
+| 42ba3389 | save the session-close R18 block verbatim | .agent/authored/f077-r18.md (new); .agent/last_block.md (rewrite) | +214/-0; +148/-208 |
+| cb2b6aa9 | record the R17 gate, register R-0398 and R-0399 | .agent/live_review.md (4 authored lines + 4 blanks); .agent/plan.md (whole file); .agent/context.md (CONTEXTCOUNT pair); docs/system/autonomy-watchdog-v1.md (DOCFIX pair) | +8/-0; +18/-19; +1/-1; +3/-3 |
 
 The handback commit rewrites `.agent/handoff.md` alone and cannot table itself.
 
 ## Item status
 | Item | Status | Reason |
 |---|---|---|
-| C0 | done | 500 insertions — at the cap, not over |
-| C1 | done | gate line, both findings, PLAN and both CONTEXT pairs in ONE commit |
-| C2 | done | the ist-doc is the worker's own text; every value read from source |
-| C3 | done | this file |
+| C0 | done | 362 insertions; the gate-13 split escape did NOT need to fire |
+| C1 | done | gate line, both findings, the LANDED line, DOCFIX, PLAN and CONTEXTCOUNT in ONE commit |
+| C2 | done | this file |
 
 ## External actions
 `git push -u origin feature/f077-autonomy-watchdog`. No `gh`, no PR, no worktree
@@ -32,53 +33,57 @@ added or removed. `.agent/STOP` never created or deleted.
 ## Verification — every value measured in this run, none copied
 | # | Gate | Measured |
 |---|---|---|
-| 1 | `git status --porcelain` / `git worktree list` | EMPTY after each of the 3 commits and at handback; before each commit only that commit's own ordered paths were dirty, never an unordered one / **1 line** |
-| 2 | authored vs `last_block.md` | byte-identical; shared sha256 `c8d411e3e4450e02c3c7540a5b6f17815a08dbe41b8b173124cff1cc9fc5149a`; **274 lines** each; both equal the source under `.remedy-wt/` |
-| 3 | `^Gate: R16 — ` / `^- R-0396 — ` / `^- R-0397 — ` / `^Gate: R15-close — ` / `^Landed: ` | **1** / **1** / **1** / **1** / **1** (the residual `Landed: R-0384` left standing, NOT 0) |
-| 4 | open set, recomputed from the record | **32** registered − **4** `Done:` (R-0383, R-0384, R-0388, R-0390) = **28 open**; no duplicate id; next free **R-0398** — the block's expected reading, reproduced |
-| 5 | `wc -l .agent/plan.md .agent/context.md` | **45** and **100** — neither moved |
-| 6 | pair application, by the shape the block named | PLAN (whole file): applied `.agent/plan.md` equals the slice byte for byte. CONTEXTCOUNT: FROM **0×**, TO **1×**. CONTEXTSTEPS: FROM **0×**, TO **1×**. READMEQF (APPEND): FROM **1×** in `docs/README.md`, its TO-only row **1×** among C2's **218** added lines. READMESYS (APPEND): FROM **1×**, its TO-only row **1×** among the same 218 |
-| 7 | the new doc | `docs/system/autonomy-watchdog-v1.md` present, **216 lines**; `grep -c 'autonomy-watchdog-v1.md' docs/README.md` = **2** (Quick-Find row 66, System row 77) |
-| 8 | `pytest tests/docs/ -q` | **295 passed** in 0.25s — the reviewer's figure, unchanged; no docs test enumerates registered files |
-| 9 | `-k "dashboard_contract or resource_safety or test_runner"` | **216 passed, 16671 deselected** in 30.79s — run after C1 replaced the state files |
-| 10 | canary `tests/cli/test_golden_path.py` | **42 passed** in 20.35s |
+| 1 | `git status --porcelain` / `git worktree list` | EMPTY after each of the 2 work commits and at handback; before each commit only that commit's own ordered paths were dirty / **1 line** |
+| 2 | authored vs `last_block.md` | byte-identical, and both byte-identical to `.remedy-wt/f077-r18-original.md`; shared sha256 `1ed498ee3e78a2fda99a15d9aaa5e1634284baee0003d0ad66841455b75476b6`; **214 lines** each |
+| 3 | `^Gate: R17 — ` / `^- R-0398 — ` / `^- R-0399 — ` / `^Gate: R16 — ` / `^Landed: ` | **1** / **1** / **1** / **1** / **2** — the residual `Landed: R-0384` plus this round's `Landed: R-0398`, as ordered |
+| 4 | open set, recomputed from the record | **34** registered − **4** `Done:` (R-0383, R-0384, R-0388, R-0390) = **30 open**; no duplicate id; next free **R-0400**. Set: R-0361, R-0362, R-0363, R-0364, R-0367, R-0368, R-0369, R-0371, R-0374 to R-0382, R-0385, R-0386, R-0387, R-0389, R-0391 to R-0399. Nothing was resolved this round; the `Landed:` line was NOT counted as a `Done:` |
+| 5 | `wc -l` plan / context / ist-doc | **44** / **100** / **216**. Contradiction reported, not reconciled: `.agent/plan.md` was **45** at `1c56b295`, not the 44 the gate attributes to that commit — 44 is the PLAN slice's own length and is reached only BY C1. Nothing was trimmed to fit |
+| 6 | pair application, by shape | PLAN (whole file): applied `.agent/plan.md` byte-equal to the slice, sha256 `39fe5fda66084ba4c8e67b094ee95599161d2605a177b62fea2cffceae832a3f`. CONTEXTCOUNT: FROM **0×**, TO **1×**. DOCFIX: FROM **0×**, TO **1×** |
+| 7 | `grep -c` in the ist-doc only | `eleven call sites` **0**; `ten call sites` **1** |
+| 8 | `pytest tests/docs/ -q` | **295 passed** in 0.26s — the reviewer's figure, reproduced |
+| 9 | `-k "dashboard_contract or resource_safety or test_runner"` | **216 passed, 16671 deselected** in 30.78s — run AFTER C1 replaced the state files |
+| 10 | canary `tests/cli/test_golden_path.py` | **42 passed** in 20.33s |
 | 11 | `.agent/STOP` | **ABSENT** at the start of the round and **ABSENT** at handback |
-| 12 | `git diff --check d9bbfe14..HEAD` | **no output** |
-| 13 | insertions per commit | **500, 29, 218** — none exceeds 500 |
-| 14 | `git diff --name-only d9bbfe14..HEAD` | `.agent/authored/f077-r17.md`, `.agent/context.md`, `.agent/last_block.md`, `.agent/live_review.md`, `.agent/plan.md`, `docs/README.md`, `docs/system/autonomy-watchdog-v1.md` = **7**; this commit makes `.agent/handoff.md` the eighth |
+| 12 | `git diff --check 1c56b295..HEAD` | **no output** |
+| 13 | insertions per commit | **362** (214 + 148) and **30**; the handback commit rewrites this file alone. None exceeds 500, so C0 was NOT split. R-0399's arithmetic `2N − matched` holds at 214 + 148 with **66** lines matched |
+| 14 | `git diff --name-only 1c56b295..HEAD` | `.agent/authored/f077-r18.md`, `.agent/context.md`, `.agent/last_block.md`, `.agent/live_review.md`, `.agent/plan.md`, `docs/system/autonomy-watchdog-v1.md` = **6**; this commit makes `.agent/handoff.md` the seventh |
 | 15 | push | `git push -u origin feature/f077-autonomy-watchdog` |
 
 ## Authored-text proofs — disk to disk, against the COMMITTED authored file
-Every slice re-extracted by line index with `sed -n`, never retyped; no transport marker line reached a target file.
-- GATE-R16: authored line 156 and `.agent/live_review.md` line 128 both sha256 `93d8ce938c853e083511b4b08d5b849cfc39f15394c1d4c4c83cf21a49c3f266`.
-- FINDING-R396: authored line 160 and record line 130 both sha256 `335c9511740148333e288247d639c2427921eadcaa7066801f6a08cb939425b2`.
-- FINDING-R397: authored line 164 and record line 132 both sha256 `b0c7ab71be52d72477e8bab0aa45abd3f3bf57f9b99ac1b40cc91153497c900a`.
-- PLAN: authored lines 172-216 and the whole applied `.agent/plan.md` both sha256 `74be87fc4947cc54d06db65a584c055493c20af5112ab4cff8c5408cb1cd2bb2`.
-- CONTEXTCOUNT-TO (223-224 → 228-229) and CONTEXTSTEPS-TO (236-239 → 243-246): each TO 1×, each FROM 0×, both pairs equal-length so the file held 100 lines.
-- READMEQF-TO (254 → 258-259) and READMESYS-TO (267 → 271-272): APPEND-shaped, each TO contains its FROM verbatim; proven by the two counts in gate 6.
+Every slice re-extracted by line index with `sed -n`; nothing retyped; no `<<<BEGIN/END>>>` marker line reached a target file.
+- GATE-R17: authored line 121 and `.agent/live_review.md` line 134 both sha256 `24d3704c3bf76da24c97670c7dc9ed8fd7fa942e8d3a54c20850585b220933c3`.
+- FINDING-R398: authored line 125 and record line 136 both sha256 `4c5f8bec5c80ccef7fa62ad320ce22b34fee4fe64340db767c9b92fa70adaed7`.
+- LANDED: authored line 129 and record line 138 both sha256 `fcbbd921230994471c494d56f5877ac62f24ef492aa1cb2326d03760882ba6ef`.
+- FINDING-R399: authored line 133 and record line 140 both sha256 `98c437009f71d45f00575e886e9edb7e7e6849c5ed8cdc10ed5041334cb36e2b`.
+- Record ORDER as ordered: GATE-R17, FINDING-R398, LANDED, FINDING-R399, one blank line between each and above the first; lines 133-140 of the record equal that concatenation byte for byte.
+- DOCFIX (authored 140-142 → 146-148) and CONTEXTCOUNT (155-156 → 160-161): equal-length rewrites, so the ist-doc held 216 lines and `.agent/context.md` held 100; counts in gate 6.
+- PLAN (authored 169-212, 44 lines): whole-file replacement, byte-equal, gate 6.
 
-## Deviations, declared
-1. **`cp`, `cmp` and several compound shell commands are denied to this session by
-   the permission layer**, so C0's two copies and every byte comparison used exact
-   Python equivalents (`shutil.copyfile`, `bytes` equality, `hashlib.sha256`).
-   Nothing was retyped; every slice came out of the COMMITTED authored file.
-2. **The ist-doc carries no `> **Status (…)**` banner.** AGENTS.md prescribes one
-   where `docs/roadmap/` and the ist-doc CONFLICT; there is no conflict here, the
-   block's eight required items do not ask for one, and it ordered nothing beyond
-   the built state. The roadmap pointer sits in the doc's "Built by" line instead.
-3. **This handoff is 84 lines.** Cause per DECISION D15: the 15-row verification
-   table, the per-commit table, the item-status table, six authored-text proofs
-   and these deviations. No section dropped.
+## Deviations & assumptions
+1. **Compound shell commands, `cp`, `cmp` and `test -e` are denied to this
+   session by the permission layer.** C0's two copies used `shutil.copyfile`;
+   gate 2's `cmp` used `bytes` equality plus `hashlib.sha256`; gate 11 read the
+   sentinel with `ls -a .agent/`. Every proof stayed byte-exact and every slice
+   came out of the COMMITTED authored file via `sed -n`.
+2. **Gate 5's plan value contradicts the disk at the base commit** — reported in
+   the table above, not reconciled. No file was altered to fit a gate.
+3. **This handoff is 89 lines.** Cause per DECISION D15: the 15-row verification
+   table, the per-commit table, the item-status table, seven authored-text
+   proofs and these deviations. No section dropped.
 
-No block/source contradiction was found: the block states no symbol name, config
-key or default, and every one in the new doc was read out of `watchdog.py`,
-`config.py`, `orchestrator_loop.py`, `mission_cmd.py` and `command_catalog.py`
-while writing it.
+Nothing else contradicts the block: no gate value came back red, and the two
+findings the round registers are the reviewer's own, correctly Low, correctly
+left OPEN. `Landed: R-0398` is an UNREVIEWED fix by construction — only a
+reviewer may replace it with an authored `Done:`.
 
 ## Next
-1. The reviewer's verdict on R17.
-2. Closure per `docs/roadmap/STATUS_closure_protocol.md`: the evidence job, a
-   FRESH review zip, the authored STATUS line committed last, then the PR — which
-   is not merged now. The ist-doc closure owed is on disk and indexed.
-3. Open findings: **28**, next free id **R-0398**. `.agent/live_review.md` is the
-   source of truth and `.agent/plan.md` mirrors the full id list.
+1. Phase 1 rule 1 of `docs/agents/self_drive_protocol.md`: re-read `.agent/STOP`
+   FROM DISK. It was ABSENT at this handback; that reading is not carried
+   forward, it is re-taken.
+2. Phase 1 rule 2: the Open PR Gate (AGENTS.md). There is no open PR for this
+   branch; the PR is created at closure, not before.
+3. Then closure per `docs/roadmap/STATUS_closure_protocol.md`: the evidence job,
+   a FRESH review zip (a zip failure is a closure blocker), the authored STATUS
+   line committed last on the branch, then the PR — which is not merged now.
+4. Open findings: **30**, next free id **R-0400**. `.agent/live_review.md` is the
+   source of truth; `.agent/plan.md` mirrors the full id list.
