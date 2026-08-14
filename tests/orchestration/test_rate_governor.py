@@ -8,6 +8,7 @@ as such in its wording table.
 """
 from __future__ import annotations
 
+import dataclasses
 import json
 from pathlib import Path
 
@@ -335,5 +336,5 @@ def test_to_json_keeps_a_missing_retry_hint_as_null():
 @pytest.mark.unit
 def test_signal_is_frozen():
     signal = RateLimitSignal(provider="claude", reason=RATE_LIMIT_REASON_OVERLOADED)
-    with pytest.raises(Exception):
+    with pytest.raises(dataclasses.FrozenInstanceError):
         signal.provider = "other"  # type: ignore[misc]
