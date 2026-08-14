@@ -16,10 +16,10 @@ the four `watchdog.*` threshold keys (`watchdog.no_progress_repeats`,
 round state and the one claimed STATUS line. Since R8 the module also carries
 T002's ACTION, `act_on_trips` — the pause, the deduped decision and the
 `watchdog_tripped` ledger entry — which is UNWIRED at this commit: the pause
-seam in `orchestrator_loop.py` is R9's, together with the four whole-ledger
+seam in `orchestrator_loop.py` is R10's, together with the four whole-ledger
 guards in `tests/orchestration/test_mission_e2e.py` that a new entry kind
-breaks (DECISION F077 D8). Open findings after R8: EIGHTEEN, next free id
-R-0386.
+breaks (DECISION F077 D8) and D7's watchdog docstring clause. Open findings
+after R9: NINETEEN, next free id R-0387.
 
 Out: repair logic, class-expectation anomaly detection and loop policy — the
 F077 feature file's Do-not-touch list. The watchdog never modifies plans, jobs
@@ -51,6 +51,8 @@ the R4 verdict, repair R-0383 and inventory T002 ✅ → R6 record the R5 verdic
 and register R-0384 ✅ → R7 record the R6 verdict, settle the eight T002
 questions as DECISIONS F077 D1-D8 and repair R-0384 ✅ → R8 record the R7
 verdict, register R-0385, resolve R-0384 and build T002's pause, deduped
-decision and ledger entry as an UNWIRED action → R9 wire it into the loop and
-pay the four e2e ledger guards → R10 T003 CLI, `mission resume` and report →
-R11 integration gate then closure.
+decision and ledger entry as an UNWIRED action ✅ → R9 record the R8 verdict,
+register R-0386 and close the session → R10 wire the action into
+`run_mission`, pay the four e2e ledger guards and write D7's docstring clause
+→ R11 T003 CLI, `mission resume` and report → R12 integration gate then
+closure.
