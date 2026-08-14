@@ -1,45 +1,45 @@
-# Handback — F077 Autonomy watchdog · R11 (HALTED at C3 by the block's stop clause)
+# Handback — F077 Autonomy watchdog · R12 (the repair; no production file touched)
 
-Branch `feature/f077-autonomy-watchdog`. Base `63ce2a6d`.
-Fortschritt: `~72 % (T001 ✅ · T002 Aktion ✅ · Verdrahtung rot, Reparatur R11 · T003 offen) — Schätzung`
+Branch `feature/f077-autonomy-watchdog`. Base `28c50487`.
+Fortschritt: `~75 % (T001 ✅ · T002 ✅ verdrahtet und grün · T003 offen) — Schätzung`
 
 ## Range
-Review of `63ce2a6d..HEAD`.
+Review of `28c50487..HEAD`.
 
 ## Commits
 
-### e53c9129 chore(f077): save the R11 block verbatim
+### 1836a366 chore(f077): save the R12 block verbatim
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f077-r11.md | +270/-0 | C0a, byte for byte |
+| .agent/authored/f077-r12.md | +253/-0 | C0a, byte for byte; all 5 rules 66 chars wide |
 
-### e5d1c338 chore(f077): mirror the R11 block into last_block
+### 9d87535b chore(f077): mirror the R12 block into last_block
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/last_block.md | +211/-234 | C0b, `cp` disk-to-disk |
+| .agent/last_block.md | +197/-214 | C0b, `cp` disk-to-disk |
 
-### 8b87ebb5 docs(f077): record the R10 verdict and register R-0387 to R-0390
+### 989a3597 docs(f077): record the R11 verdict, register R-0391 and resolve R-0388 and R-0390
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/live_review.md | +10/-0 | C1, four findings in id order then GATE-R10 |
+| .agent/live_review.md | +7/-1 | C1, FINDING-R391 → GATE-R11 → DONE-R388, then `Landed: R-0390` REPLACED by DONE-R390 |
 
-### cfd9562c docs(f077): record DECISION F077 D10 on the trip's iteration number
+### ed2a7248 docs(f077): record DECISION F077 D11 withdrawing D10 unimplemented
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/decisions.md | +36/-0 | C2, authored DECISION-D10 slice appended |
+| .agent/decisions.md | +39/-0 | C2, authored DECISION-D11 slice appended |
 
-### 79c6c223 chore(f077): mirror the halted R11 round into plan and context
+### 45b5033c test(f077): the ledger iteration is an attribution, not a unique key
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/plan.md | +27/-32 | C4, the exact blocker; 45 lines, under "<50" (R-0390) |
-| .agent/context.md | +19/-11 | C4, numbering NOT called repaired; measured 400-line block cap |
+| tests/orchestration/test_orchestrator_loop.py | +16/-4 | C3, pair LEDGER-TEST; the only test touched |
 
-### 2498233b docs(f077): mark R-0390 landed after the plan rewrite
+### 793d4cd5 chore(f077): mirror R12 into plan and context
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/live_review.md | +2/-0 | one `Landed:` line; no `Done:`, and none for R-0388 |
+| .agent/plan.md | +24/-25 | C4, 44 lines, under "<50" |
+| .agent/context.md | +13/-11 | C4, Scope + `## Steps`; ceiling line already correct — Deviation 4 |
 
-### (this commit) chore(f077): handback R11
+### (this commit) chore(f077): handback R12
 | Path | +/- | Reason |
 |---|---|---|
 | .agent/handoff.md | rewrite | C5; a handoff cannot table its own commit (R-0149) |
@@ -51,67 +51,84 @@ Review of `63ce2a6d..HEAD`.
 | C0b | done | |
 | C1 | done | |
 | C2 | done | |
-| C3 | skipped | the block's own stop clause fired — Deviation 1 |
-| C4 | deviated | records the HALT; "numbering repaired" would be false — Deviation 2 |
+| C3 | done | premise verified first; 1210 and 1253 both fire in one pass |
+| C4 | done | context.md ceiling line needed no edit — Deviation 4 |
 | C5 | done | this file |
 
 ## External actions
-`git worktree add .remedy-wt/f077-r11-probe HEAD --detach` → created at cfd9562c, probe run inside it,
-`git worktree remove --force` → removed; `git worktree list` back to exactly 1 line.
+No `git worktree` created: nothing destructive was needed this round.
 `git push -u origin feature/f077-autonomy-watchdog` run at handback. No `gh`, no PR.
 
 ## Verification
 1. `git status --porcelain` EMPTY. `git worktree list` 1 line.
-2. `cmp .agent/authored/f077-r11.md .agent/last_block.md` exit 0; shared sha256
-   `92804a8b3a8b2d2eb6bb2681b881ad5d02dbb86845feca979515a35aca39b2f4`; 270 lines.
-3. `^Gate: R10 — FAIL` 1 · `^## Steps` 1 · `^## DECISION F077 D10 ` 1 · each of R-0387/0388/0389/0390 1.
-4. Open set recomputed mechanically: 25 registered − 2 `Done:` (R-0383, R-0384) = **23 open**, no duplicate id:
-   R-0380, R-0381, R-0361, R-0362, R-0363, R-0364, R-0367, R-0368, R-0369, R-0371, R-0374, R-0375, R-0376,
-   R-0377, R-0378, R-0379, R-0382, R-0385, R-0386, R-0387, R-0388, R-0389, R-0390. R-0388 and R-0390 stay open.
-5. `import packages.orchestration.orchestrator_loop` exit 0; `import packages.orchestration.watchdog` exit 0.
-6. `test_orchestrator_loop.py -q`: base `1 failed, 195 passed`, HEAD `1 failed, 195 passed` — same assertion,
-   `assert [1, 2, 3, 3] == [1, 2, 3]`. No code changed this round, so the colour could not move.
-7. `test_watchdog.py -q`: 28 passed at base, 28 passed at HEAD; `grep -c "def test_"` 28.
-8. `test_mission_e2e.py -q`: 24 passed at base and at HEAD. Unmoved.
-9. `ruff check` over the files this round CHANGED (three `.md`): `warning: No Python files found under the given
-   path(s)` / `All checks passed!`. The Python targets were not touched; ruff on them shows one PRE-EXISTING
-   `I001` (unsorted imports) in `tests/orchestration/test_orchestrator_loop.py`, unchanged at `63ce2a6d`.
-10. Canary `tests/cli/test_golden_path.py -q` 42 passed.
-11. `-k "dashboard_contract or resource_safety or test_runner"` 216 passed, 16648 deselected; and `tests/docs/ -q`
-    295 passed — every reader of the two state files was run against the draft before it committed (R-0162).
-12. `integrity check --json`: passed=True, fail_count=0, check_count=5, high_blockers_open=pass.
-13. `wc -l .agent/plan.md` 45. Under 50.
-14. Insertions per commit: 270 · 211 · 10 · 36 · 46 · 2. None over 500.
-15. `test -e .agent/STOP` ABSENT before the round, ABSENT at handback.
-17. Trailing-whitespace scan over all six touched files → none; all newline-terminated.
+2. `cmp .agent/authored/f077-r12.md .agent/last_block.md` exit 0; shared sha256
+   `277e9c46ccb833f15573c43046a83d595438ede815d206ce365222b9cafe7249`; 253 lines.
+3. `^Gate: R11 — ` **1** · `^- R-0391 — ` **1** · `^Done: R-0388 — ` **1** · `^Done: R-0390 — ` **1** ·
+   `^## Steps` **1** · `^## DECISION F077 D11 ` **1** · `^Landed: ` **1, not 0** — Deviation 1.
+4. Open set recomputed mechanically: 26 registered − 4 `Done:` (R-0383, R-0384, R-0388, R-0390) = **22 open**,
+   no duplicate id: R-0380, R-0381, R-0361, R-0362, R-0363, R-0364, R-0367, R-0368, R-0369, R-0371, R-0374,
+   R-0375, R-0376, R-0377, R-0378, R-0379, R-0382, R-0385, R-0386, R-0387, R-0389, R-0391. Next free: R-0392.
+5. `grep -c '_record(iteration' packages/orchestration/orchestrator_loop.py` → **11**, of which line 1036 is the
+   `def _record(...)` definition, so **10 calls** — Deviation 2. The two firing in ONE pass: **1210** (the
+   executed move, unconditional after `execute_move`) and **1253** (the R-0190 blocked-completion escalation),
+   reached whenever `outcome.terminal` is false and the streak hits `BLOCKED_COMPLETIONS_BEFORE_ESCALATION`.
+   Premise CONFIRMED, so C3 was applied.
+6. `grep -c 'test_one_entry_per_iteration_numbered_from_one' tests/ -r` → **1**, run BEFORE C3. No other reference.
+7. `test_orchestrator_loop.py -q`: base `1 failed, 195 passed` → HEAD **`196 passed`** — Deviation 3 on the base run.
+8. `test_watchdog.py` + `test_mission_e2e.py -q` in one invocation: **52 passed**. Unmoved from base.
+9. `ruff check` over the seven changed files: `I001 [*] Import block is un-sorted or un-formatted` at
+   `tests/orchestration/test_orchestrator_loop.py:37`, `Found 1 error.` PRE-EXISTING and NOT fixed — the identical
+   `I001` at line 37 reproduces on `28c50487:tests/orchestration/test_orchestrator_loop.py`. The six `.md` files
+   yield no Python findings.
+10. Canary `tests/cli/test_golden_path.py -q` **42 passed**.
+11. `-k "dashboard_contract or resource_safety or test_runner"` **216 passed, 16648 deselected** — run AFTER
+    drafting both state files and BEFORE C4 committed; all five readers of `.agent/plan.md`/`.agent/context.md`
+    were located by grep first and every assertion validated against the draft (R-0162).
+12. `integrity check --json`: passed=**True**, fail_count=**0**, check_count=**5**, high_blockers_open=**pass**.
+13. `wc -l .agent/plan.md` **44**. Under 50.
+14. Insertions per commit: 253 · 197 · 7 · 39 · 16 · 37. None over 500.
+15. `test -e .agent/STOP` **ABSENT** before the round, **ABSENT** at handback.
+16. `git push -u origin feature/f077-autonomy-watchdog` — run. No `gh`, no PR.
+17. Trailing-whitespace scan over all eight touched files → none; all newline-terminated.
 
 ## Authored-text proofs
-`cmp` exit 0 (gate 2); no transport this round, so the shared sha256 is the whole proof. All five appended slices
-were re-extracted from the COMMITTED block file, never retyped; each occurs exactly 1x in its target and zero
-marker lines (`<<<BEGIN`, `<<<END`, `FROM:`, `TO:`) reached any file. PAIR LOOP-CALL and PAIR WD-DOCSTRING were
-NOT applied — C3 halted, so neither FROM/TO proof exists this round.
+`cmp` exit 0 (gate 2); there is no transport, so the shared sha256 is the whole proof. All five slices were
+re-extracted programmatically from the COMMITTED block file, never retyped. Pair LEDGER-TEST is a REWRITE: FROM
+counted **1x** before and **0x** after, TO **0x** before and **1x** after. Zero marker lines (`<<<BEGIN`,
+`<<<END`, `FROM:`, `TO:`) reached any target file.
 
 ## Deviations & assumptions
-1. **C3 NOT APPLIED, on the block's own instruction**: "if you find a path where the loop DOES record after a
-   trip, stop and report it, because then this whole repair is wrong." There is one, and it lands on exactly the
-   number D10 takes. `run_mission`'s safe point (`stop_requested`, loop lines 1057-1069) runs BEFORE the
-   top-of-loop status check that returns `mission_not_active`, and it `_record`s — so a stop requested in the
-   window after a trip writes an entry numbered `base + step - 1`, precisely `next_iteration_index` at trip time.
-   Measured, not argued: with pair LOOP-CALL applied in a disposable worktree (import path proved to resolve to
-   that worktree), a 4-iteration scripted run whose third dispatch requests a stop leaves `[1, 2, 3, 4, 4]`,
-   kinds `dispatch_job ×3, watchdog_tripped, (none)`. The same probe at base leaves `[1, 2, 3, 3, 4]`. Both
-   numberings duplicate; D10 moves the duplicate rather than removing it. Two further `_record` calls also sit
-   AFTER `watchdog_pass` in the SAME iteration — the R-0190 blocked-completion escalation and the
-   boundary-failure branch — both at the observed iteration number.
-2. C4 deviates in wording: the block orders `.agent/context.md` to describe the ledger numbering "as repaired",
-   which would be false at this HEAD, so both state files record the halt instead. R-0390's own fix landed
-   anyway — plan.md is 45 lines with `## Goal`, `## Current Step`, `## Next Steps` and `## Risks` all intact —
-   and carries the round's single `Landed:` line. No `Landed:` line was written for R-0388.
-3. **Deviations, declared** (DECISION D15): this handback is 117 lines against the ≤100 a >5-commit round allows.
+1. **Gate 3 `^Landed: ` measured 1, not the ordered 0.** The residual is `Landed: R-0384` at live_review line 78,
+   pre-existing since R6 and already resolved by `Done: R-0384` at line 84 — i.e. the live instance of OPEN
+   finding R-0380 ("a resolved finding keeps its `Landed:` line beside its `Done:` line"). It is not in this
+   round's ordered change set; deleting it would be unordered scope and would also remove R-0380's own evidence.
+   Reported unadjusted, not fixed.
+2. **Gate 5 arithmetic.** The block, R-0391, GATE-R11 and DECISION D11 all say "eleven call sites". The
+   mechanical `grep -c` is 11, but one match is the definition at line 1036, so there are ten CALLS. The claim
+   the reasoning rests on — two `_record` calls firing in one pass at one `iteration` — is unaffected and
+   verified at 1210/1253. The authored slices were applied verbatim as ordered; this note records the drift.
+3. **Gate 7's base run** was executed at `9d87535b` (after C0a/C0b, before C3) rather than in a worktree checkout
+   of `28c50487`, because `git diff 28c50487 HEAD -- . ':(exclude).agent'` is EMPTY: every non-`.agent` byte was
+   identical, which is a stronger identity proof than a worktree probe carrying the R-0337 import-path hazard.
+4. **C4, `.agent/context.md`:** the ordered block-ceiling correction per R-0389 was ALREADY on disk verbatim
+   (R11 applied it) — "the reviewer MEASURES its block mechanically … under 400 lines (DECISION F105 D5) … with
+   240 the preferred target, not a ceiling nobody counted". No edit was made there; only the Scope paragraph and
+   the `## Steps` line changed, as ordered.
+5. **Deviations, declared** (DECISION D15): this handback is 134 lines against the ≤100 a >5-commit round allows.
    Cause is mandated content — seven per-commit tables, the item-status table, the seventeen-gate verification
-   list, the authored-text proofs, and Deviation 1, which is the measurement the next round cannot start without.
-   No section was dropped to meet the cap.
+   list, the authored-text proofs, four substantive deviations and the six-part Next section this block requires
+   for a session-closing round. No section was dropped to meet the cap.
 
 ## Next
-The reviewer re-decides DECISION F077 D10's numbering against the safe-point path — the trip's number is not
-collision-free — and re-orders the repair; `test_one_entry_per_iteration_numbered_from_one` stays red until it does.
+1. **Phase 1 rule 1 of `docs/agents/self_drive_protocol.md` first**: re-read `.agent/STOP` FROM DISK before
+   anything else, and specifically before rule 2's Open PR Gate. It was ABSENT at this handback; that is a
+   measurement of the past, not a promise about the next session.
+2. **Then rule 2, the Open PR Gate.** There is NO open PR for `feature/f077-autonomy-watchdog`; one is created at
+   closure, not before. Do not open one to satisfy the gate.
+3. **The next reviewed round is R13 — T003**: the manual CLI, including the still-missing `mission resume` verb
+   (DECISION F077 D4), and the report surface.
+4. **R14** is the integration gate, then closure.
+5. **22 open findings**, next free id **R-0392**: R-0380, R-0381, R-0361, R-0362, R-0363, R-0364, R-0367, R-0368,
+   R-0369, R-0371, R-0374, R-0375, R-0376, R-0377, R-0378, R-0379, R-0382, R-0385, R-0386, R-0387, R-0389, R-0391.
+6. **R12's own verdict is not on disk, by construction** — `docs/agents/planner_reviewer_prompt.md` §4.13: the
+   last round of a session cannot record the gate on itself. R13's first commit writes it.
