@@ -10,6 +10,11 @@ grep -c '^FAILED': 8
 grep -c '^ERROR':  8   (all eight are the string 'ERROR: React UI not built.' in captured stderr, not pytest collection errors)
 Raw log:        .remedy-wt/.cache/gate_r16/base_run.txt (gitignored, not committed; see full_log_provenance.txt)
 
+Transcript normalisation: two lines of the 40 below, the blank source-listing
+lines pytest emits inside a traceback, arrived as four spaces and are written
+here as empty lines, so that `git diff --check` stays silent. Nothing else was
+touched; the raw log's sha256 in full_log_provenance.txt is the audit anchor.
+
 --- last 40 lines of the raw log ---
                     open_browser=False,
                     info_file=info_file,
@@ -17,10 +22,10 @@ Raw log:        .remedy-wt/.cache/gate_r16/base_run.txt (gitignored, not committ
                 )
             except (SystemExit, KeyboardInterrupt):
                 pass
-    
+
         t = threading.Thread(target=run, daemon=True)
         t.start()
-    
+
         # Wait for info file
         for _ in range(50):
             if Path(info_file).exists():
