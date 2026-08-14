@@ -17,6 +17,7 @@ import pytest
 from packages.orchestration.pingpong_loop import (
     PingPongResult,
     _call_with_retry,
+    export_pingpong_json,
     run_pingpong,
 )
 from packages.orchestration.pingpong_provider import (
@@ -776,3 +777,61 @@ class TestRateGovernorSeam:
         # (d) nothing slept for real: the seconds were spent on the INJECTED clock.
         assert clock.sleeps
         assert sum(clock.sleeps) > 0.0
+
+
+# ---------------------------------------------------------------------------
+# F057 T003 — the report surfaces built on the recorded waits
+#
+# These live HERE with the rest of the F057 seam tests even though the code under
+# test is the REPORT rather than the seam: this file already owns this feature's
+# tests against pingpong_loop.py, and the five files that read the export stay an
+# untouched regression signal that way.
+# ---------------------------------------------------------------------------
+
+
+def _paced_builder_result(clock: SeamFakeClock) -> PingPongResult:
+    """A run that really was paced by the governor, through the only writer of the waits."""
+    governor = _seam_governor(clock)
+    result = PingPongResult()
+    calls = [0]
+
+    def call_fn():
+        calls[0] += 1
+        if calls[0] == 1:
+            return BuilderOutput(error=BARE_RATE_LIMIT_ERROR, provider="acme")
+        return BuilderOutput(summary="ok", provider="acme")
+
+    _call_with_retry(
+        call_fn,
+        result=result,
+        role="builder",
+        provider="acme",
+        rate_governor=governor,
+    )
+    assert result.rate_limit_waits  # the fixture is worthless if nothing waited
+    return result
+
+
+class TestRateLimitWaitExportSurface:
+    """The exported run JSON carries the waits that ``_record_rate_limit_wait`` recorded."""
+
+    @pytest.mark.unit
+    @patch("packages.orchestration.pingpong_loop._time.sleep")
+    def test_paced_run_exports_its_rate_limit_waits(self, mock_sleep):
+        result = _paced_builder_result(SeamFakeClock())
+
+        exported = export_pingpong_json(result)
+
+        assert len(exported["rate_limit_waits"]) == len(result.rate_limit_waits)
+        for wait in exported["rate_limit_waits"]:
+            assert wait["provider"] == "acme"
+            assert wait["reason"] == RATE_LIMIT_REASON_RATE_LIMITED
+            assert wait["waited_s"] > 0.0
+
+    @pytest.mark.unit
+    def test_unpaced_run_exports_an_empty_list_not_a_missing_key(self):
+        """The key is unconditional: absence is a contract a reader would have to branch on."""
+        exported = export_pingpong_json(PingPongResult())
+
+        assert "rate_limit_waits" in exported
+        assert exported["rate_limit_waits"] == []

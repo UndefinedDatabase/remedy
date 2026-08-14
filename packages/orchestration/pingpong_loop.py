@@ -4417,6 +4417,12 @@ def export_pingpong_json(result: PingPongResult) -> dict[str, Any]:
         "timeout_s_effective_reviewer": result.timeout_s_effective_reviewer,
         "retries_used": result.retries_used,
         "retry_reasons": result.retry_reasons,
+        # F057: every provider rate-limit wait this run paid for, beside the retries
+        # because a wait is the third thing that can happen to a call. ALWAYS present,
+        # empty list when the run was never paced — a reader that must branch on a
+        # missing key is a worse contract than one that reads an empty list. Copied,
+        # never aliased, so a mutation of the export cannot reach the run result.
+        "rate_limit_waits": list(result.rate_limit_waits),
         # F010: where this run's call-level post-mortems went (RUN-RELATIVE — never a
         # workstation path), and, if one could not be written, why. A recording failure
         # that only lived in memory was a recording failure nobody would ever see.
