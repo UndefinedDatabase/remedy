@@ -27,22 +27,54 @@ the shape ``read_ledger`` returns. No JSONL fixture file, no disk, no conftest.
 """
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from typing import Any
 
+import pytest
+
+from packages.core.models import Job, RunState, Task
+from packages.orchestration.escalation import (
+    answer_task_decision,
+    open_task_decisions,
+)
+from packages.orchestration.mission_state import (
+    MISSION_ROLE_INITIAL,
+    MISSION_STATUS_ACHIEVED,
+    MISSION_STATUS_ACTIVE,
+    MISSION_STATUS_PAUSED,
+    create_mission,
+    link_job_to_mission,
+    load_mission,
+    set_mission_status,
+)
+from packages.orchestration.orchestrator_loop import (
+    ledger_path,
+    read_ledger,
+    render_ledger,
+)
 from packages.orchestration.orchestrator_move_schema import (
     MOVE_DECLARE_MILESTONE_DONE,
     MOVE_DISPATCH_JOB,
 )
+from packages.orchestration.storage import load_job, save_job
 from packages.orchestration.watchdog import (
+    DECISION_OPTION_ABORT,
+    DECISION_OPTION_RESUME,
+    MOVE_WATCHDOG_TRIPPED,
+    OUTCOME_WATCHDOG_TRIPPED,
     TRIP_BURN_ANOMALY,
     TRIP_GOAL_DRIFT,
     TRIP_NO_PROGRESS,
+    Trip,
     WatchdogThresholds,
+    act_on_trips,
+    dispatched_entries,
     evaluate_burn_anomaly,
     evaluate_goal_drift,
     evaluate_ledger,
     evaluate_no_progress,
     measured_tokens,
+    watchdog_decision_marker,
 )
 
 
@@ -266,3 +298,249 @@ def test_every_evaluator_tolerates_a_torn_entry_without_raising():
     assert trip.kind == TRIP_NO_PROGRESS
     assert trip.since_iteration == 4
     assert trip.numbers == {"repeats": 3, "threshold": 3, "milestone_id": "M1"}
+
+
+# ── the action: pause, decide, record (F077 T002) ──────────────────────────
+#
+# These tests DO touch disk, unlike everything above: the action's whole
+# subject is what it writes. Every one of them runs under its own ``tmp_path``
+# and passes ``root=`` explicitly, and ``REMEDY_DATA_DIR`` points at the same
+# directory because ``load_job`` — the one call the action makes that takes no
+# root — resolves the job store through it.
+#
+# Nothing here asserts anything about ``orchestrator_loop.run_mission``:
+# ``act_on_trips`` has no call site in the loop at this commit (DECISION F077
+# D8), so a green file below proves the action in isolation and nothing else.
+
+ACTION_PROJECT = "p-f077"
+T0 = datetime(2026, 8, 14, 9, 0, 0, tzinfo=timezone.utc)
+
+
+def _trip(kind: str = TRIP_NO_PROGRESS, *, what: str = "") -> Trip:
+    """One trip of the given class, carrying the evidence triple T001 builds."""
+    return Trip(
+        kind=kind,
+        what=what or f"{kind} tripped on the evidence below",
+        since_iteration=4,
+        numbers={"threshold": 3, "milestone_id": "M001"},
+    )
+
+
+def _job_with_tasks(task_count: int = 2) -> Job:
+    """The escalation suite's job shape: a planned job with attachable tasks."""
+    return Job(
+        name="watchdog-job",
+        user_prompt="build the watched thing",
+        tasks=[Task(description=f"task {i}",
+                    inputs={"task_type": "documentation"})
+               for i in range(task_count)],
+        state=RunState.PLANNED,
+    )
+
+
+@pytest.fixture()
+def data_root(tmp_path, monkeypatch):
+    """One root for the mission record, its evidence and the job store alike."""
+    monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+    return tmp_path
+
+
+@pytest.fixture()
+def mission(data_root):
+    """A persisted ACTIVE mission with no job linked to it yet."""
+    created = create_mission(ACTION_PROJECT, "Ship the watched thing",
+                             root=data_root)
+    return load_mission(ACTION_PROJECT, created.id, data_root)
+
+
+@pytest.fixture()
+def linked_job(mission, data_root):
+    """The mission's one linked, persisted job — what a decision attaches to."""
+    job = _job_with_tasks()
+    save_job(job)
+    link_job_to_mission(ACTION_PROJECT, mission.id, str(job.id),
+                        MISSION_ROLE_INITIAL, root=data_root)
+    return job
+
+
+def _status(mission_id: str, root: Any) -> str:
+    return load_mission(ACTION_PROJECT, mission_id, root).status
+
+
+def _watchdog_entries(mission_id: str, root: Any) -> list[dict[str, Any]]:
+    return [e for e in read_ledger(ACTION_PROJECT, mission_id, root)
+            if (e.get("move") or {}).get("kind") == MOVE_WATCHDOG_TRIPPED]
+
+
+def test_an_empty_trip_list_writes_nothing_at_all(mission, linked_job,
+                                                  data_root):
+    actions = act_on_trips(ACTION_PROJECT, mission.id, [], root=data_root)
+
+    assert actions == []
+    assert _status(mission.id, data_root) == MISSION_STATUS_ACTIVE
+    assert not ledger_path(ACTION_PROJECT, mission.id, data_root).is_file()
+    assert open_task_decisions(load_job(linked_job.id)) == []
+
+
+def test_one_trip_pauses_an_active_mission(mission, linked_job, data_root):
+    act_on_trips(ACTION_PROJECT, mission.id, [_trip()], root=data_root)
+
+    assert _status(mission.id, data_root) == MISSION_STATUS_PAUSED
+
+
+def test_an_achieved_mission_is_not_overwritten_by_a_trip(mission, linked_job,
+                                                          data_root):
+    set_mission_status(ACTION_PROJECT, mission.id, MISSION_STATUS_ACHIEVED,
+                       data_root)
+
+    act_on_trips(ACTION_PROJECT, mission.id, [_trip()], root=data_root)
+
+    # Terminal is terminal: the watchdog reports, it does not reopen.
+    assert _status(mission.id, data_root) == MISSION_STATUS_ACHIEVED
+    assert len(_watchdog_entries(mission.id, data_root)) == 1
+
+
+def test_the_ledger_entry_carries_the_trip_payload_unchanged(mission,
+                                                             linked_job,
+                                                             data_root):
+    trip = _trip(TRIP_BURN_ANOMALY)
+
+    act_on_trips(ACTION_PROJECT, mission.id, [trip], root=data_root)
+
+    entries = _watchdog_entries(mission.id, data_root)
+    assert len(entries) == 1
+    entry = entries[0]
+    assert entry["move"]["kind"] == MOVE_WATCHDOG_TRIPPED
+    assert entry["move"]["payload"] == trip.to_json()
+    assert entry["outcome"]["status"] == OUTCOME_WATCHDOG_TRIPPED
+    assert entry["outcome"]["detail"] == trip.what
+    assert entry["context_digest"] == ""
+    assert entry["cost"] == {"calls": 0, "usage": None,
+                             "usage_source": "unmeasured"}
+
+
+def test_the_rendered_ledger_shows_the_evidence_triple(mission, linked_job,
+                                                       data_root):
+    trip = _trip(TRIP_GOAL_DRIFT, what="dispatched a job for milestone M-ghost")
+
+    act_on_trips(ACTION_PROJECT, mission.id, [trip], root=data_root)
+
+    text = render_ledger(read_ledger(ACTION_PROJECT, mission.id, data_root))
+    assert MOVE_WATCHDOG_TRIPPED in text
+    assert f"kind: {TRIP_GOAL_DRIFT}" in text
+    assert f"what: {trip.what}" in text
+    assert f"since_iteration: {trip.since_iteration}" in text
+    assert "numbers: " in text
+    assert "milestone_id" in text
+
+
+def test_a_second_trip_of_the_same_class_is_suppressed(mission, linked_job,
+                                                       data_root):
+    first = act_on_trips(ACTION_PROJECT, mission.id, [_trip()], root=data_root,
+                         now=T0)
+    second = act_on_trips(ACTION_PROJECT, mission.id, [_trip()], root=data_root,
+                          now=T0)
+
+    assert first[0].suppressed is False
+    assert first[0].decision_id
+    assert second[0].suppressed is True
+    assert second[0].decision_id == ""
+    assert watchdog_decision_marker(TRIP_NO_PROGRESS) in second[0].note
+    # One record, not two — dedup is the point of the marker.
+    records = open_task_decisions(load_job(linked_job.id))
+    assert len(records) == 1
+    assert records[0]["options"] == [DECISION_OPTION_RESUME,
+                                     DECISION_OPTION_ABORT]
+    assert records[0]["safe_default"] == ""
+    # Both calls still recorded themselves.
+    assert len(_watchdog_entries(mission.id, data_root)) == 2
+
+
+def test_two_trip_classes_in_one_call_raise_two_decisions(mission, linked_job,
+                                                          data_root):
+    trips = [_trip(TRIP_NO_PROGRESS), _trip(TRIP_BURN_ANOMALY)]
+
+    actions = act_on_trips(ACTION_PROJECT, mission.id, trips, root=data_root,
+                           now=T0)
+
+    assert [a.suppressed for a in actions] == [False, False]
+    questions = [r["question"]
+                 for r in open_task_decisions(load_job(linked_job.id))]
+    assert len(questions) == 2
+    assert questions[0].startswith(watchdog_decision_marker(TRIP_NO_PROGRESS))
+    assert questions[1].startswith(watchdog_decision_marker(TRIP_BURN_ANOMALY))
+
+
+def test_answering_the_decision_lifts_the_suppression(mission, linked_job,
+                                                      data_root):
+    first = act_on_trips(ACTION_PROJECT, mission.id, [_trip()], root=data_root,
+                         now=T0)
+    assert act_on_trips(ACTION_PROJECT, mission.id, [_trip()],
+                        root=data_root, now=T0)[0].suppressed is True
+
+    job = load_job(linked_job.id)
+    assert answer_task_decision(job, first[0].decision_id,
+                                answer=DECISION_OPTION_RESUME, now=T0)
+    save_job(job)
+
+    third = act_on_trips(ACTION_PROJECT, mission.id, [_trip()], root=data_root,
+                         now=T0)
+
+    assert third[0].suppressed is False
+    assert third[0].decision_id
+    assert third[0].decision_id != first[0].decision_id
+
+
+def test_a_mission_with_no_linked_job_still_pauses_and_still_records(mission,
+                                                                    data_root):
+    actions = act_on_trips(ACTION_PROJECT, mission.id, [_trip()],
+                           root=data_root)
+
+    assert len(actions) == 1
+    assert actions[0].decision_id == ""
+    assert actions[0].suppressed is False
+    assert "no job is linked" in actions[0].note
+    assert _status(mission.id, data_root) == MISSION_STATUS_PAUSED
+    entries = _watchdog_entries(mission.id, data_root)
+    assert len(entries) == 1
+    # The gap is reported in the entry a human reads, not swallowed.
+    assert "no job is linked" in entries[0]["outcome"]["detail"]
+
+
+def test_a_watchdog_entry_is_inert_to_a_later_watchdog_pass(mission,
+                                                            linked_job,
+                                                            data_root):
+    act_on_trips(ACTION_PROJECT, mission.id, [_trip()], root=data_root)
+    written = _watchdog_entries(mission.id, data_root)[0]
+
+    assert dispatched_entries([written]) == []
+    assert measured_tokens(written) is None
+
+    without = [_entry(4), _entry(5)]
+    with_entry = [_entry(4), written, _entry(5)]
+    verdict_without = evaluate_no_progress(without, repeats=2)
+    verdict_with = evaluate_no_progress(with_entry, repeats=2)
+
+    assert verdict_without is not None
+    assert verdict_with == verdict_without
+
+
+def test_a_caller_supplied_iteration_is_the_number_the_entry_carries(
+        mission, linked_job, data_root):
+    act_on_trips(ACTION_PROJECT, mission.id,
+                 [_trip(TRIP_NO_PROGRESS), _trip(TRIP_BURN_ANOMALY)],
+                 root=data_root, iteration=17)
+
+    numbers = [e["iteration"] for e in _watchdog_entries(mission.id, data_root)]
+    # Simultaneous trips genuinely happened in ONE iteration (DECISION D6).
+    assert numbers == [17, 17]
+
+
+def test_without_an_iteration_the_entries_number_themselves_consecutively(
+        mission, linked_job, data_root):
+    act_on_trips(ACTION_PROJECT, mission.id,
+                 [_trip(TRIP_NO_PROGRESS), _trip(TRIP_BURN_ANOMALY)],
+                 root=data_root)
+
+    numbers = [e["iteration"] for e in _watchdog_entries(mission.id, data_root)]
+    assert numbers == [1, 2]
