@@ -4889,3 +4889,35 @@ the same routing DECISION F045 D8 used for the reviewer-conventions repair.
 HOW TO REVERSE. Delete this decision and read A2 literally. Doing so requires
 first resolving R-0361 and recovering R-0350, R-0354 and R-0358 on a paydown
 branch, because otherwise no feature can be claimed at all.
+
+## DECISION F057 D2 (2026-08-14) — the governor's acquire() contract: stop is read before cooldown, and every wait is evidence
+
+CONTEXT. T002 builds `ProviderRateGovernor.acquire()` in
+`packages/orchestration/rate_governor.py`. Three of its choices are not
+derivable from the feature file and would otherwise be re-litigated at T003,
+when the seam in `_call_with_retry` starts calling it.
+
+CHOSEN. (1) `acquire()` probes `stop_check` BEFORE it reads any cooldown, and
+again before every wait slice, so a stop request can never be delayed by a
+pacing decision. The feature file's acceptance criterion is "a stop request
+during a wait interrupts the wait immediately"; reading the cooldown first
+would satisfy the words while adding a slice of latency to every stop.
+(2) A wait that ends in a stop or in a deadline still records its
+`RateLimitWaitEvent`. Time was really spent, and evidence that omitted it would
+make a paced-then-stopped run look like a run that never waited.
+(3) `retry_after_s` is honoured verbatim when the provider sends one, and the
+exponential is used only in its absence — a provider that states its own
+recovery time knows better than a backoff curve, and `parse_retry_after_seconds`
+already rejects negatives and anything over `MAX_RETRY_AFTER_S`, so the verbatim
+path cannot be fed an absurd number.
+
+ALTERNATIVES CONSIDERED. Returning a bare bool from `acquire()`: rejected
+because "did not wait" and "was stopped mid-wait" are different facts to the
+caller and to the report line, and a bool erases the difference. Holding a lock
+across the wait so N acquirers queue fairly: rejected as v1 scope — the feature
+file says implement single-flight now, and a lock held across a wait serializes
+callers a later tier will want concurrent.
+
+HOW TO REVERSE. Delete this decision and change the three behaviours in
+`acquire()`; the tests named in the R4 block pin each one, so reversing means
+deleting those tests deliberately rather than discovering the change later.
