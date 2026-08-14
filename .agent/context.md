@@ -54,6 +54,7 @@ builder and the R-0407 token repair ✅ → R4 T001 the frozen order set and its
 version freeze ✅ → R5 record the R4 verdict, register R-0409 to R-0411 and
 DECISION F082 D3 ✅ → R6 record the R5 verdict, retire two superseded context
 regions and close T001 with the dry run ✅ → R7 T002 the append-only history,
-the trend and the regression rules ✅ → R8 record the R7 verdict, complete this
-sweep and pin the regression threshold → R9 T003 the stats bench CLI, model
-context and a fake-provider run → R10 the integration gate → R11 closure.
+the trend and the regression rules ✅ → R8 complete the context sweep and pin
+the regression threshold ✅ → R9 record the R8 verdict and retire the last
+stale claim → R10 T003 the stats bench CLI, model context and a fake-provider
+run → R11 the integration gate → R12 closure.
