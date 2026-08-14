@@ -1,59 +1,61 @@
-# Handoff — F057 R12 (integration gate)
+# Handoff — F057 R13 (R12 verdict + Built State)
 
 ## Range
-Review of 501e4bba..HEAD (branch feature/f057-rate-limit-scheduler).
+Review of 4b89c082..HEAD (branch feature/f057-rate-limit-scheduler).
 
 ## Commits
-### ffa46a7f chore(f057): save the R12 block verbatim and rewrite the plan
+### 9f78931e chore(f057): save the R13 block verbatim and rewrite the plan
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f057-r12.md | +210/-0 | R12 block saved verbatim, written once |
-| .agent/last_block.md | +164/-79 | `cp` of the block file, never retyped |
-| .agent/plan.md | +14/-15 | full replacement from the PLAN slice, round's FIRST commit |
+| .agent/authored/f057-r13.md | +215/-0 | R13 block written once, verbatim |
+| .agent/last_block.md | +167/-162 | `cp` of the block file, never retyped |
+| .agent/plan.md | +22/-19 | full replacement from the PLAN slice, round's FIRST commit |
 
-### e2ab0403 docs(f057): record the R11 verdict
+### 716f7fcb docs(f057): record R-0379 and the R12 integration-gate verdict
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/live_review.md | +2/-0 | append-only: one blank separator + the GATE-R11 line |
+| .agent/live_review.md | +4/-0 | append-only: blank + R-0379 line, blank + GATE-R12 line |
 
-### 31866e3b test(f057): land the R12 integration gate evidence
+### c04e84e2 docs(f057): add the Built State section to the feature file
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/gate_f057_r12/ | +233/-0 | 12 files: branch/base tails, metas, failed lists, both comm files, dist_hashes, provenance, worktree_cleanup, attribution |
+| docs/roadmap/features/T2_F057.md | +54/-0 | append-only: blank + the 53-line BUILTSTATE slice |
 
-### (this handoff commit) chore(f057): handback R12
+### (this handoff commit) chore(f057): handback R13
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/handoff.md | rewrite | R-0149 self-reference exception: a handoff cannot table its own commit, and R-0371 forbids it stating its own SHA |
+| .agent/handoff.md | rewrite | R-0149 self-reference exception; R-0371 forbids stating its own SHA |
 
 ## External actions
-- `git push -u origin feature/f057-rate-limit-scheduler` after ffa46a7f — ok
-- `git push` after e2ab0403 — ok; `git push` after 31866e3b — ok; one more after this commit
-- `git worktree add -b tmp/base-gate-f057-r12 .remedy-wt/base-gate-r12 21c8148e` — ok
-- `git worktree remove --force`, `git worktree prune`, `git branch -D tmp/base-gate-f057-r12` — ok, local branch only, never pushed
-- No PR, no merge, no force-push, no `remedy` CLI invocation this round.
+- `git push -u origin feature/f057-rate-limit-scheduler` after 9f78931e — ok
+- `git push` after 716f7fcb — ok; `git push` after c04e84e2 — ok; one more after this commit
+- No worktree add/remove, no PR, no merge, no force-push, no `remedy` CLI invocation this round.
 
-## Verification (13 ordered gates, real output)
-1. `git status --porcelain` → empty at round start; empty at 31866e3b (see note).
-2. `git worktree list` → 1 line at start; after cleanup `/home/decodeux/Repos/remedy  31866e3b [feature/f057-rate-limit-scheduler]`.
-3. `cmp .agent/authored/f057-r12.md .agent/last_block.md` → exit 0; both sha256 `4e1ea08bf1205699d19e966b0d5861f8543369c03507aca9919441553af1bfe9`, 210 lines each (cap 400).
-4. `wc -l .agent/plan.md` → 35, under the 50-line cap. `sed -n '170,204p'` over the COMMITTED block (`git show HEAD:...`) vs `.agent/plan.md` → cmp exit 0.
-5. `grep -c '^Gate: R11 — PASS'` → 1 (0 before the append). `grep -c '^## Steps'` → 1. Whole-file substring `## Steps` → 9, UNCHANGED from the reviewer's 9 at 501e4bba.
-6. `git show --numstat e2ab0403 -- .agent/live_review.md` → `2	0`; deletion column 0.
-7. BRANCH run `python3 -m pytest -n auto -q`: EXIT_CODE=0, WALL_SECONDS=128, `16847 passed, 19 skipped in 126.58s`. FAILED list: EMPTY (branch_failed.txt = 0 lines).
-8. BASE run at 21c8148e (`git merge-base main HEAD` confirmed 21c8148eec243d3ee2329d5dcf94e57c6aaeba49): EXIT_CODE=0, WALL_SECONDS=147, `16775 passed, 19 skipped in 146.44s`, FAILED list EMPTY. Four dist content hashes (primary before/after, base before/after) all `fb68a7293502c79b8ece61d154f5752100a16da1a08a481a7a4c1d79a5a503c0` — the PRIMARY hash did not change, so nothing wrote through. Four mtimes: base-wt src 08:14:17 / dist 08:14:30 before, src 08:14:17 / dist 08:15:42 after; primary src 2026-06-29 19:39:48 / dist 08:12:45 before and after. Detail in `.agent/gate_f057_r12/dist_hashes.txt`.
-9. `comm -13` → 0 lines; `comm -23` → 0 lines. Both committed empty.
-10. Attribution: no branch-only id and no base-only id exists, because BOTH runs produced zero FAILED lines. The serial-re-run classification has an empty domain; there is no BLOCKER. The base-only environment class was pre-empted by restoring dist/node_modules parity by CONTENT and touching the copied dist (F105 R49), not attributed after the fact. 0 ids in the flake class, below the 10 that would signal flake debt.
-11. Canary `python3 -m pytest tests/cli/test_golden_path.py -q` → `42 passed in 15.81s`, 0 failed — matches the 42-passed baseline.
-12. `git diff --name-only 501e4bba..HEAD` → exactly 16 paths: `.agent/authored/f057-r12.md`, `.agent/last_block.md`, `.agent/plan.md`, `.agent/live_review.md`, and the 12 files under `.agent/gate_f057_r12/`. No other path.
-13. `git diff --stat 501e4bba..HEAD -- packages/ apps/ tests/ docs/` → EMPTY (0 bytes of output).
+## Verification (14 ordered gates, real output)
+1. `git status --porcelain` → exit 0, EMPTY at round start; exit 0, EMPTY at c04e84e2 (see self-reference note).
+2. `git worktree list` → exit 0, exactly 1 line: `/home/decodeux/Repos/remedy  c04e84e2 [feature/f057-rate-limit-scheduler]`.
+3. `cmp .agent/authored/f057-r13.md .agent/last_block.md` → exit 0, no output. Shared sha256 `ef385dbedba5d324715bb0741bfb40c1ae73fb070c95320dc84cba7adf781f49`, 215 lines each, inside the 400-line cap. The two COMMITTED blobs are byte-equal as well.
+4. `wc -l .agent/plan.md` → 38, under the 50-line cap. The PLAN slice extracted from the COMMITTED block file (`git show HEAD:.agent/authored/f057-r13.md`, the lines between the PLAN markers) is byte-equal to `.agent/plan.md` → cmp exit 0.
+5. `.agent/live_review.md` LINE-ANCHORED: `^- R-0379 — ` → 1; `^Gate: R12 — PASS` → 1; `^## Steps` → 1. Whole-file SUBSTRING `## Steps` → 9, UNCHANGED from the reviewer's 9 at 4b89c082.
+6. `git show --numstat 716f7fcb -- .agent/live_review.md` → `4	0`. Deletion column 0.
+7. `grep -c '^## Built State' docs/roadmap/features/T2_F057.md` → 1 (baseline 0 at 4b89c082). The BUILTSTATE slice from the COMMITTED block file is byte-equal to the feature file's tail, cmp exit 0, separator exactly one blank line. `git show --numstat c04e84e2 -- docs/roadmap/features/T2_F057.md` → `54	0`; deletion column 0.
+8. Docs-round gate `python3 -m pytest tests/docs/ -q` → `295 passed in 0.23s`, 0 failed. Total UNCHANGED from the 295 baseline.
+9. Canary `python3 -m pytest tests/cli/test_golden_path.py -q` → `42 passed in 17.50s`, 0 failed. Matches the baseline.
+10. `python3 -m pytest tests/orchestration/test_provider_retry.py tests/orchestration/test_rate_governor.py -q` → `93 passed in 0.33s`, 0 failed. Matches the baseline; neither file was touched this round.
+11. `python3 -m apps.cli.grouped integrity check --json` → `"passed": true`, `"fail_count": 0`, `"check_count": 5`. Checks: handler_import pass (`handlers=334`), live_review_verdict pass, plan_consistency pass (`unchecked=0, context_complete=False`), relevant_untracked pass (`untracked=0, relevant=0`), high_blockers_open pass (`no open blocker/high findings`). Closure precondition 3 holds one round early.
+12. `git diff --name-only 4b89c082..HEAD` → exactly 5 paths: `.agent/authored/f057-r13.md`, `.agent/last_block.md`, `.agent/plan.md`, `.agent/live_review.md`, `docs/roadmap/features/T2_F057.md`. No other path.
+13. `git diff --stat 4b89c082..HEAD -- packages/ apps/ tests/` → EMPTY (0 bytes of output). No code and no test file changed.
+14. `git diff --name-only 4b89c082..HEAD -- docs/roadmap/STATUS.md` → EMPTY. The `[~]` did not move.
 
-Note on gates 1, 2 and 12: they were measured at HEAD 31866e3b, the last commit that exists while this file is being written. This commit cannot appear in them (R-0371). Re-run them at the new HEAD to close the loop.
+Self-reference note (R-0371): gates 1, 2, 12, 13 and 14 were measured at HEAD c04e84e2, the last commit that exists while this file is written; this commit cannot appear in them. Re-run them at the new HEAD to close the loop. No committed line this round states its own SHA.
 
 ## Authored-text proofs
-- `.agent/authored/f057-r12.md`: written once from the block, `cp` to `.agent/last_block.md`, `cmp` exit 0, shared sha256 `4e1ea08b…1bfe9`, 210 lines.
-- PLAN slice: extracted from the COMMITTED block file with `git show HEAD:.agent/authored/f057-r12.md | sed -n '170,204p'`, `cmp` against `.agent/plan.md` exit 0.
-- GATE-R11 slice: extracted with `git show HEAD:.agent/authored/f057-r12.md | sed -n '208p'` and appended; never retyped. `git diff -- .agent/live_review.md | grep -c '^+Done:'` → 0, so no worker-authored `Done:` paragraph.
+- `.agent/authored/f057-r13.md`: written ONCE from the block, `cp` to `.agent/last_block.md`, `cmp` exit 0, shared sha256 `ef385dbe…81f49`, 215 lines, no trailing whitespace on any line.
+- PLAN slice: extracted from the COMMITTED block file, byte-equal to `.agent/plan.md` (38 lines).
+- R-0379 slice: extracted from the COMMITTED block file, appended as ONE physical line (1550 bytes), sha256 prefix `787265b0a63fee2c`; present on the record byte for byte.
+- GATE-R12 slice: same extraction, ONE physical line (4004 bytes), sha256 prefix `5e4f3637ef3cbba9`; present on the record byte for byte.
+- BUILTSTATE slice: extracted from the COMMITTED block file, 53 lines, byte-equal to the feature file's tail.
+- No worker-authored `Done:` paragraph — the C1 diff adds no line beginning `Done:`.
 
 ## Item status
 | Item | Status | Reason |
@@ -64,10 +66,8 @@ Note on gates 1, 2 and 12: they were measured at HEAD 31866e3b, the last commit 
 | C3 | done | this commit |
 
 ## Deviations & assumptions
-- `git worktree remove --force` instead of the block's bare `git worktree remove`: the worktree held the untracked apps/ui/node_modules and apps/ui/dist parity copies, which plain remove refuses. Recorded in `worktree_cleanup.txt`.
-- The block states the PLAN slice "is 36 lines"; it is 35 (`sed -n '170,204p'`). The ordered gate — under 50 and byte-identical to plan.md — passes; the stated count is off by one and is reported, not silently absorbed.
-- PRIMARY `apps/ui/dist/index.html` mtime moved 08:04:39 → 08:12:45 during the BRANCH run (UI auto-build is not disabled there). Content hash unchanged; reported rather than smoothed over.
-- Deviations, declared (DECISION D15): this handoff is 73 lines, over the 60-line cap. Cause: the mandated content — four per-commit changed-files tables, thirteen gate transcripts including two full-suite runs with four hashes and four mtimes, the authored-text proofs and the item-status table. No section was dropped to fit.
+- No deviation from the block's instructions. No file under `packages/`, `apps/` or `tests/` was touched, and `docs/roadmap/STATUS.md` was not touched.
+- Deviations, declared (DECISION D15): this handoff is 73 lines, over the 60-line cap. Cause: the mandated content — four per-commit changed-files tables, fourteen gate transcripts including the five-check integrity breakdown, five authored-text proofs and the item-status table. No section was dropped to fit.
 
 ## Next
-Reviewer issues the R12 gate verdict. If PASS, R13 is closure per docs/roadmap/STATUS_closure_protocol.md. Open findings: 13 (R-0361, R-0362, R-0363, R-0364, R-0367, R-0368, R-0369, R-0371, R-0374, R-0375, R-0376, R-0377, R-0378).
+Reviewer issues the R13 verdict. R14 is CLOSURE per docs/roadmap/STATUS_closure_protocol.md: evidence job, FRESH review zip, the reviewer-authored STATUS line and the README capability sync in one final commit, then the PR — which is NOT merged in this session. Open findings: 14 (R-0361, R-0362, R-0363, R-0364, R-0367, R-0368, R-0369, R-0371, R-0374, R-0375, R-0376, R-0377, R-0378, R-0379).
