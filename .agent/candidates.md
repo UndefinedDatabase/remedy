@@ -7,6 +7,7 @@
 > candidate: description · source feature · date. Any entry present
 > at feature-claim time is a block condition.
 
-(empty — the F057 entry was registered as finding R-0380, and the R14 verdict's
-candidate on PR #199 as R-0381, both in `.agent/live_review.md` on the F077
-branch, 2026-08-14.)
+(empty — F077's closure raised no candidate. Every finding this feature
+produced was registered as an R-id in `.agent/live_review.md` in the round that
+found it, and the thirty-two still open are carried openly in the STATUS line's
+PASS_WITH_RISKS verdict and in the closure PR, 2026-08-14.)
