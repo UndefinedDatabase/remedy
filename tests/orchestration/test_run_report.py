@@ -12,6 +12,7 @@ import re
 
 import pytest
 
+from packages.orchestration import loop_run
 from packages.orchestration.run_report import (
     CIRCLING_ESCALATION,
     MODE_FINAL,
@@ -858,6 +859,40 @@ class TestRenderReportEntryPoint:
         """render_report may reach for the clock; the pure renderer may not."""
         report = render_report(_FakeJob(), MODE_INTERIM)
         assert report.splitlines()[0].startswith("> **INTERIM SNAPSHOT")
+
+
+class TestLoopProvenanceLine:
+    """F045 — a run that came from a loop says so, in its own report.
+
+    The report lives inside ``job_evidence_dir``, so this one line is what
+    makes the loop reference visible in the evidence area as well.
+    """
+
+    def test_a_loop_job_renders_the_loop_line_right_after_the_mission(self):
+        job = _FakeJob()
+        job.metadata[loop_run.LOOP_REF_METADATA_KEY] = "nightly-tidy"
+        lines = render_report(job).splitlines()
+        at = [i for i, line in enumerate(lines) if line == "- Loop: nightly-tidy"]
+        assert len(at) == 1, lines
+        assert at[0] == lines.index("- Mission: Do the thing") + 1, lines
+
+    def test_a_job_without_a_loop_renders_no_loop_line_anywhere(self):
+        """The negative pin the three goldens depend on — whole text, not a slice."""
+        job = _FakeJob()
+        assert loop_run.LOOP_REF_METADATA_KEY not in job.metadata
+        report = render_report(job)
+        assert [ln for ln in report.splitlines() if ln.startswith("- Loop:")] == []
+
+    def test_the_key_is_read_from_the_loop_run_constant_not_a_literal(self, monkeypatch):
+        """Renaming the writer's constant must move the reader with it."""
+        monkeypatch.setattr(loop_run, "LOOP_REF_METADATA_KEY", "renamed_loop_ref")
+        stale = _FakeJob()
+        stale.metadata["loop_ref"] = "stale-literal"
+        stale_lines = render_report(stale).splitlines()
+        assert [ln for ln in stale_lines if ln.startswith("- Loop:")] == []
+        renamed = _FakeJob()
+        renamed.metadata["renamed_loop_ref"] = "nightly-tidy"
+        assert "- Loop: nightly-tidy" in render_report(renamed).splitlines()
 
 
 # ---------------------------------------------------------------------------
