@@ -171,7 +171,7 @@ end the response with:
   always exists on disk, not only in the chat brief.
 
 - **Pre-emission block checklist (DECISION F105 D8, finding R-0250).** Run all
-  six checks mechanically, on the FINAL bytes, after the last edit, before any
+  ten checks mechanically, on the FINAL bytes, after the last edit, before any
   block leaves the reviewer. Each one has already cost this repository a round.
   1. **Size.** Count the block's lines. Over 400 (DECISION F105 D5) → split or
      cut BEFORE emitting. A worker must save the block verbatim, so an oversize
@@ -240,6 +240,23 @@ end the response with:
      gate has either fabricated the number or changed the code to suit it;
      both are worse outcomes than the declared deviation an honest worker is
      forced into, and the round pays for the reviewer's arithmetic either way.
+  9. **Citations re-measured against this branch's own edits (finding R-0353).**
+     Every `file:line` a block cites for a file the CURRENT feature branch has
+     already modified is re-grepped at emission, because this branch's own
+     earlier rounds moved the lines the reviewer read. Prefer citing the SYMBOL
+     plus its distinguishing text over a bare number: a symbol survives an edit
+     above it, a line number does not. Item 8 checks a gate's expected VALUE
+     against the code; this one checks that the block's POINTERS resolve at all
+     — a different failure, and one that halted two rounds of F045 before it
+     was written down.
+  10. **The open-finding set is recomputed, never carried forward.** Findings
+      R-0354 and R-0356. Derive the set mechanically from
+      `.agent/live_review.md` at emission — every `^- R-\d+ — ` paragraph minus
+      every `^Done: R-\d+ — ` line — and name each finding explicitly, never by
+      position. Naming them explicitly is NOT sufficient on its own: two
+      consecutive blocks did exactly that and were both still wrong, because
+      each took its set from the PREVIOUS block instead of from the record, and
+      a finding that drops out of the count stays dropped.
   Why this is on disk and not a habit: item 2 has recurred six times across
   F104 and F105, and R20 hit four of them in one block. A check that lives
   only in reviewer session memory is the A1 trap §0 names, and this list is the

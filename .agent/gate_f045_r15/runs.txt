@@ -1,0 +1,14 @@
+== branch run: python3 -m pytest -n auto -q  (cwd /home/decodeux/Repos/remedy, HEAD c84bd958) ==
+EXIT_CODE=1
+WALL_SECONDS=128
+5 failed, 16769 passed, 19 skipped in 126.83s (0:02:06)
+
+== base run 1: REMEDY_UI_NO_AUTO_BUILD=1 python3 -m pytest -n auto -q  (merge base) ==
+EXIT_CODE=1
+WALL_SECONDS=142
+11 failed, 16700 passed, 19 skipped in 141.32s (0:02:21)
+
+== base run 2: same command, same worktree, same commit ==
+EXIT_CODE=1
+WALL_SECONDS=133
+5 failed, 16706 passed, 19 skipped in 131.98s (0:02:11)

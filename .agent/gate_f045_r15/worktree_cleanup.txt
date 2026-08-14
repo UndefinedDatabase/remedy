@@ -1,0 +1,6 @@
+== git worktree list ==
+/home/decodeux/Repos/remedy  c84bd958 [feature/f045-loop-definitions]
+== git branch --list tmp/* ==
+(empty above = throwaway branch deleted)
+== git merge-base main HEAD ==
+cb3ef34fddbf0efa5799d8de93cb2d8e66566d20

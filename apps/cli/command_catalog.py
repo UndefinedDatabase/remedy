@@ -99,6 +99,7 @@ GROUPS: dict[str, GroupDef] = {
     "init": GroupDef("init", "Init", "Initialize a Remedy project in a git repo."),
     "job": GroupDef("job", "Job", "Create, inspect, and manage jobs."),
     "queue": GroupDef("queue", "Queue", "Queue goals for unattended execution."),
+    "loop": GroupDef("loop", "Loop", "Declarative recurring work defined in remedy.toml."),
     "project": GroupDef("project", "Project", "Create, inspect, and manage projects."),
     "ui": GroupDef("ui", "UI", "Open the local UI."),
     "doctor": GroupDef("doctor", "Doctor", "Check Remedy health."),
@@ -548,6 +549,41 @@ CATALOG: tuple[CommandEntry, ...] = (
             _PROJECT_SCOPE_OPT,
         ),
         related=("queue.list",),
+    ),
+
+    # ── loop (F045) ──────────────────────────────────────────────────────
+    CommandEntry(
+        command_id="loop.list",
+        group_id="loop",
+        subcommand="list",
+        description="List the loops in remedy.toml: name, trigger, action and last run.",
+        action_class="read_only",
+        related=("loop.validate", "loop.run"),
+    ),
+    CommandEntry(
+        command_id="loop.validate",
+        group_id="loop",
+        subcommand="validate",
+        description="Check every loop spec. Reports EVERY error and exits non-zero on any.",
+        action_class="read_only",
+        related=("loop.list", "loop.run"),
+    ),
+    CommandEntry(
+        command_id="loop.run",
+        group_id="loop",
+        subcommand="run",
+        # write_metadata, not an execution class: it persists a PLANNED job and
+        # stops there (DECISION F045 D7), so may_execute_commands stays False.
+        description="Materialize a loop as a planned job or mission and stop. Nothing runs.",
+        action_class="write_metadata",
+        args=(
+            ArgDef("name", "Name of the loop to materialize"),
+            ArgDef("--yes", "Skip the confirmation prompt. It approves the "
+                            "materialization only, never execution.",
+                   required=False, is_option=True, is_flag=True),
+            _PROJECT_SCOPE_OPT,
+        ),
+        related=("loop.list", "loop.validate"),
     ),
 
     # ── project ──────────────────────────────────────────────────────────

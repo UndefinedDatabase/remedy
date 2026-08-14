@@ -4622,3 +4622,224 @@ produces an invalid package and a false closure record.
 
 Reverse this decision with `git stash pop`, or by dropping the stash after the
 packager's owning feature lands the same line.
+
+## DECISION F045 D1 (2026-08-13) — loops live in a TOP-LEVEL `[[loop]]` table, not under `[remedy]`
+
+`[[loop]]` is a top-level array of tables in `remedy.toml`, never
+`[[remedy.loop]]` and never a new dotted directory convention. `load_config`
+in `packages/orchestration/config.py` reads only `parsed["remedy"]`
+(`_extract_remedy_table`), flattens that table to dotted keys and appends
+`"Unknown key in <path>: <key>"` to `load_report.warnings` for every key absent
+from `_KEY_SPEC_MAP`. `_flatten_toml` does not recurse into lists, so
+`[[remedy.loop]]` would arrive as the flat key `loop` and make every config
+load emit a spurious unknown-key warning. Top-level keeps the existing config
+system byte-for-byte unchanged and lets `loop_spec.py` own its own table.
+
+Alternatives considered: (a) `[[remedy.loop]]` — rejected, the warning above;
+(b) a `.remedy/loops/` directory — rejected, the feature file's Orchestrator
+brief explicitly forbids inventing a second config location; (c) a separate
+loops file — rejected for the same reason, and configuration that is
+versionable in one file is the feature's stated point.
+
+Reverse this decision by moving the table key and teaching `config.py` to
+ignore it. `tests/orchestration/test_loop_spec.py` pins it with a test that
+goes red if the table moves under `[remedy]`.
+
+## DECISION F045 D2 (2026-08-13) — the deadline contract is mirrored, not imported
+
+`LoopBudgets.deadline` is validated in `loop_spec.py` by
+`datetime.fromisoformat` plus a REQUIRED `tzinfo`, deliberately mirroring the
+contract of the private `budget_resolution._parse_deadline` instead of
+importing a private helper or widening `budget_resolution.py`, which belongs to
+F018/F104 and which this feature does not own.
+
+Alternatives considered: (a) import the private helper — rejected, a private
+name is not an API and the coupling would be invisible to its owner;
+(b) promote it to public API here — rejected, that is a change to another
+feature's module inside this feature's branch.
+
+Reverse this decision by promoting that helper to public API in a round that
+legitimately opens `budget_resolution.py`, then calling it from both places.
+
+## DECISION F045 D3 (2026-08-13) — T002 materializes the JOB action; action dispatch is T003's
+
+T002 delivers `loop_to_job`, which takes a loop whose action kind is `job` and
+produces an ordinary PLANNED job with `loop_ref` provenance. It does not
+dispatch across action kinds, so it makes no claim about the mission action at
+all — no user-visible "not supported yet" limit is invented. Dispatch belongs
+to `run_loop` in T003, which is where the CLI, the last-run display and the
+end-to-end fixture live, and which is the round that legitimately reads the
+Mission model's provenance surface. The feature's Acceptance line is
+job-shaped ("Fixture loop runs as a normal job with loop_ref visible in
+evidence and report"), so nothing in Acceptance waits on this.
+
+Alternatives considered: (a) dispatch both kinds in T002 — rejected, it would
+require reading and extending the Mission provenance surface in a round scoped
+to job materialization; (b) raise a "mission actions are not materialized yet"
+error — rejected, that is a fabricated limit shipped to users for a path the
+feature does support.
+
+Reverse this decision by moving dispatch into T002 and reducing T003 to the
+CLI surface.
+
+## DECISION F045 D4 (2026-08-13) — `action.mission` is a GOAL TEMPLATE, validated like `goal_template`
+
+`LoopAction.mission` carries a mission's GOAL as operator-authored text, not a
+mission id and not a reference to an already-stored mission. A loop that named
+an id could not be versioned in the config file this feature requires: the id
+does not exist until the mission is created, and it differs per machine. The
+text therefore accepts the same `{project}` and `{date}` placeholders as
+`action.goal_template`, and `loop_spec._semantic_errors` rejects any OTHER
+placeholder at VALIDATION time, mirroring the goal_template rule directly above
+it. The feature file's A9 line — "Goal templates may reference simple variables
+(project slug, date); undefined variables fail validation, not runtime" — is
+written about goal templates; applying it to only one of the two
+operator-authored templates in the same table would be an accident, not a
+design.
+
+Alternatives considered: (a) `action.mission` names a stored mission id —
+rejected, ids are per-machine runtime values and cannot live in versioned
+config; (b) leave the mission text unvalidated — rejected, an undefined
+placeholder would then reach run time, which A9 forbids for the sibling field.
+
+Reverse this decision by deleting the `action.mission` branch in
+`_semantic_errors` and treating the field as an opaque string.
+
+## DECISION F045 D5 (2026-08-13) — a mission-action loop records `loop_ref` on the JOB, not on the Mission
+
+A loop firing produces one JOB. A `Mission` is a persistent goal whose chain
+GROWS: `mission_state.continue_mission` (`mission_state.py:893`) appends
+follow-up jobs that have nothing to do with any loop. A `loop_ref` on the
+mission record would therefore claim an entire growing chain came from one
+loop, and would stop being true the first time an operator types a follow-up.
+The job is the unit that actually came from the loop, evidence and reports are
+job-shaped, and the feature's Acceptance line asks for `loop_ref` visible in
+evidence and report. So the provenance stays on the job, under the
+`LOOP_REF_METADATA_KEY` metadata key T002 established, and the mission remains
+reachable from that same job through `metadata["mission_id"]` and through
+`mission_state.mission_for_job`. `mission_state.py` is not touched at all.
+
+Explicitly NOT the reason: schema cost. `Mission`'s own class docstring records
+the F069 precedent — `mission_plan` is "ADDITIVE and OPTIONAL", "which is why
+:data:`MISSION_SCHEMA_VERSION` does NOT move for it" — so a `loop_ref: str = ""`
+field could have been added without a bump. This paragraph exists because the
+first draft of this decision asserted the opposite and was refused at the R3
+gate (finding R-0348). The decision rests on where provenance is TRUE, not on
+what recording it elsewhere would cost.
+
+Alternatives considered: (a) add an additive optional `loop_ref` to `Mission` —
+rejected, it attributes a whole chain to one firing and edits another feature's
+module from inside this branch; (b) record nothing on the mission path —
+rejected, Acceptance requires `loop_ref` in evidence.
+
+Reverse this decision by adding `loop_ref: str = ""` to `Mission` as an
+additive optional field — no version bump, per the `mission_plan` precedent —
+and writing it in the mission path; the job-side key stays either way, because
+evidence reads the job. Do NOT reverse it by bumping
+`MISSION_SCHEMA_VERSION`: `Mission.from_json` raises `unknown mission schema
+version` for any value but the current one, so a bump invalidates every mission
+already stored.
+
+## DECISION F045 D6 (2026-08-14) — an explicit save callable overrides root; root steers only the DEFAULT save
+
+`_materialize_loop_job` takes both `save` and `root`. When `save` is given it is
+called with the job ALONE and `root` is not consulted at all; only the default
+save reaches `storage.save_job(job, root)`. So a caller chooses one of two
+things — where the job goes, or that it goes nowhere — and never both.
+
+`save` exists so a caller can capture the job without a store behind it at all,
+and every current caller passes a one-argument list-appender. Giving `save` a
+second, root parameter would break all of them, and it would ask a test double
+to honour a path it has no store behind. The annotation
+`Callable[[Job], None]` is therefore load-bearing, not incidental.
+
+Alternative considered and rejected: drop `save` entirely and make every test
+pass `root`. Rejected because the store round-trip is the subject of only three
+tests; forcing the other twenty through a real store would make every one of
+them slower and none of them stricter.
+
+Reverse this decision by changing `save`'s annotation from
+`Callable[[Job], None]` to one that also takes the root, and updating every
+caller in `tests/orchestration/test_loop_run.py`.
+
+## DECISION F045 D7 (2026-08-14) — `remedy loop run --yes` confirms MATERIALIZATION, never execution
+
+WHAT: `remedy loop run <name>` materializes the named loop through
+`loop_run.run_loop` and stops. The job it produces is PLANNED. `--yes` skips
+the interactive confirmation and NOTHING else: it does not approve execution,
+it does not change the job's state, and it does not run a task.
+
+WHY this reading and not the other. The feature file lists the surface as
+`run <name> [--yes]` (`docs/roadmap/features/T2_F045.md`, the CLI bullet) and
+never says what `--yes` approves, so the flag's meaning is decided here. The
+module the command calls has already decided it. From
+`packages/orchestration/loop_run.py`'s module docstring, read at the
+definition: "APPROVAL SEMANTICS, the load-bearing part of T002: the job stops
+at PLANNED. Nothing here executes a task, approves a plan, or implies
+``--yes``. ``LoopSpec.unattended`` is RECORDED in metadata so it is auditable,
+and it changes NOTHING about the job's state — a loop reaches the operator's
+approval gate exactly like a typed goal." A `--yes` that approved EXECUTION
+would contradict that sentence from the caller's side while the callee kept
+honouring it. Of the two readings, "confirm the materialization" is the one
+the repository's own rules already select, and it is the smaller change: it
+adds a prompt, not an execution path. (R-0348's counter-measure: a decision
+that states what another module requires quotes the sentence that establishes
+it instead of paraphrasing it.)
+
+CONSEQUENCE for the operator: after `loop run` the job exists, is planned, and
+is theirs to start. Nothing was executed and no provider was called. The
+command says so itself — its last line names the command that would start the
+job, with that job's id in it, so the stop-at-PLANNED contract is visible
+rather than implied.
+
+HOW TO REVERSE: if `--yes` should ever mean "and run it", it must go through
+the same approval path a typed goal uses, and it must REFUSE for a loop whose
+spec is not `unattended`. Changing this command alone would let a config file
+start execution — a `[[loop]]` table written once could then run work without
+ever reaching the operator's approval gate — which is exactly what the current
+semantics exist to prevent.
+
+## DECISION F045 D8 (2026-08-14) — closure precondition 2 is met by the integration gate's own definition of green, not by a zero on the suite's failure counter
+
+WHAT was decided. `docs/roadmap/STATUS_closure_protocol.md` precondition 2
+requires the "full relevant suite green". At F045's closure the full suite ends
+`5 failed, 16769 passed, 19 skipped`, exit 1. F045 closes anyway, with the five
+named in the STATUS verdict as PASS_WITH_RISKS and recorded here, because the
+word doing the work in that precondition is RELEVANT and the five are not.
+
+WHY this reading and not the other. `docs/agents/integration_gate.md` step 3
+defines the gate's question as `comm -13 base_failed.txt branch_failed.txt` —
+the failures the BRANCH introduces — and step 4 makes only "a reproducible
+branch-only failure coupled to feature code" a blocker. F045's `comm -13` is
+EMPTY. The five ids are `tests/orchestration/test_role_conventions.py`
+parametrizations raising `PromptSegmentError: prompt segment
+'reviewer_conventions' is over its token cap: 954 tokens estimated, cap 800`.
+`packages/orchestration/role_conventions.py` maps that segment to
+`docs/agents/reviewer_conventions.md`; `git diff main..HEAD` shows this branch
+never touched that file, and the document is byte-identical to its state at
+F115's accepted HEAD `705feeb19c871db6313828d76ad4e1d9e0cc4d58`, whose ancestor
+`a85e82f5` (2026-08-12) is the merge that grew it past the cap. So F115 closed
+over these same five ids, on the same condition, and the condition belongs to
+`main` rather than to any feature branch.
+
+The alternative — read precondition 2 as a literal zero on the failure counter
+— was rejected because it makes closure depend on a defect no feature branch
+may repair. AGENTS.md forbids mixing an unrelated fix into a feature branch
+("Never mix unrelated features or fixes in the same branch", "no while-I'm-here
+edits"), so F045 cannot lawfully fix `reviewer_conventions.md`. Under the
+literal reading, EVERY feature would be blocked by a document none of them
+touch, and the roadmap would stall on an unrelated file — a deadlock the
+protocol's own "Failure honesty" section never contemplates, since it lists
+repair, `[!]`, or an operator decision, and the repair is out of scope by rule.
+
+CONSEQUENCE. The over-cap document is recorded as a closure CANDIDATE in
+`.agent/candidates.md` rather than as an F045 finding (no R-id is spent — the
+protocol's "Closure-candidate findings" rule), so the next feature's first
+reviewed round must register or resolve it. It deserves its own branch: the
+segment is 154 tokens over an 800-token cap, and trimming a reviewer-facing
+conventions document is a content decision, not a mechanical one.
+
+HOW TO REVERSE. Delete this decision and treat precondition 2 as a literal
+zero. Doing so requires fixing `docs/agents/reviewer_conventions.md` first, in
+its own branch, because otherwise nothing can close at all — which is precisely
+the outcome this decision exists to avoid.

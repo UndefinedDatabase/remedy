@@ -1,0 +1,10 @@
+MERGE_BASE=cb3ef34fddbf0efa5799d8de93cb2d8e66566d20
+Preparing worktree (new branch 'tmp/base-gate')
+HEAD is now at cb3ef34f Merge pull request #196 from UndefinedDatabase/feature/amend0813-glimmer-default
+worktree_add_exit=0
+copy_node_modules_exit=0
+copy_dist_exit=0
+DIST_HASH_BEFORE=86bc883a2c7fe7229f9149c1a8f684d92bc3cdd33e0702062ab4e504f7da3c89
+DIST_HASH_AFTER=86bc883a2c7fe7229f9149c1a8f684d92bc3cdd33e0702062ab4e504f7da3c89
+DIST_HASH_MATCH=yes
+BASE_RUN_DONE

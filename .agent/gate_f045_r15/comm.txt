@@ -1,0 +1,16 @@
+== comm -13 base_failed.txt branch_failed.txt  (branch-only failures) ==
+(empty above = no branch-only failures)
+
+== comm -23 base_failed.txt branch_failed.txt  (failures fixed at branch) ==
+FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_api_invalid_token_403
+FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_api_missing_job_404
+FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_app_shell_served_without_token
+FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_dashboard_no_raw_leaks
+FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_put_rejected
+FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_server_starts_and_writes_info
+
+== second base run, same commit, same command ==
+-- comm -13 base_failed2.txt branch_failed.txt --
+-- comm -23 base_failed2.txt branch_failed.txt --
+-- cmp base_failed2.txt branch_failed.txt --
+cmp exit: 0
