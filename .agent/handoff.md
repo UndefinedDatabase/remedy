@@ -1,137 +1,96 @@
-# Handoff — F057 Rate-limit-aware scheduler, R6 (T003 part 1: the seam)
+# Handoff — F057 Rate-limit-aware scheduler, round R7
 
-## Range
-Review of 33fab24e..HEAD (HEAD = C5, the commit that writes this file).
-
-## Commits
-### 89ae4311 chore(f057): save the R6 step block verbatim (C0a)
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/authored/f057-r6.md | +385/-0 | the block verbatim, 385 lines (cap 400) |
-### a16f310f chore(f057): point last_block at the R6 block (C0b)
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/last_block.md | +356/-239 | identical bytes; `cmp` exit 0 |
-### 098594a1 docs(f057): record the R5 verdict, register R-0371, resolve R-0370 (C1)
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/live_review.md | +6/-0 | GATE-R5, FINDING-371, DONE-370 appended |
-### 281caf58 docs(f057): record DECISIONS D3, D4 and D5 for the T003 seam (C2)
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/decisions.md | +65/-0 | D3 pacing, D4 no deadline_s, D5 empty provider |
-### 4493d56b feat(f057): pace provider calls through the rate governor (C3)
-| Path | +/- | Reason |
-|---|---|---|
-| packages/orchestration/pingpong_loop.py | +76/-0 | import, `rate_limit_waits`, `_record_rate_limit_wait`, first-call + retry pacing, one governor per run |
-### 28d1206c test(f057): pin the five seam properties of the wiring (C4)
-| Path | +/- | Reason |
-|---|---|---|
-| tests/orchestration/test_provider_retry.py | +216/-0 | 5 seam tests, injected FakeClock |
-### HEAD (C5) — grouped, self-referential (R-0149)
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/plan.md | rewrite | PLAN slice applied whole, 35 lines |
-| .agent/context.md | 2 pairs | CONTEXT1 + CONTEXT2 rewritten |
-| .agent/handoff.md | rewrite | this file |
+Review of 3ab9d964..HEAD. Branch feature/f057-rate-limit-scheduler. No PR this round.
 
 ## Item status
 | Item | Status | Reason |
-|---|---|---|
+|------|--------|--------|
 | C0a | done | |
 | C0b | done | |
 | C1 | done | |
 | C2 | done | |
-| C3 | deviated | block said "BOTH" call sites; there are THREE (2849/3061/3117). Wired the two it named; parse-retry site left unpaced — see Deviations |
+| C3 | deviated | test 3 builds the reject WITH a rate-limit error, not the errorless shape the existing tests use — see Deviations |
 | C4 | done | |
-| C5 | done | |
 
-## Authored-text proofs
-`cmp .agent/authored/f057-r6.md .agent/last_block.md` -> exit 0; shared sha256
-`c5dfac96f25f5a995d2ef118631d17a6123cdbb59bad5702a4fe26b0e4d7f6be`, 385 lines.
-Slices extracted from the COMMITTED authored file, never retyped; each FROM
-occurred exactly once and each TO zero times before replacement.
-| Slice | sha256 of body bytes |
-|---|---|
-| GATE-R5 | 88b5ef6e5809834a57493568c2fc2def4bc4be09854bb96ceddec482506eff33 |
-| FINDING-371 | 8c1880a08298de2df5f8a43dd49b0eaa301ebfd607b567b5bde3571b2dc9ba4a |
-| DONE-370 | 95cafee5692e338c22bf5f5fa3c280dd624263dbc6f875f4063c539e7ffcdfb5 |
-| DECISIONS | 1959e47d1af36af9167a4aee342de88fa2f9bbe92a725bf3ecf1ac2edb6c6eeb |
-| PLAN | 83db269c4e16f5337c5fb952a2481aed7ea610ea6cb3744958128b9bd0511041 |
-| CONTEXT1-FROM | e7260683975cb8c0dd358df288b0c27cf6fd570fe335c1f7732597807ff33eae |
-| CONTEXT1-TO | d7fdc5980ee60a66d02f1d9a7927aebf805a14ade95eaccb031a29efe27b59e6 |
-| CONTEXT2-FROM | 77c1ae83d74c96a3dd6d4dca56c7f7d3ee04b16d69cc085f3190eff72aede145 |
-| CONTEXT2-TO | b8abffc4a051180ef9a0ea878fce806be21a4c990e2f44b2a9cde3c492ba6e22 |
+## Commits
+### 6d70b2ef chore(f057): save the R7 block verbatim
+| Path | +/- | Reason |
+|------|-----|--------|
+| .agent/authored/f057-r7.md | +229/-0 | the R7 block, verbatim |
 
-## Verification — all 16 gates, real output
-1. `git status --porcelain` -> empty (measured at C4; C5 commits its own files).
-2. `git worktree list` -> 1 line, `/home/decodeux/Repos/remedy 28d1206c [feature/f057-rate-limit-scheduler]`.
-3. `git branch --show-current` -> `feature/f057-rate-limit-scheduler`.
-4. `cmp` -> exit 0; sha256 and 385 lines as above.
-5. line-anchored: `^Gate: R5 — PASS` 1, `^- R-0371 — ` 1, `^Done: R-0370 — ` 1,
-   `^Landed: R-0370 —` 1, `^## Steps` 1. Substring `## Steps` = 6, CHANGED from 5:
-   the GATE-R5 slice itself contains the literal "`^## Steps` 1" in its own counts.
-6. `git show --numstat 098594a1 -- .agent/live_review.md` -> `6	0`; deletions 0.
-7. `pytest tests/orchestration/test_rate_governor.py -q` -> `59 passed`, exit 0 — unchanged.
-8. `pytest tests/orchestration/test_provider_retry.py -q` -> `26 passed`, exit 0 (21 + 5).
-9. the four regression files together -> `294 passed in 39.15s`, exit 0.
-10. `ruff check pingpong_loop.py rate_governor.py test_provider_retry.py` -> `All checks passed!`, exit 0.
-11. canary `pytest tests/cli/test_golden_path.py -q` -> `42 passed`, exit 0.
-12. the three .agent contract readers -> `142 passed`, exit 0.
-13. `wc -l < .agent/plan.md` -> 35.
-14. `git diff --name-only 33fab24e..HEAD` at C4 -> .agent/authored/f057-r6.md,
-    .agent/decisions.md, .agent/last_block.md, .agent/live_review.md,
-    packages/orchestration/pingpong_loop.py, tests/orchestration/test_provider_retry.py;
-    C5 adds .agent/plan.md, .agent/context.md, .agent/handoff.md. Nothing beyond the nine.
-15. `git diff --stat 21c8148e..HEAD -- provider_timeouts.py stream_evidence.py` -> EMPTY.
-16. RED-PROOF in `.remedy-wt/r6_red`, removed and pruned (gate 2 is the proof).
-    Import path printed FIRST, from a pytest run inside it: `MODULE __file__:
-    /home/decodeux/Repos/remedy/.remedy-wt/r6_red/packages/orchestration/pingpong_loop.py`.
-    (A bare `python3` there imported the PRIMARY checkout via the editable install;
-    redone under pytest, whose rootdir pythonpath wins. R-0337 nearly bit.)
-    (i) delete retry-path `acquire(...)` + `return out` guard -> `2 failed, 25 passed`:
-    `test_rate_limited_retry_waits_and_records_one_event` at `assert clock.sleeps`
-    -> `assert []`; `test_stop_during_the_wait_ends_the_call_without_counting_a_retry`
-    at `assert calls[0] == 1` -> `assert 3 == 1`.
-    (ii) delete retry-path `observe(...)` -> `2 failed, 25 passed`, same two ids and
-    same two assertions: with no cooldown announced, nothing waits.
-    Extra probes (the block asks whether all five tests discriminate):
-    (iii) drop `and provider` from both guards -> 1 failed,
-    `test_empty_provider_skips_the_governor_entirely`, `assert result.rate_limit_waits == []`
-    vs two events under provider `''`.
-    (iv) delete the first-call pacing -> 1 failed,
-    `test_first_call_is_paced_by_a_cooldown_already_running`, `assert 0 == 1`.
-    (v) drop `rate_governor is not None` from both guards -> 1 failed,
-    `test_no_governor_leaves_retry_behaviour_identical`,
-    `AttributeError: 'NoneType' object has no attribute 'acquire'`.
-    All five C4 tests discriminate their stated property.
+### 6b4c3f56 chore(f057): point last_block at the R7 block
+| Path | +/- | Reason |
+|------|-----|--------|
+| .agent/last_block.md | +175/-331 | full rewrite of one .agent state file (F104 D1 exempt) |
+
+### 475f4ab8 docs(f057): record the R6 verdict and register R-0372 and R-0373
+| Path | +/- | Reason |
+|------|-----|--------|
+| .agent/live_review.md | +6/-0 | GATE-R6, FINDING-372, FINDING-373 appended; no line edited or removed |
+
+### 1f74beb5 fix(f057): pace the reviewer parse-retry provider call too
+| Path | +/- | Reason |
+|------|-----|--------|
+| packages/orchestration/pingpong_loop.py | +1/-0 | R-0372: `rate_governor=_rate_governor` at the third call site |
+
+### c0984caa fix(f057): retry a rate limit at the governor seam so it is reachable
+| Path | +/- | Reason |
+|------|-----|--------|
+| packages/orchestration/pingpong_loop.py | +17/-2 | R-0373: import `is_rate_limit_error`; guarded predicate; retry decision; docstring |
+| tests/orchestration/test_provider_retry.py | +93/-2 | 3 unit tests, `BARE_RATE_LIMIT_ERROR`; a now-false comment corrected |
+
+### C4 handoff (this commit, grouped — a handoff cannot table itself)
+| Path | +/- | Reason |
+|------|-----|--------|
+| .agent/plan.md | rewrite | PLAN slice applied verbatim |
+| .agent/handoff.md | rewrite | this file |
 
 ## External actions
-`git push` after each of C0a, C0b, C1, C2, C3, C4, C5 — all fast-forward, never forced.
-`git worktree add .remedy-wt/r6_red HEAD --detach` -> created; `git worktree remove
---force` + `git worktree prune` -> gone. No PR created (the block forbids one).
+`git push -u origin feature/f057-rate-limit-scheduler` after each of C0a, C0b, C1, C2, C3, C4 — exit 0 each.
+`git worktree add .remedy-wt/r7-redproof HEAD --detach` -> created at c0984caa; `git worktree remove --force` + `git worktree prune` -> `git worktree list` is one line. No gh command, no PR.
+
+## Authored-text proofs
+| Slice | sha256 | Disk-to-disk |
+|-------|--------|--------------|
+| block file (whole) | fc3c50e915797c98dba976772dffaeb64a1ac58fab42021221ed7205cf34a02d | `cmp` authored vs last_block exit 0, 229 lines |
+| GATE-R6 | cd9129042ac1029c33068ea8534d08095a92e63f65170d5764727fde39579031 | identical to live_review.md line 63 |
+| FINDING-372 | 49ff189f82e744bc3debbe8bbf55a74606904e3f49c33f3023cc69216608816d | identical to live_review.md line 65 |
+| FINDING-373 | ffdd80f4be3b5cbcc56373b6b7f1f4e4ffb82aac168d2e9b21a705b2880fc4a5 | identical to live_review.md line 67 |
+| PLAN | 1a4e43ef16ee22c0bdbeff159559325595cd440686f6a086629c3b0f53db4e1d | identical to .agent/plan.md in full |
+Each slice was extracted from the COMMITTED `.agent/authored/f057-r7.md` (via `git show HEAD:`), never retyped.
+
+## Verification — all 17 gates, real output
+1. `git status --porcelain` -> empty (exit 0).
+2. `git worktree list` -> 1 line: `/home/decodeux/Repos/remedy  c0984caa [feature/f057-rate-limit-scheduler]`.
+3. `git branch --show-current` -> `feature/f057-rate-limit-scheduler`.
+4. `cmp .agent/authored/f057-r7.md .agent/last_block.md` -> exit 0. sha256 `fc3c50e9…4a02d`, `wc -l` 229 (under the 400 cap).
+5. live_review.md line-anchored: `^Gate: R6 — PASS` 1, `^- R-0372 — ` 1, `^- R-0373 — ` 1, `^## Steps` 1. Whole-file SUBSTRING `## Steps` = 8, CHANGED from 6. Cause: the GATE-R6 slice itself contains the literal twice (once reporting its own anchored count, once reporting the R5-round substring move). Reported, not hidden.
+6. `git show --numstat 475f4ab8 -- .agent/live_review.md` -> `6  0`. Deletion column 0 as ordered.
+7. `pytest tests/orchestration/test_provider_retry.py -q` -> `29 passed in 0.27s`, 0 failed (was 26; C3 adds 3).
+8. `pytest tests/orchestration/test_rate_governor.py -q` -> `59 passed in 0.09s`, unchanged from baseline. No finding candidate.
+9. Four regression files together -> `294 passed in 39.07s`, exit 0. Exactly the baseline: the pre-F057 path did not move.
+10. `python3 -m ruff check packages/orchestration/pingpong_loop.py tests/orchestration/test_provider_retry.py` -> `All checks passed!`, exit 0.
+11. Canary `pytest tests/cli/test_golden_path.py -q` -> `42 passed in 15.85s`, 0 failed.
+12. dashboard_contract + resource_safety + test_runner -> `142 passed in 17.11s`, exit 0.
+13. `wc -l < .agent/plan.md` -> 36 (<50).
+14. `grep -n "_call_with_retry(" packages/orchestration/pingpong_loop.py` -> `2172:def`, `2938:builder_out`, `3151:reviewer_out`, `3208:retry_out`. All THREE call sites pass `rate_governor=_rate_governor` (checked by parsing each call's full paren block, not by eyeballing).
+15. `git diff --name-only 3ab9d964..HEAD` -> `.agent/authored/f057-r7.md`, `.agent/last_block.md`, `.agent/live_review.md`, `packages/orchestration/pingpong_loop.py`, `tests/orchestration/test_provider_retry.py` (+ `.agent/plan.md`, `.agent/handoff.md` in C4). No path outside the block's list.
+16. `git diff --stat 21c8148e..HEAD -- provider_timeouts.py stream_evidence.py` -> EMPTY.
+17. RED-PROOF in `.remedy-wt/r7-redproof`, never in the primary checkout. Import path proved UNDER PYTEST first: a throwaway test printed `IMPORTED_FROM: /home/decodeux/Repos/remedy/.remedy-wt/r7-redproof/packages/orchestration/pingpong_loop.py` and asserted the worktree path — `1 passed`. Worktree baseline `29 passed`. Probes:
+    (i) decision reverted to plain `should_retry` -> `1 failed, 28 passed`; `test_bare_rate_limit_is_retried_when_a_governor_is_active`, `AssertionError: assert '' == 'ok'`.
+    (ii) guard `rate_governor is not None and provider` dropped -> `1 failed, 28 passed`; `test_bare_rate_limit_without_a_governor_is_still_not_retried`, `assert 3 == 1` on the call count.
+    (iii) `rate_governor=` removed from the C2 parse-retry site -> KILLS NOTHING. `test_provider_retry.py` + `test_rate_governor.py` -> `88 passed`; the four regression files + the canary -> `336 passed`. 424 tests, all green with C2 reverted. Stated plainly: the C2 wiring change is UNTESTED — a real gap, carried below.
+    Extra probe (not ordered): explicit `is_reject or` dropped -> `1 failed, 28 passed`; `test_review_reject_is_never_retried_even_with_a_governor`, `assert 3 == 1`. This is what justifies the C3 deviation.
 
 ## Deviations & assumptions
-- Handoff length, DECISION D15 stated cause: this file exceeds the 60-line cap and
-  the 100-line >5-commit allowance. Cause is mandated content only — per-commit
-  tables for SEVEN commits, the 9-row slice-sha table, the item-status table and
-  the raw output of 16 gates including five red-proof probes. No section dropped.
-- C3, block-defect candidate: the block orders the governor passed to "BOTH
-  `_call_with_retry` call sites — the builder site and the reviewer site". There are
-  THREE in `run_pingpong`: 2849 builder, 3061 reviewer attempt, 3117 reviewer PARSE
-  RETRY. The seam inventory the block cites names all three itself (its line 129).
-  Applied literally: the two named sites are wired; a reviewer parse retry is
-  currently UNPACED. Wiring it would be a change the block did not name, against
-  "Nothing else in this file changes". Reviewer to rule: R7 wiring, or a documented
-  deliberate absence.
-- No other drift: every symbol and anchor the block cites was re-grepped on disk
-  and matched before editing.
+- Length: this handoff is 96 lines, over the 60-line cap — DECISION D15 stated cause: the mandated per-commit changed-files tables (6), the item-status table, the slice-sha256 table and the REAL output of 17 gates including four RED-PROOF probes. No section dropped, no prose padding.
+- C3 test 3 shape: the block said "build the reject the way the existing tests in this file build one" (errorless `ReviewerOutput(verdict="needs_repair")`). That shape returns at `_call_with_retry`'s `if not out.error` BEFORE the reject exclusion is reached, so it would pass with or without the exclusion — a vacuous test. Built instead with `error=BARE_RATE_LIMIT_ERROR`, the only shape that reaches the guard. The extra probe above proves the test is load-bearing. Declared before review.
+- C3 also edits `_call_with_retry`'s docstring line "Only retries on timeout or nonzero exit", which C3 makes false; leaving it would be the R-0365 defect class. Inside the ordered function, no other symbol touched.
+- Commit Gate ordering: C2 and C3 landed while `.agent/plan.md` still described T003 part 1 and said "nothing is contradicted today". The block assigns the plan rewrite to C4; followed the block and note the two-commit window here rather than reorder it.
+- Open finding candidate (worker-raised, for the reviewer to accept or reject): the C2 parse-retry wiring has no test — see gate 17 (iii).
 
 ## Open findings
-9: R-0361, R-0362, R-0363, R-0364, R-0367, R-0368, R-0369, R-0371, plus the C3
-call-site defect candidate above (unnumbered; the reviewer owns ids).
-Resolved: R-0365, R-0366, R-0370.
+10 open: R-0361, R-0362, R-0363, R-0364, R-0367, R-0368, R-0369, R-0371, R-0372, R-0373. R-0372 and R-0373 are FIXED on disk this round and stay OPEN until a reviewer verdict closes them; only reviewer-authored text may close them. Next free id: R-0374.
 
 ## Next
-Reviewer re-runs all 16 gates at HEAD, rules on the third call site, and issues the
-R6 verdict; then R7 = T003 part 2 (report surfaces + limit-emitting fixture).
+This session is at its declared round cap. The NEXT SESSION's first action is Phase 1 rule 1 of docs/agents/self_drive_protocol.md — re-read `.agent/STOP` from disk — BEFORE rule 2, the Open PR Gate. Then: reviewer verdict on R7, then T003 part 2 (the report surfaces and the bare-rate-limit fixture end-to-end, per .agent/plan.md).
