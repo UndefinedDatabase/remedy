@@ -67,7 +67,7 @@ No PR created, none merged, no worktree added or removed, no `gh` command run.
 | 12 | `python3 -m apps.cli.main integrity check --json` | `passed` true, `fail_count` 0, `check_count` 5, `high_blockers_open` pass ("no open blocker/high findings") |
 | 13 | `git diff --check 386ef7b5..HEAD` | no output |
 | 14 | per-commit insertions | ee188605 274; 11857915 237; ad5728ab 34; 4fa56b23 53; C3 handoff is a single-state-file verbatim rewrite. None over 500 |
-| 15 | `git diff --name-only 386ef7b5..HEAD` | the seven ordered paths and nothing else (six after C2, `.agent/handoff.md` added by C3) |
+| 15 | `git diff --name-only 386ef7b5..HEAD` | exactly the ordered path set and nothing else, but the set has EIGHT members, not "seven" — see deviation 5 |
 | 16 | transport, disk to disk | all 9 slices EQUAL — see Authored-text proofs |
 | 17 | push | recorded under External actions |
 
@@ -109,11 +109,23 @@ R-0399, R-0400, R-0401). Next free id R-0402.
    `16671 deselected`. The PASSED figure reproduces exactly. This is precisely the
    subject of R-0401's neighbour R-0400, registered in this round's C1, and the raw
    number is reported per that finding's own prescription.
-4. Line count. This handback is 122 lines against the 60-line cap (DECISION D15).
+4. Line count. This handback is 134 lines against the 60-line cap (DECISION D15).
    Cause: the mandated 17-row verification table with every measured gate value, the
    9-row authored-text proof table with full sha256 values, the per-commit tables for
    five commits, the item-status table and the 31-id open-findings list. No section
    was dropped and no transcript is padded.
+
+5. Gate 15's own count is wrong in the block, and nothing was changed to satisfy it.
+   The block says "exactly these seven paths" and then enumerates EIGHT:
+   `.agent/authored/f077-r19.md`, `.agent/last_block.md`, `.agent/live_review.md`,
+   `.agent/plan.md`, `.agent/context.md`, `docs/system/autonomy-watchdog-v1.md`,
+   `docs/roadmap/features/T2_F077.md`, `.agent/handoff.md` — 1 + 1 + 4 + 1 + 1.
+   `git diff --name-only 386ef7b5..HEAD` returns exactly those eight and no ninth,
+   so the SET matches the order and only the word "seven" is wrong. Gate 16 inherits
+   the same slip ("the seven slices" then names nine); all nine were proven. Reported,
+   not reconciled — no path was added or dropped to make either count read true.
+   This handback commit is a follow-up to 555eb2ca, which carried the block's count
+   verbatim before the range was measured.
 
 ## Next
 Reviewer verdict on 386ef7b5..HEAD. If PASS, the next round is F077 closure per
