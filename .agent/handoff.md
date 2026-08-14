@@ -1,105 +1,111 @@
-# Handback — F057 · Round 14 (CLOSURE)
+# Handoff — F077 R1 · claim and sweep
+
+Feature F077 Autonomy watchdog · Round R1 · Branch `feature/f077-autonomy-watchdog`
+Open findings: 16 — R-0361, R-0362, R-0363, R-0364, R-0367, R-0368, R-0369,
+R-0371, R-0374, R-0375, R-0376, R-0377, R-0378, R-0379 (carried from F057),
+R-0380, R-0381 (registered this round). Next free id: R-0382.
 
 ## Range
-Review of 6aba3878..HEAD (3 commits; branch feature/f057-rate-limit-scheduler).
+Review of 6227c3a2..HEAD; HEAD is this handoff commit, whose SHA the text it
+contains cannot name (R-0371).
 
 ## Commits
-### 427c0e26 chore(f057): save the R14 closure block verbatim
+### aec25cfd chore(f077): save the R1 claim-and-sweep block verbatim
 | Path | +/- | Reason |
-| .agent/authored/f057-r14.md | +339/-0 | C0, block saved byte for byte (NEW) |
-| .agent/last_block.md | +321/-197 | C0, `cp` of that file; cmp exit 0 |
+|---|---|---|
+| .agent/authored/f077-r1.md | +257/-0 | the R1 block, saved verbatim |
+| .agent/last_block.md | +244/-326 | `cp` of that same file |
 
-### abda479d docs(f057): record the R13 verdict
+### b9909c11 docs(f077): reset the live review record and register R-0380 and R-0381
 | Path | +/- | Reason |
-| .agent/live_review.md | +2/-0 | C1, GATE-R13 appended disk-to-disk; numstat `2 0` |
+|---|---|---|
+| .agent/live_review.md | +22/-63 | F077 head slice plus the 14 carried F057 findings |
 
-### C2 docs(f057): close F057 in the roadmap ledger — the commit writing this file
+### 40eddbeb docs(f077): claim F077 and empty the candidates carrier
 | Path | +/- | Reason |
-| docs/roadmap/STATUS.md | +1/-1 | C2a, `[~]` → `[x]` with job/package/SHA/HEAD |
-| README.md | +2/-2 | C2b, count 46→47 and Tier 2 Done 8→9 |
-| .agent/candidates.md | +1/-2 | C2c, CANDIDATES slice replaces the `(empty — …)` para |
-| .agent/context.md | +5/-2 | C2d, `## Steps` body → CONTEXT-STEPS slice |
-| .agent/plan.md | +33/-23 | C2e, CLOSED plan, 48 lines replacing 39 |
-| .agent/handoff.md | rewrite | C2f, this file |
+|---|---|---|
+| docs/roadmap/STATUS.md | +1/-1 | F077 `[ ]` → `[~]`, no other line touched |
+| .agent/candidates.md | +3/-1 | entry replaced by the CANDIDATES-TO slice |
+| .agent/plan.md | +27/-39 | full replacement, PLAN slice |
+| .agent/context.md | +19/-31 | full replacement, CONTEXT slice |
+
+### (this commit) chore(f077): handback R1
+| Path | +/- | Reason |
+|---|---|---|
+| .agent/handoff.md | rewrite | this handback (R-0149 self-reference exception) |
 
 ## Item status
 | Item | Status | Reason |
-| C0 | done | |
-| C1 | done | |
-| ITEM 2 | done | all four preconditions hold |
-| ITEM 3 | done | evidence job `f057-closure`, PASS_WITH_RISKS |
-| ITEM 4 | done | READY_FOR_REVIEW package, first attempt, clean tree |
-| C2 | done | |
-| ITEM 6 | deviated | ordered AFTER this commit, so unexecuted when this file is
-  written; PR number and URL go in the session report |
-
-## Closure values
-Evidence job `f057-closure` · package `remedy-review-20260814-085403-READY_FOR_REVIEW.zip`
-· SHA-256 `202b289122faf62a8d27c5e658ee6b80fcff0a23ee6db25fbe50c5376f6bda19`
-· accepted HEAD `abda479da68661ce9ed8073bd3887b9fa783e092` (after C1, before C2).
+|---|---|---|
+| A0 Open PR Gate | done | |
+| A1 branch | done | |
+| C0 save the block | done | |
+| C1 record reset | done | |
+| C2 claim, plan, context, candidates | done | |
+| C3 handback | done | |
 
 ## External actions
-- `git push` after 427c0e26 and abda479d — OK. Before the zip: `Everything up-to-date`;
-  `rev-list --left-right --count origin/…...HEAD` → `0	0`.
-- Evidence job: PASS_WITH_RISKS, total_passed 93, authority_count 6, partition 2/2/2,
-  head abda479d…092, 68 commits. Written to gitignored
-  `.remedy-wt/f057_closure_evidence/remedy-job-evidence-f057-closure`; never committed.
-- `bash scripts/make_review_zip.sh --evidence-dir <that dir>` → REVIEW_PACKAGE_CREATED=true,
-  PACKAGE_STATUS=READY_FOR_REVIEW, 5373 members, publication SUPPORTED, warnings `[]`,
-  external_paths `[]`, source_root_containment PASS, final_verifier_reproducible true,
-  ready_gate_matrix ok=true (blocking_reasons `[]`), REVIEW_SUBJECT_ALIGNMENT=PASS,
-  EVIDENCE_AUTHORITATIVE=true; committed_review_subject 21c8148e…a49 → abda479d…092,
-  39 files, 68 commits; `ZipFile.testzip()` → None. One attempt, no failure.
-- No worktree add/remove, no merge, no force-push. PR create: after this commit.
-- `git merge-base main HEAD` → `21c8148eec243d3ee2329d5dcf94e57c6aaeba49`.
+- `gh pr list --state open --json number,headRefName,baseRefName,isDraft` before the merge →
+  `[{"baseRefName":"main","headRefName":"feature/f057-rate-limit-scheduler","isDraft":false,"number":199}]`. Gate PASS.
+- `gh pr merge 199 --merge --delete-branch` → merged; merge commit 6227c3a2; remote head branch deleted by the gate's own flag.
+- `git checkout main` → already on main. `git pull --ff-only` → already up to date at 6227c3a2, the new `main` head.
+- `git checkout -b feature/f077-autonomy-watchdog`.
+- `git push -u origin feature/f077-autonomy-watchdog` after C0, then a push after C1, C2 and C3. No worktree added or removed.
 
 ## Verification
-- `cmp .agent/authored/f057-r14.md .agent/last_block.md` → exit 0; shared sha256
-  `214ef444f6fd0b88fa42af3493f4ace981b1c858bf68a4b028fce01f5a277a1f`, 339 lines (≤400).
-- `grep -c "^Gate: R13 — PASS" .agent/live_review.md` → 1 (baseline 0); `"^## Steps"` → 1;
-  `git show --numstat abda479d -- .agent/live_review.md` → `2	0`.
-- `python3 -m apps.cli.main integrity check --json` → exit 0, `passed: true`,
-  `fail_count: 0`, `check_count: 5`; high_blockers_open "no open blocker/high findings".
-- `git status --porcelain` before the zip → EMPTY; `git worktree list` → 1 line.
-- `pytest tests/docs/ -q` → exit 0, `295 passed in 0.23s` (baseline 295);
-  `pytest tests/cli/test_golden_path.py -q` → exit 0, `42 passed in 15.87s` (baseline 42).
-  Both run with the C2 edits in the tree, before the commit.
-- Evidence suites, each `-v`: test_rate_governor 59, test_provider_retry 34 → 93 node ids,
-  0 failed, 0 skipped; `len(node_ids) == selected` asserted per run.
-- STATUS `- [x] F057 — ` → 1 (was 0), `- [~] F057` → 0 (was 1). README `47 of 255` → 1,
-  `46 of 255` → 0, `| 2 | … | 9 | 14 |` → 1, `| 2 | … | 8 | 14 |` → 0. Tier derivation
-  re-run first: per tier {0:16, 1:22, 2:8}, total 46; F057 is `T2_F057.md` → 47 and 9.
-  First `[ ]` in STATUS order is F077 — Autonomy watchdog.
-- `wc -l .agent/plan.md` → 48 (<50). Open set recomputed from the record after C1 →
-  `OPEN ['R-0361','R-0362','R-0363','R-0364','R-0367','R-0368','R-0369','R-0371',
-  'R-0374','R-0375','R-0376','R-0377','R-0378','R-0379']` — fourteen.
-- `git diff --stat 6aba3878..HEAD -- packages/ apps/ tests/ docs/roadmap/features/` → EMPTY.
+1. `git status --porcelain` EMPTY. `git worktree list` → 1 line.
+2. `cmp .agent/authored/f077-r1.md .agent/last_block.md` exit 0; shared sha256
+   `38975e043941d1f0cc09c81898d3b84404c5210bb648ab4b0835c671c003c63f`; 257 lines, at or under 400.
+3. Pre-merge `gh pr list` quoted above; post-merge it returns `[]`. Merge commit SHA 6227c3a2.
+4. `git branch --show-current` → feature/f077-autonomy-watchdog. `git merge-base main HEAD` → 6227c3a2.
+5. `^- \[ \] F077 — Autonomy watchdog` → 0; `^- \[~\] F077 — Autonomy watchdog` → 1; `^- \[~\]` in STATUS.md → 1.
+6. Carry proof, one digest over the fourteen paragraphs joined in the listed order. Pre-reset record
+   (`git show aec25cfd:.agent/live_review.md`) and the new `.agent/live_review.md` both give
+   `ab681783020931bdd55cebaaf4541b34650836eeef8a93a8b3ad3eeeb16ab15d`, 24500 bytes. EQUAL.
+7. Open set recomputed from the new record: 16 raised, 0 `^Done:` lines, 16 open — R-0361, R-0362,
+   R-0363, R-0364, R-0367, R-0368, R-0369, R-0371, R-0374, R-0375, R-0376, R-0377, R-0378, R-0379,
+   R-0380, R-0381. Duplicates: none.
+8. `grep -c "· source F057 ·" .agent/candidates.md` → 0.
+9. `wc -l .agent/plan.md` → 36, under 50.
+10. `python3 -m pytest tests/docs/ -q` → exit 0, 295 passed in 0.23s.
+11. `python3 -m pytest tests/ui_server/test_dashboard_contract.py tests/regression/test_resource_safety.py
+    tests/orchestration/test_test_runner.py -q` → exit 0, 142 passed in 17.21s.
+12. Canary `python3 -m pytest tests/cli/test_golden_path.py -q` → exit 0, 42 passed in 15.88s.
+13. `python3 -m apps.cli.main integrity check --json` → passed true, fail_count 0, check_count 5;
+    `high_blockers_open` status pass, message "no open blocker/high findings".
+14. `git diff --stat 6227c3a2..HEAD -- packages/ apps/ tests/` → EMPTY.
+15. Insertions per commit: aec25cfd 501, b9909c11 22, 40eddbeb 50. The first exceeds 500 — see Deviations.
 
 ## Authored-text proofs
-GATE-R13, CANDIDATES, CONTEXT-STEPS and PLAN were each extracted from the COMMITTED
-`.agent/authored/f057-r14.md` (`git show HEAD:…`) between their own markers and applied
-disk-to-disk, never retyped. Slice sha256/bytes: GATE-R13 `e29f7fd8…` 4018 B; CANDIDATES
-`5405d87d…` 1560 B; CONTEXT-STEPS `f7e173ba…` 547 B; PLAN `06cd2ae6…` 2699 B. `cmp` slice ↔
-target region → exit 0 for all four: plan.md whole file, candidates.md via `tail -1`,
-context.md via `tail -7`, and live_review.md's last line hashed to the GATE-R13 sha.
-STATUS and README pairs were read out of the committed block file by line prefix, with only
-the three angle-bracket slots substituted; each FROM matched exactly once. Trailing-whitespace
-scan (`l != l.rstrip()` in Python; `grep -rn ' $'` not used) → empty for all nine files.
+Every slice was read out of the COMMITTED `.agent/authored/f077-r1.md` with `git show <sha>:<path>` and
+applied disk-to-disk by `.remedy-wt/f077_r1_reset.py` and `.remedy-wt/f077_r1_c2.py`. Nothing retyped.
+
+| Slice | sha256 | bytes | applied-region proof |
+|---|---|---|---|
+| LIVE-REVIEW-HEAD | e63be9c511c871bf41478bafcfeed37d2e750fa17f51af677180f37b901e85a5 | 4896 | new record starts with the slice |
+| PLAN | 0a71b9e04a609dac125d0ee251fbdb4c13c1b608407ce9d5defece8a9d018696 | 2023 | file bytes == slice bytes |
+| CONTEXT | 6ba9ad8acaab672b4d62c2b76ebb2c14d900fbcd8d1d6d0f48d5d28a44b8f8a6 | 1749 | file bytes == slice bytes |
+| CANDIDATES-TO | 1a135d973f3820a5324125b1bfd873e10d7bfa1caafee178316ba7fdd0ff43fc | 179 | present verbatim in candidates.md |
+| STATUS-FROM | 613e37fa482930038f75ad11ad28b4e84f3b74c9d303cc2f4b2c8422dd4862b7 | 33 | 1 match before, 0 after |
+| STATUS-TO | 39ef5257c7d3c33841f61d363c508158a814357e5806dca20d6a43e6f9a7c395 | 33 | 0 matches before, 1 after |
+
+Each of the fourteen carried paragraphs was verified present verbatim in the new record.
+Trailing-whitespace scan of all seven touched files: none found.
 
 ## Deviations & assumptions
-1. ITEM 6 runs AFTER this commit: the block orders the closure commit LAST. Per R-0371 no
-   committed line states the PR number or C2's own SHA; both are in the session report.
-   The authored PLAN slice does say "The closure PR is open and unmerged" — a forward
-   statement, true minutes after this commit, applied byte for byte as authored rather
-   than silently edited.
-2. Deviations, declared: this handback is 105 lines against the 60-line cap. Cause: three
-   per-commit changed-files tables, the mandated item-status table, the closure values
-   (job, package, SHA-256, accepted HEAD) and the four-slice authored-text proofs. No
-   section dropped.
+- OVERSIZE COMMIT, DECLARED (AGENTS.md Commit Discipline): aec25cfd inserts 501 lines — 257 for
+  `.agent/authored/f077-r1.md` plus 244 for `.agent/last_block.md`. Inseparable: the authored file and
+  its `cp` must land in one commit for the `cmp` transport proof to exist. This is the structural cause
+  R-0381 describes. Only such commit in F077 so far.
+- The block defines a carried finding as running to the next blank line, but the F057 record stores
+  R-0363..R-0366 as four adjacent lines with no blank line between them. The extractor therefore ends a
+  paragraph at a blank line OR at the next `^- R-\d+ — ` line, whichever comes first; without that,
+  R-0364 is unextractable. Done by script, not by hand; gate 6's equal digests prove byte fidelity.
+- Handback is 111 lines, over the 60-line cap (DECISION D15 stated cause). The overage is mandated
+  content: the 15-gate verification transcript, four per-commit tables, the item-status table and the
+  six-slice transport-proof table. No section dropped.
 
 ## Next
-The reviewer re-runs every gate and issues the closure VERDICT. The next session's FIRST
-action is Phase 1 rule 1 of `docs/agents/self_drive_protocol.md` — re-read `.agent/STOP`
-from disk — BEFORE rule 2's Open PR Gate. The PR stays UNMERGED.
-
-Fortschritt: 100 % (T001 ✅ · T002 ✅ · T003 ✅ · Integrationsgate ✅ · Closure ✅) — gemessen
+The reviewer gates R1 and issues the R2 block: the T001 inventory, read-only — the loop's ledger entry
+format and writer, the mission pause seam and whether it is re-read per iteration, and the milestone
+link on dispatched jobs.
