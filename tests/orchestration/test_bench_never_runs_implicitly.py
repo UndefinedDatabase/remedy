@@ -66,7 +66,12 @@ SCANNED_TREES = ("apps", "packages", "scripts")
 #: set is a DELIBERATE ACT that says the bench gained an explicit caller, never a
 #: repair to make a red test green. A name appearing here without a round that
 #: meant to put it here is the failure this pin exists to surface.
-EXPLICIT_BENCH_CALLERS: frozenset[str] = frozenset()
+EXPLICIT_BENCH_CALLERS: frozenset[str] = frozenset({
+    # R17: the fake-provider bench run's entry point. It calls BOTH guarded
+    # symbols on purpose — that is what an explicit caller is — and DECISION
+    # F082 D9 predicted this exact one name before it existed.
+    "packages/orchestration/bench_run.py",
+})
 
 #: File counts measured at R16 against this repository: apps 73, packages 256,
 #: scripts 29. The assertion below uses FLOORS well beneath those numbers rather
