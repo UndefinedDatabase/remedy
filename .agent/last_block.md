@@ -1,445 +1,224 @@
-── STEP R7/9 — F077 Autonomy watchdog (R6 verdict, the eight T002 decisions, R-0384) ──
-Goal:        Settle every open question T002 is blocked on as a recorded, reversible DECISION, and repair the three stale docstrings that claim no autonomous status write ever happens.
-Bundle:      C0 save the block · C1 the R6 verdict, Done: R-0383, and both mirrors · C2 the eight F077 decisions · C3 the R-0384 repair across all three sites · C4 handback.
-Change:      EXACTLY these ten files, nothing else — .agent/authored/f077-r7.md (new), .agent/last_block.md, .agent/live_review.md, .agent/decisions.md, .agent/plan.md, .agent/context.md, .agent/handoff.md, packages/orchestration/mission_state.py, apps/cli/commands/mission_cmd.py, tests/cli/test_mission_cmd.py.
-Constraints: NO new behaviour, NO new function, NO new test, NO signature change. C3 is docstring/prose text only — if a diff hunk in C3 touches a line that is not inside a docstring or a comment, you have gone out of scope. The watchdog pause, the decision, the dedup and the ledger entry are R8's work and are NOT built here; this round only decides their shape. Do not touch packages/orchestration/watchdog.py, orchestrator_loop.py, escalation.py, decision_queue.py or docs/. Never write a `Done:` paragraph of your own — that text is reviewer-authored; a fix you land is marked `Landed: R-XXXX — <one line>` and nothing else.
+── STEP R8/11 — F077 Autonomy watchdog (T002 the action, unwired) ────
+Goal:        Build the pause, the deduped decision and the `watchdog_tripped` ledger entry as ONE callable action in `watchdog.py`, exactly as DECISIONS F077 D1-D8 settle them, with no call site in `orchestrator_loop.py`.
+Bundle:      C0 save the block (TWO commits) · C1 the R7 verdict, R-0385, Done: R-0384 · C2 the action · C3 its tests · C4 mirrors · C5 handback.
+Change:      EXACTLY these nine files — .agent/authored/f077-r8.md (new), .agent/last_block.md, .agent/live_review.md, .agent/plan.md, .agent/context.md, .agent/handoff.md, packages/orchestration/watchdog.py, tests/orchestration/test_watchdog.py, and nothing else.
+Constraints: DECISION F077 D8 governs this round: the action ships UNWIRED. Adding any call to it from `packages/orchestration/orchestrator_loop.py` is out of scope and is a scope violation, not a bonus — R9 owns the wiring and the four `test_mission_e2e.py` guards it breaks. Do not edit orchestrator_loop.py, escalation.py, decision_queue.py, mission_state.py, mission_cmd.py or docs/. The watchdog never modifies plans, milestones or dossiers; the ONLY writes it may perform are the mission status, the escalation record on the job it attaches to, and the ledger append. Existing behaviour in watchdog.py is untouched: the three evaluators, their helpers and `watchdog_thresholds_from_config` keep their current signatures and bodies. Never write a `Done:` paragraph of your own — mark a landed fix `Landed: R-XXXX — <one line>` and nothing else.
 ──────────────────────────────────────────────────────────────────────
 
-── C0 — save the block ───────────────────────────────────────────────
-Write the block body verbatim to `.agent/authored/f077-r7.md`, `cp` it to
-`.agent/last_block.md`, commit both together. Report `cmp` exit, the shared
-sha256 and the line count.
-
-── C1 — the R6 verdict, the R-0383 resolution, and both mirrors ──────
-Findings persist FIRST. Four files, ONE commit.
-
-(a) `.agent/live_review.md` — TWO edits, in this order.
-
-  (a1) REWRITE pair. The file currently carries one physical line beginning
-  `Landed: R-0383 — `. Replace that ENTIRE physical line with the DONE-R383
-  slice. FROM and TO are disjoint, so this is a REWRITE: prove
-  `grep -c "^Landed: R-0383 — "` goes 1 -> 0 and `grep -c "^Done: R-0383 — "`
-  goes 0 -> 1. Change nothing else on that line's neighbours.
-
-  (a2) APPEND. At the very END of the file add one blank line then the
-  GATE-R6 slice. It is ONE physical line — do not re-wrap it. Shape: APPEND.
-
->>> DONE-R383 >>>
-Done: R-0383 — the module docstring of `packages/orchestration/watchdog.py` now scopes its purity claim to the three EVALUATORS and their helpers and names `watchdog_thresholds_from_config` as the ONE function that reaches outside, reading config through `get_config()`. Verified at the R6 gate by reading the committed docstring against every function in the module: the narrowed sentence is true of the code as written, and no signature and no behaviour changed to make it true.
-<<< DONE-R383 <<<
-
->>> GATE-R6 >>>
-Gate: R6 — PASS. Verification tier: round gate plus canary plus the state-file contract readers; no full-suite claim is made. Every value was re-executed by the reviewer against the disk rather than read out of the handback, and every one reproduces. Transport: `cmp .agent/authored/f077-r6.md .agent/last_block.md` exit 0 at shared sha256 `126d7c10cbe046d670a0bea99dfaa65ff0cb0a1f02a328d3141124483cc89983`, 136 lines, inside the 400-line cap and inside the 240-line ceiling R-0381's counter-measure sets; BOTH slices were re-extracted by the reviewer from the COMMITTED block file at `ca0af789` between their own markers — FINDING-R384 at 2121 bytes, sha256 `58372ae6e245aa6febf03a2aa3c69dd2f5220c5ecbe18434da844734c2f2d6a7`, and GATE-R5 at 4548 bytes, sha256 `6440d42c125339a36108ebbcaa8a4a8f0de081940b2b3af610823dcd100c1405` — and each is byte-equal to a physical line of `.agent/live_review.md`, whose tail is exactly `Landed: R-0383`, blank, FINDING-R384, blank, GATE-R5, in that order. The live_review numstat for `480a639d` is `4 0`, deletion column 0, so nothing above the append moved. The open set recomputed mechanically from the record — every `^- R-\d+ — ` paragraph minus every `^Done: R-\d+ — ` line — is exactly nineteen: R-0361, R-0362, R-0363, R-0364, R-0367, R-0368, R-0369, R-0371, R-0374, R-0375, R-0376, R-0377, R-0378, R-0379, R-0380, R-0381, R-0382, R-0383, R-0384 — with zero `^Done:` lines and exactly one `^Landed:` line, which is what an unreviewed fix is supposed to look like; the worker authored no resolution of its own. Scope held: `git diff --name-only 6e871e6d..HEAD` returns exactly the six files the Change line names, `git diff --stat 6e871e6d..HEAD -- packages/ apps/ tests/ docs/` produces NO OUTPUT AT ALL, and insertions per commit are 246, 36 and 86, none over 500. Suites re-run by the reviewer: the canary `42 passed`, the three state-file contract readers `142 passed`, `tests/orchestration/test_watchdog.py` `13 passed` against its untouched 13 baseline, and `integrity check --json` returns `passed: true`, `fail_count: 0` over 5 checks; `git status --porcelain` is empty, `git worktree list` is one line, `.agent/plan.md` is 49 physical lines under its 50 cap with `wc -l` and `grep -c ""` agreeing, so the file is newline-terminated, and `.agent/context.md` carries every reader string its three test files assert. A trailing-whitespace scan over all six touched files finds none. R-0383 is RESOLVED at this gate on the reviewer's own reading of the committed module rather than on the handback's claim. The handback's declared 126-line overage is correct under DECISION D15 and its stated cause is real: the mandated tables, the fifteen-gate transcript and the nineteen named findings genuinely do not fit in sixty lines, and no section was dropped to pretend otherwise. No block condition was hit — no fabricated value, no false live indicator, no missing changed-files table, no unverified completion claim, no silent scope change. One correction the record must carry, and it is the REVIEWER's undercount rather than the worker's: R-0384's own text says the stale no-autonomous-writes claim is "available in two places", but it is in THREE — the `TestStatusTransitions` class docstring in `tests/cli/test_mission_cmd.py` repeats it as a third time, found by grepping the suite for the sentence rather than by trusting the finding, and R7's repair covers all three sites.
-<<< GATE-R6 <<<
-
-(b) `.agent/plan.md` — REWRITE pair, replacing the Current Step section and the
-Next Steps list. FROM and TO are disjoint: prove FROM 0x and TO 1x after.
-
->>> PLAN-FROM >>>
-## Current Step
-R6 — record the R5 verdict, register R-0384, close the session.
-<<< PLAN-FROM <<<
-
->>> PLAN-TO >>>
-## Current Step
-R7 — record the R6 verdict, resolve R-0383, settle the eight T002 questions as
-DECISIONS F077 D1-D8, and repair R-0384's three stale docstrings.
-
-T002's code is NOT built this round. The eight questions the T002 inventory
-left open each had a shape consequence, and building before settling them is
-how a round discovers a schema decision halfway through. D1-D8 settle them.
-<<< PLAN-TO <<<
-
-Then in the same file replace the whole `## Next Steps` list body with:
-
->>> PLANNEXT-TO >>>
-1. R8 — T002 the code D1-D8 unblock: the pause, the deduped decision, the
-   `watchdog_tripped` ledger entry and the unit tests, as a callable action in
-   `watchdog.py` NOT yet wired into `run_mission`.
-2. R9 — wire the watchdog into the loop's iteration seam, pay the four
-   whole-ledger guards in `tests/orchestration/test_mission_e2e.py` that a new
-   entry kind breaks, and add the loop-integration test.
-3. R10 — T003 the manual CLI including the missing `mission resume` verb (D4)
-   and the report surface. R11 — integration gate, then closure.
-<<< PLANNEXT-TO <<<
-
-Also update the plan's finding ledger sentence: next free finding id is R-0385
-and the open count after this round is EIGHTEEN, because R-0383 resolves here
-and R-0384 only LANDS here. Keep `.agent/plan.md` at or under 49 physical lines
-and keep its `## Goal` and `## Next Steps` headings — contract tests read them.
-Trim the Risks section if you need the room; do not drop a heading.
-
-(c) `.agent/context.md` — REWRITE pair on the Steps line only.
-
->>> CTX-FROM >>>
-R4 T001 the three evaluators, their config keys and their tests ✅ → R5 record
-the R4 verdict, repair R-0383 and inventory T002 ✅ → R6 record the R5 verdict,
-register R-0384 and close the session → R7 T002 pause, decision, dedup and
-ledger entry, which first settles the eight open questions in
-`.agent/f077_t002_inventory.md` and repairs R-0384 → R8 T003 CLI and report →
-R9 integration gate then closure.
-<<< CTX-FROM <<<
-
->>> CTX-TO >>>
-R4 T001 the three evaluators, their config keys and their tests ✅ → R5 record
-the R4 verdict, repair R-0383 and inventory T002 ✅ → R6 record the R5 verdict
-and register R-0384 ✅ → R7 record the R6 verdict, settle the eight T002
-questions as DECISIONS F077 D1-D8 and repair R-0384 → R8 T002 the pause, the
-deduped decision and the ledger entry as an unwired action → R9 wire it into
-the loop and pay the four e2e ledger guards → R10 T003 CLI, `mission resume`
-and report → R11 integration gate then closure.
-<<< CTX-TO <<<
-
-`.agent/context.md` must still contain, after the edit: `## Active Branch` 1x,
-`feature/f077-autonomy-watchdog` at least 1x, `Steps`, an `F077` token,
-`resource` and `pytest`. Three separate test files assert those.
-
-── C2 — the eight decisions T002 is blocked on ───────────────────────
-Append the DECISIONS-F077 slice to the END of `.agent/decisions.md`, preceded
-by one blank line. Shape: APPEND. Extract it disk-to-disk; do not retype it.
-Own commit.
-
->>> DECISIONS-F077 >>>
-## DECISION F077 D1 (2026-08-14) — a trip always pauses; only the decision degrades on a jobless mission
-
-CONTEXT. `enqueue_task_decision` (`packages/orchestration/escalation.py`) is
-task-scoped and has no jobless guard, and no decision path in the repository
-attaches to a MISSION — every producer branch of `list_decisions` is job- or
-global-scoped. `evaluate_no_progress` and `evaluate_goal_drift` fire only off
-`dispatched_entries`, which requires a non-empty `outcome.job_id`, so only
-`burn_anomaly` can trip with no job to attach to.
-
-CHOSEN. The pause is unconditional; the decision is best-effort. The watchdog
-attaches through `mission.latest_link()` and the job's first task, exactly as
-`escalate_repeated_refusal` (`packages/orchestration/orchestrator_loop.py`)
-already does, and on a jobless or taskless mission it still writes `paused` and
-still writes the ledger entry, recording the attachment failure as prose in the
-entry's `outcome.detail` — the same shape `escalate_repeated_refusal` uses for
-its three guard returns.
-
-ALTERNATIVES CONSIDERED. Refusing to trip on a jobless mission (inventory §1
-option c) is cheaper, but it trades a SAFETY stop for a reporting convenience:
-a burn anomaly on a jobless mission is exactly the runaway the feature exists to
-stop. A mission-anchored decision store (option b) needs a new `DECISION_TYPES`
-member, a ninth `list_decisions` branch and a mission entry point for the three
-`remedy decision` verbs — a schema change T002 should not carry.
-
-HOW TO REVERSE. Make the attachment failure an early return before the pause.
-The D1 test named for the jobless path fails immediately, which is the point.
-
-## DECISION F077 D2 (2026-08-14) — F077's dedup wins, implemented in the watchdog and not in escalation.py
-
-CONTEXT. `packages/orchestration/escalation.py`'s module docstring declines
-dedup as policy — "Two tasks raising the same question produce TWO records
-(deduplication is a human call, feature-file A9)" — while F077 requires one
-decision per trip class, deduped within a mission until resolved. All three
-existing writers enqueue unconditionally, and `enqueue_task_decision` builds a
-fixed key set with no extras argument, so there is nowhere on the stored record
-to hang a typed dedup key.
-
-CHOSEN. F077's requirement wins, and the dedup lives at the WATCHDOG's layer.
-`escalation.py` is not touched and keeps enqueuing whatever it is asked to; the
-watchdog asks only when it should. Before enqueuing, it reads
-`open_mission_decisions(mission)` — which returns the stored record dicts, each
-carrying a `question`, filtered to `ESCALATION_STATUS_OPEN` across every linked
-job — and skips the enqueue when a record's `question` already starts with the
-marker `[watchdog:<kind>]`. The marker is a literal prefix on the question text
-because that is the one caller-controlled field on the record.
-
-ALTERNATIVES CONSIDERED. Adding dedup inside `enqueue_task_decision` reverses a
-documented policy for every caller to serve one of them. A new stored key needs
-`enqueue_task_decision` to accept extras — a signature change on a shared writer
-for a single feature's benefit.
-
-HOW TO REVERSE. Delete the marker scan in the watchdog. Escalation is untouched,
-so nothing else in the repository changes behaviour.
-
-## DECISION F077 D3 (2026-08-14) — the decision's own open/answered state IS the dedup state
-
-CONTEXT. "Deduped until resolved" needs a notion of resolved. Inventory §3 lists
-four candidates and all four are unbuilt.
-
-CHOSEN. Option (a): no new state at all. Suppression means "an open decision
-carrying this trip's marker exists". Answering it through
-`answer_task_decision` flips the record to `ESCALATION_STATUS_ANSWERED`, which
-removes it from `open_task_decisions` and therefore from
-`open_mission_decisions`, and the suppression lifts on the next evaluation with
-no bookkeeping. `remedy decision resolve` already reaches it, because
-`_cmd_decision_resolve` (`apps/cli/commands/decision.py`) dispatches on the
-`td:` prefix the escalation writer produces.
-
-ALTERNATIVES CONSIDERED. A key on the mission record touches `Mission`'s
-serialization. A file under `mission_evidence_dir` is a second source of truth
-beside the queue, which `decision_queue.py`'s own docstring rules out. Deriving
-it from the ledger is append-only and elegant but has no notion of "answered",
-which is precisely the notion the requirement is about.
-
-HOW TO REVERSE. Introduce an explicit dedup store and read it instead. The
-marker scan is one function and it is the only reader.
-
-## DECISION F077 D4 (2026-08-14) — the missing `mission resume` verb is T003's, not T002's
-
-CONTEXT. `_status_for_verb` (`apps/cli/commands/mission_cmd.py`) maps exactly
-`achieve`, `abandon` and `pause`; `apps/cli/command_catalog.py` registers the
-matching three, and a search for `mission.resume` or `mission.activate` across
-`apps/` and `packages/` returns nothing. A paused mission has NO supported path
-back to active, so a watchdog pause is terminal for the run in practice.
-
-CHOSEN. T002 ships the pause and the deduped decision without a resume verb, and
-T003 — the slice that owns the manual CLI — adds `mission resume` alongside the
-watchdog command. The feature file is NOT amended: its acceptance sentence
-"resume clears exactly that trip's dedup" stays true across T002 and T003
-together, because D3 makes the clearing a consequence of answering the decision
-rather than of the verb, and the verb only restores `active`.
-
-ALTERNATIVES CONSIDERED. Adding the verb inside T002 widens a pause-and-decide
-slice into CLI and catalog work. Shipping the pause with no route out at all,
-and not writing the gap down, is how a session rediscovers it in the round that
-can least afford the detour.
-
-HOW TO REVERSE. Move the verb into T002's change set. It is one `_status_for_verb`
-entry, one catalog registration and its test.
-
-## DECISION F077 D5 (2026-08-14) — the evidence triple rides in `move.payload`, and the renderer prints it for free
-
-CONTEXT. `MoveOutcome.to_json` emits only `status`, `detail` and — when set —
-`job_id`, so the triple has no home there. Inventory §4 offers prose in
-`detail`, a raw dict bypassing `MoveOutcome`, or a new `MoveOutcome` field that
-`render_ledger` would not print. Five loop precedents pass `move={}` for entries
-with no model move behind them.
-
-CHOSEN. The `watchdog_tripped` entry takes
-`move={"kind": "watchdog_tripped", "payload": trip.to_json()}`, a real
-`MoveOutcome` for the outcome, `context_digest=""`, and the precedent zero cost
-`{"calls": 0, "usage": None, "usage_source": USAGE_UNMEASURED}`. This was
-checked against the reader rather than assumed: `render_ledger` prints
-`move.get("kind", "unknown")` and then every key of `move["payload"]` in
-`sorted` order, so `kind`, `what`, `since_iteration` and `numbers` appear in the
-human ledger with NO change to the renderer. It also keeps `move["kind"]` a
-total lookup for the existing bare-subscript reader in the suite.
-
-The departure from the `move={}` precedent is deliberate and narrow: those five
-entries are ones where a model move was EXPECTED and absent, whereas a watchdog
-trip is an action of its own with a name. An empty move would be a claim that
-nothing happened.
-
-Re-entrancy, checked against the evaluators rather than assumed: the entry is
-inert to a later watchdog pass. `dispatched_entries` skips it because its kind
-is not `dispatch_job`; `evaluate_no_progress` neither counts nor clears on it
-because it is neither a dispatch nor a `declare_milestone_done`; and
-`measured_tokens` returns `None` for it because the cost carries no `usage`
-dict, so it cannot drag a burn baseline. R8 pins each of those three with a
-test.
-
-ALTERNATIVES CONSIDERED. Prose in `detail` loses the numbers to string parsing.
-A raw outcome dict bypassing `MoveOutcome` gives the entry a shape no other
-entry has. A new `MoveOutcome` field is invisible to the renderer, which is the
-one surface a human reads.
-
-HOW TO REVERSE. Move the payload into `outcome`. `render_ledger` stops printing
-the triple, which is the visible cost and the reason not to.
-
-## DECISION F077 D6 (2026-08-14) — the iteration number is a parameter, defaulted, never guessed
-
-CONTEXT. `run_mission` computes `base = next_iteration_index(...)` ONCE before
-the loop and then uses `iteration = base + step - 1`, while
-`next_iteration_index` re-reads the file and returns one past the highest
-recorded. An external append mid-run therefore takes a number the loop is
-already going to reuse, and the ledger ends up with a duplicate.
-
-CHOSEN. The T002 action takes `iteration: int | None = None` and falls back to
-`next_iteration_index(...)` only when the caller passes nothing. A manual
-out-of-band audit gets a correct number; the loop, when R9 wires it in, passes
-its OWN current number and no collision is possible. The hazard is closed at the
-API boundary in the round that creates the boundary, rather than left for the
-wiring round to discover.
-
-ALTERNATIVES CONSIDERED. Always calling `next_iteration_index` guarantees the
-collision the inventory warns about. Always requiring the caller to pass one
-makes the manual CLI path carry loop bookkeeping it has no business knowing.
-
-HOW TO REVERSE. Drop the parameter. The R9 wiring is the only caller that
-passes it.
-
-## DECISION F077 D7 (2026-08-14) — the stale docstrings are repaired to what is true TODAY, not to what T002 will make true
-
-CONTEXT. Finding R-0384. Three sites claim no autonomous status write happens:
-`set_mission_status` (`packages/orchestration/mission_state.py`),
-`_cmd_mission_set_status` (`apps/cli/commands/mission_cmd.py`), and — found by
-grepping the suite rather than by trusting the finding's own count — the
-`TestStatusTransitions` class docstring in `tests/cli/test_mission_cmd.py`. All
-three have been false since `mission_achieved` and `execute_move` landed.
-
-CHOSEN. All three are repaired in R7, and each new text names ONLY the callers
-that exist at R7: the three human verbs and the loop's two terminal moves. The
-watchdog sentence is deliberately NOT written yet. The T002 inventory §5
-proposes an amendment reading "and — since F077 — the autonomy watchdog, which
-writes `paused`"; applying that in R7 would replace a false claim with a
-different false claim, because no such caller exists until R8. R8 adds the
-watchdog clause in the same commit as the watchdog.
-
-ALTERNATIVES CONSIDERED. Repairing all three in R8 alongside the writer keeps
-one commit, but leaves a known-false docstring on disk across a round for no
-gain. Repairing only the two the finding named leaves the third to be found
-again by whoever greps next.
-
-HOW TO REVERSE. Restore the sentences from git history. Nothing reads them
-programmatically — no test asserts any of the three, which is why they went
-stale unnoticed.
-
-## DECISION F077 D8 (2026-08-14) — T002's action ships UNWIRED, and the four e2e ledger guards are R9's declared bill
-
-CONTEXT. Inventory §7 names four whole-ledger guards in
-`tests/orchestration/test_mission_e2e.py` that a new entry kind breaks: a
-`numbers == [1, 2, 3, 4, 5, 6, 7]` list equality, a seven-kind move list that
-also subscripts `e["move"]["kind"]` bare, a universally quantified
-`context_digest`/`cost` assertion that a zero-cost entry fails, and
-`len(e2e["open_at_pause"]) == 1` over the whole mission queue. None of them
-breaks while the watchdog is not called by `run_mission`.
-
-CHOSEN. R8 builds the pause, the decision and the ledger entry as a callable
-action with unit tests and adds NO call site in `orchestrator_loop.py`. R9 adds
-the call site and pays all four guards in that same round. The split is recorded
-here so that R8's green gate is not read as a working feature: a passing R8
-proves the action is correct in isolation and proves NOTHING about the loop,
-and the handback and brief for R8 must say exactly that.
-
-ALTERNATIVES CONSIDERED. Building and wiring in one round puts a new entry
-shape, a new decision writer, a dedup rule and four rewritten whole-file
-assertions in one diff, where a failure in any one of them is ambiguous between
-the action and the wiring.
-
-HOW TO REVERSE. Merge R8 and R9 into one round. The guard repairs are the same
-work either way; only the diagnosis cost changes.
-<<< DECISIONS-F077 <<<
-
-── C3 — the R-0384 repair, all three sites ───────────────────────────
-Three REWRITE pairs, ONE commit. Docstring prose only. For each pair prove the
-FROM string is 0x and the TO string is 1x in its file afterwards. Each FROM was
-verified by the reviewer to occur EXACTLY ONCE in its file at `55159180`.
-
-(a) `packages/orchestration/mission_state.py`, in `set_mission_status`:
-
->>> MS-FROM >>>
-    """Set a mission's status.  Only ever called by an explicit human command.
-
-    Deliberately absent: any rule that moves a mission to ``achieved`` because
-<<< MS-FROM <<<
-
->>> MS-TO >>>
-    """Set a mission's status.
-
-    Two kinds of caller write here.  The explicit human verbs — ``remedy
-    mission achieve|abandon|pause``, through
-    ``apps.cli.commands.mission_cmd._cmd_mission_set_status`` — and the loop's
-    own terminal moves: ``mission_achieved`` writes ``achieved`` for
-    ``declare_mission_achieved``, and ``execute_move`` writes ``abandoned``
-    for ``abort_with_reason``, both in
-    ``packages.orchestration.orchestrator_loop``.  A status on disk is
-    therefore NOT evidence that a human put it there.
-
-    Deliberately absent: any rule that moves a mission to ``achieved`` because
-<<< MS-TO <<<
-
-(b) `apps/cli/commands/mission_cmd.py`, in `_cmd_mission_set_status`:
-
->>> MC-FROM >>>
-    human typing the command is the authority on what the mission's state is.
-    Nothing in Remedy moves a mission between statuses on its own (F056).
-    """
-<<< MC-FROM <<<
-
->>> MC-TO >>>
-    human typing the command is the authority on what the mission's state is.
-
-    This surface is not the only writer, though.  The orchestrator loop's own
-    terminal moves write ``achieved`` and ``abandoned`` with no human in the
-    loop — see ``mission_state.set_mission_status`` for the full caller list —
-    so F056's "nothing moves on its own" holds for this COMMAND, not for the
-    status field.
-    """
-<<< MC-TO <<<
-
-(c) `tests/cli/test_mission_cmd.py`, the `TestStatusTransitions` class docstring:
-
->>> TC-FROM >>>
-    status may follow any other, because the human typing the command is
-    the authority. Nothing in Remedy moves a mission's status on its own.
-    """
-<<< TC-FROM <<<
-
->>> TC-TO >>>
-    status may follow any other, because the human typing the command is
-    the authority. This surface is not the only writer, though: the
-    orchestrator loop's terminal moves write achieved and abandoned with
-    no human in the loop.
-    """
-<<< TC-TO <<<
-
-Then append to `.agent/live_review.md`, as its new last physical line preceded
-by one blank line, the LANDED-R384 slice. Same commit as the three pairs.
-
->>> LANDED-R384 >>>
-Landed: R-0384 — repaired the stale no-autonomous-status-write claim at all THREE sites (set_mission_status in packages/orchestration/mission_state.py, _cmd_mission_set_status in apps/cli/commands/mission_cmd.py, and the TestStatusTransitions class docstring in tests/cli/test_mission_cmd.py); each new text names only the callers that exist at this commit and none of them mentions the watchdog, per DECISION F077 D7.
-<<< LANDED-R384 <<<
-
-── C4 — the handback ─────────────────────────────────────────────────
-Rewrite `.agent/handoff.md` per docs/agents/handback_template.md. It carries the
-per-commit changed-files tables, the REAL gate transcript below, the item-status
-table for C0-C4, the open-findings count and the next expected action. If the
-mandated content genuinely does not fit in 60 lines, exceed the cap and carry a
-"Deviations, declared" line naming the real line count and the specific mandated
-content that caused it (DECISION D15). Never drop a section to meet the cap.
+── C0 — save the block, in TWO commits ───────────────────────────────
+Write the block body verbatim to `.agent/authored/f077-r8.md` and commit that
+file ALONE. Then `cp .agent/authored/f077-r8.md .agent/last_block.md` and commit
+THAT alone. Two commits by construction, because one commit carrying both files
+would double the insertion count against AGENTS.md's 500 cap — the R7 lesson,
+now ordered up front instead of left for you to discover (finding R-0385).
+Report `cmp` exit 0, the shared sha256 and the line count.
+
+── C1 — the R7 verdict, finding R-0385, and the R-0384 resolution ────
+Findings persist FIRST. One commit, `.agent/live_review.md` only, appended at
+the very END in THIS order: blank, FINDING-R385, blank, GATE-R7, blank,
+DONE-R384. Each slice is ONE physical line — do not re-wrap. Change nothing
+above them, and in particular leave the existing `Landed: R-0384` line exactly
+where it is: this round APPENDS its resolution rather than rewriting that line,
+so the shape is APPEND and the deletion column of this commit's numstat is 0.
+
+>>> FINDING-R385 >>>
+- R-0385 — Medium — the reviewer emitted a 445-line block against its own 400-line gate, and the same overrun then ordered a commit AGENTS.md forbids. Two downstream costs, both real, both traceable to one omission. First: gate 2 of the R7 block ordered the worker to report the block's line count and assert it is "at or under 400"; the real value is 445, so the gate was unsatisfiable by construction, and the worker was right to report 445 unadjusted rather than trim an artifact it is required to save verbatim. That is the R-0371 self-referential-gate class recurring — a gate whose expected value the block's own bytes contradict. It also breaks the 240-line ceiling recorded in `.agent/context.md`, whose stated purpose is precisely "so the block-save commit stays inside the 500-insertion cap". Second: C0 of that block ordered the new authored file and its `cp` mirror committed TOGETHER, which at 445 lines measures 886 insertions against AGENTS.md's hard 500-line cap, whose own prescribed remedy is "stop and split before committing". The worker applied that remedy, splitting by file into `8ecf306f` (445 insertions, the authored file) and `8d9ed78e` (441 insertions, the `cp` mirror — itself the AGENTS.md-exempt verbatim rewrite of a single `.agent/**` state file), kept the bytes identical so `cmp` still exits 0, and consumed no oversize exception. That was the correct call and AGENTS.md outranks the block, so it is not a worker defect. The root cause is single: the block was never measured. Pre-emission checklist item 1 (docs/agents/planner_reviewer_prompt.md §3) says to count the block's lines mechanically on the FINAL bytes, after the last edit, before the block leaves the reviewer; the reviewer reasoned about a 240-line budget while drafting, kept adding, and never counted the result. Fix, both halves: the reviewer counts the emitted block with `wc -l` before delegating and cuts to the ceiling if it is over, AND any block expected to exceed roughly 250 lines orders C0 as two commits from the start, as this block does, so the cap is never something the worker has to discover mid-round. OPEN.
+<<< FINDING-R385 <<<
+
+>>> GATE-R7 >>>
+Gate: R7 — PASS. Verification tier: round gate plus canary plus the state-file contract readers; no full-suite claim is made. Every value was re-executed by the reviewer against the disk rather than read out of the handback, and every one reproduces. Transport: `cmp .agent/authored/f077-r7.md .agent/last_block.md` exit 0 at shared sha256 `bbac8ab687f6d0002d2cf6384c5576a7004c0266f0e6086b095e440fad83bae5`, 445 lines — OVER the 400-line cap the block set for itself, which is the reviewer's defect and is registered above as R-0385, not the worker's. All nine authored slices were re-extracted by the reviewer from the COMMITTED block file at `8ecf306f` between their own markers and each is present in its target EXACTLY ONCE, byte for byte: DONE-R383 482 bytes, GATE-R6 3444, LANDED-R384 420, DECISIONS-F077 12273, PLANNEXT-TO 561, CTX-TO 526, MS-TO 621, MC-TO 419, TC-TO 247; and all five FROM anchors — PLAN, CTX, MS, MC, TC — count 0 in their files afterwards, so every rewrite pair completed rather than double-applied. The record's line-anchored counts are `^Gate: R6 — PASS` 1, `^Done: R-0383 — ` 1, `^Landed: R-0383 — ` 0, `^Landed: R-0384 — ` 1, `^## Steps` 1, and the open set recomputed mechanically from the record — every `^- R-\d+ — ` paragraph minus every `^Done: R-\d+ — ` line — is exactly EIGHTEEN: R-0361, R-0362, R-0363, R-0364, R-0367, R-0368, R-0369, R-0371, R-0374, R-0375, R-0376, R-0377, R-0378, R-0379, R-0380, R-0381, R-0382, R-0384. Scope held exactly: `git diff --name-only 55159180..HEAD` returns the ten Change-line files and no others, `git diff --stat 55159180..HEAD -- packages/ apps/ tests/` lists exactly `mission_cmd.py`, `mission_state.py` and `test_mission_cmd.py` at 19 insertions against 3 deletions, and over `docs/` it produces no output at all. The C3 diff was read hunk by hunk rather than trusted: all three hunks sit wholly inside a docstring, no executable line moved, and each new text names ONLY the callers that exist at this commit — the three human verbs and the loop's two terminal moves — with no mention of the watchdog, which is DECISION F077 D7 applied correctly and is the difference between repairing a false claim and replacing it with a different one. The T002 inventory's own §5 proposed amendment would have made that mistake, and declining it is the right call. Suites re-run by the reviewer: `tests/cli/test_mission_cmd.py` with `tests/orchestration/test_mission_state.py` `164 passed` against the 164 baseline the reviewer measured BEFORE authoring, the canary `42 passed`, the three state-file contract readers `142 passed`, `tests/orchestration/test_watchdog.py` `13 passed` untouched, `ruff check` over the three changed files `All checks passed!`, and `integrity check --json` `passed: true`, `fail_count: 0` over 5 checks; `git status --porcelain` is empty, `git worktree list` is one line, `.agent/plan.md` is 42 physical lines with `wc -l` and `grep -c ""` agreeing, and `.agent/context.md` carries every reader string its three test files assert. The C0 split into two commits is a correct deviation and is credited to the worker rather than charged to it: AGENTS.md outranks the block, the combined commit would have been 886 insertions, and the split kept the bytes identical. The worker's refusal to trim the oversize block to satisfy a gate about the block itself is likewise correct — an artifact it must save verbatim is not its to edit — and its report of 445 unadjusted is exactly the honesty the evidence rule asks for. R-0384 is RESOLVED at this gate, on the reviewer's own reading of all three repaired sites. The eight decisions are the round's real product and they were spot-checked rather than accepted: D2's mechanism was verified reachable before it was ordered — `open_mission_decisions` in `orchestrator_loop.py` returns the STORED record dicts, each carrying a `question`, filtered to `ESCALATION_STATUS_OPEN` across every linked job — and D5's central claim was verified against the reader rather than assumed, since `render_ledger` prints `move.get("kind", "unknown")` and then every key of `move["payload"]` in sorted order, so the evidence triple reaches the human ledger with no renderer change. No block condition was hit — no fabricated value, no false live indicator, no missing changed-files table, no unverified completion claim, no silent scope change.
+<<< GATE-R7 <<<
+
+>>> DONE-R384 >>>
+Done: R-0384 — the stale "no autonomous status write" claim is repaired at all THREE sites: `set_mission_status` in `packages/orchestration/mission_state.py` now names the two kinds of caller and states that a status on disk is not evidence a human put it there; `_cmd_mission_set_status` in `apps/cli/commands/mission_cmd.py` now scopes F056's "nothing moves on its own" to the COMMAND rather than to the status field; and the `TestStatusTransitions` class docstring in `tests/cli/test_mission_cmd.py` — the third site, which the finding itself undercounted — carries the same correction. Verified at the R7 gate by reading each hunk against the callers that actually exist at that commit: `mission_achieved` and `execute_move` in `orchestrator_loop.py` are named, the watchdog deliberately is NOT, because it does not write a status until R8 lands, and a docstring naming a caller that does not exist yet would be the same defect in the other direction (DECISION F077 D7).
+<<< DONE-R384 <<<
+
+── C2 — the action ───────────────────────────────────────────────────
+Own commit. `packages/orchestration/watchdog.py` only. Append a new section
+BELOW the existing evaluators; change no existing function. Heavy imports go
+INSIDE the function body, following this module's own precedent in
+`watchdog_thresholds_from_config` and `orchestrator_loop.open_mission_decisions`
+— a module-level import of the loop would create the cycle R9's wiring needs to
+not exist.
+
+Add, in this order:
+
+1. Constants, each with the one-line WHY comment this repo puts directly above
+   a definition: `MOVE_WATCHDOG_TRIPPED = "watchdog_tripped"` (the ledger
+   entry's `move.kind`), `OUTCOME_WATCHDOG_TRIPPED = "watchdog_tripped"` (its
+   `MoveOutcome.status`), `DECISION_OPTION_RESUME = "resume"` and
+   `DECISION_OPTION_ABORT = "abort"` (the two options the feature file names).
+
+2. `def watchdog_decision_marker(kind: str) -> str` returning
+   `f"[watchdog:{kind}]"`. This prefix on the decision's QUESTION is the whole
+   dedup key (DECISION F077 D2): `enqueue_task_decision` writes a fixed key set
+   and takes no extras, so the question text is the one caller-controlled field.
+
+3. A frozen dataclass `TripAction` with `trip: Trip`, `decision_id: str = ""`,
+   `suppressed: bool = False`, `note: str = ""`. `decision_id` is `""` whenever
+   no record was written, and `note` then says why in one human sentence.
+
+4. `def act_on_trips(project_id: str, mission_id: str, trips: Sequence[Trip],
+   *, root: Any = None, iteration: int | None = None, now: Any = None) ->
+   list[TripAction]`, doing exactly this and nothing more:
+
+   (a) `if not trips: return []` — no pause, no entry, no decision. A watchdog
+       that writes on a clean ledger is a watchdog nobody leaves switched on.
+   (b) Load the mission. Write `MISSION_STATUS_PAUSED` through
+       `set_mission_status` ONLY when the current status is
+       `MISSION_STATUS_ACTIVE`. An `achieved` or `abandoned` mission is
+       terminal and the watchdog must not overwrite it; an already-`paused` one
+       needs no write. One status write per call, never one per trip.
+   (c) Read the open decisions ONCE via
+       `orchestrator_loop.open_mission_decisions(mission)`.
+   (d) For each trip, in the order given: compute its marker; if any open
+       record's `question` (coerced with `str(...)`, defaulting to `""`) starts
+       with that marker, produce `TripAction(trip, suppressed=True,
+       note=...)` and enqueue NOTHING. Otherwise attach exactly as
+       `escalate_repeated_refusal` does (DECISION F077 D1) — `mission
+       .latest_link()`, then `load_job(_as_uuid(link.job_id))` inside a
+       `try/except Exception`, then the job's first task — and on each of those
+       three guards produce a `TripAction` with `decision_id=""` and a note
+       naming the specific gap, never a raise. On the happy path call
+       `enqueue_task_decision(job, task_id=<first task's id>,
+       question=f"{marker} {trip.what}",
+       options=(DECISION_OPTION_RESUME, DECISION_OPTION_ABORT),
+       safe_default="", impact=<one sentence naming the paused mission>,
+       now=<the stamp>)`, then `save_job(job)`, and take `decision_id` from the
+       returned record. `safe_default` is deliberately EMPTY: it is the value
+       `escalation.auto_apply_safe_default` would apply unattended, and a
+       watchdog whose trip can be auto-answered by the same automation it just
+       stopped is not a tripwire. Append the new record to the in-memory open
+       list so a second trip of the same class in the SAME call cannot
+       double-enqueue.
+   (e) For each trip, append ONE ledger entry, whatever the decision outcome
+       was — the pause and the record of it must not depend on whether a
+       decision could be attached. Shape, fixed by DECISION F077 D5:
+       `move={"kind": MOVE_WATCHDOG_TRIPPED, "payload": trip.to_json()}`,
+       `outcome=MoveOutcome(status=OUTCOME_WATCHDOG_TRIPPED, detail=<see
+       below>, terminal=False).to_json()`, `context_digest=""`, and the
+       precedent zero cost `{"calls": 0, "usage": None, "usage_source":
+       USAGE_UNMEASURED}`. `detail` is `trip.what`, followed by `"; "` and the
+       note whenever a note exists. Use `append_ledger_entry(project_id,
+       mission_id, entry, root, now=<the stamp>)`.
+   (f) Iteration numbering, per DECISION F077 D6: when `iteration` is not None
+       every entry of this call carries it — simultaneous trips genuinely
+       happened in one iteration — and when it is None, call
+       `next_iteration_index(project_id, mission_id, root)` freshly before EACH
+       append, so a manual multi-trip audit numbers its entries consecutively.
+   (g) Return the `TripAction` list in trip order, one per trip, always.
+
+   Give `act_on_trips` a docstring that states what it writes (mission status,
+   one escalation record per unsuppressed trip, one ledger entry per trip) and
+   what it never touches (plans, milestones, jobs beyond that record, dossiers).
+   Then add ONE paragraph to the MODULE docstring saying that this section is
+   the action half and is deliberately NOT pure, so the existing purity sentence
+   keeps meaning only what it says. Describe only what exists at this commit:
+   the action has NO caller in `orchestrator_loop.py` and the docstring must not
+   imply one (the D7 discipline).
+
+── C3 — the tests ────────────────────────────────────────────────────
+Own commit. `tests/orchestration/test_watchdog.py` only; the 13 existing tests
+keep passing untouched. The file is currently fixture-free and pure, so add what
+you need at the bottom: borrow the mission/job fixture shapes from
+`tests/orchestration/test_orchestrator_loop.py` (its `mission` fixture, `PROJECT`
+and `_plan`) and from `tests/orchestration/test_escalation.py` for a job with
+tasks. Every test passes `root=tmp_path`. Name each test after the property it
+pins, in this file's existing sentence style. Cover, at minimum:
+
+ 1. An empty trip list writes NOTHING: status unchanged, ledger file absent or
+    unchanged, no decision, return value `[]`.
+ 2. One trip on an ACTIVE mission leaves it `paused`.
+ 3. A mission already `achieved` is NOT overwritten by a trip.
+ 4. The ledger entry's `move["kind"]` is `watchdog_tripped` and its
+    `move["payload"]` equals `trip.to_json()` exactly — assert the DICTS are
+    equal, not their rendered length.
+ 5. `render_ledger` over the read-back ledger contains the trip's `kind`, its
+    `what`, and the `since_iteration` and `numbers` keys — the D5 claim that the
+    evidence triple reaches the human ledger with no renderer change.
+ 6. Dedup: acting twice on the same trip CLASS writes exactly ONE escalation
+    record; the second call returns `suppressed=True` and `decision_id == ""`.
+ 7. Two trips of DIFFERENT classes in one call produce TWO decisions — dedup is
+    per class, not per mission.
+ 8. Answering the decision through `escalation.answer_task_decision` and saving
+    the job lifts the suppression: a third call enqueues again (DECISION D3).
+ 9. A mission with no linked job still pauses and still writes its ledger entry;
+    the returned `TripAction` has `decision_id == ""` and a note naming the
+    missing job, and nothing raises (DECISION D1).
+10. Re-entrancy (the D5 inertness claim, verified rather than asserted): build a
+    ledger that already contains a `watchdog_tripped` entry and show that
+    `dispatched_entries` ignores it, that `measured_tokens` returns `None` for
+    it, and that `evaluate_no_progress` reaches the same verdict with and
+    without it present.
+11. A caller-supplied `iteration` is the number the entry carries.
+
+Report the real test count for the file afterwards; do not adjust it to a
+number this block predicts.
+
+── C4 — the mirrors ──────────────────────────────────────────────────
+Own commit. Update `.agent/plan.md` (Current Step and the Next Steps list) and
+`.agent/context.md` (the Scope and Steps lines) to the state after R8. Keep
+`.agent/plan.md` at or under 49 physical lines with its `## Goal` and
+`## Next Steps` headings intact, and keep in `.agent/context.md`:
+`## Active Branch` 1x, `feature/f077-autonomy-watchdog`, `Steps`, `F077`,
+`resource`, `pytest`. Record in both that the open count is SEVENTEEN after this
+round — eighteen minus R-0384, plus R-0385 — and that the next free id is
+R-0386. Recompute that set from `.agent/live_review.md` yourself and report your
+own number; if it is not seventeen, report what you got and do not adjust it.
+
+── C5 — the handback ─────────────────────────────────────────────────
+Rewrite `.agent/handoff.md` per docs/agents/handback_template.md: per-commit
+changed-files tables, the REAL gate transcript, the item-status table for C0-C5,
+the open-findings count and the next expected action. Exceeding 60 lines is
+allowed only with a DECISION D15 "Deviations, declared" line naming the real
+count and the mandated content that caused it. Never drop a section.
+
+State plainly in the handback that this round's green gate proves the ACTION is
+correct in isolation and proves NOTHING about the loop, because `act_on_trips`
+has no call site yet (DECISION F077 D8). R9 adds the call site and pays the four
+whole-ledger guards in `tests/orchestration/test_mission_e2e.py`.
 
 ── Gates — run every one, report the REAL value, never the word "green" ──
-Report the actual output of each. A gate you did not run is a finding.
- 1. `git status --porcelain` -> EMPTY, and `git worktree list` -> 1 line.
- 2. `cmp .agent/authored/f077-r7.md .agent/last_block.md` -> exit 0. Report the
-    shared sha256 and the line count; must be at or under 400.
- 3. On `.agent/live_review.md`: `grep -c "^Gate: R6 — PASS"` -> 1,
-    `grep -c "^Done: R-0383 — "` -> 1, `grep -c "^Landed: R-0383 — "` -> 0,
-    `grep -c "^Landed: R-0384 — "` -> 1, `grep -c "^## Steps"` -> 1.
- 4. Recompute the open set MECHANICALLY from `.agent/live_review.md` — every
-    `^- R-\d+ — ` paragraph minus every `^Done: R-\d+ — ` line — and list the
-    ids. Expected: 19 registered, 1 resolved, EIGHTEEN open. Name all eighteen.
-    If your count differs from eighteen, report YOUR number and do not adjust
-    it to match this line.
- 5. `git show --numstat <C1-sha> -- .agent/live_review.md` and the same for the
-    C3 commit: report both columns. C1's deletion column is 1 (the Landed line
-    it rewrites); C3's deletion column is 0.
- 6. For all eight FROM/TO pairs (PLAN, PLANNEXT, CTX, MS, MC, TC): report
-    `grep -c` for the FROM and for a distinctive line of the TO in the target
-    file after the edit. Every FROM -> 0, every TO -> 1. PLANNEXT and the
-    live_review appends are APPEND-shaped; count their added lines within
-    `git show --numstat` for that commit instead of over the whole file.
- 7. `wc -l .agent/plan.md` -> at or under 49, and `grep -c ""` on it must equal
-    `wc -l` (newline-terminated). `grep -c "^## Goal"` -> 1,
-    `grep -c "^## Next Steps"` -> 1. On `.agent/context.md`:
-    `grep -c "^## Active Branch"` -> 1, and `feature/f077-autonomy-watchdog`,
-    `Steps`, `F077`, `resource`, `pytest` each at least 1.
- 8. `git diff --stat 55159180..HEAD -- packages/ apps/ tests/` must list
-    EXACTLY three files: mission_state.py, mission_cmd.py, test_mission_cmd.py.
-    `git diff --stat 55159180..HEAD -- docs/` must be EMPTY.
- 9. `git diff --name-only 55159180..HEAD` -> exactly the ten Change-line files.
-10. Read the C3 diff hunks yourself and confirm every changed line sits inside a
-    docstring. Report the three hunks' `+/-` counts.
-11. `python3 -m pytest tests/cli/test_mission_cmd.py tests/orchestration/test_mission_state.py -q` ->
-    baseline `164 passed`. Report the real number.
-12. `python3 -m pytest tests/cli/test_golden_path.py -q` -> baseline
-    `42 passed` (canary).
-13. `python3 -m pytest tests/ui_server/test_dashboard_contract.py tests/regression/test_resource_safety.py tests/orchestration/test_test_runner.py -q` ->
-    baseline `142 passed`.
-14. `python3 -m pytest tests/orchestration/test_watchdog.py -q` -> baseline
-    `13 passed`; this round does not touch it.
-15. `python3 -m ruff check packages/orchestration/mission_state.py apps/cli/commands/mission_cmd.py tests/cli/test_mission_cmd.py`
+ 1. `git status --porcelain` -> EMPTY; `git worktree list` -> 1 line.
+ 2. `cmp .agent/authored/f077-r8.md .agent/last_block.md` -> exit 0; report the
+    shared sha256 and the line count.
+ 3. On `.agent/live_review.md`: `grep -c "^Gate: R7 — PASS"` -> 1,
+    `grep -c "^- R-0385 — "` -> 1, `grep -c "^Done: R-0384 — "` -> 1,
+    `grep -c "^Landed: R-0384 — "` -> 1 (the Landed line STAYS),
+    `grep -c "^## Steps"` -> 1.
+ 4. Recompute the open set mechanically from `.agent/live_review.md` and name
+    every id. Report YOUR count.
+ 5. `git show --numstat <C1-sha> -- .agent/live_review.md`: report both columns;
+    the deletion column is 0.
+ 6. `git diff --name-only 7649a86b..HEAD` -> exactly the nine Change-line files.
+    `git diff --stat 7649a86b..HEAD -- docs/ apps/` -> EMPTY.
+ 7. `grep -rn "watchdog" packages/orchestration/orchestrator_loop.py` -> report
+    every hit. There must be NO import of and NO call into `watchdog` (D8); the
+    one pre-existing hit is a prose comment mentioning escalation, not an import.
+ 8. `python3 -m pytest tests/orchestration/test_watchdog.py -q` -> report the
+    real count; the 13 pre-existing tests must all still pass. Also report
+    `grep -c "def test_" tests/orchestration/test_watchdog.py`.
+ 9. `python3 -m pytest tests/orchestration/test_orchestrator_loop.py tests/orchestration/test_mission_e2e.py tests/orchestration/test_escalation.py -q`
+    -> run it and report the REAL result. Measure this BEFORE you start C2 as
+    well and report BOTH numbers, so a regression is attributable.
+10. `python3 -m pytest tests/cli/test_golden_path.py -q` -> baseline `42 passed`.
+11. `python3 -m pytest tests/ui_server/test_dashboard_contract.py tests/regression/test_resource_safety.py tests/orchestration/test_test_runner.py -q`
+    -> baseline `142 passed`.
+12. `python3 -m ruff check packages/orchestration/watchdog.py tests/orchestration/test_watchdog.py`
     -> exit 0. Repo-wide `ruff check` is RED on main (R-0364) and is NOT a gate.
-16. `python3 -m apps.cli.main integrity check --json` -> report `passed`,
+13. `python3 -c "import packages.orchestration.watchdog"` -> exit 0, proving no
+    import cycle was introduced.
+14. `python3 -m apps.cli.main integrity check --json` -> report `passed`,
     `fail_count`, `check_count`.
-17. Insertions per commit from `git show --numstat`; none over 500.
-18. Trailing-whitespace scan over every touched file -> none.
-19. `test -e .agent/STOP` -> report absent or present. Check it BEFORE you start
-    and AGAIN at handback. If it appears, finish the current commit, write the
-    handoff and STOP.
-20. `git push -u origin feature/f077-autonomy-watchdog`. No `gh` command, no PR.
+15. `wc -l .agent/plan.md` -> at or under 49 and equal to `grep -c ""` on it;
+    `^## Goal` 1, `^## Next Steps` 1; the six `.agent/context.md` reader
+    strings all present.
+16. Insertions per commit from `git show --numstat`; none over 500. If any
+    commit would exceed it, SPLIT before committing and say so.
+17. Trailing-whitespace scan over every touched file -> none.
+18. `test -e .agent/STOP` -> report absent or present, checked BEFORE you start
+    and AGAIN at handback. If it appears: finish the current commit, write the
+    handoff, STOP.
+19. `git push -u origin feature/f077-autonomy-watchdog`. No `gh`, no PR.
 
 Handback: completion report + rewrite `.agent/handoff.md`.
