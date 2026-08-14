@@ -5381,3 +5381,36 @@ HOW TO REVERSE. Restore the two summing lines in `measure_tokens` to read only
 `prompt_tokens`/`completion_tokens` and delete the regression test in
 `tests/orchestration/test_capability_bench.py` that names `input_tokens`.
 Nothing else depends on this decision.
+
+## DECISION F082 D2 (2026-08-14) — the bench freeze binds each order's VERSION to its digest
+
+CONTEXT. F082's acceptance says "Changing an order file without bumping its
+version fails validation." The gauntlet's freeze does not give that for free.
+`gauntlet_orders.load_order_set` compares each order file's sha256 against the
+digest recorded for it in `manifest.json`, so an edit alone DOES fail — but the
+obvious repair is to recompute the manifest digest, and that passes with no
+version bump anywhere. R2 Q3 confirmed there is no per-order version field at
+all: `GauntletOrder` carries `id`, `file_name` and `sha256`, and the only
+version constants are module-level and set-wide.
+
+DECISION. Each bench order file carries its own `bench_order_version` integer,
+and the manifest records, per order, a `digests` map from version string to the
+sha256 of the bytes published under that version. Validation requires that the
+order file's CURRENT digest equals `digests[str(version)]`. Editing the bytes
+without bumping the version therefore fails, because the new bytes do not match
+the digest recorded for the version the file still claims; bumping the version
+requires adding a new entry to the map, which is a deliberate act and leaves the
+previous pair in place as the series' own history. Changing an order starts a
+new series, which is the comparability honesty the feature file asks for.
+
+ALTERNATIVES CONSIDERED. (a) Reuse the gauntlet's single-digest manifest
+unchanged: rejected, it is exactly the mechanism that permits a silent
+recompute. (b) Derive the version from git history of the order file: rejected,
+validation must hold in an exported evidence bundle where no git history is
+present. (c) Store only the newest (version, digest) pair rather than a map:
+rejected, it loses the series history that makes an old bench row's basis
+readable, at no saving worth having.
+
+HOW TO REVERSE. Drop the `digests` map from the manifest and compare against a
+single `sha256` per order, matching the gauntlet's shape, and delete the
+version-binding tests in `tests/orchestration/test_bench_orders.py`.

@@ -2,9 +2,9 @@
 
 Branch: feature/f082-self-benchmark, cut from main after the F077 closure PR
 #200 merged. F082 is claimed `[~]` in docs/roadmap/STATUS.md. Next free finding
-id: R-0408. Open findings: thirty-seven — the thirty-two carried from F077,
-R-0403 at the claim, R-0404 at the R1 gate, and R-0405 to R-0407 at the R2
-gate. `.agent/live_review.md` is the source of truth; this file mirrors it.
+id: R-0409. Open findings: thirty-eight — the thirty-two carried from F077,
+R-0403 at the claim, R-0404 at the R1 gate, R-0405 to R-0407 at the R2 gate,
+and R-0408 at the R3 gate. `.agent/live_review.md` is the source of truth.
 
 ## Goal
 Capability becomes a measured, versioned trend instead of a feeling: a frozen
@@ -15,22 +15,22 @@ fixtures, history survives across runs, and a deliberately degraded fixture run
 triggers the regression warning.
 
 ## Current Step
-R3: the R2 gate recorded, R-0405 to R-0407 and DECISION F082 D1 registered,
-`measure_tokens` repaired, and the bench record schema built as a pure
-function over what a gauntlet run already produces.
+R4: the R3 gate recorded, R-0408 and DECISION F082 D2 registered, the sample
+project surveyed, and the five frozen orders built behind a freeze that binds
+each order's version to its digest.
 
 ## Next Steps
-1. R4 — T001 finished: the five frozen order files with per-order version
-   tags, the validation that a changed order without a bump FAILS, and the
-   dry run against recorded fixture evidence.
-2. R5 — T002: history append, trend computation, the regression rules and the
+1. R5 — T001 closed: the dry run of `build_bench_record` against RECORDED
+   fixture evidence, end to end from an order file to a row.
+2. R6 — T002: history append, trend computation, the regression rules and the
    improving, flat and degrading goldens.
-3. R6 — T003: the `stats bench` CLI, model-context recording and a
+3. R7 — T003: the `stats bench` CLI, model-context recording and a
    fake-provider bench run end to end.
-4. R7 the integration gate, R8 closure.
+4. R8 the integration gate, R9 closure.
 
 ## Risks
-- `series` and `repair_rounds` have no source in the harness (R2 Q2, Q7).
-  Both are recorded as explicitly-unmeasured rather than invented; a zero
-  standing in for an unknown is the R-0178 mistake R-0407 just registered.
-- Thirty-seven open findings is the largest carry any feature has started with.
+- The five capabilities the feature file names may not all be expressible
+  against the existing sample project. C2 surveys it FIRST and stops rather
+  than inventing an order that cannot run — an unrunnable frozen order is
+  worse than a missing one, because the freeze makes it permanent.
+- Thirty-eight open findings is the largest carry any feature has started with.
