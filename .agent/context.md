@@ -8,13 +8,14 @@ for this branch yet; one is created at closure, not before.
 ## Scope
 In: `packages/orchestration/rate_governor.py` and
 `tests/orchestration/test_rate_governor.py`, plus `.agent/**` round state and
-the one claimed STATUS line. T001 and T002 are built; T003, the seam, remains.
+the one claimed STATUS line. T001 and T002 are built and gated; T003, the seam
+in `packages/orchestration/pingpong_loop.py`, is all that remains.
 
 Out: the per-call retry policy in `packages/orchestration/provider_timeouts.py`,
 parallelism itself, and the provider adapters' internals — the feature file's
 Do-not-touch list, verified byte-identical at every round so far.
-`packages/orchestration/pingpong_loop.py` holds the T003 seam and stays
-untouched until then.
+`packages/orchestration/pingpong_loop.py` is READ this round for the seam
+inventory and stays byte-identical until T003 opens it.
 
 ## Constraints
 - The main session writes nothing in the work tree; a delegated worker subagent
@@ -31,9 +32,11 @@ untouched until then.
   branch's job, not this one's (R-0364).
 - The governor's clock and sleep are injected. A real sleep in a unit test is a
   finding.
+- Count gates over a file the same block writes state their anchoring and are
+  line-anchored for headings and record-opening tokens (R-0369).
 - A round pushes after EVERY commit, not once at its last step.
 
 ## Steps
 R1 claim and T001 ✅ → R2 findings and two fixes ✅ → R3 verdict and session
-close ✅ → R4 R3 verdict, R-0368 and T002 governor → T003 seam → integration
-gate → closure.
+close ✅ → R4 T002 governor ✅ → R5 R4 verdict, R-0369, R-0370 and the T003 seam
+inventory → T003 seam → integration gate → closure.
