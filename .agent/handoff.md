@@ -68,7 +68,7 @@ R-0378, R-0379, R-0382, R-0385, R-0386, R-0387, R-0389, R-0391, R-0392.
    so the paused-mission report has no insertion point there. Q8: the status
    safe point writes NO ledger entry — the block's phrase describes the
    stop-request safe point above it.
-3. This handoff is 89 lines. Cause per DECISION D15: the per-commit table, the
+3. This handoff is 96 lines. Cause per DECISION D15: the per-commit table, the
    16-row verification table, the item-status table, the 23 finding names and
    the mandated 5-part Next section. No section dropped.
 
@@ -87,3 +87,10 @@ R-0378, R-0379, R-0382, R-0385, R-0386, R-0387, R-0389, R-0391, R-0392.
    R-0367, R-0368, R-0369, R-0371, R-0374, R-0375, R-0376, R-0377, R-0378,
    R-0379, R-0382, R-0385, R-0386, R-0387, R-0389, R-0391, R-0392. Next free
    id: **R-0393**.
+6. **R13's own verdict is not on disk, by construction** —
+   `docs/agents/planner_reviewer_prompt.md` §4.13: the last round of a
+   session cannot record the review gate on itself. The reviewer re-ran R13's
+   sixteen gates independently and they all reproduced, but the `Gate: R13 — `
+   paragraph is owed and unwritten. R14's FIRST commit writes it, before any
+   T003 code, exactly as R13's C1 wrote `Gate: R12 — `. If that commit is
+   missing, the record has lost a round.
