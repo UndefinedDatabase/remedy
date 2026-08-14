@@ -201,6 +201,41 @@ class TestPrimaryDocsAreHonest:
             f"README claims {m.group(1)} accepted; STATUS.md has "
             f"{accepted}")
 
+    def test_the_readme_tier_table_done_column_matches_the_ledger(self):
+        """R-0360: pin the README tier table's Done column to the ledger.
+
+        The prose count beside this table is pinned by the test above
+        (R-0156), but nothing read the per-tier ``Done`` cells, so they
+        drifted silently: the Tier 2 cell sat at 6 while the ledger derived
+        7 from the F111 closure until the F045 closure wrote 8. Derive each
+        tier's count the way a reviewer derives it by hand at closure —
+        every accepted STATUS id resolved through its feature file's tier
+        prefix — and pin every row of the table, not just the one that moved.
+        """
+        readme = (REPO / "README.md").read_text(encoding="utf-8")
+        status = STATUS.read_text(encoding="utf-8")
+        features = _feature_ids()
+
+        derived: dict[int, int] = {}
+        for m in re.finditer(r"^- \[x\] F(\d{3}) — ", status, re.MULTILINE):
+            num = int(m.group(1))
+            assert num in features, f"F{num:03d} is accepted with no feature file"
+            tier = features[num][0]
+            derived[tier] = derived.get(tier, 0) + 1
+
+        rows = re.findall(r"^\| (\d{1,2}) \| [^|]+ \|\s*(\d+) \|\s*(\d+) \|$",
+                          readme, re.MULTILINE)
+        assert rows, "README must carry the Tier status table"
+        listed = set()
+        for tier_text, done_text, _total_text in rows:
+            tier = int(tier_text)
+            listed.add(tier)
+            assert int(done_text) == derived.get(tier, 0), (
+                f"README Tier {tier} Done={done_text}; the ledger derives "
+                f"{derived.get(tier, 0)}")
+        missing = sorted(set(derived) - listed)
+        assert not missing, f"accepted tiers with no README row: {missing}"
+
     def test_the_f010_documents_describe_all_three_scopes(self):
         status = STATUS.read_text(encoding="utf-8")
         f010 = re.search(r"^- \[x\] F010 —.*$", status, re.M)
