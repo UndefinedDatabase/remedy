@@ -204,6 +204,53 @@ def measured_tokens(entry: Any) -> int | None:
     return total
 
 
+#: It exists so a REPORT can name the trip that paused a mission without
+#: re-running the watchdog.
+def latest_trips_from_ledger(
+    entries: Sequence[dict[str, Any]],
+) -> list[Trip]:
+    """The newest ``watchdog_tripped`` trip per kind, in the fixed kind order.
+
+    A READER, not a fourth evaluator: ``act_on_trips`` already wrote one ledger
+    entry per trip carrying ``trip.to_json()`` (DECISION F077 D5), so this
+    reconstructs those records rather than judging the run again. It reads only
+    its argument, imports nothing and writes nothing.
+
+    "Newest" means LAST IN LEDGER ORDER, which is file order — an entry's
+    ``iteration`` is an attribution and never a key (DECISION F077 D11), so
+    nothing here is sorted by number. A torn entry is SKIPPED rather than
+    raised on, exactly as every accessor above tolerates one.
+    """
+    newest: dict[str, Trip] = {}
+    for entry in entries:
+        if _move_kind(entry) != MOVE_WATCHDOG_TRIPPED:
+            continue
+        payload = _sub_dict(_sub_dict(entry, "move"), "payload")
+        if any(field not in payload for field in
+               ("kind", "what", "since_iteration", "numbers")):
+            continue
+        kind = payload["kind"]
+        what = payload["what"]
+        numbers = payload["numbers"]
+        if (not isinstance(kind, str) or not isinstance(what, str)
+                or not isinstance(numbers, dict)):
+            continue
+        try:
+            since_iteration = int(payload["since_iteration"])
+        except (TypeError, ValueError):
+            continue
+        # A later entry of the same kind REPLACES the earlier one: the newest
+        # reading of a tripwire is the one that describes the current pause.
+        newest[kind] = Trip(kind=kind, what=what,
+                            since_iteration=since_iteration,
+                            numbers=dict(numbers))
+    # The order ``evaluate_ledger`` reports, so two readings of one mission read
+    # the same way. A kind this module does not define is not emitted.
+    return [newest[kind]
+            for kind in (TRIP_NO_PROGRESS, TRIP_BURN_ANOMALY, TRIP_GOAL_DRIFT)
+            if kind in newest]
+
+
 # ---------------------------------------------------------------------------
 # The three tripwires
 # ---------------------------------------------------------------------------

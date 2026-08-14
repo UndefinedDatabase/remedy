@@ -19,6 +19,9 @@ each test pins:
   * every evaluator tolerates a torn entry without raising;
   * ``evaluate_mission`` composes the same reads from a mission id alone and
     WRITES NOTHING — the read-only twin a manual audit can call;
+  * ``latest_trips_from_ledger`` reconstructs the trips a ledger already
+    RECORDS — newest per kind, in the fixed kind order, torn entries skipped —
+    so a report can name the cause of a pause without re-evaluating anything;
   * and — through ``run_mission`` itself — that the loop really calls the
     watchdog, that the pause it writes stops the next run from dispatching,
     and that a run which trips nothing writes nothing.
@@ -94,6 +97,7 @@ from packages.orchestration.watchdog import (
     evaluate_ledger,
     evaluate_mission,
     evaluate_no_progress,
+    latest_trips_from_ledger,
     measured_tokens,
     watchdog_decision_marker,
 )
@@ -319,6 +323,91 @@ def test_every_evaluator_tolerates_a_torn_entry_without_raising():
     assert trip.kind == TRIP_NO_PROGRESS
     assert trip.since_iteration == 4
     assert trip.numbers == {"repeats": 3, "threshold": 3, "milestone_id": "M1"}
+
+
+# ── reading the trips back out of a ledger ─────────────────────────────────
+
+
+def _tripped_entry(iteration: int, *, kind: str = TRIP_NO_PROGRESS,
+                   what: str = "the loop stalled",
+                   since_iteration: int = 1,
+                   numbers: dict[str, Any] | None = None,
+                   drop: str = "") -> dict[str, Any]:
+    """A ``watchdog_tripped`` entry in the shape ``act_on_trips`` writes it.
+
+    ``drop`` names one field to REMOVE from the trip payload, which is how a
+    torn entry reaches this module in practice: a truncated write, not an
+    invented shape.
+    """
+    payload: dict[str, Any] = {
+        "kind": kind,
+        "what": what,
+        "since_iteration": since_iteration,
+        "numbers": {"threshold": 3} if numbers is None else numbers,
+    }
+    payload.pop(drop, None)
+    entry = _entry(iteration, kind=MOVE_WATCHDOG_TRIPPED)
+    entry["move"]["payload"] = payload
+    entry["outcome"] = {"status": OUTCOME_WATCHDOG_TRIPPED, "detail": what,
+                        "terminal": False}
+    return entry
+
+
+def test_a_ledger_with_no_watchdog_entry_reports_no_trip():
+    assert latest_trips_from_ledger([]) == []
+    assert latest_trips_from_ledger([_entry(1), _entry(2)]) == []
+
+
+def test_one_trip_entry_survives_the_round_trip_through_the_ledger():
+    entry = _tripped_entry(4, what="3 dispatches in a row on milestone M1",
+                           since_iteration=2,
+                           numbers={"repeats": 3, "threshold": 3})
+
+    trips = latest_trips_from_ledger([_entry(3), entry, _entry(5)])
+
+    assert len(trips) == 1
+    assert trips[0].kind == TRIP_NO_PROGRESS
+    assert trips[0].what == "3 dispatches in a row on milestone M1"
+    assert trips[0].since_iteration == 2
+    assert trips[0].numbers == {"repeats": 3, "threshold": 3}
+
+
+def test_two_entries_of_one_kind_report_only_the_later_one():
+    entries = [
+        _tripped_entry(4, what="the first reading", since_iteration=2),
+        _tripped_entry(9, what="the later reading", since_iteration=7),
+    ]
+
+    trips = latest_trips_from_ledger(entries)
+
+    assert len(trips) == 1
+    assert trips[0].what == "the later reading"
+    assert trips[0].since_iteration == 7
+
+
+def test_scrambled_kinds_come_back_in_the_fixed_kind_order():
+    entries = [
+        _tripped_entry(4, kind=TRIP_GOAL_DRIFT),
+        _tripped_entry(5, kind=TRIP_BURN_ANOMALY),
+        _tripped_entry(6, kind=TRIP_NO_PROGRESS),
+    ]
+
+    trips = latest_trips_from_ledger(entries)
+
+    assert [t.kind for t in trips] == [TRIP_NO_PROGRESS, TRIP_BURN_ANOMALY,
+                                       TRIP_GOAL_DRIFT]
+
+
+def test_a_torn_trip_entry_is_skipped_and_its_healthy_neighbour_is_not():
+    entries = _TORN_ENTRIES + [
+        _tripped_entry(4, kind=TRIP_BURN_ANOMALY, drop="numbers"),
+        _tripped_entry(5, kind=TRIP_GOAL_DRIFT, what="a job off the plan"),
+    ]
+
+    trips = latest_trips_from_ledger(entries)
+
+    assert [t.kind for t in trips] == [TRIP_GOAL_DRIFT]
+    assert trips[0].what == "a job off the plan"
 
 
 # ── the action: pause, decide, record (F077 T002) ──────────────────────────
