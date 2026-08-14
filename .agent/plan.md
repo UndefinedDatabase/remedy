@@ -2,8 +2,8 @@
 
 Branch: feature/f082-self-benchmark, cut from main after the F077 closure PR
 #200 merged. F082 is claimed `[~]` in docs/roadmap/STATUS.md. Next free finding
-id: R-0412. Open findings: forty-one — the thirty-two carried from F077, plus
-R-0403 to R-0411 registered on this branch. `.agent/live_review.md` is the
+id: R-0414. Open findings: forty-three — the thirty-two carried from F077, plus
+R-0403 to R-0413 registered on this branch. `.agent/live_review.md` is the
 source of truth for that ledger; this file mirrors it and nothing else.
 
 ## Goal
@@ -15,19 +15,17 @@ fixtures, history survives across runs, and a deliberately degraded fixture run
 triggers the regression warning.
 
 ## Current Step
-R5 closes this session: the R4 gate recorded, R-0409 to R-0411 and DECISION
-F082 D3 registered, the state mirrors re-synced, and the handoff written. No
-code changed this round.
+R6 records the R5 gate, registers R-0412 and R-0413, retires the two superseded
+regions of `.agent/context.md`, and closes T001 with `bench_dry_run.py` — the
+join from a frozen order file to a bench row over RECORDED fixture evidence.
 
 ## Next Steps
-1. A NEW session resumes at R6 — T001 closed: the dry run of
-   `build_bench_record` against RECORDED fixture evidence, order file to row.
-2. R7 — T002: history append under the data root's project area, trend
+1. R7 — T002: history append under the data root's project area, trend
    computation, the regression rules, and the improving, flat and degrading
    goldens.
-3. R8 — T003: the `stats bench` CLI, model-context recording, and a
+2. R8 — T003: the `stats bench` CLI, model-context recording, and a
    fake-provider bench run end to end.
-4. R9 the integration gate, R10 closure.
+3. R9 the integration gate, R10 closure.
 
 ## Risks
 - The delivered order set is three, not the Design's five (R-0411). Closure

@@ -19,9 +19,7 @@ as a NEW
 `tests/orchestration/test_capability_bench.py`, and no symbol moves out of any
 gauntlet module. R3 additionally owns
 `packages/orchestration/gauntlet_runner.py::measure_tokens`, repaired under
-DECISION F082 D1 because the bench's cost field reads it (R-0407). Still to
-come: the five frozen order files with per-order version tags, the append-only
-history under the data root's project area, and the `stats bench` CLI surface.
+DECISION F082 D1 because the bench's cost field reads it (R-0407).
 Plus `.agent/f082_inventory.md` and `.agent/**` round state and the one claimed
 STATUS line.
 
@@ -48,7 +46,10 @@ a change that needs one of them edited is a finding, not a fix.
 
 ## Steps
 R1 claim F082, reset the record carrying the F077 open set forward, register
-R-0403 ✅ → R2 the T001 gauntlet-harness inventory → R3 T001 factoring, the five
-orders and the record schema → R4 T002 history, trend and regression rules → R5
-T003 CLI, model context and a fake-provider run → R6 the integration gate → R7
-closure.
+R-0403 ✅ → R2 the T001 gauntlet-harness inventory ✅ → R3 T001 the pure record
+builder and the R-0407 token repair ✅ → R4 T001 the frozen order set and its
+version freeze ✅ → R5 record the R4 verdict, register R-0409 to R-0411 and
+DECISION F082 D3 ✅ → R6 record the R5 verdict, retire the superseded context
+regions and close T001 with the dry run against recorded evidence → R7 T002
+history, trend and regression rules → R8 T003 the stats bench CLI, model context
+and a fake-provider run → R9 the integration gate → R10 closure.
