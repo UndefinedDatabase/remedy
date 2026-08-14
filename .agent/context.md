@@ -1,36 +1,46 @@
-# Context — paydown0814 closure debt
+# Context — F057 Rate-limit-aware scheduler
 
 ## Active Branch
-feature/paydown0814-closure-debt, cut from main at 1e7f7bca after the F045
-closure PR #197 merged at this session's Open PR Gate. No STATUS line is
-claimed: this is a paydown branch, not a roadmap feature. The next roadmap
-feature is F057, Rate-limit-aware scheduler, and it starts in a new session.
+feature/f057-rate-limit-scheduler, cut from main at 21c8148e. F057 is claimed
+`[~]` in docs/roadmap/STATUS.md and stays claimed until closure. No PR exists
+for this branch yet; one is created at closure, not before.
 
 ## Scope
-In: `docs/agents/reviewer_conventions.md`, trimmed under the 800-token
-prompt-segment cap with headroom (R-0359); a new pin in
-`tests/docs/test_docs_consistency.py` deriving the README tier table's Done
-column from the ledger (R-0360); `.agent/**` state, including emptying
-`.agent/candidates.md` now that both carried candidates are registered.
+In: `packages/orchestration/rate_governor.py` and
+`tests/orchestration/test_rate_governor.py`, plus `.agent/**` round state and
+the one claimed STATUS line. T001 and T002 are built and gated; T003 opened
+`packages/orchestration/pingpong_loop.py` at R6 and now owns the seam there and
+its tests in `tests/orchestration/test_provider_retry.py`.
 
-Out: every RULE the conventions document states — the trim compresses prose,
-duplication and retold precedents, never a rule; `CONVENTIONS_TOKEN_CAP`
-itself, which is production code and a P4 principle; `docs/roadmap/STATUS.md`
-and `README.md`, which no paydown branch touches; F057 and all feature work.
+Out: the per-call retry policy in `packages/orchestration/provider_timeouts.py`,
+parallelism itself, and the provider adapters' internals — the feature file's
+Do-not-touch list, verified byte-identical at every round so far.
+`packages/orchestration/stream_evidence.py` is out too and stays byte-identical.
 
 ## Constraints
-- No production code: this branch touches docs/, tests/ and .agent/ only, so
-  no packages/ or apps/ file is in scope.
 - The main session writes nothing in the work tree; a delegated worker subagent
   makes every commit (docs/agents/self_drive_protocol.md).
-- Merges only at the Open PR Gate, and never a PR this session created (G1);
-  never force-push; never work on main.
+- Merges only at the Open PR Gate; never force-push; never work on main.
 - Verification is pytest, scoped per round, plus the canary
-  tests/cli/test_golden_path.py. Destructive and red-proof checks run only
-  inside a disposable git worktree, so resource safety stays intact and no
+  tests/cli/test_golden_path.py. A round touching docs/roadmap/** also gates
+  tests/docs/. Destructive and red-proof checks run only inside a disposable
+  git worktree under .remedy-wt/, so resource safety stays intact and no
   background pytest process is ever left running.
-- A round pushes after EVERY commit, not once at its last step (R-0289).
+- Repository-wide `ruff check` is RED at base 21c8148e with 26 pre-existing
+  errors (20 I001, 4 F401, 1 F821, 1 UP035). It is NOT a round gate; ruff is
+  gated scoped to the files this feature owns. Repairing it is a paydown
+  branch's job, not this one's (R-0364).
+- The governor's clock and sleep are injected. A real sleep in a unit test is a
+  finding.
+- Count gates over a file the same block writes state their anchoring and are
+  line-anchored for headings and record-opening tokens (R-0369).
+- A round pushes after EVERY commit, not once at its last step.
 
 ## Steps
-R1 state reset and candidate registration → R2 the two fixes, each gated, the
-new pin red-proved → handoff and PR. The PR stays unmerged this session.
+R1 claim and T001 ✅ → R2 findings and two fixes ✅ → R3 verdict and session
+close ✅ → R4 T002 governor ✅ → R5 R5 verdict, R-0369, R-0370 and the T003 seam
+inventory ✅ → R6 the T003 seam itself ✅ → R7 to R11 the report surfaces, the
+limit-emitting fixture and their repair rounds ✅ → R12 the integration gate ✅
+→ R13 the R12 verdict and the feature file's Built State ✅ → R14 closure: the
+R13 verdict, the evidence job, the review zip, the STATUS and README edits and
+the PR, which is NOT merged in this session.

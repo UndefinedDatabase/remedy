@@ -1,0 +1,47 @@
+F057 R12 — UI artifact parity, verified by CONTENT (integration_gate.md step 3,
+R-0155 amendment; F105 R49 mtime correction).
+
+Aggregate dist content hash command (run in each checkout root):
+  find apps/ui/dist -type f -print0 | sort -z | xargs -0 sha256sum | sha256sum
+
+DIST CONTENT HASHES — four values
+  PRIMARY  before base run  fb68a7293502c79b8ece61d154f5752100a16da1a08a481a7a4c1d79a5a503c0
+  PRIMARY  after  base run  fb68a7293502c79b8ece61d154f5752100a16da1a08a481a7a4c1d79a5a503c0
+  BASE-WT  before base run  fb68a7293502c79b8ece61d154f5752100a16da1a08a481a7a4c1d79a5a503c0
+  BASE-WT  after  base run  fb68a7293502c79b8ece61d154f5752100a16da1a08a481a7a4c1d79a5a503c0
+
+VERDICT: all four identical. The PRIMARY hash did not change, so nothing wrote
+through into the primary checkout during the base run and the parity claim
+stands. REMEDY_UI_NO_AUTO_BUILD=1 was set for the base run and its
+neutralization is verified by these hashes, not trusted on its own (R-0169).
+
+MTIME READINGS — four (newest apps/ui/src file, apps/ui/dist/index.html)
+  BASE-WT before base run
+    newest_src      2026-08-14 08:14:17 apps/ui/src/types/react-force-graph-2d.d.ts
+    dist/index.html 2026-08-14 08:14:30
+  BASE-WT after base run
+    newest_src      2026-08-14 08:14:17 apps/ui/src/types/react-force-graph-2d.d.ts
+    dist/index.html 2026-08-14 08:15:42
+  PRIMARY before base run
+    newest_src      2026-06-29 19:39:48 apps/ui/src/components/shell/RemedyShell.tsx
+    dist/index.html 2026-08-14 08:12:45
+  PRIMARY after base run
+    newest_src      2026-06-29 19:39:48 apps/ui/src/components/shell/RemedyShell.tsx
+    dist/index.html 2026-08-14 08:12:45
+
+Both checkouts hold the ordered relationship dist NEWER than every source file.
+In the base worktree that relationship exists only because the copied dist was
+touched after `cp -a` (F105 R49): `git worktree add` stamped every tracked file,
+apps/ui/src/** included, at checkout time 08:14:17, while `cp -a` preserved
+dist's older mtime. Touching changed mtimes only — the content hash above is
+unchanged by it, which is what the parity claim rests on.
+
+PRIMARY dist/index.html moved 08:04:39 -> 08:12:45 during the BRANCH run (the UI
+auto-build is not disabled there), while the PRIMARY content hash stayed
+fb68a729...  Content parity is therefore unaffected; the reading is recorded
+rather than smoothed over.
+
+ARTIFACT COPY, not symlink (F053 R3):
+  REAL_DIR .remedy-wt/base-gate-r12/apps/ui/node_modules
+  REAL_DIR .remedy-wt/base-gate-r12/apps/ui/dist
+Both destinations were real directories, not links.

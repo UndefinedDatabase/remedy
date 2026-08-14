@@ -1,0 +1,27 @@
+F057 R12 — provenance of the UNCOMMITTED full run logs.
+
+Scratch dir (gitignored, not committed): .remedy-wt/.cache/gate_r12/
+
+BRANCH RUN
+  scratch path  .remedy-wt/.cache/gate_r12/branch_run.txt
+  wc -l         239
+  sha256        eac7767693a421d4fede97344dd2ef14cdf65315e9b8ce68e8cd505a510ddc90
+  committed     branch_run_tail.txt = last 40 lines of that file
+  trimmed away  the leading 199 lines (pytest header, plugin banner and the
+                xdist progress-dot lines); no FAILED line was trimmed —
+                `grep '^FAILED'` over the untrimmed file yields 0 lines.
+
+BASE RUN
+  scratch path  .remedy-wt/.cache/gate_r12/base_run.txt
+  wc -l         238
+  sha256        59263af7fcf3af774ac129d206742dd88ebaaa7e98ee4e6b1056a04bb9735940
+  committed     base_run_tail.txt = last 40 lines of that file
+  trimmed away  the leading 198 lines (same classes); no FAILED line was
+                trimmed — `grep '^FAILED'` over the untrimmed file yields 0
+                lines.
+
+Both logs were written OUTSIDE the checkout being exercised for the base run
+(R-0176: a log growing inside a checkout during a run changes that worktree's
+digest mid-run and fails the manifest-identity ids as false positives).
+
+Every committed member of this dir ends in .txt, never .log (R-0169).

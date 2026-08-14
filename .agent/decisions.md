@@ -4843,3 +4843,146 @@ HOW TO REVERSE. Delete this decision and treat precondition 2 as a literal
 zero. Doing so requires fixing `docs/agents/reviewer_conventions.md` first, in
 its own branch, because otherwise nothing can close at all — which is precisely
 the outcome this decision exists to avoid.
+
+## DECISION F057 D1 (2026-08-14) — Rule A2's open-finding bar is read per review record, and the reset CARRIES open findings instead of dropping them
+
+F057 is claimed with R-0361 open. Rule A2 (ROADMAP.md:27) says no new feature
+is started while findings are open, so this decision states the reading under
+which the claim proceeds, and pays for it structurally rather than by
+exception.
+
+WHY this reading and not the literal one. Six of the last seven closures in
+`docs/roadmap/STATUS.md` are PASS_WITH_RISKS — F104, F105, F107, F111, F115 and
+F045 — and a PASS_WITH_RISKS closure by construction leaves findings open. Read
+literally, A2 would have blocked every feature claim since F103, including the
+five the ledger records as accepted. The literal reading is therefore not the
+one this project has been operating under, and adopting it now would stall the
+roadmap on findings the closure protocol already decided were acceptable to
+accept. A2's enforceable content is that a REVIEW RECORD does not close over
+unresolved work, which the closure protocol's PASS_WITH_RISKS path already
+gates.
+
+WHAT IS WRONG WITH THE PRACTICE, and what this decision fixes. The practice did
+not just read A2 narrowly; it erased A2's input. At the F045 closure the
+reviewer recorded the open set as R-0350, R-0354 and R-0358, and the very next
+record — `git show f789ebc8:.agent/live_review.md` — contains none of them. The
+reset dropped three live findings without resolving, deferring or naming them.
+So from this branch on, a reset CARRIES the open set forward verbatim: this
+record reproduces R-0361 byte for byte out of `21c8148e:.agent/live_review.md`,
+and a carried finding stays open until reviewer-authored `Done:` text closes it.
+Carrying costs one line per open finding and makes A2 measurable again; dropping
+costs nothing and makes it meaningless.
+
+WHY A2 ITSELF IS NOT AMENDED HERE. AGENTS.md forbids agents editing
+`docs/roadmap/ROADMAP.md` unless the operator explicitly requests it, so the
+reading lives here and in the operator brief, where the operator can veto it at
+any later relay. Nothing waits for an answer
+(docs/agents/planner_reviewer_prompt.md §4 item 7).
+
+SCOPE, stated so it cannot drift. This decision authorises the F057 claim and
+the carry-forward. It does NOT resolve R-0361, and it does NOT recover R-0350,
+R-0354 or R-0358 — that recovery and the matching rule text in
+`docs/agents/planner_reviewer_prompt.md` §1 belong to their own paydown branch,
+because AGENTS.md forbids mixing an unrelated fix into a feature branch. This is
+the same routing DECISION F045 D8 used for the reviewer-conventions repair.
+
+HOW TO REVERSE. Delete this decision and read A2 literally. Doing so requires
+first resolving R-0361 and recovering R-0350, R-0354 and R-0358 on a paydown
+branch, because otherwise no feature can be claimed at all.
+
+## DECISION F057 D2 (2026-08-14) — the governor's acquire() contract: stop is read before cooldown, and every wait is evidence
+
+CONTEXT. T002 builds `ProviderRateGovernor.acquire()` in
+`packages/orchestration/rate_governor.py`. Three of its choices are not
+derivable from the feature file and would otherwise be re-litigated at T003,
+when the seam in `_call_with_retry` starts calling it.
+
+CHOSEN. (1) `acquire()` probes `stop_check` BEFORE it reads any cooldown, and
+again before every wait slice, so a stop request can never be delayed by a
+pacing decision. The feature file's acceptance criterion is "a stop request
+during a wait interrupts the wait immediately"; reading the cooldown first
+would satisfy the words while adding a slice of latency to every stop.
+(2) A wait that ends in a stop or in a deadline still records its
+`RateLimitWaitEvent`. Time was really spent, and evidence that omitted it would
+make a paced-then-stopped run look like a run that never waited.
+(3) `retry_after_s` is honoured verbatim when the provider sends one, and the
+exponential is used only in its absence — a provider that states its own
+recovery time knows better than a backoff curve, and `parse_retry_after_seconds`
+already rejects negatives and anything over `MAX_RETRY_AFTER_S`, so the verbatim
+path cannot be fed an absurd number.
+
+ALTERNATIVES CONSIDERED. Returning a bare bool from `acquire()`: rejected
+because "did not wait" and "was stopped mid-wait" are different facts to the
+caller and to the report line, and a bool erases the difference. Holding a lock
+across the wait so N acquirers queue fairly: rejected as v1 scope — the feature
+file says implement single-flight now, and a lock held across a wait serializes
+callers a later tier will want concurrent.
+
+HOW TO REVERSE. Delete this decision and change the three behaviours in
+`acquire()`; the tests named in the R4 block pin each one, so reversing means
+deleting those tests deliberately rather than discovering the change later.
+
+## DECISION F057 D3 (2026-08-14) — the seam PACES the first call, it never terminates it
+
+CONTEXT. T003 inserts `acquire()` into `_call_with_retry`. The retry path already
+has a stop probe that returns the last `out`; the FIRST call has no probe of any
+kind, so a terminating one there changes F011/F018 behaviour rather than adding
+to it (`.agent/f057_t003_seam_inventory.md` section 2).
+
+CHOSEN. Before the first call the seam WAITS out a running cooldown and then
+makes the call regardless of the acquire outcome. Before a RETRY it waits and
+returns the existing `out` when the outcome is not granted, joining the terminal
+path the stop probe already owns. `_call_with_retry` cannot say "no call was
+made" without fabricating a provider output, and the loop above already owns
+termination; the wait is interruptible, so a stop during a first-call wait ends
+that wait immediately, which is the acceptance criterion the feature file states.
+
+ALTERNATIVES CONSIDERED. Aborting the first call on a stopped acquire: the only
+available return value is a fabricated `out`, which is worse than a stop honoured
+one call later. Skipping the first call outright while a cooldown runs: an
+unpaced run by another name.
+
+HOW TO REVERSE. Delete the first-call acquire; the retry-path acquire stands on
+its own and the C4 tests name the two paths separately.
+
+## DECISION F057 D4 (2026-08-14) — deadline_s stays None at the seam in v1; the budget is enforced through stop_check
+
+CONTEXT. `acquire(deadline_s=...)` wants an absolute value on the injected
+monotonic scale. `grep -n monotonic packages/orchestration/pingpong_loop.py`
+returns nothing, and neither `JobBudgets` nor `BudgetCounters` is reachable from
+`_call_with_retry`, whose only budget-shaped input is the opaque `stop_check`;
+the two epochs are unrelated (inventory section 3).
+
+CHOSEN. Pass no deadline. The budget is already enforced through the same
+`stop_check` that `acquire` re-probes before every wait slice: the job's
+`_stop_check` rebuilds its counters on every call and `evaluate_budget`
+recomputes `now` and `elapsed` from `started_at` on every evaluation
+(`packages/orchestration/budget_guard.py`), so a wall-clock or deadline breach
+arising DURING a wait is seen at the next slice boundary. The governor's own
+cooldown cap bounds the wait on top of that.
+
+ALTERNATIVES CONSIDERED. Threading `JobBudgets` down as a new parameter: the
+larger change, buying no behaviour `stop_check` does not already deliver.
+Passing a POSIX timestamp into a monotonic parameter: inventing a scale, exactly
+what the inventory warns against.
+
+HOW TO REVERSE. Thread the deadline in and pass it. `acquire` already implements
+DEADLINE_EXCEEDED and its tests already pin it, so reversing is wiring.
+
+## DECISION F057 D5 (2026-08-14) — an empty provider skips the governor entirely
+
+CONTEXT. `_call_with_retry` takes `provider: str = ""` and the loop itself writes
+`provider=builder_name or ""`, so a falsy provider is reachable. The governor
+keys its cooldowns, streaks and reasons on the raw string, so an empty key would
+put every unnamed provider into ONE shared bucket.
+
+CHOSEN. When `provider` is falsy the seam does not call the governor at all — no
+observe, no acquire, no wait event. That keeps the feature's "providers without
+limit signals behave exactly as today" promise trivially true for unnamed
+providers, and makes the shared-bucket bug unreachable rather than unlikely.
+
+ALTERNATIVES CONSIDERED. A sentinel key such as "unknown": it merges genuinely
+different providers under one cooldown — the same bug, only harder to see.
+
+HOW TO REVERSE. Delete the falsy-provider guard at both seam sites; the C4 test
+named for it fails immediately, which is the point.

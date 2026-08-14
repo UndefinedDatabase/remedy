@@ -1,35 +1,48 @@
-# Plan — paydown0814 closure debt
+# Plan — F057 Rate-limit-aware scheduler (CLOSED)
 
-Branch: feature/paydown0814-closure-debt, cut from main at 1e7f7bca after the
-F045 closure PR #197 merged. Next free finding id: R-0362. R-0359 and R-0360
-are FIXED and RESOLVED by the reviewer at bc0f5223; R-0361 stays open as a
-recorded reviewer-process finding whose counter-measure is already in force.
+Branch: feature/f057-rate-limit-scheduler, cut from main at 21c8148e. F057 is
+closed `[x]` in docs/roadmap/STATUS.md as of 2026-08-14, verdict
+PASS_WITH_RISKS. Next free finding id: R-0380. Open findings, recomputed from
+`.agent/live_review.md` and not carried over from the previous plan: R-0361,
+R-0362, R-0363, R-0364, R-0367, R-0368, R-0369, R-0371, R-0374, R-0375, R-0376,
+R-0377, R-0378, R-0379 — fourteen, three Medium and eleven Low, none High,
+every one carried as a documented accepted risk. R-0365, R-0366, R-0370,
+R-0372 and R-0373 are resolved. `.agent/live_review.md` is the source of truth
+for this ledger; this file is a mirror of it and nothing else.
 
 ## Goal
-Pay down the debt the F045 closure carried out on disk, so the next feature
-starts on a green `main`: trim `docs/agents/reviewer_conventions.md` under its
-800-token prompt-segment cap (R-0359), pin the README tier table's Done column
-to the ledger (R-0360), and record the gate round's own finding (R-0361). A
-paydown branch in the established shape of feature/paydown-0730, -0731, -0731b
-and -0801 — it claims no STATUS line and closes no `[ ]`.
+Provider rate limits stop looking like failures. A per-provider governor reads
+normalized limit signals out of call evidence and makes a run WAIT visibly —
+with a reason and an expected retry — instead of burning retries or failing the
+task. Providers that emit no limit signal behave exactly as today. Shipped as
+T001 signal normalization, T002 the governor and its acquire semantics, and
+T003 the pingpong seam plus the two report surfaces.
 
 ## Current Step
-R3 complete: the reviewer re-ran every R2 gate itself, including its own
-red-proof in a disposable worktree, issued PASS, and its authored `Done:`
-resolutions for R-0359 and R-0360 are now on disk in `.agent/live_review.md`.
-PR #198 is still NOT merged.
+None. R14 closed the feature: the R13 verdict is on the record, the evidence
+job and a fresh review zip were built, and the STATUS and README edits landed
+as the last commit on the branch. The closure PR is open and unmerged.
 
 ## Next Steps
-1. R4 — Open PR Gate: merge PR #198 with
-   `gh pr merge 198 --merge --delete-branch`, then `git checkout main` and
-   `git pull --ff-only`. That merge is what finally turns `main` green, and it
-   closes the operator's manual-review window.
-2. Then F057 — Rate-limit-aware scheduler, per Rule A5 and STATUS order. New
-   session, new branch, cut from the merged `main`.
+1. Nothing on this branch. The closure PR is NOT merged in this session; it
+   merges at the next feature's start via the AGENTS.md Open PR Gate, which is
+   the operator's manual-review window.
+2. The next session's FIRST action is Phase 1 rule 1 of
+   docs/agents/self_drive_protocol.md — re-read `.agent/STOP` from disk —
+   BEFORE rule 2's Open PR Gate.
+3. `.agent/candidates.md` is non-empty. The next feature's first reviewed
+   round registers its entry with the next free id or resolves it inline as a
+   §4.7 DECISION, and empties the file in that same round.
+4. Rule A5 then proposes F077 — Autonomy watchdog, the first `[ ]` in STATUS
+   order.
 
 ## Risks
-- `main` is RED until PR #198 merges. The five
-  tests/orchestration/test_role_conventions.py ids are green on this branch,
-  which is the fix's proof, but `main` itself only turns green at the merge.
-- R-0361 remains open by design. Its counter-measure — a block may only order
-  a command the reviewer has itself executed — was applied again in R3.
+- Fourteen open findings is the largest carry this feature has held, and every
+  one of them is a reviewer gate defect rather than a product defect. They
+  close as documented Medium/Low risks; the integrity check reports no open
+  blocker/high findings.
+- A reviewer rate limit reaches the governor only when its error carries the
+  `provider_error:` prefix, because `ReviewerOutput.verdict` defaults to
+  `"blocked"`. R-0378 tracks that this coupling is undocumented in the code.
+
+Fortschritt: 100 % (T001 ✅ · T002 ✅ · T003 ✅ · Integrationsgate ✅ · Closure ✅) — gemessen

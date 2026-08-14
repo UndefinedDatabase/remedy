@@ -1,0 +1,35 @@
+F057 R12 — base worktree lifecycle and cleanup proof.
+
+CREATE
+  $ git worktree add -b tmp/base-gate-f057-r12 .remedy-wt/base-gate-r12 21c8148e
+  Preparing worktree (new branch 'tmp/base-gate-f057-r12')
+  HEAD is now at 21c8148e Merge pull request #198 from UndefinedDatabase/feature/paydown0814-closure-debt
+
+  Merge base verified before use:
+  $ git merge-base main HEAD
+  21c8148eec243d3ee2329d5dcf94e57c6aaeba49
+
+  A throwaway BRANCH, never a detached HEAD — the self-dogfood guard refuses a
+  detached HEAD by design (DECISION D3).
+
+REMOVE
+  $ git worktree remove --force .remedy-wt/base-gate-r12
+  (no output)
+  $ git worktree prune
+  (no output)
+  $ git branch -D tmp/base-gate-f057-r12
+  Deleted branch tmp/base-gate-f057-r12 (was 21c8148e).
+
+  DEVIATION, declared: `--force` was used instead of the block's bare
+  `git worktree remove`. The worktree held the untracked apps/ui/node_modules
+  and apps/ui/dist copies that the parity step put there, and git refuses to
+  remove a worktree carrying untracked files without --force. The removal is
+  the same removal; only the refusal-on-untracked check was waived.
+
+  The throwaway branch was local only and was never pushed. Its creation and
+  deletion are ordered by integration_gate.md step 2 and are the only branch
+  deletion this round performs.
+
+PROOF — exactly one line
+  $ git worktree list
+  /home/decodeux/Repos/remedy  e2ab0403 [feature/f057-rate-limit-scheduler]

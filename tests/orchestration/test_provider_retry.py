@@ -17,7 +17,9 @@ import pytest
 from packages.orchestration.pingpong_loop import (
     PingPongResult,
     _call_with_retry,
+    export_pingpong_json,
     run_pingpong,
+    summarize_pingpong,
 )
 from packages.orchestration.pingpong_provider import (
     BuilderOutput,
@@ -26,6 +28,12 @@ from packages.orchestration.pingpong_provider import (
 )
 from packages.orchestration.provider_timeouts import (
     PROFILES,
+)
+from packages.orchestration.rate_governor import (
+    RATE_LIMIT_REASON_RATE_LIMITED,
+    RATE_SIGNAL_SOURCE_RETRY_REASON,
+    ProviderRateGovernor,
+    normalize_rate_limit_signal,
 )
 
 # ---------------------------------------------------------------------------
@@ -389,3 +397,475 @@ class TestTimeoutPrecedence:
         assert result.timeout_profile == "normal"
         assert result.timeout_s_effective_builder == PROFILES["normal"].builder_base_s
         assert result.timeout_s_effective_reviewer == PROFILES["normal"].reviewer_base_s
+
+
+# ---------------------------------------------------------------------------
+# F057 T003 — the rate-governor seam inside _call_with_retry
+#
+# These live HERE, and not in tests/orchestration/test_rate_governor.py, because the
+# code under test is the SEAM in packages/orchestration/pingpong_loop.py, not the
+# governor: AGENTS.md's Code Discoverability rule names a test file after the source it
+# covers, and this file already owns _call_with_retry. test_rate_governor.py still owns
+# the governor's own behaviour. Do not re-litigate the split; move the tests only if the
+# seam moves.
+#
+# Every governor below runs on an INJECTED FakeClock and its sleep — no test here sleeps
+# for real, and none asserts on wall-clock duration. The transport backoff at
+# pingpong_loop._time.sleep is patched separately; it is F001's, not F057's.
+# ---------------------------------------------------------------------------
+
+#: A rate-limit error that the EXISTING transport predicates also call retryable
+#: ("exited" -> is_nonzero_exit_error), so it would be retried even with no governor.
+RATE_LIMITED_RETRYABLE_ERROR = (
+    "provider_error: RuntimeError: claude CLI exited 1: rate_limit exceeded for this key"
+)
+
+#: A BARE rate limit: no "exited", no timeout wording, so every transport predicate
+#: declines it and only the seam's own R-0373 rule can make it retryable.
+BARE_RATE_LIMIT_ERROR = "429 Too Many Requests"
+
+#: Slice size chosen so the waits below divide into an exact number of binary-clean
+#: slices; the production default is RATE_GOVERNOR_POLL_SLICE_S and is not under test.
+SEAM_POLL_SLICE_S = 0.25
+
+
+class SeamFakeClock:
+    """The injected clock and sleep for the seam tests: sleep advances time, never blocks."""
+
+    def __init__(self) -> None:
+        self.now = 0.0
+        self.sleeps: list[float] = []
+
+    def monotonic(self) -> float:
+        return self.now
+
+    def sleep(self, seconds: float) -> None:
+        self.sleeps.append(seconds)
+        self.now += seconds
+
+
+def _seam_governor(clock: SeamFakeClock) -> ProviderRateGovernor:
+    return ProviderRateGovernor(
+        monotonic_fn=clock.monotonic,
+        sleep_fn=clock.sleep,
+        poll_slice_s=SEAM_POLL_SLICE_S,
+    )
+
+
+def _observe_cooldown(governor: ProviderRateGovernor, provider: str) -> float:
+    """Put ``provider`` into a real cooldown through the governor's own normalizer."""
+    signal = normalize_rate_limit_signal(
+        RATE_LIMITED_RETRYABLE_ERROR,
+        provider=provider,
+        source=RATE_SIGNAL_SOURCE_RETRY_REASON,
+    )
+    assert signal is not None
+    return governor.observe(signal)
+
+
+class TestRateGovernorSeam:
+    @pytest.mark.unit
+    @patch("packages.orchestration.pingpong_loop._time.sleep")
+    def test_rate_limited_retry_waits_and_records_one_event(self, mock_sleep):
+        clock = SeamFakeClock()
+        governor = _seam_governor(clock)
+        result = PingPongResult()
+        calls = [0]
+
+        def call_fn():
+            calls[0] += 1
+            if calls[0] == 1:
+                return BuilderOutput(error=RATE_LIMITED_RETRYABLE_ERROR, provider="acme")
+            return BuilderOutput(summary="ok", provider="acme")
+
+        out = _call_with_retry(
+            call_fn,
+            result=result,
+            role="builder",
+            provider="acme",
+            rate_governor=governor,
+        )
+
+        assert out.summary == "ok"
+        assert calls[0] == 2
+        assert result.retries_used == 1
+        assert clock.sleeps  # the governor really waited, on its own injected sleep
+        assert len(result.rate_limit_waits) == 1
+        event = result.rate_limit_waits[0]
+        assert event["provider"] == "acme"
+        assert event["reason"] == RATE_LIMIT_REASON_RATE_LIMITED
+        assert event["waited_s"] > 0.0
+
+    @pytest.mark.unit
+    @patch("packages.orchestration.pingpong_loop._time.sleep")
+    def test_stop_during_the_wait_ends_the_call_without_counting_a_retry(self, mock_sleep):
+        clock = SeamFakeClock()
+        governor = _seam_governor(clock)
+        result = PingPongResult()
+        calls = [0]
+
+        def call_fn():
+            calls[0] += 1
+            return BuilderOutput(error=RATE_LIMITED_RETRYABLE_ERROR, provider="acme")
+
+        # The stop ARRIVES DURING the wait: nothing is stopped while the clock is at 0.0,
+        # so the first call and the first wait slice both happen, and only then does the
+        # operator's stop appear.
+        def stop_check():
+            return "stopped" if clock.now >= SEAM_POLL_SLICE_S else None
+
+        out = _call_with_retry(
+            call_fn,
+            result=result,
+            role="builder",
+            provider="acme",
+            stop_check=stop_check,
+            rate_governor=governor,
+        )
+
+        assert out.error == RATE_LIMITED_RETRYABLE_ERROR
+        assert calls[0] == 1  # the call count did NOT grow after the stop
+        assert result.retries_used == 0
+        assert result.retry_reasons == []
+        # The seconds really were spent, so they are still recorded.
+        assert len(result.rate_limit_waits) == 1
+        assert result.rate_limit_waits[0]["waited_s"] > 0.0
+
+    @pytest.mark.unit
+    @patch("packages.orchestration.pingpong_loop._time.sleep")
+    def test_empty_provider_skips_the_governor_entirely(self, mock_sleep):
+        clock = SeamFakeClock()
+        governor = _seam_governor(clock)
+        # A cooldown DOES exist on the empty key, so a seam that consulted the governor
+        # anyway would wait here — which is exactly the shared-bucket bug D5 forbids.
+        _observe_cooldown(governor, "")
+        result = PingPongResult()
+        calls = [0]
+
+        def call_fn():
+            calls[0] += 1
+            if calls[0] == 1:
+                return BuilderOutput(error=RATE_LIMITED_RETRYABLE_ERROR, provider="")
+            return BuilderOutput(summary="ok", provider="")
+
+        out = _call_with_retry(
+            call_fn,
+            result=result,
+            role="builder",
+            provider="",
+            rate_governor=governor,
+        )
+
+        assert out.summary == "ok"
+        assert result.retries_used == 1
+        assert result.rate_limit_waits == []
+        assert clock.sleeps == []
+        assert governor.total_waited_s() == 0.0
+
+    @pytest.mark.unit
+    @patch("packages.orchestration.pingpong_loop._time.sleep")
+    def test_no_governor_leaves_retry_behaviour_identical(self, mock_sleep):
+        result = PingPongResult()
+        calls = [0]
+
+        def call_fn():
+            calls[0] += 1
+            if calls[0] == 1:
+                return BuilderOutput(error=RATE_LIMITED_RETRYABLE_ERROR, provider="acme")
+            return BuilderOutput(summary="ok", provider="acme")
+
+        out = _call_with_retry(call_fn, result=result, role="builder", provider="acme")
+
+        assert out.summary == "ok"
+        assert calls[0] == 2
+        assert result.retries_used == 1
+        assert len(result.retry_reasons) == 1
+        assert result.rate_limit_waits == []
+
+    @pytest.mark.unit
+    @patch("packages.orchestration.pingpong_loop._time.sleep")
+    def test_first_call_is_paced_by_a_cooldown_already_running(self, mock_sleep):
+        clock = SeamFakeClock()
+        governor = _seam_governor(clock)
+        cooldown_s = _observe_cooldown(governor, "acme")
+        result = PingPongResult()
+        calls = [0]
+
+        def call_fn():
+            calls[0] += 1
+            return BuilderOutput(summary="ok", provider="acme")
+
+        out = _call_with_retry(
+            call_fn,
+            result=result,
+            role="builder",
+            provider="acme",
+            rate_governor=governor,
+        )
+
+        # The seam PACES the first call, it never cancels it (DECISION F057 D3).
+        assert out.summary == "ok"
+        assert calls[0] == 1
+        assert result.retries_used == 0
+        assert len(result.rate_limit_waits) == 1
+        assert result.rate_limit_waits[0]["waited_s"] == cooldown_s
+        assert sum(clock.sleeps) == cooldown_s
+
+    @pytest.mark.unit
+    @patch("packages.orchestration.pingpong_loop._time.sleep")
+    def test_bare_rate_limit_is_retried_when_a_governor_is_active(self, mock_sleep):
+        """R-0373: without the seam's own rule this error never reaches the governor."""
+        clock = SeamFakeClock()
+        governor = _seam_governor(clock)
+        result = PingPongResult()
+        calls = [0]
+
+        def call_fn():
+            calls[0] += 1
+            if calls[0] == 1:
+                return BuilderOutput(error=BARE_RATE_LIMIT_ERROR, provider="acme")
+            return BuilderOutput(summary="ok", provider="acme")
+
+        out = _call_with_retry(
+            call_fn,
+            result=result,
+            role="builder",
+            provider="acme",
+            rate_governor=governor,
+        )
+
+        assert out.summary == "ok"
+        assert calls[0] == 2
+        assert result.retries_used == 1
+        assert len(result.rate_limit_waits) == 1
+        assert result.rate_limit_waits[0]["provider"] == "acme"
+        assert result.rate_limit_waits[0]["reason"] == RATE_LIMIT_REASON_RATE_LIMITED
+        assert result.rate_limit_waits[0]["waited_s"] > 0.0
+
+    @pytest.mark.unit
+    @patch("packages.orchestration.pingpong_loop._time.sleep")
+    def test_bare_rate_limit_without_a_governor_is_still_not_retried(self, mock_sleep):
+        """The pre-F057 path is untouched: no governor, no new retryable error class."""
+        result = PingPongResult()
+        calls = [0]
+
+        def call_fn():
+            calls[0] += 1
+            return BuilderOutput(error=BARE_RATE_LIMIT_ERROR, provider="acme")
+
+        out = _call_with_retry(call_fn, result=result, role="builder", provider="acme")
+
+        assert out.error == BARE_RATE_LIMIT_ERROR
+        assert calls[0] == 1
+        assert result.retries_used == 0
+        assert result.retry_reasons == []
+        assert result.rate_limit_waits == []
+
+    @pytest.mark.unit
+    @patch("packages.orchestration.pingpong_loop._time.sleep")
+    def test_review_reject_is_never_retried_even_with_a_governor(self, mock_sleep):
+        """The reject carries the rate-limit wording ON PURPOSE.
+
+        A reject with no ``error`` — the shape ``test_review_reject_no_retry`` above
+        builds — returns at the loop's ``if not out.error`` before the reject exclusion
+        is ever reached, so it cannot pin this property. Only a reject whose error text
+        the governor WOULD call a rate limit reaches the guard, which is why R-0373's
+        precedence rule names the reject explicitly instead of leaning on should_retry.
+        """
+        clock = SeamFakeClock()
+        governor = _seam_governor(clock)
+        result = PingPongResult()
+        calls = [0]
+
+        def call_fn():
+            calls[0] += 1
+            return ReviewerOutput(
+                verdict="needs_repair",
+                summary="Found issues",
+                error=BARE_RATE_LIMIT_ERROR,
+                provider="acme",
+            )
+
+        out = _call_with_retry(
+            call_fn,
+            result=result,
+            role="reviewer",
+            provider="acme",
+            rate_governor=governor,
+        )
+
+        assert out.verdict == "needs_repair"
+        assert calls[0] == 1
+        assert result.retries_used == 0
+        assert result.rate_limit_waits == []
+
+    @pytest.mark.unit
+    @patch("packages.orchestration.pingpong_loop._time.sleep")
+    def test_parse_retry_rate_limit_is_paced_end_to_end(self, mock_sleep, tmp_path):
+        """R-0374: the reviewer PARSE-RETRY call site is paced by the governor too.
+
+        WHY the rate limit is wrapped as ``provider_error:`` — this is the whole reason
+        the fixture looks the way it does. ``ReviewerOutput.verdict`` DEFAULTS to
+        ``"blocked"``, and ``_call_with_retry`` computes ``is_reject`` from that field, so
+        ANY ReviewerOutput carrying an error is a review reject and returns BEFORE the
+        governor is consulted — unless the error starts with ``provider_error:``, the one
+        shape the reject rule exempts. A bare ``429 Too Many Requests`` from a reviewer is
+        therefore never retried and records no wait. The real claude-cli reviewer wraps
+        every transport failure as ``provider_error: <Type>: <message>``, so the shape
+        below is what production actually emits. R-0378 registers that this coupling is
+        documented nowhere in the production code. The wording deliberately carries
+        neither ``exited`` nor timeout wording, so no pre-existing transport predicate
+        retries it and only the seam's own rate-limit rule can.
+        """
+        clock = SeamFakeClock()
+        governor = _seam_governor(clock)
+
+        class ParseRetryRateLimitedProvider(FakeProvider):
+            """Malformed review, then a rate-limited parse retry, then a clean verdict."""
+
+            def __init__(self) -> None:
+                super().__init__()
+                self.review_calls = 0
+
+            def review(
+                self,
+                prompt: str,
+                *,
+                timeout_sec: int = 120,
+                max_output_chars: int = 50000,
+            ) -> ReviewerOutput:
+                self.review_calls += 1
+                if self.review_calls == 1:
+                    return ReviewerOutput(
+                        verdict="",
+                        raw_text="not valid json {{{",
+                        error="malformed_output: no JSON found in reviewer response",
+                        provider="fake",
+                    )
+                if self.review_calls == 2:
+                    return ReviewerOutput(
+                        error="provider_error: RuntimeError: 429 Too Many Requests",
+                        provider="fake",
+                    )
+                return ReviewerOutput(
+                    verdict="pass",
+                    confidence="high",
+                    summary="Parse retry recovered after the governor's wait.",
+                    provider="fake",
+                )
+
+        provider = ParseRetryRateLimitedProvider()
+        result = run_pingpong(
+            "test goal",
+            str(tmp_path),
+            builder_name="fake",
+            reviewer_provider=provider,
+            rate_governor=governor,
+        )
+
+        # (a) the run really entered the single bounded parse retry...
+        assert result.reviewer_parse_retry_count == 1
+        # ...and the rate-limited parse-retry call really was retried.
+        assert provider.review_calls == 3
+        # (b) the seam retried it rather than returning the rate limit as terminal.
+        assert result.retries_used >= 1
+        # (c) the governor's wait is recorded, with its own provider and reason.
+        assert result.rate_limit_waits
+        for wait in result.rate_limit_waits:
+            assert wait["provider"] == "fake"
+            assert wait["reason"] == RATE_LIMIT_REASON_RATE_LIMITED
+            assert wait["waited_s"] > 0.0
+        # (d) nothing slept for real: the seconds were spent on the INJECTED clock.
+        assert clock.sleeps
+        assert sum(clock.sleeps) > 0.0
+
+
+# ---------------------------------------------------------------------------
+# F057 T003 — the report surfaces built on the recorded waits
+#
+# These live HERE with the rest of the F057 seam tests even though the code under
+# test is the REPORT rather than the seam: this file already owns this feature's
+# tests against pingpong_loop.py, and the five files that read the export stay an
+# untouched regression signal that way.
+# ---------------------------------------------------------------------------
+
+
+def _paced_builder_result(clock: SeamFakeClock) -> PingPongResult:
+    """A run that really was paced by the governor, through the only writer of the waits."""
+    governor = _seam_governor(clock)
+    result = PingPongResult()
+    calls = [0]
+
+    def call_fn():
+        calls[0] += 1
+        if calls[0] == 1:
+            return BuilderOutput(error=BARE_RATE_LIMIT_ERROR, provider="acme")
+        return BuilderOutput(summary="ok", provider="acme")
+
+    _call_with_retry(
+        call_fn,
+        result=result,
+        role="builder",
+        provider="acme",
+        rate_governor=governor,
+    )
+    assert result.rate_limit_waits  # the fixture is worthless if nothing waited
+    return result
+
+
+class TestRateLimitWaitExportSurface:
+    """The exported run JSON carries the waits that ``_record_rate_limit_wait`` recorded."""
+
+    @pytest.mark.unit
+    @patch("packages.orchestration.pingpong_loop._time.sleep")
+    def test_paced_run_exports_its_rate_limit_waits(self, mock_sleep):
+        result = _paced_builder_result(SeamFakeClock())
+
+        exported = export_pingpong_json(result)
+
+        assert len(exported["rate_limit_waits"]) == len(result.rate_limit_waits)
+        for wait in exported["rate_limit_waits"]:
+            assert wait["provider"] == "acme"
+            assert wait["reason"] == RATE_LIMIT_REASON_RATE_LIMITED
+            assert wait["waited_s"] > 0.0
+
+    @pytest.mark.unit
+    def test_unpaced_run_exports_an_empty_list_not_a_missing_key(self):
+        """The key is unconditional: absence is a contract a reader would have to branch on."""
+        exported = export_pingpong_json(PingPongResult())
+
+        assert "rate_limit_waits" in exported
+        assert exported["rate_limit_waits"] == []
+
+
+class TestRateLimitWaitSummarySurface:
+    """The human summary says a run was paced, once, with the total and the count."""
+
+    @pytest.mark.unit
+    @patch("packages.orchestration.pingpong_loop._time.sleep")
+    def test_paced_run_summary_reports_the_total_and_the_count(self, mock_sleep):
+        result = _paced_builder_result(SeamFakeClock())
+        expected_total_s = sum(w["waited_s"] for w in result.rate_limit_waits)
+
+        rate_lines = [
+            line
+            for line in summarize_pingpong(result).splitlines()
+            if line.startswith("Rate limits: ")
+        ]
+
+        assert len(rate_lines) == 1
+        assert rate_lines[0] == (
+            f"Rate limits: waited {expected_total_s:.1f}s "
+            f"across {len(result.rate_limit_waits)} wait(s)"
+        )
+
+    @pytest.mark.unit
+    def test_unpaced_run_summary_has_no_rate_limit_line(self):
+        """A run nothing ever paced must not grow a line about pacing."""
+        rate_lines = [
+            line
+            for line in summarize_pingpong(PingPongResult()).splitlines()
+            if line.startswith("Rate limits: ")
+        ]
+
+        assert rate_lines == []
