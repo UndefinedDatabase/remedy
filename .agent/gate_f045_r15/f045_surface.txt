@@ -1,0 +1,5 @@
+== python3 -m pytest tests/orchestration/test_loop_run.py tests/cli/test_loop_cmd.py tests/orchestration/test_loop_spec.py tests/orchestration/test_run_report.py -q ==
+........................................................................ [ 58%]
+...................................................                      [100%]
+123 passed in 0.34s
+RC=0

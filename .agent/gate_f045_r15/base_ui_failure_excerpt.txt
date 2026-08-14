@@ -1,0 +1,61 @@
+self = <tests.ui_server.test_live_state.TestUIServerIntegration object at 0x7ec00642a710>
+
+    def test_server_starts_and_writes_info(self):
+>       port, token, t = self._start_server()
+
+tests/ui_server/test_live_state.py:168: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <tests.ui_server.test_live_state.TestUIServerIntegration object at 0x7ec00642a710>
+kwargs = {}, _s = <module 'secrets' from '/usr/lib/python3.10/secrets.py'>
+run = <function TestUIServerIntegration._start_server.<locals>.run at 0x7ec0050976d0>
+t = <Thread(Thread-1 (run), stopped daemon 139363168228928)>, _ = 49
+
+    def _start_server(self, **kwargs):
+        """Start server in background thread, return (port, token, thread)."""
+        import secrets as _s
+    
+        from packages.orchestration.ui_server import start_ui_server
+    
+        info_file = str(self.tmp_path / "server_info.json")
+        token = _s.token_urlsafe(16)
+    
+        def run():
+            try:
+                start_ui_server(
+                    self.job_id,
+                    host="127.0.0.1",
+                    port=0,
+                    token=token,
+                    open_browser=False,
+                    info_file=info_file,
+                    **kwargs,
+                )
+            except (SystemExit, KeyboardInterrupt):
+                pass
+    
+        t = threading.Thread(target=run, daemon=True)
+        t.start()
+    
+        # Wait for info file
+        for _ in range(50):
+            if Path(info_file).exists():
+                info = json.loads(Path(info_file).read_text())
+                return info["port"], token, t
+            time.sleep(0.1)
+>       pytest.fail("Server did not start in time")
+E       Failed: Server did not start in time
+
+tests/ui_server/test_live_state.py:165: Failed
+----------------------------- Captured stderr call -----------------------------
+
+ERROR: React UI not built.
+
+  To fix, run:
+    cd apps/ui && npm install && npm run build
+
+  Or check npm is installed and retry.
+  Disable auto-build: REMEDY_UI_NO_AUTO_BUILD=1
+
+_________ TestUIServerIntegration.test_app_shell_served_without_token __________
+[gw10] linux -- Python 3.10.12 /usr/bin/python3
