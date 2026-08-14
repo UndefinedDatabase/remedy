@@ -1,0 +1,31 @@
+{
+  "bench_order_version": 1,
+  "budget": {
+    "max_cycles": 4,
+    "max_iterations": 12,
+    "max_tokens": 600000,
+    "max_wall_seconds": 5400
+  },
+  "budget_rationale": "g01's shape: one stated milestone, one module and its test, no smoke run. The defect is already present and locally readable, so no exploration budget beyond the gauntlet's measured baseline for a single-file change is warranted.",
+  "gauntlet_order_version": 1,
+  "goal": "In the sample project, fix config resolution so that a sampleproj.conf file is consulted when no explicit config path is given, matching the precedence the README documents, and cover the repaired behaviour with a unit test that fails against the pre-change code.",
+  "id": "b02-config-lookup-bugfix",
+  "injections": [],
+  "kind": "pure_code_change",
+  "milestones": [
+    {
+      "dod": [
+        "the new unit test fails against the pre-change code",
+        "resolve finds a sampleproj.conf file without being handed its path",
+        "an explicit argument and the environment still beat the file",
+        "the full unit suite of the sample project is green",
+        "no file outside sampleproj/config.py and its test changed"
+      ],
+      "id": "m1",
+      "title": "The documented config-file layer actually runs"
+    }
+  ],
+  "rationale": "The bugfix-on-a-fixture-repo capability, probed against a defect that is genuinely present rather than planted. sampleproj/config.py::DEFAULT_CONFIG_FILENAME is defined and never read by anything, and sampleproj/config.py::resolve reaches the file layer only under if config_path is not None, so the precedence chain the project's own README publishes is not the chain the code runs. Fixing it means reading the divergence out of the documentation and the code together, not following an instruction to change a line, which is the capability worth measuring. The existing tests pass either way, so the mission cannot be steered by a red suite.",
+  "risk_probed": "defect_located_from_docs_and_code_disagreeing",
+  "title": "Find and fix a documented behaviour the code never performs"
+}

@@ -1,0 +1,29 @@
+{
+  "bench_order_set_version": 1,
+  "orders": [
+    {
+      "id": "b01-cli-report-width",
+      "file": "b01-cli-report-width.json",
+      "version": 1,
+      "digests": {
+        "1": "429b7b106cfa5f271957deacd577a698d71dec2e8f3f4ed470239973474813f8"
+      }
+    },
+    {
+      "id": "b02-config-lookup-bugfix",
+      "file": "b02-config-lookup-bugfix.json",
+      "version": 1,
+      "digests": {
+        "1": "9fb9dd82dae804d5655b765a77b251bc81ae9377312bcab48b66b4341d728765"
+      }
+    },
+    {
+      "id": "b03-cli-render-refactor",
+      "file": "b03-cli-render-refactor.json",
+      "version": 1,
+      "digests": {
+        "1": "dbf18a251b7825cb8275036825130553ac0fcd9164e40d7818f5fdb711e14183"
+      }
+    }
+  ]
+}

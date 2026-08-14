@@ -16,8 +16,10 @@ triggers the regression warning.
 
 ## Current Step
 R4: the R3 gate recorded, R-0408 and DECISION F082 D2 registered, the sample
-project surveyed, and the five frozen orders built behind a freeze that binds
-each order's version to its digest.
+project surveyed, and THREE frozen orders built behind a freeze that binds each
+order's version to its digest. Three, not five: the survey's S3 found the
+API-endpoint and frontend-widget capabilities inexpressible against
+`scripts/gauntlet_sample_project`, so they are owed in S4 rather than invented.
 
 ## Next Steps
 1. R5 — T001 closed: the dry run of `build_bench_record` against RECORDED
