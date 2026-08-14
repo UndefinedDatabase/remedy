@@ -57,6 +57,13 @@ from packages.orchestration.provider_timeouts import (
     next_backoff,
     should_retry,
 )
+from packages.orchestration.rate_governor import (
+    RATE_SIGNAL_SOURCE_RETRY_REASON,
+    ProviderRateGovernor,
+    RateLimitAcquireResult,
+    RateLimitWaitEvent,
+    normalize_rate_limit_signal,
+)
 
 # ---------------------------------------------------------------------------
 # Data model
@@ -185,6 +192,9 @@ class PingPongResult:
     timeout_s_effective_reviewer: int = 0
     retries_used: int = 0
     retry_reasons: list[str] = field(default_factory=list)
+    # F057: every provider rate-limit wait this run actually paid for, one
+    # RateLimitWaitEvent JSON dict per wait — a wait is not a retry and has no other home.
+    rate_limit_waits: list[dict[str, Any]] = field(default_factory=list)
     # F010: where the post-mortems of finally-failed provider calls were written
     # (run-relative on disk; the evidence export copies them into the bundle), and the
     # reason a post-mortem could NOT be written, if that ever happens.
@@ -2139,6 +2149,25 @@ def _record_attempt(
     ))
 
 
+def _record_rate_limit_wait(result: PingPongResult, acquired: RateLimitAcquireResult) -> None:
+    """Record ONE governor wait on the run result — the only writer of ``rate_limit_waits``.
+
+    An acquire that waited nothing records nothing: zero-second entries would bury the
+    waits a reader is looking for. The dict is built THROUGH :class:`RateLimitWaitEvent`
+    rather than by hand, so the report surface reads exactly the shape the governor
+    already emits and there is one spelling of a wait in the repository.
+    """
+    if acquired.waited_s <= 0.0:
+        return
+    result.rate_limit_waits.append(
+        RateLimitWaitEvent(
+            provider=acquired.provider,
+            waited_s=acquired.waited_s,
+            reason=acquired.reason,
+        ).to_json()
+    )
+
+
 def _call_with_retry(
     call_fn: Any,
     *,
@@ -2150,6 +2179,7 @@ def _call_with_retry(
     is_parse_retry: bool = False,
     call_reasons: list[str] | None = None,
     stop_check: Callable[[], Any] | None = None,
+    rate_governor: ProviderRateGovernor | None = None,
 ) -> Any:
     """Call a provider function with bounded retry on transient failures.
 
@@ -2164,9 +2194,30 @@ def _call_with_retry(
     IMMEDIATELY BEFORE every real ``call_fn()`` invocation, so a caller can
     record exactly one prompt-trace entry per actual provider call (F005). This
     is the same retry mechanism, not a second one.
+
+    ``rate_governor`` (F057) is the pacing seam. When one is given and ``provider``
+    is non-empty, the governor waits out that provider's running cooldown before the
+    first call and before every retry, and observes the failed call's own error so
+    the cooldown a rate limit announces is the one the next retry waits out. Every
+    wait that cost more than zero seconds is recorded on
+    ``result.rate_limit_waits``. Before the FIRST call the wait only PACES — the call
+    is made whatever the acquire outcome (DECISION F057 D3); before a RETRY a
+    non-granted outcome returns the last ``out``, joining the terminal path the stop
+    probe already owns. No ``deadline_s`` is passed: the budget reaches the wait
+    through the same ``stop_check`` the governor re-probes each slice
+    (DECISION F057 D4). A falsy ``provider`` skips the governor entirely
+    (DECISION F057 D5), and ``rate_governor=None`` — every pre-F057 caller — leaves
+    this function's behaviour exactly as it was.
     """
     from packages.orchestration.provider_timeouts import MAX_RETRIES
 
+    # F057: pace the FIRST call. This seam only WAITS — it never decides not to call
+    # (DECISION F057 D3), so the acquire outcome is recorded, not branched on.
+    if rate_governor is not None and provider:
+        _record_rate_limit_wait(
+            result,
+            rate_governor.acquire(provider, role=role, stop_check=stop_check),
+        )
     if on_call is not None:
         on_call(1, False)
     out = call_fn()
@@ -2206,6 +2257,23 @@ def _call_with_retry(
         # F018: check budget before spending another transport call
         if stop_check is not None and stop_check() is not None:
             return out
+
+        # F057: pace the RETRY. OBSERVE this failure first, so the cooldown it announces
+        # is the one this retry waits out, then wait it out. Placed BEFORE the retry
+        # counters below on purpose: a stop during the wait must leave them exactly where
+        # the stop probe above leaves them, so no evidence claims a retry that never ran.
+        if rate_governor is not None and provider:
+            _rate_signal = normalize_rate_limit_signal(
+                out.error,
+                provider=provider,
+                source=RATE_SIGNAL_SOURCE_RETRY_REASON,
+            )
+            if _rate_signal is not None:
+                rate_governor.observe(_rate_signal)
+            _acquired = rate_governor.acquire(provider, role=role, stop_check=stop_check)
+            _record_rate_limit_wait(result, _acquired)
+            if not _acquired.granted:
+                return out
 
         result.retries_used += 1
         _reason = f"{role}:attempt{attempt + 1}:{out.error[:120]}"
@@ -2452,6 +2520,7 @@ def run_pingpong(
     stop_check: Callable[[], Any] | None = None,
     episode_id: str = "",
     on_provider_call: Callable[[ProviderAttempt], None] | None = None,
+    rate_governor: ProviderRateGovernor | None = None,
 ) -> PingPongResult:
     """Run the Builder <> Reviewer ping-pong loop.
 
@@ -2717,6 +2786,11 @@ def run_pingpong(
             return None
         return stop_check()
 
+    # F057: ONE governor per run — the per-provider cooldown state is only useful if the
+    # Builder and the Reviewer share it. A caller may inject its own (tests do); otherwise
+    # this run gets one with the module's documented defaults and a real clock.
+    _rate_governor = rate_governor if rate_governor is not None else ProviderRateGovernor()
+
     def _finalize_call(result, out, *, role: str, round_num: int, kind: str,
                        fallback_prompt: str, ok: bool):
         """The single call-finalization seam. Fires once per finalized logical provider call
@@ -2858,6 +2932,7 @@ def run_pingpong(
                 on_provider_attempt=on_provider_call,
                 call_reasons=builder_call_reasons,
                 stop_check=_stopped,
+                rate_governor=_rate_governor,
             )
             rd.builder_output = builder_out
 
@@ -3075,6 +3150,7 @@ def run_pingpong(
                 on_provider_attempt=on_provider_call,
                 call_reasons=reviewer_call_reasons,
                 stop_check=_stopped,
+                rate_governor=_rate_governor,
             )
 
             # F012: the Reviewer attempt is finalized. Track the exact finalized context so a
