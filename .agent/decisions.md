@@ -4798,3 +4798,48 @@ spec is not `unattended`. Changing this command alone would let a config file
 start execution — a `[[loop]]` table written once could then run work without
 ever reaching the operator's approval gate — which is exactly what the current
 semantics exist to prevent.
+
+## DECISION F045 D8 (2026-08-14) — closure precondition 2 is met by the integration gate's own definition of green, not by a zero on the suite's failure counter
+
+WHAT was decided. `docs/roadmap/STATUS_closure_protocol.md` precondition 2
+requires the "full relevant suite green". At F045's closure the full suite ends
+`5 failed, 16769 passed, 19 skipped`, exit 1. F045 closes anyway, with the five
+named in the STATUS verdict as PASS_WITH_RISKS and recorded here, because the
+word doing the work in that precondition is RELEVANT and the five are not.
+
+WHY this reading and not the other. `docs/agents/integration_gate.md` step 3
+defines the gate's question as `comm -13 base_failed.txt branch_failed.txt` —
+the failures the BRANCH introduces — and step 4 makes only "a reproducible
+branch-only failure coupled to feature code" a blocker. F045's `comm -13` is
+EMPTY. The five ids are `tests/orchestration/test_role_conventions.py`
+parametrizations raising `PromptSegmentError: prompt segment
+'reviewer_conventions' is over its token cap: 954 tokens estimated, cap 800`.
+`packages/orchestration/role_conventions.py` maps that segment to
+`docs/agents/reviewer_conventions.md`; `git diff main..HEAD` shows this branch
+never touched that file, and the document is byte-identical to its state at
+F115's accepted HEAD `705feeb19c871db6313828d76ad4e1d9e0cc4d58`, whose ancestor
+`a85e82f5` (2026-08-12) is the merge that grew it past the cap. So F115 closed
+over these same five ids, on the same condition, and the condition belongs to
+`main` rather than to any feature branch.
+
+The alternative — read precondition 2 as a literal zero on the failure counter
+— was rejected because it makes closure depend on a defect no feature branch
+may repair. AGENTS.md forbids mixing an unrelated fix into a feature branch
+("Never mix unrelated features or fixes in the same branch", "no while-I'm-here
+edits"), so F045 cannot lawfully fix `reviewer_conventions.md`. Under the
+literal reading, EVERY feature would be blocked by a document none of them
+touch, and the roadmap would stall on an unrelated file — a deadlock the
+protocol's own "Failure honesty" section never contemplates, since it lists
+repair, `[!]`, or an operator decision, and the repair is out of scope by rule.
+
+CONSEQUENCE. The over-cap document is recorded as a closure CANDIDATE in
+`.agent/candidates.md` rather than as an F045 finding (no R-id is spent — the
+protocol's "Closure-candidate findings" rule), so the next feature's first
+reviewed round must register or resolve it. It deserves its own branch: the
+segment is 154 tokens over an 800-token cap, and trimming a reviewer-facing
+conventions document is a content decision, not a mechanical one.
+
+HOW TO REVERSE. Delete this decision and treat precondition 2 as a literal
+zero. Doing so requires fixing `docs/agents/reviewer_conventions.md` first, in
+its own branch, because otherwise nothing can close at all — which is precisely
+the outcome this decision exists to avoid.
