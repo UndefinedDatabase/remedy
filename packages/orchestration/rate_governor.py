@@ -156,9 +156,13 @@ class RateLimitSignal:
 def is_rate_limit_error(text: str | None) -> bool:
     """Does this provider text mean "the provider is rate-limiting us"?
 
-    THE rate-limit predicate. The governor, the readers below and anything T003 wires up
-    all call this one function, for the reason ``is_timeout_error`` in
-    ``packages/orchestration/provider_timeouts.py`` states: two definitions of "what
+    THE rate-limit predicate, for callers that only need a yes or no — T003's seam, and
+    any guard that branches on "is this a rate limit at all". It is the emptiness test of
+    :func:`classify_rate_limit_reason`, which owns the single wording table; the readers
+    in this module reach that table through :func:`normalize_rate_limit_signal` rather
+    than through this predicate, so the two can never disagree about a marker. That
+    single-table shape is what ``is_timeout_error`` in
+    ``packages/orchestration/provider_timeouts.py`` argues for: two definitions of "what
     counts as X" drift apart, and the drift is the bug.
 
     It returns False for the strings the existing transport predicates already own. A bare
