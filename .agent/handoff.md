@@ -1,77 +1,83 @@
-# Handoff — F057 rate-limit scheduler, round R9
+# Handoff — F057 rate-limit-aware scheduler, round R10
 
 ## Range
-Review of 37e88970..HEAD (branch feature/f057-rate-limit-scheduler).
+Review of 49d33c71..HEAD. Branch feature/f057-rate-limit-scheduler, pushed after every commit.
 
 ## Commits
-
-### 09285393 chore(f057): save the R9 block verbatim and re-mirror the plan ledger
+### 70b066fc chore(f057): save the R10 block verbatim and retarget the plan
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f057-r9.md | +206/-0 | R9 block, `cp`'d byte for byte from reviewer scratch |
-| .agent/last_block.md | +191/-75 | same bytes, same sha256 |
-| .agent/plan.md | +20/-19 | FULL REPLACEMENT from the PLAN slice (R-0377: ledger was false on disk) |
+| .agent/authored/f057-r10.md | +209/-0 | block saved verbatim via `cp`, never retyped |
+| .agent/last_block.md | +146/-143 | same bytes, same `cp` source |
+| .agent/plan.md | +8/-12 | full replacement from the PLAN slice, round's FIRST commit (R-0377) |
 
-### bf4392b9 docs(f057): record the R8 verdict and three reviewer findings
+### 030fef4b docs(f057): record the R9 verdict
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/live_review.md | +8/-0 | GATE-R8, R-0376, R-0377, R-0378 appended; 4 slices + 4 blank separators |
+| .agent/live_review.md | +2/-0 | one blank line + the GATE-R9 slice, appended at end of file |
 
-### 0d798e4f test(f057): pin the reviewer parse-retry rate limit end to end
+### 2bc63b55 feat(f057): export the recorded rate-limit waits with the run JSON
 | Path | +/- | Reason |
 |---|---|---|
-| tests/orchestration/test_provider_retry.py | +80/-0 | one end-to-end test through `run_pingpong`; nothing existing touched |
+| packages/orchestration/pingpong_loop.py | +6/-0 | `rate_limit_waits` key beside `retries_used`/`retry_reasons`, list copied |
+| tests/orchestration/test_provider_retry.py | +59/-0 | paced-run helper + the two C2 export tests |
 
-### C3 (this handoff, self-reference exception)
+### 579e274c feat(f057): report the rate-limit waits in the human run summary
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/handoff.md | rewrite | the handback itself — a handoff cannot table its own commit |
+| packages/orchestration/pingpong_loop.py | +10/-0 | conditional `Rate limits: ...` line, placed before the `Error:` line |
+| tests/orchestration/test_provider_retry.py | +34/-0 | the two C3 summary tests |
 
-## Item status
+### (this commit) chore(f057): handback R10
+| Path | +/- | Reason |
+|---|---|---|
+| .agent/handoff.md | rewrite | C4; a handoff cannot table the commit that writes it (R-0149), and its SHA does not exist while it is written (R-0371) |
+
+## Items
 | Item | Status | Reason |
 |---|---|---|
-| C0 | done | block saved verbatim; plan.md full-replaced in the round's FIRST commit |
-| C1 | done | four slices appended, byte-identical, append-shaped |
-| C2 | done | one test added inside the F057 seam section, reusing SeamFakeClock/_seam_governor |
-| C3 | done | this file |
+| C0 | done | |
+| C1 | done | |
+| C2 | done | |
+| C3 | done | |
+| C4 | done | |
+
+## Verification — all 18 gates, measured output
+1. `git status --porcelain` -> empty, exit 0 (measured after C3 and after the worktree prune; C4 stages only this file).
+2. `git worktree list` -> exactly one line: `/home/decodeux/Repos/remedy  579e274c [feature/f057-rate-limit-scheduler]`.
+3. `cmp .agent/authored/f057-r10.md .agent/last_block.md` -> exit 0. Shared sha256 `ef2f72cacc23a25d58bb3485d025ff405cc006f044f956f619df1850f34ee105`, 209 lines.
+4. `wc -l .agent/plan.md` -> 33, under 50. PLAN slice (lines 171-203) extracted from the COMMITTED block vs `.agent/plan.md`: `cmp` exit 0, both sha256 `3336195f5822a01f63ddac4543bfebd84badf000e3b8143b6c5c712d2a38837c`.
+5. `grep -c "^Gate: R9 — PASS" .agent/live_review.md` -> 1. `grep -c "^## Steps"` -> 1. Whole-file SUBSTRING count of `## Steps` -> 9, UNCHANGED from the 9 the reviewer measured at 49d33c71.
+6. `git show --numstat 030fef4b -- .agent/live_review.md` -> `2	0`. Deletion column 0.
+7. `pytest tests/orchestration/test_provider_retry.py -q` -> `34 passed`, exit 0. Base was 30; C2 added 2 and C3 added 2.
+8. The five export-reader files -> `414 passed in 3.85s`, exit 0. Unmoved from the round base; none of the five was touched.
+9. `pytest tests/orchestration/test_rate_governor.py -q` -> `59 passed`, exit 0. Unchanged.
+10. The four regression files -> `294 passed in 38.95s`, exit 0.
+11. `pytest tests/ui_server/test_dashboard_contract.py tests/regression/test_resource_safety.py tests/orchestration/test_test_runner.py -q` -> `142 passed in 17.10s`, exit 0.
+12. `pytest tests/cli/test_cli_ux.py -q` -> `57 passed in 0.92s`, exit 0.
+13. Canary `pytest tests/cli/test_golden_path.py -q` -> `42 passed in 15.86s`, exit 0.
+14. `ruff check packages/orchestration/pingpong_loop.py tests/orchestration/test_provider_retry.py` -> `All checks passed!`, exit 0.
+15. RED-PROOF, both mutations inside the disposable worktree `.remedy-wt/r10redproof` (`git worktree add ... --detach` at 579e274c), never in the primary checkout. Import path printed from INSIDE it first: `/home/decodeux/Repos/remedy/.remedy-wt/r10redproof/packages/orchestration/pingpong_loop.py`.
+    (i) `"rate_limit_waits": list(result.rate_limit_waits),` deleted from the export dict -> RED. `TestRateLimitWaitExportSurface::test_paced_run_exports_its_rate_limit_waits` at `KeyError: 'rate_limit_waits'`, and `TestRateLimitWaitExportSurface::test_unpaced_run_exports_an_empty_list_not_a_missing_key` at `AssertionError: assert 'rate_limit_waits' in {'builder_provider': '', ...}`.
+    (ii) restored (`git checkout --`, status clean), then the summary-line `if` block and its `lines.append(...)` deleted -> RED. `TestRateLimitWaitSummarySurface::test_paced_run_summary_reports_the_total_and_the_count` at `assert 0 == 1` / `+ where 0 = len([])`. Neither mutation left everything green.
+    Worktree restored, `git worktree remove` + `git worktree prune` run; `git worktree list` back to one line.
+16. `git diff --name-only 49d33c71..HEAD` -> `.agent/authored/f057-r10.md`, `.agent/last_block.md`, `.agent/live_review.md`, `.agent/plan.md`, `packages/orchestration/pingpong_loop.py`, `tests/orchestration/test_provider_retry.py` — six paths, no seventh. `.agent/handoff.md` is the seventh and arrives with C4 itself; it cannot be measured before the commit that creates it exists (R-0371), so the reviewer measures the full seven.
+17. `git diff --stat 21c8148e..HEAD -- packages/orchestration/provider_timeouts.py packages/orchestration/stream_evidence.py` -> EMPTY, exit 0.
+18. `git diff --stat 49d33c71..HEAD -- packages/ apps/` -> ` packages/orchestration/pingpong_loop.py | 16 ++++++++++++++++` / `1 file changed, 16 insertions(+)`. Exactly one file.
 
 ## External actions
-`git push -u origin feature/f057-rate-limit-scheduler` after each of C0, C1, C2, C3 — all OK.
-`git worktree add .remedy-wt/r9red HEAD --detach` → OK; `git worktree remove --force` + `git worktree prune` → OK, list back to one line.
-No `gh` commands, no merge, no force-push.
-
-## Verification — all 15 gates, measured
-1. `git status --porcelain` → empty (baseline empty).
-2. `git worktree list` → `/home/decodeux/Repos/remedy  0d798e4f [feature/f057-rate-limit-scheduler]` — one line.
-3. `cmp .agent/authored/f057-r9.md .agent/last_block.md` → exit 0, no output. sha256 (both, and `git show HEAD:` of the committed file) `14f52a4c4321e91d4776b1db895f8271fdc18b498600c652d974d626b9aa7e20`; 206 lines each.
-4. `wc -l .agent/plan.md` → `37` (< 50). `cmp` of the PLAN slice extracted from the COMMITTED block (lines 152–188) against `.agent/plan.md` → exit 0, no output.
-5. `.agent/live_review.md` line-anchored: `^Gate: R8 — PASS`=1, `^- R-0376 — `=1, `^- R-0377 — `=1, `^- R-0378 — `=1, `^## Steps`=1. Whole-file SUBSTRING count of `## Steps` = 9 — UNCHANGED from the 9 the reviewer measured at 37e88970.
-6. `git show --numstat bf4392b9 -- .agent/live_review.md` → `8	0` — 8 insertions, deletion column 0.
-7. `python3 -m pytest tests/orchestration/test_provider_retry.py -q` → `30 passed in 0.25s`, exit 0. Baseline 29; C2 adds exactly one.
-8. `python3 -m pytest tests/orchestration/test_rate_governor.py -q` → `59 passed in 0.08s`, exit 0 — unchanged from baseline 59.
-9. four regression files together → `294 passed in 38.99s`, exit 0 — exactly the ordered value.
-10. `python3 -m pytest tests/cli/test_golden_path.py -q` → `42 passed in 15.88s`, exit 0 — baseline 42.
-11. `python3 -m ruff check packages/orchestration/pingpong_loop.py tests/orchestration/test_provider_retry.py` → `All checks passed!`, exit 0.
-12. RED-PROOF, in the disposable worktree `.remedy-wt/r9red` only. Resolved import path printed from INSIDE it: `/home/decodeux/Repos/remedy/.remedy-wt/r9red/packages/orchestration/pingpong_loop.py`. Removed the single line `rate_governor=_rate_governor,` from the parse-retry `_call_with_retry` (the `retry_out` one) — `git -C … diff --stat` → `1 file changed, 1 deletion(-)`. Re-ran the new test: it FAILED. Failing id `tests/orchestration/test_provider_retry.py::TestRateGovernorSeam::test_parse_retry_rate_limit_is_paced_end_to_end`; assertion `assert provider.review_calls == 3` → `E assert 2 == 3`. Worktree removed and pruned.
-13. `git diff --name-only 37e88970..HEAD` → `.agent/authored/f057-r9.md`, `.agent/last_block.md`, `.agent/live_review.md`, `.agent/plan.md`, `tests/orchestration/test_provider_retry.py` — five at C2, and `.agent/handoff.md` arrives with C3 itself, making the ordered six and no seventh.
-14. `git diff --stat 37e88970..HEAD -- packages/ apps/` → EMPTY. No production code changed.
-15. `git diff --stat 21c8148e..HEAD -- packages/orchestration/provider_timeouts.py packages/orchestration/stream_evidence.py` → EMPTY (declared branch-point base, per the block's own gate text).
+- `git push` after each of C0/C1/C2/C3: `49d33c71..70b066fc`, `70b066fc..030fef4b`, `030fef4b..2bc63b55`, `2bc63b55..579e274c`. C4 pushed after this commit.
+- `git worktree add .remedy-wt/r10redproof HEAD --detach` -> created at 579e274c; `git worktree remove` + `git worktree prune` -> removed, one line left.
+- No `gh` command, no PR, no merge, no force-push.
 
 ## Authored-text proofs
-Disk to disk against the COMMITTED `.agent/authored/f057-r9.md`, per-line sha256 (source line → live_review line), all equal:
-GATE-R8 192→79 `c9a251a16e3c856e7ce18a1865edc6174fe41e1cec992fa3f12a7fbb8dffe79d`;
-R-0376 196→81 `69ee888fc95cc42638c4336d4e0f588d7b4bb00c967a6a2aa7d3fff0f740065e`;
-R-0377 200→83 `8a0e6889763ab35923a9670a728646fb940f47698dd919fdc90db38b52930cba`;
-R-0378 204→85 `f47ec5e9cd34ef235a57dfae66dc1eaa887f9e8d4e0acaad0150e6100ef9b67d`.
-Lines 78, 80, 82, 84 are each the empty line (`01ba4719…`), so every slice is one physical line preceded by exactly one blank. No `Done:` paragraph authored.
+- `.agent/authored/f057-r10.md` vs `.agent/last_block.md`: `cmp` exit 0, shared sha256 `ef2f72ca…`.
+- The COMMITTED block vs the reviewer's own scratch SOURCE `.remedy-wt/r10draft/f057-r10.md`: `cmp` exit 0, same sha256 — proved against the source, not only against its own copy.
+- GATE-R9 slice: extracted with `sed -n '207p'` from `git show HEAD:.agent/authored/f057-r10.md`, sha256 `e47493acf60ca57db27d0dd479ad31b389951431fc1c7727a44448933cc0647e`; line 87 of `.agent/live_review.md` on disk hashes to the same value. One physical line, preceded by exactly one blank line (itself copied from the block), appended at end of file, deletion column 0. No `Done:` paragraph was authored.
 
 ## Deviations & assumptions
-- Handoff length: this file is over the 60-line cap. DECISION D15 stated cause — the mandated content is the 15-gate verification transcript, the four per-commit changed-files tables, the item-status table and the four-line authored-text proof. No section dropped.
-- The test passes for the reason the block names, and the red-proof says so rather than the colour alone: with `rate_governor=` removed from the parse-retry call site the rate-limited retry never happens (`review_calls` 2, not 3). No other deviation: no production file was edited, no gate was re-based, nothing was changed to make a gate pass.
-- Fixture choice (block left it to the worker): the reviewer's parse retry returns `provider_error: RuntimeError: 429 Too Many Requests` — prefixed so the `is_reject` rule exempts it, and free of `exited`/timeout wording so no pre-existing transport predicate retries it. The WHY comment above the test names that dependency and points at R-0378.
-
-## Open findings
-13 open: R-0361, R-0362, R-0363, R-0364, R-0367, R-0368, R-0369, R-0371, R-0374, R-0375, R-0376, R-0377, R-0378. None resolved this round by design. R-0374's subject is now pinned on disk, but only reviewer-authored text may close it.
+- None. No gate needed re-basing, no gate was unreachable as written, nothing was edited to make a gate pass.
+- DECISION D15 stated cause: this handoff is 83 lines, over the 60-line cap. The mandated content that caused it is the 18-gate verification transcript (gate 15 alone carries two mutations with their failing test ids and assertion texts), the five per-commit changed-files tables, the item-status table and the authored-text proofs. No section was dropped or trimmed to fit.
 
 ## Next
-Reviewer verdict on R9 at 37e88970..HEAD; then T003 part 2 item 2 — the report surfaces (`rate_limit_waits` in `export_pingpong_json`, the wait line in `summarize_pingpong`).
+The reviewer independently re-runs all 18 gates against 49d33c71..HEAD and issues the R10 verdict. Open findings: 13, unchanged this round — R-0361, R-0362, R-0363, R-0364, R-0367, R-0368, R-0369, R-0371, R-0374, R-0375, R-0376, R-0377, R-0378. Nothing this round resolves one and nothing new is claimed.
