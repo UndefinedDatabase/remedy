@@ -41,10 +41,13 @@ leaves behind; that module contains no executor at all:
     61:    job.state = RunState.RUNNING
     92:    job.state = RunState.PLANNED
 
-Terminal transitions all funnel through `_apply_terminal` in the same module
-(line 911), whose docstring says it is "the ONE place a final run report is
-written (F053 T002)". It sets `job.metadata["cycle_terminal_status"]` and then
-calls `write_final_report(job)`.
+Terminal transitions all funnel through `_apply_terminal`, which is NOT in
+`job_runner.py` — that module really does contain no executor — but back in
+`packages/orchestration/long_run_executor.py`. The command that places it:
+`grep -rn "_apply_terminal" --include=*.py packages/ apps/` → its definition at
+line 911 and its single call site at line 1578. Its docstring says it is "the
+ONE place a final run report is written (F053 T002)". It sets
+`job.metadata["cycle_terminal_status"]` and then calls `write_final_report(job)`.
 
 One existing test that drives a job end to end through it:
 `tests/orchestration/test_long_run_executor.py::TestTerminalStatusMatrix::test_all_green`
