@@ -696,3 +696,83 @@ class TestRateGovernorSeam:
         assert calls[0] == 1
         assert result.retries_used == 0
         assert result.rate_limit_waits == []
+
+    @pytest.mark.unit
+    @patch("packages.orchestration.pingpong_loop._time.sleep")
+    def test_parse_retry_rate_limit_is_paced_end_to_end(self, mock_sleep, tmp_path):
+        """R-0374: the reviewer PARSE-RETRY call site is paced by the governor too.
+
+        WHY the rate limit is wrapped as ``provider_error:`` — this is the whole reason
+        the fixture looks the way it does. ``ReviewerOutput.verdict`` DEFAULTS to
+        ``"blocked"``, and ``_call_with_retry`` computes ``is_reject`` from that field, so
+        ANY ReviewerOutput carrying an error is a review reject and returns BEFORE the
+        governor is consulted — unless the error starts with ``provider_error:``, the one
+        shape the reject rule exempts. A bare ``429 Too Many Requests`` from a reviewer is
+        therefore never retried and records no wait. The real claude-cli reviewer wraps
+        every transport failure as ``provider_error: <Type>: <message>``, so the shape
+        below is what production actually emits. R-0378 registers that this coupling is
+        documented nowhere in the production code. The wording deliberately carries
+        neither ``exited`` nor timeout wording, so no pre-existing transport predicate
+        retries it and only the seam's own rate-limit rule can.
+        """
+        clock = SeamFakeClock()
+        governor = _seam_governor(clock)
+
+        class ParseRetryRateLimitedProvider(FakeProvider):
+            """Malformed review, then a rate-limited parse retry, then a clean verdict."""
+
+            def __init__(self) -> None:
+                super().__init__()
+                self.review_calls = 0
+
+            def review(
+                self,
+                prompt: str,
+                *,
+                timeout_sec: int = 120,
+                max_output_chars: int = 50000,
+            ) -> ReviewerOutput:
+                self.review_calls += 1
+                if self.review_calls == 1:
+                    return ReviewerOutput(
+                        verdict="",
+                        raw_text="not valid json {{{",
+                        error="malformed_output: no JSON found in reviewer response",
+                        provider="fake",
+                    )
+                if self.review_calls == 2:
+                    return ReviewerOutput(
+                        error="provider_error: RuntimeError: 429 Too Many Requests",
+                        provider="fake",
+                    )
+                return ReviewerOutput(
+                    verdict="pass",
+                    confidence="high",
+                    summary="Parse retry recovered after the governor's wait.",
+                    provider="fake",
+                )
+
+        provider = ParseRetryRateLimitedProvider()
+        result = run_pingpong(
+            "test goal",
+            str(tmp_path),
+            builder_name="fake",
+            reviewer_provider=provider,
+            rate_governor=governor,
+        )
+
+        # (a) the run really entered the single bounded parse retry...
+        assert result.reviewer_parse_retry_count == 1
+        # ...and the rate-limited parse-retry call really was retried.
+        assert provider.review_calls == 3
+        # (b) the seam retried it rather than returning the rate limit as terminal.
+        assert result.retries_used >= 1
+        # (c) the governor's wait is recorded, with its own provider and reason.
+        assert result.rate_limit_waits
+        for wait in result.rate_limit_waits:
+            assert wait["provider"] == "fake"
+            assert wait["reason"] == RATE_LIMIT_REASON_RATE_LIMITED
+            assert wait["waited_s"] > 0.0
+        # (d) nothing slept for real: the seconds were spent on the INJECTED clock.
+        assert clock.sleeps
+        assert sum(clock.sleeps) > 0.0
