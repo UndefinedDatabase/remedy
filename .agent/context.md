@@ -16,10 +16,15 @@ with the join from an order file to a row over recorded evidence, and
 `bench_history.py` with the append-only history, the trend and the regression
 rules. T003a landed the `stats bench` read view at R10 — a new
 `bench_cmd.py` under `apps/cli/commands/`, its catalog entry and its own test
-file, adding exactly one handler key and changing no bench module. Still to
-come, T003b alone: the
-model-context recording and a fake-provider bench run end to end, inventoried
-at R11 before it is built.
+file, adding exactly one handler key and changing no bench module. T003b's
+WRITE half landed at R13 under DECISION F082 D7 and D8: a run's `run.json` now
+carries a `models` key naming which model served which role, fed by a
+`resolved_model` attribute on the callable
+`intake.py::make_structured_call_fn` returns, with the builder recorded as a
+permanent absence because `orchestrator_loop.py::execute_dispatched_job`
+constructs `OllamaBuilder()` where no seam can observe it. Still to come,
+T003b's read half — those models into the bench record — and the fake-provider
+bench run end to end, inventoried at R11 before either is built.
 R2's inventory settled the shape: the factoring is ADDITIVE, so every bench
 module is NEW and no symbol moves out of any gauntlet module — R3's
 `capability_bench.py`, R4's `bench_orders.py`, R6's `bench_dry_run.py` and R7's
@@ -63,7 +68,8 @@ the regression threshold ✅ → R9 record the R8 verdict and retire the last
 stale claim ✅ → R10 T003a the stats bench read view ✅ → R11 the T003b
 inventory ✅ → R12 record the R11 verdict, register R-0419 and rule on the
 gauntlet key at D7 ✅ → R13 T003b the write half, every run recording which model
-served which role → R14 T003b the read half and the fake-provider run → R15 the
-integration gate → R16 closure. T003 split at DECISION F082 D5, its second half
-inventoried at D6, unblocked at D7 and split in two at D8; each round marks the
-PREVIOUS one done and never itself.
+served which role ✅ → R14 record the R13 verdict and register R-0420 to R-0422
+→ R15 T003b the read half and the fake-provider run → R16 the integration gate
+→ R17 closure. T003 split at DECISION F082 D5, its second half inventoried at
+D6, unblocked at D7 and split in two at D8; each round marks the PREVIOUS one
+done and never itself.
