@@ -491,6 +491,18 @@ def run_order(order: GauntletOrder, *, campaign_root: Path, real_data_root: Path
     # unbound `body` at the hash-after line would raise NameError over the top
     # of the real error, losing the only account of what went wrong.
     body: dict[str, Any] = _minimal_body(order, before)
+    # F082 T003b: which model served which role, filled in as each call_fn is
+    # built and read back out into the evidence body. Bound BEFORE the try for
+    # the same R-0180 reason as `body`, so the crash path still records what
+    # was resolved before the crash. A role this seam cannot observe stays
+    # None: an invented model is the exact class of lie F082 exists to prevent,
+    # and the same honesty that keeps `repair_rounds` None rather than 0.
+    # The builder is never observable here — `orchestrator_loop.py::
+    # execute_dispatched_job` constructs `OllamaBuilder()` itself, so no value
+    # reaches this seam at all. It is recorded as an absence on purpose.
+    models: dict[str, str | None] = {
+        "planner": None, "orchestrator": None, "builder": None,
+    }
 
     try:
         with isolated_environment(data_root, order):
@@ -503,11 +515,15 @@ def run_order(order: GauntletOrder, *, campaign_root: Path, real_data_root: Path
             # genuine prerequisite should be able to say so — what it may not
             # do is turn a one-milestone order into seven and spend the
             # budget rediscovering that (attempt 02, Finding A).
-            deps.plan_mission(project_id, mission.id, deps.plan_call_fn(),
+            plan_call = deps.plan_call_fn()
+            models["planner"] = getattr(plan_call, "resolved_model", None)
+            deps.plan_mission(project_id, mission.id, plan_call,
                               max_milestones=len(order.milestones) + 1)
+            move_call = deps.move_call_fn()
+            models["orchestrator"] = getattr(move_call, "resolved_model", None)
             seams = build_injectors(
                 order.injections,
-                call_fn=deps.move_call_fn(),
+                call_fn=move_call,
                 dispatch=deps.dispatch_fn(),
                 update_dossier=deps.update_dossier_fn(),
             )
@@ -533,7 +549,8 @@ def run_order(order: GauntletOrder, *, campaign_root: Path, real_data_root: Path
             # Reloaded so the record reflects everything the run wrote.
             mission = deps.load_mission(project_id, mission.id)
             body = _evidence_body(order, terminal, time.monotonic() - started,
-                                  entries, mission, injectors, before, data_root)
+                                  entries, mission, injectors, before,
+                                  data_root, models)
             gate = latest_gate_result(mission)
     except Exception as exc:  # a crashed run is a FAILED run, with evidence
         crashed = f"{type(exc).__name__}: {exc}"
@@ -544,8 +561,10 @@ def run_order(order: GauntletOrder, *, campaign_root: Path, real_data_root: Path
             # own path resolution, and outside isolation that path is the
             # operator's real root — the one thing this runner must never touch.
             with isolated_environment(data_root, order):
-                body = _evidence_body(order, terminal, time.monotonic() - started,
-                                      entries, mission, injectors, before, data_root)
+                body = _evidence_body(order, terminal,
+                                      time.monotonic() - started,
+                                      entries, mission, injectors, before,
+                                      data_root, models)
         except Exception as collect_exc:  # R-0180: the fallback keeps the run
             body = _minimal_body(order, before)
             body["terminal_status"] = terminal
@@ -592,7 +611,9 @@ def _minimal_body(order: GauntletOrder, before: str) -> dict[str, Any]:
 
 def _evidence_body(order: GauntletOrder, terminal: str, wall: float,
                    entries: list[Any], mission: Any, injectors: list[Any],
-                   before: str, data_root: Path) -> dict[str, Any]:
+                   before: str, data_root: Path,
+                   models: dict[str, str | None] | None = None,
+                   ) -> dict[str, Any]:
     """The recorded-schema body — the same bytes the dry-run evaluator judges.
 
     ``data_root`` is passed rather than re-read from the environment: this is
@@ -626,6 +647,12 @@ def _evidence_body(order: GauntletOrder, terminal: str, wall: float,
         # R-0189: which world this run was given. A different template is a
         # different campaign, and the evidence says which one it was.
         "template_digest": _template_digest(),
+        # F082 T003b (DECISION F082 D7 and D8): which model served which role.
+        # An unobserved role is None, never a default name. The dict is copied
+        # so a later mutation of the caller's own map cannot rewrite evidence
+        # that has already been recorded.
+        "models": dict(models) if models else {
+            "planner": None, "orchestrator": None, "builder": None},
     }
     tokens = measure_tokens(entries)
     if tokens is None:
