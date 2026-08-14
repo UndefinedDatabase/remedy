@@ -4491,6 +4491,16 @@ def summarize_pingpong(result: PingPongResult) -> str:
             lines.append(f"Reviewer parse: retried {result.reviewer_parse_retry_count}x, NOT recovered")
             if result.reviewer_parse_error:
                 lines.append(f"Parse error: {result.reviewer_parse_error}")
+    # F057: a run the governor paced says so, above the error line — a wait is run
+    # health, not a failure. The total is derived from the RECORDED waits and never
+    # from the governor's own total_waited_s(): the governor is not reachable from a
+    # PingPongResult, and a second source for one number is how the two drift.
+    if result.rate_limit_waits:
+        rate_limit_total_s = sum(w["waited_s"] for w in result.rate_limit_waits)
+        lines.append(
+            f"Rate limits: waited {rate_limit_total_s:.1f}s "
+            f"across {len(result.rate_limit_waits)} wait(s)"
+        )
     if result.error:
         lines.append(f"Error: {result.error}")
     lines.append("")

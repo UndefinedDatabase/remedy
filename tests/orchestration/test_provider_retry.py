@@ -19,6 +19,7 @@ from packages.orchestration.pingpong_loop import (
     _call_with_retry,
     export_pingpong_json,
     run_pingpong,
+    summarize_pingpong,
 )
 from packages.orchestration.pingpong_provider import (
     BuilderOutput,
@@ -835,3 +836,36 @@ class TestRateLimitWaitExportSurface:
 
         assert "rate_limit_waits" in exported
         assert exported["rate_limit_waits"] == []
+
+
+class TestRateLimitWaitSummarySurface:
+    """The human summary says a run was paced, once, with the total and the count."""
+
+    @pytest.mark.unit
+    @patch("packages.orchestration.pingpong_loop._time.sleep")
+    def test_paced_run_summary_reports_the_total_and_the_count(self, mock_sleep):
+        result = _paced_builder_result(SeamFakeClock())
+        expected_total_s = sum(w["waited_s"] for w in result.rate_limit_waits)
+
+        rate_lines = [
+            line
+            for line in summarize_pingpong(result).splitlines()
+            if line.startswith("Rate limits: ")
+        ]
+
+        assert len(rate_lines) == 1
+        assert rate_lines[0] == (
+            f"Rate limits: waited {expected_total_s:.1f}s "
+            f"across {len(result.rate_limit_waits)} wait(s)"
+        )
+
+    @pytest.mark.unit
+    def test_unpaced_run_summary_has_no_rate_limit_line(self):
+        """A run nothing ever paced must not grow a line about pacing."""
+        rate_lines = [
+            line
+            for line in summarize_pingpong(PingPongResult()).splitlines()
+            if line.startswith("Rate limits: ")
+        ]
+
+        assert rate_lines == []
