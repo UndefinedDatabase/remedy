@@ -8,14 +8,14 @@ for this branch yet; one is created at closure, not before.
 ## Scope
 In: `packages/orchestration/rate_governor.py` and
 `tests/orchestration/test_rate_governor.py`, plus `.agent/**` round state and
-the one claimed STATUS line. T001 and T002 are built and gated; T003, the seam
-in `packages/orchestration/pingpong_loop.py`, is all that remains.
+the one claimed STATUS line. T001 and T002 are built and gated; T003 opened
+`packages/orchestration/pingpong_loop.py` at R6 and now owns the seam there and
+its tests in `tests/orchestration/test_provider_retry.py`.
 
 Out: the per-call retry policy in `packages/orchestration/provider_timeouts.py`,
 parallelism itself, and the provider adapters' internals — the feature file's
 Do-not-touch list, verified byte-identical at every round so far.
-`packages/orchestration/pingpong_loop.py` is READ this round for the seam
-inventory and stays byte-identical until T003 opens it.
+`packages/orchestration/stream_evidence.py` is out too and stays byte-identical.
 
 ## Constraints
 - The main session writes nothing in the work tree; a delegated worker subagent
@@ -38,5 +38,6 @@ inventory and stays byte-identical until T003 opens it.
 
 ## Steps
 R1 claim and T001 ✅ → R2 findings and two fixes ✅ → R3 verdict and session
-close ✅ → R4 T002 governor ✅ → R5 R4 verdict, R-0369, R-0370 and the T003 seam
-inventory → T003 seam → integration gate → closure.
+close ✅ → R4 T002 governor ✅ → R5 R5 verdict, R-0369, R-0370 and the T003 seam
+inventory ✅ → R6 R5 verdict, R-0371 and the T003 seam itself → R7 the report
+surfaces and the limit-emitting fixture → integration gate → closure.
