@@ -148,15 +148,56 @@ def _load_mission_or_exit(project_id: str, mission_id: str) -> Any:
 
 def _cmd_mission_show(mission_id: str, *, project: str | None = None,
                       json_output: bool = False) -> None:
-    from packages.orchestration.mission_state import render_mission_chain
+    """``remedy mission show <id>`` — one mission's chain, led by why it stopped.
+
+    Read-only.  When the mission is PAUSED, the trips its ledger already
+    RECORDS lead the output (DECISION F077 D12): nothing is re-evaluated here,
+    so a reader sees the trip that actually caused THIS pause rather than a
+    fresh verdict over the same ledger, and ``remedy mission watchdog`` stays
+    the one surface that re-evaluates.
+
+    The lead lives in this handler and not in ``render_mission_chain`` because
+    that renderer takes a ``Mission`` and nothing else: the trips live in the
+    LEDGER, which ``orchestrator_loop`` owns, and ``orchestrator_loop`` imports
+    ``mission_state`` — so reaching the ledger from the renderer would invert
+    that dependency and build the very import cycle ``watchdog`` keeps its own
+    imports inside function bodies to avoid.
+    """
+    from packages.orchestration.mission_state import (
+        MISSION_STATUS_PAUSED,
+        render_mission_chain,
+    )
 
     project_id = _resolve_project_id(project)
     mission = _load_mission_or_exit(project_id, mission_id)
 
+    # The PAUSE is the condition, not the history: a mission that ran past an
+    # old trip and is active again is not waiting for anybody.
+    trips: list[Any] = []
+    if mission.status == MISSION_STATUS_PAUSED:
+        from packages.orchestration.orchestrator_loop import read_ledger
+        from packages.orchestration.watchdog import latest_trips_from_ledger
+
+        trips = latest_trips_from_ledger(read_ledger(project_id, mission.id))
+
     if json_output:
-        print(_json.dumps({"version": 1, "mission": _mission_json(mission)},
+        print(_json.dumps({"version": 1, "mission": _mission_json(mission),
+                           "watchdog_trips": [t.to_json() for t in trips]},
                           sort_keys=True))
         return
+
+    # Empty trips print NOTHING, so an unpaused mission's output is byte for
+    # byte what it was before F077.
+    if trips:
+        print("STOPPED: this mission was paused automatically and is waiting "
+              "for you.")
+        for trip in trips:
+            print(f"  {trip.kind}  (since iteration {trip.since_iteration})")
+            print(f"    {trip.what}")
+            for key in sorted(trip.numbers):
+                print(f"    {key}: {trip.numbers[key]}")
+        print(f"  Full evidence: remedy mission watchdog {mission.id}")
+        print("")
     for line in render_mission_chain(mission):
         print(line)
 
