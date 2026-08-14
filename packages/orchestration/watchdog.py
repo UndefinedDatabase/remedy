@@ -10,7 +10,8 @@ writes a file, mutates a mission, or imports the loop it observes — a watchdog
 that could edit the run it is judging would be judging its own work. They take
 a list of ledger entries (plain dicts, exactly what ``read_ledger`` returns)
 and give back :class:`Trip` records. Deciding what to DO about a trip — pausing
-the mission, raising the decision — is deliberately NOT here; that is F077 T002.
+the mission, raising the decision — is F077 T002, kept in its OWN section at
+the end of this file and never mixed into an evaluator.
 
 ``watchdog_thresholds_from_config`` is the ONE function here that reaches
 outside: called with no argument it reads config through ``get_config()``,
@@ -24,6 +25,15 @@ and ``read_ledger`` already tolerates torn lines, so an entry missing its
 ``move``, ``outcome`` or ``cost``, or carrying a non-dict where a dict belongs,
 must not be able to make the other entries unreadable. A tripwire that crashes
 on one bad line is a tripwire that is not watching.
+
+The LAST section of this file — ``act_on_trips`` and the constants above it —
+is the ACTION half, and it is deliberately NOT pure: acting on a trip means
+writing. The purity sentence above therefore means only what it says, about the
+three evaluators and their helpers, and not about this module as a whole. The
+action's writes are bounded to exactly three: the mission status, one escalation
+record on the job it attaches to, and the ledger append. It has NO caller in
+``orchestrator_loop`` at this commit — nothing in the running loop reaches it,
+and it is called by hand or by a test until that changes.
 """
 from __future__ import annotations
 
@@ -340,3 +350,176 @@ def evaluate_ledger(
         evaluate_goal_drift(entries, milestone_ids=milestone_ids),
     )
     return [trip for trip in candidates if trip is not None]
+
+
+# ---------------------------------------------------------------------------
+# F077 T002 — the ACTION: pause the mission, raise one decision, record it
+# ---------------------------------------------------------------------------
+
+#: The ledger entry's ``move.kind`` for a watchdog trip. A trip is an action
+#: with a name of its own, so the entry carries that name rather than the empty
+#: move the loop writes when a model move was expected and absent (D5).
+MOVE_WATCHDOG_TRIPPED = "watchdog_tripped"
+
+#: The same word as the entry's ``MoveOutcome.status``. What happened and what
+#: it produced are one event here; two spellings would only invite a reader to
+#: look for a difference that does not exist.
+OUTCOME_WATCHDOG_TRIPPED = "watchdog_tripped"
+
+#: Keep the mission going — the human judged the trip a false alarm.
+DECISION_OPTION_RESUME = "resume"
+#: Stop the mission — the human judged the trip real.
+DECISION_OPTION_ABORT = "abort"
+
+
+#: The dedup key, and the WHOLE of it (DECISION F077 D2): a literal prefix on
+#: the decision's question. ``enqueue_task_decision`` writes a fixed key set and
+#: takes no extras, so the question text is the one caller-controlled field.
+def watchdog_decision_marker(kind: str) -> str:
+    """``[watchdog:no_progress]`` and friends — one marker per trip class."""
+    return f"[watchdog:{kind}]"
+
+
+#: What acting on ONE trip actually managed to do. ``decision_id`` is ``""``
+#: whenever no record was written and ``note`` then says why in one human
+#: sentence, so a reader can tell suppression from an attachment failure.
+@dataclass(frozen=True)
+class TripAction:
+    """One trip, its decision id if it got one, and the reason when it did not."""
+
+    trip: Trip
+    decision_id: str = ""
+    suppressed: bool = False
+    note: str = ""
+
+
+#: The one thing the watchdog DOES about what it saw. Heavy imports live inside
+#: the body, following ``watchdog_thresholds_from_config`` and the loop's own
+#: ``open_mission_decisions``: a module-level import of the loop would create
+#: exactly the cycle the wiring round needs not to exist.
+def act_on_trips(
+    project_id: str,
+    mission_id: str,
+    trips: Sequence[Trip],
+    *,
+    root: Any = None,
+    iteration: int | None = None,
+    now: Any = None,
+) -> list[TripAction]:
+    """Pause the mission, raise one deduped decision per trip, record every trip.
+
+    WRITES, and nothing beyond them: the mission STATUS (once per call, and
+    only ``active`` → ``paused``); ONE escalation record on the job the mission
+    last linked, per unsuppressed trip; and ONE ledger entry per trip, whatever
+    the decision outcome was — the pause and the record of it must not depend
+    on whether a decision could be attached.
+
+    NEVER touched: the mission plan, its milestones, the job beyond that one
+    escalation record, and the dossier. A watchdog that could repair the run it
+    is judging would be judging its own work, so it stops and it reports.
+
+    Returns one :class:`TripAction` per trip, in the order given. An empty
+    ``trips`` writes nothing at all: a watchdog that acts on a clean ledger is
+    a watchdog nobody leaves switched on.
+    """
+    from datetime import datetime, timezone
+
+    from packages.orchestration import orchestrator_loop
+    from packages.orchestration.escalation import enqueue_task_decision
+    from packages.orchestration.mission_state import (
+        MISSION_STATUS_ACTIVE,
+        MISSION_STATUS_PAUSED,
+        load_mission,
+        set_mission_status,
+    )
+    from packages.orchestration.storage import load_job, save_job
+
+    ordered = list(trips)
+    if not ordered:
+        return []
+
+    stamp = now or datetime.now(timezone.utc)
+    mission = load_mission(project_id, mission_id, root)
+    # An achieved or abandoned mission is TERMINAL and is not overwritten; an
+    # already-paused one needs no second write. One status write per call.
+    if mission.status == MISSION_STATUS_ACTIVE:
+        mission = set_mission_status(
+            project_id, mission_id, MISSION_STATUS_PAUSED, root)
+    # Read ONCE per call. Appended to in-memory below, so two trips of the same
+    # class in the SAME call cannot enqueue twice.
+    open_records = list(orchestrator_loop.open_mission_decisions(mission))
+
+    def decide(trip: Trip) -> TripAction:
+        """The decision half for one trip. Degrades to a note, never raises."""
+        marker = watchdog_decision_marker(trip.kind)
+        if any(str(record.get("question", "") or "").startswith(marker)
+               for record in open_records):
+            return TripAction(
+                trip=trip,
+                suppressed=True,
+                note=(f"an open decision already carries {marker}, so this "
+                      f"trip class is already in front of a human"))
+        # Attachment follows ``escalate_repeated_refusal`` exactly (D1): the
+        # latest link, that job, its first task. Each gap is REPORTED, and the
+        # pause and the ledger entry happen either way.
+        link = mission.latest_link()
+        if link is None:
+            return TripAction(
+                trip=trip,
+                note=("no job is linked to this mission, so the trip cannot "
+                      "be attached to a decision — a human has to look at "
+                      "the mission"))
+        try:
+            job = load_job(orchestrator_loop._as_uuid(link.job_id))
+        except Exception as exc:
+            return TripAction(
+                trip=trip,
+                note=f"the mission's latest job could not be read: {exc}")
+        tasks = list(getattr(job, "tasks", ()) or ())
+        if not tasks:
+            return TripAction(
+                trip=trip,
+                note=f"job {link.job_id} has no task to attach the decision to")
+        record = enqueue_task_decision(
+            job,
+            task_id=tasks[0].id,
+            question=f"{marker} {trip.what}",
+            options=(DECISION_OPTION_RESUME, DECISION_OPTION_ABORT),
+            # Deliberately EMPTY: this is the value
+            # ``escalation.auto_apply_safe_default`` applies unattended, and a
+            # trip that the automation it just stopped can auto-answer is not a
+            # tripwire.
+            safe_default="",
+            impact=(f"mission {mission_id} is paused until this is answered"),
+            now=stamp)
+        save_job(job)
+        open_records.append(record)
+        return TripAction(trip=trip,
+                          decision_id=str(record.get("decision_id", "")))
+
+    actions: list[TripAction] = []
+    for trip in ordered:
+        action = decide(trip)
+        actions.append(action)
+        detail = f"{trip.what}; {action.note}" if action.note else trip.what
+        # D6: a caller's number covers every entry of the call — simultaneous
+        # trips really did happen in one iteration — while an absent one is
+        # resolved FRESHLY per append, so a manual multi-trip audit numbers its
+        # entries consecutively instead of writing the same number twice.
+        number = (iteration if iteration is not None
+                  else orchestrator_loop.next_iteration_index(
+                      project_id, mission_id, root))
+        entry = orchestrator_loop.LedgerEntry(
+            iteration=number,
+            context_digest="",
+            move={"kind": MOVE_WATCHDOG_TRIPPED, "payload": trip.to_json()},
+            outcome=orchestrator_loop.MoveOutcome(
+                status=OUTCOME_WATCHDOG_TRIPPED,
+                detail=detail,
+                terminal=False).to_json(),
+            cost={"calls": 0, "usage": None,
+                  "usage_source": orchestrator_loop.USAGE_UNMEASURED},
+        )
+        orchestrator_loop.append_ledger_entry(
+            project_id, mission_id, entry, root, now=stamp)
+    return actions
