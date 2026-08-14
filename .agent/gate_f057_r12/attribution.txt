@@ -1,0 +1,40 @@
+F057 R12 — attribution (integration_gate.md step 4).
+
+INPUTS
+  branch_failed.txt                 0 lines
+  base_failed.txt                   0 lines
+  comm_branch_only_failures.txt     0 lines (committed empty)
+  comm_base_only_failures.txt       0 lines (committed empty)
+
+BRANCH-ONLY IDS — none.
+  comm -13 base_failed.txt branch_failed.txt produced no lines because the
+  branch run produced no FAILED line at all: `16847 passed, 19 skipped`,
+  exit code 0. There is no id to re-run serially, so the serial-pass /
+  serial-fail / BLOCKER classification has an empty domain this round. No
+  reproducible branch-only failure coupled to F057 code exists, therefore no
+  BLOCKER.
+
+  Flake-debt signal: 0 branch-only failures landed in the pre-existing
+  xdist-flake class (F135/F052), which is below the 10 the block asks to be
+  called out. Nothing to report there.
+
+BASE-ONLY IDS — none.
+  comm -23 base_failed.txt branch_failed.txt produced no lines because the base
+  run produced no FAILED line at all: `16775 passed, 19 skipped`, exit code 0.
+  The environment class that normally populates this list — the missing
+  apps/ui/node_modules and apps/ui/dist build outputs, plus the F105 R49 stale
+  dist mtime — was pre-empted rather than attributed after the fact: parity was
+  restored by CONTENT before the base run and verified by the four identical
+  aggregate hashes in dist_hashes.txt, and the copied dist was touched so that
+  it is newer than every checked-out source file. No unattributed base-only id
+  remains, so nothing blocks the gate verdict on that ground.
+
+COUNTS
+  branch run  16847 passed, 19 skipped, 0 failed, exit 0, 128 wall seconds
+  base   run  16775 passed, 19 skipped, 0 failed, exit 0, 147 wall seconds
+  delta       +72 passing ids on the branch; both sides zero failures.
+
+  Wall clock on both sides is under the ~5 min budget of integration_gate.md
+  step 5, so no perf pass is flagged.
+
+The gate VERDICT is the reviewer's to issue; this file records evidence only.
