@@ -7,7 +7,7 @@
 > candidate: description · source feature · date. Any entry present
 > at feature-claim time is a block condition.
 
-(empty — F077's closure raised no candidate. Every finding this feature
-produced was registered as an R-id in `.agent/live_review.md` in the round that
-found it, and the thirty-two still open are carried openly in the STATUS line's
-PASS_WITH_RISKS verdict and in the closure PR, 2026-08-14.)
+(empty — the one candidate raised during F077's closure review, the review-zip
+packaging of `.remedy-wt/`, had no disk vehicle on that branch because it was
+raised after the closure commit, and is registered as finding R-0403 in
+`.agent/live_review.md` on the F082 branch, 2026-08-14.)

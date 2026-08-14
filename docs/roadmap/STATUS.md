@@ -63,7 +63,7 @@ The tier-block order below is the operator-decided Self-Use sequence of 2026-08-
 - [x] F045 — Loop definitions (T001–T003 complete; accepted 2026-08-14 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f045-closure · package remedy-review-20260814-032227-READY_FOR_REVIEW.zip · SHA-256 a4dc01e441bdba9713061c6c04012576f6732f0bad20b6a48d1224b21f257723 · accepted HEAD 1c84c81805668e1d0f1e04370d5366389c8a8b20)
 - [x] F057 — Rate-limit-aware scheduler (T001–T003 complete; accepted 2026-08-14 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f057-closure · package remedy-review-20260814-085403-READY_FOR_REVIEW.zip · SHA-256 202b289122faf62a8d27c5e658ee6b80fcff0a23ee6db25fbe50c5376f6bda19 · accepted HEAD abda479da68661ce9ed8073bd3887b9fa783e092)
 - [x] F077 — Autonomy watchdog (T001–T003 complete; accepted 2026-08-14 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f077-closure · package remedy-review-20260814-161744-READY_FOR_REVIEW.zip · SHA-256 47d66bdafeb5d86ed4c03033553cbc73e8cc09d78dff6e2a6558b4878faf8ccd · accepted HEAD 01764a52923c0d9850fab9cf5f6b52b44c9c69d8)
-- [ ] F082 — Self-benchmark
+- [~] F082 — Self-benchmark
 - [ ] F083 — CI self-check
 - [ ] F085 — Sandbox hardening (stage 1)
 - [x] F254 — Model alias table & dead-model doctor check (R1–R12 complete; accepted 2026-08-07 · live review PASS — ACCEPTED · Evidence job f254-closure · package remedy-review-20260807-204305-READY_FOR_REVIEW.zip · SHA-256 1b4995fa9e3ab76f7be8398be66ed69ec47e99f6e825d16cc97aa826a95a05c0 · accepted HEAD b71c9bdd93cbeb21d4b98842cdf6baa998c3ac26)
