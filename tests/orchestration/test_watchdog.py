@@ -17,9 +17,11 @@ each test pins:
     and stays silent when every dispatch is on plan;
   * ``evaluate_ledger`` reports in a fixed order;
   * every evaluator tolerates a torn entry without raising;
-  * and — in the last section, through ``run_mission`` itself — that the loop
-    really calls the watchdog, that the pause it writes stops the next run from
-    dispatching, and that a run which trips nothing writes nothing.
+  * ``evaluate_mission`` composes the same reads from a mission id alone and
+    WRITES NOTHING — the read-only twin a manual audit can call;
+  * and — through ``run_mission`` itself — that the loop really calls the
+    watchdog, that the pause it writes stops the next run from dispatching,
+    and that a run which trips nothing writes nothing.
 
 Every assertion names the Trip's ``kind``, ``since_iteration`` and the
 ``numbers`` it carries: a test that only asserts "a trip happened" does not
@@ -61,7 +63,9 @@ from packages.orchestration.mission_state import (
 from packages.orchestration.orchestrator_loop import (
     TERMINAL_ITERATION_LIMIT,
     TERMINAL_NOT_ACTIVE,
+    LedgerEntry,
     LoopLimits,
+    append_ledger_entry,
     ledger_path,
     read_ledger,
     render_ledger,
@@ -88,6 +92,7 @@ from packages.orchestration.watchdog import (
     evaluate_burn_anomaly,
     evaluate_goal_drift,
     evaluate_ledger,
+    evaluate_mission,
     evaluate_no_progress,
     measured_tokens,
     watchdog_decision_marker,
@@ -736,3 +741,84 @@ def test_a_run_that_trips_nothing_writes_no_watchdog_entry(loop_mission,
     assert load_mission(LOOP_PROJECT, loop_mission.id, data_root).status == \
         MISSION_STATUS_ACTIVE
     assert _open_questions(loop_mission.id, data_root) == []
+
+
+# ── evaluate_mission: the read-only twin (F077 T003) ───────────────────────
+#
+# The composition ``watchdog_pass`` performs BEFORE it acts, callable from a
+# mission id alone. The independence test below asserts on state read back from
+# DISK rather than on a mock, because what it claims is that nothing happened.
+
+EVAL_PROJECT = "p-f077-eval"
+
+
+def _eval_mission(data_root: Any, entries: list[dict[str, Any]]) -> Any:
+    """An ACTIVE mission with the one-milestone plan and this ledger on disk."""
+    created = create_mission(EVAL_PROJECT, "Ship the watched thing",
+                             root=data_root)
+    set_mission_plan(EVAL_PROJECT, created.id, _one_milestone_plan(), data_root)
+    for body in entries:
+        append_ledger_entry(
+            EVAL_PROJECT, created.id,
+            LedgerEntry(iteration=body["iteration"],
+                        context_digest=body["context_digest"],
+                        move=body["move"],
+                        outcome=body["outcome"],
+                        cost=body["cost"]),
+            data_root)
+    return load_mission(EVAL_PROJECT, created.id, data_root)
+
+
+def _dispatch_ledger(count: int) -> list[dict[str, Any]]:
+    """``count`` dispatches in a row on the milestone the plan really names."""
+    return [_entry(i, milestone_id="M001") for i in range(1, count + 1)]
+
+
+def test_evaluate_mission_reports_no_trip_for_a_quiet_ledger(data_root):
+    """Two dispatches is one under the default threshold of three."""
+    mission = _eval_mission(data_root, _dispatch_ledger(2))
+
+    assert evaluate_mission(EVAL_PROJECT, mission.id, root=data_root) == []
+
+
+def test_evaluate_mission_reports_the_no_progress_evidence_triple(data_root):
+    mission = _eval_mission(data_root, _dispatch_ledger(3))
+
+    trips = evaluate_mission(EVAL_PROJECT, mission.id, root=data_root)
+
+    assert len(trips) == 1
+    assert trips[0].kind == TRIP_NO_PROGRESS
+    assert trips[0].since_iteration == 1
+    assert trips[0].numbers == {"repeats": 3, "threshold": 3,
+                                "milestone_id": "M001"}
+
+
+def test_evaluate_mission_writes_nothing_at_all(data_root):
+    """The INDEPENDENCE claim: asking must not do what acting would do."""
+    mission = _eval_mission(data_root, _dispatch_ledger(3))
+    job = _job_with_tasks()
+    save_job(job)
+    link_job_to_mission(EVAL_PROJECT, mission.id, str(job.id),
+                        MISSION_ROLE_INITIAL, root=data_root)
+    before_entries = len(read_ledger(EVAL_PROJECT, mission.id, data_root))
+
+    trips = evaluate_mission(EVAL_PROJECT, mission.id, root=data_root)
+
+    # Not vacuous: this ledger really does trip, and acting on it would pause.
+    assert len(trips) == 1
+    assert load_mission(EVAL_PROJECT, mission.id, data_root).status == \
+        MISSION_STATUS_ACTIVE
+    assert len(read_ledger(EVAL_PROJECT, mission.id, data_root)) == \
+        before_entries
+    assert open_task_decisions(load_job(job.id)) == []
+
+
+def test_evaluate_mission_returns_the_same_trips_twice(data_root):
+    """A read gives the same answer twice; a write would move the ground."""
+    mission = _eval_mission(data_root, _dispatch_ledger(3))
+
+    first = evaluate_mission(EVAL_PROJECT, mission.id, root=data_root)
+    second = evaluate_mission(EVAL_PROJECT, mission.id, root=data_root)
+
+    assert first == second
+    assert len(first) == 1

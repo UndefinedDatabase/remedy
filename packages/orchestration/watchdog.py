@@ -526,27 +526,23 @@ def act_on_trips(
     return actions
 
 
-#: The whole watchdog in ONE call for a caller that has a mission id and nothing
-#: else — read the ledger, resolve the thresholds, evaluate every tripwire, act
-#: on what tripped — and the only thing ``orchestrator_loop.run_mission`` calls.
-def watchdog_pass(
+#: The READ-ONLY half of a watchdog pass, so an AUDIT can ask what the watchdog
+#: sees without the watchdog acting on what it saw.
+def evaluate_mission(
     project_id: str,
     mission_id: str,
     *,
-    iteration: int | None = None,
     root: Any = None,
-    now: Any = None,
-) -> list[TripAction]:
-    """One pass over one mission's ledger. Writes NOTHING when nothing tripped.
+) -> list[Trip]:
+    """Every tripwire over one mission's ledger, and NOT ONE WRITE.
 
     The thresholds come from config and the known milestone ids from the
     PERSISTED mission plan, so the caller supplies no policy of its own: a loop
     that could choose the watchdog's numbers would be marking its own homework.
 
-    ``iteration`` is handed straight to :func:`act_on_trips` (DECISION F077 D6).
-    A caller inside a running iteration knows the number a trip belongs to, and
-    re-deriving it from the ledger would number the trip one past the entry that
-    caused it.
+    No ``set_mission_status``, no ``enqueue_task_decision``, no ``save_job``,
+    no ledger append — directly or through a callee. Asking what the watchdog
+    sees must not itself pause the mission being asked about.
 
     Every import lives INSIDE this body for the same reason ``act_on_trips``
     keeps its own there: a module-level import of ``orchestrator_loop`` would
@@ -557,11 +553,37 @@ def watchdog_pass(
 
     entries = orchestrator_loop.read_ledger(project_id, mission_id, root)
     mission = load_mission(project_id, mission_id, root)
-    trips = evaluate_ledger(
+    return evaluate_ledger(
         entries,
         milestone_ids=orchestrator_loop.milestone_ids(mission),
         thresholds=watchdog_thresholds_from_config())
+
+
+#: The whole watchdog in ONE call for a caller that has a mission id and nothing
+#: else — ``evaluate_mission`` for what tripped, then act on it — and the only
+#: thing ``orchestrator_loop.run_mission`` calls.
+def watchdog_pass(
+    project_id: str,
+    mission_id: str,
+    *,
+    iteration: int | None = None,
+    root: Any = None,
+    now: Any = None,
+) -> list[TripAction]:
+    """One pass over one mission's ledger. Writes NOTHING when nothing tripped.
+
+    It is :func:`evaluate_mission` plus the action: the read-only evaluation
+    lives there, and this function is what turns its trips into the pause, the
+    decision and the ledger entry.
+
+    ``iteration`` is handed straight to :func:`act_on_trips` (DECISION F077 D6).
+    A caller inside a running iteration knows the number a trip belongs to, and
+    re-deriving it from the ledger would number the trip one past the entry that
+    caused it.
+    """
+    trips = evaluate_mission(project_id, mission_id, root=root)
     # The clean pass is the common one, and ``act_on_trips`` writes nothing for
-    # an empty list — so a quiet mission costs the two reads above and no write.
+    # an empty list — so a quiet mission costs the reads ``evaluate_mission``
+    # just made and no write at all.
     return act_on_trips(project_id, mission_id, trips, root=root,
                         iteration=iteration, now=now)
