@@ -1,418 +1,404 @@
-── STEP CLOSURE — F045 · ROUND 16 ────────────────────────────────────
-Goal:        Close F045. Persist the R15 verdict, make the feature file's
-             Built State current, record DECISION F045 D8, run the closure
-             preconditions, build the evidence bundle and a FRESH review zip,
-             then land the STATUS and README edits as the LAST commit and open
-             the PR. The PR is NOT merged in this session.
+── STEP T001 — F057 · ROUND 1 ────────────────────────────────────────
 
-Bundle:      C0a save this block · C0b point last_block at it · C1 the R15
-             verdict · C2 the Built State · C3 DECISION D8 · ITEM 4
-             preconditions · ITEM 5 evidence job · ITEM 6 the zip · C4 the
-             closure commit · ITEM 8 the PR.
+Goal:        Claim F057, reset the round state carrying the one open finding
+             forward instead of dropping it, record DECISION F057 D1, and
+             build T001: ONE place that turns the rate-limit signal shapes
+             this repo really emits into a normalized signal, with unit tests
+             over samples extracted from existing evidence. Nothing calls the
+             new module yet — T001 is normalization only.
+
+Bundle:      C0a save this block · C0b point last_block at it · C1 the
+             live_review reset + DECISION F057 D1 · C2 the STATUS claim and
+             the plan/context rewrites · C3 T001 module + tests · C4 handback.
 
 Change:      Exactly these files, nothing beyond them:
-             - `.agent/authored/f045-r16.md` (NEW, C0a)
+             - `.agent/authored/f057-r1.md` (NEW, C0a)
              - `.agent/last_block.md` (C0b)
-             - `.agent/live_review.md` (C1)
-             - `docs/roadmap/features/T2_F045.md` (C2, APPEND only)
-             - `.agent/decisions.md` (C3, APPEND only)
-             - `docs/roadmap/STATUS.md`, `README.md`, `.agent/candidates.md`,
-               `.agent/plan.md`, `.agent/handoff.md` (C4)
-             NO production code. NO test files. If closure reveals a defect
-             needing a code change, that fix is its OWN reviewer-gated round —
-             report it and STOP, do not fix it here.
+             - `.agent/live_review.md` (C1, full replacement)
+             - `.agent/decisions.md` (C1, APPEND only)
+             - `docs/roadmap/STATUS.md` (C2, ONE line)
+             - `.agent/plan.md` (C2, full replacement)
+             - `.agent/context.md` (C2, full replacement)
+             - `packages/orchestration/rate_governor.py` (NEW, C3)
+             - `tests/orchestration/test_rate_governor.py` (NEW, C3)
+             - `.agent/handoff.md` (C4)
+             NO other production file. In particular
+             `packages/orchestration/provider_timeouts.py`,
+             `packages/orchestration/pingpong_loop.py`,
+             `packages/orchestration/stream_evidence.py` and every provider
+             adapter stay BYTE-IDENTICAL this round — they are the feature
+             file's Do-not-touch list plus the T003 seam.
 
-Insertion budget: C1 adds 2 lines. C2 and C3 are docs appends, each well under
-the 500-insertion cap. C0a/C0b are single `.agent/**` state files, cap-EXEMPT
-by DECISION F104 D1. C4 is two small rewrites plus three edited lines.
+Staging:     EXPLICIT PATHS ONLY. Never `git add -A`. Push after every commit.
 
-Staging: EXPLICIT PATHS ONLY. Never `git add -A`. Push after every commit.
+── STEP 0 — the branch ────────────────────────────────────────────────
+`git status --porcelain` must be empty and `.agent/STOP` must not exist. If
+either fails, STOP and report.
+    git checkout main
+    git pull --ff-only
+    git checkout -b feature/f057-rate-limit-scheduler
+main is expected at 21c8148e. If it is not, report the SHA and continue.
 
 ── C0a / C0b ─────────────────────────────────────────────────────────
-Write `.agent/authored/f045-r16.md`; commit alone.
-  Subject: `chore(f045): save the R16 closure block verbatim`
-Copy it to `.agent/last_block.md`, byte-identical; commit alone.
-  Subject: `chore(f045): point last_block at the R16 block`
+Save this ENTIRE block — from the `── STEP T001` line through the end of the
+gate list — verbatim to `.agent/authored/f057-r1.md`; commit alone.
+  Subject: `chore(f057): save the R1 block verbatim`
+Copy that file to `.agent/last_block.md`, byte-identical (`cp`, then `cmp` them
+— exit 0); commit alone.
+  Subject: `chore(f057): point last_block at the R1 block`
 
-── C1 — the R15 verdict, findings persist FIRST ───────────────────────
-File: `.agent/live_review.md`. APPEND at the very END, preceded by exactly one
-blank line. Change nothing above it. ONE physical line — do not re-wrap.
+Every authored text below is applied DISK TO DISK: extract it from the
+committed `.agent/authored/f057-r1.md` between its markers with `sed`, write
+that to the target, then prove the applied bytes equal the extracted bytes.
+Do not retype an authored text by hand. The marker lines themselves
+(`>>> NAME >>>` / `<<< NAME <<<`) are never written into a target file.
 
-REVIEWER-AUTHORED. Apply byte for byte from your saved copy. Do not edit or
-shorten it. Never write a `Done:` paragraph of your own
-(planner_reviewer_prompt.md §4.4). If you think it is wrong, STOP and report.
+── C1 — findings persist FIRST ────────────────────────────────────────
+Two files, ONE commit.
 
->>> GATE-R15 >>>
-Gate: R15 — PASS. Every value re-measured by the reviewer against the disk, not against the handback. `cmp .agent/authored/f045-r15.md .agent/last_block.md` exit 0. The open set was RECOMPUTED from the record per pre-emission checklist item 10 — every `^- R-\d+ — ` paragraph minus every `^Done: R-\d+ — ` line — and is exactly three: R-0350, R-0354, R-0358, all Low, next free id R-0359. C1's numstat for `.agent/live_review.md` is `2 0`, and FINDING-358 was extracted from the committed `.agent/authored/f045-r15.md` between its own markers and found byte-identical in the file, so the application was disk-to-disk rather than a retype. The F045 surface re-run by the reviewer gives `123 passed` and the canary `tests/cli/test_golden_path.py` gives `42 passed`. THE INTEGRATION GATE: `comm -13` (branch-only failures) is EMPTY, which is the only sense in which that gate defines green (docs/agents/integration_gate.md step 3). The five failures common to both sides were reproduced independently by the reviewer at HEAD — `tests/orchestration/test_role_conventions.py`, all five raising `PromptSegmentError: prompt segment 'reviewer_conventions' is over its token cap: 954 tokens estimated, cap 800` — and they are NOT chargeable to F045: `role_conventions.py` maps that segment to `docs/agents/reviewer_conventions.md`, a file `git diff main..HEAD` shows this branch never touched, and `git diff 705feeb1..HEAD` shows byte-identical to its state at F115's accepted HEAD, whose ancestor `a85e82f5` (2026-08-12) is where the document grew past the cap. F115 therefore closed over these same five ids; the condition is a property of `main`, not of this branch. The `comm -23` attribution stands as recorded: six `tests/ui_server/test_live_state.py::TestUIServerIntegration` ids, each captured stderr naming `apps/ui/dist`, each passing serially at the merge base, and a second full base run whose FAILED list is `cmp`-identical to the branch's. Tree state at the verdict: `git status --porcelain` empty, `git worktree list` one line, `git branch --list 'tmp/*'` empty, `gh pr list --state open` `[]`. R15 changed no production code and no test file, and the round declared its own overage honestly rather than dropping a mandated section.
-<<< GATE-R15 <<<
+(a) `.agent/live_review.md` — REPLACE THE WHOLE FILE with the LIVE-REVIEW text
+below, then append ONE more line to it: the R-0361 paragraph carried forward
+VERBATIM from the previous record. Get that line from git, never by retyping:
 
-Commit C1 ALONE. Subject: `docs(f045): record the R15 verdict`
-Gates: `grep -c "^Gate: R15 — PASS" .agent/live_review.md` → 1 ·
-       `grep -c "^## Steps" .agent/live_review.md` → 1 ·
-       `git show --numstat HEAD -- .agent/live_review.md` → `2 0`
+    git show 21c8148e:.agent/live_review.md | grep '^- R-0361 — ' >> .agent/live_review.md
 
-── C2 — the feature file's Built State ────────────────────────────────
-File: `docs/roadmap/features/T2_F045.md`. APPEND the section below to the very
-END of the file, preceded by exactly one blank line. Change nothing above it.
+That paragraph is ONE physical line of 1797 bytes whose sha256 is
+`70a8c9fb1a6ddebd2a1592b467cf9cb7e18f43ad0449c245d110bc0f1f056a7b`. Verify
+with `grep '^- R-0361 — ' .agent/live_review.md | sha256sum` and report the
+digest. If it differs, STOP.
 
-This is an APPEND-shaped addition: the file currently has no `## Built State`
-heading, so every line below is new.
+The LIVE-REVIEW text ends with the R-0362 paragraph and a blank line, so the
+carried R-0361 line lands after exactly one blank line. R-0361 must be the LAST
+line of the finished file.
 
-STOP-ON-FALSE-CLAIM: every claim below was verified by the reviewer against the
-source before emission. VERIFY THEM AGAIN before committing. If ANY claim does
-not hold on disk, do NOT "improve" it — STOP and report which one and what the
-disk says. A Built State section records NAMES, FILES and LITERAL VALUES only;
-it deliberately says nothing about what a command PRINTS (F115 finding R-0343
-cost four closure rounds to that exact class).
+>>> LIVE-REVIEW >>>
+# Live Review — F057 Rate-limit-aware scheduler
 
->>> BUILT-STATE >>>
-## Built State — what F045 actually shipped (2026-08-14)
+> Round-by-round review record for the F057 branch, reset at the feature claim.
+> The paydown0814 record closed with PR #198, merged 2026-08-14; that branch's
+> closing verdict lives in its handoff and in the PR, per
+> docs/agents/planner_reviewer_prompt.md §4 item 13. Finding ids continue the
+> monotonic R-XXXX series across the reset. Next free id: R-0363.
+>
+> This reset CARRIES the open set forward rather than dropping it. R-0361 was
+> open when the previous record closed and is reproduced verbatim at the end of
+> this file, byte for byte out of `21c8148e:.agent/live_review.md`. See
+> DECISION F057 D1 in `.agent/decisions.md`.
 
-Three modules and one report field. Built and reviewed on branch
-`feature/f045-loop-definitions` over rounds R1–R16.
+## Steps
+R1 claim F057, reset this record carrying R-0361 forward, register R-0362,
+record DECISION F057 D1, and build T001 — one place that normalizes the
+rate-limit signal shapes this repo really emits, with unit tests over samples
+extracted from existing evidence → R2 T002, the governor itself: per-provider
+cooldown state, `acquire()` with a budget deadline, an injected clock, and the
+stop-beats-wait ordering → R3 T003, the seam integration at the provider-call
+choke point, wait evidence, the report line, and the limit-emitting fixture
+end-to-end → integration gate → closure.
 
-**Spec + validation** (`packages/orchestration/loop_spec.py`): loops are a
-TOP-LEVEL `[[loop]]` array of tables in `remedy.toml` — `LOOP_TABLE_KEY` is
-`"loop"` (DECISION F045 D1) — never under `[remedy]`. The models
-`LoopTrigger`, `LoopScope`, `LoopAction`, `LoopBudgets`, `LoopStopRules` and
-`LoopSpec` all derive from `structured_base._Strict`, whose
-`model_config = ConfigDict(extra="forbid")` IS the feature's "unknown fields
-rejected" requirement — there is no separate key check. `LoopSpecError` carries
-`loop_name` and `field` beside its message, so a caller can group errors
-without re-parsing message text. Two loaders exist on purpose:
-`load_loop_specs` raises on the FIRST error, which is what a listing wants,
-while `validate_loop_specs` never raises and returns EVERY message in file
-order, which is what a check wants. `LOOP_TEMPLATE_VARS` is
-`frozenset({"project", "date"})`; any other `{placeholder}` fails VALIDATION
-rather than surfacing as a runtime error. `LoopBudgets`' five field names are
-spelled exactly as the keys of `budget_resolution._CONFIG_KEYS`
-(`max_total_tokens`, `max_provider_calls`, `max_wall_clock_minutes`,
-`max_cost_usd`, `deadline`) so the resolver needs no translation layer, and
-`deadline` is validated by `datetime.fromisoformat` plus a REQUIRED `tzinfo`
-(DECISION F045 D2 — the contract is mirrored, not imported).
+## Findings
 
-**Materialization** (`packages/orchestration/loop_run.py`): `run_loop` is the
-ONE dispatch point and routes on `action.kind`; `loop_to_job` remains exactly
-the job-kind path. Provenance is two metadata keys —
-`LOOP_REF_METADATA_KEY` (`"loop_ref"`) and `LOOP_UNATTENDED_METADATA_KEY`
-(`"loop_unattended"`) — and DECISION F045 D5 puts them on the JOB, never on the
-`Mission` record; the mission stays reachable from that same job through
-`metadata["mission_id"]`. `LoopRunOutcome` carries `job`, `mission_id` and
-`notice`. `root` isolates the WHOLE firing — job store, mission record and
-job-to-mission link all land under it (findings R-0351 and R-0352, which is
-what that threading exists for). `last_run_for_loop` reads the store through
-`storage.list_jobs_safe`, which already sorts by `created_at` descending, so
-the FIRST match is the most recent — no `max()` and no re-sort.
+- R-0362 — Medium — the open-finding set is silently discarded at every branch claim, and Rule A2 forbids the claim that discards it. ROADMAP.md:27 states Rule A2 as "Every block ends with a final review: PASS or FINDINGS. No new feature is started while findings are open", and `docs/agents/reviewer_conventions.md` restates it as "No new feature starts while findings are open (A2)". At the F045 closure the reviewer's own GATE-R15 entry recorded the open set as exactly three — R-0350, R-0354 and R-0358, all Low — after RECOMPUTING it from the record per the pre-emission checklist's item 10. None of those three ids appears anywhere in the paydown0814 record that replaced it: `git show f789ebc8:.agent/live_review.md` carries only R-0359, R-0360 and R-0361. The reset therefore did not resolve them, did not defer them and did not name them; it dropped them, and the same mechanism was about to drop R-0361 at this claim. Two rules are in conflict and neither yields on its own: A2 read literally blocks every feature claim that follows a PASS_WITH_RISKS closure, which is six of the last seven closures in `docs/roadmap/STATUS.md`, while the reset as practised makes A2 unenforceable by erasing its input. No governing document authorises the erasure — `docs/agents/planner_reviewer_prompt.md` §1 says the record is reset at the claim but says nothing about what happens to findings that are open when it is, and `docs/roadmap/STATUS_closure_protocol.md` routes only CLOSURE CANDIDATES, which are explicitly not findings and spend no id. Registered here rather than acted on silently, per §2's rule that a practice invoked without a doc pointer is a finding candidate in the same brief. The structural half of the fix is applied in this round: this record carries R-0361 forward verbatim instead of dropping it, and DECISION F057 D1 states the reading under which the claim proceeds. The documentation half — an explicit carry-forward rule in `docs/agents/planner_reviewer_prompt.md` §1, and whatever becomes of R-0350, R-0354 and R-0358 — is NOT in this feature's scope: AGENTS.md forbids mixing an unrelated fix into a feature branch, so it belongs on its own paydown branch, exactly as DECISION F045 D8 routed the reviewer-conventions repair. OPEN.
 
-APPROVAL SEMANTICS, the load-bearing part: BOTH action paths stop at PLANNED.
-Nothing in this module executes a task, approves a plan or implies `--yes`, and
-`LoopSpec.unattended` is RECORDED in metadata for audit while changing nothing
-about the job's state.
+<<< LIVE-REVIEW <<<
 
-**CLI** (`apps/cli/commands/loop_cmd.py`; catalog ids `loop.list`,
-`loop.validate` and `loop.run` in `apps/cli/command_catalog.py`): the handlers
-are `_cmd_loop_list`, `_cmd_loop_validate` and `_cmd_loop_run`. Exit codes
-reuse the existing table rather than inventing one — `EXIT_ERROR` 1,
-`EXIT_USAGE` 2, `EXIT_NO_PROJECT` 3. `NEVER_RAN` is `"never"` and `INERT_MARK`
-is `"inert"`. The listing carries its OWN legend, `INERT_TRIGGER_LEGEND` =
-`"cannot fire until the scheduler exists; run such a loop manually"`, and
-deliberately does NOT reuse `loop_spec.INERT_TRIGGER_NOTICE`
-(`"scheduler not yet available; ran on demand"`), because that sentence reports
-a RUN and a listing runs nothing — finding R-0355, pinned negatively so the
-defect cannot drift back. DECISION F045 D7 — `--yes` skips the confirmation
-prompt and approves NOTHING else.
+(b) `.agent/decisions.md` — APPEND the DECISION text below to the very END of
+the file, preceded by exactly one blank line. Change nothing above it.
 
-**Report** (`packages/orchestration/run_report.py`): `ReportSources.loop_ref`
-defaults to `""`, and `_header_lines` appends its `- Loop:` line only when that
-value is non-empty, which is why every pre-F045 golden stays byte-identical.
-`collect_report_sources` reads it through `LOOP_REF_METADATA_KEY` rather than a
-string literal, so the report and the materializer cannot drift apart.
+>>> DECISION >>>
+## DECISION F057 D1 (2026-08-14) — Rule A2's open-finding bar is read per review record, and the reset CARRIES open findings instead of dropping them
 
-Deliberately NOT built, and the code says so rather than pretending otherwise:
-there is no scheduler, no watcher and no repetition. `schedule` and `event`
-triggers PARSE and VALIDATE but are inert — `INERT_TRIGGER_KINDS` and the
-`LoopSpec.is_inert` property — and a loop with such a trigger still
-materializes on demand. There is no `--config` option on any of the three
-commands, because a second way to name the file would be a second config
-location in all but name.
+F057 is claimed with R-0361 open. Rule A2 (ROADMAP.md:27) says no new feature
+is started while findings are open, so this decision states the reading under
+which the claim proceeds, and pays for it structurally rather than by
+exception.
 
-Cover: `tests/orchestration/test_loop_spec.py`,
-`tests/orchestration/test_loop_run.py`, `tests/cli/test_loop_cmd.py` and
-`tests/orchestration/test_run_report.py` — 123 node ids collected together.
-<<< BUILT-STATE <<<
+WHY this reading and not the literal one. Six of the last seven closures in
+`docs/roadmap/STATUS.md` are PASS_WITH_RISKS — F104, F105, F107, F111, F115 and
+F045 — and a PASS_WITH_RISKS closure by construction leaves findings open. Read
+literally, A2 would have blocked every feature claim since F103, including the
+five the ledger records as accepted. The literal reading is therefore not the
+one this project has been operating under, and adopting it now would stall the
+roadmap on findings the closure protocol already decided were acceptable to
+accept. A2's enforceable content is that a REVIEW RECORD does not close over
+unresolved work, which the closure protocol's PASS_WITH_RISKS path already
+gates.
 
-Commit C2 alone. Subject: `docs(f045): record the Built State of loop definitions`
-Gates: `python3 -m pytest tests/docs/ -q` → report the count; the branch has
-been holding 294 and it MUST NOT regress ·
-`grep -c "^## Built State — what F045 actually shipped (2026-08-14)$" docs/roadmap/features/T2_F045.md` → 1
+WHAT IS WRONG WITH THE PRACTICE, and what this decision fixes. The practice did
+not just read A2 narrowly; it erased A2's input. At the F045 closure the
+reviewer recorded the open set as R-0350, R-0354 and R-0358, and the very next
+record — `git show f789ebc8:.agent/live_review.md` — contains none of them. The
+reset dropped three live findings without resolving, deferring or naming them.
+So from this branch on, a reset CARRIES the open set forward verbatim: this
+record reproduces R-0361 byte for byte out of `21c8148e:.agent/live_review.md`,
+and a carried finding stays open until reviewer-authored `Done:` text closes it.
+Carrying costs one line per open finding and makes A2 measurable again; dropping
+costs nothing and makes it meaningless.
 
-── C3 — DECISION F045 D8 ─────────────────────────────────────────────
-File: `.agent/decisions.md`. APPEND at the very END, preceded by exactly one
-blank line. Change nothing above it. Apply byte for byte.
+WHY A2 ITSELF IS NOT AMENDED HERE. AGENTS.md forbids agents editing
+`docs/roadmap/ROADMAP.md` unless the operator explicitly requests it, so the
+reading lives here and in the operator brief, where the operator can veto it at
+any later relay. Nothing waits for an answer
+(docs/agents/planner_reviewer_prompt.md §4 item 7).
 
->>> DECISION-D8 >>>
-## DECISION F045 D8 (2026-08-14) — closure precondition 2 is met by the integration gate's own definition of green, not by a zero on the suite's failure counter
+SCOPE, stated so it cannot drift. This decision authorises the F057 claim and
+the carry-forward. It does NOT resolve R-0361, and it does NOT recover R-0350,
+R-0354 or R-0358 — that recovery and the matching rule text in
+`docs/agents/planner_reviewer_prompt.md` §1 belong to their own paydown branch,
+because AGENTS.md forbids mixing an unrelated fix into a feature branch. This is
+the same routing DECISION F045 D8 used for the reviewer-conventions repair.
 
-WHAT was decided. `docs/roadmap/STATUS_closure_protocol.md` precondition 2
-requires the "full relevant suite green". At F045's closure the full suite ends
-`5 failed, 16769 passed, 19 skipped`, exit 1. F045 closes anyway, with the five
-named in the STATUS verdict as PASS_WITH_RISKS and recorded here, because the
-word doing the work in that precondition is RELEVANT and the five are not.
+HOW TO REVERSE. Delete this decision and read A2 literally. Doing so requires
+first resolving R-0361 and recovering R-0350, R-0354 and R-0358 on a paydown
+branch, because otherwise no feature can be claimed at all.
+<<< DECISION <<<
 
-WHY this reading and not the other. `docs/agents/integration_gate.md` step 3
-defines the gate's question as `comm -13 base_failed.txt branch_failed.txt` —
-the failures the BRANCH introduces — and step 4 makes only "a reproducible
-branch-only failure coupled to feature code" a blocker. F045's `comm -13` is
-EMPTY. The five ids are `tests/orchestration/test_role_conventions.py`
-parametrizations raising `PromptSegmentError: prompt segment
-'reviewer_conventions' is over its token cap: 954 tokens estimated, cap 800`.
-`packages/orchestration/role_conventions.py` maps that segment to
-`docs/agents/reviewer_conventions.md`; `git diff main..HEAD` shows this branch
-never touched that file, and the document is byte-identical to its state at
-F115's accepted HEAD `705feeb19c871db6313828d76ad4e1d9e0cc4d58`, whose ancestor
-`a85e82f5` (2026-08-12) is the merge that grew it past the cap. So F115 closed
-over these same five ids, on the same condition, and the condition belongs to
-`main` rather than to any feature branch.
+Commit C1 ALONE.
+  Subject: `docs(f057): reset the review record and carry R-0361 forward`
+Gates: `grep -c '^## Steps' .agent/live_review.md` → 1 ·
+       `grep -c '^- R-0362 — ' .agent/live_review.md` → 1 ·
+       `grep -c '^- R-0361 — ' .agent/live_review.md` → 1 ·
+       `grep '^- R-0361 — ' .agent/live_review.md | sha256sum` → the digest above ·
+       `tail -n 1 .agent/live_review.md | cut -c1-12` → `- R-0361 — ` ·
+       `grep -c '^## DECISION F057 D1 ' .agent/decisions.md` → 1
 
-The alternative — read precondition 2 as a literal zero on the failure counter
-— was rejected because it makes closure depend on a defect no feature branch
-may repair. AGENTS.md forbids mixing an unrelated fix into a feature branch
-("Never mix unrelated features or fixes in the same branch", "no while-I'm-here
-edits"), so F045 cannot lawfully fix `reviewer_conventions.md`. Under the
-literal reading, EVERY feature would be blocked by a document none of them
-touch, and the roadmap would stall on an unrelated file — a deadlock the
-protocol's own "Failure honesty" section never contemplates, since it lists
-repair, `[!]`, or an operator decision, and the repair is out of scope by rule.
+── C2 — the claim ─────────────────────────────────────────────────────
+Three files, ONE commit.
 
-CONSEQUENCE. The over-cap document is recorded as a closure CANDIDATE in
-`.agent/candidates.md` rather than as an F045 finding (no R-id is spent — the
-protocol's "Closure-candidate findings" rule), so the next feature's first
-reviewed round must register or resolve it. It deserves its own branch: the
-segment is 154 tokens over an 800-token cap, and trimming a reviewer-facing
-conventions document is a content decision, not a mechanical one.
+(a) `docs/roadmap/STATUS.md` — ONE line, a REWRITE pair (the TO does not
+contain the FROM):
+    FROM: `- [ ] F057 — Rate-limit-aware scheduler`
+    TO:   `- [~] F057 — Rate-limit-aware scheduler`
+Change nothing else in that file. After the edit, FROM must appear 0x and TO
+exactly 1x.
 
-HOW TO REVERSE. Delete this decision and treat precondition 2 as a literal
-zero. Doing so requires fixing `docs/agents/reviewer_conventions.md` first, in
-its own branch, because otherwise nothing can close at all — which is precisely
-the outcome this decision exists to avoid.
-<<< DECISION-D8 <<<
+(b) `.agent/plan.md` — REPLACE THE WHOLE FILE:
 
-Commit C3 alone. Subject: `docs(f045): record the closure precondition ruling`
-Gate: `grep -c "^## DECISION F045 D8 " .agent/decisions.md` → 1
+>>> PLAN >>>
+# Plan — F057 Rate-limit-aware scheduler
 
-── ITEM 4 — preconditions (no commit unless a file changes) ──────────
-Run and record RAW output + exit code for each:
-  `python3 -m apps.cli.main integrity check --json`   → must be `"passed": true`
-  `git status --porcelain`                            → must be EMPTY
-  `git rev-list --left-right --count origin/feature/f045-loop-definitions...HEAD`
-  `git worktree list`                                 → exactly one line
-If integrity check is not passed, STOP and hand back with the raw output. Do
-not work around it.
+Branch: feature/f057-rate-limit-scheduler, cut from main at 21c8148e after
+PR #198 merged. Next free finding id: R-0363. Open findings: R-0361, R-0362.
 
-NOTE on the `remedy` CLI: bare `remedy …` invocations are denied in this
-environment. `python3 -m apps.cli.main …` is the same entry point and is what
-the reviewer used. If the module form also fails, record the raw error and say
-so — do not silently substitute a third path.
+## Goal
+Provider rate limits stop looking like failures. A per-provider governor reads
+normalized limit signals out of call evidence and makes a run WAIT visibly —
+with a reason and an expected retry — instead of burning retries or failing the
+task. Providers that emit no limit signal behave exactly as they do today.
 
-── ITEM 5 — the evidence job ─────────────────────────────────────────
-Use the canonical producer, never a bare gate writer:
-`packages.orchestration.job_evidence.create_manual_completion_bundle(
-     review_feature_id="f045", ...)`.
+## Current Step
+R1 — claim F057, reset the review record carrying R-0361 forward, register
+R-0362, record DECISION F057 D1, and build T001: one place that turns the
+rate-limit signal shapes this repo really emits into a normalized signal, with
+unit tests over samples extracted from evidence that already exists. Nothing
+calls the new module yet.
 
-  - Write the evidence directory under `.remedy-wt/` (gitignored) so it NEVER
-    enters the base..HEAD review subject. A pre-committed evidence dir packages
-    as BLOCKED_EVIDENCE.
-  - `base_commit` is the FULL 40-char merge base:
-    `cb3ef34fddbf0efa5799d8de93cb2d8e66566d20`
-  - Record the evidence job id. Use `f045-closure` as the job id, matching the
-    F103/F104/F105/F107/F111/F115 precedent in `docs/roadmap/STATUS.md`.
+## Next Steps
+1. T002 — the governor itself: per-provider cooldown state, `acquire()` with a
+   deadline taken from budgets, an injected clock, and the stop-beats-wait
+   ordering. No real sleeps in unit tests.
+2. T003 — seam integration at the provider-call choke point
+   (`_call_with_retry`), wait evidence, the report line, and the
+   limit-emitting fixture end-to-end.
+3. Integration gate, then closure per docs/roadmap/STATUS_closure_protocol.md.
 
-Heed EVERY producer pitfall in `docs/roadmap/STATUS_closure_protocol.md` — they
-surface only at zip time:
-  (a) `verification_runs` entries need a sha256-hex `output_hash`, valid
-      `VerificationTests` totals, and the FULL-LENGTH `base_commit`.
-  (b) verification records need non-empty node ids with
-      `len(node_ids) == selected` — get REAL ids with `--collect-only`.
-  (c) `test_files` entries are FILES, never directories.
-  (d) the `VerificationTests` `run_id` must match `^vr-\d{4,}$`.
-  (e) NEVER put a full-suite node-id list in a verification record.
+## Risks
+- The seam is shared with the safe-point check. The ordering stop, then budget,
+  then acquire is load-bearing and gets its own test in T002 rather than a
+  comment.
+- `is_rate_limit_error` must not swallow strings the existing transport
+  predicates already own. T001 adds no wiring at all, so that precedence is
+  settled with evidence in T003 and is not guessed now.
+<<< PLAN <<<
 
-Record the CLEAN SCOPED suites and nothing else:
-  `tests/orchestration/test_loop_spec.py`
-  `tests/orchestration/test_loop_run.py`
-  `tests/cli/test_loop_cmd.py`
-  `tests/orchestration/test_run_report.py`
-Together they collect 123 node ids (reviewer-verified) and the reviewer scanned
-them for absolute paths and secret-like strings and found none. Do NOT include
-`tests/ui_server/**`, `tests/orchestration/test_role_conventions.py`, or any
-redaction-torture parametrization. The full-suite proof rides in the committed
-`.agent/gate_f045_r15/` evidence and in the reviewer's own re-run.
+(c) `.agent/context.md` — REPLACE THE WHOLE FILE:
 
-── ITEM 6 — the review zip: MANDATORY, FRESH, from a CLEAN tree ──────
-In this order:
-  1. `git status --porcelain` → must be EMPTY. If it is not, STOP.
-  2. `git push`
-  3. Record the FULL 40-char HEAD sha. This is `accepted HEAD` — the head the
-     zip and the verdict cover, i.e. AFTER C3 and BEFORE the closure commit.
-  4. `bash scripts/make_review_zip.sh --evidence-dir <the .remedy-wt evidence dir>`
-Verify `committed_review_subject` spans BASE..HEAD and the zip import check
-passes. Record the package filename and its SHA-256.
-If the build FAILS: record the raw error VERBATIM in the handoff, author no
-`[x]` line, STOP, hand back. A failing zip is a closure BLOCKER.
+>>> CONTEXT >>>
+# Context — F057 Rate-limit-aware scheduler
 
-── C4 — the closure commit, LAST on the branch ───────────────────────
-It touches EXACTLY `docs/roadmap/STATUS.md`, `README.md` and final `.agent/`
-state — nothing else (Rule A4, R-0154).
+## Active Branch
+feature/f057-rate-limit-scheduler, cut from main at 21c8148e after the
+paydown0814 PR #198 merged at the Open PR Gate. F057 is claimed `[~]` in
+docs/roadmap/STATUS.md for the life of this branch.
 
-(a) `docs/roadmap/STATUS.md` — REWRITE this single line, touching no other.
-    The FROM matches exactly once (reviewer-verified).
-FROM:
-- [~] F045 — Loop definitions
-TO (fill ONLY the four angle-bracket slots from ITEMs 5 and 6):
-- [x] F045 — Loop definitions (T001–T003 complete; accepted 2026-08-14 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job <EVIDENCE_JOB_ID> · package <ZIP_FILENAME> · SHA-256 <ZIP_SHA256> · accepted HEAD <FULL_40_CHAR_HEAD_SHA>)
+## Scope
+In: `packages/orchestration/rate_governor.py` and
+`tests/orchestration/test_rate_governor.py`, both new, plus the `.agent/**`
+round state and the one claimed STATUS line. R1 builds T001 only — signal
+normalization — so nothing imports the new module yet.
 
-(b) `README.md`, SAME commit — exactly two REWRITE pairs. Each FROM matches
-    exactly once (reviewer-verified). If either FROM does not match byte for
-    byte, STOP and report the actual line rather than guessing.
-FROM: 45 of 255 registered items accepted. Next: F045 (Loop definitions).
-TO:   46 of 255 registered items accepted. Next: F057 (Rate-limit-aware scheduler).
-FROM: | 2 | Minimal Self-Build Runtime | 6 | 14 |
-TO:   | 2 | Minimal Self-Build Runtime | 8 | 14 |
+Out: the per-call retry policy in `packages/orchestration/provider_timeouts.py`,
+parallelism itself, and the provider adapters' internals. All three are the
+feature file's Do-not-touch list. `packages/orchestration/pingpong_loop.py`
+holds the seam and stays untouched until T003.
 
-    The tier row goes 6 → 8, NOT 6 → 7, and this is deliberate. The table's
-    rule is the feature file's tier prefix: counting `- [x] F<id>` lines in
-    STATUS.md whose `docs/roadmap/features/T<n>_F<id>.md` exists reproduces
-    EVERY total in that table (16, 22, 14, 26, 16, 29, 16, 15, 12, 12, 12, 10,
-    9, 8, 10, 10, 10, 8). By that rule Tier 2 already stands at SEVEN accepted
-    — F103, F104, F105, F107, F111, F115 and F254 — while the README says 6,
-    because the F111 closure commit `98a49b5c` incremented the count line and
-    left the tier row alone (every other Tier 2 closure incremented it:
-    `8eb93954` 0→1, `64228c05` 1→2, `ef9d4ae0` 2→3, `76fb0191` 3→4,
-    `3c017c4e` 4→5, `57a24947` 5→6). F045 makes it eight. No test pins this
-    cell, which is why the drift survived. DECLARE this correction explicitly
-    in the handoff and the PR description as a pre-existing off-by-one that
-    F045's mandated README sync necessarily corrects — do not bury it.
-    VERIFY the derivation yourself before committing; if your count disagrees
-    with 8, STOP and report your numbers rather than writing either value.
+## Constraints
+- The main session writes nothing in the work tree; a delegated worker subagent
+  makes every commit (docs/agents/self_drive_protocol.md).
+- Merges only at the Open PR Gate and never a PR this session created; never
+  force-push; never work on main.
+- Verification is pytest, scoped per round, plus the canary
+  tests/cli/test_golden_path.py. A round that touches docs/roadmap/** also
+  gates tests/docs/. Destructive and red-proof checks run only inside a
+  disposable git worktree under .remedy-wt/, so resource safety stays intact
+  and no background pytest process is ever left running.
+- Unit tests use an injected clock. A real sleep in a unit test is a finding
+  the feature file names in its Orchestrator brief.
+- A round pushes after EVERY commit, not once at its last step (R-0289).
 
-(c) `.agent/candidates.md` — REPLACE the `(empty — …)` line with the two
-    candidate entries below, keeping the file's existing header block and its
-    blockquote intact. Apply byte for byte.
+## Steps
+R1 claim and T001 signal normalization → R2 T002 governor and acquire
+semantics → R3 T003 seam, wait evidence and the fixture end-to-end →
+integration gate → closure.
+<<< CONTEXT <<<
 
->>> CANDIDATES >>>
-- The reviewer-conventions document is over its prompt-segment token cap, and
-  `main` is red because of it. `docs/agents/reviewer_conventions.md` estimates
-  954 tokens against a cap of 800, so `prompt_segments` raises
-  `PromptSegmentError` and five `tests/orchestration/test_role_conventions.py`
-  ids fail on `main` itself. Present since `a85e82f5` (2026-08-12); F115 and
-  F045 both closed over it under DECISION F045 D8. No feature branch may fix it
-  without mixing an unrelated fix (AGENTS.md), so it needs its own branch:
-  trimming ~154 tokens from a reviewer-facing conventions document is a content
-  decision. · source F045 · 2026-08-14
-- The README tier table is unpinned and silently drifted. No test in
-  `tests/docs/` counts the `Done` column of the `## Status` table, while the
-  accepted-count line beside it IS pinned by
-  `test_the_readme_accepted_count_equals_the_status_count`. The Tier 2 cell
-  therefore sat at 6 while the ledger said 7 from the F111 closure
-  (`98a49b5c`, 2026-08-13) until F045's closure corrected it to 8. A pin
-  deriving each row from the feature files' tier prefixes would have caught it
-  the same day. · source F045 · 2026-08-14
-<<< CANDIDATES <<<
+Commit C2 ALONE.
+  Subject: `docs(f057): claim F057 and reset the round state`
+Gates: `grep -c '^- \[~\] F057 — Rate-limit-aware scheduler$' docs/roadmap/STATUS.md` → 1 ·
+       `grep -c '^- \[ \] F057' docs/roadmap/STATUS.md` → 0 ·
+       `wc -l < .agent/plan.md` → under 50 ·
+       `python3 -m pytest tests/docs/ -q` → exit 0 (baseline on main: 295 passed;
+         report the number you actually observe, do not assume it) ·
+       `python3 -m pytest tests/ui_server/test_dashboard_contract.py tests/regression/test_resource_safety.py tests/orchestration/test_test_runner.py -q`
+         → exit 0 (these are the state-file contract readers)
 
-(d) Rewrite `.agent/plan.md` — UNDER 50 lines, keeping `## Goal` and
-    `## Next Steps` — to the CLOSED state: F045 closed, the PR number, the
-    accepted HEAD, open findings THREE (R-0350, R-0354, R-0358), all Low and
-    carried as documented risks, next free id R-0359, and the next action being
-    the Open PR Gate at the next feature's start. End with, verbatim:
-Fortschritt: 100 % (T001 ✅ · T002 ✅ · T003 ✅ · Integrationsgate ✅ · Closure ✅) — gemessen
+── C3 — T001, signal normalization ────────────────────────────────────
+Two NEW files, ONE commit. This is production code: it is specified here, not
+dictated line by line, and you write it.
 
-(e) Update `.agent/context.md` ONLY if it is now stale. If you touch it,
-    validate the draft against EVERY test that reads it — run
-    `rg -ln 'context.md' tests/` and satisfy all of them together: the
-    dashboard contract wants the substring "Steps" and "## Active Branch" with
-    a `feature/` slug, `test_test_runner.py` wants a roadmap F-id, and
-    `tests/regression/test_resource_safety.py` wants "resource" or "pytest"
-    (finding R-0162 — the first repair fixed one reader and tripped another).
+STEP 1, BEFORE writing any code — INVENTORY. Find every shape in this repo in
+which a provider rate-limit / overload / throttle signal can actually reach us.
+Start from these four, which the reviewer verified on disk at 21c8148e:
+  - `packages/orchestration/stream_evidence.py:296-302` — `normalize_stream_object`
+    turns a `{"type": "api_retry"|"retry", ...}` object into
+    `{"event_type": "api_retry", "attempt": int, "reason": str}` (reason bounded
+    to 300 chars, falling back to the object's `error` key).
+  - `packages/orchestration/stream_evidence.py:290-295` — the same function turns
+    `{"type": "error"|"provider_error", ...}` into
+    `{"event_type": "provider_error", "error": str}` (bounded to 500 chars).
+  - `packages/orchestration/pingpong_loop.py:2211` — each `retry_reasons` entry is
+    `f"{role}:attempt{attempt + 1}:{out.error[:120]}"`.
+  - `tests/orchestration/test_stream_evidence_integration.py:50` and
+    `tests/orchestration/test_stream_evidence.py:136` — the only literal sample in
+    the repo: `reason == "overloaded_error"`.
+Then grep for more yourself (`rg -i 'overload|throttl|too many requests|429|rate.?limit' packages/ tests/ apps/`).
+Record what you find. Finding nothing beyond the four above is a perfectly good
+result — say so; do not invent a sample.
 
-(f) Rewrite `.agent/handoff.md` as the closure handback per
-    `docs/agents/handback_template.md`. Cap 60 lines; if MANDATED content
-    genuinely does not fit, exceed it with a "Deviations, declared" line naming
-    the actual count and the mandated content that caused it. NEVER drop a
-    section. Last line repeats the plan's Fortschritt verbatim.
+STEP 2 — write `packages/orchestration/rate_governor.py`. T001 slice ONLY:
+normalization. No state, no clock, no waiting, no `acquire()` — those are T002.
+Nothing in the repo imports this module at the end of this round, and that is
+correct.
 
-BEFORE committing C4 run BOTH, and they must be green IN THE SAME COMMIT as the
-edits:
-  `python3 -m pytest tests/docs/ -q`                    (the README/STATUS count
-     pair is pinned by `test_the_readme_accepted_count_equals_the_status_count`
-     in `tests/docs/test_docs_consistency.py`, which counts `^- \[x\] F\d{3} — `
-     lines in STATUS.md and pins the README's N to it)
-  `python3 -m pytest tests/cli/test_golden_path.py -q`  (the canary)
-Commit subject: `docs(f045): close F045 in the roadmap ledger`
+  - Module docstring: what the module is for, and a section listing the
+    inventory from step 1 — each observed shape with the `file:line` it came
+    from. This is the "list the real signal samples in the diff" requirement
+    from the feature file's Orchestrator brief.
+  - A frozen dataclass `RateLimitSignal` with at least: `provider: str`,
+    `reason: str` (a normalized token, not free text), `retry_after_s: float |
+    None` (None when the provider gave no hint — do not default it to a number),
+    `source: str` (which evidence shape it came from), `raw: str` (the bounded
+    original text). Give it `to_json()` returning a plain dict, matching how
+    `StopSignal.to_json` in `packages/orchestration/safe_points.py` does it —
+    this object ends up in evidence a person reads.
+  - Named source constants rather than bare strings at call sites, one per
+    evidence shape in the inventory.
+  - `is_rate_limit_error(text: str | None) -> bool` — the ONE predicate.
+    Follow the shape and the docstring style of `is_timeout_error` /
+    `is_nonzero_exit_error` in `packages/orchestration/provider_timeouts.py`:
+    the same repo already decided that a second definition of "what counts as
+    X" is the bug. EVERY pattern it matches carries a one-line comment naming
+    either the in-repo `file:line` that evidences it, or the exact words
+    `no in-repo sample; provider vocabulary` when you are covering a real
+    provider spelling for which this repo has no sample. The reviewer will
+    grep for that marker — an unmarked speculative pattern is a finding.
+    It must return False for the strings the existing predicates own: a bare
+    timeout message and a bare non-zero-exit message are NOT rate limits.
+  - `parse_retry_after_seconds(text: str | None) -> float | None` — pull a
+    retry-after hint out of the text when one is there, None when it is not.
+    Absent is not zero. Reject negatives and absurd values with a documented
+    upper bound.
+  - A normalizer that turns one piece of evidence into a `RateLimitSignal |
+    None`, plus one small reader per evidence shape in the inventory (the
+    `run_events` event dicts, and the `retry_reasons` string list). Reuse the
+    predicate — do not re-spell the matching logic per reader.
+  - Naming follows AGENTS.md "Code Discoverability Conventions": 2-4 words
+    including a domain word, one spelling per concept, a one-line WHY comment
+    directly above each non-obvious definition. State the deliberate absence in
+    prose — this module does not wait, does not sleep and is not wired into the
+    retry path in T001 — because a reader will search for that and text search
+    cannot find code that does not exist.
 
-── ITEM 8 — the PR ───────────────────────────────────────────────────
-`git push`, then `gh pr create` per the AGENTS.md PR workflow. Base `main`,
-head `feature/f045-loop-definitions`. The description carries: what changed and
-why; key decisions (F045 D1 through D8, naming D8's closure ruling explicitly);
-how to review; a changed-files table; the latest verdict (R15 PASS; feature
-PASS_WITH_RISKS); the open-findings count (3 — R-0350, R-0354, R-0358, all Low,
-named); the declared README tier-row correction from (b); and runtime actuals —
-rounds, wall clock, models, tokens — with `not-measured` wherever the ledger has
-no number, NEVER a guess.
-Do NOT merge it. It merges at the next feature's start via the Open PR Gate.
-Commit subjects and the PR title must never contain a leading-slash token, an
-absolute path, or a secret-like string — the metadata scanner rejects them and
-blocks closure.
+STEP 3 — write `tests/orchestration/test_rate_governor.py`. It must cover:
+  - every sample from the step-1 inventory, by its real shape;
+  - the negatives: a timeout string and a non-zero-exit string are not rate
+    limits, and neither is an empty/None input;
+  - retry-after present, absent (None, not 0), negative, and over the bound;
+  - each reader end-to-end on a realistic list of event dicts / retry reasons,
+    including one that contains a mix of rate-limit and non-rate-limit entries;
+  - `to_json()` round-tripping to plain JSON types.
+  NO `time.sleep`, no real clock, no network, no filesystem.
 
-── Constraints ───────────────────────────────────────────────────────
-- AGENTS.md is highest authority. Self-review loop before EVERY commit.
-- Explicit-path staging only. Never `git add -A`. Push after every commit.
-- Never work on main. Never force-push. Never merge. Never rewrite history.
-- The closure commit is the LAST commit on the branch. Nothing after it but
-  the PR.
-- NO production code, NO test files. A needed fix is a STOP and a report.
-- Authored texts (GATE-R15, BUILT-STATE, DECISION-D8, CANDIDATES, the STATUS
-  and README pairs) are applied byte for byte from your saved copy. No trailing
-  whitespace anywhere. Verify with a Python scan (`l != l.rstrip()`), and say
-  which command you actually ran if `grep -rn ' $'` is denied.
-- Never write a `Done:` paragraph; use `Landed: R-XXXX — <one line>`.
-- If ANY precondition, the evidence job, or the zip fails: STOP, record the raw
-  output, hand back. Do NOT author a `[x]` line for a feature that did not meet
-  its preconditions. Pretending completion is the one unforgivable failure mode.
+Commit C3 ALONE.
+  Subject: `feat(f057): normalize provider rate-limit signals`
+Gates: `python3 -m pytest tests/orchestration/test_rate_governor.py -q` → exit 0,
+         report the count ·
+       `python3 -m ruff check` → exit 0 ·
+       `grep -rn 'rate_governor' packages/ apps/ --include=*.py | grep -v 'rate_governor.py:'`
+         → EMPTY (T001 wires nothing) ·
+       `git diff --stat 21c8148e..HEAD -- packages/orchestration/provider_timeouts.py packages/orchestration/pingpong_loop.py packages/orchestration/stream_evidence.py`
+         → EMPTY (Do-not-touch held) ·
+       `grep -c 'time.sleep' tests/orchestration/test_rate_governor.py` → 0
 
-── Done when ─────────────────────────────────────────────────────────
-Record the command, the exit code and the REAL output for every one.
+RED-PROOF, as a PROBE — report the outcome, do not assume a colour. It runs
+ONLY inside a disposable worktree, never in this checkout:
+    git worktree add .remedy-wt/f057_r1_red HEAD
+In that worktree, first PROVE the import path — run
+`python3 -c "import packages.orchestration.rate_governor as m; print('MODULE', m.__file__)"`
+from inside `.remedy-wt/f057_r1_red` and report the printed path; if it does not
+point inside the worktree, the probe proves nothing and you must say so. Then
+make `is_rate_limit_error` return False unconditionally, run
+`python3 -m pytest tests/orchestration/test_rate_governor.py -q` there, and
+report WHICH test ids fail and how many. Then:
+    git worktree remove --force .remedy-wt/f057_r1_red && git worktree prune
+`git worktree list` must return to ONE line and `git status --porcelain` in the
+primary checkout must be empty.
 
-  (a) `cmp .agent/authored/f045-r16.md .agent/last_block.md` → exit 0
-  (b) C1's three gates
-  (c) C2's `tests/docs/` count (≥ 294, no regression) and its grep → 1
-  (d) C3's grep → 1
-  (e) `python3 -m apps.cli.main integrity check --json` → `"passed": true`
-  (f) evidence job id · zip filename · zip SHA-256 · accepted HEAD (40 chars)
-  (g) `tests/docs/` and the canary, both green, in the closure commit
-  (h) `grep -c "^- \[x\] F045 — " docs/roadmap/STATUS.md` → 1 AND
-      `grep -c "^- \[~\] F045" docs/roadmap/STATUS.md` → 0
-  (i) `grep -c "46 of 255 registered items accepted" README.md` → 1 AND
-      `grep -c "| 2 | Minimal Self-Build Runtime | 8 | 14 |" README.md` → 1
-  (j) the open set, recomputed from the record after C1:
-      python3 - <<'EOF'
-      import re
-      lines=open('.agent/live_review.md').read().splitlines()
-      reg=[m.group(1) for l in lines if (m:=re.match(r'^- (R-\d+) — ',l))]
-      done=[m.group(1) for l in lines if (m:=re.match(r'^Done: (R-\d+) — ',l))]
-      print("OPEN",sorted(set(reg)-set(done)))
-      EOF
-      → must print exactly: OPEN ['R-0350', 'R-0354', 'R-0358']
-  (k) `git status --porcelain` at the end → REPORTED VERBATIM, must be EMPTY
-  (l) `git worktree list` → exactly one line
-  (m) `git log --oneline c6b0aeb7..HEAD` → REPORTED
-  (n) the PR URL
+── C4 — handback ──────────────────────────────────────────────────────
+Rewrite `.agent/handoff.md` (never append) per AGENTS.md: feature + round,
+branch, commit SHAs, a changed-files table, REAL verification results with real
+exit codes, the open-findings count, and the next expected action. Under 60
+lines, or carry a "Deviations, declared" line naming the real line count and the
+mandated content that caused the overage (DECISION D15). Include the
+item-status table with every bundle item C0a, C0b, C1, C2, C3, C4 exactly once,
+status `done` / `skipped` / `deviated` with a reason.
 
-Handback:    completion report plus the rewritten `.agent/handoff.md`. Include
-             the per-commit table, all raw output, the item-status table (C0a,
-             C0b, C1, C2, C3, ITEM 4, ITEM 5, ITEM 6, C4, ITEM 8 — each exactly
-             once, `done`/`skipped`/`deviated` with a reason), and grep proof
-             that the applied STATUS line, the applied GATE-R15 entry, the
-             Built State heading, DECISION D8 and the candidate entries are
-             byte-identical to the authored text. The closure VERDICT is the
-             reviewer's, not yours.
-──────────────────────────────────────────────────────────────────────
+Never write a `Done:` paragraph in `.agent/live_review.md` — that text is the
+reviewer's alone (docs/agents/planner_reviewer_prompt.md §4 item 4). If a fix
+lands before the reviewer has authored a resolution, write
+`Landed: R-XXXX — <one line>` and nothing else.
+
+Commit C4 ALONE.
+  Subject: `chore(f057): handback R1`
+
+── ROUND GATES — run every one, record the REAL exit code ─────────────
+ 1. `git status --porcelain` → empty
+ 2. `git worktree list` → exactly one line
+ 3. `git branch --show-current` → `feature/f057-rate-limit-scheduler`
+ 4. `grep -c '^- \[~\] F057 — Rate-limit-aware scheduler$' docs/roadmap/STATUS.md` → 1
+ 5. `grep -c '^- \[ \] F057' docs/roadmap/STATUS.md` → 0
+ 6. `grep -c '^## Steps' .agent/live_review.md` → 1
+ 7. `grep '^- R-0361 — ' .agent/live_review.md | sha256sum` → `70a8c9fb1a6ddebd2a1592b467cf9cb7e18f43ad0449c245d110bc0f1f056a7b`
+ 8. `grep -c '^- R-0362 — ' .agent/live_review.md` → 1
+ 9. `grep -c '^## DECISION F057 D1 ' .agent/decisions.md` → 1
+10. `wc -l < .agent/plan.md` → under 50
+11. `python3 -m pytest tests/orchestration/test_rate_governor.py -q` → exit 0
+12. `python3 -m pytest tests/docs/ -q` → exit 0
+13. `python3 -m pytest tests/ui_server/test_dashboard_contract.py tests/regression/test_resource_safety.py tests/orchestration/test_test_runner.py -q` → exit 0
+14. `python3 -m ruff check` → exit 0
+15. `python3 -m pytest tests/cli/test_golden_path.py -q` → exit 0 (the canary; baseline on main is 42 passed)
+16. `cmp .agent/authored/f057-r1.md .agent/last_block.md` → exit 0
+17. the red-proof probe outcome above, with the printed MODULE path
+
+Report every gate with its real output. "Green" as a word is not a result — a
+gate you did not run is a gate that failed. If a gate goes red, STOP, do not
+paper over it, and report the exact output.
