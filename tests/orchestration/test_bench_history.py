@@ -11,6 +11,7 @@ the moment either drifts.
 """
 from __future__ import annotations
 
+import statistics
 from pathlib import Path
 
 from packages.orchestration.bench_history import (
@@ -140,3 +141,42 @@ def test_a_degrading_history_warns_about_the_one_degraded_order_with_numbers() -
     wall_warning = next(w for w in found if w.kind == REGRESSION_WALL)
     assert wall_warning.latest == degraded.wall_s
     assert str(degraded.wall_s) in wall_warning.describe()
+
+
+def test_the_trailing_median_ignores_one_catastrophic_run() -> None:
+    """The baseline is the MEDIAN of the trailing runs and not their mean (R-0415).
+
+    ``varied.jsonl`` carries the one catastrophic run the ``_median`` docstring
+    exists for, so its trailing values are NOT all equal and the two statistics
+    disagree. Asserting the computed ``baseline`` says which of them the rule
+    used; a warn/no-warn boundary alone would only test the fixture.
+    """
+    entries = load_bench_history(GOLDEN_DIR / "varied.jsonl")
+    top = max(entry.run_seq for entry in entries)
+    trailing = [entry.record for entry in entries if entry.run_seq < top]
+    trailing_costs = [float(sum(row.cost.values())) for row in trailing if row.cost is not None]
+    trailing_walls = [float(row.wall_s) for row in trailing if row.wall_s is not None]
+
+    assert len(trailing_costs) == len(trailing_walls) == len(trailing) > 0
+    # The fixture must stay discriminating: an edit that flattens it fails HERE
+    # rather than quietly going blind again.
+    assert statistics.median(trailing_costs) != statistics.mean(trailing_costs)
+    assert statistics.median(trailing_walls) != statistics.mean(trailing_walls)
+
+    found = bench_regressions(entries, series=SERIES)
+
+    cost_warning = next(w for w in found if w.kind == REGRESSION_COST)
+    assert cost_warning.baseline == statistics.median(trailing_costs)
+    assert cost_warning.baseline != statistics.mean(trailing_costs)
+
+    wall_warning = next(w for w in found if w.kind == REGRESSION_WALL)
+    assert wall_warning.baseline == statistics.median(trailing_walls)
+    assert wall_warning.baseline != statistics.mean(trailing_walls)
+
+
+def test_a_larger_multiplier_silences_the_same_history() -> None:
+    """The threshold multiplier is load-bearing: same entries, larger x, no warning."""
+    entries = load_bench_history(GOLDEN_DIR / "varied.jsonl")
+
+    assert bench_regressions(entries, series=SERIES)
+    assert bench_regressions(entries, series=SERIES, multiplier=3.0) == ()
