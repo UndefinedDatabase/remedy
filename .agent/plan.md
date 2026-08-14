@@ -1,35 +1,34 @@
-# Plan — paydown0814 closure debt
+# Plan — F057 Rate-limit-aware scheduler
 
-Branch: feature/paydown0814-closure-debt, cut from main at 1e7f7bca after the
-F045 closure PR #197 merged. Next free finding id: R-0362. R-0359 and R-0360
-are FIXED and RESOLVED by the reviewer at bc0f5223; R-0361 stays open as a
-recorded reviewer-process finding whose counter-measure is already in force.
+Branch: feature/f057-rate-limit-scheduler, cut from main at 21c8148e after
+PR #198 merged. Next free finding id: R-0363. Open findings: R-0361, R-0362.
 
 ## Goal
-Pay down the debt the F045 closure carried out on disk, so the next feature
-starts on a green `main`: trim `docs/agents/reviewer_conventions.md` under its
-800-token prompt-segment cap (R-0359), pin the README tier table's Done column
-to the ledger (R-0360), and record the gate round's own finding (R-0361). A
-paydown branch in the established shape of feature/paydown-0730, -0731, -0731b
-and -0801 — it claims no STATUS line and closes no `[ ]`.
+Provider rate limits stop looking like failures. A per-provider governor reads
+normalized limit signals out of call evidence and makes a run WAIT visibly —
+with a reason and an expected retry — instead of burning retries or failing the
+task. Providers that emit no limit signal behave exactly as they do today.
 
 ## Current Step
-R3 complete: the reviewer re-ran every R2 gate itself, including its own
-red-proof in a disposable worktree, issued PASS, and its authored `Done:`
-resolutions for R-0359 and R-0360 are now on disk in `.agent/live_review.md`.
-PR #198 is still NOT merged.
+R1 — claim F057, reset the review record carrying R-0361 forward, register
+R-0362, record DECISION F057 D1, and build T001: one place that turns the
+rate-limit signal shapes this repo really emits into a normalized signal, with
+unit tests over samples extracted from evidence that already exists. Nothing
+calls the new module yet.
 
 ## Next Steps
-1. R4 — Open PR Gate: merge PR #198 with
-   `gh pr merge 198 --merge --delete-branch`, then `git checkout main` and
-   `git pull --ff-only`. That merge is what finally turns `main` green, and it
-   closes the operator's manual-review window.
-2. Then F057 — Rate-limit-aware scheduler, per Rule A5 and STATUS order. New
-   session, new branch, cut from the merged `main`.
+1. T002 — the governor itself: per-provider cooldown state, `acquire()` with a
+   deadline taken from budgets, an injected clock, and the stop-beats-wait
+   ordering. No real sleeps in unit tests.
+2. T003 — seam integration at the provider-call choke point
+   (`_call_with_retry`), wait evidence, the report line, and the
+   limit-emitting fixture end-to-end.
+3. Integration gate, then closure per docs/roadmap/STATUS_closure_protocol.md.
 
 ## Risks
-- `main` is RED until PR #198 merges. The five
-  tests/orchestration/test_role_conventions.py ids are green on this branch,
-  which is the fix's proof, but `main` itself only turns green at the merge.
-- R-0361 remains open by design. Its counter-measure — a block may only order
-  a command the reviewer has itself executed — was applied again in R3.
+- The seam is shared with the safe-point check. The ordering stop, then budget,
+  then acquire is load-bearing and gets its own test in T002 rather than a
+  comment.
+- `is_rate_limit_error` must not swallow strings the existing transport
+  predicates already own. T001 adds no wiring at all, so that precedence is
+  settled with evidence in T003 and is not guessed now.
