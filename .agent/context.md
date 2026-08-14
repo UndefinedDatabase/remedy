@@ -41,7 +41,7 @@ pause. `packages/orchestration/mission_state.py` stays OUT with the facade:
 `orchestrator_loop` owns, and `orchestrator_loop` imports `mission_state`, so
 reading the ledger from the renderer would invert that dependency into the
 import cycle `watchdog` keeps its imports inside function bodies to avoid. Open
-findings after the session close: TWENTY-SIX, next free id R-0396.
+findings after the R16 gate: TWENTY-EIGHT, next free id R-0398.
 
 Out: repair logic, class-expectation anomaly detection and loop policy — the
 F077 feature file's Do-not-touch list. The watchdog never modifies plans, jobs
@@ -95,6 +95,6 @@ F077 D12 and build the first half of T003 against the inventory: the read-only
 `mission resume` verb, report surface deferred → R15 record the R14 verdict,
 register R-0393 and build that report surface — `latest_trips_from_ledger` plus
 the trip lead in `_cmd_mission_show` under D12, which completes T003 → R16 the
-integration gate, whose first commit records `Gate: R15-close` and whose work is
-the branch and merge-base full runs → closure per
-docs/roadmap/STATUS_closure_protocol.md, still owing the watchdog's ist-doc.
+integration gate: 16898 passed on the branch, zero branch-only failures, all
+eight base-only ids attributed to the environment → R17 records that gate and
+writes the ist-doc → closure per docs/roadmap/STATUS_closure_protocol.md.
