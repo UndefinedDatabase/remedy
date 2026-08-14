@@ -13,11 +13,11 @@ three and not five, because the shared sample project has no HTTP surface and
 no web asset (R-0411), and the missing two wait on a bench-owned fixture per
 DECISION F082 D3 rather than an edit to the gauntlet's template. Still to come:
 the history append, the trend and regression rules, and the `stats bench` CLI.
-R2's inventory settled the shape: the factoring is ADDITIVE, so the bench lands
-as a NEW
-`packages/orchestration/capability_bench.py` with
-`tests/orchestration/test_capability_bench.py`, and no symbol moves out of any
-gauntlet module. R3 additionally owns
+R2's inventory settled the shape: the factoring is ADDITIVE, so every bench
+module is NEW and no symbol moves out of any gauntlet module — R3's
+`capability_bench.py`, R4's `bench_orders.py`, R6's `bench_dry_run.py` and R7's
+`bench_history.py`, each with its own test file under `tests/orchestration/`.
+R3 additionally owns
 `packages/orchestration/gauntlet_runner.py::measure_tokens`, repaired under
 DECISION F082 D1 because the bench's cost field reads it (R-0407).
 Plus `.agent/f082_inventory.md` and `.agent/**` round state and the one claimed
