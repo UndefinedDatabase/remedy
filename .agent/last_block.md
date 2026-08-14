@@ -1,181 +1,117 @@
-── SESSION CLOSE — F077 Autonomy watchdog · after R17 ────────────
+── STEP CLOSURE-PREP / R19 — F077 Autonomy watchdog ──────────
+Goal:        Put R18's verdict on the record, resolve R-0398 against the source,
+             register R-0400 and R-0401, repair the ist-doc span the R-0398 fix
+             got wrong, and add the Built State section that closure
+             precondition 4 requires.
 
-Goal:        Record the R17 verdict, register the two findings it produced,
-             REPAIR the one of them that put a wrong number into a durable
-             doc, and close this session with a handoff that hands closure to
-             the next one. Everything the finding invalidates moves in the
-             same commit that registers it — that coupling is what R-0395
-             exists to force, and the two close rounds before it are why.
+Bundle:      C0a save this block; C0b mirror it to last_block; C1 record +
+             count mirrors + DOCFIX2; C2 Built State; C3 handback.
 
-The base commit is `1c56b295`, the R17 handback.
+Change:      exactly these seven paths and nothing else —
+             C0a  .agent/authored/f077-r19.md          (new, verbatim block)
+             C0b  .agent/last_block.md                 (whole-file mirror)
+             C1   .agent/live_review.md                (1 rewrite + 8 appended lines)
+                  .agent/plan.md                       (whole-file replacement)
+                  .agent/context.md                    (1-line rewrite pair)
+                  docs/system/autonomy-watchdog-v1.md  (3-line rewrite pair)
+             C2   docs/roadmap/features/T2_F077.md     (append one section)
+             C3   .agent/handoff.md                    (whole-file rewrite)
 
-Bundle:
-  C0   save this block verbatim to `.agent/authored/f077-r18.md`, then `cp` it
-       to `.agent/last_block.md`
-  C1   ONE commit: append GATE-R17, FINDING-R398 and FINDING-R399 to the END of
-       `.agent/live_review.md`; apply the DOCFIX pair to
-       `docs/system/autonomy-watchdog-v1.md`; append the LANDED line to
-       `.agent/live_review.md` directly after FINDING-R398's paragraph;
-       replace `.agent/plan.md` with the PLAN slice whole; and apply the
-       CONTEXTCOUNT pair.
-  C2   handback: rewrite `.agent/handoff.md` as a SESSION-CLOSE handoff
+Constraints: No product file changes — nothing under packages/, apps/ or tests/.
+             No docs/README.md change, no docs/roadmap/STATUS.md change, no
+             README.md change: closure owns those and it is not this round.
+             `.agent/plan.md` must stay under 50 lines (AGENTS.md); the PLAN
+             slice is 45 and is applied byte for byte, never trimmed.
+             `.agent/context.md` and the ist-doc must keep their current line
+             counts — both pairs are equal-line rewrites.
+             C1 lands the two registrations AND every count they invalidate in
+             ONE commit (finding R-0395).
+             Report every measured number RAW. If a gate value does not come
+             out as this block predicts, report the contradiction and do NOT
+             alter any file to make a gate pass.
 
-Change:      EXACTLY these paths: `.agent/authored/f077-r18.md`,
-             `.agent/last_block.md`, `.agent/live_review.md`, `.agent/plan.md`,
-             `.agent/context.md`, `docs/system/autonomy-watchdog-v1.md`,
-             `.agent/handoff.md`. Seven files. NO product file. NO
-             `docs/roadmap/` file, NO `docs/README.md` change — the doc is
-             already registered and closure owns the STATUS line.
+── C1 slices ─────────────────────────────────────────────────
 
-Constraints:
-  - AGENTS.md Commit Gate before every commit.
-  - You never author a `Gate:`, a `Done:`, a `- R-NNNN` or a `Landed:` line of
-    your own. Every one below is reviewer text, extracted from the COMMITTED
-    `.agent/authored/f077-r18.md` and applied byte for byte — INCLUDING the
-    LANDED line, which is authored here precisely so you do not have to write
-    one yourself.
-  - The residual `Landed: R-0384` stays — it is open finding R-0380's
-    evidence. After C1 there are TWO `Landed:` lines and that is correct.
-  - `Done:` is reserved for reviewer-authored resolutions and NOTHING in this
-    round resolves a finding. R-0398's fix LANDS here and is marked `Landed:`;
-    the next session's reviewer replaces that line with an authored `Done:`
-    after gating it. A surviving `Landed:` line is an unreviewed fix, which is
-    exactly what this one is.
-  - The DOCFIX pair changes ONE word in a sentence of prose. Do not reflow the
-    paragraph, do not rewrap, do not touch the lines around it: FROM and TO are
-    both 3 physical lines and the file must stay 216 lines.
+(1) REWRITE in `.agent/live_review.md`: replace the single line that currently
+    reads `Landed: R-0398 — ...` with the LANDED-TO-DONE slice below. The FROM
+    is the whole of that one line; after the edit the string `Landed: R-0398`
+    appears 0 times in the file.
 
-Done when: every gate below has been RUN by you and its REAL value recorded.
-The base commit is `1c56b295`.
+<<<BEGIN LANDED-TO-DONE>>>
+Done: R-0398 — `docs/system/autonomy-watchdog-v1.md` now reads "ten call sites", and the reviewer verified the corrected COUNT against the source rather than against the fix: `grep -n '_record(' packages/orchestration/orchestrator_loop.py` returns twelve matches, of which line 916 is a nested definition inside another function and line 1036 is `run_mission`'s own nested definition, leaving calls at 1064, 1119, 1180, 1191, 1203, 1210, 1253, 1267, 1293 and 1296 — ten, every one inside `run_mission`, whose `def` is at 936 and whose last body line is the `return build_boundary_handoff(result, root)` at 1304. The sentence the count sits in is unchanged in substance and remains true. What this resolution does NOT cover is the parenthetical span the repair added alongside the count: that is wrong in the other direction and is registered separately as R-0401, so the record shows the count fixed and the new defect raised instead of one absorbing the other.
+<<<END LANDED-TO-DONE>>>
 
-  1.  `git status --porcelain` → EMPTY before each commit and at handback.
-      `git worktree list` → exactly 1 line.
-  2.  `cmp .agent/authored/f077-r18.md .agent/last_block.md` → exit 0.
-      Report the shared sha256 and the line count.
-  3.  `grep -c '^Gate: R17 — ' .agent/live_review.md` → 1.
-      `grep -c '^- R-0398 — ' .agent/live_review.md` → 1.
-      `grep -c '^- R-0399 — ' .agent/live_review.md` → 1.
-      `grep -c '^Gate: R16 — ' .agent/live_review.md` → 1, still.
-      `grep -c '^Landed: ' .agent/live_review.md` → 2, NOT 1: the residual
-      `Landed: R-0384` plus this round's `Landed: R-0398`.
-  4.  Recompute the open set from `.agent/live_review.md` mechanically — every
-      `^- R-\d+ — ` paragraph minus every `^Done: R-\d+ — ` line. C1 registers
-      two and RESOLVES NONE — a `Landed:` line is not a `Done:` line and must
-      not be counted as one — so 30 open and next free R-0400 is the expected
-      reading. Report what you MEASURE and name the set.
-  5.  `wc -l .agent/plan.md` → 44; `wc -l .agent/context.md` → 100; `wc -l
-      docs/system/autonomy-watchdog-v1.md` → 216. All three re-measured at
-      `1c56b295` by the reviewer immediately before this block was written. A
-      length that CHANGED means a mis-application: stop and report rather than
-      trimming anything to fit.
-  6.  Pair proofs, by shape:
-      - PLAN is a whole-file replacement: compare the applied `.agent/plan.md`
-        against the slice extracted from the committed authored file → equal.
-      - CONTEXTCOUNT and DOCFIX are REWRITEs, FROM and TO disjoint: FROM 0x and
-        TO 1x in their target files. Four numbers.
-  7.  `grep -c 'eleven call sites' docs/system/autonomy-watchdog-v1.md` → 0.
-      `grep -c 'ten call sites' docs/system/autonomy-watchdog-v1.md` → 1.
-      Scoped to that ONE file, not to `docs/`: this block quotes both strings
-      and is itself copied to `.agent/last_block.md`, so a wider zero is
-      unsatisfiable by construction.
-  8.  `python3 -m pytest tests/docs/ -q` → report the number. This round
-      changes a file under `docs/`. The reviewer measured `295 passed` at
-      `1c56b295`.
-  9.  `python3 -m pytest tests/ -q -k "dashboard_contract or resource_safety or test_runner"`
-      → report BOTH numbers, run AFTER C1 has replaced the state files. The
-      reviewer measured `216 passed, 16671 deselected` at `1c56b295`.
-  10. Canary: `python3 -m pytest tests/cli/test_golden_path.py -q` → report the
-      number. The reviewer measured `42 passed` at `1c56b295`.
-  11. `test -e .agent/STOP` → ABSENT or PRESENT, at the START of the round and
-      again at handback. Report both readings.
-  12. `git diff --check 1c56b295..HEAD` → no output.
-  13. Insertions per commit — report each, and confirm none exceeds 500. C0 is
-      the one to watch: it rewrites `.agent/last_block.md` as well as adding
-      the authored copy, and the two previous rounds each landed at exactly
-      500 by that arithmetic. If C0 would EXCEED 500, split it into two
-      commits — the authored save first, the `last_block` mirror second — and
-      declare the split. That is permitted here and is finding R-0399's own
-      prescription.
-  14. `git diff --name-only 1c56b295..HEAD` → exactly the ordered paths and
-      nothing else. List them.
-  15. `git push -u origin feature/f077-autonomy-watchdog`. No `gh`, no PR.
+(2) APPEND to the END of `.agent/live_review.md`, in exactly this order: one
+    blank line, the GATE-R18 slice, one blank line, the FINDING-R400 slice, one
+    blank line, the FINDING-R401 slice, one blank line, the LANDED-R401 slice.
+    That is 8 added lines and the file goes from 140 to 148 lines.
 
-Handback:    rewrite `.agent/handoff.md` as a SESSION-CLOSE handoff per
-             `docs/agents/handback_template.md`. It must carry, beyond the
-             usual sections: that the session ENDED AT ITS LIMIT with the
-             feature at closure-ready state, and a Next section whose FIRST
-             item is Phase 1 rule 1 of `docs/agents/self_drive_protocol.md` —
-             re-read `.agent/STOP` FROM DISK — and whose SECOND is rule 2, the
-             Open PR Gate. Then reply with the commit SHAs and the fifteen
-             gate values only.
+<<<BEGIN GATE-R18>>>
+Gate: R18 — PASS, with one new finding and one carried repair. Verification tier: round gate plus the docs gate plus the state-file contract readers plus the canary; no suite claim is made in this paragraph, because R16 carries this branch's integration-gate entry and nothing since has touched product code. Fourteen of the fifteen ordered gates were re-run by a NEW session against the disk and every one of the fourteen reproduces: the tree is clean and `git worktree list` is one line; `.agent/authored/f077-r18.md` and `.agent/last_block.md` are byte-identical at shared sha256 `1ed498ee3e78a2fda99a15d9aaa5e1634284baee0003d0ad66841455b75476b6`, 214 lines each; `^Gate: R17 — ` 1, `^- R-0398 — ` 1, `^- R-0399 — ` 1 and `^Landed: ` 2; the open set recomputed mechanically from the record is 34 registered paragraphs minus 4 `Done:` lines = 30 open, no duplicate id, next free `R-0400`; `wc -l` gives `.agent/plan.md` 44, `.agent/context.md` 100 and the ist-doc 216; the PLAN whole-file replacement is byte-equal to its slice at sha256 `39fe5fda66084ba4c8e67b094ee95599161d2605a177b62fea2cffceae832a3f`, and both equal-line rewrites read FROM 0x and TO 1x; `eleven call sites` 0 and `ten call sites` 1 in the ist-doc; `tests/docs/` 295 passed; the canary 42 passed; `.agent/STOP` ABSENT; `git diff --check 1c56b295..HEAD` silent; per-commit insertions 362 and 30 with the handback's 60, none over 500; the range is exactly the seven ordered paths; and `origin/feature/f077-autonomy-watchdog` sits at the same `386ef7b5` as the branch. Transport is proven disk to disk against the COMMITTED authored file, not against a retype: the four applied record slices at authored lines 121, 125, 129 and 133 are byte-identical to record lines 134, 136, 138 and 140, and all four of the handback's own sha256 values — `24d3704c…`, `4c5f8bec…`, `fcbbd921…` and `98c43700…` — recompute exactly. The round's substance is the R17 gate record and the R-0398 repair, and the reviewer audited the repair against the SOURCE rather than reading it for plausibility: `_record` genuinely has ten call sites in `run_mission`, so the corrected count is true. The worker's three declared deviations are each correct behaviour — the denied-tool substitutions kept every proof byte-exact, the gate-5 plan value really does contradict the disk at the base commit and was reported rather than reconciled, and the 89-line handoff carries its DECISION D15 cause with no section dropped. The one gate that does NOT reproduce is gate 9's DESELECTED figure, registered as R-0400; its PASSED figure, which is the value that gates anything, reproduces exactly. What this gate does NOT say: it makes no claim about the ist-doc's new parenthetical span, which is wrong and is registered as R-0401.
+<<<END GATE-R18>>>
 
-── AUTHORED SLICES — apply byte for byte ─────────────────────────
+<<<BEGIN FINDING-R400>>>
+- R-0400 — Low — the state-file contract readers' DESELECTED count does not reproduce, and this branch's own integration-gate entry already contradicts it. The gates for R15, R16, R17 and R18 each record `216 passed, 16671 deselected` for the selection `-k "dashboard_contract or resource_safety or test_runner"`. Re-run at `386ef7b5` that same selection measures `216 passed, 16701 deselected`, and `python3 -m pytest -q --collect-only` measures `16917 tests collected` on two consecutive invocations. So 216 + 16701 = 16917 is internally consistent while 216 + 16671 = 16887 is thirty short, and the `Gate: R16` paragraph in this very file carries the number that settles it: its full-suite run measured `16898 passed, 19 skipped`, which is 16917 collected. The reviewer re-ran the full suite itself at `386ef7b5` and measured `16898 passed, 19 skipped in 143.68s` at exit 0, reproducing that total a third time. The last commit on this branch to touch `tests/` is `826fb5a3`, which is R15's work, so no change after R15 can explain a moving total. The reviewer did NOT determine why the earlier runs collected thirty fewer, and no cause is attributed here: there is no conditional-collection hook in the suite (`collect_ignore`, `allow_module_level`, `importorskip` all return nothing), `pyproject.toml` sets no `testpaths` or `norecursedirs`, and the gitignored `.remedy-wt/` scratch directory is not collected. This is Low because nothing green turns red: `216 passed` reproduces at every gate that reported it, and a deselected count gates nothing on its own. The consequence is narrower and real — three gates on this branch used deselected DELTAS as corroboration for a test-count claim ("+13 equals the 13 tests this round adds", "+10 for the 10 tests added"), and that arithmetic rests on a base number that is not currently reproducible. From here, a deselected count is reported as a raw measurement only, and the corroborating arithmetic for a test-count claim uses the passed count and `--collect-only`, both of which reproduce. OPEN.
+<<<END FINDING-R400>>>
 
-GATE-R17, FINDING-R398 and FINDING-R399 are each ONE physical line, appended in
-that order to the END of `.agent/live_review.md`, each separated from the text
-above it by one blank line. The LANDED line is ONE physical line placed
-directly after FINDING-R398's paragraph, separated from it by one blank line —
-so the order in the file is FINDING-R398, LANDED, FINDING-R399.
+<<<BEGIN FINDING-R401>>>
+- R-0401 — Low — the parenthetical that R-0398's repair added to `docs/system/autonomy-watchdog-v1.md` states a span that is not `run_mission`, and it still does not state the exclusion that produced the original off-by-one. The doc now reads "`_record` has ten call sites in `run_mission` (lines 936 to 1341)". `run_mission`'s `def` is at 936, but its last body line is the `return build_boundary_handoff(result, root)` at 1304; lines 1307 to 1338 are module-level constants — `IN_FLIGHT_JOB_STATES`, `BLOCKED_COMPLETIONS_BEFORE_ESCALATION`, `RETRYABLE_FAILURE_CLASSES` and `BOUNDARY_FAILURES_BEFORE_ESCALATION` — and 1341 is `def _is_retryable`, the next top-level definition. The count is unaffected, because the ten calls all sit between 1064 and 1296, which is why this is Low and not a correctness finding against the sentence. The defect is that the parenthetical was added for exactly one purpose — R-0398's own prescription, "a doc that states such a count states the span it counted over so a later reader can reproduce it" — and as written it does not serve it: a reader who counts `_record(` over 936 to 1341 finds ELEVEN occurrences, the same eleven that produced the original error, because the span given is wrong in one direction and the nested definition at 1036 is still not mentioned in the other. A repair that reproduces the defect's own failure mode for its next reader has not landed the lesson, only the number. It is registered rather than folded into R-0398's resolution so the record shows a repair being audited and found short, instead of a reviewer accepting its own prescription as met because a number changed. The fix is the DOCFIX2 rewrite in this same commit: the span becomes 936 to 1304 and the sentence names the nested definition it excludes. OPEN.
+<<<END FINDING-R401>>>
 
-<<<BEGIN GATE-R17>>>
-Gate: R17 — PASS, with two findings, one of which is repaired in the round that registers it. Verification tier: round gate plus the docs gate plus the state-file contract readers plus the canary; no suite claim is made or needed, because R16 already carries this branch's full-suite entry and nothing since has touched product code. Every one of the fifteen ordered gates was re-run by the reviewer against the disk and every one reproduces: tree clean and one worktree; `^Gate: R16 — ` 1, `^- R-0396 — ` 1, `^- R-0397 — ` 1, `^Gate: R15-close — ` 1, `^Landed: ` 1; the open set recomputed from the record is 32 registered minus 4 `Done:` lines = 28 with no duplicate id and next free `R-0398`; `.agent/plan.md` 45, `.agent/context.md` 100 and the new doc 216; `grep -c 'autonomy-watchdog-v1.md' docs/README.md` 2, one row per table; `tests/docs/` 295 passed, the contract readers 216 passed with 16671 deselected and the canary 42 passed, all three re-run by the reviewer after C1 rather than taken from the handback; `git diff --check` silent; the range is exactly the eight ordered paths; and `origin` sits at the branch head. Transport is proven disk to disk: `.agent/authored/f077-r17.md`, `.agent/last_block.md` and the reviewer's own pre-emission original are byte-identical at sha256 `c8d411e3e4450e02c3c7540a5b6f17815a08dbe41b8b173124cff1cc9fc5149a`, 274 lines, and every slice re-extracted from the COMMITTED authored file matches its applied region — the three record paragraphs 1x each, the whole-file PLAN byte-equal, both REWRITE pairs FROM 0x and TO 1x, and both APPEND-shaped README pairs contributing exactly one new row each among C2's 218 added lines, which is the shape-appropriate proof and not a whole-file count the append makes unattainable. The round's substance is the ist-doc, the one deliverable this feature has owed since T003 finished, and the reviewer audited it against the source rather than reading it for plausibility: every symbol it names exists and is spelled as the module spells it, `watchdog_thresholds_from_config`, `evaluate_mission`, `act_on_trips`, `watchdog_pass`, `latest_trips_from_ledger` and the three evaluators among them; all four config keys, their environment variables, their types and their defaults — 3, 3, 5 and 3.0 — match `packages/orchestration/config.py` exactly; the burn tripwire's inertia condition matches `len(measured) < min_samples + window` in the source; and `watchdog_pass` is imported inside `run_mission`'s body and called once, as the doc says. The deliberate-absence section is written in the idiom AGENTS.md prescribes, which is what makes the dependency-inversion reason findable by the reader who needs it. ONE number in it is wrong and is registered as R-0398 and repaired in the next round's C1. The three declared deviations are each correct: the denied-tool substitution kept every proof byte-exact, the absent status banner is right because there is no ist/roadmap conflict to point at, and the 84-line handoff carries its DECISION D15 cause. What this gate does NOT say: it makes no claim that the doc is COMPLETE, only that everything it asserts is true of the code at this commit; and closure is now the only work left, which the session that follows this one owns.
-<<<END GATE-R17>>>
+<<<BEGIN LANDED-R401>>>
+Landed: R-0401 — `docs/system/autonomy-watchdog-v1.md` now reads "ten call sites in `run_mission` (lines 936 to 1304, counting calls and not the nested definition at 1036)"; the DOCFIX2 rewrite pair, applied in this round's C1 alongside the finding that registers it.
+<<<END LANDED-R401>>>
 
-<<<BEGIN FINDING-R398>>>
-- R-0398 — Low — the ist-doc `docs/system/autonomy-watchdog-v1.md` states that "`_record` has eleven call sites in `run_mission`", and there are ten. `run_mission` spans lines 936 to 1341 of `packages/orchestration/orchestrator_loop.py`, the next top-level `def` beginning at 1342, and `_record(` appears eleven times inside that span: the NESTED DEFINITION at line 1036 plus calls at 1064, 1119, 1180, 1191, 1203, 1210, 1253, 1267, 1293 and 1296. The worker counted occurrences in a line range and reported them as call sites, so the error is an off-by-one against the definition rather than an invented number — every other number in the doc, including all four config defaults and the burn-inertia condition, was read correctly out of the source, which is why this is Low and why the round it appeared in still passes. It is registered rather than quietly corrected because the doc is a DURABLE artifact: a reader who greps `_record(` to check the claim finds twelve matches across the file, two of which are definitions, and now has three numbers and no way to tell which one the doc meant. The sentence does not depend on the count — its point is that two entries already share an iteration number in one pass, which holds at ten — so the repair is one word and lands in the same commit that registers this finding. From here, a count of call sites is measured by excluding the definition line, and a doc that states such a count states the span it counted over so a later reader can reproduce it. OPEN.
-<<<END FINDING-R398>>>
+(3) REWRITE in `docs/system/autonomy-watchdog-v1.md` — DOCFIX2. FROM is these
+    three consecutive lines exactly as they stand on disk:
 
-<<<BEGIN LANDED>>>
-Landed: R-0398 — `docs/system/autonomy-watchdog-v1.md` now reads "ten call sites"; the DOCFIX rewrite pair, applied in this round's C1 alongside the finding that registers it.
-<<<END LANDED>>>
-
-<<<BEGIN FINDING-R399>>>
-- R-0399 — Low — the reviewer's block-save commit is at the 500-insertion cap by CONSTRUCTION, and two consecutive rounds landed on exactly 500 without anyone choosing that. C0 writes the authored block to `.agent/authored/f077-r<n>.md` AND mirrors it over `.agent/last_block.md` in one commit, so its insertion total is `N + (N - matched)`, where `N` is the block's line count and `matched` is the number of lines git's diff algorithm pairs between the OLD `last_block.md` and the new one — that is, `2N - matched`. R16's C0 measured `260 + 240 = 500` with 20 lines matched; R17's C0 measured `274 + 226 = 500` with 48 matched. Both reproduce from `git show --numstat` and neither EXCEEDS the cap, which is why this is Low and not a violation. The hazard is that the margin is invisible at authoring time and moves in the wrong direction: `matched` depends on how similar the previous block happened to be, so the reviewer cannot predict C0's size from the one number it controls, and the 400-line block cap that DECISION F105 D5 sets is in direct tension with the 500-insertion commit cap for any block past roughly 250 lines — a 275-line block against a dissimilar predecessor breaches it and forces a declared deviation onto a worker that did nothing wrong. The fix is already precedent: the R15 session-close round split its save into two commits and declared the split, and each half is then about `N` rather than `2N - matched`. From here, a block over 250 lines orders its C0 as TWO commits — the authored save, then the `last_block` mirror — so the cap binds per artifact instead of per accident. OPEN.
-<<<END FINDING-R399>>>
-
-DOCFIX is a REWRITE pair over `docs/system/autonomy-watchdog-v1.md`. FROM and
-TO are disjoint and both are 3 physical lines, so the file stays 216 lines.
-
-<<<BEGIN DOCFIX-FROM>>>
-answer per number. `_record` has eleven call sites in `run_mission`, and the
-executed move's entry and the blocked-completion escalation's entry already fire
-in the same pass at the same number. The ledger's ordering is its FILE order,
-<<<END DOCFIX-FROM>>>
-
-<<<BEGIN DOCFIX-TO>>>
-answer per number. `_record` has ten call sites in `run_mission` (lines 936 to
+<<<BEGIN DOCFIX2-FROM>>>
 1341), and the executed move's entry and the blocked-completion escalation's
 entry already fire in one pass at one number. The ledger's ordering is FILE order,
-<<<END DOCFIX-TO>>>
+never a sort on this field.
+<<<END DOCFIX2-FROM>>>
 
-CONTEXTCOUNT is a REWRITE pair over `.agent/context.md`. FROM and TO are
-disjoint and both are 2 physical lines.
+    TO is these three lines:
+
+<<<BEGIN DOCFIX2-TO>>>
+1304, counting calls and not the nested definition at 1036), and the executed
+move's entry and the blocked-completion escalation's entry already fire in one
+pass at one number. The ledger's ordering is FILE order, never a sort on it.
+<<<END DOCFIX2-TO>>>
+
+    Three lines to three lines, so the file stays at 216 lines. After the edit
+    the FROM's first line `1341), and the executed move's entry and the` appears
+    0 times and the TO's first line appears exactly 1 time.
+
+(4) REWRITE in `.agent/context.md` — CONTEXTCOUNT. FROM is this one line:
 
 <<<BEGIN CONTEXTCOUNT-FROM>>>
-import cycle `watchdog` keeps its imports inside function bodies to avoid. Open
-findings after the R16 gate: TWENTY-EIGHT, next free id R-0398.
+findings at the session close: THIRTY, next free id R-0400.
 <<<END CONTEXTCOUNT-FROM>>>
 
+    TO is this one line:
+
 <<<BEGIN CONTEXTCOUNT-TO>>>
-import cycle `watchdog` keeps its imports inside function bodies to avoid. Open
-findings at the session close: THIRTY, next free id R-0400.
+findings at R19: THIRTY-ONE, next free id R-0402.
 <<<END CONTEXTCOUNT-TO>>>
 
-PLAN is a WHOLE-FILE replacement of `.agent/plan.md`. 44 lines, measured on
-these bytes before emission, under the AGENTS.md 50-line cap. It carries
-`## Goal` and `## Next Steps` so the contract readers stay green.
+    One line to one line, so `.agent/context.md` stays at 100 lines.
+
+(5) WHOLE-FILE replacement of `.agent/plan.md` with the PLAN slice — 45 lines,
+    applied byte for byte, nothing trimmed and nothing added:
 
 <<<BEGIN PLAN>>>
 # Plan — F077 Autonomy watchdog
 
 Branch: feature/f077-autonomy-watchdog, cut from main after PR #199 merged.
-F077 is claimed `[~]` in docs/roadmap/STATUS.md. Next free finding id: R-0400.
-Open findings: THIRTY — R-0380, R-0381, R-0361, R-0362, R-0363, R-0364, R-0367,
-R-0368, R-0369, R-0371, R-0374, R-0375, R-0376, R-0377, R-0378, R-0379, R-0382,
-R-0385, R-0386, R-0387, R-0389, R-0391, R-0392, R-0393, R-0394, R-0395, R-0396,
-R-0397, R-0398, R-0399 — recomputed from `.agent/live_review.md` at the session
-close: 34 registered, 4 resolved (R-0383, R-0384, R-0388, R-0390), no duplicate
-id. R-0398's fix has LANDED but is not resolved; only a reviewer sets `Done:`.
+F077 is claimed `[~]` in docs/roadmap/STATUS.md. Next free finding id: R-0402.
+Open findings: THIRTY-ONE — R-0361, R-0362, R-0363, R-0364, R-0367, R-0368,
+R-0369, R-0371, R-0374, R-0375, R-0376, R-0377, R-0378, R-0379, R-0380, R-0381,
+R-0382, R-0385, R-0386, R-0387, R-0389, R-0391, R-0392, R-0393, R-0394, R-0395,
+R-0396, R-0397, R-0399, R-0400, R-0401 — recomputed from `.agent/live_review.md`
+at R19: 36 registered, 5 resolved (R-0383, R-0384, R-0388, R-0390, R-0398), no
+duplicate id. R-0401's fix has LANDED but is not resolved; only a reviewer sets
+`Done:`.
 
 ## Goal
 Continuous operation gets a tripwire independent of the thing it watches. A
@@ -185,20 +121,20 @@ and raises one decision per trip class carrying the evidence triple. It stops;
 it never repairs. Thresholds live in config, not code.
 
 ## Current Step
-Session close after R17. The feature is CLOSURE-READY: T001, T002 and T003 are
-built and green, the integration gate ran on the branch AND at the merge base
-with zero branch-only failures, and the ist-doc closure owed now exists at
-`docs/system/autonomy-watchdog-v1.md`, registered in `docs/README.md`. No round
-is unreviewed: R17's verdict is on the record, so the next session starts fully
-gated and owes no gate paragraph for work it did not do.
+R19 — closure preparation. The R18 verdict is on the record, R-0398 is resolved
+against the source, R-0400 and R-0401 are registered, the ist-doc's `_record`
+span is repaired, and `docs/roadmap/features/T2_F077.md` now carries the Built
+State section that closure precondition 4 requires. The other preconditions
+already hold: the reviewer re-ran the full suite itself at `386ef7b5` and
+measured 16898 passed, 19 skipped, exit 0.
 
 ## Next Steps
-1. Phase 1 of docs/agents/self_drive_protocol.md, in order: rule 1 re-reads
-   `.agent/STOP` from disk, THEN rule 2 runs the Open PR Gate. There is no open
-   PR for this branch; the PR is created at closure, not before.
-2. Closure per docs/roadmap/STATUS_closure_protocol.md: the evidence job, a
-   FRESH review zip (a zip failure is a closure blocker), the authored STATUS
-   line committed last on the branch, then the PR — which is not merged now.
+1. Closure per docs/roadmap/STATUS_closure_protocol.md: the evidence job, a
+   FRESH review zip (a zip failure is a closure blocker), then the closure
+   commit — STATUS `[x]`, the README count and tier sync in that SAME commit
+   (R-0154, and tests/docs pins the count), and the final `.agent/` state —
+   last on the branch, then the PR, which is NOT merged this session.
+2. The next feature after F077 in STATUS order is F082 — Self-benchmark.
 
 ## Risks
 - A mission resumed AFTER its watchdog decision is answered still carries the
@@ -206,9 +142,133 @@ gated and owes no gate paragraph for work it did not do.
   three tripwires, so D4's verb buys exactly one iteration (inventory Q8).
 - R14 shipped `mission resume` at exactly that scope, and DECISION F077 D12
   does not address the re-trip; no round yet owns it.
-- Thirty open findings is the largest carry any feature has held.
+- Thirty-one open findings is the largest carry any feature has held.
 - R-0396's amendment target, docs/agents/integration_gate.md, is outside this
   feature's change set, so every future gate reproduces the eight phantom
   ui_server base failures until some feature owns that doc.
 <<<END PLAN>>>
-──────────────────────────────────────────────────────────────────
+
+── C2 slice ──────────────────────────────────────────────────
+
+APPEND the BUILTSTATE slice to the END of `docs/roadmap/features/T2_F077.md`,
+preceded by exactly one blank line. Touch no other line of that file. The file
+currently ends with the `## Do not touch` section.
+
+<<<BEGIN BUILTSTATE>>>
+## Built State
+- **T001 — the three evaluators, `packages/orchestration/watchdog.py`:** `Trip`
+  is a frozen dataclass carrying exactly `kind`, `what`, `since_iteration` and
+  `numbers` plus `to_json`, so the evidence triple cannot drift its keys between
+  the evaluator that builds it and the caller that reports it. The three kinds
+  are `TRIP_NO_PROGRESS`, `TRIP_BURN_ANOMALY` and `TRIP_GOAL_DRIFT`, with one
+  pure evaluator each — `evaluate_no_progress`, `evaluate_burn_anomaly` and
+  `evaluate_goal_drift` — and `evaluate_ledger` runs all three over one ledger
+  in that fixed order, dropping non-trips. Thresholds live in config, not in
+  code: `WatchdogThresholds` is resolved by `watchdog_thresholds_from_config`,
+  the ONE function in the module that reaches outside, over the four keys
+  `watchdog.no_progress_repeats` (3), `watchdog.burn_window` (3),
+  `watchdog.burn_min_samples` (5) and `watchdog.burn_multiplier` (3.0). The burn
+  tripwire is inert while `len(measured) < min_samples + window`, which is the
+  "missions too young for a baseline" default this file's A9 section asks for.
+  At T001 the module was import-only. Tests: `tests/orchestration/test_watchdog.py`,
+  one firing and one near-miss fixture per tripwire.
+- **T002 — pause, decision, dedup and the ledger entry, same module:**
+  `act_on_trips` is the ONE writing function, and its docstring enumerates
+  exactly what it writes: the mission STATUS once per call and only `active` →
+  `paused`; one escalation record per unsuppressed trip on the job the mission
+  last linked, deduped on `watchdog_decision_marker(kind)` so a class already
+  awaiting an answer raises nothing further; and one `MOVE_WATCHDOG_TRIPPED`
+  ledger entry per trip, whatever the decision outcome was. It returns one
+  `TripAction` per trip, whose `decision_id`, `suppressed` and `note` let a
+  reader tell suppression from an attachment failure. An empty trip list writes
+  nothing at all. `watchdog_pass` is the loop seam: `run_mission` in
+  `packages/orchestration/orchestrator_loop.py` imports it INSIDE its body and
+  calls it once per iteration, so a trip on iteration k pauses before k+1
+  dispatches, and the observing iteration's number is handed down rather than
+  re-derived (DECISION F077 D6). The ledger's `iteration` field is an
+  ATTRIBUTION, not a unique key (DECISION F077 D11).
+- **T003 — the manual audit CLI and the report surface:** `evaluate_mission` is
+  the read-only twin of `watchdog_pass` — same verdict over the same ledger, and
+  not one write — and it backs `remedy mission watchdog <id>`
+  (`_cmd_mission_watchdog`, registered `read_only`). `remedy mission resume <id>`
+  (registered `write_metadata`) returns a paused mission to active through the
+  same `_cmd_mission_set_status` body as `achieve`, `abandon` and `pause`.
+  `latest_trips_from_ledger` reconstructs recorded trips out of a ledger,
+  last-wins per kind in FILE order, and `_cmd_mission_show` leads a paused
+  mission's report with the trip — placed in the command rather than in
+  `render_mission_chain` so the renderer never imports `mission_state` and the
+  import cycle the watchdog's in-body imports avoid is not built elsewhere.
+  Tests: `tests/cli/test_mission_cmd.py`, `tests/orchestration/test_mission_e2e.py`.
+- **Independence is pinned by a test, not by prose:** `evaluate_mission` writes
+  nothing at all — no `set_mission_status`, no decision, no `save_job`, no ledger
+  append, directly or through a callee — which is this file's Acceptance
+  state-diff criterion. Built-state doc: `docs/system/autonomy-watchdog-v1.md`.
+- **Known limit, deliberately not fixed here:** a mission resumed after its
+  watchdog decision is answered still carries the tripping run in its ledger and
+  trips again, for all three tripwires, so `mission resume` buys exactly one
+  iteration. DECISION F077 D12 does not address the re-trip and no round owns it.
+<<<END BUILTSTATE>>>
+
+Done when:   Every gate below is EXECUTED and its REAL value recorded in the
+             handback. Report values raw; a contradiction is reported, never
+             reconciled by editing a file.
+
+  1.  `git status --porcelain` is empty at the start of the round, after each
+      commit, and at handback; `git worktree list` is exactly one line.
+  2.  `.agent/STOP` is ABSENT — read it from disk at the start of the round and
+      again at handback, and report both readings.
+  3.  `.agent/authored/f077-r19.md` and `.agent/last_block.md` are byte-identical;
+      report the shared sha256 and the line count of each.
+  4.  In `.agent/live_review.md`: `grep -c '^Gate: R18 — '` is 1;
+      `grep -c '^- R-0400 — '` is 1; `grep -c '^- R-0401 — '` is 1;
+      `grep -c '^Done: R-0398 — '` is 1; `grep -c '^Landed: R-0398'` is 0;
+      `grep -c '^Landed: '` is 2.
+  5.  Open set recomputed MECHANICALLY from `.agent/live_review.md`, not carried
+      from this block: `grep -c '^- R-[0-9]\+ — '` is 36, `grep -c '^Done: R-[0-9]\+ — '`
+      is 5, so 31 are open; report that no id appears twice and that the next
+      free id is R-0402.
+  6.  `wc -l`: `.agent/live_review.md` 148, `.agent/plan.md` 45,
+      `.agent/context.md` 100, `docs/system/autonomy-watchdog-v1.md` 216.
+  7.  Pair application by shape. DOCFIX2 is a REWRITE: after C1 the FROM's first
+      line appears 0x and the TO's first line appears 1x in the ist-doc.
+      CONTEXTCOUNT is a REWRITE: FROM 0x, TO 1x in `.agent/context.md`. PLAN is a
+      whole-file replacement: report the sha256 of `.agent/plan.md` and the
+      sha256 of the PLAN slice extracted from the committed authored file, and
+      state that they are EQUAL.
+  8.  `grep -c '^## Built State' docs/roadmap/features/T2_F077.md` is 1, and the
+      BUILTSTATE slice is the last content of that file.
+  9.  `python3 -m pytest tests/docs/ -q` — record the count and exit code. This
+      round changes a `docs/roadmap/**` file, so this gate is mandatory.
+  10. `python3 -m pytest -q -k "dashboard_contract or resource_safety or test_runner"`
+      — record the PASSED count and the DESELECTED count exactly as printed. Do
+      not adjust either toward any number in this block or any earlier gate;
+      finding R-0400 exists because that figure has not been reproducing.
+  11. Canary: `python3 -m pytest tests/cli/test_golden_path.py -q`.
+  12. `python3 -m apps.cli.main integrity check --json` — record `passed`,
+      `fail_count`, `check_count` and the `high_blockers_open` status.
+  13. `git diff --check 386ef7b5..HEAD` produces no output.
+  14. Per-commit insertions from `git show --numstat` for every commit this
+      round; none may exceed 500. Report each number.
+  15. `git diff --name-only 386ef7b5..HEAD` is exactly the seven ordered paths.
+  16. Transport, disk to disk: for EACH of the seven slices (LANDED-TO-DONE,
+      GATE-R18, FINDING-R400, FINDING-R401, LANDED-R401, DOCFIX2-TO,
+      CONTEXTCOUNT-TO, BUILTSTATE, PLAN), extract it from the COMMITTED
+      `.agent/authored/f077-r19.md` by its markers and compare it byte for byte
+      against the region it was applied to. Report the sha256 of both sides for
+      each and state that they are EQUAL. Nothing is retyped; no marker line
+      reaches any target file.
+  17. `git push -u origin feature/f077-autonomy-watchdog`, and the remote head
+      equals the local head.
+
+Handback:    Rewrite `.agent/handoff.md` completely (never append) per AGENTS.md
+             and docs/agents/handback_template.md: feature and round, branch,
+             base SHA `386ef7b5`, a per-commit table with paths and +/-, an
+             item-status table covering C0a, C0b, C1, C2 and C3 with every item
+             present exactly once, the verification table with every measured
+             value from the gates above, the transport proofs, open-findings
+             count, declared deviations, and the next expected action. Cap is 60
+             lines; if the mandated content genuinely does not fit, exceed it and
+             carry a "Deviations, declared" line naming the actual line count and
+             the specific mandated content that caused the overage (DECISION
+             D15). Never drop a section to meet the cap.
+──────────────────────────────────────────────────────────────
