@@ -14,8 +14,12 @@ asset (R-0411), and the missing two wait on a bench-owned fixture per DECISION
 F082 D3 rather than an edit to the gauntlet's template — `bench_dry_run.py`
 with the join from an order file to a row over recorded evidence, and
 `bench_history.py` with the append-only history, the trend and the regression
-rules. Still to come, both T003: the `stats bench` CLI surface and the
-model-context recording.
+rules. T003a landed the `stats bench` read view at R10 — a new
+`bench_cmd.py` under `apps/cli/commands/`, its catalog entry and its own test
+file, adding exactly one handler key and changing no bench module. Still to
+come, T003b alone: the
+model-context recording and a fake-provider bench run end to end, inventoried
+at R11 before it is built.
 R2's inventory settled the shape: the factoring is ADDITIVE, so every bench
 module is NEW and no symbol moves out of any gauntlet module — R3's
 `capability_bench.py`, R4's `bench_orders.py`, R6's `bench_dry_run.py` and R7's
