@@ -3204,6 +3204,7 @@ def run_pingpong(
                     on_provider_attempt=on_provider_call,
                     call_reasons=reviewer_call_reasons,
                     stop_check=_stopped,
+                    rate_governor=_rate_governor,
                 )
                 retry_out.parse_retried = True
                 if not retry_out.error:
