@@ -1,59 +1,59 @@
-# Handback — paydown0814 · Round 3 of 4
+# Handback — paydown0814 · Round 4 of 4 — the LAST round of this branch
 
 ## Range
-bc0f5223..HEAD, 3 commits, branch feature/paydown0814-closure-debt. PR #198
-open and NOT merged — the merge is R4 (docs/agents/self_drive_protocol.md G1).
-Only `.agent/` was touched: no docs/, tests/, packages/, apps/, STATUS.md, README.md.
+2e866c84..HEAD, 1 commit, branch feature/paydown0814-closure-debt. Only
+`.agent/handoff.md` touched: no docs/, tests/, code, no `main` commit or push (G3).
 
 ## Commits
-### d0c5c521 chore(paydown0814): save the R3 block verbatim
+### C1 chore(paydown0814): handback R4 and close the branch — this commit
 | Path | +/- | Reason |
-| .agent/authored/paydown0814-r3.md | +140/-0 | C0, block saved byte for byte (NEW) |
-
-### 3781c36b docs(paydown0814): record the R2 verdict and resolve R-0359 and R-0360
-| Path | +/- | Reason |
-| .agent/live_review.md | +27/-3 | C1, Steps rewrite + the two reviewer-authored `Done:` lines |
-
-### C2 chore(paydown0814): handback R3 — the commit writing this file
-| Path | +/- | Reason |
-| .agent/plan.md | rewrite | C2, R3-complete state |
-| .agent/handoff.md | rewrite | this file |
+| .agent/handoff.md | rewrite | C1, the session-closing record |
 
 ## Item status
 | Item | Status | Reason |
-| C0 save the block verbatim | done | |
-| C1 live_review.md verdict + 2 resolutions | done | |
-| C2 plan + handoff | done | |
+| C1 session-closing handoff | done | |
+| C2 Open PR Gate merge of PR #198 | deviated | runs AFTER this commit is pushed |
 
-## Verification (raw results)
-- gate 1 pair proof, Python `str.count` on `.agent/live_review.md`: STEPS-FROM
-  `0`, STEPS-TO `1`, D359-FROM/TO `1`/`1`, D360-FROM/TO `1`/`1`, exit 0; each
-  of the three FROMs occurred exactly `1` time in the pre-check before applying.
-- transport: the six pair strings and the PLAN slice sha256-match the marker
-  slices of `.agent/authored/paydown0814-r3.md` — `ALL_MATCH True`, exit 0.
-- gate 2 `git show --numstat 3781c36b -- .agent/live_review.md` → `27	3`, exit
-  0. Over that diff's ADDED lines: `Done: R-0359 — ` starts exactly `1` line,
-  `Done: R-0360 — ` exactly `1`, `Done: ` total `2`; of the `3` removed, none.
-- gate 3 open/done derivation → `OPEN ['R-0361'] DONE ['R-0359', 'R-0360']`,
-  exit 0 — the ordered string exactly.
-- gate 4 `pytest tests/ui_server/test_dashboard_contract.py -q` → `70 passed in
-  3.04s`, exit 0 — unchanged from before this round, as expected.
-- canary `pytest tests/cli/test_golden_path.py -q` → `42 passed in 15.84s`, exit 0
-- `git worktree list` → ONE line, `/home/decodeux/Repos/remedy  3781c36b
-  [feature/…]`; `branch --list 'tmp/*'` and `status --porcelain` → both empty.
+## No gate entry for R4, by construction
+Per docs/agents/planner_reviewer_prompt.md §4 item 13 the closing round cannot
+record a gate on itself: its verdict lives in this handoff, the R4 completion
+report and PR #198. That absence is the TERMINATOR, not a missing gate.
 
-## External actions
-- `git push` after C0, C1 and C2 — all OK. No force-push, no worktree created,
-  nothing pushed to main, PR #198 NOT merged.
+## Rounds R2 and R3 — both PASS
+The second session's reviewer PASSed both and re-ran every gate ITSELF, not reading
+the worker's report — own red-proof included, in a disposable worktree at bc0f5223.
+
+## Findings — 1 open
+- R-0359 reviewer-conventions token cap — RESOLVED on disk, reviewer-authored
+  `Done:` text. R-0360 README tier pin — RESOLVED the same way.
+- `OPEN ['R-0361']` — 1 open, a reviewer-process finding whose counter-measure
+  is already in force. Next free finding id: R-0362.
+- `main` stays RED until PR #198 merges; that merge is the R4 action below.
+
+## R4 verification (real, this round)
+- `gh pr list --state open --json number,headRefName,baseRefName,isDraft` → exactly
+  ONE open PR: number 198, head feature/paydown0814-closure-debt, base main,
+  isDraft false, exit 0.
+- `gh pr view 198` → state OPEN, isDraft false, mergeable MERGEABLE,
+  mergeStateStatus CLEAN. All four Open PR Gate conditions met.
+- `git worktree list` → ONE line, this checkout; `git status --porcelain` empty;
+  branch in sync with origin at 2e866c84 before this commit.
+- The R4 ACTION — `gh pr merge 198 --merge --delete-branch`, then
+  `git checkout main` and `git pull --ff-only` — runs immediately AFTER this
+  commit is pushed. Its executed result, the four green-proof runs on merged
+  `main` (test_role_conventions.py, tests/docs/, test_dashboard_contract.py,
+  test_golden_path.py canary) and the open-finding derivation are reported in
+  the R4 completion report and PR #198, per item 13.
 
 ## Deviations & assumptions
-- None. Every `Done:` byte is reviewer-authored and applied verbatim; no new
-  finding id spent, next free stays R-0362.
-
-## Open findings
-1 open — `OPEN ['R-0361']`, reviewer-process, counter-measure in force. R-0359
-and R-0360 are RESOLVED on disk; `main` stays RED until PR #198 merges.
+- The block asked for the merge outcome to be written here before the commit.
+  Impossible without stranding this commit (the gate's `--delete-branch` removes
+  the branch) or committing to `main` (forbidden, G3); writing PREDICTED results
+  as if executed would be false attribution. Ordering wins: commit and push
+  first, report the real result afterwards.
+- No force-push, no worktree, no new branch, no `main` commit, no new work.
 
 ## Next
-R4 — Open PR Gate: `gh pr merge 198 --merge --delete-branch`, `git checkout main`,
-`git pull --ff-only`; that turns `main` green. Then F057 on a new branch.
+NEXT SESSION: Phase 0 state probe → Phase 1 rule 1 (re-read `.agent/STOP`)
+BEFORE rule 2 → then claim F057, Rate-limit-aware scheduler, per Rule A5 and
+STATUS order, on a NEW branch cut from the merged `main`. Do not start it now.
