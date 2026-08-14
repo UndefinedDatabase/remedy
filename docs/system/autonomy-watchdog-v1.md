@@ -173,9 +173,9 @@ A ledger from a tripped run reads `[1, 2, 3, 3]`, and that is correct.
 is recorded as belonging to the iteration that produced the evidence for it. The
 `iteration` field is an ATTRIBUTION, not a unique key: it answers "which
 iteration does this entry belong to", a question with more than one correct
-answer per number. `_record` has eleven call sites in `run_mission`, and the
-executed move's entry and the blocked-completion escalation's entry already fire
-in the same pass at the same number. The ledger's ordering is its FILE order,
+answer per number. `_record` has ten call sites in `run_mission` (lines 936 to
+1341), and the executed move's entry and the blocked-completion escalation's
+entry already fire in one pass at one number. The ledger's ordering is FILE order,
 never a sort on this field.
 
 So in `[1, 2, 3, 3]` the second `3` is the watchdog entry for the trip that
