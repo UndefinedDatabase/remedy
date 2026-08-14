@@ -1,49 +1,45 @@
-# Handback — F077 Autonomy watchdog · R10 (T002 wiring)
+# Handback — F077 Autonomy watchdog · R11 (HALTED at C3 by the block's stop clause)
 
-Branch `feature/f077-autonomy-watchdog`. Base `24600478`.
-Fortschritt: `~70 % (T001 ✅ · T002 Aktion ✅ unverdrahtet · Verdrahtung R10 · T003 offen) — Schätzung`
+Branch `feature/f077-autonomy-watchdog`. Base `63ce2a6d`.
+Fortschritt: `~72 % (T001 ✅ · T002 Aktion ✅ · Verdrahtung rot, Reparatur R11 · T003 offen) — Schätzung`
 
 ## Range
-Review of `24600478..HEAD`.
+Review of `63ce2a6d..HEAD`.
 
 ## Commits
 
-### 02362a1b chore(f077): save the R10 block verbatim
+### e53c9129 chore(f077): save the R11 block verbatim
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f077-r10.md | +293/-0 | C0a, byte for byte |
+| .agent/authored/f077-r11.md | +270/-0 | C0a, byte for byte |
 
-### ca791c52 chore(f077): mirror the R10 block into last_block
+### e5d1c338 chore(f077): mirror the R11 block into last_block
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/last_block.md | +293/-99 | C0b, `cp` disk-to-disk |
+| .agent/last_block.md | +211/-234 | C0b, `cp` disk-to-disk |
 
-### 4f771e3c docs(f077): record the R9 verdict
+### 8b87ebb5 docs(f077): record the R10 verdict and register R-0387 to R-0390
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/live_review.md | +2/-0 | C1, authored GATE-R9 slice appended |
+| .agent/live_review.md | +10/-0 | C1, four findings in id order then GATE-R10 |
 
-### c84aecac docs(f077): register decision D9 on the e2e guard probe
+### cfd9562c docs(f077): record DECISION F077 D10 on the trip's iteration number
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/decisions.md | +40/-0 | C2, authored DECISION-D9 slice appended |
+| .agent/decisions.md | +36/-0 | C2, authored DECISION-D10 slice appended |
 
-### 908d0df5 feat(f077): call the autonomy watchdog from run_mission
+### 79c6c223 chore(f077): mirror the halted R11 round into plan and context
 | Path | +/- | Reason |
 |---|---|---|
-| packages/orchestration/watchdog.py | +50/-8 | C3a `watchdog_pass`; the module's "no caller" clause repaired with it |
-| packages/orchestration/orchestrator_loop.py | +15/-0 | C3b the call site |
-| packages/orchestration/mission_state.py | +5/-0 | C3c pair MS-DOCSTRING |
-| apps/cli/commands/mission_cmd.py | +4/-0 | C3d pair CMD-DOCSTRING |
-| tests/orchestration/test_watchdog.py | +196/-4 | C3e three loop tests; stale "no call site" comment repaired |
+| .agent/plan.md | +27/-32 | C4, the exact blocker; 45 lines, under "<50" (R-0390) |
+| .agent/context.md | +19/-11 | C4, numbering NOT called repaired; measured 400-line block cap |
 
-### b7ee075c chore(f077): mirror the R10 wiring round into plan and context
+### 2498233b docs(f077): mark R-0390 landed after the plan rewrite
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/plan.md | +33/-29 | C4, R10 current, R11/R12 ahead, blocker + resume re-trip risk |
-| .agent/context.md | +16/-11 | C4, watchdog now described as WIRED; `## Steps` extended |
+| .agent/live_review.md | +2/-0 | one `Landed:` line; no `Done:`, and none for R-0388 |
 
-### (this commit) chore(f077): handback R10
+### (this commit) chore(f077): handback R11
 | Path | +/- | Reason |
 |---|---|---|
 | .agent/handoff.md | rewrite | C5; a handoff cannot table its own commit (R-0149) |
@@ -55,72 +51,67 @@ Review of `24600478..HEAD`.
 | C0b | done | |
 | C1 | done | |
 | C2 | done | |
-| C3 | done | wiring, both pairs and three tests landed; see Deviation 1 for the guard it broke |
-| C4 | done | |
+| C3 | skipped | the block's own stop clause fired — Deviation 1 |
+| C4 | deviated | records the HALT; "numbering repaired" would be false — Deviation 2 |
 | C5 | done | this file |
 
 ## External actions
-`git worktree add .remedy-wt/redproof-r10 HEAD --detach` → created at `908d0df5`; `git worktree remove --force`
-+ `git worktree prune` → list back to 1 line. `git push -u origin feature/f077-autonomy-watchdog` → gate 16. No PR.
+`git worktree add .remedy-wt/f077-r11-probe HEAD --detach` → created at cfd9562c, probe run inside it,
+`git worktree remove --force` → removed; `git worktree list` back to exactly 1 line.
+`git push -u origin feature/f077-autonomy-watchdog` run at handback. No `gh`, no PR.
 
 ## Verification
-1. `git status --porcelain` EMPTY; `git worktree list` 1 line.
-2. `cmp .agent/authored/f077-r10.md .agent/last_block.md` exit 0; shared sha256
-   `da0b9f66dbdc642b17adba8c2ee26fb3e6442055850bdf194d910dfb9fc7e031`; 293 lines each.
-3. `^Gate: R9 — PASS` in live_review → 1; `^## Steps` in live_review → 1; `^## DECISION F077 D9 ` in decisions → 1.
-4. Open set recomputed mechanically: 21 registered, 2 resolved (R-0383, R-0384), no duplicate id → NINETEEN open:
-   R-0361/0362/0363/0364/0367/0368/0369/0371/0374/0375/0376/0377/0378/0379/0380/0381/0382/0385/0386.
+1. `git status --porcelain` EMPTY. `git worktree list` 1 line.
+2. `cmp .agent/authored/f077-r11.md .agent/last_block.md` exit 0; shared sha256
+   `92804a8b3a8b2d2eb6bb2681b881ad5d02dbb86845feca979515a35aca39b2f4`; 270 lines.
+3. `^Gate: R10 — FAIL` 1 · `^## Steps` 1 · `^## DECISION F077 D10 ` 1 · each of R-0387/0388/0389/0390 1.
+4. Open set recomputed mechanically: 25 registered − 2 `Done:` (R-0383, R-0384) = **23 open**, no duplicate id:
+   R-0380, R-0381, R-0361, R-0362, R-0363, R-0364, R-0367, R-0368, R-0369, R-0371, R-0374, R-0375, R-0376,
+   R-0377, R-0378, R-0379, R-0382, R-0385, R-0386, R-0387, R-0388, R-0389, R-0390. R-0388 and R-0390 stay open.
 5. `import packages.orchestration.orchestrator_loop` exit 0; `import packages.orchestration.watchdog` exit 0.
-6. `test_watchdog.py` base `25 passed` → HEAD `28 passed`; `grep -c "def test_"` 28 (nothing skipped/double-collected).
-   `test_orchestrator_loop.py` base `196 passed` → HEAD **`1 failed, 195 passed`** (Deviation 1).
-   C3b anchor: `grep -c` of `_record(iteration, context.digest, move.model_dump(), outcome, cost)` → **2**; only one
-   is followed by the `if outcome.terminal:` three-liner, and that unique one is where the call went.
-7. `tests/cli/test_mission_cmd.py` → `83 passed`.
-8. PROBE `tests/orchestration/test_mission_e2e.py`: base `24 passed` → HEAD `24 passed`. GREEN; file untouched.
-   All three tripwires stayed inert, as D9 read them: `no_progress` is cleared by each `declare_milestone_done`
-   (longest run 2 vs threshold 3); `burn_anomaly` sees 0 measured entries (that scenario writes `usage: None`)
-   against `burn_min_samples + burn_window` = 8; `goal_drift` sees only M001 and M002, both in the plan.
-9. `ruff check` over the five changed files under packages/apps/tests → `All checks passed!`.
-10. Canary `tests/cli/test_golden_path.py` → `42 passed`.
-11. `pytest tests/ -q -k "dashboard_contract or resource_safety or test_runner"` → `216 passed, 16648 deselected`,
-    re-run AFTER the C4 edits; both drafts validated against every assertion that reads them first (R-0162).
-12. `integrity check --json` → `passed: true`, `fail_count: 0`, `check_count: 5`, `high_blockers_open`:
-    "no open blocker/high findings".
-13. RED-PROOF in `.remedy-wt/redproof-r10` at `908d0df5` with the C3b call deleted → `2 failed, 26 passed`:
-    `test_three_dispatches_in_a_row_trip_no_progress_through_the_loop` and
-    `test_the_paused_mission_dispatches_nothing_on_the_next_run` (`assert 'iteration_failed' == 'mission_not_active'`).
-    The new tests do reach the call site. The third is the NEGATIVE control and passes without the call by
-    construction — it asserts zero watchdog entries — which is what a negative control is, not a gap.
-14. Insertions per commit (C0a…C5): 293, 293, 2, 40, 270, 49, 100. None over 500.
-15. `test -e .agent/STOP` → ABSENT before the round, ABSENT at handback.
-16. `git push -u origin feature/f077-autonomy-watchdog` run at handback; branch in sync with origin.
-17. Trailing-whitespace scan over all twelve touched files → none; all newline-terminated.
+6. `test_orchestrator_loop.py -q`: base `1 failed, 195 passed`, HEAD `1 failed, 195 passed` — same assertion,
+   `assert [1, 2, 3, 3] == [1, 2, 3]`. No code changed this round, so the colour could not move.
+7. `test_watchdog.py -q`: 28 passed at base, 28 passed at HEAD; `grep -c "def test_"` 28.
+8. `test_mission_e2e.py -q`: 24 passed at base and at HEAD. Unmoved.
+9. `ruff check` over the files this round CHANGED (three `.md`): `warning: No Python files found under the given
+   path(s)` / `All checks passed!`. The Python targets were not touched; ruff on them shows one PRE-EXISTING
+   `I001` (unsorted imports) in `tests/orchestration/test_orchestrator_loop.py`, unchanged at `63ce2a6d`.
+10. Canary `tests/cli/test_golden_path.py -q` 42 passed.
+11. `-k "dashboard_contract or resource_safety or test_runner"` 216 passed, 16648 deselected; and `tests/docs/ -q`
+    295 passed — every reader of the two state files was run against the draft before it committed (R-0162).
+12. `integrity check --json`: passed=True, fail_count=0, check_count=5, high_blockers_open=pass.
+13. `wc -l .agent/plan.md` 45. Under 50.
+14. Insertions per commit: 270 · 211 · 10 · 36 · 46 · 2. None over 500.
+15. `test -e .agent/STOP` ABSENT before the round, ABSENT at handback.
+17. Trailing-whitespace scan over all six touched files → none; all newline-terminated.
 
 ## Authored-text proofs
-`cmp` exit 0 (gate 2). GATE-R9 re-extracted from the committed authored file, present in `.agent/live_review.md`
-exactly 1x, 2919 bytes / 2904 chars. DECISION-D9 present in `.agent/decisions.md` exactly 1x, 2559 bytes /
-2547 chars. Both pairs APPEND-shaped and proved as such: FROM exactly 1x in each target file, TO literally
-contains FROM, every TO-only line exactly 1x among that commit's ADDED lines. Zero marker lines reached any file.
+`cmp` exit 0 (gate 2); no transport this round, so the shared sha256 is the whole proof. All five appended slices
+were re-extracted from the COMMITTED block file, never retyped; each occurs exactly 1x in its target and zero
+marker lines (`<<<BEGIN`, `<<<END`, `FROM:`, `TO:`) reached any file. PAIR LOOP-CALL and PAIR WD-DOCSTRING were
+NOT applied — C3 halted, so neither FROM/TO proof exists this round.
 
 ## Deviations & assumptions
-1. **BLOCKER, declared, NOT repaired.**
-   `test_orchestrator_loop.py::TestTheLedgerCoversEveryIteration::test_one_entry_per_iteration_numbered_from_one`
-   is RED at HEAD. It scripts three identical dispatches on M001 under `max_iterations=3` — exactly the
-   `no_progress` pattern — so its ledger reads `[1, 2, 3, 3]` against `== [1, 2, 3]`, and its second assertion
-   `all(kind == "dispatch_job")` breaks too. The extra entry carries the loop's own iteration number, i.e.
-   DECISION F077 D6 working as designed: a stale whole-ledger guard of exactly the class D8 predicted, in a file
-   D8 and D9 never examined. The block names twelve files, says "nothing beyond them", and makes gate 8 the SOLE
-   authority for a thirteenth (`test_mission_e2e.py`, which measured green), so no gate authorises repairing this
-   one; per the block's closing STOP clause it is reported, not repaired, and the round ends here. C3 was still
-   committed: without it gates 6, 8 and 13 are not reproducible, and AGENTS.md "If Blocked" directs committing
-   the valid completed portion and recording the exact blocker in `.agent/plan.md`, which C4 does.
-2. Two docstring repairs beyond the two authored pairs, both inside already-declared files and both made false by
-   C3 itself: `watchdog.py`'s "It has NO caller in `orchestrator_loop` at this commit", and the `test_watchdog.py`
-   section comment asserting the same. Leaving either would re-create the R-0384 defect in the commit causing it.
-3. **Deviations, declared** (DECISION D15): this handback is 126 lines against the ≤100 a >5-commit round allows.
-   Cause is mandated content — six per-commit tables plus the self-referential seventh, the item-status table, the
-   seventeen-gate verification table, the authored-text proofs, and Deviation 1, which is the one thing the next
-   round cannot start without. No section was dropped to meet the cap.
+1. **C3 NOT APPLIED, on the block's own instruction**: "if you find a path where the loop DOES record after a
+   trip, stop and report it, because then this whole repair is wrong." There is one, and it lands on exactly the
+   number D10 takes. `run_mission`'s safe point (`stop_requested`, loop lines 1057-1069) runs BEFORE the
+   top-of-loop status check that returns `mission_not_active`, and it `_record`s — so a stop requested in the
+   window after a trip writes an entry numbered `base + step - 1`, precisely `next_iteration_index` at trip time.
+   Measured, not argued: with pair LOOP-CALL applied in a disposable worktree (import path proved to resolve to
+   that worktree), a 4-iteration scripted run whose third dispatch requests a stop leaves `[1, 2, 3, 4, 4]`,
+   kinds `dispatch_job ×3, watchdog_tripped, (none)`. The same probe at base leaves `[1, 2, 3, 3, 4]`. Both
+   numberings duplicate; D10 moves the duplicate rather than removing it. Two further `_record` calls also sit
+   AFTER `watchdog_pass` in the SAME iteration — the R-0190 blocked-completion escalation and the
+   boundary-failure branch — both at the observed iteration number.
+2. C4 deviates in wording: the block orders `.agent/context.md` to describe the ledger numbering "as repaired",
+   which would be false at this HEAD, so both state files record the halt instead. R-0390's own fix landed
+   anyway — plan.md is 45 lines with `## Goal`, `## Current Step`, `## Next Steps` and `## Risks` all intact —
+   and carries the round's single `Landed:` line. No `Landed:` line was written for R-0388.
+3. **Deviations, declared** (DECISION D15): this handback is 117 lines against the ≤100 a >5-commit round allows.
+   Cause is mandated content — seven per-commit tables, the item-status table, the seventeen-gate verification
+   list, the authored-text proofs, and Deviation 1, which is the measurement the next round cannot start without.
+   No section was dropped to meet the cap.
 
 ## Next
-R11 repairs that single stale guard — the only red on the branch — then starts T003.
+The reviewer re-decides DECISION F077 D10's numbering against the safe-point path — the trip's number is not
+collision-free — and re-orders the repair; `test_one_entry_per_iteration_numbered_from_one` stays red until it does.
