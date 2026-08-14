@@ -5274,3 +5274,42 @@ revert the two tests. The evidence a trip carries is unaffected either way: the
 observing iteration is named by the trip's own `since_iteration` and its
 `numbers` payload, never by the entry's number, which is why this decision costs
 no information.
+
+## DECISION F077 D11 (2026-08-14) — the ledger's `iteration` is not a unique key, and D10 is withdrawn unimplemented
+
+CONTEXT. Findings R-0388 and R-0391. DECISION F077 D10 ordered `run_mission` to
+stop passing its own iteration number to `watchdog_pass`, so a trip would be
+numbered one past the entry that caused it. It rested on two premises and both
+are false. The first, that the ledger holds one entry per iteration number:
+`_record` has eleven call sites in `run_mission`, and the executed move's entry
+and the blocked-completion escalation's entry fire in the same pass at the same
+number, shipped and green since F075 R-0190. The second, that a trip always
+ends the run before another entry can be written: `run_mission`'s safe point
+calls `_record` and returns BEFORE the top-of-loop status check, so a stop
+requested after a trip writes an entry at exactly the number D10 hands the trip.
+The worker measured it — `[1, 2, 3, 4, 4]` with the repair against
+`[1, 2, 3, 3, 4]` without it — and halted rather than applying it.
+
+CHOSEN. D10 is withdrawn without ever being implemented. DECISION F077 D6 stands
+unchanged: `run_mission` passes its own iteration number, and a trip is recorded
+as belonging to the iteration that produced the evidence for it. The `iteration`
+field is documented, here, as an ATTRIBUTION and not a key — it answers "which
+iteration does this entry belong to", a question with more than one correct
+answer per number, and the ledger's ordering is its file order. The only change
+this round makes is to the one test that encoded the imagined invariant.
+
+ALTERNATIVES CONSIDERED. Making `iteration` genuinely unique would mean giving
+every one of the eleven `_record` call sites its own number, retiring the
+attribution meaning that the R-0190 escalation entry and the F077 trip entry
+both depend on, and rewriting the guards that currently read the field as an
+iteration count — a large change to a shipped audit format, bought to satisfy a
+property nothing needs. Adding a separate sequence field beside `iteration`
+gives the ledger two numbers where readers cope with one, and the F077 entry is
+not the reason to introduce it; if a real need for row identity appears, it
+arrives with its own feature and its own migration of the record shape.
+
+HOW TO REVERSE. Re-apply D10 by restoring the `iteration=iteration` argument's
+removal at the `run_mission` call site — which was never removed, so reversing
+this decision is a change, not a revert. Any such attempt must first answer the
+safe-point path this decision names, because that path is what made D10 unsafe
+independently of whether its invariant existed.
