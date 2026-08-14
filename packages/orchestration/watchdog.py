@@ -26,14 +26,15 @@ and ``read_ledger`` already tolerates torn lines, so an entry missing its
 must not be able to make the other entries unreadable. A tripwire that crashes
 on one bad line is a tripwire that is not watching.
 
-The LAST section of this file — ``act_on_trips`` and the constants above it —
-is the ACTION half, and it is deliberately NOT pure: acting on a trip means
-writing. The purity sentence above therefore means only what it says, about the
-three evaluators and their helpers, and not about this module as a whole. The
-action's writes are bounded to exactly three: the mission status, one escalation
-record on the job it attaches to, and the ledger append. It has NO caller in
-``orchestrator_loop`` at this commit — nothing in the running loop reaches it,
-and it is called by hand or by a test until that changes.
+The LAST section of this file — ``act_on_trips``, ``watchdog_pass`` and the
+constants above them — is the ACTION half, and it is deliberately NOT pure:
+acting on a trip means writing. The purity sentence above therefore means only
+what it says, about the three evaluators and their helpers, and not about this
+module as a whole. The action's writes are bounded to exactly three: the mission
+status, one escalation record on the job it attaches to, and the ledger append.
+Since the F077 T002 wiring it DOES have a caller: ``run_mission`` calls
+``watchdog_pass`` once per continuing iteration, and that function — never
+``act_on_trips`` directly — is the running loop's only entry point here.
 """
 from __future__ import annotations
 
@@ -523,3 +524,44 @@ def act_on_trips(
         orchestrator_loop.append_ledger_entry(
             project_id, mission_id, entry, root, now=stamp)
     return actions
+
+
+#: The whole watchdog in ONE call for a caller that has a mission id and nothing
+#: else — read the ledger, resolve the thresholds, evaluate every tripwire, act
+#: on what tripped — and the only thing ``orchestrator_loop.run_mission`` calls.
+def watchdog_pass(
+    project_id: str,
+    mission_id: str,
+    *,
+    iteration: int | None = None,
+    root: Any = None,
+    now: Any = None,
+) -> list[TripAction]:
+    """One pass over one mission's ledger. Writes NOTHING when nothing tripped.
+
+    The thresholds come from config and the known milestone ids from the
+    PERSISTED mission plan, so the caller supplies no policy of its own: a loop
+    that could choose the watchdog's numbers would be marking its own homework.
+
+    ``iteration`` is handed straight to :func:`act_on_trips` (DECISION F077 D6).
+    A caller inside a running iteration knows the number a trip belongs to, and
+    re-deriving it from the ledger would number the trip one past the entry that
+    caused it.
+
+    Every import lives INSIDE this body for the same reason ``act_on_trips``
+    keeps its own there: a module-level import of ``orchestrator_loop`` would
+    create the import cycle this whole split exists to avoid.
+    """
+    from packages.orchestration import orchestrator_loop
+    from packages.orchestration.mission_state import load_mission
+
+    entries = orchestrator_loop.read_ledger(project_id, mission_id, root)
+    mission = load_mission(project_id, mission_id, root)
+    trips = evaluate_ledger(
+        entries,
+        milestone_ids=orchestrator_loop.milestone_ids(mission),
+        thresholds=watchdog_thresholds_from_config())
+    # The clean pass is the common one, and ``act_on_trips`` writes nothing for
+    # an empty list — so a quiet mission costs the two reads above and no write.
+    return act_on_trips(project_id, mission_id, trips, root=root,
+                        iteration=iteration, now=now)

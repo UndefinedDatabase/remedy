@@ -258,6 +258,10 @@ def _cmd_mission_set_status(mission_id: str, verb: str, *,
     loop — see ``mission_state.set_mission_status`` for the full caller list —
     so F056's "nothing moves on its own" holds for this COMMAND, not for the
     status field.
+
+    Since F077 the autonomy watchdog writes ``paused`` the same way and with no
+    human in the loop either, so the status field has three kinds of writer and
+    this command is only one of them.
     """
     from packages.orchestration.mission_state import MissionError, set_mission_status
 

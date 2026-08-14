@@ -16,7 +16,10 @@ each test pins:
   * goal_drift fires on the first dispatched milestone the plan never named
     and stays silent when every dispatch is on plan;
   * ``evaluate_ledger`` reports in a fixed order;
-  * every evaluator tolerates a torn entry without raising.
+  * every evaluator tolerates a torn entry without raising;
+  * and — in the last section, through ``run_mission`` itself — that the loop
+    really calls the watchdog, that the pause it writes stops the next run from
+    dispatching, and that a run which trips nothing writes nothing.
 
 Every assertion names the Trip's ``kind``, ``since_iteration`` and the
 ``numbers`` it carries: a test that only asserts "a trip happened" does not
@@ -27,8 +30,10 @@ the shape ``read_ledger`` returns. No JSONL fixture file, no disk, no conftest.
 """
 from __future__ import annotations
 
+import json
 from datetime import datetime, timezone
 from typing import Any
+from uuid import UUID
 
 import pytest
 
@@ -36,6 +41,11 @@ from packages.core.models import Job, RunState, Task
 from packages.orchestration.escalation import (
     answer_task_decision,
     open_task_decisions,
+)
+from packages.orchestration.mission_plan_schema import (
+    MISSION_PLAN_SCHEMA_V,
+    Milestone,
+    MissionPlan,
 )
 from packages.orchestration.mission_state import (
     MISSION_ROLE_INITIAL,
@@ -45,16 +55,22 @@ from packages.orchestration.mission_state import (
     create_mission,
     link_job_to_mission,
     load_mission,
+    set_mission_plan,
     set_mission_status,
 )
 from packages.orchestration.orchestrator_loop import (
+    TERMINAL_ITERATION_LIMIT,
+    TERMINAL_NOT_ACTIVE,
+    LoopLimits,
     ledger_path,
     read_ledger,
     render_ledger,
+    run_mission,
 )
 from packages.orchestration.orchestrator_move_schema import (
     MOVE_DECLARE_MILESTONE_DONE,
     MOVE_DISPATCH_JOB,
+    ORCHESTRATOR_MOVE_SCHEMA_V,
 )
 from packages.orchestration.storage import load_job, save_job
 from packages.orchestration.watchdog import (
@@ -308,9 +324,10 @@ def test_every_evaluator_tolerates_a_torn_entry_without_raising():
 # directory because ``load_job`` — the one call the action makes that takes no
 # root — resolves the job store through it.
 #
-# Nothing here asserts anything about ``orchestrator_loop.run_mission``:
-# ``act_on_trips`` has no call site in the loop at this commit (DECISION F077
-# D8), so a green file below proves the action in isolation and nothing else.
+# Nothing in THIS section asserts anything about ``orchestrator_loop`` — every
+# test below calls ``act_on_trips`` directly, so a green result here proves the
+# action in isolation. The loop's call site is pinned by the LAST section of
+# this file, which drives the same action through ``run_mission``.
 
 ACTION_PROJECT = "p-f077"
 T0 = datetime(2026, 8, 14, 9, 0, 0, tzinfo=timezone.utc)
@@ -544,3 +561,178 @@ def test_without_an_iteration_the_entries_number_themselves_consecutively(
 
     numbers = [e["iteration"] for e in _watchdog_entries(mission.id, data_root)]
     assert numbers == [1, 2]
+
+
+# ── the wiring: run_mission is what calls the watchdog (F077 T002) ─────────
+#
+# The PRODUCTION path, end to end: a scripted provider, the loop's own dispatch
+# verb, and the thresholds ``watchdog_thresholds_from_config`` really resolves.
+# Nothing below monkeypatches a threshold, injects a watchdog double or passes a
+# seam for it — the trip is forced by the MOVES, which is what makes a green
+# result evidence about ``run_mission`` and not about a stub. ``watchdog_pass``
+# is deliberately NOT imported here: every one of these tests has to travel
+# through the loop's call site to reach it.
+
+LOOP_PROJECT = "p-f077-loop"
+
+
+def _move_json(kind: str, rationale: str = "", **payload: str) -> str:
+    """One scripted move, in the wire shape ``run_structured_call`` parses."""
+    body: dict[str, Any] = {"schema_v": ORCHESTRATOR_MOVE_SCHEMA_V,
+                            "kind": kind, "rationale": rationale}
+    if payload:
+        body["payload"] = payload
+    return json.dumps(body)
+
+
+def _dispatch_move(step: str, milestone_id: str = "M001") -> str:
+    return _move_json("dispatch_job", f"{milestone_id} is ready to be worked",
+                      milestone_id=milestone_id, step=step)
+
+
+def _one_milestone_plan() -> dict[str, Any]:
+    """ONE milestone, so consecutive dispatches all land on the same run."""
+    return MissionPlan(
+        schema_v=MISSION_PLAN_SCHEMA_V,
+        milestones=[
+            Milestone(id="M001",
+                      goal="The watched thing works end to end",
+                      rationale="the mission has exactly one thing to do",
+                      depends_on=[],
+                      jobs_draft=[{"title": "core", "goal": "build the core",
+                                   "est_band": "M"}]),
+        ],
+        compiled=True,
+        origin="provider",
+    ).model_dump()
+
+
+class _PausedExecution:
+    """What the executor seam hands back, reduced to what the loop reads."""
+
+    terminal_status = "all_green"
+    job_status = "paused"
+    stop_reason = ""
+
+
+def _pause_the_job(job: Job) -> _PausedExecution:
+    """The executor seam, so this file stays provider-free (the e2e idiom).
+
+    A real executor always takes a dispatched job OUT of ``planned``; ``paused``
+    is the honest state here and the one the R-0186 in-flight guard lets a next
+    dispatch follow, which is what a no-progress run has to be able to do.
+    """
+    job.state = RunState.PAUSED
+    save_job(job)
+    return _PausedExecution()
+
+
+class _ScriptedMoves:
+    """A fake provider replaying one move per call, in order."""
+
+    def __init__(self, moves: list[str]) -> None:
+        self.moves = list(moves)
+        self.calls = 0
+
+    def __call__(self, prompt: str, attempt: int) -> str:
+        self.calls += 1
+        return self.moves[self.calls - 1]
+
+
+@pytest.fixture()
+def loop_mission(data_root):
+    """A persisted ACTIVE mission with a one-milestone plan, ready to run."""
+    created = create_mission(LOOP_PROJECT, "Ship the watched thing",
+                             root=data_root)
+    set_mission_plan(LOOP_PROJECT, created.id, _one_milestone_plan(),
+                     data_root)
+    return load_mission(LOOP_PROJECT, created.id, data_root)
+
+
+def _run_loop(mission_id: str, moves: list[str], data_root: Any, *,
+              limit: int) -> Any:
+    """One ``run_mission`` invocation over the scripted moves."""
+    return run_mission(mission_id, LoopLimits(max_iterations=limit),
+                       project_id=LOOP_PROJECT,
+                       call_fn=_ScriptedMoves(moves),
+                       execute=_pause_the_job,
+                       control_root_path=data_root / "control")
+
+
+def _move_kinds(mission_id: str, data_root: Any) -> list[str]:
+    """Every ledger entry's move kind, in order, for the whole mission."""
+    return [str((e.get("move") or {}).get("kind", ""))
+            for e in read_ledger(LOOP_PROJECT, mission_id, data_root)]
+
+
+def _open_questions(mission_id: str, data_root: Any) -> list[str]:
+    """Every open decision question across every job linked to the mission."""
+    mission = load_mission(LOOP_PROJECT, mission_id, data_root)
+    questions: list[str] = []
+    for link in mission.job_links:
+        questions.extend(str(record["question"]) for record
+                         in open_task_decisions(load_job(UUID(link.job_id))))
+    return questions
+
+
+def test_three_dispatches_in_a_row_trip_no_progress_through_the_loop(
+        loop_mission, data_root):
+    """The default threshold is 3, and the loop reaches it on its own."""
+    result = _run_loop(loop_mission.id,
+                       [_dispatch_move(f"attempt {i}") for i in (1, 2, 3)],
+                       data_root, limit=6)
+
+    kinds = _move_kinds(loop_mission.id, data_root)
+    assert kinds.count(MOVE_DISPATCH_JOB) == 3
+    assert kinds.count(MOVE_WATCHDOG_TRIPPED) == 1
+    entry = [e for e in read_ledger(LOOP_PROJECT, loop_mission.id, data_root)
+             if (e.get("move") or {}).get("kind") == MOVE_WATCHDOG_TRIPPED][0]
+    assert entry["move"]["payload"]["kind"] == TRIP_NO_PROGRESS
+    assert entry["move"]["payload"]["numbers"]["threshold"] == 3
+    assert entry["outcome"]["status"] == OUTCOME_WATCHDOG_TRIPPED
+    # The pause is the write that matters: nothing else stops the next loop.
+    assert load_mission(LOOP_PROJECT, loop_mission.id, data_root).status == \
+        MISSION_STATUS_PAUSED
+    assert result.terminal == TERMINAL_NOT_ACTIVE
+    marker = watchdog_decision_marker(TRIP_NO_PROGRESS)
+    marked = [q for q in _open_questions(loop_mission.id, data_root)
+              if q.startswith(marker)]
+    assert len(marked) == 1
+
+
+def test_the_paused_mission_dispatches_nothing_on_the_next_run(loop_mission,
+                                                               data_root):
+    """The ACCEPTANCE claim: the pause really stops the next run's work.
+
+    A pause that a later ``run_mission`` ignored would be a status field and
+    not a watchdog, so this asserts the ledger gains no dispatch at all.
+    """
+    _run_loop(loop_mission.id,
+              [_dispatch_move(f"attempt {i}") for i in (1, 2, 3)],
+              data_root, limit=6)
+    before = _move_kinds(loop_mission.id, data_root)
+
+    second = _run_loop(loop_mission.id, [_dispatch_move("attempt 4")],
+                       data_root, limit=6)
+
+    after = _move_kinds(loop_mission.id, data_root)
+    assert second.terminal == TERMINAL_NOT_ACTIVE
+    assert second.iterations == 0
+    assert after == before
+    assert after.count(MOVE_DISPATCH_JOB) == before.count(MOVE_DISPATCH_JOB) == 3
+
+
+def test_a_run_that_trips_nothing_writes_no_watchdog_entry(loop_mission,
+                                                           data_root):
+    """The negative control: neither test above can be passing vacuously."""
+    result = _run_loop(loop_mission.id,
+                       [_dispatch_move(f"attempt {i}") for i in (1, 2)],
+                       data_root, limit=2)
+
+    kinds = _move_kinds(loop_mission.id, data_root)
+    assert result.terminal == TERMINAL_ITERATION_LIMIT
+    assert kinds.count(MOVE_DISPATCH_JOB) == 2
+    assert kinds.count(MOVE_WATCHDOG_TRIPPED) == 0
+    assert load_mission(LOOP_PROJECT, loop_mission.id, data_root).status == \
+        MISSION_STATUS_ACTIVE
+    assert _open_questions(loop_mission.id, data_root) == []

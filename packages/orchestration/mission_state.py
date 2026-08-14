@@ -479,6 +479,11 @@ def set_mission_status(project_id: str, mission_id: str, status: str,
     ``packages.orchestration.orchestrator_loop``.  A status on disk is
     therefore NOT evidence that a human put it there.
 
+    Since F077 there is a third writer.  The autonomy watchdog's
+    ``watchdog.act_on_trips`` writes ``paused`` when a tripwire fires, and
+    ``orchestrator_loop.run_mission`` calls it once per continuing iteration,
+    so a mission can pause with no human and no terminal move involved.
+
     Deliberately absent: any rule that moves a mission to ``achieved`` because
     its jobs finished.  A finished job is not an achieved goal, and this
     feature does not pretend otherwise — see the module docstring.
