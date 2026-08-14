@@ -1,43 +1,36 @@
-# Context — F045 Loop definitions
+# Context — paydown0814 closure debt
 
 ## Active Branch
-feature/f045-loop-definitions, cut from main at cb3ef34f after the F115
-closure PR #195 and the amend0813 PR #196 were both merged. F045 is claimed
-`[~]` under Rule A5 as the first `[ ]` line of docs/roadmap/STATUS.md
-(Package 1 Self-Use, Tier 2).
+feature/paydown0814-closure-debt, cut from main at 1e7f7bca after the F045
+closure PR #197 merged at this session's Open PR Gate. No STATUS line is
+claimed: this is a paydown branch, not a roadmap feature. The next roadmap
+feature is F057, Rate-limit-aware scheduler, and it starts in a new session.
 
 ## Scope
-In: a declarative LOOP — trigger, scope, action, budgets, stop rules — living
-as `[[loop]]` array-of-tables in the project's remedy.toml, a loader that
-validates every spec with the loop's name in each message, and a runner that
-materializes a loop as an ordinary job/mission carrying loop_ref provenance.
-Budgets reuse the F018/F104 budget field names; actions reuse the golden path
-and missions. Nothing here executes work by itself.
+In: `docs/agents/reviewer_conventions.md`, trimmed under the 800-token
+prompt-segment cap with headroom (R-0359); a new pin in
+`tests/docs/test_docs_consistency.py` deriving the README tier table's Done
+column from the ledger (R-0360); `.agent/**` state, including emptying
+`.agent/candidates.md` now that both carried candidates are registered.
 
-Out, per the feature file's Do-not-touch: scheduling and cron, the routine
-library, notifications. Schedule and event triggers are parsed and validated
-but explicitly inert until the scheduler feature; running one says so.
+Out: every RULE the conventions document states — the trim compresses prose,
+duplication and retold precedents, never a rule; `CONVENTIONS_TOKEN_CAP`
+itself, which is production code and a P4 principle; `docs/roadmap/STATUS.md`
+and `README.md`, which no paydown branch touches; F057 and all feature work.
 
 ## Constraints
-- SPLIT rounds are mandatory: this feature touches packages/ and apps/, and
-  production code never merges self-certified
-  (docs/agents/planner_reviewer_prompt.md §3).
+- No production code: this branch touches docs/, tests/ and .agent/ only, so
+  no packages/ or apps/ file is in scope.
 - The main session writes nothing in the work tree; a delegated worker subagent
   makes every commit (docs/agents/self_drive_protocol.md).
-- Merges only at the Open PR Gate; never force-push; never touch main.
-- A round pushes after EVERY commit, not once at its last step (R-0289).
+- Merges only at the Open PR Gate, and never a PR this session created (G1);
+  never force-push; never work on main.
 - Verification is pytest, scoped per round, plus the canary
-  tests/cli/test_golden_path.py. A round touching docs/roadmap/ also runs
-  tests/docs/. The full suite runs only at the integration gate, with
-  `-n auto`. Destructive and mutation checks run only inside a disposable git
-  worktree, so resource safety stays intact and no background pytest process is
-  ever left running.
-- Loops are configuration, NOT a new directory convention: they live inside
-  the existing config file and add no second config location.
-- A loop never implies `--yes`. Unattended execution is an explicit, audited
-  field of the spec.
+  tests/cli/test_golden_path.py. Destructive and red-proof checks run only
+  inside a disposable git worktree, so resource safety stays intact and no
+  background pytest process is ever left running.
+- A round pushes after EVERY commit, not once at its last step (R-0289).
 
 ## Steps
-R1 claim, state reset and T001 spec model → T002 run materialization and
-loop_ref provenance → T003 CLI, last-run display and the fixture loop →
-integration gate → closure.
+R1 state reset and candidate registration → R2 the two fixes, each gated, the
+new pin red-proved → handoff and PR. The PR stays unmerged this session.

@@ -1,98 +1,59 @@
-# Handback — F045 · Round 16 (CLOSURE)
+# Handback — paydown0814 · Round 4 of 4 — the LAST round of this branch
 
 ## Range
-Review of c6b0aeb7..HEAD (6 commits; branch feature/f045-loop-definitions).
+2e866c84..HEAD, 1 commit, branch feature/paydown0814-closure-debt. Only
+`.agent/handoff.md` touched: no docs/, tests/, code, no `main` commit or push (G3).
 
 ## Commits
-### c1c42657 chore(f045): save the R16 closure block verbatim
+### C1 chore(paydown0814): handback R4 and close the branch — this commit
 | Path | +/- | Reason |
-| .agent/authored/f045-r16.md | +419/-0 | C0a, block saved byte for byte (NEW) |
+| .agent/handoff.md | rewrite | C1, the session-closing record |
 
-### c5f0430a chore(f045): point last_block at the R16 block
-| Path | +/- | Reason |
-| .agent/last_block.md | +419/-419 | C0b, byte-identical copy; cmp exit 0 |
+## Item status
+| Item | Status | Reason |
+| C1 session-closing handoff | done | |
+| C2 Open PR Gate merge of PR #198 | deviated | runs AFTER this commit is pushed |
 
-### f94ffce6 docs(f045): record the R15 verdict
-| Path | +/- | Reason |
-| .agent/live_review.md | +2/-0 | C1, GATE-R15 appended disk-to-disk; numstat `2 0` |
+## No gate entry for R4, by construction
+Per docs/agents/planner_reviewer_prompt.md §4 item 13 the closing round cannot
+record a gate on itself: its verdict lives in this handoff, the R4 completion
+report and PR #198. That absence is the TERMINATOR, not a missing gate.
 
-### aa5e66f5 docs(f045): record the Built State of loop definitions
-| Path | +/- | Reason |
-| docs/roadmap/features/T2_F045.md | +74/-0 | C2, Built State appended; every claim re-verified |
+## Rounds R2 and R3 — both PASS
+The second session's reviewer PASSed both and re-ran every gate ITSELF, not reading
+the worker's report — own red-proof included, in a disposable worktree at bc0f5223.
 
-### 1c84c818 docs(f045): record the closure precondition ruling
-| Path | +/- | Reason |
-| .agent/decisions.md | +45/-0 | C3, DECISION F045 D8 appended |
+## Findings — 1 open
+- R-0359 reviewer-conventions token cap — RESOLVED on disk, reviewer-authored
+  `Done:` text. R-0360 README tier pin — RESOLVED the same way.
+- `OPEN ['R-0361']` — 1 open, a reviewer-process finding whose counter-measure
+  is already in force. Next free finding id: R-0362.
+- `main` stays RED until PR #198 merges; that merge is the R4 action below.
 
-### C4 docs(f045): close F045 in the roadmap ledger — the commit writing this file
-| Path | +/- | Reason |
-| docs/roadmap/STATUS.md | +1/-1 | C4a, `[~]` → `[x]` with job/package/SHA/HEAD |
-| README.md | +2/-2 | C4b, count 45→46 and Tier 2 Done 6→8 |
-| .agent/candidates.md | +17/-2 | C4c, two candidates replace the `(empty — …)` line |
-| .agent/plan.md | +36/-36 | C4d, CLOSED state, 49 lines |
-| .agent/handoff.md | rewrite | C4f, this file |
-`.agent/context.md` NOT touched: re-read this round and still accurate (branch,
-scope, constraints, steps all hold), so C4e did not apply.
-
-## External actions
-- `git push` after each of c1c42657, c5f0430a, f94ffce6, aa5e66f5, 1c84c818 — all OK.
-- `git push` before the zip: `Everything up-to-date`; `rev-list --left-right --count` `0	0`.
-- `bash scripts/make_review_zip.sh --evidence-dir .remedy-wt/f045_closure_evidence/remedy-job-evidence-f045-closure`
-  → REVIEW_PACKAGE_CREATED=true, PACKAGE_STATUS=READY_FOR_REVIEW, 5190 members,
-  14 authoritative, publication SUPPORTED, packaging_warnings `[]`,
-  external_paths_detected `[]`, source_root_containment PASS,
-  final_verifier_reproducible true, ready_gate_matrix ok=true (blocking_reasons `[]`).
-  committed_review_subject base cb3ef34f…d20 → head 1c84c818…b20, 50 files, 94 commits.
-- Evidence job `f045-closure`: verdict PASS_WITH_RISKS, total_passed 123,
-  authority_count 14, partition T001/T002/T003 = 5/5/4, head 1c84c818…b20.
-- PR create: see Deviations — it runs after this commit; number and URL in the
-  session report.
-- No worktree add/remove, no merge, no force-push.
-
-## Verification
-- `cmp .agent/authored/f045-r16.md .agent/last_block.md` → exit 0.
-- `grep -c "^Gate: R15 — PASS" .agent/live_review.md` → 1; `grep -c "^## Steps"` → 1;
-  `git show --numstat f94ffce6 -- .agent/live_review.md` → `2	0`.
-- open set recomputed from the record → `OPEN ['R-0350', 'R-0354', 'R-0358']`.
-- `python3 -m pytest tests/docs/ -q` → exit 0, `294 passed in 0.19s` (no regression).
-- Built State heading grep → 1. `grep -c "^## DECISION F045 D8 " .agent/decisions.md` → 1.
-- `python3 -m apps.cli.main integrity check --json` → `"passed": true` (relevant_untracked
-  untracked=0 relevant=0; high_blockers_open none).
-- `git status --porcelain` before the zip → EMPTY. `git worktree list` → 1 line.
-- `python3 -m pytest tests/cli/test_golden_path.py -q` → exit 0, `42 passed in 15.90s`.
-- Scoped suites for the evidence job, each `-v`: test_loop_spec 15, test_loop_run 23,
-  test_loop_cmd 14, test_run_report 71 → 123 node ids, 0 failed, 0 skipped.
-- STATUS `- [x] F045 — ` → 1, `- [~] F045` → 0. README `46 of 255` → 1,
-  `| 2 | Minimal Self-Build Runtime | 8 | 14 |` → 1.
-- Tier derivation re-run independently: accepted per tier = {0:16, 1:22, 2:7}, every
-  other tier 0; README Totals column matches; F045 is T2 → 8. 6→8 confirmed.
-
-## Authored-text proofs
-GATE-R15, BUILT-STATE, DECISION-D8 and CANDIDATES were all extracted from the
-committed `.agent/authored/f045-r16.md` between their own markers and written
-disk-to-disk — never retyped. Post-write containment check `body in file` True for
-each. Trailing-whitespace scan (`l != l.rstrip()`, Python; `grep -rn ' $'` not used)
-→ empty for f045-r16.md, live_review.md, T2_F045.md, decisions.md, candidates.md,
-plan.md. STATUS and README pairs applied by exact-string Edit; each FROM matched once.
+## R4 verification (real, this round)
+- `gh pr list --state open --json number,headRefName,baseRefName,isDraft` → exactly
+  ONE open PR: number 198, head feature/paydown0814-closure-debt, base main,
+  isDraft false, exit 0.
+- `gh pr view 198` → state OPEN, isDraft false, mergeable MERGEABLE,
+  mergeStateStatus CLEAN. All four Open PR Gate conditions met.
+- `git worktree list` → ONE line, this checkout; `git status --porcelain` empty;
+  branch in sync with origin at 2e866c84 before this commit.
+- The R4 ACTION — `gh pr merge 198 --merge --delete-branch`, then
+  `git checkout main` and `git pull --ff-only` — runs immediately AFTER this
+  commit is pushed. Its executed result, the four green-proof runs on merged
+  `main` (test_role_conventions.py, tests/docs/, test_dashboard_contract.py,
+  test_golden_path.py canary) and the open-finding derivation are reported in
+  the R4 completion report and PR #198, per item 13.
 
 ## Deviations & assumptions
-1. plan.md carries no PR NUMBER. A PR cannot exist before the commit it must
-   contain, and the block orders the closure commit LAST with the PR after it.
-   plan.md states this and points to the handback; same construction as the F115
-   closure (57a24947). Number and URL are in the session report.
-2. README Tier 2 `Done` 6 → 8, declared: a pre-existing off-by-one. The F111
-   closure `98a49b5c` incremented the count line but not the tier row; the ledger
-   already derived 7. F045 makes 8. Verified independently, not taken on trust.
-3. DECISION D8 quotes AGENTS.md as "no while-I'm-here edits"; the file's literal
-   text is `No "while I'm here" edits.` Same rule, different hyphenation. Applied
-   byte for byte as authored rather than silently edited.
-4. Deviations, declared: this handback is 98 lines against the 60-line cap. Cause:
-   six per-commit changed-files tables (>5 commits → ≤100 permitted) plus the
-   mandated closure values — evidence job, package, SHA-256, accepted HEAD — and
-   the authored-text proofs. No section dropped.
+- The block asked for the merge outcome to be written here before the commit.
+  Impossible without stranding this commit (the gate's `--delete-branch` removes
+  the branch) or committing to `main` (forbidden, G3); writing PREDICTED results
+  as if executed would be false attribution. Ordering wins: commit and push
+  first, report the real result afterwards.
+- No force-push, no worktree, no new branch, no `main` commit, no new work.
 
 ## Next
-The reviewer re-runs every gate and issues the closure VERDICT. The PR stays
-UNMERGED; it merges at the next feature's start via the Open PR Gate.
-
-Fortschritt: 100 % (T001 ✅ · T002 ✅ · T003 ✅ · Integrationsgate ✅ · Closure ✅) — gemessen
+NEXT SESSION: Phase 0 state probe → Phase 1 rule 1 (re-read `.agent/STOP`)
+BEFORE rule 2 → then claim F057, Rate-limit-aware scheduler, per Rule A5 and
+STATUS order, on a NEW branch cut from the merged `main`. Do not start it now.
