@@ -468,7 +468,16 @@ def link_job_to_mission(project_id: str, mission_id: str, job_id: str,
 
 def set_mission_status(project_id: str, mission_id: str, status: str,
                        root: Path | None = None) -> Mission:
-    """Set a mission's status.  Only ever called by an explicit human command.
+    """Set a mission's status.
+
+    Two kinds of caller write here.  The explicit human verbs — ``remedy
+    mission achieve|abandon|pause``, through
+    ``apps.cli.commands.mission_cmd._cmd_mission_set_status`` — and the loop's
+    own terminal moves: ``mission_achieved`` writes ``achieved`` for
+    ``declare_mission_achieved``, and ``execute_move`` writes ``abandoned``
+    for ``abort_with_reason``, both in
+    ``packages.orchestration.orchestrator_loop``.  A status on disk is
+    therefore NOT evidence that a human put it there.
 
     Deliberately absent: any rule that moves a mission to ``achieved`` because
     its jobs finished.  A finished job is not an achieved goal, and this

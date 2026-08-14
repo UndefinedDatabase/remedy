@@ -592,7 +592,9 @@ class TestStatusTransitions:
 
     The verb names the status. There is no transition table: any valid
     status may follow any other, because the human typing the command is
-    the authority. Nothing in Remedy moves a mission's status on its own.
+    the authority. This surface is not the only writer, though: the
+    orchestrator loop's terminal moves write achieved and abandoned with
+    no human in the loop.
     """
 
     _VERBS = (("achieve", "achieved"), ("abandon", "abandoned"),

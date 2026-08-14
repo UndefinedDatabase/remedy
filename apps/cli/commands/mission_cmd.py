@@ -252,7 +252,12 @@ def _cmd_mission_set_status(mission_id: str, verb: str, *,
     the status, and that is the whole rule.  There is deliberately NO
     transition table here — any valid status may follow any other, because a
     human typing the command is the authority on what the mission's state is.
-    Nothing in Remedy moves a mission between statuses on its own (F056).
+
+    This surface is not the only writer, though.  The orchestrator loop's own
+    terminal moves write ``achieved`` and ``abandoned`` with no human in the
+    loop — see ``mission_state.set_mission_status`` for the full caller list —
+    so F056's "nothing moves on its own" holds for this COMMAND, not for the
+    status field.
     """
     from packages.orchestration.mission_state import MissionError, set_mission_status
 
