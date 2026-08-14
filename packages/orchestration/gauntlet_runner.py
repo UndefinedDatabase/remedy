@@ -417,6 +417,7 @@ def measure_tokens(entries: list[Any]) -> dict[str, int] | None:
     ``None`` is not zero. A run whose provider reported no usage did not spend
     nothing — it reported nothing, and the run.json says that by carrying no
     ``tokens`` key at all (R-0178: the matrix must not understate cost).
+    Both spellings count: ``input_tokens``/``output_tokens``, then ``prompt_tokens``/``completion_tokens`` (R-0407).
     """
     total_in = total_out = 0
     measured = False
@@ -426,8 +427,8 @@ def measure_tokens(entries: list[Any]) -> dict[str, int] | None:
         if not isinstance(usage, dict):
             continue
         measured = True
-        total_in += int(usage.get("prompt_tokens", 0) or 0)
-        total_out += int(usage.get("completion_tokens", 0) or 0)
+        total_in += int(usage.get("input_tokens") or usage.get("prompt_tokens") or 0)
+        total_out += int(usage.get("output_tokens") or usage.get("completion_tokens") or 0)
     return {"in": total_in, "out": total_out} if measured else None
 
 
