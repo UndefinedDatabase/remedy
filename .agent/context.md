@@ -27,8 +27,11 @@ landed at R15: `BenchRecord` carries a defaulted `models` field that
 `build_bench_record` reads straight off the evidence body and that survives the
 history file. No gauntlet module is touched and no additive ruling was needed —
 `RunEvidence` is not on that path at all, and R-0426 registers the reviewer's
-earlier claim that it was. Still to come, the fake-provider bench run end to
-end, inventoried at R11 before it is built.
+earlier claim that it was. R16 pinned F082's last unpinned acceptance criterion
+— "the bench never runs implicitly" — as an enumerated allowlist of explicit
+callers rather than as a total absence, under DECISION F082 D9, because the run
+that completes the feature is itself the first legitimate caller. Still to come,
+the fake-provider bench run end to end, inventoried at R11 before it is built.
 R2's inventory settled the shape: the factoring is ADDITIVE, so every bench
 module is NEW and no symbol moves out of any gauntlet module — R3's
 `capability_bench.py`, R4's `bench_orders.py`, R6's `bench_dry_run.py` and R7's
@@ -58,7 +61,11 @@ a change that needs one of them edited is a finding, not a fix.
   emission and keeps it under 400 lines (DECISION F105 D5), with 240 the
   preferred target so the block-save commit stays inside the 500-insertion
   limit (R-0381).
-- The bench never runs implicitly — on demand only, an F082 acceptance rule.
+- The bench never runs implicitly — on demand only, an F082 acceptance rule,
+  pinned at R16 by `tests/orchestration/test_bench_never_runs_implicitly.py` as
+  an allowlist of modules permitted to call the bench's write entry points
+  (DECISION F082 D9). The allowlist is EMPTY today and gains exactly one name at
+  R17. Adding to it is a deliberate act, not a repair.
 
 ## Steps
 R1 claim F082, reset the record carrying the F077 open set forward, register
@@ -74,8 +81,9 @@ inventory ✅ → R12 record the R11 verdict, register R-0419 and rule on the
 gauntlet key at D7 ✅ → R13 T003b the write half, every run recording which model
 served which role ✅ → R14 record the R13 verdict and register R-0420 to R-0422 ✅
 → R15 record the R14 verdict, register R-0423 to R-0426 and build T003b's read
-half → R16 the fake-provider run and the Q7 pin → R17 the integration gate →
-R18 closure. T003 split at DECISION F082 D5, its second half inventoried at D6,
-unblocked at D7 and split in two at D8, and R15 splits the read half off from
-the run because they are independent deliverables; each round marks the
-PREVIOUS one done and never itself.
+half ✅ → R16 record the R15 verdict, register R-0427 and R-0428 and pin the Q7
+criterion → R17 the fake-provider run → R18 the integration gate → R19 closure.
+T003 split at DECISION F082 D5, its second half inventoried at D6, unblocked at
+D7 and split in two at D8, R15 split the read half off from the run, and D9
+splits the Q7 pin off from the run because a total-absence pin would not survive
+the run's own driver; each round marks the PREVIOUS one done and never itself.
