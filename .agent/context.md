@@ -11,8 +11,9 @@ In: a new `packages/orchestration/watchdog.py` and
 the four `watchdog.*` threshold keys (`watchdog.no_progress_repeats`,
 `watchdog.burn_window`, `watchdog.burn_min_samples`,
 `watchdog.burn_multiplier`); the pause seam in
-`packages/orchestration/orchestrator_loop.py`, plus `.agent/**` round state and
-the one claimed STATUS line.
+`packages/orchestration/orchestrator_loop.py`;
+`.agent/f077_t002_inventory.md`, the read-only T002 inventory; plus `.agent/**`
+round state and the one claimed STATUS line.
 
 Out: repair logic, class-expectation anomaly detection and loop policy — the
 F077 feature file's Do-not-touch list. The watchdog never modifies plans, jobs
@@ -30,9 +31,14 @@ or dossiers; that independence is an acceptance criterion, not a preference.
   NOT a round gate (R-0364); ruff is gated scoped to the files F077 owns.
 - Reviewer blocks stay at or under 240 lines so the block-save commit stays
   inside the 500-insertion cap (R-0381).
+- A block that asserts a PROPERTY of the code it orders — pure, read-only, no
+  I/O — re-reads every function in that section against the assertion before
+  emission, and narrows the assertion to the part that holds (R-0383).
 
 ## Steps
 R1 merge PR #199, claim F077, reset the record, register R-0380 and R-0381 ✅ →
 R2 the T001 inventory ✅ → R3 record the R2 verdict and close the session ✅ →
-R4 T001 the three evaluators, their config keys and their tests → R5 T002 pause
-and decision → R6 T003 CLI and report → R7 integration gate then closure.
+R4 T001 the three evaluators, their config keys and their tests ✅ → R5 record
+the R4 verdict, repair R-0383 and inventory T002 → R6 T002 pause, decision,
+dedup and ledger entry → R7 T003 CLI and report → R8 integration gate then
+closure.
