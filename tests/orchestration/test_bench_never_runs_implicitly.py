@@ -19,7 +19,7 @@ Why an absence test is dangerous when it is the only guard: it reports green for
 whatever reason it finds nothing. A scanner pointed at the wrong tree, a walker
 that swallowed a parse error, or a rename of the very symbol it guards all empty
 its search space, and an emptied search space passes forever while the property
-it claimed to protect quietly dies. Properties 1 and 5 below exist ONLY to make
+it claimed to protect quietly dies. Properties 1 and 2 below exist ONLY to make
 that failure impossible: property 1 fails loudly if either guarded symbol is
 renamed away, and property 2 fails loudly if the scan visits nothing. The pin is
 shown to be capable of going RED by being MADE to go red — a disposable worktree
