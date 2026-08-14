@@ -8,8 +8,7 @@ for this branch yet; one is created at closure, not before.
 ## Scope
 In: `packages/orchestration/rate_governor.py` and
 `tests/orchestration/test_rate_governor.py`, plus `.agent/**` round state and
-the one claimed STATUS line. T001 is complete and reviewed; T002 (the governor)
-and T003 (the seam) remain.
+the one claimed STATUS line. T001 and T002 are built; T003, the seam, remains.
 
 Out: the per-call retry policy in `packages/orchestration/provider_timeouts.py`,
 parallelism itself, and the provider adapters' internals — the feature file's
@@ -30,9 +29,11 @@ untouched until then.
   errors (20 I001, 4 F401, 1 F821, 1 UP035). It is NOT a round gate; ruff is
   gated scoped to the files this feature owns. Repairing it is a paydown
   branch's job, not this one's (R-0364).
-- Unit tests use an injected clock. A real sleep in a unit test is a finding.
+- The governor's clock and sleep are injected. A real sleep in a unit test is a
+  finding.
 - A round pushes after EVERY commit, not once at its last step.
 
 ## Steps
 R1 claim and T001 ✅ → R2 findings and two fixes ✅ → R3 verdict and session
-close ✅ → next session: T002 governor → T003 seam → integration gate → closure.
+close ✅ → R4 R3 verdict, R-0368 and T002 governor → T003 seam → integration
+gate → closure.
