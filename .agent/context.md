@@ -17,14 +17,14 @@ round state and the one claimed STATUS line. Since R8 the module carries T002's
 ACTION, `act_on_trips` — the pause, the deduped decision and the
 `watchdog_tripped` ledger entry — and since R10 it is WIRED: `watchdog_pass` is
 the loop's single entry point and `run_mission` calls it once per continuing
-iteration, with D7's watchdog clause in both status docstrings. Its ledger
-numbering is NOT yet repaired: a tripped run still reads `[1, 2, 3, 3]`
-(R-0388), because R11 halted at its own stop clause when the ordered fix —
-letting the trip take `next_iteration_index` (DECISION F077 D10) — was measured
-to collide with the loop's safe-point entry on the stop path, `[1, 2, 3, 4, 4]`.
-`test_orchestrator_loop.py::test_one_entry_per_iteration_numbered_from_one`
-therefore stays RED. Open findings after R11: TWENTY-THREE, next free id
-R-0391.
+iteration, with D7's watchdog clause in both status docstrings. A tripped run's
+ledger reads `[1, 2, 3, 3]` and that is CORRECT: an entry's `iteration` is an
+ATTRIBUTION — which iteration it belongs to — and never a unique key (DECISION
+F077 D11, which withdraws D10 unimplemented and resolves R-0388 as a
+misdiagnosis). R12 repaired the one test that had encoded the imagined
+invariant, so `tests/orchestration/test_orchestrator_loop.py` is `196 passed`
+and the branch is green. Open findings after R12: TWENTY-TWO, next free id
+R-0392.
 
 Out: repair logic, class-expectation anomaly detection and loop policy — the
 F077 feature file's Do-not-touch list. The watchdog never modifies plans, jobs
@@ -66,6 +66,8 @@ DECISION F077 D9, wire the action into `run_mission`, write D7's docstring
 clause and probe the e2e guards ✅ (one guard outside the change set left red)
 → R11 record the R10 FAIL, register R-0387 to R-0390 and DECISION F077 D10,
 then HALT at the ordered repair: the loop DOES record after a trip, so D10's
-number collides on the safe-point path ⛔ → R12 re-decide the numbering, land
-the repair and clear the red guard → R13 T003 CLI, `mission resume` and report
-→ R14 integration gate then closure.
+number collides on the safe-point path ✅ (the halt was the block's own stop
+clause) → R12 record the R11 PASS, register R-0391, resolve R-0388 as a
+misdiagnosis and R-0390, decide DECISION F077 D11 and repair the one red test —
+no production file touched (its own verdict lands in R13) → R13 T003 CLI,
+`mission resume` and report → R14 integration gate then closure.
