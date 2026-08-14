@@ -8,11 +8,14 @@ exists for this branch yet; one is created at closure, not before.
 ## Scope
 In: the capability bench built on the gauntlet harness. Built so far:
 `capability_bench.py` with the pure record builder, `bench_orders.py` with the
-version-bound freeze, and THREE frozen orders under `scripts/bench_orders/` —
-three and not five, because the shared sample project has no HTTP surface and
-no web asset (R-0411), and the missing two wait on a bench-owned fixture per
-DECISION F082 D3 rather than an edit to the gauntlet's template. Still to come:
-the history append, the trend and regression rules, and the `stats bench` CLI.
+version-bound freeze, THREE frozen orders under `scripts/bench_orders/` — three
+and not five, because the shared sample project has no HTTP surface and no web
+asset (R-0411), and the missing two wait on a bench-owned fixture per DECISION
+F082 D3 rather than an edit to the gauntlet's template — `bench_dry_run.py`
+with the join from an order file to a row over recorded evidence, and
+`bench_history.py` with the append-only history, the trend and the regression
+rules. Still to come, both T003: the `stats bench` CLI surface and the
+model-context recording.
 R2's inventory settled the shape: the factoring is ADDITIVE, so every bench
 module is NEW and no symbol moves out of any gauntlet module — R3's
 `capability_bench.py`, R4's `bench_orders.py`, R6's `bench_dry_run.py` and R7's
@@ -49,7 +52,8 @@ R1 claim F082, reset the record carrying the F077 open set forward, register
 R-0403 ✅ → R2 the T001 gauntlet-harness inventory ✅ → R3 T001 the pure record
 builder and the R-0407 token repair ✅ → R4 T001 the frozen order set and its
 version freeze ✅ → R5 record the R4 verdict, register R-0409 to R-0411 and
-DECISION F082 D3 ✅ → R6 record the R5 verdict, retire the superseded context
-regions and close T001 with the dry run against recorded evidence → R7 T002
-history, trend and regression rules → R8 T003 the stats bench CLI, model context
-and a fake-provider run → R9 the integration gate → R10 closure.
+DECISION F082 D3 ✅ → R6 record the R5 verdict, retire two superseded context
+regions and close T001 with the dry run ✅ → R7 T002 the append-only history,
+the trend and the regression rules ✅ → R8 record the R7 verdict, complete this
+sweep and pin the regression threshold → R9 T003 the stats bench CLI, model
+context and a fake-provider run → R10 the integration gate → R11 closure.

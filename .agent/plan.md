@@ -2,8 +2,8 @@
 
 Branch: feature/f082-self-benchmark, cut from main after the F077 closure PR
 #200 merged. F082 is claimed `[~]` in docs/roadmap/STATUS.md. Next free finding
-id: R-0415. Open findings: forty-four — the thirty-two carried from F077, plus
-R-0403 to R-0414 registered on this branch. `.agent/live_review.md` is the
+id: R-0417. Open findings: forty-six — the thirty-two carried from F077, plus
+R-0403 to R-0416 registered on this branch. `.agent/live_review.md` is the
 source of truth for that ledger; this file mirrors it and nothing else.
 
 ## Goal
@@ -15,15 +15,15 @@ fixtures, history survives across runs, and a deliberately degraded fixture run
 triggers the regression warning.
 
 ## Current Step
-R7 records the R6 gate, registers R-0414, retires the last superseded region of
-`.agent/context.md`, and builds T002 — the append-only history under the data
-root's project area, the trend read back off it, the regression rules, and the
-improving, flat and degrading goldens.
+R8 records the R7 gate, registers R-0415 and R-0416, persists DECISION F082 D4,
+retires the two regions of `.agent/context.md` the R-0414 sweep left standing,
+and pins T002's regression threshold and trailing median with a fourth golden
+whose trailing values are not all equal.
 
 ## Next Steps
-1. R8 — T003: the `stats bench` CLI, model-context recording, and a
+1. R9 — T003: the `stats bench` CLI, model-context recording, and a
    fake-provider bench run end to end.
-2. R9 the integration gate, R10 closure.
+2. R10 the integration gate, R11 closure.
 
 ## Risks
 - The delivered order set is three, not the Design's five (R-0411). Closure
