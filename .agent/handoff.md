@@ -197,9 +197,18 @@ Fortschritt: ~94 % (T001 ✅ · T002 ✅ · T003a ✅ · T003b ✅ · Q7-Kriteri
 
 Open findings: 60 (max R-0430, next free R-0431). No block condition hit.
 
+## Reviewer verdict — recorded after this handback was written
+
+R17 is PASS. The reviewer re-executed all twenty-two gates against the disk and
+every value reproduced; the verdict line and three findings, R-0431 to R-0433,
+are appended to `.agent/live_review.md`. All three are the REVIEWER's own block
+defects, two of them the deviations declared above. Open findings are now
+SIXTY-THREE, max R-0433, next free R-0434.
+
 ## Next
 
-Review R17 over c044cb18..HEAD, then R18 — the integration gate. THE NEXT
+R18 — the integration gate, which also repairs R-0431, R-0432 and R-0433 and is
+the round that measures the Goal's three DONE conditions together. THE NEXT
 SESSION'S FIRST ACTION is self_drive_protocol.md Phase 1 rule 1, re-read
 `.agent/STOP` from disk, BEFORE rule 2's Open PR Gate. F082 is MID-FEATURE and
 no PR exists.
