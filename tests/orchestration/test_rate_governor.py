@@ -443,6 +443,20 @@ def test_two_providers_hold_independent_cooldowns():
 
 
 @pytest.mark.unit
+def test_a_later_signal_never_shortens_a_cooldown_already_running():
+    # observe() stores max(existing_deadline, now + duration), so a stray short hint
+    # cannot cancel a long wait already under way and let the run hammer the provider.
+    clock = FakeClock()
+    governor = _governor(clock)
+    governor.observe(_limit_signal(retry_after_s=30.0))
+    assert governor.cooldown_remaining_s("claude") == 30.0
+    # The clock does NOT advance between the two signals: the only thing that can move
+    # the stored deadline down is the guard being gone.
+    assert governor.observe(_limit_signal(retry_after_s=1.0)) == 1.0
+    assert governor.cooldown_remaining_s("claude") == 30.0
+
+
+@pytest.mark.unit
 def test_acquire_on_an_unobserved_provider_grants_without_waiting():
     clock = FakeClock()
     governor = _governor(clock)
