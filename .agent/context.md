@@ -13,13 +13,17 @@ the four `watchdog.*` threshold keys (`watchdog.no_progress_repeats`,
 `watchdog.burn_multiplier`); the pause seam in
 `packages/orchestration/orchestrator_loop.py`;
 `.agent/f077_t002_inventory.md`, the read-only T002 inventory; plus `.agent/**`
-round state and the one claimed STATUS line. Since R8 the module also carries
-T002's ACTION, `act_on_trips` — the pause, the deduped decision and the
-`watchdog_tripped` ledger entry — which is UNWIRED at this commit: the pause
-seam in `orchestrator_loop.py` is R10's, together with the four whole-ledger
-guards in `tests/orchestration/test_mission_e2e.py` that a new entry kind
-breaks (DECISION F077 D8) and D7's watchdog docstring clause. Open findings
-after R9: NINETEEN, next free id R-0387.
+round state and the one claimed STATUS line. Since R8 the module carries T002's
+ACTION, `act_on_trips` — the pause, the deduped decision and the
+`watchdog_tripped` ledger entry — and since R10 it is WIRED: `watchdog_pass` is
+the loop's single entry point and `run_mission` calls it once per continuing
+iteration, with D7's watchdog clause in both status docstrings. The four
+whole-ledger guards DECISION F077 D8 predicted in
+`tests/orchestration/test_mission_e2e.py` measured GREEN under the probe D9
+ordered; the guard that actually broke is
+`test_orchestrator_loop.py::test_one_entry_per_iteration_numbered_from_one`,
+outside R10's authorised change set and left RED for R11. Open findings after
+R10: NINETEEN, next free id R-0387.
 
 Out: repair logic, class-expectation anomaly detection and loop policy — the
 F077 feature file's Do-not-touch list. The watchdog never modifies plans, jobs
@@ -52,7 +56,8 @@ and register R-0384 ✅ → R7 record the R6 verdict, settle the eight T002
 questions as DECISIONS F077 D1-D8 and repair R-0384 ✅ → R8 record the R7
 verdict, register R-0385, resolve R-0384 and build T002's pause, deduped
 decision and ledger entry as an UNWIRED action ✅ → R9 record the R8 verdict,
-register R-0386 and close the session → R10 wire the action into
-`run_mission`, pay the four e2e ledger guards and write D7's docstring clause
-→ R11 T003 CLI, `mission resume` and report → R12 integration gate then
-closure.
+register R-0386 and close the session ✅ → R10 record the R9 verdict, register
+DECISION F077 D9, wire the action into `run_mission`, write D7's docstring
+clause and probe the e2e guards ✅ (one guard outside the change set left red)
+→ R11 repair that guard, then T003 CLI, `mission resume` and report → R12
+integration gate then closure.
