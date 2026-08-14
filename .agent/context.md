@@ -39,5 +39,8 @@ Do-not-touch list, verified byte-identical at every round so far.
 ## Steps
 R1 claim and T001 ✅ → R2 findings and two fixes ✅ → R3 verdict and session
 close ✅ → R4 T002 governor ✅ → R5 R5 verdict, R-0369, R-0370 and the T003 seam
-inventory ✅ → R6 R5 verdict, R-0371 and the T003 seam itself → R7 the report
-surfaces and the limit-emitting fixture → integration gate → closure.
+inventory ✅ → R6 the T003 seam itself ✅ → R7 to R11 the report surfaces, the
+limit-emitting fixture and their repair rounds ✅ → R12 the integration gate ✅
+→ R13 the R12 verdict and the feature file's Built State ✅ → R14 closure: the
+R13 verdict, the evidence job, the review zip, the STATUS and README edits and
+the PR, which is NOT merged in this session.
