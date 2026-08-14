@@ -451,3 +451,167 @@ MUST NOT TOUCH:
 - `gauntlet_evaluator.py::PASS_CRITERIA` and the criterion functions.
 - Any symbol enumerated in Q11, and the seven test files themselves.
 - Routing: F082 records model context, it does not choose models.
+
+## S1..S4 — the sample project (R4)
+
+Every claim below was read out of `scripts/gauntlet_sample_project` at branch
+head. Citations are `path::symbol` or a real file path, never bare line numbers
+(R-0353). "Not present" names where the search ran and is a real answer.
+
+### S1 — what is actually in the sample project
+
+ONE language: Python. `find scripts/gauntlet_sample_project -type f` returns
+only `.py` and `.md` files plus `__pycache__` droppings — there is no
+`package.json`, no `pyproject.toml`, no `requirements.txt`, and no `.js`,
+`.ts`, `.jsx`, `.tsx`, `.vue`, `.html` or `.css` file anywhere in the tree.
+
+The package is `scripts/gauntlet_sample_project/sampleproj/`, SEVEN modules
+beside its `__init__.py` (which carries only a docstring and
+`__version__ = "0.3.0"`), listed here and counted as seven:
+
+- `sampleproj/cli.py::main` — an `argparse` CLI, `prog="sampleproj"`, with two
+  subcommands built in `cli.py::build_parser`: `import <source|-> <target>` and
+  `report <target>`. Progress to stdout, `error: ` to stderr, exit 2 on
+  `errors.py::SampleProjError`.
+- `sampleproj/config.py::resolve` — one setting resolved explicit > environment
+  > file > built-in, over `config.py::DEFAULTS` (`max_records` 100,
+  `retry_attempts` 3, `report_width` 72) and `config.py::ENV_VARS`.
+- `sampleproj/parsing.py::parse_record` / `::parse_records` — `name=value`
+  lines; malformed input returns `None` deliberately.
+- `sampleproj/importer.py::import_records` / `::plan_import` — one file per
+  record into a target directory.
+- `sampleproj/report.py::build_report` / `::report_dir` — a fixed-width listing.
+- `sampleproj/retry.py::backoff_for` / `::backoff_series` — the doubling ladder
+  capped at `retry.py::BACKOFF_CAP_SECONDS` (30), hard-coded on purpose.
+- `sampleproj/errors.py` — the message constants and `SampleProjError`.
+
+ENTRY POINT: `python3 -m sampleproj.cli` (`cli.py` ends with
+`raise SystemExit(main())`), documented in the project's own
+`scripts/gauntlet_sample_project/README.md` under "Commands".
+
+TEST RUNNER: pytest, run from inside the project copy —
+`scripts/gauntlet_sample_project/README.md` says `python3 -m pytest tests -q`,
+and `scripts/gauntlet_sample_project/conftest.py` inserts the project directory
+on `sys.path` precisely so the materialised copy is self-sufficient. SIX test
+files (`tests/test_cli.py`, `test_config.py`, `test_importer.py`,
+`test_parsing.py`, `test_report.py`, `test_retry.py`). Measured, not assumed:
+`python3 -m pytest tests -q` inside the template returns `30 passed`.
+
+HOW A MISSION IS EXPECTED TO CHANGE IT: by editing a module and its test in
+place inside the run's own workspace copy, with the suite above as the
+executable check. The modules say so themselves — `retry.py`'s docstring names
+g01, `parsing.py`'s names g06, `importer.py`'s and `report.py`'s both name g05,
+`config.py`'s names g02 and g04, `cli.py`'s names g03 and g08. Each existing
+gauntlet order has a designated seam already written into the fixture.
+
+### S2 — how the project reaches a workspace, and whether an order may vary it
+
+`gauntlet_runner.py::materialise_sample_project(run_dir, template_dir=None)`
+copies `source = template_dir or default_template_dir()` into
+`run_dir / WORKSPACE_DIRNAME`, skipping `gauntlet_orders.py::TEMPLATE_IGNORED_DIRS`
+(`__pycache__`, `.pytest_cache`, `.git`), then runs `git init` / `add -A` /
+`commit` so the mission's work is a diff against a baseline.
+`gauntlet_runner.py::_default_make_project` then registers that workspace as a
+`project_registry.py::RemyProject` whose `canonical_repo_path` is the copy.
+
+AN ORDER CANNOT SELECT A DIFFERENT TEMPLATE. The parameter exists on the
+function, but `gauntlet_runner.py::run_order` calls the seam as
+`workspace = deps.materialise(run_dir)` — one positional argument, no template.
+The template is therefore a property of the `RunnerDeps` a CAMPAIGN is given
+(`RunnerDeps.materialise`), never of the order. The evidence side agrees:
+`gauntlet_runner.py::_template_digest` calls `template_tree_digest()` with no
+argument, so `run.json` always records the DEFAULT template's digest whatever
+was actually copied.
+
+What R2 Q3 implies for a bench order that would need its own fixture: the
+template digest is folded into the set freeze
+(`gauntlet_orders.py::compute_set_hash(entries, template_digest=...)` and the
+`template_digest` check in `::load_order_set`), so adding a second fixture tree
+is not a local act — it changes what "the sample project" digests to, and every
+frozen gauntlet order's set hash with it. A bench order needing its own fixture
+is therefore NEW work at the runner seam plus a freeze change, not a field in an
+order file. F082 has not built it.
+
+### S3 — the five capabilities, one answer each
+
+Counted as answered: FIVE questions, numbered 1 to 5. THREE are yes and TWO are
+no.
+
+1. A SMALL CLI TOOL — YES. `sampleproj/cli.py::build_parser` is a real argparse
+   CLI with two subcommands, and `tests/test_cli.py` already exercises stdout,
+   stderr and exit codes. A distinct unclaimed seam exists: `report_width` is a
+   real setting in `config.py::DEFAULTS` and `report.py::build_report` already
+   accepts `width=`, but `cli.py::main` never passes it and `build_parser`
+   offers no such option, so the setting is unreachable from the command line.
+   The file that settles it: `scripts/gauntlet_sample_project/sampleproj/cli.py`.
+
+2. AN API ENDPOINT WITH TESTS — NO. There is no HTTP surface of any kind.
+   `grep -rniE "http|flask|fastapi|django|server|route|endpoint|socket|wsgi|asgi|uvicorn|requests"`
+   over the whole project (`.py`, `.md`, `.txt`, `.json`, `.cfg`, `.toml`)
+   returns ZERO hits, and there is no dependency manifest that could declare a
+   web framework. The file that settles it: there is none — the absence itself
+   is the answer, and `scripts/gauntlet_sample_project/README.md` describes the
+   project as "a small records pipeline" with two CLI commands and nothing else.
+
+3. A FRONTEND WIDGET JUDGED BY BUILD PLUS AN HTTP-LEVEL SMOKE — NO. There is no
+   frontend and no build step. No `.js`, `.ts`, `.jsx`, `.tsx`, `.vue`, `.html`
+   or `.css` file exists in the tree, and no `package.json`; the only non-Python
+   files are `README.md` and `CHANGELOG.md`. The HTTP half fails for the same
+   reason as capability 2. The file that settles it: the absence of
+   `scripts/gauntlet_sample_project/package.json`, and
+   `scripts/gauntlet_sample_project/README.md`, which documents a pytest-only
+   check.
+
+4. A BUGFIX ON A FIXTURE REPO — YES, and a genuine defect is already present
+   rather than needing to be planted. `sampleproj/config.py::DEFAULT_CONFIG_FILENAME`
+   is defined as `"sampleproj.conf"` and `grep -rn "DEFAULT_CONFIG_FILENAME"`
+   over the project returns exactly ONE hit, its own definition — nothing reads
+   it. `config.py::resolve` consults a file only under
+   `if config_path is not None`, so with no explicit path the file layer of the
+   precedence chain never runs, while
+   `scripts/gauntlet_sample_project/README.md` states the chain as explicit >
+   environment > "a `sampleproj.conf` file" > built-in default with no such
+   condition. Documented behaviour and real behaviour disagree, and no test in
+   `tests/test_config.py` covers the unconditional lookup. The file that settles
+   it: `scripts/gauntlet_sample_project/sampleproj/config.py`.
+
+5. A REFACTOR WITH UNCHANGED BEHAVIOUR, TEST-PINNED — YES. `cli.py::main`
+   interleaves doing and presenting: the `import` branch calls
+   `importer.import_records` and then emits three kinds of progress line inline,
+   so no caller can obtain the text without printing it. Extracting the
+   rendering leaves observable behaviour identical, and `tests/test_cli.py`
+   already pins that behaviour through `capsys` on all three of stdout, stderr
+   and the return code, so the pin exists without writing it. The file that
+   settles it: `scripts/gauntlet_sample_project/tests/test_cli.py`.
+
+Two notes that cost no answer. First, capability 5's target is deliberately NOT
+the duplicated path normalisation in `importer.py::import_records` and
+`report.py::report_dir` — that is already gauntlet order g05's goal, and a bench
+order restating a gauntlet order measures the same thing twice. Second, the kind
+vocabulary is frozen at `gauntlet_orders.py::ORDER_KINDS` (five values, none of
+them a refactor kind), and `::load_order` refuses any other, so the refactor
+order is filed under `pure_code_change` rather than editing that tuple — the
+ADDITIVE constraint of Q11 forbids the edit.
+
+### S4 — what is owed, and what would make it yes
+
+The stop clause does NOT fire: three of five are expressible, which is at or
+above the threshold of three. Orders are written for capabilities 1, 4 and 5.
+Capabilities 2 and 3 are OWED, and F082 HAS NOT BUILT THEM.
+
+- CAPABILITY 2, an API endpoint with tests. Smallest fixture addition: a
+  standard-library-only `http.server` module inside `sampleproj` — one
+  `BaseHTTPRequestHandler` serving a single read-only route over the records
+  the importer already writes, plus a test that starts it on port 0 and asserts
+  the status and body. Standard library only, because the project has no
+  dependency manifest and adding one is a larger change than the capability.
+- CAPABILITY 3, a frontend widget judged by build plus an HTTP-level smoke.
+  Smallest fixture addition: capability 2 first, since the smoke is defined at
+  the HTTP level, then one static asset the endpoint serves and a "build" step
+  that is a checkable transform of it. This is strictly the larger of the two
+  and depends on the other.
+
+Neither addition is made in R4, and no order is written for either. Writing an
+order that cannot run would be worse than the gap: the freeze makes it
+permanent, and a frozen order whose goal has no seam in the project scores every
+future run against something the project cannot do.
