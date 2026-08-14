@@ -18,9 +18,14 @@ the gauntlet harness already provides, which pieces the bench must reuse rather
 than copy, and where the record schema and the history file belong, each
 answered with a file-and-symbol citation → R3 T001 the factoring plus the five
 frozen orders and the record schema → R4 T002 history append, trend computation
-and the regression rules with improving, flat and degrading goldens → R5 T003
-the CLI, model-context recording and a fake-provider bench run end to end →
-R6 the integration gate → R7 closure.
+and the regression rules with improving, flat and degrading goldens → R5 to R9
+the T002 build-out, its goldens and the verdicts on them → R10 T003a the stats
+bench read view → R11 T003b model context and a fake-provider run → R12 the
+integration gate → R13 closure. The frozen order set is THREE, not the five
+this map first promised: finding R-0411 measured it and DECISION F082 D3 binds
+the recovery to a bench-owned fixture. This map is rewritten whenever it stops
+matching `.agent/context.md`; the standing gate R-0417 created is what catches
+it.
 
 ## Findings
 
