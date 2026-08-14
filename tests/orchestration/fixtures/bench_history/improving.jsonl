@@ -1,0 +1,6 @@
+{"bench_history_version": 1, "run_seq": 1, "row": {"cost": {"in": 1600, "out": 320}, "order_id": "bench-01-cold-start", "passed": true, "postmortem_classes": [], "repair_rounds": null, "series": "f082-bench", "wall_s": 60.0}}
+{"bench_history_version": 1, "run_seq": 1, "row": {"cost": {"in": 3200, "out": 640}, "order_id": "bench-02-repair-loop", "passed": true, "postmortem_classes": [], "repair_rounds": null, "series": "f082-bench", "wall_s": 120.0}}
+{"bench_history_version": 1, "run_seq": 2, "row": {"cost": {"in": 1200, "out": 240}, "order_id": "bench-01-cold-start", "passed": true, "postmortem_classes": [], "repair_rounds": null, "series": "f082-bench", "wall_s": 48.0}}
+{"bench_history_version": 1, "run_seq": 2, "row": {"cost": {"in": 2400, "out": 480}, "order_id": "bench-02-repair-loop", "passed": true, "postmortem_classes": [], "repair_rounds": null, "series": "f082-bench", "wall_s": 96.0}}
+{"bench_history_version": 1, "run_seq": 3, "row": {"cost": {"in": 1000, "out": 200}, "order_id": "bench-01-cold-start", "passed": true, "postmortem_classes": [], "repair_rounds": null, "series": "f082-bench", "wall_s": 40.0}}
+{"bench_history_version": 1, "run_seq": 3, "row": {"cost": {"in": 2000, "out": 400}, "order_id": "bench-02-repair-loop", "passed": true, "postmortem_classes": [], "repair_rounds": null, "series": "f082-bench", "wall_s": 80.0}}
