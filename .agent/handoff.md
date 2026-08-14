@@ -1,93 +1,91 @@
-# Handoff — F045 Loop definitions · ROUND 11 · SESSION CLOSE
+# Handback — F045 Loop definitions, R12 (worker, bookkeeping + ground survey)
 
-Branch: feature/f045-loop-definitions. Base for this round: 6e6e3479.
-This was a ONE-SESSION self-drive run (docs/agents/self_drive_protocol.md). It
-ends at its DECLARED round cap with every commit written and pushed and a clean
-tree — a SUCCESS under guardrail G7, not a failure. No code changed this round:
-it puts the two outstanding reviewer counter-measures on disk and closes out.
+Branch `feature/f045-loop-definitions` · base `a85a92d9` · no PR, nothing merged.
+Open findings: 2 — R-0350, R-0354 — recomputed from `.agent/live_review.md`.
+No production code and no test file was touched.
+Deviations, declared: this handoff is 91 lines against the 60-line cap. The overage
+is mandated content only — five per-commit changed-files tables (21 lines), the
+twelve-row gate table (14), and the item-status table (8). No section was dropped.
 
-Deviations, declared: 93 lines (`wc -l`; AGENTS.md D15 allows >60 with a stated
-cause). Cause is mandated content — the per-round table, the commit table, the
-9-row gate table with real output, and the item-status table. No section is
-dropped.
+## Range
+Review of a85a92d9..HEAD.
 
-## Rounds this session (verdicts as recorded by the session reviewer)
-
-| Round | Verdict | Note |
+## Commits
+### b3f03a87 chore(f045): save the R12 block verbatim
+| Path | +/- | Reason |
 |---|---|---|
-| R6 | PASS | reviewed at session start; its commits predate f164bdfc |
-| R7 | PASS | persisted mission text, root honoured on save |
-| R8 | FAIL | the listing printed the run notice — finding R-0355 |
-| R9 | PASS | the repair: the listing got its own inert legend |
-| R10 | PASS | `loop run <name> [--yes]` — materialize, then stop |
-| R11 | this round | on-disk counter-measures + this handoff |
-
-This session's first commit is f164bdfc; HEAD before this round was 6e6e3479.
-
-## Commits this round
-
-| SHA | Subject | Files |
+| .agent/authored/f045-r12.md | +221/-0 | C0a — block saved verbatim; cap-exempt (F104 D1) |
+### 8116cb1a chore(f045): point last_block at the R12 block
+| Path | +/- | Reason |
 |---|---|---|
-| a43fecec | chore(f045): save the R11 block verbatim | .agent/authored/f045-r11.md (NEW) |
-| 11a06162 | chore(f045): point last_block at the R11 block | .agent/last_block.md |
-| c59b5187 | docs(agents): add the citation and open-set checks to the block checklist | docs/agents/planner_reviewer_prompt.md |
-| this one | docs(f045): close the session with the R11 handoff | .agent/plan.md · .agent/handoff.md |
-
-## ITEM 4 gates — real exit codes, real output
-
-| Gate | Exit | Real output |
+| .agent/last_block.md | +221/-155 | C0b — byte-identical copy; cap-exempt (F104 D1) |
+### 1a441e82 docs(f045): close R-0353, R-0355 and R-0356 at the R12 gate
+| Path | +/- | Reason |
 |---|---|---|
-| (a) cmp authored vs last_block | 0 | no output |
-| (b) checklist item count | 0 | `ITEMS ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '1', '2', '3', '5']` — the run ends at 10; the trailing `1,2,3,5` are the separate Verification-tiers list further down §3. Intro line now reads: `  ten checks mechanically, on the FINAL bytes, after the last edit, before any` |
-| (c) recomputed open set | 0 | `OPEN ['R-0350', 'R-0353', 'R-0354', 'R-0355', 'R-0356']` |
-| (d) git diff --name-only 6e6e3479..HEAD | 0 | exactly the five Change files; `.agent/live_review.md` does NOT appear |
-| (e) pytest tests/docs -q | 0 | **GREEN** — `294 passed in 0.21s` (the directory exists and collects) |
-| (f) pytest tests/cli/test_golden_path.py -q (canary) | 0 | **GREEN** — `42 passed in 17.06s` |
-| (g) git status --porcelain | 0 | EMPTY |
-| (h) git worktree list | 0 | ONE line: the primary checkout |
-| (i) gh pr list --state open --json number,headRefName | 0 | `[]` |
-
-(d), (g) and (h) were re-run after the final commit.
-
-## Open findings — RECOMPUTED, not carried forward
-
-5, by gate (c): **R-0350, R-0353, R-0354, R-0355, R-0356**. Next free id:
-R-0357. R-0353 and R-0356 are FIXED ON DISK this round — checklist items 9 and
-10 in commit c59b5187 — but they remain OPEN, and `.agent/live_review.md` was
-deliberately left untouched. A `Done:` line written in the same round as the
-repair, by the worker who applied it, is self-certified. The next session's
-reviewer verifies c59b5187 and writes both `Done:` lines.
+| .agent/live_review.md | +6/-0 | C1 — three authored `Done:` lines, one blank before each |
+### f417d4f1 docs(f045): inventory the pipeline for the loop e2e round
+| Path | +/- | Reason |
+|---|---|---|
+| .agent/f045_e2e_inventory.md | +256/-0 | C2 — the six-question survey, under the 500 cap |
+### (this commit) docs(f045): hand back R12 with the pipeline inventory
+| Path | +/- | Reason |
+|---|---|---|
+| .agent/plan.md | rewrite | C3 — authored PLAN applied byte for byte, 48 lines |
+| .agent/handoff.md | rewrite | C3 — this file; a handoff cannot table its own commit (R-0149) |
 
 ## Item status
-
 | Item | Status | Reason |
 |---|---|---|
-| ITEM 1 (C0a+C0b) | done | cmp exit 0; no trailing whitespace on any of 155 lines |
-| ITEM 2 (C1) | done | 18 insertions, budget 30; intro word and item count now agree at ten |
-| ITEM 3 (C2) | done | plan.md 47 lines (cap 50); this handoff |
-| ITEM 4 | done | every gate run; real outputs above |
+| C0a save the block | done | |
+| C0b point last_block | done | |
+| C1 three `Done:` lines | done | R-0353, R-0355, R-0356 closed |
+| C2 pipeline inventory | done | |
+| C3 plan + handoff | done | |
 
-## What F045 still needs — the feature is NOT done
+## External actions
+`git push` after C0a/C0b/C1/C2 → `a85a92d9..b3f03a87`, `b3f03a87..8116cb1a`,
+`8116cb1a..1a441e82`, `1a441e82..f417d4f1`; C3 pushed at handback. No PR, no merge, no
+worktree added. A read-only probe ran under gitignored `.remedy-wt/f045_r12_probe`
+(evidence for Q5) and was deleted before this handback.
 
-The end-to-end fixture loop through the fake-provider pipeline, then the
-integration gate (docs/agents/integration_gate.md), then closure per
-docs/roadmap/STATUS_closure_protocol.md.
+## Verification
+| Gate | Command | Exit | Real output |
+|---|---|---|---|
+| a | `cmp .agent/authored/f045-r12.md .agent/last_block.md` | 0 | (no output — identical) |
+| b | open-set recompute over live_review.md | 0 | `OPEN ['R-0350', 'R-0354']` |
+| c | C1 numstat + per-line count over its added lines | 0 | `6 0 .agent/live_review.md`; added=6; each DONE exactly once: True/True/True |
+| d | `git diff --name-only a85a92d9..HEAD` | 0 | `.agent/authored/f045-r12.md`, `.agent/f045_e2e_inventory.md`, `.agent/handoff.md`, `.agent/last_block.md`, `.agent/live_review.md`, `.agent/plan.md` |
+| e | `pytest tests/ui_server/test_dashboard_contract.py -q` | 0 | `70 passed in 3.69s` (before C3) |
+| e' | same, with C3's rewritten `plan.md` on disk | 0 | `70 passed in 3.09s` |
+| f | `pytest tests/cli/test_loop_cmd.py tests/orchestration/test_loop_run.py tests/orchestration/test_loop_spec.py -q` | 0 | `51 passed in 0.18s` |
+| g | `pytest tests/cli/test_golden_path.py -q` | 0 | `42 passed in 15.92s` |
+| h | `git status --porcelain` | 0 | (empty) |
+| i | `git worktree list` | 0 | one line: `/home/decodeux/Repos/remedy … [feature/f045-loop-definitions]` |
+| j | trailing-whitespace scan over the six files | 0 | no hits |
+| k | `gh pr list --state open --json number,headRefName` | 0 | `[]` |
 
-## Safety statement
+Gate (d) yields six paths, not five: the block's Change list has five bullets but six
+paths, because C3's bullet names `.agent/plan.md` and `.agent/handoff.md` together.
+Reported, not silently reconciled. Nothing outside that list was touched.
 
-No PR is open. Nothing was merged. `main` was never touched — every commit is
-on `feature/f045-loop-definitions`, pushed after each commit. No force-push
-occurred. No worktree was left behind. `.agent/STOP` did not exist at any point
-this round.
-FOR THE OPERATOR: this branch has carried NO PR across several sessions.
-Whether to open one is your call — this session did not make it either way.
+## Authored-text proofs
+Disk-to-disk against the committed `.agent/authored/f045-r12.md`: DONE-353, DONE-355
+and DONE-356 each appear exactly once among C1's six added lines AND exactly once in
+`.agent/live_review.md` on disk (True/True/True on both checks). PLAN:
+`open('.agent/plan.md').read() == authored_plan_text` → True, 48 lines.
 
-## Next expected action
+## Deviations & assumptions
+- Gate (j)'s literal command `grep -rn ' $' …` is DENIED by this environment's sandbox
+  ("This command requires approval"), as is `grep -rn "[ ]$" …`. An equivalent Python
+  scan (`l != l.rstrip()` over every line of all six files) ran instead and found
+  nothing. The check was performed; the ordered command was not runnable.
+- Gate (e) ran before C3 and again after it, because C3 rewrites the `plan.md` that
+  contract reads.
+- Commit messages carry no `Co-Authored-By` trailer, matching every prior commit here.
 
-1. Phase 1 rule 1 FIRST: read `.agent/STOP` from disk (finding R-0347 — a
-   sentinel that appears mid-session is invisible until something trips on it).
-2. Then Phase 1 rule 2, the Open PR Gate.
-3. Then the bookkeeping above: verify c59b5187, close R-0353 and R-0356.
-4. Then the end-to-end fixture loop, the integration gate, closure.
+## Next
+Reviewer verdict on R12, then R13: the end-to-end fixture loop, built on
+`.agent/f045_e2e_inventory.md` — its Q6 gives the smallest change, and its two
+"not determined" questions are R13's to decide rather than assume.
 
-Fortschritt: ~60 % (T001 ✅ · T002 ✅ · T003 läuft) — Schätzung
+Fortschritt: ~65 % (T001 ✅ · T002 ✅ · T003 läuft) — Schätzung
