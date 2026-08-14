@@ -15,22 +15,18 @@ with a reason and an expected retry — instead of burning retries or failing th
 task. Providers that emit no limit signal behave exactly as today.
 
 ## Current Step
-T003 part 2, item 1: the end-to-end test that pins the reviewer parse-retry call
-site, which R-0374 registered as wired but unpinned. The governor wiring itself
-is already on disk at all three `_call_with_retry` call sites; this step adds no
-production code.
+T003 part 2, item 2: the report surfaces. The governor records every wait on
+`PingPongResult.rate_limit_waits` and no reader has ever seen one. This step adds
+the exported key and the human summary line, and nothing else.
 
 ## Next Steps
-1. The report surfaces: `rate_limit_waits` in `export_pingpong_json`, and the
-   "waited Ns on provider rate limits this run" line in `summarize_pingpong`
-   built from the recorded waits.
-2. Integration gate per docs/agents/integration_gate.md, then closure per
-   docs/roadmap/STATUS_closure_protocol.md.
+1. Integration gate per docs/agents/integration_gate.md.
+2. Closure per docs/roadmap/STATUS_closure_protocol.md, which is also where the
+   thirteen open findings above are registered or resolved rather than dropped.
 
 ## Risks
-- The seam decides retryability for one error class. The 294-test regression
-  gate is what proves the pre-F057 path did not move; run it on every round that
-  touches `_call_with_retry`.
+- The export is a contract. Five test files read it; the gate that proves the new
+  key extended rather than changed it is those five files still totalling 414.
 - A reviewer rate limit reaches the governor only when its error carries the
   `provider_error:` prefix, because `ReviewerOutput.verdict` defaults to
   `"blocked"` and the reject rule would otherwise swallow it. R-0378 tracks that
