@@ -7,7 +7,10 @@ exists for this branch yet; one is created at closure, not before.
 
 ## Scope
 In: a new `packages/orchestration/watchdog.py` and
-`tests/orchestration/test_watchdog.py`, the pause seam in
+`tests/orchestration/test_watchdog.py`; `packages/orchestration/config.py` for
+the four `watchdog.*` threshold keys (`watchdog.no_progress_repeats`,
+`watchdog.burn_window`, `watchdog.burn_min_samples`,
+`watchdog.burn_multiplier`); the pause seam in
 `packages/orchestration/orchestrator_loop.py`, plus `.agent/**` round state and
 the one claimed STATUS line.
 
@@ -30,5 +33,6 @@ or dossiers; that independence is an acceptance criterion, not a preference.
 
 ## Steps
 R1 merge PR #199, claim F077, reset the record, register R-0380 and R-0381 ✅ →
-R2 the T001 inventory → R3 T001 evaluators → R4 T002 pause and decision → R5
-T003 CLI and report → integration gate → closure.
+R2 the T001 inventory ✅ → R3 record the R2 verdict and close the session ✅ →
+R4 T001 the three evaluators, their config keys and their tests → R5 T002 pause
+and decision → R6 T003 CLI and report → R7 integration gate then closure.
