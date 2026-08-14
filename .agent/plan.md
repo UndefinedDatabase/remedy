@@ -2,9 +2,10 @@
 
 Branch: feature/f082-self-benchmark, cut from main after the F077 closure PR
 #200 merged. F082 is claimed `[~]` in docs/roadmap/STATUS.md. Next free finding
-id: R-0404. Open findings: thirty-three — the thirty-two carried from F077 plus
-R-0403 registered this round. `.agent/live_review.md` is the source of truth for
-that ledger; this file mirrors it and nothing else.
+id: R-0405. Open findings: thirty-four — the thirty-two carried from F077, plus
+R-0403 registered at the claim and R-0404 registered at the R1 gate.
+`.agent/live_review.md` is the source of truth for that ledger; this file
+mirrors it and nothing else.
 
 ## Goal
 Capability becomes a measured, versioned trend instead of a feeling: a frozen
@@ -15,23 +16,21 @@ fixtures, history survives across runs, and a deliberately degraded fixture run
 triggers the regression warning.
 
 ## Current Step
-R1 is done: F082 claimed, this record reset carrying the F077 open set forward,
-R-0403 registered.
+R2: the R1 gate is recorded, R-0404 registered, and the T001 gauntlet-harness
+inventory is written read-only into `.agent/f082_inventory.md`.
 
 ## Next Steps
-1. R2 — the T001 inventory, read-only, no production edit: what the six
-   gauntlet modules under `packages/orchestration/` and
-   `scripts/self_run_gauntlet.py` already provide, which pieces the bench
-   reuses versus copies, and where the record schema and the history file
-   belong under the data root. Every answer carries a file-and-symbol
-   citation, into `.agent/f082_inventory.md`.
-2. R3 — T001 the factoring, the five frozen orders, the record schema and a
-   dry run against recorded fixture evidence.
-3. R4 — T002 history append, trend computation, regression rules and goldens.
-4. R5 — T003 CLI, model-context recording and a fake-provider bench run.
+1. R3 — T001: the factoring the inventory justifies, the five frozen orders
+   with their version tags, the record schema, and a dry run against recorded
+   fixture evidence. The gauntlet's own seven test files stay UNMODIFIED.
+2. R4 — T002: history append, trend computation, the regression rules and the
+   improving, flat and degrading goldens.
+3. R5 — T003: the `stats bench` CLI, model-context recording and a
+   fake-provider bench run end to end.
+4. R6 the integration gate, R7 closure.
 
 ## Risks
-- The factoring in T001 is the feature file's own named risk: the gauntlet's
-  seven test files must stay green UNMODIFIED, so R2 establishes what may move
-  before anything moves.
-- Thirty-three open findings is the largest carry any feature has started with.
+- The factoring in T001 is the feature file's own named risk. R2 answers what
+  may move before anything moves; an answer of "cannot move without editing a
+  gauntlet test" is a finding against the plan, not a licence to edit the test.
+- Thirty-four open findings is the largest carry any feature has started with.
