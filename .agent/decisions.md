@@ -5198,3 +5198,43 @@ the action and the wiring.
 
 HOW TO REVERSE. Merge R8 and R9 into one round. The guard repairs are the same
 work either way; only the diagnosis cost changes.
+
+## DECISION F077 D9 (2026-08-14) — D8's four-guard bill is re-measured as a probe, not carried as a prediction
+
+CONTEXT. DECISION F077 D8 states that wiring `act_on_trips` into `run_mission`
+breaks four whole-ledger guards in `tests/orchestration/test_mission_e2e.py` and
+that the wiring round pays them. That is a PREDICTION about a colour, made
+before the evaluators existed in the shape they now have. Read against the
+scripted e2e scenario — `dispatch_job`, `declare_milestone_done`,
+`dispatch_job`, `wait_on_decisions`, `dispatch_job`, `declare_milestone_done`,
+`declare_mission_achieved` — none of the three tripwires plausibly fires:
+`evaluate_no_progress` clears its run on every `declare_milestone_done` and the
+longest surviving streak in that ledger is two against a default threshold of
+three; `evaluate_burn_anomaly` returns `None` below `burn_min_samples +
+burn_window`, which is 5 + 3 = 8 measured entries against a seven-iteration run
+whose entries carry no measured `usage`; and `evaluate_goal_drift` needs a
+dispatch on a milestone the plan never named, which a scripted run does not
+produce. If nothing trips, no ledger entry is added and all four guards stay
+green.
+
+CHOSEN. The wiring round orders the MEASUREMENT and not the colour. It runs
+`tests/orchestration/test_mission_e2e.py` at the base commit and again after the
+wiring, reports both numbers, and repairs only what is actually red. A green
+second run is a correct outcome that costs the round nothing and closes D8's
+open bill by measurement. This follows the standing rule that a red-proof is a
+probe: order the colour and a worker either fabricates it or changes code to
+meet it, and both are worse than the declared deviation an honest worker is
+forced into.
+
+ALTERNATIVES CONSIDERED. Ordering the four repairs as D8 wrote them would make
+a worker rewrite four correct assertions to accommodate an entry that never
+arrives — a silent, permanent weakening of the strongest whole-ledger guards in
+the suite, bought with no defect fixed. Deleting D8 instead of amending it would
+erase the reasoning that correctly kept R8 unwired; D8's split was right and only
+its forecast about the guards was not.
+
+HOW TO REVERSE. Delete this decision and treat D8's four-guard clause as
+binding again. Anything that makes the e2e scenario trip a tripwire — a lowered
+threshold default, a scripted run with three same-milestone dispatches, a
+milestone dropped from the plan — brings the bill back on its own, which is why
+the probe is ordered every time rather than resolved once.
