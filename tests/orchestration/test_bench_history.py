@@ -1,9 +1,12 @@
 """Tests for the append-only bench history and its regression rules (F082 T002).
 
-The three goldens under ``fixtures/bench_history/`` are three runs over the same
-two order ids, written in exactly the line shape ``BenchHistoryEntry.to_json()``
-produces. They carry no timestamp, so they are comparable byte for byte and
-these tests do not depend on when they run.
+The goldens under ``fixtures/bench_history/`` are written in exactly the line
+shape ``BenchHistoryEntry.to_json()`` produces. Three of them — ``flat``,
+``improving`` and ``degrading`` — are three runs over the same two order ids;
+``varied`` is four runs over one order id and is the only one whose trailing
+values are not all equal, which is what lets a test see the trailing MEDIAN and
+the threshold multiplier at all (R-0415). None carries a timestamp, so they are
+comparable byte for byte and these tests do not depend on when they run.
 
 Expected numbers are READ OFF the goldens inside each test rather than restated
 as literals here: a literal copied out of a fixture stops testing the fixture
