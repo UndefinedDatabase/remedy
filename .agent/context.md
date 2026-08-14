@@ -6,14 +6,17 @@ claimed `[~]` in docs/roadmap/STATUS.md and stays claimed until closure. No PR
 exists for this branch yet; one is created at closure, not before.
 
 ## Scope
-In: the capability bench built on the gauntlet harness — a runner module under
-`packages/orchestration/`, the five frozen order files, the per-run record
-schema, the append-only history under the data root, and the `stats bench` CLI
-surface; plus `.agent/f082_inventory.md`, the read-only T001 inventory,
-`.agent/**` round state and the one claimed STATUS line. The exact file set is
-NOT fixed until R2 has inventoried the harness: the feature file requires
-inspecting the current shape before building, and its orchestrator brief names
-the T001 factoring as the risky part.
+In: the capability bench built on the gauntlet harness. R2's inventory settled
+the shape: the factoring is ADDITIVE, so the bench lands as a NEW
+`packages/orchestration/capability_bench.py` with
+`tests/orchestration/test_capability_bench.py`, and no symbol moves out of any
+gauntlet module. R3 additionally owns
+`packages/orchestration/gauntlet_runner.py::measure_tokens`, repaired under
+DECISION F082 D1 because the bench's cost field reads it (R-0407). Still to
+come: the five frozen order files with per-order version tags, the append-only
+history under the data root's project area, and the `stats bench` CLI surface.
+Plus `.agent/f082_inventory.md` and `.agent/**` round state and the one claimed
+STATUS line.
 
 Out: the gauntlet's pass definition, routing decisions — this feature only
 RECORDS model context — and visual judgment, which is the F082 feature file's

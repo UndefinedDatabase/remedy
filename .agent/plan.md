@@ -2,10 +2,9 @@
 
 Branch: feature/f082-self-benchmark, cut from main after the F077 closure PR
 #200 merged. F082 is claimed `[~]` in docs/roadmap/STATUS.md. Next free finding
-id: R-0405. Open findings: thirty-four — the thirty-two carried from F077, plus
-R-0403 registered at the claim and R-0404 registered at the R1 gate.
-`.agent/live_review.md` is the source of truth for that ledger; this file
-mirrors it and nothing else.
+id: R-0408. Open findings: thirty-seven — the thirty-two carried from F077,
+R-0403 at the claim, R-0404 at the R1 gate, and R-0405 to R-0407 at the R2
+gate. `.agent/live_review.md` is the source of truth; this file mirrors it.
 
 ## Goal
 Capability becomes a measured, versioned trend instead of a feeling: a frozen
@@ -16,21 +15,22 @@ fixtures, history survives across runs, and a deliberately degraded fixture run
 triggers the regression warning.
 
 ## Current Step
-R2: the R1 gate is recorded, R-0404 registered, and the T001 gauntlet-harness
-inventory is written read-only into `.agent/f082_inventory.md`.
+R3: the R2 gate recorded, R-0405 to R-0407 and DECISION F082 D1 registered,
+`measure_tokens` repaired, and the bench record schema built as a pure
+function over what a gauntlet run already produces.
 
 ## Next Steps
-1. R3 — T001: the factoring the inventory justifies, the five frozen orders
-   with their version tags, the record schema, and a dry run against recorded
-   fixture evidence. The gauntlet's own seven test files stay UNMODIFIED.
-2. R4 — T002: history append, trend computation, the regression rules and the
+1. R4 — T001 finished: the five frozen order files with per-order version
+   tags, the validation that a changed order without a bump FAILS, and the
+   dry run against recorded fixture evidence.
+2. R5 — T002: history append, trend computation, the regression rules and the
    improving, flat and degrading goldens.
-3. R5 — T003: the `stats bench` CLI, model-context recording and a
+3. R6 — T003: the `stats bench` CLI, model-context recording and a
    fake-provider bench run end to end.
-4. R6 the integration gate, R7 closure.
+4. R7 the integration gate, R8 closure.
 
 ## Risks
-- The factoring in T001 is the feature file's own named risk. R2 answers what
-  may move before anything moves; an answer of "cannot move without editing a
-  gauntlet test" is a finding against the plan, not a licence to edit the test.
-- Thirty-four open findings is the largest carry any feature has started with.
+- `series` and `repair_rounds` have no source in the harness (R2 Q2, Q7).
+  Both are recorded as explicitly-unmeasured rather than invented; a zero
+  standing in for an unknown is the R-0178 mistake R-0407 just registered.
+- Thirty-seven open findings is the largest carry any feature has started with.

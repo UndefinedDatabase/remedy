@@ -5347,3 +5347,37 @@ Dropping the report surface entirely would leave T003's own sentence unmet.
 HOW TO REVERSE. Delete the lead block from `_cmd_mission_show` and its tests;
 nothing else depends on it. The `mission watchdog` command is independent of
 this decision and survives its reversal.
+
+## DECISION F082 D1 (2026-08-14) — F082 repairs `measure_tokens` rather than recording around it
+
+CONTEXT. The R2 inventory established, and the reviewer confirmed writer to
+reader, that `gauntlet_runner.py::measure_tokens` sums `prompt_tokens` and
+`completion_tokens` while the only producer of the `cost.usage` body it reads,
+`orchestrator_loop.py::measure_call_cost`, writes `input_tokens` and
+`output_tokens`. A measured run therefore yields `{"in": 0, "out": 0}` and
+`run.json` never gets `tokens_source: unmeasured`. Registered as R-0407.
+F082's per-order record carries a `cost` field, and that field reads this
+function.
+
+DECISION. F082 repairs the key reading inside T001, additively: the function
+accepts BOTH spellings, preferring the production one, and continues to return
+`None` when nothing was measured. AGENTS.md forbids mixing an unrelated fix
+into a feature branch, and this one is not unrelated — it is the source of the
+feature's headline metric, and a bench that reports a known-false zero as a
+measured cost would be a fabricated live indicator, which is a block condition
+in its own right.
+
+ALTERNATIVES CONSIDERED. (a) Leave it and label the bench's cost basis
+UNKNOWN: rejected, because the wrong number would still be written into
+`run.json` for every gauntlet run, and F082 would be knowingly building on it.
+(b) Route it to a paydown branch and block F082 until that lands: rejected as
+disproportionate for a two-line additive repair whose blast radius is one
+function, and it would leave the defect live meanwhile. (c) Change
+`measure_call_cost` to write the older spelling instead: rejected, because that
+writer feeds consumers beyond the gauntlet and the newer spelling is the one
+the rest of the token machinery uses.
+
+HOW TO REVERSE. Restore the two summing lines in `measure_tokens` to read only
+`prompt_tokens`/`completion_tokens` and delete the regression test in
+`tests/orchestration/test_capability_bench.py` that names `input_tokens`.
+Nothing else depends on this decision.
