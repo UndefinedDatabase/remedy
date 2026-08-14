@@ -260,3 +260,62 @@ does not exist.
 How to reverse: delete this decision and T003b records no model context; the
 feature then closes with a Design bullet unbuilt and an assumption_log entry
 saying so, which is a worse but legitimate outcome.
+
+Gate: R12 — PASS, with no new finding; the first clean round on this branch in some time. Verification tier: round gate plus the canary; no full-suite claim is made and none is owed. All sixteen ordered gates were re-executed by the reviewer against the disk rather than read out of the handback, and every one reproduces at its reported value. Transport is proven at PRIMARY strength: `.remedy-wt/f082-r12-scratchpad.md`, `.agent/authored/f082-r12.md` and `.agent/last_block.md` are byte-identical at shared sha256 `debf254122da4712916bde4baa4f0f712fa315f51c61dcfa1ec92ac967721574`, 22603 bytes and 266 lines, and python3 `read_bytes()` equality holds across all three. The C1 append is a PROPERTY and was proven as one: over the committed `9fdc6d8e^`→`9fdc6d8e`, `post.startswith(pre)` is TRUE, the appended region is 8806 bytes, and the reviewer additionally extracted GATE-R11, FINDING-R419 and DECISION-D7 from the committed authored file and confirmed `add == newline + GATE-R11 + blank + FINDING-R419 + blank + DECISION-D7 + newline` byte-for-byte — so the append is not merely an append, it is exactly the three ordered slices and nothing else, with zero marker lines reaching the record and the numstat deletion column at 0. The record counts are `^Gate: R11 — PASS` 1, `^- R-0419 — ` 1, `^## DECISION F082 D7` 1, `^## DECISION F082 D6` 1 still standing unrewritten, `^Landed: ` 0 and `^Done: ` 0; the open set recomputed mechanically is FORTY-NINE with no duplicate, max R-0419 and next free R-0420. Gate 9 is the round's point and it lands: `only one role is bound to a model` is 0 in the mirror and `found exactly one role bound to a model` is exactly 2 in the record, one inside DECISION F082 D6 where Constraint 1 forbids rewriting it and one inside FINDING-R419 which quotes it on purpose. The CTXSTEPS3 pair holds as a property — `post == pre.replace(FROM, TO)` TRUE over the committed `04a24aba`, FROM 1x to 0x, TO 0x to 1x, `FROM in TO` False — and `.agent/plan.md` byte-equals the PLAN slice as a whole file at sha256 `cbdae4c19e7ac621d5d9442d84fb013fd90b3732a62232f6710e9c2e8e04fa31`, 49 lines, both required headings present, with `.agent/context.md` at 68 lines keeping every contract reader. The change set is six paths, every one inside the block's Change list, and `git diff --name-only e6c18d89..HEAD -- apps/ packages/ tests/ docs/` is EMPTY, which is the promise a verdict round exists to keep. Suites re-run by the reviewer at the branch head: the canary plus the three contract readers `184 passed`, `tests/cli/test_stats_bench.py` `25 passed`, and `integrity check --json` `passed: true`, `fail_count: 0` over 5 checks with `handlers=337` unchanged. Insertions per commit are 266, 174, 49 and 31, none over 500, `git status --porcelain` is empty, `git worktree list` is the single primary checkout, `.agent/STOP` is absent, and `gh pr list --state open` is `[]`. The reviewer also went past the gates and spot-checked the round's substance, because R-0419 is precisely the finding that says a claim nobody re-ran is not evidence: R-0419's own charge is upheld against the code — `packages/providers/ollama_planner/provider.py::_resolve_model:54` and `packages/providers/ollama_builder/provider.py::_resolve_model:175` both exist and each binds a further role to a model, so the R11 block's "exactly one role" was indeed false — and DECISION-D7's premise was re-read line by line at `gauntlet_runner.py::_evidence_body`, where the dict literal carries FIFTEEN keys and exactly one of `tokens` or `tokens_source` is then added unconditionally, so every EMITTED body carries sixteen and none of them is a model. The worker's qualified hold on that numeral was therefore accurate, and declaring it rather than quietly correcting the slice was the right call twice over. One thing the reviewer found that the round did not owe and R13 does: `::_evidence_body` is not the only writer of a run body — `::_minimal_body` writes a thirteen-key subset on the crash-of-crash path — so the count-the-writers rule that produced R-0419 applies to D7's own key, and the R13 block binds both writers explicitly rather than leaving the second one to be discovered later. No block condition was hit: no fabricated data, no false live indicator, no missing changed-files table, no unverified completion claim, no silent scope change.
+
+## DECISION F082 D8 — the module D7 did not name, and the size of T003b
+
+This decision EXTENDS DECISION F082 D7 (it does not supersede it; D7's three
+conditions stand unchanged and bind R13) and settles two things D7 left open.
+
+**Part one — `intake.py` is inside the exception.** D7 granted the additive
+`models` key to `gauntlet_runner.py::_evidence_body` and named no other module.
+But the honest value for the planner and orchestrator roles does not live in
+`gauntlet_runner.py`. `packages/orchestration/intake.py::make_structured_call_fn`
+constructs the `OllamaPlanner` that will actually serve every call and then
+returns only the closure, discarding the one thing worth recording:
+`planner.model`, the model that instance resolved. So T003b MAY add ONE
+assignment plus its WHY comment to that factory, attaching the resolved model
+to the callable it already returns.
+
+The scope of this exception is deliberately tiny and is stated so it cannot
+creep: no signature changes, no return type changes, no behaviour changes, and
+no caller is affected. `make_structured_call_fn` has six call sites — one
+inside `intake.py` itself, two in `gauntlet_runner.py`, two in
+`apps/cli/commands/mission_cmd.py` and two in `apps/cli/commands/do_cmd.py` —
+and every one of them keeps receiving exactly the callable it receives today.
+The count was taken with a repository-wide grep before this decision was
+written, which is the standing rule R-0419 imposed.
+
+Alternatives considered: (a) re-resolve the model inside the runner by calling
+`ollama_planner/provider.py::_resolve_model` — REJECTED, and this is the whole
+reason the decision exists. That re-derives a CONFIGURED value and writes it
+into evidence as though it were observed, which is exactly what
+`gauntlet_runner.py::run_order`'s own comment refuses to do (DECISION F105 D13)
+and exactly what `token_ledger.py::call_record_from_evidence` refuses for its
+own `model` column. It would also be silently WRONG whenever the factory
+returned None because Ollama was unreachable: the evidence would name a model
+for a call that never happened. (b) Record nothing for those two roles —
+REJECTED; it leaves the Design bullet unbuilt while the observed value is one
+attribute away.
+
+**Part two — T003b is split in half.** As planned, R13 carried the model-context
+write path, the read path into the bench record, AND a fake-provider bench run
+whose four blockers R11's Q6 names. That is three separable deliverables in one
+round, and the middle one needs `gauntlet_evidence.py::RunEvidence` — a THIRD
+gauntlet module that neither D7 nor part one of this decision names. Chosen:
+R13 builds the WRITE half only — the models reach `run.json` and are pinned by
+tests. R14 builds the READ half (`RunEvidence` to `BenchRecord`, which needs its
+own additive ruling) together with the fake-provider run and the Q7 pin for
+"the bench never runs implicitly". R15 is the integration gate and R16 closure.
+
+Why split rather than push: a round that cannot be gated as one thing cannot be
+reviewed as one thing. The write half has a crisp falsifiable gate — the models
+appear in the emitted body, absences stay absent, and the gauntlet's seven test
+files stay green unmodified — and that gate is worth having on its own before
+anything reads the value.
+
+How to reverse: delete part one and the planner/orchestrator models are
+unobservable, so T003b records three absences and the Design bullet closes
+unbuilt with an assumption_log entry. Delete part two and R13 reverts to the
+three-deliverable round, at the review cost stated above.
