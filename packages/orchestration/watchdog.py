@@ -5,12 +5,19 @@ READS the orchestrator loop's decision ledger and answers one question per trip
 class: is the loop repeating itself, is it burning tokens out of proportion to
 its own history, is it working on something the mission plan never named.
 
-Everything in this module is PURE. Nothing here reads a file, writes a file,
-mutates a mission, or imports the loop it observes — a watchdog that could edit
-the run it is judging would be judging its own work. The evaluators take a list
-of ledger entries (plain dicts, exactly what ``read_ledger`` returns) and give
-back :class:`Trip` records. Deciding what to DO about a trip — pausing the
-mission, raising the decision — is deliberately NOT here; that is F077 T002.
+The three EVALUATORS and their helpers are PURE: none of them reads a file,
+writes a file, mutates a mission, or imports the loop it observes — a watchdog
+that could edit the run it is judging would be judging its own work. They take
+a list of ledger entries (plain dicts, exactly what ``read_ledger`` returns)
+and give back :class:`Trip` records. Deciding what to DO about a trip — pausing
+the mission, raising the decision — is deliberately NOT here; that is F077 T002.
+
+``watchdog_thresholds_from_config`` is the ONE function here that reaches
+outside: called with no argument it reads config through ``get_config()``,
+which resolves to the project and user TOML files and to the environment. It is
+deliberately kept separate from the evaluators — the thresholds are resolved
+ONCE, at the edge, and handed down as a plain :class:`WatchdogThresholds`
+value, so the evaluators themselves stay callable with no config layer present.
 
 A malformed entry is SKIPPED, never raised on. A ledger is forensic evidence
 and ``read_ledger`` already tolerates torn lines, so an entry missing its
