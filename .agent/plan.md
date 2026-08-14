@@ -1,13 +1,14 @@
 # Plan — F077 Autonomy watchdog
 
 Branch: feature/f077-autonomy-watchdog, cut from main after PR #199 merged.
-F077 is claimed `[~]` in docs/roadmap/STATUS.md. Next free finding id: R-0400.
-Open findings: THIRTY — R-0380, R-0381, R-0361, R-0362, R-0363, R-0364, R-0367,
-R-0368, R-0369, R-0371, R-0374, R-0375, R-0376, R-0377, R-0378, R-0379, R-0382,
-R-0385, R-0386, R-0387, R-0389, R-0391, R-0392, R-0393, R-0394, R-0395, R-0396,
-R-0397, R-0398, R-0399 — recomputed from `.agent/live_review.md` at the session
-close: 34 registered, 4 resolved (R-0383, R-0384, R-0388, R-0390), no duplicate
-id. R-0398's fix has LANDED but is not resolved; only a reviewer sets `Done:`.
+F077 is claimed `[~]` in docs/roadmap/STATUS.md. Next free finding id: R-0402.
+Open findings: THIRTY-ONE — R-0361, R-0362, R-0363, R-0364, R-0367, R-0368,
+R-0369, R-0371, R-0374, R-0375, R-0376, R-0377, R-0378, R-0379, R-0380, R-0381,
+R-0382, R-0385, R-0386, R-0387, R-0389, R-0391, R-0392, R-0393, R-0394, R-0395,
+R-0396, R-0397, R-0399, R-0400, R-0401 — recomputed from `.agent/live_review.md`
+at R19: 36 registered, 5 resolved (R-0383, R-0384, R-0388, R-0390, R-0398), no
+duplicate id. R-0401's fix has LANDED but is not resolved; only a reviewer sets
+`Done:`.
 
 ## Goal
 Continuous operation gets a tripwire independent of the thing it watches. A
@@ -17,20 +18,20 @@ and raises one decision per trip class carrying the evidence triple. It stops;
 it never repairs. Thresholds live in config, not code.
 
 ## Current Step
-Session close after R17. The feature is CLOSURE-READY: T001, T002 and T003 are
-built and green, the integration gate ran on the branch AND at the merge base
-with zero branch-only failures, and the ist-doc closure owed now exists at
-`docs/system/autonomy-watchdog-v1.md`, registered in `docs/README.md`. No round
-is unreviewed: R17's verdict is on the record, so the next session starts fully
-gated and owes no gate paragraph for work it did not do.
+R19 — closure preparation. The R18 verdict is on the record, R-0398 is resolved
+against the source, R-0400 and R-0401 are registered, the ist-doc's `_record`
+span is repaired, and `docs/roadmap/features/T2_F077.md` now carries the Built
+State section that closure precondition 4 requires. The other preconditions
+already hold: the reviewer re-ran the full suite itself at `386ef7b5` and
+measured 16898 passed, 19 skipped, exit 0.
 
 ## Next Steps
-1. Phase 1 of docs/agents/self_drive_protocol.md, in order: rule 1 re-reads
-   `.agent/STOP` from disk, THEN rule 2 runs the Open PR Gate. There is no open
-   PR for this branch; the PR is created at closure, not before.
-2. Closure per docs/roadmap/STATUS_closure_protocol.md: the evidence job, a
-   FRESH review zip (a zip failure is a closure blocker), the authored STATUS
-   line committed last on the branch, then the PR — which is not merged now.
+1. Closure per docs/roadmap/STATUS_closure_protocol.md: the evidence job, a
+   FRESH review zip (a zip failure is a closure blocker), then the closure
+   commit — STATUS `[x]`, the README count and tier sync in that SAME commit
+   (R-0154, and tests/docs pins the count), and the final `.agent/` state —
+   last on the branch, then the PR, which is NOT merged this session.
+2. The next feature after F077 in STATUS order is F082 — Self-benchmark.
 
 ## Risks
 - A mission resumed AFTER its watchdog decision is answered still carries the
@@ -38,7 +39,7 @@ gated and owes no gate paragraph for work it did not do.
   three tripwires, so D4's verb buys exactly one iteration (inventory Q8).
 - R14 shipped `mission resume` at exactly that scope, and DECISION F077 D12
   does not address the re-trip; no round yet owns it.
-- Thirty open findings is the largest carry any feature has held.
+- Thirty-one open findings is the largest carry any feature has held.
 - R-0396's amendment target, docs/agents/integration_gate.md, is outside this
   feature's change set, so every future gate reproduces the eight phantom
   ui_server base failures until some feature owns that doc.

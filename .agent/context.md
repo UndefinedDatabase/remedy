@@ -41,7 +41,7 @@ pause. `packages/orchestration/mission_state.py` stays OUT with the facade:
 `orchestrator_loop` owns, and `orchestrator_loop` imports `mission_state`, so
 reading the ledger from the renderer would invert that dependency into the
 import cycle `watchdog` keeps its imports inside function bodies to avoid. Open
-findings at the session close: THIRTY, next free id R-0400.
+findings at R19: THIRTY-ONE, next free id R-0402.
 
 Out: repair logic, class-expectation anomaly detection and loop policy — the
 F077 feature file's Do-not-touch list. The watchdog never modifies plans, jobs
