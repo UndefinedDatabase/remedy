@@ -1,191 +1,184 @@
-── STEP T003 (bookkeeping + ground survey) — F045 ──────────────
-Goal:        Close the three findings whose fixes are already on disk and
-             verified, then survey the fake-provider pipeline so the NEXT round
-             can author the end-to-end fixture test from measured facts.
+── STEP T003 (repair + report provenance) — F045 ───────────────
+Goal:        Persist finding R-0357, repair the citation that caused it, then
+             make `loop_ref` visible in the run report — which lives inside the
+             job's evidence area, so one change covers both halves of the
+             feature file's Acceptance line.
 
-Bundle:      C0a save this block · C0b point last_block at it · C1 the three
-             reviewer-authored `Done:` lines · C2 the pipeline inventory ·
-             C3 plan.md and the handoff.
+Bundle:      C0a save this block · C0b point last_block at it · C1 persist
+             R-0357 · C2 repair the inventory citation · C3 the report change ·
+             C4 its tests · C5 plan.md and the handoff.
 
 Change:      Exactly these files, nothing beyond them:
-             - `.agent/authored/f045-r12.md` (NEW, C0a)
+             - `.agent/authored/f045-r13.md` (NEW, C0a)
              - `.agent/last_block.md` (C0b)
              - `.agent/live_review.md` (C1)
-             - `.agent/f045_e2e_inventory.md` (NEW, C2)
-             - `.agent/plan.md` and `.agent/handoff.md` (C3)
-             NO production code. NO test files. If you believe a production
-             change is required, STOP and report it instead of making it.
+             - `.agent/f045_e2e_inventory.md` (C2)
+             - `packages/orchestration/run_report.py` (C3)
+             - `tests/orchestration/test_run_report.py` (C4)
+             - `.agent/plan.md` and `.agent/handoff.md` (C5)
+             Do NOT edit `packages/orchestration/loop_run.py`, `loop_spec.py`,
+             `loop_cmd.py`, or any golden text inside
+             `tests/orchestration/test_run_report.py`. If you believe a golden
+             must change, STOP and report it — that is a reviewer decision.
 
 Insertion budget, per commit, measured or reasoned (finding R-0350):
              C0a and C0b are each the verbatim rewrite of a SINGLE `.agent/**`
-             state file and are cap-EXEMPT by DECISION F104 D1.
-             C1 adds exactly 6 lines — three authored lines plus one blank
-             separator before each — measured from the authored text below.
-             C2's size is deliberately NOT predicted: a survey's length follows
-             what it finds, so no number is asserted here. If C2 alone exceeds
-             500 insertions, split it by section and declare the split.
-             C3 is two `.agent/**` files, both far under the cap.
+             state file, cap-EXEMPT by DECISION F104 D1.
+             C1 adds 2 lines — one blank plus one authored line — measured from
+             the authored text below.
+             C2 is a FROM→TO rewrite of one paragraph; its net change is a
+             handful of lines, so no cap question arises.
+             C3 is three small edits in one module; no number is asserted here
+             because the exact line count depends on how the module's existing
+             formatting absorbs them.
+             C4's size follows the tests it needs; if it alone exceeds 500
+             insertions, split it and declare the split.
+             C5 is two `.agent/**` files, far under the cap.
 
 ── C0a ────────────────────────────────────────────────────────
-Write `.agent/authored/f045-r12.md` with the bytes described above.
-Commit alone. Subject: `chore(f045): save the R12 block verbatim`
+Write `.agent/authored/f045-r13.md`. Commit alone.
+Subject: `chore(f045): save the R13 block verbatim`
 
 ── C0b ────────────────────────────────────────────────────────
-Copy `.agent/authored/f045-r12.md` to `.agent/last_block.md` so the two are
-byte-identical. Commit alone.
-Subject: `chore(f045): point last_block at the R12 block`
-Ordered as its own commit because two small commits review better than one and
-splitting removes a cap question from commit time — not for a size reason.
+Copy it to `.agent/last_block.md` so the two are byte-identical. Commit alone.
+Subject: `chore(f045): point last_block at the R13 block`
 
-── C1 — the three `Done:` lines ───────────────────────────────
-APPEND to `.agent/live_review.md`, at the very END of the file, in this order:
-a blank line, then DONE-353; a blank line, then DONE-355; a blank line, then
-DONE-356. Each DONE text is ONE physical line — do not re-wrap it, do not
-insert newlines into it, do not add trailing whitespace. Take the bytes from
-your saved `.agent/authored/f045-r12.md`, not from a retype.
+── C1 — persist the finding FIRST ─────────────────────────────
+APPEND to the very END of `.agent/live_review.md`: a blank line, then the
+FINDING-357 text. It is ONE physical line — do not re-wrap it, do not insert
+newlines, no trailing whitespace. Take the bytes from your saved copy.
 
-These are REVIEWER-AUTHORED texts. You may not edit them, shorten them, or
-write any `Done:` paragraph of your own (planner_reviewer_prompt.md §4.4).
-If any of them is wrong, do NOT correct it — stop and report it.
+This is REVIEWER-AUTHORED text. Do not edit it, shorten it, or write any
+`Done:` paragraph of your own (planner_reviewer_prompt.md §4.4). If you think
+it is wrong, STOP and report it rather than correcting it.
 
->>> DONE-353 >>>
-Done: R-0353 — RESOLVED at the R12 gate. Verified against the disk, not the report: the counter-measure is ON DISK rather than in reviewer habit, which is what finally closed R-0347 and what this finding's own text asked for. `docs/agents/planner_reviewer_prompt.md` §3 carries checklist item 9, "Citations re-measured against this branch's own edits", which orders every `file:line` a block cites for a file the CURRENT feature branch has already modified to be re-grepped at emission, and prefers the SYMBOL plus its distinguishing text over a bare number because a symbol survives an edit above it and a line number does not — the exact remedy the finding names. The stale intro count that governs the list moved from six to ten in the same commit `c59b5187`, so the checklist's header no longer under-counts the checks a reviewer must run. The reviewer re-derived the count mechanically at this gate rather than reading it: the numbered run in §3 is 1 through 10 with no gap and no repeat, and the intro line reads "ten checks mechanically".
-<<< DONE-353 <<<
+>>> FINDING-357 >>>
+- R-0357 — Low — a survey's citation pointed at a module that cannot contain it, and contradicted its own neighbouring sentence. `.agent/f045_e2e_inventory.md` Q1 states that "Terminal transitions all funnel through `_apply_terminal` in the same module (line 911)". The sentence immediately before it greps `packages/orchestration/job_runner.py` and concludes "that module contains no executor at all", so "the same module" resolves to `job_runner.py` — a 94-line file whose only top-level definition is `plan_job`, which therefore has no line 911 and no `_apply_terminal`. `grep -rn "_apply_terminal" --include=*.py packages/ apps/` puts the symbol at `packages/orchestration/long_run_executor.py:911` with its one call site at line 1578, which is the module the section opened with three paragraphs earlier and the line number the citation already gives — so only the module attribution is wrong, and the quoted docstring "the ONE place a final run report is written (F053 T002)" is verbatim correct at that real location. Two rule families meet here. The citation does not resolve where it points, which is R-0349 and R-0353 and the whole reason for pre-emission checklist item 9 — closed on disk in the very round that then produced this. And the clause contradicts its own neighbour, which is the R-0331/R-0334 family: "contains no executor at all" and "terminal transitions funnel through the same module" cannot both be true of one 94-line file. Nothing landed wrong in code and no production file was touched, but `.agent/f045_e2e_inventory.md` exists precisely so the next round can trust it WITHOUT re-derivation, and a reader following it would grep a 94-line file, find nothing, and halt — the cost R-0349 and R-0353 each already charged this feature once. Counter-measure: a back-reference such as "the same module", "that file" or a bare "it" may not carry a `file:line` citation across an intervening paragraph that names a DIFFERENT module; whenever the previous sentence named another module, the intended module is named again in full. OPEN.
+<<< FINDING-357 <<<
 
->>> DONE-355 >>>
-Done: R-0355 — RESOLVED at the R12 gate. Verified against the disk, not the report: `remedy loop list` no longer borrows the RUN notice. `apps/cli/commands/loop_cmd.py` defines its own `INERT_TRIGGER_LEGEND`, "cannot fire until the scheduler exists; run such a loop manually", and the comment directly above it records why a listing deliberately does not reuse `loop_spec.INERT_TRIGGER_NOTICE` — that sentence reports a RUN, and a listing runs nothing. `INERT_TRIGGER_NOTICE` is itself untouched at "scheduler not yet available; ran on demand" and stays `remedy loop run`'s to display, printed off `outcome.notice` rather than off the constant. The pin is NEGATIVE, so the defect cannot drift back unnoticed: `test_a_schedule_trigger_loop_is_listed_and_marked_inert` in `tests/cli/test_loop_cmd.py` asserts `INERT_TRIGGER_NOTICE not in out` over the WHOLE listing output, while `test_running_an_inert_loop_prints_the_run_notice_and_still_stops_at_planned` still asserts the notice IS present on the run path — the two claims the feature actually distinguishes. The reviewer red-proved the pin in its own disposable worktree at a85a92d9 instead of trusting the colour: an import probe printed the module under `.remedy-wt/f045_r12_rev`, so the probe cannot have imported the fixed code (finding R-0337), and with the legend set back to the notice's literal text the listing test failed at its own `assert INERT_TRIGGER_NOTICE not in out`, reaching that assertion rather than dying earlier on something else. The worktree was removed and pruned before this verdict.
-<<< DONE-355 <<<
+Commit C1 ALONE, before any fix. Subject: `docs(f045): register R-0357 on the inventory citation`
 
->>> DONE-356 >>>
-Done: R-0356 — RESOLVED at the R12 gate. Verified against the disk, not the report: `docs/agents/planner_reviewer_prompt.md` §3 carries checklist item 10, "The open-finding set is recomputed, never carried forward", which orders the set derived mechanically from `.agent/live_review.md` at emission — every `^- R-\d+ — ` paragraph minus every `^Done: R-\d+ — ` line — and names each finding explicitly rather than by position. Its load-bearing clause is the one that separates it from R-0354's counter-measure and is the whole reason this finding existed: naming findings explicitly is NOT sufficient on its own, because two consecutive blocks did exactly that and were both still wrong, each having taken its set from the PREVIOUS block instead of from the record. The reviewer applied item 10 before authoring the R12 block rather than after: the recomputed set at this gate is R-0350, R-0353, R-0354, R-0355 and R-0356 — five, not the three the R9 block carried forward.
-<<< DONE-356 <<<
+── C2 — repair the citation ───────────────────────────────────
+In `.agent/f045_e2e_inventory.md`, replace the FROM paragraph with the TO
+paragraph. This pair is a REWRITE (the TO does not contain the FROM), so the
+proof is FROM 0x and TO 1x in the file after the edit.
 
-Commit C1 alone. Subject: `docs(f045): close R-0353, R-0355 and R-0356 at the R12 gate`
+>>> FROM-C2 >>>
+Terminal transitions all funnel through `_apply_terminal` in the same module
+(line 911), whose docstring says it is "the ONE place a final run report is
+written (F053 T002)". It sets `job.metadata["cycle_terminal_status"]` and then
+calls `write_final_report(job)`.
+<<< FROM-C2 <<<
 
-── C2 — the pipeline inventory ────────────────────────────────
-Write a NEW file `.agent/f045_e2e_inventory.md`. It is a SURVEY: it records
-what the code already does. It answers the six questions below, and for each
-one it records the REAL command you ran and its REAL output (trimmed to what
-is load-bearing, never invented, never paraphrased as "green"). Where the
-answer is "nothing does this", say so and show the command whose empty output
-proves it.
+>>> TO-C2 >>>
+Terminal transitions all funnel through `_apply_terminal`, which is NOT in
+`job_runner.py` — that module really does contain no executor — but back in
+`packages/orchestration/long_run_executor.py`. The command that places it:
+`grep -rn "_apply_terminal" --include=*.py packages/ apps/` → its definition at
+line 911 and its single call site at line 1578. Its docstring says it is "the
+ONE place a final run report is written (F053 T002)". It sets
+`job.metadata["cycle_terminal_status"]` and then calls `write_final_report(job)`.
+<<< TO-C2 <<<
 
-  Q1. How does a job that is in state PLANNED actually get EXECUTED through
-      the standard pipeline? Name the entry-point function and its module, and
-      name ONE existing test that drives a job through it end to end.
-  Q2. What is the fake provider? Name its module and the exact mechanism a
-      test uses to select it instead of a real provider (env var, fixture,
-      argument — whichever it really is).
-  Q3. Where, if anywhere, does `job.metadata` reach EVIDENCE? Name the writer
-      function, its module, and the on-disk artifact path it produces.
-  Q4. Where, if anywhere, does `job.metadata` reach the REPORT? Name the
-      function in `packages/orchestration/run_report.py` that would carry it.
-  Q5. Does anything today carry `loop_ref` into evidence or into the report?
-      Show the grep and its real output.
-  Q6. What is the SMALLEST change that would make `loop_ref` visible in
-      evidence and in the report — which file, which function, roughly what
-      shape? Describe it only. Write NO code and change NO production file.
+Commit C2 alone. Subject: `docs(f045): point the terminal citation at its real module`
 
-Constraints on C2: every `file:line` you cite must be produced by a command in
-this round, not remembered. Prefer naming the SYMBOL plus its distinguishing
-text over a bare line number. Do not speculate about behaviour you did not run
-or read; "not determined" is an acceptable answer and is better than a guess.
+── C3 — the report change ─────────────────────────────────────
+`packages/orchestration/run_report.py` only. Three edits, in the exact shape
+`stop_reason` already has. Read the whole module first (AGENTS.md file-editing
+safety rules) and re-read it after.
 
-Commit C2 alone. Subject: `docs(f045): inventory the pipeline for the loop e2e round`
+  1. `ReportSources` (the frozen dataclass whose docstring says "Every field is
+     optional and every absent field renders ``not recorded``") gains one field:
+         loop_ref: str = ""
+     Place it beside the other provenance fields, after `mission`. Default ""
+     so an absent value renders nothing at all — see edit 3.
+  2. `collect_report_sources(job)` already does
+     `metadata = getattr(job, "metadata", None) or {}` and reads
+     `cycle_terminal_status` and `cycle_stop_reason` by explicit name. Read the
+     loop key beside them and pass it into the `ReportSources(...)` it builds.
+     Do NOT retype the string "loop_ref": import the key so the writer and the
+     reader cannot drift —
+         from packages.orchestration.loop_run import LOOP_REF_METADATA_KEY
+     as a LOCAL import inside the function, which is the style `report_path`
+     already uses for `job_evidence_dir`. If that import turns out to be
+     circular at runtime, STOP and report it; do not fall back to a literal.
+  3. `_header_lines` emits ONE new line, conditional on the value being
+     non-empty, immediately AFTER the `- Mission: …` line:
+         if sources.loop_ref:
+             lines.append(f"- Loop: {sources.loop_ref}")
+     Conditional is load-bearing: the three goldens in
+     `tests/orchestration/test_run_report.py` are full expected report texts for
+     jobs that carry no loop, and they must stay byte-identical. That is a
+     PROOF obligation in Done-when (e), not an assumption.
 
-── C3 — plan and handoff ──────────────────────────────────────
-Replace `.agent/plan.md` ENTIRELY with the authored text between the PLAN
-markers, byte for byte, from your saved copy. It is 48 lines; the AGENTS.md cap
-is 50.
+Add a one-line WHY comment directly above the new field and above the new
+emit, per AGENTS.md "Code Discoverability Conventions".
 
->>> PLAN >>>
-# Plan — F045 Loop definitions
+Commit C3 alone. Subject: `feat(f045): carry the loop reference into the run report`
 
-Branch: feature/f045-loop-definitions, cut from main at cb3ef34f. No PR open;
-nothing merged this round. Next free finding ID: R-0357. Open findings: 2 —
-R-0350 and R-0354 — RECOMPUTED this round from `.agent/live_review.md` (every
-`^- R-\d+ — ` paragraph minus every `^Done: R-\d+ — ` line), never carried
-forward from the previous plan. R-0353, R-0355 and R-0356 were closed at the
-R12 gate by reviewer-authored `Done:` text.
+── C4 — the tests ─────────────────────────────────────────────
+`tests/orchestration/test_run_report.py` only. Add tests; change no golden and
+no existing test. Name them after what they pin. At minimum:
 
-## Goal
-Recurring work gets a declarative, versionable form: a LOOP defines trigger,
-scope, action, budget and stop rules in the project's config file, and
-`remedy loop run` executes one as a completely normal job/mission with loop
-provenance in evidence. DONE when a fixture loop validates, runs through the
-standard pipeline unchanged, and an invalid spec fails validation with precise
-messages before anything runs (docs/roadmap/features/T2_F045.md).
+  1. A job whose `metadata` carries the loop key renders exactly one line
+     `- Loop: <name>` in the report, and that line sits directly after the
+     `- Mission: …` line. Assert on the RENDERED text, and drive it through the
+     same public entry point the existing tests use.
+  2. A job with NO loop key renders NO line beginning `- Loop:` anywhere in the
+     report. This is the negative pin that keeps the goldens safe, so it must
+     scan the whole rendered text, not a slice of it.
+  3. The reader takes the key from `loop_run.LOOP_REF_METADATA_KEY` rather than
+     the literal, so a rename of the constant cannot silently unhook the
+     report from the writer.
 
-## Current Step
-R12, bookkeeping plus the ground survey T003's last item needs. The CLI is
-complete — `loop list`, `loop validate`, `loop run <name> [--yes]` — and
-`loop_ref` reaches `job.metadata`, but it appears in no evidence writer and no
-report builder, so the feature file's Acceptance line "loop_ref visible in
-evidence and report" is NOT met yet. This round writes no production code: it
-closes three findings and inventories the fake-provider pipeline into
-`.agent/f045_e2e_inventory.md` so the next round can author the end-to-end
-fixture test from measured facts instead of from assumptions.
+Do NOT assert any line count, any numstat, or any total character count of a
+report — assert the DATA (line present/absent, its text, its position relative
+to the Mission line). A serialized golden's arithmetic is not a semantic gate.
 
-## Next Steps
-1. R13: the end-to-end fixture loop through the fake-provider pipeline, built
-   on the inventory — a loop materializes a job, the job runs, and `loop_ref`
-   is visible in evidence and in the report.
-2. The integration gate (docs/agents/integration_gate.md).
-3. Closure per docs/roadmap/STATUS_closure_protocol.md.
+Commit C4 alone. Subject: `test(f045): pin the loop line in the run report`
 
-## Risks
-- Loops are parsed from a config file that does not exist in this repo (no
-  ./remedy.toml). Every test builds its own tmp config; nothing may depend on
-  a repo-level config file appearing.
-- Schedule and event triggers are parsed and validated but INERT until the
-  scheduler feature. `loop run` says so off `LoopRunOutcome.notice`.
-- `loop run` writes to the REAL job store unless given `root`, so every test
-  isolates through `REMEDY_DATA_DIR` or an explicit root.
-- Surfacing `loop_ref` in evidence and report may need production changes in
-  modules F045 has not touched; R13 must size that before ordering it.
-- This branch has carried no PR across several sessions. Whether to open one is
-  the operator's call; this session did not make it either way.
+── C5 — plan and handoff ──────────────────────────────────────
+Rewrite `.agent/plan.md`. It is YOURS to write this round, but it MUST:
+  - stay under 50 lines (AGENTS.md), keep a `## Goal` and a `## Next Steps`
+    heading (planner_reviewer_prompt.md §4.11);
+  - state the open findings as exactly THREE — R-0350, R-0354 and R-0357 —
+    RECOMPUTED from `.agent/live_review.md` by the gate (b) command, never
+    carried forward from this block. If gate (b) disagrees with that list,
+    gate (b) wins: write what the disk says and DECLARE the deviation.
+  - name the next step as the end-to-end fixture loop driving `run_cycles`,
+    then the integration gate, then closure;
+  - end with the line: `Fortschritt: ~72 % (T001 ✅ · T002 ✅ · T003 läuft) — Schätzung`
 
-Fortschritt: ~65 % (T001 ✅ · T002 ✅ · T003 läuft) — Schätzung
-<<< PLAN <<<
+Then rewrite `.agent/handoff.md` per docs/agents/handback_template.md: feature
+and round, branch, base SHA (785373ac), per-commit table, the gate table below
+with REAL exit codes and REAL output, the item-status table (AGENTS.md), the
+open-findings count, next expected action. Its last line repeats the plan's
+Fortschritt line verbatim. Cap 60 lines; if MANDATED content genuinely does not
+fit, exceed it and carry a "Deviations, declared" line naming the actual line
+count and the specific mandated content that caused it. Never drop a section.
 
-Then rewrite `.agent/handoff.md` per docs/agents/handback_template.md. It is
-YOURS to write, not authored here. It must carry: feature and round, branch,
-base SHA (a85a92d9), the per-commit table, the gate table below with REAL exit
-codes and REAL output, the item-status table (AGENTS.md), the open-findings
-count, and the next expected action. Its last line repeats the Fortschritt line
-from the plan verbatim. Cap is 60 lines; if the MANDATED content genuinely does
-not fit, exceed it and carry a "Deviations, declared" line naming the actual
-line count and the specific mandated content that caused it. Never drop a
-section to meet the cap.
-
-Commit C3 alone. Subject: `docs(f045): hand back R12 with the pipeline inventory`
+Commit C5 alone. Subject: `docs(f045): hand back R13 with the report provenance`
 
 ── Constraints ────────────────────────────────────────────────
-- AGENTS.md governs everything here. Self-review loop before EVERY commit.
-- Push after each commit: `git push -u origin feature/f045-loop-definitions`.
+- AGENTS.md governs. Self-review loop before EVERY commit. Push after each.
 - Never work on main. Never force-push. Never merge. Never create a PR.
-- Any destructive or mutation check runs ONLY inside a disposable
-  `git worktree` under `.remedy-wt/`, never in the primary checkout, and the
-  worktree is removed and pruned before you hand back. Writes to /tmp are
-  denied in this environment.
-- The authored texts (DONE-353, DONE-355, DONE-356, PLAN) are applied byte for
-  byte from your saved `.agent/authored/f045-r12.md`. No trailing whitespace on
-  any line you write.
-- If a gate goes red, or you find a contradiction, or something here is
+- Any mutation or red-proof runs ONLY inside a disposable `git worktree` under
+  `.remedy-wt/`, never in the primary checkout, and is removed and pruned
+  before you hand back. Writes to /tmp are denied in this environment.
+- Authored texts (FINDING-357, FROM-C2, TO-C2) are applied byte for byte from
+  your saved `.agent/authored/f045-r13.md`. No trailing whitespace anywhere.
+- Never write a `Done:` paragraph. If a fix of yours lands that needs
+  recording, write `Landed: R-XXXX — <one line>` instead.
+- If a gate goes red, or you hit a contradiction, or something here is
   ambiguous: STOP, commit nothing further, and report it in full. Do not guess
-  and do not widen scope to route around it. A round that halts with an honest
-  report is a success.
-- Do not write a `Done:` paragraph of your own for anything. If a fix of yours
-  lands that needs recording, use `Landed: R-XXXX — <one line>` instead.
+  and do not widen scope to route around it. An honest halt is a success.
 
 ── Done when ──────────────────────────────────────────────────
-Run every gate below and record its REAL exit code and REAL output.
-Re-run (d), (g) and (h) AFTER the final commit.
+Run every gate and record its REAL exit code and REAL output. Re-run (h), (i)
+and (j) AFTER the final commit.
 
-  (a) cmp .agent/authored/f045-r12.md .agent/last_block.md
-      → exit 0, byte-identical.
-  (b) The open-finding set, recomputed from the record after C1:
+  (a) cmp .agent/authored/f045-r13.md .agent/last_block.md   → exit 0.
+  (b) The open set, recomputed from the record after C1:
       python3 - <<'EOF'
       import re
       lines=open('.agent/live_review.md').read().splitlines()
@@ -193,29 +186,39 @@ Re-run (d), (g) and (h) AFTER the final commit.
       done=[m.group(1) for l in lines if (m:=re.match(r'^Done: (R-\d+) — ',l))]
       print("OPEN",sorted(set(reg)-set(done)))
       EOF
-      → must print exactly: OPEN ['R-0350', 'R-0354']
-  (c) The three authored lines land intact: each of DONE-353, DONE-355 and
-      DONE-356 appears EXACTLY ONCE among the lines C1's diff ADDS
-      (`git show --numstat` for the total, plus a per-line count over that
-      diff's added lines). C1's numstat for `.agent/live_review.md` is
-      6 insertions, 0 deletions.
-  (d) git diff --name-only a85a92d9..HEAD
-      → exactly the five files named in Change, and nothing else.
-  (e) python3 -m pytest tests/ui_server/test_dashboard_contract.py -q
-      → the `.agent` state-file contract, which reads live_review.md and
-      plan.md. Report the real counts.
-  (f) python3 -m pytest tests/cli/test_loop_cmd.py tests/orchestration/test_loop_run.py tests/orchestration/test_loop_spec.py -q
-      → the F045 suite. Report the real counts.
-  (g) python3 -m pytest tests/cli/test_golden_path.py -q   (the canary)
-      → report the real counts.
-  (h) git status --porcelain  → EMPTY.
-  (i) git worktree list       → exactly ONE line, the primary checkout.
-  (j) No trailing whitespace on any line of the files this round writes:
-      grep -rn ' $' .agent/authored/f045-r12.md .agent/live_review.md .agent/plan.md .agent/f045_e2e_inventory.md .agent/last_block.md .agent/handoff.md
-      → no output.
-  (k) gh pr list --state open --json number,headRefName  → [].
+      → must print exactly: OPEN ['R-0350', 'R-0354', 'R-0357']
+  (c) FINDING-357 appears EXACTLY ONCE among the lines C1's diff ADDS, and C1's
+      numstat for `.agent/live_review.md` is 2 insertions, 0 deletions.
+  (d) The C2 pair, after the edit: FROM-C2 appears 0x in
+      `.agent/f045_e2e_inventory.md` and TO-C2 appears exactly 1x. Also
+      `grep -c "in the same module" .agent/f045_e2e_inventory.md` → 0.
+  (e) THE GOLDENS ARE BYTE-IDENTICAL. Run
+      `python3 -m pytest tests/orchestration/test_run_report.py -q` and report
+      the real counts, AND confirm the three golden tests
+      `test_green_terminal_matches_golden`,
+      `test_blocked_with_decision_matches_golden` and
+      `test_budget_terminal_matches_golden` each PASS by name
+      (`-k` them and show the output). `git diff` on
+      `tests/orchestration/test_run_report.py` must show NO deletion inside any
+      golden text — report the deleted-line count for that file.
+  (f) RED-PROOF, in a disposable worktree only. At HEAD, in a worktree under
+      `.remedy-wt/`, first print `import packages.orchestration.run_report as m;
+      print(m.__file__)` and confirm the path is INSIDE that worktree — a probe
+      that imports the primary checkout proves nothing (finding R-0337). Then
+      DELETE the two new emit lines in `_header_lines` and re-run the C4 tests.
+      Report which tests fail and on WHICH assertion. Restore nothing — remove
+      and prune the worktree instead.
+  (g) python3 -m pytest tests/cli/test_loop_cmd.py tests/orchestration/test_loop_run.py tests/orchestration/test_loop_spec.py -q
+      → the F045 suite. Real counts.
+  (h) python3 -m pytest tests/cli/test_golden_path.py -q   (the canary). Real counts.
+  (i) git diff --name-only 785373ac..HEAD → exactly the eight paths in Change.
+  (j) git status --porcelain → EMPTY.  git worktree list → exactly ONE line.
+  (k) No trailing whitespace on any line of any file this round writes. If your
+      environment denies `grep -rn ' $'`, run an equivalent Python scan
+      (`l != l.rstrip()`) and say which command you actually ran.
+  (l) gh pr list --state open --json number,headRefName → [].
 
-Handback:    the completion report plus the rewritten `.agent/handoff.md`.
-             The report states, for each gate, the command, the exit code and
-             the real output. "Green" as a word is not a result.
+Handback:    completion report plus the rewritten `.agent/handoff.md`. For each
+             gate: the command, the exit code, the real output. "Green" as a
+             word is not a result.
 ──────────────────────────────────────────────────────────────
