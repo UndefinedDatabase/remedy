@@ -1,138 +1,112 @@
-── STEP R8/11 — F082 Self-benchmark (record R7, finish the sweep, pin the threshold) ──
-Goal:        Record the R7 gate, register R-0415 and R-0416, persist DECISION
-             F082 D4, retire the TWO regions of `.agent/context.md` that the
-             R-0414 sweep left standing, and close T002's real coverage gap: the
-             regression threshold and the trailing MEDIAN are pinned by nothing.
-Bundle:      C0a/C0b save this block · C1 two findings, one decision and the R7
-             verdict, persisted FIRST · C2 the state repair · C3 the fourth
-             golden and the two tests that pin the rule · C4 handback.
+── STEP R9/12 — F082 Self-benchmark (record R8, retire the last stale claim, close the session) ──
+Goal:        Record the R8 gate, register R-0417, retire the one stale sentence
+             R8's own gate 11 forbade it from fixing, re-sync the plan, and
+             leave the branch fully gated so the NEXT session starts on a
+             reviewed round instead of an open one.
+Bundle:      C0a/C0b save this block · C1 the R8 verdict and one finding,
+             persisted FIRST · C2 the docstring pair · C3 the plan re-sync ·
+             C4 handback.
 Change:      .agent/live_review.md, .agent/context.md, .agent/plan.md,
-             .agent/authored/f082-r8.md, .agent/last_block.md,
-             .agent/handoff.md,
-             tests/orchestration/fixtures/bench_history/varied.jsonl (NEW),
-             tests/orchestration/test_bench_history.py (EDITED, additive).
-             NOTHING else. No gauntlet module, no gauntlet test file, no order
-             file, no manifest, and NO production module at all — R8 changes no
-             file under `packages/`. `bench_history.py` is CORRECT as built; the
-             gap is in its tests, so the tests are what change.
+             .agent/authored/f082-r9.md, .agent/last_block.md,
+             .agent/handoff.md, tests/orchestration/test_bench_history.py
+             (EDITED, one docstring sentence). NOTHING else. No file under
+             `packages/` changes. No new test, no new fixture, no order file.
 Constraints: Findings persist FIRST (planner_reviewer_prompt.md §4 item 4).
              Never write a `Done:` or `Landed:` paragraph of your own. Every
              authored slice is applied disk-to-disk out of the COMMITTED block
              file, never retyped. Push after every commit. Never merge, never
              force-push, never work on main. Create NO pull request: F082 is
              mid-feature and its PR is created at closure, not before.
-             ADDITIVE in the test file: the three existing golden tests and the
-             five others stay byte-unmodified and only new functions are added.
+             This round DELIBERATELY carries no zero-deletion gate on the test
+             file: R8's did, and that is what made the stale sentence
+             unfixable (R-0417). The eight test FUNCTIONS stay byte-unmodified;
+             only the module docstring changes.
 Done when:   the gates at the end of this block all pass, with their real
              values reported.
 Handback:    completion report + rewrite .agent/handoff.md
 ──────────────────────────────────────────────────────────────────────
 
 ── C0 — save the block, in TWO commits ───────────────────────────────
-The reviewer's scratchpad original is at `.remedy-wt/f082-r8-scratchpad.md`.
+The reviewer's scratchpad original is at `.remedy-wt/f082-r9-scratchpad.md`.
 Saving it to both targets in ONE commit costs roughly twice its line count in
-insertions and crowds the 500-insertion cap (findings R-0381, R-0399). Split it
-unconditionally, and retype neither target:
+insertions (findings R-0381, R-0399). Split it unconditionally, and retype
+neither target:
 
-C0a. Copy the scratchpad byte for byte to `.agent/authored/f082-r8.md`.
+C0a. Copy the scratchpad byte for byte to `.agent/authored/f082-r9.md`.
      Commit that file ALONE.
-     Subject: `chore(f082): save the R8 block verbatim`
-C0b. Copy the COMMITTED `.agent/authored/f082-r8.md` — not the scratchpad —
+     Subject: `chore(f082): save the R9 block verbatim`
+C0b. Copy the COMMITTED `.agent/authored/f082-r9.md` — not the scratchpad —
      byte for byte to `.agent/last_block.md`. Commit that file ALONE.
-     Subject: `chore(f082): mirror the R8 block into last_block`
+     Subject: `chore(f082): mirror the R9 block into last_block`
 
-── C1 — two findings, one decision, the R7 verdict ───────────────────
+── C1 — the R8 verdict and one finding ───────────────────────────────
 ONE commit, the FIRST after C0. `.agent/live_review.md`, APPEND ONLY, in this
-order, separated by exactly one blank line: FINDING-R415, FINDING-R416,
-DECISION-D4, then GATE-R7. FINDING-R415, FINDING-R416 and GATE-R7 are each
-exactly ONE physical line; DECISION-D4 is exactly TWO. Nothing above the append
-may move — prove it against the pre-C1 revision over the file's existing 125
-lines.
-  Subject: `docs(f082): record the R7 verdict, register R-0415 and R-0416`
+order, separated by exactly one blank line, each exactly ONE physical line:
+FINDING-R417, then GATE-R8. Nothing above the append may move — prove it
+against the pre-C1 revision over the file's existing 134 lines.
+  Subject: `docs(f082): record the R8 verdict and register R-0417`
 
-── C2 — finish the context.md sweep ──────────────────────────────────
-ONE commit. TWO REWRITE pairs in `.agent/context.md` and one full replacement of
-`.agent/plan.md`. The two FROM slices are disjoint from each other and neither
-TO contains its own FROM. Apply CTXSCOPE first, then CTXSTEPS2.
-  C2a. Pair CTXSCOPE — the Scope paragraph's "Built so far" list omits
-       `bench_dry_run.py` and `bench_history.py`, and its "Still to come" names
-       the history append and the regression rules, which landed at R7.
-  C2b. Pair CTXSTEPS2 — the Steps map has no ✅ on R6 or R7 and still ends at
-       R10. Do NOT touch the `## Steps` heading above it: the dashboard
-       contract test asserts that substring.
-  C2c. `.agent/plan.md`. FULL REPLACEMENT with the PLAN slice.
-  Subject: `docs(f082): complete the context sweep and re-sync plan`
+── C2 — retire the stale docstring sentence ──────────────────────────
+ONE commit. One REWRITE pair, DOCSTR, in
+`tests/orchestration/test_bench_history.py`. Its FROM spans four physical lines
+of the module docstring and ends on a real line boundary. The eight test
+functions and every helper stay byte-unmodified; this commit touches the
+docstring and nothing else.
+  Subject: `docs(f082): correct the golden count in the bench history docstring`
 
---- BEGIN SLICE FINDING-R415 ---
-- R-0415 — Medium — T002's regression rule is built correctly and pinned by nothing: BOTH mechanisms that make it a rule rather than a comparison survive deletion with the whole suite green. The reviewer proved it by mutation in a disposable worktree at `20f101b0`, twice, each time reverting the previous mutation first. Replacing `if latest <= baseline * multiplier:` with `if latest <= baseline:` in `bench_history._threshold_regression` — deleting the threshold multiplier outright — leaves `8 passed`. Replacing the body of `bench_history._median` with `return float(sum(values)) / float(len(values))` — the mean instead of the median, the exact choice whose one-line WHY comment says "one catastrophic run must not raise the bar every later run is compared against" — also leaves `8 passed`. The cause is in the FIXTURES rather than in the assertions: all three goldens carry IDENTICAL trailing values, `flat.jsonl` and `degrading.jsonl` both at cost totals 1200 and 1200 with walls 40.0 and 40.0 across runs 1 and 2, and over identical values the median equals the mean and every positive multiplier ranks the same way, so no assertion written against those files can see either mechanism. The tests are not weak — they read their expected numbers off the goldens rather than restating them, which is exactly right — they are blind, and blind in a way only a mutation finds. This is the REVIEWER's defect: the R7 block ordered three goldens and named their shapes precisely, and every shape it named was a flat trailing series. It matters now rather than later because R9 wires `stats bench` to a CONFIG multiplier: a config knob whose value changes no test outcome is a knob that can drift to any number, including 1.0, without one gate going red, and the F082 acceptance criterion "cost/wall exceed the trailing median by a config multiplier" would then be satisfied in name only. The counter-measure, binding from R8 on: a block that orders a threshold rule also orders at least one fixture whose trailing values are NOT all equal and at least one assertion on the BASELINE the rule computed, not only on whether a warning appeared — a warn/no-warn boundary tests the fixture, a baseline value tests the rule. R8 closes it with a fourth golden and two tests, and re-runs both mutations to prove they now die. OPEN.
---- END SLICE FINDING-R415 ---
+── C3 — re-sync the plan and the context step map ────────────────────
+ONE commit. `.agent/plan.md` FULL REPLACEMENT with the PLAN slice, and one
+REWRITE pair, CTXSTEPS3, in `.agent/context.md`. Do NOT touch the `## Steps`
+heading above it: the dashboard contract test asserts that substring.
+  Subject: `docs(f082): re-sync the plan and the step map for R10`
 
---- BEGIN SLICE FINDING-R416 ---
-- R-0416 — Low — the closing sentence of R-0414 was false on disk in the same commit that wrote it. FINDING-R414 ends "R7 retires this one and the sweep is stated as complete for `.agent/context.md`", and after R7's C2 that file still carried two regions of R-0414's own class: the Scope paragraph's "Built so far" list, which names `capability_bench.py` and `bench_orders.py` and omits R6's `bench_dry_run.py`, followed by a "Still to come" clause naming the history append and the regression rules that R7's own C3 landed one commit later; and the Steps map, which awards ✅ to R1 through R5 and none to the landed R6. This is the third round running that a worker has declared a stale region its block did not order, and the second running that the declaration was correct — the R7 worker reported both under gate 7 and refused to repair them outside its ordered pair, which is the R-0406 conduct this repository asks for. The defect is entirely the reviewer's and it is a compound of two already-registered classes: R-0409 forbids an authored state slice from stating an outcome that a later step in the SAME block could falsify, and R-0413 registered the first time a counter-measure was violated by the very block that introduced it; R-0414's own counter-measure says to re-read the whole target file at emission and list every region naming the claim's subject, and the block that carried it re-read the file for the SENTENCE it was replacing instead. The claim also cost nothing to make and could not be checked by any gate, which is why it survived: gate 7 asked the worker to REPORT other stale regions, and reporting them does not retract a sentence already written. The counter-measure, binding from R8 on and additive to R-0414's: an authored finding never states that a sweep, a migration or a retirement is COMPLETE. It states what the round retires, by name, and leaves completeness to be measured by the next round's gate against the file. A completeness claim is a prediction about bytes the same block has not yet written, which is the R-0371 class in prose form. R8 retires both named regions and asserts nothing about what remains. OPEN.
---- END SLICE FINDING-R416 ---
+--- BEGIN SLICE FINDING-R417 ---
+- R-0417 — Low — R8's gate 11 ordered the DELETION column of `tests/orchestration/test_bench_history.py` to be 0, to protect the eight existing tests from being edited while two were added, and that gate made a sentence the same round falsified impossible to repair. The module docstring opens "The three goldens under ``fixtures/bench_history/`` are three runs over the same two order ids"; R8's C3 added `varied.jsonl`, a FOURTH golden of FOUR runs over ONE order id, so both halves of the sentence became wrong in the commit that added the file, and correcting it needs exactly one deleted line, which the gate forbade. The worker took the ordered constraint, declared the residual in the handback, and repaired nothing outside its slices — the fourth consecutive round in which a worker has declared a stale claim its block did not order and the fourth in which the declaration was correct (R-0412, R-0414, R-0416 and this one). The defect is the REVIEWER's twice over: once for a zero-deletion gate that could not coexist with the round's own change, and once for the class itself, because this is the same stale-claim class those three earlier findings already registered and the counter-measures they carry are aimed at `.agent/**` state files rather than at every file a round makes stale. Registering a fifth finding for a fifth instance would be the wrong answer; the class needs a GATE, not another paragraph. The counter-measure, binding from R10 on and REPLACING the file-scoped halves of R-0412, R-0414 and R-0416 rather than adding to them: (1) a zero-deletion gate may only be ordered over regions the round does not make stale, and where a round changes what a file's prose asserts, the block orders the prose pair in the SAME commit; (2) every block's gate list carries one standing staleness gate — for each file the round touched, re-read it end to end and report every sentence that states a count, a list of modules, a round map or a completion, together with whether it still holds — so the class is measured every round instead of discovered by a worker and registered by the reviewer one round later. R9 retires this sentence and adds that gate. OPEN.
+--- END SLICE FINDING-R417 ---
 
---- BEGIN SLICE DECISION-D4 ---
-## DECISION F082 D4 — R8 is inserted for the sweep and the threshold pin; T003 moves to R9
-Chosen 2026-08-14 by the reviewer under planner_reviewer_prompt.md §4 item 7, which routes a wrong plan into the current block as a loud, persisted, reversible decision rather than a question. R-0415 (the regression threshold and the trailing median are pinned by no test) and R-0416 (two regions of context.md left stale by the R-0414 sweep) both land between T002 and T003, and both are small. The alternative considered and rejected was folding them into R9 alongside T003 — the `stats bench` CLI, model-context recording and a fake-provider run end to end — which is already the largest remaining slice and would have made a red gate there ambiguous between a CLI defect and a fixture defect; the second alternative, deferring the threshold pin to closure, was rejected because R9 wires a CONFIG multiplier into exactly the mechanism no test can currently see, so the pin must precede the knob. The plan therefore reads R8 sweep-and-pin, R9 T003, R10 the integration gate, R11 closure, and the round denominator moves from ten to eleven in `.agent/plan.md`, `.agent/context.md` and every later block header, which is the R-0413 counter-measure applied rather than the drift it was registered against. Reverse this decision by deleting this paragraph and merging R8's bundle into R9; nothing in it is load-bearing for T003's design, only for its evidence.
---- END SLICE DECISION-D4 ---
+--- BEGIN SLICE GATE-R8 ---
+Gate: R8 — PASS, with one new finding, the reviewer's. Verification tier: round gate plus the state-file contract readers plus the canary; no full-suite claim is made and none is owed. All eighteen ordered gates were re-executed by the reviewer against the disk rather than read out of the handback, and every one reproduces at its reported value. Transport is proven at PRIMARY strength: the scratchpad `.remedy-wt/f082-r8-scratchpad.md`, `.agent/authored/f082-r8.md` and `.agent/last_block.md` are byte-identical at shared sha256 `9435c875acdf6ea2671efea0931afc66d61d3bbb61750fc517980c284bee5dd0`, 30466 bytes and 312 lines, inside the 400-line cap. The append was proven as `post == pre + add` and not by grep: the reviewer re-extracted FINDING-R415, FINDING-R416, DECISION-D4 and GATE-R7 from the COMMITTED block file, joined them with the blank-line separator the block ordered, and the result is byte-identical to the region C1 added at sha256 `2b19ac8680bd0ddd9afe59542f3ffb49eea64105aef386380eb62d530be10482`, with the whole 125-line pre-C1 file an exact prefix of the 134-line result and the C1 numstat `9 0`, deletion column zero. Both context pairs were gated as a PROPERTY: `pre.replace(SCOPE_FROM, SCOPE_TO).replace(STEPS_FROM, STEPS_TO) == post` holds byte-wise with each FROM 1x before and 0x after, `.agent/context.md` at 59 lines keeping every contract reader, and `.agent/plan.md` byte-equal to the PLAN slice as a whole file at 36 lines. The record counts are `^Gate: R7 — PASS` 1, `^- R-0415 — ` 1, `^- R-0416 — ` 1, `^## DECISION F082 D4` 1, `^Landed: ` 0 and `^Done: ` 0, so the worker authored no resolution of its own; the open set recomputed mechanically is exactly FORTY-SIX with no duplicate, max R-0416 and next free R-0417. The change set is eight paths, every one inside the block's Change list, and `git diff --name-only 20f101b0..HEAD -- packages/` is EMPTY, so the promise that no production module changed holds exactly. Suites re-run by the reviewer at the branch head: the eleven-file orchestration suite `294 passed`, closing against the reviewer's own pre-round measurement of 292 for the same files, so 292 + 2 = 294 and no pre-existing test was lost; the canary plus the three contract readers `184 passed`; scoped ruff `All checks passed!`; `integrity check --json` `passed: true`, `fail_count: 0` over 5 checks. Insertions per commit are 312, 203, 9, 21, 44 and 152, none over 500, and `gh pr list --state open` is `[]`. The load-bearing gate is 15 and the reviewer ran BOTH mutations itself in a disposable worktree at `4b0d0db0` rather than accepting the handback, reverting the first before applying the second: deleting the threshold multiplier fails `test_a_larger_multiplier_silences_the_same_history` with `1 failed, 9 passed`, and replacing `_median`'s body with the mean fails BOTH that test and `test_the_trailing_median_ignores_one_catastrophic_run` with `2 failed, 8 passed`. Each of those mutations left `8 passed` before this round, so R-0415's blindness is genuinely closed and not merely asserted; the worktree was removed and pruned and the primary checkout is clean. The new fixture is what does the work and it was read rather than trusted: `varied.jsonl` carries trailing cost totals 1000, 1000 and 4000 whose median is 1000 and whose mean is 2000, and the test asserts the two DIFFER before asserting which one the rule used, so a later edit that flattens the fixture fails loudly instead of going blind again — that non-vacuity guard is the part worth keeping. One observation costs no id: the worker reported gate 10 as seven paths where the reviewer measures eight, because the worker counted before C4 wrote the handoff, which a handoff cannot table for itself (R-0149); the per-commit table names all eight, nothing is hidden, and the difference is a reporting moment rather than a scope change. Three deviations, all declared and all accepted: the handback is 190 lines against the 60-line cap carrying its DECISION D15 stated cause with no section dropped, the commit messages carry no trailer, and the denied-command routes were named per R-0408. The fourth declaration is the new finding R-0417 and it charges the reviewer, not the worker: R8's own gate 11 froze the deletion column of the test file, which made the module docstring's "three goldens" unrepairable in the round that made it wrong. No block condition was hit — no fabricated value, no false live indicator, no missing changed-files table, no unverified completion claim by the worker, no silent scope change.
+--- END SLICE GATE-R8 ---
 
---- BEGIN SLICE GATE-R7 ---
-Gate: R7 — PASS, with two new findings, both the reviewer's, and neither charging the worker. Verification tier: round gate plus the state-file contract readers plus the canary; no full-suite claim is made and none is owed. All eighteen ordered gates were re-executed by the reviewer against the disk rather than read out of the handback, and every one reproduces at its reported value. Transport is proven at PRIMARY strength rather than the digest fallback: the scratchpad `.remedy-wt/f082-r7-scratchpad.md`, `.agent/authored/f082-r7.md` and `.agent/last_block.md` are byte-identical at shared sha256 `e0517f102c34ad9373f3ca8b9cb98701991d5c4b81737e78c873620b15801a56`, 28357 bytes and 334 lines, inside the 400-line cap. The append was proven as `post == pre + add` and not by grep: the reviewer re-extracted FINDING-R414 and GATE-R6 from the COMMITTED block file, joined them with the blank-line separator the block ordered, and the result is byte-identical to the region C1 added, with the whole 121-line pre-C1 file an exact prefix of the 125-line result and the C1 numstat `4 0`, deletion column zero. Every slice digest reproduces the reviewer's own pre-emission measurement exactly — FINDING-R414 `11026fe6…`, GATE-R6 `defbd10f…`, CTXBUILT-FROM `355436a9…`, CTXBUILT-TO `276be55e…`, PLAN `7865656a…` — and the CTXBUILT pair was gated as a PROPERTY rather than a count for the reason R6 taught: `pre.replace(FROM, TO) == post` holds byte-wise, with FROM 1x before and 0x after and TO 0x before and 1x after. `.agent/plan.md` is byte-equal to the PLAN slice as a whole file at 36 lines under the 50-line cap, `.agent/context.md` is 55 lines and keeps every contract reader, and the record counts are `^Gate: R6 — PASS` 1, `^- R-0414 — ` 1, `^## Steps` 1, `^Landed: ` 0 and `^Done: ` 0, so the worker authored no resolution of its own; the open set recomputed mechanically is exactly FORTY-FOUR with no duplicate, max R-0414 and next free R-0415. The change set is eleven paths, every one inside the block's Change list and none outside it; the four under `tests/orchestration/` are the new test file and the three new goldens, so no gauntlet or existing bench test file was touched. Suites re-run by the reviewer at the branch head: the eleven-file orchestration suite `292 passed`, and the arithmetic closes against the reviewer's own pre-round measurement of 284 for the same files without the new one, so 284 + 8 new tests = 292 and no pre-existing test was lost; the canary plus the three contract readers `184 passed`; scoped ruff over the two new Python files `All checks passed!`; `integrity check --json` `passed: true`, `fail_count: 0` over 5 checks with no open blocker/high findings. Insertions per commit are 334, 227, 4, 16, 467 and 157, none over 500. `gh pr list --state open` is `[]`. The reviewer ran its own red-proof in a disposable worktree and the ordered mutation reproduces: `append_bench_run` opening its file `"w"` instead of `"a"` fails exactly `test_a_rerun_appends_and_never_rewrites_the_bytes_already_there` at `assert after_second.startswith(after_first)`, and the failure output shows run 1's bytes genuinely gone, which also proves the mutated module was the one imported rather than the primary checkout's (R-0337). The goldens were read rather than trusted and they are not vacuous: all three carry the series the tests query, so the flat and improving files return no warning because the RULE returns none, not because the filter emptied them, and the degrading file's run 3 puts one order at cost total 2400 against a trailing median of 1200 and wall 90.0 against 40.0 while the other order is untouched, so it warns about exactly one order. `bench_history.py` itself imports `BenchRecord` and `projects_dir` and edits neither, keeps `capability_bench.py`'s purity promise true by living in its own file, mirrors `token_ledger.token_ledger_path_for` including its registry-UUID-is-not-the-repo-hash warning, nests the row under its own key so no future field can collide with an envelope field, never raises on a read, and documents its deliberate absence of a clock where a reader would search for it. Two deviations, both declared and both accepted: the handback is 180 lines against the 60-line cap carrying its DECISION D15 stated cause with no section dropped, and the commit messages carry no trailer. One observation costs no id: the worker's per-slice byte lengths exceed the reviewer's by the number of multi-byte characters in each slice, because the worker measured UTF-8 BYTES where the reviewer measured characters; the digests agree exactly, which is the load-bearing proof, and this is the same measurement-convention difference already noted at R1 and R5. The two new findings are R-0415, that the regression threshold multiplier and the trailing median are pinned by no test because all three goldens carry identical trailing values — proven by two mutations that each leave `8 passed` — and R-0416, that R-0414's own closing sentence claimed the context.md sweep was complete while two regions of its class still stood. No block condition was hit — no fabricated value, no false live indicator, no missing changed-files table, no unverified completion claim by the worker, no silent scope change.
---- END SLICE GATE-R7 ---
+--- BEGIN SLICE DOCSTR-FROM ---
+The three goldens under ``fixtures/bench_history/`` are three runs over the same
+two order ids, written in exactly the line shape ``BenchHistoryEntry.to_json()``
+produces. They carry no timestamp, so they are comparable byte for byte and
+these tests do not depend on when they run.
+--- END SLICE DOCSTR-FROM ---
 
---- BEGIN SLICE CTXSCOPE-FROM ---
-In: the capability bench built on the gauntlet harness. Built so far:
-`capability_bench.py` with the pure record builder, `bench_orders.py` with the
-version-bound freeze, and THREE frozen orders under `scripts/bench_orders/` —
-three and not five, because the shared sample project has no HTTP surface and
-no web asset (R-0411), and the missing two wait on a bench-owned fixture per
-DECISION F082 D3 rather than an edit to the gauntlet's template. Still to come:
-the history append, the trend and regression rules, and the `stats bench` CLI.
---- END SLICE CTXSCOPE-FROM ---
+--- BEGIN SLICE DOCSTR-TO ---
+The goldens under ``fixtures/bench_history/`` are written in exactly the line
+shape ``BenchHistoryEntry.to_json()`` produces. Three of them — ``flat``,
+``improving`` and ``degrading`` — are three runs over the same two order ids;
+``varied`` is four runs over one order id and is the only one whose trailing
+values are not all equal, which is what lets a test see the trailing MEDIAN and
+the threshold multiplier at all (R-0415). None carries a timestamp, so they are
+comparable byte for byte and these tests do not depend on when they run.
+--- END SLICE DOCSTR-TO ---
 
---- BEGIN SLICE CTXSCOPE-TO ---
-In: the capability bench built on the gauntlet harness. Built so far:
-`capability_bench.py` with the pure record builder, `bench_orders.py` with the
-version-bound freeze, THREE frozen orders under `scripts/bench_orders/` — three
-and not five, because the shared sample project has no HTTP surface and no web
-asset (R-0411), and the missing two wait on a bench-owned fixture per DECISION
-F082 D3 rather than an edit to the gauntlet's template — `bench_dry_run.py`
-with the join from an order file to a row over recorded evidence, and
-`bench_history.py` with the append-only history, the trend and the regression
-rules. Still to come, both T003: the `stats bench` CLI surface and the
-model-context recording.
---- END SLICE CTXSCOPE-TO ---
-
---- BEGIN SLICE CTXSTEPS2-FROM ---
-R1 claim F082, reset the record carrying the F077 open set forward, register
-R-0403 ✅ → R2 the T001 gauntlet-harness inventory ✅ → R3 T001 the pure record
-builder and the R-0407 token repair ✅ → R4 T001 the frozen order set and its
-version freeze ✅ → R5 record the R4 verdict, register R-0409 to R-0411 and
-DECISION F082 D3 ✅ → R6 record the R5 verdict, retire the superseded context
-regions and close T001 with the dry run against recorded evidence → R7 T002
-history, trend and regression rules → R8 T003 the stats bench CLI, model context
-and a fake-provider run → R9 the integration gate → R10 closure.
---- END SLICE CTXSTEPS2-FROM ---
-
---- BEGIN SLICE CTXSTEPS2-TO ---
-R1 claim F082, reset the record carrying the F077 open set forward, register
-R-0403 ✅ → R2 the T001 gauntlet-harness inventory ✅ → R3 T001 the pure record
-builder and the R-0407 token repair ✅ → R4 T001 the frozen order set and its
-version freeze ✅ → R5 record the R4 verdict, register R-0409 to R-0411 and
-DECISION F082 D3 ✅ → R6 record the R5 verdict, retire two superseded context
+--- BEGIN SLICE CTXSTEPS3-FROM ---
 regions and close T001 with the dry run ✅ → R7 T002 the append-only history,
 the trend and the regression rules ✅ → R8 record the R7 verdict, complete this
 sweep and pin the regression threshold → R9 T003 the stats bench CLI, model
 context and a fake-provider run → R10 the integration gate → R11 closure.
---- END SLICE CTXSTEPS2-TO ---
+--- END SLICE CTXSTEPS3-FROM ---
+
+--- BEGIN SLICE CTXSTEPS3-TO ---
+regions and close T001 with the dry run ✅ → R7 T002 the append-only history,
+the trend and the regression rules ✅ → R8 complete the context sweep and pin
+the regression threshold ✅ → R9 record the R8 verdict and retire the last
+stale claim → R10 T003 the stats bench CLI, model context and a fake-provider
+run → R11 the integration gate → R12 closure.
+--- END SLICE CTXSTEPS3-TO ---
 
 --- BEGIN SLICE PLAN ---
 # Plan — F082 Self-benchmark
 
 Branch: feature/f082-self-benchmark, cut from main after the F077 closure PR
 #200 merged. F082 is claimed `[~]` in docs/roadmap/STATUS.md. Next free finding
-id: R-0417. Open findings: forty-six — the thirty-two carried from F077, plus
-R-0403 to R-0416 registered on this branch. `.agent/live_review.md` is the
+id: R-0418. Open findings: forty-seven — the thirty-two carried from F077, plus
+R-0403 to R-0417 registered on this branch. `.agent/live_review.md` is the
 source of truth for that ledger; this file mirrors it and nothing else.
 
 ## Goal
@@ -144,15 +118,17 @@ fixtures, history survives across runs, and a deliberately degraded fixture run
 triggers the regression warning.
 
 ## Current Step
-R8 records the R7 gate, registers R-0415 and R-0416, persists DECISION F082 D4,
-retires the two regions of `.agent/context.md` the R-0414 sweep left standing,
-and pins T002's regression threshold and trailing median with a fourth golden
-whose trailing values are not all equal.
+R9 records the R8 gate, registers R-0417, retires the stale golden-count
+sentence in the bench-history test docstring, and re-syncs the plan. T001 and
+T002 are built and gated; T003 is the only slice left.
 
 ## Next Steps
-1. R9 — T003: the `stats bench` CLI, model-context recording, and a
-   fake-provider bench run end to end.
-2. R10 the integration gate, R11 closure.
+1. R10 — T003: the `stats bench` CLI, model-context recording, and a
+   fake-provider bench run end to end. Begin with an inspect-the-shape pass over
+   `apps/cli/commands/stats_ledger_cmd.py` and the CLI registration path before
+   authoring the change set — the ground is unknown and the planning contract
+   sanctions a shrunken step for exactly that.
+2. R11 the integration gate, R12 closure.
 
 ## Risks
 - The delivered order set is three, not the Design's five (R-0411). Closure
@@ -160,103 +136,79 @@ whose trailing values are not all equal.
   bench-owned fixture rather than an edit to the gauntlet's template.
 - The freeze holds against a file-side edit only (R-0410). The Built State
   states that threat model rather than quoting the acceptance criterion whole.
-- `repair_rounds` is `None` at every row by construction (R2 Q7). The trend
-  therefore has no repair-round series to regress on, and T003's report says so
-  rather than printing a zero.
+- `repair_rounds` is `None` at every row by construction (R2 Q7). The trend has
+  no repair-round series to regress on, and T003's report says so rather than
+  printing a zero.
+- Six of the last seven findings are reviewer-block defects, not worker
+  defects. R-0417's standing staleness gate is the counter-measure; if R10 also
+  registers one of this class, the block format itself needs re-planning.
 --- END SLICE PLAN ---
 
-── C3 — pin the threshold and the median ─────────────────────────────
-ONE commit, both files together.
-  Subject: `test(f082): pin the regression threshold and the trailing median`
-
-Write `tests/orchestration/fixtures/bench_history/varied.jsonl`, NEW. FOUR runs
-of ONE order id `bench-01-cold-start`, series `f082-bench`, every row
-`"passed": true`, `"repair_rounds": null`, `"postmortem_classes": []`, written
-in exactly the line shape `BenchHistoryEntry.to_json()` produces — generate it
-with that method rather than hand-typing the JSON, so it cannot drift from the
-shape the loader expects:
-  run 1  cost `{"in": 800, "out": 200}`   wall_s 10.0
-  run 2  cost `{"in": 800, "out": 200}`   wall_s 10.0
-  run 3  cost `{"in": 3200, "out": 800}`  wall_s 100.0
-  run 4  cost `{"in": 1600, "out": 400}`  wall_s 25.0
-Run 3 is the one catastrophic run the `_median` docstring exists for. The
-trailing cost totals are 1000, 1000 and 4000, whose median is 1000 and whose
-mean is 2000; the trailing walls are 10.0, 10.0 and 100.0, median 10.0 and mean
-40.0. The latest run sits at 2000 and 25.0 — above 1.5x each median and below
-1.5x each mean, and below 3.0x each median. That is what makes the fixture
-discriminate; nothing else in it matters.
-
-Add to `tests/orchestration/test_bench_history.py`, ADDITIVE — the eight
-existing test functions and every helper stay byte-unmodified:
-  1. `test_the_trailing_median_ignores_one_catastrophic_run` — load `varied.jsonl`,
-     compute the trailing cost totals and walls INSIDE the test by reading the
-     entries whose `run_seq` is below the highest, and assert first that the
-     median and the mean of those trailing totals DIFFER (so a later edit that
-     flattens the fixture fails here rather than silently going blind again),
-     then that the cost warning's `baseline` equals the median and does NOT
-     equal the mean, and the same for the wall warning. Assert the BASELINE the
-     rule computed, not only that a warning appeared: a warn/no-warn boundary
-     tests the fixture, a baseline value tests the rule (R-0415).
-  2. `test_a_larger_multiplier_silences_the_same_history` — the SAME entries
-     return warnings at the default multiplier and exactly `()` at
-     `multiplier=3.0`. This is what fails if `* multiplier` is ever dropped.
-  Import `statistics` if you want its `median` and `mean`; do not hand-roll them
-  in the test, and do not import the module's own `_median` — a test that reuses
-  the implementation it is checking proves nothing.
-
-If either test passes against a deliberately broken rule, say so in the handback
-rather than adjusting the test until it looks right.
-
-── C4 — handback ─────────────────────────────────────────────────────
-Rewrite `.agent/handoff.md` per docs/agents/handback_template.md. Name, as the
-FIRST action of the next session, `docs/agents/self_drive_protocol.md` Phase 1
-rule 1 — re-read `.agent/STOP` from disk — BEFORE rule 2's Open PR Gate. State
-that F082 is MID-FEATURE, that no PR exists for this branch and none is created
-until closure, and that the next round is R9 — T003. Under 60 lines, or carry a
-DECISION D15 stated-cause line naming the real count and the mandated content
-that caused it. Commit and push.
-  Subject: `chore(f082): handback R8`
+── C4 — handback, and the session ends here ──────────────────────────
+Rewrite `.agent/handoff.md` per docs/agents/handback_template.md. This is the
+LAST round of this session, so the handoff is the only return channel and the
+next session starts from it. It must state:
+  * The FIRST action of the next session is
+    `docs/agents/self_drive_protocol.md` Phase 1 rule 1 — re-read `.agent/STOP`
+    from disk — BEFORE rule 2's Open PR Gate.
+  * F082 is MID-FEATURE. No PR exists for `feature/f082-self-benchmark` and
+    none is created until closure; gate 16 proves `gh pr list --state open` is
+    `[]`.
+  * T001 and T002 are built AND gated; R8's verdict is on disk at
+    `^Gate: R8 — PASS`. The next round is R10 — T003, and it begins with an
+    inspect-the-shape pass, not with a change set.
+  * R9's OWN verdict has no on-disk gate entry by construction
+    (planner_reviewer_prompt.md §4 item 13): the round that records a verdict
+    cannot record the gate on itself, so R9's verdict lives in this handoff and
+    in the reviewer's completion report. That absence is the TERMINATOR, not a
+    missing gate — do not open a repair round to close it.
+Under 60 lines, or carry a DECISION D15 stated-cause line naming the real count
+and the mandated content that caused it. Commit and push.
+  Subject: `chore(f082): handback R9`
 
 ── Gates — run every one, report the REAL value ──────────────────────
 1.  `git status --porcelain` → EMPTY at handback. `git worktree list` → 1 line,
     as it reads AT HANDBACK.
 2.  Transport, as a PROPERTY (R-0408): prove the scratchpad,
-    `.agent/authored/f082-r8.md` and `.agent/last_block.md` are byte-identical
+    `.agent/authored/f082-r9.md` and `.agent/last_block.md` are byte-identical
     and report the shared sha256 and the line count, which must be at or under
     400. Any means; report the digest.
 3.  `.agent/STOP` — ABSENT or PRESENT, at round start AND at handback.
-4.  Append proof: the first 125 lines of the new `.agent/live_review.md` equal
+4.  Append proof: the first 134 lines of the new `.agent/live_review.md` equal
     the pre-C1 file, proven as `post == pre + add` byte-wise and not by grep.
     Report the C1 numstat for that path; DELETION column 0. Report the physical
-    line count of FINDING-R415, FINDING-R416, DECISION-D4 and GATE-R7 — 1, 1, 2
-    and 1 respectively.
-5.  `grep -c "^Gate: R7 — PASS" .agent/live_review.md` → 1; `^- R-0415 — ` → 1;
-    `^- R-0416 — ` → 1; `^## DECISION F082 D4` → 1; `^## Steps` → 1;
-    `^Landed: ` → 0; `^Done: ` → 0.
+    line count of FINDING-R417 and GATE-R8; each must be exactly 1.
+5.  `grep -c "^Gate: R8 — PASS" .agent/live_review.md` → 1; `^- R-0417 — ` → 1;
+    `^## Steps` → 1; `^Landed: ` → 0; `^Done: ` → 0.
 6.  Open set recomputed mechanically — `^- R-[0-9]\+ — ` paragraphs minus
-    `^Done: R-[0-9]\+ — ` lines. Expect FORTY-SIX; name every id; report
+    `^Done: R-[0-9]\+ — ` lines. Expect FORTY-SEVEN; name every id; report
     duplicates as none or name them; report max and next free.
-7.  Both context pairs, gated as a PROPERTY because counts alone are brittle
-    here: prove `post == pre.replace(SCOPE_FROM, SCOPE_TO).replace(STEPS_FROM,
-    STEPS_TO)` byte-wise over `.agent/context.md`, and report each FROM 1x
-    before and 0x after and each TO 0x before and 1x after, measured WITH the
-    terminating newline. Report `wc -l .agent/context.md`. Then re-read the file
-    end to end and report every region, if any, that still names which modules
-    this feature builds, which round did what, or how many rounds remain, and
-    whether each agrees with `.agent/plan.md`. Report them; repair nothing
-    outside these two pairs.
-8.  `wc -l .agent/plan.md` → under 50. Report it.
+7.  The DOCSTR pair, as a PROPERTY: prove
+    `post == pre.replace(DOCSTR_FROM, DOCSTR_TO)` byte-wise over
+    `tests/orchestration/test_bench_history.py`, and report FROM 1x before and
+    0x after, TO 0x before and 1x after, measured WITH the terminating newline.
+    Then report `git diff --numstat` for that path across THIS commit alone: the
+    deletion column is EXPECTED to be non-zero here, which is the whole point of
+    R-0417 — report the real number, do not treat it as a failure.
+8.  The CTXSTEPS3 pair, as a PROPERTY: prove
+    `post == pre.replace(CTXSTEPS3_FROM, CTXSTEPS3_TO)` byte-wise over
+    `.agent/context.md` with the same before/after counts. Report
+    `wc -l .agent/context.md` and `wc -l .agent/plan.md` (under 50).
 9.  The `.agent/context.md` contract readers: `## Active Branch` with a
     `feature/` slug, the substring `Steps`, a roadmap F-id, and `pytest` or
     `resource`. Report each.
-10. `git diff --name-only 20f101b0..HEAD` → report every path and COUNT them
-    mechanically, stating the count. The Change list is a CEILING: every path
-    reported appears in it. Name any path present that it does not contain —
-    there must be none. Report `git diff --name-only 20f101b0..HEAD --
-    packages/` separately; it must be EMPTY.
-11. `git diff --numstat 20f101b0..HEAD -- tests/orchestration/test_bench_history.py`
-    → report it. The DELETION column must be 0: the edit is purely additive and
-    no existing test or helper line is touched.
+10. STANDING STALENESS GATE (R-0417, and this is its first run). For EVERY file
+    this round touched, re-read it end to end and report every sentence that
+    states a count, a list of modules, a round map, or a completion — and
+    whether each still holds after this round's own commits. Name each one and
+    its file. Report them all; repair nothing outside the ordered pairs. If one
+    no longer holds, say so plainly: that is the finding this gate exists to
+    surface a round earlier than a worker's declaration would.
+11. `git diff --name-only 4b0d0db0..HEAD` → report every path and COUNT them
+    mechanically, stating the count and the MOMENT you measured it (before or
+    after C4). The Change list is a CEILING: every path reported appears in it.
+    Report `git diff --name-only 4b0d0db0..HEAD -- packages/` separately; it
+    must be EMPTY.
 12. `python3 -m pytest tests/orchestration/test_bench_history.py
     tests/orchestration/test_bench_dry_run.py
     tests/orchestration/test_capability_bench.py
@@ -268,45 +220,33 @@ that caused it. Commit and push.
     tests/orchestration/test_gauntlet_injection.py
     tests/orchestration/test_self_run_gauntlet.py
     tests/orchestration/test_verification_matrix.py -q` → exit 0. The reviewer
-    measured those eleven files at `20f101b0` today: 292 passed. Report the real
-    total and the arithmetic — it must be 292 plus the number of tests you added,
-    and no pre-existing test may be lost.
+    measured those eleven files at `4b0d0db0` today: 294 passed. This round adds
+    no test and removes none, so the expected total is 294 exactly. Report the
+    real total; any other number is a finding, not a rounding.
 13. `python3 -m pytest tests/cli/test_golden_path.py
     tests/ui_server/test_dashboard_contract.py
     tests/regression/test_resource_safety.py
     tests/orchestration/test_test_runner.py -q` → exit 0. Reviewer baselines
-    re-measured at `20f101b0` today: 42 for the canary and 142 for the three
+    re-measured at `4b0d0db0` today: 42 for the canary and 142 for the three
     readers, so 184.
 14. `python3 -m ruff check tests/orchestration/test_bench_history.py` → exit 0.
-    Repository-wide ruff is RED on main and is NOT a gate (R-0364); this is
-    scoped to the one Python file R8 touches. The reviewer ran the same command
-    over that file at `20f101b0` today and it printed `All checks passed!`.
-15. Red-proof, in a DISPOSABLE worktree under `.remedy-wt/` only (G5, §4 item
-    10), never in the primary checkout. Run BOTH of R-0415's mutations against
-    `packages/orchestration/bench_history.py`, reverting the first before
-    applying the second, and report the real result of each:
-      (a) replace `if latest <= baseline * multiplier:` with
-          `if latest <= baseline:` in `_threshold_regression`;
-      (b) replace the body of `_median` with
-          `return float(sum(values)) / float(len(values))`.
-    At `20f101b0` each of these left `8 passed` — that is R-0415. Order the
-    PROPERTY, not a colour: report which tests fail under each mutation and the
-    assertion text, and if EITHER mutation still leaves the suite green, say so
-    plainly — that is a real finding about C3 and the reviewer wants it, not a
-    green word. Remove and prune the worktree; `git worktree list` must read one
-    line afterwards.
-16. `python3 -m apps.cli.main integrity check --json` → `passed: true`,
+    Repository-wide ruff is RED on main and is NOT a gate (R-0364). The reviewer
+    ran this same command over that file at `4b0d0db0` today and it printed
+    `All checks passed!`.
+15. `python3 -m apps.cli.main integrity check --json` → `passed: true`,
     `fail_count: 0`, `check_count: 5`. Report the `high_blockers_open` message.
-17. `gh pr list --state open --json number,headRefName` → report it verbatim.
+16. `gh pr list --state open --json number,headRefName` → report it verbatim.
     It must be `[]`: no PR is created for this branch until closure.
-18. Report each commit's `git show --numstat <sha>` insertion total. If any
+17. Report each commit's `git show --numstat <sha>` insertion total. If any
     exceeds 500, declare it in the handback with the reason.
+No mutation red-proof is ordered this round and none is owed: R9 changes no
+executable line. Ordering one would be ordering a colour over unchanged code,
+which R-0364 and R-0252 both forbid.
 
-Transport proof: state, for each of FINDING-R415, FINDING-R416, DECISION-D4,
-GATE-R7, CTXSCOPE-FROM, CTXSCOPE-TO, CTXSTEPS2-FROM, CTXSTEPS2-TO and PLAN, that
-it was extracted from the COMMITTED `.agent/authored/f082-r8.md` and applied
-disk-to-disk, with its sha256 and byte length, and the proof that the applied
-region equals it. Both context pairs are REWRITES: neither TO contains its own
-FROM, and the two FROMs are disjoint. Confirm no BEGIN/END marker line reached
-any target file. Scan every file you touched for trailing whitespace and report
-the result.
+Transport proof: state, for each of FINDING-R417, GATE-R8, DOCSTR-FROM,
+DOCSTR-TO, CTXSTEPS3-FROM, CTXSTEPS3-TO and PLAN, that it was extracted from the
+COMMITTED `.agent/authored/f082-r9.md` and applied disk-to-disk, with its sha256
+and byte length, and the proof that the applied region equals it. DOCSTR and
+CTXSTEPS3 are both REWRITES: neither TO contains its own FROM. Confirm no
+BEGIN/END marker line reached any target file. Scan every file you touched for
+trailing whitespace and report the result.
