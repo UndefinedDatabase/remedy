@@ -4986,3 +4986,364 @@ different providers under one cooldown — the same bug, only harder to see.
 
 HOW TO REVERSE. Delete the falsy-provider guard at both seam sites; the C4 test
 named for it fails immediately, which is the point.
+
+## DECISION F077 D1 (2026-08-14) — a trip always pauses; only the decision degrades on a jobless mission
+
+CONTEXT. `enqueue_task_decision` (`packages/orchestration/escalation.py`) is
+task-scoped and has no jobless guard, and no decision path in the repository
+attaches to a MISSION — every producer branch of `list_decisions` is job- or
+global-scoped. `evaluate_no_progress` and `evaluate_goal_drift` fire only off
+`dispatched_entries`, which requires a non-empty `outcome.job_id`, so only
+`burn_anomaly` can trip with no job to attach to.
+
+CHOSEN. The pause is unconditional; the decision is best-effort. The watchdog
+attaches through `mission.latest_link()` and the job's first task, exactly as
+`escalate_repeated_refusal` (`packages/orchestration/orchestrator_loop.py`)
+already does, and on a jobless or taskless mission it still writes `paused` and
+still writes the ledger entry, recording the attachment failure as prose in the
+entry's `outcome.detail` — the same shape `escalate_repeated_refusal` uses for
+its three guard returns.
+
+ALTERNATIVES CONSIDERED. Refusing to trip on a jobless mission (inventory §1
+option c) is cheaper, but it trades a SAFETY stop for a reporting convenience:
+a burn anomaly on a jobless mission is exactly the runaway the feature exists to
+stop. A mission-anchored decision store (option b) needs a new `DECISION_TYPES`
+member, a ninth `list_decisions` branch and a mission entry point for the three
+`remedy decision` verbs — a schema change T002 should not carry.
+
+HOW TO REVERSE. Make the attachment failure an early return before the pause.
+The D1 test named for the jobless path fails immediately, which is the point.
+
+## DECISION F077 D2 (2026-08-14) — F077's dedup wins, implemented in the watchdog and not in escalation.py
+
+CONTEXT. `packages/orchestration/escalation.py`'s module docstring declines
+dedup as policy — "Two tasks raising the same question produce TWO records
+(deduplication is a human call, feature-file A9)" — while F077 requires one
+decision per trip class, deduped within a mission until resolved. All three
+existing writers enqueue unconditionally, and `enqueue_task_decision` builds a
+fixed key set with no extras argument, so there is nowhere on the stored record
+to hang a typed dedup key.
+
+CHOSEN. F077's requirement wins, and the dedup lives at the WATCHDOG's layer.
+`escalation.py` is not touched and keeps enqueuing whatever it is asked to; the
+watchdog asks only when it should. Before enqueuing, it reads
+`open_mission_decisions(mission)` — which returns the stored record dicts, each
+carrying a `question`, filtered to `ESCALATION_STATUS_OPEN` across every linked
+job — and skips the enqueue when a record's `question` already starts with the
+marker `[watchdog:<kind>]`. The marker is a literal prefix on the question text
+because that is the one caller-controlled field on the record.
+
+ALTERNATIVES CONSIDERED. Adding dedup inside `enqueue_task_decision` reverses a
+documented policy for every caller to serve one of them. A new stored key needs
+`enqueue_task_decision` to accept extras — a signature change on a shared writer
+for a single feature's benefit.
+
+HOW TO REVERSE. Delete the marker scan in the watchdog. Escalation is untouched,
+so nothing else in the repository changes behaviour.
+
+## DECISION F077 D3 (2026-08-14) — the decision's own open/answered state IS the dedup state
+
+CONTEXT. "Deduped until resolved" needs a notion of resolved. Inventory §3 lists
+four candidates and all four are unbuilt.
+
+CHOSEN. Option (a): no new state at all. Suppression means "an open decision
+carrying this trip's marker exists". Answering it through
+`answer_task_decision` flips the record to `ESCALATION_STATUS_ANSWERED`, which
+removes it from `open_task_decisions` and therefore from
+`open_mission_decisions`, and the suppression lifts on the next evaluation with
+no bookkeeping. `remedy decision resolve` already reaches it, because
+`_cmd_decision_resolve` (`apps/cli/commands/decision.py`) dispatches on the
+`td:` prefix the escalation writer produces.
+
+ALTERNATIVES CONSIDERED. A key on the mission record touches `Mission`'s
+serialization. A file under `mission_evidence_dir` is a second source of truth
+beside the queue, which `decision_queue.py`'s own docstring rules out. Deriving
+it from the ledger is append-only and elegant but has no notion of "answered",
+which is precisely the notion the requirement is about.
+
+HOW TO REVERSE. Introduce an explicit dedup store and read it instead. The
+marker scan is one function and it is the only reader.
+
+## DECISION F077 D4 (2026-08-14) — the missing `mission resume` verb is T003's, not T002's
+
+CONTEXT. `_status_for_verb` (`apps/cli/commands/mission_cmd.py`) maps exactly
+`achieve`, `abandon` and `pause`; `apps/cli/command_catalog.py` registers the
+matching three, and a search for `mission.resume` or `mission.activate` across
+`apps/` and `packages/` returns nothing. A paused mission has NO supported path
+back to active, so a watchdog pause is terminal for the run in practice.
+
+CHOSEN. T002 ships the pause and the deduped decision without a resume verb, and
+T003 — the slice that owns the manual CLI — adds `mission resume` alongside the
+watchdog command. The feature file is NOT amended: its acceptance sentence
+"resume clears exactly that trip's dedup" stays true across T002 and T003
+together, because D3 makes the clearing a consequence of answering the decision
+rather than of the verb, and the verb only restores `active`.
+
+ALTERNATIVES CONSIDERED. Adding the verb inside T002 widens a pause-and-decide
+slice into CLI and catalog work. Shipping the pause with no route out at all,
+and not writing the gap down, is how a session rediscovers it in the round that
+can least afford the detour.
+
+HOW TO REVERSE. Move the verb into T002's change set. It is one `_status_for_verb`
+entry, one catalog registration and its test.
+
+## DECISION F077 D5 (2026-08-14) — the evidence triple rides in `move.payload`, and the renderer prints it for free
+
+CONTEXT. `MoveOutcome.to_json` emits only `status`, `detail` and — when set —
+`job_id`, so the triple has no home there. Inventory §4 offers prose in
+`detail`, a raw dict bypassing `MoveOutcome`, or a new `MoveOutcome` field that
+`render_ledger` would not print. Five loop precedents pass `move={}` for entries
+with no model move behind them.
+
+CHOSEN. The `watchdog_tripped` entry takes
+`move={"kind": "watchdog_tripped", "payload": trip.to_json()}`, a real
+`MoveOutcome` for the outcome, `context_digest=""`, and the precedent zero cost
+`{"calls": 0, "usage": None, "usage_source": USAGE_UNMEASURED}`. This was
+checked against the reader rather than assumed: `render_ledger` prints
+`move.get("kind", "unknown")` and then every key of `move["payload"]` in
+`sorted` order, so `kind`, `what`, `since_iteration` and `numbers` appear in the
+human ledger with NO change to the renderer. It also keeps `move["kind"]` a
+total lookup for the existing bare-subscript reader in the suite.
+
+The departure from the `move={}` precedent is deliberate and narrow: those five
+entries are ones where a model move was EXPECTED and absent, whereas a watchdog
+trip is an action of its own with a name. An empty move would be a claim that
+nothing happened.
+
+Re-entrancy, checked against the evaluators rather than assumed: the entry is
+inert to a later watchdog pass. `dispatched_entries` skips it because its kind
+is not `dispatch_job`; `evaluate_no_progress` neither counts nor clears on it
+because it is neither a dispatch nor a `declare_milestone_done`; and
+`measured_tokens` returns `None` for it because the cost carries no `usage`
+dict, so it cannot drag a burn baseline. R8 pins each of those three with a
+test.
+
+ALTERNATIVES CONSIDERED. Prose in `detail` loses the numbers to string parsing.
+A raw outcome dict bypassing `MoveOutcome` gives the entry a shape no other
+entry has. A new `MoveOutcome` field is invisible to the renderer, which is the
+one surface a human reads.
+
+HOW TO REVERSE. Move the payload into `outcome`. `render_ledger` stops printing
+the triple, which is the visible cost and the reason not to.
+
+## DECISION F077 D6 (2026-08-14) — the iteration number is a parameter, defaulted, never guessed
+
+CONTEXT. `run_mission` computes `base = next_iteration_index(...)` ONCE before
+the loop and then uses `iteration = base + step - 1`, while
+`next_iteration_index` re-reads the file and returns one past the highest
+recorded. An external append mid-run therefore takes a number the loop is
+already going to reuse, and the ledger ends up with a duplicate.
+
+CHOSEN. The T002 action takes `iteration: int | None = None` and falls back to
+`next_iteration_index(...)` only when the caller passes nothing. A manual
+out-of-band audit gets a correct number; the loop, when R9 wires it in, passes
+its OWN current number and no collision is possible. The hazard is closed at the
+API boundary in the round that creates the boundary, rather than left for the
+wiring round to discover.
+
+ALTERNATIVES CONSIDERED. Always calling `next_iteration_index` guarantees the
+collision the inventory warns about. Always requiring the caller to pass one
+makes the manual CLI path carry loop bookkeeping it has no business knowing.
+
+HOW TO REVERSE. Drop the parameter. The R9 wiring is the only caller that
+passes it.
+
+## DECISION F077 D7 (2026-08-14) — the stale docstrings are repaired to what is true TODAY, not to what T002 will make true
+
+CONTEXT. Finding R-0384. Three sites claim no autonomous status write happens:
+`set_mission_status` (`packages/orchestration/mission_state.py`),
+`_cmd_mission_set_status` (`apps/cli/commands/mission_cmd.py`), and — found by
+grepping the suite rather than by trusting the finding's own count — the
+`TestStatusTransitions` class docstring in `tests/cli/test_mission_cmd.py`. All
+three have been false since `mission_achieved` and `execute_move` landed.
+
+CHOSEN. All three are repaired in R7, and each new text names ONLY the callers
+that exist at R7: the three human verbs and the loop's two terminal moves. The
+watchdog sentence is deliberately NOT written yet. The T002 inventory §5
+proposes an amendment reading "and — since F077 — the autonomy watchdog, which
+writes `paused`"; applying that in R7 would replace a false claim with a
+different false claim, because no such caller exists until R8. R8 adds the
+watchdog clause in the same commit as the watchdog.
+
+ALTERNATIVES CONSIDERED. Repairing all three in R8 alongside the writer keeps
+one commit, but leaves a known-false docstring on disk across a round for no
+gain. Repairing only the two the finding named leaves the third to be found
+again by whoever greps next.
+
+HOW TO REVERSE. Restore the sentences from git history. Nothing reads them
+programmatically — no test asserts any of the three, which is why they went
+stale unnoticed.
+
+## DECISION F077 D8 (2026-08-14) — T002's action ships UNWIRED, and the four e2e ledger guards are R9's declared bill
+
+CONTEXT. Inventory §7 names four whole-ledger guards in
+`tests/orchestration/test_mission_e2e.py` that a new entry kind breaks: a
+`numbers == [1, 2, 3, 4, 5, 6, 7]` list equality, a seven-kind move list that
+also subscripts `e["move"]["kind"]` bare, a universally quantified
+`context_digest`/`cost` assertion that a zero-cost entry fails, and
+`len(e2e["open_at_pause"]) == 1` over the whole mission queue. None of them
+breaks while the watchdog is not called by `run_mission`.
+
+CHOSEN. R8 builds the pause, the decision and the ledger entry as a callable
+action with unit tests and adds NO call site in `orchestrator_loop.py`. R9 adds
+the call site and pays all four guards in that same round. The split is recorded
+here so that R8's green gate is not read as a working feature: a passing R8
+proves the action is correct in isolation and proves NOTHING about the loop,
+and the handback and brief for R8 must say exactly that.
+
+ALTERNATIVES CONSIDERED. Building and wiring in one round puts a new entry
+shape, a new decision writer, a dedup rule and four rewritten whole-file
+assertions in one diff, where a failure in any one of them is ambiguous between
+the action and the wiring.
+
+HOW TO REVERSE. Merge R8 and R9 into one round. The guard repairs are the same
+work either way; only the diagnosis cost changes.
+
+## DECISION F077 D9 (2026-08-14) — D8's four-guard bill is re-measured as a probe, not carried as a prediction
+
+CONTEXT. DECISION F077 D8 states that wiring `act_on_trips` into `run_mission`
+breaks four whole-ledger guards in `tests/orchestration/test_mission_e2e.py` and
+that the wiring round pays them. That is a PREDICTION about a colour, made
+before the evaluators existed in the shape they now have. Read against the
+scripted e2e scenario — `dispatch_job`, `declare_milestone_done`,
+`dispatch_job`, `wait_on_decisions`, `dispatch_job`, `declare_milestone_done`,
+`declare_mission_achieved` — none of the three tripwires plausibly fires:
+`evaluate_no_progress` clears its run on every `declare_milestone_done` and the
+longest surviving streak in that ledger is two against a default threshold of
+three; `evaluate_burn_anomaly` returns `None` below `burn_min_samples +
+burn_window`, which is 5 + 3 = 8 measured entries against a seven-iteration run
+whose entries carry no measured `usage`; and `evaluate_goal_drift` needs a
+dispatch on a milestone the plan never named, which a scripted run does not
+produce. If nothing trips, no ledger entry is added and all four guards stay
+green.
+
+CHOSEN. The wiring round orders the MEASUREMENT and not the colour. It runs
+`tests/orchestration/test_mission_e2e.py` at the base commit and again after the
+wiring, reports both numbers, and repairs only what is actually red. A green
+second run is a correct outcome that costs the round nothing and closes D8's
+open bill by measurement. This follows the standing rule that a red-proof is a
+probe: order the colour and a worker either fabricates it or changes code to
+meet it, and both are worse than the declared deviation an honest worker is
+forced into.
+
+ALTERNATIVES CONSIDERED. Ordering the four repairs as D8 wrote them would make
+a worker rewrite four correct assertions to accommodate an entry that never
+arrives — a silent, permanent weakening of the strongest whole-ledger guards in
+the suite, bought with no defect fixed. Deleting D8 instead of amending it would
+erase the reasoning that correctly kept R8 unwired; D8's split was right and only
+its forecast about the guards was not.
+
+HOW TO REVERSE. Delete this decision and treat D8's four-guard clause as
+binding again. Anything that makes the e2e scenario trip a tripwire — a lowered
+threshold default, a scripted run with three same-milestone dispatches, a
+milestone dropped from the plan — brings the bill back on its own, which is why
+the probe is ordered every time rather than resolved once.
+
+## DECISION F077 D10 (2026-08-14) — the watchdog's ledger entry takes its OWN iteration number, and the loop stops passing its one
+
+CONTEXT. Finding R-0388. DECISION F077 D6 gave `act_on_trips` an `iteration`
+parameter defaulting to `next_iteration_index`, and said the loop "passes its
+OWN current number and no collision is possible". The R10 wiring did exactly
+that, and the ledger of a tripped three-iteration run reads `[1, 2, 3, 3]`. The
+collision D6 was written about — an external append racing the loop's
+precomputed `base` — is real and is still closed. The collision the loop itself
+creates by labelling two entries with one number is a different one, and D6 did
+not consider it.
+
+CHOSEN. `run_mission` stops passing `iteration`, so the trip is numbered from
+`next_iteration_index` — one past the highest recorded — and a tripped run reads
+`[1, 2, 3, 4]`. The parameter STAYS on both `act_on_trips` and `watchdog_pass`,
+because T003's manual `remedy mission watchdog` path is an out-of-band caller
+that may legitimately know its own number; only the loop stops supplying one.
+This is safe for precisely one reason, and it is worth stating because it is the
+thing that would break if the loop's shape changed: a trip always pauses the
+mission, and `run_mission`'s next iteration hits its top-of-loop status check
+and returns `mission_not_active` WITHOUT recording an entry, so the number the
+watchdog takes can never be one the loop goes on to write.
+
+ALTERNATIVES CONSIDERED. Keeping the duplicate and rewriting both guards would
+retire the "numbered once" invariant across two test files to accommodate one
+new entry kind — spending a property three mechanisms rely on, including
+`next_iteration_index` itself, to avoid changing one argument. Numbering the
+trip `iteration + 1` explicitly at the call site computes by hand the number
+`next_iteration_index` already returns from the record, and would drift the
+moment anything else appended.
+
+HOW TO REVERSE. Restore `iteration=iteration` at the `run_mission` call site and
+revert the two tests. The evidence a trip carries is unaffected either way: the
+observing iteration is named by the trip's own `since_iteration` and its
+`numbers` payload, never by the entry's number, which is why this decision costs
+no information.
+
+## DECISION F077 D11 (2026-08-14) — the ledger's `iteration` is not a unique key, and D10 is withdrawn unimplemented
+
+CONTEXT. Findings R-0388 and R-0391. DECISION F077 D10 ordered `run_mission` to
+stop passing its own iteration number to `watchdog_pass`, so a trip would be
+numbered one past the entry that caused it. It rested on two premises and both
+are false. The first, that the ledger holds one entry per iteration number:
+`_record` has eleven call sites in `run_mission`, and the executed move's entry
+and the blocked-completion escalation's entry fire in the same pass at the same
+number, shipped and green since F075 R-0190. The second, that a trip always
+ends the run before another entry can be written: `run_mission`'s safe point
+calls `_record` and returns BEFORE the top-of-loop status check, so a stop
+requested after a trip writes an entry at exactly the number D10 hands the trip.
+The worker measured it — `[1, 2, 3, 4, 4]` with the repair against
+`[1, 2, 3, 3, 4]` without it — and halted rather than applying it.
+
+CHOSEN. D10 is withdrawn without ever being implemented. DECISION F077 D6 stands
+unchanged: `run_mission` passes its own iteration number, and a trip is recorded
+as belonging to the iteration that produced the evidence for it. The `iteration`
+field is documented, here, as an ATTRIBUTION and not a key — it answers "which
+iteration does this entry belong to", a question with more than one correct
+answer per number, and the ledger's ordering is its file order. The only change
+this round makes is to the one test that encoded the imagined invariant.
+
+ALTERNATIVES CONSIDERED. Making `iteration` genuinely unique would mean giving
+every one of the eleven `_record` call sites its own number, retiring the
+attribution meaning that the R-0190 escalation entry and the F077 trip entry
+both depend on, and rewriting the guards that currently read the field as an
+iteration count — a large change to a shipped audit format, bought to satisfy a
+property nothing needs. Adding a separate sequence field beside `iteration`
+gives the ledger two numbers where readers cope with one, and the F077 entry is
+not the reason to introduce it; if a real need for row identity appears, it
+arrives with its own feature and its own migration of the record shape.
+
+HOW TO REVERSE. Re-apply D10 by restoring the `iteration=iteration` argument's
+removal at the `run_mission` call site — which was never removed, so reversing
+this decision is a change, not a revert. Any such attempt must first answer the
+safe-point path this decision names, because that path is what made D10 unsafe
+independently of whether its invariant existed.
+
+## DECISION F077 D12 (2026-08-14) — the trip leads `mission show`, not `mission report`
+
+CONTEXT. The feature file's T003 reads "the manual CLI + report surfacing (a
+paused-by-watchdog mission's report leads with the trip) + tests", and the
+obvious reading is `remedy mission report`. The R13 inventory measured that
+surface and it is not what the name suggests: `mission.report`'s handler is
+`_cmd_mission_report` in `apps/cli/commands/worker_facade_cmd.py`, its catalog
+entry takes a RUN id rather than a mission id, and its renderer
+`build_mission_morning_report` fills a `MissionMorningReport` from a
+`DogfoodRun` without ever importing `mission_state`, calling `load_mission` or
+reading a ledger. Its `mission_status` field is a false friend — the dogfood
+contract's verdict, never one of the four `MISSION_STATUS_*` constants — so it
+can never read `paused`. There is no insertion point there for a trip.
+
+CHOSEN. The paused-by-watchdog trip leads `remedy mission show`, the
+mission-facing surface that already loads the Mission, and `remedy mission
+watchdog` prints the full evidence triple on demand. `mission report` is left
+exactly as it is. R14 builds the watchdog command and the resume verb; R15
+adds the lead block to `_cmd_mission_show` and its tests. The feature file is
+NOT amended: its sentence says "a mission's report", not "the `mission report`
+command", and `mission show` is that report for a mission.
+
+ALTERNATIVES CONSIDERED. Giving `_cmd_mission_report` the resolve-or-facade
+branch that `_cmd_mission_run` already carries would satisfy the literal
+reading, but it puts mission-facing code in the worker facade and turns two
+green exact-set guards red in the same commit (inventory Q6). Leading the
+run-loop summary instead reaches only whoever runs the loop, never the human
+who asks about the mission afterwards, which is the case the pause exists for.
+Dropping the report surface entirely would leave T003's own sentence unmet.
+
+HOW TO REVERSE. Delete the lead block from `_cmd_mission_show` and its tests;
+nothing else depends on it. The `mission watchdog` command is independent of
+this decision and survives its reversal.

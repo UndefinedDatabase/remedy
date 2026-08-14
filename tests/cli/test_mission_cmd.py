@@ -592,7 +592,9 @@ class TestStatusTransitions:
 
     The verb names the status. There is no transition table: any valid
     status may follow any other, because the human typing the command is
-    the authority. Nothing in Remedy moves a mission's status on its own.
+    the authority. This surface is not the only writer, though: the
+    orchestrator loop's terminal moves write achieved and abandoned with
+    no human in the loop.
     """
 
     _VERBS = (("achieve", "achieved"), ("abandon", "abandoned"),
@@ -1097,3 +1099,260 @@ class TestHandoffCommand:
 
         assert proc.returncode != 0
         assert "no mission 'no-such-mission' exists to hand off" in proc.stderr
+
+
+class TestWatchdogCommandCatalog:
+    """`remedy mission watchdog <id>` — F077 T003's manual audit surface."""
+
+    def test_the_command_is_in_the_catalog_with_a_handler(self):
+        from apps.cli.command_catalog import get_command
+        from apps.cli.commands import collect_all_handlers
+
+        entry = get_command("mission.watchdog")
+        assert entry.action_class == "read_only"
+        assert entry.supports_json is True
+        assert entry.may_execute_commands is False
+        assert entry.may_mutate_repo is False
+        assert "mission.watchdog" in collect_all_handlers()
+
+
+class TestMissionWatchdog:
+    def test_an_unrun_mission_reports_no_tripwires(self, project):
+        data_root, project_id = project
+        mission_id = _start(data_root, project_id, _LONG_GOAL)
+
+        proc = _run(["mission", "watchdog", mission_id, "--project", project_id],
+                    data_root)
+
+        assert proc.returncode == 0
+        assert mission_id in proc.stdout
+        assert "Status: active" in proc.stdout
+        assert "Tripwires fired: 0" in proc.stdout
+
+    def test_the_json_view_carries_the_trip_list(self, project):
+        data_root, project_id = project
+        mission_id = _start(data_root, project_id, _LONG_GOAL)
+
+        body = json.loads(_run(["mission", "watchdog", mission_id, "--project",
+                                project_id, "--json"], data_root).stdout)
+
+        assert body["version"] == 1
+        assert body["mission_id"] == mission_id
+        assert body["trips"] == []
+
+    def test_asking_the_watchdog_changes_nothing(self, project):
+        """The acceptance claim: an audit must not pause what it audits."""
+        data_root, project_id = project
+        mission_id = _start(data_root, project_id, _LONG_GOAL)
+        _plan_no_llm(data_root, project_id, mission_id)
+        _run(["mission", "run", mission_id, "--project", project_id,
+              "--no-llm"], data_root)
+        record = (data_root / "missions" / project_id / f"{mission_id}.json")
+        before = record.read_text(encoding="utf-8")
+
+        _run(["mission", "watchdog", mission_id, "--project", project_id],
+             data_root)
+        _run(["mission", "watchdog", mission_id, "--project", project_id],
+             data_root)
+
+        assert record.read_text(encoding="utf-8") == before
+        ledger = json.loads(_run(["mission", "ledger", mission_id, "--project",
+                                  project_id, "--json"], data_root).stdout)
+        assert len(ledger["entries"]) == 1
+
+    def test_an_unknown_mission_is_an_error_not_a_crash(self, project):
+        data_root, project_id = project
+
+        proc = _run(["mission", "watchdog", "0" * 32, "--project", project_id],
+                    data_root, expect_ok=False)
+
+        assert proc.returncode == 1
+        assert "no mission" in proc.stderr
+        assert "Traceback" not in proc.stderr
+
+
+class TestResumeCommandCatalog:
+    """`remedy mission resume <id>` — DECISION F077 D4's status verb."""
+
+    def test_the_command_is_in_the_catalog_with_a_handler(self):
+        from apps.cli.command_catalog import get_command
+        from apps.cli.commands import collect_all_handlers
+
+        entry = get_command("mission.resume")
+        assert entry.action_class == "write_metadata"
+        assert entry.supports_json is True
+        assert entry.may_execute_commands is False
+        assert entry.may_mutate_repo is False
+        assert "mission.resume" in collect_all_handlers()
+
+
+class TestMissionResume:
+    """Resume restores ``active`` and does nothing else — D4's whole scope."""
+
+    def test_pause_then_resume_leaves_the_mission_active(self, project):
+        data_root, project_id = project
+        mission_id = _start(data_root, project_id, "Keep it working")
+
+        _run(["mission", "pause", mission_id, "--project", project_id],
+             data_root)
+        out = _run(["mission", "resume", mission_id, "--project", project_id],
+                   data_root).stdout
+
+        assert "Status: active" in out
+        shown = json.loads(_run(["mission", "show", mission_id, "--project",
+                                 project_id, "--json"], data_root).stdout)
+        assert shown["mission"]["status"] == "active"
+
+    def test_the_json_shape_matches_show(self, project):
+        data_root, project_id = project
+        mission_id = _start(data_root, project_id, "Keep it working")
+        _run(["mission", "pause", mission_id, "--project", project_id],
+             data_root)
+
+        body = json.loads(_run(["mission", "resume", mission_id, "--project",
+                                project_id, "--json"], data_root).stdout)
+
+        shown = json.loads(_run(["mission", "show", mission_id, "--project",
+                                 project_id, "--json"], data_root).stdout)
+        assert body["version"] == 1
+        assert body["mission"] == shown["mission"]
+
+    def test_an_unknown_mission_is_an_error_not_a_crash(self, project):
+        data_root, project_id = project
+
+        proc = _run(["mission", "resume", "0" * 32, "--project", project_id],
+                    data_root, expect_ok=False)
+
+        assert proc.returncode == 1
+        assert "no mission" in proc.stderr
+        assert "Traceback" not in proc.stderr
+
+
+def _append_trip_entry(data_root: Path, project_id: str, mission_id: str, *,
+                       kind: str = "no_progress",
+                       what: str = "3 dispatches in a row on milestone M1",
+                       since_iteration: int = 2,
+                       numbers: dict | None = None) -> None:
+    """Write ONE real ``watchdog_tripped`` ledger entry, the way F077 writes it.
+
+    Through ``append_ledger_entry`` and ``Trip.to_json`` rather than by hand,
+    so what ``mission show`` reads back is the shape the product itself writes
+    (DECISION F077 D5) and not a shape this test invented.
+    """
+    payload = {"threshold": 3, "repeats": 3} if numbers is None else numbers
+    script = (
+        "import sys; sys.path.insert(0, '.');"
+        "from packages.orchestration.orchestrator_loop import ("
+        "LedgerEntry, MoveOutcome, USAGE_UNMEASURED, append_ledger_entry,"
+        " next_iteration_index);"
+        "from packages.orchestration.watchdog import ("
+        "MOVE_WATCHDOG_TRIPPED, OUTCOME_WATCHDOG_TRIPPED, Trip);"
+        f"trip = Trip(kind={kind!r}, what={what!r},"
+        f" since_iteration={since_iteration!r}, numbers={payload!r});"
+        "entry = LedgerEntry("
+        f"iteration=next_iteration_index({project_id!r}, {mission_id!r}),"
+        " context_digest='',"
+        " move={'kind': MOVE_WATCHDOG_TRIPPED, 'payload': trip.to_json()},"
+        " outcome=MoveOutcome(status=OUTCOME_WATCHDOG_TRIPPED,"
+        " detail=trip.what, terminal=False).to_json(),"
+        " cost={'calls': 0, 'usage': None, 'usage_source': USAGE_UNMEASURED});"
+        f"append_ledger_entry({project_id!r}, {mission_id!r}, entry);"
+        "print('appended')"
+    )
+    proc = subprocess.run(
+        [sys.executable, "-c", script], cwd=str(REPO_ROOT), capture_output=True,
+        text=True, timeout=60,
+        env={**os.environ, "REMEDY_DATA_DIR": str(data_root)},
+    )
+    assert proc.returncode == 0, proc.stderr
+
+
+class TestShowLeadsWithTheTrip:
+    """F077 T003 under DECISION F077 D12: a paused mission says WHY, first.
+
+    The lead is read from what the ledger already RECORDS — ``mission show``
+    re-evaluates nothing — so these tests write a real ``watchdog_tripped``
+    entry and then pause, the same two events the watchdog produces.
+    """
+
+    def test_a_paused_mission_leads_with_the_trip(self, project):
+        data_root, project_id = project
+        mission_id = _start(data_root, project_id, "Keep it working")
+        _append_trip_entry(data_root, project_id, mission_id)
+        _run(["mission", "pause", mission_id, "--project", project_id],
+             data_root)
+
+        out = _run(["mission", "show", mission_id, "--project", project_id],
+                   data_root).stdout
+
+        assert "STOPPED" in out
+        assert "no_progress" in out
+        assert "3 dispatches in a row on milestone M1" in out
+        assert "since iteration 2" in out
+        assert "threshold: 3" in out
+        assert f"remedy mission watchdog {mission_id}" in out
+        # "Leads with" is an ORDER claim: the trip stands ABOVE the chain.
+        assert out.index("STOPPED") < out.index(f"Mission {mission_id}")
+
+    def test_the_json_carries_the_trips_and_leaves_the_mission_object_alone(
+            self, project):
+        data_root, project_id = project
+        mission_id = _start(data_root, project_id, "Keep it working")
+        _append_trip_entry(data_root, project_id, mission_id,
+                           kind="goal_drift",
+                           what="dispatched a job for milestone M-ghost",
+                           since_iteration=5,
+                           numbers={"milestone_id": "M-ghost"})
+        paused = json.loads(_run(["mission", "pause", mission_id, "--project",
+                                  project_id, "--json"], data_root).stdout)
+
+        body = json.loads(_run(["mission", "show", mission_id, "--project",
+                                project_id, "--json"], data_root).stdout)
+
+        assert [t["kind"] for t in body["watchdog_trips"]] == ["goal_drift"]
+        assert body["watchdog_trips"][0]["numbers"] == {
+            "milestone_id": "M-ghost"}
+        assert body["watchdog_trips"][0]["since_iteration"] == 5
+        # The mission sub-object is untouched by the lead: `mission resume`'s
+        # own shape test compares it against exactly this one.
+        assert body["mission"] == paused["mission"]
+
+    def test_an_active_mission_with_an_old_trip_gets_no_lead(self, project):
+        """The PAUSE is the condition, not the history."""
+        data_root, project_id = project
+        mission_id = _start(data_root, project_id, "Keep it working")
+        _append_trip_entry(data_root, project_id, mission_id)
+
+        proc = _run(["mission", "show", mission_id, "--project", project_id],
+                    data_root)
+        body = json.loads(_run(["mission", "show", mission_id, "--project",
+                                project_id, "--json"], data_root).stdout)
+
+        assert "STOPPED" not in proc.stdout
+        assert proc.stdout.startswith(f"Mission {mission_id}")
+        assert body["watchdog_trips"] == []
+
+    def test_a_mission_paused_by_hand_gets_no_lead(self, project):
+        data_root, project_id = project
+        mission_id = _start(data_root, project_id, "Keep it working")
+        _run(["mission", "pause", mission_id, "--project", project_id],
+             data_root)
+
+        proc = _run(["mission", "show", mission_id, "--project", project_id],
+                    data_root)
+        body = json.loads(_run(["mission", "show", mission_id, "--project",
+                                project_id, "--json"], data_root).stdout)
+
+        assert "STOPPED" not in proc.stdout
+        assert proc.stdout.startswith(f"Mission {mission_id}")
+        assert "Status: paused" in proc.stdout
+        assert body["watchdog_trips"] == []
+
+    def test_a_fresh_mission_carries_an_empty_trip_list(self, project):
+        data_root, project_id = project
+        mission_id = _start(data_root, project_id, "Keep it working")
+
+        body = json.loads(_run(["mission", "show", mission_id, "--project",
+                                project_id, "--json"], data_root).stdout)
+
+        assert body["watchdog_trips"] == []

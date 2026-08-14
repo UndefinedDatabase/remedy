@@ -63,6 +63,7 @@
 | token economy | [token-economy-user-guide-v0.md](guides/token-economy-user-guide-v0.md) | guide |
 | tournament | [model-route-tournament-harness-v0.md](system/model-route-tournament-harness-v0.md) | system |
 | UI | [ui-target.md](archive/ui-target.md) | archive |
+| watchdog | [autonomy-watchdog-v1.md](system/autonomy-watchdog-v1.md) | system |
 | worker | [worker.md](system/worker.md) | system |
 
 ## System Documentation (`docs/system/`)
@@ -73,6 +74,7 @@ Specifications and design documents for the built system.
 |------|-------------|
 | [agent-tooling-audit.md](system/agent-tooling-audit.md) | Audit of agent tooling (Pi.dev, Claude Code, VS Code MCP) |
 | [architecture.md](system/architecture.md) | High-level Remedy architecture |
+| [autonomy-watchdog-v1.md](system/autonomy-watchdog-v1.md) | Mission tripwires (no-progress, burn anomaly, goal drift), the pause-only action, and the mission watchdog/resume/show surface |
 | [bounded-overnight-executor-v0.md](system/bounded-overnight-executor-v0.md) | Bounded overnight executor *(overnight superseded)* |
 | [cache-optimal-prompt-ordering-v1.md](system/cache-optimal-prompt-ordering-v1.md) | Ranked prompt-segment composition, the measured before/after cacheable prefix, and why the provider-side cache share is unmeasured |
 | [candidate-quality-evaluation-v1.md](system/candidate-quality-evaluation-v1.md) | Scoring and evaluation of candidate patches |

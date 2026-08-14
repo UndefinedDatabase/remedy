@@ -1,0 +1,75 @@
+Integration gate F077 R16 — attribution (docs/agents/integration_gate.md steps 3 and 4)
+
+comm -13 base_failed.txt branch_failed.txt  →  0 lines — NO branch-only failures
+comm -23 base_failed.txt branch_failed.txt  →  8 lines — eight base-only failures
+
+BRANCH-ONLY: none
+-----------------
+The branch run produced an empty FAILED list (16898 passed, 19 skipped, exit 0),
+so comm -13 is empty and NOTHING was re-run serially on the branch. An empty
+FAILED list is a real measurement, not a missing one. The xdist-flake class
+count for the branch is therefore 0, well under the 10 that would have been a
+fact for the reviewer's brief. No failure of the STOP-clause class — reproducible,
+branch-only, coupled to F077 code — exists in this gate.
+
+BASE-ONLY: eight ids, one common cause, each attributed by direct evidence
+-------------------------------------------------------------------------
+All eight are in tests/ui_server/test_live_state.py::TestUIServerIntegration:
+  test_server_starts_and_writes_info
+  test_app_shell_served_without_token
+  test_api_invalid_token_403
+  test_api_missing_job_404
+  test_put_rejected
+  test_dashboard_no_raw_leaks
+  test_brain_endpoint
+  test_readiness_endpoint
+
+Missing artifact, named per id: apps/ui/dist/index.html, transiently absent
+inside the base worktree while the run was in flight.
+
+Direct evidence, per id: each of the eight failure blocks in the raw base log
+carries the same captured stderr, "ERROR: React UI not built." — eight
+occurrences of that string against eight FAILED ids, a strict 1:1 match. That
+string is emitted from exactly one place, packages/orchestration/ui_server.py
+_load_frontend, and only on the path where _get_frontend_dist() found no
+apps/ui/dist/index.html and the auto-build was refused; the function then calls
+sys.exit(1) in the server thread, which is why every one of the eight surfaces
+as the downstream assertion "Failed: Server did not start in time" at
+tests/ui_server/test_live_state.py:165.
+
+Why index.html was absent: a real npm install plus vite build ran inside the
+base worktree DURING the base run and vite empties the output directory before
+it rewrites it, so dist/index.html did not exist for the width of that build.
+The timestamps place the build inside the run window and outside the copy:
+  apps/ui/node_modules/.package-lock.json  mtime 14:57:40
+  apps/ui/dist/{index.html,assets/*}       mtime 14:57:42
+  base run window                          14:56:29 – 14:58:38 (129.48s wall,
+                                           log last written 14:58:38)
+  the copy that placed both trees there    completed before 14:56:16, which is
+                                           the mtime of the digest helper
+                                           written after it
+REMEDY_UI_NO_AUTO_BUILD=1 was set for the whole base run and cannot prevent
+this, which is the honest finding of this gate rather than an operator error:
+tests/ui_server/test_dashboard_contract.py::TestAutoBuildBehavior::test_auto_build_runs_by_default
+POPS that variable out of a copied environment and then calls
+_auto_build_frontend() for real, precisely to assert that the default path
+proceeds. Under -n auto that test can land on a worker concurrently with the
+TestUIServerIntegration ids, in whichever checkout the suite is running. This
+is the same class as the earlier finding that a spawned build path rewrote
+dist mid-run; the env var is not, and cannot be, a sufficient neutraliser
+while a test in the suite deliberately removes it.
+
+Confirmation by re-run: the whole class was re-run serially in the same base
+worktree afterwards, with REMEDY_UI_NO_AUTO_BUILD=1 and no -n:
+  python3 -m pytest -q tests/ui_server/test_live_state.py::TestUIServerIntegration
+  → 16 passed in 2.14s, exit 0
+So none of the eight is a genuine base failure in the code at the merge base.
+Every base-only id is attributed to the environment class by direct evidence,
+and none is left unattributed, which is the condition step 3 sets for the
+verdict not being blocked.
+
+Same-cause note on the branch run: the primary checkout's apps/ui/dist was
+likewise rebuilt at 14:53:56, inside the branch-run window 14:52:51–14:55:00,
+by the same test. On the branch the eight ids happened not to land in that
+window and passed. The difference between the two runs is scheduling, not
+code: nothing in F077 touches apps/ui, ui_server.py or tests/ui_server.

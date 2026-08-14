@@ -5,8 +5,10 @@ renders one mission's chain with each linked job's state as the job store
 reports it right now, ``plan`` compiles the goal into milestones (F069), and
 ``continue`` adds the next job — with a task that
 verifies the previous one already sitting at the head of its plan.
-``achieve``/``abandon``/``pause`` are the explicit status transitions — the
-only way a mission's status ever moves.
+``achieve``/``abandon``/``pause``/``resume`` are the explicit status
+transitions, and ``watchdog`` reports F077's tripwires without writing
+anything.  They are not the only writers: the orchestrator loop's terminal
+moves and the watchdog's own pause move the status with no human in the loop.
 
 Creation is ALWAYS explicit.  There is no code path here that a run can trip
 over: a mission exists because someone typed ``remedy mission start``, or
@@ -146,15 +148,56 @@ def _load_mission_or_exit(project_id: str, mission_id: str) -> Any:
 
 def _cmd_mission_show(mission_id: str, *, project: str | None = None,
                       json_output: bool = False) -> None:
-    from packages.orchestration.mission_state import render_mission_chain
+    """``remedy mission show <id>`` — one mission's chain, led by why it stopped.
+
+    Read-only.  When the mission is PAUSED, the trips its ledger already
+    RECORDS lead the output (DECISION F077 D12): nothing is re-evaluated here,
+    so a reader sees the trip that actually caused THIS pause rather than a
+    fresh verdict over the same ledger, and ``remedy mission watchdog`` stays
+    the one surface that re-evaluates.
+
+    The lead lives in this handler and not in ``render_mission_chain`` because
+    that renderer takes a ``Mission`` and nothing else: the trips live in the
+    LEDGER, which ``orchestrator_loop`` owns, and ``orchestrator_loop`` imports
+    ``mission_state`` — so reaching the ledger from the renderer would invert
+    that dependency and build the very import cycle ``watchdog`` keeps its own
+    imports inside function bodies to avoid.
+    """
+    from packages.orchestration.mission_state import (
+        MISSION_STATUS_PAUSED,
+        render_mission_chain,
+    )
 
     project_id = _resolve_project_id(project)
     mission = _load_mission_or_exit(project_id, mission_id)
 
+    # The PAUSE is the condition, not the history: a mission that ran past an
+    # old trip and is active again is not waiting for anybody.
+    trips: list[Any] = []
+    if mission.status == MISSION_STATUS_PAUSED:
+        from packages.orchestration.orchestrator_loop import read_ledger
+        from packages.orchestration.watchdog import latest_trips_from_ledger
+
+        trips = latest_trips_from_ledger(read_ledger(project_id, mission.id))
+
     if json_output:
-        print(_json.dumps({"version": 1, "mission": _mission_json(mission)},
+        print(_json.dumps({"version": 1, "mission": _mission_json(mission),
+                           "watchdog_trips": [t.to_json() for t in trips]},
                           sort_keys=True))
         return
+
+    # Empty trips print NOTHING, so an unpaused mission's output is byte for
+    # byte what it was before F077.
+    if trips:
+        print("STOPPED: this mission was paused automatically and is waiting "
+              "for you.")
+        for trip in trips:
+            print(f"  {trip.kind}  (since iteration {trip.since_iteration})")
+            print(f"    {trip.what}")
+            for key in sorted(trip.numbers):
+                print(f"    {key}: {trip.numbers[key]}")
+        print(f"  Full evidence: remedy mission watchdog {mission.id}")
+        print("")
     for line in render_mission_chain(mission):
         print(line)
 
@@ -233,6 +276,7 @@ def _status_for_verb(verb: str) -> str:
     from packages.orchestration.mission_state import (
         MISSION_STATUS_ABANDONED,
         MISSION_STATUS_ACHIEVED,
+        MISSION_STATUS_ACTIVE,
         MISSION_STATUS_PAUSED,
     )
 
@@ -240,19 +284,29 @@ def _status_for_verb(verb: str) -> str:
         "achieve": MISSION_STATUS_ACHIEVED,
         "abandon": MISSION_STATUS_ABANDONED,
         "pause": MISSION_STATUS_PAUSED,
+        "resume": MISSION_STATUS_ACTIVE,
     }[verb]
 
 
 def _cmd_mission_set_status(mission_id: str, verb: str, *,
                             project: str | None = None,
                             json_output: bool = False) -> None:
-    """The body behind ``achieve``, ``abandon`` and ``pause``.
+    """The body behind ``achieve``, ``abandon``, ``pause`` and ``resume``.
 
     A thin wrapper over ``mission_state.set_mission_status``: the verb names
     the status, and that is the whole rule.  There is deliberately NO
     transition table here — any valid status may follow any other, because a
     human typing the command is the authority on what the mission's state is.
-    Nothing in Remedy moves a mission between statuses on its own (F056).
+
+    This surface is not the only writer, though.  The orchestrator loop's own
+    terminal moves write ``achieved`` and ``abandoned`` with no human in the
+    loop — see ``mission_state.set_mission_status`` for the full caller list —
+    so F056's "nothing moves on its own" holds for this COMMAND, not for the
+    status field.
+
+    Since F077 the autonomy watchdog writes ``paused`` the same way and with no
+    human in the loop either, so the status field has three kinds of writer and
+    this command is only one of them.
     """
     from packages.orchestration.mission_state import MissionError, set_mission_status
 
@@ -426,6 +480,39 @@ def _cmd_mission_ledger(mission_id: str, *, project: str | None = None,
     print(render_ledger(entries))
 
 
+def _cmd_mission_watchdog(mission_id: str, *, project: str | None = None,
+                          json_output: bool = False) -> None:
+    """``remedy mission watchdog <id>`` — what the watchdog sees, on demand.
+
+    Read-only, and that is the whole point of the command: it evaluates every
+    F077 tripwire over the mission's ledger and reports what fired, pausing
+    nothing and raising no decision.  The watchdog acts only from inside
+    ``remedy mission run``; asking it what it sees must not itself stop a
+    mission.
+    """
+    from packages.orchestration.watchdog import evaluate_mission
+
+    project_id = _resolve_project_id(project)
+    mission = _load_mission_or_exit(project_id, mission_id)
+    trips = evaluate_mission(project_id, mission.id)
+
+    if json_output:
+        print(_json.dumps({"version": 1, "mission_id": mission.id,
+                           "trips": [trip.to_json() for trip in trips]},
+                          sort_keys=True))
+        return
+
+    print(mission.id)
+    print(f"  Status: {mission.status}")
+    print(f"  Tripwires fired: {len(trips)}")
+    for trip in trips:
+        print("")
+        print(f"  {trip.kind}  (since iteration {trip.since_iteration})")
+        print(f"    {trip.what}")
+        for key in sorted(trip.numbers):
+            print(f"    {key}: {trip.numbers[key]}")
+
+
 def _cmd_mission_handoff(mission_id: str, *, json_output: bool = False) -> None:
     """``remedy mission handoff <id>`` — the explicit boundary trigger (F079).
 
@@ -473,6 +560,11 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         project=getattr(args, "project", None),
         json_output=getattr(args, "json", False),
     ),
+    "mission.watchdog": lambda args: _cmd_mission_watchdog(
+        args.mission_id,
+        project=getattr(args, "project", None),
+        json_output=getattr(args, "json", False),
+    ),
     "mission.start": lambda args: _cmd_mission_start(
         args.goal,
         project=getattr(args, "project", None),
@@ -512,6 +604,11 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     ),
     "mission.pause": lambda args: _cmd_mission_set_status(
         args.mission_id, "pause",
+        project=getattr(args, "project", None),
+        json_output=getattr(args, "json", False),
+    ),
+    "mission.resume": lambda args: _cmd_mission_set_status(
+        args.mission_id, "resume",
         project=getattr(args, "project", None),
         json_output=getattr(args, "json", False),
     ),

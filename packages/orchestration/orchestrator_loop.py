@@ -1211,6 +1211,21 @@ def run_mission(
             if outcome.terminal:
                 result.terminal, result.detail = outcome.status, outcome.detail
                 return result
+
+            # F077: the autonomy watchdog reads the ledger THIS iteration just
+            # extended and pauses the mission if a tripwire fires. Placed after
+            # the terminal return on purpose — a run that is already over cannot
+            # be helped by pausing it, so only a CONTINUING iteration is
+            # watched. The loop does not read the verdict: a pause is a mission
+            # STATUS, and the next iteration's safe point already refuses to run
+            # a mission that is not active. Imported inside the body because
+            # ``watchdog`` imports this module back (DECISION F077 D6 for the
+            # iteration number, which is this loop's own).
+            from packages.orchestration.watchdog import watchdog_pass
+
+            watchdog_pass(pid, mission_id, iteration=iteration, root=root,
+                          now=now)
+
             # An iteration that decided and executed a move ends any
             # boundary-failure streak: the fault did not persist (R-0196).
             boundary_milestone, boundary_failures = "", []

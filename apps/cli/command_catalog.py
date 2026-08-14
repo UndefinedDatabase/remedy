@@ -1677,6 +1677,20 @@ CATALOG: tuple[CommandEntry, ...] = (
         related=("mission.run", "mission.show"),
     ),
     CommandEntry(
+        command_id="mission.watchdog",
+        group_id="mission",
+        subcommand="watchdog",
+        description="Evaluate a mission's autonomy tripwires and report what fired, with the evidence behind it (read-only: it pauses nothing and raises no decision).",
+        action_class="read_only",
+        args=(
+            ArgDef("mission_id", "Mission id (or a unique prefix)"),
+            _PROJECT_SCOPE_OPT,
+            _JSON_OPT,
+        ),
+        supports_json=True,
+        related=("mission.ledger", "mission.resume"),
+    ),
+    CommandEntry(
         command_id="mission.handoff",
         group_id="mission",
         subcommand="handoff",
@@ -1816,6 +1830,20 @@ CATALOG: tuple[CommandEntry, ...] = (
         ),
         supports_json=True,
         related=("mission.show", "mission.list"),
+    ),
+    CommandEntry(
+        command_id="mission.resume",
+        group_id="mission",
+        subcommand="resume",
+        description="Mark a mission active again — the pause is lifted; the tripwire that caused it is not cleared.",
+        action_class="write_metadata",
+        args=(
+            ArgDef("mission_id", "Mission id (or a unique prefix)"),
+            _PROJECT_SCOPE_OPT,
+            _JSON_OPT,
+        ),
+        supports_json=True,
+        related=("mission.pause", "mission.watchdog"),
     ),
 
     # ── doctor (product spine health check) ──────────────────────────────

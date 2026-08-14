@@ -1,0 +1,31 @@
+Integration gate F077 R16 — apps/ui/dist parity check in the base worktree
+
+Method
+------
+A composite digest over the whole directory, not a single file. For every
+regular file under the directory, sorted by its POSIX-normalised relative
+path: sha256 of the file's bytes; then a final sha256 over the concatenation
+of "<relpath>\0<file-sha256>\n" for each path in sorted order. The script is
+.remedy-wt/.cache/gate_r16/dist_digest.py (gitignored scratch, 478 bytes).
+The same script produced both readings, so the two are directly comparable.
+
+Readings
+--------
+target : .remedy-wt/f077-base-gate/apps/ui/dist
+BEFORE the base run : files=3 composite_sha256=7443253da6b5748c2485ceb5397aba2baf8121ffb861ff0783bfac669cdd2593
+AFTER  the base run : files=3 composite_sha256=7443253da6b5748c2485ceb5397aba2baf8121ffb861ff0783bfac669cdd2593
+UNCHANGED.
+
+Parity verdict
+--------------
+Content parity holds — the digest is byte-identical before and after — but the
+neutralisation claim behind it does NOT: mtime evidence proves a real npm
+install and vite build ran inside the base worktree DURING the run
+(apps/ui/node_modules/.package-lock.json 14:57:40 and all three dist files
+14:57:42, both strictly inside the base-run window 14:56:29–14:58:38, while
+the copy that placed them there had completed before 14:56:16), so the build
+merely reproduced identical bytes rather than being suppressed. Because the
+environment was therefore NOT provably static across the run, this gate does
+not rest on the parity claim: every base-only id is attributed individually
+by direct evidence in attribution.txt, which is the fallback
+docs/agents/integration_gate.md step 3 prescribes.
