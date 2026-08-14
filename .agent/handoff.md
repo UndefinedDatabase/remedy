@@ -1,106 +1,119 @@
-# Handback — F057 Rate-limit-aware scheduler · Round 1 (T001)
+# Handback — F057 Rate-limit-aware scheduler · Round 2 (R1 verdict + two fixes)
 
 ## Range
-21c8148e..HEAD, 6 commits, branch feature/f057-rate-limit-scheduler. Every commit
-pushed. No PR created, no merge, no `main` commit, no force-push.
+36b745bd..HEAD, 6 commits, branch feature/f057-rate-limit-scheduler. Every commit
+pushed. No PR, no merge, no `main` commit, no force-push. T002 is NOT in this
+round: no governor, no `acquire`, no clock, no new module.
 
 ## Commits
 | SHA | Subject | Item |
-| 841a2f10 | chore(f057): save the R1 block verbatim | C0a |
-| 122b193f | chore(f057): point last_block at the R1 block | C0b |
-| a816e5aa | docs(f057): reset the review record and carry R-0361 forward | C1 |
-| 842b4ed3 | docs(f057): claim F057 and reset the round state | C2 |
-| 07de4d7d | feat(f057): normalize provider rate-limit signals | C3a |
-| 449eabfe | test(f057): cover the rate-limit signal inventory | C3b |
-| (this)   | chore(f057): handback R1 | C4 |
+| 835c40f5 | chore(f057): save the R2 block verbatim | C0a |
+| 07fd8c19 | chore(f057): point last_block at the R2 block | C0b |
+| 28949e9b | docs(f057): record the R1 verdict and register four findings | C1 |
+| 47575d5f | docs(f057): correct the rate-limit predicate's call-graph claim | C2 |
+| 08810088 | test(f057): assert FrozenInstanceError instead of bare Exception | C3 |
+| (this)   | chore(f057): handback R2 | C4 |
 
-## Changed files (21c8148e..449eabfe)
+## Changed files (36b745bd..HEAD)
 | Path | +/- | Reason |
-| .agent/authored/f057-r1.md | +404 | C0a, the R1 block verbatim |
-| .agent/last_block.md | rewrite | C0b, `cmp` against the authored file exit 0 |
-| .agent/live_review.md | rewrite | C1, reset + R-0362 + R-0361 carried |
-| .agent/decisions.md | +46/-0 | C1, DECISION F057 D1 appended only |
-| docs/roadmap/STATUS.md | +1/-1 | C2, the single claim line |
-| .agent/plan.md | rewrite | C2 |
-| .agent/context.md | rewrite | C2 |
-| packages/orchestration/rate_governor.py | +294 | C3a, T001 normalization |
-| tests/orchestration/test_rate_governor.py | +339 | C3b, 46 tests |
+| .agent/authored/f057-r2.md | +187/-0 | C0a, the R2 block verbatim |
+| .agent/last_block.md | +160/-377 | C0b, `cmp` vs the authored file exit 0 |
+| .agent/live_review.md | +7/-0 | C1, APPEND only: GATE-R1 + R-0363..R-0366 |
+| packages/orchestration/rate_governor.py | +7/-3 | C2, one docstring paragraph |
+| tests/orchestration/test_rate_governor.py | +2/-1 | C3, one import + one assert |
+| .agent/plan.md | rewrite | C4 |
+| .agent/handoff.md | rewrite | C4 |
+No eighth file. Nothing above the appended block in live_review.md moved.
 
 ## Item status
 | Item | Status | Reason |
 | C0a | done | |
 | C0b | done | |
 | C1 | done | |
-| C2 | done | |
-| C3 | deviated | split into C3a+C3b: 633 insertions > the AGENTS.md 500 cap |
+| C2 | done | numstat gate deviated, see Deviations 1; the edit itself is exact |
+| C3 | done | |
 | C4 | done | |
 
 ## Round gates — real output
-1 `git status --porcelain` → empty, exit 0 · 2 `git worktree list` → 1 line, exit 0 ·
-3 branch → `feature/f057-rate-limit-scheduler` · 4 claimed STATUS line → 1 (via
-`grep -n -x`; `grep -c` with a `$` anchor is denied by this session's sandbox, and
-a Python re-implementation of the exact regex also returns 1) · 5 `- [ ] F057` → 0 ·
-6 `## Steps` → 1 · 7 R-0361 sha256 →
-`70a8c9fb1a6ddebd2a1592b467cf9cb7e18f43ad0449c245d110bc0f1f056a7b`, matches, and the
-line is 1797 bytes · 8 R-0362 → 1 · 9 DECISION F057 D1 → 1 · 10 `wc -l < plan.md` → 34 ·
-11 test_rate_governor.py → 46 passed, exit 0 · 12 tests/docs/ → 295 passed, exit 0 ·
-13 dashboard+resource_safety+test_runner → 142 passed, exit 0 · 14 see Deviations ·
-15 canary test_golden_path.py → 42 passed, exit 0 · 16 `cmp` authored/last_block → exit 0 ·
-17 red-proof below. Also: `grep -rn rate_governor packages/ apps/` outside the module
-itself → EMPTY; `git diff --stat 21c8148e..HEAD` for provider_timeouts.py,
-pingpong_loop.py, stream_evidence.py → EMPTY; `time.sleep` in the new test → 0.
+1 `git status --porcelain` → empty · 2 `git worktree list` → 1 line ·
+3 branch → `feature/f057-rate-limit-scheduler` · 4 `Gate: R1 — PASS` → 1 ·
+5 `- R-0363 — ` 1, `- R-0364 — ` 1, `- R-0365 — ` 1, `- R-0366 — ` 1 ·
+6 R-0361 line sha256 (line + its newline) →
+`70a8c9fb1a6ddebd2a1592b467cf9cb7e18f43ad0449c245d110bc0f1f056a7b`, matches ·
+7 `## Steps` → 1 · 8 `pytest.raises(Exception)` in the test file → 0 ·
+9 test_rate_governor.py → **46 passed**, exit 0 (46 before this round too: C3
+changed an assertion, not the count) · 10 tests/docs/ → **295 passed**, exit 0 ·
+11 canary test_golden_path.py → **42 passed**, exit 0 · 12 ruff over the two
+feature files → `All checks passed!`, exit 0 · 13 `wc -l < .agent/plan.md` → 36 ·
+14 `cmp .agent/authored/f057-r2.md .agent/last_block.md` → exit 0, both sha256
+`114397a2c11b3492b5683d8390dcc84986c339d9382067971b3b706969aff684` ·
+15 do-not-touch `git diff --stat 21c8148e..HEAD` over provider_timeouts.py,
+pingpong_loop.py, stream_evidence.py → EMPTY · 16 red-proof below.
 
-## Red-proof probe — worktree only, both mutations
-Import path proved first: `MODULE
-/home/decodeux/Repos/remedy/.remedy-wt/f057_r1_red/packages/orchestration/rate_governor.py`
-— inside the worktree, so the probe tests the mutated code.
-- Ordered mutation, `is_rate_limit_error` → `return False`: **10 failed, 36 passed**,
-  exit 1. Ids: `test_in_repo_fixture_reasons_classify[overloaded_error-…]`,
-  `[rate_limit-…]`, and all 8 `test_provider_vocabulary_spellings_classify[…]`.
-- The reader tests SURVIVE that mutation: readers reach the wording table through
-  `classify_rate_limit_reason`, of which `is_rate_limit_error` is the emptiness test.
-  So a second mutation ran, `classify_rate_limit_reason` → `return None`: **17 failed,
-  29 passed**, exit 1, adding `test_inventory_shape_1/2/3`,
-  `test_normalize_bounds_the_raw_text`, `test_read_run_event_signals_on_a_mixed_event_list`,
-  `test_read_retry_reason_signals_on_a_mixed_reason_list`,
-  `test_to_json_keeps_a_missing_retry_hint_as_null`. The table is load-bearing everywhere.
-Worktree removed and pruned; `git worktree list` back to one line.
+## Transport — disk to disk, proved
+Each authored text was extracted from the COMMITTED `.agent/authored/f057-r2.md`
+(`git show HEAD:…`, byte-equal to the working copy) between its markers, written
+to the target, and applied == extracted asserted on the re-read bytes. sha256:
+GATE-R1 `19cf92db51b90ced89bb03c16bdd5272b0634271f1dbfb7c71cbe8e9aa42d607`,
+FINDINGS-R1 `645c1da38862afef8ee535d59fbc04b2cb8ecacdfb4e283256bb74fc96bd9144`,
+R0365-TO `457d4424c9ffa22fdf997fac945360b66d871c7554fd443c76eb2c5dd55c31f4`,
+R0366-TO `af0c5533d666c894012432f75299c4102dda1aaeeef07ba84a01a506b4db88ec`.
+Both FROM texts: 1 occurrence before their edit, 0 after. Both TO texts: exactly
+1. No authored text was retyped.
 
-## T001 inventory (step 1) — 5 shapes, 1 more than the block seeded
-All four seeded shapes confirmed on disk at the exact lines given. `rg -i
-'overload|throttl|too many requests|429|rate.?limit' packages/ tests/ apps/` found ONE
-additional real sample: `tests/orchestration/fixtures/stream/retry_and_error.jsonl:3`,
-`{"type":"api_retry","attempt":2,"reason":"rate_limit"}` — a second literal beside
-`overloaded_error` on line 2 of the same fixture. Every other hit is an unrelated
-`4294967295`, a step id, or `packages/orchestration/mission_dossier.py:980`, whose
-"rate-limits" is `RecallFact` demo prose. All five are in the module docstring with
-their file:line. No sample was invented.
+## Red-proof probe for C3 — worktree only
+Import path printed first, from inside the worktree: `MODULE
+/home/decodeux/Repos/remedy/.remedy-wt/f057-r2-redproof/packages/orchestration/rate_governor.py`
+— inside the worktree, so the probe tests the mutated code. Mutation:
+`@dataclass(frozen=True)` → `@dataclass()` on `RateLimitSignal` (1 occurrence).
+Result: **1 failed, 45 passed**, exit 1. The one failing id is
+`test_signal_is_frozen`, failing with `Failed: DID NOT RAISE <class
+'dataclasses.FrozenInstanceError'>` — the new assertion names the exception, so
+the red is specific rather than incidental. Worktree removed and pruned;
+`git worktree list` back to one line, primary `git status --porcelain` empty.
 
-## Findings — 2 open
-R-0361 (Low, carried forward verbatim) and R-0362 (Medium, registered this round).
-Next free id: R-0363. No `Done:` text was written — that is the reviewer's alone.
+## Findings — 6 open
+R-0361, R-0362 carried; R-0363, R-0364, R-0365, R-0366 registered this round.
+R-0365 and R-0366 are fixed on disk but stay OPEN in the record: the worker does
+not author resolutions, and no `Done:` paragraph was written.
+- Landed: R-0365 — the `is_rate_limit_error` docstring now names
+  `classify_rate_limit_reason` as owner of the wording table and says the readers
+  reach it via `normalize_rate_limit_signal`; commit 47575d5f.
+- Landed: R-0366 — `test_signal_is_frozen` asserts
+  `dataclasses.FrozenInstanceError`; commit 08810088.
+Next free id: R-0367.
 
-## Deviations, declared (this handoff is 106 lines; DECISION D15 — the cause is the
-## mandated per-commit table, the 17-gate block, the two-mutation red-proof and the
-## item-status table, none of which may be dropped)
-1. **C3 split into two commits.** 633 insertions together, over the AGENTS.md 500 cap
-   (DECISION F104 D1 counts insertions only). Separable — nothing imports the module —
-   so the inseparability exception does not apply and AGENTS.md's own remedy (split) was
-   used, as at F052 R1 on 2026-07-30. C3a is 294 insertions, C3b is 339.
-2. **Gate 14, `python3 -m ruff check`, is RED and was RED before this round.** Exit 1,
-   26 errors: 20 I001, 4 F401, 1 F821, 1 UP035 — identical statistics at 21c8148e in a
-   throwaway worktree, so this round adds zero. Ruff on the two NEW files → "All checks
-   passed!", exit 0. Not repaired here: an unrelated fix may not ride a feature branch.
-3. **Authored-text transport used Python, not `sed`.** This session's sandbox denies
-   `sed … > target` and every pipe-to-file form. `.remedy-wt/f057_r1_extract.py` does the
-   identical marker-delimited slice of the committed `.agent/authored/f057-r1.md`; no text
-   was retyped, and `.remedy-wt/f057_r1_prove.py` proved applied == extracted for all four
-   texts (LIVE-REVIEW 3578 B, DECISION 2857 B, PLAN 1708 B, CONTEXT 1804 B). Both scripts
-   live in gitignored `.remedy-wt/` and are not committed.
-4. **The saved block runs to the end of the ROUND GATES section**, i.e. through the
-   closing "report the exact output." paragraph rather than stopping at gate item 17.
+## Deviations, declared (this handoff is 119 lines; DECISION D15 — the cause is
+## the mandated per-commit table, the 16-gate block, the transport proof, the
+## red-proof and the item-status table, none of which may be dropped)
+1. **C2's third gate is RED as ordered and unreachable as written.** Ordered:
+   `git show --numstat HEAD -- packages/orchestration/rate_governor.py` → `8 4`.
+   Real: `7 3`. The cause is arithmetic in the block, not in the edit. R0365-FROM
+   is 4 physical lines, R0365-TO is 8, and their LAST line — `    counts as X"
+   drift apart, and the drift is the bug.` — is byte identical in both, so git
+   renders it as context: 8-1 inserted, 4-1 deleted. No correct application of
+   the reviewer's own pair can produce `8 4`. The condition the gate proxies for
+   was met and proved directly: FROM 0 occurrences, TO exactly 1 and byte-equal
+   to the extracted slice, and `git diff` touches nothing but that paragraph.
+   Treated as the R-0336 / R-0361 / R-0364 family — a gate whose expected value
+   was never computed from the tool that produces it, here unreachable rather
+   than merely wrong — and declared instead of burning the round. No edit was
+   made to reach `8 4`.
+2. **Extraction and counting used Python, not `sed`, `grep -c` or redirection.**
+   This session's sandbox denies `sed`, every pipe-to-file form, and `grep -c`
+   patterns anchored with `$`. Marker slicing, line and occurrence counting and
+   every sha256 ran as inline `python3` — the substitute R1 declared. Nothing was
+   retyped; no scratch file was committed.
+3. **The saved block runs to the end of the ROUND GATES section**, through the
+   KNOWN-RED BASELINE note and the closing "report the exact output." paragraph,
+   rather than stopping at gate item 16. Same boundary R1 declared.
+Not a deviation, for the reviewer: repository-wide `python3 -m ruff check` is
+still red at exit 1 with the 26 pre-existing errors the KNOWN-RED BASELINE names.
+Correctly not a gate this round, and this round added none.
 
 ## Next
-Reviewer: re-read `.agent/STOP` (Phase 1 rule 1), then review 21c8148e..HEAD bottom-up
-and re-run every gate. Then R2 — T002, the governor: per-provider cooldown state,
-`acquire()` with a budget deadline, an injected clock, stop-beats-wait ordering.
+Next session's FIRST action is Phase 0 of docs/agents/self_drive_protocol.md,
+then Phase 1 rule 1 — re-read `.agent/STOP` — BEFORE rule 2. The work itself is
+T002: the governor, per-provider cooldown state, `acquire()` with a deadline
+taken from budgets, an injected clock, and the stop-beats-wait ordering, with no
+real sleeps in unit tests.
