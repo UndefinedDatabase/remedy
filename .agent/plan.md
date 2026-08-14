@@ -15,17 +15,17 @@ fixtures, history survives across runs, and a deliberately degraded fixture run
 triggers the regression warning.
 
 ## Current Step
-R9 records the R8 gate, registers R-0417, retires the stale golden-count
-sentence in the bench-history test docstring, and re-syncs the plan. T001 and
-T002 are built and gated; T003 is the only slice left.
+R10 records the R9 gate, splits T003 in two as DECISION F082 D5, retires this
+branch's largest stale sentence, and builds T003a: the `remedy stats bench`
+read view over the append-only history, with its catalog entry, its
+registration and its own test file. T001 and T002 are built and gated.
 
 ## Next Steps
-1. R10 — T003: the `stats bench` CLI, model-context recording, and a
-   fake-provider bench run end to end. Begin with an inspect-the-shape pass over
-   `apps/cli/commands/stats_ledger_cmd.py` and the CLI registration path before
-   authoring the change set — the ground is unknown and the planning contract
-   sanctions a shrunken step for exactly that.
-2. R11 the integration gate, R12 closure.
+1. R11 — T003b: model-context recording per run and a fake-provider bench run
+   end to end. The field no `run.json` carries yet is the risk; begin with an
+   inspect-the-shape pass over the gauntlet's run writer before authoring a
+   change set.
+2. R12 the integration gate, R13 closure.
 
 ## Risks
 - The delivered order set is three, not the Design's five (R-0411). Closure
@@ -34,8 +34,8 @@ T002 are built and gated; T003 is the only slice left.
 - The freeze holds against a file-side edit only (R-0410). The Built State
   states that threat model rather than quoting the acceptance criterion whole.
 - `repair_rounds` is `None` at every row by construction (R2 Q7). The trend has
-  no repair-round series to regress on, and T003's report says so rather than
-  printing a zero.
+  no repair-round series to regress on, and T003a says so in one sentence
+  rather than rendering a column of placeholders.
 - Six of the last seven findings are reviewer-block defects, not worker
-  defects. R-0417's standing staleness gate is the counter-measure; if R10 also
-  registers one of this class, the block format itself needs re-planning.
+  defects. R-0417's standing staleness gate is the counter-measure; R9 ran it
+  for the first time and it caught six stale sentences, so it works.

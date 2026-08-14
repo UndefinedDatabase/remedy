@@ -56,5 +56,6 @@ DECISION F082 D3 ✅ → R6 record the R5 verdict, retire two superseded context
 regions and close T001 with the dry run ✅ → R7 T002 the append-only history,
 the trend and the regression rules ✅ → R8 complete the context sweep and pin
 the regression threshold ✅ → R9 record the R8 verdict and retire the last
-stale claim → R10 T003 the stats bench CLI, model context and a fake-provider
-run → R11 the integration gate → R12 closure.
+stale claim ✅ → R10 T003a the stats bench read view → R11 T003b model context
+and a fake-provider run → R12 the integration gate → R13 closure. T003 split
+into two halves at DECISION F082 D5; R10 marks R9 done and never itself.
