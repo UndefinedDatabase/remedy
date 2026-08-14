@@ -22,9 +22,13 @@ carries a `models` key naming which model served which role, fed by a
 `resolved_model` attribute on the callable
 `intake.py::make_structured_call_fn` returns, with the builder recorded as a
 permanent absence because `orchestrator_loop.py::execute_dispatched_job`
-constructs `OllamaBuilder()` where no seam can observe it. Still to come,
-T003b's read half — those models into the bench record — and the fake-provider
-bench run end to end, inventoried at R11 before either is built.
+constructs `OllamaBuilder()` where no seam can observe it. T003b's READ half
+landed at R15: `BenchRecord` carries a defaulted `models` field that
+`build_bench_record` reads straight off the evidence body and that survives the
+history file. No gauntlet module is touched and no additive ruling was needed —
+`RunEvidence` is not on that path at all, and R-0426 registers the reviewer's
+earlier claim that it was. Still to come, the fake-provider bench run end to
+end, inventoried at R11 before it is built.
 R2's inventory settled the shape: the factoring is ADDITIVE, so every bench
 module is NEW and no symbol moves out of any gauntlet module — R3's
 `capability_bench.py`, R4's `bench_orders.py`, R6's `bench_dry_run.py` and R7's
@@ -68,8 +72,10 @@ the regression threshold ✅ → R9 record the R8 verdict and retire the last
 stale claim ✅ → R10 T003a the stats bench read view ✅ → R11 the T003b
 inventory ✅ → R12 record the R11 verdict, register R-0419 and rule on the
 gauntlet key at D7 ✅ → R13 T003b the write half, every run recording which model
-served which role ✅ → R14 record the R13 verdict and register R-0420 to R-0422
-→ R15 T003b the read half and the fake-provider run → R16 the integration gate
-→ R17 closure. T003 split at DECISION F082 D5, its second half inventoried at
-D6, unblocked at D7 and split in two at D8; each round marks the PREVIOUS one
-done and never itself.
+served which role ✅ → R14 record the R13 verdict and register R-0420 to R-0422 ✅
+→ R15 record the R14 verdict, register R-0423 to R-0426 and build T003b's read
+half → R16 the fake-provider run and the Q7 pin → R17 the integration gate →
+R18 closure. T003 split at DECISION F082 D5, its second half inventoried at D6,
+unblocked at D7 and split in two at D8, and R15 splits the read half off from
+the run because they are independent deliverables; each round marks the
+PREVIOUS one done and never itself.
