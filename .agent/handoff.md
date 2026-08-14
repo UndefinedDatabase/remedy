@@ -121,9 +121,9 @@ by line index and never retyped.
    `.agent/STOP` FROM DISK before rule 2's Open PR Gate.
 2. Rule 2, the Open PR Gate. There is NO open PR for this branch, and one is
    created at closure, not before.
-3. R16 is the INTEGRATION GATE per `docs/agents/integration_gate.md`, and it
-   owes R15's own `Gate: R15 — ` paragraph as its FIRST commit, before any
-   other work. If that commit is missing, the record has lost a round.
+3. R16 is the INTEGRATION GATE per `docs/agents/integration_gate.md`. It owes
+   no gate paragraph: R15 was reviewed before this session ended, and its
+   `Gate: R15 — PASS` is already on the record — R16 starts fully gated.
 4. Closure follows R16 per `docs/roadmap/STATUS_closure_protocol.md`, and it
    still owes an ist-doc for the watchdog under `docs/`, registered in
    `docs/README.md`. No round has written it yet.
