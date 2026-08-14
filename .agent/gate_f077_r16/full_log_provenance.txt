@@ -1,0 +1,23 @@
+Integration gate F077 R16 — provenance of the uncommitted raw run logs
+
+Both raw logs live under .remedy-wt/.cache/gate_r16/, which .gitignore drops
+(.gitignore line 235, ".remedy-wt/"). They are deliberately NOT committed: a
+log growing inside the tracked tree changes the worktree digest mid-run and
+turns the manifest-identity ids red as false positives, and each full log is
+far past the 500-insertion commit cap. The committed *_run_tail.txt files carry
+the command, the SHA, the exit code, the summary line and the last 40 lines;
+these hashes make that trim auditable.
+
+path    : .remedy-wt/.cache/gate_r16/branch_run.txt
+wc -l   : 239
+bytes   : 18889
+sha256  : 4aa142d3d3f9d14eb3f314ede242b36721548d738a2054ec700f49c0641a4543
+
+path    : .remedy-wt/.cache/gate_r16/base_run.txt
+wc -l   : 745
+bytes   : 37477
+sha256  : da686858538a13fd9a9ef72b97aa8f4086640d375368626c38804cd1ec22e25b
+
+No evidence file in .agent/gate_f077_r16/ carries a .log suffix, by the same
+rule: .gitignore drops that suffix silently and the review-zip guard rejects
+any member matching \.log$.
