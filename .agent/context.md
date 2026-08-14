@@ -39,6 +39,8 @@ or dossiers; that independence is an acceptance criterion, not a preference.
 R1 merge PR #199, claim F077, reset the record, register R-0380 and R-0381 ✅ →
 R2 the T001 inventory ✅ → R3 record the R2 verdict and close the session ✅ →
 R4 T001 the three evaluators, their config keys and their tests ✅ → R5 record
-the R4 verdict, repair R-0383 and inventory T002 → R6 T002 pause, decision,
-dedup and ledger entry → R7 T003 CLI and report → R8 integration gate then
-closure.
+the R4 verdict, repair R-0383 and inventory T002 ✅ → R6 record the R5 verdict,
+register R-0384 and close the session → R7 T002 pause, decision, dedup and
+ledger entry, which first settles the eight open questions in
+`.agent/f077_t002_inventory.md` and repairs R-0384 → R8 T003 CLI and report →
+R9 integration gate then closure.
