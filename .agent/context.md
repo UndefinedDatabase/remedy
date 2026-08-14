@@ -12,8 +12,9 @@ the four `watchdog.*` threshold keys (`watchdog.no_progress_repeats`,
 `watchdog.burn_window`, `watchdog.burn_min_samples`,
 `watchdog.burn_multiplier`); the pause seam in
 `packages/orchestration/orchestrator_loop.py`;
-`.agent/f077_t002_inventory.md`, the read-only T002 inventory; plus `.agent/**`
-round state and the one claimed STATUS line. Since R8 the module carries T002's
+`.agent/f077_t002_inventory.md` and `.agent/f077_t003_inventory.md`, the
+read-only T002 and T003 inventories; plus `.agent/**` round state and the one
+claimed STATUS line. Since R8 the module carries T002's
 ACTION, `act_on_trips` — the pause, the deduped decision and the
 `watchdog_tripped` ledger entry — and since R10 it is WIRED: `watchdog_pass` is
 the loop's single entry point and `run_mission` calls it once per continuing
@@ -23,8 +24,9 @@ ATTRIBUTION — which iteration it belongs to — and never a unique key (DECISI
 F077 D11, which withdraws D10 unimplemented and resolves R-0388 as a
 misdiagnosis). R12 repaired the one test that had encoded the imagined
 invariant, so `tests/orchestration/test_orchestrator_loop.py` is `196 passed`
-and the branch is green. Open findings after R12: TWENTY-TWO, next free id
-R-0392.
+and the branch is green. R13 then inventoried T003's surface read-only and
+touched no product file. Open findings after R13: TWENTY-THREE, next free id
+R-0393.
 
 Out: repair logic, class-expectation anomaly detection and loop policy — the
 F077 feature file's Do-not-touch list. The watchdog never modifies plans, jobs
@@ -69,5 +71,9 @@ then HALT at the ordered repair: the loop DOES record after a trip, so D10's
 number collides on the safe-point path ✅ (the halt was the block's own stop
 clause) → R12 record the R11 PASS, register R-0391, resolve R-0388 as a
 misdiagnosis and R-0390, decide DECISION F077 D11 and repair the one red test —
-no production file touched (its own verdict lands in R13) → R13 T003 CLI,
-`mission resume` and report → R14 integration gate then closure.
+no production file touched (its own verdict lands in R13) → R13 record the R12
+PASS, register R-0392 and INVENTORY T003 read-only — the mission-verb wiring,
+the side-effect-free evaluator, the dedup's real home, the report surface, the
+guards and the paused-mission pass → R14 build T003 against that inventory: the
+manual `mission watchdog` CLI, `mission resume` and the report surface → R15
+integration gate then closure.
