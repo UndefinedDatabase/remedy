@@ -1,10 +1,13 @@
 # Handback — F077 Autonomy watchdog · R13 (the T003 inventory; read-only)
 
-Branch `feature/f077-autonomy-watchdog`. Base `a9ebc920`. HEAD `8127f6fb`.
+Branch `feature/f077-autonomy-watchdog`. Base `a9ebc920`. Last work commit
+`8127f6fb`; the handback commits follow it and touch only this file.
 Fortschritt: `~78 % (T001 ✅ · T002 ✅ verdrahtet und grün · T003 inventarisiert) — Schätzung`
 
 ## Range
-Review of `a9ebc920..HEAD`. Six commits, six files, nothing outside `.agent/`.
+Review of `a9ebc920..HEAD`. The six commits below carry the work; every later
+commit in the range rewrites only `.agent/handoff.md`, whose own numstat cannot
+be written into itself (R-0371). Seven files touched, none outside `.agent/`.
 
 ## Commits
 | SHA | Subject | Path | +/- |
@@ -41,7 +44,7 @@ Review of `a9ebc920..HEAD`. Six commits, six files, nothing outside `.agent/`.
 | 10 | `-k "dashboard_contract or resource_safety or test_runner"` | 216 passed, 16648 deselected (run after drafting, before C3) |
 | 11 | `integrity check --json` | passed=true, fail_count=0, check_count=5, `high_blockers_open` = pass ("no open blocker/high findings") |
 | 12 | `wc -l .agent/plan.md` | 44 |
-| 13 | insertions per commit | 237, 200, 4, 292, 263, 37 — none over 500 |
+| 13 | insertions per commit | 237, 200, 4, 292, 263, 37 — none over 500; the handback commits are single-state-file rewrites of `.agent/handoff.md` (AGENTS.md exemption) |
 | 14 | `.agent/STOP` | ABSENT before the round and ABSENT at handback |
 | 15 | `git diff --check a9ebc920..HEAD` | no output |
 | 16 | push | `git push -u origin feature/f077-autonomy-watchdog`; no `gh`, no PR |
@@ -65,7 +68,7 @@ R-0378, R-0379, R-0382, R-0385, R-0386, R-0387, R-0389, R-0391, R-0392.
    so the paused-mission report has no insertion point there. Q8: the status
    safe point writes NO ledger entry — the block's phrase describes the
    stop-request safe point above it.
-3. This handoff is 86 lines. Cause per DECISION D15: the per-commit table, the
+3. This handoff is 89 lines. Cause per DECISION D15: the per-commit table, the
    16-row verification table, the item-status table, the 23 finding names and
    the mandated 5-part Next section. No section dropped.
 
