@@ -413,11 +413,14 @@ class TestTimeoutPrecedence:
 # ---------------------------------------------------------------------------
 
 #: A rate-limit error that the EXISTING transport predicates also call retryable
-#: ("exited" -> is_nonzero_exit_error). A bare rate-limit wording never reaches the retry
-#: path at all, because should_retry declines it before the governor is consulted.
+#: ("exited" -> is_nonzero_exit_error), so it would be retried even with no governor.
 RATE_LIMITED_RETRYABLE_ERROR = (
     "provider_error: RuntimeError: claude CLI exited 1: rate_limit exceeded for this key"
 )
+
+#: A BARE rate limit: no "exited", no timeout wording, so every transport predicate
+#: declines it and only the seam's own R-0373 rule can make it retryable.
+BARE_RATE_LIMIT_ERROR = "429 Too Many Requests"
 
 #: Slice size chosen so the waits below divide into an exact number of binary-clean
 #: slices; the production default is RATE_GOVERNOR_POLL_SLICE_S and is not under test.
@@ -605,3 +608,91 @@ class TestRateGovernorSeam:
         assert len(result.rate_limit_waits) == 1
         assert result.rate_limit_waits[0]["waited_s"] == cooldown_s
         assert sum(clock.sleeps) == cooldown_s
+
+    @pytest.mark.unit
+    @patch("packages.orchestration.pingpong_loop._time.sleep")
+    def test_bare_rate_limit_is_retried_when_a_governor_is_active(self, mock_sleep):
+        """R-0373: without the seam's own rule this error never reaches the governor."""
+        clock = SeamFakeClock()
+        governor = _seam_governor(clock)
+        result = PingPongResult()
+        calls = [0]
+
+        def call_fn():
+            calls[0] += 1
+            if calls[0] == 1:
+                return BuilderOutput(error=BARE_RATE_LIMIT_ERROR, provider="acme")
+            return BuilderOutput(summary="ok", provider="acme")
+
+        out = _call_with_retry(
+            call_fn,
+            result=result,
+            role="builder",
+            provider="acme",
+            rate_governor=governor,
+        )
+
+        assert out.summary == "ok"
+        assert calls[0] == 2
+        assert result.retries_used == 1
+        assert len(result.rate_limit_waits) == 1
+        assert result.rate_limit_waits[0]["provider"] == "acme"
+        assert result.rate_limit_waits[0]["reason"] == RATE_LIMIT_REASON_RATE_LIMITED
+        assert result.rate_limit_waits[0]["waited_s"] > 0.0
+
+    @pytest.mark.unit
+    @patch("packages.orchestration.pingpong_loop._time.sleep")
+    def test_bare_rate_limit_without_a_governor_is_still_not_retried(self, mock_sleep):
+        """The pre-F057 path is untouched: no governor, no new retryable error class."""
+        result = PingPongResult()
+        calls = [0]
+
+        def call_fn():
+            calls[0] += 1
+            return BuilderOutput(error=BARE_RATE_LIMIT_ERROR, provider="acme")
+
+        out = _call_with_retry(call_fn, result=result, role="builder", provider="acme")
+
+        assert out.error == BARE_RATE_LIMIT_ERROR
+        assert calls[0] == 1
+        assert result.retries_used == 0
+        assert result.retry_reasons == []
+        assert result.rate_limit_waits == []
+
+    @pytest.mark.unit
+    @patch("packages.orchestration.pingpong_loop._time.sleep")
+    def test_review_reject_is_never_retried_even_with_a_governor(self, mock_sleep):
+        """The reject carries the rate-limit wording ON PURPOSE.
+
+        A reject with no ``error`` — the shape ``test_review_reject_no_retry`` above
+        builds — returns at the loop's ``if not out.error`` before the reject exclusion
+        is ever reached, so it cannot pin this property. Only a reject whose error text
+        the governor WOULD call a rate limit reaches the guard, which is why R-0373's
+        precedence rule names the reject explicitly instead of leaning on should_retry.
+        """
+        clock = SeamFakeClock()
+        governor = _seam_governor(clock)
+        result = PingPongResult()
+        calls = [0]
+
+        def call_fn():
+            calls[0] += 1
+            return ReviewerOutput(
+                verdict="needs_repair",
+                summary="Found issues",
+                error=BARE_RATE_LIMIT_ERROR,
+                provider="acme",
+            )
+
+        out = _call_with_retry(
+            call_fn,
+            result=result,
+            role="reviewer",
+            provider="acme",
+            rate_governor=governor,
+        )
+
+        assert out.verdict == "needs_repair"
+        assert calls[0] == 1
+        assert result.retries_used == 0
+        assert result.rate_limit_waits == []

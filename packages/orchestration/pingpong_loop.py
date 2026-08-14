@@ -62,6 +62,7 @@ from packages.orchestration.rate_governor import (
     ProviderRateGovernor,
     RateLimitAcquireResult,
     RateLimitWaitEvent,
+    is_rate_limit_error,
     normalize_rate_limit_signal,
 )
 
@@ -2183,7 +2184,8 @@ def _call_with_retry(
 ) -> Any:
     """Call a provider function with bounded retry on transient failures.
 
-    Only retries on timeout or nonzero exit (detected via error string).
+    Only retries on timeout or nonzero exit (detected via error string) — plus, when
+    a governor is active for this call, on a rate limit (R-0373; see the decision below).
     Never retries review rejects. Records retry evidence on result.
     Every call (initial + retries) is recorded as a ProviderAttempt.
 
@@ -2247,7 +2249,20 @@ def _call_with_retry(
             and not out.error.startswith("provider_error:")
         )
 
-        if not should_retry(is_timeout=is_timeout, exit_code=1 if is_nonzero else 0, is_review_reject=is_reject):
+        # F057 R-0373: a rate limit is retryable AT THIS SEAM — the precedence rule lives
+        # here and NOT in provider_timeouts.py, whose per-call transport policy this
+        # feature must not move. Guarded on an active governor, so a caller without one
+        # keeps its pre-F057 behaviour byte for byte. Without this the whole seam is
+        # unreachable: should_retry declines a bare rate limit before the governor below
+        # ever observes it, so no cooldown is created and the pacing has nothing to pace.
+        is_rate_limit = bool(
+            rate_governor is not None and provider and is_rate_limit_error(out.error)
+        )
+        _transport_retries = should_retry(
+            is_timeout=is_timeout, exit_code=1 if is_nonzero else 0, is_review_reject=is_reject
+        )
+        # A review reject is NEVER retried, whatever else is true of it.
+        if is_reject or not (_transport_retries or is_rate_limit):
             return out
 
         backoff = next_backoff(attempt)
