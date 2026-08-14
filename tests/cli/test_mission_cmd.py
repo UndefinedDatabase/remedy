@@ -1169,3 +1169,60 @@ class TestMissionWatchdog:
         assert proc.returncode == 1
         assert "no mission" in proc.stderr
         assert "Traceback" not in proc.stderr
+
+
+class TestResumeCommandCatalog:
+    """`remedy mission resume <id>` — DECISION F077 D4's status verb."""
+
+    def test_the_command_is_in_the_catalog_with_a_handler(self):
+        from apps.cli.command_catalog import get_command
+        from apps.cli.commands import collect_all_handlers
+
+        entry = get_command("mission.resume")
+        assert entry.action_class == "write_metadata"
+        assert entry.supports_json is True
+        assert entry.may_execute_commands is False
+        assert entry.may_mutate_repo is False
+        assert "mission.resume" in collect_all_handlers()
+
+
+class TestMissionResume:
+    """Resume restores ``active`` and does nothing else — D4's whole scope."""
+
+    def test_pause_then_resume_leaves_the_mission_active(self, project):
+        data_root, project_id = project
+        mission_id = _start(data_root, project_id, "Keep it working")
+
+        _run(["mission", "pause", mission_id, "--project", project_id],
+             data_root)
+        out = _run(["mission", "resume", mission_id, "--project", project_id],
+                   data_root).stdout
+
+        assert "Status: active" in out
+        shown = json.loads(_run(["mission", "show", mission_id, "--project",
+                                 project_id, "--json"], data_root).stdout)
+        assert shown["mission"]["status"] == "active"
+
+    def test_the_json_shape_matches_show(self, project):
+        data_root, project_id = project
+        mission_id = _start(data_root, project_id, "Keep it working")
+        _run(["mission", "pause", mission_id, "--project", project_id],
+             data_root)
+
+        body = json.loads(_run(["mission", "resume", mission_id, "--project",
+                                project_id, "--json"], data_root).stdout)
+
+        shown = json.loads(_run(["mission", "show", mission_id, "--project",
+                                 project_id, "--json"], data_root).stdout)
+        assert body["version"] == 1
+        assert body["mission"] == shown["mission"]
+
+    def test_an_unknown_mission_is_an_error_not_a_crash(self, project):
+        data_root, project_id = project
+
+        proc = _run(["mission", "resume", "0" * 32, "--project", project_id],
+                    data_root, expect_ok=False)
+
+        assert proc.returncode == 1
+        assert "no mission" in proc.stderr
+        assert "Traceback" not in proc.stderr

@@ -5,8 +5,10 @@ renders one mission's chain with each linked job's state as the job store
 reports it right now, ``plan`` compiles the goal into milestones (F069), and
 ``continue`` adds the next job — with a task that
 verifies the previous one already sitting at the head of its plan.
-``achieve``/``abandon``/``pause`` are the explicit status transitions — the
-only way a mission's status ever moves.
+``achieve``/``abandon``/``pause``/``resume`` are the explicit status
+transitions, and ``watchdog`` reports F077's tripwires without writing
+anything.  They are not the only writers: the orchestrator loop's terminal
+moves and the watchdog's own pause move the status with no human in the loop.
 
 Creation is ALWAYS explicit.  There is no code path here that a run can trip
 over: a mission exists because someone typed ``remedy mission start``, or
@@ -233,6 +235,7 @@ def _status_for_verb(verb: str) -> str:
     from packages.orchestration.mission_state import (
         MISSION_STATUS_ABANDONED,
         MISSION_STATUS_ACHIEVED,
+        MISSION_STATUS_ACTIVE,
         MISSION_STATUS_PAUSED,
     )
 
@@ -240,13 +243,14 @@ def _status_for_verb(verb: str) -> str:
         "achieve": MISSION_STATUS_ACHIEVED,
         "abandon": MISSION_STATUS_ABANDONED,
         "pause": MISSION_STATUS_PAUSED,
+        "resume": MISSION_STATUS_ACTIVE,
     }[verb]
 
 
 def _cmd_mission_set_status(mission_id: str, verb: str, *,
                             project: str | None = None,
                             json_output: bool = False) -> None:
-    """The body behind ``achieve``, ``abandon`` and ``pause``.
+    """The body behind ``achieve``, ``abandon``, ``pause`` and ``resume``.
 
     A thin wrapper over ``mission_state.set_mission_status``: the verb names
     the status, and that is the whole rule.  There is deliberately NO
@@ -559,6 +563,11 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     ),
     "mission.pause": lambda args: _cmd_mission_set_status(
         args.mission_id, "pause",
+        project=getattr(args, "project", None),
+        json_output=getattr(args, "json", False),
+    ),
+    "mission.resume": lambda args: _cmd_mission_set_status(
+        args.mission_id, "resume",
         project=getattr(args, "project", None),
         json_output=getattr(args, "json", False),
     ),
