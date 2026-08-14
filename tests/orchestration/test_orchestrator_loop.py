@@ -765,8 +765,19 @@ class TestHumanOverridesWinInstantly:
 
 
 class TestTheLedgerCoversEveryIteration:
-    def test_one_entry_per_iteration_numbered_from_one(self, tmp_path, mission,
-                                                       dispatched):
+    def test_iterations_are_numbered_in_sequence_from_one(self, tmp_path,
+                                                          mission, dispatched):
+        """Four entries for three iterations, and the fourth is not a bug.
+
+        An entry's ``iteration`` is an ATTRIBUTION — which iteration it belongs
+        to — and NOT a unique key (DECISION F077 D11). The loop has recorded
+        twice under one number since F075 R-0190, where a blocked completion's
+        escalation entry follows its own move entry; see
+        ``TestTheSecondBlockedCompletionEscalates``. Here the extra entry is the
+        autonomy watchdog: three identical M001 dispatches with no milestone
+        declared done between them IS the ``no_progress`` pattern at the default
+        threshold of 3, so iteration 3 both moves and trips.
+        """
         run_mission(
             mission.id, LoopLimits(max_iterations=3), project_id=PROJECT,
             call_fn=_scripted(_move_json("dispatch_job", milestone_id="M001",
@@ -774,8 +785,9 @@ class TestTheLedgerCoversEveryIteration:
             root=tmp_path, dispatch=dispatched, execute=_executed,
             control_root_path=tmp_path / "control")
         entries = read_ledger(PROJECT, mission.id, tmp_path)
-        assert [e["iteration"] for e in entries] == [1, 2, 3]
-        assert all(e["move"]["kind"] == "dispatch_job" for e in entries)
+        assert [e["iteration"] for e in entries] == [1, 2, 3, 3]
+        assert [e["move"]["kind"] for e in entries] == [
+            "dispatch_job", "dispatch_job", "dispatch_job", "watchdog_tripped"]
 
     def test_every_entry_carries_a_context_digest_and_cost(self, tmp_path,
                                                            mission, dispatched):
