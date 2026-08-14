@@ -6,8 +6,15 @@ claimed `[~]` in docs/roadmap/STATUS.md and stays claimed until closure. No PR
 exists for this branch yet; one is created at closure, not before.
 
 ## Scope
-In: the capability bench built on the gauntlet harness. R2's inventory settled
-the shape: the factoring is ADDITIVE, so the bench lands as a NEW
+In: the capability bench built on the gauntlet harness. Built so far:
+`capability_bench.py` with the pure record builder, `bench_orders.py` with the
+version-bound freeze, and THREE frozen orders under `scripts/bench_orders/` —
+three and not five, because the shared sample project has no HTTP surface and
+no web asset (R-0411), and the missing two wait on a bench-owned fixture per
+DECISION F082 D3 rather than an edit to the gauntlet's template. Still to come:
+the history append, the trend and regression rules, and the `stats bench` CLI.
+R2's inventory settled the shape: the factoring is ADDITIVE, so the bench lands
+as a NEW
 `packages/orchestration/capability_bench.py` with
 `tests/orchestration/test_capability_bench.py`, and no symbol moves out of any
 gauntlet module. R3 additionally owns

@@ -5414,3 +5414,43 @@ readable, at no saving worth having.
 HOW TO REVERSE. Drop the `digests` map from the manifest and compare against a
 single `sha256` per order, matching the gauntlet's shape, and delete the
 version-binding tests in `tests/orchestration/test_bench_orders.py`.
+
+## DECISION F082 D3 (2026-08-14) — the missing two orders get a bench-owned fixture, never an edit to the gauntlet's
+
+CONTEXT. F082's Design names five frozen orders. R4's survey found only three
+expressible: `scripts/gauntlet_sample_project` is a pure-Python CLI project
+with no HTTP surface and no web asset, so the API-endpoint and frontend-widget
+capabilities have nothing to be written against (finding R-0411). The obvious
+repair — add an `http.server` route and a static asset to that project — is
+BLOCKED, and the block is structural rather than stylistic. The gauntlet's
+manifest records a `template_digest`, `gauntlet_orders.load_order_set` compares
+it against `template_tree_digest(template_dir)`, and the module's own history
+states that a changed template is a changed set: editing that project would
+turn the gauntlet's frozen ten red until its manifest were rewritten and
+`GAUNTLET_ORDER_SET_VERSION` bumped, which by that module's comment RESETS the
+campaign count. F082's Do-not-touch list forbids exactly this class of damage.
+
+DECISION. The two missing capabilities are recovered, when they are recovered,
+by a SEPARATE bench-owned fixture — a `scripts/bench_sample_project/` — and
+never by editing the gauntlet's template. R4's inventory answer S2 establishes
+that this is reachable without touching an order: an order cannot select a
+template, because `run_order` calls the seam as `deps.materialise(run_dir)`
+with one positional argument, so the template is a property of the
+`RunnerDeps` a CAMPAIGN is given. The bench therefore supplies its own
+`materialise` and its own template, which is additive in the same sense R2 Q11
+established for everything else in this feature. Until that fixture exists,
+F082's delivered set is three orders and its Built State says three.
+
+ALTERNATIVES CONSIDERED. (a) Add the HTTP and frontend surface to the shared
+sample project: rejected, it breaks the gauntlet's freeze and resets a campaign
+count that belongs to another feature. (b) Ship three orders and amend the
+feature file's Design down to three permanently: rejected, the two capabilities
+are the ones that probe surfaces the CLI orders cannot reach, and dropping them
+quietly would make the bench measure less while reading as complete. (c) Block
+F082 until the fixture exists: rejected as disproportionate — the trend
+machinery, the history and the CLI are all buildable and testable against three
+orders, and the fixture is additive when it lands.
+
+HOW TO REVERSE. Delete `scripts/bench_sample_project/` and the bench's own
+`materialise` dependency, and the bench falls back to the gauntlet template
+with three expressible orders — the state this decision starts from.

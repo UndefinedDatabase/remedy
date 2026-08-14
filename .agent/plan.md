@@ -2,9 +2,9 @@
 
 Branch: feature/f082-self-benchmark, cut from main after the F077 closure PR
 #200 merged. F082 is claimed `[~]` in docs/roadmap/STATUS.md. Next free finding
-id: R-0409. Open findings: thirty-eight — the thirty-two carried from F077,
-R-0403 at the claim, R-0404 at the R1 gate, R-0405 to R-0407 at the R2 gate,
-and R-0408 at the R3 gate. `.agent/live_review.md` is the source of truth.
+id: R-0412. Open findings: forty-one — the thirty-two carried from F077, plus
+R-0403 to R-0411 registered on this branch. `.agent/live_review.md` is the
+source of truth for that ledger; this file mirrors it and nothing else.
 
 ## Goal
 Capability becomes a measured, versioned trend instead of a feeling: a frozen
@@ -15,24 +15,23 @@ fixtures, history survives across runs, and a deliberately degraded fixture run
 triggers the regression warning.
 
 ## Current Step
-R4: the R3 gate recorded, R-0408 and DECISION F082 D2 registered, the sample
-project surveyed, and THREE frozen orders built behind a freeze that binds each
-order's version to its digest. Three, not five: the survey's S3 found the
-API-endpoint and frontend-widget capabilities inexpressible against
-`scripts/gauntlet_sample_project`, so they are owed in S4 rather than invented.
+R5 closes this session: the R4 gate recorded, R-0409 to R-0411 and DECISION
+F082 D3 registered, the state mirrors re-synced, and the handoff written. No
+code changed this round.
 
 ## Next Steps
-1. R5 — T001 closed: the dry run of `build_bench_record` against RECORDED
-   fixture evidence, end to end from an order file to a row.
-2. R6 — T002: history append, trend computation, the regression rules and the
-   improving, flat and degrading goldens.
-3. R7 — T003: the `stats bench` CLI, model-context recording and a
+1. A NEW session resumes at R6 — T001 closed: the dry run of
+   `build_bench_record` against RECORDED fixture evidence, order file to row.
+2. R7 — T002: history append under the data root's project area, trend
+   computation, the regression rules, and the improving, flat and degrading
+   goldens.
+3. R8 — T003: the `stats bench` CLI, model-context recording, and a
    fake-provider bench run end to end.
-4. R8 the integration gate, R9 closure.
+4. R9 the integration gate, R10 closure.
 
 ## Risks
-- The five capabilities the feature file names may not all be expressible
-  against the existing sample project. C2 surveys it FIRST and stops rather
-  than inventing an order that cannot run — an unrunnable frozen order is
-  worse than a missing one, because the freeze makes it permanent.
-- Thirty-eight open findings is the largest carry any feature has started with.
+- The delivered order set is three, not the Design's five (R-0411). Closure
+  may not quote five, and DECISION F082 D3 binds the recovery to a
+  bench-owned fixture rather than an edit to the gauntlet's template.
+- The freeze holds against a file-side edit only (R-0410). The Built State
+  states that threat model rather than quoting the acceptance criterion whole.
