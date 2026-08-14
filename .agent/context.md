@@ -17,13 +17,14 @@ round state and the one claimed STATUS line. Since R8 the module carries T002's
 ACTION, `act_on_trips` — the pause, the deduped decision and the
 `watchdog_tripped` ledger entry — and since R10 it is WIRED: `watchdog_pass` is
 the loop's single entry point and `run_mission` calls it once per continuing
-iteration, with D7's watchdog clause in both status docstrings. The four
-whole-ledger guards DECISION F077 D8 predicted in
-`tests/orchestration/test_mission_e2e.py` measured GREEN under the probe D9
-ordered; the guard that actually broke is
-`test_orchestrator_loop.py::test_one_entry_per_iteration_numbered_from_one`,
-outside R10's authorised change set and left RED for R11. Open findings after
-R10: NINETEEN, next free id R-0387.
+iteration, with D7's watchdog clause in both status docstrings. Its ledger
+numbering is NOT yet repaired: a tripped run still reads `[1, 2, 3, 3]`
+(R-0388), because R11 halted at its own stop clause when the ordered fix —
+letting the trip take `next_iteration_index` (DECISION F077 D10) — was measured
+to collide with the loop's safe-point entry on the stop path, `[1, 2, 3, 4, 4]`.
+`test_orchestrator_loop.py::test_one_entry_per_iteration_numbered_from_one`
+therefore stays RED. Open findings after R11: TWENTY-THREE, next free id
+R-0391.
 
 Out: repair logic, class-expectation anomaly detection and loop policy — the
 F077 feature file's Do-not-touch list. The watchdog never modifies plans, jobs
@@ -41,8 +42,12 @@ attaches to, and the ledger append.
   git worktree under .remedy-wt/, so resource safety stays intact.
 - Repository-wide `ruff check` is RED on main with pre-existing errors and is
   NOT a round gate (R-0364); ruff is gated scoped to the files F077 owns.
-- Reviewer blocks stay at or under 240 lines so the block-save commit stays
-  inside the 500-insertion cap (R-0381).
+- The reviewer MEASURES its block mechanically on the final bytes before
+  emission and keeps it under 400 lines (DECISION F105 D5) — the cap that is
+  actually enforceable — with 240 the preferred target, not a ceiling nobody
+  counted. R-0389 registers a 293-line block emitted against the old unmeasured
+  240 figure; the cap exists so the block-save commit stays inside the
+  500-insertion limit (R-0381).
 - A block that asserts a PROPERTY of the code it orders — pure, read-only, no
   I/O — re-reads every function in that section against the assertion before
   emission, and narrows the assertion to the part that holds (R-0383).
@@ -59,5 +64,8 @@ decision and ledger entry as an UNWIRED action ✅ → R9 record the R8 verdict,
 register R-0386 and close the session ✅ → R10 record the R9 verdict, register
 DECISION F077 D9, wire the action into `run_mission`, write D7's docstring
 clause and probe the e2e guards ✅ (one guard outside the change set left red)
-→ R11 repair that guard, then T003 CLI, `mission resume` and report → R12
-integration gate then closure.
+→ R11 record the R10 FAIL, register R-0387 to R-0390 and DECISION F077 D10,
+then HALT at the ordered repair: the loop DOES record after a trip, so D10's
+number collides on the safe-point path ⛔ → R12 re-decide the numbering, land
+the repair and clear the red guard → R13 T003 CLI, `mission resume` and report
+→ R14 integration gate then closure.
