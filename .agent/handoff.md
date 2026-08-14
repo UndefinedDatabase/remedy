@@ -1,177 +1,123 @@
-# Handback — F082 Self-benchmark, R12 (the R11 verdict, R-0419 and DECISION F082 D7)
+# Handoff — F082 Self-benchmark, R13 (T003b write half)
 
-Fortschritt: ~78 % (T001 ✅ · T002 ✅ · T003a ✅ · T003b inventoriert und entsperrt, nicht gebaut) — Schätzung
+Branch: `feature/f082-self-benchmark`. BASE b0ea45c9. No PR exists; none created.
+Fortschritt: ~82 % (T001 ✅ · T002 ✅ · T003a ✅ · T003b Schreibhälfte gebaut · Lesehälfte und Fake-Provider-Lauf offen) — Schätzung
 
 ## Range
-Review of e6c18d89..HEAD (4 commits + this one; HEAD is the C3 commit that writes this file).
+Review of b0ea45c9..a702ad9b (6 commits).
 
 ## Commits
 
-### d2a13078 chore(f082): save the R12 block verbatim
+### 6e94ba83 chore(f082): save the R13 block verbatim
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f082-r12.md | +266/-0 | C0a — the R12 block copied byte-for-byte from the reviewer scratchpad |
+| .agent/authored/f082-r13.md | +457/-0 | C0a, the block saved verbatim |
 
-### 26512b1f chore(f082): mirror the R12 block into last_block
+### 6bafd2bf chore(f082): mirror the R13 block into last_block
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/last_block.md | +174/-216 | C0b — mirrored from the COMMITTED authored file via `git show`, never from the scratchpad |
+| .agent/last_block.md | +364/-173 | C0b, byte mirror of the committed authored file |
 
-### 9fdc6d8e docs(f082): record the R11 verdict, register R-0419 and DECISION F082 D7
+### 3450762a docs(f082): record the R12 verdict and rule at DECISION F082 D8
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/live_review.md | +49/-0 | C1 — GATE-R11, FINDING-R419, DECISION-D7 APPENDED; D6 not rewritten; verdicts persisted FIRST |
+| .agent/live_review.md | +59/-0 | C1, GATE-R12 + DECISION-D8 appended |
 
-### 04a24aba docs(f082): re-sync the plan and the step map for R12
+### 200614b5 feat(f082): record which model served which role in a gauntlet run
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/context.md | +6/-5 | C2 — CTXSTEPS3 REWRITE pair |
-| .agent/plan.md | +25/-18 | C2 — whole-file replacement with the PLAN slice; the false role-binding sentence goes to 0 |
+| packages/orchestration/gauntlet_runner.py | +33/-6 | C2, six pairs: models map, both `_evidence_body` call sites, signature, key |
+| packages/orchestration/intake.py | +7/-0 | C2, INTAKE pair: `_call.resolved_model` off the serving instance |
 
-### (this commit) chore(f082): handback R12
+### 26b8804d test(f082): pin the recorded model context and its absences
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/handoff.md | rewrite | C3 — this file; a handoff cannot table the commit that writes it (R-0149) |
+| tests/orchestration/test_bench_model_context.py | +245/-0 | C3, NEW bench-owned file, 8 tests |
+
+### a702ad9b docs(f082): re-sync the plan and the step map for R13
+| Path | +/- | Reason |
+|---|---|---|
+| .agent/plan.md | +15/-15 | C4, PLAN whole-file slice |
+| .agent/context.md | +5/-4 | C4, CTXSTEPS4 pair |
+
+C5 (`.agent/handoff.md`) is this file; it cannot table its own commit (R-0149).
 
 ## External actions
-- `git push` after every commit: e6c18d89→d2a13078→26512b1f→9fdc6d8e→04a24aba, all OK;
-  C3 pushed after this file is committed.
-- `gh pr list --state open --json number,headRefName` → `[]`. NO PR created; F082 is mid-feature.
-- NO worktree added and none removed: no mutation red-proof is ordered and none is owed,
-  because R12 changes no executable line. No merge, no force-push, no rebase, no deletion.
+`git push -q origin feature/f082-self-benchmark` after C0a, C0b, C1, C2, C3, C4 — all OK.
+`git worktree add --detach .remedy-wt/f082-r13-red b0ea45c9` — OK; `git worktree remove --force` — OK, list back to the single primary checkout.
+`gh pr list --state open --json number,headRefName` → `[]`. No PR created, none merged.
 
-## Verification — all sixteen ordered gates, real measured values
-
-| # | Gate | Real measured value |
-|---|---|---|
-| 1 | clean tree / worktrees | `git status --porcelain` EMPTY (no output) at round start and at handback; `git worktree list` = one line, `/home/decodeux/Repos/remedy  e6c18d89 [feature/f082-self-benchmark]`, exactly the primary checkout |
-| 2 | transport as a PROPERTY | scratchpad, `.agent/authored/f082-r12.md` and `.agent/last_block.md` all sha256 `debf254122da4712916bde4baa4f0f712fa315f51c61dcfa1ec92ac967721574`, **22603 bytes**, **266 lines** (≤ 400). `sha256sum` agrees on all three; python3 `read_bytes()` equality TRUE across all three. `cp`/`cmp` denied → python3 route (R-0408) |
-| 3 | `.agent/STOP` | ABSENT at round start and ABSENT at handback (`pathlib.Path('.agent/STOP').exists()` → `False` both times) |
-| 4 | C1 append proof | `post == pre + add` **TRUE** byte-wise over COMMITTED `9fdc6d8e^`→`9fdc6d8e`, `add` = newline + GATE-R11 + newline + FINDING-R419 + newline + DECISION-D7 = **8806 bytes**; `post.startswith(pre)` TRUE; the 213-line pre is an exact prefix of the 262-line post. numstat `49  0` — DELETION column **0** |
-| 5 | record counts at HEAD | `^Gate: R11 — PASS` **1** · `^- R-0419 — ` **1** · `^## DECISION F082 D7` **1** · `^## DECISION F082 D6` **1** (still there, not rewritten) · `^Landed: ` **0** · `^Done: ` **0** |
-| 6 | open set recomputed | 49 opened paragraphs minus 0 `Done:` lines = **FORTY-NINE**; duplicates **NONE**; max **R-0419**; next free **R-0420**. Split re-counted: 32 ids below R-0403 carried from F077 plus 17 ids R-0403..R-0419 on this branch = 49 |
-| 7 | CTXSTEPS3 pair | over committed `04a24aba`: `post == pre.replace(FROM, TO)` **TRUE**; FROM 1x→**0x**, TO 0x→**1x**, `FROM in TO` False |
-| 8 | plan + contract readers | `.agent/plan.md` BYTE-EQUALS the PLAN slice as a whole file, sha256 `cbdae4c19e7ac621d5d9442d84fb013fd90b3732a62232f6710e9c2e8e04fa31`, `wc -l` **49** (< 50), keeps `## Goal` and `## Next Steps`. `.agent/context.md` `wc -l` **68**; `## Active Branch` is followed by `feature/f082-self-benchmark, cut from main after PR #200 merged.`; `Steps` present; F-ids F077/F082/F105; `pytest` AND `resource` present |
-| 9 | the correction landed, and only there | (a) `only one role is bound to a model` in `.agent/plan.md` = **0** — the mirror is corrected. (b) `found exactly one role bound to a model` in `.agent/live_review.md` = **2**, and both sites are the expected ones: char 138873 sits under the `## DECISION F082 D6` heading (history, Constraint 1), char 144974 sits inside the `- R-0419 — ` paragraph (the deliberate quote). Neither file was edited the way the other was |
-| 10 | STANDING STALENESS GATE (4th run) | **54 sentences** re-read across the files this round touched. **48 HOLD, 6 DO NOT** — enumerated below. Repaired: only what the ordered slices cover; nothing widened |
-| 11 | change set | `git diff --name-only e6c18d89..HEAD` measured BEFORE C3 = **5 paths**: `.agent/authored/f082-r12.md`, `.agent/context.md`, `.agent/last_block.md`, `.agent/live_review.md`, `.agent/plan.md`. With C3 it becomes 6, adding `.agent/handoff.md`. Every one is inside the block's Change list. `… -- apps/ packages/ tests/ docs/` = **EMPTY** (no output) |
-| 12 | canary + three contract readers | exit **0** — **184 passed** in 39.35s. Exactly the reviewer's e6c18d89 baseline; R12 changes no code |
-| 13 | `pytest tests/cli/test_stats_bench.py -q` | exit **0** — **25 passed** in 0.15s. R10's work still stands |
-| 14 | integrity check | exit **0** — `passed: true`, `fail_count: 0`, `check_count: 5`; `handler_import` message **`handlers=337`**, unchanged |
-| 15 | open PRs | `gh pr list --state open --json number,headRefName` → `[]` verbatim |
-| 16 | insertions per commit | `git show --numstat`: d2a13078 **+266**, 26512b1f **+174** (`git commit` reports 266/308 with rewrite detection at 79%; the numstat column is 174/216), 9fdc6d8e **+49**, 04a24aba **+31** (6 + 25). NONE over 500. C3 cannot state its own numstat (R-0371); it is the verbatim rewrite of ONE `.agent/**` state file, exempt per AGENTS.md DECISION F104 D1, and its real value is in the completion report |
-
-## Gate 10 — the six sentences that do not hold at HEAD
-
-| File | Sentence | Status |
-|---|---|---|
-| .agent/live_review.md header | "Next free id: R-0404." | FALSE — real next free is R-0420. Already registered as R-0406 (OPEN); the record is append-only and no ordered slice covers the header. LEFT |
-| .agent/live_review.md header | "the thirty-two findings … are reproduced verbatim at the end of this file" | COUNT holds (32, re-counted mechanically); "at the end of this file" does not — 49 more lines were appended this round. LEFT |
-| .agent/live_review.md `## Steps` | "R11 T003b model context and a fake-provider run → R12 the integration gate → R13 closure" | FALSE — R11 was the inventory, R12 is this verdict round, T003b is R13, the integration gate R14, closure R15. One round staler than at R11. The block's Change list allows only a C1 APPEND to this file. LEFT |
-| .agent/live_review.md `## Steps` | "This map is rewritten whenever it stops matching `.agent/context.md`" | The file now violates its own stated maintenance rule for the second round running. LEFT — no ordered slice covers it |
-| .agent/live_review.md DECISION F082 D6 | "found exactly one role bound to a model" | FALSE and DELIBERATELY PRESERVED. Constraint 1 forbids rewriting history; D7 supersedes it, R-0419 quotes it, gate 9b measures both sites |
-| .agent/live_review.md GATE-R11 | "the open set … is FORTY-EIGHT … max R-0418 and next free R-0419" | Superseded at HEAD (49 / R-0419 / R-0420). Correct as time-stamped history inside a `Gate: R11` paragraph; not repaired |
-
-The other 48 hold, and the load-bearing ones were re-measured rather than read: `STATUS.md:66`
-is `- [~] F082 — Self-benchmark`; `scripts/bench_orders/` holds exactly THREE order files plus
-its manifest; the gauntlet's seven test files exist and are untouched; `append_bench_run` and
-`dry_run_from_order_set` have DEFINITIONS ONLY and no caller under `apps/`, `packages/` or
-`scripts/`; `role_config.py::KNOWN_ROLES` is seven names and `_FIELDS` is
-`("provider", "model", "effort")`; `ollama_planner/provider.py::_resolve_model:54` and
-`ollama_builder/provider.py::_resolve_model:175` both exist; `capability_bench.py:135` writes
-`repair_rounds=None`; DECISION F082 D1 is at `.agent/decisions.md:5351` and names
-`measure_tokens`; the Do-not-touch section of `T2_F082.md` names the pass definition, routing
-decisions and visual judgment and no file at all; `test_bench_orders.py:73` is the pinning
-test; Q6 does name four blockers; the R11 block is 308 lines with 17 ordered gates at sha
-`5e59957b…`; and the block's own predicted values (184, 25, `handlers=337`, FORTY-NINE,
-R-0420, 2, 0) all reproduce.
-
-ONE QUALIFIED HOLD, reported rather than adjusted: DECISION-D7 says `_evidence_body` has
-"sixteen keys, none a model". The dict LITERAL carries **15** keys; a 16th is then added
-unconditionally as exactly one of `tokens` or `tokens_source`. So every EMITTED body carries
-sixteen and the numeral holds on that reading, one off on the literal reading. "None a model"
-holds outright on both readings.
+## Verification
+1. `git status --porcelain` → EMPTY (no output). `git worktree list` → `/home/decodeux/Repos/remedy  26b8804d [feature/f082-self-benchmark]` (measured before C5; single checkout).
+2. `.agent/authored/f082-r13.md` and `.agent/last_block.md`: python3 `read_bytes()` equality TRUE, shared sha256 `51e9713974d636e82af7ac28896c1328ce05191d139fb739c3ef3a74ae4ad9c2`, 31507 bytes, **457 lines — OVER the ordered ≤ 400** (declared below).
+3. `.agent/STOP` absent at round START and absent at handback.
+4. C1 append: over committed `3450762a^`→`3450762a`, `post == pre + add` TRUE byte-wise with `add = b"\n" + GATE-R12 + b"\n" + DECISION-D8` (7955 bytes, exactly the added region); 0 marker lines. `--numstat`: `59  0  .agent/live_review.md` — deletion column 0.
+5. Record counts at HEAD: `^Gate: R12 — PASS` 1 · `^## DECISION F082 D8` 1 · `^## DECISION F082 D7` 1 · `^Landed: ` 0 · `^Done: ` 0.
+6. Open set recomputed: registered 49, done 0, **open 49**, max `R-0419`, next free `R-0420`, duplicates none.
+7. Pairs over their own committed revision. `FROM_in_TO` is False for ALL eight, so every FROM goes 1x→0x and every TO 0x→1x (measured). Single-pair `post == pre.replace(FROM,TO)`: INTAKE TRUE, CTXSTEPS4 TRUE; the six runner pairs individually FALSE **because the block bundles all six into one commit (C2)** — proven instead as the composite property: `pre` with all six replacements applied, in block order, `== post` byte-wise TRUE.
+8. `.agent/plan.md` byte-equals the PLAN slice as a whole file: TRUE. sha256 `f9138759db8d49358f49a2fe1b42e0c7adbf985c454312c297d17cb898faae06`, `wc -l` 49 (<50), `## Goal` and `## Next Steps` present. `.agent/context.md` `wc -l` 69; contract readers all present: `## Active Branch` followed by `feature/f082-self-benchmark…`, substring `Steps`, `F082`, `pytest`.
+9. (a) the gauntlet seven at HEAD → exit 0, **276 passed** in 1.64s (same as BASE). (b) `git diff --name-only b0ea45c9..HEAD -- <the seven>` → EMPTY.
+10. Absence probe on the property-3 run: `models` = `{'builder': None, 'orchestrator': None, 'planner': None}`, all Python `NoneType`; `llama` case-insensitive in that run.json: **0**. Extra: the configured default is `muse-glimmer:latest` and its count in the same bytes is **0** — the substantive form of the same check.
+11. RED-PROOF in `.remedy-wt/f082-r13-red` (detached at b0ea45c9, only the new test file copied in, pytest run with cwd inside the worktree): **RED**. First failure `test_an_observed_model_per_role_is_recorded`, assertion text `assert body["models"]["planner"] == "qwen3:8b"` → `KeyError: 'models'` at test_bench_model_context.py:166. Worktree removed; `git status --porcelain` EMPTY and `git worktree list` single afterwards.
+12. `pytest tests/orchestration/test_bench_model_context.py -q` → exit 0, **8 passed**.
+13. `pytest tests/orchestration/test_intake.py tests/orchestration/test_intake_prompt_golden.py -q` → exit 0, **43 passed** (BASE 43).
+14. `pytest tests/cli/test_golden_path.py tests/ui_server/test_dashboard_contract.py tests/regression/test_resource_safety.py tests/orchestration/test_test_runner.py -q` → exit 0, **184 passed** in 39.75s (BASE 184, unmoved).
+15. `pytest tests/cli/test_stats_bench.py -q` → exit 0, **25 passed** (BASE 25).
+16. `ruff check` on the three owned files → exit 0, `All checks passed!`.
+17. `integrity check --json` → `passed: true`, `fail_count: 0`, `check_count: 5`, `handler_import` message `handlers=337`.
+18. Change set `git diff --name-only b0ea45c9..HEAD`, **8 paths**, measured BEFORE C5 (C5 adds `.agent/handoff.md`, a 9th, inside the Change list): `.agent/authored/f082-r13.md`, `.agent/context.md`, `.agent/last_block.md`, `.agent/live_review.md`, `.agent/plan.md`, `packages/orchestration/gauntlet_runner.py`, `packages/orchestration/intake.py`, `tests/orchestration/test_bench_model_context.py`. Every one inside the ceiling. `-- docs/ apps/ scripts/` → EMPTY.
+19. `gh pr list --state open --json number,headRefName` → `[]`.
+20. Insertions per commit: C0a 457 · C0b 364 · C1 59 · C2 40 (33+7) · C3 245 · C4 20 (15+5). None over 500. C5's own numstat is in the completion report.
+21. Staleness gate, **17 claim-bearing sentences checked** across plan.md, context.md, the two D8/GATE-R12 slices and the C3 contract. HOLD: next free id R-0420; open findings 49 = 32 carried + R-0403..R-0419 (17); F082 `[~]` at STATUS.md:66; three frozen orders under `scripts/bench_orders/`; `append_bench_run` and `dry_run_from_order_set` still have no caller under apps/, packages/, scripts/; the gauntlet seven green and unmodified; `_minimal_body` 13 keys (untouched); `_evidence_body` 15 dict-literal keys at BASE → 16 emitted, 17 at HEAD = 16 + `models`; the C3 contract's "base sixteen" enumeration is 15 names + one of `tokens`/`tokens_source` = 16, correct; step map R12✅→R13→R14→R15→R16 correct. DO NOT HOLD, reported and left (not covered by an ordered slice): (a) `.agent/context.md` Scope still reads "Still to come, T003b alone: the model-context recording and a fake-provider bench run" — the write half is now built; (b) `.agent/context.md` states the reviewer keeps its block "under 400 lines… 240 the preferred target", which the R13 block itself (457) violates; (c) DECISION F082 D8 as committed says `make_structured_call_fn` "has six call sites" and then enumerates 1+2+2+2 = **seven**; the real repo-wide count is seven invocation sites (intake.py:331, gauntlet_runner.py:216 and :225, mission_cmd.py:227 and :385, do_cmd.py:246 and :2864). The per-file enumeration is right; only the numeral "six" is wrong.
 
 ## Authored-text proofs
+Every slice was extracted from the COMMITTED `.agent/authored/f082-r13.md` via `git show HEAD:…` and applied disk-to-disk in python3; no slice was retyped. Marker lines reaching a target file: 0 in every target. Trailing-whitespace lines gained: 0 in every target. Committed authored bytes == disk authored bytes == `.agent/last_block.md` bytes (see gate 2). Pair properties: gate 7.
 
-Every slice was extracted from the COMMITTED `.agent/authored/f082-r12.md` via
-`git show HEAD:.agent/authored/f082-r12.md` and applied disk-to-disk in python3. No slice
-was retyped and none was taken from the scratchpad or the prompt after C0a.
+## Deviations & assumptions
+1. **Gate 2 line cap missed, declared not repaired.** The block is 457 lines against its own ordered ≤ 400 and against `.agent/context.md`'s ≤ 400 / 240-preferred rule (DECISION F105 D5, R-0381). Cause: reviewer-side block length. Per Constraint 7 the block was saved VERBATIM; repairing it would have broken the byte-equality that makes transport provable. Reviewer-block defect, not a worker deviation.
+2. **DECISION F082 D8 contains a wrong numeral.** "six call sites" over an enumeration of seven; the real count is seven. Applied VERBATIM per Constraint 7 and declared here rather than silently corrected — the R-0402/R-0404 "count your own enumeration" class, recurring in the reviewer's block. The decision's substance is unaffected: every one of the seven sites keeps receiving exactly the callable it received before.
+3. **Gate 7 single-pair equality is structurally unreachable for six pairs.** They share commit C2 by the block's own Bundle, so each individual `post == pre.replace(FROM,TO)` is False; the composite equality is TRUE and is reported instead. Not a transport defect.
+4. **Test-file naming deviates from `test_x.py` ↔ `x.py`.** `test_bench_model_context.py` covers `gauntlet_runner.py` + `intake.py`; the convention-named file is one of the gauntlet's seven that Constraint 1 freezes. Ordered by the block's C3 section and declared here as instructed.
+5. **plan.md currency at commit time.** C0a–C3 were committed while `.agent/plan.md` still described R12; the block's Bundle puts the plan re-sync at C4. Followed the Bundle, as in R12.
+6. Handoff length exceeds the ≤100-line cap (stated-cause overage, AGENTS.md DECISION D15): the mandated per-commit tables for 6 commits, 21 verification transcripts, and the 27-row item-status table do not fit. No section was dropped.
 
-| Slice | sha256 | bytes | lines | Applied-region proof |
-|---|---|---|---|---|
-| GATE-R11 | 7e009543d660a72d19b77babdaad14c685a26a939a5edd32c7f20ddbb8f75e2a | 4319 | 1 | part of `post == pre + add`, TRUE |
-| FINDING-R419 | 6e749fcaac473b47a435ab63900339b071e75d4de3c8ed167fba0613f678cd41 | 1777 | 1 | part of `post == pre + add`, TRUE |
-| DECISION-D7 | ccded68cf972730526a8a7787aa178cfcc05fb64ffff59341416b67719945583 | 2707 | 44 | part of `post == pre + add`, TRUE |
-| CTXSTEPS3-FROM | 397cc2c8339c79707d18ecf54a562805e0e23fd90a80d1faef10050214566681 | 353 | 5 | 1x before / 0x after |
-| CTXSTEPS3-TO | b7a752c99b55d40687879c44ca4576ac847e759e66e3eba4b740a8080ff01602 | 417 | 6 | 0x before / 1x after |
-| FORTSCHRITT | d14d2e6f18bb5dc4c8aacb602bcf92d8ff0c6b8785c5fa7c1c8539b2aba44232 | 120 | 1 | inserted into this file from the committed block, not retyped (R-0418) |
-| PLAN | cbdae4c19e7ac621d5d9442d84fb013fd90b3732a62232f6710e9c2e8e04fa31 | 2849 | 49 | `.agent/plan.md` byte-equals the slice as a WHOLE FILE |
-
-NO transport marker line reached any target file — 0 occurrences of either marker in
-`.agent/plan.md`, `.agent/context.md`, `.agent/live_review.md` and this file.
-Trailing-whitespace scan over every applied slice and every edited file: **ZERO** lines.
-
-## Item-status table
-
+## Item status
 | Item | Status | Reason |
 |---|---|---|
-| C0a save the block | done | sha256 matches the ordered digest exactly |
-| C0b mirror to last_block | done | mirrored from the COMMITTED authored file |
-| C1 GATE-R11 + FINDING-R419 + DECISION-D7 | done | APPENDED; D6 untouched; persisted FIRST |
-| C2 CTXSTEPS3 pair + PLAN | done | |
-| C3 handback | done | this file |
-| Gate 1 | done | |
-| Gate 2 | done | |
-| Gate 3 | done | |
-| Gate 4 | done | |
-| Gate 5 | done | all six counts at their ordered values |
-| Gate 6 | done | 49 / R-0420, exactly as predicted |
-| Gate 7 | done | |
-| Gate 8 | done | |
-| Gate 9 | done | 0 in the mirror, 2 in the record, both sites identified |
-| Gate 10 | done | 54 sentences checked, 6 stale surfaced, none repaired outside the ordered slices |
-| Gate 11 | done | measured before C3, stated as such; apps/packages/tests/docs EMPTY |
-| Gate 12 | done | |
-| Gate 13 | done | |
-| Gate 14 | done | |
-| Gate 15 | done | |
-| Gate 16 | done | C3's own value in the completion report |
+| C0a save block | done | 457 lines, verbatim |
+| C0b mirror | done | byte-identical |
+| C1 GATE-R12 + DECISION-D8 | done | append proven |
+| C2 code | done | 7 pairs, 2 files |
+| C3 new test file | done | 8 tests |
+| C4 plan + step map | done | PLAN + CTXSTEPS4 |
+| C5 handback | done | this file |
+| Gate 1 clean tree / worktree | done | both empty/single |
+| Gate 2 transport | deviated | equality TRUE; 457 lines > ordered 400 |
+| Gate 3 STOP | done | absent at start and at handback |
+| Gate 4 C1 append | done | `post == pre + add` TRUE, deletions 0 |
+| Gate 5 record counts | done | 1 · 1 · 1 · 0 · 0 |
+| Gate 6 open set | done | 49, max R-0419, next R-0420, no dup |
+| Gate 7 pair properties | deviated | composite TRUE; six pairs share C2 |
+| Gate 8 plan/context contracts | done | 49 / 69 lines, all readers present |
+| Gate 9 gauntlet seven | done | 276 passed, diff EMPTY |
+| Gate 10 absence is real | done | all None, `llama` count 0 |
+| Gate 11 red-proof | done | RED at BASE, `KeyError: 'models'` |
+| Gate 12 new test file | done | 8 passed |
+| Gate 13 intake suites | done | 43 passed |
+| Gate 14 canary + contract readers | done | 184 passed |
+| Gate 15 stats bench | done | 25 passed |
+| Gate 16 ruff | done | All checks passed! |
+| Gate 17 integrity | done | passed, 5 checks, handlers=337 |
+| Gate 18 change set | done | 8 paths pre-C5; docs/apps/scripts EMPTY |
+| Gate 19 open PRs | done | `[]` |
+| Gate 20 commit sizes | done | max 457, none over 500 |
+| Gate 21 staleness | done | 17 sentences; 3 do not hold, reported |
 
-## Deviations, declared
-
-1. **Handoff length.** This file exceeds the 60-line cap under the DECISION D15 stated-cause
-   allowance. The cause is mandated content only: five per-commit tables, the sixteen-gate
-   verification table, gate 10's stale-sentence table, the seven-slice authored-text proof
-   table and the twenty-one-row item-status table. No section is dropped, no prose padding.
-2. **Denied-command routes (R-0408).** `cp`, `cmp` and compound `for`-loop shell chains are
-   denied to this session class. Byte equality, transport, the append property and the
-   FROM/TO property were proven with python3 `read_bytes()` plus `sha256`; exit codes came
-   from python3 `subprocess`; the CLI through `python3 -m apps.cli.main`.
-3. **Commit messages carry no trailer**, per Constraint 6 and matching every prior commit on
-   this branch. The harness default trailer was deliberately omitted; the block wins.
-4. **`.agent/plan.md` is current only from C2 on.** The block's bundle puts the plan re-sync
-   at C2, after C0a/C0b/C1, so AGENTS.md Commit Gate item 1 is met by the bundle rather than
-   at every intermediate commit — the same shape R11 declared.
-5. **The R12 block is 266 lines** against `.agent/context.md`'s "240 preferred target". Under
-   the 400-line cap, and its C0a is 266 insertions, well under 500, so nothing is breached;
-   noted because the gate 10 sweep re-read that sentence.
-6. **No slice was silently repaired.** DECISION-D7's "sixteen keys" is one off on the
-   dict-literal reading (see the qualified hold above). It was applied VERBATIM as ordered and
-   is declared here rather than corrected — the R-0419 lesson, applied to this round's own block.
+Open findings: **49** (max R-0419, next free R-0420). R13 registers none.
 
 ## Next
-
-The FIRST action of the next session is `docs/agents/self_drive_protocol.md`
-**Phase 1 rule 1** — re-read `.agent/STOP` from disk — BEFORE rule 2's Open PR Gate.
-
-F082 is MID-FEATURE. No PR exists for `feature/f082-self-benchmark` and none is created
-until closure; gate 15 proves `gh pr list --state open` is `[]`.
-
-T001, T002 and T003a are built and gated; T003b is INVENTORIED (R11) and now UNBLOCKED
-(DECISION F082 D7). The next round is **R13 — T003b**: the additive `models` key on
-`gauntlet_runner.py::_evidence_body` under D7's three conditions, model context carried into
-the bench record, and a fake-provider bench run that first clears R11's Q6 four blockers.
-R14 is the integration gate, R15 closure.
-
-Open findings: 49. Next free id: R-0420.
+The next session's FIRST action is `docs/agents/self_drive_protocol.md` Phase 1 rule 1 —
+re-read `.agent/STOP` from disk — BEFORE rule 2's Open PR Gate. F082 is MID-FEATURE and
+no PR exists. Then: review R13, then R14 — T003b's read half (`RunEvidence` → `BenchRecord`,
+needing its own additive ruling), the fake-provider bench run against R11's Q6 four
+blockers, and the Q7 pin for "the bench never runs implicitly".
