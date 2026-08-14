@@ -1,180 +1,190 @@
-# Handoff — F082 Self-benchmark, round R7 (worker → planner/reviewer)
+# Handback — F082 Self-benchmark, round R8
 
-Branch: feature/f082-self-benchmark. Head: cc72c6eb (plus the handoff commit).
+Deviations, declared: this handback is 190 lines against the 60-line cap, under
+AGENTS.md DECISION D15 stated cause — the mandated content is the eighteen-gate
+verification table with real values, the nine-slice authored-text proof table,
+the six per-commit changed-files tables and the item-status table. No section is
+dropped and no prose is padded.
 
 ## Range
-Review of 18bc4945..HEAD.
+Review of 20f101b0..da163bc6.
 
 ## Commits
-### 350a0e59 chore(f082): save the R7 block verbatim
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/authored/f082-r7.md | +334/-0 | C0a: scratchpad copied byte for byte |
 
-### cd15902e chore(f082): mirror the R7 block into last_block
+### 18a15de7 chore(f082): save the R8 block verbatim
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/last_block.md | +227/-218 | C0b: mirror of the COMMITTED authored file |
+| .agent/authored/f082-r8.md | +312 -0 | C0a, block saved byte for byte from the scratchpad |
 
-### cb2698e4 docs(f082): record the R6 verdict and register R-0414
+### b79d2d73 chore(f082): mirror the R8 block into last_block
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/live_review.md | +4/-0 | C1: FINDING-R414 then GATE-R6, appended |
+| .agent/last_block.md | +203 -225 | C0b, mirrored from the COMMITTED authored file, not the scratchpad |
 
-### 87b6d43d docs(f082): retire the last superseded context region and re-sync plan
+### 4e031c8f docs(f082): record the R7 verdict, register R-0415 and R-0416
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/context.md | +5/-5 | C2a: CTXBUILT rewrite pair |
-| .agent/plan.md | +11/-10 | C2b: full replacement with the PLAN slice |
+| .agent/live_review.md | +9 -0 | C1, append only: FINDING-R415, FINDING-R416, DECISION-D4, GATE-R7 |
 
-### cc72c6eb feat(f082): add the append-only bench history and regression rules
+### d81cb921 docs(f082): complete the context sweep and re-sync plan
 | Path | +/- | Reason |
 |---|---|---|
-| packages/orchestration/bench_history.py | +307/-0 | C3: NEW, T002 |
-| tests/orchestration/test_bench_history.py | +142/-0 | C3: NEW, 8 tests |
-| tests/orchestration/fixtures/bench_history/flat.jsonl | +6/-0 | golden |
-| tests/orchestration/fixtures/bench_history/improving.jsonl | +6/-0 | golden |
-| tests/orchestration/fixtures/bench_history/degrading.jsonl | +6/-0 | golden |
+| .agent/context.md | +13 -9 | C2a/C2b, the CTXSCOPE and CTXSTEPS2 rewrite pairs |
+| .agent/plan.md | +8 -8 | C2c, full replacement with the PLAN slice |
+
+### da163bc6 test(f082): pin the regression threshold and the trailing median
+| Path | +/- | Reason |
+|---|---|---|
+| tests/orchestration/fixtures/bench_history/varied.jsonl | +4 -0 | C3, the fourth golden, generated with BenchHistoryEntry.to_json() |
+| tests/orchestration/test_bench_history.py | +40 -0 | C3, two new tests, purely additive |
 
 ### C4 handback (self-reference, R-0149)
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/handoff.md | rewrite | this file; a handoff cannot table its own commit |
+| .agent/handoff.md | rewrite | the commit that writes this table cannot table itself |
 
 ## External actions
-`git push -u origin feature/f082-self-benchmark` after each of C0a, C0b, C1, C2,
-C3, C4 — all OK. `git worktree add .remedy-wt/r7-redproof HEAD --detach` OK,
-`git worktree remove --force` + `git worktree prune` OK. `gh pr list --state
-open` → `[]`. No PR created: F082 is MID-FEATURE and its PR is created at
-closure, not before. No merge, no force-push, no work on main.
+- `git push -u origin feature/f082-self-benchmark` after C0a; `git push` after
+  C0b, C1, C2, C3 and C4. All succeeded.
+- `git worktree add .remedy-wt/r8-redproof HEAD --detach`, then
+  `git worktree remove --force` + `git worktree prune` after gate 15.
+- `gh pr list --state open --json number,headRefName` → `[]`. NO PR created:
+  F082 is mid-feature and its PR is created at closure.
 
-## Verification (18 ordered gates, real measured values)
-1. `git status --porcelain` EMPTY at handback. `git worktree list` → 1 line:
-   `/home/decodeux/Repos/remedy  cc72c6eb [feature/f082-self-benchmark]`.
-2. Transport as a PROPERTY (`cmp` denied; python3 byte compare + sha256sum):
-   `.remedy-wt/f082-r7-scratchpad.md` == `.agent/authored/f082-r7.md` ==
-   `.agent/last_block.md`, all True, shared sha256
-   `e0517f102c34ad9373f3ca8b9cb98701991d5c4b81737e78c873620b15801a56`,
-   28357 bytes, 334 lines (cap 400). The committed blob equals the on-disk copy.
-3. `.agent/STOP` ABSENT at round start AND ABSENT at handback (`ls` → No such
-   file or directory, both times).
-4. Append: `post == pre + add` byte-wise True against `cd15902e`'s
-   `.agent/live_review.md`; first 121 lines of post == the whole pre-C1 file,
-   True. C1 numstat `4  0` — deletion column 0. FINDING-R414 = 1 physical line,
-   GATE-R6 = 1 physical line.
-5. `^Gate: R6 — PASS` 1 · `^- R-0414 — ` 1 · `^## Steps` 1 · `^Landed: ` 0 ·
-   `^Done: ` 0. No resolution text was authored by the worker.
-6. Open set recomputed mechanically (44 `^- R-NNNN — ` paragraphs minus 0
-   `^Done:` lines) = FORTY-FOUR. Duplicates: none. Max R-0414, next free R-0415.
-   Ids: R-0361 R-0362 R-0363 R-0364 R-0367 R-0368 R-0369 R-0371 R-0374 R-0375
-   R-0376 R-0377 R-0378 R-0379 R-0380 R-0381 R-0382 R-0385 R-0386 R-0387 R-0389
-   R-0391 R-0392 R-0393 R-0394 R-0395 R-0396 R-0397 R-0399 R-0400 R-0401 R-0402
-   R-0403 R-0404 R-0405 R-0406 R-0407 R-0408 R-0409 R-0410 R-0411 R-0412 R-0413
-   R-0414.
-7. CTXBUILT as a PROPERTY: `post == pre.replace(FROM, TO)` True against
-   `cb2698e4`. FROM (newline-inclusive) 1x before / 0x after; TO 0x before /
-   1x after. `wc -l .agent/context.md` = 55. Re-read end to end: TWO residual
-   regions found, REPORTED not repaired (outside the ordered pair). (a) Scope,
-   lines 9-15: "Built so far: `capability_bench.py` …, `bench_orders.py` …, and
-   THREE frozen orders" omits R6's `bench_dry_run.py`, and "Still to come: the
-   history append, the trend and regression rules" is stale as of this commit —
-   it names which modules this feature builds and is now incomplete. (b) Steps,
-   lines 47-55: R1-R5 carry ✅ but the landed R6 entry does not. Nothing there
-   says five orders are owed and no round is mapped to another round's work.
-8. `wc -l .agent/plan.md` = 36 (cap 50).
-9. `.agent/context.md` contract readers: `## Active Branch` line 3 ·
-   `feature/f082-self-benchmark` line 4 · `Steps` line 47 (`## Steps`) ·
-   roadmap F-id `F082` line 1 · `pytest` line 35 and `resource` line 38.
-10. `git diff --name-only 18bc4945..HEAD` → 10 paths, counted with `wc -l` = 10
-    (11 with `.agent/handoff.md` from C4): `.agent/authored/f082-r7.md`,
-    `.agent/context.md`, `.agent/last_block.md`, `.agent/live_review.md`,
-    `.agent/plan.md`, `packages/orchestration/bench_history.py`,
-    `tests/orchestration/fixtures/bench_history/degrading.jsonl`,
-    `…/flat.jsonl`, `…/improving.jsonl`,
-    `tests/orchestration/test_bench_history.py`. Every one appears in the
-    block's Change list; no path is present that the Change list lacks.
-11. Same range scoped to `tests/orchestration/` → 4 paths: the three
-    `fixtures/bench_history/*.jsonl` and `test_bench_history.py`. PROPERTY: each
-    is either `tests/orchestration/test_bench_history.py` or under
-    `tests/orchestration/fixtures/bench_history/`; no existing gauntlet or bench
-    test file appears, so the gauntlet's own test files are byte-unmodified.
-12. Eleven-file orchestration suite → `292 passed`, EXIT_CODE=0. Arithmetic:
-    284 (reviewer's ten-file baseline at 18bc4945) + 8 tests written this round
-    = 292. No pre-existing test lost.
-13. Canary + three contract readers → `184 passed`, EXIT_CODE=0 (baseline 42 +
-    142 = 184, unchanged).
-14. `ruff check packages/orchestration/bench_history.py
-    tests/orchestration/test_bench_history.py` → `All checks passed!`,
-    EXIT_CODE=0.
-15. Red-proof, in the disposable worktree `.remedy-wt/r7-redproof` at HEAD only:
-    `append_bench_run` opened with mode `"w"` instead of `"a"`. Result
-    `1 failed, 7 passed`, EXIT_CODE=1. The failing test is
-    `test_a_rerun_appends_and_never_rewrites_the_bytes_already_there` at
-    `assert after_second.startswith(after_first)` → `assert False`, the run-1
-    bytes (`"run_seq": 1`) no longer a prefix of the run-2 bytes
-    (`"run_seq": 2`). The mutated module was genuinely imported: the primary
-    checkout is unmutated and green at the same command (R-0337). Worktree
-    removed and pruned; `git worktree list` reads 1 line.
-16. `python3 -m apps.cli.main integrity check --json` → `"passed": true`,
-    `"fail_count": 0`, `"check_count": 5`; `high_blockers_open` message:
-    `no open blocker/high findings`.
-17. `gh pr list --state open --json number,headRefName` → `[]`, verbatim.
-18. Insertions per commit: 350a0e59 334 · cd15902e 227 · cb2698e4 4 ·
-    87b6d43d 16 · cc72c6eb 467. None exceeds 500.
+## Verification (all eighteen gates, real values)
+1. `git status --porcelain` EMPTY at handback. `git worktree list` 1 line:
+   `/home/decodeux/Repos/remedy da163bc6 [feature/f082-self-benchmark]`.
+2. Transport as a PROPERTY (`cmp`/`cp` denied; route = python3 byte compare +
+   `sha256sum`): `.remedy-wt/f082-r8-scratchpad.md`, `.agent/authored/f082-r8.md`
+   and `.agent/last_block.md` are byte-identical, shared sha256
+   `9435c875acdf6ea2671efea0931afc66d61d3bbb61750fc517980c284bee5dd0`,
+   30466 bytes, 312 lines — inside the 400-line cap.
+3. `.agent/STOP` ABSENT at round start and ABSENT at handback.
+4. Append proof: `post == pre + add` byte-wise TRUE, pre an exact prefix, first
+   125 lines byte-equal to the pre-C1 file; C1 numstat `9 0`, DELETION 0.
+   Physical lines: FINDING-R415 1, FINDING-R416 1, DECISION-D4 2, GATE-R7 1.
+5. `^Gate: R7 — PASS` 1; `^- R-0415 — ` 1; `^- R-0416 — ` 1;
+   `^## DECISION F082 D4` 1; `^## Steps` 1 (in .agent/context.md);
+   `^Landed: ` 0; `^Done: ` 0.
+6. Open set recomputed mechanically: 46 paragraphs `^- R-[0-9]+ — `, 0
+   `^Done: ` lines, so FORTY-SIX open, no duplicate, max R-0416, next free
+   R-0417. Ids: R-0361/62/63/64, R-0367/68/69, R-0371, R-0374/75/76/77/78/79,
+   R-0380/81/82, R-0385/86/87, R-0389, R-0391/92/93/94/95/96/97, R-0399,
+   R-0400/01/02/03/04/05/06/07/08/09, R-0410/11/12/13/14/15/16.
+7. Both pairs as a PROPERTY: `post == pre.replace(SF,ST).replace(TF,TT)` TRUE.
+   SCOPE_FROM 1→0, SCOPE_TO 0→1, STEPS_FROM 1→0, STEPS_TO 0→1, measured WITH
+   the terminating newline. `wc -l .agent/context.md` = 59. Re-read end to end:
+   ONE region still names which modules the feature builds — the Scope
+   paragraph's second half, "R2's inventory settled the shape … R3's
+   `capability_bench.py`, R4's `bench_orders.py`, R6's `bench_dry_run.py` and
+   R7's `bench_history.py`" — and it AGREES with `.agent/plan.md` and with the
+   rewritten first half; nothing is stale there. The `## Steps` map now names
+   every round R1-R11 and agrees with plan.md's Next Steps (R9 T003, R10
+   integration gate, R11 closure). No other region names rounds or counts.
+   Nothing repaired outside the two ordered pairs.
+8. `wc -l .agent/plan.md` = 36, under 50.
+9. Contract readers in `.agent/context.md`: `## Active Branch` present with
+   slug `feature/f082-self-benchmark`; substring `Steps` present (1 heading);
+   roadmap F-id `F082` present (9 hits); `pytest`/`resource` present (2 hits).
+10. `git diff --name-only 20f101b0..HEAD` = 7 paths, counted mechanically:
+    .agent/authored/f082-r8.md, .agent/context.md, .agent/last_block.md,
+    .agent/live_review.md, .agent/plan.md,
+    tests/orchestration/fixtures/bench_history/varied.jsonl,
+    tests/orchestration/test_bench_history.py. Every one is in the Change list;
+    NO path outside it. `git diff --name-only 20f101b0..HEAD -- packages/` is
+    EMPTY. (`.agent/handoff.md` becomes the 8th at the C4 commit, R-0149.)
+11. `git diff --numstat 20f101b0..HEAD -- tests/orchestration/test_bench_history.py`
+    → `40  0` — DELETION column 0, purely additive.
+12. Eleven-file orchestration suite: exit 0, `294 passed`. Arithmetic:
+    292 at 20f101b0 + 2 new tests = 294; no pre-existing test lost.
+13. Canary + three contract readers: exit 0, `184 passed` (42 + 142).
+14. `python3 -m ruff check tests/orchestration/test_bench_history.py` → exit 0,
+    `All checks passed!`.
+15. Red-proof, disposable worktree `.remedy-wt/r8-redproof` at da163bc6 only.
+    Unmutated baseline there: `10 passed`, exit 0 — proving the worktree copy is
+    the one imported (cwd was the worktree, R-0337).
+    (a) `if latest <= baseline * multiplier:` → `if latest <= baseline:`
+        (FROM 1→0, TO 0→1): exit 1, `1 failed, 9 passed`. FAILED
+        `test_a_larger_multiplier_silences_the_same_history` at
+        `assert bench_regressions(entries, series=SERIES, multiplier=3.0) == ()`
+        — "Left contains 2 more items, first extra item: BenchRegression(
+        kind='cost_regression', … latest=2000.0, baseline=1000.0,
+        multiplier=3.0)". Reverted with `git -C … checkout --`; baseline
+        re-run `10 passed` before (b).
+    (b) `_median` body → `return float(sum(values)) / float(len(values))`:
+        exit 1, `2 failed, 8 passed`. FAILED
+        `test_the_trailing_median_ignores_one_catastrophic_run` at
+        `cost_warning = next(w for w in found if w.kind == REGRESSION_COST)` →
+        `StopIteration`, and
+        `test_a_larger_multiplier_silences_the_same_history` at
+        `assert bench_regressions(entries, series=SERIES)` → `assert ()`.
+    BOTH mutations that left `8 passed` at 20f101b0 now die. R-0415's blindness
+    is closed. Worktree removed and pruned; `git worktree list` = 1 line.
+16. `python3 -m apps.cli.main integrity check --json` → `passed: true`,
+    `fail_count: 0`, `check_count: 5`; `high_blockers_open` message:
+    "no open blocker/high findings".
+17. `gh pr list --state open --json number,headRefName` → `[]`.
+18. Insertions per commit: 312, 203, 9, 21, 44. None over 500.
 
 ## Authored-text proofs
-Every slice was extracted from the COMMITTED `.agent/authored/f082-r7.md` via
-`git show HEAD:<path>` and applied disk-to-disk; none was retyped and none came
-from the scratchpad. Equality proven by python3 byte comparison (`cmp` denied).
+Every slice was extracted from the COMMITTED `.agent/authored/f082-r8.md`
+(`git show HEAD:…`) and applied disk-to-disk; none was retyped and none came
+from the scratchpad.
 
-| Slice | sha256 | bytes | applied to | proof |
+| Slice | lines | bytes | sha256 | applied-region proof |
 |---|---|---|---|---|
-| FINDING-R414 | 11026fe6…0720a | 2079 | .agent/live_review.md | occurs 1x; 1 physical line |
-| GATE-R6 | defbd10f…2fa07 | 5163 | .agent/live_review.md | occurs 1x; 1 physical line |
-| CTXBUILT-FROM | 355436a9…f5bd1 | 256 | .agent/context.md | 1x before, 0x after |
-| CTXBUILT-TO | 276be55e…6677e | 325 | .agent/context.md | 0x before, 1x after |
-| PLAN | 7865656a…64dd | 1876 | .agent/plan.md | whole file byte-equal |
+| FINDING-R415 | 1 | 2343 | 74a7c65f… | in `post == pre + add`, TRUE |
+| FINDING-R416 | 1 | 2166 | fe18162c… | in `post == pre + add`, TRUE |
+| DECISION-D4 | 2 | 1457 | 7fe0fa38… | in `post == pre + add`, TRUE |
+| GATE-R7 | 1 | 5283 | 5a5d74dd… | in `post == pre + add`, TRUE |
+| CTXSCOPE-FROM | 7 | 543 | d5752692… | 1x before, 0x after |
+| CTXSCOPE-TO | 10 | 711 | bc218e9b… | 0x before, 1x after |
+| CTXSTEPS2-FROM | 8 | 634 | 1a7a541b… | 1x before, 0x after |
+| CTXSTEPS2-TO | 9 | 724 | c68e6a66… | 0x before, 1x after |
+| PLAN | 36 | 1876 | 435b5962… | whole-file equality TRUE, same digest |
 
-CTXBUILT is a REWRITE and its TO does NOT contain its FROM (verified False).
-No BEGIN/END marker line reached any target file: marker lines occur only in
-`.agent/authored/f082-r7.md` and `.agent/last_block.md`, which are the verbatim
-block copies, and 0 times in each of the other eight files. Trailing-whitespace
-scan over all ten touched files: none, and every file ends in a newline.
+Appended live_review region sha256
+`2b19ac8680bd0ddd9afe59542f3ffb49eea64105aef386380eb62d530be10482`.
+Both context pairs are REWRITES: neither TO contains its own FROM (both False)
+and the two FROMs are disjoint (both directions False). Byte lengths are UTF-8
+BYTES including each slice's terminating newline.
+Marker scan: 0 BEGIN/END lines in all six non-block files (18 in each block
+file, as expected). Trailing-whitespace scan: NONE in any of the eight files
+touched; every one ends with a newline.
 
-## Deviations & assumptions
-1. DECISION D15 stated-cause overage: this handoff is 180 lines against the
-   60-line cap. Cause is mandated content only — the five per-commit
-   changed-files tables, the eighteen-gate verification table with real values,
-   the authored-text transport and pair proofs, and the item-status table. No
-   section is dropped and no prose padding was added.
-2. `cmp`, `cp`, bare `echo $?` and the `remedy` entry point are DENIED to this
-   session class. Every affected PROPERTY was proven by another route: byte
-   equality and digests via `python3` + `sha256sum`, real exit codes via a
-   `python3` `subprocess` runner (`.remedy-wt/f082-r7-exit.py`), and the CLI via
-   `python3 -m apps.cli.main`. This is R-0408's counter-measure.
-3. Commit messages carry no `Co-Authored-By` trailer, matching this branch's
-   and this repository's existing history.
-4. Two residual superseded regions in `.agent/context.md` (gate 7 above) are
-   DECLARED and NOT repaired: they fall outside the ordered CTXBUILT pair.
-5. Scratch files `.remedy-wt/f082-r7-gen-goldens.py` (golden generator) and
-   `.remedy-wt/f082-r7-exit.py` (exit-code runner) live in the gitignored
-   `.remedy-wt/` and are not in the change set. `/tmp` writes are denied.
-
-## Item status
+## Item-status table
 | Item | Status | Reason |
 |---|---|---|
 | C0a save the block | done | |
 | C0b mirror to last_block | done | |
-| C1 R6 verdict + R-0414 | done | |
-| C2a CTXBUILT pair | done | |
-| C2b plan replacement | done | |
-| C3 bench_history + goldens + tests | done | |
+| C1 R415/R416/D4/GATE-R7 | done | |
+| C2a CTXSCOPE pair | done | |
+| C2b CTXSTEPS2 pair | done | |
+| C2c plan.md replacement | done | |
+| C3 varied.jsonl + 2 tests | done | both mutations now die |
 | C4 handback | done | |
-| Gates 1-18 | done | all run, real values above |
+| Gates 1-18 | done | all eighteen run, real values above |
+
+## Deviations & assumptions
+1. Handback length 190 lines against the 60-line cap — DECISION D15 stated
+   cause, named at the top; no section dropped.
+2. Commit messages carry no trailer, matching this branch's history.
+3. `cmp`, `cp`, bare `echo $?` and the `remedy` entry point are denied to this
+   session class. Routes used instead: python3 byte comparison plus
+   `sha256sum` for every byte-equality and transport property; a python3
+   `subprocess` runner for the real pytest exit codes under gate 15;
+   `python3 -m apps.cli.main` for gate 16. This is R-0408's counter-measure.
+4. NOT repaired, declared instead (R-0406 conduct): the module docstring of
+   `tests/orchestration/test_bench_history.py` still opens "The three goldens
+   under `fixtures/bench_history/`" while there are now FOUR. Editing it would
+   have put a deletion in that file and gate 11 orders the DELETION column at 0,
+   so the ordered constraint won. It is the R-0414/R-0416 stale-claim class, one
+   sentence, and R9 can retire it in a pair.
+5. No file under `packages/` changed, as the block required.
 
 ## Next
-FIRST action of the next session: `docs/agents/self_drive_protocol.md` Phase 1
+The next session's FIRST action is `docs/agents/self_drive_protocol.md` Phase 1
 rule 1 — re-read `.agent/STOP` from disk — BEFORE rule 2's Open PR Gate. F082 is
-MID-FEATURE: no PR exists for this branch and none is created until closure.
-Open findings: 44. Next round is R8 — T003, the `stats bench` CLI, model-context
+MID-FEATURE: no PR exists for `feature/f082-self-benchmark` and none is created
+until closure. Next round is R9 — T003: the `stats bench` CLI, model-context
 recording, and a fake-provider bench run end to end.
