@@ -15,22 +15,21 @@ with a reason and an expected retry — instead of burning retries or failing th
 task. Providers that emit no limit signal behave exactly as today.
 
 ## Current Step
-T003 is COMPLETE on disk: the governor is wired at all three `_call_with_retry`
-call sites, a rate limit is retryable at that seam, the reviewer parse-retry site
-is pinned end to end, and both report surfaces — the exported `rate_limit_waits`
-key and the `Rate limits:` summary line — are live and red-proved.
+R12 is the integration gate per docs/agents/integration_gate.md: the full-suite
+branch run, the full-suite base run at merge base 21c8148e in a throwaway
+worktree with UI artifact parity restored by content, the comm comparison, and a
+per-id attribution for every branch-only and every base-only failure. R11 passed
+its gate; T003 is complete on disk and no code changes this round.
 
 ## Next Steps
-1. The integration gate per docs/agents/integration_gate.md: full-suite branch
-   run and base run, compared. It is a whole round; the base worktree needs the
-   node_modules/dist parity that file's step 2 describes.
-2. Closure per docs/roadmap/STATUS_closure_protocol.md, which is also where the
-   thirteen open findings above are registered or resolved rather than dropped.
+1. Closure per docs/roadmap/STATUS_closure_protocol.md: evidence job, FRESH
+   review zip, the authored STATUS line committed last, then the PR. The thirteen
+   open findings above are registered or resolved there rather than dropped.
 
 ## Risks
-- Thirteen open findings is the largest carry this feature has held. Closure is
-  the round that must account for every one of them, not the round that inherits
-  them quietly.
-- A reviewer rate limit reaches the governor only when its error carries the
-  `provider_error:` prefix, because `ReviewerOutput.verdict` defaults to
-  `"blocked"`. R-0378 tracks that this coupling is undocumented in the code.
+- A reproducible branch-only failure coupled to F057 code is a BLOCKER and its
+  own reviewer-gated round, never a fix folded into this one.
+- The base worktree's dist is stale by construction after `cp -a` (F105 R49):
+  the checkout stamps src at checkout time while the copy preserves dist's older
+  mtime, so parity is restored by content AND by touching dist after the copy,
+  and any surviving base-only id is attributed per id.
