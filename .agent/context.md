@@ -1,21 +1,19 @@
-# Context — F057 Rate-limit-aware scheduler
+# Context — F077 Autonomy watchdog
 
 ## Active Branch
-feature/f057-rate-limit-scheduler, cut from main at 21c8148e. F057 is claimed
-`[~]` in docs/roadmap/STATUS.md and stays claimed until closure. No PR exists
-for this branch yet; one is created at closure, not before.
+feature/f077-autonomy-watchdog, cut from main after PR #199 merged. F077 is
+claimed `[~]` in docs/roadmap/STATUS.md and stays claimed until closure. No PR
+exists for this branch yet; one is created at closure, not before.
 
 ## Scope
-In: `packages/orchestration/rate_governor.py` and
-`tests/orchestration/test_rate_governor.py`, plus `.agent/**` round state and
-the one claimed STATUS line. T001 and T002 are built and gated; T003 opened
-`packages/orchestration/pingpong_loop.py` at R6 and now owns the seam there and
-its tests in `tests/orchestration/test_provider_retry.py`.
+In: a new `packages/orchestration/watchdog.py` and
+`tests/orchestration/test_watchdog.py`, the pause seam in
+`packages/orchestration/orchestrator_loop.py`, plus `.agent/**` round state and
+the one claimed STATUS line.
 
-Out: the per-call retry policy in `packages/orchestration/provider_timeouts.py`,
-parallelism itself, and the provider adapters' internals — the feature file's
-Do-not-touch list, verified byte-identical at every round so far.
-`packages/orchestration/stream_evidence.py` is out too and stays byte-identical.
+Out: repair logic, class-expectation anomaly detection and loop policy — the
+F077 feature file's Do-not-touch list. The watchdog never modifies plans, jobs
+or dossiers; that independence is an acceptance criterion, not a preference.
 
 ## Constraints
 - The main session writes nothing in the work tree; a delegated worker subagent
@@ -24,23 +22,13 @@ Do-not-touch list, verified byte-identical at every round so far.
 - Verification is pytest, scoped per round, plus the canary
   tests/cli/test_golden_path.py. A round touching docs/roadmap/** also gates
   tests/docs/. Destructive and red-proof checks run only inside a disposable
-  git worktree under .remedy-wt/, so resource safety stays intact and no
-  background pytest process is ever left running.
-- Repository-wide `ruff check` is RED at base 21c8148e with 26 pre-existing
-  errors (20 I001, 4 F401, 1 F821, 1 UP035). It is NOT a round gate; ruff is
-  gated scoped to the files this feature owns. Repairing it is a paydown
-  branch's job, not this one's (R-0364).
-- The governor's clock and sleep are injected. A real sleep in a unit test is a
-  finding.
-- Count gates over a file the same block writes state their anchoring and are
-  line-anchored for headings and record-opening tokens (R-0369).
-- A round pushes after EVERY commit, not once at its last step.
+  git worktree under .remedy-wt/, so resource safety stays intact.
+- Repository-wide `ruff check` is RED on main with pre-existing errors and is
+  NOT a round gate (R-0364); ruff is gated scoped to the files F077 owns.
+- Reviewer blocks stay at or under 240 lines so the block-save commit stays
+  inside the 500-insertion cap (R-0381).
 
 ## Steps
-R1 claim and T001 ✅ → R2 findings and two fixes ✅ → R3 verdict and session
-close ✅ → R4 T002 governor ✅ → R5 R5 verdict, R-0369, R-0370 and the T003 seam
-inventory ✅ → R6 the T003 seam itself ✅ → R7 to R11 the report surfaces, the
-limit-emitting fixture and their repair rounds ✅ → R12 the integration gate ✅
-→ R13 the R12 verdict and the feature file's Built State ✅ → R14 closure: the
-R13 verdict, the evidence job, the review zip, the STATUS and README edits and
-the PR, which is NOT merged in this session.
+R1 merge PR #199, claim F077, reset the record, register R-0380 and R-0381 ✅ →
+R2 the T001 inventory → R3 T001 evaluators → R4 T002 pause and decision → R5
+T003 CLI and report → integration gate → closure.
