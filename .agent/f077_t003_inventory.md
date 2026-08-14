@@ -290,3 +290,266 @@ Three consequences R14 must know, each read off a body rather than a name:
    runs BEFORE `decide` is ever called, and the ledger append runs for every
    trip whatever `decide` returned. A suppressed trip still pauses and still
    writes an entry.
+
+## Q5 — the report surface
+
+### The block's premise is wrong, and this is the most consequential finding here
+
+`mission report` is NOT a mission-facing command. Evidence:
+
+- `grep -rn '"mission.report"' --include=*.py apps/ packages/` → the handler is
+  `_cmd_mission_report` in **`apps/cli/commands/worker_facade_cmd.py`**, not in
+  `mission_cmd.py`.
+- Its `CommandEntry` declares `ArgDef("run_id", "Run ID")` — a RUN id, not a
+  mission id — and `--job-id`.
+- The renderer is `build_mission_morning_report` in
+  `packages/orchestration/dogfood_run.py`. Reading its body: it calls
+  `load_dogfood_run`, `list_dogfood_runs` and `evaluate_dogfood_run`, and fills a
+  `MissionMorningReport` from a `DogfoodRun`. It never imports `mission_state`,
+  never calls `load_mission`, never calls `read_ledger`, and never sees a
+  `Mission` record.
+- Its `report.mission_status` field is a FALSE FRIEND: it is assigned
+  `"satisfied" if ev.satisfied else ev.status` from `evaluate_dogfood_run`, i.e.
+  the dogfood contract's verdict. It is never one of the four
+  `MISSION_STATUS_*` constants and will never read `paused`.
+- The two objects are distinguished at runtime elsewhere in the same module:
+  `_cmd_mission_run` calls `_names_a_mission(run_id, ...)` and branches to the
+  F070 loop only when the positional resolves to a real mission. `_cmd_mission_report`
+  has NO such branch.
+
+So "a paused-by-watchdog mission's report leads with the trip" has **no insertion
+point in `mission report` as it stands**. Making it fit means giving
+`_cmd_mission_report` the same resolve-or-facade branch `_cmd_mission_run`
+already has, which is a change to `worker_facade_cmd.py` — and Q6 shows that file
+is the one place in this area with a hard exact-set guard.
+
+### The candidate surfaces that DO read the mission
+
+| Surface | File | Symbol | Reads |
+|---|---|---|---|
+| the run summary | `apps/cli/commands/mission_cmd.py` | `_cmd_mission_run_loop` | `run_mission` result + `read_ledger` + `render_ledger` |
+| the full ledger | `apps/cli/commands/mission_cmd.py` | `_cmd_mission_ledger` | `read_ledger` + `render_ledger` |
+| the mission chain | `apps/cli/commands/mission_cmd.py` | `_cmd_mission_show` | `mission_state.render_mission_chain` |
+
+`_cmd_mission_run_loop`'s text output has a fixed shape — mission id, then
+`Terminal:`, then `result.detail`, then `Iterations this run:`, then a
+`TERMINAL_NO_PROVIDER` note, then the ledger block, then the `Full ledger:`
+pointer. A "leads with" line would go between the mission id and `Terminal:`.
+
+### Does the renderer have a notion of leading or priority sections?
+
+**No.** `orchestrator_loop.render_ledger` is a single `for body in entries` loop
+that appends in ledger order and joins with `\n`. There is no sort, no
+partition, no header, no section concept, and its only special-casing is
+per-FIELD (`if move.get("rationale")`, `if outcome.get("detail")`,
+`if usage`). T003 would be INTRODUCING the notion of a leading section wherever
+it puts it. Because the block forbids reordering nothing in particular here, this
+is recorded as a design fact, not a defect.
+
+One thing already works in T003's favour and should not be rebuilt: a
+`watchdog_tripped` entry already renders its whole evidence triple, because
+`render_ledger` prints `move["kind"]` and then every key of `move["payload"]` in
+`sorted` order, and `act_on_trips` puts `trip.to_json()` in that payload
+(DECISION F077 D5).
+
+## Q6 — the guards that already constrain these files
+
+Checklist item 7, run as work. Command:
+`grep -rn '\.count(' tests/ --include=*.py` → **56 hits**, and ZERO of them read
+`mission_cmd.py`, `command_catalog.py`, `worker_facade_cmd.py` or `dogfood_run.py`.
+The whole-file guards in this area are `len(...) == N` and `set(...) == {...}`
+instead, and there are exactly six that matter.
+
+| Path | Test | What it pins | Verdict for R14 |
+|---|---|---|---|
+| `tests/cli/test_worker_facade_cmd.py` | `TestHandlerRegistry::test_all_handlers_present` | `set(worker_facade_cmd.COMMAND_HANDLERS.keys()) == expected`, an explicit 12-key literal set including `mission.report` | **BLOCKS** any new handler in `worker_facade_cmd.py` |
+| `tests/cli/test_worker_facade_cmd.py` | `TestCatalogIntegration::test_all_facade_commands_have_handlers` | `len([c for c in CATALOG if c.command_id in COMMAND_HANDLERS]) == 12` | **BLOCKS** the same |
+| `tests/orchestration/test_dogfood_run.py` | `TestCLIHandlers::test_handlers_registered` | `len(dogfood_cmd.COMMAND_HANDLERS) == 12` | **BLOCKS** a handler added to `dogfood_cmd.py` |
+| `tests/orchestration/test_dogfood_run.py` | `TestCatalogEntries::test_dogfood_commands_in_catalog` | `len(dogfood_cmds) == 12` for `group_id == "dogfood"` | **BLOCKS** a new `dogfood.*` entry |
+| `tests/orchestration/test_mission_compiler.py` | `test_the_cli_names_the_provider_it_planned_with` | `source.index("outcome = plan_mission(")` in `mission_cmd.py`, then `'provider_kind="ollama"'` within the next 200 chars | CONDITIONAL — red only if a new, textually EARLIER `outcome = plan_mission(` appears |
+| `tests/orchestration/test_orchestrator_loop.py` | `test_the_cli_names_the_provider_it_runs_with` | `source.index("result = run_mission(")` in `mission_cmd.py`, same 200-char window | CONDITIONAL — same shape |
+| `tests/ui_server/test_dashboard_contract.py` | `TestJobSummaryCommandContract::test_job_summary_supports_json` | `catalog.index("job.summary")`, then `supports_json=True` within 400 chars | CONDITIONAL — red only if a new entry puts the literal `job.summary` textually above the real one |
+
+The two `source.index` guards on `mission_cmd.py` carry their own docstring
+saying the scope was narrowed on purpose after R-0258, which is why they take the
+FIRST occurrence rather than counting.
+
+### The one that decides where R14 puts the handlers
+
+`apps/cli/commands/mission_cmd.py`'s own `COMMAND_HANDLERS` — 10 keys today — has
+**no size guard and no key-set guard anywhere**:
+`grep -rn 'COMMAND_HANDLERS' tests/cli/test_mission_cmd.py` returns nothing.
+`grep -rn '_status_for_verb' tests/` also returns nothing — the verb→status
+mapping is entirely untested today.
+
+So: register `mission.watchdog` and `mission.resume` in `mission_cmd.py`.
+Registering either in `worker_facade_cmd.py` turns two green tests red in the same
+commit.
+
+### The scoped ones that are harmless (recorded so R14 does not fear them)
+
+`tests/cli/test_mission_cmd.py`'s `test_mission_run_is_registered_exactly_once`
+and `test_mission_ledger_is_registered_exactly_once` filter `CATALOG` by ONE
+`command_id` before `== 1`, so a different id cannot touch them.
+`test_the_mission_commands_are_in_the_catalog`,
+`test_the_transition_commands_are_in_the_catalog`,
+`test_every_mission_command_has_a_handler` and
+`test_no_mission_command_may_execute_or_mutate_the_repo` all use `<=` subset
+checks or fixed 3-id lists. `tests/cli/test_worker_facade_cmd.py`'s
+`test_mission_commands_in_catalog` says so in its own docstring: "A subset, not
+the whole group […] not the group's size."
+
+No test pins the group's size or the catalog's:
+`grep -rn 'len(CATALOG)' tests/` and
+`grep -rn 'get_commands_for_group("mission")' tests/` both return nothing.
+
+## Q7 — the catalog's completeness contract
+
+The catalog-wide gate is ONE file: `tests/test_command_catalog.py`. The
+`dashboard_contract` suite is not one — `python3 -m pytest tests/ -q -k
+"dashboard_contract" --collect-only` reports `70/16864 tests collected (16794
+deselected)`, all 70 in `tests/ui_server/test_dashboard_contract.py`, and only its
+`ui.start` and `job.summary` tests touch the catalog at all.
+
+`ActionClass` in `apps/cli/command_catalog.py` is a `Literal` of exactly eight
+values: `read_only`, `write_metadata`, `approval_gate`, `apply_write`,
+`test_execution`, `dev_helper`, `local_state_change`,
+`controlled_builder_execution`.
+
+### What `tests/test_command_catalog.py` demands of a new entry
+
+| Test | Rule | Demand on `mission.watchdog` / `mission.resume` |
+|---|---|---|
+| `test_no_duplicate_command_ids` | ids unique | both ids are free (Q3) |
+| `test_no_duplicate_grouped_paths` | `(group_id, subcommand)` unique | `("mission","watchdog")` and `("mission","resume")` are free |
+| `test_every_command_belongs_to_known_group` | `group_id in GROUPS` | `"mission"` exists |
+| `test_command_id_format` | `command_id.split(".",1)` must equal `(group_id, subcommand)` | `command_id="mission.watchdog"`, `group_id="mission"`, `subcommand="watchdog"` — no aliasing |
+| `test_every_command_has_action_class` | one of the eight | see the precedent row below |
+| `test_mutating_commands_flagged` | `may_mutate_repo or may_execute_commands` ⇒ not `read_only` | leave both `False` |
+| `test_no_sensitive_terms_in_descriptions` | `description` free of `password=`, `BEGIN PRIVATE KEY`, `raw_stdout`, `raw_stderr`, `diff_preview`, `approval_reason`, `api_key=`, `secret=` (case-insensitive) and of token-boundary `sk-`, `ghp_`, `xoxb-` | ordinary prose passes; the token-boundary regex is why "task-scoped" is safe |
+| `test_no_sensitive_terms_in_arg_help` | same list over every `ArgDef.help` | applies to any new `ArgDef` |
+| `test_json_commands_have_json_arg` | `supports_json` ⇒ an arg literally named `--json` | reuse `_JSON_OPT` |
+
+### Rules that DO NOT exist — R14 must not invent them as constraints
+
+Each was proven by a command that returned nothing:
+
+- **Description style.** No period, capital, verb-first, or length rule.
+  `grep -rn 'description.endswith\|description\.startswith\|len(cmd.description)' tests/ --include=*.py`
+  → no catalog hits.
+- **`related=` existence or symmetry.** `grep -rn '\.related' tests/ --include=*.py`
+  → 3 hits, all single-membership checks in `test_context_inspect_cli.py` and
+  `test_change_proof_cli.py`. Confirmed independently in Q1 by the dangling
+  `readiness.show` target.
+- **Ordering.** `grep -rn sorted tests/test_command_catalog.py tests/test_grouped_cli.py`
+  → no output.
+- **A global catalog↔handler parity test.** None exists; every handler assertion
+  found is a hard-coded id list. (The bijection is nonetheless TRUE today at 334
+  ≡ 334 — Q1 — and `integrity check`'s `handler_import` check reports
+  `handlers=334`.)
+- **A global catalog↔parser reachability test.** None exists; reachability is
+  structural, via `build_parser`.
+- **A catalog→docs sync test.** Only the reverse exists: commands NAMED in
+  `docs/guides/autocoder-usage.md` must exist in the catalog
+  (`tests/cli/test_do_cmd_summary.py`). Adding an entry needs no doc edit.
+
+### The tests that will exercise the new entries indirectly
+
+`tests/test_grouped_cli.py` parametrizes over `_HELP_CONTRACT_GROUPS`, which is
+every group in `GROUPS`, so `mission` is covered:
+`test_group_help_lists_subcommands` asserts `cmd.subcommand in stdout` for every
+entry of the group, and `test_main_entrypoint_delegates_group_help_to_grouped_cli`
+repeats it through `apps.cli.main`. Both are satisfied automatically because help
+renders from the catalog — but they mean a badly-formed entry fails as a HELP
+test, not as a catalog test, which is where R14 should look first if it goes red.
+`test_help_no_sensitive_leaks` re-scans the rendered help with a PLAIN substring
+list (no token boundary, unlike `test_command_catalog.py`), so a bare `sk-`
+anywhere in a description or arg help is red there even if the catalog test
+passes.
+
+### The shape the group's precedent sets
+
+`tests/cli/test_mission_cmd.py`'s `TestPlanCatalog` and its transition-command
+tests apply the same five assertions to each mission write command:
+`action_class == "write_metadata"`, `supports_json is True`, the id in
+`collect_all_handlers()`, `may_execute_commands is False`, `may_mutate_repo is
+False`. `mission.ledger` and `mission.report` are the `read_only` precedent, both
+with `supports_json=True`. Reading those across the group: a read-only
+`mission watchdog` matches `mission.ledger`; a `mission resume` that moves the
+status matches `mission.pause`, which is `write_metadata`.
+
+## Q8 — what a paused mission does on the next pass
+
+### The safe point, exactly
+
+In `packages/orchestration/orchestrator_loop.py`, `run_mission`'s per-iteration
+loop opens with TWO safe points, and the block conflates them.
+
+The FIRST is the stop-request safe point: `stop_requested` → `consume_stop` →
+build a `TERMINAL_STOPPED` `MoveOutcome` → `_record(...)` → `return
+build_boundary_handoff(result, root)`. This one DOES write a ledger entry.
+
+The SECOND is the status safe point, and it is the one Q8 asks about:
+
+```
+        mission = load_mission(pid, mission_id, root)
+        if mission.status != MISSION_STATUS_ACTIVE:
+            result.terminal = TERMINAL_NOT_ACTIVE
+            result.detail = f"mission status is {mission.status}"
+            result.iterations = step - 1
+            return result
+```
+
+It does exactly four things and **writes NO ledger entry** — there is no
+`_record` call between the `if` and the `return`, and it returns `result` bare
+rather than through `build_boundary_handoff`. `TERMINAL_NOT_ACTIVE` is the string
+`"mission_not_active"`. So the block's phrase "the ledger entry the safe point
+writes" is wrong for this safe point; it describes the stop-request one above it.
+Correspondingly there is no interaction between a safe-point entry and the trip
+entry, because the former does not exist. What R14 needs from this is narrow:
+`resume` must restore `status == "active"` and nothing else, because the status
+is the ONLY thing this safe point reads.
+
+### The re-trip risk: the code CONFIRMS it, for all three tripwires
+
+The plan carries this as a risk. It is real, and reading the evaluators makes it
+sharper than the plan states.
+
+The order inside one iteration is: `execute_move` → `_record` → `if
+outcome.terminal: return` → `watchdog_pass(...)`. So the watchdog runs at the END
+of a continuing iteration, and the status safe point runs at the START of the
+next one. After a resume the loop therefore completes ONE full iteration —
+including a dispatch — before the watchdog can pause it again.
+
+And it will pause it again, because `read_ledger` returns the mission's whole
+history across every run and nothing prunes it:
+
+- **`no_progress`** — its run counter is cleared only by a
+  `declare_milestone_done` entry or by a change of `milestone_id`. A
+  `watchdog_tripped` entry is neither: `_move_kind` returns `"watchdog_tripped"`,
+  so the `MOVE_DECLARE_MILESTONE_DONE` branch is skipped and
+  `dispatched_entries([entry])` is empty, which `continue`s. The run therefore
+  survives the trip entry, and the FIRST dispatch after the resume makes
+  `len(run) >= repeats` true again.
+- **`goal_drift`** — `evaluate_goal_drift` returns on the first unknown
+  milestone anywhere in the ledger. That entry is permanent, so this tripwire
+  re-fires on EVERY pass until the milestone becomes known. Strongest case of the
+  three.
+- **`burn_anomaly`** — the trip entry itself does not disturb the window, because
+  `act_on_trips` writes `cost={"calls": 0, "usage": None, ...}` and
+  `measured_tokens` returns `None` for a missing `usage`, which the evaluator
+  skips. So the same trailing window is compared to the same baseline on the next
+  pass and re-fires until enough cheaper MEASURED iterations shift it.
+
+And the pause is re-applied whether or not the decision was answered, because
+`act_on_trips` pauses before `decide` is consulted (Q4, consequence 3). What
+differs is only the decision: if the human ANSWERED it, the marker scan finds no
+open record and a new decision is enqueued; if the human did not, the trip is
+suppressed and only the pause and the ledger entry are written.
+
+Net, and this is the sentence R14 must design against: **`mission resume` as D4
+defines it buys exactly one iteration.** Nothing in the current code prevents the
+immediate re-trip, and this inventory does not repair it — it records that D4's
+verb is necessary but, on its own, not sufficient, and that R14's block should
+decide explicitly whether T003 ships the verb as D4 scoped it and leaves the
+re-trip to a follow-on, or widens.
