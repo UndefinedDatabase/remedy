@@ -28,9 +28,9 @@ gains a top-level `watchdog_trips`, and an unpaused one is unchanged. `show`
 stays read-only — it re-evaluates nothing.
 
 ## Next Steps
-1. R16 — the integration gate per docs/agents/integration_gate.md. Its FIRST
-   commit owes R15's own `Gate: R15 — ` paragraph, which cannot exist before
-   this round is reviewed.
+1. R16 — the integration gate per docs/agents/integration_gate.md. It owes no
+   gate paragraph: R15 was reviewed and its verdict is on the record, so R16's
+   first commit is the integration gate's own work.
 2. Closure per docs/roadmap/STATUS_closure_protocol.md — which still owes an
    ist-doc for the watchdog under `docs/`, registered in `docs/README.md`. No
    round has written it yet.
