@@ -211,3 +211,52 @@ How to reverse: delete this decision, restore the R11 line of the step map in
 `.agent/context.md`, and order T003b whole. The inventory answers stay useful
 either way — they land in the feature file's Built State, which is where the
 closure round reads from.
+
+Gate: R11 — PASS, with one new finding, the reviewer's again. Verification tier: round gate plus the docs-round gate plus the canary; no full-suite claim is made and none is owed. All seventeen ordered gates were re-executed by the reviewer against the disk rather than read out of the handback, and every one reproduces at its reported value. Transport is proven at PRIMARY strength: the scratchpad `.remedy-wt/f082-r11-scratchpad.md`, `.agent/authored/f082-r11.md` and `.agent/last_block.md` are byte-identical at shared sha256 `5e59957b1d87982ddb4d2eb542e244c4e88794bfe39ef38362b6ab30b918a060`, 25835 bytes and 308 lines, and that digest equals the one the reviewer ordered in the delegation, so the block that ran is provably the block that was authored. The C1 append is a PROPERTY: `post == pre + add` holds byte-wise over the committed `7dd4f605^`→`7dd4f605` where `add` is GATE-R10, FINDING-R418 and DECISION-D6 joined as committed, the 174-line pre-file is an exact prefix of the 213-line result, and the numstat is `39 0` with the deletion column zero. Both context pairs re-proven as properties over their own committed revisions, each a REWRITE with its FROM going 1x to 0x and its TO landing 1x; `.agent/plan.md` byte-equals the PLAN slice as a whole file at 42 lines; `.agent/context.md` keeps every contract reader at 67 lines. The record counts are `^Gate: R10 — PASS` 1, `^- R-0418 — ` 1, `^## DECISION F082 D6` 1, `^Landed: ` 0 and `^Done: ` 0; the open set recomputed mechanically is FORTY-EIGHT with no duplicate, max R-0418 and next free R-0419. The change set is seven paths, every one inside the block's Change list, and `git diff --name-only 9f2ab66d..HEAD -- apps/ packages/ tests/` is EMPTY, which is the promise an inventory round exists to keep. Suites re-run by the reviewer at the branch head: `tests/docs/` `295 passed`, the canary plus the three contract readers `184 passed`, `tests/cli/test_stats_bench.py` `25 passed` so R10's work still stands untouched, and `integrity check --json` `passed: true`, `fail_count: 0` over 5 checks with `handlers=337` unchanged, proving this round touched no registration. Insertions per commit are 308, 242, 39, 6, 144, 23 and 118, none over 500, and `gh pr list --state open` is `[]`. C3 was verified as a PURE APPEND into the feature file — `post.startswith(pre)` is TRUE — and `## Built State` provably did not exist at 9f2ab66d, so the worker's declared deviation is exactly what the disk shows and the section it created touches none of the sections Constraint 4 protects. The inventory itself is the deliverable and the reviewer spot-checked it rather than accepting it: Q1's claim that THREE roles bind a model is true — `ollama_planner/provider.py::_resolve_model` and `ollama_builder/provider.py::_resolve_model` are two more bindings beside the orchestrator's config read, and `role_config.py::KNOWN_ROLES` is a seven-role table whose `_FIELDS` include `model`; Q7's claim that "the bench never runs implicitly" is UNPINNED is true, since `append_bench_run` and `dry_run_from_order_set` have no caller anywhere under `apps/`, `packages/` or `scripts/`, so the criterion holds today by absence and no test would notice if it stopped holding; Q7's other half is pinned exactly where it says, at `test_bench_orders.py::test_editing_an_order_without_bumping_its_version_fails_validation`; and Q4's correction to the reviewer is upheld — `docs/roadmap/features/T2_F082.md`'s Do-not-touch section names the gauntlet's pass definition, routing decisions and visual judgment, which are BEHAVIOURS, and does not name `gauntlet_runner.py` as a file at all. The round's most valuable act was refusing to silently repair the reviewer: Constraint 7 ordered verbatim application, two ordered slices were false on arrival, and the worker applied them as ordered and declared them rather than correcting them in place — which is correct twice over, because a worker that had "fixed" them would have broken the byte-equality gates that make transport provable, and the fabrication would have been invisible. That is finding R-0419, and it charges the reviewer. No block condition was hit — no fabricated data by the worker, no false live indicator, no missing changed-files table, no unverified completion claim, no silent scope change.
+
+- R-0419 — Medium, REVIEWER-BLOCK DEFECT, found by the worker and confirmed by the reviewer against the code. The R11 block asserted a fact about this repository that a wider grep refutes: DECISION-D6 states the reviewer "found exactly one role bound to a model — `orchestrator.model`", and the PLAN slice repeated it as "only one role is bound to a model". Both are FALSE. `packages/providers/ollama_planner/provider.py::_resolve_model` and `packages/providers/ollama_builder/provider.py::_resolve_model` each bind a second and third role to a model, and `packages/orchestration/role_config.py::KNOWN_ROLES` is a seven-name table whose resolvable `_FIELDS` include `model`. The cause is precise and worth naming rather than generalising: the reviewer grepped ONE file, `gauntlet_runner.py`, and wrote the result as a property of the whole repository. That is the R-0391 class — "an invariant is not established by the first file you look in; grep every writer before authoring a claim against it" — recurring here in its authored-block form rather than its finding form. The claim was also load-bearing, which is what makes this Medium rather than Low: the scarcity of role→model bindings was the stated reason DECISION F082 D6 inserted an inventory round, so a false fact was carrying a real planning decision. The decision survives its bad reason — the inventory was worth running, and it is precisely what caught this — but the reason is corrected in DECISION F082 D7 rather than left standing. Standing rule from here, binding the reviewer: a block may state a repository-wide absence ("nothing does X", "only one Y exists") only after a repository-wide search, and the block names the search it ran. An absence claimed from a single file is an unrun claim.
+
+## DECISION F082 D7 — T003b may add one key to the gauntlet's evidence body
+
+This decision SUPERSEDES the factual clause of DECISION F082 D6 (that clause
+is corrected by finding R-0419, not deleted; D6 stands as the record of why
+R11 ran) and rules on the question R11's inventory opened but could not close.
+
+The inventory's finding: recording "which models served which roles" is
+answer (c) — not recordable today without a change to a gauntlet module. A
+gauntlet `run.json` carries no model identity at all
+(`gauntlet_runner.py::_evidence_body`, sixteen keys, none a model), and the
+token ledger's `model` column cannot be joined to a bench row because the only
+run-time writer of that ledger is off the gauntlet path and `run.json` carries
+no correlating id.
+
+Chosen: T003b MAY add a `models` key to `gauntlet_runner.py::_evidence_body`,
+as a SECOND declared exception to the ADDITIVE constraint R2's inventory set,
+on three conditions. First, the key is ADDITIVE — no existing key changes
+name, type or meaning, so every existing reader keeps working. Second, the
+gauntlet's own seven test files stay green UNMODIFIED; if any needs an edit,
+the change is not additive and the round stops. Third, an absent binding is
+recorded as absent, never as a default model name — an invented model is
+precisely the class of lie F082 exists to prevent, and the same reason
+`repair_rounds` is `None` rather than 0.
+
+Why this is allowed at all: `gauntlet_runner.py` is NOT on F082's Do-not-touch
+list. That list names the gauntlet's pass definition, routing decisions and
+visual judgment — behaviours, not files — and this change decides no pass and
+routes nothing; it records what already happened. DECISION F082 D1 already
+excepted this same module once, at `::measure_tokens`, which makes this the
+second exception and not the first. That D1 exists is also the reason this
+needs a decision rather than a shrug: the ADDITIVE constraint is real, and a
+second exception granted silently would retire it by attrition.
+
+Alternatives considered: (a) a run-level header row in the bench history
+carrying the models — rejected, the bench would be recording what it did not
+observe, since the models are the gauntlet's and the bench only reads its
+evidence; (b) drop model-context recording from F082 — rejected for the reason
+D6 gave, it is an explicit Design bullet with named downstream consumers; (c)
+join through the token ledger — rejected, the inventory showed the join key
+does not exist.
+
+How to reverse: delete this decision and T003b records no model context; the
+feature then closes with a Design bullet unbuilt and an assumption_log entry
+saying so, which is a worse but legitimate outcome.
