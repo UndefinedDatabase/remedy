@@ -31,8 +31,17 @@ in-scope set to `watchdog.evaluate_mission` — the read-only twin
 `mission watchdog` (read-only) and `mission resume` (D4-scoped to the status),
 and with them `apps/cli/command_catalog.py`, `apps/cli/commands/mission_cmd.py`
 and `tests/cli/test_mission_cmd.py`. `apps/cli/commands/worker_facade_cmd.py`
-stays OUT: two exact-set guards live there (inventory Q6). Open findings after
-R14: TWENTY-THREE, next free id R-0393.
+stays OUT: two exact-set guards live there (inventory Q6). R15 finished T003
+and added two more in-scope symbols: `watchdog.latest_trips_from_ledger`, the
+pure reader that reconstructs the trips a ledger already RECORDS, and the trip
+LEAD in `_cmd_mission_show` under DECISION F077 D12 — text and `--json`, and
+`show` re-evaluates nothing, so what it reports is the trip that caused THIS
+pause. `packages/orchestration/mission_state.py` stays OUT with the facade:
+`render_mission_chain` takes a `Mission` and the trips live in the LEDGER that
+`orchestrator_loop` owns, and `orchestrator_loop` imports `mission_state`, so
+reading the ledger from the renderer would invert that dependency into the
+import cycle `watchdog` keeps its imports inside function bodies to avoid. Open
+findings after R15: TWENTY-FOUR, next free id R-0394.
 
 Out: repair logic, class-expectation anomaly detection and loop policy — the
 F077 feature file's Do-not-touch list. The watchdog never modifies plans, jobs
@@ -83,6 +92,9 @@ the side-effect-free evaluator, the dedup's real home, the report surface, the
 guards and the paused-mission pass → R14 record the R13 PASS, decide DECISION
 F077 D12 and build the first half of T003 against the inventory: the read-only
 `watchdog.evaluate_mission`, the manual `mission watchdog` CLI and the
-`mission resume` verb, report surface deferred → R15 record the R14 verdict and
-build that report surface — the trip lead in `_cmd_mission_show` under D12 →
-R16 integration gate then closure.
+`mission resume` verb, report surface deferred → R15 record the R14 verdict,
+register R-0393 and build that report surface — `latest_trips_from_ledger` plus
+the trip lead in `_cmd_mission_show` under D12, which completes T003 → R16 the
+integration gate per docs/agents/integration_gate.md, then closure per
+docs/roadmap/STATUS_closure_protocol.md, which still owes the watchdog's
+ist-doc under `docs/`.
