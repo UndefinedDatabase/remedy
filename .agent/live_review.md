@@ -1,46 +1,28 @@
-# Live Review — paydown0814 closure debt
+# Live Review — F057 Rate-limit-aware scheduler
 
-> Round-by-round review record for the paydown0814 branch, reset at the branch
-> claim. The F045 record closed with PR #197, merged 2026-08-14 at this
-> session's Open PR Gate; that round's verdict lives in the PR's closure
-> comment, per docs/agents/planner_reviewer_prompt.md §4 item 13. Finding ids
-> continue the monotonic R-XXXX series across the reset. Next free id: R-0362.
+> Round-by-round review record for the F057 branch, reset at the feature claim.
+> The paydown0814 record closed with PR #198, merged 2026-08-14; that branch's
+> closing verdict lives in its handoff and in the PR, per
+> docs/agents/planner_reviewer_prompt.md §4 item 13. Finding ids continue the
+> monotonic R-XXXX series across the reset. Next free id: R-0363.
+>
+> This reset CARRIES the open set forward rather than dropping it. R-0361 was
+> open when the previous record closed and is reproduced verbatim at the end of
+> this file, byte for byte out of `21c8148e:.agent/live_review.md`. See
+> DECISION F057 D1 in `.agent/decisions.md`.
 
 ## Steps
-R1 register the two candidates carried out of the F045 closure plus the gate
-round's own finding, and empty `.agent/candidates.md` → R2 fix R-0359 and
-R-0360, each in its own gated commit, with a red-proof for the new pin → R3
-record the reviewer's verdict and its resolutions → R4 merge PR #198 at the
-Open PR Gate, which is the round that finally turns `main` green.
-
-R2 verdict, issued at `bc0f5223` by the second session's reviewer: PASS. Every
-gate the R2 block ordered was re-run by the reviewer itself rather than read
-out of the worker's report — the cap probe (`chars 3111 tokens 778 cap 800`),
-`tests/orchestration/test_role_conventions.py` (`26 passed`), the content and
-trailing-whitespace guards, the pair proof, the new pin by node id, the whole
-`tests/docs/` suite (`295 passed`), ruff, a red-proof in the reviewer's own
-disposable worktree, and the golden-path canary (`42 passed`). The change set
-is exactly the five files the R2 block named; no `packages/`, `apps/`,
-`STATUS.md` or `README.md` was touched. Both authored slices are byte-identical
-on disk to what was applied. No block condition was hit.
-
-inline clerical fix: the R2 handoff's Range header named `ad82b469..HEAD, 4
-commits`, but that range holds 5 — it swept in `ff3f1273`, the already-reviewed
-R1 handback. The reviewed R2 range is `ff3f1273..HEAD`, which is also the SHA
-the R2 block itself names as the round's starting point. That header's own
-per-commit table listed the correct four commits and the reviewer derived the
-range mechanically, so nothing downstream was misled. Corrected here under the
-ephemeral-artifact rule in docs/agents/reviewer_conventions.md; no finding id
-spent, and the next free id stays R-0362.
+R1 claim F057, reset this record carrying R-0361 forward, register R-0362,
+record DECISION F057 D1, and build T001 — one place that normalizes the
+rate-limit signal shapes this repo really emits, with unit tests over samples
+extracted from existing evidence → R2 T002, the governor itself: per-provider
+cooldown state, `acquire()` with a budget deadline, an injected clock, and the
+stop-beats-wait ordering → R3 T003, the seam integration at the provider-call
+choke point, wait evidence, the report line, and the limit-emitting fixture
+end-to-end → integration gate → closure.
 
 ## Findings
 
-- R-0359 — Medium — the reviewer conventions document is over its prompt-segment token cap, and `main` is red because of it. `docs/agents/reviewer_conventions.md` is 3813 characters, which `token_economy.estimate_text_tokens` — documented as `chars/4` and implemented as `math.ceil(len(text) / _CHARS_PER_TOKEN)` — turns into 954 tokens against the `CONVENTIONS_TOKEN_CAP` of 800 in `packages/orchestration/prompt_segments.py`, so the registry's `register` raises `PromptSegmentError: prompt segment 'reviewer_conventions' is over its token cap: 954 tokens estimated, cap 800` and five ids in `tests/orchestration/test_role_conventions.py` fail on `main` itself. The reviewer reproduced this at `1e7f7bca` with a full `pytest -n auto`: `5 failed, 16769 passed, 19 skipped in 132.23s`, the five being exactly those ids. Present since `a85e82f5` (2026-08-12); F115 and F045 both closed over it under DECISION F045 D8, which routes the repair to its own branch because AGENTS.md forbids mixing an unrelated fix into a feature branch. Carried out of the F045 closure as candidate 1 and registered here with the next free id. Fix by trimming the document under the cap WITH headroom: the worker conventions document sits at 740 tokens, and a repair landing at 799 re-breaks `main` on the next clause anyone adds. Every RULE in the document survives the trim — only prose, duplication and retold precedents are compressed. OPEN.
-
-Done: R-0359 — Fixed at `2fce58c1`, verified by the reviewer at `bc0f5223`. `docs/agents/reviewer_conventions.md` was replaced in full by the authored slice; the reviewer re-ran the cap probe itself and measured `chars 3111 tokens 778 cap 800`, 22 tokens of headroom against `CONVENTIONS_TOKEN_CAP` in `packages/orchestration/prompt_segments.py`, then re-ran `python3 -m pytest tests/orchestration/test_role_conventions.py -q` → `26 passed`, exit 0, so the five ids that fail on `main` are green on this branch. Transport was proved disk to disk rather than by retype: sha256 over the CONVENTIONS slice of `.agent/authored/paydown0814-r2.md` and over the applied file are both `213b28e1c84b4b60dfc900c4dd43af32de2abb73b7dfe5f213680559a32218b8`. The content guards were re-run green — the three required headings present, `numbered 6` block conditions, no trailing whitespace, exactly one terminating newline. The reduction came from pointing the Discoverability section at AGENTS.md's Code Discoverability Conventions instead of restating them; every rule the pre-trim document carried survives, and `CONVENTIONS_TOKEN_CAP` was deliberately left alone, which is what keeps this a repair rather than a cap move. `main` itself only turns green when PR #198 merges.
-
-- R-0360 — Low — the README tier table's `Done` column is unpinned and silently drifted. `tests/docs/test_docs_consistency.py` pins the prose count beside it with `test_the_readme_accepted_count_equals_the_status_count` (R-0156), but no assertion reads the per-tier `Done` cells of the `## Status` table, so the Tier 2 cell sat at 6 while the ledger derived 7 from the F111 closure (`98a49b5c`, 2026-08-13) until the F045 closure corrected it to 8. The reviewer re-derived the true distribution at `1e7f7bca` by resolving every `^- \[x\] F\d{3} — ` id in `docs/roadmap/STATUS.md` through its feature file's tier prefix: tier 0 = 16, tier 1 = 22, tier 2 = 8, every other tier 0, total 46 — which the README's eighteen tier rows currently match, so the pin passes on arrival. Carried out of the F045 closure as candidate 2 and registered here. Fix by adding a pin that performs that derivation and asserts EVERY tier row, reusing the module's existing `_feature_ids()` helper rather than writing a second spelling of it. Because the pin passes on arrival it is worthless without a red-proof, which runs only inside a disposable git worktree. OPEN.
-
-Done: R-0360 — Fixed at `02572f74`, verified by the reviewer at `bc0f5223`. `tests/docs/test_docs_consistency.py` gained one method, `TestPrimaryDocsAreHonest::test_the_readme_tier_table_done_column_matches_the_ledger`, which re-derives each tier's accepted count by resolving every `^- \[x\] F\d{3} — ` id in `docs/roadmap/STATUS.md` through its feature file's tier prefix via the module's existing `_feature_ids()` helper, then asserts EVERY tier row of the README table and that no accepted tier lacks a row. The reviewer re-ran the node id → `1 passed`, exit 0; `python3 -m pytest tests/docs/ -q` → `295 passed`, exit 0, exactly one more than R1's 294; `python3 -m ruff check` → `All checks passed!`, exit 0. Because the pin passes on arrival, the reviewer re-ran the RED-PROOF itself, inside its own disposable worktree at `bc0f5223` and never in the primary checkout: the import path was proved first — the probe printed `REPO /home/decodeux/Repos/remedy/.remedy-wt/reviewer_r2_red`, so the mutated copy is the one under test — and then Tier 2's `Done` cell was mutated 8 to 7 and the pin FAILED at its own assertion, `AssertionError: README Tier 2 Done=7; the ledger derives 8` with `assert 7 == 8` and the derived distribution `{0: 16, 1: 22, 2: 8}`. The worktree was removed and pruned; `git worktree list` returned to a single line and the primary checkout's `git status --porcelain` stayed empty. `README.md` was correctly NOT edited — its table already matched the ledger, so the fix is the pin, not a number change.
+- R-0362 — Medium — the open-finding set is silently discarded at every branch claim, and Rule A2 forbids the claim that discards it. ROADMAP.md:27 states Rule A2 as "Every block ends with a final review: PASS or FINDINGS. No new feature is started while findings are open", and `docs/agents/reviewer_conventions.md` restates it as "No new feature starts while findings are open (A2)". At the F045 closure the reviewer's own GATE-R15 entry recorded the open set as exactly three — R-0350, R-0354 and R-0358, all Low — after RECOMPUTING it from the record per the pre-emission checklist's item 10. None of those three ids appears anywhere in the paydown0814 record that replaced it: `git show f789ebc8:.agent/live_review.md` carries only R-0359, R-0360 and R-0361. The reset therefore did not resolve them, did not defer them and did not name them; it dropped them, and the same mechanism was about to drop R-0361 at this claim. Two rules are in conflict and neither yields on its own: A2 read literally blocks every feature claim that follows a PASS_WITH_RISKS closure, which is six of the last seven closures in `docs/roadmap/STATUS.md`, while the reset as practised makes A2 unenforceable by erasing its input. No governing document authorises the erasure — `docs/agents/planner_reviewer_prompt.md` §1 says the record is reset at the claim but says nothing about what happens to findings that are open when it is, and `docs/roadmap/STATUS_closure_protocol.md` routes only CLOSURE CANDIDATES, which are explicitly not findings and spend no id. Registered here rather than acted on silently, per §2's rule that a practice invoked without a doc pointer is a finding candidate in the same brief. The structural half of the fix is applied in this round: this record carries R-0361 forward verbatim instead of dropping it, and DECISION F057 D1 states the reading under which the claim proceeds. The documentation half — an explicit carry-forward rule in `docs/agents/planner_reviewer_prompt.md` §1, and whatever becomes of R-0350, R-0354 and R-0358 — is NOT in this feature's scope: AGENTS.md forbids mixing an unrelated fix into a feature branch, so it belongs on its own paydown branch, exactly as DECISION F045 D8 routed the reviewer-conventions repair. OPEN.
 
 - R-0361 — Low — a gate round ordered a proof command the session cannot execute, and asserted an exit code the fetch tool contradicts. The R1 gate block ordered the posted F045 verdict fetched back with `gh api --paginate ... --jq '.[-1].body'` and `cmp`-ed against the authored file, expecting exit 0. `gh api` is denied by this session's permission layer, so the ordered command never ran at all; the worker's substitute, `gh pr view 197 --json comments --jq`, exited 1 because the `--jq` writer appends a newline to a body that already ends in one, leaving the fetched file exactly one byte longer with no differing byte in the common prefix. The worker proved equality the honest way instead — extracting the raw JSON body with no jq in the path, where the sha256 of the posted bytes and of the authored file are both `b9db4e4c41cf59c0c4adcfa8368c83843e2c0ee4e29ceab0b324864ebc19f5ff` and `cmp` exits 0 — declared both deviations in its report, and proceeded rather than burning the round on a tooling artifact. The reviewer re-verified that byte equality independently at `1e7f7bca` and agrees the merge was safe; nothing landed wrong. This is the R-0252/R-0336/R-0350 family — an ordered gate whose expected value the reviewer never computed from the tool that produces it — plus a second failure the existing counter-measures do not reach: ordering a command the permission layer denies makes the gate UNREACHABLE rather than merely wrong, and an unreachable gate cannot fail honestly. Counter-measure, applied from R2 on: a block may only order a command the reviewer has itself executed in this session, and a byte-equality claim over any transport that may normalise trailing newlines is stated as a sha256 comparison over extracted bytes, never as a `cmp` exit code. OPEN.

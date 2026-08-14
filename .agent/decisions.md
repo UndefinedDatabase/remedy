@@ -4843,3 +4843,49 @@ HOW TO REVERSE. Delete this decision and treat precondition 2 as a literal
 zero. Doing so requires fixing `docs/agents/reviewer_conventions.md` first, in
 its own branch, because otherwise nothing can close at all — which is precisely
 the outcome this decision exists to avoid.
+
+## DECISION F057 D1 (2026-08-14) — Rule A2's open-finding bar is read per review record, and the reset CARRIES open findings instead of dropping them
+
+F057 is claimed with R-0361 open. Rule A2 (ROADMAP.md:27) says no new feature
+is started while findings are open, so this decision states the reading under
+which the claim proceeds, and pays for it structurally rather than by
+exception.
+
+WHY this reading and not the literal one. Six of the last seven closures in
+`docs/roadmap/STATUS.md` are PASS_WITH_RISKS — F104, F105, F107, F111, F115 and
+F045 — and a PASS_WITH_RISKS closure by construction leaves findings open. Read
+literally, A2 would have blocked every feature claim since F103, including the
+five the ledger records as accepted. The literal reading is therefore not the
+one this project has been operating under, and adopting it now would stall the
+roadmap on findings the closure protocol already decided were acceptable to
+accept. A2's enforceable content is that a REVIEW RECORD does not close over
+unresolved work, which the closure protocol's PASS_WITH_RISKS path already
+gates.
+
+WHAT IS WRONG WITH THE PRACTICE, and what this decision fixes. The practice did
+not just read A2 narrowly; it erased A2's input. At the F045 closure the
+reviewer recorded the open set as R-0350, R-0354 and R-0358, and the very next
+record — `git show f789ebc8:.agent/live_review.md` — contains none of them. The
+reset dropped three live findings without resolving, deferring or naming them.
+So from this branch on, a reset CARRIES the open set forward verbatim: this
+record reproduces R-0361 byte for byte out of `21c8148e:.agent/live_review.md`,
+and a carried finding stays open until reviewer-authored `Done:` text closes it.
+Carrying costs one line per open finding and makes A2 measurable again; dropping
+costs nothing and makes it meaningless.
+
+WHY A2 ITSELF IS NOT AMENDED HERE. AGENTS.md forbids agents editing
+`docs/roadmap/ROADMAP.md` unless the operator explicitly requests it, so the
+reading lives here and in the operator brief, where the operator can veto it at
+any later relay. Nothing waits for an answer
+(docs/agents/planner_reviewer_prompt.md §4 item 7).
+
+SCOPE, stated so it cannot drift. This decision authorises the F057 claim and
+the carry-forward. It does NOT resolve R-0361, and it does NOT recover R-0350,
+R-0354 or R-0358 — that recovery and the matching rule text in
+`docs/agents/planner_reviewer_prompt.md` §1 belong to their own paydown branch,
+because AGENTS.md forbids mixing an unrelated fix into a feature branch. This is
+the same routing DECISION F045 D8 used for the reviewer-conventions repair.
+
+HOW TO REVERSE. Delete this decision and read A2 literally. Doing so requires
+first resolving R-0361 and recovering R-0350, R-0354 and R-0358 on a paydown
+branch, because otherwise no feature can be claimed at all.
