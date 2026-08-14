@@ -2,7 +2,8 @@
 
 Branch: feature/paydown0814-closure-debt, cut from main at 1e7f7bca after the
 F045 closure PR #197 merged at this session's Open PR Gate. Next free finding
-id: R-0362. Open findings: 3 — R-0359 (Medium), R-0360 (Low), R-0361 (Low).
+id: R-0362. Findings R-0359, R-0360 and R-0361 are registered; R-0359 and
+R-0360 are FIXED on disk and awaiting the reviewer's authored resolution.
 
 ## Goal
 Pay down the debt the F045 closure carried out on disk, so the next feature
@@ -13,25 +14,22 @@ paydown branch in the established shape of feature/paydown-0730, -0731, -0731b
 and -0801 — it claims no STATUS line and closes no `[ ]`.
 
 ## Current Step
-R1: the state reset, the three registered findings and the emptied
-`.agent/candidates.md`, committed and pushed. No fix lands this round — the
-findings persist FIRST so nothing is lost if the session dies.
+R2 complete: both fixes committed, gated and pushed, the new pin red-proved in
+a disposable worktree, and the PR opened. The PR is NOT merged this session
+(docs/agents/self_drive_protocol.md G1); it merges at the next session's Open
+PR Gate, which is the operator's manual-review window.
 
 ## Next Steps
-1. R2 — trim the conventions document under the cap WITH headroom, and add the
-   README tier pin, each in its own gated commit.
-2. R2 — red-proof the new pin inside a disposable git worktree, rewrite the
-   handoff, push, open the PR. The PR is NOT merged this session
-   (docs/agents/self_drive_protocol.md G1).
-3. Next roadmap feature per Rule A5 and STATUS order: F057 — Rate-limit-aware
-   scheduler. New session, new branch, after this PR merges at that session's
-   Open PR Gate.
+1. The reviewer re-runs every gate, authors the `Done:` resolutions for R-0359
+   and R-0360, and issues the round verdict. R-0361 stays OPEN as a recorded
+   reviewer-process finding whose counter-measure is already in force.
+2. Next roadmap feature per Rule A5 and STATUS order: F057 — Rate-limit-aware
+   scheduler. New session, new branch, after this PR merges.
 
 ## Risks
-- `main` is RED until this branch merges: five
-  `tests/orchestration/test_role_conventions.py` ids fail at 1e7f7bca. Round
-  gates are therefore scoped, and those five going GREEN is R-0359's own proof.
-- The README pin passes on arrival, so it proves nothing without a red-proof;
-  that proof runs only in a disposable worktree (self_drive_protocol.md G5).
-- Trimming a reviewer-facing rules document is a content decision. The trim
-  keeps every rule and is recorded as such; a lost rule would be a finding.
+- `main` stays RED until this PR merges. The five
+  tests/orchestration/test_role_conventions.py ids are green ON THIS BRANCH,
+  which is the fix's proof, but `main` itself only turns green at the merge.
+- The conventions trim is a content decision: every rule survives, and the
+  Discoverability section now POINTS at AGENTS.md instead of restating it.
+  Reversing that choice means restoring the prose and re-breaking the cap.
