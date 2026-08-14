@@ -4921,3 +4921,68 @@ callers a later tier will want concurrent.
 HOW TO REVERSE. Delete this decision and change the three behaviours in
 `acquire()`; the tests named in the R4 block pin each one, so reversing means
 deleting those tests deliberately rather than discovering the change later.
+
+## DECISION F057 D3 (2026-08-14) — the seam PACES the first call, it never terminates it
+
+CONTEXT. T003 inserts `acquire()` into `_call_with_retry`. The retry path already
+has a stop probe that returns the last `out`; the FIRST call has no probe of any
+kind, so a terminating one there changes F011/F018 behaviour rather than adding
+to it (`.agent/f057_t003_seam_inventory.md` section 2).
+
+CHOSEN. Before the first call the seam WAITS out a running cooldown and then
+makes the call regardless of the acquire outcome. Before a RETRY it waits and
+returns the existing `out` when the outcome is not granted, joining the terminal
+path the stop probe already owns. `_call_with_retry` cannot say "no call was
+made" without fabricating a provider output, and the loop above already owns
+termination; the wait is interruptible, so a stop during a first-call wait ends
+that wait immediately, which is the acceptance criterion the feature file states.
+
+ALTERNATIVES CONSIDERED. Aborting the first call on a stopped acquire: the only
+available return value is a fabricated `out`, which is worse than a stop honoured
+one call later. Skipping the first call outright while a cooldown runs: an
+unpaced run by another name.
+
+HOW TO REVERSE. Delete the first-call acquire; the retry-path acquire stands on
+its own and the C4 tests name the two paths separately.
+
+## DECISION F057 D4 (2026-08-14) — deadline_s stays None at the seam in v1; the budget is enforced through stop_check
+
+CONTEXT. `acquire(deadline_s=...)` wants an absolute value on the injected
+monotonic scale. `grep -n monotonic packages/orchestration/pingpong_loop.py`
+returns nothing, and neither `JobBudgets` nor `BudgetCounters` is reachable from
+`_call_with_retry`, whose only budget-shaped input is the opaque `stop_check`;
+the two epochs are unrelated (inventory section 3).
+
+CHOSEN. Pass no deadline. The budget is already enforced through the same
+`stop_check` that `acquire` re-probes before every wait slice: the job's
+`_stop_check` rebuilds its counters on every call and `evaluate_budget`
+recomputes `now` and `elapsed` from `started_at` on every evaluation
+(`packages/orchestration/budget_guard.py`), so a wall-clock or deadline breach
+arising DURING a wait is seen at the next slice boundary. The governor's own
+cooldown cap bounds the wait on top of that.
+
+ALTERNATIVES CONSIDERED. Threading `JobBudgets` down as a new parameter: the
+larger change, buying no behaviour `stop_check` does not already deliver.
+Passing a POSIX timestamp into a monotonic parameter: inventing a scale, exactly
+what the inventory warns against.
+
+HOW TO REVERSE. Thread the deadline in and pass it. `acquire` already implements
+DEADLINE_EXCEEDED and its tests already pin it, so reversing is wiring.
+
+## DECISION F057 D5 (2026-08-14) — an empty provider skips the governor entirely
+
+CONTEXT. `_call_with_retry` takes `provider: str = ""` and the loop itself writes
+`provider=builder_name or ""`, so a falsy provider is reachable. The governor
+keys its cooldowns, streaks and reasons on the raw string, so an empty key would
+put every unnamed provider into ONE shared bucket.
+
+CHOSEN. When `provider` is falsy the seam does not call the governor at all — no
+observe, no acquire, no wait event. That keeps the feature's "providers without
+limit signals behave exactly as today" promise trivially true for unnamed
+providers, and makes the shared-bucket bug unreachable rather than unlikely.
+
+ALTERNATIVES CONSIDERED. A sentinel key such as "unknown": it merges genuinely
+different providers under one cooldown — the same bug, only harder to see.
+
+HOW TO REVERSE. Delete the falsy-provider guard at both seam sites; the C4 test
+named for it fails immediately, which is the point.
