@@ -14,8 +14,11 @@ reading out of it — the same split
 :mod:`packages.orchestration.bench_dry_run` made.
 
 ADDITIVE by construction (F082 inventory Q11): :class:`BenchRecord` and
-:func:`projects_dir` are IMPORTED. No symbol moves out of a bench or gauntlet
-module and none is edited.
+:func:`projects_dir` are IMPORTED. No symbol moves out of a GAUNTLET module and
+no gauntlet module is edited. That is the invariant Q11 ruled on and the one
+every round on this branch has enforced; it is NOT a promise that bench symbols
+never change, because R15 added the `models` field to :class:`BenchRecord`
+(R-0427).
 
 Remedy deliberately does NOT put a clock in the history. Runs are grouped by an
 integer ``run_seq`` derived from the file itself — one more than the highest the
