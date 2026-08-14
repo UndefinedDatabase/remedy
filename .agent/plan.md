@@ -15,19 +15,22 @@ with a reason and an expected retry — instead of burning retries or failing th
 task. Providers that emit no limit signal behave exactly as today.
 
 ## Current Step
-T003 part 2, item 2: the report surfaces. The governor records every wait on
-`PingPongResult.rate_limit_waits` and no reader has ever seen one. This step adds
-the exported key and the human summary line, and nothing else.
+T003 is COMPLETE on disk: the governor is wired at all three `_call_with_retry`
+call sites, a rate limit is retryable at that seam, the reviewer parse-retry site
+is pinned end to end, and both report surfaces — the exported `rate_limit_waits`
+key and the `Rate limits:` summary line — are live and red-proved.
 
 ## Next Steps
-1. Integration gate per docs/agents/integration_gate.md.
+1. The integration gate per docs/agents/integration_gate.md: full-suite branch
+   run and base run, compared. It is a whole round; the base worktree needs the
+   node_modules/dist parity that file's step 2 describes.
 2. Closure per docs/roadmap/STATUS_closure_protocol.md, which is also where the
    thirteen open findings above are registered or resolved rather than dropped.
 
 ## Risks
-- The export is a contract. Five test files read it; the gate that proves the new
-  key extended rather than changed it is those five files still totalling 414.
+- Thirteen open findings is the largest carry this feature has held. Closure is
+  the round that must account for every one of them, not the round that inherits
+  them quietly.
 - A reviewer rate limit reaches the governor only when its error carries the
   `provider_error:` prefix, because `ReviewerOutput.verdict` defaults to
-  `"blocked"` and the reject rule would otherwise swallow it. R-0378 tracks that
-  this coupling is undocumented in the code.
+  `"blocked"`. R-0378 tracks that this coupling is undocumented in the code.
