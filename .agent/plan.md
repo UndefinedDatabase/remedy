@@ -15,29 +15,29 @@ fixtures, history survives across runs, and a deliberately degraded fixture run
 triggers the regression warning.
 
 ## Current Step
-R12 records the R11 gate, registers the reviewer-block defect R-0419, corrects
-the false role-binding claim this file itself carried, and rules at DECISION
-F082 D7 that T003b may add one additive `models` key to the gauntlet's evidence
-body. It writes no code.
+R13 records the R12 gate, rules at DECISION F082 D8 that `intake.py` is inside
+D7's exception and that T003b splits in two, and builds the WRITE half: a
+gauntlet run records which model served which role in its own `run.json`, and a
+role the runner cannot observe is recorded as absent rather than guessed.
 
 ## Next Steps
-1. R13 — T003b: the `models` key on `gauntlet_runner.py::_evidence_body` under
-   D7's three conditions, model context carried into the bench record, and a
-   fake-provider bench run end to end. R11's Q6 names four blockers for that
-   run — no entry point, local-Ollama reach, a `time.monotonic()` call in
-   `::run_order`, and history resolving to the real data root — and the round
-   must clear or route around each before claiming an end-to-end run.
-2. R14 the integration gate, R15 closure.
+1. R14 — T003b the read half and the run: carry the models from
+   `gauntlet_evidence.py::RunEvidence` into the bench record, which needs its
+   own additive ruling; then the fake-provider bench run, clearing R11's Q6
+   four blockers — no entry point, local-Ollama reach, a `time.monotonic()`
+   call in `::run_order`, and history resolving to the real data root; and the
+   Q7 pin for "the bench never runs implicitly".
+2. R15 the integration gate, R16 closure.
 
 ## Risks
 - "The bench never runs implicitly" is an ACCEPTANCE criterion that NO test
   pins (R11 Q7). It holds today only by absence: `append_bench_run` and
   `dry_run_from_order_set` have no caller under `apps/`, `packages/` or
   `scripts/`. An unpinned criterion found at closure is a closure blocker, so
-  R13 or R14 pins it.
-- T003b needs the D7 exception to the ADDITIVE constraint. If the gauntlet's
-  seven test files cannot stay green unmodified, the change is not additive
-  and the round stops rather than widening.
+  R14 pins it.
+- The builder's model stays unobservable after R13, because making it visible
+  means reaching into `orchestrator_loop.py::execute_dispatched_job`. Closure
+  states that absence rather than implying three roles were recorded.
 - The delivered order set is three, not the Design's five (R-0411). Closure
   may not quote five, and DECISION F082 D3 binds the recovery to a
   bench-owned fixture rather than an edit to the gauntlet's template.

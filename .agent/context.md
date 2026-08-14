@@ -62,7 +62,8 @@ the trend and the regression rules ✅ → R8 complete the context sweep and pin
 the regression threshold ✅ → R9 record the R8 verdict and retire the last
 stale claim ✅ → R10 T003a the stats bench read view ✅ → R11 the T003b
 inventory ✅ → R12 record the R11 verdict, register R-0419 and rule on the
-gauntlet key at D7 → R13 T003b model context and a fake-provider run → R14 the
-integration gate → R15 closure. T003 split at DECISION F082 D5, its second half
-inventoried at D6 and unblocked at D7; each round marks the PREVIOUS one done
-and never itself.
+gauntlet key at D7 ✅ → R13 T003b the write half, every run recording which model
+served which role → R14 T003b the read half and the fake-provider run → R15 the
+integration gate → R16 closure. T003 split at DECISION F082 D5, its second half
+inventoried at D6, unblocked at D7 and split in two at D8; each round marks the
+PREVIOUS one done and never itself.
