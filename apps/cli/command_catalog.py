@@ -1677,6 +1677,20 @@ CATALOG: tuple[CommandEntry, ...] = (
         related=("mission.run", "mission.show"),
     ),
     CommandEntry(
+        command_id="mission.watchdog",
+        group_id="mission",
+        subcommand="watchdog",
+        description="Evaluate a mission's autonomy tripwires and report what fired, with the evidence behind it (read-only: it pauses nothing and raises no decision).",
+        action_class="read_only",
+        args=(
+            ArgDef("mission_id", "Mission id (or a unique prefix)"),
+            _PROJECT_SCOPE_OPT,
+            _JSON_OPT,
+        ),
+        supports_json=True,
+        related=("mission.ledger", "mission.resume"),
+    ),
+    CommandEntry(
         command_id="mission.handoff",
         group_id="mission",
         subcommand="handoff",

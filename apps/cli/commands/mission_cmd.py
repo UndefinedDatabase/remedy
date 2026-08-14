@@ -435,6 +435,39 @@ def _cmd_mission_ledger(mission_id: str, *, project: str | None = None,
     print(render_ledger(entries))
 
 
+def _cmd_mission_watchdog(mission_id: str, *, project: str | None = None,
+                          json_output: bool = False) -> None:
+    """``remedy mission watchdog <id>`` — what the watchdog sees, on demand.
+
+    Read-only, and that is the whole point of the command: it evaluates every
+    F077 tripwire over the mission's ledger and reports what fired, pausing
+    nothing and raising no decision.  The watchdog acts only from inside
+    ``remedy mission run``; asking it what it sees must not itself stop a
+    mission.
+    """
+    from packages.orchestration.watchdog import evaluate_mission
+
+    project_id = _resolve_project_id(project)
+    mission = _load_mission_or_exit(project_id, mission_id)
+    trips = evaluate_mission(project_id, mission.id)
+
+    if json_output:
+        print(_json.dumps({"version": 1, "mission_id": mission.id,
+                           "trips": [trip.to_json() for trip in trips]},
+                          sort_keys=True))
+        return
+
+    print(mission.id)
+    print(f"  Status: {mission.status}")
+    print(f"  Tripwires fired: {len(trips)}")
+    for trip in trips:
+        print("")
+        print(f"  {trip.kind}  (since iteration {trip.since_iteration})")
+        print(f"    {trip.what}")
+        for key in sorted(trip.numbers):
+            print(f"    {key}: {trip.numbers[key]}")
+
+
 def _cmd_mission_handoff(mission_id: str, *, json_output: bool = False) -> None:
     """``remedy mission handoff <id>`` — the explicit boundary trigger (F079).
 
@@ -478,6 +511,11 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         json_output=getattr(args, "json", False),
     ),
     "mission.ledger": lambda args: _cmd_mission_ledger(
+        args.mission_id,
+        project=getattr(args, "project", None),
+        json_output=getattr(args, "json", False),
+    ),
+    "mission.watchdog": lambda args: _cmd_mission_watchdog(
         args.mission_id,
         project=getattr(args, "project", None),
         json_output=getattr(args, "json", False),

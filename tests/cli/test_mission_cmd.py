@@ -1099,3 +1099,73 @@ class TestHandoffCommand:
 
         assert proc.returncode != 0
         assert "no mission 'no-such-mission' exists to hand off" in proc.stderr
+
+
+class TestWatchdogCommandCatalog:
+    """`remedy mission watchdog <id>` — F077 T003's manual audit surface."""
+
+    def test_the_command_is_in_the_catalog_with_a_handler(self):
+        from apps.cli.command_catalog import get_command
+        from apps.cli.commands import collect_all_handlers
+
+        entry = get_command("mission.watchdog")
+        assert entry.action_class == "read_only"
+        assert entry.supports_json is True
+        assert entry.may_execute_commands is False
+        assert entry.may_mutate_repo is False
+        assert "mission.watchdog" in collect_all_handlers()
+
+
+class TestMissionWatchdog:
+    def test_an_unrun_mission_reports_no_tripwires(self, project):
+        data_root, project_id = project
+        mission_id = _start(data_root, project_id, _LONG_GOAL)
+
+        proc = _run(["mission", "watchdog", mission_id, "--project", project_id],
+                    data_root)
+
+        assert proc.returncode == 0
+        assert mission_id in proc.stdout
+        assert "Status: active" in proc.stdout
+        assert "Tripwires fired: 0" in proc.stdout
+
+    def test_the_json_view_carries_the_trip_list(self, project):
+        data_root, project_id = project
+        mission_id = _start(data_root, project_id, _LONG_GOAL)
+
+        body = json.loads(_run(["mission", "watchdog", mission_id, "--project",
+                                project_id, "--json"], data_root).stdout)
+
+        assert body["version"] == 1
+        assert body["mission_id"] == mission_id
+        assert body["trips"] == []
+
+    def test_asking_the_watchdog_changes_nothing(self, project):
+        """The acceptance claim: an audit must not pause what it audits."""
+        data_root, project_id = project
+        mission_id = _start(data_root, project_id, _LONG_GOAL)
+        _plan_no_llm(data_root, project_id, mission_id)
+        _run(["mission", "run", mission_id, "--project", project_id,
+              "--no-llm"], data_root)
+        record = (data_root / "missions" / project_id / f"{mission_id}.json")
+        before = record.read_text(encoding="utf-8")
+
+        _run(["mission", "watchdog", mission_id, "--project", project_id],
+             data_root)
+        _run(["mission", "watchdog", mission_id, "--project", project_id],
+             data_root)
+
+        assert record.read_text(encoding="utf-8") == before
+        ledger = json.loads(_run(["mission", "ledger", mission_id, "--project",
+                                  project_id, "--json"], data_root).stdout)
+        assert len(ledger["entries"]) == 1
+
+    def test_an_unknown_mission_is_an_error_not_a_crash(self, project):
+        data_root, project_id = project
+
+        proc = _run(["mission", "watchdog", "0" * 32, "--project", project_id],
+                    data_root, expect_ok=False)
+
+        assert proc.returncode == 1
+        assert "no mission" in proc.stderr
+        assert "Traceback" not in proc.stderr
