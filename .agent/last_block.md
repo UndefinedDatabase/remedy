@@ -1,155 +1,221 @@
-BEGIN BLOCK f045-r11
-── STEP T003f/6 — F045 Loop definitions · ROUND 11 (session close) ───────
+── STEP T003 (bookkeeping + ground survey) — F045 ──────────────
+Goal:        Close the three findings whose fixes are already on disk and
+             verified, then survey the fake-provider pipeline so the NEXT round
+             can author the end-to-end fixture test from measured facts.
 
-Goal:        Put the two outstanding reviewer counter-measures ON DISK, where
-             R-0347 proved they have to live, and write the session-closing
-             handoff. No code changes.
-Bundle:      ITEM 1 C0a+C0b save block · ITEM 2 C1 the pre-emission checklist ·
-             ITEM 3 C2 plan + closing handoff · ITEM 4 gates.
-Change:      .agent/authored/f045-r11.md · .agent/last_block.md ·
-             docs/agents/planner_reviewer_prompt.md · .agent/plan.md ·
-             .agent/handoff.md. Five files, nothing else. Do NOT touch
-             `.agent/live_review.md` this round — see the note in ITEM 2 about
-             why R-0353 and R-0356 stay OPEN.
-Constraints: Never work on main; never force-push; merge nothing. Do NOT open
-             a PR: this feature's branch has deliberately carried no PR across
-             several sessions and the closing handoff raises that as the
-             operator's call, not the session's.
-Insertion budget, per commit: C0a and C0b ≈ block size (single `.agent/**`
-             state-file rewrites, cap-exempt by DECISION F104 D1) · C1 ≤ 30 ·
-             C2 ≤ 130.
-Done when:   every gate in ITEM 4 has been RUN and its real output recorded.
-Handback:    completion report + rewrite .agent/handoff.md
+Bundle:      C0a save this block · C0b point last_block at it · C1 the three
+             reviewer-authored `Done:` lines · C2 the pipeline inventory ·
+             C3 plan.md and the handoff.
 
-═══ ITEM 1 · C0a and C0b — save this block verbatim ═══
-C0a: write the block bytes (BEGIN..END markers included) to
-`.agent/authored/f045-r11.md`. No trailing whitespace on any line.
-Commit subject: `chore(f045): save the R11 block verbatim`
-C0b: copy that file over `.agent/last_block.md`, replacing the R10 block.
-Commit subject: `chore(f045): point last_block at the R11 block`
-Prove it: cmp .agent/authored/f045-r11.md .agent/last_block.md → exit 0
+Change:      Exactly these files, nothing beyond them:
+             - `.agent/authored/f045-r12.md` (NEW, C0a)
+             - `.agent/last_block.md` (C0b)
+             - `.agent/live_review.md` (C1)
+             - `.agent/f045_e2e_inventory.md` (NEW, C2)
+             - `.agent/plan.md` and `.agent/handoff.md` (C3)
+             NO production code. NO test files. If you believe a production
+             change is required, STOP and report it instead of making it.
 
-═══ ITEM 2 · C1 — docs/agents/planner_reviewer_prompt.md, §3 ═══
-The "Pre-emission block checklist" bullet begins at line 173 and its numbered
-items run 1 to 8. Its own intro sentence says "Run all six checks" while EIGHT
-items already exist — the count went stale when items 7 and 8 were added, which
-is the same carried-forward-count failure R-0356 names, sitting in the very
-file that is supposed to prevent it. Verify both facts before editing: count
-the numbered items yourself and read the intro line.
+Insertion budget, per commit, measured or reasoned (finding R-0350):
+             C0a and C0b are each the verbatim rewrite of a SINGLE `.agent/**`
+             state file and are cap-EXEMPT by DECISION F104 D1.
+             C1 adds exactly 6 lines — three authored lines plus one blank
+             separator before each — measured from the authored text below.
+             C2's size is deliberately NOT predicted: a survey's length follows
+             what it finds, so no number is asserted here. If C2 alone exceeds
+             500 insertions, split it by section and declare the split.
+             C3 is two `.agent/**` files, both far under the cap.
 
-Two edits, one commit.
+── C0a ────────────────────────────────────────────────────────
+Write `.agent/authored/f045-r12.md` with the bytes described above.
+Commit alone. Subject: `chore(f045): save the R12 block verbatim`
 
-(1) Correct the intro count to match the item count AFTER your additions below.
-    Change only the number word; leave the rest of that sentence alone.
+── C0b ────────────────────────────────────────────────────────
+Copy `.agent/authored/f045-r12.md` to `.agent/last_block.md` so the two are
+byte-identical. Commit alone.
+Subject: `chore(f045): point last_block at the R12 block`
+Ordered as its own commit because two small commits review better than one and
+splitting removes a cap question from commit time — not for a size reason.
 
-(2) Append items 9 and 10 after item 8, in the same style as the eight above —
-    bold lead-in, the finding id that produced it, and the reason it is its own
-    check rather than a sub-point of an existing one:
+── C1 — the three `Done:` lines ───────────────────────────────
+APPEND to `.agent/live_review.md`, at the very END of the file, in this order:
+a blank line, then DONE-353; a blank line, then DONE-355; a blank line, then
+DONE-356. Each DONE text is ONE physical line — do not re-wrap it, do not
+insert newlines into it, do not add trailing whitespace. Take the bytes from
+your saved `.agent/authored/f045-r12.md`, not from a retype.
 
-    Item 9 — citations re-measured against this branch's own edits (finding
-    R-0353). Every `file:line` a block cites for a file the CURRENT feature
-    branch has modified is re-grepped at emission. Prefer citing the SYMBOL
-    plus its distinguishing text over a bare number: a symbol survives an edit
-    above it, a line number does not. Say why it is separate from item 8: item
-    8 checks a gate's expected VALUE against the code, this one checks that the
-    block's POINTERS resolve at all — a different failure, and one that halted
-    two rounds of this feature before it was written down.
+These are REVIEWER-AUTHORED texts. You may not edit them, shorten them, or
+write any `Done:` paragraph of your own (planner_reviewer_prompt.md §4.4).
+If any of them is wrong, do NOT correct it — stop and report it.
 
-    Item 10 — the open-finding set is recomputed, never carried forward
-    (findings R-0354 and R-0356). Derive it mechanically from
-    `.agent/live_review.md` at emission — every `^- R-\d+ — ` paragraph minus
-    every `^Done: R-\d+ — ` line — and name each finding explicitly, never by
-    position. Record that naming them explicitly is NOT sufficient on its own:
-    two consecutive blocks did exactly that and were both still wrong, because
-    each took its set from the previous block instead of from the record, and a
-    finding that drops out of the count stays dropped.
+>>> DONE-353 >>>
+Done: R-0353 — RESOLVED at the R12 gate. Verified against the disk, not the report: the counter-measure is ON DISK rather than in reviewer habit, which is what finally closed R-0347 and what this finding's own text asked for. `docs/agents/planner_reviewer_prompt.md` §3 carries checklist item 9, "Citations re-measured against this branch's own edits", which orders every `file:line` a block cites for a file the CURRENT feature branch has already modified to be re-grepped at emission, and prefers the SYMBOL plus its distinguishing text over a bare number because a symbol survives an edit above it and a line number does not — the exact remedy the finding names. The stale intro count that governs the list moved from six to ten in the same commit `c59b5187`, so the checklist's header no longer under-counts the checks a reviewer must run. The reviewer re-derived the count mechanically at this gate rather than reading it: the numbered run in §3 is 1 through 10 with no gap and no repeat, and the intro line reads "ten checks mechanically".
+<<< DONE-353 <<<
 
-Write the prose yourself; the substance above is what must be preserved.
+>>> DONE-355 >>>
+Done: R-0355 — RESOLVED at the R12 gate. Verified against the disk, not the report: `remedy loop list` no longer borrows the RUN notice. `apps/cli/commands/loop_cmd.py` defines its own `INERT_TRIGGER_LEGEND`, "cannot fire until the scheduler exists; run such a loop manually", and the comment directly above it records why a listing deliberately does not reuse `loop_spec.INERT_TRIGGER_NOTICE` — that sentence reports a RUN, and a listing runs nothing. `INERT_TRIGGER_NOTICE` is itself untouched at "scheduler not yet available; ran on demand" and stays `remedy loop run`'s to display, printed off `outcome.notice` rather than off the constant. The pin is NEGATIVE, so the defect cannot drift back unnoticed: `test_a_schedule_trigger_loop_is_listed_and_marked_inert` in `tests/cli/test_loop_cmd.py` asserts `INERT_TRIGGER_NOTICE not in out` over the WHOLE listing output, while `test_running_an_inert_loop_prints_the_run_notice_and_still_stops_at_planned` still asserts the notice IS present on the run path — the two claims the feature actually distinguishes. The reviewer red-proved the pin in its own disposable worktree at a85a92d9 instead of trusting the colour: an import probe printed the module under `.remedy-wt/f045_r12_rev`, so the probe cannot have imported the fixed code (finding R-0337), and with the legend set back to the notice's literal text the listing test failed at its own `assert INERT_TRIGGER_NOTICE not in out`, reaching that assertion rather than dying earlier on something else. The worktree was removed and pruned before this verdict.
+<<< DONE-355 <<<
 
-Why `.agent/live_review.md` is NOT in this change set: R-0353 and R-0356 stay
-OPEN. This commit is their FIX, and the reviewer has not yet verified it — a
-`Done:` line written in the same round as the repair, by the worker who applied
-it, is a finding self-certified by its own author. The next session's reviewer
-verifies this edit and writes both `Done:` lines. Recording that in the handoff
-is what carries the obligation forward.
+>>> DONE-356 >>>
+Done: R-0356 — RESOLVED at the R12 gate. Verified against the disk, not the report: `docs/agents/planner_reviewer_prompt.md` §3 carries checklist item 10, "The open-finding set is recomputed, never carried forward", which orders the set derived mechanically from `.agent/live_review.md` at emission — every `^- R-\d+ — ` paragraph minus every `^Done: R-\d+ — ` line — and names each finding explicitly rather than by position. Its load-bearing clause is the one that separates it from R-0354's counter-measure and is the whole reason this finding existed: naming findings explicitly is NOT sufficient on its own, because two consecutive blocks did exactly that and were both still wrong, each having taken its set from the PREVIOUS block instead of from the record. The reviewer applied item 10 before authoring the R12 block rather than after: the recomputed set at this gate is R-0350, R-0353, R-0354, R-0355 and R-0356 — five, not the three the R9 block carried forward.
+<<< DONE-356 <<<
 
-Commit subject: `docs(agents): add the citation and open-set checks to the block checklist`
+Commit C1 alone. Subject: `docs(f045): close R-0353, R-0355 and R-0356 at the R12 gate`
 
-═══ ITEM 3 · C2 — .agent/plan.md and the session-closing handoff ═══
-Rewrite `.agent/plan.md` (under 50 lines, keeping `## Goal`, `## Current Step`,
-`## Next Steps`, `## Risks`). RECOMPUTE the open-finding set from
-`.agent/live_review.md` with the command in gate (c) and write what you
-measure, naming each finding. This block gives you no count on purpose. Current
-Step becomes R11 — the T003 CLI is complete (`list`, `validate`, `run`), the
-two reviewer counter-measures are on disk, and the session is closing at its
-declared round cap. Next Steps: the end-to-end fixture loop through the
-fake-provider pipeline, the integration gate, then closure per
-docs/roadmap/STATUS_closure_protocol.md. State plainly that F045 is NOT closed
-and that the next session's first bookkeeping act is to verify this round's
-checklist edit and write the `Done:` lines for R-0353 and R-0356. Keep the
-Fortschritt line
-`Fortschritt: ~60 % (T001 ✅ · T002 ✅ · T003 läuft) — Schätzung` verbatim.
+── C2 — the pipeline inventory ────────────────────────────────
+Write a NEW file `.agent/f045_e2e_inventory.md`. It is a SURVEY: it records
+what the code already does. It answers the six questions below, and for each
+one it records the REAL command you ran and its REAL output (trimmed to what
+is load-bearing, never invented, never paraphrased as "green"). Where the
+answer is "nothing does this", say so and show the command whose empty output
+proves it.
 
-Then rewrite `.agent/handoff.md` as a SESSION-CLOSING handoff, per the
-AGENTS.md contract (≤60 lines, or a "Deviations, declared" line naming the real
-count and the mandated content that caused it; sections are NEVER dropped). It
-carries:
-- feature, round, branch, and the fact that this was a one-session self-drive
-  run (docs/agents/self_drive_protocol.md) that ended at its DECLARED round cap
-  with all work committed and pushed — a success under G7, not a failure
-- a per-round table for this session: R6 reviewed PASS, R7 PASS, R8 FAIL (the
-  listing printed the run notice), R9 the repair PASS, R10 PASS, R11 this round
-- every commit SHA of THIS round with its changed files
-- this round's gate results from ITEM 4
-- the recomputed open-finding count with every finding named, and the explicit
-  statement that R-0353 and R-0356 are FIXED ON DISK but still OPEN pending the
-  next reviewer's verification
-- an item-status table with one row per ITEM 1-4
-- what F045 still needs: the end-to-end fixture loop, the integration gate,
-  closure. Say plainly that the feature is NOT done
-- the state of the branch: no PR is open, nothing was merged, main was never
-  touched, no force-push occurred, no worktree was left behind. Add one line
-  flagging FOR THE OPERATOR that this branch has carried no PR across several
-  sessions and that whether to open one is their call — the session did not
-  make it either way
-- the next expected action, naming Phase 1 rule 1 (read `.agent/STOP` from
-  disk) BEFORE rule 2 (the Open PR Gate)
-- the Fortschritt line verbatim
-Commit subject: `docs(f045): close the session with the R11 handoff`
+  Q1. How does a job that is in state PLANNED actually get EXECUTED through
+      the standard pipeline? Name the entry-point function and its module, and
+      name ONE existing test that drives a job through it end to end.
+  Q2. What is the fake provider? Name its module and the exact mechanism a
+      test uses to select it instead of a real provider (env var, fixture,
+      argument — whichever it really is).
+  Q3. Where, if anywhere, does `job.metadata` reach EVIDENCE? Name the writer
+      function, its module, and the on-disk artifact path it produces.
+  Q4. Where, if anywhere, does `job.metadata` reach the REPORT? Name the
+      function in `packages/orchestration/run_report.py` that would carry it.
+  Q5. Does anything today carry `loop_ref` into evidence or into the report?
+      Show the grep and its real output.
+  Q6. What is the SMALLEST change that would make `loop_ref` visible in
+      evidence and in the report — which file, which function, roughly what
+      shape? Describe it only. Write NO code and change NO production file.
 
-═══ ITEM 4 · gates ═══
-Run every command. Record REAL exit codes and REAL output. Report counts as
-OBSERVED.
+Constraints on C2: every `file:line` you cite must be produced by a command in
+this round, not remembered. Prefer naming the SYMBOL plus its distinguishing
+text over a bare line number. Do not speculate about behaviour you did not run
+or read; "not determined" is an acceptable answer and is better than a guess.
 
-(a) cmp .agent/authored/f045-r11.md .agent/last_block.md
-(b) the checklist item count, measured not asserted:
-    python3 -c "
-    import re, pathlib
-    t = pathlib.Path('docs/agents/planner_reviewer_prompt.md').read_text()
-    print('ITEMS', re.findall(r'^  (\d+)\. \*\*', t, re.M)[:14])"
-    → the run must end at 10, and the intro sentence's number word must agree.
-      Quote the intro line in your report.
-(c) the recomputed open set:
-    python3 -c "
-    import re, pathlib
-    t = pathlib.Path('.agent/live_review.md').read_text()
-    o = re.findall(r'^- (R-\d+) — ', t, re.M); d = re.findall(r'^Done: (R-\d+) — ', t, re.M)
-    print('OPEN', [x for x in o if x not in d])"
-(d) git diff --name-only 6e6e3479..HEAD  → exactly the five Change files;
-    `.agent/live_review.md` must NOT appear.
-(e) python3 -m pytest tests/docs -q
-    → this round edits a docs file that the docs tests may assert over. If
-      tests/docs does not exist or collects nothing, say so; that is an
-      observation, not a failure.
-(f) python3 -m pytest tests/cli/test_golden_path.py -q            (canary)
-(g) git status --porcelain               → EMPTY
-(h) git worktree list                    → ONE line
-(i) confirm no PR was created: gh pr list --state open --json number,headRefName
-    → report its raw output.
+Commit C2 alone. Subject: `docs(f045): inventory the pipeline for the loop e2e round`
 
-Push after EVERY commit: `git push origin feature/f045-loop-definitions`.
-Do NOT open a PR and do NOT merge anything.
+── C3 — plan and handoff ──────────────────────────────────────
+Replace `.agent/plan.md` ENTIRELY with the authored text between the PLAN
+markers, byte for byte, from your saved copy. It is 48 lines; the AGENTS.md cap
+is 50.
 
-If any gate is RED, or anything here contradicts AGENTS.md or the disk: STOP,
-commit nothing further, and report the exact blocker with its raw output.
-END BLOCK f045-r11
+>>> PLAN >>>
+# Plan — F045 Loop definitions
+
+Branch: feature/f045-loop-definitions, cut from main at cb3ef34f. No PR open;
+nothing merged this round. Next free finding ID: R-0357. Open findings: 2 —
+R-0350 and R-0354 — RECOMPUTED this round from `.agent/live_review.md` (every
+`^- R-\d+ — ` paragraph minus every `^Done: R-\d+ — ` line), never carried
+forward from the previous plan. R-0353, R-0355 and R-0356 were closed at the
+R12 gate by reviewer-authored `Done:` text.
+
+## Goal
+Recurring work gets a declarative, versionable form: a LOOP defines trigger,
+scope, action, budget and stop rules in the project's config file, and
+`remedy loop run` executes one as a completely normal job/mission with loop
+provenance in evidence. DONE when a fixture loop validates, runs through the
+standard pipeline unchanged, and an invalid spec fails validation with precise
+messages before anything runs (docs/roadmap/features/T2_F045.md).
+
+## Current Step
+R12, bookkeeping plus the ground survey T003's last item needs. The CLI is
+complete — `loop list`, `loop validate`, `loop run <name> [--yes]` — and
+`loop_ref` reaches `job.metadata`, but it appears in no evidence writer and no
+report builder, so the feature file's Acceptance line "loop_ref visible in
+evidence and report" is NOT met yet. This round writes no production code: it
+closes three findings and inventories the fake-provider pipeline into
+`.agent/f045_e2e_inventory.md` so the next round can author the end-to-end
+fixture test from measured facts instead of from assumptions.
+
+## Next Steps
+1. R13: the end-to-end fixture loop through the fake-provider pipeline, built
+   on the inventory — a loop materializes a job, the job runs, and `loop_ref`
+   is visible in evidence and in the report.
+2. The integration gate (docs/agents/integration_gate.md).
+3. Closure per docs/roadmap/STATUS_closure_protocol.md.
+
+## Risks
+- Loops are parsed from a config file that does not exist in this repo (no
+  ./remedy.toml). Every test builds its own tmp config; nothing may depend on
+  a repo-level config file appearing.
+- Schedule and event triggers are parsed and validated but INERT until the
+  scheduler feature. `loop run` says so off `LoopRunOutcome.notice`.
+- `loop run` writes to the REAL job store unless given `root`, so every test
+  isolates through `REMEDY_DATA_DIR` or an explicit root.
+- Surfacing `loop_ref` in evidence and report may need production changes in
+  modules F045 has not touched; R13 must size that before ordering it.
+- This branch has carried no PR across several sessions. Whether to open one is
+  the operator's call; this session did not make it either way.
+
+Fortschritt: ~65 % (T001 ✅ · T002 ✅ · T003 läuft) — Schätzung
+<<< PLAN <<<
+
+Then rewrite `.agent/handoff.md` per docs/agents/handback_template.md. It is
+YOURS to write, not authored here. It must carry: feature and round, branch,
+base SHA (a85a92d9), the per-commit table, the gate table below with REAL exit
+codes and REAL output, the item-status table (AGENTS.md), the open-findings
+count, and the next expected action. Its last line repeats the Fortschritt line
+from the plan verbatim. Cap is 60 lines; if the MANDATED content genuinely does
+not fit, exceed it and carry a "Deviations, declared" line naming the actual
+line count and the specific mandated content that caused it. Never drop a
+section to meet the cap.
+
+Commit C3 alone. Subject: `docs(f045): hand back R12 with the pipeline inventory`
+
+── Constraints ────────────────────────────────────────────────
+- AGENTS.md governs everything here. Self-review loop before EVERY commit.
+- Push after each commit: `git push -u origin feature/f045-loop-definitions`.
+- Never work on main. Never force-push. Never merge. Never create a PR.
+- Any destructive or mutation check runs ONLY inside a disposable
+  `git worktree` under `.remedy-wt/`, never in the primary checkout, and the
+  worktree is removed and pruned before you hand back. Writes to /tmp are
+  denied in this environment.
+- The authored texts (DONE-353, DONE-355, DONE-356, PLAN) are applied byte for
+  byte from your saved `.agent/authored/f045-r12.md`. No trailing whitespace on
+  any line you write.
+- If a gate goes red, or you find a contradiction, or something here is
+  ambiguous: STOP, commit nothing further, and report it in full. Do not guess
+  and do not widen scope to route around it. A round that halts with an honest
+  report is a success.
+- Do not write a `Done:` paragraph of your own for anything. If a fix of yours
+  lands that needs recording, use `Landed: R-XXXX — <one line>` instead.
+
+── Done when ──────────────────────────────────────────────────
+Run every gate below and record its REAL exit code and REAL output.
+Re-run (d), (g) and (h) AFTER the final commit.
+
+  (a) cmp .agent/authored/f045-r12.md .agent/last_block.md
+      → exit 0, byte-identical.
+  (b) The open-finding set, recomputed from the record after C1:
+      python3 - <<'EOF'
+      import re
+      lines=open('.agent/live_review.md').read().splitlines()
+      reg=[m.group(1) for l in lines if (m:=re.match(r'^- (R-\d+) — ',l))]
+      done=[m.group(1) for l in lines if (m:=re.match(r'^Done: (R-\d+) — ',l))]
+      print("OPEN",sorted(set(reg)-set(done)))
+      EOF
+      → must print exactly: OPEN ['R-0350', 'R-0354']
+  (c) The three authored lines land intact: each of DONE-353, DONE-355 and
+      DONE-356 appears EXACTLY ONCE among the lines C1's diff ADDS
+      (`git show --numstat` for the total, plus a per-line count over that
+      diff's added lines). C1's numstat for `.agent/live_review.md` is
+      6 insertions, 0 deletions.
+  (d) git diff --name-only a85a92d9..HEAD
+      → exactly the five files named in Change, and nothing else.
+  (e) python3 -m pytest tests/ui_server/test_dashboard_contract.py -q
+      → the `.agent` state-file contract, which reads live_review.md and
+      plan.md. Report the real counts.
+  (f) python3 -m pytest tests/cli/test_loop_cmd.py tests/orchestration/test_loop_run.py tests/orchestration/test_loop_spec.py -q
+      → the F045 suite. Report the real counts.
+  (g) python3 -m pytest tests/cli/test_golden_path.py -q   (the canary)
+      → report the real counts.
+  (h) git status --porcelain  → EMPTY.
+  (i) git worktree list       → exactly ONE line, the primary checkout.
+  (j) No trailing whitespace on any line of the files this round writes:
+      grep -rn ' $' .agent/authored/f045-r12.md .agent/live_review.md .agent/plan.md .agent/f045_e2e_inventory.md .agent/last_block.md .agent/handoff.md
+      → no output.
+  (k) gh pr list --state open --json number,headRefName  → [].
+
+Handback:    the completion report plus the rewritten `.agent/handoff.md`.
+             The report states, for each gate, the command, the exit code and
+             the real output. "Green" as a word is not a result.
+──────────────────────────────────────────────────────────────
