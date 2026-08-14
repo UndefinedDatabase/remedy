@@ -1,49 +1,37 @@
-# Plan — F045 Loop definitions (CLOSED)
+# Plan — paydown0814 closure debt
 
-Branch: feature/f045-loop-definitions, cut from main at cb3ef34f after the
-F115 closure PR #195 merged. Accepted HEAD:
-1c84c81805668e1d0f1e04370d5366389c8a8b20 — the head the evidence job and the
-review package cover, i.e. after C3 and before this closure commit. Last
-reviewed SHA c6b0aeb7 (R15 PASS); feature verdict PASS_WITH_RISKS. Next free
-finding ID: R-0359. Open findings: 3 — R-0350, R-0354, R-0358 — all Low,
-carried as documented risks. The closure PR opens directly after this commit
-and stays UNMERGED by design; its number and URL are in the handback, because
-a PR cannot exist before the commit it must contain (F115 closure 57a24947).
+Branch: feature/paydown0814-closure-debt, cut from main at 1e7f7bca after the
+F045 closure PR #197 merged at this session's Open PR Gate. Next free finding
+id: R-0362. Open findings: 3 — R-0359 (Medium), R-0360 (Low), R-0361 (Low).
 
 ## Goal
-Recurring work gets a declarative, versionable form: a LOOP defines trigger,
-scope, action, budget and stop rules in the project's config file, and
-`remedy loop run` materializes one as a completely normal job/mission with
-loop provenance in evidence (docs/roadmap/features/T2_F045.md). DONE.
+Pay down the debt the F045 closure carried out on disk, so the next feature
+starts on a green `main`: trim `docs/agents/reviewer_conventions.md` under its
+800-token prompt-segment cap (R-0359), pin the README tier table's Done column
+to the ledger (R-0360), and record the gate round's own finding (R-0361). A
+paydown branch in the established shape of feature/paydown-0730, -0731, -0731b
+and -0801 — it claims no STATUS line and closes no `[ ]`.
 
 ## Current Step
-Closed. T001–T003 complete and gated; the Built State section of
-docs/roadmap/features/T2_F045.md is current (aa5e66f5, every claim re-verified
-against the source before commit); the integration gate in
-`.agent/gate_f045_r15/` shows an EMPTY `comm -13`, zero branch-only failures;
-`integrity check --json` is `"passed": true`; the evidence job is
-`f045-closure` and `remedy-review-20260814-032227-READY_FOR_REVIEW.zip` is
-READY_FOR_REVIEW; STATUS.md carries `[x]` and README.md the matching count.
+R1: the state reset, the three registered findings and the emptied
+`.agent/candidates.md`, committed and pushed. No fix lands this round — the
+findings persist FIRST so nothing is lost if the session dies.
 
 ## Next Steps
-1. The closure PR merges at the NEXT feature's start via the AGENTS.md Open
-   PR Gate — that gap is the operator's manual-review window. The operator
-   may also merge it manually at any time.
-2. Next feature per Rule A5 and STATUS order: F057 — Rate-limit-aware
-   scheduler. New session, new branch, nothing carried over but
-   `.agent/candidates.md`.
-3. That first reviewed round MUST register or resolve BOTH entries in
-   `.agent/candidates.md` and empty the file
-   (docs/roadmap/STATUS_closure_protocol.md).
+1. R2 — trim the conventions document under the cap WITH headroom, and add the
+   README tier pin, each in its own gated commit.
+2. R2 — red-proof the new pin inside a disposable git worktree, rewrite the
+   handoff, push, open the PR. The PR is NOT merged this session
+   (docs/agents/self_drive_protocol.md G1).
+3. Next roadmap feature per Rule A5 and STATUS order: F057 — Rate-limit-aware
+   scheduler. New session, new branch, after this PR merges at that session's
+   Open PR Gate.
 
 ## Risks
-- The suite is RED at the merge base with five known `reviewer_conventions`
-  token-cap ids, unrelated to F045 and unfixed here on purpose
-  (DECISION F045 D8; candidate 1).
-- README's Tier 2 `Done` cell was 6 while the ledger derived 7; this closure
-  writes 8 — pre-existing off-by-one from `98a49b5c`, unpinned (candidate 2).
-- Schedule and event triggers are validated but INERT until the scheduler.
-- `report_path` resolves through `jobs_dir()`, honouring no `root=`; report
-  tests isolate through the environment (R-0351/R-0352).
-
-Fortschritt: 100 % (T001 ✅ · T002 ✅ · T003 ✅ · Integrationsgate ✅ · Closure ✅) — gemessen
+- `main` is RED until this branch merges: five
+  `tests/orchestration/test_role_conventions.py` ids fail at 1e7f7bca. Round
+  gates are therefore scoped, and those five going GREEN is R-0359's own proof.
+- The README pin passes on arrival, so it proves nothing without a red-proof;
+  that proof runs only in a disposable worktree (self_drive_protocol.md G5).
+- Trimming a reviewer-facing rules document is a content decision. The trim
+  keeps every rule and is recorded as such; a lost rule would be a finding.
