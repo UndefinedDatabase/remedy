@@ -4,9 +4,14 @@ Every test writes its OWN remedy.toml under ``tmp_path`` and loads it with
 ``loop_spec.load_loop_specs``, so the real spec path is exercised rather than a
 hand-built model. Every call passes an explicit ``date``, so nothing here
 depends on the clock. MOST calls also pass an explicit ``save`` callable that
-appends to a list; the three store tests at the end pass NONE and isolate
+appends to a list; the three store tests near the end pass NONE and isolate
 through ``root`` instead, because reaching the real store through ``root`` is
 the very property they exist to prove.
+
+The LAST test is the T003 end-to-end path — loop, job, cycle loop, report on
+disk. It isolates through ``REMEDY_DATA_DIR`` as well as ``root``, because the
+report's location comes from ``jobs_dir()`` and no ``root=`` argument reaches
+it.
 
 R-0344 counter-measure: no assertion in this file matches against a string that
 carries a filesystem path. Every expected value is computed from the spec or
@@ -21,13 +26,21 @@ job store passes an explicit ``root``, so no test reads or writes a real store.
 """
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
 
 from packages.core.models import Job, RunState
 from packages.orchestration import mission_state, storage
+from packages.orchestration.builder_models import BuilderOutput, TaskExecutionContext
+from packages.orchestration.long_run_executor import (
+    TERMINAL_ALL_GREEN,
+    VERIFY_PASSED,
+    CycleLimits,
+    TaskAttempt,
+    run_cycles,
+)
 from packages.orchestration.loop_run import (
     LOOP_REF_METADATA_KEY,
     LOOP_UNATTENDED_METADATA_KEY,
@@ -42,6 +55,7 @@ from packages.orchestration.loop_spec import (
     LoopSpec,
     load_loop_specs,
 )
+from packages.orchestration.run_report import report_path
 
 DEADLINE_ISO = "2026-09-01T00:00:00+00:00"
 
@@ -380,3 +394,122 @@ def test_run_loop_root_isolates_the_job_store_on_the_job_path(
     found = last_run_for_loop(spec.name, root=tmp_path)
     assert found is not None
     assert found.id == outcome.job.id
+
+
+# ---------------------------------------------------------------------------
+# T003 — the one end-to-end path: loop -> job -> cycle loop -> report on disk
+# ---------------------------------------------------------------------------
+
+
+class _CountingProvider:
+    """A builder that always returns verifiable output and counts its calls."""
+
+    def __init__(self) -> None:
+        self.calls = 0
+
+    def __call__(self, context: TaskExecutionContext) -> BuilderOutput:
+        self.calls += 1
+        return BuilderOutput(
+            summary=f"did {context.task_description}",
+            proposed_changes=[f"write docs for {context.task_description}"],
+        )
+
+
+class _SteppingClock:
+    """A clock that advances by a fixed step per read, so nothing here sleeps."""
+
+    def __init__(self) -> None:
+        self.now = datetime(2026, 8, 13, 12, 0, 0, tzinfo=timezone.utc)
+
+    def __call__(self) -> datetime:
+        current = self.now
+        self.now = self.now + timedelta(seconds=1)
+        return current
+
+
+def _completing_step(job: Job, provider_call) -> TaskAttempt:
+    """Complete the first PENDING task, through the counted provider seam."""
+    task = next((t for t in job.tasks if t.status == RunState.PENDING), None)
+    if task is None:
+        return TaskAttempt()
+    provider_call(
+        TaskExecutionContext(
+            job_id=job.id,
+            job_prompt=job.user_prompt,
+            task_id=task.id,
+            task_type=task.inputs.get("task_type", "unknown"),
+            task_description=task.description,
+        )
+    )
+    task.status = RunState.COMPLETED
+    if all(t.status == RunState.COMPLETED for t in job.tasks):
+        job.state = RunState.COMPLETED
+    return TaskAttempt(task_id=task.id, executed=True, verified=True)
+
+
+def _passing_verify(job: Job, cycle_index: int, verify_command) -> str:
+    return VERIFY_PASSED
+
+
+@pytest.fixture
+def isolated_data_root(tmp_path: Path, monkeypatch) -> Path:
+    """The one data root the end-to-end run may touch.
+
+    ``report_path`` resolves through ``jobs_dir()``, which honours no ``root=``
+    argument — only ``REMEDY_DATA_DIR``. So the report half of the path can be
+    isolated ONLY through the environment, and the same directory is handed to
+    ``run_loop`` as ``root`` so the job store and the evidence area are one
+    place (the R-0351/R-0352 counter-measure).
+    """
+    data_dir = tmp_path / "remedy_data"
+    data_dir.mkdir()
+    monkeypatch.setenv("REMEDY_DATA_DIR", str(data_dir))
+    return data_dir
+
+
+def test_a_fixture_loop_runs_end_to_end_and_its_report_names_the_loop(
+        tmp_path: Path, isolated_data_root: Path) -> None:
+    """The F045 acceptance path in one test: a loop materializes a job, that
+    job runs through the STANDARD cycle loop with a fake provider, and the
+    report written at the terminal state names the loop it came from.
+
+    The fixture supplies NO task: ``run_loop`` runs ``job_runner.plan_job``, so
+    the job it hands back is already planned. Nothing asserted here is
+    fixture-decided — the loop ref comes from ``loop_to_job``, the tasks from
+    the planner, the ``- Loop:`` line from ``run_report``, and the last
+    assertion reads the job back off disk rather than out of ``outcome.job``
+    (R-0344/R-0351).
+    """
+    spec = _job_loop(tmp_path / "config")
+
+    outcome = run_loop(spec, project_id="remedy", date="2026-08-13",
+                       root=isolated_data_root)
+    job = outcome.job
+    assert job.metadata[LOOP_REF_METADATA_KEY] == spec.name
+
+    provider = _CountingProvider()
+
+    result = run_cycles(
+        job, CycleLimits(max_cycles=5), provider,
+        task_step=_completing_step, verify=_passing_verify,
+        clock=_SteppingClock(),
+    )
+
+    # OBSERVED at the R14 gate, not ordered in advance: the planner gives the
+    # job ``job_runner._PLANNING_TASK_SPECS`` — three tasks — and this step
+    # completes one per cycle, so three cycles and three provider calls end the
+    # run all green.
+    assert result.terminal_status == TERMINAL_ALL_GREEN
+    assert len(job.tasks) == 3
+    assert result.cycles_run == 3
+    assert provider.calls == 3
+    assert job.state is RunState.COMPLETED
+
+    written = report_path(str(job.id))
+    assert written.is_file()
+    expected_line = f"- Loop: {spec.name}"
+    text = written.read_text(encoding="utf-8")
+    assert [line for line in text.splitlines() if line == expected_line] == [expected_line]
+
+    stored = storage.load_job(job.id, isolated_data_root)
+    assert stored.metadata[LOOP_REF_METADATA_KEY] == spec.name
