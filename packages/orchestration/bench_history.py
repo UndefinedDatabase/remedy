@@ -116,6 +116,7 @@ def _record_from_row(row: dict[str, Any]) -> BenchRecord | None:
     wall_s = row.get("wall_s")
     repair_rounds = row.get("repair_rounds")
     classes = row.get("postmortem_classes")
+    models = row.get("models")
     return BenchRecord(
         order_id=order_id,
         series=series,
@@ -124,6 +125,11 @@ def _record_from_row(row: dict[str, Any]) -> BenchRecord | None:
         wall_s=float(wall_s) if isinstance(wall_s, (int, float)) and not isinstance(wall_s, bool) else None,
         repair_rounds=int(repair_rounds) if isinstance(repair_rounds, int) and not isinstance(repair_rounds, bool) else None,
         postmortem_classes=tuple(str(c) for c in classes) if isinstance(classes, list) else (),
+        # A history line written before T003b carries no ``models`` key. It
+        # reads back as ``None`` and the trend keeps it that way: the file is
+        # append-only and is never rewritten to add a field to old rows.
+        models=({str(k): (None if v is None else str(v)) for k, v in models.items()}
+                if isinstance(models, dict) else None),
     )
 
 

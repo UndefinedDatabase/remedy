@@ -64,6 +64,14 @@ class BenchRecord:
     #: run-log events; until one does, the honest value is the absent one.
     repair_rounds: int | None
     postmortem_classes: tuple[str, ...]
+    #: Which model served which role in the run this row came from, straight off
+    #: the evidence body's ``models`` key (F082 T003b write half, DECISION F082
+    #: D7). ``None`` means the run recorded no model context AT ALL — a run from
+    #: before the write half landed. A role the run could not observe is ``None``
+    #: INSIDE the dict, which is a different fact and stays distinguishable here.
+    #: Last field and defaulted on purpose: every existing ``BenchRecord(`` call
+    #: site stays valid unedited, which is what makes this change additive.
+    models: dict[str, str | None] | None = None
 
     def to_json(self) -> dict[str, Any]:
         """The row as plain JSON-ready data, keys sorted, for the history file."""
@@ -75,6 +83,7 @@ class BenchRecord:
             "wall_s": self.wall_s,
             "repair_rounds": self.repair_rounds,
             "postmortem_classes": list(self.postmortem_classes),
+            "models": dict(self.models) if self.models is not None else None,
         }
         return {key: body[key] for key in sorted(body)}
 
@@ -115,14 +124,16 @@ def build_bench_record(*, evidence_body: dict[str, Any], series: str,
                        verdict: Any) -> BenchRecord:
     """One bench row from one run's evidence body plus the evaluator's verdict.
 
-    Reads only what R2's inventory proved a gauntlet run already writes:
-    ``order_id``, ``wall_seconds`` and ``tokens`` off the ``run.json`` body,
-    and the ``failure_class`` of each postmortem it recorded. Everything else
-    the feature file names is either supplied by the caller (``series``) or has
-    no source in the harness and is therefore ``None`` (``repair_rounds``).
+    Reads only what a gauntlet run already writes: ``order_id``,
+    ``wall_seconds`` and ``tokens`` off the ``run.json`` body (R2's inventory),
+    the ``failure_class`` of each postmortem it recorded, and — since T003b's
+    write half — the ``models`` map. Everything else the feature file names is
+    either supplied by the caller (``series``) or has no source in the harness
+    and is therefore ``None`` (``repair_rounds``).
     """
     tokens = evidence_body.get("tokens")
     wall = evidence_body.get("wall_seconds")
+    models = evidence_body.get("models")
     return BenchRecord(
         order_id=str(evidence_body.get("order_id", "")),
         series=series,
@@ -134,4 +145,9 @@ def build_bench_record(*, evidence_body: dict[str, Any], series: str,
         wall_s=float(wall) if isinstance(wall, (int, float)) and not isinstance(wall, bool) else None,
         repair_rounds=None,
         postmortem_classes=_postmortem_classes_of(evidence_body),
+        # A body with no ``models`` key predates T003b's write half, and that
+        # absence is ``None`` rather than a dict of ``None``s: "nobody recorded
+        # this" and "this role was unobservable" are different facts (R-0178).
+        models=({str(k): (None if v is None else str(v)) for k, v in models.items()}
+                if isinstance(models, dict) else None),
     )
