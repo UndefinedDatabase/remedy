@@ -127,7 +127,7 @@ by line index and never retyped.
 4. Closure follows R16 per `docs/roadmap/STATUS_closure_protocol.md`, and it
    still owes an ist-doc for the watchdog under `docs/`, registered in
    `docs/README.md`. No round has written it yet.
-5. Open findings after the session close: **25** — R-0380, R-0381, R-0361,
+5. Open findings after the session close: **26** — R-0380, R-0381, R-0361,
    R-0362, R-0363, R-0364, R-0367, R-0368, R-0369, R-0371, R-0374, R-0375,
    R-0376, R-0377, R-0378, R-0379, R-0382, R-0385, R-0386, R-0387, R-0389,
-   R-0391, R-0392, R-0393, R-0394. Next free id: **R-0395**.
+   R-0391, R-0392, R-0393, R-0394, R-0395. Next free id: **R-0396**.
