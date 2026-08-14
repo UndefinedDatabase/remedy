@@ -20,6 +20,12 @@ from typing import Any
 
 import pytest
 
+from packages.orchestration.bench_history import (
+    BENCH_HISTORY_VERSION,
+    append_bench_run,
+    load_bench_history,
+)
+from packages.orchestration.capability_bench import build_bench_record
 from packages.orchestration.gauntlet_evidence import RUN_FILENAME
 from packages.orchestration.gauntlet_orders import GauntletOrder
 from packages.orchestration.gauntlet_runner import (
@@ -243,3 +249,101 @@ def test_the_written_run_json_adds_only_the_after_hash(tmp_path: Path,
     the file carries exactly one key more than the emitted body."""
     body = run_with(None, None, tmp_path, real_root)
     assert set(body) == BASE_BODY_KEYS | {"models", "data_root_hash_after"}
+
+
+# ---------------------------------------------------------------------------
+# 6. The READ half: the recorded map reaches the bench record, and survives
+#    the history file
+# ---------------------------------------------------------------------------
+
+def a_recorded_body(tmp_path: Path,
+                    models: dict[str, str | None] | None) -> dict[str, Any]:
+    """A body from the REAL emitter, never a hand-written dict.
+
+    The read half is only pinned if it is pinned against what the write half
+    actually emits; a literal body here would pin this file against itself.
+    """
+    return _evidence_body(an_order(), TERMINAL_ACHIEVED, 1.0, [], None, [],
+                          "meta-sha256:before", tmp_path, models)
+
+
+def a_record(tmp_path: Path, models: dict[str, str | None] | None):
+    """One bench row built from one recorded body, through the real builder."""
+    return build_bench_record(
+        evidence_body=a_recorded_body(tmp_path, models), series="s1",
+        verdict=None)
+
+
+def test_the_recorded_models_map_reaches_the_bench_record(tmp_path: Path) -> None:
+    record = a_record(tmp_path, {"planner": "qwen3:8b",
+                                 "orchestrator": "gpt-oss:20b",
+                                 "builder": None})
+    assert record.models == {"planner": "qwen3:8b",
+                             "orchestrator": "gpt-oss:20b",
+                             "builder": None}
+
+
+def test_a_run_that_observed_no_role_reads_back_as_three_absences(
+        tmp_path: Path) -> None:
+    """One half of the two different absences: the run DID record model
+    context, and every role in it was unobservable."""
+    assert a_record(tmp_path, None).models == {"planner": None,
+                                               "orchestrator": None,
+                                               "builder": None}
+
+
+def test_a_body_with_no_models_key_at_all_reads_back_as_none(
+        tmp_path: Path) -> None:
+    """The other half: a run from BEFORE the write half landed recorded
+    nothing, which is not the same fact as three absences (R-0178)."""
+    body = a_recorded_body(tmp_path, None)
+    del body["models"]
+    record = build_bench_record(evidence_body=body, series="s1", verdict=None)
+    assert record.models is None
+
+
+def test_to_json_carries_models_sorted_and_survives_a_json_round_trip(
+        tmp_path: Path) -> None:
+    row = a_record(tmp_path, {"planner": "qwen3:8b",
+                              "orchestrator": "gpt-oss:20b",
+                              "builder": None}).to_json()
+    assert row["models"] == {"planner": "qwen3:8b",
+                             "orchestrator": "gpt-oss:20b",
+                             "builder": None}
+    assert list(row) == sorted(row)
+    assert json.loads(json.dumps(row)) == row
+
+
+def test_models_survives_the_real_history_file(tmp_path: Path) -> None:
+    """A field that only survives ``to_json`` has not survived the FILE."""
+    record = a_record(tmp_path, {"planner": "qwen3:8b",
+                                 "orchestrator": "gpt-oss:20b",
+                                 "builder": None})
+    path = tmp_path / "bench_history.jsonl"
+    assert append_bench_run([record], path=path) == 1
+    loaded = load_bench_history(path)
+    assert len(loaded) == 1
+    assert loaded[0].record.models == record.models
+
+
+def test_a_history_line_written_before_the_read_half_still_loads(
+        tmp_path: Path) -> None:
+    """Back-compat as a property of the READER, not of a migration: the
+    history is append-only, so an old row never gains the new key."""
+    path = tmp_path / "bench_history.jsonl"
+    path.write_text(json.dumps({
+        "bench_history_version": BENCH_HISTORY_VERSION,
+        "run_seq": 1,
+        "row": {"order_id": "g01-pure-code-change", "series": "s1",
+                "passed": True, "cost": {"in": 10, "out": 20},
+                "wall_s": 1.5, "repair_rounds": None,
+                "postmortem_classes": []},
+    }) + "\n", encoding="utf-8")
+    loaded = load_bench_history(path)
+    assert len(loaded) == 1
+    row = loaded[0].record
+    assert row.models is None
+    assert row.order_id == "g01-pure-code-change"
+    assert row.passed is True
+    assert row.cost == {"in": 10, "out": 20}
+    assert row.wall_s == 1.5
