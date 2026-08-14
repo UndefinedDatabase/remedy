@@ -95,6 +95,6 @@ F077 D12 and build the first half of T003 against the inventory: the read-only
 `mission resume` verb, report surface deferred → R15 record the R14 verdict,
 register R-0393 and build that report surface — `latest_trips_from_ledger` plus
 the trip lead in `_cmd_mission_show` under D12, which completes T003 → R16 the
-integration gate per docs/agents/integration_gate.md, then closure per
-docs/roadmap/STATUS_closure_protocol.md, which still owes the watchdog's
-ist-doc under `docs/`.
+integration gate, whose first commit records `Gate: R15-close` and whose work is
+the branch and merge-base full runs → closure per
+docs/roadmap/STATUS_closure_protocol.md, still owing the watchdog's ist-doc.

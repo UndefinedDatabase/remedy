@@ -17,23 +17,23 @@ and raises one decision per trip class carrying the evidence triple. It stops;
 it never repairs. Thresholds live in config, not code.
 
 ## Current Step
-R15 — the second half of T003, which completes it. C1 recorded the R14 PASS and
-registered R-0393 (a red-proof is a PAIR: one `-k` selection for the green run
-and every mutated run). C2 added `watchdog.latest_trips_from_ledger`, a pure
-reader that reconstructs the trips a ledger already RECORDS — newest per kind,
-in the fixed kind order, torn entries skipped. C3 put the lead into
-`_cmd_mission_show` under DECISION F077 D12: a PAUSED mission's text output
-leads with the trip and its pointer to `remedy mission watchdog`, its `--json`
-gains a top-level `watchdog_trips`, and an unpaused one is unchanged. `show`
-stays read-only — it re-evaluates nothing.
+R16 — the integration gate per docs/agents/integration_gate.md: the full suite
+on the branch AND at the merge base 6227c3a2, compared with `comm`, every
+branch-only and base-only id attributed, and the evidence committed under
+`.agent/gate_f077_r16/`. F077 has run no base comparison in any round, so this
+one owes the whole procedure rather than the branch-only re-run F254 took under
+its own DECISION D14. The round's FIRST commit is not the gate work: it is the
+verdict on R15's four session-close rounds, recorded as `Gate: R15-close`, so
+that no round on this branch is unreviewed while the suite runs.
 
 ## Next Steps
-1. R16 — the integration gate per docs/agents/integration_gate.md. It owes no
-   gate paragraph: R15 was reviewed and its verdict is on the record, so R16's
-   first commit is the integration gate's own work.
-2. Closure per docs/roadmap/STATUS_closure_protocol.md — which still owes an
-   ist-doc for the watchdog under `docs/`, registered in `docs/README.md`. No
-   round has written it yet.
+1. Closure per docs/roadmap/STATUS_closure_protocol.md: the evidence job, a
+   FRESH review zip (a zip failure is a closure blocker), the authored STATUS
+   line committed last on the branch, then the PR — which is not merged now.
+2. Closure still owes an ist-doc for the watchdog under `docs/`, registered in
+   `docs/README.md`. No round has written it yet.
+3. A branch-only failure the gate reproduces is a BLOCKER whose repair is its
+   own reviewer-gated round, never folded into the closure round.
 
 ## Risks
 - A mission resumed AFTER its watchdog decision is answered still carries the
