@@ -1,103 +1,286 @@
-── STEP R7/14 — F083 CI self-check — RECORD R6, REGISTER R-0460, RESOLVE FOUR FINDINGS ──
+── STEP R8/14 — F083 CI self-check — RECORD R7, REGISTER TWO, LAND THE `remedy ci` CLI SEAM ──
 
 Goal:
-  Close the record R6 left open: write the R6 PASS verdict, register the one
-  finding that review produced, and replace the four `Landed:` lines with the
-  reviewer's `Done:` resolutions — only reviewer-authored text sets Resolved
-  (§4.4). This round writes NO code. The `remedy ci` CLI seam is fully scoped and
-  moves to R8, so the map is repaired in this same block (R-0455).
+  Make the runner reachable. Record the R7 PASS, register the two findings review
+  produced, then land the T001 CLI seam: a `ci` group and `ci.run` entry in the
+  catalog, `apps/cli/commands/ci_cmd.py` carrying `COMMAND_HANDLERS` and the
+  summary table, its wiring into `collect_all_handlers`, and
+  `tests/cli/test_ci_cmd.py` — whose last test really launches a stage argv
+  through `scripts/remedy_pytest_runner.py` as a subprocess.
 
 Bundle, in commit order:
-  C0a  copy the reviewer's scratchpad original to `.agent/authored/f083-r7.md`
+  C0a  copy the reviewer's scratchpad original to `.agent/authored/f083-r8.md`
   C0b  mirror it byte-identically into `.agent/last_block.md`
-  C1   `.agent/live_review.md` — GATE-R6-BLOCK appended at EOF, ONE commit.
-  C2   `.agent/live_review.md` — FINDING-R460 appended at EOF, ONE commit.
-  C3   `.agent/live_review.md` — the LANDED→DONE pair, ONE commit.
-  C4   `.agent/live_review.md` — the STEPS pair, ONE commit.
-  C5   `.agent/plan.md` (PLAN, whole file), ONE commit.
-  C6   `.agent/handoff.md`, the handback, alone.
+  C1   `.agent/live_review.md` — RECORD-R7 appended at EOF, ONE commit, one body:
+       gate line, blank line, the two findings.
+  C2   `apps/cli/commands/ci_cmd.py` — NEW FILE, whole file, ONE commit.
+  C3   `apps/cli/command_catalog.py` — the GROUP and ENTRY pairs, ONE commit.
+  C4   `apps/cli/commands/__init__.py` — the IMPORT and TUPLE pairs, ONE commit.
+  C5   `tests/cli/test_ci_cmd.py` — NEW FILE, whole file, ONE commit.
+  C6   `.agent/plan.md` (PLAN, whole file), ONE commit.
+  C7   `.agent/handoff.md`, the handback, alone.
 
-BASE: e166b640. Re-derive `git rev-parse HEAD` before the first commit and report
-whether it equals e166b640. If it does NOT, stop and hand off.
+BASE: 2d1c6d8d. Re-derive `git rev-parse HEAD` before the first commit and report
+whether it equals 2d1c6d8d. If it does NOT, stop and hand off.
 
 TRANSPORT: the scratchpad original of THIS block is at
-`.remedy-wt/.cache/f083-r7/f083-r7.md`, which `.gitignore` drops. C0a is a byte
+`.remedy-wt/.cache/f083-r8/f083-r8.md`, which `.gitignore` drops. C0a is a byte
 COPY of it — do not retype, reflow or strip anything. `cp` is denied in this
 session class: copy with `python3 -c "import shutil; shutil.copyfile(a, b)"`.
 
-SLICE CONVENTION (R-0437): every slice body below is the lines between its
-markers INCLUDING the trailing newline of its last line, and every shape is
-declared UNDER THAT CONVENTION. The authored units are, listed and NOT counted
-(R-0402, R-0460): GATE-R6-BLOCK, FINDING-R460, LANDED→DONE, STEPS, PLAN.
+SLICE CONVENTION (R-0437): every slice body below is the lines between its markers
+INCLUDING the trailing newline of its last line, and every shape is declared UNDER
+THAT CONVENTION. The authored units are, listed and NOT counted (R-0402, R-0460):
+RECORD-R7, CI-CMD, GROUP, ENTRY, IMPORT, TUPLE, TEST-CI-CMD, PLAN.
 
-PAIR SHAPES, stated at authoring time (§4.9) and verified on these bytes, not
-asserted: LANDED→DONE and STEPS are both REWRITEs — FROM and TO are disjoint —
-so each is proved by FROM 0x and TO 1x over the whole file. No pair in this block
-is append-shaped.
+PAIR SHAPES, stated at authoring time (§4.9), verified on these bytes rather than
+asserted, and DIFFERENT for the two files C3 and C4 touch — read this before
+choosing a proof. GROUP and ENTRY are APPEND-shaped: each TO literally CONTAINS its
+FROM, so "FROM 0x" is UNSATISFIABLE for them and is NOT ordered; their property is
+FROM 1x before AND after, TO 0x before and 1x after. IMPORT and TUPLE are REWRITEs
+— FROM and TO are disjoint — so each is proved by FROM 0x and TO 1x over the whole
+file. CI-CMD, TEST-CI-CMD and PLAN are WHOLE FILES, proved by byte equality.
 
 Constraints:
-  1. Change set, exactly: `.agent/authored/f083-r7.md`, `.agent/last_block.md`,
-     `.agent/live_review.md`, `.agent/plan.md`, `.agent/handoff.md`. Nothing
-     else. `apps/`, `packages/`, `tests/`, `scripts/` and `docs/` stay EMPTY in
-     the range diff — this round writes no code and no test, by design.
+  1. Change set, exactly: `.agent/authored/f083-r8.md`, `.agent/last_block.md`,
+     `.agent/live_review.md`, `.agent/plan.md`, `.agent/handoff.md`,
+     `apps/cli/commands/ci_cmd.py`, `apps/cli/command_catalog.py`,
+     `apps/cli/commands/__init__.py`, `tests/cli/test_ci_cmd.py`. Nothing else.
+     `packages/` stays EMPTY in the range diff — this round wires the existing
+     runner and changes no orchestration code.
   2. Apply every slice BYTE-VERBATIM. A defect in my text is a declared deviation
-     in the handback, never a silent repair. No slice contains an instruction
+     in the handback, never a silent repair. No slice carries an instruction
      addressed to you about the file it lands in (R-0450).
-  3. C1 before C2, C2 before C3, C3 before C4. Push after C6. Create NO pull
-     request. This round adds NO worktree; `git worktree list` is one line
-     throughout.
+  3. Commit strictly in the C-order above: C2 before C3, C3 before C4, C4 before
+     C5. Push after C7. Create NO pull request. This round adds NO worktree;
+     `git worktree list` is one line throughout.
   4. Env-var assignment (all three forms), `cp`, `$?` inside `$(...)` and process
      substitution are denied in this session class. Capture real exit codes as
-     `bash -c '<cmd>; echo "REAL_EXIT=$?"'` and use `python3 - <<"PY"` heredocs —
-     QUOTED delimiter — for all counting, hashing and byte comparison.
+     `bash -c '<cmd>; echo "REAL_EXIT=$?"'` and use `python3` scripts written to
+     `.remedy-wt/.cache/f083-r8/` for all counting, hashing and byte comparison —
+     a quoted heredoc is also fine where the shell accepts it.
 
---- BEGIN SLICE GATE-R6-BLOCK --- (APPEND to .agent/live_review.md, C1, with exactly one blank line between the file's current last line and the first line of this slice)
-Gate: R6 — PASS. Verification tier: the live-state contract reader, the two live-state readers and the canary, all re-run by the reviewer at the round's head, plus ruff, both orchestration test files, an independent re-derivation of every authored-text proof out of the committed git objects, and a direct behavioural probe of all three repairs against the committed module; no full-suite claim is made. TRANSPORT held in its strongest form: the committed `.agent/authored/f083-r6.md` byte-equals the REVIEWER'S OWN scratchpad original at `.remedy-wt/.cache/f083-r6/f083-r6.md`, three-way with `.agent/last_block.md`, all sha256 7c6acd4e1202d599bdcbff83b7e31c0e8e870f3e18a8a832ce60052450024540, 30218 bytes, 346 lines, and the measured 346 equals the block's declared footer — so no applied byte was retyped anywhere on the path. The three EOF appends each hold the prefix property from the git blobs, with tails byte-equal to `b"\n" + GATE-R5-BLOCK`, `b"\n" + FINDINGS` and `b"\n" + LANDED` and numstats `2 0`, `8 0` and `5 0`. The C3 REWRITE pair holds in both directions, FROM 0x and TO 1x, with the three ordered literals at 1, 1 and 0 and the substring the dashboard contract reads still present. C4's two files were read back OUT of fb9ddf12: every one of the ten ordered code literals sits at its ordered count, all five FROM literals gone and all five TO literals present exactly once, `lambda command, cwd:` exactly 3, every TO slice present VERBATIM, and TESTS-APPEND at the file's end preceded by exactly two blank lines. The repairs were then probed as BEHAVIOUR, not as text, because a diff that applies cleanly is not a defect that is fixed: `ci_exit_code(())` and the all-skipped tuple both return 1 where both returned 0 at 81af8a98, while green-plus-skipped stays 0 and green-plus-red stays 1 — the empty case narrowed and nothing else; the injected runner receives the repository root; and a REAL subprocess launched through `_run_via_subprocess`, with a child comparing `os.getcwd()` against the anchor, exits 0 — so the anchor survives the process boundary, which no unit test in this round shows. ruff exits 0 over both files, `test_ci_run.py` collects 8 and passes 8 at exit 0 — the 6 at BASE plus the 2 appended — the stage table is untouched at 7/7, the dashboard contract, resource safety and the integrity-gate tests are 113 passed exit 0 together, and the canary is 42 passed exit 0. C6's plan byte-equals PLAN at 32 lines with one numbered Next Step, `## Goal` and `## Next Steps` present and no `- [ ]` line. The open set at HEAD is 87 registered, 0 Done, 4 Landed, max R-0459, no duplicate id, and the four new ids are exactly the four ordered. The integrity gate reports passed true, fail_count 0, check_count 5, every named check pass. Insertions 346 · 235 · 2 · 8 · 7 · 44 · 5 · 12, with the handback's own 152 measured after the fact, none over 500. The worker declared one defect in the block's own text before the reviewer read the diff — the tenth consecutive round — and it is registered below as R-0460.
---- END SLICE GATE-R6-BLOCK ---
+--- BEGIN SLICE RECORD-R7 --- (APPEND to .agent/live_review.md, C1, with exactly one blank line between the file's current last line and the first line of this slice. The blank line INSIDE this slice, between the gate line and the first finding, is part of it.)
+Gate: R7 — PASS. Verification tier: all fourteen ordered gates re-run by the reviewer itself at the round's head, plus an independent re-derivation of every authored-text proof out of the committed git objects; no full-suite claim is made. Every value the handback declares was re-measured and every one MATCHED. TRANSPORT held in its strongest form: `.remedy-wt/.cache/f083-r7/f083-r7.md`, the committed `.agent/authored/f083-r7.md` and `.agent/last_block.md` are three-way byte-equal at sha256 55d13bea17d21bc337a66abdb580297d1806d557e9cf23a6dfecb9d5e28be7b7, 19042 bytes, 207 lines, and the measured 207 equals the block's declared footer — so no applied byte was retyped anywhere on the path. The two EOF appends each hold the prefix property, re-derived from the git blobs with the slices extracted BY MARKER from the committed authored file: C1 and C2 both prefix True with tails byte-equal to `b"\n" + GATE-R6-BLOCK` and `b"\n" + FINDING-R460`, numstats `2 0` and `2 0`, deletion column 0 in both. The C3 REWRITE pair holds in both directions at 0cef203c — LANDED-FROM 0x, DONE-TO 1x, line-anchored `^Landed: R-` 0 and `^Done: R-` 4, numstat `4 4` — and the C4 pair likewise at 0f854f82, STEPS-FROM 0x and STEPS-TO 1x with the three ordered literals at their ordered 1, 1 and 0, `Steps` still occurring 26 times, numstat `7 6`. The round's defining constraint held: `git diff --name-only e166b640..HEAD -- apps/ packages/ tests/ scripts/ docs/` printed NOTHING, so no code was written. The code R6 landed still runs — the two orchestration files give 15 passed at exit 0, collecting 8 and 7 per file, equal to the reviewer's BASE reading. All four verification paths were confirmed on disk before use (R-0438) and each ran separately: dashboard contract 70 passed, resource safety 21 passed, integrity-gate tests 15 passed, canary 42 passed, every one exit 0. The open set at HEAD is 88 registered, 4 `Done:`, 0 `Landed:`, open 84, max R-0460, no duplicate id, and the four resolved ids are exactly R-0456 to R-0459 — matching the block's expectation on every value. The integrity gate reports passed true, fail_count 0, check_count 5, every named check pass. `.agent/plan.md` byte-equals the PLAN slice at sha256 dad347470a35fc42ae82bb6d877002049350ddcef9ec31a88f230b035111c213, 32 lines, one numbered Next Step, no `- [ ]` line. Insertions 207 · 146 · 2 · 2 · 4 · 7 · 15, with the handback's own 112 measured after the fact, none over 500. The worker's conduct was exact: every slice applied byte-verbatim, no slice altered or reflowed, no scope widened, and no claim made that the reviewer could not re-derive. Both findings registered below are defects of the REVIEWER's own authored text, found by re-reading it against disk, and neither is chargeable to the round that applied it.
 
---- BEGIN SLICE FINDING-R460 --- (APPEND to .agent/live_review.md, C2, with exactly one blank line between the file's current last line and the first line of this slice)
-- R-0460 — Low, A BLOCK'S OWN CONVENTION PARAGRAPH MISCOUNTED ITS SLICES AND DENIED STATING A COUNT IN THE SAME BREATH. Declared by the WORKER while applying the R6 block, with the disk evidence, before the reviewer read the diff. That block's SLICE CONVENTION paragraph reads "five REWRITE pairs and one end-of-file append in the two code files", while its C4 bundle line orders "all six repair pairs" and six exist: RUNNER, INJECT, CALL and EXIT in `packages/orchestration/ci_run.py`, ASSERT and LAMBDAS in `tests/orchestration/test_ci_run.py`. The same sentence ends "No numeral is stated for that list — the list IS the statement (R-0402)" while stating numerals inside it, so the paragraph contradicts the rule it cites in the act of citing it. Nothing on disk is wrong: the worker gave the C4 line precedence, applied six, altered no slice and declared the disagreement, and gate 6 was satisfiable only with all six applied — which is why the round is green. This is the R-0402 / R-0404 / R-0436 / R-0453 family, whose standing rule is count it mechanically or state NO numeral, and it is now also the R-0331 family — clause-vs-clause disagreement inside one block — landing in a paragraph written to prevent exactly this. Low: no gate, claim or byte depended on the numeral. Standing rule from here, binding the reviewer, and placed in the pre-emission checklist rather than left as finding prose (R-0452): a block's convention paragraph names its authored units and states NO count of them, and any sentence that both enumerates and denies enumerating is a defect of the block regardless of which half is true. OPEN.
---- END SLICE FINDING-R460 ---
+- R-0461 — Medium, A FINDING DECLARED ITS OWN RULE ALREADY PLACED IN THE CHECKLIST WHILE THE SAME BLOCK FORBADE TOUCHING THE FILE THAT CARRIES IT. R-0460's closing sentence reads "Standing rule from here, binding the reviewer, and placed in the pre-emission checklist rather than left as finding prose (R-0452)". It is not placed there. The pre-emission checklist in `docs/agents/planner_reviewer_prompt.md` §3 opens "Run all ten checks mechanically" and its items run 1 to 10, none of which is the convention-paragraph rule; a repo-wide grep of every `*.md` for "convention paragraph", "NO count of them", "denies enumerating" and "both enumerates" returns the rule ONLY in `.agent/live_review.md` and in the two mirrors of the block that authored it, so the absence is measured across every writer rather than inferred from one file (R-0419). The claim was moreover unsatisfiable by construction: constraint 1 of the same block fixed the change set at five `.agent/**` paths and ordered `docs/` to stay EMPTY in the range diff, so the block asserted a placement its own constraints forbade any commit in that round from making. This is exactly the class R-0452 exists to name — a standing rule written as finding prose binds nothing — and the sentence defeats it in a new way, by ASSERTING the promotion instead of performing it, which is strictly worse than leaving it as prose because a later reader greps the checklist, does not find it, and cannot tell whether the rule was retired or never landed. It is also the R-0416 class in its purest form: an authored finding stating an outcome about bytes the same block has not written and cannot write. Low would understate it — R-0416 already ruled that completeness claims are forbidden and this is a stronger claim than completeness — so Medium. The reviewer's defect entirely; the R7 worker applied the text byte-verbatim as ordered, which is the correct conduct. Fix, owed and NOT ordered here: the promotion R-0460 claimed still has to happen — the rule becomes checklist item 11 in §3, and the "Run all ten checks" opener is updated in the same pair so the count and the enumeration agree. R8 does NOT do it: this block's change set contains no `docs/` path, and ordering the edit in the finding text while excluding the file is the very defect being registered. R9 owns it as its first item. From here, a finding may state that a rule IS in the checklist only when the same block ORDERS the edit that puts it there; otherwise it names the round that will, as this one does. OPEN.
+- R-0462 — Low, THE HANDBACK TOKEN CAP IS BINDING, EXCEEDED EVERY ROUND, AND MEASURED BY NOTHING. `docs/agents/handback_template.md` sets two independent limits: a LINE cap of ≤60, ≤100 for a >5-commit bundle and ≤160 for the >10-commit LARGE case, and below it a "Hard cap: this file stays ≤800 tokens — ≤1600 in the >10-commit LARGE case". The R7 handback declares a DECISION D15 stated-cause overage naming its 178 lines against the ≤100 cap, which is the correct and honest treatment of the LINE cap — and says nothing about the token cap, which it also exceeds. `.agent/handoff.md` at 2d1c6d8d is 8839 bytes; the file is English prose with tables, so no defensible bytes-per-token ratio brings it under 800, and even a deliberately generous five-bytes-per-token reading leaves it above the 1600 the LARGE case allows, which this 8-commit bundle cannot claim anyway. The property is what is registered here, not a token count the reviewer cannot measure exactly: the file is over the hard cap by a multiple, under every ratio worth arguing about. It is chronic rather than new — R5 was 164 lines, R6 152, R7 178 — and it is structural rather than careless: the mandated sections compose a per-commit table for every commit, a value for every ordered gate, and an item-status row for every C-item and every gate, which for a bundle of this shape cannot fit 800 tokens however tersely written. Low, because nothing downstream consumed a wrong number and the honesty of the record is unharmed. The cause is a gap in the counter-measure rather than in any round: pre-emission checklist item 3 names the LINE caps of `.agent/plan.md` and `.agent/handoff.md` and is silent on the token cap, so no reviewer pass has ever measured it. Fix, deferred to a paydown round and NOT to R8, because it changes a rule document that R8's change set does not include and the right repair is a ruling rather than an edit: the operator decides whether the 800-token cap is raised to match the mandated content, or the mandated content is reduced, and whichever way it goes, item 3 gains the token cap so the number is measured instead of assumed. Until that ruling, a handback that declares a D15 stated-cause overage names BOTH caps it exceeds rather than only the line cap. OPEN.
+--- END SLICE RECORD-R7 ---
 
---- BEGIN SLICE LANDED-FROM --- (the REWRITE pair's FROM, C3; four whole contiguous lines occurring exactly once in .agent/live_review.md)
-Landed: R-0456 — the stage run is anchored at `repo_root` via `cwd=`, the injected runner signature carries it, and a test pins that the runner receives the root; C4.
-Landed: R-0457 — `ci_exit_code` returns 1 when no stage ran, with the empty and all-skipped tuples both pinned by a test; C4.
-Landed: R-0458 — the assertion that could not fail is replaced by one on the argv shape a regression can actually produce; C4.
-Landed: R-0459 — `.agent/plan.md` names one future round; C6.
---- END SLICE LANDED-FROM ---
+--- BEGIN SLICE CI-CMD --- (WHOLE FILE, the NEW file apps/cli/commands/ci_cmd.py, C2)
+"""CLI handlers for the ``ci`` command group — Remedy's own CI, run locally.
 
---- BEGIN SLICE DONE-TO --- (the REWRITE pair's TO, C3; replaces LANDED-FROM in place, four whole lines. Only reviewer-authored text sets Resolved, which is what this pair is.)
-Done: R-0456 — the run is anchored: `_run_via_subprocess` takes the root and passes `cwd=`, the injected signature carries it, and `run_ci_stage` hands over the same `repo_root` it already used to find the script. Verified by the reviewer at e166b640 rather than read from the handback — the injected runner receives the repository root, and a REAL subprocess launched through `_run_via_subprocess`, whose child compares `os.getcwd()` against the anchor, exits 0. The anchor therefore survives the process boundary, which the unit test alone does not show. RESOLVED.
-Done: R-0457 — a run in which nothing ran is red. Verified by the reviewer at e166b640 against the committed module: `ci_exit_code(())` and the all-skipped tuple both return 1 where both returned 0 at 81af8a98, while green-plus-skipped stays 0 and green-plus-red stays 1 — the repair narrowed exactly the empty case and touched no other outcome. RESOLVED.
-Done: R-0458 — the guard is now a proposition a regression can violate: it measures the argv against the `["-m", "pytest"]` shape the module docstring says shelling out would lose, and the vacuous list-membership line is gone from the committed file. RESOLVED.
-Done: R-0459 — `.agent/plan.md` names one future round, and the map remains the single place the full round chain is stated. RESOLVED.
---- END SLICE DONE-TO ---
+The stage TABLE is :mod:`packages.orchestration.ci_stages` and the RUNNER is
+:mod:`packages.orchestration.ci_run`; this module owns only the seam between them
+and the terminal — stage selection, the summary table, and the process exit code.
+Rendering lives HERE rather than in the runner because a summary is a property of
+the command that prints it, not of the run (T2_F083). `remedy ci` runs every stage
+in table order; `--stage NAME` runs exactly one. A stage marked `runs_in_ci=False`
+is REPORTED as skipped with the command that runs it by hand — never silently
+dropped, because the coverage claim is honest only while the exclusions stay
+visible. Remedy deliberately does NOT give this command a "stop at the first red"
+switch: `run_ci_stage` never raises on a red stage, so every selected stage always
+runs and the summary is always complete.
+"""
+from __future__ import annotations
 
---- BEGIN SLICE STEPS-FROM --- (the REWRITE pair's FROM, C4; six whole lines INSIDE the existing Steps paragraph, occurring exactly once. The line that follows it in the file — the one beginning `closure. Each round marks` — is NOT part of this pair and is not touched.)
-repairs R-0456 to R-0458 and the cwd anchor → R7 T001 the `remedy ci` CLI seam
-and the summary table it prints → R8 T001 the per-stage selection tests over a
-fixture tree and the parallelism measurement D2.5 defers → R9 T002 the
-determinism and budget stages plus the guard-test wiring → R10 T002 the
-seeded-failure test per stage → R11 T003 the hosted workflow files, the docs and
-the runtime budget written from measured data → R12 the integration gate → R13
---- END SLICE STEPS-FROM ---
+import json
+import sys
+from pathlib import Path
+from typing import Any
 
---- BEGIN SLICE STEPS-TO --- (the REWRITE pair's TO, C4; replaces STEPS-FROM in place, seven whole lines, the rest of the paragraph untouched)
-repairs R-0456 to R-0458 and the cwd anchor → R7 the R6 record and the four Done
-resolutions → R8 T001 the `remedy ci` CLI seam and the summary table it prints →
-R9 T001 the per-stage selection tests over a fixture tree and the parallelism
-measurement D2.5 defers → R10 T002 the determinism and budget stages plus the
-guard-test wiring → R11 T002 the seeded-failure test per stage → R12 T003 the
-hosted workflow files, the docs and the runtime budget written from measured
-data → R13 the integration gate → R14
---- END SLICE STEPS-TO ---
+def repo_root_for_ci() -> Path:
+    """The repository root every stage is anchored at (finding R-0456).
 
---- BEGIN SLICE PLAN --- (WHOLE FILE replacement of .agent/plan.md, C5)
+    This file is `apps/cli/commands/ci_cmd.py`, so the root is three levels up.
+    """
+    return Path(__file__).resolve().parents[3]
+
+
+def summarize_ci_results(results: tuple[Any, ...]) -> str:
+    """The per-stage table a human reads: one line per stage, in run order."""
+    lines = ["STAGE        RESULT      TIME  NOTE"]
+    for result in results:
+        if not result.ran:
+            verdict = "skipped"
+        elif result.exit_code == 0:
+            verdict = "passed"
+        else:
+            verdict = f"failed({result.exit_code})"
+        lines.append(f"{result.stage:<12} {verdict:<11} {result.duration_s:5.1f}  {result.note}".rstrip())
+    return "\n".join(lines)
+
+
+def ci_results_as_json(results: tuple[Any, ...]) -> str:
+    """The same table as JSON, for a caller that parses instead of reads."""
+    rows = [
+        {
+            "stage": result.stage, "ran": result.ran, "exit_code": result.exit_code,
+            "duration_s": round(result.duration_s, 3), "note": result.note,
+        }
+        for result in results
+    ]
+    return json.dumps(rows, indent=2)
+
+
+def _cmd_ci_run(args: Any) -> None:
+    """Run the selected CI stages and exit with the run's honest verdict."""
+    from packages.orchestration.ci_run import ci_exit_code, run_ci_stage
+    from packages.orchestration.ci_stages import CI_STAGES, ci_stage_by_name
+
+    selected = getattr(args, "stage", None)
+    stages = (ci_stage_by_name(selected),) if selected else CI_STAGES
+    root = repo_root_for_ci()
+    results = tuple(run_ci_stage(stage, root) for stage in stages)
+
+    if getattr(args, "json", False):
+        print(ci_results_as_json(results))
+    else:
+        print(summarize_ci_results(results))
+
+    sys.exit(ci_exit_code(results))
+
+
+COMMAND_HANDLERS = {
+    "ci.run": lambda args: _cmd_ci_run(args),
+}
+--- END SLICE CI-CMD ---
+
+--- BEGIN SLICE GROUP-FROM --- (the APPEND-shaped pair's FROM, C3; one whole line occurring exactly once in apps/cli/command_catalog.py)
+    "integrity": GroupDef("integrity", "Integrity", "Pre-handoff integrity checks.", user_facing=False),
+--- END SLICE GROUP-FROM ---
+
+--- BEGIN SLICE GROUP-TO --- (the APPEND-shaped pair's TO, C3; replaces GROUP-FROM in place. It CONTAINS the FROM line unchanged as its second line.)
+    "ci": GroupDef("ci", "CI", "Remedy's own CI stages, run locally.", user_facing=False),
+    "integrity": GroupDef("integrity", "Integrity", "Pre-handoff integrity checks.", user_facing=False),
+--- END SLICE GROUP-TO ---
+
+--- BEGIN SLICE ENTRY-FROM --- (the APPEND-shaped pair's FROM, C3; ONE whole line occurring exactly once in apps/cli/command_catalog.py — the section comment above the integrity entry)
+    # ── integrity ───────────────────────────────────────────────────────
+--- END SLICE ENTRY-FROM ---
+
+--- BEGIN SLICE ENTRY-TO --- (the APPEND-shaped pair's TO, C3; replaces ENTRY-FROM in place. It CONTAINS the FROM line unchanged as its LAST line. `action_class` is `test_execution` and `may_execute_commands` is True because this command spawns pytest — `read_only` would fail the catalog's own mutating-commands guard.)
+    # ── ci ─────────────────────────────────────────────────────────────
+    CommandEntry(
+        command_id="ci.run",
+        group_id="ci",
+        subcommand="run",
+        description="Run Remedy's own CI stages locally and print the summary.",
+        action_class="test_execution",
+        args=(
+            ArgDef("--stage", "Run one stage by name instead of all of them", required=False, is_option=True),
+            ArgDef("--json", "Output as JSON", required=False, is_option=True),
+        ),
+        supports_json=True,
+        may_execute_commands=True,
+    ),
+
+    # ── integrity ───────────────────────────────────────────────────────
+--- END SLICE ENTRY-TO ---
+
+--- BEGIN SLICE IMPORT-FROM --- (the REWRITE pair's FROM, C4; two whole contiguous lines occurring exactly once in apps/cli/commands/__init__.py)
+        change,
+        config_cmd,
+--- END SLICE IMPORT-FROM ---
+
+--- BEGIN SLICE IMPORT-TO --- (the REWRITE pair's TO, C4; replaces IMPORT-FROM in place, three whole lines, keeping the import list alphabetical)
+        change,
+        ci_cmd,
+        config_cmd,
+--- END SLICE IMPORT-TO ---
+
+--- BEGIN SLICE TUPLE-FROM --- (the REWRITE pair's FROM, C4; a fragment at the end of the `for mod in (...)` line, occurring exactly once in apps/cli/commands/__init__.py)
+, bench_cmd):
+--- END SLICE TUPLE-FROM ---
+
+--- BEGIN SLICE TUPLE-TO --- (the REWRITE pair's TO, C4; replaces TUPLE-FROM in place. This tuple is ordered by when a module was added, not alphabetically, so the new module goes last.)
+, bench_cmd, ci_cmd):
+--- END SLICE TUPLE-TO ---
+
+--- BEGIN SLICE TEST-CI-CMD --- (WHOLE FILE, the NEW file tests/cli/test_ci_cmd.py, C5)
+"""Contract tests for the `remedy ci` CLI seam.
+
+The seam is thin by design, so these pin the three things that can rot: the
+catalog entry and its handler agree, the summary reports every stage including
+the ones CI never runs, and the argv a stage builds really reaches
+`scripts/remedy_pytest_runner.py` as a subprocess.
+"""
+from __future__ import annotations
+
+import subprocess
+from pathlib import Path
+
+import pytest
+
+from apps.cli.command_catalog import GROUPS, get_command
+from apps.cli.commands import collect_all_handlers
+from apps.cli.commands.ci_cmd import repo_root_for_ci, summarize_ci_results
+from packages.orchestration.ci_run import StageResult, stage_command
+from packages.orchestration.ci_stages import ci_stage_by_name
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+
+
+def test_ci_group_and_entry_declare_that_the_command_executes():
+    assert "ci" in GROUPS
+    assert GROUPS["ci"].user_facing is False
+    cmd = get_command("ci.run")
+    assert cmd.group_id == "ci"
+    assert cmd.subcommand == "run"
+    assert cmd.action_class == "test_execution"
+    assert cmd.may_execute_commands is True
+
+
+def test_ci_run_handler_is_reachable_from_the_cli():
+    assert "ci.run" in collect_all_handlers()
+
+
+def test_repo_root_is_the_repository_root():
+    assert repo_root_for_ci() == REPO_ROOT
+    assert (repo_root_for_ci() / "scripts" / "remedy_pytest_runner.py").is_file()
+
+
+def test_summary_reports_a_skipped_stage_instead_of_dropping_it():
+    note = "not run by CI — run it manually with: pytest -m real_ollama"
+    results = (
+        StageResult(stage="fast", ran=True, exit_code=0, duration_s=1.0, note=""),
+        StageResult(stage="excluded", ran=False, exit_code=None, duration_s=0.0, note=note),
+    )
+    table = summarize_ci_results(results)
+    assert "excluded" in table
+    assert "skipped" in table
+    assert "passed" in table
+    assert "run it manually" in table
+
+
+def test_summary_names_the_failing_exit_code():
+    results = (StageResult(stage="fast", ran=True, exit_code=2, duration_s=0.5, note=""),)
+    assert "failed(2)" in summarize_ci_results(results)
+
+
+@pytest.mark.subprocess
+def test_a_stage_argv_really_reaches_the_pytest_runner():
+    """Launch a real stage argv through the runner script, not a stub.
+
+    The tests above prove the wiring without spawning anything; this one proves
+    the seam a user actually hits.
+    """
+    command = stage_command(ci_stage_by_name("fast"), REPO_ROOT)
+    assert command[1].endswith("scripts/remedy_pytest_runner.py")
+    assert command[2] == "--"
+    probe = [*command[:3], "--collect-only", "-q", "tests/cli/test_ci_cmd.py"]
+    completed = subprocess.run(
+        probe, cwd=REPO_ROOT, capture_output=True, text=True, timeout=300, check=False
+    )
+    assert completed.returncode == 0, completed.stdout[-2000:] + completed.stderr[-2000:]
+--- END SLICE TEST-CI-CMD ---
+
+--- BEGIN SLICE PLAN --- (WHOLE FILE replacement of .agent/plan.md, C6)
 # Plan — F083 CI self-check
 
 Branch: feature/f083-ci-self-check, cut from main after the F082 closure PR #201
-merged. Next free finding id: R-0461. Open findings: the seventy-five carried out
-of the F082 record plus R-0448 to R-0460 registered on this branch, of which
+merged. Next free finding id: R-0463. Open findings: the seventy-five carried out
+of the F082 record plus R-0448 to R-0462 registered on this branch, of which
 R-0456 to R-0459 are resolved. `.agent/live_review.md` is the source of truth.
 
 ## Goal
@@ -109,17 +292,15 @@ reproduces the hosted result locally on a clean checkout, a seeded failure fails
 the right stage with a readable summary, and runtime stays within a budget.
 
 ## Current Step
-R7 closes the record R6 left open: the R6 PASS verdict, R-0460 registered, and
-the four `Landed:` lines replaced by the reviewer's `Done:` resolutions, since
-only reviewer-authored text sets Resolved. It writes no code, and it repairs the
-map because the CLI seam moves out of this round.
+R8 records the R7 PASS, registers R-0461 and R-0462, and lands the T001 CLI seam:
+the `ci` catalog group and `ci.run` entry, `apps/cli/commands/ci_cmd.py` with its
+summary table, the wiring into `collect_all_handlers`, and `tests/cli/test_ci_cmd.py`
+— whose last test really launches a stage argv through the pytest runner script.
 
 ## Next Steps
-1. R8 makes the runner reachable: a `ci` group and `ci.run` entry in
-   `apps/cli/command_catalog.py`, `apps/cli/commands/ci_cmd.py` carrying
-   `COMMAND_HANDLERS` and the summary table, its wiring in
-   `apps/cli/commands/__init__.py`, and `tests/cli/test_ci_cmd.py` — including
-   one test that really launches a stage argv through the pytest runner script.
+1. R9 promotes R-0460's rule into the §3 pre-emission checklist as item 11
+   (finding R-0461, its first item), then adds the per-stage selection tests over
+   a fixture tree that pin each stage's marker expression against known markers.
 
 ## Risks
 - `fast` still rests on a single 391.8 s reading, and the inventory showed it is
@@ -127,81 +308,93 @@ map because the CLI seam moves out of this round.
   runtime budget can be written from measured data.
 --- END SLICE PLAN ---
 
-Done when — run every gate, record its REAL value; a gate you cannot run is
-reported as not run, never as green:
+Done when — run every gate, record its REAL value; a gate you cannot run is reported as not run, never as green:
 
- 1. `git status --porcelain` EMPTY before the first commit and before C6.
+ 1. `git status --porcelain` EMPTY before the first commit and before C7.
     `git worktree list` ONE line throughout. `.agent/STOP` ABSENT at round start
     and at handback (R-0347).
  2. BASE: `git rev-parse HEAD` before the first commit; report it and whether it
-    equals e166b640.
+    equals 2d1c6d8d.
  3. TRANSPORT, bytes read in Python: sha256, bytes and lines of
-    `.remedy-wt/.cache/f083-r7/f083-r7.md`, `.agent/authored/f083-r7.md` and
-    `.agent/last_block.md`; whether all three are EQUAL; whether the measured
-    line count equals this block's declared footer.
- 4. C1 and C2 PREFIX PROPERTY, each over `<commit>^..<commit>`: `pre` prefixes
-    `post`, and `post[len(pre):]` equals `b"\n" + <slice>`, each slice extracted
-    from the COMMITTED `.agent/authored/f083-r7.md` by its markers. Report both
-    numstats; each deletion column must be 0.
- 5. C3 REWRITE PAIR over the whole `.agent/live_review.md` at C3: LANDED-FROM 0x,
-    DONE-TO 1x. Line-anchored: `^Landed: R-` must be 0, `^Done: R-` must be 4.
-    Report the C3 numstat.
- 6. C4 REWRITE PAIR over the whole file at C4: STEPS-FROM 0x, STEPS-TO 1x. Then
-    count these three literals, each wholly on ONE line of the TO so no count is
-    defeated by a line break: `R7 the R6 record and the four Done` must be 1,
-    `R13 the integration gate` must be 1, `R12 the integration gate` must be 0.
-    Confirm the substring `Steps` still occurs. Report the C4 numstat.
- 7. NO CODE WAS WRITTEN, which is this round's defining constraint:
-    `git diff --name-only e166b640..HEAD -- apps/ packages/ tests/ scripts/ docs/`
-    must print NOTHING. Report it as a measured list.
- 8. THE CODE R6 LANDED STILL RUNS, untouched: `python3 -m pytest
-    tests/orchestration/test_ci_run.py tests/orchestration/test_ci_stages.py -q`
-    — report collected count and exit code [reviewer measured 8 and 7, both exit
-    0, at BASE].
- 9. VERIFICATION, each run separately, exit code from the process (R-0438):
-    `tests/ui_server/test_dashboard_contract.py` [70/70, 0] — the reader of both
-    files this round rewrites; `tests/regression/test_resource_safety.py` [21, 0];
-    `tests/orchestration/test_integrity_gate.py` [15, 0]; and the canary
-    `tests/cli/test_golden_path.py` [42/42, 0], each via `python3 -m pytest <path>
-    -q`. `tests/docs/` is NOT a gate: no `docs/roadmap/**` path is in the change
-    set.
-10. OPEN SET at HEAD: count `^- R-\d+ — ` paragraphs, `^Done: R-\d+ — ` and
-    `^Landed: R-\d+ — ` lines; report all three, registered-minus-done, max id,
-    next free id, any duplicate. Reviewer measured 87 / 0 / 4 max R-0459 at BASE
-    and expects 88 / 4 / 0, max R-0460, open 84. Report what you MEASURE.
-11. INTEGRITY GATE, in Python because the `remedy` CLI is denied here (R-0408):
+    `.remedy-wt/.cache/f083-r8/f083-r8.md`, `.agent/authored/f083-r8.md` and
+    `.agent/last_block.md`; whether all three are EQUAL; whether the measured line
+    count equals this block's declared footer.
+ 4. C1 PREFIX PROPERTY over `<C1>^..<C1>`: `pre` prefixes `post`, and
+    `post[len(pre):]` equals `b"\n" + RECORD-R7`, that slice extracted from the
+    COMMITTED `.agent/authored/f083-r8.md` by its markers. Report the numstat;
+    its deletion column must be 0.
+ 5. THE TWO NEW FILES, each byte-equal to its slice as a whole file — sha256 and
+    line count for both: `apps/cli/commands/ci_cmd.py` against CI-CMD and
+    `tests/cli/test_ci_cmd.py` against TEST-CI-CMD. Also report
+    `git diff --name-only <C2>^..<C2>`, which must list `ci_cmd.py` ALONE.
+ 6. C3 APPEND-SHAPED PAIRS over the whole `apps/cli/command_catalog.py` at C3 —
+    each FROM is CONTAINED in its TO, so GROUP-FROM and ENTRY-FROM must each be 1x
+    BEFORE and 1x AFTER, while GROUP-TO and ENTRY-TO must each be 0x before and 1x
+    after. Report all eight. Then over the file at C3: `"ci": GroupDef` 1,
+    `command_id="ci.run"` 1, `command_id="integrity.check"` 1. Report the numstat.
+ 7. C4 REWRITE PAIRS over the whole `apps/cli/commands/__init__.py` at C4:
+    IMPORT-FROM 0x, IMPORT-TO 1x, TUPLE-FROM 0x, TUPLE-TO 1x. Then `ci_cmd`
+    occurs exactly 2 in that file and `bench_cmd` exactly 2. Report the numstat.
+ 8. RUFF over the four Python files this round writes or edits, in ONE run:
+    `python3 -m ruff check apps/cli/commands/ci_cmd.py apps/cli/command_catalog.py
+    apps/cli/commands/__init__.py tests/cli/test_ci_cmd.py` — report the real exit
+    code [reviewer measured exit 0 over the two edited files at BASE].
+ 9. THE NEW TESTS RUN: `python3 -m pytest tests/cli/test_ci_cmd.py -q` — report
+    collected count and exit code. Its last test spawns a real subprocess and is
+    the slowest; if it exceeds the runner's budget, report that rather than
+    trimming the test.
+10. THE CATALOG STILL AGREES WITH ITSELF, all four paths confirmed on disk first
+    (R-0438), in ONE run: `python3 -m pytest tests/test_command_catalog.py
+    tests/cli/test_command_catalog.py tests/test_grouped_cli.py tests/cli/test_cli_ux.py
+    -q` — collected count and exit code [BASE: 593 passed, exit 0 — a red here is
+    this round's doing]. NOTE the two same-named files; both are gates.
+11. VERIFICATION, each run separately, exit code from the process (R-0438), each
+    via `python3 -m pytest <path> -q`: `tests/ui_server/test_dashboard_contract.py`
+    [70, 0] — it reads the handler table this round extends;
+    `tests/regression/test_resource_safety.py` [21, 0];
+    `tests/orchestration/test_integrity_gate.py` [15, 0]; canary
+    `tests/cli/test_golden_path.py` [42, 0]. `tests/docs/` is NOT a gate — no
+    `docs/roadmap/**` path is in the change set.
+12. THE STAGE TABLE AND RUNNER ARE UNTOUCHED: `git diff --name-only 2d1c6d8d..HEAD
+    -- packages/` must print NOTHING. Report it as a measured list.
+13. INTEGRITY GATE, in Python because the `remedy` CLI is denied here (R-0408):
     `python3 -c "from packages.orchestration.integrity_gate import
     run_integrity_checks, export_integrity_json; import json;
     print(json.dumps(export_integrity_json(run_integrity_checks())))"` — report
-    `passed`, `fail_count`, `check_count`, every named check's status.
-12. C5 PLAN byte-equals the PLAN slice as a whole file — report sha256, line count
+    `passed`, `fail_count`, `check_count`, every check's status, and the
+    `handler_import` message, whose count rises by exactly 1 [BASE: handlers=337].
+14. OPEN SET at HEAD: count `^- R-\d+ — ` paragraphs, `^Done: R-\d+ — ` and
+    `^Landed: R-\d+ — ` lines; report all three, registered-minus-done, max id,
+    next free id, any duplicate. Reviewer measured 88 / 4 / 0, max R-0460, at BASE
+    and expects 90 / 4 / 0, max R-0462, open 86. Report what you MEASURE.
+15. C6 PLAN byte-equals the PLAN slice as a whole file — report sha256, line count
     (under 50), `## Goal` and `## Next Steps` present, no `- [ ]` line, and the
     number of numbered items under `## Next Steps`.
-13. CHANGE SET, measured BEFORE the handoff is written into C6, so it lists four
-    paths with `.agent/handoff.md` the fifth and last: `git diff --name-only
-    e166b640..HEAD`. Report the list and its count.
-14. Insertions (`+` column only) for C0a through C5 — report each; none over 500.
-    C0b is a verbatim single-`.agent/`-file rewrite, exempt by the AGENTS.md
-    counting rule; report its number anyway. C6's own count cannot exist inside
-    C6 (R-0149): report it in your final message.
+16. CHANGE SET, measured BEFORE the handoff is written into C7, so it lists eight
+    paths with `.agent/handoff.md` the ninth and last: `git diff --name-only
+    2d1c6d8d..HEAD`. Report the list and its count.
+17. Insertions (`+` column only) for C0a through C6 — report each; none over 500.
+    C0b is a verbatim single-`.agent/`-file rewrite, AGENTS.md-exempt; report it
+    anyway. C7's own count cannot exist inside C7 (R-0149): final message.
 
-The push result, the post-C6 clean-tree reading and the open-PR list postdate C6,
+The push result, the post-C7 clean-tree reading and the open-PR list postdate C7,
 so per R-0449 and R-0452 they are NOT ordered into that file: run `git push -u
-origin feature/f083-ci-self-check` after C6, create no PR, report all three in
-your final message.
+origin feature/f083-ci-self-check` after C7, create no PR, report all three in your
+final message.
 
-Handback: rewrite `.agent/handoff.md` per docs/agents/handback_template.md, as C6
+Handback: rewrite `.agent/handoff.md` per docs/agents/handback_template.md, as C7
 — feature and round, branch, per-commit changed-files tables, every gate value
 above, the item-status table covering every C-item and gate, open findings with
-max and next free id, and the next action, R8's CLI seam. C6 cannot table its own
-SHA (R-0371, R-0149); say so rather than inventing one. Repeat this Fortschritt
-line verbatim:
+max and next free id, and the next action, R9 as the plan states it. C7
+cannot table its own SHA (R-0371, R-0149); say so rather than inventing one. If it
+exceeds a cap, name BOTH the line and token caps — R-0462 registers that gap in
+C1. Fortschritt, verbatim:
 
-Fortschritt: 25 % (F083 beansprucht · R1 bis R6 PASS · Stage-Tabelle und Stage-Runner als Code gelandet · Runner-Defekte R-0456 bis R-0458 repariert, verifiziert und aufgelöst · noch keine CLI, kein Summary, keine hosted workflows) — gemessen, nicht geschätzt
+Fortschritt: 32 % (F083 beansprucht · R1 bis R7 PASS · Stage-Tabelle, Stage-Runner und jetzt die `remedy ci` CLI-Naht als Code gelandet, mit einem Test der wirklich einen Stage-Argv durch den Runner startet · noch kein Summary in den hosted workflows, keine Determinismus- oder Budget-Stage) — gemessen, nicht geschätzt
 
-If any gate is RED, or anything here contradicts what you find on disk: finish
-the commit you are in, write the handoff naming the exact blocker, end. Do not
-widen scope to route around it (G8).
+If any gate is RED, or anything here contradicts what you find on disk: finish the
+commit you are in, write the handoff naming the exact blocker, end. Do not widen
+scope to route around it (G8).
 
-BLOCK SIZE, measured on these final bytes: 207 lines (cap 400, DECISION F105 D5).
+BLOCK SIZE, measured on these final bytes: 400 lines (cap 400, DECISION F105 D5).
 ──────────────────────────────────────────────────────────────────────────────
