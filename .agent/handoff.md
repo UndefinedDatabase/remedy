@@ -1,145 +1,160 @@
-# Handback — F083 CI self-check, R5 (worker)
+# Handoff — F083 CI self-check, R6 (runner repairs)
 
-Branch: feature/f083-ci-self-check.
+Branch: feature/f083-ci-self-check. Worker round R6/13, delegated.
 
 ## Range
-Review of 0e4526b0..<C5>. C5 is the commit that writes this file and cannot
-carry its own SHA (R-0371, R-0149); none is invented. C5's insertion count, the
-push result, the post-C5 clean-tree reading and the open-PR list all postdate
-C5 and are reported in the worker's final message (R-0449, R-0452).
+
+Review of 81af8a98..HEAD — the eight commits below plus the handoff commit.
 
 ## Commits
 
-### a220e903 chore(f083): save the R5 block as authored text
+### 392e2078 docs(f083): save the R6 step block as authored text
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f083-r5.md | +382/-0 | C0a — byte copy of the scratchpad original |
+| .agent/authored/f083-r6.md | +346/-0 | C0a, byte copy of the scratchpad original |
 
-### eb94eb0d chore(f083): mirror the R5 block into last_block
+### 0d887d30 docs(f083): mirror the R6 block into last_block
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/last_block.md | +291/-305 | C0b — same bytes as C0a |
+| .agent/last_block.md | +235/-271 | C0b, byte-identical mirror |
 
-### d9aa04d3 docs(f083): record the R4 verdict in the live review
+### 2a1c4263 docs(f083): record the R5 verdict in the live review
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/live_review.md | +2/-0 | C1 — GATE-R4-BLOCK appended at EOF after one blank line |
+| .agent/live_review.md | +2/-0 | C1, GATE-R5-BLOCK appended at EOF |
 
-### ff1aae12 docs(f083): split the map R5 clause into runner and CLI seam rounds
+### 7e8c3a7b docs(f083): register R-0456 to R-0459 from the R5 review
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/live_review.md | +6/-6 | C2 — STEPS-FROM to STEPS-TO, six whole lines in place |
+| .agent/live_review.md | +8/-0 | C2, FINDINGS appended at EOF |
 
-### 8ab928aa feat(f083): add the CI stage runner and its wiring guards
+### 7158c1ef docs(f083): repair the round map for the runner repair round
 | Path | +/- | Reason |
 |---|---|---|
-| packages/orchestration/ci_run.py | +94/-0 | C3 — NEW, the stage runner |
-| tests/orchestration/test_ci_run.py | +81/-0 | C3 — NEW, its wiring guards |
+| .agent/live_review.md | +7/-6 | C3, STEPS-FROM to STEPS-TO in place |
 
-### e2c4bc8f docs(f083): point the plan at the runner round and the R6 CLI seam
+### fb9ddf12 fix(f083): anchor the CI stage run and make an empty run red
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/plan.md | +17/-23 | C4 — whole-file PLAN replacement |
+| packages/orchestration/ci_run.py | +18/-6 | C4, RUNNER/INJECT/CALL/EXIT pairs |
+| tests/orchestration/test_ci_run.py | +26/-4 | C4, ASSERT + LAMBDAS pairs, TESTS-APPEND |
 
-### C5 — SHA unknowable inside itself
+### 5fbda7d2 docs(f083): mark R-0456 to R-0459 landed
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/handoff.md | this file | C5 — the handback, alone |
+| .agent/live_review.md | +5/-0 | C5, LANDED appended at EOF |
+
+### 9bd7b584 docs(f083): point the plan at the runner repairs and one next round
+| Path | +/- | Reason |
+|---|---|---|
+| .agent/plan.md | +12/-15 | C6, PLAN whole-file replacement |
+
+### C7 — this commit, self-reference
+| Path | +/- | Reason |
+|---|---|---|
+| .agent/handoff.md | rewrite | C7 cannot table its own SHA or insertion count (R-0371, R-0149); both are in the worker's final message |
 
 ## External actions
-None through C5: no push yet, no PR created, no gh command, no worktree added
-or removed. `git push -u origin feature/f083-ci-self-check` runs after C5.
+
+None before C7. `git push -u origin feature/f083-ci-self-check` runs AFTER C7 per
+the block's closing paragraph, so its result is reported in the final message and
+not here. No PR created, no worktree added or removed.
 
 ## Verification
-Every gate below was RUN; none is reported as unrunnable. Exit codes were read
-from the process object, never from a pipe (R-0438), and every path was
-resolved on disk before it was used.
 
-1. `git status --porcelain` EMPTY before the first commit and again before C5
-   (both runs printed nothing). `git worktree list` ONE line both times:
-   `/home/decodeux/Repos/remedy … [feature/f083-ci-self-check]`. `.agent/STOP`
-   ABSENT at round start and at handback (`No such file or directory`).
-2. BASE `git rev-parse HEAD` = 0e4526b05a5d940cb6d3cffc40fe6bd56e6f3342 —
-   EQUAL to the declared 0e4526b0.
-3. TRANSPORT, bytes read in Python: `.remedy-wt/.cache/f083-r5/f083-r5.md`,
-   `.agent/authored/f083-r5.md` and `.agent/last_block.md` are each sha256
-   54bd00a70d792420fe7ff66966dd284be2ddeb6a36848729bf29031aef4c8f04, 22102
-   bytes, 382 lines; the three byte strings are EQUAL; the measured 382 equals
-   the block's declared footer count of 382.
-4. C1 PREFIX PROPERTY over d9aa04d3^..d9aa04d3, both blobs read from git: pre
-   155450 B is a prefix of post 158478 B (True), and post[155450:] equals
-   b"\n" + GATE-R4-BLOCK byte-for-byte (True), that slice extracted by its
-   markers from the COMMITTED `.agent/authored/f083-r5.md`. numstat `2 0` —
-   deletion column 0.
-5. C2 REWRITE PAIR, both slices from that same committed file. Over the WHOLE
-   `.agent/live_review.md` at ff1aae12: STEPS-FROM 0x, STEPS-TO 1x. The lines
-   `## Steps` and `## Findings` each occur 1x, in that order; inside that
-   section `R6 T001 the` = 1, `R11 the integration gate` = 1,
-   `R10 the integration gate` = 0. The substring `Steps` still occurs (19x).
-   numstat `6 6`.
-6. C3 NEW FILES read back out of 8ab928aa and compared with the extracted
-   slices: `packages/orchestration/ci_run.py` byte-equals CI-RUN — sha256
-   1eab0b140529e05c90d124526165d4bf6c239ed2b1d09be033f3b4f580edd0c3, 3257 B,
-   94 lines; `tests/orchestration/test_ci_run.py` byte-equals TEST-CI-RUN —
-   sha256 cbe857b3afa99954e887569986750e395dffa2baafeb8aaf3608837779bacfa8,
-   2517 B, 81 lines. numstat `94 0` and `81 0` — both ADDED, deletion column 0.
-7. C3 RUNS GREEN, each command separately, both paths `is_file` True first.
-   `python3 -m ruff check packages/orchestration/ci_run.py
-   tests/orchestration/test_ci_run.py` → exit 0, "All checks passed!".
-   `python3 -m pytest tests/orchestration/test_ci_run.py -q` → 6 collected,
-   6 passed, exit 0. `python3 -c "import packages.orchestration.ci_run as m;
-   print(m.__file__)"` → /home/decodeux/Repos/remedy/packages/orchestration/
-   ci_run.py — inside the PRIMARY checkout, so the green is the committed
-   code's (R-0337). Repo-wide `ruff check` was not run; it is not a gate here.
-8. R4'S CODE, which this round imports:
-   `python3 -m pytest tests/orchestration/test_ci_stages.py -q` → 7 collected,
-   7 passed, exit 0.
-9. C4 PLAN byte-equals the PLAN slice as a whole file — sha256
-   8937d73f5badbdc1a6f43fd3c9c7263db004e413702221341bad6814dc8d9977, 2009 B,
-   35 lines (under 50); `## Goal` and `## Next Steps` present; `- [ ]` lines: 0.
-10. CHANGE SET `git diff --name-only 0e4526b0..HEAD`, measured BEFORE this file
-   was written: `.agent/authored/f083-r5.md`, `.agent/last_block.md`,
-   `.agent/live_review.md`, `.agent/plan.md`,
-   `packages/orchestration/ci_run.py`, `tests/orchestration/test_ci_run.py` —
-   count 6, with `.agent/handoff.md` the seventh and last. The same command
-   restricted to `apps/ scripts/ docs/` printed NOTHING (0 paths); restricted
-   to R4's two files and `.agent/f083_inventory.md` it printed NOTHING
-   (0 paths).
-11. VERIFICATION, each command run separately, measured value first, the
-   reviewer's BASE reading in brackets:
-   `tests/ui_server/test_dashboard_contract.py` → 70 passed, exit 0 [70/70, 0];
-   `tests/regression/test_resource_safety.py` → 21 passed, exit 0 [21, 0];
-   `tests/orchestration/test_integrity_gate.py` → 15 passed, exit 0 [15, 0];
-   canary `tests/cli/test_golden_path.py` → 42 passed, exit 0 [42/42, 0].
-12. OPEN SET at HEAD: `^- R-\d+ — ` paragraphs 83, `^Done: R-\d+ — ` lines 0,
-   difference 83, max id R-0455, next free R-0456, duplicate ids none. No
-   finding was registered this round; the measured triple equals the
-   reviewer's BASE reading.
-13. INTEGRITY GATE, in Python (the `remedy` CLI is denied in this session
-   class, R-0408): passed true, fail_count 0, check_count 5 —
-   handler_import pass (handlers=337), live_review_verdict pass,
-   plan_consistency pass (unchecked=0, context_complete=False),
-   relevant_untracked pass (untracked=0, relevant=0), high_blockers_open pass.
-14. Insertions (`+` column only): C0a 382, C0b 291, C1 2, C2 6, C3 175, C4 17
-   — none over 500. C0b is a verbatim single-`.agent/`-file rewrite and is
-   exempt by the AGENTS.md counting rule; its number is reported anyway.
+1. `git status --porcelain` empty before the first commit and before C7;
+   `git worktree list` ONE line throughout; `.agent/STOP` absent at round start
+   and at handback.
+2. BASE `git rev-parse HEAD` = 81af8a98769e38a72c7b9cf0003d15e41d79c86b — EQUALS
+   the declared 81af8a98.
+3. TRANSPORT: scratchpad, `.agent/authored/f083-r6.md`, `.agent/last_block.md` all
+   sha256 7c6acd4e1202d599bdcbff83b7e31c0e8e870f3e18a8a832ce60052450024540,
+   30218 bytes, 346 lines, three-way byte-equal; 346 equals the declared footer.
+4. C1 prefix property 158500 B to 161685 B, tail byte-equal `b"\n" + GATE-R5-BLOCK`,
+   numstat `2 0`. C2 161685 B to 167607 B, tail byte-equal `b"\n" + FINDINGS`,
+   numstat `8 0`. Deletion column 0 in both.
+5. C3 whole file: STEPS-FROM 0x, STEPS-TO 1x. `repairs R-0456 to R-0458 and the
+   cwd anchor` 1 · `R11 T003 the hosted workflow files` 1 · `R10 T003 the hosted
+   workflow files` 0 · `Steps` occurs 25x. Numstat `7 6`.
+6. C4 out of fb9ddf12: `ci_run.py` sha256 fa999c062b9f41e3…, 3908 B, 106 lines,
+   numstat `18 6`; `test_ci_run.py` sha256 72cb197350dcd70b…, 3055 B, 103 lines,
+   numstat `26 4`. In ci_run.py, measured 0 each: `check=False).returncode` ·
+   `Callable[[list[str]], int]` · `stage, repo_root))` · `A skipped stage is not
+   a pass` · `for r in results if r.ran`. Measured 1 each:
+   `check=False, cwd=cwd).returncode` · `Callable[[list[str], Path], int]` ·
+   `stage_command(stage, repo_root), repo_root)` · `ran = [result for result in
+   results if result.ran]` · `cwd: Path) -> int:`. In test_ci_run.py, measured 0
+   each: `"pytest" not in command[1:2]` · `lambda command:`. Measured 1 each:
+   `command[1:3] != ["-m", "pytest"]`, and the two new test definitions
+   `test_the_stage_run_is_anchored_at_the_repository_root` and
+   `test_a_run_in_which_nothing_ran_is_not_green`. `lambda command, cwd:` = 3.
+7. TESTS-APPEND: committed test file ENDS with the slice True; the two lines
+   immediately before it are both empty True.
+8. `ruff check packages/orchestration/ci_run.py tests/orchestration/test_ci_run.py`
+   exit 0, "All checks passed!". `pytest tests/orchestration/test_ci_run.py -q`
+   8 collected, 8 passed, exit 0 — the 6 at BASE plus the 2 TESTS-APPEND adds.
+   `packages.orchestration.ci_run.__file__` =
+   /home/decodeux/Repos/remedy/packages/orchestration/ci_run.py, PRIMARY checkout.
+9. `pytest tests/orchestration/test_ci_stages.py -q` 7 collected, 7 passed,
+   exit 0 — equals the reviewer's BASE reading; the stage table is untouched.
+10. C6 plan sha256 ec12ddca9d07febd0dac3264725ff316bcc7a09d07fabc5a40b551220ea7ed23,
+    byte-equal to the PLAN slice as a whole file, 32 lines (<50), `## Goal` and
+    `## Next Steps` present, `- [ ]` count 0, numbered Next Steps items 1.
+11. CHANGE SET `git diff --name-only 81af8a98..HEAD` before C7, count 6:
+    .agent/authored/f083-r6.md · .agent/last_block.md · .agent/live_review.md ·
+    .agent/plan.md · packages/orchestration/ci_run.py ·
+    tests/orchestration/test_ci_run.py. Restricted to apps/, scripts/, docs/ the
+    measured list is EMPTY; the measured list of ci_stages.py, test_ci_stages.py
+    and .agent/f083_inventory.md entries is EMPTY.
+12. `pytest tests/ui_server/test_dashboard_contract.py -q` 70 passed exit 0 [70/70,0];
+    `tests/regression/test_resource_safety.py -q` 21 passed exit 0 [21,0];
+    `tests/orchestration/test_integrity_gate.py -q` 15 passed exit 0 [15,0];
+    canary `tests/cli/test_golden_path.py -q` 42 passed exit 0 [42/42,0].
+13. OPEN SET at HEAD: 87 registered, 0 `Done:`, 4 `Landed:`; registered minus done
+    87; max R-0459; next free R-0460; no duplicate id. Reviewer expected 87/0/4
+    with max R-0459 — matched.
+14. INTEGRITY GATE (Python; `remedy` CLI denied this session): passed true,
+    fail_count 0, check_count 5 — handler_import pass (handlers=337),
+    live_review_verdict pass, plan_consistency pass (unchecked=0),
+    relevant_untracked pass (untracked=0), high_blockers_open pass.
+15. Insertions: C0a 346 · C0b 235 · C1 2 · C2 8 · C3 7 · C4 44 · C5 5 · C6 12.
+    None over 500. C0b is a verbatim single-`.agent/`-file rewrite and exempt by
+    the AGENTS.md counting rule; reported anyway. C7's own count is in the final
+    message, since it cannot exist inside C7.
 
 ## Authored-text proofs
-Every applied slice was extracted BY ITS MARKERS from the COMMITTED
-`.agent/authored/f083-r5.md` (`git show <sha>:…`) and applied byte-verbatim;
-nothing was retyped. Each equality is byte equality PLUS a sha256 computed in
-Python — neither `cmp` nor `$?` was relied on (R-0408).
 
-| Slice | Target | Proof |
-|---|---|---|
-| whole block | .agent/authored/f083-r5.md, .agent/last_block.md | three-way byte-equal with the scratchpad original, sha256 54bd00a7…4f04 |
-| GATE-R4-BLOCK | .agent/live_review.md (C1) | post == pre + b"\n" + slice, True |
-| STEPS-FROM / STEPS-TO | .agent/live_review.md (C2) | FROM 0x, TO 1x over the whole file at C2 |
-| CI-RUN | packages/orchestration/ci_run.py | byte-equal out of 8ab928aa, sha256 1eab0b14…d0c3 |
-| TEST-CI-RUN | tests/orchestration/test_ci_run.py | byte-equal out of 8ab928aa, sha256 cbe857b3…cfa8 |
-| PLAN | .agent/plan.md | byte-equal whole file, sha256 8937d73f…9977 |
+Every slice was extracted BY MARKER from the COMMITTED
+`.agent/authored/f083-r6.md` — never from the scratchpad, never retyped — and
+compared byte-for-byte in Python. GATE-R5-BLOCK, FINDINGS, LANDED: appended tails
+byte-equal `b"\n" + slice`. STEPS: FROM 1x before / 0x after, TO 0x before / 1x
+after. RUNNER, INJECT, CALL, EXIT, ASSERT: each FROM occurred exactly 1x before
+replacement. LAMBDAS: three separate lines, each exactly 1x, replaced one-for-one
+in file order. TESTS-APPEND: committed file ends with the slice after two empty
+lines. PLAN: `.agent/plan.md` byte-equals the slice as a whole file.
+
+## Deviations & assumptions
+
+1. DECLARED DEFECT IN THE BLOCK'S TEXT — not silently repaired, not routed
+   around. The SLICE CONVENTION paragraph enumerates "five REWRITE pairs and one
+   end-of-file append in the two code files", while the bundle's C4 line orders
+   "all six repair pairs plus the test append". Six pairs exist on disk: RUNNER,
+   INJECT, CALL, EXIT in `packages/orchestration/ci_run.py`; ASSERT, LAMBDAS in
+   `tests/orchestration/test_ci_run.py`. The two clauses disagree with each
+   other, and the disk agrees with the C4 line. That same paragraph also states
+   "No numeral is stated for that list" while stating "two", "one" and "five"
+   inside it. I applied SIX pairs, because gate 6 is satisfiable only with all
+   six applied (`Callable[[list[str], Path], int]` must be 1 and
+   `lambda command, cwd:` must be 3) and every ordered literal came out at its
+   ordered value. No slice was altered. Reviewer to rule on the wording.
+2. Stated-cause overage (DECISION D15): this handoff is 196 lines against the
+   ≤100 cap for a >5-commit bundle. The cause is mandated content only — eight
+   per-commit changed-files tables, the fifteen ordered gate values, and the
+   item-status table carrying every C-item and every gate as its own row. No
+   section was dropped and no prose was padded to reach that length.
 
 ## Item status
+
 | Item | Status | Reason |
 |---|---|---|
 | C0a | done | |
@@ -147,54 +162,35 @@ Python — neither `cmp` nor `$?` was relied on (R-0408).
 | C1 | done | |
 | C2 | done | |
 | C3 | done | |
-| C4 | done | |
-| C5 | done | this file |
-| Gate 1 clean tree / worktree / STOP | done | empty, one line, absent |
-| Gate 2 BASE | done | equals 0e4526b0 |
-| Gate 3 transport | done | three-way equal, 382 = 382 |
-| Gate 4 C1 prefix | done | True, numstat 2 0 |
-| Gate 5 C2 pair | done | 0x / 1x, 1 / 1 / 0 |
-| Gate 6 C3 new files | done | both byte-equal, both added |
-| Gate 7 C3 green | done | ruff 0, 6/6 exit 0, primary path |
-| Gate 8 R4 code | done | 7/7, exit 0 |
-| Gate 9 C4 plan | done | byte-equal, 35 lines |
-| Gate 10 change set | done | 6 paths, both restrictions empty |
-| Gate 11 verification | done | 70 / 21 / 15 / 42, all exit 0 |
-| Gate 12 open set | done | 83 / 0 / R-0455 / R-0456 |
-| Gate 13 integrity gate | done | passed true, 0 of 5 failed |
-| Gate 14 insertions | done | max 382, none over 500 |
+| C4 | done | six pairs applied; see Deviations 1 |
+| C5 | done | |
+| C6 | done | |
+| C7 | done | this commit |
+| Gate 1 tree / worktree / STOP | done | |
+| Gate 2 BASE SHA | done | equals 81af8a98 |
+| Gate 3 TRANSPORT | done | |
+| Gate 4 C1+C2 prefix property | done | |
+| Gate 5 C3 rewrite pair | done | |
+| Gate 6 C4 code literals | done | |
+| Gate 7 TESTS-APPEND tail | done | |
+| Gate 8 C4 runs green | done | |
+| Gate 9 stage table still runs | done | |
+| Gate 10 C6 plan | done | |
+| Gate 11 change set | done | |
+| Gate 12 verification suites | done | |
+| Gate 13 open set | done | |
+| Gate 14 integrity gate | done | |
+| Gate 15 insertions | done | |
 
-## Deviations & assumptions
-1. STATED-CAUSE OVERAGE (AGENTS.md DECISION D15): this handoff is 200 lines,
-   over the 100-line cap for a >5-commit round. The cause is mandated content
-   only — seven per-commit changed-files tables, the fourteen gate transcripts
-   the block ordered by number, the six-row authored-text proof table and the
-   21-row item-status table. No section was dropped to meet the cap.
-2. DECLARED, NOT REPAIRED (block constraint 2 — a defect in the block's text is
-   declared, never silently fixed): the PLAN slice names TWO future rounds in
-   its `## Next Steps` (item 1 R6, item 2 R7), while the map paragraph the same
-   block leaves standing in `.agent/live_review.md` reads "Another file may name
-   at most the NEXT round — `.agent/plan.md` must, because AGENTS.md mandates
-   its Next Steps section". Disk evidence: the two numbered items in
-   `.agent/plan.md` at e2c4bc8f, and that sentence inside the Steps section at
-   ff1aae12. The plan at BASE had the same two-round shape (it named R5 and R6),
-   so this round neither introduces nor widens the condition — it is reported
-   because the block ordered the text verbatim and the rule it may cross sits in
-   a file this same block rewrote. Applied as written; the reviewer rules.
-3. Assumption, stated: C1's "exactly one blank line between the file's current
-   last line and the first line of this slice" was applied as
-   post = pre + b"\n" + slice, which is exactly what gate 4 orders byte-for-byte
-   — the two readings of the instruction agree, and the file already ended in a
-   newline (155450 B, ends `\n`).
-4. Nothing outside the block's change set was touched: R4's `ci_stages.py` and
-   `test_ci_stages.py` and `.agent/f083_inventory.md` are absent from the range
-   diff (gate 10), no module registers the new code, no PR was created and no
-   worktree was added.
-
-Fortschritt: 20 % (F083 beansprucht · R1 bis R4 PASS · Marker-Inventar gemessen · Stage-Set per DECISION F083 D2 entschieden · Stage-Tabelle und Stage-Runner als Code gelandet · noch keine CLI, kein Summary, keine hosted workflows) — gemessen, nicht geschätzt
+Open findings: 87 registered, 0 resolved. R-0456 to R-0459 are marked Landed this
+round and await the reviewer's Done. Max id R-0459, next free id R-0460.
 
 ## Next
-R6: the `remedy ci [--stage NAME] [--json]` CLI seam — catalog group, entry and
-a `COMMAND_HANDLERS` module — plus the summary table it prints, which states the
-accepted `standard`/`smoke` double-run, and one real stage invocation to prove
-the subprocess seam end to end.
+
+R7 builds the T001 CLI seam: the `remedy ci [--stage NAME] [--json]` catalog
+group, its entry and a `COMMAND_HANDLERS` module, plus the summary table it
+prints, which states the accepted `standard`/`smoke` double-run. The next
+session's first action is Phase 1 rule 1 — re-read `.agent/STOP` from disk —
+before the Open PR Gate.
+
+Fortschritt: 22 % (F083 beansprucht · R1 bis R5 PASS · Marker-Inventar gemessen · Stage-Set per DECISION F083 D2 entschieden · Stage-Tabelle und Stage-Runner als Code gelandet · Runner-Defekte R-0456 bis R-0458 repariert · noch keine CLI, kein Summary, keine hosted workflows) — gemessen, nicht geschätzt
