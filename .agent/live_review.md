@@ -26,11 +26,12 @@ set → R4 T001 the stage definitions and their structural tests → R5 T001 the
 stage runner over the existing pytest subprocess runner → R6 T001 the runner
 repairs R-0456 to R-0458 and the cwd anchor → R7 the R6 record and the four Done
 resolutions → R8 T001 the `remedy ci` CLI seam and the summary table it prints →
-R9 T001 the per-stage selection tests over a fixture tree and the parallelism
-measurement D2.5 defers → R10 T002 the determinism and budget stages plus the
-guard-test wiring → R11 T002 the seeded-failure test per stage → R12 T003 the
-hosted workflow files, the docs and the runtime budget written from measured
-data → R13 the integration gate → R14
+R9 the R8 record, the ruff repair and checklist item 11 → R10 T001 the
+per-stage selection tests over a fixture tree, the parallelism measurement D2.5
+defers, and checklist item 12 → R11 T002 the determinism and budget stages plus
+the guard-test wiring → R12 T002 the seeded-failure test per stage → R13 T003
+the hosted workflow files, the docs and the runtime budget written from measured
+data → R14 the integration gate → R15
 closure. Each round marks the PREVIOUS one done and never itself; the FULL map
 is stated here ONLY. Another file may name at most the NEXT round —
 `.agent/plan.md` must, because AGENTS.md mandates its Next Steps section — and
