@@ -37,7 +37,14 @@ file — the entry point R11's Q6 found missing. It carries no fake and no clock
 the no-network deps are the test's, and `wall_s` stays clock-derived from the
 runner. Its data root and history path are REQUIRED arguments, which closes Q6's
 fourth blocker — history resolving through `data_paths.projects_dir` to the
-operator's real root. It is the one name in the D9 allowlist.
+operator's real root. It is the one name in the D9 allowlist. R18 registered
+R-0434 and R-0435 and repaired four prose-and-typing defects, landing no
+capability: R-0435 records that R17's doubles left `job_links` empty, so no
+`dod_result.json` was ever written, every row the run produced was a FAILURE row,
+and the suite was green over it. R19 owns that repair — a stored `GateResult`
+through `dod_gate.py::save_gate_result` inside the isolated root, plus the
+properties that assert what the rows SAY — and is the round that measures the
+Goal's three DONE conditions together (DECISION F082 D10).
 R2's inventory settled the shape: the factoring is ADDITIVE, so every bench
 module is NEW and no symbol moves out of any gauntlet module — R3's
 `capability_bench.py`, R4's `bench_orders.py`, R6's `bench_dry_run.py` and R7's
@@ -90,7 +97,9 @@ served which role ✅ → R14 record the R13 verdict and register R-0420 to R-04
 → R15 record the R14 verdict, register R-0423 to R-0426 and build T003b's read
 half ✅ → R16 record the R15 verdict, register R-0427 and R-0428 and pin the Q7
 criterion ✅ → R17 record the R16 verdict, register R-0429 and R-0430 and land
-the fake-provider run → R18 the integration gate → R19 closure.
+the fake-provider run ✅ → R18 register R-0434 and R-0435, rule at D10 and repair
+R-0431 to R-0434 → R19 the acceptance proof for R-0435 → R20 the integration
+gate → R21 closure, per DECISION F082 D10.
 T003 split at DECISION F082 D5, its second half inventoried at D6, unblocked at
 D7 and split in two at D8, R15 split the read half off from the run, and D9
 splits the Q7 pin off from the run because a total-absence pin would not survive
