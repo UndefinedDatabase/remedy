@@ -333,7 +333,7 @@ feature file suggests.
    once, with an unrelated stale process present; a budget needs a repeat and a
    hosted reading, and no hosted runner exists yet (Q7).
 
-## Q5 — Stage runtime, measured at R11
+## Q9 — Stage runtime, measured at R11
 
 Every reading below was taken at R11 from the repository root by a Python driver
 calling `subprocess.run([sys.executable, "-m", "pytest", ...], cwd=REPO,
