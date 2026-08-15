@@ -171,7 +171,7 @@ end the response with:
   always exists on disk, not only in the chat brief.
 
 - **Pre-emission block checklist (DECISION F105 D8, finding R-0250).** Run all
-  eleven checks mechanically, on the FINAL bytes, after the last edit, before any
+  twelve checks mechanically, on the FINAL bytes, after the last edit, before any
   block leaves the reviewer. Each one has already cost this repository a round.
   1. **Size.** Count the block's lines. Over 400 (DECISION F105 D5) → split or
      cut BEFORE emitting. A worker must save the block verbatim, so an oversize
@@ -271,6 +271,26 @@ end the response with:
       carrying it fixed a change set with no `docs/` path in it, so the sentence
       was false on disk the moment it was written and stayed false for a round
       (R-0461). This item is that promotion, finally performed.
+  12. **A dry run executes the gate's EXACT command line.** Finding R-0463. When
+      the reviewer lints, collects or runs anything to convince itself an
+      authored slice is sound, it runs the command the BLOCK will order — same
+      binary, same flags, same working directory, and the repository's OWN
+      configuration — or the result is not evidence and may not be reported as
+      if it were. The R8 instance: the authored CI slice was checked under
+      `ruff check --isolated --line-length 120`, and `--isolated` discards
+      `pyproject.toml` and with it the `select = ["E", "F", "W", "I", "UP"]`
+      line that enables the isort rules at all, so the `I001` the worker hit was
+      never EVALUATED rather than merely unreported. The probe was green because
+      it was blind. Two neighbours differ from it: item 5 orders a PROBE when a
+      colour is unreachable, and item 8 checks a gate's expected VALUE against
+      the code, while this one governs the reviewer's own PRE-EMISSION runs,
+      which no worker ever sees and no gate ever re-checks. Working directory is
+      named in that list because it has since failed the same way: gates re-run
+      from a shell that had silently persisted into a BASE worktree produced
+      readings that were true of the wrong commit. Pair every dry run with a RED
+      CONTROL — break the property on purpose inside a disposable worktree and
+      confirm the command really goes red — because a command that cannot fail
+      proves nothing at all when it passes.
   Why this is on disk and not a habit: item 2 has recurred six times across
   F104 and F105, and R20 hit four of them in one block. A check that lives
   only in reviewer session memory is the A1 trap §0 names, and this list is the
