@@ -10,10 +10,10 @@ pin would be falsified by the very round that completes the feature — R17's
 fake-provider run is a driver whose whole job is to CALL both entry points — and
 a gate that the feature's own completion breaks teaches the next worker to edit
 tests to green. So the pin asserts instead that the set of modules calling either
-entry point EQUALS :data:`EXPLICIT_BENCH_CALLERS`, which is empty today and gains
-exactly one name at R17. "Never implicitly" was never a claim that nothing calls
-the bench; it is a claim that nothing calls it as a SIDE EFFECT, and an
-enumerated caller is the opposite of an implicit one.
+entry point EQUALS :data:`EXPLICIT_BENCH_CALLERS`, which R17 spent on exactly one
+name — the bench run's own entry point. "Never implicitly" was never a claim that
+nothing calls the bench; it is a claim that nothing calls it as a SIDE EFFECT,
+and an enumerated caller is the opposite of an implicit one.
 
 Why an absence test is dangerous when it is the only guard: it reports green for
 whatever reason it finds nothing. A scanner pointed at the wrong tree, a walker
@@ -60,12 +60,12 @@ GUARDED_SYMBOLS = frozenset(GUARDED_ENTRY_POINTS.values())
 SCANNED_TREES = ("apps", "packages", "scripts")
 
 #: THE ALLOWLIST — repo-relative module paths permitted to call a guarded entry
-#: point. EMPTY today, which is a measured fact and not an assumption.
+#: point. ONE name today, R17's, which is a measured fact and not an assumption.
 #:
-#: R17 adds EXACTLY ONE name, the fake-provider run's entry point. Adding to this
-#: set is a DELIBERATE ACT that says the bench gained an explicit caller, never a
-#: repair to make a red test green. A name appearing here without a round that
-#: meant to put it here is the failure this pin exists to surface.
+#: R17 ADDED that one name, the bench run's entry point. Adding to this set is a
+#: DELIBERATE ACT that says the bench gained an explicit caller, never a repair
+#: to make a red test green. A name appearing here without a round that meant to
+#: put it here is the failure this pin exists to surface.
 EXPLICIT_BENCH_CALLERS: frozenset[str] = frozenset({
     # R17: the fake-provider bench run's entry point. It calls BOTH guarded
     # symbols on purpose — that is what an explicit caller is — and DECISION
@@ -177,7 +177,7 @@ def test_the_scan_visits_python_files_in_every_tree() -> None:
 
 
 # ---------------------------------------------------------------------------
-# 3. THE CRITERION — callers equal the allowlist, which is empty today
+# 3. THE CRITERION — callers equal the allowlist, exactly
 # ---------------------------------------------------------------------------
 
 def test_only_allowlisted_modules_call_the_bench_write_entry_points() -> None:
