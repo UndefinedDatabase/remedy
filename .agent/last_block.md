@@ -1,183 +1,116 @@
-── STEP R1/8 — F083 CI self-check — CLAIM ─────────────────────────────────────
+── STEP R2/8 — F083 CI self-check — T001 MARKER INVENTORY ─────────────────────
 
 Goal:
-  Claim F083 and open its record. Cut the branch, reset `.agent/live_review.md`
-  for F083 carrying F082's open set forward, register the three closure-review
-  candidates F082's R23 review produced as R-0448, R-0449 and R-0450, refresh
-  the candidates carrier, and claim `[ ]`→`[~]` in the ledger. It changes no
-  code and no test. The T001 marker inventory is R2, not this round.
+  Record the R1 PASS, register the two defects R1 exposed — both the reviewer's
+  own — and produce T001's first deliverable: an inventory of the marker
+  landscape the CI stages will select over, written from MEASURED values with a
+  file-and-symbol citation behind every claim. It builds no stage runner. The
+  feature file's orchestrator brief makes this inventory T001's precondition,
+  and the stage split follows this data rather than the other way round.
 
 Bundle, in commit order:
-  C0a  copy the reviewer's scratchpad original to `.agent/authored/f083-r1.md`
+  C0a  copy the reviewer's scratchpad original to `.agent/authored/f083-r2.md`
   C0b  mirror it byte-identically into `.agent/last_block.md`
-  C1   `.agent/live_review.md` — the WHOLE FILE, rebuilt as LIVEREVIEW-HEAD plus
-       the carried open set. Findings persist FIRST (planner_reviewer_prompt §4.4).
-  C2   `.agent/context.md` (CTX, whole file), `.agent/plan.md` (PLAN, whole file),
-       `.agent/candidates.md` (CANDIDATES, whole file) and
-       `docs/roadmap/STATUS.md` (STATUSLINE pair), ONE commit — the claim.
+  C1   `.agent/live_review.md` — GATE-R1 + R-0451 + R-0452, appended at EOF in
+       ONE commit. Findings persist FIRST (planner_reviewer_prompt §4.4).
+  C2   `.agent/f083_inventory.md` (NEW, worker-authored — see THE INVENTORY),
+       `.agent/decisions.md` (DEC-D1 appended at EOF), `.agent/context.md`
+       (CTX-R2 pair) and `.agent/plan.md` (PLAN, whole file), ONE commit.
   C3   `.agent/handoff.md`, the handback, alone.
 
-BRANCH: `git checkout -b feature/f083-ci-self-check` from `main` at
-f3fd96d729c3be85604a2d37aee42c59fe39868a BEFORE C0a. The F082 closure PR #201 is
-already merged by the reviewer at the Open PR Gate; do not merge anything.
-
-BASE: f3fd96d729c3be85604a2d37aee42c59fe39868a. Re-derive `git rev-parse HEAD`
-after the checkout and before the first commit, and report whether it equals that
-value (R-0428). If it does NOT, stop and hand off.
+BASE: 928120ab. Re-derive `git rev-parse HEAD` before the first commit and report
+whether it equals 928120ab (R-0428). If it does NOT, stop and hand off.
 
 TRANSPORT: the reviewer's scratchpad original of THIS block is on disk at
-`.remedy-wt/.cache/f083-r1/f083-r1.md`, which `.gitignore` drops (line 235,
+`.remedy-wt/.cache/f083-r2/f083-r2.md`, which `.gitignore` drops (line 235,
 `.remedy-wt/`). C0a is a byte COPY of that file — do not retype it, do not
 reflow it, do not strip anything.
 
 SLICE CONVENTION (R-0437): every FROM and TO body below is the lines between its
 markers INCLUDING the trailing newline of its last line, and every shape is
-declared UNDER THAT CONVENTION. The block's authored units are, listed: one
-whole-file HEAD fragment that a mechanical carry completes (LIVEREVIEW-HEAD);
-three whole-file replacements (CTX, PLAN, CANDIDATES); and one REWRITE pair with
-FROM and TO disjoint (STATUSLINE in `docs/roadmap/STATUS.md`). No numeral is
+declared UNDER THAT CONVENTION. The block's authored units are, listed: two EOF
+appends (GATE-R1-BLOCK into `.agent/live_review.md`, DEC-D1 into
+`.agent/decisions.md`); one REWRITE pair with FROM and TO disjoint (CTX-R2 in
+`.agent/context.md`); and one whole-file replacement (PLAN). No numeral is
 stated for that list — the list IS the statement (R-0402, R-0441).
 
-THE CARRY IS MECHANICAL, NOT AUTHORED. `.agent/live_review.md` at BASE holds
-every `^- R-\d+ — ` paragraph on ONE line each; the reviewer measured 77 such
-paragraphs and 2 `^Done: R-\d+ — ` lines there. C1 builds the new file, as BYTES,
-as exactly:
-
-```
-expected = HEAD + b"\n" + b"\n\n".join(carried) + b"\n"
-```
-
-`HEAD` is the LIVEREVIEW-HEAD slice body under the slice convention, so it ends
-with R-0450's line and that line's newline. `carried` is, in BASE file order,
-every `^- R-\d+ — ` LINE whose id appears in NO `^Done: R-\d+ — ` line, each as
-one line with no newline of its own — the join supplies the blank line between
-paragraphs and the final `b"\n"` terminates the last one. Extract them out of the
-BASE file with Python; never retype a finding. `Gate:`, `Done:` and `Landed:`
-lines are NOT carried, and the head slice says so in prose, so nothing is
-silently dropped. This formula is not invented here: the reviewer applied it to
-`.agent/live_review.md` at commit e978262b, the F082 reset, and it reproduced
-that file byte-for-byte over its 33 paragraphs.
+`.agent/f083_inventory.md` is NOT an authored slice. It is the worker's own
+prose, written from the worker's own measurements, and no byte of it is dictated
+here — only the questions it must answer and the form the answers take.
 
 Constraints:
-  1. Change set: `.agent/authored/f083-r1.md`, `.agent/last_block.md`,
-     `.agent/live_review.md`, `.agent/context.md`, `.agent/plan.md`,
-     `.agent/candidates.md`, `.agent/handoff.md`, `docs/roadmap/STATUS.md`.
-     Nothing else. `packages/`, `apps/`, `scripts/` and `tests/` stay EMPTY in
-     the range diff; `docs/` contains EXACTLY ONE file, `docs/roadmap/STATUS.md`.
-     Gate 10 measures both as restrictions.
-  2. Apply every slice BYTE-VERBATIM. A defect in my text is a declared
-     deviation in the handback, never a silent repair. No slice below contains an
-     instruction to the worker; the instructions are in this block only (R-0450).
-  3. C1 lands BEFORE C2. Push after C3.
-  4. NO PULL REQUEST this round. F083's PR is created at closure, not before —
-     the F082 precedent and STATUS_closure_protocol step 5. `gh pr create` is
-     out of scope; the AGENTS.md "create a PR if reviewable" rule is satisfied by
-     the closure round, and this constraint is the deviation record for it.
-  5. This round adds NO worktree. `git worktree list` is one line throughout.
-  6. `docs/roadmap/ROADMAP.md` is NOT edited (AGENTS.md documentation boundary);
-     only the one STATUS.md line changes.
+  1. Change set: `.agent/authored/f083-r2.md`, `.agent/last_block.md`,
+     `.agent/live_review.md`, `.agent/f083_inventory.md`, `.agent/decisions.md`,
+     `.agent/context.md`, `.agent/plan.md`, `.agent/handoff.md`. Nothing else.
+     `packages/`, `apps/`, `scripts/`, `tests/` and `docs/` all stay EMPTY in the
+     range diff — this round writes no code, no test and no doc. Gate 9 measures
+     that as a restriction.
+  2. Apply every slice BYTE-VERBATIM. A defect in my text is a declared deviation
+     in the handback, never a silent repair. No slice contains an instruction
+     addressed to you about the file it lands in (R-0450).
+  3. C1 lands BEFORE C2. Push after C3. Create NO pull request — F083's PR is
+     created at closure, not before.
+  4. This round adds NO worktree. `git worktree list` is one line throughout.
+  5. MEASURE, NEVER ESTIMATE. Every number in the inventory is produced by a
+     command you ran in this round, and the inventory records the command next to
+     the number. A number you did not measure is written as `not-measured`.
+  6. A RED STAGE IS DATA, NOT A BLOCKER — DECISION F083 D1, ruled in this block
+     and appended to `.agent/decisions.md` as DEC-D1. If a stage run reports
+     failures, record the real exit code, the real counts and the failing node
+     ids in the inventory and CONTINUE the round. Rationale: this round's product
+     is a description of the repository as it is, and detecting a red main is
+     this feature's own job (R-0205, carried into F083 by its feature file). This
+     exception is scoped to the stage-runtime measurement in THIS round and to
+     nothing else; every gate below still fails the round when it is red.
 
---- BEGIN SLICE LIVEREVIEW-HEAD --- (HEAD of the rebuilt .agent/live_review.md, C1; the carry defined above follows it)
-# Live Review — F083 CI self-check
+--- BEGIN SLICE GATE-R1-BLOCK --- (APPEND to .agent/live_review.md, C1, with exactly one blank line between the file's current last line and the first line of this slice)
+Gate: R1 — PASS. Verification tier: the docs gate, the two live-state readers and the canary, all four re-run by the reviewer at the round's head; no full-suite claim is made or needed, because this round changed no code and no test. All twelve ordered gates reproduce against the committed tree. TRANSPORT held: scratchpad, `.agent/authored/f083-r1.md` and `.agent/last_block.md` are all sha256 df5447bb084a6874d2d2c59916f026c8366c07b0f984e3eba06e81be2c42b902, 24035 bytes, 313 lines, byte-equal, and the declared footer 313 equals the measured 313. C1 is the round's structurally interesting proof and it is the shape worth reusing: the reset was not reviewed by reading it but RECONSTRUCTED — the reviewer extracted LIVEREVIEW-HEAD from the committed authored file by its markers, rebuilt the carried set out of the BASE record by the block's own rule, applied the byte formula and got equality with the committed file, so the carry is proven mechanically rather than trusted. 75 paragraphs carried, none retyped; the rebuilt record measures 78 registered, 0 resolved, 0 `Landed:`, 0 `Gate:`, max R-0450, next free R-0451, no duplicate id. The formula itself was validated BEFORE emission against commit e978262b, the F082 reset, where it reproduced that file byte-for-byte over its 33 paragraphs — an ordered rule checked against the corpus it would run on, which is R-0446's standing rule holding for the first time in the round after it was written. The three whole-file slices byte-equal their sources, `.agent/plan.md` at 40 lines with `## Goal` and `## Next Steps` present and no `- [ ]` line to trip `plan_consistency`. The STATUS pair is 1/0/1 with `FROM in TO` False and the composite True; at HEAD the unclaimed F083 line is gone, exactly one `[~]` line exists in the whole ledger, and the 49 `[x]` lines are unchanged. `tests/docs/` 295 passed, `tests/regression/test_resource_safety.py` 21 passed, `tests/orchestration/test_integrity_gate.py` 15 passed and the canary 42 passed, every one exit 0 and every one equal to the value the reviewer measured at BASE before ordering it (R-0364). The integrity gate passes all five checks, `fail_count` 0, with `live_review_verdict` now quoting the F083 record and `plan_consistency` reporting `context_complete=False`. The change set is 8 paths, EMPTY under `packages/`, `apps/`, `scripts/` and `tests/`, and exactly one file under `docs/`. Insertions 313 · 260 · 28 · 65 · 119, none over 500. No PR was created, as ordered. TWO findings are registered below and both are defects of the reviewer's own block text; the worker declared both, with the disk evidence, before the reviewer read the diff, which is the seventh consecutive round.
 
-> Round-by-round review record for the F083 branch, reset at the feature claim.
-> The F082 record closed with PR #201, merged 2026-08-15; that branch's closing
-> verdict lives in its handoff and in the PR, per
-> docs/agents/planner_reviewer_prompt.md §4 item 13. Finding ids continue the
-> monotonic R-XXXX series across the reset. Next free id: R-0451.
->
-> This reset CARRIES the open set forward rather than dropping it, per DECISION
-> F057 D1 in `.agent/decisions.md` and finding R-0362. The seventy-five findings
-> open when the F082 record closed are reproduced verbatim at the end of this
-> file, extracted by id out of the previous record and never retyped. The
-> pre-reset record also held four `Landed:` lines, for R-0431, R-0432, R-0433 and
-> R-0434, recording repairs that landed without a formal resolution; those lines
-> are NOT carried, and that repair status is read out of git history rather than
-> out of this file.
+- R-0451 — Low, A BLOCK ASSERTED THAT ITS OWN SLICE SAID SOMETHING THE SLICE DOES NOT SAY, SO A DOCUMENTED DROP WENT UNDOCUMENTED. Found by the WORKER while executing the R1 carry. The R1 block's prose reads "`Gate:`, `Done:` and `Landed:` lines are NOT carried, and the head slice says so in prose, so nothing is silently dropped" — but LIVEREVIEW-HEAD, the slice that actually lands on disk, names ONLY the four `Landed:` lines. The reviewer confirmed the arithmetic at the BASE record: it held 22 `^Gate: ` lines, 2 `^Done: ` lines and 4 `^Landed: ` lines, so 24 lines were dropped that the committed record does not account for, against 4 that it does. Nothing is lost in the strong sense — the pre-reset record is intact in git history at f3fd96d7 and the reconstruction gate proves the carry was exactly the open set — but the reset's own prose is the only place a reader resuming from disk would look, and it under-reports what the reset removed. Low for that reason, and because the drop itself is correct and matches the F082 reset's shape. This is the block-clause family: R-0331 and its successors say two clauses of a block must agree with each other, and this one extends it by one step — a clause that makes a claim ABOUT a slice is checked against the slice's bytes, not against the intent, because only the slice survives the round. Standing rule from here, binding the reviewer: when block prose asserts that an applied slice states something, the pre-emission checklist greps the slice body for it; an unfound assertion is either deleted from the prose or added to the slice before the block is emitted. OPEN.
 
-## Steps
-R1 merge the F082 closure PR at the Open PR Gate, claim F083, reset this record
-carrying the F082 open set forward, and register the three F082 closure-review
-candidates as R-0448, R-0449 and R-0450 → R2 the T001 marker inventory: the
-collected count and the wall time per marker, which markers already exist, and
-which stage each belongs to, every answer carrying a file-and-symbol citation →
-R3 T001 the stage runner, the marker selections and the summary table → R4 T002
-the determinism and budget stages plus the guard-test wiring → R5 T002 the
-seeded-failure test per stage → R6 T003 the hosted workflow files, the docs and
-the runtime budget written from measured data → R7 the integration gate → R8
-closure. Each round marks the PREVIOUS one done and never itself; the map is
-stated here ONLY, and no other file restates it (R-0447).
+- R-0452 — Low, THE BLOCK THAT REGISTERED R-0449 BROKE R-0449'S OWN RULE IN THE SAME BREATH. Found by the WORKER, which declared it as its first deviation. R-0449, registered by the R1 block, states the rule "before ordering any value INTO an artifact, name the commit that writes the artifact and the step that produces the value; if the producer is not strictly earlier than the writer, the block orders the value reported in the round's final message and orders the artifact to say so". That same block's gate 12 ordered the push result and the `gh pr list` reading into the handback, and its gate 1 ordered the post-C3 `git status --porcelain` there too — while C3 IS the handback and the push necessarily follows it. The worker reported all three in its final message and said so, which is exactly the accommodation R-0449 prescribes, so nothing false was written; the reviewer independently confirmed the clean tree, the pushed head and the empty PR list after the fact. Low for that reason. The lesson is not that the rule was wrong but that a rule stated as prose inside a finding does not bind the next block, because nothing reads it at emission time: R-0449 and R-0451 both die at the same point, the moment between authoring and emitting where no mechanical check runs. Standing rule from here, binding the reviewer: the §3 pre-emission checklist gains one item that walks every gate in the Done-when list, names the commit or step that produces its value, and rejects any gate whose producer is not strictly earlier than the artifact ordered to carry it. A counter-measure that lives only in a finding paragraph has already failed once by the time it is read. OPEN.
+--- END SLICE GATE-R1-BLOCK ---
 
-## Findings
+--- BEGIN SLICE DEC-D1 --- (APPEND to .agent/decisions.md, C2, with exactly one blank line between the file's current last line and the first line of this slice)
+## DECISION F083 D1 — a red stage is inventory data, not a round blocker (2026-08-15)
 
-- R-0448 — Medium, A CLOSURE BLOCK ORDERED AN EVIDENCE FIELD IN AN ORDER THE PACKAGING VALIDATOR REJECTS, SO THE FIRST PACKAGE BUILT BLOCKED_EVIDENCE. Raised by the reviewer during F082's R23 closure review and registered here as a closure candidate, per docs/roadmap/STATUS_closure_protocol.md "Closure-candidate findings". The R23 block ordered `verification_runs[0].test_files` as "the eight FILES above", and that authored list was not sorted — `tests/cli/test_stats_bench.py` was written last and sorts first. `scripts/build_review_manifest.py::_vt_safe_files` rejects a list for which `tf != sorted(tf)`, which invalidates the whole VerificationTests document and leaves `vt_passed` unconfirmable, so packaging attempt 1 returned PACKAGE_STATUS=BLOCKED_EVIDENCE with two blocking reasons, of which `validate_evidence_candidate` named the sorting one as the single root error. The worker repaired it inside the round — the same eight files sorted, the suite re-run in that order so `command` and `node_ids` still describe a real execution, the evidence directory rebuilt from scratch, and `validate_evidence_candidate` checked BEFORE the second build — and attempt 2 packaged READY_FOR_REVIEW. The reviewer re-verified the delivered package independently rather than accepting the handback: sha256 3e8e33eb4bb724ce775ea5987e0fee0de5341d1a3bfe902c6e5f4f6f2deb84b2 recomputed from disk, `zipfile.testzip()` None, 6060 members, `ready_gate_matrix.ok` True with `blocking_reasons` `[]`, and `committed_review_subject.head_commit` equal to the accepted head 4b9bc7bc1dabdde5fca68de6ae20f86b11d21eb0. Nothing false was closed over. Medium, not Low, because this is a NEW member of a family the closure protocol already documents and therefore already knows how to prevent: the producer pitfalls listed at STATUS_closure_protocol.md Algorithm step 1 are (a) node ids with `len(node_ids) == selected`, (b) test_files that are files and never directories, (c) the `^vr-\d{4,}$` run_id regex and (d) never a full-suite node-id list — and the sorted-`test_files` rule is a fifth, (e), which that document does not carry, so every future closure block can lose a build to it exactly as this one did. The fix is one bullet in `docs/roadmap/STATUS_closure_protocol.md`; that is a process doc F083 does not own and AGENTS.md forbids mixing an unrelated fix into a feature branch, so it routes to a paydown branch exactly as R-0403, R-0444 and R-0445 were routed. OPEN.
+Scope: the stage-runtime measurement of F083 R2, and nothing else.
 
-- R-0449 — Low, A BLOCK ORDERED A VALUE INTO AN ARTIFACT THAT IS WRITTEN BEFORE THE VALUE CAN EXIST. Raised by the reviewer during F082's R23 closure review. The R23 block ordered three things that cannot all hold at once: the PR number appears in `.agent/handoff.md`, `gh pr create` runs AFTER C3, and no commit follows C3 because the STATUS edit must be the branch's last commit (Rule A4). The handoff is written inside C3, so the number does not exist when the file is authored and no later commit may add it. The worker declared the contradiction before the reviewer read the diff, wrote the handoff without inventing a number, named the recovery command, and reported the number in its final message; the reviewer recovered PR #201 with exactly that command and merged it at this round's Open PR Gate. This is R-0371 — never order a value that cannot exist when the text is written — recurring in the reviewer's own block one feature after R-0371 was registered for the same class, and it is the second such recurrence in R23 alongside R-0450. Low, because nothing false was written, the worker's declaration was correct, and the recovery is a single read-only command. Standing rule from here, binding the reviewer: before ordering any value INTO an artifact, name the commit that writes the artifact and the step that produces the value; if the producer is not strictly earlier than the writer, the block orders the value reported in the round's final message and orders the artifact to say so. OPEN.
+R2 measures the wall time of each candidate CI stage by running it. If a stage
+run reports failures, the worker records the real exit code, the real counts and
+the failing node ids in `.agent/f083_inventory.md` and CONTINUES the round,
+rather than treating the red as the G8 "any red gate ends the round" case.
 
-- R-0450 — Low, A CARRIER FILE WHOSE OWN TEXT ORDERS AN APPEND THAT THE SAME BLOCK FORBIDS, SO THE CARRIER CANNOT CARRY. Raised by the reviewer during F082's R23 closure review. The CANDIDATES slice — authored by the reviewer and applied byte-verbatim into `.agent/candidates.md` — says "Every defect the closure round's worker declares in its handback is appended below, one line each", while the same block's Constraint 2 orders every slice applied BYTE-VERBATIM and its Constraint 3 forbids any commit after C3, which is the commit the file lands in. The worker declared two defects in its handback and appended neither, correctly giving the byte-verbatim constraint precedence and recording both as declared deviations instead. The result on disk is a carrier reading "no candidate was carried out of F082's closure review" at a head where two declared defects existed — which is the exact loss the F056-candidate operator ruling of 2026-08-01 created the carrier to prevent, arriving through the carrier's own text. Nothing was actually lost: the closure brief is the vehicle STATUS_closure_protocol.md prescribes, the file is only its disk backup for a session boundary this single-session run did not have, and the three findings registered in this round ARE those candidates. Low for that reason. Standing rule from here, binding the reviewer: a slice ordered byte-verbatim may not contain an instruction addressed to the worker about the file it lands in — instructions live in the block, never in the applied bytes — and a carrier file's text describes only what the file holds. OPEN.
---- END SLICE LIVEREVIEW-HEAD ---
+Why: this round's product is a DESCRIPTION of the repository as it is. A red
+stage is a fact about the repository and therefore part of the description —
+suppressing it would make the inventory less true, and stopping on it would make
+F083 unable to inventory the very condition it exists to detect. R-0205, carried
+into F083 by its own feature file, records that live-state contract tests turn
+red for reasons unrelated to the change under review; an inventory that cannot
+survive that is an inventory that cannot be taken on this repository.
 
---- BEGIN SLICE CTX --- (WHOLE FILE replacement of .agent/context.md, C2)
-# Context — F083 CI self-check
+Limits: this exception covers the stage-runtime measurement only. Every ordered
+gate in the R2 block still ends the round when it is red, and no later round
+inherits this exception without ruling it again. Reverse this decision by
+deleting this section.
+--- END SLICE DEC-D1 ---
 
-## Active Branch
-feature/f083-ci-self-check, cut from main at f3fd96d7 after PR #201 merged. F083
-is claimed `[~]` in docs/roadmap/STATUS.md and stays claimed until closure. No PR
-exists for this branch yet; one is created at closure, not before.
-
-## Scope
+--- BEGIN SLICE CTX-R2 --- (in .agent/context.md, C2 — REWRITE pair, FROM and TO disjoint)
 In: Remedy's own CI as one entrypoint plus thin hosted wrappers. Nothing is built
 yet — this round only opens the record. The feature file T2_F083.md sets the
-shape: `remedy ci [--stage NAME] [--json]` over the stages fast, standard,
-determinism, ui and budgets; stages are MARKER SELECTIONS over the existing test
-tree, not a new test organization; hosted workflow files call the same
-entrypoint so there is one source of truth for what CI means; live-provider
-tests and the F082 benchmark are excluded by marker and said so in the output
-with their manual commands. Plus `.agent/**` round state and the one claimed
-STATUS line.
-
-Out: test contents, marker semantics, the bench's cost profile and release
-packaging — the feature file's Do-not-touch list. CI never auto-retries a suite;
-a flaky test is quarantined only by an explicit marker change in a reviewed diff.
-A change that needs a test's CONTENT edited is a finding, not a fix.
-
-## Constraints
-- The main session writes nothing in the work tree; a delegated worker subagent
-  makes every commit (docs/agents/self_drive_protocol.md).
-- Merges only at the Open PR Gate; never force-push; never work on main.
-- Verification is pytest, scoped per round, plus the canary
-  tests/cli/test_golden_path.py. A round touching docs/roadmap/** also gates
-  tests/docs/, and a round rewriting `.agent/` state also gates
-  tests/regression/test_resource_safety.py and
-  tests/orchestration/test_integrity_gate.py, which read that state live.
-  Destructive and red-proof checks run only inside a disposable git worktree
-  under .remedy-wt/, so resource safety stays intact.
-- Repository-wide `ruff check` is RED on main with pre-existing errors and is
-  NOT a round gate (R-0364); ruff is gated scoped to the files F083 owns.
-- The reviewer measures its block mechanically on the final bytes before
-  emission and keeps it under 400 lines (DECISION F105 D5), with 240 the
-  preferred target so the block-save commit stays inside the 500-insertion
-  limit (R-0381).
-- R-0205 rides with this feature by the feature file's Carried findings section:
-  contract tests that assert against LIVE `.agent/` state flip red for reasons
-  unrelated to the round that trips them. Detecting a red main is this feature's
-  own job, so the fixture-versus-live design question is answered inside it and
-  not routed away.
-
-## Steps
-The round map is stated ONCE, in the Steps section of `.agent/live_review.md`,
-and is deliberately not restated here: a map quoted in two places is the
-contradiction R-0447 records. This file tracks scope and constraints only.
---- END SLICE CTX ---
+--- BEGIN SLICE CTX-R2-TO --- (C2)
+In: Remedy's own CI as one entrypoint plus thin hosted wrappers. No stage runner
+exists yet; R2 inventoried the marker landscape the stages select over and
+`.agent/f083_inventory.md` is that record. The feature file T2_F083.md sets the
+--- END SLICE CTX-R2-TO ---
 
 --- BEGIN SLICE PLAN --- (WHOLE FILE replacement of .agent/plan.md, C2)
 # Plan — F083 CI self-check
 
 Branch: feature/f083-ci-self-check, cut from main after the F082 closure PR #201
-merged. Next free finding id: R-0451. Open findings: seventy-eight — the
-seventy-five carried out of the F082 record, plus R-0448, R-0449 and R-0450
-registered at R1. `.agent/live_review.md` is the source of truth; this file
-mirrors it.
+merged. Next free finding id: R-0453. Open findings: eighty — the seventy-five
+carried out of the F082 record, plus R-0448 to R-0452 registered on this branch.
+`.agent/live_review.md` is the source of truth; this file mirrors it.
 
 ## Goal
 Remedy's own repository gets an honest CI: one local command (`remedy ci`) and
@@ -189,125 +122,156 @@ each stage fails the right stage with a readable summary, and total runtime
 stays within a documented budget.
 
 ## Current Step
-R1 is the CLAIM: cut the branch, reset the live review record carrying F082's
-open set forward, register the three F082 closure-review candidates as R-0448,
-R-0449 and R-0450, refresh the candidates carrier, and move the ledger line from
-`[ ]` to `[~]`. No code and no test changes.
+R2 is the T001 MARKER INVENTORY: it records the R1 PASS, registers R-0451 and
+R-0452, rules DECISION F083 D1, and writes `.agent/f083_inventory.md` — which
+markers exist and who assigns them, the collected count per marker, whether the
+candidate stage selections cover the suite without overlapping, the measured
+wall time per stage, and what the repository already provides that the stage
+runner must reuse rather than copy. It builds no stage runner.
 
 ## Next Steps
-1. R2 is the T001 marker inventory, which the feature file's orchestrator brief
-   names as T001's first deliverable: collected count and wall time per marker,
-   which markers already exist, and which stage each belongs to.
-2. The stage split follows that data. No stage runner is written before it.
+1. R3 builds T001 — the stage runner, the marker selections and the summary
+   table — over the shape R2's inventory settles, and no earlier.
+2. The stage split is chosen from R2's measured data, not from the feature
+   file's suggested shape, wherever the two disagree.
 
 ## Risks
-- The three findings registered this round are all defects in the reviewer's own
-  block text, and two of them, R-0449 and R-0450, are recurrences of R-0371 in
-  the round that registered it. The counter-measures are written as standing
-  rules inside the findings; whether they hold is measurable only in later rounds.
-- R-0448's repair edits `docs/roadmap/STATUS_closure_protocol.md`, a process doc
-  F083 does not own, so it joins R-0403, R-0444 and R-0445 on the paydown queue.
-  That queue has no owner yet and grows by one this round.
-- R-0205 is carried into this feature by its own feature file: live-state
-  contract tests can turn main red for reasons unrelated to the change under
-  review. It is in scope here rather than deferred.
+- The feature file names a `live-provider` marker; the reviewer's own grep of
+  `pyproject.toml` found the live-provider role carried by `real_ollama` and no
+  marker of that name. R2 settles the naming in writing before R3 depends on it.
+- Five of the six findings registered on this branch are defects in the
+  reviewer's own block text, and R-0452 records that a counter-measure written
+  as finding prose does not bind the next block. Whether the pre-emission
+  checklist change holds is measurable only in later rounds.
+- Measuring stage wall time means running most of the suite. DECISION F083 D1
+  rules that a red stage is data for the inventory rather than a round blocker,
+  so the round can complete over a repository that is red for unrelated reasons.
 --- END SLICE PLAN ---
 
---- BEGIN SLICE CANDIDATES --- (WHOLE FILE replacement of .agent/candidates.md, C2)
-# Closure Candidates — carrier of record
+THE INVENTORY — `.agent/f083_inventory.md`, new file, your own prose. Answer
+every question below with a MEASURED value and, where the question asks for one,
+a file-and-symbol citation. Record the exact command next to each number. Where a
+question has no answer, write the absence and the command that proves it — a
+repository-wide absence is asserted only from a grep you ran (R-0419, DECISION
+F082 D7).
 
-> Written at closure per docs/roadmap/STATUS_closure_protocol.md
-> ("Closure-candidate findings", disk-vehicle rule, operator ruling
-> 2026-08-01). Read at Window-1 session bootstrap
-> (docs/agents/planner_reviewer_prompt.md §1). One entry per
-> candidate: description · source feature · date. Any entry present
-> at feature-claim time is a block condition.
+ Q1. Which test markers exist, and who assigns them? Give the declaration site
+     and every declared marker with its description. Then split them: which are
+     assigned AUTOMATICALLY at collection, and by which function, versus which
+     reach a test only through an explicit decorator. Cite file and symbol.
+ Q2. The collected count for each marker declared in Q1, and the total collected
+     count for the whole suite, each with the command that produced it.
+ Q3. The feature file `docs/roadmap/features/T2_F083.md` names its markers as
+     "integration, subprocess, ui-contract, live-provider, smoke". For EACH of
+     those five names, state whether a marker of that name exists on disk, and
+     where. Name the marker that actually carries the live-provider role. This
+     question exists because the feature file and the code may disagree; if they
+     do, the inventory records the disagreement rather than resolving it silently.
+ Q4. Take these five candidate stage selections verbatim:
+       fast          not integration and not subprocess and not real_ollama and not ui_contract and not smoke and not slow
+       standard      (integration or subprocess) and not real_ollama
+       ui            ui_contract and not real_ollama
+       smoke         smoke and not real_ollama
+       excluded      real_ollama
+     Report each one's collected count. Then answer two questions mechanically,
+     over collected NODE IDS and not over counts: do the five COVER the suite
+     (report the union size and the list of uncovered node ids), and are they
+     DISJOINT (report every pairwise overlap with its size and its node ids)?
+ Q5. The measured wall time and outcome of each stage. Run fast, ui, smoke,
+     safety and architecture serially; run standard with `-n auto`. For each,
+     record the exact command, the real exit code, collected/passed/failed/
+     skipped and the duration. Do NOT run the excluded stage: record that it was
+     not run, why, and the exact command an operator would use to run it. If a
+     stage is red, DECISION F083 D1 applies — record it and continue.
+ Q6. Does a `ci` command already exist anywhere under `apps/`, `packages/`,
+     `scripts/` or `tests/`? Answer from a grep you ran and quote the command.
+ Q7. Do hosted workflow files exist? Give the path you checked and what you found.
+ Q8. What does the repository ALREADY provide that a stage runner must reuse
+     rather than reimplement — the module that runs pytest as a subprocess today,
+     the CLI command-registration seam a new `ci` command would attach to, and
+     the parallel-execution plugin with its version. Cite file and symbol for
+     each, and name anything you looked for and did not find.
 
-The carrier is empty. The three candidates F082's closure review produced were
-registered as R-0448, R-0449 and R-0450 in `.agent/live_review.md` at F083 R1,
-which is what the closure protocol asks the next feature's first reviewed round
-to do.
---- END SLICE CANDIDATES ---
-
---- BEGIN SLICE STATUSLINE --- (in docs/roadmap/STATUS.md, C2 — REWRITE pair, FROM and TO disjoint)
-- [ ] F083 — CI self-check
---- BEGIN SLICE STATUSLINE-TO --- (C2)
-- [~] F083 — CI self-check
---- END SLICE STATUSLINE-TO ---
+Close the inventory with a short OPEN QUESTIONS section: what R3 cannot decide
+from this data. Do not answer them and do not design the stage runner here.
 
 Done when — run every gate and record its REAL value; a gate you cannot run is
 reported as not run, never as green:
 
- 1. `git status --porcelain` EMPTY before the first commit and after the last.
+ 1. `git status --porcelain` EMPTY before the first commit and before C3.
     `git worktree list` ONE line throughout. `.agent/STOP` ABSENT at round start
     and again at handback (R-0347).
- 2. BRANCH and BASE: report `git branch --show-current` and `git rev-parse HEAD`
-    taken after the checkout and before C0a, and whether the head equals
-    f3fd96d729c3be85604a2d37aee42c59fe39868a.
+ 2. BASE: `git rev-parse HEAD` before the first commit; report it and whether it
+    equals 928120ab.
  3. TRANSPORT, bytes read in Python: report sha256, byte count and line count of
-    `.remedy-wt/.cache/f083-r1/f083-r1.md`, `.agent/authored/f083-r1.md` and
+    `.remedy-wt/.cache/f083-r2/f083-r2.md`, `.agent/authored/f083-r2.md` and
     `.agent/last_block.md`, whether all three byte strings are EQUAL, and whether
     the measured line count equals this block's declared footer count.
- 4. C1 REBUILD PROPERTY, proven by reconstruction, not by reading: in Python,
-    read `.agent/live_review.md` at BASE, build `carried` by the rule stated
-    above, build `expected` by the formula stated above, and report whether
-    `expected` byte-equals `.agent/live_review.md` at the C1 head. Report the
-    count of carried paragraphs and the sha256 of the committed file. Extract
-    LIVEREVIEW-HEAD out of the COMMITTED `.agent/authored/f083-r1.md` by its
-    markers — never retype it.
- 5. C1 CONTENT COUNTS at the C1 head: `^- R-\d+ — ` count, `^Done: R-\d+ — `
-    count, `^Landed: ` count, `^Gate: ` count, the max id, the next free id, and
-    any duplicate id. Report what you MEASURE; if it differs from seventy-eight
-    registered and zero resolved, say so rather than reconciling it.
- 6. C2 WHOLE FILES: `.agent/context.md`, `.agent/plan.md` and
-    `.agent/candidates.md` at the C2 head each byte-equal their slice — report
-    sha256 and line count for each, `.agent/plan.md` under 50 lines with `## Goal`
-    and `## Next Steps` both present.
- 7. C2 STATUS PAIR: report the FROM count in `pre`, the FROM count in `post`, the
-    TO count in `post`, `FROM in TO`, and `pre.replace(FROM,TO) == post`. Then at
-    HEAD report `^- \[ \] F083` 0x, `^- \[~\] F083` 1x, the count of ALL
-    `^- \[~\] ` lines, and the count of `^- \[x\] ` lines, which the reviewer
-    measured at 49 before this round and which must not change.
+ 4. C1 PREFIX PROPERTY over `<C1>^..<C1>`: `pre` is a prefix of `post`, and
+    `post[len(pre):]` equals `b"\n" + GATE-R1-BLOCK` byte-for-byte, the slice
+    extracted from the COMMITTED `.agent/authored/f083-r2.md` by its markers.
+    Report the numstat and confirm its deletion column is 0.
+ 5. C2 APPLIED TEXT, each proven against the slice extracted from the committed
+    authored file: (a) `.agent/decisions.md` — `pre` is a prefix of `post` and
+    `post[len(pre):]` equals `b"\n" + DEC-D1`; (b) `.agent/context.md` — report
+    the FROM count in `pre`, the FROM count in `post`, the TO count in `post`,
+    `FROM in TO`, and `pre.replace(FROM,TO) == post`; (c) `.agent/plan.md` byte-
+    equals PLAN as a whole file — report sha256 and line count, under 50, with
+    `## Goal` and `## Next Steps` present and no `- [ ]` line.
+ 6. THE INVENTORY EXISTS AND ANSWERS EVERY QUESTION: report `.agent/
+    f083_inventory.md`'s line count, and for each of Q1 to Q8 the answer's
+    one-line summary. Report the count of questions answered and the count asked.
+ 7. THE INVENTORY'S ARITHMETIC IS INTERNALLY CONSISTENT, re-derived by you at
+    HEAD rather than restated from Q4: report the union size of the five stage
+    selections, the uncovered count, and every pairwise overlap with its size.
+    The reviewer measured this at emission and will compare; report what you
+    MEASURE, and if it differs say so rather than reconciling it.
  8. VERIFICATION, each command run separately with its exit code read from the
     process, never from a pipe (R-0438). Report collected count and real exit
-    code for EACH: `python3 -m pytest tests/docs/ -q` — the reviewer measured 295
-    collected, 295 passed, exit 0 at BASE; `python3 -m pytest
-    tests/regression/test_resource_safety.py -q` — 21 passed, exit 0 at BASE;
-    `python3 -m pytest tests/orchestration/test_integrity_gate.py -q` — 15
-    passed, exit 0 at BASE; and the canary `python3 -m pytest
-    tests/cli/test_golden_path.py -q` — 42 collected, 42 passed, exit 0 at BASE.
-    The three non-canary targets are this round's real check: they read
-    `.agent/` state and the ledger live, which is exactly what this round rewrites.
- 9. INTEGRITY GATE, in Python because the `remedy` CLI is denied in this session
+    code for EACH: `python3 -m pytest tests/docs/ -q`, which the reviewer
+    measured at 295 collected, 295 passed, exit 0 at BASE; `python3 -m pytest
+    tests/regression/test_resource_safety.py -q`, 21 passed, exit 0 at BASE;
+    `python3 -m pytest tests/orchestration/test_integrity_gate.py -q`, 15 passed,
+    exit 0 at BASE; and the canary `python3 -m pytest
+    tests/cli/test_golden_path.py -q`, 42 collected, 42 passed, exit 0 at BASE.
+    These four are gates and DECISION F083 D1 does NOT cover them: a red one ends
+    the round.
+ 9. CHANGE SET, measured BEFORE the handoff is written into C3, so it lists seven
+    paths and `.agent/handoff.md` is the eighth and last:
+    `git diff --name-only 928120ab..HEAD`. Report the full list and its count.
+    Restricted to `packages/`, `apps/`, `scripts/`, `tests/` and `docs/` it must
+    be EMPTY. Report that restriction as a measured list.
+10. OPEN SET at HEAD: count `^- R-\d+ — ` paragraphs, count `^Done: R-\d+ — `
+    lines, report both, their difference, the max id, the next free id and any
+    duplicate id. Report what you MEASURE.
+11. INTEGRITY GATE, in Python because the `remedy` CLI is denied in this session
     class (R-0408): `python3 -c "from packages.orchestration.integrity_gate
     import run_integrity_checks, export_integrity_json; import json;
     print(json.dumps(export_integrity_json(run_integrity_checks())))"` — report
-    `passed`, `fail_count`, `check_count` and every named check's status and
-    message. The reviewer measured 5 checks, `fail_count` 0 at BASE.
-10. CHANGE SET, measured BEFORE the handoff is written into C3:
-    `git diff --name-only f3fd96d729c3be85604a2d37aee42c59fe39868a..HEAD`. Report
-    the full list and its count. Restricted to `packages/`, `apps/`, `scripts/`
-    and `tests/` it must be EMPTY; restricted to `docs/` it must be EXACTLY ONE
-    file, `docs/roadmap/STATUS.md`. Report both restrictions as measured lists.
-11. Insertions (`+` column only) per commit — report each; none over 500. C0b and
-    C1 are verbatim single-`.agent/`-file rewrites and are exempt by the AGENTS.md
-    counting rule; report their numbers anyway.
-12. PUSH: `git push -u origin feature/f083-ci-self-check` and report its result.
-    Create NO pull request (Constraint 4); report that `gh pr list --state open`
-    is empty afterwards.
+    `passed`, `fail_count`, `check_count` and every named check's status.
+12. Insertions (`+` column only) for C0a, C0b, C1 and C2 — report each; none over
+    500. C0b is a verbatim single-`.agent/`-file rewrite and is exempt by the
+    AGENTS.md counting rule; report its number anyway. C3's own insertion count
+    cannot exist inside C3 (R-0149): report it in your final message instead.
+
+The push and its result, the post-C3 clean-tree reading and the open-PR list all
+come into existence AFTER C3 writes the handback, so per R-0449 and R-0452 they
+are NOT ordered into that file: run `git push -u origin feature/f083-ci-self-check`
+after C3, create no pull request, and report all three in your final message.
 
 Handback: rewrite `.agent/handoff.md` per docs/agents/handback_template.md, as
 C3 — feature and round, branch, per-commit changed-files tables, every gate value
-above, the item-status table covering every C-item and every gate, open findings
-with max and next free id, and the next expected action. C3 cannot table its own
-SHA (R-0371, R-0149); say so rather than inventing one. Repeat this line verbatim
-as the Fortschritt line:
+above, the item-status table covering every C-item, every gate and every
+inventory question, open findings with max and next free id, and the next
+expected action. C3 cannot table its own SHA (R-0371, R-0149); say so rather than
+inventing one. Repeat this line verbatim as the Fortschritt line:
 
-Fortschritt: 0 % (F083 beansprucht · Record zurückgesetzt, 75 offene Funde übernommen · R-0448 bis R-0450 registriert · T001–T003 offen · noch kein Code) — gemessen, nicht geschätzt
+Fortschritt: 5 % (F083 beansprucht · R1 PASS · R-0451 und R-0452 registriert · T001-Marker-Inventar gemessen und geschrieben · noch kein Stage-Runner, kein Code) — gemessen, nicht geschätzt
 
 If any gate is RED, or anything here contradicts what you find on disk: finish
 the commit you are in, write the handoff naming the exact blocker, and end. Do
-not widen scope to route around it (G8).
+not widen scope to route around it (G8). DECISION F083 D1 is the single scoped
+exception and it covers Q5's stage runs only.
 
-BLOCK SIZE, measured on these final bytes: 313 lines (cap 400, DECISION F105 D5).
+BLOCK SIZE, measured on these final bytes: 277 lines (cap 400, DECISION F105 D5).
 ──────────────────────────────────────────────────────────────────────────────
