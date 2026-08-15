@@ -332,3 +332,66 @@ feature file suggests.
 6. What the documented runtime budget should be. This round measured one machine,
    once, with an unrelated stale process present; a budget needs a repeat and a
    hosted reading, and no hosted runner exists yet (Q7).
+
+## Q5 — Stage runtime, measured at R11
+
+Every reading below was taken at R11 from the repository root by a Python driver
+calling `subprocess.run([sys.executable, "-m", "pytest", ...], cwd=REPO,
+capture_output=True)` DIRECTLY — never through `scripts/remedy_pytest_runner.py`,
+whose default timeout would truncate the serial `fast` reading. The exit code is
+`CompletedProcess.returncode` read from that process (R-0438); the wall time is
+`time.monotonic()` around the call. Marker expressions were READ from `CI_STAGES`
+in `packages.orchestration.ci_stages`, never retyped. `os.cpu_count()` on this
+machine reports 24 — the number `-n auto` resolves against, without which the
+parallel readings mean nothing.
+
+COLLECTED PER STAGE, via
+`python3 -m pytest --collect-only -q -p no:cacheprovider -m "<expression>"`:
+
+| Stage | Collected | Deselected | Suite total | Exit |
+|---|---|---|---|---|
+| fast | 3975 | 13070 | 17045 | 0 |
+| standard | 12579 | 4466 | 17045 | 0 |
+| ui | 397 | 16648 | 17045 | 0 |
+| smoke | 23 | 17022 | 17045 | 0 |
+| excluded | 79 | 16966 | 17045 | 0 |
+
+The instrument can go red: the same command with `-m "no_such_marker_at_all"`
+exits 5 and its last line is `no tests collected (17045 deselected) in 3.42s`, so
+an empty selection is distinguishable from a green one and the timings below are
+readings rather than decoration.
+
+WALL TIME AND OUTCOME. Each run was its own process, run serially with respect to
+the others; the summary line is pytest's own final line, verbatim:
+
+| Stage | Run | Wall (driver) | Exit | pytest summary line |
+|---|---|---|---|---|
+| fast | serial | 391.9 s | 0 | `3968 passed, 7 skipped, 13070 deselected in 390.53s (0:06:30)` |
+| fast | `-n auto` | 55.4 s | 0 | `3968 passed, 7 skipped in 55.17s` |
+| standard | `-n auto` | 138.8 s | 0 | `12578 passed, 1 skipped in 138.32s (0:02:18)` |
+| ui | `-n auto` | 12.2 s | 0 | `393 passed, 4 skipped in 10.23s` |
+| smoke | `-n auto` | 14.0 s | 0 | `22 passed, 1 skipped in 13.77s` |
+| excluded | not run | not measured | not measured | not measured |
+
+No summary line above names a failed count and every exit code read from the
+process is 0. The serial wall time of `standard`, `ui` and `smoke` is `not
+measured`: only `fast` was run both ways. `excluded` was NOT run — its selection
+is `real_ollama`, which needs a live server — and its own `manual_command`, read
+from the stage table, is:
+
+    python3 -m pytest -m real_ollama -q  # needs a running Ollama server
+
+THE DETERMINISM CANDIDATE SET. The glob `tests/orchestration/test_run_manifest_*.py`
+matches 45 files, which collect 850 tests at exit 0. Containment was MEASURED as
+a Python set operation over collected node ids — the 850 candidate ids against
+the 12579 ids the `standard` selection collects — not reasoned about from
+markers: the result is True with 0 ids outside `standard`.
+
+THE TWO FACTS R12 NEEDS. Long pole: under `-n auto` on this 24-CPU machine
+`standard` at 138.8 s is the slowest stage measured, while `fast` — the stage the
+plan's standing risk names — costs 391.9 s serially and 55.4 s under `-n auto`.
+Determinism set: the run-manifest suite already sits wholly inside `standard`,
+containment True with 0 ids outside, so no new selection is required to run it.
+
+This section is evidence and carries no recommendation and no budget number;
+choosing the budget belongs to R12.
