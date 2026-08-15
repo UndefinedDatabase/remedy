@@ -171,7 +171,7 @@ end the response with:
   always exists on disk, not only in the chat brief.
 
 - **Pre-emission block checklist (DECISION F105 D8, finding R-0250).** Run all
-  ten checks mechanically, on the FINAL bytes, after the last edit, before any
+  eleven checks mechanically, on the FINAL bytes, after the last edit, before any
   block leaves the reviewer. Each one has already cost this repository a round.
   1. **Size.** Count the block's lines. Over 400 (DECISION F105 D5) → split or
      cut BEFORE emitting. A worker must save the block verbatim, so an oversize
@@ -257,6 +257,20 @@ end the response with:
       consecutive blocks did exactly that and were both still wrong, because
       each took its set from the PREVIOUS block instead of from the record, and
       a finding that drops out of the count stays dropped.
+  11. **A convention paragraph names its units and states NO count of them.**
+      Findings R-0460 and R-0461. A block's slice-convention paragraph LISTS its
+      authored units and gives no numeral for them, and any sentence that both
+      enumerates and denies enumerating is a defect of the block regardless of
+      which half is true. Item 1 counts the block's LINES mechanically, which is
+      a measurement; this one forbids a hand-counted numeral about the block's
+      own parts, which is a recollection — the distinction the R-0402, R-0404,
+      R-0436 and R-0441 family kept losing. The rule binds finding text too: a
+      finding may state that a rule IS in this checklist only when the SAME block
+      orders the edit that puts it here, and otherwise it names the round that
+      will. R-0460 asserted its own promotion into this list while the block
+      carrying it fixed a change set with no `docs/` path in it, so the sentence
+      was false on disk the moment it was written and stayed false for a round
+      (R-0461). This item is that promotion, finally performed.
   Why this is on disk and not a habit: item 2 has recurred six times across
   F104 and F105, and R20 hit four of them in one block. A check that lives
   only in reviewer session memory is the A1 trap §0 names, and this list is the
