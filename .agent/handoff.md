@@ -39,7 +39,12 @@ Review of c536123b..HEAD.
 | .agent/handoff.md | rewrite | C4 — a handoff cannot table its own commit (R-0149) |
 
 ## External actions
-None. No push, no PR, no worktree add or remove.
+`git push -u origin feature/f082-self-benchmark` → `c536123b..43c138d4`,
+exit 0 (AGENTS.md Push Discipline; the block forbids a PR, not a push).
+`gh pr list --state open --json number,headRefName` → `[]`. NO PR created,
+no worktree added or removed. The push and this correcting line land in a
+trailing bookkeeping commit AFTER the handoff commit 43c138d4, which a handoff
+cannot table (R-0149); its own insertions are under 500.
 
 ## Verification
 
@@ -192,7 +197,7 @@ FEATHEAD 45 B · FEATHEAD-TO 43 B · Q7TAIL 191 B · Q7TAIL-TO 229 B · BUILTSTA
    and C2 were committed, because the block orders findings to persist FIRST
    (Constraint 3, planner_reviewer_prompt §4.4) and plan currency at C3. Stated so
    it reads as chosen, not overlooked.
-6. HANDBACK OVERAGE, stated cause (AGENTS.md D15): 206 lines against the ≤100 cap
+6. HANDBACK OVERAGE, stated cause (AGENTS.md D15): 211 lines against the ≤100 cap
    for a >5-commit round. Cause is mandated content only — six per-commit tables,
    fifteen gate transcripts, a 21-row item-status table, and gate 14's required
    naming of the claim that does not hold and of those never measured. No section
