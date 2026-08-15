@@ -5476,3 +5476,57 @@ Limits: this exception covers the stage-runtime measurement only. Every ordered
 gate in the R2 block still ends the round when it is red, and no later round
 inherits this exception without ruling it again. Reverse this decision by
 deleting this section.
+
+## DECISION F083 D2 — the stage set, ruled from R2's measurements (2026-08-15)
+
+R2's inventory closed with six open questions. Four of them are already decided
+by its own measured data plus the feature file's Do-not-touch list, and leaving
+them open would make R4 guess. They are ruled here. Two are NOT ruled, and the
+reason each is deferred is stated.
+
+RULED.
+
+D2.1 — The stage set is exactly the five selections Q4 defines: `fast`,
+`standard`, `ui`, `smoke` and `excluded`. Reason: measured, they cover the suite
+(union 17007 against a suite of 17007, uncovered 0), and no sixth selection is
+needed to reach any test.
+
+D2.2 — `safety` and `architecture` do NOT become stages of their own. Reason:
+Q4's open question 2 measured them as set intersections over the same node ids —
+`architecture`'s 71 items all sit inside `fast`, and `safety`'s 33 split 21 into
+`fast` and 12 into `standard`. Promoting either would introduce overlaps the
+five-stage set does not have, and `safety` would straddle two stages. They stay
+markers, usable for ad-hoc selection, and the stage runner does not name them.
+
+D2.3 — The `standard ∩ smoke` overlap of 8 is ACCEPTED and documented, not
+removed. Reason: every one of the 8 ids is in `tests/cli/test_pytest_runner.py`,
+which the conftest lists in both `SUBPROCESS_FILES` and `SMOKE_FILES`; removing
+the overlap means editing marker semantics, which the F083 feature file's
+Do-not-touch list forbids. The stage runner therefore MAY run those 8 twice and
+the summary table says so — a documented double-run beats a silent marker edit.
+
+D2.4 — The `determinism` and `budgets` stages the feature file names are NOT
+marker selections. Reason: Q8 recorded that neither name exists among the nine
+declared markers, so making them selections requires declaring new markers and
+assigning them across the tree, which is the same marker-semantics change D2.3
+refuses. They are script invocations the stage runner calls and whose exit code
+it folds into the summary, exactly as the feature file's own design paragraph
+describes the budgets stage.
+
+DEFERRED, with the reason.
+
+D2.5 — Per-stage parallelism is NOT pinned here. Q5 measured `fast` at 391.8 s
+serial for 3970 items and `standard` at 134.1 s under `-n auto` for 12546, so the
+cost is dominated by serialization rather than by selection — but that single
+reading does not say what `-n auto` does to `fast`, and the three small stages
+may lose more to worker startup than they gain. R4 measures each of the five both
+ways, once, and pins the setting per stage from that measurement. Pinning it now
+would be a guess dressed as a decision.
+
+D2.6 — The feature file's `ui-contract` and `live-provider` spellings are NOT
+corrected now. Reason: `docs/roadmap/features/T2_F083.md` is edited in the round
+that brings its Built State current before closure; correcting prose in a round
+that writes no other doc would be scope drift, and the inventory already records
+what exists under which name. Q3's record is the interim answer.
+
+Reverse any part of this decision by deleting its numbered paragraph.
