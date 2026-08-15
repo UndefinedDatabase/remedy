@@ -1,8 +1,8 @@
 # Plan — F083 CI self-check
 
 Branch: feature/f083-ci-self-check, cut from main after the F082 closure PR #201
-merged. Next free finding id: R-0455. Open findings: the seventy-five carried out
-of the F082 record plus R-0448 to R-0454 registered on this branch.
+merged. Next free finding id: R-0456. Open findings: the seventy-five carried out
+of the F082 record plus R-0448 to R-0455 registered on this branch.
 `.agent/live_review.md` is the source of truth; this file mirrors it.
 
 ## Goal
@@ -15,29 +15,27 @@ each stage fails the right stage with a readable summary, and total runtime
 stays within a documented budget.
 
 ## Current Step
-R3 records the R2 PASS, registers R-0453 and R-0454, repairs the finding-count
-sentence R-0453 reports, and rules DECISION F083 D2 — the stage set is Q4's five
-selections; `safety` and `architecture` do not become stages; the eight-item
-`standard`/`smoke` overlap is accepted and documented; `determinism` and
-`budgets` are script invocations rather than marker selections. Per-stage
-parallelism and the feature file's marker spellings are deferred, each with its
-reason. It writes no code.
+R4 records the R3 PASS, registers R-0455 — the round map and the two files that
+name the next round disagreed about what R4 is — repairs that map, and lands
+this feature's first code: `packages/orchestration/ci_stages.py`, the five stage
+selections DECISION F083 D2 ruled, as data with no execution in it, plus the
+structural guards in `tests/orchestration/test_ci_stages.py`.
 
 ## Next Steps
-1. R4 builds T001 over D2: the stage runner, the five marker selections, the
-   summary table and its tests, plus the one measurement D2.5 defers — each
-   stage timed with and without `-n auto`, and the per-stage setting pinned from
-   that reading.
-2. The CLI seam is the one Q8 names; the stage runner reuses the existing pytest
-   subprocess runner rather than reimplementing it.
+1. R5 wires the stage runner over `scripts/remedy_pytest_runner.py`, adds the
+   `remedy ci` CLI seam Q8 names, and renders the summary table, which states
+   the accepted `standard`/`smoke` double-run.
+2. R6 measures each stage with and without `-n auto` and pins the per-stage
+   setting from that reading (DECISION F083 D2.5), and adds the per-stage
+   selection tests over a fixture tree rather than live collected counts.
 
 ## Risks
 - Every finding registered on this branch so far is a defect in the reviewer's
   own block text, and R-0452 records that a counter-measure written as finding
-  prose does not bind the next block. R-0453 and R-0454 are the evidence that it
-  still does not: both were registered one round after their own family's rule.
+  prose does not bind the next block. R-0455 is more of that same evidence.
 - `fast` costs 391.8 s, measured once on one machine with an unrelated stale
   process present. The documented runtime budget the Goal requires cannot rest
   on a single reading, and no hosted runner exists yet to give a second one.
-- D2.3 accepts a double-run of eight tests to avoid editing marker semantics.
-  If the summary table does not state it, the acceptance becomes a silent defect.
+- The stage table carries no collected count on purpose. That keeps it from
+  going stale, but it also means nothing yet proves a stage selects what R2
+  measured; R6's fixture-tree tests are what close that gap.
