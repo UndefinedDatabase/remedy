@@ -1,0 +1,24 @@
+# Raw full-suite logs — provenance. NOT committed, by constraint 6 of the
+# R21 block: a log growing inside the tracked tree changes the worktree
+# digest mid-run and turns the manifest-identity ids red (R-0176). Gate
+# evidence also never carries a .log suffix (R-0169).
+
+path:   .remedy-wt/.cache/gate_r21/branch_run.txt
+wc -l:  241
+bytes:  19049
+sha256: 0b3cbac058c35a34e5751810d21bfc9a919527ba46a11fe2f9c6161af2b6e83b
+
+path:   .remedy-wt/.cache/gate_r21/base_run.txt
+wc -l:  745
+bytes:  37480
+sha256: 6e881bbb57b234e7224a5e72b2a42b3f2ac46acbe4603c4a162cd6c981577e23
+
+path:   .remedy-wt/.cache/gate_r21/base_rerun_fresh.txt
+wc -l:  2
+bytes:  98
+sha256: 0c7628dc375969aece554d99663c59791c85ff72af4e81ef6c0f44cefedb2fcd
+
+path:   .remedy-wt/.cache/gate_r21/base_rerun_stale.txt
+wc -l:  500
+bytes:  18295
+sha256: 5d35b2618122814870b2ec9a8e33befa656a7b851463db301ad6b9036c779b6a
