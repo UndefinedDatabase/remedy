@@ -38,24 +38,22 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
 
 from packages.orchestration.bench_dry_run import dry_run_from_order_set
 from packages.orchestration.bench_history import append_bench_run
 from packages.orchestration.bench_orders import load_bench_order_set
-from packages.orchestration.gauntlet_runner import RunnerDeps, run_campaign
+from packages.orchestration.capability_bench import BenchRecord
+from packages.orchestration.gauntlet_runner import OrderOutcome, RunnerDeps, run_campaign
 
 
 @dataclass(frozen=True)
 class BenchRunResult:
     """Everything one bench run produced, so a caller need not re-read the disk."""
 
-    #: One outcome per order, exactly as ``run_campaign`` returned them; each is
-    #: a ``gauntlet_runner.OrderOutcome``.
-    outcomes: tuple[Any, ...]
-    #: One bench row per frozen order, in the order set's own order; each is a
-    #: ``capability_bench.BenchRecord``.
-    rows: tuple[Any, ...]
+    #: One outcome per order, exactly as ``run_campaign`` returned them.
+    outcomes: tuple[OrderOutcome, ...]
+    #: One bench row per frozen order, in the order set's own order.
+    rows: tuple[BenchRecord, ...]
     #: The sequence number ``append_bench_run`` spent on this run, or ``0`` when
     #: there was nothing to append.
     run_seq: int
