@@ -1,166 +1,150 @@
-# Handback — F083 CI self-check, R11
+# Handback — F083 CI self-check, R12 of 15
 
-Feature F083 CI self-check, round R11. Branch: feature/f083-ci-self-check.
+Branch: feature/f083-ci-self-check. Round start: `pwd` = /home/decodeux/Repos/remedy
+(repository root), `git status --porcelain` EMPTY, `git worktree list` ONE line,
+`.agent/STOP` ABSENT — the same four readings hold at handback (the post-C4
+clean-tree reading, the push result and the open-PR list postdate C3 and are
+reported in the final message, per R-0449 / R-0452). No stage and no production
+code landed this round.
 
 ## Range
-Review of c6db29fa..HEAD.
+
+Review of 7130ed76..HEAD. BASE re-derived before the first commit:
+`git rev-parse HEAD` = 7130ed762b8ff1a8a2078695951b6dd2cb75abfc — EQUAL to 7130ed76.
 
 ## Commits
 
-### 9ec22090 (C0a) docs(f083): save the R11 block verbatim
+### 2490d702 docs(f083): save the R12 block verbatim
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f083-r11.md | +241/-0 | the block's bytes, written by script |
+| .agent/authored/f083-r12.md | +200/-0 | C0a — the R12 block, written verbatim by a Python script |
 
-### 5c1d6292 (C0b) docs(f083): mirror the R11 block into last_block
+### 3faca33f docs(f083): mirror the R12 block into last_block
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/last_block.md | +185/-343 | byte-identical mirror of C0a |
+| .agent/last_block.md | +117/-158 | C0b — byte-identical mirror of the C0a file |
 
-### ee4a9e37 (C1) docs(f083): record the R10 PASS and register R-0468 and R-0469
+### 33f3f77a docs(f083): record the R11 PASS and register R-0470 to R-0473
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/live_review.md | +5/-0 | RECORD-R10 appended at EOF |
+| .agent/live_review.md | +8/-0 | C1 — RECORD-R11 appended at EOF, one body |
 
-### a8363d6d (C2) docs(f083): measure every CI stage serially and under xdist
+### 0abd6ae4 docs(f083): renumber the appended inventory section to Q9
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/f083_inventory.md | +63/-0 | Q5 measurement section appended at EOF |
+| .agent/f083_inventory.md | +1/-1 | C2 — HEADING pair, `## Q5 —` rewritten to `## Q9 —` |
 
-### eb7a3d5d (C3) docs(f083): point the plan at the R12 stage work
+### c0b3ffff docs(f083): point the plan at the R13 budget work
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/plan.md | +10/-10 | PLAN slice as a whole file |
+| .agent/plan.md | +15/-12 | C3 — PLAN slice applied as a whole file |
 
-### C4 — .agent/handoff.md (this file)
-A handback cannot table the commit that writes it (R-0371, R-0149): C4's SHA and
-insertion count are in the worker's final message, not here.
+### C4 — this commit, docs(f083): write the R12 handback
+| Path | +/- | Reason |
+|---|---|---|
+| .agent/handoff.md | — | C4 — the handback; a commit cannot table its own SHA or its own insertion count (R-0371, R-0149), so both are in the final message |
 
 ## External actions
-`git push -u origin feature/f083-ci-self-check` after C4 — result in the final
-message. No PR created. No worktree added or removed. No gh command run.
+
+None through C3. `git push -u origin feature/f083-ci-self-check` runs after C4;
+NO pull request is created. No worktree added, no mutation, no timing run.
 
 ## Verification
-1. `pwd` = /home/decodeux/Repos/remedy, printed first and again before C4.
-   `git status --porcelain` EMPTY before C0a and before C4 (also after the timing
-   runs). `git worktree list` ONE line at round start and at handback.
-   `.agent/STOP` ABSENT at both.
-2. BASE `git rev-parse HEAD` = c6db29fa0ac94f220d177c2225ba14a18c41be72 — EQUALS
-   c6db29fa.
-3. TRANSPORT: `.agent/authored/f083-r11.md` and `.agent/last_block.md` both
-   sha256 45b35ecfd0c0eda4f7dab2c8f2a34fde705ad67fa9b330ba1e67e025eb55c5b7,
-   22819 bytes, 241 lines. EQUAL: True. Measured 241 lines does NOT equal the
-   declared footer 246 — deviation 1.
-4. C1 prefix: pre prefixes post True; `post[len(pre):]` == b"\n" + RECORD-R10
-   True; numstat `5 0` — deletion column 0.
-5. Collect per stage (exit 0 each, suite total 17045): fast 3975 (13070
-   deselected), standard 12579 (4466), ui 397 (16648), smoke 23 (17022),
-   excluded 79 (16966).
-6. `-m "no_such_marker_at_all"`: REAL exit 5, last line
-   `no tests collected (17045 deselected) in 3.42s`.
-7. `os.cpu_count()` = 24. fast serial: 391.9 s wall, exit 0,
-   `3968 passed, 7 skipped, 13070 deselected in 390.53s (0:06:30)`.
-   fast `-n auto`: 55.4 s wall, exit 0, `3968 passed, 7 skipped in 55.17s`.
-8. Under `-n auto`: standard 138.8 s, exit 0,
-   `12578 passed, 1 skipped in 138.32s (0:02:18)`; ui 12.2 s, exit 0,
-   `393 passed, 4 skipped in 10.23s`; smoke 14.0 s, exit 0,
-   `22 passed, 1 skipped in 13.77s`. `excluded` NOT RUN; its `manual_command` is
-   `python3 -m pytest -m real_ollama -q  # needs a running Ollama server`.
-9. `tests/orchestration/test_run_manifest_*.py`: 45 files, collecting 850 tests
-   at exit 0. Python set containment of those 850 node ids against the 12579 ids
-   the `standard` collection returns: True, 0 ids outside `standard`.
-10. C2 prefix: pre prefixes post True; numstat `63 0`; tail begins
-    b"\n## Q5 — Stage runtime, measured at R11" — ONE newline, not the two the
-    gate's literal names (deviation 2). Confirmed explicitly: every MEASUREMENT
-    numeral in the Q5 section appears in the gate 5-9 output above; the section's
-    only other numerals are identifiers (Q5, R11, R12, R-0438).
-11. Own process each, REAL exit code from the process: test_ci_stages.py 7 passed
-    exit 0; test_ci_stage_selection.py 9 passed exit 0; test_ci_cmd.py 6 passed
-    exit 0; test_ci_run.py 8 passed exit 0.
-12. test_dashboard_contract.py 70 passed exit 0; test_resource_safety.py 21
-    passed exit 0; test_integrity_gate.py 15 passed exit 0; test_golden_path.py
-    42 passed exit 0.
-13. `git diff --name-only c6db29fa..HEAD -- packages/ apps/ tests/ docs/` printed
-    NOTHING — measured list is empty. Run from the repository root
-    /home/decodeux/Repos/remedy (`pwd` printed in the same call).
-14. Integrity: passed True, fail_count 0, check_count 5. handler_import pass
-    `handlers=338`; live_review_verdict pass; plan_consistency pass
-    (`unchecked=0, context_complete=False`); relevant_untracked pass
-    (`untracked=0, relevant=0`); high_blockers_open pass.
-15. Open set at HEAD: 97 registered, 5 `Done:`, 0 `Landed:`, open 92, max R-0469,
-    next free R-0470, no duplicate id.
-16. C3 `.agent/plan.md` sha256
-    fb06f3b16c02822d29bb981422e3296331bf0c7d863497ac64d810c08c48cd22, 29 lines
-    (<50), `## Goal` and `## Next Steps` present, zero `- [ ]` lines, 1 numbered
-    item under `## Next Steps`; byte-equal to the PLAN slice.
-17. Change set at C3 — 5 paths: .agent/authored/f083-r11.md,
-    .agent/f083_inventory.md, .agent/last_block.md, .agent/live_review.md,
-    .agent/plan.md. `.agent/handoff.md` is the sixth path, added by C4.
-18. Insertions: C0a +241, C0b +185, C1 +5, C2 +63, C3 +10 — none over 500. C0b is
-    the AGENTS.md-exempt verbatim single-`.agent/`-file rewrite, reported anyway.
-    C4's own count cannot exist inside C4 (R-0149): final message.
+
+Gate 8 — the CI suites, each its own process, exit code read from that process
+(`subprocess.run(...).returncode`), never a shell `$?`:
+
+    python3 -m pytest tests/orchestration/test_ci_stages.py -q           exit=0  7 passed in 0.07s
+    python3 -m pytest tests/orchestration/test_ci_stage_selection.py -q  exit=0  9 passed in 7.63s
+    python3 -m pytest tests/cli/test_ci_cmd.py -q                        exit=0  6 passed in 0.34s
+    python3 -m pytest tests/orchestration/test_ci_run.py -q              exit=0  8 passed in 0.06s
+
+Gate 9 — verification, each run separately, same exit-code discipline:
+
+    python3 -m pytest tests/ui_server/test_dashboard_contract.py -q      exit=0  70 passed in 4.13s
+    python3 -m pytest tests/regression/test_resource_safety.py -q        exit=0  21 passed in 10.95s
+    python3 -m pytest tests/orchestration/test_integrity_gate.py -q      exit=0  15 passed in 0.15s
+    python3 -m pytest tests/cli/test_golden_path.py -q                   exit=0  42 passed in 20.29s  (canary)
+
+Gate 11 — `git diff --name-only 7130ed76..HEAD -- packages/ apps/ tests/ docs/`
+printed NOTHING; the measured list is empty, and `pwd` at the time of the run was
+the repository root, so the emptiness is not the wrong-root artefact.
+
+Gate 12 — integrity, in Python (the `remedy` CLI is denied here, R-0408):
+`passed` true, `fail_count` 0, `check_count` 5; `handler_import` pass with message
+`handlers=338` (BASE value, unchanged — this round adds no handler);
+`live_review_verdict` pass, `plan_consistency` pass, `relevant_untracked` pass,
+`high_blockers_open` pass.
 
 ## Authored-text proofs
-RECORD-R10, extracted BY MARKER from the committed .agent/authored/f083-r11.md:
-sha256 ff369e94dc3cc61034f7703a4ef5075915fdee8aa7535e83022c68c20aec3fb0, 6703
-bytes, 4 lines; C1's tail byte-equals b"\n" + it. PLAN, same extraction: sha256
-fb06f3b16c02822d29bb981422e3296331bf0c7d863497ac64d810c08c48cd22, 1502 bytes,
-29 lines; C3's .agent/plan.md byte-equals it. Both applied byte-verbatim.
 
-## Deviations & assumptions
-1. BLOCK FOOTER MISMATCH. The footer declares 246 lines; the transported bytes
-   measure 241 in both files at sha256 45b35ecf…c5b7. Nothing was added or
-   removed to close the gap; the reviewer's re-read against its own text decides.
-2. GATE 10 LITERAL vs C2 CONTRACT. The contract binds "exactly one blank line"
-   between the inventory's current last line and the section's first line; the
-   file ends with a newline, so that shape is b"\n## Q5 …". Gate 10's literal
-   b"\n\n## Q5 …" would produce TWO blank lines. The contract was applied and
-   the gate reported as measured — no silent repair either way.
-3. HEADING COLLISION. .agent/f083_inventory.md already carried
-   `## Q5 — Measured wall time and outcome per stage` (from R2). The prescribed
-   heading was applied verbatim, so the file now holds two sections whose heading
-   opens `## Q5 —`. Not repaired: the heading is ordered text.
-4. LENGTH. This handback is 166 lines, over the AGENTS.md handoff cap
-   (≤60, ≤100 with per-commit tables of >5 commits) and over the
-   docs/agents/handback_template.md cap of the same shape. Cause: the mandated
-   per-commit tables, all eighteen gate values, and the item-status table
-   covering every C-item and every gate. No section dropped, no prose padding
-   (DECISION D15, R-0462).
+`.agent/authored/f083-r12.md` and `.agent/last_block.md` are byte-EQUAL, sha256
+3821ad67c09d86b54df93ee8d0c57bf8b0c5c7b37eea50b63c12e9235d34ccd1, 21247 bytes,
+200 lines — at and under the 400-line cap (DECISION F105 D5). The block declared
+no line count of its own (R-0470), so the 200 is a value measured here, not a
+comparison. Every slice was extracted from the COMMITTED authored file by its
+markers and applied byte-verbatim; no formatter ran. Gates 4, 5, 6, 7 and 10 were
+re-proved a second time against the git blobs at C1, C2 and C3, not only against
+the working tree.
 
 ## Item status
-| Item | Status | Reason |
+
+| Item | Status | Measured / reason |
 |---|---|---|
-| C0a | done | |
-| C0b | done | |
-| C1 | done | |
-| C2 | done | |
-| C3 | done | |
-| C4 | done | this file; own SHA not tabled (R-0149) |
-| Gate 1 | done | clean, one worktree, no STOP |
-| Gate 2 | done | BASE equals c6db29fa |
-| Gate 3 | deviated | files EQUAL; 241 lines vs declared 246 |
-| Gate 4 | done | prefix True, deletions 0 |
-| Gate 5 | done | five collects, exit 0 each |
-| Gate 6 | done | exit 5, no tests collected |
-| Gate 7 | done | 391.9 s serial, 55.4 s `-n auto`, cpu 24 |
-| Gate 8 | done | standard/ui/smoke measured; excluded not run |
-| Gate 9 | done | 45 files, 850 tests, contained True |
-| Gate 10 | deviated | one newline, not the literal's two |
-| Gate 11 | done | 7 / 9 / 6 / 8, exit 0 each |
-| Gate 12 | done | 70 / 21 / 15 / 42, exit 0 each |
-| Gate 13 | done | empty list from the repository root |
-| Gate 14 | done | passed True, 0 / 5, handlers=338 |
-| Gate 15 | done | 97 / 5 / 0, open 92, max R-0469 |
-| Gate 16 | done | byte-equal, 29 lines, 1 numbered item |
-| Gate 17 | done | 5 paths at C3 |
-| Gate 18 | done | max insertion column 241 |
+| C0a | done | 200 insertions; block saved verbatim |
+| C0b | done | 117 insertions; mirror byte-identical to C0a |
+| C1 | done | 8 insertions; RECORD-R11 appended |
+| C2 | done | 1 insertion; heading renamed |
+| C3 | done | 15 insertions; PLAN whole file |
+| C4 | done | this file; own SHA and count deferred to the final message |
+| G1 | done | repo root; tree EMPTY before C0a and before C4; 1 worktree; STOP absent |
+| G2 | done | 7130ed762b8ff1a8a2078695951b6dd2cb75abfc — EQUAL to 7130ed76 |
+| G3 | done | both files sha256 3821ad67c09d…, 21247 bytes, 200 lines, EQUAL True; 200 ≤ 400 |
+| G4 | done | prefix True; tail == `b"\n" + RECORD-R11` True; numstat `8 0`, deletions 0 |
+| G5 | done | FROM 1 before / 0 after, TO 0 before / 1 after; numstat `1 1` |
+| G6 | done | 9 `^## Q\d` lines, ordered Q1 Q2 Q3 Q4 Q5 Q6 Q7 Q8 Q9, no repeat; one `## Q5 —`, one `## Q9 —` |
+| G7 | done | numstat `1 1`; both cited sentences count 1 and 1 |
+| G8 | done | 7/0, 9/0, 6/0, 8/0 |
+| G9 | done | 70/0, 21/0, 15/0, 42/0 |
+| G10 | done | byte-equal True; sha256 fc8565d17cd3…; 32 lines (<50); `## Goal` and `## Next Steps` present; 0 `- [ ]`; 1 numbered item |
+| G11 | done | empty list, run from the repository root |
+| G12 | done | passed true, 0/5 failed, handlers=338 |
+| G13 | done | 101 registered / 6 `Done:` / 0 `Landed:`; open 95; max R-0473; next free R-0474; no duplicate |
+| G14 | done | 5 paths at C3; `.agent/handoff.md` is the sixth, added by C4 |
+| G15 | done | 200, 117, 8, 1, 15 — none over 500; C0b is the AGENTS.md-exempt single-`.agent/`-file rewrite, reported anyway |
+
+Gate 14, the five paths at C3: `.agent/authored/f083-r12.md`,
+`.agent/f083_inventory.md`, `.agent/last_block.md`, `.agent/live_review.md`,
+`.agent/plan.md`.
+
+## Deviations & assumptions
+
+- No slice defect found and none repaired: RECORD-R11, HEADING-FROM, HEADING-TO
+  and PLAN were applied byte-verbatim, and the R11 defects the block set out to
+  record were recorded, not edited away.
+- Assumption, declared: RULE A ordered the block written by a Python script, so
+  the script was written to `.remedy-wt/write_r12_block.py` — gitignored
+  (`.gitignore:235`), outside the change set, and confirmed absent from the
+  measured range diff. It is the write mechanism RULE A required, not a transport
+  relay: the authored original remains the prompt byte range, as TRANSPORT states.
+- Cap: this handback is 150 lines against the ≤60-line cap and the ≤100-line cap
+  for bundles of more than five commits (R-0462: both named). Stated cause
+  (AGENTS.md DECISION D15): six per-commit tables, a fifteen-gate verification
+  record and a twenty-one-row item-status table covering every C-item and every
+  gate. No section was dropped to meet either cap.
 
 ## Open findings
-92 open. Max id R-0469, next free R-0470. R-0468 and R-0469 were registered this
-round; both are Low and both route to T002.
+
+101 registered, 6 `Done:`, 0 `Landed:`, 95 open; max R-0473, next free R-0474.
+Registered this round: R-0470 (Low, a block declared a size it had not measured),
+R-0471 (Low, two clauses disagreed about a single newline), R-0472 (Medium, a
+heading was prescribed for a file the reviewer never opened — RESOLVED by C2),
+R-0473 (Medium, a budget about to rest on one reading per stage — binds R13).
 
 ## Next
-R12 writes the determinism and budget stages from the Q5 readings, decides the
-determinism stage's shape as a recorded DECISION, and rules on R-0468.
 
-Fortschritt: 40 % (F083 beansprucht · R1 bis R7, R9 und R10 PASS, R8 FAIL auf einem roten ruff-Gate und in R9 repariert · Stage-Tabelle, Stage-Runner, die `remedy ci` CLI-Naht und die Selektionstests samt Live-Wächter als Code gelandet · R11 misst jede Stage seriell und unter `-n auto`, damit das Laufzeit-Budget aus Daten statt aus einer Schätzung entsteht · noch keine Determinismus- oder Budget-Stage, keine hosted workflows) — gemessen, nicht geschätzt
+R13 writes the determinism and budget stages from the `## Q9` readings, under
+R-0473: at least three samples per stage that carries a ceiling, or a budget that
+states on its face how many samples it rests on. It also rules on R-0468.
+
+Fortschritt: 42 % (F083 beansprucht · R1 bis R7 und R9 bis R11 PASS, R8 FAIL auf einem roten ruff-Gate und in R9 repariert · Stage-Tabelle, Stage-Runner, die `remedy ci` CLI-Naht und die Selektionstests samt Live-Wächter als Code gelandet · die Laufzeit jeder Stage ist jetzt gemessen statt geschätzt, und R12 räumt die Heading-Kollision auf, die R11 hinterlassen hat · noch keine Determinismus- oder Budget-Stage, keine hosted workflows) — gemessen, nicht geschätzt
