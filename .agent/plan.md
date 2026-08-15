@@ -1,9 +1,10 @@
 # Plan — F083 CI self-check
 
 Branch: feature/f083-ci-self-check, cut from main after the F082 closure PR #201
-merged. Next free finding id: R-0465. Open findings: the seventy-five carried out
-of the F082 record plus R-0448 to R-0464 registered on this branch, of which
-R-0456 to R-0459 are resolved. `.agent/live_review.md` is the source of truth.
+merged. Next free finding id: R-0468. Open findings: the seventy-five carried out
+of the F082 record plus R-0448 to R-0467 registered on this branch, of which
+R-0456 to R-0459 and R-0467 are resolved. `.agent/live_review.md` is the source
+of truth.
 
 ## Goal
 Remedy's own repository gets an honest CI: one local command (`remedy ci`) and
@@ -14,15 +15,13 @@ reproduces the hosted result locally on a clean checkout, a seeded failure fails
 the right stage with a readable summary, and runtime stays within a budget.
 
 ## Current Step
-R9 records the R8 FAIL, registers R-0463 and R-0464, repairs the ruff I001 the
-reviewer's own CI-CMD slice shipped, and performs the §3 promotion R-0460 claimed
-and R-0461 assigned here — the convention-paragraph rule becomes item 11 of the
-pre-emission checklist. The CLI seam itself landed in R8 and is not re-opened.
+R10 records the R9 PASS, registers R-0465 to R-0467, lands the per-stage
+selection tests over a fixture tree with a live union guard that resolves
+R-0467, and promotes R-0463's dry-run rule into §3 as checklist item 12.
 
 ## Next Steps
-1. R10 adds the per-stage selection tests over a fixture tree that pin each
-   stage's marker expression against files whose markers are known, and promotes
-   R-0463's dry-run rule into §3 as checklist item 12.
+1. R11 adds the determinism and budget stages plus the guard-test wiring, and
+   measures `fast` under `-n auto` so a runtime budget can rest on data.
 
 ## Risks
 - `fast` still rests on a single 391.8 s reading, and the inventory showed it is
