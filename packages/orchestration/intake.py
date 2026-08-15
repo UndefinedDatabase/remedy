@@ -316,6 +316,13 @@ def make_structured_call_fn(
     def _call(prompt: str, attempt: int) -> str:
         return planner.raw_call(prompt, schema=schema)
 
+    # F082 T003b (DECISION F082 D8): the model this call_fn will ACTUALLY serve
+    # with, read off the instance that serves it rather than re-resolved from
+    # config — a configured model is not the model that ran, the same rule
+    # `token_ledger.py::call_record_from_evidence` keeps for its own column.
+    # Readers use `getattr(fn, "resolved_model", None)`, so an unlabelled
+    # call_fn reads as an absence and never as a default name.
+    _call.resolved_model = planner.model  # type: ignore[attr-defined]
     return _call
 
 

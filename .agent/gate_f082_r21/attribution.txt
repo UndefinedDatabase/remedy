@@ -1,0 +1,68 @@
+# F082 R21 integration gate — attribution (integration_gate.md steps 3 and 4)
+
+BRANCH-ONLY FAILURES (comm -13 base_failed.txt branch_failed.txt): 0.
+The branch run exited 0 with "16988 passed, 19 skipped in 151.31s"; branch_failed.txt
+is empty (0 bytes), so there is nothing to attribute on this side. No reproducible
+branch-only failure coupled to F082 code exists, because no branch-only failure
+exists at all.
+
+BASE-ONLY FAILURES (comm -23 base_failed.txt branch_failed.txt): 8, all in
+tests/ui_server/test_live_state.py::TestUIServerIntegration:
+
+  test_api_invalid_token_403
+  test_api_missing_job_404
+  test_app_shell_served_without_token
+  test_brain_endpoint
+  test_dashboard_no_raw_leaks
+  test_put_rejected
+  test_readiness_endpoint
+  test_server_starts_and_writes_info
+
+CLASSIFICATION for all eight: ENVIRONMENT class (R-0155 amendment) — the
+throwaway base worktree lacks a build output that is FRESH relative to its own
+freshly checked-out sources. Not a genuine base failure, not coupled to F082.
+
+MISSING ARTIFACT, named per id: an apps/ui/dist/index.html whose mtime is newer
+than every file under apps/ui/src/ in the base worktree. Copying dist/ restores
+its CONTENT but not its freshness: shutil.copytree preserves the source mtime
+(2026-08-15T11:36:04, from the primary checkout), while `git worktree add`
+stamps the checked-out sources with the checkout time (2026-08-15T11:38:01). The
+copied build is therefore older than the sources it was built from.
+
+MECHANISM, read from the base worktree's own code
+(packages/orchestration/ui_server.py at 668d40f7):
+  _get_frontend_dist()  -> dist found (index.html present)
+  _frontend_is_stale()  -> True, because a src file is newer than dist/index.html
+  _auto_build_frontend()-> None, because REMEDY_UI_NO_AUTO_BUILD=1 (line 2772)
+  _load_frontend()      -> prints "ERROR: React UI not built." and sys.exit(1)
+The server thread dies, so the fixture's _start_server() times out and every one
+of the eight tests fails with "Failed: Server did not start in time".
+
+DIRECT EVIDENCE, per id:
+1. The captured stderr "ERROR: React UI not built." occurs EXACTLY 8 times in
+   .remedy-wt/.cache/gate_r21/base_run.txt — once per failing id, none anywhere
+   else in the log. "Server did not start in time" occurs 16 times: the source
+   line and the E line of the same 8 failures.
+2. RE-RUN, GREEN. The same 8 node ids, run serially in the SAME base worktree at
+   the SAME commit 668d40f7 with REMEDY_UI_NO_AUTO_BUILD=1 still set, after
+   dist/index.html became newer than apps/ui/src/ (a mid-run rebuild moved it to
+   2026-08-15T11:39:49): exit 0, "8 passed in 1.07s".
+   Log: .remedy-wt/.cache/gate_r21/base_rerun_fresh.txt
+3. RE-RUN, RED — the colour was ordered before it was seen. dist/index.html mtime
+   was set BACK to 2026-08-15T11:36:04, the value the parity copy had carried
+   over, changing nothing else: exit 1, "8 failed in 40.57s", the same 8 ids.
+   The mtime was then restored. This isolates the artifact freshness as the sole
+   cause: same commit, same environment variable, same code, opposite outcome.
+   Log: .remedy-wt/.cache/gate_r21/base_rerun_stale.txt
+Both re-runs were confined to the disposable base worktree (G5); the primary
+checkout was never mutated and `git status --porcelain` stayed empty.
+
+NO id is left unattributed. There is no unattributed base-only failure and no
+reproducible branch-only failure coupled to F082 code, so neither of the two
+blockers named in the R21 block's gate 9 is present.
+
+COLLECT COUNTS. Branch: 16988 passed + 19 skipped = 17007 collected, which is the
+number the R21 block declared as the expected target size. Base: 8 failed +
+16890 passed + 19 skipped = 16917 collected. The difference of 90 is the tests
+this branch adds; it is not a discrepancy against the block's 17007, which was
+stated for the branch target.

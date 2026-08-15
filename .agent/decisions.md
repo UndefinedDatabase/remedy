@@ -5347,3 +5347,110 @@ Dropping the report surface entirely would leave T003's own sentence unmet.
 HOW TO REVERSE. Delete the lead block from `_cmd_mission_show` and its tests;
 nothing else depends on it. The `mission watchdog` command is independent of
 this decision and survives its reversal.
+
+## DECISION F082 D1 (2026-08-14) — F082 repairs `measure_tokens` rather than recording around it
+
+CONTEXT. The R2 inventory established, and the reviewer confirmed writer to
+reader, that `gauntlet_runner.py::measure_tokens` sums `prompt_tokens` and
+`completion_tokens` while the only producer of the `cost.usage` body it reads,
+`orchestrator_loop.py::measure_call_cost`, writes `input_tokens` and
+`output_tokens`. A measured run therefore yields `{"in": 0, "out": 0}` and
+`run.json` never gets `tokens_source: unmeasured`. Registered as R-0407.
+F082's per-order record carries a `cost` field, and that field reads this
+function.
+
+DECISION. F082 repairs the key reading inside T001, additively: the function
+accepts BOTH spellings, preferring the production one, and continues to return
+`None` when nothing was measured. AGENTS.md forbids mixing an unrelated fix
+into a feature branch, and this one is not unrelated — it is the source of the
+feature's headline metric, and a bench that reports a known-false zero as a
+measured cost would be a fabricated live indicator, which is a block condition
+in its own right.
+
+ALTERNATIVES CONSIDERED. (a) Leave it and label the bench's cost basis
+UNKNOWN: rejected, because the wrong number would still be written into
+`run.json` for every gauntlet run, and F082 would be knowingly building on it.
+(b) Route it to a paydown branch and block F082 until that lands: rejected as
+disproportionate for a two-line additive repair whose blast radius is one
+function, and it would leave the defect live meanwhile. (c) Change
+`measure_call_cost` to write the older spelling instead: rejected, because that
+writer feeds consumers beyond the gauntlet and the newer spelling is the one
+the rest of the token machinery uses.
+
+HOW TO REVERSE. Restore the two summing lines in `measure_tokens` to read only
+`prompt_tokens`/`completion_tokens` and delete the regression test in
+`tests/orchestration/test_capability_bench.py` that names `input_tokens`.
+Nothing else depends on this decision.
+
+## DECISION F082 D2 (2026-08-14) — the bench freeze binds each order's VERSION to its digest
+
+CONTEXT. F082's acceptance says "Changing an order file without bumping its
+version fails validation." The gauntlet's freeze does not give that for free.
+`gauntlet_orders.load_order_set` compares each order file's sha256 against the
+digest recorded for it in `manifest.json`, so an edit alone DOES fail — but the
+obvious repair is to recompute the manifest digest, and that passes with no
+version bump anywhere. R2 Q3 confirmed there is no per-order version field at
+all: `GauntletOrder` carries `id`, `file_name` and `sha256`, and the only
+version constants are module-level and set-wide.
+
+DECISION. Each bench order file carries its own `bench_order_version` integer,
+and the manifest records, per order, a `digests` map from version string to the
+sha256 of the bytes published under that version. Validation requires that the
+order file's CURRENT digest equals `digests[str(version)]`. Editing the bytes
+without bumping the version therefore fails, because the new bytes do not match
+the digest recorded for the version the file still claims; bumping the version
+requires adding a new entry to the map, which is a deliberate act and leaves the
+previous pair in place as the series' own history. Changing an order starts a
+new series, which is the comparability honesty the feature file asks for.
+
+ALTERNATIVES CONSIDERED. (a) Reuse the gauntlet's single-digest manifest
+unchanged: rejected, it is exactly the mechanism that permits a silent
+recompute. (b) Derive the version from git history of the order file: rejected,
+validation must hold in an exported evidence bundle where no git history is
+present. (c) Store only the newest (version, digest) pair rather than a map:
+rejected, it loses the series history that makes an old bench row's basis
+readable, at no saving worth having.
+
+HOW TO REVERSE. Drop the `digests` map from the manifest and compare against a
+single `sha256` per order, matching the gauntlet's shape, and delete the
+version-binding tests in `tests/orchestration/test_bench_orders.py`.
+
+## DECISION F082 D3 (2026-08-14) — the missing two orders get a bench-owned fixture, never an edit to the gauntlet's
+
+CONTEXT. F082's Design names five frozen orders. R4's survey found only three
+expressible: `scripts/gauntlet_sample_project` is a pure-Python CLI project
+with no HTTP surface and no web asset, so the API-endpoint and frontend-widget
+capabilities have nothing to be written against (finding R-0411). The obvious
+repair — add an `http.server` route and a static asset to that project — is
+BLOCKED, and the block is structural rather than stylistic. The gauntlet's
+manifest records a `template_digest`, `gauntlet_orders.load_order_set` compares
+it against `template_tree_digest(template_dir)`, and the module's own history
+states that a changed template is a changed set: editing that project would
+turn the gauntlet's frozen ten red until its manifest were rewritten and
+`GAUNTLET_ORDER_SET_VERSION` bumped, which by that module's comment RESETS the
+campaign count. F082's Do-not-touch list forbids exactly this class of damage.
+
+DECISION. The two missing capabilities are recovered, when they are recovered,
+by a SEPARATE bench-owned fixture — a `scripts/bench_sample_project/` — and
+never by editing the gauntlet's template. R4's inventory answer S2 establishes
+that this is reachable without touching an order: an order cannot select a
+template, because `run_order` calls the seam as `deps.materialise(run_dir)`
+with one positional argument, so the template is a property of the
+`RunnerDeps` a CAMPAIGN is given. The bench therefore supplies its own
+`materialise` and its own template, which is additive in the same sense R2 Q11
+established for everything else in this feature. Until that fixture exists,
+F082's delivered set is three orders and its Built State says three.
+
+ALTERNATIVES CONSIDERED. (a) Add the HTTP and frontend surface to the shared
+sample project: rejected, it breaks the gauntlet's freeze and resets a campaign
+count that belongs to another feature. (b) Ship three orders and amend the
+feature file's Design down to three permanently: rejected, the two capabilities
+are the ones that probe surfaces the CLI orders cannot reach, and dropping them
+quietly would make the bench measure less while reading as complete. (c) Block
+F082 until the fixture exists: rejected as disproportionate — the trend
+machinery, the history and the CLI are all buildable and testable against three
+orders, and the fixture is additive when it lands.
+
+HOW TO REVERSE. Delete `scripts/bench_sample_project/` and the bench's own
+`materialise` dependency, and the bench falls back to the gauntlet template
+with three expressible orders — the state this decision starts from.

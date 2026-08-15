@@ -2979,6 +2979,28 @@ CATALOG: tuple[CommandEntry, ...] = (
         may_mutate_repo=False,
         may_execute_commands=False,
     ),
+    # ── stats — the self-benchmark trend (F082) ──────────────────────────
+    CommandEntry(
+        command_id="stats.bench",
+        group_id="stats",
+        subcommand="bench",
+        description=(
+            "Capability trend from the append-only bench history: the last run, "
+            "the series before it, and a regression warning naming the order and "
+            "both numbers. Never runs the bench (read-only)."
+        ),
+        action_class="read_only",
+        supports_json=True,
+        related=("stats.cost", "stats.report"),
+        args=(
+            ArgDef("--series", "Which bench series to read (default: the series of the latest run)", required=False, is_option=True),
+            ArgDef("--multiplier", "Warn when cost or wall time exceeds the trailing median by this factor (default: 1.5)", required=False, is_option=True),
+            _PROJECT_SCOPE_OPT,
+            _JSON_OPT,
+        ),
+        may_mutate_repo=False,
+        may_execute_commands=False,
+    ),
     # ── stats — the token ledger (F103) ──────────────────────────────────
     CommandEntry(
         command_id="stats.cost",

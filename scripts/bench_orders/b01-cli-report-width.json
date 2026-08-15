@@ -1,0 +1,30 @@
+{
+  "bench_order_version": 1,
+  "budget": {
+    "max_cycles": 5,
+    "max_iterations": 12,
+    "max_tokens": 700000,
+    "max_wall_seconds": 6000
+  },
+  "budget_rationale": "g03's shape: one stated milestone plus a smoke run per cycle. Same iteration and token sizing as the gauntlet's small_app_feature_with_smoke orders, which are the only measured economics this repository has for a CLI flag.",
+  "gauntlet_order_version": 1,
+  "goal": "In the sample project, add a --width option to the CLI's report command that overrides the report_width setting for that run, leaving the existing precedence untouched when the option is absent, and prove it with a smoke run of the command.",
+  "id": "b01-cli-report-width",
+  "injections": [],
+  "kind": "small_app_feature_with_smoke",
+  "milestones": [
+    {
+      "dod": [
+        "python3 -m sampleproj.cli report <dir> --width 20 renders at the requested width",
+        "python3 -m sampleproj.cli report <dir> without the option renders exactly as before",
+        "the full unit suite of the sample project is green",
+        "no file outside sampleproj/cli.py and its test changed"
+      ],
+      "id": "m1",
+      "title": "Width option implemented and smoke-proven"
+    }
+  ],
+  "rationale": "The small-CLI-tool capability, probed at a seam the project already half-built and never finished: report_width is a real setting in sampleproj/config.py::DEFAULTS and sampleproj/report.py::build_report already accepts width=, but sampleproj/cli.py::main never passes it, so the setting is unreachable from the command line. The order therefore asks for wiring rather than invention, and its proof is a real command run rather than a unit test, which is what separates it from the pure-code-change orders. It is deliberately not g03's --quiet flag nor g08's --dry-run: a bench order that restates a gauntlet order measures the same thing twice.",
+  "risk_probed": "cli_surface_wiring_with_smoke_proof",
+  "title": "Expose an existing setting on the command line and prove it by running it"
+}

@@ -7,7 +7,8 @@
 > candidate: description · source feature · date. Any entry present
 > at feature-claim time is a block condition.
 
-(empty — F077's closure raised no candidate. Every finding this feature
-produced was registered as an R-id in `.agent/live_review.md` in the round that
-found it, and the thirty-two still open are carried openly in the STATUS line's
-PASS_WITH_RISKS verdict and in the closure PR, 2026-08-14.)
+(no candidate was carried out of F082's closure review at the time this file was
+written. Every defect the closure round's worker declares in its handback is
+appended below, one line each, in the form
+"- <description> · F082 · 2026-08-15"; if the worker declares none, this file
+stays as it is and the next feature's first reviewed round empties nothing.)

@@ -1,40 +1,42 @@
-# Plan — F077 Autonomy watchdog · CLOSED
+# Plan — F082 Self-benchmark
 
-Branch: feature/f077-autonomy-watchdog. F077 is `[x]` in docs/roadmap/STATUS.md
-as of this commit, which is the LAST on the branch. Next free finding id:
-R-0403. Open findings: THIRTY-TWO, all Medium or Low, none a blocker — the
-verdict is PASS_WITH_RISKS and the ids are named in the closure PR and in
-`.agent/live_review.md`, which is the source of truth.
+Branch: feature/f082-self-benchmark, cut from main after the F077 closure PR
+#200 merged. Next free finding id: R-0448. Open findings: seventy-five — the
+thirty-two carried from F077, plus R-0403 to R-0447 registered on this branch,
+less R-0435 and R-0436 resolved at R20. `.agent/live_review.md` is the source of
+truth; this file mirrors it.
 
 ## Goal
-Continuous operation gets a tripwire independent of the thing it watches. A
-watchdog reads the orchestrator loop's ledger and on no-progress repetition, a
-burn-rate anomaly or goal drift it PAUSES the mission and raises one decision
-per trip class carrying the evidence triple. It stops; it never repairs.
-Thresholds live in config, not code. DONE: T001, T002 and T003 are built,
-tested and green, the integration gate ran on the branch and at the merge base
-with zero branch-only failures, and `docs/system/autonomy-watchdog-v1.md`
-records the built state.
+Capability becomes a measured, versioned trend instead of a feeling: a frozen
+set of benchmark orders runs on demand, producing pass rate, cost, wall time and
+repair rounds per order into an append-only history, and `remedy stats bench`
+shows the trend with regression warnings. DONE when the bench runs green on
+fixtures, history survives across runs, and a deliberately degraded fixture run
+triggers the regression warning. All three conditions are measured by the suite.
 
 ## Current Step
-None. The feature is closed and the PR is open and UNMERGED by design: it
-merges at the next feature's start via the AGENTS.md Open PR Gate, which is the
-operator's manual-review window. The operator may merge it manually at any time.
+R23 is CLOSURE: it records the R22 PASS, registers R-0446 and R-0447, repairs
+the self-contradicting round map R-0447 reports, then runs the closure algorithm
+— the evidence job, a fresh review zip, the STATUS line claiming `[x]`, the
+README count and Tier-2 row, `.agent/candidates.md`, and the PR.
 
 ## Next Steps
-1. A NEW session, per docs/agents/self_drive_protocol.md Phase 1: rule 1
-   re-reads `.agent/STOP` from disk FIRST, then rule 2 runs the Open PR Gate,
-   which merges this feature's PR before any new branch exists.
-2. Then Rule A5 claims the next feature in STATUS order: F082 — Self-benchmark.
-3. `.agent/candidates.md` is empty, so no candidate registration is owed at that
-   claim.
+1. Nothing on this branch. The PR is NOT merged this session; it merges at the
+   next feature's start via the AGENTS.md Open PR Gate, which is the operator's
+   manual-review window.
+2. The next feature is F083 — CI self-check, per Rule A5. A fresh session claims
+   it and its first reviewed round registers or resolves every entry in
+   `.agent/candidates.md`.
 
 ## Risks
-- A mission resumed AFTER its watchdog decision is answered still carries the
-  tripping run in its ledger and trips again for all three tripwires, so
-  `mission resume` buys exactly one iteration. DECISION F077 D12 does not
-  address the re-trip; it is recorded in the feature file's Built State as a
-  known limit and no feature owns it yet.
-- R-0396's amendment target, docs/agents/integration_gate.md, is outside this
-  feature's change set, so every future integration gate reproduces the eight
-  phantom ui_server base failures until some feature owns that doc.
+- Closure is PASS_WITH_RISKS, not PASS: seventy-five findings are open, all
+  Medium or Low, none a Blocker or High under either parse reading (R-0446).
+- Three carried defects are open against process docs rather than against F082
+  code: R-0445 (integration_gate.md manufactures eight false base failures on
+  every run), R-0444 (a content digest cannot see an identical rebuild) and
+  R-0403 (the review zip packages `.remedy-wt/`). None is repaired here; a
+  process-doc fix inside a feature branch is scope drift.
+- Every acceptance measurement was taken under DOUBLES, never a live provider;
+  the delivered order set is three, not five (R-0411); the freeze holds against
+  a file-side edit only (R-0410); the builder's model stays unobservable. The
+  feature file's Built State states all four absences.

@@ -1,0 +1,27 @@
+# apps/ui/dist parity check for the base run (integration_gate.md step 2)
+method: sha256 over the sorted list of '<relpath> <sha256(file)>' lines for
+        every file under the directory; script
+        .remedy-wt/.cache/gate_r21/dist_digest.py (NOT committed)
+env:    REMEDY_UI_NO_AUTO_BUILD=1 was set for the base run
+
+--- BEFORE the base run ---
+dir: /home/decodeux/Repos/remedy/.remedy-wt/base-gate/apps/ui/dist
+files: 3
+bytes: 368950
+composite_sha256: f34ec239b3eddc4381e70c39b5dff1440451db31ae726829d508bc2f137a4404
+
+--- AFTER the base run ---
+dir: /home/decodeux/Repos/remedy/.remedy-wt/base-gate/apps/ui/dist
+files: 3
+bytes: 368950
+composite_sha256: f34ec239b3eddc4381e70c39b5dff1440451db31ae726829d508bc2f137a4404
+
+equal: yes — the composite sha256 is identical before and after.
+
+CAVEAT, measured and declared rather than assumed: the digest covers CONTENT
+only. The mtimes show the directory WAS rewritten during the base run —
+apps/ui/node_modules 2026-08-15T11:39:47.807 and apps/ui/dist/index.html
+2026-08-15T11:39:49.669, both inside the base-run window 11:38:41-11:41:10,
+while the parity copy had preserved the primary checkout's 11:36:04. The
+rebuild produced byte-identical output, so the ordered digest gate is GREEN,
+but REMEDY_UI_NO_AUTO_BUILD=1 did not stop every build path (R-0169 class).
