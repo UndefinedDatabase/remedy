@@ -1,8 +1,8 @@
 # Plan — F083 CI self-check
 
 Branch: feature/f083-ci-self-check, cut from main after the F082 closure PR #201
-merged. Next free finding id: R-0461. Open findings: the seventy-five carried out
-of the F082 record plus R-0448 to R-0460 registered on this branch, of which
+merged. Next free finding id: R-0463. Open findings: the seventy-five carried out
+of the F082 record plus R-0448 to R-0462 registered on this branch, of which
 R-0456 to R-0459 are resolved. `.agent/live_review.md` is the source of truth.
 
 ## Goal
@@ -14,17 +14,15 @@ reproduces the hosted result locally on a clean checkout, a seeded failure fails
 the right stage with a readable summary, and runtime stays within a budget.
 
 ## Current Step
-R7 closes the record R6 left open: the R6 PASS verdict, R-0460 registered, and
-the four `Landed:` lines replaced by the reviewer's `Done:` resolutions, since
-only reviewer-authored text sets Resolved. It writes no code, and it repairs the
-map because the CLI seam moves out of this round.
+R8 records the R7 PASS, registers R-0461 and R-0462, and lands the T001 CLI seam:
+the `ci` catalog group and `ci.run` entry, `apps/cli/commands/ci_cmd.py` with its
+summary table, the wiring into `collect_all_handlers`, and `tests/cli/test_ci_cmd.py`
+— whose last test really launches a stage argv through the pytest runner script.
 
 ## Next Steps
-1. R8 makes the runner reachable: a `ci` group and `ci.run` entry in
-   `apps/cli/command_catalog.py`, `apps/cli/commands/ci_cmd.py` carrying
-   `COMMAND_HANDLERS` and the summary table, its wiring in
-   `apps/cli/commands/__init__.py`, and `tests/cli/test_ci_cmd.py` — including
-   one test that really launches a stage argv through the pytest runner script.
+1. R9 promotes R-0460's rule into the §3 pre-emission checklist as item 11
+   (finding R-0461, its first item), then adds the per-stage selection tests over
+   a fixture tree that pin each stage's marker expression against known markers.
 
 ## Risks
 - `fast` still rests on a single 391.8 s reading, and the inventory showed it is
