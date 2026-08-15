@@ -101,7 +101,8 @@ criterion ✅ → R17 record the R16 verdict, register R-0429 and R-0430 and lan
 the fake-provider run ✅ → R18 register R-0434 and R-0435, rule at D10 and repair
 R-0431 to R-0434 ✅ → R19 the acceptance proof for R-0435 ✅ → R20 record the R19
 verdict, register R-0438 and R-0439 and rule at D11 ✅ → R21 the integration
-gate → R22 closure, per DECISION F082 D11.
+gate ✅ → R22 record R21, register R-0443 to R-0445 and bring Built State
+current → R23 closure, per DECISION F082 D12.
 T003 split at DECISION F082 D5, its second half inventoried at D6, unblocked at
 D7 and split in two at D8, R15 split the read half off from the run, and D9
 splits the Q7 pin off from the run because a total-absence pin would not survive
