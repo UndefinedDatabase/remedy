@@ -56,15 +56,21 @@ def stage_command(stage: CiStage, repo_root: Path) -> list[str]:
     ]
 
 
-def _run_via_subprocess(command: list[str]) -> int:
-    return subprocess.run(command, check=False).returncode
+def _run_via_subprocess(command: list[str], cwd: Path) -> int:
+    """Run `command` ANCHORED at `cwd`, never at wherever the caller stands.
+
+    A stage selects by MARKER and carries no path, and this repository sets no
+    `testpaths`, so pytest collects from the working directory — without this
+    anchor the caller's cwd decides what a stage means (finding R-0456).
+    """
+    return subprocess.run(command, check=False, cwd=cwd).returncode
 
 
 def run_ci_stage(
     stage: CiStage,
     repo_root: Path,
     *,
-    run_command: Callable[[list[str]], int] = _run_via_subprocess,
+    run_command: Callable[[list[str], Path], int] = _run_via_subprocess,
     monotonic: Callable[[], float] = time.monotonic,
 ) -> StageResult:
     """Run one stage, or record why it was not run. Never raises on a red stage."""
@@ -77,7 +83,7 @@ def run_ci_stage(
             note=f"not run by CI — run it manually with: {stage.manual_command}",
         )
     started = monotonic()
-    exit_code = run_command(stage_command(stage, repo_root))
+    exit_code = run_command(stage_command(stage, repo_root), repo_root)
     elapsed = monotonic() - started
     note = "timed out" if exit_code == PYTEST_TIMEOUT_EXIT_CODE else ""
     return StageResult(
@@ -90,5 +96,11 @@ def run_ci_stage(
 
 
 def ci_exit_code(results: tuple[StageResult, ...]) -> int:
-    """0 only when every stage that RAN ended green. A skipped stage is not a pass."""
-    return 0 if all(r.exit_code == 0 for r in results if r.ran) else 1
+    """0 only when a stage actually RAN and every stage that ran ended green.
+
+    A run in which NOTHING ran is red: `all()` over the empty selection is True,
+    so the plain reading reports an invocation that executed no test — every
+    stage skipped, or no stage at all — as a passing CI (finding R-0457).
+    """
+    ran = [result for result in results if result.ran]
+    return 0 if ran and all(result.exit_code == 0 for result in ran) else 1

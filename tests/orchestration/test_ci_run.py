@@ -30,7 +30,7 @@ def test_stage_command_goes_through_the_runner_and_carries_the_selection():
     assert command[1] == str(REPO_ROOT / PYTEST_RUNNER_SCRIPT)
     assert command[2] == "--"
     assert command[3:] == pytest_argv_for_stage(stage)
-    assert "pytest" not in command[1:2]
+    assert command[1:3] != ["-m", "pytest"]
 
 
 def test_running_a_stage_records_the_exit_code_and_a_duration():
@@ -38,7 +38,7 @@ def test_running_a_stage_records_the_exit_code_and_a_duration():
     result = run_ci_stage(
         ci_stage_by_name("fast"),
         REPO_ROOT,
-        run_command=lambda command: 0,
+        run_command=lambda command, cwd: 0,
         monotonic=lambda: next(ticks),
     )
     assert result.ran is True
@@ -51,7 +51,7 @@ def test_a_timeout_exit_code_is_named_in_the_note():
     result = run_ci_stage(
         ci_stage_by_name("fast"),
         REPO_ROOT,
-        run_command=lambda command: 124,
+        run_command=lambda command, cwd: 124,
         monotonic=lambda: 0.0,
     )
     assert result.exit_code == 124
@@ -64,7 +64,7 @@ def test_an_excluded_stage_is_not_run_and_names_its_manual_command():
     result = run_ci_stage(
         stage,
         REPO_ROOT,
-        run_command=lambda command: calls.append(command) or 0,
+        run_command=lambda command, cwd: calls.append(command) or 0,
         monotonic=lambda: 0.0,
     )
     assert calls == []
@@ -79,3 +79,25 @@ def test_ci_exit_code_is_red_when_any_stage_that_ran_is_red():
     skipped = StageResult("excluded", False, None, 0.0, "not run by CI")
     assert ci_exit_code((green, skipped)) == 0
     assert ci_exit_code((green, red)) == 1
+
+
+def test_the_stage_run_is_anchored_at_the_repository_root():
+    seen = []
+
+    def record(command, cwd):
+        seen.append(cwd)
+        return 0
+
+    run_ci_stage(
+        ci_stage_by_name("fast"),
+        REPO_ROOT,
+        run_command=record,
+        monotonic=lambda: 0.0,
+    )
+    assert seen == [REPO_ROOT]
+
+
+def test_a_run_in_which_nothing_ran_is_not_green():
+    skipped = StageResult("excluded", False, None, 0.0, "not run by CI")
+    assert ci_exit_code(()) == 1
+    assert ci_exit_code((skipped,)) == 1
