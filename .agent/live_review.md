@@ -21,12 +21,18 @@ carrying the F082 open set forward, and register the three F082 closure-review
 candidates as R-0448, R-0449 and R-0450 → R2 the T001 marker inventory: the
 collected count and the wall time per marker, which markers already exist, and
 which stage each belongs to, every answer carrying a file-and-symbol citation →
-R3 T001 the stage runner, the marker selections and the summary table → R4 T002
-the determinism and budget stages plus the guard-test wiring → R5 T002 the
-seeded-failure test per stage → R6 T003 the hosted workflow files, the docs and
-the runtime budget written from measured data → R7 the integration gate → R8
-closure. Each round marks the PREVIOUS one done and never itself; the map is
-stated here ONLY, and no other file restates it (R-0447).
+R3 record R2, register R-0453 and R-0454, and rule DECISION F083 D2, the stage
+set → R4 T001 the stage definitions and their structural tests → R5 T001 the
+stage runner over the existing pytest subprocess runner, the `remedy ci` CLI
+seam and the summary table → R6 T001 the per-stage selection tests over a
+fixture tree and the parallelism measurement D2.5 defers → R7 T002 the
+determinism and budget stages plus the guard-test wiring → R8 T002 the
+seeded-failure test per stage → R9 T003 the hosted workflow files, the docs and
+the runtime budget written from measured data → R10 the integration gate → R11
+closure. Each round marks the PREVIOUS one done and never itself; the FULL map
+is stated here ONLY. Another file may name at most the NEXT round —
+`.agent/plan.md` must, because AGENTS.md mandates its Next Steps section — and
+naming one round is not restating the map (R-0447, R-0455).
 
 ## Findings
 
