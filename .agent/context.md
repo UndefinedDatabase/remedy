@@ -98,7 +98,7 @@ served which role ✅ → R14 record the R13 verdict and register R-0420 to R-04
 half ✅ → R16 record the R15 verdict, register R-0427 and R-0428 and pin the Q7
 criterion ✅ → R17 record the R16 verdict, register R-0429 and R-0430 and land
 the fake-provider run ✅ → R18 register R-0434 and R-0435, rule at D10 and repair
-R-0431 to R-0434 → R19 the acceptance proof for R-0435 → R20 the integration
+R-0431 to R-0434 ✅ → R19 the acceptance proof for R-0435 → R20 the integration
 gate → R21 closure, per DECISION F082 D10.
 T003 split at DECISION F082 D5, its second half inventoried at D6, unblocked at
 D7 and split in two at D8, R15 split the read half off from the run, and D9
