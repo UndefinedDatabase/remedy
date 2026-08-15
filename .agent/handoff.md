@@ -237,10 +237,22 @@ Open findings: 65 (max R-0435, next free R-0436). A `Landed:` line does not
 close a finding, so R-0431 to R-0434 remain counted. R-0435 IS OPEN and is the
 closure blocker of record. No block condition hit.
 
+## Reviewer verdict — recorded after this handback was written
+
+R18 is PASS. The reviewer re-executed all twenty-two gates against the disk and
+every value reproduced, including the three-way transport equality at 399 lines
+and the semantic gate that RESOLVES `bench_run.py`'s annotations rather than
+merely importing them. Two findings, R-0436 and R-0437, are appended to
+`.agent/live_review.md`; both are the REVIEWER's own block defects and both are
+the deviations the worker declared above. Nothing was marked `Done:`. Open
+findings are now SIXTY-SEVEN, max R-0437, next free R-0438.
+
 ## Next
 
 R19 — the acceptance proof for R-0435: the doubles store a DoD verdict so a
-bench row can PASS, plus the properties that assert what the rows SAY. R20 is
-the integration gate, R21 closure (DECISION F082 D10). THE NEXT SESSION'S FIRST
-ACTION is self_drive_protocol.md Phase 1 rule 1, re-read `.agent/STOP` from
-disk, BEFORE rule 2's Open PR Gate. F082 is MID-FEATURE and no PR exists.
+bench row can PASS, plus the properties that assert what the rows SAY. R19 also
+repairs R-0436's numeral in `.agent/plan.md` and the stale `test_bench_run.py`
+docstring claim this handback reported. R20 is the integration gate, R21 closure
+(DECISION F082 D10). THE NEXT SESSION'S FIRST ACTION is
+self_drive_protocol.md Phase 1 rule 1, re-read `.agent/STOP` from disk, BEFORE
+rule 2's Open PR Gate. F082 is MID-FEATURE and no PR exists.
