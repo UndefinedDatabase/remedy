@@ -1,42 +1,40 @@
-# Plan — F082 Self-benchmark
+# Plan — F083 CI self-check
 
-Branch: feature/f082-self-benchmark, cut from main after the F077 closure PR
-#200 merged. Next free finding id: R-0448. Open findings: seventy-five — the
-thirty-two carried from F077, plus R-0403 to R-0447 registered on this branch,
-less R-0435 and R-0436 resolved at R20. `.agent/live_review.md` is the source of
-truth; this file mirrors it.
+Branch: feature/f083-ci-self-check, cut from main after the F082 closure PR #201
+merged. Next free finding id: R-0451. Open findings: seventy-eight — the
+seventy-five carried out of the F082 record, plus R-0448, R-0449 and R-0450
+registered at R1. `.agent/live_review.md` is the source of truth; this file
+mirrors it.
 
 ## Goal
-Capability becomes a measured, versioned trend instead of a feeling: a frozen
-set of benchmark orders runs on demand, producing pass rate, cost, wall time and
-repair rounds per order into an append-only history, and `remedy stats bench`
-shows the trend with regression warnings. DONE when the bench runs green on
-fixtures, history survives across runs, and a deliberately degraded fixture run
-triggers the regression warning. All three conditions are measured by the suite.
+Remedy's own repository gets an honest CI: one local command (`remedy ci`) and
+matching hosted workflows run the unit and integration suites on the fake
+provider, the determinism suite, the UI build plus its smoke, and budget checks,
+with live-provider tests excluded by marker and said so. DONE when `remedy ci`
+reproduces the hosted result locally on a clean checkout, a seeded failure in
+each stage fails the right stage with a readable summary, and total runtime
+stays within a documented budget.
 
 ## Current Step
-R23 is CLOSURE: it records the R22 PASS, registers R-0446 and R-0447, repairs
-the self-contradicting round map R-0447 reports, then runs the closure algorithm
-— the evidence job, a fresh review zip, the STATUS line claiming `[x]`, the
-README count and Tier-2 row, `.agent/candidates.md`, and the PR.
+R1 is the CLAIM: cut the branch, reset the live review record carrying F082's
+open set forward, register the three F082 closure-review candidates as R-0448,
+R-0449 and R-0450, refresh the candidates carrier, and move the ledger line from
+`[ ]` to `[~]`. No code and no test changes.
 
 ## Next Steps
-1. Nothing on this branch. The PR is NOT merged this session; it merges at the
-   next feature's start via the AGENTS.md Open PR Gate, which is the operator's
-   manual-review window.
-2. The next feature is F083 — CI self-check, per Rule A5. A fresh session claims
-   it and its first reviewed round registers or resolves every entry in
-   `.agent/candidates.md`.
+1. R2 is the T001 marker inventory, which the feature file's orchestrator brief
+   names as T001's first deliverable: collected count and wall time per marker,
+   which markers already exist, and which stage each belongs to.
+2. The stage split follows that data. No stage runner is written before it.
 
 ## Risks
-- Closure is PASS_WITH_RISKS, not PASS: seventy-five findings are open, all
-  Medium or Low, none a Blocker or High under either parse reading (R-0446).
-- Three carried defects are open against process docs rather than against F082
-  code: R-0445 (integration_gate.md manufactures eight false base failures on
-  every run), R-0444 (a content digest cannot see an identical rebuild) and
-  R-0403 (the review zip packages `.remedy-wt/`). None is repaired here; a
-  process-doc fix inside a feature branch is scope drift.
-- Every acceptance measurement was taken under DOUBLES, never a live provider;
-  the delivered order set is three, not five (R-0411); the freeze holds against
-  a file-side edit only (R-0410); the builder's model stays unobservable. The
-  feature file's Built State states all four absences.
+- The three findings registered this round are all defects in the reviewer's own
+  block text, and two of them, R-0449 and R-0450, are recurrences of R-0371 in
+  the round that registered it. The counter-measures are written as standing
+  rules inside the findings; whether they hold is measurable only in later rounds.
+- R-0448's repair edits `docs/roadmap/STATUS_closure_protocol.md`, a process doc
+  F083 does not own, so it joins R-0403, R-0444 and R-0445 on the paydown queue.
+  That queue has no owner yet and grows by one this round.
+- R-0205 is carried into this feature by its own feature file: live-state
+  contract tests can turn main red for reasons unrelated to the change under
+  review. It is in scope here rather than deferred.

@@ -7,8 +7,7 @@
 > candidate: description · source feature · date. Any entry present
 > at feature-claim time is a block condition.
 
-(no candidate was carried out of F082's closure review at the time this file was
-written. Every defect the closure round's worker declares in its handback is
-appended below, one line each, in the form
-"- <description> · F082 · 2026-08-15"; if the worker declares none, this file
-stays as it is and the next feature's first reviewed round empties nothing.)
+The carrier is empty. The three candidates F082's closure review produced were
+registered as R-0448, R-0449 and R-0450 in `.agent/live_review.md` at F083 R1,
+which is what the closure protocol asks the next feature's first reviewed round
+to do.
