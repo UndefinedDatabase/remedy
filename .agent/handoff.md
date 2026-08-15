@@ -1,205 +1,142 @@
-# Handback — F082 Self-benchmark, R23 (CLOSURE)
+# Handback — F083 R1 (CI self-check · CLAIM)
 
-Branch: feature/f082-self-benchmark. Sought: CLOSED, PASS_WITH_RISKS.
+Feature/Round: F083, R1 of 8. Branch: `feature/f083-ci-self-check`, cut from main.
+BASE f3fd96d729c3be85604a2d37aee42c59fe39868a; `git rev-parse HEAD` taken after the
+checkout and before C0a is that same value — EQUAL (gate 2, R-0428).
+Open findings: 78 · max id R-0450 · next free R-0451 · 0 resolved. No PR exists for
+this branch (Constraint 4); F083's PR is created at closure.
+
+Fortschritt: 0 % (F083 beansprucht · Record zurückgesetzt, 75 offene Funde übernommen · R-0448 bis R-0450 registriert · T001–T003 offen · noch kein Code) — gemessen, nicht geschätzt
 
 ## Range
-Review of 9cc80e33..HEAD (C3).
+Review of f3fd96d729c3be85604a2d37aee42c59fe39868a..HEAD — five commits: the four
+tabled below plus the C3 commit that writes this file.
 
 ## Commits
-### 6b9ec9f5 chore(f082): save the R23 closure block as authored text
+### d08aea77 chore(f083): save the R1 claim block as authored text
 | Path | +/- | Reason |
-| `.agent/authored/f082-r23.md` | +327/-0 | C0a, byte copy of the scratchpad |
-### 1cf1b678 chore(f082): mirror the R23 block into last_block
+|---|---|---|
+| .agent/authored/f083-r1.md | +313/-0 | C0a byte copy of the scratchpad original |
+
+### 359734ce chore(f083): mirror the R1 block into last_block
 | Path | +/- | Reason |
-| `.agent/last_block.md` | +278/-275 | C0b, same bytes |
-### 6a6adf1b docs(f082): record the R22 verdict and register R-0446 and R-0447
+|---|---|---|
+| .agent/last_block.md | +260/-274 | C0b mirror of the same 24035 bytes |
+
+### c4fb1857 docs(f083): reset the live review record and register R-0448 to R-0450
 | Path | +/- | Reason |
-| `.agent/live_review.md` | +6/-0 | C1, GATE-R22-BLOCK appended at EOF |
-### 4b9bc7bc docs(f082): repair the round map and bring the plan to closure state
+|---|---|---|
+| .agent/live_review.md | +28/-378 | C1 LIVEREVIEW-HEAD plus the 75 carried findings |
+
+### b07983b9 docs(f083): claim F083 CI self-check in the ledger and open its state
 | Path | +/- | Reason |
-| `.agent/context.md` | +4/-3 | C2, CTX-D12 + CTXSTEPS-R23 (R-0447 repair) |
-| `.agent/plan.md` | +24/-28 | C2, PLAN whole file. THIS HEAD IS THE ACCEPTED HEAD |
-### C3 (this commit; cannot table its own SHA — R-0371/R-0149)
+|---|---|---|
+| .agent/context.md | +29/-89 | C2 whole-file CTX slice |
+| .agent/plan.md | +31/-33 | C2 whole-file PLAN slice |
+| .agent/candidates.md | +4/-5 | C2 whole-file CANDIDATES slice |
+| docs/roadmap/STATUS.md | +1/-1 | C2 STATUSLINE pair, unclaimed to claimed |
+
+### (SHA cannot exist here) docs(f083): write the R1 handback
 | Path | +/- | Reason |
-| `docs/roadmap/STATUS.md` | +1/-1 | STATUSLINE pair, `[~]`→`[x]` |
-| `README.md` | +2/-2 | READMECOUNT + READMETIER pairs |
-| `.agent/candidates.md` | +5/-4 | CANDIDATES whole file |
-| `.agent/handoff.md` | self-referential | this file |
+|---|---|---|
+| .agent/handoff.md | whole-file rewrite | C3; a handoff cannot table its own SHA (R-0149, R-0371) |
 
 ## External actions
-- `git push -u origin feature/f082-self-benchmark` → 9cc80e33..4b9bc7bc, OK.
-- `git push` after C3, and `gh pr create` after that (block ordering). THE PR
-  NUMBER CANNOT BE IN THIS FILE: it does not exist when C3 is written and no
-  commit may follow C3 — the R-0371 limit the block itself accepts for C3's SHA.
-  Recover with `gh pr list --state open --json number,headRefName,baseRefName,isDraft`.
-- No worktree added or removed; `git worktree list` ONE line throughout.
+`git checkout -b feature/f083-ci-self-check` → ok, HEAD f3fd96d7.
+`git push -u origin feature/f083-ci-self-check` → runs AFTER this commit; its result is in
+the round's final message (deviation 1). No `gh pr create` (Constraint 4). No worktree added.
 
-## Verification (all values measured this round, none carried)
-1. `git status --porcelain` EMPTY before C0a, before both zip builds, after C3.
-   `.agent/STOP` ABSENT at round start and at handback.
-2. TRANSPORT (bytes, Python): scratchpad, `.agent/authored/f082-r23.md` and
-   `.agent/last_block.md` all sha256
-   51e267af0a2edcd8fc9ea1acb3bc9eb707333ce77da14f6a616b4a26f3255249, 26074
-   bytes, 327 lines; all three EQUAL; declared footer 327 == measured 327.
-3. BASE: HEAD before C0a = 9cc80e33073634e37acac94231347130026cb291; equals
-   9cc80e33, True.
-4. C1: `post.startswith(pre)` True; `post[len(pre):] == b"\n" + GATE-R22-BLOCK`
-   True. numstat `6 0` — deletion column 0.
-5. C2 `.agent/context.md` — CTX-D12: FROM in pre 1, in post 0; TO in post 1;
-   `FROM in TO` False. CTXSTEPS-R23: 1, 0, 1, False. Composite
-   `pre.replace(F1,T1).replace(F2,T2) == post` True. `.agent/plan.md`
-   byte-equals PLAN, sha256
-   9f0e83c7f48bef054100cba99bcac6f94ed529d55fb2af048c7fc2e8f62745ab, 42 lines
-   (<50); `## Goal` and `## Next Steps` present.
-6. R-0447 repaired — `.agent/context.md` at HEAD: `DECISION F082 D11` 0x,
-   `R22 closure` 0x, `R23 closure` 1x, `DECISION F082 D12` 1x.
-7. EVIDENCE JOB `create_manual_completion_bundle` → `{"job_id":"f082-closure",
-   "head_commit":"4b9bc7bc1dabdde5fca68de6ae20f86b11d21eb0","authority_count":28,
-   "partition":{"T001":10,"T002":10,"T003":8},"commit_count":154,
-   "verdict":"PASS_WITH_RISKS","manual_completion":true,
-   "operator_attested_tasks":["T001","T002","T003"],"total_passed":90}`.
-   Dir `remedy-job-evidence-f082-closure`, matched by `.gitignore:226`;
-   `git status --porcelain` EMPTY after — it never entered the review subject.
-   Scoped suite really run: exit 0, 90 passed, 90 node ids,
-   `len(node_ids) == selected` True.
-8. REVIEW ZIP — TWO attempts, both recorded (AGENTS.md artifact-attempt rule).
-   Command both times: `bash scripts/make_review_zip.sh --evidence-dir
-   remedy-job-evidence-f082-closure`.
-   ATTEMPT 1: exit 0, PACKAGE_STATUS=BLOCKED_EVIDENCE,
-   `remedy-review-20260815-122102-BLOCKED_EVIDENCE.zip`. Raw
-   `ready_gate_matrix.blocking_reasons`: "final_verifier_report.json
-   test_status.passed cannot be confirmed: the VerificationTests total is
-   missing or invalid" and "verification_tests.json runs[0] test_files is not
-   sorted". `validate_evidence_candidate` gave ONE root error:
-   `verification_tests.json runs[0] test_files is not sorted`. See Deviation 1.
-   ATTEMPT 2: exit 0, PACKAGE_STATUS=READY_FOR_REVIEW, package
-   `remedy-review-20260815-122333-READY_FOR_REVIEW.zip`, SHA-256
-   3e8e33eb4bb724ce775ea5987e0fee0de5341d1a3bfe902c6e5f4f6f2deb84b2 (re-hashed
-   from disk in Python, equal to the printed value), `ready_gate_matrix.ok` True
-   with `blocking_reasons` [], `is_valid_current_run` True,
-   `evidence_authoritative` True, `zipfile.testzip()` None, 6060 members.
-   Manifest `committed_review_subject`: base 668d40f7…, head
-   4b9bc7bc1dabdde5fca68de6ae20f86b11d21eb0 — EQUALS the C2 head, True.
-9. STATUS LINE at HEAD, verbatim:
-   `- [x] F082 — Self-benchmark (T001–T003 complete; accepted 2026-08-15 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f082-closure · package remedy-review-20260815-122333-READY_FOR_REVIEW.zip · SHA-256 3e8e33eb4bb724ce775ea5987e0fee0de5341d1a3bfe902c6e5f4f6f2deb84b2 · accepted HEAD 4b9bc7bc1dabdde5fca68de6ae20f86b11d21eb0)`
-   `<<` appears 0x in the file. Replacing the three measured values back with
-   `<<ZIP>>`, `<<SHA256>>`, `<<HEAD40>>` reproduces STATUSLINE-TO byte-for-byte,
-   True. `^- \[~\] F082` 0x, `^- \[x\] F082` 1x, `^- \[x\] ` 49x.
-10. README — READMECOUNT: 1, 0, 1, `FROM in TO` False. READMETIER: 1, 0, 1,
-    False. Composite `pre.replace(F1,T1).replace(F2,T2) == post` True. README's
-    49 matches the 49 `[x]` lines in STATUS.md.
-11. `python3 -m pytest tests/docs/ -q` → exit 0, 295 collected, 295 passed.
-    `python3 -m pytest tests/cli/test_golden_path.py -q` → exit 0, 42 collected,
-    42 passed. Measured separately; exit codes read from the process (R-0438).
-12. CHANGE SET `git diff --name-only 9cc80e33..HEAD`, measured before this file
-    was written, so it lists 8 and this file is the 9th and last:
-    `.agent/authored/f082-r23.md`, `.agent/candidates.md`, `.agent/context.md`,
-    `.agent/last_block.md`, `.agent/live_review.md`, `.agent/plan.md`,
-    `README.md`, `docs/roadmap/STATUS.md` (+ `.agent/handoff.md`).
-    Restricted to `packages/`, `apps/`, `scripts/`, `tests/`: EMPTY, `[]`.
-    Restricted to `docs/`: EXACTLY ONE, `['docs/roadmap/STATUS.md']`.
-13. OPEN SET at HEAD: `^- R-\d+ — ` 77 registered, `^Done: R-\d+ — ` 2 resolved,
-    75 open. Max R-0447, next free R-0448, `^Landed: ` 4, no duplicate id.
-    Ordered 77 and 2 — measured 77 and 2.
-14. CLOSURE PRECONDITIONS re-measured at the closure head.
-    (a) Severity census of the OPEN set by R-0446's rule (first word after the
-    em-dash, trailing comma stripped): classifies 75 of 75 open findings.
-    Blocker 0, High 0, Medium 24, Low 51 (24 + 51 = 75).
-    (b) Integrity gate in Python (`remedy` CLI denied in this session class,
-    R-0408): `passed` true, `fail_count` 0, `check_count` 5 — handler_import
-    pass (handlers=337), live_review_verdict pass, plan_consistency pass
-    (unchecked=0), relevant_untracked pass (untracked=0, relevant=0),
-    high_blockers_open pass (no open blocker/high findings).
-15. Insertions (`+` column only): 327 · 278 · 6 · 28 · C3 8 (1 + 2 + 5, this
-    file excluded as self-referential). None over 500. C0b's 278 is a verbatim
-    single-`.agent/`-file rewrite, exempt by the AGENTS.md counting rule and
-    under the cap regardless.
-16. THE PR: created after C3; number not knowable here (External actions,
-    Deviation 2). NOT merged (protocol step 6).
+## Verification — real measured values, exit codes read from the process
+1. `git status --porcelain` EMPTY (0 lines) before each of C0a, C0b, C1, C2 and before
+   this commit; the post-C3 reading is in the final message (deviation 1).
+   `git worktree list` = 1 line throughout. `.agent/STOP` ABSENT at round start and now.
+2. `git branch --show-current` = feature/f083-ci-self-check; HEAD before C0a =
+   f3fd96d729c3be85604a2d37aee42c59fe39868a = BASE. EQUAL.
+3. TRANSPORT, bytes read in Python: `.remedy-wt/.cache/f083-r1/f083-r1.md`,
+   `.agent/authored/f083-r1.md` and `.agent/last_block.md` are each sha256
+   df5447bb084a6874d2d2c59916f026c8366c07b0f984e3eba06e81be2c42b902, 24035 bytes,
+   313 lines; all three byte strings EQUAL = True; 313 measured == 313 declared.
+4. C1 REBUILD, by reconstruction: LIVEREVIEW-HEAD extracted by marker from the COMMITTED
+   authored file, `carried` rebuilt from the BASE record, `expected` built by the block's
+   formula → `expected == committed` True. Carried paragraphs 75. Committed file sha256
+   fb999e2d8435e12e38f3cfe72f6d43c6e6946ce75bcbf31542864fa4b56238cc, 138302 B, 187 lines.
+   The BASE record measured 77 finding lines and 2 resolution lines, as the block declared.
+5. C1 COUNTS at c4fb1857: finding lines 78 · resolution lines 0 · `^Landed: ` 0 ·
+   `^Gate: ` 0 · max id R-0450 · next free R-0451 · duplicate ids none. Measured 78
+   registered and 0 resolved, which is what the block expected.
+6. C2 WHOLE FILES at b07983b9, each byte-equal its slice (True): `.agent/context.md`
+   sha256 825b0901bf16f5fc743526dfaedb400e865d115c9a5a4017b96c5ed364e2c023, 50 lines;
+   `.agent/plan.md` 3a53fd862b46e22521ccd54daf582ce4e087b26fd5d7d551d26d3227d970257f,
+   40 lines (<50, `## Goal` and `## Next Steps` both present); `.agent/candidates.md`
+   f31a375f3166867b770360231acf1aa230514b3e02b236ddd9258d4f7c3da212, 13 lines.
+7. C2 STATUS PAIR: FROM in `pre` 1 · FROM in `post` 0 · TO in `post` 1 · `FROM in TO`
+   False · `pre.replace(FROM,TO) == post` True. At HEAD: unclaimed F083 line 0x · claimed
+   F083 line 1x · all claimed-marker lines 1 · all done-marker lines 49, which is the BASE
+   value 49, unchanged.
+8. pytest, each run separately, exit code read from the process object (R-0438):
+   `tests/docs/` 295 collected, 295 passed, exit 0 · `tests/regression/test_resource_safety.py`
+   21 collected, 21 passed, exit 0 · `tests/orchestration/test_integrity_gate.py` 15
+   collected, 15 passed, exit 0 · canary `tests/cli/test_golden_path.py` 42 collected,
+   42 passed, exit 0. All four equal the reviewer's BASE readings.
+9. INTEGRITY GATE in Python (the `remedy` CLI is denied in this session class):
+   `passed` true, `fail_count` 0, `check_count` 5 — handler_import pass "handlers=337" ·
+   live_review_verdict pass "> Round-by-round review record for the F083 branch, reset at
+   the feature claim." · plan_consistency pass "unchecked=0, context_complete=False" ·
+   relevant_untracked pass "untracked=0, relevant=0" · high_blockers_open pass "no open
+   blocker/high findings".
+10. CHANGE SET, `git diff --name-only BASE..HEAD` measured before this file was written,
+    7 paths: .agent/authored/f083-r1.md · .agent/candidates.md · .agent/context.md ·
+    .agent/last_block.md · .agent/live_review.md · .agent/plan.md · docs/roadmap/STATUS.md.
+    Restricted to `packages/ apps/ scripts/ tests/`: EMPTY list, count 0. Restricted to
+    `docs/`: exactly one file, docs/roadmap/STATUS.md.
+11. Insertions (`+` column): d08aea77 313 · 359734ce 260 · c4fb1857 28 · b07983b9 65.
+    None over 500. C0b and C1 are single-`.agent/`-file verbatim rewrites, exempt anyway.
+12. PUSH and `gh pr list --state open`: both postdate this commit — see deviation 1.
 
 ## Authored-text proofs
-Disk-to-disk in Python (`cmp` denied in this session class — the PROPERTY, byte
-equality plus digest, is gated instead of the tool, R-0408). Scratchpad ==
-`.agent/authored/f082-r23.md` == `.agent/last_block.md`, all sha256
-51e267af0a2edcd8fc9ea1acb3bc9eb707333ce77da14f6a616b4a26f3255249. Every applied
-slice was extracted from the COMMITTED authored file by line range and compared
-as bytes: GATE-R22-BLOCK (append, exact suffix), CTX-D12, CTXSTEPS-R23,
-STATUSLINE, READMECOUNT, READMETIER (pairs, composite equality), PLAN and
-CANDIDATES (whole-file byte equality). Nothing was retyped.
+Every slice was extracted BY MARKER from the committed `.agent/authored/f083-r1.md` in
+Python and applied byte-verbatim; none was retyped. Equality is proved as byte equality
+plus sha256 rather than by `cmp`, whose availability varies in this session class
+(R-0408): LIVEREVIEW-HEAD via the gate-4 reconstruction, CTX/PLAN/CANDIDATES via gate 6,
+STATUSLINE FROM and TO via gate 7. Every comparison True.
 
 ## Deviations & assumptions
-1. DECLARED DEVIATION — reviewer-block defect, the sorted-`test_files` rule.
-   The block ordered `test_files` as "the eight FILES above"; that list is NOT
-   sorted (`tests/cli/test_stats_bench.py` is listed last, sorts first).
-   `scripts/build_review_manifest._vt_safe_files` rejects an unsorted
-   `test_files` (`if tf != sorted(tf)`), which rejects the whole
-   VerificationTests document and leaves `vt_passed` unconfirmable — the same
-   mechanism as documented pitfall (c), reached through a different field. That
-   packaged attempt 1 as BLOCKED_EVIDENCE.
-   REPAIR: the same eight files, sorted; the suite was re-run in that order so
-   `command` and `node_ids` still describe a real execution (exit 0, 90 passed
-   both times); the evidence dir was rebuilt from scratch; and
-   `validate_evidence_candidate` was checked BEFORE the second zip
-   (`is_valid_current_run` True, `validation_errors` []). No file added or
-   removed — the change is a permutation.
-   WHY NOT Constraint 7: Constraint 7 forbids CLOSING OVER a failing build, and
-   nothing was closed over — no `[x]`, no C3, no PR existed at that moment.
-   STATUS_closure_protocol step 2 states the choice as "fix or go `[!]`"; the
-   fix was mechanically determined by the validator, not guessed; and AGENTS.md
-   requires every artifact-build ATTEMPT in the handoff, which presumes retry
-   inside one round. Both attempts are recorded above. This is a NEW producer
-   pitfall, (e), for STATUS_closure_protocol.
-2. DECLARED DEVIATION — reviewer-block defect, a self-referential order (R-0371).
-   The block orders the PR number into the handback AND `gh pr create` after C3
-   AND no commit after C3. The three cannot all hold. The number is reported in
-   the round's final message rather than invented here.
-3. STATED-CAUSE OVERAGE (AGENTS.md D15): this handback is 205 lines, over the
-   ≤60 cap (the ≤100 form needs >5 commits; this round has exactly five).
-   Cause is mandated content only — sixteen ordered gates with real values,
-   five per-commit tables, transport and pair proofs, the two-attempt zip
-   record, the item-status table, the closure values. No section was dropped.
-4. Scratch helpers live in `.remedy-wt/.cache/r23/` (`/tmp` denied), which
-   `.gitignore` drops — and which R-0403 already records the zip as packaging.
+1. Declared, R-0449 class: gate 12's push result, the `gh pr list` reading and gate 1's
+   post-C3 `git status` cannot exist when C3 is authored, and Constraint 3 puts no commit
+   after C3. They are reported in the round's final message instead of being invented.
+2. Declared, NOT repaired: the LIVEREVIEW-HEAD slice's prose names only the four
+   `Landed:` lines as not carried, while the carry also drops the BASE record's 22
+   `^Gate: ` lines and 2 resolution lines. The block's own text says "the head slice says
+   so in prose, so nothing is silently dropped"; the applied bytes are silent about those
+   24 lines. Applied byte-verbatim per Constraint 2 and declared here.
+3. No pull request this round (Constraint 4); the AGENTS.md "create a PR when reviewable"
+   rule is met by F083's closure round.
+4. Handoff length: this file is 142 lines, over the 60-line cap, under the DECISION D15
+   stated-cause rule — twelve mandated gate readings, five per-commit tables and the
+   seventeen-row item-status table do not fit. No section was dropped.
 
 ## Item status
 | Item | Status | Reason |
 |---|---|---|
-| C0a | done | |
-| C0b | done | |
-| C1 | done | |
-| C2 | done | accepted HEAD 4b9bc7bc |
-| C3 | done | this commit, branch's last |
-| Evidence job | done | built twice; 1st input defective, Deviation 1 |
-| Review zip | done | READY_FOR_REVIEW on attempt 2 |
-| Gate 1 | done | |
-| Gate 2 | done | |
-| Gate 3 | done | |
-| Gate 4 | done | |
-| Gate 5 | done | |
-| Gate 6 | done | |
-| Gate 7 | done | |
-| Gate 8 | deviated | two attempts recorded, Deviation 1 |
-| Gate 9 | done | |
-| Gate 10 | done | |
-| Gate 11 | done | |
-| Gate 12 | done | 9th path is this file |
-| Gate 13 | done | |
-| Gate 14 | done | (b) run in Python, CLI denied |
-| Gate 15 | done | C3's own row excluded, R-0149 |
-| Gate 16 | deviated | PR number not knowable here, Deviation 2 |
-
-## Open findings
-75 open, 77 registered, 2 resolved. Max R-0447, next free R-0448. Blocker 0,
-High 0, Medium 24, Low 51. Closure is PASS_WITH_RISKS on that census.
-
-## Runtime actuals (observed only)
-Rounds 23. Worker model this round: claude-opus-5. Reviewer model, wall clock,
-tokens and cost: not-measured — this session keeps no ledger for them.
+| C0a authored copy | done | |
+| C0b last_block mirror | done | |
+| C1 live_review rebuild | done | |
+| C2 claim (CTX, PLAN, CANDIDATES, STATUS) | done | |
+| C3 handback | done | own SHA not tabled (R-0149) |
+| Gate 1 clean tree, worktree, STOP | done | post-C3 status in final message |
+| Gate 2 branch and base | done | |
+| Gate 3 transport | done | |
+| Gate 4 C1 rebuild property | done | |
+| Gate 5 C1 content counts | done | |
+| Gate 6 C2 whole files | done | |
+| Gate 7 C2 status pair | done | |
+| Gate 8 pytest, four targets | done | |
+| Gate 9 integrity gate | done | |
+| Gate 10 change set | done | |
+| Gate 11 insertions per commit | done | |
+| Gate 12 push, no PR | deviated | value postdates C3; in final message |
 
 ## Next
-A fresh session claims F083 — CI self-check (Rule A5). Its first action is
-Phase 1 rule 1, `.agent/STOP`; then rule 2, the Open PR Gate, which merges this
-closure PR. `.agent/candidates.md` carries no entry; the two deviations above
-are handback-declared, and the reviewer decides whether either becomes a finding.
-
-Fortschritt: 100 % (T001 ✅ · T002 ✅ · T003a ✅ · T003b ✅ · alle drei DONE-Bedingungen gemessen · Integrationsgate ✅ PASS · Closure gelaufen · PR offen, Merge erst beim nächsten Feature) — gemessen, nicht geschätzt
+The reviewer reviews f3fd96d7..HEAD and issues the R1 verdict; then R2, the T001 marker
+inventory (collected count and wall time per marker, which markers exist, which stage
+each belongs to, each with a file-and-symbol citation).
