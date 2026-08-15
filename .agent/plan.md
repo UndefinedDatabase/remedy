@@ -1,9 +1,9 @@
 # Plan — F083 CI self-check
 
 Branch: feature/f083-ci-self-check, cut from main after the F082 closure PR #201
-merged. Next free finding id: R-0460. Open findings: the seventy-five carried out
-of the F082 record plus R-0448 to R-0459 registered on this branch.
-`.agent/live_review.md` is the source of truth; this file mirrors it.
+merged. Next free finding id: R-0461. Open findings: the seventy-five carried out
+of the F082 record plus R-0448 to R-0460 registered on this branch, of which
+R-0456 to R-0459 are resolved. `.agent/live_review.md` is the source of truth.
 
 ## Goal
 Remedy's own repository gets an honest CI: one local command (`remedy ci`) and
@@ -14,19 +14,19 @@ reproduces the hosted result locally on a clean checkout, a seeded failure fails
 the right stage with a readable summary, and runtime stays within a budget.
 
 ## Current Step
-R6 records the R5 PASS, registers R-0456 to R-0459 and repairs the three runner
-defects the R5 review found: the run is anchored at the repository root, because
-a marker selection carries no path and pytest otherwise collects from wherever
-the caller stands; a run in which no stage ran is red rather than green; and a
-guard assertion that could not fail is replaced by one that can.
+R7 closes the record R6 left open: the R6 PASS verdict, R-0460 registered, and
+the four `Landed:` lines replaced by the reviewer's `Done:` resolutions, since
+only reviewer-authored text sets Resolved. It writes no code, and it repairs the
+map because the CLI seam moves out of this round.
 
 ## Next Steps
-1. R7 adds the `remedy ci [--stage NAME] [--json]` CLI seam Q8 names — the
-   catalog group, the entry and a `COMMAND_HANDLERS` module — and the summary
-   table it prints, which states the accepted `standard`/`smoke` double-run.
+1. R8 makes the runner reachable: a `ci` group and `ci.run` entry in
+   `apps/cli/command_catalog.py`, `apps/cli/commands/ci_cmd.py` carrying
+   `COMMAND_HANDLERS` and the summary table, its wiring in
+   `apps/cli/commands/__init__.py`, and `tests/cli/test_ci_cmd.py` — including
+   one test that really launches a stage argv through the pytest runner script.
 
 ## Risks
-- No test yet runs a stage for real: the injected runner buys speed at the cost
-  of never proving the subprocess seam end to end, and this round narrows that
-  gap only as far as the cwd anchor. R7 must land one real stage invocation.
-  `fast` still rests on a single 391.8 s reading.
+- `fast` still rests on a single 391.8 s reading, and the inventory showed it is
+  inverted with respect to cost. Until that is measured under `-n auto`, no
+  runtime budget can be written from measured data.
