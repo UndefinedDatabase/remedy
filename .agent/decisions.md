@@ -5454,3 +5454,25 @@ orders, and the fixture is additive when it lands.
 HOW TO REVERSE. Delete `scripts/bench_sample_project/` and the bench's own
 `materialise` dependency, and the bench falls back to the gauntlet template
 with three expressible orders — the state this decision starts from.
+
+## DECISION F083 D1 — a red stage is inventory data, not a round blocker (2026-08-15)
+
+Scope: the stage-runtime measurement of F083 R2, and nothing else.
+
+R2 measures the wall time of each candidate CI stage by running it. If a stage
+run reports failures, the worker records the real exit code, the real counts and
+the failing node ids in `.agent/f083_inventory.md` and CONTINUES the round,
+rather than treating the red as the G8 "any red gate ends the round" case.
+
+Why: this round's product is a DESCRIPTION of the repository as it is. A red
+stage is a fact about the repository and therefore part of the description —
+suppressing it would make the inventory less true, and stopping on it would make
+F083 unable to inventory the very condition it exists to detect. R-0205, carried
+into F083 by its own feature file, records that live-state contract tests turn
+red for reasons unrelated to the change under review; an inventory that cannot
+survive that is an inventory that cannot be taken on this repository.
+
+Limits: this exception covers the stage-runtime measurement only. Every ordered
+gate in the R2 block still ends the round when it is red, and no later round
+inherits this exception without ruling it again. Reverse this decision by
+deleting this section.

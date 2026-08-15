@@ -1,10 +1,9 @@
 # Plan — F083 CI self-check
 
 Branch: feature/f083-ci-self-check, cut from main after the F082 closure PR #201
-merged. Next free finding id: R-0451. Open findings: seventy-eight — the
-seventy-five carried out of the F082 record, plus R-0448, R-0449 and R-0450
-registered at R1. `.agent/live_review.md` is the source of truth; this file
-mirrors it.
+merged. Next free finding id: R-0453. Open findings: eighty — the seventy-five
+carried out of the F082 record, plus R-0448 to R-0452 registered on this branch.
+`.agent/live_review.md` is the source of truth; this file mirrors it.
 
 ## Goal
 Remedy's own repository gets an honest CI: one local command (`remedy ci`) and
@@ -16,25 +15,27 @@ each stage fails the right stage with a readable summary, and total runtime
 stays within a documented budget.
 
 ## Current Step
-R1 is the CLAIM: cut the branch, reset the live review record carrying F082's
-open set forward, register the three F082 closure-review candidates as R-0448,
-R-0449 and R-0450, refresh the candidates carrier, and move the ledger line from
-`[ ]` to `[~]`. No code and no test changes.
+R2 is the T001 MARKER INVENTORY: it records the R1 PASS, registers R-0451 and
+R-0452, rules DECISION F083 D1, and writes `.agent/f083_inventory.md` — which
+markers exist and who assigns them, the collected count per marker, whether the
+candidate stage selections cover the suite without overlapping, the measured
+wall time per stage, and what the repository already provides that the stage
+runner must reuse rather than copy. It builds no stage runner.
 
 ## Next Steps
-1. R2 is the T001 marker inventory, which the feature file's orchestrator brief
-   names as T001's first deliverable: collected count and wall time per marker,
-   which markers already exist, and which stage each belongs to.
-2. The stage split follows that data. No stage runner is written before it.
+1. R3 builds T001 — the stage runner, the marker selections and the summary
+   table — over the shape R2's inventory settles, and no earlier.
+2. The stage split is chosen from R2's measured data, not from the feature
+   file's suggested shape, wherever the two disagree.
 
 ## Risks
-- The three findings registered this round are all defects in the reviewer's own
-  block text, and two of them, R-0449 and R-0450, are recurrences of R-0371 in
-  the round that registered it. The counter-measures are written as standing
-  rules inside the findings; whether they hold is measurable only in later rounds.
-- R-0448's repair edits `docs/roadmap/STATUS_closure_protocol.md`, a process doc
-  F083 does not own, so it joins R-0403, R-0444 and R-0445 on the paydown queue.
-  That queue has no owner yet and grows by one this round.
-- R-0205 is carried into this feature by its own feature file: live-state
-  contract tests can turn main red for reasons unrelated to the change under
-  review. It is in scope here rather than deferred.
+- The feature file names a `live-provider` marker; the reviewer's own grep of
+  `pyproject.toml` found the live-provider role carried by `real_ollama` and no
+  marker of that name. R2 settles the naming in writing before R3 depends on it.
+- Five of the six findings registered on this branch are defects in the
+  reviewer's own block text, and R-0452 records that a counter-measure written
+  as finding prose does not bind the next block. Whether the pre-emission
+  checklist change holds is measurable only in later rounds.
+- Measuring stage wall time means running most of the suite. DECISION F083 D1
+  rules that a red stage is data for the inventory rather than a round blocker,
+  so the round can complete over a repository that is red for unrelated reasons.

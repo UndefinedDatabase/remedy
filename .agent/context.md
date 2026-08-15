@@ -6,8 +6,9 @@ is claimed `[~]` in docs/roadmap/STATUS.md and stays claimed until closure. No P
 exists for this branch yet; one is created at closure, not before.
 
 ## Scope
-In: Remedy's own CI as one entrypoint plus thin hosted wrappers. Nothing is built
-yet — this round only opens the record. The feature file T2_F083.md sets the
+In: Remedy's own CI as one entrypoint plus thin hosted wrappers. No stage runner
+exists yet; R2 inventoried the marker landscape the stages select over and
+`.agent/f083_inventory.md` is that record. The feature file T2_F083.md sets the
 shape: `remedy ci [--stage NAME] [--json]` over the stages fast, standard,
 determinism, ui and budgets; stages are MARKER SELECTIONS over the existing test
 tree, not a new test organization; hosted workflow files call the same
