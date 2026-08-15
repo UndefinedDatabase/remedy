@@ -70,9 +70,9 @@ a change that needs one of them edited is a finding, not a fix.
 - The bench never runs implicitly — on demand only, an F082 acceptance rule,
   pinned at R16 by `tests/orchestration/test_bench_never_runs_implicitly.py` as
   an allowlist of modules permitted to call the bench's write entry points
-  (DECISION F082 D9). The allowlist is EMPTY today and gains exactly one name at
-  R17, which spent it on `packages/orchestration/bench_run.py`. Adding to it is a
-deliberate act, not a repair.
+  (DECISION F082 D9). The allowlist holds EXACTLY ONE name, R17's
+  `packages/orchestration/bench_run.py`. Adding to it is a deliberate act, not a
+  repair.
 
 ## Steps
 R1 claim F082, reset the record carrying the F077 open set forward, register
