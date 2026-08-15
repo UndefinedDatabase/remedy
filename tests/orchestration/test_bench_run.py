@@ -20,6 +20,16 @@ the operator's real one.
 The doubles below follow the SHAPE of ``tests/orchestration/test_gauntlet_runner``'s
 ``Recorder``, authored locally rather than imported — a test module is not an
 API, and sharing its privates would make either file unable to move.
+
+The DoD VERDICT is part of the product path these doubles drive, not scenery.
+``run_order`` writes ``dod_result.json`` only when ``latest_gate_result`` finds a
+stored verdict on the mission's jobs, and the evaluator counts its absence as a
+RED blocking criterion. Until R19 the mission double carried no ``job_links`` at
+all, so every row this file produced was a FAILURE row and properties 1 to 3
+passed over all of them (finding R-0435). The double now stores a real
+``GateResult`` through ``dod_gate.py::save_gate_result``, inside the run's own
+isolated root, and property 7 asserts what the rows SAY rather than that they
+exist.
 """
 from __future__ import annotations
 
@@ -32,7 +42,11 @@ from typing import Any
 import pytest
 
 from packages.orchestration import bench_dry_run
-from packages.orchestration.bench_history import load_bench_history
+from packages.orchestration.bench_history import (
+    REGRESSION_PASS_DROP,
+    bench_regressions,
+    load_bench_history,
+)
 from packages.orchestration.bench_orders import (
     BenchOrderSetError,
     default_bench_orders_dir,
@@ -42,6 +56,13 @@ from packages.orchestration.bench_run import run_bench_campaign
 from packages.orchestration.gauntlet_runner import RunnerDeps
 
 SERIES = "bench-run-test"
+
+
+@dataclass
+class FakeJobLink:
+    """The one attribute ``gauntlet_runner.latest_gate_result`` reads."""
+
+    job_id: str
 
 
 @dataclass
@@ -76,6 +97,12 @@ class NoNetworkRun:
     """
 
     roots_written: list[Path] = field(default_factory=list)
+    #: Order ids whose DoD verdict is deliberately HELD, so their rows FAIL.
+    #: Empty by default: a plain run degrades nothing.
+    held_orders: frozenset[str] = frozenset()
+    #: The order currently running, recorded by ``_make_project`` off the slug
+    #: ``run_order`` hands it. A campaign runs its orders one at a time.
+    order_id: str = ""
 
     def deps(self) -> RunnerDeps:
         return RunnerDeps(
@@ -83,7 +110,7 @@ class NoNetworkRun:
             create_mission=self._create_mission,
             plan_mission=self._plan_mission,
             run_mission=self._run_mission,
-            load_mission=lambda project_id, mission_id: FakeMission(id=mission_id),
+            load_mission=self._load_mission,
             execute_fn=self._execute_fn,
             materialise=self._materialise,
             plan_call_fn=lambda: (lambda prompt, attempt: "{}"),
@@ -105,7 +132,17 @@ class NoNetworkRun:
         return _execute
 
     def _make_project(self, name: str, slug: str, repo_path: Path | None = None) -> str:
+        self.order_id = slug
         return "p-1"
+
+    def _job_id(self) -> str:
+        """One job id per order, so a HELD order holds only its own row."""
+        return f"job-{self.order_id}"
+
+    def _load_mission(self, project_id: str, mission_id: str) -> FakeMission:
+        """The reloaded mission ``run_order`` reads its gate verdict off."""
+        return FakeMission(id=mission_id,
+                           job_links=(FakeJobLink(job_id=self._job_id()),))
 
     def _create_mission(self, project_id: str, goal: str) -> FakeMission:
         return FakeMission()
@@ -120,7 +157,25 @@ class NoNetworkRun:
         self.roots_written.append(root)
         (root / "missions").mkdir(parents=True, exist_ok=True)
         (root / "missions" / "ledger.jsonl").write_text("{}\n", encoding="utf-8")
+        self._store_gate_verdict()
         return FakeResult()
+
+    def _store_gate_verdict(self) -> None:
+        """Write a real gate verdict through the PRODUCT's own writer.
+
+        Called from inside ``run_order``'s isolated environment, so
+        ``dod_gate.result_path`` resolves under the run's own root and nothing
+        reaches the operator's. A HELD order gets ``released=False`` with a named
+        blocking check, because a red gate is what a failing bench order IS;
+        writing no verdict at all would instead reproduce R-0435.
+        """
+        from packages.orchestration.dod_gate import GateResult, save_gate_result
+
+        held = self.order_id in self.held_orders
+        save_gate_result(self._job_id(), GateResult(
+            released=not held,
+            blocking_red=("tests-green",) if held else (),
+        ))
 
 
 @pytest.fixture()
@@ -133,14 +188,14 @@ def data_root(tmp_path: Path) -> Path:
 
 
 def _run(tmp_path: Path, data_root: Path, *, campaign: str = "campaign",
-         orders_dir: Path | None = None):
+         orders_dir: Path | None = None, runner: NoNetworkRun | None = None):
     return run_bench_campaign(
         campaign_root=tmp_path / campaign,
         data_root=data_root,
         history_path=tmp_path / "history" / "bench_history.jsonl",
         series=SERIES,
         orders_dir=orders_dir,
-        deps=NoNetworkRun().deps(),
+        deps=(runner or NoNetworkRun()).deps(),
     )
 
 
@@ -262,3 +317,68 @@ def test_a_tampered_order_set_refuses_before_anything_runs(
         f"The campaign root holds {run_dirs} after a refused set — the freeze "
         "ran AFTER the campaign, not before it")
     assert not (tmp_path / "history" / "bench_history.jsonl").exists()
+
+
+# ---------------------------------------------------------------------------
+# 7. EVERY ROW CARRIES A PASS — the Goal's "the bench runs green on fixtures"
+# ---------------------------------------------------------------------------
+
+def test_every_row_passes_on_a_clean_fixture_run(
+        tmp_path: Path, data_root: Path) -> None:
+    """What the rows SAY, not merely that they exist (finding R-0435).
+
+    Properties 1 to 3 all passed over three ``passed=False`` rows: the run was
+    joined, ordered and complete, and every order had FAILED on
+    ``dod_blocking_green``. A bench whose fixture run is red measures nothing and
+    cannot regress either — ``bench_regressions`` emits ``pass_drop`` only
+    against a trailing pass rate above zero, so a bench that never passes never
+    warns and property 8 below would be unreachable.
+    """
+    result = _run(tmp_path, data_root)
+    not_passed = [(row.order_id, row.passed) for row in result.rows
+                  if row.passed is not True]
+    assert not not_passed, (
+        f"Bench rows {not_passed} did not pass on a clean fixture run. F082's "
+        "first DONE condition is that the bench runs GREEN on fixtures; a row "
+        "that exists but failed satisfies properties 1-3 and not this one.")
+
+
+# ---------------------------------------------------------------------------
+# 8. A DEGRADED RUN WARNS — the Goal's "a degraded run triggers the warning"
+# ---------------------------------------------------------------------------
+
+def test_a_deliberately_degraded_run_triggers_the_pass_drop_warning(
+        tmp_path: Path, data_root: Path) -> None:
+    """The degradation is a HELD DoD verdict — what a real failure actually is.
+
+    No history row is edited and no warning is constructed here: the second
+    campaign really runs, the gate really refuses to release ONE order, and the
+    warning is read back off the file both runs appended to.
+
+    Only ``pass_drop`` is asserted. ``wall_s`` is clock-derived from
+    ``gauntlet_runner.run_order``, so a second fixture run that happens to take
+    over 1.5x the first legitimately adds a ``wall_regression`` — asserting the
+    whole warning tuple would pin this property to a stopwatch.
+    """
+    held = load_bench_order_set()[0].id
+    _run(tmp_path, data_root, campaign="campaign-green")
+    degraded = _run(tmp_path, data_root, campaign="campaign-degraded",
+                    runner=NoNetworkRun(held_orders=frozenset({held})))
+
+    verdicts = {row.order_id: row.passed for row in degraded.rows}
+    assert verdicts.get(held) is False, (
+        f"The held order {held} reported {verdicts.get(held)}; the degradation "
+        "never reached the row, so the warning below would prove nothing")
+    still_green = [order_id for order_id, passed in verdicts.items()
+                   if order_id != held and passed is not True]
+    assert not still_green, (
+        f"Orders {still_green} also stopped passing — the degradation was not "
+        f"confined to {held}, so a warning about it is not attributable")
+
+    entries = load_bench_history(tmp_path / "history" / "bench_history.jsonl")
+    drops = [(w.kind, w.order_id) for w in bench_regressions(entries, series=SERIES)
+             if w.kind == REGRESSION_PASS_DROP]
+    assert drops == [(REGRESSION_PASS_DROP, held)], (
+        f"Expected exactly one {REGRESSION_PASS_DROP} warning, for {held}, and "
+        f"got {drops}. F082's third DONE condition is that a deliberately "
+        "degraded fixture run triggers the regression warning.")
