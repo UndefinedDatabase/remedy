@@ -2,7 +2,7 @@
 
 These tests read the table and nothing else: nothing is collected and no count
 of the live suite is asserted. Whether each stage SELECTS the right subset is a
-different question, measured against a fixture tree in a later round — a test
+different question, measured against a fixture tree in test_ci_stage_selection.py — a test
 pinning live collected counts would go red whenever an unrelated commit added a
 test, which is the carried finding R-0205 this feature owns.
 """
