@@ -19,6 +19,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
+
 def repo_root_for_ci() -> Path:
     """The repository root every stage is anchored at (finding R-0456).
 
