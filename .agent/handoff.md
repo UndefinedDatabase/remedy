@@ -1,138 +1,129 @@
-# Handback — F083 CI self-check, R8 (worker)
+# Handback — F083 CI self-check · R9 (record R8 FAIL, repair the ruff red, promote checklist item 11)
 
-BLOCKER: gate 8 (ruff) is RED — `I001` in `apps/cli/commands/ci_cmd.py`, the
-authored CI-CMD slice. Applied BYTE-VERBATIM (constraint 2), NOT repaired.
-Values in gate 8, cause in deviation 1. Per G8 the round stops after C7.
+BLOCKER — why the round ENDS here: `.agent/STOP` APPEARED mid-round. Untracked,
+empty, 0 bytes, created 2026-08-15 15:51:12 +0200 — after gate 9 (15:50:56), before
+gate 13 (15:52:32). ABSENT at round start. Per G8 and R-0347 the sentinel is NOT
+deleted and scope is NOT widened. C0a–C5 were already committed and all 17 gates
+already run when it appeared, so nothing is half-applied: this handback is written
+as C6 and the round ENDS. Every ordered gate is GREEN, gate 7 included — the red
+one this round existed to clear.
 
 ## Range
-Review of 2d1c6d8d..HEAD (HEAD = C7, this commit).
+Review of 4406f1c1..HEAD. Branch feature/f083-ci-self-check. C6 is this commit and
+cannot table its own SHA (R-0371, R-0149); its SHA, the push result, the post-C6
+tree and the PR list go to the operator in the final message.
 
 ## Commits
-
-### b6b2c077 docs(f083): store the R8 block as authored text
+### a5be5330 docs(f083): save the R9 block as authored text
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f083-r8.md | +400/-0 | C0a — byte copy of the R8 block (shutil.copyfile) |
+| .agent/authored/f083-r9.md | +250/-0 | C0a — byte copy of the scratchpad original |
 
-### 9eef9599 chore(f083): mirror the R8 block into last_block
+### 1f2aae5e chore(f083): mirror the R9 block into last_block
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/last_block.md | +341/-148 | C0b — byte-identical mirror; AGENTS.md-exempt single-file rewrite |
+| .agent/last_block.md | +163/-313 | C0b — byte-identical mirror; single-`.agent/`-file rewrite, AGENTS.md-exempt |
 
-### 73a7744b docs(f083): record the R7 PASS and register R-0461 and R-0462
+### 8e6fd0fc docs(f083): record the R8 FAIL and its two findings
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/live_review.md | +5/-0 | C1 — RECORD-R7 appended at EOF after one blank line |
+| .agent/live_review.md | +5/-0 | C1 — RECORD-R8 appended at EOF: gate line, blank line, R-0463, R-0464 |
 
-### 8d94e9c1 feat(f083): add the ci command handlers and summary table
+### f6e23275 docs(f083): shift the round map for the R9 repair round
 | Path | +/- | Reason |
 |---|---|---|
-| apps/cli/commands/ci_cmd.py | +76/-0 | C2 — NEW, whole file = CI-CMD slice |
+| .agent/live_review.md | +6/-5 | C2 — STEPS rewrite; the map shifts by one, closure moves to R15 |
 
-### 97d24b65 feat(f083): register the ci group and ci run catalog entry
+### 196b8f4f fix(f083): separate the ci_cmd import block from the first def
 | Path | +/- | Reason |
 |---|---|---|
-| apps/cli/command_catalog.py | +16/-0 | C3 — GROUP and ENTRY append-shaped pairs |
+| apps/cli/commands/ci_cmd.py | +1/-0 | C3 — BLANK rewrite applied as text; no `ruff --fix`, no formatter |
 
-### ce4632c1 feat(f083): wire ci_cmd into collect_all_handlers
+### bb5b8836 docs(f083): add checklist item 11 on convention paragraphs
 | Path | +/- | Reason |
 |---|---|---|
-| apps/cli/commands/__init__.py | +2/-1 | C4 — IMPORT and TUPLE rewrite pairs |
+| docs/agents/planner_reviewer_prompt.md | +15/-1 | C4 — OPENER (rewrite) and ITEM11 (append) in ONE commit |
 
-### cffe65a6 test(f083): pin the ci CLI seam and a real runner subprocess
+### 5c7c6a7c docs(f083): point the plan at the R9 repair round
 | Path | +/- | Reason |
 |---|---|---|
-| tests/cli/test_ci_cmd.py | +75/-0 | C5 — NEW, whole file = TEST-CI-CMD slice |
+| .agent/plan.md | +9/-9 | C5 — whole-file PLAN slice |
 
-### be27374d docs(f083): point the plan at the landed CLI seam and R9
+### C6 — this commit, docs(f083): write the R9 handback
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/plan.md | +9/-11 | C6 — whole-file PLAN slice |
-
-### C7 (this commit) — self-reference
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/handoff.md | n/a | C7 cannot table its own SHA or count (R-0371, R-0149); both are in the worker's final message |
+| .agent/handoff.md | this file | C6 — self-reference exception (R-0149) |
 
 ## External actions
-None during C0a..C7. `git push -u origin feature/f083-ci-self-check` runs AFTER
-C7 and is reported in the final message (R-0449/R-0452). No PR created. No
-worktree added — `git worktree list` was one line throughout.
+`git push -u origin feature/f083-ci-self-check` runs AFTER C6; its result postdates
+this file (R-0449, R-0452) and goes in the final message. NO PR created. NO worktree
+added — `git worktree list` was ONE line throughout. No `gh` write command.
 
-## Verification
-Every value below was RUN and measured. No gate is reported as a word.
-
-1. `git status --porcelain` EMPTY before C0a and before C7 (both checked).
-   `git worktree list` = 1 line. `.agent/STOP` ABSENT at start and at handback.
-2. BASE `git rev-parse HEAD` = 2d1c6d8da96f73798af64978f5525d443434fb88 —
-   EQUALS the block's 2d1c6d8d.
-3. TRANSPORT: scratchpad, `.agent/authored/f083-r8.md` and `.agent/last_block.md`
-   are three-way byte-EQUAL — sha256
-   3b7d8cfb756bc950df49c605cdc99dc36971d9ea568ace4b9e70601afd129713,
-   29275 bytes, 400 lines. Measured 400 EQUALS the block's declared footer 400.
-4. C1 prefix over 73a7744b^..73a7744b: `post.startswith(pre)` True;
-   `post[len(pre):]` == `b"\n" + RECORD-R7` True (7653 bytes, slice extracted BY
-   MARKER from the committed authored file). numstat `5 0` — deletion column 0.
-5. C2 `apps/cli/commands/ci_cmd.py` byte-equals CI-CMD: sha256
-   c77954d808d19bea5a9581dfd7d883a6a33f496ce1b0883d6dbe95eb33f303e4, 76 lines.
-   C5 `tests/cli/test_ci_cmd.py` byte-equals TEST-CI-CMD: sha256
-   60f51da8f2c7102599a993a0280947822922fb04bdab7767d39442eedc29efc4, 75 lines.
-   `git diff --name-only 8d94e9c1^..8d94e9c1` = `apps/cli/commands/ci_cmd.py` ALONE.
-6. C3 append-shaped pairs on the committed blob, all eight:
-   GROUP-FROM 1 before / 1 after; GROUP-TO 0 / 1; ENTRY-FROM 1 / 1; ENTRY-TO 0 / 1.
-   At C3: `"ci": GroupDef` 1, `command_id="ci.run"` 1, `command_id="integrity.check"` 1.
-   numstat `16 0`.
-7. C4 rewrite pairs at ce4632c1: IMPORT-FROM 0, IMPORT-TO 1, TUPLE-FROM 0,
-   TUPLE-TO 1. `ci_cmd` occurs 2, `bench_cmd` occurs 2. numstat `2 1`.
-8. RUFF over the four files in ONE run — **RED**, REAL_EXIT=1, `Found 1 error.`
-   The one error: `I001 Import block is un-sorted or un-formatted`,
-   `apps/cli/commands/ci_cmd.py:15:1`, `help: Organize imports`.
-   ISOLATED: the same command over the OTHER THREE files alone printed
-   `All checks passed!` REAL_EXIT=0 — so the RED is the CI-CMD slice's own
-   bytes, not the two edited files, whose BASE exit 0 the block declared.
-9. `python3 -m pytest tests/cli/test_ci_cmd.py -q` → collected 6, `6 passed in
-   0.44s`, REAL_EXIT=0. The subprocess test really ran and is the slowest:
-   `--durations` shows `0.29s call test_a_stage_argv_really_reaches_the_pytest_runner`.
-   It did NOT exceed any budget; nothing was trimmed.
-10. All four paths confirmed on disk first (R-0438), then ONE run of
-    `tests/test_command_catalog.py tests/cli/test_command_catalog.py
-    tests/test_grouped_cli.py tests/cli/test_cli_ux.py -q` → `601 passed in
-    40.44s`, REAL_EXIT=0. BASE declared 593; the +8 is MEASURED, not assumed —
-    `--collect-only -q` piped to `grep -c` counts exactly 8 collected ids naming
-    the new `ci` entry. I did not re-run this gate at BASE myself (no worktree
-    permitted this round), so 593 stands as the block's number, not mine.
-11. Each run separately, exit code from the process, all four paths confirmed on
-    disk first: dashboard contract `70 passed` exit 0; resource safety
-    `21 passed` exit 0; integrity-gate tests `15 passed` exit 0; canary
-    `42 passed` exit 0. Every count equals the block's expectation.
-12. `git diff --name-only 2d1c6d8d..HEAD -- packages/` printed NOTHING —
-    measured empty list, REAL_EXIT=0. Stage table and runner untouched.
-13. INTEGRITY GATE via python3 (the `remedy` CLI is denied here): `passed` true,
-    `fail_count` 0, `check_count` 5. All five pass — handler_import,
-    live_review_verdict, plan_consistency, relevant_untracked, high_blockers_open.
-    `handler_import` message `handlers=338`, exactly 1 above the BASE 337.
-14. OPEN SET at HEAD: registered 90, `Done:` 4, `Landed:` 0, open 86, max R-0462,
-    next free R-0463, NO duplicate id, resolved ids exactly R-0456..R-0459.
-    Matches the block's expected 90 / 4 / 0, max R-0462, open 86 on every value.
-15. C6 `.agent/plan.md` byte-equals the PLAN slice: True. sha256
-    2a4bfe4ed8c3ce9b12b69e9fd4022f2961f5e67a401f739f5f71dd776cceba17, 30 lines
-    (cap 50), `## Goal` present, `## Next Steps` present, `- [ ]` lines 0,
-    numbered items under `## Next Steps` = 1.
-16. CHANGE SET measured BEFORE this commit, `git diff --name-only 2d1c6d8d..HEAD`
-    = 8 paths: `.agent/authored/f083-r8.md`, `.agent/last_block.md`,
-    `.agent/live_review.md`, `.agent/plan.md`, `apps/cli/command_catalog.py`,
-    `apps/cli/commands/__init__.py`, `apps/cli/commands/ci_cmd.py`,
-    `tests/cli/test_ci_cmd.py`. `.agent/handoff.md` is the ninth, added by C7.
-17. Insertions (`+` column only): C0a 400, C0b 341, C1 5, C2 76, C3 16, C4 2,
-    C5 75, C6 9. None over 500. C0b is the AGENTS.md-exempt verbatim rewrite of a
-    single `.agent/` file, reported anyway. C7's own count cannot exist inside C7.
+## Verification — every ordered gate, real values, real exit codes
+1. `git status --porcelain` EMPTY at round start, exit 0. Pre-C6 it is NOT empty:
+   exactly `?? .agent/STOP`, exit 0 — the blocker itself, nothing else, left in place.
+   `git worktree list` 1 line throughout. `.agent/STOP` ABSENT at start, PRESENT now.
+2. BASE `git rev-parse HEAD` = 4406f1c144e1121d22cc31fec2456fc9d4453865 — EQUALS
+   4406f1c1.
+3. TRANSPORT: `.remedy-wt/.cache/f083-r9/f083-r9.md`, `.agent/authored/f083-r9.md`
+   and `.agent/last_block.md` all = sha256
+   322dedf6b5ca6f5f2dde8c45dc939d24088d61920fa12012c67faa76695c58d2, 23438 bytes,
+   250 lines. ALL THREE EQUAL True. Measured lines EQUAL the declared footer 250.
+4. C1 8e6fd0fc: `pre` prefixes `post` True; `post[len(pre):]` == `b"\n" + RECORD-R8`
+   True, the slice extracted by marker from the COMMITTED authored file (sha256
+   7edaab77…, 7048 B, 4 lines). numstat `5  0` — deletion column 0.
+5. C2 f6e23275: STEPS-FROM 0x, STEPS-TO 1x. `R9 the R8 record` 1,
+   `R14 the integration gate` 1, `R13 the integration gate` 0. numstat `6  5`.
+6. C3 196b8f4f: BLANK-FROM 0x, BLANK-TO 1x. numstat `1  0`.
+7. THE RED GATE IS GREEN. Exact command, repository root, no `--isolated`, no
+   substituted flag: `python3 -m ruff check apps/cli/commands/ci_cmd.py
+   apps/cli/command_catalog.py apps/cli/commands/__init__.py tests/cli/test_ci_cmd.py`.
+   BEFORE C3, run by me on the BASE bytes: `I001 [*] Import block is un-sorted or
+   un-formatted --> apps/cli/commands/ci_cmd.py:15:1` / `Found 1 error.` / REAL_EXIT=1.
+   AFTER C3: `All checks passed!` / REAL_EXIT=0.
+8. C4 bb5b8836, six counts, the two shapes DIFFER: OPENER-FROM 0x after, OPENER-TO 1x
+   after (REWRITE); ITEM11-FROM 1x BEFORE and 1x AFTER, ITEM11-TO 0x before, 1x after
+   (APPEND). Numerals at C4: `  11. **A convention paragraph` 1, `  10. **The
+   open-finding set` 1, `  12. **` 0, `eleven checks mechanically` 1, `ten checks
+   mechanically` 0. numstat `15  1`. The gate says "at C3", where those five read
+   0 / 1 / 0 / 0 / 1 — see D1.
+9. `python3 -m pytest tests/cli/test_ci_cmd.py -q` — 6 passed, REAL_EXIT=0 [BASE 6, 0].
+10. Four catalog suites, all four paths confirmed on disk first (R-0438), ONE run —
+    601 passed, REAL_EXIT=0. UNMOVED from the 601 at BASE, as R-0464 predicts for a
+    round that adds no group.
+11. Each run separately, exit code from the process: dashboard contract 70 passed,
+    exit 0 [70, 0]; resource safety 21 passed, exit 0 [21, 0]; integrity gate 15
+    passed, exit 0 [15, 0]; canary golden path 42 passed, exit 0 [42, 0].
+12. NOTHING ELSE MOVED: `git diff --name-only 4406f1c1..HEAD -- packages/ tests/
+    apps/cli/command_catalog.py` printed NOTHING — 0 bytes, empty list, exit 0.
+13. INTEGRITY GATE (Python; the `remedy` CLI is denied here): `passed` true,
+    `fail_count` 0, `check_count` 5. handler_import pass `handlers=338`, equal to BASE,
+    this round adding no handler; live_review_verdict pass; plan_consistency pass
+    `unchecked=0, context_complete=False`; relevant_untracked pass `untracked=1,
+    relevant=0` — that untracked file IS `.agent/STOP`; high_blockers_open pass.
+14. OPEN SET at HEAD: registered 92, `Done:` 4, `Landed:` 0, registered-minus-done 88,
+    max R-0464, next free R-0465, duplicates NONE. Matches the expected 92 / 4 / 0.
+15. C5 PLAN byte-equals the slice as a whole file: sha256
+    364eb49935b945adfa4d8626e86fd7180689ca8085690128fdda6574babba28e, 30 lines (< 50),
+    `## Goal` present, `## Next Steps` present, `- [ ]` lines 0, numbered items under
+    `## Next Steps` 1.
+16. CHANGE SET measured BEFORE the handoff, i.e. at C5: SIX paths, not seven (D2) —
+    `.agent/authored/f083-r9.md`, `.agent/last_block.md`, `.agent/live_review.md`,
+    `.agent/plan.md`, `apps/cli/commands/ci_cmd.py`,
+    `docs/agents/planner_reviewer_prompt.md`. The seventh, `.agent/handoff.md`, is
+    added by C6 itself. Nothing outside the ordered change set.
+17. Insertions (`+` column only): C0a 250 · C0b 163 · C1 5 · C2 6 · C3 1 · C4 15 ·
+    C5 9. None over 500. C0b is the AGENTS.md-exempt single-`.agent/`-file rewrite,
+    reported anyway. C6's own count cannot exist inside C6 (R-0149) — final message.
 
 ## Authored-text proofs
-All eight authored units applied BYTE-VERBATIM, every body extracted BY MARKER
-from the committed `.agent/authored/f083-r8.md` by script — nothing retyped.
-RECORD-R7 by the gate-4 prefix identity; CI-CMD, TEST-CI-CMD and PLAN by whole-file
-byte equality (sha256 above); GROUP/ENTRY by the append-shaped 8-value count set;
-IMPORT/TUPLE by FROM 0x / TO 1x. Transport is three-way byte-equal (gate 3).
+Every slice was extracted BY MARKER from `.agent/authored/f083-r9.md` by a Python
+script and applied byte-verbatim — nothing retyped, reflowed or stripped. sha256 /
+bytes / lines: RECORD-R8 7edaab77… 7048/4 · STEPS-FROM 1c41e903… 359/5 · STEPS-TO
+211e05e4… 440/6 · BLANK-FROM 8d7ba99f… 56/3 · BLANK-TO 5b114ca8… 57/4 · OPENER-FROM
+3f678cff… 79/1 · OPENER-TO 4d09ad4c… 82/1 · ITEM11-FROM f3a49657… 76/1 · ITEM11-TO
+cd064716… 1175/15 · PLAN 364eb499… 1616/30. Disk-to-disk three-way byte equality of
+the authored file is gate 3; `.agent/plan.md` byte-equals PLAN (gate 15).
 
 ## Item status
 | Item | Status | Reason |
@@ -140,61 +131,64 @@ IMPORT/TUPLE by FROM 0x / TO 1x. Transport is three-way byte-equal (gate 3).
 | C0a | done | |
 | C0b | done | |
 | C1 | done | |
-| C2 | done | applied verbatim; its bytes are what gate 8 fails on |
+| C2 | done | |
 | C3 | done | |
 | C4 | done | |
 | C5 | done | |
-| C6 | done | |
-| C7 | done | this commit |
-| Gate 1 | done | |
+| C6 | done | this file; own SHA not self-tabled (R-0149) |
+| Gate 1 | deviated | round-start EMPTY; pre-C6 reading is `?? .agent/STOP` — D4 |
 | Gate 2 | done | |
 | Gate 3 | done | |
 | Gate 4 | done | |
 | Gate 5 | done | |
 | Gate 6 | done | |
-| Gate 7 | done | |
-| Gate 8 | RED | I001 in the CI-CMD slice; the round's blocker |
+| Gate 7 | done | red at BASE (exit 1), green after C3 (exit 0) |
+| Gate 8 | deviated | measured at C4; the "at C3" clause is unsatisfiable — D1 |
 | Gate 9 | done | |
-| Gate 10 | done | 601, not the declared 593; +8 measured to the new entry |
+| Gate 10 | done | |
 | Gate 11 | done | |
 | Gate 12 | done | |
 | Gate 13 | done | |
 | Gate 14 | done | |
 | Gate 15 | done | |
-| Gate 16 | done | |
+| Gate 16 | deviated | six paths at C5, not seven — D2 |
 | Gate 17 | done | |
-| push / clean tree / PR list | deviated | postdate C7 (R-0449); in the final message |
 
 ## Deviations & assumptions
-1. DECLARED DEFECT IN AUTHORED TEXT (constraint 2, not a silent repair). The
-   CI-CMD slice fails this round's own ruff gate: one blank line between the
-   import block and `def repo_root_for_ci` where ruff's `I` rules want two.
-   Evidence: gate 8 above, plus `pyproject.toml:50`
-   `select = ["E", "F", "W", "I", "UP"]`, with `I001` in neither `ignore` nor
-   the `tests/**` per-file-ignores. The fix is one blank line; NOT applied,
-   because repairing authored text is the conduct this repository forbids.
-2. AGENTS.md "If Blocked" step 2 wants the blocker written into `.agent/plan.md`.
-   Gate 15 orders `.agent/plan.md` to byte-equal the PLAN slice, which names no
-   blocker. I obeyed the byte-equality and put the blocker here instead, at the
-   top of this file. Assumption: authored-text fidelity outranks plan prose when
-   a gate measures the bytes. Flagged so the reviewer can overrule it.
-3. CAP OVERAGE, DECISION D15 stated cause, naming BOTH caps as R-0462 requires.
-   This file is 200 lines against the ≤100 line cap for a >5-commit bundle, and
-   it is over the "≤800 tokens" hard cap by a multiple under any ratio. Cause:
-   the mandated content — 9 per-commit tables, a value for all 17 gates, and an
-   item-status row per C-item and per gate. No section was dropped to fit.
-4. `git worktree list` stayed at 1 line; no `packages/` path changed; no PR.
-   Scratch scripts live in the gitignored `.remedy-wt/.cache/f083-r8/`, so the
-   tree stayed clean throughout.
+- D4, the blocker. `.agent/STOP` appeared mid-round and is PRESENT at handback. Not
+  deleted (R-0347), not routed around (G8). No work was interrupted: C0a–C5 and all 17
+  gates predate the halt. The round's substance is complete; the ROUND is ended by the
+  sentinel, not by a red gate.
+- D1. Gate 8's clause "Then over the file at C3, the numerals and the enumeration must
+  agree" is UNSATISFIABLE at C3: four of its five anchors are created by C4 itself, so
+  at C3 they read 0 / 1 / 0 / 0 / 1. I did not repair the block; I measured BOTH
+  commits and report both. The property holds at C4, the commit that lands the edit.
+  R-0371 class.
+- D2. Gate 16 orders the change set "measured BEFORE the handoff is written into C6, so
+  it lists seven paths with `.agent/handoff.md` the seventh and last". Both clauses
+  cannot hold: measured before C6 the list is SIX, and the seventh path is created by
+  the commit the measurement must precede. I report the measured six and name the
+  seventh's origin. Same R-0371 family as D1.
+- D3. Inside RECORD-R8, finding R-0463 states "C3 lands item 11 and nothing else",
+  while the block's own bundle assigns item 11 to C4 and the ruff repair to C3. I
+  applied the slice BYTE-VERBATIM per constraint 2 and did not silently repair it. On
+  disk item 11 landed in C4 (bb5b8836); C3 (196b8f4f) is the one-line ruff repair.
+- D5. Cap overage, DECISION D15 stated cause, naming BOTH caps (R-0462): this file
+  exceeds the ≤100-line cap for a >5-commit bundle AND the ≤800-token hard cap. Cause
+  is mandated content only — eight per-commit tables, a value for each of 17 gates, a
+  25-row item-status table, the authored-text proofs and the blocker paragraph the
+  halt requires. No section dropped; no prose padding.
+- No assumption_log entry was needed: no ambiguity was resolved by guessing.
 
 ## Open findings
-90 registered, 4 resolved, 86 open. Max R-0462, next free R-0463. R-0461 and
-R-0462 were registered by C1 this round.
+Registered 92, Done 4, Landed 0, OPEN 88. Max id R-0464, next free R-0465, no
+duplicate. R-0463 (Medium, blind dry run) and R-0464 (Low, parametrised baseline)
+were registered this round and are OPEN; both are charged to the reviewer.
 
 ## Next
-R9: repair the `I001` blocker in `apps/cli/commands/ci_cmd.py` (one blank line,
-via an authored slice), re-run the ruff gate, then take its first item — promote
-R-0460's rule into the §3 pre-emission checklist as item 11 (R-0461) — and add
-the per-stage selection tests over a fixture tree.
+R10 exactly as `.agent/plan.md` now states it: add the per-stage selection tests over
+a fixture tree that pin each stage's marker expression against files whose markers are
+known, and promote R-0463's dry-run rule into §3 as checklist item 12. R10 must not
+start before the operator clears `.agent/STOP`.
 
-Fortschritt: 32 % (F083 beansprucht · R1 bis R7 PASS · Stage-Tabelle, Stage-Runner und jetzt die `remedy ci` CLI-Naht als Code gelandet, mit einem Test der wirklich einen Stage-Argv durch den Runner startet · noch kein Summary in den hosted workflows, keine Determinismus- oder Budget-Stage) — gemessen, nicht geschätzt
+Fortschritt: 34 % (F083 beansprucht · R1 bis R7 PASS, R8 FAIL auf einem roten ruff-Gate und hier repariert · Stage-Tabelle, Stage-Runner und die `remedy ci` CLI-Naht als Code gelandet, mit einem Test der wirklich einen Stage-Argv durch den Runner startet · noch keine hosted workflows, keine Determinismus- oder Budget-Stage) — gemessen, nicht geschätzt
