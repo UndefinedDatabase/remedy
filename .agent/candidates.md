@@ -7,7 +7,8 @@
 > candidate: description · source feature · date. Any entry present
 > at feature-claim time is a block condition.
 
-(empty — the one candidate raised during F077's closure review, the review-zip
-packaging of `.remedy-wt/`, had no disk vehicle on that branch because it was
-raised after the closure commit, and is registered as finding R-0403 in
-`.agent/live_review.md` on the F082 branch, 2026-08-14.)
+(no candidate was carried out of F082's closure review at the time this file was
+written. Every defect the closure round's worker declares in its handback is
+appended below, one line each, in the form
+"- <description> · F082 · 2026-08-15"; if the worker declares none, this file
+stays as it is and the next feature's first reviewed round empties nothing.)
