@@ -440,3 +440,8 @@ trimmed downstream.
 
 How to reverse: delete this decision, fold R19's proof into the closure round and
 restore the R18-gate/R19-closure map. Nothing else depends on it.
+
+Landed: R-0431 — the context bullet was rewritten whole, so the "EMPTY today" head no longer contradicts the "spent it on bench_run.py" tail, and the dedented continuation line is back inside its bullet, in 7dc92202.
+Landed: R-0432 — three of the pin file's stale prose regions repaired, in ad85f536.
+Landed: R-0433 — `BenchRunResult.outcomes` and `.rows` carry their concrete types `OrderOutcome` and `BenchRecord`, and `typing.Any` is gone from the module, in 9948d04d.
+Landed: R-0434 — the fourth stale pin sentence, the allowlist constant's "R17 adds EXACTLY ONE name", repaired in the same commit as the other three, ad85f536.
