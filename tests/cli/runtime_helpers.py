@@ -162,14 +162,28 @@ def run_grouped_cli(
     root: Path,
     *,
     timeout: int = 10,
+    cwd: Path | str | None = None,
 ) -> subprocess.CompletedProcess:
     """Run python -m apps.cli.grouped with REMEDY_DATA_DIR set.
 
     Uses Popen with temp files for stdout/stderr (no pipe inheritance),
     start_new_session=True for process group isolation, and killpg for
     cleanup on timeout or after normal exit.
+
+    `cwd` runs the child somewhere other than this repository. Several guards
+    read repository state RELATIVE to the working directory — the branch guard in
+    `self_dogfood_execution.py::_git_head_file` opens `Path(".git")` — so a test
+    about such a guard is otherwise asserting against whatever checkout the suite
+    happens to run in, and a detached HEAD (what `actions/checkout` produces for
+    a pull_request) changes the answer. PYTHONPATH is pinned to the repository
+    root whenever `cwd` is set, so `python -m apps.cli.grouped` still resolves
+    from the repository and not from the temporary one. The root comes from this
+    file's own location rather than from `os.getcwd()`, which a test that chdir'd
+    would otherwise decide.
     """
     full_env = {**os.environ, "REMEDY_DATA_DIR": str(root)}
+    if cwd is not None:
+        full_env["PYTHONPATH"] = str(Path(__file__).resolve().parents[2])
     cmd = [sys.executable, "-m", "apps.cli.grouped"] + args
     args_str = " ".join(args)
 
@@ -190,6 +204,7 @@ def run_grouped_cli(
             close_fds=True,
             start_new_session=True,
             env=full_env,
+            cwd=str(cwd) if cwd is not None else None,
         )
         pgid = os.getpgid(proc.pid)
 

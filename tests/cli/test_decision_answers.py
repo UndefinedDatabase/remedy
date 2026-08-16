@@ -355,6 +355,14 @@ class TestUnattendedEndToEnd:
             "packages.orchestration.intake.make_provider_call_fn",
             lambda: (lambda prompt, attempt: _INTAKE_WITH_ONE_CLARIFICATION),
         )
+        # The flight-plan factory too, not only `plan_job_llm` behind it: the real
+        # one probes a live Ollama server, so without this the branch under test
+        # is selected by whether a server happens to run on the machine, and a
+        # runner without one lands on the deterministic skeleton instead.
+        monkeypatch.setattr(
+            "packages.orchestration.intake.make_structured_call_fn",
+            lambda model_cls, **kw: (lambda prompt, attempt: "{}"),
+        )
 
         base_plan = FlightPlan(**{
             "schema_v": "flight_plan_v1",
