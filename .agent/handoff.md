@@ -41,7 +41,7 @@ Review of 35b80d17..HEAD.
 ### C5 (this commit) docs(f083): write the R21 handback
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/handoff.md | rewrite | C5 — a handoff cannot table the commit that writes it |
+| .agent/handoff.md | rewrite | C5 a05a0ec8 plus this trailing bookkeeping commit, which only corrects items 16 and 17 to their post-C5 readings — a handoff cannot table the commit that writes it |
 
 ## External actions
 
@@ -67,8 +67,8 @@ Review of 35b80d17..HEAD.
 | 13 | done | `18 passed in 1.14s`, exit 0 |
 | 14 | done | `78 passed in 33.46s`, exit 0 |
 | 15 | done | registered 112, resolved 9, landed 0, open 103, max R-0484, next free R-0485, no duplicate id, every resolved id registered — unchanged |
-| 16 | done | .agent/authored/f083-r21.md, .agent/last_block.md, .agent/live_review.md, .agent/plan.md, .github/workflows/ci.yml, tests/orchestration/test_ci_workflow.py |
-| 17 | done | insertions 252, 180, 2, 52, 56, 14 (C0a..C4); none exceeds 500 |
+| 16 | done | .agent/authored/f083-r21.md, .agent/handoff.md, .agent/last_block.md, .agent/live_review.md, .agent/plan.md, .github/workflows/ci.yml, tests/orchestration/test_ci_workflow.py |
+| 17 | done | insertions 252, 180, 2, 52, 56, 14, 63 (C0a..C5); none exceeds 500. This trailing commit's own count is unnamed by construction |
 | 18 | done | No `git commit --amend`, no `git rebase` and no `git reset` was run this round; the history is linear. |
 
 ## Authored-text proofs
