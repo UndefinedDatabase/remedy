@@ -1,162 +1,135 @@
-# Handback — F083 CI self-check, round R14
+# Handback — F083 CI self-check — R14-REC (RECORD ROUND, session-closing)
 
-Branch: feature/f083-ci-self-check. BASE a677c3ba (gate 2: `git rev-parse HEAD`
-before the first commit was a677c3bab027842f1fb8bb93d57748ca6b6bd230 — EQUALS
-a677c3ba). Round start: `pwd` = /home/decodeux/Repos/remedy, `git status
---porcelain` EMPTY, `git worktree list` ONE line, `.agent/STOP` ABSENT. Before
-C4: porcelain EMPTY, worktree ONE line, `.agent/STOP` ABSENT (gate 1).
+Feature F083 (CI self-check). Round closed: **R14**. This is a RECORD round: it
+writes the R14 verdict to disk and ENDS THE SESSION. It took no measurement, ran
+no timing sample, and wrote no ceiling, no budget number, no stage and no
+production code. Branch: `feature/f083-ci-self-check`.
 
 ## Range
 
-Review of a677c3ba..HEAD.
+Review of `a677c3ba..94e6c353` — **verdict PASS** (reviewer re-ran all fifteen
+R14 gates itself at 94e6c353; all fifteen reproduce). This round's own commits
+run `94e6c353..bbdd2ad7` plus the C3 commit that writes this file. `git rev-parse
+HEAD` before C0a returned `94e6c353cc0d96782013434e34c5c7bb1bf57b18` — EQUAL to
+the ordered BASE.
+
+## What R14 delivered
+
+Read from `.agent/f083_inventory.md` `## Q11`, not recalled: three uncapped
+serial samples of the `standard` stage, each its own process through the
+production `_run_via_subprocess` with `REMEDY_PYTEST_TIMEOUT_SEC=5400` — 927.72 s
+(sample 1, copied from R13's uncapped probe), 935.14 s and 916.36 s (samples 2
+and 3, taken at R14). All three exit 0 and all three report the identical
+`12578 passed, 1 skipped, 4466 deselected`. Spread as `## Q11` publishes it:
+min 916.36, max 935.14, max−min 18.78.
+
+## State of the feature
+
+`remedy ci` cannot complete `standard` today, because
+`scripts/remedy_pytest_runner.py` defaults `REMEDY_PYTEST_TIMEOUT_SEC` to 600 and
+R13 measured three kills at exit 124 out of three attempts. No timeout fix, no
+budget stage, no determinism stage and no ceiling exist yet.
 
 ## Commits
 
-### 32b50bb3 docs(f083): save the R14 block verbatim (C0a)
+### da71137a docs(f083): save the R14 record block verbatim
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f083-r14.md | +301/-0 | the block, byte-verbatim |
+| .agent/authored/f083-r14-rec.md | +214/-0 | C0a — block saved byte-verbatim |
 
-### 3fc3e8ad docs(f083): mirror the R14 block into last_block (C0b)
+### d156d223 docs(f083): mirror the R14 record block into last_block
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/last_block.md | +147/-127 | byte-identical mirror of C0a |
+| .agent/last_block.md | +122/-209 | C0b — byte-identical mirror of C0a |
 
-### e31972b1 docs(f083): record the R13 PASS and register R-0475 and R-0476 (C1)
+### 74b8e157 docs(f083): record the R14 PASS and register R-0477
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/live_review.md | +6/-0 | RECORD-R13 appended at EOF |
+| .agent/live_review.md | +4/-0 | C1 — RECORD-R14 appended at EOF |
 
-### 23913f84 docs(f083): complete the three-sample serial reading of standard (C2)
+### bbdd2ad7 docs(f083): point the plan at the R15 engineering round
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/f083_inventory.md | +76/-0 | the `## Q11` section appended |
+| .agent/plan.md | +12/-9 | C2 — PLAN applied as a whole file |
 
-### e52e2d06 docs(f083): point the plan at the R15 budget and timeout work (C3)
-| Path | +/- | Reason |
+### C3 — this commit, `.agent/handoff.md` alone
+A handoff cannot table the commit that writes it: C3's own SHA and its own
+insertion count cannot exist inside C3 (R-0371, R-0149). Both are reported in
+the round's final message, together with the push result, the post-C3
+`git status --porcelain` reading, the open-PR list re-read after the push, and
+gate 13's reflog, all of which likewise postdate C2 (R-0449, R-0452).
+
+## Verification and item status — every C-item and every gate
+
+| Item | Status | Value / reason |
 |---|---|---|
-| .agent/plan.md | +18/-17 | PLAN slice as a whole file |
-
-C4 writes `.agent/handoff.md` and cannot table its own SHA or its own insertion
-count (R-0371, R-0149); both are in the final message.
-
-## External actions
-
-`git push -u origin feature/f083-ci-self-check` after C4 — result in the final
-message, it postdates this file (R-0449, R-0452). NO worktree added, NO PR
-created, NO merge. Scratch `.remedy-wt/f083-r14/` did NOT exist before this round
-created it (constraint 6); it is gitignored at `.gitignore:235`.
-
-## Verification
-
-1. pwd/porcelain/worktree/STOP — above. 2. BASE a677c3ba — EQUAL.
-3. TRANSPORT: `.agent/authored/f083-r14.md` and `.agent/last_block.md` both
-sha256 9ece6420fe5f8eba…9993e, 27455 bytes, 301 lines, EQUAL=True; each equals
-its committed blob at C0a and C0b. Measured line count 301; cap 400; at-or-under
-= True. No trailing-whitespace line.
-4. C1: pre prefixes post True; tail == `b"\n" + RECORD-R13` extracted from the
-COMMITTED authored file by its markers True; numstat `6 0` — deletions 0.
-5. C2: pre prefixes post True; tail begins with exactly
-`b"\n## Q11 — The three-sample serial cost of `standard`, completed at R14\n"`
-True; numstat `76 0` — deletions 0.
-6. C2 STRUCTURE: 11 `^## Q\d` lines, ordered Q1 Q2 Q3 Q4 Q5 Q6 Q7 Q8 Q9 Q10 Q11,
-no number repeated; `## Q5 — Measured wall time and outcome per stage` = 1,
-`## Q9 — Stage runtime, measured at R11` = 1, `## Q10 — Serial stage cost through
-the production runner, measured at R13` = 1. `^## ` lines pre 11, post 12 — C2
-added exactly 1.
-7. C2 CONTENT: 3 SAMPLE rows — sample 1 taken at R13 (copied from the uncapped
-probe in `## Q10`, not re-measured), samples 2 and 3 taken at R14. RED CONTROL
-exit code 5, whole output `17045 deselected in 3.47s`, run FIRST. Samples: 1 —
-927.72 s exit 0; 2 — 935.14 s exit 0; 3 — 916.36 s exit 0, each at
-`REMEDY_PYTEST_TIMEOUT_SEC=5400`, named as an override. Provenance command
-`git diff --name-only fb9ddf12..HEAD -- packages/ scripts/` printed NOTHING.
-Precision convention as written: every wall second at exactly two decimals, every
-derived value computed from the numbers AS PUBLISHED (min 916.36, max 935.14,
-max−min 18.78 — and 935.14−916.36 = 18.78). `not measured` occurs 2×,
-`not run` 2×. DECLARATION: `## Q11` contains no ceiling, no budget number and no
-recommendation.
-8. CI SUITES, each its own process, real exit code: test_ci_stages.py `7 passed`
-exit 0; test_ci_stage_selection.py `9 passed` exit 0; test_ci_cmd.py `6 passed`
-exit 0; test_ci_run.py `8 passed` exit 0. All four paths resolve on disk.
-9. VERIFICATION, each separately: test_dashboard_contract.py `70 passed` exit 0;
-test_resource_safety.py `21 passed` exit 0; test_integrity_gate.py `15 passed`
-exit 0; canary test_golden_path.py `42 passed` exit 0. All four paths resolve.
-10. C3 PLAN byte-equals its PLAN slice: True, sha256
-fcacccfc3a49961f…776b, 40 lines (under 50), `## Goal` present, `## Next Steps`
-present, 0 `- [ ]` lines, 1 numbered item under `## Next Steps`.
-11. `git diff --name-only a677c3ba..HEAD -- packages/ apps/ tests/ scripts/
-docs/` printed NOTHING (empty list). `git diff --name-only fb9ddf12..HEAD --
-packages/ scripts/` printed NOTHING (empty list) — the provenance proof. Both run
-from the repository root.
-12. INTEGRITY (Python, `remedy` CLI denied — R-0408): passed True, fail_count 0,
-check_count 5; handler_import pass `handlers=338` (BASE value, no handler added),
-live_review_verdict pass, plan_consistency pass `unchecked=0,
-context_complete=False`, relevant_untracked pass `untracked=0, relevant=0`,
-high_blockers_open pass.
-13. OPEN SET at HEAD, MEASURED: 104 registered, 6 `Done:`, 0 `Landed:`, open 98,
-max R-0476, next free R-0477, no duplicate id — matches the reviewer's expected
-104 / 6 / 0 / 98 / R-0476 / R-0477.
-14. CHANGE SET at C3: `.agent/authored/f083-r14.md`, `.agent/f083_inventory.md`,
-`.agent/last_block.md`, `.agent/live_review.md`, `.agent/plan.md` — count 5.
-`.agent/handoff.md` is the sixth path, added by C4.
-15. INSERTIONS: C0a +301, C0b +147 (verbatim single-`.agent/`-file rewrite,
-AGENTS.md-exempt, reported anyway), C1 +6, C2 +76, C3 +18. None over 500. C4's
-own count cannot exist inside C4 (R-0149) — final message.
-
-## Authored-text proofs
-
-RECORD-R13 and PLAN were both extracted from the COMMITTED
-`.agent/authored/f083-r14.md` by their markers and applied byte-verbatim: gate 4
-proves RECORD-R13 by byte equality of the append tail, gate 10 proves PLAN by
-whole-file byte equality. The `## Q11` body is worker-authored from measurements,
-so no byte-equality proof exists or was ordered for it (block SHAPES, gate 5).
-
-## Item status
-
-| Item | Status | Reason |
-|---|---|---|
-| C0a | done | |
-| C0b | done | |
-| C1 | done | |
-| C2 | done | |
-| C3 | done | |
-| C4 | done | this file; cannot table its own SHA |
-| Gate 1 | done | clean at both readings |
-| Gate 2 | done | BASE equals a677c3ba |
-| Gate 3 | done | 301 lines, under the 400 cap |
-| Gate 4 | done | byte-equal tail, deletions 0 |
-| Gate 5 | done | prefix + first line, deletions 0 |
-| Gate 6 | done | Q1–Q11, one `^## ` line added |
-| Gate 7 | done | 3 samples, red control 5, no ceiling |
-| Gate 8 | done | 7/9/6/8 passed, all exit 0 |
-| Gate 9 | done | 70/21/15/42 passed, all exit 0 |
-| Gate 10 | done | byte-equal, 40 lines |
-| Gate 11 | done | both ranges empty |
-| Gate 12 | done | passed True, handlers=338 |
-| Gate 13 | done | 104 / 6 / 0, open 98 |
-| Gate 14 | done | 5 paths |
-| Gate 15 | done | max +301, none over 500 |
-
-## Deviations & assumptions
-
-Deviations, declared: this handback is 162 lines and exceeds BOTH caps that
-bind it — the AGENTS.md ≤100-line cap for a >5-commit handback and the
-docs/agents/handback_template.md ≤100-line cap in the same case (R-0462). The
-cause is mandated content, not prose: fifteen ordered gate values, six
-per-commit changed-files tables, and a 21-row item-status table covering every
-C-item and every gate. No section was dropped and no gate value was trimmed.
-Assumptions: none. No slice was repaired; no defect in reviewer text was found.
+| C0a | done | 214 insertions |
+| C0b | done | 122 insertions; verbatim single-`.agent/`-file rewrite, AGENTS.md-exempt |
+| C1 | done | 4 insertions |
+| C2 | done | 12 insertions |
+| C3 | done | this file; own count in the final message |
+| Gate 1 | done | `pwd` = `/home/decodeux/Repos/remedy`, printed first. `git status --porcelain` EMPTY before C0a and before C3. `git worktree list` ONE line at round start and here. `.agent/STOP` ABSENT at both (R-0347) |
+| Gate 2 | done | BASE `94e6c353cc0d96782013434e34c5c7bb1bf57b18` — equals the ordered 94e6c353 |
+| Gate 3 | done | `.agent/authored/f083-r14-rec.md` and `.agent/last_block.md`: 19665 bytes, 214 lines, sha256 `bb8bd83dbe465e629a96c4c30ff50449d17fdd90607e6d944fef9215df31a470` each; EQUAL True. Measured line count **214**, at or under the 400-line cap: yes. The block declared no count of its own |
+| Gate 4 | done | over `74b8e157^..74b8e157`: `pre` prefixes `post` True; `post[len(pre):]` equals `b"\n" + RECORD-R14` extracted from the COMMITTED authored file True; tail begins with exactly one newline True; numstat `4 0`, deletion column 0 |
+| Gate 5 | done | `git diff --name-only 94e6c353..HEAD -- .agent/f083_inventory.md` printed NOTHING; `^## Q\d` count 11, ordered Q1…Q11 |
+| Gate 6 | done | `.agent/plan.md` byte-equals the PLAN slice True; sha256 `82d47c4f29c9296b536254b1047f8e67079c60cf2abbdd2a28132a266ff0c9b1`; 43 lines (<50); `## Goal` and `## Next Steps` present; 0 `- [ ]` lines; 1 numbered item under `## Next Steps` |
+| Gate 7 | done | each its own process, exit code read from that process: `test_ci_stages.py` 7 passed exit 0; `test_ci_stage_selection.py` 9 passed exit 0; `test_ci_cmd.py` 6 passed exit 0; `test_ci_run.py` 8 passed exit 0 |
+| Gate 8 | done | `test_dashboard_contract.py` 70 passed exit 0; `test_resource_safety.py` 21 passed exit 0; `test_integrity_gate.py` 15 passed exit 0; canary `test_golden_path.py` 42 passed exit 0 |
+| Gate 9 | done | `git diff --name-only 94e6c353..HEAD -- packages/ apps/ tests/ scripts/ docs/` printed NOTHING — measured list is EMPTY; run from the repository root `/home/decodeux/Repos/remedy` |
+| Gate 10 | done | `passed` true, `fail_count` 0, `check_count` 5; handler_import pass `handlers=338`, live_review_verdict pass, plan_consistency pass `unchecked=0, context_complete=False`, relevant_untracked pass `untracked=0, relevant=0`, high_blockers_open pass |
+| Gate 11 | done | measured at C1: 105 registered, 6 `Done:`, 0 `Landed:`, open 99, max R-0477, next free R-0478, no duplicate id |
+| Gate 12 | done | at C2, FOUR paths: `.agent/authored/f083-r14-rec.md`, `.agent/last_block.md`, `.agent/live_review.md`, `.agent/plan.md`. `.agent/handoff.md` is the fifth path C3 adds |
+| Gate 13 | deferred | the reflog reading is ordered "after the push", so it cannot exist inside C3; reported in the final message. Stated here: I ran no `git commit --amend`, no `git rebase` and no `git reset` this round |
+| Gate 14 | done | insertions 214, 122, 4, 12 — none over 500. C3's own count cannot exist inside C3 (R-0149) |
 
 ## Open findings
 
-104 registered, 6 `Done:`, 0 `Landed:` — 98 open. Max R-0476, next free R-0477.
-R-0475 is RESOLVED by C3 of this round; R-0476 is OPEN and its convention is
-stated and obeyed by `## Q11`.
+105 registered, 6 `Done:`, 0 `Landed:` → **99 open**. Max id **R-0477**, next
+free **R-0478**, no duplicate id. R-0477 is registered by C1 of this round.
+
+## External actions
+
+`gh pr list --state open` before C3 → `[]` (no open PRs). No PR created, no PR
+merged, no worktree added or removed, no `gh` write command. The push of this
+branch is run after C3 and reported in the final message.
+
+## Authored-text proofs
+
+`.agent/authored/f083-r14-rec.md` (C0a) and `.agent/last_block.md` (C0b) are
+byte-equal to each other and to the block as received — 19665 bytes, 214 lines,
+sha256 `bb8bd83d…31a470`. Both applied slices were extracted from the COMMITTED
+authored file by their markers: RECORD-R14 proved by the gate-4 prefix property,
+PLAN proved by whole-file byte equality at gate 6.
+
+## Deviations & assumptions
+
+No slice was repaired and no defect in reviewer text was found; every slice was
+applied byte-verbatim. Assumptions: none.
+
+Declared cap overage (DECISION D15, R-0462): this file is over BOTH the
+AGENTS.md base cap of ≤60 lines AND the ≤100-line allowance for handbacks whose
+per-commit tables require it. Cause is mandated content, not prose: the
+handoff-contract sections the block orders (what R14 delivered, the state of the
+feature, the open-finding set, the numbered next-session actions) sit on top of
+five per-commit tables and a nineteen-row item-status-and-gate table carrying
+fourteen gate values. No section is dropped to meet a cap.
+
+## NEXT SESSION — FIRST ACTIONS, in this order
+
+1. Read `.agent/STOP` from disk. If it exists, END immediately (G6/R-0347). At
+   this handoff `.agent/STOP` is ABSENT.
+2. Run the Open PR Gate (`gh pr list --state open --json number,headRefName,
+   baseRefName,isDraft`). At this handoff it read `[]` — no open PRs.
+3. Only then start **R15** as `.agent/plan.md` states it: a per-stage timeout in
+   the stage table, the budget stage written from the `## Q11` spread, a ruling
+   on R-0468 from the 26-error ruff baseline in `## Q10`, and the determinism
+   stage's shape settled as a DECISION. R15 is the first round since fb9ddf12 to
+   touch production code, so it is a SPLIT round and self-certification is
+   forbidden.
 
 ## Next
 
-R15: carry a per-stage timeout in the stage table and write the budget stage from
-the `## Q11` spread, rule on R-0468 from the 26-error ruff baseline `## Q10`
-records, and settle the determinism stage's shape as a DECISION.
+Start R15 (SPLIT round, production code) after steps 1 and 2 above.
 
-Fortschritt: 47 % (F083 beansprucht · R1 bis R7 und R9 bis R13 PASS, R8 FAIL auf einem roten ruff-Gate und in R9 repariert · Stage-Tabelle, Stage-Runner, die `remedy ci` CLI-Naht und die Selektionstests samt Live-Wächter als Code gelandet · R13 hat gemessen, dass `remedy ci` seine grösste Stage heute nach 600 Sekunden abschneidet, R14 vervollständigt die serielle Messung von `standard` auf drei Samples · noch keine Determinismus- oder Budget-Stage, kein Ceiling, kein Timeout-Fix, keine hosted workflows) — Rundenzahl gemessen, Prozentwert geschätzt
+Fortschritt: 48 % (F083 beansprucht · R1 bis R7 und R9 bis R14 PASS, R8 FAIL auf einem roten ruff-Gate und in R9 repariert · Stage-Tabelle, Stage-Runner, die `remedy ci` CLI-Naht und die Selektionstests samt Live-Wächter als Code gelandet · die serielle Kosten von `standard` stehen jetzt mit drei Samples fest, und damit ist gemessen statt vermutet, dass `remedy ci` seine grösste Stage heute nach 600 Sekunden abschneidet · noch keine Determinismus- oder Budget-Stage, kein Ceiling, kein Timeout-Fix, keine hosted workflows) — Rundenzahl gemessen, Prozentwert geschätzt
