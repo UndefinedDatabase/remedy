@@ -937,3 +937,16 @@ the same defect with a longer fuse — this is the R-0486 correction-carries-the
 the only stable fix for a self-count is to stop counting. The reviewer additionally swept the whole
 file for the class rather than the reported line, and reports the sweep's predicate and its four
 matches in this round's block. OPEN.
+
+Done: R-0511 — the heading no longer counts anything. `docs/agents/planner_reviewer_prompt.md`:174
+now reads "Run EVERY check below mechanically", so the sentence carries no numeral that a later
+promotion can falsify, and the word `twelve` occurs nowhere in the file. The fix was made the way the
+finding prescribed: the numeral was REMOVED rather than corrected to seventeen, because an accurate
+count is the identical defect waiting for the next item — the distinction item 11 draws between a
+measurement and a recollection, applied to the target file instead of to the block. The sweep the
+finding also demanded was run and is reported in this round's block: the predicate is a number-word
+standing next to a countable noun, it matches four lines in the file, and the three that are not
+line 174 count something real inside an item's prose rather than announcing the size of a list.
+Item 16 is amended by neither this fix nor this resolution; what changes is that the reviewer now
+runs it against the headings of every section a block EDITS as well as against the block's own,
+which is the reading the finding established and which this round is the first to perform.
