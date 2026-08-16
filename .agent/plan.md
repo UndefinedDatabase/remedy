@@ -18,10 +18,10 @@ reaches a child, and the limitations document exists and is linked from the
 README.
 
 ## Current Step
-R18, this round: record the R17 PASS, promote three standing rules into
-docs/agents/planner_reviewer_prompt.md §3 as checklist items 15, 16 and 17, then
-resolve R-0508 and R-0510 — the two findings that stayed open for exactly that
-promotion. Reviewer habit binds nothing until it is on disk.
+R19, this round: record the R18 PASS, register R-0511 — the stale check count the R18
+worker found in the checklist's own introduction — remove that numeral rather than
+correct it, and resolve the finding. The next round leaves the review machinery and
+returns to T002a's last spawn site.
 
 ## Next Steps
 1. `stream_evidence.py`:595 is T002a's last site and is NOT a `subprocess.run` swap:
