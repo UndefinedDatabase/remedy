@@ -6,7 +6,14 @@ description claims. The subject is a FIXTURE tree whose markers are known by
 construction, so every assertion pins an EXPRESSION rather than the live suite —
 pinning live collected counts would go red whenever an unrelated commit added a
 test, the carried finding R-0205 this feature owns. The one live-suite test
-asserts a PROPERTY and never a count: that no test here escapes all five stages.
+asserts a PROPERTY and never a count: that no test here escapes the stage set.
+
+Every property below that reasons about the UNION or the OVERLAP of the stages
+scopes itself to the MARKER-selected stages — `runs_in_ci and not
+stage.test_paths`. A path-bearing stage such as `budgets` selects by path and
+carries the marker expression `not real_ollama`, so folding it into a marker
+union would report every uncovered test in the repository as covered. That is a
+false green of exactly the kind this feature exists to detect.
 """
 from __future__ import annotations
 
@@ -87,43 +94,51 @@ def test_excluded_selects_every_live_provider_module_and_only_those(fixture_tree
     assert selection_for(fixture_tree, "excluded") == LIVE_MODULES
 
 
+def marker_selected_stages() -> tuple[str, ...]:
+    """The stages CI runs that select by MARKER alone — see the module docstring."""
+    return tuple(s.name for s in CI_STAGES if s.runs_in_ci and not s.test_paths)
+
+
 def test_no_ci_stage_ever_selects_a_live_provider_module(fixture_tree: Path):
     """The exclusion is the honesty claim of the whole table (DECISION F083 D2)."""
-    for stage in CI_STAGES:
-        if stage.runs_in_ci:
-            assert selection_for(fixture_tree, stage.name) & LIVE_MODULES == set(), stage.name
+    for name in marker_selected_stages():
+        assert selection_for(fixture_tree, name) & LIVE_MODULES == set(), name
 
 
 def test_exactly_one_fixture_module_lands_in_two_ci_stages(fixture_tree: Path):
     """The inventory measured exactly one overlapping pair; this names it."""
     counts: dict[str, int] = {}
-    for stage in CI_STAGES:
-        if stage.runs_in_ci:
-            for filename in selection_for(fixture_tree, stage.name):
-                counts[filename] = counts.get(filename, 0) + 1
+    for name in marker_selected_stages():
+        for filename in selection_for(fixture_tree, name):
+            counts[filename] = counts.get(filename, 0) + 1
     assert [name for name, seen in counts.items() if seen > 1] == ["test_subprocess_and_smoke.py"]
 
 
 def test_a_slow_only_module_is_selected_by_no_ci_stage(fixture_tree: Path):
     """The table's one blind spot, pinned rather than rediscovered later.
 
-    `fast` excludes `slow` and no other stage claims it, so a test marked ONLY
-    `slow` would be run by nothing. The live guard below is what keeps that
-    hypothetical: no such test exists today.
+    `fast` excludes `slow` and no other marker-selected stage claims it, so a
+    test marked ONLY `slow` would be run by nothing. The live guard below is what
+    keeps that hypothetical: no such test exists today.
     """
-    for stage in CI_STAGES:
-        if stage.runs_in_ci:
-            assert "test_slow_only.py" not in selection_for(fixture_tree, stage.name), stage.name
+    for name in marker_selected_stages():
+        assert "test_slow_only.py" not in selection_for(fixture_tree, name), name
 
 
 @pytest.mark.subprocess
-def test_no_test_in_this_repository_escapes_all_five_stages():
+def test_no_test_in_this_repository_escapes_the_marker_selected_stages():
     """The union claim in the `ci_stages` docstring, measured as a property.
 
-    Asserts the COMPLEMENT of the five expressions collects nothing, so it stays
-    green as the suite grows and reddens only when a test no stage runs appears.
+    Asserts the COMPLEMENT of the marker expressions collects nothing, so it
+    stays green as the suite grows and reddens only when a test no stage runs
+    appears. Path-bearing stages are excluded from the union for the reason the
+    module docstring gives: `not real_ollama` inside a union would report every
+    uncovered test as covered. `excluded` STAYS in the union even though CI never
+    runs it — it is the term that accounts for the live-provider tests, and
+    dropping it would make every one of them look like an escapee.
     """
-    union = " or ".join(f"({stage.marker_expression})" for stage in CI_STAGES)
+    union = " or ".join(
+        f"({stage.marker_expression})" for stage in CI_STAGES if not stage.test_paths)
     argv = [sys.executable, "-m", "pytest", "--collect-only", "-q",
             "-p", "no:cacheprovider", "-m", f"not ({union})"]
     done = subprocess.run(argv, cwd=REPO_ROOT, capture_output=True, text=True, timeout=600, check=False)

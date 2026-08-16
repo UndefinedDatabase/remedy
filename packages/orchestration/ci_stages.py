@@ -1,4 +1,4 @@
-"""Remedy's own CI stages — the five marker selections DECISION F083 D2 ruled.
+"""Remedy's own CI stages — the selections DECISION F083 D2 and D5 ruled.
 
 The stage set is DATA and it lives in exactly one place, so the local `remedy
 ci` entrypoint and the hosted workflow files cannot drift into two opinions
@@ -11,8 +11,22 @@ seam are later rounds; putting them here would make importing the stage table
 able to start a test run.
 
 The selections are MEASURED, not guessed: `.agent/f083_inventory.md` Q4
-collected all five against the whole suite, their union was the whole suite with
-nothing uncovered, and exactly one pair overlapped.
+collected the five MARKER selections against the whole suite, their union was
+the whole suite with nothing uncovered, and exactly one pair overlapped. The
+`budgets` stage is not one of them: it selects BY PATH, so it stands outside
+that union claim by construction and the selection tests scope themselves to the
+marker-selected stages rather than folding it in.
+
+Remedy deliberately does NOT make `determinism` a stage of its own (DECISION
+F083 D4). Measured at R11 and recorded in `.agent/f083_inventory.md` `## Q9`:
+the glob `tests/orchestration/test_run_manifest_*.py` matches forty-five files
+collecting 850 tests, and all 850 of those node ids sit inside the 12579 ids
+`standard` already selects, with 0 outside. A `determinism` stage would
+therefore either re-run 850 tests `standard` has just run, or require
+`standard`'s expression to be narrowed — and narrowing it is a marker-semantics
+change, which T2_F083's Do-not-touch list forbids. The determinism suite stays
+inside `standard`. Reverse by narrowing `standard` and adding the stage in the
+same commit.
 
 Remedy deliberately does NOT make `safety` and `architecture` stages of their
 own (DECISION F083 D2.2) — measured, both are subsets of the selections below
@@ -39,9 +53,14 @@ class CiStage:
     manual_command: str
     #: Wall-clock budget for this stage in seconds; 0 for a stage CI never runs.
     timeout_sec: int
+    #: Test paths this stage selects BY PATH. A stage carrying paths is selected
+    #: by those paths and its marker expression only EXCLUDES the live provider;
+    #: an empty tuple means the marker expression alone does the selecting.
+    test_paths: tuple[str, ...] = ()
 
 
-#: The stage set DECISION F083 D2.1 ruled, in the order CI runs them.
+#: The stage set DECISION F083 D2.1 ruled plus the `budgets` stage DECISION
+#: F083 D5 added, in the order CI runs them.
 CI_STAGES: tuple[CiStage, ...] = (
     CiStage(
         name="fast",
@@ -76,6 +95,20 @@ CI_STAGES: tuple[CiStage, ...] = (
         timeout_sec=300,
     ),
     CiStage(
+        name="budgets",
+        description="Repository ceilings: the guard suites that assert what this repository may not exceed.",
+        marker_expression="not real_ollama",
+        runs_in_ci=True,
+        manual_command="",
+        timeout_sec=300,
+        test_paths=(
+            "tests/orchestration/test_scratch_file_guard.py",
+            "tests/test_no_interactive_guard.py",
+            "tests/test_test_categories.py",
+            "tests/orchestration/test_ci_budgets.py",
+        ),
+    ),
+    CiStage(
         name="excluded",
         description="Live-provider tests. CI never runs them; they are listed so the coverage claim stays honest.",
         marker_expression="real_ollama",
@@ -102,4 +135,4 @@ def ci_stage_by_name(name: str) -> CiStage:
 
 def pytest_argv_for_stage(stage: CiStage) -> list[str]:
     """The pytest arguments that select `stage`. Builds argv; runs nothing."""
-    return ["-m", stage.marker_expression, "-q"]
+    return ["-m", stage.marker_expression, "-q", *stage.test_paths]

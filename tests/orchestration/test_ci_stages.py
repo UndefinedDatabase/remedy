@@ -26,7 +26,7 @@ BOOLEAN_WORDS = {"not", "and", "or"}
 
 
 def test_stage_names_are_decision_d2_in_run_order():
-    assert ci_stage_names() == ("fast", "standard", "ui", "smoke", "excluded")
+    assert ci_stage_names() == ("fast", "standard", "ui", "smoke", "budgets", "excluded")
     assert len(set(ci_stage_names())) == len(CI_STAGES)
 
 
@@ -57,8 +57,32 @@ def test_every_marker_named_in_an_expression_is_declared_in_pyproject():
 
 
 def test_pytest_argv_selects_the_expression_and_nothing_else():
-    stage = ci_stage_by_name("smoke")
-    assert pytest_argv_for_stage(stage) == ["-m", stage.marker_expression, "-q"]
+    """Both argv shapes are pinned: a path-less stage, and a path-bearing one.
+
+    A path-less stage's argv ENDS at `-q`; a stage carrying `test_paths` appends
+    exactly those paths, in table order, after it. Pinning only the first shape
+    would let a path silently vanish from the command that selects it.
+    """
+    path_less = ci_stage_by_name("smoke")
+    assert path_less.test_paths == ()
+    assert pytest_argv_for_stage(path_less) == ["-m", path_less.marker_expression, "-q"]
+
+    path_bearing = ci_stage_by_name("budgets")
+    assert path_bearing.test_paths
+    assert pytest_argv_for_stage(path_bearing) == [
+        "-m", path_bearing.marker_expression, "-q", *path_bearing.test_paths]
+
+
+def test_every_test_path_a_stage_names_resolves_on_disk():
+    """A stage whose path has moved runs NOTHING and exits 4 (finding R-0438).
+
+    pytest reports a missing path as an error, not as a failure, so a stage
+    pointed at a vanished file is a silently vacuous gate. This test is what
+    turns that into a red one.
+    """
+    for stage in CI_STAGES:
+        for relative in stage.test_paths:
+            assert (REPO_ROOT / relative).is_file(), (stage.name, relative)
 
 
 def test_unknown_stage_name_raises_naming_every_known_stage():
@@ -69,9 +93,11 @@ def test_unknown_stage_name_raises_naming_every_known_stage():
 
 
 #: The slowest wall second each stage was MEASURED at, three samples per stage:
-#: `.agent/f083_inventory.md` `## Q10` for `fast`, `ui` and `smoke`, and `## Q11`
-#: for `standard`, whose three uncapped samples span 916.36 s to 935.14 s.
-MEASURED_MAX_WALL_S = {"fast": 397.45, "standard": 935.14, "ui": 8.09, "smoke": 11.07}
+#: `.agent/f083_inventory.md` `## Q10` for `fast`, `ui` and `smoke`, `## Q11` for
+#: `standard`, whose three uncapped samples span 916.36 s to 935.14 s, and
+#: `## Q12` for `budgets`, whose three samples span 1.25 s to 1.32 s.
+MEASURED_MAX_WALL_S = {
+    "fast": 397.45, "standard": 935.14, "ui": 8.09, "smoke": 11.07, "budgets": 1.32}
 
 #: The budget rule: twice the measured maximum, rounded UP to a whole multiple of
 #: this many seconds. Doubling absorbs a slow machine; the rounding keeps the
