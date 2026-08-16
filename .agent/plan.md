@@ -18,24 +18,24 @@ reaches a child, and the limitations document exists and is linked from the
 README.
 
 ## Current Step
-R4, this round: record the R3 PASS, then apply amendment F085 D1 to
-`docs/roadmap/features/T2_F085.md` — correct the falsified premise, re-slice
-T002 per class, and rule the stage-1 command classes and their policies. No
-production code and no test file is touched.
+R5, this round: record the R4 PASS, register R-0494, then build T001 — the new
+module `packages/orchestration/exec_guard.py` with rlimit, wall-timeout and
+output-cap mechanics, plus `tests/orchestration/test_exec_guard.py` with the four
+runaway fixtures. The module gets NO callers this round.
 
 ## Next Steps
-1. T001 — `exec_guard.py` with rlimit, wall-timeout and output-cap mechanics
-   plus the runaway fixtures (cpu, memory, output, sleep), each killed and each
-   classified `resource_limit`. The wall timeout is the guard's OWN supervision:
-   six of the seven timeout-less in-scope sites are `Popen`, which takes no
-   `timeout=` keyword.
-2. T002a-d — seam migration, one order per class, with behaviour-equality
-   goldens and the environment-allowlist test.
+1. T002a — builder class, 5 sites, the first seam migration, with
+   behaviour-equality goldens for well-behaved commands.
+2. T002b-d — test (12 sites), DoD (2) and runtime (5, no wall timeout) classes,
+   one ordered sub-slice each, plus environment scrubbing with the allowlist test
+   that carries R-0202.
+3. T003 — network posture, per-class policy table, the limitations document and
+   its README link.
 
 ## Risks
+- The address-space limit is enforced but NOT attributable from `wait4` data:
+  the child raises `MemoryError`, exits 1 with no signal, and its `ru_maxrss`
+  stays below the limit. R6 rules on whether stage 1 can name that trip at all.
 - 24 in-scope call sites in 18 modules and 22 enclosing functions is a far wider
-  migration than the feature file assumed. T002 is four ordered sub-slices and
-  none of them may widen into git, packaging or other.
-- R-0202 has one reader and exactly two seams that drop the variable
-  (`managed_builder_execution.py`:1160, `test_execution_service.py`:323). Naming
-  them is not fixing them, and no round may fix them outside T002.
+  migration than the feature file assumed. None of T002's sub-slices may widen
+  into the git, packaging or other classes.
