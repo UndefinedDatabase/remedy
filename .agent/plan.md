@@ -1,7 +1,7 @@
 # Plan — F083 CI self-check
 
 Branch: feature/f083-ci-self-check, cut from main after the F082 closure PR #201
-merged. Next free finding id: R-0481. `.agent/live_review.md` is the source of
+merged. Next free finding id: R-0482. `.agent/live_review.md` is the source of
 truth for the open set; this file repeats no count of it.
 
 ## Goal
@@ -15,16 +15,18 @@ the right stage with a readable summary, and runtime stays within a budget.
 ## Current Step
 None in flight. R15 is closed PASS: every stage carries a measured `timeout_sec`,
 the runner is handed that budget per call, and `standard` is no longer killed at
-the runner's 600-second default. This record round wrote that verdict and the two
-findings it produced, and ends the session. R16 has not started.
+the runner's 600-second default. R16-REC is closed PASS and recorded it. This
+repair round, R17, registered R-0481 and rewrote this file; it ends the session.
+Round numbering, ruled at R-0481: 16 is spent by the record round and 17 by this
+one, so the next engineering round is R18. R18 has not started.
 
 ## Next Steps
-1. R16 takes the three items DECISION F083 D3 deferred: the `budgets` STAGE
+1. R18 takes the three items DECISION F083 D3 deferred: the `budgets` STAGE
    T2_F083's Design asks for, which checks documented ceilings and runs the guard
    tests and does not yet exist; a ruling on R-0468 from the 26-error ruff
    baseline `## Q10` records; and the determinism stage's shape settled as a
-   DECISION. It is a SPLIT round — the budgets stage is production code — and it
-   must honour R-0478 and R-0479 when it writes its gates.
+   DECISION. It is a SPLIT round — the budgets stage is production code — and its
+   gates must honour R-0478, R-0479 and R-0480.
 
 ## Risks
 - A per-stage `timeout_sec` is a kill threshold, NOT the budgets stage; reading
@@ -36,4 +38,4 @@ findings it produced, and ends the session. R16 has not started.
   other stages execute against the same checkout will read a clean repository as
   dirty (R-0479). Sequence it, or it reports a failure that is not there.
 - The `ui` stage is RED on a clean checkout with a cold npx cache (R-0480), so
-  the Acceptance line "clean checkout: green" is not met today. R16 rules on it.
+  the Acceptance line "clean checkout: green" is not met today. R18 rules on it.
