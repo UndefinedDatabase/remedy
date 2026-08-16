@@ -308,6 +308,19 @@ end the response with:
       governs the ORDER the block imposes on the worker's runs, which no dry run
       can surface because it is a property of the commit sequence rather than of
       any command in it.
+  14. **A per-commit gate names the commits it can honestly reach.** Finding
+      R-0489. A gate that orders a value PER COMMIT over a range ending in the
+      handback commit is unmeetable for that last commit: its own insertion count
+      cannot exist while its text is being written, so an honest worker writes
+      "and this commit's own" beside a sentence that then miscounts the range.
+      Order the per-commit numbers for the commits BEFORE the handback commit,
+      and order the handback commit's own numbers in the ROUND REPORT, which is
+      written after that commit exists. Item 13 governs the ORDER the block
+      imposes on the worker's runs; this one governs which commits a per-commit
+      gate can reach at all, which no ordering check surfaces because the gate's
+      sequence is fine and only its RANGE is wrong. The R26 instance: gate 19
+      covered a six-commit range, so the handback reported five insertion counts
+      and called the range "five single-parent commits" while HEAD held six.
   Why this is on disk and not a habit: item 2 has recurred six times across
   F104 and F105, and R20 hit four of them in one block. A check that lives
   only in reviewer session memory is the A1 trap §0 names, and this list is the
