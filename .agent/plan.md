@@ -18,14 +18,14 @@ reaches a child, and the limitations document exists and is linked from the
 README.
 
 ## Current Step
-R8, this round: record the R7 PASS, resolve R-0496, and fix R-0495 — the wall
-timeout that bounds the child but not `run_guarded`'s own return. The drain gets
-a bounded grace and the result says whether the streams were complete.
+R9, this round: record the R8 PASS, register R-0500 and fix it — the new test's
+one-blank-line separator, which stable ruff does not evaluate. No production
+module is touched and no behaviour changes.
 
 ## Next Steps
-1. T002a — builder class, 5 sites, the first seam migration. UNBLOCKED by this
-   round: the guard now bounds its own wall time, so migrating a seam onto it
-   makes hangs easier to see rather than harder.
+1. R10 starts T002a — the builder class, five call sites, the first seam
+   migration. It is UNBLOCKED: `run_guarded` now bounds its own wall time, so a
+   migrated seam makes a hang easier to see rather than harder.
 2. `_StreamPump` gains a lock and a `snapshot()` so PARTIAL output survives a
    bounded drain. R8 returns `b""` for a stream whose pump never reached EOF,
    which `streams_complete` reports honestly but which loses bytes.
