@@ -561,3 +561,59 @@ carries three samples — so their R14 wall seconds are `not measured` too. The
 
 This section is evidence. It carries no ceiling, no budget number and no
 recommendation; choosing them from these samples is R15's work.
+
+## Q12 — The three-sample cost of the `budgets` SELECTION, measured at R18
+
+WHAT WAS MEASURED, and why it is a selection rather than a stage. The `budgets`
+stage does not exist in `CI_STAGES` when this section is written — C4 adds it,
+and C4's `timeout_sec` is computed from the numbers below. So the subject here is
+the SELECTION the stage will make, driven directly, which needs no stage to
+exist. The driver command is recorded verbatim and was not retyped into the
+table:
+
+    ['/usr/bin/python3', '-m', 'pytest', '-m', 'not real_ollama', '-q', 'tests/orchestration/test_scratch_file_guard.py', 'tests/test_no_interactive_guard.py', 'tests/test_test_categories.py', 'tests/orchestration/test_ci_budgets.py']
+
+Every sample is its own `subprocess.run` from the repository root
+`/home/decodeux/Repos/remedy`, with `capture_output=True`; the exit code is the
+one THAT process returned (R-0438) and the wall second is `time.monotonic()`
+around that one call. No sample was averaged with another and no sample was
+dropped: a failing sample would be recorded with its failure.
+
+PRECISION CONVENTION, the same one `## Q11` states and binding here too (R-0476):
+every wall second is published at exactly two decimals, and every derived value —
+min, max, max−min — is computed from the numbers AS PUBLISHED in the table.
+
+| Sample | Round taken | Wall s | Exit | pytest's own final summary line |
+|---|---|---|---|---|
+| 1 of 3 | R18 | 1.32 | 0 | `40 passed in 1.12s` |
+| 2 of 3 | R18 | 1.25 | 0 | `40 passed in 1.07s` |
+| 3 of 3 | R18 | 1.27 | 0 | `40 passed in 1.07s` |
+
+SPREAD, under the convention above: min 1.25, max 1.32, max−min 0.07. All three
+ended at exit 0 and all three report the same `40 passed`, so the readings time
+the same selection and not three different ones. The MEASURED MAXIMUM is 1.32 s,
+and that is the number C4 feeds to the budget rule.
+
+DERIVED BUDGET, computed by the SAME rule the other four stages already use —
+`ceil(BUDGET_HEADROOM_FACTOR * measured_max / BUDGET_ROUNDING_S) *
+BUDGET_ROUNDING_S` with the factor 2 and the rounding 300, both pinned in
+`tests/orchestration/test_ci_stages.py`: `ceil(2 * 1.32 / 300) * 300 = ceil(0.0088)
+* 300 = 1 * 300 = 300`. The `budgets` stage therefore carries `timeout_sec=300`,
+which is the rounding floor rather than a headroom the measurement earned — a
+1.32-second selection cannot produce a smaller multiple of 300.
+
+CONTEXT, measured this round and not recalled. `os.cpu_count()` reports 24, which
+EQUALS the 24 recorded in `## Q10` and `## Q11`. `python3 -m pytest --version`
+prints `pytest 9.0.3` at exit code 0, which EQUALS the version recorded there.
+Neither the machine nor the tooling moved since the R14 samples.
+
+WHAT THIS SECTION DID NOT MEASURE, said rather than left blank. The four other
+stages were NOT re-run at R18: each already carries three samples in `## Q10` or
+`## Q11`, and re-running them would re-measure a settled number, so their R18
+wall seconds are `not measured`. The selection above deliberately RE-RUNS guard
+tests `fast` and `standard` already select; that overlap is the point of a
+budgets stage and its cost is the 1.32 seconds above, not a saving to be found.
+
+This section is evidence. The ceiling number it feeds — 26 — is not chosen here:
+it is DECISION F083 D5's, recorded in `.agent/decisions.md`, and this section
+neither raises nor lowers it.
