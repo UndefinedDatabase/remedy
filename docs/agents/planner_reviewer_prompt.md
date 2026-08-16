@@ -291,6 +291,23 @@ end the response with:
       CONTROL — break the property on purpose inside a disposable worktree and
       confirm the command really goes red — because a command that cannot fail
       proves nothing at all when it passes.
+  13. **An ordering constraint is checked against the block's OWN commit sequence.**
+      Finding R-0483. A constraint of the form "take reading X before any pytest
+      command runs this round" is read back against the commits the SAME block
+      orders. When that sequence contains a measuring pytest run — a wall-clock
+      sample, a collection count, anything whose number a later commit consumes —
+      the constraint is unmeetable as written, because a reading taken before any
+      pytest command can only ever describe the BASE commit and never HEAD. Name
+      the COMMIT the reading is taken at instead of using the word "before". The
+      F083 R18 instance: constraint 7 demanded the lint and integrity readings
+      before any pytest command while the same block ordered a three-sample
+      pytest measurement mid-round and derived a later commit's `timeout_sec`
+      from it, so the worker had to take both readings twice and spend a declared
+      deviation demonstrating a contradiction internal to the reviewer's own
+      text. Item 12 governs the reviewer's own PRE-EMISSION runs; this one
+      governs the ORDER the block imposes on the worker's runs, which no dry run
+      can surface because it is a property of the commit sequence rather than of
+      any command in it.
   Why this is on disk and not a habit: item 2 has recurred six times across
   F104 and F105, and R20 hit four of them in one block. A check that lives
   only in reviewer session memory is the A1 trap §0 names, and this list is the
