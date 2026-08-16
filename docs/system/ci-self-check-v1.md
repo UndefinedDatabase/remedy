@@ -27,8 +27,8 @@ In the order CI runs them, taken from `CI_STAGES`.
 | Stage | Selects | Why it exists |
 |---|---|---|
 | `fast` | `not integration and not subprocess and not real_ollama and not ui_contract and not smoke and not slow` | Pure unit work: no integration state, no subprocess, no UI contract, no live provider. The cheapest signal, so it runs first. |
-| `standard` | `(integration or subprocess) and not real_ollama` | Integration and subprocess tests on the fake provider. The determinism suite lives here rather than in a stage of its own (DECISION F083 D4). |
-| `ui` | `ui_contract and not real_ollama` | Python-verifiable frontend and UI contracts, including the TypeScript check. |
+| `standard` | `(integration or subprocess) and not real_ollama` | Integration and subprocess tests on the fake provider. The determinism suite lives here rather than in a stage of its own (DECISION F083 D4), and so does the TypeScript compile check, which carries the `integration` marker. |
+| `ui` | `ui_contract and not real_ollama` | Python-verifiable frontend and UI contracts. No test in this selection shells out to the node toolchain. |
 | `smoke` | `smoke and not real_ollama` | Smoke contracts for the scripts and the infrastructure. |
 | `budgets` | `not real_ollama` over four named paths | Repository ceilings: the guard suites that assert what this repository may not exceed. This is the one stage that selects BY PATH; its marker expression only excludes the live provider. |
 | `excluded` | `real_ollama` | Live-provider tests. CI never runs them; they are listed so the coverage claim stays honest. |
@@ -99,11 +99,16 @@ always complete. A run in which nothing ran at all is red, not green.
 ## The UI toolchain is a precondition (DECISION F083 D6)
 
 The hosted workflow runs `npm ci --prefix apps/ui` BEFORE `remedy ci run`. The UI
-toolchain is a precondition of the `ui` stage, not a part of it: without that
-install the stage's TypeScript check skips hosted, exactly as it skips on a local
-checkout that never ran it, and F083's Acceptance line would be met by a skip
-instead of by a real compile. The install is a workflow step rather than stage
-logic so the stage table stays data and keeps naming no toolchain.
+toolchain is a precondition of ONE TEST, and that test is not in the `ui` stage:
+`test_typescript_compiles` in `tests/ui_server/test_dashboard_contract.py` carries
+the `integration` marker, so `standard` selects it and `ui` does not. Without the
+install it skips hosted, exactly as it skips on a local checkout that never ran
+it, and F083's Acceptance line would be met by a skip instead of by a real
+compile. The install is a workflow step rather than stage logic so the stage table
+stays data and keeps naming no toolchain — which is also why the workflow installs
+the toolchain unconditionally rather than per stage: the table is the only thing
+that knows which stage selects that test, and the workflow deliberately reads no
+part of it.
 
 ## What is not measured
 
