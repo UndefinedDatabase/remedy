@@ -858,3 +858,24 @@ with 0 outside; insertions are 309, 225, 28, 45, 25 and 8 before the handback co
 amend, rebase, reset or force-push; the tree is clean and `git worktree list` is ONE line. The
 handback measures 80 lines against its own declaration of 80, and its stated-cause deviation is
 accurate. LAST_REVIEWED_SHA advances to 88dbcefa.
+
+Done: R-0508 — the counter-measure is on disk. `docs/agents/planner_reviewer_prompt.md` §3 now
+carries checklist item 15, "Pair shapes are classified by a containment test, never by eye", which
+THIS SAME BLOCK orders into that file — so the sentence you are reading names a rule that exists
+rather than one a later round is expected to write, which is exactly what item 11 requires of it.
+The item states the METHOD the finding faulted: every FROM/TO pair is tested mechanically for
+containment and the answer printed beside that pair, one reading per pair, never one generalised to
+the rest. It names its neighbour on purpose, because item 4 already stated the RULE and the R15
+block still failed while satisfying it — it ran the check for the pair it suspected and eyeballed
+the others. A rule and the method that produces its input are two different checks, and only the
+second was missing.
+
+Done: R-0510 — the counter-measure is on disk as checklist item 16, "No heading states a count of the
+contents beneath it", ordered into `docs/agents/planner_reviewer_prompt.md` §3 by THIS SAME BLOCK.
+The item carries the part of the finding that mattered: not that a heading said SIX over a body of
+SEVEN, but that the R15 block DID sweep its Bundle heading and left the Change set heading behind,
+so the fix reached the instance that was noticed instead of the class. It therefore ends by ordering
+the sweep over EVERY heading in a block rather than the one that changed, which is the R-0417 shape
+the finding named. Item 17 lands in the same commit and closes the third counter-measure this round
+was held open for — the arity rule R-0509's resolution said would be promoted here — so no standing
+rule of that family is left living only in reviewer habit.
