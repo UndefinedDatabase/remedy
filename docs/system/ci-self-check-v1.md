@@ -99,16 +99,19 @@ always complete. A run in which nothing ran at all is red, not green.
 ## The UI toolchain is a precondition (DECISION F083 D6)
 
 The hosted workflow runs `npm ci --prefix apps/ui` BEFORE `remedy ci run`. The UI
-toolchain is a precondition of ONE TEST, and that test is not in the `ui` stage:
-`test_typescript_compiles` in `tests/ui_server/test_dashboard_contract.py` carries
-the `integration` marker, so `standard` selects it and `ui` does not. Without the
-install it skips hosted, exactly as it skips on a local checkout that never ran
-it, and F083's Acceptance line would be met by a skip instead of by a real
-compile. The install is a workflow step rather than stage logic so the stage table
-stays data and keeps naming no toolchain — which is also why the workflow installs
-the toolchain unconditionally rather than per stage: the table is the only thing
-that knows which stage selects that test, and the workflow deliberately reads no
-part of it.
+toolchain is a precondition of the `standard` stage and of no other stage: two of
+the files `standard` selects need the installed toolchain, and both skip without
+it. `test_typescript_compiles` in `tests/ui_server/test_dashboard_contract.py`
+carries the `integration` marker and shells out to the TypeScript compiler; the
+Vite probes in `tests/runtimes/test_apps_ui_probe.py` carry `subprocess` and skip
+on a missing `apps/ui/node_modules/.bin/vite`. The `ui` stage needs nothing
+installed at all. Without the install those checks skip hosted, exactly as they
+skip on a local checkout that never ran it, and F083's Acceptance line would be
+met by a skip instead of by a real compile. The install is a workflow step rather
+than stage logic so the stage table stays data and keeps naming no toolchain —
+which is also why the workflow installs the toolchain unconditionally rather than
+per stage: the table is the only thing that knows which stage selects those tests,
+and the workflow deliberately reads no part of it.
 
 ## What is not measured
 
