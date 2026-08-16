@@ -18,24 +18,21 @@ reaches a child, and the limitations document exists and is linked from the
 README.
 
 ## Current Step
-R5, this round: record the R4 PASS, register R-0494, then build T001 — the new
-module `packages/orchestration/exec_guard.py` with rlimit, wall-timeout and
-output-cap mechanics, plus `tests/orchestration/test_exec_guard.py` with the four
-runaway fixtures. The module gets NO callers this round.
+R6, this round: record the R5 FAIL and persist its three findings. No fix lands
+here — findings persist before repairs so the record survives a session that
+ends. `tests/orchestration/test_exec_guard.py` stays RED on purpose.
 
 ## Next Steps
-1. T002a — builder class, 5 sites, the first seam migration, with
-   behaviour-equality goldens for well-behaved commands.
-2. T002b-d — test (12 sites), DoD (2) and runtime (5, no wall timeout) classes,
-   one ordered sub-slice each, plus environment scrubbing with the allowlist test
-   that carries R-0202.
-3. T003 — network posture, per-class policy table, the limitations document and
-   its README link.
+1. R7 repairs R-0495 — the wall timeout must bound `run_guarded`'s own return,
+   not only the process group it can reach — and then R-0496, the boundary
+   assertion that leaves the T001 suite red.
+2. T002a — builder class, 5 sites, the first seam migration. It is BLOCKED until
+   R-0495 is fixed: migrating a seam onto a guard whose timeout does not bound
+   wall time would make hangs harder to see, not easier.
+3. T002b-d, then T003 — network posture, limitations document, README link.
 
 ## Risks
-- The address-space limit is enforced but NOT attributable from `wait4` data:
-  the child raises `MemoryError`, exits 1 with no signal, and its `ru_maxrss`
-  stays below the limit. R6 rules on whether stage 1 can name that trip at all.
-- 24 in-scope call sites in 18 modules and 22 enclosing functions is a far wider
-  migration than the feature file assumed. None of T002's sub-slices may widen
-  into the git, packaging or other classes.
+- R-0495 is the feature's central promise failing in its central case. Until it
+  is fixed, no round may describe `exec_guard` as bounding runtime.
+- The address-space limit is enforced but NOT attributable from `wait4` data;
+  R5's G16 probe confirmed it. Whether stage 1 can name that trip stays open.
