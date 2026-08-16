@@ -18,10 +18,9 @@ reaches a child, and the limitations document exists and is linked from the
 README.
 
 ## Current Step
-R11, this round: the FIRST half of T002a — environment scrubbing in
-`exec_guard.py` behind an opt-in `env_allowlist`, with a `FORBIDDEN_ENV_KEYS`
-floor a wrong allowlist cannot lower. No call site is migrated, so the running
-system gains nothing yet and no containment claim follows from this round.
+R12, this round: record the R11 PASS, resolve R-0501 and register R-0502 and
+R-0503 — two gate defects the reviewer wrote into its own R11 block. Pure record
+round: no code, no tests, no behaviour, `.agent/` state only.
 
 ## Next Steps
 1. T002a's migration half: the five builder sites of amendment F085 D1 —
