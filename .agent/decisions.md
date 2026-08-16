@@ -5530,3 +5530,65 @@ that writes no other doc would be scope drift, and the inventory already records
 what exists under which name. Q3's record is the interim answer.
 
 Reverse any part of this decision by deleting its numbered paragraph.
+
+## DECISION F083 D4 — determinism does NOT become a stage of its own (2026-08-16)
+
+R11 measured it and `.agent/f083_inventory.md` `## Q9` records it: the glob
+`tests/orchestration/test_run_manifest_*.py` matches forty-five files collecting
+850 tests, and a Python set operation over collected node ids puts all 850 inside
+the 12579 ids the `standard` stage selects, with 0 ids outside.
+
+CHOSEN: the determinism suite stays inside `standard`, and the ABSENCE is
+documented where a reader would search for it — the `packages/orchestration/
+ci_stages.py` module docstring, in this repository's own "Remedy deliberately
+does NOT X because Y" idiom (AGENTS.md, Code Discoverability Conventions).
+
+ALTERNATIVES CONSIDERED AND REJECTED: a new `determinism` marker, rejected
+because assigning it across the tree is a marker-semantics change and
+`docs/roadmap/features/T2_F083.md`'s Do not touch list forbids it; a
+path-selected determinism stage, rejected because it buys nothing `standard`
+does not already do and doubles the wall cost of 850 tests. Re-running 850
+already-green tests to fill a stage name is decoration, not a check.
+
+This SUPERSEDES the `determinism` half of D2.4 above, which left the shape open
+by calling it a script invocation. `docs/roadmap/features/T2_F083.md` is amended
+in the same commit: the Design stage list loses `determinism` and the T002 line
+says the stage was ruled out rather than built.
+
+Reverse this decision by narrowing `standard`'s expression and adding the stage
+in the same commit — never by adding the stage alone, which would re-run the 850.
+
+## DECISION F083 D5 — the twenty-six ruff errors are RATCHETED, not fixed (2026-08-16)
+
+Finding R-0468 measured 26 errors from `python3 -m ruff check .` at the
+repository root under this repository's own `pyproject.toml`, none of them
+introduced by the F083 branch, while no CI stage ran a linter at all.
+
+CHOSEN: the `budgets` stage carries a DOCUMENTED lint ceiling of 26
+(`LINT_ERROR_CEILING` in `packages/orchestration/ci_budgets.py`) that fails when
+the count RISES. The debt is frozen and visible instead of silently growing, and
+the ceiling is a RATCHET: the number may only be lowered, never raised. A live
+test marked `subprocess` runs the linter under the repository's own config — no
+substituted flag and no `--isolated`, because a reading taken under a different
+config is a reading of a different repository (finding R-0463).
+
+ALTERNATIVES CONSIDERED AND REJECTED: fix all 26 now, rejected as scope drift —
+it is a mass edit across files this feature does not otherwise touch, which
+AGENTS.md Scope Control forbids as its own activity, and 25 of the 26 are
+auto-fixable import hygiene that would churn a suite that was just stabilised;
+leave lint out of CI entirely, rejected because it leaves this feature's own
+Acceptance line green while `ruff check .` is red.
+
+The twenty-sixth error is NOT import hygiene. It is a live `NameError` on a
+guard's refusal path in `packages/orchestration/gauntlet_injection.py`, and it is
+registered as finding R-0482 in `.agent/live_review.md` rather than frozen
+without comment. D5 freezes it deliberately: the fix is a production change in an
+unrelated module and belongs to a branch of its own.
+
+This also SUPERSEDES the `budgets` half of D2.4 above. D2.4 assumed the stage
+would be a script invocation because `budgets` is not a declared marker; the
+stage that landed instead selects BY PATH through the new `CiStage.test_paths`
+field, which needs no new marker and therefore touches no marker semantics.
+
+Reverse this decision by lowering the ceiling to 0 and fixing the errors in a
+branch of their own.
