@@ -1,41 +1,39 @@
-# F083 R21 — T003 part 1: the hosted workflow and the guards that keep it thin
+# F083 R22 — T003 part 2: the CI documentation, the budget table, and one rule promotion
 
-SPLIT round: it creates production CI configuration under `.github/` and a test
-under `tests/`, so the worker executes and the reviewer gates. It records the R20
-verdict and lands the first half of T003.
+SPLIT round: it changes `docs/` and `.agent/` only — no file under `packages/`,
+`apps/`, `scripts/` or `tests/` is touched. It records the R21 verdict, registers
+one Low finding and lands the second half of T003.
 
-Base: `git rev-parse HEAD` MUST print 35b80d17 before the first commit. If it
-does not, stop and report — every gate below is measured against that base.
+Base: `git rev-parse HEAD` MUST print 8336140e before the first commit. If it does
+not, stop and report — every gate below is measured against that base.
 
-## The one design choice in this round
+## What this round writes down
 
-T2_F083's Orchestrator brief says "Keep hosted workflows thin wrappers — reject
-workflow logic that isn't in the entrypoint", and its Design says the hosted files
-"mirror the same stages by calling the same entrypoint (one source of truth for
-what CI means)". The thinnest wrapper that satisfies both is ONE job calling
-`remedy ci run` ONCE, with no stage matrix and no stage name in the YAML at all:
-`CI_STAGES` already decides what runs, in what order and under which budget, and
-`_cmd_ci_run` in `apps/cli/commands/ci_cmd.py` already prints the summary and
-exits on `ci_exit_code`. A matrix over stage names would copy the table into YAML
-and give CI a second opinion about what CI means — the drift the `ci_stages`
-module docstring exists to prevent. Reverse by adding a matrix and a `--stage`
-argument in the same commit.
+T003's remaining deliverables are the documentation and the runtime budget. Both
+already exist as measurements; this round moves them from `.agent/f083_inventory.md`,
+which is task scratch, into `docs/`, which is where the built system is described.
 
-`npm ci --prefix apps/ui` is a STEP OF THE JOB, not a stage of the table, because
-DECISION F083 D6 made the toolchain a PRECONDITION of the `ui` stage rather than
-part of it: without it `test_typescript_compiles` skips hosted too and the
-Acceptance line is met by a skip rather than by a compile. Its position before the
-`remedy ci run` step is load-bearing, and C3 pins it.
+THE BUDGET NUMBERS ARE NOT CHOSEN HERE AND MUST NOT BE RE-DERIVED BY HAND. Every
+one was measured and is quoted verbatim below with its source section. The rule
+that turns a measurement into a budget is `ceil(2 * measured_max / 300) * 300`,
+with the factor 2 and the rounding 300 pinned in
+`tests/orchestration/test_ci_stages.py`. The reviewer re-computed all five against
+the `timeout_sec` values in `CI_STAGES` before emitting this block and all five
+agree; your job is to transcribe, not to recalculate.
 
-WHAT THIS ROUND DOES NOT MEASURE, said rather than left blank: hosted wall time.
-Every number in `## Q9` through `## Q12` was taken on this 24-CPU machine, and
-`standard` needs 935.14 s serially at its slowest sample against the 2100 s
-`timeout_sec` the table already carries. A hosted runner with fewer cores may
-exceed it. The first hosted run is that measurement; this round neither predicts
-it nor tunes a budget to a guess. The job cap is set ABOVE the sum of the stage
-budgets — `sum(s.timeout_sec for s in CI_STAGES if s.runs_in_ci)` is 3900 s, i.e.
-65 minutes — so a slow stage times out at ITS OWN budget with exit code 124 and a
-`timed out` note, instead of the job dying first and naming no stage.
+| Stage | Measured max, seconds | Source | Budget, seconds |
+|---|---|---|---|
+| fast | 397.45 | `## Q10`, three samples | 900 |
+| standard | 935.14 | `## Q11`, three samples | 2100 |
+| ui | 8.09 | `## Q10`, three samples | 300 |
+| smoke | 11.07 | `## Q10`, three samples | 300 |
+| budgets | 1.32 | `## Q12`, three samples | 300 |
+| excluded | not run — `runs_in_ci` is False | `## Q10` | 0 |
+
+Two derived figures, also re-computed by the reviewer: the five CI budgets sum to
+3900 s, i.e. 65 minutes, which is why `.github/workflows/ci.yml` caps its job at 90;
+and the five measured maxima sum to 1353.07 s, i.e. about 22.6 minutes, which is
+what a green serial run actually costs on the machine those samples were taken on.
 
 ## Slice convention
 
@@ -43,21 +41,55 @@ Every slice is delimited by its own `--- BEGIN SLICE <NAME> ---` and
 `--- END SLICE <NAME> ---` markers, which are TRANSPORT ONLY and NEVER reach a
 target file. A slice's content begins on the line AFTER its BEGIN marker and ends
 on the line BEFORE its END marker, newline included. The slices carried here are
-named RECORD-R20 and PLAN. A slice with no FROM: line is an EOF-APPEND: its bytes
-are appended to the end of the named file and nothing already in that file is
-edited. There is no FROM/TO pair in this block. Extract every slice
-programmatically from the COMMITTED `.agent/authored/f083-r21.md` by its markers —
-never by retyping.
+named RECORD-R21, TEMPLATE, QUICKFIND, SYSTABLE and PLAN. A slice with no FROM:
+line is an EOF-APPEND. TEMPLATE, QUICKFIND and SYSTABLE are FROM/TO pairs and all
+three are APPEND-SHAPED — each TO contains its FROM verbatim (§4.9), so the proof
+obligation for each is FROM exactly 1x in the target file before the edit, and each
+TO-ONLY line exactly 1x among the lines that commit's diff ADDS. Extract every
+slice programmatically from the COMMITTED `.agent/authored/f083-r22.md` by its
+markers — never by retyping.
 
---- BEGIN SLICE RECORD-R20 --- (EOF-APPEND to .agent/live_review.md, C1)
+--- BEGIN SLICE RECORD-R21 --- (EOF-APPEND to .agent/live_review.md, C1)
 
-Gate: R20 — PASS. The reviewer re-ran every one of the round's eighteen ordered gates itself, from the repository root at 35b80d17, and every measured value equals the one the handback reports. TRANSPORT, by digest over the committed files rather than against a scratchpad original, because this is a self-drive session in which the reviewer holds no scratch copy (§4.9 digest fallback, stated so the evidence chain stays honest): `.agent/authored/f083-r20.md` and `.agent/last_block.md` read from HEAD are byte-equal at sha256 8f77255a7c0328c8 over 24374 bytes and 276 lines. C1 and C4 are both pure appends and were proved as such rather than believed: `.agent/live_review.md` goes 263322 B to 269472 B at C1 with the former a prefix of the latter and the 6150-byte tail byte-EQUAL to the RECORD-R19 slice extracted from the committed authored file by its markers at numstat `6 0`, then 269472 B to 271015 B at C4 with the 1543-byte tail byte-EQUAL to the RESOLVE slice at numstat `4 0`; the deletion column is 0 both times, so no committed text was edited. The CHECKLIST pair is APPEND-SHAPED as declared and was checked that way rather than asserted: its TO contains its FROM verbatim, the FROM string occurred exactly 1x in `docs/agents/planner_reviewer_prompt.md` before C2 and exactly 1x after it, all 17 TO-ONLY lines occur exactly 1x each among the 17 lines C2's diff adds, C2 adds no other line, and no marker line and no FROM:/TO: label reached the file. `.agent/plan.md` byte-equals its PLAN slice at sha256 900ce257188f5781, 2149 bytes, 39 lines under the 50-line cap, with `## Goal` and `## Next Steps` present and 0 unchecked-box lines. THE FIX WAS PROVED IN BOTH DIRECTIONS RATHER THAN ON ITS HAPPY PATH, because a skip guard exercised only one way is a guard nobody has tested: in the primary checkout `python3 -m pytest tests/ui_server/test_dashboard_contract.py -q` is 70 passed at exit 0 and `test_typescript_compiles` is PASSED by name, and the compiler it resolved is the project's own — `apps/ui/node_modules/.bin/tsc --version` prints `Version 5.9.3`, which is the whole point of D6 and not the nine-year-old `tsc@2.0.4` stub the old `npx` form was grading. In a disposable worktree at HEAD where `apps/ui/node_modules` is absent by construction the same test is SKIPPED at exit 0 with a message naming the missing directory and the exact command `npm ci --prefix apps/ui`, which is the intended outcome; that worktree was removed and pruned, `git worktree list` is one line and `git status --porcelain` is empty at this verdict. The remaining gates all reproduce: `python3 -m ruff check .` reports `Found 26 errors.` at exit 1 with the breakdown unchanged at 20 I001, 4 F401, 1 F821 and 1 UP035, and the edited test file alone reports `All checks passed!` at exit 0, so the ratchet held; the integrity gate is passed true, fail_count 0, check_count 5; the five CI suites are 46 passed, `tests/docs/` is 295 passed, and the verification set with the canary is 78 passed, every one at exit 0. The range gate holds — `git diff --name-only 59d7d341..HEAD -- packages/ apps/ scripts/` prints nothing — the change set is exactly the nine paths the block names and no more, per-commit insertions are 276, 202, 6, 17, 9, 4, 46, 16 and 106 with none near 500, and the history is linear with no amend, rebase or reset. The open set recomputes mechanically from the record rather than being carried forward: 112 registered, 9 resolved, 0 landed, 103 open, maximum R-0484, next free R-0485, no duplicate id, and every resolved id is a registered id. The `Amended: R-0480` paragraph is correctly NOT counted as a registration, which is the property it was deliberately shaped to have. Three declared deviations, all honest and none a defect, and two of them are the worker correctly refusing to follow reviewer text off a cliff: the ordered "one-line WHY comment" carried about 148 characters of mandated content against a 120-character ruff ceiling, so two lines of 101 characters or fewer is the fewest that carries it without reddening the very lint gate the same block freezes; and the docs gate was run a second time AFTER C5, because C5 is the commit that changes `docs/roadmap/**` and a reading taken before it would not be a reading of the change it exists to gate. That second one is precisely the class of defect pre-emission checklist item 13 describes, applied by the worker in the same round that put item 13 on disk. ONE IMPRECISION IS RECORDED AND IS NOT A FINDING: gate 8 asked for ruff's "final line" expecting `Found 26 errors.`, but ruff's actual final line is its fixable-count hint and `Found 26 errors.` is the line above it. The reviewer's expectation was the imprecise half; the count, the breakdown and the exit code the worker reported are exact and re-measured. No finding is registered against this round.
---- END SLICE RECORD-R20 ---
---- BEGIN SLICE PLAN --- (WHOLE FILE, replaces .agent/plan.md, C4)
+Gate: R21 — PASS. The reviewer re-ran every one of the round's eighteen ordered gates itself, from the repository root at 8336140e, and every measured value equals the one the handback reports. TRANSPORT, by digest over the committed files (§4.9 digest fallback, this being a self-drive session in which the reviewer holds no scratch copy): `.agent/authored/f083-r22.md`'s predecessor `.agent/authored/f083-r21.md` and `.agent/last_block.md` are byte-equal at sha256 f0524ec4a2eae48a over 20628 bytes and 252 lines, and 252 is under the 400-line block cap. C1 is a pure append and was proved so: `.agent/live_review.md` goes 271015 B to 275871 B, the former prefixes the latter, the 4856-byte tail byte-EQUALS the RECORD-R20 slice extracted from the committed authored file by its markers, numstat is `2 0`, and the marker count in the file is 4 both at base and at HEAD, so no transport marker leaked. `.agent/plan.md` byte-equals its PLAN slice at sha256 3e06a8df6d276e06, 2174 bytes, 39 lines under the cap, `## Goal` and `## Next Steps` present, 0 unchecked-box lines. THE GUARDS WERE PROVED LIVE IN THREE DIRECTIONS RATHER THAN ONE, because a guard exercised only on its happy path is a guard nobody has tested and the block ordered only the first of these: in a disposable worktree at HEAD the reviewer moved the `npm ci --prefix apps/ui` step after the `remedy ci run` step and got exit 1 with `1 failed, 4 passed`, the single failure being `test_hosted_workflow_installs_the_ui_toolchain_before_the_run`; added `continue-on-error: true` on a non-comment line and got exit 1 with the single failure `test_hosted_workflow_never_auto_retries`; and appended a real stage marker expression to the run step and got exit 1 with the single failure `test_hosted_workflow_selects_no_tests_of_its_own`. Each mutation reddened its OWN guard and only its own, and restoring the file returned `5 passed` at exit 0. The worktree was removed and pruned; `git worktree list` is one line and `git status --porcelain` is empty at this verdict. A GAP THE ROUND DID NOT COVER WAS CLOSED BY THE REVIEWER RATHER THAN LEFT OPEN: the guards deliberately read the workflow as TEXT and never parse it, which is the right call because PyYAML is in neither `dependencies` nor the `dev` extra, but it means nothing in the round proved the file is well-formed YAML — and a malformed workflow is a hosted CI that silently never runs. The reviewer parsed it with PyYAML as a spot-check: it loads, the job `ci` carries `runs-on: ubuntu-latest` and `timeout-minutes: 90`, `concurrency` is the ref-keyed group with `cancel-in-progress`, the triggers are `push` and `pull_request` both on `main`, and the six steps are in exactly the ordered sequence — checkout, setup-python 3.10 with the pip cache, setup-node 20 with the npm cache keyed on `apps/ui/package-lock.json`, the editable dev install, the UI toolchain install, and `remedy ci run` last. The YAML 1.1 quirk that parses the `on:` key as boolean true is present and is not a defect: GitHub's own parser reads it as the trigger key, as it does in every workflow file. The remaining gates all reproduce: ruff reports `Found 26 errors.` at exit 1 with the breakdown unchanged at 20 I001, 4 F401, 1 F821 and 1 UP035 and the new test file alone `All checks passed!` at exit 0, so the ratchet held across a round that added a file; the new guards are 5 passed; the escape guard is 9 passed, which is the reading that matters most this round because C3 added a test file and a file that escaped every marker-selected stage would be a test CI never runs; the five CI suites are 46 passed, the two budget-stage guard suites 18 passed, and the verification set with the canary 78 passed, every one at exit 0. The range gate holds — `git diff --name-only 35b80d17..HEAD -- packages/ apps/ scripts/` prints nothing — the change set is exactly the seven paths the handback lists, insertions are 252, 180, 2, 52, 56, 14, 63 and 3 with none near 500, the history is linear with no amend, rebase or reset, and the open set recomputes to 112 registered, 9 resolved, 0 landed, 103 open, max R-0484, no duplicate id and no unregistered resolution. The design is right and worth naming: one job calling one `remedy ci run`, with no stage matrix and no marker expression anywhere in the YAML, is the thinnest wrapper that can satisfy the Orchestrator brief, and the guards pin exactly that rather than pinning a shape. Two of the block's own gates were removed before emission because the code contradicted them — a `-m ` absence gate that the legitimate `python3 -m pip` step would have reddened, and a stage-NAME gate that `ui` being a substring of `apps/ui` would have reddened — so this round's guards assert on marker EXPRESSIONS, which is why they are satisfiable and meaningful at the same time. One Low finding is registered against this round, R-0485, and it concerns where a deviation was written down rather than anything that landed wrong.
+
+- R-0485 — Low, A DEVIATION THE WORKER NAMED IN ITS ROUND REPORT REACHED THE HANDOFF ONLY AS A TABLE-CELL ASIDE, AND THE HANDOFF IS THE ONLY RETURN CHANNEL. R21's block ordered the commit sequence C0a through C5, which is seven commits; the round produced eight. The eighth, 8336140e, corrects items 16 and 17 of the handback to their post-C5 readings, because those two were measured at C4 and so omitted `.agent/handoff.md`, the path C5 itself adds to the change set. The commit is right, its reason is right, and refusing to amend was right — constraint 1 forbids it, and this is the R-0149 self-reference the handback template already contemplates. What is wrong is only where the departure is recorded. On disk it appears inside the C5 table's Reason cell and in a trailing sentence of item 17, while the handoff's `## Deviations & assumptions` section lists two other deviations and not this one; the worker's round report to the reviewer, by contrast, listed it first. A round report dies with its session and the handoff does not, so a later reader auditing whether R21 followed its block reads the Deviations section and learns nothing about the extra commit. Low and not Medium because the fact IS on disk, nothing is misstated and no reading is wrong — but R20's handoff declared a strictly smaller procedural departure, a gate run twice, as a numbered deviation, which is the standard this one misses. The fix is not a repair of R21, whose commits are all correct and must not be rewritten: it is the rule promotion C2 of this block performs, adding to `docs/agents/handback_template.md` the requirement that any departure from the block's ordered commit sequence appears in the Deviations section even when the commit table already shows it. A standing rule written only as finding prose binds nothing, which is why this finding names the file it changes and the commit that changes it.
+--- END SLICE RECORD-R21 ---
+--- BEGIN SLICE TEMPLATE --- (FROM/TO pair, APPEND-SHAPED, docs/agents/handback_template.md, C2)
+FROM:
+## Deviations & assumptions
+
+Each with justification / assumption_log pointer. `None` if none.
+TO:
+## Deviations & assumptions
+
+Each with justification / assumption_log pointer. `None` if none.
+
+ANY DEPARTURE FROM THE BLOCK'S ORDERED COMMIT SEQUENCE BELONGS HERE, not only in
+the commit table: an extra commit, a dropped one, or a reordering is a deviation
+even when it is correct and even when the commit table already shows it (finding
+R-0485). A round report dies with its session and this file does not, so a reader
+auditing whether a round followed its block reads this section and nothing else.
+--- END SLICE TEMPLATE ---
+--- BEGIN SLICE QUICKFIND --- (FROM/TO pair, APPEND-SHAPED, docs/README.md, C4)
+FROM:
+| candidate eval | [candidate-quality-evaluation-v1.md](system/candidate-quality-evaluation-v1.md) | system |
+TO:
+| candidate eval | [candidate-quality-evaluation-v1.md](system/candidate-quality-evaluation-v1.md) | system |
+| CI self-check | [ci-self-check-v1.md](system/ci-self-check-v1.md) | system |
+--- END SLICE QUICKFIND ---
+--- BEGIN SLICE SYSTABLE --- (FROM/TO pair, APPEND-SHAPED, docs/README.md, C4)
+FROM:
+| [candidate-quality-evaluation-v1.md](system/candidate-quality-evaluation-v1.md) | Scoring and evaluation of candidate patches |
+TO:
+| [candidate-quality-evaluation-v1.md](system/candidate-quality-evaluation-v1.md) | Scoring and evaluation of candidate patches |
+| [ci-self-check-v1.md](system/ci-self-check-v1.md) | Remedy's own CI: the stage table, the measured runtime budgets, the hosted workflow, and what CI deliberately never runs |
+--- END SLICE SYSTABLE ---
+--- BEGIN SLICE PLAN --- (WHOLE FILE, replaces .agent/plan.md, C5)
 # Plan — F083 CI self-check
 
 Branch: feature/f083-ci-self-check, cut from main after the F082 closure PR #201
-merged. Next free finding id: R-0485. `.agent/live_review.md` is the source of
+merged. Next free finding id: R-0486. `.agent/live_review.md` is the source of
 truth for the open set; this file repeats no count of it.
 
 ## Goal
@@ -69,26 +101,24 @@ reproduces the hosted result locally on a clean checkout, a seeded failure fails
 the right stage with a readable summary, and runtime stays within a budget.
 
 ## Current Step
-R20 is closed PASS and R21 recorded it. R21 landed the first half of T003: the
-hosted workflow `.github/workflows/ci.yml`, a thin wrapper that installs the
-Python and the UI toolchain and then calls `remedy ci run` once, plus the guard
-tests pinning its load-bearing properties — it calls the entrypoint, it selects
-no tests of its own, it installs the UI toolchain before the run, and it never
-auto-retries.
+R21 is closed PASS and R22 recorded it. R22 registered R-0485 (Low, a deviation
+recorded outside the handoff's Deviations section) and fixed it by rule, not by
+rewriting R21: the handback template now requires any departure from the block's
+commit sequence to appear there. T003 is COMPLETE — the workflow and its guards
+landed at R21, the documentation and the measured runtime budgets at R22.
 
 ## Next Steps
-1. T003's second half: the CI documentation under `docs/`, registered in the
-   `docs/README.md` index, carrying the runtime-budget table from the measured
-   data in `.agent/f083_inventory.md` `## Q9` through `## Q12` and saying plainly
-   that hosted wall time is NOT measured — only the local samples are.
-2. Then the integration-gate round, then closure per
-   docs/roadmap/STATUS_closure_protocol.md.
+1. The integration-gate round: the full suite exactly once, per
+   docs/agents/integration_gate.md. It is also the round that records R22's
+   verdict and resolves R-0485.
+2. Then closure per docs/roadmap/STATUS_closure_protocol.md — evidence job plus a
+   FRESH review zip, both mandatory, then the authored STATUS line and the PR.
 
 ## Risks
-- Hosted wall time is unmeasured. `standard` needs 935.14 s at its slowest local
-  sample against a 2100 s budget, and a hosted runner with fewer cores may exceed
-  it. The first hosted run is the measurement; raising `timeout_sec` before that
-  evidence exists would be a guess wearing a budget's name.
+- Hosted wall time is still unmeasured, and the first hosted run is that
+  measurement. `standard` needs 935.14 s at its slowest local sample against a
+  2100 s budget; a runner with fewer cores may exceed it. Raising `timeout_sec`
+  before that evidence exists would be a guess wearing a budget's name.
 - The lint ceiling is a RATCHET. Raising it to make a round green converts the
   one honest lint signal in this repository into decoration.
 - R-0482 is a live `NameError` on a guard's refusal path, frozen under that
@@ -97,134 +127,137 @@ auto-retries.
 
 ## Change — exactly these paths, nothing beyond them
 
-**C0a** saves this block verbatim to `.agent/authored/f083-r21.md`. **C0b**
-mirrors the committed copy over `.agent/last_block.md`. **C1** applies RECORD-R20.
+**C0a** saves this block verbatim to `.agent/authored/f083-r22.md`. **C0b** mirrors
+the committed copy over `.agent/last_block.md`. **C1** applies RECORD-R21.
+**C2** applies TEMPLATE.
 
-**C2 — the hosted workflow, the new file `.github/workflows/ci.yml`, the only
-file in this commit.** Write a workflow that:
-- is named `CI`, triggers on `push` to `main` and on `pull_request` targeting
-  `main`, and carries a `concurrency` group keyed on the ref with
-  `cancel-in-progress: true`;
-- has exactly ONE job, id `ci`, on `ubuntu-latest`, with `timeout-minutes: 90`;
-- whose steps are exactly these, in this order: `actions/checkout@v4`;
-  `actions/setup-python@v5` with python-version `'3.10'` and `cache: pip`;
-  `actions/setup-node@v4` with node-version `'20'`, `cache: npm` and
-  `cache-dependency-path: apps/ui/package-lock.json`; a step running
-  `python3 -m pip install -e ".[dev]"`; a step running `npm ci --prefix apps/ui`;
-  and a final step running `remedy ci run`;
-- carries a comment directly above the `npm ci` step naming DECISION F083 D6 and
-  stating that without this install the `ui` stage's tsc check skips hosted too;
-- carries a comment naming T2_F083's no-retry rule and why the job caps at 90
-  minutes while the stage budgets sum to 65;
-- contains NO `continue-on-error`, no retry action, no `--stage`, no `pytest`
-  invocation of its own, and no stage `marker_expression` from `CI_STAGES`.
-Python `'3.10'` is not a preference: it is this repository's `requires-python`
-floor in `pyproject.toml` and the version every measurement in
-`.agent/f083_inventory.md` was taken on. `[dev]` is the extra that carries pytest.
+**C3 — the documentation, the new file `docs/system/ci-self-check-v1.md`, the only
+file in this commit.** An ist-doc describing what is BUILT, in this repository's
+existing `docs/system/` voice — see `docs/system/real-test-execution-v1.md` for the
+register. It must contain, in whatever prose you judge clearest:
+- a title and a one-paragraph overview: Remedy's own CI is one stage TABLE
+  (`packages/orchestration/ci_stages.py`), one RUNNER
+  (`packages/orchestration/ci_run.py`), one local command (`remedy ci run`, whose
+  seam is `apps/cli/commands/ci_cmd.py`) and one hosted workflow
+  (`.github/workflows/ci.yml`) that calls that same command exactly once. The table
+  is the single source of truth for what CI means, and the workflow names no stage
+  and selects no tests of its own;
+- the stage list with what each selects and why it exists, taken from `CI_STAGES`;
+- THE RUNTIME BUDGET TABLE, transcribed from the table in this block's "What this
+  round writes down" section — every stage, its measured maximum in seconds, its
+  source section, and its budget in seconds — plus the rule
+  `ceil(2 * measured_max / 300) * 300` and the note that the factor and the
+  rounding are pinned in `tests/orchestration/test_ci_stages.py`. State that the
+  five CI budgets sum to 3900 s (65 minutes) and that the hosted job caps at 90
+  minutes for that reason, and that the five measured maxima sum to 1353.07 s
+  (about 22.6 minutes), which is what a green serial run costs on the machine the
+  samples came from;
+- the exclusions, honestly: `excluded` carries `runs_in_ci=False`, is REPORTED as
+  skipped rather than dropped, and its manual command is
+  `python3 -m pytest -m real_ollama -q  # needs a running Ollama server`. The
+  benchmark stays out of CI on cost grounds;
+- the no-retry rule and why: a flaky test is quarantined only by an explicit
+  marker change in a reviewed diff, because retries hide rot;
+- DECISION F083 D6's consequence: the hosted workflow runs `npm ci --prefix
+  apps/ui` before the CI run, because without it the `ui` stage's TypeScript check
+  skips hosted and the Acceptance line would be met by a skip rather than a
+  compile;
+- a section saying WHAT IS NOT MEASURED, rather than leaving it blank: hosted wall
+  time. Every number in the budget table was taken on a 24-CPU developer machine
+  under pytest 9.0.3; no hosted run has happened yet, and the first one is that
+  measurement.
+Two constraints on the file. Any relative markdown link it contains must resolve
+on disk — check each one. And it must not state a count of roadmap features or of
+anything in `docs/roadmap/`; `tests/docs/` pins several such counts and this
+document has no business repeating them.
 
-**C3 — the guards, the new file `tests/orchestration/test_ci_workflow.py`, the
-only file in this commit.** The module resolves the workflow from its own
-location, reads it as TEXT, and asserts. It MUST NOT use `yaml.safe_load`: PyYAML
-is in neither `dependencies` nor the `dev` extra in `pyproject.toml`, so a
-YAML-parsing guard would raise ImportError on exactly the clean checkout it exists
-to protect. Tests, each with a one-line docstring giving its reason:
-1. the workflow file EXISTS at `.github/workflows/ci.yml`;
-2. the text contains `remedy ci run`;
-3. it selects no tests of its own: for every stage in `CI_STAGES`, imported from
-   `packages.orchestration.ci_stages` and never retyped, that stage's
-   `marker_expression` does not occur in the text, and neither `--stage` nor
-   `pytest` occurs. Assert on the marker EXPRESSION and never on the stage NAME —
-   `ui` is a substring of `apps/ui`, so a name-based assertion is red by
-   construction. Do NOT assert on the token `-m `: the pip step legitimately
-   contains `python3 -m pip`.
-4. the UI toolchain is installed BEFORE the run: `npm ci --prefix apps/ui` occurs
-   exactly once, `remedy ci run` occurs exactly once, and the index of the former
-   is less than the index of the latter. Docstring names DECISION F083 D6.
-5. the workflow never auto-retries: none of `continue-on-error`, `retry`,
-   `max_attempts` occurs — checked over the NON-COMMENT lines only, i.e. lines
-   whose first non-space character is not `#`, so the workflow may explain its own
-   no-retry rule without tripping the guard that enforces it. The docstring says
-   that in one line and cites T2_F083's "retries hide rot".
-The file must be ruff-clean under this repository's own configuration.
+**C4** applies QUICKFIND and SYSTABLE, both to `docs/README.md`, in one commit.
+C3 lands BEFORE C4 deliberately: `tests/docs/` asserts that every relative link in
+`docs/README.md` resolves, so the index may not point at a file that does not yet
+exist.
 
-**C4** applies PLAN. **C5** rewrites `.agent/handoff.md`.
+**C5** applies PLAN. **C6** rewrites `.agent/handoff.md`.
 
 ## Constraints
 
 1. Never work on `main`; never force-push; never amend, rebase or reset. No PR is
    created and none is merged.
 2. `.agent/live_review.md` is APPENDED to once, at C1. No committed text in it is
-   edited. Write no resolution or `Landed:` line of your own — RECORD-R20 resolves
-   nothing and registers nothing, and that is deliberate.
-3. No marker line reaches a target file. Every slice is extracted from the
-   COMMITTED `.agent/authored/f083-r21.md` by its markers.
-4. Exactly two files are created and no existing file outside the paths named
-   above is touched. `packages/`, `apps/` and `scripts/` are not modified at all;
-   gate 6 proves it.
-5. The 26 ruff errors are NOT fixed and the lint ceiling is NOT raised. The new
-   test file must be ruff-clean, so the repo-wide count stays 26.
+   edited. Both the verdict paragraph and the R-0485 registration are
+   reviewer-authored text applied verbatim; write no resolution or `Landed:` line
+   of your own.
+3. No marker line and no `FROM:`/`TO:` label reaches a target file. Every slice is
+   extracted from the COMMITTED `.agent/authored/f083-r22.md` by its markers.
+4. Nothing under `packages/`, `apps/`, `scripts/` or `tests/` is modified at all —
+   this round is `docs/` and `.agent/` only, and gate 8 proves it.
+5. The 26 ruff errors are NOT fixed and the lint ceiling is NOT raised.
 6. Every disposable worktree is removed and pruned before the handback.
-7. If any gate is red, stop at that gate, record its real output verbatim, and
-   hand back. Do not widen the change set to route around it.
+7. If any gate is red, stop at that gate, record its real output verbatim, and hand
+   back. Do not widen the change set to route around it.
 
 ## Done when — every command run from /home/decodeux/Repos/remedy, each its own
 ## unpiped process, each exit code read from that process
 
 1. `pwd` printed FIRST. `git status --porcelain` EMPTY before the first commit and
-   before C5. `git worktree list` ONE line at round start and at handback.
+   before C6. `git worktree list` ONE line at round start and at handback.
    `.agent/STOP` ABSENT at both.
-2. `git rev-parse HEAD` at round start EQUALS 35b80d17.
-3. `.agent/authored/f083-r21.md` and `.agent/last_block.md` byte-equal; report
+2. `git rev-parse HEAD` at round start EQUALS 8336140e.
+3. `.agent/authored/f083-r22.md` and `.agent/last_block.md` byte-equal; report
    their sha256, byte count and line count.
 4. `.agent/live_review.md` at C1: the pre content PREFIXES the post content, the
-   tail byte-EQUALS the RECORD-R20 slice as extracted from the committed authored
-   file by its markers, and `git show --numstat` has deletion column 0.
-5. `.agent/plan.md` byte-equals the PLAN slice; report its sha256, line count
+   tail byte-EQUALS the RECORD-R21 slice as extracted from the committed authored
+   file by its markers, and `git show --numstat` has deletion column 0. Also report
+   the count of `--- BEGIN SLICE` in the file at base and at HEAD; they must be
+   equal, which is the proof no transport marker leaked.
+5. TEMPLATE pair proof at C2: the FROM string occurred exactly 1x in
+   `docs/agents/handback_template.md` before C2, and each TO-ONLY line occurs
+   exactly 1x among the lines C2's diff ADDS. Report both counts.
+6. QUICKFIND and SYSTABLE pair proofs at C4, separately: each FROM occurred exactly
+   1x in `docs/README.md` before C4, and each pair's TO-ONLY line occurs exactly 1x
+   among the lines C4's diff ADDS. Report all four counts.
+7. `.agent/plan.md` byte-equals the PLAN slice; report its sha256, line count
    (under 50), that `## Goal` and `## Next Steps` are present, and its count of
    unchecked-box lines.
-6. `git diff --name-only 35b80d17..HEAD -- packages/ apps/ scripts/` prints
+8. `git diff --name-only 8336140e..HEAD -- packages/ apps/ scripts/ tests/` prints
    NOTHING. Report that it printed nothing.
-7. `python3 -m ruff check .` — report the `Found N errors.` line, ruff's actual
-   final line, and the exit code. Expected 26 errors at exit 1, unchanged. Take
-   this reading AT C3, the last commit that can change it, and report the commit
-   you took it at rather than the word "before".
-8. `python3 -m ruff check tests/orchestration/test_ci_workflow.py` — report its
-   output and exit code. Expected `All checks passed!` at exit 0.
-9. `python3 -m pytest tests/orchestration/test_ci_workflow.py -q` — report the
-   passed count and exit code. All of its tests must pass.
-10. THE PROBE, not a colour, in a disposable worktree at HEAD: move the
-    `npm ci --prefix apps/ui` step to AFTER the `remedy ci run` step in that
-    worktree's copy of the workflow, re-run
-    `python3 -m pytest tests/orchestration/test_ci_workflow.py -q` there, and
-    report the exit code and summary line. Report which tests failed by name. The
-    ordering guard is expected to go RED and the others to stay green; any other
-    outcome is the finding, and a run in which nothing fails means the guard does
-    not guard. Then remove and prune the worktree and report `git worktree list`.
-11. `python3 -m pytest tests/orchestration/test_ci_stage_selection.py -q` — the
-    escape guard, because C3 adds a test file. Report the passed count and exit
-    code.
-12. `python3 -m pytest tests/orchestration/test_ci_budgets.py
+9. `python3 -m ruff check .` — report the `Found N errors.` line and the exit code.
+   Expected 26 errors at exit 1, unchanged. Take this reading AT C6 and report the
+   commit you took it at rather than the word "before"; no commit in this round
+   touches a Python file, so C6 is simply the last commit available.
+10. `python3 -m pytest tests/docs/ -q` — the docs-round gate. Report the passed
+    count and exit code. Take this reading AFTER C4, the commit that changes
+    `docs/README.md`, and say which commit you took it at: a reading taken earlier
+    would not be a reading of the change it exists to gate.
+11. Every relative markdown link in the new `docs/system/ci-self-check-v1.md`
+    resolves on disk. Report the list of link targets you checked and that none was
+    missing; if the file contains no relative link, report that explicitly rather
+    than reporting a vacuous pass.
+12. `python3 -m pytest tests/orchestration/test_ci_workflow.py -q` — the R21 guards,
+    still green. Report the passed count and exit code.
+13. `python3 -m pytest tests/orchestration/test_ci_budgets.py
     tests/orchestration/test_ci_stages.py
     tests/orchestration/test_ci_stage_selection.py tests/cli/test_ci_cmd.py
     tests/orchestration/test_ci_run.py -q` — report the passed count and exit code.
-13. `python3 -m pytest tests/test_test_categories.py
-    tests/test_no_interactive_guard.py -q` — the guard suites the `budgets` stage
-    selects, because C2 adds a repository file they could scan. Report the passed
-    count and exit code.
 14. `python3 -m pytest tests/regression/test_resource_safety.py
     tests/orchestration/test_integrity_gate.py tests/cli/test_golden_path.py -q` —
     the verification set and the canary. Report the passed count and exit code.
-15. The open set, recomputed from `.agent/live_review.md` at HEAD: count every
+15. The budget table in `docs/system/ci-self-check-v1.md` agrees with the code.
+    Import `CI_STAGES` from `packages.orchestration.ci_stages`, and for every stage
+    with `runs_in_ci` True confirm that the budget the document states for it
+    equals that stage's `timeout_sec`. Report each stage name with the two numbers
+    and whether they agree. Read the numbers OUT of the document text; do not
+    retype them from this block.
+16. The open set, recomputed from `.agent/live_review.md` at HEAD: count every
     registration paragraph, every resolution line and every `Landed:` line; report
     registered, resolved, landed, open, the maximum id, the next free id, and
-    whether any id repeats. Expected: 112 registered, 9 resolved, 0 landed, 103
-    open, max R-0484, next free R-0485 — UNCHANGED by this round, because
-    RECORD-R20 registers nothing and resolves nothing.
-16. `git diff --name-only 35b80d17..HEAD` — report the full path list. Nothing
+    whether any id repeats. Expected: 113 registered, 9 resolved, 0 landed, 104
+    open, max R-0485, next free R-0486 — one MORE registration than the round
+    started with, because RECORD-R21 registers R-0485 and resolves nothing.
+17. `git diff --name-only 8336140e..HEAD` — report the full path list. Nothing
     outside the paths this block names may appear.
-17. `git log --numstat` over the round — report the insertion count of every
-    commit. None may exceed 500.
-18. Confirm in one sentence that no `git commit --amend`, `git rebase` or
+18. `git log --numstat` over the round — report the insertion count of every commit.
+    None may exceed 500. Report the total number of commits the round produced.
+19. Confirm in one sentence that no `git commit --amend`, `git rebase` or
     `git reset` was run this round.
 
 ## Handback
@@ -232,21 +265,24 @@ The file must be ruff-clean under this repository's own configuration.
 Rewrite `.agent/handoff.md` per docs/agents/handback_template.md: feature and
 round, branch, every commit SHA, a changed-files table per commit, the real
 measured value of every gate above in an item-status table where each ordered item
-appears exactly once with `done`, `skipped` or `deviated`, the open-findings
-count, declared deviations with their causes, and the next expected action. If the
-file exceeds 60 lines, carry a "Deviations, declared" line naming its line count
-and the mandated content that caused the overage (DECISION D15).
+appears exactly once with `done`, `skipped` or `deviated`, the open-findings count,
+declared deviations with their causes, and the next expected action. Apply the rule
+C2 of this very block adds to that template: if this round departs from the ordered
+commit sequence C0a..C6 in any way — an extra commit, a dropped one, a reordering —
+that departure is named in the `## Deviations & assumptions` section and not only
+in the commit table. If the file exceeds 60 lines, carry a "Deviations, declared"
+line naming its line count and the mandated content that caused the overage
+(DECISION D15).
 
 THE NEXT ACTION THIS HANDOFF NAMES, in this order: (1) read `.agent/STOP` from
 disk, self-drive Phase 1 rule 1, before anything else; (2) run the Open PR Gate,
 `gh pr list --state open --json number,headRefName,baseRefName,isDraft`; (3) then
-T003's second half — the CI documentation under `docs/`, its registration in the
-`docs/README.md` index, and the runtime-budget table from `## Q9` through `## Q12`
-— whose round also records THIS round's verdict, which lives only in the round
-report until it does. Repeat this Fortschritt line verbatim as the handoff's last
-line:
+the integration-gate round per docs/agents/integration_gate.md — the full suite
+exactly once — which is also the round that records THIS round's verdict, which
+lives only in the round report until it does, and that resolves R-0485. Repeat this
+Fortschritt line verbatim as the handoff's last line:
 
-Fortschritt: 85 % (F083 beansprucht · R1 bis R7 und R9 bis R20 PASS, R8 FAIL auf einem roten ruff-Gate und in R9 repariert · T001 und T002 fertig · T003 zur Hälfte: die gehostete Workflow-Datei ruft denselben `remedy ci run` Entrypoint einmal auf, ohne Stage-Matrix und ohne Marker-Ausdruck im YAML, installiert die UI-Toolchain davor — D6 macht das tragend — und wiederholt nichts; Guards pinnen genau diese Eigenschaften · offen: die CI-Doku mit der Laufzeit-Budget-Tabelle aus den gemessenen Daten, danach Integration Gate und Closure) — Rundenzahl gemessen, Prozentwert geschätzt
+Fortschritt: 90 % (F083 beansprucht · R1 bis R7 und R9 bis R21 PASS, R8 FAIL auf einem roten ruff-Gate und in R9 repariert · T001, T002 und T003 fertig: Stage-Tabelle, Stage-Runner, die `remedy ci` CLI-Naht, die gemessenen Stage-Budgets, die gehostete Workflow-Datei als dünner Wrapper mit ihren Guards, und jetzt die Doku samt Laufzeit-Budget-Tabelle · D4 schliesst eine eigene Determinismus-Stage aus, D5 friert die 26 ruff-Fehler ein, D6 macht den lokalen tsc-Compiler tragend · offen sind nur noch das Integration Gate und die Closure · gehostete Laufzeit ist weiterhin NICHT gemessen) — Rundenzahl gemessen, Prozentwert geschätzt
 
 Then `git push -u origin feature/f083-ci-self-check` and report its result, the
 post-push `git status --porcelain` and the open-PR list in the round report.
