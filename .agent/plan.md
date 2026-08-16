@@ -13,28 +13,26 @@ reproduces the hosted result locally on a clean checkout, a seeded failure fails
 the right stage with a readable summary, and runtime stays within a budget.
 
 ## Current Step
-R18 is closed PASS: the `budgets` stage, path-based stage selection, the
-ratcheted lint ceiling, DECISION F083 D4 (no determinism stage) and DECISION
-F083 D5 (the 26 ruff errors frozen, not fixed) are all on disk. R19 recorded
-that verdict, registered R-0483 and R-0484 — both reviewer defects the worker
-caught — and MEASURED the R-0480 question as `## Q13` of the inventory. R19
-rules nothing.
+R19 is closed PASS and R20 recorded it. R20 corrected R-0480's cause from the
+`## Q13` measurement — the variable is a missing `apps/ui/node_modules`, not a
+cold npx cache — and ruled DECISION F083 D6: the tsc check resolves the LOCAL
+compiler or skips with an install hint, instead of silently grading a cached
+`tsc@2.0.4` stub. R-0480, R-0483 and R-0484 are resolved. T001 and T002 are
+complete.
 
 ## Next Steps
-1. R20 rules on R-0480 from the `## Q13` data. If the cold-cache cause is
-   confirmed, the options are warming the toolchain inside the stage, moving
-   `test_typescript_compiles` behind the "UI toolchain absent locally" edge case
-   the feature file already documents, or amending Acceptance. If Q13 shows the
-   cause is something else, or is not reproducible, R-0480 is amended to say so
-   before any fix is ordered. SPLIT round — the fix is production code.
-2. T003 then remains: hosted workflow files calling the same entrypoint, the
-   docs, and the runtime-budget documentation from the measured data.
+1. T003, the last slice: hosted workflow files that call the same `remedy ci`
+   entrypoint, the docs, and the runtime-budget documentation from the measured
+   data in `## Q9` through `## Q12`. The workflow MUST run
+   `npm ci --prefix apps/ui` before the `ui` stage — DECISION F083 D6 makes that
+   step load-bearing, because without it the tsc check skips hosted too.
+2. Then the integration-gate round, then closure per
+   docs/roadmap/STATUS_closure_protocol.md.
 
 ## Risks
-- R-0480's cause is a HYPOTHESIS, not a measurement. The npx cache is a per-user
-  directory, so a fresh `git worktree` alone should not produce a cold one.
-  Ordering a fix before Q13 answers this would spend a round proving the
-  reviewer wrong.
+- If T003's workflow omits the `npm ci` step, the `ui` stage goes GREEN hosted by
+  skipping, and the Acceptance line is met by a skip rather than a compile. That
+  is the same false green D6 removed, wearing a different hat.
 - The lint ceiling is a RATCHET. Raising it to make a round green converts the
   one honest lint signal in this repository into decoration.
 - R-0482 is a live `NameError` on a guard's refusal path, frozen under that
