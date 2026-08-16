@@ -286,4 +286,92 @@ Gate: R8 — PASS, and the round that finally makes the guard bound its own runt
 
 - R-0500 — Low, A BLOCK ORDERED "PRECEDED BY EXACTLY ONE BLANK LINE" FOR AN APPEND WHOSE TARGET WAS A TOP-LEVEL PYTHON DEFINITION, WHICH THE LANGUAGE SEPARATES BY TWO. Raised by the reviewer against its own R8 block at the R8 gate. Change item 5 of that block ordered the NEW-TEST slice appended "preceded by exactly one blank line", and the worker applied it exactly, so `tests/orchestration/test_exec_guard.py` now separates its last test from the one above by ONE blank line while all its other tests are separated by TWO. The worker was right not to adjust the bytes — constraint 2 forbids it — and right to declare it, which it did as deviation 5. The wording came from the `.agent/live_review.md` appends in the same block, where one blank line IS the convention, and was reused for a Python file without re-reading what the target file's own layout demands; that reuse is the defect. Lint does not catch it and cannot be relied on to: `ruff check` was exit 0 both before and after, because pycodestyle's blank-line rules E301-E306 are preview-only in stable ruff and the repository selects `["E", "F", "W", "I", "UP"]` without preview, so those rules are never EVALUATED rather than merely unreported — the same shape as R-0463, where `--isolated` made a probe blind rather than wrong. The cost is one line of churn and this finding; nothing was mismeasured and no gate passed falsely, which is why it is Low. Counter-measure, binding on the reviewer from this round on: a block that orders an APPEND into a source file states the separator the TARGET LANGUAGE requires and never a generic blank-line count carried over from a prose or state file — and where the separator itself is the thing being fixed, the gate MEASURES it directly, as G10 of the block registering this finding does, rather than resting on a linter that does not evaluate the rule. Promoting the rule into the docs/agents/planner_reviewer_prompt.md §3 pre-emission checklist is a `docs/agents/**` edit outside this feature's change set and is NOT claimed here; it is named for the paydown branch that already carries R-0403, R-0448, R-0482, R-0487, R-0490, R-0493, R-0494, R-0497 and R-0498. OPEN.
 
-Landed: R-0500 — the new test is now separated from the one above it by two blank lines, matching every other test in the file; the edit adds exactly one newline byte and changes no code; `tests/orchestration/test_exec_guard.py`, commit C2 of R9.
+Done: R-0500 — Resolved at R10. The new test is separated from the one above it by
+two blank lines, matching every other top-level definition in
+`tests/orchestration/test_exec_guard.py`; the fix was commit 76f53036 of R9 and
+added exactly one newline byte and no code. The reviewer re-measured the property
+at 02043452 rather than reading the claim: the separator list over the whole file
+is `[3, 3, 3, 3, 3, 3, 3]` at HEAD against `[3, 3, 3, 3, 3, 3, 2]` at b868401f, and
+the file grew from 8134 to 8135 bytes, a difference of exactly one. The
+counter-measure the finding names is carried into R11, whose block states the
+separator PYTHON requires for the tests it appends, distinguishes it from the
+one-blank-line convention that governs this prose file, and measures it directly
+instead of resting on a linter that never evaluates the rule. Promoting the
+counter-measure into the docs/agents/planner_reviewer_prompt.md §3 checklist
+remains a `docs/agents/**` edit outside this feature's change set and is NOT
+claimed here; it stays routed to the paydown branch, whose backlog this round's
+DECISION D2 calls overdue.
+
+Gate: R9 — PASS, the round that recorded the R8 verdict and fixed the separator the
+R8 block got wrong. All fifteen ordered gates were re-run by the reviewer from the
+repository root at 02043452 and every one reproduces the handback's reading; the
+verdict rests on those runs and not on any earlier session's claim about them, a
+distinction that matters because R9's PASS existed nowhere in this repository
+until this line. TRANSPORT: the committed `.agent/authored/f085-r9.md` and the
+committed `.agent/last_block.md` are byte-EQUAL at sha256
+e8011bbab7c5e3cd1817c1566e1112fde16ec47975b65e5cb05a358ff6d6f42d, 23297 B, 263
+lines — computed over the COMMITTED files, the digest fallback of §4.9, because
+this session did not author that block and holds no scratchpad original of it.
+`.agent/plan.md` byte-equals its slice at sha256
+83b4a6777d941144520af17a34a3731a16ab650bbc962822f1f17d356971eedb, 2217 B, 39
+lines, under the 50-line cap, carrying `## Goal`, `## Next Steps` and an F-id. The
+two `.agent/live_review.md` commits are pure appends as ordered: the pre-C1 blob is
+a byte-exact PREFIX of the post-C1 file with a 7530-byte remainder, the pre-C3 blob
+is byte-identical to the post-C1 blob and is a PREFIX of the file at HEAD with a
+250-byte remainder, and both numstats carry a deletion column of 0. The open set
+moved exactly as ordered: 114 registered / 1 resolved at b868401f against 115 / 1
+at HEAD, registered delta exactly {R-0500} with nothing lost, resolved UNCHANGED at
+{R-0496} because R9 resolved nothing, 0 duplicate ids, 0 resolutions naming an
+unregistered id, and exactly one `^Landed:` record, naming R-0500 — which is what
+an unreviewed fix is supposed to look like, and which the commit carrying this
+record retires. The substring `Steps` survives 25 times. THE FIX ITSELF, read as a
+diff and not as a summary: commit 76f53036 adds ONE blank line before
+`@pytest.mark.subprocess` on the file's last test and changes no code, numstat
+`1 0`, 8134 B to 8135 B. THE PROPERTY IS MEASURED, NOT ASSERTED: the separator list
+runs `[3, 3, 3, 3, 3, 3, 2]` at b868401f and `[3, 3, 3, 3, 3, 3, 3]` at HEAD, so
+every decorated test now carries the two blank lines Python separates top-level
+definitions by, and the trailing 2 that was the defect is gone.
+`packages/orchestration/exec_guard.py` is UNCHANGED across the round at sha256
+7dde71c84992af985b28c72d9b460280238721dae474938806f28f9b421b3b67 on both sides, so
+R9 added nothing to the module R8 fixed and no containment claim follows from it.
+Ten consecutive runs of `python3 -m pytest tests/orchestration/test_exec_guard.py
+-q` at the reviewer's own hand are ten exits of 0 and ten `7 passed` summaries
+between 7.60s and 7.66s; ruff is exit 0 under the repository's own configuration
+and says nothing about the separator, exactly as the block declared; the canary is
+`42 passed in 20.49s`, exit 0; and the eight-file structural sweep is `350 passed,
+6 skipped`, exit 0, three times out of three, so R-0499 gained no new observation.
+The change set is exactly the six ordered paths with nothing under `docs/`, `apps/`
+or `scripts/`. Per-commit insertions are C0a 263, C0b 124, C1 4, C2 1, C3 2 and C4
+6, none over 500, and the history is seven single-parent commits 831a2b0c←b868401f
+through 02043452 with no amend, rebase, reset or force-push. The values R9 routed
+nowhere are recorded HERE, measured by the reviewer at 02043452 (R-0494): the
+handback commit 02043452 inserted 43 lines and deleted 47, `.agent/handoff.md`
+measures 100 lines against its own DECISION D15 declaration of 100 so its
+self-measurement is honest, `git status --porcelain` is EMPTY, `git worktree list`
+is one line, and origin carries 02043452 with no PR open. The round's five declared
+deviations were all checked and all are accurate. LAST_REVIEWED_SHA advances to
+02043452.
+
+- R-0501 — Low, A HANDBACK NAMED THE NEXT SESSION'S FIRST ACTION WITHOUT NAMING
+PHASE 1 RULE 1 BEFORE RULE 2. Raised by the reviewer at the R9 gate against the R9
+block, which authored that section. docs/agents/self_drive_protocol.md Phase 2 ends
+with a standing requirement on this exact text: "every handoff that names the next
+session's first action names Phase 1 rule 1 before rule 2", rule 1 being the
+re-read of `.agent/STOP` from disk and rule 2 the Open PR Gate. The R9 handoff's
+"Next" section opens with "R10 starts T002a" — a next-session first action — and
+among its remaining bullets names the absence of an open PR, which is rule-2
+territory, while rule 1 appears nowhere in the file. The requirement exists because
+Phase 0 is one-shot while G6 binds at any point, so a sentinel appearing
+mid-session stays invisible until an unrelated gate trips over it (R-0347); the
+belt-and-braces reminder is what is missing. Severity is Low precisely because
+Phase 0 does probe `.agent/STOP` at session start and did so here, finding it
+absent, so nothing was actually missed. This is the same family as R-0500 and the
+second instance in two rounds: in both, the block author reused a section's
+established wording without re-reading the rule that governs that section.
+Counter-measure, binding on the reviewer from this round on and demonstrated by the
+block that registers this finding: a block ordering a handback's "Next" section
+states the rule ORDER that section must carry rather than describing its content,
+as change item 5 does here. The recurrence is why this round's DECISION D2 calls
+the paydown branch overdue: a counter-measure that cannot be written into
+docs/agents/planner_reviewer_prompt.md §3 while a feature branch is open binds only
+the block that states it, and this family has now cost two rounds. OPEN.
