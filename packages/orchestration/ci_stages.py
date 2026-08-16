@@ -37,6 +37,8 @@ class CiStage:
     marker_expression: str
     runs_in_ci: bool
     manual_command: str
+    #: Wall-clock budget for this stage in seconds; 0 for a stage CI never runs.
+    timeout_sec: int
 
 
 #: The stage set DECISION F083 D2.1 ruled, in the order CI runs them.
@@ -47,6 +49,7 @@ CI_STAGES: tuple[CiStage, ...] = (
         marker_expression="not integration and not subprocess and not real_ollama and not ui_contract and not smoke and not slow",
         runs_in_ci=True,
         manual_command="",
+        timeout_sec=900,
     ),
     CiStage(
         name="standard",
@@ -54,6 +57,7 @@ CI_STAGES: tuple[CiStage, ...] = (
         marker_expression="(integration or subprocess) and not real_ollama",
         runs_in_ci=True,
         manual_command="",
+        timeout_sec=2100,
     ),
     CiStage(
         name="ui",
@@ -61,6 +65,7 @@ CI_STAGES: tuple[CiStage, ...] = (
         marker_expression="ui_contract and not real_ollama",
         runs_in_ci=True,
         manual_command="",
+        timeout_sec=300,
     ),
     CiStage(
         name="smoke",
@@ -68,6 +73,7 @@ CI_STAGES: tuple[CiStage, ...] = (
         marker_expression="smoke and not real_ollama",
         runs_in_ci=True,
         manual_command="",
+        timeout_sec=300,
     ),
     CiStage(
         name="excluded",
@@ -75,6 +81,7 @@ CI_STAGES: tuple[CiStage, ...] = (
         marker_expression="real_ollama",
         runs_in_ci=False,
         manual_command="python3 -m pytest -m real_ollama -q  # needs a running Ollama server",
+        timeout_sec=0,
     ),
 )
 

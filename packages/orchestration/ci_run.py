@@ -19,6 +19,7 @@ with the command that prints it and is not here.
 """
 from __future__ import annotations
 
+import os
 import subprocess
 import sys
 import time
@@ -30,6 +31,9 @@ from packages.orchestration.ci_stages import CiStage, pytest_argv_for_stage
 
 #: Exit code `scripts/remedy_pytest_runner.py` returns when it kills a timeout.
 PYTEST_TIMEOUT_EXIT_CODE = 124
+
+#: The env var `scripts/remedy_pytest_runner.py` reads its budget from.
+PYTEST_TIMEOUT_ENV_VAR = "REMEDY_PYTEST_TIMEOUT_SEC"
 
 #: The runner every stage goes through, relative to the repository root.
 PYTEST_RUNNER_SCRIPT = "scripts/remedy_pytest_runner.py"
@@ -56,21 +60,30 @@ def stage_command(stage: CiStage, repo_root: Path) -> list[str]:
     ]
 
 
-def _run_via_subprocess(command: list[str], cwd: Path) -> int:
-    """Run `command` ANCHORED at `cwd`, never at wherever the caller stands.
+def _run_via_subprocess(command: list[str], cwd: Path, timeout_sec: int) -> int:
+    """Run `command` ANCHORED at `cwd` and BUDGETED at `timeout_sec` seconds.
 
     A stage selects by MARKER and carries no path, and this repository sets no
     `testpaths`, so pytest collects from the working directory — without this
     anchor the caller's cwd decides what a stage means (finding R-0456).
+
+    The budget travels as an environment variable because that is the runner's
+    only input for it, and it is set on THIS call rather than left to the ambient
+    environment: the runner's own default is 600 s, and `standard` was killed at
+    it three times out of three (`.agent/f083_inventory.md` `## Q10`) while
+    needing 935.14 s at its slowest uncapped sample (`## Q11`). Budgeting per
+    stage leaves every OTHER caller of the runner on the 600-second default,
+    which raising that default would not.
     """
-    return subprocess.run(command, check=False, cwd=cwd).returncode
+    env = {**os.environ, PYTEST_TIMEOUT_ENV_VAR: str(timeout_sec)}
+    return subprocess.run(command, check=False, cwd=cwd, env=env).returncode
 
 
 def run_ci_stage(
     stage: CiStage,
     repo_root: Path,
     *,
-    run_command: Callable[[list[str], Path], int] = _run_via_subprocess,
+    run_command: Callable[[list[str], Path, int], int] = _run_via_subprocess,
     monotonic: Callable[[], float] = time.monotonic,
 ) -> StageResult:
     """Run one stage, or record why it was not run. Never raises on a red stage."""
@@ -83,7 +96,7 @@ def run_ci_stage(
             note=f"not run by CI — run it manually with: {stage.manual_command}",
         )
     started = monotonic()
-    exit_code = run_command(stage_command(stage, repo_root), repo_root)
+    exit_code = run_command(stage_command(stage, repo_root), repo_root, stage.timeout_sec)
     elapsed = monotonic() - started
     note = "timed out" if exit_code == PYTEST_TIMEOUT_EXIT_CODE else ""
     return StageResult(

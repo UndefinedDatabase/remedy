@@ -8,6 +8,7 @@ test, which is the carried finding R-0205 this feature owns.
 """
 from __future__ import annotations
 
+import math
 import re
 from pathlib import Path
 
@@ -65,3 +66,39 @@ def test_unknown_stage_name_raises_naming_every_known_stage():
         ci_stage_by_name("determinism")
     for name in ci_stage_names():
         assert name in str(excinfo.value)
+
+
+#: The slowest wall second each stage was MEASURED at, three samples per stage:
+#: `.agent/f083_inventory.md` `## Q10` for `fast`, `ui` and `smoke`, and `## Q11`
+#: for `standard`, whose three uncapped samples span 916.36 s to 935.14 s.
+MEASURED_MAX_WALL_S = {"fast": 397.45, "standard": 935.14, "ui": 8.09, "smoke": 11.07}
+
+#: The budget rule: twice the measured maximum, rounded UP to a whole multiple of
+#: this many seconds. Doubling absorbs a slow machine; the rounding keeps the
+#: table readable. Changing a budget means re-measuring, not re-guessing.
+BUDGET_HEADROOM_FACTOR = 2
+BUDGET_ROUNDING_S = 300
+
+
+def test_every_stage_ci_runs_carries_a_budget_and_excluded_carries_none():
+    for stage in CI_STAGES:
+        if stage.runs_in_ci:
+            assert stage.timeout_sec > 0, stage.name
+        else:
+            assert stage.timeout_sec == 0, stage.name
+
+
+def test_each_budget_is_the_documented_multiple_of_the_measured_maximum():
+    for stage in CI_STAGES:
+        if not stage.runs_in_ci:
+            continue
+        measured = MEASURED_MAX_WALL_S[stage.name]
+        expected = math.ceil(
+            BUDGET_HEADROOM_FACTOR * measured / BUDGET_ROUNDING_S
+        ) * BUDGET_ROUNDING_S
+        assert stage.timeout_sec == expected, stage.name
+
+
+def test_the_standard_budget_clears_the_runners_default_that_killed_it():
+    assert ci_stage_by_name("standard").timeout_sec > 600
+    assert ci_stage_by_name("standard").timeout_sec > MEASURED_MAX_WALL_S["standard"]
