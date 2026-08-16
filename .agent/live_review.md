@@ -879,3 +879,61 @@ the sweep over EVERY heading in a block rather than the one that changed, which 
 the finding named. Item 17 lands in the same commit and closes the third counter-measure this round
 was held open for — the arity rule R-0509's resolution said would be promoted here — so no standing
 rule of that family is left living only in reviewer habit.
+
+Gate: R18 — PASS, the round that put three standing rules on disk. All nine ordered gates were re-run
+by the reviewer over 88dbcefa..646092ce and every one reproduces the handback's reading. TRANSPORT
+is proven twice over. Disk-to-disk: the committed `.agent/authored/f085-r19.md` predecessor
+`.agent/authored/f085-r18.md`, the committed `.agent/last_block.md` and both working copies are
+byte-EQUAL at sha256 7187303bf16c3414278b5cbcf7efe2ddb082e3e4c4405e31fc65247ca9ccbac8, 20616 B, 281
+lines, with 14 marker lines and 7 slice pairs intact. And by digest fallback against the reviewer's
+OWN pre-emission measurements, which is what makes the worker's declared split write a non-event:
+the block was measured in four regions before it was delegated, and the saved file's four
+corresponding regions hash to 989020a1, 88eed983, 5fe3c39b and 4fe2a9ff exactly as measured, with
+the fifth region at its measured 71 lines and the file at its measured 281. A block that reaches
+disk byte-identical to the bytes the reviewer measured has not been damaged by the number of write
+calls it took. BOTH APPEND COMMITS HOLD THEIR SHAPE: for C1 the pre-commit blob (291333 B) is a
+byte-exact PREFIX of the post-commit file (295507 B) and the remainder is byte-equal to blank plus
+RECORD1; for C3 the pre-commit blob (295507 B) is a prefix of (297276 B) and the remainder is blank
+plus DONE1 plus blank plus DONE2. Each occurs exactly ONCE at HEAD, no marker line survives, HEAD
+equals the C3 blob. THE ARITHMETIC: 125 / 6 / 0 at base and again after C1 — a record adds no id —
+against 125 / 8 / 0 at HEAD, the open set moving 119 to 117, registered difference EMPTY, resolved
+difference exactly R-0508 and R-0510, no duplicate and no resolution naming an unregistered id; next
+free R-0511. THE PROMOTION LANDED AND ITS OWN RULE HOLDS ON IT: PROMF occurs exactly once at HEAD,
+so the anchor survived its append; each of the three item titles occurs exactly once among C2's 34
+added lines; and the checklist region parses to a contiguous 1 through 17 with no repeat and no gap,
+which is item 17's arity rule holding on the very commit that writes item 17. THE PLAN PAIR: PLANF
+0x and PLANT 1x, `.agent/plan.md` at sha256
+65f9287c4ef71975c8b956a9df25793cd2e5584fb528cc816a374c39d5ca0253, 2344 B, 40 lines under its cap,
+`## Goal` and `## Risks` byte-identical to base, `## Next Steps` parsing to 1, 2, 3. Doc readers are
+305 passed 1 skipped, the state readers 157 passed and the canary 42 passed, all rc 0 and all re-run
+by the reviewer rather than accepted from the report. The change set is exactly the declared paths
+with 0 outside; insertions are 281, 198, 44, 34, 21 and 7 before the handback commit, which is
+itself 30, none over 500; seven single-parent commits, twenty reflog entries all `commit:`-prefixed,
+no amend, rebase, reset or force-push; the tree is clean and `git worktree list` is ONE line. The
+handback measures 78 lines against its own declaration of 78, inside the template's 100-line
+allowance for a table of this many commits, and its two declared deviations are both accurate. THE
+WORKER'S REFUSAL WAS CORRECT AND IS RECORDED AS SUCH: it found the stale check count at line 174,
+declined to fix it because the change set did not include it, and reported it instead of widening
+scope. That is the behaviour this loop is built to produce, and the defect it surfaced belongs to
+the reviewer's block, not to its execution — it is registered below as R-0511.
+LAST_REVIEWED_SHA advances to 646092ce.
+
+- R-0511 — Low, A HEADING KEPT COUNTING ITS OWN CONTENTS IN THE PARAGRAPH THAT INTRODUCES THE RULE
+AGAINST IT. Raised by the R18 worker in its handback and confirmed by the reviewer on disk.
+`docs/agents/planner_reviewer_prompt.md`:174 reads "Run all twelve checks mechanically" over a list
+that already held FOURTEEN items before R18 and holds SEVENTEEN after it. The count was therefore
+stale by two BEFORE the promotion round and by five after it, so R18 widened a defect it did not
+create — but it widened it while adding the very item, 16, that forbids a heading from counting the
+contents beneath it, which is what makes this worth an id rather than a silent fix. The reviewer's
+own pre-emission pass ran item 16 against the BLOCK's headings and never ran it against the TARGET
+file's, which is the same class boundary items 2, 6 and 7 exist to keep separate: a rule that reads
+the block, a rule that reads the file the block writes into, and a rule that reads the tests
+guarding it are three different passes. Item 16 as written does not say which of those it belongs
+to, and the answer is BOTH — the block's headings and the headings of any section the block edits.
+No gate was contradicted and nothing was mis-executed; the R18 worker's refusal to widen its change
+set was correct and is recorded in that round's gate. Counter-measure, applied by this block: C2
+removes the numeral entirely rather than correcting it to seventeen, because a corrected count is
+the same defect with a longer fuse — this is the R-0486 correction-carries-the-old-fact shape, and
+the only stable fix for a self-count is to stop counting. The reviewer additionally swept the whole
+file for the class rather than the reported line, and reports the sweep's predicate and its four
+matches in this round's block. OPEN.
