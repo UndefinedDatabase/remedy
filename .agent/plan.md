@@ -18,15 +18,16 @@ reaches a child, and the limitations document exists and is linked from the
 README.
 
 ## Current Step
-R12, this round: record the R11 PASS, resolve R-0501 and register R-0502 and
-R-0503 — two gate defects the reviewer wrote into its own R11 block. Pure record
-round: no code, no tests, no behaviour, `.agent/` state only.
+R13, this round: record the R12 PASS, register R-0504, and migrate the FIRST of
+T002a's five builder sites — `managed_builder_execution.py`:1160 — onto
+`run_guarded` under a stage-1 builder policy, with behaviour-equality tests.
+`exec_guard` gains its first caller in the running system.
 
 ## Next Steps
-1. T002a's migration half: the five builder sites of amendment F085 D1 —
-   `managed_builder_execution.py`:1160, `pingpong_provider.py`:952, 1075, 1208
-   and `stream_evidence.py`:595 — move to `run_guarded` with a builder policy
-   and behaviour-equality goldens.
+1. T002a's four REMAINING builder sites of amendment F085 D1 —
+   `pingpong_provider.py`:952, 1075, 1208 and `stream_evidence.py`:595 — move to
+   `run_guarded` the same way `managed_builder_execution.py` did at R13, each with
+   its own behaviour-equality goldens.
 2. `_StreamPump` gains a lock and a `snapshot()` so PARTIAL output survives a
    bounded drain. It still returns `b""` for a stream whose pump never reached
    EOF, which `streams_complete` reports honestly but which loses bytes.
