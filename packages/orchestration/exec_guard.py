@@ -7,13 +7,16 @@ classified `ExecGuardResult`.
 Deliberate absences, written here because text search cannot find code that does
 not exist:
 
-- NO CALLER. Nothing in this repository imports this module yet. Migrating the
-  in-scope call sites is T002, so no subprocess in the running system is
-  limited, supervised or sandboxed by anything written here.
+- PARTIAL COVERAGE, and the gap is the point. Since F085 T002a the managed
+  builder seam and the claude CLI provider run through this module; every other
+  subprocess in the repository — the test, DoD, runtime, git and packaging
+  classes — still spawns unsupervised. No count is written here on purpose: it
+  changes with every migration round, and the caller grep is the honest answer.
 - No environment scrubbing UNLESS the policy asks for it: with
   `env_allowlist=None` the policy's `env` reaches the child UNCHANGED, which every
-  T001 test relies on. CHOOSING an allowlist per command class is T002a's
-  migration half and is not done here.
+  T001 test relies on. Callers CHOOSE the allowlist per command class — the
+  builder policy pins one, the CLI-provider policy deliberately does not — so what
+  a child inherits is that caller's decision, never this module's default.
 - No network posture and no filesystem fence; both are T003.
 
 Why `address_space_bytes` is ENFORCED and deliberately NOT classified: a child

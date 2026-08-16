@@ -7,9 +7,11 @@ environment, hard timeout, output byte cap, and mandatory sandbox intake.
 
   Workers execute. Remedy governs. Subprocess ONLY through bounded command templates.
 
-This module is the ONLY place in the codebase that may invoke subprocess for builder execution.
-It enforces:
-  - shell=False ALWAYS (argv list only, never a shell string).
+This module is the ONLY place in the codebase that may LAUNCH a builder execution. Since F085
+T002a it does not spawn the child itself: it delegates to `exec_guard.run_guarded`, which owns the
+spawn and its limits, while this module owns the policy. It enforces:
+  - No shell, ever (argv list only, never a shell string) — asserted by AST against the guard's
+    single Popen, because a docstring sentence is not a test (R-0504).
   - Sanitized env: only allowlisted keys passed to subprocess (PATH, HOME, LANG, TERM; NO secrets/
     tokens/API keys/proxy vars).
   - Hard timeout: max 600s (killed on timeout).
@@ -1024,8 +1026,9 @@ def run_managed_builder(
 ) -> ManagedExecutionResult:
     """Run a managed builder execution via bounded subprocess.
 
-    This is the ONLY function that executes a subprocess for builder adapters.
-    shell=False ALWAYS. Sanitized env. Hard timeout. Output byte cap.
+    This is the ONLY function that launches a builder execution for builder adapters.
+    Since F085 T002a the spawn itself lives in `exec_guard.run_guarded`; this function
+    owns the policy. No shell, ever. Sanitized env. Hard timeout. Output byte cap.
     Output is UNTRUSTED and stored privately; public surfaces get redacted refs only.
 
     Returns a ManagedExecutionResult with status, exit code, duration, and output ref.
