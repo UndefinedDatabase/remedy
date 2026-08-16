@@ -1124,13 +1124,7 @@ class ClaudeCliProvider:
         )
         start = time.monotonic()
         try:
-            proc = subprocess.run(
-                argv,
-                capture_output=True,
-                text=True,
-                timeout=timeout_sec,
-                cwd=self._cwd,
-            )
+            proc = _guarded_cli_run(argv, timeout_sec=timeout_sec, cwd=self._cwd)
         except subprocess.TimeoutExpired:
             raise RuntimeError(f"claude CLI timed out after {timeout_sec}s")
         elapsed_ms = int((time.monotonic() - start) * 1000)
@@ -1257,9 +1251,7 @@ class ClaudeCliProvider:
         )
         start = time.monotonic()
         try:
-            proc = subprocess.run(
-                argv, capture_output=True, text=True, timeout=timeout_sec, cwd=self._cwd,
-            )
+            proc = _guarded_cli_run(argv, timeout_sec=timeout_sec, cwd=self._cwd)
         except subprocess.TimeoutExpired:
             raise RuntimeError(f"claude CLI timed out after {timeout_sec}s")
         dur = int((time.monotonic() - start) * 1000)

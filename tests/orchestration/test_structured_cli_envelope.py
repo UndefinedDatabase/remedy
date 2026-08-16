@@ -29,7 +29,7 @@ def _review(stdout: str, *, rc: int = 0, stderr: str = ""):
     prov._cli_version = "1.0.0 (test)"
     prov._cli_version_resolved = True
     proc = MagicMock(returncode=rc, stdout=stdout, stderr=stderr)
-    with patch("packages.orchestration.pingpong_provider.subprocess.run", return_value=proc):
+    with patch("packages.orchestration.pingpong_provider._guarded_cli_run", return_value=proc):
         return prov.review("REVIEW BASE")
 
 

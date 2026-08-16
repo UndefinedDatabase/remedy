@@ -44,6 +44,46 @@ class TestGuardedVersionProbe:
             pp._guarded_cli_run([prov._claude_path], timeout_sec=1, cwd=prov._cwd)
 
 
+_ENVELOPE = """
+    import json, sys
+    sys.stdout.write(json.dumps({"type": "result", "subtype": "success",
+                                 "is_error": False, "result": "HELLO"}))
+"""
+
+
+class TestGuardedProviderCalls:
+    """The two paths that reach the CLI through `_call`; the envelope suite mocks
+    `_guarded_cli_run`, so these are the only cases that spawn a real child."""
+
+    def test_a_well_behaved_call_returns_its_result_text(self, tmp_path):
+        text, dur, tokens, actuals, _ = _provider(tmp_path, _ENVELOPE)._call(
+            "PROMPT", timeout_sec=30, max_output_chars=1000)
+        assert text == "HELLO" and dur >= 0 and tokens == 0 and actuals is None
+
+    def test_a_nonzero_exit_raises_with_the_code_and_the_stderr_tail(self, tmp_path):
+        prov = _provider(tmp_path, 'import sys; sys.stderr.write("boom"); sys.exit(7)\n')
+        with pytest.raises(RuntimeError) as err:
+            prov._call("PROMPT", timeout_sec=30, max_output_chars=1000)
+        assert "exited 7" in str(err.value) and "boom" in str(err.value)
+
+    def test_a_wall_trip_reaches_the_timeout_message_this_seam_already_raised(self, tmp_path):
+        prov = _provider(tmp_path, "import time; time.sleep(30)\n")
+        with pytest.raises(RuntimeError) as err:
+            prov._call("PROMPT", timeout_sec=1, max_output_chars=1000)
+        assert "timed out after 1s" in str(err.value)
+
+    def test_a_signal_death_keeps_the_negative_returncode_the_message_formats(self, tmp_path):
+        prov = _provider(tmp_path, "import os, signal; os.kill(os.getpid(), signal.SIGKILL)\n")
+        with pytest.raises(RuntimeError) as err:
+            prov._call("PROMPT", timeout_sec=30, max_output_chars=1000)
+        assert "exited -9" in str(err.value)
+
+    def test_the_caller_side_char_cap_still_truncates(self, tmp_path):
+        prov = _provider(tmp_path, _ENVELOPE.replace('"HELLO"', '"X" * 50'))
+        text, _, _, _, _ = prov._call("PROMPT", timeout_sec=30, max_output_chars=10)
+        assert text == "X" * 10 + "\n[OUTPUT TRUNCATED]"
+
+
 class TestStageOnePolicyAndShape:
     def test_the_policy_enforces_what_it_can_and_leaves_the_rest_none(self):
         policy = pp._cli_exec_policy(12, "/somewhere")
@@ -62,6 +102,8 @@ class TestStageOnePolicyAndShape:
                     and isinstance(n.func.value, ast.Name) and n.func.value.id == "subprocess"]
 
         assert spawns(ClaudeCliProvider._resolve_version) == []
+        assert spawns(ClaudeCliProvider._call) == []
+        assert spawns(ClaudeCliProvider._call_reviewer_structured) == []
         assert spawns(pp._guarded_cli_run) == []
 
     def test_a_signal_death_is_republished_as_the_negative_returncode(self, tmp_path):
