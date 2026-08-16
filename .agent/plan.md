@@ -1,39 +1,40 @@
-# Plan — amend0816 CI hosted green
+# Plan — F085 Sandbox hardening (stage 1)
 
-Branch: feature/amend0816-ci-hosted-green, cut from origin/main after the F083
-closure PR #202 merged. Operator amendment "amend0816-ci-hosted-green".
+Branch: feature/f085-sandbox-hardening, cut from origin/main at a5a70621 after
+the F083 closure PR #202 and the amendment PR #203 merged.
+`.agent/live_review.md` is the source of truth for the open set, for the next
+free finding id and for the round map; this file repeats none of them.
 
 ## Goal
-Deliver the half of F083's Acceptance that was never checked: the hosted CI run
-must be GREEN with the same stage results as the local one. The hosted `fast`
-stage fails 10 tests because they mock the LLM path only halfway —
-`packages/orchestration/intake.py::make_structured_call_fn` probes a LIVE Ollama
-server, so on the operator machine those tests took the LLM branch and on a
-runner they take the deterministic-skeleton branch. DONE when the workflow run
-triggered by this branch's PR is green and both local `remedy ci run` invocations
-(with and without Ollama reach) report identical stage results.
+Builder-spawned commands stop relying on prompted discipline: every builder,
+test and DoD subprocess gets POSIX resource limits, a per-command wall timeout,
+output-size caps, a cwd pinned inside the worktree, an environment allowlist and
+a default-deny network posture — with a document that says EXACTLY what stage 1
+does and does not prevent. DONE when the limits provably kill a runaway fixture
+(cpu, memory, oversized output, endless sleep) and classify it `resource_limit`
+with the tripped limit named, an off-scope write attempt fails, well-behaved
+commands behave identically under the guard, a secret-like parent env var never
+reaches a child, and the limitations document exists and is linked from the
+README.
 
 ## Current Step
-Measuring the reds in an Ollama-less throwaway venv (`.remedy-wt/amend0816/`),
-then fixing each red by its class: (a) incomplete mock -> complete it,
-(b) genuine live-provider test -> `real_ollama` marker, (c) other environment
-state -> make hermetic. No test is deleted, no assertion weakened, no ceiling
-raised.
+R1, this round: the Open PR Gate, the branch, the STATUS claim `[ ]` → `[~]`,
+the live-review reset carrying the F083 open set forward, and the registration
+of R-0490. No production code and no test content.
 
 ## Next Steps
-1. Add the autouse `tests/conftest.py` fixture that makes a live Ollama
-   connection attempt fail immediately for every test without the `real_ollama`
-   marker. That fixture is the durable repair; without it the same drift returns
-   with the next test.
-2. Run the full battery: ruff on touched files, `remedy ci run` in both
-   environments, `tests/docs/` and `tests/cli/test_golden_path.py`.
-3. Dated operator paragraph in `docs/roadmap/features/T2_F083.md` under
-   "How it fits". STATUS.md and the README counters stay untouched.
-4. Push, open the PR, `gh run watch` the hosted run to completion, repair any
-   remaining reds, merge only on hosted green, restore ORIG_BRANCH.
+1. R2 — the subprocess-seam inventory in `.agent/f085_inventory.md`: every
+   `subprocess.*` call site in `packages/` and `apps/` with its enclosing
+   symbol, command class, cwd source, environment handling, timeout and output
+   bounding. The reviewer measured 73 such call sites across 33 files at
+   a5a70621; the feature file's premise of "a small number of helpers" is what
+   R2 tests.
 
 ## Risks
-- A stage timeout (exit 124) on a slower runner is NOT to be fixed by raising a
-  budget in `ci_stages.py`: stop and show the operator the measured times.
-- The autouse fixture may surface further tests that silently relied on a live
-  provider. Each one is classified by the same a/b/c rule, not skipped wholesale.
+- The feature file says subprocess execution "already flows through a small
+  number of helpers". At 73 call sites in 33 files that premise is unproven, and
+  if R2 disproves it the seam migration T002 plans is a much larger job than the
+  task slicing assumes. That is a spec finding for R3, not a reason to widen R2.
+- R-0202 is carried into this feature: a spawned path once ignored
+  REMEDY_UI_NO_AUTO_BUILD and the mechanism was never explained. The inventory
+  must locate that path rather than assume it is gone.
