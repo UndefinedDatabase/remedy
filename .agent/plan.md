@@ -18,22 +18,18 @@ reaches a child, and the limitations document exists and is linked from the
 README.
 
 ## Current Step
-R17, this round: record the R16 PASS, migrate R-0507's coupled unit — `_call`,
-`_call_reviewer_structured` and the envelope test's mock move as one commit — with
-five behaviour-equality goldens, then resolve R-0507 and R-0509. T002a's CLI half is
-complete after this round; every `ClaudeCliProvider` spawn runs under the guard.
+R18, this round: record the R17 PASS, promote three standing rules into
+docs/agents/planner_reviewer_prompt.md §3 as checklist items 15, 16 and 17, then
+resolve R-0508 and R-0510 — the two findings that stayed open for exactly that
+promotion. Reviewer habit binds nothing until it is on disk.
 
 ## Next Steps
-1. Promote three standing rules into docs/agents/planner_reviewer_prompt.md §3, which
-   is what R-0508 and R-0510 are still open for: classify pair shapes mechanically,
-   let no heading count its own contents, and span a whole structure when a pair
-   changes its arity. Reviewer habit binds nothing until it is on disk.
-2. `stream_evidence.py`:595 is T002a's last site and is NOT a `subprocess.run` swap:
+1. `stream_evidence.py`:595 is T002a's last site and is NOT a `subprocess.run` swap:
    it streams incrementally where `run_guarded` buffers, so its shape is decided first.
-3. `_StreamPump` gains a lock and a `snapshot()` so PARTIAL output survives a
+2. `_StreamPump` gains a lock and a `snapshot()` so PARTIAL output survives a
    bounded drain. It still returns `b""` for a stream whose pump never reached
    EOF, which `streams_complete` reports honestly but which loses bytes.
-4. T002b-d, then T003 — network posture, limitations document, README link.
+3. T002b-d, then T003 — network posture, limitations document, README link.
 
 ## Risks
 - An allowlist bounds what the PARENT hands over, never what the child's runtime
