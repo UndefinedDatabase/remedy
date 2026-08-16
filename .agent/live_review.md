@@ -761,3 +761,31 @@ the sentence that made R-0504 possible — a docstring a source-text test could 
 Verified at the fix commit: the three retired phrases occur 0 times, the caller grep scoped to
 `-- packages tests` names four paths, and the exec-guard and managed-builder suites are 152 passed,
 matching base exactly.
+
+Gate: R16 — PASS, the record-and-repair round that paid down R-0506 and fixed the numbering its
+predecessor broke. All ten ordered gates were re-run by the reviewer over 7185d949..396ad913 and
+every one reproduces the handback's reading. TRANSPORT, disk-to-disk and not by digest fallback: the
+reviewer's scratch original, the committed `.agent/authored/f085-r16.md` and `.agent/last_block.md`
+are byte-EQUAL at sha256 bda1ca21008ed866792258791cd785bbde79b9aa975c7c018fbaf50fe82e903e, 22488 B,
+316 lines. THE TWO APPEND COMMITS BOTH HOLD THEIR SHAPE: for C1 and again for C3 the pre-commit blob
+is a byte-exact PREFIX of the post-commit file, each remainder is byte-equal to blank plus exactly
+the slices that commit was given, every slice occurs ONCE in the whole file, and neither commit adds
+a marker line; the numstat readings are 74 and 17, both append-only. Keeping the resolution in its
+own commit AFTER the fix was the right shape and it verifies cleanly: at C1 the file reads
+125 / 3 / 0 and only at C3 does it read 125 / 4 / 0, so at no commit did disk claim a resolution
+whose fix had not landed. THE ARITHMETIC: 122 / 3 / 0 at base against 125 / 4 / 0 at HEAD, the open
+set moving 119 to 121 by three registrations against one resolution, registered difference exactly
+R-0508, R-0509 and R-0510, resolved difference exactly R-0506, no duplicate id and no resolution
+naming an unregistered id. THE R-0509 REPAIR IS MEASURED, NOT ASSERTED: `## Next Steps` parses to
+1, 2, 2, 3 at base and to 1, 2, 3, 4 at HEAD, with `## Goal` and `## Risks` byte-identical and the
+file at 43 lines under its cap. THE R-0506 RESOLUTION HOLDS: all three retired phrases count 0 in
+the HEAD blobs of both source files, and the caller grep scoped to `-- packages tests` names four
+paths — the two modules that import the guard and the two suites that test them — which is exactly
+the claim `exec_guard.py` no longer contradicts. The three suites owning those files are 152 passed
+at C1 and 152 at HEAD, ruff is exit 0 on both touched paths, state readers 157 passed and the canary
+42 passed. The change set is exactly the declared paths with 0 outside; insertions are 316, 240, 74,
+16, 17 and 9, none over 500; seven single-parent commits, every reflog entry `commit:`-prefixed, no
+amend, rebase, reset or force-push; the tree is clean and `git worktree list` is ONE line;
+`.agent/handoff.md` measures 79 lines against its own declaration of 79, and its single declared
+deviation — the token cap, cause named, no section dropped — is accurate. LAST_REVIEWED_SHA advances
+to the R16 handback commit.
