@@ -75,6 +75,9 @@ class ExecGuardPolicy:
     guard's own deadline, and `None` — no wall timeout — is a real policy for
     the runtime command class. `output_cap_bytes` is PER STREAM, not combined.
     `env` is passed through unchanged: scrubbing is T002, not stage 1.
+    `stream_drain_grace_seconds` is the TOTAL extra time the guard will wait for
+    both stream pumps after the child is reaped, so a descendant that escaped the
+    process group and still holds the pipe cannot extend the call without bound.
     """
 
     cpu_seconds: int | None = None
@@ -83,6 +86,7 @@ class ExecGuardPolicy:
     open_files: int | None = None
     core_file_bytes: int = 0
     wall_timeout_seconds: float | None = None
+    stream_drain_grace_seconds: float = 5.0
     output_cap_bytes: int | None = None
     cwd: str | None = None
     env: dict[str, str] | None = None
@@ -99,6 +103,13 @@ class ExecGuardResult:
     is always a member of `limits_enforced`; `limits_unsupported` names every
     requested limit this platform has no `resource` constant for, so a dropped
     limit is never silent.
+
+    `streams_complete` is False when a stream pump was still blocked when the
+    drain grace ran out — an escaped descendant holding the inherited pipe. In
+    that case the pump never reached EOF, so ITS `stdout`/`stderr` field is `b""`
+    and only `stdout_bytes_seen`/`stderr_bytes_seen` describe what the child
+    produced. A guard that returns on time and says so is better than one that
+    blocks for the escapee's whole life to keep the bytes.
     """
 
     returncode: int | None
@@ -109,6 +120,7 @@ class ExecGuardResult:
     stderr_truncated: bool
     stdout_bytes_seen: int
     stderr_bytes_seen: int
+    streams_complete: bool
     wall_seconds: float
     cpu_seconds_used: float
     classification: str
@@ -215,7 +227,13 @@ def run_guarded(cmd: Sequence[str], policy: ExecGuardPolicy) -> ExecGuardResult:
     session, so the wall-timeout kill reaches the whole process group rather than
     the leader alone. It is reaped with `os.wait4`, so the returned `rusage`
     belongs to that child and to no other, and the group is killed on every exit
-    path, so no descendant outlives this call.
+    path, so no descendant of THAT GROUP outlives this call.
+
+    A descendant that calls `setsid` leaves the group and the kill cannot reach
+    it (R-0495). It still holds the inherited pipe write ends, so the guard drains
+    the streams under `stream_drain_grace_seconds` and returns with
+    `streams_complete=False` rather than waiting for EOF that may never come:
+    `wall_timeout_seconds` bounds the CHILD, and the two together bound THIS CALL.
     """
     argv = list(cmd)
     if not argv:
@@ -272,10 +290,18 @@ def run_guarded(cmd: Sequence[str], policy: ExecGuardPolicy) -> ExecGuardResult:
         # The child is already reaped here, so hand Popen its result rather than
         # letting it wait on a pid this call no longer owns.
         proc.returncode = -os.WTERMSIG(status) if os.WIFSIGNALED(status) else os.WEXITSTATUS(status)
-        out_pump.join()
-        err_pump.join()
-        proc.stdout.close()
-        proc.stderr.close()
+        # ONE deadline for BOTH pumps, so the grace is a total cost and not a
+        # per-stream one that a second blocked pump could double.
+        drain_deadline = time.monotonic() + policy.stream_drain_grace_seconds
+        for pump in (out_pump, err_pump):
+            pump.join(max(drain_deadline - time.monotonic(), 0.0))
+        streams_complete = not (out_pump.is_alive() or err_pump.is_alive())
+        if streams_complete:
+            # Closed ONLY when no pump is still reading: closing a descriptor under
+            # a blocked reader risks that thread reading a recycled fd after a later
+            # open(). The pumps are daemons, so a leaked pair is the cheaper wrong.
+            proc.stdout.close()
+            proc.stderr.close()
     wall_seconds = time.monotonic() - started
 
     if os.WIFSIGNALED(status):
@@ -305,6 +331,7 @@ def run_guarded(cmd: Sequence[str], policy: ExecGuardPolicy) -> ExecGuardResult:
         stderr_truncated=err_pump.truncated,
         stdout_bytes_seen=out_pump.bytes_seen,
         stderr_bytes_seen=err_pump.bytes_seen,
+        streams_complete=streams_complete,
         wall_seconds=wall_seconds,
         cpu_seconds_used=rusage.ru_utime + rusage.ru_stime,
         classification=classification,
