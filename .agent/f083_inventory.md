@@ -617,3 +617,181 @@ budgets stage and its cost is the 1.32 seconds above, not a saving to be found.
 This section is evidence. The ceiling number it feeds — 26 — is not chosen here:
 it is DECISION F083 D5's, recorded in `.agent/decisions.md`, and this section
 neither raises nor lowers it.
+
+## Q13 — Why the `ui` stage is red on its first run, measured at R19
+
+WHAT THIS SECTION IS. R-0480 measured first-run reds and second-run greens for
+`tests/ui_server/test_dashboard_contract.py` in fresh worktrees and attributed
+them to a cold `npx` cache. The measurement is not in question here; the CAUSE
+is. Every value below is its own `subprocess.run` from
+`/home/decodeux/Repos/remedy` or from a disposable worktree created at 4b52f300,
+with `capture_output=True` and the exit code read from the `CompletedProcess`
+that produced it and never from a pipe (R-0438). This section carries NO
+recommendation and orders no fix: R20 rules.
+
+SAFETY, stated because a cold cache was required. The user's real npm cache at
+`/home/decodeux/.npm` was NEVER deleted, moved or modified. Cold conditions were
+produced only by setting the environment variable `npm_config_cache` to a new
+empty directory under `.remedy-wt/` for the duration of one subprocess call.
+Before the readings the real cache held the four top-level entries `_cacache`,
+`_logs`, `_npx`, `_update-notifier-last-checked` and eight `_npx` sub-entries;
+after every reading below a fresh listing reports the same four and the same
+eight.
+
+### 1 — Where the npx cache lives
+
+| Command | Exit | Value it printed |
+|---|---|---|
+| `npm config get cache` | 0 | `/home/decodeux/.npm` |
+| `npx --version` | 0 | `10.9.7` |
+| `npm --version` | 0 | `10.9.7` |
+| `node --version` | 0 | `v22.22.2` |
+
+The directory EXISTS. A directory listing, not a guess, reports the four
+top-level entries named above. `_npx` holds eight entries and one of them,
+`1d6e82a4126006c4`, ALREADY CONTAINS a `tsc` entry: its `package.json` reads
+`{"dependencies": {"tsc": "^2.0.4"}}` and its `node_modules/tsc/package.json`
+reads `"name": "tsc"`, `"version": "2.0.4"`, `"description": "A deprecated
+release of the TypeScript compiler"`. Its mtime is 2026-06-02T15:05:58, months
+before this round. No `typescript` entry exists anywhere under `_npx`.
+
+THIS IS THE FACT THE QUESTION WAS ASKED FOR. The cache is a per-USER directory,
+one per machine, and it is WARM — so a fresh `git worktree` does not produce a
+cold cache, and "fresh worktree" and "cold cache" are NOT the same condition.
+What a fresh worktree does lack is `apps/ui/node_modules`:
+`git check-ignore -v apps/ui/node_modules` exits 0 and prints
+`.gitignore:221:node_modules/`, and `git ls-files apps/ui/node_modules` returns
+0 lines. The primary checkout HAS that directory, with `node_modules/typescript`
+and `node_modules/.bin/tsc` both present; a new worktree has neither.
+
+### 2 — What the test actually runs
+
+Read from `tests/ui_server/test_dashboard_contract.py`, lines 420-428,
+`TestJobSummaryCommandContract::test_typescript_compiles`:
+
+    result = subprocess.run(
+        ["npx", "tsc", "--noEmit"],
+        cwd=str(REPO_ROOT / "apps" / "ui"),
+        capture_output=True, timeout=30,
+    )
+    assert result.returncode == 0, f"tsc failed:\n{result.stderr.decode()}"
+
+The argv is exactly `["npx", "tsc", "--noEmit"]` and it carries NEITHER `--yes`
+NOR `--no-install`. `cwd` is `REPO_ROOT / "apps" / "ui"`, and `REPO_ROOT` is
+`Path(__file__).resolve().parent.parent.parent` at line 19, so it resolves to the
+`apps/ui` of whichever checkout the test file itself lives in. The assertion
+message interpolates `result.stderr` only, while the stub described below writes
+its banner to STDOUT — which is why the failure text after `tsc failed:` is
+empty in the transcript.
+
+### 3 — The warm reading
+
+A disposable worktree `.remedy-wt/r19probe` was created at HEAD with
+`git worktree add --detach`, and the whole file was run twice with the ambient
+cache untouched. The command, each run its own unpiped process from the worktree
+root, was `python3 -m pytest tests/ui_server/test_dashboard_contract.py -q`.
+
+| Run | Exit | pytest's own final summary line | Wall s |
+|---|---|---|---|
+| 1 of 2 | 1 | `1 failed, 69 passed in 5.95s` | 6.18 |
+| 2 of 2 | 0 | `70 passed in 3.97s` | 4.16 |
+
+R-0480's OBSERVATION REPRODUCES EXACTLY: first run red, second run green. The
+one failing id is
+`tests/ui_server/test_dashboard_contract.py::TestJobSummaryCommandContract::test_typescript_compiles`,
+and the captured npx STDOUT quoted in the traceback is the deprecated stub's
+banner, `This is not the tsc command you are looking for`, followed by `Use npm
+install typescript to first add TypeScript to your project before using npx`, at
+returncode 1. Reading that stub's own bin file at
+`/home/decodeux/.npm/_npx/1d6e82a4126006c4/node_modules/tsc/bin/tsc.js`, its last
+statement is `process.exitCode = 1`: the package exits non-zero by design and
+compiles nothing.
+
+WHAT CHANGED BETWEEN THE TWO RUNS, measured rather than assumed.
+`apps/ui/node_modules` did NOT exist in the worktree before run 1 and DID exist
+after it, containing `typescript` and `.bin/tsc`. The installer is inside the
+same file, and this was measured directly rather than read off: in a THIRD fresh
+worktree `.remedy-wt/r19inst`, running only
+`tests/ui_server/test_dashboard_contract.py::TestAutoBuildBehavior::test_auto_build_runs_by_default`
+took `node_modules` from absent to present, with `typescript` and `.bin/tsc`
+inside it, at exit 0, `1 passed in 4.26s`, 4.47 s wall. That test calls
+`packages.orchestration.ui_server._auto_build_frontend()` for real with
+auto-build enabled, and that function runs
+`["npm", "install", "--no-audit", "--no-fund"]` in `apps/ui` when `node_modules`
+is missing (`ui_server.py` lines 2782-2793). It is declared at line 519 of the
+test file, 99 lines BELOW `test_typescript_compiles` at line 420, so within one
+run the tsc test executes first, against a tree with no local TypeScript yet.
+Running the tsc test alone in that same worktree immediately afterwards gave exit
+0, `1 passed in 1.65s`.
+
+### 4 — The genuinely cold reading
+
+The same `.remedy-wt/r19probe` worktree, one more run of the same suite, with
+`npm_config_cache` set to the NEW EMPTY directory `.remedy-wt/coldnpm-cache`
+(created by this round, listed as empty immediately before use). Under that
+environment `npm config get cache` printed
+`/home/decodeux/Repos/remedy/.remedy-wt/coldnpm-cache` at exit 0, so npm really
+resolved the empty cache and not the user's.
+
+| Condition | Exit | pytest's own final summary line |
+|---|---|---|
+| empty `npm_config_cache`, `node_modules` PRESENT | 0 | `70 passed in 3.92s` |
+
+GREEN WITH AN EMPTY CACHE. There is no failing test id and no npx stdout to
+quote, because nothing failed. This is the reading that contradicts the
+cold-cache attribution head-on: the cache was empty by construction and the suite
+passed anyway.
+
+A SECOND disposable worktree `.remedy-wt/r19cold` was created at HEAD to hold the
+variable the other way round — `node_modules` ABSENT — with only
+`test_typescript_compiles` selected, so nothing in the run could install it:
+
+| Run | `apps/ui/node_modules` before | Exit | pytest's own final summary line |
+|---|---|---|---|
+| 1 of 2 | absent | 1 | `1 failed in 0.50s` |
+| 2 of 2 | absent | 1 | `1 failed in 0.44s` |
+
+`node_modules` was still absent after both. The SECOND run is red too, so "first
+run red, second run green" is not a property of the run COUNT at all.
+
+### 5 — Whether `--yes` changes the colour
+
+The argv from question 2 was run DIRECTLY with `subprocess.run` — no test file
+was edited — each form with its own new empty `npm_config_cache` directory under
+`.remedy-wt/`, `cwd` set to the worktree's `apps/ui`.
+
+| Form | Worktree | `node_modules` | Exit | stdout |
+|---|---|---|---|---|
+| `npx tsc --noEmit` | r19cold | absent | 1 | the stub banner, `This is not the tsc command you are looking for` |
+| `npx --yes tsc --noEmit` | r19cold | absent | 1 | the same stub banner |
+| `npx tsc --noEmit` | r19probe | present | 0 | empty |
+| `npx --yes tsc --noEmit` | r19probe | present | 0 | empty |
+
+`--yes` CHANGES NOTHING. In the absent case npm's own STDERR reads `npm warn exec
+The following package was not found and will be installed: tsc@2.0.4` and `npm
+warn deprecated tsc@2.0.4: Package no longer supported.`; adding `--yes` removes
+only the first of those two lines, and the exit code stays 1 with the same
+STDOUT banner. The colour tracks `node_modules` in both directions across all
+four readings, and never `--yes`.
+
+### 6 — The honest conclusion
+
+The numbers show that R-0480's MEASUREMENT is exact and its stated CAUSE is not
+supported: the suite is red the first time and green after, but the variable is
+`apps/ui/node_modules`, not the `npx` cache. With `node_modules` absent the test
+resolves `tsc` to the deprecated stub `tsc@2.0.4`, which exits 1 by design; with
+it present it resolves the project's own TypeScript and exits 0; and the suite
+installs `node_modules` itself, 99 lines further down the same file, which is why
+a second run differs from the first. An empty cache with `node_modules` present
+is GREEN and a warm cache with `node_modules` absent is RED, so the cache is not
+the variable.
+
+What these numbers do NOT show, said rather than left blank. Nothing here
+measures a hosted CI runner, where a workflow step may install `node_modules`
+before pytest runs. Nothing here measures whether `_auto_build_frontend` behaves
+the same without network access; every reading above had network. Nothing here
+measures the `ui` stage as a whole — only
+`tests/ui_server/test_dashboard_contract.py` was run, and the stage's other
+selected tests are `not-measured` this round. And nothing here measures test
+ORDER under a randomising plugin; the observed order is the file's declaration
+order in this repository as it stands at 4b52f300.
