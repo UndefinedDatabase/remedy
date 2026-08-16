@@ -5632,3 +5632,47 @@ compile. T003 owns that step; it is also recorded in
 `docs/roadmap/features/T2_F083.md`.
 
 Reverse this decision by restoring the `npx` invocation.
+
+## DECISION amend0816 D1 — an unmarked test may not reach a live provider (2026-08-16)
+
+CONTEXT: F083's Acceptance asked for `remedy ci` green LOCALLY AND HOSTED with
+the same stage results. Only the local half was ever checked. The first hosted
+run, on closure PR #202, was red: ten failures in `fast`, every other stage
+green. Reproduced exactly — same ten node ids, same 3958 passed / 7 skipped /
+13091 deselected — in a throwaway venv with `pip install -e ".[dev]"` and no
+`ollama` package.
+
+CAUSE: `packages/orchestration/intake.py::make_structured_call_fn` selects
+between the LLM branch and the deterministic fallback by really calling
+`ollama.Client(host).list()`. Eight of the ten tests mock only what sits BEHIND
+that factory (`plan_job_llm`, `make_provider_call_fn`), so the branch under test
+was chosen by whether a server happened to run on the machine. The other two read
+the repository's own `.git/HEAD` through the `self execute` branch guard, and
+`actions/checkout` leaves a pull_request build detached, which that guard refuses.
+
+CHOSEN: the autouse fixture `tests/conftest.py::_no_live_ollama_reach` refuses
+`ollama.Client` construction for every test WITHOUT the `real_ollama` marker,
+raising in `__init__` so no socket opens and no timeout is waited out. The
+hosted environment becomes the one every unmarked test sees. A test that wants
+the LLM branch must mock the FACTORY; a test that asserts something about a live
+server carries the marker and runs in the `excluded` stage. The eight mocks were
+completed and the two guard tests were given their own checkout on a feature
+branch via a new `cwd` seam in `tests/cli/runtime_helpers.py::run_grouped_cli`.
+
+ALTERNATIVES CONSIDERED AND REJECTED: pointing `REMEDY_OLLAMA_HOST` at a dead
+port, rejected because it still opens a socket and makes every unmarked test pay
+a connect, and because an env var is not enforcement — nothing stops the next
+test from resolving a different host; marking the ten `real_ollama`, rejected
+because they assert nothing about a live server, so the marker would move honest
+coverage out of CI to make CI green; installing `ollama` on the runner, rejected
+because it makes the runner mirror one developer's machine instead of the other
+way round, and a server would still have to be started for the probe to succeed.
+
+CONSEQUENCE: a test that silently depends on a live provider now fails on the
+machine that writes it, not on a runner weeks later. Two of the repaired tests
+(`test_execute_idempotent`, `test_integrity_json`) were passing hosted VACUOUSLY
+— both assertions hold when execution is blocked — and now exercise the path
+they name.
+
+Reverse this decision by deleting the fixture; the drift returns with the next
+test that mocks half the provider path.
