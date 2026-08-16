@@ -1,43 +1,46 @@
-# F085 R15 — record the R14 PASS and give the claude CLI seam its guarded runner
+# F085 R16 — record the R15 PASS, register three block defects, resolve R-0506
 
-Feature T2_F085 Sandbox hardening (stage 1) · Round R15 · Branch feature/f085-sandbox-hardening
-Base of this round: the R14 handback commit, `git rev-parse HEAD` at start = c5d80471.
-Fortschritt: ~55 % (T001 gebaut · R13/R14 PASS · T002a: Builder-Site migriert, diese Runde der
-CLI-Runner samt Version-Probe · zwei gekoppelte CLI-Sites, `stream_evidence.py`, T002b-d, T003 offen).
+Feature T2_F085 Sandbox hardening (stage 1) · Round R16 · Branch feature/f085-sandbox-hardening
+Base of this round: the R15 handback commit, `git rev-parse HEAD` at start = 7185d949.
+Fortschritt: ~60 % (T001 gebaut · R13/R14/R15 PASS · T002a: Builder-Site und CLI-Runner migriert ·
+gekoppelte CLI-Sites, `stream_evidence.py`, T002b-d, T003 offen).
 
 ## Goal
 
-First the record: R14 passed the reviewer's gate — including its `.agent/STOP` halt, correct and
-honestly reported — and that verdict is written by C1, with one finding the reviewer measured
-against its own scoping work. Then the work: `pingpong_provider.py` gains the stage-1 CLI policy,
-the text-decode contract and `_guarded_cli_run`, and `_resolve_version` — the ONE site no test's
-mock reaches (R-0507) — stops calling `subprocess.run`. R14's owed plan pair lands as C3.
+A record-and-repair round, no behaviour change. R15 passed the reviewer's gate and that verdict is
+written by C1, together with the three defects R15's worker found in the reviewer's own block text
+and reported instead of repairing. Then the debt: R-0506's two falsified absence claims are
+corrected in `exec_guard.py` and `managed_builder_execution.py` — the round its own text named — and
+`.agent/plan.md`'s malformed numbering, which is R-0509, is repaired by a pair spanning the whole
+section rather than a prefix of it.
 
-Evidence already taken by the reviewer, so the worker does not repeat it: this exact change was
-applied to a `git archive HEAD` extraction, where the goldens are 8 passed and stable over ten runs,
-the seven-file regression set is 333 passed at BOTH base and the extraction, ruff is exit 0 on both
-touched paths, and SEVEN red controls each reddened exactly their own tests. Those controls earned
-their keep — an earlier draft asserted the wall trip through `_resolve_version`, which swallows every
-exception, and stayed GREEN with the re-raise deleted (the R-0504 vacuity family).
+Evidence already taken by the reviewer, reported so the worker does not repeat it: the C2 docstring
+pairs were applied to a `git archive HEAD` extraction, where the exec-guard, managed-builder and
+CLI-guard suites are 152 passed at BOTH base and the extraction, ruff is exit 0 on both touched
+paths, the three retired phrases occur 0 times afterwards, and the caller grep names four paths.
 
 ## Bundle — in this order, none added, dropped or reordered
 
-- C0a `docs(f085): save the R15 step block verbatim` — `.agent/authored/f085-r15.md`
-- C0b `docs(f085): mirror the R15 block into last_block` — `.agent/last_block.md`
-- C1 `docs(review): record the R14 PASS and register a scoping finding` — `.agent/live_review.md`
-- C2 `feat(f085): give the claude CLI seam its guarded runner` — source and new test file together,
-  since a commit adding the runner without its goldens would land an ungated seam
-- C3 `docs(f085): advance the plan to the R15 CLI runner round` — `.agent/plan.md`
-- C4 `docs(f085): rewrite the handback for R15` — `.agent/handoff.md`
+- C0a `docs(f085): save the R16 step block verbatim` — `.agent/authored/f085-r16.md`
+- C0b `docs(f085): mirror the R16 block into last_block` — `.agent/last_block.md`
+- C1 `docs(review): record the R15 PASS and register three block defects` — `.agent/live_review.md`
+- C2 `docs(f085): correct the absence claims the guard migration falsified` — both source files
+- C3 `docs(review): resolve R-0506 now that its fix has landed` — `.agent/live_review.md`
+- C4 `docs(f085): advance the plan and repair its numbering` — `.agent/plan.md`
+- C5 `docs(f085): rewrite the handback for R16` — `.agent/handoff.md`
 
-## Change set — exactly these SIX paths, nothing else
+C3 is a separate commit ON PURPOSE and must not be folded into C1: a resolution written before its
+fix lands would claim on disk something no commit had yet done, which is the exact hazard the
+`Landed:`/`Done:` split exists to prevent (planner_reviewer_prompt.md §4.4).
 
-`.agent/authored/f085-r15.md`, `.agent/last_block.md`, `.agent/live_review.md`, `.agent/plan.md`,
-`.agent/handoff.md`, `packages/orchestration/pingpong_provider.py` and
-`tests/orchestration/test_claude_cli_exec_guard.py` (NEW). Nothing under `docs/`, `apps/` or
-`scripts/`; no other file under `packages/` or `tests/`. `test_structured_cli_envelope.py`,
-`exec_guard.py`, `managed_builder_execution.py`, `.agent/context.md` and `.agent/decisions.md` are
-NOT touched — the first three are R16's, and scope is otherwise unchanged.
+## Change set — exactly these paths, nothing else
+
+`.agent/authored/f085-r16.md`, `.agent/last_block.md`, `.agent/live_review.md`, `.agent/plan.md`,
+`.agent/handoff.md`, `packages/orchestration/exec_guard.py`,
+`packages/orchestration/managed_builder_execution.py`. Nothing under `docs/`, `apps/`, `scripts/` or
+`tests/`; no other file under `packages/`. No test changes: this round alters docstrings and `.agent`
+state only, and `pingpong_provider.py` is NOT touched — its coupled unit is R17's.
+`.agent/context.md` and `.agent/decisions.md` are NOT touched.
 
 ## Constraints
 
@@ -47,81 +50,153 @@ NOT touched — the first three are R16's, and scope is otherwise unchanged.
    never retyped, reformatted or reworded: the review slices' regex-looking text and backticks are
    prose and land as prose.
 3. Apply each FROM/TO pair by locating the FROM exactly once and replacing it with the TO; if it
-   does not occur exactly once, STOP and report. CLST is APPEND-shaped — its TO CONTAINS CLSF — so
-   CLSF still occurs once after it lands, and no "FROM 0x" proof applies to it (§4.9). Every other
-   pair is a REWRITE. `TESTNEW` is a whole NEW file, written as-is.
-4. This round orders NO destructive check — the seven red controls behind it were run by the
-   reviewer before emission and are reported in the Goal, not re-ordered here. No gate below needs a
+   does not occur exactly once, STOP and report. Pair shapes, classified mechanically by containment
+   at build time and printed with this block: EGF→EGT REWRITE, MBE1F→MBE1T REWRITE, MBE2F→MBE2T
+   REWRITE, PLANF→PLANT REWRITE. No "FROM 0x" reading is ordered for any pair not listed REWRITE.
+4. This round orders NO destructive check and no mutation red-proof. No gate below needs a
    disposable tree, and no worktree is added, removed or pruned.
 5. Re-read `.agent/STOP` from disk before the FIRST commit and again before the LAST. If it exists
    at either point, finish the commit in flight, write the handback and end.
 
 <<<SLICE RECORD1>>>
-Gate: R14 — PASS, the record round `.agent/STOP` halted after its third commit. All eight ordered
-gates were re-run by the reviewer from the repository root and every one reproduces the handback's
-reading. TRANSPORT, disk-to-disk and not by digest fallback: the reviewer's `.remedy-wt/f085-r14.md`,
-the committed `.agent/authored/f085-r14.md` and `.agent/last_block.md` are byte-EQUAL at sha256
-77447503b8bc9e86e2f8f905172874568777ae8d25b074c0d3662b912b10d32e, 15023 B, 214 lines. C1 IS A PURE
-APPEND: the pre-C1 blob is a byte-exact PREFIX of the post-C1 file, HEAD equals it, and the
-7296-byte remainder is exactly blank + RECORD1 + blank + FIND1 + blank + FIND2 in that order, each
-slice occurring ONCE, none carrying trailing whitespace, no marker line reaching it. THE ARITHMETIC: 119 / 3 / 0 at base against 121 / 3 / 0 at HEAD, so the open set rose
-116 to 118 by exactly two registrations against no resolution; the registered difference is R-0505
-and R-0506, the resolved difference empty, no duplicate id, no resolution naming an unregistered id.
-THE HALT WAS CORRECT AND HONESTLY REPORTED. `.agent/STOP` appeared mid-round, C2 was never started,
-`.agent/plan.md` is byte-IDENTICAL to base at sha256
-8dae6b41813aff162aeb1c5a877ab667be909c723c30bbb4dc5b3fce42f65f6d, and PLANF still occurs EXACTLY
-once in it — so the round did not half-apply a pair and then round the number, which is what this
-gate catches. G5 is red by the sentinel, not by a misapplication. THE HONESTY GATE HOLDS: `exec_guard.py`,
-`managed_builder_execution.py` and `test_managed_builder_execution.py` are byte-identical between
-base and HEAD, so no containment claim follows from that round. State readers 157 passed and canary
-42 passed, both matching base; the change set is three `.agent` paths before C3, short of the ordered
-four by `.agent/plan.md` alone, which IS the skipped commit; insertions 214, 150 and 80, none over
-500; four single-parent commits, every reflog entry `commit:`-prefixed, no amend, rebase, reset or
-force-push; `.agent/handoff.md` measures 79 lines against its D15 declaration of 79; all seven
-declared deviations are accurate. The sentinel is ABSENT at this round's start, so Phase 1 rule 1
-does not fire. TWO SCOPE REASSIGNMENTS, recorded because each contradicts text already on
-disk: R-0506 stays OPEN with its fix moved from R15 to R16, and T002a's CLI half is split — R15
-migrates the version probe, while `_call`, `_call_reviewer_structured` and the envelope mock are ONE
-indivisible unit (R-0507) R16 carries whole, already dry-run green. LAST_REVIEWED_SHA advances to
-the R14 handback commit.
+Gate: R15 — PASS, the round that gave the claude CLI seam its guarded runner. All ten ordered gates
+were re-run by the reviewer from the repository root over c5d80471..7185d949 and every one
+reproduces the handback's reading. TRANSPORT, disk-to-disk and not by digest fallback: the
+reviewer's `.remedy-wt/f085-r15.md`, the committed `.agent/authored/f085-r15.md` and
+`.agent/last_block.md` are byte-EQUAL at sha256
+e2f4ef715c40f02df7d552e15348268b2d0edb24b986ff91e762c666314e2d88, 22895 B, 400 lines — AT the
+DECISION F105 D5 block cap, not over it. C1 IS A PURE APPEND: the pre-C1 blob is a byte-exact PREFIX
+of the post-C1 file, HEAD equals it, the remainder is exactly blank + RECORD1 + blank + FIND1, each
+occurring ONCE, and C1 added no marker line — the one slice-marker token the file holds is R7 prose,
+present at both ends. THE ARITHMETIC: 121 / 3 / 0 at base against 122 / 3 / 0 at HEAD, the open set rising 118 to
+119 by one registration against no resolution, difference exactly R-0507, no duplicate id and no
+resolution naming an unregistered id. THE CHANGE ITSELF, read as a diff and then re-measured: the
+module gains `_cli_exec_policy`, `_decode_cli_stream` and `_guarded_cli_run`, and `_resolve_version`
+now calls the runner. By AST over the HEAD blob, `_resolve_version` and `_guarded_cli_run` hold ZERO
+subprocess spawn nodes while `_call` and `_call_reviewer_structured` still hold ONE each — the
+coupled unit R-0507 names, deliberately untouched. THE STRONGEST PROOF AVAILABLE WAS TAKEN: the
+committed `pingpong_provider.py` and `test_claude_cli_exec_guard.py` are BYTE-IDENTICAL to the
+`git archive` extraction the reviewer dry-ran before emission, where seven red controls each
+reddened exactly their own tests, so the gates that pass here are the same gates proven capable of
+failing. At HEAD the goldens are 8 passed, the seven-file regression set is 333 passed at C1 and 333
+at HEAD, ruff is exit 0 on both touched paths, state readers 157 passed and the canary 42 passed.
+The change set is exactly the seven declared paths with 0 outside; insertions are 400, 339, 50, 134
+and 9, none over 500; six single-parent commits, every reflog entry `commit:`-prefixed, no amend,
+rebase, reset or force-push; `git status --porcelain` is EMPTY and `git worktree list` is ONE line.
+THE ROUND'S OWN REPORTING IS WHY THIS IS A PASS AND NOT A REPAIR: all three anomalies it declared
+are defects in the REVIEWER'S block text, not in its execution, and it reported each rather than
+quietly repairing a slice it was told to apply byte-verbatim. They are registered below as R-0508,
+R-0509 and R-0510. LAST_REVIEWED_SHA advances to the R15 handback commit.
 <<<END RECORD1>>>
 <<<SLICE FIND1>>>
-- R-0507 — Medium, A GREP OVER MOCK TARGETS WAS READ AS AN ENUMERATION OF THE CALL PATHS THOSE
-MOCKS COVER, AND THE SCOPE IT PRODUCED WAS WRONG. Raised by the reviewer against its own R15
-scoping work, before this block was emitted. Planning this round the reviewer grepped the suite for
-tests that patch the CLI spawn, found exactly one — `test_structured_cli_envelope.py` patching
-`packages.orchestration.pingpong_provider.subprocess.run` in its `_review` helper — read that helper
-as reaching `_call_reviewer_structured` alone, and concluded that the version probe and `_call` could
-migrate without touching a single test. FALSE: `test_4_legacy_non_schema_call_uses_result` sets
-`REMEDY_REVIEWER_FREETEXT=1`, which routes the same helper through `_call`, so migrating `_call`
-alone leaves that test patching a function the code no longer calls. The error was not the grep,
-which was right about WHERE the mocks are; it was reading a list of patch TARGETS as a list of the
-paths reached under them, when the reaching is decided by branches inside the tested code and by
-environment variables the tests set — the R-0258 family, a source guard the block never named. It
-cost no round only because the mandated dry run (planner_reviewer_prompt.md §3 checklist item 12)
-ran the candidate slices against those suites in a `git archive` extraction, where it surfaced as
-one red test in a set green at base. Counter-measure, binding on the reviewer from this round on:
-when a block moves a call site, never infer the affected tests from a grep over mock targets — RUN
-the candidate change against every suite touching the file and let the failures enumerate
-themselves. The plan consequence is recorded, not hidden: `_call`, `_call_reviewer_structured` and
-that mock are ONE indivisible unit, since re-pointing the mock at `_guarded_cli_run` reddens every
-envelope test still on the stdlib spawn. R15 migrates the independent version probe; R16 carries the
-coupled unit, already dry-run green. OPEN.
+- R-0508 — Low, A PAIR'S SHAPE WAS ASSERTED FOR ONE PAIR AND ASSUMED FOR THE REST, AND THE
+ASSUMPTION WAS WRONG. Raised by the R15 worker in its handback and confirmed by the reviewer against
+its own R15 block. Constraint 3 of that block classified CLST as APPEND-shaped — correctly, its TO
+contains its FROM — and then said "Every other pair is a REWRITE". IMP3 is not: IMP3T is
+`from packages.orchestration.exec_guard import ...` followed by the model-aliases import line that
+IS IMP3F, so the TO contains the FROM verbatim and IMP3F still occurs exactly 1x at HEAD, which the
+reviewer re-measured. Nothing broke, because no gate in that block ordered an "IMP3F 0x" reading —
+had one existed it would have been unsatisfiable by construction, which is the R-0207 failure this
+classification exists to prevent. The defect is the method, not the damage: checklist item 4 says a
+pair is declared APPEND only after checking that the TO literally CONTAINS the FROM, and the block
+performed that check for the pair it suspected and generalised to the others by eye. An import
+insertion that keeps the anchor line is the single most common append-shaped pair in this
+repository, so eye-checking is exactly where it fails. Counter-measure, applied in the build of the
+block that registers this: pair shapes are classified MECHANICALLY, every TO tested for containment
+of its FROM, and the result printed beside each pair before emission — never written by hand. OPEN.
 <<<END FIND1>>>
+<<<SLICE FIND2>>>
+- R-0509 — Medium, A REWRITE PAIR ENDED IN THE MIDDLE OF A NUMBERED LIST AND LEFT THE LIST
+MALFORMED ON DISK. Raised by the R15 worker and confirmed by the reviewer. R15's PLANF covered
+`## Current Step` plus only the FIRST item of `## Next Steps`; PLANT replaced it with a Current Step
+and TWO numbered items. The surviving items below the FROM kept their old numbers, so
+`.agent/plan.md` at 7185d949 reads 1, 2, 2, 3 — measured, not inferred. The worker was right not to
+touch it: constraint 2 forbids rewording a slice, so repairing the numbering would have meant
+editing authored text, and reporting the defect was the only honest move left to it. This is the
+family where a pair's FROM is scoped to the text the reviewer INTENDED to change rather than to the
+structure that text belongs to; a numbered list, a table and a fenced block are all single
+structures whose arity a partial rewrite silently corrupts. Counter-measure, binding from this round
+on: when a TO changes how many items a numbered list or table holds, the pair's FROM spans the WHOLE
+structure, never a prefix of it. The block registering this carries the repair — its plan pair
+covers the entire `## Next Steps` section and renumbers it 1 through 4. OPEN.
+<<<END FIND2>>>
+<<<SLICE FIND3>>>
+- R-0510 — Low, A SECTION HEADING COUNTED ITS OWN CONTENTS BY HAND AND GOT IT WRONG. Raised by the
+R15 worker and confirmed by the reviewer. That block's heading read "Change set — exactly these SIX
+paths, nothing else" and the section then enumerated SEVEN, which is also what
+`git diff --name-only c5d80471..HEAD` prints; the six-path reading is the one gate G10 orders for
+the range BEFORE the handback commit, so both numbers exist and the heading attached the wrong one
+to the wrong set. No gate was contradicted and nothing was mis-executed. This is the R-0402 /
+R-0404 / R-0436 family that memory keeps re-learning — checklist item 11: count it mechanically or
+state NO numeral — and its persistence has a specific cause worth naming. The R15 block DID apply
+the rule: its Bundle heading was rewritten to carry no count precisely because the commit list had
+grown by one. The Change set heading was not swept in the same pass, so the fix was applied to the
+instance that was noticed rather than to the class. That is the R-0417 staleness shape wearing a
+different hat. Counter-measure, applied in the build of this block: no heading in it states a count
+of its own contents, and the build script greps the emitted bytes for a number-word standing next to
+"paths" or "commits" and fails the build if it finds one. OPEN.
+<<<END FIND3>>>
+<<<SLICE DONE1>>>
+Done: R-0506 — the two documented absence claims the R13 migration falsified are corrected, in the
+round its own text named as the one that owes them. `packages/orchestration/exec_guard.py` no longer
+says "NO CALLER. Nothing in this repository imports this module yet"; it now states PARTIAL coverage,
+names the managed builder seam and the CLI provider as the callers, says which classes still spawn
+unsupervised, and deliberately writes NO number, because the number changes with every migration
+round and the caller grep is the honest answer. The allowlist sentence no longer claims choosing one
+per command class "is not done here" — it records that callers choose it, the builder policy pinning
+one and the CLI policy deliberately not. `packages/orchestration/managed_builder_execution.py` no
+longer calls itself the only place that may INVOKE subprocess for builder execution: it may LAUNCH
+one, and since F085 T002a it delegates the spawn to `exec_guard.run_guarded` while keeping the
+policy, in both the module docstring and `run_managed_builder`'s. Both "shell=False ALWAYS" promises
+are replaced by "No shell, ever" plus a pointer to the AST assertion that actually enforces it, so
+the sentence that made R-0504 possible — a docstring a source-text test could satisfy — is gone.
+Verified at the fix commit: the three retired phrases occur 0 times, the caller grep scoped to
+`-- packages tests` names four paths, and the exec-guard and managed-builder suites are 152 passed,
+matching base exactly.
+<<<END DONE1>>>
+<<<SLICE EGF>>>
+- NO CALLER. Nothing in this repository imports this module yet. Migrating the
+  in-scope call sites is T002, so no subprocess in the running system is
+  limited, supervised or sandboxed by anything written here.
+- No environment scrubbing UNLESS the policy asks for it: with
+  `env_allowlist=None` the policy's `env` reaches the child UNCHANGED, which every
+  T001 test relies on. CHOOSING an allowlist per command class is T002a's
+  migration half and is not done here.
+<<<END EGF>>>
+<<<SLICE EGT>>>
+- PARTIAL COVERAGE, and the gap is the point. Since F085 T002a the managed
+  builder seam and the claude CLI provider run through this module; every other
+  subprocess in the repository — the test, DoD, runtime, git and packaging
+  classes — still spawns unsupervised. No count is written here on purpose: it
+  changes with every migration round, and the caller grep is the honest answer.
+- No environment scrubbing UNLESS the policy asks for it: with
+  `env_allowlist=None` the policy's `env` reaches the child UNCHANGED, which every
+  T001 test relies on. Callers CHOOSE the allowlist per command class — the
+  builder policy pins one, the CLI-provider policy deliberately does not — so what
+  a child inherits is that caller's decision, never this module's default.
+<<<END EGT>>>
+<<<SLICE MBE1F>>>
+This module is the ONLY place in the codebase that may invoke subprocess for builder execution.
+It enforces:
+  - shell=False ALWAYS (argv list only, never a shell string).
+<<<END MBE1F>>>
+<<<SLICE MBE1T>>>
+This module is the ONLY place in the codebase that may LAUNCH a builder execution. Since F085
+T002a it does not spawn the child itself: it delegates to `exec_guard.run_guarded`, which owns the
+spawn and its limits, while this module owns the policy. It enforces:
+  - No shell, ever (argv list only, never a shell string) — asserted by AST against the guard's
+    single Popen, because a docstring sentence is not a test (R-0504).
+<<<END MBE1T>>>
+<<<SLICE MBE2F>>>
+    This is the ONLY function that executes a subprocess for builder adapters.
+    shell=False ALWAYS. Sanitized env. Hard timeout. Output byte cap.
+<<<END MBE2F>>>
+<<<SLICE MBE2T>>>
+    This is the ONLY function that launches a builder execution for builder adapters.
+    Since F085 T002a the spawn itself lives in `exec_guard.run_guarded`; this function
+    owns the policy. No shell, ever. Sanitized env. Hard timeout. Output byte cap.
+<<<END MBE2T>>>
 <<<SLICE PLANF>>>
-## Current Step
-R13, this round: record the R12 PASS, register R-0504, and migrate the FIRST of
-T002a's five builder sites — `managed_builder_execution.py`:1160 — onto
-`run_guarded` under a stage-1 builder policy, with behaviour-equality tests.
-`exec_guard` gains its first caller in the running system.
-
-## Next Steps
-1. T002a's four REMAINING builder sites of amendment F085 D1 —
-   `pingpong_provider.py`:952, 1075, 1208 and `stream_evidence.py`:595 — move to
-   `run_guarded` the same way `managed_builder_execution.py` did at R13, each with
-   its own behaviour-equality goldens.
-<<<END PLANF>>>
-<<<SLICE PLANT>>>
 ## Current Step
 R15, this round: record the R14 PASS, register R-0507, and give the claude CLI seam
 its guarded runner — `_cli_exec_policy`, `_decode_cli_stream`, `_guarded_cli_run` —
@@ -134,198 +209,37 @@ spawn a real fake CLI instead of mocking the stdlib.
    absence claims in `exec_guard.py` and `managed_builder_execution.py`.
 2. `stream_evidence.py`:595 is T002a's last site and is NOT a `subprocess.run` swap:
    it streams incrementally where `run_guarded` buffers, so its shape is decided first.
+2. `_StreamPump` gains a lock and a `snapshot()` so PARTIAL output survives a
+   bounded drain. It still returns `b""` for a stream whose pump never reached
+   EOF, which `streams_complete` reports honestly but which loses bytes.
+3. T002b-d, then T003 — network posture, limitations document, README link.
+<<<END PLANF>>>
+<<<SLICE PLANT>>>
+## Current Step
+R16, this round: record the R15 PASS, register R-0508, R-0509 and R-0510 — three
+defects in the reviewer's own R15 block that its worker reported rather than
+repaired — resolve R-0506 by correcting the two falsified absence claims, and repair
+the malformed numbering this section carried.
+
+## Next Steps
+1. R17 migrates the coupled unit of R-0507: `_call`, `_call_reviewer_structured` and
+   the envelope test's mock, which must move together. The reviewer has already
+   dry-run it green against an extraction, so the round is pairs and goldens only.
+2. `stream_evidence.py`:595 is T002a's last site and is NOT a `subprocess.run` swap:
+   it streams incrementally where `run_guarded` buffers, so its shape is decided first.
+3. `_StreamPump` gains a lock and a `snapshot()` so PARTIAL output survives a
+   bounded drain. It still returns `b""` for a stream whose pump never reached
+   EOF, which `streams_complete` reports honestly but which loses bytes.
+4. T002b-d, then T003 — network posture, limitations document, README link.
 <<<END PLANT>>>
-<<<SLICE IMP1F>>>
-import json
-import os
-<<<END IMP1F>>>
-<<<SLICE IMP1T>>>
-import json
-import locale
-import os
-<<<END IMP1T>>>
-<<<SLICE IMP2F>>>
-import shutil
-import subprocess
-import time
-<<<END IMP2F>>>
-<<<SLICE IMP2T>>>
-import shutil
-import signal
-import subprocess
-import time
-<<<END IMP2T>>>
-<<<SLICE IMP3F>>>
-from packages.orchestration.model_aliases import resolve_model_alias
-<<<END IMP3F>>>
-<<<SLICE IMP3T>>>
-from packages.orchestration.exec_guard import ExecGuardPolicy, run_guarded
-from packages.orchestration.model_aliases import resolve_model_alias
-<<<END IMP3T>>>
-<<<SLICE CLSF>>>
-class ClaudeCliProvider:
-<<<END CLSF>>>
-<<<SLICE CLST>>>
-def _cli_exec_policy(timeout_sec: float, cwd: str | None) -> ExecGuardPolicy:
-    """Stage-1 CLI-provider policy (F085 T002a) — only the limits this seam can prove.
-
-    `output_cap_bytes` stays None on purpose: this seam parses the CLI's WHOLE JSON
-    envelope, so a byte cap would cut a valid one mid-token and turn a working call
-    into a parse failure. `env_allowlist` stays None for a kindred reason: the child
-    is the operator's authenticated `claude` CLI and reads its credentials from the
-    inherited environment. Both are stage-1 gaps, owed to T003's limitations
-    document. Enforced and real: the wall deadline, the cwd pin, a zero core.
-    """
-    return ExecGuardPolicy(
-        wall_timeout_seconds=float(timeout_sec), cwd=cwd, core_file_bytes=0,
-    )
-
-
-def _decode_cli_stream(raw: bytes) -> str:
-    """Decode one guarded stream the way `text=True` decoded it.
-
-    Text mode wrapped the pipe in a `TextIOWrapper` with the locale encoding and
-    universal newlines; both are reproduced. The ONE intended difference is
-    `errors="replace"` — text mode raised UnicodeDecodeError from inside the spawn
-    and no caller here handled it, so a mojibake CLI now parses honestly instead.
-    """
-    text = raw.decode(locale.getpreferredencoding(False), errors="replace")
-    return text.replace("\r\n", "\n").replace("\r", "\n")
-
-
-def _guarded_cli_run(cmd: list[str], timeout_sec: float,
-                     cwd: str | None) -> subprocess.CompletedProcess[str]:
-    """Run a CLI command under the stage-1 policy, shaped like `subprocess.run`.
-
-    The single spawn point this module's provider calls migrate onto, and the seam
-    the tests mock instead of the stdlib. A wall trip is re-raised as
-    `subprocess.TimeoutExpired` and a signal death republished in the -SIGNUM form,
-    so every caller keeps the error text it already produced: the migration changes
-    the mechanism, never the observable outcome.
-    """
-    guarded = run_guarded(cmd, _cli_exec_policy(timeout_sec, cwd))
-    if guarded.tripped_limit == "wall_timeout":
-        raise subprocess.TimeoutExpired(cmd, timeout_sec)
-    code = guarded.returncode
-    if code is None:
-        try:
-            code = -int(signal.Signals[guarded.term_signal].value)
-        except (KeyError, ValueError, TypeError):
-            code = -1
-    return subprocess.CompletedProcess(
-        cmd, code,
-        _decode_cli_stream(guarded.stdout), _decode_cli_stream(guarded.stderr),
-    )
-
-
-class ClaudeCliProvider:
-<<<END CLST>>>
-<<<SLICE PROBEF>>>
-            proc = subprocess.run(
-                [claude, "--version"],
-                capture_output=True,
-                text=True,
-                timeout=5,
-                # Pinned like every other provider call: an unpinned probe runs in
-                # the operator's cwd and any stray write lands in the repo root.
-                cwd=self._cwd,
-            )
-<<<END PROBEF>>>
-<<<SLICE PROBET>>>
-            proc = _guarded_cli_run(
-                [claude, "--version"],
-                # Pinned like every other provider call: an unpinned probe runs in
-                # the operator's cwd and any stray write lands in the repo root.
-                timeout_sec=5, cwd=self._cwd,
-            )
-<<<END PROBET>>>
-<<<SLICE TESTNEW>>>
-"""F085 T002a — the claude CLI seam gains its guarded runner, with equal behaviour.
-
-Every case spawns a REAL fake-CLI script rather than mocking `subprocess`: a mock of
-the spawn would pin the mechanism this round replaces, and could not tell a
-translated wall trip from a forwarded `timeout=` keyword.
-"""
-from __future__ import annotations
-
-import ast
-import inspect
-import stat
-import subprocess
-import textwrap
-
-import pytest
-
-from packages.orchestration import pingpong_provider as pp
-from packages.orchestration.pingpong_provider import ClaudeCliProvider
-
-
-def _provider(tmp_path, body: str) -> ClaudeCliProvider:
-    """A provider whose `claude` binary is an executable stand-in running `body`."""
-    path = tmp_path / "claude"
-    path.write_text("#!/usr/bin/env python3\n" + textwrap.dedent(body))
-    path.chmod(path.stat().st_mode | stat.S_IEXEC | stat.S_IXGRP | stat.S_IXOTH)
-    prov = ClaudeCliProvider()
-    prov._claude_path = str(path)
-    prov._cwd = str(tmp_path)
-    return prov
-
-
-class TestGuardedVersionProbe:
-    def test_the_probe_reads_its_line_through_the_guard(self, tmp_path):
-        prov = _provider(tmp_path, 'print("1.2.3 (Claude Code)")\n')
-        assert prov._resolve_version() == "1.2.3 (Claude Code)"
-
-    def test_a_failing_probe_yields_none_and_never_raises(self, tmp_path):
-        assert _provider(tmp_path, "import sys; sys.exit(3)\n")._resolve_version() is None
-
-    def test_a_wall_trip_is_republished_as_the_timeout_callers_already_catch(self, tmp_path):
-        """On the runner, not the probe: the probe swallows every exception."""
-        prov = _provider(tmp_path, "import time; time.sleep(30)\n")
-        with pytest.raises(subprocess.TimeoutExpired):
-            pp._guarded_cli_run([prov._claude_path], timeout_sec=1, cwd=prov._cwd)
-
-
-class TestStageOnePolicyAndShape:
-    def test_the_policy_enforces_what_it_can_and_leaves_the_rest_none(self):
-        policy = pp._cli_exec_policy(12, "/somewhere")
-        assert policy.wall_timeout_seconds == 12.0 and policy.cwd == "/somewhere"
-        assert policy.core_file_bytes == 0
-        # Deliberate stage-1 gaps, pinned so a later round cannot close them in silence.
-        assert policy.output_cap_bytes is None and policy.env_allowlist is None
-        assert policy.cpu_seconds is None and policy.address_space_bytes is None
-
-    def test_the_probe_and_the_runner_hold_no_subprocess_spawn(self):
-        def spawns(func):
-            tree = ast.parse(textwrap.dedent(inspect.getsource(func)))
-            return [n for n in ast.walk(tree)
-                    if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute)
-                    and n.func.attr in {"run", "Popen", "call", "check_output"}
-                    and isinstance(n.func.value, ast.Name) and n.func.value.id == "subprocess"]
-
-        assert spawns(ClaudeCliProvider._resolve_version) == []
-        assert spawns(pp._guarded_cli_run) == []
-
-    def test_a_signal_death_is_republished_as_the_negative_returncode(self, tmp_path):
-        """`subprocess.run` reported a signal death as -SIGNUM; the guard reports a NAME."""
-        prov = _provider(tmp_path, "import os, signal; os.kill(os.getpid(), signal.SIGKILL)\n")
-        proc = pp._guarded_cli_run([prov._claude_path], timeout_sec=30, cwd=prov._cwd)
-        assert proc.returncode == -9
-
-    def test_text_mode_newline_translation_is_reproduced(self):
-        assert pp._decode_cli_stream(b"a\r\nb\rc\nd") == "a\nb\nc\nd"
-
-    def test_an_undecodable_byte_is_replaced_instead_of_raising(self):
-        assert pp._decode_cli_stream(b"ok\xff") == "ok\ufffd"
-<<<END TESTNEW>>>
 
 ## Application order
 
-C1 appends RECORD1, then FIND1, to `.agent/live_review.md`, each preceded by exactly one blank line,
-appending only — never rewriting a byte already there. C2 applies to
-`packages/orchestration/pingpong_provider.py` the pairs IMP1, IMP2, IMP3, then CLST (whose FROM is
-CLSF, the class statement, so the three helpers land immediately above it), then PROBE; and writes
-`TESTNEW` as `tests/orchestration/test_claude_cli_exec_guard.py`. C3 applies PLANF→PLANT.
+C1 appends RECORD1, then FIND1, then FIND2, then FIND3 to `.agent/live_review.md`, each preceded by
+exactly one blank line, appending only. C2 applies EGF→EGT to
+`packages/orchestration/exec_guard.py` and MBE1F→MBE1T then MBE2F→MBE2T to
+`packages/orchestration/managed_builder_execution.py`. C3 appends DONE1 to `.agent/live_review.md`,
+preceded by exactly one blank line. C4 applies PLANF→PLANT to `.agent/plan.md`.
 
 ## Gates — every one is RUN and its real exit code recorded; "green" as a word is a finding
 
@@ -335,45 +249,47 @@ as a real `subprocess.returncode` from `python3`.
 G1 HYGIENE. `git status --porcelain` EMPTY before EVERY commit in the bundle; `.agent/STOP` re-read
 from disk before the first and the last; `git worktree list` prints ONE line.
 
-G2 TRANSPORT. `.agent/authored/f085-r15.md` after C0a, `.agent/last_block.md` after C0b and the
+G2 TRANSPORT. `.agent/authored/f085-r16.md` after C0a, `.agent/last_block.md` after C0b and the
 reviewer's original are byte-EQUAL: report one sha256, byte length and line count for all three.
 C0b copies the COMMITTED C0a blob, never the scratch file.
 
-G3 C1 SHAPE. The pre-C1 blob is a byte-exact PREFIX of the post-C1 file; HEAD equals it; the
-remainder is byte-equal to blank + RECORD1 + blank + FIND1, in that order; each slice occurs exactly
-ONCE in the whole file at HEAD and no `<<<SLICE` or `<<<END` line reaches it. Report C1's numstat as
-a READING, not a prediction.
+G3 APPEND SHAPE, twice. For C1 and again for C3: the pre-commit blob is a byte-exact PREFIX of the
+post-commit file, HEAD equals it, and the remainder is byte-equal to blank + the ordered slices for
+that commit — RECORD1, FIND1, FIND2, FIND3 for C1, and DONE1 for C3. Each slice occurs exactly ONCE
+in the whole file at HEAD, and neither commit adds a `<<<SLICE` or `<<<END` line. Report both
+numstat pairs as READINGS, not predictions.
 
 G4 ARITHMETIC over `.agent/live_review.md`, regexes `^- R-\d+ — `, `^Done: R-\d+ — `,
-`^Landed: R-\d+`. Base 121 / 3 / 0, 118 open; expected at HEAD 122 / 3 / 0 → 119 open, a rise of
-exactly one from one registration against no resolution. Report both symmetric differences,
-duplicate-id counts, any resolution naming an unregistered id, and the max and next-free id.
+`^Landed: R-\d+`. Base 122 / 3 / 0, 119 open; expected at HEAD 125 / 4 / 0 → 121 open: three
+registrations and one resolution. Report the reading after C1 as well as at HEAD, both symmetric
+differences, duplicate-id counts, any resolution naming an unregistered id, and the max and
+next-free id.
 
-G5 PLAN PAIR. PLANF is a REWRITE: 0 occurrences at HEAD, PLANT once. Report `.agent/plan.md` sha256,
-bytes and a line count under 50, with `## Goal` and `## Risks` byte-IDENTICAL to base and
-`## Current Step` and `## Next Steps` not.
+G5 PLAN PAIR AND ITS NUMBERING, which is the R-0509 repair. PLANF occurs 0 times at HEAD and PLANT
+once. Report `.agent/plan.md` sha256, bytes and a line count under 50, with `## Goal` and `## Risks`
+byte-IDENTICAL to base. Then parse `## Next Steps` and report the ordered-list numbers it actually
+contains: they must read 1, 2, 3, 4 with no repeat — the defect being repaired is that they read
+1, 2, 2, 3 at base.
 
-G6 THE MIGRATION ITSELF. `python3 -m pytest tests/orchestration/test_claude_cli_exec_guard.py -q`
-exits 0 with 8 passed. Then, by AST and not by text, over `pingpong_provider.py` at HEAD:
-`_resolve_version` and `_guarded_cli_run` each hold ZERO
-`subprocess.run/Popen/call/check_output` call nodes, and `_call` with `_call_reviewer_structured`
-still hold ONE each — the coupled unit R16 carries. Report all four counts.
+G6 THE R-0506 REPAIR. Over the HEAD blobs of both source files, report the count of each retired
+phrase — `NO CALLER`, `ONLY place in the codebase that may invoke subprocess`, and `ONLY function
+that executes a subprocess` — each of which must be 0. Then the caller gate, scoped to
+`-- packages tests` so no block or state file can match itself:
+`git grep -l "from packages.orchestration.exec_guard import" -- packages tests` lists the importing
+paths; report the list. `exec_guard.py` claiming an absence this list contradicts is the finding
+being closed, so the two readings belong together.
 
-G7 REGRESSION EQUALITY, the seven files that drive this provider:
-`python3 -m pytest tests/orchestration/test_structured_cli_envelope.py
-tests/orchestration/test_pingpong.py tests/orchestration/test_provider_mode.py
-tests/orchestration/test_failure_wiring.py
-tests/orchestration/test_run_manifest_call_ref_canonical_numbers.py
-tests/orchestration/test_provider_evidence_integration.py
-tests/orchestration/test_stream_evidence_integration.py -q` exits 0 at HEAD with the SAME passed
-count it reports at base. Take the base reading at C1, the last commit before C2 changes any code,
-and report both numbers.
+G7 THE SUITES THAT OWN THOSE FILES. `python3 -m pytest
+tests/orchestration/test_managed_builder_execution.py tests/orchestration/test_exec_guard.py
+tests/orchestration/test_claude_cli_exec_guard.py -q` exits 0 at HEAD with the SAME passed count it
+reports at base. Take the base reading at C1, the last commit before C2 changes any source, and
+report both numbers.
 
 G8 LINT, scoped and deliberately not repo-wide: `python3 -m ruff check
-packages/orchestration/pingpong_provider.py tests/orchestration/test_claude_cli_exec_guard.py`
-exits 0. A repo-wide `ruff check packages/ tests/` is ALREADY RED at base (UP035 in `dag_schedule.py`,
-F821 in `gauntlet_injection.py`, F401 and I001 in `test_plan_approval.py`), so it could not fail
-honestly for this round and is not ordered.
+packages/orchestration/exec_guard.py packages/orchestration/managed_builder_execution.py` exits 0.
+A repo-wide `ruff check packages/ tests/` is ALREADY RED at base (UP035 in `dag_schedule.py`, F821
+in `gauntlet_injection.py`, F401 and I001 in `test_plan_approval.py`), so it could not fail honestly
+for this round and is not ordered.
 
 G9 STATE READERS, because this round rewrites `.agent/` state: `python3 -m pytest
 tests/orchestration/test_test_runner.py tests/regression/test_resource_safety.py
@@ -381,18 +297,18 @@ tests/orchestration/test_integrity_gate.py tests/ui_server/test_dashboard_contra
 with 157 passed. CANARY: `python3 -m pytest tests/cli/test_golden_path.py -q` exits 0 with 42
 passed. Both must match base.
 
-G10 COMMIT HYGIENE, three readings. `git diff --name-only c5d80471..HEAD` measured BEFORE C4 equals
-the six declared paths minus `.agent/handoff.md` — report the list; 0 paths outside it. The `+`
-column of `git show --numstat` for C0a, C0b, C1, C2 and C3: none exceeds 500. C4's own count is
-ordered nowhere, because a commit cannot measure itself; report it in the round report instead.
-`git log --format=%h %p c5d80471..HEAD` shows ONE parent per commit and a linear chain; `git reflog`
+G10 COMMIT HYGIENE, three readings. `git diff --name-only 7185d949..HEAD` measured BEFORE C5 equals
+the declared paths minus `.agent/handoff.md` — report the list; 0 paths outside it. The `+` column
+of `git show --numstat` for C0a, C0b, C1, C2, C3 and C4: none exceeds 500. C5's own count is ordered
+nowhere, because a commit cannot measure itself; report it in the round report instead.
+`git log --format=%h %p 7185d949..HEAD` shows ONE parent per commit and a linear chain; `git reflog`
 shows every entry prefixed `commit:`, no amend, rebase, reset or force-push.
 
 ## Done when
 
-Every commit in the bundle exists in order, the branch is pushed, every gate has been RUN with its exit
-code recorded, `git status --porcelain` is empty, and `.agent/handoff.md` is rewritten per
-docs/agents/handback_template.md with an item-status table covering C0a through C4. Run `gh pr list
+Every commit in the bundle exists in order, the branch is pushed, every gate has been RUN with its
+exit code recorded, `git status --porcelain` is empty, and `.agent/handoff.md` is rewritten per
+docs/agents/handback_template.md with an item-status table covering C0a through C5. Run `gh pr list
 --state open --json number,headRefName,baseRefName,isDraft` after the final push and report its
 output; create NO pull request and merge nothing. Report what the commands PRINTED — a gate whose
 result you did not read is a finding. If a gate contradicts this block, report the contradiction and
