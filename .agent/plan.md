@@ -13,19 +13,19 @@ reproduces the hosted result locally on a clean checkout, a seeded failure fails
 the right stage with a readable summary, and runtime stays within a budget.
 
 ## Current Step
-R26 is closed PASS: the integration gate ran the full suite on the branch and at
-the merge base and found 0 branch-only and 0 base-only failures. R27 records that
-verdict, registers and resolves R-0489, and lands the feature file's Built State
-section — the last content this feature owes, and a closure precondition the
-closure commit's own path set cannot satisfy itself. T001, T002 and T003 are
-COMPLETE.
+R27 is closed PASS. R28 is the CLOSURE round per
+docs/roadmap/STATUS_closure_protocol.md: it records that verdict, then runs the
+evidence job and a fresh review zip against this commit, writes the STATUS `[x]`
+line together with the README capability sync in one commit, and opens the PR.
+T001, T002 and T003 are COMPLETE, the integration gate passed at R26 with 0
+branch-only and 0 base-only failures, and the feature file's Built State landed
+at R27.
 
 ## Next Steps
-1. Closure per docs/roadmap/STATUS_closure_protocol.md: the evidence job, then a
-   FRESH review zip from a clean tree, then the STATUS line and the README
-   capability sync in ONE commit, then the PR. The zip's package name and
-   SHA-256 do not exist until the worker builds it, so the STATUS line is
-   authored as a template with named slots and gated on its GRAMMAR.
+1. The PR is NOT merged this session. It merges at the next feature's start via
+   the AGENTS.md Open PR Gate; the gap is the operator's manual-review window.
+2. A paydown branch for R-0482 and R-0487, which this feature deliberately did
+   not fix.
 
 ## Risks
 - Hosted wall time is still unmeasured, and the first hosted run is that
@@ -33,9 +33,6 @@ COMPLETE.
   2100 s budget, and it is also the stage carrying the toolchain-dependent tests.
 - The lint ceiling is a RATCHET. Raising it to make a round green converts the
   one honest lint signal in this repository into decoration.
-- Closure packaging has a documented history of BLOCKED_EVIDENCE traps. The
-  closure block names each one it must clear rather than discovering them at zip
-  time.
 - R-0482 (a live `NameError` on a guard's refusal path) and R-0487
-  (`docs/README.md` is never link-checked) are both frozen here and belong to a
-  paydown branch: each is a code- or test-content fix this feature may not make.
+  (`docs/README.md` is never link-checked) are both frozen here: each is a code-
+  or test-content fix this feature may not make.
