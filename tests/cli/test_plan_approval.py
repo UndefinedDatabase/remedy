@@ -90,14 +90,46 @@ _FAKE_INTAKE_JSON = json.dumps({
 })
 
 
+_FAKE_PLAN_JSON = json.dumps({
+    "schema_v": "flight_plan_v1",
+    "tasks": [{
+        "id": "T001", "title": "Do thing", "goal": "A goal",
+        "acceptance": ["Done"], "depends_on": [],
+        "est_tokens_band": "M", "files_hint": [],
+    }],
+    "risks": [],
+})
+
+
 def _setup_llm_mocks(monkeypatch, *, plan_succeeds=True, transformations=None):
-    """Configure monkeypatches for LLM intake + flight plan path."""
+    """Configure monkeypatches for LLM intake + flight plan path.
+
+    Both call_fn FACTORIES are mocked, not only the functions behind them.
+    `do_cmd` reaches the flight-plan branch solely when
+    `intake.make_structured_call_fn` hands back a callable, and the real factory
+    decides that by probing a live Ollama server. Leaving it unmocked made these
+    tests read the developer machine instead of their own fixtures: green with a
+    server up, and on a CI runner silently down the `deterministic skeleton`
+    path, where every assertion below is about the plan that never got built.
+    """
     def _fake_call(prompt: str, attempt: int) -> str:
         return _FAKE_INTAKE_JSON
 
     monkeypatch.setattr(
         "packages.orchestration.intake.make_provider_call_fn",
         lambda: _fake_call,
+    )
+
+    def _fake_plan_call(prompt: str, attempt: int) -> str:
+        return _FAKE_PLAN_JSON
+
+    # Returns a callable for every model_cls it is asked for, so the caller takes
+    # the provider branch. The payload is a valid FlightPlan rather than a stub:
+    # `plan_job_llm` is replaced below and never invokes it, but a later test that
+    # stops replacing it then still drives a mock instead of a live server.
+    monkeypatch.setattr(
+        "packages.orchestration.intake.make_structured_call_fn",
+        lambda model_cls, **kw: _fake_plan_call,
     )
 
     from packages.orchestration.flight_plan import FlightPlanResult
