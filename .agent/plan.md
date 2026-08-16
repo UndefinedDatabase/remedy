@@ -18,23 +18,22 @@ reaches a child, and the limitations document exists and is linked from the
 README.
 
 ## Current Step
-R1, this round: the Open PR Gate, the branch, the STATUS claim `[ ]` → `[~]`,
-the live-review reset carrying the F083 open set forward, and the registration
-of R-0490. No production code and no test content.
+R2, this round: record the R1 PASS, register R-0491, and write
+`.agent/f085_inventory.md` — every `subprocess.*` call site in `packages/` and
+`apps/` with its enclosing symbol, its command class and the keyword facts of
+the call itself. No production code and no test content.
 
 ## Next Steps
-1. R2 — the subprocess-seam inventory in `.agent/f085_inventory.md`: every
-   `subprocess.*` call site in `packages/` and `apps/` with its enclosing
-   symbol, command class, cwd source, environment handling, timeout and output
-   bounding. The reviewer measured 73 such call sites across 33 files at
-   a5a70621; the feature file's premise of "a small number of helpers" is what
-   R2 tests.
+1. R3 — record R2, rule the stage-1 command classes and their policies as a
+   DECISION, and rule on the premise the inventory tests: the feature file
+   assumes subprocess execution already flows through a small number of
+   helpers, and the measured call-site count is what decides whether T002's
+   seam migration is the job the task slicing assumes.
 
 ## Risks
-- The feature file says subprocess execution "already flows through a small
-  number of helpers". At 73 call sites in 33 files that premise is unproven, and
-  if R2 disproves it the seam migration T002 plans is a much larger job than the
-  task slicing assumes. That is a spec finding for R3, not a reason to widen R2.
+- If the inventory shows the seams are many rather than few, T002 as sliced is
+  under-scoped. That is a spec finding for R3 to route, not a reason for any
+  round to widen itself.
 - R-0202 is carried into this feature: a spawned path once ignored
-  REMEDY_UI_NO_AUTO_BUILD and the mechanism was never explained. The inventory
-  must locate that path rather than assume it is gone.
+  REMEDY_UI_NO_AUTO_BUILD and the mechanism was never explained. R2 locates the
+  path; it does not fix it.
