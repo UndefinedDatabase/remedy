@@ -789,3 +789,28 @@ amend, rebase, reset or force-push; the tree is clean and `git worktree list` is
 `.agent/handoff.md` measures 79 lines against its own declaration of 79, and its single declared
 deviation — the token cap, cause named, no section dropped — is accurate. LAST_REVIEWED_SHA advances
 to the R16 handback commit.
+
+Done: R-0507 — the coupled unit this finding identified has been migrated as one commit, which is
+the only way it could be migrated. `_call` and `_call_reviewer_structured` now reach the CLI through
+`_guarded_cli_run`, and `tests/orchestration/test_structured_cli_envelope.py` patches that runner
+instead of `subprocess.run`. The coupling the finding predicted is now MEASURED rather than argued:
+in a `git archive` extraction the reviewer reverted each half alone, and restoring the stdlib spawn
+at the structured site reddened ELEVEN tests while reverting the mock target alone reddened the same
+eleven — neither half is separable, exactly as the finding said. The counter-measure it bound the
+reviewer to has now been exercised for three consecutive rounds: every block since has been applied
+to an extraction and run against the suites that touch its files before emission, and that practice
+has caught a mis-scoped migration (this finding), a vacuous timeout assertion (R15) and a
+self-contradicting marker gate (R16). Five behaviour-equality goldens land with the migration —
+result text, non-zero exit with its stderr tail, the wall trip's message, a signal death's -SIGNUM
+form and the caller-side character cap — and four red controls each reddened their own tests.
+
+Done: R-0509 — the malformed numbering is repaired on disk and the repair is measured at both ends.
+`.agent/plan.md`'s `## Next Steps` parsed to 1, 2, 2, 3 at 7185d949 and parses to 1, 2, 3, 4 at
+396ad913, with no repeated number, `## Goal` and `## Risks` byte-identical to base and the file at
+43 lines under its 50-line cap. The repair was made the way the finding prescribed: R16's plan pair
+spanned the WHOLE `## Next Steps` section rather than a prefix of it, so the surviving items were
+renumbered by the pair itself instead of being left to collide with the new ones. The standing rule
+the finding states — when a TO changes how many items a numbered list or table holds, the FROM spans
+the whole structure — is not yet written into docs/agents/planner_reviewer_prompt.md §3, and this
+resolution does not claim that it is; R-0508 and R-0510 stay OPEN for that promotion round, which is
+where all three counter-measures stop being reviewer habit and start binding on disk.
