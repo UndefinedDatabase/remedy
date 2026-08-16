@@ -18,22 +18,27 @@ reaches a child, and the limitations document exists and is linked from the
 README.
 
 ## Current Step
-R9, this round: record the R8 PASS, register R-0500 and fix it — the new test's
-one-blank-line separator, which stable ruff does not evaluate. No production
-module is touched and no behaviour changes.
+R10, this round: record the R9 PASS, resolve R-0500 and register R-0501. Pure
+record round — no code, no tests, no behaviour, `.agent/` state only.
 
 ## Next Steps
-1. R10 starts T002a — the builder class, five call sites, the first seam
-   migration. It is UNBLOCKED: `run_guarded` now bounds its own wall time, so a
-   migrated seam makes a hang easier to see rather than harder.
-2. `_StreamPump` gains a lock and a `snapshot()` so PARTIAL output survives a
-   bounded drain. R8 returns `b""` for a stream whose pump never reached EOF,
-   which `streams_complete` reports honestly but which loses bytes.
-3. T002b-d, then T003 — network posture, limitations document, README link.
+1. R11 builds the FIRST half of T002a: environment scrubbing in `exec_guard.py`
+   behind an opt-in `env_allowlist`, with a `FORBIDDEN_ENV_KEYS` floor a wrong
+   allowlist cannot lower, plus tests for the secret-like variable, the R-0202
+   variable and the untouched no-allowlist path.
+2. T002a's migration half: the five builder sites of amendment F085 D1 —
+   `managed_builder_execution.py`:1160, `pingpong_provider.py`:952, 1075, 1208
+   and `stream_evidence.py`:595 — move to `run_guarded` with a builder policy
+   and behaviour-equality goldens.
+3. `_StreamPump` gains a lock and a `snapshot()` so PARTIAL output survives a
+   bounded drain. It still returns `b""` for a stream whose pump never reached
+   EOF, which `streams_complete` reports honestly but which loses bytes.
+4. T002b-d, then T003 — network posture, limitations document, README link.
 
 ## Risks
+- An allowlist bounds what the PARENT hands over, never what the child's runtime
+  adds back: a CPython child sets `LC_CTYPE` itself under PEP 538. T003's
+  limitations document must say so rather than claim a sealed environment.
 - A stream still blocked at the grace deadline leaks one pipe read end and one
-  daemon thread. Closing an fd under a blocked reader risks that thread reading a
-  recycled fd after a later `open()`, so the leak is the cheaper wrong.
-- The address-space limit is enforced but NOT attributable from `wait4` data;
-  R5's G16 probe confirmed it. Whether stage 1 can name that trip stays open.
+  daemon thread. Closing an fd under a blocked reader risks that thread reading
+  a recycled fd after a later `open()`, so the leak is the cheaper wrong.
