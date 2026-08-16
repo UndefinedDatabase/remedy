@@ -395,3 +395,93 @@ containment True with 0 ids outside, so no new selection is required to run it.
 
 This section is evidence and carries no recommendation and no budget number;
 choosing the budget belongs to R12.
+
+## Q10 — Serial stage cost through the production runner, measured at R13
+
+INSTRUMENT, imported and never retyped. A Python driver run from the repository
+root imports `CI_STAGES` and `CiStage` from `packages.orchestration.ci_stages`
+and `run_ci_stage` and `stage_command` from `packages.orchestration.ci_run`.
+Marker expressions were READ from `CI_STAGES`. Every sample is its own process
+calling `run_ci_stage(stage, repo_root)` with the repository root as
+`repo_root`; the exit code is the one that process returned (R-0438) and the
+wall second is `run_ci_stage`'s own `duration_s`, i.e. `time.monotonic()` around
+the call. The argv is `stage_command`'s own, verbatim, here for `standard`:
+
+    ['/usr/bin/python3', '/home/decodeux/Repos/remedy/scripts/remedy_pytest_runner.py', '--', '-m', '(integration or subprocess) and not real_ollama', '-q']
+
+RED CONTROL, run FIRST and before any timing sample: `CiStage(name="bogus",
+description="red control", marker_expression="no_such_marker_at_all",
+runs_in_ci=True, manual_command="")` through the same `run_ci_stage` returns
+EXIT CODE 5, its whole output being the line `17045 deselected in 3.67s`. The
+instrument can tell an empty selection from a green one, so the readings below
+are readings and not decoration.
+
+SAMPLES, three per stage, run one after another, with NO environment override —
+at `scripts/remedy_pytest_runner.py`'s own 600-second `REMEDY_PYTEST_TIMEOUT_SEC`
+default. One row per SAMPLE, never one per stage; nothing is averaged. The
+summary line is pytest's own final line, verbatim, read from that sample's own
+log file. No log came near `MAX_OUTPUT_BYTES` (512 KiB) — the largest is 14062
+bytes — so no line below is quoted out of a truncated stream.
+
+| Stage | Sample | Wall s | Exit | pytest's own final summary line |
+|---|---|---|---|---|
+| fast | 1 of 3 | 391.82 | 0 | `3968 passed, 7 skipped, 13070 deselected in 390.37s (0:06:30)` |
+| fast | 2 of 3 | 391.07 | 0 | `3968 passed, 7 skipped, 13070 deselected in 389.65s (0:06:29)` |
+| fast | 3 of 3 | 397.45 | 0 | `3968 passed, 7 skipped, 13070 deselected in 396.05s (0:06:36)` |
+| standard | 1 of 3 | 600.06 | 124 | not measured — killed at the default, so pytest printed no final line |
+| standard | 2 of 3 | 600.06 | 124 | not measured — killed at the default, so pytest printed no final line |
+| standard | 3 of 3 | 600.06 | 124 | not measured — killed at the default, so pytest printed no final line |
+| ui | 1 of 3 | 7.99 | 0 | `393 passed, 4 skipped, 16648 deselected in 6.73s` |
+| ui | 2 of 3 | 8.09 | 0 | `393 passed, 4 skipped, 16648 deselected in 6.88s` |
+| ui | 3 of 3 | 7.99 | 0 | `393 passed, 4 skipped, 16648 deselected in 6.75s` |
+| smoke | 1 of 3 | 11.07 | 0 | `22 passed, 1 skipped, 17022 deselected in 9.84s` |
+| smoke | 2 of 3 | 11.07 | 0 | `22 passed, 1 skipped, 17022 deselected in 9.85s` |
+| smoke | 3 of 3 | 11.06 | 0 | `22 passed, 1 skipped, 17022 deselected in 9.84s` |
+| excluded | not run | not measured | not measured | not run |
+
+THE ANSWER TO THE QUESTION R13 EXISTED TO SETTLE: today's `remedy ci` TRUNCATES
+its largest stage. All three `standard` samples returned 124 — `run_ci_stage`'s
+`PYTEST_TIMEOUT_EXIT_CODE` — with the note `timed out`, and the last line of each
+log is `ERROR: pytest timed out after 600 seconds.`. The last progress marker
+each killed run printed was `[ 70%]`, `[ 73%]` and `[ 71%]` respectively; that is
+where the kill landed, and no completion figure is derived from it here.
+
+UNCAPPED PROBE, the ONLY run in this section that overrides the default: because
+`standard` returned 124, one further sample was run with the environment variable
+`REMEDY_PYTEST_TIMEOUT_SEC` set to `5400`. `fast`, `ui` and `smoke` returned no
+124 in any sample, so no uncapped probe was run for them and none was needed.
+
+| Stage | Sample | Wall s | Exit | pytest's own final summary line |
+|---|---|---|---|---|
+| standard | uncapped probe, REMEDY_PYTEST_TIMEOUT_SEC=5400 | 927.72 | 0 | `12578 passed, 1 skipped, 4466 deselected in 926.15s (0:15:26)` |
+
+SPREAD, over the three default-timeout samples of each stage, min / max /
+max-minus-min in seconds:
+
+- fast — min 391.07, max 397.45, max−min 6.38.
+- standard — min 600.06, max 600.06, max−min 0.01. All three are the runner's
+  own kill, not the stage's cost, so this spread measures the timeout and not
+  `standard`; the stage's own serial cost is measured once, by the uncapped
+  probe above, and its spread is `not measured` at one sample.
+- ui — min 7.99, max 8.09, max−min 0.10.
+- smoke — min 11.06, max 11.07, max−min 0.01.
+
+THE `excluded` STAGE WAS NOT RUN, and not by choice of the driver: its
+`runs_in_ci` is False, so `run_ci_stage` returned `ran=False`, `exit_code=None`,
+`duration_s=0.0` and the note it carries, without starting anything. The
+`manual_command` read from the stage table is:
+
+    python3 -m pytest -m real_ollama -q  # needs a running Ollama server
+
+CONTEXT, measured this round and not recalled. `os.cpu_count()` reports 24 —
+recorded because every `-n auto` reading in `## Q9` resolves against it, while
+nothing in `## Q10` does. `python3 -m pytest --version` prints `pytest 9.0.3`
+at exit code 0. `python3 -m ruff check .`, run from the repository root against
+the repository's own `pyproject.toml` (`select = ["E", "F", "W", "I", "UP"]`,
+`line-length = 120`, ruff 0.15.17), ends `Found 26 errors.` and
+`[*] 25 fixable with the --fix option.` at EXIT CODE 1. Twenty-six is the lint
+baseline R-0468 needs on the record before any lint gate can be written, and
+recording it is the whole of what R13 does about R-0468.
+
+This section is evidence. It carries no ceiling, no budget number and no
+recommendation; choosing them from these samples is R14's work.
