@@ -1,8 +1,8 @@
 # Plan — F083 CI self-check
 
 Branch: feature/f083-ci-self-check, cut from main after the F082 closure PR #201
-merged. Next free finding id: R-0477. Open findings: the seventy-five carried out
-of the F082 record plus R-0448 to R-0476 registered on this branch, of which
+merged. Next free finding id: R-0478. Open findings: the seventy-five carried out
+of the F082 record plus R-0448 to R-0477 registered on this branch, of which
 R-0456 to R-0459, R-0467, R-0472 and R-0475 are resolved. `.agent/live_review.md`
 is the source of truth.
 
@@ -15,17 +15,17 @@ reproduces the hosted result locally on a clean checkout, a seeded failure fails
 the right stage with a readable summary, and runtime stays within a budget.
 
 ## Current Step
-R14 records the R13 PASS, registers R-0475 and R-0476, and completes the
-three-sample serial reading of `standard` that R13's single uncapped probe left
-at one point, so R15's ceiling rests on a measured spread rather than on one
-run. It writes no ceiling and no production code.
+None in flight. R14 is closed: the reviewer re-ran all fifteen gates at 94e6c353,
+issued PASS, resolved R-0475 and registered R-0477. This record round writes that
+verdict to disk and ends the session. R15 has not started.
 
 ## Next Steps
 1. R15 carries a per-stage timeout in the stage table and writes the budget stage
    from the `## Q11` spread, because today's `remedy ci` kills `standard` at the
-   runner's 600-second default — measured at R13, three samples, exit 124 each.
-   R15 also rules on R-0468 from the 26-error ruff baseline `## Q10` records, and
-   settles the determinism stage's shape as a DECISION.
+   runner's 600-second default. R15 also rules on R-0468 from the 26-error ruff
+   baseline `## Q10` records, and settles the determinism stage's shape as a
+   DECISION. It is the first round of this feature to touch production code
+   since fb9ddf12, so it is a SPLIT round and self-certification is forbidden.
 
 ## Risks
 - `remedy ci` cannot complete `standard` today: `scripts/remedy_pytest_runner.py`
@@ -38,3 +38,6 @@ run. It writes no ceiling and no production code.
   `standard`'s expression is narrowed in the same change.
 - 26 ruff errors stand repo-wide (R-0468) and no stage lints. A lint ceiling
   arrives red unless the baseline is recorded first, which `## Q10` does.
+- Changing the stage timeout changes what `tests/orchestration/test_ci_run.py`
+  and `tests/cli/test_ci_cmd.py` pin. R15 lands the guard and the change in the
+  same commit rather than leaving either side unpinned for a round.
