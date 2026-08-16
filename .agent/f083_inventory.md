@@ -485,3 +485,79 @@ recording it is the whole of what R13 does about R-0468.
 
 This section is evidence. It carries no ceiling, no budget number and no
 recommendation; choosing them from these samples is R14's work.
+
+## Q11 — The three-sample serial cost of `standard`, completed at R14
+
+INSTRUMENT, imported and never retyped. A Python driver run from the repository
+root imports `CI_STAGES` and `CiStage` from `packages.orchestration.ci_stages`
+and `run_ci_stage` and `stage_command` from `packages.orchestration.ci_run`. The
+`standard` stage is READ from `CI_STAGES` by name and its marker expression is
+never retyped. Every sample is its own process calling
+`run_ci_stage(stage, repo_root)` with the repository root as `repo_root` and with
+NO `run_command=` argument, so every sample really goes through the production
+`_run_via_subprocess`; the exit code is the one that process returned (R-0438)
+and the wall second is `run_ci_stage`'s own `duration_s`, i.e. `time.monotonic()`
+around the call. The argv is `stage_command`'s own, verbatim:
+
+    ['/usr/bin/python3', '/home/decodeux/Repos/remedy/scripts/remedy_pytest_runner.py', '--', '-m', '(integration or subprocess) and not real_ollama', '-q']
+
+RED CONTROL, run FIRST and before either timing sample: `CiStage(name="bogus",
+description="red control", marker_expression="no_such_marker_at_all",
+runs_in_ci=True, manual_command="")` through the same `run_ci_stage` returns
+EXIT CODE 5, its whole output being the line `17045 deselected in 3.47s`. The
+instrument can tell an empty selection from a green one, so the readings below
+are readings and not decoration.
+
+PRECISION CONVENTION, binding on this section and stated on its face (R-0476):
+every wall second is published at exactly two decimals, and every derived value
+below — min, max, max−min — is computed from the numbers AS PUBLISHED in the
+table, never from the unrounded `duration_s`. Subtracting the published bounds
+reproduces the published spread exactly.
+
+SAMPLES, three, of `standard` ONLY, each with the environment variable
+`REMEDY_PYTEST_TIMEOUT_SEC` set to `5400` — an OVERRIDE of
+`scripts/remedy_pytest_runner.py`'s own 600-second default, the same override the
+R13 probe used. Samples 2 and 3 were run at R14, one after the other, each its
+own process; sample 1 is COPIED from `## Q10` and was not re-measured here. One
+row per SAMPLE; nothing is averaged. The summary line is pytest's own final line,
+verbatim, read from that sample's own log file. Neither R14 log came near
+`MAX_OUTPUT_BYTES` (512 KiB) — each is 14062 bytes — so no line below is quoted
+out of a truncated stream.
+
+| Sample | Round taken | Wall s | Exit | pytest's own final summary line |
+|---|---|---|---|---|
+| 1 of 3 | R13 — copied from the uncapped probe recorded in `## Q10`, not re-measured at R14 | 927.72 | 0 | `12578 passed, 1 skipped, 4466 deselected in 926.15s (0:15:26)` |
+| 2 of 3 | R14 | 935.14 | 0 | `12578 passed, 1 skipped, 4466 deselected in 933.59s (0:15:33)` |
+| 3 of 3 | R14 | 916.36 | 0 | `12578 passed, 1 skipped, 4466 deselected in 914.74s (0:15:14)` |
+
+SPREAD, over the three uncapped samples, under the convention stated above:
+min 916.36, max 935.14, max−min 18.78. No sample returned 124 and all three ended
+at exit 0, so the three-sample set is COMPLETE at the uncapped setting. All three
+report the same `12578 passed, 1 skipped, 4466 deselected`, so the readings time
+the same selection and not three different ones.
+
+PROVENANCE, measured and not assumed, because sample 1 was taken at R13 and
+samples 2 and 3 at R14. `git diff --name-only fb9ddf12..HEAD -- packages/
+scripts/`, run from the repository root, printed NOTHING — its measured output is
+empty. That is the proof the instrument is byte-identical across all three
+samples: fb9ddf12, `fix(f083): anchor the CI stage run and make an empty run
+red`, is the newest commit in this branch's history that touches either path, and
+nothing under `packages/` or `scripts/` has moved since. The three readings are
+one set.
+
+CONTEXT, measured this round and not recalled. `os.cpu_count()` reports 24, which
+EQUALS the 24 recorded in `## Q10`. `python3 -m pytest --version` prints
+`pytest 9.0.3` at exit code 0, which EQUALS the `pytest 9.0.3` recorded there.
+Neither differs, so neither the machine nor the tooling moved between sample 1
+and samples 2 and 3.
+
+WHAT THIS SECTION DID NOT MEASURE, said rather than left blank. No further
+`standard` sample was taken at the runner's own 600-second default: those three
+kills are recorded in `## Q10` and re-running them would re-measure a settled
+number, so `standard`'s R14 wall second at the default is `not measured`. `fast`,
+`ui` and `smoke` were `not run` this round, for the same reason — each already
+carries three samples — so their R14 wall seconds are `not measured` too. The
+`excluded` stage was `not run`, as at R13, because its `runs_in_ci` is False.
+
+This section is evidence. It carries no ceiling, no budget number and no
+recommendation; choosing them from these samples is R15's work.
