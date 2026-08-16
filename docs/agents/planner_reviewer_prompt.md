@@ -170,8 +170,8 @@ end the response with:
   verbatim (estimate label included), so the current progress estimate
   always exists on disk, not only in the chat brief.
 
-- **Pre-emission block checklist (DECISION F105 D8, finding R-0250).** Run all
-  twelve checks mechanically, on the FINAL bytes, after the last edit, before any
+- **Pre-emission block checklist (DECISION F105 D8, finding R-0250).** Run EVERY
+  check below mechanically, on the FINAL bytes, after the last edit, before any
   block leaves the reviewer. Each one has already cost this repository a round.
   1. **Size.** Count the block's lines. Over 400 (DECISION F105 D5) → split or
      cut BEFORE emitting. A worker must save the block verbatim, so an oversize
