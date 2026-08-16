@@ -18,15 +18,16 @@ reaches a child, and the limitations document exists and is linked from the
 README.
 
 ## Current Step
-R16, this round: record the R15 PASS, register R-0508, R-0509 and R-0510 — three
-defects in the reviewer's own R15 block that its worker reported rather than
-repaired — resolve R-0506 by correcting the two falsified absence claims, and repair
-the malformed numbering this section carried.
+R17, this round: record the R16 PASS, migrate R-0507's coupled unit — `_call`,
+`_call_reviewer_structured` and the envelope test's mock move as one commit — with
+five behaviour-equality goldens, then resolve R-0507 and R-0509. T002a's CLI half is
+complete after this round; every `ClaudeCliProvider` spawn runs under the guard.
 
 ## Next Steps
-1. R17 migrates the coupled unit of R-0507: `_call`, `_call_reviewer_structured` and
-   the envelope test's mock, which must move together. The reviewer has already
-   dry-run it green against an extraction, so the round is pairs and goldens only.
+1. Promote three standing rules into docs/agents/planner_reviewer_prompt.md §3, which
+   is what R-0508 and R-0510 are still open for: classify pair shapes mechanically,
+   let no heading count its own contents, and span a whole structure when a pair
+   changes its arity. Reviewer habit binds nothing until it is on disk.
 2. `stream_evidence.py`:595 is T002a's last site and is NOT a `subprocess.run` swap:
    it streams incrementally where `run_guarded` buffers, so its shape is decided first.
 3. `_StreamPump` gains a lock and a `snapshot()` so PARTIAL output survives a
