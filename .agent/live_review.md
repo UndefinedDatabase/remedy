@@ -744,3 +744,20 @@ instance that was noticed rather than to the class. That is the R-0417 staleness
 different hat. Counter-measure, applied in the build of this block: no heading in it states a count
 of its own contents, and the build script greps the emitted bytes for a number-word standing next to
 "paths" or "commits" and fails the build if it finds one. OPEN.
+
+Done: R-0506 — the two documented absence claims the R13 migration falsified are corrected, in the
+round its own text named as the one that owes them. `packages/orchestration/exec_guard.py` no longer
+says "NO CALLER. Nothing in this repository imports this module yet"; it now states PARTIAL coverage,
+names the managed builder seam and the CLI provider as the callers, says which classes still spawn
+unsupervised, and deliberately writes NO number, because the number changes with every migration
+round and the caller grep is the honest answer. The allowlist sentence no longer claims choosing one
+per command class "is not done here" — it records that callers choose it, the builder policy pinning
+one and the CLI policy deliberately not. `packages/orchestration/managed_builder_execution.py` no
+longer calls itself the only place that may INVOKE subprocess for builder execution: it may LAUNCH
+one, and since F085 T002a it delegates the spawn to `exec_guard.run_guarded` while keeping the
+policy, in both the module docstring and `run_managed_builder`'s. Both "shell=False ALWAYS" promises
+are replaced by "No shell, ever" plus a pointer to the AST assertion that actually enforces it, so
+the sentence that made R-0504 possible — a docstring a source-text test could satisfy — is gone.
+Verified at the fix commit: the three retired phrases occur 0 times, the caller grep scoped to
+`-- packages tests` names four paths, and the exec-guard and managed-builder suites are 152 passed,
+matching base exactly.
