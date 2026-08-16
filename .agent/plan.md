@@ -13,20 +13,18 @@ reproduces the hosted result locally on a clean checkout, a seeded failure fails
 the right stage with a readable summary, and runtime stays within a budget.
 
 ## Current Step
-R24 is closed PASS and R25 recorded it. R-0488 is resolved: the D6 section now
-names the `standard` stage instead of counting tests, and every claim in it is
-pinned to a stage collection. T001, T002 and T003 are COMPLETE and no
-documentation claim in this feature is unverified against a measurement. R25
-carries no work of its own — it exists so the R24 verdict was written down before
-the session ended rather than waiting on the integration-gate round.
+R25 is closed PASS and R26 recorded it. R26 is the integration-gate round per
+docs/agents/integration_gate.md: the full suite once on the branch, once at the
+merge base f3fd96d7 in a throwaway worktree, the two FAILED lists compared, and
+every id in either direction attributed by direct evidence. Its measured values
+live in `.agent/gate_f083_r26/`, not in this file. T001, T002 and T003 are
+COMPLETE and every documentation claim in this feature is pinned to a
+measurement.
 
 ## Next Steps
-1. The integration-gate round: the full suite exactly once, per
-   docs/agents/integration_gate.md. Budget it as a round of its own — a branch run
-   plus a base run in a throwaway worktree, roughly 23 minutes of suite each, and
-   the base worktree needs `apps/ui/node_modules` parity or per-id attribution.
-2. Then closure per docs/roadmap/STATUS_closure_protocol.md — evidence job plus a
+1. Closure per docs/roadmap/STATUS_closure_protocol.md — the evidence job and a
    FRESH review zip, both mandatory, then the authored STATUS line and the PR.
+   The closure run is the second and last full-suite run this feature gets.
 
 ## Risks
 - Hosted wall time is still unmeasured, and the first hosted run is that
