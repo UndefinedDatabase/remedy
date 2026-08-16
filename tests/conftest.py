@@ -36,7 +36,7 @@ def _reset_config_cache():
 
 
 @pytest.fixture(autouse=True)
-def _no_live_ollama_reach(request, monkeypatch):
+def _no_live_ollama_reach(request):
     """Make a LIVE Ollama connection attempt fail at once for unmarked tests.
 
     ``intake.py::make_structured_call_fn`` decides whether the LLM branch or the
@@ -59,14 +59,25 @@ def _no_live_ollama_reach(request, monkeypatch):
     Tests that install their OWN fake ``ollama`` module (``monkeypatch.setitem``
     on ``sys.modules``) are unaffected: they replace the module this fixture
     patched, and they do it in the test body, after this fixture has run.
+
+    Deliberately does NOT request ``monkeypatch``. An autouse conftest fixture
+    that asks for it makes pytest build ``monkeypatch`` before every module-level
+    autouse fixture, which moves its ``undo()`` from before their teardown to
+    after it. Measured: that alone left eight teardown errors in
+    ``tests/runtimes/test_supervisor_portability.py``, where a per-test janitor
+    stops supervisor process groups while the test's own patch of
+    ``read_handshake`` was still in force. Saving and restoring the attribute by
+    hand keeps this fixture out of the ordering entirely.
     """
     if request.node.get_closest_marker("real_ollama"):
+        yield
         return
     try:
         import ollama
     except Exception:
         # Not installed — a live attempt already fails on the import, which is
         # the hosted behaviour this fixture exists to reproduce.
+        yield
         return
 
     class _RefusedOllamaClient:
@@ -78,7 +89,16 @@ def _no_live_ollama_reach(request, monkeypatch):
                 "real_ollama marker (tests/conftest.py::_no_live_ollama_reach)"
             )
 
-    monkeypatch.setattr(ollama, "Client", _RefusedOllamaClient, raising=False)
+    sentinel = object()
+    original = getattr(ollama, "Client", sentinel)
+    ollama.Client = _RefusedOllamaClient
+    try:
+        yield
+    finally:
+        if original is sentinel:
+            del ollama.Client
+        else:
+            ollama.Client = original
 
 
 @pytest.fixture(autouse=True)
