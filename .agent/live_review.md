@@ -814,3 +814,47 @@ the finding states — when a TO changes how many items a numbered list or table
 the whole structure — is not yet written into docs/agents/planner_reviewer_prompt.md §3, and this
 resolution does not claim that it is; R-0508 and R-0510 stay OPEN for that promotion round, which is
 where all three counter-measures stop being reviewer habit and start binding on disk.
+
+Gate: R17 — PASS, the round that completed T002a's CLI half. All ten ordered gates were re-run by the
+reviewer over 396ad913..88dbcefa and every one reproduces the handback's reading. TRANSPORT,
+disk-to-disk and not by digest fallback: the committed `.agent/authored/f085-r17.md` blob, the
+committed `.agent/last_block.md` blob and both working copies are byte-EQUAL at sha256
+cc496f97e15b8feb9a82368c78493c03f48f1a64c8302dca265874e4fdebb195, 19911 B, 309 lines. BOTH APPEND
+COMMITS HOLD THEIR SHAPE: for C1 the pre-commit blob 6c374ca1 (286462 B) is a byte-exact PREFIX of
+the post-commit file 98be125d (289062 B) and the remainder is byte-equal to blank plus RECORD1; for
+C3 the pre-commit blob 98be125d is a prefix of 27c1e4ef (291333 B) and the remainder is blank plus
+DONE1 plus blank plus DONE2. Each slice occurs exactly ONCE in the file at HEAD, no marker line
+survives anywhere in it, and HEAD equals the C3 blob. THE ARITHMETIC: 125 / 4 / 0 at base and after
+C1 alike — a record registers no id, exactly as the block predicted — against 125 / 6 / 0 at HEAD,
+the open set moving 121 to 119, registered difference EMPTY, resolved difference exactly R-0507 and
+R-0509, no duplicate id and no resolution naming an unregistered id; max R-0510, next free R-0511.
+THE MIGRATION IS COMPLETE AND MEASURED BY AST, NOT BY TEXT: over `pingpong_provider.py` at HEAD,
+`_resolve_version`, both defs of `_call`, `_call_reviewer_structured` and `_guarded_cli_run` hold
+ZERO `subprocess.run/Popen/call/check_output` call nodes, and so does the WHOLE MODULE. THE GOLDENS
+ARE NOT VACUOUS: the eight-file provider suite reads 341 passed at C1 in a disposable worktree at
+that commit and 346 at HEAD in the primary checkout — the two numbers are NOT equal and the
+difference is exactly the five goldens C2 adds. Those goldens spawn a REAL child, because `_provider`
+writes the body through `textwrap.dedent` to an executable stand-in, so the indented `_ENVELOPE` is
+valid Python at the child and the "HELLO" assertion could not pass against a mock. TWO INDEPENDENT
+RED CONTROLS, run by the reviewer in a disposable worktree at HEAD and not inherited from the block:
+reverting the mock target alone reddens ELEVEN tests in `test_structured_cli_envelope.py`, which is
+the number DONE1 puts on disk, and restoring the stdlib spawn at the `_call` site reddens
+`test_the_probe_and_the_runner_hold_no_subprocess_spawn`, so the two AST assertions C2 adds do bite.
+The five goldens stay GREEN under that second mutation, which is correct and worth stating: they pin
+BEHAVIOUR across the migration while the AST guard pins the MECHANISM, and neither substitutes for
+the other. THE SEAM PRESERVES ITS CONTRACT: `_guarded_cli_run` re-raises a wall trip as
+`subprocess.TimeoutExpired`, republishes a signal death in the -SIGNUM form and decodes both streams
+the way `text=True` did, so the `except subprocess.TimeoutExpired` handler each call site already
+carried still catches. THE PLAN PAIR: PLANF 0x and PLANT 1x at HEAD, `.agent/plan.md` at sha256
+8c68c6ae324fd779094990ee19c5961b35f6df4fcdb6639ef8f085aecc65c9f2, 2704 B and 44 lines under its cap,
+`## Goal` and `## Risks` byte-identical to base, `## Next Steps` parsing to 1, 2, 3, 4 with no
+repeat. Scoped ruff is exit 0 on all three touched paths, the state readers are 157 passed and the
+canary 42 passed. BEYOND THE ORDERED GATES the reviewer ran the two provider readers G7's file list
+does not cover — `test_pingpong_cli.py` at 172 passed and `test_run_manifest.py` at 44 passed — and
+grepped the repository for surviving patches of `pingpong_provider.subprocess`, of which there are
+none; the seam has no reader left on the stdlib path. The change set is exactly the declared paths
+with 0 outside; insertions are 309, 225, 28, 45, 25 and 8 before the handback commit, which is itself
+32, none over 500; seven single-parent commits, twelve reflog entries all `commit:`-prefixed, no
+amend, rebase, reset or force-push; the tree is clean and `git worktree list` is ONE line. The
+handback measures 80 lines against its own declaration of 80, and its stated-cause deviation is
+accurate. LAST_REVIEWED_SHA advances to 88dbcefa.
