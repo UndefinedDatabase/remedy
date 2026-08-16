@@ -18,22 +18,20 @@ reaches a child, and the limitations document exists and is linked from the
 README.
 
 ## Current Step
-R10, this round: record the R9 PASS, resolve R-0500 and register R-0501. Pure
-record round — no code, no tests, no behaviour, `.agent/` state only.
+R11, this round: the FIRST half of T002a — environment scrubbing in
+`exec_guard.py` behind an opt-in `env_allowlist`, with a `FORBIDDEN_ENV_KEYS`
+floor a wrong allowlist cannot lower. No call site is migrated, so the running
+system gains nothing yet and no containment claim follows from this round.
 
 ## Next Steps
-1. R11 builds the FIRST half of T002a: environment scrubbing in `exec_guard.py`
-   behind an opt-in `env_allowlist`, with a `FORBIDDEN_ENV_KEYS` floor a wrong
-   allowlist cannot lower, plus tests for the secret-like variable, the R-0202
-   variable and the untouched no-allowlist path.
-2. T002a's migration half: the five builder sites of amendment F085 D1 —
+1. T002a's migration half: the five builder sites of amendment F085 D1 —
    `managed_builder_execution.py`:1160, `pingpong_provider.py`:952, 1075, 1208
    and `stream_evidence.py`:595 — move to `run_guarded` with a builder policy
    and behaviour-equality goldens.
-3. `_StreamPump` gains a lock and a `snapshot()` so PARTIAL output survives a
+2. `_StreamPump` gains a lock and a `snapshot()` so PARTIAL output survives a
    bounded drain. It still returns `b""` for a stream whose pump never reached
    EOF, which `streams_complete` reports honestly but which loses bytes.
-4. T002b-d, then T003 — network posture, limitations document, README link.
+3. T002b-d, then T003 — network posture, limitations document, README link.
 
 ## Risks
 - An allowlist bounds what the PARENT hands over, never what the child's runtime
