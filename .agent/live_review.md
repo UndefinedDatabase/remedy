@@ -540,3 +540,83 @@ parses that code and inspects the AST, never searches its text, because a docstr
 a call site are indistinguishable to a substring search. C2 replaces it with an AST assertion that
 `run_managed_builder` holds no `subprocess` spawn node, that `run_guarded` holds exactly one
 `Popen` node passing no `shell` keyword, and that no `shell=True` keyword node exists here. OPEN.
+
+Gate: R13 — PASS, the round that gave `exec_guard` its first caller and put one live seam under
+supervision. All twelve ordered gates were re-run by the reviewer from the repository root at
+ee8e7ba1 and every one reproduces the handback's reading. TRANSPORT, disk-to-disk and not by
+digest fallback: the reviewer's `.remedy-wt/f085-r13.md`, the committed
+`.agent/authored/f085-r13.md` and `.agent/last_block.md` are byte-EQUAL at sha256
+e7f57d218a3bb2418b744753b46e667cfa8cf6e2ab22f43342e672c2eb865808, 23370 B, 400 lines — AT the
+DECISION F105 D5 block cap, not over it. C1 IS A PURE APPEND: the pre-C1 blob is a byte-exact
+PREFIX of the post-C1 file, HEAD equals it, and the 3777-byte remainder is exactly RECORD-R12 and
+R-0504, each occurring ONCE. THE ARITHMETIC: 118 / 3 / 0 at base against 119 / 3 / 0 at HEAD, so
+the open set rose 115 to 116 by exactly one registration against no resolution, with nothing lost,
+no duplicate id and no resolution naming an unregistered id. THE CHANGE ITSELF, read as a diff:
+`run_managed_builder` no longer calls `subprocess.run`; it calls `run_guarded` under a
+`_builder_exec_policy` that sets the wall deadline, the per-stream output cap, the cwd pin, a zero
+core dump and `env_allowlist=tuple(sorted(env))` — an identity over an already-sanitized env that
+adds `FORBIDDEN_ENV_KEYS` as a floor — and deliberately leaves `cpu_seconds`,
+`address_space_bytes` and `open_files` None with the reason written where a reader will look. A
+wall trip is re-raised as `subprocess.TimeoutExpired` so the module's existing timeout path is
+reached unchanged, and the result is wrapped in a `subprocess.CompletedProcess` so every
+downstream reader keeps its shape; `_guarded_exit_code` rebuilds the -SIGNUM form the guard
+reports as a NAME. BEHAVIOUR EQUALITY WAS MEASURED, NOT ASSERTED: before ordering the block the
+reviewer ran six paired probes against base and HEAD — echo, false, a 1s wall timeout, a missing
+command, an over-cap output and a SIGKILL suicide — and all six agree on status, exit code, stored
+output length and safe summary, including exit_code -9 on both sides and a child environment of
+exactly the eight sanitized keys with `GITHUB_TOKEN` absent. FOUR RED CONTROLS were decisive, each
+reddening EXACTLY its own test and nothing else, and the reviewer re-ran control (b) itself
+against the COMMITTED code in an isolated extraction: restoring the direct spawn reddens the AST
+test, disabling the wall re-raise reddens the timeout test, returning the raw returncode reddens
+the signal test, and dropping `env_allowlist` reddens the policy test. At HEAD the suite is
+132 passed against 129 at base, `test_exec_guard.py` is 12 passed unchanged, ruff is exit 0 for
+both files at base AND at HEAD, the canary is 42 passed and the four state readers are 157 passed.
+THE CALLER GATE, scoped to `-- packages tests` so no block file can match itself: ONE path at base
+and THREE at HEAD, adding the module and its test — the guard's no-caller era is over.
+`.agent/plan.md` is 42 lines under its 50-line cap with `## Goal` and `## Risks` byte-IDENTICAL to
+base. The change set is exactly the seven declared paths with 0 outside; insertions are 400, 391,
+42, 124 and 8, none over 500; the history is six single-parent commits with no amend, rebase,
+reset or force-push; `git status --porcelain` is EMPTY and `git worktree list` is ONE line; and
+`.agent/handoff.md` measures 95 lines against its own declaration of 95. The round's seven
+declared deviations were all checked and all are accurate — deviation 7 correctly caught a stale
+numeral in the dispatching brief, which named fourteen gates where the block numbers twelve; the
+block governed and all twelve ran. LAST_REVIEWED_SHA advances to the R13 handback commit.
+
+- R-0505 — Medium, TWO CLAUSES OF ONE BLOCK ORDERED INCOMPATIBLE THINGS, AND THE WORKER HAD TO
+SPEND A DEVIATION CHOOSING BETWEEN THEM. Raised by the reviewer at the R13 gate against its own
+R13 block. Gate G8 of that block ordered the four red controls to run "in a DISPOSABLE worktree
+under `.remedy-wt/`", which is what docs/agents/self_drive_protocol.md G5 requires of destructive
+verification. Constraint 3 of the SAME block said "No worktree is added, removed or pruned", and
+gate G1 ordered `git worktree list` to print ONE line. No execution satisfies all three. The
+constraint was correct for the round the block STARTED as — a record round plus a migration, with
+no destructive check — and was never revisited when the red controls were added to the gate list
+later in authoring. The worker resolved it in favour of the hard constraints, extracting
+`git archive HEAD` into a gitignored directory instead of adding a worktree, proved the isolation
+and the import path inside that copy, deleted it afterwards, and declared the whole thing. That is
+the right call and the right report, and the round was not damaged; what it cost was a deviation
+spent on the reviewer's bookkeeping. This is the family the F083 R9 lesson names — clause-versus-
+clause is the gap a per-clause checklist misses, because each clause is individually correct and
+only the PAIR is wrong. Counter-measure, binding on the reviewer from this round on: when a gate
+is added to a drafted block, re-read the CONSTRAINTS section against it before emission, and state
+in the constraint itself which gates are exempt from it rather than writing an absolute. A block
+that permits no disposable tree must not also order one. OPEN.
+
+- R-0506 — Medium, A MIGRATION FALSIFIED TWO DOCUMENTED ABSENCE CLAIMS AND LEFT BOTH STANDING.
+Raised by the reviewer at the R13 gate; the round MEASURED and reported both, exactly as its gate
+G12 ordered, and deliberately fixed neither. (1) `packages/orchestration/exec_guard.py` states
+under "Deliberate absences, written here because text search cannot find code that does not
+exist" that "NO CALLER. Nothing in this repository imports this module yet", and that choosing an
+allowlist per command class "is not done here". Both were true until R13 and are FALSE at
+ee8e7ba1: the scoped import grep names three paths, and `_builder_exec_policy` chooses exactly
+such an allowlist. (2) `packages/orchestration/managed_builder_execution.py`'s module docstring
+calls itself "the ONLY place in the codebase that may invoke subprocess for builder execution" and
+promises "shell=False ALWAYS", and `run_managed_builder`'s own docstring repeats it; the spawn is
+now `run_guarded`'s `subprocess.Popen`, which passes no `shell` keyword at all. The second text is
+the one that MADE R-0504 possible — a docstring sentence a source-text test could satisfy — so
+leaving it in place while its test has been replaced is the sharper half of this finding. Neither
+was fixed at R13 because `exec_guard.py` sits outside that round's declared change set and the
+docstring rewrite belongs with the four remaining builder sites, where the same sentences must be
+corrected once rather than twice. This is the R-0417 staleness family: a claim of ABSENCE has a
+lifetime, and the commit that ends it is the commit that owes the correction. R14 registers it;
+the R15 migration round must carry the fix for both files in its change set and gate the property
+that neither file claims an absence the caller gate contradicts. OPEN.
