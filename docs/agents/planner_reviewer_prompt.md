@@ -321,6 +321,40 @@ end the response with:
       sequence is fine and only its RANGE is wrong. The R26 instance: gate 19
       covered a six-commit range, so the handback reported five insertion counts
       and called the range "five single-parent commits" while HEAD held six.
+  15. **Pair shapes are classified by a containment test, never by eye.** Finding
+      R-0508. Before emission every FROM/TO pair is tested MECHANICALLY for whether the
+      TO contains the FROM verbatim, and the answer is printed beside that pair in the
+      block's constraints — one reading per pair, never one reading generalised to the
+      rest. Item 4 states the RULE that an APPEND claim requires containment; this one
+      governs the METHOD by which the claim is produced, which is where R-0508 landed:
+      the R15 block ran the check for the single pair it suspected, wrote "Every other
+      pair is a REWRITE", and was wrong about an import insertion whose TO kept its
+      anchor line. An import pair that keeps its anchor is the most common
+      append-shaped pair in this repository, so the eye fails exactly where it is most
+      likely to be trusted. Nothing broke that round only because no gate ordered the
+      unsatisfiable "FROM 0x" reading; the next block to order one pays for it.
+  16. **No heading states a count of the contents beneath it.** Finding R-0510. A
+      section heading that restates a number its own body defines — "exactly these SIX
+      paths", "the four commits" — drifts the moment an item is added, and the heading
+      is the half nobody re-reads. Write the heading without the numeral. Item 11
+      forbids a hand-counted numeral about the block's own PARTS inside a convention
+      paragraph; this one forbids it in a HEADING over a list the reader can count
+      unaided, which is where the R-0402 / R-0404 / R-0436 family kept resurfacing
+      after item 11 was written. The R15 instance is the shape to recognise: that block
+      DID apply the rule to its Bundle heading, because that list had just grown, and
+      left the Change set heading saying SIX over a body of SEVEN. The fix reached the
+      instance that was noticed instead of the class — the R-0417 staleness shape — so
+      sweep every heading in the block, not the one that changed.
+  17. **A pair that changes a structure's arity spans the whole structure.** Finding
+      R-0509. When a TO adds or removes an entry of a numbered list, a table, or any
+      other structure whose items carry positional labels, the FROM spans that WHOLE
+      structure rather than a prefix of it, so the surviving entries are renumbered by
+      the pair itself. A prefix-shaped FROM leaves the old labels standing on the
+      untouched tail, and the applied file then carries two items numbered 2 — which is
+      what `.agent/plan.md` held for a round. Item 4 asks what SHAPE a pair is and item
+      15 asks how that shape was determined; this one asks how far the FROM must REACH,
+      a question about the target's structure rather than about the pair's own bytes,
+      and no containment test can answer it.
   Why this is on disk and not a habit: item 2 has recurred six times across
   F104 and F105, and R20 hit four of them in one block. A check that lives
   only in reviewer session memory is the A1 trap §0 names, and this list is the
