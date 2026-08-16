@@ -18,21 +18,21 @@ reaches a child, and the limitations document exists and is linked from the
 README.
 
 ## Current Step
-R15, this round: record the R14 PASS, register R-0507, and give the claude CLI seam
-its guarded runner — `_cli_exec_policy`, `_decode_cli_stream`, `_guarded_cli_run` —
-migrating `_resolve_version`, the one site no test's mock reaches, with goldens that
-spawn a real fake CLI instead of mocking the stdlib.
+R16, this round: record the R15 PASS, register R-0508, R-0509 and R-0510 — three
+defects in the reviewer's own R15 block that its worker reported rather than
+repaired — resolve R-0506 by correcting the two falsified absence claims, and repair
+the malformed numbering this section carried.
 
 ## Next Steps
-1. R16 migrates the coupled unit of R-0507: `_call`, `_call_reviewer_structured` and
-   the envelope test's mock, which must move together, plus R-0506's fix — the stale
-   absence claims in `exec_guard.py` and `managed_builder_execution.py`.
+1. R17 migrates the coupled unit of R-0507: `_call`, `_call_reviewer_structured` and
+   the envelope test's mock, which must move together. The reviewer has already
+   dry-run it green against an extraction, so the round is pairs and goldens only.
 2. `stream_evidence.py`:595 is T002a's last site and is NOT a `subprocess.run` swap:
    it streams incrementally where `run_guarded` buffers, so its shape is decided first.
-2. `_StreamPump` gains a lock and a `snapshot()` so PARTIAL output survives a
+3. `_StreamPump` gains a lock and a `snapshot()` so PARTIAL output survives a
    bounded drain. It still returns `b""` for a stream whose pump never reached
    EOF, which `streams_complete` reports honestly but which loses bytes.
-3. T002b-d, then T003 — network posture, limitations document, README link.
+4. T002b-d, then T003 — network posture, limitations document, README link.
 
 ## Risks
 - An allowlist bounds what the PARENT hands over, never what the child's runtime
