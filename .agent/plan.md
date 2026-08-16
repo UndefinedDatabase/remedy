@@ -1,7 +1,7 @@
 # Plan — F083 CI self-check
 
 Branch: feature/f083-ci-self-check, cut from main after the F082 closure PR #201
-merged. Next free finding id: R-0483. `.agent/live_review.md` is the source of
+merged. Next free finding id: R-0485. `.agent/live_review.md` is the source of
 truth for the open set; this file repeats no count of it.
 
 ## Goal
@@ -13,30 +13,29 @@ reproduces the hosted result locally on a clean checkout, a seeded failure fails
 the right stage with a readable summary, and runtime stays within a budget.
 
 ## Current Step
-R17 is closed PASS and R18 recorded it. R18 built the `budgets` stage: `CiStage`
-carries `test_paths`, the stage selects the standing guard tests by path, and
-`packages/orchestration/ci_budgets.py` holds the documented lint ceiling. DECISION
-F083 D4 ruled that determinism does NOT become a stage — the suite already sits
-wholly inside `standard`. DECISION F083 D5 ruled R-0468 ratcheted at 26 rather
-than fixed, and registered R-0482 for the one genuine runtime defect among them.
+R18 is closed PASS: the `budgets` stage, path-based stage selection, the
+ratcheted lint ceiling, DECISION F083 D4 (no determinism stage) and DECISION
+F083 D5 (the 26 ruff errors frozen, not fixed) are all on disk. R19 recorded
+that verdict, registered R-0483 and R-0484 — both reviewer defects the worker
+caught — and MEASURED the R-0480 question as `## Q13` of the inventory. R19
+rules nothing.
 
 ## Next Steps
-1. R19 rules on R-0480: the `ui` stage is RED on a clean checkout with a cold npx
-   cache, so T2_F083's Acceptance line "clean checkout: green" is not met today.
-   The options are warming the toolchain inside the stage, moving
-   `test_typescript_compiles` behind the documented "UI toolchain absent locally"
-   edge case, or amending Acceptance. It is a SPLIT round.
-2. T003 then remains: hosted workflow files calling the same entrypoint, the docs,
-   and the runtime-budget documentation from the measured data.
+1. R20 rules on R-0480 from the `## Q13` data. If the cold-cache cause is
+   confirmed, the options are warming the toolchain inside the stage, moving
+   `test_typescript_compiles` behind the "UI toolchain absent locally" edge case
+   the feature file already documents, or amending Acceptance. If Q13 shows the
+   cause is something else, or is not reproducible, R-0480 is amended to say so
+   before any fix is ordered. SPLIT round — the fix is production code.
+2. T003 then remains: hosted workflow files calling the same entrypoint, the
+   docs, and the runtime-budget documentation from the measured data.
 
 ## Risks
-- The `budgets` stage deliberately RE-RUNS guard tests other stages already
-  select. That overlap is intentional and is why the fixture-tree overlap and
-  union properties now scope themselves to the marker-selected stages; a later
-  round that folds path-bearing stages back into those properties reintroduces a
-  false green, because a marker union that contains `not real_ollama` reports
-  every uncovered test as covered.
+- R-0480's cause is a HYPOTHESIS, not a measurement. The npx cache is a per-user
+  directory, so a fresh `git worktree` alone should not produce a cold one.
+  Ordering a fix before Q13 answers this would spend a round proving the
+  reviewer wrong.
 - The lint ceiling is a RATCHET. Raising it to make a round green converts the
   one honest lint signal in this repository into decoration.
-- R-0482 is a live `NameError` on a guard's refusal path. It is frozen under the
-  ceiling, not fixed, and belongs to a branch of its own.
+- R-0482 is a live `NameError` on a guard's refusal path, frozen under that
+  ceiling rather than fixed, and belongs to a branch of its own.
