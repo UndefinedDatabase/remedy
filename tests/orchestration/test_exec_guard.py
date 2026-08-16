@@ -175,6 +175,7 @@ def test_no_child_survives_a_killed_run():
         time.sleep(0.2)
     assert survivors == [], f"orphans survived run_guarded: {survivors}"
 
+
 @pytest.mark.subprocess
 def test_wall_timeout_bounds_the_call_when_a_descendant_escapes_the_group():
     """A grandchild in its OWN session survives the kill and keeps holding the pipe.
