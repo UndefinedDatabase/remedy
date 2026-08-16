@@ -1,39 +1,49 @@
-# Handback — F085 R6 (record-only round, NO fix)
+# Handback — F085 R7 (record the R6 PASS, register R-0498, fix R-0496)
 
-Feature T2_F085 Sandbox hardening (stage 1) · Round R6 · Branch feature/f085-sandbox-hardening
-Fortschritt: ~25 % (F085 beansprucht · Amendment F085 D1 angewandt · T001 gebaut, R5 FAIL — 3 Findings offen · T002/T003 offen) — Schätzung
-Open findings: 112 registered, 0 resolved, 112 open. Max R-0497, next free R-0498.
+Feature T2_F085 Sandbox hardening (stage 1) · Round R7 · Branch feature/f085-sandbox-hardening
+Fortschritt: ~30 % (F085 beansprucht · Amendment F085 D1 angewandt · T001 gebaut · R6 PASS · R-0496 gefixt, R-0495 offen und T002 blockiert · T003 offen) — Schätzung
+Open findings: 113 registered, 0 resolved, 113 open. Max R-0498, next free R-0499. R7 resolves NOTHING — `Landed: R-0496` is a worker note, not a resolution.
 
 ## Range
 
-Review of 16506c0b5410faa6d452da9cef482ee279d6cd0d..HEAD
+Review of ca5ff4f1756b38e7c176579abc753c0dcff06a22..HEAD
 
 ## Commits
 
-### bb22b2dd docs(f085): save the R6 step block verbatim
+### d0e597a3 docs(f085): save the R7 step block verbatim
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f085-r6.md | +213 -0 | C0a — the reviewer's block, copied byte-for-byte |
+| .agent/authored/f085-r7.md | +253 -0 | C0a — the reviewer's block, copied byte-for-byte with `shutil.copyfile` |
 
-### 4cc753b6 chore(agent): mirror the R6 block into last_block
+### 779c3840 chore(agent): mirror the R7 block into last_block
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/last_block.md | +106 -234 | C0b — the COMMITTED C0a blob, whole file |
+| .agent/last_block.md | +156 -116 | C0b — the COMMITTED C0a blob read via `git show`, whole file |
 
-### 07255ccd docs(review): record the R5 FAIL and register R-0495, R-0496, R-0497
+### 11f03f47 docs(review): record the R6 PASS and register R-0498
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/live_review.md | +8 -0 | C1 — RECORD-R5, R0495, R0496, R0497 appended in that order, verbatim |
+| .agent/live_review.md | +4 -0 | C1 — RECORD-R6 then R0498 appended verbatim, each preceded by one blank line |
 
-### 93fcf6ff docs(f085): advance the plan to the R6 record round
+### e77fa588 test(f085): compare cpu_seconds_used below the limit, not on it
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/plan.md | +14 -17 | C2 — whole file := the PLAN slice |
+| tests/orchestration/test_exec_guard.py | +7 -1 | C2 — the CPU-ASSERT pair applied as a REWRITE; R-0496's boundary assertion |
 
-### (this commit) docs(f085): rewrite the handback for R6
+### b6ef2a6e docs(review): note R-0496 landed in the R7 test fix
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/handoff.md | see note | C3 — a handback cannot table the commit that writes it (R-0149); under R-0494 its own numbers are ordered nowhere and the reviewer measures them at the next gate |
+| .agent/live_review.md | +2 -0 | C3 — the LANDED-R0496 line, verbatim; the reviewer authors the resolution |
+
+### 83c40b39 docs(f085): advance the plan to the R7 fix round
+| Path | +/- | Reason |
+|---|---|---|
+| .agent/plan.md | +12 -10 | C4 — whole file := the PLAN slice |
+
+### (this commit) docs(f085): rewrite the handback for R7
+| Path | +/- | Reason |
+|---|---|---|
+| .agent/handoff.md | see note | C5 — a handback cannot table the commit that writes it (R-0149); under R-0494 its own numbers are ordered nowhere and the reviewer measures them at the next gate |
 
 ## Item status
 
@@ -43,45 +53,51 @@ Review of 16506c0b5410faa6d452da9cef482ee279d6cd0d..HEAD
 | C0b | done | |
 | C1 | done | |
 | C2 | done | |
-| C3 | done | this commit |
+| C3 | done | |
+| C4 | done | |
+| C5 | done | this commit |
 
 ## External actions
 
-`git push origin feature/f085-sandbox-hardening` after C2 → `16506c0b..93fcf6ff`, success, origin at 93fcf6ff. A second push follows C3. No PR created, no PR merged, no other `gh` command, no worktree added or removed.
+`git push origin feature/f085-sandbox-hardening` after C4 → `ca5ff4f1..83c40b39`, success, origin at 83c40b39. A second push follows C5. `gh pr list --state open --json number,headRefName,baseRefName,isDraft` → `[]`, exit 0. No PR created, no PR merged, no worktree added or removed.
 
 ## Verification
 
-G1 `git status --porcelain` EMPTY immediately before C3 (only `.agent/handoff.md` in flight); `git worktree list` 1 line; `.agent/STOP` absent, re-read from disk before the first commit and again here.
-G2 TRANSPORT `.remedy-wt/f085-r6.md`, committed `.agent/authored/f085-r6.md` and committed `.agent/last_block.md` all byte-EQUAL at sha256 fc4752a4ac333290e30d11145beaf519b9b6eb46d3b01099f95869fff5956d03, 22488 B, 213 lines.
-G3 `.agent/plan.md` at HEAD byte-equals the PLAN slice; sha256 8b4398f8616dcdb71cf72d254e22c09937f87052350e22bd2721cb69ab1ef5ad, 38 lines, 2136 B; `## Goal` yes, `## Next Steps` yes, `F085` matched, under 50 lines.
-G4 pre-C1 214867 B is a byte-exact PREFIX of post-C1 225757 B; appended tail 10890 B, 8 lines; RECORD-R5, R0495, R0496 and R0497 each occur exactly 1x in the WHOLE file and each 1x inside the tail; `git show --numstat 07255ccd -- .agent/live_review.md` = `8 0`, deletion column 0.
-G5 regexes `^- R-\d+ — ` and `^Done: R-\d+ — `. Base 16506c0b: 109 registered, 0 resolved → 109 open. HEAD: 112 registered, 0 resolved → 112 open; 0 duplicate ids, 0 resolutions naming an unregistered id. Symmetric difference of HEAD-open against base-open plus R-0495, R-0496, R-0497: EMPTY. Newly open: exactly those three. Resolved by R6: NONE. Max R-0497, next free R-0498. LINE-START `^Landed: R-\d+` records at HEAD: 0.
-G6 `.agent/live_review.md` still contains the substring `Steps`: yes, 19 occurrences.
-G7 `git diff --name-only 16506c0b..HEAD` measured pre-C3 = `.agent/authored/f085-r6.md`, `.agent/last_block.md`, `.agent/live_review.md`, `.agent/plan.md` — the ordered set minus `.agent/handoff.md`, which is this commit. 0 paths under `packages/`, `tests/`, `docs/`, `apps/` or `scripts/`. The post-C3 reading is the R-0494 case: the reviewer measures it at the next gate.
-G8 UNCHANGED CODE. `packages/orchestration/exec_guard.py` sha256 d9c77caec4ed9136868cef080bd2e2ae18c4216851507dc943d778d5c575114e, 12241 B, at 16506c0b AND at HEAD. `tests/orchestration/test_exec_guard.py` sha256 9301bc652ecf555b983e0cf85dc7c5da52071ef20de741b9cd3f1476188bad53, 6211 B, at 16506c0b AND at HEAD. Both pairs equal: constraint 4 held, nothing was repaired.
-G9 RED — DOES NOT REPRODUCE AS ORDERED, and NOT repaired. `python3 -m pytest tests/orchestration/test_exec_guard.py -q` was run SEVEN times at HEAD from the repository root. Exit 1 on 3 runs, `1 failed, 5 passed in 4.58s`/`4.59s`; exit 0 on 4 runs, `6 passed in 4.55s`–`4.59s`. Ordered sequence: run1 exit 0, run2 exit 1, run3 exit 0, run4 exit 0, run5 exit 1, run6 exit 0, run7 exit 1. The gate passes only when the command FAILS, so it is satisfied on 3 of 7 runs and unsatisfied on 4 — it is a coin flip here, not the 5-of-5 red the reviewer measured. When it fails it fails EXACTLY as described: `test_cpu_limit_kills_a_busy_loop_and_names_the_limit`, `E AssertionError: assert 0.9997739999999999 >= 1.0`, the same value to six figures as the reviewer's 0.999776. Nothing was fixed, skipped or xfailed; G8 is the byte proof. This non-determinism is the substance of R-0496 rather than a contradiction of it: an assertion sitting ON the boundary is a coin flip, which is what R-0496 says.
-G10 `python3 -m pytest tests/cli/test_golden_path.py -q` → exit 0, `42 passed in 20.54s`. Canary green.
-G11 insertions: C0a 213, C0b 106, C1 8, C2 14 — none over 500. C3's own count is ordered nowhere (R-0494).
-G12 `git log --format=%p 16506c0b..HEAD` → one parent per commit, linear: bb22b2dd←16506c0b, 4cc753b6←bb22b2dd, 07255ccd←4cc753b6, 93fcf6ff←07255ccd. The reflog over THIS round is HEAD@{0}..HEAD@{3}, every entry `commit:`; HEAD@{4} and below are R5. No amend, rebase, reset, branch switch or force-push.
+G1 `git status --porcelain` EMPTY immediately before C5 (only `.agent/handoff.md` in flight); `git worktree list` 1 line, `/home/decodeux/Repos/remedy 83c40b39 [feature/f085-sandbox-hardening]`; `.agent/STOP` absent, re-read from disk before the FIRST commit and again here. The post-C5 status reading is the R-0494 case and the reviewer measures it at the next gate.
+G2 TRANSPORT `.remedy-wt/f085-r7.md`, committed `.agent/authored/f085-r7.md` and committed `.agent/last_block.md` all byte-EQUAL at sha256 f6fd67339f3c9745fb845b95a1fcb5649373c70c410a5852d97a3a7a027ca6af, 21267 B, 253 lines; one digest across all three.
+G3 `.agent/plan.md` at HEAD byte-equals the PLAN slice; sha256 1a2b4a3ed34f4a4ade3ffef65f2d307aebe67b64e549c1439a26ba7434920a45, 2297 B, 40 lines; `## Goal` yes, `## Next Steps` yes, `F085` matched by `\bF\d{3}\b`, 40 < 50.
+G4 pre-C1 225757 B (byte-identical to the blob at ca5ff4f1) is a byte-exact PREFIX of post-C1 231728 B; pre-C3 231728 B is a byte-exact PREFIX of post-C3 231994 B, which equals the HEAD blob. C1 tail 5971 B / 4 lines carries RECORD-R6 and R0498, each 1x in the tail and 1x in the WHOLE file; C3 tail 266 B / 2 lines carries LANDED-R0496, 1x in the tail and 1x in the WHOLE file. `git show --numstat 11f03f47 -- .agent/live_review.md` = `4 0`; `git show --numstat b6ef2a6e -- .agent/live_review.md` = `2 0`. Both deletion columns 0.
+G5 regexes `^- R-\d+ — ` and `^Done: R-\d+ — `. Base ca5ff4f1: 112 registered, 0 resolved → 112 open. HEAD: 113 registered, 0 resolved → 113 open; 0 duplicate ids, 0 resolutions naming an unregistered id. Symmetric difference of HEAD-open against base-open plus R-0498: EMPTY. HEAD-open minus base-open = {R-0498}; base-open minus HEAD-open = {}. Resolutions added by R7: 0. Max R-0498, next free R-0499. LINE-START `^Landed: R-\d+` records at HEAD: exactly 1, naming R-0496.
+G6 `.agent/live_review.md` still contains the substring `Steps`: yes, 21 occurrences.
+G7 `git diff --name-only ca5ff4f1..HEAD` measured pre-C5, exit 0 = `.agent/authored/f085-r7.md`, `.agent/last_block.md`, `.agent/live_review.md`, `.agent/plan.md`, `tests/orchestration/test_exec_guard.py` — the ordered set minus `.agent/handoff.md`, which is this commit. 0 paths under `packages/`, `docs/`, `apps/` or `scripts/`.
+G8 UNCHANGED GUARD. `packages/orchestration/exec_guard.py` sha256 d9c77caec4ed9136868cef080bd2e2ae18c4216851507dc943d778d5c575114e, 12241 B, at ca5ff4f1 AND at HEAD — EQUAL. Constraint 4 held: no part of R-0495's fix landed here.
+G9 PAIR SHAPE, a REWRITE. Over the WHOLE of `tests/orchestration/test_exec_guard.py` at HEAD the CPU-ASSERT-FROM text occurs 0 times and the line `    assert result.cpu_seconds_used >= 0.5` occurs exactly 1 time (exact full-line match). FROM occurred exactly 1 time before the edit. `git show --numstat e77fa588 -- tests/orchestration/test_exec_guard.py` = `7 1`.
+G10 DETERMINISM, ten consecutive runs of `python3 -m pytest tests/orchestration/test_exec_guard.py -q` from the repository root at HEAD: run1 exit 0 `6 passed in 4.55s`; run2 exit 0 `6 passed in 4.56s`; run3 exit 0 `6 passed in 4.58s`; run4 exit 0 `6 passed in 4.57s`; run5 exit 0 `6 passed in 4.57s`; run6 exit 0 `6 passed in 4.56s`; run7 exit 0 `6 passed in 4.57s`; run8 exit 0 `6 passed in 4.57s`; run9 exit 0 `6 passed in 4.55s`; run10 exit 0 `6 passed in 4.55s`. ALL TEN exit 0, 10 green / 0 red. The coin flip R6 measured (worker 3 red of 7, reviewer 8 red of 12, always at `test_cpu_limit_kills_a_busy_loop_and_names_the_limit`) is gone.
+G11 `python3 -m ruff check tests/orchestration/test_exec_guard.py` → exit 0, `All checks passed!`. Repository configuration, no `--isolated` (R-0463).
+G12 `python3 -m pytest tests/cli/test_golden_path.py -q` → exit 0, `42 passed in 20.50s`. Canary green, matching the reviewer's `42 passed` at ca5ff4f1.
+G13 PROBE, the eight-file structural sweep run THREE times: run1 exit 0 `350 passed, 6 skipped in 15.38s`; run2 exit 0 `350 passed, 6 skipped in 15.22s`; run3 exit 0 `350 passed, 6 skipped in 15.34s`. No run was red, so no `-rf` FAILED node id exists to report.
+G14 insertions (the `+` column): C0a 253, C0b 156, C1 4, C2 7, C3 2, C4 12 — none over 500. C5's own count is ordered nowhere (R-0494).
+G15 `git log --format=%p ca5ff4f1..HEAD` → one parent per commit, linear: d0e597a3←ca5ff4f1, 779c3840←d0e597a3, 11f03f47←779c3840, e77fa588←11f03f47, b6ef2a6e←e77fa588, 83c40b39←b6ef2a6e. The reflog over THIS round is HEAD@{0}..HEAD@{5}, every entry `commit:`; HEAD@{6} and below are R6 and earlier. No amend, rebase, reset, branch switch or force-push.
 
 ## Authored-text proofs
 
-PLAN, RECORD-R5, R0495, R0496 and R0497 were extracted programmatically from `.remedy-wt/f085-r6.md`, which G2 proves byte-equal to the COMMITTED `.agent/authored/f085-r6.md`, by their one-line `<<<SLICE …>>>`/`<<<END …>>>` markers, and applied byte-verbatim; none was retyped. Disk-to-disk equality is proved by G3 (whole file equals the slice) and G4 (prefix preserved, each slice exactly once, inside the appended tail). No marker LINE reached a target file: 0 in `.agent/plan.md`, 0 in the appended tail of `.agent/live_review.md`. The single `<<<` occurrence in `.agent/live_review.md` is authored prose inside the pre-existing RECORD-R4 paragraph, not a transport marker.
+PLAN, RECORD-R6, R0498, LANDED-R0496, CPU-ASSERT-FROM and CPU-ASSERT-TO were extracted programmatically from the COMMITTED `.agent/authored/f085-r7.md` by their one-line `<<<SLICE …>>>`/`<<<END …>>>` markers and applied byte-verbatim; none was retyped. G2 proves that file byte-equal to the reviewer's `.remedy-wt/f085-r7.md` on disk (not a digest fallback). Disk-to-disk equality is proved by G3 (whole file equals the slice), G4 (prefix preserved, each slice exactly once in the appended tail and once in the whole file) and G9 (FROM 0x, TO 1x). No marker LINE reached a target file: 0 `<<<SLICE` and 0 `<<<END` in `.agent/plan.md`, `.agent/live_review.md` and `tests/orchestration/test_exec_guard.py`. The single `<<<` occurrence in `.agent/live_review.md` is pre-existing authored prose, present identically at ca5ff4f1.
 
 ## Deviations & assumptions
 
-1. The ordered sequence C0a, C0b, C1, C2, C3 was followed exactly — five commits, none added, none dropped, no reordering.
-2. DEVIATION, declared: G9 does not reproduce. The block states the reviewer measured `1 failed, 5 passed`, exit 1, five times out of five at 16506c0b; at this worker's hand the same command at HEAD is non-deterministic, 3 red and 4 green out of 7 runs. Constraint 7 was followed: the real command, exit codes and summary lines are recorded above and NOTHING that the gate measures was edited. Consequence for R7: `test_cpu_limit_kills_a_busy_loop_and_names_the_limit` is FLAKY, not reliably red, so a green run of this file proves nothing until R-0496 is fixed.
-3. `cp` and the `remedy` CLI are denied in this session. C0a used `shutil.copyfile`; C0b wrote the bytes of the COMMITTED C0a blob read via `git show`. G2 proves the byte property the gate names.
-4. Commit Gate at C0a and C0b: `.agent/plan.md` still described R5, because C2 is the bundle's fourth commit. That is R-0491, which this bundle carries unchanged.
-5. `.agent/context.md` and `.agent/decisions.md` were NOT updated: constraint 3 limits the change set to the ordered paths.
-6. No scratch file was written this round — every gate ran through a `python3` heredoc — so `.remedy-wt/` gained nothing beyond the reviewer's own block file. It is gitignored and `git status --porcelain` is EMPTY.
-7. Stated-cause overage (DECISION D15): this file is 87 lines, over the 60-line base cap and under the 100-line >5-commit cap. Cause is mandated content only — five per-commit tables, the item-status table and the twelve-gate verification block, of which G9 needs its full transcript because it is the round's declared deviation. No section was dropped and no transcript was padded.
+1. The ordered sequence C0a, C0b, C1, C2, C3, C4, C5 was followed exactly — seven commits, none added, none dropped, no reordering.
+2. `cp` and the `remedy` CLI are denied in this session. C0a used `shutil.copyfile`; C0b wrote the bytes of the COMMITTED C0a blob read via `git show`. G2 proves the byte property the gates name.
+3. Commit Gate at C0a–C3: `.agent/plan.md` still described R6, because C4 is the bundle's sixth commit. That is R-0491, which this bundle carries unchanged.
+4. `.agent/context.md` and `.agent/decisions.md` were NOT updated: constraint 3 limits the change set to the ordered paths.
+5. One timing run of the G10 command preceded the ten (exit 0, `6 passed in 4.55s`) to size the gate's runtime. It is NOT counted in G10; the ten reported runs are ten fresh consecutive runs.
+6. Gate scratch (slice pickle, pre-C1/pre-C3 blobs, four gate scripts, this draft) was written under the gitignored `.remedy-wt/`; nothing entered the change set and `git status --porcelain` is clean.
+7. R-0495 was NOT touched, per constraint 4. G8 is its byte proof.
+8. Stated-cause overage (DECISION D15): this file is 103 lines, over the 60-line base cap and over the 100-line >5-commit cap of docs/agents/handback_template.md, and over that template's 800-token thrift cap; no byte or token figure is stated here because such a figure would change the text that states it. Cause is mandated content only — seven per-commit tables for a seven-commit bundle, the item-status table covering C0a..C5, and a FIFTEEN-gate verification block of which G10 alone must carry ten exit codes and ten summary lines because the gate orders exactly that. No section was dropped, no transcript was padded.
 
 ## Next
 
-- R7 is a REPAIR round and fixes R-0495 and R-0496 in that order; R-0497 is a reviewer-side gate defect and is fixed by the reviewer's next block, not by a worker edit.
-- `tests/orchestration/test_exec_guard.py` is RED at HEAD on `test_cpu_limit_kills_a_busy_loop_and_names_the_limit`, deliberately left red, and no round may claim this branch is green until R-0496 is resolved. G9 above records that it is in fact FLAKY rather than reliably red, which strengthens rather than weakens that rule.
-- `exec_guard.py` still has NO callers, so no containment claim holds for the running system.
-- There is NO open PR for this branch and none is opened before closure.
-- The R6 verdict is written by the NEXT round's record commit.
+- R8 is a REPAIR round and fixes R-0495, the wall timeout that does not bound `run_guarded`'s own return; it is the last thing blocking T002a;
+- `tests/orchestration/test_exec_guard.py` is GREEN and DETERMINISTIC as of this round, measured over ten runs, and R-0495 is a defect the suite does not yet cover — a green suite is not evidence that the guard bounds runtime;
+- `exec_guard.py` still has NO callers, so no containment claim holds for the running system;
+- there is NO open PR for this branch and none is opened before closure;
+- the R7 verdict is written by the NEXT round's record commit.
