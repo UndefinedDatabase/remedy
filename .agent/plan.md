@@ -18,19 +18,24 @@ reaches a child, and the limitations document exists and is linked from the
 README.
 
 ## Current Step
-R3, this round: record the R2 PASS, register R-0492, and close the session on a
-clean boundary. The seam inventory `.agent/f085_inventory.md` is complete and
-accepted; it is not revised again.
+R4, this round: record the R3 PASS, then apply amendment F085 D1 to
+`docs/roadmap/features/T2_F085.md` — correct the falsified premise, re-slice
+T002 per class, and rule the stage-1 command classes and their policies. No
+production code and no test file is touched.
 
 ## Next Steps
-1. R4 — write the `docs/roadmap/features/T2_F085.md` amendment that DECISION
-   F085 D1 names, correcting the "small number of helpers" premise the
-   inventory disproved, and rule the stage-1 command classes and their policies.
-   R4 changes `docs/roadmap/**`, so its gate list adds `tests/docs/`.
+1. T001 — `exec_guard.py` with rlimit, wall-timeout and output-cap mechanics
+   plus the runaway fixtures (cpu, memory, output, sleep), each killed and each
+   classified `resource_limit`. The wall timeout is the guard's OWN supervision:
+   six of the seven timeout-less in-scope sites are `Popen`, which takes no
+   `timeout=` keyword.
+2. T002a-d — seam migration, one order per class, with behaviour-equality
+   goldens and the environment-allowlist test.
 
 ## Risks
-- T002's seam migration is scoped against a premise the inventory disproved: 67
-  real call sites in 56 enclosing functions, of which the four helpers the
-  feature file names cover 24. R4 re-slices before any code is written.
-- R-0202 has one reader and two seams that provably drop the variable. Naming
+- 24 in-scope call sites in 18 modules and 22 enclosing functions is a far wider
+  migration than the feature file assumed. T002 is four ordered sub-slices and
+  none of them may widen into git, packaging or other.
+- R-0202 has one reader and exactly two seams that drop the variable
+  (`managed_builder_execution.py`:1160, `test_execution_service.py`:323). Naming
   them is not fixing them, and no round may fix them outside T002.
