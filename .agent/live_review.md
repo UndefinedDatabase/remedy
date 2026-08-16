@@ -620,3 +620,53 @@ corrected once rather than twice. This is the R-0417 staleness family: a claim o
 lifetime, and the commit that ends it is the commit that owes the correction. R14 registers it;
 the R15 migration round must carry the fix for both files in its change set and gate the property
 that neither file claims an absence the caller gate contradicts. OPEN.
+
+Gate: R14 — PASS, the record round `.agent/STOP` halted after its third commit. All eight ordered
+gates were re-run by the reviewer from the repository root and every one reproduces the handback's
+reading. TRANSPORT, disk-to-disk and not by digest fallback: the reviewer's `.remedy-wt/f085-r14.md`,
+the committed `.agent/authored/f085-r14.md` and `.agent/last_block.md` are byte-EQUAL at sha256
+77447503b8bc9e86e2f8f905172874568777ae8d25b074c0d3662b912b10d32e, 15023 B, 214 lines. C1 IS A PURE
+APPEND: the pre-C1 blob is a byte-exact PREFIX of the post-C1 file, HEAD equals it, and the
+7296-byte remainder is exactly blank + RECORD1 + blank + FIND1 + blank + FIND2 in that order, each
+slice occurring ONCE, none carrying trailing whitespace, no marker line reaching it. THE ARITHMETIC: 119 / 3 / 0 at base against 121 / 3 / 0 at HEAD, so the open set rose
+116 to 118 by exactly two registrations against no resolution; the registered difference is R-0505
+and R-0506, the resolved difference empty, no duplicate id, no resolution naming an unregistered id.
+THE HALT WAS CORRECT AND HONESTLY REPORTED. `.agent/STOP` appeared mid-round, C2 was never started,
+`.agent/plan.md` is byte-IDENTICAL to base at sha256
+8dae6b41813aff162aeb1c5a877ab667be909c723c30bbb4dc5b3fce42f65f6d, and PLANF still occurs EXACTLY
+once in it — so the round did not half-apply a pair and then round the number, which is what this
+gate catches. G5 is red by the sentinel, not by a misapplication. THE HONESTY GATE HOLDS: `exec_guard.py`,
+`managed_builder_execution.py` and `test_managed_builder_execution.py` are byte-identical between
+base and HEAD, so no containment claim follows from that round. State readers 157 passed and canary
+42 passed, both matching base; the change set is three `.agent` paths before C3, short of the ordered
+four by `.agent/plan.md` alone, which IS the skipped commit; insertions 214, 150 and 80, none over
+500; four single-parent commits, every reflog entry `commit:`-prefixed, no amend, rebase, reset or
+force-push; `.agent/handoff.md` measures 79 lines against its D15 declaration of 79; all seven
+declared deviations are accurate. The sentinel is ABSENT at this round's start, so Phase 1 rule 1
+does not fire. TWO SCOPE REASSIGNMENTS, recorded because each contradicts text already on
+disk: R-0506 stays OPEN with its fix moved from R15 to R16, and T002a's CLI half is split — R15
+migrates the version probe, while `_call`, `_call_reviewer_structured` and the envelope mock are ONE
+indivisible unit (R-0507) R16 carries whole, already dry-run green. LAST_REVIEWED_SHA advances to
+the R14 handback commit.
+
+- R-0507 — Medium, A GREP OVER MOCK TARGETS WAS READ AS AN ENUMERATION OF THE CALL PATHS THOSE
+MOCKS COVER, AND THE SCOPE IT PRODUCED WAS WRONG. Raised by the reviewer against its own R15
+scoping work, before this block was emitted. Planning this round the reviewer grepped the suite for
+tests that patch the CLI spawn, found exactly one — `test_structured_cli_envelope.py` patching
+`packages.orchestration.pingpong_provider.subprocess.run` in its `_review` helper — read that helper
+as reaching `_call_reviewer_structured` alone, and concluded that the version probe and `_call` could
+migrate without touching a single test. FALSE: `test_4_legacy_non_schema_call_uses_result` sets
+`REMEDY_REVIEWER_FREETEXT=1`, which routes the same helper through `_call`, so migrating `_call`
+alone leaves that test patching a function the code no longer calls. The error was not the grep,
+which was right about WHERE the mocks are; it was reading a list of patch TARGETS as a list of the
+paths reached under them, when the reaching is decided by branches inside the tested code and by
+environment variables the tests set — the R-0258 family, a source guard the block never named. It
+cost no round only because the mandated dry run (planner_reviewer_prompt.md §3 checklist item 12)
+ran the candidate slices against those suites in a `git archive` extraction, where it surfaced as
+one red test in a set green at base. Counter-measure, binding on the reviewer from this round on:
+when a block moves a call site, never infer the affected tests from a grep over mock targets — RUN
+the candidate change against every suite touching the file and let the failures enumerate
+themselves. The plan consequence is recorded, not hidden: `_call`, `_call_reviewer_structured` and
+that mock are ONE indivisible unit, since re-pointing the mock at `_guarded_cli_run` reddens every
+envelope test still on the stdlib spawn. R15 migrates the independent version probe; R16 carries the
+coupled unit, already dry-run green. OPEN.
