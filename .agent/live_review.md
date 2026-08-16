@@ -498,3 +498,45 @@ delimiter, and says so in the gate rather than leaving the worker to discover th
 exception and spend a deviation on it. Whether §4 item 9 itself should carry that
 carve-out is a `docs/agents/**` edit outside this feature's change set and is NOT
 claimed here; it is routed to the paydown branch with R-0502. OPEN.
+
+Gate: R12 — PASS, the record round that carried the R11 verdict, one resolution and two
+reviewer-gate findings onto disk. All eleven ordered gates were re-run by the reviewer and every
+one reproduces the handback's reading. TRANSPORT, disk-to-disk and not by digest fallback: the
+reviewer's `.remedy-wt/f085-r12.md`, the committed `.agent/authored/f085-r12.md` and
+`.agent/last_block.md` are byte-EQUAL at sha256
+0f66ffe7b9a96bdb9bf8f9cb130a21d7ec2b8a8102f9f02cf85fa1ff74e78678, 18334 B, 264 lines. C1 IS A
+PURE APPEND, proven by shape: the pre-C1 blob is a byte-exact PREFIX of the post-C1 file, HEAD
+equals it, and the 9775-byte remainder is exactly the four ordered slices, each occurring ONCE and
+in order. THE ARITHMETIC: 116 / 2 / 0 at base against 118 / 3 / 0 at HEAD, so the open set rose
+114 to 115 by exactly two registrations against one resolution; the registered difference is
+R-0502 and R-0503 with nothing lost, the resolved difference R-0501, no duplicate ids, no
+resolution naming an unregistered id. `.agent/plan.md` is 41 lines under its 50-line cap with
+`## Goal`, `## Next Steps` and `## Risks` byte-IDENTICAL to base. THE HONESTY GATE HOLDS:
+`exec_guard.py` and its test are byte-unchanged, so no containment claim follows from this round.
+Canary 42 passed, state readers 157 passed, both matching base; insertions 264, 200, 123, 3, none
+over 500; five single-parent commits, no amend or force-push; the change set is exactly the five
+declared `.agent/` paths; `.agent/handoff.md` measures 85 lines against its declaration of 85; the
+five declared deviations are accurate. LAST_REVIEWED_SHA advances to the R12 handback commit.
+
+- R-0504 — Medium, A SOURCE-TEXT TEST ASSERTED A KEYWORD ITS TARGET'S OWN DOCSTRING ALSO CARRIED,
+SO THE TEST WAS VACUOUS FROM THE DAY IT WAS WRITTEN. Raised by the reviewer while measuring the
+R13 migration, against pre-existing code and not against any round.
+`tests/orchestration/test_managed_builder_execution.py::TestManagedRunner::test_shell_false_always`
+read `inspect.getsource(run_managed_builder)` and asserted that `shell=False` appears in it and
+`shell=True` does not. That function's DOCSTRING opens with "shell=False ALWAYS. Sanitized env.
+Hard timeout. Output byte cap.", so the positive half was satisfied by prose. The reviewer PROVED
+the vacuity rather than arguing it: in a disposable worktree at the round's base commit, deleting
+the `shell=False` keyword from the real `subprocess.run` call and touching nothing else left the
+test GREEN, exit 0, one passed. A test that stays green when the property it names is deleted was
+never testing that property. The negative half fails in the mirror image: the module docstring also
+carries "NO shell=True" among its hard rules, so a substring search for the dangerous form matches
+prose too. The property was never at risk — `test_no_shell_true_in_orchestration` walks the AST of
+every `packages/orchestration/*.py` and fails on a real `shell=True` keyword; what was at risk was
+the belief that this second test added anything. This is the R-0438 and R-0502 family, a gate that
+cannot fail honestly, and the third instance in three rounds, which is why severity is Medium
+rather than Low: the first two were the reviewer's own gate text, this one sat in the committed
+suite. Counter-measure, applied in the round that registers it: a test asserting the SHAPE of code
+parses that code and inspects the AST, never searches its text, because a docstring, a comment and
+a call site are indistinguishable to a substring search. C2 replaces it with an AST assertion that
+`run_managed_builder` holds no `subprocess` spawn node, that `run_guarded` holds exactly one
+`Popen` node passing no `shell` keyword, and that no `shell=True` keyword node exists here. OPEN.
