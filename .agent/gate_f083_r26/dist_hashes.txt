@@ -1,0 +1,13 @@
+--- dist_before.txt (composite input, sorted '<relpath> <sha256>' lines) ---
+assets/index-CXHVPLg7.js bebb4e267da882326284d086d9552de5ab3a769f692baffd52974b9d870d7fe4
+assets/index-_5lFsic1.css 84221ebfdcc587e777db251f4fa7bf1cde55426d8792bfc6d2ad7042908ad6d0
+index.html 807d39c2c84a7f74293fd8e21502e3c52fd9b007082ab0934fe3ec6d02838e69
+composite sha256 = 5876f488eab879fcfe1fae4cfb7329e63246c0aff9dd57a203b56d8f15b69d44
+
+--- dist_after.txt (composite input, sorted '<relpath> <sha256>' lines) ---
+assets/index-CXHVPLg7.js bebb4e267da882326284d086d9552de5ab3a769f692baffd52974b9d870d7fe4
+assets/index-_5lFsic1.css 84221ebfdcc587e777db251f4fa7bf1cde55426d8792bfc6d2ad7042908ad6d0
+index.html 807d39c2c84a7f74293fd8e21502e3c52fd9b007082ab0934fe3ec6d02838e69
+composite sha256 = 5876f488eab879fcfe1fae4cfb7329e63246c0aff9dd57a203b56d8f15b69d44
+
+BEFORE == AFTER: True (file count 3 at both readings)

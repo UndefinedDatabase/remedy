@@ -1,0 +1,11 @@
+Raw full-suite logs left OUTSIDE the tracked tree (constraint 7); not committed.
+
+path       : .remedy-wt/.cache/gate_r26/branch_run.txt
+line count : 242
+byte count : 19129
+sha256     : 6c34205a17d80b80a9dabf96db482cc48d0d2d4bc58f5e90e94351586cb31ad8
+
+path       : .remedy-wt/.cache/gate_r26/base_run.txt
+line count : 241
+byte count : 19049
+sha256     : 10761be9c96eb4b6fe017f3bfec6d108b14332fa1593bef9db04be00c80483dd

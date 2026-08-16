@@ -1,0 +1,31 @@
+F083 R26 integration gate — attribution (docs/agents/integration_gate.md step 4)
+
+branch run : 2b71141676c0917e41ac2d35c26c42d2e9847685, exit 0,
+             "17047 passed, 19 skipped in 126.08s (0:02:06)"
+base run   : f3fd96d729c3be85604a2d37aee42c59fe39868a, exit 0,
+             "16988 passed, 19 skipped in 146.39s (0:02:26)"
+
+branch_failed.txt : 0 ids, 0 bytes
+base_failed.txt   : 0 ids, 0 bytes
+comm -13 base_failed.txt branch_failed.txt (branch-only) : 0 ids, 0 bytes
+comm -23 base_failed.txt branch_failed.txt (base-only)   : 0 ids, 0 bytes
+
+BOTH LISTS ARE EMPTY. Nothing needs attributing. There is no branch-only
+failure, so the constraint-9 blocker does not fire; there is no base-only
+failure, so no environment-class artifact has to be named per id. No id is
+left unattributed, because there is no id in either direction.
+
+Zero ids landed in the xdist-flake class, which is not more than ten, so no
+flake-debt line is owed.
+
+Parity, measured rather than assumed: apps/ui/node_modules and apps/ui/dist
+were placed in the base worktree by copy, neither path is a symbolic link
+(0 at each), and the copied dist was made newer than that worktree's src
+before the run. The composite dist digest over 3 files is
+5876f488eab879fcfe1fae4cfb7329e63246c0aff9dd57a203b56d8f15b69d44 BEFORE the base run and
+the identical value AFTER it, so REMEDY_UI_NO_AUTO_BUILD=1 held and the
+parity claim stands rather than being voided (R-0169).
+
+The branch collects 59 more passing tests than the base (17047 against
+16988) and skips the same 19; that difference is the feature's own added
+tests, not a failure in either direction.
