@@ -1,93 +1,103 @@
-── STEP R6 — F085 Sandbox hardening (stage 1) ────────────────
+── STEP R7 — F085 Sandbox hardening (stage 1) ────────────────
 
 Goal:
-Record the R5 FAIL and persist the three findings it produced, then hand off.
-This round applies NO fix: findings persist FIRST, in their own commit, so that
-nothing is lost if this session ends (docs/agents/planner_reviewer_prompt.md §4
-item 4). The repairs are R7's work and the handback names them.
+Record the R6 PASS, register the one finding the R6 gate produced against the
+reviewer's own block, and fix R-0496 so that `tests/orchestration/test_exec_guard.py`
+stops being a coin flip. R-0495 is NOT touched this round: its fix rewrites the
+stream-pump and the wall-timeout return path and needs a block of its own, which
+is R8. Findings persist FIRST, in their own commit, before any repair
+(docs/agents/planner_reviewer_prompt.md §4 item 4).
 
 Bundle (ordered, one commit each; no extra commit, none dropped, no reordering):
-  C0a save this block verbatim as `.agent/authored/f085-r6.md`
+  C0a save this block verbatim as `.agent/authored/f085-r7.md`
   C0b mirror the COMMITTED C0a file into `.agent/last_block.md`
-  C1  `.agent/live_review.md` += RECORD-R5, then R0495, then R0496, then R0497
-  C2  `.agent/plan.md` whole file := the PLAN slice
-  C3  rewrite `.agent/handoff.md` (the handback)
+  C1  `.agent/live_review.md` += RECORD-R6, then R0498
+  C2  `tests/orchestration/test_exec_guard.py` := the CPU-ASSERT pair applied
+  C3  `.agent/live_review.md` += the LANDED-R0496 line
+  C4  `.agent/plan.md` whole file := the PLAN slice
+  C5  rewrite `.agent/handoff.md` (the handback)
 
 Base:
-This round starts from `16506c0b5410faa6d452da9cef482ee279d6cd0d`, the R5
-handback commit and the current tip of `feature/f085-sandbox-hardening`. Every
-range gate below names that SHA. Stay on this branch; do not create a new one.
+This round starts from `ca5ff4f1756b38e7c176579abc753c0dcff06a22`, the R6 handback
+commit and the current tip of `feature/f085-sandbox-hardening`. Every range gate
+below names that SHA. Stay on this branch; do not create a new one.
 
 Slice convention:
 Each authored unit below sits between a one-line `<<<SLICE NAME>>>` marker and a
 one-line `<<<END NAME>>>` marker. Extract each slice programmatically by its
 markers and apply it byte-verbatim. No marker line ever reaches a target file.
-The slices are PLAN, RECORD-R5, R0495, R0496 and R0497. Every slice's bytes end
-with a single trailing newline, and a whole-file slice is the COMPLETE file
-including it.
+The slices are PLAN, RECORD-R6, R0498, LANDED-R0496, CPU-ASSERT-FROM and
+CPU-ASSERT-TO. Every slice's bytes end with a single trailing newline, and a
+whole-file slice is the COMPLETE file including it.
 
-Round type: SINGLE-SESSION-eligible by change set (only `.agent/**`), but the
-single-writer rule of docs/agents/self_drive_protocol.md is unchanged — the
-reviewer writes nothing, you write everything.
+Round type: SPLIT. The change set reaches `tests/`, so the reviewer gates and you
+execute; the single-writer rule of docs/agents/self_drive_protocol.md is
+unchanged — the reviewer writes nothing, you write everything.
 
 ──────────────────────────────────────────────────────────────
 
 Change:
 
-1. C0a — write this ENTIRE block, byte for byte, to
-   `.agent/authored/f085-r6.md`. The reviewer's original is on disk at
-   `.remedy-wt/f085-r6.md` and its expected sha256 is stated in the delegation
-   that carries this block; copy that file rather than retyping it
-   (`shutil.copyfile` is fine — the gate names the byte property, not the tool).
-   Verify the digest BEFORE committing. Commit alone.
+1. C0a — write this ENTIRE block, byte for byte, to `.agent/authored/f085-r7.md`.
+   The reviewer's original is on disk at `.remedy-wt/f085-r7.md` and its expected
+   sha256 is stated in the delegation that carries this block; copy that file
+   rather than retyping it (`shutil.copyfile` is fine — the gate names the byte
+   property, not the tool). Verify the digest BEFORE committing. Commit alone.
 
-2. C0b — copy the COMMITTED `.agent/authored/f085-r6.md` over
+2. C0b — copy the COMMITTED `.agent/authored/f085-r7.md` over
    `.agent/last_block.md`, whole file. Commit alone.
 
-3. C1 — append to `.agent/live_review.md`, in this order, each preceded by
-   exactly one blank line, all byte-verbatim, nothing else in the file touched:
-   a. the RECORD-R5 slice;
-   b. the R0495 slice;
-   c. the R0496 slice;
-   d. the R0497 slice.
+3. C1 — append to `.agent/live_review.md`, in this order, each preceded by exactly
+   one blank line, byte-verbatim, nothing else in the file touched:
+   a. the RECORD-R6 slice;
+   b. the R0498 slice.
    The pre-C1 content must remain a byte-exact PREFIX of the post-C1 content.
 
-4. C2 — `.agent/plan.md` whole file := the PLAN slice. Commit alone.
+4. C2 — in `tests/orchestration/test_exec_guard.py`, replace the CPU-ASSERT-FROM
+   slice with the CPU-ASSERT-TO slice. This pair is a REWRITE, not an append: the
+   TO does not contain the FROM, because the whole point is that the compared
+   value changes. FROM occurs exactly once in the file before the edit and zero
+   times after; nothing else in the file, and no other file, is touched by this
+   commit. Do not edit `packages/orchestration/exec_guard.py`.
 
-5. C3 — rewrite `.agent/handoff.md` per docs/agents/handback_template.md. Its
+5. C3 — append to `.agent/live_review.md`, preceded by exactly one blank line, the
+   LANDED-R0496 slice byte-verbatim. It is a `Landed:` line and NOT a `Done:`
+   paragraph: only reviewer-authored text sets Resolved
+   (docs/agents/planner_reviewer_prompt.md §4 item 4), and the reviewer replaces
+   this line with the authored resolution at the next gate.
+
+6. C4 — `.agent/plan.md` whole file := the PLAN slice. Commit alone.
+
+7. C5 — rewrite `.agent/handoff.md` per docs/agents/handback_template.md. Its
    state block repeats this Fortschritt line verbatim:
-   `Fortschritt: ~25 % (F085 beansprucht · Amendment F085 D1 angewandt · T001 gebaut, R5 FAIL — 3 Findings offen · T002/T003 offen) — Schätzung`
+   `Fortschritt: ~30 % (F085 beansprucht · Amendment F085 D1 angewandt · T001 gebaut · R6 PASS · R-0496 gefixt, R-0495 offen und T002 blockiert · T003 offen) — Schätzung`
    Its "Next" section states exactly this:
-   - R7 is a REPAIR round and fixes R-0495 and R-0496 in that order; R-0497 is a
-     reviewer-side gate defect and is fixed by the reviewer's next block, not by
-     a worker edit;
-   - `tests/orchestration/test_exec_guard.py` is RED at HEAD on
-     `test_cpu_limit_kills_a_busy_loop_and_names_the_limit`, deliberately left
-     red, and no round may claim this branch is green until R-0496 is resolved;
+   - R8 is a REPAIR round and fixes R-0495, the wall timeout that does not bound
+     `run_guarded`'s own return; it is the last thing blocking T002a;
+   - `tests/orchestration/test_exec_guard.py` is GREEN and DETERMINISTIC as of this
+     round, measured over ten runs, and R-0495 is a defect the suite does not yet
+     cover — a green suite is not evidence that the guard bounds runtime;
    - `exec_guard.py` still has NO callers, so no containment claim holds for the
      running system;
    - there is NO open PR for this branch and none is opened before closure;
-   - the R6 verdict is written by the NEXT round's record commit.
+   - the R7 verdict is written by the NEXT round's record commit.
 
 ──────────────────────────────────────────────────────────────
 
 Constraints:
 
-1. AGENTS.md is the highest authority. Self-review loop before every commit;
-   push after committing.
-2. Every slice is applied BYTE-VERBATIM. If a slice cannot be applied as-is,
-   stop and declare it — never adjust the bytes to make a gate pass.
-3. The ONLY files this round may change are the ones named in the ordered
-   bundle. Do NOT touch `packages/orchestration/exec_guard.py`,
-   `tests/orchestration/test_exec_guard.py`, `.agent/f085_inventory.md`,
+1. AGENTS.md is the highest authority. Self-review loop before every commit; push
+   after committing.
+2. Every slice is applied BYTE-VERBATIM. If a slice cannot be applied as-is, stop
+   and declare it — never adjust the bytes to make a gate pass.
+3. The ONLY files this round may change are the ones named in the ordered bundle.
+   Do NOT touch `packages/orchestration/exec_guard.py`, `.agent/f085_inventory.md`,
    `docs/roadmap/STATUS.md`, `docs/roadmap/features/T2_F085.md` or
    `docs/roadmap/ROADMAP.md`.
-4. DO NOT FIX ANYTHING THIS ROUND. The red test stays red and the guard stays as
-   it is. A round that persists findings and also repairs them cannot prove the
-   findings were persisted before the repair, which is the whole point of the
-   ordering.
-5. Never force-push, never rebase, never amend, never reset, never work on
-   `main`, never delete a branch. Do not create a PR.
+4. DO NOT FIX R-0495 THIS ROUND, and do not "improve" anything else in the test
+   file while you are in it. One finding, one pair, one commit.
+5. Never force-push, never rebase, never amend, never reset, never work on `main`,
+   never delete a branch. Do not create a PR.
 6. Re-read `.agent/STOP` from disk before the FIRST commit and again at the
    handback. If it exists at either point, finish the commit in flight, write the
    handoff and end.
@@ -99,53 +109,71 @@ Constraints:
 Done when — every command run from the repository root with `pwd` confirmed,
 every real exit code recorded:
 
-G1  `git status --porcelain` is EMPTY at the handback. `git worktree list` is
-    ONE line. `.agent/STOP` absent at both readings.
-G2  TRANSPORT: `.remedy-wt/f085-r6.md`, the committed `.agent/authored/f085-r6.md`
+G1  `git status --porcelain` is EMPTY at the handback. `git worktree list` is ONE
+    line. `.agent/STOP` absent at both readings.
+G2  TRANSPORT: `.remedy-wt/f085-r7.md`, the committed `.agent/authored/f085-r7.md`
     and the committed `.agent/last_block.md` are byte-EQUAL and share one sha256.
     Report that digest, the byte count and the line count.
-G3  `.agent/plan.md` at HEAD is byte-equal to the PLAN slice; report its sha256
-    and line count; it contains `## Goal`, `## Next Steps` and a `\bF\d{3}\b`
-    match, and is under 50 lines.
-G4  `.agent/live_review.md`: the pre-C1 content is a byte-exact PREFIX of the
-    post-C1 content, and the appended tail contains the RECORD-R5, R0495, R0496
-    and R0497 slices, each byte-verbatim and each exactly once. Report
-    `git show --numstat` for that path at C1 and confirm its deletion column is 0.
+G3  `.agent/plan.md` at HEAD is byte-equal to the PLAN slice; report its sha256 and
+    line count; it contains `## Goal`, `## Next Steps` and a `\bF\d{3}\b` match, and
+    is under 50 lines.
+G4  `.agent/live_review.md`: the pre-C1 content is a byte-exact PREFIX of the post-C1
+    content and the pre-C3 content is a byte-exact PREFIX of the post-C3 content.
+    The C1 tail contains the RECORD-R6 and R0498 slices and the C3 tail contains the
+    LANDED-R0496 slice, each byte-verbatim and each exactly once in the WHOLE file.
+    Report `git show --numstat` for that path at C1 and at C3 and confirm both
+    deletion columns are 0.
 G5  Open-set recomputation at HEAD with the two regexes `^- R-\d+ — ` and
     `^Done: R-\d+ — `: report registered, resolved, duplicate ids and resolutions
-    naming an unregistered id. REQUIRED: the set of OPEN ids at HEAD EQUALS the
-    set open at `16506c0b` PLUS exactly `R-0495`, `R-0496` and `R-0497`, and R6
-    resolves nothing. Report both counts and the symmetric difference rather than
-    predicting them, plus the max id and the next free id. Separately report the
-    number of LINE-START records matching `^Landed: R-\d+`.
+    naming an unregistered id. REQUIRED: the set of OPEN ids at HEAD EQUALS the set
+    open at `ca5ff4f1` PLUS exactly `R-0498`, and R7 resolves nothing — a `Landed:`
+    line is not a resolution. Report both counts and the symmetric difference rather
+    than predicting them, plus the max id and the next free id. Separately report the
+    number of LINE-START records matching `^Landed: R-\d+`, which must be exactly 1
+    and must name R-0496.
 G6  `.agent/live_review.md` still contains the substring `Steps`.
-G7  `git diff --name-only 16506c0b..HEAD` lists exactly this set and nothing
-    else: `.agent/authored/f085-r6.md`, `.agent/handoff.md`,
-    `.agent/last_block.md`, `.agent/live_review.md`, `.agent/plan.md`. Report the
-    real list. NO path under `packages/`, `tests/`, `docs/`, `apps/` or
-    `scripts/` may appear — this round changes no code, and a path there would
-    mean constraint 4 was broken.
-G8  UNCHANGED CODE, the counter-proof to constraint 4: report the sha256 of
-    `packages/orchestration/exec_guard.py` and of
-    `tests/orchestration/test_exec_guard.py` at `16506c0b` and at HEAD. Each pair
-    must be equal.
-G9  THE RED STAYS RED, and this gate PASSES when the command FAILS — read it
-    carefully. Run `python3 -m pytest tests/orchestration/test_exec_guard.py -q`
-    and report its real exit code and its real summary line. The reviewer
-    measured `1 failed, 5 passed`, exit 1, five times out of five at `16506c0b`,
-    failing on `test_cpu_limit_kills_a_busy_loop_and_names_the_limit` at
-    `assert result.cpu_seconds_used >= 1.0` with the value `0.999776`. Report
-    what YOU get. Do not fix it, do not skip it, do not mark it xfail.
-G10 `python3 -m pytest tests/cli/test_golden_path.py -q` → exit 0, the canary.
-    The reviewer measured `42 passed`, exit 0, at `16506c0b`.
-G11 Per-commit insertions — the `+` column of `git show --numstat` — for C0a,
-    C0b, C1 and C2 only. None may exceed 500. C3's own count is ordered nowhere
-    and the reviewer measures it at the next gate (R-0494).
-G12 `git log --format=%p 16506c0b..HEAD` shows one parent per commit (linear).
+G7  `git diff --name-only ca5ff4f1..HEAD` lists exactly this set and nothing else:
+    `.agent/authored/f085-r7.md`, `.agent/handoff.md`, `.agent/last_block.md`,
+    `.agent/live_review.md`, `.agent/plan.md`,
+    `tests/orchestration/test_exec_guard.py`. Report the real list. NO path under
+    `packages/`, `docs/`, `apps/` or `scripts/` may appear.
+G8  UNCHANGED GUARD, the counter-proof to constraint 4: report the sha256 of
+    `packages/orchestration/exec_guard.py` at `ca5ff4f1` and at HEAD. They must be
+    equal — R-0495 is R8's work and no part of it lands here.
+G9  PAIR SHAPE, a REWRITE: over the WHOLE of `tests/orchestration/test_exec_guard.py`
+    at HEAD, the CPU-ASSERT-FROM text occurs 0 times and the line
+    `    assert result.cpu_seconds_used >= 0.5` occurs exactly 1 time. Report both
+    counts. Also report the `git show --numstat` of C2 for that path.
+G10 DETERMINISM, and read this one carefully: run
+    `python3 -m pytest tests/orchestration/test_exec_guard.py -q` TEN times in a row
+    and report the real exit code AND the real summary line of EACH of the ten runs,
+    in order. ALL TEN must be exit 0. One green run is not what this gate asks for:
+    at `ca5ff4f1` this same command is a coin flip — the reviewer measured 8 red and
+    4 green over twelve runs — and ten consecutive greens is the evidence that the
+    coin flip is gone. If any run is red, report every reading and hand back without
+    repairing anything. (This gate is the counter-measure of R-0498, applied in the
+    block that registers it.)
+G11 `python3 -m ruff check tests/orchestration/test_exec_guard.py` → exit 0, using
+    the repository's OWN configuration. Do NOT pass `--isolated`: it discards
+    `pyproject.toml` and with it the lint rules this gate exists to run (R-0463).
+G12 `python3 -m pytest tests/cli/test_golden_path.py -q` → exit 0, the canary. The
+    reviewer measured `42 passed`, exit 0, at `ca5ff4f1`.
+G13 PROBE, not a colour — run the eight-file structural sweep THREE times and report
+    each real exit code and each real summary line:
+    `python3 -m pytest tests/orchestration/test_autonomy.py tests/regression/test_named_bugs.py tests/test_path_utils.py tests/test_data_paths.py tests/test_no_interactive_guard.py tests/orchestration/test_review_subject_resolution.py tests/orchestration/test_test_runner.py tests/ui_server/test_dashboard_contract.py -q -rf`
+    The reviewer measured `350 passed, 6 skipped`, exit 0, seven times out of seven
+    at `ca5ff4f1`, and on a scratch worktree carrying a LARGER draft change saw one
+    unreproduced red in 22 runs whose node id was not captured. So: if a run is red,
+    report the FAILED node id verbatim from `-rf` and hand back. Do not repair it and
+    do not re-run until it goes green.
+G14 Per-commit insertions — the `+` column of `git show --numstat` — for C0a, C0b,
+    C1, C2, C3 and C4 only. None may exceed 500. C5's own count is ordered nowhere
+    and the reviewer measures it at the next gate (R-0494, checklist item 14).
+G15 `git log --format=%p ca5ff4f1..HEAD` shows one parent per commit (linear).
     `git reflog` over this round shows only `commit:` entries — no amend, rebase,
     reset, checkout of another branch, or force-push.
 
-Verification tier: round gate (§3 tier 1) plus the canary at G10. The docs-round
+Verification tier: round gate (§3 tier 1) plus the canary at G12. The docs-round
 gate of tier 5 is NOT triggered: this round's change set contains no
 `docs/roadmap/**` path.
 
@@ -154,6 +182,20 @@ Completion report + rewrite `.agent/handoff.md`. Push with
 `git push origin feature/f085-sandbox-hardening`. Do NOT open a PR.
 
 ──────────────────────────────────────────────────────────────
+
+<<<SLICE CPU-ASSERT-FROM>>>
+    assert result.cpu_seconds_used >= 1.0
+<<<END CPU-ASSERT-FROM>>>
+
+<<<SLICE CPU-ASSERT-TO>>>
+    # Tolerance strictly BELOW the limit, never ON it (R-0496): `ru_utime +
+    # ru_stime` is the kernel's own CPU accounting, which is granular and rounds
+    # against RLIMIT_CPU rather than exactly to it, so a value a few hundred
+    # microseconds under an integer limit is the normal outcome. The property
+    # this test is named for is the SIGXCPU trip asserted above; the number only
+    # has to show the child really burned the CPU it was limited on.
+    assert result.cpu_seconds_used >= 0.5
+<<<END CPU-ASSERT-TO>>>
 
 <<<SLICE PLAN>>>
 # Plan — F085 Sandbox hardening (stage 1)
@@ -176,38 +218,36 @@ reaches a child, and the limitations document exists and is linked from the
 README.
 
 ## Current Step
-R6, this round: record the R5 FAIL and persist its three findings. No fix lands
-here — findings persist before repairs so the record survives a session that
-ends. `tests/orchestration/test_exec_guard.py` stays RED on purpose.
+R7, this round: record the R6 PASS, register R-0498, and fix R-0496 — the
+boundary assertion that made the T001 suite a coin flip. R-0495 is untouched
+here; it gets its own round because its fix rewrites the stream pumps.
 
 ## Next Steps
-1. R7 repairs R-0495 — the wall timeout must bound `run_guarded`'s own return,
-   not only the process group it can reach — and then R-0496, the boundary
-   assertion that leaves the T001 suite red.
-2. T002a — builder class, 5 sites, the first seam migration. It is BLOCKED until
-   R-0495 is fixed: migrating a seam onto a guard whose timeout does not bound
-   wall time would make hangs harder to see, not easier.
+1. R8 repairs R-0495: the wall timeout must bound `run_guarded`'s own return and
+   not only the process group it can reach, and the result must say whether the
+   streams were complete. The docstring's "no descendant outlives this call"
+   narrows to the group the kill actually reaches.
+2. T002a — builder class, 5 sites, the first seam migration. BLOCKED until R-0495
+   is fixed: migrating a seam onto a guard whose timeout does not bound wall time
+   would make hangs harder to see, not easier.
 3. T002b-d, then T003 — network posture, limitations document, README link.
 
 ## Risks
 - R-0495 is the feature's central promise failing in its central case. Until it
-  is fixed, no round may describe `exec_guard` as bounding runtime.
+  is fixed, no round may describe `exec_guard` as bounding runtime, and a green
+  T001 suite is not evidence to the contrary: no test covers R-0495 yet.
 - The address-space limit is enforced but NOT attributable from `wait4` data;
   R5's G16 probe confirmed it. Whether stage 1 can name that trip stays open.
 <<<END PLAN>>>
 
-<<<SLICE RECORD-R5>>>
-Gate: R5 — FAIL. Every ordered gate the reviewer can re-run reproduces at the reviewer's own hand from the repository root at 16506c0b — G1 through G10 and G12 through G15, plus G17 read directly out of the two new files — and the round is failed on G11, which does not; G16 is a worker-side probe of a child process rather than a reproducible reading, and its result is consistent with the reviewer's own rlimit measurements taken while authoring the R5 block. TRANSPORT, against the reviewer's OWN scratchpad original and NOT by digest fallback (§4.9): `.remedy-wt/f085-r5.md`, the committed `.agent/authored/f085-r5.md` and the committed `.agent/last_block.md` are byte-EQUAL at sha256 4d1188a70d2f8d1ff23f6a5801c212b4406a738c7d6c59d77bb1877047ab9220, 26997 B, 341 lines. `.agent/plan.md` at HEAD byte-equals the PLAN slice at sha256 cbc8ee8a0b3b7196ae4dd9832abb66b009ccbe959ae0706f06f2ec2f266547a8, 41 lines, under the 50-line cap, carrying `## Goal`, `## Next Steps` and an F-id. The C1 append is honest: the pre-C1 blob of 208910 B is a byte-exact PREFIX of the 214867 B post-C1 file, the RECORD-R4 and R0494 slices each occur exactly once in the whole file and both inside the 5957-byte, four-line appended tail, and the numstat is `4 0` with a zero deletion column. The open set moved by exactly one: 108 open at 382ed7fa, 109 at HEAD, symmetric difference against base plus R-0494 EMPTY, 0 duplicate ids, 0 resolutions naming an unregistered id, 0 line-start `^Landed: R-` records. The change set is exactly the seven ordered paths, the history is seven single-parent commits, and the per-commit insertions are C0a 341, C0b 250, C1 4, C2 16, C3 314, C4 170, none over 500. Re-run by the reviewer in the PRIMARY checkout: ruff over the two new files exit 0 `All checks passed!`; the eight-file structural sweep `350 passed, 6 skipped` exit 0, the same reading as at base, so the new orchestration module trips none of the whole-directory guards; the canary `42 passed` exit 0; and G12 clean, the only `pgrep` matches being the reviewer's own probe command line rather than any surviving fixture. The values R5 routed nowhere are recorded HERE, measured by the reviewer at 16506c0b, which is the R-0494 counter-measure working as designed: C3 of the handback inserted 55 lines, the post-C5 change set is the same seven paths, `git status --porcelain` is EMPTY, `git worktree list` is one line, the push landed with origin at 16506c0b, and the handback measures 106 lines against its own DECISION D15 declaration of 106, so its self-measurement is honest. THE FAIL: G11 ordered `python3 -m pytest tests/orchestration/test_exec_guard.py -q` at exit 0 and the handback reports `6 passed in 4.59s`; at the reviewer's hand the same command at the same commit returns `1 failed, 5 passed`, exit 1, on FIVE consecutive runs, failing at `assert result.cpu_seconds_used >= 1.0` with the measured value 0.999776. The test passes when run alone, which is why a single worker run could honestly have seen green: the assertion sits directly on a boundary rather than near one, so this is recorded as a marginal-assertion defect and NOT as a fabricated reading — nothing in the record supports the harsher reading, and the mechanism explains both observations. It is registered as R-0496. The reviewer's own independent probe then found the more serious defect the ordered gates did not reach, registered as R-0495: `run_guarded` under a 1.0-second `wall_timeout_seconds` returned after 300.04 seconds. G17's no-overclaim gate is confirmed at the level it was written — neither new file claims any existing seam is guarded — and R-0495 is a different failure, an internal promise the module does not keep. R5's substance is otherwise sound: the guard's classification of cpu, wall and output trips is correct, its address-space non-attribution is honest, and G16's probe confirmed the reviewer's stated reason rather than contradicting it, with returncode 1, no term_signal, `MemoryError` on stderr and `ru_maxrss` of 26157056 B below the 67108864 B limit. LAST_REVIEWED_SHA does NOT advance and stays 382ed7fa.
-<<<END RECORD-R5>>>
+<<<SLICE LANDED-R0496>>>
+Landed: R-0496 — the marginal assertion now compares `cpu_seconds_used` against 0.5 instead of against the 1.0 RLIMIT_CPU limit it sat exactly on, with the kernel-accounting reason in a comment above it; `tests/orchestration/test_exec_guard.py`, commit C2 of R7.
+<<<END LANDED-R0496>>>
 
-<<<SLICE R0495>>>
-- R-0495 — High, `run_guarded`'S WALL TIMEOUT DOES NOT BOUND `run_guarded`'S OWN RETURN: A DESCENDANT THAT LEAVES THE PROCESS GROUP HOLDS THE INHERITED PIPES OPEN AND THE GUARD BLOCKS ON ITS STREAM PUMPS UNTIL THAT DESCENDANT EXITS. Raised by the reviewer at the R5 gate, by a probe of its own choosing rather than by any ordered gate. Measured, not reasoned: with `ExecGuardPolicy(wall_timeout_seconds=1.0, output_cap_bytes=4096)` and a child that spawns one grandchild with `start_new_session=True` and then sleeps, `run_guarded` returned after 300.04 seconds — the grandchild's full lifetime — and the returned `ExecGuardResult` carried `tripped_limit="wall_timeout"` with `wall_seconds=300.04`. The mechanism is in `packages/orchestration/exec_guard.py`: the deadline fires on schedule and `_kill_process_group` sends SIGKILL to the child's group, but a grandchild that called `setsid` is no longer IN that group, it still holds the write ends of the stdout and stderr pipes the guard created, so `_StreamPump.read1` never reaches EOF and the `out_pump.join()` and `err_pump.join()` calls in the `finally` block — which have no timeout — block until it exits. This is the feature's central promise failing in the case containment exists for. It is worse than a plain hang because the result LOOKS correct to any caller that reads `tripped_limit` alone, and `wall_seconds` is the only field that betrays it. It is not hypothetical, and the reviewer grepped rather than recalled: `start_new_session=True` appears in production code in `packages/orchestration/dod_runners.py`, `packages/orchestration/stream_evidence.py`, `packages/orchestration/test_execution_service.py`, `packages/runtimes/runtime_supervisor.py`, `packages/runtimes/dev_server.py` and `apps/cli/commands/runtime_cmd.py`. Three of those files hold sites in the very classes stage 1 migrates — dod, test and runtime under amendment F085 D1 — so the escaping descendant is not an exotic case but the ordinary shape of the code this guard is being built to wrap. The module's own `run_guarded` docstring states "the group is killed on every exit path, so no descendant outlives this call", which the same probe falsifies for a descendant that leaves the group, and the feature file's Orchestrator brief requires rejecting overclaiming wording in code comments. Counter-measure, for R7 and stated as a PROPERTY rather than an implementation: after the deadline fires and the group kill is sent, `run_guarded` must return within a bounded grace period regardless of whether any process still holds the pipes, and the result must say plainly whether the streams were complete when it returned; the docstring sentence must narrow to the process group it can actually reach. T002a is BLOCKED until this is fixed — migrating a seam onto this guard would make hangs harder to see than they are today, since an unguarded hang at least does not report a satisfied timeout. OPEN.
-<<<END R0495>>>
+<<<SLICE RECORD-R6>>>
+Gate: R6 — PASS. Every ordered gate was re-run by the reviewer from the repository root at ca5ff4f1, and every one reproduces the handback's reading, with the round's single declared deviation CONFIRMED rather than refuted. TRANSPORT, against the reviewer's OWN scratchpad original and NOT by digest fallback (§4.9): `.remedy-wt/f085-r6.md`, the committed `.agent/authored/f085-r6.md` and the committed `.agent/last_block.md` are byte-EQUAL at sha256 fc4752a4ac333290e30d11145beaf519b9b6eb46d3b01099f95869fff5956d03, 22488 B, 213 lines. `.agent/plan.md` at HEAD byte-equals the PLAN slice at sha256 8b4398f8616dcdb71cf72d254e22c09937f87052350e22bd2721cb69ab1ef5ad, 2136 B, 38 lines, under the 50-line cap, carrying `## Goal`, `## Next Steps` and an F-id. The C1 append is honest: the pre-C1 blob of 214867 B is a byte-exact PREFIX of the 225757 B post-C1 file, the RECORD-R5, R0495, R0496 and R0497 slices each occur exactly once in the whole file and each exactly once inside the 10890-byte, eight-line appended tail, the numstat is `8 0` with a zero deletion column, and the file is byte-identical from C1 through HEAD. The open set moved by exactly three: 109 registered / 0 resolved / 109 open at 16506c0b against 112 / 0 / 112 at HEAD, symmetric difference of HEAD-open against base-open plus R-0495, R-0496 and R-0497 EMPTY, 0 duplicate ids, 0 resolutions naming an unregistered id, 0 line-start `^Landed: R-` records, max R-0497 and next free R-0498. The substring `Steps` survives 19 times. The change set is exactly the five ordered `.agent/**` paths with nothing under `packages/`, `tests/`, `docs/`, `apps/` or `scripts/`, and G8's counter-proof holds: `packages/orchestration/exec_guard.py` at sha256 d9c77caec4ed9136868cef080bd2e2ae18c4216851507dc943d778d5c575114e, 12241 B, and `tests/orchestration/test_exec_guard.py` at sha256 9301bc652ecf555b983e0cf85dc7c5da52071ef20de741b9cd3f1476188bad53, 6211 B, are byte-identical at 16506c0b and at HEAD, so constraint 4 held and nothing was repaired under cover of a record round. The history is five single-parent commits, bb22b2dd←16506c0b then 4cc753b6, 07255ccd, 93fcf6ff and ca5ff4f1, and the reflog over the round carries `commit:` entries only. The canary is `42 passed in 20.46s`, exit 0. THE DEVIATION, CONFIRMED: G9 ordered a COLOUR — it passed only when the command FAILED — and the worker reported that the colour does not reproduce, 3 red and 4 green over seven runs. At the reviewer's own hand the same command at HEAD is red on 8 runs and green on 4 out of TWELVE, `1 failed, 5 passed` against `6 passed`, always at `test_cpu_limit_kills_a_busy_loop_and_names_the_limit`. The worker's reading is therefore corroborated and the gate as written was unmeetable rather than unmet. The worker recorded the real commands, exit codes and summary lines, edited nothing the gate measures — G8 is the byte proof — and declared the deviation, which is exactly what constraint 7 asks of it; the defect is the reviewer's own and is registered as R-0498. The values R6 routed nowhere are recorded HERE, measured by the reviewer at ca5ff4f1, which is the R-0494 counter-measure working as designed: the handback commit ca5ff4f1 inserted 41 lines and deleted 60, the per-commit insertions before it are C0a 213, C0b 106, C1 8 and C2 14 with none over 500, the post-C5 change set is the same five paths, `git status --porcelain` is EMPTY, `git worktree list` is one line, the push landed with origin at ca5ff4f1, and `.agent/handoff.md` measures 87 lines against its own DECISION D15 declaration of 87, so its self-measurement is honest. LAST_REVIEWED_SHA advances to ca5ff4f1.
+<<<END RECORD-R6>>>
 
-<<<SLICE R0496>>>
-- R-0496 — Medium, THE T001 SUITE IS RED IN FILE ORDER ON A MARGINAL ASSERTION THAT COMPARES KERNEL CPU ACCOUNTING AGAINST AN EXACT INTEGER LIMIT. Raised by the reviewer at the R5 gate while re-running G11. `python3 -m pytest tests/orchestration/test_exec_guard.py -q` at 16506c0b returns `1 failed, 5 passed`, exit 1, on five consecutive runs, failing at `test_cpu_limit_kills_a_busy_loop_and_names_the_limit` on `assert result.cpu_seconds_used >= 1.0` with the measured value 0.999776; the same test run ALONE passes. Everything the test exists to prove holds in the failing run: `term_signal` is SIGXCPU, `classification` is `resource_limit`, `tripped_limit` is `cpu_seconds` and it is a member of `limits_enforced`. Only the accounting assertion fails, and it fails because `ru_utime + ru_stime` is sampled from the kernel's own CPU accounting, which is granular and rounds against the RLIMIT_CPU soft limit rather than exactly to it, so a value a few hundred microseconds under an integer limit is the NORMAL outcome and not an anomaly. The handback reports `6 passed in 4.59s` for this command, and the reviewer's reading contradicts it; the boundary mechanism explains both readings without any dishonesty, and this finding records it as a marginal-assertion defect for that reason — see the RECORD-R5 paragraph, which declines the harsher reading explicitly. Counter-measure for R7: assert the property the test is named for and drop or loosen the accounting assertion — if CPU consumption is asserted at all it is asserted against a tolerance strictly below the limit, never against the limit itself, because a test whose expected value sits ON a boundary is a coin flip that will re-fail later at a much worse moment. This is the reviewer-arithmetic family of R-0327 and R-0336 appearing inside a WORKER-authored test rather than inside a reviewer gate: order the colour, never the exact number. OPEN.
-<<<END R0496>>>
-
-<<<SLICE R0497>>>
-- R-0497 — Low, A REVIEWER GATE ORDERED AN EXPECTED VALUE THE CODE COULD NOT PRODUCE: G8 OF THE R5 BLOCK REQUIRED A CONTENT GREP TO MATCH A FILE THAT NEVER NAMES ITS OWN PATH. Raised by the reviewer against its own block at the R5 gate. R5's G8 ordered `grep -rn "exec_guard" packages/ apps/ scripts/ tests/` to return "matches in `packages/orchestration/exec_guard.py` and `tests/orchestration/test_exec_guard.py` ONLY", but `grep` matches CONTENT and the new module never writes the string `exec_guard` anywhere inside itself — its docstring says "execution guard" — so the module's own file cannot appear in that output by construction. The real result is two lines, both in the test file. The worker read the difference correctly, reported it, and explicitly did not edit the module to make the gate match, which is the behaviour the block's constraint 7 asks for and the reason this is Low rather than higher: nothing false was recorded and no round passed on it. The cost is one declared deviation spent proving a reviewer mistake. This is the pre-emission checklist item 8 class — a gate whose expected VALUE the code contradicts — recurring in its cheapest form, and the specific lesson is narrower than item 8 as written: a gate over an ABSENCE must name the property it means, which here is "no file other than these two imports or mentions the module", so the honest form orders the SET of matching files and asserts that set contains no third entry, rather than predicting which of the two will appear. The fix is reviewer-side and lands in the next block's gate wording, not in a worker edit; promoting the narrower rule into docs/agents/planner_reviewer_prompt.md §3 is a `docs/agents/**` edit outside this feature's change set and is NOT claimed here, but named for the paydown branch that already carries R-0403, R-0448, R-0482, R-0487, R-0490, R-0493 and R-0494. OPEN.
-<<<END R0497>>>
+<<<SLICE R0498>>>
+- R-0498 — Low, A REVIEWER GATE ORDERED AN EXPECTED COLOUR FOR A COMMAND THE REVIEWER HAD SEEN ONLY FIVE TIMES, AND THAT COMMAND IS A COIN FLIP RATHER THAN RELIABLY RED. Raised by the reviewer against its own R6 block at the R6 gate. G9 of that block ordered `python3 -m pytest tests/orchestration/test_exec_guard.py -q`, declared that the gate PASSES when the command FAILS, and rested that order on five consecutive red runs measured at 16506c0b. The worker got 3 red and 4 green over seven runs and declared the deviation; the reviewer then measured 8 red and 4 green over twelve runs at ca5ff4f1. Five consecutive observations of one colour are not evidence of determinism — for an even coin five identical outcomes arrive once in sixteen attempts, which is ordinary rather than remarkable — so the sample never supported the order built on it, and the flakiness was a property of the test the whole time rather than something that changed between rounds. The cost was one declared deviation on a round that did everything else right, and the worse branch was reachable: had the worker's seven runs happened to come out all red, an unmeetable gate would have been recorded as satisfied and the coin flip would have stayed invisible until it fell the other way at a less convenient moment. This is the reviewer-arithmetic family of R-0327 and R-0336 reaching the same place from a third direction — R-0327 ordered a count the reviewer computed by hand, R-0497 ordered a value the code could not produce, and this one orders a colour that a non-deterministic command cannot honestly promise. Counter-measure, binding on the reviewer from this round on and APPLIED IN THE SAME BLOCK THAT REGISTERS THIS FINDING, as gate G10: a gate that names an expected COLOUR for a command whose determinism has not been established orders that command run at least TEN times with every exit code and summary line reported, and either requires the colour on all ten or is rewritten as a probe that reports what it saw. Promoting the rule into the docs/agents/planner_reviewer_prompt.md §3 pre-emission checklist is a `docs/agents/**` edit outside this feature's change set and is NOT claimed here; it is named for the paydown branch that already carries R-0403, R-0448, R-0482, R-0487, R-0490, R-0493, R-0494 and R-0497. OPEN.
+<<<END R0498>>>
