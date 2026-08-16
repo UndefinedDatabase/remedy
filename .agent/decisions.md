@@ -5592,3 +5592,43 @@ field, which needs no new marker and therefore touches no marker semantics.
 
 Reverse this decision by lowering the ceiling to 0 and fixing the errors in a
 branch of their own.
+
+## DECISION F083 D6 — the tsc check resolves the LOCAL compiler or it skips (2026-08-16)
+
+Finding R-0480 observed `tests/ui_server/test_dashboard_contract.py::
+TestJobSummaryCommandContract::test_typescript_compiles` red on the first run of
+the module and green on the second, and blamed a cold `npx` cache. R19 measured
+that hypothesis as `## Q13` of `.agent/f083_inventory.md` and FALSIFIED it: the
+cache is the per-user directory `/home/decodeux/.npm`, it is warm, and the
+deliberately cold run is green. The real variable is `apps/ui/node_modules`,
+which `.gitignore` excludes and which is therefore absent from every fresh clone
+and every new `git worktree`. With no local TypeScript, `npx tsc` resolves the
+deprecated `tsc@2.0.4` stub out of the user cache, whose bin ends in
+`process.exitCode = 1` — so the assertion `result.returncode == 0` was grading a
+nine-year-old stub's exit code and reporting it as a TypeScript verdict. The
+first-run/second-run flip is intra-module ORDERING: the test sits above
+`TestAutoBuildBehavior::test_auto_build_runs_by_default`, which really runs
+`npm install`.
+
+CHOSEN: the test resolves `apps/ui/node_modules/.bin/tsc` explicitly and runs
+THAT binary; when the binary is absent it SKIPS with a message naming the missing
+directory and the exact install command `npm ci --prefix apps/ui`. This is not a
+new policy — it is this feature's own documented edge case, "UI toolchain absent
+locally: the ui stage reports skipped with the install hint locally but is
+REQUIRED hosted", finally implemented instead of merely written down.
+
+ALTERNATIVES CONSIDERED AND REJECTED: `npx --yes`, rejected because Q13 measured
+it and it changes nothing — the stub resolves either way; having the test run
+`npm ci` itself, rejected because a test that installs a toolchain is a build
+step wearing a test's name and it would put a network install inside the `fast`
+stage; leaving the `npx` form and amending Acceptance, rejected because it keeps
+a green that is a stub's exit code.
+
+CONSEQUENCE FOR T003, recorded so it cannot be forgotten: hosted rigor is now
+load-bearing. The hosted workflow MUST run `npm ci --prefix apps/ui` before the
+`ui` stage, or the check skips hosted as well and the Acceptance line "Clean
+checkout: `remedy ci` green locally and hosted" is met by a skip rather than by a
+compile. T003 owns that step; it is also recorded in
+`docs/roadmap/features/T2_F083.md`.
+
+Reverse this decision by restoring the `npx` invocation.
