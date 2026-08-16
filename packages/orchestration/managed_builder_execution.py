@@ -62,6 +62,7 @@ import json
 import logging
 import os
 import re
+import signal
 import subprocess
 import time
 from dataclasses import dataclass, field
@@ -70,6 +71,7 @@ from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
+from packages.orchestration.exec_guard import ExecGuardPolicy, run_guarded
 from packages.orchestration.provider_trust import _safe_path_label, _scrub_public
 
 _log = logging.getLogger("remedy.managed_execution")
@@ -954,6 +956,44 @@ def _build_sanitized_env(template: dict[str, Any]) -> dict[str, str]:
     return env
 
 
+def _builder_exec_policy(timeout: int, max_bytes: int, cwd: str | None,
+                         env: dict[str, str]) -> ExecGuardPolicy:
+    """Stage-1 builder policy (F085 T002a) — only the limits this seam can prove.
+
+    `cpu_seconds`, `address_space_bytes` and `open_files` are deliberately None: a
+    value picked without measuring real builder workloads would kill legitimate builds
+    (a multi-threaded build burns CPU-seconds far faster than wall-clock), and T2_F085
+    makes the per-class rlimit VALUES config with per-project overrides. RLIMIT_AS also
+    cannot be classified from what `wait4` reports, so a build it killed would surface
+    as a plain failure. What IS enforced is real: the guard's own wall deadline, a
+    per-stream output cap applied WHILE reading, the cwd pin, a zero core dump, and
+    `FORBIDDEN_ENV_KEYS` as a floor beneath the template's allowlist. `env` is already
+    the product of `_build_sanitized_env`, so allowlisting its keys reproduces it.
+    """
+    return ExecGuardPolicy(
+        wall_timeout_seconds=float(timeout),
+        output_cap_bytes=max_bytes,
+        cwd=cwd,
+        env=env,
+        env_allowlist=tuple(sorted(env)),
+        core_file_bytes=0,
+    )
+
+
+def _guarded_exit_code(guarded) -> int:
+    """Translate a guard result into the integer `exit_code` this module publishes.
+
+    `subprocess.run` reported a signal death as -SIGNUM; the guard reports
+    `returncode=None` plus the signal NAME, so the negative form is rebuilt here.
+    """
+    if guarded.returncode is not None:
+        return guarded.returncode
+    try:
+        return -int(signal.Signals[guarded.term_signal].value)
+    except (KeyError, ValueError, TypeError):
+        return -1
+
+
 # ---------------------------------------------------------------------------
 # Managed runner (the ONLY subprocess execution point for builders)
 # ---------------------------------------------------------------------------
@@ -1154,17 +1194,21 @@ def run_managed_builder(
                    f"Subprocess started: {_safe(argv[0], 50)}", ddir=ddir)
     result.status = ManagedExecutionStatus.RUNNING
 
-    # 6. Execute subprocess — shell=False ALWAYS.
+    # 6. Execute subprocess — through the F085 exec guard; argv list, never a shell.
     start_time = time.monotonic()
     try:
-        proc = subprocess.run(
-            argv,
-            shell=False,  # HARD: never True
-            capture_output=True,
-            timeout=timeout,
-            env=env,
-            cwd=repo_path or None,
-        )
+        guarded = run_guarded(argv, _builder_exec_policy(timeout, max_bytes,
+                                                         repo_path or None, env))
+        if guarded.tripped_limit == "wall_timeout":
+            # The guard CLASSIFIES a wall trip where subprocess.run RAISED one. Re-raise
+            # so the timeout path below stays the one this module already had: the
+            # migration changes the mechanism, never the observable outcome.
+            raise subprocess.TimeoutExpired(argv, timeout)
+        # A CompletedProcess keeps every downstream reader — returncode, stdout, stderr
+        # — identical to the pre-migration shape; the slice below is then a no-op,
+        # because the guard capped each stream WHILE reading it.
+        proc = subprocess.CompletedProcess(argv, _guarded_exit_code(guarded),
+                                           guarded.stdout, guarded.stderr)
         elapsed_ms = int((time.monotonic() - start_time) * 1000)
         result.duration_ms = elapsed_ms
         result.exit_code = proc.returncode

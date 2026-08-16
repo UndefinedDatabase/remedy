@@ -348,14 +348,78 @@ class TestManagedRunner(unittest.TestCase):
             assert result.status == ManagedExecutionStatus.FAILED
             assert "command_not_found" in result.blocking_reasons
 
-    def test_shell_false_always(self):
-        """Verify shell=False in subprocess call by checking the source."""
+    def test_spawn_goes_through_the_guard_and_never_through_a_shell(self):
+        """Assert the no-shell property by AST, because the text form was vacuous.
+
+        The old assertion searched this function's source for `shell=False` and was
+        satisfied by its DOCSTRING (R-0504). Since F085 T002a the spawn lives in
+        `exec_guard.run_guarded`, so the property is asserted where it is enforced.
+        """
+        import ast
         import inspect
-        src = inspect.getsource(run_managed_builder)
-        # Must contain shell=False
-        assert "shell=False" in src
-        # Must NOT contain shell=True
-        assert "shell=True" not in src
+
+        from packages.orchestration import exec_guard
+        from packages.orchestration import managed_builder_execution as mbe
+
+        def spawn_calls(func):
+            tree = ast.parse(inspect.getsource(func))
+            return [n for n in ast.walk(tree)
+                    if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute)
+                    and n.func.attr in {"run", "Popen", "call", "check_output"}
+                    and isinstance(n.func.value, ast.Name)
+                    and n.func.value.id == "subprocess"]
+
+        assert spawn_calls(run_managed_builder) == []
+        popens = spawn_calls(exec_guard.run_guarded)
+        assert len(popens) == 1
+        assert "shell" not in {kw.arg for kw in popens[0].keywords}
+        # By AST, not by text: this module's own docstring carries the words
+        # "NO shell=True", so a substring search fails on prose either way.
+        module_tree = ast.parse(inspect.getsource(mbe))
+        assert not [n for n in ast.walk(module_tree)
+                    if isinstance(n, ast.keyword) and n.arg == "shell"
+                    and isinstance(n.value, ast.Constant) and n.value.value is True]
+
+    def test_wall_timeout_is_translated_into_the_timeout_status(self):
+        """The guard CLASSIFIES a wall trip; this seam must still REPORT a timeout."""
+        import tempfile
+        with tempfile.TemporaryDirectory() as td:
+            _create_test_session(td, "ses-to")
+            t = CommandTemplate(template_id="to-test", argv_template=["sleep", "5"],
+                                enabled=True, requires_approval=False, timeout_seconds=1)
+            save_command_template(t, data_dir=Path(td))
+            result = run_managed_builder("ses-to", template_id="to-test",
+                                          job_id="job-to", data_dir=Path(td))
+            assert result.status == ManagedExecutionStatus.TIMEOUT
+            assert result.safe_summary == "Timeout after 1s"
+
+    def test_a_signal_death_keeps_the_negative_exit_code_contract(self):
+        """subprocess.run reported -SIGNUM; the guard reports a NAME. -9 either way."""
+        import tempfile
+        with tempfile.TemporaryDirectory() as td:
+            _create_test_session(td, "ses-sig9")
+            script = Path(td) / "selfkill.py"
+            script.write_text("import os, signal\nos.kill(os.getpid(), signal.SIGKILL)\n")
+            t = CommandTemplate(template_id="sig9-test",
+                                argv_template=["python3", str(script)],
+                                enabled=True, requires_approval=False)
+            save_command_template(t, data_dir=Path(td))
+            result = run_managed_builder("ses-sig9", template_id="sig9-test",
+                                          job_id="job-sig9", data_dir=Path(td))
+            assert result.status == ManagedExecutionStatus.FAILED
+            assert result.exit_code == -9
+
+    def test_builder_policy_reproduces_the_sanitized_env_and_floors_it(self):
+        """The allowlist is an identity on an already-sanitized env, and still a floor."""
+        from packages.orchestration.exec_guard import scrub_child_env
+        from packages.orchestration.managed_builder_execution import _builder_exec_policy
+        env = _build_sanitized_env({})
+        policy = _builder_exec_policy(30, 4096, None, env)
+        assert scrub_child_env(env, policy.env_allowlist) == env
+        assert policy.wall_timeout_seconds == 30.0 and policy.cpu_seconds is None
+        smuggled = dict(env, GITHUB_TOKEN="ghp_never")
+        floored = _builder_exec_policy(30, 4096, None, smuggled)
+        assert "GITHUB_TOKEN" not in scrub_child_env(smuggled, floored.env_allowlist)
 
 
 class TestEventLedger(unittest.TestCase):
