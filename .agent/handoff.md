@@ -1,44 +1,45 @@
-# Handback — F085 Sandbox hardening (stage 1) · Round R16
+# Handback — F085 Sandbox hardening (stage 1) · Round R17
 
-Branch: feature/f085-sandbox-hardening. Record-and-repair round, no behaviour change.
+Branch: feature/f085-sandbox-hardening. T002a's CLI half completed; behaviour held by five goldens.
 
 ## Range
-Review of 7185d949..HEAD (this handback commit sits on 50c279b7).
+Review of 396ad913..HEAD (this handback commit sits on bc0d3850).
 
 ## Commits
 
-### f05b68e5 docs(f085): save the R16 step block verbatim
+### c847ec27 docs(f085): save the R17 step block verbatim
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f085-r16.md | +316/-0 | C0a: block copied byte-for-byte (shutil.copyfile) |
+| .agent/authored/f085-r17.md | +309/-0 | C0a: block copied byte-for-byte (shutil.copyfile) |
 
-### 7a94b0e3 docs(f085): mirror the R16 block into last_block
+### a0bc19de docs(f085): mirror the R17 block into last_block
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/last_block.md | +240/-324 | C0b: the COMMITTED C0a blob, not the scratch file |
+| .agent/last_block.md | +225/-232 | C0b: the COMMITTED C0a blob, not the scratch file |
 
-### d320f79f docs(review): record the R15 PASS and register three block defects
+### 2dae006e docs(review): record the R16 PASS
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/live_review.md | +74/-0 | C1: RECORD1 (R15 PASS) + FIND1/2/3 = R-0508, R-0509, R-0510 |
+| .agent/live_review.md | +28/-0 | C1: RECORD1 only — a record registers no id |
 
-### 178152f3 docs(f085): correct the absence claims the guard migration falsified
+### 3199f721 feat(f085): route the remaining claude CLI calls through the guard
 | Path | +/- | Reason |
 |---|---|---|
-| packages/orchestration/exec_guard.py | +8/-5 | C2 EGF→EGT: PARTIAL COVERAGE replaces "NO CALLER"; allowlist is the caller's |
-| packages/orchestration/managed_builder_execution.py | +8/-5 | C2 MBE1/MBE2: LAUNCH not invoke; "No shell, ever" + AST pointer |
+| packages/orchestration/pingpong_provider.py | +2/-10 | C2 CALLF→CALLT then STRUCTF→STRUCTT: both spawns become `_guarded_cli_run` |
+| tests/orchestration/test_claude_cli_exec_guard.py | +42/-0 | C2 ASTF→ASTT (two new AST assertions) + GOLDF→GOLDT (five behaviour goldens) |
+| tests/orchestration/test_structured_cli_envelope.py | +1/-1 | C2 MOCKF→MOCKT: the mock target moves with the spawns — one indivisible unit (R-0507) |
 
-### 093cfabc docs(review): resolve R-0506 now that its fix has landed
+### 23ea5816 docs(review): resolve R-0507 and R-0509 now that their fixes have landed
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/live_review.md | +17/-0 | C3: DONE1, appended AFTER C2 landed — separate commit on purpose |
+| .agent/live_review.md | +25/-0 | C3: DONE1 then DONE2, appended AFTER C2 landed — separate commit on purpose |
 
-### 50c279b7 docs(f085): advance the plan and repair its numbering
+### bc0d3850 docs(f085): advance the plan to the checklist-promotion round
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/plan.md | +9/-9 | C4 PLANF→PLANT over the whole Next Steps section; 1,2,2,3 → 1,2,3,4 (R-0509 repair) |
+| .agent/plan.md | +8/-7 | C4 PLANF→PLANT over Current Step and the first Next Steps item |
 
-### this commit docs(f085): rewrite the handback for R16
+### this commit docs(f085): rewrite the handback for R17
 | Path | +/- | Reason |
 |---|---|---|
 | .agent/handoff.md | rewrite | C5: this file — a handoff cannot table the commit that writes it (R-0149) |
@@ -55,25 +56,25 @@ Review of 7185d949..HEAD (this handback commit sits on 50c279b7).
 | C5 | done | this commit |
 
 ## Verification
-- G1 `git status --porcelain` rc=0 EMPTY before every commit; `git worktree list` 1 line; `.agent/STOP` absent before C0a and before C5.
-- G2 scratch original, `.agent/authored/f085-r16.md` post-C0a and `.agent/last_block.md` post-C0b: sha256 bda1ca21008ed866792258791cd785bbde79b9aa975c7c018fbaf50fe82e903e, 22488 B, 316 lines, byte-equal True.
-- G3 C1: pre f8a58f0d…, post 52a1dd28…, prefix True, remainder == blank+RECORD1+blank+FIND1+blank+FIND2+blank+FIND3 True, each slice 1×; numstat READING +74/-0. C3: pre 52a1dd28…, post 6c374ca1…, prefix True, remainder == blank+DONE1 True, DONE1 1×; READING +17/-0. Marker tokens 1 `<<<SLICE`/1 `<<<END` before and after both commits (pre-existing R7 prose).
-- G4 base 122/3/0 → 119 open; after C1 125/3/0 → 122 open; HEAD 125/4/0 → 121 open. Symmetric diffs: registered R-0508, R-0509, R-0510; resolved R-0506. 0 duplicate ids, 0 resolutions of an unregistered id. Max R-0510, next free R-0511.
-- G5 PLANF 0× / PLANT 1× at HEAD. plan.md sha256 8472adc781a6130bcf983c3e7dbccbe47307400e7e64ef46b39c422087e4c4a2, 2589 B, 43 lines. `## Goal` and `## Risks` byte-identical to base: True/True. Next Steps numbers parsed: base 1,2,2,3 → HEAD 1,2,3,4.
-- G6 HEAD blobs of both files: "NO CALLER" 0/0; "ONLY place in the codebase that may invoke subprocess" 0/0; "ONLY function that executes a subprocess" 0/0. `git grep -l "from packages.orchestration.exec_guard import" -- packages tests` rc=0, 4 paths: managed_builder_execution.py, pingpong_provider.py, test_exec_guard.py, test_managed_builder_execution.py.
-- G7 managed_builder + exec_guard + claude_cli_exec_guard: at C1 rc=0 "152 passed"; at HEAD rc=0 "152 passed".
-- G8 `ruff check exec_guard.py managed_builder_execution.py` rc=0 "All checks passed!" at base and HEAD. Repo-wide ruff not ordered — already red at base.
-- G9 state readers rc=0 "157 passed" base and HEAD; canary `tests/cli/test_golden_path.py` rc=0 "42 passed" base and HEAD.
-- G10 `git diff --name-only 7185d949..HEAD` before C5: the 6 declared paths minus handoff, 0 outside, 0 untouched. Insertions +316, +240, +74, +16, +17, +9 — none over 500. `git log --format=%h %p`: 6 commits, one parent each, linear. `git reflog -12`: 0 entries not prefixed `commit:`.
+- G1 `git status --porcelain` rc=0 EMPTY before every commit; `git worktree list` 1 line; `.agent/STOP` absent before C0a and before C5. Observed: the G9 suite transiently creates and removes `tests/regression/test_wrapper_slow_*.py` in the work tree while running — no commit was taken during a run.
+- G2 scratch original, `.agent/authored/f085-r17.md` post-C0a and `.agent/last_block.md` post-C0b: sha256 cc496f97e15b8feb9a82368c78493c03f48f1a64c8302dca265874e4fdebb195, 19911 B, 309 lines, byte-equal True.
+- G3 C1: pre 6c374ca1… (286462 B), post 98be125d… (289062 B), prefix True, remainder == blank+RECORD1 True, RECORD1 1× in the whole file; numstat READING +28/-0. C3: pre 98be125d…, post 27c1e4ef… (291333 B), prefix True, remainder == blank+DONE1+blank+DONE2 True, DONE1 1× and DONE2 1×; READING +25/-0. Marker lines matching `^<<<(SLICE|END)` = 0 after both commits.
+- G4 base 125/4/0 → 121 open; after C1 125/4/0 → 121 open (a record adds no id); HEAD 125/6/0 → 119 open. Symmetric diffs: registered [] (NO registration), resolved R-0507 and R-0509. 0 duplicate registered ids, 0 duplicate resolved ids, 0 resolutions naming an unregistered id. Max R-0510, next free R-0511.
+- G5 PLANF 0× / PLANT 1× at HEAD. plan.md sha256 8c68c6ae324fd779094990ee19c5961b35f6df4fcdb6639ef8f085aecc65c9f2, 2704 B, 44 lines (under 50). `## Goal` and `## Risks` byte-identical to base: True/True. `## Next Steps` parses to 1, 2, 3, 4 — no repeat.
+- G6 AST over pingpong_provider.py at HEAD, `subprocess.run/Popen/call/check_output` call nodes: `_resolve_version` 0, `_call` 0 (both defs in the module), `_call_reviewer_structured` 0, `_guarded_cli_run` 0. WHOLE MODULE 0 — T002a's CLI half is complete.
+- G7 eight-file provider suite: at C1 rc=0 "341 passed"; at HEAD rc=0 "346 passed". The +5 is exactly the five goldens C2 adds; the two readings are NOT equal and must not be reported as equal.
+- G8 `python3 -m ruff check pingpong_provider.py test_claude_cli_exec_guard.py test_structured_cli_envelope.py` rc=0 "All checks passed!". Repo-wide ruff not ordered — already red at base.
+- G9 state readers rc=0 "157 passed" at base and HEAD; canary `tests/cli/test_golden_path.py` rc=0 "42 passed" at base and HEAD. Both match base.
+- G10 `git diff --name-only 396ad913..HEAD` before C5: the 7 declared paths minus handoff, 0 outside. Insertions +309, +225, +28, +45, +25, +8 — none over 500 (C5's own count is not ordered; it is in the round report). `git log --format=%h %p`: 6 commits, one parent each, linear. `git reflog -12`: 0 entries not prefixed `commit:`; no amend, rebase, reset or force-push.
 
 ## Authored-text proofs
-All 13 slices extracted by marker pair and applied byte-verbatim; no marker line reached a target. Pair shapes re-classified mechanically by containment: EGF→EGT, MBE1F→MBE1T, MBE2F→MBE2T, PLANF→PLANT all REWRITE, matching constraint 3. Each FROM occurred 1× before and 0× after. Disk-to-disk equality is G2. The whole block was dry-run on a `git archive HEAD` extraction first: 4 pairs applied, ruff rc=0, AST parse rc=0, numbering 1,2,3,4, retired phrases 0.
+All 15 slices extracted by marker pair and applied byte-verbatim; no marker line reached any target file (0 in all four). Pair shapes re-classified mechanically by containment before applying, matching constraint 3: CALLF→CALLT, STRUCTF→STRUCTT, MOCKF→MOCKT, ASTF→ASTT, PLANF→PLANT all REWRITE with FROM 1× before and 0× after; GOLDF→GOLDT APPEND, whose FROM legitimately survives 1× inside its own TO, so no "FROM 0×" was read for it. Constraint 4 honoured: CALLT and STRUCTT are byte-identical, each site located by its own distinct FROM, CALLF→CALLT applied first; the shared line occurs 2× in the file afterwards, as expected. Disk-to-disk equality is G2.
 
 ## External actions
-`git push -u origin feature/f085-sandbox-hardening` and `gh pr list --state open --json number,headRefName,baseRefName,isDraft` run after C5; outputs in the round report. No PR created, nothing merged, no worktree added or removed.
+`git push -u origin feature/f085-sandbox-hardening` and `gh pr list --state open --json number,headRefName,baseRefName,isDraft` run after C5; outputs in the round report. No PR created, nothing merged, no worktree added, removed or pruned.
 
 ## Deviations & assumptions
-Bundle ran C0a, C0b, C1, C2, C3, C4, C5 in the block's order — none added, dropped or reordered. No gate contradicted the block. Deviations, declared: this handback is 79 lines and roughly 1.4k tokens, over the 60-line/800-token cap. Cause: seven per-commit changed-files tables, the item-status table, and ten ordered gates whose real readings the block requires. No section was dropped.
+Bundle ran C0a, C0b, C1, C2, C3, C4, C5 in the block's order — none added, dropped or reordered. No gate contradicted the block; no gate came out red. Deviations, declared: this handback is 80 lines and roughly 1.6k tokens, over the 60-line/800-token cap. Cause: seven per-commit changed-files tables, the item-status table, and ten ordered gates whose real readings the block requires. No section was dropped.
 
 ## Next
-Reviewer re-runs G1-G10 over 7185d949..HEAD and issues the R16 verdict, re-reading `.agent/STOP` first. If PASS, R17 migrates the R-0507 coupled unit: `_call`, `_call_reviewer_structured` and the envelope test's mock.
+Reviewer re-runs G1-G10 over 396ad913..HEAD and issues the R17 verdict, re-reading `.agent/STOP` first (Phase 1 rule 1 before rule 2). If PASS, the next round promotes three standing rules into docs/agents/planner_reviewer_prompt.md §3 — what R-0508 and R-0510 are still open for.
