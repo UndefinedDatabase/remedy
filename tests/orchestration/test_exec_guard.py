@@ -174,3 +174,38 @@ def test_no_child_survives_a_killed_run():
             break
         time.sleep(0.2)
     assert survivors == [], f"orphans survived run_guarded: {survivors}"
+
+@pytest.mark.subprocess
+def test_wall_timeout_bounds_the_call_when_a_descendant_escapes_the_group():
+    """A grandchild in its OWN session survives the kill and keeps holding the pipe.
+
+    The deadline must still bound `run_guarded`'s own return (R-0495): the drain
+    grace is a bounded cost on top of the deadline, not the escapee's lifetime.
+    """
+    escapee = (
+        "import subprocess, sys, time\n"
+        "subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(20)', sys.argv[1]],\n"
+        "                 start_new_session=True)\n"
+        "time.sleep(120)\n"
+    )
+    started = time.monotonic()
+    result = run_guarded(
+        _child(escapee),
+        ExecGuardPolicy(wall_timeout_seconds=1.0, stream_drain_grace_seconds=2.0, output_cap_bytes=64 * 1024),
+    )
+    elapsed = time.monotonic() - started
+
+    assert result.tripped_limit == "wall_timeout"
+    assert result.streams_complete is False
+    # Upper bound only: the escapee sleeps 20s, so any return well under that is
+    # the property. Deadline + grace is ~3s here; 10s leaves room for a slow box.
+    assert elapsed < 10.0
+
+    # The escapee outlives the guard BY DESIGN, so this test ends it rather than
+    # leaving a MARKER process that a later test's pgrep sweep would find.
+    subprocess.run(["pkill", "-f", MARKER], check=False)
+    for _ in range(10):
+        if not _survivors():
+            break
+        time.sleep(0.2)
+    assert _survivors() == []
