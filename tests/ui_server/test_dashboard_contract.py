@@ -420,8 +420,16 @@ class TestJobSummaryCommandContract:
     def test_typescript_compiles(self):
         """Verify tsc --noEmit passes (checked in CI)."""
         import subprocess
+        local_tsc = REPO_ROOT / "apps" / "ui" / "node_modules" / ".bin" / "tsc"
+        # WHY R-0480 / DECISION F083 D6: with no local TypeScript, npx resolves a cached tsc@2.0.4
+        # stub whose bin sets exitCode 1, so the old form graded the stub's exit code, not a compile.
+        if not local_tsc.is_file():
+            pytest.skip(
+                f"UI toolchain absent: {local_tsc.parent.parent} is missing; "
+                "run `npm ci --prefix apps/ui`"
+            )
         result = subprocess.run(
-            ["npx", "tsc", "--noEmit"],
+            [str(local_tsc), "--noEmit"],
             cwd=str(REPO_ROOT / "apps" / "ui"),
             capture_output=True, timeout=30,
         )

@@ -5454,3 +5454,181 @@ orders, and the fixture is additive when it lands.
 HOW TO REVERSE. Delete `scripts/bench_sample_project/` and the bench's own
 `materialise` dependency, and the bench falls back to the gauntlet template
 with three expressible orders — the state this decision starts from.
+
+## DECISION F083 D1 — a red stage is inventory data, not a round blocker (2026-08-15)
+
+Scope: the stage-runtime measurement of F083 R2, and nothing else.
+
+R2 measures the wall time of each candidate CI stage by running it. If a stage
+run reports failures, the worker records the real exit code, the real counts and
+the failing node ids in `.agent/f083_inventory.md` and CONTINUES the round,
+rather than treating the red as the G8 "any red gate ends the round" case.
+
+Why: this round's product is a DESCRIPTION of the repository as it is. A red
+stage is a fact about the repository and therefore part of the description —
+suppressing it would make the inventory less true, and stopping on it would make
+F083 unable to inventory the very condition it exists to detect. R-0205, carried
+into F083 by its own feature file, records that live-state contract tests turn
+red for reasons unrelated to the change under review; an inventory that cannot
+survive that is an inventory that cannot be taken on this repository.
+
+Limits: this exception covers the stage-runtime measurement only. Every ordered
+gate in the R2 block still ends the round when it is red, and no later round
+inherits this exception without ruling it again. Reverse this decision by
+deleting this section.
+
+## DECISION F083 D2 — the stage set, ruled from R2's measurements (2026-08-15)
+
+R2's inventory closed with six open questions. Four of them are already decided
+by its own measured data plus the feature file's Do-not-touch list, and leaving
+them open would make R4 guess. They are ruled here. Two are NOT ruled, and the
+reason each is deferred is stated.
+
+RULED.
+
+D2.1 — The stage set is exactly the five selections Q4 defines: `fast`,
+`standard`, `ui`, `smoke` and `excluded`. Reason: measured, they cover the suite
+(union 17007 against a suite of 17007, uncovered 0), and no sixth selection is
+needed to reach any test.
+
+D2.2 — `safety` and `architecture` do NOT become stages of their own. Reason:
+Q4's open question 2 measured them as set intersections over the same node ids —
+`architecture`'s 71 items all sit inside `fast`, and `safety`'s 33 split 21 into
+`fast` and 12 into `standard`. Promoting either would introduce overlaps the
+five-stage set does not have, and `safety` would straddle two stages. They stay
+markers, usable for ad-hoc selection, and the stage runner does not name them.
+
+D2.3 — The `standard ∩ smoke` overlap of 8 is ACCEPTED and documented, not
+removed. Reason: every one of the 8 ids is in `tests/cli/test_pytest_runner.py`,
+which the conftest lists in both `SUBPROCESS_FILES` and `SMOKE_FILES`; removing
+the overlap means editing marker semantics, which the F083 feature file's
+Do-not-touch list forbids. The stage runner therefore MAY run those 8 twice and
+the summary table says so — a documented double-run beats a silent marker edit.
+
+D2.4 — The `determinism` and `budgets` stages the feature file names are NOT
+marker selections. Reason: Q8 recorded that neither name exists among the nine
+declared markers, so making them selections requires declaring new markers and
+assigning them across the tree, which is the same marker-semantics change D2.3
+refuses. They are script invocations the stage runner calls and whose exit code
+it folds into the summary, exactly as the feature file's own design paragraph
+describes the budgets stage.
+
+DEFERRED, with the reason.
+
+D2.5 — Per-stage parallelism is NOT pinned here. Q5 measured `fast` at 391.8 s
+serial for 3970 items and `standard` at 134.1 s under `-n auto` for 12546, so the
+cost is dominated by serialization rather than by selection — but that single
+reading does not say what `-n auto` does to `fast`, and the three small stages
+may lose more to worker startup than they gain. R4 measures each of the five both
+ways, once, and pins the setting per stage from that measurement. Pinning it now
+would be a guess dressed as a decision.
+
+D2.6 — The feature file's `ui-contract` and `live-provider` spellings are NOT
+corrected now. Reason: `docs/roadmap/features/T2_F083.md` is edited in the round
+that brings its Built State current before closure; correcting prose in a round
+that writes no other doc would be scope drift, and the inventory already records
+what exists under which name. Q3's record is the interim answer.
+
+Reverse any part of this decision by deleting its numbered paragraph.
+
+## DECISION F083 D4 — determinism does NOT become a stage of its own (2026-08-16)
+
+R11 measured it and `.agent/f083_inventory.md` `## Q9` records it: the glob
+`tests/orchestration/test_run_manifest_*.py` matches forty-five files collecting
+850 tests, and a Python set operation over collected node ids puts all 850 inside
+the 12579 ids the `standard` stage selects, with 0 ids outside.
+
+CHOSEN: the determinism suite stays inside `standard`, and the ABSENCE is
+documented where a reader would search for it — the `packages/orchestration/
+ci_stages.py` module docstring, in this repository's own "Remedy deliberately
+does NOT X because Y" idiom (AGENTS.md, Code Discoverability Conventions).
+
+ALTERNATIVES CONSIDERED AND REJECTED: a new `determinism` marker, rejected
+because assigning it across the tree is a marker-semantics change and
+`docs/roadmap/features/T2_F083.md`'s Do not touch list forbids it; a
+path-selected determinism stage, rejected because it buys nothing `standard`
+does not already do and doubles the wall cost of 850 tests. Re-running 850
+already-green tests to fill a stage name is decoration, not a check.
+
+This SUPERSEDES the `determinism` half of D2.4 above, which left the shape open
+by calling it a script invocation. `docs/roadmap/features/T2_F083.md` is amended
+in the same commit: the Design stage list loses `determinism` and the T002 line
+says the stage was ruled out rather than built.
+
+Reverse this decision by narrowing `standard`'s expression and adding the stage
+in the same commit — never by adding the stage alone, which would re-run the 850.
+
+## DECISION F083 D5 — the twenty-six ruff errors are RATCHETED, not fixed (2026-08-16)
+
+Finding R-0468 measured 26 errors from `python3 -m ruff check .` at the
+repository root under this repository's own `pyproject.toml`, none of them
+introduced by the F083 branch, while no CI stage ran a linter at all.
+
+CHOSEN: the `budgets` stage carries a DOCUMENTED lint ceiling of 26
+(`LINT_ERROR_CEILING` in `packages/orchestration/ci_budgets.py`) that fails when
+the count RISES. The debt is frozen and visible instead of silently growing, and
+the ceiling is a RATCHET: the number may only be lowered, never raised. A live
+test marked `subprocess` runs the linter under the repository's own config — no
+substituted flag and no `--isolated`, because a reading taken under a different
+config is a reading of a different repository (finding R-0463).
+
+ALTERNATIVES CONSIDERED AND REJECTED: fix all 26 now, rejected as scope drift —
+it is a mass edit across files this feature does not otherwise touch, which
+AGENTS.md Scope Control forbids as its own activity, and 25 of the 26 are
+auto-fixable import hygiene that would churn a suite that was just stabilised;
+leave lint out of CI entirely, rejected because it leaves this feature's own
+Acceptance line green while `ruff check .` is red.
+
+The twenty-sixth error is NOT import hygiene. It is a live `NameError` on a
+guard's refusal path in `packages/orchestration/gauntlet_injection.py`, and it is
+registered as finding R-0482 in `.agent/live_review.md` rather than frozen
+without comment. D5 freezes it deliberately: the fix is a production change in an
+unrelated module and belongs to a branch of its own.
+
+This also SUPERSEDES the `budgets` half of D2.4 above. D2.4 assumed the stage
+would be a script invocation because `budgets` is not a declared marker; the
+stage that landed instead selects BY PATH through the new `CiStage.test_paths`
+field, which needs no new marker and therefore touches no marker semantics.
+
+Reverse this decision by lowering the ceiling to 0 and fixing the errors in a
+branch of their own.
+
+## DECISION F083 D6 — the tsc check resolves the LOCAL compiler or it skips (2026-08-16)
+
+Finding R-0480 observed `tests/ui_server/test_dashboard_contract.py::
+TestJobSummaryCommandContract::test_typescript_compiles` red on the first run of
+the module and green on the second, and blamed a cold `npx` cache. R19 measured
+that hypothesis as `## Q13` of `.agent/f083_inventory.md` and FALSIFIED it: the
+cache is the per-user directory `/home/decodeux/.npm`, it is warm, and the
+deliberately cold run is green. The real variable is `apps/ui/node_modules`,
+which `.gitignore` excludes and which is therefore absent from every fresh clone
+and every new `git worktree`. With no local TypeScript, `npx tsc` resolves the
+deprecated `tsc@2.0.4` stub out of the user cache, whose bin ends in
+`process.exitCode = 1` — so the assertion `result.returncode == 0` was grading a
+nine-year-old stub's exit code and reporting it as a TypeScript verdict. The
+first-run/second-run flip is intra-module ORDERING: the test sits above
+`TestAutoBuildBehavior::test_auto_build_runs_by_default`, which really runs
+`npm install`.
+
+CHOSEN: the test resolves `apps/ui/node_modules/.bin/tsc` explicitly and runs
+THAT binary; when the binary is absent it SKIPS with a message naming the missing
+directory and the exact install command `npm ci --prefix apps/ui`. This is not a
+new policy — it is this feature's own documented edge case, "UI toolchain absent
+locally: the ui stage reports skipped with the install hint locally but is
+REQUIRED hosted", finally implemented instead of merely written down.
+
+ALTERNATIVES CONSIDERED AND REJECTED: `npx --yes`, rejected because Q13 measured
+it and it changes nothing — the stub resolves either way; having the test run
+`npm ci` itself, rejected because a test that installs a toolchain is a build
+step wearing a test's name and it would put a network install inside the `fast`
+stage; leaving the `npx` form and amending Acceptance, rejected because it keeps
+a green that is a stub's exit code.
+
+CONSEQUENCE FOR T003, recorded so it cannot be forgotten: hosted rigor is now
+load-bearing. The hosted workflow MUST run `npm ci --prefix apps/ui` before the
+`ui` stage, or the check skips hosted as well and the Acceptance line "Clean
+checkout: `remedy ci` green locally and hosted" is met by a skip rather than by a
+compile. T003 owns that step; it is also recorded in
+`docs/roadmap/features/T2_F083.md`.
+
+Reverse this decision by restoring the `npx` invocation.

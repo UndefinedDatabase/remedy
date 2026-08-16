@@ -59,6 +59,12 @@ none.
 
 Each with justification / assumption_log pointer. `None` if none.
 
+ANY DEPARTURE FROM THE BLOCK'S ORDERED COMMIT SEQUENCE BELONGS HERE, not only in
+the commit table: an extra commit, a dropped one, or a reordering is a deviation
+even when it is correct and even when the commit table already shows it (finding
+R-0485). A round report dies with its session and this file does not, so a reader
+auditing whether a round followed its block reads this section and nothing else.
+
 ## Next
 
 The single expected next action.

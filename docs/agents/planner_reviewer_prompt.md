@@ -171,7 +171,7 @@ end the response with:
   always exists on disk, not only in the chat brief.
 
 - **Pre-emission block checklist (DECISION F105 D8, finding R-0250).** Run all
-  ten checks mechanically, on the FINAL bytes, after the last edit, before any
+  twelve checks mechanically, on the FINAL bytes, after the last edit, before any
   block leaves the reviewer. Each one has already cost this repository a round.
   1. **Size.** Count the block's lines. Over 400 (DECISION F105 D5) → split or
      cut BEFORE emitting. A worker must save the block verbatim, so an oversize
@@ -257,6 +257,70 @@ end the response with:
       consecutive blocks did exactly that and were both still wrong, because
       each took its set from the PREVIOUS block instead of from the record, and
       a finding that drops out of the count stays dropped.
+  11. **A convention paragraph names its units and states NO count of them.**
+      Findings R-0460 and R-0461. A block's slice-convention paragraph LISTS its
+      authored units and gives no numeral for them, and any sentence that both
+      enumerates and denies enumerating is a defect of the block regardless of
+      which half is true. Item 1 counts the block's LINES mechanically, which is
+      a measurement; this one forbids a hand-counted numeral about the block's
+      own parts, which is a recollection — the distinction the R-0402, R-0404,
+      R-0436 and R-0441 family kept losing. The rule binds finding text too: a
+      finding may state that a rule IS in this checklist only when the SAME block
+      orders the edit that puts it here, and otherwise it names the round that
+      will. R-0460 asserted its own promotion into this list while the block
+      carrying it fixed a change set with no `docs/` path in it, so the sentence
+      was false on disk the moment it was written and stayed false for a round
+      (R-0461). This item is that promotion, finally performed.
+  12. **A dry run executes the gate's EXACT command line.** Finding R-0463. When
+      the reviewer lints, collects or runs anything to convince itself an
+      authored slice is sound, it runs the command the BLOCK will order — same
+      binary, same flags, same working directory, and the repository's OWN
+      configuration — or the result is not evidence and may not be reported as
+      if it were. The R8 instance: the authored CI slice was checked under
+      `ruff check --isolated --line-length 120`, and `--isolated` discards
+      `pyproject.toml` and with it the `select = ["E", "F", "W", "I", "UP"]`
+      line that enables the isort rules at all, so the `I001` the worker hit was
+      never EVALUATED rather than merely unreported. The probe was green because
+      it was blind. Two neighbours differ from it: item 5 orders a PROBE when a
+      colour is unreachable, and item 8 checks a gate's expected VALUE against
+      the code, while this one governs the reviewer's own PRE-EMISSION runs,
+      which no worker ever sees and no gate ever re-checks. Working directory is
+      named in that list because it has since failed the same way: gates re-run
+      from a shell that had silently persisted into a BASE worktree produced
+      readings that were true of the wrong commit. Pair every dry run with a RED
+      CONTROL — break the property on purpose inside a disposable worktree and
+      confirm the command really goes red — because a command that cannot fail
+      proves nothing at all when it passes.
+  13. **An ordering constraint is checked against the block's OWN commit sequence.**
+      Finding R-0483. A constraint of the form "take reading X before any pytest
+      command runs this round" is read back against the commits the SAME block
+      orders. When that sequence contains a measuring pytest run — a wall-clock
+      sample, a collection count, anything whose number a later commit consumes —
+      the constraint is unmeetable as written, because a reading taken before any
+      pytest command can only ever describe the BASE commit and never HEAD. Name
+      the COMMIT the reading is taken at instead of using the word "before". The
+      F083 R18 instance: constraint 7 demanded the lint and integrity readings
+      before any pytest command while the same block ordered a three-sample
+      pytest measurement mid-round and derived a later commit's `timeout_sec`
+      from it, so the worker had to take both readings twice and spend a declared
+      deviation demonstrating a contradiction internal to the reviewer's own
+      text. Item 12 governs the reviewer's own PRE-EMISSION runs; this one
+      governs the ORDER the block imposes on the worker's runs, which no dry run
+      can surface because it is a property of the commit sequence rather than of
+      any command in it.
+  14. **A per-commit gate names the commits it can honestly reach.** Finding
+      R-0489. A gate that orders a value PER COMMIT over a range ending in the
+      handback commit is unmeetable for that last commit: its own insertion count
+      cannot exist while its text is being written, so an honest worker writes
+      "and this commit's own" beside a sentence that then miscounts the range.
+      Order the per-commit numbers for the commits BEFORE the handback commit,
+      and order the handback commit's own numbers in the ROUND REPORT, which is
+      written after that commit exists. Item 13 governs the ORDER the block
+      imposes on the worker's runs; this one governs which commits a per-commit
+      gate can reach at all, which no ordering check surfaces because the gate's
+      sequence is fine and only its RANGE is wrong. The R26 instance: gate 19
+      covered a six-commit range, so the handback reported five insertion counts
+      and called the range "five single-parent commits" while HEAD held six.
   Why this is on disk and not a habit: item 2 has recurred six times across
   F104 and F105, and R20 hit four of them in one block. A check that lives
   only in reviewer session memory is the A1 trap §0 names, and this list is the

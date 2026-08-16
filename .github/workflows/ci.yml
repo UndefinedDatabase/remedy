@@ -1,0 +1,52 @@
+# Remedy's own CI, hosted. This file is a THIN WRAPPER on purpose: it installs a
+# toolchain and then calls the local CI entrypoint exactly once. The stage table
+# in packages/orchestration/ci_stages.py decides what runs, in what order and
+# under which budget, so this workflow names no stage and selects no tests of its
+# own — one source of truth for what CI means (T2_F083).
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    # T2_F083's no-rerun rule — "retries hide rot" — so no step here is ever
+    # re-attempted automatically and a red run stays red until a human reads it.
+    # The 90-minute job cap sits ABOVE the 65 minutes the CI stage budgets sum to
+    # (3900 s), so a slow stage dies at ITS OWN budget and names itself in the
+    # summary, instead of the job being killed first and naming no stage at all.
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: pip
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: apps/ui/package-lock.json
+
+      - name: Install Remedy with its dev extra
+        run: python3 -m pip install -e ".[dev]"
+
+      # DECISION F083 D6: the UI toolchain is a PRECONDITION of the `ui` stage,
+      # not a part of it. Without this install the stage's tsc check skips here
+      # exactly as it skips on a local checkout that never ran it, and the
+      # Acceptance line would be met by a skip instead of by a real compile.
+      - name: Install the UI toolchain
+        run: npm ci --prefix apps/ui
+
+      - name: Run Remedy CI
+        run: remedy ci run

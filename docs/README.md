@@ -22,6 +22,7 @@
 | brain | [project-brain.md](system/project-brain.md) | system |
 | chat | [grounded-chat-spec.md](roadmap/design/grounded-chat-spec.md) | roadmap |
 | candidate eval | [candidate-quality-evaluation-v1.md](system/candidate-quality-evaluation-v1.md) | system |
+| CI self-check | [ci-self-check-v1.md](system/ci-self-check-v1.md) | system |
 | candidate gen | [local-candidate-generator-v0.md](system/local-candidate-generator-v0.md) | system |
 | cockpit | [operator-cockpit-v1.md](system/operator-cockpit-v1.md) | system |
 | context | [context-inspector.md](system/context-inspector.md) | system |
@@ -78,6 +79,7 @@ Specifications and design documents for the built system.
 | [bounded-overnight-executor-v0.md](system/bounded-overnight-executor-v0.md) | Bounded overnight executor *(overnight superseded)* |
 | [cache-optimal-prompt-ordering-v1.md](system/cache-optimal-prompt-ordering-v1.md) | Ranked prompt-segment composition, the measured before/after cacheable prefix, and why the provider-side cache share is unmeasured |
 | [candidate-quality-evaluation-v1.md](system/candidate-quality-evaluation-v1.md) | Scoring and evaluation of candidate patches |
+| [ci-self-check-v1.md](system/ci-self-check-v1.md) | Remedy's own CI: the stage table, the measured runtime budgets, the hosted workflow, and what CI deliberately never runs |
 | [context-inspector.md](system/context-inspector.md) | Context window inspection and debugging |
 | [controlled-claude-code-operator-path-v0.md](system/controlled-claude-code-operator-path-v0.md) | Controlled operator path for Claude Code sessions |
 | [core-product-spine-v0.md](system/core-product-spine-v0.md) | Core product architecture spine |

@@ -1,42 +1,38 @@
-# Plan — F082 Self-benchmark
+# Plan — F083 CI self-check
 
-Branch: feature/f082-self-benchmark, cut from main after the F077 closure PR
-#200 merged. Next free finding id: R-0448. Open findings: seventy-five — the
-thirty-two carried from F077, plus R-0403 to R-0447 registered on this branch,
-less R-0435 and R-0436 resolved at R20. `.agent/live_review.md` is the source of
-truth; this file mirrors it.
+Branch: feature/f083-ci-self-check, cut from main after the F082 closure PR #201
+merged. `.agent/live_review.md` is the source of truth for the open set and for
+the next free finding id; this file repeats neither.
 
 ## Goal
-Capability becomes a measured, versioned trend instead of a feeling: a frozen
-set of benchmark orders runs on demand, producing pass rate, cost, wall time and
-repair rounds per order into an append-only history, and `remedy stats bench`
-shows the trend with regression warnings. DONE when the bench runs green on
-fixtures, history survives across runs, and a deliberately degraded fixture run
-triggers the regression warning. All three conditions are measured by the suite.
+Remedy's own repository gets an honest CI: one local command (`remedy ci`) and
+matching hosted workflows run the unit and integration suites on the fake
+provider, the determinism suite, the UI build plus its smoke, and budget checks,
+with live-provider tests excluded by marker and said so. DONE when `remedy ci`
+reproduces the hosted result locally on a clean checkout, a seeded failure fails
+the right stage with a readable summary, and runtime stays within a budget.
 
 ## Current Step
-R23 is CLOSURE: it records the R22 PASS, registers R-0446 and R-0447, repairs
-the self-contradicting round map R-0447 reports, then runs the closure algorithm
-— the evidence job, a fresh review zip, the STATUS line claiming `[x]`, the
-README count and Tier-2 row, `.agent/candidates.md`, and the PR.
+R27 is closed PASS. R28 is the CLOSURE round per
+docs/roadmap/STATUS_closure_protocol.md: it records that verdict, then runs the
+evidence job and a fresh review zip against this commit, writes the STATUS `[x]`
+line together with the README capability sync in one commit, and opens the PR.
+T001, T002 and T003 are COMPLETE, the integration gate passed at R26 with 0
+branch-only and 0 base-only failures, and the feature file's Built State landed
+at R27.
 
 ## Next Steps
-1. Nothing on this branch. The PR is NOT merged this session; it merges at the
-   next feature's start via the AGENTS.md Open PR Gate, which is the operator's
-   manual-review window.
-2. The next feature is F083 — CI self-check, per Rule A5. A fresh session claims
-   it and its first reviewed round registers or resolves every entry in
-   `.agent/candidates.md`.
+1. The PR is NOT merged this session. It merges at the next feature's start via
+   the AGENTS.md Open PR Gate; the gap is the operator's manual-review window.
+2. A paydown branch for R-0482 and R-0487, which this feature deliberately did
+   not fix.
 
 ## Risks
-- Closure is PASS_WITH_RISKS, not PASS: seventy-five findings are open, all
-  Medium or Low, none a Blocker or High under either parse reading (R-0446).
-- Three carried defects are open against process docs rather than against F082
-  code: R-0445 (integration_gate.md manufactures eight false base failures on
-  every run), R-0444 (a content digest cannot see an identical rebuild) and
-  R-0403 (the review zip packages `.remedy-wt/`). None is repaired here; a
-  process-doc fix inside a feature branch is scope drift.
-- Every acceptance measurement was taken under DOUBLES, never a live provider;
-  the delivered order set is three, not five (R-0411); the freeze holds against
-  a file-side edit only (R-0410); the builder's model stays unobservable. The
-  feature file's Built State states all four absences.
+- Hosted wall time is still unmeasured, and the first hosted run is that
+  measurement. `standard` needs 935.14 s at its slowest local sample against a
+  2100 s budget, and it is also the stage carrying the toolchain-dependent tests.
+- The lint ceiling is a RATCHET. Raising it to make a round green converts the
+  one honest lint signal in this repository into decoration.
+- R-0482 (a live `NameError` on a guard's refusal path) and R-0487
+  (`docs/README.md` is never link-checked) are both frozen here: each is a code-
+  or test-content fix this feature may not make.

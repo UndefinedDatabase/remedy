@@ -143,6 +143,7 @@ GROUPS: dict[str, GroupDef] = {
     "review": GroupDef("review", "Review", "Reviewer recommendations.", user_facing=False),
     "propose": GroupDef("propose", "Propose", "Proposed task evaluation.", user_facing=False),
     "dev": GroupDef("dev", "Dev", "Developer utilities.", user_facing=False),
+    "ci": GroupDef("ci", "CI", "Remedy's own CI stages, run locally.", user_facing=False),
     "integrity": GroupDef("integrity", "Integrity", "Pre-handoff integrity checks.", user_facing=False),
     "contract": GroupDef("contract", "Contract", "Run contract inspection.", user_facing=False),
     "progress": GroupDef("progress", "Progress", "Progress ledger.", user_facing=False),
@@ -4310,6 +4311,21 @@ CATALOG: tuple[CommandEntry, ...] = (
         ),
         supports_json=True,
         related=("plan.status",),
+    ),
+
+    # ── ci ─────────────────────────────────────────────────────────────
+    CommandEntry(
+        command_id="ci.run",
+        group_id="ci",
+        subcommand="run",
+        description="Run Remedy's own CI stages locally and print the summary.",
+        action_class="test_execution",
+        args=(
+            ArgDef("--stage", "Run one stage by name instead of all of them", required=False, is_option=True),
+            ArgDef("--json", "Output as JSON", required=False, is_option=True),
+        ),
+        supports_json=True,
+        may_execute_commands=True,
     ),
 
     # ── integrity ───────────────────────────────────────────────────────
