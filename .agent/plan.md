@@ -18,22 +18,19 @@ reaches a child, and the limitations document exists and is linked from the
 README.
 
 ## Current Step
-R2, this round: record the R1 PASS, register R-0491, and write
-`.agent/f085_inventory.md` — every `subprocess.*` call site in `packages/` and
-`apps/` with its enclosing symbol, its command class and the keyword facts of
-the call itself. No production code and no test content.
+R3, this round: record the R2 PASS, register R-0492, and close the session on a
+clean boundary. The seam inventory `.agent/f085_inventory.md` is complete and
+accepted; it is not revised again.
 
 ## Next Steps
-1. R3 — record R2, rule the stage-1 command classes and their policies as a
-   DECISION, and rule on the premise the inventory tests: the feature file
-   assumes subprocess execution already flows through a small number of
-   helpers, and the measured call-site count is what decides whether T002's
-   seam migration is the job the task slicing assumes.
+1. R4 — write the `docs/roadmap/features/T2_F085.md` amendment that DECISION
+   F085 D1 names, correcting the "small number of helpers" premise the
+   inventory disproved, and rule the stage-1 command classes and their policies.
+   R4 changes `docs/roadmap/**`, so its gate list adds `tests/docs/`.
 
 ## Risks
-- If the inventory shows the seams are many rather than few, T002 as sliced is
-  under-scoped. That is a spec finding for R3 to route, not a reason for any
-  round to widen itself.
-- R-0202 is carried into this feature: a spawned path once ignored
-  REMEDY_UI_NO_AUTO_BUILD and the mechanism was never explained. R2 locates the
-  path; it does not fix it.
+- T002's seam migration is scoped against a premise the inventory disproved: 67
+  real call sites in 56 enclosing functions, of which the four helpers the
+  feature file names cover 24. R4 re-slices before any code is written.
+- R-0202 has one reader and two seams that provably drop the variable. Naming
+  them is not fixing them, and no round may fix them outside T002.
