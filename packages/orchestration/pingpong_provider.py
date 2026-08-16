@@ -10,8 +10,10 @@ No secrets in logs or reports.
 from __future__ import annotations
 
 import json
+import locale
 import os
 import shutil
+import signal
 import subprocess
 import time
 from dataclasses import dataclass, field
@@ -21,6 +23,7 @@ from packages.orchestration.call_identity import (
     canonical_call_number,
     prepare_call_input,
 )
+from packages.orchestration.exec_guard import ExecGuardPolicy, run_guarded
 from packages.orchestration.model_aliases import resolve_model_alias
 from packages.orchestration.schemas import (
     ReviewVerdict as _ReviewVerdictSchema,
@@ -790,6 +793,58 @@ def build_claude_cli_args(
 # ``_looks_like_unknown_json_schema_option`` / ``_call_reviewer_structured``).
 
 
+def _cli_exec_policy(timeout_sec: float, cwd: str | None) -> ExecGuardPolicy:
+    """Stage-1 CLI-provider policy (F085 T002a) — only the limits this seam can prove.
+
+    `output_cap_bytes` stays None on purpose: this seam parses the CLI's WHOLE JSON
+    envelope, so a byte cap would cut a valid one mid-token and turn a working call
+    into a parse failure. `env_allowlist` stays None for a kindred reason: the child
+    is the operator's authenticated `claude` CLI and reads its credentials from the
+    inherited environment. Both are stage-1 gaps, owed to T003's limitations
+    document. Enforced and real: the wall deadline, the cwd pin, a zero core.
+    """
+    return ExecGuardPolicy(
+        wall_timeout_seconds=float(timeout_sec), cwd=cwd, core_file_bytes=0,
+    )
+
+
+def _decode_cli_stream(raw: bytes) -> str:
+    """Decode one guarded stream the way `text=True` decoded it.
+
+    Text mode wrapped the pipe in a `TextIOWrapper` with the locale encoding and
+    universal newlines; both are reproduced. The ONE intended difference is
+    `errors="replace"` — text mode raised UnicodeDecodeError from inside the spawn
+    and no caller here handled it, so a mojibake CLI now parses honestly instead.
+    """
+    text = raw.decode(locale.getpreferredencoding(False), errors="replace")
+    return text.replace("\r\n", "\n").replace("\r", "\n")
+
+
+def _guarded_cli_run(cmd: list[str], timeout_sec: float,
+                     cwd: str | None) -> subprocess.CompletedProcess[str]:
+    """Run a CLI command under the stage-1 policy, shaped like `subprocess.run`.
+
+    The single spawn point this module's provider calls migrate onto, and the seam
+    the tests mock instead of the stdlib. A wall trip is re-raised as
+    `subprocess.TimeoutExpired` and a signal death republished in the -SIGNUM form,
+    so every caller keeps the error text it already produced: the migration changes
+    the mechanism, never the observable outcome.
+    """
+    guarded = run_guarded(cmd, _cli_exec_policy(timeout_sec, cwd))
+    if guarded.tripped_limit == "wall_timeout":
+        raise subprocess.TimeoutExpired(cmd, timeout_sec)
+    code = guarded.returncode
+    if code is None:
+        try:
+            code = -int(signal.Signals[guarded.term_signal].value)
+        except (KeyError, ValueError, TypeError):
+            code = -1
+    return subprocess.CompletedProcess(
+        cmd, code,
+        _decode_cli_stream(guarded.stdout), _decode_cli_stream(guarded.stderr),
+    )
+
+
 class ClaudeCliProvider:
     """Provider using local `claude` CLI via `claude -p "<prompt>"`.
 
@@ -949,14 +1004,11 @@ class ClaudeCliProvider:
         self._cli_version_resolved = True
         try:
             claude = self._get_claude_path()
-            proc = subprocess.run(
+            proc = _guarded_cli_run(
                 [claude, "--version"],
-                capture_output=True,
-                text=True,
-                timeout=5,
                 # Pinned like every other provider call: an unpinned probe runs in
                 # the operator's cwd and any stray write lands in the repo root.
-                cwd=self._cwd,
+                timeout_sec=5, cwd=self._cwd,
             )
             if proc.returncode == 0 and proc.stdout and proc.stdout.strip():
                 self._cli_version = proc.stdout.strip()
