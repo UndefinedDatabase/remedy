@@ -10,8 +10,10 @@ not exist:
 - NO CALLER. Nothing in this repository imports this module yet. Migrating the
   in-scope call sites is T002, so no subprocess in the running system is
   limited, supervised or sandboxed by anything written here.
-- No environment scrubbing and no allowlist. `ExecGuardPolicy.env` is handed to
-  the child UNCHANGED; scrubbing is T002.
+- No environment scrubbing UNLESS the policy asks for it: with
+  `env_allowlist=None` the policy's `env` reaches the child UNCHANGED, which every
+  T001 test relies on. CHOOSING an allowlist per command class is T002a's
+  migration half and is not done here.
 - No network posture and no filesystem fence; both are T003.
 
 Why `address_space_bytes` is ENFORCED and deliberately NOT classified: a child
@@ -21,6 +23,12 @@ mapping never became resident. Nothing `wait4` reports therefore distinguishes
 that death from any other exit-1 failure, so this module enforces the limit and
 declines to name it in `tripped_limit`. Claiming `address_space` from that
 evidence would be an overclaim.
+
+What an allowlist does NOT bound, stated where a reader will look for it: it
+bounds what the PARENT hands over, never what the child's own runtime then adds
+to itself. A CPython child spawned with a restricted environment sets `LC_CTYPE`
+during PEP 538 locale coercion, so the child's environment is a SUPERSET of the
+scrubbed one. Nothing here can prevent that, and stage 1 does not pretend to.
 
 Why the wall timeout is supervised here rather than forwarded as a `timeout=`
 keyword: six of the seven timeout-less in-scope call sites are
@@ -47,7 +55,7 @@ import signal
 import subprocess
 import threading
 import time
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
 #: How often the supervisor re-checks a still-running child against its deadline.
@@ -64,6 +72,28 @@ _RLIMIT_ATTRS = {
     "core_file_bytes": "RLIMIT_CORE",
 }
 
+#: Never inherited by a guarded child, whatever an allowlist says. Same spelling and
+#: members as `managed_builder_execution._FORBIDDEN_ENV_KEYS`, kept here so the guard
+#: denies them even when a caller's allowlist is wrong.
+FORBIDDEN_ENV_KEYS = frozenset({
+    "ANTHROPIC_API_KEY", "OPENAI_API_KEY", "CLAUDE_API_KEY",
+    "HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY",
+    "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN",
+    "GITHUB_TOKEN", "GH_TOKEN", "GITLAB_TOKEN",
+    "DATABASE_URL", "REDIS_URL",
+})
+
+
+def scrub_child_env(source: Mapping[str, str], allowlist: Sequence[str]) -> dict[str, str]:
+    """Build a child environment from `source`, keeping ONLY allowlisted keys.
+
+    A `FORBIDDEN_ENV_KEYS` member is dropped even when the allowlist names it: the
+    allowlist is a caller's policy, this set is the guard's floor. An undefined key
+    is ABSENT, not empty — a build tool reads empty as "set to nothing".
+    """
+    keep = set(allowlist) - FORBIDDEN_ENV_KEYS
+    return {key: source[key] for key in sorted(keep) if key in source}
+
 
 @dataclass(frozen=True)
 class ExecGuardPolicy:
@@ -74,7 +104,10 @@ class ExecGuardPolicy:
     SIGKILL and the trip stays attributable. `wall_timeout_seconds` is this
     guard's own deadline, and `None` — no wall timeout — is a real policy for
     the runtime command class. `output_cap_bytes` is PER STREAM, not combined.
-    `env` is passed through unchanged: scrubbing is T002, not stage 1.
+    `env` reaches the child unchanged while `env_allowlist` is None. When
+    `env_allowlist` names keys, the child's environment is built by
+    `scrub_child_env` from `env` — or from `os.environ` when `env` is None —
+    keeping only those keys and never one in `FORBIDDEN_ENV_KEYS`.
     `stream_drain_grace_seconds` is the TOTAL extra time the guard will wait for
     both stream pumps after the child is reaped, so a descendant that escaped the
     process group and still holds the pipe cannot extend the call without bound.
@@ -90,6 +123,7 @@ class ExecGuardPolicy:
     output_cap_bytes: int | None = None
     cwd: str | None = None
     env: dict[str, str] | None = None
+    env_allowlist: tuple[str, ...] | None = None
 
 
 @dataclass(frozen=True)
@@ -250,13 +284,19 @@ def run_guarded(cmd: Sequence[str], policy: ExecGuardPolicy) -> ExecGuardResult:
         for const, soft, hard in rlimit_calls:
             resource.setrlimit(const, (soft, hard))
 
+    child_env = policy.env
+    if policy.env_allowlist is not None:
+        child_env = scrub_child_env(
+            os.environ if policy.env is None else policy.env, policy.env_allowlist
+        )
+
     started = time.monotonic()
     proc = subprocess.Popen(
         argv,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         cwd=policy.cwd,
-        env=policy.env,
+        env=child_env,
         start_new_session=True,
         preexec_fn=_apply_rlimits,
     )

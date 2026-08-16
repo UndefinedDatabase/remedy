@@ -17,7 +17,7 @@ import time
 
 import pytest
 
-from packages.orchestration.exec_guard import ExecGuardPolicy, run_guarded
+from packages.orchestration.exec_guard import ExecGuardPolicy, run_guarded, scrub_child_env
 
 #: Unique argv token so `pgrep -af` can find leftovers of THIS run and no other.
 MARKER = f"REMEDY_EXEC_GUARD_FIXTURE_{os.getpid()}"
@@ -34,6 +34,29 @@ def _survivors() -> list[str]:
     """Command lines still matching MARKER, with pgrep's own line filtered out."""
     found = subprocess.run(["pgrep", "-af", MARKER], capture_output=True, text=True)
     return [line for line in found.stdout.splitlines() if "pgrep" not in line]
+
+
+#: A child that prints its whole environment, one KEY=VALUE per line.
+_ENV_DUMP = (
+    "import os, sys\n"
+    "sys.stdout.write(''.join(f'{k}={v}\\n' for k, v in sorted(os.environ.items())))\n"
+)
+
+#: CPython adds this to any child spawned with a restricted environment (PEP 538
+#: locale coercion). It is the interpreter's, not the guard's, so assertions below
+#: subtract it rather than crediting the guard with producing it.
+_INTERPRETER_ADDED_ENV_KEYS = frozenset({"LC_CTYPE"})
+
+
+def _dumped(result) -> dict[str, str]:
+    """The child's environment from its stdout, minus what the interpreter added.
+
+    Subtract-if-present, never assert-present: a build that does not coerce the
+    locale has nothing to subtract and the assertions still hold.
+    """
+    lines = result.stdout.decode().splitlines()
+    parsed = dict(line.split("=", 1) for line in lines if "=" in line)
+    return {k: v for k, v in parsed.items() if k not in _INTERPRETER_ADDED_ENV_KEYS}
 
 
 @pytest.mark.subprocess
@@ -210,3 +233,79 @@ def test_wall_timeout_bounds_the_call_when_a_descendant_escapes_the_group():
             break
         time.sleep(0.2)
     assert _survivors() == []
+
+
+@pytest.mark.subprocess
+def test_no_allowlist_hands_the_environment_to_the_child_unchanged():
+    """The T001 contract, pinned: without an allowlist NOTHING is scrubbed.
+
+    A forbidden key sits in `env` on purpose and arrives, so a migration that
+    forgets its allowlist is visibly unprotected, not quietly half-protected.
+    """
+    passed = {"PATH": "/usr/bin", "ANTHROPIC_API_KEY": "sk-unscrubbed-by-design"}
+
+    result = run_guarded(
+        _child(_ENV_DUMP),
+        ExecGuardPolicy(wall_timeout_seconds=10.0, env=passed),
+    )
+
+    assert result.returncode == 0
+    assert _dumped(result) == passed
+
+
+@pytest.mark.subprocess
+def test_the_allowlist_keeps_only_the_variables_it_names():
+    """An allowlisted key survives; an unlisted key never reaches the child."""
+    result = run_guarded(
+        _child(_ENV_DUMP),
+        ExecGuardPolicy(
+            wall_timeout_seconds=10.0,
+            env={"PATH": "/usr/bin", "REMEDY_KEPT": "yes", "REMEDY_DROPPED": "no"},
+            env_allowlist=("PATH", "REMEDY_KEPT"),
+        ),
+    )
+
+    assert result.returncode == 0
+    assert _dumped(result) == {"PATH": "/usr/bin", "REMEDY_KEPT": "yes"}
+
+
+@pytest.mark.subprocess
+def test_a_secret_like_variable_never_reaches_the_child_even_when_allowlisted():
+    """`FORBIDDEN_ENV_KEYS` is the guard's floor: a wrong allowlist cannot lower it."""
+    result = run_guarded(
+        _child(_ENV_DUMP),
+        ExecGuardPolicy(
+            wall_timeout_seconds=10.0,
+            env={"PATH": "/usr/bin", "ANTHROPIC_API_KEY": "sk-should-never-appear"},
+            env_allowlist=("PATH", "ANTHROPIC_API_KEY"),
+        ),
+    )
+
+    assert result.returncode == 0
+    assert "ANTHROPIC_API_KEY" not in _dumped(result)
+    assert b"sk-should-never-appear" not in result.stdout
+    assert _dumped(result) == {"PATH": "/usr/bin"}
+
+
+@pytest.mark.subprocess
+def test_the_ui_no_auto_build_variable_survives_an_allowlist_that_names_it():
+    """R-0202: the variable a spawn path once dropped is allowlistable and arrives."""
+    result = run_guarded(
+        _child(_ENV_DUMP),
+        ExecGuardPolicy(
+            wall_timeout_seconds=10.0,
+            env={"PATH": "/usr/bin", "REMEDY_UI_NO_AUTO_BUILD": "1"},
+            env_allowlist=("PATH", "REMEDY_UI_NO_AUTO_BUILD"),
+        ),
+    )
+
+    assert result.returncode == 0
+    assert _dumped(result)["REMEDY_UI_NO_AUTO_BUILD"] == "1"
+
+
+def test_scrub_child_env_drops_a_key_the_source_never_defined():
+    """An allowlisted but undefined key is ABSENT, never present and empty."""
+    scrubbed = scrub_child_env({"PATH": "/usr/bin"}, ("PATH", "NEVER_SET_ANYWHERE"))
+
+    assert scrubbed == {"PATH": "/usr/bin"}
+    assert "NEVER_SET_ANYWHERE" not in scrubbed
