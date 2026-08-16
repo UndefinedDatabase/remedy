@@ -18,16 +18,17 @@ reaches a child, and the limitations document exists and is linked from the
 README.
 
 ## Current Step
-R13, this round: record the R12 PASS, register R-0504, and migrate the FIRST of
-T002a's five builder sites — `managed_builder_execution.py`:1160 — onto
-`run_guarded` under a stage-1 builder policy, with behaviour-equality tests.
-`exec_guard` gains its first caller in the running system.
+R15, this round: record the R14 PASS, register R-0507, and give the claude CLI seam
+its guarded runner — `_cli_exec_policy`, `_decode_cli_stream`, `_guarded_cli_run` —
+migrating `_resolve_version`, the one site no test's mock reaches, with goldens that
+spawn a real fake CLI instead of mocking the stdlib.
 
 ## Next Steps
-1. T002a's four REMAINING builder sites of amendment F085 D1 —
-   `pingpong_provider.py`:952, 1075, 1208 and `stream_evidence.py`:595 — move to
-   `run_guarded` the same way `managed_builder_execution.py` did at R13, each with
-   its own behaviour-equality goldens.
+1. R16 migrates the coupled unit of R-0507: `_call`, `_call_reviewer_structured` and
+   the envelope test's mock, which must move together, plus R-0506's fix — the stale
+   absence claims in `exec_guard.py` and `managed_builder_execution.py`.
+2. `stream_evidence.py`:595 is T002a's last site and is NOT a `subprocess.run` swap:
+   it streams incrementally where `run_guarded` buffers, so its shape is decided first.
 2. `_StreamPump` gains a lock and a `snapshot()` so PARTIAL output survives a
    bounded drain. It still returns `b""` for a stream whose pump never reached
    EOF, which `streams_complete` reports honestly but which loses bytes.
