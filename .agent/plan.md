@@ -13,26 +13,26 @@ reproduces the hosted result locally on a clean checkout, a seeded failure fails
 the right stage with a readable summary, and runtime stays within a budget.
 
 ## Current Step
-R19 is closed PASS and R20 recorded it. R20 corrected R-0480's cause from the
-`## Q13` measurement — the variable is a missing `apps/ui/node_modules`, not a
-cold npx cache — and ruled DECISION F083 D6: the tsc check resolves the LOCAL
-compiler or skips with an install hint, instead of silently grading a cached
-`tsc@2.0.4` stub. R-0480, R-0483 and R-0484 are resolved. T001 and T002 are
-complete.
+R20 is closed PASS and R21 recorded it. R21 landed the first half of T003: the
+hosted workflow `.github/workflows/ci.yml`, a thin wrapper that installs the
+Python and the UI toolchain and then calls `remedy ci run` once, plus the guard
+tests pinning its load-bearing properties — it calls the entrypoint, it selects
+no tests of its own, it installs the UI toolchain before the run, and it never
+auto-retries.
 
 ## Next Steps
-1. T003, the last slice: hosted workflow files that call the same `remedy ci`
-   entrypoint, the docs, and the runtime-budget documentation from the measured
-   data in `## Q9` through `## Q12`. The workflow MUST run
-   `npm ci --prefix apps/ui` before the `ui` stage — DECISION F083 D6 makes that
-   step load-bearing, because without it the tsc check skips hosted too.
+1. T003's second half: the CI documentation under `docs/`, registered in the
+   `docs/README.md` index, carrying the runtime-budget table from the measured
+   data in `.agent/f083_inventory.md` `## Q9` through `## Q12` and saying plainly
+   that hosted wall time is NOT measured — only the local samples are.
 2. Then the integration-gate round, then closure per
    docs/roadmap/STATUS_closure_protocol.md.
 
 ## Risks
-- If T003's workflow omits the `npm ci` step, the `ui` stage goes GREEN hosted by
-  skipping, and the Acceptance line is met by a skip rather than a compile. That
-  is the same false green D6 removed, wearing a different hat.
+- Hosted wall time is unmeasured. `standard` needs 935.14 s at its slowest local
+  sample against a 2100 s budget, and a hosted runner with fewer cores may exceed
+  it. The first hosted run is the measurement; raising `timeout_sec` before that
+  evidence exists would be a guess wearing a budget's name.
 - The lint ceiling is a RATCHET. Raising it to make a round green converts the
   one honest lint signal in this repository into decoration.
 - R-0482 is a live `NameError` on a guard's refusal path, frozen under that
