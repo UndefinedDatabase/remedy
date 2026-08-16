@@ -1,60 +1,74 @@
-# Handback — F083 R28 (CLOSURE)
+# Handback — F085 R1 (claim)
 
 ## Range
-Review of 74063862..HEAD on feature/f083-ci-self-check. Ordered sequence C0a, C0b, C1, C2, C3 followed exactly; C3 is the last commit.
+Review of a5a70621..HEAD on feature/f085-sandbox-hardening. Ordered sequence C0a, C0b, C1, C2, C3 followed exactly; C3 is the last commit.
+Fortschritt: ~2 % (F085 beansprucht · T001/T002/T003 offen) — Schätzung
 
 ## Commits
-### fb8a703a docs(f083): save the R28 closure block verbatim
+### 1e447586 docs(f085): save the R1 step block verbatim
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f083-r28.md | 317/0 | C0a — block copied byte-for-byte (`shutil.copyfile`; `cp` is denied here) |
-### ae303b0f chore(agent): mirror the R28 block into last_block
+| .agent/authored/f085-r1.md | 339/0 | C0a — block copied byte-for-byte (`shutil.copyfile`; `cp` is denied here) |
+### 9994b596 chore(agent): mirror the R1 block into last_block
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/last_block.md | 275/242 | C0b — mirror of the COMMITTED authored copy |
-### 6bcc4d39 docs(review): record the R27 PASS verdict
+| .agent/last_block.md | 322/300 | C0b — mirror of the COMMITTED authored copy |
+### 92dcdb03 docs(f085): reset the live review carrying the F083 open set
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/live_review.md | 2/0 | C1 — RECORD-R27 appended at EOF, deletion column 0 |
-### 83f3eb31 docs(f083): advance the plan to the closure round
+| .agent/live_review.md | 41/138 | C1 — LIVEREVIEW-HEADER, then R0490, then the carried open paragraphs |
+### e1562470 docs(f085): claim F085 in the ledger and reset the task state
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/plan.md | 13/16 | C2 — PLAN slice, whole file. **ACCEPTED HEAD 83f3eb31f5020bc5201a23b06e23e7558ee01b4e** |
-### C3 (this commit) docs(f083): close F083 in the roadmap ledger
+| docs/roadmap/STATUS.md | 1/1 | C2 — STATUSLINE pair, `[ ]` becomes `[~]` |
+| .agent/context.md | 31/29 | C2 — CONTEXT slice, whole file |
+| .agent/plan.md | 31/30 | C2 — PLAN slice, whole file |
+| .agent/candidates.md | 3/15 | C2 — CANDIDATES slice, whole file; the carrier is empty |
+### C3 (this commit) docs(f085): rewrite the handback for R1
 | Path | +/- | Reason |
 |---|---|---|
-| docs/roadmap/STATUS.md | 1/1 | STATUSLINE pair, `[~]`→`[x]` with package, SHA-256 and accepted HEAD |
-| README.md | 2/2 | READMECOUNT 49→50 and READMETIER 11→12, same commit as STATUS (R-0154) |
-| .agent/candidates.md | 15/4 | CANDIDATES slice, whole file — carrier is EMPTY for F083 |
-| .agent/handoff.md | — | this file (R-0149 self-reference) |
+| .agent/handoff.md | — | this file (R-0149 self-reference); its own insertion count rides in the round report, per G14 |
+
+## Item status
+| Item | Status | Reason |
+|---|---|---|
+| C0a | done | |
+| C0b | done | |
+| C1 | done | |
+| C2 | done | |
+| C3 | done | this commit |
 
 ## External actions
-- `git push -u origin feature/f083-ci-self-check` → 74063862..83f3eb31, OK (before the zip build, per the canonical sequence).
-- The push of C3 and `gh pr create` run AFTER this commit, so their outcomes — PR number and URL — cannot exist in this file and ride in the ROUND REPORT, the same item-14 routing R-0489 established. No `gh pr merge` is run in this session.
-- No worktree added or removed — `git worktree list` is ONE line throughout.
+- `gh pr list --state open --json number,headRefName,baseRefName,isDraft` → exit 0, raw output `[]`. Open PR Gate passed; nothing merged, nothing to stop for.
+- `git checkout main` → exit 0; `git pull --ff-only` → exit 0, "Already up to date."; `git rev-parse HEAD` = a5a706214d20101dd54564c23d0a3c22efcc705d, the ordered base; `git checkout -b feature/f085-sandbox-hardening` → exit 0. `feature/f083-ci-self-check` left alone.
+- `git push -u origin feature/f085-sandbox-hardening` → exit 0, new branch, remote head e1562470. The push of C3 runs after this commit, so its outcome rides in the round report. No PR created, none merged.
+- No worktree added or removed; `git worktree list` is ONE line throughout.
 
 ## Verification
-- pwd `/home/decodeux/Repos/remedy`. `git rev-parse HEAD` before C0a = 74063862…, equals the ordered base. `git status --porcelain` EMPTY before C0a and before the zip build; the post-C3 reading cannot exist in this file and rides in the round report. `.agent/STOP` absent at round start and at handback.
-- TRANSPORT: `.remedy-wt/f083-r28.md`, committed `.agent/authored/f083-r28.md` and committed `.agent/last_block.md` all sha256 822f27dee592af55b29761c3bddab530ee64735850bdbcfb3171f957b283387f, 23611 B, 317 lines — byte-EQUAL.
-- C1: pre (315460 B) PREFIXES post (320295 B); tail byte-EQUALS the RECORD-R27 slice; numstat `2 0`. live_review BEGIN-marker LINE count 0 at base and 0 at HEAD.
-- C2: `.agent/plan.md` byte-equals PLAN, sha256 21bc00f89b2fe12fab8e76e85ff7f3ca6b583930af2362f1ebdbca80a5ba677a, 38 lines (<50), `## Goal` and `## Next Steps` present, 0 unchecked-box lines.
-- EVIDENCE JOB `f083-closure`: verdict PASS_WITH_RISKS, authority_count 20, partition T001 7/T002 7/T003 6, commit_count 189, total_passed 121, head 83f3eb31…. Dir `remedy-job-evidence-f083-closure/` (gitignored line 226) — `git status --porcelain` STILL EMPTY after.
-- VERIFICATION RECORD, from a real run of the seven scoped files (`python3 -m pytest <7 files> -q` → 121 passed, exit 0): selected 121 == len(node_ids) 121; test_files = those seven files, sorted True; run_id `vr-0001` matches `^vr-\d{4,}$`; output_hash 9def1a8d… 64 hex.
-- REVIEW ZIP: `bash scripts/make_review_zip.sh --evidence-dir remedy-job-evidence-f083-closure`, exit 0 → **remedy-review-20260816-082019-READY_FOR_REVIEW.zip**, SHA-256 **162bacf6265e79651b098c524b5060de44d58e9d89e9ec4d645c158950b78986**. Manifest `committed_review_subject.head_commit` = 83f3eb31f5020bc5201a23b06e23e7558ee01b4e = the C2 head. First attempt: see Deviations.
-- STATUS LINE: `<<` occurs 0x in the file; replacing the three measured values back with their tokens reproduces STATUSLINE-TO BYTE-FOR-BYTE (True). `^- \[~\] F083` 0x, `^- \[x\] F083` 1x, `^- \[x\] F\d{3} — ` 50 lines.
-- README: READMECOUNT FROM 1 before / 0 after, TO 1 after; READMETIER FROM 1 before / 0 after, TO 1 after; composite `pre.replace(F1,T1).replace(F2,T2) == post` True.
-- `python3 -m pytest tests/docs/ -q` → 295 passed, exit 0. `python3 -m pytest tests/cli/test_golden_path.py -q` → 42 passed, exit 0. `remedy integrity check --json` → exit 0, passed True, fail_count 0; handler_import, live_review_verdict, plan_consistency, relevant_untracked and high_blockers_open all pass.
-- OPEN SET at HEAD: 117 registered, 13 resolved, 0 landed, **104 open**; max R-0489, next free R-0490; 0 duplicate ids, 0 resolutions naming an unregistered id; R-0482 and R-0487 still open.
-- Per-commit insertions C0a 317, C0b 275, C1 2, C2 13 — none over 500. C3's own count goes in the round report (checklist item 14). History linear, 4 single-parent commits in the range when read (C3 not yet made); reflog shows only `commit:` entries; no amend, rebase, reset or force-push.
+- G1 `git status --porcelain` EMPTY before C0a and after every commit so far; `.agent/STOP` absent before the first commit and at this handback. The post-C3 readings cannot exist in this file and ride in the round report.
+- G2 TRANSPORT: `.remedy-wt/f085-r1.md`, committed `.agent/authored/f085-r1.md` and committed `.agent/last_block.md` are byte-EQUAL, all sha256 7a34422a0df2ca34a94599de5804a87cf9b53e211c17de6a1e99f9d81b006512, 21785 B, 339 lines.
+- G3 live_review at HEAD: 105 registered, 0 resolved, 0 `Landed:` lines, 0 duplicate ids, 0 resolutions naming an unregistered id. OPEN at HEAD 105, OPEN in the blob at a5a70621 104; the set comparison open(HEAD) == open(base) plus R-0490 is True with an empty symmetric difference. Max id R-0490, next free R-0491.
+- G4 carried paragraphs compared 104, byte-equal to their pre-reset originals 104 — the two numbers agree.
+- G5 `.agent/live_review.md` contains the substring `Steps`: True.
+- G6 STATUS.md at HEAD: FROM 0x, TO 1x, `^- \[~\]` 1x, `^- \[x\] F\d{3} — ` 50x, `<<` 0x. Measured at a5a70621 first: FROM 1x, `[~]` 0x, `[x] F` 50x — the reviewer's reading reproduced. README.md is not touched.
+- G7 `.agent/context.md` at HEAD: `## Active Branch`, `feature/`, `Steps`, a `\bF\d{3}\b` match and `resource|pytest` (case-insensitive) all present; each of the eight forbidden strings absent.
+- G8 `.agent/plan.md` at HEAD: `## Goal` and `## Next Steps` present, `\bF\d{3}\b` matches, 40 lines — under 50.
+- G9 byte-equal to their slices, sha256 and lines: context.md 297bd3984fbfef45efe46f1f6774fdbeddd5ac1b0d96608c3076738b23281bad 48; plan.md 05d8bf545f1066d10d66211883bead74a723b3f8939c0b2f76f4a12ad1db7b6a 40; candidates.md ffa9a740e0b77ba38a4e72d0f9edf5723a2fb574240abe0326ec5e4522f2429f 12.
+- G10 `python3 -m pytest tests/orchestration/test_test_runner.py tests/ui_server/test_dashboard_contract.py tests/regression/test_resource_safety.py tests/orchestration/test_integrity_gate.py -q` → `157 passed`, exit 0, run in the PRIMARY checkout.
+- G11 `python3 -m pytest tests/docs/ -q` → `295 passed`, exit 0.
+- G12 `python3 -m pytest tests/cli/test_golden_path.py -q` → `42 passed`, exit 0.
+- G13 `git diff --name-only a5a70621..HEAD` read before C3 lists 7 paths: the ordered set minus `.agent/handoff.md`, which this commit adds. Nothing outside the ordered set. The eight-path reading rides in the round report.
+- G14 per-commit insertions from `git show --numstat`: C0a 339, C0b 322, C1 41, C2 66 — none over 500. C3's own count goes in the round report.
+- G15 `git log --format=%p a5a70621..HEAD` → one parent per commit, history linear; `git reflog` over this round shows only `commit:` and `checkout:` entries — no amend, rebase, reset or force-push.
 
 ## Authored-text proofs
-Every slice extracted programmatically from the COMMITTED `.agent/authored/f083-r28.md` by its markers and applied byte-verbatim: RECORD-R27 (tail equality), PLAN (whole-file byte equality), CANDIDATES (whole file), and the pairs STATUSLINE, READMECOUNT, READMETIER (single-occurrence replacements, counted before and after). STATUSLINE is verbatim except the three ordered placeholders, proven by the round-trip above. No transport marker reached any target file.
+Every slice was extracted programmatically from the COMMITTED `.agent/authored/f085-r1.md` by its one-line markers and applied byte-verbatim: LIVEREVIEW-HEADER and R0490 in C1, the single-occurrence STATUSLINE pair in C2 (counted before and after), and CONTEXT, PLAN and CANDIDATES as whole files whose digests are recorded under G9. No marker line reached any target file and no slice was retyped.
 
 ## Deviations & assumptions
-1. **The FIRST zip attempt packaged BLOCKED_EVIDENCE and was fixed, not closed over.** `remedy-review-20260816-081828-BLOCKED_EVIDENCE.zip` (SHA-256 cce65acad2e2278d4b9748f637512f5c14cd9c0fd8824cab8cb0dfdf910ef798), single manifest error verbatim: `verification_tests.json runs[0] output_hash does not match sha256(stdout_summary)`. Cause: I hashed the full pytest stdout while recording only its last line as `stdout_summary`; the packaging validator in `scripts/build_review_manifest.py` requires `output_hash == sha256(stdout_summary)`. Fix: record the whole 181-char stdout as `stdout_summary` and hash exactly that; rebuild the evidence job and the zip from the SAME clean tree at the SAME head. Nothing committed changed between the attempts. Read as protocol step 2's "fix or go `[!]`" branch; the block's constraint 7 (end the round) was read as covering a build this round could not repair without a commit, which this was not. The reviewer may rule otherwise — the raw error and both packages are recorded here.
-2. `cp` is denied in this session, so C0a copied through `shutil.copyfile`; the PROPERTY the gate names (byte equality + shared sha256 of the committed blobs) was measured, not the tool. `/tmp` is denied, so scratch lives in the gitignored `.remedy-wt/`.
-3. This file is within the 60-line cap but over the template's ≤800-token guidance; the cause is mandated content — five per-commit tables plus the closure values. No section dropped, no padding, no transcript.
+1. `cp` is denied in this session, so C0a copied through `shutil.copyfile`; the PROPERTY the gate names — byte equality and one shared sha256 — was measured, not the tool. `/tmp` is denied, so scratch lives in the gitignored `.remedy-wt/`.
+2. `.agent/plan.md` still described the closed amend0816 work during C0a, C0b and C1 because the ordered bundle rewrites it in C2. The block's order was followed as written; from C2 on the plan matches this round. Declared rather than silently reordered.
+3. This file is 74 lines, over the 60-line cap that a 5-commit round carries. Cause is mandated content: five per-commit tables plus fifteen ordered gate readings, each carrying its real measured value. No section dropped, no padding, no transcript.
 4. The ordered commit sequence C0a, C0b, C1, C2, C3 was followed EXACTLY — no extra commit, none dropped, no reordering. Nothing follows C3.
 
 ## Next
-The PR is NOT merged in this session. It merges at the NEXT feature's start via the AGENTS.md Open PR Gate; the gap is the operator's manual-review window. Window 1 reviews this closure round.
+Window 1 reviews this round; Phase 1 rule 1 first, re-reading `.agent/STOP` from disk. No PR exists for this branch and none is opened before closure.
