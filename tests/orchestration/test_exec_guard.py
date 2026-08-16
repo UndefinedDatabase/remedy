@@ -83,7 +83,13 @@ def test_cpu_limit_kills_a_busy_loop_and_names_the_limit():
     assert result.classification == "resource_limit"
     assert result.tripped_limit == "cpu_seconds"
     assert result.tripped_limit in result.limits_enforced
-    assert result.cpu_seconds_used >= 1.0
+    # Tolerance strictly BELOW the limit, never ON it (R-0496): `ru_utime +
+    # ru_stime` is the kernel's own CPU accounting, which is granular and rounds
+    # against RLIMIT_CPU rather than exactly to it, so a value a few hundred
+    # microseconds under an integer limit is the normal outcome. The property
+    # this test is named for is the SIGXCPU trip asserted above; the number only
+    # has to show the child really burned the CPU it was limited on.
+    assert result.cpu_seconds_used >= 0.5
 
 
 @pytest.mark.subprocess
