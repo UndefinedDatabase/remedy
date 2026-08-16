@@ -1,56 +1,46 @@
-# Handback — F083 R22 (T003 part 2: the CI doc, the budget table, one rule promotion)
+# Handback — F083 R23 (repair: the CI note named the wrong stage for the TypeScript check)
 
-Branch: feature/f083-ci-self-check. Base 8336140e. Docs- and state-only round.
+Branch: feature/f083-ci-self-check. Base 07d6577a. Docs- and state-only round.
 
 ## Range
 
-Review of 8336140e..HEAD — 8 commits, C0a..C6.
+Review of 07d6577a..HEAD — 6 commits, C0a..C4.
 
 ## Commits
 
-### c50f38e8 docs(f083): save the R22 step block
+### 3f3e28ed docs(f083): save the R23 step block
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f083-r22.md | +288/-0 | C0a — the R22 block saved verbatim |
+| .agent/authored/f083-r23.md | +263/-0 | C0a — the R23 block saved verbatim |
 
-### d589142b docs(f083): mirror the R22 block to last_block
+### 0f3eece5 chore(agent): mirror the R23 block to last_block
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/last_block.md | +211/-175 | C0b — mirror of the COMMITTED C0a file |
+| .agent/last_block.md | +182/-207 | C0b — mirror of the COMMITTED C0a file |
 
-### 601d6292 docs(f083): record the R21 verdict and register R-0485
+### 8fbcbc6f docs(f083): record the R22 verdict and register R-0486 and R-0487
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/live_review.md | +4/-0 | C1 — RECORD-R21 appended at EOF, no committed text edited |
+| .agent/live_review.md | +8/-0 | C1 — RECORD-R22 appended at EOF, no committed text edited |
 
-### 4f65f713 docs(agents): require commit-sequence departures in the deviations section
+### f35cb48e docs(f083): put the TypeScript compile check in the stage that selects it
 | Path | +/- | Reason |
 |---|---|---|
-| docs/agents/handback_template.md | +6/-0 | C2 — TEMPLATE pair; the R-0485 rule promotion |
+| docs/system/ci-self-check-v1.md | +12/-7 | C2 — UIROW, STDROW and D6SEC, one correction, one commit |
 
-### 80526c25 docs(f083): describe Remedy's own CI and its measured budgets
+### ff3d713e docs(f083): advance the plan to the integration gate
 | Path | +/- | Reason |
 |---|---|---|
-| docs/system/ci-self-check-v1.md | +115/-0 | C3 — the new ist-doc, the only file in the commit |
+| .agent/plan.md | +14/-11 | C3 — PLAN slice, whole-file replacement |
 
-### 39722f6b docs(index): register the CI self-check note
+### C4 docs(f083): write the R23 handback
 | Path | +/- | Reason |
 |---|---|---|
-| docs/README.md | +2/-0 | C4 — QUICKFIND and SYSTABLE pairs, landed after C3 |
-
-### 872ef22d docs(f083): advance the plan past T003
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/plan.md | +15/-17 | C5 — PLAN slice, whole-file replacement |
-
-### C6 docs(f083): write the R22 handback
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/handoff.md | this file | C6 — R-0149 self-reference: a handoff cannot table the commit that writes it |
+| .agent/handoff.md | this file | C4 — R-0149 self-reference: a handoff cannot table the commit that writes it |
 
 ## External actions
 
-`git push -u origin feature/f083-ci-self-check` after C6 — result in the round
+`git push -u origin feature/f083-ci-self-check` after C4 — result in the round
 report. No worktree was added, so none had to be removed. No PR created, edited
 or merged. No `gh` command run.
 
@@ -58,57 +48,44 @@ or merged. No `gh` command run.
 
 | Item | Status | Measured |
 |---|---|---|
-| 1 | done | `pwd` = /home/decodeux/Repos/remedy first; `git status --porcelain` empty before C0a and before C6; `git worktree list` 1 line at start and at handback; `.agent/STOP` absent at both |
-| 2 | done | `git rev-parse HEAD` at round start = 8336140eed9f1f1e234313c1f0c5fbf829609461 |
-| 3 | done | authored file and `.agent/last_block.md` byte-equal; sha256 35e46857c733612a9cdeff09625eacacda99ea2b02675f79fcde4407ad918d0e, 24644 bytes, 288 lines |
-| 4 | done | pre 275871 B prefixes post 282756 B; tail (6885 B) byte-EQUALS the RECORD-R21 slice extracted from the committed authored file; `git show --numstat` = `4 0`; `--- BEGIN SLICE` count 4 at base and 4 at HEAD |
-| 5 | done | TEMPLATE FROM occurred 1x in the target before C2; all 5 TO-ONLY lines occur 1x each among C2's 6 added lines |
-| 6 | done | QUICKFIND FROM 1x before C4, its 1 TO-ONLY line 1x among added; SYSTABLE FROM 1x before C4, its 1 TO-ONLY line 1x among added; C4 adds 2 lines total |
-| 7 | done | `.agent/plan.md` byte-equals the PLAN slice; sha256 056a6756b92341b96e8bb3a608f11a816f7b3c0f288d941960293539aaa71d4b, 37 lines, `## Goal` and `## Next Steps` present, 0 unchecked-box lines |
-| 8 | done | `git diff --name-only 8336140e..HEAD -- packages/ apps/ scripts/ tests/` printed nothing (empty stdout, exit 0) |
-| 9 | deviated | `python3 -m ruff check .` → `Found 26 errors.`, exit 1, unchanged. Taken on the tree committed as C6, not on the C6 commit object — see Deviations |
-| 10 | done | `python3 -m pytest tests/docs/ -q` → `295 passed in 0.25s`, exit 0, taken at C4 39722f6b |
-| 11 | done | 2 relative links in the new doc, both resolve: `../roadmap/features/T2_F083.md`, `test-lanes-v0.md`. None missing |
-| 12 | done | `python3 -m pytest tests/orchestration/test_ci_workflow.py -q` → `5 passed in 0.06s`, exit 0 |
-| 13 | done | the five CI suites → `46 passed in 8.08s`, exit 0 |
-| 14 | done | verification set + canary → `78 passed in 31.56s`, exit 0 |
-| 15 | done | budgets read OUT of the document text vs `CI_STAGES.timeout_sec`: fast 900/900, standard 2100/2100, ui 300/300, smoke 300/300, budgets 300/300 — all five agree |
-| 16 | done | 113 registered, 9 resolved (`Done:` lines), 0 `Landed:` lines, 104 open; max R-0485, next free R-0486; no id repeats |
-| 17 | done | `.agent/authored/f083-r22.md`, `.agent/handoff.md`, `.agent/last_block.md`, `.agent/live_review.md`, `.agent/plan.md`, `docs/README.md`, `docs/agents/handback_template.md`, `docs/system/ci-self-check-v1.md` — 8 paths, none outside the block |
-| 18 | done | insertions 288, 211, 4, 6, 115, 2, 15; C6's own is bounded by this file's 122 lines and is reported post-commit in the round report (R-0149). None exceeds 500; 8 commits |
-| 19 | done | no `git commit --amend`, `git rebase` or `git reset` was run this round |
+| 1 | done | `pwd` = /home/decodeux/Repos/remedy first; `git status --porcelain` empty before C0a and before C4; `git worktree list` 1 line at start and at handback; `.agent/STOP` absent at both |
+| 2 | done | `git rev-parse HEAD` at round start = 07d6577ab346722ad0687886ff077a918db2610e |
+| 3 | done | authored file and `.agent/last_block.md` byte-equal as COMMITTED blobs; sha256 c194ee19da65f7d34fbb8b61bd8c69dea0a82254f954de36d5edf8cda1df04d7, 27100 bytes, 263 lines |
+| 4 | done | pre 282756 B prefixes post 293293 B; tail (10537 B) byte-EQUALS the RECORD-R22 slice extracted from the committed authored file; `git show --numstat` = `8 0`; `--- BEGIN SLICE` count 4 at base and 4 at HEAD |
+| 5 | done | after C2, counted in `docs/system/ci-self-check-v1.md` ALONE: UIROW FROM 0x / TO 1x; STDROW FROM 0x / TO 1x; D6SEC FROM 0x / TO 1x. Each FROM occurred exactly 1x before its replacement |
+| 6 | done | `.agent/plan.md` byte-equals the PLAN slice; sha256 b846a529a780417c8c6b8dc4dccc266671cf522be00a27bfa05e77e09f117417, 2401 bytes, 40 lines, `## Goal` and `## Next Steps` present, 0 unchecked-box lines |
+| 7 | done | `git diff --name-only 07d6577a..HEAD -- packages/ apps/ scripts/ tests/` printed NOTHING (empty stdout) |
+| 8 | done | collected per stage out of `CI_STAGES`, ids containing `test_typescript_compiles`: fast 0 (3975 collected), **standard 1** (12600), ui 0 (397), smoke 0 (23), budgets 0 (40), excluded 0 (79); every collection exit 0. The one hit is `tests/ui_server/test_dashboard_contract.py::TestJobSummaryCommandContract::test_typescript_compiles`. The `ui` selection yields 7 distinct files, all under `tests/ui_contracts/`, and **0** of them contain `node_modules`, `npx`, `tsc` or `npm ` |
+| 9 | done | `python3 -m pytest tests/docs/ -q` → `295 passed in 0.31s`, exit 0, taken at C2 f35cb48e |
+| 10 | done | 2 relative links in the doc, both resolve: `../roadmap/features/T2_F083.md`, `test-lanes-v0.md`. 0 missing |
+| 11 | done | `python3 -m ruff check .` → `Found 26 errors.`, exit 1, unchanged. Taken at C3 ff3d713e |
+| 12 | done | verification set + canary → `78 passed in 31.51s`, exit 0 |
+| 13 | done | `tests/orchestration/test_ci_stages.py` + `test_ci_stage_selection.py` → `20 passed in 7.60s`, exit 0 |
+| 14 | done | recomputed at HEAD: 115 registered, 10 `Done:`, 0 `Landed:`, 105 open; max R-0487, next free R-0488; 0 repeated ids, 0 resolutions naming an unregistered id |
+| 15 | done | `.agent/authored/f083-r23.md`, `.agent/handoff.md`, `.agent/last_block.md`, `.agent/live_review.md`, `.agent/plan.md`, `docs/system/ci-self-check-v1.md` — 6 paths, nothing else |
+| 16 | done | insertions 263, 182, 8, 12, 14; C4's own is bounded by this file's line count and is reported post-commit in the round report (R-0149). None exceeds 500. History linear, 6 single-parent commits chained to 07d6577a |
 
 ## Authored-text proofs
 
-RECORD-R21, TEMPLATE, QUICKFIND, SYSTABLE and PLAN were each extracted
-PROGRAMMATICALLY from the COMMITTED `.agent/authored/f083-r22.md` by their
+RECORD-R22, UIROW, STDROW, D6SEC and PLAN were each extracted PROGRAMMATICALLY
+from the COMMITTED `.agent/authored/f083-r23.md` by their
 `--- BEGIN SLICE X ---` / `--- END SLICE X ---` markers and never retyped.
 `.agent/live_review.md`'s appended tail and `.agent/plan.md`'s whole content are
-byte-equal to their slices (items 4 and 7). No marker line and no `FROM:`/`TO:`
-label reached any target file: after each edit the target's counts of
-`--- BEGIN SLICE`, `--- END SLICE`, `\nFROM:\n` and `\nTO:\n` were all 0, and
+byte-equal to their slices (items 4 and 6). No marker line and no `FROM:`/`TO:`
+label reached any target file: after C2 the document's counts of `BEGIN SLICE`,
+`END SLICE` and of lines equal to `FROM:` or `TO:` are all 0, and
 `.agent/live_review.md`'s marker count is unchanged at 4.
 
 ## Deviations & assumptions
 
-1. **Item 9 taken on the C6 TREE, not the C6 commit object.** The block orders the
-   ruff reading "at C6", and C6 is the commit that writes this file — the reading
-   cannot be inside the text being written before that text exists (R-0149). It was
-   therefore measured on the working tree that C6 commits, byte-identical to C6's
-   tree. No commit in this round touches a Python file and ruff scans no `.md`, so
-   the reading is invariant across C5, the C6 tree and C6. The post-commit re-run
-   at C6 is reported in the round report.
-2. **No departure from the ordered commit sequence.** C0a, C0b, C1, C2, C3, C4, C5,
-   C6 ran in that order, one commit each, none added, none dropped, none reordered
-   — stated here explicitly under the rule C2 of this round adds to
+1. **No departure from the ordered commit sequence.** C0a, C0b, C1, C2, C3, C4 ran
+   in exactly that order, one commit each, none added, none dropped, none
+   reordered — stated here explicitly under the rule R22 added to
    docs/agents/handback_template.md.
-3. `.remedy-wt/` held the extracted slices and the pre-image of
-   `.agent/live_review.md` as scratch. It is gitignored and not part of the change
-   set (the known R-0403 packaging trade-off).
-4. **Deviations, declared (DECISION D15):** this file is 122 lines, above the
-   60-line cap. Cause: the mandated per-commit changed-files tables for 8 commits
-   (8 tables, 32 lines) plus the 19-row item-status table with its measured values
-   (21 lines). No section was dropped to meet the cap.
+2. `.remedy-wt/` held the extracted slices and the gate scripts as scratch. It is
+   gitignored and not part of the change set (the known R-0403 packaging
+   trade-off). No git worktree was created this round, so none had to be pruned.
+3. This file is 100 lines, inside the template's ≤100 allowance for >5 commits.
 
 ## Next
 
@@ -117,6 +94,7 @@ label reached any target file: after each edit the target's counts of
    `gh pr list --state open --json number,headRefName,baseRefName,isDraft`.
 3. Then the integration-gate round per docs/agents/integration_gate.md — the full
    suite exactly once. That round also RECORDS this round's verdict, which lives
-   only in the round report until it does, and resolves R-0485.
+   only in the round report until it does, and resolves R-0486. R-0487 stays open
+   and is routed to a paydown branch with R-0482.
 
-Fortschritt: 90 % (F083 beansprucht · R1 bis R7 und R9 bis R21 PASS, R8 FAIL auf einem roten ruff-Gate und in R9 repariert · T001, T002 und T003 fertig: Stage-Tabelle, Stage-Runner, die `remedy ci` CLI-Naht, die gemessenen Stage-Budgets, die gehostete Workflow-Datei als dünner Wrapper mit ihren Guards, und jetzt die Doku samt Laufzeit-Budget-Tabelle · D4 schliesst eine eigene Determinismus-Stage aus, D5 friert die 26 ruff-Fehler ein, D6 macht den lokalen tsc-Compiler tragend · offen sind nur noch das Integration Gate und die Closure · gehostete Laufzeit ist weiterhin NICHT gemessen) — Rundenzahl gemessen, Prozentwert geschätzt
+Fortschritt: 90 % (F083 beansprucht · R1 bis R7, R9 bis R21 PASS, R8 und R22 FAIL — R8 auf einem roten ruff-Gate, R22 auf einer falschen Stage-Zuordnung in der neuen Doku, beide in der Folgerunde repariert · T001, T002 und T003 fertig: Stage-Tabelle, Stage-Runner, die `remedy ci` CLI-Naht, die gemessenen Stage-Budgets, die gehostete Workflow-Datei als dünner Wrapper mit ihren Guards, und die Doku samt Laufzeit-Budget-Tabelle · D4 schliesst eine eigene Determinismus-Stage aus, D5 friert die 26 ruff-Fehler ein, D6 macht den lokalen tsc-Compiler tragend · offen sind im Feature selbst nur noch das Integration Gate und die Closure; R-0487 (docs/README.md wird nie auf tote Links geprüft) ist neu registriert und bewusst auf einen eigenen Paydown-Branch geroutet, weil Testinhalte hier tabu sind · gehostete Laufzeit ist weiterhin NICHT gemessen) — Rundenzahl gemessen, Prozentwert geschätzt
