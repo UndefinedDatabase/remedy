@@ -670,3 +670,77 @@ themselves. The plan consequence is recorded, not hidden: `_call`, `_call_review
 that mock are ONE indivisible unit, since re-pointing the mock at `_guarded_cli_run` reddens every
 envelope test still on the stdlib spawn. R15 migrates the independent version probe; R16 carries the
 coupled unit, already dry-run green. OPEN.
+
+Gate: R15 — PASS, the round that gave the claude CLI seam its guarded runner. All ten ordered gates
+were re-run by the reviewer from the repository root over c5d80471..7185d949 and every one
+reproduces the handback's reading. TRANSPORT, disk-to-disk and not by digest fallback: the
+reviewer's `.remedy-wt/f085-r15.md`, the committed `.agent/authored/f085-r15.md` and
+`.agent/last_block.md` are byte-EQUAL at sha256
+e2f4ef715c40f02df7d552e15348268b2d0edb24b986ff91e762c666314e2d88, 22895 B, 400 lines — AT the
+DECISION F105 D5 block cap, not over it. C1 IS A PURE APPEND: the pre-C1 blob is a byte-exact PREFIX
+of the post-C1 file, HEAD equals it, the remainder is exactly blank + RECORD1 + blank + FIND1, each
+occurring ONCE, and C1 added no marker line — the one slice-marker token the file holds is R7 prose,
+present at both ends. THE ARITHMETIC: 121 / 3 / 0 at base against 122 / 3 / 0 at HEAD, the open set rising 118 to
+119 by one registration against no resolution, difference exactly R-0507, no duplicate id and no
+resolution naming an unregistered id. THE CHANGE ITSELF, read as a diff and then re-measured: the
+module gains `_cli_exec_policy`, `_decode_cli_stream` and `_guarded_cli_run`, and `_resolve_version`
+now calls the runner. By AST over the HEAD blob, `_resolve_version` and `_guarded_cli_run` hold ZERO
+subprocess spawn nodes while `_call` and `_call_reviewer_structured` still hold ONE each — the
+coupled unit R-0507 names, deliberately untouched. THE STRONGEST PROOF AVAILABLE WAS TAKEN: the
+committed `pingpong_provider.py` and `test_claude_cli_exec_guard.py` are BYTE-IDENTICAL to the
+`git archive` extraction the reviewer dry-ran before emission, where seven red controls each
+reddened exactly their own tests, so the gates that pass here are the same gates proven capable of
+failing. At HEAD the goldens are 8 passed, the seven-file regression set is 333 passed at C1 and 333
+at HEAD, ruff is exit 0 on both touched paths, state readers 157 passed and the canary 42 passed.
+The change set is exactly the seven declared paths with 0 outside; insertions are 400, 339, 50, 134
+and 9, none over 500; six single-parent commits, every reflog entry `commit:`-prefixed, no amend,
+rebase, reset or force-push; `git status --porcelain` is EMPTY and `git worktree list` is ONE line.
+THE ROUND'S OWN REPORTING IS WHY THIS IS A PASS AND NOT A REPAIR: all three anomalies it declared
+are defects in the REVIEWER'S block text, not in its execution, and it reported each rather than
+quietly repairing a slice it was told to apply byte-verbatim. They are registered below as R-0508,
+R-0509 and R-0510. LAST_REVIEWED_SHA advances to the R15 handback commit.
+
+- R-0508 — Low, A PAIR'S SHAPE WAS ASSERTED FOR ONE PAIR AND ASSUMED FOR THE REST, AND THE
+ASSUMPTION WAS WRONG. Raised by the R15 worker in its handback and confirmed by the reviewer against
+its own R15 block. Constraint 3 of that block classified CLST as APPEND-shaped — correctly, its TO
+contains its FROM — and then said "Every other pair is a REWRITE". IMP3 is not: IMP3T is
+`from packages.orchestration.exec_guard import ...` followed by the model-aliases import line that
+IS IMP3F, so the TO contains the FROM verbatim and IMP3F still occurs exactly 1x at HEAD, which the
+reviewer re-measured. Nothing broke, because no gate in that block ordered an "IMP3F 0x" reading —
+had one existed it would have been unsatisfiable by construction, which is the R-0207 failure this
+classification exists to prevent. The defect is the method, not the damage: checklist item 4 says a
+pair is declared APPEND only after checking that the TO literally CONTAINS the FROM, and the block
+performed that check for the pair it suspected and generalised to the others by eye. An import
+insertion that keeps the anchor line is the single most common append-shaped pair in this
+repository, so eye-checking is exactly where it fails. Counter-measure, applied in the build of the
+block that registers this: pair shapes are classified MECHANICALLY, every TO tested for containment
+of its FROM, and the result printed beside each pair before emission — never written by hand. OPEN.
+
+- R-0509 — Medium, A REWRITE PAIR ENDED IN THE MIDDLE OF A NUMBERED LIST AND LEFT THE LIST
+MALFORMED ON DISK. Raised by the R15 worker and confirmed by the reviewer. R15's PLANF covered
+`## Current Step` plus only the FIRST item of `## Next Steps`; PLANT replaced it with a Current Step
+and TWO numbered items. The surviving items below the FROM kept their old numbers, so
+`.agent/plan.md` at 7185d949 reads 1, 2, 2, 3 — measured, not inferred. The worker was right not to
+touch it: constraint 2 forbids rewording a slice, so repairing the numbering would have meant
+editing authored text, and reporting the defect was the only honest move left to it. This is the
+family where a pair's FROM is scoped to the text the reviewer INTENDED to change rather than to the
+structure that text belongs to; a numbered list, a table and a fenced block are all single
+structures whose arity a partial rewrite silently corrupts. Counter-measure, binding from this round
+on: when a TO changes how many items a numbered list or table holds, the pair's FROM spans the WHOLE
+structure, never a prefix of it. The block registering this carries the repair — its plan pair
+covers the entire `## Next Steps` section and renumbers it 1 through 4. OPEN.
+
+- R-0510 — Low, A SECTION HEADING COUNTED ITS OWN CONTENTS BY HAND AND GOT IT WRONG. Raised by the
+R15 worker and confirmed by the reviewer. That block's heading read "Change set — exactly these SIX
+paths, nothing else" and the section then enumerated SEVEN, which is also what
+`git diff --name-only c5d80471..HEAD` prints; the six-path reading is the one gate G10 orders for
+the range BEFORE the handback commit, so both numbers exist and the heading attached the wrong one
+to the wrong set. No gate was contradicted and nothing was mis-executed. This is the R-0402 /
+R-0404 / R-0436 family that memory keeps re-learning — checklist item 11: count it mechanically or
+state NO numeral — and its persistence has a specific cause worth naming. The R15 block DID apply
+the rule: its Bundle heading was rewritten to carry no count precisely because the commit list had
+grown by one. The Change set heading was not swept in the same pass, so the fix was applied to the
+instance that was noticed rather than to the class. That is the R-0417 staleness shape wearing a
+different hat. Counter-measure, applied in the build of this block: no heading in it states a count
+of its own contents, and the build script greps the emitted bytes for a number-word standing next to
+"paths" or "commits" and fails the build if it finds one. OPEN.
