@@ -1,138 +1,148 @@
-# Handback — F083 R19 (record R18, register R-0483 and R-0484, MEASURE R-0480 as Q13)
+# Handback — F083 R20 (record R19, amend and fix R-0480, promote R-0483, resolve three)
 
-Feature T2_F083 CI self-check · Round R19 · Branch `feature/f083-ci-self-check`
-Base 6ce3c58d · C0a f5341008 · C0b a21d81a2 · C1 4b52f300 · C2 0239896a · C3 3c80c3fc ·
-C4 = this commit.
-This round wrote NO production code. MEASUREMENT round: it rules nothing and orders no fix.
+Feature T2_F083 CI self-check · Round R20 · Branch `feature/f083-ci-self-check`
+Base 59d7d341 · C0a 12423e57 · C0b 0f78cdc0 · C1 b83b02c1 · C2 f31f55c3 · C3 824bb6bb ·
+C4 9ae4f8aa · C5 a6daec1e · C6 0e9c72ed · C7 = this commit.
+SPLIT round: one test METHOD changed under `tests/`; `packages/`, `apps/` and `scripts/` untouched.
 
 ## Range
-Review of 6ce3c58d..HEAD.
+Review of 59d7d341..HEAD.
 
 ## Commits
 
-### f5341008 docs(f083): save the R19 block verbatim
+### 12423e57 docs(f083): save the R20 block verbatim
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f083-r19.md | +215/-0 | R19 block saved byte-verbatim (C0a) |
+| .agent/authored/f083-r20.md | +276/-0 | R20 block saved byte-verbatim (C0a) |
 
-### a21d81a2 docs(f083): mirror the R19 block into last_block
+### 0f78cdc0 docs(f083): mirror the R20 block into last_block
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/last_block.md | +134/-209 | byte-identical copy of the committed authored file (C0b) |
+| .agent/last_block.md | +202/-141 | byte-identical copy of the committed authored file (C0b) |
 
-### 4b52f300 docs(f083): record the R18 PASS and register R-0483 and R-0484
+### b83b02c1 docs(f083): record the R19 PASS and amend the R-0480 cause
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/live_review.md | +6/-0 | RECORD-R18 EOF-append; no committed text edited (C1) |
+| .agent/live_review.md | +6/-0 | RECORD-R19 EOF-append; no committed text edited (C1) |
 
-### 0239896a docs(f083): measure the Q13 cause behind R-0480
+### f31f55c3 docs(agents): promote R-0483 as pre-emission checklist item 13
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/f083_inventory.md | +178/-0 | `## Q13`, the six ordered questions answered with measurements (C2) |
+| docs/agents/planner_reviewer_prompt.md | +17/-0 | CHECKLIST pair, append-shaped, §3 item 13 (C2) |
 
-### 3c80c3fc docs(f083): advance the plan to R20
+### 824bb6bb fix(tests): resolve the local tsc or skip with an install hint
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/plan.md | +21/-22 | PLAN slice applied as a whole file (C3) |
+| tests/ui_server/test_dashboard_contract.py | +9/-1 | `test_typescript_compiles` only; DECISION F083 D6 (C3) |
 
-### C4 docs(f083): write the R19 handback
+### 9ae4f8aa docs(f083): resolve R-0483 and R-0480
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/handoff.md | rewritten | C4; a handoff cannot table its own commit (R-0149) |
+| .agent/live_review.md | +4/-0 | RESOLVE EOF-append; no committed text edited (C4) |
+
+### a6daec1e docs(f083): rule DECISION F083 D6 and record the T003 install step
+| Path | +/- | Reason |
+|---|---|---|
+| .agent/decisions.md | +40/-0 | DECISION F083 D6 in the file's existing entry shape (C5) |
+| docs/roadmap/features/T2_F083.md | +6/-1 | the A9 UI-toolchain bullet only; ROADMAP.md untouched (C5) |
+
+### 0e9c72ed docs(f083): advance the plan to T003
+| Path | +/- | Reason |
+|---|---|---|
+| .agent/plan.md | +16/-18 | PLAN slice applied as a whole file (C6) |
+
+### C7 docs(f083): write the R20 handback
+| Path | +/- | Reason |
+|---|---|---|
+| .agent/handoff.md | rewritten | C7; a handoff cannot table its own commit (R-0149) |
 
 ## External actions
-`git push -u origin feature/f083-ci-self-check` runs AFTER C4. That push result, the post-C4
-`git status --porcelain` and the open-PR list postdate this file (R-0449) and are reported in
-the round report, not here. No PR was created or merged. THREE disposable worktrees were added
-and all three removed: `.remedy-wt/r19probe`, `.remedy-wt/r19cold`, `.remedy-wt/r19inst`.
+`git push -u origin feature/f083-ci-self-check` runs AFTER C7. That push result, the post-C7
+`git status --porcelain` and the open-PR list postdate this file (R-0449) and are reported in the
+round report, not here. No PR was created or merged. ONE disposable worktree was added and
+removed: `.remedy-wt/r20probe` (gate 11).
 
 ## Verification — item status and measured values
 Status values: done / skipped / deviated. Every ordered item appears exactly once.
 
 | Item | Status | Measured |
 |---|---|---|
-| C0a f5341008 | done | +215/-0, one path |
-| C0b a21d81a2 | done | +134/-209, one path |
-| C1 4b52f300 | done | +6/-0, one path |
-| C2 0239896a | done | +178/-0, one path |
-| C3 3c80c3fc | done | +21/-22, one path |
-| C4 | done | this commit; its own SHA and insertion count are reported in the round report (R-0149) |
-| 1 | done | `pwd` printed FIRST = /home/decodeux/Repos/remedy; `git status --porcelain` EMPTY before C0a and before C4; `git worktree list` ONE line at round start and at handback; `.agent/STOP` ABSENT at both |
-| 2 | done | base `git rev-parse HEAD` = 6ce3c58dff2af9f9d6907ef4907f8e8a765943b9 — equals 6ce3c58d |
-| 3 | done | `.agent/authored/f083-r19.md` and `.agent/last_block.md` READ FROM HEAD are both sha256 64d578db137f2167, 20868 bytes, 215 lines; the scratch `.remedy-wt/f083-r19-block.md` is the same digest; ALL THREE EQUAL, and 215 is under the 400-line cap |
-| 4 | done | pre 255203 B prefixes post 263322 B; post[len(pre):] EQUALS the RECORD-R18 slice extracted from the COMMITTED authored file by its markers, 8119 B, sha256 b4fa72b66a377244; numstat `6 0`, deletion column 0. Zero marker LINES reached the file; the one `--- BEGIN SLICE` occurrence the slice adds is mid-line quoted prose inside the R18 record's own text |
-| 5 | done | `.agent/plan.md` byte-equals its PLAN slice; sha256 f34d1db67fc789b5, 2312 bytes, 41 lines (<50), `## Goal` and `## Next Steps` present, 0 `- [ ]` lines, 0 `--- BEGIN SLICE` occurrences |
-| 6 | done | `git diff --name-only 6ce3c58d..HEAD -- packages/ apps/ tests/ scripts/` printed NOTHING. No production code was written |
-| 7 | done | `python3 -m ruff check .` → final line `Found 26 errors.`, exit 1. UNCHANGED from the 26-error base, as expected: this round writes no Python |
-| 8 | done | passed true, fail_count 0, check_count 5; handler_import pass `handlers=338`; live_review_verdict pass; plan_consistency pass (`unchecked=0, context_complete=False`); relevant_untracked pass (`untracked=0, relevant=0`); high_blockers_open pass |
-| 9 | done | the five CI suites in one unpiped process → 46 passed, exit 0. All five paths resolve on disk (checked individually); none produced exit 4 |
-| 10 | done | `python3 -m pytest tests/cli/test_golden_path.py -q` → 42 passed, exit 0. The path resolves on disk |
-| 11 | done | 112 registered / 6 `Done:` / 0 `Landed:` / 106 open; max R-0484; next free R-0485; no duplicate id. Matches the block's expected values exactly |
-| 12 | done | 13 `^## Q\d` headings in `.agent/f083_inventory.md`, Q1 through Q13 |
-| 13 | done | 5 paths at C3, every one named by this block: `.agent/authored/f083-r19.md`, `.agent/f083_inventory.md`, `.agent/last_block.md`, `.agent/live_review.md`, `.agent/plan.md`. C4 adds `.agent/handoff.md` as the sixth. Nothing outside the block's paths |
-| 14 | done | insertions C0a 215, C0b 134 (verbatim single-`.agent/`-file rewrite, AGENTS.md-exempt, reported anyway), C1 6, C2 178, C3 21 — none over 500 |
-| 15 | done | no `git commit --amend`, no `git rebase` and no `git reset` was run this round; the real npm cache `/home/decodeux/.npm` was neither deleted nor modified — it held `_cacache`, `_logs`, `_npx`, `_update-notifier-last-checked` and eight `_npx` sub-entries before the readings and the same four and same eight after |
-
-## Q13 — the measured answer, in one paragraph
-R-0480's OBSERVATION reproduces exactly and its stated CAUSE is not supported. The npx cache is
-the per-user directory `/home/decodeux/.npm` and it is WARM: `_npx/1d6e82a4126006c4` has held a
-`tsc` entry since 2026-06-02, and that entry is the DEPRECATED stub `tsc@2.0.4`, whose bin ends
-in `process.exitCode = 1`. The test's argv is `["npx", "tsc", "--noEmit"]` with neither `--yes`
-nor `--no-install`. In `.remedy-wt/r19probe` the full file ran `1 failed, 69 passed` exit 1 then
-`70 passed` exit 0 — R-0480 exactly — and the variable that changed was `apps/ui/node_modules`,
-which is gitignored at `.gitignore:221` and therefore absent from every new worktree. The same
-suite under an EMPTY `npm_config_cache` was GREEN, `70 passed` exit 0; and in `.remedy-wt/r19cold`
-with `node_modules` absent the tsc test alone was RED on BOTH runs, `1 failed` twice. `--yes`
-changed nothing: exit 1 with `node_modules` absent, exit 0 with it present, in all four forms.
-The installer was measured directly, not inferred: in `.remedy-wt/r19inst`, running only
-`TestAutoBuildBehavior::test_auto_build_runs_by_default` took `node_modules` from absent to
-present (exit 0, `1 passed in 4.26s`), and the tsc test alone then passed there. That test is 99
-lines below `test_typescript_compiles` in the same file. This section carries NO recommendation.
+| C0a 12423e57 | done | +276/-0, one path |
+| C0b 0f78cdc0 | done | +202/-141, one path |
+| C1 b83b02c1 | done | +6/-0, one path |
+| C2 f31f55c3 | done | +17/-0, one path |
+| C3 824bb6bb | done | +9/-1, one path, one method |
+| C4 9ae4f8aa | done | +4/-0, one path |
+| C5 a6daec1e | done | +40/-0 and +6/-1, two paths |
+| C6 0e9c72ed | done | +16/-18, one path |
+| C7 | done | this commit; its own SHA and insertion count are in the round report (R-0149) |
+| 1 | done | `pwd` printed FIRST = /home/decodeux/Repos/remedy; `git status --porcelain` EMPTY before C0a and before C7; `git worktree list` ONE line at round start and at handback; `.agent/STOP` ABSENT at both |
+| 2 | done | base `git rev-parse HEAD` = 59d7d341faef7f905ced4abed255dc54d02e45b0 — equals 59d7d341 |
+| 3 | done | `.agent/authored/f083-r20.md` and `.agent/last_block.md` READ FROM HEAD are both sha256 8f77255a7c0328c8, 24374 bytes, 276 lines; the scratch `.remedy-wt/f083-r20-block.md` is the same digest; ALL THREE EQUAL |
+| 4 | done | C1: pre 263322 B prefixes post 269472 B, tail 6150 B byte-EQUALS the RECORD-R19 slice extracted from the COMMITTED authored file by its markers, numstat `6 0`. C4: pre 269472 B prefixes post 271015 B, tail 1543 B byte-EQUALS the RESOLVE slice, numstat `4 0`. Deletion column 0 both times; no marker line and no FROM:/TO: label reached the file |
+| 5 | done | the FROM string occurred exactly **1x** in `docs/agents/planner_reviewer_prompt.md` before C2 and was replaced once; all **17** TO-ONLY lines occur exactly **1x** each among the 17 lines C2's diff ADDS, and C2 adds no other line |
+| 6 | done | `.agent/plan.md` byte-equals its PLAN slice; sha256 900ce257188f5781, 2149 bytes, **39 lines** (<50), `## Goal` and `## Next Steps` present, **0** `- [ ]` lines, 0 `--- BEGIN SLICE` occurrences |
+| 7 | done | `git diff --name-only 59d7d341..HEAD -- packages/ apps/ scripts/` printed NOTHING (empty stdout, exit 0) |
+| 8 | done | `python3 -m ruff check .` → final line `Found 26 errors.`, exit 1 — UNCHANGED, breakdown 20 I001 / 4 F401 / 1 F821 / 1 UP035. The edited test file alone: `All checks passed!`, exit 0. Taken at C3, before any pytest command ran this round |
+| 9 | done | passed **true**, fail_count **0**, check_count **5**; exit 0. Taken at C3, before any pytest command ran this round |
+| 10 | done | `python3 -m pytest tests/ui_server/test_dashboard_contract.py -q` → **70 passed**, exit 0, zero skips. `test_typescript_compiles` **PASSED** — confirmed by name with `-v -k typescript_compiles`: `PASSED`, `1 passed, 69 deselected`, and `apps/ui/node_modules/.bin/tsc` is a file here |
+| 11 | done | THE PROBE in `.remedy-wt/r20probe` at 824bb6bb, `apps/ui/node_modules` absent by construction: **SKIPPED**, exit **0**, summary `1 skipped, 69 deselected in 0.11s`, reason `UI toolchain absent: …/r20probe/apps/ui/node_modules is missing; run \`npm ci --prefix apps/ui\``. Not PASSED and not FAILED — the intended outcome. Worktree removed and pruned; `git worktree list` is ONE line |
+| 12 | done | the five CI suites in one unpiped process → **46 passed**, exit 0 |
+| 13 | done | `python3 -m pytest tests/docs/ -q` → **295 passed**, exit 0. Run TWICE: once before C5 and again AFTER C5, which is the commit that changes `docs/roadmap/**`; both readings are 295 passed, exit 0 |
+| 14 | done | the verification set plus the canary → **78 passed**, exit 0. All three paths resolve on disk (checked individually); none produced exit 4 |
+| 15 | done | **112** registered / **9** `Done:` / **0** `Landed:` / **103** open; max **R-0484**; next free **R-0485**; no duplicate id. Matches the block's expected values exactly. The new `Done:` ids are R-0483 and R-0480; the `Amended: R-0480` paragraph is correctly NOT counted as a registration |
+| 16 | done | 8 paths at C6, every one named by this block: `.agent/authored/f083-r20.md`, `.agent/decisions.md`, `.agent/last_block.md`, `.agent/live_review.md`, `.agent/plan.md`, `docs/agents/planner_reviewer_prompt.md`, `docs/roadmap/features/T2_F083.md`, `tests/ui_server/test_dashboard_contract.py`. C7 adds `.agent/handoff.md` as the ninth. Nothing outside the block's paths |
+| 17 | done | insertions 276, 202, 6, 17, 9, 4, 46, 16 for C0a…C6 — none over 500 |
+| 18 | done | no `git commit --amend`, no `git rebase` and no `git reset` was run this round |
 
 ## Authored-text proofs
-`.remedy-wt/f083-r19-block.md`, the committed `.agent/authored/f083-r19.md` and the committed
+`.remedy-wt/f083-r20-block.md`, the committed `.agent/authored/f083-r20.md` and the committed
 `.agent/last_block.md` are all three byte-equal: sha256
-64d578db137f21670492246575f7cf0638a0d9f38634a6c325c130e6232fa6b9, 20868 bytes, 215 lines.
-Both slices were extracted from the COMMITTED authored file by their `--- BEGIN/END SLICE ---`
-markers and applied programmatically; no marker LINE reached a target file. Constraint 3 held:
-`.agent/live_review.md` was only appended to, and no committed text in it was edited. No
-`Done:` paragraph was written by this worker; C1 carries only the reviewer's authored text.
+8f77255a7c0328c81bd31eb2f91397266215f805d2fb8f4ca3511c0bfe868402, 24374 bytes, 276 lines.
+All four slices were extracted from the COMMITTED authored file by their `--- BEGIN/END SLICE ---`
+markers and applied programmatically; no marker LINE and no `FROM:`/`TO:` label reached a target
+file. Constraint 2 held: `.agent/live_review.md` was only appended to, at C1 and C4, and no
+committed text in it was edited. No `Done:` or `Landed:` line was written by this worker — C1 and
+C4 carry only the reviewer's authored text.
 
 ## Deviations & assumptions
-1. THREE disposable worktrees, not one. The block's questions 3 to 5 speak of "a disposable
-   worktree" and then "that worktree". `.remedy-wt/r19probe` answered 3, 4 and the
-   `node_modules`-present half of 5 literally, as ordered. But questions 4 and 5 asked for a
-   COLD-cache reading, and in r19probe `node_modules` already existed after question 3, so npx
-   never consults any cache there and the reading alone could not separate the two candidate
-   causes. `.remedy-wt/r19cold` was added to hold `node_modules` ABSENT, and `.remedy-wt/r19inst`
-   to measure WHICH test installs it rather than read it off the source. Both are ADDITIONS to
-   the ordered readings, never substitutions: every literal reading the block asked for is in
-   `## Q13` with its own exit code. All three worktrees were removed and pruned; `git worktree
-   list` is ONE line and `git status --porcelain` is empty.
-2. The real npm cache was never touched. Cold conditions came only from `npm_config_cache`
-   pointed at new empty directories under `.remedy-wt/`, one per form, each listed as empty
-   immediately before use and each verified with `npm config get cache` under that environment.
-   Those scratch cache directories were deleted afterwards; `/home/decodeux/.npm` was not.
-3. Two shell invocations were denied by this session class and produced NO reading: one
-   `git worktree add` piped through `tail` with `$?`, and one large heredoc append. Both were
-   re-run through `python3` and through the file-write tool respectively, with the same content;
-   nothing was recorded from the denied attempts and no gate value came from them.
-4. `.agent/plan.md` still read "R19 rules on R-0480" while C1 and C2 were committed, because the
-   block's own sequence places the PLAN slice at C3. It named the right feature and the right
-   round throughout, and C3 corrected the wording. Declared rather than left to be noticed.
-5. This handoff is 138 lines, over the 60-line cap. Mandated cause (DECISION D15): the per-commit
-   tables for six commits, the item-status table covering C0a-C4 plus all fifteen gates with
-   their real measured values, the Q13 summary this round exists to produce, the authored-text
-   proof and the declared deviations do not fit in 60 lines. No section was dropped and no
-   transcript was padded.
+1. **The WHY comment at C3 is TWO lines, not one.** The block orders "a one-line WHY comment"
+   that names R-0480 AND DECISION F083 D6 AND states that `npx` resolves a cached `tsc@2.0.4`
+   stub when no local TypeScript exists AND that the old form graded the stub's exit code. That
+   content is ~148 characters; this repository's ruff `line-length` is 120 (`pyproject.toml:38`),
+   so the mandated content cannot fit on one line without going red on the very lint gate the
+   same block freezes at 26. Two lines is the fewest that carries all of it; both are ≤101
+   characters and the file is ruff-clean. The comment sits directly above the `if not
+   local_tsc.is_file():` guard, i.e. directly above the skip.
+2. **Gate 13 was run twice**, before and after C5. The block lists it among gates whose order it
+   does not fix, but its stated reason is "because C5 changes `docs/roadmap/**`", so a reading
+   taken before C5 would not be a reading of the change it exists to gate. Both runs are 295
+   passed, exit 0; the post-C5 run is the binding one. This is exactly the class of defect the
+   checklist item 13 promoted at C2 describes, caught here rather than reported.
+3. **Gates 8 and 9 were taken at C3, not at the base.** The prompt orders both readings before
+   any pytest command runs this round, and the block additionally expects the ruff count to be
+   unchanged BY the round — which only a reading that includes the edited test can show. C3 is
+   the last commit that can change either value, and no pytest command had run at that point, so
+   one reading satisfies both requirements. Naming the commit rather than relying on "before" is
+   the item-13 rule applied to this round's own constraint.
+4. **Every gate ran through `python3 -c`/`subprocess.run` rather than a bare shell line.** This
+   session class denies `$?` and `echo "X=$?"` forms. Each gate is still its OWN unpiped process
+   and every exit code reported above was read from THAT process's return code, never from a
+   pipeline's tail.
+5. This handoff is 148 lines, over the 60-line cap. Mandated cause (DECISION D15): per-commit
+   tables for nine commits, the item-status table covering C0a-C7 plus all eighteen ordered
+   gates with their real measured values, the transport and pair proofs, and the declared
+   deviations do not fit in 60 lines. No section was dropped and no transcript was padded.
 
 ## Open findings
-112 registered, 6 resolved, 106 open. Max id R-0484, next free id R-0485.
+112 registered, 9 resolved, 103 open. Max id R-0484, next free id R-0485.
 
 ## Next
 1. Read `.agent/STOP` from disk (self-drive Phase 1 rule 1) — before anything else.
 2. Run the Open PR Gate: `gh pr list --state open --json number,headRefName,baseRefName,isDraft`.
-3. Then R20, as the repaired `.agent/plan.md` names it: rule on R-0480 from the `## Q13` data.
-   The data says the cause is the absent `apps/ui/node_modules`, not the npx cache, so R-0480
-   is amended before any fix is ordered. It is a SPLIT round — the fix is production code.
-Fortschritt: 62 % (F083 beansprucht · R1 bis R7 und R9 bis R18 PASS, R8 FAIL auf einem roten ruff-Gate und in R9 repariert · Stage-Tabelle, Stage-Runner, die `remedy ci` CLI-Naht, die Selektionstests, die gemessenen Stage-Budgets und die budgets-Stage mit geratschter Lint-Decke als Code gelandet · D4 schliesst eine eigene Determinismus-Stage aus, D5 friert die 26 ruff-Fehler ein · R19 misst nur: die Ursache hinter R-0480 wird als Q13 gemessen, bevor R20 darüber entscheidet · noch offen: T003 mit den hosted workflows) — Rundenzahl gemessen, Prozentwert geschätzt
+3. Then T003, the last slice: the hosted workflow files calling the same `remedy ci` entrypoint,
+   the docs, and the runtime-budget documentation. Its first reviewed round also records THIS
+   round's verdict, which lives only in the round report until it does. The workflow MUST run
+   `npm ci --prefix apps/ui` before the `ui` stage — DECISION F083 D6 makes that step
+   load-bearing.
+Fortschritt: 78 % (F083 beansprucht · R1 bis R7 und R9 bis R19 PASS, R8 FAIL auf einem roten ruff-Gate und in R9 repariert · T001 und T002 fertig: Stage-Tabelle, Stage-Runner, die `remedy ci` CLI-Naht, die Selektionstests, die gemessenen Stage-Budgets und die budgets-Stage mit geratschter Lint-Decke · D4 schliesst eine eigene Determinismus-Stage aus, D5 friert die 26 ruff-Fehler ein, D6 lässt den tsc-Check den LOKALEN Compiler auflösen statt einen gecachten tsc@2.0.4-Stub zu benoten · offen ist nur noch T003: hosted workflows, Docs und das Laufzeit-Budget, danach Integration Gate und Closure) — Rundenzahl gemessen, Prozentwert geschätzt
