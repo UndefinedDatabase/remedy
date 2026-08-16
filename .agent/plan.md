@@ -13,18 +13,18 @@ reproduces the hosted result locally on a clean checkout, a seeded failure fails
 the right stage with a readable summary, and runtime stays within a budget.
 
 ## Current Step
-R23 is closed PASS and R24 recorded it. R-0486 is resolved: the CI note now puts
-the TypeScript compile check in `standard`, the stage that selects it. R24
-registered R-0488 — the replacement paragraph called the toolchain a precondition
-of ONE test when `standard` selects eight toolchain-dependent node ids across two
-files — and repaired it in the same round. T003 stays COMPLETE. No documentation
-claim in this feature is now unverified against a collection.
+R24 is closed PASS and R25 recorded it. R-0488 is resolved: the D6 section now
+names the `standard` stage instead of counting tests, and every claim in it is
+pinned to a stage collection. T001, T002 and T003 are COMPLETE and no
+documentation claim in this feature is unverified against a measurement. R25
+carries no work of its own — it exists so the R24 verdict was written down before
+the session ended rather than waiting on the integration-gate round.
 
 ## Next Steps
 1. The integration-gate round: the full suite exactly once, per
-   docs/agents/integration_gate.md. It is also the round that records R24's
-   verdict and resolves R-0488. Budget it as a full round of its own: a branch run
-   plus a base run in a throwaway worktree, roughly 23 minutes of suite each.
+   docs/agents/integration_gate.md. Budget it as a round of its own — a branch run
+   plus a base run in a throwaway worktree, roughly 23 minutes of suite each, and
+   the base worktree needs `apps/ui/node_modules` parity or per-id attribution.
 2. Then closure per docs/roadmap/STATUS_closure_protocol.md — evidence job plus a
    FRESH review zip, both mandatory, then the authored STATUS line and the PR.
 
