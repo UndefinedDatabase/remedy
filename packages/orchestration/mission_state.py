@@ -56,6 +56,7 @@ from typing import Any
 from uuid import UUID, uuid4
 
 from packages.orchestration.data_paths import missions_dir
+from packages.orchestration.exec_guard import run_guarded_test_command
 from packages.orchestration.storage import _atomic_write_job as _atomic_write
 
 #: Bumped whenever the record body changes shape.  A reader meeting a version
@@ -807,6 +808,9 @@ def run_verify_task(task: Any, *, cwd: Path | None = None,
     executor; it takes ``(argv, cwd)`` and returns ``(exit_code, output)``.
     The default runs the recorded command as an argv list — never through a
     shell, so a recorded command cannot become a recorded shell injection.
+    It goes through ``run_guarded_test_command``, so the recorded command runs
+    under the `test`-class resource limits, the wall timeout and the environment
+    allowlist rather than on prompted discipline alone.
     """
     inputs = task.inputs if isinstance(getattr(task, "inputs", None), dict) else {}
     command = str(inputs.get("verify_command", "") or "").strip()
@@ -828,14 +832,12 @@ def run_verify_task(task: Any, *, cwd: Path | None = None,
     argv = shlex.split(command)
     if runner is None:
         def runner(argv: list[str], cwd: Path | None):  # noqa: E306
-            import subprocess
-
-            completed = subprocess.run(
-                argv, cwd=str(cwd) if cwd else None, capture_output=True,
-                text=True, timeout=900,
+            completed = run_guarded_test_command(
+                argv, timeout_sec=900, cwd=str(cwd) if cwd else None,
             )
             return (completed.returncode,
-                    (completed.stdout or "") + (completed.stderr or ""))
+                    (completed.stdout or b"").decode("utf-8", "replace")
+                    + (completed.stderr or b"").decode("utf-8", "replace"))
 
     try:
         exit_code, output = runner(argv, cwd)
