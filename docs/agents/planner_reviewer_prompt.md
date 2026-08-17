@@ -393,7 +393,15 @@ end the response with:
       of a sentence in `.agent/live_review.md` survives and two-sevenths do not. The
       counter-measure is the commit name, never a rewrite: appending a correction is
       how this record stays honest, and overwriting landed text is worse than a dated
-      wrong sentence.
+      wrong sentence. Finding R-0521 narrows what counts as naming the commit: it must
+      be an absolute
+      identifier that already EXISTS when the slice is written — a SHA, never a label
+      like `HEAD` or `main` that re-resolves as the round proceeds and therefore names
+      a different commit by the time the round ends. A block always has such a SHA to
+      hand, because its own base is stated in its done-when. R-0521 is this rule
+      failing while being obeyed: the slice that RESOLVED R-0520 wrote "at HEAD",
+      satisfied item 20 as it was then worded, and was falsified one commit later by
+      its own round.
   Why this is on disk and not a habit: item 2 has recurred six times across
   F104 and F105, and R20 hit four of them in one block. A check that lives
   only in reviewer session memory is the A1 trap §0 names, and this list is the
