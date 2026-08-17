@@ -3156,3 +3156,59 @@ five sites DEC8 names to `runtime`, and `packages/orchestration/ui_server.py` re
 `npm run build` — the pair whose working guard a no-wall-timeout policy would have removed. NO NEW
 FINDING WAS REGISTERED: no gate came out red, no claim in the handback failed to reproduce, and
 the open set stays at 141 with R-0554 free.
+
+Gate: R52 — the R51 entry. R51 PASSED. Every ordered gate G1-G9 was re-executed by the reviewer
+over 3a64b65e..67475107, not read, and each reproduces the handback's reading. LINE COUNTS ARE
+`splitlines` COUNTS. TRANSPORT HELD AGAINST THE REVIEWER'S OWN ORIGINAL, disk-to-disk with no
+digest fallback: `.remedy-wt/f085-r51.md`, the committed `.agent/authored/f085-r51.md` at
+44a1fbde, the committed `.agent/last_block.md` at aa38f8c7 and both working copies as they stand
+at 67475107 are all five byte-EQUAL at sha256
+12c6771bf04c38f94be460b4beb48ed93ea5b37709ce1f70711f89a093703abc, 29295 B, 489 lines, 28 marker
+lines — every figure measured on every copy. THE SHAPES HELD, each measured separately from slices
+the reviewer extracted programmatically from the committed block by marker pair. THE FIVE REWRITES
+each give `TO contains FROM: false` as that block declared, each FROM occurred exactly 1x in its
+own pre-commit blob and 0x in its post-commit file with its TO exactly 1x: PLAN5F→PLAN5T in
+`.agent/plan.md` at 051b4082 numstat `13 11`, HDRF→HDRT in
+`packages/orchestration/exec_guard.py` at ff93b13a numstat `5 3`, and DOCF→DOCT, IMPF→IMPT and
+SITEF→SITET in `packages/orchestration/dod_runners.py` at 44460d56 numstat `13 6`. THE PROSE
+APPEND held for RECORD19 on `.agent/live_review.md` at 73489620: byte-exact prefix, a remainder of
+exactly one blank line plus the slice, an exact suffix, 0 marker LINES, and each of its 37 slice
+lines — 0 empty — occurring exactly once among the 38 lines that commit adds, numstat `38 0`. THE
+THREE CODE APPENDS held under the ORDERED EQUALITY §4.9 owes them since R-0531 — SEAM at fcfb2a0f
+numstat `77 0`, TESTSDOD at 43cd292a numstat `52 0`, TESTSGUARD at 43cd292a numstat `22 0`: each
+post-commit file equals `pre + slice` with NO joiner byte, each commit's added lines are exactly
+that slice's lines IN ORDER, and 0 marker LINES reached any of the three. THE SUITES AND THE LINT
+GATE WERE RE-RUN, NOT READ, in the primary checkout with the block's exact command lines, each
+exit 0: the code suite `150 passed` against a base of 147, the four state readers `159 passed`
+against 159, the canary `42 passed` against 42, and ruff `All checks passed!`. THE PLAN CONTRACT
+HELD at 051b4082: 43 lines against the 50-line cap, with `## Goal`, `## Next Steps` and a roadmap
+F-id present. THE ARITHMETIC STOOD STILL AS ORDERED: 168 / 27 / 0 at both 3a64b65e and 67475107,
+141 open at both, all three symmetric differences EMPTY, no duplicate id and no resolution naming
+an unregistered id at either SHA. HYGIENE IS CLEAN: over the eight commits of 3a64b65e..67475107
+that precede the handback the per-commit INSERTION counts, the column AGENTS.md DECISION F104 D1
+fixes for the cap, are 489, 425, 13, 38, 5, 77, 13 and 74, and the handback commit adds 55; none
+over 500; that range's path set measured before the handback is exactly the eight ordered paths
+and nothing else; all nine commits are single-parent; the tree is clean and `git worktree list` is
+one line. THE BLOCK'S OWN SIZE re-measured from the committed file gives TOTAL 489, PROSE 226 and
+RECORD19 37, agreeing with that block. THE TWO RED CONTROLS THAT BLOCK RECORDED WERE NOT TAKEN ON
+TRUST: the reviewer re-ran both in a disposable worktree at 67475107 and removed it. Reverting
+SITET to SITEF failed both new `dod_runners` tests and printed `AWS_SECRET_ACCESS_KEY` in the leak
+test's own failure message; replacing the seam's `wall_timeout_seconds` with None failed the new
+policy test AND the pre-existing `test_a_timeout_is_red_not_a_hang`, so the behaviour-equality
+golden that block named really does hold the migration in place.
+
+- R-0554 — `.agent/plan.md` claimed FOUR tests for a round that shipped THREE. Low. The R51 block
+authored PLAN5T with the clause "four tests ship with it", and the round it described shipped
+three: TESTSDOD defined two tests and TESTSGUARD one, which is also what the code suite measured
+as `150 passed` against a base of 147. This is the class checklist item 16 names after R-0537 and
+R-0543 — a sentence that quantifies what follows it, drifting because the numeral is the half
+nobody re-reads — and it is the third instance of that class, in the same file R-0543 arrived in.
+It is LOW and not Medium because no GATE ordered or reported the number: every gate R51 ordered is
+reproducible and this reviewer reproduced all nine, so the miscount misled a reader of the plan
+and never a verdict. The worker is not at fault; it applied the reviewer's slice byte-verbatim,
+which is what constraint 1 required of it. C1 of the round carrying this registration retires the
+clause as a side effect — PLAN6F spans the `## Current Step` section holding it and PLAN6T
+describes R52 instead — so this finding is expected to be RESOLVED at the R52 gate rather than
+repaired by a round of its own; `.agent/plan.md` states the CURRENT step and never a history, so
+no appending correction under R-0520 is owed to it. Found and registered by the reviewer while
+gating R51.
