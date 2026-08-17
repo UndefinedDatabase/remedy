@@ -1,283 +1,283 @@
-── STEP T002b paydown — F085 — R25 ───────────────────────────────────────────
+── STEP T002b continued — F085 — R26 ─────────────────────────────────────────
 
-Goal: record the R24 PASS, register the one finding it produced — a stale claim
-the reviewer's own R24 block failed to sweep out of a file that block edited —
-and retire that claim in the same round. Then close the session cleanly.
+Goal: record the R25 PASS, then continue T002b by moving `autorun.py`'s three
+`test`-class sites off their bare `subprocess.run` and onto the shared seam
+`run_guarded_test_command`. Mechanism changes; observable outcome does not.
 
-Bundle, in order: C0a save this block · C0b mirror it into last_block · C1
-record R24 and register R-0516 · C2 retire the stale claim · C3 resolve R-0516 ·
-C4 plan · C5 handback.
-
-This is the session's LAST round, reached at the declared cap of two authored
-rounds and not at a blocker. No production code is touched: the only change
-outside `.agent/` is a docstring that asserts something false.
+Bundle, in order: C0a save this block · C0b mirror it into last_block · C1 record
+R25 · C2 migrate the three sites · C3 plan · C4 handback.
 
 ## Why this round exists — read before C2
 
-`tests/orchestration/test_exec_guard.py` opens with "The guard has NO callers in
-this repository, so nothing here says anything about whether any existing Remedy
-subprocess is limited. It is not." That was true when T001 wrote it. It stopped
-being true at T002a, when the managed builder seam and the CLI provider became
-callers, and R24 made it doubly false by adding `test_runner`. R24's own C2
-EDITED that file and swept the sibling claim in `exec_guard.py`'s PARTIAL
-COVERAGE bullet — so the block reached the instance it happened to notice and
-left the one in the file it was editing, which is the R-0417 staleness shape the
-record already names.
+T002b migrated `test_runner.run_tests_local` at R24 and left the rest of the
+`test` class on bare spawns. `autorun.py` holds three of them: one in
+`_run_fixture_builder` and two in `_run_repair_loop_fixture`. They are the next
+sites because they share the migrated shape exactly — an argv list, a `timeout`,
+a `cwd`, no `shell` — and because real children already drive them in the suite,
+so the migration is verifiable rather than merely plausible.
 
-A false sentence in a test file is worth a round: it is read by whoever next asks
-what the guard covers, and it answers with the opposite of the truth.
+The reviewer measured the three sites before authoring this block, and two facts
+decide its shape:
+
+- Every read of the returned object across all three sites is `.returncode` —
+  checked with an AST walk over both enclosing functions, not by eye. The seam
+  returns BYTES streams where the old call passed `text=True`, and because no
+  site reads `stdout` or `stderr`, that difference is unobservable here. This is
+  why the pairs below drop `capture_output=True, text=True` rather than trying to
+  preserve them: the seam always captures, and it has no `text` parameter.
+- `subprocess` stays imported in `_run_fixture_builder`, because its `except
+  subprocess.TimeoutExpired` clause still needs the name, and the seam still
+  raises exactly that exception on a wall trip. In `_run_repair_loop_fixture` the
+  two migrated calls are that function's ONLY uses of `subprocess`, so IMP2
+  removes the import. Leaving it would turn ruff F401 red.
+
+Neither fixture path catches `TimeoutExpired` around the repair-loop calls today,
+and neither did before: an uncaught wall trip stays uncaught. That is preserved
+behaviour, not an oversight, and no slice below changes it.
 
 ## Change
 
-C2 — `tests/orchestration/test_exec_guard.py`, one commit, the DOCF→DOCT pair
-below applied to the module docstring and NOTHING else in the file. The pair is a
-REWRITE: the reviewer tested containment mechanically and DOCT does not contain
-DOCF. The replacement does not substitute a new count for the old claim — it
-points at where the migration state actually lives, so it cannot go stale the
-same way.
+C2 — `packages/orchestration/autorun.py`, one commit, exactly the pairs below and
+nothing else in the file. Each FROM was confirmed to occur EXACTLY ONCE in the
+file at this base. Containment was tested mechanically, one reading per pair, and
+every reading came back the same way — no TO contains its FROM verbatim:
+IMP1 REWRITE · SITE1 REWRITE · IMP2 REWRITE · SITE2 REWRITE · SITE3 REWRITE ·
+PLANF/PLANT REWRITE. IMP1 is called out because it is the shape most often
+mistaken for an append: it keeps its anchor line and still inserts a blank line
+above it, so the FROM does not survive intact.
+
+Do NOT touch `exec_guard.py`. Its PARTIAL COVERAGE note already says the test
+class is PARTIALLY migrated and deliberately writes no count, so this round
+leaves that note TRUE and editing it would only re-introduce the staleness R-0516
+was raised about. The reviewer also swept `autorun.py`'s own module docstring and
+its autonomy-level list: neither states anything this round falsifies, so C2
+edits no prose in that file beyond the comment SITE1T carries.
 
 ## Constraints
 
-1. SINGLE-SESSION rules do NOT apply: this round is gated by the reviewer like
-   every other. The change set is `.agent/**` plus one file under `tests/`, so no
-   production code path is self-certified.
-2. AGENTS.md in full: the self-review loop before EVERY commit, one logical step
-   per commit, `.agent/plan.md` current before committing, a clean tree, the push,
-   the handoff rewrite. Commit subjects carry no leading-slash token and no path.
-3. C1 lands BEFORE C2. The verdict record and the registration persist first, so a
-   session that dies mid-round still leaves both on disk.
-4. C3 lands AFTER C2, and G5 is RUN in between — after C2 is committed and before
-   C3 is committed. DONE1 states both that the claim is already retired and that
-   G5 verified it, and checklist item 19 binds a block that orders such a
-   sentence to schedule its producer: a gate result may be asserted only by a
-   slice the block commits after that gate has run. Report G5's reading at the
-   point it is taken, not only at the end of the round.
-5. The authored slices — RECORD1, DOCF, DOCT, DONE1, PLANF, PLANT — are extracted
-   programmatically from the COMMITTED `.agent/authored/f085-r25.md` by their
-   one-line markers and applied byte-verbatim. Never retype them, never source
-   them from `.remedy-wt/`, and let no marker line reach a target file.
-6. Pair shapes, classified mechanically before this block was emitted, one reading
-   per pair: DOCT contains DOCF — False, a REWRITE. PLANT contains PLANF — False,
-   a REWRITE. Both therefore carry a legitimate "FROM 0x at HEAD" gate. RECORD1
-   and DONE1 are not pairs: each is an APPEND of a new paragraph at the end of
-   `.agent/live_review.md`, so each is proved by a prefix proof and no `0x`
-   reading is ordered for either.
-7. Destructive verification, if you run any, happens ONLY inside a disposable
-   `git worktree` under `.remedy-wt/`, removed and pruned before the handback. The
-   primary checkout satisfies `git status --porcelain` == empty at every commit
-   and at the handback.
-8. The 500-line cap counts INSERTIONS — the first column of `git show --numstat` —
-   never the churn total `git show --stat` prints.
-9. If any gate comes out red, or if this block contradicts itself or the code,
-   finish the commit in hand, record the contradiction in the handback and END.
-   Do not guess and do not widen scope to route around it.
+1. Every slice is applied byte-verbatim, extracted PROGRAMMATICALLY from the
+   committed `.agent/authored/f085-r26.md` by its marker pair. Never retype a
+   slice, and never apply one from this prompt directly. Marker lines
+   (`BEGIN-…`/`END-…`) never reach a target file.
+2. Re-read `.agent/STOP` from disk before C0a and again before C4. If it exists,
+   finish the commit in flight, write the handback and stop.
+3. `git status --porcelain` is empty at round start and after every commit. Any
+   destructive check runs ONLY in a disposable `git worktree` under
+   `.remedy-wt/`, removed and pruned before the handback.
+4. C1's RECORD1 is an APPEND to `.agent/live_review.md`: the pre-commit file
+   stays a byte-exact prefix, and exactly one blank line separates it from the
+   slice. Do not reflow, re-wrap or re-indent RECORD1.
+5. Nothing outside the declared change set is touched. This round registers no
+   finding and resolves none, so the finding arithmetic must come out FLAT.
+6. If any gate below comes out red, or any FROM does not match at exactly one
+   place, STOP: write the handback naming the exact command, its exit code and
+   its output, and do not improvise a repair.
 
 ## Done when
 
-G1 STOP AND TREE. Re-read `.agent/STOP` from disk before C0a and again before C5
-and report both readings; if it exists at either point, finish the commit in
-hand, write the handoff and END. `git status --porcelain` is empty at round start
-and after every commit. Report `git worktree list`'s line count at the handback.
+G1 STATE. `.agent/STOP` absent at the two points named in constraint 2;
+`git status --porcelain` empty at round start and after every commit;
+`git worktree list` is one line at the handback.
 
-G2 TRANSPORT. The committed `.agent/authored/f085-r25.md`, the committed
-`.agent/last_block.md` and both working copies are byte-EQUAL. Report the sha256,
-the byte count, the line count and the number of marker lines. Then report the
-sha256 of each of these regions of the saved file, measured by the reviewer
-before delegating: lines 1 through 60, lines 61 through 140, and line 141 to the
-end. Three matching digests show a split write changed nothing.
+G2 TRANSPORT. After C0b, the committed `.agent/authored/f085-r26.md`, the
+committed `.agent/last_block.md` and BOTH working copies are byte-EQUAL. Report
+the sha256, the byte count, the line count, the number of marker lines, and three
+region digests over the line ranges 1-60, 61-140 and 141-end, so a split write
+would be visible rather than merely unlikely.
 
-G3 APPEND SHAPE, for C1 and again for C3. The pre-commit blob of
-`.agent/live_review.md` is a byte-exact PREFIX of the post-commit file; the
-remainder is exactly one blank line followed by the slice; the HEAD blob equals
-the working copy; the slice's first line occurs exactly ONCE in the whole file;
-the file carries 0 marker lines. Report the `git show --numstat` pair for each as
-a READING, insertions being the FIRST column.
+G3 APPEND SHAPE for C1. The pre-commit blob of `.agent/live_review.md` is a
+byte-exact PREFIX of the post-commit file; the remainder is exactly one blank
+line plus RECORD1; RECORD1's first line occurs once in the commit's added lines;
+0 marker lines land in the file; the HEAD blob equals the working copy. Report
+`git show --numstat` for that path and commit.
 
-G4 ARITHMETIC over `.agent/live_review.md`, regexes `^- R-\d+ — `,
-`^Done: R-\d+ — ` and `^Landed: R-\d+`. At base 3d1821bf the reading is
-130 / 13 / 0 with 117 open. After C1 expect 131 / 13 / 0 with 118 open — the
-registration must LAND before the fix. At HEAD expect 131 / 14 / 0 with 117 open.
-Report the reading at all three points, both symmetric differences — each exactly
-R-0516 — the duplicate-id counts, any resolution naming an unregistered id, and
-the max and next-free id.
+G4 ARITHMETIC, FLAT. Count the registered, done and landed id sets in
+`.agent/live_review.md` at base 5b02cff9 and at HEAD. The reviewer's base reading
+is 131 registered / 14 done / 0 landed, 117 open. Both readings must be identical
+— a `Gate:` line registers nothing. Report both symmetric differences (each must
+be empty), the count of duplicate ids, the count of resolutions naming an
+unregistered id, the maximum id and the next free id.
 
-G5 THE DOCSTRING PAIR. DOCF occurs exactly ONCE in
-`tests/orchestration/test_exec_guard.py` at base and 0 times at HEAD; DOCT occurs
-exactly once at HEAD. Report the file's sha256 and byte count at HEAD, and report
-that the file's first line is unchanged from base — the pair rewrites a paragraph
-inside the docstring, never the docstring's opening.
+G5 THE MIGRATION, MEASURED ON THE FILE. In `packages/orchestration/autorun.py` at
+HEAD: `subprocess.run(` occurs 0 times, having occurred 3 times at base; each FROM
+text below occurs 0 times; each TO text below occurs exactly once;
+`run_guarded_test_command` occurs once per migrated call site plus once per import
+that C2 adds. Report `import subprocess` still present in `_run_fixture_builder`
+and absent from `_run_repair_loop_fixture`. Report the file's sha256 and byte count.
 
 G6 PLAN PAIR. PLANF occurs 0 times at HEAD and PLANT exactly once. `## Goal` and
 `## Risks` are byte-IDENTICAL to their base bytes. Report `.agent/plan.md`'s
-sha256, its byte count, a line count under 50, and the numbers its `## Next
+sha256, its byte count, a line count under 50, and the numerals its `## Next
 Steps` list parses to rather than a count of them.
 
-G7 THE EDITED SUITE, run after C2: `python3 -m pytest
-tests/orchestration/test_exec_guard.py -q` exits 0. The reviewer's base reading
-is `24 passed`. Report the count as a READING. A docstring edit must not move it,
-so report whether it did.
+G7 THE ROUND GATE, run after C2:
+`python3 -m pytest tests/orchestration/test_autorun.py
+tests/test_cli_execution_loop_closure.py tests/regression/test_named_bugs.py -q`
+exits 0. The reviewer's base reading is `140 passed, 6 skipped`. Report the counts
+as a READING, and report whether the migration moved them. These three files were
+chosen deliberately: the first drives `_run_fixture_builder` with a real child,
+the second drives BOTH repair-loop sites with real children — once expecting a
+pass and once expecting a failing suite — and the third reads `autorun.py` as
+SOURCE and asserts `shell=True` never appears in it, which the seam must not
+re-introduce.
 
-G8 STATE READERS, because this round rewrites `.agent/` state: `python3 -m pytest
+G8 REACHABILITY PROBE, run in a disposable worktree at HEAD and NOT in the primary
+checkout. Make `run_guarded_test_command` raise on entry — edit its body in
+`exec_guard.py` inside the worktree — then run G7's exact command line there.
+REPORT what happens: how many nodes fail, whether the injected error appears in
+the output, and the exact tail. No colour is ordered and none is predicted; the
+reading itself is the evidence that C2's code is on a path the suite really
+executes.
+
+G9 NEIGHBOURS AND LINT. `python3 -m pytest tests/orchestration/test_exec_guard.py
+-q` exits 0, base reading `24 passed`. The four state readers, because this round
+rewrites `.agent/` state: `python3 -m pytest
 tests/orchestration/test_test_runner.py tests/regression/test_resource_safety.py
 tests/orchestration/test_integrity_gate.py tests/ui_server/test_dashboard_contract.py
--q` exits 0; base reading `158 passed`, and that suite spawns wrapper processes
-under flock and is timing-sensitive, so report the count as a READING. CANARY:
+-q` exits 0, base reading `158 passed`; that suite spawns wrapper processes under
+flock and is timing-sensitive, so report its count as a READING. CANARY:
 `python3 -m pytest tests/cli/test_golden_path.py -q` exits 0, base reading
-`42 passed`. No ruff gate is ordered and none is skipped by oversight: this change
-set holds one `.py` file and the only edit in it is inside a string literal — run
-`python3 -m ruff check tests/orchestration/test_exec_guard.py` anyway and report
-it, since it costs nothing and the file is a `.py` file. No docs gate: nothing
-under `docs/` changes.
+`42 passed`. LINT: `python3 -m ruff check packages/orchestration/autorun.py`
+exits 0. No docs gate: nothing under `docs/` changes.
 
-G9 COMMIT HYGIENE. `git diff --name-only 3d1821bf..HEAD` measured BEFORE C5
-equals the declared paths minus `.agent/handoff.md` — report the list and 0 paths
-outside it. For C0a, C0b, C1, C2, C3 and C4 report the FIRST COLUMN of
-`git show --numstat`; none exceeds 500. C5's own count is ordered nowhere, since a
-commit cannot measure itself; report it in the round report instead. Report
-`git log --format=%h %p 3d1821bf..HEAD` and confirm one parent each, and report
-`git reflog -10` showing no amend, rebase, reset or force-push.
+G10 COMMIT HYGIENE. `git diff --name-only 5b02cff9..HEAD` measured BEFORE C4 holds
+exactly these paths and nothing else, named rather than counted:
+`.agent/authored/f085-r26.md`, `.agent/last_block.md`, `.agent/live_review.md`,
+`packages/orchestration/autorun.py`, `.agent/plan.md`. Report per-commit insertions
+for every commit BEFORE C4 — C4 cannot measure itself, so report its own insertions
+in the round report instead — and confirm none exceeds 500. Confirm every commit has
+exactly one parent and that `git reflog -12` holds only `commit:` entries.
 
 ## Handback
 
 Rewrite `.agent/handoff.md` per docs/agents/handback_template.md: feature and
-round, branch, a per-commit changed-files table, the item-status table covering
-C0a, C0b, C1, C2, C3, C4 and C5 exactly once each, the real gate readings above,
-the open-findings count, and the next expected action. Repeat this Fortschritt
-line verbatim, estimate label included:
-
-Fortschritt: ~78 % (T001 gebaut · R13-R24 PASS · T002a KOMPLETT · T002b: Seam
-gebaut, 1 von 12 `test`-Sites migriert · T002b Rest, T002c-d, T003 offen) —
+round, branch, base SHA, a per-commit changed-files table, the item-status table
+covering C0a, C0b, C1, C2, C3 and C4, the real verification results for G1-G10
+with exit codes, the open-findings count, and the next expected action. Repeat the
+Fortschritt line verbatim from this block:
+Fortschritt: ~80 % (T001 gebaut · R13-R25 PASS · T002a KOMPLETT · T002b: Seam
+gebaut, `test_runner` + `autorun` migriert · T002b Rest, T002c-d, T003 offen) —
 Schätzung.
-
-The Next section states, in the protocol's own order, that the next session's
-first action is Phase 1 rule 1 — re-read `.agent/STOP` from disk — BEFORE rule 2,
-the Open PR Gate (`gh pr list --state open --json
-number,headRefName,baseRefName,isDraft`); that R25's own verdict is NOT a §4.13
-terminator, because that clause covers the last round of a BRANCH and this branch
-continues, so the next session's first reviewed round records R25's gate entry in
-`.agent/live_review.md`; and that the first work item is the remaining
-`test`-class sites, starting with the three in `autorun.py`, which share the
-migrated shape exactly.
-
-Then push the branch. Do not create a PR and do not merge anything.
+Then `git push -u origin feature/f085-sandbox-hardening`. Create no PR and merge
+nothing.
 
 BEGIN-RECORD1
-Gate: R24 — PASS, the round that opened T002b by building the shared test-class
-seam and migrating the first of the twelve sites onto it. All ten ordered gates
-were re-run by the reviewer over f28ed65a..3d1821bf and every one reproduces the
-handback's reading. TRANSPORT IS PROVEN DISK-TO-DISK AND NOT BY FALLBACK: the
-committed `.agent/authored/f085-r24.md` is byte-EQUAL to the reviewer's own
-pre-delegation original as well as to the committed `.agent/last_block.md` and
-both working copies, at sha256
-46db5e38c4b586971364f75b7976daa3ff88e20ac5558aa2d82b807698380340, 22645 B, 355
-lines, and the three region digests 7804f388, 69d643fe and 7ac81591 reproduce
-exactly, so the single write really was single and nothing shifted. THE APPEND
-COMMIT HOLDS ITS SHAPE: C1's pre-commit blob is a byte-exact PREFIX of the
-post-commit file, the remainder is exactly one blank line plus RECORD1, that
-slice occurs once, no marker line reached any target file, and the HEAD blob
-equals the working copy. THE ARITHMETIC IS FLAT EXACTLY WHERE IT WAS ORDERED TO
-BE: 130 / 13 / 0 with 117 open at base and unchanged at HEAD, both symmetric
-differences empty, no duplicate id, no resolution naming an unregistered id, max
-R-0515. THE SEAM IS REAL AND SHAPED LIKE WHAT IT REPLACED:
-`run_guarded_test_command` returns a `CompletedProcess` with bytes streams,
-raises `subprocess.TimeoutExpired` on a wall trip CARRYING the partial streams
-the guard already holds, republishes a signal death as a negative returncode, and
-deliberately does not catch `FileNotFoundError`, which is why `run_tests_local`'s
-`command_not_found` branch still works untouched. The policy sets only what it
-can defend — `cpu_seconds`, `address_space_bytes` and `open_files` stay None on
-the precedent `_builder_exec_policy` already established, rather than inventing a
-second answer — and the 16 MiB output cap sits above the caller's own 1 MiB
-truncation with the reason written beside the value, so `output_truncated` keeps
-describing what the caller measured. THE MIGRATION CHANGED THE MECHANISM AND NOT
-THE OUTCOME: every mocked call site in both test files moved onto the new seam
-with its fabricated `CompletedProcess` values unchanged, and the one assertion
-that could no longer fail — a `shell=` check against a seam with no `shell`
-parameter — was REPLACED rather than retargeted, so it now pins the argv, the
-timeout and the cwd the seam really receives. THE GOLDEN RUNS A REAL CHILD AND
-REACHES THE MIGRATED PATH, which the reviewer confirmed independently rather than
-accepting the worker's probe: with `run_guarded_test_command` made to raise on
-entry in a disposable worktree at HEAD, the golden node stopped passing and
-reported the injected error. THE GATES WERE RE-RUN, NOT READ: ruff over the five
-changed files exited 0 with `All checks passed!`, the migrated suites gave
-`119 passed`, the four state readers `158 passed` and the canary `42 passed`,
-each as its exact ordered command line and each reproducing the handback's
-number. COMMIT HYGIENE IS CLEAN: the changed-path set before C5 is exactly the
-declared one, per-commit insertions are 355, 315, 46, 206, 62, 9 and 68 with none
+Gate: R25 — PASS, the paydown round that recorded R24 and retired the stale
+no-callers claim from the guard's own fixture file. All nine ordered gates were
+re-run by the reviewer over 3d1821bf..5b02cff9 and every one reproduces the
+handback's reading. TRANSPORT IS PROVEN DISK-TO-DISK UNDER THE §4.9 DIGEST
+FALLBACK, WHICH THIS ENTRY STATES RATHER THAN HIDES: this session did not author
+R25's block, so no reviewer-side pre-delegation original exists to compare
+against, and the proof is instead that the committed `.agent/authored/f085-r25.md`
+is byte-EQUAL to the committed `.agent/last_block.md` and to both working copies
+at sha256 4abce714f82e9a6b2baad095c02c6f0aecebfd009ce4a8883531c908b8971262,
+18089 B, 296 lines, with the region digests 07199a30, cad21f6b and 3de16b95 all
+reproducing, and that every applied slice re-derives from that committed file by
+its marker pair. THE APPEND COMMITS HOLD THEIR SHAPE: for C1 and again for C3 the
+pre-commit blob is a byte-exact PREFIX of the post-commit file and the remainder
+is exactly one blank line plus the slice, at numstat 67/0 and 12/0. THE ARITHMETIC
+MOVES ONLY WHERE R-0516 MOVES IT: 130 / 13 / 0 with 117 open at base, 131 / 13 / 0
+with 118 open after C1, and 131 / 14 / 0 with 117 open at HEAD; both symmetric
+differences are exactly the set holding R-0516; no duplicate id, no resolution
+naming an unregistered id, max R-0516 and next free R-0517. THE FALSE SENTENCE IS
+OFF DISK AND ITS REPLACEMENT RESOLVES: DOCF occurs 0 times at HEAD and DOCT
+exactly once, the file's first line is byte-unchanged from base, sha256
+ee200a92041190027a59efc08a835dd2827dc951de57eb7e35cf158957d2d04c at 21388 B — and
+the reviewer followed the new pointer rather than trusting it, finding the PARTIAL
+COVERAGE note exactly once in `exec_guard.py`, saying what DOCT attributes to it
+and writing no count, so the replacement cannot go stale the way the sentence it
+replaced did. THE GATES WERE RE-RUN, NOT READ: the edited suite exited 0 with
+`24 passed` and the docstring edit did NOT move that base, the four state readers
+gave `158 passed`, the canary `42 passed`, and ruff over the changed `.py`
+`All checks passed!`, each as its exact ordered command line. COMMIT HYGIENE IS
+CLEAN: the changed-path set is the declared one, per-commit insertions are 296,
+217, 67, 6, 12 and 7 with the handback's own 56 measured after it existed and none
 over 500, seven commits form a single-parent chain, and the reflog holds nothing
-but `commit:` entries. The three declared deviations are all improvements the
-block should have ordered itself and none widens scope: the falsified
-`test_runner.py` safety bullets, the module-handle import that keeps a `test_`
-prefixed factory out of pytest's collection, and naming the 16 MiB default as a
-constant. No block condition is met.
-
-- R-0516 — Low, A BLOCK EDITED A FILE AND LEFT A CLAIM IN IT THAT THE SAME BLOCK
-MADE FALSE. R24's C2 added six tests to `tests/orchestration/test_exec_guard.py`
-and, in the same commit, correctly rewrote the PARTIAL COVERAGE bullet in
-`exec_guard.py` that the migration falsified. It did not touch that TEST file's
-own module docstring, which still says the guard "has NO callers in this
-repository, so nothing here says anything about whether any existing Remedy
-subprocess is limited. It is not." That sentence has been false since T002a and
-R24 made it doubly false. Low because nothing executable depends on it and no
-gate could have gone red over it — its whole cost is paid by the next reader who
-asks what the guard covers and is told the opposite of the truth. It is
-registered rather than waved through because it is the R-0417 staleness shape
-that this record already names twice: the fix reached the INSTANCE the reviewer
-noticed, in the neighbouring file, and not the CLASS, in the file the block was
-already editing. The counter-measure is not a new checklist item — item 16 and
-the sweep rule it carries already cover a block's own headings, and the gap here
-is that the same sweep was never run over the TARGET file's existing prose.
-Widening item 16 would restate what the R-0417 entry already says; retiring the
-claim is the fix, and this round's own C2 performs it. OPEN.
+but `commit:` entries. The handback is 100 lines — exactly the ceiling its seven
+per-commit tables engage under DECISION D15, so it sits AT the cap rather than
+over it. No block condition is met.
 END-RECORD1
 
-BEGIN-DOCF
-The guard has NO callers in this repository, so nothing here says anything about
-whether any existing Remedy subprocess is limited. It is not.
-END-DOCF
+BEGIN-IMP1F
+        import subprocess
+        import sys as _sys
+        try:
+END-IMP1F
 
-BEGIN-DOCT
-These tests exercise the guard DIRECTLY, so a green run here says the mechanism
-works and says nothing about which of Remedy's own subprocesses are spawned
-through it. That migration state lives in one place on purpose — the PARTIAL
-COVERAGE note in `exec_guard`'s own module docstring — and the caller grep is the
-honest answer. No count is repeated here, because a count in a second file is a
-second thing to forget.
-END-DOCT
+BEGIN-IMP1T
+        import subprocess
+        import sys as _sys
 
-BEGIN-DONE1
-Done: R-0516 — resolved. The false sentence is off disk: this round's C2 replaced
-it with a paragraph that says what these tests DO prove, points at
-`exec_guard`'s PARTIAL COVERAGE note as the single place the migration state is
-recorded, and deliberately repeats no count — a count in a second file is a
-second thing to forget, which is how the retired sentence went stale in the first
-place. The resolution is verified by this round's G5 before this line is
-committed, per constraint 4. No checklist item is added: item 16 and the R-0417
-entry already carry the sweep rule, and the gap R-0516 exposed was that the sweep
-was run over the block's own text and not over the prose already sitting in the
-file the block was editing. That is a reading of an existing rule, not a new one,
-and this record is where it belongs.
-END-DONE1
+        from packages.orchestration.exec_guard import run_guarded_test_command
+        try:
+END-IMP1T
+
+BEGIN-SITE1F
+            proc = subprocess.run(
+                [_sys.executable, "-m", "pytest", str(test_path), "-x", "-q", "--tb=short", "--no-header"],
+                capture_output=True, text=True, timeout=30,
+                cwd=str(repo),
+            )
+END-SITE1F
+
+BEGIN-SITE1T
+            # Guarded since F085 T002b: rlimits, an env allowlist and the guard's
+            # own deadline replace the bare spawn. Only `returncode` is read here,
+            # so the seam's bytes streams change nothing this site observes.
+            proc = run_guarded_test_command(
+                [_sys.executable, "-m", "pytest", str(test_path), "-x", "-q", "--tb=short", "--no-header"],
+                timeout_sec=30,
+                cwd=str(repo),
+            )
+END-SITE1T
+
+BEGIN-IMP2F
+    import subprocess
+    import sys as _sys
+
+    from packages.orchestration.permissions import Capability, set_permission
+END-IMP2F
+
+BEGIN-IMP2T
+    import sys as _sys
+
+    from packages.orchestration.exec_guard import run_guarded_test_command
+    from packages.orchestration.permissions import Capability, set_permission
+END-IMP2T
+
+BEGIN-SITE2F
+        proc = subprocess.run(
+            [_sys.executable, "-m", "pytest", str(test_path), "-x", "-q",
+             "--tb=short", "--no-header"],
+            capture_output=True, text=True, timeout=30, cwd=str(repo),
+        )
+END-SITE2F
+
+BEGIN-SITE2T
+        proc = run_guarded_test_command(
+            [_sys.executable, "-m", "pytest", str(test_path), "-x", "-q",
+             "--tb=short", "--no-header"],
+            timeout_sec=30, cwd=str(repo),
+        )
+END-SITE2T
+
+BEGIN-SITE3F
+            proc2 = subprocess.run(
+                [_sys.executable, "-m", "pytest", str(test_path), "-x", "-q",
+                 "--tb=short", "--no-header"],
+                capture_output=True, text=True, timeout=30, cwd=str(repo),
+            )
+END-SITE3F
+
+BEGIN-SITE3T
+            proc2 = run_guarded_test_command(
+                [_sys.executable, "-m", "pytest", str(test_path), "-x", "-q",
+                 "--tb=short", "--no-header"],
+                timeout_sec=30, cwd=str(repo),
+            )
+END-SITE3T
 
 BEGIN-PLANF
-## Current Step
-R24, this round: record the R23 PASS and open T002b. `exec_guard` gains the shared
-test-class seam — an explicit environment allowlist, a policy factory and a
-`subprocess.run`-shaped runner — and `test_runner.run_tests_local`, the most
-load-bearing of the twelve `test`-class sites, becomes its first caller. Its mocked
-call sites move onto the new seam and one real pytest run proves a well-behaved
-command still works through it.
-
-## Next Steps
-1. T002b continued — the remaining `test`-class sites, including
-   `test_execution_service.py`'s `Popen`, which takes the child half via
-   `plan_child_spawn` rather than the runner, and which carries R-0202.
-2. T002c-d — the two DoD sites and the five runtime sites, whose policy differs:
-   no wall timeout, because their children are the long-lived harness.
-3. T003 — network posture, the honest limitations document, the README link. Then
-   the integration gate, then closure.
-END-PLANF
-
-BEGIN-PLANT
 ## Current Step
 R25, this round: record the R24 PASS, register R-0516 — a stale claim the R24
 block left standing in a file it was itself editing — and retire that claim in the
@@ -287,6 +287,23 @@ a blocker.
 ## Next Steps
 1. T002b continued — the remaining `test`-class sites, starting with the three in
    `autorun.py`, which share the migrated shape exactly, and ending with
+   `test_execution_service.py`'s `Popen`, which takes the child half via
+   `plan_child_spawn` rather than the runner and which carries R-0202.
+2. T002c-d — the two DoD sites and the five runtime sites, whose policy differs:
+   no wall timeout, because their children are the long-lived harness.
+3. T003 — network posture, the honest limitations document, the README link. Then
+   the integration gate, then closure.
+END-PLANF
+
+BEGIN-PLANT
+## Current Step
+R26, this round: record the R25 PASS and continue T002b by moving `autorun.py`'s
+three `test`-class sites onto `run_guarded_test_command`. Every one of them reads
+only `returncode`, so the seam's bytes streams change nothing they observe, and
+real children already drive both fixture paths in the suite the round gate re-runs.
+
+## Next Steps
+1. T002b continued — the `test`-class sites still on a bare spawn, ending with
    `test_execution_service.py`'s `Popen`, which takes the child half via
    `plan_child_spawn` rather than the runner and which carries R-0202.
 2. T002c-d — the two DoD sites and the five runtime sites, whose policy differs:
