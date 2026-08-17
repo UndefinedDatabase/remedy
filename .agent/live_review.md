@@ -2670,3 +2670,101 @@ measured that way and states both of its numbers. R45 owes the counter-measure D
 stated budget for a record slice, alongside the checklist item 16 widening R-0537 named and
 did not perform. Neither is in the checklist at f3e9687a and this entry does not claim
 otherwise.
+
+Gate: R45 — the R44 entry. R44 PASSED. Every ordered gate G1-G9 was re-executed by the reviewer
+over f3e9687a..981d08d0, not read, and each reproduces the handback's reading exactly; the full
+numbers live in the handback at 981d08d0 and are not restated here. LINE COUNTS ARE
+`splitlines` COUNTS. What the re-run establishes: transport proved disk-to-disk against the
+reviewer's own `.remedy-wt/f085-r44.md` with no digest fallback, all copies equal at sha256
+d8bf11c9…, 30615 B, 516 lines; both C1 appends held their prefix-plus-blank-plus-slice shape
+with 0 marker LINES reaching either file; both edited `.py` files reconstruct byte-identically
+from their base blobs under the ordered slice application; the suites re-ran in the primary
+checkout at exit 0, `190 passed` against a base of 186 with each of the four new test names
+collected exactly once and the canary `42 passed` against 42; the arithmetic held still at
+153 / 27 / 0 and 126 open at both SHAs, all three symmetric differences EMPTY.
+
+THE ONE RED CLAUSE WAS REPORTED AS RED, WHICH IS WHY THIS IS A PASS. C0a carries 516
+insertions against the AGENTS.md 500-line cap, and R44's handback declared it under the
+AGENTS.md exception with an inseparability reason rather than reporting the clause green.
+Clause (b) reproduces under independent measurement at 981d08d0: walking all 268 commits of
+`main..981d08d0` gives exactly one over 500 — d4473f85 at 516 — the next largest at 454 and
+four at 400. The allowance is spent for F085, and DEC6, landed by this same commit, is the
+counter-measure so that it is never needed again.
+
+EIGHT REGISTRATIONS, ALL OWED BEFORE THIS ROUND AND ALL RE-MEASURED AT 981d08d0. Three were
+declared by R43's worker and deferred by RECORD12; five come from R44's handback, four of them
+defects in the R44 block, which is the reviewer's own text.
+
+- R-0539 — Low, A RANGE READING WAS QUALIFIED WITH A SINGLE COMMIT. RECORD11, applied at
+007f18df, states "the path set at 7c4a2583 is exactly the five ordered paths". Measured at
+981d08d0: `git show --name-only 7c4a2583` returns exactly one path, `.agent/plan.md`; the
+five-path set is a property of the RANGE 0e2cdacd..4c7bcb3a. The mis-scoped-qualifier class
+R-0534 opened and R-0538 recorded recurring, arriving through the RANGE side checklist item 22
+governs. Declared by R43's worker and registered here per checklist item 20.
+
+- R-0540 — Low, A COUNT WAS REPORTED WITHOUT THE FILE IT WAS COUNTED IN. RECORD11, applied at
+007f18df, states that lines matching a `## DECISION F085 D<n> —` pattern "number 2 at 0e2cdacd
+against 3 at 4c7bcb3a", and names no path. Measured at 981d08d0: in `.agent/live_review.md`,
+the file that sentence sits in, the count is 0 at both SHAs; in `.agent/decisions.md` it is 2
+and 3. The numbers are right and their owner is missing, so a reader who resolves the string to
+the file holding it reads a false sentence. Declared by R43's worker.
+
+- R-0541 — Low, A FINDING'S ENUMERATION OF ANOTHER TEXT'S NUMERALS WAS INCOMPLETE. R-0537,
+applied at f3e9687a, states that the R41 block's numerals "of that family are the 50-line and
+60-line caps it quotes as standing rules and the 45 and 69 that RECORD9 reports as READINGS".
+Measured at 981d08d0 against `.agent/authored/f085-r41.md` as committed at 9cc4772c: that file
+contains "500-line cap" twice, quoting the AGENTS.md commit cap, and neither occurrence appears
+in R-0537's list. The conclusion survives, since neither omitted numeral is a prediction; the
+enumeration fails, inside a finding whose subject is a defective enumeration. Declared by R43's
+worker.
+
+- R-0542 — Medium, A DECISION DESCRIBED THE BLOCK IT SHIPPED WITH AND THE BLOCK DID OTHERWISE.
+DECISION F085 D5, applied at da47ee40, closes "The R44 block is the first measured under this
+counting and declares both of its numbers in its own constraints". Measured at 981d08d0 against
+`.agent/authored/f085-r44.md` as committed at d4473f85: constraint 10 of that block declines to
+state them — "the worker measures them from the committed `.agent/authored/f085-r44.md` rather
+than taking them from here" — and neither 239 nor 516 occurs anywhere in the block's prose.
+This is checklist item 11's R-0527 shape one level out: item 11 forbids a BLOCK constraint
+asserting a property its own slice lacks, and here a SLICE asserts a property its own block
+lacks. DEC6 carries the counter-measure; R45's constraint 9 is the first text written under it.
+Declared by R44's worker as deviation 2.
+
+- R-0543 — Low, A PLAN SENTENCE COUNTED THE TESTS ITS OWN ROUND SHIPPED AND COUNTED THEM WRONG.
+PLANT13, applied at 91ad51ae, says R44 applies DECISION F085 D4 "with five tests". Measured at
+981d08d0: `def test_` in `tests/orchestration/test_ci_run.py` goes from 10 at f3e9687a to 14,
+so C2 added four, and the R44 block's own goal line says "four tests". The slice was applied
+byte-verbatim and correctly left unrepaired. This is the class R-0537 named and asked the
+checklist to cover; that widening is R46's, having been cut from this block for size, and this
+registration does not claim it has happened. Declared by R44's worker as deviation 3.
+
+- R-0544 — Medium, A BASE READING WAS ORDERED THAT A CONTAINMENT-SHAPED PAIR CANNOT PRODUCE.
+Constraint 2 of the R44 block, committed at d4473f85, asserts that each FROM occurred 1x in its
+target at f3e9687a "and each TO 0x there". Measured at 981d08d0: CIT1 is the single line
+`import subprocess` and CIF1 is that line preceded by `import os`, so CIF1 CONTAINS CIT1 and
+CIT1 reads 1x at f3e9687a, not 0x. A deletion-shaped rewrite whose TO is a subset of its FROM
+has the unattainable-count property checklist items 4 and 15 establish for an APPEND, and both
+are written only about the TO-contains-FROM direction. Nothing broke, since every FROM read
+exactly 1x, but the block ordered a number no honest run could produce. The counter-measure is
+to order no base reading of a TO at all, which R45's constraint 2 is the first block to do.
+Declared by R44's worker as deviation 4.
+
+- R-0545 — Medium, AN ORDERED-EQUALITY GATE ASSUMED A COMMIT DOES ONE THING TO A FILE. Gate G4
+of the R44 block, committed at d4473f85, orders the R-0531 code-append proof as "the pre-commit
+blob is a byte-exact PREFIX of the post-commit file". Measured at 981d08d0: for
+`tests/orchestration/test_ci_run.py` that clause is FALSE and cannot be true, since the same
+commit both REWRITES the file's import block and APPENDS to its end. The meetable form holds
+and was measured by worker and reviewer alike: the base blob with TIMPF→TIMPT applied, 4206 B,
+IS a byte-exact prefix of the 6317 B post-commit file, the remainder being exactly TESTS. §4.9
+carries the same assumption; this finding does not amend it, it records that the PREFIX half
+must name the intermediate text whenever a commit edits above its own append, which G4 of this
+round is the first gate to do. Declared by R44's worker as deviation 5.
+
+- R-0546 — Medium, LIFTING ONE CAP LEFT THE ROUND STANDING ON ANOTHER. DECISION F085 D5,
+applied at da47ee40, rules that the 400-line block cap counts a block's PROSE and that slices
+are counted but not capped, its CHOSEN paragraph naming "a commit under 500 insertions" among
+the caps that stand untouched. Measured at 981d08d0: the very block D5 was written for measures
+516 lines, and C0a saves it as a NEW file where insertions equal lines, so D5's first
+application forced the branch to spend its single AGENTS.md declared-oversize allowance. Both
+rules were correctly stated and never measured against each other. What earns it an id is that
+the collision was derivable at emission from numbers already in the block. DEC6, landed by this
+same commit, is the counter-measure. Found by the reviewer at this gate.

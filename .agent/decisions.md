@@ -5864,3 +5864,47 @@ judgement for one half of the block. R45 owes the counter-measure: a stated budg
 RECORD slice, which is the slice class that grew, alongside the checklist item 16 widening
 R-0537 named. The R44 block is the first measured under this counting and declares both of its
 numbers in its own constraints.
+
+## DECISION F085 D6 — a block is budgeted at 480 lines TOTAL, because the commit that saves it is capped at 500 insertions (2026-08-17)
+
+Ruled by the reviewer at the R45 gate under docs/agents/planner_reviewer_prompt.md §4 item 7.
+Reverse it by deleting this section; D5's 400-line PROSE cap then stands alone and the total
+is again unbudgeted. This decision AMENDS nothing in AGENTS.md and weakens nothing there: the
+500-insertion commit cap is untouched and remains the higher authority.
+
+THE PROBLEM IS MEASURED, and it is finding R-0546. DECISION F085 D5 lifted the 400-line cap off
+a block's authored SLICES so a round could carry code again, and its CHOSEN paragraph left "a
+commit under 500 insertions" standing; the two sentences are individually correct and were
+never read against each other. A block is saved by C0a as a NEW file under `.agent/authored/`,
+where insertions EQUAL lines, and DECISION F105 D5 rules that path counts normally rather than
+claiming the `.agent/**` single-artifact exemption. The commit cap has therefore always been a
+hard ceiling on a block's TOTAL size, and D5's first application produced a 516-line block that
+spent the branch's one AGENTS.md declared-oversize allowance — measured at 981d08d0, exactly
+one of the 268 commits on this branch exceeds 500.
+
+CHOSEN: a block is budgeted at 490 lines TOTAL and its PROSE stays capped at 400 by D5. The ten
+lines of margin are not an estimate of anything — C0b's insertions are bounded above by the
+block's own line count, so the mirror needs no allowance — they exist because a reviewer's
+hand-shaped artifact must not sit within a rounding error of a hard repository cap that no
+downstream actor can relax. Both numbers are MEASURED at emission and stated in the block's
+constraints, and the worker re-measures both from the committed file and reports them; the
+disagreement between those two readings is what makes drift visible, and stating only one of
+them is what produced R-0542. A RECORD SLICE IS BUDGETED AT 140 LINES — the counter-measure D5
+named as owed and did not supply. The record is the slice class that actually grew and the one
+whose growth is least visible, a gate entry having no natural stopping point. A round whose
+record would exceed 140 lines splits the registrations into their own round rather than
+deferring them, which is what R43 and R44 each did under pressure from the wrong cap.
+
+ALTERNATIVES CONSIDERED AND REJECTED: splitting C0a across two commits, for the reason R44's
+handback gave — it puts a truncated block on disk at an intermediate commit while constraint 1
+makes those exact bytes the source every slice is extracted from; claiming the `.agent/**`
+single-artifact exemption for `.agent/authored/`, because DECISION F105 D5 rules that path
+counts normally and this decision may not reverse another feature's ruling; raising the
+AGENTS.md 500-insertion cap, because AGENTS.md is the highest authority and §4 item 7 routes a
+wrong FEATURE spec to planning, never a repository rule to the reviewer.
+
+CONSEQUENCE. 490 against 400 leaves at most 90 lines of slice in a block whose prose runs to
+the cap, which is not enough for a migration; that is intentional, since it prices prose
+against product at emission, where the reviewer can still shorten the prose, rather than at
+commit time, where nobody can. The R45 block ran over this budget in draft and was cut to fit
+before emission, dropping a checklist edit to R46, which is the rule working as intended.
