@@ -571,3 +571,80 @@ def run_guarded_test_command(
         except (KeyError, ValueError, TypeError):
             returncode = -1
     return subprocess.CompletedProcess(list(cmd), returncode, guarded.stdout, guarded.stderr)
+
+
+# ---------------------------------------------------------------------------
+# The `dod-process` seam (F085 T002c) — the DoD's own bounded checks, which
+# KEEP their wall timeout: a DoD check is a check, never a service.
+# ---------------------------------------------------------------------------
+
+
+#: WHY: the environment a `dod-process` command may inherit, and its per-stream cap.
+#: The MEMBERS are the `test`-class values and the NAMES are deliberately separate:
+#: T2_F085's policy table rules `test` and `dod-process` as two rows, so widening one
+#: row stays a one-line edit here instead of silently widening the other. The cap MUST
+#: stay strictly ABOVE `dod_runners.MAX_OUTPUT_TAIL_CHARS` for the reason
+#: `TEST_COMMAND_OUTPUT_CAP_BYTES` states about `test_runner`: the caller tails the
+#: output itself and publishes `output_truncated` from that measurement.
+DOD_PROCESS_ENV_ALLOWLIST: tuple[str, ...] = TEST_COMMAND_ENV_ALLOWLIST
+DOD_PROCESS_OUTPUT_CAP_BYTES: int = TEST_COMMAND_OUTPUT_CAP_BYTES
+
+
+def dod_process_exec_policy(timeout_sec: float, cwd: str | None) -> ExecGuardPolicy:
+    """The stage-1 policy every `dod-process` check runs under.
+
+    A DoD check is BOUNDED — pytest, a linter, a build, a project's own command —
+    so it KEEPS a wall timeout, which is what separates this class from `dod-app`
+    in T2_F085's policy table. `cpu_seconds`, `address_space_bytes` and
+    `open_files` are None for the reasons
+    `managed_builder_execution._builder_exec_policy` already settled for the
+    builder class, not restated here so the two cannot drift apart.
+
+    `env=None` is deliberate and is the gap this seam closes: the call site it
+    replaces passed `os.environ.copy()`, which handed a project-authored command
+    the WHOLE parent environment. With `env=None` and an allowlist,
+    `plan_child_spawn` builds the child environment from `os.environ` keeping only
+    allowlisted keys, and `FORBIDDEN_ENV_KEYS` remains the floor beneath it.
+    """
+    return ExecGuardPolicy(
+        wall_timeout_seconds=float(timeout_sec),
+        output_cap_bytes=DOD_PROCESS_OUTPUT_CAP_BYTES,
+        cwd=cwd,
+        core_file_bytes=0,
+        env=None,
+        env_allowlist=DOD_PROCESS_ENV_ALLOWLIST,
+    )
+
+
+def run_guarded_dod_process_command(
+    cmd: Sequence[str],
+    *,
+    timeout_sec: float,
+    cwd: str | None,
+) -> subprocess.CompletedProcess[bytes]:
+    """Run one `dod-process` check under the guard, shaped like `subprocess.run`.
+
+    The same three translations `run_guarded_test_command` performs, and for the
+    same reason — a migrated call site keeps the result and exception shapes it
+    already handled: a wall trip is raised as `subprocess.TimeoutExpired` CARRYING
+    the partial streams the guard is holding, a signal death comes back as a
+    NEGATIVE returncode, and `FileNotFoundError` is left to propagate, because it
+    means the executable does not exist rather than that a run misbehaved.
+
+    WHY the translation is duplicated here rather than shared: two callers are not
+    yet a pattern, and the third is known — `runtime-build` at T002d, whose sites
+    are `subprocess.run` calls carrying a `timeout=` of their own. That round
+    extracts this, with three uses to show which parts are really common.
+    """
+    guarded = run_guarded(cmd, dod_process_exec_policy(timeout_sec, cwd))
+    if guarded.tripped_limit == "wall_timeout":
+        raise subprocess.TimeoutExpired(
+            list(cmd), timeout_sec, output=guarded.stdout, stderr=guarded.stderr
+        )
+    returncode = guarded.returncode
+    if returncode is None:
+        try:
+            returncode = -int(signal.Signals[guarded.term_signal].value)
+        except (KeyError, ValueError, TypeError):
+            returncode = -1
+    return subprocess.CompletedProcess(list(cmd), returncode, guarded.stdout, guarded.stderr)
