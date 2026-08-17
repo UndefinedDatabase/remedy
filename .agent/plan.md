@@ -18,9 +18,10 @@ reaches a child, and the limitations document exists and is linked from the
 README.
 
 ## Current Step
-R49, this round: record the R48 PASS, register R-0550 and R-0551, and amend the F085 feature
-file so the `dod` class carries the two policies its two sites actually need. A planning
-correction that unblocks T002c rather than implementing it. No source file changes this round.
+R50, this round: record the R49 PASS, register R-0552 and R-0553, and amend the F085 feature
+file so the `runtime` class carries the two policies its sites actually need — the same
+correction D7 made for `dod`, applied to the row D7 left standing. A planning correction; no
+source file changes this round, and T002c is built at R51.
 
 ## Next Steps
 1. T002c — `_run_process_check` in `packages/orchestration/dod_runners.py` onto the guard seam
@@ -28,7 +29,8 @@ correction that unblocks T002c rather than implementing it. No source file chang
    closes is `env=os.environ.copy()`, which hands the child the whole parent environment.
 2. T002c — `_run_app_once` in that same module under the dod-app policy: no wall timeout and
    network allowed, because it starts the app harness and probes it over HTTP.
-3. T002d — the five runtime sites. Then T003, the integration gate, then closure.
+3. T002d — the runtime sites under DECISION F085 D8: `runtime-server` takes no wall timeout,
+   `runtime-build` keeps the one it already has. Then T003, the integration gate, then closure.
 
 ## Risks
 - An allowlist bounds what the PARENT hands over, never what the child's runtime
