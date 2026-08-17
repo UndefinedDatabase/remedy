@@ -18,16 +18,17 @@ reaches a child, and the limitations document exists and is linked from the
 README.
 
 ## Current Step
-R23, this round: record the R22 PASS, register R-0514 and R-0515 — both defects of
-the reviewer's own block rather than of any code R22 wrote — and promote both
-counter-measures into the pre-emission checklist, where a rule binds and finding
-prose does not. A paydown round with no production code; the session's declared
-round cap of three is reached here, not a blocker.
+R24, this round: record the R23 PASS and open T002b. `exec_guard` gains the shared
+test-class seam — an explicit environment allowlist, a policy factory and a
+`subprocess.run`-shaped runner — and `test_runner.run_tests_local`, the most
+load-bearing of the twelve `test`-class sites, becomes its first caller. Its mocked
+call sites move onto the new seam and one real pytest run proves a well-behaved
+command still works through it.
 
 ## Next Steps
-1. T002b — the twelve `test`-class sites, in ten modules, with behaviour-equality
-   goldens and the environment-allowlist test that carries R-0202. It is the largest
-   remaining slice and will not fit one round.
+1. T002b continued — the remaining `test`-class sites, including
+   `test_execution_service.py`'s `Popen`, which takes the child half via
+   `plan_child_spawn` rather than the runner, and which carries R-0202.
 2. T002c-d — the two DoD sites and the five runtime sites, whose policy differs:
    no wall timeout, because their children are the long-lived harness.
 3. T003 — network posture, the honest limitations document, the README link. Then
