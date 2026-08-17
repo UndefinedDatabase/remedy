@@ -18,17 +18,16 @@ reaches a child, and the limitations document exists and is linked from the
 README.
 
 ## Current Step
-R45, this round: record the R44 PASS, register R-0539 through R-0546, rule DECISION F085 D6 on
-the block budget, and migrate `packages/orchestration/builder_bridge.py` onto the stage-1 guard
-as the last `test`-class site. T002b closes with this round.
+R47, this round: record the R46 PASS, register R-0548 for the plan-path defect R46's handback
+declared, and promote two counter-measures into the §3 pre-emission checklist — item 16 widened
+past headings, and a new item 23 carrying the plan-path rule R-0377 and R-0491 state only as
+finding prose. No source file changes this round.
 
 ## Next Steps
-1. R46 — the checklist item 16 widening R-0537 and R-0543 both name, cut from R45 for size,
-   then T002c: the two DoD sites in `packages/orchestration/dod_runners.py`, whose policy
-   differs from the `test` class in taking no wall timeout, because their children are the
-   long-lived harness rather than a bounded suite run.
-2. T002c-d — the two DoD sites and the five runtime sites, whose policy differs:
-   no wall timeout, because their children are the long-lived harness.
+1. T002c — the two DoD sites in `packages/orchestration/dod_runners.py`, whose policy differs
+   from the `test` class in taking no wall timeout, because their children are the long-lived
+   harness rather than a bounded suite run.
+2. T002d — the five runtime sites, under that same no-wall-timeout policy.
 3. T003 — network posture, the honest limitations document, the README link. Then
    the integration gate, then closure.
 
