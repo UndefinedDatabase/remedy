@@ -18,21 +18,18 @@ reaches a child, and the limitations document exists and is linked from the
 README.
 
 ## Current Step
-R43, this round: record the R42 PASS and register R-0537 and R-0538, both defects in
-R-0536's own text. A RECORD round by measurement, not by choice: the `ci_run.py` migration
-is authored, dry-run and red-controlled, but its block measured 487 lines against the
-400-line cap of DECISION F105 D5, so R44 applies it.
+R44, this round: record the R43 PASS and apply DECISION F085 D4 to
+`packages/orchestration/ci_run.py` with five tests. The three findings R43's worker declared
+are stated in the record and take ids at R45; the block cap took the half already safe on
+disk rather than deferring the code a third time.
 
 ## Next Steps
-1. T002b remainder — the two `test`-class sites still on a bare spawn. At c3201976 BOTH
-   overlay one variable onto a copy of `os.environ`, so both were blocked on the same
-   missing capability rather than `builder_bridge.py` alone: `ci_run.py` sets the
-   per-stage pytest budget, `builder_bridge.py` sets `PYTHONDONTWRITEBYTECODE`. R38's
-   `extra_env` overlay unblocks both (DECISION F085 D3). `ci_run.py` goes first and its
-   design is ruled in DECISION F085 D4: capture and re-emit the stage output, set the
-   guard's wall ABOVE the child's own budget as a backstop, and carry that budget through
-   `extra_env`. R44 applies it, then `builder_bridge.py` as the last site of this
-   sub-slice. One or two per order, never as one group.
+1. R45 — register the three findings RECORD12 states as owed, then migrate
+   `packages/orchestration/builder_bridge.py`, the last `test`-class site on a bare spawn,
+   which at c3201976 overlays `PYTHONDONTWRITEBYTECODE` onto a copy of `os.environ` and is
+   unblocked by the same `extra_env` overlay `ci_run.py` needed (DECISION F085 D3). R45 also
+   owes two checklist promotions this branch has measured and not made: widening item 16 to
+   any sentence that counts what follows it, and a stated budget for a record slice.
 2. T002c-d — the two DoD sites and the five runtime sites, whose policy differs:
    no wall timeout, because their children are the long-lived harness.
 3. T003 — network posture, the honest limitations document, the README link. Then
