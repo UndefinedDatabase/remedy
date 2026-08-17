@@ -1103,3 +1103,27 @@ BEFORE `SIGXCPU`, so a deadline set far above the CPU limit never fires on the
 healthy path and never steals the `cpu_seconds` attribution, while a regressed path
 is killed at the deadline and reports `wall_timeout` — a named failure instead of a
 hang. OPEN.
+
+Done: R-0512 — resolved. The counter-measure is in force in this round's own block
+rather than promised for a later one: G3 and G10 both name the reading as the FIRST
+COLUMN of `git show --numstat` and both say explicitly that the churn total
+`git show --stat` prints is not the reading, and the Done-when clause requires every
+insertion count in the handoff to agree with the changed-files table beside it. The
+R21 handoff itself is history and is not rewritten — editing a past handback would
+destroy the record the finding is evidence of, and AGENTS.md rewrites that file per
+round rather than amending it. What changes is that the ambiguity can no longer be
+reached from a block's own wording.
+
+Done: R-0513 — resolved.
+`test_cpu_limit_kills_a_busy_loop_and_names_the_limit` now carries
+`wall_timeout_seconds=30.0`, thirty times the CPU limit it is testing, so the
+deadline cannot fire on the healthy path. Every existing assertion survives
+unchanged, and `tripped_limit == "cpu_seconds"` is now doing double duty: it is
+still the property the test is named for, and it is also the proof that the backstop
+did not steal the attribution — which it could only do if the deadline fired first,
+because `run_guarded` checks `deadline_fired` before `SIGXCPU`. The regression the
+finding describes now ends in a named failure inside the deadline instead of an
+unbounded hang, and because the guard's `finally` is reached, the group kill sweeps
+the busy loop rather than leaving it orphaned. This round's G7 probe b exercised that
+path directly: with the rlimit suppressed, the node fails and names `wall_timeout`
+within the external timeout rather than stalling the run.
