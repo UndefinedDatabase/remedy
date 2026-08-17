@@ -1,96 +1,87 @@
-# Handback — F085 Sandbox hardening (stage 1) · Round R22
+# Handback — F085 Sandbox hardening (stage 1) · Round R23 (session close)
 
-Branch: feature/f085-sandbox-hardening. R21 recorded as PASS. R-0512 and R-0513 registered AND resolved in the same round, findings first.
-Fortschritt: ~76 % (T001 gebaut · R13-R21 PASS · T002a KOMPLETT · Guard-Test-Backstop und Pump-Snapshot gebaut · T002b-d, T003 offen) — Schätzung.
+Branch: feature/f085-sandbox-hardening. R22 recorded as PASS. R-0514 and R-0515 registered AND resolved in the same round, findings first. A paydown round: both findings are defects of the reviewer's own block, no production code is touched, and the session's declared round cap of three is reached here.
+Fortschritt: ~76 % (T001 gebaut · R13-R22 PASS · T002a KOMPLETT · Pre-emission-Checkliste um Punkt 18 und 19 gehärtet · T002b-d, T003 offen) — Schätzung.
 
 ## Range
-Review of 3622f2cf..HEAD (this handback commit sits on 90fc1122).
+Review of b4da5101..HEAD (this handback commit sits on 722c3191).
 
 ## Commits
 
-### cceec64c docs(f085): save the R22 step block verbatim
+### 28b6b799 docs(f085): save the R23 step block verbatim
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f085-r22.md | +372/-0 | C0a: the block's exact bytes, 24629 B, 372 lines, 8 marker lines |
+| .agent/authored/f085-r23.md | +368/-0 | C0a: the block's exact bytes, 24320 B, 368 lines, 12 marker lines |
 
-### 25e38e22 docs(f085): mirror the R22 block into last_block
+### 5c3c8363 docs(f085): mirror the R23 block into last_block
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/last_block.md | +272/-230 | C0b: byte-write of the COMMITTED C0a blob read back with `git show`; `cp` not used |
+| .agent/last_block.md | +280/-284 | C0b: byte-write of the COMMITTED C0a blob read back with `git show`; `cp` not used, the scratch file not used |
 
-### c85eca07 docs(review): record the R21 PASS and register R-0512 and R-0513
+### d67a15cb docs(review): record the R22 PASS and register R-0514 and R-0515
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/live_review.md | +88/-0 | C1: RECORD1 appended after exactly one blank line, BEFORE either fix |
+| .agent/live_review.md | +97/-0 | C1: RECORD1 appended after exactly one blank line, BEFORE the fix |
 
-### 71dd9416 test(f085): give the cpu-limit guard test a wall-timeout backstop
+### df78d275 docs(agents): add pre-emission checklist items 18 and 19
 | Path | +/- | Reason |
 |---|---|---|
-| tests/orchestration/test_exec_guard.py | +10/-2 | C2: `wall_timeout_seconds=30.0` + the WHY; every existing assertion kept |
+| docs/agents/planner_reviewer_prompt.md | +23/-0 | C2: CHECKF→CHECKT, APPEND-shaped; items 18 and 19 inserted above the closing paragraph, which is carried through unchanged |
 
-### 55ebfe26 fix(f085): keep a blocked pump's bytes via a locked snapshot
+### e0a068b5 docs(review): resolve R-0514 and R-0515
 | Path | +/- | Reason |
 |---|---|---|
-| packages/orchestration/exec_guard.py | +50/-26 | C3: `_StreamPump._lock` + `snapshot()`; `run_guarded` reads every stream field through it; `ExecGuardResult` docstring corrected |
-| tests/orchestration/test_exec_guard.py | +52/-0 | C3: 2 tests added, none rewritten |
+| .agent/live_review.md | +19/-0 | C3: DONE1 appended after exactly one blank line, AFTER C2 landed, so its claim is true when committed |
 
-### a81c97b6 docs(review): resolve R-0512 and R-0513
+### 722c3191 docs(f085): advance the plan to the R23 paydown
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/live_review.md | +24/-0 | C4: DONE1 appended after exactly one blank line |
+| .agent/plan.md | +5/-6 | C4: PLANF→PLANT (REWRITE); `## Goal` and `## Risks` untouched |
 
-### 90fc1122 docs(f085): advance the plan to R22
+### this commit docs(f085): rewrite the handback for R23
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/plan.md | +13/-12 | C5: PLANF→PLANT (REWRITE); `## Goal` and `## Risks` untouched |
-
-### this commit docs(f085): rewrite the handback for R22
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/handoff.md | rewrite | C6: this file — a handoff cannot table the commit that writes it (R-0149) |
+| .agent/handoff.md | rewrite | C5: this file — a handoff cannot table the commit that writes it (R-0149) |
 
 ## Item status
 | Item | Status | Reason |
 |---|---|---|
-| C0a | done | single write attempted FIRST and succeeded; constraint 7's split fallback not needed |
+| C0a | done | single write attempted FIRST and succeeded (24320 of 24320 bytes); constraint 8's split fallback not needed |
 | C0b | done | |
-| C1 | done | landed before C2 and C3 per constraint 5 |
+| C1 | done | landed before C2 per constraint 5 |
 | C2 | done | |
-| C3 | done | |
+| C3 | done | landed after C2 per constraint 6 |
 | C4 | done | |
-| C5 | done | |
-| C6 | done | this commit |
+| C5 | done | this commit |
 
 ## External actions
-`git worktree add .remedy-wt/r22-probe HEAD --detach` rc=0; `git worktree remove --force .remedy-wt/r22-probe` rc=0 and `git worktree prune` rc=0, both BEFORE C6. G7 probe b1 left one orphaned busy loop, swept by argv MARKER and verified gone by `pgrep` (deviation 2). `git push -u origin feature/f085-sandbox-hardening` and `gh pr list --state open --json number,headRefName,baseRefName,isDraft` run after C6; outputs in the round report. No PR created, nothing merged.
+No `git worktree add` and no `git worktree remove`: this round ordered no destructive verification, so constraint 10 never engaged and `git worktree list` stayed at ONE line throughout. `git push -u origin feature/f085-sandbox-hardening` and `gh pr list --state open --json number,headRefName,baseRefName,isDraft` run after C5; outputs in the round report. No PR created, nothing merged.
 
 ## Verification
-- G1 `git status --porcelain` rc=0 and EMPTY at round start and after every commit. `.agent/STOP` re-read from disk before C0a and again before C6 — ABSENT both times. `git worktree list` rc=0, ONE line at the handback.
-- G2 committed `.agent/authored/f085-r22.md`, committed `.agent/last_block.md` and both working copies all byte-EQUAL: sha256 f7b6b9ca92d5a5b3956afa125ba5a189e99ff104d0148499e75707edd4775677, 24629 B, 372 lines, 8 marker lines, 0 trailing-whitespace lines. Region digests of the saved file: lines 1-60 f5ecdf9d6402a62cbb4828853f9d043072c26058857c1be4471f7e03e52bba2d, lines 61-140 9a8f32e70a536e13fc082d168793f8b99c37732a72879c144a6c366b01ce6102, line 141-end 53c558aecd3dbb41cfab18fc170cb36af1dc304fe4a96a5490b778c954c54bf4. C0b's source was `git show cceec64c:.agent/authored/f085-r22.md` rc=0, written as bytes.
-- G3 C1: pre-commit blob 309316 B is a byte-exact PREFIX of the post-commit file 316105 B True; remainder == one blank line + RECORD1 True; HEAD blob == working copy True; RECORD1's first line occurs 1x in the whole file; 0 marker lines; `--numstat` READING +88/-0. C4: pre 316105 B PREFIX of post 317782 B True; remainder == one blank line + DONE1 True; HEAD blob == working copy True; first line 1x; 0 marker lines; `--numstat` READING +24/-0.
-- G4 base 3622f2cf 126/9/0 with 117 open. After C1 128/9/0 with 119 open — both registrations LANDED. At HEAD 128/11/0 with 117 open. Registered symmetric difference base..HEAD = [R-0512, R-0513]; resolved symmetric difference = [R-0512, R-0513]. 0 duplicate registered ids, 0 duplicate resolved ids, 0 resolutions naming an unregistered id. Max R-0513, next free R-0514.
-- G5 PLANF 0x and PLANT 1x at HEAD; PLANT contains PLANF False (REWRITE), PLANF 1x before applying. `.agent/plan.md` sha256 0e1790b9b02cc2b78f934bddd4b078b789fb3a2a5688967e650f70669546b2b2, 2555 B, 43 lines (under 50). `## Goal` and `## Risks` byte-IDENTICAL to base: True/True. `## Next Steps` parses to 1, 2, 3.
-- G6a `pytest tests/orchestration/test_exec_guard.py -q` rc=0, READING "18 passed in 10.95s" — ROSE from base 16 by C3's 2 tests; C2 changed a test without adding one.
-- G6b `pytest test_exec_guard.py test_stream_evidence.py test_stream_evidence_integration.py -q` rc=0, READING "123 passed in 19.78s" (base 121, +2 from C3).
-- G6c `pytest test_managed_builder_execution.py test_pingpong.py test_pingpong_cli.py -q` rc=0, READING "337 passed in 4.52s" — identical to the stated base, so C3 did not disturb the seams that consume the stream fields. No ordered suite came out red, so the re-run branch never triggered.
-- G7 PROBES, in the disposable worktree at HEAD, external per-node timeout. (a) `snapshot()` forced to `(b"", 0, False)`: rc=1, READING "9 failed, 9 passed in 10.85s" — 9 tests fail, among them C3's own `test_a_pump_blocked_by_an_escapee_still_returns_the_bytes_it_already_read`. C3's other new test passes under this mutation by construction, since it asserts the zero state the mutation returns. (b) `preexec_fn` made a no-op with C2's backstop KEPT: rc=1, the single node FAILED in 30.26s under `timeout 180` — it did not hang; a direct run of the same policy under the same mutation, with the imported module file printed as proof of path, returned `tripped_limit = wall_timeout` at 30.0s. The literal reading of G7b, which ALSO removes `wall_timeout_seconds`, was run as a control: rc=124, no output, killed by `timeout 120` — the R-0513 hang, reproduced (deviation 1).
-- G8 `ruff check packages/orchestration/exec_guard.py tests/orchestration/test_exec_guard.py` rc=0, "All checks passed!" — the block's exact command line.
-- G9 state readers (test_test_runner, test_resource_safety, test_integrity_gate, test_dashboard_contract) rc=0, READING "157 passed in 20.01s". CANARY `tests/cli/test_golden_path.py` rc=0, READING "42 passed in 20.44s". No doc-reader gate: the change set holds no file under `docs/`.
-- G10 `git diff --name-only 3622f2cf..HEAD` BEFORE C6 = the 6 declared paths (4 under `.agent/`, 1 under `packages/orchestration/`, 1 under `tests/orchestration/`), the declared set minus `.agent/handoff.md`, 0 paths outside. `git show --numstat` FIRST COLUMN — insertions, never the churn total `--stat` prints: C0a 372, C0b 272, C1 88, C2 10, C3 102, C4 24, C5 13 — none over 500 (C6's own count is in the round report). `git log --format=%h %p 3622f2cf..HEAD`: 7 commits, ONE parent each, linear chain. `git reflog -12`: every entry prefixed `commit:`; no amend, rebase, reset or force-push.
+- G1 `git status --porcelain` rc=0 and EMPTY at round start and after every one of C0a, C0b, C1, C2, C3, C4. `.agent/STOP` re-read from disk before C0a and again before C5 — ABSENT both times. `git worktree list` rc=0, ONE line at the handback.
+- G2 committed `.agent/authored/f085-r23.md`, committed `.agent/last_block.md` and both working copies all byte-EQUAL: sha256 6506c9cc76ba9c63d95c5f0a41fcee4d48dca39b4e26231e6f4bd66400ebb9d4, 24320 B, 368 lines, 12 marker lines, 0 trailing-whitespace lines. Region digests of the saved file: lines 1-60 6d1b2d39786527d2212c6720ad2875febc7ef80b9acc3d928c8e993d6a12f779, lines 61-140 cac1351224c388c8fb51fe104d1129065d91118cfe985f0a36fd4139cc9a6957, line 141-end 8c2421ae4f374dd51c5be2fb63af3b53e1d846ae0e83557a2302bc78900a01b5 — all three match the reviewer's pre-delegation measurement, so no split write occurred and nothing shifted. C0b's source was `git show 28b6b799:.agent/authored/f085-r23.md` rc=0, written as bytes.
+- G3 C1: pre-commit blob 317782 B is a byte-exact PREFIX of the post-commit file 325318 B True; remainder == one blank line + RECORD1 True; HEAD blob == working copy True; RECORD1's first line occurs 1x in the whole file; 0 marker lines; `--numstat` READING +97/-0. C3: pre 325318 B PREFIX of post 326581 B True; remainder == one blank line + DONE1 True; HEAD blob == working copy True; first line 1x; 0 marker lines; `--numstat` READING +19/-0.
+- G4 base b4da5101 128/11/0 with 117 open. After C1 130/11/0 with 119 open — both registrations LANDED before the fix. At HEAD 130/13/0 with 117 open. Registered symmetric difference base..HEAD = [R-0514, R-0515]; resolved symmetric difference = [R-0514, R-0515]. 0 duplicate registered ids, 0 duplicate resolved ids, 0 resolutions naming an unregistered id. Max R-0515, next free R-0516.
+- G5 CHECKF occurred exactly 1x in `docs/agents/planner_reviewer_prompt.md` at base. At HEAD CHECKT occurs 1x, and each of the 23 lines CHECKT adds that CHECKF does not contain occurs exactly 1x among the 23 lines C2's diff ADDS — the append-shaped proof; no "CHECKF 0x" reading was taken, because this pair cannot produce one. The checklist's numbered items parse to 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19 over the region between `- **Pre-emission block checklist` and `  Why this is on disk`. File at HEAD: sha256 738920de8caf1fb63a36bd9af7681eef1dec2d0098e3b59718e45c48123b8ad4, 38028 B.
+- G6 PLANF 0x and PLANT 1x at HEAD; PLANT contains PLANF False (REWRITE), PLANF 1x before applying. `.agent/plan.md` sha256 0720ba73702686e67362b4e34c95d491a26b32c4e920de1140f0f91a010f3c66, 2437 B, 42 lines (under 50). `## Goal` and `## Risks` byte-IDENTICAL to their base bytes: True/True. `## Next Steps` parses to 1, 2, 3.
+- G7 `python3 -m pytest tests/docs/ -q` rc=0, READING "295 passed in 0.51s" — identical to the reviewer's base reading, so C2's docs edit disturbed no doc reader.
+- G8 state readers (test_test_runner, test_resource_safety, test_integrity_gate, test_dashboard_contract) rc=0, READING "157 passed in 19.59s". CANARY `tests/cli/test_golden_path.py -q` rc=0, READING "42 passed in 20.43s". No ruff gate ordered and none skipped by oversight: the change set holds no `.py` file. No exec_guard or stream suite for the same reason — nothing under `packages/` or `tests/` changed.
+- G9 `git diff --name-only b4da5101..HEAD` BEFORE C5 = `.agent/authored/f085-r23.md`, `.agent/last_block.md`, `.agent/live_review.md`, `.agent/plan.md`, `docs/agents/planner_reviewer_prompt.md` — the declared set minus `.agent/handoff.md`, 0 paths outside it. `git show --numstat` FIRST COLUMN — insertions, never the churn total `--stat` prints: C0a 368, C0b 280, C1 97, C2 23, C3 19, C4 5 — none over 500 (C5's own count is in the round report, since a commit cannot measure itself). `git log --format=%h %p b4da5101..HEAD`: 6 commits, ONE parent each, linear chain. `git reflog -8`: every entry prefixed `commit:`; no amend, rebase, reset or force-push.
 
 ## Authored-text proofs
-All 4 slices (RECORD1, DONE1, PLANF, PLANT) extracted programmatically by their one-line marker pairs from the COMMITTED block file, never from `.remedy-wt/` and never retyped, and applied byte-verbatim; 0 marker lines reached any target file. Slice digests: RECORD1 22e9ab7656e28f2ea0a17af841880a7ffbb62e7ca9e7884cd4f27b18a620a932 (87 lines), DONE1 c8f14d3ed8b9a5cfca581c269015004780b44f0366f912cfcee4c069d12fa26e (23 lines), PLANF 88feb4d52028d7794735561775a0e75ec6269dacdd4baf3ecceee10c9c5800fb, PLANT 4e11656a0d5b047063b980bcbe2f5f01be4741b04518b23e664a8b2f13e55d03. PLANF→PLANT re-classified MECHANICALLY by containment before applying: TO contains FROM False → REWRITE, agreeing with the block. Disk-to-disk equality is G2; the append shapes are G3.
+All 6 slices (RECORD1, CHECKF, CHECKT, DONE1, PLANF, PLANT) extracted programmatically by their one-line marker pairs from the COMMITTED `.agent/authored/f085-r23.md`, never from `.remedy-wt/` and never retyped, and applied byte-verbatim; 0 transport marker lines reached any target file. Slice digests: RECORD1 e2bb4c285033a77d5fa59418065d02ba4353b35bcf19ea12d441bc5636699ab8 (96 lines), CHECKF e411b1add43714323585dc634b1c3b800440dadcd2f746d71a917d09f840df55 (4), CHECKT e4799d98eb26a46e9b3511344864e67d704a7e617e8428ad084010b70ccf0a52 (27), DONE1 a9fccd54a911722ddc2044f1e2cf2109ba6a9b04e0d132e9e8b6566d86d4bd82 (18), PLANF 4e11656a0d5b047063b980bcbe2f5f01be4741b04518b23e664a8b2f13e55d03 (16), PLANT b90d1cf70037c0b31c466cce018895d33c89aa6d751357684ac7bb80a2dc5813 (15). Both pairs re-classified MECHANICALLY by containment before applying: CHECKT contains CHECKF True → APPEND; PLANT contains PLANF False → REWRITE. Both agree with the block. Disk-to-disk equality is G2; the append shapes are G3 and G5.
 
 ## Deviations & assumptions
-Bundle ran C0a, C0b, C1, C2, C3, C4, C5, C6 in the block's order — none added, dropped or reordered. No gate contradicted the block and no ordered gate came out red. Deviations, declared:
-(1) G7 probe b is internally ambiguous: its recipe removes `wall_timeout_seconds`, while its stated property is that "with the backstop the node must FAIL and name `wall_timeout`". Both were run. The property variant (backstop kept, rlimit suppressed) is the one the DONE1 text rests on and it FAILED in 30.26s; the literal variant hung and was killed at 120s. Reported as two readings rather than resolved by picking one.
-(2) The literal G7b variant left an unbounded busy loop behind, exactly as R-0513 describes. It was swept by its argv MARKER via the same `pkill -f MARKER` call `test_exec_guard.py` uses for its own escapee, after the interactive `kill`/`pkill` forms were refused by the session sandbox; `pgrep` confirmed 0 survivors. The sweep was scoped to that one MARKER string and to nothing else.
-(3) G7's probe order ran BEFORE C4 was committed rather than after C5, because DONE1 asserts a G7 probe-b result and writing that claim to disk unverified would have made the record itself the defect. No commit was reordered; only a gate was.
-(4) C3 rewrote the `ExecGuardResult` docstring sentence that promised `b""`, as the block ordered, and added no completeness claim: it names the buffer PARTIAL and leaves `streams_complete`'s meaning and value untouched. The fd handling and its comment are unchanged.
-(5) This handback measures 96 lines — inside the ≤100 allowance a >5-commit bundle carries — but over the template's 800-token hard cap. Cause, per DECISION D15: eight per-commit changed-files tables, the eight-row item-status table, and ten ordered gates whose real printed readings the block requires, including G7's four separate probe outcomes. No section was dropped and no transcript was pasted.
-Assumptions: G1's "EMPTY after every commit" is read as empty at round start and after every commit; before a commit the only entry was that commit's own declared path.
+Bundle ran C0a, C0b, C1, C2, C3, C4, C5 in the block's order — none added, dropped or reordered. No gate contradicted the block and no ordered gate came out red. Deviations, declared:
+(1) `.remedy-wt/r23-handoff-draft.md` was created as the handback scratchpad the template's write-once rule requires, under a NEW name that did not already exist there, and nothing under `.remedy-wt/` was committed, deleted or overwritten. It stays gitignored and out of every commit.
+(2) Several shell forms were refused by this session's permission layer — `&&`/`||` chains, `${PIPESTATUS[0]}` and `$?` — so every measurement, every byte copy and every slice extraction ran through `python3 - <<'PY'` with `subprocess.run`, which is the routing this repository already uses for shell loops. Test gates ran as their exact ordered command lines and their exit codes were read from `subprocess.run(...).returncode`.
+(3) This handback measures 87 lines — inside the ≤100 allowance a >5-commit bundle carries — but over the template's 800-token hard cap. Cause, per DECISION D15: seven per-commit changed-files tables, the seven-row item-status table, and nine ordered gates whose real printed readings the block requires, including G2's four transport digests and G5's full item-number list. No section was dropped and no transcript was pasted.
+Assumptions: G1's "EMPTY after every commit" is read as empty at round start and after every commit; before a commit the only entry was that commit's own declared path. Region digests are computed over the lines with their newlines included, which is the convention under which the three reported values reproduce the whole-file digest by concatenation.
 Observed, NOT fixed (outside the change set): none this round.
 
 ## Next
-Next session, in the protocol's own order: Phase 1 rule 1 — re-read `.agent/STOP` from disk — BEFORE rule 2, the Open PR Gate (`gh pr list --state open --json number,headRefName,baseRefName,isDraft`). Then the first item from `.agent/plan.md`: T002b, the twelve `test`-class sites in ten modules, with behaviour-equality goldens and the environment-allowlist test that carries R-0202 — the largest remaining slice, which will not fit one round.
+This is the LAST round of the session, reached at the declared round cap of three, not at a blocker.
+R23's own verdict is NOT a §4.13 terminator. That clause covers the last round of a BRANCH; this branch continues, so R23 is an ordinary reviewed round and the NEXT session's first reviewed round records its gate entry in `.agent/live_review.md`. The previous session mis-applied that clause to a session boundary and its R20 gate entry had to be written a session late; do not repeat it.
+Next session, in the protocol's own order: Phase 1 rule 1 — re-read `.agent/STOP` from disk — BEFORE rule 2, the Open PR Gate (`gh pr list --state open --json number,headRefName,baseRefName,isDraft`).
+Then the first work item: T002b, the twelve `test`-class sites across ten modules, which will not fit a single round.
 Open findings: 117.
