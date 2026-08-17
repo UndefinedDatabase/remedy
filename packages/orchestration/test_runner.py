@@ -21,9 +21,12 @@ Execution safety guard:
 
 Safety constraints:
   - No shell=True.
-  - subprocess.run receives an argv list only (from CommandCandidate.argv_list()).
+  - The spawn goes through exec_guard.run_guarded_test_command, which receives an
+    argv list only (from CommandCandidate.argv_list()).
   - cwd is the resolved target_repo path.
-  - Environment: inherits os.environ (no extra vars, no .env reading).
+  - Environment: since F085 T002b the child gets exec_guard's
+    TEST_COMMAND_ENV_ALLOWLIST filtered out of os.environ — no extra vars, no
+    .env reading, and no secret-shaped key.
   - Timeout: default 60 seconds (configurable via timeout_sec argument).
   - Raw stdout/stderr are written to the workspace test_runs/ subdirectory
     and are not returned in any structured field.
@@ -41,6 +44,8 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import TYPE_CHECKING
+
+from packages.orchestration.exec_guard import run_guarded_test_command
 
 if TYPE_CHECKING:
     from packages.core.models import Job
@@ -198,11 +203,13 @@ def run_tests_local(
     exit_code: int | None = None
 
     try:
-        proc = subprocess.run(
+        # Guarded since F085 T002b: rlimits, an env allowlist and the guard's own
+        # deadline replace the bare spawn. The observable outcome is unchanged —
+        # same CompletedProcess with bytes streams, same TimeoutExpired.
+        proc = run_guarded_test_command(
             argv,
+            timeout_sec=timeout_sec,
             cwd=str(repo_root),
-            capture_output=True,
-            timeout=timeout_sec,
         )
         duration_ms = int((time.monotonic() - start) * 1000)
         exit_code = proc.returncode
