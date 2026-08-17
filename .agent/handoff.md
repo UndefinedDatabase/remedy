@@ -1,123 +1,125 @@
-# Handback — F085 Sandbox hardening (stage 1) — R27
+# Handback — F085 Sandbox hardening (stage 1) — R28
 
-Feature F085 · Round R27 · Branch `feature/f085-sandbox-hardening`
-Base 369d94a3 · pre-C3 HEAD 0419ac76 · open findings 118 · next free id R-0518
-Fortschritt: ~80 % (T001 gebaut · R13-R26 PASS · T002a KOMPLETT · T002b: Seam
-gebaut, `test_runner` + `autorun` migriert · T002b Rest, T002c-d, T003 offen) —
-Schätzung.
+Feature F085 · Round R28 · Branch `feature/f085-sandbox-hardening`
+Base 07b1ba25 · pre-C4 HEAD e78c7027 · open findings 118 · next free id R-0519
+Fortschritt: ~85 % (T001 gebaut · R13-R27 PASS · T002a KOMPLETT · T002b: Seam
+gebaut, `test_runner` + `autorun` + `test_execution_service` migriert · T002b
+Restprüfung, T002c-d, T003 offen) — Schätzung.
 
 ## Range
 
-Review of 369d94a3..HEAD — 5 commits: C0a C0b C1 C2 C3.
+Review of 07b1ba25..HEAD — 6 commits: C0a C0b C1 C2 C3 C4.
 
 ## Commits
 
-### 8b1a306e docs(f085): save the R27 step block
+### ebf2c9b3 docs(f085): save the R28 step block — C0a
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f085-r27.md | +229 | R27 block verbatim; 6 markers, 3 pairs |
+| .agent/authored/f085-r28.md | +398/-0 | R28 block verbatim; 26 marker lines, 13 pairs |
 
-### b3c47120 docs(f085): mirror the R27 block into last_block
+### b8ee66ec docs(f085): mirror the R28 block into last_block — C0b
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/last_block.md | +168/-252 | mirrored from the committed blob |
+| .agent/last_block.md | +334/-165 | written from the COMMITTED blob, not the worktree |
 
-### 2962358e docs(review): record the R26 PASS and register R-0517
+### d3e84dda docs(review): record the R27 PASS, resolve R-0517 and register R-0518 — C1
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/live_review.md | +61 | RECORD2: R26 gate entry + R-0517, appended |
+| .agent/live_review.md | +71/-0 | RECORD1 appended: R27 entry, R-0517 done, R-0518 new |
 
-### 0419ac76 docs(f085): advance the plan to R27
+### 6186ec31 docs(f085): advance the plan to R28 — C2
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/plan.md | +4/-4 | PLANF2→PLANT2 rewrite of `## Current Step` |
+| .agent/plan.md | +8/-7 | PLANF→PLANT over Current Step + Next Steps |
 
-### C3 docs(f085): rewrite the handback for R27 and close the session
+### e78c7027 feat(f085): spawn the isolated test process under the exec guard child plan — C3
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/handoff.md | this file | a handoff cannot table its own commit |
+| packages/orchestration/test_execution_service.py | +15/-2 | S1 import, S2 `plan_child_spawn` |
+| tests/orchestration/test_test_execution_service.py | +24/-0 | S3 `resource`, S4 `pytest`, S5 RLIMIT_CORE proof |
+
+### C4 — this handback (self-reference, R-0149 pattern)
+| Path | +/- | Reason |
+|---|---|---|
+| .agent/handoff.md | measured in the round report | a handoff cannot measure the commit that writes it |
 
 ## Item status
 
 | Item | Status | Reason |
 |---|---|---|
-| C0a save the block | done | 229 lines, 6 marker lines, 3 pairs |
-| C0b mirror to last_block | done | sourced from the committed blob |
-| C1 record R26, register R-0517 | done | append-shaped, numstat 61/0 |
-| C2 plan pair | done | PLANF2 matched at exactly one place |
-| C3 handback | done | this file, then push |
+| C0a | done | |
+| C0b | done | |
+| C1 | done | |
+| C2 | done | |
+| C3 | done | |
+| C4 | done | |
 
 ## External actions
 
-`git push -u origin feature/f085-sandbox-hardening` — run after C3. No PR
-created, nothing merged. No `git worktree add`: no destructive check was needed,
-so `git worktree list` stayed at its single line all round.
+`git worktree add .remedy-wt/r28-g8 HEAD --detach` → created at e78c7027, G8 only; `git worktree
+remove --force` + `git worktree prune` → `git worktree list` one line. `git push -u origin
+feature/f085-sandbox-hardening` → after C4. No `gh` command, no PR, no merge.
 
 ## Verification
 
-G1 STATE — `ls -la .agent/STOP` exit 2 (absent) before C0a and again before C3;
-`git status --porcelain` empty (exit 0, no output) at round start and after each
-of C0a, C0b, C1, C2; `git worktree list` one line: the repo root at this branch.
-G2 TRANSPORT — the committed and working copies of `.agent/authored/f085-r27.md`
-and `.agent/last_block.md` are all four byte-EQUAL at sha256
-ce7ffcc42df494a9c21e733f410e6d8f48d394bc16239a0be71191232cdeafdd, 14103 B,
-229 lines, 6 marker lines; regions 1-60 dfea0906, 61-140 85061d65,
-141-229 b03dbb55.
-G3 APPEND SHAPE — the pre-commit blob is a byte-exact PREFIX of the post-commit
-file; the remainder is exactly one blank line plus RECORD2; RECORD2's first line
-occurs 1x among the 61 lines the commit ADDS; 0 lines match
-`^(BEGIN|END)-[A-Z0-9]+$` in the file, while the substring `END-` hits 5x — all
-of it `APPEND-shaped` prose older than this round.
-`git show --numstat` for that path → `61	0	.agent/live_review.md`.
-G4 ARITHMETIC — base 369d94a3: 131 registered / 14 done / 0 landed, 117 open,
-max R-0516. HEAD: 132 / 14 / 0, 118 open, max R-0517, next free R-0518.
-Registered symmetric difference `['R-0517']`; done `[]`; landed `[]`;
-0 duplicate ids; 0 resolutions naming an unregistered id.
-G5 PLAN PAIR — PLANF2 occurs 0x at HEAD and PLANT2 1x; PLANT2 does not contain
-PLANF2, so the pair is a REWRITE. `## Goal` and `## Risks` are byte-IDENTICAL to
-their base bytes. `.agent/plan.md` sha256
-254757ce2fbc3267ebdda74003373bf987e83371927bb6384a1a50caf470b46c, 2370 B,
-41 lines (<50); its `## Next Steps` list parses to the numerals 1, 2, 3.
-G6 STATE READERS — `python3 -m pytest tests/orchestration/test_test_runner.py
-tests/regression/test_resource_safety.py tests/orchestration/test_integrity_gate.py
-tests/ui_server/test_dashboard_contract.py -q` exit 0, `158 passed in 21.12s`
-— reported as a READING, since that suite spawns wrapper processes under flock
-and is timing-sensitive. CANARY: `python3 -m pytest tests/cli/test_golden_path.py
--q` exit 0, `42 passed in 22.01s`. No ruff gate and none skipped by oversight:
-the change set contains no `.py` file. No docs gate: nothing under `docs/`.
-G7 COMMIT HYGIENE — `git diff --name-only 369d94a3..HEAD` measured before C3 is
-exactly `.agent/authored/f085-r27.md`, `.agent/last_block.md`,
-`.agent/live_review.md`, `.agent/plan.md` and nothing else. Per-commit
-insertions before C3: C0a 229, C0b 168, C1 61, C2 4 — none exceeds 500; C3
-cannot measure itself, so its own insertions are reported in the round report.
-Every commit has exactly one parent; `git reflog -12` holds only `commit:`
-entries.
+G1 `ls -la .agent/STOP` exit 2 `No such file or directory`, read before C0a and again before C4.
+`git status --porcelain` empty at round start and after each of the five commits; `git worktree
+list` one line.
+G2 committed authored file, committed `last_block.md` and BOTH working copies byte-EQUAL: sha256
+c73bac4c5553f82312b5d38669bb33de3586a897f2ec7198f39c0b1399b406d0, 21848 B, 398 lines, 26 marker
+lines, region digests 3866a6a1 / d15e4f7e / 4b8d681f.
+G3 pre-commit blob a byte-exact PREFIX: True; remainder exactly one blank line + RECORD1: True;
+RECORD1's first line 1× among the 71 added lines; 0 lines match `^(BEGIN|END)-[A-Z0-9]+$` while
+the substring `END-` hits 7× (older prose). `git show --numstat`: `71 0`.
+G4 base 07b1ba25: 132 registered / 14 done / 0 landed, 118 open, max R-0517. HEAD: 133 / 15 / 0,
+118 open, max R-0518, next free R-0519. Registered symdiff `['R-0518']`, done symdiff `['R-0517']`,
+landed symdiff `[]`; 0 duplicate ids; 0 resolutions naming an unregistered id.
+G5 PLANF 0×, PLANT 1×; `## Goal` and `## Risks` byte-IDENTICAL to base; sha256
+cb45b4b58e735e33e3ac8d3025f09f3850e1df79feafe4934d6d04357b52417f, 2393 B, 42 lines (<50);
+`## Next Steps` parses to 1, 2, 3.
+G6 S1F/S2F/S3F/S4F 0× each and S1T/S2T/S3T/S4T 1× each at HEAD. S5 append-shaped:
+`    def test_child_half_of_the_exec_policy_reaches_the_child(self, tmp_path):` 1× among C3's 39
+added lines; `    def test_no_shell_true(self):` still 1× in the whole file.
+G7 exit 0, `98 passed in 24.72s` (base reading 97; this round adds one test, which ran — no skip).
+G8 in worktree `.remedy-wt/r28-g8` at e78c7027 and nowhere else: `preexec_fn=plan.preexec_fn,`
+deleted (1 occurrence) → node exit 1, last line `1 failed in 0.35s`; file restored byte-identical
+→ same node exit 0, last line `1 passed in 0.27s`.
+G9 exit 0, `All checks passed!`.
+G10 exit 0, `158 passed in 19.95s`, run in the PRIMARY checkout, never in the G8 worktree (R-0518).
+CANARY `tests/cli/test_golden_path.py` exit 0, `42 passed in 20.32s`.
+G11 `git diff --name-only 07b1ba25..HEAD` before C4 holds exactly `.agent/authored/f085-r28.md`,
+`.agent/last_block.md`, `.agent/live_review.md`, `.agent/plan.md`,
+`packages/orchestration/test_execution_service.py` and
+`tests/orchestration/test_test_execution_service.py`, nothing else. Insertions 398, 334, 71, 8, 39
+— none over 500. Every commit has one parent; `git reflog -12` holds only `commit:` entries.
+STALENESS (constraint 8): both edited files re-read at HEAD after C3 — `_build_safe_env` is defined
+in the same module the S2T comment names (line 265) and `_run_isolated_process` has exactly one
+caller, unpacking the tuple positionally (line 806). No sentence this round wrote was falsified,
+and no slice quotes another file's wording as a claim.
 
 ## Authored-text proofs
 
-RECORD2, PLANF2 and PLANT2 were each extracted PROGRAMMATICALLY by marker pair
-from the committed `.agent/authored/f085-r27.md` and applied byte-verbatim; none
-was retyped and none was taken from the prompt. RECORD2 slice sha256
-9e9cb91b3635dedcca6238dda554a3f67fa7770cacc9febf93aa9dc4f99f2311, 60 lines. No
-marker line reached `.agent/live_review.md` or `.agent/plan.md`.
+All thirteen slices were extracted PROGRAMMATICALLY from the COMMITTED `.agent/authored/f085-r28.md`
+by their marker pairs and applied byte-verbatim; none was retyped or taken from the prompt. Every
+FROM matched at exactly 1 place before its edit — pre-counted for all five code pairs before the
+first write. 0 marker lines reached any target file. Disk-to-disk: the committed blob equals the
+file copied in, sha256 as under G2.
 
 ## Deviations & assumptions
 
-Ordered sequence: none. C0a C0b C1 C2 C3 ran exactly as ordered, with no extra,
-dropped or reordered commit, and nothing outside the declared change set moved.
-Deviations, declared: this handback is 123 lines against the ≤60 cap that a
-5-commit round carries. The cause is mandated content only — the five per-commit
-tables, the item-status table, and the G1-G7 verification block with its
-transport, append-shape, arithmetic and pair proofs (DECISION D15). No section is
-dropped and no prose is padded.
+The ordered sequence C0a → C0b → C1 → C2 → C3 → C4 was followed exactly: no extra, dropped or
+reordered commit, and no gate reading departed from what the block ordered.
+Deviations, declared (DECISION D15): this file is 125 lines against the 100 its six per-commit
+tables permit. The cause is mandated content — six per-commit changed-files tables, the six-row
+item-status table, and real readings with exit codes for eleven gates plus the standing staleness
+check. No section was dropped or shortened to meet the cap.
 
 ## Next
 
-The next session's FIRST action is Phase 1 rule 1 — re-read `.agent/STOP` from
-disk — BEFORE rule 2, the Open PR Gate (`gh pr list --state open --json
-number,headRefName,baseRefName,isDraft`). R-0517 is OPEN and awaits the next
-reviewed round's authored resolution; it is not resolved here, because its fix is
-this handback itself and this handback is the round's last commit. R27's own
-verdict is NOT a §4.13 terminator — this branch continues, so the next reviewed
-round records R27's gate entry in `.agent/live_review.md`. Work then resumes at
-T002b: `test_execution_service.py`'s `Popen`, which carries R-0202.
+The next session's FIRST action is Phase 1 rule 1 — re-read `.agent/STOP` from disk — BEFORE
+rule 2, the Open PR Gate (`gh pr list --state open --json number,headRefName,baseRefName,isDraft`).
+R-0202 is NOT resolved by this round: `env` reaches the child exactly as the caller built it, so
+`REMEDY_UI_NO_AUTO_BUILD` is dropped after this round by the same code as before it. R-0518 is
+registered and NOT fixed here. R28's own verdict is NOT a §4.13 terminator, because this branch
+continues, and the next reviewed round records R28's gate entry in `.agent/live_review.md`. Then
+T002b Restprüfung.
