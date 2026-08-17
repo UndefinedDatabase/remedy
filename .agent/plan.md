@@ -18,9 +18,9 @@ reaches a child, and the limitations document exists and is linked from the
 README.
 
 ## Current Step
-R38, this round: record the R37 PASS, register R-0528 and R-0529, and give the
-`test`-class seam an `extra_env` overlay so a call site can SET a variable — the one
-capability both remaining T002b sites need. No call site is migrated.
+R39, this round: record the R38 PASS, register R-0530, and implement DECISION F085 D3 —
+the `extra_env` overlay on the `test`-class seam, with the tests pinning the set, the
+`FORBIDDEN_ENV_KEYS` floor and the untouched allowlist. No call site is migrated.
 
 ## Next Steps
 1. T002b remainder — the two `test`-class sites still on a bare spawn. At c3201976 BOTH
