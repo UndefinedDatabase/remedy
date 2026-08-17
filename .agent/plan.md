@@ -18,12 +18,11 @@ reaches a child, and the limitations document exists and is linked from the
 README.
 
 ## Current Step
-R22, this round: record the R21 PASS, register R-0512 and R-0513, and fix both. The
-guard's CPU test gains a wall-timeout backstop far above the limit it exercises, so
-a regression in rlimit application ends in a named failure instead of an unbounded
-hang with an orphan behind it. `_StreamPump` gains a lock and a `snapshot()`, so a
-stream whose pump is still blocked at the drain deadline contributes the bytes it
-already read instead of nothing. `streams_complete` keeps its meaning exactly.
+R23, this round: record the R22 PASS, register R-0514 and R-0515 — both defects of
+the reviewer's own block rather than of any code R22 wrote — and promote both
+counter-measures into the pre-emission checklist, where a rule binds and finding
+prose does not. A paydown round with no production code; the session's declared
+round cap of three is reached here, not a blocker.
 
 ## Next Steps
 1. T002b — the twelve `test`-class sites, in ten modules, with behaviour-equality
