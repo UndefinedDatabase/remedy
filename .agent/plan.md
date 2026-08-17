@@ -18,17 +18,20 @@ reaches a child, and the limitations document exists and is linked from the
 README.
 
 ## Current Step
-R31, this round: record the R30 PASS, register R-0520 against the reviewer's own
-R29 gate entry, and move `pingpong_loop._run_test_command` onto
-`run_guarded_test_command` — the last site of the shape R30 migrated.
+R32, this round: record the R31 PASS, resolve R-0520 by promoting its
+counter-measure into the pre-emission checklist, and move
+`integrity_gate._check_collect_only` onto `run_guarded_test_command` — the
+`test`-class site that pins no cwd and keeps `cwd=None` deliberately.
 
 ## Next Steps
-1. T002b remainder — the four `test`-class sites still on a bare spawn, each
-   differing from the shape already migrated: `builder_bridge.py`:220 adds
-   `PYTHONDONTWRITEBYTECODE` to a full `os.environ`, `ci_run.py`:79 streams to the
-   console instead of capturing and passes no timeout, `integrity_gate.py`:283
-   passes no cwd at all, and `mission_state.py`:833 spawns inside a default
-   `runner` closure. One or two per order, never as one group.
+1. T002b remainder — the three `test`-class sites still on a bare spawn, each
+   differing from the shapes already migrated: `builder_bridge.py` SETS
+   `PYTHONDONTWRITEBYTECODE` on a full `os.environ` copy, which the seam cannot
+   express today because `run_guarded_test_command` allowlists keys rather than
+   setting values — that site needs the seam widened before it can move;
+   `ci_run.py` streams to the console instead of capturing and passes no timeout;
+   and `mission_state.py` spawns inside a default `runner` closure. One or two per
+   order, never as one group.
 2. T002c-d — the two DoD sites and the five runtime sites, whose policy differs:
    no wall timeout, because their children are the long-lived harness.
 3. T003 — network posture, the honest limitations document, the README link. Then
