@@ -2460,3 +2460,75 @@ reaches SUITE commands, which need installed dependencies, and never a read-only
 reading of named paths at another commit, which has no dependency to miss. The commit
 carrying item 21 is fixed by constraint 6 to land after this one. G6 of the R39 block stays
 as it landed at eba5de68.
+
+Gate: R42 — the R41 entry. R41 PASSED. Every ordered gate was re-run by the reviewer over
+93226220..0e2cdacd and each reproduces the handback's reading. LINE COUNTS IN THIS ENTRY
+ARE `splitlines` COUNTS, stated because the convention is exactly what R-0536 below
+registers. TRANSPORT WAS PROVED AGAINST THE REVIEWER'S OWN ORIGINAL: the scratch file the
+block was authored into, the committed `.agent/authored/f085-r41.md` at 9cc4772c, the
+committed `.agent/last_block.md` at a66aa301 and the working copies of those two paths as
+they stand at 0e2cdacd are all five byte-EQUAL at sha256
+a3716bdf9fa29892bbb6220a5b50bf6c73b057106e0465a28d71e3cd17febbba, 28265 B, 398 lines, 14
+marker lines. THE APPEND HELD ITS SHAPE: 1a29a77d's pre-commit blob of 412143 B is a
+byte-exact PREFIX of the 420193 B post-commit file, the remainder of 8050 B is one blank
+line plus RECORD9, RECORD9 hashes cf21f13adb1535b6 over 8049 B and 101 lines and is an
+exact suffix, the appended bytes equal the marker-pair extraction from the committed
+authored block, numstat 102/0, no duplicate non-empty line among the 102 added, and no
+marker line reached the file. THE ARITHMETIC MOVED AS ORDERED: 147 / 24 / 0 at 93226220
+against 149 / 27 / 0 at 0e2cdacd, 123 open against 122, registered symmetric difference
+exactly R-0533 and R-0534, done symmetric difference exactly R-0530, R-0531 and R-0532,
+landed symmetric difference empty, no duplicate id, no resolution naming an unregistered
+id. THE DOC EDITS LANDED AS TWO APPENDS: P49FROM, P49TO, CL20FROM and CL20TO each occur
+exactly 1x at 0e2cdacd, and for BOTH commits the lines the diff adds equal the TO-only
+lines IN ORDER — 14 for 01359f81 and 49 for 247df04b — which is the ordered-equality
+reading item 9 of §4 now prescribes, applied to its own landing commit. The checklist
+region reads labels 1..22 contiguous against 1..20 at the base; no marker line reached the
+file. THE PLAN PAIR LANDED AS A REWRITE: PLANF9 0x and PLANT9 1x at 0e2cdacd, `## Goal`
+and `## Next Steps` both present, no marker line, numstat 4/3. THE SUITES WERE RE-RUN, NOT
+READ, each in the primary checkout, each exit 0: the four state readers `159 passed`
+against a base of 159, and the canary `42 passed` against 42. HYGIENE IS CLEAN: the path
+set before C5 is exactly the five ordered paths; walking 93226220..0e2cdacd gives
+per-commit insertions 398, 361, 102, 14, 49, 4 and the handback commit's own 101, none
+over 500; all seven commits are single-parent; `git reflog -10` holds only `commit:`
+entries; and `git worktree list` is one line.
+
+WHAT THE WORKER FOUND AND DID NOT TOUCH. Under constraints 8 and 9 R41's worker measured
+the reviewer's own RECORD9 and the block's own predictions against the repository, found
+five readings that differ, declared them and repaired none. That is the seventh
+consecutive round in which the constraint-8 report produced the round's findings. The two
+findings below are the reviewer's, not the worker's: R41's execution reproduced under
+independent re-run in every particular.
+
+- R-0535 — Low, THE CLAUSE THAT LANDED THE QUALIFIER RULE BROKE IT TWICE IN ITS OWN TEXT.
+RECORD9, applied at commit 1a29a77d, registers R-0534 and states its counter-measure —
+that a SHA qualifier attaches to EVERY reading a clause states, not only the first — and
+two of RECORD9's own clauses then state a trailing reading the qualifier does not reach.
+Measured: its plan clause reads "PLANF8 0x and PLANT8 1x at 93226220, `.agent/plan.md` 45
+lines", and `.agent/plan.md` is 45 lines at 93226220 and at 1a29a77d but 46 at 0e2cdacd,
+falsified by C4 of RECORD9's own round; its arithmetic clause closes "next free R-0533",
+which is true at 93226220 and false at 1a29a77d, because RECORD9 itself registers R-0533
+and R-0534 and so moves the next free id to R-0535 in the very commit that lands the
+sentence. The second is the sharper of the two: no reading of the qualifier's scope makes
+it true where it landed. What this is NOT is a worker error or a rule that failed — the
+R41 block was authored BEFORE checklist item 20 carried the R-0534 clause, and constraint
+6 put C1 ahead of C3, so RECORD9 was written under the old rule and landed under the new
+one. The lesson is narrower and worth the id: a round that WRITES a checklist rule must
+apply that rule to its own slices at authoring time, because the slices land in the same
+round and the record does not care which commit taught it. Found by the worker under
+constraint 8 and registered by the reviewer.
+
+- R-0536 — Low, A BLOCK PREDICTED FOUR LINE COUNTS UNDER AN UNSTATED NEWLINE CONVENTION
+AND EVERY ONE READ ONE HIGH. The R41 block, applied at commit 9cc4772c, stated that
+`docs/agents/planner_reviewer_prompt.md` would be "707 lines at HEAD against 644 at
+93226220" and that the reviewer's dry run "put it at 47 lines" for `.agent/plan.md`.
+Measured at 0e2cdacd with `splitlines`: 706, 643 and 46. The reviewer counted with
+`split("\n")` on text ending in a newline, which yields one trailing empty element and
+therefore one extra line, while the worker counted with `splitlines`, which does not — the
+same one-line divergence the newline convention exists to settle. Nothing false landed in
+the repository and no gate failed, and the reason is worth recording as much as the defect:
+G5 ordered "report the number rather than asserting it", so the gate asked for a
+MEASUREMENT and the reviewer's wrong prediction had no gate to break. A gate that orders a
+value would have failed here and cost the round a repair. The counter-measure is the one
+already on disk and not followed: state the convention beside any line count a block
+predicts, and default to the `splitlines` reading, which is what every worker on this
+branch has used. Found by the worker under constraint 8 and registered by the reviewer.
