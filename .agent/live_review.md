@@ -1289,3 +1289,70 @@ changed-path set before C5 is exactly the declared one, per-commit insertions ar
 single-parent chain, the reflog holds nothing but `commit:` entries, and the
 primary checkout is porcelain-empty with one worktree. No block condition is met
 and no finding is registered against this round.
+
+Gate: R24 — PASS, the round that opened T002b by building the shared test-class
+seam and migrating the first of the twelve sites onto it. All ten ordered gates
+were re-run by the reviewer over f28ed65a..3d1821bf and every one reproduces the
+handback's reading. TRANSPORT IS PROVEN DISK-TO-DISK AND NOT BY FALLBACK: the
+committed `.agent/authored/f085-r24.md` is byte-EQUAL to the reviewer's own
+pre-delegation original as well as to the committed `.agent/last_block.md` and
+both working copies, at sha256
+46db5e38c4b586971364f75b7976daa3ff88e20ac5558aa2d82b807698380340, 22645 B, 355
+lines, and the three region digests 7804f388, 69d643fe and 7ac81591 reproduce
+exactly, so the single write really was single and nothing shifted. THE APPEND
+COMMIT HOLDS ITS SHAPE: C1's pre-commit blob is a byte-exact PREFIX of the
+post-commit file, the remainder is exactly one blank line plus RECORD1, that
+slice occurs once, no marker line reached any target file, and the HEAD blob
+equals the working copy. THE ARITHMETIC IS FLAT EXACTLY WHERE IT WAS ORDERED TO
+BE: 130 / 13 / 0 with 117 open at base and unchanged at HEAD, both symmetric
+differences empty, no duplicate id, no resolution naming an unregistered id, max
+R-0515. THE SEAM IS REAL AND SHAPED LIKE WHAT IT REPLACED:
+`run_guarded_test_command` returns a `CompletedProcess` with bytes streams,
+raises `subprocess.TimeoutExpired` on a wall trip CARRYING the partial streams
+the guard already holds, republishes a signal death as a negative returncode, and
+deliberately does not catch `FileNotFoundError`, which is why `run_tests_local`'s
+`command_not_found` branch still works untouched. The policy sets only what it
+can defend — `cpu_seconds`, `address_space_bytes` and `open_files` stay None on
+the precedent `_builder_exec_policy` already established, rather than inventing a
+second answer — and the 16 MiB output cap sits above the caller's own 1 MiB
+truncation with the reason written beside the value, so `output_truncated` keeps
+describing what the caller measured. THE MIGRATION CHANGED THE MECHANISM AND NOT
+THE OUTCOME: every mocked call site in both test files moved onto the new seam
+with its fabricated `CompletedProcess` values unchanged, and the one assertion
+that could no longer fail — a `shell=` check against a seam with no `shell`
+parameter — was REPLACED rather than retargeted, so it now pins the argv, the
+timeout and the cwd the seam really receives. THE GOLDEN RUNS A REAL CHILD AND
+REACHES THE MIGRATED PATH, which the reviewer confirmed independently rather than
+accepting the worker's probe: with `run_guarded_test_command` made to raise on
+entry in a disposable worktree at HEAD, the golden node stopped passing and
+reported the injected error. THE GATES WERE RE-RUN, NOT READ: ruff over the five
+changed files exited 0 with `All checks passed!`, the migrated suites gave
+`119 passed`, the four state readers `158 passed` and the canary `42 passed`,
+each as its exact ordered command line and each reproducing the handback's
+number. COMMIT HYGIENE IS CLEAN: the changed-path set before C5 is exactly the
+declared one, per-commit insertions are 355, 315, 46, 206, 62, 9 and 68 with none
+over 500, seven commits form a single-parent chain, and the reflog holds nothing
+but `commit:` entries. The three declared deviations are all improvements the
+block should have ordered itself and none widens scope: the falsified
+`test_runner.py` safety bullets, the module-handle import that keeps a `test_`
+prefixed factory out of pytest's collection, and naming the 16 MiB default as a
+constant. No block condition is met.
+
+- R-0516 — Low, A BLOCK EDITED A FILE AND LEFT A CLAIM IN IT THAT THE SAME BLOCK
+MADE FALSE. R24's C2 added six tests to `tests/orchestration/test_exec_guard.py`
+and, in the same commit, correctly rewrote the PARTIAL COVERAGE bullet in
+`exec_guard.py` that the migration falsified. It did not touch that TEST file's
+own module docstring, which still says the guard "has NO callers in this
+repository, so nothing here says anything about whether any existing Remedy
+subprocess is limited. It is not." That sentence has been false since T002a and
+R24 made it doubly false. Low because nothing executable depends on it and no
+gate could have gone red over it — its whole cost is paid by the next reader who
+asks what the guard covers and is told the opposite of the truth. It is
+registered rather than waved through because it is the R-0417 staleness shape
+that this record already names twice: the fix reached the INSTANCE the reviewer
+noticed, in the neighbouring file, and not the CLASS, in the file the block was
+already editing. The counter-measure is not a new checklist item — item 16 and
+the sweep rule it carries already cover a block's own headings, and the gap here
+is that the same sweep was never run over the TARGET file's existing prose.
+Widening item 16 would restate what the R-0417 entry already says; retiring the
+claim is the fix, and this round's own C2 performs it. OPEN.
