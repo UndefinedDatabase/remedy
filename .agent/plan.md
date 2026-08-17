@@ -18,20 +18,19 @@ reaches a child, and the limitations document exists and is linked from the
 README.
 
 ## Current Step
-R41, this round: record the R40 PASS, register R-0533 and R-0534 — both defects in
-RECORD8's own text — and resolve R-0530, R-0531 and R-0532 by writing their
-counter-measures into `docs/agents/planner_reviewer_prompt.md`. No production code
-changes; R42 takes the `ci_run.py` migration.
+R42, this round: record the R41 PASS, register R-0535 and R-0536 — both defects in
+RECORD9's own text — and rule DECISION F085 D4, the measured design for the `ci_run.py`
+migration. Session-closing round: no production code changes, and R43 applies D4 in code.
 
 ## Next Steps
 1. T002b remainder — the two `test`-class sites still on a bare spawn. At c3201976 BOTH
    overlay one variable onto a copy of `os.environ`, so both were blocked on the same
    missing capability rather than `builder_bridge.py` alone: `ci_run.py` sets the
    per-stage pytest budget, `builder_bridge.py` sets `PYTHONDONTWRITEBYTECODE`. R38's
-   `extra_env` overlay unblocks both (DECISION F085 D3). `ci_run.py` still goes first
-   and still owes a DECISION on where its output goes: its spawn streams to the console
-   while the seam captures, so that migration changes observable behaviour rather than
-   preserving it. One or two per order, never as one group.
+   `extra_env` overlay unblocks both (DECISION F085 D3). `ci_run.py` goes first and its
+   design is ruled in DECISION F085 D4: capture and re-emit the stage output, set the
+   guard's wall ABOVE the child's own budget as a backstop, and carry that budget through
+   `extra_env`. R43 applies it. One or two per order, never as one group.
 2. T002c-d — the two DoD sites and the five runtime sites, whose policy differs:
    no wall timeout, because their children are the long-lived harness.
 3. T003 — network posture, the honest limitations document, the README link. Then
