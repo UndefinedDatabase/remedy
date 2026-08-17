@@ -489,6 +489,7 @@ def test_command_exec_policy(
     *,
     output_cap_bytes: int = TEST_COMMAND_OUTPUT_CAP_BYTES,
     extra_env_keys: Sequence[str] = (),
+    extra_env: Mapping[str, str] | None = None,
 ) -> ExecGuardPolicy:
     """The stage-1 policy every `test`-class command runs under.
 
@@ -504,14 +505,26 @@ def test_command_exec_policy(
     actually lives. `extra_env_keys` is the per-project override knob T2_F085's
     edge-case section promises — a project whose suite needs one more variable
     names it there instead of widening the shared allowlist for everyone.
+
+    `extra_env` SETS variables the parent need not have, which `extra_env_keys`
+    cannot do: that knob names keys to pass THROUGH, so a key absent from
+    `os.environ` arrives absent. Both `test`-class call sites still on a bare
+    spawn overlay one variable onto a copy of `os.environ` and would lose that
+    value silently on this seam without this knob. The overlay becomes the scrub
+    SOURCE and its keys join the allowlist, so `scrub_child_env` still applies
+    `FORBIDDEN_ENV_KEYS` as the floor: an `extra_env` naming a forbidden key does
+    not reach the child.
     """
+    overlay = dict(extra_env or {})
     return ExecGuardPolicy(
         wall_timeout_seconds=float(timeout_sec),
         output_cap_bytes=output_cap_bytes,
         cwd=cwd,
         core_file_bytes=0,
-        env=None,
-        env_allowlist=TEST_COMMAND_ENV_ALLOWLIST + tuple(extra_env_keys),
+        env={**os.environ, **overlay} if overlay else None,
+        env_allowlist=(
+            TEST_COMMAND_ENV_ALLOWLIST + tuple(extra_env_keys) + tuple(sorted(overlay))
+        ),
     )
 
 
@@ -521,6 +534,7 @@ def run_guarded_test_command(
     timeout_sec: float,
     cwd: str | None,
     extra_env_keys: Sequence[str] = (),
+    extra_env: Mapping[str, str] | None = None,
 ) -> subprocess.CompletedProcess[bytes]:
     """Run one `test`-class command under the guard, shaped like `subprocess.run`.
 
@@ -543,7 +557,7 @@ def run_guarded_test_command(
     exist rather than that a run misbehaved, and every caller already handles it.
     """
     guarded = run_guarded(cmd, test_command_exec_policy(
-        timeout_sec, cwd, extra_env_keys=extra_env_keys))
+        timeout_sec, cwd, extra_env_keys=extra_env_keys, extra_env=extra_env))
     if guarded.tripped_limit == "wall_timeout":
         raise subprocess.TimeoutExpired(
             list(cmd), timeout_sec, output=guarded.stdout, stderr=guarded.stderr

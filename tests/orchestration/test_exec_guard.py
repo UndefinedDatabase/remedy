@@ -538,3 +538,52 @@ def test_a_nonzero_exit_comes_back_as_a_completed_process():
     assert isinstance(result, subprocess.CompletedProcess)
     assert result.returncode == 3
     assert b"ran" in result.stdout
+
+
+@pytest.mark.subprocess
+def test_extra_env_sets_a_value_the_parent_does_not_have(monkeypatch):
+    """The SET knob, which `extra_env_keys` cannot provide.
+
+    `extra_env_keys` names keys to pass THROUGH, so a key the parent lacks arrives
+    absent. The remaining `test`-class sites SET a value instead, which is why the
+    two knobs are separate rather than one.
+    """
+    monkeypatch.delenv("REMEDY_PROBE_BUDGET", raising=False)
+
+    passed_through = run_guarded_test_command(
+        _child(_ENV_DUMP), timeout_sec=30, cwd=None,
+        extra_env_keys=("REMEDY_PROBE_BUDGET",),
+    )
+    set_by_overlay = run_guarded_test_command(
+        _child(_ENV_DUMP), timeout_sec=30, cwd=None,
+        extra_env={"REMEDY_PROBE_BUDGET": "4242"},
+    )
+
+    assert "REMEDY_PROBE_BUDGET" not in _dumped(passed_through)
+    assert _dumped(set_by_overlay)["REMEDY_PROBE_BUDGET"] == "4242"
+
+
+@pytest.mark.subprocess
+def test_extra_env_cannot_smuggle_a_forbidden_key_past_the_floor():
+    """`FORBIDDEN_ENV_KEYS` is the guard's floor and not a caller's to lower."""
+    result = run_guarded_test_command(
+        _child(_ENV_DUMP), timeout_sec=30, cwd=None,
+        extra_env={"ANTHROPIC_API_KEY": "sk-should-never-appear"},
+    )
+
+    assert "ANTHROPIC_API_KEY" not in _dumped(result)
+    assert b"sk-should-never-appear" not in result.stdout
+
+
+def test_extra_env_adds_to_the_allowlisted_environment_rather_than_replacing_it(monkeypatch):
+    """The overlay ADDS; what the allowlist already carries still reaches the child."""
+    monkeypatch.setenv("REMEDY_UI_NO_AUTO_BUILD", "1")
+
+    policy = exec_guard.test_command_exec_policy(
+        60, None, extra_env={"REMEDY_PROBE_BUDGET": "7"}
+    )
+    child_env = exec_guard.plan_child_spawn(policy).env
+
+    assert child_env["REMEDY_PROBE_BUDGET"] == "7"
+    assert child_env["REMEDY_UI_NO_AUTO_BUILD"] == "1"
+    assert "PATH" in child_env
