@@ -100,10 +100,18 @@ def test_well_behaved_command_is_unchanged_by_the_guard():
 
 @pytest.mark.subprocess
 def test_cpu_limit_kills_a_busy_loop_and_names_the_limit():
-    """RLIMIT_CPU with a grace band gives SIGXCPU, which is attributable."""
+    """RLIMIT_CPU with a grace band gives SIGXCPU, which is attributable.
+
+    The deadline below is a BACKSTOP and NOT the property under test (R-0513): it
+    sits thirty times above the CPU limit so it never fires on the healthy path,
+    and it exists so that a regression which stops the rlimit reaching the child
+    ends as a named `wall_timeout` failure instead of an unbounded hang that leaves
+    the busy loop orphaned. `tripped_limit == "cpu_seconds"` below is therefore also
+    the proof that the backstop never steals the attribution.
+    """
     result = run_guarded(
         _child("x = 0\nwhile True:\n    x += 1\n"),
-        ExecGuardPolicy(cpu_seconds=1, output_cap_bytes=64 * 1024),
+        ExecGuardPolicy(cpu_seconds=1, wall_timeout_seconds=30.0, output_cap_bytes=64 * 1024),
     )
 
     assert result.returncode is None
