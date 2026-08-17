@@ -985,3 +985,33 @@ itself 32, none over 500; seven single-parent commits, fourteen reflog entries a
 `commit:`-prefixed, no amend, rebase, reset or force-push; the tree is clean, `git worktree list` is
 ONE line, and the branch is in sync with its remote. The handback measures 80 lines against its own
 declaration of 80. LAST_REVIEWED_SHA advances to 6b6cfee5.
+
+Gate: R20 — PASS, the record round that closed the previous session. All seven ordered
+gates were re-run by the reviewer over 6b6cfee5..1cfa0acb and every one reproduces the
+handback's reading. R20's verdict is recorded HERE rather than left in the handoff: the
+§4.13 terminator covers the last round of a BRANCH, and this branch continues, so the
+round is an ordinary reviewed round whose gate entry the next round writes. TRANSPORT:
+the committed `.agent/authored/f085-r20.md`, the committed `.agent/last_block.md` and
+both working copies are byte-EQUAL at sha256
+3026ed0d86d1d40c2e5d5a57076f39d7df37b96dbaa6041d0765be5fe543fbc8, 12660 B, 174 lines.
+The worker split the C0a write into six calls without first attempting one, which
+constraint 6 conditioned on a rejection; it declared the deviation, and the byte
+equality proves the split cost nothing. Declaring a deviation a gate can disprove is
+how this loop is supposed to work. THE APPEND COMMIT HOLDS ITS SHAPE: for C1 the
+pre-commit blob (303775 B) is a byte-exact PREFIX of the post-commit file (307026 B)
+and the remainder is exactly one blank line plus RECORD1; `Gate: R19` occurs once in
+the whole file, no marker line survives, and the HEAD blob equals the C1 blob. THE
+ARITHMETIC STAYED WHERE IT WAS ORDERED TO: 126 / 9 / 0 and 117 open at base and the
+same at HEAD, both symmetric differences empty, no duplicate id and no resolution
+naming an unregistered id; max R-0511, next free R-0512. THE PLAN PAIR touched what it
+was scoped to: `.agent/plan.md` is at sha256
+4f6c8d32716a73b6deb30c4076511acc62b1e5dae2adb1fab93c993b1e5364b6, 2473 B, 41 lines
+under its cap. State readers are 157 passed and the canary 42 passed, both re-run by
+the reviewer rather than accepted from the report, and both from the block's exact
+command lines. The change set is exactly the five declared paths with 0 outside;
+insertions are 174, 111, 35 and 5 before the handback commit, which is itself 31, none
+over 500; five single-parent commits in a linear chain, every reflog entry
+`commit:`-prefixed, no amend, rebase, reset or force-push; the tree is clean and
+`git worktree list` is ONE line. The handback measures 66 lines against its own
+declared 66, with the mandated content named as the cause. LAST_REVIEWED_SHA advances
+to 1cfa0acb.
