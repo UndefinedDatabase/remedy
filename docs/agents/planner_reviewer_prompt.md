@@ -271,6 +271,25 @@ end the response with:
       carrying it fixed a change set with no `docs/` path in it, so the sentence
       was false on disk the moment it was written and stayed false for a round
       (R-0461). This item is that promotion, finally performed.
+      Findings R-0526 and R-0527 widen this item from the NUMERAL to the class it
+      belongs to: any claim a block or a slice makes about its OWN text is MEASURED
+      before emission and written as the property that was measured. Two forms have now
+      cost rounds. A slice may not assert a universal over its own contents — R-0526 was
+      a resolution closing with "every reference it makes to `.agent/handoff.md` names
+      the SHA that holds the text it means", which was false of three of its own four,
+      because the clause it restated binds only references that LOCATE landed text and
+      the sentence quantified over all of them. A block constraint may not assert a
+      property its own slice does not have — R-0527 was constraint 8 of the R36 block
+      declaring that RECORD4 stated facts about two named source files when RECORD4
+      contained neither path, which made the staleness obligation that constraint
+      carried vacuous rather than met, and only the worker's own measurement caught it.
+      Both are recollections in the one document that exists because recollections are
+      not evidence. State what was counted, or state nothing: "the sentences that locate
+      landed text name their SHA" is measurable, "every reference names its SHA" is a
+      universal nobody checked. Items 19 and 20 govern claims about a GATE's result and
+      about another FILE's content; this one governs a claim about the author's own
+      bytes, which neither reaches because the text in question has not landed anywhere
+      yet when the claim is written.
   12. **A dry run executes the gate's EXACT command line.** Finding R-0463. When
       the reviewer lints, collects or runs anything to convince itself an
       authored slice is sound, it runs the command the BLOCK will order — same
