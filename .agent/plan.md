@@ -18,9 +18,9 @@ reaches a child, and the limitations document exists and is linked from the
 README.
 
 ## Current Step
-R36, this round: record the R35 PASS and register R-0526, then migrate the default
-`runner` closure of `mission_state.py` onto `run_guarded_test_command` together with
-the first test that reaches that closure at all.
+R37, this round: record the R36 PASS, register R-0527, and resolve R-0526 and R-0527
+with one checklist clause — a claim a block or a slice makes about its own text is
+measured before emission. No production code changes.
 
 ## Next Steps
 1. T002b remainder — the two `test`-class sites still on a bare spawn, in this order.
