@@ -1729,3 +1729,58 @@ range named in a neighbouring sentence. Rewriting the landed text is NOT propose
 appending a correction is how this record stays honest, and a later round may do
 that; overwriting history in `.agent/live_review.md` is worse than a dated wrong
 sentence. OPEN.
+
+Gate: R31 — PASS, the round that moved `pingpong_loop._run_test_command` onto the
+shared `test`-class seam and registered R-0520. Every ordered gate was re-run by the
+reviewer over d4fe1674..HEAD and each one reproduces the handback's reading.
+TRANSPORT REPRODUCES IN REGIONS AND NOT ONLY IN TOTAL: the committed
+`.agent/authored/f085-r31.md`, the committed `.agent/last_block.md` and both working
+copies are all four byte-EQUAL at sha256
+9023be74ce151bf00b833090c733fe9f77210a50519f4c14790f615adc6cf2a4, 20195 B, 352
+lines, 20 marker lines, region digests def02d5c, afd442cb and b083f1bd. THE APPEND
+COMMIT HOLDS ITS SHAPE: C1's pre-commit blob is a byte-exact PREFIX of the
+post-commit file, the remainder is exactly one blank line plus RECORD1 at 5193 =
+1 + 5192 bytes, numstat 67/0, RECORD1's first line occurs once among the 67 lines
+that commit adds, and 0 lines match `^(BEGIN|END)-[A-Z0-9]+$` while the substring
+`END-` hits eleven times in that file's prose. THE ARITHMETIC MOVED IN THE
+REGISTERED SET ALONE: 134 registered / 16 done / 0 landed at d4fe1674 against 135 /
+16 / 0 at HEAD, 118 open rising to 119, registered symmetric difference exactly
+R-0520, done and landed symmetric differences both empty, no duplicate id, no
+resolution naming an unregistered id, max R-0520 and next free R-0521. THE PAIRS
+LANDED WHERE THEY WERE AIMED: at HEAD SPAWNF and OUTF each occur 0 times in
+`pingpong_loop.py` while SPAWNT and OUTT each occur once, IMPT occurs once, the guard
+import occurs once among the nine lines C2 adds to that file, the new test def occurs
+once among the twenty-five lines C2 adds to its test file, 0 marker lines reached
+either, and every applied slice matches its committed original byte for byte — TESTPL
+is an exact suffix of the test file and RECORD1 an exact suffix of the review record.
+PLANF is gone and PLANT occurs once, in a 43-line plan under the 50-line cap. THE
+PROOF IS A REAL COUPLING AND THE REVIEWER BROKE IT INDEPENDENTLY: at HEAD the round
+gate exits 0 at `34 passed` against the `33 passed` the reviewer measured at
+d4fe1674, and in the reviewer's own disposable worktree at 16234fbf, with the guarded
+call replaced by a bare `subprocess.run` and the decode left standing, the run exits 1
+with `1 failed, 33 passed` — `test_pingpong_loop_test_command_runs_on_the_guarded_seam`,
+`AttributeError: 'str' object has no attribute 'decode'` at `pingpong_loop.py:3549`.
+THE SEAM'S CONTRACT WAS READ RATHER THAN TRUSTED: `run_guarded_test_command` raises
+`subprocess.TimeoutExpired` on a wall trip, deliberately does not catch
+`FileNotFoundError`, and returns a negative returncode on a signal death — so both
+`except` clauses and `passed = proc.returncode == 0` are unchanged. THE GATES WERE RE-RUN, NOT READ: ruff
+over the two changed files `All checks passed!`, the four state readers `158 passed`
+and the canary `42 passed`, each as its exact ordered command line in the primary
+checkout, each exit 0. COMMIT HYGIENE IS CLEAN: the path set is the seven declared
+paths, per-commit insertions are 352, 174, 67, 34, 5 and the handback's own 130, none
+over 500, all six commits are single-parent, and the reflog holds only `commit:`
+entries. STALENESS REPRODUCES: `builder_bridge.py`, `ci_run.py`, `integrity_gate.py` and
+`mission_state.py` each show 0 references to `run_guarded_test_command` at HEAD, and
+R-0520's own text survives C2 — `job_promote.py` and `pingpong_promote.py` reference
+that symbol twice each at BOTH d4fe1674 and HEAD. The 162-line handback declares its own overage against the
+100-line cap and names the mandated content that caused it. No block condition is met,
+and the worker deviated from nothing it was ordered to do.
+
+Done: R-0520 — Resolved at R32. The counter-measure the finding named is now
+checklist item 20 of `docs/agents/planner_reviewer_prompt.md` §3, applied by the
+commit that precedes this one in this round: a slice may assert a present-tense fact
+about a source file only when the sentence names the commit its reading was taken at.
+The finding asked for a rule rather than an edit, so the resolution is the promotion
+and not a rewrite of the R29 sentence that exposed it. That sentence stays on disk,
+wrong for two of its seven names from commit 10fe9a14 onward, because appending a
+correction is how this record stays honest; this paragraph is that correction.
