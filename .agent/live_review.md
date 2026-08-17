@@ -1243,3 +1243,49 @@ application — C3 lands after C2 precisely so that the sentence above, assertin
 items 18 and 19 are on disk, is true at the moment it is committed rather than a
 commit later. A rule whose own block does not obey it is the R-0460 shape, and this
 one obeys it.
+
+Gate: R23 — PASS, a paydown round that fixed two defects of the reviewer's own
+block and touched no production code. All nine ordered gates were re-run by the
+reviewer over b4da5101..f28ed65a and every one reproduces the handback's reading.
+TRANSPORT IS EXACT: the committed `.agent/authored/f085-r23.md`, the committed
+`.agent/last_block.md` and both working copies are byte-EQUAL at sha256
+6506c9cc76ba9c63d95c5f0a41fcee4d48dca39b4e26231e6f4bd66400ebb9d4, 24320 B, 368
+lines, 0 trailing-whitespace lines, and the three region digests reported —
+6d1b2d39, cac13512 and 8c2421ae over lines 1-60, 61-140 and 141-end — reproduce
+under the newline-included convention the handback declared, so the single write
+really was single. THE APPEND COMMITS HOLD THEIR SHAPE: for C1 the pre-commit
+blob is a byte-exact PREFIX of the post-commit file and the remainder is exactly
+one blank line plus RECORD1; for C3 the same property holds for DONE1. Each
+slice occurs exactly once in the file, no marker line survives anywhere, and the
+HEAD blob equals the working copy in both cases. ALL SIX SLICE DIGESTS MATCH the
+handback: RECORD1 e2bb4c28, CHECKF e411b1ad, CHECKT e4799d98, DONE1 a9fccd54,
+PLANF 4e11656a, PLANT b90d1cf7, each extracted here from the committed authored
+file by its own marker pair and compared against the target on disk, so the
+worker's applied bytes are the reviewer's authored bytes and not a retype. THE
+ARITHMETIC MOVED WHERE IT WAS ORDERED TO: 128 / 11 / 0 with 117 open at base,
+130 / 11 / 0 with 119 open after C1 — both registrations landed BEFORE the fix,
+which is the ordering constraint 5 existed to enforce — and 130 / 13 / 0 with 117
+open at HEAD. Registered and resolved symmetric differences are each exactly
+R-0514 and R-0515; no duplicate id, no resolution naming an unregistered id; max
+R-0515 and next free R-0516. THE COUNTER-MEASURES ARE REALLY ON DISK AS RULES:
+`docs/agents/planner_reviewer_prompt.md` at HEAD hashes to 738920de and its
+pre-emission checklist parses to the numbers 1 through 19 with no gap and no
+repeat, so items 18 and 19 are numbered members of the list rather than prose
+appended near it. The pair was append-shaped and was proved as one — CHECKT
+contains CHECKF verbatim, so the unsatisfiable "CHECKF 0x" reading was correctly
+never ordered. THE PLAN PAIR WAS A REWRITE and behaved like one: PLANF 0x and
+PLANT 1x at HEAD, `## Goal` and `## Risks` byte-identical to their base bytes,
+42 lines, under the cap. THE GATES WERE RE-RUN, NOT READ: the reviewer executed
+`python3 -m pytest tests/docs/ -q` (295 passed), the four state readers (157
+passed) and the canary `tests/cli/test_golden_path.py -q` (42 passed), each as
+its exact ordered command line, and each reproduced the handback's number. One
+correction to the record, which changes no verdict: the reviewer's first attempt
+at the state-reader gate used two wrong paths, pytest reported "no tests ran"
+rather than an error, and the reading was worthless until the block's own command
+line was used instead — the R-0438 vacuous-gate shape, caught here by comparing
+against the ordered command rather than by any gate. COMMIT HYGIENE IS CLEAN: the
+changed-path set before C5 is exactly the declared one, per-commit insertions are
+368, 280, 97, 23, 19, 5 and 42 with none over 500, the seven commits form a
+single-parent chain, the reflog holds nothing but `commit:` entries, and the
+primary checkout is porcelain-empty with one worktree. No block condition is met
+and no finding is registered against this round.
