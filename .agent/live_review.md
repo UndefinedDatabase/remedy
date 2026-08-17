@@ -1604,3 +1604,61 @@ estimate. The counter-measure ships in this same round: C3 writes the migration
 state into `.agent/f085_inventory.md` directly beneath the class list that defines
 the set, so the next estimate is derived from the file that fixes the denominator
 rather than from the previous estimate. OPEN.
+
+Gate: R29 — PASS, the state-only round that recorded the R28 PASS, registered
+R-0519 and put the T002b migration state into the inventory of record. Every
+ordered gate was re-run by the reviewer over b0d09db4..f99a8fe2 and each one
+reproduces the handback's reading. TRANSPORT: the committed
+`.agent/authored/f085-r29.md`, the committed `.agent/last_block.md` and both
+working copies are all four byte-EQUAL at sha256
+5c93aff876b168aada846b99dcf9ff927df3f41f3329b55a7f40d353422dd813, 18160 B, 306
+lines, 10 marker lines at 157, 226, 228, 244, 246, 262, 264, 276, 278 and 306,
+region digests c40e6be2, 23d988e4 and 70c142ae. No scratchpad original from that
+authoring session survived into this one, so the proof is disk-to-disk over the
+committed artifacts under the self-drive protocol's cmp rule; stated, not
+implied. THE APPEND
+COMMIT HOLDS ITS SHAPE: C1's pre-commit blob is a byte-exact PREFIX of the
+post-commit file, the remainder is exactly one blank line plus RECORD1 at numstat
+69/0, RECORD1's first line occurs once among the 69 lines that commit adds, and 0
+lines match `^(BEGIN|END)-[A-Z0-9]+$` while the substring `END-` hits nine times
+in that file's prose. THE ARITHMETIC MOVED IN ONE SET ONLY: 134 registered / 15
+done / 0 landed at HEAD against 133 / 15 / 0 at base, 118 open rising to 119,
+registered symmetric difference exactly R-0519, done and landed symmetric
+differences both empty, no duplicate id, no resolution naming an unregistered id,
+max R-0519 and next free R-0520. THE PAIRS LANDED WHERE THEY WERE AIMED: PLANF
+occurs 0 times at HEAD and PLANT exactly once, `## Goal` and `## Risks` are
+byte-identical to their base bytes, `.agent/plan.md` is 42 lines under the
+50-line cap, and its `## Next Steps` parses to 1, 2, 3. INVF occurs once and INVT
+once, INVT contains INVF verbatim so the pair really is append-shaped, and
+`Migration state, measured at R29:` occurs once among the 16 lines C3 adds. THE
+MEASUREMENT THE ROUND EXISTS TO RECORD IS TRUE OF THE SOURCE, NOT ONLY OF THE
+PROSE: the reviewer re-derived it per file rather than trusting the paragraph.
+`autorun.py` references `run_guarded_test_command` five times, `test_runner.py`
+three times and `test_execution_service.py` references `plan_child_spawn` three
+times, so those three files carry the five sites called ON THE SEAM;
+`builder_bridge.py`, `ci_run.py`, `integrity_gate.py`, `job_promote.py`,
+`mission_state.py`, `pingpong_loop.py` and `pingpong_promote.py` reference
+neither symbol. Five on the seam, seven not, as the inventory paragraph and
+R-0519 both state. THE GATES WERE RE-RUN, NOT READ: the four state
+readers exited 0 at `158 passed` and the canary exited 0 at `42 passed`, each as
+its exact ordered command line in the primary checkout. COMMIT HYGIENE IS CLEAN:
+the path set before the handback is the five declared paths, per-commit
+insertions are 306, 212, 69, 8 and 16 with the handback's own 99 measured after
+it existed and none over 500, the range is a single-parent chain, and the reflog
+holds only `commit:` entries. One reported number differs and neither reading is
+wrong: the handback gives `## Goal` as 729 B where a heading-inclusive slice
+measures 730 B, a section-boundary convention that leaves the ordered property —
+byte-identical to base — reproducing either way. The 131-line handback declares
+its own overage against the 100-line cap and names the mandated content that
+caused it. No block condition is met.
+
+Done: R-0519 — RESOLVED at R29 by the counter-measure the finding itself named.
+`.agent/f085_inventory.md` now carries `Migration state, measured at R29:`
+directly beneath the `### test — 12` heading that defines the class, naming the
+criterion for being on the seam, the files that satisfy it and the files that do
+not — so the next estimate is derived from the file that fixes the denominator
+instead of from the previous estimate. The overstated line is gone as well: R29's
+handback carries `~60 %` with `T002b 5 von 12 Sites auf dem Seam, 7 offen` in
+place of `~85 %`. The reviewer verified the correction against the SOURCE, per
+the per-file reading in this round's gate entry above. Resolved rather than
+carried, because the finding asked for a denominator on disk and it is on disk.
