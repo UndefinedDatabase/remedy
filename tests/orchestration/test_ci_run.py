@@ -6,12 +6,16 @@ what an excluded stage reports — without paying a suite run to learn it.
 """
 from __future__ import annotations
 
+import subprocess
 import sys
 from pathlib import Path
 
+from packages.orchestration import ci_run
 from packages.orchestration.ci_run import (
     PYTEST_RUNNER_SCRIPT,
     PYTEST_TIMEOUT_ENV_VAR,
+    PYTEST_TIMEOUT_EXIT_CODE,
+    PYTEST_WALL_GRACE_SEC,
     StageResult,
     _run_via_subprocess,
     ci_exit_code,
@@ -130,3 +134,54 @@ def test_the_budget_reaches_the_runner_process_as_its_environment_variable():
     )
     assert _run_via_subprocess([sys.executable, "-c", probe], REPO_ROOT, 4242) == 0
     assert _run_via_subprocess([sys.executable, "-c", probe], REPO_ROOT, 600) == 3
+
+
+def test_the_guard_wall_sits_above_the_stage_budget(monkeypatch):
+    """The backstop relationship, read off the call the guard actually receives."""
+    seen = {}
+
+    def capture(cmd, **kwargs):
+        seen.update(kwargs)
+        return subprocess.CompletedProcess(list(cmd), 0, b"", b"")
+
+    monkeypatch.setattr(ci_run, "run_guarded_test_command", capture)
+    assert _run_via_subprocess([sys.executable, "-c", ""], REPO_ROOT, 300) == 0
+    assert seen["timeout_sec"] == 300 + PYTEST_WALL_GRACE_SEC
+    assert seen["timeout_sec"] > 300
+    assert seen["extra_env"] == {PYTEST_TIMEOUT_ENV_VAR: "300"}
+    assert seen["cwd"] == str(REPO_ROOT)
+
+
+def test_a_stages_captured_output_is_re_emitted_to_the_console(capfd):
+    """`capfd`, not `capsys`: the re-emit is a file-descriptor-level write."""
+    probe = "import sys; sys.stdout.write('stage-out'); sys.stderr.write('stage-err')"
+    assert _run_via_subprocess([sys.executable, "-c", probe], REPO_ROOT, 60) == 0
+    captured = capfd.readouterr()
+    assert "stage-out" in captured.out
+    assert "stage-err" in captured.err
+
+
+def test_a_wall_trip_comes_back_as_the_timeout_exit_code():
+    """`test_a_timeout_exit_code_is_named_in_the_note` closes the chain to the note."""
+    assert _run_via_subprocess(
+        [sys.executable, "-c", "import time; time.sleep(60)"],
+        REPO_ROOT,
+        1,
+        wall_grace_sec=0.5,
+    ) == PYTEST_TIMEOUT_EXIT_CODE
+
+
+def test_a_secret_like_parent_variable_does_not_reach_the_stage_child(monkeypatch):
+    """Before the migration this variable arrived; the budget must still arrive.
+
+    Both halves are asserted together because passing one without the other is the
+    failure that would otherwise look green.
+    """
+    monkeypatch.setenv("REMEDY_CI_RUN_FAKE_TOKEN", "sk-not-a-real-secret")
+    probe = (
+        "import os,sys;"
+        "leaked = 'REMEDY_CI_RUN_FAKE_TOKEN' in os.environ;"
+        f"budget = os.environ.get({PYTEST_TIMEOUT_ENV_VAR!r});"
+        "sys.exit(0 if not leaked and budget == '77' else 3)"
+    )
+    assert _run_via_subprocess([sys.executable, "-c", probe], REPO_ROOT, 77) == 0
