@@ -1662,3 +1662,70 @@ handback carries `~60 %` with `T002b 5 von 12 Sites auf dem Seam, 7 offen` in
 place of `~85 %`. The reviewer verified the correction against the SOURCE, per
 the per-file reading in this round's gate entry above. Resolved rather than
 carried, because the finding asked for a denominator on disk and it is on disk.
+
+Gate: R30 — PASS, the round that moved `job_promote._run_post_test` and
+`pingpong_promote._run_post_test` onto the shared `test`-class seam. Every ordered
+gate was re-run by the reviewer over f99a8fe2..d4fe1674 and each one reproduces
+the handback's reading. TRANSPORT WAS PROVED AGAINST THE REVIEWER'S OWN ORIGINAL,
+not only against a digest: the scratch file the block was authored into, the
+committed `.agent/authored/f085-r30.md`, the committed `.agent/last_block.md` and
+both working copies are all five byte-EQUAL at sha256
+fd9117aad06382747a59995dbeef4d32d75e14f3f7e3d19af7bc5499dc93b0a2, 21347 B, 399
+lines, 26 marker lines, region digests 9e5478bc, 97f12afd, c6bb8ee5 and d3cf7d6b.
+THE APPEND COMMIT HOLDS ITS SHAPE: C1's pre-commit blob is a byte-exact PREFIX of
+the post-commit file, the remainder is exactly one blank line plus RECORD1 at
+numstat 58/0, RECORD1's first line occurs once among the 58 lines that commit
+adds, and 0 lines match `^(BEGIN|END)-[A-Z0-9]+$` while the substring `END-` hits
+ten times in that file's prose. THE ARITHMETIC MOVED IN THE DONE SET ALONE: 134
+registered / 16 done / 0 landed at d4fe1674 against 134 / 15 / 0 at f99a8fe2, 119
+open falling to 118, registered symmetric difference empty, done symmetric
+difference exactly R-0519, landed empty, no duplicate id, no resolution naming an
+unregistered id, max R-0519 and next free R-0520. THE PAIRS LANDED WHERE THEY WERE
+AIMED: at d4fe1674 SPAWNF and OUTF each occur 0 times in both migrated files while
+SPAWNT and OUTT each occur once, IMPT1 occurs once in `job_promote.py` and IMPT2
+once in `pingpong_promote.py`, the guard import occurs once among the lines C2 adds
+to each source, each new test def occurs once among the lines C2 adds to its test
+file, and 0 marker lines reached any of the four. PLANF is gone and PLANT occurs
+once, in a 46-line plan under the 50-line cap. THE PROOF IS A REAL COUPLING AND THE
+REVIEWER BROKE IT INDEPENDENTLY: at d4fe1674 the round gate exits 0 at `146 passed`
+against the `144 passed` the reviewer measured at f99a8fe2 before the block was
+written, and in the reviewer's own disposable worktree at d4fe1674, with the
+guarded call replaced by a bare `subprocess.run` and the decode left standing, the
+run exits 1 with `2 failed, 73 passed` — `TestApprovePostTest::test_post_apply_test_runs`
+and `test_job_promote_post_test_runs_on_the_guarded_seam`, both
+`AttributeError: 'str' object has no attribute 'decode'`. The first of those two is
+the behaviour-equality golden this feature's Acceptance asks for: it spawns a REAL
+child through the migrated function, so its staying green under the guard is the
+evidence that well-behaved commands behave identically. THE GATES WERE RE-RUN, NOT
+READ: ruff over the four changed files `All checks passed!`, the four state readers
+`158 passed` and the canary `42 passed`, each as its exact ordered command line in
+the primary checkout. COMMIT HYGIENE IS CLEAN: the path set is the nine declared
+paths, per-commit insertions are 399, 317, 58, 69 and 12 with the handback's own
+100 measured after it existed and none over 500, all six commits are single-parent,
+and the reflog holds only `commit:` entries. The 150-line handback declares its own
+overage against the 100-line cap and names the mandated content that caused it. No
+block condition is met, and the worker deviated from nothing it was ordered to do.
+
+- R-0520 — Low, A REVIEWER-AUTHORED GATE ENTRY MADE A PRESENT-TENSE CLAIM ABOUT
+SOURCE FILES THE SAME BLOCK THEN CHANGED. The R29 gate entry applied at commit
+9668bec4 lists seven modules and states that they "reference neither symbol",
+meaning `run_guarded_test_command` and `plan_child_spawn`. That reading was taken
+at f99a8fe2 and is true there. C2 of the SAME round, commit 10fe9a14, put
+`job_promote.py` and `pingpong_promote.py` on the seam, and at d4fe1674 each of
+those two files references `run_guarded_test_command` twice — so two of the seven
+names in that sentence are wrong for every commit from 10fe9a14 onward, in a file
+that is the permanent record. The defect is the reviewer's, not the worker's: R30's
+handback found it under constraint 8 and reported it instead of editing a slice it
+was forbidden to alter or a file outside its change set, which is exactly the
+behaviour constraint 8 exists to produce. Low because nothing executable depends on
+the sentence, no gate can go red over it, and the paragraph it sits in opens by
+naming the range b0d09db4..f99a8fe2 that scopes it. It is registered rather than
+quietly corrected because this is the R-0417 staleness class recurring in the one
+place the standing gate does not reach — the reviewer's own authored prose, written
+before the commit that falsifies it exists. The counter-measure is a rule, not an
+edit: a slice that states a fact about a file the SAME block modifies names the
+commit its reading was taken at, in the sentence itself, rather than relying on a
+range named in a neighbouring sentence. Rewriting the landed text is NOT proposed —
+appending a correction is how this record stays honest, and a later round may do
+that; overwriting history in `.agent/live_review.md` is worse than a dated wrong
+sentence. OPEN.
