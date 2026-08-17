@@ -18,20 +18,21 @@ reaches a child, and the limitations document exists and is linked from the
 README.
 
 ## Current Step
-R32, this round: record the R31 PASS, resolve R-0520 by promoting its
-counter-measure into the pre-emission checklist, and move
-`integrity_gate._check_collect_only` onto `run_guarded_test_command` — the
-`test`-class site that pins no cwd and keeps `cwd=None` deliberately.
+R33, this round: record the R32 PASS, and register and resolve R-0521 by narrowing
+pre-emission checklist item 20 so the commit a slice names must be a SHA that
+already exists rather than a label that re-resolves. No production code changes.
 
 ## Next Steps
-1. T002b remainder — the three `test`-class sites still on a bare spawn, each
-   differing from the shapes already migrated: `builder_bridge.py` SETS
-   `PYTHONDONTWRITEBYTECODE` on a full `os.environ` copy, which the seam cannot
-   express today because `run_guarded_test_command` allowlists keys rather than
-   setting values — that site needs the seam widened before it can move;
-   `ci_run.py` streams to the console instead of capturing and passes no timeout;
-   and `mission_state.py` spawns inside a default `runner` closure. One or two per
-   order, never as one group.
+1. T002b remainder — the three `test`-class sites still on a bare spawn, in this
+   order. `mission_state.py` next: it spawns inside a default `runner` closure and
+   is otherwise the capture-and-timeout shape already migrated three times. Then
+   `ci_run.py`, which streams to the console instead of capturing and passes no
+   timeout, so moving it onto a capturing seam is a behaviour decision and not a
+   mechanical swap. `builder_bridge.py` comes LAST and is BLOCKED until the seam
+   can SET an environment value: it puts `PYTHONDONTWRITEBYTECODE` on a full
+   `os.environ` copy, while `run_guarded_test_command` only allowlists keys that
+   the parent already has, so migrating it as-is would silently stop that variable
+   reaching the child. One or two per order, never as one group.
 2. T002c-d — the two DoD sites and the five runtime sites, whose policy differs:
    no wall timeout, because their children are the long-lived harness.
 3. T003 — network posture, the honest limitations document, the README link. Then
