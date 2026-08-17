@@ -2288,3 +2288,73 @@ already ordered the measurement that caught it, so nothing new is owed to the ch
 what is owed is the habit of running that measurement over sentences quantifying across
 COMMITS, which no pair-shape or path check reaches. Found by the worker under constraint 8
 and registered by the reviewer.
+
+Gate: R40 — the R39 entry. R39 PASSED. Every ordered gate was re-run by the reviewer over
+cbcb5c23..d3a707f5 and each reproduces the handback's reading. TRANSPORT WAS PROVED
+AGAINST THE REVIEWER'S OWN ORIGINAL: the scratch file the block was authored into, the
+committed `.agent/authored/f085-r39.md`, the committed `.agent/last_block.md` at 757be21c
+and both working copies are all five byte-EQUAL at sha256
+32415af6db43f9228459a2bb05241c35c0a39073ab4ffb638d01758448f1181a, 19352 B, 349 lines, 24
+marker lines. THE SEAM CHANGE IS THE FOUR PAIRS AND NOTHING ELSE: the reviewer rebuilt
+`packages/orchestration/exec_guard.py` mechanically — the pre-commit blob with each FROM
+replaced once by its TO equals dce66faa's blob byte for byte — and the guard's floor is
+untouched, `def scrub_child_env` through its `return` hashing 3880a84d over 540 B at both
+cbcb5c23 and d3a707f5. THE APPEND HELD ITS SHAPE: 607050ba's pre-commit blob 402603 B is
+a byte-exact PREFIX of the 406554 B post-commit file, the remainder 3951 B is one blank
+line plus RECORD7, RECORD7 is an exact suffix, its first line occurs once among the 50
+lines that commit adds, numstat 50/0, and 0 marker lines reached the file. THE ARITHMETIC
+MOVED IN THE REGISTERED SET ALONE: 144 / 24 / 0 at cbcb5c23 against 145 / 24 / 0 at
+d3a707f5, 120 open against 121, registered symmetric difference exactly R-0530, done and
+landed symmetric differences empty, no duplicate id, no resolution naming an unregistered
+id, next free R-0531. THE SUITES WERE RE-RUN, NOT READ, each as its exact ordered command
+line in the primary checkout, each exit 0: `test_exec_guard.py` `27 passed` against a base
+of 24, the four seam consumers `262 passed` equalling their base, the four state readers
+`159 passed`, ruff over the two touched paths `All checks passed!`, and the canary
+`42 passed`. HYGIENE IS CLEAN: the path set is the seven declared paths, per-commit
+insertions are 349, 295, 50, 66, 6 and the handback's own 147, none over 500, all six
+commits are single-parent, the reflog holds only `commit:` entries, and origin and local
+agree at d3a707f5.
+
+WHAT THE WORKER FOUND AND DID NOT TOUCH. Under constraint 8 R39's worker measured two of
+the reviewer's own gate sentences against the repository, found both unsatisfiable,
+declared them, ran the strongest measurement each one admitted, and changed no slice. That
+is the fifth consecutive round in which the constraint-8 report produced the round's
+findings. Both are registered below.
+
+- R-0531 — Low, AN APPEND OBLIGATION WRITTEN FOR PROSE WAS ORDERED OVER A CODE SLICE.
+G5 of the R39 block, applied at commit eba5de68, ordered that "every line SEAMTESTS
+contains occurs exactly once AMONG THE LINES C2'S DIFF ADDS". Measured at d3a707f5, four
+distinct lines of that 47-line slice fail it — the empty line 12x, `    )` 4x, the
+argument line `        _child(_ENV_DUMP), timeout_sec=30, cwd=None,` 3x and
+`@pytest.mark.subprocess` 2x. §4.9 states the per-line count for TO-ONLY additions and
+already bends where a slice legitimately repeats a sentence the file carries; what it does
+not anticipate is that a CODE slice repeats lines STRUCTURALLY, because blank separators,
+closing parentheses and decorators are what code is made of. The obligation is therefore
+unattainable by construction for every code append, which is the R-0207 shape — demanding
+a count that invites either a fabricated number or a pointless repair round — arriving
+through a slice's LANGUAGE rather than through its pair shape. The worker substituted the
+property that does hold and measured it: the lines C2 adds are exactly two empty lines
+followed by SEAMTESTS's 47 lines IN ORDER, the pre-commit blob is a byte-exact prefix, and
+the slice is an exact suffix. That ordered-equality reading is strictly stronger than the
+per-line count it replaced, since it fixes position as well as multiplicity. The next
+record round resolves this by writing that reading into the checklist as the form a CODE
+append is owed. Found by the worker under constraint 8 and registered by the reviewer.
+
+- R-0532 — Low, A BASELINE GATE WAS ORDERED AT A COMMIT WHERE ITS OWN PATHS DO NOT EXIST.
+G6 of the R39 block, applied at commit eba5de68, ordered `ruff check` over
+`packages/orchestration/exec_guard.py` and `tests/orchestration/test_exec_guard.py` "at
+`origin/main` as well", so that a pre-existing error could not be read as a new one.
+Measured: `git ls-tree origin/main` returns nothing for either path — `exec_guard.py` was
+ADDED on this branch at e0d4d880 — so the command exits 1 with `E902 No such file or
+directory` per path and produces no lint reading at all. The comparison the gate exists to
+make is empty by construction. This is R-0364 recurring in the reviewer's own text: that
+finding's whole content is that a gate is executed at its base BEFORE it is ordered, and
+the HEAD run was executed while the origin/main run was not. A second defect rides in the
+same gate: G6's preamble binds every command in it to "the PRIMARY checkout and never in a
+worktree" under R-0518, while a reading at `origin/main` from a branch checkout requires
+exactly the worktree that clause forbids, so the two sentences cannot both be obeyed. The
+worker ran it, recorded the exit code and output, treated the green HEAD gate as the
+operative one and declared the rest, which is the correct handling. Nothing false about
+the repository landed. The next record round resolves this by binding a baseline gate to
+paths that exist at the base it names, and by carving the worktree exception the R-0518
+clause needs.
