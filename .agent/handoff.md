@@ -1,39 +1,42 @@
-# Handback — F085 Sandbox hardening (stage 1) — R29
+# Handback — F085 Sandbox hardening (stage 1) — R30
 
-Branch `feature/f085-sandbox-hardening` · Base `b0d09db4` · HEAD before this
-commit `f62dfa88`. State-only round: no `.py` file changed.
+Branch `feature/f085-sandbox-hardening` · Base `f99a8fe2` · HEAD before this
+commit `17a3e053`. First round of this block that changes `.py` files.
 
-Fortschritt: ~60 % (T001 gebaut · R13-R28 PASS · T002a KOMPLETT · T002b 5 von 12
-Sites auf dem Seam, 7 offen · T002c-d, T003 offen) — Schätzung, gegen die
+Fortschritt: ~63 % (T001 gebaut · R13-R29 PASS · T002a KOMPLETT · T002b 7 von 12
+Sites auf dem Seam, 5 offen · T002c-d, T003 offen) — Schätzung, gegen die
 Klassentabelle aus Amendment F085 D1 gemessen.
 
-Deviations, declared: this file measures 131 lines against the
-100-line cap for a >5-commit round. Cause is mandated content only — six
-per-commit tables, the six-row item-status table, eight gates with real readings
-and the constraint-8 staleness report. No section dropped, no transcript pasted.
+Deviations, declared: this file measures 150 lines against the 100-line cap for a
+>5-commit round. Cause is mandated content only — six per-commit tables, the
+six-row item-status table, eight gates with real readings and the constraint-8
+staleness report. No section dropped, no transcript pasted.
 
 ## Range
 
-Review of b0d09db4..HEAD.
+Review of f99a8fe2..HEAD.
 
 ## Commits
 
-### 57b152c3 docs(f085): save the R29 step block (C0a)
+### 6e1879bb docs(f085): save the R30 step block (C0a)
 | Path | +/- | Reason |
-| `.agent/authored/f085-r29.md` | +306/-0 | the block, sha256 5c93aff8… verified before commit |
-### 5dfb8305 docs(f085): mirror the R29 block into last_block (C0b)
+| `.agent/authored/f085-r30.md` | +399/-0 | the block, sha256 fd9117aa… verified before commit |
+### 23293d23 docs(f085): mirror the R30 block into last_block (C0b)
 | Path | +/- | Reason |
-| `.agent/last_block.md` | +212/-304 | written from `git show HEAD:.agent/authored/f085-r29.md` |
-### e1ce0b68 docs(review): record the R28 PASS and register R-0519 (C1)
+| `.agent/last_block.md` | +317/-224 | written from `git show HEAD:.agent/authored/f085-r30.md` |
+### 9668bec4 docs(f085): record the R29 PASS and resolve R-0519 (C1)
 | Path | +/- | Reason |
-| `.agent/live_review.md` | +69/-0 | RECORD1 appended: R28 gate entry + R-0519 |
-### 1f5d58c0 docs(f085): advance the plan to R29 (C2)
+| `.agent/live_review.md` | +58/-0 | RECORD1 appended: R29 gate entry + the R-0519 resolution |
+### 10fe9a14 feat(f085): move both post-test spawns onto the guarded test seam (C2)
 | Path | +/- | Reason |
-| `.agent/plan.md` | +8/-8 | PLANF→PLANT rewrite of Current Step and Next Steps |
-### f62dfa88 docs(f085): record the T002b migration state in the inventory (C3)
+| `packages/orchestration/job_promote.py` | +9/-5 | IMPF1→IMPT1, SPAWNF→SPAWNT, OUTF→OUTT |
+| `packages/orchestration/pingpong_promote.py` | +10/-5 | IMPF2→IMPT2, SPAWNF→SPAWNT, OUTF→OUTT |
+| `tests/orchestration/test_job_promote.py` | +25/-0 | TESTJP appended |
+| `tests/orchestration/test_pingpong_promote.py` | +25/-0 | TESTPP appended |
+### 17a3e053 docs(f085): advance the plan to R30 (C3)
 | Path | +/- | Reason |
-| `.agent/f085_inventory.md` | +16/-0 | INVF→INVT paragraph under `### test — 12` |
-### this commit docs(f085): rewrite the handback for R29 (C4)
+| `.agent/plan.md` | +12/-8 | PLANF→PLANT rewrite of Current Step and Next Steps |
+### this commit docs(f085): rewrite the handback for R30 (C4)
 | Path | +/- | Reason |
 | `.agent/handoff.md` | self-reference | a handback cannot table its own commit (R-0149); insertions are in the round report |
 
@@ -50,82 +53,98 @@ Review of b0d09db4..HEAD.
 
 ## External actions
 
+`git worktree add --detach .remedy-wt/r30red HEAD` → created at 10fe9a14, used
+for G6's destructive red proof only. `git worktree remove --force` then
+`git worktree prune` → removed before C3; `git worktree list` is one line.
 `git push -u origin feature/f085-sandbox-hardening` after C4 — outcome in the
-round report. No `gh` command, no PR, no merge, no worktree added or removed.
+round report. No `gh` command, no PR, no merge.
 
 ## Verification
 
-G1 STATE. `ls -la .agent/STOP` → `No such file or directory` before C0a and
-again before C4. `git status --porcelain` empty at round start and after all five
-commits. `git worktree list` one line: the primary checkout.
-G2 TRANSPORT. Working + committed `.agent/authored/f085-r29.md` and working +
-committed `.agent/last_block.md`, all four byte-EQUAL, sha256
-5c93aff876b168aada846b99dcf9ff927df3f41f3329b55a7f40d353422dd813 — 18160 B, 306
-lines, 10 marker lines (157, 226, 228, 244, 246, 262, 264, 276, 278, 306),
-region digests 1-100 `c40e6be2`, 101-200 `23d988e4`, 201-306 `70c142ae`.
+G1 STATE. `ls -la .agent/STOP` → `No such file or directory` before C0a and again
+before C4. `git status --porcelain` empty at round start and after all five
+commits before C4. `git worktree list` one line at the handback.
+G2 TRANSPORT. Committed + working `.agent/authored/f085-r30.md` and committed +
+working `.agent/last_block.md`, all four byte-EQUAL at sha256
+fd9117aad06382747a59995dbeef4d32d75e14f3f7e3d19af7bc5499dc93b0a2 — 21347 B, 399
+lines, 26 marker lines (193, 251, 253, 261, 263, 274, 276, 278, 280, 282, 284,
+286, 288, 291, 293, 295, 297, 301, 303, 329, 331, 357, 359, 376, 378, 399),
+region digests 1-100 `9e5478bc`, 101-200 `97f12afd`, 201-300 `c6bb8ee5`, 301-399
+`d3cf7d6b`.
 G3 APPEND SHAPE. Pre-commit blob a byte-exact PREFIX: True. Remainder equals one
-blank line plus RECORD1: True. RECORD1's first line occurs 1× among the 69 added
+blank line plus RECORD1: True. RECORD1's first line occurs 1× among the 58 added
 lines. Lines matching `^(BEGIN|END)-[A-Z0-9]+$`: 0 — the bare substring `END-`
-hits 9×, the prose the gate warned about. numstat `69	0	.agent/live_review.md`.
-G4 ARITHMETIC. Base b0d09db4: 133 registered / 15 done / 0 landed, 118 open, max
-R-0518. HEAD: 134 / 15 / 0, 119 open, max R-0519, next free R-0520. Registered
-symmetric difference `['R-0519']`; done and landed symmetric differences `[]`.
-Duplicate ids 0. Resolutions naming an unregistered id 0.
-G5 PLAN PAIR. PLANF 0× at HEAD, PLANT 1×. `## Goal` byte-IDENTICAL to base (729
-B), `## Risks` byte-IDENTICAL to base (472 B). `.agent/plan.md` sha256
-baa0440f25f1856fc951868035c837aa99e60cb80e72f082e34c8375f8dea150 — 2453 B, 42
-lines (under 50). `## Next Steps` parses to the numerals 1, 2, 3.
-G6 INVENTORY PAIR. INVF 1× at HEAD, INVT 1× at HEAD. The 16 lines C3 adds hold
-`Migration state, measured at R29:` exactly once. INVF — the `### test — 12`
-heading plus its ten site lines, 11 lines, sha256 74cb89e9… — occurs 1× at base
-and 1× at HEAD, so those bytes are unchanged.
-numstat `16	0	.agent/f085_inventory.md`.
-G7 STATE READERS, in the PRIMARY checkout (`git worktree list` one line).
+hits 10×. numstat `58	0	.agent/live_review.md`.
+G4 ARITHMETIC. Base f99a8fe2: 134 registered / 15 done / 0 landed, 119 open, max
+R-0519. HEAD: 134 / 16 / 0, 118 open, max R-0519, next free R-0520. Registered
+symmetric difference `[]`; done `['R-0519']`; landed `[]`. Duplicate ids 0.
+Resolutions naming an unregistered id 0.
+G5 MIGRATION PAIRS at HEAD. SPAWNF 0× and OUTF 0× in both `job_promote.py` and
+`pingpong_promote.py`; SPAWNT 1× and OUTT 1× in each. Containment measured:
+SPAWNF→SPAWNT REWRITE, OUTF→OUTT REWRITE, IMPF1→IMPT1 APPEND-SHAPED, IMPF2→IMPT2
+APPEND-SHAPED, PLANF→PLANT REWRITE. IMPT1 1× in `job_promote.py`, IMPT2 1× in
+`pingpong_promote.py`; the guard import line occurs 1× among the lines C2 adds to
+each. Each new test def occurs 1× among the lines C2 adds to its file. 0 marker
+lines in any of the four files. numstat 9/5, 10/5, 25/0, 25/0.
+G6 THE MIGRATION IS REAL. Round gate in the PRIMARY checkout `python3 -m pytest
+tests/orchestration/test_job_promote.py tests/orchestration/test_pingpong_promote.py
+-q -rf` → exit 0, reading `146 passed in 8.67s`; the same command re-measured at
+base f99a8fe2 → exit 0, `144 passed in 8.53s`. RED PROOF in the disposable
+worktree at 10fe9a14, never in the primary: the five-line guarded call replaced by
+the bare `subprocess.run(argv, capture_output=True, text=True, timeout=timeout_sec,
+cwd=str(target))` with the decode left standing → `python3 -m pytest
+tests/orchestration/test_job_promote.py -q -rf` exit 1, `2 failed, 73 passed in
+12.19s`, failures `TestApprovePostTest::test_post_apply_test_runs` and
+`test_job_promote_post_test_runs_on_the_guarded_seam`, both raising
+`AttributeError: 'str' object has no attribute 'decode'` at
+`packages/orchestration/job_promote.py:429`.
+G7 LINT AND STATE READERS. `python3 -m ruff check` over the four files as one
+command line, repo config, no `--isolated` → exit 0, `All checks passed!`.
 `python3 -m pytest tests/orchestration/test_test_runner.py
 tests/regression/test_resource_safety.py tests/orchestration/test_integrity_gate.py
-tests/ui_server/test_dashboard_contract.py -rf -q` → exit 0, reading `158 passed
-in 19.71s`. CANARY `python3 -m pytest tests/cli/test_golden_path.py -q` → exit 0,
-reading `42 passed in 20.25s`. No ruff and no docs gate: the change set holds no
-`.py` file and nothing under `docs/`.
-G8 HYGIENE, measured before C4. `git diff --name-only b0d09db4..HEAD` holds
-exactly `.agent/authored/f085-r29.md`, `.agent/f085_inventory.md`,
-`.agent/last_block.md`, `.agent/live_review.md`, `.agent/plan.md`. Per-commit
-insertions 306, 212, 69, 8, 16 — none over 500; all five have one parent.
-`git reflog -12 --format=%gs`: 12 entries, 0 whose action is not `commit:`.
-STALENESS (constraint 8). Re-read after C3: `.agent/live_review.md`,
-`.agent/plan.md`, `.agent/f085_inventory.md`, `.agent/authored/f085-r29.md`,
-`.agent/last_block.md`. RECORD1's promise that C3 writes the migration state
-beneath the class list is true on disk. Its two quotations name HISTORICAL
-artifacts, not current wording — `Fortschritt: ~85 %` at line 5 of
-`b0d09db4:.agent/handoff.md` and "ending with … `Popen`" at line 27 of
-`07b1ba25:.agent/plan.md`, both verified — so C2 and C4 rewriting those files
-now falsifies neither.
+tests/ui_server/test_dashboard_contract.py -rf -q` in the PRIMARY checkout → exit
+0, `158 passed in 20.29s`. CANARY `python3 -m pytest tests/cli/test_golden_path.py
+-q` → exit 0, `42 passed in 21.76s`. No docs gate: nothing under `docs/` changed.
+All four were also run at base BEFORE C2 — exits 0 at `144 passed`, `158 passed`,
+`42 passed` and `All checks passed!` — so none was already red.
+G8 HYGIENE, measured before C4. `git diff --name-only f99a8fe2..HEAD` holds
+exactly the change set minus `.agent/handoff.md`; symmetric difference against the
+declared eight `[]`. Per-commit insertions 399, 317, 58, 69, 12 — none over 500;
+all five single-parent. `git reflog -10`: 10 entries, all `commit:`.
+STALENESS (constraint 8). Re-read after C3: `.agent/authored/f085-r30.md`,
+`.agent/last_block.md`, `.agent/live_review.md`, `.agent/plan.md` and the four C2
+files. One present-tense sentence is now historical and is REPORTED rather than
+edited: RECORD1's R29 gate entry says `job_promote.py` and `pingpong_promote.py`
+"reference neither symbol" — true of base f99a8fe2, the range that entry is
+explicitly scoped to, and false at HEAD, where each references
+`run_guarded_test_command` twice. `.agent/f085_inventory.md` carries the same
+reading under its own `measured at R29:` label and is outside the change set
+(constraint 6), so neither file was touched. Re-derived at HEAD per file: 7 of the
+12 `test`-class sites are on the seam and 5 are not — the Fortschritt numbers.
 
 ## Authored-text proofs
 
-All five slices were extracted PROGRAMMATICALLY from the COMMITTED
-`.agent/authored/f085-r29.md` by their marker pairs and applied byte-verbatim;
-none was retyped or taken from the prompt. RECORD1 append-verified byte-exactly
-(G3); PLANF matched at exactly 1 place and PLANT is 1× at HEAD (G5); INVF matched
-at exactly 1 place and INVT is 1× at HEAD (G6); 0 marker lines reached any
-target. The block digest was verified equal to 5c93aff8… before C0a.
+All thirteen slices were extracted PROGRAMMATICALLY from the COMMITTED
+`.agent/authored/f085-r30.md` by their marker pairs and applied byte-verbatim;
+none was retyped or taken from the prompt. Each FROM matched at exactly 1 place in
+each file it was applied to (measured; see G3 and G5). 0 marker lines reached any
+target. The block digest was verified equal to fd9117aa… before C0a and the
+committed copy is byte-EQUAL to the source (G2).
 
 ## Deviations & assumptions
 
 No departure from the ordered sequence C0a · C0b · C1 · C2 · C3 · C4: none extra,
-none dropped, none reordered. No worktree created. One measurement was corrected
-before being reported: the first G8 reflog predicate tested for the substring
-`": commit"` and wrongly called all 12 lines non-`commit:`; rewritten as
-`startswith("commit:")` and re-measured. Only the corrected reading is claimed.
-Length overage declared at the top of this file.
+none dropped, none reordered. The C2 pairs were dry-run against throwaway copies
+under gitignored `.remedy-wt/r30dry/` before any primary-checkout edit; that
+directory is scratch and is not part of the change set. Length overage declared at
+the top of this file.
 
 ## Next
 
-Next session's FIRST action is Phase 1 rule 1 — re-read `.agent/STOP` from disk
-— BEFORE rule 2, the Open PR Gate
+Next session's FIRST action is Phase 1 rule 1 — re-read `.agent/STOP` from disk —
+BEFORE rule 2, the Open PR Gate
 (`gh pr list --state open --json number,headRefName,baseRefName,isDraft`).
-R-0519 is OPEN and awaits the next reviewed round's authored resolution. R29's
-own verdict is NOT a §4.13 terminator: this branch continues. The next reviewed
-round records R29's gate entry in `.agent/live_review.md`. Open findings: 119.
-Then T002b continued — the seven `test`-class sites still on a bare spawn, per
-`.agent/plan.md` Next Steps item 1.
+R30's own verdict is NOT a §4.13 terminator: this branch continues. The next
+reviewed round records R30's gate entry in `.agent/live_review.md`. Open findings:
+118. Then T002b remainder — `pingpong_loop.py`:3537 first, per `.agent/plan.md`
+Next Steps item 1.
