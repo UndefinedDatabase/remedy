@@ -2173,3 +2173,68 @@ what was counted, or state nothing. The block that carries this resolution appli
 itself — its constraint 8 names the one file this block both edits and makes claims
 about, and asserts no property of any slice's contents. Applied by the commit that
 constraint 9 of this round's block fixes ahead of this one.
+
+Gate: R38 — the R37 entry. R37 PASSED. Every ordered gate was re-run by the reviewer
+over 483975b3..c3201976 and each reproduces the handback's reading. TRANSPORT WAS PROVED
+DISK-TO-DISK: the committed `.agent/authored/f085-r37.md`, the committed
+`.agent/last_block.md` at 857ca31a and both working copies are byte-EQUAL at sha256
+c8efc5c06444464245a311d03acc78f008246a9c259a7100330bdeac876d8409, 21768 B, 329 lines, 10
+marker lines, region digests 70737984, 9bdbc476 and 89541ee6. THE APPEND COMMIT HELD ITS
+SHAPE: 75feb987's pre-commit blob 391135 B is a byte-exact PREFIX of the 397527 B
+post-commit file, the remainder 6392 B is one blank line plus RECORD5, RECORD5 is an
+exact suffix, its first line occurs once among the 81 lines that commit adds, numstat
+81/0, and 0 lines match `^(BEGIN|END)-[A-Z0-9]+$` while the BEGIN substring occurs 15
+times. THE ARITHMETIC MOVED AS ORDERED: 141 / 22 / 0 at 483975b3 against 142 / 24 / 0 at
+c3201976, 119 open against 118, registered symmetric difference exactly R-0527, done
+symmetric difference exactly R-0526 and R-0527, landed symmetric difference empty, no
+duplicate id, no resolution naming an unregistered id, next free R-0528. THE CLAUSE
+LANDED AND BOTH PAIRS WERE APPLIED VERBATIM: at c3201976 the I11F text occurs once, the
+item-11, item-12 and closing-paragraph openers each occur once, all 19 TO-only lines
+occur exactly once among the 19 lines 69155e06 adds, numstat 19/0, and the reviewer
+reproduced both applications mechanically — each pre-commit blob with its FROM replaced
+once by its TO equals the post-commit blob byte for byte, for I11F→I11T and PLANF5→PLANT5
+alike. THE SUITES WERE RE-RUN, NOT READ: the four state readers `159 passed`,
+`tests/docs/` `295 passed` and the canary `42 passed`, each as its exact ordered command
+line in the primary checkout, each exit 0. HYGIENE IS CLEAN: the path set is the six
+declared paths, per-commit insertions are 329, 264, 19, 81, 3 and the handback's own 42,
+none over 500, all six commits are single-parent, the reflog holds only `commit:`
+entries, the handback is 94 lines against its 100-line cap, and origin and local agree at
+c3201976.
+
+WHAT THE WORKER FOUND AND DID NOT TOUCH. Under constraint 8 R37's worker measured the
+reviewer's own constraint against the slice it described, found both halves false,
+declared it, and changed nothing — the third consecutive round in which the constraint-8
+report produced the round's finding.
+
+- R-0528 — Low, A BLOCK CONSTRAINT ASSERTED TWO PROPERTIES OF ITS OWN TEXT AND BOTH ARE
+FALSE. Constraint 8 of the R37 block, applied at commits e2b23b33 and 857ca31a, states
+that "The only file this block both edits and makes claims about is
+`docs/agents/planner_reviewer_prompt.md`" and that "Every other reading RECORD5 asserts
+about a state before this round names 483975b3 or an earlier SHA". Measured against
+RECORD5 at c3201976, both fail. RECORD5 makes claims about three files that round edits,
+not one: `docs/agents/planner_reviewer_prompt.md`, `.agent/last_block.md` and
+`.agent/live_review.md`. And RECORD5's transport sentence names no SHA at all — its three
+8-hex tokens 7d583ed0, ace9d813 and 9b5a9653 are region content digests and resolve to no
+git object — while asserting a reading of `.agent/last_block.md` that the same round's
+C0b, commit 857ca31a, falsified: that file hashes 208ad9d3 at 483975b3 and c8efc5c0 at
+857ca31a and every commit after it. `.agent/last_block.md` is on
+the R-0525 list of paths this workflow rewrites every round, so that sentence was owed a
+SHA by a rule already on disk. This is the R-0527 shape recurring inside the very
+constraint written to close R-0527, one commit before the item-11 clause forbidding it
+landed. Found by the worker under constraint 8 and registered by the reviewer.
+
+- R-0529 — Low, THE RESOLUTION THAT CLOSED R-0527 IS ITSELF AN INSTANCE OF R-0527. The
+`Done: R-0527` paragraph, applied at commit 75feb987, closes with "The block that carries
+this resolution applies it to itself — its constraint 8 names the one file this block
+both edits and makes claims about, and asserts no property of any slice's contents."
+Measured at c3201976 both halves are false, by the same readings R-0528 records: the
+constraint names one file where RECORD5 claims about three, and the constraint DOES
+assert a property of a slice's contents — the sentence binding every reading RECORD5
+makes to name 483975b3 or earlier, which is the half the transport sentence breaks. What
+separates this from R-0528 is where it landed. R-0528's text sits in a block record; this
+one sits in `.agent/live_review.md`, the permanent findings register, inside the paragraph
+certifying R-0527 closed — so the register now asserts a compliance nobody measured, in
+the one document whose whole purpose is that its claims are measured. R37's handback
+declared the constraint and did not name this second landing site, which is why it needs
+an id of its own rather than a sentence inside R-0528. Per constraint 9 nothing is
+rewritten: this registration is the correction.
