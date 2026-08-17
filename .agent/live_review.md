@@ -2358,3 +2358,105 @@ operative one and declared the rest, which is the correct handling. Nothing fals
 the repository landed. The next record round resolves this by binding a baseline gate to
 paths that exist at the base it names, and by carving the worktree exception the R-0518
 clause needs.
+
+Gate: R41 — the R40 entry. R40 PASSED. Every ordered gate was re-run by the reviewer over
+d3a707f5..93226220 and each reproduces the handback's reading. TRANSPORT WAS PROVED AGAINST
+THE REVIEWER'S OWN ORIGINAL: the scratch file the block was authored into, the committed
+`.agent/authored/f085-r40.md` at fc5d957a, the committed `.agent/last_block.md` at 067fa3d2
+and the working copies of those two paths as they stand at 93226220 are all five byte-EQUAL
+at sha256 fad599b49902bd898feca72a990ba03061af4ba6598135570e7028ff797c41ed, 15082 B, 225
+lines, 6 marker lines. THE APPEND HELD ITS SHAPE: a5e240ca's pre-commit blob of 406554 B is
+a byte-exact PREFIX of the 412143 B post-commit file, the remainder of 5589 B is one blank
+line plus RECORD8, and RECORD8 extracted by its marker pair from the committed authored
+block hashes d6ce71700bafa738218c94e573b2470bfefc0532953f679234604721dc3b96af over 5588 B
+and 69 lines, equal byte for byte to what that commit appended; numstat 70/0, and no marker
+line reached the file. THE ARITHMETIC MOVED IN THE REGISTERED SET ALONE: 145 / 24 / 0 at
+d3a707f5 against 147 / 24 / 0 at 93226220, 121 open against 123, registered symmetric
+difference exactly R-0531 and R-0532, done and landed symmetric differences empty, no
+duplicate id, no resolution naming an unregistered id, next free R-0533. THE PLAN PAIR
+LANDED AS A REWRITE: PLANF8 0x and PLANT8 1x at 93226220, `.agent/plan.md` 45 lines under
+the 50-line cap with `## Goal` and `## Next Steps` both present, no marker line, numstat
+3/3. THE SUITES WERE RE-RUN, NOT READ, each in the primary checkout, each exit 0: the four
+state readers `159 passed` against a base of 159, and the canary `42 passed` against 42.
+HYGIENE IS CLEAN: per-commit insertions over that range are 225, 168, 70, 3 and the
+handback commit's own 81, none over 500; every commit in the range is single-parent; `git
+reflog -10` holds only `commit:` entries; and `git worktree list` is one line.
+
+BOTH R40 FINDINGS REPRODUCE INDEPENDENTLY. R-0531's counts were re-measured over the 49
+lines dce66faa adds to `tests/orchestration/test_exec_guard.py`: the empty line 12x,
+`    )` 4x, the argument line 3x and `@pytest.mark.subprocess` 2x, and those four are the
+only distinct lines occurring more than once there. R-0532's premise was re-measured at
+93226220: `git ls-tree origin/main` returns nothing for either
+`packages/orchestration/exec_guard.py` or `tests/orchestration/test_exec_guard.py`.
+
+WHAT THE WORKER FOUND AND DID NOT TOUCH. Under constraints 8 and 9 R40's worker measured
+two clauses of RECORD8 — the reviewer's own text, landed at a5e240ca — against the
+repository, found both false, declared them, and repaired neither, which is exactly what
+constraint 9 required. That is the sixth consecutive round in which the constraint-8 report
+produced the round's findings. Both are registered below, and this registration IS the
+correction: checklist item 20 holds that appending a correction is how this record stays
+honest and that overwriting landed text is worse than a dated wrong sentence, so a5e240ca
+keeps its bytes.
+
+- R-0533 — Low, A PER-COMMIT INSERTION LIST REPORTED ONE COMMIT'S CHURN COLUMN. RECORD8's
+hygiene clause, applied at commit a5e240ca, reads "per-commit insertions are 349, 295, 50,
+66, 6 and the handback's own 147". Re-measured by walking cbcb5c23..d3a707f5, the six
+commits insert 349, 295, 50, 66, 3 and 147: f31802f0 is 3 insertions and 3 deletions, so 6
+is the insertions+deletions churn reading that AGENTS.md DECISION F104 D1 excludes from the
+500-line cap. The clause's conclusion, none over 500, survives, so nothing false about this
+repository's compliance landed; what landed is a wrong number in a permanent record. Its
+provenance is what earns it an id: this is R-0530's class recurring inside the paragraph
+that REGISTERED R-0530, one commit after that paragraph concluded "nothing new is owed to
+the checklist ... what is owed is the habit of running that measurement over sentences
+quantifying across COMMITS". A counter-measure written as finding prose binds nothing, and
+the round that wrote this one is the proof. Found by the worker under constraint 8 and
+registered by the reviewer.
+
+- R-0534 — Low, A PRESENT-TENSE CLAIM ABOUT A WORKING COPY WAS FALSIFIED BY ITS OWN ROUND'S
+EARLIER COMMIT. RECORD8's transport clause, applied at commit a5e240ca, states that the R39
+scratch file, `.agent/authored/f085-r39.md`, `.agent/last_block.md` "at 757be21c" and "both
+working copies" are "all five byte-EQUAL" at sha256 32415af6…1181a. Measured:
+`.agent/last_block.md` does hash 32415af6 at 757be21c as the clause says, but 067fa3d2 —
+C0b of the very round that wrote the sentence, two commits before it landed — overwrote
+that path with the R40 block, so at a5e240ca both the working and the committed
+`.agent/last_block.md` hash fad599b4…c41ed. Four of the five copies matched when the
+sentence landed and the fifth did not. The same clause's closing "origin and local agree at
+d3a707f5" was false for the same structural reason: that block ordered its single push
+AFTER the handback commit, so while RECORD8 was landing local HEAD was a5e240ca and origin
+was still d3a707f5. This is R-0520's shape with a twist that let it through: the qualifier
+was attached to the COMMITTED reading and omitted from the WORKING reading standing beside
+it in the same sentence, so item 20 read as satisfied because a SHA was present — just not
+for the half that needed one. Found by the worker under constraint 8 and registered by the
+reviewer.
+
+Done: R-0530 — Resolved at R41. Item 22 of `docs/agents/planner_reviewer_prompt.md` §3 now
+binds any clause that states a value per commit, a value holding at "every commit after"
+one, or a total over a range to be recomputed at emission by walking that range with `git
+rev-list --reverse`, one reading per commit, and written as the list that walk produced.
+R-0530 concluded that nothing was owed to the checklist and that the counter-measure was a
+habit; R-0533 is that habit failing one commit later inside R-0530's own paragraph, which
+is the evidence that overturns the conclusion. The commit carrying item 22 is fixed by
+constraint 6 of the R41 block to land after the commit carrying this paragraph. The
+sentence R-0530 registered stays where it landed at 3b915e3c; nothing was rewritten.
+
+Done: R-0531 — Resolved at R41 by the same block. §4.9 of
+`docs/agents/planner_reviewer_prompt.md` now states that its per-line count is written for
+PROSE and binds prose only, that a slice of CODE repeats lines structurally so the count is
+unattainable by construction for every code append, and that the obligation there is
+ORDERED EQUALITY instead — pre-commit blob a byte-exact prefix, slice an exact suffix, and
+the lines the commit's diff adds exactly the slice's lines IN ORDER. That is the property
+R39's worker substituted and measured, promoted from one round's improvisation to the rule,
+and it is strictly stronger than the count it replaces because it fixes position as well as
+multiplicity. The commit carrying that text is fixed by constraint 6 to land after this
+one. The gate sentence R-0531 registers stays in commit eba5de68.
+
+Done: R-0532 — Resolved at R41 by the same block. Item 21 now binds a gate ordered at any
+commit other than the one under review to be checked at emission with `git ls-tree <base>
+-- <path>` for EVERY path it names, because a path this branch added does not exist at that
+base and the tool then exits on the missing file and produces no reading at all — the
+vacuous-gate shape of R-0438, reached through the base rather than through a typo. The same
+item carries the carve-out the R39 instance also needed: an R-0518 primary-checkout clause
+reaches SUITE commands, which need installed dependencies, and never a read-only baseline
+reading of named paths at another commit, which has no dependency to miss. The commit
+carrying item 21 is fixed by constraint 6 to land after this one. G6 of the R39 block stays
+as it landed at eba5de68.
