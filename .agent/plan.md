@@ -18,15 +18,16 @@ reaches a child, and the limitations document exists and is linked from the
 README.
 
 ## Current Step
-R27, this round: record the R26 PASS and register R-0517 — the reviewer's own R26
-block under-specified its Handback section, so that round's handoff dropped the
-next-session pointer the self-drive protocol requires. The session's declared cap
-of two authored rounds is reached here, not a blocker.
+R28, this round: record the R27 PASS, resolve R-0517, and put
+`test_execution_service._run_isolated_process` on the seam's CHILD half via
+`plan_child_spawn`, keeping its own wait deadline, its process-group kill and its
+file-backed streams where they are. R-0202 stays open: the environment the child
+receives is unchanged by this round.
 
 ## Next Steps
-1. T002b continued — the `test`-class sites still on a bare spawn, ending with
-   `test_execution_service.py`'s `Popen`, which takes the child half via
-   `plan_child_spawn` rather than the runner and which carries R-0202.
+1. T002b Restprüfung — re-derive the `test`-class site set from
+   `.agent/f085_inventory.md` against amendment F085 D1's twelve, and name every
+   site still on a bare spawn before T002b is called finished.
 2. T002c-d — the two DoD sites and the five runtime sites, whose policy differs:
    no wall timeout, because their children are the long-lived harness.
 3. T003 — network posture, the honest limitations document, the README link. Then
