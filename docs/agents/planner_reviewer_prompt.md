@@ -456,6 +456,55 @@ end the response with:
       carve-out above being read too widely one round after it landed: it licenses an
       ordering constraint in place of a SHA for a claim about the round's OWN change,
       and a sentence locating a PRIOR round's text is not that claim.
+      Finding R-0534 narrows this item from the SENTENCE to the READING. A clause that
+      names a SHA for one reading and sets a second reading beside it in the present
+      tense satisfies this item as worded and is still false on landing: the qualifier
+      attaches to EVERY reading the clause states, including the working copies a
+      transport proof lists last. The instance: a transport clause named
+      `.agent/last_block.md` "at 757be21c" correctly, then called five copies equal with
+      no commit named, while that round's own C0b had already overwritten the working
+      copy two commits earlier — four of the five matched, and the sentence claimed five.
+  21. **A baseline gate resolves its own paths at the base it names.** Finding R-0532. A
+      gate ordered "at `origin/main` as well", or at any commit other than the one under
+      review, is checked at emission with `git ls-tree <base> -- <path>` for EVERY path it
+      names, because a path this branch ADDED does not exist there: the tool then exits
+      non-zero on a missing file and produces no reading at all, so the comparison the
+      gate exists to make is empty by construction rather than merely unreported. Drop
+      that path from the baseline half and say so inline, or name a base where it
+      resolves. R-0364 requires every gate to be EXECUTED at its base before it is
+      ordered and item 12 pairs the reviewer's own dry run with a red control; this one
+      governs whether the base run can produce a reading AT ALL, which neither reaches,
+      because a command that exits on a missing path never evaluates the rule the gate
+      was written for — the vacuous-gate shape of R-0438, arriving through the base
+      rather than through a typo. The R39 instance: G6 ordered `ruff check` over
+      `packages/orchestration/exec_guard.py` and its test at `origin/main`, and
+      `exec_guard.py` was added on this branch, so both paths are absent there and the
+      baseline half exited `E902 No such file or directory` per path.
+      The same item carries the carve-out that instance also needed. A clause binding a
+      block's commands to the PRIMARY checkout and never a worktree (R-0518, whose red is
+      `apps/ui/node_modules` absent from any fresh worktree) reaches SUITE commands, which
+      need installed dependencies, and never a read-only baseline reading of named paths
+      at another commit: that reading has no dependency to miss, and requiring it in the
+      primary checkout while also requiring another commit's content is a pair of
+      sentences no worker can obey together. Read such a baseline with `git show
+      <base>:<path>` into scratch, or in a disposable worktree under §4.10.
+  22. **A sentence quantifying across COMMITS is measured over the whole range.** Findings
+      R-0530 and R-0533. Any clause stating a value per commit, a value holding at "every
+      commit after" one, or a total over a range is recomputed at emission by walking that
+      range mechanically — `git rev-list --reverse <base>..<head>`, one reading per commit
+      — and written as the list that walk produced, never generalised from the commits the
+      author happened to read. Two forms have cost this branch a finding each. R-0530 was a
+      correction that named two SHAs correctly and then added "and every commit after it",
+      which its own round's C0b had already falsified. R-0533 is the same class one round
+      later inside the record that REGISTERED R-0530: a per-commit insertion list read
+      `349, 295, 50, 66, 6` where that fifth commit is 3 insertions and 3 deletions, so the
+      sentence reported the churn column AGENTS.md DECISION F104 D1 excludes from the
+      500-line cap. That recurrence is why this is an item rather than a habit — R-0530
+      concluded "nothing new is owed to the checklist", and the class returned in the very
+      paragraph that concluded it. Item 11 governs a claim about the author's OWN bytes and
+      item 20 a claim about a FILE's content at a commit; this one governs a claim about a
+      RANGE, which neither reaches, because each individual reading in it can be correct
+      while the quantifier or the column is wrong.
   Why this is on disk and not a habit: item 2 has recurred six times across
   F104 and F105, and R20 hit four of them in one block. A check that lives
   only in reviewer session memory is the A1 trap §0 names, and this list is the
