@@ -1863,3 +1863,107 @@ SHA, never a label like `HEAD` or `main` — applied by the commit that precedes
 one in this round. The narrowing is the whole resolution; the R31 gate entry's "at
 HEAD" sentence stays on disk, wrong for one of its four names from ed88be4c onward,
 because overwriting landed text is worse than a dated wrong sentence.
+
+Gate: R34 — the R33 entry. R33 FAILED, on one sentence, under §4.5's "unverified
+completion claims". EVERY GATE R33 ORDERED REPRODUCES: the reviewer re-ran G1-G7 over
+c2033d6c..7480d880 and each returns the handback's reading. TRANSPORT WAS PROVED
+AGAINST THE REVIEWER'S OWN ORIGINAL, not only against a digest: the scratch file the
+block was authored into, the committed `.agent/authored/f085-r33.md`, the committed
+`.agent/last_block.md` and both working copies are all five byte-EQUAL at sha256
+a089cc6604b57cfd9c7ee5449742a4651c10c9d7db80af0f8da735bd5b566404, 19296 B, 305 lines,
+10 marker lines, region digests 2c1d1941, 84609b00 and f6c3a188 under the
+trailing-newline convention the handback used. THE APPEND COMMIT HELD ITS SHAPE:
+c933b949's pre-commit blob is a byte-exact PREFIX of the 373548 B post-commit file,
+the remainder is 6064 B = one blank line plus RECORD1, RECORD1 is an exact suffix,
+its first line occurs once among the 79 lines that commit adds, numstat 79/0, 0 lines
+match `^(BEGIN|END)-[A-Z0-9]+$` while the BEGIN substring occurs 7 times. THE
+ARITHMETIC MOVED IN BOTH SETS BY ONE ID: 135 registered / 17 done / 0 landed at
+c2033d6c against 136 / 18 / 0 at 7480d880, 118 open at both ends, registered and done
+symmetric differences each exactly R-0521, landed symmetric difference empty, no
+duplicate id, no resolution naming an unregistered id, and next free R-0522. THE
+NARROWING LANDED WHERE IT WAS AIMED: at 7480d880 the item-20 opener, the new
+`identifier that already EXISTS` line and the checklist's closing paragraph each
+occur exactly once in `docs/agents/planner_reviewer_prompt.md`, 0 marker lines
+reached it, numstat 9/1, and 74dfa30e does precede c933b949 as R33's constraint 9
+required. THE SUITES WERE RE-RUN, NOT READ: the four state readers `159 passed`, the
+docs suite `295 passed` and the canary `42 passed`, each as its exact ordered command
+line in the primary checkout, each exit 0. COMMIT HYGIENE IS CLEAN: the path set is
+the six declared paths, per-commit insertions are 305, 223, 9, 79, 13 and the
+handback's own 89, none over 500, all six commits are single-parent, the reflog holds
+only `commit:` entries, and the ordered push landed — origin and local agree at
+7480d880. The worker deviated from nothing it was ordered to do.
+
+WHAT FAILED IS A SENTENCE NO GATE ASKED FOR. R33's handback closes its
+`## Authored-text proofs` section by calling both pairs REWRITE and stating that each
+FROM "matched exactly once before apply and 0 times after". The reviewer measured the
+SHARPF text at 74dfa30e: it occurs once, not zero times. The findings follow: the
+reviewer's mislabelling, the false line it produced, and one the reviewer found while
+authoring this block's own resolutions.
+
+- R-0522 — Medium, A PAIR WAS DECLARED A REWRITE WHILE ITS TO CONTAINED ITS FROM
+VERBATIM, BY A CONSTRAINT THAT CLAIMED A MECHANICAL CONTAINMENT TEST. R33's constraint
+2 reads "Pair shapes, each MEASURED by the reviewer with a containment test, one
+reading per pair: SHARPF→SHARPT REWRITE · PLANF→PLANT REWRITE". SHARPT begins with
+SHARPF verbatim, so the containment test returns true and the pair is APPEND-shaped;
+PLANF→PLANT is a REWRITE and that half is right. This is checklist item 15 — itself
+the counter-measure for R-0508, the finding in which a block "ran the check for the
+single pair it suspected" and generalised — recurring one feature later in the round
+that had just narrowed item 20 for the same underlying reason. Item 15 was obeyed as
+written: a per-pair reading WAS printed. What was printed was the LABEL and not the
+test's output, and a label is indistinguishable on the page from a measured one, so
+nothing downstream could catch it. Medium rather than Low because the label is what
+the worker's proof obligation is derived FROM: a wrong label does not stay a
+documentation defect, it manufactures a false measurement, which is R-0523.
+
+- R-0523 — Medium, A HANDBACK REPORTED A PROOF NUMBER THAT THE FILE ON DISK
+CONTRADICTS. R33's handback, applied at 7480d880, states in `## Authored-text proofs`
+that SHARPF→SHARPT and PLANF→PLANT are "both REWRITE; each FROM matched exactly once
+before apply and 0 times after, each TO once after". At 74dfa30e the SHARPF text
+occurs exactly once in `docs/agents/planner_reviewer_prompt.md` and the SHARPT text
+occurs exactly once, because the second contains the first; the claim is true of
+PLANF→PLANT and false of SHARPF→SHARPT. §4.5 lists unverified completion claims among
+the block conditions, so this is the sentence that costs R33 its PASS even though
+every ordered gate is green — a round's verdict is not the conjunction of its gates.
+The defect is not dishonesty: §4.9 says in terms that demanding a FROM-zero count for
+an append-shaped pair "invites either a fabricated number or a pointless repair
+round", and this is that invitation being accepted. The counter-measure is upstream,
+at R-0522, because a worker handed a correct shape reports a correct number. The
+landed sentence is NOT rewritten: this paragraph is its correction, per R-0521.
+
+- R-0524 — Low, ITEM 20 NOW DEMANDS A SHA FOR A CLASS OF SLICE IN WHICH NO SHA CAN
+EXIST. R-0521's narrowing, applied at 74dfa30e, requires that the commit a slice names
+be "an absolute identifier that already EXISTS when the slice is written", justified
+on the ground that "a block always has such a SHA to hand, because its own base is
+stated in its done-when". The base SHA answers a reading of a state that PRECEDES the
+round. It cannot answer a slice that asserts what the round's own commits have just
+made true — and every `Done:` paragraph in this file is of that class, including
+those in this entry, which assert what items 15 and 20 require after C1 of R34. For
+those the required identifier is a commit that does not exist when the slice is
+authored, so the rule as narrowed is satisfiable only by a value that cannot be
+written: the R-0371 shape, which this same checklist forbids for gates. Low because
+it has cost no round yet and was caught while authoring rather than after landing.
+Found by the reviewer against its own draft, which is where item 20 is supposed to be
+read.
+
+Done: R-0522 — Resolved at R34. Checklist item 15 of
+`docs/agents/planner_reviewer_prompt.md` §3 now requires the constraint to record the
+containment test's OUTPUT — `TO contains FROM: true` or `false` — with the APPEND or
+REWRITE label derived on the same line, and it states that a `true` reading orders the
+§4.9 append obligation and never a FROM-zero count. The narrowing is applied by the
+commit that constraint 9 of this round's block fixes ahead of this one; constraint 2
+of that same block is the first use of the new form, recording a boolean for every
+pair it lists.
+
+Done: R-0523 — Resolved at R34. This registration is the correction, and it is the
+whole resolution: the false sentence stays in `.agent/handoff.md` where it landed,
+because overwriting landed text is worse than a dated wrong sentence. What stops the
+class is R-0522's narrowing plus the constraint this round's block carries, which
+forbids reporting a FROM-zero count for an APPEND pair under any wording. No gate is
+added, because no gate could have caught a number nothing ordered.
+
+Done: R-0524 — Resolved at R34. Checklist item 20 of
+`docs/agents/planner_reviewer_prompt.md` §3 now carves out the slice that describes
+the round's own landed change: it names the block CONSTRAINT fixing the commit order
+instead of a SHA, and a reading of any prior state still names its SHA. Applied by the
+commit that constraint 9 of this round's block fixes ahead of this one, which is what
+lets these three paragraphs name constraint 9 rather than an impossible identifier.
