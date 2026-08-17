@@ -1,150 +1,162 @@
-# Handback — F085 Sandbox hardening (stage 1) — R30
+# Handback — F085 Sandbox hardening, R31
 
-Branch `feature/f085-sandbox-hardening` · Base `f99a8fe2` · HEAD before this
-commit `17a3e053`. First round of this block that changes `.py` files.
-
-Fortschritt: ~63 % (T001 gebaut · R13-R29 PASS · T002a KOMPLETT · T002b 7 von 12
-Sites auf dem Seam, 5 offen · T002c-d, T003 offen) — Schätzung, gegen die
+Branch: feature/f085-sandbox-hardening. Base SHA: d4fe1674.
+Fortschritt: ~67 % (T001 gebaut · R13-R30 PASS · T002a KOMPLETT · T002b 8 von 12
+Sites auf dem Seam, 4 offen · T002c-d, T003 offen) — Schätzung, gegen die
 Klassentabelle aus Amendment F085 D1 gemessen.
-
-Deviations, declared: this file measures 150 lines against the 100-line cap for a
->5-commit round. Cause is mandated content only — six per-commit tables, the
-six-row item-status table, eight gates with real readings and the constraint-8
-staleness report. No section dropped, no transcript pasted.
 
 ## Range
 
-Review of f99a8fe2..HEAD.
+Review of d4fe1674..HEAD.
 
 ## Commits
 
-### 6e1879bb docs(f085): save the R30 step block (C0a)
+### 8149fa06 docs(f085): save the R31 step block
 | Path | +/- | Reason |
-| `.agent/authored/f085-r30.md` | +399/-0 | the block, sha256 fd9117aa… verified before commit |
-### 23293d23 docs(f085): mirror the R30 block into last_block (C0b)
-| Path | +/- | Reason |
-| `.agent/last_block.md` | +317/-224 | written from `git show HEAD:.agent/authored/f085-r30.md` |
-### 9668bec4 docs(f085): record the R29 PASS and resolve R-0519 (C1)
-| Path | +/- | Reason |
-| `.agent/live_review.md` | +58/-0 | RECORD1 appended: R29 gate entry + the R-0519 resolution |
-### 10fe9a14 feat(f085): move both post-test spawns onto the guarded test seam (C2)
-| Path | +/- | Reason |
-| `packages/orchestration/job_promote.py` | +9/-5 | IMPF1→IMPT1, SPAWNF→SPAWNT, OUTF→OUTT |
-| `packages/orchestration/pingpong_promote.py` | +10/-5 | IMPF2→IMPT2, SPAWNF→SPAWNT, OUTF→OUTT |
-| `tests/orchestration/test_job_promote.py` | +25/-0 | TESTJP appended |
-| `tests/orchestration/test_pingpong_promote.py` | +25/-0 | TESTPP appended |
-### 17a3e053 docs(f085): advance the plan to R30 (C3)
-| Path | +/- | Reason |
-| `.agent/plan.md` | +12/-8 | PLANF→PLANT rewrite of Current Step and Next Steps |
-### this commit docs(f085): rewrite the handback for R30 (C4)
-| Path | +/- | Reason |
-| `.agent/handoff.md` | self-reference | a handback cannot table its own commit (R-0149); insertions are in the round report |
+|---|---|---|
+| .agent/authored/f085-r31.md | +352/-0 | C0a, block saved byte-for-byte |
 
-## Item status
+### 00a34d16 docs(f085): mirror the R31 block into last_block
+| Path | +/- | Reason |
+|---|---|---|
+| .agent/last_block.md | +174/-221 | C0b, mirror of the committed blob |
+
+### f7f8914c docs(review): record the R30 PASS and register R-0520
+| Path | +/- | Reason |
+|---|---|---|
+| .agent/live_review.md | +67/-0 | C1, RECORD1 appended verbatim |
+
+### 11ebcc80 feat(f085): move the pingpong loop test spawn onto the guarded seam
+| Path | +/- | Reason |
+|---|---|---|
+| packages/orchestration/pingpong_loop.py | +9/-5 | C2, SPAWNF→SPAWNT, OUTF→OUTT, IMPF→IMPT |
+| tests/orchestration/test_pingpong.py | +25/-0 | C2, TESTPL appended |
+
+### fddff602 docs(f085): advance the plan to R31
+| Path | +/- | Reason |
+|---|---|---|
+| .agent/plan.md | +5/-8 | C3, PLANF→PLANT |
+
+### (this commit) docs(f085): rewrite the handback for R31
+| Path | +/- | Reason |
+|---|---|---|
+| .agent/handoff.md | round report | C4 cannot table itself (R-0149) |
 
 | Item | Status | Reason |
-|------|--------|--------|
-| C0a  | done   | |
-| C0b  | done   | |
-| C1   | done   | |
-| C2   | done   | |
-| C3   | done   | |
-| C4   | done   | this commit |
+|---|---|---|
+| C0a | done | |
+| C0b | done | |
+| C1 | done | |
+| C2 | done | |
+| C3 | done | |
+| C4 | done | |
 
 ## External actions
 
-`git worktree add --detach .remedy-wt/r30red HEAD` → created at 10fe9a14, used
-for G6's destructive red proof only. `git worktree remove --force` then
-`git worktree prune` → removed before C3; `git worktree list` is one line.
-`git push -u origin feature/f085-sandbox-hardening` after C4 — outcome in the
-round report. No `gh` command, no PR, no merge.
+`git worktree add --detach .remedy-wt/r31red HEAD` → created at 11ebcc80 (G6).
+`git worktree remove --force` + `git worktree prune` → gone before C3;
+`git worktree list` is one line. `git push -u origin feature/f085-sandbox-hardening`
+— outcome in the round report. No PR, no merge, no gh command.
 
 ## Verification
 
-G1 STATE. `ls -la .agent/STOP` → `No such file or directory` before C0a and again
-before C4. `git status --porcelain` empty at round start and after all five
-commits before C4. `git worktree list` one line at the handback.
-G2 TRANSPORT. Committed + working `.agent/authored/f085-r30.md` and committed +
-working `.agent/last_block.md`, all four byte-EQUAL at sha256
-fd9117aad06382747a59995dbeef4d32d75e14f3f7e3d19af7bc5499dc93b0a2 — 21347 B, 399
-lines, 26 marker lines (193, 251, 253, 261, 263, 274, 276, 278, 280, 282, 284,
-286, 288, 291, 293, 295, 297, 301, 303, 329, 331, 357, 359, 376, 378, 399),
-region digests 1-100 `9e5478bc`, 101-200 `97f12afd`, 201-300 `c6bb8ee5`, 301-399
-`d3cf7d6b`.
-G3 APPEND SHAPE. Pre-commit blob a byte-exact PREFIX: True. Remainder equals one
-blank line plus RECORD1: True. RECORD1's first line occurs 1× among the 58 added
-lines. Lines matching `^(BEGIN|END)-[A-Z0-9]+$`: 0 — the bare substring `END-`
-hits 10×. numstat `58	0	.agent/live_review.md`.
-G4 ARITHMETIC. Base f99a8fe2: 134 registered / 15 done / 0 landed, 119 open, max
-R-0519. HEAD: 134 / 16 / 0, 118 open, max R-0519, next free R-0520. Registered
-symmetric difference `[]`; done `['R-0519']`; landed `[]`. Duplicate ids 0.
-Resolutions naming an unregistered id 0.
-G5 MIGRATION PAIRS at HEAD. SPAWNF 0× and OUTF 0× in both `job_promote.py` and
-`pingpong_promote.py`; SPAWNT 1× and OUTT 1× in each. Containment measured:
-SPAWNF→SPAWNT REWRITE, OUTF→OUTT REWRITE, IMPF1→IMPT1 APPEND-SHAPED, IMPF2→IMPT2
-APPEND-SHAPED, PLANF→PLANT REWRITE. IMPT1 1× in `job_promote.py`, IMPT2 1× in
-`pingpong_promote.py`; the guard import line occurs 1× among the lines C2 adds to
-each. Each new test def occurs 1× among the lines C2 adds to its file. 0 marker
-lines in any of the four files. numstat 9/5, 10/5, 25/0, 25/0.
-G6 THE MIGRATION IS REAL. Round gate in the PRIMARY checkout `python3 -m pytest
-tests/orchestration/test_job_promote.py tests/orchestration/test_pingpong_promote.py
--q -rf` → exit 0, reading `146 passed in 8.67s`; the same command re-measured at
-base f99a8fe2 → exit 0, `144 passed in 8.53s`. RED PROOF in the disposable
-worktree at 10fe9a14, never in the primary: the five-line guarded call replaced by
-the bare `subprocess.run(argv, capture_output=True, text=True, timeout=timeout_sec,
-cwd=str(target))` with the decode left standing → `python3 -m pytest
-tests/orchestration/test_job_promote.py -q -rf` exit 1, `2 failed, 73 passed in
-12.19s`, failures `TestApprovePostTest::test_post_apply_test_runs` and
-`test_job_promote_post_test_runs_on_the_guarded_seam`, both raising
-`AttributeError: 'str' object has no attribute 'decode'` at
-`packages/orchestration/job_promote.py:429`.
-G7 LINT AND STATE READERS. `python3 -m ruff check` over the four files as one
-command line, repo config, no `--isolated` → exit 0, `All checks passed!`.
-`python3 -m pytest tests/orchestration/test_test_runner.py
-tests/regression/test_resource_safety.py tests/orchestration/test_integrity_gate.py
-tests/ui_server/test_dashboard_contract.py -rf -q` in the PRIMARY checkout → exit
-0, `158 passed in 20.29s`. CANARY `python3 -m pytest tests/cli/test_golden_path.py
--q` → exit 0, `42 passed in 21.76s`. No docs gate: nothing under `docs/` changed.
-All four were also run at base BEFORE C2 — exits 0 at `144 passed`, `158 passed`,
-`42 passed` and `All checks passed!` — so none was already red.
-G8 HYGIENE, measured before C4. `git diff --name-only f99a8fe2..HEAD` holds
-exactly the change set minus `.agent/handoff.md`; symmetric difference against the
-declared eight `[]`. Per-commit insertions 399, 317, 58, 69, 12 — none over 500;
-all five single-parent. `git reflog -10`: 10 entries, all `commit:`.
-STALENESS (constraint 8). Re-read after C3: `.agent/authored/f085-r30.md`,
-`.agent/last_block.md`, `.agent/live_review.md`, `.agent/plan.md` and the four C2
-files. One present-tense sentence is now historical and is REPORTED rather than
-edited: RECORD1's R29 gate entry says `job_promote.py` and `pingpong_promote.py`
-"reference neither symbol" — true of base f99a8fe2, the range that entry is
-explicitly scoped to, and false at HEAD, where each references
-`run_guarded_test_command` twice. `.agent/f085_inventory.md` carries the same
-reading under its own `measured at R29:` label and is outside the change set
-(constraint 6), so neither file was touched. Re-derived at HEAD per file: 7 of the
-12 `test`-class sites are on the seam and 5 are not — the Fortschritt numbers.
+G1 STATE. `.agent/STOP` absent before C0a and again before C4 (`ls` → No such
+file). `git status --porcelain` empty at round start and after every commit.
+`git worktree list` one line at the handback.
+
+G2 TRANSPORT. The committed authored file, the committed `.agent/last_block.md`,
+both working copies and the source file are all five byte-EQUAL: sha256
+9023be74ce151bf00b833090c733fe9f77210a50519f4c14790f615adc6cf2a4, 20195 B, 352
+lines, 20 marker lines; regions 1-100 def02d5c, 101-200 afd442cb, 201-352 b083f1bd.
+
+G3 APPEND SHAPE (C1). Pre-commit blob is a byte-exact PREFIX (True); remainder is
+exactly one blank line + RECORD1 (5193 = 1 + 5192 B, True); RECORD1's first line
+1× among the 67 added lines; 0 lines match `^(BEGIN|END)-[A-Z0-9]+$` (substring
+`END-` 11×). `git show --numstat f7f8914c` → `67 0 .agent/live_review.md`.
+
+G4 ARITHMETIC. Base d4fe1674: 134 registered / 16 done / 0 landed, 118 open, 0
+duplicate ids, 0 resolutions naming an unregistered id, max R-0519, next free
+R-0520 — reproduces the ordered base reading. HEAD: 135 / 16 / 0, 119 open, 0
+duplicates, 0 unregistered resolutions, max R-0520, next free R-0521. Registered
+symmetric difference `['R-0520']`; done and landed both `[]`.
+
+G5 MIGRATION PAIRS at HEAD, in `pingpong_loop.py`: SPAWNF 0×, OUTF 0×, SPAWNT 1×,
+OUTT 1×, IMPT 1× (IMPF is a prefix of IMPT, so no whole-file FROM count — constraint
+2). `from packages.orchestration.exec_guard import run_guarded_test_command` 1×
+among C2's added lines to that file;
+`def test_pingpong_loop_test_command_runs_on_the_guarded_seam(tmp_path, monkeypatch):`
+1× among C2's added lines to the test file; 0 marker lines in either.
+`git show --numstat 11ebcc80` → `9 5 packages/orchestration/pingpong_loop.py`,
+`25 0 tests/orchestration/test_pingpong.py`.
+
+G6 ROUND GATE + RED PROOF. Primary checkout:
+`python3 -m pytest tests/orchestration/test_pingpong.py -q -rf` → exit 0,
+`34 passed in 0.79s` (a reading, not a target; base d4fe1674 was 33 passed).
+RED PROOF in the disposable worktree `.remedy-wt/r31red` at 11ebcc80, never in the
+primary checkout: the five-line `run_guarded_test_command(` call matched 1× and
+became the bare
+`subprocess.run(argv, capture_output=True, text=True, timeout=timeout_sec, cwd=str(staging))`
+with the decode line left standing. Same command → exit 1, `1 failed, 33 passed in
+1.04s`. Failing node
+`tests/orchestration/test_pingpong.py::test_pingpong_loop_test_command_runs_on_the_guarded_seam`,
+exception `AttributeError: 'str' object has no attribute 'decode'. Did you mean:
+'encode'?` at `packages/orchestration/pingpong_loop.py:3549`.
+
+G7 LINT AND STATE READERS, all in the PRIMARY checkout.
+`python3 -m ruff check packages/orchestration/pingpong_loop.py tests/orchestration/test_pingpong.py`
+(repo configuration, no `--isolated`) → exit 0, `All checks passed!`.
+`python3 -m pytest tests/orchestration/test_test_runner.py tests/regression/test_resource_safety.py tests/orchestration/test_integrity_gate.py tests/ui_server/test_dashboard_contract.py -rf -q`
+→ exit 0, `158 passed in 19.84s` (base 158; R-0518's `test_vitest_passes` red did
+NOT occur). CANARY `python3 -m pytest tests/cli/test_golden_path.py -q` → exit 0,
+`42 passed in 20.32s`. No docs gate: nothing under `docs/` changed.
+
+G8 COMMIT HYGIENE, before C4. `git diff --name-only d4fe1674..HEAD` → exactly
+`.agent/authored/f085-r31.md`, `.agent/last_block.md`, `.agent/live_review.md`,
+`.agent/plan.md`, `packages/orchestration/pingpong_loop.py`,
+`tests/orchestration/test_pingpong.py` — the declared set minus `.agent/handoff.md`,
+nothing else. Per-commit insertions 352, 174, 67, 34, 5; none exceeds 500; C4's own
+is in the round report. All five are single-parent; `git reflog -10` holds only
+`commit:` entries.
+
+STALENESS (constraint 8). Re-read at HEAD: the authored file and `last_block.md`
+(still byte-equal), `live_review.md`, `plan.md`, `pingpong_loop.py`,
+`test_pingpong.py`. R-0520's text survives C2 — it names d4fe1674 in the sentence,
+and `job_promote.py` and `pingpong_promote.py` reference `run_guarded_test_command`
+2× each at BOTH d4fe1674 and HEAD, C2 touching neither. PLANT's four remaining
+sites are still bare at HEAD: `builder_bridge.py`:220, `ci_run.py`:79,
+`integrity_gate.py`:283, `mission_state.py`:833 each show `subprocess.run(` with 0
+guard references; `pingpong_loop.py`:3537 is correctly gone from the plan. No
+sentence this round put on disk was falsified by a later commit of the round.
 
 ## Authored-text proofs
 
-All thirteen slices were extracted PROGRAMMATICALLY from the COMMITTED
-`.agent/authored/f085-r30.md` by their marker pairs and applied byte-verbatim;
-none was retyped or taken from the prompt. Each FROM matched at exactly 1 place in
-each file it was applied to (measured; see G3 and G5). 0 marker lines reached any
-target. The block digest was verified equal to fd9117aa… before C0a and the
-committed copy is byte-EQUAL to the source (G2).
+Every slice was extracted PROGRAMMATICALLY from the committed
+`.agent/authored/f085-r31.md` by BEGIN-/END- marker pair — never retyped, never
+taken from the prompt. sha256 (first 12): RECORD1 b314db9c6ad3 (5192 B), SPAWNF
+4880de1c4d8c, SPAWNT 4b00b3c594fa, OUTF 636de4dfa7c1, OUTT cfb4a03724fe, IMPF
+37f58e93625c, IMPT 225acdb277e2, TESTPL b72084ce889e, PLANT 59d8979450b5. Each
+FROM matched exactly ONE place in its target: SPAWNF, OUTF, IMPF, PLANF all 1×.
+Disk-to-disk: the committed authored file equals the source byte-for-byte (G2).
 
 ## Deviations & assumptions
 
-No departure from the ordered sequence C0a · C0b · C1 · C2 · C3 · C4: none extra,
-none dropped, none reordered. The C2 pairs were dry-run against throwaway copies
-under gitignored `.remedy-wt/r30dry/` before any primary-checkout edit; that
-directory is scratch and is not part of the change set. Length overage declared at
-the top of this file.
+No departure from the ordered commit sequence: C0a, C0b, C1, C2, C3, C4 ran in
+that order, one commit each, none extra and none dropped.
+Declared: (a) this handback is 162 lines against the 100-line cap; the cause is
+mandated content — six per-commit tables, the item-status table, eight gate
+transcripts with exit codes and the staleness sweep. No section was dropped to
+meet it (AGENTS.md D15). (b) Before C2 the three pairs were dry-run against
+throwaway COPIES of the two targets in a gitignored scratch dir
+(`.remedy-wt/r31apply` — not a git worktree, no git operation) to confirm each
+FROM matched once and ruff stayed green; the dir was deleted, nothing committed.
 
 ## Next
 
-Next session's FIRST action is Phase 1 rule 1 — re-read `.agent/STOP` from disk —
-BEFORE rule 2, the Open PR Gate
+The next session's FIRST action is Phase 1 rule 1 — re-read `.agent/STOP` from
+disk — BEFORE rule 2, the Open PR Gate
 (`gh pr list --state open --json number,headRefName,baseRefName,isDraft`).
-R30's own verdict is NOT a §4.13 terminator: this branch continues. The next
-reviewed round records R30's gate entry in `.agent/live_review.md`. Open findings:
-118. Then T002b remainder — `pingpong_loop.py`:3537 first, per `.agent/plan.md`
-Next Steps item 1.
+R-0520 is OPEN and awaits the next reviewed round's authored resolution: this
+round registered it and resolved nothing, so the done set is unchanged at 16.
+R31's own verdict is NOT a §4.13 terminator, because this branch continues.
+The next reviewed round records R31's gate entry in `.agent/live_review.md`.
+Expected next action: the reviewer gates d4fe1674..HEAD and re-runs G1-G8.
