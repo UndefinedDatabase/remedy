@@ -378,6 +378,22 @@ end the response with:
       family, narrowed from commit SHAs to gate results. The R22 instance: DONE1
       asserted a probe outcome while the block listed its gates after its commits, and
       only the worker's own reordering kept the record true.
+  20. **A slice states a fact about a file the same block edits only with the commit
+      it was read at.** Finding R-0520. An authored slice may assert a present-tense
+      fact about a source file — "these modules reference neither symbol", "this
+      function still spawns bare" — only when the sentence itself names the commit the
+      reading was taken at, because a later commit of the SAME block may falsify it and
+      the slice is by then unalterable: constraint 1 forbids editing a slice and the
+      file it lands in is the permanent record. Item 9 re-measures a block's POINTERS
+      at emission and item 19 governs a claim about a GATE's result; this one governs a
+      claim about a file's CONTENT, which neither reaches, because the pointer resolves
+      and no gate is involved — the sentence is simply true at the base and false at
+      HEAD. The R29 instance: a gate entry listed seven modules as referencing neither
+      symbol, and C2 of that same round put two of them on the seam, so five-sevenths
+      of a sentence in `.agent/live_review.md` survives and two-sevenths do not. The
+      counter-measure is the commit name, never a rewrite: appending a correction is
+      how this record stays honest, and overwriting landed text is worse than a dated
+      wrong sentence.
   Why this is on disk and not a habit: item 2 has recurred six times across
   F104 and F105, and R20 hit four of them in one block. A check that lives
   only in reviewer session memory is the A1 trap §0 names, and this list is the
