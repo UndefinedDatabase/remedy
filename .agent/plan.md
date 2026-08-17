@@ -18,21 +18,22 @@ reaches a child, and the limitations document exists and is linked from the
 README.
 
 ## Current Step
-R51, this round: T002c's first half. `_run_process_check` moves onto a new `dod-process` seam in
-`packages/orchestration/exec_guard.py` that keeps the check's wall timeout and its cwd pin and
-replaces the `env=os.environ.copy()` copy with an allowlist; four tests ship with it. The R50
-PASS is recorded in the same round.
+R52, this round: the `dod-app` seam alone, in `packages/orchestration/exec_guard.py`. It takes no
+wall timeout and no output cap — both are parent-side, and its caller owns its own deadline and
+writes the app's output to a file. One test ships with it. Its caller migrates at R53, so the
+module's PARTIAL COVERAGE note is untouched here and stays true. The R51 PASS is recorded in the
+same round, with finding R-0554.
 
 ## Next Steps
-1. T002c — `_run_app_once` in `packages/orchestration/dod_runners.py` under the dod-app policy:
-   no wall timeout and network allowed, because it starts the app harness and probes it over
-   HTTP. It takes the CHILD half alone through `plan_child_spawn`, since it owns its own
-   parent-side deadline and writes the app's output to a file rather than to a pipe.
+1. T002c — migrate `_run_app_once` in `packages/orchestration/dod_runners.py` onto that seam,
+   taking the CHILD half alone through `plan_child_spawn`, and rewrite the `exec_guard` coverage
+   note in the same round, because only the call site's move makes that note false.
 2. T002d — the runtime sites under DECISION F085 D8: `runtime-server` takes no wall timeout and
    `runtime-build` keeps the one it already has. That round also extracts the guard-result
    translation the `test` and `dod-process` seams each carry, once three uses show its shape.
-3. T003 — network posture, the limitations document, its README link. Then the integration gate,
-   then closure.
+3. T003 — network posture, the limitations document, its README link. That document states what
+   the CHILD-half migrations do NOT bound: an app log written to a file takes no guard output cap.
+   Then the integration gate, then closure.
 
 ## Risks
 - An allowlist bounds what the PARENT hands over, never what the child's runtime
