@@ -18,10 +18,9 @@ reaches a child, and the limitations document exists and is linked from the
 README.
 
 ## Current Step
-R47, this round: record the R46 PASS, register R-0548 for the plan-path defect R46's handback
-declared, and promote two counter-measures into the §3 pre-emission checklist — item 16 widened
-past headings, and a new item 23 carrying the plan-path rule R-0377 and R-0491 state only as
-finding prose. No source file changes this round.
+R48, this round: record the R47 PASS and register R-0549 for the session-resume clauses the R47
+handback dropped. A record-only round, so the verdict reaches disk before the session that
+issued it ends; T002c opens at R49. No source file changes this round.
 
 ## Next Steps
 1. T002c — the two DoD sites in `packages/orchestration/dod_runners.py`, whose policy differs
