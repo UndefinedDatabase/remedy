@@ -18,16 +18,20 @@ reaches a child, and the limitations document exists and is linked from the
 README.
 
 ## Current Step
-R29, this round: record the R28 PASS and register R-0519. The T002b Restprüfung
-found five of the twelve `test`-class sites on the seam and seven still on a bare
-spawn, which the previous Fortschritt overstated; the measurement lands in
-`.agent/f085_inventory.md` beneath the class list that defines the set.
+R30, this round: record the R29 PASS, resolve R-0519, and move the two
+byte-identical post-test spawns of `job_promote.py` and `pingpong_promote.py`
+onto `run_guarded_test_command`, each with a test that pins the spawn and the
+bytes-to-str decode the seam makes necessary.
 
 ## Next Steps
-1. T002b continued — the seven `test`-class sites still on a bare spawn:
-   `builder_bridge.py`:220, `ci_run.py`:79, `integrity_gate.py`:283,
-   `job_promote.py`:417, `mission_state.py`:833, `pingpong_loop.py`:3537 and
-   `pingpong_promote.py`:326. Take them in small groups, one order per group.
+1. T002b remainder — the `test`-class sites still on a bare spawn.
+   `pingpong_loop.py`:3537 first: it is the same shape as the pair just migrated,
+   with `staging` in place of `target`, so it takes the same pair with one word
+   changed. Then the four that each differ: `builder_bridge.py`:220 adds
+   `PYTHONDONTWRITEBYTECODE` to a full `os.environ`, `ci_run.py`:79 streams to the
+   console instead of capturing and passes no timeout, `integrity_gate.py`:283
+   passes no cwd at all, and `mission_state.py`:833 spawns inside a default
+   `runner` closure. One or two per order, never as one group.
 2. T002c-d — the two DoD sites and the five runtime sites, whose policy differs:
    no wall timeout, because their children are the long-lived harness.
 3. T003 — network posture, the honest limitations document, the README link. Then
