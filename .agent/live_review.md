@@ -3328,3 +3328,50 @@ identical either way, since the threshold is more than five commits and both rea
 no gate and no cap moved, and the worker again read the Bundle rather than the sentence and wrote
 "Eight commits" in the handback while flagging the contradiction. Found by the worker, registered
 by the reviewer while gating R53.
+
+Gate: R55 — the R54 entry. R54 PASSED. Every ordered gate G1-G9 was re-executed by the reviewer
+over 8ba3ad45..1812c219, not read, and each reproduces the handback's reading. LINE COUNTS ARE
+`splitlines` COUNTS. TRANSPORT HELD AGAINST THE REVIEWER'S OWN ORIGINAL, disk-to-disk with no
+digest fallback: `.remedy-wt/f085-r54.md`, the committed `.agent/authored/f085-r54.md` at eb18ad04,
+the committed `.agent/last_block.md` at 2067581f, both of those paths at 1812c219 and both working
+copies as they stand at 1812c219 are all seven byte-EQUAL at sha256
+19497ed6660efbf34b3e2fbb246faa0c1ef0e0a75e7132c14e3757a6c3182959, 31279 B, 490 lines, 22 marker
+lines — every figure measured on every copy. THE SHAPES HELD. Each of the four REWRITES gives
+`TO contains FROM: false`, its FROM 1x in the pre-commit blob and 0x after with its TO exactly 1x:
+PLAN8F→PLAN8T at dbfb26af numstat `8 9`, and XLAT1F→XLAT1T, XLAT2F→XLAT2T and DOCXF→DOCXT all at
+1bfcaf0c, that path's numstat `7 26`. THE PROSE APPEND RECORD22 on `.agent/live_review.md` at
+d48febf0: byte-exact prefix, a remainder of exactly one blank line plus the slice, an exact suffix,
+0 marker LINES, and each of its 51 non-empty slice lines occurring exactly once among the 53 lines
+that commit adds, numstat `53 0`. THE TWO CODE APPENDS held under ORDERED EQUALITY — SEAM3 at
+27279810 numstat `99 0` and TESTSRB at a3d32124 numstat `46 0`: each post-commit file equals
+`pre + slice` with NO byte between them, each commit's added lines are exactly that slice's lines
+IN ORDER, and 0 marker LINES reached either. THE SUITES AND THE LINT GATE WERE RE-RUN, NOT READ, in
+the primary checkout with the block's exact command lines, each exit 0: the code suite `156 passed`
+against a base of 152, the four state readers `159 passed` against 159, the canary `42 passed`
+against 42, and ruff `All checks passed!`. THE PLAN CONTRACT HELD at dbfb26af: 41 lines against the
+50-line cap, with `## Goal`, `## Next Steps` and a roadmap F-id present — 41 is the figure that
+block projected. THE ARITHMETIC MOVED AS ORDERED: 172 / 27 / 0 at 1812c219 against 171 / 27 / 0 at
+8ba3ad45, 145 open against 144, the registered symmetric difference exactly R-0557, done and landed
+symmetric differences EMPTY, no duplicate id and no resolution naming an unregistered id at either
+SHA. HYGIENE IS CLEAN: walking 8ba3ad45..1812c219 commit by commit the INSERTION counts, the column
+AGENTS.md DECISION F104 D1 fixes for the cap, are 490, 417, 8, 53, 99, 7, 46 and 35 for the
+handback commit; none over 500; that range's path set measured before the handback is exactly the
+six ordered paths and does NOT hold `packages/orchestration/ui_server.py`, which that round's
+change set excluded; all eight commits are single-parent; the tree is clean and `git worktree list`
+is one line. THE BLOCK'S OWN SIZE re-measured from the committed file gives TOTAL 490, PROSE 225
+and RECORD22 52, agreeing with that block. THE HANDBACK'S OWN SELF-CLAIM was checked and holds:
+`.agent/handoff.md` at 1812c219 states 92 lines and measures 92, inside the ≤100 allowance an
+eight-commit round carries. THE WORKER'S ONE DECLARED DEVIATION WAS VERIFIED RATHER THAN ACCEPTED:
+it reported writing throwaway helper scripts under the gitignored `.remedy-wt/`, and
+`git ls-files .remedy-wt` returns EMPTY at 1812c219, so nothing it named entered the repository.
+THE EXTRACTION WAS PROVEN SHARED, NOT ASSUMED, by the reviewer's own red control in a disposable
+worktree at 1812c219 that it removed afterwards. At that commit
+`_completed_process_from_guarded` is defined exactly once and called from three sites, and the
+module holds `raise subprocess.TimeoutExpired(` exactly once where 8ba3ad45 held it twice — so the
+duplication really is gone rather than merely wrapped. Deleting the wall-trip branch from that one
+helper turned three tests RED across all three seams at once — the `test` seam's
+`test_a_wall_trip_raises_timeout_expired_carrying_the_partial_output`, the `dod-process` seam's
+`TestNeverASilentPass::test_a_timeout_is_red_not_a_hang` in `tests/orchestration/test_dod_runners.py`,
+and the new `test_the_runtime_build_seam_raises_timeout_expired_on_a_wall_trip` — against 80 passed
+and 0 failed unmutated. A refactor whose single point of failure reddens every caller is the
+equality claim actually holding, which is what the round's own G5 could only show negatively.
