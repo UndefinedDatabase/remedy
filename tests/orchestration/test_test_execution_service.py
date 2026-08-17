@@ -16,11 +16,14 @@ Coverage:
 from __future__ import annotations
 
 import os
+import resource
 import sys
 from dataclasses import asdict
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
+
+import pytest
 
 from packages.orchestration.test_execution_service import (
     TestExecutionLease,
@@ -263,6 +266,27 @@ class TestRunIsolatedProcess:
         )
         # Output must be in file, not returned
         assert output.read_bytes() != b""
+
+    def test_child_half_of_the_exec_policy_reaches_the_child(self, tmp_path):
+        # The guard sets BOTH halves of RLIMIT_CORE to 0 while an unguarded child
+        # inherits the parent's hard limit unchanged, so a child that reads (0, 0) is
+        # evidence that `plan_child_spawn`'s `preexec_fn` really ran between fork and
+        # exec. When the parent's own hard limit is already 0 there is nothing to
+        # observe, and the test says so instead of passing vacuously.
+        if resource.getrlimit(resource.RLIMIT_CORE)[1] == 0:
+            pytest.skip("parent already has a zero RLIMIT_CORE hard limit")
+        output = tmp_path / "out.txt"
+        status, exit_code, _dur, _started = _run_isolated_process(
+            [sys.executable, "-c",
+             "import resource, sys; "
+             "sys.exit(0 if resource.getrlimit(resource.RLIMIT_CORE) == (0, 0) else 1)"],
+            cwd=str(tmp_path),
+            env=_build_safe_env({"PATH": os.environ.get("PATH", "/usr/bin")}),
+            output_file=output,
+            timeout_seconds=10.0,
+        )
+        assert status == "passed"
+        assert exit_code == 0
 
     def test_no_shell_true(self):
         # Verify _run_isolated_process cannot be called with shell=True
