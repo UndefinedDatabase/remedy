@@ -1368,3 +1368,38 @@ entry already carry the sweep rule, and the gap R-0516 exposed was that the swee
 was run over the block's own text and not over the prose already sitting in the
 file the block was editing. That is a reading of an existing rule, not a new one,
 and this record is where it belongs.
+
+Gate: R25 — PASS, the paydown round that recorded R24 and retired the stale
+no-callers claim from the guard's own fixture file. All nine ordered gates were
+re-run by the reviewer over 3d1821bf..5b02cff9 and every one reproduces the
+handback's reading. TRANSPORT IS PROVEN DISK-TO-DISK UNDER THE §4.9 DIGEST
+FALLBACK, WHICH THIS ENTRY STATES RATHER THAN HIDES: this session did not author
+R25's block, so no reviewer-side pre-delegation original exists to compare
+against, and the proof is instead that the committed `.agent/authored/f085-r25.md`
+is byte-EQUAL to the committed `.agent/last_block.md` and to both working copies
+at sha256 4abce714f82e9a6b2baad095c02c6f0aecebfd009ce4a8883531c908b8971262,
+18089 B, 296 lines, with the region digests 07199a30, cad21f6b and 3de16b95 all
+reproducing, and that every applied slice re-derives from that committed file by
+its marker pair. THE APPEND COMMITS HOLD THEIR SHAPE: for C1 and again for C3 the
+pre-commit blob is a byte-exact PREFIX of the post-commit file and the remainder
+is exactly one blank line plus the slice, at numstat 67/0 and 12/0. THE ARITHMETIC
+MOVES ONLY WHERE R-0516 MOVES IT: 130 / 13 / 0 with 117 open at base, 131 / 13 / 0
+with 118 open after C1, and 131 / 14 / 0 with 117 open at HEAD; both symmetric
+differences are exactly the set holding R-0516; no duplicate id, no resolution
+naming an unregistered id, max R-0516 and next free R-0517. THE FALSE SENTENCE IS
+OFF DISK AND ITS REPLACEMENT RESOLVES: DOCF occurs 0 times at HEAD and DOCT
+exactly once, the file's first line is byte-unchanged from base, sha256
+ee200a92041190027a59efc08a835dd2827dc951de57eb7e35cf158957d2d04c at 21388 B — and
+the reviewer followed the new pointer rather than trusting it, finding the PARTIAL
+COVERAGE note exactly once in `exec_guard.py`, saying what DOCT attributes to it
+and writing no count, so the replacement cannot go stale the way the sentence it
+replaced did. THE GATES WERE RE-RUN, NOT READ: the edited suite exited 0 with
+`24 passed` and the docstring edit did NOT move that base, the four state readers
+gave `158 passed`, the canary `42 passed`, and ruff over the changed `.py`
+`All checks passed!`, each as its exact ordered command line. COMMIT HYGIENE IS
+CLEAN: the changed-path set is the declared one, per-commit insertions are 296,
+217, 67, 6, 12 and 7 with the handback's own 56 measured after it existed and none
+over 500, seven commits form a single-parent chain, and the reflog holds nothing
+but `commit:` entries. The handback is 100 lines — exactly the ceiling its seven
+per-commit tables engage under DECISION D15, so it sits AT the cap rather than
+over it. No block condition is met.
