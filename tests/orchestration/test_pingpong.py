@@ -339,3 +339,28 @@ class TestExportSafety:
         # repo_path should not contain absolute staging path
         text = json.dumps(data)
         assert "/tmp/remedy-pingpong-" not in text
+
+
+# F085 T002b — pingpong_loop._run_test_command on the shared `test`-class seam
+
+
+def test_pingpong_loop_test_command_runs_on_the_guarded_seam(tmp_path, monkeypatch):
+    """The spawn goes through `run_guarded_test_command`, and its BYTES decode to str."""
+    import subprocess
+
+    from packages.orchestration import pingpong_loop
+
+    seen: dict[str, object] = {}
+
+    def _fake_guarded(cmd, *, timeout_sec, cwd, extra_env_keys=()):
+        seen.update(cmd=list(cmd), timeout_sec=timeout_sec, cwd=cwd)
+        return subprocess.CompletedProcess(list(cmd), 0, b"out-line\n", b"err-line\n")
+
+    monkeypatch.setattr(pingpong_loop, "run_guarded_test_command", _fake_guarded)
+    passed, summary = pingpong_loop._run_test_command("pytest -q", tmp_path, timeout_sec=17)
+
+    assert passed is True
+    assert seen == {"cmd": ["pytest", "-q"], "timeout_sec": 17, "cwd": str(tmp_path)}
+    assert summary.startswith("exit=0")
+    assert "out-line" in summary
+    assert "err-line" in summary
