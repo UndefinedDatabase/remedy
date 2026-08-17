@@ -18,20 +18,19 @@ reaches a child, and the limitations document exists and is linked from the
 README.
 
 ## Current Step
-R37, this round: record the R36 PASS, register R-0527, and resolve R-0526 and R-0527
-with one checklist clause — a claim a block or a slice makes about its own text is
-measured before emission. No production code changes.
+R38, this round: record the R37 PASS, register R-0528 and R-0529, and give the
+`test`-class seam an `extra_env` overlay so a call site can SET a variable — the one
+capability both remaining T002b sites need. No call site is migrated.
 
 ## Next Steps
-1. T002b remainder — the two `test`-class sites still on a bare spawn, in this order.
-   `ci_run.py` next: at 23b5fcd9 its only spawn streams to the console and passes no
-   timeout, so moving it onto the capturing seam changes observable behaviour and the
-   round that does it records where the output goes as a DECISION.
-   `builder_bridge.py` comes LAST and is BLOCKED until the seam
-   can SET an environment value: it puts `PYTHONDONTWRITEBYTECODE` on a full
-   `os.environ` copy, while `run_guarded_test_command` only allowlists keys that
-   the parent already has, so migrating it as-is would silently stop that variable
-   reaching the child. One or two per order, never as one group.
+1. T002b remainder — the two `test`-class sites still on a bare spawn. At c3201976 BOTH
+   overlay one variable onto a copy of `os.environ`, so both were blocked on the same
+   missing capability rather than `builder_bridge.py` alone: `ci_run.py` sets the
+   per-stage pytest budget, `builder_bridge.py` sets `PYTHONDONTWRITEBYTECODE`. R38's
+   `extra_env` overlay unblocks both (DECISION F085 D3). `ci_run.py` still goes first
+   and still owes a DECISION on where its output goes: its spawn streams to the console
+   while the seam captures, so that migration changes observable behaviour rather than
+   preserving it. One or two per order, never as one group.
 2. T002c-d — the two DoD sites and the five runtime sites, whose policy differs:
    no wall timeout, because their children are the long-lived harness.
 3. T003 — network posture, the honest limitations document, the README link. Then

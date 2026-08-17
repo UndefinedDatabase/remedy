@@ -5718,3 +5718,41 @@ limitations document, not to this decision.
 Reverse this decision by inlining `plan_child_spawn` back into `run_guarded` and
 dropping `run_streamed_command`'s `policy` keyword; the seam returns to spawning a
 child under no limits at all.
+
+## DECISION F085 D3 — the `test`-class seam gains an `extra_env` overlay (2026-08-17)
+
+Ruled by the reviewer at the R38 gate under docs/agents/planner_reviewer_prompt.md §4
+item 7. R38 records the ruling; R39 applies it in code, and no call site migrates in
+either. Reverse it before R39 by deleting this section, or after R39 by dropping the
+`extra_env` parameter from `test_command_exec_policy` and `run_guarded_test_command`
+and restoring `env=None`; the seam then returns to passing keys through and setting
+none.
+
+CONTEXT, measured at c3201976. Two of the twelve `test`-class sites are still on a bare
+spawn, and both build their child environment the same way: `ci_run.py` line 78 overlays
+`PYTEST_TIMEOUT_ENV_VAR` onto a copy of `os.environ` so each CI stage gets its own
+budget, and `builder_bridge.py` line 219 overlays `PYTHONDONTWRITEBYTECODE`. The seam
+offered only `extra_env_keys`, which widens the allowlist while the scrub SOURCE stays
+`os.environ`, so a key the parent lacks reaches the child absent. `.agent/plan.md` at
+c3201976 recorded this blocker for `builder_bridge.py` alone; it belongs to both.
+
+CHOSEN: an `extra_env` mapping whose entries become the scrub SOURCE overlay and whose
+keys join the allowlist for that call only. `scrub_child_env` keeps `FORBIDDEN_ENV_KEYS`
+as the floor, so the knob cannot smuggle a secret past it, and a test pins that.
+
+ALTERNATIVES CONSIDERED AND REJECTED: adding the two variables to
+`TEST_COMMAND_ENV_ALLOWLIST`, rejected because passing a key through is not setting it —
+the parent does not hold the per-stage value, and a shared allowlist is the wrong home
+for one caller's variable; having each site export the variable into its own process
+before spawning, rejected because that mutates the parent's environment for every
+concurrent caller and outlives the call; leaving both sites unmigrated and naming them in
+T003's limitations document, rejected because Amendment F085 D1's class table puts the
+whole `test` class under stage-1 containment and two unguarded sites would make that row
+false.
+
+CONSEQUENCE, stated plainly rather than minimised: once R39 lands this, a caller can SET
+any variable not in `FORBIDDEN_ENV_KEYS`, which is strictly more power than passing one
+through, and the guard's floor is the only thing keeping that honest — so R39 owes a test
+that a forbidden key handed to `extra_env` still does not reach the child. The knob
+changes nothing for a caller that does not pass it: the default is `None` and the policy
+stays byte-identical to today's.
