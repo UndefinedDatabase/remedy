@@ -18,9 +18,9 @@ reaches a child, and the limitations document exists and is linked from the
 README.
 
 ## Current Step
-R39, this round: record the R38 PASS, register R-0530, and implement DECISION F085 D3 —
-the `extra_env` overlay on the `test`-class seam, with the tests pinning the set, the
-`FORBIDDEN_ENV_KEYS` floor and the untouched allowlist. No call site is migrated.
+R40, this round: record the R39 PASS and register R-0531 and R-0532, the two R39 gate
+sentences its worker measured as unsatisfiable. Session-closing round: no production
+code changes, and R41 takes the `ci_run.py` migration.
 
 ## Next Steps
 1. T002b remainder — the two `test`-class sites still on a bare spawn. At c3201976 BOTH
