@@ -950,3 +950,38 @@ line 174 count something real inside an item's prose rather than announcing the 
 Item 16 is amended by neither this fix nor this resolution; what changes is that the reviewer now
 runs it against the headings of every section a block EDITS as well as against the block's own,
 which is the reading the finding established and which this round is the first to perform.
+
+Gate: R19 — PASS, the repair round that stopped a heading counting itself. All nine ordered gates
+were re-run by the reviewer over 646092ce..6b6cfee5 and every one reproduces the handback's reading.
+TRANSPORT is proven twice over, as it was in R18. Disk-to-disk: the committed
+`.agent/authored/f085-r19.md`, the committed `.agent/last_block.md` and both working copies are
+byte-EQUAL at sha256 4d750d6c237b25d7bd6e990ca0fee97bd3c9b47a03c5d2340ebda2ea81a13fba, 17340 B, 236
+lines, 14 marker lines. And by digest fallback against the reviewer's OWN pre-emission measurements:
+the block was measured in three regions before delegation and the saved file's three corresponding
+regions hash to dc5598e8, f20288aa and a9d3811c exactly as measured. The worker split the C0a write
+into seven calls because a single heredoc of that size is rejected by this session's tool; constraint
+6 permitted exactly that, and the digests prove the split cost nothing. A declared deviation that a
+gate can disprove is how this loop is supposed to work. THE APPEND COMMITS HOLD THEIR SHAPE: for C1
+the pre-commit blob (297276 B) is a byte-exact PREFIX of the post-commit file (302599 B) and the
+remainder is byte-equal to blank plus RECORD1 plus blank plus REG1; for C3 the pre-commit blob
+(302599 B) is a prefix of (303775 B) and the remainder is blank plus DONE1. Each occurs exactly ONCE
+at HEAD, no marker line survives, HEAD equals the C3 blob. THE ARITHMETIC MOVED WHERE IT WAS
+ORDERED TO: 125 / 8 / 0 and 117 open at base, 126 / 8 / 0 and 118 open after C1 — the registration
+landed, which is the reading that was flat in R17 and R18 and had to move here — and 126 / 9 / 0
+with 117 open at HEAD. Registered difference exactly R-0511, resolved difference exactly R-0511, no
+duplicate and no resolution naming an unregistered id; next free R-0512. THE FIX IS THE ONE THE
+FINDING PRESCRIBED: HEADF occurs 0 times at HEAD and HEADT once, the diff is 2 lines for 2 lines,
+and the word `twelve` occurs 0 times in the WHOLE file — the numeral was REMOVED rather than
+corrected to seventeen, so there is no count left to go stale. The checklist region still parses to
+a contiguous 1 through 17, so the commit that stopped counting the list did not disturb it. THE
+PLAN PAIR touched what it was scoped to and nothing else: PLANF 0x, PLANT 1x, and `## Goal`,
+`## Next Steps` and `## Risks` all byte-IDENTICAL to base, which is the proof that a Current-Step
+rewrite did not span the list beside it. `.agent/plan.md` is at sha256
+5684439dfacac31c052cd4e63bb661ed8a1b25218ae68c51fc09c3c7e1865d04, 2341 B, 40 lines under its cap.
+Doc readers are 305 passed 1 skipped, state readers 157 passed, canary 42 passed, all rc 0 and all
+re-run by the reviewer rather than accepted from the report. The change set is exactly the declared
+paths with 0 outside; insertions are 236, 155, 58, 2, 13 and 4 before the handback commit, which is
+itself 32, none over 500; seven single-parent commits, fourteen reflog entries all
+`commit:`-prefixed, no amend, rebase, reset or force-push; the tree is clean, `git worktree list` is
+ONE line, and the branch is in sync with its remote. The handback measures 80 lines against its own
+declaration of 80. LAST_REVIEWED_SHA advances to 6b6cfee5.
