@@ -18,19 +18,21 @@ reaches a child, and the limitations document exists and is linked from the
 README.
 
 ## Current Step
-R50, this round: record the R49 PASS, register R-0552 and R-0553, and amend the F085 feature
-file so the `runtime` class carries the two policies its sites actually need — the same
-correction D7 made for `dod`, applied to the row D7 left standing. A planning correction; no
-source file changes this round, and T002c is built at R51.
+R51, this round: T002c's first half. `_run_process_check` moves onto a new `dod-process` seam in
+`packages/orchestration/exec_guard.py` that keeps the check's wall timeout and its cwd pin and
+replaces the `env=os.environ.copy()` copy with an allowlist; four tests ship with it. The R50
+PASS is recorded in the same round.
 
 ## Next Steps
-1. T002c — `_run_process_check` in `packages/orchestration/dod_runners.py` onto the guard seam
-   under the dod-process policy: it is a bounded check and KEEPS a wall timeout; the gap it
-   closes is `env=os.environ.copy()`, which hands the child the whole parent environment.
-2. T002c — `_run_app_once` in that same module under the dod-app policy: no wall timeout and
-   network allowed, because it starts the app harness and probes it over HTTP.
-3. T002d — the runtime sites under DECISION F085 D8: `runtime-server` takes no wall timeout,
-   `runtime-build` keeps the one it already has. Then T003, the integration gate, then closure.
+1. T002c — `_run_app_once` in `packages/orchestration/dod_runners.py` under the dod-app policy:
+   no wall timeout and network allowed, because it starts the app harness and probes it over
+   HTTP. It takes the CHILD half alone through `plan_child_spawn`, since it owns its own
+   parent-side deadline and writes the app's output to a file rather than to a pipe.
+2. T002d — the runtime sites under DECISION F085 D8: `runtime-server` takes no wall timeout and
+   `runtime-build` keeps the one it already has. That round also extracts the guard-result
+   translation the `test` and `dod-process` seams each carry, once three uses show its shape.
+3. T003 — network posture, the limitations document, its README link. Then the integration gate,
+   then closure.
 
 ## Risks
 - An allowlist bounds what the PARENT hands over, never what the child's runtime
