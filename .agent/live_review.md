@@ -2238,3 +2238,53 @@ the one document whose whole purpose is that its claims are measured. R37's hand
 declared the constraint and did not name this second landing site, which is why it needs
 an id of its own rather than a sentence inside R-0528. Per constraint 9 nothing is
 rewritten: this registration is the correction.
+
+Gate: R39 — the R38 entry. R38 PASSED. Every ordered gate was re-run by the reviewer over
+c3201976..cbcb5c23 and each reproduces the handback's reading. TRANSPORT WAS PROVED
+AGAINST THE REVIEWER'S OWN ORIGINAL: the scratch file the block was authored into, the
+committed `.agent/authored/f085-r38.md`, the committed `.agent/last_block.md` at b9d5050b
+and both working copies are all five byte-EQUAL at sha256
+5fa4d096e45014a54d93d7f27efe176adc4c85a1f10ebdcf6a649c6620cb5090, 18154 B, 284 lines, 12
+marker lines — and that digest is the one the reviewer measured BEFORE emission, so the
+block the worker applied is the block the reviewer wrote. BOTH APPENDS HELD THEIR SHAPE:
+3b915e3c's pre-commit blob 397527 B is a byte-exact PREFIX of the 402603 B post-commit
+file with remainder one blank line plus RECORD6, numstat 65/0; 275a294e's 356103 B is a
+prefix of 358646 B with remainder one blank line plus DEC6, numstat 38/0; each slice is an
+exact suffix, each first line occurs once among that commit's added lines, and 0 marker
+lines reached either file. THE ARITHMETIC MOVED IN THE REGISTERED SET ALONE: 142 / 24 / 0
+at c3201976 against 144 / 24 / 0 at cbcb5c23, 118 open against 120, registered symmetric
+difference exactly R-0528 and R-0529, done and landed symmetric differences empty, no
+duplicate id, no resolution naming an unregistered id, next free R-0530. THE PLAN PAIRS
+WERE APPLIED VERBATIM: the reviewer rebuilt the file mechanically — the pre-commit blob
+with each FROM replaced once by its TO equals the post-commit blob byte for byte — and
+`.agent/plan.md` is 45 lines against its 50-line cap with `## Goal` and `## Next Steps`
+intact. THE SUITES WERE RE-RUN, NOT READ: the four state readers `159 passed` and the
+canary `42 passed`, each as its exact ordered command line in the primary checkout, each
+exit 0. HYGIENE IS CLEAN: the path set is the six declared paths, per-commit insertions
+are 284, 249, 65, 49 and the handback's own 48, none over 500, all five commits are
+single-parent, the reflog holds only `commit:` entries, and origin and local agree at
+cbcb5c23.
+
+WHAT THE WORKER FOUND AND DID NOT TOUCH. Under constraint 8 R38's worker measured a
+sentence of the reviewer's own RECORD6 against the repository, found it false, declared it
+in the handback, and changed nothing. That is the fourth consecutive round in which the
+constraint-8 report produced the round's finding, and the third in which the false
+sentence was one the reviewer wrote about its own text.
+
+- R-0530 — Low, A CORRECTION INTRODUCED THE UNIVERSAL IT WAS WRITTEN TO REMOVE. RECORD6's
+R-0528 paragraph, applied at commit 3b915e3c, states that `.agent/last_block.md` "hashes
+208ad9d3 at 483975b3 and c8efc5c0 at 857ca31a and every commit after it". Measured: that
+file hashes 208ad9d3 at 483975b3, c8efc5c0 at 857ca31a and c3201976, and 5fa4d096 at
+b9d5050b and cbcb5c23. The clause "and every commit after it" is therefore false from
+b9d5050b — R38's own C0b — onward, and because C0b PRECEDES C1 the sentence was already
+false at the moment it landed. The two readings it actually took are correct; only the
+quantifier is wrong. What makes this worth an id rather than a shrug is its provenance:
+the clause was ADDED by the reviewer, in the last edit before emission, specifically to
+satisfy the R-0525 rule that a reference to `.agent/last_block.md` name the SHA holding
+the text it means — and naming two SHAs correctly, then generalising past them, is the
+R-0526 universal-quantifier shape reappearing inside the paragraph that registers its own
+class. Checklist item 11 already forbids exactly this and the block's own constraint 8
+already ordered the measurement that caught it, so nothing new is owed to the checklist:
+what is owed is the habit of running that measurement over sentences quantifying across
+COMMITS, which no pair-shape or path check reaches. Found by the worker under constraint 8
+and registered by the reviewer.
