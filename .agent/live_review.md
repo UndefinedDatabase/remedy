@@ -2532,3 +2532,85 @@ value would have failed here and cost the round a repair. The counter-measure is
 already on disk and not followed: state the convention beside any line count a block
 predicts, and default to the `splitlines` reading, which is what every worker on this
 branch has used. Found by the worker under constraint 8 and registered by the reviewer.
+
+Gate: R43 — the R42 entry. R42 PASSED. Every ordered gate was re-run by the reviewer over
+0e2cdacd..4c7bcb3a and each reproduces the handback's reading. LINE COUNTS HERE ARE
+`splitlines` COUNTS. TRANSPORT WAS PROVED AGAINST THE REVIEWER'S OWN ORIGINAL: the scratch
+file `.remedy-wt/f085-r42.md`, the committed `.agent/authored/f085-r42.md` and
+`.agent/last_block.md` at 7b02da1c, and the working copies of those two paths as they stand
+at 4c7bcb3a, are all five byte-EQUAL at sha256 b6ba3371…f7161c25, 23195 B, 332 lines, 8
+marker lines, region 1-100 at 3bc171fb05e29fa9 over 6720 B and region 101-end at
+d0ad2b78183925d3 over 16475 B. BOTH APPENDS HELD THEIR SHAPE: at dc34997a a pre-commit blob
+of 420193 B is a byte-exact prefix of the 426006 B post-commit file, its 5813 B remainder is
+exactly one blank line plus RECORD10 — sha256 407c8ff2e3c61ac6…, 5812 B, 71 lines, 3 empty —
+an exact suffix, numstat 72/0, each of the 68 non-empty slice lines occurring exactly once
+among the 72 added and the added lines equal to blank-plus-slice IN ORDER; at 5695c2b0 the
+same shape holds for DEC4 over 358646 B and 363135 B with a 4489 B remainder — sha256
+fa6f2e9fd40c883f…, 4488 B, 60 lines, 6 empty — numstat 61/0, 54 non-empty lines each once
+among the 61 added, ordered equality holding. No marker line reached either file at
+4c7bcb3a. THE ARITHMETIC MOVED AS ORDERED: 149 / 27 / 0 at 0e2cdacd against 151 / 27 / 0 at
+4c7bcb3a, 122 open against 124, registered symmetric difference exactly R-0535 and R-0536,
+done and landed symmetric differences empty, and at each of those two SHAs no duplicate id
+and no resolution naming an unregistered id. THE DECISION LANDED: lines matching
+`^## DECISION F085 D\d+ —` number 2 at 0e2cdacd against 3 at 4c7bcb3a, the D4 heading occurs
+exactly 1x at 4c7bcb3a, and there is no D1 section at either SHA. THE PLAN PAIR LANDED AS A
+REWRITE: PLANF10 1x and PLANT10 0x at 0e2cdacd against 0x and 1x at 4c7bcb3a, `## Goal` and
+`## Next Steps` present at both, no marker line at either, numstat 7/8, and `.agent/plan.md`
+measuring 46 lines at 0e2cdacd and 45 at 4c7bcb3a, each under the 50-line cap. THE SUITES
+WERE RE-RUN, NOT READ, each in the primary
+checkout, each exit 0: the four state readers `159 passed` against a base of 159, and the
+canary `42 passed` against 42. HYGIENE IS CLEAN: walking 0e2cdacd..4c7bcb3a mechanically
+gives the per-commit insertion counts 332, 273, 72, 61, 7 and 122, none over 500; the path
+set at 7c4a2583 is exactly the five ordered paths; all six commits are single-parent; and at
+4c7bcb3a `git reflog -10` held ten entries of no non-`commit:` kind while `git worktree
+list` held one line. The handback at 4c7bcb3a runs to 153 lines and carries the DECISION D15
+stated cause, whose named content is mandated rather than padding.
+
+WHAT THE WORKER FOUND AND DID NOT TOUCH. Under constraints 8 and 9 R42's worker measured the
+reviewer's own RECORD10 and DEC4 against the repository, declared one reading that differs
+and repaired none — again the round's finding came out of the constraint-8 report, as
+RECORD10 recorded for R41. R-0538 is that reading; R-0537 is the reviewer's own, found while
+re-reading R-0536 at this gate. R42's execution reproduced under independent re-run in every
+particular.
+
+WHY R43 SHIPS NO CODE. The `ci_run.py` migration DECISION F085 D4 rules was authored in full
+for this round and proved before being deferred: applied to two disposable worktrees at
+4c7bcb3a, linted clean, run to `59 passed` there against a base of `54 passed` at the same
+commit, and red-controlled on four separate mutations, each of which exited non-zero. Its
+step block then measured 487 lines against the 400-line cap DECISION F105 D5 sets, and
+checklist item 1 requires the split BEFORE emission rather than a declared deviation
+afterwards. The migration is R44's, and it starts from measured slices rather than from a
+design.
+
+- R-0537 — Low, A FINDING'S HEADLINE COUNTED FOUR OF SOMETHING ITS BODY GIVES THREE OF.
+R-0536, applied at commit dc34997a, opens "A BLOCK PREDICTED FOUR LINE COUNTS UNDER AN
+UNSTATED NEWLINE CONVENTION AND EVERY ONE READ ONE HIGH", and its body then quotes three
+predictions from the R41 block — "707 lines at HEAD against 644 at 93226220" and "put it at
+47 lines" — and measures three values against them, "706, 643 and 46". Measured at 4c7bcb3a:
+the R41 block, committed at 9cc4772c, predicts exactly three line counts; its other numerals
+of that family are the 50-line and 60-line caps it quotes as standing rules and the 45 and 69
+that RECORD9 reports as READINGS of R40's round, none of them a prediction and none of them
+quoted by R-0536. The trailing half of the headline survives — all three predictions did read
+one high — so the defect is the numeral alone. This is the R-0402 / R-0404 / R-0436
+enumeration family arriving where checklist item 16 does not reach: item 16 binds a section
+HEADING over a list, and a finding headline is a heading over a body by every property that
+made item 16 necessary, being the half nobody re-reads and the half that drifted from the
+body beneath it. The counter-measure is to widen item 16 from a heading to any sentence that
+counts what follows it; that promotion is NOT in the checklist and is owed to a later round,
+which is why this finding names it instead of asserting it. Found and registered by the
+reviewer.
+
+- R-0538 — Low, ONE SHA QUALIFIED THREE VALUES AND ONLY TWO WERE READ THERE. R-0536, applied
+at commit dc34997a, closes "Measured at 0e2cdacd with `splitlines`: 706, 643 and 46."
+Measured at 4c7bcb3a: `docs/agents/planner_reviewer_prompt.md` is 706 lines at 0e2cdacd and
+643 at 93226220, and `.agent/plan.md` is 46 at 0e2cdacd — so the middle value is a reading at
+a commit OTHER than the one its own sentence names, and at the named commit that file is 706
+rather than 643. The intent is recoverable, because the three values map positionally onto
+the three predictions the preceding sentence quotes and the second of those is itself
+qualified "at 93226220", so nothing false about the repository follows. What earns it an id
+is where it landed: this is the mis-scoped-qualifier shape R-0534 registered and R-0535
+recorded recurring, arriving for the third consecutive round and this time INSIDE the
+paragraph registering a different measurement-convention defect — the same self-application
+failure R-0535 named, one round after naming it. R42's worker declared it under constraint 8
+and correctly left it standing under constraint 9; the registration is the correction, per
+checklist item 20. Found by the worker under constraint 8 and registered by the reviewer.
