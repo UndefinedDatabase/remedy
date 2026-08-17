@@ -1356,3 +1356,15 @@ the sweep rule it carries already cover a block's own headings, and the gap here
 is that the same sweep was never run over the TARGET file's existing prose.
 Widening item 16 would restate what the R-0417 entry already says; retiring the
 claim is the fix, and this round's own C2 performs it. OPEN.
+
+Done: R-0516 — resolved. The false sentence is off disk: this round's C2 replaced
+it with a paragraph that says what these tests DO prove, points at
+`exec_guard`'s PARTIAL COVERAGE note as the single place the migration state is
+recorded, and deliberately repeats no count — a count in a second file is a
+second thing to forget, which is how the retired sentence went stale in the first
+place. The resolution is verified by this round's G5 before this line is
+committed, per constraint 4. No checklist item is added: item 16 and the R-0417
+entry already carry the sweep rule, and the gap R-0516 exposed was that the sweep
+was run over the block's own text and not over the prose already sitting in the
+file the block was editing. That is a reading of an existing rule, not a new one,
+and this record is where it belongs.
