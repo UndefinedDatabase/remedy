@@ -2828,3 +2828,65 @@ figure, so no round was misjudged. What is wrong is that a live rule is ambiguou
 appended by this same commit, fixes the ruled figure at 490 without editing DEC6, per checklist
 item 20's rule that landed text is corrected by appending and never by rewriting. Found by R45's
 worker under its own deviation 2 and registered by the reviewer.
+
+Gate: R47 — the R46 entry. R46 PASSED. Every ordered gate G1-G6 was re-executed by the reviewer
+over 470d2577..c8da1928, not read, and each reproduces the handback's reading. LINE COUNTS ARE
+`splitlines` COUNTS. TRANSPORT HELD AGAINST THE REVIEWER'S OWN ORIGINAL, disk-to-disk with no
+digest fallback: `.remedy-wt/f085-r46.md`, the committed `.agent/authored/f085-r46.md` at
+6f302271, the committed `.agent/last_block.md` at 5b351a2e and both working copies as they
+stand at c8da1928 are all five byte-EQUAL at sha256
+89a8b79bd98dbc53c40225c15b0070e9a57cad5d1cb788d6eef2dac6bce1363c, 13950 B, 192 lines, 4 marker
+lines. BOTH APPENDS HELD THEIR SHAPE, and the reviewer extracted the two slices programmatically
+from the committed block by marker pair rather than retyping them: for RECORD14 on
+`.agent/live_review.md` and DEC6C on `.agent/decisions.md` alike the pre-commit blob is a
+byte-exact prefix, the remainder is exactly one blank line plus the slice, the slice is an exact
+suffix, 0 marker LINES reached either file, and every non-empty slice line occurs exactly once
+among that path's added lines — 59 slice lines of which 3 empty against 60 added for the first,
+16 of which 3 empty against 17 for the second, at sha256 ecb74b8c782b1baa… and
+b1bb9c74c7725dea…, the two digests the R46 handback also reports. THE SUITES WERE RE-RUN, NOT
+READ, each in the primary checkout, each exit 0: the four state readers `159 passed` against a
+base of 159, the canary `42 passed` against 42. THE ARITHMETIC MOVED AS ORDERED: 162 / 27 / 0 at
+c8da1928 against 161 / 27 / 0 at 470d2577, 135 open against 134, the registered symmetric
+difference exactly R-0547, done and landed symmetric differences EMPTY, no duplicate id and no
+resolution naming an unregistered id at either SHA. HYGIENE IS CLEAN: walking the range
+mechanically gives the per-commit insertion counts 192, 144, 77 and 31, none over 500 and so no
+second call on the allowance d4473f85 spent; the path set of the range ending at 9afeeb86 is
+exactly the four ordered paths and the full range adds only `.agent/handoff.md`; all four
+commits are single-parent; the tree is clean and `git worktree list` is one line.
+
+THE CORRECTION IS REAL, NOT MERELY APPLIED. Measured at c8da1928 in `.agent/decisions.md`:
+DECISION F085 D6's heading still reads 480 while its CHOSEN and CONSEQUENCE paragraphs read 490,
+and DEC6C now stands later in that same file fixing the ruled figure at 490 without editing D6,
+which is checklist item 20's rule that landed text is corrected by appending and never by
+rewriting. R-0547's description of the defect reproduces on disk in every particular.
+
+- R-0548 — Medium, REVIEWER-BLOCK DEFECT, A ROUND REGISTERED A FINDING UNDER A CHANGE SET THAT
+NAMED NO PLAN, WHICH IS ALREADY THE COUNTER-MEASURE OF TWO OPEN FINDINGS AND THE BINDING RULE OF
+NEITHER. The R46 block, committed at 6f302271, names five paths in its change set — the authored
+block, `.agent/last_block.md`, `.agent/live_review.md`, `.agent/decisions.md` and
+`.agent/handoff.md` — and its constraint 5 forbids touching anything outside that set. That same
+round registered R-0547. R-0377 rules, still OPEN: "any round whose bundle registers, resolves
+or renumbers a finding names `.agent/plan.md` in its change set and rewrites its ledger in the
+round's FIRST commit". R-0491 rules, still OPEN: the plan update "is ordered as the FIRST commit
+of a round that has substance to record", ahead of everything but the two block-save commits.
+R46 satisfied neither, and its worker did the only correct thing available to it — it declared
+the conflict as handback deviation 2 rather than widening the change set past a gate that would
+then have gone red, which is what constraints 5 and 6 of that block require. Measured at
+c8da1928, before this round's own C1 changes it: `.agent/plan.md` reads "R45, this round" under
+its `## Current Step` heading and its Next Steps item 1 describes R46 as work still to come,
+while all four of R46's commits stand above it in the history. THE COST IS THE ONE R-0377
+ALREADY PRICED: AGENTS.md's Session Resume tells a new session to read `.agent/plan.md` second,
+ahead of the review record, so a bootstrapping reader starts from a plan one round behind that
+names the round it is reading as unstarted. AGENTS.md's Commit Gate item 1 — "Verify
+`.agent/plan.md` matches the current work ... If any of these fail: DO NOT COMMIT" — was
+unmet for all four of R46's commits, and a broken repository rule rather than a broken
+convention is why this is Medium. THE CAUSE IS NOT THE R46 BLOCK ITSELF. It is that R-0377's and
+R-0491's counter-measures live as finding PROSE and were never promoted into the §3 pre-emission
+checklist, so no block reads them at the one moment they bind — the class this repository keeps
+paying for, in which a standing rule stated in a finding body binds nothing. That is why the
+counter-measure here is a checklist item and not a third restatement: this same round adds item
+23 carrying both rules, and its own C1 advances the plan ahead of every other substantive
+commit, which is the first application of the rule it writes. R-0377 and R-0491 stay OPEN. This
+finding records their recurrence and resolves neither, because neither is resolved until a later
+round demonstrates the promoted item catching what the prose did not. Found and registered by
+the reviewer while gating R46.
