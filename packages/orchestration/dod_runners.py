@@ -9,11 +9,16 @@ named reason. Nothing here can produce a silent pass.
 Subprocess discipline is the one already used by
 ``test_runner.run_tests_local``, reused rather than reinvented:
 
-  * never ``shell=True``; ``subprocess.run`` receives an argv LIST;
+  * never ``shell=True``; the spawn receives an argv LIST;
   * ``cwd`` is the resolved worktree (or a validated subdirectory of it);
-  * the environment is inherited as-is — no extra vars, no ``.env`` reading;
   * a timeout always applies;
   * output is captured, decoded leniently, and truncated to a tail.
+
+Since F085 T002c the single-process kinds spawn through
+``exec_guard.run_guarded_dod_process_command``, so the environment is no longer
+inherited as-is: a child receives only allowlisted keys, never a secret-like
+variable. The harness spawn in ``_run_app_once`` is still bare — it is the
+second half of T002c, under the ``dod-app`` policy.
 
 Two guards are specific to this module, because a DoD check can originate from
 an LLM rather than from repository discovery:
@@ -55,6 +60,7 @@ from pathlib import Path
 from typing import Any
 
 from packages.orchestration.dod_schema import DoD, DoDCheck
+from packages.orchestration.exec_guard import run_guarded_dod_process_command
 from packages.orchestration.test_runner import _EXECUTION_SAFE_EXECUTABLES
 from packages.runtimes.dev_server import (
     GRACE_SECONDS,
@@ -299,12 +305,13 @@ def _run_process_check(check: DoDCheck, ctx: _RunContext) -> CheckEvidence:
 
     start = time.monotonic()
     try:
-        proc = subprocess.run(
+        # The guard owns the spawn since F085 T002c: it keeps this check's wall
+        # timeout and its cwd pin, and replaces the whole-parent-environment copy
+        # this call used to pass with the `dod-process` allowlist.
+        proc = run_guarded_dod_process_command(
             argv,
+            timeout_sec=ctx.timeout_sec,
             cwd=str(cwd),
-            capture_output=True,
-            timeout=ctx.timeout_sec,
-            env=os.environ.copy(),
         )
     except FileNotFoundError:
         # The tool is not installed. A missing linter is a RED check with a
