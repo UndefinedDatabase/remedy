@@ -3275,3 +3275,56 @@ the units without pinning the boundary. THE COUNTER-MEASURE IS IN THE R53 BLOCK'
 paragraph, which states newline-inclusion explicitly and says that no joiner and no terminator byte
 is ever added; that is the block carrying this registration. Found by the worker's declared
 assumption, registered by the reviewer while gating R52.
+
+Gate: R54 — the R53 entry. R53 PASSED. Every ordered gate G1-G9 was re-executed by the reviewer
+over 3bafcc1e..8ba3ad45, not read, and each reproduces the handback's reading. LINE COUNTS ARE
+`splitlines` COUNTS. TRANSPORT HELD AGAINST THE REVIEWER'S OWN ORIGINAL, disk-to-disk with no
+digest fallback: `.remedy-wt/f085-r53.md`, the committed `.agent/authored/f085-r53.md` at 94e4da84,
+the committed `.agent/last_block.md` at 8267fde9, both of those paths at 8ba3ad45 and both working
+copies as they stand at 8ba3ad45 are all seven byte-EQUAL at sha256
+58a4c90c25772d8c0083afd808474e69bf96cb3c27033eb652dca7cba28f1825, 28869 B, 429 lines, 24 marker
+lines — every figure measured on every copy. THE SHAPES HELD. Each of the five REWRITES gives
+`TO contains FROM: false`, its FROM 1x in the pre-commit blob and 0x after with its TO exactly 1x:
+PLAN7F→PLAN7T at 2e136a4e numstat `9 11`, HDRF2→HDRT2 at de4f2057 numstat `6 5`, and DOCF2→DOCT2,
+IMPF2→IMPT2 and SITEF2→SITET2 all at bbd35e23, that path's numstat `27 7`. THE PROSE APPEND
+RECORD21 on `.agent/live_review.md` at d5fe684c: byte-exact prefix, a remainder of exactly one
+blank line plus the slice, an exact suffix, 0 marker LINES, and each of its 60 non-empty slice
+lines occurring exactly once among the 63 lines that commit adds, numstat `63 0`. THE CODE APPEND
+TESTSDOD2 at 85f5da00 held under ORDERED EQUALITY: the post-commit file equals `pre + slice` with
+NO byte between them, that commit's added lines are exactly the slice's 41 lines IN ORDER, and 0
+marker LINES reached it, numstat `41 0`. THE SUITES AND THE LINT GATE WERE RE-RUN, NOT READ, in the
+primary checkout with the block's exact command lines, each exit 0: the code suite `152 passed`
+against a base of 151, the four state readers `159 passed` against 159, the canary `42 passed`
+against 42, and ruff `All checks passed!`. THE PLAN CONTRACT HELD at 2e136a4e: 42 lines against the
+50-line cap, with `## Goal`, `## Next Steps` and a roadmap F-id present — 42 is the figure that
+block projected. THE ARITHMETIC MOVED AS ORDERED: 171 / 27 / 0 at 8ba3ad45 against 169 / 27 / 0 at
+3bafcc1e, 144 open against 142, the registered symmetric difference exactly R-0555 and R-0556, done
+and landed symmetric differences EMPTY, no duplicate id and no resolution naming an unregistered id
+at either SHA. HYGIENE IS CLEAN: walking 3bafcc1e..8ba3ad45 commit by commit the INSERTION counts,
+the column AGENTS.md DECISION F104 D1 fixes for the cap, are 429, 340, 9, 63, 6, 27, 41 and 45 for
+the handback commit; none over 500; that range's path set measured before the handback is exactly
+the seven ordered paths and does NOT hold `tests/orchestration/test_exec_guard.py`, which that
+round's change set excluded; all eight commits are single-parent; the tree is clean and
+`git worktree list` is one line. THE BLOCK'S OWN SIZE re-measured from the committed file gives
+TOTAL 429, PROSE 231 and RECORD21 62, agreeing with that block. THE HANDBACK'S OWN SELF-CLAIM was
+checked and holds: `.agent/handoff.md` at 8ba3ad45 states 92 lines and measures 92, inside the
+≤100 allowance an eight-commit round carries. THE REVIEWER ALSO RAN ITS OWN RED CONTROL on the
+LANDED code rather than accepting the one that block recorded at its base: in a disposable worktree
+at 8ba3ad45, removed afterwards, the new `TestTheDodAppSeam` test passed unmutated and went RED when
+SITET2 was reverted to SITEF2, failing on `AWS_SECRET_ACCESS_KEY` present in the child environment
+— so the migration is genuinely covered at its call site and the test is not vacuous.
+
+- R-0557 — the R53 block's Handback section said "seven commits" over a Bundle naming eight. Low.
+That block's Bundle at 8ba3ad45 names C0a, C0b, C1, C2, C3, C4, C5 and C6, and its Handback section
+then wrote "This round's Bundle names seven commits, which is more than five". This is checklist
+item 16's class as R-0537 and R-0543 widened it — a sentence that quantifies what follows it,
+drifting because the numeral is the half nobody re-reads — and it is the SECOND instance in two
+rounds: R-0555 registered exactly this shape against the R52 block, in the very record slice the
+R53 block carried. Registering the class twice without changing the practice is what makes it worth
+naming a counter-measure: the R54 block states its commit count ONCE, in its Bundle sentence, in
+the same words the item-status list beneath it uses, so a later revision cannot move one without
+visibly contradicting the other. It is LOW for the reason R-0555 was: the allowance it computes is
+identical either way, since the threshold is more than five commits and both readings clear it, so
+no gate and no cap moved, and the worker again read the Bundle rather than the sentence and wrote
+"Eight commits" in the handback while flagging the contradiction. Found by the worker, registered
+by the reviewer while gating R53.
