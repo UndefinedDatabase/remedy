@@ -1224,3 +1224,22 @@ checklist items do not cover: item 13 governs the ORDER a block imposes on the
 worker's runs and item 14 governs which commits a per-commit gate can reach, while
 this is a property of a slice's TEXT. Counter-measure: promoted into the
 pre-emission checklist by this round's own C2, as item 19. OPEN.
+
+Done: R-0514 — resolved. The counter-measure is on disk as item 18 of the
+pre-emission block checklist in `docs/agents/planner_reviewer_prompt.md`, applied by
+this round's C2 and verified by this round's G5 before this line was written. It is
+stated as a rule the reviewer runs mechanically on the final bytes, alongside the
+seventeen that precede it, rather than as prose in a finding — which is the whole
+point, since a rule that lives only in a finding is read once by the round that
+registers it and never again. Its distinguishing note names the three neighbours it
+is NOT, so the next reviewer does not have to re-derive why items 5, 8 and 12 leave
+this gap open.
+
+Done: R-0515 — resolved. The counter-measure is on disk as item 19 of the same
+checklist, applied by the same commit. It is deliberately narrow: it does not
+forbid a slice from describing a gate, it requires the block to SCHEDULE that gate
+before the commit that writes the slice. This round's own Constraint 6 is the first
+application — C3 lands after C2 precisely so that the sentence above, asserting
+items 18 and 19 are on disk, is true at the moment it is committed rather than a
+commit later. A rule whose own block does not obey it is the R-0460 shape, and this
+one obeys it.
