@@ -2092,3 +2092,84 @@ same round: the counter-measure is a checklist clause, this is a production roun
 fix authored in passing is how the last three rounds became record-keeping. The next
 record round resolves it by extending item 11 from numerals to any self-referential
 claim a slice makes about its own text, stated as the property actually measured.
+
+Gate: R37 — the R36 entry. R36 PASSED, and it was the first production round since R32:
+the default `runner` closure of `packages/orchestration/mission_state.py` moved onto
+`run_guarded_test_command`, with the first test that reaches that closure at all. Every
+ordered gate was re-run by the reviewer over 23b5fcd9..483975b3 and each reproduces the
+handback's reading. TRANSPORT WAS PROVED AGAINST THE REVIEWER'S OWN ORIGINAL, not only
+against a digest: the scratch file the block was authored into, the committed
+`.agent/authored/f085-r36.md`, the committed `.agent/last_block.md` and both working
+copies are all five byte-EQUAL at sha256
+208ad9d39755891b5bb83f9382e6f3d613c97cafc4652ad2b8b662887d3ce8d1, 24223 B, 400 lines, 22
+marker lines, region digests 7d583ed0, ace9d813 and 9b5a9653 — and that digest is the
+one the reviewer measured BEFORE emission, so the block the worker applied is the block
+the reviewer wrote. THE APPEND COMMIT HELD ITS SHAPE: e27c1c61's pre-commit blob 387274 B
+is a byte-exact PREFIX of the 391135 B post-commit file, the remainder 3861 B is one
+blank line plus RECORD4, RECORD4 is an exact suffix, its first line occurs once among the
+47 lines that commit adds, numstat 47/0, 0 lines match `^(BEGIN|END)-[A-Z0-9]+$` while the
+BEGIN substring occurs 13 times. THE ARITHMETIC MOVED IN THE REGISTERED SET ALONE: 140
+registered / 22 done / 0 landed at 23b5fcd9 against 141 / 22 / 0 at 483975b3, 118 open
+against 119, registered symmetric difference exactly R-0526, done and landed symmetric
+differences empty, no duplicate id, no resolution naming an unregistered id, and next
+free R-0527. THE MIGRATION IS THE SLICES AND NOTHING ELSE: at 483975b3 the import sits at
+MODULE level in isort order, the three APPEND FROMs each still occur once, the REWRITE
+pair reads FROM 0x and TO 1x, the 34 lines C2 adds are exactly the 24 TO-only lines of the
+four pairs plus the ten unchanged context lines the diff carries, 0 marker lines reached
+either file, and the string `subprocess` now occurs 0 times in that module. THE SEAM IS
+REACHED BY A TEST FOR THE FIRST TIME: at 23b5fcd9 every test exercising `run_verify_task`
+passed its own `runner=`, so the default closure was executed by no test, and
+`test_the_default_runner_goes_through_the_guarded_seam` closes that gap in the same commit
+as the code. THE RED PROOF WAS RE-RUN BY THE REVIEWER, NOT READ: in a disposable worktree
+at 83bc6df1 with the module-level import moved into the closure, `1 failed, 81 passed`
+and the failure is `AttributeError` naming `run_guarded_test_command` at the
+`monkeypatch.setattr` line — the module-level import is load-bearing, and a closure-local
+one would have left the site untestable while every other gate stayed green. The worktree
+was removed and pruned and the primary checkout is clean. THE SUITES WERE RE-RUN, NOT
+READ: ruff `All checks passed!`, `test_mission_state.py` `82 passed`, the four state
+readers `159 passed` and the canary `42 passed`, each as its exact ordered command line in
+the primary checkout, each exit 0. COMMIT HYGIENE IS CLEAN: the path set is the six
+declared paths, per-commit insertions are 400, 361, 47, 34, 8 and the handback's own 50,
+none over 500, all six commits are single-parent, the reflog holds only `commit:` entries,
+and the ordered push landed — origin and local agree at 483975b3.
+
+WHAT THE WORKER FOUND AND DID NOT TOUCH. Under constraint 8 R36's worker measured the
+reviewer's own constraint against the slice it described, found it false, declared it in
+the handback, and changed nothing. That is the second consecutive round in which the
+constraint-8 report produced the round's finding, and it is why the reviewer's text is
+gated by the worker's measurement rather than by the reviewer's own re-reading.
+
+- R-0527 — Low, A BLOCK CONSTRAINT ASSERTED A PROPERTY ITS OWN SLICE DOES NOT HAVE.
+Constraint 8 of the R36 block, applied at commit 8a0766c1, states that RECORD4 "states
+facts about `packages/orchestration/mission_state.py` and
+`tests/orchestration/test_mission_state.py`, both of which C2 of this same round edits",
+and then binds every such sentence to name the SHA 23b5fcd9. Measured at 483975b3,
+RECORD4 contains zero occurrences of either path: its file-state readings all belong to
+the R35 range and name 6ca30b16, 23b5fcd9, cde59e8c or 2342ed97. The obligation was
+therefore VACUOUS rather than met — a staleness gate that could not fail, which is the
+R-0438 class arriving through a constraint instead of a path. Nothing false about the
+repository landed on disk, and the worker performed the re-read anyway across all six
+edited files, which is why this is Low. What makes it worth an id is where the false
+sentence lives: constraint text is committed verbatim to `.agent/authored/f085-r36.md`
+and `.agent/last_block.md`, so a reviewer recollection about the reviewer's own slice is
+now part of the permanent record, and the only reason it was caught is that a worker
+measured a claim its author had not. Found by the worker under constraint 8 and
+registered by the reviewer, which is where a constraint-8 report is supposed to land.
+
+Done: R-0526 — Resolved at R37. Checklist item 11 of
+`docs/agents/planner_reviewer_prompt.md` §3 now binds any claim a block or a slice makes
+about its OWN text to be measured before emission and written as the property measured,
+and it names the universal-quantifier form explicitly: a slice may not assert a universal
+over its own contents, because "every reference names its SHA" is a claim nobody counted
+while "the sentences that locate landed text name their SHA" is one that can be. Applied
+by the commit that constraint 9 of this round's block fixes ahead of this one. The
+sentence R-0526 registered stays where it landed; nothing in `.agent/live_review.md` was
+rewritten.
+
+Done: R-0527 — Resolved at R37 by the same clause, which is why the two share one. Item
+11 now also forbids a block constraint from asserting a property its own slice does not
+have, and the counter-measure is stated as a method rather than as a prohibition: state
+what was counted, or state nothing. The block that carries this resolution applies it to
+itself — its constraint 8 names the one file this block both edits and makes claims
+about, and asserts no property of any slice's contents. Applied by the commit that
+constraint 9 of this round's block fixes ahead of this one.
