@@ -808,6 +808,23 @@ def _cli_exec_policy(timeout_sec: float, cwd: str | None) -> ExecGuardPolicy:
     )
 
 
+def _stream_exec_policy(cwd: str | None) -> ExecGuardPolicy:
+    """Stage-1 streaming-provider policy (F085 T002a) — the CHILD half only.
+
+    `run_streamed_command` is a streaming supervisor and owns its own parent half,
+    so this policy deliberately sets less than `_cli_exec_policy` does.
+    `wall_timeout_seconds` stays None because that seam's watchdog is already the
+    deadline for this call and a second one would fight it. `output_cap_bytes`
+    stays None because that seam caps through `max_bytes` and `on_cap`, which stop
+    the process tree instead of merely capping what is stored. `env_allowlist`
+    stays None for the reason `_cli_exec_policy` gives: the child is the operator's
+    authenticated `claude` CLI and reads its credentials from the inherited
+    environment — a stage-1 gap owed to T003's limitations document. Enforced and
+    real: the cwd pin and a zero core.
+    """
+    return ExecGuardPolicy(cwd=cwd, core_file_bytes=0)
+
+
 def _decode_cli_stream(raw: bytes) -> str:
     """Decode one guarded stream the way `text=True` decoded it.
 
@@ -1043,8 +1060,9 @@ class ClaudeCliProvider:
         )
         call_dir = self._allocate_stream_call_dir()
         run = run_streamed_command(
-            argv, call_dir, cwd=self._cwd, timeout_sec=timeout_sec,
+            argv, call_dir, timeout_sec=timeout_sec,
             max_bytes=self._stream_max_bytes or DEFAULT_MAX_BYTES,
+            policy=_stream_exec_policy(self._cwd),
         )
         self._last_stream_capture = run
 

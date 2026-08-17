@@ -32,10 +32,16 @@ import re
 from collections.abc import Iterable, Iterator
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from packages.orchestration.prompt_trace import redact_prompt_text
 from packages.orchestration.token_actuals import STRUCTURED_RETRY_EXHAUSTED_SUBTYPE
+
+if TYPE_CHECKING:
+    # Type-only: `exec_guard` imports the POSIX-only `resource` module, and this
+    # module is imported far more widely than the one seam that takes a policy.
+    # The runtime import sits inside `run_streamed_command`, next to its use.
+    from packages.orchestration.exec_guard import ExecGuardPolicy
 
 SCHEMA_VERSION = "1.0.0"
 
@@ -515,7 +521,13 @@ _TERM_GRACE_SEC = 0.5
 
 @dataclass
 class StreamRunResult:
-    """Outcome of running a provider process under stream capture."""
+    """Outcome of running a provider process under stream capture.
+
+    ``limits_enforced`` / ``limits_unsupported`` RECORD what the spawn policy
+    really applied to the child rather than asserting anything: both stay empty
+    when no policy was given, which is exactly what an unguarded spawn deserves
+    to report.
+    """
     capture: StreamCaptureResult
     returncode: int = 0
     terminated_at_cap: bool = False
@@ -524,6 +536,8 @@ class StreamRunResult:
     stderr_truncated: bool = False
     duration_ms: int = 0
     events: list[dict[str, Any]] = field(default_factory=list)
+    limits_enforced: tuple[str, ...] = ()
+    limits_unsupported: tuple[str, ...] = ()
 
 
 def _stop_process_tree(proc: Any) -> None:
@@ -573,6 +587,7 @@ def run_streamed_command(
     cwd: str | None = None,
     timeout_sec: int = 120,
     max_bytes: int = DEFAULT_MAX_BYTES,
+    policy: ExecGuardPolicy | None = None,
 ) -> StreamRunResult:
     """Run a provider command, capturing its stream-json stdout incrementally.
 
@@ -586,14 +601,34 @@ def run_streamed_command(
 
     At the byte cap the process tree is stopped rather than drained, so an
     unbounded live stream is never read just to count what was skipped.
+
+    ``policy`` supplies only the CHILD half of an F085 execution policy
+    (``exec_guard.plan_child_spawn``): the rlimits applied between fork and exec,
+    the cwd and the environment. The PARENT half stays here — the watchdog above
+    IS the deadline and ``max_bytes`` IS the output cap, so a policy's
+    ``wall_timeout_seconds`` and ``output_cap_bytes`` are not read and a second
+    deadline never fights this one.
+
+    PRECEDENCE, the one trap in this shape: when ``policy`` is given it OWNS cwd
+    and env, and this function's own ``cwd`` argument is ignored. Pass one or the
+    other, never both.
     """
     import subprocess
     import threading
     import time
 
+    plan = None
+    if policy is not None:
+        from packages.orchestration.exec_guard import plan_child_spawn
+        plan = plan_child_spawn(policy)
+
     start = time.monotonic()
     proc = subprocess.Popen(
-        argv, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        argv,
+        cwd=cwd if plan is None else plan.cwd,
+        env=None if plan is None else plan.env,
+        preexec_fn=None if plan is None else plan.preexec_fn,
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE,
         text=True, bufsize=1,
         start_new_session=True,  # own process group: we can stop the whole tree
     )
@@ -678,6 +713,8 @@ def run_streamed_command(
         stderr_truncated=stderr_bytes["n"] > len(tail),
         duration_ms=int((time.monotonic() - start) * 1000),
         events=read_run_events(capture.events_path),
+        limits_enforced=() if plan is None else plan.limits_enforced,
+        limits_unsupported=() if plan is None else plan.limits_unsupported,
     )
 
 

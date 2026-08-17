@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import stat
+import sys
 import time
 from pathlib import Path
 
@@ -20,6 +21,7 @@ from packages.orchestration.agent_run_trace import (
     resolve_trace_source,
     trace_events_from_run_events,
 )
+from packages.orchestration.exec_guard import ExecGuardPolicy
 from packages.orchestration.pingpong_provider import (
     ClaudeCliProvider,
     build_claude_cli_args,
@@ -28,6 +30,7 @@ from packages.orchestration.stream_evidence import (
     RAW_STREAM_FILENAME,
     RUN_EVENTS_FILENAME,
     STDERR_TAIL_BYTES,
+    final_result_text,
     read_run_events,
     run_streamed_command,
     usage_actuals_from_events,
@@ -1052,3 +1055,113 @@ class TestStreamExhaustionThenValidRetryReconciles:
         outs = [a.usage_actuals["output_tokens"] for a in with_usage]
         assert sum(ins) == 30 and sum(outs) == 6            # totals reconcile
         assert result.rounds[-1].reviewer_output.verdict == "pass"
+
+
+# ---------------------------------------------------------------------------
+# F085 T002a — the streaming seam under an execution policy (DECISION F085 D2)
+# ---------------------------------------------------------------------------
+
+def _reporter_argv(expr: str) -> list[str]:
+    """A python child printing ONE stream-json result line whose value is `expr`.
+
+    The value is read back out of the CAPTURED stream, so each test asserts what
+    the child really saw rather than what the parent believes it configured.
+    """
+    src = (
+        "import json, os, resource, sys\n"
+        f"value = {expr}\n"
+        "sys.stdout.write(json.dumps({'type': 'result', 'is_error': False,\n"
+        "                             'result': value,\n"
+        "                             'usage': {'input_tokens': 1, 'output_tokens': 1}}) + '\\n')\n"
+    )
+    return [sys.executable, "-c", src]
+
+
+#: What the child's OWN RLIMIT_CORE is, as the child sees it after preexec_fn ran.
+_CORE_EXPR = "'core=%s,%s' % resource.getrlimit(resource.RLIMIT_CORE)"
+
+#: Where the child was actually started, for the cwd-precedence test.
+_CWD_EXPR = "os.getcwd()"
+
+
+def _reported(run) -> str:
+    return final_result_text(run.events, run.capture.raw_path)
+
+
+class TestStreamPolicySpawn:
+    def test_a_policy_changes_nothing_a_caller_can_observe(self, tmp_path):
+        """Behaviour equality — the acceptance criterion for every T002 sub-slice."""
+        argv = [str(_fake_stream_bin(tmp_path, _stream_lines()) / "claude")]
+
+        plain = run_streamed_command(argv, tmp_path / "plain")
+        guarded = run_streamed_command(
+            argv, tmp_path / "guarded", policy=ExecGuardPolicy(core_file_bytes=0),
+        )
+
+        assert guarded.returncode == plain.returncode == 0
+        assert guarded.terminated_at_cap == plain.terminated_at_cap
+        assert guarded.timed_out == plain.timed_out
+        # The two capture directories differ on purpose; every counted field must not.
+        drop = {"raw_path", "events_path"}
+        assert {k: v for k, v in guarded.capture.to_dict().items() if k not in drop} == \
+               {k: v for k, v in plain.capture.to_dict().items() if k not in drop}
+        assert guarded.events == plain.events
+
+    def test_the_result_records_the_limits_the_policy_applied(self, tmp_path):
+        """A record, not an assertion: no policy means an honest empty tuple."""
+        argv = [str(_fake_stream_bin(tmp_path, _stream_lines()) / "claude")]
+
+        guarded = run_streamed_command(
+            argv, tmp_path / "g", policy=ExecGuardPolicy(core_file_bytes=0),
+        )
+        plain = run_streamed_command(argv, tmp_path / "p")
+
+        assert "core_file_bytes" in guarded.limits_enforced
+        # The watchdog and max_bytes are this seam's own parent half, so the plan
+        # never claims them and this test pins that it does not.
+        assert "wall_timeout" not in guarded.limits_enforced
+        assert "output_bytes" not in guarded.limits_enforced
+        assert guarded.limits_unsupported == ()
+        assert plain.limits_enforced == ()
+        assert plain.limits_unsupported == ()
+
+    def test_the_child_really_runs_with_the_core_limit_the_policy_set(self, tmp_path):
+        """The rlimit reaches the child: it prints its own limit and we read it back."""
+        import resource
+
+        guarded = run_streamed_command(
+            _reporter_argv(_CORE_EXPR), tmp_path / "g",
+            policy=ExecGuardPolicy(core_file_bytes=0), timeout_sec=30,
+        )
+        plain = run_streamed_command(_reporter_argv(_CORE_EXPR), tmp_path / "p", timeout_sec=30)
+
+        assert guarded.returncode == 0
+        assert _reported(guarded) == "core=0,0"
+        # The control, stated rather than assumed: an unguarded child inherits THIS
+        # process's limit. On a box whose own core limit is already 0 the two agree,
+        # and this line says so instead of pretending the comparison proved more.
+        assert _reported(plain) == "core={},{}".format(*resource.getrlimit(resource.RLIMIT_CORE))
+
+    def test_the_policy_owns_cwd_when_one_is_given(self, tmp_path):
+        """The documented precedence: the policy's cwd wins over the cwd argument."""
+        work = tmp_path / "work"
+        work.mkdir()
+
+        run = run_streamed_command(
+            _reporter_argv(_CWD_EXPR), tmp_path / "o", cwd=str(tmp_path),
+            policy=ExecGuardPolicy(cwd=str(work), core_file_bytes=0), timeout_sec=30,
+        )
+
+        assert _reported(run) == str(work)
+
+    def test_the_provider_seam_spawns_its_stream_child_under_a_policy(self, monkeypatch, tmp_path):
+        """The real call site: ClaudeCliProvider's streamed run is no longer unguarded."""
+        monkeypatch.setenv("PATH", str(_fake_stream_bin(tmp_path, _stream_lines())))
+        prov = ClaudeCliProvider(
+            stream_evidence=True, stream_evidence_dir=str(tmp_path / "t" / "builder"),
+        )
+
+        prov.build("x")
+
+        assert "core_file_bytes" in prov.last_stream_capture.limits_enforced
+        assert prov.last_stream_capture.limits_unsupported == ()
