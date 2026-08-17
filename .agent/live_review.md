@@ -1015,3 +1015,91 @@ over 500; five single-parent commits in a linear chain, every reflog entry
 `git worktree list` is ONE line. The handback measures 66 lines against its own
 declared 66, with the mandated content named as the cause. LAST_REVIEWED_SHA advances
 to 1cfa0acb.
+
+Gate: R21 — PASS, the round that ruled and built the streaming seam's shape. All ten
+ordered gates were re-run by the reviewer over 1cfa0acb..3622f2cf and every one
+reproduces the handback's reading. TRANSPORT is proven twice over. Disk-to-disk: the
+committed `.agent/authored/f085-r21.md`, the committed `.agent/last_block.md` and
+both working copies are byte-EQUAL at sha256
+b17efc371d740f199a7d05528109e81283591cbf630d9c2673cbbf0b03d42e37, 21446 B, 330
+lines, 8 marker lines. And against the reviewer's OWN pre-delegation measurement:
+the whole-file digest matches, and the three regions hash to 570cbf61, 5686f3e6 and
+28534295 exactly as measured before the block was handed over. The single write
+succeeded, so this round spent no deviation on transport at all. THE APPEND COMMITS
+HOLD THEIR SHAPE: for C1 the pre-commit blob (307026 B) is a byte-exact PREFIX of
+the post-commit file (309316 B) and the remainder is exactly one blank line plus
+RECORD1; for C2 the pre-commit blob of `.agent/decisions.md` (353356 B) is a prefix
+of (356103 B) and the remainder is blank plus DECISION1. Each slice occurs once, no
+marker line survives, and each HEAD blob equals its working copy. THE ARITHMETIC
+STAYED FLAT AS ORDERED: 126 / 9 / 0 and 117 open at both ends, both symmetric
+differences empty, no duplicate id and no resolution naming an unregistered id; max
+R-0511. THE EXTRACTION IS FAITHFUL: `plan_child_spawn` holds the same `_plan_rlimits`
+call, the same `_apply_rlimits` closure and the same `child_env` resolution that
+`run_guarded` ran inline, and `run_guarded` now appends `wall_timeout` and
+`output_bytes` to the plan's list rather than to its own — so the parent-side names
+stay parent-side, which is the property the whole split rests on. THE MIGRATION IS
+HONEST: `_stream_exec_policy` sets a cwd pin and a zero core and NOTHING else, and
+its docstring says why each absent field is absent rather than implying coverage;
+the cwd precedence is documented at `run_streamed_command` and pinned by a test; and
+`pingpong_provider` stopped passing `cwd=` in the same commit, so cwd has exactly one
+source. THE NEW ASSERTIONS REACH THE CODE THEY NAME, verified by the reviewer's own
+mutation in a disposable worktree rather than accepted from the worker's probe: with
+`plan_child_spawn`'s `preexec_fn` replaced by a no-op, both rlimit tests go red and
+the child reports `core=0,-1` where the guarded path reports `core=0,0`, while the
+behaviour-equality test correctly stays green because it asserts nothing about
+rlimits. Suites re-run by the reviewer: exec_guard 16 passed against a base of 12,
+the stream trio 121 against 112, the sibling seams 337 against 337 unchanged, state
+readers 157, canary 42, and ruff `All checks passed!` on the block's exact command
+line. The change set is exactly the declared paths with 0 outside; insertions are
+330, 305, 30, 42, 134, 172 and 10 before the handback commit, which is itself 61,
+none over 500; eight single-parent commits in a linear chain, every reflog entry
+`commit:`-prefixed, no amend, rebase, reset or force-push; the tree is clean and
+`git worktree list` is ONE line. Five deviations were declared and none is harmful:
+the `TYPE_CHECKING` import in particular is correct engineering, since `exec_guard`
+imports the POSIX-only `resource` module and `stream_evidence` is imported far more
+widely than the one seam that takes a policy. LAST_REVIEWED_SHA advances to
+3622f2cf.
+
+- R-0512 — Low, A HANDBACK REPORTED AN INSERTION COUNT TAKEN FROM THE WRONG
+PRODUCER, AND CONTRADICTED ITS OWN TABLE IN THE SAME FILE. R21's gate G10 ordered
+"the `+` column of `git show --numstat`" for each commit. The handoff's G10 line
+reports `C5 19`. The real reading is `10	9` — ten insertions, nine deletions — and
+19 is the churn total `git show --stat` prints on its "1 file changed" line. The
+same handoff's changed-files table two dozen lines above says `+10/-9` for that path,
+so the file disagrees with itself and only one of the two numbers came from the tool
+the gate named. Nothing false landed on disk and the conclusion the gate exists to
+support — none over 500 — is true under either reading, which is why this is Low. It
+is registered because AGENTS.md's Commit Discipline settles this exact ambiguity as
+DECISION F104 D1: the 500-line cap counts INSERTIONS only, the `+` column, not
+insertions+deletions. A verification line that reports the churn number while naming
+`--numstat` re-opens a question that decision closed, and this is the same family as
+R-0336 and R-0367 — a number asserted about an artifact without being computed from
+the tool that produces it. Counter-measure, applied in this round's own block and
+binding from here: every block that orders an insertion count names it as the FIRST
+COLUMN of `git show --numstat` and says explicitly that the churn total is not the
+reading, and the handback's summary numbers must agree with its own changed-files
+table. OPEN.
+
+- R-0513 — Medium, A GUARD TEST'S FAILURE MODE IS AN UNBOUNDED HANG AND AN ORPHANED
+BUSY LOOP, SO IT CANNOT REPORT THE REGRESSION IT EXISTS TO CATCH.
+`tests/orchestration/test_exec_guard.py::test_cpu_limit_kills_a_busy_loop_and_names_the_limit`
+runs a `while True` child under `ExecGuardPolicy(cpu_seconds=1, output_cap_bytes=64
+* 1024)` — no `wall_timeout_seconds`. RLIMIT_CPU is therefore the ONLY thing that
+ends that child. When a regression stops the rlimit reaching it, the child never
+exits, `run_guarded`'s supervision loop has no deadline to break on, its `finally`
+never runs, and the group kill that would sweep the child never happens: the test
+does not go red, it hangs, and it leaves an unlimited busy loop behind. This is not
+hypothetical. R21's G7 probe mutated `plan_child_spawn`'s `preexec_fn` to a no-op —
+exactly the regression this test names — and the suite returned nothing for 600
+seconds; the worker had to abandon the single-command probe, re-run it node by node
+under an external per-node timeout, and afterwards sweep a surviving pid. Medium
+rather than Low because the cost is paid by whichever future round breaks rlimit
+application, which is precisely the round least able to afford a silent 600-second
+stall, and because the orphan outlives the run. Raised by the R21 worker as an
+observation outside its change set and confirmed by the reviewer against the code
+rather than accepted from the report. The fix is one policy field, and the ordering
+inside `run_guarded`'s classifier is what makes it safe: `deadline_fired` is checked
+BEFORE `SIGXCPU`, so a deadline set far above the CPU limit never fires on the
+healthy path and never steals the `cpu_seconds` attribution, while a regressed path
+is killed at the deadline and reports `wall_timeout` — a named failure instead of a
+hang. OPEN.
