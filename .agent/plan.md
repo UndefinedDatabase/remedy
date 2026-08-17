@@ -18,17 +18,16 @@ reaches a child, and the limitations document exists and is linked from the
 README.
 
 ## Current Step
-R35, this round: record the R34 PASS, and register and resolve R-0525 by naming the
-paths this workflow rewrites every round, so a slice locating landed text in one of
-them carries the SHA that holds it. No production code changes.
+R36, this round: record the R35 PASS and register R-0526, then migrate the default
+`runner` closure of `mission_state.py` onto `run_guarded_test_command` together with
+the first test that reaches that closure at all.
 
 ## Next Steps
-1. T002b remainder — the three `test`-class sites still on a bare spawn, in this
-   order. `mission_state.py` next: it spawns inside a default `runner` closure and
-   is otherwise the capture-and-timeout shape already migrated three times. Then
-   `ci_run.py`, which streams to the console instead of capturing and passes no
-   timeout, so moving it onto a capturing seam is a behaviour decision and not a
-   mechanical swap. `builder_bridge.py` comes LAST and is BLOCKED until the seam
+1. T002b remainder — the two `test`-class sites still on a bare spawn, in this order.
+   `ci_run.py` next: at 23b5fcd9 its only spawn streams to the console and passes no
+   timeout, so moving it onto the capturing seam changes observable behaviour and the
+   round that does it records where the output goes as a DECISION.
+   `builder_bridge.py` comes LAST and is BLOCKED until the seam
    can SET an environment value: it puts `PYTHONDONTWRITEBYTECODE` on a full
    `os.environ` copy, while `run_guarded_test_command` only allowlists keys that
    the parent already has, so migrating it as-is would silently stop that variable
