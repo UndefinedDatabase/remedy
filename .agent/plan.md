@@ -18,9 +18,9 @@ reaches a child, and the limitations document exists and is linked from the
 README.
 
 ## Current Step
-R33, this round: record the R32 PASS, and register and resolve R-0521 by narrowing
-pre-emission checklist item 20 so the commit a slice names must be a SHA that
-already exists rather than a label that re-resolves. No production code changes.
+R34, this round: record the R33 FAIL, and register and resolve R-0522, R-0523 and
+R-0524 — a pair mislabelled REWRITE, the false rewrite proof that label produced, and
+the slice class item 20's required SHA cannot reach. No production code changes.
 
 ## Next Steps
 1. T002b remainder — the three `test`-class sites still on a bare spawn, in this
