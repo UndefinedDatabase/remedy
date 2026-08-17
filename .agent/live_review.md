@@ -1535,3 +1535,72 @@ requirement. NOT fixed here: the repair belongs in the test — skip the node wh
 `apps/ui/node_modules` is absent — and `tests/orchestration/test_test_runner.py`
 carries no skip of its own today, so the fix is a real edit to a gate file and
 sits outside this round's change set. OPEN.
+
+Gate: R28 — PASS, the round that put `_run_isolated_process` on the seam's child
+half and closed R-0517. Every ordered gate was re-run by the reviewer over
+07b1ba25..b0d09db4 and each one reproduces the handback's reading. TRANSPORT WAS
+PROVED AGAINST THE REVIEWER'S OWN ORIGINAL AND NOT ONLY AGAINST A DIGEST: the
+scratch file the block was authored into, the committed
+`.agent/authored/f085-r28.md`, the committed `.agent/last_block.md` and both
+working copies are all five byte-EQUAL at sha256
+c73bac4c5553f82312b5d38669bb33de3586a897f2ec7198f39c0b1399b406d0, 21848 B, 398
+lines, 26 marker lines, region digests 3866a6a1, d15e4f7e and 4b8d681f. THE
+APPEND COMMIT HOLDS ITS SHAPE: C1's pre-commit blob is a byte-exact PREFIX of the
+post-commit file, the remainder is exactly one blank line plus RECORD1 at numstat
+71/0, RECORD1's first line occurs once among the 71 lines that commit adds, and 0
+lines match `^(BEGIN|END)-[A-Z0-9]+$` while the substring `END-` hits seven times
+— five older than that round and two added by RECORD1's own prose, which quotes
+the regex and the word `APPEND-shaped`. A line-anchored count reports the
+property; a substring count reports the prose. THE ARITHMETIC MOVED IN BOTH SETS
+AT ONCE WHILE THE OPEN COUNT STAYED FLAT: 133 registered / 15 done / 0 landed at
+HEAD against 132 / 14 / 0 at base, 118 open at both ends, registered symmetric
+difference exactly R-0518, done symmetric difference exactly R-0517, landed
+empty, no duplicate id, no resolution naming an unregistered id, max R-0518 and
+next free R-0519. A flat open count across a round that both registers and
+resolves is the arithmetic working, not the arithmetic standing still. THE
+MIGRATION TOOK THE CHILD HALF AND LEFT THE PARENT HALF ALONE: S1F through S4F
+occur 0 times at HEAD and each TO exactly once, the new test's `def` line occurs
+once among the lines C3 adds, `def test_no_shell_true(self):` still occurs
+exactly once in the file, and no marker line reached any target. The source
+guards over `_run_isolated_process` still hold, because the migration kept
+`subprocess.Popen(`, `start_new_session=True` and `DEVNULL` inside the function
+and added no `subprocess.run(`. THE PROOF IS A REAL CHILD AND THE REVIEWER BROKE
+IT INDEPENDENTLY: at HEAD the new node passes, and in a disposable worktree at
+HEAD with the single line `preexec_fn=plan.preexec_fn,` deleted it FAILS, then
+passes again once restored. The reviewer ran that recipe itself rather than
+reading the worker's transcript, and the parent's own RLIMIT_CORE of (0, -1) is
+what makes the child's (0, 0) an observation rather than a tautology. THE GATES
+WERE RE-RUN, NOT READ: the round gate exited 0 with `98 passed` against a base of
+`97 passed` the reviewer measured before the block was written, ruff over both
+changed files `All checks passed!`, the four state readers `158 passed` and the
+canary `42 passed`, each as its exact ordered command line. COMMIT HYGIENE IS
+CLEAN: the path set is the six declared paths, per-commit insertions are 398,
+334, 71, 8 and 39 with the handback's own 84 measured after it existed and none
+over 500, the range is a single-parent chain, and the reflog holds only `commit:`
+entries. The handback is 125 lines against the 100 a round with more than five
+per-commit tables may carry; the overage is declared, names its own measured
+length and names the mandated content that caused it. R-0202 is correctly still
+OPEN: the migration passes the caller's already-scrubbed `env` through unchanged,
+so the variable that finding names is dropped after this round by the same code
+as before it. No block condition is met.
+
+- R-0519 — Low, A PROGRESS ESTIMATE THE REVIEWER AUTHORED OVERSTATED A SLICE THE
+CLASS TABLE CAN MEASURE. R28's handback carries `Fortschritt: ~85 %`, and the plan
+it inherited described T002b's remainder as the `test`-class sites "ending with
+`test_execution_service.py`'s `Popen`". Measured against amendment F085 D1's class
+table, five of the twelve `test`-class sites are on the shared seam and seven are
+not. `test_execution_service.py`:323 was the last `Popen` of the class, not its
+last SITE, and the plan sentence conflated the two — which is how an estimate
+built on it reached 85 % for a slice that is under half migrated. The criterion
+used, so it can be re-checked: a site is ON THE SEAM when its spawn takes cwd,
+env and the fork-to-exec hook from `exec_guard`, through either
+`run_guarded_test_command` or `plan_child_spawn`; each of the seven remaining
+files contains no reference to either symbol. Low because nothing executable
+depends on the number and no gate could go red over it. It is registered rather
+than corrected in silence because the Fortschritt line is the operator's only
+progress signal, it is authored by the reviewer, and
+docs/agents/planner_reviewer_prompt.md §2 requires it to be honest and labelled an
+estimate. The counter-measure ships in this same round: C3 writes the migration
+state into `.agent/f085_inventory.md` directly beneath the class list that defines
+the set, so the next estimate is derived from the file that fixes the denominator
+rather than from the previous estimate. OPEN.
