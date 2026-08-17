@@ -2045,3 +2045,50 @@ the clause says so, because a rule that reaches every path would make ordinary
 cross-references unwritable. Applied by the commit that constraint 9 of this round's
 block fixes ahead of this one. This entry obeys the new clause: every reference it
 makes to `.agent/handoff.md` names the SHA that holds the text it means.
+
+Gate: R36 — the R35 entry. R35 PASSED: the interlude that recorded R34 and narrowed
+checklist item 20 to the paths this workflow rewrites every round. Every ordered gate
+was re-run by the reviewer over 6ca30b16..23b5fcd9 and each reproduces the handback's
+reading. TRANSPORT: the committed `.agent/authored/f085-r35.md`, the committed
+`.agent/last_block.md` and both working copies are byte-EQUAL at sha256
+41a8470f56a9063fb40a82526f0731bb57b2de20f296b075de572848a6f8581d, 21145 B, 331 lines,
+10 marker lines, region digests c9271720, 72829987 and 3e006c9f — all four measured by
+the reviewer, not read from the handback. THE APPEND COMMIT HELD ITS SHAPE: cde59e8c's
+pre-commit blob 381289 B is a byte-exact PREFIX of the 387274 B post-commit file, the
+remainder 5985 B is one blank line plus RECORD3, RECORD3 is an exact suffix, its first
+line occurs once among the 78 lines that commit adds, numstat 78/0, 0 lines match
+`^(BEGIN|END)-[A-Z0-9]+$` while the BEGIN substring occurs 11 times. THE ARITHMETIC
+MOVED IN BOTH SETS BY THE SAME ONE ID: 139 registered / 21 done / 0 landed at 6ca30b16
+against 140 / 22 / 0 at 23b5fcd9, 118 open at both ends, registered and done symmetric
+differences each exactly R-0525, landed symmetric difference empty, no duplicate id, no
+resolution naming an unregistered id, and next free R-0526. THE NARROWING LANDED AS AN
+APPEND AND WAS PROVED AS ONE: at 23b5fcd9 the I20F text still occurs exactly once, the
+item-15, item-20 and closing-paragraph openers each occur exactly once, and the 11
+lines C1's diff adds are exactly the 11 lines I20T adds that I20F does not contain,
+each once; 0 marker lines reached the file; numstat 11/0. THE SUITES WERE RE-RUN, NOT
+READ: the four state readers `159 passed`, the docs suite `295 passed` and the canary
+`42 passed`, each as its exact ordered command line in the primary checkout, each exit
+0. The ordered push landed: `git ls-remote origin` and the local branch agree at
+23b5fcd9. COMMIT HYGIENE IS CLEAN: the path set before C4 is the five declared paths,
+per-commit insertions are 331, 215, 11, 78, 3 and the handback's own 58, none over 500,
+all six commits are single-parent, and the reflog holds only `commit:` entries.
+
+- R-0526 — Low, A RESOLUTION ASSERTED A UNIVERSAL PROPERTY OF ITS OWN REFERENCES THAT
+ITS OWN TEXT DOES NOT MEET. R35's RECORD3, applied at commit cde59e8c, closes its
+R-0525 resolution with "This entry obeys the new clause: every reference it makes to
+`.agent/handoff.md` names the SHA that holds the text it means." The reviewer counted
+the sentences of RECORD3 mentioning that path at 23b5fcd9 and found four: one locates
+landed text and names 2342ed97, and the other three — the rule statement, the path list
+and the compliance claim itself — name no SHA and locate nothing. Under the clause as it
+landed the entry IS compliant, because the clause binds only a slice that LOCATES landed
+text; what fails is the sentence's own restatement of it, which quantifies over every
+reference rather than over the ones that locate text and is false of three of its own
+four. The referent is recoverable, so the cost is the audit it invites: a later reader
+checking the claim must re-derive that three of those references locate nothing. This is
+the R-0402 and R-0460 family with a quantifier in place of a numeral — item 11 forbids a
+hand-counted NUMERAL about a block's own parts, and nothing yet forbids a hand-checked
+UNIVERSAL about a slice's own text. Registered here and deliberately NOT resolved in the
+same round: the counter-measure is a checklist clause, this is a production round, and a
+fix authored in passing is how the last three rounds became record-keeping. The next
+record round resolves it by extending item 11 from numerals to any self-referential
+claim a slice makes about its own text, stated as the property actually measured.
