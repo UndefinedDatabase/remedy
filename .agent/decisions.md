@@ -5676,3 +5676,45 @@ they name.
 
 Reverse this decision by deleting the fixture; the drift returns with the next
 test that mocks half the provider path.
+
+## DECISION F085 D2 — the streaming seam takes the guard's CHILD half, not `run_guarded` (2026-08-17)
+
+CONTEXT: `stream_evidence.run_streamed_command` is T002a's last unmigrated spawn.
+The other two sites became `run_guarded` calls, and this one cannot: it iterates
+stdout line by line into `capture_stream_evidence`, which writes evidence files as
+the lines arrive and stops the child at a byte cap through an `on_cap` callback,
+while `run_guarded` buffers both streams through `_StreamPump` and returns bytes at
+the end. Incremental capture is what that seam exists to do, so the difference is
+the feature and not a gap.
+
+CHOSEN: split `ExecGuardPolicy`'s effect in two and share only the half that is
+actually common. `exec_guard.plan_child_spawn(policy)` returns a `ChildSpawnPlan` —
+the cwd, the resolved environment, the fork-to-exec `preexec_fn` and the names of
+the rlimits enforced and unsupported — and BOTH supervisors pass it to their own
+`Popen`. The PARENT half stays with whoever spawns: `run_guarded` keeps its
+`wait4` supervision, its deadline and its pumps, and `run_streamed_command` keeps
+the watchdog, process group, byte cap and stderr tail it already had. One
+implementation of what a policy does TO A CHILD; two supervisors, because there
+really are two.
+
+ALTERNATIVES CONSIDERED AND REJECTED: teaching `run_guarded` a streaming mode,
+rejected because it rewrites the supervision of a module T001 had just proven and
+buys nothing the streaming seam does not already have; duplicating the rlimit and
+scrub logic inside `stream_evidence.py`, rejected because T003 adds a network
+posture to exactly that child half and a second copy is a second thing to forget;
+leaving the seam unguarded and naming it in T003's limitations document, rejected
+because T2_F085's Edge-cases section makes the per-class rlimit VALUES config with
+per-project overrides, and a class whose only streaming site cannot receive a
+configured value leaves the policy table with a hole no document closes honestly.
+
+CONSEQUENCE: what this seam gains in stage 1 is narrow and worth stating plainly —
+the rlimit `preexec_fn` and a place for the values T003 configures. It already had
+a wall deadline, an output cap, a cwd pin and a killable process group. Its policy
+sets no environment allowlist, for the same reason `_cli_exec_policy` sets none:
+the child is the operator's authenticated `claude` CLI and reads its credentials
+from the inherited environment. That is a stage-1 gap and it is owed to T003's
+limitations document, not to this decision.
+
+Reverse this decision by inlining `plan_child_spawn` back into `run_guarded` and
+dropping `run_streamed_command`'s `policy` keyword; the seam returns to spawning a
+child under no limits at all.
