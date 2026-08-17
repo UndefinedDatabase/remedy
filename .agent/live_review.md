@@ -1967,3 +1967,81 @@ the round's own landed change: it names the block CONSTRAINT fixing the commit o
 instead of a SHA, and a reading of any prior state still names its SHA. Applied by the
 commit that constraint 9 of this round's block fixes ahead of this one, which is what
 lets these three paragraphs name constraint 9 rather than an impossible identifier.
+
+Gate: R35 — the R34 entry. R34 PASSED: the repair round that registered and resolved
+R-0522, R-0523 and R-0524 — a pair labelled REWRITE while its TO contained its FROM,
+the false rewrite proof that label produced, and the slice class item 20's required
+SHA cannot reach. Every ordered gate was re-run by the reviewer over
+7480d880..6ca30b16 and each reproduces the handback's reading. TRANSPORT WAS PROVED
+AGAINST THE REVIEWER'S OWN ORIGINAL, not only against a digest: the scratch file the
+block was authored into, the committed `.agent/authored/f085-r34.md`, the committed
+`.agent/last_block.md` and both working copies are all five byte-EQUAL at sha256
+42bf5eeb4bd3725848d7f824912827a9bff4948a18dd2f6cf13bc6caec46835b, 24167 B, 373 lines,
+14 marker lines, region digests 2764ed2a, 6fe4a6ca and 2b83c685 — and that digest is
+the one the reviewer measured BEFORE emission, so the block the worker applied is the
+block the reviewer wrote. THE APPEND COMMIT HELD ITS SHAPE: 2342ed97's pre-commit blob
+373548 B is a byte-exact PREFIX of the 381289 B post-commit file, the remainder is
+7741 B = one blank line plus RECORD2, RECORD2 is an exact suffix, its first line
+occurs once among the 104 lines that commit adds, numstat 104/0, 0 lines match
+`^(BEGIN|END)-[A-Z0-9]+$` while the BEGIN substring occurs 9 times. THE ARITHMETIC
+MOVED IN BOTH SETS BY THE SAME THREE IDS: 136 registered / 18 done / 0 landed at
+7480d880 against 139 / 21 / 0 at 6ca30b16, 118 open at both ends, registered and done
+symmetric differences each exactly R-0522, R-0523 and R-0524, landed symmetric
+difference empty, no duplicate id, no resolution naming an unregistered id, and next
+free R-0525. THE NARROWINGS LANDED AS APPENDS AND WERE PROVED AS APPENDS: at 6ca30b16
+the I15 and I20 FROM texts each still occur exactly once, which is what an
+append-shaped pair guarantees and what R33's handback wrongly denied of its own pair;
+the item-15, item-16 and item-20 openers and the checklist's closing paragraph each
+occur exactly once; every one of the 24 lines the two TOs add that their FROMs do not
+contain occurs exactly once among the 24 lines c15798a8 adds; 0 marker lines reached
+the file; numstat 24/0. THE SUITES WERE RE-RUN, NOT READ: the four state readers
+`159 passed`, the docs suite `295 passed` and the canary `42 passed`, each as its
+exact ordered command line in the primary checkout, each exit 0. THE DOCS GATE IS
+BLIND TO THE CHECKLIST EDIT AND WAS NOT COUNTED AS EVIDENCE FOR IT: the reviewer ran
+the red control in a disposable worktree at 7480d880 with
+`docs/agents/planner_reviewer_prompt.md` cut down to the single line `# broken`, and
+`tests/docs/` still returned `295 passed`, so no test under that directory reads the
+file and G5's occurrence counts are the only check on C1's content. The worktree was
+removed and pruned and the primary checkout is clean. COMMIT HYGIENE IS CLEAN: the
+path set before C4 is the five declared paths, per-commit insertions are 373, 304, 24,
+104, 3 and the handback's own 81, none over 500, all six commits are single-parent,
+the reflog holds only `commit:` entries, and the ordered push landed — origin and
+local agree at 6ca30b16. THE HANDBACK REPORTED THE PAIR SHAPES THE WAY R34 EXISTS TO
+MAKE POSSIBLE: both APPEND pairs are reported as APPEND with no FROM-zero count
+claimed, and the one REWRITE pair carries its FROM-0x/TO-1x reading. That is R-0523's
+counter-measure working on the first round it applied.
+
+WHAT THE WORKER FOUND AND DID NOT TOUCH. Under constraint 8 R34's worker reported that
+one sentence of the reviewer's own RECORD2 was falsified by its own C4, and declared
+it in the handback rather than editing a slice it was told to apply byte-verbatim.
+That is exactly the behaviour constraint 8 exists to produce, and the finding below is
+the reviewer's, not the worker's.
+
+- R-0525 — Low, A RESOLUTION LOCATED LANDED TEXT IN A PATH THAT IS REWRITTEN EVERY
+ROUND, WITHOUT THE SHA THAT HOLDS IT. R34's RECORD2, applied at commit 2342ed97,
+closes its R-0523 resolution with the words "the false sentence stays in
+`.agent/handoff.md` where it landed". Commit 6ca30b16 — C4 of the same round — rewrote
+that path in full, so at 6ca30b16 it does not contain the sentence; the version of
+that path in commit 7480d880 does. The referent is recoverable, because the R-0523
+registration two paragraphs above names 7480d880 explicitly, which is why this is Low
+and was not a block condition against R34. What makes it worth an id is that it is the
+R-0520 family arriving through a door R-0524 had just left open. R-0524's carve-out
+permits an ordering constraint in place of a SHA for a claim about the round's OWN
+change; this sentence is not that claim. It locates a PRIOR round's text by path
+alone, and for `.agent/handoff.md` a bare path can never be durable, because the last
+commit of every round rewrites it by construction — the staleness is SCHEDULED, not
+merely possible, and no ordering constraint reaches it. The same holds for
+`.agent/plan.md`, `.agent/last_block.md` and `.agent/context.md`. Found by the
+reviewer against the worker's declared observation, which is where a constraint-8
+report is supposed to be read.
+
+Done: R-0525 — Resolved at R35. Checklist item 20 of
+`docs/agents/planner_reviewer_prompt.md` §3 now requires a slice that merely LOCATES
+landed text to name the SHA of the commit holding it whenever the path is one this
+workflow rewrites every round, and it names those paths — `.agent/handoff.md`,
+`.agent/plan.md`, `.agent/last_block.md`, `.agent/context.md` — rather than leaving
+the reader to judge which paths qualify. Elsewhere a bare path stays acceptable, and
+the clause says so, because a rule that reaches every path would make ordinary
+cross-references unwritable. Applied by the commit that constraint 9 of this round's
+block fixes ahead of this one. This entry obeys the new clause: every reference it
+makes to `.agent/handoff.md` names the SHA that holds the text it means.
