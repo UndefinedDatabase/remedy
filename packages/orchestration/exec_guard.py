@@ -10,10 +10,10 @@ not exist:
 - PARTIAL COVERAGE, and the gap is the point. Since F085 T002a the managed
   builder seam and the claude CLI provider run through `run_guarded`, and a
   supervisor that must own its own parent half may take the CHILD half alone
-  through `plan_child_spawn`; every other subprocess in the repository — the
-  test, DoD, runtime, git and packaging classes — still spawns unsupervised. No
-  count is written here on purpose: it changes with every migration round, and
-  the caller grep is the honest answer.
+  through `plan_child_spawn`; since T002b the test class is PARTIALLY migrated
+  through `run_guarded_test_command`, while the DoD, runtime, git and packaging
+  classes still spawn unsupervised. No count is written here on purpose: it
+  changes with every migration round, and the caller grep is the honest answer.
 - No environment scrubbing UNLESS the policy asks for it: with
   `env_allowlist=None` the policy's `env` reaches the child UNCHANGED, which every
   T001 test relies on. Callers CHOOSE the allowlist per command class — the
@@ -87,6 +87,27 @@ FORBIDDEN_ENV_KEYS = frozenset({
     "GITHUB_TOKEN", "GH_TOKEN", "GITLAB_TOKEN",
     "DATABASE_URL", "REDIS_URL",
 })
+
+#: WHY: the one environment a `test`-class command may inherit — locale, interpreter
+#: behaviour, the toolchain PATH and the temp dirs a test suite legitimately needs.
+#: Sorted, so a reader can see at a glance whether a key is a member.
+#: `REMEDY_UI_NO_AUTO_BUILD` is a member for carried finding R-0202: the mid-run UI
+#: rebuild class exists BECAUSE that variable stopped reaching a child, so an
+#: allowlist that dropped it would re-create the very bug this feature must close.
+TEST_COMMAND_ENV_ALLOWLIST: tuple[str, ...] = (
+    "CI", "HOME", "LANG", "LC_ALL", "LC_CTYPE", "LOGNAME", "PATH", "PWD",
+    "PYTHONDONTWRITEBYTECODE", "PYTHONHASHSEED", "PYTHONPATH", "PYTHONUNBUFFERED",
+    "REMEDY_UI_NO_AUTO_BUILD", "SHELL", "TEMP", "TERM", "TMP", "TMPDIR", "TZ",
+    "USER", "VIRTUAL_ENV",
+)
+
+#: Default per-stream output cap for a `test`-class command, 16 MiB. It MUST stay
+#: strictly ABOVE `test_runner.MAX_TEST_OUTPUT_BYTES` (1 MiB): the caller does its own
+#: truncation and publishes `output_truncated` from it, so a guard cap at or below the
+#: caller's would truncate FIRST and that flag would stop describing what the caller
+#: measured. The relationship is stated in words rather than imported, because the
+#: dependency runs the other way — `test_runner` imports this module, never the reverse.
+TEST_COMMAND_OUTPUT_CAP_BYTES: int = 16 * 1024 * 1024
 
 
 def scrub_child_env(source: Mapping[str, str], allowlist: Sequence[str]) -> dict[str, str]:
@@ -454,3 +475,83 @@ def run_guarded(cmd: Sequence[str], policy: ExecGuardPolicy) -> ExecGuardResult:
         limits_enforced=tuple(enforced),
         limits_unsupported=plan.limits_unsupported,
     )
+
+
+# ---------------------------------------------------------------------------
+# The shared `test`-class seam (F085 T002b) — ONE policy and ONE runner for the
+# whole command class, so ten modules cannot each grow a private answer.
+# ---------------------------------------------------------------------------
+
+
+def test_command_exec_policy(
+    timeout_sec: float,
+    cwd: str | None,
+    *,
+    output_cap_bytes: int = TEST_COMMAND_OUTPUT_CAP_BYTES,
+    extra_env_keys: Sequence[str] = (),
+) -> ExecGuardPolicy:
+    """The stage-1 policy every `test`-class command runs under.
+
+    `cpu_seconds`, `address_space_bytes` and `open_files` are deliberately None,
+    for the reasons `managed_builder_execution._builder_exec_policy` already
+    settled for the builder class — not restated here, so the two cannot drift
+    apart. What IS enforced is real: this guard's own wall deadline, a per-stream
+    output cap applied WHILE reading, the cwd pin, a zero core dump and an
+    explicit environment allowlist.
+
+    `env=None` is deliberate: it makes `plan_child_spawn` build the child
+    environment from `os.environ`, which is where a test command's toolchain
+    actually lives. `extra_env_keys` is the per-project override knob T2_F085's
+    edge-case section promises — a project whose suite needs one more variable
+    names it there instead of widening the shared allowlist for everyone.
+    """
+    return ExecGuardPolicy(
+        wall_timeout_seconds=float(timeout_sec),
+        output_cap_bytes=output_cap_bytes,
+        cwd=cwd,
+        core_file_bytes=0,
+        env=None,
+        env_allowlist=TEST_COMMAND_ENV_ALLOWLIST + tuple(extra_env_keys),
+    )
+
+
+def run_guarded_test_command(
+    cmd: Sequence[str],
+    *,
+    timeout_sec: float,
+    cwd: str | None,
+    extra_env_keys: Sequence[str] = (),
+) -> subprocess.CompletedProcess[bytes]:
+    """Run one `test`-class command under the guard, shaped like `subprocess.run`.
+
+    The return value is a `CompletedProcess` with BYTES streams and a wall trip is
+    raised as `subprocess.TimeoutExpired`, so a call site migrated onto this seam
+    keeps the exception and result shapes it already handled: the mechanism
+    changes, the observable outcome does not.
+
+    The `TimeoutExpired` carries the PARTIAL streams the guard is already holding.
+    Callers of the sites this seam replaces read `exc.stdout` and `exc.stderr` to
+    persist what a timed-out suite managed to print, and dropping that output would
+    lose evidence the guard has in hand.
+
+    A signal death comes back as a NEGATIVE returncode in the -SIGNUM form — the
+    same translation `managed_builder_execution._guarded_exit_code` performs — since
+    that is what `subprocess.run` reported before the migration.
+
+    `FileNotFoundError` is deliberately NOT caught here: `Popen` raises it inside
+    `run_guarded` before any supervision starts, it means the executable does not
+    exist rather than that a run misbehaved, and every caller already handles it.
+    """
+    guarded = run_guarded(cmd, test_command_exec_policy(
+        timeout_sec, cwd, extra_env_keys=extra_env_keys))
+    if guarded.tripped_limit == "wall_timeout":
+        raise subprocess.TimeoutExpired(
+            list(cmd), timeout_sec, output=guarded.stdout, stderr=guarded.stderr
+        )
+    returncode = guarded.returncode
+    if returncode is None:
+        try:
+            returncode = -int(signal.Signals[guarded.term_signal].value)
+        except (KeyError, ValueError, TypeError):
+            returncode = -1
+    return subprocess.CompletedProcess(list(cmd), returncode, guarded.stdout, guarded.stderr)

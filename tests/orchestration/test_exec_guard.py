@@ -18,11 +18,17 @@ import time
 
 import pytest
 
+# `test_command_exec_policy` is called through this module handle on purpose: bound
+# as a bare name here it would match pytest's `test_*` collection pattern and error
+# on fixtures it never had.
+from packages.orchestration import exec_guard
 from packages.orchestration.exec_guard import (
+    TEST_COMMAND_ENV_ALLOWLIST,
     ExecGuardPolicy,
     _StreamPump,
     plan_child_spawn,
     run_guarded,
+    run_guarded_test_command,
     scrub_child_env,
 )
 
@@ -433,3 +439,98 @@ def test_plan_child_spawn_preexec_really_lowers_the_core_limit_in_the_child():
 
     assert result.returncode == 0
     assert result.stdout.strip() == b"(0, 0)"
+
+
+# ---------------------------------------------------------------------------
+# The shared `test`-class seam (T002b) — the policy, the allowlist and the runner
+# ---------------------------------------------------------------------------
+
+
+def test_the_ui_no_auto_build_variable_is_a_member_of_the_test_allowlist():
+    """R-0202, pinned as a membership: dropping this key re-creates the bug."""
+    assert "REMEDY_UI_NO_AUTO_BUILD" in TEST_COMMAND_ENV_ALLOWLIST
+
+
+def test_the_test_policy_sets_only_the_limits_it_can_defend():
+    """The three unmeasured rlimits stay None; the cap stays above the caller's own.
+
+    `MAX_TEST_OUTPUT_BYTES` is imported HERE rather than in `exec_guard`, so the two
+    values move together while the dependency keeps running one way only.
+    """
+    from packages.orchestration.test_runner import MAX_TEST_OUTPUT_BYTES
+
+    policy = exec_guard.test_command_exec_policy(60, "/tmp")
+
+    assert policy.cpu_seconds is None
+    assert policy.address_space_bytes is None
+    assert policy.open_files is None
+    assert policy.core_file_bytes == 0
+    assert policy.output_cap_bytes > MAX_TEST_OUTPUT_BYTES
+
+
+@pytest.mark.subprocess
+def test_the_seam_hands_a_child_the_allowlist_and_neither_secret(monkeypatch):
+    """A real child, spawned through the runner itself, dumps what it inherited.
+
+    Spawned through `run_guarded_test_command` and not through `scrub_child_env`
+    alone, because the property under test is what the SEAM gives a child.
+    """
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-should-never-appear")
+    monkeypatch.setenv("MY_PROJECT_SECRET", "should-never-appear-either")
+    monkeypatch.setenv("REMEDY_UI_NO_AUTO_BUILD", "1")
+
+    result = run_guarded_test_command(_child(_ENV_DUMP), timeout_sec=30, cwd=None)
+    dumped = _dumped(result)
+
+    assert result.returncode == 0
+    assert dumped["REMEDY_UI_NO_AUTO_BUILD"] == "1"
+    assert "PATH" in dumped
+    assert "ANTHROPIC_API_KEY" not in dumped
+    assert "MY_PROJECT_SECRET" not in dumped
+    assert b"sk-should-never-appear" not in result.stdout
+    assert b"should-never-appear-either" not in result.stdout
+
+
+@pytest.mark.subprocess
+def test_extra_env_keys_widens_the_allowlist_for_that_call_only(monkeypatch):
+    """The per-project override knob: named it arrives, unnamed it does not."""
+    monkeypatch.setenv("MY_PROJECT_TOOLCHAIN", "yes")
+
+    named = run_guarded_test_command(
+        _child(_ENV_DUMP), timeout_sec=30, cwd=None,
+        extra_env_keys=("MY_PROJECT_TOOLCHAIN",),
+    )
+    unnamed = run_guarded_test_command(_child(_ENV_DUMP), timeout_sec=30, cwd=None)
+
+    assert _dumped(named)["MY_PROJECT_TOOLCHAIN"] == "yes"
+    assert "MY_PROJECT_TOOLCHAIN" not in _dumped(unnamed)
+
+
+@pytest.mark.subprocess
+def test_a_wall_trip_raises_timeout_expired_carrying_the_partial_output():
+    """The partial-stream promise, proven: the line printed before the trip survives."""
+    argv = _child(
+        "import sys, time\n"
+        "sys.stdout.write('printed-before-the-timeout\\n')\n"
+        "sys.stdout.flush()\n"
+        "time.sleep(120)\n"
+    )
+
+    with pytest.raises(subprocess.TimeoutExpired) as excinfo:
+        run_guarded_test_command(argv, timeout_sec=2, cwd=None)
+
+    assert b"printed-before-the-timeout" in excinfo.value.output
+
+
+@pytest.mark.subprocess
+def test_a_nonzero_exit_comes_back_as_a_completed_process():
+    """The `subprocess.run` shape a migrated call site keeps reading."""
+    result = run_guarded_test_command(
+        _child("import sys\nsys.stdout.write('ran\\n')\nsys.exit(3)\n"),
+        timeout_sec=30,
+        cwd=None,
+    )
+
+    assert isinstance(result, subprocess.CompletedProcess)
+    assert result.returncode == 3
+    assert b"ran" in result.stdout
