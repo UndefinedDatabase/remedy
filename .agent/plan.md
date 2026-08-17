@@ -18,9 +18,9 @@ reaches a child, and the limitations document exists and is linked from the
 README.
 
 ## Current Step
-R34, this round: record the R33 FAIL, and register and resolve R-0522, R-0523 and
-R-0524 — a pair mislabelled REWRITE, the false rewrite proof that label produced, and
-the slice class item 20's required SHA cannot reach. No production code changes.
+R35, this round: record the R34 PASS, and register and resolve R-0525 by naming the
+paths this workflow rewrites every round, so a slice locating landed text in one of
+them carries the SHA that holds it. No production code changes.
 
 ## Next Steps
 1. T002b remainder — the three `test`-class sites still on a bare spawn, in this
