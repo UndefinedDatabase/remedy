@@ -1403,3 +1403,64 @@ over 500, seven commits form a single-parent chain, and the reflog holds nothing
 but `commit:` entries. The handback is 100 lines — exactly the ceiling its seven
 per-commit tables engage under DECISION D15, so it sits AT the cap rather than
 over it. No block condition is met.
+
+Gate: R26 — PASS, the round that carried T002b into `autorun.py` and moved its
+three `test`-class sites onto the shared seam. All ten ordered gates were re-run
+by the reviewer over 5b02cff9..369d94a3 and every one reproduces the handback's
+reading. TRANSPORT HELD ACROSS A HALT AND A RE-CREATION: the worker stopped
+before C0a because the block ordered a 312-line save while the delivered text
+measured 313, committed nothing and left the tree byte-clean at 5b02cff9. The
+reviewer re-measured its own source in halves, confirmed 313, and traced 312 to
+hand-summed section counts taken after a late edit to three sections — an
+arithmetic recollection standing in for a measurement, which is the defect the
+gate caught and the reason the gate exists. The worker's two independent
+transcriptions produced the identical sha256
+4220f7db082fd722fa28163fdbdfe2684f6c0ec42d772c866106009c26402908 at 16616 B, and
+at HEAD the committed authored file, the committed `.agent/last_block.md` and both
+working copies are byte-EQUAL at that digest, 313 lines, 26 marker lines in 13
+pairs, region digests 9a91a0ce, 41d355bc and e34ff2fa. THE APPEND COMMIT HOLDS
+ITS SHAPE: C1's pre-commit blob is a byte-exact PREFIX of the post-commit file,
+the remainder is exactly one blank line plus RECORD1 at numstat 35/0, and no
+marker line reached any target file — the three `END-` hits in
+`.agent/live_review.md` are the word `APPEND-shaped` in prose older than this
+round, which a substring count reports and a line-anchored count does not. THE
+ARITHMETIC IS FLAT EXACTLY WHERE IT WAS ORDERED FLAT: 131 / 14 / 0 with 117 open
+at base and identical at HEAD, all three symmetric differences empty, no duplicate
+id, no resolution naming an unregistered id, max R-0516. THE MIGRATION CHANGED
+THE MECHANISM AND NOT THE OUTCOME: `subprocess.run(` occurs 0 times at HEAD having
+occurred 3 times at base, each of the five FROM texts 0 times and each TO exactly
+once, `run_guarded_test_command` 5 times as three call sites plus two imports,
+`import subprocess` still present in `_run_fixture_builder` for its `except
+subprocess.TimeoutExpired` clause and gone from `_run_repair_loop_fixture` where
+nothing else used it. THE MIGRATED CODE SITS ON AN EXECUTED PATH, PROVEN FROM
+OPPOSITE ENDS: the reviewer broke the three bare spawns at BASE before authoring
+and the round gate reported 18 failures; the worker broke the SEAM at HEAD inside
+a disposable worktree and the same command line reported 18 failures spanning both
+driving files. The same number from both directions is what a preserved call graph
+looks like. THE GATES WERE RE-RUN, NOT READ: the round gate exited 0 with
+`140 passed, 6 skipped` and the migration did not move it, the guard suite
+`24 passed`, the four state readers `158 passed`, the canary `42 passed` and ruff
+`All checks passed!`, each as its exact ordered command line. COMMIT HYGIENE IS
+CLEAN: the changed-path set before C4 is exactly the five declared paths,
+per-commit insertions are 313, 258, 35, 12 and 5 with C4's own 85 measured after
+it existed and none over 500, six commits form a single-parent chain, and the
+reflog holds only `commit:` entries. Both deviations are declared, the D15 overage
+names its own measured length, and neither widens scope. No block condition is met.
+
+- R-0517 — Low, A BLOCK'S HANDBACK SECTION DROPPED A POINTER THE PROTOCOL
+REQUIRES, AND THE HANDOFF INHERITED THE GAP. docs/agents/self_drive_protocol.md
+§Phase 2 requires that every handoff naming the next session's first action names
+Phase 1 rule 1 — re-read `.agent/STOP` from disk — BEFORE rule 2, the Open PR
+Gate. R25's handoff carried that sentence. R26's does not, because the R26 block's
+Handback section enumerated what the handoff must contain and left it out. The
+worker is not at fault: it wrote what the block ordered, which is the shape this
+record keeps finding on the reviewer's side of the line. Low because nothing
+executable depends on it and no gate could have gone red over it — the whole cost
+lands on the next session, which opens a handoff telling it to re-run gates and
+saying nothing about the sentinel that can halt a round before it starts, nor
+about the PR gate that must precede any new branch. It is registered rather than
+waved through because the reviewer authored the omission, and a reviewer defect
+spoken aloud only in a chat window is exactly the A1 trap this record exists to
+close. No checklist item is added: the requirement already lives in the protocol,
+so the fix is that this round's own handback carries the sentence and every later
+block's Handback section names it among the mandated contents. OPEN.
