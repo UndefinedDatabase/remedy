@@ -17,7 +17,12 @@ import time
 
 import pytest
 
-from packages.orchestration.exec_guard import ExecGuardPolicy, run_guarded, scrub_child_env
+from packages.orchestration.exec_guard import (
+    ExecGuardPolicy,
+    plan_child_spawn,
+    run_guarded,
+    scrub_child_env,
+)
 
 #: Unique argv token so `pgrep -af` can find leftovers of THIS run and no other.
 MARKER = f"REMEDY_EXEC_GUARD_FIXTURE_{os.getpid()}"
@@ -309,3 +314,62 @@ def test_scrub_child_env_drops_a_key_the_source_never_defined():
 
     assert scrubbed == {"PATH": "/usr/bin"}
     assert "NEVER_SET_ANYWHERE" not in scrubbed
+
+
+# ---------------------------------------------------------------------------
+# plan_child_spawn — the CHILD half a streaming supervisor can take on its own
+# ---------------------------------------------------------------------------
+
+def test_plan_child_spawn_names_rlimits_only_and_no_parent_side_limit():
+    """`limits_enforced` is the rlimit half; the deadline and the cap are the parent's.
+
+    The policy below asks for a wall timeout and an output cap on purpose: a plan
+    that named them would be claiming enforcement it cannot perform, since nothing
+    in a `preexec_fn` bounds either.
+    """
+    plan = plan_child_spawn(
+        ExecGuardPolicy(core_file_bytes=0, wall_timeout_seconds=10.0, output_cap_bytes=64 * 1024)
+    )
+
+    assert "core_file_bytes" in plan.limits_enforced
+    assert "wall_timeout" not in plan.limits_enforced
+    assert "output_bytes" not in plan.limits_enforced
+    assert plan.limits_unsupported == ()
+
+
+def test_plan_child_spawn_scrubs_exactly_like_scrub_child_env():
+    """With an allowlist the plan's env IS `scrub_child_env` of the same inputs."""
+    env = {"PATH": "/usr/bin", "REMEDY_KEPT": "yes", "ANTHROPIC_API_KEY": "sk-nope"}
+    allowlist = ("PATH", "REMEDY_KEPT", "ANTHROPIC_API_KEY")
+
+    plan = plan_child_spawn(ExecGuardPolicy(env=env, env_allowlist=allowlist))
+
+    assert plan.env == scrub_child_env(env, allowlist)
+
+
+def test_plan_child_spawn_hands_the_environment_over_unchanged_without_an_allowlist():
+    """No allowlist means no scrub — and `None` stays `None`, which means "inherit"."""
+    env = {"PATH": "/usr/bin", "ANTHROPIC_API_KEY": "sk-unscrubbed-by-design"}
+
+    assert plan_child_spawn(ExecGuardPolicy(env=env)).env == env
+    assert plan_child_spawn(ExecGuardPolicy(env=None)).env is None
+
+
+@pytest.mark.subprocess
+def test_plan_child_spawn_preexec_really_lowers_the_core_limit_in_the_child():
+    """Proved in a REAL child, never by calling `preexec_fn` in the test process.
+
+    Calling it here would lower this interpreter's own RLIMIT_CORE for the rest of
+    the session and would prove only that the function runs, not that a spawn under
+    the plan obeys it. The guarded run reads the limit back out of the child.
+    """
+    plan = plan_child_spawn(ExecGuardPolicy(core_file_bytes=0))
+    assert callable(plan.preexec_fn)
+
+    result = run_guarded(
+        _child("import resource\nprint(resource.getrlimit(resource.RLIMIT_CORE))\n"),
+        ExecGuardPolicy(core_file_bytes=0, wall_timeout_seconds=10.0, output_cap_bytes=64 * 1024),
+    )
+
+    assert result.returncode == 0
+    assert result.stdout.strip() == b"(0, 0)"

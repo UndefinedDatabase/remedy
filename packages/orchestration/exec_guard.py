@@ -8,10 +8,12 @@ Deliberate absences, written here because text search cannot find code that does
 not exist:
 
 - PARTIAL COVERAGE, and the gap is the point. Since F085 T002a the managed
-  builder seam and the claude CLI provider run through this module; every other
-  subprocess in the repository — the test, DoD, runtime, git and packaging
-  classes — still spawns unsupervised. No count is written here on purpose: it
-  changes with every migration round, and the caller grep is the honest answer.
+  builder seam and the claude CLI provider run through `run_guarded`, and a
+  supervisor that must own its own parent half may take the CHILD half alone
+  through `plan_child_spawn`; every other subprocess in the repository — the
+  test, DoD, runtime, git and packaging classes — still spawns unsupervised. No
+  count is written here on purpose: it changes with every migration round, and
+  the caller grep is the honest answer.
 - No environment scrubbing UNLESS the policy asks for it: with
   `env_allowlist=None` the policy's `env` reaches the child UNCHANGED, which every
   T001 test relies on. Callers CHOOSE the allowlist per command class — the
@@ -58,7 +60,7 @@ import signal
 import subprocess
 import threading
 import time
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 
 #: How often the supervisor re-checks a still-running child against its deadline.
@@ -127,6 +129,28 @@ class ExecGuardPolicy:
     cwd: str | None = None
     env: dict[str, str] | None = None
     env_allowlist: tuple[str, ...] | None = None
+
+
+# WHY: the CHILD-side half of a policy — everything a `Popen` must pass to obey it — so a supervisor that owns its own PARENT half can still be limited.
+@dataclass(frozen=True)
+class ChildSpawnPlan:
+    """What any `subprocess.Popen` must be given to spawn a child under a policy.
+
+    The PARENT half — the wall deadline, the output cap, reaping the child and
+    killing its group — stays with whichever supervisor spawns, because
+    `run_guarded` buffers both streams to bytes while a streaming supervisor
+    consumes stdout line by line, and only this half is common to both.
+
+    `limits_enforced` therefore names ONLY the rlimits that were really applied.
+    `wall_timeout` and `output_bytes` are parent-side, and each supervisor
+    appends them to its own result when it enforces them.
+    """
+
+    cwd: str | None
+    env: dict[str, str] | None
+    preexec_fn: Callable[[], None]
+    limits_enforced: tuple[str, ...]
+    limits_unsupported: tuple[str, ...]
 
 
 @dataclass(frozen=True)
@@ -239,6 +263,39 @@ def _plan_rlimits(policy: ExecGuardPolicy) -> tuple[list[tuple[int, int, int]], 
     return calls, enforced, unsupported
 
 
+def plan_child_spawn(policy: ExecGuardPolicy) -> ChildSpawnPlan:
+    """Resolve `policy` into the cwd, environment and `preexec_fn` a child needs.
+
+    Support for each rlimit is decided HERE, in the parent, so an unsupported
+    limit is reported rather than dropped in silence. The returned `preexec_fn`
+    runs between fork and exec and applies those limits and nothing else.
+
+    The environment follows the module's rule exactly: `policy.env` reaches the
+    child UNCHANGED — including `None`, which means "inherit" — while
+    `env_allowlist` is None, and is rebuilt by `scrub_child_env` when it is not.
+    """
+    rlimit_calls, enforced, unsupported = _plan_rlimits(policy)
+
+    def _apply_rlimits() -> None:
+        # Runs in the forked child between fork and exec: rlimits, nothing else.
+        for const, soft, hard in rlimit_calls:
+            resource.setrlimit(const, (soft, hard))
+
+    child_env = policy.env
+    if policy.env_allowlist is not None:
+        child_env = scrub_child_env(
+            os.environ if policy.env is None else policy.env, policy.env_allowlist
+        )
+
+    return ChildSpawnPlan(
+        cwd=policy.cwd,
+        env=child_env,
+        preexec_fn=_apply_rlimits,
+        limits_enforced=tuple(enforced),
+        limits_unsupported=tuple(unsupported),
+    )
+
+
 def _kill_process_group(pgid: int) -> None:
     """SIGKILL a whole process group; an already-gone group is success, not an error."""
     if pgid <= 1:
@@ -276,32 +333,23 @@ def run_guarded(cmd: Sequence[str], policy: ExecGuardPolicy) -> ExecGuardResult:
     if not argv:
         raise ValueError("run_guarded requires a non-empty argv list")
 
-    rlimit_calls, enforced, unsupported = _plan_rlimits(policy)
+    plan = plan_child_spawn(policy)
+    # The parent half is this guard's own, so it appends its own limit names.
+    enforced = list(plan.limits_enforced)
     if policy.wall_timeout_seconds is not None:
         enforced.append("wall_timeout")
     if policy.output_cap_bytes is not None:
         enforced.append("output_bytes")
-
-    def _apply_rlimits() -> None:
-        # Runs in the forked child between fork and exec: rlimits, nothing else.
-        for const, soft, hard in rlimit_calls:
-            resource.setrlimit(const, (soft, hard))
-
-    child_env = policy.env
-    if policy.env_allowlist is not None:
-        child_env = scrub_child_env(
-            os.environ if policy.env is None else policy.env, policy.env_allowlist
-        )
 
     started = time.monotonic()
     proc = subprocess.Popen(
         argv,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
-        cwd=policy.cwd,
-        env=child_env,
+        cwd=plan.cwd,
+        env=plan.env,
         start_new_session=True,
-        preexec_fn=_apply_rlimits,
+        preexec_fn=plan.preexec_fn,
     )
     # start_new_session=True makes the child its own group leader, so its pid IS the pgid.
     pgid = proc.pid
@@ -380,5 +428,5 @@ def run_guarded(cmd: Sequence[str], policy: ExecGuardPolicy) -> ExecGuardResult:
         classification=classification,
         tripped_limit=tripped_limit,
         limits_enforced=tuple(enforced),
-        limits_unsupported=tuple(unsupported),
+        limits_unsupported=plan.limits_unsupported,
     )
