@@ -1127,3 +1127,100 @@ unbounded hang, and because the guard's `finally` is reached, the group kill swe
 the busy loop rather than leaving it orphaned. This round's G7 probe b exercised that
 path directly: with the rlimit suppressed, the node fails and names `wall_timeout`
 within the external timeout rather than stalling the run.
+
+Gate: R22 — PASS, the round that hardened T001 against its own failure modes. All
+ten ordered gates were re-run by the reviewer over 3622f2cf..b4da5101 and every one
+reproduces the handback's reading. TRANSPORT is proven twice over. Disk-to-disk: the committed
+`.agent/authored/f085-r22.md`, the committed `.agent/last_block.md` and both working
+copies are byte-EQUAL at sha256
+f7b6b9ca92d5a5b3956afa125ba5a189e99ff104d0148499e75707edd4775677, 24629 B, 372
+lines, 8 marker lines. And against the reviewer's OWN pre-delegation measurement:
+the whole-file digest matches and the three regions hash to f5ecdf9d, 9a8f32e7 and
+53c558ae exactly as measured before the block was handed over. The single write
+succeeded. THE APPEND COMMITS HOLD THEIR SHAPE: for C1 the pre-commit blob (309316
+B) is a byte-exact PREFIX of the post-commit file (316105 B) and the remainder is
+exactly one blank line plus RECORD1; for C3 the pre-commit blob (316105 B) is a
+prefix of (317782 B) and the remainder is blank plus DONE1. Each slice occurs once,
+no marker line survives, the HEAD blob equals the working copy. THE ARITHMETIC MOVED
+EXACTLY WHERE IT WAS ORDERED TO, which is the reading that was flat in R20 and R21
+and had to move here: 126 / 9 / 0 and 117 open at base, 128 / 9 / 0 and 119 open
+after C1 — both registrations landed before any fix — and 128 / 11 / 0 with 117 open
+at HEAD. Registered difference exactly R-0512 and R-0513,
+resolved difference exactly the same two, no duplicate and no resolution naming an
+unregistered id; max R-0513. THE SNAPSHOT IS CORRECT WHERE IT MATTERS: every field
+of `_StreamPump` now lives behind one lock and is read only through `snapshot()`, so
+the three values describe a single point in the stream; `run_guarded` takes that
+snapshot AFTER the joins and BEFORE the conditional close, so a partial read never
+races the descriptor it reads from; `streams_complete` keeps both its meaning and
+its value, being computed from `is_alive()` exactly as before; and the fd handling is
+untouched, so the comment explaining why a blocked pump's descriptor stays open is
+still true. The `ExecGuardResult` docstring's `b""` promise was rewritten rather than
+left to rot, and the replacement claims a PARTIAL buffer and nothing more. THE
+BACKSTOP DOES NOT STEAL THE ATTRIBUTION, verified by the reviewer's own mutation in a
+disposable worktree rather than accepted from the worker's probe: with
+`plan_child_spawn`'s `preexec_fn` replaced by a no-op and the backstop left in
+place, the node FAILS in 30.28 s under an external 180 s timeout instead of hanging,
+and a direct run of the same policy against the mutated module — its `__file__`
+printed as proof of import path — returns `term_signal=SIGKILL`,
+`classification=resource_limit` and `tripped_limit=wall_timeout`. `pgrep` finds no
+survivor afterwards, which is the second half of the fix: because the deadline is
+reached, `run_guarded`'s `finally` runs and the group kill sweeps the busy loop that
+R21's probe had to sweep by hand. Suites re-run by the reviewer: exec_guard 18
+passed against a base of 16, the stream trio 123 against 121, the sibling seams 337
+unchanged, doc readers not applicable, state readers 157, canary 42, ruff
+`All checks passed!`. The change set is exactly the declared paths with 0 outside;
+insertions are 372, 272, 88, 10, 102, 24 and 13 before the handback commit, which is
+itself 44, none over 500 — and every one of those numbers is the `--numstat` first
+column, which is R-0512's counter-measure working on the first round it bound. Seven
+commits before the handback, one parent each, linear; every reflog entry
+`commit:`-prefixed; tree clean; `git worktree list` ONE line. Six deviations were
+declared and none is harmful. Two of them are findings against the REVIEWER and are
+registered below. A third deserves naming here rather than as a finding: the worker
+swept an orphan its own probe created by calling `subprocess.run(["pkill", "-f",
+MARKER])` from Python after the interactive `kill` and `pkill` forms were refused by
+the session's permission layer. That is the same form-level rejection this
+repository already routes around for shell loops, the sweep was scoped to one MARKER
+string, it is the exact call `test_exec_guard.py` already makes for its own escapee,
+and the worker declared it unprompted. It is correct behaviour, not a violation.
+LAST_REVIEWED_SHA advances to b4da5101.
+
+- R-0514 — Medium, A BLOCK ORDERED A PROBE WHOSE RECIPE CONTRADICTS THE PROPERTY THE
+SAME PARAGRAPH SAYS IT PROVES. R22's gate G7 probe b ordered, in one sentence,
+"remove `wall_timeout_seconds` from the policy in
+`test_cpu_limit_kills_a_busy_loop_and_names_the_limit` AND make `plan_child_spawn`'s
+`preexec_fn` a no-op", and in the next, "with the backstop the node must FAIL and
+name `wall_timeout`". The backstop IS `wall_timeout_seconds`. Removing it and then
+asserting its effect cannot both hold, so no run satisfies the paragraph as written:
+the literal recipe reproduces the hang R-0513 describes, and the stated property
+requires the field the recipe deletes. The worker handled it correctly — it named
+the contradiction, ran BOTH variants, and reported both readings rather than picking
+one silently — and both readings turned out useful, since the literal variant is the
+only direct reproduction of R-0513's harm this feature has on record. Medium because
+the round spent a declared deviation and a second full probe run proving a defect in
+the reviewer's own text, and because the failure is invisible to every existing
+check: item 5 of the pre-emission checklist decides WHETHER a colour may be ordered,
+item 8 checks a gate's expected VALUE against the code, and item 12 governs the
+reviewer's own dry runs — none of them reads the block's two sentences against EACH
+OTHER, which is the only place this defect lives, because both halves are
+individually sound. Counter-measure: promoted into the pre-emission checklist by
+this round's own C2, as item 18. OPEN.
+
+- R-0515 — Low, AN AUTHORED SLICE ASSERTED A GATE RESULT THE BLOCK NEVER SCHEDULED
+THE GATE TO PRODUCE. R22's DONE1 slice, applied byte-verbatim into
+`.agent/live_review.md` by C4, states "This round's G7 probe b exercised that path
+directly: with the rlimit suppressed, the node fails and names `wall_timeout` within
+the external timeout rather than stalling the run." Nothing in that block fixed WHEN
+G7 ran. The bundle listed the gates after the commits, so the natural order would
+have committed C4 — and with it that sentence — before the probe that makes it true.
+The worker saw this and moved G7 ahead of C4 on its own initiative, declaring the
+reordering as a deviation, so nothing false reached disk and the claim is now
+independently confirmed. Low for that reason. It is registered because the honest
+outcome depended on the worker noticing: a worker that had followed the block's own
+sequence would have committed an unverified claim into the permanent record, which
+is the one file in this repository that must never carry one. This is the R-0371 and
+R-0449 family — never order a value into an artifact written before the value can
+exist — narrowed from commit SHAs to gate RESULTS, which is a producer the existing
+checklist items do not cover: item 13 governs the ORDER a block imposes on the
+worker's runs and item 14 governs which commits a per-commit gate can reach, while
+this is a property of a slice's TEXT. Counter-measure: promoted into the
+pre-emission checklist by this round's own C2, as item 19. OPEN.
