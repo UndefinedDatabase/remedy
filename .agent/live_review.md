@@ -2951,3 +2951,97 @@ gate held; the cost is a resume hazard, not a wrong record. The counter-measure 
 own Handback section, which enumerates all four closing statements explicitly instead of
 naming the section and trusting the previous round's shape to carry over. Found and registered
 by the reviewer while gating R47.
+
+Gate: R49 — the R48 entry. R48 PASSED. Every ordered gate G1-G7 was re-executed by the reviewer
+over d6b06997..1e0c14e0, not read, and each reproduces the handback's reading. LINE COUNTS ARE
+`splitlines` COUNTS. TRANSPORT HELD AGAINST THE REVIEWER'S OWN ORIGINAL, disk-to-disk with no
+digest fallback: `.remedy-wt/f085-r48.md`, the committed `.agent/authored/f085-r48.md` at
+452ffd2b, the committed `.agent/last_block.md` at 5e81e727 and both working copies as they
+stand at 1e0c14e0 are all five byte-EQUAL at sha256
+da6fd5a6a1de5b03d5f78f39c312a04c6504fe39a51065a82088fde08751ca38, 15488 B, 213 lines, 6 marker
+lines. THE SHAPES HELD, each measured separately from slices the reviewer extracted
+programmatically from the committed block by marker pair rather than retyping them. THE
+REWRITE: PLAN2F occurs 0x and PLAN2T exactly 1x in `.agent/plan.md` at 360897f7, with
+`TO contains FROM: false` as that block declared, numstat `3 4`. THE PROSE APPEND: for RECORD16
+on `.agent/live_review.md` at 3bc7977b the pre-commit blob is a byte-exact prefix, the remainder
+is exactly one blank line plus the slice, the slice is an exact suffix, 0 marker LINES reached
+the file, and every non-empty slice line occurs exactly once among that path's added lines — 60
+slice lines of which 2 empty against 61 added, numstat `61 0`. THE SUITES WERE RE-RUN, NOT READ,
+each in the primary checkout, each exit 0: the four state readers `159 passed` against a base of
+159, the canary `42 passed` against 42. THE PLAN CONTRACT HELD at 1e0c14e0: 39 lines against the
+50-line cap, `## Goal`, `## Next Steps` and a roadmap F-id all present. THE ARITHMETIC MOVED AS
+ORDERED: 164 / 27 / 0 at 1e0c14e0 against 163 / 27 / 0 at d6b06997, 137 open against 136, the
+registered symmetric difference exactly R-0549, done and landed symmetric differences EMPTY, no
+duplicate id and no resolution naming an unregistered id at either SHA. HYGIENE IS CLEAN: over
+the five commits of d6b06997..1e0c14e0 the per-commit INSERTION counts, the column AGENTS.md
+DECISION F104 D1 fixes for the cap, are 213, 140, 3, 61 and 34, none over 500 and so no second
+call on the allowance d4473f85 spent; the path set of the range ending at 3bc7977b is exactly
+the four ordered paths and the full range adds only `.agent/handoff.md`; all five commits are
+single-parent; the tree is clean and `git worktree list` is one line. THE BLOCK'S OWN SIZE
+re-measured from the committed file gives TOTAL 213, PROSE 144 and RECORD16 60, all three
+agreeing with what that block stated.
+
+TWO CLAIMS THAT BLOCK MADE ABOUT EARLIER ROUNDS WERE RE-MEASURED RATHER THAN TRUSTED, because a
+record repeating an unverified number launders it. R47's per-commit insertions over
+c8da1928..d6b06997 really are 308, 259, 8, 62, 36 and 42. R47's five-copy transport really does
+hold at sha256 a1d2fe72fd6425b5bbf3a06d13e9eb25dbebabb80bfd8a10e49694251cb5530f, 22123 B, 308
+lines, 14 marker lines. RECORD16's checklist-structure claim holds WITHIN THE BOUNDS IT NAMES:
+walking `docs/agents/planner_reviewer_prompt.md` at d6b06997 from its introductory checklist
+bullet to the line beginning `  Why this is on disk` gives the numerals 1 through 23 ascending
+with no duplicate and no gap. Read over the WHOLE file that same pattern also matches the
+Verification-tiers list further down, so the bound is load-bearing and the claim is true only
+because it states one. ONE DIFFERENCE IS NOTED AND IS NOT A DEFECT: the reviewer's slice digests
+differ from the handback's by exactly one byte per slice, because the reviewer's extractor keeps
+the newline before the END marker and the worker's dropped it; all three line counts agree at
+5, 4 and 60, and the applied bytes are what G3 proved.
+
+- R-0550 — Low, REVIEWER-BLOCK DEFECT, A RECORD SLICE STATED A PRESENT-TENSE READING OF A FILE
+ITS OWN BLOCK REWROTE ONE COMMIT EARLIER. RECORD16 closes its plan-contract sentence with "THE
+PLAN CONTRACT HOLDS: 40 lines against the 50-line cap", and that clause names no commit. The
+reading was true of `.agent/plan.md` at d6b06997, where the file is 40 lines. C1 of that same
+round, 360897f7, made it 39, and RECORD16 landed at C2, 3bc7977b — one commit LATER. So the
+sentence was false of the file it describes at the moment it reached disk, and it is false at
+1e0c14e0 too. This is exactly checklist item 20, the R-0520 class, and the block did not miss
+the rule: its own constraint 5 asserted that "every sentence in RECORD16 that reads a file THIS
+BLOCK also edits names the SHA d6b06997 in the same clause". That constraint is false of its
+own slice twice over — this sentence names no SHA at all, and the one plan-reading sentence
+that DOES name one names 3fe2667d, which is correct on the merits and is not the SHA the
+constraint promised. A constraint asserting a property its own slice does not have is the
+R-0527 shape checklist item 11 governs, so the two items met in one paragraph. Low, because
+nothing about a GATE was misreported: every gate result RECORD16 states is reproducible, this
+reviewer reproduced all of them, and the damage is one stale number in a permanent record.
+THE COUNTER-MEASURE IS NOT A REWRITE. Item 20 fixes that explicitly — appending a correction is
+how this record stays honest, and overwriting landed text is worse than a dated wrong sentence
+— so the sentence stays and this paragraph is its correction. What changes is the emission
+step: a constraint of the form "every sentence in X names SHA Y" is MEASURED sentence by
+sentence before emission, in the same way item 15 requires a containment test per pair rather
+than one reading generalised across pairs, because a universal asserted over a slice's own
+sentences is the recollection item 11 exists to forbid. Found and registered by the reviewer
+while gating R48.
+
+- R-0551 — Medium, SPEC DEFECT, THE `dod` POLICY ROW COVERS TWO SITES THAT DO NOT SHARE A
+POLICY, AND THE TWO DOCUMENTS DESCRIBING IT CONTRADICT EACH OTHER AND THE CODE. Amendment F085
+D1 in `docs/roadmap/features/T2_F085.md` at 1e0c14e0 gives `dod` one row reading wall timeout
+`yes` and network `default-deny` for both of its sites. `.agent/plan.md` at 1e0c14e0 says the
+opposite of the same two sites — "whose policy differs from the `test` class in taking no wall
+timeout, because their children are the long-lived harness rather than a bounded suite run" —
+and the R48 handback at 1e0c14e0 repeats it. Measured against the code at 1e0c14e0, both are
+wrong, in opposite directions, and each is right about one site. `.agent/f085_inventory.md`
+assigns exactly `packages/orchestration/dod_runners.py`:302 and :575 to the class.
+`_run_process_check`, the first, runs ONE BOUNDED CHECK — its docstring says "a check that IS
+one process: pytest, lint, build, custom_cmd" — and already passes `timeout=ctx.timeout_sec`
+with a `subprocess.TimeoutExpired` handler that classifies the trip; it is not a long-lived
+harness, it keeps its wall timeout, and its actual stage-1 gap is `env=os.environ.copy()`.
+`_run_app_once`, the second, starts the application with
+`Popen(..., start_new_session=True)`, waits with `http_probe` against `spec.health_path` over
+`http://<host>:<port>`, and stops it in a `finally`; a wall timeout would kill the harness
+mid-probe and a default-deny network posture would break the probe that judges it, which is
+word for word the reason D1 already gives for excusing the `runtime` class. THE CONSEQUENCE IS
+THAT T002c COULD NOT HAVE BEEN BUILT CORRECTLY FROM EITHER DOCUMENT: following the feature file
+puts a killing clock and a network denial on the app harness, and following the plan strips a
+working timeout off a bounded check. Medium rather than Low because it would have landed as
+production behaviour and the wrong half is invisible at review time — both readings look
+internally consistent. THE COUNTER-MEASURE IS THIS ROUND'S OWN C3a AND C3b: the row splits into
+`dod-process` and `dod-app` under DECISION F085 D7, ruled per §4 item 7, and `.agent/plan.md`
+is corrected by C1 in the same round so the two documents agree. The site total is unchanged,
+so the inventory needs no edit. Found and registered by the reviewer while planning T002c.
