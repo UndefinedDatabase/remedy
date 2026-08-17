@@ -355,6 +355,29 @@ end the response with:
       15 asks how that shape was determined; this one asks how far the FROM must REACH,
       a question about the target's structure rather than about the pair's own bytes,
       and no containment test can answer it.
+  18. **A probe's recipe and its stated property are read against each other.** Finding
+      R-0514. A block that orders a red-proof states BOTH what to mutate and what the
+      result should show, and those two halves are checked against each other before
+      emission. A recipe that removes the very guard whose effect the property asserts
+      is satisfiable by no run at all, so the worker must either guess which half was
+      meant or spend a declared deviation running both. Item 5 decides WHETHER a colour
+      may be ordered, item 8 checks a gate's expected VALUE against the code, and item
+      12 governs the reviewer's own dry runs; none of them reads the block's own two
+      sentences against EACH OTHER, which is the only place this defect lives, because
+      both halves are individually sound. The R22 instance: probe b ordered
+      `wall_timeout_seconds` removed from a test AND asserted that "with the backstop
+      the node must FAIL and name `wall_timeout`".
+  19. **A claim about a gate's result names the commit that runs the gate.** Finding
+      R-0515. An authored slice may state what a gate showed only when the same block
+      fixes that the gate runs BEFORE the commit that writes the slice. Otherwise the
+      worker must either reorder the round on its own initiative or commit a claim it
+      has not verified, and the second puts a false line into the permanent record.
+      Item 13 governs the ORDER a block imposes on the worker's runs and item 14 which
+      commits a per-commit gate can honestly reach; this one governs a slice's TEXT
+      making a claim whose producer the block never scheduled — the R-0371 and R-0449
+      family, narrowed from commit SHAs to gate results. The R22 instance: DONE1
+      asserted a probe outcome while the block listed its gates after its commits, and
+      only the worker's own reordering kept the record true.
   Why this is on disk and not a habit: item 2 has recurred six times across
   F104 and F105, and R20 hit four of them in one block. A check that lives
   only in reviewer session memory is the A1 trap §0 names, and this list is the
