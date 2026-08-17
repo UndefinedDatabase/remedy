@@ -18,10 +18,11 @@ reaches a child, and the limitations document exists and is linked from the
 README.
 
 ## Current Step
-R19, this round: record the R18 PASS, register R-0511 — the stale check count the R18
-worker found in the checklist's own introduction — remove that numeral rather than
-correct it, and resolve the finding. The next round leaves the review machinery and
-returns to T002a's last spawn site.
+R20, this round: record the R19 PASS and close the session on a written handoff. A
+record round only — the session reached its declared round cap at R19, and opening
+`stream_evidence.py`'s shape question at a session boundary is what guardrail G8 of
+the self-drive protocol forbids. R20's own verdict is the §4.13 terminator: it lives
+in the handoff, not on disk, and the next session must not open a repair round for it.
 
 ## Next Steps
 1. `stream_evidence.py`:595 is T002a's last site and is NOT a `subprocess.run` swap:
