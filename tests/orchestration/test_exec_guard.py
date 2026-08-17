@@ -587,3 +587,25 @@ def test_extra_env_adds_to_the_allowlisted_environment_rather_than_replacing_it(
     assert child_env["REMEDY_PROBE_BUDGET"] == "7"
     assert child_env["REMEDY_UI_NO_AUTO_BUILD"] == "1"
     assert "PATH" in child_env
+
+
+def test_the_dod_process_policy_keeps_the_wall_timeout_its_class_is_defined_by():
+    """The one column separating `dod-process` from `dod-app` in T2_F085's table.
+
+    Everything is reached through the `exec_guard` module handle, for the reason
+    the import block states: a bare name here would meet pytest's collection
+    pattern or drift from the module's own spelling. The allowlist is asserted by
+    IDENTITY rather than by re-listing its members, so widening the shared set
+    cannot silently make this test the second place to edit.
+    """
+    policy = exec_guard.dod_process_exec_policy(45, "/tmp/dod-cwd")
+    assert policy.wall_timeout_seconds == 45.0
+    assert policy.cwd == "/tmp/dod-cwd"
+    assert policy.core_file_bytes == 0
+    assert policy.output_cap_bytes == exec_guard.DOD_PROCESS_OUTPUT_CAP_BYTES
+    assert policy.env is None
+    assert policy.env_allowlist == exec_guard.DOD_PROCESS_ENV_ALLOWLIST
+    assert not exec_guard.FORBIDDEN_ENV_KEYS & set(policy.env_allowlist)
+    assert policy.cpu_seconds is None
+    assert policy.address_space_bytes is None
+    assert policy.open_files is None

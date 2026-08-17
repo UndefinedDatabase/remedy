@@ -577,3 +577,55 @@ class TestRunChecks:
         )
         evidence = run_checks(dod, worktree)
         assert [e.green for e in evidence] == [False, True]
+
+
+# ---------------------------------------------------------------------------
+# The `dod-process` seam (F085 T002c)
+# ---------------------------------------------------------------------------
+
+class TestTheDodProcessSeam:
+    """The single-process kinds spawn through the guard, not through a bare run.
+
+    The equality half of this slice is every other test in this file: they drive
+    the real path, so a behaviour change under the guard shows up there rather
+    than in a golden written for the occasion.
+    """
+
+    def test_a_check_spawns_through_the_seam_with_its_timeout_and_cwd(
+            self, worktree: Path, monkeypatch):
+        import subprocess as sp
+
+        from packages.orchestration import dod_runners
+
+        seen: dict = {}
+
+        def _capture(cmd, *, timeout_sec, cwd):
+            seen.update(cmd=list(cmd), timeout_sec=timeout_sec, cwd=cwd)
+            return sp.CompletedProcess(list(cmd), 0, b"seam stdout", b"")
+
+        monkeypatch.setattr(
+            dod_runners, "run_guarded_dod_process_command", _capture)
+        ev = run_check(check("custom_cmd", {"argv": EXIT_OK}),
+                       worktree, timeout_sec=7)
+
+        assert seen["cmd"] == EXIT_OK
+        assert seen["timeout_sec"] == 7
+        assert seen["cwd"] == str(worktree.resolve())
+        assert ev.status == STATUS_PASSED
+        assert "seam stdout" in ev.output_tail
+
+    def test_a_secret_like_parent_variable_never_reaches_a_check(
+            self, worktree: Path, monkeypatch):
+        monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", "f085-must-not-leak")
+        monkeypatch.setenv("F085_NOT_ALLOWLISTED", "f085-must-not-leak")
+        ev = run_check(
+            check("custom_cmd", {"argv": [
+                "python3", "-c",
+                "import json, os; print(json.dumps(dict(os.environ)))"]}),
+            worktree)
+
+        assert ev.status == STATUS_PASSED
+        child_env = json.loads(ev.output_tail)
+        assert "AWS_SECRET_ACCESS_KEY" not in child_env
+        assert "F085_NOT_ALLOWLISTED" not in child_env
+        assert "PATH" in child_env
