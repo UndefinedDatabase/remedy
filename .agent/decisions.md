@@ -5817,3 +5817,50 @@ measurement of how long a stage takes to die on its own budget, and no such meas
 exists at 0e2cdacd. `tests/orchestration/test_ci_run.py` exercises the real
 `_run_via_subprocess` for the budget pass-through, so that test changes with the
 implementation and is the first place a silent regression would show.
+
+## DECISION F085 D5 — the 400-line block cap counts a block's PROSE, not the slices it transports (2026-08-17)
+
+Ruled by the reviewer at the R44 gate under docs/agents/planner_reviewer_prompt.md §4 item 7,
+which routes a wrong spec to planning as a loud, persisted, reversible decision rather than as
+a question to the operator. Reverse it by deleting this section; checklist item 1 then returns
+to counting every line of a block.
+
+THE PROBLEM IS MEASURED, not anticipated. DECISION F105 D5 caps a step block at 400 lines and
+checklist item 1 requires the split BEFORE emission. Three consecutive rounds have now been
+shaped by that cap rather than by their work: R42 and R43 each ended with more open findings
+than they started and neither moved a line of production code, and R43's own record states the
+cause — the `ci_run.py` migration and its record together measured 487. R44 re-authored that
+same pair from scratch with the FROM slices narrowed to the changed lines, the docstrings
+pointed at DECISION F085 D4 instead of restating it, one redundant test dropped and the
+finding registrations deferred, and still measured 462 before this ruling was added to it.
+The cap has stopped bounding verbosity and started bounding how much code a round may carry.
+
+WHAT THE CAP IS FOR, and therefore what it should count. Item 1's stated reason is that a
+worker must save a block VERBATIM, so an oversize block cannot be fixed downstream and becomes
+a declared deviation on a round that did nothing wrong. That reason bites on the text the
+reviewer writes ABOUT the work — goal, constraints, gates — which can always be shorter. It
+does not bite on an authored SLICE: a slice is content that must land in the repository byte
+for byte, and shortening it does not make the block safer, it makes the change smaller or the
+code less documented.
+
+CHOSEN: the 400-line cap counts a block's PROSE — every line outside a BEGIN-/END- marker
+pair, the marker lines included, since those are the reviewer's own. Slices are counted and
+REPORTED, never capped by this rule. Every other cap stands untouched: an authored
+`.agent/plan.md` text under 50 lines, a handback under 60 or with a stated cause, a commit
+under 500 insertions. A block states BOTH numbers, its prose count and its total, so nothing
+is hidden by the change of unit.
+
+ALTERNATIVES CONSIDERED AND REJECTED: raising the cap to a larger single number, rejected
+because it licenses longer PROSE, which is the half that actually grew and the half item 1
+exists to bound; splitting every code round into a record round and a code round, rejected as
+already measured — that is what R42 and R43 were, and it produced two rounds of process and no
+product; trimming the authored code's documentation to fit, rejected because this repository's
+discoverability conventions make the WHY beside a definition load-bearing, and a cap paid for
+in comments is paid for in the thing those comments protect.
+
+CONSEQUENCE, stated plainly. The reviewer gains room and loses the mechanical pressure that
+kept blocks short, so the honest reading is that this moves a hard limit onto the reviewer's
+judgement for one half of the block. R45 owes the counter-measure: a stated budget for a
+RECORD slice, which is the slice class that grew, alongside the checklist item 16 widening
+R-0537 named. The R44 block is the first measured under this counting and declares both of its
+numbers in its own constraints.

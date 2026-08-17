@@ -2614,3 +2614,59 @@ paragraph registering a different measurement-convention defect — the same sel
 failure R-0535 named, one round after naming it. R42's worker declared it under constraint 8
 and correctly left it standing under constraint 9; the registration is the correction, per
 checklist item 20. Found by the worker under constraint 8 and registered by the reviewer.
+
+Gate: R44 — the R43 entry. R43 PASSED. Every ordered gate was re-run by the reviewer over
+4c7bcb3a..f3e9687a and each reproduces the handback's reading. LINE COUNTS HERE ARE
+`splitlines` COUNTS. TRANSPORT WAS PROVED AGAINST THE REVIEWER'S OWN ORIGINAL: the scratch
+file `.remedy-wt/f085-r43.md`, the committed `.agent/authored/f085-r43.md` at 5ddea9f5, the
+committed `.agent/last_block.md` at 4da31634 and the working copies of those two paths as
+they stand at f3e9687a are all five byte-EQUAL at sha256 3f7e0157…e393a2b426, 17166 B, 245
+lines, 10 marker lines, region 1-100 at 708961ae3d989f4e over 6906 B and region 101-end at
+de50ec15e79f8664 over 10260 B — disk-to-disk, no digest fallback. THE APPEND HELD ITS SHAPE:
+at 007f18df a pre-commit blob of 426006 B is a byte-exact prefix of the 432672 B post-commit
+file, the 6666 B remainder is exactly one blank line plus RECORD11 (sha256 2442e139ff6a0836…,
+6665 B, 81 lines, 4 empty, 0 duplicate non-empty), the slice is an exact suffix, numstat 82/0,
+each of the 77 non-empty slice lines occurs exactly once among the 82 added, ordered equality
+added == blank+slice holds, and 0 marker LINES reached the file. THE PLAN RECONSTRUCTS:
+`.agent/plan.md` at 4c7bcb3a is sha256 7b95158a…, applying PLANF11→PLANT11 and
+PLANF12→PLANT12 gives 5928c3c5…, byte-identical to the committed file at 921e8712 and to the
+working copy at f3e9687a; both pairs measured `TO contains FROM: false`, each FROM read 1x
+and each TO 0x at 4c7bcb3a against 0x and 1x at HEAD; `## Goal` and `## Next Steps` are
+present, 0 marker lines reached it, it measures 47 lines against the 50-line cap, numstat 6/4.
+THE ARITHMETIC MOVED AS ORDERED: 151 / 27 / 0 at 4c7bcb3a against 153 / 27 / 0 at f3e9687a,
+124 open against 126, registered symmetric difference exactly R-0537 and R-0538, done and
+landed symmetric differences empty, and at each of those two SHAs no duplicate id and no
+resolution naming an unregistered id. THE SUITES WERE RE-RUN, NOT READ, each in the primary
+checkout, each exit 0: the four state readers `159 passed` against a base of 159 and the
+canary `42 passed` against 42. HYGIENE IS CLEAN: walking 4c7bcb3a..f3e9687a mechanically
+gives the per-commit insertion counts 245, 201, 82, 6 and 139, none over 500; the path set
+over that whole range is exactly the five ordered paths and the range ending at 921e8712 is
+that set minus `.agent/handoff.md`; all five commits are single-parent; and at f3e9687a
+`git reflog -10` held ten entries of no non-`commit:` kind while `git worktree list` held one
+line. The handback at f3e9687a runs to 165 lines and carries the DECISION D15 stated cause.
+
+THREE REGISTRATIONS ARE OWED AND ARE NOT MADE HERE. Under constraints 8 and 9 R43's worker
+declared three readings of the reviewer's own RECORD11 and R-0537 that differ from the
+repository, and repaired none. All three reproduce under independent re-measurement at
+f3e9687a: the path set "at 7c4a2583" is one path and belongs to a RANGE; the
+DECISION-heading count of 2 against 3 is 0 at both SHAs in the file the sentence sits in and
+true only of `.agent/decisions.md`; and R-0537's enumeration of the R41 block's numerals
+omits the two "500-line cap" quotes `.agent/authored/f085-r41.md` carries at 9cc4772c. They
+take ids at R45 rather than here, and nothing is at risk in the interval: the handback at
+f3e9687a states all three, so the persist-first rule of §4.4 is already met by disk.
+
+WHY THAT DEFERRAL, AND WHY THE CAP WAS RULED ON INSTEAD OF PAID AGAIN. R42 and R43 both ended
+with more open findings than they started and neither moved a line of production code, which
+is the ⚠️ condition docs/agents/planner_reviewer_prompt.md §2 defines. The cause is measured,
+not suspected: at R43 the record and the `ci_run.py` migration together came to 487 lines
+against the 400-line cap of DECISION F105 D5, and R44 re-authored the same pair from scratch
+with narrowed FROM slices, docstrings pointing at DECISION F085 D4 instead of restating it,
+one redundant test dropped and the registrations deferred, and still measured 462 before this
+ruling was added to it. A cap that
+three consecutive rounds have to be shaped around is bounding the product rather than the
+prose, so DECISION F085 D5 — landed by this same commit — rules that the 400 counts a block's
+PROSE and that slices are counted and reported but not capped. The R44 block is the first
+measured that way and states both of its numbers. R45 owes the counter-measure D5 names, a
+stated budget for a record slice, alongside the checklist item 16 widening R-0537 named and
+did not perform. Neither is in the checklist at f3e9687a and this entry does not claim
+otherwise.
