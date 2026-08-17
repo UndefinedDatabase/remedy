@@ -426,6 +426,17 @@ end the response with:
       gates and now also forbids for slices. The carve-out is narrow on purpose: it
       reaches a claim about the round's OWN commits and nothing else, and a reading of
       any PRIOR state still names its SHA.
+      Finding R-0525 closes the other side of the same gap. A slice that merely LOCATES
+      landed text names the SHA of the commit holding it whenever the path is one this
+      workflow rewrites every round — `.agent/handoff.md`, `.agent/plan.md`,
+      `.agent/last_block.md`, `.agent/context.md`. For those the rewrite is SCHEDULED
+      rather than possible: the last commit of every round rewrites the handback by
+      construction, so a bare path reference to one of them is stale before the round
+      that wrote it has ended, and no ordering constraint can rescue it. Elsewhere a
+      bare path is fine, and this clause deliberately reaches no further. R-0525 is the
+      carve-out above being read too widely one round after it landed: it licenses an
+      ordering constraint in place of a SHA for a claim about the round's OWN change,
+      and a sentence locating a PRIOR round's text is not that claim.
   Why this is on disk and not a habit: item 2 has recurred six times across
   F104 and F105, and R20 hit four of them in one block. A check that lives
   only in reviewer session memory is the A1 trap §0 names, and this list is the
