@@ -14,11 +14,14 @@ Subprocess discipline is the one already used by
   * a timeout always applies;
   * output is captured, decoded leniently, and truncated to a tail.
 
-Since F085 T002c the single-process kinds spawn through
-``exec_guard.run_guarded_dod_process_command``, so the environment is no longer
-inherited as-is: a child receives only allowlisted keys, never a secret-like
-variable. The harness spawn in ``_run_app_once`` is still bare — it is the
-second half of T002c, under the ``dod-app`` policy.
+Since F085 T002c no kind here spawns bare. The single-process kinds go through
+``exec_guard.run_guarded_dod_process_command``, and the harness spawn in
+``_run_app_once`` takes the CHILD half of ``exec_guard.dod_app_exec_policy``, so
+the environment is no longer inherited as-is: a child receives only allowlisted
+keys plus the keys the project's own runtime configuration declares, never a
+secret-like variable. What the CHILD half does NOT carry is the parent-side
+pair — no wall timeout and no output cap — because ``_run_app_once`` owns its
+own deadline and writes the app's output to a file rather than to a pipe.
 
 Two guards are specific to this module, because a DoD check can originate from
 an LLM rather than from repository discovery:
@@ -60,7 +63,11 @@ from pathlib import Path
 from typing import Any
 
 from packages.orchestration.dod_schema import DoD, DoDCheck
-from packages.orchestration.exec_guard import run_guarded_dod_process_command
+from packages.orchestration.exec_guard import (
+    dod_app_exec_policy,
+    plan_child_spawn,
+    run_guarded_dod_process_command,
+)
 from packages.orchestration.test_runner import _EXECUTION_SAFE_EXECUTABLES
 from packages.runtimes.dev_server import (
     GRACE_SECONDS,
@@ -579,8 +586,21 @@ def _run_app_once(spec: Any, deadline: float, log: list[str],
         console = ""
         try:
             try:
+                # The guard owns the CHILD half of this spawn since F085 T002c:
+                # the rlimits, the cwd pin and an allowlisted environment,
+                # resolved between fork and exec. The PARENT half stays HERE —
+                # this function owns its own `deadline`, stops the family in a
+                # `finally`, and writes the app's output to a file rather than
+                # to a pipe — so the policy carries no wall timeout and no
+                # output cap, and a second deadline never fights this one.
+                plan = plan_child_spawn(dod_app_exec_policy(
+                    cwd=spec.cwd,
+                    env=spec.resolved_env(port),
+                    declared_env_keys=tuple(spec.env) + ("PORT",),
+                ))
                 proc = subprocess.Popen(  # noqa: S603 - argv list, never a shell
-                    argv, cwd=spec.cwd, env=spec.resolved_env(port),
+                    argv, cwd=plan.cwd, env=plan.env,
+                    preexec_fn=plan.preexec_fn,
                     stdout=handle, stderr=subprocess.STDOUT,
                     stdin=subprocess.DEVNULL,
                     # Its own session, so the family can be killed whole without
