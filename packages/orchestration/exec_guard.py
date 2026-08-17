@@ -648,3 +648,53 @@ def run_guarded_dod_process_command(
         except (KeyError, ValueError, TypeError):
             returncode = -1
     return subprocess.CompletedProcess(list(cmd), returncode, guarded.stdout, guarded.stderr)
+
+
+# ---------------------------------------------------------------------------
+# The `dod-app` seam (F085 T002c) — the DoD's own application harness, which
+# takes the CHILD half ALONE, because `_run_app_once` is already a supervisor.
+# ---------------------------------------------------------------------------
+
+
+#: WHY: the environment the DoD's application harness may inherit. The MEMBERS are
+#: the `test`-class values and the NAME is deliberately separate, for the reason
+#: `DOD_PROCESS_ENV_ALLOWLIST` states: T2_F085's policy table rules `dod-app` as its
+#: own row, so widening one row stays a one-line edit here.
+DOD_APP_ENV_ALLOWLIST: tuple[str, ...] = TEST_COMMAND_ENV_ALLOWLIST
+
+
+def dod_app_exec_policy(
+    *,
+    cwd: str | None,
+    env: Mapping[str, str] | None = None,
+    declared_env_keys: Sequence[str] = (),
+) -> ExecGuardPolicy:
+    """The stage-1 policy the DoD's application harness runs under.
+
+    `wall_timeout_seconds` and `output_cap_bytes` are BOTH None, and that is the
+    row T2_F085's table gives `dod-app` rather than an omission: the caller takes
+    the CHILD half alone, owns its own deadline, stops the process family in a
+    `finally`, and writes the app's output to a file rather than to a pipe. A
+    second deadline would fight the first, and an output cap is enforced WHILE
+    READING a pipe this guard never holds. Remedy deliberately does not bound that
+    file here; T003's limitations document says so rather than letting the table's
+    column imply a bound that is absent.
+
+    `cpu_seconds`, `address_space_bytes` and `open_files` are None for the reasons
+    `managed_builder_execution._builder_exec_policy` already settled for the
+    builder class, not restated here so the two cannot drift apart.
+
+    `env` is the CALLER's already-resolved environment and becomes the scrub
+    SOURCE; `declared_env_keys` names the keys it adds on top of the parent's —
+    for the coming caller, the project's runtime configuration plus `PORT`. Those
+    keys JOIN the allowlist, so `scrub_child_env` keeps them while
+    `FORBIDDEN_ENV_KEYS` stays the floor beneath both.
+    """
+    return ExecGuardPolicy(
+        wall_timeout_seconds=None,
+        output_cap_bytes=None,
+        cwd=cwd,
+        core_file_bytes=0,
+        env=dict(env) if env is not None else None,
+        env_allowlist=DOD_APP_ENV_ALLOWLIST + tuple(sorted(declared_env_keys)),
+    )
