@@ -18,16 +18,13 @@ reaches a child, and the limitations document exists and is linked from the
 README.
 
 ## Current Step
-R30, this round: record the R29 PASS, resolve R-0519, and move the two
-byte-identical post-test spawns of `job_promote.py` and `pingpong_promote.py`
-onto `run_guarded_test_command`, each with a test that pins the spawn and the
-bytes-to-str decode the seam makes necessary.
+R31, this round: record the R30 PASS, register R-0520 against the reviewer's own
+R29 gate entry, and move `pingpong_loop._run_test_command` onto
+`run_guarded_test_command` — the last site of the shape R30 migrated.
 
 ## Next Steps
-1. T002b remainder — the `test`-class sites still on a bare spawn.
-   `pingpong_loop.py`:3537 first: it is the same shape as the pair just migrated,
-   with `staging` in place of `target`, so it takes the same pair with one word
-   changed. Then the four that each differ: `builder_bridge.py`:220 adds
+1. T002b remainder — the four `test`-class sites still on a bare spawn, each
+   differing from the shape already migrated: `builder_bridge.py`:220 adds
    `PYTHONDONTWRITEBYTECODE` to a full `os.environ`, `ci_run.py`:79 streams to the
    console instead of capturing and passes no timeout, `integrity_gate.py`:283
    passes no cwd at all, and `mission_state.py`:833 spawns inside a default
