@@ -18,17 +18,17 @@ reaches a child, and the limitations document exists and is linked from the
 README.
 
 ## Current Step
-R48, this round: record the R47 PASS and register R-0549 for the session-resume clauses the R47
-handback dropped. A record-only round, so the verdict reaches disk before the session that
-issued it ends; T002c opens at R49. No source file changes this round.
+R49, this round: record the R48 PASS, register R-0550 and R-0551, and amend the F085 feature
+file so the `dod` class carries the two policies its two sites actually need. A planning
+correction that unblocks T002c rather than implementing it. No source file changes this round.
 
 ## Next Steps
-1. T002c — the two DoD sites in `packages/orchestration/dod_runners.py`, whose policy differs
-   from the `test` class in taking no wall timeout, because their children are the long-lived
-   harness rather than a bounded suite run.
-2. T002d — the five runtime sites, under that same no-wall-timeout policy.
-3. T003 — network posture, the honest limitations document, the README link. Then
-   the integration gate, then closure.
+1. T002c — `_run_process_check` in `packages/orchestration/dod_runners.py` onto the guard seam
+   under the dod-process policy: it is a bounded check and KEEPS a wall timeout; the gap it
+   closes is `env=os.environ.copy()`, which hands the child the whole parent environment.
+2. T002c — `_run_app_once` in that same module under the dod-app policy: no wall timeout and
+   network allowed, because it starts the app harness and probes it over HTTP.
+3. T002d — the five runtime sites. Then T003, the integration gate, then closure.
 
 ## Risks
 - An allowlist bounds what the PARENT hands over, never what the child's runtime
