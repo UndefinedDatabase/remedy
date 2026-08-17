@@ -132,6 +132,22 @@ in `review_subject.py` is git.
 - `packages/orchestration/test_execution_service.py`:323
 - `packages/orchestration/test_runner.py`:201
 
+Migration state, measured at R29:
+A site is ON THE SEAM when its spawn takes cwd, env and the fork-to-exec hook
+from `exec_guard`, through either `run_guarded_test_command` or
+`plan_child_spawn`. ON THE SEAM: `autorun.py` (all three, R26) and
+`test_runner.py`, both through `run_guarded_test_command`, and
+`test_execution_service.py` through `plan_child_spawn`'s child half at R28 —
+child half only, because that site writes its output into a file handle and
+returns a positional tuple, so the parent half cannot move. NOT YET:
+`builder_bridge.py`, `ci_run.py`, `integrity_gate.py`, `job_promote.py`,
+`mission_state.py`, `pingpong_loop.py` and `pingpong_promote.py`, none of which
+references either symbol. The line numbers above are this inventory's original
+R2 coordinates and were NOT re-measured for this paragraph; the migration state
+was measured per FILE, by the symbols each one references. `job_promote.py` and
+`integrity_gate.py` also hold spawns of other classes, which this paragraph does
+not count.
+
 ### dod — 2
 - `packages/orchestration/dod_runners.py`:302, 575
 
