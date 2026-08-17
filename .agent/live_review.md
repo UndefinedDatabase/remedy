@@ -2890,3 +2890,64 @@ commit, which is the first application of the rule it writes. R-0377 and R-0491 
 finding records their recurrence and resolves neither, because neither is resolved until a later
 round demonstrates the promoted item catching what the prose did not. Found and registered by
 the reviewer while gating R46.
+
+Gate: R48 — the R47 entry. R47 PASSED. Every ordered gate G1-G8 was re-executed by the reviewer
+over c8da1928..d6b06997, not read, and each reproduces the handback's reading. LINE COUNTS ARE
+`splitlines` COUNTS. TRANSPORT HELD AGAINST THE REVIEWER'S OWN ORIGINAL, disk-to-disk with no
+digest fallback: `.remedy-wt/f085-r47.md`, the committed `.agent/authored/f085-r47.md` at
+e0eee32f, the committed `.agent/last_block.md` at 313e8321 and both working copies as they
+stand at d6b06997 are all five byte-EQUAL at sha256
+a1d2fe72fd6425b5bbf3a06d13e9eb25dbebabb80bfd8a10e49694251cb5530f, 22123 B, 308 lines, 14 marker
+lines. THE SHAPES HELD, each measured separately from slices the reviewer extracted
+programmatically from the committed block by marker pair rather than retyping them. THE REWRITE:
+R47's PLANF occurs 0x and its PLANT exactly 1x in `.agent/plan.md` at 3fe2667d, with
+`TO contains FROM: false` as that block declared, numstat `8 9`. THE PROSE APPEND: for RECORD15
+on `.agent/live_review.md` the pre-commit blob is a byte-exact prefix, the remainder is exactly
+one blank line plus the slice, the slice is an exact suffix, 0 marker LINES reached the file,
+and every non-empty slice line occurs exactly once among that path's added lines — 61 slice
+lines of which 2 empty against 62 added, at sha256 a2f71483…. THE TWO CHECKLIST APPENDS: on
+`docs/agents/planner_reviewer_prompt.md` at 522d925a, C16F and C23F each occur exactly 1x and
+C16T and C23T each exactly 1x, `TO contains FROM: true` for both as declared, 18 TO-only lines
+each against the 36 lines that commit adds to the path, 0 violations, 0 marker LINES, numstat
+`36 0`. THE SUITES WERE RE-RUN, NOT READ, each in the primary checkout, each exit 0: the four
+state readers `159 passed` against a base of 159, the canary `42 passed` against 42. THE PLAN
+CONTRACT HOLDS: 40 lines against the 50-line cap, `## Goal`, `## Next Steps` and a roadmap F-id
+all present — the union of every assertion the reviewer collected by grepping `tests/`. THE
+ARITHMETIC MOVED AS ORDERED: 163 / 27 / 0 at d6b06997 against 162 / 27 / 0 at c8da1928, 136 open
+against 135, the registered symmetric difference exactly R-0548, done and landed symmetric
+differences EMPTY, no duplicate id and no resolution naming an unregistered id at either SHA.
+THE CHECKLIST STRUCTURE IS INTACT: walking the region from its introductory bullet to the line
+beginning `  Why this is on disk` gives the numerals 1 through 23 ascending with no duplicate
+and no gap, and no line matches `^  24\. ` anywhere in the file, so item 23 landing at the END
+of the list renumbered no surviving entry — the answer item 17 asks for. HYGIENE IS CLEAN: the
+per-commit insertion counts are 308, 259, 8, 62, 36 and 42, none over 500 and so no second call
+on the allowance d4473f85 spent; the path set of the range ending at 522d925a is exactly the
+five ordered paths and the full range adds only `.agent/handoff.md`; all six commits are
+single-parent; the tree is clean and `git worktree list` is one line.
+
+THE PROMOTION IS REAL, NOT MERELY APPLIED. Read at d6b06997, item 16 of the §3 checklist now
+reaches a finding headline and a quantifying sentence as well as a heading, and a VALUE a body
+fixes as well as a COUNT; item 23 now carries the plan-path rule that R-0377 and R-0491 had
+stated only in their own bodies. R47's own C1 advanced `.agent/plan.md` ahead of every other
+substantive commit, which is item 23 binding the round that wrote it.
+
+- R-0549 — Low, REVIEWER-BLOCK DEFECT, A HANDBACK'S CLOSING SECTION LOST THREE CLAUSES THE
+PREVIOUS ONE CARRIED, AND ONE OF THEM NAMES WHO RECORDS THE VERDICT. Measured by diffing the
+`## Next` sections of `.agent/handoff.md` at c8da1928 and at d6b06997: the R46 handback closes
+with the successor clause "R46's verdict, when the reviewer issues it, is recorded by R47's own
+record slice", a standalone line "Open findings: 135, next free id R-0548" and the pointer
+"Phase 1 rule 1 first: re-read `.agent/STOP` from disk". The R47 handback carries none of the
+three. Its open-findings count survives only inside the G6 transcript, where a resuming session
+reading the `## Next` section alone will not meet it. THE CONSEQUENCE IS THE ONE THIS WORKFLOW
+CANNOT ABSORB: R47's handback tells R48 not to open a repair round over the missing gate entry
+and never says that R48's record slice is what writes the verdict instead, so a verdict issued
+at the end of a session can be stranded in that session — the handoff is the only return
+channel, and the clause that routes the verdict onto disk is the one that went missing. The
+protocol's own Phase 2 requires the STOP pointer by name, so its loss is a rule broken rather
+than a habit skipped. THE CAUSE IS THE R47 BLOCK, not its worker: that block's Handback section
+ordered the successor clause and the repair-round warning but omitted all three of these, and
+the worker wrote exactly what was ordered. Low, because nothing false was written and every
+gate held; the cost is a resume hazard, not a wrong record. The counter-measure is this round's
+own Handback section, which enumerates all four closing statements explicitly instead of
+naming the section and trusting the previous round's shape to carry over. Found and registered
+by the reviewer while gating R47.
