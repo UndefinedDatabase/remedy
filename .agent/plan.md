@@ -18,18 +18,15 @@ reaches a child, and the limitations document exists and is linked from the
 README.
 
 ## Current Step
-R44, this round: record the R43 PASS and apply DECISION F085 D4 to
-`packages/orchestration/ci_run.py` with five tests. The three findings R43's worker declared
-are stated in the record and take ids at R45; the block cap took the half already safe on
-disk rather than deferring the code a third time.
+R45, this round: record the R44 PASS, register R-0539 through R-0546, rule DECISION F085 D6 on
+the block budget, and migrate `packages/orchestration/builder_bridge.py` onto the stage-1 guard
+as the last `test`-class site. T002b closes with this round.
 
 ## Next Steps
-1. R45 — register the three findings RECORD12 states as owed, then migrate
-   `packages/orchestration/builder_bridge.py`, the last `test`-class site on a bare spawn,
-   which at c3201976 overlays `PYTHONDONTWRITEBYTECODE` onto a copy of `os.environ` and is
-   unblocked by the same `extra_env` overlay `ci_run.py` needed (DECISION F085 D3). R45 also
-   owes two checklist promotions this branch has measured and not made: widening item 16 to
-   any sentence that counts what follows it, and a stated budget for a record slice.
+1. R46 — the checklist item 16 widening R-0537 and R-0543 both name, cut from R45 for size,
+   then T002c: the two DoD sites in `packages/orchestration/dod_runners.py`, whose policy
+   differs from the `test` class in taking no wall timeout, because their children are the
+   long-lived harness rather than a bounded suite run.
 2. T002c-d — the two DoD sites and the five runtime sites, whose policy differs:
    no wall timeout, because their children are the long-lived harness.
 3. T003 — network posture, the honest limitations document, the README link. Then
