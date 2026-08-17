@@ -5756,3 +5756,64 @@ through, and the guard's floor is the only thing keeping that honest — so R39 
 that a forbidden key handed to `extra_env` still does not reach the child. The knob
 changes nothing for a caller that does not pass it: the default is `None` and the policy
 stays byte-identical to today's.
+
+## DECISION F085 D4 — the `ci_run.py` stage spawn migrates with output re-emitted and the wall as a backstop (2026-08-17)
+
+Ruled by the reviewer at the R41 gate under docs/agents/planner_reviewer_prompt.md §4
+item 7. R42 records the ruling; R43 applies it in code, and `builder_bridge.py` follows
+in a later round. Reverse it before R43 by deleting this section, or after R43 by
+restoring `_run_via_subprocess` to `subprocess.run(command, check=False, cwd=cwd,
+env={**os.environ, PYTEST_TIMEOUT_ENV_VAR: str(timeout_sec)})` and dropping the re-emit.
+
+CONTEXT, measured at 0e2cdacd. `.agent/handoff.md` at 93226220 named ONE behavioural
+delta for this migration — that `_run_via_subprocess` streams the child's stdout and
+stderr to the console through inherited fds and returns only the returncode, while
+`run_guarded_test_command` CAPTURES both streams and returns them as bytes. Two more were
+measured at 0e2cdacd and are equally load-bearing. First, the seam takes a WALL timeout
+and raises `subprocess.TimeoutExpired`, whereas today the per-stage budget travels to the
+CHILD as `REMEDY_PYTEST_TIMEOUT_SEC` and the runner self-terminates with exit code 124,
+which `run_ci_stage` reads to set `note="timed out"`. Second, the seam SCRUBS the child
+environment to `TEST_COMMAND_ENV_ALLOWLIST`, where today the child inherits a full copy of
+`os.environ`. A migration that addressed only the output would have changed the other two
+silently.
+
+MEASURED, not assumed, before this ruling: a pytest child spawned through
+`run_guarded_test_command` with the per-stage budget supplied via the `extra_env` overlay
+that landed at dce66faa received 9 environment keys, read the budget back correctly, and
+ran `tests/cli/test_golden_path.py` to `42 passed` at returncode 0 in 20.7 s. The
+allowlist scrub does not break a pytest child in this repository, which is what made the
+env delta rulable rather than a blocker.
+
+CHOSEN, in three parts. OUTPUT: capture, then re-emit — the guarded call keeps both
+streams and `_run_via_subprocess` writes them to `sys.stdout.buffer` and
+`sys.stderr.buffer` before returning, so the operator still sees every stage's output and
+the guard still gets its size cap. What is LOST is live streaming: output appears when a
+stage ENDS rather than as it is produced, so a long stage looks silent while it runs.
+Stated plainly rather than minimised, because a CI runner that appears hung is a real
+cost to whoever is watching it. WALL: a backstop set ABOVE the child's own budget, never
+equal to it — the child keeps `REMEDY_PYTEST_TIMEOUT_SEC` and its 124 exit code, so the
+timeout that produces a readable pytest report stays the operative one, and the guard's
+wall only catches a child that ignores its own budget. ENV: the allowlist plus the
+per-stage budget through `extra_env`, which is precisely the capability DECISION F085 D3
+added and R39 landed.
+
+ALTERNATIVES CONSIDERED AND REJECTED: capturing without re-emitting, rejected because a CI
+runner whose stage output vanishes is worse than an unguarded one; keeping the live stream
+by handing inherited fds through the guard, rejected because the output cap is enforced
+WHILE the guard reads the pipes and an inherited fd is never read by the guard, so the cap
+would silently not apply and the migration would buy nothing; setting the guard's wall
+equal to `stage.timeout_sec`, rejected because the two deadlines would race and the guard
+would sometimes win, replacing an informative pytest report with a bare kill; leaving
+`ci_run.py` unmigrated and naming it in T003's limitations document, rejected because
+Amendment F085 D1's class table puts the whole `test` class under stage-1 containment and
+an unguarded site would make that row false.
+
+CONSEQUENCE, stated plainly. R43 owes three tests it does not have today: that a stage's
+captured output actually reaches the console, that the per-stage budget still arrives in
+the child, and that a wall trip maps to the `timed out` note rather than to a bare
+non-zero. The size of the grace margin between the child's budget and the guard's wall is
+NOT ruled here — it is R43's to choose and to justify in code, because choosing it needs a
+measurement of how long a stage takes to die on its own budget, and no such measurement
+exists at 0e2cdacd. `tests/orchestration/test_ci_run.py` exercises the real
+`_run_via_subprocess` for the budget pass-through, so that test changes with the
+implementation and is the first place a silent regression would show.
