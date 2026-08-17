@@ -18,10 +18,10 @@ reaches a child, and the limitations document exists and is linked from the
 README.
 
 ## Current Step
-R26, this round: record the R25 PASS and continue T002b by moving `autorun.py`'s
-three `test`-class sites onto `run_guarded_test_command`. Every one of them reads
-only `returncode`, so the seam's bytes streams change nothing they observe, and
-real children already drive both fixture paths in the suite the round gate re-runs.
+R27, this round: record the R26 PASS and register R-0517 — the reviewer's own R26
+block under-specified its Handback section, so that round's handoff dropped the
+next-session pointer the self-drive protocol requires. The session's declared cap
+of two authored rounds is reached here, not a blocker.
 
 ## Next Steps
 1. T002b continued — the `test`-class sites still on a bare spawn, ending with
