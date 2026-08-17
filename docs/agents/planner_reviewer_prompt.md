@@ -376,6 +376,24 @@ end the response with:
       left the Change set heading saying SIX over a body of SEVEN. The fix reached the
       instance that was noticed instead of the class — the R-0417 staleness shape — so
       sweep every heading in the block, not the one that changed.
+      Findings R-0537, R-0543 and R-0547 widen this item twice over, and the two widenings
+      are independent of each other. FIRST, from a HEADING to ANY SENTENCE that quantifies
+      what follows it: a finding headline counting the instances its own body gives, a plan
+      sentence counting the tests its round shipped, a goal line counting the sites a bundle
+      touches. A headline is a heading by every property that made this item necessary — it
+      is the half nobody re-reads and the half that drifts once the body grows — and R-0537
+      and R-0543 are that same shape one round apart, the first counting FOUR of something
+      its body gives three of, the second saying "five tests" over a round that shipped
+      four. SECOND, from a COUNT to ANY VALUE the body beneath it fixes: R-0547 is a
+      DECISION whose heading rules 480 lines TOTAL while its own CHOSEN and CONSEQUENCE
+      paragraphs rule 490, so the numeral is a budget rather than a tally and this item as
+      first written does not reach it at all. Both widenings share one mechanical check,
+      which is what to run before emission: for every heading, every finding headline and
+      every quantifying sentence in the block, read the numerals it states against the body
+      beneath it, and wherever the two can drift apart, DELETE the numeral from the heading
+      rather than synchronise it. A ruled figure that must appear in a heading appears there
+      once, in the same words as the body that rules it, so that a later revision cannot
+      change one without visibly contradicting the other.
   17. **A pair that changes a structure's arity spans the whole structure.** Finding
       R-0509. When a TO adds or removes an entry of a numbered list, a table, or any
       other structure whose items carry positional labels, the FROM spans that WHOLE
@@ -505,6 +523,24 @@ end the response with:
       item 20 a claim about a FILE's content at a commit; this one governs a claim about a
       RANGE, which neither reaches, because each individual reading in it can be correct
       while the quantifier or the column is wrong.
+  23. **A round that touches the finding ledger names `.agent/plan.md` in its change set.**
+      Findings R-0377, R-0491 and R-0548. A block whose bundle registers, resolves or
+      renumbers a finding also advances `.agent/plan.md`, and orders that update as the FIRST
+      substantive commit of the round — only the two block-save commits, which write nothing
+      but the block itself, may precede it. Omitting the path does not make the change set
+      smaller; it makes a pair of rules that cannot both hold, because AGENTS.md's Commit Gate
+      item 1 requires the plan to match the current work before EVERY commit while the block's
+      own change-set constraint forbids touching anything unnamed. An honest worker can then
+      only declare the conflict, which repairs nothing, and the plan stays false on disk for
+      the length of a round — the file AGENTS.md's Session Resume tells the next session to
+      read SECOND, ahead of the review record. Where a round genuinely cannot advance the plan
+      first, the block says so in its own text and names the commit at which the plan becomes
+      current, rather than leaving the worker to discover the conflict. This is an item rather
+      than a habit because R-0377 and R-0491 each stated exactly this counter-measure in a
+      finding BODY and neither bound anything: R-0548 is the R46 block registering a finding
+      under a five-path change set holding no plan, features after the first of the two was
+      written. A rule that lives only in a finding body is a rule the next block does not
+      read.
   Why this is on disk and not a habit: item 2 has recurred six times across
   F104 and F105, and R20 hit four of them in one block. A check that lives
   only in reviewer session memory is the A1 trap §0 names, and this list is the
