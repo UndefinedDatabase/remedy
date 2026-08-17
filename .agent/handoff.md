@@ -1,48 +1,46 @@
-# Handback — F085 Sandbox hardening (stage 1), R34
+# Handback — F085 Sandbox hardening (stage 1) · Runde 35 (T002b interlude)
 
-Branch: feature/f085-sandbox-hardening · base SHA 7480d880. No production code
-changed: checklist narrowing, record, state only. Open findings: 118.
-
-Fortschritt: ~70 % (T001 gebaut · R13-R32 PASS · R33 FAIL, hier repariert · T002a
-KOMPLETT · T002b 9 von 12 Sites auf dem Seam, 3 offen · T002c-d, T003 offen) —
-Schätzung, gegen die Klassentabelle aus Amendment F085 D1 gemessen.
+Branch: feature/f085-sandbox-hardening · Base SHA: 6ca30b16 · HEAD: this commit (C4).
+Fortschritt: ~70 % (T001 gebaut · R13-R32 PASS · R33 FAIL, an R34 repariert · R34
+PASS · T002a KOMPLETT · T002b 9 von 12 Sites auf dem Seam, 3 offen · T002c-d, T003
+offen) — Schätzung, gegen die Klassentabelle aus Amendment F085 D1 gemessen.
 
 ## Range
-
-Review of 7480d880..HEAD.
+Review of 6ca30b16..HEAD.
 
 ## Commits
 
-### 56f0bcb7 docs(f085): save the R34 step block
+### 54f5f447 docs(f085): save the R35 step block
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f085-r34.md | +373/-0 | C0a: block saved byte-for-byte |
+| .agent/authored/f085-r35.md | +331/-0 | C0a — block saved byte-for-byte |
 
-### b928de97 docs(f085): mirror the R34 block into last_block
+### 84f912a9 docs(f085): mirror the R35 block into last_block
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/last_block.md | +304/-236 | C0b: identical bytes mirrored |
+| .agent/last_block.md | +215/-257 | C0b — full replacement with the same bytes |
 
-### c15798a8 docs(review): narrow checklist items 15 and 20
+### 6d3b0230 docs(review): narrow checklist item 20 to paths rewritten every round
 | Path | +/- | Reason |
 |---|---|---|
-| docs/agents/planner_reviewer_prompt.md | +24/-0 | C1: P15F→P15T, P20F→P20T |
+| docs/agents/planner_reviewer_prompt.md | +11/-0 | C1 — I20F->I20T applied |
 
-### 2342ed97 docs(review): record the R33 FAIL and register and resolve R-0522 to R-0524
+### cde59e8c docs(review): record the R34 PASS and register and resolve R-0525
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/live_review.md | +104/-0 | C2: RECORD2 appended, nothing else |
+| .agent/live_review.md | +78/-0 | C2 — RECORD3 appended |
 
-### 942ecbf1 docs(f085): advance the plan to R34
+### 5e484694 docs(f085): advance the plan to R35
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/plan.md | +3/-3 | C3: PLANF2→PLANT2, file stays 47 lines |
+| .agent/plan.md | +3/-3 | C3 — PLANF3->PLANT3 applied |
 
-### (this commit) docs(f085): rewrite the handback for R34
+### C4 (this commit) docs(f085): rewrite the handback for R35
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/handoff.md | rewrite | C4: a handoff cannot table itself (R-0149); own insertions in the round report |
+| .agent/handoff.md | full rewrite | C4 — this handback; a handoff cannot table the commit that writes it (R-0149). Its own insertions are reported in the round report, per checklist item 14. |
 
+## Item status
 | Item | Status | Reason |
 |---|---|---|
 | C0a | done | |
@@ -53,100 +51,51 @@ Review of 7480d880..HEAD.
 | C4 | done | this commit |
 
 ## External actions
-
-`git push -u origin feature/f085-sandbox-hardening` after C4 — outcome in the round
-report. No PR, no merge, no gh command, no worktree added or removed.
+`git push -u origin feature/f085-sandbox-hardening` — outcome in the round report (run after this commit). No worktree add/remove: this round ordered no destructive check. No PR, no merge, no gh command.
 
 ## Verification
-
-G1 STATE — pass. `.agent/STOP` absent, read from disk before C0a and again before C4.
-`git status --porcelain` empty at round start and after each of C0a-C3.
-`git worktree list` = 1 line throughout; this round created none.
-
-G2 TRANSPORT — pass. Committed `.agent/authored/f085-r34.md`, committed
-`.agent/last_block.md` and BOTH working copies are byte-EQUAL: sha256
-42bf5eeb4bd3725848d7f824912827a9bff4948a18dd2f6cf13bc6caec46835b, 24167 B,
-373 lines, 14 marker lines, regions 1-100 / 101-200 / 201-373 = 2764ed2a / 6fe4a6ca
-/ 2b83c685 (trailing newlines included) — every value measured, none computed by hand.
-
-G3 APPEND SHAPE — pass. Pre-commit blob 373548 B is a byte-exact PREFIX of the
-381289 B post-commit file; remainder 7741 B = one blank line + RECORD2's 7740 B;
-RECORD2 is an exact suffix; its first line occurs once among the 104 lines 2342ed97
-adds; 0 lines match `^(BEGIN|END)-[A-Z0-9]+$` while the `BEGIN` SUBSTRING occurs 9×
-— which is why LINES were counted.
-`git show --numstat 2342ed97 -- .agent/live_review.md` = `104  0`.
-
-G4 ARITHMETIC — pass. Base 7480d880: 136 registered / 18 done / 0 landed, 118 open,
-both maxima R-0521 — reproduces the reviewer's base exactly. HEAD: 139 / 21 / 0,
-118 open again, both maxima R-0524. Registered symmetric difference
-{R-0522, R-0523, R-0524}, done symmetric difference the same three, landed symmetric
-difference empty, 0 duplicate ids, 0 resolutions naming an unregistered id, maximum
-id R-0524, next free R-0525.
-
-G5 NARROWINGS + APPEND OBLIGATION — pass, measured at HEAD after C1, in
-`docs/agents/planner_reviewer_prompt.md`. The P15F text still occurs exactly once and
-the P20F text still occurs exactly once — both pairs are APPEND-shaped, so their FROMs
-survive by construction. The item-15, item-16 and item-20 openers and the `Why this is
-on disk and not a habit…` closer each occur exactly once: two items narrowed, none
-added, removed or renumbered. §4.9 append obligation: P15T contributes 12 TO-only
-lines and P20T 12, and each of those 24 occurs exactly once among the 24 lines C1's
-diff ADDS. 0 marker lines reached the file. `git show --numstat c15798a8` = `24  0`.
-
-G6 SUITES — pass, run in the PRIMARY checkout, never in a worktree (R-0518).
-- 4 state readers, `-rf -q`: exit 0, `159 passed in 21.14s` (base 159 passed).
-- `python3 -m pytest tests/docs/ -q`: exit 0, `295 passed in 0.51s` (base 295). Not
-  read as evidence about C1: no test under `tests/docs/` reads that file.
-- CANARY `tests/cli/test_golden_path.py -q`: exit 0, `42 passed in 21.85s` (base 42).
-No ruff run and no red proof were ordered: this round changed no production code.
-
-G7 HYGIENE — pass, measured BEFORE C4. `git diff --name-only 7480d880..HEAD` holds
-exactly the 5 declared paths (change set minus `.agent/handoff.md`), nothing else.
-Per-commit insertions 373, 304, 24, 104, 3 — none exceeds 500. All 5 commits have
-exactly one parent; `git reflog -10` holds only `commit:` entries.
-
-STALENESS (constraint 8), re-read after C3: `.agent/authored/f085-r34.md`,
-`.agent/last_block.md`, `docs/agents/planner_reviewer_prompt.md`,
-`.agent/live_review.md`, `.agent/plan.md`. Each commit touches exactly one path and no
-commit after C2 touches a file RECORD2 asserts about; C1 precedes C2 as constraint 9
-requires, so RECORD2's claims about the narrowed items 15 and 20 were true when
-written. `HEAD` appears nowhere in RECORD2; every commit id it asserts (c2033d6c,
-7480d880, 74dfa30e, c933b949) resolves, and the R-0522 and R-0524 resolutions name
-constraint 9 under the item-20 carve-out C1 landed.
+G1 STATE — `.agent/STOP` absent before C0a and again before C4 (re-read from disk both times). `git status --porcelain` = 0 lines at round start and after every commit. `git worktree list` = 1 line throughout; no worktree created.
+G2 TRANSPORT — the committed `.agent/authored/f085-r35.md`, the committed `.agent/last_block.md`, BOTH working copies and the `.remedy-wt/` scratch are all five byte-EQUAL. sha256 41a8470f56a9063fb40a82526f0731bb57b2de20f296b075de572848a6f8581d · 21145 B · 331 lines · 10 marker lines. Region digests, trailing newlines included: 1-100 c9271720b7cfafdaace2084ea4be25573c30b21917d5b69cd1d0238f4d408bdd, 101-200 72829987007260b78060e784880c098c26c24d40c66d0f1b64558b80ebba6147, 201-331 3e006c9f27531922202f443377bd7f450f22c93b066f09e81e0b7608befa98c8. All measured, none computed by hand.
+G3 APPEND SHAPE for cde59e8c — pre-commit blob 381289 B is a byte-exact PREFIX of the 387274 B post-commit file; remainder 5985 B = exactly one blank line plus RECORD3; RECORD3 is an exact suffix; its first line occurs 1x among the 78 lines the diff ADDS; 0 lines match `^(BEGIN|END)-[A-Z0-9]+$` while the BEGIN substring occurs 11x. `git show --numstat` = 78 0 .agent/live_review.md.
+G4 ARITHMETIC — base 6ca30b16: 139 registered / 21 done / 0 landed, 118 open, max registered R-0524, max resolved R-0524. HEAD: 140 / 22 / 0, 118 open, both maxima R-0525. Registered symmetric difference {R-0525}; done symmetric difference {R-0525}; landed symmetric difference empty; 0 duplicate ids; 0 resolutions naming an unregistered id; maximum id R-0525; next free id R-0526 (moved from R-0525).
+G5 NARROWING + APPEND OBLIGATION for 6d3b0230 — the I20F text still occurs exactly 1x, which is what an APPEND-shaped pair guarantees. The item-15 opener, the item-20 opener and the closing-paragraph opener each occur exactly 1x, so no item was added, removed or renumbered. All 11 TO-only lines occur exactly 1x among the 11 lines the commit's diff ADDS — the §4.9 append obligation, ordered instead of a FROM-zero count. 0 marker lines reached the file. `git show --numstat` = 11 0 docs/agents/planner_reviewer_prompt.md.
+G6 SUITES — run in the PRIMARY checkout, never a worktree. `python3 -m pytest tests/orchestration/test_test_runner.py tests/regression/test_resource_safety.py tests/orchestration/test_integrity_gate.py tests/ui_server/test_dashboard_contract.py -rf -q` exit 0, `159 passed in 19.77s`. `python3 -m pytest tests/docs/ -q` exit 0, `295 passed in 0.42s` — NOT read as evidence about C1: the reviewer's red control showed `tests/docs/` stays at 295 passed with that file cut to `# broken`, so the suite is blind to C1 by construction and G5 is the only check on C1's content. CANARY `python3 -m pytest tests/cli/test_golden_path.py -q` exit 0, `42 passed in 20.27s`. No ruff run and no red proof ordered: this round changed no production code.
+G7 HYGIENE — `git diff --name-only 6ca30b16..HEAD` measured BEFORE C4 holds exactly `.agent/authored/f085-r35.md`, `.agent/last_block.md`, `.agent/live_review.md`, `.agent/plan.md`, `docs/agents/planner_reviewer_prompt.md` and nothing else — the declared change set minus `.agent/handoff.md`, which C4 writes. Per-commit insertions before C4: 331, 215, 11, 78, 3 — none exceeds 500. Every commit has exactly one parent. `git reflog -10` holds only `commit:` entries.
 
 ## Authored-text proofs
+Every slice was extracted PROGRAMMATICALLY from the COMMITTED `.agent/authored/f085-r35.md` by its BEGIN/END marker pair; none was retyped or taken from the prompt; each FROM was asserted to match exactly once before the replace; 0 marker lines reached any target file. Transport is disk-to-disk byte equality (G2), not a digest fallback.
+- I20F->I20T — TO contains FROM: true — APPEND. FROM occurs 1x before and 1x after, by construction. The §4.9 append obligation is what is proved: every TO-only line occurs exactly 1x among the commit's ADDED lines (G5). No FROM-zero reading is claimed for this pair, under any wording.
+- PLANF3->PLANT3 — TO contains FROM: false — REWRITE. FROM 1x before, 0x after; TO 1x after.
+- RECORD3 — append to `.agent/live_review.md`, proved as an append by G3.
+Constraint 8 staleness re-read after C3, at HEAD: `.agent/authored/f085-r35.md`, `.agent/last_block.md`, `docs/agents/planner_reviewer_prompt.md`, `.agent/live_review.md`, `.agent/plan.md`. No sentence this round put on disk is falsified by a later commit of the same round; RECORD3's readings of prior state name 2342ed97, c15798a8, 7480d880 or 6ca30b16, and its claim about the state this round creates names constraint 9. Its four sentences mentioning `.agent/handoff.md` were checked individually: the one that LOCATES landed text names 2342ed97, 6ca30b16 and 7480d880; the other three state the rule or the path list and locate nothing.
 
-All four slices were extracted PROGRAMMATICALLY from the COMMITTED
-`.agent/authored/f085-r34.md` by marker pair, none retyped, 0 marker lines reaching
-any target file.
-- P15F→P15T — TO contains FROM: true — APPEND. FROM matched exactly once before
-  apply; the §4.9 append obligation is the reading reported under G5, and no
-  FROM-zero count is claimed, because for an append pair none exists.
-- P20F→P20T — TO contains FROM: true — APPEND. Same obligation, same G5 reading.
-- PLANF2→PLANT2 — TO contains FROM: false — REWRITE. FROM matched exactly once
-  before apply and 0 times after; the TO occurs exactly once after.
-- RECORD2 — APPEND to `.agent/live_review.md`, proved by the prefix, remainder and
-  exact-suffix byte equalities under G3.
+Open findings: 118 (unchanged — R-0525 was registered and resolved in the same round).
 
 ## Deviations & assumptions
-
-No deviation from the block: C0a, C0b, C1, C2, C3, C4 ran in exactly that order, one
-commit each — nothing added, dropped, merged or reordered.
-Observation, not a repair: RECORD2's R-0523 resolution says the false sentence "stays
-in `.agent/handoff.md` where it landed". C4 rewrites that file per constraint 10, so
-the sentence stays in the commit 7480d880 where it landed and not in the file's
-current content. The slice was applied byte-verbatim and nothing was edited.
-Deviations, declared: this handback is 152 lines against the 100-line cap (>5-commit
-case). Cause is mandated content, not prose: six per-commit changed-files tables, the
-six-row item-status table, the verbatim Fortschritt block, seven gate transcripts
-G1-G7, the constraint-8 staleness reading and the four-pair proof list. No section was
-dropped to fit.
+None. The commit sequence executed is exactly the block's Bundle in order: C0a, C0b, C1, C2, C3, C4 — no extra commit, none dropped, no reordering. Stated-cause overage per AGENTS.md DECISION D15: this handback is 101 lines against the 100-line cap for a >5-commit bundle. The cause is mandated content, not verbosity — six per-commit tables, the seven-gate verification table with its region digests and set arithmetic, the item-status table, the transport and pair proofs, and the migration design the block requires to be carried verbatim in `## Next`. No section was dropped to meet the cap.
 
 ## Next
+The next session's FIRST action is Phase 1 rule 1 — re-read `.agent/STOP` from disk — BEFORE rule 2, the Open PR Gate (`gh pr list --state open --json number,headRefName,baseRefName,isDraft`). R35's own verdict is NOT a §4.13 terminator: this branch continues, so the next reviewed round records R35's gate entry in `.agent/live_review.md`.
 
-The next session's FIRST action is Phase 1 rule 1 — re-read `.agent/STOP` from disk —
-BEFORE rule 2, the Open PR Gate
-(`gh pr list --state open --json number,headRefName,baseRefName,isDraft`).
-R34's own verdict is NOT a §4.13 terminator, because this branch continues. The next
-reviewed round records R34's gate entry in `.agent/live_review.md`. The next
-MIGRATION round takes `mission_state.py`'s spawn, because `builder_bridge.py` cannot
-move until the seam can SET an environment value rather than only allowlist a key.
+Then the MIGRATION round, whose design the reviewer derived at 6ca30b16 and which is carried here verbatim so it is not re-derived wrongly:
+
+  The next MIGRATION round takes the default `runner` closure in
+  `packages/orchestration/mission_state.py` — at 6ca30b16 it is the
+  `subprocess.run(argv, cwd=..., capture_output=True, text=True, timeout=900)` call
+  inside `if runner is None:`, and it is the capture-and-timeout shape already
+  migrated at `pingpong_loop.py`, `test_runner.py`, `job_promote.py` and
+  `integrity_gate.py`.
+  The import MUST be added at MODULE level, not inside the closure. Every existing
+  seam test intercepts the call with
+  `monkeypatch.setattr(<module>, "run_guarded_test_command", _fake_guarded)`
+  (`tests/orchestration/test_pingpong.py`, `test_integrity_gate.py`,
+  `test_job_promote.py` at 6ca30b16), and that patch cannot reach a name bound by a
+  function-local import — a local import would leave the site untestable by the
+  established pattern while every gate stayed green.
+  The reviewer checked the cycle at 6ca30b16: `packages/orchestration/exec_guard.py`
+  contains no reference to `mission_state`, so a module-level import adds no cycle.
+  The seam returns BYTES while this closure has always returned `str`, so the decode
+  `(proc.stdout or b"").decode("utf-8", "replace") + (proc.stderr or b"").decode(
+  "utf-8", "replace")` is part of the change, matching `pingpong_loop.py` at 6ca30b16.
+  `builder_bridge.py` still comes LAST and stays BLOCKED until the seam can SET an
+  environment value rather than only allowlist a key.
