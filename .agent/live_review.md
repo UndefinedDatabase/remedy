@@ -2768,3 +2768,63 @@ application forced the branch to spend its single AGENTS.md declared-oversize al
 rules were correctly stated and never measured against each other. What earns it an id is that
 the collision was derivable at emission from numbers already in the block. DEC6, landed by this
 same commit, is the counter-measure. Found by the reviewer at this gate.
+
+Gate: R46 — the R45 entry. R45 PASSED. Every ordered gate G1-G9 was re-executed by the reviewer
+over 981d08d0..470d2577, not read, and each reproduces the handback's reading. LINE COUNTS ARE
+`splitlines` COUNTS. TRANSPORT WAS PROVED AGAINST THE REVIEWER'S OWN ORIGINAL, disk-to-disk with
+no digest fallback: `.remedy-wt/f085-r45.md`, the committed `.agent/authored/f085-r45.md` at
+d6f42cd0, the committed `.agent/last_block.md` at 6977b3e8 and both working copies as they stand
+at 470d2577 are all five byte-EQUAL at sha256
+448c531c3430eafe4efb0080363ff8c4e1908261f5d688bdbf248ce00c163cb0, 29951 B, 477 lines, 30 marker
+lines. BOTH APPENDS HELD THEIR SHAPE: for RECORD13 on `.agent/live_review.md` and DEC6 on
+`.agent/decisions.md` alike, the pre-commit blob is a byte-exact prefix, the remainder is exactly
+one blank line plus the slice, the slice is an exact suffix, 0 marker LINES reached either file,
+and every non-empty slice line occurs exactly once among that path's added lines — 97 slice lines
+against 98 added for the first, 43 against 44 for the second. THE CODE RECONSTRUCTS:
+`packages/orchestration/builder_bridge.py` at 981d08d0 with BBF1→BBT1, BBF2→BBT2 and BBF3→BBT3
+applied in that order is byte-identical to the committed file at 778a74ba, sha256
+5a95a367a15f9d34…; `tests/orchestration/test_builder_bridge.py` with TIMPF→TIMPT applied and
+TESTS appended is byte-identical at dffeaac42c130440…, and the ORDERED EQUALITY holds on the
+form G4 ordered — the intermediate text is a byte-exact prefix, TESTS an exact suffix, and the
+59 lines C2 adds are TIMPT's two new import lines followed by TESTS' 57, in order. THE SUITES
+WERE RE-RUN, NOT READ, each in the primary checkout, each exit 0: the five builder-bridge files
+`82 passed, 1 skipped` against a base of `80 passed, 1 skipped`, the four state readers
+`159 passed` against 159, and the canary `42 passed` against 42; `ruff check` over the two `.py`
+paths returned `All checks passed!`. THE ARITHMETIC MOVED AS ORDERED: 161 / 27 / 0 at 470d2577
+against 153 / 27 / 0 at 981d08d0, 134 open against 126, the registered symmetric difference
+exactly R-0539 through R-0546, done and landed symmetric differences EMPTY, no duplicate id and
+no resolution naming an unregistered id at either SHA. HYGIENE IS CLEAN: walking
+981d08d0..470d2577 mechanically gives the per-commit insertion counts 477, 410, 142, 70, 7 and
+58, none over 500 and so no second call on the allowance d4473f85 spent; the path set of the
+range ending at 7cd2879d is exactly the seven ordered paths; all six commits are single-parent.
+
+THE MIGRATION IS REAL, NOT MERELY APPLIED. `import os` is gone from
+`packages/orchestration/builder_bridge.py` at 470d2577 and the one surviving `os.` occurrence is
+inside a comment, so the module no longer builds a child environment from the parent's own — the
+scrub is what the child now gets. Before delegating, the reviewer proved the same slice bytes in
+a disposable worktree at 981d08d0 under four red controls, each of which exited non-zero on the
+test it was aimed at: the fixture repo demanding the scrubbed token be PRESENT, the fixture repo
+demanding the `PYTHONDONTWRITEBYTECODE` overlay be ABSENT, `extra_env` dropped from the guard
+call, and `cwd` handed None — the last taking 60.26 s, which is the guard's own wall tripping
+rather than an assertion failing. T002b is closed: every site of the `test` class named in
+DECISION F085 D3 is on the seam.
+
+WHAT THE WORKER FOUND IN THE REVIEWER'S OWN TEXT. R45's worker applied every slice byte-verbatim
+and declared one contradiction rather than repairing it, which is what constraints 1 and 6 ask
+for. R-0547 is that finding. It is the reviewer's error, not the worker's, and the round is a
+PASS because the worker's execution reproduced in every particular under independent re-run.
+
+- R-0547 — Medium, A DECISION'S HEADING RULED ONE NUMBER AND ITS BODY RULED ANOTHER. DECISION
+F085 D6, applied at 812626d3, is headed "a block is budgeted at 480 lines TOTAL" while its
+CHOSEN paragraph rules "a block is budgeted at 490 lines TOTAL" and its CONSEQUENCE paragraph
+computes from 490; the R45 block's own Goal and constraint 9 also say 490. Measured at 470d2577:
+the DEC6 slice contains the string 480 once, in the heading, and 490 twice, in the body. The
+cause is recoverable and worth recording, because it is the shape this repository keeps paying
+for: the reviewer drafted the section at 480, revised the ruled figure to 490 in the body when
+the margin's justification changed, and did not sweep the heading — the R-0481 late-addition
+shape, landing in the one place checklist item 16 already governs and the widening of item 16
+that R45 cut for size would have caught. Nothing was decided wrongly: 477 is inside either
+figure, so no round was misjudged. What is wrong is that a live rule is ambiguous on disk. DEC6C,
+appended by this same commit, fixes the ruled figure at 490 without editing DEC6, per checklist
+item 20's rule that landed text is corrected by appending and never by rewriting. Found by R45's
+worker under its own deviation 2 and registered by the reviewer.

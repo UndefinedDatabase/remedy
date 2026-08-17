@@ -5908,3 +5908,20 @@ the cap, which is not enough for a migration; that is intentional, since it pric
 against product at emission, where the reviewer can still shorten the prose, rather than at
 commit time, where nobody can. The R45 block ran over this budget in draft and was cut to fit
 before emission, dropping a checklist edit to R46, which is the rule working as intended.
+
+## DECISION F085 D6 — correction to the ruled figure (2026-08-17)
+
+DECISION F085 D6, applied at 812626d3, is internally inconsistent: its heading says 480 lines
+TOTAL and its CHOSEN and CONSEQUENCE paragraphs say 490. THE RULED FIGURE IS 490. The CHOSEN
+paragraph is the operative one — it carries the reasoning for the margin and the CONSEQUENCE
+paragraph computes from it, while the heading is a leftover from an earlier draft in which the
+margin was justified differently. Finding R-0547 registers the defect.
+
+D6 is not edited, because appending a correction is how landed text stays honest in this
+repository and overwriting it is worse than a dated wrong sentence — docs/agents/planner_reviewer_prompt.md
+§3 checklist item 20. A reader who reaches the D6 heading reaches this section too, since both
+live in `.agent/decisions.md` and this one is later.
+
+Reverse this correction by deleting this section, which restores the ambiguity rather than the
+480; reverse D6 itself by deleting D6, which returns the block cap to DECISION F085 D5's
+400-line PROSE rule with no budget on the total.
