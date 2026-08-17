@@ -18,21 +18,26 @@ reaches a child, and the limitations document exists and is linked from the
 README.
 
 ## Current Step
-R54, this round: T002d's first half. `packages/orchestration/exec_guard.py` gains the
-`runtime-build` seam under Amendment F085 D8 — a BOUNDED class, so it KEEPS a wall timeout — and
-that third caller is what makes the guard-result translation worth extracting, so the `test` and
-`dod-process` wrappers move onto the shared helper in the same round. No call site migrates here.
-Four tests ship with it. The R53 PASS is recorded in the same round, with finding R-0557.
+R55, this round: a RECORD round only. It persists the R54 PASS to `.agent/live_review.md` and
+advances this file; it writes no production code and ships no test. It exists because the
+reviewer's session ended at its declared round cap, and a verdict that lives only in a chat reply
+is one the next session would have to re-derive from the diff.
 
 ## Next Steps
 1. T002d's second half — migrate the two `runtime-build` sites in `_auto_build_frontend`
-   (`packages/orchestration/ui_server.py`) onto the new seam with `check=True`, then the three
-   `runtime-server` sites, which take no wall timeout because a clock would kill them mid-service.
+   (`packages/orchestration/ui_server.py`) onto `run_guarded_runtime_build_command` with
+   `check=True`, settling the npm environment risk below FIRST. Then the three `runtime-server`
+   sites, which take no wall timeout because a clock would kill them mid-service.
 2. T003 — network posture, the limitations document, its README link. That document states what
    the CHILD-half migrations do NOT bound: an app log written to a file takes no guard output cap.
    Then the integration gate, then closure.
 
 ## Risks
+- `RUNTIME_BUILD_ENV_ALLOWLIST` is `TEST_COMMAND_ENV_ALLOWLIST`, read at 1812c219: it carries
+  `HOME` and `PATH`, so a public-registry `npm install` survives the scrub, but it names no
+  `NPM_CONFIG_*`, no `NODE_*` and no proxy variable. A project on a private registry or behind a
+  proxy would break at the migration, not at the seam. R56 settles this BEFORE it migrates —
+  widen that row, or take the `extra_env_keys` knob the `test` row already carries.
 - An allowlist bounds what the PARENT hands over, never what the child's runtime
   adds back: a CPython child sets `LC_CTYPE` itself under PEP 538. T003's
   limitations document must say so rather than claim a sealed environment.
