@@ -18,14 +18,13 @@ reaches a child, and the limitations document exists and is linked from the
 README.
 
 ## Current Step
-R25, this round: record the R24 PASS, register R-0516 — a stale claim the R24
-block left standing in a file it was itself editing — and retire that claim in the
-same round. The session's declared cap of two authored rounds is reached here, not
-a blocker.
+R26, this round: record the R25 PASS and continue T002b by moving `autorun.py`'s
+three `test`-class sites onto `run_guarded_test_command`. Every one of them reads
+only `returncode`, so the seam's bytes streams change nothing they observe, and
+real children already drive both fixture paths in the suite the round gate re-runs.
 
 ## Next Steps
-1. T002b continued — the remaining `test`-class sites, starting with the three in
-   `autorun.py`, which share the migrated shape exactly, and ending with
+1. T002b continued — the `test`-class sites still on a bare spawn, ending with
    `test_execution_service.py`'s `Popen`, which takes the child half via
    `plan_child_spawn` rather than the runner and which carries R-0202.
 2. T002c-d — the two DoD sites and the five runtime sites, whose policy differs:
