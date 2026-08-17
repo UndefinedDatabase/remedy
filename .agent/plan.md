@@ -18,19 +18,20 @@ reaches a child, and the limitations document exists and is linked from the
 README.
 
 ## Current Step
-R20, this round: record the R19 PASS and close the session on a written handoff. A
-record round only — the session reached its declared round cap at R19, and opening
-`stream_evidence.py`'s shape question at a session boundary is what guardrail G8 of
-the self-drive protocol forbids. R20's own verdict is the §4.13 terminator: it lives
-in the handoff, not on disk, and the next session must not open a repair round for it.
+R21, this round: record the R20 PASS, rule the streaming seam's shape as DECISION
+F085 D2, and migrate it. `exec_guard` gains a public `ChildSpawnPlan` and
+`plan_child_spawn`, carved out of what `run_guarded` already runs before its own
+`Popen`; `run_streamed_command` takes an optional policy and applies that plan at
+the spawn it already has, keeping the watchdog, the process group and the byte cap
+that make it a streaming supervisor. T002a closes when this lands.
 
 ## Next Steps
-1. `stream_evidence.py`:595 is T002a's last site and is NOT a `subprocess.run` swap:
-   it streams incrementally where `run_guarded` buffers, so its shape is decided first.
-2. `_StreamPump` gains a lock and a `snapshot()` so PARTIAL output survives a
+1. `_StreamPump` gains a lock and a `snapshot()` so PARTIAL output survives a
    bounded drain. It still returns `b""` for a stream whose pump never reached
    EOF, which `streams_complete` reports honestly but which loses bytes.
-3. T002b-d, then T003 — network posture, limitations document, README link.
+2. T002b — the twelve `test`-class sites, in ten modules, with behaviour-equality
+   goldens and the environment-allowlist test that carries R-0202.
+3. T002c-d, then T003 — network posture, limitations document, README link.
 
 ## Risks
 - An allowlist bounds what the PARENT hands over, never what the child's runtime
