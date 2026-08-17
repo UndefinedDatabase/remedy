@@ -639,3 +639,49 @@ def test_the_dod_app_policy_takes_neither_a_wall_timeout_nor_an_output_cap():
     assert child_env["PORT"] == "5173"
     assert child_env["PATH"] == "/usr/bin"
     assert "AWS_SECRET_ACCESS_KEY" not in child_env
+
+
+def test_the_runtime_build_policy_keeps_the_wall_timeout_its_class_is_defined_by():
+    policy = exec_guard.runtime_build_exec_policy(90.0, "/tmp")
+    assert policy.wall_timeout_seconds == 90.0
+    assert policy.output_cap_bytes == exec_guard.RUNTIME_BUILD_OUTPUT_CAP_BYTES
+    assert policy.cwd == "/tmp"
+    assert policy.core_file_bytes == 0
+    assert policy.env is None
+    assert policy.env_allowlist == exec_guard.RUNTIME_BUILD_ENV_ALLOWLIST
+    assert policy.cpu_seconds is None
+    assert policy.address_space_bytes is None
+
+
+@pytest.mark.subprocess
+def test_the_runtime_build_seam_hands_a_child_the_allowlist_and_not_the_secret(monkeypatch):
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-should-never-appear")
+    monkeypatch.setenv("MY_PROJECT_SECRET", "should-never-appear-either")
+    completed = exec_guard.run_guarded_runtime_build_command(
+        _child(_ENV_DUMP), timeout_sec=30, cwd=None)
+    dumped = _dumped(completed)
+    assert completed.returncode == 0
+    assert "PATH" in dumped
+    assert "ANTHROPIC_API_KEY" not in dumped
+    assert "MY_PROJECT_SECRET" not in dumped
+
+
+@pytest.mark.subprocess
+def test_the_runtime_build_seam_raises_called_process_error_only_when_check_is_asked():
+    cmd = _child("raise SystemExit(3)")
+    completed = exec_guard.run_guarded_runtime_build_command(cmd, timeout_sec=30, cwd=None)
+    assert completed.returncode == 3
+    with pytest.raises(subprocess.CalledProcessError) as caught:
+        exec_guard.run_guarded_runtime_build_command(
+            cmd, timeout_sec=30, cwd=None, check=True)
+    assert caught.value.returncode == 3
+    assert caught.value.cmd == cmd
+
+
+@pytest.mark.subprocess
+def test_the_runtime_build_seam_raises_timeout_expired_on_a_wall_trip():
+    with pytest.raises(subprocess.TimeoutExpired) as caught:
+        exec_guard.run_guarded_runtime_build_command(
+            _child("import time; print('before', flush=True); time.sleep(30)"),
+            timeout_sec=1.0, cwd=None, check=True)
+    assert b"before" in (caught.value.output or b"")
