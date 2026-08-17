@@ -18,16 +18,16 @@ reaches a child, and the limitations document exists and is linked from the
 README.
 
 ## Current Step
-R28, this round: record the R27 PASS, resolve R-0517, and put
-`test_execution_service._run_isolated_process` on the seam's CHILD half via
-`plan_child_spawn`, keeping its own wait deadline, its process-group kill and its
-file-backed streams where they are. R-0202 stays open: the environment the child
-receives is unchanged by this round.
+R29, this round: record the R28 PASS and register R-0519. The T002b Restprüfung
+found five of the twelve `test`-class sites on the seam and seven still on a bare
+spawn, which the previous Fortschritt overstated; the measurement lands in
+`.agent/f085_inventory.md` beneath the class list that defines the set.
 
 ## Next Steps
-1. T002b Restprüfung — re-derive the `test`-class site set from
-   `.agent/f085_inventory.md` against amendment F085 D1's twelve, and name every
-   site still on a bare spawn before T002b is called finished.
+1. T002b continued — the seven `test`-class sites still on a bare spawn:
+   `builder_bridge.py`:220, `ci_run.py`:79, `integrity_gate.py`:283,
+   `job_promote.py`:417, `mission_state.py`:833, `pingpong_loop.py`:3537 and
+   `pingpong_promote.py`:326. Take them in small groups, one order per group.
 2. T002c-d — the two DoD sites and the five runtime sites, whose policy differs:
    no wall timeout, because their children are the long-lived harness.
 3. T003 — network posture, the honest limitations document, the README link. Then
