@@ -11,9 +11,11 @@ not exist:
   builder seam and the claude CLI provider run through `run_guarded`, and a
   supervisor that must own its own parent half may take the CHILD half alone
   through `plan_child_spawn`; since T002b the test class is PARTIALLY migrated
-  through `run_guarded_test_command`, while the DoD, runtime, git and packaging
-  classes still spawn unsupervised. No count is written here on purpose: it
-  changes with every migration round, and the caller grep is the honest answer.
+  through `run_guarded_test_command`; and since T002c the DoD's bounded process
+  checks run through `run_guarded_dod_process_command`, while the DoD app
+  harness and the runtime, git and packaging classes still spawn unsupervised.
+  No count is written here on purpose: it changes with every migration round,
+  and the caller grep is the honest answer.
 - No environment scrubbing UNLESS the policy asks for it: with
   `env_allowlist=None` the policy's `env` reaches the child UNCHANGED, which every
   T001 test relies on. Callers CHOOSE the allowlist per command class — the
