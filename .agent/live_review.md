@@ -3118,3 +3118,41 @@ landed sentence: C3a replaces the paragraph as part of the D8 split, and its rep
 the no-wall-timeout rule as a condition each class is tested against rather than as a universal
 over an unenumerated set, while the per-site reading lives in DEC8 beside the SHA it was taken
 at. Found and registered by the reviewer while gating R49.
+
+Gate: R51 — the R50 entry. R50 PASSED. Every ordered gate G1-G8 was re-executed by the reviewer
+over 25a5b42e..3a64b65e, not read, and each reproduces the handback's reading. LINE COUNTS ARE
+`splitlines` COUNTS. TRANSPORT HELD AGAINST THE REVIEWER'S OWN ORIGINAL, disk-to-disk with no
+digest fallback: `.remedy-wt/f085-r50.md`, the committed `.agent/authored/f085-r50.md` at
+c22cb9dd, the committed `.agent/last_block.md` at 634447bc and both working copies as they stand
+at 3a64b65e are all five byte-EQUAL at sha256
+061fa19d22524bd91e69697f28285376e82f45005d7894f833ab991adb390cd7, 24335 B, 334 lines, 12 marker
+lines — every figure measured on every copy. THE SHAPES HELD, each measured separately from slices
+the reviewer extracted programmatically from the committed block by marker pair rather than
+retyping them. THE TWO REWRITES: PLAN4F occurs 0x and PLAN4T exactly 1x in `.agent/plan.md` at
+2241cb69 at numstat `6 4`, and AMEND8F occurs 0x and AMEND8T exactly 1x in
+`docs/roadmap/features/T2_F085.md` at 8bb7a287 at numstat `10 7`; both pairs give
+`TO contains FROM: false`, as that block declared. THE TWO PROSE APPENDS: for RECORD18 on
+`.agent/live_review.md` at 56722bd7 and for DEC8 on the feature file at 9b9cd0b4 the pre-commit
+blob is a byte-exact prefix, the remainder is exactly one blank line plus the slice, the slice is
+an exact suffix, 0 marker LINES reached either file, and every non-empty slice line occurs exactly
+once among that path's added lines — 72 slice lines of which 2 empty against 73 added at numstat
+`73 0`, and 29 slice lines of which 3 empty against 30 added at numstat `30 0`. THE SUITES WERE
+RE-RUN, NOT READ, each in the primary checkout, each exit 0: the four state readers `159 passed`
+against a base of 159, the canary `42 passed` against 42, the docs tier `295 passed` against 295.
+THE PLAN CONTRACT HELD at 2241cb69: 41 lines against the 50-line cap, with `## Goal`,
+`## Next Steps` and a roadmap F-id all present. THE ARITHMETIC MOVED AS ORDERED: 168 / 27 / 0 at
+3a64b65e against 166 / 27 / 0 at 25a5b42e, 141 open against 139, the registered symmetric
+difference exactly R-0552 and R-0553, done and landed symmetric differences EMPTY, no duplicate id
+and no resolution naming an unregistered id at either SHA, and R-0554 free. HYGIENE IS CLEAN: over
+the six commits of 25a5b42e..3a64b65e that precede the handback the per-commit INSERTION counts,
+the column AGENTS.md DECISION F104 D1 fixes for the cap, are 334, 239, 6, 73, 10 and 30, and the
+handback commit adds 79; none over 500; the path set of that range is exactly the six ordered paths
+and nothing else; all seven commits are single-parent; the tree is clean and `git worktree list` is
+one line. THE BLOCK'S OWN SIZE re-measured from the committed file gives TOTAL 334, PROSE 182 and
+RECORD18 72, agreeing with that block. THE AMENDMENT'S OWN MEASUREMENT WAS
+SPOT-CHECKED rather than accepted: read at 3a64b65e, `.agent/f085_inventory.md` assigns exactly the
+five sites DEC8 names to `runtime`, and `packages/orchestration/ui_server.py` really does call
+`subprocess.run` with `timeout=120` twice inside `_auto_build_frontend`, for `npm install` and
+`npm run build` — the pair whose working guard a no-wall-timeout policy would have removed. NO NEW
+FINDING WAS REGISTERED: no gate came out red, no claim in the handback failed to reproduce, and
+the open set stays at 141 with R-0554 free.
