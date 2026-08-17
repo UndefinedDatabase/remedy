@@ -1,87 +1,107 @@
-── STEP T002b interlude — F085 — R33 ─────────────────────────────────────────
+── STEP T002b interlude — F085 — R34 ─────────────────────────────────────────
 
-Goal: record the R32 PASS, and register AND resolve R-0521 — the defect R32's own
-resolving slice committed against the rule it was resolving — by sharpening
-pre-emission checklist item 20 so the commit a slice names must be one that
-already exists rather than a label that re-resolves.
+Goal: record the R33 FAIL, and register AND resolve R-0522, R-0523 and R-0524 — a
+pair the block labelled REWRITE while its TO contained its FROM verbatim, the false
+rewrite proof that label produced in the permanent record, and the slice class for
+which checklist item 20's newly required SHA cannot exist at all.
 
-Bundle, in order: C0a save this block · C0b mirror it into last_block · C1 sharpen
-checklist item 20 · C2 record R32 and register and resolve R-0521 · C3 plan ·
-C4 handback.
+Bundle, in order: C0a save this block · C0b mirror it into last_block · C1 narrow
+checklist items 15 and 20 · C2 record R33 and register and resolve R-0522, R-0523 and
+R-0524 · C3 plan · C4 handback.
 
 ## Why this round exists — read before C1
 
-R32 passed. The reviewer re-ran every gate it ordered over 16234fbf..HEAD and each
-reproduces the handback's reading, including the red proof, which the reviewer
-re-broke independently in its own disposable worktree.
+R33 failed on one sentence. Every gate the R33 block ordered was re-run by the
+reviewer over c2033d6c..7480d880 and every one reproduces the handback's reading
+exactly: the block's five copies byte-equal at sha256 a089cc66, the append commit
+c933b949 holding its shape at numstat 79/0, the arithmetic moving 135/17/0 to
+136/18/0 with 118 open at both ends, the checklist narrowing landed once, and the
+suites at 159, 295 and 42 passed. The worker deviated from nothing.
 
-R32's worker declared, under constraint 8 and correctly, that a sentence its own
-C2 committed was falsified by its own C3. The R31 gate entry says
-`builder_bridge.py`, `ci_run.py`, `integrity_gate.py` and `mission_state.py` each
-show 0 references to `run_guarded_test_command` "at HEAD". That reading was taken
-at 16234fbf and is true there; C3 of the same round put `integrity_gate.py` on the
-seam, so one of those four names is wrong for every commit from ed88be4c onward.
+The defect is in the handback's `## Authored-text proofs` section. It states that
+SHARPF→SHARPT and PLANF→PLANT are "both REWRITE" and that "each FROM matched exactly
+once before apply and 0 times after". At 74dfa30e the SHARPF text occurs ONCE in
+`docs/agents/planner_reviewer_prompt.md`, not zero times, because SHARPT begins with
+SHARPF verbatim: the pair is APPEND-shaped. The reviewer's constraint 2 declared it a
+REWRITE while claiming a mechanical containment test per pair, and the worker then
+reported the rewrite proof's number for a count that cannot come out that way.
 
-That is the exact class checklist item 20 was promoted to prevent, committed by
-the slice that promoted it, one commit after it landed. Item 20 as written asks a
-slice to name "the commit the reading was taken at", and the sentence did name a
-commit — it named `HEAD`, which is a label that re-resolves as the round proceeds
-and therefore names a different commit by the time the round ends. The rule was
-followed to the letter and defeated anyway, so the counter-measure is a narrowing
-of the rule and not a new one: the commit named must be an ABSOLUTE identifier
-that already exists when the slice is written. A block always has one to hand —
-its own base SHA, which the reviewer states in every done-when.
+That is checklist item 15 — the R-0508 counter-measure — being obeyed in form and
+defeated in substance, one round after item 20 was narrowed for the identical reason.
+Item 15 asks that "the answer is printed beside that pair"; the R33 block did print
+an answer, and the answer was a LABEL rather than the test's output. A label is a
+recollection wearing a measurement's clothes, so the narrowing records the boolean
+and derives the label from it.
+
+A third defect is the reviewer's alone and blocks this very block. Item 20 as
+narrowed by R-0521 demands an absolute SHA that already exists when a slice is
+written, justified by "a block always has such a SHA to hand, because its own base is
+stated in its done-when". That covers a reading taken BEFORE the round. It cannot
+cover a slice describing the round's OWN landed change — and every `Done:` paragraph
+is exactly that, including those below. Demanding a SHA there demands a value
+that cannot exist, which is the R-0371 shape. Item 20 gains the carve-out in C1, and
+C2 relies on it; the commit order is what makes that honest.
 
 This round changes no production code, so it orders no red proof and no ruff run.
 
 ## Change
 
-C1 — `docs/agents/planner_reviewer_prompt.md`, one commit, the SHARPF→SHARPT
-pair, which narrows item 20 in place.
+C1 — `docs/agents/planner_reviewer_prompt.md`, one commit, the pairs P15F→P15T, which
+narrows checklist item 15, and P20F→P20T, which carves out item 20. Neither adds or
+removes an item, so no list arity changes and no label is renumbered.
 
-C2 — `.agent/live_review.md`, one commit, RECORD1 appended and nothing else.
-RECORD1 carries the R32 gate entry, then the R-0521 registration, then its
-resolution, as one slice.
+C2 — `.agent/live_review.md`, one commit, RECORD2 appended and nothing else. RECORD2
+carries the R33 gate entry, then the registrations, then the resolutions, as one
+slice.
 
-C3 — `.agent/plan.md`, one commit, the PLANF→PLANT pair. It spans the Current Step
-and list item 1, the only lines that change; items 2 and 3 keep their labels
-untouched because the list's arity does not change.
+C3 — `.agent/plan.md`, one commit, the PLANF2→PLANT2 pair over the Current Step block
+alone. Next Steps is untouched: the migration order did not change.
 
 Change set, named rather than counted: `docs/agents/planner_reviewer_prompt.md`,
-`.agent/authored/f085-r33.md`, `.agent/last_block.md`, `.agent/live_review.md`,
+`.agent/authored/f085-r34.md`, `.agent/last_block.md`, `.agent/live_review.md`,
 `.agent/plan.md` and `.agent/handoff.md`. Nothing else is touched.
 
 ## Constraints
 
 1. Every slice is applied byte-verbatim, extracted PROGRAMMATICALLY from the
-   committed `.agent/authored/f085-r33.md` by its marker pair. Never retype a
-   slice, never apply one from the prompt. Marker lines never reach a target file.
-2. Pair shapes, each MEASURED by the reviewer with a containment test, one reading
-   per pair: SHARPF→SHARPT REWRITE · PLANF→PLANT REWRITE.
+   committed `.agent/authored/f085-r34.md` by its marker pair. Never retype a slice,
+   never apply one from the prompt. Marker lines never reach a target file.
+2. Pair shapes, each MEASURED by the reviewer with a containment test and recorded as
+   the test's OUTPUT, one reading per pair:
+   P15F→P15T — TO contains FROM: true — APPEND.
+   P20F→P20T — TO contains FROM: true — APPEND.
+   PLANF2→PLANT2 — TO contains FROM: false — REWRITE.
+   For the two APPEND pairs the "FROM 0x after" count is unattainable by
+   construction and is NOT ordered; §4.9's append obligation is ordered instead. Do
+   not report a FROM-zero reading for them under any wording.
 3. Re-read `.agent/STOP` from disk before C0a and again before C4. If it exists,
    finish the commit in flight, write the handback and stop.
 4. `git status --porcelain` is empty at round start and after every commit. This
-   round orders no destructive check, so it creates no worktree; `git worktree
-   list` is one line throughout.
+   round orders no destructive check, so it creates no worktree; `git worktree list`
+   is one line throughout.
 5. C2 is an APPEND: the pre-commit file stays a byte-exact prefix and exactly one
-   blank line separates it from RECORD1. Do not reflow, re-wrap or re-indent it.
-6. Nothing outside the declared change set is touched. This round both registers
-   and resolves R-0521 and touches no other id, so the open count must come out
-   unchanged.
+   blank line separates it from RECORD2. Do not reflow, re-wrap or re-indent it.
+6. Nothing outside the declared change set is touched. This round registers and
+   resolves R-0522, R-0523 and R-0524 and touches no other id, so the open count must
+   come out unchanged.
 7. If any gate comes out red, or a FROM does not match at exactly one place in the
-   file it is applied to, STOP: write the handback naming the exact command, its
-   exit code and its output, and do not improvise a repair.
+   file it is applied to, STOP: write the handback naming the exact command, its exit
+   code and its output, and do not improvise a repair.
 8. STALENESS, standing: after C3 re-read every edited file and confirm that no
-   sentence this round put on disk was falsified by a later commit of the same
-   round, and that no slice quotes another file's current wording as a claim. Name
-   what was re-read. RECORD1 states facts about `.agent/live_review.md` and about
-   `docs/agents/planner_reviewer_prompt.md`, both of which this block edits, and
-   every reading it ASSERTS names a SHA rather than a relative label. `HEAD` does
-   appear in RECORD1, always QUOTING or naming the defect R-0521 registers rather
-   than asserting a reading of its own — that is the finding's subject, not an
-   instance of it. Check that distinction holds; do not "repair" the quotations.
-9. The commit order C1 before C2 is load-bearing: it is what makes RECORD1's claim
-   about the sharpened item 20 true when it is written. Do not reorder.
+   sentence this round put on disk was falsified by a later commit of the same round,
+   and that no slice quotes another file's current wording as a claim. Name what was
+   re-read. RECORD2 states facts about `docs/agents/planner_reviewer_prompt.md` and
+   `.agent/live_review.md`, both of which this block edits. Every reading RECORD2
+   ASSERTS about a state BEFORE this round names the SHA 7480d880 or an earlier one;
+   every claim about a state this round CREATES names constraint 9 instead, under the
+   item-20 carve-out C1 lands. `HEAD` appears nowhere in RECORD2 as a reading.
+9. The commit order C1 before C2 is load-bearing twice over: it is what makes
+   RECORD2's claims about the narrowed items 15 and 20 true when they are written,
+   and it is what licenses RECORD2 to use the item-20 carve-out at all. Do not
+   reorder.
+10. Do not "repair" the R33 handback. `.agent/handoff.md` is rewritten by C4 in the
+    normal way; the false proof sentence is corrected by RECORD2's registration, not
+    by editing landed text — the R-0521 principle.
 
 ## Done when
 
@@ -89,217 +109,265 @@ G1 STATE. `.agent/STOP` absent at the two points named in constraint 3;
 `git status --porcelain` empty at round start and after every commit;
 `git worktree list` one line throughout.
 
-G2 TRANSPORT. After C0b the committed `.agent/authored/f085-r33.md`, the committed
-`.agent/last_block.md` and BOTH working copies are byte-EQUAL. Report the sha256,
-the byte count, the line count, the number of marker lines, and region digests over
-the line ranges 1-100, 101-200 and 201-end. Do not compute any of those numbers by
-hand; measure them.
+G2 TRANSPORT. After C0b the committed `.agent/authored/f085-r34.md`, the committed
+`.agent/last_block.md` and BOTH working copies are byte-EQUAL. Report the sha256, the
+byte count, the line count, the number of marker lines, and region digests over the
+line ranges 1-100, 101-200 and 201-end, each digest taken over those lines with their
+trailing newlines included. Do not compute any of those numbers by hand; measure
+them.
 
 G3 APPEND SHAPE for C2. The pre-commit blob of `.agent/live_review.md` is a
 byte-exact PREFIX of the post-commit file; the remainder is exactly one blank line
-plus RECORD1; RECORD1's first line occurs once among the lines that commit's diff
-ADDS; 0 lines matching `^(BEGIN|END)-[A-Z0-9]+$` land in the file — count marker
-LINES, never the substring, because the quoted regex already appears in that file's
-prose and a substring count reports it. Report `git show --numstat` for that path.
+plus RECORD2; RECORD2 is an exact suffix of the post-commit file; RECORD2's first
+line occurs once among the lines that commit's diff ADDS; 0 lines matching
+`^(BEGIN|END)-[A-Z0-9]+$` land in the file — count marker LINES, never the substring,
+because the quoted regex already appears in that file's prose. Report
+`git show --numstat` for that path.
 
 G4 ARITHMETIC. Count the registered, done and landed id sets in
-`.agent/live_review.md` at base c2033d6c and at HEAD, taking registered from
+`.agent/live_review.md` at base 7480d880 and at HEAD, taking registered from
 `^- R-\d{4} — `, done from `^Done: R-\d{4} — ` and landed from `^Landed: R-\d{4}`.
-The reviewer's base reading is 135 registered / 17 done / 0 landed, 118 open, max
-registered R-0520 and max resolved R-0520; at HEAD it must be 136 / 18 / 0 with 118
-open again and both maxima R-0521. Report the registered symmetric difference and
-the done symmetric difference (each must hold exactly R-0521), the landed symmetric
-difference (empty), the count of duplicate ids, the count of resolutions naming an
-unregistered id, the maximum id, and the next free id, which moves from R-0521 to
-R-0522.
+The reviewer's base reading is 136 registered / 18 done / 0 landed, 118 open, max
+registered R-0521 and max resolved R-0521; at HEAD it must be 139 / 21 / 0 with 118
+open again and both maxima R-0524. Report the registered symmetric difference and the
+done symmetric difference (each must hold exactly R-0522, R-0523 and R-0524), the
+landed symmetric difference (empty), the count of duplicate ids, the count of
+resolutions naming an unregistered id, the maximum id, and the next free id, which
+moves from R-0522 to R-0525.
 
-G5 THE CHECKLIST NARROWING LANDED, measured at HEAD after C1. In
-`docs/agents/planner_reviewer_prompt.md` the line
-`      identifier that already EXISTS when the slice is written — a SHA, never a label`
-occurs exactly once; the closing paragraph opener
-`  Why this is on disk and not a habit: item 2 has recurred six times across`
-still occurs exactly once; the item-20 opener
-`  20. **A slice states a fact about a file the same block edits only with the commit`
-still occurs exactly once, because this pair narrows item 20 rather than adding an
-item; and 0 lines matching `^(BEGIN|END)-[A-Z0-9]+$` reached the file. Report
-`git show --numstat` for C1.
+G5 THE NARROWINGS LANDED, measured at HEAD after C1, and the APPEND obligation
+for both pairs. In `docs/agents/planner_reviewer_prompt.md`:
+- the P15F text still occurs exactly once and the P20F text still occurs exactly
+  once, because both pairs are APPEND-shaped and their FROMs survive by construction;
+- the item-15 opener
+  `  15. **Pair shapes are classified by a containment test, never by eye.** Finding`
+  and the item-20 opener
+  `  20. **A slice states a fact about a file the same block edits only with the commit`
+  and the item-16 opener
+  `  16. **No heading states a count of the contents beneath it.** Finding R-0510. A`
+  and the closing paragraph opener
+  `  Why this is on disk and not a habit: item 2 has recurred six times across`
+  each still occur exactly once, because this commit narrows two items rather than
+  adding, removing or renumbering any;
+- every line that P15T and P20T add and their FROMs do not contain occurs exactly
+  once AMONG THE LINES C1's DIFF ADDS — that is the §4.9 append obligation, and it is
+  the reading ordered INSTEAD of a FROM-zero count;
+- 0 lines matching `^(BEGIN|END)-[A-Z0-9]+$` reached the file.
+Report `git show --numstat` for C1.
 
 G6 STATE READERS AND DOCS. This round changes no production code, so it orders no
 ruff run and no red proof. Because it rewrites `.agent/` state:
 `python3 -m pytest tests/orchestration/test_test_runner.py
 tests/regression/test_resource_safety.py tests/orchestration/test_integrity_gate.py
 tests/ui_server/test_dashboard_contract.py -rf -q` exits 0, base reading
-`159 passed`. RUN IT IN THE PRIMARY CHECKOUT AND NEVER IN A WORKTREE: R-0518
-records why, and a red naming `TestVitestFrontendTestFoundation::test_vitest_passes`
-with `apps/ui/node_modules` absent IS that finding rather than a regression. Any
-other red is a STOP under constraint 7. Because a file under `docs/` changes:
-`python3 -m pytest tests/docs/ -q` exits 0, base reading `295 passed`. CANARY:
-`python3 -m pytest tests/cli/test_golden_path.py -q` exits 0, base reading
+`159 passed`. RUN IT IN THE PRIMARY CHECKOUT AND NEVER IN A WORKTREE: R-0518 records
+why, and a red naming `TestVitestFrontendTestFoundation::test_vitest_passes` with
+`apps/ui/node_modules` absent IS that finding rather than a regression. Any other red
+is a STOP under constraint 7. Because a file under `docs/` changes:
+`python3 -m pytest tests/docs/ -q` exits 0, base reading `295 passed`. Do NOT read
+that green as evidence about C1: the reviewer ran the red control in a disposable
+worktree at 7480d880 and, with `docs/agents/planner_reviewer_prompt.md` replaced by
+the single line `# broken`, the suite still returned `295 passed`. No test under
+`tests/docs/` reads that file, so this gate covers the README index and roadmap
+consistency and is BLIND to C1 by construction. G5 is the only check on C1's content.
+CANARY: `python3 -m pytest tests/cli/test_golden_path.py -q` exits 0, base reading
 `42 passed`.
 
-G7 COMMIT HYGIENE. `git diff --name-only c2033d6c..HEAD` measured BEFORE C4 holds
+G7 COMMIT HYGIENE. `git diff --name-only 7480d880..HEAD` measured BEFORE C4 holds
 exactly the paths named in the change set above, minus `.agent/handoff.md` which C4
 writes, and nothing else. Report per-commit insertions for every commit BEFORE C4 —
-C4 cannot measure itself, so report its own insertions in the round report instead
-— and confirm none exceeds 500. Confirm every commit has exactly one parent and
-that `git reflog -10` holds only `commit:` entries.
+C4 cannot measure itself, so report its own insertions in the round report instead —
+and confirm none exceeds 500. Confirm every commit has exactly one parent and that
+`git reflog -10` holds only `commit:` entries.
 
 ## Handback
 
 Rewrite `.agent/handoff.md` per docs/agents/handback_template.md: feature and round,
-branch, base SHA c2033d6c, a per-commit changed-files table, the item-status table
+branch, base SHA 7480d880, a per-commit changed-files table, the item-status table
 covering C0a, C0b, C1, C2, C3 and C4, the real verification results for G1-G7 with
-exit codes, the open-findings count, and the next expected action. Repeat this
+exit codes, the open-findings count, and the next expected action. In the
+`## Authored-text proofs` section, report each pair under the shape constraint 2
+assigns it and NEVER report a FROM-zero count for an APPEND pair. Repeat this
 Fortschritt line verbatim:
-Fortschritt: ~70 % (T001 gebaut · R13-R32 PASS · T002a KOMPLETT · T002b 9 von 12
-Sites auf dem Seam, 3 offen · T002c-d, T003 offen) — Schätzung, gegen die
-Klassentabelle aus Amendment F085 D1 gemessen.
+Fortschritt: ~70 % (T001 gebaut · R13-R32 PASS · R33 FAIL, hier repariert · T002a
+KOMPLETT · T002b 9 von 12 Sites auf dem Seam, 3 offen · T002c-d, T003 offen) —
+Schätzung, gegen die Klassentabelle aus Amendment F085 D1 gemessen.
 
 The handback MUST state, in its `## Next` section, that the next session's first
 action is Phase 1 rule 1 — re-read `.agent/STOP` from disk — BEFORE rule 2, the Open
-PR Gate (`gh pr list --state open --json number,headRefName,baseRefName,isDraft`).
-It MUST also state that R33's own verdict is NOT a §4.13 terminator because this
-branch continues, that the next reviewed round records R33's gate entry in
-`.agent/live_review.md`, and that the next MIGRATION round takes
-`mission_state.py`'s spawn, because `builder_bridge.py` cannot move until the seam
-can SET an environment value rather than only allowlist a key.
+PR Gate (`gh pr list --state open --json number,headRefName,baseRefName,isDraft`). It
+MUST also state that R34's own verdict is NOT a §4.13 terminator because this branch
+continues, that the next reviewed round records R34's gate entry in
+`.agent/live_review.md`, and that the next MIGRATION round takes `mission_state.py`'s
+spawn, because `builder_bridge.py` cannot move until the seam can SET an environment
+value rather than only allowlist a key.
 
 Then `git push -u origin feature/f085-sandbox-hardening`. No PR, no merge.
 
-BEGIN-SHARPF
-      counter-measure is the commit name, never a rewrite: appending a correction is
-      how this record stays honest, and overwriting landed text is worse than a dated
-      wrong sentence.
-END-SHARPF
+BEGIN-P15F
+      likely to be trusted. Nothing broke that round only because no gate ordered the
+      unsatisfiable "FROM 0x" reading; the next block to order one pays for it.
+END-P15F
 
-BEGIN-SHARPT
-      counter-measure is the commit name, never a rewrite: appending a correction is
-      how this record stays honest, and overwriting landed text is worse than a dated
-      wrong sentence. Finding R-0521 narrows what counts as naming the commit: it must
-      be an absolute
-      identifier that already EXISTS when the slice is written — a SHA, never a label
-      like `HEAD` or `main` that re-resolves as the round proceeds and therefore names
-      a different commit by the time the round ends. A block always has such a SHA to
+BEGIN-P15T
+      likely to be trusted. Nothing broke that round only because no gate ordered the
+      unsatisfiable "FROM 0x" reading; the next block to order one pays for it.
+      Finding R-0522 narrows what "the answer is printed" means: the constraint records
+      the containment test's own OUTPUT — the words `TO contains FROM: true` or
+      `TO contains FROM: false` — and the APPEND or REWRITE label is derived from that
+      output on the same line, never written on its own. A bare label is a recollection
+      wearing a measurement's clothes, and it is indistinguishable on the page from a
+      measured one, which is how R-0522 arose one round after this item was last
+      relied on: a block declared a pair a REWRITE while its TO began with its FROM
+      verbatim, and the handback then reported the rewrite proof's FROM-zero count for
+      a FROM that still occurred once. A block that records `true` orders the §4.9
+      append obligation and never a FROM-zero count, and it says so in the same
+      constraint, because the unattainable count is what turns a mislabelled pair into
+      a false line in the permanent record.
+END-P15T
+
+BEGIN-P20F
       hand, because its own base is stated in its done-when. R-0521 is this rule
       failing while being obeyed: the slice that RESOLVED R-0520 wrote "at HEAD",
       satisfied item 20 as it was then worded, and was falsified one commit later by
       its own round.
-END-SHARPT
+END-P20F
 
-BEGIN-RECORD1
-Gate: R33 — the R32 entry. R32 PASSED: the round that promoted the slice-fact rule
-into pre-emission checklist item 20, resolved R-0520 and moved
-`integrity_gate._check_collect_only` onto the shared `test`-class seam. Every ordered
-gate was re-run by the reviewer over 16234fbf..c2033d6c and each reproduces the
-handback's reading. TRANSPORT WAS PROVED AGAINST THE REVIEWER'S OWN ORIGINAL, not
-only against a digest: the scratch file the block was authored into, the committed
-`.agent/authored/f085-r32.md`, the committed `.agent/last_block.md` and both working
-copies are all five byte-EQUAL at sha256
-75deb8c5d666fc2f4053583eb8c4a3d94dd2db8f52c227df2a22b2392cf1e686, 23119 B, 400
-lines, 24 marker lines, region digests eb26791d, 656230ba and 0d724fc0. THE APPEND
-COMMIT HOLDS ITS SHAPE: C2's pre-commit blob is a byte-exact PREFIX of the
-post-commit file, the remainder is exactly one blank line plus RECORD1 at 4361 =
-1 + 4360 bytes, numstat 55/0, RECORD1's first line occurs once among the 55 lines
-that commit adds, 0 lines match `^(BEGIN|END)-[A-Z0-9]+$`, and the applied slice is
-an exact suffix of the file. THE ARITHMETIC MOVED IN THE DONE SET ALONE: 135
-registered / 17 done / 0 landed at c2033d6c against 135 / 16 / 0 at 16234fbf, 119
-open falling to 118, registered and landed symmetric differences empty, done
-symmetric difference exactly R-0520, no duplicate id, no resolution naming an
-unregistered id, and next free R-0521 at both ends because the round registered
-nothing. THE ORDERING THAT MADE THE RECORD TRUE WAS OBEYED: constraint 10 required
-the checklist promotion to precede the resolution that cites it, and 94e70839 does
-precede ce69c39a. THE PAIRS LANDED WHERE THEY WERE AIMED: at c2033d6c IGSPAWNF and
-IGERRF each occur 0 times in `integrity_gate.py` while IGSPAWNT, IGERRT and IGIMPT
-each occur once, the guard import occurs once among the lines C3 adds to that file,
-`import subprocess` still occurs once because the `git ls-files` call in
-`_check_relevant_untracked` is a different command class, the new test def occurs
-once among the lines C3 adds to its test file, TESTIG is an exact suffix of that
-file, and 0 marker lines reached any target. Item 20 occurs once and the checklist's
-closing paragraph still occurs once. PLANF is gone and PLANT occurs once, in a
-46-line plan under the 50-line cap. THE MIGRATION WAS PROVED TWICE, BY RUNNING IT
-AND BY BREAKING IT: the round gate exits 0 at `16 passed` against the `15 passed`
-the reviewer measured at 16234fbf, the migrated function run FOR REAL prints
-`collect_only IntegrityStatus.PASS pytest collection passed` — identical to the
-unmigrated reading at 16234fbf, which is the behaviour-equality evidence this
-feature's Acceptance asks for, and it shows the guard's environment allowlist does
-not starve a real collection — and in the reviewer's own disposable worktree at
-c2033d6c, with the guarded call replaced by a bare `subprocess.run`, the run exits 1
-with `1 failed, 15 passed` at node `test_collect_only_runs_on_the_guarded_seam`,
-`AssertionError` at `test_integrity_gate.py:235`. THE GATES WERE RE-RUN, NOT READ:
-ruff over the two changed files `All checks passed!`, the four state readers
-`159 passed`, the docs suite `295 passed` and the canary `42 passed`, each as its
-exact ordered command line in the primary checkout, each exit 0. COMMIT HYGIENE IS
-CLEAN: the path set is the eight declared paths, per-commit insertions are 400, 288,
-16, 55, 41, 12 and the handback's own 80, none over 500, all seven commits are
-single-parent, and the reflog holds only `commit:` entries. The 128-line handback
-declares its own overage against the 100-line cap and names the mandated content
-that caused it. The worker deviated from nothing it was ordered to do, and the one
-defect the round put on disk is the reviewer's, registered next.
+BEGIN-P20T
+      hand, because its own base is stated in its done-when. R-0521 is this rule
+      failing while being obeyed: the slice that RESOLVED R-0520 wrote "at HEAD",
+      satisfied item 20 as it was then worded, and was falsified one commit later by
+      its own round.
+      Finding R-0524 carves out the one class for which no such SHA can exist. A slice
+      that describes THIS round's own landed change — every `Done:` paragraph is of
+      that class — asserts a fact whose commit has not been written when the slice is
+      authored, so it names instead the block CONSTRAINT that fixes the commit order,
+      and the block carries that constraint as an ordering requirement the worker
+      cannot satisfy by accident. The base SHA answers a reading taken BEFORE the
+      round; the ordering constraint answers a reading only the round itself makes
+      true, and demanding a SHA for the second demands a value that cannot exist when
+      the text is written — the R-0371 shape, which this checklist already forbids for
+      gates and now also forbids for slices. The carve-out is narrow on purpose: it
+      reaches a claim about the round's OWN commits and nothing else, and a reading of
+      any PRIOR state still names its SHA.
+END-P20T
 
-- R-0521 — Low, A SLICE OBEYED CHECKLIST ITEM 20 AND WAS FALSIFIED ANYWAY, BECAUSE
-THE COMMIT IT NAMED WAS A LABEL RATHER THAN A SHA. R32's RECORD1, applied at commit
-ce69c39a, closes with a staleness sentence stating that `builder_bridge.py`,
-`ci_run.py`, `integrity_gate.py` and `mission_state.py` each show 0 references to
-`run_guarded_test_command` "at HEAD". That reading was taken at 16234fbf and is true
-there. C3 of the SAME round, commit ed88be4c, put `integrity_gate.py` on the seam,
-and at c2033d6c that file references the symbol twice — so one of the four names in
-that sentence is wrong for every commit from ed88be4c onward, in a file that is the
-permanent record. This is the R-0520 class recurring in the very slice that resolved
-R-0520, one commit after the counter-measure landed. The defect is the reviewer's,
-not the worker's: R32's handback found it under constraint 8 and reported it instead
-of editing a slice it was forbidden to alter, which is exactly the behaviour
-constraint 8 exists to produce. Low because nothing executable depends on the
-sentence and no gate can go red over it. What makes it worth an id rather than a
-correction is that item 20 was FOLLOWED: the sentence did name a commit, and the
-commit it named was `HEAD`, which re-resolves as the round proceeds and so denotes a
-different commit at the end of the round than at the start. A rule that can be
-obeyed and defeated at once is under-specified rather than ignored, which is why the
-counter-measure narrows item 20 instead of adding an item. Rewriting the landed
-sentence is NOT proposed: appending a correction is how this record stays honest,
-and this paragraph is that correction.
+BEGIN-RECORD2
+Gate: R34 — the R33 entry. R33 FAILED, on one sentence, under §4.5's "unverified
+completion claims". EVERY GATE R33 ORDERED REPRODUCES: the reviewer re-ran G1-G7 over
+c2033d6c..7480d880 and each returns the handback's reading. TRANSPORT WAS PROVED
+AGAINST THE REVIEWER'S OWN ORIGINAL, not only against a digest: the scratch file the
+block was authored into, the committed `.agent/authored/f085-r33.md`, the committed
+`.agent/last_block.md` and both working copies are all five byte-EQUAL at sha256
+a089cc6604b57cfd9c7ee5449742a4651c10c9d7db80af0f8da735bd5b566404, 19296 B, 305 lines,
+10 marker lines, region digests 2c1d1941, 84609b00 and f6c3a188 under the
+trailing-newline convention the handback used. THE APPEND COMMIT HELD ITS SHAPE:
+c933b949's pre-commit blob is a byte-exact PREFIX of the 373548 B post-commit file,
+the remainder is 6064 B = one blank line plus RECORD1, RECORD1 is an exact suffix,
+its first line occurs once among the 79 lines that commit adds, numstat 79/0, 0 lines
+match `^(BEGIN|END)-[A-Z0-9]+$` while the BEGIN substring occurs 7 times. THE
+ARITHMETIC MOVED IN BOTH SETS BY ONE ID: 135 registered / 17 done / 0 landed at
+c2033d6c against 136 / 18 / 0 at 7480d880, 118 open at both ends, registered and done
+symmetric differences each exactly R-0521, landed symmetric difference empty, no
+duplicate id, no resolution naming an unregistered id, and next free R-0522. THE
+NARROWING LANDED WHERE IT WAS AIMED: at 7480d880 the item-20 opener, the new
+`identifier that already EXISTS` line and the checklist's closing paragraph each
+occur exactly once in `docs/agents/planner_reviewer_prompt.md`, 0 marker lines
+reached it, numstat 9/1, and 74dfa30e does precede c933b949 as R33's constraint 9
+required. THE SUITES WERE RE-RUN, NOT READ: the four state readers `159 passed`, the
+docs suite `295 passed` and the canary `42 passed`, each as its exact ordered command
+line in the primary checkout, each exit 0. COMMIT HYGIENE IS CLEAN: the path set is
+the six declared paths, per-commit insertions are 305, 223, 9, 79, 13 and the
+handback's own 89, none over 500, all six commits are single-parent, the reflog holds
+only `commit:` entries, and the ordered push landed — origin and local agree at
+7480d880. The worker deviated from nothing it was ordered to do.
 
-Done: R-0521 — Resolved at R33. Checklist item 20 of
-`docs/agents/planner_reviewer_prompt.md` §3 now requires that the commit a slice
-names be an absolute identifier that already exists when the slice is written — a
-SHA, never a label like `HEAD` or `main` — applied by the commit that precedes this
-one in this round. The narrowing is the whole resolution; the R31 gate entry's "at
-HEAD" sentence stays on disk, wrong for one of its four names from ed88be4c onward,
-because overwriting landed text is worse than a dated wrong sentence.
-END-RECORD1
+WHAT FAILED IS A SENTENCE NO GATE ASKED FOR. R33's handback closes its
+`## Authored-text proofs` section by calling both pairs REWRITE and stating that each
+FROM "matched exactly once before apply and 0 times after". The reviewer measured the
+SHARPF text at 74dfa30e: it occurs once, not zero times. The findings follow: the
+reviewer's mislabelling, the false line it produced, and one the reviewer found while
+authoring this block's own resolutions.
 
-BEGIN-PLANF
-## Current Step
-R32, this round: record the R31 PASS, resolve R-0520 by promoting its
-counter-measure into the pre-emission checklist, and move
-`integrity_gate._check_collect_only` onto `run_guarded_test_command` — the
-`test`-class site that pins no cwd and keeps `cwd=None` deliberately.
+- R-0522 — Medium, A PAIR WAS DECLARED A REWRITE WHILE ITS TO CONTAINED ITS FROM
+VERBATIM, BY A CONSTRAINT THAT CLAIMED A MECHANICAL CONTAINMENT TEST. R33's constraint
+2 reads "Pair shapes, each MEASURED by the reviewer with a containment test, one
+reading per pair: SHARPF→SHARPT REWRITE · PLANF→PLANT REWRITE". SHARPT begins with
+SHARPF verbatim, so the containment test returns true and the pair is APPEND-shaped;
+PLANF→PLANT is a REWRITE and that half is right. This is checklist item 15 — itself
+the counter-measure for R-0508, the finding in which a block "ran the check for the
+single pair it suspected" and generalised — recurring one feature later in the round
+that had just narrowed item 20 for the same underlying reason. Item 15 was obeyed as
+written: a per-pair reading WAS printed. What was printed was the LABEL and not the
+test's output, and a label is indistinguishable on the page from a measured one, so
+nothing downstream could catch it. Medium rather than Low because the label is what
+the worker's proof obligation is derived FROM: a wrong label does not stay a
+documentation defect, it manufactures a false measurement, which is R-0523.
 
-## Next Steps
-1. T002b remainder — the three `test`-class sites still on a bare spawn, each
-   differing from the shapes already migrated: `builder_bridge.py` SETS
-   `PYTHONDONTWRITEBYTECODE` on a full `os.environ` copy, which the seam cannot
-   express today because `run_guarded_test_command` allowlists keys rather than
-   setting values — that site needs the seam widened before it can move;
-   `ci_run.py` streams to the console instead of capturing and passes no timeout;
-   and `mission_state.py` spawns inside a default `runner` closure. One or two per
-   order, never as one group.
-END-PLANF
+- R-0523 — Medium, A HANDBACK REPORTED A PROOF NUMBER THAT THE FILE ON DISK
+CONTRADICTS. R33's handback, applied at 7480d880, states in `## Authored-text proofs`
+that SHARPF→SHARPT and PLANF→PLANT are "both REWRITE; each FROM matched exactly once
+before apply and 0 times after, each TO once after". At 74dfa30e the SHARPF text
+occurs exactly once in `docs/agents/planner_reviewer_prompt.md` and the SHARPT text
+occurs exactly once, because the second contains the first; the claim is true of
+PLANF→PLANT and false of SHARPF→SHARPT. §4.5 lists unverified completion claims among
+the block conditions, so this is the sentence that costs R33 its PASS even though
+every ordered gate is green — a round's verdict is not the conjunction of its gates.
+The defect is not dishonesty: §4.9 says in terms that demanding a FROM-zero count for
+an append-shaped pair "invites either a fabricated number or a pointless repair
+round", and this is that invitation being accepted. The counter-measure is upstream,
+at R-0522, because a worker handed a correct shape reports a correct number. The
+landed sentence is NOT rewritten: this paragraph is its correction, per R-0521.
 
-BEGIN-PLANT
+- R-0524 — Low, ITEM 20 NOW DEMANDS A SHA FOR A CLASS OF SLICE IN WHICH NO SHA CAN
+EXIST. R-0521's narrowing, applied at 74dfa30e, requires that the commit a slice names
+be "an absolute identifier that already EXISTS when the slice is written", justified
+on the ground that "a block always has such a SHA to hand, because its own base is
+stated in its done-when". The base SHA answers a reading of a state that PRECEDES the
+round. It cannot answer a slice that asserts what the round's own commits have just
+made true — and every `Done:` paragraph in this file is of that class, including
+those in this entry, which assert what items 15 and 20 require after C1 of R34. For
+those the required identifier is a commit that does not exist when the slice is
+authored, so the rule as narrowed is satisfiable only by a value that cannot be
+written: the R-0371 shape, which this same checklist forbids for gates. Low because
+it has cost no round yet and was caught while authoring rather than after landing.
+Found by the reviewer against its own draft, which is where item 20 is supposed to be
+read.
+
+Done: R-0522 — Resolved at R34. Checklist item 15 of
+`docs/agents/planner_reviewer_prompt.md` §3 now requires the constraint to record the
+containment test's OUTPUT — `TO contains FROM: true` or `false` — with the APPEND or
+REWRITE label derived on the same line, and it states that a `true` reading orders the
+§4.9 append obligation and never a FROM-zero count. The narrowing is applied by the
+commit that constraint 9 of this round's block fixes ahead of this one; constraint 2
+of that same block is the first use of the new form, recording a boolean for every
+pair it lists.
+
+Done: R-0523 — Resolved at R34. This registration is the correction, and it is the
+whole resolution: the false sentence stays in `.agent/handoff.md` where it landed,
+because overwriting landed text is worse than a dated wrong sentence. What stops the
+class is R-0522's narrowing plus the constraint this round's block carries, which
+forbids reporting a FROM-zero count for an APPEND pair under any wording. No gate is
+added, because no gate could have caught a number nothing ordered.
+
+Done: R-0524 — Resolved at R34. Checklist item 20 of
+`docs/agents/planner_reviewer_prompt.md` §3 now carves out the slice that describes
+the round's own landed change: it names the block CONSTRAINT fixing the commit order
+instead of a SHA, and a reading of any prior state still names its SHA. Applied by the
+commit that constraint 9 of this round's block fixes ahead of this one, which is what
+lets these three paragraphs name constraint 9 rather than an impossible identifier.
+END-RECORD2
+
+BEGIN-PLANF2
 ## Current Step
 R33, this round: record the R32 PASS, and register and resolve R-0521 by narrowing
 pre-emission checklist item 20 so the commit a slice names must be a SHA that
 already exists rather than a label that re-resolves. No production code changes.
+END-PLANF2
 
-## Next Steps
-1. T002b remainder — the three `test`-class sites still on a bare spawn, in this
-   order. `mission_state.py` next: it spawns inside a default `runner` closure and
-   is otherwise the capture-and-timeout shape already migrated three times. Then
-   `ci_run.py`, which streams to the console instead of capturing and passes no
-   timeout, so moving it onto a capturing seam is a behaviour decision and not a
-   mechanical swap. `builder_bridge.py` comes LAST and is BLOCKED until the seam
-   can SET an environment value: it puts `PYTHONDONTWRITEBYTECODE` on a full
-   `os.environ` copy, while `run_guarded_test_command` only allowlists keys that
-   the parent already has, so migrating it as-is would silently stop that variable
-   reaching the child. One or two per order, never as one group.
-END-PLANT
+BEGIN-PLANT2
+## Current Step
+R34, this round: record the R33 FAIL, and register and resolve R-0522, R-0523 and
+R-0524 — a pair mislabelled REWRITE, the false rewrite proof that label produced, and
+the slice class item 20's required SHA cannot reach. No production code changes.
+END-PLANT2
