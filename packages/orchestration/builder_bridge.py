@@ -12,7 +12,6 @@ Public API::
 
 from __future__ import annotations
 
-import os
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -32,6 +31,7 @@ from packages.orchestration.diff_repair_response import (
     diff_repair_response_to_patch,
     parse_diff_repair_response,
 )
+from packages.orchestration.exec_guard import run_guarded_test_command
 
 STOP_REASONS = frozenset({
     "structured_patch_parse_failed",
@@ -216,12 +216,18 @@ def run_builder_bridge(
         test_cmd = _find_test_command(repo_path)
         if test_cmd:
             try:
-                env = {**os.environ, "PYTHONDONTWRITEBYTECODE": "1"}
-                proc = subprocess.run(
+                # Stage-1 guard, per DECISION F085 D3. `extra_env` SETS the one
+                # variable this site used to overlay onto a copy of `os.environ`,
+                # which the guard's allowlist scrub would otherwise drop. The 60 s
+                # was already this call's wall and stays its wall: the guard's own
+                # deadline replaces `subprocess.run`'s and still surfaces as
+                # `TimeoutExpired`, so the handler below is unchanged. Streams come
+                # back as BYTES rather than text, and only `returncode` is read here.
+                proc = run_guarded_test_command(
                     test_cmd,
-                    capture_output=True, text=True, timeout=60,
+                    timeout_sec=60,
                     cwd=str(repo_path),
-                    env=env,
+                    extra_env={"PYTHONDONTWRITEBYTECODE": "1"},
                 )
                 passed = proc.returncode == 0
                 result.test_passed = passed
