@@ -1,77 +1,91 @@
-── STEP T002b Restprüfung — F085 — R29 ───────────────────────────────────────
+── STEP T002b group 1 — F085 — R30 ───────────────────────────────────────────
 
-Goal: record the R28 PASS, register what the Restprüfung measured, and put that
-measurement on disk in the inventory of record — how many of amendment F085 D1's
-twelve `test`-class sites are on the shared seam today and exactly which ones are
-not. No production code is touched: every path in the change set is under
-`.agent/`.
+Goal: record the R29 PASS, resolve R-0519, and move the two byte-identical
+post-test spawns — `job_promote._run_post_test` and
+`pingpong_promote._run_post_test` — onto the shared `test`-class seam, each with
+a test that pins the migration.
 
 Bundle, in order: C0a save this block · C0b mirror it into last_block · C1 record
-R28 and register R-0519 · C2 plan · C3 inventory · C4 handback.
+R29 and resolve R-0519 · C2 the migration and its tests · C3 plan · C4 handback.
 
 ## Why this round exists — read before C1
 
-R28 passed every gate it ordered. The reviewer re-ran all of them over
-07b1ba25..b0d09db4, including its red proof in a fresh worktree, and every
-reading reproduces.
+R29 passed every gate it ordered; the reviewer re-ran all of them over
+b0d09db4..f99a8fe2 and every reading reproduces. R-0519's counter-measure landed
+in that same round, so this round resolves it rather than carrying it.
 
-The Restprüfung R28's own plan ordered has now been done, and it corrects the
-picture rather than confirming it. `.agent/plan.md` had described T002b's
-remainder as "the `test`-class sites still on a bare spawn, ending with
-`test_execution_service.py`'s `Popen`". That sentence is true about `Popen`
-specifically and misleading about the slice: `test_execution_service.py`:323 was
-the last `Popen` in the class, not the last SITE. Five of the twelve are on the
-seam — `autorun.py`:382, 510 and 563, `test_runner.py`:201 and
-`test_execution_service.py`:323 — and seven are still on a bare spawn.
+The two sites this round migrates are ONE shape, not two: over the regions the
+pairs replace, `job_promote.py` and `pingpong_promote.py` are byte-identical —
+same `shlex`-split argv, same `timeout_sec`, same `cwd=str(target)`, same
+concatenation of the two streams into the `str` summary the caller reads. That is
+why one pair serves both files.
 
-That makes the Fortschritt line R28's handback carries, `~85 %`, an overstatement
-the class table contradicts, which is why R-0519 is registered here rather than
-quietly corrected. The estimate is the operator's only progress signal and it was
-authored by the reviewer.
+The seam hands back BYTES — `run_guarded_test_command` returns
+`CompletedProcess[bytes]` — so the migration has two coupled halves: the spawn
+moves onto the guard AND the stream concatenation gains a decode. A change that
+does only one half raises `AttributeError: 'str' object has no attribute
+'decode'`, which is what G6's red proof produces on purpose.
+
+`pingpong_loop._run_test_command` is the same shape with `staging` in place of
+`target` and is deliberately NOT in this round: adding it pushed the block over
+the 400-line cap of docs/agents/planner_reviewer_prompt.md §3 item 1. It leads
+the plan's remainder list instead.
 
 ## Change
 
 C1 — `.agent/live_review.md`, one commit, RECORD1 appended and nothing else.
-RECORD1 carries the R28 gate entry and then the R-0519 registration, as one slice.
+RECORD1 carries the R29 gate entry and then the R-0519 resolution, as one slice.
 
-C2 — `.agent/plan.md`, one commit, the PLANF→PLANT pair. The FROM spans the whole
+C2 — one commit. SPAWNF→SPAWNT and OUTF→OUTT are each applied to
+`job_promote.py` AND to `pingpong_promote.py`, matching at exactly one place in
+each; the pairs are narrowed to the lines that actually change, so the untouched
+`except` arms are not carried through the block. Each file also takes its own
+IMPORT pair, because their import blocks differ — `job_promote.py` already
+imports from `packages.orchestration`, `pingpong_promote.py` does not. TESTJP and
+TESTPP append one node each to the test file named after the source it covers.
+
+C3 — `.agent/plan.md`, one commit, the PLANF→PLANT pair. The FROM spans the whole
 `## Current Step` and `## Next Steps` region so the numbered list is rewritten by
-the pair itself.
+the pair itself and no stale label survives on its tail.
 
-C3 — `.agent/f085_inventory.md`, one commit, the INVF→INVT pair. INVT keeps the
-`### test — 12` heading and its site list byte-for-byte and adds a migration-state
-paragraph beneath them, so the inventory's own numbering is untouched and the
-measurement lands where a reader of that file will look for it.
+Change set, named rather than counted: `packages/orchestration/job_promote.py`,
+`packages/orchestration/pingpong_promote.py`,
+`tests/orchestration/test_job_promote.py`,
+`tests/orchestration/test_pingpong_promote.py`, `.agent/authored/f085-r30.md`,
+`.agent/last_block.md`, `.agent/live_review.md`, `.agent/plan.md` and
+`.agent/handoff.md`. Nothing else is touched.
 
 ## Constraints
 
 1. Every slice is applied byte-verbatim, extracted PROGRAMMATICALLY from the
-   committed `.agent/authored/f085-r29.md` by its marker pair. Never retype a
-   slice, and never apply one from the delegating prompt. Marker lines never
-   reach a target file.
-2. Pair shapes, each MEASURED by the reviewer with a containment test rather than
-   read by eye, one reading per pair: PLANF→PLANT REWRITE · INVF→INVT
-   APPEND-SHAPED, because INVT contains INVF verbatim and adds only text beneath
-   it. INVF therefore takes the added-lines proof of G6 and never a whole-file
-   "FROM 0x" count.
+   committed `.agent/authored/f085-r30.md` by its marker pair. Never retype a
+   slice, never apply one from the prompt. Marker lines never reach a target file.
+2. Pair shapes, each MEASURED by the reviewer with a containment test, one
+   reading per pair: SPAWNF→SPAWNT REWRITE · OUTF→OUTT REWRITE · IMPF1→IMPT1
+   APPEND-SHAPED · IMPF2→IMPT2 APPEND-SHAPED · PLANF→PLANT REWRITE. The two
+   append-shaped import pairs therefore take the added-lines proof of G5 and
+   never a whole-file "FROM 0x" count. TESTJP and TESTPP are appends to the end
+   of their files and have no FROM at all.
 3. Re-read `.agent/STOP` from disk before C0a and again before C4. If it exists,
    finish the commit in flight, write the handback and stop.
-4. `git status --porcelain` is empty at round start and after every commit. No
-   destructive check is ordered this round, so `git worktree list` stays one line
-   throughout; if you need one anyway it goes under `.remedy-wt/` and is removed
-   and pruned before the handback.
+4. `git status --porcelain` is empty at round start and after every commit. G6's
+   red proof is destructive, so it runs ONLY inside a disposable worktree under
+   `.remedy-wt/`, which is removed and pruned before C3; `git worktree list` is
+   one line at the handback.
 5. C1 is an APPEND: the pre-commit file stays a byte-exact prefix and exactly one
    blank line separates it from RECORD1. Do not reflow, re-wrap or re-indent it.
-6. Nothing outside the declared change set is touched. This round resolves no
-   finding and registers R-0519 and no other, so the done set must come out
-   unchanged.
-7. If any gate comes out red, or a FROM does not match at exactly one place,
-   STOP: write the handback naming the exact command, its exit code and its
-   output, and do not improvise a repair.
+6. Nothing outside the declared change set is touched. This round resolves R-0519
+   and registers nothing, so the registered set must come out unchanged.
+7. If any gate comes out red, or a FROM does not match at exactly one place in
+   the file it is applied to, STOP: write the handback naming the exact command,
+   its exit code and its output, and do not improvise a repair.
 8. STALENESS, standing: after C3 re-read every edited file and confirm that no
    sentence this round put on disk was falsified by a later commit of the same
    round, and that no slice quotes another file's current wording as a claim.
-   Report the check by naming what was re-read.
+   Name what was re-read.
+9. TESTJP and TESTPP append to files that already end in a test body. Append each
+   to the file's existing bytes with exactly the blank lines the slice itself
+   carries; do not insert or delete a separating newline of your own.
 
 ## Done when
 
@@ -79,11 +93,11 @@ G1 STATE. `.agent/STOP` absent at the two points named in constraint 3;
 `git status --porcelain` empty at round start and after every commit;
 `git worktree list` one line at the handback.
 
-G2 TRANSPORT. After C0b the committed `.agent/authored/f085-r29.md`, the
+G2 TRANSPORT. After C0b the committed `.agent/authored/f085-r30.md`, the
 committed `.agent/last_block.md` and BOTH working copies are byte-EQUAL. Report
 the sha256, the byte count, the line count, the number of marker lines, and
-region digests over the line ranges 1-100, 101-200 and 201-end. Do not compute
-any of those numbers by hand; measure them.
+region digests over the line ranges 1-100, 101-200, 201-300 and 301-end. Do not
+compute any of those numbers by hand; measure them.
 
 G3 APPEND SHAPE for C1. The pre-commit blob of `.agent/live_review.md` is a
 byte-exact PREFIX of the post-commit file; the remainder is exactly one blank
@@ -94,156 +108,255 @@ both already appear in that file's prose and a substring count reports them.
 Report `git show --numstat` for that path.
 
 G4 ARITHMETIC. Count the registered, done and landed id sets in
-`.agent/live_review.md` at base b0d09db4 and at HEAD. The reviewer's base reading
-is 133 registered / 15 done / 0 landed, 118 open, max R-0518; at HEAD it must be
-134 / 15 / 0 with 119 open and max R-0519. Report the registered symmetric
-difference (it must hold exactly R-0519), the done and landed symmetric
-differences (both empty), the count of duplicate ids, the count of resolutions
-naming an unregistered id, the maximum id and the next free id.
+`.agent/live_review.md` at base f99a8fe2 and at HEAD. The reviewer's base reading
+is 134 registered / 15 done / 0 landed, 119 open, max R-0519; at HEAD it must be
+134 / 16 / 0 with 118 open and max still R-0519. Report the registered symmetric
+difference (it must be EMPTY), the done symmetric difference (it must hold
+exactly R-0519), the landed symmetric difference (empty), the count of duplicate
+ids, the count of resolutions naming an unregistered id, the maximum id and the
+next free id.
 
-G5 PLAN PAIR. PLANF occurs 0 times at HEAD and PLANT exactly once. `## Goal` and
-`## Risks` are byte-IDENTICAL to their base bytes. Report `.agent/plan.md`'s
-sha256, its byte count, a line count under 50, and the numerals its `## Next
-Steps` list parses to rather than a count of them.
+G5 MIGRATION PAIRS, measured at HEAD after C2. SPAWNF and OUTF each occur 0 times
+in `job_promote.py` and 0 times in `pingpong_promote.py`, and SPAWNT and OUTT each
+occur exactly once in each file. For each IMPORT pair, which is append-shaped,
+report that its TO
+occurs exactly once in its file and that the line
+`from packages.orchestration.exec_guard import run_guarded_test_command` occurs
+exactly once among the lines C2's diff ADDS to that file. Report that each of the
+two test files gained the line
+`def test_job_promote_post_test_runs_on_the_guarded_seam(tmp_path, monkeypatch):`
+respectively
+`def test_pingpong_promote_post_test_runs_on_the_guarded_seam(tmp_path, monkeypatch):`
+exactly once among the lines C2's diff ADDS to it. Report that 0 lines matching
+`^(BEGIN|END)-[A-Z0-9]+$` reached any of the four files, and `git show --numstat`
+for C2.
 
-G6 INVENTORY PAIR. INVF is append-shaped, so report that INVF occurs exactly once
-in `.agent/f085_inventory.md` at HEAD, that INVT occurs exactly once, and that the
-lines C3's diff ADDS contain the line `Migration state, measured at R29:` exactly
-once. Also report that the file's `### test — 12` heading and the ten site lines
-beneath it are byte-IDENTICAL to their base bytes.
+G6 THE MIGRATION IS REAL, PROVED BY BREAKING IT. Round gate first, in the PRIMARY
+checkout: `python3 -m pytest tests/orchestration/test_job_promote.py
+tests/orchestration/test_pingpong_promote.py -q -rf` exits 0. The reviewer
+measured that command at base f99a8fe2 as `144 passed` and, with this block's own
+slices applied in a disposable worktree, as `146 passed` — report the HEAD count
+as a READING and never as a target. The behaviour-equality golden the feature
+file asks for is `TestApprovePostTest::test_post_apply_test_runs`, which spawns a
+REAL child through the migrated function; the new node does not.
+Then the RED PROOF, in a disposable worktree at HEAD under `.remedy-wt/` and
+NEVER in the primary checkout: in `job_promote.py` replace the five-line
+`run_guarded_test_command(` call with a bare
+`subprocess.run(argv, capture_output=True, text=True, timeout=timeout_sec, cwd=str(target))`
+and LEAVE the decode line as this block wrote it, then run
+`python3 -m pytest tests/orchestration/test_job_promote.py -q -rf`. It must FAIL
+with both `test_job_promote_post_test_runs_on_the_guarded_seam` and
+`TestApprovePostTest::test_post_apply_test_runs` among the failures. Report the
+failing node names and the exception text the run prints. Delete the worktree,
+then remove and prune it before C3.
 
-G7 STATE READERS AND CANARY, because this round rewrites `.agent/` state:
+G7 LINT AND STATE READERS. `python3 -m ruff check` over the four non-`.agent`
+files C2 changes, as one command line with the repository's own configuration and
+no `--isolated`, exits 0. Then, because this round also rewrites `.agent/` state:
 `python3 -m pytest tests/orchestration/test_test_runner.py
 tests/regression/test_resource_safety.py tests/orchestration/test_integrity_gate.py
 tests/ui_server/test_dashboard_contract.py -rf -q` exits 0, base reading
-`158 passed` — report the count as a READING and never as a target. RUN IT IN THE
-PRIMARY CHECKOUT AND NEVER IN A WORKTREE: R-0518 records why, and a red naming
-`TestVitestFrontendTestFoundation::test_vitest_passes` with `apps/ui/node_modules`
-absent IS that finding rather than a regression. Any other red is a STOP under
-constraint 7. CANARY: `python3 -m pytest tests/cli/test_golden_path.py -q` exits
-0, base reading `42 passed`. No ruff gate and none skipped by oversight: the
-change set contains no `.py` file. No docs gate: nothing under `docs/` changes.
+`158 passed`. RUN IT IN THE PRIMARY CHECKOUT AND NEVER IN A WORKTREE: R-0518
+records why, and a red naming `TestVitestFrontendTestFoundation::test_vitest_passes`
+with `apps/ui/node_modules` absent IS that finding rather than a regression. Any
+other red is a STOP under constraint 7. CANARY:
+`python3 -m pytest tests/cli/test_golden_path.py -q` exits 0, base reading
+`42 passed`. No docs gate: nothing under `docs/` changes.
 
-G8 COMMIT HYGIENE. `git diff --name-only b0d09db4..HEAD` measured BEFORE C4 holds
-exactly these paths and nothing else, named rather than counted:
-`.agent/authored/f085-r29.md`, `.agent/f085_inventory.md`, `.agent/last_block.md`,
-`.agent/live_review.md`, `.agent/plan.md`. Report per-commit insertions for every
-commit BEFORE C4 — C4 cannot measure itself, so report its own insertions in the
-round report instead — and confirm none exceeds 500. Confirm every commit has
-exactly one parent and that `git reflog -12` holds only `commit:` entries.
+G8 COMMIT HYGIENE. `git diff --name-only f99a8fe2..HEAD` measured BEFORE C4 holds
+exactly the paths named in the change set above, minus `.agent/handoff.md` which
+C4 writes, and nothing else. Report per-commit insertions for every commit BEFORE
+C4 — C4 cannot measure itself, so report its own insertions in the round report
+instead — and confirm none exceeds 500. Confirm every commit has exactly one
+parent and that `git reflog -10` holds only `commit:` entries.
 
 ## Handback
 
 Rewrite `.agent/handoff.md` per docs/agents/handback_template.md: feature and
-round, branch, base SHA, a per-commit changed-files table, the item-status table
-covering C0a, C0b, C1, C2, C3 and C4, the real verification results for G1-G8
-with exit codes, the open-findings count, and the next expected action. Repeat
-this Fortschritt line verbatim:
-Fortschritt: ~60 % (T001 gebaut · R13-R28 PASS · T002a KOMPLETT · T002b 5 von 12
-Sites auf dem Seam, 7 offen · T002c-d, T003 offen) — Schätzung, gegen die
+round, branch, base SHA f99a8fe2, a per-commit changed-files table, the
+item-status table covering C0a, C0b, C1, C2, C3 and C4, the real verification
+results for G1-G8 with exit codes, the open-findings count, and the next expected
+action. Repeat this Fortschritt line verbatim:
+Fortschritt: ~63 % (T001 gebaut · R13-R29 PASS · T002a KOMPLETT · T002b 7 von 12
+Sites auf dem Seam, 5 offen · T002c-d, T003 offen) — Schätzung, gegen die
 Klassentabelle aus Amendment F085 D1 gemessen.
 
 The handback MUST state, in its `## Next` section, that the next session's first
 action is Phase 1 rule 1 — re-read `.agent/STOP` from disk — BEFORE rule 2, the
 Open PR Gate (`gh pr list --state open --json
-number,headRefName,baseRefName,isDraft`). It MUST also state that R-0519 is OPEN
-and awaits the next reviewed round's authored resolution, that R29's own verdict
-is NOT a §4.13 terminator because this branch continues, and that the next
-reviewed round records R29's gate entry in `.agent/live_review.md`.
+number,headRefName,baseRefName,isDraft`). It MUST also state that R30's own
+verdict is NOT a §4.13 terminator because this branch continues, and that the
+next reviewed round records R30's gate entry in `.agent/live_review.md`.
 
-Then `git push -u origin feature/f085-sandbox-hardening`. Create no PR and merge
-nothing.
+Then `git push -u origin feature/f085-sandbox-hardening`. No PR, no merge.
 
 BEGIN-RECORD1
-Gate: R28 — PASS, the round that put `_run_isolated_process` on the seam's child
-half and closed R-0517. Every ordered gate was re-run by the reviewer over
-07b1ba25..b0d09db4 and each one reproduces the handback's reading. TRANSPORT WAS
-PROVED AGAINST THE REVIEWER'S OWN ORIGINAL AND NOT ONLY AGAINST A DIGEST: the
-scratch file the block was authored into, the committed
-`.agent/authored/f085-r28.md`, the committed `.agent/last_block.md` and both
-working copies are all five byte-EQUAL at sha256
-c73bac4c5553f82312b5d38669bb33de3586a897f2ec7198f39c0b1399b406d0, 21848 B, 398
-lines, 26 marker lines, region digests 3866a6a1, d15e4f7e and 4b8d681f. THE
-APPEND COMMIT HOLDS ITS SHAPE: C1's pre-commit blob is a byte-exact PREFIX of the
+Gate: R29 — PASS, the state-only round that recorded the R28 PASS, registered
+R-0519 and put the T002b migration state into the inventory of record. Every
+ordered gate was re-run by the reviewer over b0d09db4..f99a8fe2 and each one
+reproduces the handback's reading. TRANSPORT: the committed
+`.agent/authored/f085-r29.md`, the committed `.agent/last_block.md` and both
+working copies are all four byte-EQUAL at sha256
+5c93aff876b168aada846b99dcf9ff927df3f41f3329b55a7f40d353422dd813, 18160 B, 306
+lines, 10 marker lines at 157, 226, 228, 244, 246, 262, 264, 276, 278 and 306,
+region digests c40e6be2, 23d988e4 and 70c142ae. No scratchpad original from that
+authoring session survived into this one, so the proof is disk-to-disk over the
+committed artifacts under the self-drive protocol's cmp rule; stated, not
+implied. THE APPEND
+COMMIT HOLDS ITS SHAPE: C1's pre-commit blob is a byte-exact PREFIX of the
 post-commit file, the remainder is exactly one blank line plus RECORD1 at numstat
-71/0, RECORD1's first line occurs once among the 71 lines that commit adds, and 0
-lines match `^(BEGIN|END)-[A-Z0-9]+$` while the substring `END-` hits seven times
-— five older than that round and two added by RECORD1's own prose, which quotes
-the regex and the word `APPEND-shaped`. A line-anchored count reports the
-property; a substring count reports the prose. THE ARITHMETIC MOVED IN BOTH SETS
-AT ONCE WHILE THE OPEN COUNT STAYED FLAT: 133 registered / 15 done / 0 landed at
-HEAD against 132 / 14 / 0 at base, 118 open at both ends, registered symmetric
-difference exactly R-0518, done symmetric difference exactly R-0517, landed
-empty, no duplicate id, no resolution naming an unregistered id, max R-0518 and
-next free R-0519. A flat open count across a round that both registers and
-resolves is the arithmetic working, not the arithmetic standing still. THE
-MIGRATION TOOK THE CHILD HALF AND LEFT THE PARENT HALF ALONE: S1F through S4F
-occur 0 times at HEAD and each TO exactly once, the new test's `def` line occurs
-once among the lines C3 adds, `def test_no_shell_true(self):` still occurs
-exactly once in the file, and no marker line reached any target. The source
-guards over `_run_isolated_process` still hold, because the migration kept
-`subprocess.Popen(`, `start_new_session=True` and `DEVNULL` inside the function
-and added no `subprocess.run(`. THE PROOF IS A REAL CHILD AND THE REVIEWER BROKE
-IT INDEPENDENTLY: at HEAD the new node passes, and in a disposable worktree at
-HEAD with the single line `preexec_fn=plan.preexec_fn,` deleted it FAILS, then
-passes again once restored. The reviewer ran that recipe itself rather than
-reading the worker's transcript, and the parent's own RLIMIT_CORE of (0, -1) is
-what makes the child's (0, 0) an observation rather than a tautology. THE GATES
-WERE RE-RUN, NOT READ: the round gate exited 0 with `98 passed` against a base of
-`97 passed` the reviewer measured before the block was written, ruff over both
-changed files `All checks passed!`, the four state readers `158 passed` and the
-canary `42 passed`, each as its exact ordered command line. COMMIT HYGIENE IS
-CLEAN: the path set is the six declared paths, per-commit insertions are 398,
-334, 71, 8 and 39 with the handback's own 84 measured after it existed and none
-over 500, the range is a single-parent chain, and the reflog holds only `commit:`
-entries. The handback is 125 lines against the 100 a round with more than five
-per-commit tables may carry; the overage is declared, names its own measured
-length and names the mandated content that caused it. R-0202 is correctly still
-OPEN: the migration passes the caller's already-scrubbed `env` through unchanged,
-so the variable that finding names is dropped after this round by the same code
-as before it. No block condition is met.
+69/0, RECORD1's first line occurs once among the 69 lines that commit adds, and 0
+lines match `^(BEGIN|END)-[A-Z0-9]+$` while the substring `END-` hits nine times
+in that file's prose. THE ARITHMETIC MOVED IN ONE SET ONLY: 134 registered / 15
+done / 0 landed at HEAD against 133 / 15 / 0 at base, 118 open rising to 119,
+registered symmetric difference exactly R-0519, done and landed symmetric
+differences both empty, no duplicate id, no resolution naming an unregistered id,
+max R-0519 and next free R-0520. THE PAIRS LANDED WHERE THEY WERE AIMED: PLANF
+occurs 0 times at HEAD and PLANT exactly once, `## Goal` and `## Risks` are
+byte-identical to their base bytes, `.agent/plan.md` is 42 lines under the
+50-line cap, and its `## Next Steps` parses to 1, 2, 3. INVF occurs once and INVT
+once, INVT contains INVF verbatim so the pair really is append-shaped, and
+`Migration state, measured at R29:` occurs once among the 16 lines C3 adds. THE
+MEASUREMENT THE ROUND EXISTS TO RECORD IS TRUE OF THE SOURCE, NOT ONLY OF THE
+PROSE: the reviewer re-derived it per file rather than trusting the paragraph.
+`autorun.py` references `run_guarded_test_command` five times, `test_runner.py`
+three times and `test_execution_service.py` references `plan_child_spawn` three
+times, so those three files carry the five sites called ON THE SEAM;
+`builder_bridge.py`, `ci_run.py`, `integrity_gate.py`, `job_promote.py`,
+`mission_state.py`, `pingpong_loop.py` and `pingpong_promote.py` reference
+neither symbol. Five on the seam, seven not, as the inventory paragraph and
+R-0519 both state. THE GATES WERE RE-RUN, NOT READ: the four state
+readers exited 0 at `158 passed` and the canary exited 0 at `42 passed`, each as
+its exact ordered command line in the primary checkout. COMMIT HYGIENE IS CLEAN:
+the path set before the handback is the five declared paths, per-commit
+insertions are 306, 212, 69, 8 and 16 with the handback's own 99 measured after
+it existed and none over 500, the range is a single-parent chain, and the reflog
+holds only `commit:` entries. One reported number differs and neither reading is
+wrong: the handback gives `## Goal` as 729 B where a heading-inclusive slice
+measures 730 B, a section-boundary convention that leaves the ordered property —
+byte-identical to base — reproducing either way. The 131-line handback declares
+its own overage against the 100-line cap and names the mandated content that
+caused it. No block condition is met.
 
-- R-0519 — Low, A PROGRESS ESTIMATE THE REVIEWER AUTHORED OVERSTATED A SLICE THE
-CLASS TABLE CAN MEASURE. R28's handback carries `Fortschritt: ~85 %`, and the plan
-it inherited described T002b's remainder as the `test`-class sites "ending with
-`test_execution_service.py`'s `Popen`". Measured against amendment F085 D1's class
-table, five of the twelve `test`-class sites are on the shared seam and seven are
-not. `test_execution_service.py`:323 was the last `Popen` of the class, not its
-last SITE, and the plan sentence conflated the two — which is how an estimate
-built on it reached 85 % for a slice that is under half migrated. The criterion
-used, so it can be re-checked: a site is ON THE SEAM when its spawn takes cwd,
-env and the fork-to-exec hook from `exec_guard`, through either
-`run_guarded_test_command` or `plan_child_spawn`; each of the seven remaining
-files contains no reference to either symbol. Low because nothing executable
-depends on the number and no gate could go red over it. It is registered rather
-than corrected in silence because the Fortschritt line is the operator's only
-progress signal, it is authored by the reviewer, and
-docs/agents/planner_reviewer_prompt.md §2 requires it to be honest and labelled an
-estimate. The counter-measure ships in this same round: C3 writes the migration
-state into `.agent/f085_inventory.md` directly beneath the class list that defines
-the set, so the next estimate is derived from the file that fixes the denominator
-rather than from the previous estimate. OPEN.
+Done: R-0519 — RESOLVED at R29 by the counter-measure the finding itself named.
+`.agent/f085_inventory.md` now carries `Migration state, measured at R29:`
+directly beneath the `### test — 12` heading that defines the class, naming the
+criterion for being on the seam, the files that satisfy it and the files that do
+not — so the next estimate is derived from the file that fixes the denominator
+instead of from the previous estimate. The overstated line is gone as well: R29's
+handback carries `~60 %` with `T002b 5 von 12 Sites auf dem Seam, 7 offen` in
+place of `~85 %`. The reviewer verified the correction against the SOURCE, per
+the per-file reading in this round's gate entry above. Resolved rather than
+carried, because the finding asked for a denominator on disk and it is on disk.
 END-RECORD1
 
+BEGIN-SPAWNF
+        proc = subprocess.run(
+            argv,
+            capture_output=True,
+            text=True,
+            timeout=timeout_sec,
+            cwd=str(target),
+        )
+END-SPAWNF
+
+BEGIN-SPAWNT
+        # Guarded since F085 T002b: rlimits, an env allowlist, a pinned cwd and the
+        # guard's own wall deadline replace the bare spawn. The observable outcome is
+        # unchanged — same returncode, same TimeoutExpired, same FileNotFoundError —
+        # except that the guard hands back BYTES, which the decode below turns into
+        # the str this function has always returned.
+        proc = run_guarded_test_command(
+            argv,
+            timeout_sec=timeout_sec,
+            cwd=str(target),
+        )
+END-SPAWNT
+
+BEGIN-OUTF
+    output = (proc.stdout or "") + (proc.stderr or "")
+END-OUTF
+
+BEGIN-OUTT
+    output = (proc.stdout or b"").decode("utf-8", "replace") + (proc.stderr or b"").decode("utf-8", "replace")
+END-OUTT
+
+BEGIN-IMPF1
+from packages.orchestration.pingpong_evidence import (
+END-IMPF1
+
+BEGIN-IMPT1
+from packages.orchestration.exec_guard import run_guarded_test_command
+from packages.orchestration.pingpong_evidence import (
+END-IMPT1
+
+BEGIN-IMPF2
+from uuid import uuid4
+END-IMPF2
+
+BEGIN-IMPT2
+from uuid import uuid4
+
+from packages.orchestration.exec_guard import run_guarded_test_command
+END-IMPT2
+
+BEGIN-TESTJP
+
+
+# F085 T002b — job_promote._run_post_test on the shared `test`-class seam
+
+
+def test_job_promote_post_test_runs_on_the_guarded_seam(tmp_path, monkeypatch):
+    """The spawn goes through `run_guarded_test_command`, and its BYTES decode to str."""
+    import subprocess
+
+    from packages.orchestration import job_promote
+
+    seen: dict[str, object] = {}
+
+    def _fake_guarded(cmd, *, timeout_sec, cwd, extra_env_keys=()):
+        seen.update(cmd=list(cmd), timeout_sec=timeout_sec, cwd=cwd)
+        return subprocess.CompletedProcess(list(cmd), 0, b"out-line\n", b"err-line\n")
+
+    monkeypatch.setattr(job_promote, "run_guarded_test_command", _fake_guarded)
+    passed, summary = job_promote._run_post_test("pytest -q", tmp_path, timeout_sec=17)
+
+    assert passed is True
+    assert seen == {"cmd": ["pytest", "-q"], "timeout_sec": 17, "cwd": str(tmp_path)}
+    assert summary.startswith("exit=0")
+    assert "out-line" in summary
+    assert "err-line" in summary
+END-TESTJP
+
+BEGIN-TESTPP
+
+
+# F085 T002b — pingpong_promote._run_post_test on the shared `test`-class seam
+
+
+def test_pingpong_promote_post_test_runs_on_the_guarded_seam(tmp_path, monkeypatch):
+    """The spawn goes through `run_guarded_test_command`, and its BYTES decode to str."""
+    import subprocess
+
+    from packages.orchestration import pingpong_promote
+
+    seen: dict[str, object] = {}
+
+    def _fake_guarded(cmd, *, timeout_sec, cwd, extra_env_keys=()):
+        seen.update(cmd=list(cmd), timeout_sec=timeout_sec, cwd=cwd)
+        return subprocess.CompletedProcess(list(cmd), 0, b"out-line\n", b"err-line\n")
+
+    monkeypatch.setattr(pingpong_promote, "run_guarded_test_command", _fake_guarded)
+    passed, summary = pingpong_promote._run_post_test("pytest -q", tmp_path, timeout_sec=17)
+
+    assert passed is True
+    assert seen == {"cmd": ["pytest", "-q"], "timeout_sec": 17, "cwd": str(tmp_path)}
+    assert summary.startswith("exit=0")
+    assert "out-line" in summary
+    assert "err-line" in summary
+END-TESTPP
+
 BEGIN-PLANF
-## Current Step
-R28, this round: record the R27 PASS, resolve R-0517, and put
-`test_execution_service._run_isolated_process` on the seam's CHILD half via
-`plan_child_spawn`, keeping its own wait deadline, its process-group kill and its
-file-backed streams where they are. R-0202 stays open: the environment the child
-receives is unchanged by this round.
-
-## Next Steps
-1. T002b Restprüfung — re-derive the `test`-class site set from
-   `.agent/f085_inventory.md` against amendment F085 D1's twelve, and name every
-   site still on a bare spawn before T002b is called finished.
-2. T002c-d — the two DoD sites and the five runtime sites, whose policy differs:
-   no wall timeout, because their children are the long-lived harness.
-3. T003 — network posture, the honest limitations document, the README link. Then
-   the integration gate, then closure.
-END-PLANF
-
-BEGIN-PLANT
 ## Current Step
 R29, this round: record the R28 PASS and register R-0519. The T002b Restprüfung
 found five of the twelve `test`-class sites on the seam and seven still on a bare
@@ -259,48 +372,28 @@ spawn, which the previous Fortschritt overstated; the measurement lands in
    no wall timeout, because their children are the long-lived harness.
 3. T003 — network posture, the honest limitations document, the README link. Then
    the integration gate, then closure.
+
+END-PLANF
+
+BEGIN-PLANT
+## Current Step
+R30, this round: record the R29 PASS, resolve R-0519, and move the two
+byte-identical post-test spawns of `job_promote.py` and `pingpong_promote.py`
+onto `run_guarded_test_command`, each with a test that pins the spawn and the
+bytes-to-str decode the seam makes necessary.
+
+## Next Steps
+1. T002b remainder — the `test`-class sites still on a bare spawn.
+   `pingpong_loop.py`:3537 first: it is the same shape as the pair just migrated,
+   with `staging` in place of `target`, so it takes the same pair with one word
+   changed. Then the four that each differ: `builder_bridge.py`:220 adds
+   `PYTHONDONTWRITEBYTECODE` to a full `os.environ`, `ci_run.py`:79 streams to the
+   console instead of capturing and passes no timeout, `integrity_gate.py`:283
+   passes no cwd at all, and `mission_state.py`:833 spawns inside a default
+   `runner` closure. One or two per order, never as one group.
+2. T002c-d — the two DoD sites and the five runtime sites, whose policy differs:
+   no wall timeout, because their children are the long-lived harness.
+3. T003 — network posture, the honest limitations document, the README link. Then
+   the integration gate, then closure.
+
 END-PLANT
-
-BEGIN-INVF
-### test — 12
-- `packages/orchestration/autorun.py`:382, 510, 563
-- `packages/orchestration/builder_bridge.py`:220
-- `packages/orchestration/ci_run.py`:79
-- `packages/orchestration/integrity_gate.py`:283
-- `packages/orchestration/job_promote.py`:417
-- `packages/orchestration/mission_state.py`:833
-- `packages/orchestration/pingpong_loop.py`:3537
-- `packages/orchestration/pingpong_promote.py`:326
-- `packages/orchestration/test_execution_service.py`:323
-- `packages/orchestration/test_runner.py`:201
-END-INVF
-
-BEGIN-INVT
-### test — 12
-- `packages/orchestration/autorun.py`:382, 510, 563
-- `packages/orchestration/builder_bridge.py`:220
-- `packages/orchestration/ci_run.py`:79
-- `packages/orchestration/integrity_gate.py`:283
-- `packages/orchestration/job_promote.py`:417
-- `packages/orchestration/mission_state.py`:833
-- `packages/orchestration/pingpong_loop.py`:3537
-- `packages/orchestration/pingpong_promote.py`:326
-- `packages/orchestration/test_execution_service.py`:323
-- `packages/orchestration/test_runner.py`:201
-
-Migration state, measured at R29:
-A site is ON THE SEAM when its spawn takes cwd, env and the fork-to-exec hook
-from `exec_guard`, through either `run_guarded_test_command` or
-`plan_child_spawn`. ON THE SEAM: `autorun.py` (all three, R26) and
-`test_runner.py`, both through `run_guarded_test_command`, and
-`test_execution_service.py` through `plan_child_spawn`'s child half at R28 —
-child half only, because that site writes its output into a file handle and
-returns a positional tuple, so the parent half cannot move. NOT YET:
-`builder_bridge.py`, `ci_run.py`, `integrity_gate.py`, `job_promote.py`,
-`mission_state.py`, `pingpong_loop.py` and `pingpong_promote.py`, none of which
-references either symbol. The line numbers above are this inventory's original
-R2 coordinates and were NOT re-measured for this paragraph; the migration state
-was measured per FILE, by the symbols each one references. `job_promote.py` and
-`integrity_gate.py` also hold spawns of other classes, which this paragraph does
-not count.
-END-INVT
