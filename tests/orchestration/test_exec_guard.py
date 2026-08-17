@@ -609,3 +609,33 @@ def test_the_dod_process_policy_keeps_the_wall_timeout_its_class_is_defined_by()
     assert policy.cpu_seconds is None
     assert policy.address_space_bytes is None
     assert policy.open_files is None
+
+
+def test_the_dod_app_policy_takes_neither_a_wall_timeout_nor_an_output_cap():
+    """The two columns separating `dod-app` from every bounded class in T2_F085.
+
+    Both are PARENT-side, and this policy's caller takes the CHILD half alone, so
+    None here is the row the table rules rather than an omission. The declared
+    keys are asserted to JOIN the allowlist rather than replace it, and
+    `FORBIDDEN_ENV_KEYS` is asserted to survive a caller that names one.
+    """
+    policy = exec_guard.dod_app_exec_policy(
+        cwd="/tmp/dod-app-cwd",
+        env={"PATH": "/usr/bin", "PORT": "5173", "AWS_SECRET_ACCESS_KEY": "leak"},
+        declared_env_keys=("PORT", "AWS_SECRET_ACCESS_KEY"),
+    )
+
+    assert policy.wall_timeout_seconds is None
+    assert policy.output_cap_bytes is None
+    assert policy.cwd == "/tmp/dod-app-cwd"
+    assert policy.core_file_bytes == 0
+    assert policy.cpu_seconds is None
+    assert policy.address_space_bytes is None
+    assert policy.open_files is None
+    assert set(exec_guard.DOD_APP_ENV_ALLOWLIST) <= set(policy.env_allowlist)
+    assert "PORT" in policy.env_allowlist
+
+    child_env = exec_guard.plan_child_spawn(policy).env
+    assert child_env["PORT"] == "5173"
+    assert child_env["PATH"] == "/usr/bin"
+    assert "AWS_SECRET_ACCESS_KEY" not in child_env
