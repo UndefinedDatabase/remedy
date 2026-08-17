@@ -212,3 +212,31 @@ class TestPlanConsistency:
             assert plan_check.status == IntegrityStatus.PASS
         finally:
             os.chdir(old_cwd)
+
+
+# F085 T002b — integrity_gate._check_collect_only on the shared `test`-class seam
+
+
+def test_collect_only_runs_on_the_guarded_seam(monkeypatch):
+    """The spawn goes through `run_guarded_test_command` with no cwd pin, and its BYTES decode."""
+    import subprocess
+
+    from packages.orchestration import integrity_gate
+
+    seen: dict[str, object] = {}
+
+    def _fake_guarded(cmd, *, timeout_sec, cwd, extra_env_keys=()):
+        seen.update(cmd=list(cmd), timeout_sec=timeout_sec, cwd=cwd)
+        return subprocess.CompletedProcess(list(cmd), 1, b"", b"boom-\xff-undecodable\n")
+
+    monkeypatch.setattr(integrity_gate, "run_guarded_test_command", _fake_guarded)
+    check = integrity_gate._check_collect_only()
+
+    assert seen == {
+        "cmd": ["bash", "scripts/remedy_pytest.sh", "tests/", "--collect-only", "-q"],
+        "timeout_sec": 120,
+        "cwd": None,
+    }
+    assert check.status is integrity_gate.IntegrityStatus.FAIL
+    assert "boom-" in check.message
+    assert "undecodable" in check.message

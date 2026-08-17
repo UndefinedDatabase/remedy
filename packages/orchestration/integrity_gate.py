@@ -19,6 +19,8 @@ from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
 
+from packages.orchestration.exec_guard import run_guarded_test_command
+
 
 class IntegrityStatus(str, Enum):
     PASS = "pass"
@@ -280,14 +282,22 @@ def run_integrity_checks(*, collect_only: bool = False) -> IntegrityGateResult:
 def _check_collect_only() -> IntegrityCheck:
     """Run pytest --collect-only as integrity check."""
     try:
-        result = subprocess.run(
+        # Guarded since F085 T002b: rlimits, an env allowlist, a per-stream output cap
+        # and the guard's own wall deadline replace the bare spawn. `cwd=None` is
+        # deliberate and is the one pin this seam does NOT add here — the command
+        # resolves `scripts/remedy_pytest.sh` relative to the process working
+        # directory, so pinning it anywhere else would break collection. The guard
+        # hands back BYTES, which the failure branch below decodes.
+        result = run_guarded_test_command(
             ["bash", "scripts/remedy_pytest.sh", "tests/", "--collect-only", "-q"],
-            capture_output=True, text=True, timeout=120,
+            timeout_sec=120,
+            cwd=None,
         )
         if result.returncode == 0:
             return IntegrityCheck("collect_only", IntegrityStatus.PASS, "pytest collection passed")
         return IntegrityCheck("collect_only", IntegrityStatus.FAIL,
-                              f"collect-only failed: {result.stderr[:200]}")
+                              "collect-only failed: "
+                              + (result.stderr or b"").decode("utf-8", "replace")[:200])
     except Exception as exc:
         return IntegrityCheck("collect_only", IntegrityStatus.SKIP, f"error: {exc}"[:200])
 
