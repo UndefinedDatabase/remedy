@@ -561,17 +561,7 @@ def run_guarded_test_command(
     """
     guarded = run_guarded(cmd, test_command_exec_policy(
         timeout_sec, cwd, extra_env_keys=extra_env_keys, extra_env=extra_env))
-    if guarded.tripped_limit == "wall_timeout":
-        raise subprocess.TimeoutExpired(
-            list(cmd), timeout_sec, output=guarded.stdout, stderr=guarded.stderr
-        )
-    returncode = guarded.returncode
-    if returncode is None:
-        try:
-            returncode = -int(signal.Signals[guarded.term_signal].value)
-        except (KeyError, ValueError, TypeError):
-            returncode = -1
-    return subprocess.CompletedProcess(list(cmd), returncode, guarded.stdout, guarded.stderr)
+    return _completed_process_from_guarded(cmd, timeout_sec, guarded)
 
 
 # ---------------------------------------------------------------------------
@@ -632,23 +622,14 @@ def run_guarded_dod_process_command(
     NEGATIVE returncode, and `FileNotFoundError` is left to propagate, because it
     means the executable does not exist rather than that a run misbehaved.
 
-    WHY the translation is duplicated here rather than shared: two callers are not
-    yet a pattern, and the third is known — `runtime-build` at T002d, whose sites
-    are `subprocess.run` calls carrying a `timeout=` of their own. That round
-    extracts this, with three uses to show which parts are really common.
+    WHY the translation is shared rather than repeated here: T002d added the third
+    caller, `run_guarded_runtime_build_command`, and three uses showed which parts
+    are really common. `_completed_process_from_guarded` holds all three
+    translations; what stays per-seam is the policy each wrapper builds, and the
+    `check` knob `runtime-build` alone asks for.
     """
     guarded = run_guarded(cmd, dod_process_exec_policy(timeout_sec, cwd))
-    if guarded.tripped_limit == "wall_timeout":
-        raise subprocess.TimeoutExpired(
-            list(cmd), timeout_sec, output=guarded.stdout, stderr=guarded.stderr
-        )
-    returncode = guarded.returncode
-    if returncode is None:
-        try:
-            returncode = -int(signal.Signals[guarded.term_signal].value)
-        except (KeyError, ValueError, TypeError):
-            returncode = -1
-    return subprocess.CompletedProcess(list(cmd), returncode, guarded.stdout, guarded.stderr)
+    return _completed_process_from_guarded(cmd, timeout_sec, guarded)
 
 
 # ---------------------------------------------------------------------------
