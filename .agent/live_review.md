@@ -1784,3 +1784,82 @@ The finding asked for a rule rather than an edit, so the resolution is the promo
 and not a rewrite of the R29 sentence that exposed it. That sentence stays on disk,
 wrong for two of its seven names from commit 10fe9a14 onward, because appending a
 correction is how this record stays honest; this paragraph is that correction.
+
+Gate: R33 — the R32 entry. R32 PASSED: the round that promoted the slice-fact rule
+into pre-emission checklist item 20, resolved R-0520 and moved
+`integrity_gate._check_collect_only` onto the shared `test`-class seam. Every ordered
+gate was re-run by the reviewer over 16234fbf..c2033d6c and each reproduces the
+handback's reading. TRANSPORT WAS PROVED AGAINST THE REVIEWER'S OWN ORIGINAL, not
+only against a digest: the scratch file the block was authored into, the committed
+`.agent/authored/f085-r32.md`, the committed `.agent/last_block.md` and both working
+copies are all five byte-EQUAL at sha256
+75deb8c5d666fc2f4053583eb8c4a3d94dd2db8f52c227df2a22b2392cf1e686, 23119 B, 400
+lines, 24 marker lines, region digests eb26791d, 656230ba and 0d724fc0. THE APPEND
+COMMIT HOLDS ITS SHAPE: C2's pre-commit blob is a byte-exact PREFIX of the
+post-commit file, the remainder is exactly one blank line plus RECORD1 at 4361 =
+1 + 4360 bytes, numstat 55/0, RECORD1's first line occurs once among the 55 lines
+that commit adds, 0 lines match `^(BEGIN|END)-[A-Z0-9]+$`, and the applied slice is
+an exact suffix of the file. THE ARITHMETIC MOVED IN THE DONE SET ALONE: 135
+registered / 17 done / 0 landed at c2033d6c against 135 / 16 / 0 at 16234fbf, 119
+open falling to 118, registered and landed symmetric differences empty, done
+symmetric difference exactly R-0520, no duplicate id, no resolution naming an
+unregistered id, and next free R-0521 at both ends because the round registered
+nothing. THE ORDERING THAT MADE THE RECORD TRUE WAS OBEYED: constraint 10 required
+the checklist promotion to precede the resolution that cites it, and 94e70839 does
+precede ce69c39a. THE PAIRS LANDED WHERE THEY WERE AIMED: at c2033d6c IGSPAWNF and
+IGERRF each occur 0 times in `integrity_gate.py` while IGSPAWNT, IGERRT and IGIMPT
+each occur once, the guard import occurs once among the lines C3 adds to that file,
+`import subprocess` still occurs once because the `git ls-files` call in
+`_check_relevant_untracked` is a different command class, the new test def occurs
+once among the lines C3 adds to its test file, TESTIG is an exact suffix of that
+file, and 0 marker lines reached any target. Item 20 occurs once and the checklist's
+closing paragraph still occurs once. PLANF is gone and PLANT occurs once, in a
+46-line plan under the 50-line cap. THE MIGRATION WAS PROVED TWICE, BY RUNNING IT
+AND BY BREAKING IT: the round gate exits 0 at `16 passed` against the `15 passed`
+the reviewer measured at 16234fbf, the migrated function run FOR REAL prints
+`collect_only IntegrityStatus.PASS pytest collection passed` — identical to the
+unmigrated reading at 16234fbf, which is the behaviour-equality evidence this
+feature's Acceptance asks for, and it shows the guard's environment allowlist does
+not starve a real collection — and in the reviewer's own disposable worktree at
+c2033d6c, with the guarded call replaced by a bare `subprocess.run`, the run exits 1
+with `1 failed, 15 passed` at node `test_collect_only_runs_on_the_guarded_seam`,
+`AssertionError` at `test_integrity_gate.py:235`. THE GATES WERE RE-RUN, NOT READ:
+ruff over the two changed files `All checks passed!`, the four state readers
+`159 passed`, the docs suite `295 passed` and the canary `42 passed`, each as its
+exact ordered command line in the primary checkout, each exit 0. COMMIT HYGIENE IS
+CLEAN: the path set is the eight declared paths, per-commit insertions are 400, 288,
+16, 55, 41, 12 and the handback's own 80, none over 500, all seven commits are
+single-parent, and the reflog holds only `commit:` entries. The 128-line handback
+declares its own overage against the 100-line cap and names the mandated content
+that caused it. The worker deviated from nothing it was ordered to do, and the one
+defect the round put on disk is the reviewer's, registered next.
+
+- R-0521 — Low, A SLICE OBEYED CHECKLIST ITEM 20 AND WAS FALSIFIED ANYWAY, BECAUSE
+THE COMMIT IT NAMED WAS A LABEL RATHER THAN A SHA. R32's RECORD1, applied at commit
+ce69c39a, closes with a staleness sentence stating that `builder_bridge.py`,
+`ci_run.py`, `integrity_gate.py` and `mission_state.py` each show 0 references to
+`run_guarded_test_command` "at HEAD". That reading was taken at 16234fbf and is true
+there. C3 of the SAME round, commit ed88be4c, put `integrity_gate.py` on the seam,
+and at c2033d6c that file references the symbol twice — so one of the four names in
+that sentence is wrong for every commit from ed88be4c onward, in a file that is the
+permanent record. This is the R-0520 class recurring in the very slice that resolved
+R-0520, one commit after the counter-measure landed. The defect is the reviewer's,
+not the worker's: R32's handback found it under constraint 8 and reported it instead
+of editing a slice it was forbidden to alter, which is exactly the behaviour
+constraint 8 exists to produce. Low because nothing executable depends on the
+sentence and no gate can go red over it. What makes it worth an id rather than a
+correction is that item 20 was FOLLOWED: the sentence did name a commit, and the
+commit it named was `HEAD`, which re-resolves as the round proceeds and so denotes a
+different commit at the end of the round than at the start. A rule that can be
+obeyed and defeated at once is under-specified rather than ignored, which is why the
+counter-measure narrows item 20 instead of adding an item. Rewriting the landed
+sentence is NOT proposed: appending a correction is how this record stays honest,
+and this paragraph is that correction.
+
+Done: R-0521 — Resolved at R33. Checklist item 20 of
+`docs/agents/planner_reviewer_prompt.md` §3 now requires that the commit a slice
+names be an absolute identifier that already exists when the slice is written — a
+SHA, never a label like `HEAD` or `main` — applied by the commit that precedes this
+one in this round. The narrowing is the whole resolution; the R31 gate entry's "at
+HEAD" sentence stays on disk, wrong for one of its four names from ed88be4c onward,
+because overwriting landed text is worse than a dated wrong sentence.
