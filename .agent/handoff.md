@@ -1,133 +1,99 @@
-# Handback — F085 Sandbox hardening (stage 1), Runde R50
+# Handback — F085 Sandbox hardening (stage 1), R51
 
-Branch `feature/f085-sandbox-hardening`, base SHA 25a5b42e. Record + amendment round; no source
-file touched.
+Feature F085 · Round R51 · Branch `feature/f085-sandbox-hardening` · Base 3a64b65e
 
 ## Range
-
-Review of 25a5b42e..HEAD.
+Review of 3a64b65e..HEAD. Nine commits: C0a C0b C1 C2 C3 C4 C5 C6 C7.
 
 ## Commits
-
-### c22cb9dd chore(f085): save the authored R50 step block
+### 44a1fbde chore(f085): save the authored R51 step block
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f085-r50.md | +334/-0 | C0a — reviewer block saved byte-verbatim |
+| `.agent/authored/f085-r51.md` | +489/-0 | C0a — the R51 block, byte-verbatim from the reviewer's original |
 
-### 634447bc chore(f085): mirror the R50 block into last_block
+### aa38f8c7 chore(f085): mirror the R51 block into last_block
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/last_block.md | +239/-250 | C0b — identical bytes mirrored from the committed blob |
+| `.agent/last_block.md` | +425/-270 | C0b — the COMMITTED blob copied over; single-state-file rewrite |
 
-### 2241cb69 docs(f085): advance the plan to R50
+### 051b4082 docs(f085): advance the plan to R51
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/plan.md | +6/-4 | C1 — PLAN4F→PLAN4T rewrite |
+| `.agent/plan.md` | +13/-11 | C1 — PLAN5F→PLAN5T, the first substantive commit |
 
-### 56722bd7 docs(f085): record the R49 PASS and register R-0552 and R-0553
+### 73489620 docs(f085): record the R50 PASS
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/live_review.md | +73/-0 | C2 — RECORD18 appended |
+| `.agent/live_review.md` | +38/-0 | C2 — RECORD19 appended; nothing registered, nothing resolved |
 
-### 8bb7a287 docs(f085): split the runtime policy row into runtime-server and runtime-build
+### ff93b13a docs(f085): update the exec_guard coverage note for the dod-process seam
 | Path | +/- | Reason |
 |---|---|---|
-| docs/roadmap/features/T2_F085.md | +10/-7 | C3a — AMEND8F→AMEND8T rewrite |
+| `packages/orchestration/exec_guard.py` | +5/-3 | C3 — HDRF→HDRT, the PARTIAL COVERAGE note |
 
-### 9b9cd0b4 docs(f085): append amendment F085 D8 for the runtime policy split
+### fcfb2a0f feat(f085): add the dod-process seam to exec_guard
 | Path | +/- | Reason |
 |---|---|---|
-| docs/roadmap/features/T2_F085.md | +30/-0 | C3b — DEC8 appended |
+| `packages/orchestration/exec_guard.py` | +77/-0 | C4 — SEAM appended: allowlist, cap, policy, runner |
 
-### C4 docs(f085): rewrite the handback for R50
+### 44460d56 feat(f085): migrate the DoD process check onto the guard seam
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/handoff.md | this file | C4 — a handback cannot table its own commit (R-0149) |
+| `packages/orchestration/dod_runners.py` | +13/-6 | C5 — DOCF→DOCT, IMPF→IMPT, SITEF→SITET |
+
+### 43cd292a test(f085): cover the dod-process seam and its policy
+| Path | +/- | Reason |
+|---|---|---|
+| `tests/orchestration/test_dod_runners.py` | +52/-0 | C6 — TESTSDOD, two tests |
+| `tests/orchestration/test_exec_guard.py` | +22/-0 | C6 — TESTSGUARD, one test |
+
+### C7 — self-reference, a handback cannot table the commit that writes it
+| Path | +/- | Reason |
+|---|---|---|
+| `.agent/handoff.md` | in the round report | C7 — this file; its own insertions go to the operator |
 
 ## Item status
-
 | Item | Status | Reason |
-|---|---|---|
+|------|--------|--------|
 | C0a | done | |
 | C0b | done | |
 | C1 | done | |
 | C2 | done | |
-| C3a | done | |
-| C3b | done | |
-| C4 | done | this commit |
+| C3 | done | |
+| C4 | done | |
+| C5 | done | |
+| C6 | done | |
+| C7 | done | this commit |
 
 ## External actions
-
-`git push -u origin feature/f085-sandbox-hardening` — run after C4; result in the round report.
-No `gh` command, no PR, no merge, no worktree added or removed.
+`git push -u origin feature/f085-sandbox-hardening` after C7; outcome reported to the operator. No PR, no merge, no `gh` call, no worktree add and no worktree remove.
 
 ## Verification
-
-G1 STATE, pass. `.agent/STOP` absent before C0a and again before C4; `git status --porcelain`
-empty at round start and after each of the seven commits; `git worktree list` one line throughout.
-G2 TRANSPORT, pass, disk-to-disk with no digest fallback. `.remedy-wt/f085-r50.md`, the committed
-and the working `.agent/authored/f085-r50.md` and the committed and the working
-`.agent/last_block.md` are all five byte-EQUAL: sha256
-061fa19d22524bd91e69697f28285376e82f45005d7894f833ab991adb390cd7, 24335 B, 334 lines, 12 marker
-lines — every figure measured on every copy.
-G3 SHAPES, pass, one reading per pair. C1: PLAN4F 0x, PLAN4T 1x in `.agent/plan.md`, numstat
-`6 4`. C2: pre-commit blob an exact prefix, remainder exactly one blank line plus the slice, slice
-an exact suffix, 0 marker LINES in the file, 72 slice lines of which 2 empty, each non-empty slice
-line exactly once among the 73 lines added to that path, numstat `73 0`. C3a: AMEND8F 0x, AMEND8T
-1x in `docs/roadmap/features/T2_F085.md`, numstat `10 7`. C3b: prefix, one blank line plus slice,
-exact suffix, 0 marker LINES, 29 slice lines of which 3 empty, each non-empty line exactly once
-among the 30 added, numstat `30 0`.
-G4 SUITE, exit 0, primary checkout, no worktree: `python3 -m pytest
-tests/orchestration/test_test_runner.py tests/regression/test_resource_safety.py
-tests/orchestration/test_integrity_gate.py tests/ui_server/test_dashboard_contract.py -rf -q` →
-`159 passed in 19.77s`, base 159. CANARY `python3 -m pytest tests/cli/test_golden_path.py -q` →
-exit 0, `42 passed in 20.55s`, base 42.
-G5 DOCS TIER, exit 0: `python3 -m pytest tests/docs/ -q` → `295 passed in 0.43s`, base 295.
-G6 PLAN CONTRACT on `.agent/plan.md` at 2241cb69, pass: 41 lines against the 50-line cap;
-`## Goal` true, `## Next Steps` true, `\bF\d{3}\b` true (F083, F085).
-G7 ARITHMETIC, pass. 25a5b42e: 166 registered / 27 done / 0 landed, 139 open, 0 duplicate ids, 0
-resolutions naming an unregistered id, max registered R-0551, max resolved R-0532. HEAD: 168 / 27
-/ 0, 141 open, 0 duplicates, 0 orphan resolutions. Registered symmetric difference exactly
-{R-0552, R-0553}; done and landed symmetric differences EMPTY.
-G8 HYGIENE, pass. `git diff --name-only 25a5b42e..HEAD` before C4 = `.agent/authored/f085-r50.md`,
-`.agent/last_block.md`, `.agent/live_review.md`, `.agent/plan.md`,
-`docs/roadmap/features/T2_F085.md` — the change set minus `.agent/handoff.md`, nothing else.
-Per-commit INSERTIONS before C4: 334, 239, 6, 73, 10, 30 — none over 500, so the allowance spent
-at d4473f85 is not called on again. All commits single-parent.
-BLOCK SIZE re-measured from the committed `.agent/authored/f085-r50.md`: TOTAL 334, PROSE 182,
-RECORD18 72 — each equal to what the block stated, each under its DECISION F085 D6 cap.
+G1 STATE — `.agent/STOP` absent before C0a and again before C7 (`ls` exit 2 at both points); `git status --porcelain` EMPTY at round start and after each of the eight commits preceding this one, whose own post-commit reading goes to the operator; `git worktree list` one line throughout.
+G2 TRANSPORT — exit 0. The committed `.agent/authored/f085-r51.md`, the committed `.agent/last_block.md`, BOTH working copies and the reviewer's `.remedy-wt/f085-r51.md` are all five byte-EQUAL, disk-to-disk and not by digest fallback: sha256 12c6771bf04c38f94be460b4beb48ed93ea5b37709ce1f70711f89a093703abc, 29295 B, 489 lines, 28 marker lines — every figure measured on every copy.
+G3 SHAPES — THE FIVE REWRITES, each measured on its own post-commit file, FROM 0x and TO 1x in each: PLAN5F→PLAN5T at 051b4082 numstat `13 11`, HDRF→HDRT at ff93b13a numstat `5 3`, and DOCF→DOCT, IMPF→IMPT and SITEF→SITET at 44460d56 numstat `13 6`; every pair reads `TO contains FROM: false`. THE PROSE APPEND, C2 / RECORD19 / `.agent/live_review.md`: the pre-commit blob is a byte-exact PREFIX, the remainder is exactly one blank line plus the slice, the slice is an exact SUFFIX, 0 marker LINES are in the post-commit file, and each of the 37 slice lines — 0 of them empty — occurs exactly once among the 38 lines that commit adds to that path, numstat `38 0`. THE THREE CODE APPENDS, each `pre + slice` with NO joiner byte, prefix and suffix exact, 0 marker LINES, and the added lines exactly the slice's lines IN ORDER: SEAM 77 lines at fcfb2a0f numstat `77 0`; TESTSDOD 52 lines numstat `52 0` and TESTSGUARD 22 lines numstat `22 0`, both at 43cd292a.
+G4 LINT — `python3 -m ruff check packages/orchestration/exec_guard.py packages/orchestration/dod_runners.py tests/orchestration/test_dod_runners.py tests/orchestration/test_exec_guard.py`: `All checks passed!`, exit 0.
+G5 CODE SUITE — `python3 -m pytest tests/orchestration/test_dod_runners.py tests/orchestration/test_exec_guard.py tests/orchestration/test_product_smoke.py -q -rf`, primary checkout: `150 passed in 28.17s`, exit 0 — the base 147 plus the three tests this round adds.
+G6 STATE READERS — `python3 -m pytest tests/orchestration/test_test_runner.py tests/regression/test_resource_safety.py tests/orchestration/test_integrity_gate.py tests/ui_server/test_dashboard_contract.py -rf -q`: `159 passed in 19.83s`, exit 0. CANARY `python3 -m pytest tests/cli/test_golden_path.py -q`: `42 passed in 20.41s`, exit 0.
+G7 PLAN CONTRACT — `.agent/plan.md` at 051b4082 is 43 lines against the 50-line cap; contains `## Goal` true, contains `## Next Steps` true, matches `\bF\d{3}\b` true.
+G8 ARITHMETIC — 168 registered / 27 done / 0 landed at BOTH 3a64b65e and HEAD; 141 open at both; max registered R-0553, max resolved R-0532; the registered, done and landed symmetric differences are all EMPTY; 0 duplicate ids and 0 resolutions naming an unregistered id at both SHAs; next free id R-0554.
+G9 HYGIENE — measured BEFORE C7: `git diff --name-only 3a64b65e..HEAD` holds exactly the eight ordered paths and nothing else. Per-commit INSERTIONS 489, 425, 13, 38, 5, 77, 13, 74 — none over 500. Every commit has exactly one parent, the tree is clean and `git worktree list` is one line.
+BLOCK SIZE, re-measured from the committed `.agent/authored/f085-r51.md`: TOTAL 489 against the 490 cap, PROSE 226 against 400 (489 minus the 263 slice-body lines, so marker lines count as prose), RECORD19 37 against 140 — all three agree with the figures the block states.
 
 ## Authored-text proofs
-
-All six slices were extracted PROGRAMMATICALLY from the committed `.agent/authored/f085-r50.md`
-by BEGIN-/END- marker pair and applied byte-verbatim; none was retyped and no marker line reached
-a target file. The disk-to-disk comparison against the reviewer's own `.remedy-wt/f085-r50.md` is
-G2 above.
+Every slice was extracted PROGRAMMATICALLY by its marker pair out of the committed `.agent/authored/f085-r51.md`; none was retyped, reflowed or taken from the delegation prompt. All fourteen were used — the five FROM texts PLAN5F, HDRF, DOCF, IMPF and SITEF matched their targets, and the nine texts PLAN5T, HDRT, DOCT, IMPT, SITET, SEAM, TESTSDOD, TESTSGUARD and RECORD19 were written. The disk-to-disk comparison result is G2 above; 0 marker LINES reached any target file.
 
 ## Deviations & assumptions
+None. No departure from the block's ordered commit sequence: C0a C0b C1 C2 C3 C4 C5 C6 C7 ran in that order with no extra commit, no dropped commit and no reordering. The round's two red controls were deliberately NOT repeated — the reviewer had already executed them at 3a64b65e under block constraint 10 — so no worktree was created and none was removed. This file is 99 lines: more than five commits, so the ≤100-line allowance applies and no DECISION D15 stated-cause overage is claimed. No section was dropped to meet the cap.
 
-None. The ordered sequence C0a, C0b, C1, C2, C3a, C3b, C4 was followed exactly, with no extra,
-dropped or reordered commit, and no gate came out red.
-Deviations, declared: this file is 133 lines, over the ≤100 allowance, under DECISION D15
-stated cause — seven per-commit changed-files tables, the seven-row item-status table and the
-G1-G8 transcripts including the transport and the four pair proofs are all mandated content, and
-no section was dropped to meet the cap.
+## Fortschritt
+Fortschritt: ~87 % (T001 gebaut · R13-R32 PASS · R33 FAIL, an R34 repariert · R34-R50 PASS ·
+T002a KOMPLETT · T002b KOMPLETT · T002c erste Hälfte in dieser Runde gebaut, `_run_app_once`
+offen · T002d entsperrt durch Amendment F085 D8, noch nicht gebaut · T003 offen) — Schätzung,
+gegen die Klassentabelle aus Amendment F085 D1 gemessen.
 
 ## Next
-
-ONE. The next round is R51, started by a FRESH session, and it implements T002c:
-`_run_process_check` onto the guard seam KEEPING its wall timeout and closing its
-`env=os.environ.copy()` gap, and `_run_app_once` under the dod-app policy with no wall timeout and
-network allowed. T002d then follows under the DECISION F085 D8 split, then T003, the integration
-gate and closure.
-TWO. R50's own verdict is NOT on disk as a gate entry, because the round that records a verdict
-cannot record one on itself (docs/agents/planner_reviewer_prompt.md §4.13). That absence is the
-terminator, not a missing gate, and R51 must not open a repair round to close it; R50's verdict,
-when the reviewer issues it, is recorded by R51's OWN record slice.
-THREE. Open findings: 141. Next free finding id: R-0554.
-FOUR. Phase 1 rule 1 first: re-read `.agent/STOP` from disk — ahead of the Open PR Gate.
-
-Fortschritt: ~85 % (T001 gebaut · R13-R32 PASS · R33 FAIL, an R34 repariert · R34-R49 PASS ·
-T002a KOMPLETT · T002b KOMPLETT · T002c entsperrt durch Amendment F085 D7, noch nicht gebaut ·
-T002d entsperrt durch Amendment F085 D8, noch nicht gebaut · T003 offen) — Schätzung, gegen die
-Klassentabelle aus Amendment F085 D1 gemessen.
+ONE: the next expected action is the reviewer gating 3a64b65e..HEAD and issuing R51's verdict; then R52, which implements T002c's second half — `_run_app_once` under the dod-app policy, taking the CHILD half alone through `plan_child_spawn`; T002d then follows under the D8 split, then T003, the integration gate and closure.
+TWO: R51's own verdict is NOT on disk as a gate entry, because the round that records a verdict cannot record one on itself (docs/agents/planner_reviewer_prompt.md §4.13) — that absence is the terminator, not a missing gate, and R52 must not open a repair round to close it; R51's verdict, when the reviewer issues it, is recorded by R52's OWN record slice.
+THREE: 141 findings are open and R-0554 is the next free id.
+FOUR: Phase 1 rule 1 first: re-read `.agent/STOP` from disk — the self-drive protocol requires that rule to be named ahead of the Open PR Gate.
