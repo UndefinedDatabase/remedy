@@ -3212,3 +3212,66 @@ describes R52 instead — so this finding is expected to be RESOLVED at the R52 
 repaired by a round of its own; `.agent/plan.md` states the CURRENT step and never a history, so
 no appending correction under R-0520 is owed to it. Found and registered by the reviewer while
 gating R51.
+
+Gate: R53 — the R52 entry. R52 PASSED. Every ordered gate G1-G9 was re-executed by the reviewer
+over 67475107..3bafcc1e, not read, and each reproduces the handback's reading. LINE COUNTS ARE
+`splitlines` COUNTS. TRANSPORT HELD AGAINST THE REVIEWER'S OWN ORIGINAL, disk-to-disk with no
+digest fallback: `.remedy-wt/f085-r52.md`, the committed `.agent/authored/f085-r52.md` at
+a7896384, the committed `.agent/last_block.md` at 216fe178 and both working copies as they stand
+at 3bafcc1e are all five byte-EQUAL at sha256
+dbb09a909d14afe36d188f834eba2698f195ac502d2372f92e0f89d5bda554b8, 25680 B, 373 lines, 10 marker
+lines, and that digest is the one the R52 block itself carried — every figure measured on every
+copy. THE SHAPES HELD. The single REWRITE PLAN6F→PLAN6T in `.agent/plan.md` at 511736d6 gives
+`TO contains FROM: false`, its FROM occurred 1x in the pre-commit blob and 0x after with its TO
+exactly 1x, numstat `11 10`. THE PROSE APPEND RECORD20 on `.agent/live_review.md` at 23a7ec30:
+byte-exact prefix, a remainder of exactly one blank line plus the slice, an exact suffix, 0 marker
+LINES, and each of its 54 non-empty slice lines occurring exactly once among the 56 lines that
+commit adds, numstat `56 0`. THE TWO CODE APPENDS held under ORDERED EQUALITY — SEAM2 at d5b1c8f6
+numstat `50 0` and TESTSGUARD2 at 610fd945 numstat `30 0`: each post-commit file equals
+`pre + slice` with NO byte between them, each commit's added lines are exactly that slice's lines
+IN ORDER, and 0 marker LINES reached either. THE SUITES AND THE LINT GATE WERE RE-RUN, NOT READ,
+in the primary checkout with the block's exact command lines, each exit 0: the code suite
+`151 passed` against a base of 150, the four state readers `159 passed` against 159, the canary
+`42 passed` against 42, and ruff `All checks passed!`. THE PLAN CONTRACT HELD at 511736d6: 44
+lines against the 50-line cap, with `## Goal`, `## Next Steps` and a roadmap F-id present — 44 is
+the figure that block projected. THE ARITHMETIC MOVED AS ORDERED: 169 / 27 / 0 at 3bafcc1e against
+168 / 27 / 0 at 67475107, 142 open against 141, the registered symmetric difference exactly
+R-0554, done and landed symmetric differences EMPTY, no duplicate id and no resolution naming an
+unregistered id at either SHA. HYGIENE IS CLEAN: over the six commits of 67475107..3bafcc1e that
+precede the handback the per-commit INSERTION counts, the column AGENTS.md DECISION F104 D1 fixes
+for the cap, are 373, 255, 11, 56, 50 and 30, and the handback commit adds 38; none over 500; that
+range's path set measured before the handback is exactly the six ordered paths and does NOT hold
+`packages/orchestration/dod_runners.py`, which that round's change set excluded; all seven commits
+are single-parent; the tree is clean and `git worktree list` is one line. THE BLOCK'S OWN SIZE
+re-measured from the committed file gives TOTAL 373, PROSE 205 and RECORD20 55, agreeing with that
+block. THE HANDBACK'S OWN SELF-CLAIM was checked and holds: it states 86 lines and measures 86,
+inside the ≤100 allowance a seven-commit round carries.
+
+- R-0555 — the R52 block's Handback section said "Six commits" over a Bundle naming seven. Low.
+That block's Bundle names C0a, C0b, C1, C2, C3, C4 and C5, and its Handback section then wrote
+"Six commits, so the ≤100-line allowance applies". This is checklist item 16's class as R-0537 and
+R-0543 widened it — a sentence that quantifies what follows it, drifting because the numeral is
+the half nobody re-reads — arriving in the reviewer's own block one round after R-0554 registered
+the same class against `.agent/plan.md`. It is LOW because the allowance it computes is identical
+either way: the threshold is more than five commits and both readings clear it, so no gate and no
+cap moved. The worker read the Bundle rather than the sentence, wrote "Seven commits" in the
+handback, and flagged the contradiction instead of silently following either half — which is the
+behaviour the block wants. Found by the worker, registered by the reviewer while gating R52.
+
+- R-0556 — a block's slice convention did not say whether a slice INCLUDES its terminating
+newline, so the worker's extraction and the block's definition disagreed. Low. The R52 block's
+CONVENTION said only that "a slice is the bytes strictly between its marker lines" and that a
+trailing newline is not an extra line. Under the reading that a slice ends with the newline
+terminating its last content line, `post == pre + slice` holds exactly for SEAM2 at d5b1c8f6 and
+TESTSGUARD2 at 610fd945, which is what the reviewer measured at 3bafcc1e; under an extraction that
+joins the inner lines WITHOUT a trailing newline it does not, and the worker therefore appended one
+and declared an assumption for it. BOTH ROUTES PRODUCED IDENTICAL BYTES ON DISK, so nothing landed
+wrong and G4 stayed green either way; what the gap cost was a declared assumption on a round that
+did nothing wrong, and it put into the handback the absolute claim that `post == pre + slice` does
+not hold at fcfb2a0f, which is false under the block's own convention and true only under the
+worker's unstated one. This is the newline class the reviewer's own notes already carry — one
+newline shifts both slice counts and pair shape — recurring because the convention sentence stated
+the units without pinning the boundary. THE COUNTER-MEASURE IS IN THE R53 BLOCK'S OWN CONVENTION
+paragraph, which states newline-inclusion explicitly and says that no joiner and no terminator byte
+is ever added; that is the block carrying this registration. Found by the worker's declared
+assumption, registered by the reviewer while gating R52.
