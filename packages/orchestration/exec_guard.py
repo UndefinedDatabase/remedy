@@ -699,3 +699,102 @@ def dod_app_exec_policy(
         env=dict(env) if env is not None else None,
         env_allowlist=DOD_APP_ENV_ALLOWLIST + tuple(sorted(declared_env_keys)),
     )
+
+
+# ---------------------------------------------------------------------------
+# The `runtime-build` seam (F085 T002d) — the UI auto-build's npm commands, which
+# KEEP their wall timeout: a build runs to completion, and `runtime-server` is the
+# row Amendment F085 D8 rules must not hold a clock. The translation the three
+# seams share is extracted HERE, at its third use, for the reason
+# `run_guarded_dod_process_command` recorded while there were only two.
+# ---------------------------------------------------------------------------
+
+
+def _completed_process_from_guarded(
+    cmd: Sequence[str],
+    timeout_sec: float,
+    guarded: ExecGuardResult,
+) -> subprocess.CompletedProcess[bytes]:
+    """Translate one `ExecGuardResult` into what `subprocess.run` would have returned.
+
+    The three translations every seam-shaped wrapper performs, in one place: a wall
+    trip is raised as `subprocess.TimeoutExpired` CARRYING the partial streams the
+    guard is holding, a signal death comes back as a NEGATIVE returncode in the
+    -SIGNUM form, and anything else becomes a `CompletedProcess` with BYTES streams.
+    `FileNotFoundError` never reaches here: `Popen` raises it inside `run_guarded`
+    before any supervision starts, so no wrapper ever holds a result to translate.
+
+    Remedy deliberately does not fold `check=True` in here: only `runtime-build`
+    asks for it, and one caller is not a pattern — the same reason this function
+    itself waited for a third use.
+    """
+    if guarded.tripped_limit == "wall_timeout":
+        raise subprocess.TimeoutExpired(
+            list(cmd), timeout_sec, output=guarded.stdout, stderr=guarded.stderr
+        )
+    returncode = guarded.returncode
+    if returncode is None:
+        try:
+            returncode = -int(signal.Signals[guarded.term_signal].value)
+        except (KeyError, ValueError, TypeError):
+            returncode = -1
+    return subprocess.CompletedProcess(list(cmd), returncode, guarded.stdout, guarded.stderr)
+
+
+#: WHY: the environment a `runtime-build` command may inherit, and its per-stream cap.
+#: The MEMBERS are the `test`-class values and the NAMES are deliberately separate, for
+#: the reason `DOD_PROCESS_ENV_ALLOWLIST` states: T2_F085's policy table rules
+#: `runtime-build` as its own row, so widening one row stays a one-line edit here.
+RUNTIME_BUILD_ENV_ALLOWLIST: tuple[str, ...] = TEST_COMMAND_ENV_ALLOWLIST
+RUNTIME_BUILD_OUTPUT_CAP_BYTES: int = TEST_COMMAND_OUTPUT_CAP_BYTES
+
+
+def runtime_build_exec_policy(timeout_sec: float, cwd: str | None) -> ExecGuardPolicy:
+    """The stage-1 policy every `runtime-build` command runs under.
+
+    A build is BOUNDED — `npm install` and `npm run build` each run to completion —
+    so it KEEPS a wall timeout, which is what Amendment F085 D8 separates this class
+    from `runtime-server` by. Its network stays ALLOWED: the class fetches from a
+    package registry, and a default-deny posture would break the command it guards.
+
+    `cpu_seconds`, `address_space_bytes` and `open_files` are None for the reasons
+    `managed_builder_execution._builder_exec_policy` already settled for the builder
+    class, not restated here so the two cannot drift apart.
+
+    `env=None` is deliberate and is the gap this seam closes: the call sites it is
+    built for inherit the whole parent environment, so a secret-like variable reaches
+    an npm lifecycle script a project's own `package.json` may author.
+    """
+    return ExecGuardPolicy(
+        wall_timeout_seconds=float(timeout_sec),
+        output_cap_bytes=RUNTIME_BUILD_OUTPUT_CAP_BYTES,
+        cwd=cwd,
+        core_file_bytes=0,
+        env=None,
+        env_allowlist=RUNTIME_BUILD_ENV_ALLOWLIST,
+    )
+
+
+def run_guarded_runtime_build_command(
+    cmd: Sequence[str],
+    *,
+    timeout_sec: float,
+    cwd: str | None,
+    check: bool = False,
+) -> subprocess.CompletedProcess[bytes]:
+    """Run one `runtime-build` command under the guard, shaped like `subprocess.run`.
+
+    `_completed_process_from_guarded` performs the three translations this seam
+    shares with `test` and `dod-process`. `check` is the part it does NOT share:
+    both call sites this seam is built for pass `check=True` and catch
+    `subprocess.CalledProcessError`, so the seam raises exactly that rather than
+    making each site re-derive it from a returncode.
+    """
+    completed = _completed_process_from_guarded(
+        cmd, timeout_sec, run_guarded(cmd, runtime_build_exec_policy(timeout_sec, cwd)))
+    if check and completed.returncode != 0:
+        raise subprocess.CalledProcessError(
+            completed.returncode, list(cmd),
+            output=completed.stdout, stderr=completed.stderr,
+        )
+    return completed
