@@ -333,6 +333,18 @@ end the response with:
       append-shaped pair in this repository, so the eye fails exactly where it is most
       likely to be trusted. Nothing broke that round only because no gate ordered the
       unsatisfiable "FROM 0x" reading; the next block to order one pays for it.
+      Finding R-0522 narrows what "the answer is printed" means: the constraint records
+      the containment test's own OUTPUT — the words `TO contains FROM: true` or
+      `TO contains FROM: false` — and the APPEND or REWRITE label is derived from that
+      output on the same line, never written on its own. A bare label is a recollection
+      wearing a measurement's clothes, and it is indistinguishable on the page from a
+      measured one, which is how R-0522 arose one round after this item was last
+      relied on: a block declared a pair a REWRITE while its TO began with its FROM
+      verbatim, and the handback then reported the rewrite proof's FROM-zero count for
+      a FROM that still occurred once. A block that records `true` orders the §4.9
+      append obligation and never a FROM-zero count, and it says so in the same
+      constraint, because the unattainable count is what turns a mislabelled pair into
+      a false line in the permanent record.
   16. **No heading states a count of the contents beneath it.** Finding R-0510. A
       section heading that restates a number its own body defines — "exactly these SIX
       paths", "the four commits" — drifts the moment an item is added, and the heading
@@ -402,6 +414,18 @@ end the response with:
       failing while being obeyed: the slice that RESOLVED R-0520 wrote "at HEAD",
       satisfied item 20 as it was then worded, and was falsified one commit later by
       its own round.
+      Finding R-0524 carves out the one class for which no such SHA can exist. A slice
+      that describes THIS round's own landed change — every `Done:` paragraph is of
+      that class — asserts a fact whose commit has not been written when the slice is
+      authored, so it names instead the block CONSTRAINT that fixes the commit order,
+      and the block carries that constraint as an ordering requirement the worker
+      cannot satisfy by accident. The base SHA answers a reading taken BEFORE the
+      round; the ordering constraint answers a reading only the round itself makes
+      true, and demanding a SHA for the second demands a value that cannot exist when
+      the text is written — the R-0371 shape, which this checklist already forbids for
+      gates and now also forbids for slices. The carve-out is narrow on purpose: it
+      reaches a claim about the round's OWN commits and nothing else, and a reading of
+      any PRIOR state still names its SHA.
   Why this is on disk and not a habit: item 2 has recurred six times across
   F104 and F105, and R20 hit four of them in one block. A check that lives
   only in reviewer session memory is the A1 trap §0 names, and this list is the
