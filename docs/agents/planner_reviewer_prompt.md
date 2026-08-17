@@ -584,6 +584,20 @@ end the response with:
    total, plus a per-line count over that diff's ADDED lines for the
    strays. The reviewer states which shape each pair is at authoring
    time, in the receipt itself.
+   That per-line count is written for PROSE and binds prose only
+   (R-0531). A slice of CODE repeats lines STRUCTURALLY — blank
+   separators, closing parentheses, decorators and repeated argument
+   lines are what code is made of — so "each TO-ONLY addition exactly
+   1x among the added lines" is unattainable by construction for
+   every code append, and demanding it invites the fabricated number
+   R-0207 already warned about, arriving through a slice's LANGUAGE
+   rather than through its pair shape. For a code append the
+   obligation is ORDERED EQUALITY: the pre-commit blob is a
+   byte-exact PREFIX of the post-commit file, the slice is an exact
+   SUFFIX of it, and the lines that commit's diff ADDS are exactly
+   the slice's lines IN ORDER. That reading is strictly stronger than
+   the count it replaces — it fixes position as well as multiplicity
+   — and it stays measurable however often a line recurs.
 10. Mutation/red-proof spot-checks (temporarily breaking code to prove a
     test catches it) are encouraged — but ONLY inside a disposable
     `git worktree` at HEAD, never in the primary checkout. This
