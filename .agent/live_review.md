@@ -1464,3 +1464,74 @@ spoken aloud only in a chat window is exactly the A1 trap this record exists to
 close. No checklist item is added: the requirement already lives in the protocol,
 so the fix is that this round's own handback carries the sentence and every later
 block's Handback section names it among the mandated contents. OPEN.
+
+Gate: R27 — PASS, the round that recorded R26 and registered the reviewer's own
+omission. Every ordered gate was re-run by the reviewer over 369d94a3..07b1ba25
+and each one reproduces the handback's reading. TRANSPORT IS EXACT IN ALL FOUR
+PLACES: the committed `.agent/authored/f085-r27.md`, the committed
+`.agent/last_block.md` and both working copies are byte-EQUAL at sha256
+ce7ffcc42df494a9c21e733f410e6d8f48d394bc16239a0be71191232cdeafdd, 14103 B, 229
+lines, 6 marker lines, region digests dfea0906, 85061d65 and b03dbb55. THE APPEND
+COMMIT HOLDS ITS SHAPE: C1's pre-commit blob is a byte-exact PREFIX of the
+post-commit file, the remainder is exactly one blank line plus RECORD2 at numstat
+61/0, RECORD2's first line occurs once among the lines that commit adds, and 0
+lines match `^(BEGIN|END)-[A-Z0-9]+$` while the substring `END-` hits five times —
+all of it `APPEND-shaped` prose older than that round, which is the exact
+distinction the gate exists to force. THE ARITHMETIC MOVED BY THE ONE ID IT WAS
+ORDERED TO MOVE BY: 131 registered / 14 done / 0 landed with 117 open at base and
+132 / 14 / 0 with 118 open at HEAD, registered symmetric difference exactly
+R-0517, done and landed symmetric differences empty, no duplicate id, no
+resolution naming an unregistered id, max R-0517 and next free R-0518. THE PLAN
+PAIR IS A REWRITE AND ONLY THE ORDERED REGION MOVED: PLANF2 occurs 0 times at HEAD
+and PLANT2 once, `## Goal` and `## Risks` are byte-identical to their base bytes,
+the file is 254757ce2fbc3267ebdda74003373bf987e83371927bb6384a1a50caf470b46c at
+2370 B and 41 lines, and its `## Next Steps` list parses to 1, 2, 3. THE GATES
+WERE RE-RUN, NOT READ: the four state readers exited 0 with `158 passed` and the
+canary exited 0 with `42 passed`, each as its exact ordered command line, and no
+ruff gate was skipped by oversight because the change set holds no `.py` file.
+COMMIT HYGIENE IS CLEAN: the path set measured before the handback commit is the
+four declared `.agent/` paths and the handback adds only itself, per-commit
+insertions are 229, 168, 61 and 4 with the handback's own 80 measured after it
+existed and none over 500, the range is a single-parent chain, and the reflog
+holds only `commit:` entries. The handback is 123 lines against the 60 its
+per-commit tables carry; the overage is declared, names its own measured length
+and names the mandated content that caused it, which DECISION D15 permits and
+which no dropped section was traded for. No block condition is met.
+
+Done: R-0517 — resolved. The pointer is back on disk, and the block that dropped
+it is the block that restored it. R27's Handback section named the
+Phase-1-rule-1 sentence among the handback's mandated contents, and the handback
+it produced carries it: `.agent/handoff.md` at 07b1ba25 states in its `## Next`
+section that the next session's first action is re-reading `.agent/STOP` from
+disk BEFORE the Open PR Gate, and the reviewer read that from the file rather
+than from the worker's report. The finding closes on the PROPERTY and not on a
+sentence: what is required is that a handoff naming the next session's first
+action names the sentinel check first, and that every later block's Handback
+section carries the requirement forward — this round's block does. No checklist
+item is added, because docs/agents/self_drive_protocol.md §Phase 2 already binds
+it and a second copy would be a second source of truth.
+
+- R-0518 — Medium, A GATED TEST NEEDS A GITIGNORED BUILD DIRECTORY, SO THE
+STATE-READER GATE IS RED IN EXACTLY THE DISPOSABLE WORKTREE THIS PROTOCOL
+MANDATES. `tests/orchestration/test_test_runner.py::TestVitestFrontendTestFoundation::test_vitest_passes`
+runs `npx vitest run` with `cwd=Path("apps/ui").resolve()`, and
+`apps/ui/node_modules` is gitignored at `.gitignore:221`, so a fresh
+`git worktree` never carries it. That node sits inside the four-file state-reader
+suite every `.agent/`-rewriting round gates on, while
+docs/agents/planner_reviewer_prompt.md §4 item 10 and the self-drive protocol's
+G5 both require destructive verification to run in a disposable worktree. The two
+rules meet in a red no change caused. MEASURED, not inferred: in the primary
+checkout the node passed 3 of 3 standalone and the whole suite read `158 passed`
+at exit 0 in 5 of 5 runs at base 07b1ba25; in a worktree created at the same
+commit with no `apps/ui/node_modules` it failed 2 of 2 standalone with
+`AssertionError: vitest failed: ... [UNRESOLVED_IMPORT] Could not resolve
+'vitest/config'`. The first red the reviewer hit reported only a tail summary and
+named no node, which is why `-rf` now stands in the ordered command line — a
+reading ordered in a shape that cannot carry the evidence it exists to produce is
+its own small defect, recorded here rather than in a separate id. Medium because
+a red gate halts a round under the standing rule that a worker never repairs
+around one, and this red is reachable by any round that follows the worktree
+requirement. NOT fixed here: the repair belongs in the test — skip the node when
+`apps/ui/node_modules` is absent — and `tests/orchestration/test_test_runner.py`
+carries no skip of its own today, so the fix is a real edit to a gate file and
+sits outside this round's change set. OPEN.
