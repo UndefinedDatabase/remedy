@@ -18,20 +18,18 @@ reaches a child, and the limitations document exists and is linked from the
 README.
 
 ## Current Step
-R52, this round: the `dod-app` seam alone, in `packages/orchestration/exec_guard.py`. It takes no
-wall timeout and no output cap — both are parent-side, and its caller owns its own deadline and
-writes the app's output to a file. One test ships with it. Its caller migrates at R53, so the
-module's PARTIAL COVERAGE note is untouched here and stays true. The R51 PASS is recorded in the
-same round, with finding R-0554.
+R53, this round: T002c's migration, which COMPLETES T002c. `_run_app_once` in
+`packages/orchestration/dod_runners.py` takes the CHILD half alone through `plan_child_spawn`
+under the `dod-app` seam R52 landed, so the whole-parent-environment copy it passed becomes an
+allowlist. The `exec_guard` PARTIAL COVERAGE note is rewritten in the same round, because only
+this call site's move makes it false. One test ships with it. The R52 PASS is recorded in the same
+round, with findings R-0555 and R-0556.
 
 ## Next Steps
-1. T002c — migrate `_run_app_once` in `packages/orchestration/dod_runners.py` onto that seam,
-   taking the CHILD half alone through `plan_child_spawn`, and rewrite the `exec_guard` coverage
-   note in the same round, because only the call site's move makes that note false.
-2. T002d — the runtime sites under DECISION F085 D8: `runtime-server` takes no wall timeout and
+1. T002d — the runtime sites under DECISION F085 D8: `runtime-server` takes no wall timeout and
    `runtime-build` keeps the one it already has. That round also extracts the guard-result
-   translation the `test` and `dod-process` seams each carry, once three uses show its shape.
-3. T003 — network posture, the limitations document, its README link. That document states what
+   translation the `test` and `dod-process` seams each carry, now that three uses show its shape.
+2. T003 — network posture, the limitations document, its README link. That document states what
    the CHILD-half migrations do NOT bound: an app log written to a file takes no guard output cap.
    Then the integration gate, then closure.
 
