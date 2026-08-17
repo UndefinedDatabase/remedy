@@ -1,87 +1,185 @@
-# Handback — F085 Sandbox hardening (stage 1) · Runde 38 (R37 record + DECISION F085 D3)
+# Handback — F085 Sandbox hardening, R39
 
-Branch: feature/f085-sandbox-hardening · Base SHA: c3201976 · HEAD: this commit (C3).
-Fortschritt: ~74 % (T001 gebaut · R13-R32 PASS · R33 FAIL, an R34 repariert · R34-R37
-PASS · T002a KOMPLETT · T002b 10 von 12 Sites auf dem Seam, die letzten 2 durch
-DECISION F085 D3 ab R39 entsperrt · T002c-d, T003 offen) — Schätzung, gegen die
-Klassentabelle aus Amendment F085 D1 gemessen.
+Branch `feature/f085-sandbox-hardening`, base SHA cbcb5c23.
+Deviations, declared (DECISION D15): this file is 185 lines. Cause is mandated content — six
+per-commit tables, the item-status table, the G1-G7 transcripts, the per-pair authored-text
+proofs, the constraint-8 measurements and two verbatim blocks. No section dropped.
+
 ## Range
-Review of c3201976..HEAD.
+
+Review of cbcb5c23..HEAD (6 commits).
 
 ## Commits
 
-### c8a379f1 docs(f085): save the R38 step block
+### eba5de68 docs(f085): save the R39 step block
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f085-r38.md | +284/-0 | C0a — block saved byte-for-byte |
+| .agent/authored/f085-r39.md | +349/-0 | C0a — the block, byte-for-byte |
 
-### b9d5050b docs(f085): mirror the R38 block into last_block
+### 757be21c docs(f085): mirror the R39 block into last_block
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/last_block.md | +249/-294 | C0b — full replacement with the same bytes |
+| .agent/last_block.md | +295/-230 | C0b — same bytes as C0a |
 
-### 3b915e3c docs(review): record the R37 PASS and register R-0528 and R-0529
+### 607050ba docs(review): record the R38 PASS and register R-0530
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/live_review.md | +65/-0 | C1 — RECORD6 appended: R37 gate entry, R-0528, R-0529 |
+| .agent/live_review.md | +50/-0 | C1 — RECORD7 appended |
 
-### 275a294e docs(f085): rule the extra_env overlay for the test-class seam
+### dce66faa feat(f085): add an extra_env overlay to the test-class exec seam
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/decisions.md | +38/-0 | C2 — DEC6 appended as DECISION F085 D3 |
-| .agent/plan.md | +11/-12 | C2 — PLANF6A->PLANT6A and PLANF6B->PLANT6B applied |
+| packages/orchestration/exec_guard.py | +17/-3 | C2 — SEAMA→B, C→D, E→F, G→H |
+| tests/orchestration/test_exec_guard.py | +49/-0 | C2 — SEAMTESTS appended |
 
-### C3 (this commit) docs(f085): rewrite the handback for R38
+### f31802f0 docs(f085): advance the plan to R39
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/handoff.md | full rewrite | C3 — this handback; a handoff cannot table the commit that writes it (R-0149). Its own insertions are reported in the round report. |
+| .agent/plan.md | +3/-3 | C3 — PLANF7→PLANT7 |
+
+### (this commit) docs(f085): rewrite the handback for R39
+| Path | +/- | Reason |
+|---|---|---|
+| .agent/handoff.md | rewrite | C4 — a handback cannot table itself |
 
 ## Item status
+
 | Item | Status | Reason |
 |---|---|---|
 | C0a | done | |
 | C0b | done | |
 | C1 | done | |
 | C2 | done | |
-| C3 | done | this commit |
+| C3 | done | |
+| C4 | done | this commit |
 
 ## External actions
-No worktree was created — this round ordered no destructive check; `git worktree list` = 1 line throughout. `git push -u origin feature/f085-sandbox-hardening` — outcome in the round report (run after this commit). No PR, no merge, no gh command.
+
+`git fetch origin main` — ok. `git worktree add --detach .remedy-wt/base-main origin/main`, used
+for the ordered origin/main ruff run, then `git worktree remove` + `git worktree prune`;
+`git worktree list` is one line. `git push -u origin feature/f085-sandbox-hardening`. No PR, no merge.
 
 ## Verification
-G1 STATE — `.agent/STOP` re-read from disk before C0a and again before C3; absent both times (`ls` exit 2, "No such file or directory"). `git status --porcelain` = 0 lines at round start and after every commit. `git worktree list` = 1 line throughout: `/home/decodeux/Repos/remedy 275a294e [feature/f085-sandbox-hardening]`.
-G2 TRANSPORT — the committed `.agent/authored/f085-r38.md`, the committed `.agent/last_block.md`, BOTH working copies and the reviewer's own `.remedy-wt/f085-r38.md` are all five byte-EQUAL, measured disk-to-disk after C0b, not by digest fallback. sha256 5fa4d096e45014a54d93d7f27efe176adc4c85a1f10ebdcf6a649c6620cb5090 · 18154 B · 284 lines · 12 marker lines. Region digests, trailing newlines included: 1-100 4568e657… (6223 B), 101-200 8bdbaafb… (7342 B), 201-300 7baf119c… (4589 B), 301-end EMPTY (0 B — the file ends at line 284). Every one measured; none computed by hand.
-G3 APPEND SHAPE — C1 3b915e3c on `.agent/live_review.md`: pre-commit blob 397527 B is a byte-exact PREFIX of the 402603 B post-commit file; remainder 5076 B = exactly one blank line plus RECORD6; RECORD6 is an exact suffix; its first line occurs 1x among the 65 lines the diff ADDS; 0 lines match `^(BEGIN|END)-[A-Z0-9]+$` while the BEGIN substring occurs 17x; `git show --numstat` = 65 0 .agent/live_review.md. C2 275a294e on `.agent/decisions.md`: pre-commit blob 356103 B is a byte-exact PREFIX of the 358646 B post-commit file; remainder 2543 B = exactly one blank line plus DEC6; DEC6 is an exact suffix; its first line occurs 1x among the 38 lines the diff ADDS; 0 marker lines, BEGIN substring 1x; `git show --numstat` = 38 0 .agent/decisions.md.
-G4 ARITHMETIC — base c3201976: 142 registered / 24 done / 0 landed, 118 open, max registered R-0527, max resolved R-0527 — the block's base reading, reproduced. HEAD: 144 / 24 / 0, 120 open, max registered R-0529, max resolved R-0527. Registered symmetric difference {R-0528, R-0529}; done symmetric difference empty; landed symmetric difference empty; 0 duplicate ids; 0 resolutions naming an unregistered id; maximum id R-0529; next free id R-0530 (moved from R-0528).
-G5 THE PLAN, measured at HEAD after C2 — PLANF6A 0x / PLANT6A 1x; PLANF6B 0x / PLANT6B 1x. `.agent/plan.md` is 45 lines against the 50-line AGENTS.md cap and still carries `## Goal` 1x and `## Next Steps` 1x. 0 lines match `^(BEGIN|END)-[A-Z0-9]+$`. `git show --numstat` for C2 = 38 0 .agent/decisions.md and 11 12 .agent/plan.md.
-G6 SUITES — each run in the PRIMARY checkout /home/decodeux/Repos/remedy, never a worktree (R-0518). `python3 -m pytest tests/orchestration/test_test_runner.py tests/regression/test_resource_safety.py tests/orchestration/test_integrity_gate.py tests/ui_server/test_dashboard_contract.py -rf -q` exit 0, `159 passed in 20.99s` — no R-0518 red, `-rf` printed no failure section. CANARY `python3 -m pytest tests/cli/test_golden_path.py -q` exit 0, `42 passed in 22.34s`. Both reproduce the block's base readings.
-G7 HYGIENE — `git diff --name-only c3201976..HEAD` measured BEFORE C3 holds exactly `.agent/authored/f085-r38.md`, `.agent/decisions.md`, `.agent/last_block.md`, `.agent/live_review.md`, `.agent/plan.md` and nothing else — the declared change set minus `.agent/handoff.md`, which C3 writes. Per-commit insertions before C3: 284, 249, 65, 49 — none exceeds 500. Every commit has exactly one parent (c8a379f1<-c3201976, b9d5050b<-c8a379f1, 3b915e3c<-b9d5050b, 275a294e<-3b915e3c). `git reflog -10` holds only `commit:` entries.
+
+G1 STATE — pass. `.agent/STOP` absent before C0a and again before C4 (`ls` exit 2 both times);
+`git status --porcelain` empty at round start and after each of the five commits; `git worktree
+list` one line at the handback.
+
+G2 TRANSPORT — pass, disk-to-disk, no digest fallback. Reviewer `.remedy-wt/f085-r39.md`, both
+working copies and both committed blobs are five-way byte-EQUAL: sha256
+32415af6db43f9228459a2bb05241c35c0a39073ab4ffb638d01758448f1181a, 19352 B, 349 lines, 24 marker
+lines. Regions measured, not computed, trailing newlines included: 1-100 6673 B 84af37ab3ad18bcf…;
+101-200 5284 B e8ae19eb0bb28eb3…; 201-300 4155 B d78747c143a2305d…; 301-end 3240 B 64aa4ed98c296d61….
+
+G3 APPEND SHAPE — pass. Pre-commit blob 402603 B is a byte-exact PREFIX of the 406554 B post-commit
+file; remainder 3951 B == one blank line + RECORD7 exactly; RECORD7 an exact suffix; its first line
+occurs 1x among the commit's 50 added lines; 0 LINES match `^(BEGIN|END)-[A-Z0-9]+$`. numstat 50/0.
+
+G4 ARITHMETIC — pass, matching every expected reading. Base cbcb5c23 144 / 24 / 0, 120 open, max
+registered R-0529, max resolved R-0527; HEAD 145 / 24 / 0, 121 open, max registered R-0530, max
+resolved R-0527. Registered symmetric difference exactly `['R-0530']`; done and landed symmetric
+differences empty; 0 duplicate ids; 0 resolutions naming an unregistered id; maximum id R-0530;
+next free id R-0530 → R-0531.
+
+G5 THE SEAM — pass on every ordered reading but one, which is unattainable (Deviation 1). In
+`exec_guard.py` at HEAD each of the four FROMs occurs 0x and each of the four TOs 1x. Floor
+untouched: `    keep = set(allowlist) - FORBIDDEN_ENV_KEYS` 1x at base and 1x at HEAD; `def
+scrub_child_env` through its `return` byte-identical base vs HEAD, 540 B each. 0 marker lines
+reached either file. C2 numstat 17/3 and 49/0. SEAMTESTS, what holds: added lines == `['','']` +
+SEAMTESTS's 47 lines in order; pre 21388 B a byte-exact prefix of post 23271 B; remainder == two
+blank lines + SEAMTESTS; slice an exact suffix. After C3: PLANF7 0x, PLANT7 1x, `.agent/plan.md`
+45 lines against the 50-line cap.
+
+G6 SUITES — every command in the PRIMARY checkout, each exit 0 except the origin/main ruff
+sub-order (Deviation 2):
+- `python3 -m pytest tests/orchestration/test_exec_guard.py -q` → 0, `27 passed in 13.22s` (base 24).
+- `python3 -m pytest tests/orchestration/test_mission_state.py tests/orchestration/test_job_promote.py
+  tests/orchestration/test_pingpong.py tests/orchestration/test_pingpong_promote.py -q` → 0,
+  `262 passed in 9.98s`, equal to base.
+- `python3 -m pytest tests/orchestration/test_test_runner.py tests/regression/test_resource_safety.py
+  tests/orchestration/test_integrity_gate.py tests/ui_server/test_dashboard_contract.py -rf -q` → 0,
+  `159 passed in 20.55s`. No R-0518 red.
+- `python3 -m ruff check packages/orchestration/exec_guard.py tests/orchestration/test_exec_guard.py`
+  → 0, `All checks passed!`. Same command at origin/main → exit 1, Deviation 2.
+- CANARY `python3 -m pytest tests/cli/test_golden_path.py -q` → 0, `42 passed in 22.27s`.
+
+G7 HYGIENE — pass. `git diff --name-only cbcb5c23..HEAD` before C4 is exactly the declared change
+set minus `.agent/handoff.md`, nothing else. Insertions before C4: 349, 295, 50, 66, 6 — none over
+500; C4's own insertions are in the round report, since C4 cannot measure itself. Every commit has
+exactly one parent; `git reflog -10` holds only `commit:` entries.
 
 ## Authored-text proofs
-Every slice was extracted PROGRAMMATICALLY from the COMMITTED `.agent/authored/f085-r38.md` by its BEGIN/END marker pair; none was retyped or taken from the prompt; each FROM was asserted to match exactly once before the replace; 0 marker lines reached any target file. Transport is disk-to-disk byte equality (G2), not a digest fallback.
-- RECORD6 — append to `.agent/live_review.md`, no FROM; 5075 B, 64 lines; proved as an append by G3.
-- DEC6 — append to `.agent/decisions.md`, no FROM; 2542 B, 37 lines; proved as an append by G3.
-- PLANF6A->PLANT6A — containment test OUTPUT: `TO contains FROM: false` — REWRITE, so the pair is owed and given the FROM 0x / TO 1x reading. FROM occurred exactly 1x in `.agent/plan.md` at c3201976; at HEAD FROM 0x, TO 1x.
-- PLANF6B->PLANT6B — containment test OUTPUT: `TO contains FROM: false` — REWRITE, same reading. FROM occurred exactly 1x in `.agent/plan.md` at c3201976; at HEAD FROM 0x, TO 1x.
 
-Open findings: 120 (118 + R-0528 + R-0529 registered; nothing resolved this round).
+Every slice extracted PROGRAMMATICALLY from the committed `.agent/authored/f085-r39.md` by its
+marker pair, never retyped; five-way disk equality is G2.
+- SEAMA→SEAMB, SEAMC→SEAMD, SEAME→SEAMF, SEAMG→SEAMH and PLANF7→PLANT7 — REWRITE, the shape
+  constraint 2 assigns: `TO contains FROM: false` measured for each, each FROM 1x in its target
+  before and 0x after, each TO 1x after (counts in G5).
+- RECORD7 — APPEND, no FROM and no FROM-zero count reported. §4.9 met: first line 1x among the
+  added lines, plus G3's prefix / remainder / suffix proofs.
+- SEAMTESTS — APPEND, no FROM and no FROM-zero count reported. §4.9 AS ORDERED is unattainable
+  (Deviation 1); the proofs that do hold are in G5.
 
 ## Deviations & assumptions
-The commit sequence executed is exactly the block's Bundle in order: C0a, C0b, C1, C2, C3 — five commits, no extra, none dropped, no reordering. Every slice was applied byte-verbatim as written; none was edited.
-DECLARED DEFECT IN THE BLOCK'S OWN TEXT, applied as written and not repaired (constraint 9): RECORD6's R-0528 paragraph asserts that `.agent/last_block.md` "hashes 208ad9d3 at 483975b3 and c8efc5c0 at 857ca31a and every commit after it". Measured by sha256 over `git show <sha>:.agent/last_block.md`: 208ad9d3 at 483975b3; c8efc5c0 at 857ca31a and at c3201976; 5fa4d096 at b9d5050b and at HEAD. The universal clause "every commit after it" is therefore FALSE from b9d5050b onward — b9d5050b is this round's own C0b, and C0b precedes C1, so the sentence was already false at the instant it landed. That is the same R-0417 staleness class R-0528 itself registers, recurring inside the paragraph that registers it; the fourth consecutive round in which the constraint-8 report produced the finding.
-CONSTRAINT-8 SWEEP, naming what was re-read and reporting the measurement: all five files this round edited were re-read at HEAD after C2 — `.agent/authored/f085-r38.md`, `.agent/last_block.md`, `.agent/live_review.md`, `.agent/decisions.md`, `.agent/plan.md`. Beyond the declaration above, RECORD6's remaining quotations each name the SHA they were measured at (the R37 constraint at e2b23b33 and 857ca31a, the `Done: R-0527` paragraph at 75feb987, both readings at c3201976), so neither C0b nor C1 falsifies them. DEC6's factual claims were re-measured at c3201976 and all hold: `ci_run.py` line 78 is `env = {**os.environ, PYTEST_TIMEOUT_ENV_VAR: str(timeout_sec)}`, line 79 is a `subprocess.run` with no capture (it streams), `builder_bridge.py` line 219 is `env = {**os.environ, "PYTHONDONTWRITEBYTECODE": "1"}`, and `exec_guard.py` offers `extra_env_keys` at lines 491/523 and no `extra_env`. DEC6's one claim about a file C2 itself rewrites names its SHA — "`.agent/plan.md` at c3201976 recorded this blocker for `builder_bridge.py` alone" — and was true there, so C2 does not falsify it.
-LENGTH, measured with `wc -l` on the draft before writing the file: 87 lines against the 60-line cap that a 5-commit bundle carries, so a DECISION D15 stated-cause overage IS claimed. The mandated content that causes it: five per-commit tables plus the item-status table, seven gate entries G1-G7 carrying their real measurements, four authored-text pair proofs, the two texts the block orders repeated verbatim (the 4-line Fortschritt line and the 8-line R39/R40 note) and the two declarations above. No section was dropped and no transcript was padded.
+
+Commit sequence: NO departure. C0a, C0b, C1, C2, C3, C4 in the block's order — nothing extra,
+dropped or reordered.
+
+1. G5's SEAMTESTS per-line obligation is unmeetable by construction; nothing was edited, this is
+declared instead. Ordered: "every line SEAMTESTS contains occurs exactly once AMONG THE LINES C2'S
+DIFF ADDS". Measured: 19 of SEAMTESTS's 47 lines fail it, because the slice repeats lines
+internally — `''` 12x, `    )` 4x, `        _child(_ENV_DUMP), timeout_sec=30, cwd=None,` 3x,
+`@pytest.mark.subprocess` 2x. §4.9 scopes that count to TO-ONLY additions and bends for
+legitimately repeated PROSE; a CODE slice repeats lines structurally, so no correct application of
+this slice could satisfy the count as written.
+
+2. The ordered `ruff` run at origin/main exits 1, not 0. `python3 -m ruff check
+packages/orchestration/exec_guard.py tests/orchestration/test_exec_guard.py` in a detached worktree
+at origin/main (a5a70621): exit 1, `E902 No such file or directory (os error 2)` for each of the
+two paths, `Found 2 errors.` Cause measured: NEITHER path exists at origin/main — `git ls-tree
+origin/main` over both paths is empty, and `exec_guard.py` was ADDED on this branch at e0d4d880.
+The reading the sub-order wanted survives, more strongly: zero pre-existing ruff errors on those
+paths at main because the paths are not there, so HEAD's `All checks passed!` is entirely this
+branch's. Two defects in one bullet — ordered without being executed at its own base (R-0364), and
+G6's preamble orders every command "in the PRIMARY checkout and never in a worktree" while an
+origin/main run of it requires one. The HEAD ruff gate is exit 0; no repair was improvised.
+
+3. Observation only, text this round did NOT write, not repaired (constraint 9): `.agent/plan.md`
+Next Steps 1 says "R38's `extra_env` overlay unblocks both". The overlay CODE landed this round at
+dce66faa; R38's 275a294e landed DECISION F085 D3 alone. No slice touches that paragraph.
+
+Constraint 8, staleness — re-read all six files this round wrote; the measurements:
+- RECORD7's R-0530 paragraph quantifies over a CLOSED set of SHAs, so C0b cannot falsify it.
+  Measured: sha256 of `.agent/last_block.md` is 208ad9d3… at 483975b3, c8efc5c0… at 857ca31a AND
+  c3201976, 5fa4d096… at b9d5050b AND cbcb5c23 — exactly what the paragraph states — and
+  32415af6… at 757be21c, a commit the paragraph does not reach.
+- RECORD7 quotes the R-0528 clause; that clause occurs 1x in `.agent/live_review.md` at 3b915e3c,
+  the commit RECORD7 names (matched over flattened whitespace — it is line-wrapped on disk).
+- SEAMD's "Both `test`-class call sites still on a bare spawn overlay one variable onto a copy of
+  `os.environ`" measured TRUE: `ci_run.py:78` and `builder_bridge.py:219` are the two, no third.
+- PLANT7's "No call site is migrated" measured TRUE: the cbcb5c23..HEAD path set holds no call site.
+- Borderline, NOT registered: RECORD7's trailing "next free R-0530" carries no SHA of its own,
+  though the sentence's other readings are anchored at c3201976 and cbcb5c23; C1 registers R-0530
+  in the very commit that lands the clause, so a reader dropping the anchor reads it false at HEAD.
+
+Open findings: 121 (was 120 — R-0530 registered, nothing resolved). Next free id R-0531.
+
+Fortschritt: ~76 % (T001 gebaut · R13-R32 PASS · R33 FAIL, an R34 repariert · R34-R38
+PASS · T002a KOMPLETT · T002b 10 von 12 Sites auf dem Seam, die letzten 2 ab R40
+migrierbar · T002c-d, T003 offen) — Schätzung, gegen die Klassentabelle aus Amendment
+F085 D1 gemessen.
 
 ## Next
-The next session's FIRST action is Phase 1 rule 1 — re-read `.agent/STOP` from disk — BEFORE rule 2, the Open PR Gate (`gh pr list --state open --json number,headRefName,baseRefName,isDraft`). R38's own verdict is NOT a §4.13 terminator: this branch continues, so the next reviewed round records R38's gate entry in `.agent/live_review.md`.
 
-Carried verbatim from the block:
+The next session's FIRST action is Phase 1 rule 1 — re-read `.agent/STOP` from disk — BEFORE rule 2,
+the Open PR Gate (`gh pr list --state open --json number,headRefName,baseRefName,isDraft`). R39's
+own verdict is NOT a §4.13 terminator because this branch continues, and the next reviewed round
+records R39's gate entry.
 
-  R39 implements DECISION F085 D3 in `packages/orchestration/exec_guard.py`: an
-  `extra_env` mapping on `test_command_exec_policy` and `run_guarded_test_command`
-  whose entries become the scrub SOURCE overlay and whose keys join the allowlist,
-  with `scrub_child_env` keeping `FORBIDDEN_ENV_KEYS` as the floor, plus the tests
-  that pin the set, the floor and the untouched allowlist. No call site is migrated
-  in R39. R40 then migrates `packages/orchestration/ci_run.py`, which still owes its
-  own DECISION on where the stage's output goes: at c3201976 the spawn at line 79
-  streams straight to the console while the seam captures.
+  R40 migrates `packages/orchestration/ci_run.py` onto the seam, passing the per-stage
+  budget through `extra_env`. It still owes its own DECISION on where the stage output
+  goes: at cbcb5c23 `_run_via_subprocess` streams straight to the console and returns
+  only the returncode, while the seam CAPTURES both streams, so the migration changes
+  observable behaviour rather than preserving it and that decision is the round's own
+  work. `packages/orchestration/builder_bridge.py` follows it, and R41 or later takes
+  T002c-d.
