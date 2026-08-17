@@ -18,17 +18,16 @@ reaches a child, and the limitations document exists and is linked from the
 README.
 
 ## Current Step
-R53, this round: T002c's migration, which COMPLETES T002c. `_run_app_once` in
-`packages/orchestration/dod_runners.py` takes the CHILD half alone through `plan_child_spawn`
-under the `dod-app` seam R52 landed, so the whole-parent-environment copy it passed becomes an
-allowlist. The `exec_guard` PARTIAL COVERAGE note is rewritten in the same round, because only
-this call site's move makes it false. One test ships with it. The R52 PASS is recorded in the same
-round, with findings R-0555 and R-0556.
+R54, this round: T002d's first half. `packages/orchestration/exec_guard.py` gains the
+`runtime-build` seam under Amendment F085 D8 — a BOUNDED class, so it KEEPS a wall timeout — and
+that third caller is what makes the guard-result translation worth extracting, so the `test` and
+`dod-process` wrappers move onto the shared helper in the same round. No call site migrates here.
+Four tests ship with it. The R53 PASS is recorded in the same round, with finding R-0557.
 
 ## Next Steps
-1. T002d — the runtime sites under DECISION F085 D8: `runtime-server` takes no wall timeout and
-   `runtime-build` keeps the one it already has. That round also extracts the guard-result
-   translation the `test` and `dod-process` seams each carry, now that three uses show its shape.
+1. T002d's second half — migrate the two `runtime-build` sites in `_auto_build_frontend`
+   (`packages/orchestration/ui_server.py`) onto the new seam with `check=True`, then the three
+   `runtime-server` sites, which take no wall timeout because a clock would kill them mid-service.
 2. T003 — network posture, the limitations document, its README link. That document states what
    the CHILD-half migrations do NOT bound: an app log written to a file takes no guard output cap.
    Then the integration gate, then closure.
