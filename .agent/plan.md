@@ -18,9 +18,10 @@ reaches a child, and the limitations document exists and is linked from the
 README.
 
 ## Current Step
-R40, this round: record the R39 PASS and register R-0531 and R-0532, the two R39 gate
-sentences its worker measured as unsatisfiable. Session-closing round: no production
-code changes, and R41 takes the `ci_run.py` migration.
+R41, this round: record the R40 PASS, register R-0533 and R-0534 — both defects in
+RECORD8's own text — and resolve R-0530, R-0531 and R-0532 by writing their
+counter-measures into `docs/agents/planner_reviewer_prompt.md`. No production code
+changes; R42 takes the `ci_run.py` migration.
 
 ## Next Steps
 1. T002b remainder — the two `test`-class sites still on a bare spawn. At c3201976 BOTH
