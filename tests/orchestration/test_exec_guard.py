@@ -10,6 +10,7 @@ whether any existing Remedy subprocess is limited. It is not.
 
 from __future__ import annotations
 
+import io
 import os
 import subprocess
 import sys
@@ -19,6 +20,7 @@ import pytest
 
 from packages.orchestration.exec_guard import (
     ExecGuardPolicy,
+    _StreamPump,
     plan_child_spawn,
     run_guarded,
     scrub_child_env,
@@ -237,6 +239,56 @@ def test_wall_timeout_bounds_the_call_when_a_descendant_escapes_the_group():
     # Upper bound only: the escapee sleeps 20s, so any return well under that is
     # the property. Deadline + grace is ~3s here; 10s leaves room for a slow box.
     assert elapsed < 10.0
+
+    # The escapee outlives the guard BY DESIGN, so this test ends it rather than
+    # leaving a MARKER process that a later test's pgrep sweep would find.
+    subprocess.run(["pkill", "-f", MARKER], check=False)
+    for _ in range(10):
+        if not _survivors():
+            break
+        time.sleep(0.2)
+    assert _survivors() == []
+
+
+def test_stream_pump_snapshot_reports_nothing_before_the_pump_has_read():
+    """A pump that never ran holds no bytes, has seen none and dropped none.
+
+    The zero state matters because `run_guarded` now reads EVERY stream field
+    through `snapshot()`, including on the path where a pump is still blocked and
+    has produced nothing at all.
+    """
+    pump = _StreamPump(io.BytesIO(b"never read, because run() is never called"), None)
+
+    assert pump.snapshot() == (b"", 0, False)
+
+
+@pytest.mark.subprocess
+def test_a_pump_blocked_by_an_escapee_still_returns_the_bytes_it_already_read():
+    """The drain deadline costs the REST of a stream, never the part already read.
+
+    Same escapee shape as
+    `test_wall_timeout_bounds_the_call_when_a_descendant_escapes_the_group` — the
+    grandchild holds the inherited pipe write end past the deadline — but the child
+    writes and flushes a known line FIRST. That line must come back even though the
+    pump never reaches EOF, and `streams_complete` must still report the stream as
+    incomplete.
+    """
+    escapee = (
+        "import subprocess, sys, time\n"
+        "sys.stdout.write('line-written-before-the-escapee\\n')\n"
+        "sys.stdout.flush()\n"
+        "subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(20)', sys.argv[1]],\n"
+        "                 start_new_session=True)\n"
+        "time.sleep(120)\n"
+    )
+    result = run_guarded(
+        _child(escapee),
+        ExecGuardPolicy(wall_timeout_seconds=1.0, stream_drain_grace_seconds=2.0, output_cap_bytes=64 * 1024),
+    )
+
+    assert result.tripped_limit == "wall_timeout"
+    assert result.streams_complete is False
+    assert b"line-written-before-the-escapee" in result.stdout
 
     # The escapee outlives the guard BY DESIGN, so this test ends it rather than
     # leaving a MARKER process that a later test's pgrep sweep would find.

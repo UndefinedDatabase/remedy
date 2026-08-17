@@ -166,11 +166,14 @@ class ExecGuardResult:
     limit is never silent.
 
     `streams_complete` is False when a stream pump was still blocked when the
-    drain grace ran out — an escaped descendant holding the inherited pipe. In
-    that case the pump never reached EOF, so ITS `stdout`/`stderr` field is `b""`
-    and only `stdout_bytes_seen`/`stderr_bytes_seen` describe what the child
-    produced. A guard that returns on time and says so is better than one that
-    blocks for the escapee's whole life to keep the bytes.
+    drain grace ran out — an escaped descendant holding the inherited pipe. Its
+    meaning is exactly that and nothing more: some pump did not reach EOF. ITS
+    `stdout`/`stderr` field then carries whatever that pump had already read when
+    the grace ran out, which is a PARTIAL buffer and is claimed as nothing else,
+    and `stdout_bytes_seen`/`stderr_bytes_seen` are the byte totals counted so
+    far — above the stored length whenever the cap trimmed the storage. A guard
+    that returns on time with the bytes in hand, and says the stream is
+    incomplete, is better than one that blocks for the escapee's whole life.
     """
 
     returncode: int | None
@@ -196,32 +199,47 @@ class _StreamPump(threading.Thread):
     The cap is applied WHILE reading. The buffer is never allowed to grow past
     the cap and then trimmed, because that would need the memory the cap exists
     to deny.
+
+    Every field lives behind `_lock` and is read only through `snapshot()`, so a
+    caller that gives up on a pump still blocked at the drain deadline gets the
+    bytes it HAD read rather than nothing, and never observes a half-applied
+    update of the three values against each other.
     """
 
     def __init__(self, stream, cap: int | None) -> None:
         super().__init__(daemon=True)
         self._stream = stream
         self._cap = cap
-        self.data = b""
-        self.bytes_seen = 0
-        self.truncated = False
+        self._lock = threading.Lock()
+        self._stored = bytearray()
+        self._bytes_seen = 0
+        self._truncated = False
+
+    def snapshot(self) -> tuple[bytes, int, bool]:
+        """The bytes stored so far, the bytes seen so far and the truncated flag.
+
+        Safe to call at any time, including while `run()` is still reading: all
+        three are taken under the writer's own lock, so they describe one single
+        point in the stream. After EOF they are the pump's final values.
+        """
+        with self._lock:
+            return bytes(self._stored), self._bytes_seen, self._truncated
 
     def run(self) -> None:
-        stored = bytearray()
         while True:
             chunk = self._stream.read1(_READ_CHUNK_BYTES)
             if not chunk:
                 break
-            self.bytes_seen += len(chunk)
-            if self._cap is None:
-                stored += chunk
-                continue
-            room = max(self._cap - len(stored), 0)
-            if room:
-                stored += chunk[:room]
-            if len(chunk) > room:
-                self.truncated = True
-        self.data = bytes(stored)
+            with self._lock:
+                self._bytes_seen += len(chunk)
+                if self._cap is None:
+                    self._stored += chunk
+                    continue
+                room = max(self._cap - len(self._stored), 0)
+                if room:
+                    self._stored += chunk[:room]
+                if len(chunk) > room:
+                    self._truncated = True
 
 
 def _plan_rlimits(policy: ExecGuardPolicy) -> tuple[list[tuple[int, int, int]], list[str], list[str]]:
@@ -387,6 +405,12 @@ def run_guarded(cmd: Sequence[str], policy: ExecGuardPolicy) -> ExecGuardResult:
         for pump in (out_pump, err_pump):
             pump.join(max(drain_deadline - time.monotonic(), 0.0))
         streams_complete = not (out_pump.is_alive() or err_pump.is_alive())
+        # Read through snapshot() rather than off a pump that may still be
+        # blocked: a pump the grace ran out on has bytes in hand, and throwing
+        # them away buys nothing. `streams_complete` above already says the
+        # stream is partial, so the two together stay honest.
+        stdout_data, stdout_seen, stdout_truncated = out_pump.snapshot()
+        stderr_data, stderr_seen, stderr_truncated = err_pump.snapshot()
         if streams_complete:
             # Closed ONLY when no pump is still reading: closing a descriptor under
             # a blocked reader risks that thread reading a recycled fd after a later
@@ -406,7 +430,7 @@ def run_guarded(cmd: Sequence[str], policy: ExecGuardPolicy) -> ExecGuardResult:
         classification, tripped_limit = "resource_limit", "wall_timeout"
     elif term_signal == "SIGXCPU":
         classification, tripped_limit = "resource_limit", "cpu_seconds"
-    elif out_pump.truncated or err_pump.truncated:
+    elif stdout_truncated or stderr_truncated:
         classification, tripped_limit = "resource_limit", "output_bytes"
     elif returncode == 0:
         classification, tripped_limit = "ok", None
@@ -416,12 +440,12 @@ def run_guarded(cmd: Sequence[str], policy: ExecGuardPolicy) -> ExecGuardResult:
     return ExecGuardResult(
         returncode=returncode,
         term_signal=term_signal,
-        stdout=out_pump.data,
-        stderr=err_pump.data,
-        stdout_truncated=out_pump.truncated,
-        stderr_truncated=err_pump.truncated,
-        stdout_bytes_seen=out_pump.bytes_seen,
-        stderr_bytes_seen=err_pump.bytes_seen,
+        stdout=stdout_data,
+        stderr=stderr_data,
+        stdout_truncated=stdout_truncated,
+        stderr_truncated=stderr_truncated,
+        stdout_bytes_seen=stdout_seen,
+        stderr_bytes_seen=stderr_seen,
         streams_complete=streams_complete,
         wall_seconds=wall_seconds,
         cpu_seconds_used=rusage.ru_utime + rusage.ru_stime,
