@@ -1,30 +1,39 @@
-# Handback — F085 R46
+# Handback — F085 R47
 
-Feature F085 (sandbox hardening) · Round R46 · Branch feature/f085-sandbox-hardening · Base SHA 470d2577
+Feature F085 (sandbox hardening) · Round R47 · Branch feature/f085-sandbox-hardening · Base SHA c8da1928
 
 ## Range
 
-Review of 470d2577..HEAD
+Review of c8da1928..HEAD
 
 ## Commits
 
-### 6f302271 docs(f085): save the R46 step block — C0a
+### e0eee32f docs(f085): save the R47 step block — C0a
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f085-r46.md | +192/-0 | block saved byte-verbatim from the reviewer's .remedy-wt file |
+| .agent/authored/f085-r47.md | +308/-0 | block saved byte-verbatim from the reviewer's .remedy-wt file |
 
-### 5b351a2e docs(f085): mirror the R46 block into last_block — C0b
+### 313e8321 docs(f085): mirror the R47 block into last_block — C0b
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/last_block.md | +144/-429 | identical bytes mirrored |
+| .agent/last_block.md | +259/-143 | identical bytes mirrored |
 
-### 9afeeb86 docs(f085): record the R45 PASS, register R-0547, correct the D6 figure — C1
+### 3fe2667d docs(f085): advance the plan to R47 — C1
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/live_review.md | +60/-0 | RECORD14 appended |
-| .agent/decisions.md | +17/-0 | DEC6C appended; DEC6 itself left byte-identical |
+| .agent/plan.md | +8/-9 | PLANF→PLANT rewrite; first substantive commit, per the rule C23T writes |
 
-### C2 — this commit, docs(f085): rewrite the handback for R46
+### 243f91fc docs(f085): record the R46 PASS and register R-0548 — C2
+| Path | +/- | Reason |
+|---|---|---|
+| .agent/live_review.md | +62/-0 | RECORD15 appended |
+
+### 522d925a docs(f085): widen checklist item 16 and add item 23 — C3
+| Path | +/- | Reason |
+|---|---|---|
+| docs/agents/planner_reviewer_prompt.md | +36/-0 | C16F→C16T and C23F→C23T, both APPEND-shaped |
+
+### C4 — this commit, docs(f085): rewrite the handback for R47
 | Path | +/- | Reason |
 |---|---|---|
 | .agent/handoff.md | rewrite | a handback cannot table the commit that writes it (R-0149) |
@@ -36,48 +45,50 @@ Review of 470d2577..HEAD
 | C0a | done | |
 | C0b | done | |
 | C1 | done | |
-| C2 | done | this commit |
+| C2 | done | |
+| C3 | done | |
+| C4 | done | this commit |
 
 ## External actions
 
-`git push -u origin feature/f085-sandbox-hardening` after C2. No worktree added, no PR, no merge.
+`git push -u origin feature/f085-sandbox-hardening` after C4. No worktree added, no PR, no merge.
 
 ## Verification
 
-G1 STATE, exit 0. `.agent/STOP` absent before C0a and again before C2. `git status --porcelain` exit 0 with empty output at round start and after each of C0a, C0b, C1. `git worktree list` one line throughout.
+G1 STATE, exit 0. `.agent/STOP` absent before C0a and again before C4 (`ls` → "No such file or directory" both times). `git status --porcelain` exit 0, empty output at round start and after each of C0a, C0b, C1, C2, C3. `git worktree list` one line throughout.
 
-G2 TRANSPORT, exit 0. All five copies byte-EQUAL disk-to-disk, no digest fallback — reviewer `.remedy-wt/f085-r46.md`, committed `.agent/authored/f085-r46.md`, committed `.agent/last_block.md` and both working copies: sha256 89a8b79bd98dbc53c40225c15b0070e9a57cad5d1cb788d6eef2dac6bce1363c, 13950 B, 192 lines, 4 marker lines, each of the four values measured separately on every copy.
+G2 TRANSPORT, exit 0. All FIVE copies byte-EQUAL disk-to-disk, no digest fallback — reviewer `.remedy-wt/f085-r47.md`, committed `.agent/authored/f085-r47.md`, committed `.agent/last_block.md` and both working copies: sha256 a1d2fe72fd6425b5bbf3a06d13e9eb25dbebabb80bfd8a10e49694251cb5530f, 22123 B, 308 lines, 14 marker lines — each of the four values measured separately on every copy.
 
-G3 APPEND SHAPE, exit 0, measured separately per path. RECORD14 → `.agent/live_review.md`: pre-commit blob is a byte-exact prefix true; remainder is exactly one blank line plus the slice true; slice is an exact suffix true; 0 lines matching `^(BEGIN|END)-[A-Z0-9]+$` in the file; slice 59 lines of which 3 empty; C1 adds 60 lines to the path; 0 non-empty slice lines occur ≠1x among them; numstat `60 0`. DEC6C → `.agent/decisions.md`: prefix true, remainder true, suffix true, 0 marker LINES; slice 16 lines of which 3 empty; C1 adds 17 lines; 0 violations; numstat `17 0`.
+G3 SHAPES, exit 0, measured separately per pair and per path. C1 / PLANF→PLANT / `.agent/plan.md`, REWRITE: PLANF 0x, PLANT 1x in the post-commit file, 0 marker LINES, numstat `8 9`. C2 / RECORD15 / `.agent/live_review.md`, PROSE APPEND: pre-commit blob a byte-exact prefix true, remainder exactly one blank line plus the slice true, slice an exact suffix true, 0 lines matching `^(BEGIN|END)-[A-Z0-9]+$`; slice 61 lines of which 2 empty against 62 added lines; 0 non-empty slice lines occur ≠1x among them; numstat `62 0`. C3 / both pairs / `docs/agents/planner_reviewer_prompt.md`, both APPEND: C16F 1x and C16T 1x, C23F 1x and C23T 1x; TO-only lines 18 and 18, all non-empty, each occurring exactly once among the 36 lines C3 adds to the path (18+18=36, 0 violations); 0 marker LINES; numstat `36 0`.
 
-G4 SUITE, both in the primary checkout, both exit 0. Four state-reading files `-rf -q` → `159 passed in 19.84s`, against the reviewer's base reading of 159 at 470d2577. CANARY `tests/cli/test_golden_path.py -q` → `42 passed in 20.34s`, base 42.
+G4 SUITE, both in the PRIMARY checkout, both exit 0. Four state readers `-rf -q` → `159 passed in 19.90s`, against the reviewer's base of 159 at c8da1928. CANARY `tests/cli/test_golden_path.py -q` → `42 passed in 20.39s`, base 42.
 
-G5 ARITHMETIC, exit 0. Line-start patterns `^- R-\d{4} `, `^Done: R-\d{4}`, `^Landed: R-\d{4}`. Base 470d2577: 161 / 27 / 0, 134 open, max registered R-0546, max resolved R-0532, 0 duplicate ids, 0 resolutions naming an unregistered id — reproduces the reviewer's stated base exactly. HEAD: 162 / 27 / 0, 135 open, max registered R-0547, 0 duplicates, 0 orphan resolutions. Symmetric differences: registered exactly R-0547; done EMPTY; landed EMPTY. Next free id R-0548.
+G5 PLAN CONTRACT, exit 0, on `.agent/plan.md` after C1: 40 lines (cap 50); `## Goal` true, `## Next Steps` true, `\bF\d{3}\b` true.
 
-G6 HYGIENE, exit 0, measured before C2. `git diff --name-only 470d2577..HEAD` returns exactly four paths — `.agent/authored/f085-r46.md`, `.agent/decisions.md`, `.agent/last_block.md`, `.agent/live_review.md` — the declared change set minus `.agent/handoff.md`, and nothing else. Insertions: C0a 192, C0b 144, C1 77; none exceeds 500, so the allowance spent at d4473f85 was not called on again. C2's own insertions go in the round report. Every commit has exactly one parent.
+G6 ARITHMETIC, exit 0. Line-start patterns `^- R-\d{4} `, `^Done: R-\d{4}`, `^Landed: R-\d{4}`. Base c8da1928: 162 / 27 / 0, 135 open, max registered R-0547, max resolved R-0532, 0 duplicate ids, 0 resolutions naming an unregistered id — reproduces the reviewer's stated base exactly. HEAD: 163 / 27 / 0, 136 open, max registered R-0548, max resolved R-0532, 0 duplicates, 0 orphan resolutions. Symmetric differences: registered exactly R-0548; done EMPTY; landed EMPTY. Next free id R-0549.
+
+G7 STRUCTURE, exit 0, on `docs/agents/planner_reviewer_prompt.md` after C3. Region walked from the checklist's introductory bullet (line 173) to `  Why this is on disk` (line 544). Numeral list as the walk produced it: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23 — ascending, no duplicate, no gap. 0 lines match `^  24\. ` anywhere in the file. Item 23 stands at the END of the list, so no surviving entry was renumbered.
+
+G8 HYGIENE, exit 0, measured BEFORE C4. `git diff --name-only c8da1928..HEAD` returns exactly five paths — `.agent/authored/f085-r47.md`, `.agent/last_block.md`, `.agent/live_review.md`, `.agent/plan.md`, `docs/agents/planner_reviewer_prompt.md` — the declared change set minus `.agent/handoff.md`, and nothing else. Insertions: C0a 308, C0b 259, C1 8, C2 62, C3 36; none exceeds 500, so the allowance spent at d4473f85 was not called on again. C4's own insertions go in the round report. Every commit has exactly one parent.
 
 ## Authored-text proofs
 
-Both slices were extracted PROGRAMMATICALLY from the committed `.agent/authored/f085-r46.md` by BEGIN-/END- marker pair, read back through `git show HEAD:` — neither retyped, neither taken from the prompt, which carried none. RECORD14 sha256 ecb74b8c782b1baaa916590eac651c0832fc5495e9ec933480f94e5f36e0ed9d, 5134 B, 59 lines. DEC6C sha256 b1bb9c74c7725deabace604e20dac61b3471a7ea7b86210401e4a944aad93c67, 1100 B, 16 lines. Neither slice carries a FROM, so no containment reading is owed. 0 marker lines reached either target. The disk-to-disk equality against the reviewer's original is G2.
+All five slices were extracted PROGRAMMATICALLY from the committed `.agent/authored/f085-r47.md` by BEGIN-/END- marker pair, read back through `git show HEAD:` — none retyped, none taken from the prompt, which carried none. PLANF sha256 5937c07070887623b58838a6396d9687c13015da3b3e29e380225031fac0acc5 (890 B, 14 lines); PLANT 730c6b2700a295794d792b5eaf34e068d82c2537e4cbc6e38f1200e17cccfdaa (801 B, 13 lines); RECORD15 a2f714830b29258056067e1c128a58c23ca94e74baa64eae87710703e946278b (5402 B, 61 lines); C16F 1906879ad126020c…, C16T 259e137eb4096733…, C23F db67c66d98688977…, C23T 327a60407c47298d…. Containment readings as constraint 3 orders: PLANT contains PLANF FALSE (REWRITE, FROM-zero reading reported under G3); C16T contains C16F TRUE and C23T contains C23F TRUE (APPEND, §4.9 per-line obligation discharged under G3). RECORD15 carries no FROM. 0 marker lines reached any target. The disk-to-disk equality against the reviewer's original is G2.
 
-## Constraint 7 — the block's own size, re-measured from the committed file
+## Constraint 9 — the block's own size, re-measured from the committed file
 
-TOTAL 192 lines; PROSE 117 — 192 minus the 75 lines strictly inside a marker pair, markers counted as prose, which is the counting DECISION F085 D5 fixes. Both readings AGREE with the reviewer's stated PROSE 117 / TOTAL 192; there is no disagreement to report. Inside the 490-line total D6-as-corrected rules and the 400-line prose cap D5 rules.
+TOTAL 308 lines; PROSE 180 — 308 minus the 128 lines strictly inside a marker pair, markers counted as prose, the counting DECISION F085 D5 fixes; RECORD15 61 lines. All three AGREE with the reviewer's stated PROSE 180 / TOTAL 308 / RECORD15 61; there is no mismatch to report. Inside the 490-line total D6-as-corrected-by-DEC6C rules, the 400-line prose cap and the 140-line RECORD cap.
 
 ## Deviations & assumptions
 
-1. This handback exceeds the 60-line cap under AGENTS.md DECISION D15. Cause, named: the four-commit per-commit changed-files table, the item-status table over C0a-C2, the six G1-G6 transcripts carrying their real numbers, the authored-text pair proofs and the constraint 7 size reading. No section was dropped and no transcript was padded. Actual line count: 83.
-2. `.agent/plan.md` was NOT updated and still reads `Current Step: R45`. The block's change set names five paths, plan.md is not among them, constraint 5 forbids touching anything outside it and G6 goes red on any extra path — so advancing the plan would have turned a green gate red, which constraint 6 makes a STOP. Declared rather than repaired: AGENTS.md commit-gate item 1 is therefore unmet for this round's commits, and R47 owes the advance. This is a defect in the block, not a choice.
-3. No commit was added, dropped or reordered. The bundle ran C0a, C0b, C1, C2 exactly as ordered, and no gate came out red.
+1. This handback exceeds the 60-line cap. It is inside the ≤100 allowance the template grants when per-commit tables of >5 commits require it (six here), and the cause is named as AGENTS.md DECISION D15 asks either way: the six-commit per-commit changed-files table, the item-status table over C0a-C4, the eight G1-G8 transcripts carrying their real numbers, the authored-text pair-and-digest proofs and the constraint 9 size reading. No section was dropped and no transcript was padded. Actual line count: 94.
+2. No commit was added, dropped or reordered. The bundle ran C0a, C0b, C1, C2, C3, C4 exactly as ordered, C1 first among the substantive commits as constraint 4 requires, and no gate came out red.
+3. `.agent/context.md` and `.agent/decisions.md` were NOT touched: this round changes no scope, assumption or constraint and rules no decision, and both paths are outside the block's change set.
 
-Fortschritt: ~85 % (T001 gebaut · R13-R32 PASS · R33 FAIL, an R34 repariert · R34-R45 PASS ·
+Fortschritt: ~85 % (T001 gebaut · R13-R32 PASS · R33 FAIL, an R34 repariert · R34-R46 PASS ·
 T002a KOMPLETT · T002b KOMPLETT, alle Sites der Klasse auf dem Seam · T002c-d, T003 offen) —
 Schätzung, gegen die Klassentabelle aus Amendment F085 D1 gemessen.
 
 ## Next
 
-R47, started by a FRESH session. Its first two acts are the checklist item 16 widening that R-0537 and R-0543 both name and that R45 then R46 each cut for size, and the correction R-0547 asks the checklist to carry. T002c then opens with the two DoD sites in `packages/orchestration/dod_runners.py`, whose policy differs from the `test` class because their children are the long-lived harness and take no wall timeout. T002d, T003, the integration gate and closure follow.
-
-R46's OWN verdict is deliberately NOT on disk as a gate entry. The round that records a verdict cannot record one on itself (docs/agents/planner_reviewer_prompt.md §4.13), so that absence is this round's terminator and not a missing gate: R47 must NOT open a repair round to close it. R46's verdict, when the reviewer issues it, is recorded by R47's own record slice.
-
-Open findings: 135, next free id R-0548. Phase 1 rule 1 first: re-read `.agent/STOP` from disk.
+R48, started by a FRESH session. R48 opens T002c with the two DoD sites in `packages/orchestration/dod_runners.py`, whose policy differs from the `test` class because their children are the long-lived harness and take no wall timeout. T002d, T003, the integration gate and closure follow. R47's own verdict is NOT on disk as a gate entry, because the round that records a verdict cannot record one on itself (docs/agents/planner_reviewer_prompt.md §4.13) — that absence is the terminator, not a missing gate, and R48 must not open a repair round to close it.
