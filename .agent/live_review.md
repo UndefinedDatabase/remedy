@@ -3045,3 +3045,76 @@ internally consistent. THE COUNTER-MEASURE IS THIS ROUND'S OWN C3a AND C3b: the 
 `dod-process` and `dod-app` under DECISION F085 D7, ruled per §4 item 7, and `.agent/plan.md`
 is corrected by C1 in the same round so the two documents agree. The site total is unchanged,
 so the inventory needs no edit. Found and registered by the reviewer while planning T002c.
+
+Gate: R50 — the R49 entry. R49 PASSED. Every ordered gate G1-G8 was re-executed by the reviewer
+over 1e0c14e0..25a5b42e, not read, and each reproduces the handback's reading. LINE COUNTS ARE
+`splitlines` COUNTS. TRANSPORT HELD AGAINST THE REVIEWER'S OWN ORIGINAL, disk-to-disk with no
+digest fallback: `.remedy-wt/f085-r49.md`, the committed `.agent/authored/f085-r49.md` at
+6f084636, the committed `.agent/last_block.md` at 8862abce and both working copies as they stand
+at 25a5b42e are all five byte-EQUAL at sha256
+fe04d524d02f044891f9ffb591b5aa83335a07c9ac0471bde02b6b20f13319dc, 24858 B, 345 lines, 12 marker
+lines. THE SHAPES HELD, each measured separately from slices the reviewer extracted
+programmatically from the committed block by marker pair rather than retyping them. THE TWO
+REWRITES: PLAN3F occurs 0x and PLAN3T exactly 1x in `.agent/plan.md` at d5fb16a5 at numstat
+`9 9`, and AMEND7F occurs 0x and AMEND7T exactly 1x in `docs/roadmap/features/T2_F085.md` at
+7df0bf33 at numstat `8 5`; both pairs give `TO contains FROM: false`, as that block declared. THE
+TWO PROSE APPENDS: for RECORD17 on `.agent/live_review.md` at 0131b21b and for DEC7 on the
+feature file at ad9a38a8 the pre-commit blob is a byte-exact prefix, the remainder is exactly one
+blank line plus the slice, the slice is an exact suffix, 0 marker LINES reached either file, and
+every non-empty slice line occurs exactly once among that path's added lines — 93 slice lines of
+which 3 empty against 94 added at numstat `94 0`, and 25 slice lines of which 3 empty against 26
+added at numstat `26 0`. THE SUITES WERE RE-RUN, NOT READ, each in the primary checkout, each
+exit 0: the four state readers `159 passed` against a base of 159, the canary `42 passed` against
+42, the docs tier `295 passed` against 295. THE PLAN CONTRACT HELD at d5fb16a5: 39 lines against
+the 50-line cap, with `## Goal`, `## Next Steps` and a roadmap F-id all present. THE ARITHMETIC
+MOVED AS ORDERED: 166 / 27 / 0 at 25a5b42e against 164 / 27 / 0 at 1e0c14e0, 139 open against
+137, the registered symmetric difference exactly R-0550 and R-0551, done and landed symmetric
+differences EMPTY, no duplicate id and no resolution naming an unregistered id at either SHA, and
+R-0552 free. HYGIENE IS CLEAN: over the six commits of 1e0c14e0..25a5b42e that precede the
+handback the per-commit INSERTION counts, the column AGENTS.md DECISION F104 D1 fixes for the
+cap, are 345, 283, 9, 94, 8 and 26, and the handback commit adds 99; none over 500 and so no
+second call on the allowance d4473f85 spent; the path set of that range is exactly the six
+ordered paths and nothing else; all seven commits are single-parent; the tree is clean and
+`git worktree list` is one line. THE BLOCK'S OWN SIZE re-measured from the committed file gives
+TOTAL 345, PROSE 180 and RECORD17 93, each agreeing with what that block stated and each under
+its DECISION F085 D6 cap. ONE DIFFERENCE IS NOTED AND IS NOT A DEFECT: the reviewer's slice byte
+counts run one below the handback's on every slice, because the two extractors disagree about the
+newline preceding an END marker; the six slice line counts agree at 12, 12, 10, 13, 25 and 93,
+and the applied bytes are what G3 proved.
+
+- R-0552 — Medium, SPEC DEFECT, THE `runtime` POLICY ROW COVERS SITES THAT DO NOT SHARE A POLICY,
+AND ITS NO-WALL-TIMEOUT RULING WOULD REMOVE A TIMEOUT TWO OF THEM ALREADY HAVE. The `runtime` row
+of the policy table in `docs/roadmap/features/T2_F085.md` at 25a5b42e gives all five of its sites
+no wall timeout. Measured against `.agent/f085_inventory.md` at 25a5b42e, whose own `callee` and
+`timeout` columns already separate them, three are `Popen` calls that pass no timeout and start
+long-lived children — `apps/cli/commands/runtime_cmd.py`:136 in `_serve_supervisor`,
+`packages/runtimes/dev_server.py`:1484 in `start` and
+`packages/runtimes/runtime_supervisor.py`:235 in `run` — while two are `subprocess.run` calls
+inside `_auto_build_frontend`, `packages/orchestration/ui_server.py`:2787 and :2800, which pass
+`timeout=120` and run `npm install` and `npm run build` to completion. For that second pair a
+no-wall-timeout policy does not relax a guard, it REMOVES a working one, which is word for word
+the regression R-0551 identified for `_run_process_check` one row above. Medium for the reason
+R-0551 was Medium: it would land as production behaviour at T002d, and both readings look
+internally consistent at review time. THE COUNTER-MEASURE IS THIS ROUND'S OWN C3a AND C3b, which
+split the row into `runtime-server` and `runtime-build` under DECISION F085 D8 and leave the site
+total unchanged, so the inventory needs no edit. THE DEEPER COUNTER-MEASURE IS THE SWEEP: D7
+fixed the `dod` row and left this one standing, which is the R-0417 shape of fixing the instance
+rather than the class, so D8 states the reading it took over EVERY stage-1 row. Found and
+registered by the reviewer while gating R49.
+
+- R-0553 — Low, REVIEWER-BLOCK DEFECT, AN AUTHORED SLICE ASSERTED AN UNMEASURED UNIVERSAL OVER A
+CLASS AND IS FALSE OF TWO OF ITS MEMBERS. AMEND7T, applied at 7df0bf33, rewrote the paragraph
+under the policy table to say that the classes taking no wall timeout are the ones whose children
+are long-lived servers and that "each is judged by a readiness probe over HTTP, so each keeps
+network access". Measured at 25a5b42e, the two `_auto_build_frontend` sites R-0552 names sit in a
+class that paragraph covers, and they are judged by `check=True` on a completed `npm` run rather
+than by any HTTP probe, so the sentence is false of them however its quantifier is read — over
+classes or over sites. This is checklist item 11 as R-0526 widened it: a universal asserted over
+a set nobody enumerated, written by the reviewer in the very slice that was correcting the
+identical defect one row above. Low, because no GATE was misreported — every gate R49 ordered is
+reproducible and this reviewer reproduced all of them — and because the normative content of that
+passage is the table, which this round corrects. THE COUNTER-MEASURE IS NOT A REWRITE of the
+landed sentence: C3a replaces the paragraph as part of the D8 split, and its replacement states
+the no-wall-timeout rule as a condition each class is tested against rather than as a universal
+over an unenumerated set, while the per-site reading lives in DEC8 beside the SHA it was taken
+at. Found and registered by the reviewer while gating R49.
