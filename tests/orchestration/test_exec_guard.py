@@ -4,8 +4,12 @@ Each fixture is a real child process, so every test here carries the
 `subprocess` marker registered in `pyproject.toml`. Limits are kept deliberately
 small: the point is that the guard trips, not how long it takes to trip.
 
-The guard has NO callers in this repository, so nothing here says anything about
-whether any existing Remedy subprocess is limited. It is not.
+These tests exercise the guard DIRECTLY, so a green run here says the mechanism
+works and says nothing about which of Remedy's own subprocesses are spawned
+through it. That migration state lives in one place on purpose — the PARTIAL
+COVERAGE note in `exec_guard`'s own module docstring — and the caller grep is the
+honest answer. No count is repeated here, because a count in a second file is a
+second thing to forget.
 """
 
 from __future__ import annotations
