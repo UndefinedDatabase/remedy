@@ -1,79 +1,135 @@
-# Handback — F085 Sandbox hardening (stage 1), R57
+# Handback — F085 R58 · T002d second half: the two `runtime-build` call sites
 
-Feature F085 · Round R57 · Branch `feature/f085-sandbox-hardening` · Base 3bb82a25
+Branch `feature/f085-sandbox-hardening`, base SHA b2bb3809, six ordered commits. Every number
+below was measured by this worker. Deviations, declared: 135 lines against the ≤100-line
+allowance the six-commit bundle earns, under AGENTS.md DECISION D15. Stated cause: the mandated
+per-commit tables, the item-status table and the REAL G1-G9 results with exit codes and output.
+No section is dropped and no gate reading is summarized to "green".
 
 ## Range
-Review of 3bb82a25..HEAD. SEVEN commits: C0a C0b C1 C2 C3 C4 C5. A REPAIR round: the defect R56 landed is one missing blank line in a test file, so this round registers R-0558, adds the blank line and records the R56 FAIL. `packages/orchestration/exec_guard.py` and `packages/orchestration/ui_server.py` are untouched by design.
+Review of b2bb3809..HEAD
 
 ## Commits
-### 36704887 docs(f085): save the R57 step block
+
+### b5bcc11b docs(f085): save the R58 step block as authored text
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f085-r57.md` | +298/-0 | C0a — the R57 block, byte-verbatim from the reviewer's original |
-### df6936de docs(f085): mirror the R57 block into last_block
+| .agent/authored/f085-r58.md | +436/-0 | C0a — block copied byte-verbatim from `.remedy-wt/f085-r58.md` |
+
+### c2b0b317 docs(f085): mirror the R58 block into last_block
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/last_block.md` | +203/-250 | C0b — the COMMITTED blob copied over; single-state-file rewrite |
-### ddd4f8b8 docs(f085): advance the plan to the R57 repair
+| .agent/last_block.md | +366/-228 | C0b — mirror of the committed authored file |
+
+### 240934ad docs(f085): advance the plan to the R58 call-site migration
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/plan.md` | +5/-5 | C1 — PLAN11F→PLAN11T, the first substantive commit; 44 lines after |
-### a6c5176f docs(f085): record the R56 FAIL and register R-0558
+| .agent/plan.md | +8/-9 | C1 — PLAN12F→PLAN12T |
+
+### 728469ac docs(f085): record the R57 PASS and resolve R-0558
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/live_review.md` | +59/-0 | C2 — RECORD25 appended; registers R-0558 and resolves nothing |
-### 356a1568 fix(f085): restore the two-blank-line separation before the npm key set
+| .agent/live_review.md | +53/-1 | C2 — RECORD26F→RECORD26T; reviewer text, the worker authored none |
+
+### 35db0c2f feat(f085): route both auto-build npm commands through the runtime-build guard
 | Path | +/- | Reason |
 |---|---|---|
-| `tests/orchestration/test_exec_guard.py` | +1/-0 | C3 — FIXBLANKF→FIXBLANKT; exactly one newline byte, no code touched |
-### 847af55f docs(f085): note R-0558 landed in the R57 blank-line fix
+| packages/orchestration/ui_server.py | +13/-6 | C3 — DOCIMPORT + INSTALL + BUILD, one commit |
+| tests/ui_server/test_dashboard_contract.py | +35/-0 | C3 — TESTGUARD, one new test |
+
+### C4 (this commit) docs(f085): write the R58 handback
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/live_review.md` | +2/-0 | C4 — the worker's single `Landed:` line naming C3's SHA, plus its blank separator |
-### C5 — self-reference, a handback cannot table the commit that writes it
-| Path | +/- | Reason |
-|---|---|---|
-| `.agent/handoff.md` | in the round report | C5 — this file; its own insertions go to the operator |
+| .agent/handoff.md | rewrite | C4 — a handoff cannot table the commit that writes it |
 
 ## Item status
 | Item | Status | Reason |
-|------|--------|--------|
+|---|---|---|
 | C0a | done | |
 | C0b | done | |
 | C1 | done | |
 | C2 | done | |
-| C3 | done | |
-| C4 | done | |
-| C5 | done | this commit |
+| C3 | done | four pairs in one commit, as the Change section requires |
+| C4 | done | this commit |
 
-## External actions
-`git push -u origin feature/f085-sandbox-hardening` after C5; outcome reported to the operator. No PR, no merge, no other `gh` call, no worktree add and no worktree remove.
-
-## Verification
-G1 STATE — `.agent/STOP` absent before C0a and again before C5 (`Path.exists()` False at both points); `git status --porcelain` EMPTY at round start and after each of the six commits preceding this one, whose own post-commit reading goes to the operator; `git worktree list` one line throughout; `git ls-files .remedy-wt` empty.
-G2 TRANSPORT — the committed `.agent/authored/f085-r57.md`, the committed `.agent/last_block.md`, BOTH working copies and the reviewer's `.remedy-wt/f085-r57.md` are all five byte-EQUAL, disk-to-disk and not by digest fallback: sha256 d186ed7740849c36c93e83bcc6ae3509ae820d743aa0eb7d06d3e575a7a18b74, 22571 B, 298 lines, 10 marker lines — every figure measured on every copy.
-G3 SHAPES — REWRITE 1, PLAN11F→PLAN11T on `.agent/plan.md` at ddd4f8b8: `TO contains FROM: false`, FROM 1x in the pre-commit blob, FROM 0x and TO exactly 1x after, numstat `5 5`. REWRITE 2, FIXBLANKF→FIXBLANKT on `tests/orchestration/test_exec_guard.py` at 356a1568: `TO contains FROM: false`, FROM 1x before, FROM 0x and TO exactly 1x after, numstat `1 0`; the file goes 29917 B / 731 lines to 29918 B / 732 lines, so the whole effect is one newline byte. PROSE APPEND, C2 / RECORD25 / `.agent/live_review.md` at a6c5176f: byte-exact PREFIX, remainder exactly one blank line plus the slice, exact SUFFIX, 0 lines matching `^(BEGIN|END)-[A-Z0-9]+$` in the file, and each of the slice's 57 non-empty lines occurring exactly once among the 59 lines that commit adds to that path, numstat `59 0`.
-G4 SUITES — primary checkout, never a worktree, each exit 0. `python3 -m pytest tests/orchestration/test_exec_guard.py -rf -q`: `35 passed in 14.26s`, the expected 35 since the round ships and deletes no test. `python3 -m pytest tests/orchestration/test_test_runner.py tests/regression/test_resource_safety.py tests/orchestration/test_integrity_gate.py tests/ui_server/test_dashboard_contract.py -rf -q`: `159 passed in 19.78s` against the base 159. CANARY `python3 -m pytest tests/cli/test_golden_path.py -q`: `42 passed in 20.26s` against the base 42.
-G5 LINT — both halves over the same two paths, the repository's own `pyproject.toml`, no `--isolated`. `python3 -m ruff check packages/orchestration/exec_guard.py tests/orchestration/test_exec_guard.py`: exit 0, `All checks passed!` — the blind gate, green before and after. `python3 -m ruff check --preview packages/orchestration/exec_guard.py tests/orchestration/test_exec_guard.py` AFTER C3: exit 0, `All checks passed!`. The worker also ran that exact preview command once BEFORE C3 and reproduced the reviewer's red: exit 1, `Found 1 error.`, `error[E305][*]: Expected 2 blank lines after class or function definition, found (1)` at `tests/orchestration/test_exec_guard.py:691:1`, `[*] 1 fixable with the --fix option.` — `--fix` was NOT run, per constraint 9, and no preview finding anywhere else in the repository was touched.
-G6 PLAN CONTRACT — `.agent/plan.md` after C1 is 44 lines against the 50-line cap, the figure the block projected; contains `## Goal` true, contains `## Next Steps` true, matches `\bF\d{3}\b` true.
-G7 ARITHMETIC — 172 registered / 27 done / 0 landed and 145 open at 3bb82a25; 173 / 27 / 1 and 146 open at HEAD. Registered symmetric difference exactly `{R-0558}`, landed symmetric difference exactly `{R-0558}`, done symmetric difference EMPTY. Max registered R-0557 at base and R-0558 at HEAD; max resolved R-0532 at both; 0 duplicate ids and 0 resolutions naming an unregistered id at both SHAs; next free id R-0559.
-G8 HYGIENE — measured BEFORE C5: `git diff --name-only 3bb82a25..HEAD` holds exactly `.agent/authored/f085-r57.md`, `.agent/last_block.md`, `.agent/live_review.md`, `.agent/plan.md` and `tests/orchestration/test_exec_guard.py` and nothing else; it holds NEITHER `packages/orchestration/exec_guard.py` NOR `packages/orchestration/ui_server.py`. Per-commit INSERTIONS 298, 203, 5, 59, 1, 2 — none over 500, so the oversize allowance spent at d4473f85 stays untouched. Every commit has exactly one parent, the tree is clean and `git worktree list` is one line.
-BLOCK SIZE, re-measured from the committed `.agent/authored/f085-r57.md`: TOTAL 298 against the 490 cap ruled by DECISION F085 D6, PROSE 199 against 400 (298 minus the 99 slice-body lines, so marker lines count as prose), RECORD25 58 against 140 — all three agree with the figures constraint 10 states.
+## Verification — real commands, real exit codes
+- G1 STATE. `.agent/STOP` absent before C0a and again before C4 (`ls` exit 2 both times).
+  `git status --porcelain` empty at round start and after every commit. `git worktree list` one
+  line at round start and one at the end; the G9 worktree existed only in between.
+- G2 TRANSPORT, disk-to-disk, no digest fallback. `.remedy-wt/f085-r58.md`, both working copies
+  and both committed blobs — FIVE copies — are byte-EQUAL at sha256
+  6d46cb294da82694650390a40f65c57cc886dd9885d3e1302a638270e193bd77, 29671 B, 436 lines, 24 marker
+  lines. Block sizes re-measured from the committed file: TOTAL 436 (cap 490), PROSE 267 (cap
+  400), RECORD26T 53 (cap 140) — all three agree with constraint 11 exactly.
+- G3 SHAPES. All six pairs `TO contains FROM: false`, FROM 1x in the blob it is applied to, and in
+  each post-commit blob FROM 0x with TO exactly 1x. Re-applying the extracted FROM→TO to the
+  pre-commit blob reproduces the post-commit blob BYTE-EXACTLY for all four (commit, path) pairs,
+  sha256 equal on both sides. numstat: 240934ad `8 9`; 728469ac `53 1`; 35db0c2f `13 6` and
+  `35 0`. Lines matching `^(BEGIN|END)-[A-Z0-9]+$` at HEAD: 0 in `.agent/plan.md`, 0 in
+  `.agent/live_review.md`, 0 in `ui_server.py`, 0 in the test file.
+- G4 SUITES, primary checkout, each exit 0: dashboard contract `71 passed` — base 70, one test
+  added, so YES it is 71; responsive `92 passed`; exec_guard `35 passed`; the four state readers
+  `160 passed` (base 159, expected 160); canary golden path `42 passed`.
+- G5 LINT. `python3 -m ruff check <both paths>` exit 0, `All checks passed!`. NARROWED PREVIEW per
+  path, rule-code MULTISET at b2bb3809 vs HEAD, exit 1 at both SHAs on both paths:
+  `packages/orchestration/ui_server.py` `E306 x3` → `E306 x3`;
+  `tests/ui_server/test_dashboard_contract.py` `E226 x1, E303 x11, W391 x1` → identical. Both
+  multisets IDENTICAL per path — no new code, no higher count. No `--isolated`, no `--fix`.
+- G6 PLAN CONTRACT after C1: 43 lines against the 50-line cap, which is the reviewer's projection
+  exactly; `## Goal` True, `## Next Steps` True, `\bF\d{3}\b` True.
+- G7 ARITHMETIC. b2bb3809: 173 / 27 / 1, 146 open, max registered R-0558, max resolved R-0532.
+  HEAD: 173 / 28 / 0, 145 open, max registered R-0558, max resolved R-0558. Registered symmetric
+  difference EMPTY; done symmetric difference exactly {R-0558}, direction ADDED; landed symmetric
+  difference exactly {R-0558}, direction REMOVED. 0 duplicate ids and 0 resolutions naming an
+  unregistered id at both SHAs. Next free id R-0559.
+- G8 HYGIENE, measured BEFORE C4. `git diff --name-only b2bb3809..HEAD` is exactly the six paths
+  `.agent/authored/f085-r58.md`, `.agent/last_block.md`, `.agent/live_review.md`,
+  `.agent/plan.md`, `packages/orchestration/ui_server.py`,
+  `tests/ui_server/test_dashboard_contract.py` and nothing else — NEITHER
+  `packages/orchestration/exec_guard.py` NOR `runtime_cmd.py` / `dev_server.py` /
+  `runtime_supervisor.py`. Per-commit INSERTIONS before C4: 436, 366, 8, 53, 48 — none over 500,
+  all five single-parent. C4 cannot measure itself: it touches only `.agent/handoff.md`, the
+  AGENTS.md single-state-file rewrite exemption.
+- G9 RED CONTROL, in the disposable worktree `.remedy-wt/r58-g9`, since removed. BUILDT→BUILDF
+  alone (bare `subprocess.run` restored at the `npm run build` site, the install site left
+  migrated), then `python3 -m pytest tests/ui_server/test_dashboard_contract.py -rf -q` → EXIT 1,
+  RED. The complete `-rf` summary is one line:
+  `FAILED tests/ui_server/test_dashboard_contract.py::TestAutoBuildBehavior::test_auto_build_npm_commands_run_through_the_guard`
+  — the only failure, and it is the new test. The rest of the file is NOT red: the run reports
+  `1 failed, 69 passed, 1 skipped`, the skip being the UI-toolchain test a fresh worktree skips as
+  the block predicted. The failing assertion is `assert bare_run.call_count == 0` → `1 == 0`.
+  Worktree then removed; `git worktree list` one line, `git status --porcelain` empty.
 
 ## Authored-text proofs
-Every slice was extracted PROGRAMMATICALLY by its marker pair out of the committed `.agent/authored/f085-r57.md` under that block's CONVENTION; none was retyped, reflowed or taken from the delegation prompt. All five were used — PLAN11F and FIXBLANKF each matched their target exactly 1x, and PLAN11T, FIXBLANKT and RECORD25 were written. FIXBLANK was applied as a byte-level replace of the exact extracted FROM by the exact extracted TO, never by an editor insert: FROM is 142 B and TO is 143 B. The disk-to-disk comparison result is G2 above; 0 marker LINES reached any target file. The only text the WORKER authored is C4's single `Landed: R-0558 — …` line, per constraint 7; no `Done:` paragraph was written.
+All six slices were extracted PROGRAMMATICALLY from the COMMITTED `.agent/authored/f085-r58.md`
+under the block's CONVENTION and applied as byte-level replacements — no editor insert, no hand
+edit, no marker line in any target. Disk-to-disk equality of the five copies is under G2; the
+per-pair byte-exact replay is under G3.
+
+## External actions
+- `git worktree add --detach .remedy-wt/r58-g9 HEAD` created it; `git worktree remove` removed it.
+- `git push -u origin feature/f085-sandbox-hardening` after C3 — exit 0, `b2bb3809..35db0c2f`.
+  The same push is re-run after C4. No PR, no merge, no force-push.
 
 ## Deviations & assumptions
-No departure from the block's ordered commit sequence: C0a C0b C1 C2 C3 C4 C5 ran in that order with no extra commit, no dropped commit and no reordering. NO ASSUMPTION ABOUT SLICE SHAPE WAS NEEDED: the CONVENTION states newline-inclusion, so both rewrites held as exact byte replacements and RECORD25 held as `post == pre + "\n" + slice` byte-exactly, with no joiner and no terminator added. DECLARED, since the change set says "nothing else": the extraction, application and measurement ran as `python3 - <<'PY'` heredocs, and the only file written outside the change set is this handback's draft under the gitignored `.remedy-wt/`, which `git ls-files .remedy-wt` shows untracked and which is not the reviewer's block file. DECLARED as an EXTRA, unordered reading, not a scope widening: the pre-C3 `--preview` run recorded under G5, which is read-only and changed nothing. `python3 -m ruff --fix` was never run, nothing was reformatted, and the 634 preview findings elsewhere in the repository were not touched. No red control and no destructive check was ordered or run, so no worktree was created and none was removed. This round REGISTERED R-0558 and RESOLVED NOTHING, as constraint 8 orders. Deviations, declared — DECISION D15 stated cause: this file is 79 lines, inside the ≤100-line allowance a seven-commit round carries, but ≈2.5k tokens against the handback template's ≤800-token hard cap. The cause is MANDATED content only: seven per-commit changed-files tables, the seven-row item-status table, a G1-G8 verification transcript that carries BOTH halves of G5 including the pre-fix red output this round exists to remove, the block-size re-measurement and the four verbatim Fortschritt lines. No section was dropped and no transcript was padded.
-
-## Fortschritt
-Fortschritt: ~94 % (T001 gebaut · R13-R55 PASS · R56 FAIL, an R57 repariert · T002a KOMPLETT ·
-T002b KOMPLETT · T002c KOMPLETT · T002d zur Hälfte — Naht, Extraktion und die Umgebungszeile
-gebaut, die fünf Call-Sites offen · T003 offen) — Schätzung, gegen die Klassentabelle aus
-Amendment F085 D1 gemessen.
+None. C0a, C0b, C1, C2, C3, C4 ran in the block's order with no commit added, dropped or
+reordered; no slice was edited, no gate widened, no target file reformatted. No value this worker
+measured disagreed with the block: the base preview multisets, the base arithmetic 173/27/1 with
+146 open, the base dashboard `70 passed`, TOTAL 436 / PROSE 267 / RECORD26T 53 and the projected
+plan length 43 all reproduced exactly.
 
 ## Next
-ONE: the next round is R58, which migrates the two `runtime-build` call sites in `_auto_build_frontend` (`packages/orchestration/ui_server.py`) onto `run_guarded_runtime_build_command` with `check=True`. Then the three `runtime-server` sites, then T003, the integration gate and closure.
-TWO: R58 also carries the reviewer-authored `Done: R-0558` that resolves this round's finding, replacing the `Landed:` line C4 writes, and the R57 verdict, because the round that records a verdict cannot record one on itself (docs/agents/planner_reviewer_prompt.md §4.13).
-THREE: 146 findings are open and R-0559 is the next free id.
-FOUR: Phase 1 rule 1 first: re-read `.agent/STOP` from disk — the self-drive protocol requires every handoff that names the next session's first action to put that rule ahead of the PR Gate.
+ONE: the next round is R59, which migrates the three `runtime-server` call sites in
+`packages/orchestration/runtime_cmd.py`, `packages/orchestration/dev_server.py` and
+`packages/orchestration/runtime_supervisor.py`; they are `Popen`-shaped and take NO wall timeout,
+because a clock would kill a server mid-service, so that round's first task is to establish
+whether a `runtime-server` seam exists yet or has to be built.
+TWO: R59 also carries the R58 verdict, because the round that records a verdict cannot record one
+on itself (docs/agents/planner_reviewer_prompt.md §4.13).
+THREE: 145 findings are open and the next free id is R-0559.
+FOUR: Phase 1 rule 1 first: re-read `.agent/STOP` from disk.
+
+Fortschritt: ~96 % (T001 gebaut · R13-R55 PASS · R56 FAIL, an R57 repariert · R57 PASS · T002a
+KOMPLETT · T002b KOMPLETT · T002c KOMPLETT · T002d KOMPLETT — Naht, Extraktion, Umgebungszeile und
+die beiden `runtime-build`-Call-Sites gebaut · T003 offen, mitsamt den drei
+`runtime-server`-Call-Sites) — Schätzung, gegen die Klassentabelle aus Amendment F085 D1 gemessen.
