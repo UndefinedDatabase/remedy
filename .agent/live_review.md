@@ -3375,3 +3375,36 @@ helper turned three tests RED across all three seams at once — the `test` seam
 and the new `test_the_runtime_build_seam_raises_timeout_expired_on_a_wall_trip` — against 80 passed
 and 0 failed unmutated. A refactor whose single point of failure reddens every caller is the
 equality claim actually holding, which is what the round's own G5 could only show negatively.
+
+Gate: R56 — the R55 entry. R55 PASSED. Every ordered gate G1-G7 was re-executed by the reviewer
+over 1812c219..49a3fdcb, not read, and each reproduces the handback's reading. LINE COUNTS ARE
+`splitlines` COUNTS. TRANSPORT HELD AGAINST THE REVIEWER'S OWN ORIGINAL, disk-to-disk with no
+digest fallback: `.remedy-wt/f085-r55.md`, the committed `.agent/authored/f085-r55.md` and the
+committed `.agent/last_block.md` at 49a3fdcb, and both of those working copies as they stand at
+49a3fdcb, are all five byte-EQUAL at sha256
+dfcb54609904651d7d882c01e83ade3712e1ab8a42355b62199a4271a89f665e, 19014 B, 253 lines, 6 marker
+lines — every figure measured on every copy. THE SHAPES HELD. The one REWRITE gives
+`TO contains FROM: false`, its FROM 1x in the pre-commit blob and 0x after with its TO exactly 1x:
+PLAN9F→PLAN9T at e02f0dcc, numstat `12 7`. THE PROSE APPEND RECORD23 on `.agent/live_review.md` at
+2bb63069: byte-exact prefix, a remainder of exactly one blank line plus the slice, an exact suffix,
+0 marker LINES, and each of its 46 non-empty slice lines occurring exactly once among the 47 lines
+that commit adds, numstat `47 0`. THE SUITES WERE RE-RUN, NOT READ, in the primary checkout with
+the block's exact command lines, each exit 0: the four state readers `159 passed` against a base of
+159, and the canary `42 passed` against 42. THE PLAN CONTRACT HELD at e02f0dcc: 46 lines against
+the 50-line cap, with `## Goal`, `## Next Steps` and a roadmap F-id present — 46 is the figure that
+block projected. THE ARITHMETIC DID NOT MOVE, as a record round requires: 172 registered / 27 done
+/ 0 landed and 145 open at 1812c219 and the same at 49a3fdcb, max registered R-0557 and max
+resolved R-0532 at both, all three symmetric differences EMPTY, 0 duplicate ids and 0 resolutions
+naming an unregistered id at both SHAs. HYGIENE IS CLEAN: walking 1812c219..49a3fdcb commit by
+commit the INSERTION counts, the column AGENTS.md DECISION F104 D1 fixes for the cap, are 253, 174,
+12, 47 and 31 for the handback commit; none over 500; that range's path set is exactly the five
+ordered paths and holds NO path under `packages/` or `tests/`, which that round's change set
+excluded; all five commits are single-parent; the tree is clean and `git worktree list` is one
+line. THE BLOCK'S OWN SIZE re-measured from the committed file gives TOTAL 253, PROSE 158 and
+RECORD23 46, agreeing with that block. THE HANDBACK'S OWN SELF-CLAIM was checked and holds:
+`.agent/handoff.md` at 49a3fdcb states 69 lines and measures 69, and its DECISION D15 stated cause
+names only MANDATED content — five per-commit tables, the item-status table, the verification
+transcript — with no section dropped, which is what that decision permits and what a five-commit
+round genuinely owes. THE ROUND'S OWN CLAIM TO HAVE REGISTERED AND RESOLVED NOTHING was verified
+rather than accepted, since it is the whole substance of a record round: the registered, done and
+landed id SETS at the two SHAs are identical element by element, not merely equal in count.
