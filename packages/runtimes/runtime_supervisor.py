@@ -220,6 +220,19 @@ class Supervisor:
         self.port = int(os.environ["REMEDY_RUNTIME_PORT"])
         argv = self.spec.resolved_cmd(self.port)
         env = self.spec.resolved_env(self.port)
+        # F085 T002e: the CHILD half of the `runtime-server` policy, exactly as
+        # `dev_server.DevServer.start` takes it. The supervisor keeps the parent half —
+        # the log pump, the readiness report, the stop path. Its own `REMEDY_RUNTIME_*`
+        # variables are ITS environment, not the application's, so they are not declared.
+        from packages.orchestration.exec_guard import (
+            plan_child_spawn,
+            runtime_server_exec_policy,
+        )
+        spawn_plan = plan_child_spawn(runtime_server_exec_policy(
+            cwd=self.spec.cwd,
+            env=env,
+            declared_env_keys=("PORT", *(str(key) for key in self.spec.env)),
+        ))
         log_file = log_path(self.project_root)
 
         # 1. the log, synchronously, before any process exists
@@ -233,7 +246,8 @@ class Supervisor:
         # 2. the application, as OUR child
         try:
             self.proc = subprocess.Popen(      # noqa: S603 - argv, never a shell
-                argv, cwd=self.spec.cwd, env=env,
+                argv, cwd=spawn_plan.cwd, env=spawn_plan.env,
+                preexec_fn=spawn_plan.preexec_fn,  # rlimits between fork and exec
                 stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                 stdin=subprocess.DEVNULL,
                 # The application gets its OWN session, so its group can be killed

@@ -1466,6 +1466,20 @@ class DevServer:
         self.port = choose_port(self.spec.port, self.spec.host)
         argv = self.spec.resolved_cmd(self.port)
         env = self.spec.resolved_env(self.port)
+        # F085 T002e: the CHILD half of the `runtime-server` policy. `resolved_env` has
+        # already merged the spec's own keys and `PORT` over the parent's environment, so
+        # those are the DECLARED keys and the merged mapping is the scrub SOURCE; the
+        # allowlist keeps them plus its own members, and every other variable the parent
+        # held — a provider key, an operator's shell setting — stops here.
+        from packages.orchestration.exec_guard import (
+            plan_child_spawn,
+            runtime_server_exec_policy,
+        )
+        spawn_plan = plan_child_spawn(runtime_server_exec_policy(
+            cwd=self.spec.cwd,
+            env=env,
+            declared_env_keys=("PORT", *(str(key) for key in self.spec.env)),
+        ))
 
         try:
             self.log_file.parent.mkdir(parents=True, exist_ok=True)
@@ -1483,8 +1497,9 @@ class DevServer:
         try:
             self.proc = subprocess.Popen(          # noqa: S603 - argv, never shell
                 argv,
-                cwd=self.spec.cwd,
-                env=env,
+                cwd=spawn_plan.cwd,
+                env=spawn_plan.env,
+                preexec_fn=spawn_plan.preexec_fn,  # rlimits between fork and exec
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 stdin=subprocess.DEVNULL,

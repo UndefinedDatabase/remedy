@@ -143,12 +143,12 @@ def project(tmp_path) -> Path:
 
 
 def _config(root: Path, script: str, *, timeout: float = 20.0,
-            port: int | None = None) -> None:
+            port: int | None = None, env: dict[str, str] | None = None) -> None:
     if port is None:
         port = worker_port()
     cfg = root / ".remedy"
     cfg.mkdir(exist_ok=True)
-    (cfg / "config.toml").write_text(
+    body = (
         "[runtime]\n"
         f'cmd = ["{sys.executable}", "{script}"]\n'
         'cwd = "."\n'
@@ -156,6 +156,13 @@ def _config(root: Path, script: str, *, timeout: float = 20.0,
         'health_path = "/"\n'
         f"ready_timeout_s = {timeout}\n"
     )
+    # `runtime.env` is the SUPPORTED channel for a variable the application needs.
+    # Since F085 T002e the guard scrubs the parent environment, so a value smuggled
+    # through `os.environ` no longer reaches the child; a DECLARED key does.
+    if env:
+        body += "\n[runtime.env]\n" + "".join(
+            f'{key} = "{value}"\n' for key, value in env.items())
+    (cfg / "config.toml").write_text(body)
 
 
 def _cli(project: Path, data_root: Path, *args: str, timeout: float = 120.0):
@@ -506,11 +513,14 @@ class TestReadinessLogTail:
     ):
         marker = tmp_path / "child-printed.marker"
         (project / "never_marker.py").write_text(NEVER_WITH_MARKER)
-        _config(project, "never_marker.py", timeout=12.0)
+        # DECLARED, not inherited: T002e scrubs the application environment, so the
+        # marker path travels through `runtime.env` — which also proves a declared
+        # key survives the CLI and the supervisor end to end.
+        _config(project, "never_marker.py", timeout=12.0,
+                env={"REMEDY_TEST_MARKER": str(marker)})
 
         env = dict(os.environ)
         env["REMEDY_DATA_DIR"] = str(data_root)
-        env["REMEDY_TEST_MARKER"] = str(marker)
         proc = subprocess.Popen(
             [sys.executable, "-m", "apps.cli.main", "runtime", "serve",
              "--repo", str(project), "--json"],
