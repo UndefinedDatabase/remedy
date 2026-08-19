@@ -3633,3 +3633,39 @@ child exited 0, reported its cwd as the pinned directory, received `REMEDY_RUNTI
 receive `ANTHROPIC_API_KEY`, and read `RLIMIT_CORE` as `(0, 0)` — so the rlimit really is applied
 between fork and exec and the scrub really is enforced, on the one path the suite exercises only by
 proxy. NOTHING FAILED and this round registers no finding.
+
+Gate: R61 — the R60 entry. R60 PASSED. Every ordered gate G1-G7 was re-executed by the reviewer over
+d91d2ffa..5b9f935b, not read, and each reproduces the handback's reading exactly; the worker deviated
+in nothing beyond the handback length it declared. LINE COUNTS ARE `splitlines` COUNTS. TRANSPORT
+HELD AGAINST THE REVIEWER'S OWN ORIGINAL, disk-to-disk with no digest fallback: the committed
+`.agent/authored/f085-r60.md` and the committed `.agent/last_block.md` at 5b9f935b, both of those
+working copies as they stand at 5b9f935b, and the reviewer's own original are all five byte-EQUAL at
+sha256 ec373c9c3df936db9dd595afa7799255e80649b84b0212e93ca43f0e8678aa47, 19312 B, 253 lines, 6 marker
+lines, which is the digest that block carried. THE SHAPES HELD, and the two classes were measured
+apart. PLAN14F→PLAN14T at ac7f5ac5 is a REWRITE: `TO contains FROM: false`, FROM 1x before and 0x
+after, TO exactly 1x, numstat `6 6`, and re-applying the extracted FROM→TO to the pre-commit blob
+reproduces the post-commit blob BYTE-EXACTLY. RECORD28 at a567afe3 satisfies ORDERED EQUALITY on
+every clause: the pre-commit blob is a byte-exact PREFIX, the slice an exact SUFFIX, `pre + slice`
+equals the post-commit blob byte for byte, and that commit's ADDED lines equal the slice's 47 lines
+IN ORDER, numstat `47 0`. Marker LINES at 5b9f935b are 0 in both slice targets, `.agent/plan.md` and
+`.agent/live_review.md`. THE SUITES WERE RE-RUN, NOT READ, in the primary checkout with the block's
+exact command lines, each exit 0: the four state readers `160 passed`, unchanged as ordered, and the
+canary `42 passed`. THE PLAN CONTRACT HELD at ac7f5ac5: 45 lines against the 50-line cap with
+`## Goal`, `## Next Steps` and a roadmap F-id all present, 45 being the figure that block projected.
+THE ARITHMETIC DID NOT MOVE, as constraint 8 of that block required: 174 registered / 28 done / 0
+landed and 146 open at d91d2ffa, the same three numbers and the same 146 at 5b9f935b, max registered
+R-0559 and max resolved R-0558 at both, all three symmetric differences EMPTY, and 0 duplicate ids
+and 0 resolutions naming an unregistered id at both SHAs. HYGIENE IS CLEAN: the path set over
+d91d2ffa..a567afe3 is exactly `.agent/authored/f085-r60.md`, `.agent/last_block.md`,
+`.agent/live_review.md` and `.agent/plan.md`, holds no `.py` path at all and none of the three
+`runtime-server` call sites; per-commit INSERTIONS are 253, 171, 6, 47 and 52 for the handback
+commit, none over 500; all five commits are single-parent. THE BLOCK'S OWN SIZE re-measured from the
+committed file gives TOTAL 253, PROSE 170 and RECORD28 47, agreeing with that block's own figures and
+under 490 / 400 / 140. CHECKLIST ITEM 24 HELD FOR THE ROUND AFTER THE ONE THAT PROMOTED IT: all three
+call sites resolve at d91d2ffa — `apps/cli/commands/runtime_cmd.py` blob 01ab65ed,
+`packages/runtimes/dev_server.py` blob 7715a28e and `packages/runtimes/runtime_supervisor.py` blob
+9f3749ae — so the absence clause G7 carried forbade paths that really exist, which is what R-0559
+asked for. THE ONE REPORTING NOTE THE HANDBACK RAISED WAS CHECKED RATHER THAN ACCEPTED: G3's
+marker-count clause and G2's are not in conflict, because G3 counts marker lines in the slice
+TARGETS, where the reviewer reads 0, while G2 counts them in the two transport COPIES, where the
+reviewer reads 6 by construction. NOTHING FAILED and this round registers no finding.
