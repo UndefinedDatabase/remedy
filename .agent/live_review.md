@@ -4266,3 +4266,47 @@ that block's constraint 9, which is why it is registered here. OPEN.
 Landed: R-0564 — the defeated no-shell test now spies on `subprocess.Popen`, delegating to the real
 spawn, and asserts over every recorded spawn that no `shell=True` is present and that argv is a list;
 `tests/test_command_discovery.py` only, in this round's C3.
+
+Gate: R72 — the R71 entry. R71 PASSED. Every gate its block ordered was re-taken by the reviewer over
+6a04b37b..f023e2b1 rather than read from the handback, except `git status --porcelain` after each
+intermediate commit and the absence of `.agent/STOP` at the two points R71's constraint 2 names, which
+are unobservable once a round has ended and are accepted on the worker's report. TRANSPORT HELD,
+disk-to-disk with the reviewer's OWN pre-emission original in the comparison and no digest fallback:
+that original, the committed `.agent/authored/f085-r71.md`, the committed `.agent/last_block.md` at
+f023e2b1 and both working copies at f023e2b1 are all five byte-EQUAL at sha256
+9c87a93b587cfcef5db3ba28246f088439a61aad6587f9b3f8220513e31ba630, 29863 B, 408 lines, 12 marker lines;
+TOTAL 408 against the 490 cap, PROSE 255 against 400, RECORD40 65 against 140. THE SHAPES HELD, one
+reading per pair: PLAN25F→PLAN25T over `.agent/plan.md` at 17df8755 and NOSHELLF→NOSHELLT over
+`tests/test_command_discovery.py` at 3cf6788e both read `TO contains FROM: false`, both show FROM 1x
+pre-commit and 0x post-commit with TO exactly 1x post-commit, and both reproduce their post-commit blob
+BYTE-EXACTLY when re-applied. RECORD40 at ea9e80b5 and the `Landed:` line at 2eb5d1f3 each satisfy
+ORDERED EQUALITY against their OWN pre-commit blob — PREFIX, SUFFIX, `pre + slice` equal byte for byte,
+ADDED lines equal to the slice's lines IN ORDER, 65 and 65 and then 4 and 4. Marker LINES at f023e2b1
+are 0 in all three edited files. THE SUITES WERE RE-RUN, NOT READ, in the primary checkout, serially,
+each exit 0: `92 passed` for `tests/test_command_discovery.py` at f023e2b1 where the same file read
+`1 failed, 91 passed` at 6a04b37b, `44 passed` for `tests/orchestration/test_exec_guard.py`, and the
+canary `42 passed`. BOTH LINT HALVES printed `All checks passed!` over the repaired file at f023e2b1.
+THE PLAN CONTRACT HELD at 17df8755: 39 lines against the 50-line cap with `## Goal`, `## Next Steps`
+and a roadmap F-id all present. THE HYGIENE READING HELD: the range touches six paths, exactly one of
+them under `tests/` and none under `packages/`, `apps/`, `docs/` or `scripts/`, over seven
+single-parent commits inserting 408, 334, 9, 65, 25, 4 and 109 lines, none over 500.
+
+- R-0566 — Medium — the R71 block's constraint 9 stated an open-findings count its own record text
+contradicted, and the worker caught it. That constraint ruled "open moves 147 → 148" for a round that
+registered two findings and marked one `Landed:`, deriving the number from OPEN = REGISTERED − DONE −
+LANDED. But docs/agents/planner_reviewer_prompt.md §4 item 4 rules that a `Landed:` line is an
+UNREVIEWED FIX and not a resolution — "a surviving `Landed:` line is an unreviewed fix, which is
+exactly what it should look like" — and RECORD40, authored in the same block, closes R-0564's
+registration paragraph with `OPEN.`. So the block asserted a finding was not open in the same breath as
+its own ledger text asserted it was, and the correct reading at f023e2b1 is 181 minus 32, that is 149.
+The formula was never wrong before because `landed` was 0 at every SHA this feature had measured until
+R71, so the two readings agreed everywhere they had been exercised and the defect was latent in every
+block that carried it. Medium, not High, because no false number reached `.agent/live_review.md` — the
+R71 worker declared the disagreement under that block's constraint 8 and reported BOTH readings in the
+handback rather than reconciling them, which is the third round in this feature that rule has caught a
+reviewer error. Not Low, because the count is what a closure round reports and what the next session
+reads first. COUNTER-MEASURE: DECISION F085 D7, appended to `.agent/decisions.md` by this round's C4,
+rules the formula on disk instead of leaving it to be re-derived per block, and G6 of this block is the
+first gate written under it — it orders BOTH formulas reported side by side at both SHAs, so the rule
+and the reading it rejects are visible together in the record rather than one silently replacing the
+other. OPEN.
