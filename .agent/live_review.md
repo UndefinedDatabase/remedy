@@ -3521,3 +3521,68 @@ a comparison of the RULE-CODE MULTISET at base and at HEAD, since a bare exit-0 
 path is unpassable: at b2bb3809 `packages/orchestration/ui_server.py` reports 3 preview findings
 and `tests/ui_server/test_dashboard_contract.py` reports 13, and R58 gates both in that narrowed
 form.
+
+Gate: R59 — the R58 entry. R58 PASSED. Every ordered gate G1-G9 was re-executed by the reviewer over
+b2bb3809..79f79f27, not read, and each reproduces the handback's reading exactly; the worker deviated
+in nothing. LINE COUNTS ARE `splitlines` COUNTS. TRANSPORT HELD AGAINST THE REVIEWER'S OWN ORIGINAL,
+disk-to-disk with no digest fallback: `.remedy-wt/f085-r58.md`, the committed
+`.agent/authored/f085-r58.md` and the committed `.agent/last_block.md` at 79f79f27, and both of those
+working copies as they stand at 79f79f27, are all five byte-EQUAL at sha256
+6d46cb294da82694650390a40f65c57cc886dd9885d3e1302a638270e193bd77, 29671 B, 436 lines, 24 marker
+lines, which is the digest the reviewer emitted. THE SHAPES HELD. All six pairs give
+`TO contains FROM: false`, the FROM 1x in the pre-commit blob and 0x after with the TO exactly 1x,
+and for all four (commit, path) pairs re-applying the extracted FROM→TO to the pre-commit blob
+reproduces the post-commit blob BYTE-EXACTLY: `.agent/plan.md` at 240934ad numstat `8 9`,
+`.agent/live_review.md` at 728469ac numstat `53 1`, and at 35db0c2f
+`packages/orchestration/ui_server.py` numstat `13 6` with the three pairs applied in order and
+`tests/ui_server/test_dashboard_contract.py` numstat `35 0`. Marker LINES at 79f79f27 are 0 in every
+one of those four files. THE SUITES WERE RE-RUN, NOT READ, in the primary checkout with the block's
+exact command lines, each exit 0: the dashboard contract `71 passed`, which is the 71 the block
+ordered the worker to confirm rather than assume; responsive `92 passed`; the guard suite
+`35 passed`; the four state readers `160 passed`; the canary `42 passed`. BOTH LINT HALVES HELD:
+plain `ruff check` over the two paths is exit 0 `All checks passed!`, and the NARROWED PREVIEW
+multiset comparison the R57 resolution mandated reproduces per path — `ui_server.py` `E306` x3 at
+both b2bb3809 and 79f79f27, `test_dashboard_contract.py` `E226` x1 / `E303` x11 / `W391` x1 at both
+— identical multisets, so no slice added a blank-line defect. THE PLAN CONTRACT HELD at 240934ad: 43
+lines against the 50-line cap with `## Goal`, `## Next Steps` and a roadmap F-id all present, 43
+being the figure that block projected. THE ARITHMETIC MOVED EXACTLY AS ORDERED: 173 / 27 / 1 and 146
+open at b2bb3809, 173 / 28 / 0 and 145 open at 79f79f27, the registered symmetric difference EMPTY,
+the done symmetric difference exactly `{R-0558}` ADDED and the landed symmetric difference exactly
+`{R-0558}` REMOVED, with 0 duplicate ids and 0 resolutions naming an unregistered id at both SHAs.
+HYGIENE IS CLEAN: the path set over b2bb3809..35db0c2f is exactly the six the change set named and
+holds no `packages/orchestration/exec_guard.py`; per-commit INSERTIONS are 436, 366, 8, 53, 48 and
+104 for the handback commit, none over 500; all six commits are single-parent. THE BLOCK'S OWN SIZE
+re-measured from the committed file gives TOTAL 436, PROSE 267 and RECORD26T 53, agreeing with that
+block, and the handback's self-claim of 135 lines measures 135. THE RED CONTROL WAS RE-RUN BY THE
+REVIEWER, in a disposable worktree since removed: with BUILDT reverted to BUILDF at the
+`npm run build` site alone, `python3 -m pytest tests/ui_server/test_dashboard_contract.py -rf -q` is
+EXIT 1 with exactly one failure, `test_auto_build_npm_commands_run_through_the_guard`, on
+`assert bare_run.call_count == 0` reading `1 == 0` — the worker's reading reproduced line for line.
+THE ONE CLAIM NO ORDERED GATE COVERS WAS CHECKED RATHER THAN ACCEPTED, since every test in the round
+MOCKS the seam and none exercises the real child: at 79f79f27 the real `npm run build` in `apps/ui`
+returns rc 0 with 355 bytes of stdout and 0 of stderr THROUGH the seam and rc 0 with 355 and 0 bare,
+so the narrowed `runtime-build` environment allowlist really does carry a working npm build, and
+constraint 9's behaviour-preservation claim is measured rather than asserted. The exception contract
+was read at 79f79f27 and holds: `_completed_process_from_guarded` raises `subprocess.TimeoutExpired`
+on a wall trip, `run_guarded` lets `Popen` raise `FileNotFoundError` before any translation, and
+`check=True` raises `subprocess.CalledProcessError`, so all three names in the two surviving `except`
+tuples stay reachable.
+
+- R-0559 — Medium — the R58 block's G8 ordered an absence reading over three paths that do not exist
+in this repository. It named `packages/orchestration/runtime_cmd.py`,
+`packages/orchestration/dev_server.py` and `packages/orchestration/runtime_supervisor.py` and
+required the round's path set to hold none of them. The three real files are
+`apps/cli/commands/runtime_cmd.py`, `packages/runtimes/dev_server.py` and
+`packages/runtimes/runtime_supervisor.py`, each resolved on disk at 79f79f27. A gate that forbids
+touching a path which cannot appear forbids nothing, so the protection G8 claimed over the NEXT
+round's files was never in force — the vacuous-gate class of R-0438 and R-0532, arriving through a
+path that was never resolved rather than through a base that lacks it. R58 still PASSES: G8's other
+half enumerated the round's path set POSITIVELY and exhaustively, and that reading is what actually
+held the change set to six paths, so nothing wrong landed. The cost is that the same three wrong
+paths reached `.agent/handoff.md` at 79f79f27, which is the map the next session reads, and the next
+round is exactly the round those paths matter for. COUNTER-MEASURE: item 24 of the §3 checklist in
+`docs/agents/planner_reviewer_prompt.md`, which constraint 6 of the R59 block fixes as landing in
+the commit BEFORE this record — every path a gate NAMES is resolved with `git ls-tree` at the base
+the gate names before the block is emitted. The rule is promoted into the checklist rather than left
+in this paragraph, because a standing rule written as finding prose binds nothing and recurs
+(R-0452, R-0454).
