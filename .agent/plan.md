@@ -18,20 +18,18 @@ reaches a child, and the limitations document exists and is linked from the
 README.
 
 ## Current Step
-R64, this round: T003 opens with the network posture itself. `exec_guard` gains a `deny_network`
-policy field and a `DENIED_NETWORK_ENV` overlay written AFTER the allowlist scrub — the proxy
-names are `FORBIDDEN_ENV_KEYS` members, so the floor would otherwise delete the posture — and the
-`test` class, the largest deny row in amendment F085 D1's table, sets it. The R63 PASS is
-recorded in the same round.
+R65, this round: the two deny rows amendment F085 D1 still leaves unwired take the posture R64
+built. `dod_process_exec_policy` and `managed_builder_execution._builder_exec_policy` set
+`deny_network=True`, each pinned by a test in the file its own class already owns, so all three
+bounded rows of that table now deny. The R64 PASS is recorded and its one finding registered in
+the same round, with the counter-measure landing ahead of the record.
 
 ## Next Steps
-1. Wire the remaining deny rows: `dod_process_exec_policy` in the same module and the builder
-   policy in `managed_builder_execution`, each with the seam test its class already has.
-2. T003's limitations document and its README link, stating what stage 1 does NOT prevent: a
+1. T003's limitations document and its README link, stating what stage 1 does NOT prevent: a
    binary that ignores proxy variables reaches the network anyway, an app log written to a file
    takes no guard output cap, and the git, packaging and other classes never ran under the guard
    at all.
-3. Then the integration gate, then closure.
+2. Then the integration gate, then closure.
 
 ## Risks
 - An allowlist bounds what the PARENT hands over, never what the child's runtime
