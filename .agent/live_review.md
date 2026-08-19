@@ -3467,3 +3467,5 @@ reasoned about. Second, a block whose change set appends to a `.py` file gates i
 `ruff check --preview` over THAT path alone, and only after the reviewer has read that path at the
 base commit and found it preview-clean — a file with pre-existing preview findings takes the
 narrower reading instead of a gate nobody can pass. Found by the reviewer while gating R56.
+
+Landed: R-0558 — the two-blank-line separation PEP 8 puts between a function and the following top-level definition is restored before `_RUNTIME_BUILD_ADDED_ENV_KEYS` in `tests/orchestration/test_exec_guard.py`; the edit adds exactly one newline byte and changes no code, and `python3 -m ruff check --preview` over that path is exit 0 where it reported one E305 before; commit 356a1568, C3 of R57.
