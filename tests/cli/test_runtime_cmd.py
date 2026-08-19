@@ -256,3 +256,45 @@ class TestStop:
         finally:
             victim.kill()
             victim.wait()
+
+
+class TestTheSupervisorEnvironmentIsScrubbed:
+    """F085 T002e — what the supervisor child really inherits from the CLI.
+
+    The supervisor is spawned to DEVNULL and dumps no environment of its own, so
+    the handover can only be observed at the `Popen` call. The recorder DELEGATES
+    to the real one, so the runtime still comes up and these assertions describe a
+    spawn that actually served rather than a call that was intercepted.
+    """
+
+    def test_a_secret_parent_variable_never_reaches_the_supervisor(
+            self, tmp_path, capsys, monkeypatch):
+        import subprocess
+
+        seen: dict = {}
+        real_popen = subprocess.Popen
+
+        def recording_popen(argv, **kwargs):
+            if any("runtime_supervisor" in str(a) for a in argv):
+                seen.update(kwargs)
+            return real_popen(argv, **kwargs)
+
+        monkeypatch.setattr(subprocess, "Popen", recording_popen)
+        monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-must-not-travel")
+        monkeypatch.setenv("REMEDY_UNDECLARED_MARKER", "must-not-travel")
+
+        root = _project(tmp_path, "server.py", SERVER)
+        runtime_cmd._cmd_runtime_serve(str(root), json_output=True)
+        out = json.loads(capsys.readouterr().out)
+        try:
+            assert out["ok"] is True                        # it really served
+            env = seen["env"]
+            assert "ANTHROPIC_API_KEY" not in env           # the guard's floor held
+            assert "REMEDY_UNDECLARED_MARKER" not in env    # the allowlist bound
+            assert "PATH" in env                            # the allowlist held
+            assert env["REMEDY_RUNTIME_PORT"] == str(out["port"])
+            assert env["REMEDY_DATA_DIR"] == str(tmp_path / "remedy_data")
+            assert seen["preexec_fn"] is not None            # rlimits between fork and exec
+        finally:
+            runtime_cmd._cmd_runtime_stop(str(root), json_output=True)
+            capsys.readouterr()
