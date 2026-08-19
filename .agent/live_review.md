@@ -3893,3 +3893,54 @@ commit BEFORE this record — a revert target is named by the PATH it is applied
 are counted IN THAT FILE at the SHA the control names, a count above 1 forcing a longer unique string.
 The rule is promoted into the checklist rather than left in this paragraph, because a standing rule
 written as finding prose binds nothing and recurs (R-0452, R-0454). OPEN.
+
+Gate: R66 — the R65 entry. R65 PASSED. Every ordered gate G1-G9 was re-executed by the reviewer over
+e5eecb29..97caa9e1, not read, and each reproduces the handback's reading exactly; the worker deviated
+in nothing and declared nothing. LINE COUNTS ARE `splitlines` COUNTS. TRANSPORT HELD, disk-to-disk
+with no digest fallback: the committed `.agent/authored/f085-r65.md` and the committed
+`.agent/last_block.md` at 97caa9e1, both working copies at 97caa9e1, and the received
+`.remedy-wt/f085-r65.md` are all five byte-EQUAL at sha256
+f0fa416c8a4b343601435f75fb8f69a5c7e8f7198b7c433b4a9a9343ebd11399, 31907 B, 459 lines, 32 marker lines.
+THE SHAPES HELD, and the two classes were measured apart, one reading per pair. The six REWRITES —
+PLAN19 over `.agent/plan.md` at 73db31ec, CHECK25 over `docs/agents/planner_reviewer_prompt.md` at
+28a749e3, DOD1 and DOD2 over `packages/orchestration/exec_guard.py` at aadcf5e1, BUILD1 and BUILD2
+over `packages/orchestration/managed_builder_execution.py` at 6b0edbef — each read
+`TO contains FROM: false`, each FROM 1x in its own pre-commit blob, each ending FROM 0x with TO
+exactly 1x. TESTBUILD over `tests/orchestration/test_managed_builder_execution.py` at a2aaff6d is
+APPEND-shaped, reading FROM 1x AND TO 1x post-commit with no FROM-zero reading taken. Re-application
+IN ORDER reproduced the post-commit blob BYTE-EXACTLY on all five paths. RECORD33 over
+`.agent/live_review.md` at 1439a831 and TESTDOD over `tests/orchestration/test_exec_guard.py` at
+bf4c6645, neither of which has a FROM, satisfy ORDERED EQUALITY on every clause — PREFIX, SUFFIX,
+`pre + slice` equal to the post-commit blob byte for byte, and ADDED lines equal to the slice's lines
+IN ORDER, 71 and 71, 9 and 9, numstat `71 0` and `9 0`. Marker LINES at 97caa9e1 are 0 in each of the
+seven edited files. THE SUITES WERE RE-RUN, NOT READ, in the primary checkout with that block's exact
+command lines, serially, each exit 0: `331 passed` against a base of `329 passed` for the seam set,
+C6 and C7 each adding exactly one test; `160 passed` against a base of `160 passed` for the four state
+readers; and the canary `42 passed` against a base of `42 passed`. THE PLAN CONTRACT HELD at 97caa9e1:
+40 lines against the 50-line cap with `## Goal`, `## Next Steps` and a roadmap F-id all present, 40
+being that block's own projection. THE ARITHMETIC MOVED IN EXACTLY ONE PLACE, as that block's
+constraint 9 required: 174 registered / 28 done / 0 landed and 146 open at e5eecb29 against 175 / 28 /
+0 and 147 open at 97caa9e1, max registered moving R-0559 to R-0560 while max resolved stayed R-0558,
+the registered symmetric difference exactly the single id R-0560, the done and landed symmetric
+differences EMPTY, and 0 duplicate ids and 0 orphan resolutions at both SHAs. LINT WAS RE-RUN over all
+four `.py` paths from the repository root with the repository's own configuration, plain and
+`--preview`, each exit 0 with `All checks passed!`. THE RED CONTROL REPRODUCED EXACTLY inside a
+disposable worktree at 97caa9e1: applying the DOD2T→DOD2F byte pair to
+`packages/orchestration/exec_guard.py`, in which the DOD2T bytes were counted 1x before the replace,
+gave a worktree `git diff --stat` of `1 file changed, 1 deletion(-)` and turned
+`python3 -m pytest tests/orchestration/test_exec_guard.py -q -rf` red at exit 1 with
+`1 failed, 41 passed`, the single failure being
+`test_the_dod_process_policy_denies_the_network_its_row_denies` on its
+`assert policy.deny_network is True` line — exactly the ordered failure and the only one, which is
+what item 25 bought: R64's control reddened two tests and this one reddens precisely the test whose
+row was reverted. HYGIENE IS CLEAN: the path set over e5eecb29..97caa9e1 is exactly the nine the
+change set named and holds none of the three `runtime-server` paths; all seven paths G9 orders
+resolved at e5eecb29 under `git ls-tree`; per-commit INSERTIONS are 459, 392, 7, 10, 71, 5, 5, 9, 14
+and 50 for the handback commit, none over 500; all ten commits are single-parent; and
+`.agent/handoff.md` at 97caa9e1 is 90 lines, within the ≤100-line cap its ten-commit table allows,
+with the ordered Fortschritt line present verbatim. THE BLOCK'S OWN SIZE re-measured from the
+committed file at 97caa9e1 gives TOTAL 459, PROSE 289 counting its 32 marker lines and RECORD33 71,
+agreeing with that block's own figures and inside 490 / 400 / 140. ONE READING THE HANDBACK FLAGGED
+WAS CHECKED RATHER THAN ACCEPTED: C0b's insertion count is 392 by `--numstat` and 459 by the commit
+line's rewrite detection, and the numstat reading is the one G9 measures, so the handback naming both
+is correct rather than a discrepancy. NOTHING FAILED and this round registers no finding.
