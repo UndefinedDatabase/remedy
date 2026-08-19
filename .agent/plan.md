@@ -18,16 +18,19 @@ reaches a child, and the limitations document exists and is linked from the
 README.
 
 ## Current Step
-R72, this round: the integration gate re-taken, plus the ledger work R71 left open. R71 PASSED —
-its repair is verified and R-0564 is resolved by reviewer text here — and the reviewer's own
-arithmetic slip in the R71 block is registered as R-0566 and settled as DECISION F085 D7: the open
-count is REGISTERED minus DONE, and a `Landed:` line is an unreviewed fix rather than a resolution.
-The gate is re-run because a repair landing after a gate makes that gate's comparison stale.
+R73, this round: R72's verdict recorded, the findings its gate produced registered, and the feature
+file's Built State written — so the closure round that follows touches only the paths
+docs/roadmap/STATUS_closure_protocol.md item 5 allows. R72 PASSED: its transport, its slice shapes,
+its arithmetic and its integration gate were re-taken by the reviewer rather than read, and the
+branch-side full-suite failure the reviewer's own repeated runs produced passes serially, which
+docs/agents/integration_gate.md step 4 classifies as the xdist-flake class to record and not to block.
 
 ## Next Steps
 1. Closure per docs/roadmap/STATUS_closure_protocol.md: evidence job, FRESH review zip, the STATUS
-   line authored by the reviewer, and the PR the operator merges at the next Open PR Gate — unless
-   this round's gate returns a blocker, in which case its repair round comes first.
+   line and the README capability sync authored by the reviewer, and the PR the operator merges at
+   the next Open PR Gate.
+2. R-0567, R-0568 and R-0569 close as documented risks in that closure under precondition 1 of that
+   protocol, rather than by a repair round inside this feature.
 
 ## Risks
 - An allowlist bounds what the PARENT hands over, never what the child's runtime
