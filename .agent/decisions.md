@@ -5925,3 +5925,29 @@ live in `.agent/decisions.md` and this one is later.
 Reverse this correction by deleting this section, which restores the ambiguity rather than the
 480; reverse D6 itself by deleting D6, which returns the block cap to DECISION F085 D5's
 400-line PROSE rule with no budget on the total.
+
+## DECISION F085 D7 — the open-findings count (2026-08-19)
+
+CHOSEN. The open-findings count over `.agent/live_review.md` is OPEN = REGISTERED − DONE, where
+REGISTERED counts lines matching `^- R-\d+ — ` and DONE counts lines matching `^Done: R-\d+ — `. A
+`Landed: R-\d+ — ` line is NOT a resolution and is NEVER subtracted: docs/agents/planner_reviewer_prompt.md
+§4 item 4 defines it as a worker's record of an UNREVIEWED fix, written so that a session dying between
+a fix and its review leaves a state no reader can mistake for a resolution, and the reviewer replaces
+it with authored `Done:` text at the next gate. A finding whose fix has landed but has not been
+reviewed is therefore OPEN, and it stops being open when the reviewer says so and not when the worker
+does. Finding R-0566 registers the defect this settles.
+
+ALTERNATIVE CONSIDERED and rejected: OPEN = REGISTERED − DONE − LANDED, which several blocks of this
+feature carried in their arithmetic constraints. It is undetectable while no `Landed:` line exists —
+which was true at every SHA this feature measured before R71 — and it silently closes a finding on the
+worker's authority, which is precisely the authority §4 item 4 withholds. It was never a considered
+choice; it was an unexamined formula, which is why it is written down now rather than argued about
+again.
+
+CONSEQUENCE. A round that lands a fix without a reviewer resolution does not reduce the open count, so
+the count stops moving until review happens — which is the honest reading and is meant to be visible.
+Blocks that state an expected open count state which formula produced it. Where a round both registers
+and resolves one finding, the count is unchanged and that is not an error.
+
+Reverse this decision by deleting this section, which returns the formula to whatever each block
+asserts and restores the ambiguity R-0566 was registered for.
