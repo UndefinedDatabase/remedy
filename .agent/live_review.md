@@ -3822,3 +3822,74 @@ reviewer session that did not survive to remove it and holding a clean tree at t
 reviewer used it for the red control above, then removed and pruned it, leaving `git worktree
 list` at one line and `git status --porcelain` empty in the primary checkout. NOTHING FAILED and
 this round registers no finding.
+
+Gate: R65 — the R64 entry. R64 PASSED. Every ordered gate G1-G9 was re-executed by the reviewer over
+e26f1f3e..e5eecb29, not read, and each reproduces the handback's reading exactly; the worker deviated
+in nothing and declared nothing. LINE COUNTS ARE `splitlines` COUNTS. TRANSPORT HELD, disk-to-disk
+with no digest fallback: the committed `.agent/authored/f085-r64.md` and the committed
+`.agent/last_block.md` at e5eecb29, both working copies as they stand at e5eecb29, and the received
+`.remedy-wt/f085-r64.md` are all five byte-EQUAL at sha256
+670a2563e54daff38b815a445493dba8b417024e65c5eba4e0b9cbcdb8ae2108, 31314 B, 490 lines, 32 marker lines.
+THE SHAPES HELD, and the two classes were measured apart, one reading per pair. PLAN18F→PLAN18T over
+`.agent/plan.md` at a8877d26, GUARD1F→GUARD1T and GUARD6F→GUARD6T over
+`packages/orchestration/exec_guard.py` at 01fd653d are REWRITES — each containment test reads
+`TO contains FROM: false` — and each ends FROM 0x with TO exactly 1x, each FROM having occurred
+exactly 1x in its own pre-commit blob. GUARD2, GUARD3, GUARD4 and GUARD5 are APPEND-shaped over that
+same file at 01fd653d, each reading FROM exactly 1x AND TO exactly 1x post-commit with no FROM-zero
+reading taken, and all six GUARD pairs re-applied IN ORDER to the pre-commit blob reproduce the
+post-commit blob BYTE-EXACTLY. RECORD32 over `.agent/live_review.md` at 2e6b772e and TESTNET over
+`tests/orchestration/test_exec_guard.py` at 25c75325, neither of which has a FROM, satisfy ORDERED
+EQUALITY on every clause: pre-commit blob a byte-exact PREFIX, slice an exact SUFFIX, `pre + slice`
+equal to the post-commit blob byte for byte, and each commit's ADDED lines equal to the slice's lines
+IN ORDER — 64 and 64, 57 and 57, numstat `64 0` and `57 0`. Marker LINES at e5eecb29 are 0 in each of
+the four edited files. THE SUITES WERE RE-RUN, NOT READ, in the primary checkout with that block's
+exact command lines, serially, each exit 0: `329 passed` against a base of `324 passed` for the seam
+set, C4's five new tests being the difference; `160 passed` against a base of `160 passed` for the
+four state readers; and the canary `42 passed` against a base of `42 passed`. THE PLAN CONTRACT HELD
+at e5eecb29: 42 lines against the 50-line cap with `## Goal`, `## Next Steps` and a roadmap F-id all
+present, 42 being that block's own projection. THE ARITHMETIC DID NOT MOVE, as that block's
+constraint 8 required: 174 registered / 28 done / 0 landed and 146 open at e26f1f3e, the same three
+numbers and the same 146 at e5eecb29, max registered R-0559 and max resolved R-0558 at both, all
+three symmetric differences EMPTY, and 0 duplicate ids and 0 orphan resolutions at both SHAs. LINT
+WAS RE-RUN over both `.py` paths from the repository root with the repository's own configuration,
+plain and `--preview`, each exit 0 with `All checks passed!`. THE RED CONTROL REPRODUCED EXACTLY
+inside a disposable worktree at 25c75325: deleting the one line `        deny_network=True,` from
+`test_command_exec_policy` in `packages/orchestration/exec_guard.py` — a worktree `git diff --stat` of
+`1 file changed, 1 deletion(-)` and nothing else — turned
+`python3 -m pytest tests/orchestration/test_exec_guard.py -q -rf` red at exit 1 with
+`2 failed, 39 passed`, failing both
+`test_the_test_class_policy_denies_the_network_its_row_denies`, the one that block ordered, and
+`test_a_denied_child_really_receives_the_closed_port` on its
+`assert dumped["HTTP_PROXY"] == exec_guard.DENIED_NETWORK_PROXY_URL` line with `KeyError: 'HTTP_PROXY'`
+— the second being the real-child half of the same one-line revert, which that handback reported
+rather than concealed. HYGIENE IS CLEAN: the path set over e26f1f3e..e5eecb29 is exactly the seven the
+change set named and holds none of the three `runtime-server` paths; all five paths G9 orders resolved
+at e26f1f3e under `git ls-tree`; per-commit INSERTIONS are 490, 419, 12, 64, 39, 57 and 32 for the
+handback commit, none over 500; all seven commits are single-parent. THE BLOCK'S OWN SIZE re-measured
+from the committed file at e5eecb29 gives TOTAL 490, PROSE 274 counting its 32 marker lines and
+RECORD32 64, agreeing with that block's own figures and inside 490 / 400 / 140. ONE FINDING IS
+REGISTERED AGAINST THAT BLOCK'S OWN GATE TEXT, and it is the reviewer's defect rather than the
+worker's, which is why R64 still PASSES.
+
+- R-0560 — Low — the R64 block's G8 ordered a destructive revert by quoting a line that was not unique
+in the tree at the SHA the control runs at. It ordered "revert EXACTLY ONE thing: the single line
+`        deny_network=True,` in `test_command_exec_policy`", and at 25c75325 those exact bytes occur
+TWICE: once in `packages/orchestration/exec_guard.py`, which is where `test_command_exec_policy` is
+defined, and once in `tests/orchestration/test_exec_guard.py`, which TESTNET appended in the same
+round. The qualifier that disambiguates them is the function name, and that name begins with `test_`,
+so it reads as a pointer INTO the test file for anyone who has not already resolved the symbol. The
+reviewer of this round deleted the wrong occurrence on the first attempt, restored the file and
+re-ran, so the cost is measured rather than hypothetical. This is the vacuous-and-ambiguous gate
+family of R-0438, R-0532 and R-0559 arriving through the BYTES a gate orders changed rather than
+through the paths it names: item 24 would have resolved every path in that sentence and still passed
+it, because both paths exist. R64 PASSES anyway — the control was met, the deletion that was finally
+made was the ordered one, the `1 file changed, 1 deletion(-)` reading in the handback is the correct
+one, and the red it produced is the red the block predicted. The danger is that a red control cannot
+tell a wrong revert from a right one: deleting the TESTNET occurrence also reddens that suite, so a
+reader who never noticed the ambiguity would have reported a green-looking control that proved
+nothing about `test_command_exec_policy`. COUNTER-MEASURE: item 25 of the §3 checklist in
+`docs/agents/planner_reviewer_prompt.md`, which constraint 6 of this block fixes as landing in the
+commit BEFORE this record — a revert target is named by the PATH it is applied to and its exact bytes
+are counted IN THAT FILE at the SHA the control names, a count above 1 forcing a longer unique string.
+The rule is promoted into the checklist rather than left in this paragraph, because a standing rule
+written as finding prose binds nothing and recurs (R-0452, R-0454). OPEN.
