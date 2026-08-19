@@ -1,124 +1,143 @@
-# Handback — F085 sandbox hardening, R69 (T003's last acceptance line)
+# Handback — F085 Sandbox hardening, R70 (the INTEGRATION GATE)
 
-Branch: feature/f085-sandbox-hardening. Base SHA: 1df91b27.
+Branch: feature/f085-sandbox-hardening. Base SHA: 126b70ae. HEAD: 660540f6 + this commit.
+G4 outcome: BLOCKER — one branch-only failure reproduces serially, does not reproduce at the merge
+base, and is coupled to this feature's code. No fix attempted (constraint 11).
 
 ## Range
-
-Review of 1df91b27..HEAD
+Review of 126b70ae..HEAD — six commits: C0a C0b C1 C2 C3 C4.
 
 ## Commits
 
-### e575ab43 chore(f085): save the R69 step block under .agent/authored
+### 585a4390 chore(f085): save the R70 step block  (C0a)
 | Path | +/- | Reason |
-|---|---|---|
-| .agent/authored/f085-r69.md | +420/-0 | C0a — the block, copied byte-verbatim |
+| `.agent/authored/f085-r70.md` | +308/-0 | block saved byte-verbatim from transport |
 
-### 6a4df519 chore(f085): mirror the R69 block into last_block
+### 6b6ff1e5 chore(f085): mirror the R70 block into last_block  (C0b)
 | Path | +/- | Reason |
-|---|---|---|
-| .agent/last_block.md | +349/-273 | C0b — mirror, byte-equal to the authored copy |
+| `.agent/last_block.md` | +228/-340 | mirror of the same bytes |
 
-### cc563f6d docs(f085): advance the plan to the R69 acceptance round
+### cdbcfb16 chore(f085): advance the plan to the R70 integration gate  (C1)
 | Path | +/- | Reason |
-|---|---|---|
-| .agent/plan.md | +8/-9 | C1 — PLAN23F→PLAN23T rewrite |
+| `.agent/plan.md` | +7/-9 | PLAN24F→PLAN24T applied |
 
-### 4651069b docs(f085): record the R68 PASS and resolve R-0563
+### d2e65482 docs(f085): record the R69 PASS  (C2)
 | Path | +/- | Reason |
-|---|---|---|
-| .agent/live_review.md | +40/-0 | C2 — RECORD37 appended at EOF |
+| `.agent/live_review.md` | +54/-0 | RECORD38 appended at EOF |
 
-### b735eb93 test(f085): measure the denied fetch against a really listening server
+### 660540f6 chore(f085): record the R70 integration gate evidence  (C3)
 | Path | +/- | Reason |
-|---|---|---|
-| tests/orchestration/test_exec_guard.py | +104/-0 | C3 — IMPORTSF→IMPORTST, THEN NETTEST appended |
+| `.agent/gate_f085_r70/` | +262/-0 | 10 files: attribution, both FAILED lists, both comm outputs, both run tails, branch_meta, base_parity, full_log_provenance |
 
-### C4 (this commit) docs(f085): write the R69 handback
+### C4 handback (self-referential, R-0149 pattern)
 | Path | +/- | Reason |
-|---|---|---|
-| .agent/handoff.md | rewrite | C4 — a handoff cannot table the commit that writes it |
+| `.agent/handoff.md` | rewrite | this file; a handoff cannot table its own commit |
 
 ## Item status
-
 | Item | Status | Reason |
-|---|---|---|
+|------|--------|--------|
 | C0a | done | |
 | C0b | done | |
-| C1 | done | |
-| C2 | done | |
-| C3 | done | |
-| C4 | done | this commit |
+| C1  | done | |
+| C2  | done | |
+| C3  | done | evidence committed; G4 verdict is BLOCKER, reported not fixed |
+| C4  | done | this handback |
 
 ## External actions
+- `git worktree add -b tmp/base-gate-r70 .remedy-wt/base-r70 a5a70621` → rc 0, on a branch, not detached.
+- `git worktree remove --force .remedy-wt/base-r70` + `git worktree prune` → rc 0.
+- `git branch -D tmp/base-gate-r70` → "Deleted branch tmp/base-gate-r70 (was a5a70621)".
+- `git push -u origin feature/f085-sandbox-hardening`. No PR, no merge.
 
-`git worktree add --detach .remedy-wt/redctl-r69 HEAD` → created at b735eb93 for G8; removed with
-`git worktree remove --force .remedy-wt/redctl-r69`; `git worktree list` one line again.
-`git push -u origin feature/f085-sandbox-hardening` after this commit. No PR, no merge.
-
-## Verification
-
-G1 STATE, all readings as ordered: `.agent/STOP` absent before C0a and before C4; `git status
---porcelain` empty at round start and after every commit; `git worktree list` one line at start and
-at end, and no worktree existed across any commit.
-G2 TRANSPORT. Committed and working `.agent/authored/f085-r69.md` + `.agent/last_block.md`, all four
-byte-EQUAL: sha256 3b506bf1f24540e5ed8fe84ac7487b67041b17da43b02b0d869d08305d893dc3, 27901 B, 420
-lines, 12 marker lines. TOTAL 420 / cap 490 · PROSE 241 / 400 · RECORD37 40 / 140.
-G3 SHAPES. cc563f6d: `TO contains FROM: false`, FROM 0x and TO 1x post-commit, re-apply reproduces
-post BYTE-EXACTLY. 4651069b: PREFIX, SUFFIX, `pre + slice` == post byte for byte, ADDED 40 == slice
-40 IN ORDER. b735eb93: IMPORTSF 1x pre / 0x post, IMPORTST 1x post, NETTEST an exact SUFFIX, and
-`pre.replace(IMPORTSF, IMPORTST) + NETTEST` == post BYTE-EXACTLY. numstat 8/9 · 40/0 · 104/0. Marker
-LINES 0 in all three edited files.
-G4 SUITES, primary checkout, serial, each exit 0: `test_exec_guard.py -q -rf` → `44 passed` (base
-42); `-k "really_listening or closed_proxy_port"` → `2 passed, 42 deselected`, 2 selected / 2 passed;
-the four state readers → `160 passed` (base 160); CANARY `test_golden_path.py` → `42 passed` (base 42).
-G5 PLAN CONTRACT. 39 lines / cap 50; `## Goal` true, `## Next Steps` true, `\bF\d{3}\b` true.
-G6 ARITHMETIC. 1df91b27: 178 / 30 / 0, 148 open, max reg R-0563, max resolved R-0562. HEAD:
-178 / 31 / 0, 147 open, max reg R-0563, max resolved R-0563. Symmetric differences — registered []
-· done ['R-0563'] · landed []; 0 duplicate ids and 0 orphan resolutions at both SHAs; next id R-0564.
-G7 LINT, both exit 0, both `All checks passed!`: `ruff check` and `ruff check --preview` over
-`tests/orchestration/test_exec_guard.py`.
-G8 RED CONTROL, in the disposable worktree only, after C3. Ordered byte string 1x in
-`packages/orchestration/exec_guard.py`; bare `deny_network=True,` 2x, post-mutation 1 True
-(dod-process, untouched) / 1 False. `pytest ... -k "really_listening or closed_proxy_port"` there:
-EXIT 1, `2 failed, 42 deselected` — RED. FAILED
-test_a_guarded_test_command_cannot_reach_a_server_that_is_really_listening (`assert 0 != 0`, guarded
-child returncode=0, stdout `REMEDY_EXEC_GUARD_SERVED_BODY`); FAILED
-test_the_refusal_a_denied_child_sees_names_the_closed_proxy_port (`assert b'Connection refused' in
-b''`). Worktree removed, mutation committed nowhere, primary checkout clean.
-G9 HYGIENE, before C4: exactly the 5 change-set paths minus `.agent/handoff.md`; 0 under
-packages/apps/docs/scripts, 1 under tests/. Insertions 420 · 349 · 8 · 40 · 104, none over 500, all
-five single-parent.
+## Verification (real exit codes, real values)
+- **G1 STATE.** `.agent/STOP` absent before C0a and before C4 (`ls` → No such file). `git status
+  --porcelain` empty at round start and after every commit. `git worktree list` one line at both ends.
+- **G2 TRANSPORT.** Committed `.agent/authored/f085-r70.md`, committed `.agent/last_block.md`, both
+  working copies and the transport file: ALL FIVE BYTE-EQUAL, sha256
+  31f928b9466a6d46a22ed4be1da815f545419861ac9341f12a03cdff414442f3, 24310 B, 308 lines, 6 marker
+  lines each. TOTAL 308 ≤ 490; PROSE 232 ≤ 400; RECORD38 54 ≤ 140 (PLAN24F 12, PLAN24T 10).
+- **G3 SHAPES.** PLAN24F→PLAN24T over `.agent/plan.md` at cdbcfb16: `TO contains FROM: False`;
+  FROM 1x pre-commit; FROM 0x and TO 1x post-commit; re-applying FROM→TO to the pre-commit blob
+  reproduces the post-commit blob BYTE-EXACTLY (True). numstat `7 9`.
+  RECORD38 over `.agent/live_review.md` at d2e65482: PREFIX True, SUFFIX True, `pre + slice == post`
+  True, ADDED lines 54 == slice lines 54 and equal IN ORDER (True). numstat `54 0`.
+  Marker LINES `^(BEGIN|END)-[A-Z0-9]+$`: 0 in both edited files.
+- **G4 INTEGRATION GATE.** Suites ran SERIALLY, one pytest process at a time.
+  - Branch run `python3 -m pytest -n auto -q` (primary checkout): **exit 1**, **152 s**,
+    `1 failed, 17131 passed, 19 skipped in 151.31s`. FAILED list 1 line.
+  - Base run, same command, `REMEDY_UI_NO_AUTO_BUILD=1`, in `.remedy-wt/base-r70` at a5a70621:
+    **exit 1**, **113 s**, `8 failed, 17039 passed, 19 skipped in 111.77s`. FAILED list 8 lines.
+  - Parity: `apps/ui/node_modules` and `apps/ui/dist` COPIED with `cp -a`, never symlinked; no symlink
+    found. DIST_SHA256 BEFORE == AFTER = fb68a7293502c79b8ece61d154f5752100a16da1a08a481a7a4c1d79a5a503c0.
+  - `comm -13` branch-only: **1** line. `comm -23` base-only: **8** lines. Both committed.
+  - Attribution — one entry per id, none absent (`.agent/gate_f085_r70/attribution.txt`):
+    - **BLOCKER**, `tests/test_command_discovery.py::TestNoShellTrue::test_run_tests_local_no_shell_true`.
+      Serial re-run, primary checkout: exit 1, `1 failed in 0.47s`,
+      `assert mock_run.called → AssertionError: assert False` at line 663. Same id serial at the merge
+      base: **exit 0, `1 passed in 0.21s`** — does NOT reproduce. Coupling: this feature replaced
+      `subprocess.run(...)` in `run_tests_local` with `run_guarded_test_command(...)`
+      (`packages/orchestration/test_runner.py`), which spawns via `subprocess.Popen`
+      (`packages/orchestration/exec_guard.py:427`), so the test's `patch("subprocess.run")` is never
+      reached. `git diff --stat a5a70621..HEAD -- tests/test_command_discovery.py` is EMPTY — the
+      branch never touched the failing test. Round STOPPED here; no fix attempted.
+    - 8 base-only ids, all `tests/ui_server/test_live_state.py::TestUIServerIntegration::*`, one
+      environment class, missing artifact named per id: a built `apps/ui/dist/index.html` newer than
+      the worktree's checked-out `apps/ui/src` (src 18:54:11 vs copied dist 18:52:27 →
+      `_frontend_is_stale()` True → `_auto_build_frontend` returns None under
+      `REMEDY_UI_NO_AUTO_BUILD=1`, ui_server.py:2781 → "ERROR: React UI not built." + `sys.exit(1)`,
+      ui_server.py:2856/2867 → "Server did not start in time"). Direct confirmation: the class re-run
+      SERIALLY in that same worktree with the artifact fresh → **exit 0, `16 passed in 2.12s`**. No
+      genuine base failure; no id unattributed.
+  - Wall budget: branch run 152 s, under ~5 min. No perf note owed.
+- **G5 PLAN CONTRACT.** `.agent/plan.md` at HEAD: **37 lines** ≤ 50; `## Goal` True; `## Next Steps`
+  True; `\bF\d{3}\b` True.
+- **G6 ARITHMETIC.** 126b70ae: 178 registered / 31 done / 0 landed, 147 open, max registered R-0563,
+  max resolved R-0563, 0 duplicate ids, 0 orphan resolutions. HEAD: IDENTICAL on all nine readings.
+  All three symmetric differences EMPTY. Next free id R-0564.
+- **G7 CANARY.** `python3 -m pytest tests/cli/test_golden_path.py -q` → **exit 0**, `42 passed in 21.90s`.
+- **G8 HYGIENE.** `git diff --name-only 126b70ae..HEAD` before C4 = 14 paths: `.agent/authored/
+  f085-r70.md`, `.agent/last_block.md`, `.agent/plan.md`, `.agent/live_review.md`, and the 10 files
+  under `.agent/gate_f085_r70/`. Grep for `^(packages|apps|docs|scripts|tests)/` or `\.log$` → NONE.
+  Insertions: 585a4390 308, 6b6ff1e5 228, cdbcfb16 7, d2e65482 54, 660540f6 262 — none over 500.
+  Every commit single-parent. No second oversize commit.
 
 ## Authored-text proofs
-
-Every slice was extracted PROGRAMMATICALLY from the COMMITTED `.agent/authored/f085-r69.md` by its
-marker pair under the block's CONVENTION; none retyped, none taken from the prompt. The disk-to-disk
-comparison is G2's four-way byte equality plus G3's three byte-exact reconstructions.
+`.agent/authored/f085-r70.md` vs the transport file: `cmp` equal, both sha256 31f928b9…414442f3,
+24310 B. `.agent/last_block.md` vs it: `cmp` equal, same digest. Both slices were extracted
+PROGRAMMATICALLY from the committed authored file by marker pair under the block's CONVENTION;
+neither was retyped, reflowed, nor taken from the prompt.
 
 ## Deviations & assumptions
+1. **Handoff overage, declared.** This file is 143 lines against the ≤100 cap that >5-commit tables
+   allow (AGENTS.md DECISION D15, stated cause). Cause: the mandated per-commit tables for six
+   commits, the item-status table, the transport and pair proofs, and G4's mandated full numbers —
+   both exit codes, both wall times, both FAILED counts, both comm counts and the per-id attribution.
+   No section was dropped.
+2. **`base_run_tail.txt` committed.** G4's file list names `branch_run_tail.txt` but no base tail;
+   `docs/agents/integration_gate.md` step 2 orders "same records" for the base side, which G4
+   incorporates by reference. Committed and declared rather than silently added.
+3. **`base_parity.txt` carries a MEASURED CAVEAT beyond the two digests G4 orders.** Mtimes taken
+   after the runs show `apps/ui/dist` was rewritten INSIDE BOTH checkouts mid-run (primary 18:52:27
+   during the branch run; worktree 18:55:23 during the base run) while the content digest stayed
+   equal, the rebuild being byte-deterministic. By the block's own stated rule the parity claim
+   stands, and every base-only id is additionally attributed per id. The blindness of a content
+   digest to an mtime-only rebuild is REPORTED for the reviewer to judge.
+4. **Bundle order.** No extra commit, no dropped commit, no reordering: C0a C0b C1 C2 C3 C4 exactly.
+5. **No ledger text authored** (constraint 8): no `Landed:` line, no `Done:` paragraph, RECORD38
+   unedited. The BLOCKER is REPORTED, not registered — constraint 9 rules this round registers
+   nothing, so registering it is the reviewer's act. No disagreement was found between RECORD38 and
+   anything measured this round.
 
-Ordered commit sequence C0a · C0b · C1 · C2 · C3 · C4 followed exactly — no extra, dropped or
-reordered commit. Declared overage: this handback is 124 lines against the ≤100 cap, caused by
-mandated content only — six per-commit tables, the item-status table, nine gate transcripts and the
-verbatim Fortschritt block; no section was dropped. Constraint 8: I re-measured every mechanically
-checkable RECORD37 claim — R68's transport digest/size/marker readings, TOTAL 344 / PROSE 230 /
-RECORD36 88, 0 marker lines in both files R68 edited, plan.md 40 lines at 1df91b27, the
-177/28/0-149-open → 178/30/0-148-open move with symmetric differences {R-0563} and {R-0561, R-0562},
-the a8ba453d ledger a byte-exact PREFIX of the 1df91b27 ledger, `and an example sentence in` at 1x
-per SHA, and five single-parent commits over the range. ALL AGREE; no disagreement to report.
+Fortschritt: ~100 % der Bauarbeit und das Integration Gate gelaufen (T001 gebaut · T002 KOMPLETT ·
+T003 KOMPLETT und akzeptanzgemessen · R69 PASS) — offen bleibt nur noch die Closure: Evidence-Job,
+frischer Review-Zip, die STATUS-Zeile und der PR. Schätzung, gegen die Klassentabelle aus Amendment
+F085 D1 gemessen.
 
 ## Next
-
-ONE: R70 is the INTEGRATION GATE — the full suite per docs/agents/integration_gate.md, the first of
-the two full-suite runs this feature owes; closure per docs/roadmap/STATUS_closure_protocol.md
-follows it.
-TWO: R69 carries no verdict of its own, because the round that records a verdict cannot record one on
-itself (docs/agents/planner_reviewer_prompt.md §4 item 13); R70 carries it.
-THREE: 147 findings open; next free id R-0564.
+ONE: R71 is CLOSURE per docs/roadmap/STATUS_closure_protocol.md — evidence job, FRESH review zip, the
+reviewer-authored STATUS line, and the PR the operator merges at the next Open PR Gate. That plan is
+now CONDITIONAL on the G4 BLOCKER above, whose fix is its own reviewer-gated round before closure.
+TWO: R70 carries no verdict of its own, because the round that records a verdict cannot record one on
+itself (docs/agents/planner_reviewer_prompt.md §4 item 13); R71 carries it.
+THREE: open findings 147; next free id R-0564.
 FOUR: Phase 1 rule 1 first: re-read `.agent/STOP` from disk.
-
-Fortschritt: ~100 % der Bauarbeit (T001 gebaut · T002 KOMPLETT · T003 KOMPLETT: Netz-Posture
-verdrahtet und gepinnt, Limitations-Dokument steht, verlinkt und inhaltlich korrekt, und die letzte
-Akzeptanzzeile ist jetzt am echt lauschenden Server gemessen, mit Kontrolle · R66 und R67 FAIL, beide
-Fehler des Reviewers, beide repariert) — offen bleiben nur noch Integration Gate und Closure.
-Schätzung, gegen die Klassentabelle aus Amendment F085 D1 gemessen.
