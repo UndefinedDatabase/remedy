@@ -761,3 +761,60 @@ def test_the_runtime_server_policy_holds_no_clock_and_no_cap():
     assert child_env["REMEDY_RUNTIME_PORT"] == "7331"
     assert child_env["PATH"] == "/usr/bin"
     assert "ANTHROPIC_API_KEY" not in child_env
+
+
+def test_a_denied_policy_points_every_proxy_spelling_at_the_closed_port():
+    """The posture is proxy-shaped: both spellings set, and no host exempted."""
+    child_env = exec_guard.plan_child_spawn(exec_guard.ExecGuardPolicy(
+        env={"PATH": "/usr/bin"}, deny_network=True,
+    )).env
+
+    for key, value in exec_guard.DENIED_NETWORK_ENV:
+        assert child_env[key] == value
+    assert child_env["HTTP_PROXY"] == "http://127.0.0.1:9"   # the literal, not the constant
+    assert child_env["no_proxy"] == ""
+    assert child_env["PATH"] == "/usr/bin"
+
+
+def test_the_deny_survives_the_scrub_that_forbids_those_very_keys():
+    """The ordering property: the floor drops the PARENT's proxy, and the guard's own
+    value is written after that floor has run rather than before it."""
+    child_env = exec_guard.plan_child_spawn(exec_guard.ExecGuardPolicy(
+        env={"PATH": "/usr/bin", "HTTP_PROXY": "http://corp.example:3128"},
+        env_allowlist=("PATH", "HTTP_PROXY"),
+        deny_network=True,
+    )).env
+
+    assert child_env["HTTP_PROXY"] == exec_guard.DENIED_NETWORK_PROXY_URL
+    assert "corp.example" not in child_env["HTTP_PROXY"]
+
+
+def test_a_policy_that_does_not_deny_carries_no_proxy_variable_at_all():
+    """The default is off, and off means ABSENT rather than empty."""
+    child_env = exec_guard.plan_child_spawn(exec_guard.ExecGuardPolicy(
+        env={"PATH": "/usr/bin"}, env_allowlist=("PATH",),
+    )).env
+
+    assert child_env == {"PATH": "/usr/bin"}
+    assert not set(dict(exec_guard.DENIED_NETWORK_ENV)) & set(child_env)
+
+
+def test_the_test_class_policy_denies_the_network_its_row_denies():
+    """Amendment F085 D1's network column for the `test` row, in code."""
+    policy = exec_guard.test_command_exec_policy(60, "/tmp")
+
+    assert policy.deny_network is True
+
+
+@pytest.mark.subprocess
+def test_a_denied_child_really_receives_the_closed_port(monkeypatch):
+    """A real child, through the seam, dumps the posture it actually inherited."""
+    monkeypatch.setenv("HTTP_PROXY", "http://corp.example:3128")
+
+    result = run_guarded_test_command(_child(_ENV_DUMP), timeout_sec=30, cwd=None)
+    dumped = _dumped(result)
+
+    assert result.returncode == 0
+    assert dumped["HTTP_PROXY"] == exec_guard.DENIED_NETWORK_PROXY_URL
+    assert dumped["no_proxy"] == ""
+    assert b"corp.example" not in result.stdout
