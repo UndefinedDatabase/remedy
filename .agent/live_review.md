@@ -4015,3 +4015,91 @@ both findings is reported in the R67 block and re-run by its G8: `spawn unsuperv
 live occurrences at 261dce53, this one and R-0561's, and the two remaining hits in the repository are
 an unrelated constant in `packages/runtimes/dev_server.py` and an example sentence in
 `docs/agents/planner_reviewer_prompt.md`. OPEN.
+
+Gate: R68 — the R67 entry. R67 FAILED, and the failure is the REVIEWER's for the second round
+running, not the worker's. Every ordered gate G1-G9 was re-executed by the reviewer over
+261dce53..a8ba453d, not read, and each reproduces the handback's reading exactly; the worker deviated
+in nothing, applied every slice unedited, and declared the defect this entry registers instead of
+repairing it — which is what that block's constraint 8 asked for, and the second consecutive round in
+which a worker's declared disbelief is the only thing that caught the reviewer. LINE COUNTS ARE
+`splitlines` COUNTS. TRANSPORT HELD, disk-to-disk with no digest fallback: the committed
+`.agent/authored/f085-r67.md` and the committed `.agent/last_block.md` at a8ba453d, and both working
+copies at a8ba453d, are all four byte-EQUAL at sha256
+8f1d0218ad4e0796a9618d46cf2737b8fd0d60ecb022431e5d73ebae92a99db1, 29948 B, 386 lines, 14 marker
+lines. THE SHAPES HELD: PLAN21 over `.agent/plan.md` at 7c0dca8b, FIXDOC over
+`docs/system/exec-guard-limitations-v0.md` at 5f09088a and FIXMOD over
+`packages/orchestration/exec_guard.py` at 3440efe4 are REWRITES, each reading
+`TO contains FROM: false`, each FROM 1x pre-commit and 0x post-commit with its TO exactly 1x
+post-commit, and each pair re-applied to its pre-commit blob reproduces its post-commit blob
+BYTE-EXACTLY. RECORD35 over `.agent/live_review.md` at 60057260 satisfies ORDERED EQUALITY on every
+clause — PREFIX, SUFFIX, `pre + slice` equal byte for byte, ADDED lines equal to the slice's lines IN
+ORDER, 71 and 71. Marker LINES at a8ba453d are 0 in each of the four edited files. THE SUITES WERE
+RE-RUN, NOT READ, in the primary checkout, serially, each exit 0: `331 passed` for the six readers of
+the edited module, `295 passed` for the docs-consistency suite, `160 passed` for the four state
+readers and the canary `42 passed`, each equal to its base. THE PLAN CONTRACT HELD at a8ba453d: 40
+lines against the 50-line cap with `## Goal`, `## Next Steps` and a roadmap F-id all present. THE
+ARITHMETIC MOVED BY EXACTLY TWO REGISTRATIONS, as that block's constraint 9 required: 175 registered /
+28 done / 0 landed and 147 open at 261dce53 against 177 / 28 / 0 and 149 open at a8ba453d, the
+registered symmetric difference exactly {R-0561, R-0562}, the done and landed differences both EMPTY,
+and 0 duplicate ids and 0 orphan resolutions at both SHAs. THE LINT HELD at a8ba453d, both the plain
+and the preview half exit 0 on `All checks passed!`. THE TRUTH GATE HELD on all six of its readings,
+which is why both repairs resolve below. WHAT FAILED IS THE ONE CLAUSE THAT GATE DID NOT READ.
+
+Done: R-0561 — Resolved at R67, commit 5f09088a. Re-read by the reviewer in the file rather than in
+the handback: `docs/system/exec-guard-limitations-v0.md` at a8ba453d carries the heading
+`## Six classes run under the guard, and only three of them deny the network`, contains each of the
+six stage-1 class names `builder`, `test`, `dod-process`, `dod-app`, `runtime-server` and
+`runtime-build`, separates being guarded from denying the network in as many words, and carries the
+two contents `docs/roadmap/features/T2_F085.md` assigns to it and the first version omitted — that the
+exclusion is a `SCOPE ruling` and that untouched sites `can hang`. The old heading
+`## Only three command classes run under the guard at all` occurs 0 times in that file at a8ba453d,
+and the false sentence naming `runtime` among the unsupervised occurs 0 times there.
+
+Done: R-0562 — Resolved at R67, commit 3440efe4. The `exec_guard` module docstring's PARTIAL COVERAGE
+bullet at a8ba453d names the runtime class as migrated whole, through `runtime_server_exec_policy` for
+its servers and `run_guarded_runtime_build_command` for its builds, and leaves the unsupervised claim
+to `git`, `packaging` and `other`; the sentence `the runtime, git and packaging classes still spawn
+unsupervised` occurs 0 times in `packages/orchestration/exec_guard.py` at a8ba453d. The repair is
+INERT, which is the property no red control could have shown: the pre-commit and post-commit blobs of
+that file at 3440efe4, parsed with `ast.parse` and each module docstring set to None, produce
+IDENTICAL `ast.dump` output, so that commit changed docstring bytes and nothing executable.
+
+- R-0563 — Medium — a sweep gate read a TOTAL while the sentence beside it characterised the
+INDIVIDUAL hits, so a false clause reached the finding ledger through the very round that registered
+the counter-measure against false claims. RECORD35's closing sentence, committed at 60057260, states
+that the `spawn unsupervised` sweep leaves two further hits standing in this repository beyond the two
+it repairs, locating one in `packages/runtimes/dev_server.py` and one in
+`docs/agents/planner_reviewer_prompt.md`; the R67 block's own sweep paragraph says the same, and both
+were authored by the reviewer. Measured with `git grep -n "spawn unsupervised"` over `packages/`,
+`apps/`, `docs/` and `tests/`, that phrase returns EXACTLY two hits at 261dce53 and EXACTLY two at
+a8ba453d — the two live claims themselves — so no further hit exists under those four trees at either
+SHA. The `dev_server.py` lines carry the bare word `unsupervised` in the `OWNER_UNSUPERVISED` constant
+and never the phrase, and `docs/agents/planner_reviewer_prompt.md` carries 0 occurrences of
+`unsupervised` in any case at either SHA, so one half of the claim confuses a word with a phrase and
+the other half names a file that never held either. Medium, not High, because no repair was
+misdirected — the two findings the sweep bounds are both correct and both resolve above — and not Low,
+because that sentence is the BOUNDING claim for both of them: a reader who trusts it believes two
+further sites were deliberately left alone and will not look, which is the R-0417 staleness hazard
+pointed the other way. The R67 worker measured this and declared it under that block's constraint 8
+rather than editing reviewer text, which is why it is registered here rather than shipped.
+COUNTER-MEASURE, narrowing R-0561's: when a block orders a gate over a SWEEP, EVERY clause of the
+sentence that sweep licenses is read back from the sweep's own output — the total, the path each hit
+lands in, and the characterisation of every hit NOT repaired — because a gate that counts hits cannot
+fail on a sentence that describes them. R67's G8 ordered the count, got two, and passed while the
+prose beside it said four; nothing in that block compared the two, and no gate it ordered could have.
+G7 of the R68 block is the first written under this rule, and reading A of that gate — the path of
+every hit, not only how many — is the clause R67's G8 was missing. OPEN.
+
+CORRECTION TO RECORD35, appended and not applied, per docs/agents/planner_reviewer_prompt.md §3
+checklist item 20: overwriting landed text is worse than a dated wrong sentence, so the clause
+registered as R-0563 above stands untouched where it was committed at 60057260 and THIS paragraph is
+its retraction, exactly as the correction section of DECISION F085 D6 retracts a ruled figure in
+`.agent/decisions.md` without editing it. The true reading, taken by the reviewer at 261dce53 and
+again at a8ba453d: the phrase `spawn unsupervised` occurs exactly twice under `packages/`, `apps/`,
+`docs/` and `tests/` at each of those SHAs, both occurrences are the two claims R-0561 and R-0562
+name, and no third or fourth occurrence of that phrase exists under those four trees at either SHA.
+The phrase does recur under `.agent/` — in this workflow's own block mirrors, handbacks and records,
+RECORD35 among them — and that is the only place it does, which is why this retraction names the
+trees it swept instead of saying `the repository`. R-0561 and R-0562 are unaffected by the
+retraction: the sweep that bounds them is COMPLETE at two rather than at four, which makes their
+repairs more nearly exhaustive than the sentence claimed, not less.
