@@ -14,10 +14,13 @@ second thing to forget.
 
 from __future__ import annotations
 
+import contextlib
+import http.server
 import io
 import os
 import subprocess
 import sys
+import threading
 import time
 
 import pytest
@@ -827,3 +830,104 @@ def test_the_dod_process_policy_denies_the_network_its_row_denies():
     assert policy.deny_network is True
     child_env = exec_guard.plan_child_spawn(policy).env
     assert dict(exec_guard.DENIED_NETWORK_ENV).items() <= child_env.items()
+
+
+#: A child that fetches one URL and handles nothing, so an unreachable server makes
+#: the COMMAND fail instead of merely printing about it — which is the shape
+#: `docs/roadmap/features/T2_F085.md` states its acceptance in. `urllib` honours
+#: `http_proxy`/`HTTP_PROXY`, which is the posture stage 1 actually sets; the URL is
+#: `argv[2]` because `_child` puts MARKER at `argv[1]`.
+_FETCH_URL = (
+    "import sys, urllib.request\n"
+    "sys.stdout.write(urllib.request.urlopen(sys.argv[2], timeout=5).read().decode())\n"
+)
+
+#: Served to any GET, so a successful fetch is proved by CONTENT and not by an exit
+#: code that a dozen other outcomes would also produce.
+_SERVED_BODY = b"REMEDY_EXEC_GUARD_SERVED_BODY"
+
+
+class _ServesOneBody(http.server.BaseHTTPRequestHandler):
+    """Answer every GET with `_SERVED_BODY`, and keep pytest's output clean."""
+
+    def do_GET(self):  # noqa: N802 — BaseHTTPRequestHandler names the hook
+        self.send_response(200)
+        self.send_header("Content-Length", str(len(_SERVED_BODY)))
+        self.end_headers()
+        self.wfile.write(_SERVED_BODY)
+
+    def log_message(self, *_args):
+        """Silence the default stderr access log."""
+
+
+@contextlib.contextmanager
+def _really_listening():
+    """A loopback HTTP server on an ephemeral port, answering for real.
+
+    Stage 1's deny is a PROXY posture and never a kernel one, so a fetch that fails
+    against a port where nothing listens proves nothing whatever. This harness
+    exists so the denied fetch is measured against a server that IS answering, and
+    the port is ephemeral so two concurrent runs cannot collide on it.
+    """
+    server = http.server.HTTPServer(("127.0.0.1", 0), _ServesOneBody)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        yield f"http://127.0.0.1:{server.server_address[1]}/"
+    finally:
+        server.shutdown()
+        thread.join(timeout=5)
+        server.server_close()
+
+
+@pytest.mark.subprocess
+def test_a_guarded_test_command_cannot_reach_a_server_that_is_really_listening():
+    """T2_F085's remaining acceptance line, with its control in the same body.
+
+    The control runs FIRST and unguarded and must be SERVED. That is what makes the
+    guarded failure attributable to the deny posture rather than to a harness that
+    never came up: both children run the SAME argv against the SAME url, so the
+    posture is the only difference between them. A test that asserted only the
+    failure would stay green if this server stopped listening altogether, which is
+    the one way this measurement can lie.
+    """
+    with _really_listening() as url:
+        served = subprocess.run(
+            _child(_FETCH_URL) + [url], capture_output=True, timeout=30,
+        )
+        assert served.returncode == 0, served.stderr
+        assert _SERVED_BODY in served.stdout
+
+        denied = run_guarded_test_command(
+            _child(_FETCH_URL) + [url], timeout_sec=30, cwd=None,
+        )
+
+        assert denied.returncode != 0
+        assert _SERVED_BODY not in denied.stdout
+        assert b"URLError" in denied.stderr
+
+        # The deny stopped the CHILD and not the server: T003's "the harness still
+        # serves" half, measured after the refusal rather than assumed from it.
+        again = subprocess.run(
+            _child(_FETCH_URL) + [url], capture_output=True, timeout=30,
+        )
+        assert again.returncode == 0
+        assert _SERVED_BODY in again.stdout
+
+
+@pytest.mark.subprocess
+def test_the_refusal_a_denied_child_sees_names_the_closed_proxy_port():
+    """WHY the fetch failed, so a future unrelated breakage cannot pass for the deny.
+
+    `denied.returncode != 0` above is satisfied by any crash at all. This pins the
+    refusal to the posture: the child reports a connection refusal, and the proxy it
+    was pointed at is the closed port `DENIED_NETWORK_PROXY_URL` names.
+    """
+    with _really_listening() as url:
+        denied = run_guarded_test_command(
+            _child(_FETCH_URL) + [url], timeout_sec=30, cwd=None,
+        )
+
+    assert b"Connection refused" in denied.stderr
+    assert exec_guard.DENIED_NETWORK_PROXY_URL == "http://127.0.0.1:9"
+    assert exec_guard.test_command_exec_policy(30, None).deny_network is True
