@@ -184,3 +184,112 @@ Reviewer: gate this round, issue the closing verdict into this handoff and into 
 round of a branch records its verdict there and not in `.agent/live_review.md`, per
 docs/agents/planner_reviewer_prompt.md §4 item 13 — and end the session. The operator merges the PR
 at the next feature's Open PR Gate; this session merges nothing.
+
+## Reviewer verdict — R74: PASS
+
+Issued by the planner and reviewer of the self-drive session of 2026-08-19 over the range
+ed34119b..e950e8af. This is the LAST round of the branch, so its verdict lives here, in the round
+report and on PR #204, and never in `.agent/live_review.md` — the terminator
+docs/agents/planner_reviewer_prompt.md §4 item 13 describes, not a missing gate entry. Everything
+below was RE-RUN by the reviewer rather than read from the handback above, except the absence of
+`.agent/STOP` at the two points R74's constraint 2 names and `git status --porcelain` after each
+intermediate commit, which are unobservable once a round has ended and are accepted on the worker's
+report.
+
+TRANSPORT HELD, disk-to-disk under the digest fallback of §4 item 9, and wider than the block
+ordered: the committed `.agent/authored/f085-r74.md` and the committed `.agent/last_block.md` at
+1181037b, both working copies, and both files again at e950e8af are all byte-EQUAL at sha256
+d8a1225789c214549a90d61a21041f576e247036be4aa30cf941e3a394716e9b, 27361 B, 383 lines. TOTAL 383
+against the 490 cap; the thirteen slices sum to 149 lines, so PROSE is 234 against 400. All thirteen
+slice digests were recomputed by the reviewer and every one agrees with the handback. Of the 26 lines
+beginning `BEGIN-` or `END-`, all 26 are real markers: the block predicted one prose line beginning
+`END-OF-FILE`, and in the transported bytes that string is mid-line, so the worker's deviation 1 is
+confirmed as measured and no slice was changed to suit the prediction.
+
+THE SHAPES HELD, each against its own commit's pre-commit blob. PLAN28F→PLAN28T at 430a4a82 shows
+FROM 1x pre and 0x post with TO exactly 1x post, and reproduces the post blob BYTE-EXACTLY.
+STATUSF→STATUST at e950e8af, with only its three slots filled, shows the same three readings and the
+same byte-exact reproduction. READMECOUNT and READMETIER at e950e8af each show FROM 1x pre, 0x post
+and TO 1x post; their per-pair reproduction is False, and re-applying all three README pairs to the
+617ef70a blob reproduces the e950e8af blob byte-exactly, which confirms the worker's deviation 2 as a
+structural consequence of three pairs landing in one commit rather than as a defect. READMEDOC is
+append-shaped — `TO contains FROM: true` — so no FROM-zero count was taken by anyone; its FROM occurs
+1x in the post-commit file and its single TO-ONLY line occurs exactly 1x among the 3 lines C3's diff
+adds to `README.md`. RECORD43 at 617ef70a satisfies ORDERED EQUALITY: the pre blob is a byte-exact
+PREFIX, the slice an exact SUFFIX, `pre + slice == post` is True, and that commit's 36 added lines
+equal the slice's 36 lines IN ORDER. `.agent/candidates.md` at e950e8af equals CANDIDATES byte for
+byte at sha256 2343f4383e2465004f02a516276482d6587a0a5590d6cee008df4a76085431e6, 1915 B. Lines
+beginning `BEGIN-` or `END-` number 0 in every TARGET file the round edited — `docs/roadmap/STATUS.md`,
+`README.md`, `.agent/candidates.md`, `.agent/plan.md`, `.agent/live_review.md` and
+`.agent/handoff.md`, each read at e950e8af — the two block mirrors excepted by construction.
+
+THE SUITES WERE RE-RUN, NOT READ, in the primary checkout, serially, each exit 0. The full suite read
+`17132 passed, 19 skipped in 120.36s`, and the reviewer ran it at e950e8af where the block ordered it
+at 617ef70a: e950e8af is that commit's content plus one closure commit touching only `.agent/`,
+`README.md` and `docs/roadmap/STATUS.md`, so the reading covers the ordered commit and the doc edits
+made after it, and it is reported as the superset it is rather than as the reading that was ordered.
+R-0569's id did not fire, so no serial re-run was needed. `tests/docs/` read `295 passed`,
+`tests/orchestration/test_roadmap_index.py` read `30 passed`, the four state readers
+`.agent/context.md` names read `160 passed`, and the canary read `42 passed` — every one equal to the
+value the R74 block recorded at its base. The integrity gate read `Status: PASS (0 failures)` over
+five checks with `handler_import: handlers=338`, through the module path because the `remedy` CLI
+entry point is denied in this sandbox, which is the same substitution the worker declared.
+
+THE ARITHMETIC HELD under DECISION F085 D7: 184 registered, 32 done and OPEN 152 at ed34119b, and the
+same three values at e950e8af, with both symmetric differences EMPTY, 0 duplicate registered ids, 0
+duplicate done ids, 0 resolutions naming an unregistered id and 0 `^Landed:` lines at both SHAs. Max
+registered R-0569, max resolved R-0564, next free id R-0570. THE PLAN CONTRACT HELD at 430a4a82: 38
+lines against the 50-line cap, with `## Goal`, `## Next Steps` and a roadmap F-id present, and 0
+marker lines. THE HYGIENE HELD: the range touches only paths the R74 block's Change set names, every
+path that set names is touched, none ends `.log`, and no evidence directory and no zip appear, over
+five single-parent commits in one chain inserting 383, 353, 8, 36 and 185 lines, none over 500. The
+worker's deviation 8 is confirmed correct: `git show --numstat` reads 353 insertions for C0b where
+the block's own line count is 383.
+
+THE ARTIFACTS HELD, re-verified by the reviewer on disk rather than read. `sha256sum` over
+`remedy-review-20260819-203439-READY_FOR_REVIEW.zip` returns
+951d05c41f7c9ab5ee4dc0428b8be17e981b09738c20587f5c6c31b020296ad6, byte-identical to the value the
+STATUS line carries. Its `.review_zip_manifest.json` reads `package_status: READY_FOR_REVIEW`,
+`evidence_authoritative: true`, `review_subject_evidence_alignment.verdict: PASS`,
+`final_verifier_reproducibility: VERIFIED_EQUAL`, `token_truth_authority: VERIFIED_EQUAL`,
+`ready_gate_matrix.ok: true` with `blocking_reasons` empty, `packaged_evidence_job_id: f085-closure`
+over task ids T001, T002 and T003, and a `committed_review_subject` whose head_commit is
+617ef70a3d566abed1ca68a034570636636edad5 — the accepted HEAD the STATUS line names — with base
+a5a706214d20101dd54564c23d0a3c22efcc705d, `base_is_ancestor: true` and commit_count 463, across 7258
+members. `commit_execution_gate: NEEDS_HUMAN_APPROVAL` is the human-merge gate this workflow requires
+and is not a defect. Read while this gate ran, PR #204 is OPEN, not a draft, from
+`feature/f085-sandbox-hardening` into `main` and MERGEABLE, and its body's package, SHA-256 and
+accepted HEAD equal the STATUS line's while its `464 commits` equals the reviewer's own
+`git rev-list --count main..HEAD`.
+
+ALL FIVE CLOSURE PRECONDITIONS of docs/roadmap/STATUS_closure_protocol.md hold, checked one by one:
+every step has a PASS round and the 152 open findings are documented Medium or Low risks, with the
+integrity gate reporting no open blocker and no High finding; the full relevant suite is green by the
+reviewer's own run; the integrity gate passes with `untracked=0, relevant=0`; the feature file's
+Built State section is present and was gated at R73; and at e950e8af the tree was clean with
+`git status --porcelain` empty, the branch pushed to the same SHA as the local HEAD, and
+`git worktree list` showing only the primary checkout.
+
+F085 IS THEREFORE CLOSED AND ACCEPTED. What was not delivered stays on the record rather than in a
+claim: R-0568 — the guard's `resource_limit` classification not reaching the F010 postmortem taxonomy
+— remains open and documented.
+
+One further candidate was raised by this gate after `.agent/candidates.md` was committed at e950e8af,
+and this round carries it into that file: see its "Raised after the closure commit" section.
+
+## Verdict round — record
+
+| Item | Status | Reason |
+|------|--------|--------|
+| C0a  | done   | block saved verbatim |
+| C0b  | done   | block mirrored into last_block |
+| C1   | done   | candidate carrier appended |
+| C2   | done   | this verdict appended |
+
+The four SHAs, the per-commit changed-files tables, C2's own insertion count and the ten gate results
+ride in the round report, because a commit can state neither its own SHA nor its own insertion count
+while its text is being written. Open findings: 152 (184 registered − 32 done, DECISION F085 D7).
+Next free id R-0570.
+
+Next expected action: none in this session. The operator merges PR #204 at the next feature's Open PR
+Gate; this session merged nothing and created no branch.
