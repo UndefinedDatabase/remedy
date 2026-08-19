@@ -730,3 +730,34 @@ def test_the_runtime_build_row_passes_npm_config_by_name_and_never_by_prefix(mon
     assert dumped["NPM_CONFIG_REGISTRY"] == "https://registry.example.invalid"
     assert "NPM_CONFIG__AUTHTOKEN" not in dumped
     assert "HTTPS_PROXY" not in dumped
+
+
+def test_the_runtime_server_policy_holds_no_clock_and_no_cap():
+    """The two columns Amendment F085 D8 separates `runtime-server` by.
+
+    Both are PARENT-side and all three call sites keep their own `Popen`, so None
+    here is the row the table rules rather than an omission. The declared keys are
+    asserted to JOIN the allowlist rather than replace it, and `FORBIDDEN_ENV_KEYS`
+    is asserted to survive a caller that names one.
+    """
+    policy = exec_guard.runtime_server_exec_policy(
+        cwd="/tmp/runtime-server-cwd",
+        env={"PATH": "/usr/bin", "REMEDY_RUNTIME_PORT": "7331",
+             "ANTHROPIC_API_KEY": "leak"},
+        declared_env_keys=("REMEDY_RUNTIME_PORT", "ANTHROPIC_API_KEY"),
+    )
+
+    assert policy.wall_timeout_seconds is None
+    assert policy.output_cap_bytes is None
+    assert policy.cwd == "/tmp/runtime-server-cwd"
+    assert policy.core_file_bytes == 0
+    assert policy.cpu_seconds is None
+    assert policy.address_space_bytes is None
+    assert policy.open_files is None
+    assert set(exec_guard.RUNTIME_SERVER_ENV_ALLOWLIST) <= set(policy.env_allowlist)
+    assert "REMEDY_RUNTIME_PORT" in policy.env_allowlist
+
+    child_env = exec_guard.plan_child_spawn(policy).env
+    assert child_env["REMEDY_RUNTIME_PORT"] == "7331"
+    assert child_env["PATH"] == "/usr/bin"
+    assert "ANTHROPIC_API_KEY" not in child_env

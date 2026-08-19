@@ -793,3 +793,61 @@ def run_guarded_runtime_build_command(
             output=completed.stdout, stderr=completed.stderr,
         )
     return completed
+
+
+# ---------------------------------------------------------------------------
+# The `runtime-server` seam (F085 T002e) — the long-lived application servers,
+# which take the CHILD half ALONE for the reason `dod_app_exec_policy` states:
+# each of the three call sites is already a supervisor owning its own readiness
+# probe, its own log handling and its own stop path.
+# ---------------------------------------------------------------------------
+
+
+#: WHY: the environment a `runtime-server` child may inherit. The MEMBERS are the
+#: `test`-class values and the NAME stays deliberately separate, for the reason
+#: `DOD_APP_ENV_ALLOWLIST` states: T2_F085's policy table rules `runtime-server` as
+#: its own row, so widening one row stays a one-line edit here.
+RUNTIME_SERVER_ENV_ALLOWLIST: tuple[str, ...] = TEST_COMMAND_ENV_ALLOWLIST
+
+
+def runtime_server_exec_policy(
+    *,
+    cwd: str | None,
+    env: Mapping[str, str] | None = None,
+    declared_env_keys: Sequence[str] = (),
+) -> ExecGuardPolicy:
+    """The stage-1 policy every `runtime-server` child runs under.
+
+    `wall_timeout_seconds` is None because Amendment F085 D8 rules this row must
+    not hold a clock: a wall deadline would kill a served application mid-request,
+    which is the whole reason the row was split off from `runtime-build`.
+
+    `output_cap_bytes` is None for the reason `dod_app_exec_policy` records about
+    its own row, and not as an omission of T2_F085's column: the cap is enforced
+    WHILE READING a pipe, and all three call sites read their own — two through a
+    `LogPump` carrying its own `max_bytes`, one sending the child to `DEVNULL`. A
+    cap here would have to hold a pipe this policy never sees. T003's limitations
+    document says so rather than letting the column imply a bound that is absent.
+
+    `cpu_seconds`, `address_space_bytes` and `open_files` are None for the reasons
+    `managed_builder_execution._builder_exec_policy` already settled for the
+    builder class, not restated here so the two cannot drift apart.
+
+    `env` is the CALLER's already-resolved environment and becomes the scrub
+    SOURCE, because every one of the three sites builds one before it spawns;
+    `declared_env_keys` names the keys it adds on top of the parent's. Those keys
+    JOIN the allowlist, so `scrub_child_env` keeps them while `FORBIDDEN_ENV_KEYS`
+    stays the floor beneath both.
+
+    Remedy deliberately ships no `run_guarded_runtime_server_command`: `run_guarded`
+    buffers both streams and waits for the child to EXIT, and a server never exits
+    on its own, so the callers keep their own `Popen` and take `plan_child_spawn`.
+    """
+    return ExecGuardPolicy(
+        wall_timeout_seconds=None,
+        output_cap_bytes=None,
+        cwd=cwd,
+        core_file_bytes=0,
+        env=dict(env) if env is not None else None,
+        env_allowlist=RUNTIME_SERVER_ENV_ALLOWLIST + tuple(sorted(declared_env_keys)),
+    )
