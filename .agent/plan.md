@@ -18,15 +18,17 @@ reaches a child, and the limitations document exists and is linked from the
 README.
 
 ## Current Step
-R70, this round: the INTEGRATION GATE, the first of the two full-suite runs this feature owes.
-The branch suite and a merge-base suite run sequentially under restored parity, every branch-only
-failure is attributed by direct evidence, and the comparison is REPORTED rather than predicted.
-R69 PASSED: the denied fetch is now measured against a really listening server, with its control
-in the same test body. No source file, no test and no document is touched this round.
+R71, this round: the repair the integration gate demanded. R70 PASSED and its gate found exactly
+one real branch-only regression — `test_run_tests_local_no_shell_true` pinned a spawn site that
+F085 T002b moved, so it failed on a property that still holds. The test is pulled to the new seam
+and its two assertions are proved reachable by mutation. Registered as R-0564; the parity-digest
+blindness the same gate surfaced is registered as R-0565. No production file is touched.
 
 ## Next Steps
-1. Closure per docs/roadmap/STATUS_closure_protocol.md: evidence job, FRESH review zip, the STATUS
-   line authored by the reviewer, and the PR the operator merges at the next Open PR Gate.
+1. Re-run the integration gate per docs/agents/integration_gate.md: a repair landed after a gate
+   invalidates that gate's comparison, so the branch-versus-base reading is taken again.
+2. Then closure per docs/roadmap/STATUS_closure_protocol.md: evidence job, FRESH review zip, the
+   STATUS line authored by the reviewer, and the PR the operator merges at the next Open PR Gate.
 
 ## Risks
 - An allowlist bounds what the PARENT hands over, never what the child's runtime
