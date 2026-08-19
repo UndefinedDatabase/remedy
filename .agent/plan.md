@@ -1,38 +1,34 @@
-# Plan — F085 Sandbox hardening (stage 1)
+# Plan — F085 Sandbox hardening (stage 1) — CLOSED, merge blocked
 
-Branch: feature/f085-sandbox-hardening, cut from origin/main at a5a70621 after
-the F083 closure PR #202 and the amendment PR #203 merged.
-`.agent/live_review.md` is the source of truth for the open set, for the next
+Branch: feature/f085-sandbox-hardening. F085 is closed and accepted; the R74 PASS
+verdict landed at 4c2d707b and as the single comment on PR #204.
+`.agent/live_review.md` stays the source of truth for the open set, for the next
 free finding id and for the round map; this file repeats none of them.
 
 ## Goal
-Builder-spawned commands stop relying on prompted discipline: every builder,
-test and DoD subprocess gets POSIX resource limits, a per-command wall timeout,
-output-size caps, a cwd pinned inside the worktree, an environment allowlist and
-a default-deny network posture — with a document that says EXACTLY what stage 1
-does and does not prevent. DONE when the limits provably kill a runaway fixture
-(cpu, memory, oversized output, endless sleep) and classify it `resource_limit`
-with the tripped limit named, an off-scope write attempt fails, well-behaved
-commands behave identically under the guard, a secret-like parent env var never
-reaches a child, and the limitations document exists and is linked from the
-README.
+Get PR #204 merged. F085's build goal is met and gated — builder-spawned commands
+run under POSIX resource limits, a wall timeout, output caps, a pinned cwd, an
+environment allowlist and a default-deny network posture, with the limitations
+document written and linked. Nothing remains to BUILD in F085.
 
 ## Current Step
-R74, the closure round per docs/roadmap/STATUS_closure_protocol.md: R73's PASS recorded, then the
-evidence job and a FRESH review zip built from a clean tree at that record's commit, then one closure
-commit carrying the reviewer-authored STATUS line, the README capability sync and the candidate
-carrier, then the PR. R73 PASSED — its transport, both slice shapes, the arithmetic and all four of
-its gate suites were re-run by the reviewer rather than read from the handback.
+BLOCKED at the Open PR Gate. PR #204 is OPEN, MERGEABLE and not a draft, but its
+`ci` check is FAILURE (run 32292354363, 43m26s), so `mergeStateStatus` is
+UNSTABLE. AGENTS.md orders stop-and-report, not a merge. The full suite is EXIT 0
+at the PR head 4c2d707b, so the red is not a local test failure; WHICH CI stage is
+red is unknown, because `gh run` and `gh api` are denied in this sandbox and the
+job log could not be read.
 
 ## Next Steps
-1. The operator merges the closure PR at the next feature's Open PR Gate; this session merges nothing.
-2. The next session claims the next feature by Rule A5, and its FIRST reviewed round empties
-   `.agent/candidates.md` by registering or resolving every entry that file holds.
+1. Read the log of CI run 32292354363 and name the red stage.
+2. Fix it on this branch, or record why the check is not a merge blocker.
+3. Merge #204 at the Open PR Gate; then claim the next feature by Rule A5, whose
+   FIRST reviewed round empties `.agent/candidates.md` — TWO entries are open.
 
 ## Risks
-- An allowlist bounds what the PARENT hands over, never what the child's runtime
-  adds back: a CPython child sets `LC_CTYPE` itself under PEP 538. T003's
-  limitations document must say so rather than claim a sealed environment.
-- A stream still blocked at the grace deadline leaks one pipe read end and one
-  daemon thread. Closing an fd under a blocked reader risks that thread reading
-  a recycled fd after a later `open()`, so the leak is the cheaper wrong.
+- CI runs its stages serially: `pytest_argv_for_stage` adds no `-n auto` and
+  `pyproject.toml` sets no `addopts`, where local runs use `-n auto`. A stage may
+  be dying at its budget (exit 124, note `timed out`) rather than on a real
+  assertion. Unmeasured — read the log before acting on it.
+- The R75 record round (e950e8af..4c2d707b, `.agent/` only) carries no gate entry,
+  by the terminator rule its own carrier candidate describes.
