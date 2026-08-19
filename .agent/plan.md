@@ -18,16 +18,18 @@ reaches a child, and the limitations document exists and is linked from the
 README.
 
 ## Current Step
-R58, this round: T002d's second half. The two `runtime-build` call sites in
-`_auto_build_frontend` (`packages/orchestration/ui_server.py`) move onto
-`run_guarded_runtime_build_command` with `check=True`, reached as a module attribute so a test
-can patch it, and one new test pins that no bare `subprocess.run` survives in that function.
-The R57 PASS and the resolution of R-0558 are recorded in the same round.
+R59, this round: T002e. `runtime_server_exec_policy` and `RUNTIME_SERVER_ENV_ALLOWLIST` are added
+to `packages/orchestration/exec_guard.py` — the row Amendment F085 D8 rules must hold NO wall
+timeout — together with the test that pins both absent columns and the environment scrub. The seam
+is POLICY-ONLY: the three call sites keep their own `Popen` and take `plan_child_spawn`. The R58
+PASS is recorded and R-0559 registered in the same round.
 
 ## Next Steps
-1. The three `runtime-server` sites (`runtime_cmd.py`, `dev_server.py`,
-   `runtime_supervisor.py`) — `Popen`-shaped, and taking NO wall timeout, because a clock
-   would kill them mid-service.
+1. Migrate the three `runtime-server` call sites onto the policy:
+   `apps/cli/commands/runtime_cmd.py`, `packages/runtimes/dev_server.py` and
+   `packages/runtimes/runtime_supervisor.py`. Each keeps its own `Popen` and its own
+   supervision; what changes is the `cwd`, `env` and `preexec_fn` it spawns with, which come
+   from `plan_child_spawn`.
 2. T003 — network posture, the limitations document, its README link. That document states what
    the CHILD-half migrations do NOT bound: an app log written to a file takes no guard output
    cap, and a build behind an HTTP proxy does not run under the guard at all, because the proxy
