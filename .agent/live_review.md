@@ -4415,3 +4415,39 @@ and belongs with the paydown branch `.agent/context.md` already routes R-0403, R
 and R-0490 to. The obvious repair, for whoever takes it: give the fixture a port chosen per worker
 rather than the literal default, or assert only over the port each case actually bound and poll it to
 a bounded deadline instead of sampling once at 0.2 s. OPEN.
+
+Gate: R74 — the R73 entry. R73 PASSED. Every gate its block ordered was re-taken by the reviewer over
+d6d96e50..ed34119b rather than read from the handback, except the absence of `.agent/STOP` at the two
+points R73's constraint 2 names and `git status --porcelain` after each intermediate commit, which are
+unobservable once a round has ended and are accepted on the worker's report. TRANSPORT HELD,
+disk-to-disk under the digest fallback of docs/agents/planner_reviewer_prompt.md §4 item 9: the
+committed `.agent/authored/f085-r73.md`, the committed `.agent/last_block.md` and both working copies,
+all read at ed34119b, are byte-EQUAL at sha256
+5fd5b62c53488cd9386701ac8d3781aac6914d15ccbbf4b78a7f3fec34cc8b12, 24180 B, 293 lines. TOTAL 293
+against the 490 cap; the four slices measure 11, 14, 93 and 32 lines, so PROSE is 143 against 400. Of
+the nine lines beginning `BEGIN-` or `END-`, eight are the four slices' markers and the ninth is a
+CONVENTION prose line beginning `END-OF-FILE`; the R73 worker reported both readings rather than
+reconciling them, which is what constraint 8 asks for and the third round in this feature it has
+produced a correct disclosure. THE SHAPES HELD: PLAN27F→PLAN27T over `.agent/plan.md` at 319060db
+reads `TO contains FROM: false`, shows FROM 1x pre-commit and 0x post-commit with TO exactly 1x
+post-commit, and reproduces its post-commit blob BYTE-EXACTLY on re-application. RECORD42 at 1961e5cc
+and BUILTSTATE at e461e9c4 each satisfy ORDERED EQUALITY against their own pre-commit blob — PREFIX,
+SUFFIX and `pre + slice` equal byte for byte. All four slice digests recomputed by the reviewer agree
+with the handback. Marker LINES are 0 in all three edited files at e461e9c4. THE SUITES WERE RE-RUN,
+NOT READ, in the primary checkout, serially, each exit 0 and each equal to the reading the reviewer
+had taken at the base d6d96e50 before ordering it: `295 passed` for `tests/docs/`, `30 passed` for
+`tests/orchestration/test_roadmap_index.py`, `160 passed` for the four state readers, and the canary
+`42 passed`. The docs gate ran in BOTH halves because `tests/docs/` asserts nothing about a feature
+file's BODY — finding R-0493 proved that by red control — so the roadmap-index half is what actually
+reads the file C3 edited. The reviewer also pre-applied PLAN27T and BUILTSTATE inside a throwaway
+worktree at d6d96e50 before emitting the block and measured `325 passed` for the two halves together,
+so the ordered colour had been observed on the edited tree and not only on the base. THE ARITHMETIC
+HELD under DECISION F085 D7: 181 registered / 32 done at d6d96e50 and 184 / 32 at e461e9c4, so OPEN
+moves 149 to 152; the registered symmetric difference is exactly {R-0567, R-0568, R-0569}, the done
+symmetric difference is empty, and there are 0 duplicate ids and 0 resolutions naming an unregistered
+id at both SHAs. THE PLAN CONTRACT HELD at 319060db: 41 lines against the 50-line cap with `## Goal`,
+`## Next Steps` and a roadmap F-id present. THE HYGIENE HELD: the range touches the six paths the
+block named and no other, none under `packages/`, `apps/`, `scripts/` or `tests/` and none ending
+`.log`, over six single-parent commits inserting 293, 279, 10, 93, 32 and 47 lines, none over 500.
+THE BUILT STATE IS THEREFORE CURRENT, which is precondition 4 of
+docs/roadmap/STATUS_closure_protocol.md and the reason this closure round can follow immediately.
