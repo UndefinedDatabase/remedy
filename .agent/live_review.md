@@ -3719,3 +3719,42 @@ commit on the branch. SECOND, the red control: reverting ONLY `env=spawn_plan.en
 `ANTHROPIC_API_KEY not in child_env` assertion, with the imported module path printed from inside
 the same invocation to prove the worktree copy was the one under test. So the test pins the scrub
 rather than passing for an unrelated reason. NOTHING FAILED and this round registers no finding.
+
+Gate: R63 — the R62 entry. R62 PASSED. Every ordered gate G1-G7 was re-executed by the reviewer over
+a05669a5..cbe1b3e5, not read, and each reproduces the handback's reading exactly; the worker deviated
+in nothing and declared nothing. LINE COUNTS ARE `splitlines` COUNTS. TRANSPORT HELD, disk-to-disk
+with no digest fallback, though NOT against a reviewer scratchpad original: R62 was authored by an
+earlier session and this one holds no original of it, so the comparison ran across the six copies
+that do exist — the committed `.agent/authored/f085-r62.md` at 37114518 and at cbe1b3e5, the
+committed `.agent/last_block.md` at aa9b94e8 and at cbe1b3e5, and both working copies as they stand
+at cbe1b3e5 — all six byte-EQUAL at sha256
+ad6827dc70e67bd8d007666fa379345ea4c318b9a62ac58baa19ceb10a4ead50, 19619 B, 256 lines, 6 marker
+lines. What binds that block's CONTENT is the shape proof rather than the digest, and it held. THE
+SHAPES HELD, and the two classes were measured apart, one reading per pair. PLAN16F→PLAN16T is a
+REWRITE — its containment test reads `TO contains FROM: false` — and over `.agent/plan.md` at
+3d754312 it ends FROM 0x with TO exactly 1x, its FROM having occurred exactly 1x in that file at
+aa9b94e8, and re-applying the extracted pair to the pre-commit blob reproduces the post-commit blob
+BYTE-EXACTLY. RECORD30, which has no FROM, satisfies ORDERED EQUALITY on every clause over
+`.agent/live_review.md` at 5cced41e: the pre-commit blob at 3d754312 is a byte-exact PREFIX, the
+slice is an exact SUFFIX, `pre + slice` equals the post-commit blob byte for byte, and that commit's
+ADDED lines equal the slice's lines IN ORDER, 50 and 50, numstat `50 0`. Marker LINES at cbe1b3e5
+are 0 in `.agent/plan.md`, in `.agent/live_review.md` and in `.agent/handoff.md`. THE SUITES WERE
+RE-RUN, NOT READ, in the primary checkout with that block's exact command lines, each exit 0: the
+four state readers `160 passed` against a base of `160 passed`, and the canary `42 passed` against a
+base of `42 passed`, both unchanged because that round changed no code. THE PLAN CONTRACT HELD at
+cbe1b3e5: 44 lines against the 50-line cap with `## Goal`, `## Next Steps` and a roadmap F-id all
+present, 44 being the figure that block projected. THE ARITHMETIC DID NOT MOVE, as constraint 8 of
+that block required: 174 registered / 28 done / 0 landed and 146 open at a05669a5, the same three
+numbers and the same 146 at cbe1b3e5, max registered R-0559 and max resolved R-0558 at both, all
+three symmetric differences EMPTY, and 0 duplicate ids and 0 resolutions naming an unregistered id at
+both SHAs. HYGIENE IS CLEAN: the path set over a05669a5..cbe1b3e5 is exactly the five the change set
+named, holds no `.py` path at all, and holds `apps/cli/commands/runtime_cmd.py` not at all;
+per-commit INSERTIONS are 256, 166, 7, 50 and 30 for the handback commit, none over 500; all five
+commits are single-parent; and `.agent/handoff.md` at cbe1b3e5 is 60 lines, within its own cap, with
+the ordered Fortschritt line present verbatim. THE BLOCK'S OWN SIZE re-measured from the committed
+file at cbe1b3e5 gives TOTAL 256, PROSE 172 counting its 6 marker lines and RECORD30 50, agreeing
+with that block's own figures and under 490 / 400 / 140. ONE CLAIM NO GATE COVERED WAS CHECKED
+RATHER THAN ACCEPTED: the R62 handback's open question, whether the supervisor needs `PYTHONPATH`
+and `VIRTUAL_ENV` declared, was settled by reading `packages/orchestration/exec_guard.py` at
+cbe1b3e5, where both keys are already members of the tuple `RUNTIME_SERVER_ENV_ALLOWLIST` is
+assigned from, so R63 declares neither. NOTHING FAILED and this round registers no finding.
