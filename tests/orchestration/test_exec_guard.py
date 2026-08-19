@@ -818,3 +818,12 @@ def test_a_denied_child_really_receives_the_closed_port(monkeypatch):
     assert dumped["HTTP_PROXY"] == exec_guard.DENIED_NETWORK_PROXY_URL
     assert dumped["no_proxy"] == ""
     assert b"corp.example" not in result.stdout
+
+
+def test_the_dod_process_policy_denies_the_network_its_row_denies():
+    """Amendment F085 D1's network column for the `dod-process` row, in code."""
+    policy = exec_guard.dod_process_exec_policy(45, "/tmp/dod-cwd")
+
+    assert policy.deny_network is True
+    child_env = exec_guard.plan_child_spawn(policy).env
+    assert dict(exec_guard.DENIED_NETWORK_ENV).items() <= child_env.items()
