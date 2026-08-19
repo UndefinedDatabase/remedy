@@ -18,11 +18,11 @@ reaches a child, and the limitations document exists and is linked from the
 README.
 
 ## Current Step
-R67, this round: repair. R66 FAILED — the reviewer's limitations document claimed three classes
-run under the guard when amendment F085 D1 marks SIX stage-1 and only three default-deny, and the
-`exec_guard` module docstring still called the runtime class unsupervised after R61 and R63
-migrated it whole. Both claims are corrected, both registered as R-0561 and R-0562, and the
-sweep behind them is reported rather than assumed.
+R68, this round: the ledger. R67's two repairs are correct and re-read, so R-0561 and R-0562 are
+marked done — but R67 FAILED on its own record: RECORD35 closes R-0562 by naming further
+repository hits for `spawn unsupervised` that do not exist. That claim is registered as R-0563
+and retracted by an APPENDED correction, never by rewriting landed text. No source file, no test
+and no document is touched.
 
 ## Next Steps
 1. The remaining acceptance measurement: a guarded test command is refused against a loopback
