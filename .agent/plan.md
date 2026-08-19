@@ -18,11 +18,11 @@ reaches a child, and the limitations document exists and is linked from the
 README.
 
 ## Current Step
-R56, this round: settle the npm environment question T002d's second half depends on. The
-`runtime-build` allowlist row is widened from the bare `test` set to the npm and node
-CONFIGURATION keys a build reads, each key named in full so no credential spelled `NPM_CONFIG_*`
-passes with them, and two tests pin both halves. No call site migrates here. The R55 PASS is
-recorded in the same round.
+R57, this round: repair the one defect R56 landed. Its C3 joined a code slice to
+`tests/orchestration/test_exec_guard.py` with one blank line where that file's own convention uses
+two, and the ordered `ruff` gate is blind to it because this repository does not run `--preview`
+and E301-E306 are preview-only. This round registers R-0558, adds the blank line and records the
+R56 FAIL. R56's production change is correct and is not touched.
 
 ## Next Steps
 1. T002d's second half — migrate the two `runtime-build` sites in `_auto_build_frontend`
