@@ -4103,3 +4103,43 @@ RECORD35 among them — and that is the only place it does, which is why this re
 trees it swept instead of saying `the repository`. R-0561 and R-0562 are unaffected by the
 retraction: the sweep that bounds them is COMPLETE at two rather than at four, which makes their
 repairs more nearly exhaustive than the sentence claimed, not less.
+
+Gate: R69 — the R68 entry. R68 PASSED. All eight ordered gates were re-executed by the reviewer over
+a8ba453d..1df91b27, not read, and every measured value equals the one the handback reports. LINE
+COUNTS ARE `splitlines` COUNTS. TRANSPORT HELD, disk-to-disk with no digest fallback and with the
+reviewer's OWN pre-emission original in the comparison: the committed `.agent/authored/f085-r68.md`,
+the committed `.agent/last_block.md` at 1df91b27, both working copies at 1df91b27 and the reviewer's
+original are all five byte-EQUAL at sha256
+f064a5dee523d030e4477585eea3e54fa31731e6741ad5ca1499fbae7c7cfcac, 27537 B, 344 lines, 6 marker lines;
+TOTAL 344 against the 490 cap, PROSE 230 against 400, RECORD36 88 against 140. THE SHAPES HELD:
+PLAN22F→PLAN22T over `.agent/plan.md` at e9d4eca6 reads `TO contains FROM: false`, FROM 1x pre-commit
+and 0x post-commit with TO exactly 1x post-commit, and re-applied reproduces the post-commit blob
+BYTE-EXACTLY. RECORD36 over `.agent/live_review.md` at ea2a458f satisfies ORDERED EQUALITY on every
+clause — PREFIX, SUFFIX, `pre + slice` equal byte for byte, ADDED lines equal to the slice's lines IN
+ORDER, 88 and 88 — with a numstat deletion column of 0. Marker LINES at 1df91b27 are 0 in both edited
+files. THE SUITES WERE RE-RUN, NOT READ, in the primary checkout, serially, each exit 0: `160 passed`
+for the four state readers and the canary `42 passed`, each equal to its base. THE PLAN CONTRACT HELD
+at 1df91b27: 40 lines against the 50-line cap with `## Goal`, `## Next Steps` and a roadmap F-id all
+present. THE ARITHMETIC MOVED AS THAT BLOCK'S CONSTRAINT 9 REQUIRED: 177 registered / 28 done / 0
+landed and 149 open at a8ba453d against 178 / 30 / 0 and 148 open at 1df91b27, the registered
+symmetric difference exactly {R-0563}, the done symmetric difference exactly {R-0561, R-0562}, the
+landed difference EMPTY, and 0 duplicate ids and 0 orphan resolutions at both SHAs. THE TRUTH GATE
+HELD on all four of its readings, which is what resolves R-0563 below. The history over that range is
+five single-parent commits with no amend, rebase, reset or force-push in the reflog, and the branch is
+in sync with its remote.
+
+Done: R-0563 — Resolved at R68, commit ea2a458f, and the resolution is a RETRACTION rather than an
+edit. The false clause registered as R-0563 still stands byte-for-byte where it was committed at
+60057260, and RECORD36 appends the correction beneath it, which is what
+docs/agents/planner_reviewer_prompt.md §3 checklist item 20 rules and what DECISION F085 D6's own
+correction section does in `.agent/decisions.md`. The reviewer proved BOTH halves mechanically at
+1df91b27: the whole of `.agent/live_review.md` as it stood at a8ba453d is a byte-exact PREFIX of the
+file at 1df91b27, so nothing landed was overwritten, and the string `and an example sentence in`
+occurs exactly 1 time at each of those two SHAs rather than dropping to 0. The counter-measure the
+finding names was applied in the same round that registered it: R68's G7 read every clause of the
+sweep back from the sweep's own output rather than its total alone — the two hits AND the path each
+one lands in at a8ba453d and at 1df91b27, no match for `unsupervised` in
+`docs/agents/planner_reviewer_prompt.md` at either SHA with the exit code reported alongside the empty
+output, and the bare word matching 4 lines of `packages/runtimes/dev_server.py` at a8ba453d while the
+phrase matches none there. That last reading is the word-for-phrase confusion R-0563 exists to name,
+measured in the file that produced it.
