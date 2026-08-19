@@ -4322,3 +4322,96 @@ rules the formula on disk instead of leaving it to be re-derived per block, and 
 first gate written under it — it orders BOTH formulas reported side by side at both SHAs, so the rule
 and the reading it rejects are visible together in the record rather than one silently replacing the
 other. OPEN.
+
+Gate: R73 — the R72 entry. R72 PASSED. Every gate its block ordered was re-taken by the reviewer over
+f023e2b1..d6d96e50 rather than read from the handback, except the absence of `.agent/STOP` at the two
+points R72's constraints name and `git status --porcelain` after each intermediate commit, which are
+unobservable once a round has ended and are accepted on the worker's report; both hold observably now,
+and `git worktree list` is one line with no `tmp/` branch left behind. TRANSPORT HELD, disk-to-disk,
+under the digest fallback of docs/agents/planner_reviewer_prompt.md §4 item 9 rather than against a
+scratchpad original, because a self-drive reviewer writes nothing it could later compare against: the
+committed `.agent/authored/f085-r72.md`, the committed `.agent/last_block.md` and both working copies,
+all read at d6d96e50, are byte-EQUAL at sha256
+8deb1e027ffa9a44f0a870c8b780ca7f048f3c1a4e1904eb7625c5f061193383, 29673 B, 374 lines, 12 marker lines;
+TOTAL 374 against the 490 cap and PROSE 263 against 400. THE SHAPES HELD, one reading per unit, every
+slice re-extracted from that committed file by marker under its own convention rather than retyped:
+PLAN26F→PLAN26T over `.agent/plan.md` at 4bbfac80 and LANDEDF→LANDEDT over `.agent/live_review.md` at
+0f7e3f7e both read `TO contains FROM: false`, both show FROM 1x pre-commit and 0x post-commit with TO
+exactly 1x post-commit, and both reproduce their post-commit blob BYTE-EXACTLY when re-applied.
+RECORD41 at 5f592bdd and DECISIOND7 at 2f786299 each satisfy ORDERED EQUALITY against their own
+pre-commit blob — PREFIX, SUFFIX and `pre + slice` equal byte for byte. The slice digests recomputed
+here agree with every prefix the handback recorded. Marker LINES are 0 in all three edited files at
+d6d96e50. THE INTEGRATION GATE HOLDS AND ITS BRANCH HALF WAS RE-RUN, NOT READ: the reviewer ran
+`python3 -m pytest -n auto -q` in the primary checkout at d6d96e50 four times, and the first returned
+`1 failed, 17131 passed, 19 skipped in 117.44s` while the other three each returned
+`17132 passed, 19 skipped`, in 143.94s, 150.09s and 152.08s. The single red id was
+`tests/orchestration/test_product_smoke.py::test_no_zombie_processes_after_every_outcome`, which
+re-ran SERIALLY at `1 passed in 1.07s` — the xdist-flake class docs/agents/integration_gate.md step 4
+records rather than blocks — and R-0569 below carries its mechanism and the reason it is not coupled
+to this feature. THE BASE HALF is accepted on the worker's committed evidence rather than re-run, the
+reviewer having spent its suite budget on four branch runs instead of one: `comm -13` is empty,
+`comm -23` holds five ids, and each of those five is attributed per id by direct evidence in
+`.agent/gate_f085_r72/attribution.txt`. THE PROVENANCE HELD: every scratch log named in
+`.agent/gate_f085_r72/full_log_provenance.txt` still exists and hashes to exactly the digest recorded
+there. THE ARITHMETIC HELD under DECISION F085 D7: 180 registered / 31 done at f023e2b1 and 181 / 32
+at d6d96e50, so OPEN is 149 at BOTH SHAs; registered symmetric difference {R-0566}, done symmetric
+difference {R-0564}, 0 duplicate ids and 0 resolutions naming an unregistered id at both SHAs, max
+registered R-0565→R-0566 and max resolved R-0563→R-0564. THE HYGIENE HELD: `git diff --name-only
+f023e2b1..d6d96e50` lists fifteen paths, ALL under `.agent/`, none under `packages/`, `apps/`,
+`docs/`, `scripts/` or `tests/` and none ending `.log`; the eight commits are single-parent and insert
+374, 301, 8, 44, 15, 26, 185 and 107 lines, none over 500. THE PLAN CONTRACT HELD at d6d96e50: 38
+lines against the 50-line cap, with `## Goal`, `## Next Steps` and a roadmap F-id all present.
+
+- R-0567 — Low — the R-0566 registration text attributes its own operands to the wrong commit, and the
+R72 worker caught it and declared it rather than editing the slice. That paragraph, applied at
+5f592bdd, closes with "the correct reading at f023e2b1 is 181 minus 32, that is 149". Measured here by
+the reviewer, `.agent/live_review.md` at f023e2b1 holds 180 lines matching the registered-id pattern
+and 31 matching the resolved-id pattern, while 181 and 32 are the readings at d6d96e50 — the SHA that
+same round produced. The VALUE is right at both SHAs, which is why this is Low: no count anyone reads
+is wrong, and DECISION F085 D7, the rule that sentence exists to justify, is untouched by the slip. It
+is a finding and not a typo because docs/agents/planner_reviewer_prompt.md §4 item 20 governs exactly
+this shape — a slice stating a fact about a file its own block edits — and requires the sentence to
+name the commit its reading was taken at; these operands were read at the round's own tip and written
+beside the base's SHA. COUNTER-MEASURE, performed by this paragraph and by no rewrite: item 20 rules
+that appending a correction is how this record stays honest and that overwriting landed text is worse
+than a dated wrong sentence, so the R-0566 paragraph stands exactly as applied and this one carries
+the measured operands. OPEN.
+
+- R-0568 — Medium — the guard's `resource_limit` classification never reached the F010 postmortem
+taxonomy, while both the feature file's Design section and `.agent/context.md`'s Scope say it would.
+Read at d6d96e50: `packages/orchestration/exec_guard.py` sets `classification` to `resource_limit`
+with `tripped_limit` naming `wall_timeout`, `cpu_seconds` or `output_bytes`, and that pair lives on
+`ExecGuardResult`; `packages/orchestration/failure_postmortem.py` defines `FailureClass` with no
+`RESOURCE_LIMIT` member; and the only reader of a trip outside the guard and its own tests is
+`packages/orchestration/managed_builder_execution.py`, which tests whether `tripped_limit` equals
+`wall_timeout`. `.agent/context.md` at d6d96e50 closes its Scope section with "The tripped limit
+becomes an additive `resource_limit` postmortem class". Not High, because nothing false shipped: the
+Acceptance section asks for a fixture "killed by its limit and classified resource_limit with the
+limit named" and that is met, and `docs/system/exec-guard-limitations-v0.md` claims no postmortem
+class anywhere. Not Low, because a stated in-scope item did not ship and only a grep of the enum
+reveals it, which is the deliberate-absence class AGENTS.md's discoverability conventions exist for.
+NOT FIXED IN THIS FEATURE: adding a member to the F010 enum and teaching its writers to emit it is
+production code beyond what remains here, so it closes as a documented risk under precondition 1 of
+docs/roadmap/STATUS_closure_protocol.md. The Built State section this round appends to
+`docs/roadmap/features/T2_F085.md` states the same absence where a reader would search for it. OPEN.
+
+- R-0569 — Low — the product-smoke zombie check asserts against a FIXED port inside a suite that runs
+under `-n auto`, so it can fail on a port a different worker owns. Read at d6d96e50,
+`tests/orchestration/test_product_smoke.py` builds its app fixtures with a `port` parameter defaulting
+to 5273, and `dev_server.choose_port` returns the requested port when it is free AT CHOOSE TIME and a
+fallback otherwise; the check stops each app and then asserts that a connect to each port it used
+fails, 0.2 s later. Nothing serialises those cases across xdist workers, so a second worker binding
+5273 in the window between one case's teardown and its assertion produces exactly the observed
+failure. The reviewer measured the colour rather than assuming it: four `python3 -m pytest -n auto -q`
+runs at d6d96e50 in the primary checkout gave one red and three green, and the red id passed serially
+at `1 passed in 1.07s`. NOT COUPLED TO F085, measured rather than argued: `git diff --name-only
+a5a70621..d6d96e50` names neither `tests/orchestration/test_product_smoke.py` nor
+`packages/orchestration/product_smoke.py`, and this branch's edit to `packages/runtimes/dev_server.py`
+changes only the cwd, the environment and the `preexec_fn` of the `DevServer` spawn, leaving
+`choose_port` and `stop_process_tree` untouched. What was NOT captured is direct evidence of the
+concurrent binder — the run log records the assertion and not the other worker — and the
+counter-measure does not depend on it. NOT FIXED IN THIS FEATURE: the repair edits a test's content
+and belongs with the paydown branch `.agent/context.md` already routes R-0403, R-0448, R-0482, R-0487
+and R-0490 to. The obvious repair, for whoever takes it: give the fixture a port chosen per worker
+rather than the literal default, or assert only over the port each case actually bound and poll it to
+a bounded deadline instead of sampling once at 0.2 s. OPEN.
