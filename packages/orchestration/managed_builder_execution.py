@@ -971,6 +971,10 @@ def _builder_exec_policy(timeout: int, max_bytes: int, cwd: str | None,
     per-stream output cap applied WHILE reading, the cwd pin, a zero core dump, and
     `FORBIDDEN_ENV_KEYS` as a floor beneath the template's allowlist. `env` is already
     the product of `_build_sanitized_env`, so allowlisting its keys reproduces it.
+
+    `deny_network=True` is amendment F085 D1's network column for the `builder` row.
+    It is a PROXY posture and not a kernel one, so a build tool that honours proxy
+    variables cannot reach the network while one that ignores them still can.
     """
     return ExecGuardPolicy(
         wall_timeout_seconds=float(timeout),
@@ -979,6 +983,7 @@ def _builder_exec_policy(timeout: int, max_bytes: int, cwd: str | None,
         env=env,
         env_allowlist=tuple(sorted(env)),
         core_file_bytes=0,
+        deny_network=True,
     )
 
 
