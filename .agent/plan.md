@@ -18,18 +18,17 @@ reaches a child, and the limitations document exists and is linked from the
 README.
 
 ## Current Step
-R68, this round: the ledger. R67's two repairs are correct and re-read, so R-0561 and R-0562 are
-marked done — but R67 FAILED on its own record: RECORD35 closes R-0562 by naming further
-repository hits for `spawn unsupervised` that do not exist. That claim is registered as R-0563
-and retracted by an APPENDED correction, never by rewriting landed text. No source file, no test
-and no document is touched.
+R69, this round: T003's last acceptance line. A guarded `test`-class command is refused against a
+loopback server that IS listening, while the same argv without the posture is served and the
+server keeps serving afterwards — the control lives in the test body, so a harness that never
+came up turns the measurement red rather than green. R68 PASSED and R-0563 is marked done. This
+completes the build work; only the integration gate and closure remain.
 
 ## Next Steps
-1. The remaining acceptance measurement: a guarded test command is refused against a loopback
-   server that is really listening, where the same child without the posture is served.
-2. The integration gate: the full suite per docs/agents/integration_gate.md, the first of the two
+1. The integration gate: the full suite per docs/agents/integration_gate.md, the first of the two
    full-suite runs this feature owes.
-3. Then closure per docs/roadmap/STATUS_closure_protocol.md.
+2. Then closure per docs/roadmap/STATUS_closure_protocol.md: evidence job, FRESH review zip, the
+   STATUS line authored by the reviewer, and the PR the operator merges at the next Open PR Gate.
 
 ## Risks
 - An allowlist bounds what the PARENT hands over, never what the child's runtime
