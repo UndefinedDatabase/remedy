@@ -18,11 +18,11 @@ reaches a child, and the limitations document exists and is linked from the
 README.
 
 ## Current Step
-R66, this round: T003's document. `docs/system/exec-guard-limitations-v0.md` states what stage 1
-does NOT prevent — a proxy posture is not containment, three classes of five run under the guard
-at all, an allowlist does not bound what a child's own runtime adds, and an app log written to a
-file takes no cap — and `docs/README.md` links it from both tables. The R65 PASS is recorded in
-the same round.
+R67, this round: repair. R66 FAILED — the reviewer's limitations document claimed three classes
+run under the guard when amendment F085 D1 marks SIX stage-1 and only three default-deny, and the
+`exec_guard` module docstring still called the runtime class unsupervised after R61 and R63
+migrated it whole. Both claims are corrected, both registered as R-0561 and R-0562, and the
+sweep behind them is reported rather than assumed.
 
 ## Next Steps
 1. The remaining acceptance measurement: a guarded test command is refused against a loopback
