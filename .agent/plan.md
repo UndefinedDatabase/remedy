@@ -18,18 +18,18 @@ reaches a child, and the limitations document exists and is linked from the
 README.
 
 ## Current Step
-R65, this round: the two deny rows amendment F085 D1 still leaves unwired take the posture R64
-built. `dod_process_exec_policy` and `managed_builder_execution._builder_exec_policy` set
-`deny_network=True`, each pinned by a test in the file its own class already owns, so all three
-bounded rows of that table now deny. The R64 PASS is recorded and its one finding registered in
-the same round, with the counter-measure landing ahead of the record.
+R66, this round: T003's document. `docs/system/exec-guard-limitations-v0.md` states what stage 1
+does NOT prevent — a proxy posture is not containment, three classes of five run under the guard
+at all, an allowlist does not bound what a child's own runtime adds, and an app log written to a
+file takes no cap — and `docs/README.md` links it from both tables. The R65 PASS is recorded in
+the same round.
 
 ## Next Steps
-1. T003's limitations document and its README link, stating what stage 1 does NOT prevent: a
-   binary that ignores proxy variables reaches the network anyway, an app log written to a file
-   takes no guard output cap, and the git, packaging and other classes never ran under the guard
-   at all.
-2. Then the integration gate, then closure.
+1. The remaining acceptance measurement: a guarded test command is refused against a loopback
+   server that is really listening, where the same child without the posture is served.
+2. The integration gate: the full suite per docs/agents/integration_gate.md, the first of the two
+   full-suite runs this feature owes.
+3. Then closure per docs/roadmap/STATUS_closure_protocol.md.
 
 ## Risks
 - An allowlist bounds what the PARENT hands over, never what the child's runtime
