@@ -13,8 +13,11 @@ not exist:
   through `plan_child_spawn`; since T002b the test class is PARTIALLY migrated
   through `run_guarded_test_command`; and since T002c the DoD class is migrated
   whole — its bounded checks through `run_guarded_dod_process_command`, and its
-  application harness through the CHILD half of `dod_app_exec_policy` — while
-  the runtime, git and packaging classes still spawn unsupervised. No count is
+  application harness through the CHILD half of `dod_app_exec_policy`; and since
+  T002d the runtime class is migrated whole too, its three servers through
+  `runtime_server_exec_policy` and its two builds through
+  `run_guarded_runtime_build_command` — while the git, packaging and other
+  classes still spawn unsupervised. No count is
   written here on purpose: it changes with every migration round, and the caller
   grep is the honest answer.
 - No environment scrubbing UNLESS the policy asks for it: with
