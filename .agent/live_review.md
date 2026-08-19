@@ -4197,3 +4197,68 @@ sync with its remote.
 
 R69 REGISTERED NOTHING AND RESOLVED NOTHING, so this entry carries no registration line and no
 resolution line of its own: the open set stays 147 and the next free id stays R-0564.
+
+Gate: R71 — the R70 entry. R70 PASSED as a round, and the INTEGRATION GATE IT RAN RETURNED A BLOCKER,
+which are two different statements and both are true. The round is a PASS because every gate its block
+ordered was executed and reported honestly and because the worker STOPPED at the blocker instead of
+repairing it, which is what docs/agents/integration_gate.md step 4 requires; the gate is a BLOCKER
+because a branch-only failure reproduces serially, does not reproduce at the merge base, and is
+coupled to code this feature changed. Every gate reading below was re-taken by the reviewer over
+126b70ae..6a04b37b rather than read from the handback, except `git status --porcelain` after each
+intermediate commit and the absence of `.agent/STOP` at the two points R70's constraint 2 names, which
+are unobservable once a round has ended and are accepted on the worker's report. TRANSPORT HELD,
+disk-to-disk with the reviewer's OWN pre-emission original in the comparison and no digest fallback:
+that original, the committed `.agent/authored/f085-r70.md`, the committed `.agent/last_block.md` at
+6a04b37b and both working copies at 6a04b37b are all five byte-EQUAL at sha256
+31f928b9466a6d46a22ed4be1da815f545419861ac9341f12a03cdff414442f3, 24310 B, 308 lines, 6 marker lines;
+TOTAL 308 against the 490 cap, PROSE 232 against 400, RECORD38 54 against 140. THE SHAPES HELD:
+PLAN24F→PLAN24T over `.agent/plan.md` at cdbcfb16 reads `TO contains FROM: false`, FROM 1x pre-commit
+and 0x post-commit with TO exactly 1x post-commit, and re-applied reproduces the post-commit blob
+BYTE-EXACTLY; RECORD38 over `.agent/live_review.md` at d2e65482 satisfies ORDERED EQUALITY on every
+clause — PREFIX, SUFFIX, `pre + slice` equal byte for byte, ADDED lines equal to the slice's lines IN
+ORDER, 54 and 54. Marker LINES at 6a04b37b are 0 in both edited files. THE PLAN CONTRACT HELD at
+cdbcfb16: 37 lines against the 50-line cap with `## Goal`, `## Next Steps` and a roadmap F-id all
+present. THE ARITHMETIC STOOD STILL AS THAT BLOCK'S CONSTRAINT 9 REQUIRED: 178 registered / 31 done /
+0 landed and 147 open at both 126b70ae and 6a04b37b, all three symmetric differences EMPTY, and 0
+duplicate ids and 0 orphan resolutions at both SHAs. THE CANARY WAS RE-RUN, NOT READ, in the primary
+checkout: exit 0, `42 passed`. THE HYGIENE READING HELD: the range touches 15 paths, every one of them
+under `.agent/`, none under `packages/`, `apps/`, `docs/`, `scripts/` or `tests/` and none ending
+`.log`, over six single-parent commits inserting 308, 228, 7, 54, 262 and 112 lines, none over 500.
+
+- R-0564 — High — a test that pinned a security-relevant property was silently defeated by this
+feature's own migration, and no round gate could see it. `tests/test_command_discovery.py` section M
+exists to pin "no shell=True in the execution path"; its `run_tests_local` case patched the name
+`subprocess.run` and asserted `mock_run.called`. F085 T002b changed `run_tests_local` to call
+`exec_guard.run_guarded_test_command`, which spawns with `subprocess.Popen` at
+`packages/orchestration/exec_guard.py`, so the patched name is never reached, `mock_run.called` is
+False, and the assertion fails at 6a04b37b on a property that is in fact still true of the source. The
+reviewer reproduced it serially in the primary checkout at 6a04b37b — EXIT 1, `1 failed in 0.41s`,
+`assert mock_run.called` — and confirmed the same id passes at the merge base a5a70621, where
+`packages/orchestration/test_runner.py` still called `subprocess.run`. `git diff --stat
+a5a70621..6a04b37b -- tests/test_command_discovery.py` is EMPTY: the branch never touched the failing
+test, so the behaviour under test moved and the measurement did not follow it. High, not Medium,
+because for the whole span between the migration and R70 this test was reporting on a call site that
+no longer ran: had the guard passed `shell=True`, nothing in the suite would have said so, and every
+round gate F085 ordered stayed green throughout — the R-0220 class, a green gate over a feature the
+gate does not reach. COUNTER-MEASURE: when a round moves a spawn, a call or any other seam out of a
+module, grep the suite for tests that patch the OLD name over that module — `rg -l '<old.name>' tests/`
+followed by reading each `patch(` in what it returns — and pull each one to the new seam in the SAME
+round that moves the seam. R70's gate is the only thing that caught this one, and a gate that runs
+twice per feature is too coarse a net to be the first line. OPEN.
+
+- R-0565 — Medium — the integration gate's own parity check is blind to the change it is meant to
+detect. docs/agents/integration_gate.md orders `apps/ui/dist` hashed before and after the base run,
+and a changed hash to void the parity claim; but the artifact's staleness is decided by MTIME, not by
+content — `packages/orchestration/ui_server.py` treats the frontend as stale when any file under
+`apps/ui/src` is newer than `apps/ui/dist/index.html` — and a rebuild that reproduces byte-identical
+output leaves the digest equal while moving the mtime. R70's own evidence records exactly that at
+6a04b37b: `.agent/gate_f085_r70/base_parity.txt` reports DIST_SHA256_BEFORE equal to DIST_SHA256_AFTER
+and, beside it, mtimes showing `apps/ui/dist` was rewritten inside both checkouts mid-run, which is
+also why the eight base-only ids failed. So the digest test reported parity intact over a run in which
+the artifact was in fact rebuilt twice. Medium, not High, because that round did not rely on the
+parity claim alone — every base-only id was additionally attributed per id by direct evidence, which
+is the alternative integration_gate.md itself allows — and not Low, because the next gate that leans
+on the digest alone will believe a parity claim that was never tested. COUNTER-MEASURE: the parity
+reading records the artifact's MTIME alongside its sha256, and a moved mtime voids the claim exactly
+as a changed digest does. The R70 worker measured this and declared it rather than fixing it, under
+that block's constraint 9, which is why it is registered here. OPEN.
