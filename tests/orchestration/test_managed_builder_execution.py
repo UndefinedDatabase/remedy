@@ -421,6 +421,20 @@ class TestManagedRunner(unittest.TestCase):
         floored = _builder_exec_policy(30, 4096, None, smuggled)
         assert "GITHUB_TOKEN" not in scrub_child_env(smuggled, floored.env_allowlist)
 
+    def test_the_builder_policy_denies_the_network_its_row_denies(self):
+        """Amendment F085 D1's network column for the `builder` row, in code."""
+        from packages.orchestration.exec_guard import (
+            DENIED_NETWORK_ENV,
+            plan_child_spawn,
+        )
+        from packages.orchestration.managed_builder_execution import _builder_exec_policy
+        env = _build_sanitized_env({})
+        policy = _builder_exec_policy(30, 4096, None, env)
+        assert policy.deny_network is True
+        child_env = plan_child_spawn(policy).env
+        assert dict(DENIED_NETWORK_ENV).items() <= child_env.items()
+        assert all(child_env[key] == value for key, value in env.items())
+
 
 class TestEventLedger(unittest.TestCase):
     """Test event recording and listing."""
