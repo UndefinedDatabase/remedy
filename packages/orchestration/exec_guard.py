@@ -634,6 +634,10 @@ def dod_process_exec_policy(timeout_sec: float, cwd: str | None) -> ExecGuardPol
     the WHOLE parent environment. With `env=None` and an allowlist,
     `plan_child_spawn` builds the child environment from `os.environ` keeping only
     allowlisted keys, and `FORBIDDEN_ENV_KEYS` remains the floor beneath it.
+
+    `deny_network=True` is amendment F085 D1's network column for this row: a DoD
+    check is a bounded, project-authored command, so it takes the same proxy
+    posture the `test` class takes, written after the scrub that would delete it.
     """
     return ExecGuardPolicy(
         wall_timeout_seconds=float(timeout_sec),
@@ -642,6 +646,7 @@ def dod_process_exec_policy(timeout_sec: float, cwd: str | None) -> ExecGuardPol
         core_file_bytes=0,
         env=None,
         env_allowlist=DOD_PROCESS_ENV_ALLOWLIST,
+        deny_network=True,
     )
 
 
