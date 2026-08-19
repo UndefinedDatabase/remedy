@@ -4263,9 +4263,21 @@ reading records the artifact's MTIME alongside its sha256, and a moved mtime voi
 as a changed digest does. The R70 worker measured this and declared it rather than fixing it, under
 that block's constraint 9, which is why it is registered here. OPEN.
 
-Landed: R-0564 — the defeated no-shell test now spies on `subprocess.Popen`, delegating to the real
-spawn, and asserts over every recorded spawn that no `shell=True` is present and that argv is a list;
-`tests/test_command_discovery.py` only, in this round's C3.
+Done: R-0564 — Resolved at R71, commit 3cf6788e, and verified by the reviewer at f023e2b1 rather than
+read. The repaired test patches `subprocess.Popen` with a spy that DELEGATES to the real spawn and
+asserts over every recorded call that no `shell=True` is present and that argv is a list, so it pins
+the property at the seam the guard actually uses. The reviewer re-ran the file at f023e2b1 in the
+primary checkout: `92 passed`, exit 0, against the base reading of `1 failed, 91 passed` at 6a04b37b,
+and both ruff halves printed `All checks passed!` over it at f023e2b1. The fix is not merely green: the
+reviewer proved BOTH of its assertions reachable by mutation inside a disposable worktree at 6a04b37b,
+inserting `shell=True` into the guard's `Popen` call to make the shell assertion fail, and replacing
+the guarded call with a fabricated `CompletedProcess` to make `assert spawns` fail on an empty list.
+The new seam is strictly stronger than the one it replaces, which the reviewer also measured: reverting
+`run_tests_local` to `subprocess.run` in that worktree left the test GREEN, because `subprocess.run` is
+itself implemented on `Popen`, so the assertion now holds wherever the spawn is written and cannot be
+defeated by moving it again. The counter-measure R-0564 names is therefore satisfied by construction
+for this test rather than by vigilance. No production file was touched by the repair, because the
+property was always true of the source and only the measurement had come loose.
 
 Gate: R72 — the R71 entry. R71 PASSED. Every gate its block ordered was re-taken by the reviewer over
 6a04b37b..f023e2b1 rather than read from the handback, except `git status --porcelain` after each
