@@ -723,10 +723,24 @@ def _completed_process_from_guarded(
 
 
 #: WHY: the environment a `runtime-build` command may inherit, and its per-stream cap.
-#: The MEMBERS are the `test`-class values and the NAMES are deliberately separate, for
+#: The `test`-class values are the BASE and the NAMES stay deliberately separate, for
 #: the reason `DOD_PROCESS_ENV_ALLOWLIST` states: T2_F085's policy table rules
-#: `runtime-build` as its own row, so widening one row stays a one-line edit here.
-RUNTIME_BUILD_ENV_ALLOWLIST: tuple[str, ...] = TEST_COMMAND_ENV_ALLOWLIST
+#: `runtime-build` as its own row, so widening one row is an edit here alone.
+#: The ADDED keys are the npm and node CONFIGURATION a build legitimately reads: `HOME`
+#: and `PATH` alone reach a public registry with default settings only, so a project on
+#: a private registry, a custom cache or a corporate TLS root would have broken at the
+#: call site rather than at the seam. Each key is named IN FULL and never by a prefix,
+#: which is what keeps `NPM_CONFIG__AUTHTOKEN` — and every other credential spelled
+#: into that namespace — out of the child, since `scrub_child_env` matches whole keys.
+#: Remedy deliberately does not pass a proxy variable here: `HTTP_PROXY`, `HTTPS_PROXY`
+#: and `ALL_PROXY` are `FORBIDDEN_ENV_KEYS` members, which is the guard's floor and not
+#: a row's to lift, so a build behind a proxy is a STATED stage-1 limitation for T003's
+#: document rather than something this row reaches.
+RUNTIME_BUILD_ENV_ALLOWLIST: tuple[str, ...] = TEST_COMMAND_ENV_ALLOWLIST + (
+    "NODE_ENV", "NODE_EXTRA_CA_CERTS", "NODE_OPTIONS", "NODE_PATH",
+    "NPM_CONFIG_CACHE", "NPM_CONFIG_PREFIX", "NPM_CONFIG_REGISTRY",
+    "NPM_CONFIG_USERCONFIG",
+)
 RUNTIME_BUILD_OUTPUT_CAP_BYTES: int = TEST_COMMAND_OUTPUT_CAP_BYTES
 
 

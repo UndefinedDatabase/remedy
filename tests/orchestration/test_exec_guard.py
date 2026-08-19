@@ -685,3 +685,47 @@ def test_the_runtime_build_seam_raises_timeout_expired_on_a_wall_trip():
             _child("import time; print('before', flush=True); time.sleep(30)"),
             timeout_sec=1.0, cwd=None, check=True)
     assert b"before" in (caught.value.output or b"")
+
+#: The npm and node CONFIGURATION keys the `runtime-build` row adds to the `test` base.
+#: Listed here so the two tests below read the same set and a widening edits one place.
+_RUNTIME_BUILD_ADDED_ENV_KEYS = frozenset({
+    "NODE_ENV", "NODE_EXTRA_CA_CERTS", "NODE_OPTIONS", "NODE_PATH",
+    "NPM_CONFIG_CACHE", "NPM_CONFIG_PREFIX", "NPM_CONFIG_REGISTRY",
+    "NPM_CONFIG_USERCONFIG",
+})
+
+
+def test_the_runtime_build_row_adds_the_npm_configuration_to_the_test_base():
+    """The widened row, asserted as base-plus-additions rather than as a re-listing.
+
+    The `test` set is asserted to SURVIVE as a subset, so a later widening of the
+    shared base cannot silently drop out of this class, and `FORBIDDEN_ENV_KEYS` is
+    asserted disjoint so the floor holds however the row grows.
+    """
+    allowlist = set(exec_guard.RUNTIME_BUILD_ENV_ALLOWLIST)
+    assert set(TEST_COMMAND_ENV_ALLOWLIST) <= allowlist
+    assert _RUNTIME_BUILD_ADDED_ENV_KEYS <= allowlist
+    assert not exec_guard.FORBIDDEN_ENV_KEYS & allowlist
+
+
+@pytest.mark.subprocess
+def test_the_runtime_build_row_passes_npm_config_by_name_and_never_by_prefix(monkeypatch):
+    """A named `NPM_CONFIG_*` key reaches the child; a credential in that namespace does not.
+
+    This is the property that makes the widening safe to ship: `scrub_child_env` matches
+    a whole key, so `NPM_CONFIG__AUTHTOKEN` is unlisted rather than merely unmentioned.
+    `HTTPS_PROXY` is asserted absent for the other reason — it is a `FORBIDDEN_ENV_KEYS`
+    member, so the floor drops it even though a build behind a proxy would want it.
+    """
+    monkeypatch.setenv("NPM_CONFIG_REGISTRY", "https://registry.example.invalid")
+    monkeypatch.setenv("NPM_CONFIG__AUTHTOKEN", "npm-token-should-never-appear")
+    monkeypatch.setenv("HTTPS_PROXY", "http://proxy.example.invalid:8080")
+
+    completed = exec_guard.run_guarded_runtime_build_command(
+        _child(_ENV_DUMP), timeout_sec=30, cwd=None)
+
+    dumped = _dumped(completed)
+    assert completed.returncode == 0
+    assert dumped["NPM_CONFIG_REGISTRY"] == "https://registry.example.invalid"
+    assert "NPM_CONFIG__AUTHTOKEN" not in dumped
+    assert "HTTPS_PROXY" not in dumped
