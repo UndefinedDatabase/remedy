@@ -433,3 +433,52 @@ class TestSpecValidation:
             for kw in node.keywords if kw.arg == "shell"
         ]
         assert shell_kwargs == []
+
+
+class TestTheChildEnvironmentIsScrubbed:
+    """F085 T002e — what a launched application really inherits, measured IN the child.
+
+    `tests/orchestration/test_exec_guard.py` pins the POLICY object. The only place
+    what a real `Popen` under it hands over can be observed is the child itself, so
+    this server dumps its own environment to a file before it starts serving.
+    """
+
+    ENV_DUMP_SERVER = """
+import http.server, json, os, sys
+port = int(os.environ["PORT"])
+open(sys.argv[1], "w").write(json.dumps(dict(os.environ)))
+class H(http.server.BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200); self.end_headers(); self.wfile.write(b"ok")
+    def log_message(self, *a): pass
+http.server.HTTPServer(("127.0.0.1", port), H).serve_forever()
+"""
+
+    def test_a_secret_parent_variable_never_reaches_the_app(self, project, monkeypatch):
+        import json
+
+        (project / "envdump.py").write_text(self.ENV_DUMP_SERVER)
+        dump = project / "child_env.json"
+        monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-must-not-travel")
+        monkeypatch.setenv("REMEDY_UNDECLARED_MARKER", "must-not-travel")
+
+        server = DevServer(
+            RuntimeSpec(
+                cmd=[sys.executable, str(project / "envdump.py"), str(dump)],
+                cwd=str(project), port=worker_port(), health_path="/",
+                ready_timeout_s=20.0, env={"APP_DECLARED_TOKEN": "travels"},
+            ),
+            project,
+        )
+        server.start()
+        try:
+            assert server.wait_ready().ok
+            child_env = json.loads(dump.read_text())
+        finally:
+            server.stop()
+
+        assert child_env["PORT"] == str(server.port)
+        assert child_env["APP_DECLARED_TOKEN"] == "travels"    # the spec's own key
+        assert "PATH" in child_env                             # the allowlist held
+        assert "ANTHROPIC_API_KEY" not in child_env            # the guard's floor held
+        assert "REMEDY_UNDECLARED_MARKER" not in child_env     # the allowlist bound
