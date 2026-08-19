@@ -18,17 +18,20 @@ reaches a child, and the limitations document exists and is linked from the
 README.
 
 ## Current Step
-R63, this round: the LAST `runtime-server` call site, `apps/cli/commands/runtime_cmd.py`, takes
-`plan_child_spawn`, so the Remedy supervisor the CLI launches inherits the allowlist plus the
-three `REMEDY_*` keys it declares and nothing else. A test pins that handover at the `Popen`
-seam, which is the only place it can be observed. The R62 PASS is recorded in the same round.
+R64, this round: T003 opens with the network posture itself. `exec_guard` gains a `deny_network`
+policy field and a `DENIED_NETWORK_ENV` overlay written AFTER the allowlist scrub — the proxy
+names are `FORBIDDEN_ENV_KEYS` members, so the floor would otherwise delete the posture — and the
+`test` class, the largest deny row in amendment F085 D1's table, sets it. The R63 PASS is
+recorded in the same round.
 
 ## Next Steps
-1. T003 — network posture, the limitations document, its README link. That document states what
-   the CHILD-half migrations do NOT bound: an app log written to a file takes no guard output
-   cap, and a build behind an HTTP proxy does not run under the guard at all, because the proxy
-   variables are `FORBIDDEN_ENV_KEYS` members and the floor is not a row's to lift.
-2. Then the integration gate, then closure.
+1. Wire the remaining deny rows: `dod_process_exec_policy` in the same module and the builder
+   policy in `managed_builder_execution`, each with the seam test its class already has.
+2. T003's limitations document and its README link, stating what stage 1 does NOT prevent: a
+   binary that ignores proxy variables reaches the network anyway, an app log written to a file
+   takes no guard output cap, and the git, packaging and other classes never ran under the guard
+   at all.
+3. Then the integration gate, then closure.
 
 ## Risks
 - An allowlist bounds what the PARENT hands over, never what the child's runtime
