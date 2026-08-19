@@ -22,7 +22,11 @@ not exist:
   T001 test relies on. Callers CHOOSE the allowlist per command class — the
   builder policy pins one, the CLI-provider policy deliberately does not — so what
   a child inherits is that caller's decision, never this module's default.
-- No network posture and no filesystem fence; both are T003.
+- No filesystem fence; it is T003's remaining half. The network posture EXISTS since T003 for
+  the classes whose policy sets `deny_network`, and it is a PROXY posture and never a kernel
+  one: it points a child's proxy variables at a closed loopback port, so a toolchain that
+  HONOURS those variables cannot reach the network while a binary that ignores them still can.
+  Stage 2 closes that gap; stage 1 raises the bar and declines to call it containment.
 
 Why `address_space_bytes` is ENFORCED and deliberately NOT classified: a child
 that exceeds RLIMIT_AS has its mapping refused, raises `MemoryError` and exits 1
@@ -112,6 +116,26 @@ TEST_COMMAND_ENV_ALLOWLIST: tuple[str, ...] = (
 #: dependency runs the other way — `test_runner` imports this module, never the reverse.
 TEST_COMMAND_OUTPUT_CAP_BYTES: int = 16 * 1024 * 1024
 
+#: WHY the RFC 863 discard port on loopback: nothing listens there, so a connect is REFUSED at
+#: once rather than hanging a build behind a routing black hole.
+DENIED_NETWORK_PROXY_URL: str = "http://127.0.0.1:9"
+
+#: WHY written AFTER the allowlist scrub and never through an allowlist: these names are
+#: `FORBIDDEN_ENV_KEYS` members and the floor is not a policy's to lift. The floor denies the
+#: PARENT's proxy, which may carry credentials; these values are the guard's own and are
+#: inherited from nobody. Both cases are set because toolchains disagree about spelling, and
+#: `NO_PROXY` is EMPTY so no host is exempt from the deny.
+DENIED_NETWORK_ENV: tuple[tuple[str, str], ...] = (
+    ("ALL_PROXY", DENIED_NETWORK_PROXY_URL),
+    ("HTTPS_PROXY", DENIED_NETWORK_PROXY_URL),
+    ("HTTP_PROXY", DENIED_NETWORK_PROXY_URL),
+    ("NO_PROXY", ""),
+    ("all_proxy", DENIED_NETWORK_PROXY_URL),
+    ("http_proxy", DENIED_NETWORK_PROXY_URL),
+    ("https_proxy", DENIED_NETWORK_PROXY_URL),
+    ("no_proxy", ""),
+)
+
 
 def scrub_child_env(source: Mapping[str, str], allowlist: Sequence[str]) -> dict[str, str]:
     """Build a child environment from `source`, keeping ONLY allowlisted keys.
@@ -153,6 +177,10 @@ class ExecGuardPolicy:
     cwd: str | None = None
     env: dict[str, str] | None = None
     env_allowlist: tuple[str, ...] | None = None
+    #: WHY the field lives here and not in a caller: the deny must survive the allowlist scrub,
+    #: and `plan_child_spawn` is the only place that sees the environment after it. True
+    #: overlays `DENIED_NETWORK_ENV`; the D1 policy table's network column decides it per class.
+    deny_network: bool = False
 
 
 # WHY: the CHILD-side half of a policy — everything a `Popen` must pass to obey it — so a supervisor that owns its own PARENT half can still be limited.
@@ -315,6 +343,9 @@ def plan_child_spawn(policy: ExecGuardPolicy) -> ChildSpawnPlan:
     The environment follows the module's rule exactly: `policy.env` reaches the
     child UNCHANGED — including `None`, which means "inherit" — while
     `env_allowlist` is None, and is rebuilt by `scrub_child_env` when it is not.
+    `deny_network` then overlays `DENIED_NETWORK_ENV` on whatever that produced,
+    after the scrub and never before it, so a denied child inherits what its
+    policy allows PLUS the posture.
     """
     rlimit_calls, enforced, unsupported = _plan_rlimits(policy)
 
@@ -328,6 +359,12 @@ def plan_child_spawn(policy: ExecGuardPolicy) -> ChildSpawnPlan:
         child_env = scrub_child_env(
             os.environ if policy.env is None else policy.env, policy.env_allowlist
         )
+    if policy.deny_network:
+        # AFTER the scrub on purpose: these keys are `FORBIDDEN_ENV_KEYS` members, so a scrub
+        # running later would delete the very posture this sets. `None` means "inherit", and a
+        # denied child inherits the parent environment PLUS the deny.
+        child_env = dict(os.environ if child_env is None else child_env)
+        child_env.update(DENIED_NETWORK_ENV)
 
     return ChildSpawnPlan(
         cwd=policy.cwd,
@@ -528,6 +565,7 @@ def test_command_exec_policy(
         env_allowlist=(
             TEST_COMMAND_ENV_ALLOWLIST + tuple(extra_env_keys) + tuple(sorted(overlay))
         ),
+        deny_network=True,
     )
 
 
