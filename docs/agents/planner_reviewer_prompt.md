@@ -555,6 +555,16 @@ end the response with:
       under `apps/cli/commands/` and `packages/runtimes/`, so the clause held trivially, protected
       nothing, and carried the wrong paths on into `.agent/handoff.md` — the map AGENTS.md's
       Session Resume tells the next session to read.
+  25. **A destructive gate's revert target is named by PATH and is unique inside it.** Finding
+      R-0560. A red control that orders a revert by quoting a LINE — "delete the single line `X`
+      in `Y`" — names the FILE the revert is applied to, and the exact bytes it orders removed are
+      counted IN THAT FILE at the SHA the control runs at, where the count must be 1. Naming only
+      the enclosing function is not a measurement: the same line commonly occurs in a second
+      source file and in the block mirrors under `.agent/`, and a reader who resolves that name to
+      the wrong file reverts the wrong line while the run still goes red — which is exactly what
+      the control cannot distinguish from its own success. Where the bytes recur inside the named
+      file, the control orders a longer UNIQUE byte string instead. Item 24 resolves the paths a
+      gate NAMES; this one resolves the BYTES a gate orders CHANGED.
   Why this is on disk and not a habit: item 2 has recurred six times across
   F104 and F105, and R20 hit four of them in one block. A check that lives
   only in reviewer session memory is the A1 trap §0 names, and this list is the
