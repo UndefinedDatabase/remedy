@@ -686,6 +686,7 @@ def test_the_runtime_build_seam_raises_timeout_expired_on_a_wall_trip():
             timeout_sec=1.0, cwd=None, check=True)
     assert b"before" in (caught.value.output or b"")
 
+
 #: The npm and node CONFIGURATION keys the `runtime-build` row adds to the `test` base.
 #: Listed here so the two tests below read the same set and a widening edits one place.
 _RUNTIME_BUILD_ADDED_ENV_KEYS = frozenset({
