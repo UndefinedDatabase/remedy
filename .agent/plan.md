@@ -18,18 +18,17 @@ reaches a child, and the limitations document exists and is linked from the
 README.
 
 ## Current Step
-R60, this round: a RECORD round that writes no code. It records the R59 PASS, which the round
-after a verdict always owes because a round cannot record one on itself
-(docs/agents/planner_reviewer_prompt.md §4.13). The `runtime-server` policy built at R59 is
-verified and unchanged; nothing consumes it yet.
+R61, this round: the two APP-spawning `runtime-server` call sites — `packages/runtimes/dev_server.py`
+and `packages/runtimes/runtime_supervisor.py` — take `plan_child_spawn`, so a project's application
+inherits the allowlist plus `PORT` and the spec's own keys and nothing else. A test reads the
+environment from inside the running child. The R60 PASS is recorded in the same round.
 
 ## Next Steps
-1. Migrate the three `runtime-server` call sites onto the policy:
-   `apps/cli/commands/runtime_cmd.py`, `packages/runtimes/dev_server.py` and
-   `packages/runtimes/runtime_supervisor.py`. Each keeps its own `Popen` and its own
-   supervision; what changes is the `cwd`, `env` and `preexec_fn` it spawns with, which come
-   from `plan_child_spawn`. Settle per site which keys its child needs on top of
-   `RUNTIME_SERVER_ENV_ALLOWLIST` BEFORE editing: a scrub that drops one breaks a server.
+1. Migrate the LAST call site, `apps/cli/commands/runtime_cmd.py`, whose child is the Remedy
+   supervisor rather than a project application. Its declared keys are `REMEDY_DATA_DIR`,
+   `REMEDY_RUNTIME_LOG_MAX` and `REMEDY_RUNTIME_PORT`: the supervisor resolves its runtime
+   directory through `projects_dir()`, the boundary suite passes the log cap to the CLI, and the
+   supervisor reads the port with `os.environ[...]` and dies without it.
 2. T003 — network posture, the limitations document, its README link. That document states what
    the CHILD-half migrations do NOT bound: an app log written to a file takes no guard output
    cap, and a build behind an HTTP proxy does not run under the guard at all, because the proxy
