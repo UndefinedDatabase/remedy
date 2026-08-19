@@ -23,12 +23,21 @@ and a connect is refused at once.
 
 Kernel-level isolation is stage 2. Stage 1 raises the bar and reports honestly.
 
-## Only three command classes run under the guard at all
+## Six classes run under the guard, and only three of them deny the network
 
-Amendment F085 D1's table wires `builder`, `test` and `dod-process`. The `dod-app` class
-deliberately takes no wall timeout and no deny — its harness must keep serving on its own
-port. The git, packaging, runtime and other call sites still spawn unsupervised, so a limit
-proved for a test command says nothing about a `git` invocation.
+Amendment F085 D1's table marks SIX classes stage-1 guarded: `builder`, `test`, `dod-process`,
+`dod-app`, `runtime-server` and `runtime-build`. Being guarded and denying the network are
+SEPARATE columns of that table. Only `builder`, `test` and `dod-process` default-deny. The
+other three are guarded but keep network access, because the server classes are judged by an
+HTTP readiness probe and `runtime-build` fetches from a package registry — so a guarded
+command is not necessarily a command that cannot reach the network.
+
+The `git` (24 sites), `packaging` (11) and `other` (8) classes are NOT stage-1 classes and
+still spawn unsupervised, so a limit proved for a test command says nothing about a `git`
+invocation. Their exclusion is a SCOPE ruling and NOT a safety claim: their argv is authored by
+Remedy itself rather than supplied by a project, which is the problem this feature names. It
+follows that several of those sites pass no timeout at all and can hang, and stage 1 does not
+fix that.
 
 ## An allowlist bounds the PARENT, not the child's own runtime
 
