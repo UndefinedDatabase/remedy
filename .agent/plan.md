@@ -18,26 +18,24 @@ reaches a child, and the limitations document exists and is linked from the
 README.
 
 ## Current Step
-R55, this round: a RECORD round only. It persists the R54 PASS to `.agent/live_review.md` and
-advances this file; it writes no production code and ships no test. It exists because the
-reviewer's session ended at its declared round cap, and a verdict that lives only in a chat reply
-is one the next session would have to re-derive from the diff.
+R56, this round: settle the npm environment question T002d's second half depends on. The
+`runtime-build` allowlist row is widened from the bare `test` set to the npm and node
+CONFIGURATION keys a build reads, each key named in full so no credential spelled `NPM_CONFIG_*`
+passes with them, and two tests pin both halves. No call site migrates here. The R55 PASS is
+recorded in the same round.
 
 ## Next Steps
 1. T002d's second half — migrate the two `runtime-build` sites in `_auto_build_frontend`
    (`packages/orchestration/ui_server.py`) onto `run_guarded_runtime_build_command` with
-   `check=True`, settling the npm environment risk below FIRST. Then the three `runtime-server`
-   sites, which take no wall timeout because a clock would kill them mid-service.
+   `check=True`. Then the three `runtime-server` sites, which take no wall timeout because a
+   clock would kill them mid-service.
 2. T003 — network posture, the limitations document, its README link. That document states what
-   the CHILD-half migrations do NOT bound: an app log written to a file takes no guard output cap.
+   the CHILD-half migrations do NOT bound: an app log written to a file takes no guard output
+   cap, and a build behind an HTTP proxy does not run under the guard at all, because the proxy
+   variables are `FORBIDDEN_ENV_KEYS` members and the floor is not a row's to lift.
    Then the integration gate, then closure.
 
 ## Risks
-- `RUNTIME_BUILD_ENV_ALLOWLIST` is `TEST_COMMAND_ENV_ALLOWLIST`, read at 1812c219: it carries
-  `HOME` and `PATH`, so a public-registry `npm install` survives the scrub, but it names no
-  `NPM_CONFIG_*`, no `NODE_*` and no proxy variable. A project on a private registry or behind a
-  proxy would break at the migration, not at the seam. R56 settles this BEFORE it migrates —
-  widen that row, or take the `extra_env_keys` knob the `test` row already carries.
 - An allowlist bounds what the PARENT hands over, never what the child's runtime
   adds back: a CPython child sets `LC_CTYPE` itself under PEP 538. T003's
   limitations document must say so rather than claim a sealed environment.
