@@ -1,0 +1,40 @@
+........................................................................ [ 98%]
+........................................................................ [ 99%]
+........................................................................ [ 99%]
+........................................................................ [ 99%]
+...............                                                          [100%]
+=================================== FAILURES ===================================
+______________ TestNoShellTrue.test_run_tests_local_no_shell_true ______________
+[gw10] linux -- Python 3.10.12 /usr/bin/python3
+
+self = <tests.test_command_discovery.TestNoShellTrue object at 0x7f4cd1c65060>
+tmp_path = PosixPath('/tmp/pytest-of-decodeux/pytest-154/popen-gw10/test_run_tests_local_no_shell_0')
+
+    def test_run_tests_local_no_shell_true(self, tmp_path):
+        """run_tests_local must never pass shell=True to subprocess.run."""
+        from unittest.mock import patch
+    
+        from packages.orchestration.test_runner import run_tests_local
+    
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        (repo / "pyproject.toml").write_text("[project]\n")
+        (repo / "tests").mkdir()
+        job = _make_job()
+        job.metadata["target_repo"] = str(repo)
+    
+        proc = subprocess.CompletedProcess(
+            args=["python3", "-m", "pytest"], returncode=0,
+            stdout=b"1 passed\n", stderr=b"",
+        )
+        with patch("subprocess.run", return_value=proc) as mock_run:
+            run_tests_local(job, tmp_path)
+    
+>       assert mock_run.called
+E       AssertionError: assert False
+E        +  where False = <MagicMock name='run' id='139967997558640'>.called
+
+tests/test_command_discovery.py:663: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_command_discovery.py::TestNoShellTrue::test_run_tests_local_no_shell_true
+1 failed, 17131 passed, 19 skipped in 151.31s (0:02:31)

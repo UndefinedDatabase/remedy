@@ -1,0 +1,40 @@
+                    open_browser=False,
+                    info_file=info_file,
+                    **kwargs,
+                )
+            except (SystemExit, KeyboardInterrupt):
+                pass
+    
+        t = threading.Thread(target=run, daemon=True)
+        t.start()
+    
+        # Wait for info file
+        for _ in range(50):
+            if Path(info_file).exists():
+                info = json.loads(Path(info_file).read_text())
+                return info["port"], token, t
+            time.sleep(0.1)
+>       pytest.fail("Server did not start in time")
+E       Failed: Server did not start in time
+
+tests/ui_server/test_live_state.py:165: Failed
+----------------------------- Captured stderr call -----------------------------
+
+ERROR: React UI not built.
+
+  To fix, run:
+    cd apps/ui && npm install && npm run build
+
+  Or check npm is installed and retry.
+  Disable auto-build: REMEDY_UI_NO_AUTO_BUILD=1
+
+=========================== short test summary info ============================
+FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_server_starts_and_writes_info
+FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_app_shell_served_without_token
+FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_api_invalid_token_403
+FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_api_missing_job_404
+FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_put_rejected
+FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_dashboard_no_raw_leaks
+FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_readiness_endpoint
+FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_brain_endpoint
+8 failed, 17039 passed, 19 skipped in 111.77s (0:01:51)
