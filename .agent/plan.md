@@ -18,19 +18,16 @@ reaches a child, and the limitations document exists and is linked from the
 README.
 
 ## Current Step
-R73, this round: R72's verdict recorded, the findings its gate produced registered, and the feature
-file's Built State written — so the closure round that follows touches only the paths
-docs/roadmap/STATUS_closure_protocol.md item 5 allows. R72 PASSED: its transport, its slice shapes,
-its arithmetic and its integration gate were re-taken by the reviewer rather than read, and the
-branch-side full-suite failure the reviewer's own repeated runs produced passes serially, which
-docs/agents/integration_gate.md step 4 classifies as the xdist-flake class to record and not to block.
+R74, the closure round per docs/roadmap/STATUS_closure_protocol.md: R73's PASS recorded, then the
+evidence job and a FRESH review zip built from a clean tree at that record's commit, then one closure
+commit carrying the reviewer-authored STATUS line, the README capability sync and the candidate
+carrier, then the PR. R73 PASSED — its transport, both slice shapes, the arithmetic and all four of
+its gate suites were re-run by the reviewer rather than read from the handback.
 
 ## Next Steps
-1. Closure per docs/roadmap/STATUS_closure_protocol.md: evidence job, FRESH review zip, the STATUS
-   line and the README capability sync authored by the reviewer, and the PR the operator merges at
-   the next Open PR Gate.
-2. R-0567, R-0568 and R-0569 close as documented risks in that closure under precondition 1 of that
-   protocol, rather than by a repair round inside this feature.
+1. The operator merges the closure PR at the next feature's Open PR Gate; this session merges nothing.
+2. The next session claims the next feature by Rule A5, and its FIRST reviewed round empties
+   `.agent/candidates.md` by registering or resolving every entry that file holds.
 
 ## Risks
 - An allowlist bounds what the PARENT hands over, never what the child's runtime
