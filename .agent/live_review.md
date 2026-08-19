@@ -3758,3 +3758,67 @@ RATHER THAN ACCEPTED: the R62 handback's open question, whether the supervisor n
 and `VIRTUAL_ENV` declared, was settled by reading `packages/orchestration/exec_guard.py` at
 cbe1b3e5, where both keys are already members of the tuple `RUNTIME_SERVER_ENV_ALLOWLIST` is
 assigned from, so R63 declares neither. NOTHING FAILED and this round registers no finding.
+
+Gate: R64 — the R63 entry. R63 PASSED. Every ordered gate G1-G9 was re-executed by the reviewer
+over cbe1b3e5..e26f1f3e, not read, and each reproduces the handback's reading exactly; the worker
+deviated in nothing and declared nothing. LINE COUNTS ARE `splitlines` COUNTS. TRANSPORT HELD,
+disk-to-disk with no digest fallback, though NOT against a reviewer scratchpad original: R63 was
+authored by an earlier session and this one holds no original of it, so the comparison ran across
+the six copies that do exist — the committed `.agent/authored/f085-r63.md` at 28dd3923 and at
+e26f1f3e, the committed `.agent/last_block.md` at 9a8e3161 and at e26f1f3e, and both working
+copies as they stand at e26f1f3e — all six byte-EQUAL at sha256
+b9230558fafe431bc69a62dadd059d93c1977510d53baceb817e7ef0a71c1d29, 26177 B, 373 lines, 12 marker
+lines. What binds that block's CONTENT is the shape proof rather than the digest, and it held.
+THE SHAPES HELD, and the two classes were measured apart, one reading per pair. PLAN17F→PLAN17T
+over `.agent/plan.md` at 87c467db and SITE4F→SITE4T over `apps/cli/commands/runtime_cmd.py` at
+a045970b are both REWRITES — each containment test reads `TO contains FROM: false` — and each
+ends FROM 0x with TO exactly 1x, each FROM having occurred exactly 1x in its own target at
+9a8e3161 and at 1d1c6abc respectively, with re-application of the extracted pair to the
+pre-commit blob reproducing the post-commit blob BYTE-EXACTLY in both cases.
+RECORD31 and TESTCLI, neither of which has a FROM, satisfy ORDERED EQUALITY on every clause:
+RECORD31 over `.agent/live_review.md` at 1d1c6abc and TESTCLI over
+`tests/cli/test_runtime_cmd.py` at 394c45af each have the pre-commit blob as a byte-exact PREFIX,
+the slice as an exact SUFFIX, `pre + slice` equal to the post-commit blob byte for byte, and that
+commit's ADDED lines equal to the slice's lines IN ORDER — 39 and 39, 42 and 42, numstat `39 0`
+and `42 0`. Marker LINES at e26f1f3e are 0 in each of the four edited files. THE SUITES WERE
+RE-RUN, NOT READ, in the primary checkout with that block's exact command lines, each exit 0:
+`305 passed` against a base of `304 passed` for the migration set, C4's one new test being the
+difference; `160 passed` against a base of `160 passed` for the four state readers; and the
+canary `42 passed` against a base of `42 passed`. ONE READING HAD TO BE TAKEN TWICE, recorded
+because it will recur: run concurrently with a second pytest process over the same file, the
+migration set read `1 failed, 304 passed` and blamed
+`test_an_instance_id_that_changes_during_the_request_is_never_healthy`, while serially and alone
+it read `305 passed` at exit 0. These suites spawn real supervisors that bind a port and leave
+escapees when a readiness assertion fails, so concurrency alone reddens tests neither run
+touched; the serial reading is the honest one. THE PLAN CONTRACT HELD at e26f1f3e: 39 lines
+against the 50-line cap with `## Goal`, `## Next Steps` and a roadmap F-id all present, 39 being
+that block's own projection. THE ARITHMETIC DID NOT MOVE, as constraint 8 required: 174
+registered / 28 done / 0 landed and 146 open at cbe1b3e5, the same three numbers and the same 146
+at e26f1f3e, max registered R-0559 and max resolved R-0558 at both, all three symmetric
+differences EMPTY, and 0 duplicate ids and 0 orphan resolutions at both SHAs. LINT WAS RE-RUN over
+both `.py` paths from the repository root with the repository's own configuration, plain and
+`--preview`, each exit 0 with `All checks passed!`. THE RED CONTROL REPRODUCED EXACTLY inside a
+disposable worktree at e26f1f3e: reverting only `cwd=spawn_plan.cwd, env=spawn_plan.env,` to
+`cwd=str(source_root), env=env,` — a one-line worktree diff and nothing else — turned
+`python3 -m pytest tests/cli/test_runtime_cmd.py -q -rf` from `17 passed` at exit 0 into
+`1 failed, 16 passed` at exit 1, failing
+`TestTheSupervisorEnvironmentIsScrubbed::test_a_secret_parent_variable_never_reaches_the_supervisor`
+on its `assert "ANTHROPIC_API_KEY" not in env` line with the secret present in the reported
+environment; that un-reverted baseline of `17 passed` also confirms C4 added exactly one test to
+a file whose base was 16. HYGIENE IS CLEAN: the path set over cbe1b3e5..e26f1f3e is exactly the
+seven the change set named; all four paths G9 orders resolved at cbe1b3e5 under `git ls-tree`;
+per-commit INSERTIONS are 373, 287, 6, 39, 18, 42 and 46 for the handback commit, none over 500;
+all seven commits are single-parent; and `.agent/handoff.md` at e26f1f3e is 75 lines, within the
+≤100-line cap its seven-commit table allows, with the ordered Fortschritt line present verbatim.
+THE BLOCK'S OWN SIZE re-measured from the committed file at e26f1f3e gives TOTAL 373, PROSE 226
+counting its 12 marker lines and RECORD31 39, agreeing with that block's own figures and under
+490 / 400 / 140. ONE CLAIM NO GATE COVERED WAS CHECKED RATHER
+THAN ACCEPTED: RECORD31's assertion that `PYTHONPATH` and `VIRTUAL_ENV` need no declaration holds
+at e26f1f3e, where `packages/orchestration/exec_guard.py` assigns
+`RUNTIME_SERVER_ENV_ALLOWLIST` from `TEST_COMMAND_ENV_ALLOWLIST` and that tuple lists both keys.
+ONE STATE OBSERVATION IS RECORDED AND IS NOT A WORKER DEVIATION: a disposable worktree
+`.remedy-wt/rv63` existed at review time, created after the handback commit e26f1f3e by a
+reviewer session that did not survive to remove it and holding a clean tree at that commit; the
+reviewer used it for the red control above, then removed and pruned it, leaving `git worktree
+list` at one line and `git status --porcelain` empty in the primary checkout. NOTHING FAILED and
+this round registers no finding.
