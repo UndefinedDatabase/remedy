@@ -1,264 +1,204 @@
-── STEP T003 remaining deny rows — F085 — R65 ────────────────────────────────
+── STEP T003 limitations document — F085 — R66 ───────────────────────────────
 
-Goal: finish the network posture's wiring. The two rows amendment F085 D1 still marks default-deny
-— `dod-process` and `builder` — set `deny_network`, each pinned by a test in the file its own class
-already owns, so all three bounded classes in that table now carry the posture R64 built. The R64
-PASS is recorded in the same round, and the one finding that review raised is registered with its
-counter-measure landing BEFORE the record that cites it.
+Goal: T003's document. A new `docs/system/exec-guard-limitations-v0.md` states what F085 stage 1 does
+NOT prevent, and the docs index links it from both of its tables, which is the "limitations document
+exists, is linked, and names the non-guarantees explicitly" half of T2_F085's Acceptance. The R65 PASS
+is recorded in the same round.
 
 Bundle, in order: C0a save this block · C0b mirror it into last_block · C1 advance `.agent/plan.md` ·
-C2 land checklist item 25 · C3 record the R64 PASS and register R-0560 · C4 wire the `dod-process`
-row · C5 wire the `builder` row · C6 pin the `dod-process` row · C7 pin the `builder` row ·
-C8 handback. That list runs past five commits, so the handback takes the ≤100-line cap AGENTS.md
+C2 record the R65 PASS · C3 write the limitations document · C4 link it from the docs index ·
+C5 handback. That list runs past five commits, so the handback takes the ≤100-line cap AGENTS.md
 allows when a per-commit table needs it.
 
-CONVENTION, binding on every count here, carried verbatim in force from the R64 block. A line count
-is the `splitlines` reading — a trailing newline is NOT an extra line. A SLICE IS THE BYTES STRICTLY
+THIS ROUND EDITS NO `.py` FILE. Its change set holds no code path at all, so NO lint gate and NO red
+control are ordered — both are ordered by the presence of a `.py` path, and there is none. The
+acceptance line that a network access really fails under deny is measured by its own round, named in
+PLAN20T, because that one needs a code change and a destructive control this one cannot host.
+
+CONVENTION, binding on every count here, carried verbatim in force from the R65 block. A line count is
+the `splitlines` reading — a trailing newline is NOT an extra line. A SLICE IS THE BYTES STRICTLY
 BETWEEN ITS MARKER LINES AND THEREFORE INCLUDES THE NEWLINE THAT TERMINATES ITS LAST CONTENT LINE:
 extract it as everything after the `BEGIN-` line's own newline up to and including the newline
 immediately before the `END-` line, so that `pre + slice` is already a newline-terminated file and NO
-joiner and NO terminator byte is ever added. THIS BLOCK'S FROM/TO PAIRS ARE PLAN19, CHECK25, DOD1,
-DOD2, BUILD1, BUILD2 AND TESTBUILD; ITS END-OF-FILE APPENDS, WHICH HAVE NO FROM AT ALL, ARE RECORD33
-AND TESTDOD — listed rather than counted, per §3 checklist item 11. Each append slice CARRIES ITS OWN
+joiner and NO terminator byte is ever added. THIS BLOCK'S FROM/TO PAIRS ARE PLAN20, INDEX1 AND INDEX2;
+ITS ONE END-OF-FILE APPEND, WHICH HAS NO FROM AT ALL, IS RECORD34; ITS ONE WHOLE-FILE SLICE IS
+DOCLIM — listed rather than counted, per §3 checklist item 11. Each append slice CARRIES ITS OWN
 LEADING BLANK LINES, so the separation its target's convention requires is a property of bytes that
 were measured and never of a join shape that was reasoned about.
 
 ## Change
 
-C1 applies PLAN19F→PLAN19T to `.agent/plan.md`, rewriting the `## Current Step` section and the WHOLE
+C1 applies PLAN20F→PLAN20T to `.agent/plan.md`, rewriting the `## Current Step` section and the WHOLE
 `## Next Steps` list — the whole list, per §3 checklist item 17, so no surviving item can keep a stale
-label. C2 applies CHECK25F→CHECK25T to `docs/agents/planner_reviewer_prompt.md`, adding item 25 to the
-§3 checklist. C3 appends RECORD33 to the END of `.agent/live_review.md`. C4 applies DOD1 then DOD2, in
-that order, to `packages/orchestration/exec_guard.py`. C5 applies BUILD1 then BUILD2, in that order, to
-`packages/orchestration/managed_builder_execution.py`. C6 appends TESTDOD to the END of
-`tests/orchestration/test_exec_guard.py`. C7 applies TESTBUILDF→TESTBUILDT to
-`tests/orchestration/test_managed_builder_execution.py`, which is a REWRITE and not an append because
-that file ends in `if __name__ == "__main__":` and its policy tests live in a class.
+label. C2 appends RECORD34 to the END of `.agent/live_review.md`. C3 CREATES
+`docs/system/exec-guard-limitations-v0.md` whose entire content is the DOCLIM slice. C4 applies
+INDEX1F→INDEX1T and then INDEX2F→INDEX2T to `docs/README.md`, adding the quick-find row and the
+system-table row.
 
-Change set, named rather than counted: `.agent/authored/f085-r65.md`, `.agent/last_block.md`,
-`.agent/plan.md`, `docs/agents/planner_reviewer_prompt.md`, `.agent/live_review.md`,
-`packages/orchestration/exec_guard.py`, `packages/orchestration/managed_builder_execution.py`,
-`tests/orchestration/test_exec_guard.py`, `tests/orchestration/test_managed_builder_execution.py`,
-`.agent/handoff.md`. Nothing else. NO `docs/roadmap/**` path is in that set, so the §3 docs tier does
-NOT trigger and no `tests/docs/` gate is ordered; `docs/agents/**` is outside what `tests/docs/` reads.
-FOUR `.py` paths ARE in it, so a lint gate and a red control ARE ordered. The three `runtime-server`
-call sites R61 and R63 migrated — `packages/runtimes/dev_server.py`,
-`packages/runtimes/runtime_supervisor.py` and `apps/cli/commands/runtime_cmd.py` — are NOT in the set
-and this round must not touch them. All seven tracked paths named here were resolved on disk at
-e5eecb29 with `git ls-tree`, one call per path, before emission, per checklist item 24, and all seven
-exist.
+Change set, named rather than counted: `.agent/authored/f085-r66.md`, `.agent/last_block.md`,
+`.agent/plan.md`, `.agent/live_review.md`, `docs/system/exec-guard-limitations-v0.md`,
+`docs/README.md`, `.agent/handoff.md`. Nothing else. NO `docs/roadmap/**` path is in that set, so no
+roadmap file is edited and Rule A4 is untouched; a `docs/**` path IS in it, so the docs-consistency
+suite is ordered in G4. Every tracked path named here was resolved on disk at 97caa9e1 with
+`git ls-tree`, one call per path, before emission, per checklist item 24: all exist EXCEPT
+`docs/system/exec-guard-limitations-v0.md`, which returns EMPTY because C3 creates it, and that
+absence is itself a gate reading in G3 rather than an oversight.
 
-The design reading a gate cannot recompute, taken from `docs/roadmap/features/T2_F085.md` at e5eecb29:
-the amendment F085 D1 policy table's network column reads `default-deny` for the `builder`, `test` and
-`dod-process` rows and for no other row, so C4 and C5 complete that column rather than extending it.
-`dod-app` is deliberately NOT wired — its harness serves the network on its own port, which that same
-file states — and the `test` row was wired at R64. DOD1T and BUILD1T carry that per-row reasoning into
-the two docstrings, where a reader searching for it will land.
+The reading a gate cannot recompute, taken at 97caa9e1: the only `docs/**` files naming `exec_guard`
+are the two roadmap feature files and `docs/agents/planner_reviewer_prompt.md`, none of them an
+ist-doc, so DOCLIM creates rather than duplicates — the justification AGENTS.md's "prefer updating
+existing files over creating new ones" rule requires. Its content is bounded the same way: every
+non-guarantee it states is one this feature's own code or tests already established, and the proxy
+paragraph reports a measurement the reviewer took at 97caa9e1 — a child under the posture printed
+`REFUSED:URLError` against a loopback server that was really listening, where the same child without
+the posture printed `REACHED:SERVED`.
 
 ## Constraints
 
 1. Every slice is applied byte-verbatim, extracted PROGRAMMATICALLY from the committed
-   `.agent/authored/f085-r65.md` by its marker pair under the CONVENTION above. Never retype one,
+   `.agent/authored/f085-r66.md` by its marker pair under the CONVENTION above. Never retype one,
    never apply one from the prompt, never reflow one. Marker lines never reach a target file.
-2. Re-read `.agent/STOP` from disk before C0a and again before C8; if it exists, finish the commit in
+2. Re-read `.agent/STOP` from disk before C0a and again before C5; if it exists, finish the commit in
    flight, write the handback and stop. `git status --porcelain` is empty at round start and after
    every commit.
 3. PAIR SHAPES. The reviewer ran the containment test at emission against each target's blob at
-   e5eecb29 and prints its own output here per checklist item 15, one reading per pair:
-   PLAN19F→PLAN19T `TO contains FROM: false`; CHECK25F→CHECK25T `TO contains FROM: false`;
-   DOD1F→DOD1T `TO contains FROM: false`; DOD2F→DOD2T `TO contains FROM: false`;
-   BUILD1F→BUILD1T `TO contains FROM: false`; BUILD2F→BUILD2T `TO contains FROM: false`;
-   TESTBUILDF→TESTBUILDT `TO contains FROM: true`. The first six are therefore REWRITES and each owes
-   the FROM 0x / TO 1x reading over its own post-commit file. TESTBUILD is APPEND-shaped, so the
-   FROM-zero count is unattainable for it BY CONSTRUCTION and must NOT be reported: its obligation is
-   FROM exactly 1x and TO exactly 1x in the post-commit blob, which is §4.9's append reading for a
-   pair whose TO opens with its own FROM. Each FROM occurs EXACTLY 1x in its target at e5eecb29 — the
-   reviewer measured all seven.
-4. RECORD33 AND TESTDOD HAVE NO FROM. Each is appended at the END of its target. Their obligation is
-   ORDERED EQUALITY per §4.9 as R-0531 narrows it: the pre-commit blob is a byte-exact PREFIX of the
-   post-commit file, the slice is an exact SUFFIX of it, and the lines that commit's diff ADDS are
-   exactly the slice's lines IN ORDER. Do not invent a FROM for either and do not report a FROM count.
-   TESTDOD is CODE, so §4.9's per-line "each TO-ONLY addition exactly 1x" count does NOT bind it and
-   must not be reported — ordered equality replaces it (R-0531).
-5. C1 IS THE FIRST SUBSTANTIVE COMMIT, ahead of the record and ahead of every code commit. Only C0a
+   97caa9e1 and prints its own output here per checklist item 15, one reading per pair:
+   PLAN20F→PLAN20T `TO contains FROM: false`; INDEX1F→INDEX1T `TO contains FROM: false`;
+   INDEX2F→INDEX2T `TO contains FROM: true`. PLAN20 and INDEX1 are therefore REWRITES and each owes
+   the FROM 0x / TO 1x reading over its own post-commit file. INDEX2 is APPEND-shaped — its TO opens
+   with the new row and then repeats its own FROM line — so the FROM-zero count is unattainable for it
+   BY CONSTRUCTION and must NOT be reported: its obligation is FROM exactly 1x AND TO exactly 1x in
+   the post-commit blob, which is §4.9's append reading. Each FROM occurs EXACTLY 1x in its target at
+   97caa9e1 — the reviewer measured all three.
+4. RECORD34 HAS NO FROM, AND DOCLIM HAS NO FROM AND NO PRE-IMAGE. RECORD34 owes ORDERED EQUALITY per
+   §4.9 as R-0531 narrows it: the pre-commit blob is a byte-exact PREFIX of the post-commit file, the
+   slice is an exact SUFFIX of it, and the lines that commit's diff ADDS are exactly the slice's lines
+   IN ORDER. DOCLIM owes WHOLE-FILE equality instead: the file does not exist at 97caa9e1, and its
+   post-commit blob equals the DOCLIM bytes EXACTLY, with nothing prepended and nothing appended. Do
+   not invent a FROM for either.
+5. C1 IS THE FIRST SUBSTANTIVE COMMIT, ahead of the record and ahead of both docs commits. Only C0a
    and C0b may precede it. This round writes to the finding ledger, so §3 checklist item 23 binds it.
-6. C2 LANDS BEFORE C3 ON PURPOSE. RECORD33 names item 25 of the §3 checklist as R-0560's
-   counter-measure, so the item must already be on disk when the record that cites it is written —
-   the ordering the R59 block used for item 24, and the reason a standing rule left in finding prose
-   binds nothing (R-0452, R-0454).
-7. Every sentence in RECORD33 that states a reading of a file names the SHA it was read at in the same
+6. Every sentence in RECORD34 that states a reading of a file names the SHA it was read at in the same
    clause, per checklist item 20 as R-0521 and R-0534 narrow it — the qualifier attaches to EVERY
-   reading in the clause, not only the first. RECORD33 states readings of R64's range and of this
-   round's base only, all of which are prior state, so every SHA it names already exists when it is
-   written.
-8. THE WORKER AUTHORS NO LEDGER TEXT THIS ROUND. RECORD33 is reviewer text and carries the R-0560
-   registration inside it. Do not add a `Landed:` line, do not add a `Done:` paragraph of your own,
-   and do not edit RECORD33 to reconcile it with anything you measure. A disagreement between RECORD33
-   and your own reading is a finding to REPORT in the handback, never to fix.
-9. THIS ROUND REGISTERS EXACTLY ONE FINDING AND RESOLVES NOTHING. Registered moves 174 → 175, done
-   stays 28, landed stays 0, open moves 146 → 147, and the next free id moves R-0560 → R-0561.
-   RECORD33 carries exactly one `- R-` registration line and no `Done:` line, which is why the
-   arithmetic moves in exactly that one place; G6 proves it.
-10. THE BLOCK'S OWN SIZE, under DECISION F085 D6 as DEC6C fixes the ruled figure: 490 lines TOTAL,
+   reading in the clause, not only the first. RECORD34 states readings of R65's range only, all of
+   which are prior state, so every SHA it names already exists when it is written.
+7. THE WORKER AUTHORS NO LEDGER TEXT THIS ROUND. RECORD34 is reviewer text. Do not add a `Landed:`
+   line, do not add a `Done:` paragraph of your own, and do not edit RECORD34 to reconcile it with
+   anything you measure. A disagreement between RECORD34 and your own reading is a finding to REPORT
+   in the handback, never to fix.
+8. THIS ROUND REGISTERS NOTHING AND RESOLVES NOTHING. The reviewer re-executed every R65 gate and
+   found nothing to register. Registered stays 175, done stays 28, landed stays 0, open stays 147, and
+   the next free id stays R-0561. RECORD34 is a `Gate:` paragraph and carries no `- R-` registration
+   line and no `Done:` line, which is why the arithmetic must not move; G6 proves it.
+9. THE BLOCK'S OWN SIZE, under DECISION F085 D6 as DEC6C fixes the ruled figure: 490 lines TOTAL,
    PROSE capped at 400 by D5, a RECORD slice capped at 140. The reviewer measured all three on the
    final bytes at emission. The worker re-measures all three from the committed
-   `.agent/authored/f085-r65.md`; a mismatch is a finding against this block, not the worker.
-11. C4, C5, C6 AND C7 ARE SEPARATE COMMITS and land in that order. C4 and C5 each leave the suite
-   green on their own — the reviewer verified both in a disposable worktree at e5eecb29 — so no
-   commit in this round is knowingly red.
-12. If a gate comes out red, STOP: write the handback naming the exact command, its exit code and its
+   `.agent/authored/f085-r66.md`; a mismatch is a finding against this block, not the worker.
+10. If a gate comes out red, STOP: write the handback naming the exact command, its exit code and its
    output, and push what is committed. Never edit a slice to make a gate green, and never widen the
    change set to route around a red.
-13. RUN THE SUITES SERIALLY, one pytest process at a time, never alongside another in any checkout or
+11. RUN THE SUITES SERIALLY, one pytest process at a time, never alongside another in any checkout or
    worktree. These suites spawn real supervisors that bind a port and leave escapees when a readiness
-   assertion fails, so two concurrent runs redden each other on tests neither touched: at e26f1f3e the
-   R63 gate suite read `1 failed, 304 passed` concurrent and `305 passed` at exit 0 serial.
+   assertion fails, so two concurrent runs redden each other on tests neither touched.
+12. DOCLIM IS AN IST-DOC AND STATES ONLY WHAT IS BUILT. Do not add a status banner, do not add a
+   roadmap promise, and do not soften a non-guarantee. If you believe a sentence in it is false at
+   HEAD, that is a finding to REPORT in the handback, never to edit.
 
 ## Done when
 
 G1 STATE. `.agent/STOP` absent at the two points in constraint 2; `git status --porcelain` empty at
-round start and after every commit. This round DOES order a destructive check (G8), so
-`git worktree list` is one line at round start, one line again at the end, and the worktree G8 creates
-is removed and pruned before the handback is written.
+round start and after every commit. This round orders NO destructive check, so no `git worktree` is
+created at all and `git worktree list` is one line at round start and one line at the end.
 
-G2 TRANSPORT. After C0b the committed `.agent/authored/f085-r65.md`, the committed
+G2 TRANSPORT. After C0b the committed `.agent/authored/f085-r66.md`, the committed
 `.agent/last_block.md` and BOTH working copies are byte-EQUAL. Report sha256, byte count, line count
-and marker-line count for each. Also report the block's TOTAL, PROSE and RECORD33 line counts read
-from that committed file, against constraint 10's 490 / 400 / 140.
+and marker-line count for each. Also report the block's TOTAL, PROSE and RECORD34 line counts read
+from that committed file, against constraint 9's 490 / 400 / 140.
 
 G3 SHAPES, measured SEPARATELY per pair and per path.
- - PLAN19F→PLAN19T is a REWRITE over `.agent/plan.md` at C1, CHECK25F→CHECK25T a REWRITE over
-   `docs/agents/planner_reviewer_prompt.md` at C2: for each report its FROM 0x and its TO exactly 1x
-   over the post-commit blob, and re-applying the extracted FROM→TO to the pre-commit blob must
-   reproduce the post-commit blob BYTE-EXACTLY.
- - DOD1F→DOD1T and DOD2F→DOD2T are REWRITES over `packages/orchestration/exec_guard.py` at C4, and
-   BUILD1F→BUILD1T and BUILD2F→BUILD2T are REWRITES over
-   `packages/orchestration/managed_builder_execution.py` at C5: the same three readings each,
-   measured over each file's own pre- and post-commit blobs, and for each file both of its pairs
-   re-applied IN ORDER must reproduce the post-commit blob BYTE-EXACTLY.
- - TESTBUILDF→TESTBUILDT is APPEND-shaped over `tests/orchestration/test_managed_builder_execution.py`
-   at C7: report FROM exactly 1x AND TO exactly 1x in the post-commit blob, NO FROM-zero count, and
-   re-application reproducing the post-commit blob BYTE-EXACTLY.
- - For RECORD33 at C3 and TESTDOD at C6 report the ordered-equality readings constraint 4 names:
-   pre-commit blob is a byte-exact PREFIX, the slice is an exact SUFFIX, `pre + slice` equals the
-   post-commit blob byte for byte, and that commit's ADDED lines are exactly the slice's lines IN
-   ORDER.
+ - PLAN20F→PLAN20T is a REWRITE over `.agent/plan.md` at C1 and INDEX1F→INDEX1T a REWRITE over
+   `docs/README.md` at C4: for each report FROM 0x and TO exactly 1x over the post-commit blob.
+   INDEX2F→INDEX2T, over `docs/README.md` at that same commit, reports FROM exactly 1x AND TO exactly
+   1x instead, per constraint 3, and NO FROM-zero count. Re-applying the extracted pairs to each
+   pre-commit blob — for `docs/README.md` both of its pairs IN ORDER — must reproduce the post-commit
+   blob BYTE-EXACTLY.
+ - For RECORD34 at C2 report the ordered-equality readings constraint 4 names: pre-commit blob is a
+   byte-exact PREFIX, the slice is an exact SUFFIX, `pre + slice` equals the post-commit blob byte for
+   byte, and that commit's ADDED lines are exactly the slice's lines IN ORDER.
+ - For DOCLIM at C3 report: `git ls-tree 97caa9e1 -- docs/system/exec-guard-limitations-v0.md` is
+   EMPTY, the post-commit blob EQUALS the DOCLIM bytes exactly, and that commit's ADDED lines are
+   exactly the slice's lines IN ORDER.
  - Plus `git show --numstat` for each path and commit, plus the count of lines matching
    `^(BEGIN|END)-[A-Z0-9]+$` in each edited file, which must be 0 — count marker LINES, never the
    substring, since that regex already appears in `.agent/live_review.md`.
 
 G4 SUITES, in the PRIMARY checkout and never in a worktree (R-0518), each EXIT 0, and serially per
-constraint 13. Report each run's passed count; the counts are reported, never predicted, and only the
+constraint 11. Report each run's passed count; the counts are reported, never predicted, and only the
 exit code is ordered. The reviewer took every base reading below itself, in the primary checkout, at
-e5eecb29.
- - `python3 -m pytest tests/orchestration/test_exec_guard.py tests/orchestration/test_test_runner.py
-   tests/test_test_runner.py tests/orchestration/test_ci_run.py
-   tests/orchestration/test_managed_builder_execution.py tests/orchestration/test_dod_runners.py
-   -q -rf` — base `329 passed`, no skips: the readers of both seams C4 and C5 change.
+97caa9e1.
+ - `python3 -m pytest tests/docs/test_docs_consistency.py -q` — base `295 passed`; C3 and C4 change
+   `docs/**` and this suite reads `docs/README.md` directly, which is the whole reason it is ordered.
  - `python3 -m pytest tests/orchestration/test_test_runner.py tests/regression/test_resource_safety.py
    tests/orchestration/test_integrity_gate.py tests/ui_server/test_dashboard_contract.py -rf -q` —
-   base `160 passed`; two of them assert on `.agent/plan.md`, which C1 rewrites, and that is the whole
-   reason this set is ordered.
+   base `160 passed`; two of them assert on `.agent/plan.md`, which C1 rewrites.
  - CANARY `python3 -m pytest tests/cli/test_golden_path.py -q` — base `42 passed`.
 
 G5 PLAN CONTRACT, on `.agent/plan.md` after C1, the union of every assertion the reviewer collected by
 grepping `tests/` plus the AGENTS.md cap: the file contains `## Goal`, contains `## Next Steps`,
 matches `\bF\d{3}\b`, and is at most 50 lines. Report the line count and the three booleans. The
-reviewer projected 40 lines by applying the pair to that blob at e5eecb29.
+reviewer projected 40 lines by applying the pair to that blob at 97caa9e1.
 
 G6 ARITHMETIC. Count the registered, done and landed id sets in `.agent/live_review.md` at base
-e5eecb29 and at HEAD, from the line-start patterns for a registration, a resolution and a landed line.
-The reviewer's base reading is 174 / 28 / 0, 146 open, max registered R-0559, max resolved R-0558. At
-HEAD the reading must be 175 / 28 / 0, 147 open, max registered R-0560 and max resolved still R-0558,
-because constraint 9 rules this round registers exactly one finding and resolves nothing. The
-symmetric difference of the registered sets must be EXACTLY `{R-0560}` and the done and landed
-symmetric differences must both be EMPTY. Next free id R-0561. Report all three symmetric differences,
-the duplicate-id count and the count of resolutions naming an unregistered id, at both SHAs.
+97caa9e1 and at HEAD, from the line-start patterns for a registration, a resolution and a landed line.
+The reviewer's base reading is 175 / 28 / 0, 147 open, max registered R-0560, max resolved R-0558. At
+HEAD the reading must be IDENTICAL — 175 / 28 / 0, 147 open, same two maxima — and all three symmetric
+differences must be EMPTY, because constraint 8 rules this round registers and resolves nothing. Next
+free id R-0561. Report all three symmetric differences, the duplicate-id count and the count of
+resolutions naming an unregistered id, at both SHAs.
 
-G7 LINT, over the four `.py` paths this round edits, run from the repository root with the
-repository's OWN configuration — no `--isolated`, per §3 checklist item 12. BOTH halves are green at
-the base, so both are ordered GREEN rather than compared as multisets; the reviewer executed both at
-e5eecb29 itself, per R-0364, and both printed `All checks passed!` over all four paths.
- - `python3 -m ruff check packages/orchestration/exec_guard.py
-   packages/orchestration/managed_builder_execution.py tests/orchestration/test_exec_guard.py
-   tests/orchestration/test_managed_builder_execution.py` — exit 0.
- - The same four paths again with `--preview` — exit 0. The preview half is ordered separately because
-   ruff is preview-blind to the E301-E306 class that a code append most plausibly breaks (R-0500,
-   R-0558).
+G7 LINK INTEGRITY, on `docs/README.md` after C4, because a link gate is the point of this round.
+Report all four readings: the string `system/exec-guard-limitations-v0.md` occurs EXACTLY twice in
+that file; the path `docs/system/exec-guard-limitations-v0.md` resolves on disk at HEAD; the file it
+resolves to is byte-identical to the DOCLIM slice; and the quick-find row and the system-table row are
+each present exactly once, counted as whole LINES from INDEX1T's and INDEX2T's own new line.
 
-G8 RED CONTROL, the ONLY destructive check this round, and ONLY inside a disposable `git worktree` at
-HEAD under §4.10 — never in the primary checkout. In that worktree revert EXACTLY ONE thing: replace
-the DOD2T bytes with the DOD2F bytes in `packages/orchestration/exec_guard.py`, which deletes the one
-line `        deny_network=True,` from `dod_process_exec_policy` and changes nothing else, then re-run
-`python3 -m pytest tests/orchestration/test_exec_guard.py -q -rf`. The revert is ordered as a BYTE
-PAIR over a NAMED path and not as a bare line because that bare line occurs FOUR times among the
-`.py` files this round leaves behind — twice in `packages/orchestration/exec_guard.py`, once in
-`packages/orchestration/managed_builder_execution.py` and once in
-`tests/orchestration/test_exec_guard.py` — and twice more in each block mirror under `.agent/`, while
-the DOD2T bytes occur exactly ONCE in `packages/orchestration/exec_guard.py`, which is item 25 of the
-§3 checklist applied to this block's own control. Report the worktree's `git diff --stat`,
-which must read `1 file changed, 1 deletion(-)`. The run must FAIL, and among the failures must be
-`test_the_dod_process_policy_denies_the_network_its_row_denies` on its
-`assert policy.deny_network is True` line. Report every failing test's full name and that asserted
-line. Then remove and prune the worktree and confirm `git status --porcelain` empty in the primary
-checkout.
-
-G9 HYGIENE. `git diff --name-only e5eecb29..HEAD` measured BEFORE C8 holds exactly the change set
-above minus `.agent/handoff.md`, which C8 writes, and nothing else — and in particular holds none of
-`packages/runtimes/dev_server.py`, `packages/runtimes/runtime_supervisor.py` and
-`apps/cli/commands/runtime_cmd.py`. Those three and the four `.py` paths this round edits were each
-resolved at e5eecb29 with `git ls-tree e5eecb29 -- <path>`, one call per path, and all seven exist;
-re-run those seven calls and report each result, per §3 checklist item 24. Report per-commit
-insertions for every commit BEFORE C8 — C8 cannot measure itself, so its own go in the round report —
-and confirm none exceeds 500. This branch spent the AGENTS.md declared-oversize allowance at
-d4473f85, so a second oversize commit is a STOP under constraint 12, never a declaration. Confirm
-every commit is single-parent.
+G8 HYGIENE. `git diff --name-only 97caa9e1..HEAD` measured BEFORE C5 holds exactly the change set
+above minus `.agent/handoff.md`, which C5 writes, and nothing else — and in particular holds no `.py`
+path at all, and none of `packages/orchestration/exec_guard.py`, `packages/runtimes/dev_server.py`,
+`packages/runtimes/runtime_supervisor.py` and `apps/cli/commands/runtime_cmd.py`. Those four were each
+resolved at 97caa9e1 with `git ls-tree 97caa9e1 -- <path>`, one call per path, and all four exist;
+re-run those four calls and report each result, per §3 checklist item 24. Report per-commit insertions
+for every commit BEFORE C5 — C5 cannot measure itself, so its own go in the round report — and confirm
+none exceeds 500. This branch spent the AGENTS.md declared-oversize allowance at d4473f85, so a second
+oversize commit is a STOP under constraint 10, never a declaration. Confirm every commit is
+single-parent.
 
 ## Handback
 
 Rewrite `.agent/handoff.md` per docs/agents/handback_template.md: feature and round, branch, base SHA
-e5eecb29, a per-commit changed-files table, the item-status table covering C0a, C0b, C1, C2, C3, C4,
-C5, C6, C7 and C8, the real G1-G9 results with exit codes, the open-findings count and the next
-expected action. The Bundle above holds more than five commits, so the ≤100-line cap applies; if the
-mandated content genuinely does not fit even there, name the DECISION D15 stated cause and the
-specific mandated content behind the overage, and drop no section.
+97caa9e1, a per-commit changed-files table, the item-status table covering C0a, C0b, C1, C2, C3, C4
+and C5, the real G1-G8 results with exit codes, the open-findings count and the next expected action.
+The Bundle above holds more than five commits, so the ≤100-line cap applies; if the mandated content
+genuinely does not fit even there, name the DECISION D15 stated cause and the specific mandated
+content behind the overage, and drop no section.
 Repeat this Fortschritt line verbatim:
-Fortschritt: ~99 % (T001 gebaut · R13-R64 PASS · T002 KOMPLETT — alle vier Klassen migriert ·
-T003 fast fertig: alle drei default-deny-Zeilen der D1-Tabelle sind verdrahtet und gepinnt, offen
-bleibt allein das Limitations-Dokument mit seinem README-Link) — Schätzung, gegen die
+Fortschritt: ~99 % (T001 gebaut · R13-R65 PASS · T002 KOMPLETT · T003 fast fertig: alle drei
+default-deny-Zeilen verdrahtet und gepinnt, das Limitations-Dokument steht und ist zweifach verlinkt;
+offen bleibt allein die Akzeptanzmessung am echt lauschenden Server) — Schätzung, gegen die
 Klassentabelle aus Amendment F085 D1 gemessen.
 
-The `## Next` section carries the statements labelled ONE through FOUR below. ONE: R66 writes T003's
-limitations document and its README link, stating what stage 1 does NOT prevent — a binary that
-ignores proxy variables reaches the network anyway, an app log written to a file takes no guard output
-cap, and the git, packaging and other classes never ran under the guard at all — after which the
-integration gate and closure follow. TWO: R65 carries no verdict of its own, because the round that
-records a verdict cannot record one on itself (docs/agents/planner_reviewer_prompt.md §4.13); R66
+The `## Next` section carries the statements labelled ONE through FOUR below. ONE: R67 measures
+T2_F085's remaining acceptance line — a network access from a guarded test command fails under deny —
+against a loopback server that is really listening, with the red control that line needs; the
+integration gate and closure follow it. TWO: R66 carries no verdict of its own, because the round that
+records a verdict cannot record one on itself (docs/agents/planner_reviewer_prompt.md §4.13); R67
 carries it. THREE: a standalone closing line stating the open findings count and the next free id.
 FOUR: `Phase 1 rule 1 first: re-read `.agent/STOP` from disk`, which the self-drive protocol requires
 every handoff naming a next action to put ahead of the PR Gate.
 
 Then `git push -u origin feature/f085-sandbox-hardening`. No PR, no merge.
 
-BEGIN-PLAN19F
-## Current Step
-R64, this round: T003 opens with the network posture itself. `exec_guard` gains a `deny_network`
-policy field and a `DENIED_NETWORK_ENV` overlay written AFTER the allowlist scrub — the proxy
-names are `FORBIDDEN_ENV_KEYS` members, so the floor would otherwise delete the posture — and the
-`test` class, the largest deny row in amendment F085 D1's table, sets it. The R63 PASS is
-recorded in the same round.
-
-## Next Steps
-1. Wire the remaining deny rows: `dod_process_exec_policy` in the same module and the builder
-   policy in `managed_builder_execution`, each with the seam test its class already has.
-2. T003's limitations document and its README link, stating what stage 1 does NOT prevent: a
-   binary that ignores proxy variables reaches the network anyway, an app log written to a file
-   takes no guard output cap, and the git, packaging and other classes never ran under the guard
-   at all.
-3. Then the integration gate, then closure.
-END-PLAN19F
-
-BEGIN-PLAN19T
+BEGIN-PLAN20F
 ## Current Step
 R65, this round: the two deny rows amendment F085 D1 still leaves unwired take the posture R64
 built. `dod_process_exec_policy` and `managed_builder_execution._builder_exec_policy` set
@@ -272,188 +212,168 @@ the same round, with the counter-measure landing ahead of the record.
    takes no guard output cap, and the git, packaging and other classes never ran under the guard
    at all.
 2. Then the integration gate, then closure.
-END-PLAN19T
+END-PLAN20F
 
-BEGIN-CHECK25F
-      Session Resume tells the next session to read.
-  Why this is on disk and not a habit: item 2 has recurred six times across
-END-CHECK25F
+BEGIN-PLAN20T
+## Current Step
+R66, this round: T003's document. `docs/system/exec-guard-limitations-v0.md` states what stage 1
+does NOT prevent — a proxy posture is not containment, three classes of five run under the guard
+at all, an allowlist does not bound what a child's own runtime adds, and an app log written to a
+file takes no cap — and `docs/README.md` links it from both tables. The R65 PASS is recorded in
+the same round.
 
-BEGIN-CHECK25T
-      Session Resume tells the next session to read.
-  25. **A destructive gate's revert target is named by PATH and is unique inside it.** Finding
-      R-0560. A red control that orders a revert by quoting a LINE — "delete the single line `X`
-      in `Y`" — names the FILE the revert is applied to, and the exact bytes it orders removed are
-      counted IN THAT FILE at the SHA the control runs at, where the count must be 1. Naming only
-      the enclosing function is not a measurement: the same line commonly occurs in a second
-      source file and in the block mirrors under `.agent/`, and a reader who resolves that name to
-      the wrong file reverts the wrong line while the run still goes red — which is exactly what
-      the control cannot distinguish from its own success. Where the bytes recur inside the named
-      file, the control orders a longer UNIQUE byte string instead. Item 24 resolves the paths a
-      gate NAMES; this one resolves the BYTES a gate orders CHANGED.
-  Why this is on disk and not a habit: item 2 has recurred six times across
-END-CHECK25T
+## Next Steps
+1. The remaining acceptance measurement: a guarded test command is refused against a loopback
+   server that is really listening, where the same child without the posture is served.
+2. The integration gate: the full suite per docs/agents/integration_gate.md, the first of the two
+   full-suite runs this feature owes.
+3. Then closure per docs/roadmap/STATUS_closure_protocol.md.
+END-PLAN20T
 
-BEGIN-DOD1F
-    allowlisted keys, and `FORBIDDEN_ENV_KEYS` remains the floor beneath it.
-    """
-END-DOD1F
+BEGIN-INDEX1F
+| dogfood | [dogfood-run-user-guide.md](guides/dogfood-run-user-guide.md) | guide |
+| external builder | [external-builder-sandbox-v0.md](system/external-builder-sandbox-v0.md) | system |
+END-INDEX1F
 
-BEGIN-DOD1T
-    allowlisted keys, and `FORBIDDEN_ENV_KEYS` remains the floor beneath it.
+BEGIN-INDEX1T
+| dogfood | [dogfood-run-user-guide.md](guides/dogfood-run-user-guide.md) | guide |
+| exec guard | [exec-guard-limitations-v0.md](system/exec-guard-limitations-v0.md) | system |
+| external builder | [external-builder-sandbox-v0.md](system/external-builder-sandbox-v0.md) | system |
+END-INDEX1T
 
-    `deny_network=True` is amendment F085 D1's network column for this row: a DoD
-    check is a bounded, project-authored command, so it takes the same proxy
-    posture the `test` class takes, written after the scrub that would delete it.
-    """
-END-DOD1T
+BEGIN-INDEX2F
+| [execution-approval-policy-v0.md](system/execution-approval-policy-v0.md) | Human approval gates for execution |
+END-INDEX2F
 
-BEGIN-DOD2F
-        env_allowlist=DOD_PROCESS_ENV_ALLOWLIST,
-    )
-END-DOD2F
+BEGIN-INDEX2T
+| [exec-guard-limitations-v0.md](system/exec-guard-limitations-v0.md) | What the F085 stage-1 execution guard does NOT prevent |
+| [execution-approval-policy-v0.md](system/execution-approval-policy-v0.md) | Human approval gates for execution |
+END-INDEX2T
 
-BEGIN-DOD2T
-        env_allowlist=DOD_PROCESS_ENV_ALLOWLIST,
-        deny_network=True,
-    )
-END-DOD2T
+BEGIN-DOCLIM
+# Execution Guard — what stage 1 does NOT prevent
 
-BEGIN-BUILD1F
-    the product of `_build_sanitized_env`, so allowlisting its keys reproduces it.
-    """
-END-BUILD1F
+## Overview
 
-BEGIN-BUILD1T
-    the product of `_build_sanitized_env`, so allowlisting its keys reproduces it.
+F085 stage 1 gives builder-spawned commands POSIX resource limits, a wall timeout, output
+caps, a pinned cwd, an environment allowlist over a forbidden-key floor, and a default-deny
+network posture. This document states the non-guarantees, because a guard trusted past its
+evidence is worse than no guard: the code deliberately declines to call any of this
+containment.
 
-    `deny_network=True` is amendment F085 D1's network column for the `builder` row.
-    It is a PROXY posture and not a kernel one, so a build tool that honours proxy
-    variables cannot reach the network while one that ignores them still can.
-    """
-END-BUILD1T
+## The network posture is a PROXY posture, never a kernel one
 
-BEGIN-BUILD2F
-        env_allowlist=tuple(sorted(env)),
-        core_file_bytes=0,
-    )
-END-BUILD2F
+`deny_network` points a child's proxy variables — both spellings, plus an empty `NO_PROXY` so
+no host is exempt — at `http://127.0.0.1:9`, the RFC 863 discard port, where nothing listens
+and a connect is refused at once.
 
-BEGIN-BUILD2T
-        env_allowlist=tuple(sorted(env)),
-        core_file_bytes=0,
-        deny_network=True,
-    )
-END-BUILD2T
+- A toolchain that HONOURS proxy variables cannot reach the network. Measured: a guarded child
+  is refused against a loopback server that is really listening, while the same child without
+  the posture is served.
+- A binary that IGNORES them reaches the network anyway. Static Go binaries, anything using
+  raw sockets, and most things speaking a non-HTTP protocol are in that set.
+- Nothing here blocks DNS, raw sockets, or a unix socket to a local daemon.
 
-BEGIN-TESTDOD
+Kernel-level isolation is stage 2. Stage 1 raises the bar and reports honestly.
 
+## Only three command classes run under the guard at all
 
-def test_the_dod_process_policy_denies_the_network_its_row_denies():
-    """Amendment F085 D1's network column for the `dod-process` row, in code."""
-    policy = exec_guard.dod_process_exec_policy(45, "/tmp/dod-cwd")
+Amendment F085 D1's table wires `builder`, `test` and `dod-process`. The `dod-app` class
+deliberately takes no wall timeout and no deny — its harness must keep serving on its own
+port. The git, packaging, runtime and other call sites still spawn unsupervised, so a limit
+proved for a test command says nothing about a `git` invocation.
 
-    assert policy.deny_network is True
-    child_env = exec_guard.plan_child_spawn(policy).env
-    assert dict(exec_guard.DENIED_NETWORK_ENV).items() <= child_env.items()
-END-TESTDOD
+## An allowlist bounds the PARENT, not the child's own runtime
 
-BEGIN-TESTBUILDF
-        smuggled = dict(env, GITHUB_TOKEN="ghp_never")
-        floored = _builder_exec_policy(30, 4096, None, smuggled)
-        assert "GITHUB_TOKEN" not in scrub_child_env(smuggled, floored.env_allowlist)
-END-TESTBUILDF
+Scrubbing decides what the parent hands over. It cannot decide what the child then adds to
+itself: a CPython child sets `LC_CTYPE` during PEP 538 locale coercion, so a child's
+environment is a SUPERSET of the scrubbed one. Tests subtract that key rather than crediting
+the guard with producing it.
 
-BEGIN-TESTBUILDT
-        smuggled = dict(env, GITHUB_TOKEN="ghp_never")
-        floored = _builder_exec_policy(30, 4096, None, smuggled)
-        assert "GITHUB_TOKEN" not in scrub_child_env(smuggled, floored.env_allowlist)
+## Output caps bound what the guard READS
 
-    def test_the_builder_policy_denies_the_network_its_row_denies(self):
-        """Amendment F085 D1's network column for the `builder` row, in code."""
-        from packages.orchestration.exec_guard import (
-            DENIED_NETWORK_ENV,
-            plan_child_spawn,
-        )
-        from packages.orchestration.managed_builder_execution import _builder_exec_policy
-        env = _build_sanitized_env({})
-        policy = _builder_exec_policy(30, 4096, None, env)
-        assert policy.deny_network is True
-        child_env = plan_child_spawn(policy).env
-        assert dict(DENIED_NETWORK_ENV).items() <= child_env.items()
-        assert all(child_env[key] == value for key, value in env.items())
-END-TESTBUILDT
+The cap applies to the child's stdout and stderr while the guard is reading them. An
+application that writes its own log to a FILE takes no guard cap at all, and neither does
+anything a child writes through a descriptor the guard never owned. Past the cap the guard
+stops STORING and keeps COUNTING, so the reported byte totals stay honest while the stored
+output is truncated.
 
-BEGIN-RECORD33
+## Limits that are enforced but not classified
 
-Gate: R65 — the R64 entry. R64 PASSED. Every ordered gate G1-G9 was re-executed by the reviewer over
-e26f1f3e..e5eecb29, not read, and each reproduces the handback's reading exactly; the worker deviated
+`address_space_bytes` is enforced through RLIMIT_AS. A child that exceeds it has its mapping
+refused, raises `MemoryError` and exits 1 with no signal, and its `ru_maxrss` stays below the
+limit because the refused mapping never became resident. Nothing `wait4` reports distinguishes
+that death from any other exit-1 failure, so the guard enforces the limit and declines to name
+it in `tripped_limit`. Naming it would be an overclaim.
+
+## There is no filesystem fence
+
+The cwd is PINNED, which decides where a relative path lands. It does not stop a child writing
+to an absolute path outside the worktree. A filesystem fence is stage 2.
+
+## A stream still blocked at the grace deadline leaks
+
+If a stream is still blocked when the grace deadline passes, one pipe read end and one daemon
+thread survive the run. Closing that descriptor under a blocked reader risks the thread reading
+a recycled descriptor after a later `open()`, so the leak is the deliberately chosen cheaper
+wrong.
+
+## Where the rules live
+
+Policy per command class: `packages/orchestration/exec_guard.py`. The class table and the
+staging plan: `docs/roadmap/features/T2_F085.md`.
+END-DOCLIM
+
+BEGIN-RECORD34
+
+Gate: R66 — the R65 entry. R65 PASSED. Every ordered gate G1-G9 was re-executed by the reviewer over
+e5eecb29..97caa9e1, not read, and each reproduces the handback's reading exactly; the worker deviated
 in nothing and declared nothing. LINE COUNTS ARE `splitlines` COUNTS. TRANSPORT HELD, disk-to-disk
-with no digest fallback: the committed `.agent/authored/f085-r64.md` and the committed
-`.agent/last_block.md` at e5eecb29, both working copies as they stand at e5eecb29, and the received
-`.remedy-wt/f085-r64.md` are all five byte-EQUAL at sha256
-670a2563e54daff38b815a445493dba8b417024e65c5eba4e0b9cbcdb8ae2108, 31314 B, 490 lines, 32 marker lines.
-THE SHAPES HELD, and the two classes were measured apart, one reading per pair. PLAN18F→PLAN18T over
-`.agent/plan.md` at a8877d26, GUARD1F→GUARD1T and GUARD6F→GUARD6T over
-`packages/orchestration/exec_guard.py` at 01fd653d are REWRITES — each containment test reads
-`TO contains FROM: false` — and each ends FROM 0x with TO exactly 1x, each FROM having occurred
-exactly 1x in its own pre-commit blob. GUARD2, GUARD3, GUARD4 and GUARD5 are APPEND-shaped over that
-same file at 01fd653d, each reading FROM exactly 1x AND TO exactly 1x post-commit with no FROM-zero
-reading taken, and all six GUARD pairs re-applied IN ORDER to the pre-commit blob reproduce the
-post-commit blob BYTE-EXACTLY. RECORD32 over `.agent/live_review.md` at 2e6b772e and TESTNET over
-`tests/orchestration/test_exec_guard.py` at 25c75325, neither of which has a FROM, satisfy ORDERED
-EQUALITY on every clause: pre-commit blob a byte-exact PREFIX, slice an exact SUFFIX, `pre + slice`
-equal to the post-commit blob byte for byte, and each commit's ADDED lines equal to the slice's lines
-IN ORDER — 64 and 64, 57 and 57, numstat `64 0` and `57 0`. Marker LINES at e5eecb29 are 0 in each of
-the four edited files. THE SUITES WERE RE-RUN, NOT READ, in the primary checkout with that block's
-exact command lines, serially, each exit 0: `329 passed` against a base of `324 passed` for the seam
-set, C4's five new tests being the difference; `160 passed` against a base of `160 passed` for the
-four state readers; and the canary `42 passed` against a base of `42 passed`. THE PLAN CONTRACT HELD
-at e5eecb29: 42 lines against the 50-line cap with `## Goal`, `## Next Steps` and a roadmap F-id all
-present, 42 being that block's own projection. THE ARITHMETIC DID NOT MOVE, as that block's
-constraint 8 required: 174 registered / 28 done / 0 landed and 146 open at e26f1f3e, the same three
-numbers and the same 146 at e5eecb29, max registered R-0559 and max resolved R-0558 at both, all
-three symmetric differences EMPTY, and 0 duplicate ids and 0 orphan resolutions at both SHAs. LINT
-WAS RE-RUN over both `.py` paths from the repository root with the repository's own configuration,
-plain and `--preview`, each exit 0 with `All checks passed!`. THE RED CONTROL REPRODUCED EXACTLY
-inside a disposable worktree at 25c75325: deleting the one line `        deny_network=True,` from
-`test_command_exec_policy` in `packages/orchestration/exec_guard.py` — a worktree `git diff --stat` of
-`1 file changed, 1 deletion(-)` and nothing else — turned
+with no digest fallback: the committed `.agent/authored/f085-r65.md` and the committed
+`.agent/last_block.md` at 97caa9e1, both working copies at 97caa9e1, and the received
+`.remedy-wt/f085-r65.md` are all five byte-EQUAL at sha256
+f0fa416c8a4b343601435f75fb8f69a5c7e8f7198b7c433b4a9a9343ebd11399, 31907 B, 459 lines, 32 marker lines.
+THE SHAPES HELD, and the two classes were measured apart, one reading per pair. The six REWRITES —
+PLAN19 over `.agent/plan.md` at 73db31ec, CHECK25 over `docs/agents/planner_reviewer_prompt.md` at
+28a749e3, DOD1 and DOD2 over `packages/orchestration/exec_guard.py` at aadcf5e1, BUILD1 and BUILD2
+over `packages/orchestration/managed_builder_execution.py` at 6b0edbef — each read
+`TO contains FROM: false`, each FROM 1x in its own pre-commit blob, each ending FROM 0x with TO
+exactly 1x. TESTBUILD over `tests/orchestration/test_managed_builder_execution.py` at a2aaff6d is
+APPEND-shaped, reading FROM 1x AND TO 1x post-commit with no FROM-zero reading taken. Re-application
+IN ORDER reproduced the post-commit blob BYTE-EXACTLY on all five paths. RECORD33 over
+`.agent/live_review.md` at 1439a831 and TESTDOD over `tests/orchestration/test_exec_guard.py` at
+bf4c6645, neither of which has a FROM, satisfy ORDERED EQUALITY on every clause — PREFIX, SUFFIX,
+`pre + slice` equal to the post-commit blob byte for byte, and ADDED lines equal to the slice's lines
+IN ORDER, 71 and 71, 9 and 9, numstat `71 0` and `9 0`. Marker LINES at 97caa9e1 are 0 in each of the
+seven edited files. THE SUITES WERE RE-RUN, NOT READ, in the primary checkout with that block's exact
+command lines, serially, each exit 0: `331 passed` against a base of `329 passed` for the seam set,
+C6 and C7 each adding exactly one test; `160 passed` against a base of `160 passed` for the four state
+readers; and the canary `42 passed` against a base of `42 passed`. THE PLAN CONTRACT HELD at 97caa9e1:
+40 lines against the 50-line cap with `## Goal`, `## Next Steps` and a roadmap F-id all present, 40
+being that block's own projection. THE ARITHMETIC MOVED IN EXACTLY ONE PLACE, as that block's
+constraint 9 required: 174 registered / 28 done / 0 landed and 146 open at e5eecb29 against 175 / 28 /
+0 and 147 open at 97caa9e1, max registered moving R-0559 to R-0560 while max resolved stayed R-0558,
+the registered symmetric difference exactly the single id R-0560, the done and landed symmetric
+differences EMPTY, and 0 duplicate ids and 0 orphan resolutions at both SHAs. LINT WAS RE-RUN over all
+four `.py` paths from the repository root with the repository's own configuration, plain and
+`--preview`, each exit 0 with `All checks passed!`. THE RED CONTROL REPRODUCED EXACTLY inside a
+disposable worktree at 97caa9e1: applying the DOD2T→DOD2F byte pair to
+`packages/orchestration/exec_guard.py`, in which the DOD2T bytes were counted 1x before the replace,
+gave a worktree `git diff --stat` of `1 file changed, 1 deletion(-)` and turned
 `python3 -m pytest tests/orchestration/test_exec_guard.py -q -rf` red at exit 1 with
-`2 failed, 39 passed`, failing both
-`test_the_test_class_policy_denies_the_network_its_row_denies`, the one that block ordered, and
-`test_a_denied_child_really_receives_the_closed_port` on its
-`assert dumped["HTTP_PROXY"] == exec_guard.DENIED_NETWORK_PROXY_URL` line with `KeyError: 'HTTP_PROXY'`
-— the second being the real-child half of the same one-line revert, which that handback reported
-rather than concealed. HYGIENE IS CLEAN: the path set over e26f1f3e..e5eecb29 is exactly the seven the
-change set named and holds none of the three `runtime-server` paths; all five paths G9 orders resolved
-at e26f1f3e under `git ls-tree`; per-commit INSERTIONS are 490, 419, 12, 64, 39, 57 and 32 for the
-handback commit, none over 500; all seven commits are single-parent. THE BLOCK'S OWN SIZE re-measured
-from the committed file at e5eecb29 gives TOTAL 490, PROSE 274 counting its 32 marker lines and
-RECORD32 64, agreeing with that block's own figures and inside 490 / 400 / 140. ONE FINDING IS
-REGISTERED AGAINST THAT BLOCK'S OWN GATE TEXT, and it is the reviewer's defect rather than the
-worker's, which is why R64 still PASSES.
-
-- R-0560 — Low — the R64 block's G8 ordered a destructive revert by quoting a line that was not unique
-in the tree at the SHA the control runs at. It ordered "revert EXACTLY ONE thing: the single line
-`        deny_network=True,` in `test_command_exec_policy`", and at 25c75325 those exact bytes occur
-TWICE: once in `packages/orchestration/exec_guard.py`, which is where `test_command_exec_policy` is
-defined, and once in `tests/orchestration/test_exec_guard.py`, which TESTNET appended in the same
-round. The qualifier that disambiguates them is the function name, and that name begins with `test_`,
-so it reads as a pointer INTO the test file for anyone who has not already resolved the symbol. The
-reviewer of this round deleted the wrong occurrence on the first attempt, restored the file and
-re-ran, so the cost is measured rather than hypothetical. This is the vacuous-and-ambiguous gate
-family of R-0438, R-0532 and R-0559 arriving through the BYTES a gate orders changed rather than
-through the paths it names: item 24 would have resolved every path in that sentence and still passed
-it, because both paths exist. R64 PASSES anyway — the control was met, the deletion that was finally
-made was the ordered one, the `1 file changed, 1 deletion(-)` reading in the handback is the correct
-one, and the red it produced is the red the block predicted. The danger is that a red control cannot
-tell a wrong revert from a right one: deleting the TESTNET occurrence also reddens that suite, so a
-reader who never noticed the ambiguity would have reported a green-looking control that proved
-nothing about `test_command_exec_policy`. COUNTER-MEASURE: item 25 of the §3 checklist in
-`docs/agents/planner_reviewer_prompt.md`, which constraint 6 of this block fixes as landing in the
-commit BEFORE this record — a revert target is named by the PATH it is applied to and its exact bytes
-are counted IN THAT FILE at the SHA the control names, a count above 1 forcing a longer unique string.
-The rule is promoted into the checklist rather than left in this paragraph, because a standing rule
-written as finding prose binds nothing and recurs (R-0452, R-0454). OPEN.
-END-RECORD33
+`1 failed, 41 passed`, the single failure being
+`test_the_dod_process_policy_denies_the_network_its_row_denies` on its
+`assert policy.deny_network is True` line — exactly the ordered failure and the only one, which is
+what item 25 bought: R64's control reddened two tests and this one reddens precisely the test whose
+row was reverted. HYGIENE IS CLEAN: the path set over e5eecb29..97caa9e1 is exactly the nine the
+change set named and holds none of the three `runtime-server` paths; all seven paths G9 orders
+resolved at e5eecb29 under `git ls-tree`; per-commit INSERTIONS are 459, 392, 7, 10, 71, 5, 5, 9, 14
+and 50 for the handback commit, none over 500; all ten commits are single-parent; and
+`.agent/handoff.md` at 97caa9e1 is 90 lines, within the ≤100-line cap its ten-commit table allows,
+with the ordered Fortschritt line present verbatim. THE BLOCK'S OWN SIZE re-measured from the
+committed file at 97caa9e1 gives TOTAL 459, PROSE 289 counting its 32 marker lines and RECORD33 71,
+agreeing with that block's own figures and inside 490 / 400 / 140. ONE READING THE HANDBACK FLAGGED
+WAS CHECKED RATHER THAN ACCEPTED: C0b's insertion count is 392 by `--numstat` and 459 by the commit
+line's rewrite detection, and the numstat reading is the one G9 measures, so the handback naming both
+is correct rather than a discrepancy. NOTHING FAILED and this round registers no finding.
+END-RECORD34
