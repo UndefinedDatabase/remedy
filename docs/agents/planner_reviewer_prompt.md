@@ -541,6 +541,20 @@ end the response with:
       under a five-path change set holding no plan, features after the first of the two was
       written. A rule that lives only in a finding body is a rule the next block does not
       read.
+  24. **Every path a gate NAMES is resolved on disk before the gate is ordered.** Finding R-0559.
+      A gate that names a path — in a command, in a baseline reading, or in an ABSENCE clause such
+      as "the round's path set holds neither X nor Y" — has each of those paths checked with
+      `git ls-tree <base> -- <path>` at the base it names, and a path that does not resolve is
+      corrected, or dropped with the correction stated inline. Item 21 binds the paths a baseline
+      COMMAND runs over, where a missing path makes the tool exit and produce no reading at all;
+      this one binds the paths a gate merely MENTIONS, where nothing exits and nothing is reported
+      — the absence clause is satisfied by every possible round, so it forbids nothing while
+      reading on the page exactly like a guard. The R58 instance: G8 forbade the round's path set
+      to hold `packages/orchestration/runtime_cmd.py`, `packages/orchestration/dev_server.py` or
+      `packages/orchestration/runtime_supervisor.py`, and all three of those files really live
+      under `apps/cli/commands/` and `packages/runtimes/`, so the clause held trivially, protected
+      nothing, and carried the wrong paths on into `.agent/handoff.md` — the map AGENTS.md's
+      Session Resume tells the next session to read.
   Why this is on disk and not a habit: item 2 has recurred six times across
   F104 and F105, and R20 hit four of them in one block. A check that lives
   only in reviewer session memory is the A1 trap §0 names, and this list is the
