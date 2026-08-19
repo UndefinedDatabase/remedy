@@ -4143,3 +4143,57 @@ one lands in at a8ba453d and at 1df91b27, no match for `unsupervised` in
 output, and the bare word matching 4 lines of `packages/runtimes/dev_server.py` at a8ba453d while the
 phrase matches none there. That last reading is the word-for-phrase confusion R-0563 exists to name,
 measured in the file that produced it.
+
+Gate: R70 — the R69 entry. R69 PASSED with no finding registered against it. Every one of R69's nine
+ordered gates was re-taken by the reviewer over 1df91b27..126b70ae rather than read from the handback,
+except the two readings that exist only while a round is running — `git status --porcelain` after each
+intermediate commit, and the absence of `.agent/STOP` at the two points R69's constraint 2 names —
+which are unobservable once the round has ended and are accepted on the worker's report. Every value
+the reviewer could re-measure equals the one the handback reports. LINE COUNTS ARE `splitlines`
+COUNTS. TRANSPORT HELD, disk-to-disk with
+no digest fallback: the committed `.agent/authored/f085-r69.md`, the committed `.agent/last_block.md`
+at 126b70ae and both working copies at 126b70ae are all four byte-EQUAL at sha256
+3b506bf1f24540e5ed8fe84ac7487b67041b17da43b02b0d869d08305d893dc3, 27901 B, 420 lines, 12 marker
+lines; TOTAL 420 against the 490 cap, PROSE 241 against 400, RECORD37 40 against 140. THE SHAPES HELD,
+one reading per pair. PLAN23F→PLAN23T over `.agent/plan.md` at cc563f6d reads `TO contains FROM:
+false`, FROM 1x pre-commit and 0x post-commit with TO exactly 1x post-commit, and re-applied
+reproduces the post-commit blob BYTE-EXACTLY. RECORD37 over `.agent/live_review.md` at 4651069b
+satisfies ORDERED EQUALITY on every clause — PREFIX, SUFFIX, `pre + slice` equal byte for byte, and
+that commit's ADDED lines equal to the slice's lines IN ORDER, 40 and 40. The two edits C3 made to
+`tests/orchestration/test_exec_guard.py` at b735eb93 reconstruct BYTE-EXACTLY from that commit's
+pre-commit blob by applying `IMPORTSF`→`IMPORTST` and then concatenating `NETTEST`, with IMPORTSF 1x
+pre-commit and 0x post-commit, IMPORTST exactly 1x post-commit, and NETTEST an exact SUFFIX of the
+post-commit blob. Marker LINES at 126b70ae are 0 in all three edited files. THE SUITES WERE RE-RUN,
+NOT READ, in the primary checkout, serially, each exit 0: `44 passed` for
+`tests/orchestration/test_exec_guard.py` at 126b70ae, `2 passed, 42 deselected` for the same file
+filtered to the two tests C3 added — so those two are exactly the file's growth and the other 42 are
+the ones that predate them — `160 passed` for the four state readers, and the canary `42 passed`. BOTH LINT HALVES printed `All checks passed!` over that test file at 126b70ae, the preview
+half included. THE PLAN CONTRACT HELD at cc563f6d: 39 lines against the 50-line cap, with `## Goal`,
+`## Next Steps` and a roadmap F-id all present. THE ARITHMETIC MOVED AS THAT BLOCK'S CONSTRAINT 9
+REQUIRED: 178 registered / 30 done / 0 landed and 148 open at 1df91b27 against 178 / 31 / 0 and 147
+open at 126b70ae, the registered and landed symmetric differences both EMPTY, the done symmetric
+difference exactly {R-0563}, and 0 duplicate ids and 0 orphan resolutions at both SHAs.
+
+THE RED CONTROL WAS RE-RUN BY THE REVIEWER'S OWN HAND, inside a disposable worktree at 126b70ae and
+never in the primary checkout. The ordered byte string occurs exactly 1 time in
+`packages/orchestration/exec_guard.py` at 126b70ae; mutating only its `deny_network` argument moves
+the bare `deny_network=True,` count in that file from 2 to 1, leaving the untouched `dod-process`
+occurrence beside one `False`. The two selected tests then FAIL: the guarded child comes back
+`returncode=0` carrying `REMEDY_EXEC_GUARD_SERVED_BODY` in its stdout, and the refusal assertion reads
+`assert b'Connection refused' in b''`. That is the exact opposite of the green reading, which is what
+makes the green attributable to the deny posture rather than to a harness that never came up. The
+worktree was removed and `git worktree list` is one line.
+
+THE RECORD ITSELF WAS RE-MEASURED, which is the obligation R66 and R67 failed. Every mechanically
+checkable claim RECORD37 makes about R68's range was re-run at the SHA it names, and all of them hold
+— including the clause that R-0563 exists to police: at a8ba453d the bare word matches 4 lines of
+`packages/runtimes/dev_server.py` under the case-insensitive reading R68's own `git grep -ic` command
+ran, while the phrase `spawn unsupervised` matches none there, and `docs/agents/planner_reviewer_prompt.md`
+contains no occurrence of `unsupervised` at a8ba453d or at 1df91b27. The `.agent/live_review.md` blob
+at a8ba453d is a byte-exact PREFIX of the blob at 1df91b27, so nothing landed was overwritten. The
+history over 1df91b27..126b70ae is six single-parent commits inserting 420, 349, 8, 40, 104 and 81
+lines, none over 500, with no amend, rebase, reset or force-push in the reflog, and the branch is in
+sync with its remote.
+
+R69 REGISTERED NOTHING AND RESOLVED NOTHING, so this entry carries no registration line and no
+resolution line of its own: the open set stays 147 and the next free id stays R-0564.
