@@ -18,22 +18,17 @@ reaches a child, and the limitations document exists and is linked from the
 README.
 
 ## Current Step
-R62, this round: a RECORD round that writes no code. It records the R61 PASS, which the round
-after a verdict always owes because a round cannot record one on itself
-(docs/agents/planner_reviewer_prompt.md §4.13). The two app-spawning call sites migrated at R61
-are verified and unchanged; the third has not been touched.
+R63, this round: the LAST `runtime-server` call site, `apps/cli/commands/runtime_cmd.py`, takes
+`plan_child_spawn`, so the Remedy supervisor the CLI launches inherits the allowlist plus the
+three `REMEDY_*` keys it declares and nothing else. A test pins that handover at the `Popen`
+seam, which is the only place it can be observed. The R62 PASS is recorded in the same round.
 
 ## Next Steps
-1. Migrate the LAST call site, `apps/cli/commands/runtime_cmd.py`, whose child is the Remedy
-   supervisor rather than a project application. Its declared keys are `REMEDY_DATA_DIR`,
-   `REMEDY_RUNTIME_LOG_MAX` and `REMEDY_RUNTIME_PORT`; settle before editing whether the
-   supervisor also needs `PYTHONPATH` and `VIRTUAL_ENV`, since the CLI spawns it as `python -m`
-   from the Remedy checkout rather than the project's.
-2. T003 — network posture, the limitations document, its README link. That document states what
+1. T003 — network posture, the limitations document, its README link. That document states what
    the CHILD-half migrations do NOT bound: an app log written to a file takes no guard output
    cap, and a build behind an HTTP proxy does not run under the guard at all, because the proxy
    variables are `FORBIDDEN_ENV_KEYS` members and the floor is not a row's to lift.
-   Then the integration gate, then closure.
+2. Then the integration gate, then closure.
 
 ## Risks
 - An allowlist bounds what the PARENT hands over, never what the child's runtime
