@@ -18,17 +18,16 @@ reaches a child, and the limitations document exists and is linked from the
 README.
 
 ## Current Step
-R57, this round: repair the one defect R56 landed. Its C3 joined a code slice to
-`tests/orchestration/test_exec_guard.py` with one blank line where that file's own convention uses
-two, and the ordered `ruff` gate is blind to it because this repository does not run `--preview`
-and E301-E306 are preview-only. This round registers R-0558, adds the blank line and records the
-R56 FAIL. R56's production change is correct and is not touched.
+R58, this round: T002d's second half. The two `runtime-build` call sites in
+`_auto_build_frontend` (`packages/orchestration/ui_server.py`) move onto
+`run_guarded_runtime_build_command` with `check=True`, reached as a module attribute so a test
+can patch it, and one new test pins that no bare `subprocess.run` survives in that function.
+The R57 PASS and the resolution of R-0558 are recorded in the same round.
 
 ## Next Steps
-1. T002d's second half — migrate the two `runtime-build` sites in `_auto_build_frontend`
-   (`packages/orchestration/ui_server.py`) onto `run_guarded_runtime_build_command` with
-   `check=True`. Then the three `runtime-server` sites, which take no wall timeout because a
-   clock would kill them mid-service.
+1. The three `runtime-server` sites (`runtime_cmd.py`, `dev_server.py`,
+   `runtime_supervisor.py`) — `Popen`-shaped, and taking NO wall timeout, because a clock
+   would kill them mid-service.
 2. T003 — network posture, the limitations document, its README link. That document states what
    the CHILD-half migrations do NOT bound: an app log written to a file takes no guard output
    cap, and a build behind an HTTP proxy does not run under the guard at all, because the proxy
