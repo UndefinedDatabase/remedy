@@ -558,6 +558,41 @@ class TestAutoBuildBehavior:
                 _auto_build_frontend()
                 mock_run.assert_not_called()
 
+    def test_auto_build_npm_commands_run_through_the_guard(self):
+        """Both npm commands reach the runtime-build seam; none reaches a bare run."""
+        import inspect
+        import subprocess as sp
+
+        from packages.orchestration import exec_guard, ui_server
+
+        seen = []
+
+        def _record(cmd, *, timeout_sec, cwd, check=False):
+            seen.append((list(cmd), timeout_sec, cwd, check))
+            return sp.CompletedProcess(list(cmd), 0, b"", b"")
+
+        env = os.environ.copy()
+        env.pop("REMEDY_UI_NO_AUTO_BUILD", None)
+        with patch.dict(os.environ, env, clear=True):
+            with patch.object(exec_guard, "run_guarded_runtime_build_command", _record):
+                with patch.object(sp, "run") as bare_run:
+                    ui_server._auto_build_frontend()
+
+        assert bare_run.call_count == 0
+        assert seen, "the npm run build site never reached the guard"
+        cmd, timeout_sec, cwd, check = seen[-1]
+        assert cmd == ["npm", "run", "build"]
+        assert timeout_sec == 120
+        assert check is True
+        assert cwd is not None and cwd.endswith("apps/ui")
+
+        # The install site is skipped whenever node_modules is fresh, so this run may
+        # never reach it. Pin that site structurally instead of by a call that depends
+        # on the checkout's mtimes.
+        source = inspect.getsource(ui_server._auto_build_frontend)
+        assert source.count("exec_guard.run_guarded_runtime_build_command(") == 2
+        assert "subprocess.run(" not in source
+
     def test_frontend_is_stale_function_exists(self):
         """_frontend_is_stale must exist and return bool."""
         from packages.orchestration.ui_server import _frontend_is_stale
