@@ -3408,3 +3408,62 @@ transcript — with no section dropped, which is what that decision permits and 
 round genuinely owes. THE ROUND'S OWN CLAIM TO HAVE REGISTERED AND RESOLVED NOTHING was verified
 rather than accepted, since it is the whole substance of a record round: the registered, done and
 landed id SETS at the two SHAs are identical element by element, not merely equal in count.
+
+Gate: R57 — the R56 entry. R56 FAILED, and the failure is the reviewer's, not the worker's. Every
+ordered gate G1-G8 was re-executed by the reviewer over 49a3fdcb..3bb82a25, not read, and each
+reproduces the handback's reading exactly; the worker deviated in nothing, applied every slice
+byte-verbatim and declared its scratch honestly. LINE COUNTS ARE `splitlines` COUNTS. TRANSPORT
+HELD AGAINST THE REVIEWER'S OWN ORIGINAL, disk-to-disk with no digest fallback: `.remedy-wt/`'s
+`f085-r56.md`, the committed `.agent/authored/f085-r56.md` and the committed `.agent/last_block.md`
+at 3bb82a25, and both of those working copies as they stand at 3bb82a25, are all five byte-EQUAL at
+sha256 1a9fcbdbd41463fd0fcd2116837d2ec6dec100304614149609db5b467a33cb82, 24319 B, 345 lines, 12
+marker lines, which is the digest the reviewer emitted. THE SHAPES HELD. Both REWRITES give
+`TO contains FROM: false`, FROM 1x in the pre-commit blob and 0x after with the TO exactly 1x:
+PLAN10F→PLAN10T at 9a218ec1 numstat `10 12`, and ALLOWF→ALLOWT at 94574142 numstat `17 3`. THE
+PROSE APPEND RECORD24 on `.agent/live_review.md` at 33c99b54: byte-exact prefix, a remainder of
+exactly one blank line plus the slice, an exact suffix, 0 marker LINES, and each of its 32
+non-empty slice lines occurring exactly once among the 33 lines that commit adds, numstat `33 0`.
+THE CODE APPEND TESTSNPM on `tests/orchestration/test_exec_guard.py` at 94574142 held under ORDERED
+EQUALITY, numstat `44 0`: the post-commit file equals `pre + "\n" + slice` byte-exactly and that
+commit's added lines are one blank line followed by the slice's lines IN ORDER. THE SUITES AND THE
+ORDERED LINT WERE RE-RUN, NOT READ, in the primary checkout with the block's exact command lines,
+each exit 0: the guard suite `35 passed` against a base of 33, the four state readers `159 passed`
+against 159, the canary `42 passed` against 42, and ruff `All checks passed!`. THE PLAN CONTRACT
+HELD at 9a218ec1: 44 lines against the 50-line cap with `## Goal`, `## Next Steps` and a roadmap
+F-id present — 44 is the figure that block projected. THE ARITHMETIC DID NOT MOVE, as that round
+required: 172 / 27 / 0 and 145 open at 49a3fdcb and the same at 3bb82a25, all three symmetric
+differences EMPTY. HYGIENE IS CLEAN: the per-commit INSERTION counts over that range are 345, 244,
+10, 33, 61 and 38 for the handback commit; none over 500; the path set measured before the handback
+excludes `packages/orchestration/ui_server.py` as that change set ordered; all six commits are
+single-parent. THE WIDENING ITSELF IS RIGHT AND STAYS: the reviewer proved in a disposable worktree
+at 3bb82a25, since removed, that reverting the row reddens both new tests while the other 33 stay
+green, and that making `scrub_child_env` match `NPM_CONFIG_` as a PREFIX leaks
+`NPM_CONFIG__AUTHTOKEN` into the child and reddens the second test alone — so the by-name-never-by-
+prefix property the row depends on is pinned rather than asserted. WHAT FAILED is one blank line,
+registered below.
+
+- R-0558 — a block claimed a PEP 8 blank-line property for a code append that a one-blank-line join
+cannot produce, and the ordered lint gate was structurally blind to the result. Low. The R56 block's
+CONVENTION said "TESTSNPM is CODE joined to its target by exactly one blank line, so the file keeps
+the two-blank-line separation PEP 8 puts between top-level definitions". Those two clauses
+contradict each other: joining with ONE blank line yields ONE, and at 3bb82a25
+`tests/orchestration/test_exec_guard.py` separates `_RUNTIME_BUILD_ADDED_ENV_KEYS` from the
+function above it by a single blank line, where that same file separates `_ENV_DUMP` from the
+function above IT by two. `ruff check --preview` over that path at 3bb82a25 reports exactly one
+`E305 blank-lines-after-function-or-class`, and over the same path's blob at 49a3fdcb reports
+`All checks passed!`, so the violation is this round's and the file was otherwise preview-clean.
+It is LOW because nothing behavioural moved and every ordered gate is honestly reproducible; what
+it cost is a formatting violation in a production test file and a false sentence in the permanent
+record. THE GATE COULD NOT HAVE CAUGHT IT: this repository runs `ruff` without `--preview` and
+E301-E306 are preview-only, which finding R-0500 already recorded, so the reviewer's own
+pre-emission dry run — which ran the block's exact ordered command, per checklist item 12 — was
+blind in precisely the way that item exists to prevent. Running the whole repository under
+`--preview` is NOT the counter-measure: 634 preview findings exist across `packages/`, `tests/`
+and `apps/` at 3bb82a25, and sweeping them is the churn AGENTS.md's Code Discoverability section
+forbids as its own activity. THE COUNTER-MEASURE IS TWO-PART, and R57 performs both. First, a code
+slice CARRIES the blank lines its target's convention requires INSIDE the slice, so the separation
+is a property of bytes that were measured rather than a consequence of a join shape that was
+reasoned about. Second, a block whose change set appends to a `.py` file gates it with
+`ruff check --preview` over THAT path alone, and only after the reviewer has read that path at the
+base commit and found it preview-clean — a file with pre-existing preview findings takes the
+narrower reading instead of a gate nobody can pass. Found by the reviewer while gating R56.
