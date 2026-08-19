@@ -3468,4 +3468,56 @@ reasoned about. Second, a block whose change set appends to a `.py` file gates i
 base commit and found it preview-clean — a file with pre-existing preview findings takes the
 narrower reading instead of a gate nobody can pass. Found by the reviewer while gating R56.
 
-Landed: R-0558 — the two-blank-line separation PEP 8 puts between a function and the following top-level definition is restored before `_RUNTIME_BUILD_ADDED_ENV_KEYS` in `tests/orchestration/test_exec_guard.py`; the edit adds exactly one newline byte and changes no code, and `python3 -m ruff check --preview` over that path is exit 0 where it reported one E305 before; commit 356a1568, C3 of R57.
+Gate: R58 — the R57 entry. R57 PASSED. Every ordered gate G1-G8 was re-executed by the reviewer
+over 3bb82a25..b2bb3809, not read, and each reproduces the handback's reading exactly; the worker
+deviated in nothing and declared its scratch honestly. LINE COUNTS ARE `splitlines` COUNTS.
+TRANSPORT HELD AGAINST THE REVIEWER'S OWN ORIGINAL, disk-to-disk with no digest fallback:
+`.remedy-wt/f085-r57.md`, the committed `.agent/authored/f085-r57.md` and the committed
+`.agent/last_block.md` at b2bb3809, and both of those working copies as they stand at b2bb3809, are
+all five byte-EQUAL at sha256 d186ed7740849c36c93e83bcc6ae3509ae820d743aa0eb7d06d3e575a7a18b74,
+22571 B, 298 lines, 10 marker lines, which is the digest the reviewer emitted. THE SHAPES HELD.
+Both REWRITES give `TO contains FROM: false`, the FROM 1x in the pre-commit blob and 0x after with
+the TO exactly 1x, and in each case re-applying the extracted FROM→TO to the pre-commit blob
+reproduces the post-commit blob BYTE-EXACTLY: PLAN11F→PLAN11T at ddd4f8b8 numstat `5 5`, and
+FIXBLANKF→FIXBLANKT at 356a1568 numstat `1 0`, where the FROM is 142 B and the TO 143 B and
+`tests/orchestration/test_exec_guard.py` goes 29917 B / 731 lines to 29918 B / 732 lines — the
+whole effect is one newline byte. THE PROSE APPEND RECORD25 on `.agent/live_review.md` at a6c5176f:
+byte-exact prefix, a remainder of exactly one blank line plus the slice, an exact suffix, 0 marker
+LINES, and each of its 57 non-empty slice lines occurring exactly once among the 59 lines that
+commit adds, numstat `59 0`. THE SUITES AND BOTH LINT HALVES WERE RE-RUN, NOT READ, in the primary
+checkout with the block's exact command lines, each exit 0: the guard suite `35 passed`, the four
+state readers `159 passed`, the canary `42 passed`, ruff `All checks passed!` and — the reading
+this round exists for — `ruff check --preview` over the two paths `All checks passed!`. THE RED
+CONTROL THE BLOCK DID NOT ORDER WAS RUN ANYWAY, in a disposable worktree since removed, because a
+green preview cannot by itself tell a repaired file from one that was never broken: at 3bb82a25
+that exact command is exit 1 with `Found 1 error.` and exactly one `E305` at
+`tests/orchestration/test_exec_guard.py:691`, and at 49a3fdcb it is exit 0 `All checks passed!` —
+so the fix has teeth and the violation was R56's alone. THE PLAN CONTRACT HELD at ddd4f8b8: 44
+lines against the 50-line cap with `## Goal`, `## Next Steps` and a roadmap F-id present, 44 being
+the figure that block projected. THE ARITHMETIC MOVED EXACTLY AS ORDERED: 172 / 27 / 0 and 145 open
+at 3bb82a25, 173 / 27 / 1 and 146 open at b2bb3809, the registered and landed symmetric differences
+each exactly `{R-0558}` and the done symmetric difference EMPTY, with 0 duplicate ids and 0
+resolutions naming an unregistered id at both SHAs. HYGIENE IS CLEAN: the path set over that range
+is exactly the six the change set named and holds NEITHER `packages/orchestration/exec_guard.py`
+NOR `packages/orchestration/ui_server.py`; per-commit INSERTIONS are 298, 203, 5, 59, 1, 2 and 39
+for the handback commit, none over 500; all seven commits are single-parent. THE BLOCK'S OWN SIZE
+re-measured from the committed file gives TOTAL 298, PROSE 199 and RECORD25 58, agreeing with that
+block, and the handback's self-claim of 79 lines measures 79. TWO NUMERIC CLAIMS RECORD25 PUT INTO
+THE PERMANENT RECORD WERE CHECKED RATHER THAN ACCEPTED, since a wrong count there is the R-0402
+class: `--preview` over `packages`, `tests` and `apps` at 3bb82a25 reports exactly 634 findings,
+and at that SHA `_ENV_DUMP` carries two blank lines above its comment block where
+`_RUNTIME_BUILD_ADDED_ENV_KEYS` carried one. NOTHING FAILED and this round registers no finding.
+
+Done: R-0558 — Resolved at R57, commit 356a1568. The two-blank-line separation PEP 8 puts between a
+function and the following top-level definition is restored before `_RUNTIME_BUILD_ADDED_ENV_KEYS`
+in `tests/orchestration/test_exec_guard.py`; the edit adds exactly one newline byte and changes no
+code. The reviewer verified the colour in both directions in a disposable worktree, since removed:
+`python3 -m ruff check --preview` over that path is exit 0 at b2bb3809 and exit 1 with exactly one
+`E305` at line 691 at 3bb82a25. BOTH HALVES of the counter-measure this finding named are in force
+from R58 on. First, a code slice CARRIES the blank lines its target's convention requires INSIDE
+the slice — R58 goes further and uses no append at all. Second, a block editing a `.py` file gates
+that path with `ruff check --preview`, narrowed where the path already carries preview findings to
+a comparison of the RULE-CODE MULTISET at base and at HEAD, since a bare exit-0 gate over such a
+path is unpassable: at b2bb3809 `packages/orchestration/ui_server.py` reports 3 preview findings
+and `tests/ui_server/test_dashboard_contract.py` reports 13, and R58 gates both in that narrowed
+form.
