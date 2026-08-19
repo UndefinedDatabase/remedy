@@ -3586,3 +3586,50 @@ the commit BEFORE this record — every path a gate NAMES is resolved with `git 
 the gate names before the block is emitted. The rule is promoted into the checklist rather than left
 in this paragraph, because a standing rule written as finding prose binds nothing and recurs
 (R-0452, R-0454).
+
+Gate: R60 — the R59 entry. R59 PASSED. Every ordered gate G1-G9 was re-executed by the reviewer over
+79f79f27..d91d2ffa, not read, and each reproduces the handback's reading exactly; the worker deviated
+in nothing beyond the handback length it declared. LINE COUNTS ARE `splitlines` COUNTS. TRANSPORT
+HELD AGAINST THE REVIEWER'S OWN ORIGINAL, disk-to-disk with no digest fallback: `.remedy-wt/f085-r59.md`,
+the committed `.agent/authored/f085-r59.md` and the committed `.agent/last_block.md` at d91d2ffa, and
+both of those working copies as they stand at d91d2ffa, are all five byte-EQUAL at sha256
+8df06395327c5573a708a055a05eaf9b0d0d02b5103ba823908f1e13abbc1fed, 31513 B, 447 lines, 14 marker
+lines, which is the digest the reviewer emitted. THE SHAPES HELD, and the two classes were measured
+apart. PLAN13F→PLAN13T at 0279b57e is a REWRITE: `TO contains FROM: false`, FROM 1x before and 0x
+after, TO exactly 1x, numstat `10 8`. CHECKF→CHECKT at b5b76e3c is APPEND-shaped: `TO contains FROM:
+true`, FROM 1x and TO 1x after, no zero count owed or reported, numstat `14 0`. For BOTH,
+re-applying the extracted FROM→TO to the pre-commit blob reproduces the post-commit blob
+BYTE-EXACTLY. The three FROM-less appends satisfy ORDERED EQUALITY on every clause: for RECORD28's
+predecessor RECORD27 at 307b4456, and for SEAMCODE and TESTCODE at b2104539, the pre-commit blob is
+a byte-exact PREFIX, the slice an exact SUFFIX, `pre + slice` equals the post-commit blob byte for
+byte, and each commit's ADDED lines equal that slice's lines IN ORDER — 65, 58 and 31 lines, numstat
+`65 0`, `58 0` and `31 0`. Marker LINES at d91d2ffa are 0 in all five edited files. THE SUITES WERE
+RE-RUN, NOT READ, in the primary checkout with the block's exact command lines, each exit 0: the
+guard suite `36 passed`, which is the 36 the block ordered the worker to confirm rather than assume;
+the four state readers `160 passed`, unchanged as ordered; the canary `42 passed`. BOTH LINT HALVES
+HELD IN THE STRONG FORM over the two `.py` paths: `ruff check` exit 0 `All checks passed!` and
+`ruff check --preview` exit 0 `All checks passed!`, which is the direct evidence that SEAMCODE and
+TESTCODE carried their own leading blank lines — the R-0558 counter-measure holding as bytes rather
+than as reasoning. THE PLAN CONTRACT HELD at 0279b57e: 45 lines against the 50-line cap with
+`## Goal`, `## Next Steps` and a roadmap F-id present, 45 being the figure that block projected.
+THE ARITHMETIC MOVED EXACTLY AS ORDERED: 173 / 28 / 0 and 145 open at 79f79f27, 174 / 28 / 0 and 146
+open at d91d2ffa, the registered symmetric difference exactly `{R-0559}` ADDED with the done and
+landed symmetric differences both EMPTY, and 0 duplicate ids and 0 resolutions naming an
+unregistered id at both SHAs. HYGIENE IS CLEAN: the path set over 79f79f27..b2104539 is exactly the
+seven the change set named and holds none of the three R61 call sites; per-commit INSERTIONS are
+447, 368, 10, 14, 65, 89 and 91 for the handback commit, none over 500; all seven commits are
+single-parent. THE BLOCK'S OWN SIZE re-measured from the committed file gives TOTAL 447, PROSE 243
+and RECORD27 65, agreeing with that block. CHECKLIST ITEM 24 WAS APPLIED TO THE BLOCK THAT REGISTERED
+IT: all three R61 call sites resolve at 79f79f27 — `apps/cli/commands/runtime_cmd.py`,
+`packages/runtimes/dev_server.py` and `packages/runtimes/runtime_supervisor.py` — so the R-0559
+defect did not recur in the round that named it. THE RED CONTROL WAS RE-RUN BY THE REVIEWER, in a
+disposable worktree since removed: `wall_timeout_seconds=None,` occurs 2x after C4 and mutating the
+LAST occurrence alone to `30.0` gives EXIT 1 with exactly one failure,
+`test_the_runtime_server_policy_holds_no_clock_and_no_cap`. THE CLAIM NO ORDERED GATE COVERS WAS
+CHECKED RATHER THAN ACCEPTED, because the new test asserts on the policy dataclass and never spawns:
+at d91d2ffa the reviewer built the policy with a declared key and a forbidden key both present, took
+`plan_child_spawn`, and spawned a real child with the returned `cwd`, `env` and `preexec_fn`. The
+child exited 0, reported its cwd as the pinned directory, received `REMEDY_RUNTIME_PORT`, did NOT
+receive `ANTHROPIC_API_KEY`, and read `RLIMIT_CORE` as `(0, 0)` — so the rlimit really is applied
+between fork and exec and the scrub really is enforced, on the one path the suite exercises only by
+proxy. NOTHING FAILED and this round registers no finding.
