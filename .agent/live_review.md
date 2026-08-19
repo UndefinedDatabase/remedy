@@ -3669,3 +3669,53 @@ asked for. THE ONE REPORTING NOTE THE HANDBACK RAISED WAS CHECKED RATHER THAN AC
 marker-count clause and G2's are not in conflict, because G3 counts marker lines in the slice
 TARGETS, where the reviewer reads 0, while G2 counts them in the two transport COPIES, where the
 reviewer reads 6 by construction. NOTHING FAILED and this round registers no finding.
+
+Gate: R62 — the R61 entry. R61 PASSED. Every ordered gate G1-G8 was re-executed by the reviewer over
+5b9f935b..a05669a5, not read, and each reproduces the handback's reading exactly; the worker deviated
+in nothing beyond the handback length it declared and one stated assumption about when a base reading
+was taken, which the reviewer's own independent base reading corroborates. LINE COUNTS ARE
+`splitlines` COUNTS. TRANSPORT HELD AGAINST THE REVIEWER'S OWN ORIGINAL, disk-to-disk with no digest
+fallback: the reviewer's original, the committed `.agent/authored/f085-r61.md` and the committed
+`.agent/last_block.md` at a05669a5, and both of those working copies as they stand at a05669a5, are
+all five byte-EQUAL at sha256
+bb18ff7d5cdb461883a2e3b35fa6e137f178bbf759362d312904c91cd5b80eab, 30129 B, 484 lines, 32 marker
+lines. THE SHAPES HELD, and the two classes were measured apart, one reading per pair. The five
+REWRITES each end FROM 0x with TO exactly 1x — PLAN16's predecessor PLAN15 at 70c6c741, numstat
+`9 10`, and SITE2B, SITE3B, BOUNDA and BOUNDB at 63c9fd46. The two APPEND-shaped pairs, SITE2A and
+SITE3A at 63c9fd46, end FROM 1x and TO 1x, and no zero count was owed or reported for either. For
+all seven, re-applying the extracted pairs in order to the pre-commit blob reproduces the
+post-commit blob BYTE-EXACTLY, per path. The two FROM-less appends satisfy ORDERED EQUALITY on every
+clause: RECORD29 at 603e39f7 and TESTCODE at 9727c5e3 each have the pre-commit blob as a byte-exact
+PREFIX, the slice as an exact SUFFIX, `pre + slice` equal to the post-commit blob byte for byte, and
+the commit's ADDED lines equal to the slice's lines IN ORDER — 36 and 49 lines, numstat `36 0` and
+`49 0`. Marker LINES at a05669a5 are 0 in all six edited files. BOTH LINT HALVES WERE ALREADY RED AT
+THE BASE, so both were compared as rule-code MULTISETS rather than demanded green, and both are
+UNCHANGED: `ruff check` over the four paths gives `{I001: 1}` at 5b9f935b and `{I001: 1}` at
+a05669a5, and `ruff check --preview` gives `{E303: 1, I001: 1}` at both — no new code and no second
+instance, so neither migration introduced a lint finding. THE SUITES WERE RE-RUN, NOT READ, in the
+primary checkout with the block's exact command lines, each exit 0: `tests/runtimes/` `252 passed`
+against a base of `251 passed` with no skips at either, which is the base plus exactly the one test
+C4 added; the guard suite `36 passed`, unchanged, so the seam this round CONSUMES was not altered;
+the four state readers `160 passed`, unchanged; the canary `42 passed`. THE PLAN CONTRACT HELD at
+70c6c741: 44 lines against the 50-line cap with `## Goal`, `## Next Steps` and a roadmap F-id all
+present, 44 being the figure that block projected. THE ARITHMETIC DID NOT MOVE, as constraint 8 of
+that block required: 174 registered / 28 done / 0 landed and 146 open at 5b9f935b, the same three
+numbers and the same 146 at a05669a5, max registered R-0559 and max resolved R-0558 at both, all
+three symmetric differences EMPTY, and 0 duplicate ids and 0 resolutions naming an unregistered id at
+both SHAs. HYGIENE IS CLEAN: the path set over 5b9f935b..9727c5e3 is exactly the eight the change set
+named and holds `apps/cli/commands/runtime_cmd.py` not at all; per-commit INSERTIONS are 484, 397, 9,
+36, 46, 49 and 54 for the handback commit, none over 500; all seven commits are single-parent. THE
+BLOCK'S OWN SIZE re-measured from the committed file gives TOTAL 484, PROSE 269 and RECORD29 36,
+agreeing with that block's own figures and under 490 / 400 / 140. TWO CLAIMS NO GATE COVERED WERE
+CHECKED RATHER THAN ACCEPTED, both by the reviewer before the block was emitted and both inside a
+disposable worktree since removed, with the primary checkout's `git status --porcelain` empty
+immediately after each. FIRST, the block's own slices were applied to a throwaway tree and its gates
+run there, which is how the boundary test
+`test_the_readiness_failure_returns_the_line_the_child_really_printed` was found to go RED at exit 3
+under the migration alone — it handed its application a marker path through the PARENT environment —
+and that is why C3 carries its adaptation in the same commit instead of leaving a knowingly red
+commit on the branch. SECOND, the red control: reverting ONLY `env=spawn_plan.env` to `env=env` in
+`packages/runtimes/dev_server.py` makes the new test FAIL on exactly its
+`ANTHROPIC_API_KEY not in child_env` assertion, with the imported module path printed from inside
+the same invocation to prove the worktree copy was the one under test. So the test pins the scrub
+rather than passing for an unrelated reason. NOTHING FAILED and this round registers no finding.
