@@ -1,0 +1,8 @@
+BRANCH RUN — F085 R72 integration gate
+CHECKOUT=/home/decodeux/Repos/remedy (primary)
+REVISION=2f786299 (feature/f085-sandbox-hardening)
+CMD=python3 -m pytest -n auto -q
+EXIT_CODE=0
+WALL_SECONDS=118.4
+SUMMARY=17132 passed, 19 skipped in 117.93s (0:01:57)
+FAILED_COUNT=0

@@ -1,0 +1,44 @@
+BASE PARITY — F085 R72 integration gate
+MERGE_BASE=a5a70621
+BASE_WORKTREE=.remedy-wt/base-r72 on branch tmp/base-gate-r72 (never detached, DECISION D3)
+ARTIFACTS=apps/ui/node_modules and apps/ui/dist COPIED (shutil.copytree, symlinks preserved,
+  never symlinked as a whole: islink=False for both destinations)
+ENV=REMEDY_UI_NO_AUTO_BUILD=1 set for the base pytest process
+
+BEFORE_DIST_SHA256=09463f4379b4702ce090a0396c4b92256e122e0567b30d896cd2919291b03e51
+BEFORE_DIST_FILECOUNT=3
+BEFORE_INDEX_HTML_MTIME_NS=1787160844952953724
+
+AFTER_DIST_SHA256=09463f4379b4702ce090a0396c4b92256e122e0567b30d896cd2919291b03e51
+AFTER_DIST_FILECOUNT=3
+AFTER_INDEX_HTML_MTIME_NS=1787161006911038970
+
+DIGEST_MOVED=no
+MTIME_MOVED=YES (+161958085246 ns)
+
+PARITY_CLAIM=VOID. The block orders that a changed digest OR a moved mtime voids the parity
+claim, so no parity is claimed here and EVERY base-only failure is attributed per id by direct
+evidence in attribution.txt instead. This is the first gate to read the mtime half, ordered as
+the counter-measure for finding R-0565: the content digest is blind to a byte-identical rebuild
+while `_frontend_is_stale()` in packages/orchestration/ui_server.py decides staleness by MTIME.
+The reading proves R-0565 was a real blind spot: the digest did NOT move and the mtime DID.
+
+DIRECT EVIDENCE OF THE REBUILD, read from the base worktree after the run:
+  1787161005.1629321130 apps/ui/package-lock.json
+  1787161005.1800040430 apps/ui/node_modules/.package-lock.json
+  1787161005.3657910870 apps/ui/node_modules/.vite-temp
+  1787161006.9108368790 apps/ui/dist/assets/index-_5lFsic1.css
+  1787161006.9110389700 apps/ui/dist/assets/index-CXHVPLg7.js
+  1787161006.9110389700 apps/ui/dist/index.html
+An npm install plus a vite build really ran inside the base worktree near the end of the base
+run, despite REMEDY_UI_NO_AUTO_BUILD=1 on the pytest process — the R-0169 / F069 R2 class of a
+spawned build path that does not carry the variable. The rebuild was byte-identical, which is
+exactly why the digest alone reported parity that did not hold.
+
+BASE RUN
+CMD=python3 -m pytest -n auto -q
+CWD=/home/decodeux/Repos/remedy/.remedy-wt/base-r72
+EXIT_CODE=1
+WALL_SECONDS=153.6
+SUMMARY=5 failed, 17042 passed, 19 skipped in 153.08s (0:02:33)
+FAILED_COUNT=5

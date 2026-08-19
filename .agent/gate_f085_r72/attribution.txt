@@ -1,0 +1,66 @@
+ATTRIBUTION — F085 R72 integration gate
+Range: merge base a5a70621 versus branch tip 2f786299 (feature/f085-sandbox-hardening).
+Every id in BOTH comm outputs has an entry below. No id is silently absent.
+
+comm -13 base_failed.txt branch_failed.txt  ->  comm_branch_only_failures.txt : 0 lines
+comm -23 base_failed.txt branch_failed.txt  ->  comm_base_only_failures.txt   : 5 lines
+
+BRANCH-ONLY FAILURES: NONE. The branch run failed nothing at all (exit 0, 17132 passed,
+19 skipped), so the branch-only set is empty by construction and no serial re-run of a
+branch-only id was needed or performed.
+
+R70 CARRY-FORWARD, stated explicitly as the block orders:
+tests/test_command_discovery.py::TestNoShellTrue::test_run_tests_local_no_shell_true —
+R70's one branch-only id, repaired at R71 in commit 3cf6788e — appears in NEITHER comm
+output this round. It is absent from branch_failed.txt (which is empty) and absent from
+base_failed.txt. The regression R70 found is gone from the branch side and did not migrate
+to the base side.
+
+BASE-ONLY FAILURES: 5 ids, all in tests/ui_server/test_live_state.py::TestUIServerIntegration.
+All five are attributed to the SAME environment class by direct evidence, per id below.
+
+ARTIFACT NAMED, common to all five: apps/ui/dist/index.html in the throwaway base worktree.
+`_get_frontend_dist()` found it (it was copied), but `_frontend_is_stale()` in
+packages/orchestration/ui_server.py returns True when ANY file under apps/ui/src is newer than
+apps/ui/dist/index.html by MTIME. `git worktree add` writes the whole source tree with a fresh
+mtime, while the COPY of dist preserved the primary checkout's older mtime, so dist was stale by
+construction the moment the worktree existed. With REMEDY_UI_NO_AUTO_BUILD=1 the auto-build
+returns None, `_load_frontend` falls through to the loud failure and calls sys.exit(1) inside the
+server thread, so the server never starts and _start_server() times out after 5 s.
+
+PER-ID EVIDENCE. For each id: the base-run stderr marker, and a SERIAL re-run at the base after
+the mid-run rebuild had made apps/ui/dist fresh again. All five re-runs were executed one at a
+time in the base worktree with REMEDY_UI_NO_AUTO_BUILD=1 still set.
+
+1) tests/ui_server/test_live_state.py::TestUIServerIntegration::test_api_missing_job_404
+   base xdist run: Failed: Server did not start in time; captured stderr "ERROR: React UI not built."
+   CMD=python3 -m pytest <id> -q  CWD=.remedy-wt/base-r72  EXIT_CODE=0  WALL=2.5s  "1 passed in 0.32s"
+   CLASS=environment (stale apps/ui/dist by mtime). Not a base code failure.
+
+2) tests/ui_server/test_live_state.py::TestUIServerIntegration::test_api_requires_token
+   base xdist run: Failed: Server did not start in time; captured stderr "ERROR: React UI not built."
+   CMD=python3 -m pytest <id> -q  CWD=.remedy-wt/base-r72  EXIT_CODE=0  WALL=0.6s  "1 passed in 0.39s"
+   CLASS=environment (stale apps/ui/dist by mtime). Not a base code failure.
+
+3) tests/ui_server/test_live_state.py::TestUIServerIntegration::test_app_shell_served_without_token
+   base xdist run: Failed: Server did not start in time; captured stderr "ERROR: React UI not built."
+   CMD=python3 -m pytest <id> -q  CWD=.remedy-wt/base-r72  EXIT_CODE=0  WALL=0.5s  "1 passed in 0.30s"
+   CLASS=environment (stale apps/ui/dist by mtime). Not a base code failure.
+
+4) tests/ui_server/test_live_state.py::TestUIServerIntegration::test_put_rejected
+   base xdist run: Failed: Server did not start in time; captured stderr "ERROR: React UI not built."
+   CMD=python3 -m pytest <id> -q  CWD=.remedy-wt/base-r72  EXIT_CODE=0  WALL=0.6s  "1 passed in 0.33s"
+   CLASS=environment (stale apps/ui/dist by mtime). Not a base code failure.
+
+5) tests/ui_server/test_live_state.py::TestUIServerIntegration::test_server_starts_and_writes_info
+   base xdist run: Failed: Server did not start in time; captured stderr "ERROR: React UI not built."
+   CMD=python3 -m pytest <id> -q  CWD=.remedy-wt/base-r72  EXIT_CODE=0  WALL=0.5s  "1 passed in 0.32s"
+   CLASS=environment (stale apps/ui/dist by mtime). Not a base code failure.
+
+The marker counts in the raw base log corroborate the per-id reading: 5 occurrences of
+"ERROR: React UI not built." and 5 of "Failed: Server did not start in time" — one each.
+
+VERDICT INPUT. 0 branch-only ids, so no BLOCKER exists under the gate's definition: a blocker
+requires a branch-only id that fails serially, does not reproduce at the base, and touches this
+feature's code. All 5 base-only ids are attributed by direct evidence, so no unattributed
+comm -23 id remains to block the gate verdict. The gate verdict itself is the reviewer's to issue.
