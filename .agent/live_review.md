@@ -3944,3 +3944,74 @@ agreeing with that block's own figures and inside 490 / 400 / 140. ONE READING T
 WAS CHECKED RATHER THAN ACCEPTED: C0b's insertion count is 392 by `--numstat` and 459 by the commit
 line's rewrite detection, and the numstat reading is the one G9 measures, so the handback naming both
 is correct rather than a discrepancy. NOTHING FAILED and this round registers no finding.
+
+Gate: R67 — the R66 entry. R66 FAILED, and the failure is the REVIEWER's, not the worker's. Every
+ordered gate G1-G8 was re-executed by the reviewer over 97caa9e1..261dce53, not read, and each
+reproduces the handback's reading exactly; the worker deviated in nothing, applied every slice
+unedited, and declared the defect this entry registers instead of repairing it — which is what that
+block's constraint 12 asked for and the reason the defect was caught inside one round rather than at
+closure. LINE COUNTS ARE `splitlines` COUNTS. TRANSPORT HELD, disk-to-disk with no digest fallback:
+the committed `.agent/authored/f085-r66.md` and the committed `.agent/last_block.md` at 261dce53,
+both working copies at 261dce53, and the received `.remedy-wt/f085-r66.md` are all five byte-EQUAL at
+sha256 9a356739fc567d675cfb1a075b48b7916ad6c13fd4ad9eb587c8d216142000e6, 26720 B, 379 lines, 16 marker
+lines. THE SHAPES HELD: PLAN20 over `.agent/plan.md` at 9cc64066 and INDEX1 over `docs/README.md` at
+5cc11db0 are REWRITES, each reading `TO contains FROM: false`, each FROM 1x pre-commit and 0x with TO
+exactly 1x post-commit; INDEX2 over that same file at that same commit is APPEND-shaped, reading FROM
+1x AND TO 1x post-commit with no FROM-zero reading taken; both `docs/README.md` pairs re-applied IN
+ORDER reproduce the post-commit blob BYTE-EXACTLY, as does the PLAN20 pair on its own file. RECORD34
+over `.agent/live_review.md` at 70f09162 satisfies ORDERED EQUALITY on every clause — PREFIX, SUFFIX,
+`pre + slice` equal byte for byte, ADDED lines equal to the slice's lines IN ORDER, 51 and 51. DOCLIM
+at 69addbbf satisfies WHOLE-FILE equality: `git ls-tree 97caa9e1` for that path is EMPTY and the
+post-commit blob equals the DOCLIM bytes exactly. Marker LINES at 261dce53 are 0 in each of the four
+edited files. THE SUITES WERE RE-RUN, NOT READ, in the primary checkout, serially, each exit 0:
+`295 passed` for the docs-consistency suite, `160 passed` for the four state readers and the canary
+`42 passed`, each equal to its base. THE PLAN CONTRACT HELD at 261dce53: 40 lines against the 50-line
+cap with `## Goal`, `## Next Steps` and a roadmap F-id all present, 40 being that block's own
+projection. THE ARITHMETIC DID NOT MOVE, as that block's constraint 8 required: 175 registered / 28
+done / 0 landed and 147 open at both 97caa9e1 and 261dce53, max registered R-0560 and max resolved
+R-0558 at both, all three symmetric differences EMPTY, and 0 duplicate ids and 0 orphan resolutions at
+both SHAs. THE LINK GATE HELD at 261dce53: `system/exec-guard-limitations-v0.md` occurs exactly twice
+in `docs/README.md`, the path resolves, and the file it resolves to is byte-identical to the DOCLIM
+slice. WHAT FAILED IS THE CONTENT THOSE GATES NEVER READ. Not one of the eight gates asked whether the
+document's sentences are TRUE, so a shape-perfect round published a false claim, and the only reason
+it did not survive is that a human-facing constraint asked the worker to report disbelief.
+
+- R-0561 — Medium — the T003 limitations document published a false statement of which command
+classes run under the execution guard, and the reviewer authored it. The DOCLIM slice, applied
+byte-verbatim at 69addbbf, carried the heading "Only three command classes run under the guard at all"
+and the sentences "Amendment F085 D1's table wires `builder`, `test` and `dod-process`" and "The git,
+packaging, runtime and other call sites still spawn unsupervised". Read at 261dce53,
+`docs/roadmap/features/T2_F085.md` marks SIX rows `Stage 1 = yes` — `builder`, `test`, `dod-process`,
+`dod-app`, `runtime-server` and `runtime-build` — and only three of those six carry `default-deny` in
+the SEPARATE network column. The document therefore reported the DENY set as if it were the GUARDED
+set, and named `runtime` among the unsupervised when its three server sites call
+`runtime_server_exec_policy` at 261dce53 from `packages/runtimes/dev_server.py`,
+`packages/runtimes/runtime_supervisor.py` and `apps/cli/commands/runtime_cmd.py` and its two build
+sites call `run_guarded_runtime_build_command` from `packages/orchestration/ui_server.py`. The same
+conflation reached `.agent/plan.md` at 9cc64066 as "three classes of five". Medium, not High, because
+the error UNDERSTATES coverage — it credits the guard with less than it does, so no reader is misled
+into trusting an unguarded path — and not Low, because this document exists precisely to be the
+truthful account of what stage 1 does and does not do, and a limitations document that misdescribes
+its own scope cannot serve that purpose. It also omitted content `docs/roadmap/features/T2_F085.md`
+explicitly assigns to it: that the git, packaging and other exclusion is a SCOPE ruling and not a
+safety claim, and that several of those sites pass no timeout and can hang. C3 of this round replaces
+the section and adds the omitted content. COUNTER-MEASURE: a block that authors PROSE ASSERTING A FACT
+ABOUT THIS REPOSITORY orders a gate that reads that fact back from its source — the class names from
+the D1 table, the call sites from a grep — exactly as it already orders shape and arithmetic gates.
+R66 ordered eight gates and not one of them could have failed on a false sentence; G8 of the R67 block
+is the first of this kind and is the shape the rule takes. OPEN.
+
+- R-0562 — Low — the `exec_guard` module docstring still called the runtime class unsupervised two
+rounds after this branch migrated it. The PARTIAL COVERAGE bullet read "the runtime, git and packaging
+classes still spawn unsupervised" at 261dce53, while R61 and R63 migrated all three `runtime-server`
+sites and `packages/orchestration/ui_server.py` has called `run_guarded_runtime_build_command` for
+both `runtime-build` sites since T002d. This is the R-0506 class — a documented absence claim
+falsified by the migration that the same branch performed, and not retired in the round that
+falsified it — arriving in the module whose docstring is the first thing a reader of this seam sees.
+Low, because the claim is an inventory note rather than a safety property, and the bullet's own
+sentence already declines to write a count "because it changes with every migration round", which is
+the same instinct applied one clause too narrowly. C4 of this round repairs it. The sweep that bounds
+both findings is reported in the R67 block and re-run by its G8: `spawn unsupervised` has exactly two
+live occurrences at 261dce53, this one and R-0561's, and the two remaining hits in the repository are
+an unrelated constant in `packages/runtimes/dev_server.py` and an example sentence in
+`docs/agents/planner_reviewer_prompt.md`. OPEN.
