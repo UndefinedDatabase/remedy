@@ -4262,3 +4262,7 @@ on the digest alone will believe a parity claim that was never tested. COUNTER-M
 reading records the artifact's MTIME alongside its sha256, and a moved mtime voids the claim exactly
 as a changed digest does. The R70 worker measured this and declared it rather than fixing it, under
 that block's constraint 9, which is why it is registered here. OPEN.
+
+Landed: R-0564 — the defeated no-shell test now spies on `subprocess.Popen`, delegating to the real
+spawn, and asserts over every recorded spawn that no `shell=True` is present and that argv is a list;
+`tests/test_command_discovery.py` only, in this round's C3.
