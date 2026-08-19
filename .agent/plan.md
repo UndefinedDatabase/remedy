@@ -18,17 +18,15 @@ reaches a child, and the limitations document exists and is linked from the
 README.
 
 ## Current Step
-R69, this round: T003's last acceptance line. A guarded `test`-class command is refused against a
-loopback server that IS listening, while the same argv without the posture is served and the
-server keeps serving afterwards — the control lives in the test body, so a harness that never
-came up turns the measurement red rather than green. R68 PASSED and R-0563 is marked done. This
-completes the build work; only the integration gate and closure remain.
+R70, this round: the INTEGRATION GATE, the first of the two full-suite runs this feature owes.
+The branch suite and a merge-base suite run sequentially under restored parity, every branch-only
+failure is attributed by direct evidence, and the comparison is REPORTED rather than predicted.
+R69 PASSED: the denied fetch is now measured against a really listening server, with its control
+in the same test body. No source file, no test and no document is touched this round.
 
 ## Next Steps
-1. The integration gate: the full suite per docs/agents/integration_gate.md, the first of the two
-   full-suite runs this feature owes.
-2. Then closure per docs/roadmap/STATUS_closure_protocol.md: evidence job, FRESH review zip, the
-   STATUS line authored by the reviewer, and the PR the operator merges at the next Open PR Gate.
+1. Closure per docs/roadmap/STATUS_closure_protocol.md: evidence job, FRESH review zip, the STATUS
+   line authored by the reviewer, and the PR the operator merges at the next Open PR Gate.
 
 ## Risks
 - An allowlist bounds what the PARENT hands over, never what the child's runtime
