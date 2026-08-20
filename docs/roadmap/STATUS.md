@@ -73,7 +73,7 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
 
 ## Tier 5 — Operator Cockpit (parallel human track)
 
-- [ ] F255 — Teacher role (evidence-grounded live explainer & learn-along tutor)
+- [~] F255 — Teacher role (evidence-grounded live explainer & learn-along tutor)
 - [ ] F008 — SSE event stream
 - [ ] F009 — The single write channel
 - [ ] F021 — Live activity feed + "agent is doing now"
