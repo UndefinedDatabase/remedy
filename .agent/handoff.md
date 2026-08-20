@@ -50,3 +50,47 @@ None. The block's ordered sequence C0a, C0b, C1, C2, C3, C4, C5 was executed in 
 ## Next
 
 The reviewer reviews `e7cdae4d..HEAD` and records R22's verdict in `.agent/live_review.md` as `Gate: R23 — the R22 entry.`; the next substantive work is the integration gate.
+
+## Reviewer's session verdict — authored by the reviewer, applied by the worker
+
+Written because finding R-0571 is that a verdict issued and never put on disk
+cannot be told apart from one never issued; appended so the next handback rewrite
+cannot silently destroy it. Session of 2026-08-20, self-drive per
+docs/agents/self_drive_protocol.md, resuming the branch at `bc85e5f7` and ending
+at its declared three-round cap. The reviewer wrote nothing in the work tree, one
+delegated worker per round made every commit, and every verdict below rests on
+gates the reviewer re-executed over the committed diff, never on a handback.
+
+| Round | Range | Verdict |
+|---|---|---|
+| R19 | 7b84524c..bc85e5f7 | PASS — one finding, R-0586, against the reviewer |
+| R20 | bc85e5f7..a7373e00 | PASS — one finding, R-0587, against the reviewer |
+| R21 | a7373e00..e7cdae4d | PASS — one finding, R-0588, against the reviewer |
+| R22 | e7cdae4d..HEAD | verdict not yet on disk; see the last paragraph |
+
+R19 was inherited ungated, so Phase 1 rule 4 reviewed it first. R20 is the round
+this feature needed: `tests/test_install_smoke.py` exists, its helpers and its
+opt-in skip go red when the code under them is mutated, and its install path is
+declared unproven rather than dressed as coverage. R21 put both of the session's
+rules into the checklist as mechanical scans, and the reviewer's pre-emission dry
+run PREDICTED the edited file's digest, which then matched on landing.
+
+EVERY DEFECT THIS SESSION FOUND WAS THE REVIEWER'S OWN TEXT, and none was in the
+workers' execution. R-0586 the reviewer caught by re-reading a landed record;
+R-0587 and R-0588 the WORKERS caught, each applying a flawed slice verbatim as its
+constraints required and then declaring the problem instead of quietly repairing
+it. Three rounds, three reviewer defects, three honest handbacks — the split is
+doing the job it exists for, and the checklist is three items richer for it.
+
+WHAT THIS FEATURE STILL OWES: the integration gate, then closure. NO INSTALL HAS
+BEEN PROVEN in this session or any other, and no round of this workflow can prove
+one — DECISION F086 D4 records that with the measurement behind it, and closure
+names it as unproven rather than counting a skipped test as coverage. The release
+workflow has likewise never been dispatched.
+
+R22 IS NOT A TERMINATOR — F086's pull request is created at closure, which has not
+happened — so this session claims no §4 item 13 carve-out and leaves its last
+verdict to be recorded. THE NEXT SESSION'S FIRST ACTIONS are Phase 1 rule 1, then
+rule 2, then rule 4: review `e7cdae4d..HEAD` and record R22's verdict in
+`.agent/live_review.md` as `Gate: R23 — the R22 entry.`, the header shape §3 item
+26 binds. Its first substantive work is the integration gate.
