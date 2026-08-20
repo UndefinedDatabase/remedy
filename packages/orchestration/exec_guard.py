@@ -123,20 +123,30 @@ TEST_COMMAND_OUTPUT_CAP_BYTES: int = 16 * 1024 * 1024
 #: once rather than hanging a build behind a routing black hole.
 DENIED_NETWORK_PROXY_URL: str = "http://127.0.0.1:9"
 
+#: WHY loopback is exempt from the deny (operator amendment amend0820-gate-autonomy,
+#: 2026-08-20): what this posture exists to deny is the EXTERNAL network, not a suite's own
+#: test server. A `test`-class child that starts an HTTP server on loopback and then probes
+#: it — which is how this repository's runtime, smoke and CLI suites judge readiness — was
+#: sent through the closed proxy and refused, so the guard failed its own CI rather than a
+#: build's network access. The exemption is these three SPELLINGS exactly, the ones a probe
+#: reaches a local server at; an address the list does not name (any other host, loopback or
+#: not) still goes through the closed proxy. Reverse it by restoring the empty string here.
+DENIED_NETWORK_NO_PROXY: str = "localhost,127.0.0.1,::1"
+
 #: WHY written AFTER the allowlist scrub and never through an allowlist: these names are
 #: `FORBIDDEN_ENV_KEYS` members and the floor is not a policy's to lift. The floor denies the
 #: PARENT's proxy, which may carry credentials; these values are the guard's own and are
 #: inherited from nobody. Both cases are set because toolchains disagree about spelling, and
-#: `NO_PROXY` is EMPTY so no host is exempt from the deny.
+#: `NO_PROXY` exempts loopback and nothing else, for the reason above.
 DENIED_NETWORK_ENV: tuple[tuple[str, str], ...] = (
     ("ALL_PROXY", DENIED_NETWORK_PROXY_URL),
     ("HTTPS_PROXY", DENIED_NETWORK_PROXY_URL),
     ("HTTP_PROXY", DENIED_NETWORK_PROXY_URL),
-    ("NO_PROXY", ""),
+    ("NO_PROXY", DENIED_NETWORK_NO_PROXY),
     ("all_proxy", DENIED_NETWORK_PROXY_URL),
     ("http_proxy", DENIED_NETWORK_PROXY_URL),
     ("https_proxy", DENIED_NETWORK_PROXY_URL),
-    ("no_proxy", ""),
+    ("no_proxy", DENIED_NETWORK_NO_PROXY),
 )
 
 

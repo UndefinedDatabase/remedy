@@ -10,13 +10,19 @@ containment.
 
 ## The network posture is a PROXY posture, never a kernel one
 
-`deny_network` points a child's proxy variables — both spellings, plus an empty `NO_PROXY` so
-no host is exempt — at `http://127.0.0.1:9`, the RFC 863 discard port, where nothing listens
-and a connect is refused at once.
+`deny_network` points a child's proxy variables — both spellings — at `http://127.0.0.1:9`, the
+RFC 863 discard port, where nothing listens and a connect is refused at once. `NO_PROXY` names
+`localhost,127.0.0.1,::1` and nothing else.
 
 - A toolchain that HONOURS proxy variables cannot reach the network. Measured: a guarded child
-  is refused against a loopback server that is really listening, while the same child without
-  the posture is served.
+  is refused against a server that is really listening on an address the exemption does not
+  name, while the same child without the posture is served.
+- LOOPBACK IS EXEMPT, by operator amendment amend0820-gate-autonomy (2026-08-20). What this
+  posture exists to deny is the external network, not a suite's own test server: a `test`-class
+  child that starts an HTTP server on loopback and probes it for readiness — how this
+  repository's runtime, smoke and CLI suites decide whether an app came up — was sent through
+  the closed proxy and refused. The exemption is the three spellings above, matched by NAME:
+  any other host, loopback or not, still goes through the closed proxy.
 - A binary that IGNORES them reaches the network anyway. Static Go binaries, anything using
   raw sockets, and most things speaking a non-HTTP protocol are in that set.
 - Nothing here blocks DNS, raw sockets, or a unix socket to a local daemon.

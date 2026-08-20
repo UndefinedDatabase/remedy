@@ -767,7 +767,7 @@ def test_the_runtime_server_policy_holds_no_clock_and_no_cap():
 
 
 def test_a_denied_policy_points_every_proxy_spelling_at_the_closed_port():
-    """The posture is proxy-shaped: both spellings set, and no host exempted."""
+    """The posture is proxy-shaped: both spellings set, and loopback the only exemption."""
     child_env = exec_guard.plan_child_spawn(exec_guard.ExecGuardPolicy(
         env={"PATH": "/usr/bin"}, deny_network=True,
     )).env
@@ -775,7 +775,8 @@ def test_a_denied_policy_points_every_proxy_spelling_at_the_closed_port():
     for key, value in exec_guard.DENIED_NETWORK_ENV:
         assert child_env[key] == value
     assert child_env["HTTP_PROXY"] == "http://127.0.0.1:9"   # the literal, not the constant
-    assert child_env["no_proxy"] == ""
+    assert child_env["no_proxy"] == "localhost,127.0.0.1,::1"
+    assert child_env["NO_PROXY"] == "localhost,127.0.0.1,::1"
     assert child_env["PATH"] == "/usr/bin"
 
 
@@ -819,7 +820,7 @@ def test_a_denied_child_really_receives_the_closed_port(monkeypatch):
 
     assert result.returncode == 0
     assert dumped["HTTP_PROXY"] == exec_guard.DENIED_NETWORK_PROXY_URL
-    assert dumped["no_proxy"] == ""
+    assert dumped["no_proxy"] == "localhost,127.0.0.1,::1"
     assert b"corp.example" not in result.stdout
 
 
@@ -860,20 +861,30 @@ class _ServesOneBody(http.server.BaseHTTPRequestHandler):
         """Silence the default stderr access log."""
 
 
+#: An address `DENIED_NETWORK_NO_PROXY` does NOT name, which is where the deny is measured
+#: now that the three loopback spellings are exempt. It is a second loopback alias — every
+#: 127.0.0.0/8 address is local on Linux — so the measurement needs neither an external
+#: network nor name resolution to be deterministic: what makes it denied is its ABSENCE from
+#: the exemption list, which is the property under test.
+_UNEXEMPT_HOST = "127.0.0.2"
+
+
 @contextlib.contextmanager
-def _really_listening():
-    """A loopback HTTP server on an ephemeral port, answering for real.
+def _really_listening(host: str = "127.0.0.1"):
+    """An HTTP server on `host` and an ephemeral port, answering for real.
 
     Stage 1's deny is a PROXY posture and never a kernel one, so a fetch that fails
     against a port where nothing listens proves nothing whatever. This harness
     exists so the denied fetch is measured against a server that IS answering, and
-    the port is ephemeral so two concurrent runs cannot collide on it.
+    the port is ephemeral so two concurrent runs cannot collide on it. `host`
+    selects which side of the exemption a caller is measuring: the default is the
+    exempt loopback address, `_UNEXEMPT_HOST` the denied one.
     """
-    server = http.server.HTTPServer(("127.0.0.1", 0), _ServesOneBody)
+    server = http.server.HTTPServer((host, 0), _ServesOneBody)
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
     try:
-        yield f"http://127.0.0.1:{server.server_address[1]}/"
+        yield f"http://{host}:{server.server_address[1]}/"
     finally:
         server.shutdown()
         thread.join(timeout=5)
@@ -890,8 +901,13 @@ def test_a_guarded_test_command_cannot_reach_a_server_that_is_really_listening()
     posture is the only difference between them. A test that asserted only the
     failure would stay green if this server stopped listening altogether, which is
     the one way this measurement can lie.
+
+    The server listens on `_UNEXEMPT_HOST` rather than on `127.0.0.1`: since the
+    operator amendment amend0820-gate-autonomy the three spellings
+    `DENIED_NETWORK_NO_PROXY` names are exempt, so the deny is measured at an
+    address the exemption does not name.
     """
-    with _really_listening() as url:
+    with _really_listening(_UNEXEMPT_HOST) as url:
         served = subprocess.run(
             _child(_FETCH_URL) + [url], capture_output=True, timeout=30,
         )
@@ -923,7 +939,7 @@ def test_the_refusal_a_denied_child_sees_names_the_closed_proxy_port():
     refusal to the posture: the child reports a connection refusal, and the proxy it
     was pointed at is the closed port `DENIED_NETWORK_PROXY_URL` names.
     """
-    with _really_listening() as url:
+    with _really_listening(_UNEXEMPT_HOST) as url:
         denied = run_guarded_test_command(
             _child(_FETCH_URL) + [url], timeout_sec=30, cwd=None,
         )
@@ -931,3 +947,23 @@ def test_the_refusal_a_denied_child_sees_names_the_closed_proxy_port():
     assert b"Connection refused" in denied.stderr
     assert exec_guard.DENIED_NETWORK_PROXY_URL == "http://127.0.0.1:9"
     assert exec_guard.test_command_exec_policy(30, None).deny_network is True
+
+
+@pytest.mark.subprocess
+def test_a_guarded_test_command_still_reaches_the_loopback_the_exemption_names():
+    """The other half of amend0820-gate-autonomy: the exemption is real, not declared.
+
+    A `test`-class child that starts a server on loopback and then probes it over HTTP
+    is how this repository's runtime, smoke and CLI suites judge readiness, and with an
+    empty `NO_PROXY` every one of them was refused through the closed proxy. This
+    measures that path through the seam itself, so a posture that stopped exempting
+    127.0.0.1 fails HERE — one named test — instead of failing dozens of suites that
+    say nothing about the network.
+    """
+    with _really_listening() as url:
+        reached = run_guarded_test_command(
+            _child(_FETCH_URL) + [url], timeout_sec=30, cwd=None,
+        )
+
+    assert reached.returncode == 0, reached.stderr
+    assert _SERVED_BODY in reached.stdout
