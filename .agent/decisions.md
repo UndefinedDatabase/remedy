@@ -6090,3 +6090,57 @@ publish.
 
 Reverse this decision by deleting this section, which returns the version story to a
 single literal with no reader and no `--version` flag.
+
+## DECISION F086 D3 — the dual-mode resolver is withdrawn; the carry mechanism is `artifacts` (2026-08-20)
+
+CHOSEN, and it AMENDS DECISION F086 D1 rather than replacing it. Part (c) of D1
+required `_get_frontend_dist()` to resolve the asset directory in two modes,
+package-relative when installed and repository-relative in a checkout, on the
+stated premise that "its three `.parent` hops land on the environment's
+`site-packages` parent once installed and there is no repository root there to
+find". That premise is FALSE, and the R3 inventory's open question 4 carries the
+same error. The hops land on the wheel ROOT, not its parent:
+`packages/orchestration/ui_server.py` has exactly three ancestors up to the
+archive root, and `apps/` is a sibling of `packages/` at that same root — the
+identical geometry a checkout has. Measured three ways at `72e07381`: from an
+extracted wheel the function returned that extraction's own `apps/ui/dist`; from
+an independent copy of `packages/` plus `apps/ui/dist` laid out the same way and
+placed first on `sys.path` with the working directory outside the repository, it
+returned that copy's directory; and from the checkout it returned the checkout's.
+In every case the loaded module's `__file__` was printed first, so the reading
+could not have come from the wrong copy. No dual-mode code is therefore written,
+because the single expression already satisfies both modes, and a second
+resolution path would be untested surface added to satisfy a measurement error.
+
+KEPT from part (c): the test per mode. The property is load-bearing for the
+feature's own DONE condition and nothing currently pins it, so a regression that
+broke installed-mode resolution would be invisible until a user's first serve. A
+test that constructs a wheel-root-shaped layout and asserts the resolver follows
+it is cheap, and it is the artifact that would have caught the premise error
+years earlier than a human would.
+
+CONFIRMED and now MEASURED, part (a): the explicit carry is real and both
+candidate mechanisms work. From a probe worktree OUTSIDE the repository with
+`apps/ui/dist` present, `pyproject.toml` AS COMMITTED AT `72e07381` produces 414
+members and 0 under `apps/ui/dist/`; `artifacts = ["apps/ui/dist/**"]` produces 417 members,
+2155470 bytes and 3; a `force-include` table produces 417 members, 2155479 bytes
+and 3. `artifacts` is chosen: it needs no source-to-target path mapping, and it
+is the smaller of the two artifacts by nine bytes. R6's measurement could not
+choose between them because its control was vacuous, which is finding R-0574.
+
+STILL OWED, part (b), and this decision sharpens why. The carry does not make an
+absent UI loud: measured at `72e07381`, a build with `artifacts` applied and no
+`apps/ui/dist` present exits 0 and produces the same 414-member wheel with 0 UI
+files. So landing the carry alone is a strict improvement — with assets present
+the wheel now ships them, where before it never did — but it does NOT satisfy
+D1's "never ship a wheel with an empty UI directory silently", and no release may
+be cut until the packaging-time guard exists.
+
+ALTERNATIVE CONSIDERED and rejected: keep part (c) as written and build the
+dual-mode resolver anyway, on the grounds that it is harmless. Rejected because
+it is not harmless — it would add a branch no environment reaches, and a branch
+no environment reaches is a branch no test can honestly red-prove, which this
+repository has already paid for once (finding R-0252).
+
+Reverse this decision by deleting this section, which restores D1 part (c) as
+written and reopens the choice between `artifacts` and `force-include`.
