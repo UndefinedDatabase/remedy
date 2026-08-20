@@ -53,6 +53,10 @@ DEFAULT_MODEL = _PROVIDER_DEFAULT_MODELS[DEFAULT_PROVIDER]
 #: role's, because raising the orchestrator to a top-tier model is a
 #: CONFIGURATION act (`orchestrator.model`), not a change to the routing policy
 #: in docs/agents/model_routing_policy.md.
+#: ``teacher`` (F255) narrates a running mission and answers operator questions.
+#: It is listed here so its calls resolve without the unknown-role warning. It is
+#: read-only by construction and never influences a run, which is why it carries
+#: no CLI override flags and no per-role budget limit (DECISION F255 D1 and D3).
 KNOWN_ROLES: tuple[str, ...] = (
     "builder",
     "reviewer",
@@ -61,6 +65,7 @@ KNOWN_ROLES: tuple[str, ...] = (
     "test_worker",
     "final_verifier",
     "orchestrator",
+    "teacher",
 )
 
 #: Resolvable fields on a RoleConfig, in declaration order.
