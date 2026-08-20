@@ -14,21 +14,26 @@ path and the UI serve work, the version command matches the tag, and a release
 with a missing changelog entry is refused by the gate.
 
 ## Current Step
-R27: record R26's verdict, register R-0594 — a gate that ordered a reading at a
-base revision without naming a non-writing mechanism, so the worker overwrote a
-tracked path to take it — and land item 29, where a rule has to live to bind the
-next block.
+R28: record R27's verdict, and register and fix R-0595 — a false test location in
+the F086 feature file's Built State — and R-0596 — the documentation link gate
+never evaluated the documentation index, because it parametrised by filename and
+two primary docs are both named README.md. The gate is repaired HERE so that R29's
+index rows are judged by a gate that works.
 
 ## Next Steps
-1. THE PACKAGING IST-DOC is owed and is the next round's FIRST work: `docs/system/`
-   has no page for what F086 built and AGENTS.md requires one. It was drafted for
-   R27 and cut when the block measured 418 lines against the 400 cap. It must land
-   BEFORE the closure commit, whose path set R-0154 fixes at STATUS.md, README.md
-   and `.agent/`; an earlier commit in the closure round satisfies that.
+1. THE PACKAGING IST-DOC is R29's work and its FIRST work: `docs/system/` has no
+   page for what F086 built and AGENTS.md requires one. It was drafted for R27 and
+   again for R28, and cut each time on the block cap; DECISION F085 D5 requires the
+   design to change, so it now gets a round of its own. It lands with its two
+   `docs/README.md` rows in the SAME commit as the file they point at, and it must
+   land BEFORE the closure commit, whose path set R-0154 fixes at STATUS.md,
+   README.md and `.agent/`.
 2. CLOSURE then follows, per docs/roadmap/STATUS_closure_protocol.md — evidence
    job, FRESH review zip, the STATUS line, the README capability sync in that SAME
-   commit, the PR. Precondition 4 is already met: `## Built State` landed at
-   `d420e8e5`. The open set closes PASS_WITH_RISKS, as F083 and F085 both did.
+   commit, the PR. Precondition 4 is met: `## Built State` landed at `d420e8e5` and
+   R28 corrects one sentence of it. The open set closes PASS_WITH_RISKS, as F083
+   and F085 both did. That round CREATES the PR, so it is the branch terminator §4
+   item 13 describes and its verdict lives in the handoff and the PR.
 3. THE RELEASE WORKFLOW HAS NEVER BEEN RUN and NO INSTALL HAS EVER BEEN PROVEN;
    no round of this workflow can do either. Both are human actions, and closure
    names them as unproven rather than counting a skipped test as coverage.
