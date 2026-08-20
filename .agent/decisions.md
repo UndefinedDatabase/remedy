@@ -6188,3 +6188,189 @@ is the latest and most expensive moment to learn about it.
 
 Reverse this decision by deleting this section, which reopens the choice between
 an opt-in marker, a new CI stage, and a release-workflow step.
+
+## DECISION F255 D1 — the teacher joins BOTH role vocabularies (2026-08-20)
+
+CHOSEN. `teacher` is added to `KNOWN_ROLES` in
+`packages/orchestration/role_config.py`, taking it from seven names to eight,
+AND to the `ConventionsRole` enum in
+`packages/orchestration/role_conventions.py`, because the teacher needs a model
+(the first vocabulary) and a persisted behaviour document (the second). The
+frozen pin `test_all_seven_roles_present` in
+`tests/orchestration/test_role_config.py` is renamed and its tuple extended IN
+THE SAME COMMIT as the vocabulary change, never in a follow-up: a ledger-style
+count and its test pin land together (finding R-0151).
+
+MEASURED at R2, which is why this is a decision and not a preference: the
+registration says the teacher is "resolved through the same role_config
+mechanism as orchestrator/worker/reviewer", but `worker` is NOT in
+`KNOWN_ROLES` — it exists only as `ConventionsRole.WORKER`. The registration
+names two vocabularies as if they were one, and this decision separates them.
+
+DELIBERATELY NOT EXTENDED: `_ROLE_OVERRIDE_ROLES` in `apps/cli/commands/do_cmd.py`
+and the `_ROLE_PROMPT_KEYS` / `_ROLE_ESTIMATED_KEYS` maps in
+`packages/orchestration/token_cost_policy.py`. Those three lists describe the
+roles that perform the BUILD and carry per-role prompt columns; the teacher
+neither builds nor is charged against those columns, and its spend is attributed
+by the ledger `role` column instead (DECISION F255 D3). A role added to a list
+whose meaning it does not share is how a vocabulary rots.
+
+ALTERNATIVE CONSIDERED and rejected: add `teacher` to `KNOWN_ROLES` alone.
+Rejected because `role_conventions.py` is where a role's rules are persisted,
+and a teacher with no conventions document is a prompt with no written rules —
+exactly the state AGENTS.md exists to prevent for every other role.
+
+Reverse this decision by deleting this section and removing the name from both
+tuples, which restores the seven-name pin.
+
+## DECISION F255 D2 — F255 does NOT close its own event-vocabulary dependency (2026-08-20)
+
+CHOSEN. Stage 1 narration keys to an EXPLICITLY ENUMERATED subset of run-log
+event names, declared in ONE place inside the teacher's own module and pinned by
+a test. Every event outside that set is narrated as unknown, under the feature's
+own honesty rule for grounding source 1 — "asserts only what evidence shows,
+says unknown where it is silent". F255 does NOT build a repo-wide named-event
+registry and does NOT make the emitter enforce one.
+
+MEASURED at R2: `RunEvent.event` at `packages/orchestration/run_log.py:66` is an
+unconstrained `str` and `RunLogWriter.log` validates nothing; 39 distinct event
+names are emitted from 14 files; `EVENT_METADATA_SCHEMAS` covers the METADATA
+KEYS of seven event types and has ZERO production callers. The registration's
+declared dependency, "stable ledger event vocabulary (Tier 2)", is therefore NOT
+satisfied today, and this decision refuses to pretend otherwise.
+
+ALTERNATIVE CONSIDERED and rejected: close the dependency first — introduce the
+registry and make every emitter use it. Rejected for THIS feature because it
+edits the 14 emitting files and every event name in the repository, which is a
+Tier 2 infrastructure feature in its own right and is nowhere in F255's scope.
+Widening a Tier 5 feature into a Tier 2 refactor is the scope drift AGENTS.md
+forbids, and doing it inside a teaching feature would bury it.
+
+CONSEQUENCE, stated plainly so no later text overclaims: F255's narration is
+only as stable as the names it enumerates. A rename in an unrelated module
+degrades narration for that event to "unknown" rather than breaking the run —
+which is the failure mode the honesty rule prefers — and the enumerated set is a
+test pin, so such a rename surfaces as a RED TEST rather than as silence.
+
+Reverse this decision by deleting this section, which reopens the choice between
+an enumerated subset and a repo-wide registry.
+
+## DECISION F255 D3 — teacher spend is REPORTED per role, and no new limit axis is built (2026-08-20)
+
+CHOSEN. Teacher spend is separated by the `role` column that already exists on
+the F103 ledger's `calls` table, and is read with `query_cost(by="role")`. F255
+adds NO new budget limit and NO new limit axis. Stage 1 is declared zero-token
+and charges nothing; Stage 2 charges under the role name `teacher`.
+
+MEASURED at R2: a "pool" concept does not exist anywhere in
+`packages/orchestration/` — the only two hits are an unrelated local variable.
+Attribution runs on `_CALL_COLUMNS`'s `role` field; `COST_GROUP_KEYS` is exactly
+`("role", "model", "day")`; and all five enforceable limits in `_LIMIT_ORDER`
+are JOB-scoped, none of them per-role.
+
+WHAT THIS DECISION DELIBERATELY DOES NOT RULE, and says so rather than letting a
+later round discover it: the registration's phrase "its OWN budget pool" is
+satisfied in the REPORTING sense and explicitly NOT in the LIMIT sense. No text
+in this feature may claim the teacher is capped. If a cap is wanted later it is
+a new axis in `budget_guard.py`, ruled then, on its own evidence.
+
+ALTERNATIVE CONSIDERED and rejected: add a per-role limit axis now. Rejected
+because it changes the enforcement path that every job already depends on, in
+order to cap a role that by construction cannot influence the run — the largest
+blast radius in the feature bought for the smallest gain.
+
+Reverse this decision by deleting this section, which reopens per-role limits.
+
+## DECISION F255 D4 — read-only is proven BEHAVIOURALLY, because the annotation proves nothing (2026-08-20)
+
+CHOSEN. The teacher's hard read-only invariant is proven by a BEHAVIOURAL test —
+the command runs and the bytes on disk are unchanged — modelled on
+`tests/orchestration/test_job_budgets.py:1352`, whose comment states the standard
+exactly: `action_class="read_only"` has to be true of the bytes on disk. The
+`action_class="read_only"` declaration is carried as well, but it is the label,
+never the guarantee.
+
+MEASURED at R2: `ActionClass` is a `typing.Literal` at
+`apps/cli/command_catalog.py:31`; a `Literal` annotation is not checked when the
+frozen dataclass is constructed; and NO code path anywhere branches on
+`action_class == "read_only"` to permit or deny an operation. The only
+non-declaration uses are one serialization and one comment. Enforcement today is
+the test suite, and only one test in it is behavioural.
+
+CONSEQUENCE: the registration's "Hard invariants: ActionClass read_only" names a
+DECLARATION. Any later sentence in this feature claiming that the annotation
+enforces the invariant is false, and this decision is the reason a reviewer may
+say so without re-deriving it.
+
+ALTERNATIVE CONSIDERED and rejected: build catalog-wide runtime enforcement, so
+`read_only` is checked at dispatch for every command. Rejected as out of scope —
+it is a trust-core change touching every command's dispatch path, and F255 is a
+Tier 5 teaching feature. It is worth doing: it is registered as a closure
+candidate of this feature rather than silently dropped.
+
+Reverse this decision by deleting this section.
+
+## DECISION F255 D5 — F255 ships `remedy teach` and does NOT build `do watch` (2026-08-20)
+
+CHOSEN. The feature's CLI surface is `remedy teach`. F255 does NOT build
+`remedy do watch`, and it STATES its own isolation rules instead of inheriting
+rules that were never written. The rules it states, taken from what the run log
+actually is: the teacher opens the append-only JSONL run log READ-ONLY, re-reads
+it whole through the existing production reader
+`packages/orchestration/timeline.py:68`, tolerates a malformed trailing line by
+dropping that line, holds no lock, and has no write path to the run at all.
+
+MEASURED at R2: the `do` group holds fifteen commands and none is `watch`; no
+`teach` command exists; and the searches that establish both are recorded in
+`.agent/f255_inventory.md`. The registration's phrase "same isolation rules as
+watch" therefore refers to rules that do not exist, and its CLI phrase
+`remedy do watch --learn` names a command that does not exist.
+
+ALTERNATIVE CONSIDERED and rejected: build `do watch --learn` as the
+registration literally says. Rejected because `do watch` is a general live-run
+viewer that is useful independently of teaching; building it inside F255 would
+silently widen a teaching feature into a cockpit feature, which the
+registration's own Non-goals forbid — "cockpit panel ships with Tier 5, not
+before". A feature that grows a second feature inside itself cannot be reviewed
+against its own Done condition.
+
+CONSEQUENCE: the registration's CLI phrase is SUPERSEDED. R4 writes the
+superseding text into `docs/roadmap/features/T5_F255.md` itself, so the feature
+file and this ruling never disagree on disk — a decision that lives only here
+while the feature file still says `do watch` is the R-0417 staleness class.
+
+Reverse this decision by deleting this section and restoring the `do watch`
+phrasing in the feature file.
+
+## DECISION F255 D6 — the handback token cap is withdrawn; the LINE cap is the operative bound (2026-08-20)
+
+CHOSEN, ruling finding R-0602. The sentence "Hard cap: this file stays ≤800
+tokens — ≤1600 in the >10-commit LARGE case" is REMOVED from
+`docs/agents/handback_template.md`. The line cap in that same file — ≤60, ≤100
+when a >5-commit table requires it, ≤160 in the LARGE case — becomes the single
+operative bound on a handback's size, and the template says so explicitly.
+
+MEASURED: over the twelve most recent commits that rewrote `.agent/handoff.md`,
+every one exceeds the token cap, in a band from 1306 to 2983 by the chars/4
+estimate — 1.6x to 3.7x — while the LINE cap in the same document is met by all
+of them. Two caps on one artifact disagreed, and only one was ever obeyed.
+
+WHY WITHDRAW RATHER THAN RAISE. Raising the number to fit current practice
+blesses whatever the last round happened to write and must be raised again the
+next time a bundle grows. The line cap already scales with commit count, is
+measured with `wc -l` and needs no tokenizer, whereas a token cap depends on an
+estimator nobody has agreed on — chars/4 is itself a guess, and the true count
+differs per model. A cap that cannot be measured identically by two readers
+cannot be enforced by either.
+
+ALTERNATIVE CONSIDERED and rejected: restate the cap at 3000 tokens. Rejected
+for the reason above — it is the current maximum dressed as a rule, and it would
+still leave two caps that can disagree.
+
+WHERE THIS LANDS: the template edit is NOT made by this round, whose change set
+is `.agent/` only. It lands in the docs round that follows the feature-file
+amendment, and until it lands no round is failed against the 800-token number
+and no handback claims to meet it.
+
+Reverse this decision by deleting this section and restoring the removed
+sentence.
