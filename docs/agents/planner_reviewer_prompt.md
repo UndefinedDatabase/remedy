@@ -700,6 +700,25 @@ end the response with:
       blob over the tracked file, linted, restored it byte-identically and declared the
       method — a correct reading taken by a route the protocol forbids, and the same
       reading was available from `--stdin-filename` with nothing written at all.
+  30. **A new finding id is minted only after the open set is searched for the
+      DEFECT.** Finding R-0603. Before writing `- R-XXXX`, grep
+      `.agent/live_review.md` for the defect itself — the file it is in, the
+      rule it breaks, the symptom a reader would search for — and not merely for
+      an id. If an OPEN finding already describes it, add the new evidence to
+      that finding's fix rather than minting a second id, because two ids for
+      one defect are two things to resolve, two things to carry forward and two
+      chances to fix it half-way. Item 10 governs the SHAPE of the open set —
+      it recomputes the set mechanically and forbids carrying it forward — and
+      is silent on whether a NEW id describes a defect the set already holds,
+      which is the gap that let this happen twice: the same class cost F086 R28
+      a FAIL, and R-0602 was still minted at F255 R2 for the handback token cap
+      that R-0462 had held OPEN since F083 R8. The reviewer had just measured
+      twelve handbacks against that cap and never searched the record for the
+      defect it was measuring. A duplicate is not harmless: R-0462 carried a fix
+      clause the duplicate did not, and had the ruling gone the other way the
+      two entries could have been resolved in contradictory directions. When a
+      duplicate is discovered, retire the NEWER id as the duplicate, keep the
+      older one as the record, and say in both resolutions which is which.
   Why this is on disk and not a habit: item 2 has recurred six times across
   F104 and F105, and R20 hit four of them in one block. A check that lives
   only in reviewer session memory is the A1 trap §0 names, and this list is the
