@@ -1,111 +1,105 @@
-# Handback — F086 Release capability, R10 (T002: the version command)
+# Handback — F086 Release capability, R11 (record the R10 verdict; close the session)
 
-Branch `feature/f086-release-capability`, pushed, unmerged, no PR. R10 registers
-no finding; the open set stays at 161.
+Branch `feature/f086-release-capability`, pushed, unmerged, no PR. R11 registers
+no finding; the open set stays at 161. Last round of this session.
 
 ## Range
 
-Review of e7c219cc..HEAD.
+Review of dea9dc2f..HEAD.
 
 ## Commits
 
-### 4759f699 chore(state): save the F086 R10 step block verbatim
+### f88949f0 chore(agent): save the F086 R11 step block verbatim
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f086-r10.md | +490/-0 | C0a, block saved byte-verbatim |
+| .agent/authored/f086-r11.md | +320/-0 | C0a, block saved byte-verbatim |
 
-### 555bd335 chore(state): mirror the F086 R10 block into last_block
+### 709a69c3 chore(agent): mirror the F086 R11 block into last_block
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/last_block.md | +339/-316 | C0b, mirror of the COMMITTED C0a file |
+| .agent/last_block.md | +201/-371 | C0b, mirror of the COMMITTED C0a file |
 
-### a36c28b9 docs(state): advance the plan to the F086 R10 step
+### 3c1330b0 docs(state): advance the F086 plan to R11
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/plan.md | +12/-8 | C1, whole file := PLAN10 slice |
+| .agent/plan.md | +12/-14 | C1, whole file := PLAN11 slice |
 
-### 308e6a28 chore(review): record the F086 R9 verdict in the review ledger
+### 77aa97bd chore(review): record the F086 R10 verdict in the review ledger
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/live_review.md | +2/-0 | C2, RECORD8 EOF-append; registers no id |
+| .agent/live_review.md | +2/-0 | C2, RECORD9 EOF-append; registers no id |
 
-### 08a61a13 feat(cli): report version and build info behind a version flag
+### (this commit and the next) the C3 handback and the C4 verdict append
 | Path | +/- | Reason |
 |---|---|---|
-| apps/cli/version_report.py | +67/-0 | C3a, VERSIONMOD: metadata readers, renderer, flag handler |
-| apps/cli/grouped.py | +7/-0 | C3b, PAIRFROM→PAIRTO: called before the help pre-scan |
-
-### 8fd0f701 test(cli): pin both version modes for the version flag
-| Path | +/- | Reason |
-|---|---|---|
-| tests/cli/test_version_report.py | +83/-0 | C4, TESTMOD: installed and checkout modes |
-
-### (this commit) docs(state): write the F086 R10 handback
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/handoff.md | self-reference | C5; a handoff cannot table the commit that writes it (R-0149). Its insertion count and the post-C5 path set are in the round report |
+| .agent/handoff.md | self-reference | C3 writes this file; C4 appends the reviewer's VERDICT slice to it. A handoff cannot table the commit that writes it (R-0149). Both insertion counts and the post-C3 path set are in the round report |
 
 ## External actions
 
-- `git push -u origin feature/f086-release-capability` after C4 → `e7c219cc..8fd0f701`, ok.
-- `git push` after C5 → in the round report.
-- `git worktree add /home/decodeux/remedy-f086r10-check HEAD` → ok; removed + pruned;
-  `git worktree list` back to 1 line, directory gone.
+- `git push origin feature/f086-release-capability` after C2 → `dea9dc2f..77aa97bd`, ok.
+- `git push` after C4 → in the round report.
+- No worktree added or removed; `git worktree list` stayed at 1 line throughout.
 - No PR created, edited or merged.
 
 ## Verification
 
-G1 `git status --porcelain` EMPTY; `git worktree list` 1 line; `.agent/STOP` absent,
-   re-read from disk before C0a and again at the handback; branch as named.
-G2 scratchpad, committed `.agent/authored/f086-r10.md`, committed `.agent/last_block.md`
-   byte-EQUAL: sha256 769c36fe…a35a2710, 28100 B, 490 lines.
-G3 `.agent/plan.md` == PLAN10: sha256 25eb0de8…7d295ea6, 45 lines (<50); holds `## Goal`,
-   `## Next Steps`, `F086`.
-G4 pre-C2 blob a byte-exact PREFIX; remainder == RECORD8, sha256 40f25eed…b1671d12, 3098 B.
-G5 BOTH extractions AGREE at HEAD: 163 registered / 2 resolved / 0 duplicates /
-   0 unregistered resolutions / 0 `Landed:` / 161 open, registered SETS equal, symmetric
-   difference vs `e7c219cc` = `[]`. Control: the same extractor reads `['R-0580']` added
-   across `419fb683..e7c219cc` under both.
-G6 `apps/cli/version_report.py` == VERSIONMOD, sha256 3985d089…d4938543, 67 lines;
-   `tests/cli/test_version_report.py` == TESTMOD, sha256 a8caed7b…b032dd34, 83 lines;
-   `git ls-tree e7c219cc` EMPTY for both, so NEW is measured.
-G7 PAIRFROM 1x in the `e7c219cc` blob; base-with-replacement and HEAD both sha256
-   31b11380d9ad99df9e479fa3f8e292181b69070066ad1aca342f42480fc88fc0 — MATCH.
-G8 `python3 -m apps.cli.grouped --version` → exit 0; `remedy   0.1.0` / `build    dev` /
-   `python   3.10.12` / `platform Linux-6.17.9-76061709-generic-x86_64-with-glibc2.35`.
-   `build` reads `dev`: nothing writes REVISION yet, and no revision was invented.
-G9 `pytest tests/cli/test_version_report.py -q -rf` primary → exit 0, 8 passed. Red
-   controls, out-of-repo worktree only, each byte string counted 1x first: (i) the
-   two-line `embedded is None` guard deleted → exit 1, 4 failed 4 passed; (ii) reverted,
-   `if handle_version_flag(argv):` → `if False:` → exit 1, 2 failed 6 passed;
-   (iii) both reverted → exit 0, 8 passed, worktree `git status --porcelain` EMPTY.
-G10 the four CLI reader suites `-q -rf` primary → exit 0, 601 passed.
-G11 the four `.agent/` state-reader suites `-q -rf` primary → exit 0, 160 passed.
-G12 `pytest tests/cli/test_golden_path.py -q` primary → exit 0, 42 passed, started only
-   after G11 had ENDED; no two suite runs overlapped this round.
-G13 `ruff check` on the three touched paths from the repo root → exit 0, All checks passed.
-G14 insertions before C5: 490, 339, 12, 2, 74, 83 — none over 500.
-G15 six commits, each exactly ONE parent, linear from `e7c219cc`; `git reflog` over this
-   round shows only `commit:` entries — no amend, rebase, reset or force-push.
-G16 pre-C5 path set is exactly constraint 2 minus `.agent/handoff.md`; `pyproject.toml`,
-   `hatch_build.py` and every path under `docs/`, `scripts/`, `packages/` ABSENT, and all
-   five confirmed to EXIST at `e7c219cc` by `git ls-tree`.
-G17 `gh pr list --state open --json number,headRefName,baseRefName,isDraft` → `[]`.
+G1 `git status --porcelain` EMPTY at every commit; `git worktree list` 1 line;
+   `.agent/STOP` absent, re-read from disk before C0a and again at the handback;
+   branch `feature/f086-release-capability`.
+G2 scratchpad `.remedy-wt/f086-r11.md`, committed `.agent/authored/f086-r11.md` and
+   committed `.agent/last_block.md` byte-EQUAL: sha256 c76d6b4f…f9ff257fc2, 21640 B,
+   320 lines.
+G3 `.agent/plan.md` == PLAN11: sha256 cc7fefe2…72648680, 2469 B, 43 lines (<50); holds
+   `## Goal`, `## Next Steps`, `F086`.
+G4 pre-C2 blob a byte-exact PREFIX of the post-C2 blob; remainder == RECORD9,
+   sha256 34a16d52…dbea9d0f, 3397 B, 2 lines.
+G5 BOTH extractions AGREE at `dea9dc2f` and at HEAD: 163 registered / 2 resolved /
+   0 duplicates / 0 unregistered resolutions / 0 `Landed:` / 161 open, the two registered
+   SETS equal at each. Symmetric difference of the HEAD registered set against `dea9dc2f`
+   = `[]` under both — this round registers nothing. Control: the same extractor reads
+   `['R-0580']` added across `419fb683..e7c219cc` under both, so it can see a difference.
+G6 `.agent/plan.md`, `.agent/live_review.md`, `.agent/handoff.md` at HEAD each hold 0
+   LINES beginning `<<<SLICE ` or `<<<END `.
+G7 `Gate: ` paragraphs: 8 at `dea9dc2f` naming R3, R4, R5, R6, R7, R8, R9, R10; 9 at HEAD
+   naming those plus R11. The one added paragraph names R11. No entry for R11's own round
+   was added — that absence is the terminator (planner_reviewer_prompt.md §4 item 13).
+G8 in the round report: the C3 blob is a byte-exact PREFIX of the file at HEAD and the
+   remainder is byte-equal to the VERDICT slice. A handoff cannot measure the commit that
+   appends to it.
+G9 `python3 -m pytest tests/orchestration/test_test_runner.py
+   tests/ui_server/test_dashboard_contract.py tests/regression/test_resource_safety.py
+   tests/orchestration/test_integrity_gate.py -q -rf` primary → exit 0, 160 passed.
+G10 `python3 -m pytest tests/cli/test_golden_path.py -q` primary → exit 0, 42 passed,
+   started only after G9 had ENDED (G9 12:57:07, G10 start 12:57:07, end 12:57:28); the
+   two runs did not overlap.
+G11 insertions before C3: 320, 201, 12, 2 — none over 500. C3's own and C4's are in the
+   round report.
+G12 four commits before C3, each exactly ONE parent, linear `dea9dc2f` → f88949f0 →
+   709a69c3 → 3c1330b0 → 77aa97bd; `git reflog` over this round shows only `commit:`
+   entries — no amend, rebase, reset or force-push.
+G13 pre-C3 path set is exactly `.agent/authored/f086-r11.md`, `.agent/last_block.md`,
+   `.agent/live_review.md`, `.agent/plan.md`. `pyproject.toml`, `hatch_build.py` and every
+   path under `apps/`, `packages/`, `tests/`, `docs/`, `scripts/` ABSENT — and all seven
+   confirmed to EXIST at `dea9dc2f` by `git ls-tree`, so the clause forbids something real.
+G14 `gh pr list --state open --json number,headRefName,baseRefName,isDraft` → `[]`.
+   Nothing merged; this round opens and merges no PR.
 
 ## Authored-text proofs
 
-All five slices were extracted programmatically by their one-line markers from the
-COMMITTED `.agent/authored/f086-r10.md`, never retyped: PLAN10 (G3), RECORD8 (G4),
-VERSIONMOD and TESTMOD (G6), PAIRFROM/PAIRTO by ordered equality (G7). 0 lines
-beginning `<<<SLICE ` or `<<<END ` reached any target file.
+All three slices were extracted programmatically by their one-line `<<<SLICE …>>>` /
+`<<<END …>>>` markers from the COMMITTED `.agent/authored/f086-r11.md`, never retyped:
+PLAN11 (G3, whole file), RECORD9 (G4, EOF-append), VERDICT (G8, EOF-append). 0 marker
+LINES reached any target file (G6).
 
 ## Deviations & assumptions
 
-Sequence C0a, C0b, C1, C2, C3, C4, C5 executed exactly: one commit each, none added,
-dropped or reordered. Deviations, declared: this file stands at 113 lines against the
-100-line cap, an overage under AGENTS.md DECISION D15 caused by the mandated per-commit
-tables for 7 commits and the mandated Verification transcript for 17 gates. No section
-was dropped to meet the cap.
+Sequence C0a, C0b, C1, C2, C3, C4 executed exactly: one commit each, none added, dropped
+or reordered. Deviations, declared: this file will stand at 165 lines once C4 appends the
+reviewer's 58-line VERDICT slice, against the 100-line cap — an overage under AGENTS.md
+DECISION D15. Its cause is mandated content: the reviewer's authored session verdict,
+which the round that CLOSES a session must carry to disk (finding R-0571), plus the
+per-commit tables for 6 commits and the Verification transcript for 14 gates. No section
+was dropped to meet the cap, and nothing is trimmed after C4.
 
 ## Next
 
