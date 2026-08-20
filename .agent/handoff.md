@@ -53,3 +53,45 @@ PLAN18, LANDEDFROM, DONE0584, RECORD16, DECISION4 and VERDICT were each extracte
 1. Re-read `.agent/STOP` from disk (Phase 1 rule 1).
 2. Run the Open PR Gate (Phase 1 rule 2): `gh pr list --state open --json number,headRefName,baseRefName,isDraft`.
 3. Then review `f0b27118..HEAD` and record R18's verdict in `.agent/live_review.md` (Phase 1 rule 4).
+
+## Reviewer's session verdict — authored by the reviewer, applied by the worker
+
+Written because finding R-0571 is that a verdict issued and never put on disk
+cannot be told apart from one never issued; appended so the next handback rewrite
+cannot silently destroy it. Session of 2026-08-20, self-drive per
+docs/agents/self_drive_protocol.md, resuming the branch at `4750383c`. The
+reviewer wrote nothing in the work tree, one delegated worker per round made every
+commit, and every verdict below rests on gates the reviewer re-executed over the
+committed diff, never on a handback.
+
+| Round | Range | Verdict |
+|---|---|---|
+| R16 | efc021d9..4750383c | PASS — one finding, R-0584, against the reviewer |
+| R17 | 4750383c..f0b27118 | PASS — no finding |
+| R18 | f0b27118..HEAD | verdict not yet on disk; see the last paragraph |
+
+R16 was inherited ungated, so Phase 1 rule 4 reviewed it first. Its trigger is
+real and it is manual, and every transport, ledger and suite reading its block
+ordered reproduces. Its one defect was invisible to every gate it ordered and only
+a control the block never ordered could find it: three of its seven guards
+asserted a positive existence over text that INCLUDED the workflow's comments, and
+two of those were satisfied by a comment alone — delete the fallback that keeps an
+absent CI answer from reading green, or comment out the only trigger the workflow
+has, and the suite stayed at 7 passed either way.
+
+R17 repaired exactly that, and the repair is measured from both sides: the same
+mutation that was green at `4750383c` is red at `f0b27118`, naming only its own
+test, while the guard that was already sound stays red at both commits. R18 then
+resolved R-0584 in the ledger and ruled DECISION F086 D4.
+
+WHAT THIS FEATURE STILL OWES: the install smoke module per D4, then its wall-clock
+measured on a host that can run it, then the CI opt-in, then the integration gate
+and closure. NOTHING IN THIS SESSION PROVED AN INSTALL: no round of this workflow
+can, which D4 records with the measurement behind it. The release workflow has
+likewise never been dispatched.
+
+R18 IS NOT A TERMINATOR — F086's pull request is created at closure, which has not
+happened — so this session claims no §4 item 13 carve-out and leaves its last
+verdict to be recorded. THE NEXT SESSION'S FIRST ACTIONS are Phase 1 rule 1, then
+rule 2, then rule 4: review `f0b27118..HEAD` and record R18's verdict in
+`.agent/live_review.md` as `Gate: R19 — the R18 entry`.
