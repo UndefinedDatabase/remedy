@@ -1,81 +1,80 @@
-# Handback — F086 R20, the install smoke module and the R19 record (branch feature/f086-release-capability)
+# Handback — F086 R21, the R20 record and the two checklist promotions (branch feature/f086-release-capability)
 
 ## Range
 
-Review of bc85e5f7..HEAD (6 commits: 7f89c13f, 03136104, 992c70da, 4dc7cbdf, 724882f2, C4).
+Review of a7373e00..HEAD (6 commits: 7f82ad08, 6d2233fb, ba8cf1b9, a4fba89b, e1af7921, C4; C5 then appends VERDICT to this file).
 
 ## Commits
 
-### 7f89c13f docs(state): save the F086 R20 step block as authored text
+### 7f82ad08 docs(state): save the F086 R21 step block as authored text
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f086-r20.md | +482/-0 | C0a — the R20 block, byte-verbatim |
+| .agent/authored/f086-r21.md | +351/-0 | C0a — the R21 block, byte-verbatim |
 
-### 03136104 docs(state): mirror the F086 R20 block into last_block
+### 6d2233fb docs(state): mirror the F086 R21 block into last_block
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/last_block.md | +406/-283 | C0b — mirror read back from the committed C0a |
+| .agent/last_block.md | +256/-387 | C0b — mirror read back from the committed C0a with `git show` |
 
-### 992c70da docs(state): advance the plan to F086 R20
+### ba8cf1b9 docs(state): advance the plan to F086 R21
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/plan.md | +7/-10 | C1 — PLAN20, whole file, alone |
+| .agent/plan.md | +16/-14 | C1 — PLAN21, whole file, alone, before the ledger moves |
 
-### 4dc7cbdf docs(review): register R-0586 and record the R19 verdict
+### a4fba89b docs(review): register R-0587 and record the R20 verdict
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/live_review.md | +4/-0 | C2 — pure append: FIND0586 then RECORD18 |
+| .agent/live_review.md | +4/-0 | C2 — pure append: FIND0587 then RECORD19 |
 
-### 724882f2 test(install): add the opt-in install smoke module for F086 T2
+### e1af7921 docs(agents): promote the R-0586 and R-0587 rules into the checklist
 | Path | +/- | Reason |
 |---|---|---|
-| tests/test_install_smoke.py | +220/-0 | C3 — SMOKE, a file new on this branch, alone |
+| docs/agents/planner_reviewer_prompt.md | +32/-0 | C3 — both pairs in ONE commit: the item-20 clause and the new item 26 |
 
-### C4 docs(state): write the F086 R20 handback
+### C4 and C5, grouped — a handoff cannot table the commit that writes it (R-0149)
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/handoff.md | rewrite | C4 — this file; a handoff cannot table its own commit (R-0149) |
+| .agent/handoff.md | rewrite | C4 — this file |
+| .agent/handoff.md | append | C5 — the VERDICT slice, appended byte-verbatim |
 
 ## External actions
 
-- `git worktree add --detach .remedy-wt/r20probe 724882f2` — created for G10/G11 only.
-- `git worktree remove --force .remedy-wt/r20probe` then `git worktree prune` — removed; `git worktree list` reads one line.
-- `gh pr list --state open --json number,headRefName,baseRefName,isDraft` → `[]`. Nothing created, nothing merged.
-- `git push -u origin feature/f086-release-capability` — see the round report for its outcome.
+- `gh pr list --state open --json number,headRefName,baseRefName,isDraft` — Open PR Gate re-read; result on the G14 line. Nothing created, nothing merged.
+- `git push -u origin feature/f086-release-capability` — outcome in the round report.
+- NO worktree added and none removed: this round ordered no mutation, so `git worktree list` read one line throughout.
 
 ## Verification
 
 - G1 HYGIENE: `git status --porcelain` empty at every commit and at the handback; `.agent/STOP` re-read from disk before C0a and at the handback, absent both times; branch feature/f086-release-capability; `git worktree list` one line.
-- G2 TRANSPORT: `.remedy-wt/f086-r20.md`, committed `.agent/authored/f086-r20.md` and committed `.agent/last_block.md` byte-EQUAL at sha256 c88049f01e95e66db81fcbb778cde3a93746525eac864d9264876ff0f30b9231, 32032 B over 482 lines.
-- Constraint 7 re-measured on the committed C0a: 482 total / 212 prose / 270 slice incl. 8 marker lines — the block's own declaration, under D6's 490 and D5's 400.
-- G3 PLAN: `.agent/plan.md` at 992c70da byte-equal to PLAN20 at sha256 2043155c37445fb5ce7823556623299110c56c5da674af789b9a11194ba5453c, 40 lines (< 50), contains `## Goal`, `## Next Steps`, `F086`.
-- G4 APPEND: pre-C2 blob is a byte-exact PREFIX of the post-C2 blob; the 4-line remainder equals blank + FIND0586 + blank + RECORD18 at sha256 7a4502ccf0774f4d941d77b6aebe98bbd1bc1b1851b564ca6dc9d276417bf23b.
-- G5 LEDGER SETS: at 4dc7cbdf both extractions read 169 / 3 / 0 / 0 / 0 / 166 and their registered SETS are equal; registered symmetric difference against bc85e5f7 is exactly `['R-0586']`; CONTROL f0b27118..7b84524c reads `[]` registered while its resolved set gains `R-0584`.
-- G6 THE FINDING'S OWN RULE: over the lines 4dc7cbdf ADDS to `.agent/live_review.md`, backtick-quoted spans deleted first, `\bHEAD\b` reads 0 (6 before the strip, all quoted); RED CONTROL over `fd166295`'s added lines reads 3 with the same extractor.
-- G7 NO MARKER LEAKED: 0 lines beginning `<<<SLICE ` or `<<<END ` in `.agent/plan.md`, `.agent/live_review.md`, `.agent/handoff.md`, `tests/test_install_smoke.py` at C4 — see the round report for the four readings.
-- G8 THE MODULE IS THE SLICE AND IS NEW: `git ls-tree bc85e5f7 -- tests/test_install_smoke.py` printed NOTHING; at 724882f2 the file and the SMOKE slice are byte-EQUAL at sha256 ea84a2f5233b277e7b9fbd0bac3c77447885d4110b8d5e2d9bf668a09ef83f61, 9475 B over 220 lines.
-- G9 THE MODULE RUNS, THE SKIP IS REAL: `python3 -m pytest tests/test_install_smoke.py -q -rs` exit 0, 14 passed, 1 skipped; skip line verbatim `SKIPPED [1] tests/test_install_smoke.py:175: install smoke is opt-in: set REMEDY_INSTALL_SMOKE=1 on a host with network access`; the one skip is `test_the_wheel_installs_and_the_installed_cli_runs_the_golden_path`.
-- G10 LINT, BOTH HALVES: clean file, both `python3 -m ruff check` and `--preview` exit 0; with one separating blank line deleted INSIDE the probe worktree the PLAIN half still exits 0 while the PREVIEW half exits 1 naming E302 — the R-0500 disagreement, measured, then reverted.
-- G11 MUTATION PROBES, in the probe worktree, each target line occurring exactly 1x, each reverted before the next: (a) `return False` → exit 1, FAILED `TestInstallSmokeOptIn::test_any_other_value_enables_it`; (b) `if False:` → exit 1, FAILED `TestBuildRootLiesOutsideTheRepository::test_a_path_inside_the_repository_is_refused` and `::test_the_repository_root_itself_is_refused`. The install test STILL SKIPPED in both.
-- G12 SUITES, primary checkout, serially, no two pytest processes at once: 24 passed exit 0 (marker/step-file/CI-stage guards), then 160 passed exit 0 (the state-file readers), then 42 passed exit 0 (golden-path canary).
-- G13 CHANGE SET: `git diff --name-only bc85e5f7..HEAD` before C4 equals the constraint-2 list AS SETS, symmetric difference empty both ways; all six forbidden paths resolve at bc85e5f7 via `git ls-tree` and none appears in the range.
-- G14 HISTORY: five single-parent commits, linear; `git reflog` over this round shows only `commit:` entries — no amend, rebase, reset, force-push. Insertions before C4: 482, 406, 7, 4, 220 — none over 500, no DECISION F104 D1 exemption invoked.
-- G15 HANDBACK AND PR GATE: this file's `wc -l` reading and the Open PR Gate output are in the round report; the gate printed `[]`.
+- G2 TRANSPORT: `.remedy-wt/f086-r21.md`, committed `.agent/authored/f086-r21.md` and committed `.agent/last_block.md` byte-EQUAL at sha256 7c28f5c828d665ee5c10a52371ce5448c25e1efd24f57a7ee02d0de2aa5c807a, 29051 B over 351 lines.
+- Constraint 7 re-measured on the committed C0a: 351 total / 215 prose / 136 slice incl. 16 marker lines — the block's own declaration, under D6's 490 and D5's 400.
+- G3 PLAN: `.agent/plan.md` at ba8cf1b9 byte-equal to PLAN21 at sha256 b54a06d4a5f5ca611d463a20782fe7bb3590ec67b71e4367a2ecd28cafc7245e, 42 lines (< 50), contains `## Goal`, `## Next Steps`, `F086`.
+- G4 THE LEDGER APPEND: pre-C2 blob is a byte-exact PREFIX of the post-C2 blob; the 4-line remainder equals blank + FIND0587 + blank + RECORD19 at sha256 837f39fd87b59a52fbedc4a6078b4b79e216b3b8b96bde0a0037e9950048263f.
+- G5 LEDGER SETS: at a4fba89b BOTH extractions read 170 / 3 / 0 / 0 / 0 / 167 and their registered SETS are equal; registered symmetric difference against a7373e00 is exactly `['R-0587']`; CONTROL f0b27118..7b84524c reads `[]` registered while its resolved set gains `R-0584`.
+- G6 THE R-0586 RULE: over the lines a4fba89b ADDS to `.agent/live_review.md`, backtick-quoted spans deleted first, `\bHEAD\b` reads 0 (0 before the strip too); RED CONTROL over `fd166295`'s added lines reads 3 with the same extractor. Binds the ledger commit only, by the block's own wording.
+- G7 THE R-0587 RULE: at a7373e00, 17 headers, exactly one string occurring more than once and it is `Gate: R19 — the R18 entry.`; at a4fba89b, 18 headers, that duplicate SET UNCHANGED (constraint 3 forbids repairing it), `Gate: R21 — the R20 entry.` occurring 1x, LAST in the file, followed by ` R20 PASSED,`.
+- G8 THE TWO PAIRS: printed `TO contains FROM: true` for both, hence both APPEND-shaped; each FROM occurs 1x at a7373e00 AND 1x at e1af7921 — the append form, not a defect — and all 14 + 18 TO-ONLY lines occur exactly 1x among C3's 32 added lines. ORDERED EQUALITY holds: e1af7921's file equals the a7373e00 blob with each FROM's single occurrence replaced by its TO and nothing else, sha256 085c6c830b898e7c3d37590430c943b007e5772b3735c37e5d62b42244c80461 over 805 lines, against 773 lines at a7373e00.
+- G9 AIMED AND RENUMBERED NOTHING: `grep -c '^  21\. \*\*'` reads 1 and `grep -c '^  26\. \*\*'` reads 1; CHECK20TO is followed by `  21. **A baseline gate resolves its own paths at the base it names.** Finding R-0532. A` and CHECK26TO by `  Why this is on disk and not a habit: item 2 has recurred six times across`.
+- G10 NO MARKER LEAKED: 0 lines beginning `<<<SLICE ` or `<<<END ` in `.agent/plan.md`, `.agent/live_review.md` and `docs/agents/planner_reviewer_prompt.md` at C4 — the three readings are in the round report, and `.agent/handoff.md`'s fourth reading is taken after C5.
+- G11 SUITES, primary checkout, serially, the second started only after the first reported: `-q -rf` over the four state readers exit 0, 160 passed; then the golden-path canary exit 0, 42 passed. No suite reads the edited prompt file — its one hit under `tests/` is inside a `@pytest.mark.skip` reason string in `tests/test_agent_tooling.py`, whose test reads `.claude/agents/remedy-reviewer.md`.
+- G12 CHANGE SET: `git diff --name-only a7373e00..HEAD` before C4 equals the constraint-2 list minus `.agent/handoff.md` AS SETS, symmetric difference empty; all five forbidden paths resolve at a7373e00 via `git ls-tree` and none appears in the range.
+- G13 HISTORY: five single-parent commits, linear; `git reflog` over this round shows only `commit:` entries — no amend, rebase, reset, force-push. Insertions before C4: 351, 256, 16, 4, 32 — none over 500, no DECISION F104 D1 exemption invoked.
+- G14 HANDBACK AND PR GATE: this file's `wc -l`, the seven-heading list, the C4-prefix-of-C5 measurement and the Open PR Gate output are in the round report; the gate printed `[]`.
 
-NO INSTALL RAN THIS ROUND. `REMEDY_INSTALL_SMOKE` stayed UNSET in every environment created, the probe worktree's included, so the module's one install test SKIPPED in every run reported above. A skipped test is not coverage: DECISION F086 D4 already records that F086's DONE condition stays UNPROVEN until that variable is set on a host that can honour it. No wheel was built, no venv was created, no network was reached.
+NO CODE MOVED THIS ROUND and no test could have gone red on C3: the round writes state files and one docs file, so G8 and G9 are C3's entire evidence and the suites gate only the state texts. NO INSTALL RAN — `REMEDY_INSTALL_SMOKE` was set nowhere, no wheel was built, no venv created, no network reached.
 
 ## Authored-text proofs
 
-- PLAN20, FIND0586, RECORD18 and SMOKE were EXTRACTED programmatically from the COMMITTED `.agent/authored/f086-r20.md`, never retyped and never reformatted; SMOKE was applied as bytes with no formatter run over it.
-- Disk-to-disk: `.agent/plan.md` == PLAN20 (G3), `.agent/live_review.md`'s C2 remainder == blank + FIND0586 + blank + RECORD18 (G4), `tests/test_install_smoke.py` == SMOKE (G8) — all three byte-equal, digests above.
-- The committed C0a is byte-equal to the `.remedy-wt/f086-r20.md` scratchpad the round was delegated from, and `.agent/last_block.md` mirrors the committed C0a read back with `git show` (G2).
+- PLAN21, FIND0587, RECORD19, CHECK20FROM/TO, CHECK26FROM/TO and VERDICT were EXTRACTED programmatically from the COMMITTED `.agent/authored/f086-r21.md`, never retyped and never reformatted.
+- Disk-to-disk: `.agent/plan.md` == PLAN21 (G3), `.agent/live_review.md`'s C2 remainder == blank + FIND0587 + blank + RECORD19 (G4), `docs/agents/planner_reviewer_prompt.md` == the base blob with both FROMs replaced by their TOs (G8), `.agent/handoff.md`'s C5 remainder == VERDICT (round report).
+- The committed C0a is byte-equal to the `.remedy-wt/f086-r21.md` scratchpad the round was delegated from, and `.agent/last_block.md` mirrors the committed C0a read back with `git show` (G2).
 
 ## Deviations & assumptions
 
-- No departure from the block's ordered commit sequence: C0a, C0b, C1, C2, C3, C4 were committed in that order, one commit each, nothing extra, nothing dropped, nothing reordered.
-- OBSERVATION for the reviewer, not a change: the RECORD18 slice opens `Gate: R19 — the R18 entry. R19 PASSED …`, while every prior entry in `.agent/live_review.md` follows `Gate: R<this round> — the R<previous round> entry. R<previous round> …` and the entry immediately above it already opens `Gate: R19 — the R18 entry.`. Constraint 1 forbids editing a slice and constraint 3 forbids the worker authoring a verdict, so the slice was applied byte-verbatim and the discrepancy is reported rather than repaired. No gate this block orders measures that prose.
-- No verdict on this round is written here. The worker reports what the gates measured; ruling is the reviewer's.
+- No departure from the block's ordered commit sequence: C0a, C0b, C1, C2, C3 were committed in that order, one commit each, nothing extra, nothing dropped, nothing reordered. C4 is the commit writing this file and C5 appends VERDICT to it; the round report carries both, since a handoff cannot certify a commit that does not exist when it is written.
+- ASSUMPTION, stated because it looks like a defect and is not: the duplicate header `Gate: R19 — the R18 entry.` remains on disk at `4dc7cbdf`. Constraint 3 and §3 item 20 forbid rewriting a landed record, and G7 gates that duplicate set as UNCHANGED. FIND0587 is the dated correction.
+- No verdict on this round is written here. The worker reports what the gates measured; ruling is the reviewer's. The VERDICT text appended at C5 is the reviewer's own, applied byte-verbatim.
 
 ## Next
 
-The reviewer re-runs G1-G15 over bc85e5f7..HEAD and rules on R20. Before authoring R21, re-read `.agent/STOP` from disk (Phase 1 rule 1 before rule 2); R21 promotes R-0586's rule into the §3 pre-emission checklist item 20 and records R20's verdict.
+The reviewer re-runs G1-G14 over a7373e00..HEAD and rules on R21. Before authoring anything, re-read `.agent/STOP` from disk (Phase 1 rule 1 before rule 2). Per the VERDICT text C5 appends, the next session records R21 in `.agent/live_review.md` under the header `Gate: R22 — the R21 entry.`, then takes the integration gate.
