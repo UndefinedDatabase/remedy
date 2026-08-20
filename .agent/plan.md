@@ -14,11 +14,11 @@ path and the UI serve work, the version command matches the tag, and a release
 with a missing changelog entry is refused by the gate.
 
 ## Current Step
-R24: record R23's verdict, register the three defects R23 exposed — R-0589 a
-constant stated twice and corrected once, R-0590 a gate whose conditional
-discharged itself, R-0591 an ordered recipe whose default broke the parity it was
-meant to restore — and promote all three counter-measures onto the §3 checklist,
-where a rule has to live to bind the next block.
+R25: record R24's verdict, register R-0592 — the handback's mandated `## Commits`
+table carries a `+/-` column no gate reaches, and at R24 one row of it disagreed
+with `git diff --numstat` and with the same file's own gate line — and promote its
+counter-measure onto the §3 checklist as item 28, where a rule has to live to
+bind the next block.
 
 ## Next Steps
 1. THE INTEGRATION GATE IS DONE and it is GREEN: at R23 the branch full suite ran
