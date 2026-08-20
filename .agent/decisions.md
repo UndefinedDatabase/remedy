@@ -6012,3 +6012,81 @@ raised by hand.
 
 Reverse this decision by deleting the exception paragraph from AGENTS.md's Open PR
 Gate, which returns the gate to stop-and-report on any failing check.
+
+## DECISION F086 D1 — the wheel carries the built UI explicitly, and installed mode never builds it (2026-08-20)
+
+CHOSEN. T001 makes the built UI a declared wheel artifact rather than a file that
+happens to be lying around. Three parts, and the first is useless without the other
+two. (a) `pyproject.toml` gains an explicit carry for `apps/ui/dist` under
+`[tool.hatch.build.targets.wheel]` — `artifacts` or `force-include`, whichever the
+installed hatchling honours, chosen by MEASUREMENT and not by documentation — because
+that directory is untracked and matched by the generic `dist/` ignore at
+`.gitignore:13`, and a build backend that respects VCS ignores will otherwise omit it
+however carefully it was built first. (b) A packaging-time guard REFUSES to produce a
+wheel whose `apps/ui/dist/index.html` is absent, so the failure is loud at build time
+instead of silent at serve time; the feature file's "never ship a wheel with an empty
+UI directory silently" is this clause. (c) `_get_frontend_dist()` in
+`packages/orchestration/ui_server.py` resolves the asset directory in BOTH modes —
+package-relative when installed, repository-relative in a checkout — with a test per
+mode, because its three `.parent` hops land on the environment's `site-packages`
+parent once installed and there is no repository root there to find.
+
+Additionally, and rules the hazard R3's inventory surfaced as its open question 4:
+in INSTALLED mode the missing-assets path does NOT spawn npm. `_load_frontend()`
+today answers a missing `dist/` by running `npm install` and `npm run build`, and
+`apps/ui/package.json` IS a wheel member, so that path is reachable from a user's
+environment where no `node_modules` exists and no toolchain is promised. Installed
+mode degrades to the honest "UI assets not built" message the feature file expects to
+already exist; auto-build stays a CHECKOUT-mode convenience. The mode test is the same
+one part (c) introduces, so this costs no second mechanism.
+
+ALTERNATIVE CONSIDERED and rejected: ship the UI SOURCE and build on first serve,
+which is close to today's accidental behaviour — the wheel already carries 65 files
+under `apps/ui/src/` and a 182948-byte `package-lock.json` but no build output. It is
+rejected because it makes every installed user's first serve depend on a network, a
+node toolchain and an npm lockfile resolution, turning a packaging problem into a
+runtime one, and because it cannot satisfy the feature's own DONE condition that the
+UI serve work in a fresh virtualenv. Whether the wheel should keep shipping that
+source at all is left to T003's wheel-size budget and is NOT ruled here.
+
+CONSEQUENCE. The wheel stops being buildable from a bare `git worktree`: producing a
+releasable artifact now requires the UI to be built first, which is a real constraint
+on CI and on any human cutting a release, and it is deliberate — it is the only way the
+guard in (b) can be honest. The measured baseline T001 must move is a wheel of 414
+members and 2038283 bytes carrying 0 members under `apps/ui/dist/`.
+
+Reverse this decision by deleting this section and the explicit carry it rules, which
+returns the wheel to whatever the backend's default file selection produces — today,
+a wheel with no UI.
+
+## DECISION F086 D2 — one version literal, read through package metadata, honest in a checkout (2026-08-20)
+
+CHOSEN. T002 keeps `pyproject.toml` as the single place a version NUMBER is written —
+it is `version = "0.1.0"` at `pyproject.toml:7` today, and R3 measured the wheel's
+METADATA agreeing with it — and `remedy --version` reads it back through
+`importlib.metadata.version("remedy")` rather than through a second literal in Python
+source. No `__version__` constant is introduced to be kept in sync, because a second
+literal is the defect this decision exists to prevent. There is no `--version` flag
+under `apps/` today; T002 adds one, and it prints the version, the git sha embedded at
+build time, the Python version and the platform, as the feature file's Design asks.
+
+In a CHECKOUT the distribution is frequently not installed and the embedded sha does
+not exist, so the command reports the version it can prove and says `dev` for the build
+info rather than inventing a sha or crashing. That is the feature file's "checkout mode
+reports dev honestly" and it is a REQUIREMENT, not a fallback: a version command that
+reports a stale or fabricated sha is worse than one that admits it is a working tree.
+
+ALTERNATIVE CONSIDERED and rejected: generate a `_version.py` at build time as the
+single source. It reads more simply at the call site, but it puts a generated file on
+the import path where a stale copy in a checkout outranks the metadata and reports a
+version nobody built — the precise failure mode the honest-`dev` clause exists to
+avoid.
+
+CONSEQUENCE. `remedy --version` is only fully truthful for an INSTALLED distribution,
+which is the mode the release gate cares about, and the checkout mode is deliberately
+less informative rather than differently informative. The release gate T003 builds can
+then compare a tag against exactly one number, read from the artifact it is about to
+publish.
+
+Reverse this decision by deleting this section, which returns the version story to a
+single literal with no reader and no `--version` flag.
