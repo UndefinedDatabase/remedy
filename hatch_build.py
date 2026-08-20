@@ -2,7 +2,9 @@
 
 THE GUARD: `artifacts = ["apps/ui/dist/**"]` carries the built UI but is SILENT
 when that directory is absent — measured at 419fb683, such a build exits 0 and
-ships zero UI files, which DECISION F086 D1 part (b) forbids.
+ships zero UI files, which DECISION F086 D1 part (b) forbids. It binds the
+targets that SHIP those files and never the editable one, which ships nothing of
+its own and serves the UI from the checkout it points at.
 
 THE EMBEDDING: `remedy --version` reports the revision a wheel was built from
 (DECISION F086 D2). hatchling prefixes every hook-supplied extra-metadata entry
@@ -28,6 +30,21 @@ except ImportError:  # pragma: no cover - only the real wheel build takes this p
 
 FRONTEND_DIST_INDEX = "apps/ui/dist/index.html"
 REVISION_WHEEL_NAME = "REVISION"
+EDITABLE_BUILD_TARGET = "editable"
+
+
+def build_target_ships_ui_assets(version: str) -> bool:
+    """Return whether build target `version` produces an artifact that SHIPS the UI.
+
+    Only the editable target does not. `pip install -e` writes a path hook pointing
+    at the checkout, so the UI serves from `apps/ui/dist` in the source tree once it
+    is built and nothing is ever copied out; guarding that target refuses the dev
+    install on every fresh clone instead. Measured on CI run 32402941541 at
+    dcf351c6, where the workflow's own `pip install -e ".[dev]"` step exited 1 and
+    no test ran at all. DECISION F086 D1 part (b) governs the SHIPPED artifact,
+    which every other target still is.
+    """
+    return version != EDITABLE_BUILD_TARGET
 
 
 def assert_frontend_assets_built(root: str | Path) -> Path:
@@ -84,6 +101,8 @@ class RemedyBuildHook(BuildHookInterface):
     PLUGIN_NAME = "remedy-build"
 
     def initialize(self, version, build_data):
+        if not build_target_ships_ui_assets(version):
+            return
         assert_frontend_assets_built(self.root)
         build_data["extra_metadata"].update(
             build_revision_metadata(self.root, tempfile.mkdtemp())
