@@ -15,19 +15,19 @@ path and the UI serve work, the version command matches the tag, and a release
 with a missing changelog entry is refused by the gate.
 
 ## Current Step
-R6, this round: record the R5 verdict, then land T001 part (a) of DECISION F086
-D1 — the explicit wheel carry for `apps/ui/dist` — with the carry mechanism
-chosen by building a wheel each way and counting what each one carries. The same
-round reads, without acting on it, what `_get_frontend_dist()` returns from an
-extracted wheel layout.
+R7, this round: register the four defects R6 exposed in the reviewer's own gates,
+record the R6 verdict, rule DECISION F086 D3, and land T001 part (a) — the
+`artifacts` carry for `apps/ui/dist` in `pyproject.toml`. The carry mechanism was
+selected by a measurement the reviewer executed itself, with a control that can
+fail; R6's own control could not, which is finding R-0574.
 
 ## Next Steps
-1. R7 — the reviewer rules on R6's installed-layout reading, which bears directly
-   on DECISION F086 D1 part (c): the dual-mode resolver is worth building only if
-   the current three-parent expression fails from an installed layout. Then T001
-   parts (b) and (c) as that ruling leaves them — the packaging-time guard that
-   refuses a wheel whose `apps/ui/dist/index.html` is absent, and the
-   installed-mode path that never spawns npm.
+1. R8 — T001 part (b), the packaging-time guard that refuses to produce a wheel
+   whose `apps/ui/dist/index.html` is absent, plus the two-mode resolver TEST that
+   DECISION F086 D3 keeps after withdrawing the two-mode resolver CODE. The guard
+   is owed because the carry alone is silent: measured at 72e07381, a build with
+   the carry applied and no `dist/` present exits 0 and produces a 414-member
+   wheel carrying 0 UI files.
 
 ## Risks
 - The install smoke F086 requires creates a fresh virtualenv and runs the wheel's
