@@ -14,16 +14,19 @@ path and the UI serve work, the version command matches the tag, and a release
 with a missing changelog entry is refused by the gate.
 
 ## Current Step
-R16, this round: the TRIGGER, and the session closes. A manual-trigger
-`.github/workflows/release.yml` builds the wheel, reads this commit's real CI
-conclusion and calls `scripts/release_gate_check.py`; text guards keep it manual,
-thin and publish-free. Then the R15 verdict is recorded and the reviewer's own
-session verdict is written to disk (finding R-0571).
+R17, this round: record R16's verdict, register finding R-0584 and repair it.
+Three of the release workflow's seven text guards assert a positive existence over
+text that includes the file's COMMENTS, and two of them are satisfied by a comment
+alone — the `${found:-missing}` fallback can be deleted, and the only trigger the
+workflow has can be commented out, with the suite green either way. All three
+positive checks move onto the file's executable lines.
 
 ## Next Steps
 1. The install smoke T2_F086 T001 still owes: a fresh virtualenv, the wheel
    installed into it, `remedy` on PATH, and the golden path and the UI serve
-   probed from it. The round that writes it must name its execution host.
+   probed from it. The round that writes it must rule, as a DECISION, WHERE that
+   smoke executes — an opt-in marker, a `ci.yml` stage, or a step of
+   `release.yml` — because no self-drive session can run it here.
 2. Then the integration gate (docs/agents/integration_gate.md) and closure. The
    packaging ist-doc is written at closure, when the built state stops moving.
 3. THE RELEASE WORKFLOW HAS NEVER BEEN RUN. It is gated as TEXT, the way
@@ -33,11 +36,11 @@ session verdict is written to disk (finding R-0571).
 
 ## Risks
 - The install smoke creates a fresh virtualenv and runs the wheel's console
-  script. This session's permission layer refuses to execute any interpreter
-  under `.remedy-wt/`, so the round that writes it must name its execution host
-  or it will be unverifiable where it matters.
+  script. MEASURED at R17 rather than assumed: this session's permission layer
+  refuses to execute an interpreter under `.remedy-wt/`, so a self-drive round can
+  write that smoke but cannot run it, and the round that writes it says so.
 - A build tool's file selection depends on WHERE the tree is: hatchling drops
   every VCS exclusion when the build root is gitignore-matched, so any packaging
   probe uses a worktree OUTSIDE this repository (finding R-0574).
 - Ruff is RED repo-wide at 26 pre-existing errors and is NOT a gate; a round
-  touching Python gates ruff scoped to the files it touches.
+  touching Python gates ruff scoped to the files it touches, by multiset.
