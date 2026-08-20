@@ -1,49 +1,43 @@
-# Plan — no feature claimed; the Open PR Gate is CLEAR
+# Plan — F086 Release capability
 
-Branch: `main`. F085 is CLOSED, ACCEPTED and MERGED — PR #204 merged at 68155931
-with `--merge --delete-branch`. The operator amendment amend0820-gate-autonomy is
-merged too (PR #205 at 86555049). `.agent/live_review.md` stays the source of truth
-for the open set, for the next free finding id and for the round map; this file
-repeats none of them.
+Branch: feature/f086-release-capability, cut from `main` at 76661dc1. Pull request
+#207 is open and unmerged; the CI check on 665c45df, run 32405232165, is green —
+the first green run this branch has had. It merges at the next feature's Open PR
+Gate.
+`.agent/live_review.md` is the source of truth for the open set, for the next free
+finding id and for the round map; this file repeats none of them.
 
 ## Goal
-Claim the next feature by Rule A5. Nothing is in flight: no open PR, no feature
-branch, no half-landed round. This file exists to say so plainly, because the next
-session's Phase 0 reads it before it reads anything else.
+Remedy ships like a normal tool: `pip install` yields the `remedy` CLI with the
+UI assets bundled, `remedy --version` reports version and build info, and a
+release is gated by CI plus a semver and changelog discipline. DONE when a wheel
+built from a clean checkout installs into a fresh virtualenv where the golden
+path and the UI serve work, the version command matches the tag, and a release
+with a missing changelog entry is refused by the gate.
 
 ## Current Step
-IDLE at the gate, with the gate open. `gh pr list --state open` returns zero rows,
-`git status --porcelain` is empty on `main`, and `.agent/STOP` is absent. The two
-blockers the previous three sessions ended on are both gone:
-
-- The red `ci` check on #204 was ONE cause, not a stage budget. The guard's
-  deny-network posture emptied `NO_PROXY`, so a guarded child could not reach a
-  loopback server it had started itself; 62 tests failed with `[Errno 111]
-  Connection refused`. A 63rd, the deny test's own CONTROL, failed because CI runs
-  pytest itself as a guarded child, so a control spawned with plain
-  `subprocess.run` inherited the very posture it was meant to contrast with. See
-  DECISION amend0820-gate-autonomy A1 in `.agent/decisions.md`.
-- The reason no session could NAME that cause was a missing permission, not a
-  protocol judgement. `Bash(gh run:*)`, `Bash(gh api:*)` and `Bash(gh pr checks:*)`
-  are now in the tracked `.claude/settings.json`, and AGENTS.md's Open PR Gate now
-  treats a running or red check as WORK. See DECISION amend0820-gate-autonomy A2.
+R35: record R34's verdict in `.agent/live_review.md` so it is not stranded
+(DECISION F085 D9). This round registers no finding, resolves none, and changes
+no source file, test or document.
 
 ## Next Steps
-1. Re-read `.agent/STOP` from disk before anything else — Phase 1 rule 1.
-2. Claim the next feature by Rule A5. Its FIRST reviewed round must register or
-   resolve BOTH `.agent/candidates.md` entries and empty that file.
+1. THE OPEN PR GATE MERGES #207, per AGENTS.md, before any new branch is cut.
+   The operator may merge it manually at any time instead.
+2. R35'S OWN VERDICT IS RECORDED BY THE NEXT FEATURE'S FIRST REVIEWED ROUND,
+   the way F085's closure candidates reached F086 R1. R35 does NOT claim the
+   terminator carve-out: R-0583 gives that to the round creating the branch's
+   pull request, which was R31, so the regress ends at the merge and not here.
+3. F086 STAYS `[x]` IN THE LEDGER. Neither R-0598 nor R-0599 falsifies the
+   closure's own claim, so each correction is a dated ledger entry and never a
+   rewrite of a landed STATUS line.
 
 ## Risks
-- CI runs its stages serially: `pytest_argv_for_stage` adds no `-n auto` and
-  `pyproject.toml` sets no `addopts`, where local runs use `-n auto`. MEASURED
-  across three hosted runs on 2026-08-19/20: no stage has yet tripped its budget —
-  the widest `standard` sample was 1617.5 s against a 2100 s cap. The risk stays
-  listed because a slower hosted runner could still trip it; the budget is then
-  re-derived by the rule `tests/orchestration/test_ci_stages.py` states, from a
-  re-measured maximum, never raised by hand.
-- The R75 record round (e950e8af..4c2d707b, `.agent/` only) carries no gate entry,
-  by the terminator rule its own carrier candidate describes.
-- `.claude/settings.local.json` is gitignored and read-denied, so what it grants or
-  denies cannot be inspected from inside a session. The three grants above were
-  therefore added to the TRACKED settings file; whether they take effect is
-  observable only from a session that is not in bypass-permissions mode.
+- THE FEATURE'S OWN DONE CONDITION IS NOT FULLY PROVEN and closure says so rather
+  than counting a skipped test as coverage: no wheel has been installed into a
+  fresh virtualenv, and `.github/workflows/release.yml` has never been dispatched.
+  Both are human actions and both are named in the STATUS line's PASS_WITH_RISKS.
+- A GREEN CI RUN IS NOT A WHEEL INSTALL. It proves the dev install and the suite,
+  which is what R-0598 broke, and it proves neither risk above.
+- R-0571 IS THE HOLE THIS ROUND ROUTES AROUND BY HAND rather than fixes: a last
+  round whose verdict was written and one whose verdict was never written are
+  indistinguishable on disk, and the fix edits files F086 does not own.

@@ -309,9 +309,13 @@ class TestPrimaryDocsAreHonest:
 
 
 class TestPrimaryDocLinksResolve:
-    @pytest.mark.parametrize("doc", [p.name for p in PRIMARY_DOCS])
+    # R-0596: parametrising by `p.name` collided the repository README.md with
+    # docs/README.md and `next` resolved both to the first, so the documentation
+    # INDEX — the one file AGENTS.md requires every new doc to be registered in —
+    # was checked by no case. The repo-relative path is unique by construction.
+    @pytest.mark.parametrize("doc", [str(p.relative_to(REPO)) for p in PRIMARY_DOCS])
     def test_every_relative_markdown_link_exists(self, doc):
-        path = next(p for p in PRIMARY_DOCS if p.name == doc)
+        path = REPO / doc
         if not path.is_file():
             pytest.skip(f"{doc} does not exist")
         text = path.read_text(encoding="utf-8")

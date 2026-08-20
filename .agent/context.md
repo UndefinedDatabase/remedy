@@ -1,48 +1,47 @@
-# Context — F085 Sandbox hardening (stage 1)
+# Context — F086 Release capability
 
 ## Active Branch
-feature/f085-sandbox-hardening, cut from origin/main at a5a70621 after the F083
-closure PR #202 and the operator amendment PR #203 were both merged. Self-drive
+feature/f086-release-capability, cut from `main` at 76661dc1, the merge commit
+of PR #206, which the operator merged manually at the Open PR Gate. Self-drive
 session per docs/agents/self_drive_protocol.md: the main session plans and
 reviews and writes nothing in the work tree, one delegated worker per round
 makes every commit.
 
 ## Scope
-In: stage-1 containment for builder-, test- and DoD-spawned subprocesses — a
-common `exec_guard` seam carrying POSIX resource limits, a wall timeout distinct
-from the provider timeouts, output-size caps, a cwd pinned inside the worktree,
-an environment allowlist, and a default-deny network posture for build and test
-commands, plus the honest limitations document and its README link. The tripped
-limit becomes an additive `resource_limit` postmortem class.
+In: shipping Remedy as a normal installable tool — a single wheel with the
+console entrypoint `remedy`, the built UI carried as package data, asset
+resolution that works from an installed wheel as well as from a checkout, a
+single-sourced version with build info behind `remedy --version`, a release CI
+stage gated on tag/version agreement and on a changelog section, a wheel-size
+budget, and a fresh-virtualenv install smoke.
 
-Out, per the feature file's Do-not-touch: container isolation, provider
-transport timeouts, and fence semantics. Windows is explicitly out of scope for
-stage 1 and is documented as such. No wording anywhere — code comments included
-— may claim more containment than is enforced.
+Out, per the feature file's Do-not-touch: auto-publishing, installers beyond
+pip, update mechanisms and the license choice. Publishing to an index stays a
+HUMAN command in v1; automating the final upload is explicitly rejected for this
+feature. No wording anywhere may claim the wheel ships assets it does not.
 
 ## Constraints
 - Merges only at the Open PR Gate; never force-push; never work on main.
 - Verification is pytest, scoped per round, plus the canary
   tests/cli/test_golden_path.py. A round touching docs/roadmap/** also gates
-  tests/docs/, and a round rewriting `.agent/` state also gates the four files
-  that read that state live: tests/orchestration/test_test_runner.py,
+  tests/docs/ and tests/orchestration/test_roadmap_index.py, and a round
+  rewriting `.agent/` state also gates the four files that read that state live:
+  tests/orchestration/test_test_runner.py,
   tests/ui_server/test_dashboard_contract.py,
   tests/regression/test_resource_safety.py and
   tests/orchestration/test_integrity_gate.py. Destructive and red-proof checks
   run only inside a disposable git worktree under .remedy-wt/, so resource
-  safety stays intact.
-- Repository-wide `ruff check` is RED on main with pre-existing errors and is
-  NOT a gate (R-0364); ruff is gated scoped to the files a round touches,
-  measured against the SAME files at origin/main so a pre-existing error is not
-  read as a new one.
-- Two AST guards already constrain this feature's target files and bind every
-  seam order: `test_no_subprocess_in_discovery_module` forbids `subprocess.run`
-  in packages/orchestration/command_discovery.py, and
-  `test_no_shell_true_in_orchestration` forbids `shell=True` anywhere in
-  packages/orchestration/*.py.
-- 104 findings are open at the claim, carried forward into the reset record per
-  DECISION F057 D1. R-0403, R-0448, R-0482, R-0487 and R-0490 are routed to a
-  paydown branch and are deliberately not fixed here.
+  safety stays intact. Two pytest processes never run at once.
+- Repository-wide `ruff check` is RED at the claim and is NOT a gate (R-0364):
+  the reviewer measured 26 errors at 76661dc1 — 20 I001, 4 F401, 1 F821 and 1
+  UP035. Ruff is gated scoped to the files a round touches, measured against the
+  SAME files at 76661dc1 so a pre-existing error is not read as a new one.
+- A wheel build runs npm. Every such spawn goes through the F085 `exec_guard`
+  seam rather than a bare subprocess, and a round that adds one says so.
+- 152 findings are open at the claim, carried forward into the reset record per
+  DECISION F057 D1. R-0403, R-0448, R-0482, R-0487, R-0490, R-0567, R-0568,
+  R-0569, R-0570 and R-0571 are routed to a paydown branch and are deliberately
+  not fixed here.
 
 ## Steps
 Stated once, in `.agent/plan.md`. This file tracks scope and constraints only.

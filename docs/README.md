@@ -46,6 +46,7 @@
 | provider trust | [provider-trust-gate-v0.md](system/provider-trust-gate-v0.md) | system |
 | provider trust | [provider-trust-verification-v1.md](system/provider-trust-verification-v1.md) | system |
 | quickstart | [simple-operator-quickstart-v0.md](guides/simple-operator-quickstart-v0.md) | guide |
+| release / packaging | [release-capability-v1.md](system/release-capability-v1.md) | system |
 | remedy.toml | [remedy-toml-configuration-system-v0.md](system/remedy-toml-configuration-system-v0.md) | system |
 | remedy.toml | [remedy-toml-user-guide.md](guides/remedy-toml-user-guide.md) | guide |
 | repair | [repair-loop-v1.md](system/repair-loop-v1.md) | system |
@@ -118,6 +119,7 @@ Specifications and design documents for the built system.
 | [quality-baseline-v0.md](system/quality-baseline-v0.md) | Quality baseline definitions |
 | [real-test-execution-snapshot-rollback-proof-v1.md](system/real-test-execution-snapshot-rollback-proof-v1.md) | Test execution + snapshot/rollback proof spec |
 | [real-test-execution-v1.md](system/real-test-execution-v1.md) | Real test execution service |
+| [release-capability-v1.md](system/release-capability-v1.md) | What the wheel carries, what `remedy --version` reports, every reason the release gate refuses, and what F086 leaves unproven |
 | [remedy-toml-configuration-system-v0.md](system/remedy-toml-configuration-system-v0.md) | remedy.toml configuration system |
 | [repair-loop-v0.md](system/repair-loop-v0.md) | Repair loop v0 (legacy) |
 | [repair-loop-v1.md](system/repair-loop-v1.md) | Repair loop v1 (bounded, approval-gated) |

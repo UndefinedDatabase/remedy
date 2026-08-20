@@ -6012,3 +6012,179 @@ raised by hand.
 
 Reverse this decision by deleting the exception paragraph from AGENTS.md's Open PR
 Gate, which returns the gate to stop-and-report on any failing check.
+
+## DECISION F086 D1 — the wheel carries the built UI explicitly, and installed mode never builds it (2026-08-20)
+
+CHOSEN. T001 makes the built UI a declared wheel artifact rather than a file that
+happens to be lying around. Three parts, and the first is useless without the other
+two. (a) `pyproject.toml` gains an explicit carry for `apps/ui/dist` under
+`[tool.hatch.build.targets.wheel]` — `artifacts` or `force-include`, whichever the
+installed hatchling honours, chosen by MEASUREMENT and not by documentation — because
+that directory is untracked and matched by the generic `dist/` ignore at
+`.gitignore:13`, and a build backend that respects VCS ignores will otherwise omit it
+however carefully it was built first. (b) A packaging-time guard REFUSES to produce a
+wheel whose `apps/ui/dist/index.html` is absent, so the failure is loud at build time
+instead of silent at serve time; the feature file's "never ship a wheel with an empty
+UI directory silently" is this clause. (c) `_get_frontend_dist()` in
+`packages/orchestration/ui_server.py` resolves the asset directory in BOTH modes —
+package-relative when installed, repository-relative in a checkout — with a test per
+mode, because its three `.parent` hops land on the environment's `site-packages`
+parent once installed and there is no repository root there to find.
+
+Additionally, and rules the hazard R3's inventory surfaced as its open question 4:
+in INSTALLED mode the missing-assets path does NOT spawn npm. `_load_frontend()`
+today answers a missing `dist/` by running `npm install` and `npm run build`, and
+`apps/ui/package.json` IS a wheel member, so that path is reachable from a user's
+environment where no `node_modules` exists and no toolchain is promised. Installed
+mode degrades to the honest "UI assets not built" message the feature file expects to
+already exist; auto-build stays a CHECKOUT-mode convenience. The mode test is the same
+one part (c) introduces, so this costs no second mechanism.
+
+ALTERNATIVE CONSIDERED and rejected: ship the UI SOURCE and build on first serve,
+which is close to today's accidental behaviour — the wheel already carries 65 files
+under `apps/ui/src/` and a 182948-byte `package-lock.json` but no build output. It is
+rejected because it makes every installed user's first serve depend on a network, a
+node toolchain and an npm lockfile resolution, turning a packaging problem into a
+runtime one, and because it cannot satisfy the feature's own DONE condition that the
+UI serve work in a fresh virtualenv. Whether the wheel should keep shipping that
+source at all is left to T003's wheel-size budget and is NOT ruled here.
+
+CONSEQUENCE. The wheel stops being buildable from a bare `git worktree`: producing a
+releasable artifact now requires the UI to be built first, which is a real constraint
+on CI and on any human cutting a release, and it is deliberate — it is the only way the
+guard in (b) can be honest. The measured baseline T001 must move is a wheel of 414
+members and 2038283 bytes carrying 0 members under `apps/ui/dist/`.
+
+Reverse this decision by deleting this section and the explicit carry it rules, which
+returns the wheel to whatever the backend's default file selection produces — today,
+a wheel with no UI.
+
+## DECISION F086 D2 — one version literal, read through package metadata, honest in a checkout (2026-08-20)
+
+CHOSEN. T002 keeps `pyproject.toml` as the single place a version NUMBER is written —
+it is `version = "0.1.0"` at `pyproject.toml:7` today, and R3 measured the wheel's
+METADATA agreeing with it — and `remedy --version` reads it back through
+`importlib.metadata.version("remedy")` rather than through a second literal in Python
+source. No `__version__` constant is introduced to be kept in sync, because a second
+literal is the defect this decision exists to prevent. There is no `--version` flag
+under `apps/` today; T002 adds one, and it prints the version, the git sha embedded at
+build time, the Python version and the platform, as the feature file's Design asks.
+
+In a CHECKOUT the distribution is frequently not installed and the embedded sha does
+not exist, so the command reports the version it can prove and says `dev` for the build
+info rather than inventing a sha or crashing. That is the feature file's "checkout mode
+reports dev honestly" and it is a REQUIREMENT, not a fallback: a version command that
+reports a stale or fabricated sha is worse than one that admits it is a working tree.
+
+ALTERNATIVE CONSIDERED and rejected: generate a `_version.py` at build time as the
+single source. It reads more simply at the call site, but it puts a generated file on
+the import path where a stale copy in a checkout outranks the metadata and reports a
+version nobody built — the precise failure mode the honest-`dev` clause exists to
+avoid.
+
+CONSEQUENCE. `remedy --version` is only fully truthful for an INSTALLED distribution,
+which is the mode the release gate cares about, and the checkout mode is deliberately
+less informative rather than differently informative. The release gate T003 builds can
+then compare a tag against exactly one number, read from the artifact it is about to
+publish.
+
+Reverse this decision by deleting this section, which returns the version story to a
+single literal with no reader and no `--version` flag.
+
+## DECISION F086 D3 — the dual-mode resolver is withdrawn; the carry mechanism is `artifacts` (2026-08-20)
+
+CHOSEN, and it AMENDS DECISION F086 D1 rather than replacing it. Part (c) of D1
+required `_get_frontend_dist()` to resolve the asset directory in two modes,
+package-relative when installed and repository-relative in a checkout, on the
+stated premise that "its three `.parent` hops land on the environment's
+`site-packages` parent once installed and there is no repository root there to
+find". That premise is FALSE, and the R3 inventory's open question 4 carries the
+same error. The hops land on the wheel ROOT, not its parent:
+`packages/orchestration/ui_server.py` has exactly three ancestors up to the
+archive root, and `apps/` is a sibling of `packages/` at that same root — the
+identical geometry a checkout has. Measured three ways at `72e07381`: from an
+extracted wheel the function returned that extraction's own `apps/ui/dist`; from
+an independent copy of `packages/` plus `apps/ui/dist` laid out the same way and
+placed first on `sys.path` with the working directory outside the repository, it
+returned that copy's directory; and from the checkout it returned the checkout's.
+In every case the loaded module's `__file__` was printed first, so the reading
+could not have come from the wrong copy. No dual-mode code is therefore written,
+because the single expression already satisfies both modes, and a second
+resolution path would be untested surface added to satisfy a measurement error.
+
+KEPT from part (c): the test per mode. The property is load-bearing for the
+feature's own DONE condition and nothing currently pins it, so a regression that
+broke installed-mode resolution would be invisible until a user's first serve. A
+test that constructs a wheel-root-shaped layout and asserts the resolver follows
+it is cheap, and it is the artifact that would have caught the premise error
+years earlier than a human would.
+
+CONFIRMED and now MEASURED, part (a): the explicit carry is real and both
+candidate mechanisms work. From a probe worktree OUTSIDE the repository with
+`apps/ui/dist` present, `pyproject.toml` AS COMMITTED AT `72e07381` produces 414
+members and 0 under `apps/ui/dist/`; `artifacts = ["apps/ui/dist/**"]` produces 417 members,
+2155470 bytes and 3; a `force-include` table produces 417 members, 2155479 bytes
+and 3. `artifacts` is chosen: it needs no source-to-target path mapping, and it
+is the smaller of the two artifacts by nine bytes. R6's measurement could not
+choose between them because its control was vacuous, which is finding R-0574.
+
+STILL OWED, part (b), and this decision sharpens why. The carry does not make an
+absent UI loud: measured at `72e07381`, a build with `artifacts` applied and no
+`apps/ui/dist` present exits 0 and produces the same 414-member wheel with 0 UI
+files. So landing the carry alone is a strict improvement — with assets present
+the wheel now ships them, where before it never did — but it does NOT satisfy
+D1's "never ship a wheel with an empty UI directory silently", and no release may
+be cut until the packaging-time guard exists.
+
+ALTERNATIVE CONSIDERED and rejected: keep part (c) as written and build the
+dual-mode resolver anyway, on the grounds that it is harmless. Rejected because
+it is not harmless — it would add a branch no environment reaches, and a branch
+no environment reaches is a branch no test can honestly red-prove, which this
+repository has already paid for once (finding R-0252).
+
+Reverse this decision by deleting this section, which restores D1 part (c) as
+written and reopens the choice between `artifacts` and `force-include`.
+
+## DECISION F086 D4 — the install smoke is written here and executed elsewhere (2026-08-20)
+
+CHOSEN. The T2_F086 install smoke is ONE module, `tests/test_install_smoke.py`,
+carrying the `smoke` and `slow` markers, which SELF-SKIPS unless the environment
+variable `REMEDY_INSTALL_SMOKE` is set. Its execution host is a machine with
+network access and permission to spawn an interpreter it just installed — a
+GitHub runner or the operator's own shell — and never a self-drive round.
+
+MEASURED, at R17, which is why this is a decision and not a preference: this
+session's permission layer refuses to execute an interpreter under `.remedy-wt/`,
+so `python3 -m venv .remedy-wt/probe-venv` succeeds and the resulting
+`.remedy-wt/probe-venv/bin/python` cannot be run. A wheel install also needs the
+network to resolve `pydantic>=2.0` and `psutil>=5.9`, which `pyproject.toml`
+declares. Neither constraint is a property of one round; both hold for every
+round of this workflow.
+
+WHY OPT-IN RATHER THAN A NEW CI STAGE. `tests/orchestration/test_ci_stages.py`
+pins the stage tuple to `("fast", "standard", "ui", "smoke", "budgets",
+"excluded")`, so a new stage is a change to that pin as well; and the existing
+`smoke` stage already selects `smoke`-marked tests. The opt-in variable mirrors
+what `real_ollama` already does for tests the default suite must not run, which
+is the pattern this repository has and the reason the marker exists.
+
+WHAT THIS DECISION DELIBERATELY DOES NOT RULE. It does not name the CI stage that
+sets the variable. That choice needs the smoke's real wall-clock, and the `smoke`
+stage carries a 300 s `timeout_sec` which AGENTS.md forbids raising by hand — a
+budget is re-derived by the rule `tests/orchestration/test_ci_stages.py` states,
+from a re-measured maximum. Choosing the stage before measuring the duration
+would be exactly the blind raise that rule exists to prevent, so it waits.
+
+CONSEQUENCE, stated plainly so no later reader mistakes a written test for a
+passing one: until that variable is set somewhere real, F086's DONE condition —
+"a wheel built from a clean checkout installs into a fresh virtualenv where the
+golden path and the UI serve work" — is UNPROVEN. The closure round names it as
+unproven rather than counting a skipped test as coverage.
+
+ALTERNATIVE CONSIDERED and rejected: put the smoke in the release workflow
+instead, as a step of `release.yml`. Rejected because that workflow is manual and
+rarely dispatched, so a packaging regression would surface at release time, which
+is the latest and most expensive moment to learn about it.
+
+Reverse this decision by deleting this section, which reopens the choice between
+an opt-in marker, a new CI stage, and a release-workflow step.

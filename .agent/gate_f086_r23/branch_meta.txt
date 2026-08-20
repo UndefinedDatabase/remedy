@@ -1,0 +1,8 @@
+F086 R23 integration gate -- BRANCH RUN
+CHECKOUT   /home/decodeux/Repos/remedy (primary)
+REVISION   181ade7e6b89ddaf427c2688c95cf898aea4980c
+COMMAND    python3 -m pytest -n auto -q
+EXIT_CODE  0
+WALL_SECONDS 149.0
+SUMMARY    17192 passed, 20 skipped in 148.46s (0:02:28)
+FAILED_COUNT 0

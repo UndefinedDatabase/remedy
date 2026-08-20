@@ -340,6 +340,35 @@ end the response with:
       sequence is fine and only its RANGE is wrong. The R26 instance: gate 19
       covered a six-commit range, so the handback reported five insertion counts
       and called the range "five single-parent commits" while HEAD held six.
+      Finding R-0588 raises this item from the PER-COMMIT reading to the WHOLE-FILE
+      one. A bound on a file that MORE THAN ONE commit builds — the handback this
+      workflow writes at one commit and appends the reviewer's verdict to at the
+      next — is stated per commit and never once over the final state, because the
+      final state does not exist when the text that must respect it is written. The
+      block computes any constant its own appended slices contribute: it SHIPS that
+      slice, so it knows the length, and it fixes the earlier commit's bound as the
+      cap minus that constant. The R21 instance: G14 ordered the handoff "at the
+      commit C5 creates" to be at most 100 lines AND ordered a DECISION D15 line
+      declaring any overage, while C5 appended only the 40-line VERDICT and C4 wrote
+      the 80-line text — so the worker met every content obligation, could not have
+      known the sum in time to declare it, and had to record the arithmetic in the
+      round report instead of in the file. The counter-measure is two readings, not
+      a bigger cap: bound the writing commit, bound the appending commit, and state
+      which is which.
+      Finding R-0589 adds the SWEEP this item's arithmetic needs and does not state. A
+      constant the block computes for ITSELF — an appended slice's length, and the bound
+      on the earlier commit derived from it — is stated ONCE, in one clause, and every
+      other clause NAMES that clause rather than repeating its numeral. Where a numeral
+      genuinely must appear twice, every occurrence is re-grepped after the LAST edit and
+      before emission, because correcting one occurrence is precisely where the next wrong
+      one lands: R-0486 and R-0488 are that shape, and this instance arrived inside the
+      round whose own clause above requires the block to compute the constant. Computing
+      it once and stating it twice is what this item as first written permits. The R23
+      instance: the block re-measured its VERDICT slice at 44 lines after a trim, corrected
+      constraint 9 to 44 with a C4 bound of 56, and left gate G15 ordering "at most 57" and
+      "exactly (a) plus 43" — so one block held both numerals twice and the second copy was
+      unmeetable for every possible round, while the handback landed at 56 and 100 and met
+      the corrected clause exactly.
   15. **Pair shapes are classified by a containment test, never by eye.** Finding
       R-0508. Before emission every FROM/TO pair is tested MECHANICALLY for whether the
       TO contains the FROM verbatim, and the answer is printed beside that pair in the
@@ -394,6 +423,13 @@ end the response with:
       rather than synchronise it. A ruled figure that must appear in a heading appears there
       once, in the same words as the body that rules it, so that a later revision cannot
       change one without visibly contradicting the other.
+      Finding R-0585 widens the check's REACH rather than its subject: the list a sentence
+      counts need not sit beneath that sentence. The R18 instance is a done-when gate reading
+      "exactly the four paths of constraint 2 other than `.agent/handoff.md`" while constraint
+      2, fifty lines above it, named five — so "read the numerals against the body beneath it"
+      never looked at the list that had drifted, and an honest worker had to spend a declared
+      deviation proving the block contradicted itself. Resolve every count to the list it
+      NAMES, wherever in the block that list lives, and prefer naming it over counting it.
   17. **A pair that changes a structure's arity spans the whole structure.** Finding
       R-0509. When a TO adds or removes an entry of a numbered list, a table, or any
       other structure whose items carry positional labels, the FROM spans that WHOLE
@@ -416,6 +452,19 @@ end the response with:
       both halves are individually sound. The R22 instance: probe b ordered
       `wall_timeout_seconds` removed from a test AND asserted that "with the backstop
       the node must FAIL and name `wall_timeout`".
+      Finding R-0591 widens this item from a RED-PROOF's two halves to ANY ordered recipe
+      and the property that recipe is ordered to establish. A block that names a MECHANISM
+      — a copy call, a flag, an environment variable, a shell builtin — is read against
+      what the mechanism must PRESERVE, using its real defaults rather than its intent, and
+      the argument that carries the property is named in the order rather than assumed. The
+      R23 instance: G9 ordered `apps/ui/node_modules` restored into a base worktree "with
+      `shutil.copytree` — NEVER symlink" to give the base run artefact parity, and
+      `copytree` defaults to `symlinks=False`, so it dereferenced npm's 23 bin shims and
+      CAUSED 7 of the 23 base-only failures the parity existed to prevent. The repository's
+      own precedent had it right — `.agent/gate_f085_r72/base_parity.txt` reads "symlinks
+      preserved" — and the block kept the citation while dropping the qualifier, which is
+      how a correct precedent becomes an incorrect order. Where a mechanism's DEFAULT is
+      the hazard, order the argument, not the function.
   19. **A claim about a gate's result names the commit that runs the gate.** Finding
       R-0515. An authored slice may state what a gate showed only when the same block
       fixes that the gate runs BEFORE the commit that writes the slice. Otherwise the
@@ -482,6 +531,20 @@ end the response with:
       `.agent/last_block.md` "at 757be21c" correctly, then called five copies equal with
       no commit named, while that round's own C0b had already overwritten the working
       copy two commits earlier — four of the five matched, and the sentence claimed five.
+      Finding R-0586 adds the mechanical scan this item has always described and nothing
+      has ever run. Before emission every slice bound for an append-only record is searched
+      for the labels this item forbids: delete each backtick-quoted span first — a token a
+      finding QUOTES is not a token it USES, and a guard that cannot tell the two apart is
+      satisfied by the quotation (R-0584 class) — then require ZERO matches of `\bHEAD\b`
+      in what remains. `main` and `origin/main` are INSPECTED rather than counted to zero,
+      because both also occur as ordinary prose and a zero-gate over them is unmeetable —
+      the R-0563 shape, where a sweep stated too widely protects nothing. Measured at
+      `bc85e5f7`, the `Gate:` entries of `.agent/live_review.md` from R10 through R19
+      carried 3, 2, 2, 6, 3, 1, 1, 0, 4 and 3 unquoted occurrences in that order, every one
+      but R17's carrying at least one: a rule stated for four rounds and broken under
+      itself, because nothing measured it. Those landed entries are NOT rewritten — the
+      counter-measure above is the dated correction — and this scan binds only text that
+      has not yet been written.
   21. **A baseline gate resolves its own paths at the base it names.** Finding R-0532. A
       gate ordered "at `origin/main` as well", or at any commit other than the one under
       review, is checked at emission with `git ls-tree <base> -- <path>` for EVERY path it
@@ -565,6 +628,78 @@ end the response with:
       the control cannot distinguish from its own success. Where the bytes recur inside the named
       file, the control orders a longer UNIQUE byte string instead. Item 24 resolves the paths a
       gate NAMES; this one resolves the BYTES a gate orders CHANGED.
+  26. **A slice joining a file's repeating record format is read against the entries it
+      joins.** Finding R-0587. When an authored slice appends an entry to a file whose
+      existing entries share a header shape — the `Gate: R<n> — the R<n-1> entry.` lines of
+      `.agent/live_review.md`, a changelog's version headings, any keyed series — the
+      slice's own header is compared MECHANICALLY against the headers already in that file
+      before emission, as a pattern match and never by eye. Items 11 and 16 govern numerals
+      a block states about its own text and about a list it names, and item 20 governs a
+      fact about a file's CONTENT; none of them reads a slice's SHAPE against the shape of
+      its neighbours, which is where R-0587 landed. The R20 instance: RECORD18 was headed
+      `Gate: R19 — the R18 entry.` while its body recorded R19 at R20, so the header
+      duplicated the entry directly above it byte for byte and the ledger gained two
+      paragraphs answering to one key — and the handback of the round before had already
+      named the correct string. No gate the block ordered could see it, because those gates
+      measured bytes and ids and the entry was perfect in both; the worker applied it
+      verbatim, as constraint 1 required, and declared it. A header is the key a later
+      reader searches by, so a duplicated one costs more than a stale sentence: order the
+      comparison before emission, and never repair it by rewriting the landed entry, which
+      item 20 forbids.
+  27. **A conditional gate is read against the case where its condition is FALSE.** Finding
+      R-0590. A done-when of the form "if X, then attribute / report / prove Y" is checked at
+      emission against NOT-X, and wherever the obligation Y survives that case the condition
+      is DROPPED rather than narrowed. A gate that discharges itself the moment its guard
+      fails is indistinguishable on the page from one that binds, and it fails silently and
+      in the safe-looking direction — the vacuous-gate class of R-0438, arriving through a
+      guard rather than through a missing path. Item 8 checks a gate's expected VALUE against
+      the code and item 18 reads an ordered recipe against the property it must establish;
+      neither reaches this one, because the value is right and the recipe is sound and only
+      the REACHABILITY of the demand is wrong. The R23 instance: G10 ordered every base-only
+      failure attributed by direct evidence "if the parity claim went VOID", and at that round
+      parity HELD on both digest and mtime while 23 base-only ids existed — the two are
+      independent, parity being a statement about what the RUN rebuilt and the base-only set
+      about what the base LACKS — so the gate demanded nothing of 23 real failures, over
+      exactly the evidence an integration gate exists to produce.
+      docs/agents/integration_gate.md step 3 makes that attribution unconditional, and the
+      worker attributed all 23 by demonstration on its own initiative and said so, which is
+      the round rescuing the reviewer rather than the gate doing its job.
+  28. **A measurement the handback template ALSO carries is gated where the template
+      puts it.** Finding R-0592. When a block orders a value that
+      docs/agents/handback_template.md independently requires in a mandated section —
+      the `+/-` column of the `## Commits` table, a path set, a file's line count —
+      the gate NAMES that section as the place the value lands and orders the two
+      readings compared, cell by cell, against the tool that produced them. A value
+      the worker must write twice will be derived twice, and the second derivation is
+      not covered by a gate that only says "report it": the Verification line can be
+      exactly right while the table beside it is wrong, and the table is the half a
+      later session reads. Item 22 binds a sentence the REVIEWER writes about a range
+      and item 14 a constant the BLOCK computes for itself; neither reaches a number
+      the WORKER re-derives to fill a section the template mandates, which is the
+      third writer of the same value. The R24 instance: G12 ordered each commit's
+      insertion count reported, the worker reported all five correctly, and the
+      `## Commits` row for the block-mirror commit read `+380/-334` — the file's line
+      counts after and before — where `git diff --numstat` reads `270  224`, the two
+      differing by exactly the lines the old and new block share. Full-file rewrites
+      are where this bites, because only there do the counts and the columns diverge.
+  29. **A gate that measures a NON-CURRENT revision names the mechanism that reads it
+      without writing.** Finding R-0594. When a done-when orders a tool run "at <base>"
+      as well as at the round's own commit, the block names HOW the base bytes reach
+      that tool — `git show <sha>:<path>` into memory, a scratch copy under a
+      gitignored directory, or the tool's own stdin flag where its configuration is
+      path-sensitive (`ruff check --stdin-filename <path> -`, so `per-file-ignores`
+      still resolves). A gate that says only "run X at <base>" leaves overwrite-and-
+      restore as the obvious route, and that route mutates the PRIMARY checkout, which
+      docs/agents/self_drive_protocol.md guardrail G5 forbids outright. Item 18 reads a
+      NAMED mechanism against the property it must preserve and item 27 reads a
+      conditional against its false case; neither reaches this one, because here the
+      block names no mechanism at all and the defect is the ROUTE the worker is left to
+      invent rather than the ORDER itself. The R26 instance: G11 ordered
+      `ruff check packages/orchestration/release_gate.py` at the base and at C3, and
+      ruff resolves per-file-ignores by the given path, so the worker wrote the base
+      blob over the tracked file, linted, restored it byte-identically and declared the
+      method — a correct reading taken by a route the protocol forbids, and the same
+      reading was available from `--stdin-filename` with nothing written at all.
   Why this is on disk and not a habit: item 2 has recurred six times across
   F104 and F105, and R20 hit four of them in one block. A check that lives
   only in reviewer session memory is the A1 trap §0 names, and this list is the

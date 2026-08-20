@@ -1,0 +1,25 @@
+F086 R23 -- RAW LOG PROVENANCE
+
+Every suite log of this round was written to the gitignored scratch dir
+.remedy-wt/.cache/gate_r23/, OUTSIDE the tracked tree, while its run was in
+flight (R-0176: a log growing inside the repo changes the worktree digest mid-run
+and turns the manifest-identity ids into false failures). Only the derived .txt
+evidence in this directory is committed (R-0169). Each raw log's identity:
+
+  base_failed.txt                    lines     23  sha256 7c947e7f433714fd37e610948a5bc5e71273094670b7ede46dfbaadff13d2b78
+  base_failed_raw.txt                lines     23  sha256 7c947e7f433714fd37e610948a5bc5e71273094670b7ede46dfbaadff13d2b78
+  base_meta_raw.txt                  lines      5  sha256 058d47648951702b93c5c2415806c2f81a6fd06f490e43a2904ccac7ac00855c
+  base_rerun_env_restored.txt        lines    996  sha256 88ec49c320d3f9ad6e5c6906a063dd6f5d77a68827ec118445af651cbea86e6d
+  base_rerun_mtime_restored.txt      lines      2  sha256 c1ae2e36df1799bf1489a660b0b57c8146263a05bd69bc943eb700d17d4997a8
+  base_run.txt                       lines   1808  sha256 e41c0dc38bb147ef85a27546b54fab25aaf8d93a872232e72b2e645fa19f7d55
+  branch_failed.txt                  lines      0  sha256 e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+  branch_failed_raw.txt              lines      0  sha256 e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+  branch_meta_raw.txt                lines      4  sha256 a7c5557b0779614679270616fc95fad8c54aae04e8840c4f4063fe188b0abc8f
+  branch_run.txt                     lines    244  sha256 12cd9f63b6b5379b5a3b2b8f504bac39aea80090b252ad30b0dd19b807b424bc
+  canary_run.txt                     lines      2  sha256 c8be53b22d5ab211845205269b877cfb5da0a9227d02a7ce79ecbb4445f2daa9
+  comm_base_only_failures.txt        lines     23  sha256 7c947e7f433714fd37e610948a5bc5e71273094670b7ede46dfbaadff13d2b78
+  comm_branch_only_failures.txt      lines      0  sha256 e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+
+The throwaway worktree .remedy-wt/base-r23 and its branch tmp/base-gate-r23 were
+REMOVED and PRUNED after every reading above was taken; `git worktree list` then
+reads one line, and `git branch --list 'tmp/*'` reads none.
