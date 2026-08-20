@@ -5951,3 +5951,33 @@ and resolves one finding, the count is unchanged and that is not an error.
 
 Reverse this decision by deleting this section, which returns the formula to whatever each block
 asserts and restores the ambiguity R-0566 was registered for.
+
+## DECISION amend0820-gate-autonomy A1 — loopback is exempt from the deny-network posture (2026-08-20)
+
+CHOSEN by the operator on 2026-08-20, applied at commit f882c727 on
+`feature/f085-sandbox-hardening`. `exec_guard.DENIED_NETWORK_NO_PROXY` is
+`localhost,127.0.0.1,::1` and is written into both `NO_PROXY` spellings of
+`DENIED_NETWORK_ENV`. Every other host — loopback or not — still goes through
+`DENIED_NETWORK_PROXY_URL`, the closed discard port.
+
+WHY. The posture as shipped emptied `NO_PROXY`, so no host was exempt and an HTTP
+request a guarded `test`-class child made to a server IT HAD JUST STARTED went to the
+closed proxy. That is how this repository's runtime, smoke and CLI suites judge
+readiness. Hosted CI run 32301614177 measured the cost: 62 failures across the `fast`
+and `standard` stages, every one of them `[Errno 111] Connection refused` against a
+server whose own log line said `ready`. The sandbox exists to deny the EXTERNAL
+network; it was denying the suite its own test server.
+
+ALTERNATIVE CONSIDERED and rejected: leave the posture and stop running those suites
+under the guard. It would move the network policy out of one table and into a
+per-suite exception list, and it would delete coverage the guard was built to have.
+
+CONSEQUENCE. The deny is measured where it still applies — a really-listening server
+on 127.0.0.2, which the exemption does not name — and the exemption is measured
+directly by `test_a_guarded_test_command_still_reaches_the_loopback_the_exemption_names`.
+`docs/system/exec-guard-limitations-v0.md` states the exemption in its own words, and
+`docs/roadmap/features/T2_F085.md` carries it as an amendment section. A future reader
+must not describe stage 1 as denying "all" network access to a guarded child.
+
+Reverse this decision by restoring the empty string in `DENIED_NETWORK_NO_PROXY` and
+deleting the amendment section in the feature file, which returns 62 tests to red.
