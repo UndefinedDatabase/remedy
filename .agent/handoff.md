@@ -1,98 +1,59 @@
-# Handback — F086 R14, close the session (branch feature/f086-release-capability)
+# Handback — F086 R15, the DATA and the CALLER (branch feature/f086-release-capability)
 
 ## Range
 
-Review of a662abcc..HEAD
+Review of 6f5a589a..HEAD
 
 ## Commits
 
 | # | Commit | Path | +/- | Reason |
 |---|---|---|---|---|
-| C0a | 44caf7e1 | .agent/authored/f086-r14.md | +330/-0 | the block, byte-verbatim |
-| C0b | 25ce4987 | .agent/last_block.md | +221/-381 | mirror of the COMMITTED C0a |
-| C1 | fbfddb0a | .agent/plan.md | +10/-9 | the PLAN14 slice, whole file |
-| C2 | 6c053b46 | .agent/live_review.md | +2/-0 | RECORD12, the R13 entry |
-| C3 | this commit | .agent/handoff.md | rewrite | R-0149: cannot table itself |
-| C4 | next commit | .agent/handoff.md | append | the VERDICT slice, 43 lines |
+| C0a | 16889dd5 | .agent/authored/f086-r15.md | +489/-0 | the block, byte-verbatim |
+| C0b | 866d905d | .agent/last_block.md | +404/-245 | mirror of the COMMITTED C0a |
+| C1 | b59fbd8f | .agent/plan.md | +16/-17 | the PLAN15 slice, whole file |
+| C2 | 96483707 | .agent/live_review.md | +4/-0 | FIND0583 then RECORD13, appended |
+| C3 | 3b77cf19 | CHANGELOG.md | +24/-0 | the CHANGELOG slice, a NEW file |
+| C4 | 8cdecc5b | scripts/release_gate_check.py | +72/-0 | the RUNNER slice, a NEW file |
+| C5 | 5bfdddfa | tests/orchestration/test_release_gate_wiring.py | +91/-0 | the TESTS slice, NEW |
+| C6 | this commit | .agent/handoff.md | rewrite | R-0149: cannot table itself |
 
 ## External actions
 
-`git push origin feature/f086-release-capability` after C2 → `a662abcc..6c053b46`, and again after C4 (the round report carries that one). `gh pr list --state open --json number,headRefName,baseRefName,isDraft` → `[]`. No PR created, nothing merged, no worktree added.
+`git push -u origin feature/f086-release-capability` after C5 → `6f5a589a..5bfdddfa`, and again after C6 (the round report carries that one). `gh pr list --state open --json number,headRefName,baseRefName,isDraft` → `[]`; no PR created, nothing merged. `git worktree add .remedy-wt/r15-probe HEAD --detach` for G9, G10 and G11's control, then `git worktree remove` + `git worktree prune`; `git worktree list` now reads one line.
 
 ## Verification
 
-One line per gate. The FULL transcript — every command, its real exit code, its output and every 64-character digest — is in the ROUND REPORT (block step C3, the R-0582 repair; G8 measures it).
-G1 tree EMPTY at every commit and at the handback, `git worktree list` 1 line, `.agent/STOP` absent before C0a and again at the handback, branch correct.
-G2 `.remedy-wt/f086-r14.md` ≡ committed authored ≡ committed last_block, byte-EQUAL, 23468 B, 330 lines; size re-measured from the committed file as 330 total / 236 prose / 94 slice incl. 6 markers, as declared.
-G3 `.agent/plan.md` ≡ PLAN14, 43 lines (under 50), holds `## Goal`, `## Next Steps` and `F086`.
-G4 the pre-C2 ledger blob is a byte-exact PREFIX of the post-C2 blob; remainder ≡ RECORD12, 2 lines.
-G5 HEAD reads 165 registered / 2 resolved / 0 duplicates / 0 unregistered resolutions / 0 `Landed:` / 163 open under BOTH extractions, and the two registered SETS are EQUAL; symmetric difference against a662abcc is `[]`; the control over 3351878d..a662abcc reads `['R-0582']`, so the extractor can see a difference.
-G6 0 lines beginning `<<<SLICE ` or `<<<END ` in plan.md, live_review.md and handoff.md.
-G7 `Gate: ` paragraphs 11 at a662abcc, naming R3 through R13, and 12 at HEAD, the added one naming R14. R14's own entry is absent by construction; none was added.
-G8 this file is 98 lines at HEAD, AT MOST 100 — no DECISION D15 overage is declared. Re-derived from each commit's own blob: R10 113, R11 165, R12 223, R13 222. All seven mandated headings are present, in the template's order.
-G9 `.agent/handoff.md` as committed by C3 is a byte-exact PREFIX of the file at HEAD; the remainder ≡ VERDICT, 43 lines.
-G10 exit 0, 160 passed, then exit 0, 42 passed — both in the primary checkout, run serially, the second started only after the first had ended.
-G11 insertions before C3: C0a 330, C0b 221, C1 10, C2 2. None exceeds 500.
-G12 linear, every commit exactly one parent: a662abcc → 44caf7e1 → 25ce4987 → fbfddb0a → 6c053b46; `git reflog` over this round shows only `commit:` entries.
-G13 path set before C3 is exactly the four `.agent/` files above; `pyproject.toml`, `hatch_build.py` and every path under `apps/`, `packages/`, `tests/`, `docs/` and `scripts/` are ABSENT from the range, and all seven EXIST at a662abcc, so the clause forbids something real.
-G14 `gh pr list --state open --json number,headRefName,baseRefName,isDraft` → `[]`.
+One line per gate. The FULL transcript — every command, its real exit code, its output and every 64-character digest — is in the ROUND REPORT (block step C6, the R-0582 repair; G15 measures it).
+G1 primary tree EMPTY at every commit and at the handback, `.agent/STOP` absent before C0a and again at the handback, branch `feature/f086-release-capability`, HEAD at 6f5a589a when the round began.
+G2 `.remedy-wt/f086-r15.md` ≡ committed authored ≡ committed last_block, all three byte-EQUAL, 29861 B, 489 lines; size re-measured from the COMMITTED file as 489 total / 244 prose / 245 slice incl. 12 markers, which is what the block declares of itself.
+G3 `.agent/plan.md` ≡ PLAN15, 42 lines (under 50), holds `## Goal`, `## Next Steps` and `F086`.
+G4 the pre-C2 ledger blob is a byte-exact PREFIX of the post-C2 blob; the 4-line remainder ≡ FIND0583 followed by RECORD13, in that order.
+G5 HEAD reads 166 registered / 2 resolved / 0 duplicate ids / 0 unregistered resolutions / 0 `Landed:` / 164 open under BOTH extractions, and the two registered SETS are EQUAL; the symmetric difference against 6f5a589a is `['R-0583']`; the control over 3351878d..a662abcc reads `['R-0582']`, so the extractor can see a difference.
+G6 0 lines beginning `<<<SLICE ` or `<<<END ` in plan.md, live_review.md, handoff.md, CHANGELOG.md, scripts/release_gate_check.py and tests/orchestration/test_release_gate_wiring.py.
+G7 `CHANGELOG.md` ≡ CHANGELOG (1146 B, 24 lines), `scripts/release_gate_check.py` ≡ RUNNER (2966 B, 72 lines), `tests/orchestration/test_release_gate_wiring.py` ≡ TESTS (3785 B, 91 lines); `git ls-tree 6f5a589a` prints nothing for each, so all three commits are creations, not edits.
+G8 exit 0, 21 passed — the wiring suite and the gate suite together, primary checkout.
+G9 RED PROOF: the exact line `## [0.1.0] - 2026-08-20` counted 1x, then replaced by `## [0.1.0-broken] - 2026-08-20` in the worktree's CHANGELOG.md and nothing else → exit 1, exactly 3 failed / 6 passed, naming `test_the_declared_version_has_a_non_empty_section`, `test_this_repository_is_refused_for_no_reason_at_all` and `test_a_sound_release_exits_zero`. Reverted → exit 0, 9 passed, that worktree's porcelain EMPTY.
+G10 with a 2040197 B file at the worktree's `dist/remedy-0.1.0-py3-none-any.whl`: `--tag v0.1.0 --ci-status success` → exit 0, stdout exactly `release v0.1.0 may proceed`, stderr empty; `--tag v9.9.9 --ci-status failure` → exit 1, stdout empty, exactly 2 stderr lines, both beginning `REFUSED: `, one naming CI and one the tag.
+G11 ruff over the two new paths in the primary checkout → exit 0, EMPTY rule-code multiset. No base reading exists to compare against: both paths are ABSENT at 6f5a589a, which G7 measures. CONTROL in the worktree only, `import json` inserted after the 1x line `import argparse` → exit 1 naming F401; reverted → exit 0.
+G12 exit 0, 160 passed for the four state readers, then exit 0, 42 passed for the canary. They did NOT overlap: the second process started 3.708 s after the first had ENDED.
+G13 linear, every commit exactly one parent: 6f5a589a → 16889dd5 → 866d905d → b59fbd8f → 96483707 → 3b77cf19 → 8cdecc5b → 5bfdddfa; `git reflog` over this round shows only `commit:` entries. Insertions before C6: 489, 404, 16, 4, 24, 72, 91 — none over 500, and no DECISION F104 D1 exemption invoked.
+G14 the path set before C6 is exactly the seven paths tabled above other than `.agent/handoff.md`. `pyproject.toml`, `hatch_build.py`, `packages/orchestration/release_gate.py` and `.github/workflows/ci.yml` are ABSENT from the range and all four EXIST at 6f5a589a, so the clause forbids something real. `.github/workflows/release.yml` is absent from the range AND at 6f5a589a — it is R16's work, said plainly so the clause does not read as a guard over a live file (R-0559).
+G15 this file is 59 lines at HEAD, AT MOST 100 — no DECISION D15 overage is declared — and all seven mandated headings of docs/agents/handback_template.md are present, in the template's order.
+G16 `gh pr list --state open --json number,headRefName,baseRefName,isDraft` → `[]`. Nothing merged.
 
 ## Authored-text proofs
 
-PLAN14, RECORD12 and VERDICT were each extracted programmatically by their one-line `<<<SLICE NAME>>>` / `<<<END NAME>>>` markers from the COMMITTED `.agent/authored/f086-r14.md` and applied byte-verbatim; none was retyped or edited. Each applied region byte-EQUALS its slice, verified disk-to-disk. Every sha256 is reported in full, at 64 characters, in the round report; none is written here in part.
+PLAN15, FIND0583, RECORD13, CHANGELOG, RUNNER and TESTS were each extracted programmatically by their one-line `<<<SLICE NAME>>>` / `<<<END NAME>>>` markers from the COMMITTED `.agent/authored/f086-r15.md` and applied byte-verbatim; none was retyped or edited. Each applied region byte-EQUALS its slice, verified disk-to-disk against the committed blob. Every sha256 is reported in full, at 64 characters, in the round report; none is written here in part.
 
 ## Deviations & assumptions
 
-- ORDERED COMMIT SEQUENCE: no deviation. C0a, C0b, C1, C2, C3, C4 ran in the block's order, one commit each, none extra, none dropped, none reordered.
-- The Verification section above is a per-gate SUMMARY, not a raw transcript. That departs from this template's "raw transcripts" wording and was ordered by this round's block step C3 as the R-0582 repair; the transcript lives in the round report, which no cap binds. No section is dropped.
-- This file stands at 98 lines after C4 — the 55 lines C3 wrote plus the 43-line VERDICT slice. Nothing was trimmed after C4. It exceeds the template's separate ≤800-token guidance; the round report states the measured token count.
+- ORDERED COMMIT SEQUENCE: no deviation. C0a, C0b, C1, C2, C3, C4, C5, C6 ran in the block's order, one commit each, none extra, none dropped, none reordered.
+- The Verification section above is a per-gate SUMMARY, not a raw transcript. That departs from this template's "raw transcripts" wording and was ordered by this round's block step C6 as the R-0582 repair; the transcript lives in the round report, which no cap binds. No section is dropped.
 - `Range` names the literal token `HEAD`, the R10-onward convention on this branch: a handoff cannot name the SHA of the commit that writes it.
-- The worker wrote no verdict anywhere. The section appended below is the REVIEWER's own text, applied byte-verbatim by C4.
+- The worker wrote no verdict of its own anywhere. RECORD13, the R14 entry in the finding ledger, is the REVIEWER's text, applied byte-verbatim by C2.
+- Nothing calls the release gate from production code yet: `scripts/release_gate_check.py` is called by its tests and, from R16, by a manual-trigger workflow. It is not executable, has no `[project.scripts]` entry and is imported by no production module — as the block ordered.
 
 ## Next
 
 1. Re-read `.agent/STOP` from disk (Phase 1 rule 1).
 2. Then run the Open PR Gate (Phase 1 rule 2): `gh pr list --state open --json number,headRefName,baseRefName,isDraft`.
-
-## Reviewer's session verdict — authored by the reviewer, applied by the worker
-
-Written because finding R-0571 is that a verdict issued and never put on disk
-cannot be told apart from one never issued; appended so the next handback rewrite
-cannot silently destroy it. Session of 2026-08-20, self-drive per
-docs/agents/self_drive_protocol.md. The reviewer wrote nothing in the work tree,
-one delegated worker per round made every commit, and every verdict below rests
-on gates the reviewer re-executed over the committed diff, never on a handback.
-
-| Round | Range | Verdict |
-|---|---|---|
-| R11 | dea9dc2f..ee22186c | PASS — one finding, R-0581, against the reviewer |
-| R12 | ee22186c..3351878d | PASS — no finding |
-| R13 | 3351878d..a662abcc | PASS — no finding |
-| R14 | a662abcc..HEAD | terminator; §4 item 13 gives it no ledger entry |
-
-R11 was inherited unreviewed — the stranding DECISION F085 D9 warns about — so
-reviewing it first was Phase 1 rule 4. Every ordered property held; its one
-defect was in the evidence record, a transport digest reported ending
-`f9ff257fc2` where the true one ends `f1fa257fc2`. That is R-0581 and not a
-failure: "report the sha256" is a shape no wrong value violates, and the
-convention wrote digests ELIDED. Every digest ordered since is in full.
-
-R12 closed what T002 owed, proved on a real wheel built outside this repository:
-417 members, one REVISION member at `<dist-info>/extra_metadata/REVISION` whose
-bytes equal the probe worktree's own HEAD, against a base build that also exits
-0 — so the control ran — and ships 416 with none. It also fixed a reader that
-could never have worked, hatchling prefixing hook metadata with
-`extra_metadata/`. R13 landed T003's decision half: `refuse_release` refuses on
-red CI, a tag not matching the version, a missing or empty changelog section, and
-a wheel over an 8 MiB budget, one seeded-failure test each.
-
-WHAT THIS FEATURE STILL OWES: nothing calls the release gate. `CHANGELOG.md` does
-not exist and no workflow supplies a real tag, version or wheel size — R15's
-work, and until it lands the gate refuses nothing. Then the install smoke, whose
-fresh-virtualenv step this session's permission posture cannot execute, then the
-integration gate and closure.
-
-All three findings this session registered are defects in the reviewer's own
-instrumentation, not in the work under review, which passed every gate it was
-given. G8 is the first gate this reviewer has written that can fail on the
-reviewer's own habit.
