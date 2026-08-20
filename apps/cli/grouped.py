@@ -468,6 +468,13 @@ def _wants_json(raw: list[str]) -> bool:
 
 def main(argv: list[str] | None = None) -> None:
     """Entry point for the grouped CLI."""
+    # Pre-scan for --version first: it answers from anywhere in the tree and must
+    # not be swallowed by --help or by argparse (DECISION F086 D2).
+    from apps.cli.version_report import handle_version_flag
+
+    if handle_version_flag(argv):
+        return
+
     # Pre-scan for --help to avoid argparse SystemExit on missing required args
     if _pre_scan_help(argv):
         return
