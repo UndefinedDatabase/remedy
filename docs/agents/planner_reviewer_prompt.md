@@ -682,6 +682,24 @@ end the response with:
       counts after and before — where `git diff --numstat` reads `270  224`, the two
       differing by exactly the lines the old and new block share. Full-file rewrites
       are where this bites, because only there do the counts and the columns diverge.
+  29. **A gate that measures a NON-CURRENT revision names the mechanism that reads it
+      without writing.** Finding R-0594. When a done-when orders a tool run "at <base>"
+      as well as at the round's own commit, the block names HOW the base bytes reach
+      that tool — `git show <sha>:<path>` into memory, a scratch copy under a
+      gitignored directory, or the tool's own stdin flag where its configuration is
+      path-sensitive (`ruff check --stdin-filename <path> -`, so `per-file-ignores`
+      still resolves). A gate that says only "run X at <base>" leaves overwrite-and-
+      restore as the obvious route, and that route mutates the PRIMARY checkout, which
+      docs/agents/self_drive_protocol.md guardrail G5 forbids outright. Item 18 reads a
+      NAMED mechanism against the property it must preserve and item 27 reads a
+      conditional against its false case; neither reaches this one, because here the
+      block names no mechanism at all and the defect is the ROUTE the worker is left to
+      invent rather than the ORDER itself. The R26 instance: G11 ordered
+      `ruff check packages/orchestration/release_gate.py` at the base and at C3, and
+      ruff resolves per-file-ignores by the given path, so the worker wrote the base
+      blob over the tracked file, linted, restored it byte-identically and declared the
+      method — a correct reading taken by a route the protocol forbids, and the same
+      reading was available from `--stdin-filename` with nothing written at all.
   Why this is on disk and not a habit: item 2 has recurred six times across
   F104 and F105, and R20 hit four of them in one block. A check that lives
   only in reviewer session memory is the A1 trap §0 names, and this list is the
