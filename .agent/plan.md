@@ -1,8 +1,9 @@
 # Plan — F086 Release capability
 
 Branch: feature/f086-release-capability, cut from `main` at 76661dc1. Pull request
-#207 is open and its CI check is GREEN at 665c45df, run 32405232165 — the first
-green run this branch has had. It merges at the next feature's Open PR Gate.
+#207 is open and unmerged; the CI check on 665c45df, run 32405232165, is green —
+the first green run this branch has had. It merges at the next feature's Open PR
+Gate.
 `.agent/live_review.md` is the source of truth for the open set, for the next free
 finding id and for the round map; this file repeats none of them.
 
@@ -15,28 +16,28 @@ path and the UI serve work, the version command matches the tag, and a release
 with a missing changelog entry is refused by the gate.
 
 ## Current Step
-R33: record R32's verdict, resolve R-0598 — the editable-target exemption, which
-the branch's own CI run now proves in the environment that found the defect — and
-register R-0599 against the pair-shape reading the R32 block declared. State
-files only; no source file, test or document changes.
+R34: record R33's verdict in `.agent/live_review.md` so it is not stranded
+(DECISION F085 D9). This round registers no finding, resolves none, and changes
+no source file, test or document. It is the last round this session runs.
 
 ## Next Steps
-1. THE REVIEWER GATES R33. If R33 ends the branch its verdict has no on-disk gate
-   entry by construction, and that absence is the terminator rather than a missing
-   gate (docs/agents/planner_reviewer_prompt.md section 4 item 13).
-2. THE OPEN PR GATE MERGES #207 at the start of the next feature, per AGENTS.md —
-   not in this round. The operator may merge it manually at any time instead.
+1. THE NEXT SESSION REVIEWS R34 FIRST. Its handback is ungated by construction,
+   and Phase 1 of docs/agents/self_drive_protocol.md orders rule 1, the `.agent/STOP`
+   re-read, before rule 2, the Open PR Gate. R34 does NOT claim the terminator
+   carve-out: that belongs only to the round creating the branch's pull request,
+   which was R31 (R-0583).
+2. THE OPEN PR GATE MERGES #207 at the start of the next feature, per AGENTS.md.
+   The operator may merge it manually at any time instead.
 3. F086 STAYS `[x]` IN THE LEDGER. Neither R-0598 nor R-0599 falsifies the
-   closure's own claim — a shipped wheel is still refused without UI assets, and
-   the accepted evidence names the commit it was taken at — so each correction is
-   a dated ledger entry, never a rewrite of a landed STATUS line.
+   closure's own claim, so each correction is a dated ledger entry and never a
+   rewrite of a landed STATUS line.
 
 ## Risks
 - THE FEATURE'S OWN DONE CONDITION IS NOT FULLY PROVEN and closure says so rather
   than counting a skipped test as coverage: no wheel has been installed into a
   fresh virtualenv, and `.github/workflows/release.yml` has never been dispatched.
   Both are human actions and both are named in the STATUS line's PASS_WITH_RISKS.
-- THE GREEN RUN IS A CI RUN, not a wheel install. It proves the dev install and
-  the suite, which is what R-0598 broke, and it proves neither risk above.
+- A GREEN CI RUN IS NOT A WHEEL INSTALL. It proves the dev install and the suite,
+  which is what R-0598 broke, and it proves neither risk above.
 - The review package is 71% `.remedy-wt/` scratch by member count (R-0403, open
   and routed to a paydown branch); it inflates the package and is not a failure.
