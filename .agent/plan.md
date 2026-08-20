@@ -14,30 +14,31 @@ path and the UI serve work, the version command matches the tag, and a release
 with a missing changelog entry is refused by the gate.
 
 ## Current Step
-R23, the INTEGRATION GATE: record R22's verdict, resolve R-0588 — whose
-counter-measure landed at `72640273` and which R22's own G13 then met — and run
-the tier-3 full suite twice per docs/agents/integration_gate.md, branch and merge
-base, with `apps/ui/node_modules` and `apps/ui/dist` parity restored by COPY, then
-attribute every id in both comm outputs.
+R24: record R23's verdict, register the three defects R23 exposed — R-0589 a
+constant stated twice and corrected once, R-0590 a gate whose conditional
+discharged itself, R-0591 an ordered recipe whose default broke the parity it was
+meant to restore — and promote all three counter-measures onto the §3 checklist,
+where a rule has to live to bind the next block.
 
 ## Next Steps
-1. CLOSURE per docs/roadmap/STATUS_closure_protocol.md — evidence job, FRESH
-   review zip, the STATUS line, the PR. The packaging ist-doc is written there,
-   when the built state stops moving.
-2. The install smoke's wall-clock is MEASURED on a host that can run it, and only
+1. THE INTEGRATION GATE IS DONE and it is GREEN: at R23 the branch full suite ran
+   17192 passed / 20 skipped / 0 failed, the branch-only failure set was EMPTY, and
+   all 23 base-only ids were attributed to the throwaway worktree's missing build
+   artefacts by demonstration at `76661dc1`. Evidence: `.agent/gate_f086_r23/`.
+2. CLOSURE is the next substantive round, per docs/roadmap/STATUS_closure_protocol.md
+   — evidence job, FRESH review zip, the STATUS line, the PR. The packaging ist-doc
+   is written there, when the built state stops moving.
+3. The install smoke's wall-clock is MEASURED on a host that can run it, and only
    then is a CI stage chosen to opt in — the `smoke` stage carries a budget
    AGENTS.md forbids raising by hand.
-3. THE RELEASE WORKFLOW HAS NEVER BEEN RUN and NO INSTALL HAS EVER BEEN PROVEN;
+4. THE RELEASE WORKFLOW HAS NEVER BEEN RUN and NO INSTALL HAS EVER BEEN PROVEN;
    no round of this workflow can do either. Both are human actions, and closure
    names them as unproven rather than counting a skipped test as coverage.
 
 ## Risks
-- A branch-only failure the gate reproduces serially and couples to feature code
-  is a BLOCKER whose repair is its own reviewer-gated round, never this one's.
-- The base worktree lacks build outputs, so parity is restored by COPY and never
-  by symlink; `apps/ui/dist` is read by DIGEST AND BY MTIME before and after that
-  run, because at F085 R72 the digest held still while the mtime moved (R-0565).
-  Either reading moving voids the parity claim and forces per-id attribution.
+- Closure needs a FRESH review zip and a zip failure is a closure blocker; the zip
+  packages `.remedy-wt/`, which R-0403 registered and which no round has yet paid
+  down.
 - `tests/test_install_smoke.py` SKIPS everywhere it currently runs. Its unit
   coverage is real; its install coverage is zero until the variable is set.
 - Ruff is RED repo-wide at 26 pre-existing errors and is NOT a gate; a round
