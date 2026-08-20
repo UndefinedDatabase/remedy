@@ -170,8 +170,8 @@ end the response with:
   verbatim (estimate label included), so the current progress estimate
   always exists on disk, not only in the chat brief.
 
-- **Pre-emission block checklist (DECISION F105 D8, finding R-0250).** Run all
-  twelve checks mechanically, on the FINAL bytes, after the last edit, before any
+- **Pre-emission block checklist (DECISION F105 D8, finding R-0250).** Run EVERY
+  check below mechanically, on the FINAL bytes, after the last edit, before any
   block leaves the reviewer. Each one has already cost this repository a round.
   1. **Size.** Count the block's lines. Over 400 (DECISION F105 D5) → split or
      cut BEFORE emitting. A worker must save the block verbatim, so an oversize
@@ -271,6 +271,25 @@ end the response with:
       carrying it fixed a change set with no `docs/` path in it, so the sentence
       was false on disk the moment it was written and stayed false for a round
       (R-0461). This item is that promotion, finally performed.
+      Findings R-0526 and R-0527 widen this item from the NUMERAL to the class it
+      belongs to: any claim a block or a slice makes about its OWN text is MEASURED
+      before emission and written as the property that was measured. Two forms have now
+      cost rounds. A slice may not assert a universal over its own contents — R-0526 was
+      a resolution closing with "every reference it makes to `.agent/handoff.md` names
+      the SHA that holds the text it means", which was false of three of its own four,
+      because the clause it restated binds only references that LOCATE landed text and
+      the sentence quantified over all of them. A block constraint may not assert a
+      property its own slice does not have — R-0527 was constraint 8 of the R36 block
+      declaring that RECORD4 stated facts about two named source files when RECORD4
+      contained neither path, which made the staleness obligation that constraint
+      carried vacuous rather than met, and only the worker's own measurement caught it.
+      Both are recollections in the one document that exists because recollections are
+      not evidence. State what was counted, or state nothing: "the sentences that locate
+      landed text name their SHA" is measurable, "every reference names its SHA" is a
+      universal nobody checked. Items 19 and 20 govern claims about a GATE's result and
+      about another FILE's content; this one governs a claim about the author's own
+      bytes, which neither reaches because the text in question has not landed anywhere
+      yet when the claim is written.
   12. **A dry run executes the gate's EXACT command line.** Finding R-0463. When
       the reviewer lints, collects or runs anything to convince itself an
       authored slice is sound, it runs the command the BLOCK will order — same
@@ -321,6 +340,231 @@ end the response with:
       sequence is fine and only its RANGE is wrong. The R26 instance: gate 19
       covered a six-commit range, so the handback reported five insertion counts
       and called the range "five single-parent commits" while HEAD held six.
+  15. **Pair shapes are classified by a containment test, never by eye.** Finding
+      R-0508. Before emission every FROM/TO pair is tested MECHANICALLY for whether the
+      TO contains the FROM verbatim, and the answer is printed beside that pair in the
+      block's constraints — one reading per pair, never one reading generalised to the
+      rest. Item 4 states the RULE that an APPEND claim requires containment; this one
+      governs the METHOD by which the claim is produced, which is where R-0508 landed:
+      the R15 block ran the check for the single pair it suspected, wrote "Every other
+      pair is a REWRITE", and was wrong about an import insertion whose TO kept its
+      anchor line. An import pair that keeps its anchor is the most common
+      append-shaped pair in this repository, so the eye fails exactly where it is most
+      likely to be trusted. Nothing broke that round only because no gate ordered the
+      unsatisfiable "FROM 0x" reading; the next block to order one pays for it.
+      Finding R-0522 narrows what "the answer is printed" means: the constraint records
+      the containment test's own OUTPUT — the words `TO contains FROM: true` or
+      `TO contains FROM: false` — and the APPEND or REWRITE label is derived from that
+      output on the same line, never written on its own. A bare label is a recollection
+      wearing a measurement's clothes, and it is indistinguishable on the page from a
+      measured one, which is how R-0522 arose one round after this item was last
+      relied on: a block declared a pair a REWRITE while its TO began with its FROM
+      verbatim, and the handback then reported the rewrite proof's FROM-zero count for
+      a FROM that still occurred once. A block that records `true` orders the §4.9
+      append obligation and never a FROM-zero count, and it says so in the same
+      constraint, because the unattainable count is what turns a mislabelled pair into
+      a false line in the permanent record.
+  16. **No heading states a count of the contents beneath it.** Finding R-0510. A
+      section heading that restates a number its own body defines — "exactly these SIX
+      paths", "the four commits" — drifts the moment an item is added, and the heading
+      is the half nobody re-reads. Write the heading without the numeral. Item 11
+      forbids a hand-counted numeral about the block's own PARTS inside a convention
+      paragraph; this one forbids it in a HEADING over a list the reader can count
+      unaided, which is where the R-0402 / R-0404 / R-0436 family kept resurfacing
+      after item 11 was written. The R15 instance is the shape to recognise: that block
+      DID apply the rule to its Bundle heading, because that list had just grown, and
+      left the Change set heading saying SIX over a body of SEVEN. The fix reached the
+      instance that was noticed instead of the class — the R-0417 staleness shape — so
+      sweep every heading in the block, not the one that changed.
+      Findings R-0537, R-0543 and R-0547 widen this item twice over, and the two widenings
+      are independent of each other. FIRST, from a HEADING to ANY SENTENCE that quantifies
+      what follows it: a finding headline counting the instances its own body gives, a plan
+      sentence counting the tests its round shipped, a goal line counting the sites a bundle
+      touches. A headline is a heading by every property that made this item necessary — it
+      is the half nobody re-reads and the half that drifts once the body grows — and R-0537
+      and R-0543 are that same shape one round apart, the first counting FOUR of something
+      its body gives three of, the second saying "five tests" over a round that shipped
+      four. SECOND, from a COUNT to ANY VALUE the body beneath it fixes: R-0547 is a
+      DECISION whose heading rules 480 lines TOTAL while its own CHOSEN and CONSEQUENCE
+      paragraphs rule 490, so the numeral is a budget rather than a tally and this item as
+      first written does not reach it at all. Both widenings share one mechanical check,
+      which is what to run before emission: for every heading, every finding headline and
+      every quantifying sentence in the block, read the numerals it states against the body
+      beneath it, and wherever the two can drift apart, DELETE the numeral from the heading
+      rather than synchronise it. A ruled figure that must appear in a heading appears there
+      once, in the same words as the body that rules it, so that a later revision cannot
+      change one without visibly contradicting the other.
+  17. **A pair that changes a structure's arity spans the whole structure.** Finding
+      R-0509. When a TO adds or removes an entry of a numbered list, a table, or any
+      other structure whose items carry positional labels, the FROM spans that WHOLE
+      structure rather than a prefix of it, so the surviving entries are renumbered by
+      the pair itself. A prefix-shaped FROM leaves the old labels standing on the
+      untouched tail, and the applied file then carries two items numbered 2 — which is
+      what `.agent/plan.md` held for a round. Item 4 asks what SHAPE a pair is and item
+      15 asks how that shape was determined; this one asks how far the FROM must REACH,
+      a question about the target's structure rather than about the pair's own bytes,
+      and no containment test can answer it.
+  18. **A probe's recipe and its stated property are read against each other.** Finding
+      R-0514. A block that orders a red-proof states BOTH what to mutate and what the
+      result should show, and those two halves are checked against each other before
+      emission. A recipe that removes the very guard whose effect the property asserts
+      is satisfiable by no run at all, so the worker must either guess which half was
+      meant or spend a declared deviation running both. Item 5 decides WHETHER a colour
+      may be ordered, item 8 checks a gate's expected VALUE against the code, and item
+      12 governs the reviewer's own dry runs; none of them reads the block's own two
+      sentences against EACH OTHER, which is the only place this defect lives, because
+      both halves are individually sound. The R22 instance: probe b ordered
+      `wall_timeout_seconds` removed from a test AND asserted that "with the backstop
+      the node must FAIL and name `wall_timeout`".
+  19. **A claim about a gate's result names the commit that runs the gate.** Finding
+      R-0515. An authored slice may state what a gate showed only when the same block
+      fixes that the gate runs BEFORE the commit that writes the slice. Otherwise the
+      worker must either reorder the round on its own initiative or commit a claim it
+      has not verified, and the second puts a false line into the permanent record.
+      Item 13 governs the ORDER a block imposes on the worker's runs and item 14 which
+      commits a per-commit gate can honestly reach; this one governs a slice's TEXT
+      making a claim whose producer the block never scheduled — the R-0371 and R-0449
+      family, narrowed from commit SHAs to gate results. The R22 instance: DONE1
+      asserted a probe outcome while the block listed its gates after its commits, and
+      only the worker's own reordering kept the record true.
+  20. **A slice states a fact about a file the same block edits only with the commit
+      it was read at.** Finding R-0520. An authored slice may assert a present-tense
+      fact about a source file — "these modules reference neither symbol", "this
+      function still spawns bare" — only when the sentence itself names the commit the
+      reading was taken at, because a later commit of the SAME block may falsify it and
+      the slice is by then unalterable: constraint 1 forbids editing a slice and the
+      file it lands in is the permanent record. Item 9 re-measures a block's POINTERS
+      at emission and item 19 governs a claim about a GATE's result; this one governs a
+      claim about a file's CONTENT, which neither reaches, because the pointer resolves
+      and no gate is involved — the sentence is simply true at the base and false at
+      HEAD. The R29 instance: a gate entry listed seven modules as referencing neither
+      symbol, and C2 of that same round put two of them on the seam, so five-sevenths
+      of a sentence in `.agent/live_review.md` survives and two-sevenths do not. The
+      counter-measure is the commit name, never a rewrite: appending a correction is
+      how this record stays honest, and overwriting landed text is worse than a dated
+      wrong sentence. Finding R-0521 narrows what counts as naming the commit: it must
+      be an absolute
+      identifier that already EXISTS when the slice is written — a SHA, never a label
+      like `HEAD` or `main` that re-resolves as the round proceeds and therefore names
+      a different commit by the time the round ends. A block always has such a SHA to
+      hand, because its own base is stated in its done-when. R-0521 is this rule
+      failing while being obeyed: the slice that RESOLVED R-0520 wrote "at HEAD",
+      satisfied item 20 as it was then worded, and was falsified one commit later by
+      its own round.
+      Finding R-0524 carves out the one class for which no such SHA can exist. A slice
+      that describes THIS round's own landed change — every `Done:` paragraph is of
+      that class — asserts a fact whose commit has not been written when the slice is
+      authored, so it names instead the block CONSTRAINT that fixes the commit order,
+      and the block carries that constraint as an ordering requirement the worker
+      cannot satisfy by accident. The base SHA answers a reading taken BEFORE the
+      round; the ordering constraint answers a reading only the round itself makes
+      true, and demanding a SHA for the second demands a value that cannot exist when
+      the text is written — the R-0371 shape, which this checklist already forbids for
+      gates and now also forbids for slices. The carve-out is narrow on purpose: it
+      reaches a claim about the round's OWN commits and nothing else, and a reading of
+      any PRIOR state still names its SHA.
+      Finding R-0525 closes the other side of the same gap. A slice that merely LOCATES
+      landed text names the SHA of the commit holding it whenever the path is one this
+      workflow rewrites every round — `.agent/handoff.md`, `.agent/plan.md`,
+      `.agent/last_block.md`, `.agent/context.md`. For those the rewrite is SCHEDULED
+      rather than possible: the last commit of every round rewrites the handback by
+      construction, so a bare path reference to one of them is stale before the round
+      that wrote it has ended, and no ordering constraint can rescue it. Elsewhere a
+      bare path is fine, and this clause deliberately reaches no further. R-0525 is the
+      carve-out above being read too widely one round after it landed: it licenses an
+      ordering constraint in place of a SHA for a claim about the round's OWN change,
+      and a sentence locating a PRIOR round's text is not that claim.
+      Finding R-0534 narrows this item from the SENTENCE to the READING. A clause that
+      names a SHA for one reading and sets a second reading beside it in the present
+      tense satisfies this item as worded and is still false on landing: the qualifier
+      attaches to EVERY reading the clause states, including the working copies a
+      transport proof lists last. The instance: a transport clause named
+      `.agent/last_block.md` "at 757be21c" correctly, then called five copies equal with
+      no commit named, while that round's own C0b had already overwritten the working
+      copy two commits earlier — four of the five matched, and the sentence claimed five.
+  21. **A baseline gate resolves its own paths at the base it names.** Finding R-0532. A
+      gate ordered "at `origin/main` as well", or at any commit other than the one under
+      review, is checked at emission with `git ls-tree <base> -- <path>` for EVERY path it
+      names, because a path this branch ADDED does not exist there: the tool then exits
+      non-zero on a missing file and produces no reading at all, so the comparison the
+      gate exists to make is empty by construction rather than merely unreported. Drop
+      that path from the baseline half and say so inline, or name a base where it
+      resolves. R-0364 requires every gate to be EXECUTED at its base before it is
+      ordered and item 12 pairs the reviewer's own dry run with a red control; this one
+      governs whether the base run can produce a reading AT ALL, which neither reaches,
+      because a command that exits on a missing path never evaluates the rule the gate
+      was written for — the vacuous-gate shape of R-0438, arriving through the base
+      rather than through a typo. The R39 instance: G6 ordered `ruff check` over
+      `packages/orchestration/exec_guard.py` and its test at `origin/main`, and
+      `exec_guard.py` was added on this branch, so both paths are absent there and the
+      baseline half exited `E902 No such file or directory` per path.
+      The same item carries the carve-out that instance also needed. A clause binding a
+      block's commands to the PRIMARY checkout and never a worktree (R-0518, whose red is
+      `apps/ui/node_modules` absent from any fresh worktree) reaches SUITE commands, which
+      need installed dependencies, and never a read-only baseline reading of named paths
+      at another commit: that reading has no dependency to miss, and requiring it in the
+      primary checkout while also requiring another commit's content is a pair of
+      sentences no worker can obey together. Read such a baseline with `git show
+      <base>:<path>` into scratch, or in a disposable worktree under §4.10.
+  22. **A sentence quantifying across COMMITS is measured over the whole range.** Findings
+      R-0530 and R-0533. Any clause stating a value per commit, a value holding at "every
+      commit after" one, or a total over a range is recomputed at emission by walking that
+      range mechanically — `git rev-list --reverse <base>..<head>`, one reading per commit
+      — and written as the list that walk produced, never generalised from the commits the
+      author happened to read. Two forms have cost this branch a finding each. R-0530 was a
+      correction that named two SHAs correctly and then added "and every commit after it",
+      which its own round's C0b had already falsified. R-0533 is the same class one round
+      later inside the record that REGISTERED R-0530: a per-commit insertion list read
+      `349, 295, 50, 66, 6` where that fifth commit is 3 insertions and 3 deletions, so the
+      sentence reported the churn column AGENTS.md DECISION F104 D1 excludes from the
+      500-line cap. That recurrence is why this is an item rather than a habit — R-0530
+      concluded "nothing new is owed to the checklist", and the class returned in the very
+      paragraph that concluded it. Item 11 governs a claim about the author's OWN bytes and
+      item 20 a claim about a FILE's content at a commit; this one governs a claim about a
+      RANGE, which neither reaches, because each individual reading in it can be correct
+      while the quantifier or the column is wrong.
+  23. **A round that touches the finding ledger names `.agent/plan.md` in its change set.**
+      Findings R-0377, R-0491 and R-0548. A block whose bundle registers, resolves or
+      renumbers a finding also advances `.agent/plan.md`, and orders that update as the FIRST
+      substantive commit of the round — only the two block-save commits, which write nothing
+      but the block itself, may precede it. Omitting the path does not make the change set
+      smaller; it makes a pair of rules that cannot both hold, because AGENTS.md's Commit Gate
+      item 1 requires the plan to match the current work before EVERY commit while the block's
+      own change-set constraint forbids touching anything unnamed. An honest worker can then
+      only declare the conflict, which repairs nothing, and the plan stays false on disk for
+      the length of a round — the file AGENTS.md's Session Resume tells the next session to
+      read SECOND, ahead of the review record. Where a round genuinely cannot advance the plan
+      first, the block says so in its own text and names the commit at which the plan becomes
+      current, rather than leaving the worker to discover the conflict. This is an item rather
+      than a habit because R-0377 and R-0491 each stated exactly this counter-measure in a
+      finding BODY and neither bound anything: R-0548 is the R46 block registering a finding
+      under a five-path change set holding no plan, features after the first of the two was
+      written. A rule that lives only in a finding body is a rule the next block does not
+      read.
+  24. **Every path a gate NAMES is resolved on disk before the gate is ordered.** Finding R-0559.
+      A gate that names a path — in a command, in a baseline reading, or in an ABSENCE clause such
+      as "the round's path set holds neither X nor Y" — has each of those paths checked with
+      `git ls-tree <base> -- <path>` at the base it names, and a path that does not resolve is
+      corrected, or dropped with the correction stated inline. Item 21 binds the paths a baseline
+      COMMAND runs over, where a missing path makes the tool exit and produce no reading at all;
+      this one binds the paths a gate merely MENTIONS, where nothing exits and nothing is reported
+      — the absence clause is satisfied by every possible round, so it forbids nothing while
+      reading on the page exactly like a guard. The R58 instance: G8 forbade the round's path set
+      to hold `packages/orchestration/runtime_cmd.py`, `packages/orchestration/dev_server.py` or
+      `packages/orchestration/runtime_supervisor.py`, and all three of those files really live
+      under `apps/cli/commands/` and `packages/runtimes/`, so the clause held trivially, protected
+      nothing, and carried the wrong paths on into `.agent/handoff.md` — the map AGENTS.md's
+      Session Resume tells the next session to read.
+  25. **A destructive gate's revert target is named by PATH and is unique inside it.** Finding
+      R-0560. A red control that orders a revert by quoting a LINE — "delete the single line `X`
+      in `Y`" — names the FILE the revert is applied to, and the exact bytes it orders removed are
+      counted IN THAT FILE at the SHA the control runs at, where the count must be 1. Naming only
+      the enclosing function is not a measurement: the same line commonly occurs in a second
+      source file and in the block mirrors under `.agent/`, and a reader who resolves that name to
+      the wrong file reverts the wrong line while the run still goes red — which is exactly what
+      the control cannot distinguish from its own success. Where the bytes recur inside the named
+      file, the control orders a longer UNIQUE byte string instead. Item 24 resolves the paths a
+      gate NAMES; this one resolves the BYTES a gate orders CHANGED.
   Why this is on disk and not a habit: item 2 has recurred six times across
   F104 and F105, and R20 hit four of them in one block. A check that lives
   only in reviewer session memory is the A1 trap §0 names, and this list is the
@@ -449,6 +693,20 @@ end the response with:
    total, plus a per-line count over that diff's ADDED lines for the
    strays. The reviewer states which shape each pair is at authoring
    time, in the receipt itself.
+   That per-line count is written for PROSE and binds prose only
+   (R-0531). A slice of CODE repeats lines STRUCTURALLY — blank
+   separators, closing parentheses, decorators and repeated argument
+   lines are what code is made of — so "each TO-ONLY addition exactly
+   1x among the added lines" is unattainable by construction for
+   every code append, and demanding it invites the fabricated number
+   R-0207 already warned about, arriving through a slice's LANGUAGE
+   rather than through its pair shape. For a code append the
+   obligation is ORDERED EQUALITY: the pre-commit blob is a
+   byte-exact PREFIX of the post-commit file, the slice is an exact
+   SUFFIX of it, and the lines that commit's diff ADDS are exactly
+   the slice's lines IN ORDER. That reading is strictly stronger than
+   the count it replaces — it fixes position as well as multiplicity
+   — and it stays measurable however often a line recurs.
 10. Mutation/red-proof spot-checks (temporarily breaking code to prove a
     test catches it) are encouraged — but ONLY inside a disposable
     `git worktree` at HEAD, never in the primary checkout. This

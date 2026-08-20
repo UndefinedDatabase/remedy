@@ -641,7 +641,18 @@ class TestNoShellTrue:
         mock_run.assert_not_called()
 
     def test_run_tests_local_no_shell_true(self, tmp_path):
-        """run_tests_local must never pass shell=True to subprocess.run."""
+        """run_tests_local must never spawn through a shell.
+
+        F085 T002b moved the spawn rather than removing it: `run_tests_local` no
+        longer calls `subprocess.run` at all, it calls
+        `exec_guard.run_guarded_test_command`, which spawns with
+        `subprocess.Popen`. The property this test exists to pin is unchanged —
+        no shell, and argv passed as a list — so the test follows the spawn to
+        its new seam instead of asserting against a call site that no longer
+        runs. The spy DELEGATES to the real `Popen` rather than replacing it:
+        the guard reads the child's pid, waits on it and pumps its streams, so a
+        mock returning no real process would measure the mock and not the spawn.
+        """
         from unittest.mock import patch
 
         from packages.orchestration.test_runner import run_tests_local
@@ -653,16 +664,21 @@ class TestNoShellTrue:
         job = _make_job()
         job.metadata["target_repo"] = str(repo)
 
-        proc = subprocess.CompletedProcess(
-            args=["python3", "-m", "pytest"], returncode=0,
-            stdout=b"1 passed\n", stderr=b"",
-        )
-        with patch("subprocess.run", return_value=proc) as mock_run:
+        real_popen = subprocess.Popen
+        spawns = []
+
+        def _record_then_really_spawn(*args, **kwargs):
+            spawns.append((args, kwargs))
+            return real_popen(*args, **kwargs)
+
+        with patch("subprocess.Popen", side_effect=_record_then_really_spawn):
             run_tests_local(job, tmp_path)
 
-        assert mock_run.called
-        call_kwargs = mock_run.call_args.kwargs
-        assert not call_kwargs.get("shell", False), "shell=True must never be used"
+        assert spawns, "run_tests_local must reach a real spawn"
+        for call_args, call_kwargs in spawns:
+            assert not call_kwargs.get("shell", False), "shell=True must never be used"
+            argv = call_kwargs.get("args", call_args[0] if call_args else None)
+            assert isinstance(argv, list), f"argv must be a list, got {type(argv)}"
 
 
 # ---------------------------------------------------------------------------

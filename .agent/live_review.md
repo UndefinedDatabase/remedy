@@ -1,43 +1,44 @@
-# Live Review — F083 CI self-check
+# Live Review — F085 Sandbox hardening (stage 1)
 
-> Round-by-round review record for the F083 branch, reset at the feature claim.
-> The F082 record closed with PR #201, merged 2026-08-15; that branch's closing
-> verdict lives in its handoff and in the PR, per
-> docs/agents/planner_reviewer_prompt.md §4 item 13. Finding ids continue the
-> monotonic R-XXXX series across the reset. Next free id: R-0451.
+> Round-by-round review record for the F085 branch, reset at the feature claim.
+> The F083 record closed with PR #202, merged 2026-08-16, and the operator
+> amendment PR #203 followed it on `main`; that branch's closing verdict lives
+> in its handoff and in the PR, per docs/agents/planner_reviewer_prompt.md §4
+> item 13. Finding ids continue the monotonic R-XXXX series across the reset.
+> Next free id: R-0491.
 >
 > This reset CARRIES the open set forward rather than dropping it, per DECISION
-> F057 D1 in `.agent/decisions.md` and finding R-0362. The seventy-five findings
-> open when the F082 record closed are reproduced verbatim at the end of this
-> file, extracted by id out of the previous record and never retyped. The
-> pre-reset record also held four `Landed:` lines, for R-0431, R-0432, R-0433 and
-> R-0434, recording repairs that landed without a formal resolution; those lines
-> are NOT carried, and that repair status is read out of git history rather than
-> out of this file.
+> F057 D1 in `.agent/decisions.md` and finding R-0362. The findings open when
+> the F083 record closed are reproduced verbatim at the end of this file,
+> extracted by id out of the previous record and never retyped. The pre-reset
+> record held no `Landed:` line.
 
 ## Steps
-R1 merge the F082 closure PR at the Open PR Gate, claim F083, reset this record
-carrying the F082 open set forward, and register the three F082 closure-review
-candidates as R-0448, R-0449 and R-0450 → R2 the T001 marker inventory: the
-collected count and the wall time per marker, which markers already exist, and
-which stage each belongs to, every answer carrying a file-and-symbol citation →
-R3 record R2, register R-0453 and R-0454, and rule DECISION F083 D2, the stage
-set → R4 T001 the stage definitions and their structural tests → R5 T001 the
-stage runner over the existing pytest subprocess runner → R6 T001 the runner
-repairs R-0456 to R-0458 and the cwd anchor → R7 the R6 record and the four Done
-resolutions → R8 T001 the `remedy ci` CLI seam and the summary table it prints →
-R9 the R8 record, the ruff repair and checklist item 11 → R10 T001 the
-per-stage selection tests over a fixture tree, the parallelism measurement D2.5
-defers, and checklist item 12 → R11 T002 the determinism and budget stages plus
-the guard-test wiring → R12 T002 the seeded-failure test per stage → R13 T003
-the hosted workflow files, the docs and the runtime budget written from measured
-data → R14 the integration gate → R15
-closure. Each round marks the PREVIOUS one done and never itself; the FULL map
-is stated here ONLY. Another file may name at most the NEXT round —
-`.agent/plan.md` must, because AGENTS.md mandates its Next Steps section — and
-naming one round is not restating the map (R-0447, R-0455).
+R1 claim F085, reset this record carrying the F083 open set forward, and
+register R-0490 out of the reviewer's R28 closure review → R2 the subprocess
+seam inventory: every `subprocess.*` call site in `packages/` and `apps/`, each
+with its enclosing symbol, its command class, the source of its cwd, its
+environment handling, whether it carries a timeout and whether its output is
+bounded, plus the AST guards that already constrain those files and the R-0202
+spawn path → R3 record R2 and rule the stage-1 command classes and their
+policies as a DECISION → R4 T001 `exec_guard.run_guarded` with rlimits, a wall
+timeout distinct from the provider timeouts, and output caps → R5 T001 the
+runaway fixtures — cpu, memory, output and sleep — each killed and each
+classified `resource_limit` with the tripped limit named → R6 record R4 and R5 →
+R7 onward T002 seam migration, one order per seam with behaviour-equality
+goldens for well-behaved commands, plus environment scrubbing and its allowlist
+test → then T003 the network posture, the per-class policies, the honest
+limitations document and its README link → then the integration gate → then
+closure. The map from R7 on is planned rather than measured: the inventory R2
+produces is what fixes the seam order, and a round that changes this map records
+the change as a DECISION in this file. Each round marks the PREVIOUS one done
+and never itself; the FULL map is stated here ONLY. Another file may name at
+most the NEXT round — `.agent/plan.md` must, because AGENTS.md mandates its Next
+Steps section — and naming one round is not restating the map (R-0447, R-0455).
 
 ## Findings
+
+- R-0490 — Low, THE CLOSURE PROTOCOL'S PRODUCER-PITFALL LIST NEVER STATES THAT `output_hash` MUST BE THE SHA-256 OF `stdout_summary` EXACTLY, AND F083'S FIRST CLOSURE PACKAGE WAS BLOCKED BY THAT GAP. Raised by the reviewer during the R28 closure review of F083 and registered here as a closure candidate, per docs/roadmap/STATUS_closure_protocol.md "Closure-candidate findings". The R28 worker hashed the FULL pytest stdout while recording only its last line as `stdout_summary`, and `scripts/build_review_manifest.py` requires `output_hash == sha256(stdout_summary)`, so packaging attempt 1 returned PACKAGE_STATUS=BLOCKED_EVIDENCE with the single verbatim error `verification_tests.json runs[0] output_hash does not match sha256(stdout_summary)`. The worker repaired it inside the round — the whole 181-character stdout recorded as `stdout_summary` and hashed exactly, the evidence job and the zip rebuilt from the same clean tree at the same head, nothing committed changed between the two attempts — and attempt 2 packaged READY_FOR_REVIEW. That reading of protocol step 2's "fix or go `[!]`" branch is correct and the reviewer accepts it. The reviewer re-verified the delivered package independently rather than accepting the handback: sha256 162bacf6265e79651b098c524b5060de44d58e9d89e9ec4d645c158950b78986 recomputed from disk, `zipfile.testzip()` None, 6284 members. Nothing false was closed over, which is why this is Low rather than Medium. It is registered because the pitfall list at that document's Algorithm step 1 carries (a) node ids with `len(node_ids) == selected`, (b) `test_files` entries that are files and never directories, (c) the `^vr-\d{4,}$` run_id regex and (d) never a full-suite node-id list, and says of this field only that verification_runs entries "need a sha256-hex output_hash" — which the BLOCKED package had. The exact-preimage rule is a sixth pitfall that document does not carry, the fifth being R-0448's sorted-`test_files` rule, which is still open and routed the same way. The fix is one bullet in `docs/roadmap/STATUS_closure_protocol.md`; that is a process doc F085 does not own and AGENTS.md forbids mixing an unrelated fix into a feature branch, so it routes to the same paydown branch as R-0403, R-0448, R-0482 and R-0487. OPEN.
 
 - R-0448 — Medium, A CLOSURE BLOCK ORDERED AN EVIDENCE FIELD IN AN ORDER THE PACKAGING VALIDATOR REJECTS, SO THE FIRST PACKAGE BUILT BLOCKED_EVIDENCE. Raised by the reviewer during F082's R23 closure review and registered here as a closure candidate, per docs/roadmap/STATUS_closure_protocol.md "Closure-candidate findings". The R23 block ordered `verification_runs[0].test_files` as "the eight FILES above", and that authored list was not sorted — `tests/cli/test_stats_bench.py` was written last and sorts first. `scripts/build_review_manifest.py::_vt_safe_files` rejects a list for which `tf != sorted(tf)`, which invalidates the whole VerificationTests document and leaves `vt_passed` unconfirmable, so packaging attempt 1 returned PACKAGE_STATUS=BLOCKED_EVIDENCE with two blocking reasons, of which `validate_evidence_candidate` named the sorting one as the single root error. The worker repaired it inside the round — the same eight files sorted, the suite re-run in that order so `command` and `node_ids` still describe a real execution, the evidence directory rebuilt from scratch, and `validate_evidence_candidate` checked BEFORE the second build — and attempt 2 packaged READY_FOR_REVIEW. The reviewer re-verified the delivered package independently rather than accepting the handback: sha256 3e8e33eb4bb724ce775ea5987e0fee0de5341d1a3bfe902c6e5f4f6f2deb84b2 recomputed from disk, `zipfile.testzip()` None, 6060 members, `ready_gate_matrix.ok` True with `blocking_reasons` `[]`, and `committed_review_subject.head_commit` equal to the accepted head 4b9bc7bc1dabdde5fca68de6ae20f86b11d21eb0. Nothing false was closed over. Medium, not Low, because this is a NEW member of a family the closure protocol already documents and therefore already knows how to prevent: the producer pitfalls listed at STATUS_closure_protocol.md Algorithm step 1 are (a) node ids with `len(node_ids) == selected`, (b) test_files that are files and never directories, (c) the `^vr-\d{4,}$` run_id regex and (d) never a full-suite node-id list — and the sorted-`test_files` rule is a fifth, (e), which that document does not carry, so every future closure block can lose a build to it exactly as this one did. The fix is one bullet in `docs/roadmap/STATUS_closure_protocol.md`; that is a process doc F083 does not own and AGENTS.md forbids mixing an unrelated fix into a feature branch, so it routes to a paydown branch exactly as R-0403, R-0444 and R-0445 were routed. OPEN.
 
@@ -195,152 +196,4258 @@ naming one round is not restating the map (R-0447, R-0455).
 
 - R-0447 — Medium, A STATE FILE THAT NOW CONTRADICTS ITSELF, BECAUSE A DECISION MOVED A VALUE AN EARLIER AUTHORED SENTENCE HAD QUOTED. Found by the WORKER through the standing staleness gate, which is exactly what that gate exists for. `.agent/context.md` at the R22 head says in one place "the round map now runs to R21 the integration gate and R22 closure (DECISION F082 D11)" and in another, four dozen lines later, "→ R23 closure, per DECISION F082 D12". Both sentences are on disk in the same file at the same commit and they disagree about which round closes this feature. The reviewer confirmed it by literal count at HEAD: `DECISION F082 D11` 1x, `DECISION F082 D12` 1x, `R22 closure` 1x, `R23 closure` 1x. The cause is precise. The offending sentence was authored by the REVIEWER at R21 as the CTX-D10 pair's TO, to retire a stale D10 citation — and it retired that citation by quoting the round map, a value that moves. One round later the reviewer's own DECISION D12 moved it, and the R22 block that ruled D12 carried no pair to repair the sentence D12 falsified. Medium, not Low: `.agent/context.md` is read by thirteen test files and is the reviewer's context of record across sessions, so a reader resuming from disk gets two different answers to "which round closes F082" with nothing to break the tie. Not High because no test asserts the round map and the plan and the Steps chain both agree on R23. This is R-0440 recurring one round after R-0440 was written, in the reviewer's own text rather than in a `Done:` paragraph, which is precisely the generalisation R-0440 failed to make. Standing rule from here, binding the reviewer: a block that rules a DECISION changing any value carries, in the SAME block, a repair pair for every sentence on disk that states that value — found by grepping the value, not by recalling where it was written. The staleness gate is the backstop, not the mechanism; a contradiction it merely REPORTS has already shipped.
 
-Gate: R1 — PASS. Verification tier: the docs gate, the two live-state readers and the canary, all four re-run by the reviewer at the round's head; no full-suite claim is made or needed, because this round changed no code and no test. All twelve ordered gates reproduce against the committed tree. TRANSPORT held: scratchpad, `.agent/authored/f083-r1.md` and `.agent/last_block.md` are all sha256 df5447bb084a6874d2d2c59916f026c8366c07b0f984e3eba06e81be2c42b902, 24035 bytes, 313 lines, byte-equal, and the declared footer 313 equals the measured 313. C1 is the round's structurally interesting proof and it is the shape worth reusing: the reset was not reviewed by reading it but RECONSTRUCTED — the reviewer extracted LIVEREVIEW-HEAD from the committed authored file by its markers, rebuilt the carried set out of the BASE record by the block's own rule, applied the byte formula and got equality with the committed file, so the carry is proven mechanically rather than trusted. 75 paragraphs carried, none retyped; the rebuilt record measures 78 registered, 0 resolved, 0 `Landed:`, 0 `Gate:`, max R-0450, next free R-0451, no duplicate id. The formula itself was validated BEFORE emission against commit e978262b, the F082 reset, where it reproduced that file byte-for-byte over its 33 paragraphs — an ordered rule checked against the corpus it would run on, which is R-0446's standing rule holding for the first time in the round after it was written. The three whole-file slices byte-equal their sources, `.agent/plan.md` at 40 lines with `## Goal` and `## Next Steps` present and no `- [ ]` line to trip `plan_consistency`. The STATUS pair is 1/0/1 with `FROM in TO` False and the composite True; at HEAD the unclaimed F083 line is gone, exactly one `[~]` line exists in the whole ledger, and the 49 `[x]` lines are unchanged. `tests/docs/` 295 passed, `tests/regression/test_resource_safety.py` 21 passed, `tests/orchestration/test_integrity_gate.py` 15 passed and the canary 42 passed, every one exit 0 and every one equal to the value the reviewer measured at BASE before ordering it (R-0364). The integrity gate passes all five checks, `fail_count` 0, with `live_review_verdict` now quoting the F083 record and `plan_consistency` reporting `context_complete=False`. The change set is 8 paths, EMPTY under `packages/`, `apps/`, `scripts/` and `tests/`, and exactly one file under `docs/`. Insertions 313 · 260 · 28 · 65 · 119, none over 500. No PR was created, as ordered. TWO findings are registered below and both are defects of the reviewer's own block text; the worker declared both, with the disk evidence, before the reviewer read the diff, which is the seventh consecutive round.
-
 - R-0451 — Low, A BLOCK ASSERTED THAT ITS OWN SLICE SAID SOMETHING THE SLICE DOES NOT SAY, SO A DOCUMENTED DROP WENT UNDOCUMENTED. Found by the WORKER while executing the R1 carry. The R1 block's prose reads "`Gate:`, `Done:` and `Landed:` lines are NOT carried, and the head slice says so in prose, so nothing is silently dropped" — but LIVEREVIEW-HEAD, the slice that actually lands on disk, names ONLY the four `Landed:` lines. The reviewer confirmed the arithmetic at the BASE record: it held 22 `^Gate: ` lines, 2 `^Done: ` lines and 4 `^Landed: ` lines, so 24 lines were dropped that the committed record does not account for, against 4 that it does. Nothing is lost in the strong sense — the pre-reset record is intact in git history at f3fd96d7 and the reconstruction gate proves the carry was exactly the open set — but the reset's own prose is the only place a reader resuming from disk would look, and it under-reports what the reset removed. Low for that reason, and because the drop itself is correct and matches the F082 reset's shape. This is the block-clause family: R-0331 and its successors say two clauses of a block must agree with each other, and this one extends it by one step — a clause that makes a claim ABOUT a slice is checked against the slice's bytes, not against the intent, because only the slice survives the round. Standing rule from here, binding the reviewer: when block prose asserts that an applied slice states something, the pre-emission checklist greps the slice body for it; an unfound assertion is either deleted from the prose or added to the slice before the block is emitted. OPEN.
 
 - R-0452 — Low, THE BLOCK THAT REGISTERED R-0449 BROKE R-0449'S OWN RULE IN THE SAME BREATH. Found by the WORKER, which declared it as its first deviation. R-0449, registered by the R1 block, states the rule "before ordering any value INTO an artifact, name the commit that writes the artifact and the step that produces the value; if the producer is not strictly earlier than the writer, the block orders the value reported in the round's final message and orders the artifact to say so". That same block's gate 12 ordered the push result and the `gh pr list` reading into the handback, and its gate 1 ordered the post-C3 `git status --porcelain` there too — while C3 IS the handback and the push necessarily follows it. The worker reported all three in its final message and said so, which is exactly the accommodation R-0449 prescribes, so nothing false was written; the reviewer independently confirmed the clean tree, the pushed head and the empty PR list after the fact. Low for that reason. The lesson is not that the rule was wrong but that a rule stated as prose inside a finding does not bind the next block, because nothing reads it at emission time: R-0449 and R-0451 both die at the same point, the moment between authoring and emitting where no mechanical check runs. Standing rule from here, binding the reviewer: the §3 pre-emission checklist gains one item that walks every gate in the Done-when list, names the commit or step that produces its value, and rejects any gate whose producer is not strictly earlier than the artifact ordered to carry it. A counter-measure that lives only in a finding paragraph has already failed once by the time it is read. OPEN.
-
-Gate: R2 — PASS. Verification tier: the docs gate, the two live-state readers and the canary, all four re-run by the reviewer at the round's head, plus an independent re-derivation of the inventory's load-bearing arithmetic and a spot-check of two of its six timed stage runs; no full-suite claim is made, because this round changed no code and no test. All twelve ordered gates reproduce against the committed tree. TRANSPORT held: scratchpad, `.agent/authored/f083-r2.md` and `.agent/last_block.md` are all sha256 6521fd1cbe019c44cb0093c5af9c62427c5c7179ce31eced251bed45cd41002a, 23836 bytes, 277 lines, byte-equal, declared footer 277 equal to measured 277. C1's prefix property is True with a `6 0` numstat. C2's three applied units each hold against the slice extracted from the COMMITTED authored file: `.agent/decisions.md` is a pure append equal to `b"\n" + DEC-D1`, the `.agent/context.md` pair is 1/0/1 with `FROM in TO` False and the composite True, and `.agent/plan.md` byte-equals PLAN at 41 lines with no `- [ ]` line. The open set at HEAD is 80 registered, 0 resolved, max R-0452, next free R-0453, no duplicate id. The change set is 7 paths before the handback and 8 after, EMPTY under `packages/`, `apps/`, `scripts/`, `tests/` AND `docs/` — this round wrote no code, no test and no doc, as ordered. Insertions 277 · 212 · 6 · 382 · 152, none over 500. The inventory itself is the round's product and it was checked as such rather than read: the reviewer re-collected the five stage selections at HEAD and got union 17007 against a suite of 17007, uncovered 0, and exactly one non-empty pairwise overlap, `standard ∩ smoke` = 8, every id in `tests/cli/test_pytest_runner.py` — reproducing Q4 exactly, and reproducing the value the reviewer had measured independently BEFORE the block was emitted, which is R-0364 holding on both sides of the round. Two of the six timed stages were re-run: `architecture` 71 passed exit 0 and `ui` 393 passed 4 skipped exit 0 in 6.92 s, against the inventory's recorded 71/0 and 393/4 at 6.92 s pytest time — equal, including the inventory's distinction between driver time and pytest time, which is a precision the round was not asked for and volunteered. The inventory's most consequential result is a negative one and it is stated plainly: `fast` costs 391.8 s serially for 3970 items while `standard` costs 134.1 s under `-n auto` for 12546, so the split the feature file suggests is inverted with respect to cost. That number is why R4 does not pin a parallelism setting from this data, and DECISION F083 D2 below says so. Q3 is the round's other real catch — the feature file's `ui-contract` and `live-provider` do not exist under those spellings, and the inventory names `ui_contract` and `real_ollama` as what does exist rather than resolving the disagreement silently, which is exactly what the question asked for. TWO findings are registered below and both are defects of the reviewer's own block text; the worker declared both, with the disk evidence, before the reviewer read the diff, which is the eighth consecutive round.
 
 - R-0453 — Low, A SENTENCE COUNTED A SET THE SAME SLICE HAD ALREADY ENUMERATED, AND THE TWO DISAGREE ON DISK. Found by the WORKER while applying the R2 PLAN slice. That slice's opening paragraph enumerates the branch's findings as "R-0448 to R-0452" — five — and its Risks section then reads "Five of the six findings registered on this branch are defects in the reviewer's own block text". The reviewer confirmed both sentences are in `.agent/plan.md` at d2282fca, lines 5 and 35, and that gate 10 measured max R-0452 with 80 registered against 75 carried, which makes the branch's own count five. The numeral is wrong twice over: there is no sixth finding, and the qualifier "five of" implies an exception that does not exist — all five ARE reviewer-block defects. Nothing downstream consumed the number, and `.agent/live_review.md` remains the source of truth the plan says it mirrors, so the damage is a reader's confusion at one file. Low for that reason. This is the R-0402 / R-0404 / R-0436 family in its plainest form: a numeral written next to an enumeration that already stated the count. The standing rule from those findings — count it mechanically or state no numeral, and prefer writing the range alone — was in force and was broken anyway, in a slice whose own first paragraph carried the correct enumeration two dozen lines above. Repaired in this round's PLAN slice by removing the numeral and letting the range stand. OPEN until the repair is reviewed.
 
 - R-0454 — Low, A GATE ORDERED A MEASUREMENT OF SUBJECTS THE BLOCK NEVER DEFINED, SO THE WORKER HAD TO CHOOSE THEM. Found by the WORKER, which declared it as its second deviation. R2's Q4 defines five stage selections by name and expression — fast, standard, ui, smoke, excluded — and Q5 then orders "Run fast, ui, smoke, safety and architecture serially". `safety` and `architecture` are not among the five and no expression is given for either anywhere in the block. The worker inferred `-m "safety and not real_ollama"` and `-m "architecture and not real_ollama"` by analogy with the `ui` and `smoke` forms, recorded both exact commands in the inventory, and declared the inference rather than presenting it as ordered. The reviewer re-ran `architecture` and reproduces 71 passed, so the inference was the right one — which is the problem, not the mitigation: a worker that guesses correctly is still a worker that guessed, and the protocol's whole point is that it must never have to. This is R-0438's family, an unrunnable-as-written gate, reached from the other side: R-0438 was a path that did not resolve on disk, this is a subject that does not resolve in the block. Low, because the inference was declared, mechanically checkable and correct. Standing rule from here, binding the reviewer: every noun a Done-when gate orders measured is either defined in the same block or resolvable to a single value on disk, and the pre-emission checklist resolves each one before emission — the same walk R-0452 added for gate values, extended to gate subjects. OPEN.
 
-Gate: R3 — PASS. Verification tier: the docs gate, the two live-state readers and the canary, all four re-run by the reviewer at the round's head; no full-suite claim is made, because this round changed no code and no test. Every ordered gate reproduces against the committed tree, each one re-measured by the reviewer rather than read out of the handback. TRANSPORT held: the scratchpad `.remedy-wt/.cache/f083-r3/f083-r3.md`, `.agent/authored/f083-r3.md` and `.agent/last_block.md` are all sha256 16f8c9f5328cd309694229502181e3f7a9511096fb2c3b2732865222399f2d6f, 20235 bytes, 230 lines, and all three byte strings are equal. C1's prefix property holds with a `6 0` numstat and a tail byte-equal to `b"\n" + GATE-R2-BLOCK` extracted by marker from the COMMITTED authored file, not from the reviewer's own copy. C2's two applied units hold the same way: `.agent/decisions.md` is a pure append equal to `b"\n" + DEC-D2`, and `.agent/plan.md` byte-equals PLAN at sha256 de1a88703ff03bc246f1d5dd8451922eabe5af67ddd53f657da19efd26d4ce0e, 43 lines, with `## Goal` and `## Next Steps` present and no `- [ ]` line. R-0453's repair is on disk, counted as literals at HEAD: `six findings` 0x, `Five of the six` 0x, `R-0448 to R-0454` 1x. The change set is six paths, every one under `.agent/`, with `packages/`, `apps/`, `scripts/`, `tests/` and `docs/` all empty and `.agent/f083_inventory.md` untouched as Constraint 5 required. Insertions 230 · 139 · 6 · 78 · 72, none over 500. The open set at HEAD is 82 registered, 0 resolved, max R-0454, next free R-0455, no duplicate id, against 80 and max R-0452 at BASE — exactly the two ordered ids and nothing else. The integrity gate reports passed true, fail_count 0, check_count 5, every named check pass. The four verification targets reproduce the BASE readings exactly: `tests/docs/` 295 passed exit 0, `tests/regression/test_resource_safety.py` 21 passed exit 0, `tests/orchestration/test_integrity_gate.py` 15 passed exit 0, and the canary `tests/cli/test_golden_path.py` 42 passed exit 0. The worker declared no deviation and repaired nothing silently, and its first declared deviation in the previous rounds is what R-0454's standing rule now prevents — the rule held on the first block written after it. ONE finding is registered below and it is again a defect of the reviewer's own block text rather than of the work delivered.
-
 - R-0455 — Medium, THE ROUND MAP AND THE TWO FILES THAT NAME THE NEXT ROUND DISAGREE ABOUT WHAT R4 IS. Found by the REVIEWER while reviewing R3. `.agent/live_review.md` carries the round map in its `## Steps` section, and R-0447's own remedy made that section the single place the map is stated. At 83d4a649 that section reads "R3 T001 the stage runner, the marker selections and the summary table → R4 T002 the determinism and budget stages plus the guard-test wiring", while `.agent/plan.md` and `.agent/handoff.md` at the same commit each carry the string "R4 builds T001" exactly once, counted as a literal in both files. R3 did not build T001: it recorded R2, registered R-0453 and R-0454 and ruled DECISION F083 D2, and its own block says "It builds no stage runner and writes no code". So the single source says R4 is T002 while the two files derived from it say R4 is T001, and a session resuming from the map alone would build the wrong round. The arithmetic is broken with it: the map ends "R7 the integration gate → R8 closure" and the R3 handback opens "R3 of 8", but with T001 pushed to R4 every later item shifts and eight slots can no longer hold the work. The cause is precise and it is the reviewer's own: the R3 block gave its round a scope the map does not describe and ordered no repair of the map, which is the R-0447 class landing in the very file R-0447's remedy designated as the one that cannot go stale. The worker is not at fault — it applied every slice byte-verbatim as ordered and nothing in its change set reached the map. Repaired in this round's STEPS pair, which restates the map over the rounds that actually remain and narrows the "no other file restates it" clause to what it can mean, since AGENTS.md mandates a Next Steps section in `.agent/plan.md` and naming one round is not restating a map. Standing rule from here, binding the reviewer, and placed where it binds rather than left as prose (R-0452): a block that gives its round a scope the map does not describe repairs the map in that same block, or it is not emitted. OPEN until the repair is reviewed.
-
-Gate: R4 — PASS, with NO finding registered: the round was clean and the reviewer looked for one. Verification tier: the live-state contract reader, the two live-state readers and the canary, all re-run by the reviewer at the round's head, plus ruff and the new test file, and an independent re-derivation of every authored-text proof out of the committed objects; no full-suite claim is made. TRANSPORT held: the scratchpad `.remedy-wt/.cache/f083-r4/f083-r4.md`, `.agent/authored/f083-r4.md` and `.agent/last_block.md` are all sha256 3ae4f3b405cf1f65080217f69f73fdc93392ebc893874a7db2d8d03292790ab9, 25711 bytes, 396 lines, three-way byte-equal, and the measured 396 equals the block's declared footer. C1's prefix property holds from the git blobs, 150497 B to 154993 B, with a tail byte-equal to `b"\n" + GATE-R3-BLOCK` and a `4 0` numstat. C2's REWRITE pair holds in both directions: over the whole file STEPS-FROM is 0x and STEPS-TO is 1x, and inside the `## Steps`-to-`## Findings` section the literal `R3 T001` is 0x while `R4 T001 the stage definitions` is 1x — the map now describes the rounds that actually remain. The substring `Steps` survives in the file, so the dashboard contract that reads it stays green, and it does: 70 collected, 70 passed, exit 0, equal to the BASE reading. C3's two new files were read back OUT of the commit and byte-equal their slices — `packages/orchestration/ci_stages.py` sha256 6fb04d77bc4aae2e…, 3838 bytes, 98 lines, and `tests/orchestration/test_ci_stages.py` sha256 d61b189366699ea6…, 2355 bytes, 67 lines, both absent at BASE, both added with a 0 deletion column. Both run green in the PRIMARY checkout, not only in the reviewer's probe worktree: `ruff check` over the two paths exits 0, `pytest tests/orchestration/test_ci_stages.py -q` collects 7 and passes 7 at exit 0, and `packages.orchestration.ci_stages` imports from the primary checkout path — so the green is the committed code's, not a stale copy's (R-0337). C4's plan byte-equals PLAN at sha256 cdaa06847f2b7005…, 41 lines, `## Goal` and `## Next Steps` present, no `- [ ]` line. The change set is the seven ordered paths and nothing else, with `apps/`, `scripts/` and `docs/` empty and `.agent/f083_inventory.md` absent. Insertions 396 · 324 · 4 · 12 · 165 · 17 · 122, none over 500. The open set at HEAD is 83 registered, 0 resolved, max R-0455, next free R-0456, no duplicate id, and R-0455 is the only id added since BASE. The integrity gate reports passed true, fail_count 0, check_count 5, every named check pass; resource safety 21 passed exit 0, the integrity-gate tests 15 passed exit 0, and the canary 42 passed exit 0. The handback carries every mandated section, a 25-row item-status table and the Fortschritt line verbatim, and its stated-cause overage names the real measured 172 lines — the worker measured its own first draft's claim of 145, found it wrong and corrected it before committing, which is the declaration discipline working before the reviewer ever read the file.
-
-Gate: R5 — PASS on execution, with FOUR findings registered below. Verification tier: the live-state contract reader, the two live-state readers and the canary, all re-run by the reviewer at the round's head, plus ruff and both orchestration test files, and an independent re-derivation of every authored-text proof out of the committed git objects; no full-suite claim is made. The worker's execution was exact and its declaration discipline held for the ninth consecutive round: every slice was applied byte-verbatim, every ordered gate was run and reported with a real value, and the one defect it found in the reviewer's own text — the plan naming two future rounds where the map allows one — was declared before the reviewer read the diff rather than silently repaired. TRANSPORT held: the scratchpad `.remedy-wt/.cache/f083-r5/f083-r5.md`, `.agent/authored/f083-r5.md` and `.agent/last_block.md` are all sha256 54bd00a70d792420fe7ff66966dd284be2ddeb6a36848729bf29031aef4c8f04, 22102 bytes, 382 lines, three-way byte-equal, and the measured 382 equals the block's declared footer. C1's prefix property holds from the git blobs, 155450 B to 158478 B, with a tail byte-equal to `b"\n" + GATE-R4-BLOCK` extracted by marker from the COMMITTED authored file, and a `2 0` numstat. C2's REWRITE pair holds in both directions, with the three ordered section literals counting 1, 1 and 0 exactly as ordered, and the substring the dashboard contract reads still present — that contract is green at 70 collected, 70 passed, exit 0. C3's two new files were read back OUT of 8ab928aa and byte-equal their slices: `packages/orchestration/ci_run.py` sha256 1eab0b140529e05c…, 3257 bytes, 94 lines, and `tests/orchestration/test_ci_run.py` sha256 cbe857b3afa99954…, 2517 bytes, 81 lines, both added with a 0 deletion column. Both run green in the PRIMARY checkout: ruff over the two paths exits 0 with "All checks passed!", the two orchestration test files collect 13 and pass 13 at exit 0, and `packages.orchestration.ci_run` imports from the primary checkout path, so the green is the committed code's (R-0337). C4's plan byte-equals PLAN at sha256 8937d73f5badbdc1…, 35 lines, `## Goal` and `## Next Steps` present, no `- [ ]` line. The change set is the seven ordered paths and nothing else. Insertions 382 · 291 · 2 · 6 · 175 · 17, with the handback's own 164 measured after the fact, none over 500. The open set at HEAD is 83 registered, 0 resolved, max R-0455, next free R-0456, no duplicate id — unchanged from BASE, as ordered. The integrity gate reports passed true, fail_count 0, check_count 5, every named check pass; resource safety and the integrity-gate tests together are 36 passed exit 0, and the canary is 42 passed exit 0. What the ordered gates could not catch is what the findings below carry: every gate this block wrote was a gate about TRANSPORT and SHAPE, and none of them asked whether the runner is correct. It is not, in three ways, and all three are the reviewer's own authored text landing unexamined — which is the R-0220 class, a green gate that is not a working feature, arriving in the round that first gave this feature executable code.
-
-- R-0456 — Medium, THE STAGE RUNNER TAKES A REPOSITORY ROOT AND THEN RUNS PYTEST WHEREVER THE CALLER HAPPENS TO STAND. Found by the REVIEWER while reviewing R5. `run_ci_stage` accepts `repo_root` and hands it to `stage_command`, which uses it for exactly one thing: building the absolute path of `scripts/remedy_pytest_runner.py`. The run itself is `subprocess.run(command, check=False)` in `_run_via_subprocess`, with no `cwd`, and `pytest_argv_for_stage` returns `["-m", <expression>, "-q"]` — a MARKER selection carrying no path. `pyproject.toml` `[tool.pytest.ini_options]` sets `pythonpath` and `markers` and no `testpaths`, so pytest with no path argument collects from the process's working directory. Measured by the reviewer at 81af8a98, the same marker expression run twice with only the cwd differing: from the repository root, `-m "smoke and not real_ollama" --collect-only -q` reports `23/17020 tests collected (16997 deselected)` at exit 0; from `tests/orchestration`, the identical command reports `4/10729 tests collected (10725 deselected), 10 errors` at exit 2. So what a stage MEANS is decided by the caller's working directory — in the one feature whose stated purpose is that there is a single source of truth for what CI means (T2_F083). Medium, because the failure is silent in the direction that matters: a working directory whose smaller collected subset happens to pass returns exit 0, and the summary the CLI will print calls that stage green. The stage table is not implicated; `ci_stages.py` is correct and this is entirely the runner's. Fix: `_run_via_subprocess` takes the root and passes `cwd=`, the injected `run_command` signature widens to carry it so a test can pin the anchor, and `run_ci_stage` passes the same `repo_root` it already uses to find the script. OPEN.
-
-- R-0457 — Medium, THE AGGREGATE EXIT CODE REPORTS GREEN FOR A RUN IN WHICH NO STAGE RAN AT ALL. Found by the REVIEWER while reviewing R5. `ci_exit_code` is `0 if all(r.exit_code == 0 for r in results if r.ran) else 1`. The generator is EMPTY whenever no result has `ran` True, `all()` over an empty iterable is True, and the function therefore returns 0. Measured by the reviewer at 81af8a98 against the committed code: `ci_exit_code(())` returns 0, and `ci_exit_code((StageResult("excluded", False, None, 0.0, "not run by CI"),))` returns 0. The function's own docstring states "0 only when every stage that RAN ended green. A skipped stage is not a pass" — and the second sentence is false in exactly the case where no stage ran. This is reachable, not theoretical: the plan's next round adds `remedy ci --stage NAME`, and `excluded` is a stage name, so `remedy ci --stage excluded` is a spelled-out invocation that executes no test and exits 0. Medium, and not Low, because the entire feature is a claim about honest CI and an exit code of 0 that means "nothing ran" is indistinguishable — to a shell, to a hosted workflow, to the operator — from one that means "everything passed"; a hosted workflow gating a merge on that code would gate on nothing. Fix: green requires that at least one stage RAN, `ci_exit_code` returns 1 for a results tuple with no `ran` member, and a test pins both the empty tuple and the all-skipped tuple. OPEN.
-
-- R-0458 — Low, A GUARD ASSERTION THAT CANNOT FAIL, WRITTEN TO FORBID A STRING THAT IS IN FACT PRESENT. Found by the REVIEWER while reviewing R5. The last line of `test_stage_command_goes_through_the_runner_and_carries_the_selection` in `tests/orchestration/test_ci_run.py` is `assert "pytest" not in command[1:2]`. `command[1:2]` is a one-element LIST, so `in` is element equality and not a substring test: the assertion asks whether that list contains the exact string `"pytest"`, which it cannot, because the line directly above already asserts that its single element equals `str(REPO_ROOT / PYTEST_RUNNER_SCRIPT)`. Measured by the reviewer at 81af8a98: `command[1]` is `/home/decodeux/Repos/remedy/scripts/remedy_pytest_runner.py`, `"pytest" in command[1]` is True — the path contains the very substring the line reads as forbidding — and the assertion as written evaluates True. The line therefore reads to a human as "we do not exec bare pytest" while proving nothing, and it is the exact shape R-0327's family names: a check whose colour is decided before it runs. Low: no production behaviour depends on it and the two assertions above it do the real work. Fix: assert the proposition that was meant and that a regression can actually violate — that the argv is not the `[python, "-m", "pytest", …]` shape the module docstring says shelling out would lose. OPEN.
-
-- R-0459 — Low, THE PLAN NAMES TWO FUTURE ROUNDS WHERE THE MAP ALLOWS ONE. Declared by the WORKER in the R5 handback as its second deviation, with the disk evidence, before the reviewer read the diff — the declaration discipline working exactly as intended, and the reviewer rules on it here as asked. The condition at 81af8a98: the Steps section of `.agent/live_review.md` says "Another file may name at most the NEXT round — `.agent/plan.md` must, because AGENTS.md mandates its Next Steps section — and naming one round is not restating the map", while the `## Next Steps` section of `.agent/plan.md` carries two numbered items. AGENTS.md's plan.md contract requires a Next Steps section and sets no count, so the two texts do not contradict AGENTS.md — they contradict each other, which is the R-0447 class, a map stated in two places drifting, arriving in reviewer-authored text one round after R-0455 registered the same class for the same file pair. The reviewer rules for the tighter reading: the map is stated once, and any other file names the NEXT round only. Low, because no code, gate or claim depends on it, and because the plan carried this shape at BASE too, so R5 neither introduced nor widened it. Fix: the plan's Next Steps carries one item. OPEN.
-
-Done: R-0456 — the run is anchored: `_run_via_subprocess` takes the root and passes `cwd=`, the injected signature carries it, and `run_ci_stage` hands over the same `repo_root` it already used to find the script. Verified by the reviewer at e166b640 rather than read from the handback — the injected runner receives the repository root, and a REAL subprocess launched through `_run_via_subprocess`, whose child compares `os.getcwd()` against the anchor, exits 0. The anchor therefore survives the process boundary, which the unit test alone does not show. RESOLVED.
-Done: R-0457 — a run in which nothing ran is red. Verified by the reviewer at e166b640 against the committed module: `ci_exit_code(())` and the all-skipped tuple both return 1 where both returned 0 at 81af8a98, while green-plus-skipped stays 0 and green-plus-red stays 1 — the repair narrowed exactly the empty case and touched no other outcome. RESOLVED.
-Done: R-0458 — the guard is now a proposition a regression can violate: it measures the argv against the `["-m", "pytest"]` shape the module docstring says shelling out would lose, and the vacuous list-membership line is gone from the committed file. RESOLVED.
-Done: R-0459 — `.agent/plan.md` names one future round, and the map remains the single place the full round chain is stated. RESOLVED.
-
-Gate: R6 — PASS. Verification tier: the live-state contract reader, the two live-state readers and the canary, all re-run by the reviewer at the round's head, plus ruff, both orchestration test files, an independent re-derivation of every authored-text proof out of the committed git objects, and a direct behavioural probe of all three repairs against the committed module; no full-suite claim is made. TRANSPORT held in its strongest form: the committed `.agent/authored/f083-r6.md` byte-equals the REVIEWER'S OWN scratchpad original at `.remedy-wt/.cache/f083-r6/f083-r6.md`, three-way with `.agent/last_block.md`, all sha256 7c6acd4e1202d599bdcbff83b7e31c0e8e870f3e18a8a832ce60052450024540, 30218 bytes, 346 lines, and the measured 346 equals the block's declared footer — so no applied byte was retyped anywhere on the path. The three EOF appends each hold the prefix property from the git blobs, with tails byte-equal to `b"\n" + GATE-R5-BLOCK`, `b"\n" + FINDINGS` and `b"\n" + LANDED` and numstats `2 0`, `8 0` and `5 0`. The C3 REWRITE pair holds in both directions, FROM 0x and TO 1x, with the three ordered literals at 1, 1 and 0 and the substring the dashboard contract reads still present. C4's two files were read back OUT of fb9ddf12: every one of the ten ordered code literals sits at its ordered count, all five FROM literals gone and all five TO literals present exactly once, `lambda command, cwd:` exactly 3, every TO slice present VERBATIM, and TESTS-APPEND at the file's end preceded by exactly two blank lines. The repairs were then probed as BEHAVIOUR, not as text, because a diff that applies cleanly is not a defect that is fixed: `ci_exit_code(())` and the all-skipped tuple both return 1 where both returned 0 at 81af8a98, while green-plus-skipped stays 0 and green-plus-red stays 1 — the empty case narrowed and nothing else; the injected runner receives the repository root; and a REAL subprocess launched through `_run_via_subprocess`, with a child comparing `os.getcwd()` against the anchor, exits 0 — so the anchor survives the process boundary, which no unit test in this round shows. ruff exits 0 over both files, `test_ci_run.py` collects 8 and passes 8 at exit 0 — the 6 at BASE plus the 2 appended — the stage table is untouched at 7/7, the dashboard contract, resource safety and the integrity-gate tests are 113 passed exit 0 together, and the canary is 42 passed exit 0. C6's plan byte-equals PLAN at 32 lines with one numbered Next Step, `## Goal` and `## Next Steps` present and no `- [ ]` line. The open set at HEAD is 87 registered, 0 Done, 4 Landed, max R-0459, no duplicate id, and the four new ids are exactly the four ordered. The integrity gate reports passed true, fail_count 0, check_count 5, every named check pass. Insertions 346 · 235 · 2 · 8 · 7 · 44 · 5 · 12, with the handback's own 152 measured after the fact, none over 500. The worker declared one defect in the block's own text before the reviewer read the diff — the tenth consecutive round — and it is registered below as R-0460.
 
 - R-0460 — Low, A BLOCK'S OWN CONVENTION PARAGRAPH MISCOUNTED ITS SLICES AND DENIED STATING A COUNT IN THE SAME BREATH. Declared by the WORKER while applying the R6 block, with the disk evidence, before the reviewer read the diff. That block's SLICE CONVENTION paragraph reads "five REWRITE pairs and one end-of-file append in the two code files", while its C4 bundle line orders "all six repair pairs" and six exist: RUNNER, INJECT, CALL and EXIT in `packages/orchestration/ci_run.py`, ASSERT and LAMBDAS in `tests/orchestration/test_ci_run.py`. The same sentence ends "No numeral is stated for that list — the list IS the statement (R-0402)" while stating numerals inside it, so the paragraph contradicts the rule it cites in the act of citing it. Nothing on disk is wrong: the worker gave the C4 line precedence, applied six, altered no slice and declared the disagreement, and gate 6 was satisfiable only with all six applied — which is why the round is green. This is the R-0402 / R-0404 / R-0436 / R-0453 family, whose standing rule is count it mechanically or state NO numeral, and it is now also the R-0331 family — clause-vs-clause disagreement inside one block — landing in a paragraph written to prevent exactly this. Low: no gate, claim or byte depended on the numeral. Standing rule from here, binding the reviewer, and placed in the pre-emission checklist rather than left as finding prose (R-0452): a block's convention paragraph names its authored units and states NO count of them, and any sentence that both enumerates and denies enumerating is a defect of the block regardless of which half is true. OPEN.
 
-Gate: R7 — PASS. Verification tier: all fourteen ordered gates re-run by the reviewer itself at the round's head, plus an independent re-derivation of every authored-text proof out of the committed git objects; no full-suite claim is made. Every value the handback declares was re-measured and every one MATCHED. TRANSPORT held in its strongest form: `.remedy-wt/.cache/f083-r7/f083-r7.md`, the committed `.agent/authored/f083-r7.md` and `.agent/last_block.md` are three-way byte-equal at sha256 55d13bea17d21bc337a66abdb580297d1806d557e9cf23a6dfecb9d5e28be7b7, 19042 bytes, 207 lines, and the measured 207 equals the block's declared footer — so no applied byte was retyped anywhere on the path. The two EOF appends each hold the prefix property, re-derived from the git blobs with the slices extracted BY MARKER from the committed authored file: C1 and C2 both prefix True with tails byte-equal to `b"\n" + GATE-R6-BLOCK` and `b"\n" + FINDING-R460`, numstats `2 0` and `2 0`, deletion column 0 in both. The C3 REWRITE pair holds in both directions at 0cef203c — LANDED-FROM 0x, DONE-TO 1x, line-anchored `^Landed: R-` 0 and `^Done: R-` 4, numstat `4 4` — and the C4 pair likewise at 0f854f82, STEPS-FROM 0x and STEPS-TO 1x with the three ordered literals at their ordered 1, 1 and 0, `Steps` still occurring 26 times, numstat `7 6`. The round's defining constraint held: `git diff --name-only e166b640..HEAD -- apps/ packages/ tests/ scripts/ docs/` printed NOTHING, so no code was written. The code R6 landed still runs — the two orchestration files give 15 passed at exit 0, collecting 8 and 7 per file, equal to the reviewer's BASE reading. All four verification paths were confirmed on disk before use (R-0438) and each ran separately: dashboard contract 70 passed, resource safety 21 passed, integrity-gate tests 15 passed, canary 42 passed, every one exit 0. The open set at HEAD is 88 registered, 4 `Done:`, 0 `Landed:`, open 84, max R-0460, no duplicate id, and the four resolved ids are exactly R-0456 to R-0459 — matching the block's expectation on every value. The integrity gate reports passed true, fail_count 0, check_count 5, every named check pass. `.agent/plan.md` byte-equals the PLAN slice at sha256 dad347470a35fc42ae82bb6d877002049350ddcef9ec31a88f230b035111c213, 32 lines, one numbered Next Step, no `- [ ]` line. Insertions 207 · 146 · 2 · 2 · 4 · 7 · 15, with the handback's own 112 measured after the fact, none over 500. The worker's conduct was exact: every slice applied byte-verbatim, no slice altered or reflowed, no scope widened, and no claim made that the reviewer could not re-derive. Both findings registered below are defects of the REVIEWER's own authored text, found by re-reading it against disk, and neither is chargeable to the round that applied it.
-
 - R-0461 — Medium, A FINDING DECLARED ITS OWN RULE ALREADY PLACED IN THE CHECKLIST WHILE THE SAME BLOCK FORBADE TOUCHING THE FILE THAT CARRIES IT. R-0460's closing sentence reads "Standing rule from here, binding the reviewer, and placed in the pre-emission checklist rather than left as finding prose (R-0452)". It is not placed there. The pre-emission checklist in `docs/agents/planner_reviewer_prompt.md` §3 opens "Run all ten checks mechanically" and its items run 1 to 10, none of which is the convention-paragraph rule; a repo-wide grep of every `*.md` for "convention paragraph", "NO count of them", "denies enumerating" and "both enumerates" returns the rule ONLY in `.agent/live_review.md` and in the two mirrors of the block that authored it, so the absence is measured across every writer rather than inferred from one file (R-0419). The claim was moreover unsatisfiable by construction: constraint 1 of the same block fixed the change set at five `.agent/**` paths and ordered `docs/` to stay EMPTY in the range diff, so the block asserted a placement its own constraints forbade any commit in that round from making. This is exactly the class R-0452 exists to name — a standing rule written as finding prose binds nothing — and the sentence defeats it in a new way, by ASSERTING the promotion instead of performing it, which is strictly worse than leaving it as prose because a later reader greps the checklist, does not find it, and cannot tell whether the rule was retired or never landed. It is also the R-0416 class in its purest form: an authored finding stating an outcome about bytes the same block has not written and cannot write. Low would understate it — R-0416 already ruled that completeness claims are forbidden and this is a stronger claim than completeness — so Medium. The reviewer's defect entirely; the R7 worker applied the text byte-verbatim as ordered, which is the correct conduct. Fix, owed and NOT ordered here: the promotion R-0460 claimed still has to happen — the rule becomes checklist item 11 in §3, and the "Run all ten checks" opener is updated in the same pair so the count and the enumeration agree. R8 does NOT do it: this block's change set contains no `docs/` path, and ordering the edit in the finding text while excluding the file is the very defect being registered. R9 owns it as its first item. From here, a finding may state that a rule IS in the checklist only when the same block ORDERS the edit that puts it there; otherwise it names the round that will, as this one does. OPEN.
+
 - R-0462 — Low, THE HANDBACK TOKEN CAP IS BINDING, EXCEEDED EVERY ROUND, AND MEASURED BY NOTHING. `docs/agents/handback_template.md` sets two independent limits: a LINE cap of ≤60, ≤100 for a >5-commit bundle and ≤160 for the >10-commit LARGE case, and below it a "Hard cap: this file stays ≤800 tokens — ≤1600 in the >10-commit LARGE case". The R7 handback declares a DECISION D15 stated-cause overage naming its 178 lines against the ≤100 cap, which is the correct and honest treatment of the LINE cap — and says nothing about the token cap, which it also exceeds. `.agent/handoff.md` at 2d1c6d8d is 8839 bytes; the file is English prose with tables, so no defensible bytes-per-token ratio brings it under 800, and even a deliberately generous five-bytes-per-token reading leaves it above the 1600 the LARGE case allows, which this 8-commit bundle cannot claim anyway. The property is what is registered here, not a token count the reviewer cannot measure exactly: the file is over the hard cap by a multiple, under every ratio worth arguing about. It is chronic rather than new — R5 was 164 lines, R6 152, R7 178 — and it is structural rather than careless: the mandated sections compose a per-commit table for every commit, a value for every ordered gate, and an item-status row for every C-item and every gate, which for a bundle of this shape cannot fit 800 tokens however tersely written. Low, because nothing downstream consumed a wrong number and the honesty of the record is unharmed. The cause is a gap in the counter-measure rather than in any round: pre-emission checklist item 3 names the LINE caps of `.agent/plan.md` and `.agent/handoff.md` and is silent on the token cap, so no reviewer pass has ever measured it. Fix, deferred to a paydown round and NOT to R8, because it changes a rule document that R8's change set does not include and the right repair is a ruling rather than an edit: the operator decides whether the 800-token cap is raised to match the mandated content, or the mandated content is reduced, and whichever way it goes, item 3 gains the token cap so the number is measured instead of assumed. Until that ruling, a handback that declares a D15 stated-cause overage names BOTH caps it exceeds rather than only the line cap. OPEN.
 
-Gate: R8 — FAIL, on ONE red gate out of seventeen, with every other gate green and re-run by the reviewer at the round's head. The red is gate 8, ruff, and it is the REVIEWER's defect in the authored CI-CMD slice rather than any act of the worker's: `python3 -m ruff check` over the four files gives `I001 Import block is un-sorted or un-formatted` at `apps/cli/commands/ci_cmd.py:15`, exit 1, because one blank line separates the import block from `def repo_root_for_ci` where `pyproject.toml`'s `select = ["E", "F", "W", "I", "UP"]` requires two. The worker isolated it correctly — the same command over the other three files alone exits 0, so the failure is the new slice's own bytes — applied the slice byte-verbatim as constraint 2 demands, declined to repair it, declared it, and ended the round under G8. That is exactly the conduct this repository asks for, and the round is charged to the reviewer. Everything else the round produced is sound and was re-derived independently: TRANSPORT three-way byte-equal at sha256 3b7d8cfb756bc950df49c605cdc99dc36971d9ea568ace4b9e70601afd129713, 29275 bytes, 400 lines, equal to the block's declared footer; C1's prefix property holds with the tail byte-equal to `b"\n" + RECORD-R7`; `apps/cli/commands/ci_cmd.py`, `tests/cli/test_ci_cmd.py` and `.agent/plan.md` each byte-equal their slices as whole files; both catalog pairs landed append-shaped with `"ci": GroupDef`, `command_id="ci.run"` and `command_id="integrity.check"` each exactly 1, and `ci_cmd` and `bench_cmd` each exactly 2 in `__init__.py`. The seam WORKS rather than merely parses: `tests/cli/test_ci_cmd.py` collects 6 and passes 6 at exit 0, including the subprocess test that really launches a stage argv through `scripts/remedy_pytest_runner.py`; the integrity gate reports passed true, fail_count 0, check_count 5 and `handlers=338`, exactly one more than the 337 measured at BASE, which is the proof the handler is reachable and not merely written; `packages/` is untouched in the range diff; the canary is 42 passed and the dashboard contract 70 passed, both exit 0. The open set is 90 registered, 4 `Done:`, 0 `Landed:`, open 86, max R-0462, no duplicate id. Insertions 400 · 341 · 5 · 76 · 16 · 2 · 75 · 9 · 152, none over 500. The four catalog suites report 601 passed at exit 0 against the 593 the block bracketed as its BASE reading: the reviewer accounted for the delta rather than accepting it, and `--collect-only` names exactly 8 new ids, all of them `test_grouped_cli.py` parametrisations over the new `ci` group — 593 + 8 = 601, fully explained, nothing dropped. The worker also declared a genuine conflict between two live rules and asked to be overruled if wrong: AGENTS.md "If Blocked" step 2 orders the exact blocker into `.agent/plan.md`, while the block's gate ordered `.agent/plan.md` to byte-equal a PLAN slice that names no blocker. It obeyed the byte-equality and put the blocker at the top of `.agent/handoff.md`. The reviewer RULES THAT CORRECT and the ruling is not a finding against either side: a whole-file slice is reviewer-authored text a worker may not edit, the handback is the channel the template already mandates for a blocker, and a worker that had instead written prose into `.agent/plan.md` would have broken the one gate that proves the file was not tampered with. The obligation the conflict really exposes belongs to the REVIEWER, and it is discharged in this block: when a round can end blocked, the PLAN slice the NEXT block authors states the blocker, which is why this round's PLAN names the ruff failure and the repair in its Current Step. Both findings below are the reviewer's.
-
 - R-0463 — Medium, A DRY RUN THAT COULD NOT FAIL THE WAY THE REAL GATE FAILS, AND SO SHIPPED A RED SLICE. The authored CI-CMD slice reached the worker with a ruff violation in it. The proximate cause is mechanical: an earlier trim pass over the block deleted a `_ROOT_DEPTH` constant that had sat between the imports and the first `def`, and the deletion took one of the two blank lines with it. The real cause is the verification. Before delegating, the reviewer DID lint the applied slice and DID read `All checks passed!` at exit 0 — under `python3 -m ruff check --no-respect-gitignore --isolated --line-length 120 --target-version py310`. `--isolated` discards `pyproject.toml`, and with it the `select = ["E", "F", "W", "I", "UP"]` line that turns the `I` (isort) rules on at all; ruff's default selection is `E` and `F` only, so `I001` was not merely unreported, it was never evaluated. The probe was green because it was blind, which is the R-0337 class — a probe whose import path or config differs from the gate's proves nothing about the gate — recurring in a new medium, configuration rather than module resolution. It is Medium and not Low because the failure mode is silent and general: every future authored code slice checked this way would pass the reviewer and fail the worker, and the round it costs is a full delegate-and-review cycle. Standing rule, binding the reviewer from here: a dry run executes the gate's EXACT command line, from the repository root, with the repository's own configuration — no `--isolated`, no substituted flags, no convenient variant — or it is not evidence and is not reported as if it were. This block does NOT place that rule in §3: C3 lands item 11 and nothing else, and asserting a promotion this change set does not order is the R-0461 defect itself. R10 owns it as checklist item 12, and this paragraph is the text item 12 carries. OPEN.
+
 - R-0464 — Low, A GATE OVER A PARAMETRISED SUITE QUOTED A COLLECTED COUNT AS ITS BASELINE. R8's gate 10 ordered the four catalog suites and bracketed "[BASE: 593 passed, exit 0 — a red here is this round's doing]". The suites are parametrised per catalog GROUP — `test_grouped_cli.py` alone generates eight ids for every group — so a round whose whole purpose is to ADD a group necessarily moves that number, and 601 was the correct, green result. Nothing broke, because the gate ordered the worker to REPORT the count rather than to match 593, and the worker reported 601, refused to treat the delta as either error or nuisance, and accounted for all eight ids by collection. But the bracketed figure still framed 593 as the expected reading and cost the worker a disproof it could not complete — it could not re-run the suites at BASE, no worktree being permitted that round, so it had to hand the question back unresolved. This is the R-0336 family, whose rule is to gate the PROPERTY and never a serialized count. Low: no false verdict was reached and the reviewer confirmed the delta at the gate. Refinement of that rule, binding the reviewer from here: when a gate names a collected count at all, it first establishes whether the suite is parametrised over anything the round CHANGES, and if it is, the gate states the expected DELTA and its cause — "adding one group adds eight ids" — instead of a bare baseline that the round is designed to invalidate. OPEN.
 
-Gate: R9 — PASS. All seventeen gates were re-run by the reviewer at the round's head, from the repository root, and every value the handback reported was reproduced exactly: TRANSPORT three-way byte-equal at sha256 322dedf6b5ca6f5f2dde8c45dc939d24088d61920fa12012c67faa76695c58d2, 23438 bytes, 250 lines, equal to the block's declared footer; the C1 prefix property holds with the tail byte-equal to `b"\n" + RECORD-R8`; every one of the ten authored slices re-extracted by marker to the digest the handback printed; the STEPS, BLANK and OPENER rewrites each read FROM 0x and TO 1x at their own commits and the ITEM11 append read FROM 1x before and after with TO 0x before and 1x after; the change set is exactly the seven declared paths with `packages/`, `tests/` and `apps/cli/command_catalog.py` empty in the range diff; the integrity gate reports passed true, fail_count 0, check_count 5, handlers=338; the open set is 92 registered, 4 `Done:`, 0 `Landed:`, open 88, max R-0464, no duplicate; `.agent/plan.md` byte-equals its PLAN slice at 30 lines; and the verification quartet is 70, 21, 15 and 42 passed, each at exit 0 from the process itself. Gate 7, the red one this round existed to clear, is GREEN — and the reviewer did not accept green on its own word: the R8 command was re-run UNCHANGED inside a disposable worktree checked out at BASE 4406f1c1, where it exited 1 with `I001 Import block is un-sorted or un-formatted` at `apps/cli/commands/ci_cmd.py:15:1`, against exit 0 and `All checks passed!` at HEAD. A gate that cannot be shown to fail is not evidence, and this one was shown to fail. The `.agent/STOP` sentinel that ended R9 was cleared by the operator before this session and is ABSENT on disk; it was never deleted by an agent. The worker's conduct was correct throughout: it applied every slice byte-verbatim, declared three deviations rather than silently repairing reviewer text, and refused to invent its own commit SHA. All three deviations are defects in MY block, not in its work, and the two findings below are charged to the reviewer accordingly. One process note belongs in this record because it nearly cost the verdict: the reviewer's first pass at gates 10 to 13 ran in a shell whose working directory had silently persisted into the BASE worktree from the red control, so a 601, an empty `git diff` and an integrity reading were all produced against 4406f1c1 while being read as HEAD. The `git diff` gate was vacuous by construction there — the range is empty at its own base. It was caught before any verdict, every affected gate was re-run at the root with `pwd` confirmed first, and the re-run values are the ones recorded above. Nothing was reported from the stale directory. This is the R-0337 family in a third medium — not import path, not configuration, but working directory — and item 12, which R10 lands, names the working directory explicitly for that reason.
-
 - R-0465 — Medium, GATES THAT ORDER A PROPERTY AT A COMMIT WHICH CANNOT CARRY IT. The R9 block spent two of its three deviations on gates that were unsatisfiable as written, both in the same way. Gate 8 ordered the item-11 numerals to agree "over the file at C3", but four of its five anchors are created by C4 itself, so at C3 they necessarily read 0 / 1 / 0 / 0 / 1; gate 16 ordered a change set "measured BEFORE the handoff is written into C6, so it lists seven paths with `.agent/handoff.md` the seventh and last", and both clauses cannot hold at once because the seventh path is created by the very commit the measurement must precede. The worker did the right thing twice — measured what was measurable, reported both readings, declared the deviation — but each cost a round-slot of reviewer arithmetic to adjudicate, and a worker with less nerve would have fabricated the agreeing numbers instead. This is the R-0371 family, whose rule is that a block may never order a value which cannot exist at the moment the ordered text is written; the earlier instances were commit SHAs, and these two are properties pinned to the wrong commit boundary, which is the same defect wearing different clothes. Standing rule, binding the reviewer from here and already covered in spirit by §3 item 8: every done-when that names a commit states the commit at which the property FIRST holds, and when a property spans a pair of commits the gate names both readings it expects instead of one that only one of them can satisfy. OPEN.
-- R-0466 — Low, A FINDING NAMED THE WRONG COMMIT FOR THE EDIT IT WAS DEFERRING. Inside RECORD-R8, finding R-0463 reads "This block does NOT place that rule in §3: C3 lands item 11 and nothing else". The R9 bundle assigns item 11 to C4 and the ruff repair to C3, so the sentence is wrong about its own block on disk: item 11 landed in bb5b8836 (C4) and 196b8f4f (C3) is the one-line ruff repair. The substance was right — the finding correctly declined to claim a promotion its change set did not order, and correctly named R10 as the round that would own it, which is precisely what §3 item 11 demands — and only the commit letter is false. The worker applied the slice byte-verbatim as constraint 2 required and declared the contradiction rather than editing reviewer text, which is the conduct this repository wants. Low because nothing downstream depended on the letter and no verdict turned on it. Refinement, binding the reviewer: when finding text names a commit inside its own block, that letter is re-read against the bundle at emission, in the same pass as §3 item 9 re-greps citations — a C-letter is a pointer, and pointers are checked, not remembered. OPEN.
-- R-0467 — Low, THE STAGE TABLE'S UNION CLAIM WAS TRUE BY LUCK AND GUARDED BY NOTHING. `packages/orchestration/ci_stages.py` states in prose that the five selections' "union was the whole suite with nothing uncovered", measured once in `.agent/f083_inventory.md` Q4 at claim time. Nothing on disk kept that true afterwards. A test marked ONLY `slow` is selected by no stage at all — `fast` excludes `slow` explicitly and no other stage claims it — so a single such test would silently be run by no CI stage while the docstring went on promising full coverage. Measured at 98900254 the hole is empty: the complement of all five expressions collects 0 of 17036 tests, so the claim is TRUE today, which is exactly why this is Low rather than a defect in the table. It is registered because a claim kept by luck is indistinguishable from one kept by design right up to the commit that breaks it, and because the fix is one test rather than a redesign. RESOLVED by this round's C2: `test_a_slow_only_module_is_selected_by_no_ci_stage` pins the blind spot against the fixture tree so it is documented rather than rediscovered, and `test_no_test_in_this_repository_escapes_all_five_stages` asserts the complement collects nothing, as a property and never as a count, so it stays green as the suite grows and goes red only when a test appears that no stage would run.
-Done: R-0467 — the union claim is now a live guard; see C2 of R10.
 
-Gate: R10 — PASS. All nineteen gates were re-run by the reviewer at the round's head, from the repository root with `pwd` confirmed before every reading, and every value the handback reported was reproduced exactly, with no deviation of any kind found in the worker's execution. TRANSPORT is three-way byte-equal — the scratchpad original at `.remedy-wt/.cache/f083-r10/f083-r10.md`, `.agent/authored/f083-r10.md` and `.agent/last_block.md` all read sha256 ebfb3238fb9e18a3374805ba0adb3e9c2c51d22eb1e88566db69a2285f2d9880 at 31090 bytes and 399 lines, equal to the block's declared footer. All nine authored slices were re-extracted BY MARKER from the committed authored file and every one matched the digest, byte count and line count the handback printed: RECORD-R9 ccd35335 7067 6, TESTFILE fbffda72 6138 131, DOCSTRING-FROM fb339e4e 80 1, DOCSTRING-TO 72c494c0 93 1, OPENER-FROM 4d09ad4c 82 1, OPENER-TO 63b7c487 82 1, ITEM12-FROM f3a49657 76 1, ITEM12-TO 8a530ad2 1618 21, PLAN 0518bf2d 1463 29. The C1 prefix property holds with the tail byte-equal to `b"\n" + RECORD-R9` and a deletion column of 0; the C2 test file byte-equals TESTFILE and carries the declared digest; the DOCSTRING rewrite reads FROM 1x/TO 0x before and FROM 0x/TO 1x after; the ITEM12 append reads FROM 1x before AND after with TO 0x before and 1x after; and all five item-12 numerals agree at C3 as ordered. Every executable gate was run by the reviewer as its own process, and the real exit code was read from that process rather than from a shell: ruff `All checks passed!` at 0, the new selection suite 9 passed at 0, `test_ci_stages.py` 7 passed at 0, `test_ci_cmd.py` 6 passed at 0, the catalog quartet 601 passed at 0 and unmoved from BASE, and the verification quartet 70, 21, 15 and 42 passed at 0 each. The scoped range diff over `packages/`, `apps/` and `docs/roadmap/` printed nothing from the repository root; the integrity gate reports passed true, fail_count 0, check_count 5 and handlers=338; the open set recomputes to 95 registered, 5 `Done:`, 0 `Landed:`, 90 open, max R-0467, next free R-0468, no duplicate id; the change set at C4 is exactly the seven declared paths with `.agent/handoff.md` the eighth added by C5; and no commit's insertion column exceeds 500. Gate 8, the one gate that can only be believed by being reproduced, was reproduced: in a disposable worktree at HEAD — never the primary checkout — a single test marked only `slow` under `tests/cli/` turned the union guard RED at exit 1, naming `tests/cli/test_redproof_slow_only.py::test_case` at `1/17046 tests collected (17045 deselected)`, and the worktree was removed with `git worktree list` back to one line and the primary tree clean. That colour matters more than any green in this record: the guard C2 landed can actually fail, so its passing state is evidence rather than decoration. The worker's arithmetic cross-check is independently confirmed — 17046 = 17036 + 9 + 1 — because the reviewer's own collect at HEAD without the probe reads 17045 tests, which is 17036 + the 9 tests C2 added. The single declared deviation, a 184-line handback against both the AGENTS.md cap and the handback-template cap, is measured as declared at exactly 184 lines, names both caps as DECISION D15 and R-0462 require, drops no mandated section and pads no prose; it is accepted and is not a finding. The two findings below are NOT charges against this round, whose execution was clean throughout — they are conditions of the repository that the reviewer's own spot-check turned up while gating it, and they are registered here because F083 is the feature that owns them.
+- R-0466 — Low, A FINDING NAMED THE WRONG COMMIT FOR THE EDIT IT WAS DEFERRING. Inside RECORD-R8, finding R-0463 reads "This block does NOT place that rule in §3: C3 lands item 11 and nothing else". The R9 bundle assigns item 11 to C4 and the ruff repair to C3, so the sentence is wrong about its own block on disk: item 11 landed in bb5b8836 (C4) and 196b8f4f (C3) is the one-line ruff repair. The substance was right — the finding correctly declined to claim a promotion its change set did not order, and correctly named R10 as the round that would own it, which is precisely what §3 item 11 demands — and only the commit letter is false. The worker applied the slice byte-verbatim as constraint 2 required and declared the contradiction rather than editing reviewer text, which is the conduct this repository wants. Low because nothing downstream depended on the letter and no verdict turned on it. Refinement, binding the reviewer: when finding text names a commit inside its own block, that letter is re-read against the bundle at emission, in the same pass as §3 item 9 re-greps citations — a C-letter is a pointer, and pointers are checked, not remembered. OPEN.
 
 - R-0468 — Low, THE REPOSITORY THIS FEATURE WILL GATE IS TWENTY-SIX RUFF ERRORS RED, AND NOT ONE CI STAGE RUNS RUFF. Measured by the reviewer at c6db29fa from the repository root, with the repo's own `pyproject.toml` and no substituted flag: `python3 -m ruff check . --statistics` reports 26 errors — 20 I001 unsorted-imports, 4 F401 unused-import, 1 UP035 deprecated-import and 1 F821 undefined-name — of which 25 are auto-fixable. None of them belongs to this branch: `python3 -m ruff check tests/orchestration/test_ci_stage_selection.py tests/orchestration/test_ci_stages.py` prints `All checks passed!` at exit 0, so R10 added no debt and all 26 predate this feature. It is registered against F083 rather than left alone because of the feature's own Acceptance line, "Clean checkout: `remedy ci` green locally and hosted with the same stage results": all five entries in `CI_STAGES` are pytest marker selections and none of them invokes a linter, so `remedy ci` is green today while `ruff check .` is red, and the day T003's hosted workflow adds a lint step it arrives red with 26 errors nobody scheduled. Low and not Medium because no false GREEN exists on disk right now — no stage claims to lint and none does — and because the remedy is bounded and mechanical rather than a redesign. Routed to T002, whose brief already names "no forbidden patterns" as budget-stage work: a lint ceiling belongs to the budget stage, and the choice between clearing the 26 first or landing the stage against a recorded baseline is R12's to make and to record as a DECISION. OPEN.
+
 - R-0469 — Low, A NAME THAT EXISTS NOWHERE IS INTERPOLATED INTO AN ERROR MESSAGE IN PRODUCTION CODE. `check_injections_supported` in `packages/orchestration/gauntlet_injection.py` raises `MissingSeamError(f"{name} cannot be injected at {BLOCKED_INJECTIONS[name]}: " f"{MISSING_SEAM}")`, and `MISSING_SEAM` is defined nowhere at all: `grep -rn "MISSING_SEAM" --include=*.py .` returns exactly one hit in the whole repository and it is that use site. Evaluating that f-string would raise `NameError: name 'MISSING_SEAM' is not defined` instead of the `MissingSeamError` the function exists to raise, so the refusal path fails in a way none of its own tests describe. Low, and the reason is reachability, checked rather than assumed as §3 item 5 requires: `BLOCKED_INJECTIONS: dict[str, str] = {}` is an empty literal and nothing anywhere writes into it, so `name in BLOCKED_INJECTIONS` is False for every input and the branch is dead today. This is a landmine rather than a live defect, and it detonates on the first commit that registers a blocked injection class. It is registered under F083 rather than routed elsewhere because it is the concrete proof of R-0468 and inseparable from it: ruff has flagged this exact line as F821 for as long as the line has existed, and the only reason nobody noticed is that no stage of Remedy's CI runs ruff. A linter finding nobody reads is indistinguishable from having no linter. Fix and finding travel to T002 together with R-0468. OPEN.
 
-Gate: R11 — PASS. The reviewer re-ran the round at its head from the repository root and reproduced it: the authored file and `.agent/last_block.md` are byte-equal at sha256 45b35ecfd0c0 over 22819 bytes and 241 lines; the C1 prefix property holds with the tail byte-equal to `b"\n" + RECORD-R10` and a deletion column of 0; the C2 prefix property holds with the tail opening on a single newline and the Q5 heading; `.agent/plan.md` byte-equals its PLAN slice at 29 lines; the change set at C3 is exactly the five declared paths with `.agent/handoff.md` the sixth added by C4; and the scoped range diff over `packages/`, `apps/`, `tests/` and `docs/` printed nothing, so a round that promised no code delivered none. Every gate was re-run as its own process with the exit code read from that process: the four CI suites at 7, 9, 6 and 8 passed and the verification quartet at 70, 21, 15 and 42 passed, all exit 0; the integrity gate reports passed true, fail_count 0, check_count 5, handlers=338; the open set recomputes to 97 registered, 5 `Done:`, 0 `Landed:`, 92 open, max R-0469, next free R-0470, no duplicate id. The MEASUREMENTS were re-taken rather than read: the reviewer's own collect reproduces fast 3975, standard 12579, ui 397, smoke 23 and excluded 79 against a suite total of 17045, the bogus-marker control exits 5 with `no tests collected` so an empty selection cannot pass for a green one, `fast` under `-n auto` re-reads 55.1 s at exit 0 with the identical `3968 passed, 7 skipped` summary, and the determinism candidate set re-measures as 45 files and 850 ids with set containment in `standard` True and 0 ids outside. The Q5 section itself is the conduct this repository wants: it records `not measured` where nothing was run, it declines to state a serial time for the three stages that were only run in parallel, it names the CPU count beside every `-n auto` reading, and it carries no recommendation and no budget number — evidence, kept separate from the decision it will inform. The worker's conduct was correct throughout: it applied every slice byte-verbatim, it refused to invent its own commit SHA, and it declared three deviations rather than silently repairing reviewer text. All three of those deviations are defects in the reviewer's block and none is a defect in the work, and they are charged to the reviewer as R-0470, R-0471 and R-0472 below. The fourth finding is not a deviation at all: it is what the reviewer found by re-running a measurement instead of reading it.
-
 - R-0470 — Low, A BLOCK DECLARED A SIZE IT HAD NOT MEASURED. The R11 footer reads "BLOCK SIZE, measured on these final bytes: 246 lines", and the transported bytes measure 241 lines at 22819 bytes in both `.agent/authored/f083-r11.md` and `.agent/last_block.md`, which are byte-equal to each other. The word "measured" was false: no count was taken, a number was recalled. The worker did exactly the right thing — it reported the mismatch, declared it, and changed nothing to close the gap, because closing a gap between a claim and the bytes by editing the bytes is how a record stops being one. Low because nothing downstream consumed the numeral and the cap was never in danger at either value. This is the R-0402 / R-0404 / R-0436 family, whose standing rule is count it or state NO numeral, and §3 item 1 already orders the count to be taken mechanically on the FINAL bytes after the last edit; the rule was not missing, it was skipped. Refinement, binding the reviewer and already applied by the block that carries this text: a block whose reviewer cannot mechanically count its own final bytes — which is every block in a session with no scratchpad file, because the bytes exist only in the prompt — declares NO line count and orders the WORKER to measure it against the cap instead. A number the author cannot verify is not a declaration, it is a guess wearing a declaration's clothes. OPEN.
-- R-0471 — Low, TWO CLAUSES OF ONE BLOCK DISAGREED ABOUT A SINGLE NEWLINE. R11's C2 contract required "exactly one blank line between the file's current last line and its first line", while gate 10 of the same block ordered the appended tail to begin `b"\n\n## Q5 — …"`. Because `.agent/f083_inventory.md` already ended with a newline, the contract yields a tail of `b"\n## Q5 — …"` and the gate's literal would have produced two blank lines: the two clauses cannot both be satisfied. Gate 4 of that same block had the newline right for the live_review append, so the block contradicted not only itself but its own neighbouring gate. The worker applied the contract, reported the gate as measured, and declared the difference, which is the correct order of precedence and the correct disclosure. Low because the disagreement was visible on inspection and cost no rework beyond the declaration. This is the R-0437 newline family crossed with the clause-versus-clause defect: the fix is not more prose about newlines but a mechanical pass in which every gate literal that quotes an append boundary is checked against the convention paragraph of the SAME block before emission, in the same sweep §3 item 9 uses to re-grep citations. OPEN.
-- R-0472 — Medium, A HEADING WAS PRESCRIBED FOR A FILE THE REVIEWER NEVER OPENED. R11's C2 contract fixed the appended section's first line as `## Q5 — Stage runtime, measured at R11`. `.agent/f083_inventory.md` already carried `## Q5 — Measured wall time and outcome per stage` from R2, and its sections already ran Q1 through Q8, so the ordered heading both duplicated an existing one and restarted the numbering after Q8. The worker applied the ordered bytes and declared the collision, which is right — reviewer text is not the worker's to edit — and the result is that the file on disk now holds two sections opening `## Q5 —` with the second sitting after Q8. Medium and not Low because this one did not stop at a false claim: it put a real fault into a document that two of its own body sentences already cite by Q-number, so a later reader following "the reviewer's `-n auto` reading in Q5" has two candidate sections and no way to choose. It is the §3 item 6 failure class in its plainest form — the block that writes into a file must be checked against what that file ALREADY contains — and the check was not skipped so much as never reached, because the reviewer prescribed a heading for a file it had not opened. Refinement, binding the reviewer: any block ordering an append to a file it has not read in the CURRENT session reads that file first and, for a structured file, greps the sibling headings before naming a new one. RESOLVED by this round's C2, which renames the appended section to `## Q9 —`, restoring a single monotonic sequence and disambiguating the two existing citations as a side effect.
-- R-0473 — Medium, A BUDGET IS ABOUT TO BE WRITTEN FROM ONE READING PER STAGE, WHICH IS THE MISTAKE THE PLAN'S OWN RISK NAMES. Q5 records exactly one wall-clock reading for each of `standard`, `ui` and `smoke`, and two for `fast`. The reviewer re-ran `standard` under `-n auto` on the SAME machine at the SAME commit with the expression read from `CI_STAGES`, and measured 170.1 s against the 138.8 s Q5 records — a spread of about 22 % — while the pass and skip counts were identical at 12578 and 1, and the exit code was 0 both times. Nothing was fabricated and Q5 is not wrong: a single reading honestly reported as a single reading is exactly what it claims to be, and the section carries no budget number precisely because choosing one was left to a later round. The finding is about what happens NEXT. `.agent/plan.md` has carried, for several rounds, the risk that `fast` rested on a single 391.8 s reading and that no runtime budget could be written from it; R11 replaced that with two readings for `fast` and one for every other stage, so for three of the five stages the risk is unchanged in kind and merely newer. A ceiling set at or just above a single sample fails the first time ordinary variance exceeds it, and a CI that fails for variance teaches its readers to ignore it — which is worse than having no budget, because it spends the credibility the budget existed to build. Medium because the budget stage is the very next piece of work and would bake the error in. Binding R13: before any ceiling is written, each stage that will carry one is measured at least three times and the ceiling is set from the observed SPREAD with its headroom stated, or the budget is documented as provisional and says on its face how many samples it rests on. Remedy does not need a tight budget; it needs an honest one. OPEN.
-Done: R-0472 — the appended section is renamed to `## Q9 —`; see C2 of R12.
 
-Gate: R12 — PASS. The reviewer re-ran all fifteen gates itself at the round's head from the repository root and all fifteen reproduce. TRANSPORT: `.agent/authored/f083-r12.md` and `.agent/last_block.md` are byte-equal at sha256 3821ad67c09d over 21247 bytes and 200 lines, each equal to its committed blob at C0a and C0b, and 200 is at and under the 400-line cap. C1's prefix property holds with the tail byte-equal to `b"\n" + RECORD-R11` extracted from the COMMITTED authored file by its markers, numstat `8 0`. C2's REWRITE pair measures FROM 1x before and 0x after, TO 0x before and 1x after, numstat `1 1`; the file's `^## Q\d` headings now read Q1 through Q9, each exactly once, and the two body sentences citing Q5 still count 1 each. C3's `.agent/plan.md` byte-equals its PLAN slice at sha256 fc8565d17cd3, 32 lines, `## Goal` and `## Next Steps` present, 0 `- [ ]` lines. The scoped range diff over `packages/`, `apps/`, `tests/` and `docs/` printed nothing from the repository root, so a round that promised no code delivered none. Every gate ran as its own process with the exit code read from that process: the four CI suites at 7, 9, 6 and 8 passed and the verification quartet at 70, 21, 15 and 42 passed, all exit 0; the integrity gate reports passed true, fail_count 0, check_count 5, handlers=338; the open set recomputes to 101 registered, 6 `Done:`, 0 `Landed:`, 95 open, max R-0473, next free R-0474, no duplicate id. Insertions 200, 117, 8, 1, 15 and 114, none over 500. The REPAIR was checked as a repair and not merely as a diff: the two sentences citing "Q5" sit in `## Q8` and in `## OPEN QUESTIONS`, both predate the R11 append, and the original `## Q5` does record that only `standard` used `-n auto` and does time `safety` and `architecture` as separate rows — so the rename restores their true referent rather than merely deleting a duplicate heading. The findings were checked against their subjects rather than read: R11's authored block measures 241 lines at 22819 bytes against the "246 lines" its own footer declares, so R-0470 holds; that block's C2 contract says "exactly one blank line" while its own gate 10 orders a tail of `b"\n\n## Q5 — …"`, so R-0471 holds; it ordered `## Q5 — Stage runtime, measured at R11` into a file already carrying `## Q5 — Measured wall time and outcome per stage` and already running to Q8, so R-0472 holds and C2 resolves it; and `## Q9` does record one wall-clock reading each for `standard`, `ui` and `smoke` and two for `fast`, with `standard` at 138.8 s and the summary `12578 passed, 1 skipped`, so R-0473's data holds. The worker's conduct was correct throughout: every slice applied byte-verbatim, the handback's 150 lines declared against BOTH caps with the mandated content named as the cause, and no `Done:` paragraph of its own. One defect remains and it belongs to the reviewer, registered below.
+- R-0471 — Low, TWO CLAUSES OF ONE BLOCK DISAGREED ABOUT A SINGLE NEWLINE. R11's C2 contract required "exactly one blank line between the file's current last line and its first line", while gate 10 of the same block ordered the appended tail to begin `b"\n\n## Q5 — …"`. Because `.agent/f083_inventory.md` already ended with a newline, the contract yields a tail of `b"\n## Q5 — …"` and the gate's literal would have produced two blank lines: the two clauses cannot both be satisfied. Gate 4 of that same block had the newline right for the live_review append, so the block contradicted not only itself but its own neighbouring gate. The worker applied the contract, reported the gate as measured, and declared the difference, which is the correct order of precedence and the correct disclosure. Low because the disagreement was visible on inspection and cost no rework beyond the declaration. This is the R-0437 newline family crossed with the clause-versus-clause defect: the fix is not more prose about newlines but a mechanical pass in which every gate literal that quotes an append boundary is checked against the convention paragraph of the SAME block before emission, in the same sweep §3 item 9 uses to re-grep citations. OPEN.
+
+- R-0473 — Medium, A BUDGET IS ABOUT TO BE WRITTEN FROM ONE READING PER STAGE, WHICH IS THE MISTAKE THE PLAN'S OWN RISK NAMES. Q5 records exactly one wall-clock reading for each of `standard`, `ui` and `smoke`, and two for `fast`. The reviewer re-ran `standard` under `-n auto` on the SAME machine at the SAME commit with the expression read from `CI_STAGES`, and measured 170.1 s against the 138.8 s Q5 records — a spread of about 22 % — while the pass and skip counts were identical at 12578 and 1, and the exit code was 0 both times. Nothing was fabricated and Q5 is not wrong: a single reading honestly reported as a single reading is exactly what it claims to be, and the section carries no budget number precisely because choosing one was left to a later round. The finding is about what happens NEXT. `.agent/plan.md` has carried, for several rounds, the risk that `fast` rested on a single 391.8 s reading and that no runtime budget could be written from it; R11 replaced that with two readings for `fast` and one for every other stage, so for three of the five stages the risk is unchanged in kind and merely newer. A ceiling set at or just above a single sample fails the first time ordinary variance exceeds it, and a CI that fails for variance teaches its readers to ignore it — which is worse than having no budget, because it spends the credibility the budget existed to build. Medium because the budget stage is the very next piece of work and would bake the error in. Binding R13: before any ceiling is written, each stage that will carry one is measured at least three times and the ceiling is set from the observed SPREAD with its headroom stated, or the budget is documented as provisional and says on its face how many samples it rests on. Remedy does not need a tight budget; it needs an honest one. OPEN.
 
 - R-0474 — Medium, A FINDING'S EVIDENCE POINTER WAS INVALIDATED BY ITS OWN BLOCK, IN THE SAME ROUND THAT WROTE IT. R12's C1 wrote R-0473 into this file with three present-tense citations of `Q5` — "Q5 records exactly one wall-clock reading for each of `standard`, `ui` and `smoke`, and two for `fast`", "the 138.8 s Q5 records", and "Q5 is not wrong" — every one of them meaning the section R11 had appended. C2 of that same block then renamed that section to `## Q9 —`, so by the end of the round all three pointers resolve to `## Q5 — Measured wall time and outcome per stage`, a different section with different numbers: it carries one reading for each of SIX stages, it puts `standard` at 134.1 s rather than 138.8 s, and it holds no second `fast` reading at all. The measured CONTENT of R-0473 is correct and was verified against `## Q9` at this gate, so nothing is fabricated and no number is wrong; what broke is the address, not the data. Medium because R-0473 is the finding that BINDS the next round, and a binding instruction naming the wrong evidence section sends the round that must obey it to the wrong table — the same consequence R-0472 was rated Medium for, with the arrow reversed: R-0472 was a heading prescribed for a file the reviewer had not read, and this is a citation left pointing at a heading the same block moved. The block was aware of the rename everywhere else — its constraint 5 reasons explicitly about which references the rename disambiguates, and the PLAN slice it applied at C3 already reads "from the `## Q9` readings" — so the omission is confined to the finding text, which makes it an emission-sweep failure rather than a misunderstanding. R-0473's text is deliberately NOT edited to close this gap: R-0470 established one round ago that closing the distance between a claim and the bytes by editing the bytes is how a record stops being one, and that principle does not weaken when the stale half is the reviewer's own. The correction lives here instead, in the finding that reports it, and it is stated once and plainly: every `Q5` in R-0473 means the section now titled `## Q9 — Stage runtime, measured at R11`. Refinement, binding the reviewer: when one block both WRITES a citation and MOVES its referent, the citation is authored in the POST-move form, and the block's pre-emission sweep re-reads every heading, section number and quoted name that any later slice of the SAME block rewrites — the sweep §3 item 9 already performs for `file:line` citations, widened to the section names this repository actually navigates by. OPEN.
-
-Gate: R13 — PASS. The reviewer re-ran all fifteen gates itself at the round's head from the repository root and all fifteen reproduce. TRANSPORT: `.agent/authored/f083-r13.md` and `.agent/last_block.md` are byte-equal at sha256 75da10a8a4eb11ee over 23716 bytes and 281 lines, each equal to its committed blob at C0a and C0b, and 281 is under the 400-line cap. C1's prefix property holds with the tail byte-equal to `b"\n" + RECORD-R12` extracted from the COMMITTED authored file by its markers, numstat `4 0`. C2's prefix property holds and its tail begins with exactly one newline followed by the ordered `## Q10` heading, numstat `90 0`; the file's `^## Q\d` headings now read Q1 through Q10, each exactly once, and `## Q5 — Measured wall time and outcome per stage` and `## Q9 — Stage runtime, measured at R11` still count 1 each. C3's `.agent/plan.md` byte-equals its PLAN slice at sha256 2043c38937c87ca3, 39 lines, `## Goal` and `## Next Steps` present, 0 `- [ ]` lines. The scoped range diff over `packages/`, `apps/`, `tests/`, `scripts/` and `docs/` printed nothing from the repository root, so a round that promised no code delivered none. Every gate ran as its own process with the exit code read from that process: the four CI suites at 7, 9, 6 and 8 passed and the verification quartet at 70, 21, 15 and 42 passed, all exit 0; the integrity gate reports passed true, fail_count 0, check_count 5, handlers=338; the open set recomputes to 102 registered, 6 `Done:`, 0 `Landed:`, 96 open, max R-0474, next free R-0475, no duplicate id. Insertions 281, 180, 4, 90, 18 and 124, none over 500. `git rev-parse f3ab6cc4^` is 6af03d95ceaa2b5dd9e95de1de25ee0cfe4bb2c6, so the BASE clause holds at the block's own first commit, and the worker's declared Gate-2 deviation is the reviewer's doing and not a lapse of its own: this session took the round over at C2 after an earlier session had already committed C0a, C0b and C1, and instructed the worker to run gate 2 and report rather than stop. THE EVIDENCE WAS CHECKED AGAINST ITS SOURCE RATHER THAN READ: every pytest summary line `## Q10` quotes was compared against that sample's own log under `.remedy-wt/f083-r13/logs/` and each matches verbatim; the red control's whole output is the single line `17045 deselected in 3.67s` at exit 5; the three `standard` kills each end `ERROR: pytest timed out after 600 seconds.` with last progress markers `[ 70%]`, `[ 73%]` and `[ 71%]` exactly as recorded; the largest log is 14062 bytes against the runner's 512 KiB cap, so no line is quoted out of a truncated stream; and every wall second in the sample table rounds correctly from the raw `duration_s` in `samples.jsonl`, the one derived figure that does not reproduce from the published values being registered below. The round's own question is answered, and the answer is unwelcome and honest: today's `remedy ci` truncates `standard` at 600 seconds three times out of three, and the stage completes green in 927.72 s only when the default is overridden. The worker's conduct was correct throughout: the red control ran first, no `run_command=` injection replaced the instrument, every sample went through the production `_run_via_subprocess`, the harness killed the driver once and the resumable `samples.jsonl` design lost and double-counted nothing, all fifteen records are present, and the 164-line handback declares BOTH caps with the mandated content named as the cause. Two defects remain and BOTH belong to the reviewer, registered below.
 
 - R-0475 — Medium, A PLAN SLICE DECLARED AN OUTCOME UNKNOWN THAT ITS OWN BLOCK'S EARLIER COMMIT HAD ALREADY MEASURED. The R13 block's PLAN slice, applied byte-verbatim at C3, carries the risk bullet "`standard` collects 12579 items and has never been run serially, so today's `remedy ci` may already truncate its largest stage. R13 measures it; until then the outcome is unknown, not assumed." C2 of that same block measured it two commits earlier: three samples at exit 124 against the runner's 600-second default, and an uncapped probe completing the stage green in 927.72 s. So at the round's head `.agent/plan.md` states the outcome is unknown while `## Q10`, added in the same range, records it — and `.agent/plan.md` is the file AGENTS.md's Session Resume reads second, before any doc and before the diff. Nothing false was published: the sentence was true when the block was authored, the worker was ordered to apply it byte-verbatim and correctly did, and the measurement it contradicts is itself correct. What broke is that the round's own bridge does not carry the round's own headline result. Medium because the plan is what a resumed session reads to decide what to do next, and a session that believes `standard`'s serial cost is still unmeasured either spends an hour re-measuring it or writes a budget from `## Q9`'s `-n auto` figures — the precise error R13 existed to prevent. This is R-0474's shape with a different subject: one block wrote a claim and another slice of the SAME block destroyed its truth, and where R-0474 covered citations and section names, a status claim about the world is the same failure through a different door. Standing rule, binding the reviewer: a PLAN slice is authored in the POST-round form, because C3 applies it AFTER the measurement at C2 — a risk the round is about to resolve is written as the question the round answers and the section that will carry the answer, never as an open unknown, and a risk paragraph may not name a figure that the same block's own earlier commit could move. The R13 PLAN text is deliberately NOT edited retroactively; R-0470 settled one round ago that closing the distance between a claim and the bytes by editing the bytes is how a record stops being one. RESOLVED by C3 of this block, whose PLAN states the measured outcome and names no figure its own C2 can contradict.
 
 - R-0476 — Low, A DERIVED SPREAD WAS PUBLISHED AT A PRECISION ITS OWN PUBLISHED INPUTS CANNOT PRODUCE. `## Q10`'s spread list reads "standard — min 600.06, max 600.06, max−min 0.01." Subtracting the two published bounds gives 0.00. Neither figure is false: the three raw `duration_s` readings in `.remedy-wt/f083-r13/samples.jsonl` are 600.0565918530001, 600.0635042400008 and 600.0613217750015, both bounds round to 600.06 at two decimals, and the unrounded difference of 0.0069 rounds to 0.01. The wall-second column is published at two decimals while the spread was computed at full precision, and the section states neither convention, so the one row where the two disagree reads as an arithmetic error to any reader who checks the table against itself. Low, and not higher: every number is a true reading at its stated precision, the other three stages' spreads do reproduce from their published bounds — fast 397.45 minus 391.07 is 6.38, ui 8.09 minus 7.99 is 0.10, smoke 11.07 minus 11.06 is 0.01 — and the substantive claim attached to that row, that this spread measures the runner's kill rather than the stage's cost, is correct and stated plainly. Not Nil, because `## Q10` is the evidence a ceiling will be written from, and a table that cannot be recomputed from its own published figures invites the next round either to quote a contradiction or to re-derive numbers it should have been able to read. Standing rule, binding the reviewer: a block that orders both raw readings and a value derived from them fixes ONE precision for the pair and states it on the section's face — the derived value is computed from the numbers as published, or the section says it is computed from the unrounded readings and gives the reader no reason to subtract. `## Q10` is not edited to close the gap, for the reason R-0470 settled; the convention is stated and obeyed by `## Q11` in this block instead. OPEN.
 
-Gate: R14 — PASS. The reviewer re-ran all fifteen gates itself at 94e6c353 from the repository root and all fifteen reproduce. TRANSPORT: `.agent/authored/f083-r14.md` and `.agent/last_block.md` are byte-equal at sha256 9ece6420fe5f8eba over 27455 bytes and 301 lines, each equal to its committed blob at C0a and C0b, and 301 is under the 400-line cap. C1's prefix property holds with the tail byte-equal to `b"\n" + RECORD-R13` extracted from the COMMITTED authored file by its markers, numstat `6 0`. C2's prefix property holds, its tail begins with exactly one newline and the ordered `## Q11` heading, numstat `76 0`; the file's `^## Q\d` headings read Q1 through Q11, each exactly once, the `## Q5`, `## Q9` and `## Q10` heading lines each still count 1, and C2 added exactly one `^## ` line. C3's `.agent/plan.md` byte-equals its PLAN slice at sha256 fcacccfc3a49961f, 40 lines, `## Goal` and `## Next Steps` present, 0 `- [ ]` lines. Both range gates printed nothing from the repository root: the scoped `a677c3ba..HEAD` diff over `packages/`, `apps/`, `tests/`, `scripts/` and `docs/`, and the provenance `fb9ddf12..HEAD` diff over `packages/` and `scripts/`. Every gate ran as its own process with the exit code read from that process: the four CI suites at 7, 9, 6 and 8 passed and the verification quartet at 70, 21, 15 and 42 passed, all exit 0; the integrity gate reports passed true, fail_count 0, check_count 5, handlers=338; the open set recomputes to 104 registered, 6 `Done:`, 0 `Landed:`, 98 open, max R-0476, next free R-0477, no duplicate id. Insertions 301, 147, 6, 76, 18 and 117, none over 500. THE EVIDENCE WAS CHECKED AGAINST ITS SOURCE RATHER THAN READ: the two R14 sample logs under `.remedy-wt/f083-r14/logs/` end with exactly the summary lines `## Q11` quotes, at 14062 bytes each against the runner's 512 KiB cap; the red control's whole output is the single line `17045 deselected in 3.47s` at exit 5, taken before either sample; and the raw `duration_s` values in `samples.jsonl`, 935.1410913239997 and 916.3571064700009, round to the published 935.14 and 916.36. The finding R14 was ordered to answer is answered in the strict form R-0473 demanded: `standard`'s serial cost now rests on THREE uncapped samples rather than one, 927.72, 935.14 and 916.36 seconds, all exit 0, all reporting the identical `12578 passed, 1 skipped, 4466 deselected`, so the readings time one selection and not three. R-0476's rule was obeyed rather than merely quoted — the published spread of min 916.36, max 935.14 and max−min 18.78 reproduces exactly by subtracting the published bounds, which is what `## Q10`'s `standard` row could not do. R-0475 is RESOLVED: the PLAN applied at C3 names no figure its own C2 could move and points at `## Q11` instead of repeating it. The worker's conduct was correct throughout: the red control ran first, no `run_command=` injection replaced the instrument, every sample went through the production `_run_via_subprocess`, both slices were applied byte-verbatim with no repair, the change set is exactly the six ordered paths, and the 162-line handback declares both caps with the mandated content named as the cause. One defect remains, registered below, and it concerns an action rather than a text.
-
 - R-0477 — Low, A COMMIT WAS AMENDED AND THE REWRITE SURVIVES ONLY IN A CHANNEL THE REPOSITORY DOES NOT KEEP. R14's worker created C4 with the subject `docs(f083): write the R13 handback`, noticed that the convention names the PRODUCING round rather than the round being handed back, and amended the message to `docs(f083): write the R14 handback` before pushing. The correction is right: the file's own content said R14 throughout, and `6af03d95 write the R12 handback` sets the precedent the amended subject follows. Nothing published was rewritten either — `git reflog show refs/remotes/origin/feature/f083-ci-self-check` records the remote moving 6af03d95 to a677c3ba to 94e6c353, each an ancestor of the next, so the only commit the remote ever saw was the amended one and no force was used. Two things nevertheless went wrong. First, guardrail G2 of docs/agents/self_drive_protocol.md reads "Never force-push. No `--force`, no `--force-with-lease`, no history rewrite, no branch deletion" — and `git commit --amend` IS a history rewrite by git's own definition, so a worker meeting a typo in an unpushed subject has a rule that forbids the obvious repair and no stated exception, which is a gap in the rule rather than a lapse by the worker. Second, and this is the part that costs something: the amend is absent from `.agent/handoff.md`. It was reported to the reviewer in the round's final message, alongside the four values the block genuinely routes there — C4's own SHA, C4's own insertion count, the push result and the open-PR list — but those four are routed there because they CANNOT exist inside C4, whereas an amend is an action taken on the repository that a later commit could have recorded. The handback's Deviations section instead reads "Assumptions: none. No slice was repaired; no defect in reviewer text was found", which is true of every clause it makes and still leaves a reader of the repository alone unable to learn that a commit message on this branch was rewritten. Low, not Medium: the rewrite touched an unpublished commit only, the resulting subject is more correct than the one it replaced, the reviewer was told, and no evidence, gate value or measurement is affected. Two standing rules follow. Binding the WORKER: G2's prohibition is read as absolute on PUBLISHED history and as permitting exactly one exception — the message, never the content, of a commit that has not yet been pushed — and any such amend is declared in the next artifact that CAN carry it, which is the next round's record when C4 itself is the amended commit. Binding the REVIEWER: a block that orders a commit whose subject follows a convention NAMES that subject in the bundle, the way this block's own C-items are named, so the worker never has to choose it and never has to repair it. OPEN.
-
-Gate: R14-REC — PASS. The reviewer re-ran all fourteen gates itself at 54d83919 from the repository root and all fourteen reproduce. TRANSPORT: `.agent/authored/f083-r14-rec.md` and `.agent/last_block.md` are byte-equal at sha256 bb8bd83dbe465e62 over 19665 bytes and 214 lines, and 214 is under the 400-line cap. C1's prefix property holds with the tail byte-equal to `b"\n" + RECORD-R14` extracted from the COMMITTED authored file by its markers, numstat `4 0`. C2's `.agent/plan.md` byte-equals its PLAN slice, 43 lines, `## Goal` and `## Next Steps` present, 0 `- [ ]` lines. `.agent/f083_inventory.md` is untouched across the range and its `^## Q\d` headings still read Q1 through Q11, each once. The scoped range diff over `packages/`, `apps/`, `tests/`, `scripts/` and `docs/` printed NOTHING, so a record round that promised no code delivered none, and the measured change set is exactly the five `.agent/` paths. Every gate ran as its own process with the exit code read from that process: the four CI suites at 7, 9, 6 and 8 passed and the verification quartet at 70, 21, 15 and 42 passed, all exit 0; the integrity gate reports passed true, fail_count 0, check_count 5, handlers=338; the open set recomputes to 105 registered, 6 `Done:`, 0 `Landed:`, 99 open, max R-0477, next free R-0478, no duplicate id. Insertions 214, 122, 4, 12 and 101, none over 500. THE ROUND'S OWN CLAIM WAS CHECKED AGAINST ITS SUBJECT RATHER THAN READ: R-0477 is the amend disclosure the R14 handback could not carry, so the record now holds what the handoff did not, and both of its standing rules are obeyed by the block below — every C-item subject is NAMED there, so no worker has to choose one and none has to repair one. The worker's conduct was correct throughout: both slices applied byte-verbatim, no `Done:` paragraph of its own, the change set exactly the ordered paths, and the declared cap overage names the mandated content as its cause. No defect was found in this round and no finding is registered against it.
-
-DECISION F083 D3 — R15 CARRIES THE TIMEOUT ALONE; THE BUDGET STAGE, THE DETERMINISM SHAPE AND THE R-0468 RULING MOVE TO R16. `.agent/plan.md` at 54d83919 names four things for R15: a per-stage timeout, a budget stage written from the `## Q11` spread, a ruling on R-0468, and the determinism stage's shape. CHOSEN: R15 does the FIRST only. Reason: the timeout is the one item that is BROKEN rather than merely absent — `## Q10` records `standard` killed at exit 124 three times out of three — and it is the item the others rest on, because a budget stage asserting a ceiling on a stage the runner truncates would be asserting it against a kill and not against the stage. ALTERNATIVES CONSIDERED: all four in one round, rejected because the block ordering them cannot fit under the 400-line cap of docs/agents/planner_reviewer_prompt.md §3 item 1 and the change set would mix a production fix with three rulings, which AGENTS.md Commit Discipline forbids; and the budget stage first, rejected for the reason just given. REVERSE by ordering the remaining three in any later round — nothing here forecloses them and `.agent/plan.md` now points at R16 for exactly those three. Said plainly so it cannot be misread later: the `budgets` STAGE that T2_F083's Design section names remains UNBUILT, and this decision does not build it. A per-stage `timeout_sec` is a kill threshold the runner enforces on one stage; the budgets stage is a stage that CHECKS documented ceilings and runs the guard tests. The two are not the same thing and F083 is not done when only the first exists.
-
-Gate: R15 — PASS. The reviewer re-ran all fifteen R15 gates itself at 2c1240ce from the repository root and all fifteen reproduce. TRANSPORT, proved against the reviewer's OWN scratchpad original rather than by digest fallback (§4.9): `.remedy-wt/f083-r15-block.md`, the committed `.agent/authored/f083-r15.md` and the committed `.agent/last_block.md` are all three byte-equal at sha256 ed21a4676a8fb162 over 23399 bytes and 400 lines, and 400 is AT the 400-line cap. C1's prefix property holds with the tail byte-equal to the RECORD-R14REC slice extracted from the COMMITTED authored file by its markers, 3603 bytes, numstat `4 0`. C2's change set is EXACTLY the four ordered code paths and `scripts/remedy_pytest_runner.py` is not among them. C3's `.agent/plan.md` byte-equals its PLAN slice at sha256 890c56124e010f31, 33 lines, `## Goal` and `## Next Steps` present, 0 `- [ ]` lines. `.agent/f083_inventory.md` is untouched across the range and its `^## Q\d` headings still read Q1 through Q11. THE CODE WAS RE-DERIVED RATHER THAN READ: the reviewer applied its own block's twenty slices to a clean worktree at 54d83919 and byte-compared the result against every committed file — `ci_stages.py`, `ci_run.py`, `test_ci_run.py`, `test_ci_stages.py`, `.agent/live_review.md` and `.agent/plan.md` are all six byte-identical to the reviewer's independent derivation, which is what proves the worker's two aborted applier passes left no residue. Every gate ran as its own process with the exit code read from that process: the four CI suites at 10, 9, 6 and 10 passed and the verification quartet at 70, 21, 15 and 42 passed, all exit 0; `python3 -m ruff check .` from the repository root against the repository's own `pyproject.toml` ends `Found 26 errors.` at exit 1, EQUAL to the `## Q10` baseline, so the round added no lint error; the integrity gate reports passed true, fail_count 0, check_count 5, handlers=338; the open set recomputes to 105 registered, 6 `Done:`, 0 `Landed:`, 99 open, max R-0477, no duplicate id, unchanged as the block predicted. Insertions 400, 368, 4, 95 and 16, none over 500. THE RED CONTROL WAS RE-RUN BY THE REVIEWER, not accepted from the report: setting `timeout_sec=2100` to `600` inside a disposable worktree at HEAD turns `test_ci_stages.py` red at exit 1 with exactly `test_each_budget_is_the_documented_multiple_of_the_measured_maximum` and `test_the_standard_budget_clears_the_runners_default_that_killed_it` failing, so the budget guards can fail and their green is worth something. The worker's conduct was correct throughout: every slice applied byte-verbatim with none repaired, no `Done:` paragraph of its own, the change set exactly the ordered paths, both aborted passes restored with `git show` rather than the `git reset` constraint 3 forbids, and all three deviations declared. What R15 delivered is what it promised and no more: each stage carries a budget derived by the published rule from the published maxima, the budget reaches the runner process as its environment variable, and `standard` at 2100 s clears the 935.14 s it was measured at. Two defects remain and BOTH belong to the reviewer, registered below.
 
 - R-0478 — Medium, A GATE NAMED FOUR TEST PATHS THAT DO NOT RESOLVE ON DISK, AND BUYING BLOCK-CAP HEADROOM IS WHY. The R15 block's gate 9 ordered `test_dashboard_contract.py`, `test_resource_safety.py` and `test_integrity_gate.py` as bare basenames and closed with the sentence "Paths as gate 8 names them". Gate 8 names four paths and not one of them is any of these three, so the pointer resolves to nothing and the ordered command line is a basename with no directory. The worker ran `pytest tests/cli/test_dashboard_contract.py`, got EXIT 4 and the message that the file or directory was not found, recognised it as the vacuous-gate class, globbed the real paths and re-ran them green — the honest response, and the reason this cost the round nothing. It could have cost the round everything: `pytest <missing path>` exits 4 and reports NO failure, so a worker reading exit codes less carefully would have recorded a gate that never executed a test as an unremarkable non-zero, which is precisely finding R-0438 and precisely what a self-check feature exists to prevent. Medium, not Low, because the gate whose paths evaporated is the VERIFICATION quartet, the one that stands between a scoped round and a broken repository. The cause is nameable and is the part worth keeping: the paths were full and correct in the draft, and they were shortened to basenames in the final trimming pass that brought the block from 403 lines down to the 400-line cap of docs/agents/planner_reviewer_prompt.md §3 item 1. Standing rule, binding the reviewer: a gate's PATHS, commands and flags are never the material cut to meet the block cap — they are the load-bearing bytes of the only thing a round is verified by. When a block is over cap, cut prose, cut a FROM/TO to its changed lines, or split the round; and a block that has been trimmed at all re-reads every gate's paths afterwards and resolves each one on disk before emission, because the trimming pass is exactly when they die. OPEN.
 
 - R-0479 — Low, A GENERATED TEST FILE APPEARS UNTRACKED IN THE WORKING TREE WHILE THE SUITE RUNS, AND TWO GATES READ THE REPOSITORY AS DIRTY WHILE IT IS THERE. Measured, not inferred: while `tests/regression/test_resource_safety.py` was running in this repository, the reviewer ran the integrity gate and `ruff` against the primary checkout and read `relevant_untracked` FAIL with the message `1 relevant untracked: tests/regression/test_wrapper_slow_1014301_ijaza9_1.py`, together with `Found 27 errors.` from ruff. Both readings were taken again after that suite finished and both returned to their true values — `relevant_untracked` pass with `untracked=0, relevant=0`, and `Found 26 errors.` — and `git status --porcelain` was EMPTY before the suite, empty after it, and the named file is absent from the tree now. Nothing in R15 caused it and no committed artefact is affected; the contaminated readings were the reviewer's own, taken concurrently, and they are corrected in the gate paragraph above rather than left standing. Low because it corrupts no commit and survives no suite run. Not Nil, because two of this repository's own health checks — the integrity gate's untracked check and any lint ceiling counting errors repo-wide — report a clean repository as dirty for as long as a suite is in flight, and F083 exists to give this repository a CI whose green means something. A CI that runs its own integrity gate concurrently with its test stages would read that failure as real. Standing rule, binding every role: a gate that reads WORKING-TREE state — `git status --porcelain`, the integrity gate's untracked check, a repo-wide lint count — is run when no test suite is executing against the same checkout, and a reading taken concurrently with one is reported as contaminated rather than as a value. Whether the generator should clean up after itself, and whether `relevant_untracked` should ignore this name class, is a question for the budgets stage that will have to run these checks in a real sequence; it is NOT ruled here and no fix is ordered. OPEN.
 
-- R-0480 — Medium, THE `ui` STAGE IS RED ON A GENUINELY CLEAN CHECKOUT, WHICH IS THE ONE CONDITION THIS FEATURE'S ACCEPTANCE NAMES. Measured, four times, each in a DISPOSABLE worktree created at 2c1240ce and each the FIRST run of that suite in that worktree: `python3 -m pytest tests/ui_server/test_dashboard_contract.py -q` exits 1 with `1 failed, 69 passed`, and the failure is always the same id — `TestJobSummaryCommandContract::test_typescript_compiles`. Its assertion is `assert 1 == 0` over `CompletedProcess(args=['npx', 'tsc', '--noEmit'], returncode=1)`, and the captured stdout is npx's own interactive install notice, the one that warns about running code from un-installed packages. The SECOND run in the SAME worktree exits 0 with `70 passed`, every time. In the primary checkout the suite has been green at every reading this session, because its npx cache is already warm. So the test does not depend on the repository's state at all: it depends on whether `tsc` has already been fetched into the npx cache on that machine, and it pays for the fetch on first use. T2_F083's Acceptance section reads "Clean checkout: `remedy ci` green locally and hosted with the same stage results", and `test_typescript_compiles` carries the `ui_contract` marker, so it is selected by the `ui` stage — which means the stage table this feature has spent fifteen rounds building selects, today, a stage that is RED the first time anyone runs it on a clean machine and GREEN forever after. Medium and deliberately not High or Blocker: no committed artefact is wrong, the production code R15 landed is unaffected, and the condition is invisible on any machine that has run the suite once. Not Low, because it falsifies the feature's own acceptance criterion, because a hosted runner is a clean checkout with a cold cache BY CONSTRUCTION and would meet it on every single run, and because the failure mode is the worst kind for a self-check feature — green on the developer's machine, red in CI, with the difference living in a cache nobody names. This finding RESOLVES the anecdote R-0479 left open: the one-off 69/70 reading observed while authoring R15 was this, not the untracked-file class, and it is recorded here rather than folded into R-0479 because the two have different subjects and only one of them is now named. No fix is ordered here and the diagnosis stops at the measurement: whether the `ui` stage should install the toolchain before it selects, whether `test_typescript_compiles` belongs behind the "UI toolchain absent locally" edge case T2_F083 already documents, or whether the stage should warm the cache and say so, is a design question the budgets-and-stages round owns. OPEN.
-
-Gate: R16-REC — PASS. The reviewer re-ran all sixteen R16-REC gates itself at 0d9c72e0 from the repository root and all sixteen reproduce. TRANSPORT, proved against the reviewer's OWN scratchpad original rather than by digest fallback (§4.9): `.remedy-wt/f083-r16-block.md`, the committed `.agent/authored/f083-r16-rec.md` and the committed `.agent/last_block.md` are all three byte-equal at sha256 ce30a79f6e1bbc61 over 20986 bytes and 171 lines, under the 400-line cap. C1's prefix property holds with the tail byte-equal to the RECORD-R15 slice extracted from the COMMITTED authored file by its markers, 9957 bytes, numstat `8 0`. C2's `.agent/plan.md` byte-equals its PLAN slice at sha256 79411ece7fbca4d4, 39 lines, `## Goal` and `## Next Steps` present, 0 `- [ ]` lines. Both range gates printed NOTHING from the repository root: the scoped diff over `packages/`, `apps/`, `tests/`, `scripts/` and `docs/`, and the diff over `.agent/f083_inventory.md`, whose `^## Q\d` headings still read Q1 through Q11. The measured change set is the five `.agent/` paths. Every gate ran as its own process with the exit code read from that process: the four CI suites at 10, 9, 6 and 10 passed and the verification quartet at 70, 21, 15 and 42 passed, all exit 0; `python3 -m ruff check .` ends `Found 26 errors.` at exit 1, EQUAL to the `## Q10` baseline; the integrity gate reports passed true, fail_count 0, check_count 5, handlers=338; the open set recomputes to 108 registered, 6 `Done:`, 0 `Landed:`, 102 open, max R-0480, next free R-0481, no duplicate id — exactly what the block predicted. Insertions 171, 98, 8 and 13, none over 500. THE ORDERING GATE WAS THE POINT AND IT HELD: the worker took the lint and integrity readings BEFORE any pytest command ran, which is the discipline R-0479 exists to impose, so both are values rather than contaminated samples. The R-0480 exception did not trigger in the primary checkout, whose npx cache is warm, so no second dashboard-contract reading exists and none is claimed. The worker's conduct was correct throughout: both slices applied byte-verbatim, no `Done:` paragraph of its own, the change set exactly the ordered paths, and both deviations declared — including one worth keeping, that it discarded a gate reading it had piped through `tail` because the pipe would have masked the exit code, and re-ran the suite bare. One defect remains and it belongs entirely to the reviewer, registered below.
-
 - R-0481 — Medium, A LATE INSERTION WAS SWEPT THROUGH A BLOCK'S ARITHMETIC BUT NOT THROUGH ITS PROSE, AND THE PLAN ON DISK NOW UNDERSTATES ITS OWN ROUND. The R16-REC block was authored with two findings and finished with three: R-0480 was written after the rest of the block existed, once the reviewer had chased a one-off dashboard-contract reading to its cause. The insertion sweep updated everything that could be COUNTED — gate 13's expectation moved to 108 / 6 / 0 with max R-0480, C1's subject became "register three findings", the PLAN's next-free id became R-0481, and a new Risks bullet named R-0480 — and it updated nothing that was merely WRITTEN. Three clauses are wrong on disk as a result, all inside the PLAN slice applied at C2 and all verified by the reviewer at 0d9c72e0: `## Current Step` says "This record round wrote that verdict and the two findings it produced" where the round registered THREE; `## Next Steps` says the next round "must honour R-0478 and R-0479 when it writes its gates", silently dropping R-0480, which is the only one of the three that names a stage the next round has to design around; and `## Current Step` closes "R16 has not started" while C2's own commit subject reads "point the plan at the R17 budget stage", so the commit message and the file it commits name different rounds. Nothing is fabricated and no gate value is affected — the worker applied the slice byte-verbatim and correctly, every number the block gated on was right, and the reviewer's arithmetic reproduced at every gate. What broke is that `.agent/plan.md` is the file AGENTS.md's Session Resume orders read SECOND, before any doc and before the diff, and a session resuming from it is told to honour two findings when three are open and is given two different names for the round it should start. Medium for that reason and no other: it costs the next session a reconciliation it should not have to perform, in the one file that exists to prevent exactly that. This is the R-0474 and R-0475 shape a third time, with the trigger named at last — not a moved referent and not a stale status claim, but a LATE ADDITION whose sweep stopped at the numerals. Standing rule, binding the reviewer: when a finding, item or slice is added to a block that is already drafted, the re-sweep covers the block's PROSE as well as its counts — every sentence that enumerates the finding set, names the next round, or lists what the next round must honour is re-read against the block's FINAL bytes, and the pre-emission checklist's mechanical items are re-run on those bytes rather than on the draft they were first run on. ROUND NUMBERING, ruled here because two clauses on disk disagree and neither may be rewritten: the record round committed as `f083-r16-rec.md` has SPENT the number 16, the repair round carrying this finding is R17, and the next ENGINEERING round — the budgets stage, the R-0468 ruling and the determinism shape — is R18. The PLAN slice of this block states that and nothing else; the superseded "R16" and "R17 budget stage" clauses are left standing where they are, per R-0470. OPEN.
-
-Gate: R17-REPAIR — PASS. The reviewer re-ran the round's gates itself at ab1d2344 from the repository root and every one reproduces. TRANSPORT: `.agent/authored/f083-r17-repair.md` and `.agent/last_block.md` are byte-equal at sha256 7e27fc530221b2302ee225f4bc65a761f5f2d510ae6f3015a1e51e7ab2dfc3a9 over 17638 bytes and 176 lines, matching the handback's declared digest exactly. C1's prefix property holds: `.agent/live_review.md` at 8c9290dd is 243969 bytes, at 0cbeae03 is 249551 bytes, the former prefixes the latter, and the 5582-byte tail is byte-EQUAL to the RECORD-R16REC slice extracted from the COMMITTED authored file by its own markers — with numstat `4 0`, so nothing already in the file was edited. No marker line leaked: `.agent/plan.md` contains zero `--- BEGIN SLICE` occurrences and the one occurrence in `.agent/live_review.md` is present at 8c9290dd, before C1 ran, so it is quoted finding text and not transport residue. C2's `.agent/plan.md` byte-equals its PLAN slice at 2424 bytes and sha256 8a06dd76b2fc2be0c6b65a9e971dc5470110f012c5bc1100d28d562a89b27c5d, 41 lines under the 50-line cap, `## Goal` and `## Next Steps` both present, 0 `- [ ]` lines; all four of the plan's text gates hold at HEAD — `R18 has not started` PRESENT, `R-0478, R-0479 and R-0480` PRESENT, `the two findings it produced` ABSENT, `R16 has not started` ABSENT — which is precisely the R-0481 repair the round existed to perform. The range gate holds: `git diff --name-only 0d9c72e0..HEAD -- packages/ apps/ tests/ scripts/ docs/` prints NOTHING, so the round wrote no production code, exactly as declared. Per-commit numstat read from `git log --numstat` reproduces the handback's table to the line: 176/0, 70/65, 4/0, 9/7 and 65/83, one path each, no insertion count near 500. Gates taken BEFORE any pytest command, honouring R-0479: `python3 -m ruff check .` ends `Found 26 errors.` at exit 1, EQUAL to the `## Q10` baseline, and the integrity gate reports passed true, fail_count 0, check_count 5, handlers=338, with all five checks pass. Then the suites, each unpiped with its exit read from its own process: the four CI suites at 35 passed, exit 0, and the verification quartet with the canary at 148 passed, exit 0 — 70 + 21 + 15 + 42, matching the handback's per-suite claims in their sum. The open set recomputes mechanically from the record to 109 registered, 6 `Done:`, 0 `Landed:`, 103 open, max R-0481, no duplicate id — exactly what the handback declared. Both declared deviations are honest and neither is a finding: the discarded gate-10 invocation produced no reading and none was reported from it, and the 97-line handoff carries its DECISION D15 stated cause naming the mandated content that overran. REVIEWER CONDUCT, recorded because it is the lesson of this gate: the reviewer's own first re-run of the quartet named `tests/ui_contracts/test_dashboard_contract.py`, which does not exist — pytest exited 4 with `file or directory not found` and ran nothing. The block under review had ordered `tests/ui_server/test_dashboard_contract.py`, correctly; the wrong path was the reviewer's, it was caught because exit 4 is not exit 0, and the quartet was re-run at the ordered paths. It is written down because a reviewer who had read that exit code as a pass would have certified a gate that never ran, which is the R-0438 class exactly. One new finding is registered below; it is a pre-existing repository defect this round's lint reading surfaced, not a defect of R17.
 
 - R-0482 — Medium, A GUARD THAT REFUSES AN UNSUPPORTED INJECTION RAISES `NameError` INSTEAD OF THE ERROR IT NAMES, BECAUSE THE MESSAGE INTERPOLATES AN UNDEFINED NAME. Measured at ab1d2344 by the reviewer: `python3 -m ruff check .` reports `F821 Undefined name MISSING_SEAM` at `packages/orchestration/gauntlet_injection.py:286:20`, and `grep -rn "MISSING_SEAM" packages/ tests/` returns exactly one line — that same use site. The name is referenced and defined nowhere, in the repository or in the test tree. The site is `check_injections_supported`, whose whole purpose is to "refuse an order whose declared injections cannot be driven honestly": for a name in `BLOCKED_INJECTIONS` it builds `f"{name} cannot be injected at {BLOCKED_INJECTIONS[name]}: {MISSING_SEAM}"` and hands it to `MissingSeamError`. The f-string is evaluated BEFORE the exception is constructed, so that branch raises `NameError: name 'MISSING_SEAM' is not defined` and the `MissingSeamError` the caller is written to catch is never constructed at all. The unknown-injection branch immediately below it is unaffected and does raise correctly, which is why the defect is invisible from the outside: the guard appears to work, and fails only on the one input class it was written for. Medium and not High: no false GREEN exists on disk, the branch is not reached by any current test — no test in the tree names `MISSING_SEAM` — and the failure is loud rather than silent when it does fire. Not Low, because a guard whose refusal path is itself broken is worse than no guard, and because a caller catching `MissingSeamError` around this call gets an uncaught `NameError` through it. This finding belongs to F083 only in the sense that F083's lint reading is what surfaced it: it is ONE of the twenty-six errors DECISION F083 D5 freezes at the ceiling, and D5 freezes it deliberately rather than fixing it here, because the fix is a production change in an unrelated module and AGENTS.md Scope Control forbids it as a "while I'm here" edit. The fix — define the constant or drop the interpolation — belongs to a branch of its own and is not ordered by this round. OPEN.
 
-Gate: R18 — PASS. The reviewer re-ran every gate itself at 6ce3c58d from the repository root, and the two colours the block ordered were re-proved independently rather than accepted from the handback. TRANSPORT, proved against the reviewer's OWN scratchpad original and not by digest fallback (§4.9): `.remedy-wt/f083-r18-block.md`, the committed `.agent/authored/f083-r18.md` and the committed `.agent/last_block.md` are all three byte-equal at sha256 272806846bd4e204 over 23774 bytes and 290 lines, under the 400-line cap. C1's prefix property holds — `.agent/live_review.md` goes 249551 B to 255203 B, the former prefixes the latter, and the 5652-byte tail is byte-EQUAL to the RECORD-R17 slice extracted from the COMMITTED authored file by its markers, numstat `4 0`. C6's `.agent/plan.md` byte-equals its PLAN slice, 42 lines under the 50-line cap, `## Goal` and `## Next Steps` present, 0 `- [ ]` lines, and 0 `--- BEGIN SLICE` occurrences, so no marker line leaked. The change set is exactly the thirteen paths the block named and nothing else, and per-commit insertions read from `git log --numstat` are 290, 270, 4, 178, 56, 103, 24 and 114 — none near 500. Gates taken BEFORE any pytest command, honouring R-0479: `python3 -m ruff check .` ends `Found 26 errors.` at exit 1 with the breakdown UNCHANGED at 20 I001, 4 F401, 1 F821 and 1 UP035, so the four new Python files this round added contribute zero errors and DECISION F083 D5's ceiling is honest; the integrity gate reports passed true, fail_count 0, check_count 5, handlers=338, all five checks pass. Then the suites, each unpiped with its exit read from its own process: the budgets suite and the four CI suites together 46 passed exit 0, `tests/docs/` 295 passed exit 0, and the verification quartet with the canary 148 passed exit 0. The open set recomputes mechanically to 110 registered, 6 `Done:`, 0 `Landed:`, 104 open, max R-0482, no duplicate id, and `.agent/f083_inventory.md` carries twelve `## Q` headings reading Q1 through Q12 — every value the block predicted. THE TWO RED CONTROLS WERE RE-RUN BY THE REVIEWER, in a disposable worktree created at HEAD and removed before this verdict, with `git worktree list` one line and `git status --porcelain` empty afterwards: pointing one `budgets` test path at a file that does not exist turns `test_every_test_path_a_stage_names_resolves_on_disk` RED, and the assertion message resolves `REPO_ROOT` to the WORKTREE copy, which is the proof that the mutated code is what ran (R-0337 class); lowering `LINT_ERROR_CEILING` to 0 turns `test_this_repository_really_is_at_or_below_the_lint_ceiling` RED with ruff's real reading of 26 in the message. Both gates can fail, so both mean something when they pass. THE WORK ITSELF IS SOUND: `timeout_sec=300` for `budgets` is exactly `ceil(2 * 1.32 / 300) * 300` under the table's own documented rule against the `## Q12` measured maximum, so the new budget was derived and not chosen; `pytest_argv_for_stage` appends `*stage.test_paths` and both argv shapes are pinned; and the D4 deliberate-absence paragraph landed in the `ci_stages` docstring in the repository's own idiom, with the feature file amended to match and `docs/roadmap/ROADMAP.md` untouched. THE WORKER'S CONDUCT WAS BETTER THAN THE BLOCK IT WAS GIVEN, and that is the substance of this gate: it caught two defects in the reviewer's own instructions, implemented the correct thing, and declared both rather than quietly complying. Both are registered below as reviewer defects. No finding is registered against the worker, and its remaining four declared deviations are all honest and none is a defect: a pre-commit suite run, two shell forms this session class denies which produced no reading, an extra `--statistics` ruff view, and a 154-line handoff carrying its DECISION D15 stated cause.
-
-- R-0483 — Low, THE BLOCK ORDERED A GATE ORDERING ITS OWN COMMIT SEQUENCE MADE UNMEETABLE, AND THE WORKER HAD TO SPEND A DEVIATION PROVING IT. The R18 block's constraint 7 read "the lint reading and the integrity gate are taken BEFORE any pytest command runs this round", which exists to serve R-0479: a repo-wide lint count or an integrity reading taken while a suite is executing against the same checkout reads a clean repository as dirty. But the SAME block ordered C3 as a wall-clock MEASUREMENT of the budgets selection — three pytest runs — and then ordered C4's `timeout_sec` to be derived from that measurement. A pytest command therefore had to run in the middle of the round by construction, so a reading taken "before any pytest command" could only ever describe the base commit, never HEAD. The worker resolved it in the only honest way available: it took both readings TWICE, once genuinely before any pytest ran and once at HEAD before the gate suites, reported that the values are identical, and declared the deviation — and it recorded that the first integrity reading was RED on `relevant_untracked` because C2's two files were not yet committed, rather than quietly reporting the green one. Low and not Medium: no gate produced a wrong value, no evidence was lost, and the contamination R-0479 guards against did not occur. It is registered because the cost is real and recurring — the round paid a declared deviation to demonstrate a contradiction internal to the reviewer's own text, which docs/agents/planner_reviewer_prompt.md §3 item 5 names as the outcome worse than the mistake. THE RULE THIS PRODUCES, stated here and NOT yet binding: an ordering constraint over "any pytest command" is checked against the block's OWN commit sequence before emission, and when that sequence contains a measuring pytest run, the constraint names the COMMIT the reading is taken at instead of using the word "before". It binds nothing while it lives in this paragraph — a rule written as finding prose is an unpersisted lesson (R-0452, R-0454) — and R20 is the round that promotes it into docs/agents/planner_reviewer_prompt.md §3's pre-emission checklist, in the same block that carries the edit. Until that edit lands, this finding stays OPEN for that reason and not for any other. OPEN.
-
-- R-0484 — Medium, A SCOPING CLAUSE THE BLOCK ORDERED WOULD HAVE TURNED A GREEN PROPERTY TEST RED FOR A REASON THE BLOCK DID NOT INTEND, AND ONLY THE WORKER'S REFUSAL KEPT IT GREEN. The R18 block's C4 ordered four selection tests scoped to stages with `runs_in_ci and not stage.test_paths`. For three of them that is right. For `test_no_test_in_this_repository_escapes_all_five_stages` it is wrong, and demonstrably so: that test asserts the COMPLEMENT of the union of the stage marker expressions collects nothing, and `excluded` carries `runs_in_ci=False`, so the ordered clause would have dropped `real_ollama` — the only term in the union that accounts for the live-provider tests — out of the union entirely. The complement would then have collected all 79 `real_ollama` items measured at `## Q2`, the subprocess call would have returned 0 instead of the asserted 5, and the gate would have gone red reporting every live-provider test as a test no stage runs. The reviewer's intent was to exclude PATH-bearing stages from a MARKER union, and `runs_in_ci` had no business in that predicate at all. The worker scoped it to `not stage.test_paths` alone, keeping `excluded` in, renamed the test to `test_no_test_in_this_repository_escapes_the_marker_selected_stages`, wrote the reason into the docstring, and declared the deviation. Medium and not Low, and not because anything landed wrong — nothing did: had the worker complied literally, the round would have ended on a red gate whose cause is a one-word predicate error in the reviewer's text, and the repair round would have been spent rediscovering it. This is the pre-emission checklist's item 8 exactly — a gate whose expected VALUE the code contradicts, ordered without reading the code that produces it — and the reviewer had read that very test file in the same turn it authored the clause. The remedy is not a new rule: item 8 already covers it, and it was not run against this clause. OPEN.
-
-Gate: R19 — PASS. The reviewer re-ran every gate itself at 59d7d341 from the repository root. TRANSPORT, against the reviewer's OWN scratchpad original and not by digest fallback (§4.9): `.remedy-wt/f083-r19-block.md`, the committed `.agent/authored/f083-r19.md` and the committed `.agent/last_block.md` are all three byte-equal at sha256 64d578db137f2167 over 20868 bytes and 215 lines. C1's prefix property holds — `.agent/live_review.md` goes 255203 B to 263322 B, the former prefixes the latter, the 8119-byte tail is byte-EQUAL to the RECORD-R18 slice extracted from the COMMITTED authored file by its markers, and numstat is `6 0`. C3's `.agent/plan.md` byte-equals its PLAN slice, 41 lines under the cap, `## Goal` and `## Next Steps` present, 0 `- [ ]` lines, 0 `--- BEGIN SLICE` occurrences. THE ROUND'S OWN CONSTRAINT HELD AND WAS RE-PROVED: `git diff --name-only 6ce3c58d..HEAD -- packages/ apps/ tests/ scripts/` printed NOTHING, so a measurement round measured and wrote no production code; the change set is exactly the six `.agent/` paths, and per-commit insertions are 215, 134, 6, 178, 21 and 92, none near 500. Lint and integrity taken before any pytest command: `Found 26 errors.` at exit 1 with the breakdown UNCHANGED at 20 I001, 4 F401, 1 F821, 1 UP035, and the integrity gate passed true, fail_count 0, check_count 5, handlers=338. The five CI suites and the canary together are 88 passed, exit 0. The open set recomputes to 112 registered, 6 `Done:`, 0 `Landed:`, 106 open, max R-0484, no duplicate id, and the inventory carries thirteen `## Q` headings reading Q1 through Q13 — every value the block predicted. THE MEASUREMENT WAS SPOT-CHECKED RATHER THAN BELIEVED, because a measurement round's whole value is its numbers: the reviewer read `test_typescript_compiles` in `tests/ui_server/test_dashboard_contract.py` and confirms its argv is exactly `["npx", "tsc", "--noEmit"]` with `cwd` at `REPO_ROOT / "apps" / "ui"` and neither `--yes` nor `--no-install`, exactly as Q13 reports; `.gitignore` line 221 is `node_modules/`; and `apps/ui/node_modules` exists in the primary checkout, which is the condition Q13 identifies as the real variable. The round exceeded its brief in the way a measurement round should: ordered to answer six questions in one disposable worktree, it created two MORE worktrees to separate the two candidate causes from each other, and declared the addition rather than folding it into the answer. All three were removed and pruned; `git worktree list` is one line and `git status --porcelain` is empty at this verdict. The user's real npm cache was never deleted, moved or modified — every cold-cache condition came from `npm_config_cache` pointed at a new empty directory under `.remedy-wt/`, which is the mechanism the block required and the only one used. Its five declared deviations are all honest and none is a defect, including the one worth naming: the worker caught and corrected its OWN handoff line count before committing, rather than shipping a self-report that disagreed with the file it described. No finding is registered against this round.
-
-Amended: R-0480 — CAUSE CORRECTED at R20 from the `## Q13` measurement, per R-0470. This paragraph deliberately does NOT begin with the `- R-XXXX — ` registration form, because R-0480 is already registered and a second such line would count as a duplicate registration in every open-set recomputation this record supports. the text above is left standing and this paragraph supersedes only its cause. The OBSERVATION reproduces exactly and is not in question — first run red, second run green, four times. The stated CAUSE, a cold `npx` cache, is FALSIFIED. Measured at R19 and recorded as `## Q13`: the npx cache is the per-user directory `/home/decodeux/.npm`, it is WARM and has held a `tsc` entry under `_npx/1d6e82a4126006c4` since 2026-06-02, and the deliberately COLD run — the same suite with `npm_config_cache` pointed at an empty directory — is GREEN at `70 passed`, exit 0. A cold cache does not produce the failure; a warm one does. The real variable is `apps/ui/node_modules`, which `.gitignore` line 221 excludes as `node_modules/` and which is therefore absent from every fresh clone and every new `git worktree` by construction. With it ABSENT the suite is RED on BOTH runs, measured — so "first run red, second green" was never about the run count at all. What actually happens is worse than a cache miss: `npx tsc` with no local TypeScript resolves the deprecated `tsc@2.0.4` stub from the user cache, whose bin ends in `process.exitCode = 1`, so the assertion `result.returncode == 0` has been reading a nine-year-old stub's exit code and reporting it as a TypeScript verdict. The run-1/run-2 flip is intra-module ORDERING: `test_typescript_compiles` sits above `TestAutoBuildBehavior::test_auto_build_runs_by_default`, which calls `_auto_build_frontend` and performs a real `npm install`, so the first run of the module CREATES the `node_modules` that makes the second run green — measured directly at R19 in a third worktree by running that one test and watching the directory appear. The severity stays Medium and the finding stays this feature's business for the reason it always was: T2_F083's Acceptance line says "Clean checkout: `remedy ci` green locally and hosted", the `ui` stage selects this test by its `ui_contract` marker, and a hosted runner is a clean checkout by construction. DECISION F083 D6, ruled in this same block, is the fix.
-
-Done: R-0484 — the defect was the reviewer's and the correct code is already on disk. The R18 worker declined the clause, scoped the union to `not stage.test_paths` alone so `excluded` stays in the union, renamed the test to `test_no_test_in_this_repository_escapes_the_marker_selected_stages`, and put the reason in the docstring; the reviewer re-ran that test at 6ce3c58d and it is green. No rule is added for it, and none is needed: pre-emission checklist item 8 already governs a gate whose expected value the code contradicts, and this instance was a failure to RUN item 8, not a gap in it. Resolved as a defect that never reached disk.
-
-Done: R-0483 — promoted, not merely restated. The rule now stands as item 13 of the pre-emission block checklist in docs/agents/planner_reviewer_prompt.md §3, added by C2 of this same block, which is the condition item 11 of that list imposes on a finding that claims its own promotion. The paragraph that registered it said explicitly that it bound nothing while it lived in finding prose and named R20 as the round that would move it; this is that round, and the move is the resolution.
-
-Done: R-0480 — cause corrected and fixed. The correction is the amendment paragraph appended at C1 of this block, which supersedes the cold-cache attribution with the `## Q13` measurement; the fix is C3, ruled as DECISION F083 D6: `test_typescript_compiles` now resolves `apps/ui/node_modules/.bin/tsc` explicitly instead of letting `npx` fall back to a cached `tsc@2.0.4` stub, and SKIPS with the install command when that binary is absent — which is T2_F083's own "UI toolchain absent locally" edge case implemented rather than merely documented. The `ui` stage is therefore no longer RED on a clean checkout, and the silent-stub reading that made it green for the wrong reason is gone too. What is NOT resolved and is deliberately left to T003: hosted rigor now depends on the workflow running `npm ci --prefix apps/ui` before the `ui` stage, or the check skips hosted as well and Acceptance is met by a skip rather than by a compile. That obligation is recorded in the feature file by C5 of this block, which is where T003 will look for it.
-
-Gate: R20 — PASS. The reviewer re-ran every one of the round's eighteen ordered gates itself, from the repository root at 35b80d17, and every measured value equals the one the handback reports. TRANSPORT, by digest over the committed files rather than against a scratchpad original, because this is a self-drive session in which the reviewer holds no scratch copy (§4.9 digest fallback, stated so the evidence chain stays honest): `.agent/authored/f083-r20.md` and `.agent/last_block.md` read from HEAD are byte-equal at sha256 8f77255a7c0328c8 over 24374 bytes and 276 lines. C1 and C4 are both pure appends and were proved as such rather than believed: `.agent/live_review.md` goes 263322 B to 269472 B at C1 with the former a prefix of the latter and the 6150-byte tail byte-EQUAL to the RECORD-R19 slice extracted from the committed authored file by its markers at numstat `6 0`, then 269472 B to 271015 B at C4 with the 1543-byte tail byte-EQUAL to the RESOLVE slice at numstat `4 0`; the deletion column is 0 both times, so no committed text was edited. The CHECKLIST pair is APPEND-SHAPED as declared and was checked that way rather than asserted: its TO contains its FROM verbatim, the FROM string occurred exactly 1x in `docs/agents/planner_reviewer_prompt.md` before C2 and exactly 1x after it, all 17 TO-ONLY lines occur exactly 1x each among the 17 lines C2's diff adds, C2 adds no other line, and no marker line and no FROM:/TO: label reached the file. `.agent/plan.md` byte-equals its PLAN slice at sha256 900ce257188f5781, 2149 bytes, 39 lines under the 50-line cap, with `## Goal` and `## Next Steps` present and 0 unchecked-box lines. THE FIX WAS PROVED IN BOTH DIRECTIONS RATHER THAN ON ITS HAPPY PATH, because a skip guard exercised only one way is a guard nobody has tested: in the primary checkout `python3 -m pytest tests/ui_server/test_dashboard_contract.py -q` is 70 passed at exit 0 and `test_typescript_compiles` is PASSED by name, and the compiler it resolved is the project's own — `apps/ui/node_modules/.bin/tsc --version` prints `Version 5.9.3`, which is the whole point of D6 and not the nine-year-old `tsc@2.0.4` stub the old `npx` form was grading. In a disposable worktree at HEAD where `apps/ui/node_modules` is absent by construction the same test is SKIPPED at exit 0 with a message naming the missing directory and the exact command `npm ci --prefix apps/ui`, which is the intended outcome; that worktree was removed and pruned, `git worktree list` is one line and `git status --porcelain` is empty at this verdict. The remaining gates all reproduce: `python3 -m ruff check .` reports `Found 26 errors.` at exit 1 with the breakdown unchanged at 20 I001, 4 F401, 1 F821 and 1 UP035, and the edited test file alone reports `All checks passed!` at exit 0, so the ratchet held; the integrity gate is passed true, fail_count 0, check_count 5; the five CI suites are 46 passed, `tests/docs/` is 295 passed, and the verification set with the canary is 78 passed, every one at exit 0. The range gate holds — `git diff --name-only 59d7d341..HEAD -- packages/ apps/ scripts/` prints nothing — the change set is exactly the nine paths the block names and no more, per-commit insertions are 276, 202, 6, 17, 9, 4, 46, 16 and 106 with none near 500, and the history is linear with no amend, rebase or reset. The open set recomputes mechanically from the record rather than being carried forward: 112 registered, 9 resolved, 0 landed, 103 open, maximum R-0484, next free R-0485, no duplicate id, and every resolved id is a registered id. The `Amended: R-0480` paragraph is correctly NOT counted as a registration, which is the property it was deliberately shaped to have. Three declared deviations, all honest and none a defect, and two of them are the worker correctly refusing to follow reviewer text off a cliff: the ordered "one-line WHY comment" carried about 148 characters of mandated content against a 120-character ruff ceiling, so two lines of 101 characters or fewer is the fewest that carries it without reddening the very lint gate the same block freezes; and the docs gate was run a second time AFTER C5, because C5 is the commit that changes `docs/roadmap/**` and a reading taken before it would not be a reading of the change it exists to gate. That second one is precisely the class of defect pre-emission checklist item 13 describes, applied by the worker in the same round that put item 13 on disk. ONE IMPRECISION IS RECORDED AND IS NOT A FINDING: gate 8 asked for ruff's "final line" expecting `Found 26 errors.`, but ruff's actual final line is its fixable-count hint and `Found 26 errors.` is the line above it. The reviewer's expectation was the imprecise half; the count, the breakdown and the exit code the worker reported are exact and re-measured. No finding is registered against this round.
-
-Gate: R21 — PASS. The reviewer re-ran every one of the round's eighteen ordered gates itself, from the repository root at 8336140e, and every measured value equals the one the handback reports. TRANSPORT, by digest over the committed files (§4.9 digest fallback, this being a self-drive session in which the reviewer holds no scratch copy): `.agent/authored/f083-r22.md`'s predecessor `.agent/authored/f083-r21.md` and `.agent/last_block.md` are byte-equal at sha256 f0524ec4a2eae48a over 20628 bytes and 252 lines, and 252 is under the 400-line block cap. C1 is a pure append and was proved so: `.agent/live_review.md` goes 271015 B to 275871 B, the former prefixes the latter, the 4856-byte tail byte-EQUALS the RECORD-R20 slice extracted from the committed authored file by its markers, numstat is `2 0`, and the marker count in the file is 4 both at base and at HEAD, so no transport marker leaked. `.agent/plan.md` byte-equals its PLAN slice at sha256 3e06a8df6d276e06, 2174 bytes, 39 lines under the cap, `## Goal` and `## Next Steps` present, 0 unchecked-box lines. THE GUARDS WERE PROVED LIVE IN THREE DIRECTIONS RATHER THAN ONE, because a guard exercised only on its happy path is a guard nobody has tested and the block ordered only the first of these: in a disposable worktree at HEAD the reviewer moved the `npm ci --prefix apps/ui` step after the `remedy ci run` step and got exit 1 with `1 failed, 4 passed`, the single failure being `test_hosted_workflow_installs_the_ui_toolchain_before_the_run`; added `continue-on-error: true` on a non-comment line and got exit 1 with the single failure `test_hosted_workflow_never_auto_retries`; and appended a real stage marker expression to the run step and got exit 1 with the single failure `test_hosted_workflow_selects_no_tests_of_its_own`. Each mutation reddened its OWN guard and only its own, and restoring the file returned `5 passed` at exit 0. The worktree was removed and pruned; `git worktree list` is one line and `git status --porcelain` is empty at this verdict. A GAP THE ROUND DID NOT COVER WAS CLOSED BY THE REVIEWER RATHER THAN LEFT OPEN: the guards deliberately read the workflow as TEXT and never parse it, which is the right call because PyYAML is in neither `dependencies` nor the `dev` extra, but it means nothing in the round proved the file is well-formed YAML — and a malformed workflow is a hosted CI that silently never runs. The reviewer parsed it with PyYAML as a spot-check: it loads, the job `ci` carries `runs-on: ubuntu-latest` and `timeout-minutes: 90`, `concurrency` is the ref-keyed group with `cancel-in-progress`, the triggers are `push` and `pull_request` both on `main`, and the six steps are in exactly the ordered sequence — checkout, setup-python 3.10 with the pip cache, setup-node 20 with the npm cache keyed on `apps/ui/package-lock.json`, the editable dev install, the UI toolchain install, and `remedy ci run` last. The YAML 1.1 quirk that parses the `on:` key as boolean true is present and is not a defect: GitHub's own parser reads it as the trigger key, as it does in every workflow file. The remaining gates all reproduce: ruff reports `Found 26 errors.` at exit 1 with the breakdown unchanged at 20 I001, 4 F401, 1 F821 and 1 UP035 and the new test file alone `All checks passed!` at exit 0, so the ratchet held across a round that added a file; the new guards are 5 passed; the escape guard is 9 passed, which is the reading that matters most this round because C3 added a test file and a file that escaped every marker-selected stage would be a test CI never runs; the five CI suites are 46 passed, the two budget-stage guard suites 18 passed, and the verification set with the canary 78 passed, every one at exit 0. The range gate holds — `git diff --name-only 35b80d17..HEAD -- packages/ apps/ scripts/` prints nothing — the change set is exactly the seven paths the handback lists, insertions are 252, 180, 2, 52, 56, 14, 63 and 3 with none near 500, the history is linear with no amend, rebase or reset, and the open set recomputes to 112 registered, 9 resolved, 0 landed, 103 open, max R-0484, no duplicate id and no unregistered resolution. The design is right and worth naming: one job calling one `remedy ci run`, with no stage matrix and no marker expression anywhere in the YAML, is the thinnest wrapper that can satisfy the Orchestrator brief, and the guards pin exactly that rather than pinning a shape. Two of the block's own gates were removed before emission because the code contradicted them — a `-m ` absence gate that the legitimate `python3 -m pip` step would have reddened, and a stage-NAME gate that `ui` being a substring of `apps/ui` would have reddened — so this round's guards assert on marker EXPRESSIONS, which is why they are satisfiable and meaningful at the same time. One Low finding is registered against this round, R-0485, and it concerns where a deviation was written down rather than anything that landed wrong.
-
-- R-0485 — Low, A DEVIATION THE WORKER NAMED IN ITS ROUND REPORT REACHED THE HANDOFF ONLY AS A TABLE-CELL ASIDE, AND THE HANDOFF IS THE ONLY RETURN CHANNEL. R21's block ordered the commit sequence C0a through C5, which is seven commits; the round produced eight. The eighth, 8336140e, corrects items 16 and 17 of the handback to their post-C5 readings, because those two were measured at C4 and so omitted `.agent/handoff.md`, the path C5 itself adds to the change set. The commit is right, its reason is right, and refusing to amend was right — constraint 1 forbids it, and this is the R-0149 self-reference the handback template already contemplates. What is wrong is only where the departure is recorded. On disk it appears inside the C5 table's Reason cell and in a trailing sentence of item 17, while the handoff's `## Deviations & assumptions` section lists two other deviations and not this one; the worker's round report to the reviewer, by contrast, listed it first. A round report dies with its session and the handoff does not, so a later reader auditing whether R21 followed its block reads the Deviations section and learns nothing about the extra commit. Low and not Medium because the fact IS on disk, nothing is misstated and no reading is wrong — but R20's handoff declared a strictly smaller procedural departure, a gate run twice, as a numbered deviation, which is the standard this one misses. The fix is not a repair of R21, whose commits are all correct and must not be rewritten: it is the rule promotion C2 of this block performs, adding to `docs/agents/handback_template.md` the requirement that any departure from the block's ordered commit sequence appears in the Deviations section even when the commit table already shows it. A standing rule written only as finding prose binds nothing, which is why this finding names the file it changes and the commit that changes it.
-
-Gate: R22 — FAIL. Every one of the round's nineteen ordered gates reproduces at the reviewer's own hand, from the repository root at 07d6577a, and every measured value equals the one the handback reports — the round FAILS on a property no gate in its block covered, which is stated first so the record is not read as a transport failure. TRANSPORT, by digest over the committed files (§4.9 digest fallback, this being a self-drive session in which the reviewer holds no scratch copy): `.agent/authored/f083-r22.md` and `.agent/last_block.md` are byte-equal at sha256 35e46857c733612a over 24644 bytes and 288 lines, under the 400-line block cap. C1 is a pure append and was proved so rather than believed: `.agent/live_review.md` goes 275871 B to 282756 B, the former prefixes the latter, the 6885-byte tail byte-EQUALS the RECORD-R21 slice extracted from the committed authored file by its markers, `git show --numstat` is `4 0` so no committed text was edited, and the file's count of transport BEGIN-markers is unchanged at four between base and HEAD, so none leaked. All three FROM/TO pairs are APPEND-SHAPED as declared and were checked that way: each TO contains its FROM verbatim, each FROM occurred exactly 1x in its target before its commit, TEMPLATE's five TO-ONLY lines each occur exactly 1x among the six lines C2 adds, QUICKFIND's and SYSTABLE's one TO-ONLY line each occur exactly 1x among the two lines C4 adds, and no marker line and no FROM:/TO: label reached any target. `.agent/plan.md` byte-equals its PLAN slice at sha256 056a6756b92341b9, 2087 bytes, 37 lines under the 50-line cap, `## Goal` and `## Next Steps` present, 0 unchecked-box lines. The gates all reproduce: the range gate prints nothing for `packages/ apps/ scripts/ tests/`; ruff is `Found 26 errors.` at exit 1 at HEAD, so the ratchet held; `tests/docs/` is 295 passed; the R21 workflow guards are 5 passed; the five CI suites are 46 passed; the verification set with the canary is 78 passed, every one at exit 0; both relative links in the new document resolve; the open set recomputes mechanically to 113 registered, 9 resolved, 0 landed, 104 open, max R-0485, no duplicate id and no unregistered resolution; the change set is exactly the eight paths the handback lists; per-commit insertions are 288, 211, 4, 6, 115, 2, 15 and 79, none near 500; and the history is eight single-parent commits chained to 8336140e with no amend, rebase or reset. The item 9 deviation is correct and is not a finding: a ruff reading cannot be inside the file being written before that text exists (R-0149), and the reviewer's own re-run at the committed C6 returns the same 26 errors at exit 1, which is what the deviation predicted. THE BUDGET TABLE IS RIGHT AND WAS RE-DERIVED RATHER THAN READ: every measured maximum in the document matches both `.agent/f083_inventory.md`'s published samples and `MEASURED_MAX_WALL_S` in `tests/orchestration/test_ci_stages.py` — fast 397.45 from `## Q10`, standard 935.14 from `## Q11`, ui 8.09 and smoke 11.07 from `## Q10`, budgets 1.32 from `## Q12` — all five budgets equal their stage's `timeout_sec` when the numbers are parsed OUT of the document text, the five sum to 3900 s against the workflow's own `timeout-minutes: 90`, the five maxima sum to 1353.07 s, and `ceil(2 * measured_max / 300) * 300` reproduces every one of them. The machine facts hold too: `os.cpu_count()` is 24 and pytest is 9.0.3. WHAT FAILS THE ROUND is a claim about built behaviour that no ordered gate asked about, in the document that IS this round's deliverable, registered below as R-0486: the stage table's `ui` row and the entire D6 section attribute the TypeScript compile check to the `ui` stage, and the code says `standard`. The reviewer measured stage membership by collecting each stage's own selection out of `CI_STAGES` — `standard` selects `test_typescript_compiles`, `ui` does not, and no other stage does either — and further found that of the seven files the `ui` selection collects, not one mentions `node_modules`, `npx`, `tsc` or `npm `, so the D6 section's subject is wrong and not merely its wording. The gate that would have caught it did not exist: the block ordered the stage list "taken from `CI_STAGES`" and gated the budget table against the code, but nothing gated the Why-it-exists column against a collection, so the worker's added clause travelled unchecked. That gate is ordered in the repair round, which is the only durable half of this verdict. ONE REVIEWER IMPRECISION IS RECORDED AND IS NOT A FINDING AGAINST THE WORKER, because it is the reviewer's own text and it cost the round nothing: the R22 block justified landing C3 before C4 with the claim that "`tests/docs/` asserts that every relative link in `docs/README.md` resolves". It does not, and the commit order it produced was harmless and good practice anyway. Red-controlling that claim for the repair block is what surfaced R-0487, registered below: the link guard parametrizes on `p.name`, the repo root `README.md` and `docs/README.md` collide on that id, and both cases resolve to the root file, so the index every new document must be registered in has never been link-checked at all.
-
-Done: R-0485 — resolved as designed, by rule rather than by rewriting R21. C2 of R22 added to `docs/agents/handback_template.md` the requirement that any departure from the block's ordered commit sequence appears in the Deviations section even when the commit table already shows it, and the reviewer verified the pair on disk: the FROM occurred exactly 1x before the commit, all five TO-ONLY lines occur exactly 1x each among the six lines the commit adds, and no marker or label leaked into the file. R22's own handback then applied the new rule to itself in the same round it landed — its Deviations section carries the explicit line "No departure from the ordered commit sequence", naming the eight commits in order — which is the strongest available evidence that the rule is usable and not merely present. R21's commits were correctly left alone.
-
-- R-0486 — Medium, THE NEW CI NOTE ATTRIBUTES THE TYPESCRIPT COMPILE CHECK TO THE `ui` STAGE, AND THE CODE PUTS IT IN `standard`. Measured, not read: collecting each stage's own selection out of `CI_STAGES` puts `tests/ui_server/test_dashboard_contract.py::TestJobSummaryCommandContract::test_typescript_compiles` in `standard` with 1 hit and in `ui` with 0, and `fast`, `smoke`, `budgets` and `excluded` with 0 each; `-m integration` selects the id and `-m ui_contract` does not. `docs/system/ci-self-check-v1.md` states the opposite twice. The stage table's `ui` row reads "Python-verifiable frontend and UI contracts, including the TypeScript check", a clause the worker added beyond the `CiStage.description` the block told it to take the column from. The whole "The UI toolchain is a precondition (DECISION F083 D6)" section then builds on that error: "The UI toolchain is a precondition of the `ui` stage, not a part of it: without that install the stage's TypeScript check skips hosted". The `ui` stage has no such dependency — of the seven files its selection collects, not one mentions `node_modules`, `npx`, `tsc` or `npm `. Medium and deliberately not Low: this is a document in `docs/`, which AGENTS.md defines as the description of what IS, and the misattribution is not cosmetic. It moves the compile out of the stage whose budget is 300 s against an 8.09 s measured maximum and into the one the document itself flags as the stage to watch on a slower hosted runner, so a reader reasoning about hosted timeout risk from this page reasons about the wrong stage and the wrong budget. Not High: nothing executable is wrong, CI behaviour is unaffected, and the hosted install still precedes the whole run, so the compile does get its toolchain. The error was INHERITED rather than invented — R-0480's prose asserted the same membership ("`test_typescript_compiles` carries the `ui_contract` marker, so it is selected by the `ui` stage") and that finding is already resolved, so its text is committed history and is NOT rewritten here; the correction lands where a reader looks for built behaviour, which is the document. The markers are not touched either: marker semantics are on T2_F083's Do-not-touch list, so the fix moves the document to the code and never the code to the document. Fixed at C2 of this round by three FROM/TO pairs, and gated by a collection that reports which stage selects the id rather than by any sentence about it.
-
 - R-0487 — Medium, `docs/README.md` HAS NEVER BEEN LINK-CHECKED, AND THE GUARD THAT IS SUPPOSED TO CHECK IT REPORTS GREEN TWICE FOR THE WRONG FILE. `TestPrimaryDocLinksResolve` in `tests/docs/test_docs_consistency.py` parametrizes over `[p.name for p in PRIMARY_DOCS]`, and `PRIMARY_DOCS` holds both the repository root `README.md` and `docs/README.md`, so two entries share the parametrize id `README.md`. The test body then recovers the path with `next(p for p in PRIMARY_DOCS if p.name == doc)`, and `next` returns the FIRST match for both cases — the root file. The root README is therefore link-checked twice and `docs/README.md` never. Proved by paired control inside a disposable worktree at 07d6577a, not by reading: breaking one relative link in the ROOT `README.md` fails both `test_every_relative_markdown_link_exists[README.md0]` and `[README.md1]` at `2 failed, 293 passed`, while breaking one in `docs/README.md` leaves the suite at `295 passed` with nothing red. The worktree was removed and pruned. Medium and not Low: AGENTS.md makes registering every new or renamed doc in `docs/README.md` mandatory, R22's own C4 did exactly that, and the index carries 163 relative links that nothing verifies — a guard that cannot fail is the "green as a word" class this repository treats as a block condition, and here it announces itself green twice. Not High: measured directly, all 163 of those links resolve today, so the hole is latent rather than live, and no shipped artifact is wrong. NOT FIXED IN THIS FEATURE, deliberately: the repair is an edit to a test's CONTENT, which T2_F083's Do-not-touch list forbids, and `.agent/context.md` already rules that a change needing a test's content edited is a finding and not a fix. It is routed to a paydown branch of its own, alongside R-0482. The obvious repair, for whoever takes it: parametrize on a path relative to the repo root rather than on `p.name`, so the two ids stop colliding, and keep the `next(...)` lookup keyed on that same unique value. OPEN.
 
-Gate: R23 — PASS. Every one of the round's sixteen ordered gates reproduces at the reviewer's own hand, from the repository root at 24bc77c5, and every measured value equals the one the handback reports. TRANSPORT, against the reviewer's OWN original bytes and NOT by digest fallback (§4.9), because the authored block survived on disk this round: the committed `.agent/authored/f083-r24.md`'s predecessor `.agent/authored/f083-r23.md` is byte-IDENTICAL to the reviewer's emitted file, and `.agent/last_block.md` is byte-identical to both, all three at sha256 c194ee19da65f7d3 over 27100 bytes and 263 lines, under the 400-line cap. C1 is a pure append and was proved so: `.agent/live_review.md` goes 282756 B to 293293 B, the former prefixes the latter, the 10537-byte tail byte-EQUALS the RECORD-R22 slice extracted from the committed authored file by its markers, `git show --numstat` is `8 0` so no committed text was edited, and the file's count of transport BEGIN-markers is unchanged at four between base and HEAD. The D6SEC, UIROW and STDROW pairs are REWRITES as declared and were checked that way, each scoped to `docs/system/ci-self-check-v1.md` alone: every FROM occurred exactly 1x before its replacement and exactly 0x after, every TO exactly 1x after, and the document's marker count and its count of bare FROM:/TO: label lines are both 0. `.agent/plan.md` byte-equals its PLAN slice at sha256 b846a529a780417c, 2401 bytes, 40 lines under the 50-line cap, `## Goal` and `## Next Steps` present, 0 unchecked-box lines. THE NEW GATE DID THE WORK IT WAS ADDED FOR, which is the point of the round: collecting each stage's own selection out of `CI_STAGES` puts `test_typescript_compiles` in `standard` with exactly 1 node id and in `fast`, `ui`, `smoke`, `budgets` and `excluded` with 0 each, every collection at exit 0, and the `ui` selection's seven files contain no `node_modules`, `npx`, `tsc` or `npm ` at all — so the correction was verified against a collection rather than against a sentence, and R-0486 is resolved on measured ground. The remaining gates reproduce: the range gate prints nothing for `packages/ apps/ scripts/ tests/`; ruff is `Found 26 errors.` at exit 1, so the ratchet held; `tests/docs/` is 295 passed; the stage-table guards are 20 passed; the verification set with the canary is 78 passed, every one at exit 0; both relative links in the document resolve; the open set recomputes to 115 registered, 10 resolved, 0 landed, 105 open, max R-0487, next free R-0488, no duplicate id and no unregistered resolution; the change set is exactly the six paths the handback lists; per-commit insertions are 263, 182, 8, 12, 14 and 47, none near 500; and the history is six single-parent commits chained to 07d6577a with no amend, rebase or reset. Both declared deviations are honest and neither is a defect: running gate 8 before C2 rather than after is the worker correctly refusing to commit a correction it had not yet verified — constraint 7 of the block told it that a disagreeing reading meant the document was right — and the reading is invariant across the round because it reads only `packages/` and `tests/`, neither of which this round touches; the reviewer re-took it at HEAD and got the same six numbers. THE ROUND IS NOT FAULTLESS, but the fault is the reviewer's and not the worker's, and it is registered below as R-0488 rather than charged against this verdict: the replacement paragraph the reviewer authored for the D6 section calls the toolchain "a precondition of ONE TEST", and `standard` also selects seven Vite-probe node ids that need the same install. A worker ordered to apply an authored slice byte for byte cannot fix its content, and this one applied it exactly as required; charging that to the round would punish the behaviour the transport rules exist to produce.
+Gate: R1 — PASS. All fifteen ordered gates reproduce at the reviewer's own hand, from the repository root at 9ba3179e, and every measured value equals the one the handback reports. TRANSPORT, against the reviewer's OWN scratchpad original and NOT by digest fallback (§4.9): `.remedy-wt/f085-r1.md`, the committed `.agent/authored/f085-r1.md` and the committed `.agent/last_block.md` are byte-EQUAL at sha256 7a34422a0df2ca34a94599de5804a87cf9b53e211c17de6a1e99f9d81b006512, 21785 B, 339 lines. THE RESET IS HONEST, which is this round's only irreversible act: the pre-reset blob at a5a70621 holds 117 registered ids, 13 resolved, 0 `Landed:` lines, 0 duplicates and 0 resolutions naming an unregistered id, so 104 were open; at HEAD the record holds 105 registered and 0 resolved, the set of open ids equals the pre-reset open set plus exactly R-0490 with an EMPTY symmetric difference, and each of the 104 carried paragraphs was extracted by id from the pre-reset blob and compared byte-for-byte against its counterpart at HEAD — 104 compared, 104 equal, none missing, none altered, no id registered that was not open at the base. Next free id R-0491. STATUS: the FROM line occurs 0x and the TO line 1x, `^- \[~\]` is 1x, `^- \[x\] F\d{3} — ` is still 50x, `<<` is 0x, and replacing the TO back with the FROM reproduces the base file BYTE-FOR-BYTE, which proves the commit moved that one line and nothing else. README.md is byte-identical to the base, correctly, because the capability counters move only at closure. The three whole-file state slices are byte-equal to their authored originals — context.md 297bd398… 48 lines, plan.md 05d8bf54… 40 lines, candidates.md ffa9a740… 12 lines — every contract assertion their four reader tests make is satisfied at HEAD, and no transport marker reached any target file. Re-run by the reviewer: the four state-file readers `157 passed` exit 0, `tests/docs/` `295 passed` exit 0, the canary `42 passed` exit 0. Per-commit insertions C0a 339, C0b 322, C1 41, C2 66, C3 — the handback commit — 49, none over 500; the change set is exactly the eight ordered paths and no path under `packages/`, `apps/`, `tests/` or `scripts/`; history is five single-parent commits and the reflog shows no amend, rebase, reset or force-push. The handback is 74 lines against a 60-line cap, declared inside the file with that exact count and its cause under the AGENTS.md DECISION D15 stated-cause rule, with no section dropped — permitted, not a finding. Two further declared deviations are accepted and are not findings: `shutil.copyfile` for a denied `cp`, which the block itself sanctioned because the gate names the byte property rather than the tool, and the worker's note that `.remedy-wt/` has accumulated roughly a thousand scratch entries, which is the already-registered R-0403 mechanism and unchanged by this round. The third — that `.agent/plan.md` still described the previous feature during C0a, C0b and C1 — is real, is the reviewer's fault rather than the worker's, and is registered below as R-0491.
 
-Done: R-0486 — resolved, and verified against a collection rather than against prose. C2 of R23 applied three REWRITE pairs to `docs/system/ci-self-check-v1.md`: the stage table's `ui` row no longer claims the TypeScript check and now records that no test in that selection shells out to the node toolchain, the `standard` row now names the check and its `integration` marker, and the D6 section no longer calls the toolchain a precondition of the `ui` stage. The reviewer re-ran the membership gate itself at 24bc77c5 — `standard` 1 node id, `fast`, `ui`, `smoke`, `budgets` and `excluded` 0 each — so the document now agrees with the code on the point it previously contradicted. The markers were not touched, as T2_F083's Do-not-touch list requires, and R-0480's committed prose, which carried the original error, was correctly left alone as resolved history. What R23 did NOT get right is a quantifier in its own replacement text, registered separately as R-0488; that is a new defect in new text, not a failure of this resolution.
+- R-0491 — Low, THE CANONICAL ROUND BUNDLE PUTS THE BLOCK-SAVE COMMITS AHEAD OF THE PLAN UPDATE, SO EVERY ROUND'S FIRST COMMITS LAND WHILE `.agent/plan.md` STILL DESCRIBES THE PREVIOUS ROUND OR THE PREVIOUS FEATURE. Raised by the reviewer at the R1 gate, from a deviation the R1 worker declared correctly rather than routing around. AGENTS.md's Commit Gate is unconditional — "Before committing: 1. Verify `.agent/plan.md` matches the current work ... If any of these fail: DO NOT COMMIT" — and its Task Completion Protocol repeats it as "Before every commit: 1. Verify that `.agent/plan.md` reflects the current state". The R1 bundle ordered C0a, C0b and C1 before the PLAN slice landed in C2, and at C0a the plan on disk still described `amend0816 CI hosted green`, a closed and merged branch. Three commits therefore landed against a plan that did not match the current work. This is not a worker defect: the worker followed the ordered sequence, which Constraint 2 of that block required byte-verbatim, and declared the conflict in its handback instead of silently reordering — the correct behaviour on both counts. It is a REVIEWER defect, and a structural one rather than a slip, because the same ordering appears in the F083 R1 and F083 R28 bundles and would otherwise recur in every round of this feature by construction, arriving as a re-declared deviation each time instead of as a fixed rule. Low, because nothing false was written and no gate was weakened: the plan was correct from C2 on and the round's own gates proved it byte-equal to its authored slice. Counter-measure, binding on the reviewer from R2 on and demonstrated by the R2 bundle that carries this finding: the `.agent/plan.md` update is ordered as the FIRST commit of a round that has substance to record, ahead of the live-review record and ahead of the round's work, so that only the two block-save commits — which write nothing but the block itself — can precede it. Where a round genuinely cannot do that, the block says so in its own text and names the commit at which the plan becomes current, rather than leaving the worker to discover the conflict. The wider question of whether a pure block-save commit should be exempt from the Commit Gate at all is an AGENTS.md question that F085 does not own; AGENTS.md forbids mixing an unrelated fix into a feature branch, so that half routes to the same paydown branch as R-0403, R-0448, R-0482, R-0487 and R-0490. OPEN.
 
-- R-0488 — Medium, THE D6 SECTION NOW UNDERCOUNTS WHAT NEEDS THE UI TOOLCHAIN, AND THE SENTENCE IS THE REVIEWER'S OWN. R23's replacement paragraph in `docs/system/ci-self-check-v1.md` reads "The UI toolchain is a precondition of ONE TEST, and that test is not in the `ui` stage". Measured by collecting each stage out of `CI_STAGES`, `standard` selects `test_typescript_compiles` at 1 node id AND `tests/runtimes/test_apps_ui_probe.py` at 7 node ids; that file carries `pytestmark = [pytest.mark.subprocess, pytest.mark.slow]`, which `standard`'s expression matches, and it is guarded by `pytest.mark.skipif` on a missing `apps/ui/node_modules/.bin/vite` with the reason "INTEGRATION BLOCKER: apps/ui dependencies are not installed". Eight node ids across two files depend on the install, not one. Medium and not Low: this is the same class as R-0486 and in the same paragraph — a countable claim about built behaviour in a `docs/` page, stated with a numeral that the code contradicts — and a reader deciding whether the hosted `npm ci` step is worth its minute is being shown one eighth of the reason it exists. Not High: the sentence errs toward understating the dependency, so nothing built on it is unsafe, and R23's load-bearing correction is unaffected — the check really is in `standard`, the `ui` stage really needs nothing installed, and the workflow really does install unconditionally. AUTHORSHIP IS RECORDED BECAUSE IT DETERMINES WHERE THE FIX BELONGS: the sentence was authored by the reviewer and applied verbatim by a worker that constraint 3 forbade from altering it, so this is a defect in reviewer text, not in worker execution, and R23's verdict stays PASS. The lesson generalises past this paragraph and is why the finding is registered rather than quietly patched: a reviewer correcting a counting error is exactly when a new counting error gets written, because the corrected sentence is drafted with the old wrong fact still in mind. Fixed at C2 of this round by one REWRITE pair, and gated by the same collection that measured it.
+Gate: R2 — PASS. All sixteen ordered gates reproduce at the reviewer's own hand, from the repository root at 2d492d49, and every measured value equals the one the handback reports. TRANSPORT, against the reviewer's OWN scratchpad original and NOT by digest fallback (§4.9): `.remedy-wt/f085-r2.md`, the committed `.agent/authored/f085-r2.md` and the committed `.agent/last_block.md` are byte-EQUAL at sha256 d5db9ebcc977024df569710a2cb7528f4311b735a6e8cf380d72ffd6aecbd139, 20720 B, 264 lines. The C2 append is honest: the pre-C2 blob of 190930 B is a byte-exact PREFIX of the 196461 B post-C2 file, the RECORD-R1 and R0491 slices each occur exactly once inside the appended tail, the numstat is `4 0` with a zero deletion column, and no transport marker reached any file. The open set moves by exactly one: 105 open at the base, 106 at HEAD, the set comparison against the base set plus R-0491 has an EMPTY symmetric difference, 0 duplicate ids and 0 resolutions naming an unregistered id, next free R-0492. THE INVENTORY WAS RE-DERIVED, NOT READ: the reviewer ran the block's own grep at HEAD, got 73 sites, and found the table's 73 rows equal to it as a SET with an empty symmetric difference; then re-parsed every one of the 33 files with an independent AST walk and re-computed all six keyword columns from each call's own keywords, agreeing on 73 of 73 rows; then re-derived the class partition, finding all seven headings inside the closed vocabulary, every declared per-class count equal to the count actually listed under it, the seven counts summing to 73, every site assigned exactly once, and the assigned set equal to the table set. The reviewer's independent walk also reproduces the worker's most valuable declaration — that only 67 of the 73 grep lines are real calls, the other six being four docstring lines and two type annotations at exactly the sites the handback names. Re-run by the reviewer: the four state-file readers `157 passed` exit 0, the canary `42 passed` exit 0. Per-commit insertions C0a 264, C0b 185, C1 14, C2 4, C3 309, C4 — the handback commit — 61, none over 500; the change set is exactly the six ordered `.agent/` paths with nothing under `packages/`, `apps/`, `tests/`, `scripts/` or `docs/`; history is six single-parent commits with no amend, rebase, reset or force-push. One symbol disagreed between the reviewer's walk and the table — `test_execution_service.py:361`, where the table says `<module>` and an innermost-range walk says `_kill_process_group` — and the table is RIGHT under the scope-of-execution reading it applies consistently to all six non-call rows, since line 361 is the `def` header itself and a def header executes in module scope. The ambiguity is the block's, not the worker's, and is registered below as R-0492. DECISION F085 D1, recorded here per §4 item 7 and reversible by any later relay: the feature file's premise that subprocess execution "already flows through a small number of helpers" is FALSIFIED by measurement — 67 real call sites in 56 distinct enclosing functions, of which the four helpers it names cover 24, while git plumbing alone holds 24 with 12 of them in `worktrees.py`. The chosen option is to amend `docs/roadmap/features/T2_F085.md` in R4 and re-slice T002 against the measured shape rather than the assumed one; the alternatives considered were to proceed on the written slicing, which would under-scope T002 by roughly two thirds, and to widen R2 to do the re-slicing, which would have mixed an inventory round with a planning ruling. R4 also carries that amendment's `tests/docs/` gate. The map in this file's Steps section is amended by that same decision: ruling the stage-1 command classes moves from R3 to R4, because R3 is this session's terminator round.
 
-Gate: R24 — PASS. Every one of the round's sixteen ordered gates reproduces at the reviewer's own hand, from the repository root at 94ceafa2, and every measured value equals the one the handback reports. TRANSPORT, against the reviewer's OWN original bytes and NOT by digest fallback (§4.9): the committed `.agent/authored/f083-r24.md` is byte-IDENTICAL to the reviewer's emitted file and `.agent/last_block.md` is byte-identical to both, all three at sha256 cb9ab43ea41ae179 over 21312 bytes and 232 lines, under the 400-line cap. C1 is a pure append and was proved so: `.agent/live_review.md` goes 293293 B to 300239 B, the former prefixes the latter, the 6946-byte tail byte-EQUALS the RECORD-R23 slice extracted from the committed authored file by its markers, `git show --numstat` is `6 0` so no committed text was edited, and the file's count of transport BEGIN-markers is unchanged at four between base and HEAD. The D6FIX pair is a REWRITE as declared and was checked that way, scoped to `docs/system/ci-self-check-v1.md` alone: the FROM occurred exactly 1x before the replacement and exactly 0x after, the TO exactly 1x after, and the document's marker count and its count of bare FROM:/TO: label lines are both 0. `.agent/plan.md` byte-equals its PLAN slice at sha256 e1f4becafde7b177, 2303 bytes, 39 lines under the 50-line cap, `## Goal` and `## Next Steps` present, 0 unchecked-box lines. THE MEMBERSHIP GATE REPRODUCES ON BOTH FILES, which is the whole point of the repair: collecting each stage's own selection out of `CI_STAGES` gives `standard` 1 node id containing `test_typescript_compiles` and 7 containing `test_apps_ui_probe`, and gives `fast`, `ui`, `smoke`, `budgets` and `excluded` 0 and 0 each, every collection at exit 0 — so the corrected paragraph's "the `standard` stage and no other" is measured rather than asserted, and `tests/runtimes/test_apps_ui_probe.py` does carry the `pytest.mark.skipif` on a missing `apps/ui/node_modules/.bin/vite` that the paragraph now cites. The remaining gates reproduce: the range gate prints nothing for `packages/ apps/ scripts/ tests/`; ruff is `Found 26 errors.` at exit 1, so the ratchet held; `tests/docs/` is 295 passed; the three stage- and workflow-guard files are 25 passed; the verification set with the canary is 78 passed, every one at exit 0; both relative links in the document resolve; the open set recomputes to 116 registered, 11 resolved, 0 landed, 105 open, max R-0488, next free R-0489, no duplicate id and no unregistered resolution; the change set is exactly the six paths the handback lists; per-commit insertions are 232, 102, 6, 13, 14 and 48, none near 500; and the history is six single-parent commits chained to 24bc77c5 with no amend, rebase or reset. All five declared deviations are honest and none is a defect. Two deserve naming. Running gate 8 before C2 rather than after is the worker declining to commit a correction it had not yet verified, under a gate whose own STOP clause says a disagreeing reading means the document is right; the reading is invariant across the round because it reads only `packages/` and `tests/`, and the reviewer re-took it at HEAD and got the same twelve numbers. And gate 13 reporting 25 where the R23 record says 20 is not a regression but a change of scope the worker correctly identified and re-measured both ways: R23 ordered two guard files, this block ordered three, `test_ci_workflow.py` contributes the other 5, and re-running the two-file form at HEAD still returns exactly 20. The C0b numstat note is likewise correct — `git commit`'s rename-detected summary and `git show --numstat` disagree on a whole-file state rewrite, both readings sit far under the cap, and that commit is an exempt single `.agent/**` state-file rewrite in any case.
+- R-0492 — Low, A BLOCK DEFINED ITS INVENTORY UNITS BY A TEXT GREP WHILE ITS COLUMNS DEMANDED FACTS ABOUT CODE, SO SIX OF THE SEVENTY-THREE ORDERED "CALL SITES" ARE NOT CALLS AND ONE SYMBOL WAS UNDEFINED. Raised by the reviewer at the R2 gate against its own R2 block. That block's step 5 says "ONE ROW PER CALL SITE, no row for anything else", and then defines the set with `git grep -n -E 'subprocess\.(run|Popen|call|check_output|check_call)' -- packages/ apps/` while gate G7 demands the table equal that grep as a SET. A regex over text cannot distinguish a call from prose about a call, and six of the 73 matches are not calls: four are documentation — `command_discovery.py:190` and `:205`, `dod_runners.py:12`, `test_runner.py:24`, three of which are docstrings that promise the very safety properties this feature is about — and two are type annotations, `test_execution_service.py:361` and `dev_server.py:1440`. The two halves of the block are therefore unsatisfiable together, and the worker resolved the conflict the right way: it tabled all 73 to satisfy the set-equality gate, marked the six non-calls `n/a` in the six keyword columns rather than inventing `no`, and declared the tension in its handback instead of silently dropping rows. The reviewer's independent AST walk reproduces exactly those six. The same root cause produced a second defect: `symbol` is specified as "the innermost enclosing `def`/`async def`/`class` name at that line", which is undefined when the matched line IS a `def` header, as `test_execution_service.py:361` is. The table's `<module>` is correct under the scope-of-execution reading it applies consistently to all six non-call rows — a def header executes in module scope — but the block never states which reading governs, so an innermost-range walk disagrees and neither answer can be called wrong. Low, because nothing false was recorded, no gate was weakened, the six rows are honestly marked, and the inventory's value is untouched: the 67 real calls carry fully re-derived facts. Counter-measure, binding on the reviewer from R4 on: when a block orders an inventory of code units, the SET is defined by the semantic predicate the columns describe — here "a `subprocess.*` call node in the AST" — and any text grep is named only as the starting candidate list, with the block stating explicitly what to do with candidates the predicate rejects; and any column whose value depends on a scope reading names the reading. This is the R-0367 and R-0463 family seen from a new side: those bar a reviewer from asserting a number the producing tool cannot yield, while this one bars defining a set with one tool and describing it with another. OPEN.
 
-Done: R-0488 — resolved, and the replacement text was measured before it was written rather than after. C2 of R24 rewrote the D6 section so that it names the `standard` stage rather than a count of tests: it states that the toolchain is a precondition of `standard` and of no other stage, that two of the files `standard` selects need the install and both skip without it, that `test_typescript_compiles` carries `integration` and shells out to the compiler while the Vite probes in `tests/runtimes/test_apps_ui_probe.py` carry `subprocess` and skip on a missing `apps/ui/node_modules/.bin/vite`, and that the `ui` stage needs nothing installed at all. The reviewer re-ran the collection itself at 94ceafa2 across every stage — `standard` 1 and 7, every other stage 0 and 0 — so each of those claims is now pinned to a measurement, and the paragraph no longer carries a numeral about tests that a later marker change could silently falsify. The string "ONE TEST" occurs nowhere in the document. R-0486's correction, which this finding sat on top of, is unaffected and stays resolved.
+Gate: R3 — PASS. All twelve ordered gates reproduce at the reviewer's own hand, from the repository root at fb346e8c, and every measured value equals the one the handback reports. TRANSPORT, against the reviewer's OWN scratchpad original and NOT by digest fallback (§4.9): `.remedy-wt/f085-r3.md`, the committed `.agent/authored/f085-r3.md` and the committed `.agent/last_block.md` are byte-EQUAL at sha256 77fb0d0ec4256a6d5145f58118eac49090c11df05827cba4e21d5d74206b19ee, 16976 B, 186 lines. `.agent/plan.md` at HEAD byte-equals the PLAN slice at sha256 05b3082b6f971b944d52dc84663d45bb366046abba1dcd99f94823f585be0479, 36 lines, 1970 B, carrying `## Goal`, `## Next Steps` and an F-id, under the 50-line cap. The C2 append is honest: the pre-C2 blob of 196461 B is a byte-exact PREFIX of the 202948 B post-C2 file, the RECORD-R2 and R0492 slices each occur exactly once in the whole file and both inside the 6487-byte, four-line appended tail, the numstat is `4 0` with a zero deletion column, and no transport marker reached a target file: measured at fb346e8c, before this paragraph existed, neither `.agent/plan.md` nor `.agent/live_review.md` contained a single slice-marker sequence. The open set moves by exactly one: 106 open at 2d492d49, 107 at HEAD, the symmetric difference of the HEAD open set against the base open set plus R-0492 is EMPTY, with 0 duplicate ids and 0 resolutions naming an unregistered id; max R-0492, next free R-0493. `.agent/f085_inventory.md` is byte-identical at base and at HEAD at sha256 fed207f9f8fb5a2de6a52a5366e1f3332eab1ae60c3a666cbddf4771f6c166bd, so R3 did not revise what R2 closed. The change set is exactly the five ordered `.agent/` paths with nothing under `packages/`, `apps/`, `tests/`, `scripts/` or `docs/`; the history is five single-parent commits and the reflog over the round is five `commit:` entries with no amend, rebase, reset or force-push; per-commit insertions are C0a 186, C0b 75, C1 12, C2 4 and C3 40 — the handback commit's own count, which could not exist while its text was being written and is recorded here instead — none over 500. Re-run by the reviewer in the PRIMARY checkout: the four state-file readers `157 passed` exit 0, the canary `42 passed` exit 0. The handback's self-measurement is honest: it declares 87 lines under DECISION D15 and it measures 87. One reading is stated rather than corrected, because the gate never defined it: G5's `Landed:` figure of 14 is a raw SUBSTRING count over the whole file, while the number of actual `^Landed: R-` RECORDS is 0 — all fourteen occurrences sit in prose inside five paragraphs that discuss the convention, so no unreviewed fix is hiding in the record. That is the R-0492 class read back against the very block that registered it, and it is answered by construction rather than by a second finding: R4's G5 orders the line-start regex, which is exactly the counter-measure R-0492 binds the reviewer to from R4 on. TERMINATOR CORRECTION, recorded because the disk must not keep a claim the session has falsified: the R3 block and the R3 handback both state that the R3 verdict lives only in the handoff, the round report and the PR under §4 item 13, because R3 was authored as this branch's last round. The session continued into R4, so R3 is NOT the last round of the branch, item 13 does not apply to it, and THIS paragraph is its on-disk gate entry. Item 13 still governs whichever round does end the branch.
 
-Gate: R25 — PASS. Every one of the round's thirteen ordered gates reproduces at the reviewer's own hand, from the repository root at 6a413eb7, and every measured value equals the one the handback reports. TRANSPORT, by DIGEST FALLBACK and declared as such (§4.9): the R25 block was authored by a previous session, so no reviewer-side original survives to compare against, and the proof actually available is that the committed `.agent/authored/f083-r25.md` and `.agent/last_block.md` are byte-IDENTICAL to each other and that both carry the sha256 the R25 handback had recorded before either file was read this session — 21dbf26eeaec7c0aee97ea5e216c23286c71631f0cddaae88e13ab39847724cd over 14465 bytes and 161 lines, under the 400-line cap. C1 is a pure append and was proved so: `.agent/live_review.md` goes 300239 B to 305119 B, the former prefixes the latter, the 4880-byte tail byte-EQUALS the RECORD-R24 slice extracted from the committed authored file by its markers, `git show --numstat` is `4 0` so no committed text was edited, and the file's count of transport marker LINES is 0 at base and 0 at HEAD while the bare substring count is 4 at both. `.agent/plan.md` byte-EQUALS its PLAN slice at sha256 ff88ab851c0cb6d86430a947ddb5c0c67158e0e9136d5a1636eb4a3611c50751 over 2304 bytes and 39 lines, under the 50-line cap, with `## Goal` and `## Next Steps` present, 0 unchecked-box lines and 0 marker lines. No marker line reached any target file. The remaining gates reproduce: `ONE TEST` occurs 0 times in `docs/system/ci-self-check-v1.md`; the range gate over `docs/ packages/ apps/ scripts/ tests/` prints nothing at exit 0; ruff is `Found 26 errors.` with `[*] 25 fixable` at exit 1, so the ratchet held and the ceiling was not raised; the verification set with the canary is `78 passed in 31.27s` at exit 0; `tests/docs/` is `295 passed in 0.25s` at exit 0; the open set recomputes to 116 registered, 12 resolved, 0 landed and 104 open, max id R-0488 and next free R-0489, with 0 duplicate ids and 0 resolutions naming an unregistered id, R-0488 resolved and R-0482 and R-0487 both still open; the change set is exactly the five `.agent/` paths the handback lists and nothing else; per-commit insertions are 161, 79, 4, 9 and 45, none near 500; and the history is five single-parent commits chained to 94ceafa2, with a reflog showing only `commit:` entries and no amend, rebase or reset. The ordered sequence C0a, C0b, C1, C2, C3 was followed exactly — five commits, none added, none dropped, none reordered. The open set moves 105 to 104 across the round, entirely because the RECORD-R24 text that C1 appended carries a `Done: R-0488` line; R25 registered no finding of its own and resolved none of its own, which is what a persistence round should do. Both declared deviations are honest and neither is a defect. The C0b reading discrepancy reproduces exactly as declared — `git commit`'s rename-detected summary says 161 insertions and 232 deletions while `git show --numstat` gives 79 and 150 — gate 13 uses numstat as the block ordered, both readings sit far under the cap, and that commit is an exempt single `.agent/**` state-file rewrite under the AGENTS.md counting rule in any case. The stated-cause overage is honest under DECISION D15: the handback measures 70 lines against the 60-line cap, the cause named is mandated content — five per-commit tables and a thirteen-row item-status table — and no mandated section was dropped to chase the cap.
+- R-0493 — Low, THE MANDATED DOCS-ROUND GATE IS VACUOUS FOR A FEATURE-FILE EDIT, SO A ROUND THAT AMENDS `docs/roadmap/features/**` IS GATED BY A COMMAND THAT CANNOT FAIL ON ITS OWN CHANGE. Raised by the reviewer at the R3 gate while assembling R4's gate list. docs/agents/planner_reviewer_prompt.md §3, verification tier 5, requires any round whose change set includes `docs/roadmap/**` to gate with `python3 -m pytest tests/docs/ -q`. Measured rather than assumed: `tests/docs/test_docs_consistency.py` reads `PRIMARY_DOCS` — `README.md`, `AGENTS.md`, `docs/README.md`, `docs/roadmap/STATUS.md` and `docs/roadmap/ROADMAP.md` — plus F012-specific assertions and the feature-detail FILENAME pattern, and asserts nothing whatever about the BODY of a feature detail file. Proven by a red control inside a disposable `git worktree` at fb346e8c, never in the primary checkout: with line 2 of `docs/roadmap/features/T2_F085.md` replaced by a malformed dependency line, `python3 -m pytest tests/docs/ -q` stayed GREEN at `295 passed`, while `python3 -m pytest tests/orchestration/test_roadmap_index.py -q` went RED at `11 failed, 19 passed`. The rule is right for its founding case — R-0151, where a STATUS.md ledger-count change broke the feature-ledger pins — and vacuous for the case it now most often meets, since AGENTS.md forbids editing `ROADMAP.md` without an explicit operator request and STATUS.md edits belong to closure, which leaves the feature detail file as the ordinary `docs/roadmap/**` change. Low, because nothing false was recorded and no round has yet passed on the strength of this gate alone; the cost is a round that believes itself gated and is not. That is the silently-vacuous-gate class of R-0438 reached by a different route: R-0438's gate named a path that did not exist, while this one names a path that exists and does not cover the change. Counter-measure, binding on the reviewer from this round on and APPLIED IN THE SAME BLOCK THAT REGISTERS THIS FINDING, as gate G11: a round whose change set touches `docs/roadmap/features/**` gates `python3 -m pytest tests/orchestration/test_roadmap_index.py -q` IN ADDITION to the mandated `tests/docs/` command, because that suite is the only one in the repository that parses those files. Promoting the rule into §3 tier 5 itself is a `docs/agents/**` edit outside this feature's change set and is NOT claimed here; it is named as work for the paydown branch that already carries R-0403, R-0448, R-0482, R-0487 and R-0490. OPEN.
 
-Gate: R26 — PASS. This was the integration gate, and it is green in both directions. TRANSPORT, against the reviewer's OWN original bytes and NOT by digest fallback (§4.9): the block was emitted to `.remedy-wt/f083-r26.md` and COPIED rather than retyped, and the committed `.agent/authored/f083-r26.md` and `.agent/last_block.md` are byte-IDENTICAL to that original, all three at sha256 461cc40b451538c67da83a4fcc000056736d3a86a715cc0e9d7bdd2bd885fe29 over 17873 bytes and 224 lines, under the 400-line cap. C1 is a pure append and was proved so: `.agent/live_review.md` goes 305119 B to 308606 B, the former prefixes the latter, the 3487-byte tail byte-EQUALS the RECORD-R25 slice extracted from the committed authored file by its markers, `git show --numstat` is `2 0`, and the file's count of transport marker LINES is 0 at base and 0 at HEAD while the bare substring count is 4 at both. THE GATE ITSELF REPRODUCES AT THE REVIEWER'S OWN HAND. The reviewer re-ran the full branch suite itself from the repository root at ceb46a23 and got `17047 passed, 19 skipped in 111.66s` at exit 0 with 0 `FAILED` and 0 `ERROR` lines, which equals the worker's `17047 passed, 19 skipped in 126.08s` reading; both raw logs still carry the sha256, byte count and line count their committed `full_log_provenance.txt` records — 6c34205a…1ad8 over 19129 B and 242 lines for the branch run, 10761be9…83dd over 19049 B and 241 lines for the base run — and the reviewer re-derived BOTH failure lists out of those raw logs rather than trusting the committed ones, getting 0 and 0, so `comm -13` and `comm -23` are empty and the two committed comm files are correctly empty. The base run is the control and the branch-only conclusion does not depend on it: a branch run with zero `FAILED` lines makes the branch-only set empty against ANY base. Parity was independently corroborated rather than accepted: the reviewer recomputed the composite digest of the PRIMARY checkout's `apps/ui/dist` and got 5876f488eab879fcfe1fae4cfb7329e63246c0aff9dd57a203b56d8f15b69d44, which equals BOTH the BEFORE and the AFTER readings the committed `dist_hashes.txt` carries — so the copy was faithful and `REMEDY_UI_NO_AUTO_BUILD=1` held across the base run. The freshness step this block added over the F082 R21 procedure earned its place: R21 copied a content-correct but STALE `dist`, the UI server refused to start, and that gate paid eight base-only failures for per-id attribution; R26 re-stamped the copied `dist` newer than the worktree's `src` and took zero. The remaining gates reproduce: the canary is `42 passed` at exit 0; ruff is `Found 26 errors.` with `[*] 25 fixable` at exit 1 and the only path C3 changed before HEAD is `.agent/handoff.md`, so the reading is invariant across the commit it was taken at; the open set recomputes to 116 registered, 12 resolved, 0 landed and 104 open, max R-0488 and next free R-0489, 0 duplicate ids, 0 resolutions naming an unregistered id, R-0488 resolved and R-0482 and R-0487 still open, with 0 open findings above Medium — 36 Medium and 68 Low; `.agent/plan.md` byte-EQUALS its PLAN slice at sha256 8cd8b2e201f28bc30eb5b67714b00a6f73788c617b734a63bf8ece2f75265840 over 2085 bytes and 37 lines; the range gate prints nothing; the change set is exactly 14 paths, every one under `.agent/`; the evidence directory holds its nine `.txt` members with 0 `.log` files among 3533 tracked paths; the worktree was removed and `tmp/base-gate` deleted; and the history is six single-parent commits chained to 6a413eb7 with a reflog showing only `commit:` entries. Collection arithmetic cross-checks in three places: 17047 + 19 = 17066, which equals the reviewer's own `--collect-only` count, and 16988 + 19 = 17007, which equals what F082's own integration gate collected at the commit that is now main's tip — so the 59-test difference is exactly this feature's additions. The ordered sequence C0a, C0b, C1, C2, C3, C4 was followed exactly, six commits, none added, dropped or reordered. All four declared deviations are honest and none is a defect. The tooling substitution deserves naming: this session denies `cp`, so the parity copies ran through `shutil.copytree(..., symlinks=True)`, and the worker measured the PROPERTY the block ordered — both paths are real directories with 0 symbolic links at them — rather than reporting the tool. That is the correct reading of a gate that names a property, and `symlinks=True` is the right flag here because it preserves `node_modules`' internal RELATIVE links inside the copy instead of following them, while the prohibition the gate exists for is the DIRECTORY-level symlink that would let a build write THROUGH into the primary checkout; the unchanged dist digest is the evidence that no such write happened.
+Gate: R4 — PASS. All sixteen ordered gates reproduce at the reviewer's own hand, from the repository root at 382ed7fa, and every measured value equals the one the handback reports. TRANSPORT, against the reviewer's OWN scratchpad original and NOT by digest fallback (§4.9): `.remedy-wt/f085-r4.md`, the committed `.agent/authored/f085-r4.md` and the committed `.agent/last_block.md` are byte-EQUAL at sha256 c755c49d28f58c0d9f97ce0e0f95daa75e9291eeb3b6fce10153291b96727b42, 23993 B, 318 lines. `.agent/plan.md` at HEAD byte-equals the PLAN slice at sha256 a1a17001365fd83c0de0168d8c7d5c6057ead885121c54917fbc54322c1be673, 41 lines, 2266 B, carrying `## Goal`, `## Next Steps` and an F-id, under the 50-line cap. The C2 append is honest: the pre-C2 blob of 202948 B is a byte-exact PREFIX of the 208910 B post-C2 file, the RECORD-R3 and R0493 slices each occur exactly once in the whole file and both inside the 5962-byte, four-line appended tail, and the numstat is `4 0` with a zero deletion column. The open set moves by exactly one: 107 open at fb346e8c, 108 at HEAD, the symmetric difference of the HEAD open set against the base open set plus R-0493 is EMPTY, with 0 duplicate ids, 0 resolutions naming an unregistered id and 0 line-start `^Landed: R-` records; max R-0493, next free R-0494. `.agent/f085_inventory.md` is byte-identical at base and at HEAD at sha256 fed207f9f8fb5a2de6a52a5366e1f3332eab1ae60c3a666cbddf4771f6c166bd, so R4 did not revise what R2 closed. The amendment landed exactly as authored: in `docs/roadmap/features/T2_F085.md` FROM1 and FROM2 each occur 0 times and TO1, TO2 and the AMENDMENT each exactly once, the file ends with the AMENDMENT, `<<<` occurs 0 times, and lines 1 and 2 are byte-identical to lines 1 and 2 at fb346e8c, which is what keeps `tests/orchestration/test_roadmap_index.py` parsing it. Its arithmetic reproduces against the inventory it cites: the inventory's own per-class counts are builder 5, test 12, dod 2, runtime 5, git 24, packaging 11 and other 14, of which six `other` rows are the grep lines that are not call sites at all, so the amendment's `8 real` is exact and 5+12+2+5+24+11+8 equals the 67 real sites it claims. The change set is exactly the six ordered paths with nothing under `packages/`, `apps/`, `tests/` or `scripts/`; the history is six single-parent commits and the reflog over the round is six `commit:` entries with no amend, rebase, reset or force-push. Re-run by the reviewer in the PRIMARY checkout: `tests/docs/` 295 passed exit 0, `test_roadmap_index.py` 30 passed exit 0 — the R-0493 counter-measure doing its work on the very round that registered it — the four state-file readers 157 passed exit 0, and the canary 42 passed exit 0. The values R4's own gates routed to its round report, which no later session can read, are recorded HERE instead, measured by the reviewer at 382ed7fa: C4 inserted 48 lines, so the per-commit series is 318, 213, 16, 4, 68, 48 and none exceeds 500; the post-C4 change set is the same six paths; `git status --porcelain` is EMPTY and `git worktree list` is one line; the push landed, with `origin/feature/f085-sandbox-hardening` at 382ed7fa; and the handback measures 95 lines and 8467 B against its own DECISION D15 declaration of 95 lines, so its self-measurement is honest. That routing is the R-0494 class, registered next and answered by G14 of the R5 block.
 
-- R-0489 — Low, A GATE ORDERED A PER-COMMIT NUMBER FOR THE COMMIT THAT WOULD CARRY THE ANSWER, SO THE HANDBACK'S SENTENCE ABOUT ITS OWN RANGE IS FALSE AT HEAD BY CONSTRUCTION. Gate 19 of the R26 block ordered "per-commit insertions from `git show --numstat`, reported per commit" over a range whose last commit is C4, the handback commit itself. C4's own numstat cannot exist while C4's text is being written, so the worker honestly wrote "224, 158, 2, 108, 9 and C4's own" and, in the same cell, "five single-parent commits chained to 6a413eb7" — true of the five commits that existed as it wrote, false of the six-commit range that same sentence names. Nothing measured was wrong and nothing green was claimed that was not run: the reviewer measured all six itself at 224, 158, 2, 108, 9 and 80, and the history is linear with no amend, rebase or reset. The defect is the reviewer's GATE, not the round, and it is the R-0371 class — ordering a value that cannot exist when the text is written — landing in the one place `docs/agents/handback_template.md` already documents as self-referential (R-0149, which the R26 handback's own commit table cites). Low and not Medium: the only false thing is a count of commits in a range, and the correct numbers sit beside it.
-Done: R-0489 — resolved in the same round that registered it, and the fix is a rule on disk rather than a sentence in a record. C1 of this round added item 14 to the pre-emission block checklist in `docs/agents/planner_reviewer_prompt.md`: a per-commit gate orders the numbers for the commits BEFORE the handback commit and orders the handback commit's own numbers in the round report, which is written after that commit exists. This round's own gate 16 is written that way and is the worked example. Registering and resolving in one round is the R-0460/R-0461 precedent applied deliberately: a finding may assert its own promotion into that checklist only when the SAME block orders the edit that performs it, and this block does, in a commit that lands BEFORE the record claiming it.
+- R-0494 — Low, UNDER SELF-DRIVE A GATE READING ROUTED TO THE "ROUND REPORT" IS WRITTEN TO A CHANNEL THAT DIES WITH THE SESSION, SO THE NEXT SESSION INHERITS A GATE IT CANNOT READ. Raised by the reviewer at the R4 gate. docs/agents/planner_reviewer_prompt.md §3 pre-emission checklist item 14 rules that a per-commit gate may not order a value the handback commit cannot hold — its own insertion count — and directs that value to the ROUND REPORT instead, which is correct for the two-window relay where the operator sees that report. docs/agents/self_drive_protocol.md removes the second window and rules the opposite way about channels: "The handoff is the only return channel, and a session with no handoff did not happen." R4 followed item 14 exactly, so its G1 post-C4 readings, its G9 post-C4 change set, its G14 C4 insertion count and its push outcome were all directed into the worker's final message; the session then ended at the handback, and every one of those readings ceased to exist. Measured rather than assumed: none of the four appears in `.agent/handoff.md` at 382ed7fa, which states for each only that it "is in the round report". Nothing false was recorded and nothing was lost in substance, because a self-drive reviewer has execution and re-measured all four at 382ed7fa — they are in the RECORD-R4 paragraph above — which is exactly why this is Low and not higher. The cost is structural: a gate whose reading lives only in an ephemeral channel is unauditable by any later reader, and under G7 session limits an ending session is the NORMAL case rather than the exception, so the channel dies routinely. This is the R-0438 silently-vacuous-gate family reached from a third direction — R-0438's gate named a path that did not exist, R-0493's named a path that exists and does not cover the change, and this one names a value that is produced and then written where nothing can read it. Counter-measure, binding on the reviewer from this round on and APPLIED IN THE SAME BLOCK THAT REGISTERS THIS FINDING, as gate G14: under self-drive the handback commit's own numbers are ordered nowhere, and the reviewer measures them at the next gate and records them in that round's record paragraph in `.agent/live_review.md`, which is on disk and therefore auditable. Amending checklist item 14 itself to carry the self-drive branch is a `docs/agents/**` edit outside this feature's change set and is NOT claimed here; it is named as work for the paydown branch that already carries R-0403, R-0448, R-0482, R-0487, R-0490 and R-0493. OPEN.
 
-Gate: R27 — PASS. All sixteen ordered gates reproduce at the reviewer's own hand from the repository root at 74063862, and every measured value equals the one the handback reports. TRANSPORT, against the reviewer's OWN original bytes and NOT by digest fallback (§4.9): `.remedy-wt/f083-r27.md`, the committed `.agent/authored/f083-r27.md` and the committed `.agent/last_block.md` are all byte-IDENTICAL at sha256 369d9a4e1773dea61dc7b13c414e2d1f5c524112b482b9eecb12ecc0db398c9c over 24166 bytes and 284 lines, under the 400-line cap. THE CHECKLIST PAIR WAS SETTLED BY ONE EQUALITY RATHER THAN BY COUNTS: `pre.replace(FROM, TO, 1) == post` measured True over `docs/agents/planner_reviewer_prompt.md`, which no partially-correct edit can satisfy; the FROM occurred 1x before and 1x after — inside the TO, the declared APPEND shape — the TO 0x before and 1x after, and the file holds 0 marker lines and 0 bare FROM:/TO: label lines. Both appends are pure: `docs/roadmap/features/T2_F083.md` goes 5064 B to 8757 B with the former a prefix of the latter and the 3693-byte tail byte-EQUAL to the BUILTSTATE slice at numstat `58 0`, `## Built State` 0x before and 1x after; `.agent/live_review.md` goes 308606 B to 315460 B with the same prefix property, its tail byte-EQUAL to the RECORD-R26 slice at numstat `5 0`, and its transport marker LINE count 0 at base and 0 at HEAD while the bare substring count is 4 at both. `.agent/plan.md` byte-EQUALS the PLAN slice at sha256 dc58b598b1eb72bc6944e7f59931a125dfd91a6925ce30866831a5e4621310e8, 41 lines under the 50-line cap, `## Goal` and `## Next Steps` present, 0 unchecked-box lines. THE BUILT STATE'S CLAIMS WERE CHECKED AGAINST THE CODE, NOT ACCEPTED AS PROSE: the reviewer imported the stage table and summed it, getting 3900 s against the workflow's 5400 s job cap so the "cap sits above the sum" sentence holds; the six stage names are exactly `fast`, `standard`, `ui`, `smoke`, `budgets` and `excluded`; and `LINT_ERROR_CEILING` is 26, the number the section calls a ratchet. The run gates reproduce: `tests/docs/` 295 passed at exit 0, the canary 42 passed at exit 0, the stage-table, workflow-guard and CLI-seam suites 22 passed at exit 0, and ruff `Found 26 errors.` with `[*] 25 fixable` at exit 1 — the ratchet held, and the only path C4 changed before HEAD is `.agent/handoff.md`, so the reading is invariant across the commit it was taken at. The restrictions hold as restrictions: the range over `packages/ apps/ scripts/ tests/ .github/` is EMPTY, the range over `docs/` is exactly `docs/agents/planner_reviewer_prompt.md` and `docs/roadmap/features/T2_F083.md`, and `docs/roadmap/STATUS.md` and `README.md` are each ABSENT from the whole range — which is what keeps the closure commit's own path set available. The open set recomputes to 117 registered, 13 resolved, 0 landed and 104 open, max R-0489 and next free R-0490, 0 duplicate ids and 0 resolutions naming an unregistered id, with R-0489 both registered and resolved and R-0482 and R-0487 still open. Per-commit insertions are 284, 212, 13, 58, 5, 16 and 99, none near 500; the range holds seven single-parent commits chained to ceb46a23; the reflog shows only `commit:` entries. The ordered sequence C0a, C0b, C1, C2, C3, C4, C5 was followed exactly, and C1 landed before C3 as ordered, so C3's claim that checklist item 14 is on disk was true at the moment it was committed. R-0489 IS RESOLVED AND THE FIX IS ALREADY WORKING. The finding was that a per-commit gate cannot reach the handback commit, so the R26 handoff reported five insertion counts beside a sentence calling a six-commit range "five single-parent commits". This round's handoff says "six commits in the range when read" and routes C5's own count to the round report, where it was measured at 99 — the same shape the R26 handoff got wrong, now right, one round after the rule was written down. That is the R-0460/R-0461 precedent honoured rather than cited: the block that asserted the promotion also performed it, in a commit that landed before the record claiming it. Three declared deviations, all honest, none a defect. The tooling substitution is correct in kind: `cp` is denied in this session, so C0a copied through `shutil.copyfile` and the worker measured the PROPERTY the gate names — byte equality of the committed blobs plus the shared sha256 — rather than reporting the tool. The stated-cause overage is honest under DECISION D15: the handoff is 136 lines against a cap that allows 100 for tables of more than five commits, the cause named is mandated content — seven per-commit tables and a sixteen-row item-status table — and the reviewer read the file and found no prose padding, no verbatim transcript and no restated procedure in it. It is over the cap and says so, which is the behaviour the rule asks for.
+Gate: R5 — FAIL. Every ordered gate the reviewer can re-run reproduces at the reviewer's own hand from the repository root at 16506c0b — G1 through G10 and G12 through G15, plus G17 read directly out of the two new files — and the round is failed on G11, which does not; G16 is a worker-side probe of a child process rather than a reproducible reading, and its result is consistent with the reviewer's own rlimit measurements taken while authoring the R5 block. TRANSPORT, against the reviewer's OWN scratchpad original and NOT by digest fallback (§4.9): `.remedy-wt/f085-r5.md`, the committed `.agent/authored/f085-r5.md` and the committed `.agent/last_block.md` are byte-EQUAL at sha256 4d1188a70d2f8d1ff23f6a5801c212b4406a738c7d6c59d77bb1877047ab9220, 26997 B, 341 lines. `.agent/plan.md` at HEAD byte-equals the PLAN slice at sha256 cbc8ee8a0b3b7196ae4dd9832abb66b009ccbe959ae0706f06f2ec2f266547a8, 41 lines, under the 50-line cap, carrying `## Goal`, `## Next Steps` and an F-id. The C1 append is honest: the pre-C1 blob of 208910 B is a byte-exact PREFIX of the 214867 B post-C1 file, the RECORD-R4 and R0494 slices each occur exactly once in the whole file and both inside the 5957-byte, four-line appended tail, and the numstat is `4 0` with a zero deletion column. The open set moved by exactly one: 108 open at 382ed7fa, 109 at HEAD, symmetric difference against base plus R-0494 EMPTY, 0 duplicate ids, 0 resolutions naming an unregistered id, 0 line-start `^Landed: R-` records. The change set is exactly the seven ordered paths, the history is seven single-parent commits, and the per-commit insertions are C0a 341, C0b 250, C1 4, C2 16, C3 314, C4 170, none over 500. Re-run by the reviewer in the PRIMARY checkout: ruff over the two new files exit 0 `All checks passed!`; the eight-file structural sweep `350 passed, 6 skipped` exit 0, the same reading as at base, so the new orchestration module trips none of the whole-directory guards; the canary `42 passed` exit 0; and G12 clean, the only `pgrep` matches being the reviewer's own probe command line rather than any surviving fixture. The values R5 routed nowhere are recorded HERE, measured by the reviewer at 16506c0b, which is the R-0494 counter-measure working as designed: C3 of the handback inserted 55 lines, the post-C5 change set is the same seven paths, `git status --porcelain` is EMPTY, `git worktree list` is one line, the push landed with origin at 16506c0b, and the handback measures 106 lines against its own DECISION D15 declaration of 106, so its self-measurement is honest. THE FAIL: G11 ordered `python3 -m pytest tests/orchestration/test_exec_guard.py -q` at exit 0 and the handback reports `6 passed in 4.59s`; at the reviewer's hand the same command at the same commit returns `1 failed, 5 passed`, exit 1, on FIVE consecutive runs, failing at `assert result.cpu_seconds_used >= 1.0` with the measured value 0.999776. The test passes when run alone, which is why a single worker run could honestly have seen green: the assertion sits directly on a boundary rather than near one, so this is recorded as a marginal-assertion defect and NOT as a fabricated reading — nothing in the record supports the harsher reading, and the mechanism explains both observations. It is registered as R-0496. The reviewer's own independent probe then found the more serious defect the ordered gates did not reach, registered as R-0495: `run_guarded` under a 1.0-second `wall_timeout_seconds` returned after 300.04 seconds. G17's no-overclaim gate is confirmed at the level it was written — neither new file claims any existing seam is guarded — and R-0495 is a different failure, an internal promise the module does not keep. R5's substance is otherwise sound: the guard's classification of cpu, wall and output trips is correct, its address-space non-attribution is honest, and G16's probe confirmed the reviewer's stated reason rather than contradicting it, with returncode 1, no term_signal, `MemoryError` on stderr and `ru_maxrss` of 26157056 B below the 67108864 B limit. LAST_REVIEWED_SHA does NOT advance and stays 382ed7fa.
+
+- R-0495 — High, `run_guarded`'S WALL TIMEOUT DOES NOT BOUND `run_guarded`'S OWN RETURN: A DESCENDANT THAT LEAVES THE PROCESS GROUP HOLDS THE INHERITED PIPES OPEN AND THE GUARD BLOCKS ON ITS STREAM PUMPS UNTIL THAT DESCENDANT EXITS. Raised by the reviewer at the R5 gate, by a probe of its own choosing rather than by any ordered gate. Measured, not reasoned: with `ExecGuardPolicy(wall_timeout_seconds=1.0, output_cap_bytes=4096)` and a child that spawns one grandchild with `start_new_session=True` and then sleeps, `run_guarded` returned after 300.04 seconds — the grandchild's full lifetime — and the returned `ExecGuardResult` carried `tripped_limit="wall_timeout"` with `wall_seconds=300.04`. The mechanism is in `packages/orchestration/exec_guard.py`: the deadline fires on schedule and `_kill_process_group` sends SIGKILL to the child's group, but a grandchild that called `setsid` is no longer IN that group, it still holds the write ends of the stdout and stderr pipes the guard created, so `_StreamPump.read1` never reaches EOF and the `out_pump.join()` and `err_pump.join()` calls in the `finally` block — which have no timeout — block until it exits. This is the feature's central promise failing in the case containment exists for. It is worse than a plain hang because the result LOOKS correct to any caller that reads `tripped_limit` alone, and `wall_seconds` is the only field that betrays it. It is not hypothetical, and the reviewer grepped rather than recalled: `start_new_session=True` appears in production code in `packages/orchestration/dod_runners.py`, `packages/orchestration/stream_evidence.py`, `packages/orchestration/test_execution_service.py`, `packages/runtimes/runtime_supervisor.py`, `packages/runtimes/dev_server.py` and `apps/cli/commands/runtime_cmd.py`. Three of those files hold sites in the very classes stage 1 migrates — dod, test and runtime under amendment F085 D1 — so the escaping descendant is not an exotic case but the ordinary shape of the code this guard is being built to wrap. The module's own `run_guarded` docstring states "the group is killed on every exit path, so no descendant outlives this call", which the same probe falsifies for a descendant that leaves the group, and the feature file's Orchestrator brief requires rejecting overclaiming wording in code comments. Counter-measure, for R7 and stated as a PROPERTY rather than an implementation: after the deadline fires and the group kill is sent, `run_guarded` must return within a bounded grace period regardless of whether any process still holds the pipes, and the result must say plainly whether the streams were complete when it returned; the docstring sentence must narrow to the process group it can actually reach. T002a is BLOCKED until this is fixed — migrating a seam onto this guard would make hangs harder to see than they are today, since an unguarded hang at least does not report a satisfied timeout. OPEN.
+
+- R-0496 — Medium, THE T001 SUITE IS RED IN FILE ORDER ON A MARGINAL ASSERTION THAT COMPARES KERNEL CPU ACCOUNTING AGAINST AN EXACT INTEGER LIMIT. Raised by the reviewer at the R5 gate while re-running G11. `python3 -m pytest tests/orchestration/test_exec_guard.py -q` at 16506c0b returns `1 failed, 5 passed`, exit 1, on five consecutive runs, failing at `test_cpu_limit_kills_a_busy_loop_and_names_the_limit` on `assert result.cpu_seconds_used >= 1.0` with the measured value 0.999776; the same test run ALONE passes. Everything the test exists to prove holds in the failing run: `term_signal` is SIGXCPU, `classification` is `resource_limit`, `tripped_limit` is `cpu_seconds` and it is a member of `limits_enforced`. Only the accounting assertion fails, and it fails because `ru_utime + ru_stime` is sampled from the kernel's own CPU accounting, which is granular and rounds against the RLIMIT_CPU soft limit rather than exactly to it, so a value a few hundred microseconds under an integer limit is the NORMAL outcome and not an anomaly. The handback reports `6 passed in 4.59s` for this command, and the reviewer's reading contradicts it; the boundary mechanism explains both readings without any dishonesty, and this finding records it as a marginal-assertion defect for that reason — see the RECORD-R5 paragraph, which declines the harsher reading explicitly. Counter-measure for R7: assert the property the test is named for and drop or loosen the accounting assertion — if CPU consumption is asserted at all it is asserted against a tolerance strictly below the limit, never against the limit itself, because a test whose expected value sits ON a boundary is a coin flip that will re-fail later at a much worse moment. This is the reviewer-arithmetic family of R-0327 and R-0336 appearing inside a WORKER-authored test rather than inside a reviewer gate: order the colour, never the exact number. OPEN.
+
+- R-0497 — Low, A REVIEWER GATE ORDERED AN EXPECTED VALUE THE CODE COULD NOT PRODUCE: G8 OF THE R5 BLOCK REQUIRED A CONTENT GREP TO MATCH A FILE THAT NEVER NAMES ITS OWN PATH. Raised by the reviewer against its own block at the R5 gate. R5's G8 ordered `grep -rn "exec_guard" packages/ apps/ scripts/ tests/` to return "matches in `packages/orchestration/exec_guard.py` and `tests/orchestration/test_exec_guard.py` ONLY", but `grep` matches CONTENT and the new module never writes the string `exec_guard` anywhere inside itself — its docstring says "execution guard" — so the module's own file cannot appear in that output by construction. The real result is two lines, both in the test file. The worker read the difference correctly, reported it, and explicitly did not edit the module to make the gate match, which is the behaviour the block's constraint 7 asks for and the reason this is Low rather than higher: nothing false was recorded and no round passed on it. The cost is one declared deviation spent proving a reviewer mistake. This is the pre-emission checklist item 8 class — a gate whose expected VALUE the code contradicts — recurring in its cheapest form, and the specific lesson is narrower than item 8 as written: a gate over an ABSENCE must name the property it means, which here is "no file other than these two imports or mentions the module", so the honest form orders the SET of matching files and asserts that set contains no third entry, rather than predicting which of the two will appear. The fix is reviewer-side and lands in the next block's gate wording, not in a worker edit; promoting the narrower rule into docs/agents/planner_reviewer_prompt.md §3 is a `docs/agents/**` edit outside this feature's change set and is NOT claimed here, but named for the paydown branch that already carries R-0403, R-0448, R-0482, R-0487, R-0490, R-0493 and R-0494. OPEN.
+
+Gate: R6 — PASS. Every ordered gate was re-run by the reviewer from the repository root at ca5ff4f1, and every one reproduces the handback's reading, with the round's single declared deviation CONFIRMED rather than refuted. TRANSPORT, against the reviewer's OWN scratchpad original and NOT by digest fallback (§4.9): `.remedy-wt/f085-r6.md`, the committed `.agent/authored/f085-r6.md` and the committed `.agent/last_block.md` are byte-EQUAL at sha256 fc4752a4ac333290e30d11145beaf519b9b6eb46d3b01099f95869fff5956d03, 22488 B, 213 lines. `.agent/plan.md` at HEAD byte-equals the PLAN slice at sha256 8b4398f8616dcdb71cf72d254e22c09937f87052350e22bd2721cb69ab1ef5ad, 2136 B, 38 lines, under the 50-line cap, carrying `## Goal`, `## Next Steps` and an F-id. The C1 append is honest: the pre-C1 blob of 214867 B is a byte-exact PREFIX of the 225757 B post-C1 file, the RECORD-R5, R0495, R0496 and R0497 slices each occur exactly once in the whole file and each exactly once inside the 10890-byte, eight-line appended tail, the numstat is `8 0` with a zero deletion column, and the file is byte-identical from C1 through HEAD. The open set moved by exactly three: 109 registered / 0 resolved / 109 open at 16506c0b against 112 / 0 / 112 at HEAD, symmetric difference of HEAD-open against base-open plus R-0495, R-0496 and R-0497 EMPTY, 0 duplicate ids, 0 resolutions naming an unregistered id, 0 line-start `^Landed: R-` records, max R-0497 and next free R-0498. The substring `Steps` survives 19 times. The change set is exactly the five ordered `.agent/**` paths with nothing under `packages/`, `tests/`, `docs/`, `apps/` or `scripts/`, and G8's counter-proof holds: `packages/orchestration/exec_guard.py` at sha256 d9c77caec4ed9136868cef080bd2e2ae18c4216851507dc943d778d5c575114e, 12241 B, and `tests/orchestration/test_exec_guard.py` at sha256 9301bc652ecf555b983e0cf85dc7c5da52071ef20de741b9cd3f1476188bad53, 6211 B, are byte-identical at 16506c0b and at HEAD, so constraint 4 held and nothing was repaired under cover of a record round. The history is five single-parent commits, bb22b2dd←16506c0b then 4cc753b6, 07255ccd, 93fcf6ff and ca5ff4f1, and the reflog over the round carries `commit:` entries only. The canary is `42 passed in 20.46s`, exit 0. THE DEVIATION, CONFIRMED: G9 ordered a COLOUR — it passed only when the command FAILED — and the worker reported that the colour does not reproduce, 3 red and 4 green over seven runs. At the reviewer's own hand the same command at HEAD is red on 8 runs and green on 4 out of TWELVE, `1 failed, 5 passed` against `6 passed`, always at `test_cpu_limit_kills_a_busy_loop_and_names_the_limit`. The worker's reading is therefore corroborated and the gate as written was unmeetable rather than unmet. The worker recorded the real commands, exit codes and summary lines, edited nothing the gate measures — G8 is the byte proof — and declared the deviation, which is exactly what constraint 7 asks of it; the defect is the reviewer's own and is registered as R-0498. The values R6 routed nowhere are recorded HERE, measured by the reviewer at ca5ff4f1, which is the R-0494 counter-measure working as designed: the handback commit ca5ff4f1 inserted 41 lines and deleted 60, the per-commit insertions before it are C0a 213, C0b 106, C1 8 and C2 14 with none over 500, the post-C5 change set is the same five paths, `git status --porcelain` is EMPTY, `git worktree list` is one line, the push landed with origin at ca5ff4f1, and `.agent/handoff.md` measures 87 lines against its own DECISION D15 declaration of 87, so its self-measurement is honest. LAST_REVIEWED_SHA advances to ca5ff4f1.
+
+- R-0498 — Low, A REVIEWER GATE ORDERED AN EXPECTED COLOUR FOR A COMMAND THE REVIEWER HAD SEEN ONLY FIVE TIMES, AND THAT COMMAND IS A COIN FLIP RATHER THAN RELIABLY RED. Raised by the reviewer against its own R6 block at the R6 gate. G9 of that block ordered `python3 -m pytest tests/orchestration/test_exec_guard.py -q`, declared that the gate PASSES when the command FAILS, and rested that order on five consecutive red runs measured at 16506c0b. The worker got 3 red and 4 green over seven runs and declared the deviation; the reviewer then measured 8 red and 4 green over twelve runs at ca5ff4f1. Five consecutive observations of one colour are not evidence of determinism — for an even coin five identical outcomes arrive once in sixteen attempts, which is ordinary rather than remarkable — so the sample never supported the order built on it, and the flakiness was a property of the test the whole time rather than something that changed between rounds. The cost was one declared deviation on a round that did everything else right, and the worse branch was reachable: had the worker's seven runs happened to come out all red, an unmeetable gate would have been recorded as satisfied and the coin flip would have stayed invisible until it fell the other way at a less convenient moment. This is the reviewer-arithmetic family of R-0327 and R-0336 reaching the same place from a third direction — R-0327 ordered a count the reviewer computed by hand, R-0497 ordered a value the code could not produce, and this one orders a colour that a non-deterministic command cannot honestly promise. Counter-measure, binding on the reviewer from this round on and APPLIED IN THE SAME BLOCK THAT REGISTERS THIS FINDING, as gate G10: a gate that names an expected COLOUR for a command whose determinism has not been established orders that command run at least TEN times with every exit code and summary line reported, and either requires the colour on all ten or is rewritten as a probe that reports what it saw. Promoting the rule into the docs/agents/planner_reviewer_prompt.md §3 pre-emission checklist is a `docs/agents/**` edit outside this feature's change set and is NOT claimed here; it is named for the paydown branch that already carries R-0403, R-0448, R-0482, R-0487, R-0490, R-0493, R-0494 and R-0497. OPEN.
+
+Done: R-0496 — RESOLVED at R7. `assert result.cpu_seconds_used >= 1.0` became `assert result.cpu_seconds_used >= 0.5` in `test_cpu_limit_kills_a_busy_loop_and_names_the_limit`, with a comment above it naming the kernel-accounting reason the old value was a boundary: `ru_utime + ru_stime` rounds against RLIMIT_CPU rather than exactly to it. The counter-measure the finding asked for is met — the tolerance is strictly BELOW the limit and the property the test is named for, the SIGXCPU trip, is asserted separately and unchanged. The reviewer verified the fix by running `python3 -m pytest tests/orchestration/test_exec_guard.py -q` TEN times at d37d1a1e: ten exits of 0, ten `6 passed` summaries, against 8 red of 12 measured at ca5ff4f1 before the fix. The coin flip is gone by measurement rather than by assertion. Commit e77fa588, `7 1` on that path.
+
+Gate: R7 — PASS. Every one of the fifteen ordered gates was re-run by the reviewer from the repository root at d37d1a1e and every one reproduces the handback's reading; the round declared no deviation of substance and none was found. TRANSPORT, against the reviewer's OWN scratchpad original and NOT by digest fallback (§4.9): `.remedy-wt/f085-r7.md`, the committed `.agent/authored/f085-r7.md` and the committed `.agent/last_block.md` are byte-EQUAL at sha256 f6fd67339f3c9745fb845b95a1fcb5649373c70c410a5852d97a3a7a027ca6af, 21267 B, 253 lines. `.agent/plan.md` at HEAD byte-equals the PLAN slice at sha256 1a2b4a3ed34f4a4ade3ffef65f2d307aebe67b64e549c1439a26ba7434920a45, 2297 B, 40 lines, under the 50-line cap, carrying `## Goal`, `## Next Steps` and an F-id. Both live_review appends are honest: the 225757 B base blob is a byte-exact PREFIX of the 231728 B post-C1 file, which is itself a byte-exact PREFIX of the 231994 B HEAD blob, and the numstats are `4 0` at C1 and `2 0` at C3 with both deletion columns zero. The open set moved by exactly one: 112 registered / 0 resolved / 112 open at ca5ff4f1 against 113 / 0 / 113 at HEAD, HEAD-open minus base-open = {R-0498} and base-open minus HEAD-open = {}, 0 duplicate ids, 0 resolutions naming an unregistered id, max R-0498 and next free R-0499. Exactly one LINE-START `^Landed: R-\d+` record exists and it names R-0496, which is the shape §4 item 4 asks for and which THIS round retires into the authored `Done:` above. The substring `Steps` survives 21 times. The change set is exactly the six ordered paths with nothing under `packages/`, `docs/`, `apps/` or `scripts/`, and the UNCHANGED GUARD holds: `packages/orchestration/exec_guard.py` is byte-identical at ca5ff4f1 and at HEAD at sha256 d9c77caec4ed9136868cef080bd2e2ae18c4216851507dc943d778d5c575114e, 12241 B, so constraint 4 held and no part of R-0495's fix leaked into the test round. The CPU-ASSERT pair is a REWRITE and reads as one: the FROM occurs 0 times at HEAD, the TO line exactly 1 time, numstat `7 1`. No marker line reached a target file — 0 `<<<SLICE` and 0 `<<<END` in `.agent/plan.md`, `.agent/live_review.md` and `tests/orchestration/test_exec_guard.py` — and the handback's claim about the single pre-existing `<<<` in `.agent/live_review.md` is exact: 1 occurrence at ca5ff4f1 and 1 at HEAD, in authored prose about a former gate. THE COIN FLIP IS GONE, measured and not asserted: ten consecutive runs of `python3 -m pytest tests/orchestration/test_exec_guard.py -q` at the reviewer's own hand are ten exits of 0 and ten `6 passed` summaries between 4.55s and 4.60s, against the 8 red of 12 the reviewer measured at ca5ff4f1 — which is what R-0498's counter-measure asks a colour gate to establish before it is ordered. `python3 -m ruff check` on the test file is exit 0 under the repository's own configuration; the canary is `42 passed in 20.49s`, exit 0; the eight-file structural sweep is `350 passed, 6 skipped`, exit 0, three times out of three. Per-commit insertions are C0a 253, C0b 156, C1 4, C2 7, C3 2 and C4 12, none over 500, and the history is seven single-parent commits d0e597a3←ca5ff4f1 through d37d1a1e with a reflog of `commit:` entries only. The values R7 routed nowhere are recorded HERE, measured by the reviewer at d37d1a1e, which is the R-0494 counter-measure working as designed: the handback commit d37d1a1e inserted 58 lines and deleted 42, `.agent/handoff.md` measures 103 lines against its own DECISION D15 declaration of 103 so its self-measurement is honest, `git status --porcelain` is EMPTY, `git worktree list` is one line, and origin carries d37d1a1e with no PR open. LAST_REVIEWED_SHA advances to d37d1a1e.
+
+- R-0499 — Low, THE EIGHT-FILE STRUCTURAL SWEEP GOES RED ABOUT ONCE IN TWENTY RUNS INSIDE A FRESH GIT WORKTREE, AND THE FAILING NODE ID HAS NEVER BEEN CAPTURED. Raised by the reviewer at the R8 authoring dry run. Two observations exist and both are inside a disposable worktree, never in the primary checkout: the F085 R7 worker saw one red in 22 runs on a scratch worktree carrying a larger draft change and did not capture the node id, and the reviewer saw one red in 14 runs on the R8 dry-run worktree and did not capture it either, because the run that produced it was not the run that carried `-rf` output to the log. The red reading is `1 failed, 348 passed, 7 skipped` against the green `350 passed, 6 skipped`, so a test that normally PASSES was SKIPPED in the same run that another test failed — which is the signature of an environment-conditional skip rather than of a logic defect. The sweep's only environment-conditional member is `test_typescript_compiles` in `tests/ui_server/test_dashboard_contract.py`, which resolves `apps/ui/node_modules/.bin/tsc` relative to the file's own tree, skips with "UI toolchain absent" when that path is missing, and otherwise shells out to a REAL `tsc --noEmit` under `timeout=30` — the one member of the eight-file sweep that depends on a heavy external toolchain and on wall-clock. `node_modules` is gitignored, so a fresh worktree's copy of it is populated out of band and its state at the worktree's FIRST sweep run is not something the sweep controls. Nothing in the F085 change set reaches any of the eight files, so this is a pre-existing property of the gate and not of the guard. Counter-measure, already applied in the block that registers this finding: the sweep is ordered as a PROBE carrying `-rf`, never as an expected COLOUR, and a red run reports its FAILED node id verbatim and hands back rather than re-running until green — which is the only way the id gets captured. The finding resolves when a red run finally names the test. Whether `test_typescript_compiles` belongs in a structural sweep at all is a question for the F252 flake work and is NOT claimed here. OPEN.
+
+Gate: R8 — PASS, and the round that finally makes the guard bound its own runtime. Every one of the fifteen ordered gates was re-run by the reviewer from the repository root at b868401f and every one reproduces the handback's reading. TRANSPORT, against the reviewer's OWN scratchpad original and NOT by digest fallback (§4.9): `.remedy-wt/f085-r8.md`, the committed `.agent/authored/f085-r8.md` and the committed `.agent/last_block.md` are byte-EQUAL at sha256 b89466df0a7caa60971c727be97ae1ab0de7478476fc7be391a0bdb63163dfde, 27927 B, 393 lines. `.agent/plan.md` at HEAD byte-equals the PLAN slice at sha256 a0bd751ab5087eea336976f65cc2aa62f79dddf74fbecbc672d6bf92ab2db1a5, 2235 B, 39 lines, under the 50-line cap, carrying `## Goal`, `## Next Steps` and an F-id. The C1 edit is exactly the shape the block ordered: the pre-C1 blob ends with the LANDED-R0496 line, stripping that line leaves 231729 B which is a byte-exact PREFIX of the 238429 B post-C1 file, and the 6700-byte remainder equals the DONE-R0496 slice, a blank line, the RECORD-R7 slice, a blank line and the R0499 slice, byte for byte — the reviewer reconstructed that remainder from its own scratchpad slices and compared bytes, rather than reading the worker's claim. The numstat is `5 1` and the single deletion is the retired `Landed:` line. The open set moved as ordered: 113 registered / 0 resolved at d37d1a1e against 114 / 1 at HEAD, registered delta exactly {R-0499} with nothing lost, resolved exactly {R-0496} against an empty base, 0 duplicate ids, 0 resolutions naming an unregistered id, max R-0499, next free R-0500, and the LINE-START `^Landed: R-\d+` count fell from 1 to 0 — the worker's marker retired into reviewer-authored text, which is what §4 item 4 asks for. The substring `Steps` survives 23 times. The change set is exactly the seven ordered paths with nothing under `docs/`, `apps/` or `scripts/`. THE FIX ITSELF, read as a diff and not as a summary: `run_guarded`'s `finally` no longer calls `out_pump.join()` and `err_pump.join()` untimed; it computes ONE `drain_deadline` from `policy.stream_drain_grace_seconds`, joins both pumps against that shared deadline so the grace is a total and not a per-stream cost, derives `streams_complete` from `is_alive()` on both, and closes `proc.stdout`/`proc.stderr` ONLY when the drain completed — the deliberate leak of a pipe read end under a still-blocked reader being cheaper than a recycled-fd read, which the added comment states where a reader will find it. `stream_drain_grace_seconds` and `streams_complete` are documented in their own dataclass docstrings, and the `run_guarded` docstring's old absolute claim "no descendant outlives this call" is narrowed to "no descendant of THAT GROUP", with the setsid escape named and attributed to R-0495. All seven pairs read as declared: GUARD5 and GUARD6 are rewrites with FROM 0x and TO 1x, GUARD1, GUARD2, GUARD3, GUARD4 and GUARD7 are appends with TO 1x, numstat `32 5`. The new test is present exactly once and the file ends with it. THE PROPERTY IS MEASURED, NOT ASSERTED: the reviewer reproduced R-0495 before ordering the fix — an escapee sleeping 20s under `wall_timeout_seconds=1.0` made the unfixed guard return after 20.13s — and the fixed guard returned after 6.00s, the 1.0s deadline plus the 5.0s grace, with `streams_complete=False` and no surviving process. Ten consecutive runs of `python3 -m pytest tests/orchestration/test_exec_guard.py -q` at the reviewer's own hand are ten exits of 0 and ten `7 passed` summaries between 7.62s and 7.66s, and the worker's independent ten are the same. The red control is decisive and the reviewer ran it too, in a disposable worktree: replacing the bounded join with `pump.join()` turns the suite red at exactly one node, `test_wall_timeout_bounds_the_call_when_a_descendant_escapes_the_group`, on `assert result.streams_complete is False` — so the new test detects the very regression it was written for, and the gate can fail honestly. `grep -rn "exec_guard"` over packages, apps, scripts and tests still names exactly one file, the test file, so constraint 4 held and NO call site was migrated: the running system is still unprotected and no containment claim may be made from this round. Ruff is exit 0 under the repository's own configuration; the canary is `42 passed in 20.48s`, exit 0; the eight-file sweep is `350 passed, 6 skipped`, exit 0, three times out of three, so R-0499 gained no new observation. Per-commit insertions are C0a 393, C0b 268, C1 5, C2 32, C3 35 and C4 12, none over 500, and the history is seven single-parent commits 988869c6←d37d1a1e through b868401f with a reflog of `commit:` entries only. The values R8 routed nowhere are recorded HERE, measured by the reviewer at b868401f (R-0494): the handback commit b868401f inserted 45 lines and deleted 44, `.agent/handoff.md` measures 104 lines against its own DECISION D15 declaration of 104 so its self-measurement is honest, `git status --porcelain` is EMPTY, `git worktree list` is one line, and origin carries b868401f with no PR open. The round's eight declared deviations were all checked and all are accurate; deviation 5 is the honest declaration of a real defect the reviewer caused, and it is registered as R-0500 rather than held against the round. LAST_REVIEWED_SHA advances to b868401f.
+
+- R-0500 — Low, A BLOCK ORDERED "PRECEDED BY EXACTLY ONE BLANK LINE" FOR AN APPEND WHOSE TARGET WAS A TOP-LEVEL PYTHON DEFINITION, WHICH THE LANGUAGE SEPARATES BY TWO. Raised by the reviewer against its own R8 block at the R8 gate. Change item 5 of that block ordered the NEW-TEST slice appended "preceded by exactly one blank line", and the worker applied it exactly, so `tests/orchestration/test_exec_guard.py` now separates its last test from the one above by ONE blank line while all its other tests are separated by TWO. The worker was right not to adjust the bytes — constraint 2 forbids it — and right to declare it, which it did as deviation 5. The wording came from the `.agent/live_review.md` appends in the same block, where one blank line IS the convention, and was reused for a Python file without re-reading what the target file's own layout demands; that reuse is the defect. Lint does not catch it and cannot be relied on to: `ruff check` was exit 0 both before and after, because pycodestyle's blank-line rules E301-E306 are preview-only in stable ruff and the repository selects `["E", "F", "W", "I", "UP"]` without preview, so those rules are never EVALUATED rather than merely unreported — the same shape as R-0463, where `--isolated` made a probe blind rather than wrong. The cost is one line of churn and this finding; nothing was mismeasured and no gate passed falsely, which is why it is Low. Counter-measure, binding on the reviewer from this round on: a block that orders an APPEND into a source file states the separator the TARGET LANGUAGE requires and never a generic blank-line count carried over from a prose or state file — and where the separator itself is the thing being fixed, the gate MEASURES it directly, as G10 of the block registering this finding does, rather than resting on a linter that does not evaluate the rule. Promoting the rule into the docs/agents/planner_reviewer_prompt.md §3 pre-emission checklist is a `docs/agents/**` edit outside this feature's change set and is NOT claimed here; it is named for the paydown branch that already carries R-0403, R-0448, R-0482, R-0487, R-0490, R-0493, R-0494, R-0497 and R-0498. OPEN.
+
+Done: R-0500 — Resolved at R10. The new test is separated from the one above it by
+two blank lines, matching every other top-level definition in
+`tests/orchestration/test_exec_guard.py`; the fix was commit 76f53036 of R9 and
+added exactly one newline byte and no code. The reviewer re-measured the property
+at 02043452 rather than reading the claim: the separator list over the whole file
+is `[3, 3, 3, 3, 3, 3, 3]` at HEAD against `[3, 3, 3, 3, 3, 3, 2]` at b868401f, and
+the file grew from 8134 to 8135 bytes, a difference of exactly one. The
+counter-measure the finding names is carried into R11, whose block states the
+separator PYTHON requires for the tests it appends, distinguishes it from the
+one-blank-line convention that governs this prose file, and measures it directly
+instead of resting on a linter that never evaluates the rule. Promoting the
+counter-measure into the docs/agents/planner_reviewer_prompt.md §3 checklist
+remains a `docs/agents/**` edit outside this feature's change set and is NOT
+claimed here; it stays routed to the paydown branch, whose backlog this round's
+DECISION D2 calls overdue.
+
+Gate: R9 — PASS, the round that recorded the R8 verdict and fixed the separator the
+R8 block got wrong. All fifteen ordered gates were re-run by the reviewer from the
+repository root at 02043452 and every one reproduces the handback's reading; the
+verdict rests on those runs and not on any earlier session's claim about them, a
+distinction that matters because R9's PASS existed nowhere in this repository
+until this line. TRANSPORT: the committed `.agent/authored/f085-r9.md` and the
+committed `.agent/last_block.md` are byte-EQUAL at sha256
+e8011bbab7c5e3cd1817c1566e1112fde16ec47975b65e5cb05a358ff6d6f42d, 23297 B, 263
+lines — computed over the COMMITTED files, the digest fallback of §4.9, because
+this session did not author that block and holds no scratchpad original of it.
+`.agent/plan.md` byte-equals its slice at sha256
+83b4a6777d941144520af17a34a3731a16ab650bbc962822f1f17d356971eedb, 2217 B, 39
+lines, under the 50-line cap, carrying `## Goal`, `## Next Steps` and an F-id. The
+two `.agent/live_review.md` commits are pure appends as ordered: the pre-C1 blob is
+a byte-exact PREFIX of the post-C1 file with a 7530-byte remainder, the pre-C3 blob
+is byte-identical to the post-C1 blob and is a PREFIX of the file at HEAD with a
+250-byte remainder, and both numstats carry a deletion column of 0. The open set
+moved exactly as ordered: 114 registered / 1 resolved at b868401f against 115 / 1
+at HEAD, registered delta exactly {R-0500} with nothing lost, resolved UNCHANGED at
+{R-0496} because R9 resolved nothing, 0 duplicate ids, 0 resolutions naming an
+unregistered id, and exactly one `^Landed:` record, naming R-0500 — which is what
+an unreviewed fix is supposed to look like, and which the commit carrying this
+record retires. The substring `Steps` survives 25 times. THE FIX ITSELF, read as a
+diff and not as a summary: commit 76f53036 adds ONE blank line before
+`@pytest.mark.subprocess` on the file's last test and changes no code, numstat
+`1 0`, 8134 B to 8135 B. THE PROPERTY IS MEASURED, NOT ASSERTED: the separator list
+runs `[3, 3, 3, 3, 3, 3, 2]` at b868401f and `[3, 3, 3, 3, 3, 3, 3]` at HEAD, so
+every decorated test now carries the two blank lines Python separates top-level
+definitions by, and the trailing 2 that was the defect is gone.
+`packages/orchestration/exec_guard.py` is UNCHANGED across the round at sha256
+7dde71c84992af985b28c72d9b460280238721dae474938806f28f9b421b3b67 on both sides, so
+R9 added nothing to the module R8 fixed and no containment claim follows from it.
+Ten consecutive runs of `python3 -m pytest tests/orchestration/test_exec_guard.py
+-q` at the reviewer's own hand are ten exits of 0 and ten `7 passed` summaries
+between 7.60s and 7.66s; ruff is exit 0 under the repository's own configuration
+and says nothing about the separator, exactly as the block declared; the canary is
+`42 passed in 20.49s`, exit 0; and the eight-file structural sweep is `350 passed,
+6 skipped`, exit 0, three times out of three, so R-0499 gained no new observation.
+The change set is exactly the six ordered paths with nothing under `docs/`, `apps/`
+or `scripts/`. Per-commit insertions are C0a 263, C0b 124, C1 4, C2 1, C3 2 and C4
+6, none over 500, and the history is seven single-parent commits 831a2b0c←b868401f
+through 02043452 with no amend, rebase, reset or force-push. The values R9 routed
+nowhere are recorded HERE, measured by the reviewer at 02043452 (R-0494): the
+handback commit 02043452 inserted 43 lines and deleted 47, `.agent/handoff.md`
+measures 100 lines against its own DECISION D15 declaration of 100 so its
+self-measurement is honest, `git status --porcelain` is EMPTY, `git worktree list`
+is one line, and origin carries 02043452 with no PR open. The round's five declared
+deviations were all checked and all are accurate. LAST_REVIEWED_SHA advances to
+02043452.
+
+- R-0501 — Low, A HANDBACK NAMED THE NEXT SESSION'S FIRST ACTION WITHOUT NAMING
+PHASE 1 RULE 1 BEFORE RULE 2. Raised by the reviewer at the R9 gate against the R9
+block, which authored that section. docs/agents/self_drive_protocol.md Phase 2 ends
+with a standing requirement on this exact text: "every handoff that names the next
+session's first action names Phase 1 rule 1 before rule 2", rule 1 being the
+re-read of `.agent/STOP` from disk and rule 2 the Open PR Gate. The R9 handoff's
+"Next" section opens with "R10 starts T002a" — a next-session first action — and
+among its remaining bullets names the absence of an open PR, which is rule-2
+territory, while rule 1 appears nowhere in the file. The requirement exists because
+Phase 0 is one-shot while G6 binds at any point, so a sentinel appearing
+mid-session stays invisible until an unrelated gate trips over it (R-0347); the
+belt-and-braces reminder is what is missing. Severity is Low precisely because
+Phase 0 does probe `.agent/STOP` at session start and did so here, finding it
+absent, so nothing was actually missed. This is the same family as R-0500 and the
+second instance in two rounds: in both, the block author reused a section's
+established wording without re-reading the rule that governs that section.
+Counter-measure, binding on the reviewer from this round on and demonstrated by the
+block that registers this finding: a block ordering a handback's "Next" section
+states the rule ORDER that section must carry rather than describing its content,
+as change item 5 does here. The recurrence is why this round's DECISION D2 calls
+the paydown branch overdue: a counter-measure that cannot be written into
+docs/agents/planner_reviewer_prompt.md §3 while a feature branch is open binds only
+the block that states it, and this family has now cost two rounds. OPEN.
+
+Gate: R11 — PASS, the round that gave `exec_guard` an opt-in environment allowlist
+with a floor beneath it. All thirteen ordered gates were re-run by the reviewer from
+the repository root at 0406ceba and every one reproduces the handback's reading.
+TRANSPORT, disk-to-disk against the reviewer's OWN scratchpad original and NOT by
+digest fallback (§4.9): `.remedy-wt/f085-r11.md`, the committed
+`.agent/authored/f085-r11.md` and the committed `.agent/last_block.md` are byte-EQUAL
+at sha256 0ac925d29a4c537683a695d732ed4d4af62e600ed7486d7d0d762514715a469b, 19176 B,
+400 lines — at the 400-line block cap of DECISION F105 D5, not over it. `.agent/plan.md`
+is sha256 699172bfed0791f5ab282384ef8f669c26249c6418ddc4fdd7a8c1688edd361a, 2446 B, 42
+lines, under the 50-line cap, and the PLAN pair did what a narrowed pair is for: the
+`## Goal` and `## Risks` sections are byte-IDENTICAL to their text at 2587780d, the
+`## Next Steps` list renumbers contiguously 1-2-3 with no orphaned entry, and PLANF
+occurs 0 times against PLANT once. ALL TEN pair shapes read exactly as declared over
+the whole of each target file: FROM 0 / TO 1 for the rewrites PLAN, GUARD1, GUARD2,
+GUARD4, GUARD6 and TEST1, and FROM 1 / TO 1 for the appends GUARD3, GUARD5, GUARD7 and
+TEST2, with NEWTESTS occurring once and the test file ending with it. THE CHANGE
+ITSELF, read as a diff and not as a summary: `FORBIDDEN_ENV_KEYS` is a frozenset whose
+members and spelling match `managed_builder_execution._FORBIDDEN_ENV_KEYS`;
+`scrub_child_env` intersects a caller's allowlist with the source mapping AFTER
+subtracting that floor, so an allowlist naming a secret cannot lower it, and an
+allowlisted key the source never defined is absent rather than empty; `env_allowlist`
+is a new frozen-dataclass field defaulting to None; and `run_guarded` computes
+`child_env` from `os.environ` or from `policy.env` ONLY when the allowlist is not
+None, so the T001 pass-through contract is byte-for-byte unchanged when it is. The
+module docstring's absence note was narrowed rather than deleted, and a new paragraph
+states the honest limit a reader would otherwise have to discover: an allowlist bounds
+what the PARENT hands over and never what the child's runtime adds back, a CPython
+child setting `LC_CTYPE` itself under PEP 538 locale coercion, so the child's
+environment is a SUPERSET of the scrubbed one. That paragraph is why the tests
+subtract an interpreter-added key instead of asserting an exact environment — the
+reviewer hit that exact failure in its own pre-emission dry run, which is what a dry
+run is for. THE PROPERTY IS MEASURED, NOT ASSERTED: before ordering the block the
+reviewer ran three red controls in a disposable worktree and each was decisive —
+dropping the `FORBIDDEN_ENV_KEYS` subtraction reddens exactly
+`test_a_secret_like_variable_never_reaches_the_child_even_when_allowlisted`; scrubbing
+unconditionally reddens eight tests including every T001 fixture, which is what proves
+the None path load-bearing; and returning `""` for an undefined key reddens exactly
+`test_scrub_child_env_drops_a_key_the_source_never_defined`. Restored, the suite is
+green again. At HEAD the reviewer's own ten consecutive runs of `python3 -m pytest
+tests/orchestration/test_exec_guard.py -q` are ten exits of 0 and ten `12 passed`
+summaries between 7.71s and 7.79s — 12 against the 7 of R9, the five new tests. The
+import path was verified in the same session (`m.__file__` resolves inside the primary
+checkout and both new names are present), because a shell cwd that had silently
+persisted into a worktree is a real failure mode this session hit. Ruff is exit 0 for
+both files under the repository's own configuration, and the worker took the same
+reading at base BEFORE touching either file, so the green is unchanged rather than
+newly earned. The canary is `42 passed in 20.46s` and the four `.agent/` state readers
+are `157 passed in 19.74s`, both matching base. THE HONESTY GATE HOLDS, by a corrected
+measurement: the only TRACKED `.py` file containing the string `exec_guard` is the test
+file, and no tracked module imports `packages.orchestration.exec_guard`, so NO call
+site was migrated and nothing in the running system is scrubbed by this round. The
+change set is exactly the six ordered paths. Per-commit insertions are C0a 400, C0b
+358, C1 145 and C2 7, none over 500; the history is five single-parent commits
+a1726eb7←2587780d through 0406ceba with no amend, rebase, reset or force-push; and
+`git status --porcelain` is EMPTY with one worktree. `.agent/handoff.md` measures 90
+lines against its own DECISION D15 declaration of 90, so its self-measurement is
+honest. The round's six declared deviations were all checked and all are accurate; two
+of them report defects in the REVIEWER's gates rather than in the work, and the worker
+was right to report them as measured instead of repairing text to make a number come
+out — they are registered here as R-0502 and R-0503 rather than held against the round.
+LAST_REVIEWED_SHA advances to 0406ceba.
+
+Done: R-0501 — Resolved at R12. The counter-measure has now been applied twice on disk
+and verified by the reviewer both times: the R10 handback's "Next" section opens with
+"FIRST, per Phase 1 rule 1 of docs/agents/self_drive_protocol.md, re-read
+`.agent/STOP` from disk" and only then reaches the Open PR Gate, and the R11 handback
+does the same. Both blocks ordered that ORDER explicitly rather than describing the
+section's content, which is the counter-measure the finding named. The rule the R9
+handback missed — Phase 2's "every handoff that names the next session's first action
+names Phase 1 rule 1 before rule 2" — is therefore satisfied by the two most recent
+handbacks, and the belt-and-braces reminder exists again for the next session that
+resumes cold. Promotion of the counter-measure into the
+docs/agents/planner_reviewer_prompt.md §3 checklist stays a `docs/agents/**` edit
+outside this feature's change set and is NOT claimed here; it remains routed to the
+paydown branch, which this feature's DECISION D2 calls overdue.
+
+- R-0502 — Low, A REVIEWER GATE ASKED grep FOR A STRING THE TARGET FILE CANNOT
+CONTAIN, MAKING ITS EXPECTED RESULT UNREACHABLE. Raised by the reviewer at the R11
+gate against its own R11 block. Gate 11 of that block ordered
+`grep -rln "exec_guard" packages apps scripts tests` and declared that it "names
+exactly two paths — `packages/orchestration/exec_guard.py` and
+`tests/orchestration/test_exec_guard.py`". `grep -l` matches file CONTENT, and
+`exec_guard.py` does not contain the string `exec_guard` anywhere in its own source,
+so the module could never appear in that output — at 2587780d exactly as at HEAD. The
+declared result was unreachable when the gate was written, not broken by the round.
+The worker did the right thing: it reported the gate as measured, named the cause,
+demonstrated the underlying property by a different route, and changed nothing to make
+the number come out. This is the R-0371 family — a gate that cannot be satisfied by
+any honest run — and the neighbouring R-0438 case, where a path that did not resolve
+made a gate silently vacuous; here the gate was loud rather than vacuous, which is why
+it cost only a deviation. The PROPERTY the gate exists for does hold, by the corrected
+measurement the reviewer ran at the gate: intersected with `git ls-files`, the only
+tracked `.py` file containing `exec_guard` is `tests/orchestration/test_exec_guard.py`,
+and no tracked module imports `packages.orchestration.exec_guard`, so no call site was
+migrated. Counter-measure, binding on the reviewer from this round on: a no-caller gate
+names the IMPORT statement over TRACKED files —
+`git grep -ln "from packages.orchestration.<module> import"` — and never a bare
+filename grep, because a module's own name is the one string its source is least likely
+to contain, and untracked `__pycache__` artifacts otherwise pollute the result. OPEN.
+
+- R-0503 — Low, AN "EXACTLY ONCE AMONG THE ADDED LINES" PROOF IS UNSATISFIABLE FOR
+STRUCTURAL LINES. Raised by the reviewer at the R11 gate against its own R11 block.
+Gate 4 ordered, for each append-shaped pair, that "each TO-ONLY added line" occur
+"exactly once AMONG THE LINES THAT COMMIT ADDS", quoting
+docs/agents/planner_reviewer_prompt.md §4 item 9. Applied literally that is unmeetable
+whenever a TO adds more than one blank line or more than one bare `"""`, which every
+multi-definition Python slice does: R11's C1 added six blank lines to `exec_guard.py`,
+twenty-three to the test file, and two bare docstring terminators. The worker met the
+gate for every CONTENT-carrying line — GUARD3 18/18, GUARD5 1/1, GUARD7 5/5, TEST2
+16/16, zero content strays — and enumerated the structural repeats instead of
+filtering them out of sight, which is the honest reading and the one the reviewer
+accepts. The §4 item 9 rule was written for prose files, where a repeated line is a
+real signal that a slice landed twice; in a source file a repeated blank line carries
+no information at all. This is the same shape as R-0253, which already had to bend the
+whole-file version of this count because a TO legitimately repeats a sentence the file
+already carries — the rule bends, never the text. Counter-measure, binding on the
+reviewer from this round on: an "exactly once among the added lines" gate over a
+SOURCE file scopes itself to lines that are not blank and not a bare docstring
+delimiter, and says so in the gate rather than leaving the worker to discover the
+exception and spend a deviation on it. Whether §4 item 9 itself should carry that
+carve-out is a `docs/agents/**` edit outside this feature's change set and is NOT
+claimed here; it is routed to the paydown branch with R-0502. OPEN.
+
+Gate: R12 — PASS, the record round that carried the R11 verdict, one resolution and two
+reviewer-gate findings onto disk. All eleven ordered gates were re-run by the reviewer and every
+one reproduces the handback's reading. TRANSPORT, disk-to-disk and not by digest fallback: the
+reviewer's `.remedy-wt/f085-r12.md`, the committed `.agent/authored/f085-r12.md` and
+`.agent/last_block.md` are byte-EQUAL at sha256
+0f66ffe7b9a96bdb9bf8f9cb130a21d7ec2b8a8102f9f02cf85fa1ff74e78678, 18334 B, 264 lines. C1 IS A
+PURE APPEND, proven by shape: the pre-C1 blob is a byte-exact PREFIX of the post-C1 file, HEAD
+equals it, and the 9775-byte remainder is exactly the four ordered slices, each occurring ONCE and
+in order. THE ARITHMETIC: 116 / 2 / 0 at base against 118 / 3 / 0 at HEAD, so the open set rose
+114 to 115 by exactly two registrations against one resolution; the registered difference is
+R-0502 and R-0503 with nothing lost, the resolved difference R-0501, no duplicate ids, no
+resolution naming an unregistered id. `.agent/plan.md` is 41 lines under its 50-line cap with
+`## Goal`, `## Next Steps` and `## Risks` byte-IDENTICAL to base. THE HONESTY GATE HOLDS:
+`exec_guard.py` and its test are byte-unchanged, so no containment claim follows from this round.
+Canary 42 passed, state readers 157 passed, both matching base; insertions 264, 200, 123, 3, none
+over 500; five single-parent commits, no amend or force-push; the change set is exactly the five
+declared `.agent/` paths; `.agent/handoff.md` measures 85 lines against its declaration of 85; the
+five declared deviations are accurate. LAST_REVIEWED_SHA advances to the R12 handback commit.
+
+- R-0504 — Medium, A SOURCE-TEXT TEST ASSERTED A KEYWORD ITS TARGET'S OWN DOCSTRING ALSO CARRIED,
+SO THE TEST WAS VACUOUS FROM THE DAY IT WAS WRITTEN. Raised by the reviewer while measuring the
+R13 migration, against pre-existing code and not against any round.
+`tests/orchestration/test_managed_builder_execution.py::TestManagedRunner::test_shell_false_always`
+read `inspect.getsource(run_managed_builder)` and asserted that `shell=False` appears in it and
+`shell=True` does not. That function's DOCSTRING opens with "shell=False ALWAYS. Sanitized env.
+Hard timeout. Output byte cap.", so the positive half was satisfied by prose. The reviewer PROVED
+the vacuity rather than arguing it: in a disposable worktree at the round's base commit, deleting
+the `shell=False` keyword from the real `subprocess.run` call and touching nothing else left the
+test GREEN, exit 0, one passed. A test that stays green when the property it names is deleted was
+never testing that property. The negative half fails in the mirror image: the module docstring also
+carries "NO shell=True" among its hard rules, so a substring search for the dangerous form matches
+prose too. The property was never at risk — `test_no_shell_true_in_orchestration` walks the AST of
+every `packages/orchestration/*.py` and fails on a real `shell=True` keyword; what was at risk was
+the belief that this second test added anything. This is the R-0438 and R-0502 family, a gate that
+cannot fail honestly, and the third instance in three rounds, which is why severity is Medium
+rather than Low: the first two were the reviewer's own gate text, this one sat in the committed
+suite. Counter-measure, applied in the round that registers it: a test asserting the SHAPE of code
+parses that code and inspects the AST, never searches its text, because a docstring, a comment and
+a call site are indistinguishable to a substring search. C2 replaces it with an AST assertion that
+`run_managed_builder` holds no `subprocess` spawn node, that `run_guarded` holds exactly one
+`Popen` node passing no `shell` keyword, and that no `shell=True` keyword node exists here. OPEN.
+
+Gate: R13 — PASS, the round that gave `exec_guard` its first caller and put one live seam under
+supervision. All twelve ordered gates were re-run by the reviewer from the repository root at
+ee8e7ba1 and every one reproduces the handback's reading. TRANSPORT, disk-to-disk and not by
+digest fallback: the reviewer's `.remedy-wt/f085-r13.md`, the committed
+`.agent/authored/f085-r13.md` and `.agent/last_block.md` are byte-EQUAL at sha256
+e7f57d218a3bb2418b744753b46e667cfa8cf6e2ab22f43342e672c2eb865808, 23370 B, 400 lines — AT the
+DECISION F105 D5 block cap, not over it. C1 IS A PURE APPEND: the pre-C1 blob is a byte-exact
+PREFIX of the post-C1 file, HEAD equals it, and the 3777-byte remainder is exactly RECORD-R12 and
+R-0504, each occurring ONCE. THE ARITHMETIC: 118 / 3 / 0 at base against 119 / 3 / 0 at HEAD, so
+the open set rose 115 to 116 by exactly one registration against no resolution, with nothing lost,
+no duplicate id and no resolution naming an unregistered id. THE CHANGE ITSELF, read as a diff:
+`run_managed_builder` no longer calls `subprocess.run`; it calls `run_guarded` under a
+`_builder_exec_policy` that sets the wall deadline, the per-stream output cap, the cwd pin, a zero
+core dump and `env_allowlist=tuple(sorted(env))` — an identity over an already-sanitized env that
+adds `FORBIDDEN_ENV_KEYS` as a floor — and deliberately leaves `cpu_seconds`,
+`address_space_bytes` and `open_files` None with the reason written where a reader will look. A
+wall trip is re-raised as `subprocess.TimeoutExpired` so the module's existing timeout path is
+reached unchanged, and the result is wrapped in a `subprocess.CompletedProcess` so every
+downstream reader keeps its shape; `_guarded_exit_code` rebuilds the -SIGNUM form the guard
+reports as a NAME. BEHAVIOUR EQUALITY WAS MEASURED, NOT ASSERTED: before ordering the block the
+reviewer ran six paired probes against base and HEAD — echo, false, a 1s wall timeout, a missing
+command, an over-cap output and a SIGKILL suicide — and all six agree on status, exit code, stored
+output length and safe summary, including exit_code -9 on both sides and a child environment of
+exactly the eight sanitized keys with `GITHUB_TOKEN` absent. FOUR RED CONTROLS were decisive, each
+reddening EXACTLY its own test and nothing else, and the reviewer re-ran control (b) itself
+against the COMMITTED code in an isolated extraction: restoring the direct spawn reddens the AST
+test, disabling the wall re-raise reddens the timeout test, returning the raw returncode reddens
+the signal test, and dropping `env_allowlist` reddens the policy test. At HEAD the suite is
+132 passed against 129 at base, `test_exec_guard.py` is 12 passed unchanged, ruff is exit 0 for
+both files at base AND at HEAD, the canary is 42 passed and the four state readers are 157 passed.
+THE CALLER GATE, scoped to `-- packages tests` so no block file can match itself: ONE path at base
+and THREE at HEAD, adding the module and its test — the guard's no-caller era is over.
+`.agent/plan.md` is 42 lines under its 50-line cap with `## Goal` and `## Risks` byte-IDENTICAL to
+base. The change set is exactly the seven declared paths with 0 outside; insertions are 400, 391,
+42, 124 and 8, none over 500; the history is six single-parent commits with no amend, rebase,
+reset or force-push; `git status --porcelain` is EMPTY and `git worktree list` is ONE line; and
+`.agent/handoff.md` measures 95 lines against its own declaration of 95. The round's seven
+declared deviations were all checked and all are accurate — deviation 7 correctly caught a stale
+numeral in the dispatching brief, which named fourteen gates where the block numbers twelve; the
+block governed and all twelve ran. LAST_REVIEWED_SHA advances to the R13 handback commit.
+
+- R-0505 — Medium, TWO CLAUSES OF ONE BLOCK ORDERED INCOMPATIBLE THINGS, AND THE WORKER HAD TO
+SPEND A DEVIATION CHOOSING BETWEEN THEM. Raised by the reviewer at the R13 gate against its own
+R13 block. Gate G8 of that block ordered the four red controls to run "in a DISPOSABLE worktree
+under `.remedy-wt/`", which is what docs/agents/self_drive_protocol.md G5 requires of destructive
+verification. Constraint 3 of the SAME block said "No worktree is added, removed or pruned", and
+gate G1 ordered `git worktree list` to print ONE line. No execution satisfies all three. The
+constraint was correct for the round the block STARTED as — a record round plus a migration, with
+no destructive check — and was never revisited when the red controls were added to the gate list
+later in authoring. The worker resolved it in favour of the hard constraints, extracting
+`git archive HEAD` into a gitignored directory instead of adding a worktree, proved the isolation
+and the import path inside that copy, deleted it afterwards, and declared the whole thing. That is
+the right call and the right report, and the round was not damaged; what it cost was a deviation
+spent on the reviewer's bookkeeping. This is the family the F083 R9 lesson names — clause-versus-
+clause is the gap a per-clause checklist misses, because each clause is individually correct and
+only the PAIR is wrong. Counter-measure, binding on the reviewer from this round on: when a gate
+is added to a drafted block, re-read the CONSTRAINTS section against it before emission, and state
+in the constraint itself which gates are exempt from it rather than writing an absolute. A block
+that permits no disposable tree must not also order one. OPEN.
+
+- R-0506 — Medium, A MIGRATION FALSIFIED TWO DOCUMENTED ABSENCE CLAIMS AND LEFT BOTH STANDING.
+Raised by the reviewer at the R13 gate; the round MEASURED and reported both, exactly as its gate
+G12 ordered, and deliberately fixed neither. (1) `packages/orchestration/exec_guard.py` states
+under "Deliberate absences, written here because text search cannot find code that does not
+exist" that "NO CALLER. Nothing in this repository imports this module yet", and that choosing an
+allowlist per command class "is not done here". Both were true until R13 and are FALSE at
+ee8e7ba1: the scoped import grep names three paths, and `_builder_exec_policy` chooses exactly
+such an allowlist. (2) `packages/orchestration/managed_builder_execution.py`'s module docstring
+calls itself "the ONLY place in the codebase that may invoke subprocess for builder execution" and
+promises "shell=False ALWAYS", and `run_managed_builder`'s own docstring repeats it; the spawn is
+now `run_guarded`'s `subprocess.Popen`, which passes no `shell` keyword at all. The second text is
+the one that MADE R-0504 possible — a docstring sentence a source-text test could satisfy — so
+leaving it in place while its test has been replaced is the sharper half of this finding. Neither
+was fixed at R13 because `exec_guard.py` sits outside that round's declared change set and the
+docstring rewrite belongs with the four remaining builder sites, where the same sentences must be
+corrected once rather than twice. This is the R-0417 staleness family: a claim of ABSENCE has a
+lifetime, and the commit that ends it is the commit that owes the correction. R14 registers it;
+the R15 migration round must carry the fix for both files in its change set and gate the property
+that neither file claims an absence the caller gate contradicts. OPEN.
+
+Gate: R14 — PASS, the record round `.agent/STOP` halted after its third commit. All eight ordered
+gates were re-run by the reviewer from the repository root and every one reproduces the handback's
+reading. TRANSPORT, disk-to-disk and not by digest fallback: the reviewer's `.remedy-wt/f085-r14.md`,
+the committed `.agent/authored/f085-r14.md` and `.agent/last_block.md` are byte-EQUAL at sha256
+77447503b8bc9e86e2f8f905172874568777ae8d25b074c0d3662b912b10d32e, 15023 B, 214 lines. C1 IS A PURE
+APPEND: the pre-C1 blob is a byte-exact PREFIX of the post-C1 file, HEAD equals it, and the
+7296-byte remainder is exactly blank + RECORD1 + blank + FIND1 + blank + FIND2 in that order, each
+slice occurring ONCE, none carrying trailing whitespace, no marker line reaching it. THE ARITHMETIC: 119 / 3 / 0 at base against 121 / 3 / 0 at HEAD, so the open set rose
+116 to 118 by exactly two registrations against no resolution; the registered difference is R-0505
+and R-0506, the resolved difference empty, no duplicate id, no resolution naming an unregistered id.
+THE HALT WAS CORRECT AND HONESTLY REPORTED. `.agent/STOP` appeared mid-round, C2 was never started,
+`.agent/plan.md` is byte-IDENTICAL to base at sha256
+8dae6b41813aff162aeb1c5a877ab667be909c723c30bbb4dc5b3fce42f65f6d, and PLANF still occurs EXACTLY
+once in it — so the round did not half-apply a pair and then round the number, which is what this
+gate catches. G5 is red by the sentinel, not by a misapplication. THE HONESTY GATE HOLDS: `exec_guard.py`,
+`managed_builder_execution.py` and `test_managed_builder_execution.py` are byte-identical between
+base and HEAD, so no containment claim follows from that round. State readers 157 passed and canary
+42 passed, both matching base; the change set is three `.agent` paths before C3, short of the ordered
+four by `.agent/plan.md` alone, which IS the skipped commit; insertions 214, 150 and 80, none over
+500; four single-parent commits, every reflog entry `commit:`-prefixed, no amend, rebase, reset or
+force-push; `.agent/handoff.md` measures 79 lines against its D15 declaration of 79; all seven
+declared deviations are accurate. The sentinel is ABSENT at this round's start, so Phase 1 rule 1
+does not fire. TWO SCOPE REASSIGNMENTS, recorded because each contradicts text already on
+disk: R-0506 stays OPEN with its fix moved from R15 to R16, and T002a's CLI half is split — R15
+migrates the version probe, while `_call`, `_call_reviewer_structured` and the envelope mock are ONE
+indivisible unit (R-0507) R16 carries whole, already dry-run green. LAST_REVIEWED_SHA advances to
+the R14 handback commit.
+
+- R-0507 — Medium, A GREP OVER MOCK TARGETS WAS READ AS AN ENUMERATION OF THE CALL PATHS THOSE
+MOCKS COVER, AND THE SCOPE IT PRODUCED WAS WRONG. Raised by the reviewer against its own R15
+scoping work, before this block was emitted. Planning this round the reviewer grepped the suite for
+tests that patch the CLI spawn, found exactly one — `test_structured_cli_envelope.py` patching
+`packages.orchestration.pingpong_provider.subprocess.run` in its `_review` helper — read that helper
+as reaching `_call_reviewer_structured` alone, and concluded that the version probe and `_call` could
+migrate without touching a single test. FALSE: `test_4_legacy_non_schema_call_uses_result` sets
+`REMEDY_REVIEWER_FREETEXT=1`, which routes the same helper through `_call`, so migrating `_call`
+alone leaves that test patching a function the code no longer calls. The error was not the grep,
+which was right about WHERE the mocks are; it was reading a list of patch TARGETS as a list of the
+paths reached under them, when the reaching is decided by branches inside the tested code and by
+environment variables the tests set — the R-0258 family, a source guard the block never named. It
+cost no round only because the mandated dry run (planner_reviewer_prompt.md §3 checklist item 12)
+ran the candidate slices against those suites in a `git archive` extraction, where it surfaced as
+one red test in a set green at base. Counter-measure, binding on the reviewer from this round on:
+when a block moves a call site, never infer the affected tests from a grep over mock targets — RUN
+the candidate change against every suite touching the file and let the failures enumerate
+themselves. The plan consequence is recorded, not hidden: `_call`, `_call_reviewer_structured` and
+that mock are ONE indivisible unit, since re-pointing the mock at `_guarded_cli_run` reddens every
+envelope test still on the stdlib spawn. R15 migrates the independent version probe; R16 carries the
+coupled unit, already dry-run green. OPEN.
+
+Gate: R15 — PASS, the round that gave the claude CLI seam its guarded runner. All ten ordered gates
+were re-run by the reviewer from the repository root over c5d80471..7185d949 and every one
+reproduces the handback's reading. TRANSPORT, disk-to-disk and not by digest fallback: the
+reviewer's `.remedy-wt/f085-r15.md`, the committed `.agent/authored/f085-r15.md` and
+`.agent/last_block.md` are byte-EQUAL at sha256
+e2f4ef715c40f02df7d552e15348268b2d0edb24b986ff91e762c666314e2d88, 22895 B, 400 lines — AT the
+DECISION F105 D5 block cap, not over it. C1 IS A PURE APPEND: the pre-C1 blob is a byte-exact PREFIX
+of the post-C1 file, HEAD equals it, the remainder is exactly blank + RECORD1 + blank + FIND1, each
+occurring ONCE, and C1 added no marker line — the one slice-marker token the file holds is R7 prose,
+present at both ends. THE ARITHMETIC: 121 / 3 / 0 at base against 122 / 3 / 0 at HEAD, the open set rising 118 to
+119 by one registration against no resolution, difference exactly R-0507, no duplicate id and no
+resolution naming an unregistered id. THE CHANGE ITSELF, read as a diff and then re-measured: the
+module gains `_cli_exec_policy`, `_decode_cli_stream` and `_guarded_cli_run`, and `_resolve_version`
+now calls the runner. By AST over the HEAD blob, `_resolve_version` and `_guarded_cli_run` hold ZERO
+subprocess spawn nodes while `_call` and `_call_reviewer_structured` still hold ONE each — the
+coupled unit R-0507 names, deliberately untouched. THE STRONGEST PROOF AVAILABLE WAS TAKEN: the
+committed `pingpong_provider.py` and `test_claude_cli_exec_guard.py` are BYTE-IDENTICAL to the
+`git archive` extraction the reviewer dry-ran before emission, where seven red controls each
+reddened exactly their own tests, so the gates that pass here are the same gates proven capable of
+failing. At HEAD the goldens are 8 passed, the seven-file regression set is 333 passed at C1 and 333
+at HEAD, ruff is exit 0 on both touched paths, state readers 157 passed and the canary 42 passed.
+The change set is exactly the seven declared paths with 0 outside; insertions are 400, 339, 50, 134
+and 9, none over 500; six single-parent commits, every reflog entry `commit:`-prefixed, no amend,
+rebase, reset or force-push; `git status --porcelain` is EMPTY and `git worktree list` is ONE line.
+THE ROUND'S OWN REPORTING IS WHY THIS IS A PASS AND NOT A REPAIR: all three anomalies it declared
+are defects in the REVIEWER'S block text, not in its execution, and it reported each rather than
+quietly repairing a slice it was told to apply byte-verbatim. They are registered below as R-0508,
+R-0509 and R-0510. LAST_REVIEWED_SHA advances to the R15 handback commit.
+
+- R-0508 — Low, A PAIR'S SHAPE WAS ASSERTED FOR ONE PAIR AND ASSUMED FOR THE REST, AND THE
+ASSUMPTION WAS WRONG. Raised by the R15 worker in its handback and confirmed by the reviewer against
+its own R15 block. Constraint 3 of that block classified CLST as APPEND-shaped — correctly, its TO
+contains its FROM — and then said "Every other pair is a REWRITE". IMP3 is not: IMP3T is
+`from packages.orchestration.exec_guard import ...` followed by the model-aliases import line that
+IS IMP3F, so the TO contains the FROM verbatim and IMP3F still occurs exactly 1x at HEAD, which the
+reviewer re-measured. Nothing broke, because no gate in that block ordered an "IMP3F 0x" reading —
+had one existed it would have been unsatisfiable by construction, which is the R-0207 failure this
+classification exists to prevent. The defect is the method, not the damage: checklist item 4 says a
+pair is declared APPEND only after checking that the TO literally CONTAINS the FROM, and the block
+performed that check for the pair it suspected and generalised to the others by eye. An import
+insertion that keeps the anchor line is the single most common append-shaped pair in this
+repository, so eye-checking is exactly where it fails. Counter-measure, applied in the build of the
+block that registers this: pair shapes are classified MECHANICALLY, every TO tested for containment
+of its FROM, and the result printed beside each pair before emission — never written by hand. OPEN.
+
+- R-0509 — Medium, A REWRITE PAIR ENDED IN THE MIDDLE OF A NUMBERED LIST AND LEFT THE LIST
+MALFORMED ON DISK. Raised by the R15 worker and confirmed by the reviewer. R15's PLANF covered
+`## Current Step` plus only the FIRST item of `## Next Steps`; PLANT replaced it with a Current Step
+and TWO numbered items. The surviving items below the FROM kept their old numbers, so
+`.agent/plan.md` at 7185d949 reads 1, 2, 2, 3 — measured, not inferred. The worker was right not to
+touch it: constraint 2 forbids rewording a slice, so repairing the numbering would have meant
+editing authored text, and reporting the defect was the only honest move left to it. This is the
+family where a pair's FROM is scoped to the text the reviewer INTENDED to change rather than to the
+structure that text belongs to; a numbered list, a table and a fenced block are all single
+structures whose arity a partial rewrite silently corrupts. Counter-measure, binding from this round
+on: when a TO changes how many items a numbered list or table holds, the pair's FROM spans the WHOLE
+structure, never a prefix of it. The block registering this carries the repair — its plan pair
+covers the entire `## Next Steps` section and renumbers it 1 through 4. OPEN.
+
+- R-0510 — Low, A SECTION HEADING COUNTED ITS OWN CONTENTS BY HAND AND GOT IT WRONG. Raised by the
+R15 worker and confirmed by the reviewer. That block's heading read "Change set — exactly these SIX
+paths, nothing else" and the section then enumerated SEVEN, which is also what
+`git diff --name-only c5d80471..HEAD` prints; the six-path reading is the one gate G10 orders for
+the range BEFORE the handback commit, so both numbers exist and the heading attached the wrong one
+to the wrong set. No gate was contradicted and nothing was mis-executed. This is the R-0402 /
+R-0404 / R-0436 family that memory keeps re-learning — checklist item 11: count it mechanically or
+state NO numeral — and its persistence has a specific cause worth naming. The R15 block DID apply
+the rule: its Bundle heading was rewritten to carry no count precisely because the commit list had
+grown by one. The Change set heading was not swept in the same pass, so the fix was applied to the
+instance that was noticed rather than to the class. That is the R-0417 staleness shape wearing a
+different hat. Counter-measure, applied in the build of this block: no heading in it states a count
+of its own contents, and the build script greps the emitted bytes for a number-word standing next to
+"paths" or "commits" and fails the build if it finds one. OPEN.
+
+Done: R-0506 — the two documented absence claims the R13 migration falsified are corrected, in the
+round its own text named as the one that owes them. `packages/orchestration/exec_guard.py` no longer
+says "NO CALLER. Nothing in this repository imports this module yet"; it now states PARTIAL coverage,
+names the managed builder seam and the CLI provider as the callers, says which classes still spawn
+unsupervised, and deliberately writes NO number, because the number changes with every migration
+round and the caller grep is the honest answer. The allowlist sentence no longer claims choosing one
+per command class "is not done here" — it records that callers choose it, the builder policy pinning
+one and the CLI policy deliberately not. `packages/orchestration/managed_builder_execution.py` no
+longer calls itself the only place that may INVOKE subprocess for builder execution: it may LAUNCH
+one, and since F085 T002a it delegates the spawn to `exec_guard.run_guarded` while keeping the
+policy, in both the module docstring and `run_managed_builder`'s. Both "shell=False ALWAYS" promises
+are replaced by "No shell, ever" plus a pointer to the AST assertion that actually enforces it, so
+the sentence that made R-0504 possible — a docstring a source-text test could satisfy — is gone.
+Verified at the fix commit: the three retired phrases occur 0 times, the caller grep scoped to
+`-- packages tests` names four paths, and the exec-guard and managed-builder suites are 152 passed,
+matching base exactly.
+
+Gate: R16 — PASS, the record-and-repair round that paid down R-0506 and fixed the numbering its
+predecessor broke. All ten ordered gates were re-run by the reviewer over 7185d949..396ad913 and
+every one reproduces the handback's reading. TRANSPORT, disk-to-disk and not by digest fallback: the
+reviewer's scratch original, the committed `.agent/authored/f085-r16.md` and `.agent/last_block.md`
+are byte-EQUAL at sha256 bda1ca21008ed866792258791cd785bbde79b9aa975c7c018fbaf50fe82e903e, 22488 B,
+316 lines. THE TWO APPEND COMMITS BOTH HOLD THEIR SHAPE: for C1 and again for C3 the pre-commit blob
+is a byte-exact PREFIX of the post-commit file, each remainder is byte-equal to blank plus exactly
+the slices that commit was given, every slice occurs ONCE in the whole file, and neither commit adds
+a marker line; the numstat readings are 74 and 17, both append-only. Keeping the resolution in its
+own commit AFTER the fix was the right shape and it verifies cleanly: at C1 the file reads
+125 / 3 / 0 and only at C3 does it read 125 / 4 / 0, so at no commit did disk claim a resolution
+whose fix had not landed. THE ARITHMETIC: 122 / 3 / 0 at base against 125 / 4 / 0 at HEAD, the open
+set moving 119 to 121 by three registrations against one resolution, registered difference exactly
+R-0508, R-0509 and R-0510, resolved difference exactly R-0506, no duplicate id and no resolution
+naming an unregistered id. THE R-0509 REPAIR IS MEASURED, NOT ASSERTED: `## Next Steps` parses to
+1, 2, 2, 3 at base and to 1, 2, 3, 4 at HEAD, with `## Goal` and `## Risks` byte-identical and the
+file at 43 lines under its cap. THE R-0506 RESOLUTION HOLDS: all three retired phrases count 0 in
+the HEAD blobs of both source files, and the caller grep scoped to `-- packages tests` names four
+paths — the two modules that import the guard and the two suites that test them — which is exactly
+the claim `exec_guard.py` no longer contradicts. The three suites owning those files are 152 passed
+at C1 and 152 at HEAD, ruff is exit 0 on both touched paths, state readers 157 passed and the canary
+42 passed. The change set is exactly the declared paths with 0 outside; insertions are 316, 240, 74,
+16, 17 and 9, none over 500; seven single-parent commits, every reflog entry `commit:`-prefixed, no
+amend, rebase, reset or force-push; the tree is clean and `git worktree list` is ONE line;
+`.agent/handoff.md` measures 79 lines against its own declaration of 79, and its single declared
+deviation — the token cap, cause named, no section dropped — is accurate. LAST_REVIEWED_SHA advances
+to the R16 handback commit.
+
+Done: R-0507 — the coupled unit this finding identified has been migrated as one commit, which is
+the only way it could be migrated. `_call` and `_call_reviewer_structured` now reach the CLI through
+`_guarded_cli_run`, and `tests/orchestration/test_structured_cli_envelope.py` patches that runner
+instead of `subprocess.run`. The coupling the finding predicted is now MEASURED rather than argued:
+in a `git archive` extraction the reviewer reverted each half alone, and restoring the stdlib spawn
+at the structured site reddened ELEVEN tests while reverting the mock target alone reddened the same
+eleven — neither half is separable, exactly as the finding said. The counter-measure it bound the
+reviewer to has now been exercised for three consecutive rounds: every block since has been applied
+to an extraction and run against the suites that touch its files before emission, and that practice
+has caught a mis-scoped migration (this finding), a vacuous timeout assertion (R15) and a
+self-contradicting marker gate (R16). Five behaviour-equality goldens land with the migration —
+result text, non-zero exit with its stderr tail, the wall trip's message, a signal death's -SIGNUM
+form and the caller-side character cap — and four red controls each reddened their own tests.
+
+Done: R-0509 — the malformed numbering is repaired on disk and the repair is measured at both ends.
+`.agent/plan.md`'s `## Next Steps` parsed to 1, 2, 2, 3 at 7185d949 and parses to 1, 2, 3, 4 at
+396ad913, with no repeated number, `## Goal` and `## Risks` byte-identical to base and the file at
+43 lines under its 50-line cap. The repair was made the way the finding prescribed: R16's plan pair
+spanned the WHOLE `## Next Steps` section rather than a prefix of it, so the surviving items were
+renumbered by the pair itself instead of being left to collide with the new ones. The standing rule
+the finding states — when a TO changes how many items a numbered list or table holds, the FROM spans
+the whole structure — is not yet written into docs/agents/planner_reviewer_prompt.md §3, and this
+resolution does not claim that it is; R-0508 and R-0510 stay OPEN for that promotion round, which is
+where all three counter-measures stop being reviewer habit and start binding on disk.
+
+Gate: R17 — PASS, the round that completed T002a's CLI half. All ten ordered gates were re-run by the
+reviewer over 396ad913..88dbcefa and every one reproduces the handback's reading. TRANSPORT,
+disk-to-disk and not by digest fallback: the committed `.agent/authored/f085-r17.md` blob, the
+committed `.agent/last_block.md` blob and both working copies are byte-EQUAL at sha256
+cc496f97e15b8feb9a82368c78493c03f48f1a64c8302dca265874e4fdebb195, 19911 B, 309 lines. BOTH APPEND
+COMMITS HOLD THEIR SHAPE: for C1 the pre-commit blob 6c374ca1 (286462 B) is a byte-exact PREFIX of
+the post-commit file 98be125d (289062 B) and the remainder is byte-equal to blank plus RECORD1; for
+C3 the pre-commit blob 98be125d is a prefix of 27c1e4ef (291333 B) and the remainder is blank plus
+DONE1 plus blank plus DONE2. Each slice occurs exactly ONCE in the file at HEAD, no marker line
+survives anywhere in it, and HEAD equals the C3 blob. THE ARITHMETIC: 125 / 4 / 0 at base and after
+C1 alike — a record registers no id, exactly as the block predicted — against 125 / 6 / 0 at HEAD,
+the open set moving 121 to 119, registered difference EMPTY, resolved difference exactly R-0507 and
+R-0509, no duplicate id and no resolution naming an unregistered id; max R-0510, next free R-0511.
+THE MIGRATION IS COMPLETE AND MEASURED BY AST, NOT BY TEXT: over `pingpong_provider.py` at HEAD,
+`_resolve_version`, both defs of `_call`, `_call_reviewer_structured` and `_guarded_cli_run` hold
+ZERO `subprocess.run/Popen/call/check_output` call nodes, and so does the WHOLE MODULE. THE GOLDENS
+ARE NOT VACUOUS: the eight-file provider suite reads 341 passed at C1 in a disposable worktree at
+that commit and 346 at HEAD in the primary checkout — the two numbers are NOT equal and the
+difference is exactly the five goldens C2 adds. Those goldens spawn a REAL child, because `_provider`
+writes the body through `textwrap.dedent` to an executable stand-in, so the indented `_ENVELOPE` is
+valid Python at the child and the "HELLO" assertion could not pass against a mock. TWO INDEPENDENT
+RED CONTROLS, run by the reviewer in a disposable worktree at HEAD and not inherited from the block:
+reverting the mock target alone reddens ELEVEN tests in `test_structured_cli_envelope.py`, which is
+the number DONE1 puts on disk, and restoring the stdlib spawn at the `_call` site reddens
+`test_the_probe_and_the_runner_hold_no_subprocess_spawn`, so the two AST assertions C2 adds do bite.
+The five goldens stay GREEN under that second mutation, which is correct and worth stating: they pin
+BEHAVIOUR across the migration while the AST guard pins the MECHANISM, and neither substitutes for
+the other. THE SEAM PRESERVES ITS CONTRACT: `_guarded_cli_run` re-raises a wall trip as
+`subprocess.TimeoutExpired`, republishes a signal death in the -SIGNUM form and decodes both streams
+the way `text=True` did, so the `except subprocess.TimeoutExpired` handler each call site already
+carried still catches. THE PLAN PAIR: PLANF 0x and PLANT 1x at HEAD, `.agent/plan.md` at sha256
+8c68c6ae324fd779094990ee19c5961b35f6df4fcdb6639ef8f085aecc65c9f2, 2704 B and 44 lines under its cap,
+`## Goal` and `## Risks` byte-identical to base, `## Next Steps` parsing to 1, 2, 3, 4 with no
+repeat. Scoped ruff is exit 0 on all three touched paths, the state readers are 157 passed and the
+canary 42 passed. BEYOND THE ORDERED GATES the reviewer ran the two provider readers G7's file list
+does not cover — `test_pingpong_cli.py` at 172 passed and `test_run_manifest.py` at 44 passed — and
+grepped the repository for surviving patches of `pingpong_provider.subprocess`, of which there are
+none; the seam has no reader left on the stdlib path. The change set is exactly the declared paths
+with 0 outside; insertions are 309, 225, 28, 45, 25 and 8 before the handback commit, which is itself
+32, none over 500; seven single-parent commits, twelve reflog entries all `commit:`-prefixed, no
+amend, rebase, reset or force-push; the tree is clean and `git worktree list` is ONE line. The
+handback measures 80 lines against its own declaration of 80, and its stated-cause deviation is
+accurate. LAST_REVIEWED_SHA advances to 88dbcefa.
+
+Done: R-0508 — the counter-measure is on disk. `docs/agents/planner_reviewer_prompt.md` §3 now
+carries checklist item 15, "Pair shapes are classified by a containment test, never by eye", which
+THIS SAME BLOCK orders into that file — so the sentence you are reading names a rule that exists
+rather than one a later round is expected to write, which is exactly what item 11 requires of it.
+The item states the METHOD the finding faulted: every FROM/TO pair is tested mechanically for
+containment and the answer printed beside that pair, one reading per pair, never one generalised to
+the rest. It names its neighbour on purpose, because item 4 already stated the RULE and the R15
+block still failed while satisfying it — it ran the check for the pair it suspected and eyeballed
+the others. A rule and the method that produces its input are two different checks, and only the
+second was missing.
+
+Done: R-0510 — the counter-measure is on disk as checklist item 16, "No heading states a count of the
+contents beneath it", ordered into `docs/agents/planner_reviewer_prompt.md` §3 by THIS SAME BLOCK.
+The item carries the part of the finding that mattered: not that a heading said SIX over a body of
+SEVEN, but that the R15 block DID sweep its Bundle heading and left the Change set heading behind,
+so the fix reached the instance that was noticed instead of the class. It therefore ends by ordering
+the sweep over EVERY heading in a block rather than the one that changed, which is the R-0417 shape
+the finding named. Item 17 lands in the same commit and closes the third counter-measure this round
+was held open for — the arity rule R-0509's resolution said would be promoted here — so no standing
+rule of that family is left living only in reviewer habit.
+
+Gate: R18 — PASS, the round that put three standing rules on disk. All nine ordered gates were re-run
+by the reviewer over 88dbcefa..646092ce and every one reproduces the handback's reading. TRANSPORT
+is proven twice over. Disk-to-disk: the committed `.agent/authored/f085-r19.md` predecessor
+`.agent/authored/f085-r18.md`, the committed `.agent/last_block.md` and both working copies are
+byte-EQUAL at sha256 7187303bf16c3414278b5cbcf7efe2ddb082e3e4c4405e31fc65247ca9ccbac8, 20616 B, 281
+lines, with 14 marker lines and 7 slice pairs intact. And by digest fallback against the reviewer's
+OWN pre-emission measurements, which is what makes the worker's declared split write a non-event:
+the block was measured in four regions before it was delegated, and the saved file's four
+corresponding regions hash to 989020a1, 88eed983, 5fe3c39b and 4fe2a9ff exactly as measured, with
+the fifth region at its measured 71 lines and the file at its measured 281. A block that reaches
+disk byte-identical to the bytes the reviewer measured has not been damaged by the number of write
+calls it took. BOTH APPEND COMMITS HOLD THEIR SHAPE: for C1 the pre-commit blob (291333 B) is a
+byte-exact PREFIX of the post-commit file (295507 B) and the remainder is byte-equal to blank plus
+RECORD1; for C3 the pre-commit blob (295507 B) is a prefix of (297276 B) and the remainder is blank
+plus DONE1 plus blank plus DONE2. Each occurs exactly ONCE at HEAD, no marker line survives, HEAD
+equals the C3 blob. THE ARITHMETIC: 125 / 6 / 0 at base and again after C1 — a record adds no id —
+against 125 / 8 / 0 at HEAD, the open set moving 119 to 117, registered difference EMPTY, resolved
+difference exactly R-0508 and R-0510, no duplicate and no resolution naming an unregistered id; next
+free R-0511. THE PROMOTION LANDED AND ITS OWN RULE HOLDS ON IT: PROMF occurs exactly once at HEAD,
+so the anchor survived its append; each of the three item titles occurs exactly once among C2's 34
+added lines; and the checklist region parses to a contiguous 1 through 17 with no repeat and no gap,
+which is item 17's arity rule holding on the very commit that writes item 17. THE PLAN PAIR: PLANF
+0x and PLANT 1x, `.agent/plan.md` at sha256
+65f9287c4ef71975c8b956a9df25793cd2e5584fb528cc816a374c39d5ca0253, 2344 B, 40 lines under its cap,
+`## Goal` and `## Risks` byte-identical to base, `## Next Steps` parsing to 1, 2, 3. Doc readers are
+305 passed 1 skipped, the state readers 157 passed and the canary 42 passed, all rc 0 and all re-run
+by the reviewer rather than accepted from the report. The change set is exactly the declared paths
+with 0 outside; insertions are 281, 198, 44, 34, 21 and 7 before the handback commit, which is
+itself 30, none over 500; seven single-parent commits, twenty reflog entries all `commit:`-prefixed,
+no amend, rebase, reset or force-push; the tree is clean and `git worktree list` is ONE line. The
+handback measures 78 lines against its own declaration of 78, inside the template's 100-line
+allowance for a table of this many commits, and its two declared deviations are both accurate. THE
+WORKER'S REFUSAL WAS CORRECT AND IS RECORDED AS SUCH: it found the stale check count at line 174,
+declined to fix it because the change set did not include it, and reported it instead of widening
+scope. That is the behaviour this loop is built to produce, and the defect it surfaced belongs to
+the reviewer's block, not to its execution — it is registered below as R-0511.
+LAST_REVIEWED_SHA advances to 646092ce.
+
+- R-0511 — Low, A HEADING KEPT COUNTING ITS OWN CONTENTS IN THE PARAGRAPH THAT INTRODUCES THE RULE
+AGAINST IT. Raised by the R18 worker in its handback and confirmed by the reviewer on disk.
+`docs/agents/planner_reviewer_prompt.md`:174 reads "Run all twelve checks mechanically" over a list
+that already held FOURTEEN items before R18 and holds SEVENTEEN after it. The count was therefore
+stale by two BEFORE the promotion round and by five after it, so R18 widened a defect it did not
+create — but it widened it while adding the very item, 16, that forbids a heading from counting the
+contents beneath it, which is what makes this worth an id rather than a silent fix. The reviewer's
+own pre-emission pass ran item 16 against the BLOCK's headings and never ran it against the TARGET
+file's, which is the same class boundary items 2, 6 and 7 exist to keep separate: a rule that reads
+the block, a rule that reads the file the block writes into, and a rule that reads the tests
+guarding it are three different passes. Item 16 as written does not say which of those it belongs
+to, and the answer is BOTH — the block's headings and the headings of any section the block edits.
+No gate was contradicted and nothing was mis-executed; the R18 worker's refusal to widen its change
+set was correct and is recorded in that round's gate. Counter-measure, applied by this block: C2
+removes the numeral entirely rather than correcting it to seventeen, because a corrected count is
+the same defect with a longer fuse — this is the R-0486 correction-carries-the-old-fact shape, and
+the only stable fix for a self-count is to stop counting. The reviewer additionally swept the whole
+file for the class rather than the reported line, and reports the sweep's predicate and its four
+matches in this round's block. OPEN.
+
+Done: R-0511 — the heading no longer counts anything. `docs/agents/planner_reviewer_prompt.md`:174
+now reads "Run EVERY check below mechanically", so the sentence carries no numeral that a later
+promotion can falsify, and the word `twelve` occurs nowhere in the file. The fix was made the way the
+finding prescribed: the numeral was REMOVED rather than corrected to seventeen, because an accurate
+count is the identical defect waiting for the next item — the distinction item 11 draws between a
+measurement and a recollection, applied to the target file instead of to the block. The sweep the
+finding also demanded was run and is reported in this round's block: the predicate is a number-word
+standing next to a countable noun, it matches four lines in the file, and the three that are not
+line 174 count something real inside an item's prose rather than announcing the size of a list.
+Item 16 is amended by neither this fix nor this resolution; what changes is that the reviewer now
+runs it against the headings of every section a block EDITS as well as against the block's own,
+which is the reading the finding established and which this round is the first to perform.
+
+Gate: R19 — PASS, the repair round that stopped a heading counting itself. All nine ordered gates
+were re-run by the reviewer over 646092ce..6b6cfee5 and every one reproduces the handback's reading.
+TRANSPORT is proven twice over, as it was in R18. Disk-to-disk: the committed
+`.agent/authored/f085-r19.md`, the committed `.agent/last_block.md` and both working copies are
+byte-EQUAL at sha256 4d750d6c237b25d7bd6e990ca0fee97bd3c9b47a03c5d2340ebda2ea81a13fba, 17340 B, 236
+lines, 14 marker lines. And by digest fallback against the reviewer's OWN pre-emission measurements:
+the block was measured in three regions before delegation and the saved file's three corresponding
+regions hash to dc5598e8, f20288aa and a9d3811c exactly as measured. The worker split the C0a write
+into seven calls because a single heredoc of that size is rejected by this session's tool; constraint
+6 permitted exactly that, and the digests prove the split cost nothing. A declared deviation that a
+gate can disprove is how this loop is supposed to work. THE APPEND COMMITS HOLD THEIR SHAPE: for C1
+the pre-commit blob (297276 B) is a byte-exact PREFIX of the post-commit file (302599 B) and the
+remainder is byte-equal to blank plus RECORD1 plus blank plus REG1; for C3 the pre-commit blob
+(302599 B) is a prefix of (303775 B) and the remainder is blank plus DONE1. Each occurs exactly ONCE
+at HEAD, no marker line survives, HEAD equals the C3 blob. THE ARITHMETIC MOVED WHERE IT WAS
+ORDERED TO: 125 / 8 / 0 and 117 open at base, 126 / 8 / 0 and 118 open after C1 — the registration
+landed, which is the reading that was flat in R17 and R18 and had to move here — and 126 / 9 / 0
+with 117 open at HEAD. Registered difference exactly R-0511, resolved difference exactly R-0511, no
+duplicate and no resolution naming an unregistered id; next free R-0512. THE FIX IS THE ONE THE
+FINDING PRESCRIBED: HEADF occurs 0 times at HEAD and HEADT once, the diff is 2 lines for 2 lines,
+and the word `twelve` occurs 0 times in the WHOLE file — the numeral was REMOVED rather than
+corrected to seventeen, so there is no count left to go stale. The checklist region still parses to
+a contiguous 1 through 17, so the commit that stopped counting the list did not disturb it. THE
+PLAN PAIR touched what it was scoped to and nothing else: PLANF 0x, PLANT 1x, and `## Goal`,
+`## Next Steps` and `## Risks` all byte-IDENTICAL to base, which is the proof that a Current-Step
+rewrite did not span the list beside it. `.agent/plan.md` is at sha256
+5684439dfacac31c052cd4e63bb661ed8a1b25218ae68c51fc09c3c7e1865d04, 2341 B, 40 lines under its cap.
+Doc readers are 305 passed 1 skipped, state readers 157 passed, canary 42 passed, all rc 0 and all
+re-run by the reviewer rather than accepted from the report. The change set is exactly the declared
+paths with 0 outside; insertions are 236, 155, 58, 2, 13 and 4 before the handback commit, which is
+itself 32, none over 500; seven single-parent commits, fourteen reflog entries all
+`commit:`-prefixed, no amend, rebase, reset or force-push; the tree is clean, `git worktree list` is
+ONE line, and the branch is in sync with its remote. The handback measures 80 lines against its own
+declaration of 80. LAST_REVIEWED_SHA advances to 6b6cfee5.
+
+Gate: R20 — PASS, the record round that closed the previous session. All seven ordered
+gates were re-run by the reviewer over 6b6cfee5..1cfa0acb and every one reproduces the
+handback's reading. R20's verdict is recorded HERE rather than left in the handoff: the
+§4.13 terminator covers the last round of a BRANCH, and this branch continues, so the
+round is an ordinary reviewed round whose gate entry the next round writes. TRANSPORT:
+the committed `.agent/authored/f085-r20.md`, the committed `.agent/last_block.md` and
+both working copies are byte-EQUAL at sha256
+3026ed0d86d1d40c2e5d5a57076f39d7df37b96dbaa6041d0765be5fe543fbc8, 12660 B, 174 lines.
+The worker split the C0a write into six calls without first attempting one, which
+constraint 6 conditioned on a rejection; it declared the deviation, and the byte
+equality proves the split cost nothing. Declaring a deviation a gate can disprove is
+how this loop is supposed to work. THE APPEND COMMIT HOLDS ITS SHAPE: for C1 the
+pre-commit blob (303775 B) is a byte-exact PREFIX of the post-commit file (307026 B)
+and the remainder is exactly one blank line plus RECORD1; `Gate: R19` occurs once in
+the whole file, no marker line survives, and the HEAD blob equals the C1 blob. THE
+ARITHMETIC STAYED WHERE IT WAS ORDERED TO: 126 / 9 / 0 and 117 open at base and the
+same at HEAD, both symmetric differences empty, no duplicate id and no resolution
+naming an unregistered id; max R-0511, next free R-0512. THE PLAN PAIR touched what it
+was scoped to: `.agent/plan.md` is at sha256
+4f6c8d32716a73b6deb30c4076511acc62b1e5dae2adb1fab93c993b1e5364b6, 2473 B, 41 lines
+under its cap. State readers are 157 passed and the canary 42 passed, both re-run by
+the reviewer rather than accepted from the report, and both from the block's exact
+command lines. The change set is exactly the five declared paths with 0 outside;
+insertions are 174, 111, 35 and 5 before the handback commit, which is itself 31, none
+over 500; five single-parent commits in a linear chain, every reflog entry
+`commit:`-prefixed, no amend, rebase, reset or force-push; the tree is clean and
+`git worktree list` is ONE line. The handback measures 66 lines against its own
+declared 66, with the mandated content named as the cause. LAST_REVIEWED_SHA advances
+to 1cfa0acb.
+
+Gate: R21 — PASS, the round that ruled and built the streaming seam's shape. All ten
+ordered gates were re-run by the reviewer over 1cfa0acb..3622f2cf and every one
+reproduces the handback's reading. TRANSPORT is proven twice over. Disk-to-disk: the
+committed `.agent/authored/f085-r21.md`, the committed `.agent/last_block.md` and
+both working copies are byte-EQUAL at sha256
+b17efc371d740f199a7d05528109e81283591cbf630d9c2673cbbf0b03d42e37, 21446 B, 330
+lines, 8 marker lines. And against the reviewer's OWN pre-delegation measurement:
+the whole-file digest matches, and the three regions hash to 570cbf61, 5686f3e6 and
+28534295 exactly as measured before the block was handed over. The single write
+succeeded, so this round spent no deviation on transport at all. THE APPEND COMMITS
+HOLD THEIR SHAPE: for C1 the pre-commit blob (307026 B) is a byte-exact PREFIX of
+the post-commit file (309316 B) and the remainder is exactly one blank line plus
+RECORD1; for C2 the pre-commit blob of `.agent/decisions.md` (353356 B) is a prefix
+of (356103 B) and the remainder is blank plus DECISION1. Each slice occurs once, no
+marker line survives, and each HEAD blob equals its working copy. THE ARITHMETIC
+STAYED FLAT AS ORDERED: 126 / 9 / 0 and 117 open at both ends, both symmetric
+differences empty, no duplicate id and no resolution naming an unregistered id; max
+R-0511. THE EXTRACTION IS FAITHFUL: `plan_child_spawn` holds the same `_plan_rlimits`
+call, the same `_apply_rlimits` closure and the same `child_env` resolution that
+`run_guarded` ran inline, and `run_guarded` now appends `wall_timeout` and
+`output_bytes` to the plan's list rather than to its own — so the parent-side names
+stay parent-side, which is the property the whole split rests on. THE MIGRATION IS
+HONEST: `_stream_exec_policy` sets a cwd pin and a zero core and NOTHING else, and
+its docstring says why each absent field is absent rather than implying coverage;
+the cwd precedence is documented at `run_streamed_command` and pinned by a test; and
+`pingpong_provider` stopped passing `cwd=` in the same commit, so cwd has exactly one
+source. THE NEW ASSERTIONS REACH THE CODE THEY NAME, verified by the reviewer's own
+mutation in a disposable worktree rather than accepted from the worker's probe: with
+`plan_child_spawn`'s `preexec_fn` replaced by a no-op, both rlimit tests go red and
+the child reports `core=0,-1` where the guarded path reports `core=0,0`, while the
+behaviour-equality test correctly stays green because it asserts nothing about
+rlimits. Suites re-run by the reviewer: exec_guard 16 passed against a base of 12,
+the stream trio 121 against 112, the sibling seams 337 against 337 unchanged, state
+readers 157, canary 42, and ruff `All checks passed!` on the block's exact command
+line. The change set is exactly the declared paths with 0 outside; insertions are
+330, 305, 30, 42, 134, 172 and 10 before the handback commit, which is itself 61,
+none over 500; eight single-parent commits in a linear chain, every reflog entry
+`commit:`-prefixed, no amend, rebase, reset or force-push; the tree is clean and
+`git worktree list` is ONE line. Five deviations were declared and none is harmful:
+the `TYPE_CHECKING` import in particular is correct engineering, since `exec_guard`
+imports the POSIX-only `resource` module and `stream_evidence` is imported far more
+widely than the one seam that takes a policy. LAST_REVIEWED_SHA advances to
+3622f2cf.
+
+- R-0512 — Low, A HANDBACK REPORTED AN INSERTION COUNT TAKEN FROM THE WRONG
+PRODUCER, AND CONTRADICTED ITS OWN TABLE IN THE SAME FILE. R21's gate G10 ordered
+"the `+` column of `git show --numstat`" for each commit. The handoff's G10 line
+reports `C5 19`. The real reading is `10	9` — ten insertions, nine deletions — and
+19 is the churn total `git show --stat` prints on its "1 file changed" line. The
+same handoff's changed-files table two dozen lines above says `+10/-9` for that path,
+so the file disagrees with itself and only one of the two numbers came from the tool
+the gate named. Nothing false landed on disk and the conclusion the gate exists to
+support — none over 500 — is true under either reading, which is why this is Low. It
+is registered because AGENTS.md's Commit Discipline settles this exact ambiguity as
+DECISION F104 D1: the 500-line cap counts INSERTIONS only, the `+` column, not
+insertions+deletions. A verification line that reports the churn number while naming
+`--numstat` re-opens a question that decision closed, and this is the same family as
+R-0336 and R-0367 — a number asserted about an artifact without being computed from
+the tool that produces it. Counter-measure, applied in this round's own block and
+binding from here: every block that orders an insertion count names it as the FIRST
+COLUMN of `git show --numstat` and says explicitly that the churn total is not the
+reading, and the handback's summary numbers must agree with its own changed-files
+table. OPEN.
+
+- R-0513 — Medium, A GUARD TEST'S FAILURE MODE IS AN UNBOUNDED HANG AND AN ORPHANED
+BUSY LOOP, SO IT CANNOT REPORT THE REGRESSION IT EXISTS TO CATCH.
+`tests/orchestration/test_exec_guard.py::test_cpu_limit_kills_a_busy_loop_and_names_the_limit`
+runs a `while True` child under `ExecGuardPolicy(cpu_seconds=1, output_cap_bytes=64
+* 1024)` — no `wall_timeout_seconds`. RLIMIT_CPU is therefore the ONLY thing that
+ends that child. When a regression stops the rlimit reaching it, the child never
+exits, `run_guarded`'s supervision loop has no deadline to break on, its `finally`
+never runs, and the group kill that would sweep the child never happens: the test
+does not go red, it hangs, and it leaves an unlimited busy loop behind. This is not
+hypothetical. R21's G7 probe mutated `plan_child_spawn`'s `preexec_fn` to a no-op —
+exactly the regression this test names — and the suite returned nothing for 600
+seconds; the worker had to abandon the single-command probe, re-run it node by node
+under an external per-node timeout, and afterwards sweep a surviving pid. Medium
+rather than Low because the cost is paid by whichever future round breaks rlimit
+application, which is precisely the round least able to afford a silent 600-second
+stall, and because the orphan outlives the run. Raised by the R21 worker as an
+observation outside its change set and confirmed by the reviewer against the code
+rather than accepted from the report. The fix is one policy field, and the ordering
+inside `run_guarded`'s classifier is what makes it safe: `deadline_fired` is checked
+BEFORE `SIGXCPU`, so a deadline set far above the CPU limit never fires on the
+healthy path and never steals the `cpu_seconds` attribution, while a regressed path
+is killed at the deadline and reports `wall_timeout` — a named failure instead of a
+hang. OPEN.
+
+Done: R-0512 — resolved. The counter-measure is in force in this round's own block
+rather than promised for a later one: G3 and G10 both name the reading as the FIRST
+COLUMN of `git show --numstat` and both say explicitly that the churn total
+`git show --stat` prints is not the reading, and the Done-when clause requires every
+insertion count in the handoff to agree with the changed-files table beside it. The
+R21 handoff itself is history and is not rewritten — editing a past handback would
+destroy the record the finding is evidence of, and AGENTS.md rewrites that file per
+round rather than amending it. What changes is that the ambiguity can no longer be
+reached from a block's own wording.
+
+Done: R-0513 — resolved.
+`test_cpu_limit_kills_a_busy_loop_and_names_the_limit` now carries
+`wall_timeout_seconds=30.0`, thirty times the CPU limit it is testing, so the
+deadline cannot fire on the healthy path. Every existing assertion survives
+unchanged, and `tripped_limit == "cpu_seconds"` is now doing double duty: it is
+still the property the test is named for, and it is also the proof that the backstop
+did not steal the attribution — which it could only do if the deadline fired first,
+because `run_guarded` checks `deadline_fired` before `SIGXCPU`. The regression the
+finding describes now ends in a named failure inside the deadline instead of an
+unbounded hang, and because the guard's `finally` is reached, the group kill sweeps
+the busy loop rather than leaving it orphaned. This round's G7 probe b exercised that
+path directly: with the rlimit suppressed, the node fails and names `wall_timeout`
+within the external timeout rather than stalling the run.
+
+Gate: R22 — PASS, the round that hardened T001 against its own failure modes. All
+ten ordered gates were re-run by the reviewer over 3622f2cf..b4da5101 and every one
+reproduces the handback's reading. TRANSPORT is proven twice over. Disk-to-disk: the committed
+`.agent/authored/f085-r22.md`, the committed `.agent/last_block.md` and both working
+copies are byte-EQUAL at sha256
+f7b6b9ca92d5a5b3956afa125ba5a189e99ff104d0148499e75707edd4775677, 24629 B, 372
+lines, 8 marker lines. And against the reviewer's OWN pre-delegation measurement:
+the whole-file digest matches and the three regions hash to f5ecdf9d, 9a8f32e7 and
+53c558ae exactly as measured before the block was handed over. The single write
+succeeded. THE APPEND COMMITS HOLD THEIR SHAPE: for C1 the pre-commit blob (309316
+B) is a byte-exact PREFIX of the post-commit file (316105 B) and the remainder is
+exactly one blank line plus RECORD1; for C3 the pre-commit blob (316105 B) is a
+prefix of (317782 B) and the remainder is blank plus DONE1. Each slice occurs once,
+no marker line survives, the HEAD blob equals the working copy. THE ARITHMETIC MOVED
+EXACTLY WHERE IT WAS ORDERED TO, which is the reading that was flat in R20 and R21
+and had to move here: 126 / 9 / 0 and 117 open at base, 128 / 9 / 0 and 119 open
+after C1 — both registrations landed before any fix — and 128 / 11 / 0 with 117 open
+at HEAD. Registered difference exactly R-0512 and R-0513,
+resolved difference exactly the same two, no duplicate and no resolution naming an
+unregistered id; max R-0513. THE SNAPSHOT IS CORRECT WHERE IT MATTERS: every field
+of `_StreamPump` now lives behind one lock and is read only through `snapshot()`, so
+the three values describe a single point in the stream; `run_guarded` takes that
+snapshot AFTER the joins and BEFORE the conditional close, so a partial read never
+races the descriptor it reads from; `streams_complete` keeps both its meaning and
+its value, being computed from `is_alive()` exactly as before; and the fd handling is
+untouched, so the comment explaining why a blocked pump's descriptor stays open is
+still true. The `ExecGuardResult` docstring's `b""` promise was rewritten rather than
+left to rot, and the replacement claims a PARTIAL buffer and nothing more. THE
+BACKSTOP DOES NOT STEAL THE ATTRIBUTION, verified by the reviewer's own mutation in a
+disposable worktree rather than accepted from the worker's probe: with
+`plan_child_spawn`'s `preexec_fn` replaced by a no-op and the backstop left in
+place, the node FAILS in 30.28 s under an external 180 s timeout instead of hanging,
+and a direct run of the same policy against the mutated module — its `__file__`
+printed as proof of import path — returns `term_signal=SIGKILL`,
+`classification=resource_limit` and `tripped_limit=wall_timeout`. `pgrep` finds no
+survivor afterwards, which is the second half of the fix: because the deadline is
+reached, `run_guarded`'s `finally` runs and the group kill sweeps the busy loop that
+R21's probe had to sweep by hand. Suites re-run by the reviewer: exec_guard 18
+passed against a base of 16, the stream trio 123 against 121, the sibling seams 337
+unchanged, doc readers not applicable, state readers 157, canary 42, ruff
+`All checks passed!`. The change set is exactly the declared paths with 0 outside;
+insertions are 372, 272, 88, 10, 102, 24 and 13 before the handback commit, which is
+itself 44, none over 500 — and every one of those numbers is the `--numstat` first
+column, which is R-0512's counter-measure working on the first round it bound. Seven
+commits before the handback, one parent each, linear; every reflog entry
+`commit:`-prefixed; tree clean; `git worktree list` ONE line. Six deviations were
+declared and none is harmful. Two of them are findings against the REVIEWER and are
+registered below. A third deserves naming here rather than as a finding: the worker
+swept an orphan its own probe created by calling `subprocess.run(["pkill", "-f",
+MARKER])` from Python after the interactive `kill` and `pkill` forms were refused by
+the session's permission layer. That is the same form-level rejection this
+repository already routes around for shell loops, the sweep was scoped to one MARKER
+string, it is the exact call `test_exec_guard.py` already makes for its own escapee,
+and the worker declared it unprompted. It is correct behaviour, not a violation.
+LAST_REVIEWED_SHA advances to b4da5101.
+
+- R-0514 — Medium, A BLOCK ORDERED A PROBE WHOSE RECIPE CONTRADICTS THE PROPERTY THE
+SAME PARAGRAPH SAYS IT PROVES. R22's gate G7 probe b ordered, in one sentence,
+"remove `wall_timeout_seconds` from the policy in
+`test_cpu_limit_kills_a_busy_loop_and_names_the_limit` AND make `plan_child_spawn`'s
+`preexec_fn` a no-op", and in the next, "with the backstop the node must FAIL and
+name `wall_timeout`". The backstop IS `wall_timeout_seconds`. Removing it and then
+asserting its effect cannot both hold, so no run satisfies the paragraph as written:
+the literal recipe reproduces the hang R-0513 describes, and the stated property
+requires the field the recipe deletes. The worker handled it correctly — it named
+the contradiction, ran BOTH variants, and reported both readings rather than picking
+one silently — and both readings turned out useful, since the literal variant is the
+only direct reproduction of R-0513's harm this feature has on record. Medium because
+the round spent a declared deviation and a second full probe run proving a defect in
+the reviewer's own text, and because the failure is invisible to every existing
+check: item 5 of the pre-emission checklist decides WHETHER a colour may be ordered,
+item 8 checks a gate's expected VALUE against the code, and item 12 governs the
+reviewer's own dry runs — none of them reads the block's two sentences against EACH
+OTHER, which is the only place this defect lives, because both halves are
+individually sound. Counter-measure: promoted into the pre-emission checklist by
+this round's own C2, as item 18. OPEN.
+
+- R-0515 — Low, AN AUTHORED SLICE ASSERTED A GATE RESULT THE BLOCK NEVER SCHEDULED
+THE GATE TO PRODUCE. R22's DONE1 slice, applied byte-verbatim into
+`.agent/live_review.md` by C4, states "This round's G7 probe b exercised that path
+directly: with the rlimit suppressed, the node fails and names `wall_timeout` within
+the external timeout rather than stalling the run." Nothing in that block fixed WHEN
+G7 ran. The bundle listed the gates after the commits, so the natural order would
+have committed C4 — and with it that sentence — before the probe that makes it true.
+The worker saw this and moved G7 ahead of C4 on its own initiative, declaring the
+reordering as a deviation, so nothing false reached disk and the claim is now
+independently confirmed. Low for that reason. It is registered because the honest
+outcome depended on the worker noticing: a worker that had followed the block's own
+sequence would have committed an unverified claim into the permanent record, which
+is the one file in this repository that must never carry one. This is the R-0371 and
+R-0449 family — never order a value into an artifact written before the value can
+exist — narrowed from commit SHAs to gate RESULTS, which is a producer the existing
+checklist items do not cover: item 13 governs the ORDER a block imposes on the
+worker's runs and item 14 governs which commits a per-commit gate can reach, while
+this is a property of a slice's TEXT. Counter-measure: promoted into the
+pre-emission checklist by this round's own C2, as item 19. OPEN.
+
+Done: R-0514 — resolved. The counter-measure is on disk as item 18 of the
+pre-emission block checklist in `docs/agents/planner_reviewer_prompt.md`, applied by
+this round's C2 and verified by this round's G5 before this line was written. It is
+stated as a rule the reviewer runs mechanically on the final bytes, alongside the
+seventeen that precede it, rather than as prose in a finding — which is the whole
+point, since a rule that lives only in a finding is read once by the round that
+registers it and never again. Its distinguishing note names the three neighbours it
+is NOT, so the next reviewer does not have to re-derive why items 5, 8 and 12 leave
+this gap open.
+
+Done: R-0515 — resolved. The counter-measure is on disk as item 19 of the same
+checklist, applied by the same commit. It is deliberately narrow: it does not
+forbid a slice from describing a gate, it requires the block to SCHEDULE that gate
+before the commit that writes the slice. This round's own Constraint 6 is the first
+application — C3 lands after C2 precisely so that the sentence above, asserting
+items 18 and 19 are on disk, is true at the moment it is committed rather than a
+commit later. A rule whose own block does not obey it is the R-0460 shape, and this
+one obeys it.
+
+Gate: R23 — PASS, a paydown round that fixed two defects of the reviewer's own
+block and touched no production code. All nine ordered gates were re-run by the
+reviewer over b4da5101..f28ed65a and every one reproduces the handback's reading.
+TRANSPORT IS EXACT: the committed `.agent/authored/f085-r23.md`, the committed
+`.agent/last_block.md` and both working copies are byte-EQUAL at sha256
+6506c9cc76ba9c63d95c5f0a41fcee4d48dca39b4e26231e6f4bd66400ebb9d4, 24320 B, 368
+lines, 0 trailing-whitespace lines, and the three region digests reported —
+6d1b2d39, cac13512 and 8c2421ae over lines 1-60, 61-140 and 141-end — reproduce
+under the newline-included convention the handback declared, so the single write
+really was single. THE APPEND COMMITS HOLD THEIR SHAPE: for C1 the pre-commit
+blob is a byte-exact PREFIX of the post-commit file and the remainder is exactly
+one blank line plus RECORD1; for C3 the same property holds for DONE1. Each
+slice occurs exactly once in the file, no marker line survives anywhere, and the
+HEAD blob equals the working copy in both cases. ALL SIX SLICE DIGESTS MATCH the
+handback: RECORD1 e2bb4c28, CHECKF e411b1ad, CHECKT e4799d98, DONE1 a9fccd54,
+PLANF 4e11656a, PLANT b90d1cf7, each extracted here from the committed authored
+file by its own marker pair and compared against the target on disk, so the
+worker's applied bytes are the reviewer's authored bytes and not a retype. THE
+ARITHMETIC MOVED WHERE IT WAS ORDERED TO: 128 / 11 / 0 with 117 open at base,
+130 / 11 / 0 with 119 open after C1 — both registrations landed BEFORE the fix,
+which is the ordering constraint 5 existed to enforce — and 130 / 13 / 0 with 117
+open at HEAD. Registered and resolved symmetric differences are each exactly
+R-0514 and R-0515; no duplicate id, no resolution naming an unregistered id; max
+R-0515 and next free R-0516. THE COUNTER-MEASURES ARE REALLY ON DISK AS RULES:
+`docs/agents/planner_reviewer_prompt.md` at HEAD hashes to 738920de and its
+pre-emission checklist parses to the numbers 1 through 19 with no gap and no
+repeat, so items 18 and 19 are numbered members of the list rather than prose
+appended near it. The pair was append-shaped and was proved as one — CHECKT
+contains CHECKF verbatim, so the unsatisfiable "CHECKF 0x" reading was correctly
+never ordered. THE PLAN PAIR WAS A REWRITE and behaved like one: PLANF 0x and
+PLANT 1x at HEAD, `## Goal` and `## Risks` byte-identical to their base bytes,
+42 lines, under the cap. THE GATES WERE RE-RUN, NOT READ: the reviewer executed
+`python3 -m pytest tests/docs/ -q` (295 passed), the four state readers (157
+passed) and the canary `tests/cli/test_golden_path.py -q` (42 passed), each as
+its exact ordered command line, and each reproduced the handback's number. One
+correction to the record, which changes no verdict: the reviewer's first attempt
+at the state-reader gate used two wrong paths, pytest reported "no tests ran"
+rather than an error, and the reading was worthless until the block's own command
+line was used instead — the R-0438 vacuous-gate shape, caught here by comparing
+against the ordered command rather than by any gate. COMMIT HYGIENE IS CLEAN: the
+changed-path set before C5 is exactly the declared one, per-commit insertions are
+368, 280, 97, 23, 19, 5 and 42 with none over 500, the seven commits form a
+single-parent chain, the reflog holds nothing but `commit:` entries, and the
+primary checkout is porcelain-empty with one worktree. No block condition is met
+and no finding is registered against this round.
+
+Gate: R24 — PASS, the round that opened T002b by building the shared test-class
+seam and migrating the first of the twelve sites onto it. All ten ordered gates
+were re-run by the reviewer over f28ed65a..3d1821bf and every one reproduces the
+handback's reading. TRANSPORT IS PROVEN DISK-TO-DISK AND NOT BY FALLBACK: the
+committed `.agent/authored/f085-r24.md` is byte-EQUAL to the reviewer's own
+pre-delegation original as well as to the committed `.agent/last_block.md` and
+both working copies, at sha256
+46db5e38c4b586971364f75b7976daa3ff88e20ac5558aa2d82b807698380340, 22645 B, 355
+lines, and the three region digests 7804f388, 69d643fe and 7ac81591 reproduce
+exactly, so the single write really was single and nothing shifted. THE APPEND
+COMMIT HOLDS ITS SHAPE: C1's pre-commit blob is a byte-exact PREFIX of the
+post-commit file, the remainder is exactly one blank line plus RECORD1, that
+slice occurs once, no marker line reached any target file, and the HEAD blob
+equals the working copy. THE ARITHMETIC IS FLAT EXACTLY WHERE IT WAS ORDERED TO
+BE: 130 / 13 / 0 with 117 open at base and unchanged at HEAD, both symmetric
+differences empty, no duplicate id, no resolution naming an unregistered id, max
+R-0515. THE SEAM IS REAL AND SHAPED LIKE WHAT IT REPLACED:
+`run_guarded_test_command` returns a `CompletedProcess` with bytes streams,
+raises `subprocess.TimeoutExpired` on a wall trip CARRYING the partial streams
+the guard already holds, republishes a signal death as a negative returncode, and
+deliberately does not catch `FileNotFoundError`, which is why `run_tests_local`'s
+`command_not_found` branch still works untouched. The policy sets only what it
+can defend — `cpu_seconds`, `address_space_bytes` and `open_files` stay None on
+the precedent `_builder_exec_policy` already established, rather than inventing a
+second answer — and the 16 MiB output cap sits above the caller's own 1 MiB
+truncation with the reason written beside the value, so `output_truncated` keeps
+describing what the caller measured. THE MIGRATION CHANGED THE MECHANISM AND NOT
+THE OUTCOME: every mocked call site in both test files moved onto the new seam
+with its fabricated `CompletedProcess` values unchanged, and the one assertion
+that could no longer fail — a `shell=` check against a seam with no `shell`
+parameter — was REPLACED rather than retargeted, so it now pins the argv, the
+timeout and the cwd the seam really receives. THE GOLDEN RUNS A REAL CHILD AND
+REACHES THE MIGRATED PATH, which the reviewer confirmed independently rather than
+accepting the worker's probe: with `run_guarded_test_command` made to raise on
+entry in a disposable worktree at HEAD, the golden node stopped passing and
+reported the injected error. THE GATES WERE RE-RUN, NOT READ: ruff over the five
+changed files exited 0 with `All checks passed!`, the migrated suites gave
+`119 passed`, the four state readers `158 passed` and the canary `42 passed`,
+each as its exact ordered command line and each reproducing the handback's
+number. COMMIT HYGIENE IS CLEAN: the changed-path set before C5 is exactly the
+declared one, per-commit insertions are 355, 315, 46, 206, 62, 9 and 68 with none
+over 500, seven commits form a single-parent chain, and the reflog holds nothing
+but `commit:` entries. The three declared deviations are all improvements the
+block should have ordered itself and none widens scope: the falsified
+`test_runner.py` safety bullets, the module-handle import that keeps a `test_`
+prefixed factory out of pytest's collection, and naming the 16 MiB default as a
+constant. No block condition is met.
+
+- R-0516 — Low, A BLOCK EDITED A FILE AND LEFT A CLAIM IN IT THAT THE SAME BLOCK
+MADE FALSE. R24's C2 added six tests to `tests/orchestration/test_exec_guard.py`
+and, in the same commit, correctly rewrote the PARTIAL COVERAGE bullet in
+`exec_guard.py` that the migration falsified. It did not touch that TEST file's
+own module docstring, which still says the guard "has NO callers in this
+repository, so nothing here says anything about whether any existing Remedy
+subprocess is limited. It is not." That sentence has been false since T002a and
+R24 made it doubly false. Low because nothing executable depends on it and no
+gate could have gone red over it — its whole cost is paid by the next reader who
+asks what the guard covers and is told the opposite of the truth. It is
+registered rather than waved through because it is the R-0417 staleness shape
+that this record already names twice: the fix reached the INSTANCE the reviewer
+noticed, in the neighbouring file, and not the CLASS, in the file the block was
+already editing. The counter-measure is not a new checklist item — item 16 and
+the sweep rule it carries already cover a block's own headings, and the gap here
+is that the same sweep was never run over the TARGET file's existing prose.
+Widening item 16 would restate what the R-0417 entry already says; retiring the
+claim is the fix, and this round's own C2 performs it. OPEN.
+
+Done: R-0516 — resolved. The false sentence is off disk: this round's C2 replaced
+it with a paragraph that says what these tests DO prove, points at
+`exec_guard`'s PARTIAL COVERAGE note as the single place the migration state is
+recorded, and deliberately repeats no count — a count in a second file is a
+second thing to forget, which is how the retired sentence went stale in the first
+place. The resolution is verified by this round's G5 before this line is
+committed, per constraint 4. No checklist item is added: item 16 and the R-0417
+entry already carry the sweep rule, and the gap R-0516 exposed was that the sweep
+was run over the block's own text and not over the prose already sitting in the
+file the block was editing. That is a reading of an existing rule, not a new one,
+and this record is where it belongs.
+
+Gate: R25 — PASS, the paydown round that recorded R24 and retired the stale
+no-callers claim from the guard's own fixture file. All nine ordered gates were
+re-run by the reviewer over 3d1821bf..5b02cff9 and every one reproduces the
+handback's reading. TRANSPORT IS PROVEN DISK-TO-DISK UNDER THE §4.9 DIGEST
+FALLBACK, WHICH THIS ENTRY STATES RATHER THAN HIDES: this session did not author
+R25's block, so no reviewer-side pre-delegation original exists to compare
+against, and the proof is instead that the committed `.agent/authored/f085-r25.md`
+is byte-EQUAL to the committed `.agent/last_block.md` and to both working copies
+at sha256 4abce714f82e9a6b2baad095c02c6f0aecebfd009ce4a8883531c908b8971262,
+18089 B, 296 lines, with the region digests 07199a30, cad21f6b and 3de16b95 all
+reproducing, and that every applied slice re-derives from that committed file by
+its marker pair. THE APPEND COMMITS HOLD THEIR SHAPE: for C1 and again for C3 the
+pre-commit blob is a byte-exact PREFIX of the post-commit file and the remainder
+is exactly one blank line plus the slice, at numstat 67/0 and 12/0. THE ARITHMETIC
+MOVES ONLY WHERE R-0516 MOVES IT: 130 / 13 / 0 with 117 open at base, 131 / 13 / 0
+with 118 open after C1, and 131 / 14 / 0 with 117 open at HEAD; both symmetric
+differences are exactly the set holding R-0516; no duplicate id, no resolution
+naming an unregistered id, max R-0516 and next free R-0517. THE FALSE SENTENCE IS
+OFF DISK AND ITS REPLACEMENT RESOLVES: DOCF occurs 0 times at HEAD and DOCT
+exactly once, the file's first line is byte-unchanged from base, sha256
+ee200a92041190027a59efc08a835dd2827dc951de57eb7e35cf158957d2d04c at 21388 B — and
+the reviewer followed the new pointer rather than trusting it, finding the PARTIAL
+COVERAGE note exactly once in `exec_guard.py`, saying what DOCT attributes to it
+and writing no count, so the replacement cannot go stale the way the sentence it
+replaced did. THE GATES WERE RE-RUN, NOT READ: the edited suite exited 0 with
+`24 passed` and the docstring edit did NOT move that base, the four state readers
+gave `158 passed`, the canary `42 passed`, and ruff over the changed `.py`
+`All checks passed!`, each as its exact ordered command line. COMMIT HYGIENE IS
+CLEAN: the changed-path set is the declared one, per-commit insertions are 296,
+217, 67, 6, 12 and 7 with the handback's own 56 measured after it existed and none
+over 500, seven commits form a single-parent chain, and the reflog holds nothing
+but `commit:` entries. The handback is 100 lines — exactly the ceiling its seven
+per-commit tables engage under DECISION D15, so it sits AT the cap rather than
+over it. No block condition is met.
+
+Gate: R26 — PASS, the round that carried T002b into `autorun.py` and moved its
+three `test`-class sites onto the shared seam. All ten ordered gates were re-run
+by the reviewer over 5b02cff9..369d94a3 and every one reproduces the handback's
+reading. TRANSPORT HELD ACROSS A HALT AND A RE-CREATION: the worker stopped
+before C0a because the block ordered a 312-line save while the delivered text
+measured 313, committed nothing and left the tree byte-clean at 5b02cff9. The
+reviewer re-measured its own source in halves, confirmed 313, and traced 312 to
+hand-summed section counts taken after a late edit to three sections — an
+arithmetic recollection standing in for a measurement, which is the defect the
+gate caught and the reason the gate exists. The worker's two independent
+transcriptions produced the identical sha256
+4220f7db082fd722fa28163fdbdfe2684f6c0ec42d772c866106009c26402908 at 16616 B, and
+at HEAD the committed authored file, the committed `.agent/last_block.md` and both
+working copies are byte-EQUAL at that digest, 313 lines, 26 marker lines in 13
+pairs, region digests 9a91a0ce, 41d355bc and e34ff2fa. THE APPEND COMMIT HOLDS
+ITS SHAPE: C1's pre-commit blob is a byte-exact PREFIX of the post-commit file,
+the remainder is exactly one blank line plus RECORD1 at numstat 35/0, and no
+marker line reached any target file — the three `END-` hits in
+`.agent/live_review.md` are the word `APPEND-shaped` in prose older than this
+round, which a substring count reports and a line-anchored count does not. THE
+ARITHMETIC IS FLAT EXACTLY WHERE IT WAS ORDERED FLAT: 131 / 14 / 0 with 117 open
+at base and identical at HEAD, all three symmetric differences empty, no duplicate
+id, no resolution naming an unregistered id, max R-0516. THE MIGRATION CHANGED
+THE MECHANISM AND NOT THE OUTCOME: `subprocess.run(` occurs 0 times at HEAD having
+occurred 3 times at base, each of the five FROM texts 0 times and each TO exactly
+once, `run_guarded_test_command` 5 times as three call sites plus two imports,
+`import subprocess` still present in `_run_fixture_builder` for its `except
+subprocess.TimeoutExpired` clause and gone from `_run_repair_loop_fixture` where
+nothing else used it. THE MIGRATED CODE SITS ON AN EXECUTED PATH, PROVEN FROM
+OPPOSITE ENDS: the reviewer broke the three bare spawns at BASE before authoring
+and the round gate reported 18 failures; the worker broke the SEAM at HEAD inside
+a disposable worktree and the same command line reported 18 failures spanning both
+driving files. The same number from both directions is what a preserved call graph
+looks like. THE GATES WERE RE-RUN, NOT READ: the round gate exited 0 with
+`140 passed, 6 skipped` and the migration did not move it, the guard suite
+`24 passed`, the four state readers `158 passed`, the canary `42 passed` and ruff
+`All checks passed!`, each as its exact ordered command line. COMMIT HYGIENE IS
+CLEAN: the changed-path set before C4 is exactly the five declared paths,
+per-commit insertions are 313, 258, 35, 12 and 5 with C4's own 85 measured after
+it existed and none over 500, six commits form a single-parent chain, and the
+reflog holds only `commit:` entries. Both deviations are declared, the D15 overage
+names its own measured length, and neither widens scope. No block condition is met.
+
+- R-0517 — Low, A BLOCK'S HANDBACK SECTION DROPPED A POINTER THE PROTOCOL
+REQUIRES, AND THE HANDOFF INHERITED THE GAP. docs/agents/self_drive_protocol.md
+§Phase 2 requires that every handoff naming the next session's first action names
+Phase 1 rule 1 — re-read `.agent/STOP` from disk — BEFORE rule 2, the Open PR
+Gate. R25's handoff carried that sentence. R26's does not, because the R26 block's
+Handback section enumerated what the handoff must contain and left it out. The
+worker is not at fault: it wrote what the block ordered, which is the shape this
+record keeps finding on the reviewer's side of the line. Low because nothing
+executable depends on it and no gate could have gone red over it — the whole cost
+lands on the next session, which opens a handoff telling it to re-run gates and
+saying nothing about the sentinel that can halt a round before it starts, nor
+about the PR gate that must precede any new branch. It is registered rather than
+waved through because the reviewer authored the omission, and a reviewer defect
+spoken aloud only in a chat window is exactly the A1 trap this record exists to
+close. No checklist item is added: the requirement already lives in the protocol,
+so the fix is that this round's own handback carries the sentence and every later
+block's Handback section names it among the mandated contents. OPEN.
+
+Gate: R27 — PASS, the round that recorded R26 and registered the reviewer's own
+omission. Every ordered gate was re-run by the reviewer over 369d94a3..07b1ba25
+and each one reproduces the handback's reading. TRANSPORT IS EXACT IN ALL FOUR
+PLACES: the committed `.agent/authored/f085-r27.md`, the committed
+`.agent/last_block.md` and both working copies are byte-EQUAL at sha256
+ce7ffcc42df494a9c21e733f410e6d8f48d394bc16239a0be71191232cdeafdd, 14103 B, 229
+lines, 6 marker lines, region digests dfea0906, 85061d65 and b03dbb55. THE APPEND
+COMMIT HOLDS ITS SHAPE: C1's pre-commit blob is a byte-exact PREFIX of the
+post-commit file, the remainder is exactly one blank line plus RECORD2 at numstat
+61/0, RECORD2's first line occurs once among the lines that commit adds, and 0
+lines match `^(BEGIN|END)-[A-Z0-9]+$` while the substring `END-` hits five times —
+all of it `APPEND-shaped` prose older than that round, which is the exact
+distinction the gate exists to force. THE ARITHMETIC MOVED BY THE ONE ID IT WAS
+ORDERED TO MOVE BY: 131 registered / 14 done / 0 landed with 117 open at base and
+132 / 14 / 0 with 118 open at HEAD, registered symmetric difference exactly
+R-0517, done and landed symmetric differences empty, no duplicate id, no
+resolution naming an unregistered id, max R-0517 and next free R-0518. THE PLAN
+PAIR IS A REWRITE AND ONLY THE ORDERED REGION MOVED: PLANF2 occurs 0 times at HEAD
+and PLANT2 once, `## Goal` and `## Risks` are byte-identical to their base bytes,
+the file is 254757ce2fbc3267ebdda74003373bf987e83371927bb6384a1a50caf470b46c at
+2370 B and 41 lines, and its `## Next Steps` list parses to 1, 2, 3. THE GATES
+WERE RE-RUN, NOT READ: the four state readers exited 0 with `158 passed` and the
+canary exited 0 with `42 passed`, each as its exact ordered command line, and no
+ruff gate was skipped by oversight because the change set holds no `.py` file.
+COMMIT HYGIENE IS CLEAN: the path set measured before the handback commit is the
+four declared `.agent/` paths and the handback adds only itself, per-commit
+insertions are 229, 168, 61 and 4 with the handback's own 80 measured after it
+existed and none over 500, the range is a single-parent chain, and the reflog
+holds only `commit:` entries. The handback is 123 lines against the 60 its
+per-commit tables carry; the overage is declared, names its own measured length
+and names the mandated content that caused it, which DECISION D15 permits and
+which no dropped section was traded for. No block condition is met.
+
+Done: R-0517 — resolved. The pointer is back on disk, and the block that dropped
+it is the block that restored it. R27's Handback section named the
+Phase-1-rule-1 sentence among the handback's mandated contents, and the handback
+it produced carries it: `.agent/handoff.md` at 07b1ba25 states in its `## Next`
+section that the next session's first action is re-reading `.agent/STOP` from
+disk BEFORE the Open PR Gate, and the reviewer read that from the file rather
+than from the worker's report. The finding closes on the PROPERTY and not on a
+sentence: what is required is that a handoff naming the next session's first
+action names the sentinel check first, and that every later block's Handback
+section carries the requirement forward — this round's block does. No checklist
+item is added, because docs/agents/self_drive_protocol.md §Phase 2 already binds
+it and a second copy would be a second source of truth.
+
+- R-0518 — Medium, A GATED TEST NEEDS A GITIGNORED BUILD DIRECTORY, SO THE
+STATE-READER GATE IS RED IN EXACTLY THE DISPOSABLE WORKTREE THIS PROTOCOL
+MANDATES. `tests/orchestration/test_test_runner.py::TestVitestFrontendTestFoundation::test_vitest_passes`
+runs `npx vitest run` with `cwd=Path("apps/ui").resolve()`, and
+`apps/ui/node_modules` is gitignored at `.gitignore:221`, so a fresh
+`git worktree` never carries it. That node sits inside the four-file state-reader
+suite every `.agent/`-rewriting round gates on, while
+docs/agents/planner_reviewer_prompt.md §4 item 10 and the self-drive protocol's
+G5 both require destructive verification to run in a disposable worktree. The two
+rules meet in a red no change caused. MEASURED, not inferred: in the primary
+checkout the node passed 3 of 3 standalone and the whole suite read `158 passed`
+at exit 0 in 5 of 5 runs at base 07b1ba25; in a worktree created at the same
+commit with no `apps/ui/node_modules` it failed 2 of 2 standalone with
+`AssertionError: vitest failed: ... [UNRESOLVED_IMPORT] Could not resolve
+'vitest/config'`. The first red the reviewer hit reported only a tail summary and
+named no node, which is why `-rf` now stands in the ordered command line — a
+reading ordered in a shape that cannot carry the evidence it exists to produce is
+its own small defect, recorded here rather than in a separate id. Medium because
+a red gate halts a round under the standing rule that a worker never repairs
+around one, and this red is reachable by any round that follows the worktree
+requirement. NOT fixed here: the repair belongs in the test — skip the node when
+`apps/ui/node_modules` is absent — and `tests/orchestration/test_test_runner.py`
+carries no skip of its own today, so the fix is a real edit to a gate file and
+sits outside this round's change set. OPEN.
+
+Gate: R28 — PASS, the round that put `_run_isolated_process` on the seam's child
+half and closed R-0517. Every ordered gate was re-run by the reviewer over
+07b1ba25..b0d09db4 and each one reproduces the handback's reading. TRANSPORT WAS
+PROVED AGAINST THE REVIEWER'S OWN ORIGINAL AND NOT ONLY AGAINST A DIGEST: the
+scratch file the block was authored into, the committed
+`.agent/authored/f085-r28.md`, the committed `.agent/last_block.md` and both
+working copies are all five byte-EQUAL at sha256
+c73bac4c5553f82312b5d38669bb33de3586a897f2ec7198f39c0b1399b406d0, 21848 B, 398
+lines, 26 marker lines, region digests 3866a6a1, d15e4f7e and 4b8d681f. THE
+APPEND COMMIT HOLDS ITS SHAPE: C1's pre-commit blob is a byte-exact PREFIX of the
+post-commit file, the remainder is exactly one blank line plus RECORD1 at numstat
+71/0, RECORD1's first line occurs once among the 71 lines that commit adds, and 0
+lines match `^(BEGIN|END)-[A-Z0-9]+$` while the substring `END-` hits seven times
+— five older than that round and two added by RECORD1's own prose, which quotes
+the regex and the word `APPEND-shaped`. A line-anchored count reports the
+property; a substring count reports the prose. THE ARITHMETIC MOVED IN BOTH SETS
+AT ONCE WHILE THE OPEN COUNT STAYED FLAT: 133 registered / 15 done / 0 landed at
+HEAD against 132 / 14 / 0 at base, 118 open at both ends, registered symmetric
+difference exactly R-0518, done symmetric difference exactly R-0517, landed
+empty, no duplicate id, no resolution naming an unregistered id, max R-0518 and
+next free R-0519. A flat open count across a round that both registers and
+resolves is the arithmetic working, not the arithmetic standing still. THE
+MIGRATION TOOK THE CHILD HALF AND LEFT THE PARENT HALF ALONE: S1F through S4F
+occur 0 times at HEAD and each TO exactly once, the new test's `def` line occurs
+once among the lines C3 adds, `def test_no_shell_true(self):` still occurs
+exactly once in the file, and no marker line reached any target. The source
+guards over `_run_isolated_process` still hold, because the migration kept
+`subprocess.Popen(`, `start_new_session=True` and `DEVNULL` inside the function
+and added no `subprocess.run(`. THE PROOF IS A REAL CHILD AND THE REVIEWER BROKE
+IT INDEPENDENTLY: at HEAD the new node passes, and in a disposable worktree at
+HEAD with the single line `preexec_fn=plan.preexec_fn,` deleted it FAILS, then
+passes again once restored. The reviewer ran that recipe itself rather than
+reading the worker's transcript, and the parent's own RLIMIT_CORE of (0, -1) is
+what makes the child's (0, 0) an observation rather than a tautology. THE GATES
+WERE RE-RUN, NOT READ: the round gate exited 0 with `98 passed` against a base of
+`97 passed` the reviewer measured before the block was written, ruff over both
+changed files `All checks passed!`, the four state readers `158 passed` and the
+canary `42 passed`, each as its exact ordered command line. COMMIT HYGIENE IS
+CLEAN: the path set is the six declared paths, per-commit insertions are 398,
+334, 71, 8 and 39 with the handback's own 84 measured after it existed and none
+over 500, the range is a single-parent chain, and the reflog holds only `commit:`
+entries. The handback is 125 lines against the 100 a round with more than five
+per-commit tables may carry; the overage is declared, names its own measured
+length and names the mandated content that caused it. R-0202 is correctly still
+OPEN: the migration passes the caller's already-scrubbed `env` through unchanged,
+so the variable that finding names is dropped after this round by the same code
+as before it. No block condition is met.
+
+- R-0519 — Low, A PROGRESS ESTIMATE THE REVIEWER AUTHORED OVERSTATED A SLICE THE
+CLASS TABLE CAN MEASURE. R28's handback carries `Fortschritt: ~85 %`, and the plan
+it inherited described T002b's remainder as the `test`-class sites "ending with
+`test_execution_service.py`'s `Popen`". Measured against amendment F085 D1's class
+table, five of the twelve `test`-class sites are on the shared seam and seven are
+not. `test_execution_service.py`:323 was the last `Popen` of the class, not its
+last SITE, and the plan sentence conflated the two — which is how an estimate
+built on it reached 85 % for a slice that is under half migrated. The criterion
+used, so it can be re-checked: a site is ON THE SEAM when its spawn takes cwd,
+env and the fork-to-exec hook from `exec_guard`, through either
+`run_guarded_test_command` or `plan_child_spawn`; each of the seven remaining
+files contains no reference to either symbol. Low because nothing executable
+depends on the number and no gate could go red over it. It is registered rather
+than corrected in silence because the Fortschritt line is the operator's only
+progress signal, it is authored by the reviewer, and
+docs/agents/planner_reviewer_prompt.md §2 requires it to be honest and labelled an
+estimate. The counter-measure ships in this same round: C3 writes the migration
+state into `.agent/f085_inventory.md` directly beneath the class list that defines
+the set, so the next estimate is derived from the file that fixes the denominator
+rather than from the previous estimate. OPEN.
+
+Gate: R29 — PASS, the state-only round that recorded the R28 PASS, registered
+R-0519 and put the T002b migration state into the inventory of record. Every
+ordered gate was re-run by the reviewer over b0d09db4..f99a8fe2 and each one
+reproduces the handback's reading. TRANSPORT: the committed
+`.agent/authored/f085-r29.md`, the committed `.agent/last_block.md` and both
+working copies are all four byte-EQUAL at sha256
+5c93aff876b168aada846b99dcf9ff927df3f41f3329b55a7f40d353422dd813, 18160 B, 306
+lines, 10 marker lines at 157, 226, 228, 244, 246, 262, 264, 276, 278 and 306,
+region digests c40e6be2, 23d988e4 and 70c142ae. No scratchpad original from that
+authoring session survived into this one, so the proof is disk-to-disk over the
+committed artifacts under the self-drive protocol's cmp rule; stated, not
+implied. THE APPEND
+COMMIT HOLDS ITS SHAPE: C1's pre-commit blob is a byte-exact PREFIX of the
+post-commit file, the remainder is exactly one blank line plus RECORD1 at numstat
+69/0, RECORD1's first line occurs once among the 69 lines that commit adds, and 0
+lines match `^(BEGIN|END)-[A-Z0-9]+$` while the substring `END-` hits nine times
+in that file's prose. THE ARITHMETIC MOVED IN ONE SET ONLY: 134 registered / 15
+done / 0 landed at HEAD against 133 / 15 / 0 at base, 118 open rising to 119,
+registered symmetric difference exactly R-0519, done and landed symmetric
+differences both empty, no duplicate id, no resolution naming an unregistered id,
+max R-0519 and next free R-0520. THE PAIRS LANDED WHERE THEY WERE AIMED: PLANF
+occurs 0 times at HEAD and PLANT exactly once, `## Goal` and `## Risks` are
+byte-identical to their base bytes, `.agent/plan.md` is 42 lines under the
+50-line cap, and its `## Next Steps` parses to 1, 2, 3. INVF occurs once and INVT
+once, INVT contains INVF verbatim so the pair really is append-shaped, and
+`Migration state, measured at R29:` occurs once among the 16 lines C3 adds. THE
+MEASUREMENT THE ROUND EXISTS TO RECORD IS TRUE OF THE SOURCE, NOT ONLY OF THE
+PROSE: the reviewer re-derived it per file rather than trusting the paragraph.
+`autorun.py` references `run_guarded_test_command` five times, `test_runner.py`
+three times and `test_execution_service.py` references `plan_child_spawn` three
+times, so those three files carry the five sites called ON THE SEAM;
+`builder_bridge.py`, `ci_run.py`, `integrity_gate.py`, `job_promote.py`,
+`mission_state.py`, `pingpong_loop.py` and `pingpong_promote.py` reference
+neither symbol. Five on the seam, seven not, as the inventory paragraph and
+R-0519 both state. THE GATES WERE RE-RUN, NOT READ: the four state
+readers exited 0 at `158 passed` and the canary exited 0 at `42 passed`, each as
+its exact ordered command line in the primary checkout. COMMIT HYGIENE IS CLEAN:
+the path set before the handback is the five declared paths, per-commit
+insertions are 306, 212, 69, 8 and 16 with the handback's own 99 measured after
+it existed and none over 500, the range is a single-parent chain, and the reflog
+holds only `commit:` entries. One reported number differs and neither reading is
+wrong: the handback gives `## Goal` as 729 B where a heading-inclusive slice
+measures 730 B, a section-boundary convention that leaves the ordered property —
+byte-identical to base — reproducing either way. The 131-line handback declares
+its own overage against the 100-line cap and names the mandated content that
+caused it. No block condition is met.
+
+Done: R-0519 — RESOLVED at R29 by the counter-measure the finding itself named.
+`.agent/f085_inventory.md` now carries `Migration state, measured at R29:`
+directly beneath the `### test — 12` heading that defines the class, naming the
+criterion for being on the seam, the files that satisfy it and the files that do
+not — so the next estimate is derived from the file that fixes the denominator
+instead of from the previous estimate. The overstated line is gone as well: R29's
+handback carries `~60 %` with `T002b 5 von 12 Sites auf dem Seam, 7 offen` in
+place of `~85 %`. The reviewer verified the correction against the SOURCE, per
+the per-file reading in this round's gate entry above. Resolved rather than
+carried, because the finding asked for a denominator on disk and it is on disk.
+
+Gate: R30 — PASS, the round that moved `job_promote._run_post_test` and
+`pingpong_promote._run_post_test` onto the shared `test`-class seam. Every ordered
+gate was re-run by the reviewer over f99a8fe2..d4fe1674 and each one reproduces
+the handback's reading. TRANSPORT WAS PROVED AGAINST THE REVIEWER'S OWN ORIGINAL,
+not only against a digest: the scratch file the block was authored into, the
+committed `.agent/authored/f085-r30.md`, the committed `.agent/last_block.md` and
+both working copies are all five byte-EQUAL at sha256
+fd9117aad06382747a59995dbeef4d32d75e14f3f7e3d19af7bc5499dc93b0a2, 21347 B, 399
+lines, 26 marker lines, region digests 9e5478bc, 97f12afd, c6bb8ee5 and d3cf7d6b.
+THE APPEND COMMIT HOLDS ITS SHAPE: C1's pre-commit blob is a byte-exact PREFIX of
+the post-commit file, the remainder is exactly one blank line plus RECORD1 at
+numstat 58/0, RECORD1's first line occurs once among the 58 lines that commit
+adds, and 0 lines match `^(BEGIN|END)-[A-Z0-9]+$` while the substring `END-` hits
+ten times in that file's prose. THE ARITHMETIC MOVED IN THE DONE SET ALONE: 134
+registered / 16 done / 0 landed at d4fe1674 against 134 / 15 / 0 at f99a8fe2, 119
+open falling to 118, registered symmetric difference empty, done symmetric
+difference exactly R-0519, landed empty, no duplicate id, no resolution naming an
+unregistered id, max R-0519 and next free R-0520. THE PAIRS LANDED WHERE THEY WERE
+AIMED: at d4fe1674 SPAWNF and OUTF each occur 0 times in both migrated files while
+SPAWNT and OUTT each occur once, IMPT1 occurs once in `job_promote.py` and IMPT2
+once in `pingpong_promote.py`, the guard import occurs once among the lines C2 adds
+to each source, each new test def occurs once among the lines C2 adds to its test
+file, and 0 marker lines reached any of the four. PLANF is gone and PLANT occurs
+once, in a 46-line plan under the 50-line cap. THE PROOF IS A REAL COUPLING AND THE
+REVIEWER BROKE IT INDEPENDENTLY: at d4fe1674 the round gate exits 0 at `146 passed`
+against the `144 passed` the reviewer measured at f99a8fe2 before the block was
+written, and in the reviewer's own disposable worktree at d4fe1674, with the
+guarded call replaced by a bare `subprocess.run` and the decode left standing, the
+run exits 1 with `2 failed, 73 passed` — `TestApprovePostTest::test_post_apply_test_runs`
+and `test_job_promote_post_test_runs_on_the_guarded_seam`, both
+`AttributeError: 'str' object has no attribute 'decode'`. The first of those two is
+the behaviour-equality golden this feature's Acceptance asks for: it spawns a REAL
+child through the migrated function, so its staying green under the guard is the
+evidence that well-behaved commands behave identically. THE GATES WERE RE-RUN, NOT
+READ: ruff over the four changed files `All checks passed!`, the four state readers
+`158 passed` and the canary `42 passed`, each as its exact ordered command line in
+the primary checkout. COMMIT HYGIENE IS CLEAN: the path set is the nine declared
+paths, per-commit insertions are 399, 317, 58, 69 and 12 with the handback's own
+100 measured after it existed and none over 500, all six commits are single-parent,
+and the reflog holds only `commit:` entries. The 150-line handback declares its own
+overage against the 100-line cap and names the mandated content that caused it. No
+block condition is met, and the worker deviated from nothing it was ordered to do.
+
+- R-0520 — Low, A REVIEWER-AUTHORED GATE ENTRY MADE A PRESENT-TENSE CLAIM ABOUT
+SOURCE FILES THE SAME BLOCK THEN CHANGED. The R29 gate entry applied at commit
+9668bec4 lists seven modules and states that they "reference neither symbol",
+meaning `run_guarded_test_command` and `plan_child_spawn`. That reading was taken
+at f99a8fe2 and is true there. C2 of the SAME round, commit 10fe9a14, put
+`job_promote.py` and `pingpong_promote.py` on the seam, and at d4fe1674 each of
+those two files references `run_guarded_test_command` twice — so two of the seven
+names in that sentence are wrong for every commit from 10fe9a14 onward, in a file
+that is the permanent record. The defect is the reviewer's, not the worker's: R30's
+handback found it under constraint 8 and reported it instead of editing a slice it
+was forbidden to alter or a file outside its change set, which is exactly the
+behaviour constraint 8 exists to produce. Low because nothing executable depends on
+the sentence, no gate can go red over it, and the paragraph it sits in opens by
+naming the range b0d09db4..f99a8fe2 that scopes it. It is registered rather than
+quietly corrected because this is the R-0417 staleness class recurring in the one
+place the standing gate does not reach — the reviewer's own authored prose, written
+before the commit that falsifies it exists. The counter-measure is a rule, not an
+edit: a slice that states a fact about a file the SAME block modifies names the
+commit its reading was taken at, in the sentence itself, rather than relying on a
+range named in a neighbouring sentence. Rewriting the landed text is NOT proposed —
+appending a correction is how this record stays honest, and a later round may do
+that; overwriting history in `.agent/live_review.md` is worse than a dated wrong
+sentence. OPEN.
+
+Gate: R31 — PASS, the round that moved `pingpong_loop._run_test_command` onto the
+shared `test`-class seam and registered R-0520. Every ordered gate was re-run by the
+reviewer over d4fe1674..HEAD and each one reproduces the handback's reading.
+TRANSPORT REPRODUCES IN REGIONS AND NOT ONLY IN TOTAL: the committed
+`.agent/authored/f085-r31.md`, the committed `.agent/last_block.md` and both working
+copies are all four byte-EQUAL at sha256
+9023be74ce151bf00b833090c733fe9f77210a50519f4c14790f615adc6cf2a4, 20195 B, 352
+lines, 20 marker lines, region digests def02d5c, afd442cb and b083f1bd. THE APPEND
+COMMIT HOLDS ITS SHAPE: C1's pre-commit blob is a byte-exact PREFIX of the
+post-commit file, the remainder is exactly one blank line plus RECORD1 at 5193 =
+1 + 5192 bytes, numstat 67/0, RECORD1's first line occurs once among the 67 lines
+that commit adds, and 0 lines match `^(BEGIN|END)-[A-Z0-9]+$` while the substring
+`END-` hits eleven times in that file's prose. THE ARITHMETIC MOVED IN THE
+REGISTERED SET ALONE: 134 registered / 16 done / 0 landed at d4fe1674 against 135 /
+16 / 0 at HEAD, 118 open rising to 119, registered symmetric difference exactly
+R-0520, done and landed symmetric differences both empty, no duplicate id, no
+resolution naming an unregistered id, max R-0520 and next free R-0521. THE PAIRS
+LANDED WHERE THEY WERE AIMED: at HEAD SPAWNF and OUTF each occur 0 times in
+`pingpong_loop.py` while SPAWNT and OUTT each occur once, IMPT occurs once, the guard
+import occurs once among the nine lines C2 adds to that file, the new test def occurs
+once among the twenty-five lines C2 adds to its test file, 0 marker lines reached
+either, and every applied slice matches its committed original byte for byte — TESTPL
+is an exact suffix of the test file and RECORD1 an exact suffix of the review record.
+PLANF is gone and PLANT occurs once, in a 43-line plan under the 50-line cap. THE
+PROOF IS A REAL COUPLING AND THE REVIEWER BROKE IT INDEPENDENTLY: at HEAD the round
+gate exits 0 at `34 passed` against the `33 passed` the reviewer measured at
+d4fe1674, and in the reviewer's own disposable worktree at 16234fbf, with the guarded
+call replaced by a bare `subprocess.run` and the decode left standing, the run exits 1
+with `1 failed, 33 passed` — `test_pingpong_loop_test_command_runs_on_the_guarded_seam`,
+`AttributeError: 'str' object has no attribute 'decode'` at `pingpong_loop.py:3549`.
+THE SEAM'S CONTRACT WAS READ RATHER THAN TRUSTED: `run_guarded_test_command` raises
+`subprocess.TimeoutExpired` on a wall trip, deliberately does not catch
+`FileNotFoundError`, and returns a negative returncode on a signal death — so both
+`except` clauses and `passed = proc.returncode == 0` are unchanged. THE GATES WERE RE-RUN, NOT READ: ruff
+over the two changed files `All checks passed!`, the four state readers `158 passed`
+and the canary `42 passed`, each as its exact ordered command line in the primary
+checkout, each exit 0. COMMIT HYGIENE IS CLEAN: the path set is the seven declared
+paths, per-commit insertions are 352, 174, 67, 34, 5 and the handback's own 130, none
+over 500, all six commits are single-parent, and the reflog holds only `commit:`
+entries. STALENESS REPRODUCES: `builder_bridge.py`, `ci_run.py`, `integrity_gate.py` and
+`mission_state.py` each show 0 references to `run_guarded_test_command` at HEAD, and
+R-0520's own text survives C2 — `job_promote.py` and `pingpong_promote.py` reference
+that symbol twice each at BOTH d4fe1674 and HEAD. The 162-line handback declares its own overage against the
+100-line cap and names the mandated content that caused it. No block condition is met,
+and the worker deviated from nothing it was ordered to do.
+
+Done: R-0520 — Resolved at R32. The counter-measure the finding named is now
+checklist item 20 of `docs/agents/planner_reviewer_prompt.md` §3, applied by the
+commit that precedes this one in this round: a slice may assert a present-tense fact
+about a source file only when the sentence names the commit its reading was taken at.
+The finding asked for a rule rather than an edit, so the resolution is the promotion
+and not a rewrite of the R29 sentence that exposed it. That sentence stays on disk,
+wrong for two of its seven names from commit 10fe9a14 onward, because appending a
+correction is how this record stays honest; this paragraph is that correction.
+
+Gate: R33 — the R32 entry. R32 PASSED: the round that promoted the slice-fact rule
+into pre-emission checklist item 20, resolved R-0520 and moved
+`integrity_gate._check_collect_only` onto the shared `test`-class seam. Every ordered
+gate was re-run by the reviewer over 16234fbf..c2033d6c and each reproduces the
+handback's reading. TRANSPORT WAS PROVED AGAINST THE REVIEWER'S OWN ORIGINAL, not
+only against a digest: the scratch file the block was authored into, the committed
+`.agent/authored/f085-r32.md`, the committed `.agent/last_block.md` and both working
+copies are all five byte-EQUAL at sha256
+75deb8c5d666fc2f4053583eb8c4a3d94dd2db8f52c227df2a22b2392cf1e686, 23119 B, 400
+lines, 24 marker lines, region digests eb26791d, 656230ba and 0d724fc0. THE APPEND
+COMMIT HOLDS ITS SHAPE: C2's pre-commit blob is a byte-exact PREFIX of the
+post-commit file, the remainder is exactly one blank line plus RECORD1 at 4361 =
+1 + 4360 bytes, numstat 55/0, RECORD1's first line occurs once among the 55 lines
+that commit adds, 0 lines match `^(BEGIN|END)-[A-Z0-9]+$`, and the applied slice is
+an exact suffix of the file. THE ARITHMETIC MOVED IN THE DONE SET ALONE: 135
+registered / 17 done / 0 landed at c2033d6c against 135 / 16 / 0 at 16234fbf, 119
+open falling to 118, registered and landed symmetric differences empty, done
+symmetric difference exactly R-0520, no duplicate id, no resolution naming an
+unregistered id, and next free R-0521 at both ends because the round registered
+nothing. THE ORDERING THAT MADE THE RECORD TRUE WAS OBEYED: constraint 10 required
+the checklist promotion to precede the resolution that cites it, and 94e70839 does
+precede ce69c39a. THE PAIRS LANDED WHERE THEY WERE AIMED: at c2033d6c IGSPAWNF and
+IGERRF each occur 0 times in `integrity_gate.py` while IGSPAWNT, IGERRT and IGIMPT
+each occur once, the guard import occurs once among the lines C3 adds to that file,
+`import subprocess` still occurs once because the `git ls-files` call in
+`_check_relevant_untracked` is a different command class, the new test def occurs
+once among the lines C3 adds to its test file, TESTIG is an exact suffix of that
+file, and 0 marker lines reached any target. Item 20 occurs once and the checklist's
+closing paragraph still occurs once. PLANF is gone and PLANT occurs once, in a
+46-line plan under the 50-line cap. THE MIGRATION WAS PROVED TWICE, BY RUNNING IT
+AND BY BREAKING IT: the round gate exits 0 at `16 passed` against the `15 passed`
+the reviewer measured at 16234fbf, the migrated function run FOR REAL prints
+`collect_only IntegrityStatus.PASS pytest collection passed` — identical to the
+unmigrated reading at 16234fbf, which is the behaviour-equality evidence this
+feature's Acceptance asks for, and it shows the guard's environment allowlist does
+not starve a real collection — and in the reviewer's own disposable worktree at
+c2033d6c, with the guarded call replaced by a bare `subprocess.run`, the run exits 1
+with `1 failed, 15 passed` at node `test_collect_only_runs_on_the_guarded_seam`,
+`AssertionError` at `test_integrity_gate.py:235`. THE GATES WERE RE-RUN, NOT READ:
+ruff over the two changed files `All checks passed!`, the four state readers
+`159 passed`, the docs suite `295 passed` and the canary `42 passed`, each as its
+exact ordered command line in the primary checkout, each exit 0. COMMIT HYGIENE IS
+CLEAN: the path set is the eight declared paths, per-commit insertions are 400, 288,
+16, 55, 41, 12 and the handback's own 80, none over 500, all seven commits are
+single-parent, and the reflog holds only `commit:` entries. The 128-line handback
+declares its own overage against the 100-line cap and names the mandated content
+that caused it. The worker deviated from nothing it was ordered to do, and the one
+defect the round put on disk is the reviewer's, registered next.
+
+- R-0521 — Low, A SLICE OBEYED CHECKLIST ITEM 20 AND WAS FALSIFIED ANYWAY, BECAUSE
+THE COMMIT IT NAMED WAS A LABEL RATHER THAN A SHA. R32's RECORD1, applied at commit
+ce69c39a, closes with a staleness sentence stating that `builder_bridge.py`,
+`ci_run.py`, `integrity_gate.py` and `mission_state.py` each show 0 references to
+`run_guarded_test_command` "at HEAD". That reading was taken at 16234fbf and is true
+there. C3 of the SAME round, commit ed88be4c, put `integrity_gate.py` on the seam,
+and at c2033d6c that file references the symbol twice — so one of the four names in
+that sentence is wrong for every commit from ed88be4c onward, in a file that is the
+permanent record. This is the R-0520 class recurring in the very slice that resolved
+R-0520, one commit after the counter-measure landed. The defect is the reviewer's,
+not the worker's: R32's handback found it under constraint 8 and reported it instead
+of editing a slice it was forbidden to alter, which is exactly the behaviour
+constraint 8 exists to produce. Low because nothing executable depends on the
+sentence and no gate can go red over it. What makes it worth an id rather than a
+correction is that item 20 was FOLLOWED: the sentence did name a commit, and the
+commit it named was `HEAD`, which re-resolves as the round proceeds and so denotes a
+different commit at the end of the round than at the start. A rule that can be
+obeyed and defeated at once is under-specified rather than ignored, which is why the
+counter-measure narrows item 20 instead of adding an item. Rewriting the landed
+sentence is NOT proposed: appending a correction is how this record stays honest,
+and this paragraph is that correction.
+
+Done: R-0521 — Resolved at R33. Checklist item 20 of
+`docs/agents/planner_reviewer_prompt.md` §3 now requires that the commit a slice
+names be an absolute identifier that already exists when the slice is written — a
+SHA, never a label like `HEAD` or `main` — applied by the commit that precedes this
+one in this round. The narrowing is the whole resolution; the R31 gate entry's "at
+HEAD" sentence stays on disk, wrong for one of its four names from ed88be4c onward,
+because overwriting landed text is worse than a dated wrong sentence.
+
+Gate: R34 — the R33 entry. R33 FAILED, on one sentence, under §4.5's "unverified
+completion claims". EVERY GATE R33 ORDERED REPRODUCES: the reviewer re-ran G1-G7 over
+c2033d6c..7480d880 and each returns the handback's reading. TRANSPORT WAS PROVED
+AGAINST THE REVIEWER'S OWN ORIGINAL, not only against a digest: the scratch file the
+block was authored into, the committed `.agent/authored/f085-r33.md`, the committed
+`.agent/last_block.md` and both working copies are all five byte-EQUAL at sha256
+a089cc6604b57cfd9c7ee5449742a4651c10c9d7db80af0f8da735bd5b566404, 19296 B, 305 lines,
+10 marker lines, region digests 2c1d1941, 84609b00 and f6c3a188 under the
+trailing-newline convention the handback used. THE APPEND COMMIT HELD ITS SHAPE:
+c933b949's pre-commit blob is a byte-exact PREFIX of the 373548 B post-commit file,
+the remainder is 6064 B = one blank line plus RECORD1, RECORD1 is an exact suffix,
+its first line occurs once among the 79 lines that commit adds, numstat 79/0, 0 lines
+match `^(BEGIN|END)-[A-Z0-9]+$` while the BEGIN substring occurs 7 times. THE
+ARITHMETIC MOVED IN BOTH SETS BY ONE ID: 135 registered / 17 done / 0 landed at
+c2033d6c against 136 / 18 / 0 at 7480d880, 118 open at both ends, registered and done
+symmetric differences each exactly R-0521, landed symmetric difference empty, no
+duplicate id, no resolution naming an unregistered id, and next free R-0522. THE
+NARROWING LANDED WHERE IT WAS AIMED: at 7480d880 the item-20 opener, the new
+`identifier that already EXISTS` line and the checklist's closing paragraph each
+occur exactly once in `docs/agents/planner_reviewer_prompt.md`, 0 marker lines
+reached it, numstat 9/1, and 74dfa30e does precede c933b949 as R33's constraint 9
+required. THE SUITES WERE RE-RUN, NOT READ: the four state readers `159 passed`, the
+docs suite `295 passed` and the canary `42 passed`, each as its exact ordered command
+line in the primary checkout, each exit 0. COMMIT HYGIENE IS CLEAN: the path set is
+the six declared paths, per-commit insertions are 305, 223, 9, 79, 13 and the
+handback's own 89, none over 500, all six commits are single-parent, the reflog holds
+only `commit:` entries, and the ordered push landed — origin and local agree at
+7480d880. The worker deviated from nothing it was ordered to do.
+
+WHAT FAILED IS A SENTENCE NO GATE ASKED FOR. R33's handback closes its
+`## Authored-text proofs` section by calling both pairs REWRITE and stating that each
+FROM "matched exactly once before apply and 0 times after". The reviewer measured the
+SHARPF text at 74dfa30e: it occurs once, not zero times. The findings follow: the
+reviewer's mislabelling, the false line it produced, and one the reviewer found while
+authoring this block's own resolutions.
+
+- R-0522 — Medium, A PAIR WAS DECLARED A REWRITE WHILE ITS TO CONTAINED ITS FROM
+VERBATIM, BY A CONSTRAINT THAT CLAIMED A MECHANICAL CONTAINMENT TEST. R33's constraint
+2 reads "Pair shapes, each MEASURED by the reviewer with a containment test, one
+reading per pair: SHARPF→SHARPT REWRITE · PLANF→PLANT REWRITE". SHARPT begins with
+SHARPF verbatim, so the containment test returns true and the pair is APPEND-shaped;
+PLANF→PLANT is a REWRITE and that half is right. This is checklist item 15 — itself
+the counter-measure for R-0508, the finding in which a block "ran the check for the
+single pair it suspected" and generalised — recurring one feature later in the round
+that had just narrowed item 20 for the same underlying reason. Item 15 was obeyed as
+written: a per-pair reading WAS printed. What was printed was the LABEL and not the
+test's output, and a label is indistinguishable on the page from a measured one, so
+nothing downstream could catch it. Medium rather than Low because the label is what
+the worker's proof obligation is derived FROM: a wrong label does not stay a
+documentation defect, it manufactures a false measurement, which is R-0523.
+
+- R-0523 — Medium, A HANDBACK REPORTED A PROOF NUMBER THAT THE FILE ON DISK
+CONTRADICTS. R33's handback, applied at 7480d880, states in `## Authored-text proofs`
+that SHARPF→SHARPT and PLANF→PLANT are "both REWRITE; each FROM matched exactly once
+before apply and 0 times after, each TO once after". At 74dfa30e the SHARPF text
+occurs exactly once in `docs/agents/planner_reviewer_prompt.md` and the SHARPT text
+occurs exactly once, because the second contains the first; the claim is true of
+PLANF→PLANT and false of SHARPF→SHARPT. §4.5 lists unverified completion claims among
+the block conditions, so this is the sentence that costs R33 its PASS even though
+every ordered gate is green — a round's verdict is not the conjunction of its gates.
+The defect is not dishonesty: §4.9 says in terms that demanding a FROM-zero count for
+an append-shaped pair "invites either a fabricated number or a pointless repair
+round", and this is that invitation being accepted. The counter-measure is upstream,
+at R-0522, because a worker handed a correct shape reports a correct number. The
+landed sentence is NOT rewritten: this paragraph is its correction, per R-0521.
+
+- R-0524 — Low, ITEM 20 NOW DEMANDS A SHA FOR A CLASS OF SLICE IN WHICH NO SHA CAN
+EXIST. R-0521's narrowing, applied at 74dfa30e, requires that the commit a slice names
+be "an absolute identifier that already EXISTS when the slice is written", justified
+on the ground that "a block always has such a SHA to hand, because its own base is
+stated in its done-when". The base SHA answers a reading of a state that PRECEDES the
+round. It cannot answer a slice that asserts what the round's own commits have just
+made true — and every `Done:` paragraph in this file is of that class, including
+those in this entry, which assert what items 15 and 20 require after C1 of R34. For
+those the required identifier is a commit that does not exist when the slice is
+authored, so the rule as narrowed is satisfiable only by a value that cannot be
+written: the R-0371 shape, which this same checklist forbids for gates. Low because
+it has cost no round yet and was caught while authoring rather than after landing.
+Found by the reviewer against its own draft, which is where item 20 is supposed to be
+read.
+
+Done: R-0522 — Resolved at R34. Checklist item 15 of
+`docs/agents/planner_reviewer_prompt.md` §3 now requires the constraint to record the
+containment test's OUTPUT — `TO contains FROM: true` or `false` — with the APPEND or
+REWRITE label derived on the same line, and it states that a `true` reading orders the
+§4.9 append obligation and never a FROM-zero count. The narrowing is applied by the
+commit that constraint 9 of this round's block fixes ahead of this one; constraint 2
+of that same block is the first use of the new form, recording a boolean for every
+pair it lists.
+
+Done: R-0523 — Resolved at R34. This registration is the correction, and it is the
+whole resolution: the false sentence stays in `.agent/handoff.md` where it landed,
+because overwriting landed text is worse than a dated wrong sentence. What stops the
+class is R-0522's narrowing plus the constraint this round's block carries, which
+forbids reporting a FROM-zero count for an APPEND pair under any wording. No gate is
+added, because no gate could have caught a number nothing ordered.
+
+Done: R-0524 — Resolved at R34. Checklist item 20 of
+`docs/agents/planner_reviewer_prompt.md` §3 now carves out the slice that describes
+the round's own landed change: it names the block CONSTRAINT fixing the commit order
+instead of a SHA, and a reading of any prior state still names its SHA. Applied by the
+commit that constraint 9 of this round's block fixes ahead of this one, which is what
+lets these three paragraphs name constraint 9 rather than an impossible identifier.
+
+Gate: R35 — the R34 entry. R34 PASSED: the repair round that registered and resolved
+R-0522, R-0523 and R-0524 — a pair labelled REWRITE while its TO contained its FROM,
+the false rewrite proof that label produced, and the slice class item 20's required
+SHA cannot reach. Every ordered gate was re-run by the reviewer over
+7480d880..6ca30b16 and each reproduces the handback's reading. TRANSPORT WAS PROVED
+AGAINST THE REVIEWER'S OWN ORIGINAL, not only against a digest: the scratch file the
+block was authored into, the committed `.agent/authored/f085-r34.md`, the committed
+`.agent/last_block.md` and both working copies are all five byte-EQUAL at sha256
+42bf5eeb4bd3725848d7f824912827a9bff4948a18dd2f6cf13bc6caec46835b, 24167 B, 373 lines,
+14 marker lines, region digests 2764ed2a, 6fe4a6ca and 2b83c685 — and that digest is
+the one the reviewer measured BEFORE emission, so the block the worker applied is the
+block the reviewer wrote. THE APPEND COMMIT HELD ITS SHAPE: 2342ed97's pre-commit blob
+373548 B is a byte-exact PREFIX of the 381289 B post-commit file, the remainder is
+7741 B = one blank line plus RECORD2, RECORD2 is an exact suffix, its first line
+occurs once among the 104 lines that commit adds, numstat 104/0, 0 lines match
+`^(BEGIN|END)-[A-Z0-9]+$` while the BEGIN substring occurs 9 times. THE ARITHMETIC
+MOVED IN BOTH SETS BY THE SAME THREE IDS: 136 registered / 18 done / 0 landed at
+7480d880 against 139 / 21 / 0 at 6ca30b16, 118 open at both ends, registered and done
+symmetric differences each exactly R-0522, R-0523 and R-0524, landed symmetric
+difference empty, no duplicate id, no resolution naming an unregistered id, and next
+free R-0525. THE NARROWINGS LANDED AS APPENDS AND WERE PROVED AS APPENDS: at 6ca30b16
+the I15 and I20 FROM texts each still occur exactly once, which is what an
+append-shaped pair guarantees and what R33's handback wrongly denied of its own pair;
+the item-15, item-16 and item-20 openers and the checklist's closing paragraph each
+occur exactly once; every one of the 24 lines the two TOs add that their FROMs do not
+contain occurs exactly once among the 24 lines c15798a8 adds; 0 marker lines reached
+the file; numstat 24/0. THE SUITES WERE RE-RUN, NOT READ: the four state readers
+`159 passed`, the docs suite `295 passed` and the canary `42 passed`, each as its
+exact ordered command line in the primary checkout, each exit 0. THE DOCS GATE IS
+BLIND TO THE CHECKLIST EDIT AND WAS NOT COUNTED AS EVIDENCE FOR IT: the reviewer ran
+the red control in a disposable worktree at 7480d880 with
+`docs/agents/planner_reviewer_prompt.md` cut down to the single line `# broken`, and
+`tests/docs/` still returned `295 passed`, so no test under that directory reads the
+file and G5's occurrence counts are the only check on C1's content. The worktree was
+removed and pruned and the primary checkout is clean. COMMIT HYGIENE IS CLEAN: the
+path set before C4 is the five declared paths, per-commit insertions are 373, 304, 24,
+104, 3 and the handback's own 81, none over 500, all six commits are single-parent,
+the reflog holds only `commit:` entries, and the ordered push landed — origin and
+local agree at 6ca30b16. THE HANDBACK REPORTED THE PAIR SHAPES THE WAY R34 EXISTS TO
+MAKE POSSIBLE: both APPEND pairs are reported as APPEND with no FROM-zero count
+claimed, and the one REWRITE pair carries its FROM-0x/TO-1x reading. That is R-0523's
+counter-measure working on the first round it applied.
+
+WHAT THE WORKER FOUND AND DID NOT TOUCH. Under constraint 8 R34's worker reported that
+one sentence of the reviewer's own RECORD2 was falsified by its own C4, and declared
+it in the handback rather than editing a slice it was told to apply byte-verbatim.
+That is exactly the behaviour constraint 8 exists to produce, and the finding below is
+the reviewer's, not the worker's.
+
+- R-0525 — Low, A RESOLUTION LOCATED LANDED TEXT IN A PATH THAT IS REWRITTEN EVERY
+ROUND, WITHOUT THE SHA THAT HOLDS IT. R34's RECORD2, applied at commit 2342ed97,
+closes its R-0523 resolution with the words "the false sentence stays in
+`.agent/handoff.md` where it landed". Commit 6ca30b16 — C4 of the same round — rewrote
+that path in full, so at 6ca30b16 it does not contain the sentence; the version of
+that path in commit 7480d880 does. The referent is recoverable, because the R-0523
+registration two paragraphs above names 7480d880 explicitly, which is why this is Low
+and was not a block condition against R34. What makes it worth an id is that it is the
+R-0520 family arriving through a door R-0524 had just left open. R-0524's carve-out
+permits an ordering constraint in place of a SHA for a claim about the round's OWN
+change; this sentence is not that claim. It locates a PRIOR round's text by path
+alone, and for `.agent/handoff.md` a bare path can never be durable, because the last
+commit of every round rewrites it by construction — the staleness is SCHEDULED, not
+merely possible, and no ordering constraint reaches it. The same holds for
+`.agent/plan.md`, `.agent/last_block.md` and `.agent/context.md`. Found by the
+reviewer against the worker's declared observation, which is where a constraint-8
+report is supposed to be read.
+
+Done: R-0525 — Resolved at R35. Checklist item 20 of
+`docs/agents/planner_reviewer_prompt.md` §3 now requires a slice that merely LOCATES
+landed text to name the SHA of the commit holding it whenever the path is one this
+workflow rewrites every round, and it names those paths — `.agent/handoff.md`,
+`.agent/plan.md`, `.agent/last_block.md`, `.agent/context.md` — rather than leaving
+the reader to judge which paths qualify. Elsewhere a bare path stays acceptable, and
+the clause says so, because a rule that reaches every path would make ordinary
+cross-references unwritable. Applied by the commit that constraint 9 of this round's
+block fixes ahead of this one. This entry obeys the new clause: every reference it
+makes to `.agent/handoff.md` names the SHA that holds the text it means.
+
+Gate: R36 — the R35 entry. R35 PASSED: the interlude that recorded R34 and narrowed
+checklist item 20 to the paths this workflow rewrites every round. Every ordered gate
+was re-run by the reviewer over 6ca30b16..23b5fcd9 and each reproduces the handback's
+reading. TRANSPORT: the committed `.agent/authored/f085-r35.md`, the committed
+`.agent/last_block.md` and both working copies are byte-EQUAL at sha256
+41a8470f56a9063fb40a82526f0731bb57b2de20f296b075de572848a6f8581d, 21145 B, 331 lines,
+10 marker lines, region digests c9271720, 72829987 and 3e006c9f — all four measured by
+the reviewer, not read from the handback. THE APPEND COMMIT HELD ITS SHAPE: cde59e8c's
+pre-commit blob 381289 B is a byte-exact PREFIX of the 387274 B post-commit file, the
+remainder 5985 B is one blank line plus RECORD3, RECORD3 is an exact suffix, its first
+line occurs once among the 78 lines that commit adds, numstat 78/0, 0 lines match
+`^(BEGIN|END)-[A-Z0-9]+$` while the BEGIN substring occurs 11 times. THE ARITHMETIC
+MOVED IN BOTH SETS BY THE SAME ONE ID: 139 registered / 21 done / 0 landed at 6ca30b16
+against 140 / 22 / 0 at 23b5fcd9, 118 open at both ends, registered and done symmetric
+differences each exactly R-0525, landed symmetric difference empty, no duplicate id, no
+resolution naming an unregistered id, and next free R-0526. THE NARROWING LANDED AS AN
+APPEND AND WAS PROVED AS ONE: at 23b5fcd9 the I20F text still occurs exactly once, the
+item-15, item-20 and closing-paragraph openers each occur exactly once, and the 11
+lines C1's diff adds are exactly the 11 lines I20T adds that I20F does not contain,
+each once; 0 marker lines reached the file; numstat 11/0. THE SUITES WERE RE-RUN, NOT
+READ: the four state readers `159 passed`, the docs suite `295 passed` and the canary
+`42 passed`, each as its exact ordered command line in the primary checkout, each exit
+0. The ordered push landed: `git ls-remote origin` and the local branch agree at
+23b5fcd9. COMMIT HYGIENE IS CLEAN: the path set before C4 is the five declared paths,
+per-commit insertions are 331, 215, 11, 78, 3 and the handback's own 58, none over 500,
+all six commits are single-parent, and the reflog holds only `commit:` entries.
+
+- R-0526 — Low, A RESOLUTION ASSERTED A UNIVERSAL PROPERTY OF ITS OWN REFERENCES THAT
+ITS OWN TEXT DOES NOT MEET. R35's RECORD3, applied at commit cde59e8c, closes its
+R-0525 resolution with "This entry obeys the new clause: every reference it makes to
+`.agent/handoff.md` names the SHA that holds the text it means." The reviewer counted
+the sentences of RECORD3 mentioning that path at 23b5fcd9 and found four: one locates
+landed text and names 2342ed97, and the other three — the rule statement, the path list
+and the compliance claim itself — name no SHA and locate nothing. Under the clause as it
+landed the entry IS compliant, because the clause binds only a slice that LOCATES landed
+text; what fails is the sentence's own restatement of it, which quantifies over every
+reference rather than over the ones that locate text and is false of three of its own
+four. The referent is recoverable, so the cost is the audit it invites: a later reader
+checking the claim must re-derive that three of those references locate nothing. This is
+the R-0402 and R-0460 family with a quantifier in place of a numeral — item 11 forbids a
+hand-counted NUMERAL about a block's own parts, and nothing yet forbids a hand-checked
+UNIVERSAL about a slice's own text. Registered here and deliberately NOT resolved in the
+same round: the counter-measure is a checklist clause, this is a production round, and a
+fix authored in passing is how the last three rounds became record-keeping. The next
+record round resolves it by extending item 11 from numerals to any self-referential
+claim a slice makes about its own text, stated as the property actually measured.
+
+Gate: R37 — the R36 entry. R36 PASSED, and it was the first production round since R32:
+the default `runner` closure of `packages/orchestration/mission_state.py` moved onto
+`run_guarded_test_command`, with the first test that reaches that closure at all. Every
+ordered gate was re-run by the reviewer over 23b5fcd9..483975b3 and each reproduces the
+handback's reading. TRANSPORT WAS PROVED AGAINST THE REVIEWER'S OWN ORIGINAL, not only
+against a digest: the scratch file the block was authored into, the committed
+`.agent/authored/f085-r36.md`, the committed `.agent/last_block.md` and both working
+copies are all five byte-EQUAL at sha256
+208ad9d39755891b5bb83f9382e6f3d613c97cafc4652ad2b8b662887d3ce8d1, 24223 B, 400 lines, 22
+marker lines, region digests 7d583ed0, ace9d813 and 9b5a9653 — and that digest is the
+one the reviewer measured BEFORE emission, so the block the worker applied is the block
+the reviewer wrote. THE APPEND COMMIT HELD ITS SHAPE: e27c1c61's pre-commit blob 387274 B
+is a byte-exact PREFIX of the 391135 B post-commit file, the remainder 3861 B is one
+blank line plus RECORD4, RECORD4 is an exact suffix, its first line occurs once among the
+47 lines that commit adds, numstat 47/0, 0 lines match `^(BEGIN|END)-[A-Z0-9]+$` while the
+BEGIN substring occurs 13 times. THE ARITHMETIC MOVED IN THE REGISTERED SET ALONE: 140
+registered / 22 done / 0 landed at 23b5fcd9 against 141 / 22 / 0 at 483975b3, 118 open
+against 119, registered symmetric difference exactly R-0526, done and landed symmetric
+differences empty, no duplicate id, no resolution naming an unregistered id, and next
+free R-0527. THE MIGRATION IS THE SLICES AND NOTHING ELSE: at 483975b3 the import sits at
+MODULE level in isort order, the three APPEND FROMs each still occur once, the REWRITE
+pair reads FROM 0x and TO 1x, the 34 lines C2 adds are exactly the 24 TO-only lines of the
+four pairs plus the ten unchanged context lines the diff carries, 0 marker lines reached
+either file, and the string `subprocess` now occurs 0 times in that module. THE SEAM IS
+REACHED BY A TEST FOR THE FIRST TIME: at 23b5fcd9 every test exercising `run_verify_task`
+passed its own `runner=`, so the default closure was executed by no test, and
+`test_the_default_runner_goes_through_the_guarded_seam` closes that gap in the same commit
+as the code. THE RED PROOF WAS RE-RUN BY THE REVIEWER, NOT READ: in a disposable worktree
+at 83bc6df1 with the module-level import moved into the closure, `1 failed, 81 passed`
+and the failure is `AttributeError` naming `run_guarded_test_command` at the
+`monkeypatch.setattr` line — the module-level import is load-bearing, and a closure-local
+one would have left the site untestable while every other gate stayed green. The worktree
+was removed and pruned and the primary checkout is clean. THE SUITES WERE RE-RUN, NOT
+READ: ruff `All checks passed!`, `test_mission_state.py` `82 passed`, the four state
+readers `159 passed` and the canary `42 passed`, each as its exact ordered command line in
+the primary checkout, each exit 0. COMMIT HYGIENE IS CLEAN: the path set is the six
+declared paths, per-commit insertions are 400, 361, 47, 34, 8 and the handback's own 50,
+none over 500, all six commits are single-parent, the reflog holds only `commit:` entries,
+and the ordered push landed — origin and local agree at 483975b3.
+
+WHAT THE WORKER FOUND AND DID NOT TOUCH. Under constraint 8 R36's worker measured the
+reviewer's own constraint against the slice it described, found it false, declared it in
+the handback, and changed nothing. That is the second consecutive round in which the
+constraint-8 report produced the round's finding, and it is why the reviewer's text is
+gated by the worker's measurement rather than by the reviewer's own re-reading.
+
+- R-0527 — Low, A BLOCK CONSTRAINT ASSERTED A PROPERTY ITS OWN SLICE DOES NOT HAVE.
+Constraint 8 of the R36 block, applied at commit 8a0766c1, states that RECORD4 "states
+facts about `packages/orchestration/mission_state.py` and
+`tests/orchestration/test_mission_state.py`, both of which C2 of this same round edits",
+and then binds every such sentence to name the SHA 23b5fcd9. Measured at 483975b3,
+RECORD4 contains zero occurrences of either path: its file-state readings all belong to
+the R35 range and name 6ca30b16, 23b5fcd9, cde59e8c or 2342ed97. The obligation was
+therefore VACUOUS rather than met — a staleness gate that could not fail, which is the
+R-0438 class arriving through a constraint instead of a path. Nothing false about the
+repository landed on disk, and the worker performed the re-read anyway across all six
+edited files, which is why this is Low. What makes it worth an id is where the false
+sentence lives: constraint text is committed verbatim to `.agent/authored/f085-r36.md`
+and `.agent/last_block.md`, so a reviewer recollection about the reviewer's own slice is
+now part of the permanent record, and the only reason it was caught is that a worker
+measured a claim its author had not. Found by the worker under constraint 8 and
+registered by the reviewer, which is where a constraint-8 report is supposed to land.
+
+Done: R-0526 — Resolved at R37. Checklist item 11 of
+`docs/agents/planner_reviewer_prompt.md` §3 now binds any claim a block or a slice makes
+about its OWN text to be measured before emission and written as the property measured,
+and it names the universal-quantifier form explicitly: a slice may not assert a universal
+over its own contents, because "every reference names its SHA" is a claim nobody counted
+while "the sentences that locate landed text name their SHA" is one that can be. Applied
+by the commit that constraint 9 of this round's block fixes ahead of this one. The
+sentence R-0526 registered stays where it landed; nothing in `.agent/live_review.md` was
+rewritten.
+
+Done: R-0527 — Resolved at R37 by the same clause, which is why the two share one. Item
+11 now also forbids a block constraint from asserting a property its own slice does not
+have, and the counter-measure is stated as a method rather than as a prohibition: state
+what was counted, or state nothing. The block that carries this resolution applies it to
+itself — its constraint 8 names the one file this block both edits and makes claims
+about, and asserts no property of any slice's contents. Applied by the commit that
+constraint 9 of this round's block fixes ahead of this one.
+
+Gate: R38 — the R37 entry. R37 PASSED. Every ordered gate was re-run by the reviewer
+over 483975b3..c3201976 and each reproduces the handback's reading. TRANSPORT WAS PROVED
+DISK-TO-DISK: the committed `.agent/authored/f085-r37.md`, the committed
+`.agent/last_block.md` at 857ca31a and both working copies are byte-EQUAL at sha256
+c8efc5c06444464245a311d03acc78f008246a9c259a7100330bdeac876d8409, 21768 B, 329 lines, 10
+marker lines, region digests 70737984, 9bdbc476 and 89541ee6. THE APPEND COMMIT HELD ITS
+SHAPE: 75feb987's pre-commit blob 391135 B is a byte-exact PREFIX of the 397527 B
+post-commit file, the remainder 6392 B is one blank line plus RECORD5, RECORD5 is an
+exact suffix, its first line occurs once among the 81 lines that commit adds, numstat
+81/0, and 0 lines match `^(BEGIN|END)-[A-Z0-9]+$` while the BEGIN substring occurs 15
+times. THE ARITHMETIC MOVED AS ORDERED: 141 / 22 / 0 at 483975b3 against 142 / 24 / 0 at
+c3201976, 119 open against 118, registered symmetric difference exactly R-0527, done
+symmetric difference exactly R-0526 and R-0527, landed symmetric difference empty, no
+duplicate id, no resolution naming an unregistered id, next free R-0528. THE CLAUSE
+LANDED AND BOTH PAIRS WERE APPLIED VERBATIM: at c3201976 the I11F text occurs once, the
+item-11, item-12 and closing-paragraph openers each occur once, all 19 TO-only lines
+occur exactly once among the 19 lines 69155e06 adds, numstat 19/0, and the reviewer
+reproduced both applications mechanically — each pre-commit blob with its FROM replaced
+once by its TO equals the post-commit blob byte for byte, for I11F→I11T and PLANF5→PLANT5
+alike. THE SUITES WERE RE-RUN, NOT READ: the four state readers `159 passed`,
+`tests/docs/` `295 passed` and the canary `42 passed`, each as its exact ordered command
+line in the primary checkout, each exit 0. HYGIENE IS CLEAN: the path set is the six
+declared paths, per-commit insertions are 329, 264, 19, 81, 3 and the handback's own 42,
+none over 500, all six commits are single-parent, the reflog holds only `commit:`
+entries, the handback is 94 lines against its 100-line cap, and origin and local agree at
+c3201976.
+
+WHAT THE WORKER FOUND AND DID NOT TOUCH. Under constraint 8 R37's worker measured the
+reviewer's own constraint against the slice it described, found both halves false,
+declared it, and changed nothing — the third consecutive round in which the constraint-8
+report produced the round's finding.
+
+- R-0528 — Low, A BLOCK CONSTRAINT ASSERTED TWO PROPERTIES OF ITS OWN TEXT AND BOTH ARE
+FALSE. Constraint 8 of the R37 block, applied at commits e2b23b33 and 857ca31a, states
+that "The only file this block both edits and makes claims about is
+`docs/agents/planner_reviewer_prompt.md`" and that "Every other reading RECORD5 asserts
+about a state before this round names 483975b3 or an earlier SHA". Measured against
+RECORD5 at c3201976, both fail. RECORD5 makes claims about three files that round edits,
+not one: `docs/agents/planner_reviewer_prompt.md`, `.agent/last_block.md` and
+`.agent/live_review.md`. And RECORD5's transport sentence names no SHA at all — its three
+8-hex tokens 7d583ed0, ace9d813 and 9b5a9653 are region content digests and resolve to no
+git object — while asserting a reading of `.agent/last_block.md` that the same round's
+C0b, commit 857ca31a, falsified: that file hashes 208ad9d3 at 483975b3 and c8efc5c0 at
+857ca31a and every commit after it. `.agent/last_block.md` is on
+the R-0525 list of paths this workflow rewrites every round, so that sentence was owed a
+SHA by a rule already on disk. This is the R-0527 shape recurring inside the very
+constraint written to close R-0527, one commit before the item-11 clause forbidding it
+landed. Found by the worker under constraint 8 and registered by the reviewer.
+
+- R-0529 — Low, THE RESOLUTION THAT CLOSED R-0527 IS ITSELF AN INSTANCE OF R-0527. The
+`Done: R-0527` paragraph, applied at commit 75feb987, closes with "The block that carries
+this resolution applies it to itself — its constraint 8 names the one file this block
+both edits and makes claims about, and asserts no property of any slice's contents."
+Measured at c3201976 both halves are false, by the same readings R-0528 records: the
+constraint names one file where RECORD5 claims about three, and the constraint DOES
+assert a property of a slice's contents — the sentence binding every reading RECORD5
+makes to name 483975b3 or earlier, which is the half the transport sentence breaks. What
+separates this from R-0528 is where it landed. R-0528's text sits in a block record; this
+one sits in `.agent/live_review.md`, the permanent findings register, inside the paragraph
+certifying R-0527 closed — so the register now asserts a compliance nobody measured, in
+the one document whose whole purpose is that its claims are measured. R37's handback
+declared the constraint and did not name this second landing site, which is why it needs
+an id of its own rather than a sentence inside R-0528. Per constraint 9 nothing is
+rewritten: this registration is the correction.
+
+Gate: R39 — the R38 entry. R38 PASSED. Every ordered gate was re-run by the reviewer over
+c3201976..cbcb5c23 and each reproduces the handback's reading. TRANSPORT WAS PROVED
+AGAINST THE REVIEWER'S OWN ORIGINAL: the scratch file the block was authored into, the
+committed `.agent/authored/f085-r38.md`, the committed `.agent/last_block.md` at b9d5050b
+and both working copies are all five byte-EQUAL at sha256
+5fa4d096e45014a54d93d7f27efe176adc4c85a1f10ebdcf6a649c6620cb5090, 18154 B, 284 lines, 12
+marker lines — and that digest is the one the reviewer measured BEFORE emission, so the
+block the worker applied is the block the reviewer wrote. BOTH APPENDS HELD THEIR SHAPE:
+3b915e3c's pre-commit blob 397527 B is a byte-exact PREFIX of the 402603 B post-commit
+file with remainder one blank line plus RECORD6, numstat 65/0; 275a294e's 356103 B is a
+prefix of 358646 B with remainder one blank line plus DEC6, numstat 38/0; each slice is an
+exact suffix, each first line occurs once among that commit's added lines, and 0 marker
+lines reached either file. THE ARITHMETIC MOVED IN THE REGISTERED SET ALONE: 142 / 24 / 0
+at c3201976 against 144 / 24 / 0 at cbcb5c23, 118 open against 120, registered symmetric
+difference exactly R-0528 and R-0529, done and landed symmetric differences empty, no
+duplicate id, no resolution naming an unregistered id, next free R-0530. THE PLAN PAIRS
+WERE APPLIED VERBATIM: the reviewer rebuilt the file mechanically — the pre-commit blob
+with each FROM replaced once by its TO equals the post-commit blob byte for byte — and
+`.agent/plan.md` is 45 lines against its 50-line cap with `## Goal` and `## Next Steps`
+intact. THE SUITES WERE RE-RUN, NOT READ: the four state readers `159 passed` and the
+canary `42 passed`, each as its exact ordered command line in the primary checkout, each
+exit 0. HYGIENE IS CLEAN: the path set is the six declared paths, per-commit insertions
+are 284, 249, 65, 49 and the handback's own 48, none over 500, all five commits are
+single-parent, the reflog holds only `commit:` entries, and origin and local agree at
+cbcb5c23.
+
+WHAT THE WORKER FOUND AND DID NOT TOUCH. Under constraint 8 R38's worker measured a
+sentence of the reviewer's own RECORD6 against the repository, found it false, declared it
+in the handback, and changed nothing. That is the fourth consecutive round in which the
+constraint-8 report produced the round's finding, and the third in which the false
+sentence was one the reviewer wrote about its own text.
+
+- R-0530 — Low, A CORRECTION INTRODUCED THE UNIVERSAL IT WAS WRITTEN TO REMOVE. RECORD6's
+R-0528 paragraph, applied at commit 3b915e3c, states that `.agent/last_block.md` "hashes
+208ad9d3 at 483975b3 and c8efc5c0 at 857ca31a and every commit after it". Measured: that
+file hashes 208ad9d3 at 483975b3, c8efc5c0 at 857ca31a and c3201976, and 5fa4d096 at
+b9d5050b and cbcb5c23. The clause "and every commit after it" is therefore false from
+b9d5050b — R38's own C0b — onward, and because C0b PRECEDES C1 the sentence was already
+false at the moment it landed. The two readings it actually took are correct; only the
+quantifier is wrong. What makes this worth an id rather than a shrug is its provenance:
+the clause was ADDED by the reviewer, in the last edit before emission, specifically to
+satisfy the R-0525 rule that a reference to `.agent/last_block.md` name the SHA holding
+the text it means — and naming two SHAs correctly, then generalising past them, is the
+R-0526 universal-quantifier shape reappearing inside the paragraph that registers its own
+class. Checklist item 11 already forbids exactly this and the block's own constraint 8
+already ordered the measurement that caught it, so nothing new is owed to the checklist:
+what is owed is the habit of running that measurement over sentences quantifying across
+COMMITS, which no pair-shape or path check reaches. Found by the worker under constraint 8
+and registered by the reviewer.
+
+Gate: R40 — the R39 entry. R39 PASSED. Every ordered gate was re-run by the reviewer over
+cbcb5c23..d3a707f5 and each reproduces the handback's reading. TRANSPORT WAS PROVED
+AGAINST THE REVIEWER'S OWN ORIGINAL: the scratch file the block was authored into, the
+committed `.agent/authored/f085-r39.md`, the committed `.agent/last_block.md` at 757be21c
+and both working copies are all five byte-EQUAL at sha256
+32415af6db43f9228459a2bb05241c35c0a39073ab4ffb638d01758448f1181a, 19352 B, 349 lines, 24
+marker lines. THE SEAM CHANGE IS THE FOUR PAIRS AND NOTHING ELSE: the reviewer rebuilt
+`packages/orchestration/exec_guard.py` mechanically — the pre-commit blob with each FROM
+replaced once by its TO equals dce66faa's blob byte for byte — and the guard's floor is
+untouched, `def scrub_child_env` through its `return` hashing 3880a84d over 540 B at both
+cbcb5c23 and d3a707f5. THE APPEND HELD ITS SHAPE: 607050ba's pre-commit blob 402603 B is
+a byte-exact PREFIX of the 406554 B post-commit file, the remainder 3951 B is one blank
+line plus RECORD7, RECORD7 is an exact suffix, its first line occurs once among the 50
+lines that commit adds, numstat 50/0, and 0 marker lines reached the file. THE ARITHMETIC
+MOVED IN THE REGISTERED SET ALONE: 144 / 24 / 0 at cbcb5c23 against 145 / 24 / 0 at
+d3a707f5, 120 open against 121, registered symmetric difference exactly R-0530, done and
+landed symmetric differences empty, no duplicate id, no resolution naming an unregistered
+id, next free R-0531. THE SUITES WERE RE-RUN, NOT READ, each as its exact ordered command
+line in the primary checkout, each exit 0: `test_exec_guard.py` `27 passed` against a base
+of 24, the four seam consumers `262 passed` equalling their base, the four state readers
+`159 passed`, ruff over the two touched paths `All checks passed!`, and the canary
+`42 passed`. HYGIENE IS CLEAN: the path set is the seven declared paths, per-commit
+insertions are 349, 295, 50, 66, 6 and the handback's own 147, none over 500, all six
+commits are single-parent, the reflog holds only `commit:` entries, and origin and local
+agree at d3a707f5.
+
+WHAT THE WORKER FOUND AND DID NOT TOUCH. Under constraint 8 R39's worker measured two of
+the reviewer's own gate sentences against the repository, found both unsatisfiable,
+declared them, ran the strongest measurement each one admitted, and changed no slice. That
+is the fifth consecutive round in which the constraint-8 report produced the round's
+findings. Both are registered below.
+
+- R-0531 — Low, AN APPEND OBLIGATION WRITTEN FOR PROSE WAS ORDERED OVER A CODE SLICE.
+G5 of the R39 block, applied at commit eba5de68, ordered that "every line SEAMTESTS
+contains occurs exactly once AMONG THE LINES C2'S DIFF ADDS". Measured at d3a707f5, four
+distinct lines of that 47-line slice fail it — the empty line 12x, `    )` 4x, the
+argument line `        _child(_ENV_DUMP), timeout_sec=30, cwd=None,` 3x and
+`@pytest.mark.subprocess` 2x. §4.9 states the per-line count for TO-ONLY additions and
+already bends where a slice legitimately repeats a sentence the file carries; what it does
+not anticipate is that a CODE slice repeats lines STRUCTURALLY, because blank separators,
+closing parentheses and decorators are what code is made of. The obligation is therefore
+unattainable by construction for every code append, which is the R-0207 shape — demanding
+a count that invites either a fabricated number or a pointless repair round — arriving
+through a slice's LANGUAGE rather than through its pair shape. The worker substituted the
+property that does hold and measured it: the lines C2 adds are exactly two empty lines
+followed by SEAMTESTS's 47 lines IN ORDER, the pre-commit blob is a byte-exact prefix, and
+the slice is an exact suffix. That ordered-equality reading is strictly stronger than the
+per-line count it replaced, since it fixes position as well as multiplicity. The next
+record round resolves this by writing that reading into the checklist as the form a CODE
+append is owed. Found by the worker under constraint 8 and registered by the reviewer.
+
+- R-0532 — Low, A BASELINE GATE WAS ORDERED AT A COMMIT WHERE ITS OWN PATHS DO NOT EXIST.
+G6 of the R39 block, applied at commit eba5de68, ordered `ruff check` over
+`packages/orchestration/exec_guard.py` and `tests/orchestration/test_exec_guard.py` "at
+`origin/main` as well", so that a pre-existing error could not be read as a new one.
+Measured: `git ls-tree origin/main` returns nothing for either path — `exec_guard.py` was
+ADDED on this branch at e0d4d880 — so the command exits 1 with `E902 No such file or
+directory` per path and produces no lint reading at all. The comparison the gate exists to
+make is empty by construction. This is R-0364 recurring in the reviewer's own text: that
+finding's whole content is that a gate is executed at its base BEFORE it is ordered, and
+the HEAD run was executed while the origin/main run was not. A second defect rides in the
+same gate: G6's preamble binds every command in it to "the PRIMARY checkout and never in a
+worktree" under R-0518, while a reading at `origin/main` from a branch checkout requires
+exactly the worktree that clause forbids, so the two sentences cannot both be obeyed. The
+worker ran it, recorded the exit code and output, treated the green HEAD gate as the
+operative one and declared the rest, which is the correct handling. Nothing false about
+the repository landed. The next record round resolves this by binding a baseline gate to
+paths that exist at the base it names, and by carving the worktree exception the R-0518
+clause needs.
+
+Gate: R41 — the R40 entry. R40 PASSED. Every ordered gate was re-run by the reviewer over
+d3a707f5..93226220 and each reproduces the handback's reading. TRANSPORT WAS PROVED AGAINST
+THE REVIEWER'S OWN ORIGINAL: the scratch file the block was authored into, the committed
+`.agent/authored/f085-r40.md` at fc5d957a, the committed `.agent/last_block.md` at 067fa3d2
+and the working copies of those two paths as they stand at 93226220 are all five byte-EQUAL
+at sha256 fad599b49902bd898feca72a990ba03061af4ba6598135570e7028ff797c41ed, 15082 B, 225
+lines, 6 marker lines. THE APPEND HELD ITS SHAPE: a5e240ca's pre-commit blob of 406554 B is
+a byte-exact PREFIX of the 412143 B post-commit file, the remainder of 5589 B is one blank
+line plus RECORD8, and RECORD8 extracted by its marker pair from the committed authored
+block hashes d6ce71700bafa738218c94e573b2470bfefc0532953f679234604721dc3b96af over 5588 B
+and 69 lines, equal byte for byte to what that commit appended; numstat 70/0, and no marker
+line reached the file. THE ARITHMETIC MOVED IN THE REGISTERED SET ALONE: 145 / 24 / 0 at
+d3a707f5 against 147 / 24 / 0 at 93226220, 121 open against 123, registered symmetric
+difference exactly R-0531 and R-0532, done and landed symmetric differences empty, no
+duplicate id, no resolution naming an unregistered id, next free R-0533. THE PLAN PAIR
+LANDED AS A REWRITE: PLANF8 0x and PLANT8 1x at 93226220, `.agent/plan.md` 45 lines under
+the 50-line cap with `## Goal` and `## Next Steps` both present, no marker line, numstat
+3/3. THE SUITES WERE RE-RUN, NOT READ, each in the primary checkout, each exit 0: the four
+state readers `159 passed` against a base of 159, and the canary `42 passed` against 42.
+HYGIENE IS CLEAN: per-commit insertions over that range are 225, 168, 70, 3 and the
+handback commit's own 81, none over 500; every commit in the range is single-parent; `git
+reflog -10` holds only `commit:` entries; and `git worktree list` is one line.
+
+BOTH R40 FINDINGS REPRODUCE INDEPENDENTLY. R-0531's counts were re-measured over the 49
+lines dce66faa adds to `tests/orchestration/test_exec_guard.py`: the empty line 12x,
+`    )` 4x, the argument line 3x and `@pytest.mark.subprocess` 2x, and those four are the
+only distinct lines occurring more than once there. R-0532's premise was re-measured at
+93226220: `git ls-tree origin/main` returns nothing for either
+`packages/orchestration/exec_guard.py` or `tests/orchestration/test_exec_guard.py`.
+
+WHAT THE WORKER FOUND AND DID NOT TOUCH. Under constraints 8 and 9 R40's worker measured
+two clauses of RECORD8 — the reviewer's own text, landed at a5e240ca — against the
+repository, found both false, declared them, and repaired neither, which is exactly what
+constraint 9 required. That is the sixth consecutive round in which the constraint-8 report
+produced the round's findings. Both are registered below, and this registration IS the
+correction: checklist item 20 holds that appending a correction is how this record stays
+honest and that overwriting landed text is worse than a dated wrong sentence, so a5e240ca
+keeps its bytes.
+
+- R-0533 — Low, A PER-COMMIT INSERTION LIST REPORTED ONE COMMIT'S CHURN COLUMN. RECORD8's
+hygiene clause, applied at commit a5e240ca, reads "per-commit insertions are 349, 295, 50,
+66, 6 and the handback's own 147". Re-measured by walking cbcb5c23..d3a707f5, the six
+commits insert 349, 295, 50, 66, 3 and 147: f31802f0 is 3 insertions and 3 deletions, so 6
+is the insertions+deletions churn reading that AGENTS.md DECISION F104 D1 excludes from the
+500-line cap. The clause's conclusion, none over 500, survives, so nothing false about this
+repository's compliance landed; what landed is a wrong number in a permanent record. Its
+provenance is what earns it an id: this is R-0530's class recurring inside the paragraph
+that REGISTERED R-0530, one commit after that paragraph concluded "nothing new is owed to
+the checklist ... what is owed is the habit of running that measurement over sentences
+quantifying across COMMITS". A counter-measure written as finding prose binds nothing, and
+the round that wrote this one is the proof. Found by the worker under constraint 8 and
+registered by the reviewer.
+
+- R-0534 — Low, A PRESENT-TENSE CLAIM ABOUT A WORKING COPY WAS FALSIFIED BY ITS OWN ROUND'S
+EARLIER COMMIT. RECORD8's transport clause, applied at commit a5e240ca, states that the R39
+scratch file, `.agent/authored/f085-r39.md`, `.agent/last_block.md` "at 757be21c" and "both
+working copies" are "all five byte-EQUAL" at sha256 32415af6…1181a. Measured:
+`.agent/last_block.md` does hash 32415af6 at 757be21c as the clause says, but 067fa3d2 —
+C0b of the very round that wrote the sentence, two commits before it landed — overwrote
+that path with the R40 block, so at a5e240ca both the working and the committed
+`.agent/last_block.md` hash fad599b4…c41ed. Four of the five copies matched when the
+sentence landed and the fifth did not. The same clause's closing "origin and local agree at
+d3a707f5" was false for the same structural reason: that block ordered its single push
+AFTER the handback commit, so while RECORD8 was landing local HEAD was a5e240ca and origin
+was still d3a707f5. This is R-0520's shape with a twist that let it through: the qualifier
+was attached to the COMMITTED reading and omitted from the WORKING reading standing beside
+it in the same sentence, so item 20 read as satisfied because a SHA was present — just not
+for the half that needed one. Found by the worker under constraint 8 and registered by the
+reviewer.
+
+Done: R-0530 — Resolved at R41. Item 22 of `docs/agents/planner_reviewer_prompt.md` §3 now
+binds any clause that states a value per commit, a value holding at "every commit after"
+one, or a total over a range to be recomputed at emission by walking that range with `git
+rev-list --reverse`, one reading per commit, and written as the list that walk produced.
+R-0530 concluded that nothing was owed to the checklist and that the counter-measure was a
+habit; R-0533 is that habit failing one commit later inside R-0530's own paragraph, which
+is the evidence that overturns the conclusion. The commit carrying item 22 is fixed by
+constraint 6 of the R41 block to land after the commit carrying this paragraph. The
+sentence R-0530 registered stays where it landed at 3b915e3c; nothing was rewritten.
+
+Done: R-0531 — Resolved at R41 by the same block. §4.9 of
+`docs/agents/planner_reviewer_prompt.md` now states that its per-line count is written for
+PROSE and binds prose only, that a slice of CODE repeats lines structurally so the count is
+unattainable by construction for every code append, and that the obligation there is
+ORDERED EQUALITY instead — pre-commit blob a byte-exact prefix, slice an exact suffix, and
+the lines the commit's diff adds exactly the slice's lines IN ORDER. That is the property
+R39's worker substituted and measured, promoted from one round's improvisation to the rule,
+and it is strictly stronger than the count it replaces because it fixes position as well as
+multiplicity. The commit carrying that text is fixed by constraint 6 to land after this
+one. The gate sentence R-0531 registers stays in commit eba5de68.
+
+Done: R-0532 — Resolved at R41 by the same block. Item 21 now binds a gate ordered at any
+commit other than the one under review to be checked at emission with `git ls-tree <base>
+-- <path>` for EVERY path it names, because a path this branch added does not exist at that
+base and the tool then exits on the missing file and produces no reading at all — the
+vacuous-gate shape of R-0438, reached through the base rather than through a typo. The same
+item carries the carve-out the R39 instance also needed: an R-0518 primary-checkout clause
+reaches SUITE commands, which need installed dependencies, and never a read-only baseline
+reading of named paths at another commit, which has no dependency to miss. The commit
+carrying item 21 is fixed by constraint 6 to land after this one. G6 of the R39 block stays
+as it landed at eba5de68.
+
+Gate: R42 — the R41 entry. R41 PASSED. Every ordered gate was re-run by the reviewer over
+93226220..0e2cdacd and each reproduces the handback's reading. LINE COUNTS IN THIS ENTRY
+ARE `splitlines` COUNTS, stated because the convention is exactly what R-0536 below
+registers. TRANSPORT WAS PROVED AGAINST THE REVIEWER'S OWN ORIGINAL: the scratch file the
+block was authored into, the committed `.agent/authored/f085-r41.md` at 9cc4772c, the
+committed `.agent/last_block.md` at a66aa301 and the working copies of those two paths as
+they stand at 0e2cdacd are all five byte-EQUAL at sha256
+a3716bdf9fa29892bbb6220a5b50bf6c73b057106e0465a28d71e3cd17febbba, 28265 B, 398 lines, 14
+marker lines. THE APPEND HELD ITS SHAPE: 1a29a77d's pre-commit blob of 412143 B is a
+byte-exact PREFIX of the 420193 B post-commit file, the remainder of 8050 B is one blank
+line plus RECORD9, RECORD9 hashes cf21f13adb1535b6 over 8049 B and 101 lines and is an
+exact suffix, the appended bytes equal the marker-pair extraction from the committed
+authored block, numstat 102/0, no duplicate non-empty line among the 102 added, and no
+marker line reached the file. THE ARITHMETIC MOVED AS ORDERED: 147 / 24 / 0 at 93226220
+against 149 / 27 / 0 at 0e2cdacd, 123 open against 122, registered symmetric difference
+exactly R-0533 and R-0534, done symmetric difference exactly R-0530, R-0531 and R-0532,
+landed symmetric difference empty, no duplicate id, no resolution naming an unregistered
+id. THE DOC EDITS LANDED AS TWO APPENDS: P49FROM, P49TO, CL20FROM and CL20TO each occur
+exactly 1x at 0e2cdacd, and for BOTH commits the lines the diff adds equal the TO-only
+lines IN ORDER — 14 for 01359f81 and 49 for 247df04b — which is the ordered-equality
+reading item 9 of §4 now prescribes, applied to its own landing commit. The checklist
+region reads labels 1..22 contiguous against 1..20 at the base; no marker line reached the
+file. THE PLAN PAIR LANDED AS A REWRITE: PLANF9 0x and PLANT9 1x at 0e2cdacd, `## Goal`
+and `## Next Steps` both present, no marker line, numstat 4/3. THE SUITES WERE RE-RUN, NOT
+READ, each in the primary checkout, each exit 0: the four state readers `159 passed`
+against a base of 159, and the canary `42 passed` against 42. HYGIENE IS CLEAN: the path
+set before C5 is exactly the five ordered paths; walking 93226220..0e2cdacd gives
+per-commit insertions 398, 361, 102, 14, 49, 4 and the handback commit's own 101, none
+over 500; all seven commits are single-parent; `git reflog -10` holds only `commit:`
+entries; and `git worktree list` is one line.
+
+WHAT THE WORKER FOUND AND DID NOT TOUCH. Under constraints 8 and 9 R41's worker measured
+the reviewer's own RECORD9 and the block's own predictions against the repository, found
+five readings that differ, declared them and repaired none. That is the seventh
+consecutive round in which the constraint-8 report produced the round's findings. The two
+findings below are the reviewer's, not the worker's: R41's execution reproduced under
+independent re-run in every particular.
+
+- R-0535 — Low, THE CLAUSE THAT LANDED THE QUALIFIER RULE BROKE IT TWICE IN ITS OWN TEXT.
+RECORD9, applied at commit 1a29a77d, registers R-0534 and states its counter-measure —
+that a SHA qualifier attaches to EVERY reading a clause states, not only the first — and
+two of RECORD9's own clauses then state a trailing reading the qualifier does not reach.
+Measured: its plan clause reads "PLANF8 0x and PLANT8 1x at 93226220, `.agent/plan.md` 45
+lines", and `.agent/plan.md` is 45 lines at 93226220 and at 1a29a77d but 46 at 0e2cdacd,
+falsified by C4 of RECORD9's own round; its arithmetic clause closes "next free R-0533",
+which is true at 93226220 and false at 1a29a77d, because RECORD9 itself registers R-0533
+and R-0534 and so moves the next free id to R-0535 in the very commit that lands the
+sentence. The second is the sharper of the two: no reading of the qualifier's scope makes
+it true where it landed. What this is NOT is a worker error or a rule that failed — the
+R41 block was authored BEFORE checklist item 20 carried the R-0534 clause, and constraint
+6 put C1 ahead of C3, so RECORD9 was written under the old rule and landed under the new
+one. The lesson is narrower and worth the id: a round that WRITES a checklist rule must
+apply that rule to its own slices at authoring time, because the slices land in the same
+round and the record does not care which commit taught it. Found by the worker under
+constraint 8 and registered by the reviewer.
+
+- R-0536 — Low, A BLOCK PREDICTED FOUR LINE COUNTS UNDER AN UNSTATED NEWLINE CONVENTION
+AND EVERY ONE READ ONE HIGH. The R41 block, applied at commit 9cc4772c, stated that
+`docs/agents/planner_reviewer_prompt.md` would be "707 lines at HEAD against 644 at
+93226220" and that the reviewer's dry run "put it at 47 lines" for `.agent/plan.md`.
+Measured at 0e2cdacd with `splitlines`: 706, 643 and 46. The reviewer counted with
+`split("\n")` on text ending in a newline, which yields one trailing empty element and
+therefore one extra line, while the worker counted with `splitlines`, which does not — the
+same one-line divergence the newline convention exists to settle. Nothing false landed in
+the repository and no gate failed, and the reason is worth recording as much as the defect:
+G5 ordered "report the number rather than asserting it", so the gate asked for a
+MEASUREMENT and the reviewer's wrong prediction had no gate to break. A gate that orders a
+value would have failed here and cost the round a repair. The counter-measure is the one
+already on disk and not followed: state the convention beside any line count a block
+predicts, and default to the `splitlines` reading, which is what every worker on this
+branch has used. Found by the worker under constraint 8 and registered by the reviewer.
+
+Gate: R43 — the R42 entry. R42 PASSED. Every ordered gate was re-run by the reviewer over
+0e2cdacd..4c7bcb3a and each reproduces the handback's reading. LINE COUNTS HERE ARE
+`splitlines` COUNTS. TRANSPORT WAS PROVED AGAINST THE REVIEWER'S OWN ORIGINAL: the scratch
+file `.remedy-wt/f085-r42.md`, the committed `.agent/authored/f085-r42.md` and
+`.agent/last_block.md` at 7b02da1c, and the working copies of those two paths as they stand
+at 4c7bcb3a, are all five byte-EQUAL at sha256 b6ba3371…f7161c25, 23195 B, 332 lines, 8
+marker lines, region 1-100 at 3bc171fb05e29fa9 over 6720 B and region 101-end at
+d0ad2b78183925d3 over 16475 B. BOTH APPENDS HELD THEIR SHAPE: at dc34997a a pre-commit blob
+of 420193 B is a byte-exact prefix of the 426006 B post-commit file, its 5813 B remainder is
+exactly one blank line plus RECORD10 — sha256 407c8ff2e3c61ac6…, 5812 B, 71 lines, 3 empty —
+an exact suffix, numstat 72/0, each of the 68 non-empty slice lines occurring exactly once
+among the 72 added and the added lines equal to blank-plus-slice IN ORDER; at 5695c2b0 the
+same shape holds for DEC4 over 358646 B and 363135 B with a 4489 B remainder — sha256
+fa6f2e9fd40c883f…, 4488 B, 60 lines, 6 empty — numstat 61/0, 54 non-empty lines each once
+among the 61 added, ordered equality holding. No marker line reached either file at
+4c7bcb3a. THE ARITHMETIC MOVED AS ORDERED: 149 / 27 / 0 at 0e2cdacd against 151 / 27 / 0 at
+4c7bcb3a, 122 open against 124, registered symmetric difference exactly R-0535 and R-0536,
+done and landed symmetric differences empty, and at each of those two SHAs no duplicate id
+and no resolution naming an unregistered id. THE DECISION LANDED: lines matching
+`^## DECISION F085 D\d+ —` number 2 at 0e2cdacd against 3 at 4c7bcb3a, the D4 heading occurs
+exactly 1x at 4c7bcb3a, and there is no D1 section at either SHA. THE PLAN PAIR LANDED AS A
+REWRITE: PLANF10 1x and PLANT10 0x at 0e2cdacd against 0x and 1x at 4c7bcb3a, `## Goal` and
+`## Next Steps` present at both, no marker line at either, numstat 7/8, and `.agent/plan.md`
+measuring 46 lines at 0e2cdacd and 45 at 4c7bcb3a, each under the 50-line cap. THE SUITES
+WERE RE-RUN, NOT READ, each in the primary
+checkout, each exit 0: the four state readers `159 passed` against a base of 159, and the
+canary `42 passed` against 42. HYGIENE IS CLEAN: walking 0e2cdacd..4c7bcb3a mechanically
+gives the per-commit insertion counts 332, 273, 72, 61, 7 and 122, none over 500; the path
+set at 7c4a2583 is exactly the five ordered paths; all six commits are single-parent; and at
+4c7bcb3a `git reflog -10` held ten entries of no non-`commit:` kind while `git worktree
+list` held one line. The handback at 4c7bcb3a runs to 153 lines and carries the DECISION D15
+stated cause, whose named content is mandated rather than padding.
+
+WHAT THE WORKER FOUND AND DID NOT TOUCH. Under constraints 8 and 9 R42's worker measured the
+reviewer's own RECORD10 and DEC4 against the repository, declared one reading that differs
+and repaired none — again the round's finding came out of the constraint-8 report, as
+RECORD10 recorded for R41. R-0538 is that reading; R-0537 is the reviewer's own, found while
+re-reading R-0536 at this gate. R42's execution reproduced under independent re-run in every
+particular.
+
+WHY R43 SHIPS NO CODE. The `ci_run.py` migration DECISION F085 D4 rules was authored in full
+for this round and proved before being deferred: applied to two disposable worktrees at
+4c7bcb3a, linted clean, run to `59 passed` there against a base of `54 passed` at the same
+commit, and red-controlled on four separate mutations, each of which exited non-zero. Its
+step block then measured 487 lines against the 400-line cap DECISION F105 D5 sets, and
+checklist item 1 requires the split BEFORE emission rather than a declared deviation
+afterwards. The migration is R44's, and it starts from measured slices rather than from a
+design.
+
+- R-0537 — Low, A FINDING'S HEADLINE COUNTED FOUR OF SOMETHING ITS BODY GIVES THREE OF.
+R-0536, applied at commit dc34997a, opens "A BLOCK PREDICTED FOUR LINE COUNTS UNDER AN
+UNSTATED NEWLINE CONVENTION AND EVERY ONE READ ONE HIGH", and its body then quotes three
+predictions from the R41 block — "707 lines at HEAD against 644 at 93226220" and "put it at
+47 lines" — and measures three values against them, "706, 643 and 46". Measured at 4c7bcb3a:
+the R41 block, committed at 9cc4772c, predicts exactly three line counts; its other numerals
+of that family are the 50-line and 60-line caps it quotes as standing rules and the 45 and 69
+that RECORD9 reports as READINGS of R40's round, none of them a prediction and none of them
+quoted by R-0536. The trailing half of the headline survives — all three predictions did read
+one high — so the defect is the numeral alone. This is the R-0402 / R-0404 / R-0436
+enumeration family arriving where checklist item 16 does not reach: item 16 binds a section
+HEADING over a list, and a finding headline is a heading over a body by every property that
+made item 16 necessary, being the half nobody re-reads and the half that drifted from the
+body beneath it. The counter-measure is to widen item 16 from a heading to any sentence that
+counts what follows it; that promotion is NOT in the checklist and is owed to a later round,
+which is why this finding names it instead of asserting it. Found and registered by the
+reviewer.
+
+- R-0538 — Low, ONE SHA QUALIFIED THREE VALUES AND ONLY TWO WERE READ THERE. R-0536, applied
+at commit dc34997a, closes "Measured at 0e2cdacd with `splitlines`: 706, 643 and 46."
+Measured at 4c7bcb3a: `docs/agents/planner_reviewer_prompt.md` is 706 lines at 0e2cdacd and
+643 at 93226220, and `.agent/plan.md` is 46 at 0e2cdacd — so the middle value is a reading at
+a commit OTHER than the one its own sentence names, and at the named commit that file is 706
+rather than 643. The intent is recoverable, because the three values map positionally onto
+the three predictions the preceding sentence quotes and the second of those is itself
+qualified "at 93226220", so nothing false about the repository follows. What earns it an id
+is where it landed: this is the mis-scoped-qualifier shape R-0534 registered and R-0535
+recorded recurring, arriving for the third consecutive round and this time INSIDE the
+paragraph registering a different measurement-convention defect — the same self-application
+failure R-0535 named, one round after naming it. R42's worker declared it under constraint 8
+and correctly left it standing under constraint 9; the registration is the correction, per
+checklist item 20. Found by the worker under constraint 8 and registered by the reviewer.
+
+Gate: R44 — the R43 entry. R43 PASSED. Every ordered gate was re-run by the reviewer over
+4c7bcb3a..f3e9687a and each reproduces the handback's reading. LINE COUNTS HERE ARE
+`splitlines` COUNTS. TRANSPORT WAS PROVED AGAINST THE REVIEWER'S OWN ORIGINAL: the scratch
+file `.remedy-wt/f085-r43.md`, the committed `.agent/authored/f085-r43.md` at 5ddea9f5, the
+committed `.agent/last_block.md` at 4da31634 and the working copies of those two paths as
+they stand at f3e9687a are all five byte-EQUAL at sha256 3f7e0157…e393a2b426, 17166 B, 245
+lines, 10 marker lines, region 1-100 at 708961ae3d989f4e over 6906 B and region 101-end at
+de50ec15e79f8664 over 10260 B — disk-to-disk, no digest fallback. THE APPEND HELD ITS SHAPE:
+at 007f18df a pre-commit blob of 426006 B is a byte-exact prefix of the 432672 B post-commit
+file, the 6666 B remainder is exactly one blank line plus RECORD11 (sha256 2442e139ff6a0836…,
+6665 B, 81 lines, 4 empty, 0 duplicate non-empty), the slice is an exact suffix, numstat 82/0,
+each of the 77 non-empty slice lines occurs exactly once among the 82 added, ordered equality
+added == blank+slice holds, and 0 marker LINES reached the file. THE PLAN RECONSTRUCTS:
+`.agent/plan.md` at 4c7bcb3a is sha256 7b95158a…, applying PLANF11→PLANT11 and
+PLANF12→PLANT12 gives 5928c3c5…, byte-identical to the committed file at 921e8712 and to the
+working copy at f3e9687a; both pairs measured `TO contains FROM: false`, each FROM read 1x
+and each TO 0x at 4c7bcb3a against 0x and 1x at HEAD; `## Goal` and `## Next Steps` are
+present, 0 marker lines reached it, it measures 47 lines against the 50-line cap, numstat 6/4.
+THE ARITHMETIC MOVED AS ORDERED: 151 / 27 / 0 at 4c7bcb3a against 153 / 27 / 0 at f3e9687a,
+124 open against 126, registered symmetric difference exactly R-0537 and R-0538, done and
+landed symmetric differences empty, and at each of those two SHAs no duplicate id and no
+resolution naming an unregistered id. THE SUITES WERE RE-RUN, NOT READ, each in the primary
+checkout, each exit 0: the four state readers `159 passed` against a base of 159 and the
+canary `42 passed` against 42. HYGIENE IS CLEAN: walking 4c7bcb3a..f3e9687a mechanically
+gives the per-commit insertion counts 245, 201, 82, 6 and 139, none over 500; the path set
+over that whole range is exactly the five ordered paths and the range ending at 921e8712 is
+that set minus `.agent/handoff.md`; all five commits are single-parent; and at f3e9687a
+`git reflog -10` held ten entries of no non-`commit:` kind while `git worktree list` held one
+line. The handback at f3e9687a runs to 165 lines and carries the DECISION D15 stated cause.
+
+THREE REGISTRATIONS ARE OWED AND ARE NOT MADE HERE. Under constraints 8 and 9 R43's worker
+declared three readings of the reviewer's own RECORD11 and R-0537 that differ from the
+repository, and repaired none. All three reproduce under independent re-measurement at
+f3e9687a: the path set "at 7c4a2583" is one path and belongs to a RANGE; the
+DECISION-heading count of 2 against 3 is 0 at both SHAs in the file the sentence sits in and
+true only of `.agent/decisions.md`; and R-0537's enumeration of the R41 block's numerals
+omits the two "500-line cap" quotes `.agent/authored/f085-r41.md` carries at 9cc4772c. They
+take ids at R45 rather than here, and nothing is at risk in the interval: the handback at
+f3e9687a states all three, so the persist-first rule of §4.4 is already met by disk.
+
+WHY THAT DEFERRAL, AND WHY THE CAP WAS RULED ON INSTEAD OF PAID AGAIN. R42 and R43 both ended
+with more open findings than they started and neither moved a line of production code, which
+is the ⚠️ condition docs/agents/planner_reviewer_prompt.md §2 defines. The cause is measured,
+not suspected: at R43 the record and the `ci_run.py` migration together came to 487 lines
+against the 400-line cap of DECISION F105 D5, and R44 re-authored the same pair from scratch
+with narrowed FROM slices, docstrings pointing at DECISION F085 D4 instead of restating it,
+one redundant test dropped and the registrations deferred, and still measured 462 before this
+ruling was added to it. A cap that
+three consecutive rounds have to be shaped around is bounding the product rather than the
+prose, so DECISION F085 D5 — landed by this same commit — rules that the 400 counts a block's
+PROSE and that slices are counted and reported but not capped. The R44 block is the first
+measured that way and states both of its numbers. R45 owes the counter-measure D5 names, a
+stated budget for a record slice, alongside the checklist item 16 widening R-0537 named and
+did not perform. Neither is in the checklist at f3e9687a and this entry does not claim
+otherwise.
+
+Gate: R45 — the R44 entry. R44 PASSED. Every ordered gate G1-G9 was re-executed by the reviewer
+over f3e9687a..981d08d0, not read, and each reproduces the handback's reading exactly; the full
+numbers live in the handback at 981d08d0 and are not restated here. LINE COUNTS ARE
+`splitlines` COUNTS. What the re-run establishes: transport proved disk-to-disk against the
+reviewer's own `.remedy-wt/f085-r44.md` with no digest fallback, all copies equal at sha256
+d8bf11c9…, 30615 B, 516 lines; both C1 appends held their prefix-plus-blank-plus-slice shape
+with 0 marker LINES reaching either file; both edited `.py` files reconstruct byte-identically
+from their base blobs under the ordered slice application; the suites re-ran in the primary
+checkout at exit 0, `190 passed` against a base of 186 with each of the four new test names
+collected exactly once and the canary `42 passed` against 42; the arithmetic held still at
+153 / 27 / 0 and 126 open at both SHAs, all three symmetric differences EMPTY.
+
+THE ONE RED CLAUSE WAS REPORTED AS RED, WHICH IS WHY THIS IS A PASS. C0a carries 516
+insertions against the AGENTS.md 500-line cap, and R44's handback declared it under the
+AGENTS.md exception with an inseparability reason rather than reporting the clause green.
+Clause (b) reproduces under independent measurement at 981d08d0: walking all 268 commits of
+`main..981d08d0` gives exactly one over 500 — d4473f85 at 516 — the next largest at 454 and
+four at 400. The allowance is spent for F085, and DEC6, landed by this same commit, is the
+counter-measure so that it is never needed again.
+
+EIGHT REGISTRATIONS, ALL OWED BEFORE THIS ROUND AND ALL RE-MEASURED AT 981d08d0. Three were
+declared by R43's worker and deferred by RECORD12; five come from R44's handback, four of them
+defects in the R44 block, which is the reviewer's own text.
+
+- R-0539 — Low, A RANGE READING WAS QUALIFIED WITH A SINGLE COMMIT. RECORD11, applied at
+007f18df, states "the path set at 7c4a2583 is exactly the five ordered paths". Measured at
+981d08d0: `git show --name-only 7c4a2583` returns exactly one path, `.agent/plan.md`; the
+five-path set is a property of the RANGE 0e2cdacd..4c7bcb3a. The mis-scoped-qualifier class
+R-0534 opened and R-0538 recorded recurring, arriving through the RANGE side checklist item 22
+governs. Declared by R43's worker and registered here per checklist item 20.
+
+- R-0540 — Low, A COUNT WAS REPORTED WITHOUT THE FILE IT WAS COUNTED IN. RECORD11, applied at
+007f18df, states that lines matching a `## DECISION F085 D<n> —` pattern "number 2 at 0e2cdacd
+against 3 at 4c7bcb3a", and names no path. Measured at 981d08d0: in `.agent/live_review.md`,
+the file that sentence sits in, the count is 0 at both SHAs; in `.agent/decisions.md` it is 2
+and 3. The numbers are right and their owner is missing, so a reader who resolves the string to
+the file holding it reads a false sentence. Declared by R43's worker.
+
+- R-0541 — Low, A FINDING'S ENUMERATION OF ANOTHER TEXT'S NUMERALS WAS INCOMPLETE. R-0537,
+applied at f3e9687a, states that the R41 block's numerals "of that family are the 50-line and
+60-line caps it quotes as standing rules and the 45 and 69 that RECORD9 reports as READINGS".
+Measured at 981d08d0 against `.agent/authored/f085-r41.md` as committed at 9cc4772c: that file
+contains "500-line cap" twice, quoting the AGENTS.md commit cap, and neither occurrence appears
+in R-0537's list. The conclusion survives, since neither omitted numeral is a prediction; the
+enumeration fails, inside a finding whose subject is a defective enumeration. Declared by R43's
+worker.
+
+- R-0542 — Medium, A DECISION DESCRIBED THE BLOCK IT SHIPPED WITH AND THE BLOCK DID OTHERWISE.
+DECISION F085 D5, applied at da47ee40, closes "The R44 block is the first measured under this
+counting and declares both of its numbers in its own constraints". Measured at 981d08d0 against
+`.agent/authored/f085-r44.md` as committed at d4473f85: constraint 10 of that block declines to
+state them — "the worker measures them from the committed `.agent/authored/f085-r44.md` rather
+than taking them from here" — and neither 239 nor 516 occurs anywhere in the block's prose.
+This is checklist item 11's R-0527 shape one level out: item 11 forbids a BLOCK constraint
+asserting a property its own slice lacks, and here a SLICE asserts a property its own block
+lacks. DEC6 carries the counter-measure; R45's constraint 9 is the first text written under it.
+Declared by R44's worker as deviation 2.
+
+- R-0543 — Low, A PLAN SENTENCE COUNTED THE TESTS ITS OWN ROUND SHIPPED AND COUNTED THEM WRONG.
+PLANT13, applied at 91ad51ae, says R44 applies DECISION F085 D4 "with five tests". Measured at
+981d08d0: `def test_` in `tests/orchestration/test_ci_run.py` goes from 10 at f3e9687a to 14,
+so C2 added four, and the R44 block's own goal line says "four tests". The slice was applied
+byte-verbatim and correctly left unrepaired. This is the class R-0537 named and asked the
+checklist to cover; that widening is R46's, having been cut from this block for size, and this
+registration does not claim it has happened. Declared by R44's worker as deviation 3.
+
+- R-0544 — Medium, A BASE READING WAS ORDERED THAT A CONTAINMENT-SHAPED PAIR CANNOT PRODUCE.
+Constraint 2 of the R44 block, committed at d4473f85, asserts that each FROM occurred 1x in its
+target at f3e9687a "and each TO 0x there". Measured at 981d08d0: CIT1 is the single line
+`import subprocess` and CIF1 is that line preceded by `import os`, so CIF1 CONTAINS CIT1 and
+CIT1 reads 1x at f3e9687a, not 0x. A deletion-shaped rewrite whose TO is a subset of its FROM
+has the unattainable-count property checklist items 4 and 15 establish for an APPEND, and both
+are written only about the TO-contains-FROM direction. Nothing broke, since every FROM read
+exactly 1x, but the block ordered a number no honest run could produce. The counter-measure is
+to order no base reading of a TO at all, which R45's constraint 2 is the first block to do.
+Declared by R44's worker as deviation 4.
+
+- R-0545 — Medium, AN ORDERED-EQUALITY GATE ASSUMED A COMMIT DOES ONE THING TO A FILE. Gate G4
+of the R44 block, committed at d4473f85, orders the R-0531 code-append proof as "the pre-commit
+blob is a byte-exact PREFIX of the post-commit file". Measured at 981d08d0: for
+`tests/orchestration/test_ci_run.py` that clause is FALSE and cannot be true, since the same
+commit both REWRITES the file's import block and APPENDS to its end. The meetable form holds
+and was measured by worker and reviewer alike: the base blob with TIMPF→TIMPT applied, 4206 B,
+IS a byte-exact prefix of the 6317 B post-commit file, the remainder being exactly TESTS. §4.9
+carries the same assumption; this finding does not amend it, it records that the PREFIX half
+must name the intermediate text whenever a commit edits above its own append, which G4 of this
+round is the first gate to do. Declared by R44's worker as deviation 5.
+
+- R-0546 — Medium, LIFTING ONE CAP LEFT THE ROUND STANDING ON ANOTHER. DECISION F085 D5,
+applied at da47ee40, rules that the 400-line block cap counts a block's PROSE and that slices
+are counted but not capped, its CHOSEN paragraph naming "a commit under 500 insertions" among
+the caps that stand untouched. Measured at 981d08d0: the very block D5 was written for measures
+516 lines, and C0a saves it as a NEW file where insertions equal lines, so D5's first
+application forced the branch to spend its single AGENTS.md declared-oversize allowance. Both
+rules were correctly stated and never measured against each other. What earns it an id is that
+the collision was derivable at emission from numbers already in the block. DEC6, landed by this
+same commit, is the counter-measure. Found by the reviewer at this gate.
+
+Gate: R46 — the R45 entry. R45 PASSED. Every ordered gate G1-G9 was re-executed by the reviewer
+over 981d08d0..470d2577, not read, and each reproduces the handback's reading. LINE COUNTS ARE
+`splitlines` COUNTS. TRANSPORT WAS PROVED AGAINST THE REVIEWER'S OWN ORIGINAL, disk-to-disk with
+no digest fallback: `.remedy-wt/f085-r45.md`, the committed `.agent/authored/f085-r45.md` at
+d6f42cd0, the committed `.agent/last_block.md` at 6977b3e8 and both working copies as they stand
+at 470d2577 are all five byte-EQUAL at sha256
+448c531c3430eafe4efb0080363ff8c4e1908261f5d688bdbf248ce00c163cb0, 29951 B, 477 lines, 30 marker
+lines. BOTH APPENDS HELD THEIR SHAPE: for RECORD13 on `.agent/live_review.md` and DEC6 on
+`.agent/decisions.md` alike, the pre-commit blob is a byte-exact prefix, the remainder is exactly
+one blank line plus the slice, the slice is an exact suffix, 0 marker LINES reached either file,
+and every non-empty slice line occurs exactly once among that path's added lines — 97 slice lines
+against 98 added for the first, 43 against 44 for the second. THE CODE RECONSTRUCTS:
+`packages/orchestration/builder_bridge.py` at 981d08d0 with BBF1→BBT1, BBF2→BBT2 and BBF3→BBT3
+applied in that order is byte-identical to the committed file at 778a74ba, sha256
+5a95a367a15f9d34…; `tests/orchestration/test_builder_bridge.py` with TIMPF→TIMPT applied and
+TESTS appended is byte-identical at dffeaac42c130440…, and the ORDERED EQUALITY holds on the
+form G4 ordered — the intermediate text is a byte-exact prefix, TESTS an exact suffix, and the
+59 lines C2 adds are TIMPT's two new import lines followed by TESTS' 57, in order. THE SUITES
+WERE RE-RUN, NOT READ, each in the primary checkout, each exit 0: the five builder-bridge files
+`82 passed, 1 skipped` against a base of `80 passed, 1 skipped`, the four state readers
+`159 passed` against 159, and the canary `42 passed` against 42; `ruff check` over the two `.py`
+paths returned `All checks passed!`. THE ARITHMETIC MOVED AS ORDERED: 161 / 27 / 0 at 470d2577
+against 153 / 27 / 0 at 981d08d0, 134 open against 126, the registered symmetric difference
+exactly R-0539 through R-0546, done and landed symmetric differences EMPTY, no duplicate id and
+no resolution naming an unregistered id at either SHA. HYGIENE IS CLEAN: walking
+981d08d0..470d2577 mechanically gives the per-commit insertion counts 477, 410, 142, 70, 7 and
+58, none over 500 and so no second call on the allowance d4473f85 spent; the path set of the
+range ending at 7cd2879d is exactly the seven ordered paths; all six commits are single-parent.
+
+THE MIGRATION IS REAL, NOT MERELY APPLIED. `import os` is gone from
+`packages/orchestration/builder_bridge.py` at 470d2577 and the one surviving `os.` occurrence is
+inside a comment, so the module no longer builds a child environment from the parent's own — the
+scrub is what the child now gets. Before delegating, the reviewer proved the same slice bytes in
+a disposable worktree at 981d08d0 under four red controls, each of which exited non-zero on the
+test it was aimed at: the fixture repo demanding the scrubbed token be PRESENT, the fixture repo
+demanding the `PYTHONDONTWRITEBYTECODE` overlay be ABSENT, `extra_env` dropped from the guard
+call, and `cwd` handed None — the last taking 60.26 s, which is the guard's own wall tripping
+rather than an assertion failing. T002b is closed: every site of the `test` class named in
+DECISION F085 D3 is on the seam.
+
+WHAT THE WORKER FOUND IN THE REVIEWER'S OWN TEXT. R45's worker applied every slice byte-verbatim
+and declared one contradiction rather than repairing it, which is what constraints 1 and 6 ask
+for. R-0547 is that finding. It is the reviewer's error, not the worker's, and the round is a
+PASS because the worker's execution reproduced in every particular under independent re-run.
+
+- R-0547 — Medium, A DECISION'S HEADING RULED ONE NUMBER AND ITS BODY RULED ANOTHER. DECISION
+F085 D6, applied at 812626d3, is headed "a block is budgeted at 480 lines TOTAL" while its
+CHOSEN paragraph rules "a block is budgeted at 490 lines TOTAL" and its CONSEQUENCE paragraph
+computes from 490; the R45 block's own Goal and constraint 9 also say 490. Measured at 470d2577:
+the DEC6 slice contains the string 480 once, in the heading, and 490 twice, in the body. The
+cause is recoverable and worth recording, because it is the shape this repository keeps paying
+for: the reviewer drafted the section at 480, revised the ruled figure to 490 in the body when
+the margin's justification changed, and did not sweep the heading — the R-0481 late-addition
+shape, landing in the one place checklist item 16 already governs and the widening of item 16
+that R45 cut for size would have caught. Nothing was decided wrongly: 477 is inside either
+figure, so no round was misjudged. What is wrong is that a live rule is ambiguous on disk. DEC6C,
+appended by this same commit, fixes the ruled figure at 490 without editing DEC6, per checklist
+item 20's rule that landed text is corrected by appending and never by rewriting. Found by R45's
+worker under its own deviation 2 and registered by the reviewer.
+
+Gate: R47 — the R46 entry. R46 PASSED. Every ordered gate G1-G6 was re-executed by the reviewer
+over 470d2577..c8da1928, not read, and each reproduces the handback's reading. LINE COUNTS ARE
+`splitlines` COUNTS. TRANSPORT HELD AGAINST THE REVIEWER'S OWN ORIGINAL, disk-to-disk with no
+digest fallback: `.remedy-wt/f085-r46.md`, the committed `.agent/authored/f085-r46.md` at
+6f302271, the committed `.agent/last_block.md` at 5b351a2e and both working copies as they
+stand at c8da1928 are all five byte-EQUAL at sha256
+89a8b79bd98dbc53c40225c15b0070e9a57cad5d1cb788d6eef2dac6bce1363c, 13950 B, 192 lines, 4 marker
+lines. BOTH APPENDS HELD THEIR SHAPE, and the reviewer extracted the two slices programmatically
+from the committed block by marker pair rather than retyping them: for RECORD14 on
+`.agent/live_review.md` and DEC6C on `.agent/decisions.md` alike the pre-commit blob is a
+byte-exact prefix, the remainder is exactly one blank line plus the slice, the slice is an exact
+suffix, 0 marker LINES reached either file, and every non-empty slice line occurs exactly once
+among that path's added lines — 59 slice lines of which 3 empty against 60 added for the first,
+16 of which 3 empty against 17 for the second, at sha256 ecb74b8c782b1baa… and
+b1bb9c74c7725dea…, the two digests the R46 handback also reports. THE SUITES WERE RE-RUN, NOT
+READ, each in the primary checkout, each exit 0: the four state readers `159 passed` against a
+base of 159, the canary `42 passed` against 42. THE ARITHMETIC MOVED AS ORDERED: 162 / 27 / 0 at
+c8da1928 against 161 / 27 / 0 at 470d2577, 135 open against 134, the registered symmetric
+difference exactly R-0547, done and landed symmetric differences EMPTY, no duplicate id and no
+resolution naming an unregistered id at either SHA. HYGIENE IS CLEAN: walking the range
+mechanically gives the per-commit insertion counts 192, 144, 77 and 31, none over 500 and so no
+second call on the allowance d4473f85 spent; the path set of the range ending at 9afeeb86 is
+exactly the four ordered paths and the full range adds only `.agent/handoff.md`; all four
+commits are single-parent; the tree is clean and `git worktree list` is one line.
+
+THE CORRECTION IS REAL, NOT MERELY APPLIED. Measured at c8da1928 in `.agent/decisions.md`:
+DECISION F085 D6's heading still reads 480 while its CHOSEN and CONSEQUENCE paragraphs read 490,
+and DEC6C now stands later in that same file fixing the ruled figure at 490 without editing D6,
+which is checklist item 20's rule that landed text is corrected by appending and never by
+rewriting. R-0547's description of the defect reproduces on disk in every particular.
+
+- R-0548 — Medium, REVIEWER-BLOCK DEFECT, A ROUND REGISTERED A FINDING UNDER A CHANGE SET THAT
+NAMED NO PLAN, WHICH IS ALREADY THE COUNTER-MEASURE OF TWO OPEN FINDINGS AND THE BINDING RULE OF
+NEITHER. The R46 block, committed at 6f302271, names five paths in its change set — the authored
+block, `.agent/last_block.md`, `.agent/live_review.md`, `.agent/decisions.md` and
+`.agent/handoff.md` — and its constraint 5 forbids touching anything outside that set. That same
+round registered R-0547. R-0377 rules, still OPEN: "any round whose bundle registers, resolves
+or renumbers a finding names `.agent/plan.md` in its change set and rewrites its ledger in the
+round's FIRST commit". R-0491 rules, still OPEN: the plan update "is ordered as the FIRST commit
+of a round that has substance to record", ahead of everything but the two block-save commits.
+R46 satisfied neither, and its worker did the only correct thing available to it — it declared
+the conflict as handback deviation 2 rather than widening the change set past a gate that would
+then have gone red, which is what constraints 5 and 6 of that block require. Measured at
+c8da1928, before this round's own C1 changes it: `.agent/plan.md` reads "R45, this round" under
+its `## Current Step` heading and its Next Steps item 1 describes R46 as work still to come,
+while all four of R46's commits stand above it in the history. THE COST IS THE ONE R-0377
+ALREADY PRICED: AGENTS.md's Session Resume tells a new session to read `.agent/plan.md` second,
+ahead of the review record, so a bootstrapping reader starts from a plan one round behind that
+names the round it is reading as unstarted. AGENTS.md's Commit Gate item 1 — "Verify
+`.agent/plan.md` matches the current work ... If any of these fail: DO NOT COMMIT" — was
+unmet for all four of R46's commits, and a broken repository rule rather than a broken
+convention is why this is Medium. THE CAUSE IS NOT THE R46 BLOCK ITSELF. It is that R-0377's and
+R-0491's counter-measures live as finding PROSE and were never promoted into the §3 pre-emission
+checklist, so no block reads them at the one moment they bind — the class this repository keeps
+paying for, in which a standing rule stated in a finding body binds nothing. That is why the
+counter-measure here is a checklist item and not a third restatement: this same round adds item
+23 carrying both rules, and its own C1 advances the plan ahead of every other substantive
+commit, which is the first application of the rule it writes. R-0377 and R-0491 stay OPEN. This
+finding records their recurrence and resolves neither, because neither is resolved until a later
+round demonstrates the promoted item catching what the prose did not. Found and registered by
+the reviewer while gating R46.
+
+Gate: R48 — the R47 entry. R47 PASSED. Every ordered gate G1-G8 was re-executed by the reviewer
+over c8da1928..d6b06997, not read, and each reproduces the handback's reading. LINE COUNTS ARE
+`splitlines` COUNTS. TRANSPORT HELD AGAINST THE REVIEWER'S OWN ORIGINAL, disk-to-disk with no
+digest fallback: `.remedy-wt/f085-r47.md`, the committed `.agent/authored/f085-r47.md` at
+e0eee32f, the committed `.agent/last_block.md` at 313e8321 and both working copies as they
+stand at d6b06997 are all five byte-EQUAL at sha256
+a1d2fe72fd6425b5bbf3a06d13e9eb25dbebabb80bfd8a10e49694251cb5530f, 22123 B, 308 lines, 14 marker
+lines. THE SHAPES HELD, each measured separately from slices the reviewer extracted
+programmatically from the committed block by marker pair rather than retyping them. THE REWRITE:
+R47's PLANF occurs 0x and its PLANT exactly 1x in `.agent/plan.md` at 3fe2667d, with
+`TO contains FROM: false` as that block declared, numstat `8 9`. THE PROSE APPEND: for RECORD15
+on `.agent/live_review.md` the pre-commit blob is a byte-exact prefix, the remainder is exactly
+one blank line plus the slice, the slice is an exact suffix, 0 marker LINES reached the file,
+and every non-empty slice line occurs exactly once among that path's added lines — 61 slice
+lines of which 2 empty against 62 added, at sha256 a2f71483…. THE TWO CHECKLIST APPENDS: on
+`docs/agents/planner_reviewer_prompt.md` at 522d925a, C16F and C23F each occur exactly 1x and
+C16T and C23T each exactly 1x, `TO contains FROM: true` for both as declared, 18 TO-only lines
+each against the 36 lines that commit adds to the path, 0 violations, 0 marker LINES, numstat
+`36 0`. THE SUITES WERE RE-RUN, NOT READ, each in the primary checkout, each exit 0: the four
+state readers `159 passed` against a base of 159, the canary `42 passed` against 42. THE PLAN
+CONTRACT HOLDS: 40 lines against the 50-line cap, `## Goal`, `## Next Steps` and a roadmap F-id
+all present — the union of every assertion the reviewer collected by grepping `tests/`. THE
+ARITHMETIC MOVED AS ORDERED: 163 / 27 / 0 at d6b06997 against 162 / 27 / 0 at c8da1928, 136 open
+against 135, the registered symmetric difference exactly R-0548, done and landed symmetric
+differences EMPTY, no duplicate id and no resolution naming an unregistered id at either SHA.
+THE CHECKLIST STRUCTURE IS INTACT: walking the region from its introductory bullet to the line
+beginning `  Why this is on disk` gives the numerals 1 through 23 ascending with no duplicate
+and no gap, and no line matches `^  24\. ` anywhere in the file, so item 23 landing at the END
+of the list renumbered no surviving entry — the answer item 17 asks for. HYGIENE IS CLEAN: the
+per-commit insertion counts are 308, 259, 8, 62, 36 and 42, none over 500 and so no second call
+on the allowance d4473f85 spent; the path set of the range ending at 522d925a is exactly the
+five ordered paths and the full range adds only `.agent/handoff.md`; all six commits are
+single-parent; the tree is clean and `git worktree list` is one line.
+
+THE PROMOTION IS REAL, NOT MERELY APPLIED. Read at d6b06997, item 16 of the §3 checklist now
+reaches a finding headline and a quantifying sentence as well as a heading, and a VALUE a body
+fixes as well as a COUNT; item 23 now carries the plan-path rule that R-0377 and R-0491 had
+stated only in their own bodies. R47's own C1 advanced `.agent/plan.md` ahead of every other
+substantive commit, which is item 23 binding the round that wrote it.
+
+- R-0549 — Low, REVIEWER-BLOCK DEFECT, A HANDBACK'S CLOSING SECTION LOST THREE CLAUSES THE
+PREVIOUS ONE CARRIED, AND ONE OF THEM NAMES WHO RECORDS THE VERDICT. Measured by diffing the
+`## Next` sections of `.agent/handoff.md` at c8da1928 and at d6b06997: the R46 handback closes
+with the successor clause "R46's verdict, when the reviewer issues it, is recorded by R47's own
+record slice", a standalone line "Open findings: 135, next free id R-0548" and the pointer
+"Phase 1 rule 1 first: re-read `.agent/STOP` from disk". The R47 handback carries none of the
+three. Its open-findings count survives only inside the G6 transcript, where a resuming session
+reading the `## Next` section alone will not meet it. THE CONSEQUENCE IS THE ONE THIS WORKFLOW
+CANNOT ABSORB: R47's handback tells R48 not to open a repair round over the missing gate entry
+and never says that R48's record slice is what writes the verdict instead, so a verdict issued
+at the end of a session can be stranded in that session — the handoff is the only return
+channel, and the clause that routes the verdict onto disk is the one that went missing. The
+protocol's own Phase 2 requires the STOP pointer by name, so its loss is a rule broken rather
+than a habit skipped. THE CAUSE IS THE R47 BLOCK, not its worker: that block's Handback section
+ordered the successor clause and the repair-round warning but omitted all three of these, and
+the worker wrote exactly what was ordered. Low, because nothing false was written and every
+gate held; the cost is a resume hazard, not a wrong record. The counter-measure is this round's
+own Handback section, which enumerates all four closing statements explicitly instead of
+naming the section and trusting the previous round's shape to carry over. Found and registered
+by the reviewer while gating R47.
+
+Gate: R49 — the R48 entry. R48 PASSED. Every ordered gate G1-G7 was re-executed by the reviewer
+over d6b06997..1e0c14e0, not read, and each reproduces the handback's reading. LINE COUNTS ARE
+`splitlines` COUNTS. TRANSPORT HELD AGAINST THE REVIEWER'S OWN ORIGINAL, disk-to-disk with no
+digest fallback: `.remedy-wt/f085-r48.md`, the committed `.agent/authored/f085-r48.md` at
+452ffd2b, the committed `.agent/last_block.md` at 5e81e727 and both working copies as they
+stand at 1e0c14e0 are all five byte-EQUAL at sha256
+da6fd5a6a1de5b03d5f78f39c312a04c6504fe39a51065a82088fde08751ca38, 15488 B, 213 lines, 6 marker
+lines. THE SHAPES HELD, each measured separately from slices the reviewer extracted
+programmatically from the committed block by marker pair rather than retyping them. THE
+REWRITE: PLAN2F occurs 0x and PLAN2T exactly 1x in `.agent/plan.md` at 360897f7, with
+`TO contains FROM: false` as that block declared, numstat `3 4`. THE PROSE APPEND: for RECORD16
+on `.agent/live_review.md` at 3bc7977b the pre-commit blob is a byte-exact prefix, the remainder
+is exactly one blank line plus the slice, the slice is an exact suffix, 0 marker LINES reached
+the file, and every non-empty slice line occurs exactly once among that path's added lines — 60
+slice lines of which 2 empty against 61 added, numstat `61 0`. THE SUITES WERE RE-RUN, NOT READ,
+each in the primary checkout, each exit 0: the four state readers `159 passed` against a base of
+159, the canary `42 passed` against 42. THE PLAN CONTRACT HELD at 1e0c14e0: 39 lines against the
+50-line cap, `## Goal`, `## Next Steps` and a roadmap F-id all present. THE ARITHMETIC MOVED AS
+ORDERED: 164 / 27 / 0 at 1e0c14e0 against 163 / 27 / 0 at d6b06997, 137 open against 136, the
+registered symmetric difference exactly R-0549, done and landed symmetric differences EMPTY, no
+duplicate id and no resolution naming an unregistered id at either SHA. HYGIENE IS CLEAN: over
+the five commits of d6b06997..1e0c14e0 the per-commit INSERTION counts, the column AGENTS.md
+DECISION F104 D1 fixes for the cap, are 213, 140, 3, 61 and 34, none over 500 and so no second
+call on the allowance d4473f85 spent; the path set of the range ending at 3bc7977b is exactly
+the four ordered paths and the full range adds only `.agent/handoff.md`; all five commits are
+single-parent; the tree is clean and `git worktree list` is one line. THE BLOCK'S OWN SIZE
+re-measured from the committed file gives TOTAL 213, PROSE 144 and RECORD16 60, all three
+agreeing with what that block stated.
+
+TWO CLAIMS THAT BLOCK MADE ABOUT EARLIER ROUNDS WERE RE-MEASURED RATHER THAN TRUSTED, because a
+record repeating an unverified number launders it. R47's per-commit insertions over
+c8da1928..d6b06997 really are 308, 259, 8, 62, 36 and 42. R47's five-copy transport really does
+hold at sha256 a1d2fe72fd6425b5bbf3a06d13e9eb25dbebabb80bfd8a10e49694251cb5530f, 22123 B, 308
+lines, 14 marker lines. RECORD16's checklist-structure claim holds WITHIN THE BOUNDS IT NAMES:
+walking `docs/agents/planner_reviewer_prompt.md` at d6b06997 from its introductory checklist
+bullet to the line beginning `  Why this is on disk` gives the numerals 1 through 23 ascending
+with no duplicate and no gap. Read over the WHOLE file that same pattern also matches the
+Verification-tiers list further down, so the bound is load-bearing and the claim is true only
+because it states one. ONE DIFFERENCE IS NOTED AND IS NOT A DEFECT: the reviewer's slice digests
+differ from the handback's by exactly one byte per slice, because the reviewer's extractor keeps
+the newline before the END marker and the worker's dropped it; all three line counts agree at
+5, 4 and 60, and the applied bytes are what G3 proved.
+
+- R-0550 — Low, REVIEWER-BLOCK DEFECT, A RECORD SLICE STATED A PRESENT-TENSE READING OF A FILE
+ITS OWN BLOCK REWROTE ONE COMMIT EARLIER. RECORD16 closes its plan-contract sentence with "THE
+PLAN CONTRACT HOLDS: 40 lines against the 50-line cap", and that clause names no commit. The
+reading was true of `.agent/plan.md` at d6b06997, where the file is 40 lines. C1 of that same
+round, 360897f7, made it 39, and RECORD16 landed at C2, 3bc7977b — one commit LATER. So the
+sentence was false of the file it describes at the moment it reached disk, and it is false at
+1e0c14e0 too. This is exactly checklist item 20, the R-0520 class, and the block did not miss
+the rule: its own constraint 5 asserted that "every sentence in RECORD16 that reads a file THIS
+BLOCK also edits names the SHA d6b06997 in the same clause". That constraint is false of its
+own slice twice over — this sentence names no SHA at all, and the one plan-reading sentence
+that DOES name one names 3fe2667d, which is correct on the merits and is not the SHA the
+constraint promised. A constraint asserting a property its own slice does not have is the
+R-0527 shape checklist item 11 governs, so the two items met in one paragraph. Low, because
+nothing about a GATE was misreported: every gate result RECORD16 states is reproducible, this
+reviewer reproduced all of them, and the damage is one stale number in a permanent record.
+THE COUNTER-MEASURE IS NOT A REWRITE. Item 20 fixes that explicitly — appending a correction is
+how this record stays honest, and overwriting landed text is worse than a dated wrong sentence
+— so the sentence stays and this paragraph is its correction. What changes is the emission
+step: a constraint of the form "every sentence in X names SHA Y" is MEASURED sentence by
+sentence before emission, in the same way item 15 requires a containment test per pair rather
+than one reading generalised across pairs, because a universal asserted over a slice's own
+sentences is the recollection item 11 exists to forbid. Found and registered by the reviewer
+while gating R48.
+
+- R-0551 — Medium, SPEC DEFECT, THE `dod` POLICY ROW COVERS TWO SITES THAT DO NOT SHARE A
+POLICY, AND THE TWO DOCUMENTS DESCRIBING IT CONTRADICT EACH OTHER AND THE CODE. Amendment F085
+D1 in `docs/roadmap/features/T2_F085.md` at 1e0c14e0 gives `dod` one row reading wall timeout
+`yes` and network `default-deny` for both of its sites. `.agent/plan.md` at 1e0c14e0 says the
+opposite of the same two sites — "whose policy differs from the `test` class in taking no wall
+timeout, because their children are the long-lived harness rather than a bounded suite run" —
+and the R48 handback at 1e0c14e0 repeats it. Measured against the code at 1e0c14e0, both are
+wrong, in opposite directions, and each is right about one site. `.agent/f085_inventory.md`
+assigns exactly `packages/orchestration/dod_runners.py`:302 and :575 to the class.
+`_run_process_check`, the first, runs ONE BOUNDED CHECK — its docstring says "a check that IS
+one process: pytest, lint, build, custom_cmd" — and already passes `timeout=ctx.timeout_sec`
+with a `subprocess.TimeoutExpired` handler that classifies the trip; it is not a long-lived
+harness, it keeps its wall timeout, and its actual stage-1 gap is `env=os.environ.copy()`.
+`_run_app_once`, the second, starts the application with
+`Popen(..., start_new_session=True)`, waits with `http_probe` against `spec.health_path` over
+`http://<host>:<port>`, and stops it in a `finally`; a wall timeout would kill the harness
+mid-probe and a default-deny network posture would break the probe that judges it, which is
+word for word the reason D1 already gives for excusing the `runtime` class. THE CONSEQUENCE IS
+THAT T002c COULD NOT HAVE BEEN BUILT CORRECTLY FROM EITHER DOCUMENT: following the feature file
+puts a killing clock and a network denial on the app harness, and following the plan strips a
+working timeout off a bounded check. Medium rather than Low because it would have landed as
+production behaviour and the wrong half is invisible at review time — both readings look
+internally consistent. THE COUNTER-MEASURE IS THIS ROUND'S OWN C3a AND C3b: the row splits into
+`dod-process` and `dod-app` under DECISION F085 D7, ruled per §4 item 7, and `.agent/plan.md`
+is corrected by C1 in the same round so the two documents agree. The site total is unchanged,
+so the inventory needs no edit. Found and registered by the reviewer while planning T002c.
+
+Gate: R50 — the R49 entry. R49 PASSED. Every ordered gate G1-G8 was re-executed by the reviewer
+over 1e0c14e0..25a5b42e, not read, and each reproduces the handback's reading. LINE COUNTS ARE
+`splitlines` COUNTS. TRANSPORT HELD AGAINST THE REVIEWER'S OWN ORIGINAL, disk-to-disk with no
+digest fallback: `.remedy-wt/f085-r49.md`, the committed `.agent/authored/f085-r49.md` at
+6f084636, the committed `.agent/last_block.md` at 8862abce and both working copies as they stand
+at 25a5b42e are all five byte-EQUAL at sha256
+fe04d524d02f044891f9ffb591b5aa83335a07c9ac0471bde02b6b20f13319dc, 24858 B, 345 lines, 12 marker
+lines. THE SHAPES HELD, each measured separately from slices the reviewer extracted
+programmatically from the committed block by marker pair rather than retyping them. THE TWO
+REWRITES: PLAN3F occurs 0x and PLAN3T exactly 1x in `.agent/plan.md` at d5fb16a5 at numstat
+`9 9`, and AMEND7F occurs 0x and AMEND7T exactly 1x in `docs/roadmap/features/T2_F085.md` at
+7df0bf33 at numstat `8 5`; both pairs give `TO contains FROM: false`, as that block declared. THE
+TWO PROSE APPENDS: for RECORD17 on `.agent/live_review.md` at 0131b21b and for DEC7 on the
+feature file at ad9a38a8 the pre-commit blob is a byte-exact prefix, the remainder is exactly one
+blank line plus the slice, the slice is an exact suffix, 0 marker LINES reached either file, and
+every non-empty slice line occurs exactly once among that path's added lines — 93 slice lines of
+which 3 empty against 94 added at numstat `94 0`, and 25 slice lines of which 3 empty against 26
+added at numstat `26 0`. THE SUITES WERE RE-RUN, NOT READ, each in the primary checkout, each
+exit 0: the four state readers `159 passed` against a base of 159, the canary `42 passed` against
+42, the docs tier `295 passed` against 295. THE PLAN CONTRACT HELD at d5fb16a5: 39 lines against
+the 50-line cap, with `## Goal`, `## Next Steps` and a roadmap F-id all present. THE ARITHMETIC
+MOVED AS ORDERED: 166 / 27 / 0 at 25a5b42e against 164 / 27 / 0 at 1e0c14e0, 139 open against
+137, the registered symmetric difference exactly R-0550 and R-0551, done and landed symmetric
+differences EMPTY, no duplicate id and no resolution naming an unregistered id at either SHA, and
+R-0552 free. HYGIENE IS CLEAN: over the six commits of 1e0c14e0..25a5b42e that precede the
+handback the per-commit INSERTION counts, the column AGENTS.md DECISION F104 D1 fixes for the
+cap, are 345, 283, 9, 94, 8 and 26, and the handback commit adds 99; none over 500 and so no
+second call on the allowance d4473f85 spent; the path set of that range is exactly the six
+ordered paths and nothing else; all seven commits are single-parent; the tree is clean and
+`git worktree list` is one line. THE BLOCK'S OWN SIZE re-measured from the committed file gives
+TOTAL 345, PROSE 180 and RECORD17 93, each agreeing with what that block stated and each under
+its DECISION F085 D6 cap. ONE DIFFERENCE IS NOTED AND IS NOT A DEFECT: the reviewer's slice byte
+counts run one below the handback's on every slice, because the two extractors disagree about the
+newline preceding an END marker; the six slice line counts agree at 12, 12, 10, 13, 25 and 93,
+and the applied bytes are what G3 proved.
+
+- R-0552 — Medium, SPEC DEFECT, THE `runtime` POLICY ROW COVERS SITES THAT DO NOT SHARE A POLICY,
+AND ITS NO-WALL-TIMEOUT RULING WOULD REMOVE A TIMEOUT TWO OF THEM ALREADY HAVE. The `runtime` row
+of the policy table in `docs/roadmap/features/T2_F085.md` at 25a5b42e gives all five of its sites
+no wall timeout. Measured against `.agent/f085_inventory.md` at 25a5b42e, whose own `callee` and
+`timeout` columns already separate them, three are `Popen` calls that pass no timeout and start
+long-lived children — `apps/cli/commands/runtime_cmd.py`:136 in `_serve_supervisor`,
+`packages/runtimes/dev_server.py`:1484 in `start` and
+`packages/runtimes/runtime_supervisor.py`:235 in `run` — while two are `subprocess.run` calls
+inside `_auto_build_frontend`, `packages/orchestration/ui_server.py`:2787 and :2800, which pass
+`timeout=120` and run `npm install` and `npm run build` to completion. For that second pair a
+no-wall-timeout policy does not relax a guard, it REMOVES a working one, which is word for word
+the regression R-0551 identified for `_run_process_check` one row above. Medium for the reason
+R-0551 was Medium: it would land as production behaviour at T002d, and both readings look
+internally consistent at review time. THE COUNTER-MEASURE IS THIS ROUND'S OWN C3a AND C3b, which
+split the row into `runtime-server` and `runtime-build` under DECISION F085 D8 and leave the site
+total unchanged, so the inventory needs no edit. THE DEEPER COUNTER-MEASURE IS THE SWEEP: D7
+fixed the `dod` row and left this one standing, which is the R-0417 shape of fixing the instance
+rather than the class, so D8 states the reading it took over EVERY stage-1 row. Found and
+registered by the reviewer while gating R49.
+
+- R-0553 — Low, REVIEWER-BLOCK DEFECT, AN AUTHORED SLICE ASSERTED AN UNMEASURED UNIVERSAL OVER A
+CLASS AND IS FALSE OF TWO OF ITS MEMBERS. AMEND7T, applied at 7df0bf33, rewrote the paragraph
+under the policy table to say that the classes taking no wall timeout are the ones whose children
+are long-lived servers and that "each is judged by a readiness probe over HTTP, so each keeps
+network access". Measured at 25a5b42e, the two `_auto_build_frontend` sites R-0552 names sit in a
+class that paragraph covers, and they are judged by `check=True` on a completed `npm` run rather
+than by any HTTP probe, so the sentence is false of them however its quantifier is read — over
+classes or over sites. This is checklist item 11 as R-0526 widened it: a universal asserted over
+a set nobody enumerated, written by the reviewer in the very slice that was correcting the
+identical defect one row above. Low, because no GATE was misreported — every gate R49 ordered is
+reproducible and this reviewer reproduced all of them — and because the normative content of that
+passage is the table, which this round corrects. THE COUNTER-MEASURE IS NOT A REWRITE of the
+landed sentence: C3a replaces the paragraph as part of the D8 split, and its replacement states
+the no-wall-timeout rule as a condition each class is tested against rather than as a universal
+over an unenumerated set, while the per-site reading lives in DEC8 beside the SHA it was taken
+at. Found and registered by the reviewer while gating R49.
+
+Gate: R51 — the R50 entry. R50 PASSED. Every ordered gate G1-G8 was re-executed by the reviewer
+over 25a5b42e..3a64b65e, not read, and each reproduces the handback's reading. LINE COUNTS ARE
+`splitlines` COUNTS. TRANSPORT HELD AGAINST THE REVIEWER'S OWN ORIGINAL, disk-to-disk with no
+digest fallback: `.remedy-wt/f085-r50.md`, the committed `.agent/authored/f085-r50.md` at
+c22cb9dd, the committed `.agent/last_block.md` at 634447bc and both working copies as they stand
+at 3a64b65e are all five byte-EQUAL at sha256
+061fa19d22524bd91e69697f28285376e82f45005d7894f833ab991adb390cd7, 24335 B, 334 lines, 12 marker
+lines — every figure measured on every copy. THE SHAPES HELD, each measured separately from slices
+the reviewer extracted programmatically from the committed block by marker pair rather than
+retyping them. THE TWO REWRITES: PLAN4F occurs 0x and PLAN4T exactly 1x in `.agent/plan.md` at
+2241cb69 at numstat `6 4`, and AMEND8F occurs 0x and AMEND8T exactly 1x in
+`docs/roadmap/features/T2_F085.md` at 8bb7a287 at numstat `10 7`; both pairs give
+`TO contains FROM: false`, as that block declared. THE TWO PROSE APPENDS: for RECORD18 on
+`.agent/live_review.md` at 56722bd7 and for DEC8 on the feature file at 9b9cd0b4 the pre-commit
+blob is a byte-exact prefix, the remainder is exactly one blank line plus the slice, the slice is
+an exact suffix, 0 marker LINES reached either file, and every non-empty slice line occurs exactly
+once among that path's added lines — 72 slice lines of which 2 empty against 73 added at numstat
+`73 0`, and 29 slice lines of which 3 empty against 30 added at numstat `30 0`. THE SUITES WERE
+RE-RUN, NOT READ, each in the primary checkout, each exit 0: the four state readers `159 passed`
+against a base of 159, the canary `42 passed` against 42, the docs tier `295 passed` against 295.
+THE PLAN CONTRACT HELD at 2241cb69: 41 lines against the 50-line cap, with `## Goal`,
+`## Next Steps` and a roadmap F-id all present. THE ARITHMETIC MOVED AS ORDERED: 168 / 27 / 0 at
+3a64b65e against 166 / 27 / 0 at 25a5b42e, 141 open against 139, the registered symmetric
+difference exactly R-0552 and R-0553, done and landed symmetric differences EMPTY, no duplicate id
+and no resolution naming an unregistered id at either SHA, and R-0554 free. HYGIENE IS CLEAN: over
+the six commits of 25a5b42e..3a64b65e that precede the handback the per-commit INSERTION counts,
+the column AGENTS.md DECISION F104 D1 fixes for the cap, are 334, 239, 6, 73, 10 and 30, and the
+handback commit adds 79; none over 500; the path set of that range is exactly the six ordered paths
+and nothing else; all seven commits are single-parent; the tree is clean and `git worktree list` is
+one line. THE BLOCK'S OWN SIZE re-measured from the committed file gives TOTAL 334, PROSE 182 and
+RECORD18 72, agreeing with that block. THE AMENDMENT'S OWN MEASUREMENT WAS
+SPOT-CHECKED rather than accepted: read at 3a64b65e, `.agent/f085_inventory.md` assigns exactly the
+five sites DEC8 names to `runtime`, and `packages/orchestration/ui_server.py` really does call
+`subprocess.run` with `timeout=120` twice inside `_auto_build_frontend`, for `npm install` and
+`npm run build` — the pair whose working guard a no-wall-timeout policy would have removed. NO NEW
+FINDING WAS REGISTERED: no gate came out red, no claim in the handback failed to reproduce, and
+the open set stays at 141 with R-0554 free.
+
+Gate: R52 — the R51 entry. R51 PASSED. Every ordered gate G1-G9 was re-executed by the reviewer
+over 3a64b65e..67475107, not read, and each reproduces the handback's reading. LINE COUNTS ARE
+`splitlines` COUNTS. TRANSPORT HELD AGAINST THE REVIEWER'S OWN ORIGINAL, disk-to-disk with no
+digest fallback: `.remedy-wt/f085-r51.md`, the committed `.agent/authored/f085-r51.md` at
+44a1fbde, the committed `.agent/last_block.md` at aa38f8c7 and both working copies as they stand
+at 67475107 are all five byte-EQUAL at sha256
+12c6771bf04c38f94be460b4beb48ed93ea5b37709ce1f70711f89a093703abc, 29295 B, 489 lines, 28 marker
+lines — every figure measured on every copy. THE SHAPES HELD, each measured separately from slices
+the reviewer extracted programmatically from the committed block by marker pair. THE FIVE REWRITES
+each give `TO contains FROM: false` as that block declared, each FROM occurred exactly 1x in its
+own pre-commit blob and 0x in its post-commit file with its TO exactly 1x: PLAN5F→PLAN5T in
+`.agent/plan.md` at 051b4082 numstat `13 11`, HDRF→HDRT in
+`packages/orchestration/exec_guard.py` at ff93b13a numstat `5 3`, and DOCF→DOCT, IMPF→IMPT and
+SITEF→SITET in `packages/orchestration/dod_runners.py` at 44460d56 numstat `13 6`. THE PROSE
+APPEND held for RECORD19 on `.agent/live_review.md` at 73489620: byte-exact prefix, a remainder of
+exactly one blank line plus the slice, an exact suffix, 0 marker LINES, and each of its 37 slice
+lines — 0 empty — occurring exactly once among the 38 lines that commit adds, numstat `38 0`. THE
+THREE CODE APPENDS held under the ORDERED EQUALITY §4.9 owes them since R-0531 — SEAM at fcfb2a0f
+numstat `77 0`, TESTSDOD at 43cd292a numstat `52 0`, TESTSGUARD at 43cd292a numstat `22 0`: each
+post-commit file equals `pre + slice` with NO joiner byte, each commit's added lines are exactly
+that slice's lines IN ORDER, and 0 marker LINES reached any of the three. THE SUITES AND THE LINT
+GATE WERE RE-RUN, NOT READ, in the primary checkout with the block's exact command lines, each
+exit 0: the code suite `150 passed` against a base of 147, the four state readers `159 passed`
+against 159, the canary `42 passed` against 42, and ruff `All checks passed!`. THE PLAN CONTRACT
+HELD at 051b4082: 43 lines against the 50-line cap, with `## Goal`, `## Next Steps` and a roadmap
+F-id present. THE ARITHMETIC STOOD STILL AS ORDERED: 168 / 27 / 0 at both 3a64b65e and 67475107,
+141 open at both, all three symmetric differences EMPTY, no duplicate id and no resolution naming
+an unregistered id at either SHA. HYGIENE IS CLEAN: over the eight commits of 3a64b65e..67475107
+that precede the handback the per-commit INSERTION counts, the column AGENTS.md DECISION F104 D1
+fixes for the cap, are 489, 425, 13, 38, 5, 77, 13 and 74, and the handback commit adds 55; none
+over 500; that range's path set measured before the handback is exactly the eight ordered paths
+and nothing else; all nine commits are single-parent; the tree is clean and `git worktree list` is
+one line. THE BLOCK'S OWN SIZE re-measured from the committed file gives TOTAL 489, PROSE 226 and
+RECORD19 37, agreeing with that block. THE TWO RED CONTROLS THAT BLOCK RECORDED WERE NOT TAKEN ON
+TRUST: the reviewer re-ran both in a disposable worktree at 67475107 and removed it. Reverting
+SITET to SITEF failed both new `dod_runners` tests and printed `AWS_SECRET_ACCESS_KEY` in the leak
+test's own failure message; replacing the seam's `wall_timeout_seconds` with None failed the new
+policy test AND the pre-existing `test_a_timeout_is_red_not_a_hang`, so the behaviour-equality
+golden that block named really does hold the migration in place.
+
+- R-0554 — `.agent/plan.md` claimed FOUR tests for a round that shipped THREE. Low. The R51 block
+authored PLAN5T with the clause "four tests ship with it", and the round it described shipped
+three: TESTSDOD defined two tests and TESTSGUARD one, which is also what the code suite measured
+as `150 passed` against a base of 147. This is the class checklist item 16 names after R-0537 and
+R-0543 — a sentence that quantifies what follows it, drifting because the numeral is the half
+nobody re-reads — and it is the third instance of that class, in the same file R-0543 arrived in.
+It is LOW and not Medium because no GATE ordered or reported the number: every gate R51 ordered is
+reproducible and this reviewer reproduced all nine, so the miscount misled a reader of the plan
+and never a verdict. The worker is not at fault; it applied the reviewer's slice byte-verbatim,
+which is what constraint 1 required of it. C1 of the round carrying this registration retires the
+clause as a side effect — PLAN6F spans the `## Current Step` section holding it and PLAN6T
+describes R52 instead — so this finding is expected to be RESOLVED at the R52 gate rather than
+repaired by a round of its own; `.agent/plan.md` states the CURRENT step and never a history, so
+no appending correction under R-0520 is owed to it. Found and registered by the reviewer while
+gating R51.
+
+Gate: R53 — the R52 entry. R52 PASSED. Every ordered gate G1-G9 was re-executed by the reviewer
+over 67475107..3bafcc1e, not read, and each reproduces the handback's reading. LINE COUNTS ARE
+`splitlines` COUNTS. TRANSPORT HELD AGAINST THE REVIEWER'S OWN ORIGINAL, disk-to-disk with no
+digest fallback: `.remedy-wt/f085-r52.md`, the committed `.agent/authored/f085-r52.md` at
+a7896384, the committed `.agent/last_block.md` at 216fe178 and both working copies as they stand
+at 3bafcc1e are all five byte-EQUAL at sha256
+dbb09a909d14afe36d188f834eba2698f195ac502d2372f92e0f89d5bda554b8, 25680 B, 373 lines, 10 marker
+lines, and that digest is the one the R52 block itself carried — every figure measured on every
+copy. THE SHAPES HELD. The single REWRITE PLAN6F→PLAN6T in `.agent/plan.md` at 511736d6 gives
+`TO contains FROM: false`, its FROM occurred 1x in the pre-commit blob and 0x after with its TO
+exactly 1x, numstat `11 10`. THE PROSE APPEND RECORD20 on `.agent/live_review.md` at 23a7ec30:
+byte-exact prefix, a remainder of exactly one blank line plus the slice, an exact suffix, 0 marker
+LINES, and each of its 54 non-empty slice lines occurring exactly once among the 56 lines that
+commit adds, numstat `56 0`. THE TWO CODE APPENDS held under ORDERED EQUALITY — SEAM2 at d5b1c8f6
+numstat `50 0` and TESTSGUARD2 at 610fd945 numstat `30 0`: each post-commit file equals
+`pre + slice` with NO byte between them, each commit's added lines are exactly that slice's lines
+IN ORDER, and 0 marker LINES reached either. THE SUITES AND THE LINT GATE WERE RE-RUN, NOT READ,
+in the primary checkout with the block's exact command lines, each exit 0: the code suite
+`151 passed` against a base of 150, the four state readers `159 passed` against 159, the canary
+`42 passed` against 42, and ruff `All checks passed!`. THE PLAN CONTRACT HELD at 511736d6: 44
+lines against the 50-line cap, with `## Goal`, `## Next Steps` and a roadmap F-id present — 44 is
+the figure that block projected. THE ARITHMETIC MOVED AS ORDERED: 169 / 27 / 0 at 3bafcc1e against
+168 / 27 / 0 at 67475107, 142 open against 141, the registered symmetric difference exactly
+R-0554, done and landed symmetric differences EMPTY, no duplicate id and no resolution naming an
+unregistered id at either SHA. HYGIENE IS CLEAN: over the six commits of 67475107..3bafcc1e that
+precede the handback the per-commit INSERTION counts, the column AGENTS.md DECISION F104 D1 fixes
+for the cap, are 373, 255, 11, 56, 50 and 30, and the handback commit adds 38; none over 500; that
+range's path set measured before the handback is exactly the six ordered paths and does NOT hold
+`packages/orchestration/dod_runners.py`, which that round's change set excluded; all seven commits
+are single-parent; the tree is clean and `git worktree list` is one line. THE BLOCK'S OWN SIZE
+re-measured from the committed file gives TOTAL 373, PROSE 205 and RECORD20 55, agreeing with that
+block. THE HANDBACK'S OWN SELF-CLAIM was checked and holds: it states 86 lines and measures 86,
+inside the ≤100 allowance a seven-commit round carries.
+
+- R-0555 — the R52 block's Handback section said "Six commits" over a Bundle naming seven. Low.
+That block's Bundle names C0a, C0b, C1, C2, C3, C4 and C5, and its Handback section then wrote
+"Six commits, so the ≤100-line allowance applies". This is checklist item 16's class as R-0537 and
+R-0543 widened it — a sentence that quantifies what follows it, drifting because the numeral is
+the half nobody re-reads — arriving in the reviewer's own block one round after R-0554 registered
+the same class against `.agent/plan.md`. It is LOW because the allowance it computes is identical
+either way: the threshold is more than five commits and both readings clear it, so no gate and no
+cap moved. The worker read the Bundle rather than the sentence, wrote "Seven commits" in the
+handback, and flagged the contradiction instead of silently following either half — which is the
+behaviour the block wants. Found by the worker, registered by the reviewer while gating R52.
+
+- R-0556 — a block's slice convention did not say whether a slice INCLUDES its terminating
+newline, so the worker's extraction and the block's definition disagreed. Low. The R52 block's
+CONVENTION said only that "a slice is the bytes strictly between its marker lines" and that a
+trailing newline is not an extra line. Under the reading that a slice ends with the newline
+terminating its last content line, `post == pre + slice` holds exactly for SEAM2 at d5b1c8f6 and
+TESTSGUARD2 at 610fd945, which is what the reviewer measured at 3bafcc1e; under an extraction that
+joins the inner lines WITHOUT a trailing newline it does not, and the worker therefore appended one
+and declared an assumption for it. BOTH ROUTES PRODUCED IDENTICAL BYTES ON DISK, so nothing landed
+wrong and G4 stayed green either way; what the gap cost was a declared assumption on a round that
+did nothing wrong, and it put into the handback the absolute claim that `post == pre + slice` does
+not hold at fcfb2a0f, which is false under the block's own convention and true only under the
+worker's unstated one. This is the newline class the reviewer's own notes already carry — one
+newline shifts both slice counts and pair shape — recurring because the convention sentence stated
+the units without pinning the boundary. THE COUNTER-MEASURE IS IN THE R53 BLOCK'S OWN CONVENTION
+paragraph, which states newline-inclusion explicitly and says that no joiner and no terminator byte
+is ever added; that is the block carrying this registration. Found by the worker's declared
+assumption, registered by the reviewer while gating R52.
+
+Gate: R54 — the R53 entry. R53 PASSED. Every ordered gate G1-G9 was re-executed by the reviewer
+over 3bafcc1e..8ba3ad45, not read, and each reproduces the handback's reading. LINE COUNTS ARE
+`splitlines` COUNTS. TRANSPORT HELD AGAINST THE REVIEWER'S OWN ORIGINAL, disk-to-disk with no
+digest fallback: `.remedy-wt/f085-r53.md`, the committed `.agent/authored/f085-r53.md` at 94e4da84,
+the committed `.agent/last_block.md` at 8267fde9, both of those paths at 8ba3ad45 and both working
+copies as they stand at 8ba3ad45 are all seven byte-EQUAL at sha256
+58a4c90c25772d8c0083afd808474e69bf96cb3c27033eb652dca7cba28f1825, 28869 B, 429 lines, 24 marker
+lines — every figure measured on every copy. THE SHAPES HELD. Each of the five REWRITES gives
+`TO contains FROM: false`, its FROM 1x in the pre-commit blob and 0x after with its TO exactly 1x:
+PLAN7F→PLAN7T at 2e136a4e numstat `9 11`, HDRF2→HDRT2 at de4f2057 numstat `6 5`, and DOCF2→DOCT2,
+IMPF2→IMPT2 and SITEF2→SITET2 all at bbd35e23, that path's numstat `27 7`. THE PROSE APPEND
+RECORD21 on `.agent/live_review.md` at d5fe684c: byte-exact prefix, a remainder of exactly one
+blank line plus the slice, an exact suffix, 0 marker LINES, and each of its 60 non-empty slice
+lines occurring exactly once among the 63 lines that commit adds, numstat `63 0`. THE CODE APPEND
+TESTSDOD2 at 85f5da00 held under ORDERED EQUALITY: the post-commit file equals `pre + slice` with
+NO byte between them, that commit's added lines are exactly the slice's 41 lines IN ORDER, and 0
+marker LINES reached it, numstat `41 0`. THE SUITES AND THE LINT GATE WERE RE-RUN, NOT READ, in the
+primary checkout with the block's exact command lines, each exit 0: the code suite `152 passed`
+against a base of 151, the four state readers `159 passed` against 159, the canary `42 passed`
+against 42, and ruff `All checks passed!`. THE PLAN CONTRACT HELD at 2e136a4e: 42 lines against the
+50-line cap, with `## Goal`, `## Next Steps` and a roadmap F-id present — 42 is the figure that
+block projected. THE ARITHMETIC MOVED AS ORDERED: 171 / 27 / 0 at 8ba3ad45 against 169 / 27 / 0 at
+3bafcc1e, 144 open against 142, the registered symmetric difference exactly R-0555 and R-0556, done
+and landed symmetric differences EMPTY, no duplicate id and no resolution naming an unregistered id
+at either SHA. HYGIENE IS CLEAN: walking 3bafcc1e..8ba3ad45 commit by commit the INSERTION counts,
+the column AGENTS.md DECISION F104 D1 fixes for the cap, are 429, 340, 9, 63, 6, 27, 41 and 45 for
+the handback commit; none over 500; that range's path set measured before the handback is exactly
+the seven ordered paths and does NOT hold `tests/orchestration/test_exec_guard.py`, which that
+round's change set excluded; all eight commits are single-parent; the tree is clean and
+`git worktree list` is one line. THE BLOCK'S OWN SIZE re-measured from the committed file gives
+TOTAL 429, PROSE 231 and RECORD21 62, agreeing with that block. THE HANDBACK'S OWN SELF-CLAIM was
+checked and holds: `.agent/handoff.md` at 8ba3ad45 states 92 lines and measures 92, inside the
+≤100 allowance an eight-commit round carries. THE REVIEWER ALSO RAN ITS OWN RED CONTROL on the
+LANDED code rather than accepting the one that block recorded at its base: in a disposable worktree
+at 8ba3ad45, removed afterwards, the new `TestTheDodAppSeam` test passed unmutated and went RED when
+SITET2 was reverted to SITEF2, failing on `AWS_SECRET_ACCESS_KEY` present in the child environment
+— so the migration is genuinely covered at its call site and the test is not vacuous.
+
+- R-0557 — the R53 block's Handback section said "seven commits" over a Bundle naming eight. Low.
+That block's Bundle at 8ba3ad45 names C0a, C0b, C1, C2, C3, C4, C5 and C6, and its Handback section
+then wrote "This round's Bundle names seven commits, which is more than five". This is checklist
+item 16's class as R-0537 and R-0543 widened it — a sentence that quantifies what follows it,
+drifting because the numeral is the half nobody re-reads — and it is the SECOND instance in two
+rounds: R-0555 registered exactly this shape against the R52 block, in the very record slice the
+R53 block carried. Registering the class twice without changing the practice is what makes it worth
+naming a counter-measure: the R54 block states its commit count ONCE, in its Bundle sentence, in
+the same words the item-status list beneath it uses, so a later revision cannot move one without
+visibly contradicting the other. It is LOW for the reason R-0555 was: the allowance it computes is
+identical either way, since the threshold is more than five commits and both readings clear it, so
+no gate and no cap moved, and the worker again read the Bundle rather than the sentence and wrote
+"Eight commits" in the handback while flagging the contradiction. Found by the worker, registered
+by the reviewer while gating R53.
+
+Gate: R55 — the R54 entry. R54 PASSED. Every ordered gate G1-G9 was re-executed by the reviewer
+over 8ba3ad45..1812c219, not read, and each reproduces the handback's reading. LINE COUNTS ARE
+`splitlines` COUNTS. TRANSPORT HELD AGAINST THE REVIEWER'S OWN ORIGINAL, disk-to-disk with no
+digest fallback: `.remedy-wt/f085-r54.md`, the committed `.agent/authored/f085-r54.md` at eb18ad04,
+the committed `.agent/last_block.md` at 2067581f, both of those paths at 1812c219 and both working
+copies as they stand at 1812c219 are all seven byte-EQUAL at sha256
+19497ed6660efbf34b3e2fbb246faa0c1ef0e0a75e7132c14e3757a6c3182959, 31279 B, 490 lines, 22 marker
+lines — every figure measured on every copy. THE SHAPES HELD. Each of the four REWRITES gives
+`TO contains FROM: false`, its FROM 1x in the pre-commit blob and 0x after with its TO exactly 1x:
+PLAN8F→PLAN8T at dbfb26af numstat `8 9`, and XLAT1F→XLAT1T, XLAT2F→XLAT2T and DOCXF→DOCXT all at
+1bfcaf0c, that path's numstat `7 26`. THE PROSE APPEND RECORD22 on `.agent/live_review.md` at
+d48febf0: byte-exact prefix, a remainder of exactly one blank line plus the slice, an exact suffix,
+0 marker LINES, and each of its 51 non-empty slice lines occurring exactly once among the 53 lines
+that commit adds, numstat `53 0`. THE TWO CODE APPENDS held under ORDERED EQUALITY — SEAM3 at
+27279810 numstat `99 0` and TESTSRB at a3d32124 numstat `46 0`: each post-commit file equals
+`pre + slice` with NO byte between them, each commit's added lines are exactly that slice's lines
+IN ORDER, and 0 marker LINES reached either. THE SUITES AND THE LINT GATE WERE RE-RUN, NOT READ, in
+the primary checkout with the block's exact command lines, each exit 0: the code suite `156 passed`
+against a base of 152, the four state readers `159 passed` against 159, the canary `42 passed`
+against 42, and ruff `All checks passed!`. THE PLAN CONTRACT HELD at dbfb26af: 41 lines against the
+50-line cap, with `## Goal`, `## Next Steps` and a roadmap F-id present — 41 is the figure that
+block projected. THE ARITHMETIC MOVED AS ORDERED: 172 / 27 / 0 at 1812c219 against 171 / 27 / 0 at
+8ba3ad45, 145 open against 144, the registered symmetric difference exactly R-0557, done and landed
+symmetric differences EMPTY, no duplicate id and no resolution naming an unregistered id at either
+SHA. HYGIENE IS CLEAN: walking 8ba3ad45..1812c219 commit by commit the INSERTION counts, the column
+AGENTS.md DECISION F104 D1 fixes for the cap, are 490, 417, 8, 53, 99, 7, 46 and 35 for the
+handback commit; none over 500; that range's path set measured before the handback is exactly the
+six ordered paths and does NOT hold `packages/orchestration/ui_server.py`, which that round's
+change set excluded; all eight commits are single-parent; the tree is clean and `git worktree list`
+is one line. THE BLOCK'S OWN SIZE re-measured from the committed file gives TOTAL 490, PROSE 225
+and RECORD22 52, agreeing with that block. THE HANDBACK'S OWN SELF-CLAIM was checked and holds:
+`.agent/handoff.md` at 1812c219 states 92 lines and measures 92, inside the ≤100 allowance an
+eight-commit round carries. THE WORKER'S ONE DECLARED DEVIATION WAS VERIFIED RATHER THAN ACCEPTED:
+it reported writing throwaway helper scripts under the gitignored `.remedy-wt/`, and
+`git ls-files .remedy-wt` returns EMPTY at 1812c219, so nothing it named entered the repository.
+THE EXTRACTION WAS PROVEN SHARED, NOT ASSUMED, by the reviewer's own red control in a disposable
+worktree at 1812c219 that it removed afterwards. At that commit
+`_completed_process_from_guarded` is defined exactly once and called from three sites, and the
+module holds `raise subprocess.TimeoutExpired(` exactly once where 8ba3ad45 held it twice — so the
+duplication really is gone rather than merely wrapped. Deleting the wall-trip branch from that one
+helper turned three tests RED across all three seams at once — the `test` seam's
+`test_a_wall_trip_raises_timeout_expired_carrying_the_partial_output`, the `dod-process` seam's
+`TestNeverASilentPass::test_a_timeout_is_red_not_a_hang` in `tests/orchestration/test_dod_runners.py`,
+and the new `test_the_runtime_build_seam_raises_timeout_expired_on_a_wall_trip` — against 80 passed
+and 0 failed unmutated. A refactor whose single point of failure reddens every caller is the
+equality claim actually holding, which is what the round's own G5 could only show negatively.
+
+Gate: R56 — the R55 entry. R55 PASSED. Every ordered gate G1-G7 was re-executed by the reviewer
+over 1812c219..49a3fdcb, not read, and each reproduces the handback's reading. LINE COUNTS ARE
+`splitlines` COUNTS. TRANSPORT HELD AGAINST THE REVIEWER'S OWN ORIGINAL, disk-to-disk with no
+digest fallback: `.remedy-wt/f085-r55.md`, the committed `.agent/authored/f085-r55.md` and the
+committed `.agent/last_block.md` at 49a3fdcb, and both of those working copies as they stand at
+49a3fdcb, are all five byte-EQUAL at sha256
+dfcb54609904651d7d882c01e83ade3712e1ab8a42355b62199a4271a89f665e, 19014 B, 253 lines, 6 marker
+lines — every figure measured on every copy. THE SHAPES HELD. The one REWRITE gives
+`TO contains FROM: false`, its FROM 1x in the pre-commit blob and 0x after with its TO exactly 1x:
+PLAN9F→PLAN9T at e02f0dcc, numstat `12 7`. THE PROSE APPEND RECORD23 on `.agent/live_review.md` at
+2bb63069: byte-exact prefix, a remainder of exactly one blank line plus the slice, an exact suffix,
+0 marker LINES, and each of its 46 non-empty slice lines occurring exactly once among the 47 lines
+that commit adds, numstat `47 0`. THE SUITES WERE RE-RUN, NOT READ, in the primary checkout with
+the block's exact command lines, each exit 0: the four state readers `159 passed` against a base of
+159, and the canary `42 passed` against 42. THE PLAN CONTRACT HELD at e02f0dcc: 46 lines against
+the 50-line cap, with `## Goal`, `## Next Steps` and a roadmap F-id present — 46 is the figure that
+block projected. THE ARITHMETIC DID NOT MOVE, as a record round requires: 172 registered / 27 done
+/ 0 landed and 145 open at 1812c219 and the same at 49a3fdcb, max registered R-0557 and max
+resolved R-0532 at both, all three symmetric differences EMPTY, 0 duplicate ids and 0 resolutions
+naming an unregistered id at both SHAs. HYGIENE IS CLEAN: walking 1812c219..49a3fdcb commit by
+commit the INSERTION counts, the column AGENTS.md DECISION F104 D1 fixes for the cap, are 253, 174,
+12, 47 and 31 for the handback commit; none over 500; that range's path set is exactly the five
+ordered paths and holds NO path under `packages/` or `tests/`, which that round's change set
+excluded; all five commits are single-parent; the tree is clean and `git worktree list` is one
+line. THE BLOCK'S OWN SIZE re-measured from the committed file gives TOTAL 253, PROSE 158 and
+RECORD23 46, agreeing with that block. THE HANDBACK'S OWN SELF-CLAIM was checked and holds:
+`.agent/handoff.md` at 49a3fdcb states 69 lines and measures 69, and its DECISION D15 stated cause
+names only MANDATED content — five per-commit tables, the item-status table, the verification
+transcript — with no section dropped, which is what that decision permits and what a five-commit
+round genuinely owes. THE ROUND'S OWN CLAIM TO HAVE REGISTERED AND RESOLVED NOTHING was verified
+rather than accepted, since it is the whole substance of a record round: the registered, done and
+landed id SETS at the two SHAs are identical element by element, not merely equal in count.
+
+Gate: R57 — the R56 entry. R56 FAILED, and the failure is the reviewer's, not the worker's. Every
+ordered gate G1-G8 was re-executed by the reviewer over 49a3fdcb..3bb82a25, not read, and each
+reproduces the handback's reading exactly; the worker deviated in nothing, applied every slice
+byte-verbatim and declared its scratch honestly. LINE COUNTS ARE `splitlines` COUNTS. TRANSPORT
+HELD AGAINST THE REVIEWER'S OWN ORIGINAL, disk-to-disk with no digest fallback: `.remedy-wt/`'s
+`f085-r56.md`, the committed `.agent/authored/f085-r56.md` and the committed `.agent/last_block.md`
+at 3bb82a25, and both of those working copies as they stand at 3bb82a25, are all five byte-EQUAL at
+sha256 1a9fcbdbd41463fd0fcd2116837d2ec6dec100304614149609db5b467a33cb82, 24319 B, 345 lines, 12
+marker lines, which is the digest the reviewer emitted. THE SHAPES HELD. Both REWRITES give
+`TO contains FROM: false`, FROM 1x in the pre-commit blob and 0x after with the TO exactly 1x:
+PLAN10F→PLAN10T at 9a218ec1 numstat `10 12`, and ALLOWF→ALLOWT at 94574142 numstat `17 3`. THE
+PROSE APPEND RECORD24 on `.agent/live_review.md` at 33c99b54: byte-exact prefix, a remainder of
+exactly one blank line plus the slice, an exact suffix, 0 marker LINES, and each of its 32
+non-empty slice lines occurring exactly once among the 33 lines that commit adds, numstat `33 0`.
+THE CODE APPEND TESTSNPM on `tests/orchestration/test_exec_guard.py` at 94574142 held under ORDERED
+EQUALITY, numstat `44 0`: the post-commit file equals `pre + "\n" + slice` byte-exactly and that
+commit's added lines are one blank line followed by the slice's lines IN ORDER. THE SUITES AND THE
+ORDERED LINT WERE RE-RUN, NOT READ, in the primary checkout with the block's exact command lines,
+each exit 0: the guard suite `35 passed` against a base of 33, the four state readers `159 passed`
+against 159, the canary `42 passed` against 42, and ruff `All checks passed!`. THE PLAN CONTRACT
+HELD at 9a218ec1: 44 lines against the 50-line cap with `## Goal`, `## Next Steps` and a roadmap
+F-id present — 44 is the figure that block projected. THE ARITHMETIC DID NOT MOVE, as that round
+required: 172 / 27 / 0 and 145 open at 49a3fdcb and the same at 3bb82a25, all three symmetric
+differences EMPTY. HYGIENE IS CLEAN: the per-commit INSERTION counts over that range are 345, 244,
+10, 33, 61 and 38 for the handback commit; none over 500; the path set measured before the handback
+excludes `packages/orchestration/ui_server.py` as that change set ordered; all six commits are
+single-parent. THE WIDENING ITSELF IS RIGHT AND STAYS: the reviewer proved in a disposable worktree
+at 3bb82a25, since removed, that reverting the row reddens both new tests while the other 33 stay
+green, and that making `scrub_child_env` match `NPM_CONFIG_` as a PREFIX leaks
+`NPM_CONFIG__AUTHTOKEN` into the child and reddens the second test alone — so the by-name-never-by-
+prefix property the row depends on is pinned rather than asserted. WHAT FAILED is one blank line,
+registered below.
+
+- R-0558 — a block claimed a PEP 8 blank-line property for a code append that a one-blank-line join
+cannot produce, and the ordered lint gate was structurally blind to the result. Low. The R56 block's
+CONVENTION said "TESTSNPM is CODE joined to its target by exactly one blank line, so the file keeps
+the two-blank-line separation PEP 8 puts between top-level definitions". Those two clauses
+contradict each other: joining with ONE blank line yields ONE, and at 3bb82a25
+`tests/orchestration/test_exec_guard.py` separates `_RUNTIME_BUILD_ADDED_ENV_KEYS` from the
+function above it by a single blank line, where that same file separates `_ENV_DUMP` from the
+function above IT by two. `ruff check --preview` over that path at 3bb82a25 reports exactly one
+`E305 blank-lines-after-function-or-class`, and over the same path's blob at 49a3fdcb reports
+`All checks passed!`, so the violation is this round's and the file was otherwise preview-clean.
+It is LOW because nothing behavioural moved and every ordered gate is honestly reproducible; what
+it cost is a formatting violation in a production test file and a false sentence in the permanent
+record. THE GATE COULD NOT HAVE CAUGHT IT: this repository runs `ruff` without `--preview` and
+E301-E306 are preview-only, which finding R-0500 already recorded, so the reviewer's own
+pre-emission dry run — which ran the block's exact ordered command, per checklist item 12 — was
+blind in precisely the way that item exists to prevent. Running the whole repository under
+`--preview` is NOT the counter-measure: 634 preview findings exist across `packages/`, `tests/`
+and `apps/` at 3bb82a25, and sweeping them is the churn AGENTS.md's Code Discoverability section
+forbids as its own activity. THE COUNTER-MEASURE IS TWO-PART, and R57 performs both. First, a code
+slice CARRIES the blank lines its target's convention requires INSIDE the slice, so the separation
+is a property of bytes that were measured rather than a consequence of a join shape that was
+reasoned about. Second, a block whose change set appends to a `.py` file gates it with
+`ruff check --preview` over THAT path alone, and only after the reviewer has read that path at the
+base commit and found it preview-clean — a file with pre-existing preview findings takes the
+narrower reading instead of a gate nobody can pass. Found by the reviewer while gating R56.
+
+Gate: R58 — the R57 entry. R57 PASSED. Every ordered gate G1-G8 was re-executed by the reviewer
+over 3bb82a25..b2bb3809, not read, and each reproduces the handback's reading exactly; the worker
+deviated in nothing and declared its scratch honestly. LINE COUNTS ARE `splitlines` COUNTS.
+TRANSPORT HELD AGAINST THE REVIEWER'S OWN ORIGINAL, disk-to-disk with no digest fallback:
+`.remedy-wt/f085-r57.md`, the committed `.agent/authored/f085-r57.md` and the committed
+`.agent/last_block.md` at b2bb3809, and both of those working copies as they stand at b2bb3809, are
+all five byte-EQUAL at sha256 d186ed7740849c36c93e83bcc6ae3509ae820d743aa0eb7d06d3e575a7a18b74,
+22571 B, 298 lines, 10 marker lines, which is the digest the reviewer emitted. THE SHAPES HELD.
+Both REWRITES give `TO contains FROM: false`, the FROM 1x in the pre-commit blob and 0x after with
+the TO exactly 1x, and in each case re-applying the extracted FROM→TO to the pre-commit blob
+reproduces the post-commit blob BYTE-EXACTLY: PLAN11F→PLAN11T at ddd4f8b8 numstat `5 5`, and
+FIXBLANKF→FIXBLANKT at 356a1568 numstat `1 0`, where the FROM is 142 B and the TO 143 B and
+`tests/orchestration/test_exec_guard.py` goes 29917 B / 731 lines to 29918 B / 732 lines — the
+whole effect is one newline byte. THE PROSE APPEND RECORD25 on `.agent/live_review.md` at a6c5176f:
+byte-exact prefix, a remainder of exactly one blank line plus the slice, an exact suffix, 0 marker
+LINES, and each of its 57 non-empty slice lines occurring exactly once among the 59 lines that
+commit adds, numstat `59 0`. THE SUITES AND BOTH LINT HALVES WERE RE-RUN, NOT READ, in the primary
+checkout with the block's exact command lines, each exit 0: the guard suite `35 passed`, the four
+state readers `159 passed`, the canary `42 passed`, ruff `All checks passed!` and — the reading
+this round exists for — `ruff check --preview` over the two paths `All checks passed!`. THE RED
+CONTROL THE BLOCK DID NOT ORDER WAS RUN ANYWAY, in a disposable worktree since removed, because a
+green preview cannot by itself tell a repaired file from one that was never broken: at 3bb82a25
+that exact command is exit 1 with `Found 1 error.` and exactly one `E305` at
+`tests/orchestration/test_exec_guard.py:691`, and at 49a3fdcb it is exit 0 `All checks passed!` —
+so the fix has teeth and the violation was R56's alone. THE PLAN CONTRACT HELD at ddd4f8b8: 44
+lines against the 50-line cap with `## Goal`, `## Next Steps` and a roadmap F-id present, 44 being
+the figure that block projected. THE ARITHMETIC MOVED EXACTLY AS ORDERED: 172 / 27 / 0 and 145 open
+at 3bb82a25, 173 / 27 / 1 and 146 open at b2bb3809, the registered and landed symmetric differences
+each exactly `{R-0558}` and the done symmetric difference EMPTY, with 0 duplicate ids and 0
+resolutions naming an unregistered id at both SHAs. HYGIENE IS CLEAN: the path set over that range
+is exactly the six the change set named and holds NEITHER `packages/orchestration/exec_guard.py`
+NOR `packages/orchestration/ui_server.py`; per-commit INSERTIONS are 298, 203, 5, 59, 1, 2 and 39
+for the handback commit, none over 500; all seven commits are single-parent. THE BLOCK'S OWN SIZE
+re-measured from the committed file gives TOTAL 298, PROSE 199 and RECORD25 58, agreeing with that
+block, and the handback's self-claim of 79 lines measures 79. TWO NUMERIC CLAIMS RECORD25 PUT INTO
+THE PERMANENT RECORD WERE CHECKED RATHER THAN ACCEPTED, since a wrong count there is the R-0402
+class: `--preview` over `packages`, `tests` and `apps` at 3bb82a25 reports exactly 634 findings,
+and at that SHA `_ENV_DUMP` carries two blank lines above its comment block where
+`_RUNTIME_BUILD_ADDED_ENV_KEYS` carried one. NOTHING FAILED and this round registers no finding.
+
+Done: R-0558 — Resolved at R57, commit 356a1568. The two-blank-line separation PEP 8 puts between a
+function and the following top-level definition is restored before `_RUNTIME_BUILD_ADDED_ENV_KEYS`
+in `tests/orchestration/test_exec_guard.py`; the edit adds exactly one newline byte and changes no
+code. The reviewer verified the colour in both directions in a disposable worktree, since removed:
+`python3 -m ruff check --preview` over that path is exit 0 at b2bb3809 and exit 1 with exactly one
+`E305` at line 691 at 3bb82a25. BOTH HALVES of the counter-measure this finding named are in force
+from R58 on. First, a code slice CARRIES the blank lines its target's convention requires INSIDE
+the slice — R58 goes further and uses no append at all. Second, a block editing a `.py` file gates
+that path with `ruff check --preview`, narrowed where the path already carries preview findings to
+a comparison of the RULE-CODE MULTISET at base and at HEAD, since a bare exit-0 gate over such a
+path is unpassable: at b2bb3809 `packages/orchestration/ui_server.py` reports 3 preview findings
+and `tests/ui_server/test_dashboard_contract.py` reports 13, and R58 gates both in that narrowed
+form.
+
+Gate: R59 — the R58 entry. R58 PASSED. Every ordered gate G1-G9 was re-executed by the reviewer over
+b2bb3809..79f79f27, not read, and each reproduces the handback's reading exactly; the worker deviated
+in nothing. LINE COUNTS ARE `splitlines` COUNTS. TRANSPORT HELD AGAINST THE REVIEWER'S OWN ORIGINAL,
+disk-to-disk with no digest fallback: `.remedy-wt/f085-r58.md`, the committed
+`.agent/authored/f085-r58.md` and the committed `.agent/last_block.md` at 79f79f27, and both of those
+working copies as they stand at 79f79f27, are all five byte-EQUAL at sha256
+6d46cb294da82694650390a40f65c57cc886dd9885d3e1302a638270e193bd77, 29671 B, 436 lines, 24 marker
+lines, which is the digest the reviewer emitted. THE SHAPES HELD. All six pairs give
+`TO contains FROM: false`, the FROM 1x in the pre-commit blob and 0x after with the TO exactly 1x,
+and for all four (commit, path) pairs re-applying the extracted FROM→TO to the pre-commit blob
+reproduces the post-commit blob BYTE-EXACTLY: `.agent/plan.md` at 240934ad numstat `8 9`,
+`.agent/live_review.md` at 728469ac numstat `53 1`, and at 35db0c2f
+`packages/orchestration/ui_server.py` numstat `13 6` with the three pairs applied in order and
+`tests/ui_server/test_dashboard_contract.py` numstat `35 0`. Marker LINES at 79f79f27 are 0 in every
+one of those four files. THE SUITES WERE RE-RUN, NOT READ, in the primary checkout with the block's
+exact command lines, each exit 0: the dashboard contract `71 passed`, which is the 71 the block
+ordered the worker to confirm rather than assume; responsive `92 passed`; the guard suite
+`35 passed`; the four state readers `160 passed`; the canary `42 passed`. BOTH LINT HALVES HELD:
+plain `ruff check` over the two paths is exit 0 `All checks passed!`, and the NARROWED PREVIEW
+multiset comparison the R57 resolution mandated reproduces per path — `ui_server.py` `E306` x3 at
+both b2bb3809 and 79f79f27, `test_dashboard_contract.py` `E226` x1 / `E303` x11 / `W391` x1 at both
+— identical multisets, so no slice added a blank-line defect. THE PLAN CONTRACT HELD at 240934ad: 43
+lines against the 50-line cap with `## Goal`, `## Next Steps` and a roadmap F-id all present, 43
+being the figure that block projected. THE ARITHMETIC MOVED EXACTLY AS ORDERED: 173 / 27 / 1 and 146
+open at b2bb3809, 173 / 28 / 0 and 145 open at 79f79f27, the registered symmetric difference EMPTY,
+the done symmetric difference exactly `{R-0558}` ADDED and the landed symmetric difference exactly
+`{R-0558}` REMOVED, with 0 duplicate ids and 0 resolutions naming an unregistered id at both SHAs.
+HYGIENE IS CLEAN: the path set over b2bb3809..35db0c2f is exactly the six the change set named and
+holds no `packages/orchestration/exec_guard.py`; per-commit INSERTIONS are 436, 366, 8, 53, 48 and
+104 for the handback commit, none over 500; all six commits are single-parent. THE BLOCK'S OWN SIZE
+re-measured from the committed file gives TOTAL 436, PROSE 267 and RECORD26T 53, agreeing with that
+block, and the handback's self-claim of 135 lines measures 135. THE RED CONTROL WAS RE-RUN BY THE
+REVIEWER, in a disposable worktree since removed: with BUILDT reverted to BUILDF at the
+`npm run build` site alone, `python3 -m pytest tests/ui_server/test_dashboard_contract.py -rf -q` is
+EXIT 1 with exactly one failure, `test_auto_build_npm_commands_run_through_the_guard`, on
+`assert bare_run.call_count == 0` reading `1 == 0` — the worker's reading reproduced line for line.
+THE ONE CLAIM NO ORDERED GATE COVERS WAS CHECKED RATHER THAN ACCEPTED, since every test in the round
+MOCKS the seam and none exercises the real child: at 79f79f27 the real `npm run build` in `apps/ui`
+returns rc 0 with 355 bytes of stdout and 0 of stderr THROUGH the seam and rc 0 with 355 and 0 bare,
+so the narrowed `runtime-build` environment allowlist really does carry a working npm build, and
+constraint 9's behaviour-preservation claim is measured rather than asserted. The exception contract
+was read at 79f79f27 and holds: `_completed_process_from_guarded` raises `subprocess.TimeoutExpired`
+on a wall trip, `run_guarded` lets `Popen` raise `FileNotFoundError` before any translation, and
+`check=True` raises `subprocess.CalledProcessError`, so all three names in the two surviving `except`
+tuples stay reachable.
+
+- R-0559 — Medium — the R58 block's G8 ordered an absence reading over three paths that do not exist
+in this repository. It named `packages/orchestration/runtime_cmd.py`,
+`packages/orchestration/dev_server.py` and `packages/orchestration/runtime_supervisor.py` and
+required the round's path set to hold none of them. The three real files are
+`apps/cli/commands/runtime_cmd.py`, `packages/runtimes/dev_server.py` and
+`packages/runtimes/runtime_supervisor.py`, each resolved on disk at 79f79f27. A gate that forbids
+touching a path which cannot appear forbids nothing, so the protection G8 claimed over the NEXT
+round's files was never in force — the vacuous-gate class of R-0438 and R-0532, arriving through a
+path that was never resolved rather than through a base that lacks it. R58 still PASSES: G8's other
+half enumerated the round's path set POSITIVELY and exhaustively, and that reading is what actually
+held the change set to six paths, so nothing wrong landed. The cost is that the same three wrong
+paths reached `.agent/handoff.md` at 79f79f27, which is the map the next session reads, and the next
+round is exactly the round those paths matter for. COUNTER-MEASURE: item 24 of the §3 checklist in
+`docs/agents/planner_reviewer_prompt.md`, which constraint 6 of the R59 block fixes as landing in
+the commit BEFORE this record — every path a gate NAMES is resolved with `git ls-tree` at the base
+the gate names before the block is emitted. The rule is promoted into the checklist rather than left
+in this paragraph, because a standing rule written as finding prose binds nothing and recurs
+(R-0452, R-0454).
+
+Gate: R60 — the R59 entry. R59 PASSED. Every ordered gate G1-G9 was re-executed by the reviewer over
+79f79f27..d91d2ffa, not read, and each reproduces the handback's reading exactly; the worker deviated
+in nothing beyond the handback length it declared. LINE COUNTS ARE `splitlines` COUNTS. TRANSPORT
+HELD AGAINST THE REVIEWER'S OWN ORIGINAL, disk-to-disk with no digest fallback: `.remedy-wt/f085-r59.md`,
+the committed `.agent/authored/f085-r59.md` and the committed `.agent/last_block.md` at d91d2ffa, and
+both of those working copies as they stand at d91d2ffa, are all five byte-EQUAL at sha256
+8df06395327c5573a708a055a05eaf9b0d0d02b5103ba823908f1e13abbc1fed, 31513 B, 447 lines, 14 marker
+lines, which is the digest the reviewer emitted. THE SHAPES HELD, and the two classes were measured
+apart. PLAN13F→PLAN13T at 0279b57e is a REWRITE: `TO contains FROM: false`, FROM 1x before and 0x
+after, TO exactly 1x, numstat `10 8`. CHECKF→CHECKT at b5b76e3c is APPEND-shaped: `TO contains FROM:
+true`, FROM 1x and TO 1x after, no zero count owed or reported, numstat `14 0`. For BOTH,
+re-applying the extracted FROM→TO to the pre-commit blob reproduces the post-commit blob
+BYTE-EXACTLY. The three FROM-less appends satisfy ORDERED EQUALITY on every clause: for RECORD28's
+predecessor RECORD27 at 307b4456, and for SEAMCODE and TESTCODE at b2104539, the pre-commit blob is
+a byte-exact PREFIX, the slice an exact SUFFIX, `pre + slice` equals the post-commit blob byte for
+byte, and each commit's ADDED lines equal that slice's lines IN ORDER — 65, 58 and 31 lines, numstat
+`65 0`, `58 0` and `31 0`. Marker LINES at d91d2ffa are 0 in all five edited files. THE SUITES WERE
+RE-RUN, NOT READ, in the primary checkout with the block's exact command lines, each exit 0: the
+guard suite `36 passed`, which is the 36 the block ordered the worker to confirm rather than assume;
+the four state readers `160 passed`, unchanged as ordered; the canary `42 passed`. BOTH LINT HALVES
+HELD IN THE STRONG FORM over the two `.py` paths: `ruff check` exit 0 `All checks passed!` and
+`ruff check --preview` exit 0 `All checks passed!`, which is the direct evidence that SEAMCODE and
+TESTCODE carried their own leading blank lines — the R-0558 counter-measure holding as bytes rather
+than as reasoning. THE PLAN CONTRACT HELD at 0279b57e: 45 lines against the 50-line cap with
+`## Goal`, `## Next Steps` and a roadmap F-id present, 45 being the figure that block projected.
+THE ARITHMETIC MOVED EXACTLY AS ORDERED: 173 / 28 / 0 and 145 open at 79f79f27, 174 / 28 / 0 and 146
+open at d91d2ffa, the registered symmetric difference exactly `{R-0559}` ADDED with the done and
+landed symmetric differences both EMPTY, and 0 duplicate ids and 0 resolutions naming an
+unregistered id at both SHAs. HYGIENE IS CLEAN: the path set over 79f79f27..b2104539 is exactly the
+seven the change set named and holds none of the three R61 call sites; per-commit INSERTIONS are
+447, 368, 10, 14, 65, 89 and 91 for the handback commit, none over 500; all seven commits are
+single-parent. THE BLOCK'S OWN SIZE re-measured from the committed file gives TOTAL 447, PROSE 243
+and RECORD27 65, agreeing with that block. CHECKLIST ITEM 24 WAS APPLIED TO THE BLOCK THAT REGISTERED
+IT: all three R61 call sites resolve at 79f79f27 — `apps/cli/commands/runtime_cmd.py`,
+`packages/runtimes/dev_server.py` and `packages/runtimes/runtime_supervisor.py` — so the R-0559
+defect did not recur in the round that named it. THE RED CONTROL WAS RE-RUN BY THE REVIEWER, in a
+disposable worktree since removed: `wall_timeout_seconds=None,` occurs 2x after C4 and mutating the
+LAST occurrence alone to `30.0` gives EXIT 1 with exactly one failure,
+`test_the_runtime_server_policy_holds_no_clock_and_no_cap`. THE CLAIM NO ORDERED GATE COVERS WAS
+CHECKED RATHER THAN ACCEPTED, because the new test asserts on the policy dataclass and never spawns:
+at d91d2ffa the reviewer built the policy with a declared key and a forbidden key both present, took
+`plan_child_spawn`, and spawned a real child with the returned `cwd`, `env` and `preexec_fn`. The
+child exited 0, reported its cwd as the pinned directory, received `REMEDY_RUNTIME_PORT`, did NOT
+receive `ANTHROPIC_API_KEY`, and read `RLIMIT_CORE` as `(0, 0)` — so the rlimit really is applied
+between fork and exec and the scrub really is enforced, on the one path the suite exercises only by
+proxy. NOTHING FAILED and this round registers no finding.
+
+Gate: R61 — the R60 entry. R60 PASSED. Every ordered gate G1-G7 was re-executed by the reviewer over
+d91d2ffa..5b9f935b, not read, and each reproduces the handback's reading exactly; the worker deviated
+in nothing beyond the handback length it declared. LINE COUNTS ARE `splitlines` COUNTS. TRANSPORT
+HELD AGAINST THE REVIEWER'S OWN ORIGINAL, disk-to-disk with no digest fallback: the committed
+`.agent/authored/f085-r60.md` and the committed `.agent/last_block.md` at 5b9f935b, both of those
+working copies as they stand at 5b9f935b, and the reviewer's own original are all five byte-EQUAL at
+sha256 ec373c9c3df936db9dd595afa7799255e80649b84b0212e93ca43f0e8678aa47, 19312 B, 253 lines, 6 marker
+lines, which is the digest that block carried. THE SHAPES HELD, and the two classes were measured
+apart. PLAN14F→PLAN14T at ac7f5ac5 is a REWRITE: `TO contains FROM: false`, FROM 1x before and 0x
+after, TO exactly 1x, numstat `6 6`, and re-applying the extracted FROM→TO to the pre-commit blob
+reproduces the post-commit blob BYTE-EXACTLY. RECORD28 at a567afe3 satisfies ORDERED EQUALITY on
+every clause: the pre-commit blob is a byte-exact PREFIX, the slice an exact SUFFIX, `pre + slice`
+equals the post-commit blob byte for byte, and that commit's ADDED lines equal the slice's 47 lines
+IN ORDER, numstat `47 0`. Marker LINES at 5b9f935b are 0 in both slice targets, `.agent/plan.md` and
+`.agent/live_review.md`. THE SUITES WERE RE-RUN, NOT READ, in the primary checkout with the block's
+exact command lines, each exit 0: the four state readers `160 passed`, unchanged as ordered, and the
+canary `42 passed`. THE PLAN CONTRACT HELD at ac7f5ac5: 45 lines against the 50-line cap with
+`## Goal`, `## Next Steps` and a roadmap F-id all present, 45 being the figure that block projected.
+THE ARITHMETIC DID NOT MOVE, as constraint 8 of that block required: 174 registered / 28 done / 0
+landed and 146 open at d91d2ffa, the same three numbers and the same 146 at 5b9f935b, max registered
+R-0559 and max resolved R-0558 at both, all three symmetric differences EMPTY, and 0 duplicate ids
+and 0 resolutions naming an unregistered id at both SHAs. HYGIENE IS CLEAN: the path set over
+d91d2ffa..a567afe3 is exactly `.agent/authored/f085-r60.md`, `.agent/last_block.md`,
+`.agent/live_review.md` and `.agent/plan.md`, holds no `.py` path at all and none of the three
+`runtime-server` call sites; per-commit INSERTIONS are 253, 171, 6, 47 and 52 for the handback
+commit, none over 500; all five commits are single-parent. THE BLOCK'S OWN SIZE re-measured from the
+committed file gives TOTAL 253, PROSE 170 and RECORD28 47, agreeing with that block's own figures and
+under 490 / 400 / 140. CHECKLIST ITEM 24 HELD FOR THE ROUND AFTER THE ONE THAT PROMOTED IT: all three
+call sites resolve at d91d2ffa — `apps/cli/commands/runtime_cmd.py` blob 01ab65ed,
+`packages/runtimes/dev_server.py` blob 7715a28e and `packages/runtimes/runtime_supervisor.py` blob
+9f3749ae — so the absence clause G7 carried forbade paths that really exist, which is what R-0559
+asked for. THE ONE REPORTING NOTE THE HANDBACK RAISED WAS CHECKED RATHER THAN ACCEPTED: G3's
+marker-count clause and G2's are not in conflict, because G3 counts marker lines in the slice
+TARGETS, where the reviewer reads 0, while G2 counts them in the two transport COPIES, where the
+reviewer reads 6 by construction. NOTHING FAILED and this round registers no finding.
+
+Gate: R62 — the R61 entry. R61 PASSED. Every ordered gate G1-G8 was re-executed by the reviewer over
+5b9f935b..a05669a5, not read, and each reproduces the handback's reading exactly; the worker deviated
+in nothing beyond the handback length it declared and one stated assumption about when a base reading
+was taken, which the reviewer's own independent base reading corroborates. LINE COUNTS ARE
+`splitlines` COUNTS. TRANSPORT HELD AGAINST THE REVIEWER'S OWN ORIGINAL, disk-to-disk with no digest
+fallback: the reviewer's original, the committed `.agent/authored/f085-r61.md` and the committed
+`.agent/last_block.md` at a05669a5, and both of those working copies as they stand at a05669a5, are
+all five byte-EQUAL at sha256
+bb18ff7d5cdb461883a2e3b35fa6e137f178bbf759362d312904c91cd5b80eab, 30129 B, 484 lines, 32 marker
+lines. THE SHAPES HELD, and the two classes were measured apart, one reading per pair. The five
+REWRITES each end FROM 0x with TO exactly 1x — PLAN16's predecessor PLAN15 at 70c6c741, numstat
+`9 10`, and SITE2B, SITE3B, BOUNDA and BOUNDB at 63c9fd46. The two APPEND-shaped pairs, SITE2A and
+SITE3A at 63c9fd46, end FROM 1x and TO 1x, and no zero count was owed or reported for either. For
+all seven, re-applying the extracted pairs in order to the pre-commit blob reproduces the
+post-commit blob BYTE-EXACTLY, per path. The two FROM-less appends satisfy ORDERED EQUALITY on every
+clause: RECORD29 at 603e39f7 and TESTCODE at 9727c5e3 each have the pre-commit blob as a byte-exact
+PREFIX, the slice as an exact SUFFIX, `pre + slice` equal to the post-commit blob byte for byte, and
+the commit's ADDED lines equal to the slice's lines IN ORDER — 36 and 49 lines, numstat `36 0` and
+`49 0`. Marker LINES at a05669a5 are 0 in all six edited files. BOTH LINT HALVES WERE ALREADY RED AT
+THE BASE, so both were compared as rule-code MULTISETS rather than demanded green, and both are
+UNCHANGED: `ruff check` over the four paths gives `{I001: 1}` at 5b9f935b and `{I001: 1}` at
+a05669a5, and `ruff check --preview` gives `{E303: 1, I001: 1}` at both — no new code and no second
+instance, so neither migration introduced a lint finding. THE SUITES WERE RE-RUN, NOT READ, in the
+primary checkout with the block's exact command lines, each exit 0: `tests/runtimes/` `252 passed`
+against a base of `251 passed` with no skips at either, which is the base plus exactly the one test
+C4 added; the guard suite `36 passed`, unchanged, so the seam this round CONSUMES was not altered;
+the four state readers `160 passed`, unchanged; the canary `42 passed`. THE PLAN CONTRACT HELD at
+70c6c741: 44 lines against the 50-line cap with `## Goal`, `## Next Steps` and a roadmap F-id all
+present, 44 being the figure that block projected. THE ARITHMETIC DID NOT MOVE, as constraint 8 of
+that block required: 174 registered / 28 done / 0 landed and 146 open at 5b9f935b, the same three
+numbers and the same 146 at a05669a5, max registered R-0559 and max resolved R-0558 at both, all
+three symmetric differences EMPTY, and 0 duplicate ids and 0 resolutions naming an unregistered id at
+both SHAs. HYGIENE IS CLEAN: the path set over 5b9f935b..9727c5e3 is exactly the eight the change set
+named and holds `apps/cli/commands/runtime_cmd.py` not at all; per-commit INSERTIONS are 484, 397, 9,
+36, 46, 49 and 54 for the handback commit, none over 500; all seven commits are single-parent. THE
+BLOCK'S OWN SIZE re-measured from the committed file gives TOTAL 484, PROSE 269 and RECORD29 36,
+agreeing with that block's own figures and under 490 / 400 / 140. TWO CLAIMS NO GATE COVERED WERE
+CHECKED RATHER THAN ACCEPTED, both by the reviewer before the block was emitted and both inside a
+disposable worktree since removed, with the primary checkout's `git status --porcelain` empty
+immediately after each. FIRST, the block's own slices were applied to a throwaway tree and its gates
+run there, which is how the boundary test
+`test_the_readiness_failure_returns_the_line_the_child_really_printed` was found to go RED at exit 3
+under the migration alone — it handed its application a marker path through the PARENT environment —
+and that is why C3 carries its adaptation in the same commit instead of leaving a knowingly red
+commit on the branch. SECOND, the red control: reverting ONLY `env=spawn_plan.env` to `env=env` in
+`packages/runtimes/dev_server.py` makes the new test FAIL on exactly its
+`ANTHROPIC_API_KEY not in child_env` assertion, with the imported module path printed from inside
+the same invocation to prove the worktree copy was the one under test. So the test pins the scrub
+rather than passing for an unrelated reason. NOTHING FAILED and this round registers no finding.
+
+Gate: R63 — the R62 entry. R62 PASSED. Every ordered gate G1-G7 was re-executed by the reviewer over
+a05669a5..cbe1b3e5, not read, and each reproduces the handback's reading exactly; the worker deviated
+in nothing and declared nothing. LINE COUNTS ARE `splitlines` COUNTS. TRANSPORT HELD, disk-to-disk
+with no digest fallback, though NOT against a reviewer scratchpad original: R62 was authored by an
+earlier session and this one holds no original of it, so the comparison ran across the six copies
+that do exist — the committed `.agent/authored/f085-r62.md` at 37114518 and at cbe1b3e5, the
+committed `.agent/last_block.md` at aa9b94e8 and at cbe1b3e5, and both working copies as they stand
+at cbe1b3e5 — all six byte-EQUAL at sha256
+ad6827dc70e67bd8d007666fa379345ea4c318b9a62ac58baa19ceb10a4ead50, 19619 B, 256 lines, 6 marker
+lines. What binds that block's CONTENT is the shape proof rather than the digest, and it held. THE
+SHAPES HELD, and the two classes were measured apart, one reading per pair. PLAN16F→PLAN16T is a
+REWRITE — its containment test reads `TO contains FROM: false` — and over `.agent/plan.md` at
+3d754312 it ends FROM 0x with TO exactly 1x, its FROM having occurred exactly 1x in that file at
+aa9b94e8, and re-applying the extracted pair to the pre-commit blob reproduces the post-commit blob
+BYTE-EXACTLY. RECORD30, which has no FROM, satisfies ORDERED EQUALITY on every clause over
+`.agent/live_review.md` at 5cced41e: the pre-commit blob at 3d754312 is a byte-exact PREFIX, the
+slice is an exact SUFFIX, `pre + slice` equals the post-commit blob byte for byte, and that commit's
+ADDED lines equal the slice's lines IN ORDER, 50 and 50, numstat `50 0`. Marker LINES at cbe1b3e5
+are 0 in `.agent/plan.md`, in `.agent/live_review.md` and in `.agent/handoff.md`. THE SUITES WERE
+RE-RUN, NOT READ, in the primary checkout with that block's exact command lines, each exit 0: the
+four state readers `160 passed` against a base of `160 passed`, and the canary `42 passed` against a
+base of `42 passed`, both unchanged because that round changed no code. THE PLAN CONTRACT HELD at
+cbe1b3e5: 44 lines against the 50-line cap with `## Goal`, `## Next Steps` and a roadmap F-id all
+present, 44 being the figure that block projected. THE ARITHMETIC DID NOT MOVE, as constraint 8 of
+that block required: 174 registered / 28 done / 0 landed and 146 open at a05669a5, the same three
+numbers and the same 146 at cbe1b3e5, max registered R-0559 and max resolved R-0558 at both, all
+three symmetric differences EMPTY, and 0 duplicate ids and 0 resolutions naming an unregistered id at
+both SHAs. HYGIENE IS CLEAN: the path set over a05669a5..cbe1b3e5 is exactly the five the change set
+named, holds no `.py` path at all, and holds `apps/cli/commands/runtime_cmd.py` not at all;
+per-commit INSERTIONS are 256, 166, 7, 50 and 30 for the handback commit, none over 500; all five
+commits are single-parent; and `.agent/handoff.md` at cbe1b3e5 is 60 lines, within its own cap, with
+the ordered Fortschritt line present verbatim. THE BLOCK'S OWN SIZE re-measured from the committed
+file at cbe1b3e5 gives TOTAL 256, PROSE 172 counting its 6 marker lines and RECORD30 50, agreeing
+with that block's own figures and under 490 / 400 / 140. ONE CLAIM NO GATE COVERED WAS CHECKED
+RATHER THAN ACCEPTED: the R62 handback's open question, whether the supervisor needs `PYTHONPATH`
+and `VIRTUAL_ENV` declared, was settled by reading `packages/orchestration/exec_guard.py` at
+cbe1b3e5, where both keys are already members of the tuple `RUNTIME_SERVER_ENV_ALLOWLIST` is
+assigned from, so R63 declares neither. NOTHING FAILED and this round registers no finding.
+
+Gate: R64 — the R63 entry. R63 PASSED. Every ordered gate G1-G9 was re-executed by the reviewer
+over cbe1b3e5..e26f1f3e, not read, and each reproduces the handback's reading exactly; the worker
+deviated in nothing and declared nothing. LINE COUNTS ARE `splitlines` COUNTS. TRANSPORT HELD,
+disk-to-disk with no digest fallback, though NOT against a reviewer scratchpad original: R63 was
+authored by an earlier session and this one holds no original of it, so the comparison ran across
+the six copies that do exist — the committed `.agent/authored/f085-r63.md` at 28dd3923 and at
+e26f1f3e, the committed `.agent/last_block.md` at 9a8e3161 and at e26f1f3e, and both working
+copies as they stand at e26f1f3e — all six byte-EQUAL at sha256
+b9230558fafe431bc69a62dadd059d93c1977510d53baceb817e7ef0a71c1d29, 26177 B, 373 lines, 12 marker
+lines. What binds that block's CONTENT is the shape proof rather than the digest, and it held.
+THE SHAPES HELD, and the two classes were measured apart, one reading per pair. PLAN17F→PLAN17T
+over `.agent/plan.md` at 87c467db and SITE4F→SITE4T over `apps/cli/commands/runtime_cmd.py` at
+a045970b are both REWRITES — each containment test reads `TO contains FROM: false` — and each
+ends FROM 0x with TO exactly 1x, each FROM having occurred exactly 1x in its own target at
+9a8e3161 and at 1d1c6abc respectively, with re-application of the extracted pair to the
+pre-commit blob reproducing the post-commit blob BYTE-EXACTLY in both cases.
+RECORD31 and TESTCLI, neither of which has a FROM, satisfy ORDERED EQUALITY on every clause:
+RECORD31 over `.agent/live_review.md` at 1d1c6abc and TESTCLI over
+`tests/cli/test_runtime_cmd.py` at 394c45af each have the pre-commit blob as a byte-exact PREFIX,
+the slice as an exact SUFFIX, `pre + slice` equal to the post-commit blob byte for byte, and that
+commit's ADDED lines equal to the slice's lines IN ORDER — 39 and 39, 42 and 42, numstat `39 0`
+and `42 0`. Marker LINES at e26f1f3e are 0 in each of the four edited files. THE SUITES WERE
+RE-RUN, NOT READ, in the primary checkout with that block's exact command lines, each exit 0:
+`305 passed` against a base of `304 passed` for the migration set, C4's one new test being the
+difference; `160 passed` against a base of `160 passed` for the four state readers; and the
+canary `42 passed` against a base of `42 passed`. ONE READING HAD TO BE TAKEN TWICE, recorded
+because it will recur: run concurrently with a second pytest process over the same file, the
+migration set read `1 failed, 304 passed` and blamed
+`test_an_instance_id_that_changes_during_the_request_is_never_healthy`, while serially and alone
+it read `305 passed` at exit 0. These suites spawn real supervisors that bind a port and leave
+escapees when a readiness assertion fails, so concurrency alone reddens tests neither run
+touched; the serial reading is the honest one. THE PLAN CONTRACT HELD at e26f1f3e: 39 lines
+against the 50-line cap with `## Goal`, `## Next Steps` and a roadmap F-id all present, 39 being
+that block's own projection. THE ARITHMETIC DID NOT MOVE, as constraint 8 required: 174
+registered / 28 done / 0 landed and 146 open at cbe1b3e5, the same three numbers and the same 146
+at e26f1f3e, max registered R-0559 and max resolved R-0558 at both, all three symmetric
+differences EMPTY, and 0 duplicate ids and 0 orphan resolutions at both SHAs. LINT WAS RE-RUN over
+both `.py` paths from the repository root with the repository's own configuration, plain and
+`--preview`, each exit 0 with `All checks passed!`. THE RED CONTROL REPRODUCED EXACTLY inside a
+disposable worktree at e26f1f3e: reverting only `cwd=spawn_plan.cwd, env=spawn_plan.env,` to
+`cwd=str(source_root), env=env,` — a one-line worktree diff and nothing else — turned
+`python3 -m pytest tests/cli/test_runtime_cmd.py -q -rf` from `17 passed` at exit 0 into
+`1 failed, 16 passed` at exit 1, failing
+`TestTheSupervisorEnvironmentIsScrubbed::test_a_secret_parent_variable_never_reaches_the_supervisor`
+on its `assert "ANTHROPIC_API_KEY" not in env` line with the secret present in the reported
+environment; that un-reverted baseline of `17 passed` also confirms C4 added exactly one test to
+a file whose base was 16. HYGIENE IS CLEAN: the path set over cbe1b3e5..e26f1f3e is exactly the
+seven the change set named; all four paths G9 orders resolved at cbe1b3e5 under `git ls-tree`;
+per-commit INSERTIONS are 373, 287, 6, 39, 18, 42 and 46 for the handback commit, none over 500;
+all seven commits are single-parent; and `.agent/handoff.md` at e26f1f3e is 75 lines, within the
+≤100-line cap its seven-commit table allows, with the ordered Fortschritt line present verbatim.
+THE BLOCK'S OWN SIZE re-measured from the committed file at e26f1f3e gives TOTAL 373, PROSE 226
+counting its 12 marker lines and RECORD31 39, agreeing with that block's own figures and under
+490 / 400 / 140. ONE CLAIM NO GATE COVERED WAS CHECKED RATHER
+THAN ACCEPTED: RECORD31's assertion that `PYTHONPATH` and `VIRTUAL_ENV` need no declaration holds
+at e26f1f3e, where `packages/orchestration/exec_guard.py` assigns
+`RUNTIME_SERVER_ENV_ALLOWLIST` from `TEST_COMMAND_ENV_ALLOWLIST` and that tuple lists both keys.
+ONE STATE OBSERVATION IS RECORDED AND IS NOT A WORKER DEVIATION: a disposable worktree
+`.remedy-wt/rv63` existed at review time, created after the handback commit e26f1f3e by a
+reviewer session that did not survive to remove it and holding a clean tree at that commit; the
+reviewer used it for the red control above, then removed and pruned it, leaving `git worktree
+list` at one line and `git status --porcelain` empty in the primary checkout. NOTHING FAILED and
+this round registers no finding.
+
+Gate: R65 — the R64 entry. R64 PASSED. Every ordered gate G1-G9 was re-executed by the reviewer over
+e26f1f3e..e5eecb29, not read, and each reproduces the handback's reading exactly; the worker deviated
+in nothing and declared nothing. LINE COUNTS ARE `splitlines` COUNTS. TRANSPORT HELD, disk-to-disk
+with no digest fallback: the committed `.agent/authored/f085-r64.md` and the committed
+`.agent/last_block.md` at e5eecb29, both working copies as they stand at e5eecb29, and the received
+`.remedy-wt/f085-r64.md` are all five byte-EQUAL at sha256
+670a2563e54daff38b815a445493dba8b417024e65c5eba4e0b9cbcdb8ae2108, 31314 B, 490 lines, 32 marker lines.
+THE SHAPES HELD, and the two classes were measured apart, one reading per pair. PLAN18F→PLAN18T over
+`.agent/plan.md` at a8877d26, GUARD1F→GUARD1T and GUARD6F→GUARD6T over
+`packages/orchestration/exec_guard.py` at 01fd653d are REWRITES — each containment test reads
+`TO contains FROM: false` — and each ends FROM 0x with TO exactly 1x, each FROM having occurred
+exactly 1x in its own pre-commit blob. GUARD2, GUARD3, GUARD4 and GUARD5 are APPEND-shaped over that
+same file at 01fd653d, each reading FROM exactly 1x AND TO exactly 1x post-commit with no FROM-zero
+reading taken, and all six GUARD pairs re-applied IN ORDER to the pre-commit blob reproduce the
+post-commit blob BYTE-EXACTLY. RECORD32 over `.agent/live_review.md` at 2e6b772e and TESTNET over
+`tests/orchestration/test_exec_guard.py` at 25c75325, neither of which has a FROM, satisfy ORDERED
+EQUALITY on every clause: pre-commit blob a byte-exact PREFIX, slice an exact SUFFIX, `pre + slice`
+equal to the post-commit blob byte for byte, and each commit's ADDED lines equal to the slice's lines
+IN ORDER — 64 and 64, 57 and 57, numstat `64 0` and `57 0`. Marker LINES at e5eecb29 are 0 in each of
+the four edited files. THE SUITES WERE RE-RUN, NOT READ, in the primary checkout with that block's
+exact command lines, serially, each exit 0: `329 passed` against a base of `324 passed` for the seam
+set, C4's five new tests being the difference; `160 passed` against a base of `160 passed` for the
+four state readers; and the canary `42 passed` against a base of `42 passed`. THE PLAN CONTRACT HELD
+at e5eecb29: 42 lines against the 50-line cap with `## Goal`, `## Next Steps` and a roadmap F-id all
+present, 42 being that block's own projection. THE ARITHMETIC DID NOT MOVE, as that block's
+constraint 8 required: 174 registered / 28 done / 0 landed and 146 open at e26f1f3e, the same three
+numbers and the same 146 at e5eecb29, max registered R-0559 and max resolved R-0558 at both, all
+three symmetric differences EMPTY, and 0 duplicate ids and 0 orphan resolutions at both SHAs. LINT
+WAS RE-RUN over both `.py` paths from the repository root with the repository's own configuration,
+plain and `--preview`, each exit 0 with `All checks passed!`. THE RED CONTROL REPRODUCED EXACTLY
+inside a disposable worktree at 25c75325: deleting the one line `        deny_network=True,` from
+`test_command_exec_policy` in `packages/orchestration/exec_guard.py` — a worktree `git diff --stat` of
+`1 file changed, 1 deletion(-)` and nothing else — turned
+`python3 -m pytest tests/orchestration/test_exec_guard.py -q -rf` red at exit 1 with
+`2 failed, 39 passed`, failing both
+`test_the_test_class_policy_denies_the_network_its_row_denies`, the one that block ordered, and
+`test_a_denied_child_really_receives_the_closed_port` on its
+`assert dumped["HTTP_PROXY"] == exec_guard.DENIED_NETWORK_PROXY_URL` line with `KeyError: 'HTTP_PROXY'`
+— the second being the real-child half of the same one-line revert, which that handback reported
+rather than concealed. HYGIENE IS CLEAN: the path set over e26f1f3e..e5eecb29 is exactly the seven the
+change set named and holds none of the three `runtime-server` paths; all five paths G9 orders resolved
+at e26f1f3e under `git ls-tree`; per-commit INSERTIONS are 490, 419, 12, 64, 39, 57 and 32 for the
+handback commit, none over 500; all seven commits are single-parent. THE BLOCK'S OWN SIZE re-measured
+from the committed file at e5eecb29 gives TOTAL 490, PROSE 274 counting its 32 marker lines and
+RECORD32 64, agreeing with that block's own figures and inside 490 / 400 / 140. ONE FINDING IS
+REGISTERED AGAINST THAT BLOCK'S OWN GATE TEXT, and it is the reviewer's defect rather than the
+worker's, which is why R64 still PASSES.
+
+- R-0560 — Low — the R64 block's G8 ordered a destructive revert by quoting a line that was not unique
+in the tree at the SHA the control runs at. It ordered "revert EXACTLY ONE thing: the single line
+`        deny_network=True,` in `test_command_exec_policy`", and at 25c75325 those exact bytes occur
+TWICE: once in `packages/orchestration/exec_guard.py`, which is where `test_command_exec_policy` is
+defined, and once in `tests/orchestration/test_exec_guard.py`, which TESTNET appended in the same
+round. The qualifier that disambiguates them is the function name, and that name begins with `test_`,
+so it reads as a pointer INTO the test file for anyone who has not already resolved the symbol. The
+reviewer of this round deleted the wrong occurrence on the first attempt, restored the file and
+re-ran, so the cost is measured rather than hypothetical. This is the vacuous-and-ambiguous gate
+family of R-0438, R-0532 and R-0559 arriving through the BYTES a gate orders changed rather than
+through the paths it names: item 24 would have resolved every path in that sentence and still passed
+it, because both paths exist. R64 PASSES anyway — the control was met, the deletion that was finally
+made was the ordered one, the `1 file changed, 1 deletion(-)` reading in the handback is the correct
+one, and the red it produced is the red the block predicted. The danger is that a red control cannot
+tell a wrong revert from a right one: deleting the TESTNET occurrence also reddens that suite, so a
+reader who never noticed the ambiguity would have reported a green-looking control that proved
+nothing about `test_command_exec_policy`. COUNTER-MEASURE: item 25 of the §3 checklist in
+`docs/agents/planner_reviewer_prompt.md`, which constraint 6 of this block fixes as landing in the
+commit BEFORE this record — a revert target is named by the PATH it is applied to and its exact bytes
+are counted IN THAT FILE at the SHA the control names, a count above 1 forcing a longer unique string.
+The rule is promoted into the checklist rather than left in this paragraph, because a standing rule
+written as finding prose binds nothing and recurs (R-0452, R-0454). OPEN.
+
+Gate: R66 — the R65 entry. R65 PASSED. Every ordered gate G1-G9 was re-executed by the reviewer over
+e5eecb29..97caa9e1, not read, and each reproduces the handback's reading exactly; the worker deviated
+in nothing and declared nothing. LINE COUNTS ARE `splitlines` COUNTS. TRANSPORT HELD, disk-to-disk
+with no digest fallback: the committed `.agent/authored/f085-r65.md` and the committed
+`.agent/last_block.md` at 97caa9e1, both working copies at 97caa9e1, and the received
+`.remedy-wt/f085-r65.md` are all five byte-EQUAL at sha256
+f0fa416c8a4b343601435f75fb8f69a5c7e8f7198b7c433b4a9a9343ebd11399, 31907 B, 459 lines, 32 marker lines.
+THE SHAPES HELD, and the two classes were measured apart, one reading per pair. The six REWRITES —
+PLAN19 over `.agent/plan.md` at 73db31ec, CHECK25 over `docs/agents/planner_reviewer_prompt.md` at
+28a749e3, DOD1 and DOD2 over `packages/orchestration/exec_guard.py` at aadcf5e1, BUILD1 and BUILD2
+over `packages/orchestration/managed_builder_execution.py` at 6b0edbef — each read
+`TO contains FROM: false`, each FROM 1x in its own pre-commit blob, each ending FROM 0x with TO
+exactly 1x. TESTBUILD over `tests/orchestration/test_managed_builder_execution.py` at a2aaff6d is
+APPEND-shaped, reading FROM 1x AND TO 1x post-commit with no FROM-zero reading taken. Re-application
+IN ORDER reproduced the post-commit blob BYTE-EXACTLY on all five paths. RECORD33 over
+`.agent/live_review.md` at 1439a831 and TESTDOD over `tests/orchestration/test_exec_guard.py` at
+bf4c6645, neither of which has a FROM, satisfy ORDERED EQUALITY on every clause — PREFIX, SUFFIX,
+`pre + slice` equal to the post-commit blob byte for byte, and ADDED lines equal to the slice's lines
+IN ORDER, 71 and 71, 9 and 9, numstat `71 0` and `9 0`. Marker LINES at 97caa9e1 are 0 in each of the
+seven edited files. THE SUITES WERE RE-RUN, NOT READ, in the primary checkout with that block's exact
+command lines, serially, each exit 0: `331 passed` against a base of `329 passed` for the seam set,
+C6 and C7 each adding exactly one test; `160 passed` against a base of `160 passed` for the four state
+readers; and the canary `42 passed` against a base of `42 passed`. THE PLAN CONTRACT HELD at 97caa9e1:
+40 lines against the 50-line cap with `## Goal`, `## Next Steps` and a roadmap F-id all present, 40
+being that block's own projection. THE ARITHMETIC MOVED IN EXACTLY ONE PLACE, as that block's
+constraint 9 required: 174 registered / 28 done / 0 landed and 146 open at e5eecb29 against 175 / 28 /
+0 and 147 open at 97caa9e1, max registered moving R-0559 to R-0560 while max resolved stayed R-0558,
+the registered symmetric difference exactly the single id R-0560, the done and landed symmetric
+differences EMPTY, and 0 duplicate ids and 0 orphan resolutions at both SHAs. LINT WAS RE-RUN over all
+four `.py` paths from the repository root with the repository's own configuration, plain and
+`--preview`, each exit 0 with `All checks passed!`. THE RED CONTROL REPRODUCED EXACTLY inside a
+disposable worktree at 97caa9e1: applying the DOD2T→DOD2F byte pair to
+`packages/orchestration/exec_guard.py`, in which the DOD2T bytes were counted 1x before the replace,
+gave a worktree `git diff --stat` of `1 file changed, 1 deletion(-)` and turned
+`python3 -m pytest tests/orchestration/test_exec_guard.py -q -rf` red at exit 1 with
+`1 failed, 41 passed`, the single failure being
+`test_the_dod_process_policy_denies_the_network_its_row_denies` on its
+`assert policy.deny_network is True` line — exactly the ordered failure and the only one, which is
+what item 25 bought: R64's control reddened two tests and this one reddens precisely the test whose
+row was reverted. HYGIENE IS CLEAN: the path set over e5eecb29..97caa9e1 is exactly the nine the
+change set named and holds none of the three `runtime-server` paths; all seven paths G9 orders
+resolved at e5eecb29 under `git ls-tree`; per-commit INSERTIONS are 459, 392, 7, 10, 71, 5, 5, 9, 14
+and 50 for the handback commit, none over 500; all ten commits are single-parent; and
+`.agent/handoff.md` at 97caa9e1 is 90 lines, within the ≤100-line cap its ten-commit table allows,
+with the ordered Fortschritt line present verbatim. THE BLOCK'S OWN SIZE re-measured from the
+committed file at 97caa9e1 gives TOTAL 459, PROSE 289 counting its 32 marker lines and RECORD33 71,
+agreeing with that block's own figures and inside 490 / 400 / 140. ONE READING THE HANDBACK FLAGGED
+WAS CHECKED RATHER THAN ACCEPTED: C0b's insertion count is 392 by `--numstat` and 459 by the commit
+line's rewrite detection, and the numstat reading is the one G9 measures, so the handback naming both
+is correct rather than a discrepancy. NOTHING FAILED and this round registers no finding.
+
+Gate: R67 — the R66 entry. R66 FAILED, and the failure is the REVIEWER's, not the worker's. Every
+ordered gate G1-G8 was re-executed by the reviewer over 97caa9e1..261dce53, not read, and each
+reproduces the handback's reading exactly; the worker deviated in nothing, applied every slice
+unedited, and declared the defect this entry registers instead of repairing it — which is what that
+block's constraint 12 asked for and the reason the defect was caught inside one round rather than at
+closure. LINE COUNTS ARE `splitlines` COUNTS. TRANSPORT HELD, disk-to-disk with no digest fallback:
+the committed `.agent/authored/f085-r66.md` and the committed `.agent/last_block.md` at 261dce53,
+both working copies at 261dce53, and the received `.remedy-wt/f085-r66.md` are all five byte-EQUAL at
+sha256 9a356739fc567d675cfb1a075b48b7916ad6c13fd4ad9eb587c8d216142000e6, 26720 B, 379 lines, 16 marker
+lines. THE SHAPES HELD: PLAN20 over `.agent/plan.md` at 9cc64066 and INDEX1 over `docs/README.md` at
+5cc11db0 are REWRITES, each reading `TO contains FROM: false`, each FROM 1x pre-commit and 0x with TO
+exactly 1x post-commit; INDEX2 over that same file at that same commit is APPEND-shaped, reading FROM
+1x AND TO 1x post-commit with no FROM-zero reading taken; both `docs/README.md` pairs re-applied IN
+ORDER reproduce the post-commit blob BYTE-EXACTLY, as does the PLAN20 pair on its own file. RECORD34
+over `.agent/live_review.md` at 70f09162 satisfies ORDERED EQUALITY on every clause — PREFIX, SUFFIX,
+`pre + slice` equal byte for byte, ADDED lines equal to the slice's lines IN ORDER, 51 and 51. DOCLIM
+at 69addbbf satisfies WHOLE-FILE equality: `git ls-tree 97caa9e1` for that path is EMPTY and the
+post-commit blob equals the DOCLIM bytes exactly. Marker LINES at 261dce53 are 0 in each of the four
+edited files. THE SUITES WERE RE-RUN, NOT READ, in the primary checkout, serially, each exit 0:
+`295 passed` for the docs-consistency suite, `160 passed` for the four state readers and the canary
+`42 passed`, each equal to its base. THE PLAN CONTRACT HELD at 261dce53: 40 lines against the 50-line
+cap with `## Goal`, `## Next Steps` and a roadmap F-id all present, 40 being that block's own
+projection. THE ARITHMETIC DID NOT MOVE, as that block's constraint 8 required: 175 registered / 28
+done / 0 landed and 147 open at both 97caa9e1 and 261dce53, max registered R-0560 and max resolved
+R-0558 at both, all three symmetric differences EMPTY, and 0 duplicate ids and 0 orphan resolutions at
+both SHAs. THE LINK GATE HELD at 261dce53: `system/exec-guard-limitations-v0.md` occurs exactly twice
+in `docs/README.md`, the path resolves, and the file it resolves to is byte-identical to the DOCLIM
+slice. WHAT FAILED IS THE CONTENT THOSE GATES NEVER READ. Not one of the eight gates asked whether the
+document's sentences are TRUE, so a shape-perfect round published a false claim, and the only reason
+it did not survive is that a human-facing constraint asked the worker to report disbelief.
+
+- R-0561 — Medium — the T003 limitations document published a false statement of which command
+classes run under the execution guard, and the reviewer authored it. The DOCLIM slice, applied
+byte-verbatim at 69addbbf, carried the heading "Only three command classes run under the guard at all"
+and the sentences "Amendment F085 D1's table wires `builder`, `test` and `dod-process`" and "The git,
+packaging, runtime and other call sites still spawn unsupervised". Read at 261dce53,
+`docs/roadmap/features/T2_F085.md` marks SIX rows `Stage 1 = yes` — `builder`, `test`, `dod-process`,
+`dod-app`, `runtime-server` and `runtime-build` — and only three of those six carry `default-deny` in
+the SEPARATE network column. The document therefore reported the DENY set as if it were the GUARDED
+set, and named `runtime` among the unsupervised when its three server sites call
+`runtime_server_exec_policy` at 261dce53 from `packages/runtimes/dev_server.py`,
+`packages/runtimes/runtime_supervisor.py` and `apps/cli/commands/runtime_cmd.py` and its two build
+sites call `run_guarded_runtime_build_command` from `packages/orchestration/ui_server.py`. The same
+conflation reached `.agent/plan.md` at 9cc64066 as "three classes of five". Medium, not High, because
+the error UNDERSTATES coverage — it credits the guard with less than it does, so no reader is misled
+into trusting an unguarded path — and not Low, because this document exists precisely to be the
+truthful account of what stage 1 does and does not do, and a limitations document that misdescribes
+its own scope cannot serve that purpose. It also omitted content `docs/roadmap/features/T2_F085.md`
+explicitly assigns to it: that the git, packaging and other exclusion is a SCOPE ruling and not a
+safety claim, and that several of those sites pass no timeout and can hang. C3 of this round replaces
+the section and adds the omitted content. COUNTER-MEASURE: a block that authors PROSE ASSERTING A FACT
+ABOUT THIS REPOSITORY orders a gate that reads that fact back from its source — the class names from
+the D1 table, the call sites from a grep — exactly as it already orders shape and arithmetic gates.
+R66 ordered eight gates and not one of them could have failed on a false sentence; G8 of the R67 block
+is the first of this kind and is the shape the rule takes. OPEN.
+
+- R-0562 — Low — the `exec_guard` module docstring still called the runtime class unsupervised two
+rounds after this branch migrated it. The PARTIAL COVERAGE bullet read "the runtime, git and packaging
+classes still spawn unsupervised" at 261dce53, while R61 and R63 migrated all three `runtime-server`
+sites and `packages/orchestration/ui_server.py` has called `run_guarded_runtime_build_command` for
+both `runtime-build` sites since T002d. This is the R-0506 class — a documented absence claim
+falsified by the migration that the same branch performed, and not retired in the round that
+falsified it — arriving in the module whose docstring is the first thing a reader of this seam sees.
+Low, because the claim is an inventory note rather than a safety property, and the bullet's own
+sentence already declines to write a count "because it changes with every migration round", which is
+the same instinct applied one clause too narrowly. C4 of this round repairs it. The sweep that bounds
+both findings is reported in the R67 block and re-run by its G8: `spawn unsupervised` has exactly two
+live occurrences at 261dce53, this one and R-0561's, and the two remaining hits in the repository are
+an unrelated constant in `packages/runtimes/dev_server.py` and an example sentence in
+`docs/agents/planner_reviewer_prompt.md`. OPEN.
+
+Gate: R68 — the R67 entry. R67 FAILED, and the failure is the REVIEWER's for the second round
+running, not the worker's. Every ordered gate G1-G9 was re-executed by the reviewer over
+261dce53..a8ba453d, not read, and each reproduces the handback's reading exactly; the worker deviated
+in nothing, applied every slice unedited, and declared the defect this entry registers instead of
+repairing it — which is what that block's constraint 8 asked for, and the second consecutive round in
+which a worker's declared disbelief is the only thing that caught the reviewer. LINE COUNTS ARE
+`splitlines` COUNTS. TRANSPORT HELD, disk-to-disk with no digest fallback: the committed
+`.agent/authored/f085-r67.md` and the committed `.agent/last_block.md` at a8ba453d, and both working
+copies at a8ba453d, are all four byte-EQUAL at sha256
+8f1d0218ad4e0796a9618d46cf2737b8fd0d60ecb022431e5d73ebae92a99db1, 29948 B, 386 lines, 14 marker
+lines. THE SHAPES HELD: PLAN21 over `.agent/plan.md` at 7c0dca8b, FIXDOC over
+`docs/system/exec-guard-limitations-v0.md` at 5f09088a and FIXMOD over
+`packages/orchestration/exec_guard.py` at 3440efe4 are REWRITES, each reading
+`TO contains FROM: false`, each FROM 1x pre-commit and 0x post-commit with its TO exactly 1x
+post-commit, and each pair re-applied to its pre-commit blob reproduces its post-commit blob
+BYTE-EXACTLY. RECORD35 over `.agent/live_review.md` at 60057260 satisfies ORDERED EQUALITY on every
+clause — PREFIX, SUFFIX, `pre + slice` equal byte for byte, ADDED lines equal to the slice's lines IN
+ORDER, 71 and 71. Marker LINES at a8ba453d are 0 in each of the four edited files. THE SUITES WERE
+RE-RUN, NOT READ, in the primary checkout, serially, each exit 0: `331 passed` for the six readers of
+the edited module, `295 passed` for the docs-consistency suite, `160 passed` for the four state
+readers and the canary `42 passed`, each equal to its base. THE PLAN CONTRACT HELD at a8ba453d: 40
+lines against the 50-line cap with `## Goal`, `## Next Steps` and a roadmap F-id all present. THE
+ARITHMETIC MOVED BY EXACTLY TWO REGISTRATIONS, as that block's constraint 9 required: 175 registered /
+28 done / 0 landed and 147 open at 261dce53 against 177 / 28 / 0 and 149 open at a8ba453d, the
+registered symmetric difference exactly {R-0561, R-0562}, the done and landed differences both EMPTY,
+and 0 duplicate ids and 0 orphan resolutions at both SHAs. THE LINT HELD at a8ba453d, both the plain
+and the preview half exit 0 on `All checks passed!`. THE TRUTH GATE HELD on all six of its readings,
+which is why both repairs resolve below. WHAT FAILED IS THE ONE CLAUSE THAT GATE DID NOT READ.
+
+Done: R-0561 — Resolved at R67, commit 5f09088a. Re-read by the reviewer in the file rather than in
+the handback: `docs/system/exec-guard-limitations-v0.md` at a8ba453d carries the heading
+`## Six classes run under the guard, and only three of them deny the network`, contains each of the
+six stage-1 class names `builder`, `test`, `dod-process`, `dod-app`, `runtime-server` and
+`runtime-build`, separates being guarded from denying the network in as many words, and carries the
+two contents `docs/roadmap/features/T2_F085.md` assigns to it and the first version omitted — that the
+exclusion is a `SCOPE ruling` and that untouched sites `can hang`. The old heading
+`## Only three command classes run under the guard at all` occurs 0 times in that file at a8ba453d,
+and the false sentence naming `runtime` among the unsupervised occurs 0 times there.
+
+Done: R-0562 — Resolved at R67, commit 3440efe4. The `exec_guard` module docstring's PARTIAL COVERAGE
+bullet at a8ba453d names the runtime class as migrated whole, through `runtime_server_exec_policy` for
+its servers and `run_guarded_runtime_build_command` for its builds, and leaves the unsupervised claim
+to `git`, `packaging` and `other`; the sentence `the runtime, git and packaging classes still spawn
+unsupervised` occurs 0 times in `packages/orchestration/exec_guard.py` at a8ba453d. The repair is
+INERT, which is the property no red control could have shown: the pre-commit and post-commit blobs of
+that file at 3440efe4, parsed with `ast.parse` and each module docstring set to None, produce
+IDENTICAL `ast.dump` output, so that commit changed docstring bytes and nothing executable.
+
+- R-0563 — Medium — a sweep gate read a TOTAL while the sentence beside it characterised the
+INDIVIDUAL hits, so a false clause reached the finding ledger through the very round that registered
+the counter-measure against false claims. RECORD35's closing sentence, committed at 60057260, states
+that the `spawn unsupervised` sweep leaves two further hits standing in this repository beyond the two
+it repairs, locating one in `packages/runtimes/dev_server.py` and one in
+`docs/agents/planner_reviewer_prompt.md`; the R67 block's own sweep paragraph says the same, and both
+were authored by the reviewer. Measured with `git grep -n "spawn unsupervised"` over `packages/`,
+`apps/`, `docs/` and `tests/`, that phrase returns EXACTLY two hits at 261dce53 and EXACTLY two at
+a8ba453d — the two live claims themselves — so no further hit exists under those four trees at either
+SHA. The `dev_server.py` lines carry the bare word `unsupervised` in the `OWNER_UNSUPERVISED` constant
+and never the phrase, and `docs/agents/planner_reviewer_prompt.md` carries 0 occurrences of
+`unsupervised` in any case at either SHA, so one half of the claim confuses a word with a phrase and
+the other half names a file that never held either. Medium, not High, because no repair was
+misdirected — the two findings the sweep bounds are both correct and both resolve above — and not Low,
+because that sentence is the BOUNDING claim for both of them: a reader who trusts it believes two
+further sites were deliberately left alone and will not look, which is the R-0417 staleness hazard
+pointed the other way. The R67 worker measured this and declared it under that block's constraint 8
+rather than editing reviewer text, which is why it is registered here rather than shipped.
+COUNTER-MEASURE, narrowing R-0561's: when a block orders a gate over a SWEEP, EVERY clause of the
+sentence that sweep licenses is read back from the sweep's own output — the total, the path each hit
+lands in, and the characterisation of every hit NOT repaired — because a gate that counts hits cannot
+fail on a sentence that describes them. R67's G8 ordered the count, got two, and passed while the
+prose beside it said four; nothing in that block compared the two, and no gate it ordered could have.
+G7 of the R68 block is the first written under this rule, and reading A of that gate — the path of
+every hit, not only how many — is the clause R67's G8 was missing. OPEN.
+
+CORRECTION TO RECORD35, appended and not applied, per docs/agents/planner_reviewer_prompt.md §3
+checklist item 20: overwriting landed text is worse than a dated wrong sentence, so the clause
+registered as R-0563 above stands untouched where it was committed at 60057260 and THIS paragraph is
+its retraction, exactly as the correction section of DECISION F085 D6 retracts a ruled figure in
+`.agent/decisions.md` without editing it. The true reading, taken by the reviewer at 261dce53 and
+again at a8ba453d: the phrase `spawn unsupervised` occurs exactly twice under `packages/`, `apps/`,
+`docs/` and `tests/` at each of those SHAs, both occurrences are the two claims R-0561 and R-0562
+name, and no third or fourth occurrence of that phrase exists under those four trees at either SHA.
+The phrase does recur under `.agent/` — in this workflow's own block mirrors, handbacks and records,
+RECORD35 among them — and that is the only place it does, which is why this retraction names the
+trees it swept instead of saying `the repository`. R-0561 and R-0562 are unaffected by the
+retraction: the sweep that bounds them is COMPLETE at two rather than at four, which makes their
+repairs more nearly exhaustive than the sentence claimed, not less.
+
+Gate: R69 — the R68 entry. R68 PASSED. All eight ordered gates were re-executed by the reviewer over
+a8ba453d..1df91b27, not read, and every measured value equals the one the handback reports. LINE
+COUNTS ARE `splitlines` COUNTS. TRANSPORT HELD, disk-to-disk with no digest fallback and with the
+reviewer's OWN pre-emission original in the comparison: the committed `.agent/authored/f085-r68.md`,
+the committed `.agent/last_block.md` at 1df91b27, both working copies at 1df91b27 and the reviewer's
+original are all five byte-EQUAL at sha256
+f064a5dee523d030e4477585eea3e54fa31731e6741ad5ca1499fbae7c7cfcac, 27537 B, 344 lines, 6 marker lines;
+TOTAL 344 against the 490 cap, PROSE 230 against 400, RECORD36 88 against 140. THE SHAPES HELD:
+PLAN22F→PLAN22T over `.agent/plan.md` at e9d4eca6 reads `TO contains FROM: false`, FROM 1x pre-commit
+and 0x post-commit with TO exactly 1x post-commit, and re-applied reproduces the post-commit blob
+BYTE-EXACTLY. RECORD36 over `.agent/live_review.md` at ea2a458f satisfies ORDERED EQUALITY on every
+clause — PREFIX, SUFFIX, `pre + slice` equal byte for byte, ADDED lines equal to the slice's lines IN
+ORDER, 88 and 88 — with a numstat deletion column of 0. Marker LINES at 1df91b27 are 0 in both edited
+files. THE SUITES WERE RE-RUN, NOT READ, in the primary checkout, serially, each exit 0: `160 passed`
+for the four state readers and the canary `42 passed`, each equal to its base. THE PLAN CONTRACT HELD
+at 1df91b27: 40 lines against the 50-line cap with `## Goal`, `## Next Steps` and a roadmap F-id all
+present. THE ARITHMETIC MOVED AS THAT BLOCK'S CONSTRAINT 9 REQUIRED: 177 registered / 28 done / 0
+landed and 149 open at a8ba453d against 178 / 30 / 0 and 148 open at 1df91b27, the registered
+symmetric difference exactly {R-0563}, the done symmetric difference exactly {R-0561, R-0562}, the
+landed difference EMPTY, and 0 duplicate ids and 0 orphan resolutions at both SHAs. THE TRUTH GATE
+HELD on all four of its readings, which is what resolves R-0563 below. The history over that range is
+five single-parent commits with no amend, rebase, reset or force-push in the reflog, and the branch is
+in sync with its remote.
+
+Done: R-0563 — Resolved at R68, commit ea2a458f, and the resolution is a RETRACTION rather than an
+edit. The false clause registered as R-0563 still stands byte-for-byte where it was committed at
+60057260, and RECORD36 appends the correction beneath it, which is what
+docs/agents/planner_reviewer_prompt.md §3 checklist item 20 rules and what DECISION F085 D6's own
+correction section does in `.agent/decisions.md`. The reviewer proved BOTH halves mechanically at
+1df91b27: the whole of `.agent/live_review.md` as it stood at a8ba453d is a byte-exact PREFIX of the
+file at 1df91b27, so nothing landed was overwritten, and the string `and an example sentence in`
+occurs exactly 1 time at each of those two SHAs rather than dropping to 0. The counter-measure the
+finding names was applied in the same round that registered it: R68's G7 read every clause of the
+sweep back from the sweep's own output rather than its total alone — the two hits AND the path each
+one lands in at a8ba453d and at 1df91b27, no match for `unsupervised` in
+`docs/agents/planner_reviewer_prompt.md` at either SHA with the exit code reported alongside the empty
+output, and the bare word matching 4 lines of `packages/runtimes/dev_server.py` at a8ba453d while the
+phrase matches none there. That last reading is the word-for-phrase confusion R-0563 exists to name,
+measured in the file that produced it.
+
+Gate: R70 — the R69 entry. R69 PASSED with no finding registered against it. Every one of R69's nine
+ordered gates was re-taken by the reviewer over 1df91b27..126b70ae rather than read from the handback,
+except the two readings that exist only while a round is running — `git status --porcelain` after each
+intermediate commit, and the absence of `.agent/STOP` at the two points R69's constraint 2 names —
+which are unobservable once the round has ended and are accepted on the worker's report. Every value
+the reviewer could re-measure equals the one the handback reports. LINE COUNTS ARE `splitlines`
+COUNTS. TRANSPORT HELD, disk-to-disk with
+no digest fallback: the committed `.agent/authored/f085-r69.md`, the committed `.agent/last_block.md`
+at 126b70ae and both working copies at 126b70ae are all four byte-EQUAL at sha256
+3b506bf1f24540e5ed8fe84ac7487b67041b17da43b02b0d869d08305d893dc3, 27901 B, 420 lines, 12 marker
+lines; TOTAL 420 against the 490 cap, PROSE 241 against 400, RECORD37 40 against 140. THE SHAPES HELD,
+one reading per pair. PLAN23F→PLAN23T over `.agent/plan.md` at cc563f6d reads `TO contains FROM:
+false`, FROM 1x pre-commit and 0x post-commit with TO exactly 1x post-commit, and re-applied
+reproduces the post-commit blob BYTE-EXACTLY. RECORD37 over `.agent/live_review.md` at 4651069b
+satisfies ORDERED EQUALITY on every clause — PREFIX, SUFFIX, `pre + slice` equal byte for byte, and
+that commit's ADDED lines equal to the slice's lines IN ORDER, 40 and 40. The two edits C3 made to
+`tests/orchestration/test_exec_guard.py` at b735eb93 reconstruct BYTE-EXACTLY from that commit's
+pre-commit blob by applying `IMPORTSF`→`IMPORTST` and then concatenating `NETTEST`, with IMPORTSF 1x
+pre-commit and 0x post-commit, IMPORTST exactly 1x post-commit, and NETTEST an exact SUFFIX of the
+post-commit blob. Marker LINES at 126b70ae are 0 in all three edited files. THE SUITES WERE RE-RUN,
+NOT READ, in the primary checkout, serially, each exit 0: `44 passed` for
+`tests/orchestration/test_exec_guard.py` at 126b70ae, `2 passed, 42 deselected` for the same file
+filtered to the two tests C3 added — so those two are exactly the file's growth and the other 42 are
+the ones that predate them — `160 passed` for the four state readers, and the canary `42 passed`. BOTH LINT HALVES printed `All checks passed!` over that test file at 126b70ae, the preview
+half included. THE PLAN CONTRACT HELD at cc563f6d: 39 lines against the 50-line cap, with `## Goal`,
+`## Next Steps` and a roadmap F-id all present. THE ARITHMETIC MOVED AS THAT BLOCK'S CONSTRAINT 9
+REQUIRED: 178 registered / 30 done / 0 landed and 148 open at 1df91b27 against 178 / 31 / 0 and 147
+open at 126b70ae, the registered and landed symmetric differences both EMPTY, the done symmetric
+difference exactly {R-0563}, and 0 duplicate ids and 0 orphan resolutions at both SHAs.
+
+THE RED CONTROL WAS RE-RUN BY THE REVIEWER'S OWN HAND, inside a disposable worktree at 126b70ae and
+never in the primary checkout. The ordered byte string occurs exactly 1 time in
+`packages/orchestration/exec_guard.py` at 126b70ae; mutating only its `deny_network` argument moves
+the bare `deny_network=True,` count in that file from 2 to 1, leaving the untouched `dod-process`
+occurrence beside one `False`. The two selected tests then FAIL: the guarded child comes back
+`returncode=0` carrying `REMEDY_EXEC_GUARD_SERVED_BODY` in its stdout, and the refusal assertion reads
+`assert b'Connection refused' in b''`. That is the exact opposite of the green reading, which is what
+makes the green attributable to the deny posture rather than to a harness that never came up. The
+worktree was removed and `git worktree list` is one line.
+
+THE RECORD ITSELF WAS RE-MEASURED, which is the obligation R66 and R67 failed. Every mechanically
+checkable claim RECORD37 makes about R68's range was re-run at the SHA it names, and all of them hold
+— including the clause that R-0563 exists to police: at a8ba453d the bare word matches 4 lines of
+`packages/runtimes/dev_server.py` under the case-insensitive reading R68's own `git grep -ic` command
+ran, while the phrase `spawn unsupervised` matches none there, and `docs/agents/planner_reviewer_prompt.md`
+contains no occurrence of `unsupervised` at a8ba453d or at 1df91b27. The `.agent/live_review.md` blob
+at a8ba453d is a byte-exact PREFIX of the blob at 1df91b27, so nothing landed was overwritten. The
+history over 1df91b27..126b70ae is six single-parent commits inserting 420, 349, 8, 40, 104 and 81
+lines, none over 500, with no amend, rebase, reset or force-push in the reflog, and the branch is in
+sync with its remote.
+
+R69 REGISTERED NOTHING AND RESOLVED NOTHING, so this entry carries no registration line and no
+resolution line of its own: the open set stays 147 and the next free id stays R-0564.
+
+Gate: R71 — the R70 entry. R70 PASSED as a round, and the INTEGRATION GATE IT RAN RETURNED A BLOCKER,
+which are two different statements and both are true. The round is a PASS because every gate its block
+ordered was executed and reported honestly and because the worker STOPPED at the blocker instead of
+repairing it, which is what docs/agents/integration_gate.md step 4 requires; the gate is a BLOCKER
+because a branch-only failure reproduces serially, does not reproduce at the merge base, and is
+coupled to code this feature changed. Every gate reading below was re-taken by the reviewer over
+126b70ae..6a04b37b rather than read from the handback, except `git status --porcelain` after each
+intermediate commit and the absence of `.agent/STOP` at the two points R70's constraint 2 names, which
+are unobservable once a round has ended and are accepted on the worker's report. TRANSPORT HELD,
+disk-to-disk with the reviewer's OWN pre-emission original in the comparison and no digest fallback:
+that original, the committed `.agent/authored/f085-r70.md`, the committed `.agent/last_block.md` at
+6a04b37b and both working copies at 6a04b37b are all five byte-EQUAL at sha256
+31f928b9466a6d46a22ed4be1da815f545419861ac9341f12a03cdff414442f3, 24310 B, 308 lines, 6 marker lines;
+TOTAL 308 against the 490 cap, PROSE 232 against 400, RECORD38 54 against 140. THE SHAPES HELD:
+PLAN24F→PLAN24T over `.agent/plan.md` at cdbcfb16 reads `TO contains FROM: false`, FROM 1x pre-commit
+and 0x post-commit with TO exactly 1x post-commit, and re-applied reproduces the post-commit blob
+BYTE-EXACTLY; RECORD38 over `.agent/live_review.md` at d2e65482 satisfies ORDERED EQUALITY on every
+clause — PREFIX, SUFFIX, `pre + slice` equal byte for byte, ADDED lines equal to the slice's lines IN
+ORDER, 54 and 54. Marker LINES at 6a04b37b are 0 in both edited files. THE PLAN CONTRACT HELD at
+cdbcfb16: 37 lines against the 50-line cap with `## Goal`, `## Next Steps` and a roadmap F-id all
+present. THE ARITHMETIC STOOD STILL AS THAT BLOCK'S CONSTRAINT 9 REQUIRED: 178 registered / 31 done /
+0 landed and 147 open at both 126b70ae and 6a04b37b, all three symmetric differences EMPTY, and 0
+duplicate ids and 0 orphan resolutions at both SHAs. THE CANARY WAS RE-RUN, NOT READ, in the primary
+checkout: exit 0, `42 passed`. THE HYGIENE READING HELD: the range touches 15 paths, every one of them
+under `.agent/`, none under `packages/`, `apps/`, `docs/`, `scripts/` or `tests/` and none ending
+`.log`, over six single-parent commits inserting 308, 228, 7, 54, 262 and 112 lines, none over 500.
+
+- R-0564 — High — a test that pinned a security-relevant property was silently defeated by this
+feature's own migration, and no round gate could see it. `tests/test_command_discovery.py` section M
+exists to pin "no shell=True in the execution path"; its `run_tests_local` case patched the name
+`subprocess.run` and asserted `mock_run.called`. F085 T002b changed `run_tests_local` to call
+`exec_guard.run_guarded_test_command`, which spawns with `subprocess.Popen` at
+`packages/orchestration/exec_guard.py`, so the patched name is never reached, `mock_run.called` is
+False, and the assertion fails at 6a04b37b on a property that is in fact still true of the source. The
+reviewer reproduced it serially in the primary checkout at 6a04b37b — EXIT 1, `1 failed in 0.41s`,
+`assert mock_run.called` — and confirmed the same id passes at the merge base a5a70621, where
+`packages/orchestration/test_runner.py` still called `subprocess.run`. `git diff --stat
+a5a70621..6a04b37b -- tests/test_command_discovery.py` is EMPTY: the branch never touched the failing
+test, so the behaviour under test moved and the measurement did not follow it. High, not Medium,
+because for the whole span between the migration and R70 this test was reporting on a call site that
+no longer ran: had the guard passed `shell=True`, nothing in the suite would have said so, and every
+round gate F085 ordered stayed green throughout — the R-0220 class, a green gate over a feature the
+gate does not reach. COUNTER-MEASURE: when a round moves a spawn, a call or any other seam out of a
+module, grep the suite for tests that patch the OLD name over that module — `rg -l '<old.name>' tests/`
+followed by reading each `patch(` in what it returns — and pull each one to the new seam in the SAME
+round that moves the seam. R70's gate is the only thing that caught this one, and a gate that runs
+twice per feature is too coarse a net to be the first line. OPEN.
+
+- R-0565 — Medium — the integration gate's own parity check is blind to the change it is meant to
+detect. docs/agents/integration_gate.md orders `apps/ui/dist` hashed before and after the base run,
+and a changed hash to void the parity claim; but the artifact's staleness is decided by MTIME, not by
+content — `packages/orchestration/ui_server.py` treats the frontend as stale when any file under
+`apps/ui/src` is newer than `apps/ui/dist/index.html` — and a rebuild that reproduces byte-identical
+output leaves the digest equal while moving the mtime. R70's own evidence records exactly that at
+6a04b37b: `.agent/gate_f085_r70/base_parity.txt` reports DIST_SHA256_BEFORE equal to DIST_SHA256_AFTER
+and, beside it, mtimes showing `apps/ui/dist` was rewritten inside both checkouts mid-run, which is
+also why the eight base-only ids failed. So the digest test reported parity intact over a run in which
+the artifact was in fact rebuilt twice. Medium, not High, because that round did not rely on the
+parity claim alone — every base-only id was additionally attributed per id by direct evidence, which
+is the alternative integration_gate.md itself allows — and not Low, because the next gate that leans
+on the digest alone will believe a parity claim that was never tested. COUNTER-MEASURE: the parity
+reading records the artifact's MTIME alongside its sha256, and a moved mtime voids the claim exactly
+as a changed digest does. The R70 worker measured this and declared it rather than fixing it, under
+that block's constraint 9, which is why it is registered here. OPEN.
+
+Done: R-0564 — Resolved at R71, commit 3cf6788e, and verified by the reviewer at f023e2b1 rather than
+read. The repaired test patches `subprocess.Popen` with a spy that DELEGATES to the real spawn and
+asserts over every recorded call that no `shell=True` is present and that argv is a list, so it pins
+the property at the seam the guard actually uses. The reviewer re-ran the file at f023e2b1 in the
+primary checkout: `92 passed`, exit 0, against the base reading of `1 failed, 91 passed` at 6a04b37b,
+and both ruff halves printed `All checks passed!` over it at f023e2b1. The fix is not merely green: the
+reviewer proved BOTH of its assertions reachable by mutation inside a disposable worktree at 6a04b37b,
+inserting `shell=True` into the guard's `Popen` call to make the shell assertion fail, and replacing
+the guarded call with a fabricated `CompletedProcess` to make `assert spawns` fail on an empty list.
+The new seam is strictly stronger than the one it replaces, which the reviewer also measured: reverting
+`run_tests_local` to `subprocess.run` in that worktree left the test GREEN, because `subprocess.run` is
+itself implemented on `Popen`, so the assertion now holds wherever the spawn is written and cannot be
+defeated by moving it again. The counter-measure R-0564 names is therefore satisfied by construction
+for this test rather than by vigilance. No production file was touched by the repair, because the
+property was always true of the source and only the measurement had come loose.
+
+Gate: R72 — the R71 entry. R71 PASSED. Every gate its block ordered was re-taken by the reviewer over
+6a04b37b..f023e2b1 rather than read from the handback, except `git status --porcelain` after each
+intermediate commit and the absence of `.agent/STOP` at the two points R71's constraint 2 names, which
+are unobservable once a round has ended and are accepted on the worker's report. TRANSPORT HELD,
+disk-to-disk with the reviewer's OWN pre-emission original in the comparison and no digest fallback:
+that original, the committed `.agent/authored/f085-r71.md`, the committed `.agent/last_block.md` at
+f023e2b1 and both working copies at f023e2b1 are all five byte-EQUAL at sha256
+9c87a93b587cfcef5db3ba28246f088439a61aad6587f9b3f8220513e31ba630, 29863 B, 408 lines, 12 marker lines;
+TOTAL 408 against the 490 cap, PROSE 255 against 400, RECORD40 65 against 140. THE SHAPES HELD, one
+reading per pair: PLAN25F→PLAN25T over `.agent/plan.md` at 17df8755 and NOSHELLF→NOSHELLT over
+`tests/test_command_discovery.py` at 3cf6788e both read `TO contains FROM: false`, both show FROM 1x
+pre-commit and 0x post-commit with TO exactly 1x post-commit, and both reproduce their post-commit blob
+BYTE-EXACTLY when re-applied. RECORD40 at ea9e80b5 and the `Landed:` line at 2eb5d1f3 each satisfy
+ORDERED EQUALITY against their OWN pre-commit blob — PREFIX, SUFFIX, `pre + slice` equal byte for byte,
+ADDED lines equal to the slice's lines IN ORDER, 65 and 65 and then 4 and 4. Marker LINES at f023e2b1
+are 0 in all three edited files. THE SUITES WERE RE-RUN, NOT READ, in the primary checkout, serially,
+each exit 0: `92 passed` for `tests/test_command_discovery.py` at f023e2b1 where the same file read
+`1 failed, 91 passed` at 6a04b37b, `44 passed` for `tests/orchestration/test_exec_guard.py`, and the
+canary `42 passed`. BOTH LINT HALVES printed `All checks passed!` over the repaired file at f023e2b1.
+THE PLAN CONTRACT HELD at 17df8755: 39 lines against the 50-line cap with `## Goal`, `## Next Steps`
+and a roadmap F-id all present. THE HYGIENE READING HELD: the range touches six paths, exactly one of
+them under `tests/` and none under `packages/`, `apps/`, `docs/` or `scripts/`, over seven
+single-parent commits inserting 408, 334, 9, 65, 25, 4 and 109 lines, none over 500.
+
+- R-0566 — Medium — the R71 block's constraint 9 stated an open-findings count its own record text
+contradicted, and the worker caught it. That constraint ruled "open moves 147 → 148" for a round that
+registered two findings and marked one `Landed:`, deriving the number from OPEN = REGISTERED − DONE −
+LANDED. But docs/agents/planner_reviewer_prompt.md §4 item 4 rules that a `Landed:` line is an
+UNREVIEWED FIX and not a resolution — "a surviving `Landed:` line is an unreviewed fix, which is
+exactly what it should look like" — and RECORD40, authored in the same block, closes R-0564's
+registration paragraph with `OPEN.`. So the block asserted a finding was not open in the same breath as
+its own ledger text asserted it was, and the correct reading at f023e2b1 is 181 minus 32, that is 149.
+The formula was never wrong before because `landed` was 0 at every SHA this feature had measured until
+R71, so the two readings agreed everywhere they had been exercised and the defect was latent in every
+block that carried it. Medium, not High, because no false number reached `.agent/live_review.md` — the
+R71 worker declared the disagreement under that block's constraint 8 and reported BOTH readings in the
+handback rather than reconciling them, which is the third round in this feature that rule has caught a
+reviewer error. Not Low, because the count is what a closure round reports and what the next session
+reads first. COUNTER-MEASURE: DECISION F085 D7, appended to `.agent/decisions.md` by this round's C4,
+rules the formula on disk instead of leaving it to be re-derived per block, and G6 of this block is the
+first gate written under it — it orders BOTH formulas reported side by side at both SHAs, so the rule
+and the reading it rejects are visible together in the record rather than one silently replacing the
+other. OPEN.
+
+Gate: R73 — the R72 entry. R72 PASSED. Every gate its block ordered was re-taken by the reviewer over
+f023e2b1..d6d96e50 rather than read from the handback, except the absence of `.agent/STOP` at the two
+points R72's constraints name and `git status --porcelain` after each intermediate commit, which are
+unobservable once a round has ended and are accepted on the worker's report; both hold observably now,
+and `git worktree list` is one line with no `tmp/` branch left behind. TRANSPORT HELD, disk-to-disk,
+under the digest fallback of docs/agents/planner_reviewer_prompt.md §4 item 9 rather than against a
+scratchpad original, because a self-drive reviewer writes nothing it could later compare against: the
+committed `.agent/authored/f085-r72.md`, the committed `.agent/last_block.md` and both working copies,
+all read at d6d96e50, are byte-EQUAL at sha256
+8deb1e027ffa9a44f0a870c8b780ca7f048f3c1a4e1904eb7625c5f061193383, 29673 B, 374 lines, 12 marker lines;
+TOTAL 374 against the 490 cap and PROSE 263 against 400. THE SHAPES HELD, one reading per unit, every
+slice re-extracted from that committed file by marker under its own convention rather than retyped:
+PLAN26F→PLAN26T over `.agent/plan.md` at 4bbfac80 and LANDEDF→LANDEDT over `.agent/live_review.md` at
+0f7e3f7e both read `TO contains FROM: false`, both show FROM 1x pre-commit and 0x post-commit with TO
+exactly 1x post-commit, and both reproduce their post-commit blob BYTE-EXACTLY when re-applied.
+RECORD41 at 5f592bdd and DECISIOND7 at 2f786299 each satisfy ORDERED EQUALITY against their own
+pre-commit blob — PREFIX, SUFFIX and `pre + slice` equal byte for byte. The slice digests recomputed
+here agree with every prefix the handback recorded. Marker LINES are 0 in all three edited files at
+d6d96e50. THE INTEGRATION GATE HOLDS AND ITS BRANCH HALF WAS RE-RUN, NOT READ: the reviewer ran
+`python3 -m pytest -n auto -q` in the primary checkout at d6d96e50 four times, and the first returned
+`1 failed, 17131 passed, 19 skipped in 117.44s` while the other three each returned
+`17132 passed, 19 skipped`, in 143.94s, 150.09s and 152.08s. The single red id was
+`tests/orchestration/test_product_smoke.py::test_no_zombie_processes_after_every_outcome`, which
+re-ran SERIALLY at `1 passed in 1.07s` — the xdist-flake class docs/agents/integration_gate.md step 4
+records rather than blocks — and R-0569 below carries its mechanism and the reason it is not coupled
+to this feature. THE BASE HALF is accepted on the worker's committed evidence rather than re-run, the
+reviewer having spent its suite budget on four branch runs instead of one: `comm -13` is empty,
+`comm -23` holds five ids, and each of those five is attributed per id by direct evidence in
+`.agent/gate_f085_r72/attribution.txt`. THE PROVENANCE HELD: every scratch log named in
+`.agent/gate_f085_r72/full_log_provenance.txt` still exists and hashes to exactly the digest recorded
+there. THE ARITHMETIC HELD under DECISION F085 D7: 180 registered / 31 done at f023e2b1 and 181 / 32
+at d6d96e50, so OPEN is 149 at BOTH SHAs; registered symmetric difference {R-0566}, done symmetric
+difference {R-0564}, 0 duplicate ids and 0 resolutions naming an unregistered id at both SHAs, max
+registered R-0565→R-0566 and max resolved R-0563→R-0564. THE HYGIENE HELD: `git diff --name-only
+f023e2b1..d6d96e50` lists fifteen paths, ALL under `.agent/`, none under `packages/`, `apps/`,
+`docs/`, `scripts/` or `tests/` and none ending `.log`; the eight commits are single-parent and insert
+374, 301, 8, 44, 15, 26, 185 and 107 lines, none over 500. THE PLAN CONTRACT HELD at d6d96e50: 38
+lines against the 50-line cap, with `## Goal`, `## Next Steps` and a roadmap F-id all present.
+
+- R-0567 — Low — the R-0566 registration text attributes its own operands to the wrong commit, and the
+R72 worker caught it and declared it rather than editing the slice. That paragraph, applied at
+5f592bdd, closes with "the correct reading at f023e2b1 is 181 minus 32, that is 149". Measured here by
+the reviewer, `.agent/live_review.md` at f023e2b1 holds 180 lines matching the registered-id pattern
+and 31 matching the resolved-id pattern, while 181 and 32 are the readings at d6d96e50 — the SHA that
+same round produced. The VALUE is right at both SHAs, which is why this is Low: no count anyone reads
+is wrong, and DECISION F085 D7, the rule that sentence exists to justify, is untouched by the slip. It
+is a finding and not a typo because docs/agents/planner_reviewer_prompt.md §4 item 20 governs exactly
+this shape — a slice stating a fact about a file its own block edits — and requires the sentence to
+name the commit its reading was taken at; these operands were read at the round's own tip and written
+beside the base's SHA. COUNTER-MEASURE, performed by this paragraph and by no rewrite: item 20 rules
+that appending a correction is how this record stays honest and that overwriting landed text is worse
+than a dated wrong sentence, so the R-0566 paragraph stands exactly as applied and this one carries
+the measured operands. OPEN.
+
+- R-0568 — Medium — the guard's `resource_limit` classification never reached the F010 postmortem
+taxonomy, while both the feature file's Design section and `.agent/context.md`'s Scope say it would.
+Read at d6d96e50: `packages/orchestration/exec_guard.py` sets `classification` to `resource_limit`
+with `tripped_limit` naming `wall_timeout`, `cpu_seconds` or `output_bytes`, and that pair lives on
+`ExecGuardResult`; `packages/orchestration/failure_postmortem.py` defines `FailureClass` with no
+`RESOURCE_LIMIT` member; and the only reader of a trip outside the guard and its own tests is
+`packages/orchestration/managed_builder_execution.py`, which tests whether `tripped_limit` equals
+`wall_timeout`. `.agent/context.md` at d6d96e50 closes its Scope section with "The tripped limit
+becomes an additive `resource_limit` postmortem class". Not High, because nothing false shipped: the
+Acceptance section asks for a fixture "killed by its limit and classified resource_limit with the
+limit named" and that is met, and `docs/system/exec-guard-limitations-v0.md` claims no postmortem
+class anywhere. Not Low, because a stated in-scope item did not ship and only a grep of the enum
+reveals it, which is the deliberate-absence class AGENTS.md's discoverability conventions exist for.
+NOT FIXED IN THIS FEATURE: adding a member to the F010 enum and teaching its writers to emit it is
+production code beyond what remains here, so it closes as a documented risk under precondition 1 of
+docs/roadmap/STATUS_closure_protocol.md. The Built State section this round appends to
+`docs/roadmap/features/T2_F085.md` states the same absence where a reader would search for it. OPEN.
+
+- R-0569 — Low — the product-smoke zombie check asserts against a FIXED port inside a suite that runs
+under `-n auto`, so it can fail on a port a different worker owns. Read at d6d96e50,
+`tests/orchestration/test_product_smoke.py` builds its app fixtures with a `port` parameter defaulting
+to 5273, and `dev_server.choose_port` returns the requested port when it is free AT CHOOSE TIME and a
+fallback otherwise; the check stops each app and then asserts that a connect to each port it used
+fails, 0.2 s later. Nothing serialises those cases across xdist workers, so a second worker binding
+5273 in the window between one case's teardown and its assertion produces exactly the observed
+failure. The reviewer measured the colour rather than assuming it: four `python3 -m pytest -n auto -q`
+runs at d6d96e50 in the primary checkout gave one red and three green, and the red id passed serially
+at `1 passed in 1.07s`. NOT COUPLED TO F085, measured rather than argued: `git diff --name-only
+a5a70621..d6d96e50` names neither `tests/orchestration/test_product_smoke.py` nor
+`packages/orchestration/product_smoke.py`, and this branch's edit to `packages/runtimes/dev_server.py`
+changes only the cwd, the environment and the `preexec_fn` of the `DevServer` spawn, leaving
+`choose_port` and `stop_process_tree` untouched. What was NOT captured is direct evidence of the
+concurrent binder — the run log records the assertion and not the other worker — and the
+counter-measure does not depend on it. NOT FIXED IN THIS FEATURE: the repair edits a test's content
+and belongs with the paydown branch `.agent/context.md` already routes R-0403, R-0448, R-0482, R-0487
+and R-0490 to. The obvious repair, for whoever takes it: give the fixture a port chosen per worker
+rather than the literal default, or assert only over the port each case actually bound and poll it to
+a bounded deadline instead of sampling once at 0.2 s. OPEN.
+
+Gate: R74 — the R73 entry. R73 PASSED. Every gate its block ordered was re-taken by the reviewer over
+d6d96e50..ed34119b rather than read from the handback, except the absence of `.agent/STOP` at the two
+points R73's constraint 2 names and `git status --porcelain` after each intermediate commit, which are
+unobservable once a round has ended and are accepted on the worker's report. TRANSPORT HELD,
+disk-to-disk under the digest fallback of docs/agents/planner_reviewer_prompt.md §4 item 9: the
+committed `.agent/authored/f085-r73.md`, the committed `.agent/last_block.md` and both working copies,
+all read at ed34119b, are byte-EQUAL at sha256
+5fd5b62c53488cd9386701ac8d3781aac6914d15ccbbf4b78a7f3fec34cc8b12, 24180 B, 293 lines. TOTAL 293
+against the 490 cap; the four slices measure 11, 14, 93 and 32 lines, so PROSE is 143 against 400. Of
+the nine lines beginning `BEGIN-` or `END-`, eight are the four slices' markers and the ninth is a
+CONVENTION prose line beginning `END-OF-FILE`; the R73 worker reported both readings rather than
+reconciling them, which is what constraint 8 asks for and the third round in this feature it has
+produced a correct disclosure. THE SHAPES HELD: PLAN27F→PLAN27T over `.agent/plan.md` at 319060db
+reads `TO contains FROM: false`, shows FROM 1x pre-commit and 0x post-commit with TO exactly 1x
+post-commit, and reproduces its post-commit blob BYTE-EXACTLY on re-application. RECORD42 at 1961e5cc
+and BUILTSTATE at e461e9c4 each satisfy ORDERED EQUALITY against their own pre-commit blob — PREFIX,
+SUFFIX and `pre + slice` equal byte for byte. All four slice digests recomputed by the reviewer agree
+with the handback. Marker LINES are 0 in all three edited files at e461e9c4. THE SUITES WERE RE-RUN,
+NOT READ, in the primary checkout, serially, each exit 0 and each equal to the reading the reviewer
+had taken at the base d6d96e50 before ordering it: `295 passed` for `tests/docs/`, `30 passed` for
+`tests/orchestration/test_roadmap_index.py`, `160 passed` for the four state readers, and the canary
+`42 passed`. The docs gate ran in BOTH halves because `tests/docs/` asserts nothing about a feature
+file's BODY — finding R-0493 proved that by red control — so the roadmap-index half is what actually
+reads the file C3 edited. The reviewer also pre-applied PLAN27T and BUILTSTATE inside a throwaway
+worktree at d6d96e50 before emitting the block and measured `325 passed` for the two halves together,
+so the ordered colour had been observed on the edited tree and not only on the base. THE ARITHMETIC
+HELD under DECISION F085 D7: 181 registered / 32 done at d6d96e50 and 184 / 32 at e461e9c4, so OPEN
+moves 149 to 152; the registered symmetric difference is exactly {R-0567, R-0568, R-0569}, the done
+symmetric difference is empty, and there are 0 duplicate ids and 0 resolutions naming an unregistered
+id at both SHAs. THE PLAN CONTRACT HELD at 319060db: 41 lines against the 50-line cap with `## Goal`,
+`## Next Steps` and a roadmap F-id present. THE HYGIENE HELD: the range touches the six paths the
+block named and no other, none under `packages/`, `apps/`, `scripts/` or `tests/` and none ending
+`.log`, over six single-parent commits inserting 293, 279, 10, 93, 32 and 47 lines, none over 500.
+THE BUILT STATE IS THEREFORE CURRENT, which is precondition 4 of
+docs/roadmap/STATUS_closure_protocol.md and the reason this closure round can follow immediately.

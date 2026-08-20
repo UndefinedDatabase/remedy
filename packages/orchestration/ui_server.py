@@ -2766,8 +2766,17 @@ def _auto_build_frontend(reason: str = "missing") -> Path | None:
 
     Runs automatically when dist/ is missing or stale (source newer than build).
     Disable with REMEDY_UI_NO_AUTO_BUILD=1 if you manage builds yourself.
+
+    Both npm commands run through `run_guarded_runtime_build_command`, so the
+    `runtime-build` policy — wall timeout, output cap, pinned cwd and the env
+    allowlist — bounds them here instead of a bare `subprocess.run` handing the whole
+    parent environment to an npm lifecycle script. The seam is reached as a module
+    attribute so a test can patch it; `subprocess` stays imported for the two
+    exception types the `except` clauses below name.
     """
     import subprocess
+
+    from packages.orchestration import exec_guard
 
     if os.environ.get("REMEDY_UI_NO_AUTO_BUILD") == "1":
         return None
@@ -2784,12 +2793,11 @@ def _auto_build_frontend(reason: str = "missing") -> Path | None:
     need_install = not node_modules.is_dir() or node_modules.stat().st_mtime < pkg_mtime
     if need_install:
         try:
-            subprocess.run(
+            exec_guard.run_guarded_runtime_build_command(
                 ["npm", "install", "--no-audit", "--no-fund"],
+                timeout_sec=120,
                 cwd=str(ui_root),
                 check=True,
-                capture_output=True,
-                timeout=120,
             )
         except (FileNotFoundError, subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
             print(f"[remedy-ui] npm install failed: {exc}", file=sys.stderr)
@@ -2797,12 +2805,11 @@ def _auto_build_frontend(reason: str = "missing") -> Path | None:
 
     # npm run build
     try:
-        subprocess.run(
+        exec_guard.run_guarded_runtime_build_command(
             ["npm", "run", "build"],
+            timeout_sec=120,
             cwd=str(ui_root),
             check=True,
-            capture_output=True,
-            timeout=120,
         )
     except (FileNotFoundError, subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
         print(f"[remedy-ui] build failed: {exc}", file=sys.stderr)

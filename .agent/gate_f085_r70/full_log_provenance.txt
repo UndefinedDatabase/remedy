@@ -1,0 +1,26 @@
+PROVENANCE OF THE RAW RUN LOGS — F085 R70 integration gate
+
+The raw run logs were written to the gitignored scratch dir
+.remedy-wt/.cache/gate_r70/ while each suite ran, never inside the tracked
+tree (R-0176: a log growing inside the repo during a run changes the
+worktree digest mid-run and fails the manifest-identity ids as false
+positives). They are NOT committed: together they are far over the
+AGENTS.md 500-insertion commit cap. What IS committed is what
+docs/agents/integration_gate.md step 1 names -- raw tail, full FAILED
+list, exit code, wall time -- plus the comm outputs and the attribution.
+Evidence files are named .txt and never .log (R-0169).
+
+Line count and sha256 so the trim is auditable:
+
+  277 /home/decodeux/Repos/remedy/.remedy-wt/.cache/gate_r70/branch_run.txt
+  748 /home/decodeux/Repos/remedy/.remedy-wt/.cache/gate_r70/base_run.txt
+   35 /home/decodeux/Repos/remedy/.remedy-wt/.cache/gate_r70/serial_branchonly_1.txt
+    2 /home/decodeux/Repos/remedy/.remedy-wt/.cache/gate_r70/serial_base_1.txt
+    2 /home/decodeux/Repos/remedy/.remedy-wt/.cache/gate_r70/serial_base_only.txt
+ 1064 total
+
+7a5cdabbf6085fb6478648a59d2673cc91440d604814567225d578c6d20c3f6a  /home/decodeux/Repos/remedy/.remedy-wt/.cache/gate_r70/branch_run.txt
+e6d97307ecd21ef28604430afb9de02a2fbc4cdc9a02d32032e1699553e8ee04  /home/decodeux/Repos/remedy/.remedy-wt/.cache/gate_r70/base_run.txt
+c8adcee826aaa7ed953af6e68200779291b79a72e3ef0f75347387b8415d1891  /home/decodeux/Repos/remedy/.remedy-wt/.cache/gate_r70/serial_branchonly_1.txt
+8989a153a4f265bdf8bf8abfcbf7ce96cf91c69ee66d543244ebf0fc2c9d041d  /home/decodeux/Repos/remedy/.remedy-wt/.cache/gate_r70/serial_base_1.txt
+3eb20307f7f4edc3b2468d0abb3b92cb1efdef5cac81bca02bb6362fd76af951  /home/decodeux/Repos/remedy/.remedy-wt/.cache/gate_r70/serial_base_only.txt

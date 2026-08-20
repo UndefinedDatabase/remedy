@@ -1,0 +1,111 @@
+ATTRIBUTION — F085 R70 integration gate, docs/agents/integration_gate.md step 4.
+Branch HEAD at the time of the runs: d2e65482 (feature/f085-sandbox-hardening).
+Merge base: a5a70621. Every id in comm_branch_only_failures.txt and in
+comm_base_only_failures.txt has exactly one entry below; none is absent.
+
+SUMMARY OF THE TWO RUNS AS MEASURED
+  branch run: exit 1, 152 s wall, "1 failed, 17131 passed, 19 skipped in 151.31s"
+  base   run: exit 1, 113 s wall, "8 failed, 17039 passed, 19 skipped in 111.77s"
+  comm -13 base branch (branch-only): 1 line
+  comm -23 base branch (base-only)  : 8 lines
+
+================================================================================
+BRANCH-ONLY — 1 id
+================================================================================
+
+[B1] tests/test_command_discovery.py::TestNoShellTrue::test_run_tests_local_no_shell_true
+
+  Serial re-run, primary checkout:
+    COMMAND: python3 -m pytest tests/test_command_discovery.py::TestNoShellTrue::test_run_tests_local_no_shell_true -q
+    EXIT CODE: 1
+    OUTCOME:  "1 failed in 0.47s"
+              assert mock_run.called -> AssertionError: assert False
+              tests/test_command_discovery.py:663
+
+  Classification: serial-FAIL. NOT the xdist-flake class.
+
+  Reproduction at the merge base, same id, serial, inside .remedy-wt/base-r70:
+    COMMAND: python3 -m pytest tests/test_command_discovery.py::TestNoShellTrue::test_run_tests_local_no_shell_true -q
+    EXIT CODE: 0
+    OUTCOME:  "1 passed in 0.21s"
+  It does NOT reproduce at the base.
+
+  Coupling to this feature's code, by direct evidence:
+    - git diff a5a70621..HEAD -- packages/orchestration/test_runner.py shows
+      run_tests_local() no longer calls subprocess.run(). It now calls
+      run_guarded_test_command(argv, timeout_sec=..., cwd=...), added by this
+      feature under the comment "Guarded since F085 T002b".
+    - packages/orchestration/exec_guard.py:427 spawns with subprocess.Popen(...).
+      run_guarded_test_command is defined at exec_guard.py:575.
+    - The test patches the name "subprocess.run" and asserts mock_run.called.
+      Popen is a different name, so the patch is never reached and .called is
+      False. The assertion at tests/test_command_discovery.py:663 fails.
+    - git diff --stat a5a70621..HEAD -- tests/test_command_discovery.py is EMPTY:
+      this branch never touched the failing test file. The behaviour under test
+      changed; the test did not.
+
+  VERDICT: BLOCKER. Branch-only, reproduces serially, does not reproduce at the
+  merge base, and is coupled to code this feature changed
+  (packages/orchestration/test_runner.py and packages/orchestration/exec_guard.py).
+  Per this round's block, constraint 11 and the G4 text, the round STOPS here and
+  does NOT attempt a fix: the fix is its own reviewer-gated round. No source file
+  and no test file was edited by this round.
+
+================================================================================
+BASE-ONLY — 8 ids, all one environment class
+================================================================================
+
+All eight are TestUIServerIntegration cases in tests/ui_server/test_live_state.py.
+Named missing artifact, identical for all eight: a built apps/ui/dist/index.html
+whose mtime is NEWER than the throwaway worktree's freshly checked-out
+apps/ui/src, which is what packages/orchestration/ui_server.py actually tests.
+
+Causal chain, measured rather than assumed:
+  1. git worktree add checked apps/ui/src out at 18:54:11 (worktree created
+     18:54:10). cp -a preserved the copied apps/ui/dist/index.html mtime of
+     18:52:27 from the primary checkout, i.e. OLDER than the checked-out source.
+  2. ui_server.py:2748 _frontend_is_stale() returns True when any file under
+     apps/ui/src is newer than apps/ui/dist/index.html -> True at base run start.
+  3. ui_server.py:2839 therefore calls _auto_build_frontend("source changed"),
+     which returns None at ui_server.py:2781 because REMEDY_UI_NO_AUTO_BUILD=1
+     was set for the base run.
+  4. With dist None and no legacy fallback allowed, ui_server.py:2856 prints
+     "ERROR: React UI not built." and ui_server.py:2867 calls sys.exit(1). The
+     server thread dies, so the test helper times out with
+     "Failed: Server did not start in time" at tests/ui_server/test_live_state.py:165.
+     That exact stderr block appears 8 times in the base run log.
+  5. A build path not gated by REMEDY_UI_NO_AUTO_BUILD rewrote the worktree's
+     apps/ui/dist at 18:55:23, mid-run. The 8 cases of the class that ran after
+     that point passed; these 8 ran before it and failed.
+
+Direct confirmation, serial, inside the same base worktree, after the artifact
+was fresh:
+    COMMAND (cwd .remedy-wt/base-r70):
+      python3 -m pytest tests/ui_server/test_live_state.py::TestUIServerIntegration -q
+    EXIT CODE: 0
+    OUTCOME:  "16 passed in 2.12s"
+All 16 cases of the class, including all 8 base-only ids, pass at the merge base
+once the build artifact is usable. None is a genuine base failure.
+
+Per-id entries (each attributed to the class above by the same direct evidence:
+the "React UI not built" stderr in the base run log, and the exit-0 serial re-run
+in the same worktree with the artifact restored):
+
+  [E1] tests/ui_server/test_live_state.py::TestUIServerIntegration::test_api_invalid_token_403
+       missing artifact: fresh apps/ui/dist/index.html in .remedy-wt/base-r70
+  [E2] tests/ui_server/test_live_state.py::TestUIServerIntegration::test_api_missing_job_404
+       missing artifact: fresh apps/ui/dist/index.html in .remedy-wt/base-r70
+  [E3] tests/ui_server/test_live_state.py::TestUIServerIntegration::test_app_shell_served_without_token
+       missing artifact: fresh apps/ui/dist/index.html in .remedy-wt/base-r70
+  [E4] tests/ui_server/test_live_state.py::TestUIServerIntegration::test_brain_endpoint
+       missing artifact: fresh apps/ui/dist/index.html in .remedy-wt/base-r70
+  [E5] tests/ui_server/test_live_state.py::TestUIServerIntegration::test_dashboard_no_raw_leaks
+       missing artifact: fresh apps/ui/dist/index.html in .remedy-wt/base-r70
+  [E6] tests/ui_server/test_live_state.py::TestUIServerIntegration::test_put_rejected
+       missing artifact: fresh apps/ui/dist/index.html in .remedy-wt/base-r70
+  [E7] tests/ui_server/test_live_state.py::TestUIServerIntegration::test_readiness_endpoint
+       missing artifact: fresh apps/ui/dist/index.html in .remedy-wt/base-r70
+  [E8] tests/ui_server/test_live_state.py::TestUIServerIntegration::test_server_starts_and_writes_info
+       missing artifact: fresh apps/ui/dist/index.html in .remedy-wt/base-r70
+
+No base-only id is unattributed.

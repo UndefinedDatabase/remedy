@@ -53,6 +53,7 @@ from packages.orchestration.command_discovery import (
     select_best_test_candidate,
 )
 from packages.orchestration.data_paths import resolve_data_root
+from packages.orchestration.exec_guard import ExecGuardPolicy, plan_child_spawn
 from packages.orchestration.permissions import Capability, is_allowed
 from packages.orchestration.run_contract import (
     ContractAction,
@@ -318,12 +319,24 @@ def _run_isolated_process(
     status: str
     exit_code: int | None = None
 
+    # WHY: the CHILD half of the F085 execution policy — the rlimits, the cwd and the
+    # environment `plan_child_spawn` resolves between fork and exec. The PARENT half
+    # stays here: this function owns its own `proc.wait` deadline, its process-group
+    # kill and its file-backed streams, so the policy carries no wall timeout and no
+    # output cap and a second deadline never fights this one. `env` stays the
+    # CALLER's: `_build_safe_env` already scrubbed it against the job's environment,
+    # while the seam's own allowlist would rebuild it from `os.environ` and discard
+    # that scrubbing. Remedy deliberately does not surface `plan.limits_unsupported`
+    # here — this function's return tuple is read positionally by every caller.
+    plan = plan_child_spawn(ExecGuardPolicy(cwd=cwd, env=env, core_file_bytes=0))
+
     with open(output_file, "wb") as out_fh:
         try:
             proc = subprocess.Popen(
                 argv,
-                cwd=cwd,
-                env=env,
+                cwd=plan.cwd,
+                env=plan.env,
+                preexec_fn=plan.preexec_fn,
                 stdin=subprocess.DEVNULL,
                 stdout=out_fh,
                 stderr=out_fh,

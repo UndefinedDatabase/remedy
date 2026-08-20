@@ -1,46 +1,48 @@
-# Context — amend0816 CI hosted green
+# Context — F085 Sandbox hardening (stage 1)
 
 ## Active Branch
-feature/amend0816-ci-hosted-green, cut from origin/main at 4e1fd006 after the
-F083 closure PR #202 merged. This is an operator AMENDMENT to a closed feature,
-not a new roadmap feature: it delivers the hosted half of F083's Acceptance,
-which no session ever checked. Run in an ordinary interactive session, not the
-self-drive loop, so the main session commits directly.
+feature/f085-sandbox-hardening, cut from origin/main at a5a70621 after the F083
+closure PR #202 and the operator amendment PR #203 were both merged. Self-drive
+session per docs/agents/self_drive_protocol.md: the main session plans and
+reviews and writes nothing in the work tree, one delegated worker per round
+makes every commit.
 
 ## Scope
-In: making the hosted CI run GREEN with the same stage results as the local one.
-That means test CONTENT this time — the ten `fast` failures are tests that mock
-the provider path only halfway, so repairing them is the work, and F083's
-Do-not-touch list does not bind an amendment written to fix exactly that. The
-durable piece is the autouse fixture `tests/conftest.py::_no_live_ollama_reach`
-(DECISION amend0816 D1). Plus a dated operator paragraph in
-`docs/roadmap/features/T2_F083.md` and this `.agent/` state.
+In: stage-1 containment for builder-, test- and DoD-spawned subprocesses — a
+common `exec_guard` seam carrying POSIX resource limits, a wall timeout distinct
+from the provider timeouts, output-size caps, a cwd pinned inside the worktree,
+an environment allowlist, and a default-deny network posture for build and test
+commands, plus the honest limitations document and its README link. The tripped
+limit becomes an additive `resource_limit` postmortem class.
 
-Out: STATUS.md and the README capability counters, which stay untouched — F083
-is already closed and this amendment does not re-open its ledger line. No test is
-deleted, no assertion weakened, no ceiling raised. A stage timeout on a slower
-runner is NOT fixed by editing a budget in `ci_stages.py`: stop and show the
-operator the measured times.
+Out, per the feature file's Do-not-touch: container isolation, provider
+transport timeouts, and fence semantics. Windows is explicitly out of scope for
+stage 1 and is documented as such. No wording anywhere — code comments included
+— may claim more containment than is enforced.
 
 ## Constraints
-- Ordinary interactive session: the main session commits directly. The
-  self-drive delegation rule of docs/agents/self_drive_protocol.md does not
-  apply here.
 - Merges only at the Open PR Gate; never force-push; never work on main.
 - Verification is pytest, scoped per round, plus the canary
   tests/cli/test_golden_path.py. A round touching docs/roadmap/** also gates
-  tests/docs/, and a round rewriting `.agent/` state also gates
+  tests/docs/, and a round rewriting `.agent/` state also gates the four files
+  that read that state live: tests/orchestration/test_test_runner.py,
+  tests/ui_server/test_dashboard_contract.py,
   tests/regression/test_resource_safety.py and
-  tests/orchestration/test_integrity_gate.py, which read that state live.
-  Destructive and red-proof checks run only inside a disposable git worktree
-  under .remedy-wt/, so resource safety stays intact.
+  tests/orchestration/test_integrity_gate.py. Destructive and red-proof checks
+  run only inside a disposable git worktree under .remedy-wt/, so resource
+  safety stays intact.
 - Repository-wide `ruff check` is RED on main with pre-existing errors and is
-  NOT a gate (R-0364); ruff is gated scoped to the files this amendment touches,
+  NOT a gate (R-0364); ruff is gated scoped to the files a round touches,
   measured against the SAME files at origin/main so a pre-existing error is not
   read as a new one.
-- The acceptance evidence is a HOSTED run, not a local one. A local green is
-  necessary and not sufficient; `gh run watch` on the PR's workflow run is the
-  measurement that F083 skipped.
+- Two AST guards already constrain this feature's target files and bind every
+  seam order: `test_no_subprocess_in_discovery_module` forbids `subprocess.run`
+  in packages/orchestration/command_discovery.py, and
+  `test_no_shell_true_in_orchestration` forbids `shell=True` anywhere in
+  packages/orchestration/*.py.
+- 104 findings are open at the claim, carried forward into the reset record per
+  DECISION F057 D1. R-0403, R-0448, R-0482, R-0487 and R-0490 are routed to a
+  paydown branch and are deliberately not fixed here.
 
 ## Steps
 Stated once, in `.agent/plan.md`. This file tracks scope and constraints only.

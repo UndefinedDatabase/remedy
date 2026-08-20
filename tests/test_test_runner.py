@@ -118,7 +118,10 @@ class TestRunTestsLocalBlocked:
         (repo / "pyproject.toml").write_text("[build-system]\n")
         (repo / "tests").mkdir()
         job = _make_job(with_repo=str(repo))
-        with patch("subprocess.run", side_effect=FileNotFoundError("pytest: not found")):
+        with patch(
+            "packages.orchestration.test_runner.run_guarded_test_command",
+            side_effect=FileNotFoundError("pytest: not found"),
+        ):
             record = run_tests_local(job, tmp_path)
         assert record.status == "blocked"
         assert record.blocked_reason == "command_not_found"
@@ -199,15 +202,19 @@ class TestCommandAutoDetect:
             stdout=b"1 passed\n",
             stderr=b"",
         )
-        with patch("subprocess.run", return_value=completed) as mock_run:
+        with patch("packages.orchestration.test_runner.run_guarded_test_command", return_value=completed) as mock_run:
             record = run_tests_local(job, tmp_path)
 
         assert record.status == "passed"
         assert record.command == "python3 -m pytest"
         assert record.exit_code == 0
-        # subprocess.run called without shell=True
+        # The old "no shell= keyword" assertion could not fail against a seam that
+        # HAS no shell parameter, so this asserts what the seam really received.
+        assert mock_run.call_count == 1
+        assert mock_run.call_args.args[0] == ["python3", "-m", "pytest"]
         call_kwargs = mock_run.call_args.kwargs
-        assert not call_kwargs.get("shell", False)
+        assert call_kwargs["timeout_sec"] == TIMEOUT_DEFAULT_SEC
+        assert call_kwargs["cwd"] == str(repo.resolve())
 
     def test_no_auto_detect_without_tests_dir(self, tmp_path):
         repo = tmp_path / "repo"
@@ -241,7 +248,7 @@ class TestRunTestsLocalOutcome:
             args=["python3", "-m", "pytest"], returncode=0,
             stdout=stdout, stderr=b"",
         )
-        with patch("subprocess.run", return_value=proc):
+        with patch("packages.orchestration.test_runner.run_guarded_test_command", return_value=proc):
             record = run_tests_local(job, tmp_path)
 
         assert record.status == "passed"
@@ -258,7 +265,7 @@ class TestRunTestsLocalOutcome:
             args=["python3", "-m", "pytest"], returncode=1,
             stdout=b"", stderr=stderr,
         )
-        with patch("subprocess.run", return_value=proc):
+        with patch("packages.orchestration.test_runner.run_guarded_test_command", return_value=proc):
             record = run_tests_local(job, tmp_path)
 
         assert record.status == "failed"
@@ -270,7 +277,7 @@ class TestRunTestsLocalOutcome:
         exc = subprocess.TimeoutExpired(cmd=["python3", "-m", "pytest"], timeout=60)
         exc.stdout = b""
         exc.stderr = b""
-        with patch("subprocess.run", side_effect=exc):
+        with patch("packages.orchestration.test_runner.run_guarded_test_command", side_effect=exc):
             record = run_tests_local(job, tmp_path)
 
         assert record.status == "timeout"
@@ -283,7 +290,7 @@ class TestRunTestsLocalOutcome:
             args=["python3", "-m", "pytest"], returncode=0,
             stdout=stdout, stderr=b"",
         )
-        with patch("subprocess.run", return_value=proc):
+        with patch("packages.orchestration.test_runner.run_guarded_test_command", return_value=proc):
             record = run_tests_local(job, tmp_path)
 
         output_file = tmp_path / "test_runs" / record.output_path
@@ -297,7 +304,7 @@ class TestRunTestsLocalOutcome:
             args=["python3", "-m", "pytest"], returncode=0,
             stdout=stdout, stderr=b"",
         )
-        with patch("subprocess.run", return_value=proc):
+        with patch("packages.orchestration.test_runner.run_guarded_test_command", return_value=proc):
             record = run_tests_local(job, tmp_path)
 
         # record is a frozen dataclass — verify no raw output field exists

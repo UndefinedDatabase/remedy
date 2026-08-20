@@ -17,6 +17,8 @@ from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
+from packages.orchestration.exec_guard import run_guarded_test_command
+
 # ---------------------------------------------------------------------------
 # Blocked path patterns
 # ---------------------------------------------------------------------------
@@ -323,11 +325,14 @@ def _run_post_test(
     except ValueError as exc:
         return False, f"Invalid test command: {exc}"
     try:
-        proc = subprocess.run(
+        # Guarded since F085 T002b: rlimits, an env allowlist, a pinned cwd and the
+        # guard's own wall deadline replace the bare spawn. The observable outcome is
+        # unchanged — same returncode, same TimeoutExpired, same FileNotFoundError —
+        # except that the guard hands back BYTES, which the decode below turns into
+        # the str this function has always returned.
+        proc = run_guarded_test_command(
             argv,
-            capture_output=True,
-            text=True,
-            timeout=timeout_sec,
+            timeout_sec=timeout_sec,
             cwd=str(target),
         )
     except FileNotFoundError:
@@ -335,7 +340,7 @@ def _run_post_test(
     except subprocess.TimeoutExpired:
         return False, f"Test command timed out after {timeout_sec}s"
 
-    output = (proc.stdout or "") + (proc.stderr or "")
+    output = (proc.stdout or b"").decode("utf-8", "replace") + (proc.stderr or b"").decode("utf-8", "replace")
     if len(output) > _TEST_OUTPUT_CAP:
         output = output[:_TEST_OUTPUT_CAP] + "\n[OUTPUT TRUNCATED]"
     passed = proc.returncode == 0

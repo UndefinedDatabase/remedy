@@ -1,0 +1,25 @@
+PARITY AND BASE RUN — F085 R70 integration gate
+Base worktree: .remedy-wt/base-r70 on throwaway branch tmp/base-gate-r70 at a5a70621
+apps/ui/node_modules and apps/ui/dist were COPIED (cp -a) from the primary
+checkout, never symlinked; REMEDY_UI_NO_AUTO_BUILD=1 was set for the base run.
+DIST_SHA256_BEFORE=fb68a7293502c79b8ece61d154f5752100a16da1a08a481a7a4c1d79a5a503c0
+DIST_SHA256_AFTER=fb68a7293502c79b8ece61d154f5752100a16da1a08a481a7a4c1d79a5a503c0
+DIST_DIGEST_UNCHANGED=true  -> the neutralization held; parity claim stands.
+BASE_EXIT_CODE=1
+BASE_WALL_SECONDS=113
+
+MEASURED CAVEAT ON THE DIGEST TEST (reported, not resolved by this round).
+The digest test is content-based and therefore cannot see a rebuild that
+reproduces byte-identical output. Mtimes measured after the run show that
+apps/ui/dist WAS rewritten inside BOTH checkouts while their suites ran:
+
+  primary  apps/ui/dist/index.html mtime 18:52:27  (branch run 18:51:21-18:53:53)
+  worktree apps/ui/dist/index.html mtime 18:55:23  (base   run 18:54:11-18:56:04)
+  worktree created 18:54:10, apps/ui/src checked out 18:54:11
+
+So DIST_SHA256_BEFORE == DIST_SHA256_AFTER holds on CONTENT while the tree was
+in fact rebuilt. By this block's own stated rule the parity claim stands, and
+every base-only id is additionally attributed per id in attribution.txt by
+direct evidence rather than by the parity class alone. The blindness of the
+content digest to an mtime-only rebuild is reported for the reviewer to judge;
+this round registers nothing.

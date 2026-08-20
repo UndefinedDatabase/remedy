@@ -378,10 +378,15 @@ def _run_fixture_builder(
     if autonomy_level >= 4 and fx.get("source_patch_applied"):
         import subprocess
         import sys as _sys
+
+        from packages.orchestration.exec_guard import run_guarded_test_command
         try:
-            proc = subprocess.run(
+            # Guarded since F085 T002b: rlimits, an env allowlist and the guard's
+            # own deadline replace the bare spawn. Only `returncode` is read here,
+            # so the seam's bytes streams change nothing this site observes.
+            proc = run_guarded_test_command(
                 [_sys.executable, "-m", "pytest", str(test_path), "-x", "-q", "--tb=short", "--no-header"],
-                capture_output=True, text=True, timeout=30,
+                timeout_sec=30,
                 cwd=str(repo),
             )
             passed = proc.returncode == 0
@@ -436,9 +441,9 @@ def _run_repair_loop_fixture(
     Cycle 1: Apply wrong-ish fix → tests fail → repair_context_created.
     Cycle 2: Apply correct fix → tests pass → proof_collected.
     """
-    import subprocess
     import sys as _sys
 
+    from packages.orchestration.exec_guard import run_guarded_test_command
     from packages.orchestration.permissions import Capability, set_permission
     from packages.orchestration.repair_context import build_repair_context
     from packages.orchestration.source_apply import apply_structured_patch
@@ -507,10 +512,10 @@ def _run_repair_loop_fixture(
 
     if autonomy_level >= 4 and max_cycles >= 1:
         fx["cycles_run"] = 1
-        proc = subprocess.run(
+        proc = run_guarded_test_command(
             [_sys.executable, "-m", "pytest", str(test_path), "-x", "-q",
              "--tb=short", "--no-header"],
-            capture_output=True, text=True, timeout=30, cwd=str(repo),
+            timeout_sec=30, cwd=str(repo),
         )
         passed = proc.returncode == 0
         test_event = {"event": "test_run_completed", "metadata": {
@@ -560,10 +565,10 @@ def _run_repair_loop_fixture(
             apply_structured_patch(patch2, repo, data_dir=str(data_dir), job_id=job.id, job=job,
                                    intent_id=intent_id2)
 
-            proc2 = subprocess.run(
+            proc2 = run_guarded_test_command(
                 [_sys.executable, "-m", "pytest", str(test_path), "-x", "-q",
                  "--tb=short", "--no-header"],
-                capture_output=True, text=True, timeout=30, cwd=str(repo),
+                timeout_sec=30, cwd=str(repo),
             )
             passed2 = proc2.returncode == 0
             _emit(data_dir, job.id, "test_run_completed", {

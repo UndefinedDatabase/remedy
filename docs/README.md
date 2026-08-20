@@ -31,6 +31,7 @@
 | do continue | [do-continue-v1.md](guides/do-continue-v1.md) | guide |
 | do run | [do-run-v1.md](guides/do-run-v1.md) | guide |
 | dogfood | [dogfood-run-user-guide.md](guides/dogfood-run-user-guide.md) | guide |
+| exec guard | [exec-guard-limitations-v0.md](system/exec-guard-limitations-v0.md) | system |
 | external builder | [external-builder-sandbox-v0.md](system/external-builder-sandbox-v0.md) | system |
 | external builder | [external-builder-worker-contract-v0.md](system/external-builder-worker-contract-v0.md) | system |
 | external builder | [managed-external-builder-execution-v1.md](system/managed-external-builder-execution-v1.md) | system |
@@ -85,6 +86,7 @@ Specifications and design documents for the built system.
 | [core-product-spine-v0.md](system/core-product-spine-v0.md) | Core product architecture spine |
 | [development-artifact-boundary-v0.md](system/development-artifact-boundary-v0.md) | Boundaries between dev artifacts and production |
 | [diff-only-repair-v1.md](system/diff-only-repair-v1.md) | Diff-only repair: hunk selection, unified-diff response, strict apply, full-file fallback |
+| [exec-guard-limitations-v0.md](system/exec-guard-limitations-v0.md) | What the F085 stage-1 execution guard does NOT prevent |
 | [execution-approval-policy-v0.md](system/execution-approval-policy-v0.md) | Human approval gates for execution |
 | [expensive-builder-routing-v0.md](system/expensive-builder-routing-v0.md) | Local-first routing to expensive external builders |
 | [external-builder-sandbox-v0.md](system/external-builder-sandbox-v0.md) | Sandbox for external builder execution |

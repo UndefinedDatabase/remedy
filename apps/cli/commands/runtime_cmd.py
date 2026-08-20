@@ -131,13 +131,30 @@ def _serve_supervisor(root, spec, json_output: bool):
     env = dict(os.environ)
     env["REMEDY_RUNTIME_PORT"] = str(port)
     source_root = Path(__file__).resolve().parents[3]      # the Remedy checkout
+    # F085 T002e: the CHILD half of the `runtime-server` policy, the LAST of the three
+    # call sites. This child is the Remedy supervisor itself, not a project application,
+    # so the keys it declares are its OWN `REMEDY_RUNTIME_*` control variables plus the
+    # data root it resolves `projects_dir()` through. `PYTHONPATH` and `VIRTUAL_ENV` are
+    # already `RUNTIME_SERVER_ENV_ALLOWLIST` members, so the `python -m` import from the
+    # Remedy checkout needs nothing declared on top.
+    from packages.orchestration.exec_guard import (
+        plan_child_spawn,
+        runtime_server_exec_policy,
+    )
+    spawn_plan = plan_child_spawn(runtime_server_exec_policy(
+        cwd=str(source_root),
+        env=env,
+        declared_env_keys=("REMEDY_DATA_DIR", "REMEDY_RUNTIME_LOG_MAX",
+                           "REMEDY_RUNTIME_PORT"),
+    ))
 
     try:
         proc = subprocess.Popen(          # noqa: S603 - argv, never a shell
             [_sys.executable, "-m", "packages.runtimes.runtime_supervisor",
              "--repo", str(root), "--spec", str(spec_file), "--handshake", str(hs),
              "--instance", instance_id],
-            cwd=str(source_root), env=env,
+            cwd=spawn_plan.cwd, env=spawn_plan.env,
+            preexec_fn=spawn_plan.preexec_fn,  # rlimits between fork and exec
             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
             stdin=subprocess.DEVNULL,
             start_new_session=True,       # its OWN session: not our process group

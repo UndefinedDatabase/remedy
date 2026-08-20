@@ -688,6 +688,32 @@ class TestVerifyTaskExecution:
 
         assert seen == [["pytest", "tests/importer", "-q"]]
 
+    def test_the_default_runner_goes_through_the_guarded_seam(self, monkeypatch):
+        import subprocess
+
+        from packages.orchestration import mission_state
+
+        seen: dict[str, object] = {}
+
+        def _fake_guarded(cmd, *, timeout_sec, cwd, extra_env_keys=()):
+            seen.update(cmd=list(cmd), timeout_sec=timeout_sec, cwd=cwd)
+            return subprocess.CompletedProcess(
+                list(cmd), 0, b"ok-\xff-undecodable\n", b"warn\n")
+
+        monkeypatch.setattr(mission_state, "run_guarded_test_command", _fake_guarded)
+        outcome = run_verify_task(self._task("pytest tests/importer -q"))
+
+        assert seen == {
+            "cmd": ["pytest", "tests/importer", "-q"],
+            "timeout_sec": 900,
+            "cwd": None,
+        }
+        assert outcome.result == VERIFY_RESULT_PASSED
+        assert outcome.exit_code == 0
+        assert "ok-" in outcome.output_tail
+        assert "undecodable" in outcome.output_tail
+        assert "warn" in outcome.output_tail
+
 
 class TestTwoJobFixtureEndToEnd:
     """The acceptance fixture: job 1 green -> continue -> verify runs FIRST.

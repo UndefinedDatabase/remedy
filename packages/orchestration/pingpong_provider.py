@@ -10,8 +10,10 @@ No secrets in logs or reports.
 from __future__ import annotations
 
 import json
+import locale
 import os
 import shutil
+import signal
 import subprocess
 import time
 from dataclasses import dataclass, field
@@ -21,6 +23,7 @@ from packages.orchestration.call_identity import (
     canonical_call_number,
     prepare_call_input,
 )
+from packages.orchestration.exec_guard import ExecGuardPolicy, run_guarded
 from packages.orchestration.model_aliases import resolve_model_alias
 from packages.orchestration.schemas import (
     ReviewVerdict as _ReviewVerdictSchema,
@@ -790,6 +793,75 @@ def build_claude_cli_args(
 # ``_looks_like_unknown_json_schema_option`` / ``_call_reviewer_structured``).
 
 
+def _cli_exec_policy(timeout_sec: float, cwd: str | None) -> ExecGuardPolicy:
+    """Stage-1 CLI-provider policy (F085 T002a) — only the limits this seam can prove.
+
+    `output_cap_bytes` stays None on purpose: this seam parses the CLI's WHOLE JSON
+    envelope, so a byte cap would cut a valid one mid-token and turn a working call
+    into a parse failure. `env_allowlist` stays None for a kindred reason: the child
+    is the operator's authenticated `claude` CLI and reads its credentials from the
+    inherited environment. Both are stage-1 gaps, owed to T003's limitations
+    document. Enforced and real: the wall deadline, the cwd pin, a zero core.
+    """
+    return ExecGuardPolicy(
+        wall_timeout_seconds=float(timeout_sec), cwd=cwd, core_file_bytes=0,
+    )
+
+
+def _stream_exec_policy(cwd: str | None) -> ExecGuardPolicy:
+    """Stage-1 streaming-provider policy (F085 T002a) — the CHILD half only.
+
+    `run_streamed_command` is a streaming supervisor and owns its own parent half,
+    so this policy deliberately sets less than `_cli_exec_policy` does.
+    `wall_timeout_seconds` stays None because that seam's watchdog is already the
+    deadline for this call and a second one would fight it. `output_cap_bytes`
+    stays None because that seam caps through `max_bytes` and `on_cap`, which stop
+    the process tree instead of merely capping what is stored. `env_allowlist`
+    stays None for the reason `_cli_exec_policy` gives: the child is the operator's
+    authenticated `claude` CLI and reads its credentials from the inherited
+    environment — a stage-1 gap owed to T003's limitations document. Enforced and
+    real: the cwd pin and a zero core.
+    """
+    return ExecGuardPolicy(cwd=cwd, core_file_bytes=0)
+
+
+def _decode_cli_stream(raw: bytes) -> str:
+    """Decode one guarded stream the way `text=True` decoded it.
+
+    Text mode wrapped the pipe in a `TextIOWrapper` with the locale encoding and
+    universal newlines; both are reproduced. The ONE intended difference is
+    `errors="replace"` — text mode raised UnicodeDecodeError from inside the spawn
+    and no caller here handled it, so a mojibake CLI now parses honestly instead.
+    """
+    text = raw.decode(locale.getpreferredencoding(False), errors="replace")
+    return text.replace("\r\n", "\n").replace("\r", "\n")
+
+
+def _guarded_cli_run(cmd: list[str], timeout_sec: float,
+                     cwd: str | None) -> subprocess.CompletedProcess[str]:
+    """Run a CLI command under the stage-1 policy, shaped like `subprocess.run`.
+
+    The single spawn point this module's provider calls migrate onto, and the seam
+    the tests mock instead of the stdlib. A wall trip is re-raised as
+    `subprocess.TimeoutExpired` and a signal death republished in the -SIGNUM form,
+    so every caller keeps the error text it already produced: the migration changes
+    the mechanism, never the observable outcome.
+    """
+    guarded = run_guarded(cmd, _cli_exec_policy(timeout_sec, cwd))
+    if guarded.tripped_limit == "wall_timeout":
+        raise subprocess.TimeoutExpired(cmd, timeout_sec)
+    code = guarded.returncode
+    if code is None:
+        try:
+            code = -int(signal.Signals[guarded.term_signal].value)
+        except (KeyError, ValueError, TypeError):
+            code = -1
+    return subprocess.CompletedProcess(
+        cmd, code,
+        _decode_cli_stream(guarded.stdout), _decode_cli_stream(guarded.stderr),
+    )
+
+
 class ClaudeCliProvider:
     """Provider using local `claude` CLI via `claude -p "<prompt>"`.
 
@@ -949,14 +1021,11 @@ class ClaudeCliProvider:
         self._cli_version_resolved = True
         try:
             claude = self._get_claude_path()
-            proc = subprocess.run(
+            proc = _guarded_cli_run(
                 [claude, "--version"],
-                capture_output=True,
-                text=True,
-                timeout=5,
                 # Pinned like every other provider call: an unpinned probe runs in
                 # the operator's cwd and any stray write lands in the repo root.
-                cwd=self._cwd,
+                timeout_sec=5, cwd=self._cwd,
             )
             if proc.returncode == 0 and proc.stdout and proc.stdout.strip():
                 self._cli_version = proc.stdout.strip()
@@ -991,8 +1060,9 @@ class ClaudeCliProvider:
         )
         call_dir = self._allocate_stream_call_dir()
         run = run_streamed_command(
-            argv, call_dir, cwd=self._cwd, timeout_sec=timeout_sec,
+            argv, call_dir, timeout_sec=timeout_sec,
             max_bytes=self._stream_max_bytes or DEFAULT_MAX_BYTES,
+            policy=_stream_exec_policy(self._cwd),
         )
         self._last_stream_capture = run
 
@@ -1072,13 +1142,7 @@ class ClaudeCliProvider:
         )
         start = time.monotonic()
         try:
-            proc = subprocess.run(
-                argv,
-                capture_output=True,
-                text=True,
-                timeout=timeout_sec,
-                cwd=self._cwd,
-            )
+            proc = _guarded_cli_run(argv, timeout_sec=timeout_sec, cwd=self._cwd)
         except subprocess.TimeoutExpired:
             raise RuntimeError(f"claude CLI timed out after {timeout_sec}s")
         elapsed_ms = int((time.monotonic() - start) * 1000)
@@ -1205,9 +1269,7 @@ class ClaudeCliProvider:
         )
         start = time.monotonic()
         try:
-            proc = subprocess.run(
-                argv, capture_output=True, text=True, timeout=timeout_sec, cwd=self._cwd,
-            )
+            proc = _guarded_cli_run(argv, timeout_sec=timeout_sec, cwd=self._cwd)
         except subprocess.TimeoutExpired:
             raise RuntimeError(f"claude CLI timed out after {timeout_sec}s")
         dur = int((time.monotonic() - start) * 1000)

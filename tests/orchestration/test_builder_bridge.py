@@ -2,8 +2,10 @@
 from __future__ import annotations
 
 import json
+import subprocess
 
 from packages.core.models import Job
+from packages.orchestration import builder_bridge
 from packages.orchestration.builder_models import BuilderOutput
 
 
@@ -185,3 +187,60 @@ class TestBuilderBridgeSafety:
         result = run_builder_bridge(output, tmp_path, job=job, data_dir=tmp_path, autonomy_level=3)
         assert result.stage == "parse_failed"
         assert result.parse_result.error_kind == "validation_failed"
+
+
+def _run_bridge_test_stage(tmp_path):
+    """Drive the bridge to stage 4 against a one-file fixture repo."""
+    patch_text = json.dumps({
+        "file_ops": [{"path": "calc.py", "action": "create", "content": "x = 1\n"}]
+    })
+    output = BuilderOutput(
+        summary="Fix calc", proposed_changes=["Fix add"],
+        structured_patch_text=patch_text,
+    )
+    return builder_bridge.run_builder_bridge(
+        output, tmp_path, job=Job(name="test"), data_dir=tmp_path, autonomy_level=4
+    )
+
+
+class TestBuilderBridgeGuardSeam:
+    """T002b's last `test`-class site, migrated onto the stage-1 guard."""
+
+    def test_the_guard_receives_the_wall_the_cwd_and_the_bytecode_overlay(
+        self, tmp_path, monkeypatch
+    ):
+        """Read off the call the seam receives, which the result cannot show."""
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        seen = {}
+
+        def capture(cmd, **kwargs):
+            seen.update(kwargs)
+            return subprocess.CompletedProcess(list(cmd), 0, b"", b"")
+
+        monkeypatch.setattr(builder_bridge, "run_guarded_test_command", capture)
+        (tmp_path / "tests").mkdir()
+        (tmp_path / "tests" / "test_calc.py").write_text("def test_ok():\n    pass\n")
+        assert _run_bridge_test_stage(tmp_path).test_passed is True
+        assert seen["timeout_sec"] == 60
+        assert seen["cwd"] == str(tmp_path)
+        assert seen["extra_env"] == {"PYTHONDONTWRITEBYTECODE": "1"}
+
+    def test_a_secret_like_parent_variable_does_not_reach_the_test_child(
+        self, tmp_path, monkeypatch
+    ):
+        """The overlay must still arrive while the parent's secret does not.
+
+        Both halves are asserted inside the fixture repo's own test body, so the
+        green `test_passed` below IS the assertion rather than a proxy for it.
+        """
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        monkeypatch.setenv("REMEDY_BRIDGE_FAKE_TOKEN", "sk-not-a-real-secret")
+        (tmp_path / "tests").mkdir()
+        (tmp_path / "tests" / "test_env.py").write_text(
+            "import os\n"
+            "\n"
+            "def test_env():\n"
+            "    assert 'REMEDY_BRIDGE_FAKE_TOKEN' not in os.environ\n"
+            "    assert os.environ.get('PYTHONDONTWRITEBYTECODE') == '1'\n"
+        )
+        assert _run_bridge_test_stage(tmp_path).test_passed is True

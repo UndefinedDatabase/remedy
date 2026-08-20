@@ -1442,3 +1442,28 @@ class TestReportShowsRepoMismatch:
         result = promote_run(run_id, target_repo=str(other), approve=True)
         summary = summarize_promotion(result)
         assert "Run repo:" in summary or "target_repo_mismatch" in summary
+
+
+# F085 T002b — pingpong_promote._run_post_test on the shared `test`-class seam
+
+
+def test_pingpong_promote_post_test_runs_on_the_guarded_seam(tmp_path, monkeypatch):
+    """The spawn goes through `run_guarded_test_command`, and its BYTES decode to str."""
+    import subprocess
+
+    from packages.orchestration import pingpong_promote
+
+    seen: dict[str, object] = {}
+
+    def _fake_guarded(cmd, *, timeout_sec, cwd, extra_env_keys=()):
+        seen.update(cmd=list(cmd), timeout_sec=timeout_sec, cwd=cwd)
+        return subprocess.CompletedProcess(list(cmd), 0, b"out-line\n", b"err-line\n")
+
+    monkeypatch.setattr(pingpong_promote, "run_guarded_test_command", _fake_guarded)
+    passed, summary = pingpong_promote._run_post_test("pytest -q", tmp_path, timeout_sec=17)
+
+    assert passed is True
+    assert seen == {"cmd": ["pytest", "-q"], "timeout_sec": 17, "cwd": str(tmp_path)}
+    assert summary.startswith("exit=0")
+    assert "out-line" in summary
+    assert "err-line" in summary

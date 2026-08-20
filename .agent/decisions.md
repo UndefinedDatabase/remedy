@@ -5676,3 +5676,308 @@ they name.
 
 Reverse this decision by deleting the fixture; the drift returns with the next
 test that mocks half the provider path.
+
+## DECISION F085 D2 — the streaming seam takes the guard's CHILD half, not `run_guarded` (2026-08-17)
+
+CONTEXT: `stream_evidence.run_streamed_command` is T002a's last unmigrated spawn.
+The other two sites became `run_guarded` calls, and this one cannot: it iterates
+stdout line by line into `capture_stream_evidence`, which writes evidence files as
+the lines arrive and stops the child at a byte cap through an `on_cap` callback,
+while `run_guarded` buffers both streams through `_StreamPump` and returns bytes at
+the end. Incremental capture is what that seam exists to do, so the difference is
+the feature and not a gap.
+
+CHOSEN: split `ExecGuardPolicy`'s effect in two and share only the half that is
+actually common. `exec_guard.plan_child_spawn(policy)` returns a `ChildSpawnPlan` —
+the cwd, the resolved environment, the fork-to-exec `preexec_fn` and the names of
+the rlimits enforced and unsupported — and BOTH supervisors pass it to their own
+`Popen`. The PARENT half stays with whoever spawns: `run_guarded` keeps its
+`wait4` supervision, its deadline and its pumps, and `run_streamed_command` keeps
+the watchdog, process group, byte cap and stderr tail it already had. One
+implementation of what a policy does TO A CHILD; two supervisors, because there
+really are two.
+
+ALTERNATIVES CONSIDERED AND REJECTED: teaching `run_guarded` a streaming mode,
+rejected because it rewrites the supervision of a module T001 had just proven and
+buys nothing the streaming seam does not already have; duplicating the rlimit and
+scrub logic inside `stream_evidence.py`, rejected because T003 adds a network
+posture to exactly that child half and a second copy is a second thing to forget;
+leaving the seam unguarded and naming it in T003's limitations document, rejected
+because T2_F085's Edge-cases section makes the per-class rlimit VALUES config with
+per-project overrides, and a class whose only streaming site cannot receive a
+configured value leaves the policy table with a hole no document closes honestly.
+
+CONSEQUENCE: what this seam gains in stage 1 is narrow and worth stating plainly —
+the rlimit `preexec_fn` and a place for the values T003 configures. It already had
+a wall deadline, an output cap, a cwd pin and a killable process group. Its policy
+sets no environment allowlist, for the same reason `_cli_exec_policy` sets none:
+the child is the operator's authenticated `claude` CLI and reads its credentials
+from the inherited environment. That is a stage-1 gap and it is owed to T003's
+limitations document, not to this decision.
+
+Reverse this decision by inlining `plan_child_spawn` back into `run_guarded` and
+dropping `run_streamed_command`'s `policy` keyword; the seam returns to spawning a
+child under no limits at all.
+
+## DECISION F085 D3 — the `test`-class seam gains an `extra_env` overlay (2026-08-17)
+
+Ruled by the reviewer at the R38 gate under docs/agents/planner_reviewer_prompt.md §4
+item 7. R38 records the ruling; R39 applies it in code, and no call site migrates in
+either. Reverse it before R39 by deleting this section, or after R39 by dropping the
+`extra_env` parameter from `test_command_exec_policy` and `run_guarded_test_command`
+and restoring `env=None`; the seam then returns to passing keys through and setting
+none.
+
+CONTEXT, measured at c3201976. Two of the twelve `test`-class sites are still on a bare
+spawn, and both build their child environment the same way: `ci_run.py` line 78 overlays
+`PYTEST_TIMEOUT_ENV_VAR` onto a copy of `os.environ` so each CI stage gets its own
+budget, and `builder_bridge.py` line 219 overlays `PYTHONDONTWRITEBYTECODE`. The seam
+offered only `extra_env_keys`, which widens the allowlist while the scrub SOURCE stays
+`os.environ`, so a key the parent lacks reaches the child absent. `.agent/plan.md` at
+c3201976 recorded this blocker for `builder_bridge.py` alone; it belongs to both.
+
+CHOSEN: an `extra_env` mapping whose entries become the scrub SOURCE overlay and whose
+keys join the allowlist for that call only. `scrub_child_env` keeps `FORBIDDEN_ENV_KEYS`
+as the floor, so the knob cannot smuggle a secret past it, and a test pins that.
+
+ALTERNATIVES CONSIDERED AND REJECTED: adding the two variables to
+`TEST_COMMAND_ENV_ALLOWLIST`, rejected because passing a key through is not setting it —
+the parent does not hold the per-stage value, and a shared allowlist is the wrong home
+for one caller's variable; having each site export the variable into its own process
+before spawning, rejected because that mutates the parent's environment for every
+concurrent caller and outlives the call; leaving both sites unmigrated and naming them in
+T003's limitations document, rejected because Amendment F085 D1's class table puts the
+whole `test` class under stage-1 containment and two unguarded sites would make that row
+false.
+
+CONSEQUENCE, stated plainly rather than minimised: once R39 lands this, a caller can SET
+any variable not in `FORBIDDEN_ENV_KEYS`, which is strictly more power than passing one
+through, and the guard's floor is the only thing keeping that honest — so R39 owes a test
+that a forbidden key handed to `extra_env` still does not reach the child. The knob
+changes nothing for a caller that does not pass it: the default is `None` and the policy
+stays byte-identical to today's.
+
+## DECISION F085 D4 — the `ci_run.py` stage spawn migrates with output re-emitted and the wall as a backstop (2026-08-17)
+
+Ruled by the reviewer at the R41 gate under docs/agents/planner_reviewer_prompt.md §4
+item 7. R42 records the ruling; R43 applies it in code, and `builder_bridge.py` follows
+in a later round. Reverse it before R43 by deleting this section, or after R43 by
+restoring `_run_via_subprocess` to `subprocess.run(command, check=False, cwd=cwd,
+env={**os.environ, PYTEST_TIMEOUT_ENV_VAR: str(timeout_sec)})` and dropping the re-emit.
+
+CONTEXT, measured at 0e2cdacd. `.agent/handoff.md` at 93226220 named ONE behavioural
+delta for this migration — that `_run_via_subprocess` streams the child's stdout and
+stderr to the console through inherited fds and returns only the returncode, while
+`run_guarded_test_command` CAPTURES both streams and returns them as bytes. Two more were
+measured at 0e2cdacd and are equally load-bearing. First, the seam takes a WALL timeout
+and raises `subprocess.TimeoutExpired`, whereas today the per-stage budget travels to the
+CHILD as `REMEDY_PYTEST_TIMEOUT_SEC` and the runner self-terminates with exit code 124,
+which `run_ci_stage` reads to set `note="timed out"`. Second, the seam SCRUBS the child
+environment to `TEST_COMMAND_ENV_ALLOWLIST`, where today the child inherits a full copy of
+`os.environ`. A migration that addressed only the output would have changed the other two
+silently.
+
+MEASURED, not assumed, before this ruling: a pytest child spawned through
+`run_guarded_test_command` with the per-stage budget supplied via the `extra_env` overlay
+that landed at dce66faa received 9 environment keys, read the budget back correctly, and
+ran `tests/cli/test_golden_path.py` to `42 passed` at returncode 0 in 20.7 s. The
+allowlist scrub does not break a pytest child in this repository, which is what made the
+env delta rulable rather than a blocker.
+
+CHOSEN, in three parts. OUTPUT: capture, then re-emit — the guarded call keeps both
+streams and `_run_via_subprocess` writes them to `sys.stdout.buffer` and
+`sys.stderr.buffer` before returning, so the operator still sees every stage's output and
+the guard still gets its size cap. What is LOST is live streaming: output appears when a
+stage ENDS rather than as it is produced, so a long stage looks silent while it runs.
+Stated plainly rather than minimised, because a CI runner that appears hung is a real
+cost to whoever is watching it. WALL: a backstop set ABOVE the child's own budget, never
+equal to it — the child keeps `REMEDY_PYTEST_TIMEOUT_SEC` and its 124 exit code, so the
+timeout that produces a readable pytest report stays the operative one, and the guard's
+wall only catches a child that ignores its own budget. ENV: the allowlist plus the
+per-stage budget through `extra_env`, which is precisely the capability DECISION F085 D3
+added and R39 landed.
+
+ALTERNATIVES CONSIDERED AND REJECTED: capturing without re-emitting, rejected because a CI
+runner whose stage output vanishes is worse than an unguarded one; keeping the live stream
+by handing inherited fds through the guard, rejected because the output cap is enforced
+WHILE the guard reads the pipes and an inherited fd is never read by the guard, so the cap
+would silently not apply and the migration would buy nothing; setting the guard's wall
+equal to `stage.timeout_sec`, rejected because the two deadlines would race and the guard
+would sometimes win, replacing an informative pytest report with a bare kill; leaving
+`ci_run.py` unmigrated and naming it in T003's limitations document, rejected because
+Amendment F085 D1's class table puts the whole `test` class under stage-1 containment and
+an unguarded site would make that row false.
+
+CONSEQUENCE, stated plainly. R43 owes three tests it does not have today: that a stage's
+captured output actually reaches the console, that the per-stage budget still arrives in
+the child, and that a wall trip maps to the `timed out` note rather than to a bare
+non-zero. The size of the grace margin between the child's budget and the guard's wall is
+NOT ruled here — it is R43's to choose and to justify in code, because choosing it needs a
+measurement of how long a stage takes to die on its own budget, and no such measurement
+exists at 0e2cdacd. `tests/orchestration/test_ci_run.py` exercises the real
+`_run_via_subprocess` for the budget pass-through, so that test changes with the
+implementation and is the first place a silent regression would show.
+
+## DECISION F085 D5 — the 400-line block cap counts a block's PROSE, not the slices it transports (2026-08-17)
+
+Ruled by the reviewer at the R44 gate under docs/agents/planner_reviewer_prompt.md §4 item 7,
+which routes a wrong spec to planning as a loud, persisted, reversible decision rather than as
+a question to the operator. Reverse it by deleting this section; checklist item 1 then returns
+to counting every line of a block.
+
+THE PROBLEM IS MEASURED, not anticipated. DECISION F105 D5 caps a step block at 400 lines and
+checklist item 1 requires the split BEFORE emission. Three consecutive rounds have now been
+shaped by that cap rather than by their work: R42 and R43 each ended with more open findings
+than they started and neither moved a line of production code, and R43's own record states the
+cause — the `ci_run.py` migration and its record together measured 487. R44 re-authored that
+same pair from scratch with the FROM slices narrowed to the changed lines, the docstrings
+pointed at DECISION F085 D4 instead of restating it, one redundant test dropped and the
+finding registrations deferred, and still measured 462 before this ruling was added to it.
+The cap has stopped bounding verbosity and started bounding how much code a round may carry.
+
+WHAT THE CAP IS FOR, and therefore what it should count. Item 1's stated reason is that a
+worker must save a block VERBATIM, so an oversize block cannot be fixed downstream and becomes
+a declared deviation on a round that did nothing wrong. That reason bites on the text the
+reviewer writes ABOUT the work — goal, constraints, gates — which can always be shorter. It
+does not bite on an authored SLICE: a slice is content that must land in the repository byte
+for byte, and shortening it does not make the block safer, it makes the change smaller or the
+code less documented.
+
+CHOSEN: the 400-line cap counts a block's PROSE — every line outside a BEGIN-/END- marker
+pair, the marker lines included, since those are the reviewer's own. Slices are counted and
+REPORTED, never capped by this rule. Every other cap stands untouched: an authored
+`.agent/plan.md` text under 50 lines, a handback under 60 or with a stated cause, a commit
+under 500 insertions. A block states BOTH numbers, its prose count and its total, so nothing
+is hidden by the change of unit.
+
+ALTERNATIVES CONSIDERED AND REJECTED: raising the cap to a larger single number, rejected
+because it licenses longer PROSE, which is the half that actually grew and the half item 1
+exists to bound; splitting every code round into a record round and a code round, rejected as
+already measured — that is what R42 and R43 were, and it produced two rounds of process and no
+product; trimming the authored code's documentation to fit, rejected because this repository's
+discoverability conventions make the WHY beside a definition load-bearing, and a cap paid for
+in comments is paid for in the thing those comments protect.
+
+CONSEQUENCE, stated plainly. The reviewer gains room and loses the mechanical pressure that
+kept blocks short, so the honest reading is that this moves a hard limit onto the reviewer's
+judgement for one half of the block. R45 owes the counter-measure: a stated budget for a
+RECORD slice, which is the slice class that grew, alongside the checklist item 16 widening
+R-0537 named. The R44 block is the first measured under this counting and declares both of its
+numbers in its own constraints.
+
+## DECISION F085 D6 — a block is budgeted at 480 lines TOTAL, because the commit that saves it is capped at 500 insertions (2026-08-17)
+
+Ruled by the reviewer at the R45 gate under docs/agents/planner_reviewer_prompt.md §4 item 7.
+Reverse it by deleting this section; D5's 400-line PROSE cap then stands alone and the total
+is again unbudgeted. This decision AMENDS nothing in AGENTS.md and weakens nothing there: the
+500-insertion commit cap is untouched and remains the higher authority.
+
+THE PROBLEM IS MEASURED, and it is finding R-0546. DECISION F085 D5 lifted the 400-line cap off
+a block's authored SLICES so a round could carry code again, and its CHOSEN paragraph left "a
+commit under 500 insertions" standing; the two sentences are individually correct and were
+never read against each other. A block is saved by C0a as a NEW file under `.agent/authored/`,
+where insertions EQUAL lines, and DECISION F105 D5 rules that path counts normally rather than
+claiming the `.agent/**` single-artifact exemption. The commit cap has therefore always been a
+hard ceiling on a block's TOTAL size, and D5's first application produced a 516-line block that
+spent the branch's one AGENTS.md declared-oversize allowance — measured at 981d08d0, exactly
+one of the 268 commits on this branch exceeds 500.
+
+CHOSEN: a block is budgeted at 490 lines TOTAL and its PROSE stays capped at 400 by D5. The ten
+lines of margin are not an estimate of anything — C0b's insertions are bounded above by the
+block's own line count, so the mirror needs no allowance — they exist because a reviewer's
+hand-shaped artifact must not sit within a rounding error of a hard repository cap that no
+downstream actor can relax. Both numbers are MEASURED at emission and stated in the block's
+constraints, and the worker re-measures both from the committed file and reports them; the
+disagreement between those two readings is what makes drift visible, and stating only one of
+them is what produced R-0542. A RECORD SLICE IS BUDGETED AT 140 LINES — the counter-measure D5
+named as owed and did not supply. The record is the slice class that actually grew and the one
+whose growth is least visible, a gate entry having no natural stopping point. A round whose
+record would exceed 140 lines splits the registrations into their own round rather than
+deferring them, which is what R43 and R44 each did under pressure from the wrong cap.
+
+ALTERNATIVES CONSIDERED AND REJECTED: splitting C0a across two commits, for the reason R44's
+handback gave — it puts a truncated block on disk at an intermediate commit while constraint 1
+makes those exact bytes the source every slice is extracted from; claiming the `.agent/**`
+single-artifact exemption for `.agent/authored/`, because DECISION F105 D5 rules that path
+counts normally and this decision may not reverse another feature's ruling; raising the
+AGENTS.md 500-insertion cap, because AGENTS.md is the highest authority and §4 item 7 routes a
+wrong FEATURE spec to planning, never a repository rule to the reviewer.
+
+CONSEQUENCE. 490 against 400 leaves at most 90 lines of slice in a block whose prose runs to
+the cap, which is not enough for a migration; that is intentional, since it prices prose
+against product at emission, where the reviewer can still shorten the prose, rather than at
+commit time, where nobody can. The R45 block ran over this budget in draft and was cut to fit
+before emission, dropping a checklist edit to R46, which is the rule working as intended.
+
+## DECISION F085 D6 — correction to the ruled figure (2026-08-17)
+
+DECISION F085 D6, applied at 812626d3, is internally inconsistent: its heading says 480 lines
+TOTAL and its CHOSEN and CONSEQUENCE paragraphs say 490. THE RULED FIGURE IS 490. The CHOSEN
+paragraph is the operative one — it carries the reasoning for the margin and the CONSEQUENCE
+paragraph computes from it, while the heading is a leftover from an earlier draft in which the
+margin was justified differently. Finding R-0547 registers the defect.
+
+D6 is not edited, because appending a correction is how landed text stays honest in this
+repository and overwriting it is worse than a dated wrong sentence — docs/agents/planner_reviewer_prompt.md
+§3 checklist item 20. A reader who reaches the D6 heading reaches this section too, since both
+live in `.agent/decisions.md` and this one is later.
+
+Reverse this correction by deleting this section, which restores the ambiguity rather than the
+480; reverse D6 itself by deleting D6, which returns the block cap to DECISION F085 D5's
+400-line PROSE rule with no budget on the total.
+
+## DECISION F085 D7 — the open-findings count (2026-08-19)
+
+CHOSEN. The open-findings count over `.agent/live_review.md` is OPEN = REGISTERED − DONE, where
+REGISTERED counts lines matching `^- R-\d+ — ` and DONE counts lines matching `^Done: R-\d+ — `. A
+`Landed: R-\d+ — ` line is NOT a resolution and is NEVER subtracted: docs/agents/planner_reviewer_prompt.md
+§4 item 4 defines it as a worker's record of an UNREVIEWED fix, written so that a session dying between
+a fix and its review leaves a state no reader can mistake for a resolution, and the reviewer replaces
+it with authored `Done:` text at the next gate. A finding whose fix has landed but has not been
+reviewed is therefore OPEN, and it stops being open when the reviewer says so and not when the worker
+does. Finding R-0566 registers the defect this settles.
+
+ALTERNATIVE CONSIDERED and rejected: OPEN = REGISTERED − DONE − LANDED, which several blocks of this
+feature carried in their arithmetic constraints. It is undetectable while no `Landed:` line exists —
+which was true at every SHA this feature measured before R71 — and it silently closes a finding on the
+worker's authority, which is precisely the authority §4 item 4 withholds. It was never a considered
+choice; it was an unexamined formula, which is why it is written down now rather than argued about
+again.
+
+CONSEQUENCE. A round that lands a fix without a reviewer resolution does not reduce the open count, so
+the count stops moving until review happens — which is the honest reading and is meant to be visible.
+Blocks that state an expected open count state which formula produced it. Where a round both registers
+and resolves one finding, the count is unchanged and that is not an error.
+
+Reverse this decision by deleting this section, which returns the formula to whatever each block
+asserts and restores the ambiguity R-0566 was registered for.
+
+## DECISION amend0820-gate-autonomy A1 — loopback is exempt from the deny-network posture (2026-08-20)
+
+CHOSEN by the operator on 2026-08-20, applied at commit f882c727 on
+`feature/f085-sandbox-hardening`. `exec_guard.DENIED_NETWORK_NO_PROXY` is
+`localhost,127.0.0.1,::1` and is written into both `NO_PROXY` spellings of
+`DENIED_NETWORK_ENV`. Every other host — loopback or not — still goes through
+`DENIED_NETWORK_PROXY_URL`, the closed discard port.
+
+WHY. The posture as shipped emptied `NO_PROXY`, so no host was exempt and an HTTP
+request a guarded `test`-class child made to a server IT HAD JUST STARTED went to the
+closed proxy. That is how this repository's runtime, smoke and CLI suites judge
+readiness. Hosted CI run 32301614177 measured the cost: 62 failures across the `fast`
+and `standard` stages, every one of them `[Errno 111] Connection refused` against a
+server whose own log line said `ready`. The sandbox exists to deny the EXTERNAL
+network; it was denying the suite its own test server.
+
+ALTERNATIVE CONSIDERED and rejected: leave the posture and stop running those suites
+under the guard. It would move the network policy out of one table and into a
+per-suite exception list, and it would delete coverage the guard was built to have.
+
+CONSEQUENCE. The deny is measured where it still applies — a really-listening server
+on 127.0.0.2, which the exemption does not name — and the exemption is measured
+directly by `test_a_guarded_test_command_still_reaches_the_loopback_the_exemption_names`.
+`docs/system/exec-guard-limitations-v0.md` states the exemption in its own words, and
+`docs/roadmap/features/T2_F085.md` carries it as an amendment section. A future reader
+must not describe stage 1 as denying "all" network access to a guarded child.
+
+Reverse this decision by restoring the empty string in `DENIED_NETWORK_NO_PROXY` and
+deleting the amendment section in the feature file, which returns 62 tests to red.

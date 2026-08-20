@@ -16,13 +16,13 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-50 of 255 registered items accepted. Next: F085 (Sandbox hardening, stage 1).
+51 of 255 registered items accepted. Next: F086 (Release capability).
 
 | Tier | Name | Done | Total |
 |------|------|-----:|------:|
 | 0 | Foundation & Trust Core | 16 | 16 |
 | 1 | Self-Build Bootstrap | 22 | 22 |
-| 2 | Minimal Self-Build Runtime | 12 | 14 |
+| 2 | Minimal Self-Build Runtime | 13 | 14 |
 | 3 | Full Token Economy & Autonomy | 0 | 26 |
 | 4 | Memory & Learning | 0 | 16 |
 | 5 | Operator Cockpit | 0 | 29 |
@@ -100,6 +100,7 @@ remedy runtime serve                       # start dev-server supervisor (F007)
 | Runtime harness (F007) | [`docs/system/runtime-harness-v1.md`](docs/system/runtime-harness-v1.md) |
 | remedy.toml config | [`docs/guides/remedy-toml-user-guide.md`](docs/guides/remedy-toml-user-guide.md) |
 | Step history (archive) | [`docs/archive/remedy-step-history-v0.md`](docs/archive/remedy-step-history-v0.md) |
+| Execution guard limits (F085) | [`docs/system/exec-guard-limitations-v0.md`](docs/system/exec-guard-limitations-v0.md) |
 
 ## Development
 

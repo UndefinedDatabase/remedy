@@ -571,7 +571,7 @@ class TestTestRunnerOutputTruncation:
             args=["python3", "-m", "pytest"], returncode=0,
             stdout=big_output, stderr=b"",
         )
-        with patch("subprocess.run", return_value=proc):
+        with patch("packages.orchestration.test_runner.run_guarded_test_command", return_value=proc):
             record = run_tests_local(job, tmp_path)
 
         assert record.output_truncated is True
@@ -599,12 +599,44 @@ class TestTestRunnerOutputTruncation:
             args=["python3", "-m", "pytest"], returncode=0,
             stdout=b"1 passed\n", stderr=b"",
         )
-        with patch("subprocess.run", return_value=proc):
+        with patch("packages.orchestration.test_runner.run_guarded_test_command", return_value=proc):
             record = run_tests_local(job, tmp_path)
 
         assert record.output_truncated is False
         assert record.original_output_bytes == len(b"1 passed\n")
         assert record.persisted_output_bytes == record.original_output_bytes
+
+    @pytest.mark.subprocess
+    def test_a_real_pytest_run_still_passes_through_the_guarded_seam(self, tmp_path):
+        """F085 T002b behaviour equality, run for real and never mocked.
+
+        Every other test in this class hands `run_tests_local` a fabricated
+        `CompletedProcess`, so none of them would notice an environment allowlist
+        that starved a legitimate child. This one runs a real pytest through the
+        migrated seam end to end.
+
+        What it proves and what it does not: a well-behaved test command still runs
+        to completion through the guard. It says NOTHING about whether the allowlist
+        is minimal — `execvpe` falls back to `os.defpath` when PATH is absent, so a
+        narrower allowlist would not necessarily show up here.
+        """
+        from packages.orchestration.test_runner import run_tests_local
+
+        job = _make_job_s261()
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        (repo / "pyproject.toml").write_text("[project]\nname='x'\nversion='0'\n")
+        (repo / "tests").mkdir()
+        (repo / "tests" / "test_trivial.py").write_text("def test_trivial():\n    assert True\n")
+        job.metadata["target_repo"] = str(repo)
+
+        record = run_tests_local(job, tmp_path)
+
+        assert record.status == "passed"
+        assert record.exit_code == 0
+        assert record.blocked_reason == ""
+        output_file = tmp_path / "test_runs" / record.output_path
+        assert b"1 passed" in output_file.read_bytes()
 
 
 # ---------------------------------------------------------------------------

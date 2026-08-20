@@ -1,0 +1,17 @@
+FULL LOG PROVENANCE — F085 R72 integration gate
+
+Every suite log was written OUTSIDE the repository's tracked tree while its run was in flight,
+to the gitignored scratch dir .remedy-wt/.cache/gate_r72/, per R-0176: a log growing INSIDE the
+repo during a run changes the worktree digest mid-run and turns the manifest-identity ids into
+false failures. Only the derived evidence in this directory is committed, and it is named .txt
+and never .log per R-0169. The raw logs stay in scratch because they are large, machine-generated
+and reproducible from the recorded commands, while their identity is pinned here by digest.
+
+PATH                                            LINES   SHA256
+.remedy-wt/.cache/gate_r72/branch_run.txt         243   ea02b661e0c3abf7540b5e8aa05db12facf3aa0bff89fbee89a8a934fdb80b25
+.remedy-wt/.cache/gate_r72/base_run.txt           559   2c62b1bfe961e78713b6c45ad72a95d66d8e5d40896a2cdb43c320ae2ca1a056
+.remedy-wt/.cache/gate_r72/base_only_serial.txt    30   6ab41c571f0e004130cd5a582f52b1d9f2d57a0c6065951478fbd9841d85acfd
+.remedy-wt/.cache/gate_r72/canary.txt               2   4ae20ca96dd2580f91690e1ece679c32f798c870f783e5b749fb0067fe7c8748
+
+The base worktree .remedy-wt/base-r72 and its throwaway branch tmp/base-gate-r72 are removed
+after these readings were taken; `git worktree list` is one line at the end of the round.
