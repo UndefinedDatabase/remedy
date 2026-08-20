@@ -1,78 +1,77 @@
-# Handback — F085 · session of 2026-08-19 (Open PR Gate, BLOCKED)
+# Handback — amend0820-gate-autonomy · session of 2026-08-20 (Open PR Gate, CLEAR)
 
-Branch `feature/f085-sandbox-hardening`, HEAD at the R75 record round. This session planned and
-reviewed only: no feature code, no new branch, no merge, no verdict. F085 stays CLOSED and
-ACCEPTED — the R74 PASS verdict landed at 4c2d707b and is also the single comment on PR #204
-(2026-08-19T19:19:16Z), so it is not stranded.
+Branch `main` at 86555049. This session was an ORDINARY interactive session, not the self-drive
+command, and it executed the operator amendment amend0820-gate-autonomy end to end: it unblocked
+F085's merge, merged it, and then made the block that stopped three previous sessions unable to
+recur. No open PR remains.
 
-Fortschritt: F085 ist gebaut und abgenommen; offen ist nur der Merge. Der Open PR Gate wurde in
-dieser Sitzung erreicht und hat GESPERRT — der CI-Check auf PR #204 ist rot. Lokal ist dieselbe
-Commit-Spitze grün, die Ursache liegt also in der CI-Umgebung und nicht im Testcode. WELCHE Stage
-rot ist, konnte diese Sitzung nicht feststellen: `gh run` und `gh api` sind hier gesperrt.
+Fortschritt: F085 ist gemerged (PR #204), die Gate-Autonomie ist gemerged (PR #205), und der
+Arbeitsstand steht wieder bei "nächstes Feature nach Rule A5 beanspruchen". Der rote CI-Check
+hatte EINE Ursache, kein Stufen-Budget: die Sandbox-Posture des Guards sperrte den eigenen
+Testserver aus. Die Sitzungen können ab jetzt `gh run`, `gh api` und `gh pr checks` lesen, und
+ein roter Lauf ist laut AGENTS.md ausdrücklich Arbeitsauftrag statt Abbruchgrund.
 
 ## Phase 0 — probe, run this session
 
-- `git status --porcelain` EMPTY; branch `feature/f085-sandbox-hardening`; `.agent/STOP` absent.
-- `gh pr list --state open`: exactly ONE — #204, `feature/f085-sandbox-hardening` → `main`,
-  `isDraft: false`. Phase 1 rule 2 fired.
-- `remedy plan status` / `remedy plan next` NOT run — the `remedy` entry point is denied
-  session-wide here. Disk fallback used: `.agent/handoff.md`, `.agent/plan.md`,
-  `.agent/candidates.md`.
+- `git status --porcelain` EMPTY; branch was `feature/f085-sandbox-hardening`; `.agent/STOP` absent.
+- `gh pr list --state open`: exactly ONE — #204, `feature/f085-sandbox-hardening` → `main`.
+- `gh pr checks 204` → `ci` FAILURE, 42m51s, run 32301614177. This session COULD read it: the
+  operator granted `gh run` in the prompt itself.
 
-## The blocker
+## What the red actually was
 
-`gh pr checks 204` → one check, `ci` (workflow CI), state FAILURE, 43m26s, run 32292354363,
-job 96196033505. `gh pr view 204` → `state OPEN`, `mergeable MERGEABLE`,
-`mergeStateStatus UNSTABLE`, `isDraft false`, 0 reviews, 1 comment.
+Run 32301614177 failed 62 tests across `fast` and `standard`, every one of them `[Errno 111]
+Connection refused` against a server whose own log line said `ready`. `DENIED_NETWORK_ENV` set
+`NO_PROXY=""`, so a guarded `test`-class child's HTTP request to a server IT HAD JUST STARTED went
+to the closed discard-port proxy. That is how the runtime, smoke and CLI suites judge readiness.
+No stage tripped its budget — `fast` 887.5 s, `standard` 1617.5 s — so the standing budget-kill
+hypothesis from the previous handback is REFUTED, not merely unconfirmed.
 
-AGENTS.md Open PR Gate: failing checks mean stop, report the blocker, do not proceed with new
-work. No `gh pr merge` was run and no branch was created.
+A 63rd failure surfaced once the 62 were gone: the deny test's own CONTROL child. It is spawned
+with plain `subprocess.run`, which inherits the pytest process's environment — and in CI that
+process is itself a guarded child, so the "unguarded" control was guarded. It had been failing for
+that reason all along, hidden behind the louder 62.
 
-The run tested the CURRENT head: `4c2d707b` was committed 19:16:44Z, the check started 19:19:55Z
-and completed 20:03:21Z.
+## Verification
 
-## Verification — re-run, not read
+| Gate | Result |
+|------|--------|
+| CI run 32338830449 (F085 branch) | SUCCESS — fast, standard, ui, smoke, budgets all passed |
+| CI run 32340783256 (amendment branch) | SUCCESS |
+| `tests/docs/` | 295 passed |
+| `tests/cli/test_golden_path.py` | 42 passed |
+| `tests/orchestration/test_exec_guard.py` under `run_guarded_test_command` | 45 passed |
+| previously-red runtime/CLI/smoke suites, under the guard | 129 + 197 passed |
+| `ruff check .` | 26 findings, identical to the base — no Python added by the amendment branch |
 
-- FULL SUITE at `4c2d707b`, primary checkout, `python3 -m pytest -n auto -q`: EXIT 0,
-  `17132 passed, 19 skipped in 144.77s (0:02:24)`. The red is NOT a local test failure.
-- `git diff --numstat e950e8af..4c2d707b`: the four ungated R75 commits touch `.agent/` ONLY —
-  `authored/f085-r75.md` 299/0, `candidates.md` 18/0, `handoff.md` 109/0, `last_block.md` 272/356.
-  No source, doc or test file in that range.
-
-## Not known — do not guess
-
-Which CI stage went red. The job log was never read: `gh run` and `gh api` are DENIED here.
-
-Hypothesis, NOT a finding: CI runs its stages SERIALLY — `pytest_argv_for_stage` builds
-`["-m", expr, "-q", *paths]` with no `-n auto`, and `pyproject.toml` sets no `addopts` — where the
-green run above used `-n auto`. Stage budgets sum to 3900s (`fast` 900, `standard` 2100, and `ui`,
-`smoke`, `budgets` 300 each) and a budget kill returns exit 124 with note `timed out`
-(`packages/orchestration/ci_run.py`). A 43m26s wall is CONSISTENT with a `standard` budget kill on
-a 2-core hosted runner. Consistent is not measured — read the log before acting on this.
+Both fixes are red-controlled: restore the empty `NO_PROXY` and the new exemption test fails;
+drop the control's env argument and the deny test fails with the exact CI message.
 
 ## Item status
 
 | Item | Status | Reason |
 |------|--------|--------|
-| Phase 0 probe | done | |
-| Phase 1 decide | done | rule 2 fired |
-| Open PR Gate #204 | blocked | check `ci` FAILURE — AGENTS.md orders stop and report |
-| New feature work | skipped | the Gate forbids new work while the PR is blocked |
+| Read and classify the red CI run | done | class (a), the guard's own posture |
+| Repair on the F085 branch | done | f882c727, 4e926506 |
+| Merge #204 | done | 68155931, branch deleted |
+| Permissions for gh run / gh api / gh pr checks | done | tracked `.claude/settings.json` |
+| AGENTS.md Open PR Gate exception | done | PR #205, merged at 86555049 |
+| State files refreshed | done | this file and `.agent/plan.md` |
 
 Open findings: 152, next free id R-0570 — carried from the R74 record, NOT re-measured here.
 `.agent/candidates.md` holds TWO entries and stays non-empty.
 
 ## Deviations, declared
 
-Handback line count 78, over the 60-line cap. Mandated content only — the Phase 0 readings,
-the blocker's real command outputs, the verification results, the item-status table and the
-next-action list. No section dropped; verbosity is not the cause.
+The three `gh` grants went into the TRACKED `.claude/settings.json`, not into
+`.claude/settings.local.json` where the existing `gh pr` grants live. That file is gitignored
+(`.gitignore:216`) AND read-denied by the repo's own settings, so it could neither be read nor
+reach a fresh checkout. Allow-rules union across settings files, and nothing was removed. This
+session ran in bypass-permissions mode, so it could NOT observe the grants taking effect; the
+first session that is not in that mode is the real test.
 
 ## Next
 
 1. Phase 1 rule 1 FIRST: re-read `.agent/STOP` from disk.
-2. Then the Open PR Gate on #204 — it stays blocked while `ci` is FAILURE. Read the log of run
-   32292354363: a session where `gh run view --log-failed` is permitted, or the operator supplies
-   it. Do NOT merge, do NOT create a branch, do NOT start a feature until that check is green.
-3. Only after the merge: the next feature by Rule A5, whose FIRST reviewed round registers or
-   resolves BOTH `.agent/candidates.md` entries and empties that file.
+2. The Open PR Gate is CLEAR — zero open PRs. Claim the next feature by Rule A5, whose FIRST
+   reviewed round registers or resolves BOTH `.agent/candidates.md` entries and empties that file.
