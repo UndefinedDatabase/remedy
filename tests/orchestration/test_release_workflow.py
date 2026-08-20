@@ -38,7 +38,7 @@ def test_release_workflow_calls_the_gate_runner_exactly_once():
 def test_release_workflow_is_triggered_by_hand_only():
     """Cutting a release is a human decision, so no event may fire this job."""
     text = workflow_text()
-    assert "workflow_dispatch:" in text
+    assert any("workflow_dispatch:" in line for line in executable_lines())
     for event in ("\n  push:", "\n  pull_request:", "\n  schedule:", "\n  release:"):
         assert event not in text, event
 
@@ -58,7 +58,7 @@ def test_release_workflow_never_auto_retries():
 
 def test_release_workflow_passes_the_tag_through_the_environment():
     """A tag interpolated into a shell line would be a command-injection seam."""
-    assert '--tag "$TAG"' in workflow_text()
+    assert any('--tag "$TAG"' in line for line in executable_lines())
     carriers = [line for line in executable_lines() if "inputs.tag" in line]
     assert carriers, "the workflow never reads its own tag input"
     for line in carriers:
@@ -67,4 +67,4 @@ def test_release_workflow_passes_the_tag_through_the_environment():
 
 def test_release_workflow_refuses_when_no_ci_run_is_found():
     """An absent CI answer must not read as a green one."""
-    assert "missing" in workflow_text()
+    assert any("missing" in line for line in executable_lines())
