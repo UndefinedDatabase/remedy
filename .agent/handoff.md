@@ -96,3 +96,47 @@ The VERDICT text is the reviewer's; this worker wrote no verdict anywhere.
 
 Next session: re-read `.agent/STOP` from disk (Phase 1 rule 1), then run the Open PR
 Gate (Phase 1 rule 2). Then R6 — T001 under DECISION F086 D1.
+
+## Reviewer's session verdict — authored by the reviewer, applied by the worker
+
+This section exists because finding R-0571, registered by this feature, is that a
+verdict issued and never written to disk cannot be told apart from one never
+issued. It is appended rather than written into the sections above so that the
+next handback rewrite cannot silently destroy it.
+
+Session of 2026-08-20, self-drive per docs/agents/self_drive_protocol.md. The
+reviewer wrote nothing in the work tree; one delegated worker made every commit of
+every round; every verdict below rests on gates the reviewer re-executed itself
+over the committed diff, never on a handback's summary.
+
+| Round | Range | Verdict |
+|---|---|---|
+| R1 | 76661dc1..25f7a5af | FAIL — R-0572, R-0573 |
+| R2 | 25f7a5af..9e855296 | PASS |
+| R3 | 9e855296..0cabd17e | PASS |
+| R4 | 0cabd17e..655661b0 | PASS |
+
+R1 claimed F086, reset the review record carrying the F085 open set forward and
+registered the two closure candidates as R-0570 and R-0571, emptying
+`.agent/candidates.md`. It FAILED on the carry: 39 multi-line finding paragraphs
+were truncated to their headlines, 52917 characters of the permanent record lost.
+The cause was the reviewer's own block wording — "a finding paragraph is a line
+matching `^- R-\d+ — `" defines the paragraph as the line — and the worker applied
+it literally and reported honestly. No gate caught it because R1's own transport
+gate compared both sides with that same broken extractor; R-0572 carries the loss
+and R-0573 the gate defect. R2 restored all 39 paragraphs verbatim from the
+pre-reset blob and resolved R-0572, under a check whose negative control is
+required to reject the corrupt state. R3 measured the packaging shape by building
+a real wheel and established that a wheel built from a pristine checkout carries
+ZERO members under `apps/ui/dist/` — Remedy currently packages a CLI whose UI
+cannot serve. R4 ruled DECISION F086 D1 and D2 on that measurement.
+
+The open set stands at 155, next free id R-0574. R-0573 remains OPEN: its durable
+fix promotes a rule into the pre-emission checklist at
+docs/agents/planner_reviewer_prompt.md §3, a file F086 does not own, so it routes
+to a paydown branch with R-0403, R-0448, R-0482, R-0487 and R-0490.
+
+By docs/agents/planner_reviewer_prompt.md §4 item 13 the LAST round of a branch
+has no on-disk gate entry, so R5's own verdict is the terminator and lives in the
+reviewer's closing report rather than here. That absence is the rule, not an
+omission — and it is precisely the hole R-0571 exists to close.
