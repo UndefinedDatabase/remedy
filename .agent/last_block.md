@@ -1,186 +1,116 @@
-── STEP R1 — F255 Teacher role ────────────────────────────────
-Goal:        Merge the F086 pull request at the Open PR Gate, claim F255 in the
-             ledger, reset the live-review record so it carries the F086 open
-             set forward without losing a byte, register R-0600 and record the
-             F086 R35 verdict, which has no home in the record it belongs to.
-             No source file and no test changes this round.
+── STEP R2 — F255 Teacher role ────────────────────────────────
+Goal:        Register R-0601 and R-0602, record the R1 verdict so it is not
+             stranded, and MEASURE the five seams F255 depends on into an
+             inventory file — every claim carrying a citation that resolves at
+             HEAD. Nothing is designed this round and nothing is built: R3 rules
+             the shape once the ground is known. No source file, no test and no
+             document under docs/ changes.
 
-Bundle:      S0 the Open PR Gate and the new branch · C0a save this block ·
-             C0b mirror it · C1 claim F255 and reset the scope · C2 reset the
-             review record and register R-0600 · C3 gate F086 R35 · C4 the plan ·
-             C5 the handback, then push.
+Bundle:      C0a save this block · C0b mirror it · C1 register R-0601 and
+             R-0602 · C2 record the R1 verdict · C3 the inventory · C4 the
+             plan · C5 the handback, then push.
 
 Change:      Exactly these paths, in this order, one commit each.
-             C0a `.agent/authored/f255-r1.md`
+             C0a `.agent/authored/f255-r2.md`
              C0b `.agent/last_block.md`
-             C1  `docs/roadmap/STATUS.md` and `.agent/context.md`
+             C1  `.agent/live_review.md`
              C2  `.agent/live_review.md`
-             C3  `.agent/live_review.md`
+             C3  `.agent/f255_inventory.md`   (NEW FILE, worker-authored)
              C4  `.agent/plan.md`
              C5  `.agent/handoff.md`
              Nothing else is created, modified, deleted or staged. These paths
              are PRESENT at the base and must stay untouched: `hatch_build.py`,
-             `pyproject.toml`, `README.md`, `.agent/candidates.md`,
-             `.agent/decisions.md`, `docs/roadmap/features/T5_F255.md`,
-             `docs/agents/planner_reviewer_prompt.md`.
+             `pyproject.toml`, `README.md`, `docs/roadmap/STATUS.md`,
+             `docs/roadmap/features/T5_F255.md`, `.agent/context.md`,
+             `packages/orchestration/role_config.py`,
+             `apps/cli/command_catalog.py`.
 
 Constraints:
 1. NO SLICE IS EDITED. Every text between `<<<SLICE x` and `<<<END x` is applied
    byte for byte. A slice you believe is wrong is applied anyway and DECLARED in
    the handback; you never repair it silently. Marker lines never reach a target.
-2. TRANSPORT. `.remedy-wt/f255-r1.md` is this block on disk. C0a copies that
-   FILE to `.agent/authored/f255-r1.md` — copy it, never retype it — and C0b
+2. TRANSPORT. `.remedy-wt/f255-r2.md` is this block on disk. C0a copies that
+   FILE to `.agent/authored/f255-r2.md` — copy it, never retype it — and C0b
    copies the same file to `.agent/last_block.md`. Prove all three byte-EQUAL;
    the reviewer stated the expected digest when it delegated, and that digest
    cannot appear in this file because this file is what it digests.
-3. S0 IS THE OPEN PR GATE AND COMES FIRST, before any commit of this round.
-   Run `gh pr list --state open --json number,headRefName,baseRefName,isDraft`
-   and report it. Exactly one PR — #207, `feature/f086-release-capability` into
-   `main`, not a draft — is the expected reading; ANY other reading stops the
-   round and you write the handback instead. Then, exactly as AGENTS.md orders:
-   `gh pr merge 207 --merge --delete-branch`, `git checkout main`,
-   `git pull --ff-only`, `git checkout -b feature/f255-teacher-role`. No force
-   push, no history rewrite, and no commit is ever made on `main`.
-4. ONE PAIR, AND IT IS A REWRITE. CLAIM255FROM and CLAIM255TO are a FROM→TO pair
-   over `docs/roadmap/STATUS.md`. The reviewer ran the containment test over the
-   two slices before emission and the test printed `TO contains FROM: False`, so
-   the pair is a REWRITE and G5 orders the FROM-zero count that shape owes.
-   Every other slice is a whole-file replacement or an append, and owes no pair
-   proof at all.
-5. THE RECORD IS RESET BY SCRIPT, NEVER BY HAND. C2 writes
-   `.agent/live_review.md` by running the RESETPY slice, which carries its own
-   three controls and fails loudly rather than writing a damaged record. You do
-   not retype, rewrap, reorder or summarise a single carried finding. The
-   reviewer dry-ran this exact script against the base record and it printed
-   registered 182, resolved 7, carried 175, orphans 0, first_id R-0570, last_id
-   R-0599, out_units 179. R0600 is then APPENDED to that reset record, in the
-   same C2 commit, preceded by exactly one blank line (R-0578) and placed after
-   the last carried finding; RECORD35 is appended to the result the same way at
-   C3. Both are copied from their extracted slice files, never retyped.
-6. YOU NEVER WRITE A `Done:` OR A `Landed:` PARAGRAPH. Nothing is fixed this
-   round, only recorded. R-0600 is REGISTERED, and the reset carries the open
-   set forward unresolved.
-7. `.agent/STOP` is read from disk before S0. If it exists, stop and write the
-   handback instead — the merge does not happen either.
-8. `git status --porcelain` is EMPTY after every commit. No worktree is created
+3. NO FROM/TO PAIR EXISTS THIS ROUND. R0601, R0602 and RECORDR1 are APPENDS to
+   `.agent/live_review.md`, PLAN255R2 is a WHOLE-FILE replacement of
+   `.agent/plan.md`, and the inventory is a NEW file you author yourself. The
+   reviewer ran the containment test over this block's slices before emission
+   and found no pair to classify, so no FROM count is ordered anywhere below.
+4. EVERY APPEND IS BLANK-SEPARATED. Each of R0601, R0602 and RECORDR1 is
+   appended preceded by exactly one blank line (R-0578), copied from its
+   extracted slice file and never retyped. Nothing already in that file is
+   rewritten, reordered or deleted. The registered set moves by exactly +2 and
+   the resolved set does not move at all.
+5. YOU NEVER WRITE A `Done:` OR A `Landed:` PARAGRAPH. Nothing is fixed this
+   round, only registered, recorded and measured.
+6. THE INVENTORY IS MEASURED, NEVER RECALLED. This is the whole point of the
+   round. Every factual claim in `.agent/f255_inventory.md` carries a
+   `path:line` citation that you resolved AT HEAD by opening the file and
+   reading that line — not from memory, not from a feature file, not from this
+   block. Where the answer is that something does NOT exist, write it as an
+   explicit absence: "Remedy deliberately does not X" is a first-class finding
+   and is more valuable here than a plausible guess. Never invent a path to
+   make an answer look complete; an honest ABSENT is what R3 needs.
+7. NOTHING IS DESIGNED AND NOTHING IS BUILT THIS ROUND. You do not add a role,
+   a config key, a CLI command, a test or a doc. If the measurement suggests an
+   obvious fix, RECORD the suggestion in the inventory and leave the code alone
+   — R3 rules the design as a DECISION and amends the feature file.
+8. `.agent/STOP` is read from disk before C0a. If it exists, stop and write the
+   handback instead.
+9. `git status --porcelain` is EMPTY after every commit. No worktree is created
    this round, because no destructive check is ordered.
-9. YOU DO NOT WAIT ON ANY CI RUN and you report no run's conclusion. The
-   reviewer watched run 32411743463 on `538323e0` to its conclusion before
-   emitting this block, which is why S0 may merge at all.
+10. YOU DO NOT WAIT ON ANY CI RUN and you report no run's conclusion.
 
-<<<SLICE CLAIM255FROM
-- [ ] F255 — Teacher role (evidence-grounded live explainer & learn-along tutor)
-<<<END CLAIM255FROM
+The inventory answers these six questions, one `##` heading each, in this order.
+Each answer is a short paragraph of prose plus a citation table whose rows are
+`path:line` · symbol · one line of what it does. Quote the decisive source line
+verbatim where a single line settles the question.
 
-<<<SLICE CLAIM255TO
-- [~] F255 — Teacher role (evidence-grounded live explainer & learn-along tutor)
-<<<END CLAIM255TO
+Q1 ROLE RESOLUTION. What role names does the vocabulary hold, where is that
+   vocabulary declared, and what happens TODAY when a role outside it is
+   resolved — warning, error, or silent default? Name EVERY file that carries
+   an independent role list, because a fourth role must be taught to each one.
+   Record whether the feature file's phrase "the same role_config mechanism as
+   orchestrator/worker/reviewer" matches the names actually declared.
+Q2 LEDGER EVENT VOCABULARY. Is there a CLOSED, enumerated vocabulary of run-log
+   event names, or are event names free strings? Where is an event emitted and
+   where, if anywhere, is its name validated? F255's registration names "stable
+   ledger event vocabulary (Tier 2)" as a DEPENDENCY: record, measured, whether
+   that dependency is satisfied today, and name any partial registries.
+Q3 BUDGET POOLS. How is a token charge attributed to its spender, and does a
+   "pool" concept exist in the code at all? Record the separation axis that
+   actually exists, and where a budget LIMIT is expressed, so R3 can rule
+   whether a teacher pool is a new value on an existing axis or a new axis.
+Q4 ActionClass read_only. Where is `ActionClass` defined, what are its members,
+   and what ENFORCES it — a runtime check on a code path, or a declaration
+   checked only by tests? Name the enforcing code or record its absence.
+Q5 THE WATCH PATH. Does `remedy do watch` exist? Does `remedy teach` exist?
+   Record the nearest EXISTING read-only reader of a live run and the mechanism
+   by which it stays isolated from the writer.
+Q6 DOES `teacher` EXIST ANYWHERE? Search `packages/`, `apps/`, `tests/` and
+   `scripts/` and report every hit, or report zero.
 
-<<<SLICE LRHEAD255
-# Live Review — F255 Teacher role
+<<<SLICE R0601
+- R-0601 — Low — A GATE ORDERING THAT EVERY REFLOG ENTRY OF A ROUND READ `commit:` CANNOT BE MET BY ANY ROUND WHOSE BUNDLE OPENS WITH THE OPEN PR GATE, AND THE HANDBACK THEN CARRIES THE OVER-SCOPED SENTENCE INTO THE PERMANENT RECORD. G12 of the F255 R1 block, saved at `903c00ff`, orders "that every `git reflog` entry of this round reads `commit:`" — wording carried across from the F086 R35 block, whose round performed no branch navigation at all. R1's own bundle opens with S0, which AGENTS.md defines as `gh pr merge`, `git checkout main`, `git pull --ff-only` and `git checkout -b`, so that round's reflog necessarily holds `checkout` and `pull --ff-only` entries and the ordered universal is unmeetable by construction. Re-measured by the reviewer at `6c47a490`: of the ELEVEN reflog entries R1 produced, SEVEN read `commit` and FOUR read `checkout` or `pull --ff-only`, so the sentence at line 49 of `.agent/handoff.md` is FALSE under its literal reading and true only under the narrower reading "the entries for this round's commits". The worker met the gate by DECLARING the imprecision in its round report rather than by amending C5 — an amend would itself have added a non-`commit` reflog entry and an eighth, unordered commit — which is the correct response, and the reason this is registered against the block's wording and never against the round. Nothing on disk is wrong: the property the gate exists to protect is the ABSENCE of history rewriting, and re-measured over those same entries BY THEIR OPERATION PREFIX — the text before the first colon of `git reflog --format=%gs`, which is the only place the operation appears — `amend`, `reset`, `rebase` and `cherry` each occur 0 times. The prefix reading is itself load-bearing: two of R1's commit SUBJECTS contain the word "reset", so a naive scan of the whole `%gs` line reports two false history-rewrite hits, and the reviewer's own first measurement did exactly that before being corrected. The counter-measure replaces one unmeetable universal with the two measurable claims it was reaching for, and the R2 block already carries them: every reflog entry that PRODUCED a commit of the round reads `commit`, reported as a count, and no entry of the round — navigation included — has a history-rewriting operation prefix.
+<<<END R0601
 
-> Round-by-round review record for the F255 branch, reset at the feature claim.
-> The F086 record closed with pull request #207, merged into `main` at this
-> feature's Open PR Gate. That branch's LAST round, R35, has no gate entry in
-> its own record by construction, because a round's verdict is written by the
-> NEXT reviewed round (DECISION F085 D9) and R35 was the last round F086 had;
-> its entry is therefore the first `Gate:` paragraph below. Finding ids continue
-> the monotonic R-XXXX series across the reset.
-> Next free id: R-0601.
->
-> This reset CARRIES the open set forward rather than dropping it, per DECISION
-> F057 D1 in `.agent/decisions.md` and finding R-0362. The findings open when
-> the F086 record closed are reproduced verbatim below, extracted BY ID out of
-> the previous record by script and never retyped, never rewrapped and never
-> summarised. The pre-reset record held no `Landed:` line.
+<<<SLICE R0602
+- R-0602 — Low — THE HANDBACK TEMPLATE'S 800-TOKEN HARD CAP HAS BEEN EXCEEDED BY EVERY ROUND FOR AT LEAST TWELVE ROUNDS, SO IT BINDS NOTHING AND NO ROUND HAS EVER BEEN FOUND AGAINST IT. `docs/agents/handback_template.md` states at line 14 "Hard cap: this file stays ≤800 tokens — ≤1600 in the >10-commit LARGE case (P4 token thrift)". Measured by the reviewer over the twelve most recent commits that rewrote `.agent/handoff.md`, at the chars/4 estimate the worker itself used: EVERY ONE exceeds 800, from 1306 tokens at `3f154c6f` to 2983 at `6c47a490`, a band of 1.6x to 3.7x the cap, with the F086 R35 handback that this reviewer PASSED sitting at 2148. The line-count cap in the SAME document is meanwhile respected — R1's 67 lines sit inside the ≤100 allowance the template grants a table of more than five commits — so two caps in one file disagree about what the same artifact may contain, and only the token one is dead letter. It is registered rather than repaired because it is not this round's regression, it is not fixable by writing a shorter handback while the mandated content stays what it is, and choosing between the two coherent outcomes is an operator-visible DECISION under §4 item 7: either the cap is stale and is restated to a number the mandated sections can actually meet, or the mandated content shrinks and the template says which section gives way. R3 rules it alongside the F255 spec amendments. Until then no round should be failed against a number twelve consecutive rounds have ignored, and no handback should cite compliance with it.
+<<<END R0602
 
-## Steps
-R1 merge #207 at the Open PR Gate, claim F255 in the ledger, reset this record
-carrying the F086 open set forward, register R-0600 and gate R35 → R2 the
-teacher-role inventory: how `role_config` resolves a role today, which ledger
-events carry a vocabulary stable enough to key narration to, how F103 separates
-a budget pool, what `ActionClass` read_only already enforces and how the watch
-path isolates a reader from the run — each MEASURED in the source rather than
-read off the feature file → R3 record R2 and rule the teacher role's shape, its
-three grounding sources and its own budget pool as a DECISION, amending
-`docs/roadmap/features/T5_F255.md` with the Design, Task slicing, Acceptance and
-Do-not-touch sections its registration stub has never carried → R4 onward the
-built work, in the T-slices that DECISION names.
+<<<SLICE RECORDR1
+Gate: R2 — the R1 entry. R1 PASSED. Every gate the R1 block ordered was RE-EXECUTED by the reviewer over `b35d350b..6c47a490` rather than read from the handback, and every one holds; two findings are registered this round, R-0601 against the block's own reflog wording and R-0602 against a template cap the whole project has outgrown, and NEITHER is a defect of the round's work. THE OPEN PR GATE RAN AS AGENTS.md ORDERS: `gh pr list` returned exactly one entry, #207 from `feature/f086-release-capability` into `main` and not a draft; `gh pr view 207` now reports `MERGED` at 2026-08-20T20:27:23Z with merge commit `b35d350b`; `git rev-parse main` and `origin/main` both read `b35d350b`; `git merge-base HEAD main` IS that commit, so feature/f255-teacher-role is cut from the merge and no commit of the round sits on `main`; and `gh pr list --state open` now returns the empty list. The merge was authorised because the reviewer watched CI run 32411743463 on `538323e0` to conclusion `success` with #207 MERGEABLE and mergeStateStatus CLEAN. THE TRANSPORT HELD IN THE PRIMARY FORM: the reviewer's scratch original `.remedy-wt/f255-r1.md`, the committed `.agent/authored/f255-r1.md` at `903c00ff` and the committed `.agent/last_block.md` at `d5437d29` are byte-EQUAL at sha256 c445fb0d6e9b45a98a5523c0fb35292be44289aa91c12dd72d19ca61e10e7d25 over 29472 B and 386 lines — the digest stated at delegation — and both commits carry the identical git blob `74f3dde6`. THE CLAIM IS A REWRITE THAT MOVED ONE LINE: in `docs/roadmap/STATUS.md` the FROM line reads 1x at `b35d350b` and 0x at `c4718364` while the TO line reads 0x then 1x, the containment test prints False so the REWRITE shape the block declared is the shape the slices have, and `git diff --numstat` for that file is `1 1`, so no other ledger line moved and F255 now reads `- [~]`. THE RESET CARRIED THE OPEN SET WITHOUT LOSING A BYTE, WHICH IS THE ROUND'S REAL RISK AND THE ONE R-0572 EXISTS FOR: measured by the reviewer independently of the worker's script, by a line scan alone, the base blob at `b35d350b` holds 182 registered, 7 resolved, 175 open and 0 `Landed:`, and the C2 blob at `7efd78aa` holds 176 registered, 0 resolved, 176 open and 0 `Landed:` — the reading a carry-forward of 175 plus one registration owes; the carried id sequence equals the base open sequence AS AN ORDERED LIST; none of the seven resolved ids leaked in; and `- R-0600 — ` occurs exactly 1x, last. THE CARRY IS VERBATIM UNDER A CONTROL THAT CAN ACTUALLY FAIL: all 175 carried paragraphs are EXACT ELEMENTS of the base record's 226-paragraph set, 175 matched of 175, and three negative controls — one paragraph truncated by 40 B, one word altered, one paragraph dropped — are each REJECTED. That control shape is load-bearing rather than ceremonial: the truncated paragraph IS still a substring of the base blob, so the containment form of the same check accepts it, which the reviewer confirmed by running both forms against the same mutant before the block was emitted. THE R35 ENTRY LANDED AS AN APPEND: the pre-C3 blob, 314805 B over 972 lines, is a byte-exact PREFIX of the post-C3 blob, 319613 B over 974 lines; the 2-line remainder is a blank line followed by RECORD35 at sha256 158079a7f686685eab8455d9d1c21db7a6ef4f01b25075d1cf01cd3a07275308 over 4808 B, separator PRESENT; an independent paragraph split yields 181 units whose LAST is exactly RECORD35, at sha256 818125f7f01a3a55 over 4807 B and 1 line with its trailing newline INCLUDED and at sha256 d336f5e06edd657a over 4806 B with it STRIPPED, both conventions given because R-0600 was registered for omitting exactly that; a one-byte mutant is REJECTED by both readings; and `Gate: R1 — the F086 R35 entry.` occurs 1x, is the only and therefore last line beginning `Gate: R`, with no header key repeated. THE STATE FILES ARE BYTE-EXACT AND SATISFY EVERY READER THE REVIEWER COLLECTED: `.agent/plan.md` at `7f1fc0e0` byte-equals PLAN255 at 40 lines, under the 50-line cap, with `## Goal` 1x, `## Next Steps` 1x and `F255` 3x; `.agent/context.md` at `c4718364` byte-equals CONTEXT255 with `## Active Branch` 1x, `feature/` 1x, `Steps` 1x, `F255` 1x and `pytest` 2x, and carries none of the eight stale strings the dashboard and test-runner contracts forbid; the reset record contains `Steps`. THE ROUND GATE WAS RE-RUN SERIALLY BY THE REVIEWER IN THE PRIMARY CHECKOUT, never two pytest processes at once: the four-file state-reader selection exited 0 at `160 passed`, `tests/docs/` with `test_roadmap_index.py` exited 0 at `325 passed`, and the canary exited 0 at `42 passed`, each equal to the count measured at `538323e0` before the round began. THE RANGE IS WHAT THE HANDBACK DECLARES: seven paths over seven single-parent commits, every `+/-` cell of the `## Commits` table byte-identical to `git diff --numstat` at 386/0, 352/154, 28/27 with 1/1, 25/124, 2/0, 31/34 and C5's own 39/27 correctly routed to the round report rather than claimed inside itself; a maximum insertion column of 386, under the 500 cap; all seven paths the Change section names as untouched present at `b35d350b` and absent from the range; zero marker lines in each of the five files the round writes; and a handback of 67 lines, inside the ≤100 allowance its seven-commit table earns, carrying all seven mandated headings in the template's order. R1 IS NOT A TERMINATOR: R-0583 gives that carve-out to the round whose bundle creates the branch's pull request, and on this branch no pull request exists yet.
+<<<END RECORDR1
 
-## Findings
-<<<END LRHEAD255
-
-<<<SLICE RESETPY
-"""Reset .agent/live_review.md for F255, carrying the F086 open set forward.
-
-Paragraph convention, stated because a digest without it is unrecoverable
-(finding R-0600): a UNIT is a run of text between blank-line separators, taken
-WITHOUT any trailing newline. The file is exactly the units joined by a blank
-line, plus one final newline.
-"""
-import re
-import sys
-
-SRC = sys.argv[1]          # the pre-reset .agent/live_review.md
-HEADSLICE = sys.argv[2]    # the extracted LRHEAD255 slice
-OUT = sys.argv[3]          # where the reset record is written
-
-src = open(SRC, encoding="utf-8").read()
-units = [u.rstrip("\n") for u in src.split("\n\n")]
-
-# CONTROL 1 - the split is lossless: it reconstructs the source byte for byte.
-assert "\n\n".join(units) + "\n" == src, "paragraph split is not lossless"
-
-reg = re.compile(r"^- (R-\d+) — ")
-done = re.compile(r"^Done: (R-\d+) — ")
-
-registered, resolved, orphans = [], set(), 0
-for u in units:
-    if reg.match(u):
-        registered.append(u)
-    elif done.match(u):
-        resolved.add(done.match(u).group(1))
-    elif not (u.startswith("#") or u.startswith(">") or u.startswith("Gate: R")):
-        orphans += 1
-
-# CONTROL 2 - a truncated carry shows up as a fragment that matches no kind.
-assert orphans == 0, "orphan fragment: the record does not split cleanly"
-
-carried = [u for u in registered if reg.match(u).group(1) not in resolved]
-ids = [reg.match(u).group(1) for u in carried]
-
-# CONTROL 3 - every carried unit is an EXACT ELEMENT of the source unit list.
-# Substring containment is NOT enough: a truncated paragraph is still a
-# substring of the source, so "u in src" cannot reject a truncated carry.
-source_units = set(units)
-for u in carried:
-    assert u in source_units, "carried unit is not a verbatim source paragraph"
-
-head = open(HEADSLICE, encoding="utf-8").read().rstrip("\n")
-out = "\n\n".join([head] + carried) + "\n"
-open(OUT, "w", encoding="utf-8").write(out)
-
-print("registered", len(registered))
-print("resolved", len(resolved))
-print("carried", len(carried))
-print("orphans", orphans)
-print("first_id", ids[0], "last_id", ids[-1])
-print("out_units", len(out.split("\n\n")))
-<<<END RESETPY
-
-<<<SLICE R0600
-- R-0600 — Low — A DIGEST STATED FOR AN EXTRACTED REGION WITHOUT ITS BYTE AND LINE COUNT LEAVES THE NEWLINE CONVENTION UNRECOVERABLE, SO RE-MEASURING A TRUE RECORD READS FAIL. The entry `Gate: R35 — the R34 entry.`, appended to the F086 record at `f7c9ac12` and not carried into this file, which carries findings only, states its second and independent extraction as "a paragraph-level split of the whole post-commit blob independently yields RECORD33 as the last of its 225 paragraphs at sha256 2e625c2042172a92166d202c60dd1bdd64e918d16ef5eee7369485e6348737b9" and gives neither a byte count nor a line count with it. Re-measured by the F255 R1 reviewer at `eaca4ed2`: the last of that blob's 225 paragraphs digests to `925b1388cc9b1194` over 3640 B when the paragraph's trailing newline is INCLUDED, and to `2e625c2042172a92` over 3639 B when it is STRIPPED, so the entry is TRUE under the stripped reading, unverifiable under the other, and nothing in the sentence says which was taken. The same round's own handback states the counterpart measurement the other way — `2b5b3239`, 4349 B, 1 line, newline INCLUDED — so two texts of one round record the same class of measurement under opposite conventions, and only the one carrying counts can be checked at all. Nothing on disk is wrong and no carry was lost; the defect is in the proof text, which is the permanent record, and discharging it cost the next reviewer a re-measurement round. The counter-measure is a §3 pre-emission checklist item: every digest a block or a record states for an extracted region carries the byte count and the line count of the exact bytes digested. The R1 dry run of this feature's own reset found the same class in its second half — an extraction-equality control written as substring containment cannot reject a TRUNCATED carry, because a truncated paragraph remains a substring of the source, so that control was replaced before emission by exact membership in the source's paragraph SET, with negative controls that reject truncation, corruption and omission alike. Both halves belong in one checklist item: a measurement that cannot fail and a measurement whose units are unstated are the same defect wearing different clothes.
-<<<END R0600
-
-<<<SLICE RECORD35
-Gate: R1 — the F086 R35 entry. R35 PASSED with NO finding against its own work and none against its block, and its verdict is recorded HERE rather than in the record it belongs to because R35 was the last round of the F086 branch and a round's verdict is written by the NEXT reviewed round (DECISION F085 D9). Every gate the R35 block ordered was RE-EXECUTED by the reviewer over `d56cadad..538323e0` rather than read from the handback, and every one holds as written. THE TRANSPORT HELD IN THE PRIMARY FORM: the reviewer's scratch original `.remedy-wt/f086-r35.md`, the committed `.agent/authored/f086-r35.md` at `83f47722` and the committed `.agent/last_block.md` at `e1ea7e37` are byte-EQUAL at sha256 e343fbc2c680a40000caefa03e0a18759d02a5bdd206a1e585805a2fa218c200 over 16778 B and 188 lines, and both commits carry the identical git blob `ad133a89`. THE PLAN LANDED AS AUTHORED: `.agent/plan.md` at `a7754e89` byte-equals PLAN35 extracted programmatically from the committed block, at sha256 581b3997e921679e4b1bb23207c48b4c284850c4571aa65479e324bc1b94a2f8 over 2467 B and 43 lines, under the AGENTS.md 50-line cap, carrying `## Goal` once, `## Next Steps` once and `F086` four times. THE LEDGER APPEND HELD UNDER TWO EXTRACTIONS AND A NEGATIVE CONTROL: the pre-C2 blob at `a7754e89`, 456242 B over 1069 lines, is a byte-exact PREFIX of the post-C2 blob at `f7c9ac12`, 460592 B over 1071 lines; the 2-line remainder is a blank line followed by RECORD34 at sha256 dbe1fe3999384b375c11ad55cb204fb6a246f31cae063c3bc558a2079813c7e5 over 4350 B with the blank separator PRESENT; a paragraph-level split of the post-C2 blob independently yields RECORD34 as the last of its 226 paragraphs, at sha256 2b5b3239ef0c3666887369ebcb2ffa5753c3c5ad9f894424e0a4567c14c65ae4 over 4349 B and 1 line with the paragraph's trailing newline INCLUDED and at sha256 6dff0faa70f04b8469647007f831b09395d4e8504e1a8286d9962776aa2f3d82 over 4348 B with it STRIPPED, both stated because R-0600 is registered this round for omitting exactly that; and a remainder mutated at one byte, offset 40, space to the letter X, is REJECTED by both extractions rather than by neither. THE SETS DID NOT MOVE AND BOTH ENDS WERE MEASURED: registered 182, resolved 7, open 175 and `Landed:` 0 at `d56cadad`, and each of those four numbers identical at `f7c9ac12`, which is what a `Gate:` paragraph adding no `- R-` line and no `Done:` line must produce. THE TWO SCANS RAN AND THE CONTROL PROVED THE FIRST OF THEM: with backtick-quoted spans deleted first, the unquoted word-boundary match on the four capital letters reads 0 over the two lines `f7c9ac12` adds, while the same extractor over `fd166295`'s four added lines to that same file reads 3, so the gate is not vacuous; `Gate: R` headers go 32 to 33, the only key occurring more than once is unchanged at both ends and is exactly `Gate: R19 — the R18 entry`, and `Gate: R35 — the R34 entry.` occurs once, sits last, and is followed by text beginning `R34 ` once its leading space is stripped. THE ROUND GATE WAS RE-RUN SERIALLY IN THE PRIMARY CHECKOUT, never two pytest processes at once: the four-file state-reader selection exited 0 at `160 passed` and the canary exited 0 at `42 passed`, each equal to the count the R35 block records the reviewer measuring at `d56cadad`. THE RANGE IS WHAT THE HANDBACK DECLARES: five `.agent/` paths over five single-parent commits, every `+/-` cell of the `## Commits` table byte-identical to `git diff --numstat` at 188/0, 65/54, 10/10 and 2/0, with the handback commit's own 20/20 correctly routed to the round report rather than claimed inside itself; a maximum insertion column of 188, under the 500 cap; every `git reflog` entry of the round reading `commit:`; each of the eight paths the Change section names as untouched present at `d56cadad` and absent from the range; zero marker lines in either target; and a handback of 55 lines carrying all seven mandated headings in the template's order, under the 60-line cap. THE PERMANENT RECORD IT WROTE IS TRUE, which is the check a `Gate:` entry owes the entry below it: the reviewer re-measured every factual claim RECORD34 makes — the R34 transport digest 8b6a657c over 15233 B and 177 lines with blob `5941b129`, the `b7e373cb` plan digest 7270a6b4 over 2483 B and 43 lines with its heading counts of one, one and two, the prefix property with its 88184b09 remainder over 3641 B, the 225-paragraph split, the 182/7/175/0 sets at both ends, and the 31-to-32 header count — against disk at the SHAs that sentence names, and every one of them holds; its single unrecoverable clause is the bare paragraph digest R-0600 registers. R35 IS NOT A TERMINATOR and never claimed to be: R-0583 gives that carve-out to the round whose bundle creates the branch's pull request, which on F086 was R31.
-<<<END RECORD35
-
-<<<SLICE PLAN255
+<<<SLICE PLAN255R2
 # Plan — F255 Teacher role
 
-Branch: feature/f255-teacher-role, cut from `main` at the merge commit of pull
-request #207, which this round merged at the Open PR Gate.
+Branch: feature/f255-teacher-role, cut from `main` at b35d350b, the merge commit
+of pull request #207. No pull request is open for this branch; on this project
+the PR is created by the closure round.
 `.agent/live_review.md` is the source of truth for the open set, for the next
 free finding id and for the round map; this file repeats none of them.
 
@@ -194,193 +124,127 @@ teacher spend is its own budget pool in the F103 ledger, and the read-only
 invariants hold under test.
 
 ## Current Step
-R1: merge #207, claim F255, reset `.agent/live_review.md` carrying the F086 open
-set forward, register R-0600 and record the F086 R35 verdict. No source file and
-no test changes this round.
+R2: register R-0601 and R-0602, record the R1 verdict, and MEASURE the five
+seams F255 depends on into `.agent/f255_inventory.md`. Nothing is designed and
+nothing is built this round.
 
 ## Next Steps
-1. R2 MEASURES THE GROUND BEFORE ANYTHING IS DESIGNED, because the feature file
-   is a registration stub: how `role_config` resolves a role, which ledger
-   events carry a stable vocabulary, how F103 separates a budget pool, what
-   `ActionClass` read_only enforces, and how the watch path isolates a reader.
-2. R3 RECORDS R2 AND RULES THE SHAPE AS A DECISION, amending
+1. R3 RULES THE SHAPE AS A DECISION and amends
    `docs/roadmap/features/T5_F255.md` with the Design, Task slicing, Acceptance
-   and Do-not-touch sections it has never carried.
+   and Do-not-touch sections its registration stub has never carried. R3 also
+   rules R-0602, the dead token cap, per §4 item 7.
+2. R3 MUST RULE ON EACH SPEC-VS-REALITY GAP R2 MEASURES, rather than building
+   around it. A dependency the registration names but the code lacks is a
+   planning decision, not a detail for a build round to improvise.
 3. R4 ONWARD BUILDS THE T-SLICES that DECISION names, Stage 1 before Stage 2.
 
 ## Risks
-- THE FEATURE FILE IS A STUB. It carries Goal & Done, Scope and Non-goals only,
-  so the Task slicing and Acceptance every build round reads are absent, and
-  designing from the stub alone would be guessing rather than planning.
+- THE REGISTRATION MAY NAME GROUND THAT DOES NOT EXIST. F255 depends on a
+  "stable ledger event vocabulary" and on the isolation rules of a `watch`
+  command; R2 measures whether either is real before R3 designs on top of it.
+- READ-ONLY IS AN INVARIANT, NOT AN INTENTION. If `ActionClass` read_only turns
+  out to be declarative only, the teacher's hard invariant needs an enforcement
+  seam that must be designed rather than assumed.
 - THE THREE GROUNDING SOURCES ARE THE WHOLE FEATURE. A teacher that silently
   mixes ledger fact, workspace code and model knowledge is worse than no
   teacher, so their separation is a test obligation and not a prompt wish.
-- READ-ONLY IS AN INVARIANT, NOT AN INTENTION. `ActionClass` read_only and the
-  watch isolation must be shown to hold for the teacher path itself.
-<<<END PLAN255
-
-<<<SLICE CONTEXT255
-# Context — F255 Teacher role
-
-## Active Branch
-feature/f255-teacher-role, cut from `main` at the merge commit of pull request
-#207, which this round merged at the Open PR Gate. Self-drive session per
-docs/agents/self_drive_protocol.md: the main session plans and reviews and
-writes nothing in the work tree, one delegated worker per round makes every
-commit.
-
-## Scope
-In: a fourth configured role `teacher`, resolved through the same `role_config`
-mechanism as orchestrator, worker and reviewer; passive narration keyed to
-ledger events (Stage 1: deterministic templates, zero tokens, offline);
-on-demand Q&A (Stage 2) through the teacher role's own model over a small
-context; three grounding sources kept separate and labelled; a teacher budget
-pool reported apart from mission spend in the F103 ledger; a level dial; and the
-CLI surfaces `remedy do watch --learn` and `remedy teach ask`.
-
-Out, per the feature file's Non-goals: any write access to the run, mission
-steering, and any influence on orchestrator, worker or reviewer decisions. The
-cockpit panel ships with Tier 5 and not before.
-
-## Constraints
-- Merges only at the Open PR Gate; never force-push; never work on main.
-- Verification is pytest, scoped per round, plus the canary
-  tests/cli/test_golden_path.py. A round touching docs/roadmap/** also gates
-  tests/docs/ and tests/orchestration/test_roadmap_index.py, and a round
-  rewriting `.agent/` state also gates the four files that read that state
-  live: tests/orchestration/test_test_runner.py,
-  tests/ui_server/test_dashboard_contract.py,
-  tests/regression/test_resource_safety.py and
-  tests/orchestration/test_integrity_gate.py. Destructive and red-proof checks
-  run only inside a disposable git worktree under .remedy-wt/, so resource
-  safety stays intact. Two pytest processes never run at once.
-- THE FEATURE FILE IS A REGISTRATION STUB: Goal & Done, Scope and Non-goals and
-  nothing else. R2 inventories the ground and R3 rules the shape and amends the
-  file; no build round starts before that amendment lands.
-- Repository-wide `ruff check` is RED at the claim and is NOT a gate (R-0364):
-  the reviewer measured 26 errors at 538323e0 — 20 I001, 4 F401, 1 UP035 and
-  1 F821. Ruff is gated scoped to the files a round touches, measured against
-  the SAME files at the claim so a pre-existing error is not read as a new one.
-- 176 findings are open once this round registers R-0600, all carried forward
-  into the reset record per DECISION F057 D1. R-0403, R-0448, R-0482, R-0487,
-  R-0490, R-0567, R-0568, R-0569, R-0570 and R-0571 stay routed to a paydown
-  branch and are deliberately not fixed here.
-
-## Steps
-Stated once, in `.agent/plan.md`. This file tracks scope and constraints only.
-<<<END CONTEXT255
+<<<END PLAN255R2
 
 Done when:
-G1 HYGIENE. `.agent/STOP` read from disk before S0 and reported absent or
-   present; `git status --porcelain` EMPTY after every commit and at the
-   handback; `git worktree list` reports the primary checkout alone, because
-   this round creates none; the branch after S0 is feature/f255-teacher-role.
-   No reading is taken by overwriting a file in the primary checkout — use
-   `git show <sha>:<path>`.
-G2 THE OPEN PR GATE. Report the `gh pr list` output BEFORE the merge verbatim,
-   the exact merge command and its real output, then `gh pr view 207 --json
-   state,mergedAt` showing `MERGED`, then `git log --oneline -n 1 main` and
-   `git rev-parse main`. Report that the new branch's merge-base with `main` IS
-   that merge commit, and that `git log --oneline -n 1 origin/main` agrees. No
-   commit of this round has `main` as its branch.
-G3 TRANSPORT. Report the sha256 and the byte and line counts of
-   `.remedy-wt/f255-r1.md`, of `.agent/authored/f255-r1.md` at C0a and of
+G1 HYGIENE. `.agent/STOP` read from disk before C0a and reported absent or
+   present; branch is feature/f255-teacher-role; `git status --porcelain` EMPTY
+   after every commit and at the handback; `git worktree list` reports the
+   primary checkout alone. No reading is taken by overwriting a file in the
+   primary checkout — use `git show <sha>:<path>`.
+G2 TRANSPORT. Report the sha256 and the byte and line counts of
+   `.remedy-wt/f255-r2.md`, of `.agent/authored/f255-r2.md` at C0a and of
    `.agent/last_block.md` at C0b, and state whether all three are EQUAL.
-G4 SLICES EXTRACTED, NEVER RETYPED. Report the command that extracts each slice
-   from the COMMITTED `.agent/authored/f255-r1.md` by its markers, and the
-   sha256, byte count and line count of each extracted slice. Every count you
-   state anywhere for an extracted region carries its bytes AND its lines,
-   which is what R-0600 registers.
-G5 THE CLAIM, A REWRITE PAIR. In `docs/roadmap/STATUS.md`: report CLAIM255FROM's
-   count at the base and after C1, and CLAIM255TO's count at both ends. The
-   reviewer measured FROM 1x and TO 0x at the base; the rewrite shape owes FROM
-   0x and TO 1x after C1. Report `git diff --numstat` for that file at C1 — it
-   must be 1 insertion and 1 deletion, proving no other ledger line moved.
-G6 THE RESET, BY SCRIPT, WITH ITS CONTROLS. Report the RESETPY run's full stdout
-   and its exit code. Then, INDEPENDENTLY of that script and of any paragraph
-   split, scan the pre-reset blob and the C2 blob line by line with
-   `^- (R-\d+) — ` and `^Done: (R-\d+) — `, and report: the open set at the base
-   as a count, the carried id list at C2 as a count, that the two are EQUAL as
-   ORDERED sequences, and that no resolved id appears at C2. The reviewer
-   measured 175 open at the base. Report also that `^Done: ` and `^Gate: ` each
-   occur 0x in the C2 blob before C3 appends the first gate entry.
-G7 THE CARRY IS VERBATIM, AND THE CONTROL PROVES IT CAN FAIL. Every carried
-   paragraph at C2 is an EXACT ELEMENT of the base record's paragraph set —
-   report that as a count of 175 matched out of 175. Then run THREE negative
-   controls over your own extraction and report that EACH is REJECTED: one
-   carried paragraph truncated by 40 bytes, one with a single word altered, and
-   one dropped entirely. A control that is accepted makes the gate worthless;
-   substring containment accepts the first of the three, which is why exact
-   membership is ordered here.
-G8 R-0600 REGISTERED, SETS MEASURED AT BOTH ENDS. With `^- R-\d+ — ` as
-   registered and `^Done: R-\d+ — ` as resolved, report both counts plus open
-   and `Landed:` at the base and at C2. The reviewer measured 182 registered,
-   7 resolved, 175 open and 0 `Landed:` at the base. At C2 the expected reading
-   is 176 registered, 0 resolved, 176 open and 0 `Landed:`, because the reset
-   carries the open set only and this round registers R-0600. Report that
-   `- R-0600 — ` occurs exactly 1x at C2.
-G9 THE R35 GATE ENTRY. C3 appends RECORD35 preceded by exactly one blank line.
-   The pre-C3 blob is a byte-exact PREFIX of the post-C3 blob; report the
-   remainder's sha256, byte count and line count, and that the blank separator
-   is present. Report it a SECOND time by an independent paragraph-level split
-   whose LAST unit is RECORD35, giving that unit's sha256 with BOTH newline
-   conventions and their byte counts. Run a negative control — one character of
-   the expected remainder mutated — and report that BOTH readings reject it.
-   Report that `Gate: R1 — the F086 R35 entry.` occurs exactly 1x, is the LAST
-   line beginning `Gate: R`, and that no other `Gate: R` header key repeats.
-G10 THE STATE FILES SATISFY THEIR READERS. Report, measured on the committed
-   files: `.agent/plan.md` at C4 byte-equals PLAN255, its line count is under
-   50, and it contains `## Goal`, `## Next Steps` and a roadmap F-id;
-   `.agent/context.md` at C1 byte-equals CONTEXT255 and contains `## Active
-   Branch`, `feature/`, `Steps`, a roadmap F-id and the word `pytest`;
-   `.agent/live_review.md` at C3 contains `Steps`. Report each as the measured
-   value, not as the word yes.
-G11 THE ROUND GATE, serially in the PRIMARY checkout, never two pytest
-   processes at once. This round rewrites `.agent/` state AND touches
-   docs/roadmap/**, so both selections gate, plus the canary. Report the exact
-   command, exit code and tail of each:
+G3 SLICES EXTRACTED, NEVER RETYPED. Report the command that extracts each slice
+   from the COMMITTED `.agent/authored/f255-r2.md` by its markers, and the
+   sha256, byte count AND line count of each — every digest you state anywhere
+   for an extracted region carries both counts and names its newline convention
+   (R-0600).
+G4 THE TWO FINDINGS REGISTERED. With `^- R-\d+ — ` as registered and
+   `^Done: R-\d+ — ` as resolved, report both counts plus open and `Landed:` at
+   the base and at C1. The reviewer measured 176 registered, 0 resolved, 176
+   open and 0 `Landed:` at `6c47a490`; C1 owes 178 / 0 / 178 / 0. Report that
+   `- R-0601 — ` and `- R-0602 — ` each occur exactly 1x, that each is preceded
+   by exactly one blank line, and that the pre-C1 blob is a byte-exact PREFIX
+   of the post-C1 blob with the remainder equal to the two slices in order.
+G5 THE R1 VERDICT ENTRY. C2 appends RECORDR1 preceded by exactly one blank
+   line. The pre-C2 blob is a byte-exact PREFIX of the post-C2 blob; report the
+   remainder's sha256, byte count and line count and that the blank separator is
+   present. Report it a SECOND time by an independent paragraph-level split
+   whose LAST unit is RECORDR1, giving that unit's sha256 under BOTH newline
+   conventions with the byte count of each. Run a negative control — one
+   character of the expected remainder mutated — and report that BOTH readings
+   reject it. Report that `Gate: R2 — the R1 entry.` occurs exactly 1x, is the
+   LAST line beginning `Gate: R`, and that no `Gate: R` header key repeats.
+G6 THE INVENTORY'S CITATIONS RESOLVE AT HEAD. This is the round's central gate.
+   Extract every `path:line` citation from `.agent/f255_inventory.md` with a
+   script, and for each one report that the path is TRACKED at HEAD
+   (`git ls-tree`) and that the file has at least that many lines. Report
+   matched and total; they must be equal. Then run a NEGATIVE CONTROL: append a
+   citation naming a path that does not exist, and one naming a real path at an
+   impossible line, to a COPY of the file, and report that the checker REJECTS
+   each. A checker that accepts a bogus citation proves nothing about the real
+   ones.
+G7 THE INVENTORY ANSWERS EVERY QUESTION. Report that `.agent/f255_inventory.md`
+   carries one `##` heading per question Q1..Q6 in that order, and for each the
+   number of citation rows beneath it. A question answered by an ABSENCE is
+   answered — report it as ABSENT with the search that established it, and give
+   the search command, not a conclusion alone.
+G8 THE PLAN. `.agent/plan.md` at C4 byte-equals PLAN255R2; report its sha256,
+   byte and line counts, that the line count is under 50, and that `## Goal`,
+   `## Next Steps` and a roadmap F-id all occur in it.
+G9 THE ROUND GATE, serially in the PRIMARY checkout, never two pytest processes
+   at once. This round rewrites `.agent/` state and touches no source file, no
+   test and nothing under docs/, so the four state-reader files are the gate,
+   plus the canary. Report the exact command, exit code and tail of each:
      `python3 -m pytest tests/orchestration/test_test_runner.py tests/ui_server/test_dashboard_contract.py tests/regression/test_resource_safety.py tests/orchestration/test_integrity_gate.py -q -rf`
-     `python3 -m pytest tests/docs/ tests/orchestration/test_roadmap_index.py -q -rf`
      `python3 -m pytest tests/cli/test_golden_path.py -q -rf`
-   The reviewer measured exit 0 at 160 passed, exit 0 at 325 passed and exit 0
-   at 42 passed, all three at 538323e0 in the primary checkout, and measured the
-   docs selection green a second time with CLAIM255TO already applied inside a
-   disposable worktree.
-G12 CHANGE SET, HISTORY AND CAPS. Report `git diff --name-only <merge-base>..HEAD`
+   The reviewer measured exit 0 at 160 passed and exit 0 at 42 passed, both at
+   `6c47a490` in the primary checkout.
+G10 CHANGE SET, HISTORY AND CAPS. Report `git diff --name-only 6c47a490..HEAD`
    and state that it equals the Change list with no path on either side alone;
-   that each of the seven paths the Change section names as untouched is PRESENT
+   that each of the eight paths the Change section names as untouched is PRESENT
    at the base and absent from that range; that every commit in the range has
-   one parent; that every `git reflog` entry of this round reads `commit:`; and
-   each commit's insertion column from `git diff --numstat`, every one under
-   500. The same `+/-` cells appear in the handback's `## Commits` table and
-   must be byte-identical to the tool's output. C5's own cell cannot exist while
-   C5 is written, so it belongs to the round report, and so does the complete
-   change set, which C5 completes.
-G13 NO MARKER LEAKED. Report the count of LINES beginning `<<<SLICE ` or
-   `<<<END ` in every file this round writes: `docs/roadmap/STATUS.md`,
-   `.agent/context.md`, `.agent/live_review.md`, `.agent/plan.md` and
-   `.agent/handoff.md`. Every count must be 0.
-G14 THE PUSH. After C5, `git push -u origin feature/f255-teacher-role` and
-   report its real output. Do NOT create a pull request — on this project the
-   PR is created by the closure round — and do NOT wait on the CI run the push
-   starts (constraint 9). C5's own insertion count and the push cannot appear
-   inside C5, so they belong in the round report.
+   one parent; and each commit's insertion column from `git diff --numstat`,
+   every one under 500, with the same `+/-` cells appearing byte-identically in
+   the handback's `## Commits` table. C5's own cell and the complete change set
+   belong to the round report, not to C5.
+   THE REFLOG IS REPORTED AS TWO MEASURED CLAIMS, NOT ONE UNIVERSAL (R-0601):
+   first, the count of reflog entries of this round that PRODUCED a commit and
+   read `commit` — it must equal the number of commits the round makes; second,
+   the count of entries of this round, navigation included, whose OPERATION
+   PREFIX — the text before the first colon of `git reflog --format=%gs` —
+   contains `amend`, `reset`, `rebase` or `cherry`, which must be 0. Read the
+   prefix, never the whole line: commit SUBJECTS in this project routinely
+   contain the word "reset", and scanning the full line reports false rewrites.
+   List every entry of the round with its operation prefix.
+G11 NO MARKER LEAKED. Report the count of LINES beginning `<<<SLICE ` or
+   `<<<END ` in `.agent/live_review.md` at C2, `.agent/f255_inventory.md` at C3,
+   `.agent/plan.md` at C4 and `.agent/handoff.md` at C5. Every count must be 0.
+G12 THE PUSH. After C5, `git push` and report its real output. Do NOT create a
+   pull request and do NOT wait on the CI run the push starts (constraint 10).
 
 Handback:    Rewrite `.agent/handoff.md` per docs/agents/handback_template.md —
-             all seven mandated headings in the template's order, at most 60
-             lines or a DECISION D15 stated-cause line naming the real count and
-             the mandated content that caused it. It carries the item-status
-             table for the S0..C5 bundle, the `## Commits` table G12 pins, and
-             one LINE per gate rather than its transcript (R-0582). Its `## Next`
-             section names the next session's FIRST action as Phase 1 rule 1,
-             the `.agent/STOP` re-read, and its SECOND as R2, the teacher-role
-             inventory — in that order — and states that R1 awaits review. There
-             is no open pull request to merge after this round, because S0
-             merged the only one and this branch's PR is created at closure.
-             The full transcripts go in the round report you return, never in
-             the file. The handback also carries this Fortschritt line verbatim,
-             because with no relay you never see the operator brief that would
-             otherwise state it (R-0418):
-             Fortschritt: ~2 % (F086 merged and closed · F255 claimed · R1 the
-             claim and the record reset · R2 the inventory next) — Schätzung
+             all seven mandated headings in the template's order, the
+             item-status table for the C0a..C5 bundle, the `## Commits` table
+             G10 pins, and one LINE per gate rather than its transcript
+             (R-0582). Do NOT cite compliance with the template's 800-token cap:
+             R-0602 registers that cap as dead letter this same round, and a
+             handback claiming to meet it would be the false sentence that
+             finding is about. Stay inside the LINE cap the template grants your
+             commit count. Its `## Next` section names the next session's FIRST
+             action as Phase 1 rule 1, the `.agent/STOP` re-read, and its SECOND
+             as R3 — the DECISION round that rules the shape, rules R-0602 and
+             amends the feature file — in that order, and states that R2 awaits
+             review. There is no open pull request. The full transcripts go in
+             the round report you return, never in the file. The handback also
+             carries this Fortschritt line verbatim, because with no relay you
+             never see the operator brief that would otherwise state it
+             (R-0418):
+             Fortschritt: ~5 % (F086 merged · F255 claimed at R1 · R2 measures
+             the ground · R3 rules the design next) — Schätzung
 ──────────────────────────────────────────────────────────────
