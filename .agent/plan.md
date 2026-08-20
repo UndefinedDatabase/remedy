@@ -15,13 +15,17 @@ path and the UI serve work, the version command matches the tag, and a release
 with a missing changelog entry is refused by the gate.
 
 ## Current Step
-R12, this round: close T002. The wheel now embeds the revision it was built
-from, and `apps/cli/version_report.py` reads it back at the path hatchling
-actually writes. Also records the R11 verdict and registers R-0581.
+R13, this round: T003's decision half. `packages/orchestration/release_gate.py`
+refuses a release on red CI, a tag that does not match the version, a missing or
+empty changelog section, or a wheel over budget, with one seeded-failure test
+each. Also records the R12 verdict and registers R-0582.
 
 ## Next Steps
-1. T003 — the release CI stage, the changelog and tag gate, the wheel-size
-   budget and the seeded-failure tests.
+1. R14 — the DATA and the CALLER, which R13 deliberately left out: a
+   keep-a-changelog `CHANGELOG.md` with a section for the version
+   `pyproject.toml` declares, a test that the real changelog covers the real
+   version, and a manual-trigger workflow calling `refuse_release` with the real
+   tag, version, changelog and wheel size. UNTIL THEN THE GATE REFUSES NOTHING.
 2. Then the install smoke, the integration gate, and closure. The packaging
    ist-doc is written at closure, when the built state stops moving.
 
@@ -32,7 +36,7 @@ actually writes. Also records the R11 verdict and registers R-0581.
   session with this posture; the round that writes it must name its execution
   host or it will be unverifiable where it matters.
 - A build tool's file selection depends on WHERE the tree is: hatchling drops
-  every VCS exclusion when the build root is itself gitignore-matched, so any
-  packaging probe uses a worktree OUTSIDE this repository (finding R-0574).
+  every VCS exclusion when the build root is gitignore-matched, so any packaging
+  probe uses a worktree OUTSIDE this repository (finding R-0574).
 - Ruff is RED repo-wide at 26 pre-existing errors and is NOT a gate; a round
   touching Python gates ruff scoped to the files it touches.
