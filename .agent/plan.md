@@ -14,23 +14,20 @@ path and the UI serve work, the version command matches the tag, and a release
 with a missing changelog entry is refused by the gate.
 
 ## Current Step
-R19, this round and this session's last: record R18's verdict, register R-0585 —
-a done-when gate of the R18 block counted a path list that lives in another
-section of that block — and promote the rule it exposes into the §3 pre-emission
-checklist, item 16, where a rule has to live to bind the next block.
+R20: write the install smoke DECISION F086 D4 rules — `tests/test_install_smoke.py`,
+one module that self-skips unless `REMEDY_INSTALL_SMOKE` is set — and record R19's
+verdict plus R-0586, the finding R19 produced against the reviewer.
 
 ## Next Steps
-1. R20 writes the install smoke per DECISION F086 D4: one `smoke`-marked,
-   `slow`-marked module that SELF-SKIPS unless `REMEDY_INSTALL_SMOKE` is set. What
-   it can gate is the skip path and the module's own logic; what it cannot gate is
-   the install itself, and it says so rather than implying coverage.
+1. R21 promotes R-0586's rule into the §3 pre-emission checklist, item 20, where a
+   rule has to live to bind the next block, and records R20's verdict.
 2. Then the smoke's wall-clock is MEASURED on a host that can run it, and only
    then is a CI stage chosen to opt in — the `smoke` stage carries a 300 s budget
    that AGENTS.md forbids raising by hand.
 3. Then the integration gate (docs/agents/integration_gate.md) and closure. The
    packaging ist-doc is written at closure, when the built state stops moving.
-4. THE RELEASE WORKFLOW HAS NEVER BEEN RUN, and no round can dispatch it; its
-   first real run is a human action.
+4. THE RELEASE WORKFLOW HAS NEVER BEEN RUN and NO INSTALL HAS EVER BEEN PROVEN;
+   no round of this workflow can do either. Both are human actions.
 
 ## Risks
 - The install smoke needs network, a venv interpreter and minutes. MEASURED at
