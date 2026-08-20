@@ -861,6 +861,22 @@ class _ServesOneBody(http.server.BaseHTTPRequestHandler):
         """Silence the default stderr access log."""
 
 
+def _unproxied_env() -> dict[str, str]:
+    """`os.environ` WITHOUT the deny posture, so a control child is really unguarded.
+
+    A control below is spawned with plain `subprocess.run`, which inherits this
+    process's environment — and this process is not reliably outside the guard. CI
+    runs pytest itself as a `test`-class guarded child, so `os.environ` here already
+    carries `DENIED_NETWORK_ENV` and a control would be refused through the closed
+    proxy for a reason that has nothing to do with the case under test. Measured on
+    hosted run 32301614177, where this file's deny test failed on its own CONTROL.
+    Subtracting exactly the posture's keys leaves the control unguarded whether the
+    suite runs under the guard or not.
+    """
+    denied = {key for key, _ in exec_guard.DENIED_NETWORK_ENV}
+    return {key: value for key, value in os.environ.items() if key not in denied}
+
+
 #: An address `DENIED_NETWORK_NO_PROXY` does NOT name, which is where the deny is measured
 #: now that the three loopback spellings are exempt. It is a second loopback alias — every
 #: 127.0.0.0/8 address is local on Linux — so the measurement needs neither an external
@@ -910,6 +926,7 @@ def test_a_guarded_test_command_cannot_reach_a_server_that_is_really_listening()
     with _really_listening(_UNEXEMPT_HOST) as url:
         served = subprocess.run(
             _child(_FETCH_URL) + [url], capture_output=True, timeout=30,
+            env=_unproxied_env(),
         )
         assert served.returncode == 0, served.stderr
         assert _SERVED_BODY in served.stdout
@@ -926,6 +943,7 @@ def test_a_guarded_test_command_cannot_reach_a_server_that_is_really_listening()
         # serves" half, measured after the refusal rather than assumed from it.
         again = subprocess.run(
             _child(_FETCH_URL) + [url], capture_output=True, timeout=30,
+            env=_unproxied_env(),
         )
         assert again.returncode == 0
         assert _SERVED_BODY in again.stdout
