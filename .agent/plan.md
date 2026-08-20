@@ -1,43 +1,40 @@
-# Plan — F086 Release capability
+# Plan — F255 Teacher role
 
-Branch: feature/f086-release-capability, cut from `main` at 76661dc1. Pull request
-#207 is open and unmerged; the CI check on 665c45df, run 32405232165, is green —
-the first green run this branch has had. It merges at the next feature's Open PR
-Gate.
-`.agent/live_review.md` is the source of truth for the open set, for the next free
-finding id and for the round map; this file repeats none of them.
+Branch: feature/f255-teacher-role, cut from `main` at the merge commit of pull
+request #207, which this round merged at the Open PR Gate.
+`.agent/live_review.md` is the source of truth for the open set, for the next
+free finding id and for the round map; this file repeats none of them.
 
 ## Goal
-Remedy ships like a normal tool: `pip install` yields the `remedy` CLI with the
-UI assets bundled, `remedy --version` reports version and build info, and a
-release is gated by CI plus a semver and changelog discipline. DONE when a wheel
-built from a clean checkout installs into a fresh virtualenv where the golden
-path and the UI serve work, the version command matches the tag, and a release
-with a missing changelog entry is refused by the gate.
+A fourth configured role, `teacher`, that narrates a running mission and answers
+operator questions about the operator's own code, and never influences the run.
+DONE when passive narration keyed to ledger events (Stage 1, deterministic
+templates, zero tokens) and on-demand Q&A (Stage 2, through the teacher role's
+own model) both work, the three grounding sources are never mixed silently,
+teacher spend is its own budget pool in the F103 ledger, and the read-only
+invariants hold under test.
 
 ## Current Step
-R35: record R34's verdict in `.agent/live_review.md` so it is not stranded
-(DECISION F085 D9). This round registers no finding, resolves none, and changes
-no source file, test or document.
+R1: merge #207, claim F255, reset `.agent/live_review.md` carrying the F086 open
+set forward, register R-0600 and record the F086 R35 verdict. No source file and
+no test changes this round.
 
 ## Next Steps
-1. THE OPEN PR GATE MERGES #207, per AGENTS.md, before any new branch is cut.
-   The operator may merge it manually at any time instead.
-2. R35'S OWN VERDICT IS RECORDED BY THE NEXT FEATURE'S FIRST REVIEWED ROUND,
-   the way F085's closure candidates reached F086 R1. R35 does NOT claim the
-   terminator carve-out: R-0583 gives that to the round creating the branch's
-   pull request, which was R31, so the regress ends at the merge and not here.
-3. F086 STAYS `[x]` IN THE LEDGER. Neither R-0598 nor R-0599 falsifies the
-   closure's own claim, so each correction is a dated ledger entry and never a
-   rewrite of a landed STATUS line.
+1. R2 MEASURES THE GROUND BEFORE ANYTHING IS DESIGNED, because the feature file
+   is a registration stub: how `role_config` resolves a role, which ledger
+   events carry a stable vocabulary, how F103 separates a budget pool, what
+   `ActionClass` read_only enforces, and how the watch path isolates a reader.
+2. R3 RECORDS R2 AND RULES THE SHAPE AS A DECISION, amending
+   `docs/roadmap/features/T5_F255.md` with the Design, Task slicing, Acceptance
+   and Do-not-touch sections it has never carried.
+3. R4 ONWARD BUILDS THE T-SLICES that DECISION names, Stage 1 before Stage 2.
 
 ## Risks
-- THE FEATURE'S OWN DONE CONDITION IS NOT FULLY PROVEN and closure says so rather
-  than counting a skipped test as coverage: no wheel has been installed into a
-  fresh virtualenv, and `.github/workflows/release.yml` has never been dispatched.
-  Both are human actions and both are named in the STATUS line's PASS_WITH_RISKS.
-- A GREEN CI RUN IS NOT A WHEEL INSTALL. It proves the dev install and the suite,
-  which is what R-0598 broke, and it proves neither risk above.
-- R-0571 IS THE HOLE THIS ROUND ROUTES AROUND BY HAND rather than fixes: a last
-  round whose verdict was written and one whose verdict was never written are
-  indistinguishable on disk, and the fix edits files F086 does not own.
+- THE FEATURE FILE IS A STUB. It carries Goal & Done, Scope and Non-goals only,
+  so the Task slicing and Acceptance every build round reads are absent, and
+  designing from the stub alone would be guessing rather than planning.
+- THE THREE GROUNDING SOURCES ARE THE WHOLE FEATURE. A teacher that silently
+  mixes ledger fact, workspace code and model knowledge is worse than no
+  teacher, so their separation is a test obligation and not a prompt wish.
+- READ-ONLY IS AN INVARIANT, NOT AN INTENTION. `ActionClass` read_only and the
+  watch isolation must be shown to hold for the teacher path itself.
