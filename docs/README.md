@@ -8,7 +8,7 @@
 | Keyword | File | Category |
 |---------|------|----------|
 | ADR / decision record | [0001-raise-cycle-safety-cap.md](adr/0001-raise-cycle-safety-cap.md) | adr |
-| agent conventions | [worker_conventions.md](agents/worker_conventions.md), [reviewer_conventions.md](agents/reviewer_conventions.md) | agents |
+| agent conventions | [worker_conventions.md](agents/worker_conventions.md), [reviewer_conventions.md](agents/reviewer_conventions.md), [teacher_conventions.md](agents/teacher_conventions.md) | agents |
 | handback template | [handback_template.md](agents/handback_template.md) | agents |
 | integration gate | [integration_gate.md](agents/integration_gate.md) | agents |
 | orchestrator protocol | [orchestrator_protocol.md](agents/orchestrator_protocol.md) | agents |
@@ -181,14 +181,15 @@ Deprecated or future-only design documents kept for historical context.
 
 ## Agent Conventions (`docs/agents/`)
 
-Canonical, model-agnostic role conventions and routing policy. The worker and
-reviewer files are the F105 conventions prompt segments (token-capped); the
-routing policy seeds F110.
+Canonical, model-agnostic role conventions and routing policy. The worker,
+reviewer and teacher files are the conventions prompt segments (token-capped);
+the routing policy seeds F110.
 
 | File | Description |
 |------|-------------|
 | [worker_conventions.md](agents/worker_conventions.md) | Worker/builder role rules (F105 conventions segment) |
 | [reviewer_conventions.md](agents/reviewer_conventions.md) | Reviewer role rules + block conditions (F105 conventions segment) |
+| [teacher_conventions.md](agents/teacher_conventions.md) | Teacher role rules: read-only stance, grounding sources (F255 conventions segment) |
 | [model_routing_policy.md](agents/model_routing_policy.md) | Class→tier seed map, promotion rule, hard rules (seeds F110) |
 | [planner_reviewer_prompt.md](agents/planner_reviewer_prompt.md) | Window 1 bootstrap: planner & live reviewer prompt |
 | [split_workflow.md](agents/split_workflow.md) | Two-window feature lifecycle (v3), roles, round protocol, handoff |
