@@ -16,25 +16,27 @@ silently, teacher spend is reported as its own role in the F103 ledger, and the
 read-only invariant is proven behaviourally.
 
 ## Current Step
-R4: record the R3 verdict and amend `docs/roadmap/features/T5_F255.md` by
-APPEND — the Design, Task slicing, Acceptance, Edge cases, Orchestrator brief
-and Do-not-touch sections, plus the three supersessions the R3 rulings require.
-Nothing is built this round and no registered word is rewritten.
+R5: apply DECISION F255 D6 to `docs/agents/handback_template.md`, add checklist
+item 30 so a duplicate id cannot be minted again, record the R4 verdict, and
+resolve R-0462, R-0602 and R-0603. The feature file is not touched and no code
+is written.
 
 ## Next Steps
-1. R5 APPLIES DECISION F255 D6 to `docs/agents/handback_template.md`, removing
-   the withdrawn 800-token cap and stating that the LINE cap is the operative
-   bound. It is a docs round and gates tests/docs/ accordingly.
-2. R6 BUILDS T001 — the role vocabularies — including the renamed seven-to-eight
-   pin in the SAME commit as the tuple it guards.
-3. R7 ONWARD BUILDS T002 AND T003 TOGETHER, Stage 1 narration with its
-   behavioural read-only proof, then T004 last.
+1. R6 BUILDS T001 — the role vocabularies. `teacher` joins `KNOWN_ROLES` and
+   `ConventionsRole`, with the renamed seven-to-eight pin in the SAME commit as
+   the tuple it guards, plus a `teacher.model` config key modelled on
+   `orchestrator.model`. This is the first round of this feature to touch source.
+2. R7 BUILDS T002 AND T003 TOGETHER — Stage 1 narration and the behavioural
+   read-only proof — because a read-only feature whose read-only-ness is
+   unproven is this feature's likeliest failure.
+3. T004, Stage 2 Q&A, comes last and only once the grounding-source labelling
+   of T002 is real.
 
 ## Risks
-- THE AMENDMENT IS NOW THE SPEC. If a T-slice drifts from it, the drift is a
-  finding rather than a preference, which is the point of writing it down.
+- R6 IS THE FIRST SOURCE-TOUCHING ROUND OF THIS FEATURE. Its gate must include
+  the tests that read the role vocabulary, not only the state-reader four, and
+  the seven-to-eight pin is a deliberate tripwire rather than an accident.
 - STAGE 1 MUST STAY ZERO-TOKEN TO BE WORTH HAVING. If narration quietly starts
   calling a model, the feature loses both its cost story and its offline story.
-- READ-ONLY IS PROVEN BY ONE TEST SHAPE. If that test is weak, the feature's
-  hardest invariant is decorative — DECISION F255 D4 is only as good as the
-  test T003 writes.
+- THE AMENDMENT IS NOW THE SPEC. A T-slice that drifts from it is a finding
+  rather than a preference, which is why it was written down before any build.
