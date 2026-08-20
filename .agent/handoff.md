@@ -93,3 +93,59 @@ PLAN8, FINDINGS2, RESOLUTION, RECORD6 and VERDICT were extracted programmaticall
 ## Next
 
 Next session, in this order: (1) re-read `.agent/STOP` from disk, Phase 1 rule 1; (2) run the Open PR Gate, Phase 1 rule 2.
+
+## Reviewer's session verdict — authored by the reviewer, applied by the worker
+
+This section exists because finding R-0571, registered by this feature, is that a
+verdict issued and never written to disk cannot be told apart from one never
+issued. It is appended rather than written into the sections above so that the
+next handback rewrite cannot silently destroy it.
+
+Session of 2026-08-20, self-drive per docs/agents/self_drive_protocol.md, and the
+SECOND session on this branch. The reviewer wrote nothing in the work tree; one
+delegated worker per round made every commit; every verdict below rests on gates
+the reviewer re-executed itself over the committed diff, never on a handback's
+summary.
+
+| Round | Range | Verdict |
+|---|---|---|
+| R5 | 655661b0..91459dc1 | PASS |
+| R6 | 91459dc1..72e07381 | PASS |
+| R7 | 72e07381..b769ccd7 | FAIL — R-0578 |
+
+R5 was inherited unreviewed from the previous session, which ended immediately
+after issuing its own verdict; reviewing it first was Phase 1 rule 4 and it
+passed on every gate. R6 was ordered to choose the wheel carry mechanism by
+measurement and could not: its red control was sited under `.remedy-wt/`, and
+hatchling drops every VCS exclusion when the build root is itself gitignore-matched,
+so the control read 3 where 0 was required. The worker obeyed the block's own halt
+clause, left `pyproject.toml` untouched, found the cause in hatchling's source and
+proved it — the right outcome from a broken order, and the defect is registered as
+R-0574 against the reviewer. R7 then landed the carry for real, with the probe tree
+moved OUTSIDE the repository: `artifacts = ["apps/ui/dist/**"]` is in
+`pyproject.toml` at `b769ccd7`, a wheel built at that commit carries
+`apps/ui/dist/index.html` and both asset bundles, and the control that must read 0
+does read 0. R7 failed only on the layout of the reviewer's own findings slice,
+which R8 repaired.
+
+Every finding this session registered — R-0574 through R-0579 — is a defect in
+the reviewer's own gates rather than in any worker's execution. That is the honest
+summary of the session: the workers were not the weak link, and every round that
+went wrong went wrong in the order, not in the obedience.
+
+DECISION F086 D3 was ruled and is the session's other durable output. It withdraws
+D1 part (c) — the dual-mode asset resolver — because the premise was false, and
+measured false from an extracted wheel, from an independent wheel-root-shaped copy
+and from the checkout: `_get_frontend_dist()`'s three `.parent` hops
+land on the wheel ROOT, where `apps/` is a sibling of `packages/` exactly as in a
+checkout, so the single existing expression already resolves in both modes. The
+test per mode is KEPT. D1 part (b), the packaging-time guard, is still owed and no
+release may be cut before it exists: with the carry applied and no `dist/` present
+a build still exits 0 and ships a wheel with zero UI files.
+
+The open set stands at 160 once this round's own C2 and C4 have landed, which is
+what G5 requires and measures at HEAD, and the next free id is R-0580. By
+docs/agents/planner_reviewer_prompt.md §4 item 13 the LAST round of a branch has no
+on-disk gate entry, so R8's own verdict is the terminator and lives in the
+reviewer's closing report rather than here. That absence is the rule, not an
+omission — and it is precisely the hole R-0571 exists to close.
