@@ -1,49 +1,43 @@
-# Plan — no feature claimed; the Open PR Gate is CLEAR
+# Plan — F086 Release capability
 
-Branch: `main`. F085 is CLOSED, ACCEPTED and MERGED — PR #204 merged at 68155931
-with `--merge --delete-branch`. The operator amendment amend0820-gate-autonomy is
-merged too (PR #205 at 86555049). `.agent/live_review.md` stays the source of truth
-for the open set, for the next free finding id and for the round map; this file
-repeats none of them.
+Branch: feature/f086-release-capability, cut from `main` at 76661dc1, the merge
+commit of PR #206. `.agent/live_review.md` is the source of truth for the open
+set, for the next free finding id and for the round map; this file repeats none
+of them.
 
 ## Goal
-Claim the next feature by Rule A5. Nothing is in flight: no open PR, no feature
-branch, no half-landed round. This file exists to say so plainly, because the next
-session's Phase 0 reads it before it reads anything else.
+Remedy ships like a normal tool: `pip install` yields the `remedy` CLI with the
+UI assets bundled, `remedy --version` reports version and build info, and a
+release is gated by CI plus a semver and changelog discipline. DONE when a wheel
+built from a clean checkout installs into a fresh virtualenv where the golden
+path and the UI serve work, the version command matches the tag, and a release
+with a missing changelog entry is refused by the gate.
 
 ## Current Step
-IDLE at the gate, with the gate open. `gh pr list --state open` returns zero rows,
-`git status --porcelain` is empty on `main`, and `.agent/STOP` is absent. The two
-blockers the previous three sessions ended on are both gone:
-
-- The red `ci` check on #204 was ONE cause, not a stage budget. The guard's
-  deny-network posture emptied `NO_PROXY`, so a guarded child could not reach a
-  loopback server it had started itself; 62 tests failed with `[Errno 111]
-  Connection refused`. A 63rd, the deny test's own CONTROL, failed because CI runs
-  pytest itself as a guarded child, so a control spawned with plain
-  `subprocess.run` inherited the very posture it was meant to contrast with. See
-  DECISION amend0820-gate-autonomy A1 in `.agent/decisions.md`.
-- The reason no session could NAME that cause was a missing permission, not a
-  protocol judgement. `Bash(gh run:*)`, `Bash(gh api:*)` and `Bash(gh pr checks:*)`
-  are now in the tracked `.claude/settings.json`, and AGENTS.md's Open PR Gate now
-  treats a running or red check as WORK. See DECISION amend0820-gate-autonomy A2.
+R1, this round: the STATUS claim `[ ]` → `[~]`, the live-review reset carrying
+the F085 open set forward, and the registration of the two closure candidates
+F085's R74 closure review produced. No production code and no packaging change.
 
 ## Next Steps
-1. Re-read `.agent/STOP` from disk before anything else — Phase 1 rule 1.
-2. Claim the next feature by Rule A5. Its FIRST reviewed round must register or
-   resolve BOTH `.agent/candidates.md` entries and empty that file.
+1. R2 — the packaging-shape inventory in `.agent/f086_inventory.md`, MEASURED
+   from a real `python -m build` rather than read off the metadata: what the
+   built wheel actually contains, whether the UI assets are in it, how the serve
+   command resolves that directory, and where a version string could be
+   single-sourced from. The reviewer read four starting facts at 76661dc1 —
+   `pyproject.toml` declares `version = "0.1.0"` literally, its wheel target
+   lists `packages = ["packages", "apps"]` with no package-data rule,
+   `apps/cli` defines no `--version` flag, and `ui_server._get_frontend_dist`
+   resolves `apps/ui/dist` by walking three parents up from its own `__file__`.
+   R2 confirms or refutes each rather than inheriting it.
 
 ## Risks
-- CI runs its stages serially: `pytest_argv_for_stage` adds no `-n auto` and
-  `pyproject.toml` sets no `addopts`, where local runs use `-n auto`. MEASURED
-  across three hosted runs on 2026-08-19/20: no stage has yet tripped its budget —
-  the widest `standard` sample was 1617.5 s against a 2100 s cap. The risk stays
-  listed because a slower hosted runner could still trip it; the budget is then
-  re-derived by the rule `tests/orchestration/test_ci_stages.py` states, from a
-  re-measured maximum, never raised by hand.
-- The R75 record round (e950e8af..4c2d707b, `.agent/` only) carries no gate entry,
-  by the terminator rule its own carrier candidate describes.
-- `.claude/settings.local.json` is gitignored and read-denied, so what it grants or
-  denies cannot be inspected from inside a session. The three grants above were
-  therefore added to the TRACKED settings file; whether they take effect is
-  observable only from a session that is not in bypass-permissions mode.
+- `packages = ["packages", "apps"]` collects `apps/ui` wholesale, and
+  `apps/ui/node_modules` lives under that path. Whether a built wheel already
+  carries that tree is a MEASUREMENT R2 must take; it is not a conclusion this
+  file draws, and the wheel-size budget T003 wants depends on the answer.
+- The feature file requires dual-mode asset resolution, checkout and installed
+  wheel, and the resolver has one mode today. Adding the second is T001's
+  substance and the reason T001 is the largest slice.
+- Building a wheel spawns npm. That spawn is exactly what F085's guard now
+  bounds, so a packaging round that bypasses the seam would silently undo
+  stage-1 containment.
