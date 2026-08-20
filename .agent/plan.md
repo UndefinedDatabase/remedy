@@ -15,19 +15,14 @@ path and the UI serve work, the version command matches the tag, and a release
 with a missing changelog entry is refused by the gate.
 
 ## Current Step
-R11, this round: close the session. Record the R10 verdict and write the
-reviewer's own session verdict to disk, so that no verdict this session issued
-exists only in a transcript (finding R-0571). No code, no test, no PR.
+R12, this round: close T002. The wheel now embeds the revision it was built
+from, and `apps/cli/version_report.py` reads it back at the path hatchling
+actually writes. Also records the R11 verdict and registers R-0581.
 
 ## Next Steps
-1. R12 — the REVISION embedding T002 still owes. `resolve_build_revision()` in
-   `apps/cli/version_report.py` reads a `REVISION` file out of the installed
-   distribution's metadata and NOTHING WRITES THAT FILE, so an installed wheel
-   reports `dev` exactly as a checkout does. `hatch_build.py` is where it gets
-   written, beside the asset guard that already lives there.
-2. Then T003 — the release CI stage, the changelog and tag gate, the wheel-size
+1. T003 — the release CI stage, the changelog and tag gate, the wheel-size
    budget and the seeded-failure tests.
-3. Then the install smoke, the integration gate, and closure. The packaging
+2. Then the install smoke, the integration gate, and closure. The packaging
    ist-doc is written at closure, when the built state stops moving.
 
 ## Risks
