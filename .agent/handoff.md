@@ -53,3 +53,46 @@ PLAN14, RECORD12 and VERDICT were each extracted programmatically by their one-l
 
 1. Re-read `.agent/STOP` from disk (Phase 1 rule 1).
 2. Then run the Open PR Gate (Phase 1 rule 2): `gh pr list --state open --json number,headRefName,baseRefName,isDraft`.
+
+## Reviewer's session verdict — authored by the reviewer, applied by the worker
+
+Written because finding R-0571 is that a verdict issued and never put on disk
+cannot be told apart from one never issued; appended so the next handback rewrite
+cannot silently destroy it. Session of 2026-08-20, self-drive per
+docs/agents/self_drive_protocol.md. The reviewer wrote nothing in the work tree,
+one delegated worker per round made every commit, and every verdict below rests
+on gates the reviewer re-executed over the committed diff, never on a handback.
+
+| Round | Range | Verdict |
+|---|---|---|
+| R11 | dea9dc2f..ee22186c | PASS — one finding, R-0581, against the reviewer |
+| R12 | ee22186c..3351878d | PASS — no finding |
+| R13 | 3351878d..a662abcc | PASS — no finding |
+| R14 | a662abcc..HEAD | terminator; §4 item 13 gives it no ledger entry |
+
+R11 was inherited unreviewed — the stranding DECISION F085 D9 warns about — so
+reviewing it first was Phase 1 rule 4. Every ordered property held; its one
+defect was in the evidence record, a transport digest reported ending
+`f9ff257fc2` where the true one ends `f1fa257fc2`. That is R-0581 and not a
+failure: "report the sha256" is a shape no wrong value violates, and the
+convention wrote digests ELIDED. Every digest ordered since is in full.
+
+R12 closed what T002 owed, proved on a real wheel built outside this repository:
+417 members, one REVISION member at `<dist-info>/extra_metadata/REVISION` whose
+bytes equal the probe worktree's own HEAD, against a base build that also exits
+0 — so the control ran — and ships 416 with none. It also fixed a reader that
+could never have worked, hatchling prefixing hook metadata with
+`extra_metadata/`. R13 landed T003's decision half: `refuse_release` refuses on
+red CI, a tag not matching the version, a missing or empty changelog section, and
+a wheel over an 8 MiB budget, one seeded-failure test each.
+
+WHAT THIS FEATURE STILL OWES: nothing calls the release gate. `CHANGELOG.md` does
+not exist and no workflow supplies a real tag, version or wheel size — R15's
+work, and until it lands the gate refuses nothing. Then the install smoke, whose
+fresh-virtualenv step this session's permission posture cannot execute, then the
+integration gate and closure.
+
+All three findings this session registered are defects in the reviewer's own
+instrumentation, not in the work under review, which passed every gate it was
+given. G8 is the first gate this reviewer has written that can fail on the
+reviewer's own habit.
