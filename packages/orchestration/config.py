@@ -504,6 +504,20 @@ _CONFIG_KEY_SPECS: tuple[ConfigKeySpec, ...] = (
         default=10,
     ),
     ConfigKeySpec(
+        key="teacher.model",
+        env_var="REMEDY_TEACHER_MODEL",
+        description=(
+            "Model for the teacher role (F255). The teacher reads and explains "
+            "and never writes, so this key buys explanation quality and nothing "
+            "else. Unset means the role resolves exactly like every other one. "
+            "Stage 1 narration is deterministic and spends nothing, so nothing "
+            "reads this key until the Stage 2 question path exists (T004) — a "
+            "declared key with no reader yet, not a forgotten wiring."
+        ),
+        value_type=str,
+        default=None,
+    ),
+    ConfigKeySpec(
         key="watchdog.no_progress_repeats",
         env_var="REMEDY_WATCHDOG_NO_PROGRESS_REPEATS",
         description=(

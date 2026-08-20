@@ -71,6 +71,15 @@ class TestConfigKeySpec:
     def test_get_unknown_key(self):
         assert get_key_spec("nonexistent.key") is None
 
+    # F255: the teacher's own routing surface. Pinned by EXPECTED LITERAL
+    # because a test that reads the spec it is meant to freeze cannot fail.
+    def test_teacher_model_key_is_declared(self):
+        spec = get_key_spec("teacher.model")
+        assert spec is not None
+        assert spec.env_var == "REMEDY_TEACHER_MODEL"
+        assert spec.value_type is str
+        assert spec.default is None
+
     def test_fallback_keys(self):
         builder = get_key_spec("ollama.builder.model")
         assert builder is not None
