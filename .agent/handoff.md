@@ -54,3 +54,47 @@ PLAN17, FIND0584, RECORD15, the six PAIR slices and VERDICT were each extracted 
 1. Re-read `.agent/STOP` from disk (Phase 1 rule 1).
 2. Run the Open PR Gate (Phase 1 rule 2): `gh pr list --state open --json number,headRefName,baseRefName,isDraft`.
 3. Then review `4750383c..HEAD` and record R17's verdict in `.agent/live_review.md` (Phase 1 rule 4).
+
+## Reviewer's session verdict — authored by the reviewer, applied by the worker
+
+Written because finding R-0571 is that a verdict issued and never put on disk
+cannot be told apart from one never issued; appended so the next handback rewrite
+cannot silently destroy it. Session of 2026-08-20, self-drive per
+docs/agents/self_drive_protocol.md, a NEW session resuming the branch at
+`4750383c`. The reviewer wrote nothing in the work tree, one delegated worker made
+every commit, and the verdict below rests on gates the reviewer re-executed over
+the committed diff, never on a handback.
+
+| Round | Range | Verdict |
+|---|---|---|
+| R16 | efc021d9..4750383c | PASS — one finding, R-0584, against the reviewer |
+| R17 | 4750383c..HEAD | verdict not yet on disk; see the last paragraph |
+
+R16 was inherited ungated, so Phase 1 rule 4 reviewed it before any new work was
+planned. Its trigger is real and it is manual: the workflow fires on
+`workflow_dispatch` alone, carries the tag through the environment rather than
+into a shell line, calls the gate runner once, and publishes nothing. Every
+transport, ledger, hygiene and suite reading its block ordered reproduces under
+the reviewer's own commands, and the handback held its 100-line cap for the third
+round running.
+
+Its one defect is in the guards the reviewer itself authored, and only a control
+the block never ordered could find it: three of the seven assert a positive
+existence over text that includes the workflow's COMMENTS. Delete the shell
+fallback that keeps an absent CI answer from reading as a green one, and the suite
+stays at 7 passed because the word survives in a comment. Comment out the only
+trigger the workflow has, and the suite stays at 7 passed for the same reason.
+That is R-0584, and this round moves all three positive checks onto the file's
+executable lines, after which both mutations go red naming only their own test
+while the same mutations at `4750383c` stay green.
+
+WHAT THIS FEATURE STILL OWES, unchanged by this round: the install smoke, whose
+fresh-virtualenv step this session's permission posture cannot execute — measured,
+not assumed — then the integration gate and closure. The release workflow has
+never been dispatched, and no round can dispatch it.
+
+R17 IS NOT A TERMINATOR — F086's pull request is created at closure, which has not
+happened — so this session claims no §4 item 13 carve-out and leaves its last
+verdict to be recorded. THE NEXT SESSION'S FIRST ACTIONS are Phase 1 rule 1, then
+rule 2, then rule 4: review `4750383c..HEAD` and record R17's verdict in
+`.agent/live_review.md` as `Gate: R18 — the R17 entry`.
