@@ -78,3 +78,43 @@ NO CODE MOVED THIS ROUND and no test could have gone red on C3: the round writes
 ## Next
 
 The reviewer re-runs G1-G14 over a7373e00..HEAD and rules on R21. Before authoring anything, re-read `.agent/STOP` from disk (Phase 1 rule 1 before rule 2). Per the VERDICT text C5 appends, the next session records R21 in `.agent/live_review.md` under the header `Gate: R22 — the R21 entry.`, then takes the integration gate.
+
+## Reviewer's session verdict — authored by the reviewer, applied by the worker
+
+Written because finding R-0571 is that a verdict issued and never put on disk
+cannot be told apart from one never issued; appended so the next handback rewrite
+cannot silently destroy it. Session of 2026-08-20, self-drive per
+docs/agents/self_drive_protocol.md, resuming the branch at `bc85e5f7` and ending
+at its declared round cap. The reviewer wrote nothing in the work tree, one
+delegated worker per round made every commit, and every verdict below rests on
+gates the reviewer re-executed over the committed diff, never on a handback.
+
+| Round | Range | Verdict |
+|---|---|---|
+| R19 | 7b84524c..bc85e5f7 | PASS — one finding, R-0586, against the reviewer |
+| R20 | bc85e5f7..a7373e00 | PASS — one finding, R-0587, against the reviewer |
+| R21 | a7373e00..HEAD | verdict not yet on disk; see the last paragraph |
+
+R19 was inherited ungated, so Phase 1 rule 4 reviewed it first. Its checklist edit
+landed inside item 16 and moved nothing else, and the reviewer re-ran the claim
+that commit rests on rather than repeating it. R20 is the round this feature
+needed: `tests/test_install_smoke.py` exists, its pure helpers and its opt-in skip
+are gated by tests that go red when the code under them is mutated, and its
+install path is honestly declared as unproven rather than dressed as coverage.
+Both rounds' defects were the reviewer's own text, not the worker's work, and both
+were caught — R-0586 by the reviewer re-reading a landed record, R-0587 by the
+WORKER, which applied a bad slice verbatim as its constraints required and then
+declared it instead of quietly repairing it. That is the split working as designed.
+
+WHAT THIS FEATURE STILL OWES: the integration gate, then closure. NO INSTALL HAS
+BEEN PROVEN in this session or any other, and no round of this workflow can prove
+one — DECISION F086 D4 records that with the measurement behind it, and closure
+names it as unproven rather than counting a skipped test as coverage. The release
+workflow has likewise never been dispatched.
+
+R21 IS NOT A TERMINATOR — F086's pull request is created at closure, which has not
+happened — so this session claims no §4 item 13 carve-out and leaves its last
+verdict to be recorded. THE NEXT SESSION'S FIRST ACTIONS are Phase 1 rule 1, then
+rule 2, then rule 4: review `a7373e00..HEAD` and record R21's verdict in
+`.agent/live_review.md` as `Gate: R22 — the R21 entry.`, which is the header
+shape §3 item 26 now binds.
