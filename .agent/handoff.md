@@ -54,3 +54,46 @@ PLAN16, RECORD14, WORKFLOW, GUARDS and VERDICT were each extracted programmatica
 1. Re-read `.agent/STOP` from disk (Phase 1 rule 1).
 2. Run the Open PR Gate (Phase 1 rule 2): `gh pr list --state open --json number,headRefName,baseRefName,isDraft`.
 3. Then review `efc021d9..HEAD` and record R16's verdict in `.agent/live_review.md` (Phase 1 rule 4).
+
+## Reviewer's session verdict — authored by the reviewer, applied by the worker
+
+Written because finding R-0571 is that a verdict issued and never put on disk
+cannot be told apart from one never issued; appended so the next handback rewrite
+cannot silently destroy it. Session of 2026-08-20, self-drive per
+docs/agents/self_drive_protocol.md. The reviewer wrote nothing in the work tree,
+one delegated worker per round made every commit, and every verdict below rests
+on gates the reviewer re-executed over the committed diff, never on a handback.
+
+| Round | Range | Verdict |
+|---|---|---|
+| R14 | a662abcc..6f5a589a | PASS — one finding, R-0583, against the reviewer |
+| R15 | 6f5a589a..efc021d9 | PASS — no finding |
+| R16 | efc021d9..HEAD | verdict not yet on disk; see the last paragraph |
+
+R14 was inherited ungated, so Phase 1 rule 4 reviewed it first, and every ordered
+property held. Its one defect is in its own appended verdict, which called R14 a
+branch TERMINATOR: it was not one, the branch continued into R15 and R16, and
+`Gate: R15 — the R14 entry` is now in the ledger. That is R-0583, and its
+counter-measure is narrow — the terminator carve-out of §4 item 13 belongs only to
+a round whose own bundle CREATES the branch's pull request.
+
+R15 is the round that made the release gate real. Before it, `refuse_release`
+decided correctly and nothing called it, so it refused nothing. After it there is a
+`CHANGELOG.md` carrying the version `pyproject.toml` declares, and a caller reading
+the version out of the built wheel's own filename rather than trusting a second
+declaration that could drift. The reviewer's own spot-check, outside pytest and
+against the committed script, refused a wheel one byte over the budget. R16 adds
+the manual trigger, gated as TEXT the way `ci.yml` is gated, and publishing stays a
+human command: the guards go red if a `push:` trigger, a `twine upload` step, or a
+tag interpolated into a shell line ever appears — each proved by its own red
+control rather than asserted.
+
+WHAT THIS FEATURE STILL OWES: the install smoke, whose fresh-virtualenv step this
+session's permission posture cannot execute; then the integration gate and closure.
+The release workflow has never been dispatched, and no round can dispatch it.
+
+R16 IS NOT A TERMINATOR — F086's pull request is created at closure, which has
+not happened — so this session claims no carve-out and leaves its last verdict to
+be recorded. THE NEXT SESSION'S FIRST ACTIONS are Phase 1 rule 1, then rule 2,
+then rule 4: review `efc021d9..HEAD` and record R16's verdict in
+`.agent/live_review.md` as `Gate: R17 — the R16 entry`.
