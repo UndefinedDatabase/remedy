@@ -50,3 +50,50 @@ ONE READING TAKEN LITERALLY, declared rather than assumed: G7 asks that the text
 ## Next
 
 The reviewer reviews `39bfc199..HEAD` and records R24's verdict in `.agent/live_review.md` as `Gate: R25 — the R24 entry.` (§3 item 26). F086's next substantive round is closure.
+
+## Reviewer's session verdict — authored by the reviewer, applied by the worker
+
+Written because finding R-0571 is that a verdict issued and never put on disk cannot be
+told apart from one never issued. Session of 2026-08-20, self-drive per
+docs/agents/self_drive_protocol.md, resuming at `43e7f1e0` under a three-round cap
+declared up front per guardrail G7. The reviewer wrote nothing in the work tree, one
+delegated worker per round made every commit, and every verdict below rests on gates the
+reviewer RE-EXECUTED over the committed diff, never on a handback.
+
+| Round | Range | Verdict |
+|---|---|---|
+| R22 | e7cdae4d..43e7f1e0 | PASS — no finding |
+| R23 | 43e7f1e0..39bfc199 | PASS — three findings, all against the reviewer |
+| R24 | 39bfc199..HEAD | verdict not yet on disk; see the last paragraph |
+
+R22 was inherited ungated, so Phase 1 rule 4 reviewed it before any new work was
+planned. It produced NO finding, and it closed R-0588 in the strong form: R22 landed
+that finding's counter-measure into §3 item 14 and its own handback was then bounded by
+the rule it had just written.
+
+R23 IS THIS FEATURE'S INTEGRATION GATE AND IT IS GREEN. The reviewer re-ran the full
+suite independently and read 17192 passed, 20 skipped, exit 0 — matching the worker's
+own run — so the branch-only failure set is empty by construction. All 23 base-only
+failures were attributed by DEMONSTRATION at `76661dc1`, stronger than
+docs/agents/integration_gate.md step 3 asks for. Only the integration-gate round may
+claim "full suite green" (§4.6); this one may, and does.
+
+R23's three findings are ALL DEFECTS OF THE REVIEWER'S OWN BLOCK TEXT and none is in the
+worker's execution: R-0589 a self-computed constant stated twice and corrected once,
+R-0590 a gate whose conditional discharged itself over 23 real failures, R-0591 an
+ordered recipe whose default destroyed the parity it was meant to restore. THE WORKER
+DECLARED ALL THREE, applied each slice verbatim as constraint 1 required, and went
+BEYOND the vacuous gate to attribute the evidence the feature actually needed — an
+independent executor catching three reviewer defects that no gate the reviewer wrote
+could have caught, because the reviewer wrote the gates.
+
+WHAT THIS FEATURE STILL OWES: closure alone. NO INSTALL HAS BEEN PROVEN in this session
+or any other and no round of this workflow can prove one; DECISION F086 D4 records that
+with its measurement, the release workflow has never been dispatched, and closure names
+both as unproven rather than counting a skipped test as coverage.
+
+R24 IS NOT A TERMINATOR — F086's pull request is created at closure, which has not
+happened — so this session claims no §4 item 13 carve-out and leaves its last verdict to
+be recorded (R-0583). THE NEXT SESSION'S FIRST ACTIONS are Phase 1 rule 1, then rule 2,
+then rule 4: review `39bfc199..HEAD` and record R24's verdict as `Gate: R25 — the R24
+entry.`, the header shape §3 item 26 binds. Its first substantive work is closure.
