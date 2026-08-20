@@ -54,3 +54,47 @@ OTHERWISE NONE: the ordered sequence C0a, C0b, C1, C2, C3, C4, C5 ran in order, 
 ## Next
 
 The reviewer reviews `43e7f1e0..HEAD` and records R23's verdict in `.agent/live_review.md` as `Gate: R24 — the R23 entry.`; the next substantive work is closure.
+
+## Reviewer's session verdict — authored by the reviewer, applied by the worker
+
+Written because finding R-0571 is that a verdict issued and never put on disk cannot be
+told apart from one never issued; appended so the next handback rewrite cannot silently
+destroy it. Session of 2026-08-20, self-drive per docs/agents/self_drive_protocol.md,
+resuming the branch at `43e7f1e0` and declaring a three-round cap up front per guardrail
+G7. The reviewer wrote nothing in the work tree, one delegated worker per round made
+every commit, and every verdict below rests on gates the reviewer RE-EXECUTED over the
+committed diff, never on a handback.
+
+| Round | Range | Verdict |
+|---|---|---|
+| R22 | e7cdae4d..43e7f1e0 | PASS — no finding |
+| R23 | 43e7f1e0..HEAD | verdict not yet on disk; see the last paragraph |
+
+R22 was inherited ungated, so Phase 1 rule 4 reviewed it before any new work was
+planned. It is the first round of this feature in four to produce NO finding, and the
+reason is worth recording: R21 registered R-0588 against the reviewer, R22 landed the
+counter-measure into §3 item 14 at `72640273`, and R22's OWN handback was then bounded
+by the rule it had just written — C4 at 56 lines because the block shipped a 44-line
+VERDICT and 100 minus 44 is 56, landing at 52 and 96. A rule proved on its author beats
+a rule merely filed, and this one closed R-0588 in the same round it was written.
+
+The reviewer re-ran both suites rather than reading their colours — 160 passed for the
+four state readers, then 42 for the canary, serially in the primary checkout — and
+every transport digest, slice equality, ledger set and scan control reproduces. The
+facts INSIDE the slices were checked as well as their bytes per R-0561, a shape gate
+never failing on a false sentence.
+
+R23 IS THE INTEGRATION GATE, whose result is not knowable when this text is authored,
+so this block orders no colour for it and claims none. WHAT THIS FEATURE STILL OWES
+after it is closure. NO INSTALL HAS BEEN PROVEN in this session or any other and no
+round of this workflow can prove one — DECISION F086 D4 records that with its
+measurement — and the release workflow has never been dispatched; both are human
+actions, named at closure as unproven rather than counted as coverage.
+
+R23 IS NOT A TERMINATOR — F086's pull request is created at closure, which has not
+happened — so this session claims no §4 item 13 carve-out and leaves its last verdict
+to be recorded (R-0583). THE NEXT SESSION'S FIRST ACTIONS are Phase 1 rule 1, then
+rule 2, then rule 4: review `43e7f1e0..HEAD` and record R23's verdict in
+`.agent/live_review.md` as `Gate: R24 — the R23 entry.`, the header shape §3 item 26
+binds. Its first substantive work is closure — unless R23's gate found a blocker, in
+which case that repair is the next round and closure waits behind it.
