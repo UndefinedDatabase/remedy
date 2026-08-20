@@ -17,6 +17,12 @@ remedy = "apps.cli.grouped:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["packages", "apps"]
+# WHY: apps/ui/dist is build output, untracked and matched by the generic `dist/`
+# ignore at .gitignore:13, so a VCS-aware backend omits it unless it is named
+# here. DECISION F086 D1 (a), mechanism chosen by measurement in DECISION F086 D3.
+# This carry is NOT a guard: with no dist/ present the build still succeeds and
+# ships no UI. That guard is D1 part (b) and is still owed.
+artifacts = ["apps/ui/dist/**"]
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
