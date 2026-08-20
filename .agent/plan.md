@@ -14,12 +14,14 @@ path and the UI serve work, the version command matches the tag, and a release
 with a missing changelog entry is refused by the gate.
 
 ## Current Step
-R1, this round: the STATUS claim `[ ]` → `[~]`, the live-review reset carrying
-the F085 open set forward, and the registration of the two closure candidates
-F085's R74 closure review produced. No production code and no packaging change.
+R2, this round: repair the R1 carry. R1 reset the live-review record and
+truncated every multi-line finding paragraph to its headline; this round
+registers that defect and the gate defect that let it pass, restores the lost
+paragraphs verbatim from the pre-reset blob, and proves the restoration with a
+check that is required to fail on the corrupt state. No production code.
 
 ## Next Steps
-1. R2 — the packaging-shape inventory in `.agent/f086_inventory.md`, MEASURED
+1. R3 — the packaging-shape inventory in `.agent/f086_inventory.md`, MEASURED
    from a real `python -m build` rather than read off the metadata: what the
    built wheel actually contains, whether the UI assets are in it, how the serve
    command resolves that directory, and where a version string could be
@@ -28,16 +30,17 @@ F085's R74 closure review produced. No production code and no packaging change.
    lists `packages = ["packages", "apps"]` with no package-data rule,
    `apps/cli` defines no `--version` flag, and `ui_server._get_frontend_dist`
    resolves `apps/ui/dist` by walking three parents up from its own `__file__`.
-   R2 confirms or refutes each rather than inheriting it.
+   R3 confirms or refutes each rather than inheriting it.
 
 ## Risks
+- The finding record is the repository's own memory, and a carry that loses part
+  of it is invisible to every existing gate: the four state readers, the docs
+  suite and the canary were all green over the truncated file. Until a paragraph
+  integrity check exists somewhere durable, every future reset carries the same
+  risk.
 - `packages = ["packages", "apps"]` collects `apps/ui` wholesale, and
   `apps/ui/node_modules` lives under that path. Whether a built wheel already
-  carries that tree is a MEASUREMENT R2 must take; it is not a conclusion this
-  file draws, and the wheel-size budget T003 wants depends on the answer.
-- The feature file requires dual-mode asset resolution, checkout and installed
-  wheel, and the resolver has one mode today. Adding the second is T001's
-  substance and the reason T001 is the largest slice.
+  carries that tree is a MEASUREMENT R3 must take.
 - Building a wheel spawns npm. That spawn is exactly what F085's guard now
   bounds, so a packaging round that bypasses the seam would silently undo
   stage-1 containment.
