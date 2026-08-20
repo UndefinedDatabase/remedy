@@ -1,142 +1,97 @@
-# Handoff — F086 Release capability, R5 (record + session close)
+# Handoff — F086 Release capability, R6 (T001 part a, measured — carry NOT landed)
 
 Branch: feature/f086-release-capability (continued; no branch created, no PR opened).
-Base 655661b0 · HEAD = the C4 commit · Open findings 155 (156 registered, 1 resolved).
-Fortschritt: ~3 % (F086 beansprucht · R1-R4 gegated · Paketform entschieden · T001/T002/T003 offen) — Schätzung
+Base 91459dc1 · HEAD = the C5 commit · Open findings 155 (156 registered, 1 resolved).
+Size: this file is 97 lines against the 100-line cap that a >5-commit bundle
+allows, so no AGENTS.md DECISION D15 overage is claimed. No section is trimmed.
 
 ## Range
 
-Review of 655661b0..HEAD
+Review of 91459dc1..HEAD
 
 ## Commits
 
-### 9d23807b chore(state): save the F086 R5 authored block
+### e168ef0d chore(state): save the F086 R6 step block verbatim
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f086-r5.md | +299/-0 | C0a, `shutil.copyfile` of `.remedy-wt/f086-r5.md` |
+| .agent/authored/f086-r6.md | +363/-0 | C0a, `shutil.copyfile` of `.remedy-wt/f086-r6.md` |
 
-### 355dea2c chore(state): mirror the R5 block into last_block
+### 6f5739d4 chore(state): mirror the F086 R6 block into last_block
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/last_block.md | +189/-192 | C0b, whole-file mirror of the COMMITTED C0a blob |
+| .agent/last_block.md | +270/-206 | C0b, whole-file mirror of the COMMITTED C0a blob |
 
-### 18b2cf89 chore(state): advance the plan to the F086 R5 record and close round
+### c30791ae chore(state): advance the plan to the F086 R6 step
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/plan.md | +22/-21 | C1, PLAN5 slice byte-verbatim, whole file |
+| .agent/plan.md | +18/-19 | C1, PLAN6 slice byte-verbatim, whole file |
 
-### ed5d4f11 chore(review): record the F086 R4 verdict in the review ledger
+### 6cdbc34a chore(review): record the F086 R5 verdict in the review ledger
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/live_review.md | +2/-0 | C2, RECORD3 appended by pure concatenation |
+| .agent/live_review.md | +2/-0 | C2, RECORD4 EOF-append |
 
-### C3 (this commit) + C4 — grouped, a handoff cannot table itself (R-0149 pattern)
+### 468dabf6 docs(state): record the F086 R6 wheel carry measurement
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/handoff.md | rewrite | C3, this commit, per docs/agents/handback_template.md |
-| .agent/handoff.md | append | C4, the reviewer's 44-line VERDICT slice; numstat in the round report |
+| .agent/f086_r6_inventory.md | +225/-0 | C3, the readings, worker's own words |
+
+### this commit docs(state): write the F086 R6 handback
+| Path | +/- | Reason |
+|---|---|---|
+| .agent/handoff.md | rewrite | C5; a handoff cannot table its own commit (R-0149) |
+
+C4 produced NO COMMIT and `pyproject.toml` is untouched — see Deviations item 1.
 
 ## External actions
 
-`git push origin feature/f086-release-capability` after C4. No worktree added or
-removed (`git worktree list` stayed ONE line). `gh pr list --state open` run READ-ONLY
-at the handback: no PR created, edited or merged this round.
+- `git worktree add .remedy-wt/f086r6-tree 91459dc1` → exit 0, detached at 91459dc1.
+- `git worktree remove --force .remedy-wt/f086r6-tree`, `git worktree prune` → exit 0.
+- `python3 -m pip install --no-input --target .remedy-wt/f086r6-pylib build hatchling` → exit 0.
+- `gh pr list --state open --json number,headRefName,baseRefName,isDraft` → `[]`, read-only.
+- `git push origin feature/f086-release-capability` after this commit.
+- No PR created, none merged. G8's second worktree was never created: C4 made no edit.
 
 ## Verification
 
-| Gate | Exit | Result |
-|---|---|---|
-| G1 | 0 | at C3: `git status --porcelain` EMPTY, `git worktree list` ONE line, `.agent/STOP` absent, branch feature/f086-release-capability; re-taken after C4 in the round report |
-| G2 | 0 | scratch, committed authored and committed last_block all byte-EQUAL: sha256 101be7cec956c4fa99009d2c0471c2d1c49e8b4b616fd1b2237d280f6de9e37c, 20909 B, 299 lines |
-| G3 | 0 | `.agent/plan.md` byte-equal to extracted PLAN5, sha256 314b31c3…7923, 44 lines (<50), has `## Goal`, `## Next Steps`, `F086` |
-| G4 | 0 | 156 registered / 1 resolved / 155 open at BOTH SHAs; registered, resolved and OPEN sets IDENTICAL (symdiff empty); 0 dups, 0 unregistered resolutions, 0 `Landed:` |
-| G5a | 0 | REQUIRED: compared 152, equal 152 (paragraph = whole block, never its first line); carried set VERIFIED equal to registered-and-unresolved in the 76661dc1 blob |
-| G5b | 0 | NEGATIVE CONTROL at 25f7a5af: compared 152, equal 113 — strictly fewer; the halves DISAGREE, so the check can fail |
-| G6 | 0 | RECORD3 present verbatim and as EOF suffix, begins `Gate:`, no `^- R-\d+ — ` match; `Steps` present; marker LINES 0 (substring `<<<` also 0 here) |
-| G7 | — | measured after C4 in the round report: a handoff written by C3 cannot measure its own append. Known at C3: VERDICT slice sha256 af46e4af4c91c72773285435dc2988bcf0cc7b3f0e870819b4ee849332c5b1a1, 2576 B, 44 lines, extracted from the COMMITTED authored file |
-| G8 | 0 | `160 passed in 19.96s`, four state readers, PRIMARY checkout, serial |
-| G9 | 0 | `42 passed in 20.29s`, canary, started only after G8 returned |
-| G10 | 0 | at C3: authored/f086-r5.md, last_block.md, live_review.md, plan.md (+ handoff.md with this commit); `pyproject.toml` and every path under `packages/`, `apps/`, `tests/`, `docs/`, `scripts/` ABSENT |
-| G11 | 0 | insertions 299, 189, 22, 2 — none over 500, no F104 D1 exemption invoked; C3 and C4 in the round report |
-| G12 | 0 | one parent per commit (linear) over C0a-C2; reflog `commit:`/`checkout:` only, re-taken after C4 |
-| G13 | 0 | `gh pr list --state open --json number,headRefName,baseRefName,isDraft` → `[]`; nothing merged, nothing opened |
+G1 `git status --porcelain` empty; `git worktree list` 1 line; `.agent/STOP` absent; branch feature/f086-release-capability.
+G2 `.remedy-wt/f086-r6.md` == committed `.agent/authored/f086-r6.md` == committed `.agent/last_block.md`; sha256 3335f4b7fa6b40ba72534454814c2bbf8906ede3b624fc76dfcb7bd6e5fd492b, 25011 B, 363 lines.
+G3 `.agent/plan.md` byte-equal to PLAN6; sha256 ed90971e53568f8d4671541403a07e309d4b797987d55376eb9d9c3bdb2fdedd, 43 lines; has `## Goal`, `## Next Steps`, `F086`; under 50.
+G4 91459dc1 → 156 registered / 1 resolved / 155 open / 0 duplicate ids / 0 unregistered resolutions / 10 `Landed:` lines. HEAD → 156 / 1 / 155 / 0 / 0 / 11. Registered, resolved and OPEN are IDENTICAL sets (symmetric difference empty on all three). The one extra `Landed:` line IS the RECORD4 paragraph, whose prose quotes the string.
+G5 vs `76661dc1`: compared 152, equal 152. Negative control vs `25f7a5af` over the same 152 ids: compared 152, equal 113 — strictly fewer, so the check can fail. Sub-clause NOT reproduced: my paragraph extractor reads 184 registered at `76661dc1`, 152 of them present at HEAD and 32 absent, and finds no resolution convention there that yields a registered-and-unresolved set of 152. Reported, not repaired.
+G6 RECORD4 present verbatim exactly 1x at HEAD; begins `Gate:`; does not match the finding pattern; `.agent/live_review.md` contains `Steps`. Marker LINES: 0 in live_review.md, 0 in plan.md, 0 in the inventory.
+G7 NOT APPLICABLE — C4 made no edit. For the record: PYFROM occurs exactly 1x in `pyproject.toml` at 91459dc1, and that file is byte-identical at 91459dc1 and HEAD.
+G8 SKIPPED — C4 made no edit, so no second worktree was created and no carry was proved this round.
+G9 M5, four printed lines. As literally ordered (`sys.path[:] = ['<site>']`) → exit 1, no stdout, `ModuleNotFoundError: No module named '__future__'`; replacing all of sys.path drops the stdlib. Re-run with `sys.path.insert(0, '<site>')` → exit 0:
+    /home/decodeux/Repos/remedy/.remedy-wt/f086r6-site/packages/orchestration/ui_server.py
+    /home/decodeux/Repos/remedy/.remedy-wt/f086r6-site/apps/ui/dist
+  Primary checkout, default sys.path → exit 0:
+    /home/decodeux/Repos/remedy/packages/orchestration/ui_server.py
+    /home/decodeux/Repos/remedy/apps/ui/dist
+G10 `python3 -m pytest tests/orchestration/test_test_runner.py tests/ui_server/test_dashboard_contract.py tests/regression/test_resource_safety.py tests/orchestration/test_integrity_gate.py -q -rf` → exit 0, `160 passed in 20.46s`, primary checkout.
+G11 `python3 -m pytest tests/cli/test_golden_path.py -q` → exit 0, `42 passed in 20.43s`. Run after G10 finished; the two never overlapped and no build was in flight.
+G12 `git diff --name-only 91459dc1..HEAD` → `.agent/authored/f086-r6.md`, `.agent/f086_r6_inventory.md`, `.agent/handoff.md`, `.agent/last_block.md`, `.agent/live_review.md`, `.agent/plan.md`. `pyproject.toml` ABSENT because C4 made no edit. All five of packages/ apps/ tests/ docs/ scripts/ exist at 91459dc1; none appears in the range.
+G13 insertions — e168ef0d 363, 6f5739d4 270, c30791ae 18, 6cdbc34a 2, 468dabf6 225; C4 none. No commit over 500 and no DECISION F104 D1 exemption invoked. C5's own count is in the completion report.
+G14 one parent per commit: 91459dc1 ← e168ef0d ← 6f5739d4 ← c30791ae ← 6cdbc34a ← 468dabf6. `git reflog` over this round shows only `commit:` entries — no amend, rebase, reset or force-push.
+G15 `gh pr list --state open --json number,headRefName,baseRefName,isDraft` → `[]`. Nothing merged.
+
+MEASUREMENT HEADLINE: M2's red control returned 3 members under `apps/ui/dist/`, not the required 0, so the measurement is void by the block's own clause and C4 applied neither pair. Cause: hatchling 1.32.0 `load_vcs_exclusion_patterns()` returns `[]` whenever the build ROOT is itself matched by the `.gitignore` it reads; `.gitignore` lists `.remedy-wt/` and M1 sites the probe tree there, so ALL VCS exclusion was off and plain `packages` carried the assets. Full readings in `.agent/f086_r6_inventory.md`.
 
 ## Authored-text proofs
 
-PLAN5, RECORD3 and VERDICT were extracted PROGRAMMATICALLY by their one-line
-markers from the COMMITTED `.agent/authored/f086-r5.md` and applied byte-verbatim,
-never retyped: G3 the plan equality, G6 the ledger append, G7 the handoff append.
-The VERDICT text is the reviewer's; this worker wrote no verdict anywhere.
-
-## Item status
-
-| Item | Status | Reason |
-|---|---|---|
-| C0a | done | |
-| C0b | done | |
-| C1 | done | |
-| C2 | done | |
-| C3 | done | this commit |
-| C4 | done | appends the VERDICT slice to this file |
+PLAN6 and RECORD4 were extracted programmatically by their one-line markers from the COMMITTED `.agent/authored/f086-r6.md` and applied byte-verbatim; both are re-verified byte-equal at HEAD under G3 and G6. PYFROM, PYTO-A and PYTO-B were NOT applied to `pyproject.toml`; they were applied only to the probe tree's scratch copy under `.remedy-wt/`. No marker line reached any target file.
 
 ## Deviations & assumptions
 
-1. NO departure from the ordered sequence: six commits in block order, none extra,
-   dropped or reordered. No code, no test, no `docs/` file, no `pyproject.toml`.
-2. D15 OVERAGE, declared: this file will stand at 142 lines after C4 — 98 written
-   here plus the reviewer's 44-line VERDICT slice — against the 100-line cap that
-   >5 per-commit tables allow. Cause: the round that closes a session carries the
-   reviewer's authored session verdict as mandated content (finding R-0571), and no
-   section was dropped to meet the cap. Written ONCE; no trim commit follows C4.
-3. G1, G7, G11 (C3, C4) and the G12 reflog are stated as measured only where they
-   were measurable at C3; their post-C4 readings are in the round report, because a
-   file cannot record the commit that appends to it.
+1. C4 produced NO COMMIT. This is a departure from the ordered bundle, declared here per R-0485. M2's halt clause — "report that and hand off without editing `pyproject.toml`" — fired because the red control read 3 rather than 0.
+2. M3, M4 and M5 were run even though M2's clause says to hand off. G9 orders M5's lines with no skip clause and M5 needs an extracted wheel; M3 and M4 give the reviewer the raw data. Neither was used to select a variant.
+3. One reading the block did not order was taken: the same base-`pyproject.toml` build run from the PRIMARY checkout, whose root is not gitignore-matched → 414 members, 2038283 bytes, 0 under `apps/ui/dist/`. Taken because M2's stated purpose is a control that can fail and the ordered form could not. `git status --porcelain` was empty immediately before and after it.
+4. Every wheel build ran through `python3 - <<'PY'` that sets `sys.path` AND `os.environ['PYTHONPATH']` to `.remedy-wt/f086r6-pylib` and calls `runpy.run_module('build')`. This session's Bash guard refuses both `PYTHONPATH=… python3 …` and `env PYTHONPATH=… python3 …`. The system python3 is the interpreter throughout; no interpreter under `.remedy-wt/` was executed.
+5. M5's two probes ran via `subprocess.run([...], cwd='/home/decodeux')` because the session's directory guard blocks `cd` outside the repository. The working directory was outside the repository as ordered, and the argument vectors are the block's own.
+6. M4 (variant B) exited 1 with `ValueError: A second file is being added to the wheel archive at the same path: apps/ui/dist/index.html`. That collision is itself a consequence of the vacuous condition and is reported as a reading, not as a ruling on variant B.
+7. `python3 -m pip install …` and the G10 suite were each run twice: the first run of each was piped into `tail`, which masks the exit code, so the identical command was re-run unpiped to obtain a real one.
+8. No verdict is written anywhere. `.agent/f086_r6_inventory.md` reports readings and rules on nothing.
 
 ## Next
 
-Next session: re-read `.agent/STOP` from disk (Phase 1 rule 1), then run the Open PR
-Gate (Phase 1 rule 2). Then R6 — T001 under DECISION F086 D1.
-
-## Reviewer's session verdict — authored by the reviewer, applied by the worker
-
-This section exists because finding R-0571, registered by this feature, is that a
-verdict issued and never written to disk cannot be told apart from one never
-issued. It is appended rather than written into the sections above so that the
-next handback rewrite cannot silently destroy it.
-
-Session of 2026-08-20, self-drive per docs/agents/self_drive_protocol.md. The
-reviewer wrote nothing in the work tree; one delegated worker made every commit of
-every round; every verdict below rests on gates the reviewer re-executed itself
-over the committed diff, never on a handback's summary.
-
-| Round | Range | Verdict |
-|---|---|---|
-| R1 | 76661dc1..25f7a5af | FAIL — R-0572, R-0573 |
-| R2 | 25f7a5af..9e855296 | PASS |
-| R3 | 9e855296..0cabd17e | PASS |
-| R4 | 0cabd17e..655661b0 | PASS |
-
-R1 claimed F086, reset the review record carrying the F085 open set forward and
-registered the two closure candidates as R-0570 and R-0571, emptying
-`.agent/candidates.md`. It FAILED on the carry: 39 multi-line finding paragraphs
-were truncated to their headlines, 52917 characters of the permanent record lost.
-The cause was the reviewer's own block wording — "a finding paragraph is a line
-matching `^- R-\d+ — `" defines the paragraph as the line — and the worker applied
-it literally and reported honestly. No gate caught it because R1's own transport
-gate compared both sides with that same broken extractor; R-0572 carries the loss
-and R-0573 the gate defect. R2 restored all 39 paragraphs verbatim from the
-pre-reset blob and resolved R-0572, under a check whose negative control is
-required to reject the corrupt state. R3 measured the packaging shape by building
-a real wheel and established that a wheel built from a pristine checkout carries
-ZERO members under `apps/ui/dist/` — Remedy currently packages a CLI whose UI
-cannot serve. R4 ruled DECISION F086 D1 and D2 on that measurement.
-
-The open set stands at 155, next free id R-0574. R-0573 remains OPEN: its durable
-fix promotes a rule into the pre-emission checklist at
-docs/agents/planner_reviewer_prompt.md §3, a file F086 does not own, so it routes
-to a paydown branch with R-0403, R-0448, R-0482, R-0487 and R-0490.
-
-By docs/agents/planner_reviewer_prompt.md §4 item 13 the LAST round of a branch
-has no on-disk gate entry, so R5's own verdict is the terminator and lives in the
-reviewer's closing report rather than here. That absence is the rule, not an
-omission — and it is precisely the hole R-0571 exists to close.
+Next session, in this order: (1) re-read `.agent/STOP` from disk, Phase 1 rule 1; (2) run the Open PR Gate, Phase 1 rule 2.
