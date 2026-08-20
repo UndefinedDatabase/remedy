@@ -16,13 +16,13 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-51 of 255 registered items accepted. Next: F086 (Release capability).
+52 of 255 registered items accepted. Next: F255 (Teacher role).
 
 | Tier | Name | Done | Total |
 |------|------|-----:|------:|
 | 0 | Foundation & Trust Core | 16 | 16 |
 | 1 | Self-Build Bootstrap | 22 | 22 |
-| 2 | Minimal Self-Build Runtime | 13 | 14 |
+| 2 | Minimal Self-Build Runtime | 14 | 14 |
 | 3 | Full Token Economy & Autonomy | 0 | 26 |
 | 4 | Memory & Learning | 0 | 16 |
 | 5 | Operator Cockpit | 0 | 29 |
@@ -58,7 +58,8 @@ F053 final & interim report.
 Accepted in Tier 2 so far:
 F254 model alias table & dead-model doctor check,
 F103 token ledger (SQLite), F104 hard budget enforcement,
-F105 cache-optimal prompt ordering, F107 context compiler v2.
+F105 cache-optimal prompt ordering, F107 context compiler v2,
+F086 release capability (wheel, `remedy --version`, release gate).
 
 Full per-feature state: [`docs/roadmap/STATUS.md`](docs/roadmap/STATUS.md)
 
