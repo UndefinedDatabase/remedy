@@ -11,8 +11,16 @@
 > (DECISION 2026-08-03, F070 R1 precedent: 16 commits) — by
 > trimming transcripts to command + exit code + decisive lines and by
 > summarizing evidence directories — never by dropping a section.
-> Hard cap: this file stays ≤800 tokens — ≤1600 in the >10-commit
-> LARGE case (P4 token thrift).
+> That LINE cap is the single operative bound on a handback's size: it
+> scales with the commit count, is measured with `wc -l`, and needs no
+> tokenizer to agree on. A "≤800 tokens — ≤1600 in the >10-commit LARGE
+> case" hard cap stood here until 2026-08-20, when DECISION F255 D6
+> withdrew it (findings R-0462 and R-0602): twelve consecutive rounds
+> exceeded it, from roughly 1306 to 2983 tokens at a chars/4 estimate,
+> while every one of them met the line cap. A cap two readers cannot
+> measure identically is not enforceable by either, and a cap no round
+> has met in twelve rounds binds nothing. Do not restate a token cap
+> here without re-measuring what the mandated sections actually cost.
 > Write-once rule (PH v3): draft the handback in the session
 > scratchpad, measure it there (`wc -l`) against the cap, then write
 > and commit `.agent/handoff.md` ONCE — trim commits against the cap
