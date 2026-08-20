@@ -54,6 +54,13 @@ without the build backend installed. The revision is written to a temporary
 staging directory and never into the source tree: a generated file there would
 survive the build and report a revision nobody built.
 
+Neither rule binds the EDITABLE target. `build_target_ships_ui_assets` answers
+that question and `initialize` returns before both rules when the answer is no.
+`pip install -e` writes a path hook into the checkout and copies no asset
+anywhere, so refusing it protects nothing while breaking the dev install every
+fresh clone starts with — including this repository's own first CI step, which is
+how R-0598 was found, on run 32402941541.
+
 ## Asset resolution has one mode, deliberately
 
 Remedy deliberately does NOT carry a two-mode asset resolver. DECISION F086 D3
