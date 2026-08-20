@@ -53,3 +53,42 @@ THE R-0592 INSTANCE REPRODUCED HERE, reported because it is this round's subject
 ## Next
 
 The reviewer reviews `e33ba23a..HEAD` and records R25's verdict in `.agent/live_review.md` as `Gate: R26 — the R25 entry.` (§3 item 26). F086's next substantive round is closure.
+
+## Reviewer's session verdict — authored by the reviewer, applied by the worker
+
+Written because finding R-0571 is that a verdict issued and never put on disk cannot be
+told apart from one never issued. Session of 2026-08-20, self-drive per
+docs/agents/self_drive_protocol.md, resuming at `e33ba23a` under a three-round cap
+declared up front per guardrail G7. The reviewer wrote nothing in the work tree, one
+delegated worker per round made every commit, and the verdict below rests on gates the
+reviewer RE-EXECUTED over the committed diff, never on a handback.
+
+| Round | Range | Verdict |
+|---|---|---|
+| R24 | 39bfc199..e33ba23a | PASS — one finding, R-0592, against the reviewer |
+| R25 | e33ba23a..this range | verdict not yet on disk; see the last paragraph |
+
+R24 was inherited ungated, so Phase 1 rule 4 reviewed it before any new work was
+planned. All fourteen of its gates reproduce to the byte on the reviewer's own runs:
+the three-way transport digest, PLAN24, the eight-line ledger remainder, the ordered
+equality over the three checklist pairs, both ledger extractions with the control
+moving, the item-20 scan with its red control reading 3, the header check, and both
+suites green at exit 0 on runs the reviewer took serially and independently.
+
+R-0592 IS A GAP IN THE REVIEWER'S GATE COVERAGE, NOT IN THE WORKER'S EXECUTION. The
+worker computed every insertion count R24's G12 ordered and reported all five
+correctly; the `## Commits` table beside them carried the same value for one commit a
+second time, derived from line counts instead of from the diff, and no clause of that
+block and no item of the §3 checklist had ever named that table. R25 registers it and
+lands item 28, which closes the class rather than the instance.
+
+WHAT THIS FEATURE STILL OWES: closure alone. NO INSTALL HAS BEEN PROVEN in this session
+or any other and no round of this workflow can prove one; DECISION F086 D4 records that
+with its measurement, the release workflow has never been dispatched, and closure names
+both as unproven rather than counting a skipped test as coverage.
+
+R25 IS NOT A TERMINATOR — F086's pull request is created at closure, which has not
+happened — so this session claims no §4 item 13 carve-out and leaves its last verdict to
+be recorded (R-0583). THE NEXT SESSION'S FIRST ACTIONS are Phase 1 rule 1, then rule 2,
+then rule 4: review this round and record R25's verdict as `Gate: R26 — the R25 entry.`,
+the header shape §3 item 26 binds. Its first substantive work is closure.
