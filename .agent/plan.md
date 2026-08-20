@@ -15,14 +15,13 @@ path and the UI serve work, the version command matches the tag, and a release
 with a missing changelog entry is refused by the gate.
 
 ## Current Step
-R7, this round: register the four defects R6 exposed in the reviewer's own gates,
-record the R6 verdict, rule DECISION F086 D3, and land T001 part (a) — the
-`artifacts` carry for `apps/ui/dist` in `pyproject.toml`. The carry mechanism was
-selected by a measurement the reviewer executed itself, with a control that can
-fail; R6's own control could not, which is finding R-0574.
+R8, this round: repair the ledger separation R7's G5 caught — four findings landed
+as one paragraph block, so three of them were invisible to the extractor that
+carries the open set forward — then record the R7 verdict and close the session.
+T001 part (a) is landed and proved: the wheel now carries `apps/ui/dist`.
 
 ## Next Steps
-1. R8 — T001 part (b), the packaging-time guard that refuses to produce a wheel
+1. R9 — T001 part (b), the packaging-time guard that refuses to produce a wheel
    whose `apps/ui/dist/index.html` is absent, plus the two-mode resolver TEST that
    DECISION F086 D3 keeps after withdrawing the two-mode resolver CODE. The guard
    is owed because the carry alone is silent: measured at 72e07381, a build with
@@ -35,9 +34,9 @@ fail; R6's own control could not, which is finding R-0574.
   interpreter under `.remedy-wt/`, so that smoke cannot be proved green from a
   session with this posture; the round that writes it must name its execution
   host or it will be unverifiable where it matters.
-- A wheel that carries `apps/ui/dist` is only as honest as the directory it was
-  built from, so a release now requires the UI to be built first — DECISION F086
-  D1's own stated consequence, inherited by CI and by any human cutting a release.
+- A build tool's file selection depends on WHERE the tree is: hatchling drops every
+  VCS exclusion when the build root is itself gitignore-matched, so any future
+  packaging probe uses a worktree OUTSIDE this repository (finding R-0574).
 - Ruff is RED repo-wide at 26 pre-existing errors and is NOT a gate; a round
   touching Python gates ruff scoped to the files it touches, measured against the
   same files at the base.
