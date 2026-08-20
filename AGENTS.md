@@ -77,6 +77,22 @@ If the PR cannot be merged (conflicts, failing checks, missing approvals, or pol
 2. report the blocker
 3. do not proceed with new work
 
+Exception, operator amendment amend0820-gate-autonomy (2026-08-20) — a CI check
+that is RUNNING or RED is WORK, not a blocker:
+
+- Still RUNNING: wait for it with `gh run watch <run-id> --exit-status`, up to 60
+  minutes. Do not end the session while a run it is waiting on is alive.
+- Ended RED: read it with `gh run view <run-id> --log-failed`. Repairing that
+  branch IS this session's work order, and commits on the open PR's branch are
+  explicitly allowed for it. Classify the failure before fixing it — a guard or
+  sandbox posture breaking the suite, a stage budget too small for a slower
+  hosted runner, or a real defect — and never delete a test, weaken an assertion
+  or raise a ceiling to make a check green. A budget is re-derived by the rule
+  `tests/orchestration/test_ci_stages.py` states, from a re-measured maximum;
+  it is never raised by hand.
+- Only an UNREADABLE state ends the session with a report: the `gh` permissions
+  are missing, or GitHub is unreachable. Red is readable, so red is work.
+
 ------------------------------------------------------------------------
 
 ### Branching

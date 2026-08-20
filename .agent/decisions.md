@@ -5981,3 +5981,34 @@ must not describe stage 1 as denying "all" network access to a guarded child.
 
 Reverse this decision by restoring the empty string in `DENIED_NETWORK_NO_PROXY` and
 deleting the amendment section in the feature file, which returns 62 tests to red.
+
+## DECISION amend0820-gate-autonomy A2 — a red or running CI check is work, not a blocker (2026-08-20)
+
+CHOSEN by the operator on 2026-08-20. AGENTS.md's Open PR Gate now carries the
+exception in its own words. A session that reaches the gate and finds the open PR
+not merge-ready no longer ends there when the reason is its CI check: a RUNNING
+check is waited on with `gh run watch --exit-status` up to 60 minutes, and a RED one
+makes repairing that branch the session's work order, with commits on the open PR's
+branch explicitly allowed. Only an UNREADABLE state — `gh` permissions missing, or
+GitHub unreachable — still ends the session with a report.
+
+The three grants a session needs to read that state are in `.claude/settings.json`:
+`Bash(gh run:*)`, `Bash(gh api:*)` and `Bash(gh pr checks:*)`. They are added to the
+TRACKED settings file rather than the untracked local one, so a fresh checkout has
+them; nothing was removed, and permission allow-rules union across settings files.
+
+WHY. F085's own gate ran out of session three times over a red check nobody could
+read: `.agent/plan.md` at 4c2d707b recorded "WHICH CI stage is red is unknown,
+because `gh run` and `gh api` are denied in this sandbox". The block was never a
+judgement that the work could not proceed — it was a missing permission, and the
+protocol turned that into a stop.
+
+CONSEQUENCE. A session can now spend most of its budget repairing someone else's red
+branch, which is intended: an unmerged PR blocks every later feature by the gate
+itself. The repair rules of DECISION amend0820-gate-autonomy A1's round still bind —
+no test deleted, no assertion weakened, no ceiling raised — and a stage budget is
+re-derived by the rule `tests/orchestration/test_ci_stages.py` states rather than
+raised by hand.
+
+Reverse this decision by deleting the exception paragraph from AGENTS.md's Open PR
+Gate, which returns the gate to stop-and-report on any failing check.
