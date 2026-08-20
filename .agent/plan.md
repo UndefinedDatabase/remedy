@@ -16,32 +16,28 @@ silently, teacher spend is reported as its own role in the F103 ledger, and the
 read-only invariant is proven behaviourally.
 
 ## Current Step
-R9: record the R8 verdict and build Stage 1 narration — the enumerated event
-set, the deterministic templates and the unrecognised-event path — as one new
-module with its own tests. T001 is complete as of R8.
+R10: record the R9 verdict and finish T002 and T003 — `remedy teach narrate`
+over a real run log, its catalog entry declaring `action_class="read_only"`, and
+the behavioural proof that the command changes no byte under the data root.
 
 ## Next Steps
-1. R10 BUILDS THE SURFACE AND THE PROOF TOGETHER: `remedy teach` printing the
-   narration over a real run log through `timeline.load_run_events`, its
-   command-catalog entry declaring `action_class="read_only"`, and T003's
-   BEHAVIOURAL proof over that command — bytes on disk unchanged across the
-   call. T002 and T003 were planned as one round; they are two because the
-   module and its tests alone measure 221 lines, and a block carrying the CLI
-   surface as well cannot fit the 490-line cap of DECISION F085 D6. The proof
-   travels with the SURFACE because the module opens nothing and takes no path,
-   so proving it read-only would prove the half that was never at risk.
-2. T004, Stage 2 Q&A, follows: the small context, the source labelling, the
-   level dial, and spend recorded under the role name `teacher`. It is also the
-   round that gives `teacher.model` its first reader.
-3. The integration gate and the closure round follow T004, per
-   docs/roadmap/STATUS_closure_protocol.md.
+1. R11 BUILDS T004, Stage 2 Q&A: `remedy teach ask`, the small context, the
+   three grounding sources labelled per answer, the level dial, and spend
+   recorded under the role name `teacher`. It is the round that gives
+   `teacher.model` its first reader.
+2. The INTEGRATION GATE round follows T004 — the full suite, per
+   docs/agents/integration_gate.md — because T002 and T003 touch the CLI
+   catalog, which the parser and the help renderer both read.
+3. The CLOSURE round follows, per docs/roadmap/STATUS_closure_protocol.md:
+   evidence job, fresh review zip, the STATUS line, and the pull request.
 
 ## Risks
-- STAGE 1 IS ZERO-TOKEN ONLY WHILE NOTHING CALLS A MODEL FROM IT. The module
-  built here imports no provider and opens no file, and a test asserts both; if
-  a later round routes narration through a model, that test is the tripwire.
-- THE READ-ONLY INVARIANT IS NOT YET PROVEN BEHAVIOURALLY. Nothing an operator
-  can invoke exists until R10, and this branch's pull request is created by the
-  closure round, so no narration reaches an operator before its proof lands.
-- NARRATION IS UNDOCUMENTED IN `docs/` UNTIL R10, deliberately: documenting a
-  module nobody can call would describe a capability that does not exist.
+- STAGE 2 IS THE ROUND THAT CAN BREAK THE COST STORY. Stage 1 spends nothing
+  because it calls no model; T004 introduces the first teacher model call, and
+  its spend must land under the role name `teacher` in the F103 ledger or
+  DECISION F255 D3 is unmet.
+- THE READ-ONLY PROOF COVERS THE NARRATE PATH ONLY. `remedy teach ask` is a new
+  path and needs its own proof; a proof of one command is not a proof of a role.
+- THE CATALOG IS SHARED GROUND. `teach` is a new command group the parser and
+  the help renderer both build from, so a later round changing its shape re-runs
+  their suites, not only the teacher's own.
