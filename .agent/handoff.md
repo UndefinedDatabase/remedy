@@ -1,74 +1,72 @@
-# Handoff — F086 Release capability, R4 (record + the packaging DECISIONs)
+# Handoff — F086 Release capability, R5 (record + session close)
 
 Branch: feature/f086-release-capability (continued; no branch created, no PR opened).
-Base 0cabd17e · HEAD this commit · Open findings 155 (156 registered, 1 resolved).
-Fortschritt: ~3 % (F086 beansprucht · R1-R3 gegated · Paketform entschieden · T001/T002/T003 offen) — Schätzung
+Base 655661b0 · HEAD = the C4 commit · Open findings 155 (156 registered, 1 resolved).
+Fortschritt: ~3 % (F086 beansprucht · R1-R4 gegated · Paketform entschieden · T001/T002/T003 offen) — Schätzung
 
 ## Range
 
-Review of 0cabd17e..HEAD
+Review of 655661b0..HEAD
 
 ## Commits
 
-### 2abb622b chore(state): save the F086 R4 authored block
+### 9d23807b chore(state): save the F086 R5 authored block
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f086-r4.md | +302/-0 | C0a, `shutil.copyfile` of `.remedy-wt/f086-r4.md` |
+| .agent/authored/f086-r5.md | +299/-0 | C0a, `shutil.copyfile` of `.remedy-wt/f086-r5.md` |
 
-### 67d16973 chore(state): mirror the R4 block into last_block
+### 355dea2c chore(state): mirror the R5 block into last_block
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/last_block.md | +193/-168 | C0b, whole-file mirror of the COMMITTED C0a blob |
+| .agent/last_block.md | +189/-192 | C0b, whole-file mirror of the COMMITTED C0a blob |
 
-### a4059de3 chore(state): advance the plan to the F086 R4 record and decision round
+### 18b2cf89 chore(state): advance the plan to the F086 R5 record and close round
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/plan.md | +23/-21 | C1, PLAN4 slice byte-verbatim, whole file |
+| .agent/plan.md | +22/-21 | C1, PLAN5 slice byte-verbatim, whole file |
 
-### 4f812309 chore(review): record the F086 R3 verdict in the review ledger
+### ed5d4f11 chore(review): record the F086 R4 verdict in the review ledger
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/live_review.md | +2/-0 | C2, RECORD2 appended by pure concatenation |
+| .agent/live_review.md | +2/-0 | C2, RECORD3 appended by pure concatenation |
 
-### 596eb7b0 docs(decisions): rule the F086 wheel asset carry and the single version literal
+### C3 (this commit) + C4 — grouped, a handoff cannot table itself (R-0149 pattern)
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/decisions.md | +78/-0 | C3, DECISION1 then DECISION2 appended; no landed section edited |
-
-### this commit docs(state): write the F086 R4 handback
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/handoff.md | rewrite | C4, cannot table itself (R-0149 pattern) |
+| .agent/handoff.md | rewrite | C3, this commit, per docs/agents/handback_template.md |
+| .agent/handoff.md | append | C4, the reviewer's 44-line VERDICT slice; numstat in the round report |
 
 ## External actions
 
-`git push origin feature/f086-release-capability` after this commit. No worktree added
-or removed (`git worktree list` stayed ONE line), no `gh`, no PR, no venv, no build.
+`git push origin feature/f086-release-capability` after C4. No worktree added or
+removed (`git worktree list` stayed ONE line). `gh pr list --state open` run READ-ONLY
+at the handback: no PR created, edited or merged this round.
 
 ## Verification
 
 | Gate | Exit | Result |
 |---|---|---|
-| G1 | 0 | `git status --porcelain` EMPTY, `git worktree list` ONE line, `.agent/STOP` absent, branch still feature/f086-release-capability |
-| G2 | 0 | scratch, committed authored and committed last_block all byte-EQUAL: sha256 84485aac89d300e388c7a432af78dca51f6da510784d67de60a653cbcdf53b20, 21879 B, 302 lines |
-| G3 | 0 | `.agent/plan.md` byte-equal to extracted PLAN4, sha256 872e59f1…5682, 43 lines (<50), has `## Goal`, `## Next Steps`, `F086` |
+| G1 | 0 | at C3: `git status --porcelain` EMPTY, `git worktree list` ONE line, `.agent/STOP` absent, branch feature/f086-release-capability; re-taken after C4 in the round report |
+| G2 | 0 | scratch, committed authored and committed last_block all byte-EQUAL: sha256 101be7cec956c4fa99009d2c0471c2d1c49e8b4b616fd1b2237d280f6de9e37c, 20909 B, 299 lines |
+| G3 | 0 | `.agent/plan.md` byte-equal to extracted PLAN5, sha256 314b31c3…7923, 44 lines (<50), has `## Goal`, `## Next Steps`, `F086` |
 | G4 | 0 | 156 registered / 1 resolved / 155 open at BOTH SHAs; registered, resolved and OPEN sets IDENTICAL (symdiff empty); 0 dups, 0 unregistered resolutions, 0 `Landed:` |
-| G5a | 0 | REQUIRED: compared 152, equal 152 (paragraph extraction, whole block) |
-| G5b | 0 | NEGATIVE CONTROL at 25f7a5af: compared 152, equal 113 — strictly fewer; halves DISAGREE, so the check can fail |
-| G6 | 0 | RECORD2 present verbatim, begins `Gate:`, no `^- R-\d+ — ` match; `Steps` present; `<<<` occurs 0x |
-| G7 | 0 | file at 0cabd17e is a byte-exact PREFIX of HEAD = True; remainder == D1+D2 exactly; D1 sha256 998c729d…7dfd (3251 B), D2 sha256 ead658cf…9e4a (2059 B); `## DECISION F086 D1` 1x, `D2` 1x, `<<<` 0x |
-| G8 | 0 | `160 passed in 19.97s`, four state readers, PRIMARY checkout, serial |
-| G9 | 0 | `42 passed in 20.48s`, canary, serial, after G8 finished |
-| G10 | 0 | authored/f086-r4.md, decisions.md, last_block.md, live_review.md, plan.md (+ handoff.md with this commit); `pyproject.toml`, `ui_server.py`, `apps/`, `tests/`, `docs/` ABSENT |
-| G11 | 0 | insertions 302, 193, 23, 2, 78 — none over 500, no exemption invoked |
-| G12 | 0 | one parent per commit (linear); reflog shows only `commit:` entries |
+| G5a | 0 | REQUIRED: compared 152, equal 152 (paragraph = whole block, never its first line); carried set VERIFIED equal to registered-and-unresolved in the 76661dc1 blob |
+| G5b | 0 | NEGATIVE CONTROL at 25f7a5af: compared 152, equal 113 — strictly fewer; the halves DISAGREE, so the check can fail |
+| G6 | 0 | RECORD3 present verbatim and as EOF suffix, begins `Gate:`, no `^- R-\d+ — ` match; `Steps` present; marker LINES 0 (substring `<<<` also 0 here) |
+| G7 | — | measured after C4 in the round report: a handoff written by C3 cannot measure its own append. Known at C3: VERDICT slice sha256 af46e4af4c91c72773285435dc2988bcf0cc7b3f0e870819b4ee849332c5b1a1, 2576 B, 44 lines, extracted from the COMMITTED authored file |
+| G8 | 0 | `160 passed in 19.96s`, four state readers, PRIMARY checkout, serial |
+| G9 | 0 | `42 passed in 20.29s`, canary, started only after G8 returned |
+| G10 | 0 | at C3: authored/f086-r5.md, last_block.md, live_review.md, plan.md (+ handoff.md with this commit); `pyproject.toml` and every path under `packages/`, `apps/`, `tests/`, `docs/`, `scripts/` ABSENT |
+| G11 | 0 | insertions 299, 189, 22, 2 — none over 500, no F104 D1 exemption invoked; C3 and C4 in the round report |
+| G12 | 0 | one parent per commit (linear) over C0a-C2; reflog `commit:`/`checkout:` only, re-taken after C4 |
+| G13 | 0 | `gh pr list --state open --json number,headRefName,baseRefName,isDraft` → `[]`; nothing merged, nothing opened |
 
 ## Authored-text proofs
 
-PLAN4, RECORD2, DECISION1 and DECISION2 were extracted PROGRAMMATICALLY by their
-one-line markers from the COMMITTED `.agent/authored/f086-r4.md` and applied
-byte-verbatim, never retyped: G3 the plan equality, G6 the ledger append, G7 the
-decisions prefix-plus-remainder equality; `<<<` occurs 0x in every target.
+PLAN5, RECORD3 and VERDICT were extracted PROGRAMMATICALLY by their one-line
+markers from the COMMITTED `.agent/authored/f086-r5.md` and applied byte-verbatim,
+never retyped: G3 the plan equality, G6 the ledger append, G7 the handoff append.
+The VERDICT text is the reviewer's; this worker wrote no verdict anywhere.
 
 ## Item status
 
@@ -78,23 +76,23 @@ decisions prefix-plus-remainder equality; `<<<` occurs 0x in every target.
 | C0b | done | |
 | C1 | done | |
 | C2 | done | |
-| C3 | done | |
-| C4 | done | this commit |
+| C3 | done | this commit |
+| C4 | done | appends the VERDICT slice to this file |
 
 ## Deviations & assumptions
 
-1. NO departure from the ordered sequence: five commits in block order plus C4, none
-   extra, dropped or reordered. No code, no test, no `docs/` file, no `pyproject.toml`.
-2. NO contradiction found between DECISION F086 D1/D2 and `.agent/f086_inventory.md`:
-   every figure the DECISIONs cite is the inventory's own reading — 414 members /
-   2038283 B / 0 under `apps/ui/dist/` (b, c), 65 src files and the 182948-byte lockfile
-   (b), the generic `dist/` ignore and the absent `artifacts`/`force-include` (f), the
-   three `.parent` hops (g), the reachable npm spawn (i), `pyproject.toml:7` agreeing
-   with the wheel METADATA (e), no `--version` under `apps/` (h).
-3. G5 note: "carried at the F086 claim" = the ids in BOTH the HEAD ledger and the
-   `76661dc1` blob (152); a first pass over all 184 paragraphs there was the wrong set.
+1. NO departure from the ordered sequence: six commits in block order, none extra,
+   dropped or reordered. No code, no test, no `docs/` file, no `pyproject.toml`.
+2. D15 OVERAGE, declared: this file will stand at 142 lines after C4 — 98 written
+   here plus the reviewer's 44-line VERDICT slice — against the 100-line cap that
+   >5 per-commit tables allow. Cause: the round that closes a session carries the
+   reviewer's authored session verdict as mandated content (finding R-0571), and no
+   section was dropped to meet the cap. Written ONCE; no trim commit follows C4.
+3. G1, G7, G11 (C3, C4) and the G12 reflog are stated as measured only where they
+   were measurable at C3; their post-C4 readings are in the round report, because a
+   file cannot record the commit that appends to it.
 
 ## Next
 
-Reviewer re-runs G1-G12 over `0cabd17e..HEAD` and, on PASS, authors R5 — T001 under
-DECISION F086 D1 — Phase 1 rule 1 (`.agent/STOP`) before rule 2.
+Next session: re-read `.agent/STOP` from disk (Phase 1 rule 1), then run the Open PR
+Gate (Phase 1 rule 2). Then R6 — T001 under DECISION F086 D1.
