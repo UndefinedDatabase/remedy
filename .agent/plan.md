@@ -14,31 +14,30 @@ path and the UI serve work, the version command matches the tag, and a release
 with a missing changelog entry is refused by the gate.
 
 ## Current Step
-R17, this round: record R16's verdict, register finding R-0584 and repair it.
-Three of the release workflow's seven text guards assert a positive existence over
-text that includes the file's COMMENTS, and two of them are satisfied by a comment
-alone — the `${found:-missing}` fallback can be deleted, and the only trigger the
-workflow has can be commented out, with the suite green either way. All three
-positive checks move onto the file's executable lines.
+R18, this round: state files only. R17's repair of R-0584 is verified, so the
+worker's `Landed:` line becomes the reviewer's `Done:` text, R17's verdict enters
+the ledger, and DECISION F086 D4 rules where the install smoke executes — the one
+design question left open by the fact that no round of this workflow can run it.
 
 ## Next Steps
-1. The install smoke T2_F086 T001 still owes: a fresh virtualenv, the wheel
-   installed into it, `remedy` on PATH, and the golden path and the UI serve
-   probed from it. The round that writes it must rule, as a DECISION, WHERE that
-   smoke executes — an opt-in marker, a `ci.yml` stage, or a step of
-   `release.yml` — because no self-drive session can run it here.
-2. Then the integration gate (docs/agents/integration_gate.md) and closure. The
+1. R19 writes the install smoke per DECISION F086 D4: one `smoke`-marked,
+   `slow`-marked module that SELF-SKIPS unless `REMEDY_INSTALL_SMOKE` is set, so
+   the default suite stays fast and the test is honest about never having run
+   here. What R19 can gate is the skip path and the module's own logic; what it
+   cannot gate is the install, and it says so.
+2. Then the smoke's wall-clock is MEASURED on a host that can run it, and only
+   then is a CI stage chosen to opt in — the `smoke` stage carries a 300 s budget
+   that AGENTS.md forbids raising by hand.
+3. Then the integration gate (docs/agents/integration_gate.md) and closure. The
    packaging ist-doc is written at closure, when the built state stops moving.
-3. THE RELEASE WORKFLOW HAS NEVER BEEN RUN. It is gated as TEXT, the way
+4. THE RELEASE WORKFLOW HAS NEVER BEEN RUN. It is gated as TEXT, the way
    `tests/orchestration/test_ci_workflow.py` gates `ci.yml`. No round can
-   dispatch it; its first real run is a human action, and its guards check what
-   they say and nothing more.
+   dispatch it; its first real run is a human action.
 
 ## Risks
-- The install smoke creates a fresh virtualenv and runs the wheel's console
-  script. MEASURED at R17 rather than assumed: this session's permission layer
-  refuses to execute an interpreter under `.remedy-wt/`, so a self-drive round can
-  write that smoke but cannot run it, and the round that writes it says so.
+- The install smoke needs network, a venv interpreter and minutes. MEASURED at
+  R17: this session's permission layer refuses to execute an interpreter under
+  `.remedy-wt/`, so a self-drive round can write that smoke but cannot run it.
 - A build tool's file selection depends on WHERE the tree is: hatchling drops
   every VCS exclusion when the build root is gitignore-matched, so any packaging
   probe uses a worktree OUTSIDE this repository (finding R-0574).
