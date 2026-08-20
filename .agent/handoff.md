@@ -52,3 +52,45 @@ PLAN19, FIND0585, RECORD17, CHECKFROM, CHECKTO and VERDICT were each extracted p
 1. Re-read `.agent/STOP` from disk (Phase 1 rule 1).
 2. Run the Open PR Gate (Phase 1 rule 2): `gh pr list --state open --json number,headRefName,baseRefName,isDraft`.
 3. Then review `7b84524c..HEAD` and record R19's verdict in `.agent/live_review.md` (Phase 1 rule 4).
+
+## Reviewer's session verdict — authored by the reviewer, applied by the worker
+
+Written because finding R-0571 is that a verdict issued and never put on disk
+cannot be told apart from one never issued; appended so the next handback rewrite
+cannot silently destroy it. Session of 2026-08-20, self-drive per
+docs/agents/self_drive_protocol.md, resuming the branch at `4750383c` and ending
+at its declared three-round cap. The reviewer wrote nothing in the work tree, one
+delegated worker per round made every commit, and every verdict below rests on
+gates the reviewer re-executed over the committed diff, never on a handback.
+
+| Round | Range | Verdict |
+|---|---|---|
+| R16 | efc021d9..4750383c | PASS — one finding, R-0584, against the reviewer |
+| R17 | 4750383c..f0b27118 | PASS — no finding |
+| R18 | f0b27118..7b84524c | PASS — one finding, R-0585, against the reviewer |
+| R19 | 7b84524c..HEAD | verdict not yet on disk; see the last paragraph |
+
+R16 was inherited ungated, so Phase 1 rule 4 reviewed it first. Its manual release
+trigger is real and every ordered property reproduced; its one defect was invisible
+to every gate it ordered, and only a control the block never ordered could find it
+— three guards asserting over text that included the workflow's COMMENTS, two of
+them satisfied by a comment alone. R17 repaired exactly that, measured from both
+sides: the mutation that was green at `4750383c` is red at `f0b27118`, naming only
+its own test, while the guard that was already sound stays red at both commits.
+R18 resolved R-0584 in the ledger and ruled DECISION F086 D4 — the install smoke is
+written here and executed elsewhere, with the permission and network constraints
+that force it measured rather than assumed. Its own defect was again the reviewer's:
+a gate counting a list it did not contain, which is R-0585 and which R19 promotes
+into the checklist.
+
+WHAT THIS FEATURE STILL OWES: the install smoke module per D4, then its wall-clock
+measured on a host that can run it, then the CI opt-in, then the integration gate
+and closure. NOTHING IN THIS SESSION PROVED AN INSTALL, and no round of this
+workflow can; D4 records that with the measurement behind it. The release workflow
+has likewise never been dispatched.
+
+R19 IS NOT A TERMINATOR — F086's pull request is created at closure, which has not
+happened — so this session claims no §4 item 13 carve-out and leaves its last
+verdict to be recorded. THE NEXT SESSION'S FIRST ACTIONS are Phase 1 rule 1, then
+rule 2, then rule 4: review `7b84524c..HEAD` and record R19's verdict in
+`.agent/live_review.md` as `Gate: R20 — the R19 entry`.
