@@ -394,6 +394,13 @@ end the response with:
       rather than synchronise it. A ruled figure that must appear in a heading appears there
       once, in the same words as the body that rules it, so that a later revision cannot
       change one without visibly contradicting the other.
+      Finding R-0585 widens the check's REACH rather than its subject: the list a sentence
+      counts need not sit beneath that sentence. The R18 instance is a done-when gate reading
+      "exactly the four paths of constraint 2 other than `.agent/handoff.md`" while constraint
+      2, fifty lines above it, named five — so "read the numerals against the body beneath it"
+      never looked at the list that had drifted, and an honest worker had to spend a declared
+      deviation proving the block contradicted itself. Resolve every count to the list it
+      NAMES, wherever in the block that list lives, and prefer naming it over counting it.
   17. **A pair that changes a structure's arity spans the whole structure.** Finding
       R-0509. When a TO adds or removes an entry of a numbered list, a table, or any
       other structure whose items carry positional labels, the FROM spans that WHOLE
