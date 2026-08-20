@@ -14,25 +14,27 @@ path and the UI serve work, the version command matches the tag, and a release
 with a missing changelog entry is refused by the gate.
 
 ## Current Step
-R20: write the install smoke DECISION F086 D4 rules — `tests/test_install_smoke.py`,
-one module that self-skips unless `REMEDY_INSTALL_SMOKE` is set — and record R19's
-verdict plus R-0586, the finding R19 produced against the reviewer.
+R21, this session's last: record R20's verdict, register R-0587 — a ledger entry
+that carried the header of the entry above it — and promote both of this session's
+rules into the §3 pre-emission checklist, item 20 and a new item 26.
 
 ## Next Steps
-1. R21 promotes R-0586's rule into the §3 pre-emission checklist, item 20, where a
-   rule has to live to bind the next block, and records R20's verdict.
-2. Then the smoke's wall-clock is MEASURED on a host that can run it, and only
-   then is a CI stage chosen to opt in — the `smoke` stage carries a 300 s budget
-   that AGENTS.md forbids raising by hand.
-3. Then the integration gate (docs/agents/integration_gate.md) and closure. The
-   packaging ist-doc is written at closure, when the built state stops moving.
+1. THE INTEGRATION GATE is the next substantive round: the full suite per
+   docs/agents/integration_gate.md, run once before closure. A regression there is
+   a normal repair round, not a closure blocker.
+2. Then closure per docs/roadmap/STATUS_closure_protocol.md — evidence job, FRESH
+   review zip, the STATUS line, the PR. The packaging ist-doc is written there,
+   when the built state stops moving.
+3. The install smoke's wall-clock is MEASURED on a host that can run it, and only
+   then is a CI stage chosen to opt in — the `smoke` stage carries a budget
+   AGENTS.md forbids raising by hand.
 4. THE RELEASE WORKFLOW HAS NEVER BEEN RUN and NO INSTALL HAS EVER BEEN PROVEN;
-   no round of this workflow can do either. Both are human actions.
+   no round of this workflow can do either. Both are human actions, and closure
+   names them as unproven rather than counting a skipped test as coverage.
 
 ## Risks
-- The install smoke needs network, a venv interpreter and minutes. MEASURED at
-  R17: this session's permission layer refuses to execute an interpreter under
-  `.remedy-wt/`, so a self-drive round can write that smoke but cannot run it.
+- `tests/test_install_smoke.py` SKIPS everywhere it currently runs. Its unit
+  coverage is real; its install coverage is zero until the variable is set.
 - A build tool's file selection depends on WHERE the tree is: hatchling drops
   every VCS exclusion when the build root is gitignore-matched, so any packaging
   probe uses a worktree OUTSIDE this repository (finding R-0574).
