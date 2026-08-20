@@ -6144,3 +6144,47 @@ repository has already paid for once (finding R-0252).
 
 Reverse this decision by deleting this section, which restores D1 part (c) as
 written and reopens the choice between `artifacts` and `force-include`.
+
+## DECISION F086 D4 — the install smoke is written here and executed elsewhere (2026-08-20)
+
+CHOSEN. The T2_F086 install smoke is ONE module, `tests/test_install_smoke.py`,
+carrying the `smoke` and `slow` markers, which SELF-SKIPS unless the environment
+variable `REMEDY_INSTALL_SMOKE` is set. Its execution host is a machine with
+network access and permission to spawn an interpreter it just installed — a
+GitHub runner or the operator's own shell — and never a self-drive round.
+
+MEASURED, at R17, which is why this is a decision and not a preference: this
+session's permission layer refuses to execute an interpreter under `.remedy-wt/`,
+so `python3 -m venv .remedy-wt/probe-venv` succeeds and the resulting
+`.remedy-wt/probe-venv/bin/python` cannot be run. A wheel install also needs the
+network to resolve `pydantic>=2.0` and `psutil>=5.9`, which `pyproject.toml`
+declares. Neither constraint is a property of one round; both hold for every
+round of this workflow.
+
+WHY OPT-IN RATHER THAN A NEW CI STAGE. `tests/orchestration/test_ci_stages.py`
+pins the stage tuple to `("fast", "standard", "ui", "smoke", "budgets",
+"excluded")`, so a new stage is a change to that pin as well; and the existing
+`smoke` stage already selects `smoke`-marked tests. The opt-in variable mirrors
+what `real_ollama` already does for tests the default suite must not run, which
+is the pattern this repository has and the reason the marker exists.
+
+WHAT THIS DECISION DELIBERATELY DOES NOT RULE. It does not name the CI stage that
+sets the variable. That choice needs the smoke's real wall-clock, and the `smoke`
+stage carries a 300 s `timeout_sec` which AGENTS.md forbids raising by hand — a
+budget is re-derived by the rule `tests/orchestration/test_ci_stages.py` states,
+from a re-measured maximum. Choosing the stage before measuring the duration
+would be exactly the blind raise that rule exists to prevent, so it waits.
+
+CONSEQUENCE, stated plainly so no later reader mistakes a written test for a
+passing one: until that variable is set somewhere real, F086's DONE condition —
+"a wheel built from a clean checkout installs into a fresh virtualenv where the
+golden path and the UI serve work" — is UNPROVEN. The closure round names it as
+unproven rather than counting a skipped test as coverage.
+
+ALTERNATIVE CONSIDERED and rejected: put the smoke in the release workflow
+instead, as a step of `release.yml`. Rejected because that workflow is manual and
+rarely dispatched, so a packaging regression would surface at release time, which
+is the latest and most expensive moment to learn about it.
+
+Reverse this decision by deleting this section, which reopens the choice between
+an opt-in marker, a new CI stage, and a release-workflow step.
