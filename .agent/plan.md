@@ -15,16 +15,20 @@ path and the UI serve work, the version command matches the tag, and a release
 with a missing changelog entry is refused by the gate.
 
 ## Current Step
-R9, this round: land T001 part (b) — the packaging-time guard that refuses to
-build a wheel whose `apps/ui/dist/index.html` is absent — together with the
-two-mode resolver TEST that DECISION F086 D3 keeps after withdrawing the
-two-mode resolver CODE. Register R-0580 and record the R8 verdict.
+R10, this round: land T002's reporting surface — `remedy --version` reading the
+version back through package metadata per DECISION F086 D2, with the build
+revision, the Python version and the platform, and reporting `dev` for whatever
+a checkout cannot prove. Record the R9 verdict. T001 is complete and proved: the
+wheel carries `apps/ui/dist`, and a build without it now fails loudly.
 
 ## Next Steps
-1. R10 — T002: the version single-source and the build info behind
-   `remedy --version`, with a checkout mode that reports "dev" honestly
-   (DECISION F086 D2).
-2. Then T003 — the release CI stage, the changelog and tag gate, the wheel-size
+1. R11 — close this session: record the R10 verdict and write the reviewer's
+   session verdict to disk.
+2. Then the REVISION embedding, which T002 still owes: `resolve_build_revision()`
+   reads a `REVISION` file out of the installed distribution's metadata, and
+   nothing writes that file yet, so an installed wheel reports `dev` exactly as a
+   checkout does. The build hook `hatch_build.py` is where it gets written.
+3. Then T003 — the release CI stage, the changelog and tag gate, the wheel-size
    budget and the seeded-failure tests; then the integration gate; then closure.
    The packaging ist-doc is written at closure, when the built state stops moving.
 
