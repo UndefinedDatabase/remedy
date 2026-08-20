@@ -1,0 +1,72 @@
+# Remedy's release gate, hosted. MANUAL TRIGGER ONLY: cutting a release is a
+# human decision, so nothing here fires on a push, a tag or a schedule. Like
+# ci.yml this file is a THIN WRAPPER — it builds the wheel, observes the real
+# conclusion of this commit's CI run, and hands both to the gate runner under
+# scripts/, which owns every rule. Remedy deliberately does not publish from CI:
+# there is no upload step and no index credential here, because T2_F086's
+# Do-not-touch keeps the final upload a HUMAN command.
+name: Release gate
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'The tag being released, for example v0.1.0'
+        required: true
+
+# Read-only: the gate reads a CI conclusion and writes nothing back.
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: pip
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: apps/ui/package-lock.json
+
+      # The wheel must carry real UI assets: hatch_build.py fails the build when
+      # apps/ui/dist is absent, so this step is a precondition of the next one.
+      - name: Build the UI assets
+        run: npm ci --prefix apps/ui && npm run --prefix apps/ui build
+
+      - name: Build the wheel
+        run: |
+          python3 -m pip install build
+          python3 -m build --wheel
+
+      # The gate judges the CI run that really happened for THIS commit. When no
+      # run exists the step reports 'missing', which is not 'success', so the
+      # gate refuses rather than treating an absent answer as a green one.
+      - name: Read this commit's CI conclusion
+        id: ci
+        env:
+          GH_TOKEN: ${{ github.token }}
+          COMMIT: ${{ github.sha }}
+        run: |
+          found=$(gh run list --workflow=ci.yml --commit="$COMMIT" \
+            --limit 1 --json conclusion --jq '.[0].conclusion')
+          echo "conclusion=${found:-missing}" >> "$GITHUB_OUTPUT"
+
+      # The tag reaches the runner through the ENVIRONMENT, never interpolated
+      # into a shell line, so a crafted tag cannot become a command.
+      - name: Refuse the release unless every rule passes
+        env:
+          TAG: ${{ inputs.tag }}
+          CI_STATUS: ${{ steps.ci.outputs.conclusion }}
+        run: |
+          built=$(ls dist/*.whl)
+          python3 scripts/release_gate_check.py --tag "$TAG" \
+            --wheel "$built" --ci-status "$CI_STATUS"
