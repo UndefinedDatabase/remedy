@@ -16,18 +16,17 @@ path and the UI serve work, the version command matches the tag, and a release
 with a missing changelog entry is refused by the gate.
 
 ## Current Step
-R34: record R33's verdict in `.agent/live_review.md` so it is not stranded
+R35: record R34's verdict in `.agent/live_review.md` so it is not stranded
 (DECISION F085 D9). This round registers no finding, resolves none, and changes
-no source file, test or document. It is the last round this session runs.
+no source file, test or document.
 
 ## Next Steps
-1. THE NEXT SESSION REVIEWS R34 FIRST. Its handback is ungated by construction,
-   and Phase 1 of docs/agents/self_drive_protocol.md orders rule 1, the `.agent/STOP`
-   re-read, before rule 2, the Open PR Gate. R34 does NOT claim the terminator
-   carve-out: that belongs only to the round creating the branch's pull request,
-   which was R31 (R-0583).
-2. THE OPEN PR GATE MERGES #207 at the start of the next feature, per AGENTS.md.
+1. THE OPEN PR GATE MERGES #207, per AGENTS.md, before any new branch is cut.
    The operator may merge it manually at any time instead.
+2. R35'S OWN VERDICT IS RECORDED BY THE NEXT FEATURE'S FIRST REVIEWED ROUND,
+   the way F085's closure candidates reached F086 R1. R35 does NOT claim the
+   terminator carve-out: R-0583 gives that to the round creating the branch's
+   pull request, which was R31, so the regress ends at the merge and not here.
 3. F086 STAYS `[x]` IN THE LEDGER. Neither R-0598 nor R-0599 falsifies the
    closure's own claim, so each correction is a dated ledger entry and never a
    rewrite of a landed STATUS line.
@@ -39,5 +38,6 @@ no source file, test or document. It is the last round this session runs.
   Both are human actions and both are named in the STATUS line's PASS_WITH_RISKS.
 - A GREEN CI RUN IS NOT A WHEEL INSTALL. It proves the dev install and the suite,
   which is what R-0598 broke, and it proves neither risk above.
-- The review package is 71% `.remedy-wt/` scratch by member count (R-0403, open
-  and routed to a paydown branch); it inflates the package and is not a failure.
+- R-0571 IS THE HOLE THIS ROUND ROUTES AROUND BY HAND rather than fixes: a last
+  round whose verdict was written and one whose verdict was never written are
+  indistinguishable on disk, and the fix edits files F086 does not own.
