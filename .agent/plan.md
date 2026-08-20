@@ -14,28 +14,30 @@ path and the UI serve work, the version command matches the tag, and a release
 with a missing changelog entry is refused by the gate.
 
 ## Current Step
-R3, this round: record the R2 verdict in the review ledger, then MEASURE the
-packaging shape by building a real wheel in a disposable virtualenv from a
-pristine worktree and reading what is inside it. Nothing about the packaging is
-changed this round; the inventory is what fixes the T001 order.
+R4, this round: record the R3 verdict, and rule as DECISIONs how the wheel comes
+to carry the UI it serves and where the single version string lives — both from
+what R3 measured rather than from the feature file's assumptions. No code and no
+test this round.
 
 ## Next Steps
-1. R4 — rule the packaging shape and the version single-source as a DECISION in
-   `.agent/decisions.md`, from what the R3 inventory actually measured rather
-   than from the feature file's assumptions, and author the T001 order against
-   it. The open question the inventory exists to settle is whether a wheel built
-   from a pristine tree carries `apps/ui/dist` at all: that directory is
-   gitignored at `.gitignore:13` and untracked, while the wheel target is a bare
-   `packages = ["packages", "apps"]` with no artifacts or force-include rule.
+1. R5 — T001 begins: the packaging change DECISION F086 D1 rules, in its own
+   commits — the wheel-side asset carry, the packaging-time guard that refuses
+   to build a wheel with no UI, and the dual-mode resolver in
+   `_get_frontend_dist()` with a test for each mode. The measured baseline it
+   must move is a wheel of 414 members and 2038283 bytes carrying 0 members
+   under `apps/ui/dist/`.
 
 ## Risks
-- If the wheel omits the UI assets, T001 is not a small packaging tweak: it needs
-  a build step that produces the assets and a package-data rule that carries
-  them, plus the dual-mode resolver, and the feature file's "fail loudly if
-  assets are missing" line becomes the acceptance test.
-- `apps/ui/node_modules` is 305 MB and sits under a path the wheel target names.
-  Whether it reaches the wheel is measured by R3, not assumed, and the answer
-  sets the wheel-size budget T003 wants.
-- Building a wheel spawns npm. That spawn is what F085's guard bounds, so a
-  packaging round that bypasses the seam would silently undo stage-1
-  containment.
+- The install smoke F086 requires creates a fresh virtualenv and runs the
+  wheel's console script. R3 measured that THIS session's permission layer
+  refuses to execute any interpreter under `.remedy-wt/`, so the smoke cannot
+  be proved green from a session with that posture; the round that writes it
+  must name its execution host or it will be unverifiable where it matters.
+- `_load_frontend()` reacts to a missing `dist/` by spawning npm, and
+  `apps/ui/package.json` ships in the wheel, so an installed environment can
+  reach the npm path with no `node_modules` present. DECISION F086 D1 rules
+  that path off in installed mode; a T001 that carries assets but leaves the
+  spawn reachable has fixed only half of it.
+- Ruff is RED repo-wide at 26 pre-existing errors and is NOT a gate; a round
+  touching Python gates ruff scoped to the files it touches, measured against
+  the same files at the base.
