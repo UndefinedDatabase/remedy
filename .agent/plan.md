@@ -1,7 +1,8 @@
 # Plan — F086 Release capability
 
-Branch: feature/f086-release-capability, pushed and unmerged, cut from `main` at
-76661dc1. No pull request exists yet: it belongs to R31, the closure commit.
+Branch: feature/f086-release-capability, cut from `main` at 76661dc1. R31 is the
+closure round and the branch terminator; its pull request is created by this round
+and merged by the NEXT feature's Open PR Gate, never here.
 `.agent/live_review.md` is the source of truth for the open set, for the next free
 finding id and for the round map; this file repeats none of them.
 
@@ -14,31 +15,27 @@ path and the UI serve work, the version command matches the tag, and a release
 with a missing changelog entry is refused by the gate.
 
 ## Current Step
-R30: record R29's verdict, re-confirm the full suite, and build the two artifacts
-closure cannot proceed without — the feature-scoped evidence bundle and a FRESH
-review zip from a clean tree. It commits no `docs/` change and creates no PR.
+R31: register R-0597, record R30's verdict, then the closure commit — the `[x]`
+STATUS line with the values R30 measured, the README capability sync in that SAME
+commit (R-0154), and the handback — followed by the pull request, unmerged.
 
 ## Next Steps
-1. R31 IS THE CLOSURE COMMIT and the branch terminator. It is a round of its own
-   because the STATUS line quotes the package filename, its SHA-256 and the
-   accepted HEAD, and none of those exists before R30 measures them — ordering a
-   value that cannot exist when the text is written is the R-0371 defect. R31
-   authors the `[x]` STATUS line, the README capability sync in the SAME commit
-   (R-0154: README and STATUS may never disagree in any committed state), any
-   closure candidates into `.agent/candidates.md`, and the final `.agent` state,
-   then creates the PR. Its path set is exactly those four areas.
-2. THE PR IS NOT MERGED THIS SESSION. It merges at the next feature's start via
-   the Open PR Gate, which is the operator's manual-review window; the operator
-   may merge manually at any time instead.
-3. THE RELEASE WORKFLOW HAS NEVER BEEN RUN and NO INSTALL HAS EVER BEEN PROVEN;
-   no round of this workflow can do either. Both are human actions, and closure
-   names them as unproven rather than counting a skipped test as coverage.
+1. THE PR IS NOT MERGED BY THIS SESSION. It merges at the next feature's start
+   through the AGENTS.md Open PR Gate, which is the operator's manual-review
+   window; the operator may merge it manually at any time instead.
+2. THE NEXT FEATURE is selected by Rule A5 from `docs/roadmap/STATUS.md` — the
+   first `[ ]` in ledger order — in a FRESH session. Its first reviewed round
+   reads `.agent/candidates.md`, which this closure leaves empty and correct.
+3. R-0597 IS OPEN AND ROUTED, not fixed here: the closure commit's path set is
+   fixed by R-0154 at STATUS.md, README.md and `.agent/`, and the finding's
+   counter-measure already exists as checklist item 8 — it was not run, rather
+   than missing — so nothing is owed to `docs/agents/`.
 
 ## Risks
-- The review zip packages `.remedy-wt/`, registered as R-0403 and never paid
-  down; it makes the package larger and is not a build failure.
-- `tests/test_install_smoke.py` SKIPS everywhere it currently runs, so it is
-  deliberately NOT one of the evidence bundle's verification runs.
+- THE FEATURE'S OWN DONE CONDITION IS NOT FULLY PROVEN and closure says so rather
+  than counting a skipped test as coverage: no wheel has been installed into a
+  fresh virtualenv, and `.github/workflows/release.yml` has never been dispatched.
+  Both are human actions and both are named in the STATUS line's PASS_WITH_RISKS.
+- The review package is 71% `.remedy-wt/` scratch by member count (R-0403, open
+  and routed to a paydown branch); it inflates the package and is not a failure.
 - The open set closes PASS_WITH_RISKS, as F083 and F085 both did.
-- `remedy integrity check` is denied to this session class, so precondition 3 is
-  met through `packages.orchestration.integrity_gate` and reported as such.
