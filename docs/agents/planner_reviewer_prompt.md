@@ -664,6 +664,24 @@ end the response with:
       docs/agents/integration_gate.md step 3 makes that attribution unconditional, and the
       worker attributed all 23 by demonstration on its own initiative and said so, which is
       the round rescuing the reviewer rather than the gate doing its job.
+  28. **A measurement the handback template ALSO carries is gated where the template
+      puts it.** Finding R-0592. When a block orders a value that
+      docs/agents/handback_template.md independently requires in a mandated section —
+      the `+/-` column of the `## Commits` table, a path set, a file's line count —
+      the gate NAMES that section as the place the value lands and orders the two
+      readings compared, cell by cell, against the tool that produced them. A value
+      the worker must write twice will be derived twice, and the second derivation is
+      not covered by a gate that only says "report it": the Verification line can be
+      exactly right while the table beside it is wrong, and the table is the half a
+      later session reads. Item 22 binds a sentence the REVIEWER writes about a range
+      and item 14 a constant the BLOCK computes for itself; neither reaches a number
+      the WORKER re-derives to fill a section the template mandates, which is the
+      third writer of the same value. The R24 instance: G12 ordered each commit's
+      insertion count reported, the worker reported all five correctly, and the
+      `## Commits` row for the block-mirror commit read `+380/-334` — the file's line
+      counts after and before — where `git diff --numstat` reads `270  224`, the two
+      differing by exactly the lines the old and new block share. Full-file rewrites
+      are where this bites, because only there do the counts and the columns diverge.
   Why this is on disk and not a habit: item 2 has recurred six times across
   F104 and F105, and R20 hit four of them in one block. A check that lives
   only in reviewer session memory is the A1 trap §0 names, and this list is the
