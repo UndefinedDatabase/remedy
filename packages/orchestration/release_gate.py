@@ -3,9 +3,11 @@
 This module DECIDES and RUNS NOTHING. It takes a description of a proposed
 release and returns the reasons to refuse it, so each refusal the feature's
 Acceptance names is testable without a tag, a wheel or a CI run existing. The
-caller — a manual-trigger workflow, not yet written — supplies the real values,
-reads the repository's `CHANGELOG.md` and stops on a non-empty result. Until that
-caller exists this gate refuses nothing, because nothing calls it. It is
+caller is `scripts/release_gate_check.py`, added at 8cdecc5b: it supplies the real
+values, reads the repository's `CHANGELOG.md` and stops on a non-empty result, and
+`.github/workflows/release.yml`, added at 25336879, runs that caller on a manual
+trigger only. This gate is therefore WIRED: it refuses real releases, and the
+absence note it carried until F086 R26 no longer describes the repository. It is
 deliberately NOT an entry in `ci_stages.CI_STAGES`, which is pytest-selection
 data; this gate selects no tests. Publishing stays a HUMAN command, which
 T2_F086's Orchestrator brief requires: nothing here uploads or holds a credential.
