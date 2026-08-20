@@ -1,120 +1,52 @@
-# Handback — F086 R21, the R20 record and the two checklist promotions (branch feature/f086-release-capability)
+# Handback — F086 R22
 
 ## Range
 
-Review of a7373e00..HEAD (6 commits: 7f82ad08, 6d2233fb, ba8cf1b9, a4fba89b, e1af7921, C4; C5 then appends VERDICT to this file).
+Review of `e7cdae4d..HEAD`.
 
 ## Commits
 
-### 7f82ad08 docs(state): save the F086 R21 step block as authored text
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/authored/f086-r21.md | +351/-0 | C0a — the R21 block, byte-verbatim |
+One table, one row per commit (compact form, constraint 7).
 
-### 6d2233fb docs(state): mirror the F086 R21 block into last_block
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/last_block.md | +256/-387 | C0b — mirror read back from the committed C0a with `git show` |
-
-### ba8cf1b9 docs(state): advance the plan to F086 R21
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/plan.md | +16/-14 | C1 — PLAN21, whole file, alone, before the ledger moves |
-
-### a4fba89b docs(review): register R-0587 and record the R20 verdict
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/live_review.md | +4/-0 | C2 — pure append: FIND0587 then RECORD19 |
-
-### e1af7921 docs(agents): promote the R-0586 and R-0587 rules into the checklist
-| Path | +/- | Reason |
-|---|---|---|
-| docs/agents/planner_reviewer_prompt.md | +32/-0 | C3 — both pairs in ONE commit: the item-20 clause and the new item 26 |
-
-### C4 and C5, grouped — a handoff cannot table the commit that writes it (R-0149)
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/handoff.md | rewrite | C4 — this file |
-| .agent/handoff.md | append | C5 — the VERDICT slice, appended byte-verbatim |
+| Commit | Short SHA | Path | +/- | Reason |
+|---|---|---|---|---|
+| C0a | 787a1141 | `.agent/authored/f086-r22.md` | +336/-0 | the R22 block saved byte-verbatim |
+| C0b | 39ab54ef | `.agent/last_block.md` | +185/-200 | mirror of the committed C0a, read back from git |
+| C1 | f6bafbdc | `.agent/plan.md` | +11/-9 | whole file := PLAN22 |
+| C2 | 79dbd1d4 | `.agent/live_review.md` | +4/-0 | append: blank, FIND0588, blank, RECORD20 |
+| C3 | 72640273 | `docs/agents/planner_reviewer_prompt.md` | +15/-0 | item 14 gains the R-0588 clause |
+| C4, C5 | this commit, then its successor | `.agent/handoff.md` | see round report | this handback, then VERDICT appended verbatim; a handoff cannot table the commit that writes it (R-0149) |
 
 ## External actions
 
-- `gh pr list --state open --json number,headRefName,baseRefName,isDraft` — Open PR Gate re-read; result on the G14 line. Nothing created, nothing merged.
-- `git push -u origin feature/f086-release-capability` — outcome in the round report.
-- NO worktree added and none removed: this round ordered no mutation, so `git worktree list` read one line throughout.
+`gh pr list --state open --json number,headRefName,baseRefName,isDraft` -> `[]`. Nothing created, nothing merged. One push of this branch after C5.
 
 ## Verification
 
-- G1 HYGIENE: `git status --porcelain` empty at every commit and at the handback; `.agent/STOP` re-read from disk before C0a and at the handback, absent both times; branch feature/f086-release-capability; `git worktree list` one line.
-- G2 TRANSPORT: `.remedy-wt/f086-r21.md`, committed `.agent/authored/f086-r21.md` and committed `.agent/last_block.md` byte-EQUAL at sha256 7c28f5c828d665ee5c10a52371ce5448c25e1efd24f57a7ee02d0de2aa5c807a, 29051 B over 351 lines.
-- Constraint 7 re-measured on the committed C0a: 351 total / 215 prose / 136 slice incl. 16 marker lines — the block's own declaration, under D6's 490 and D5's 400.
-- G3 PLAN: `.agent/plan.md` at ba8cf1b9 byte-equal to PLAN21 at sha256 b54a06d4a5f5ca611d463a20782fe7bb3590ec67b71e4367a2ecd28cafc7245e, 42 lines (< 50), contains `## Goal`, `## Next Steps`, `F086`.
-- G4 THE LEDGER APPEND: pre-C2 blob is a byte-exact PREFIX of the post-C2 blob; the 4-line remainder equals blank + FIND0587 + blank + RECORD19 at sha256 837f39fd87b59a52fbedc4a6078b4b79e216b3b8b96bde0a0037e9950048263f.
-- G5 LEDGER SETS: at a4fba89b BOTH extractions read 170 / 3 / 0 / 0 / 0 / 167 and their registered SETS are equal; registered symmetric difference against a7373e00 is exactly `['R-0587']`; CONTROL f0b27118..7b84524c reads `[]` registered while its resolved set gains `R-0584`.
-- G6 THE R-0586 RULE: over the lines a4fba89b ADDS to `.agent/live_review.md`, backtick-quoted spans deleted first, `\bHEAD\b` reads 0 (0 before the strip too); RED CONTROL over `fd166295`'s added lines reads 3 with the same extractor. Binds the ledger commit only, by the block's own wording.
-- G7 THE R-0587 RULE: at a7373e00, 17 headers, exactly one string occurring more than once and it is `Gate: R19 — the R18 entry.`; at a4fba89b, 18 headers, that duplicate SET UNCHANGED (constraint 3 forbids repairing it), `Gate: R21 — the R20 entry.` occurring 1x, LAST in the file, followed by ` R20 PASSED,`.
-- G8 THE TWO PAIRS: printed `TO contains FROM: true` for both, hence both APPEND-shaped; each FROM occurs 1x at a7373e00 AND 1x at e1af7921 — the append form, not a defect — and all 14 + 18 TO-ONLY lines occur exactly 1x among C3's 32 added lines. ORDERED EQUALITY holds: e1af7921's file equals the a7373e00 blob with each FROM's single occurrence replaced by its TO and nothing else, sha256 085c6c830b898e7c3d37590430c943b007e5772b3735c37e5d62b42244c80461 over 805 lines, against 773 lines at a7373e00.
-- G9 AIMED AND RENUMBERED NOTHING: `grep -c '^  21\. \*\*'` reads 1 and `grep -c '^  26\. \*\*'` reads 1; CHECK20TO is followed by `  21. **A baseline gate resolves its own paths at the base it names.** Finding R-0532. A` and CHECK26TO by `  Why this is on disk and not a habit: item 2 has recurred six times across`.
-- G10 NO MARKER LEAKED: 0 lines beginning `<<<SLICE ` or `<<<END ` in `.agent/plan.md`, `.agent/live_review.md` and `docs/agents/planner_reviewer_prompt.md` at C4 — the three readings are in the round report, and `.agent/handoff.md`'s fourth reading is taken after C5.
-- G11 SUITES, primary checkout, serially, the second started only after the first reported: `-q -rf` over the four state readers exit 0, 160 passed; then the golden-path canary exit 0, 42 passed. No suite reads the edited prompt file — its one hit under `tests/` is inside a `@pytest.mark.skip` reason string in `tests/test_agent_tooling.py`, whose test reads `.claude/agents/remedy-reviewer.md`.
-- G12 CHANGE SET: `git diff --name-only a7373e00..HEAD` before C4 equals the constraint-2 list minus `.agent/handoff.md` AS SETS, symmetric difference empty; all five forbidden paths resolve at a7373e00 via `git ls-tree` and none appears in the range.
-- G13 HISTORY: five single-parent commits, linear; `git reflog` over this round shows only `commit:` entries — no amend, rebase, reset, force-push. Insertions before C4: 351, 256, 16, 4, 32 — none over 500, no DECISION F104 D1 exemption invoked.
-- G14 HANDBACK AND PR GATE: this file's `wc -l`, the seven-heading list, the C4-prefix-of-C5 measurement and the Open PR Gate output are in the round report; the gate printed `[]`.
-
-NO CODE MOVED THIS ROUND and no test could have gone red on C3: the round writes state files and one docs file, so G8 and G9 are C3's entire evidence and the suites gate only the state texts. NO INSTALL RAN — `REMEDY_INSTALL_SMOKE` was set nowhere, no wheel was built, no venv created, no network reached.
+G1 HYGIENE: `git status --porcelain` empty at every commit and at the handback; `.agent/STOP` absent, re-read before C0a and again now; branch `feature/f086-release-capability`; `git worktree list` one line throughout; no mutation and no disposable worktree ordered.
+G2 TRANSPORT: `.remedy-wt/f086-r22.md`, the committed `.agent/authored/f086-r22.md` and the committed `.agent/last_block.md` are all three byte-EQUAL at sha256 d4d00dfbf05f263c2c4f3b5a94eab14ab9533a84dcbcfeadcd46771741a5f4bf, 27444 bytes, 336 lines.
+G3 PLAN: `.agent/plan.md` at f6bafbdc byte-equal to PLAN22 extracted from the committed C0a, sha256 1955bfe2937ae46ef5e3c7c5f10e8cc6973391936c535629b64d8b781a206ac7, 44 lines (under 50), containing `## Goal`, `## Next Steps` and `F086`.
+G4 LEDGER APPEND: the pre-C2 blob is a byte-exact PREFIX of the post-C2 blob; the remainder is byte-equal to a blank line, FIND0588, a blank line, RECORD20, at sha256 51cae6480f0be3fe54cda0b91134d1bd23ab8b04b8bd6cf31769f7707cceb132 over 4 lines.
+G5 LEDGER SETS: both extractions agree at C2 — 171 registered, 3 resolved, 0 duplicates, 0 unregistered resolutions, 0 anchored `Landed:` lines, 168 open — the two registered id SETS are EQUAL, and the symmetric difference against the `e7cdae4d` set is exactly `['R-0588']`; CONTROL `f0b27118..7b84524c` reads `[]` registered while its resolved set gains exactly `R-0584`.
+G6 ITEM-20 SCAN: over the lines C2 ADDS, backtick-quoted spans deleted first, `\bHEAD\b` reads 0; RED CONTROL over the lines `fd166295` adds to the same file reads 3. Binds the ledger commit only.
+G7 ITEM-26 CHECK: at `e7cdae4d` 18 headers with exactly one string twice, `Gate: R19 — the R18 entry.` (the red control); at C2 19 headers, that duplicate SET UNCHANGED because constraint 3 forbids repairing it, `Gate: R22 — the R21 entry.` occurring 1x, being the LAST such header, and the text after it beginning `R21 `.
+G8 THE PAIR: `TO contains FROM: true`, so the pair is APPEND-shaped and the obligation is the append form; CHECK14FROM occurs 1x at `e7cdae4d` AND 1x at C3; each of the 15 CHECK14TO-ONLY lines occurs exactly 1x among C3's 15 added lines; ordered equality holds — C3's file is the `e7cdae4d` blob with CHECK14FROM's single occurrence replaced by CHECK14TO and nothing else changed — at sha256 1df716cdff9b2e290f43e311787a31bdfcde80483a9f37ec53bfc845b9aef12c over 820 lines, against 805 at the base.
+G9 STRUCTURE: `grep -c '^  15\. \*\*' docs/agents/planner_reviewer_prompt.md` reads 1, `grep -c '^  14\. \*\*' ...` reads 1, and the line after CHECK14TO's last line is `  15. **Pair shapes are classified by a containment test, never by eye.** Finding` — the clause landed inside item 14 and renumbered nothing.
+G10 NO MARKER LEAKED: 0 lines beginning `<<<SLICE ` or `<<<END ` in `.agent/plan.md`, `.agent/live_review.md` and `docs/agents/planner_reviewer_prompt.md` at C4, counting marker LINES; the `.agent/handoff.md` reading can only be taken after C5 and is in the round report.
+G11 SUITES, serially in the PRIMARY checkout, the second started only after the first ENDED and reported its code: the four state readers exit 0 with 160 passed; then the canary exits 0 with 42 passed. No suite reads `docs/agents/planner_reviewer_prompt.md`, so G8 and G9 are C3's entire evidence.
+G12 CHANGE SET AND HISTORY: the printed path set equals the set constraint 2 names other than `.agent/handoff.md`, with no path on either side alone; every path constraint 2 FORBIDS is PRESENT at `e7cdae4d` by `git ls-tree`; the range is linear with every commit at exactly one parent and the round's `git reflog` entries all `commit:`; insertions before C4 are 336, 185, 11, 4 and 15, none over 500.
+G13 THE HANDBACK, BOTH HALVES: (a) `wc -l` of `.agent/handoff.md` at C4 reads 52, within constraint 7's bound of 56; (b) at C5 it must read 96, that is (a) plus VERDICT's 44, within 100. (a) held, so no DECISION D15 "Deviations, declared" line was needed and none was written. All seven mandated headings of docs/agents/handback_template.md are present in the template's order and no section was dropped. The prefix-and-remainder equality is measurable only after C5 and is in the round report.
+G14 OPEN PR GATE, re-read at the handback: `gh pr list --state open --json number,headRefName,baseRefName,isDraft` printed `[]`. Nothing created, nothing merged.
 
 ## Authored-text proofs
 
-- PLAN21, FIND0587, RECORD19, CHECK20FROM/TO, CHECK26FROM/TO and VERDICT were EXTRACTED programmatically from the COMMITTED `.agent/authored/f086-r21.md`, never retyped and never reformatted.
-- Disk-to-disk: `.agent/plan.md` == PLAN21 (G3), `.agent/live_review.md`'s C2 remainder == blank + FIND0587 + blank + RECORD19 (G4), `docs/agents/planner_reviewer_prompt.md` == the base blob with both FROMs replaced by their TOs (G8), `.agent/handoff.md`'s C5 remainder == VERDICT (round report).
-- The committed C0a is byte-equal to the `.remedy-wt/f086-r21.md` scratchpad the round was delegated from, and `.agent/last_block.md` mirrors the committed C0a read back with `git show` (G2).
+PLAN22, FIND0588, RECORD20, CHECK14FROM, CHECK14TO and VERDICT were all EXTRACTED programmatically from the committed `.agent/authored/f086-r22.md`, never retyped. Disk-to-disk: `.agent/plan.md` at C1 equals PLAN22 exactly (G3); C2's remainder equals blank+FIND0588+blank+RECORD20 exactly (G4); C3's file equals the base with CHECK14FROM replaced by CHECK14TO and nothing else (G8); C5's remainder equals VERDICT exactly, reported in the round report because it is measurable only after C5.
+The block itself: the scratchpad, the committed authored copy and the committed last-block mirror are byte-EQUAL (G2). Constraint 8 re-measured from the COMMITTED C0a: 336 lines TOTAL, 217 prose, 119 slice including its 12 marker lines — against DECISION F085 D6's 490 total and D5's 400 prose.
 
 ## Deviations & assumptions
 
-- No departure from the block's ordered commit sequence: C0a, C0b, C1, C2, C3 were committed in that order, one commit each, nothing extra, nothing dropped, nothing reordered. C4 is the commit writing this file and C5 appends VERDICT to it; the round report carries both, since a handoff cannot certify a commit that does not exist when it is written.
-- ASSUMPTION, stated because it looks like a defect and is not: the duplicate header `Gate: R19 — the R18 entry.` remains on disk at `4dc7cbdf`. Constraint 3 and §3 item 20 forbid rewriting a landed record, and G7 gates that duplicate set as UNCHANGED. FIND0587 is the dated correction.
-- No verdict on this round is written here. The worker reports what the gates measured; ruling is the reviewer's. The VERDICT text appended at C5 is the reviewer's own, applied byte-verbatim.
+None. The block's ordered sequence C0a, C0b, C1, C2, C3, C4, C5 was executed in order, with no extra commit, none dropped and no reordering. Constraint 3 was honoured: the duplicate header at `4dc7cbdf` and the handoff at `e7cdae4d` that lacks its DECISION D15 line are both left standing, and G7 records the duplicate as expected rather than as a violation. No verdict was authored by the worker anywhere.
 
 ## Next
 
-The reviewer re-runs G1-G14 over a7373e00..HEAD and rules on R21. Before authoring anything, re-read `.agent/STOP` from disk (Phase 1 rule 1 before rule 2). Per the VERDICT text C5 appends, the next session records R21 in `.agent/live_review.md` under the header `Gate: R22 — the R21 entry.`, then takes the integration gate.
-
-## Reviewer's session verdict — authored by the reviewer, applied by the worker
-
-Written because finding R-0571 is that a verdict issued and never put on disk
-cannot be told apart from one never issued; appended so the next handback rewrite
-cannot silently destroy it. Session of 2026-08-20, self-drive per
-docs/agents/self_drive_protocol.md, resuming the branch at `bc85e5f7` and ending
-at its declared round cap. The reviewer wrote nothing in the work tree, one
-delegated worker per round made every commit, and every verdict below rests on
-gates the reviewer re-executed over the committed diff, never on a handback.
-
-| Round | Range | Verdict |
-|---|---|---|
-| R19 | 7b84524c..bc85e5f7 | PASS — one finding, R-0586, against the reviewer |
-| R20 | bc85e5f7..a7373e00 | PASS — one finding, R-0587, against the reviewer |
-| R21 | a7373e00..HEAD | verdict not yet on disk; see the last paragraph |
-
-R19 was inherited ungated, so Phase 1 rule 4 reviewed it first. Its checklist edit
-landed inside item 16 and moved nothing else, and the reviewer re-ran the claim
-that commit rests on rather than repeating it. R20 is the round this feature
-needed: `tests/test_install_smoke.py` exists, its pure helpers and its opt-in skip
-are gated by tests that go red when the code under them is mutated, and its
-install path is honestly declared as unproven rather than dressed as coverage.
-Both rounds' defects were the reviewer's own text, not the worker's work, and both
-were caught — R-0586 by the reviewer re-reading a landed record, R-0587 by the
-WORKER, which applied a bad slice verbatim as its constraints required and then
-declared it instead of quietly repairing it. That is the split working as designed.
-
-WHAT THIS FEATURE STILL OWES: the integration gate, then closure. NO INSTALL HAS
-BEEN PROVEN in this session or any other, and no round of this workflow can prove
-one — DECISION F086 D4 records that with the measurement behind it, and closure
-names it as unproven rather than counting a skipped test as coverage. The release
-workflow has likewise never been dispatched.
-
-R21 IS NOT A TERMINATOR — F086's pull request is created at closure, which has not
-happened — so this session claims no §4 item 13 carve-out and leaves its last
-verdict to be recorded. THE NEXT SESSION'S FIRST ACTIONS are Phase 1 rule 1, then
-rule 2, then rule 4: review `a7373e00..HEAD` and record R21's verdict in
-`.agent/live_review.md` as `Gate: R22 — the R21 entry.`, which is the header
-shape §3 item 26 now binds.
+The reviewer reviews `e7cdae4d..HEAD` and records R22's verdict in `.agent/live_review.md` as `Gate: R23 — the R22 entry.`; the next substantive work is the integration gate.
