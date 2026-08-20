@@ -1,86 +1,100 @@
-# Handback — F255 R2 (measurement round)
+# Handback — F255 R3 (Teacher role · ruling round)
+
+Fortschritt: ~8 % (F086 merged · F255 claimed · R2 measured the ground · R3 ruled six DECISIONs · R4 amends the feature file next) — Schätzung
 
 ## Range
-Review of 6c47a490..HEAD — 7 commits, C0a..C5. R2 registers, records and MEASURES; it designs nothing and builds nothing.
+
+Review of `73d7d6e2..HEAD` — six commits: C0a `f728166b` · C0b `8228c53f` · C1 `b4def48c` · C2 `0b018e32` · C3 `5ce2edd7` · C4 this commit.
 
 ## Commits
 
-### 759d9179 chore(state): save the F255 R2 step block
+### f728166b docs(state): save the F255 R3 step block
 | Path | +/- | Reason |
-|---|---|---|
-| `.agent/authored/f255-r2.md` | 250/0 | C0a — the R2 block, copied byte for byte from `.remedy-wt/f255-r2.md` |
+|------|-----|--------|
+| .agent/authored/f255-r3.md | 384/0 | the R3 block, copied from `.remedy-wt/f255-r3.md` |
 
-### 29cd160a chore(state): mirror the F255 R2 step block
+### 8228c53f docs(state): mirror the F255 R3 step block
 | Path | +/- | Reason |
-|---|---|---|
-| `.agent/last_block.md` | 199/335 | C0b — the same file mirrored; whole-file rewrite of one state file |
+|------|-----|--------|
+| .agent/last_block.md | 327/193 | same file mirrored; replaces the R2 block |
 
-### b9c0cb64 docs(review): register R-0601 and R-0602
+### b4def48c docs(review): record the R2 verdict
 | Path | +/- | Reason |
-|---|---|---|
-| `.agent/live_review.md` | 4/0 | C1 — two findings appended, each preceded by exactly one blank line |
+|------|-----|--------|
+| .agent/live_review.md | 2/0 | RECORDR2 appended after one blank line |
 
-### c1e03f43 docs(review): record the R1 verdict
+### 0b018e32 docs(decisions): rule the six F255 design decisions
 | Path | +/- | Reason |
-|---|---|---|
-| `.agent/live_review.md` | 2/0 | C2 — the R1 PASS entry appended, blank-separated |
+|------|-----|--------|
+| .agent/decisions.md | 186/0 | DECISIONS255 appended after one blank line: D1..D6 |
 
-### e589ddee docs(state): measure the F255 seam inventory
+### 5ce2edd7 chore(plan): advance the plan to F255 R3
 | Path | +/- | Reason |
-|---|---|---|
-| `.agent/f255_inventory.md` | 282/0 | C3 — NEW FILE: the six-question measurement, 78 citations |
+|------|-----|--------|
+| .agent/plan.md | 23/22 | whole-file replacement by PLAN255R3 |
 
-### d2df95e4 chore(plan): advance the plan to F255 R2
-| Path | +/- | Reason |
-|---|---|---|
-| `.agent/plan.md` | 18/16 | C4 — byte-equals the PLAN255R2 slice |
-
-### C5 — the commit that writes this file
-Self-reference (R-0149 pattern): a handoff cannot table its own commit. Its path is `.agent/handoff.md`; its `+/-` cell and the complete change set are reported in the round report, as G10 orders.
+C4 rewrites `.agent/handoff.md` alone and cannot table its own commit (template
+self-reference exception, R-0149). Its `+/-` cell and the complete six-commit
+change set are in the round report, as G8 orders.
 
 ## Item status
+
 | Item | Status | Reason |
-|---|---|---|
-| C0a | done | |
-| C0b | done | |
-| C1 | done | |
-| C2 | done | |
-| C3 | done | |
-| C4 | done | |
-| C5 | done | |
+|------|--------|--------|
+| C0a  | done   | |
+| C0b  | done   | |
+| C1   | done   | |
+| C2   | done   | |
+| C3   | done   | |
+| C4   | done   | this commit |
 
 ## External actions
-`git push` after C5 — real output in the round report. No pull request created and no CI run awaited (constraint 10). No worktree created or removed; no `gh` command run.
+
+`git push` on feature/f255-teacher-role after C4 — output in the round report.
+No PR created, no worktree added or removed, no `gh` command, no CI run watched
+(constraint 9).
 
 ## Verification
-One line per gate; full transcripts are in the round report (R-0582).
-- G1 HYGIENE — PASS. `.agent/STOP` read from disk before C0a and ABSENT; branch feature/f255-teacher-role; `git status --porcelain` EMPTY after every commit and at the handback; `git worktree list` reports the primary checkout alone.
-- G2 TRANSPORT — PASS. `.remedy-wt/f255-r2.md`, `.agent/authored/f255-r2.md` at C0a and `.agent/last_block.md` at C0b are all three EQUAL at sha256 6f36cbc3950bb5a940a821771d0535c235457a24b6fa77f1b367748690aa2eb1, 25463 B, 250 lines.
-- G3 SLICES — PASS. Extracted from the COMMITTED `.agent/authored/f255-r2.md` by marker-line index, never retyped; digests with newline INCLUDED: R0601 b7b885eb 2310 B 1 line, R0602 53b04b2f 1585 B 1 line, RECORDR1 e42585d9 5512 B 1 line, PLAN255R2 a6c18dbe 2325 B 42 lines.
-- G4 REGISTRATION — PASS. Base 176 registered / 0 resolved / 176 open / 0 `^Landed:`; C1 178 / 0 / 178 / 0, the owed reading. `- R-0601 — ` and `- R-0602 — ` occur 1x each, each preceded by exactly one blank line; the pre-C1 blob is a byte-exact PREFIX of the post-C1 blob with remainder equal to blank+R0601+blank+R0602.
-- G5 R1 VERDICT — PASS. Pre-C2 blob 323510 B / 978 lines is a byte-exact PREFIX of post-C2 329023 B / 980 lines; remainder 1b50c445, 5513 B, 2 lines, blank separator PRESENT. Independent paragraph split gives 184 units whose LAST is RECORDR1 — e42585d9 over 5512 B newline INCLUDED, 4440c6d7 over 5511 B STRIPPED; a one-byte mutant is REJECTED by BOTH readings. `Gate: R2 — the R1 entry.` occurs 1x, is the LAST `Gate: R` line, and no header key repeats.
-- G6 CITATIONS RESOLVE — PASS, the round's central gate. 78 `path:line` citations extracted by script from `.agent/f255_inventory.md`; matched 78 of 78, every path TRACKED at HEAD and every line inside the file's length. NEGATIVE CONTROL on a copy: a nonexistent path and a real path at an impossible line are each REJECTED. The checker caught a real defect in the first draft — a bare filename with no directory — which was corrected before C3 was committed.
-- G7 EVERY QUESTION ANSWERED — PASS. Six `##` headings, Q1..Q6 in order, with 15 / 9 / 7 / 7 / 10 / 1 citation rows. Q6 is an ABSENCE established by `grep -rni "teacher" packages/ apps/ tests/ scripts/`: ONE hit repo-wide, a comment at `tests/docs/test_docs_consistency.py:26`. Q5 is an ABSENCE too — neither `remedy do watch` nor `remedy teach` exists.
-- G8 THE PLAN — PASS. `.agent/plan.md` at C4 byte-equals PLAN255R2 at sha256 a6c18dbefa96d26880ae95fcc69e1f9a0526bc767bf801bfc601e992808d1c5d, 2325 B, 42 lines (under 50); `## Goal` 1x, `## Next Steps` 1x, `F255` 4x.
-- G9 ROUND GATE — PASS, run SERIALLY in the primary checkout, never two pytest processes at once. State-reader selection exit 0 at `160 passed`; canary `tests/cli/test_golden_path.py` exit 0 at `42 passed`. Both equal the reviewer's counts at 6c47a490.
-- G10 CHANGE SET / HISTORY / CAPS — PASS. `git diff --name-only 6c47a490..HEAD` equals the Change list's five non-handoff paths with no path on either side alone; all eight paths named untouched are PRESENT at the base and absent from the range; the same command scoped to `apps/ packages/ tests/ docs/ scripts/` is EMPTY. Every commit has ONE parent. Insertions 250, 199, 4, 2, 282, 18 — every one under 500. REFLOG as TWO measured claims: entries of this round that PRODUCED a commit and read `commit` = 6 measured at C4, plus the entry the C5 commit itself produces, i.e. 7 for a 7-commit round; entries of this round, navigation included, whose OPERATION PREFIX — the text before the first colon of `%gs` — contains `amend`, `reset`, `rebase` or `cherry` = 0. Both re-measured after C5 in the round report.
-- G11 NO MARKER LEAKED — PASS. Lines beginning `<<<SLICE ` or `<<<END ` count 0 in `.agent/live_review.md` at C2, `.agent/f255_inventory.md` at C3, `.agent/plan.md` at C4 and `.agent/handoff.md` at C5.
-- G12 THE PUSH — ORDERED after C5, so it cannot be measured inside the commit it follows; the real `git push` output is in the round report. No PR created, no CI run awaited.
+
+G1 HYGIENE — `.agent/STOP` read from disk before C0a: ABSENT. Branch feature/f255-teacher-role; `git status --porcelain` EMPTY after all six commits; `git worktree list` = the primary checkout alone.
+G2 TRANSPORT — `.remedy-wt/f255-r3.md`, `f728166b:.agent/authored/f255-r3.md` and `8228c53f:.agent/last_block.md` are all sha256 `afb54baf…7aaf09`, 28352 B, 384 lines: all three EQUAL.
+G3 SLICES — extracted programmatically from the committed authored blob by its marker pairs, never retyped; newline convention = trailing newline INCLUDED. RECORDR2 `80ea3987…` 4787 B 1 line; DECISIONS255 `4a68cf40…` 10851 B 185 lines; PLAN255R3 `202965c9…` 2470 B 43 lines. STRIPPED-convention digests in the round report.
+G4 VERDICT ENTRY — pre-C1 blob is a byte-exact PREFIX of the post-C1 blob; remainder `aba1b59e…` 4788 B 2 lines, blank separator PRESENT, remainder == blank line + RECORDR2 byte for byte. Independent paragraph split: 185 units, LAST unit == RECORDR2, sha256 `80ea3987…` (4787 B, newline INCLUDED) and `74c6e6a0…` (4786 B, STRIPPED). Negative control (one byte of the expected remainder flipped): BOTH readings reject. Sets UNCHANGED — base `73d7d6e2` 178 registered / 0 resolved / 178 open / 0 line-anchored `Landed:`, C1 `b4def48c` 178 / 0 / 178 / 0. `Gate: R3 — the R2 entry.` occurs 1x, is the LAST line beginning `Gate: R` (3 such lines), and no `Gate: R` header key repeats.
+G5 DECISIONS — pre-C2 blob is a byte-exact PREFIX of the post-C2 blob; remainder == blank line + DECISIONS255 byte for byte (10852 B, 186 lines). `^## DECISION F255 D` count: 0 at the base, 6 at C2. Headings in order: D1 the teacher joins BOTH role vocabularies · D2 F255 does NOT close its own event-vocabulary dependency · D3 teacher spend is REPORTED per role, and no new limit axis is built · D4 read-only is proven BEHAVIOURALLY, because the annotation proves nothing · D5 F255 ships `remedy teach` and does NOT build `do watch` · D6 the handback token cap is withdrawn; the LINE cap is the operative bound — each dated (2026-08-20). Of 389 heading lines in the file, 0 occur twice.
+G6 PLAN — `5ce2edd7:.agent/plan.md` byte-equals PLAN255R3: sha256 `202965c9…`, 2470 B, 43 lines (< 50). `## Goal`, `## Next Steps` and the roadmap F-id `T5_F255` all occur.
+G7 ROUND GATE — run SERIALLY in the primary checkout. `python3 -m pytest tests/orchestration/test_test_runner.py tests/ui_server/test_dashboard_contract.py tests/regression/test_resource_safety.py tests/orchestration/test_integrity_gate.py -q -rf` → exit 0, `160 passed`. `python3 -m pytest tests/cli/test_golden_path.py -q -rf` → exit 0, `42 passed`. Both equal the counts measured at `73d7d6e2`.
+G8 CHANGE SET — `git diff --name-only 73d7d6e2..HEAD` equals the Change list with no path on either side alone; the same command scoped to `apps/ packages/ tests/ docs/ scripts/` is EMPTY. All eight named paths are PRESENT at the base and ABSENT from the range. Every commit has ONE parent. Insertion columns 384, 327, 2, 186, 23 and C4's (round report) — all under 500. Reflog, as two measured claims (R-0601): commit-producing entries reading `commit` = 6, equal to this round's commit count; entries whose OPERATION PREFIX (text before the first colon of `%gs`) contains `amend`, `reset`, `rebase` or `cherry` = 0.
+G9 NO MARKER LEAKED — lines beginning `<<<SLICE ` or `<<<END ` : 0 in `.agent/live_review.md` at C1, 0 in `.agent/decisions.md` at C2, 0 in `.agent/plan.md` at C3, 0 in `.agent/handoff.md` at C4.
+G10 PUSH — `git push` run after C4; real output in the round report. No PR, no CI wait.
 
 ## Authored-text proofs
-Four slices applied, each extracted programmatically from the COMMITTED `.agent/authored/f255-r2.md` and applied byte for byte: R0601 and R0602 (C1 appends), RECORDR1 (C2 append), PLAN255R2 (C4 whole-file replacement). Every one was compared disk-to-disk against its extraction and is EQUAL; digests under G3 and G8. No slice was edited and no marker line reached a target. `.agent/f255_inventory.md` and this file are worker-authored, not slices.
+
+All three slices were extracted from the COMMITTED `.agent/authored/f255-r3.md`
+(`f728166b`) by marker pair and applied byte for byte, never retyped or
+rewrapped. Disk-to-disk equality against that file: RECORDR2 and DECISIONS255
+each equal their append remainder minus the blank separator; PLAN255R3 equals
+`.agent/plan.md` at C3 exactly (G4, G5, G6). Zero marker lines reached any
+target file.
 
 ## Deviations & assumptions
-No departure from the block's ordered commit sequence: C0a, C0b, C1, C2, C3, C4, C5 ran in that order, one commit each — no extra commit, none dropped, none reordered. Two things are declared rather than smoothed over:
-1. G4 orders a `Landed:` count without anchoring it. Line-anchored `^Landed:` reads 0 at both ends, the reviewer's stated reading and the one reported above. The unanchored substring `Landed:` reads 19 at BOTH ends, unmoved by this round — those 19 sit inside carried finding paragraphs as prose. Reported both ways so the number cannot be read two ways.
-2. This handback makes NO claim of compliance with the template's 800-token hard cap. R-0602, registered this same round at C1, is precisely that the cap has been exceeded by every round for at least twelve rounds and binds nothing; asserting compliance would be the false sentence that finding is about. The LINE cap the template grants a table of more than five commits IS met.
-3. Two ordered values cannot exist when this file is written, because C5 is the commit that writes it: the reflog count including C5's own entry, and G12's push. Neither is claimed as measured here — G10 gives the 6 measured at C4 and names the seventh as the one this commit produces, and G12 is marked ORDERED rather than PASS. Both real values are in the round report.
-Assumptions: none beyond the block.
+
+- ORDERED SEQUENCE FOLLOWED EXACTLY: six commits, C0a → C0b → C1 → C2 → C3 → C4,
+  no extra commit, none dropped, none reordered.
+- NO COMPLIANCE CLAIMED WITH THE TEMPLATE'S 800-TOKEN CAP. DECISION F255 D6,
+  landed by C2 this round, withdraws it; the LINE cap the six-commit table earns
+  (≤100) is the bound this file is measured against. The template still carries
+  the withdrawn sentence — the docs round after R4 removes it (D6 "WHERE THIS
+  LANDS"), so the disagreement on disk is scheduled, not overlooked.
+- NO RULING WAS ACTED ON. No role, command, test or config key was added and
+  `docs/roadmap/features/T5_F255.md` was NOT amended (constraint 6). R4 does that.
+- NO SLICE WAS EDITED and no slice appeared wrong.
+- G7's exit codes were printed by a serial `subprocess` wrapper because the
+  session's bash guard rejects `${PIPESTATUS[0]}`; the two pytest commands are
+  the block's verbatim ones. Both suites also ran once directly, same results.
 
 ## Next
-1. FIRST action of the next session is Phase 1 rule 1 — re-read `.agent/STOP` from disk. It is ABSENT as of this handback, and G6 binds at any point.
-2. SECOND is R3, the DECISION round: rule the F255 shape from this inventory, rule R-0602 per §4 item 7, and amend `docs/roadmap/features/T5_F255.md` with the Design, Task slicing, Acceptance and Do-not-touch sections its registration stub has never carried. The inventory hands R3 three spec-vs-reality gaps to RULE on rather than build around: the registration's "orchestrator/worker/reviewer" names two different role vocabularies and `worker` is in neither `KNOWN_ROLES`; the declared Tier 2 dependency on a "stable ledger event vocabulary" is NOT satisfied, since event names are free strings with 39 emitted and 4 registered; and `ActionClass` read_only is enforced by nothing at runtime.
-R2 awaits review. There is no open pull request on this branch.
 
-Fortschritt: ~5 % (F086 merged · F255 claimed at R1 · R2 measures
-the ground · R3 rules the design next) — Schätzung
+The next session's FIRST action is Phase 1 rule 1 — re-read `.agent/STOP` from
+disk. Its SECOND is R4: amend `docs/roadmap/features/T5_F255.md` from the six
+DECISIONs C2 landed, replacing the superseded `do watch` phrasing. R3 awaits
+review. There is no open pull request.
