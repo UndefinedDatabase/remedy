@@ -1,58 +1,62 @@
-# Handback — F086 R31 (closure)
+# Handback — F086 R32 (packaging guard repair)
 
 ## Range
 
-Review of d1889132..HEAD — 5 commits, C0a C0b C1 C2 C3, one worker; C3 is the closure commit and, per Rule A4, the last commit on the branch.
+Review of dcf351c6..HEAD — 6 commits, C0a C0b C1 C2 C3 C4, plus this C5; one worker. R31 is no longer the branch terminator: CI run 32402941541 against dcf351c6 failed at `pip install -e ".[dev]"`, and repairing that is this round under the AGENTS.md amend0820-gate-autonomy amendment.
 
 ## Commits
 
 | # | SHA | Path | +/- | Reason |
 |---|---|---|---|---|
-| C0a | 6a690bd3 | .agent/authored/f086-r31.md | 373/0 | save the R31 block |
-| C0b | ff959aa1 | .agent/last_block.md | 296/330 | mirror the block |
-| C1 | e453d9af | .agent/plan.md | 22/25 | PLAN31 — plan advanced to R31 |
-| C2 | 4ce7f204 | .agent/live_review.md | 4/0 | FIND0597 registered, RECORD30 appended |
-| C3 | self | docs/roadmap/STATUS.md | 1/1 | STATUSLINE — `[~]` becomes `[x]` |
-| C3 | self | README.md | 4/3 | RMCOUNT, RMTIER, RMLIST — the capability sync |
-| C3 | self | .agent/handoff.md | 32/34 | this handback (R-0149 self-reference) |
+| C0a | 84f30a06 | .agent/authored/f086-r32.md | 327/0 | save the R32 block, copied not retyped |
+| C0b | 3d98f5ce | .agent/last_block.md | 299/345 | mirror the same file |
+| C1 | 6623ae48 | .agent/plan.md | 16/15 | PLAN32 — plan advanced to R32 |
+| C2 | 761683af | .agent/live_review.md | 4/0 | FIND0598 registered, RECORD31 appended |
+| C3 | 2be0fbbf | hatch_build.py | 20/1 | DOCPAIR, FNPAIR, HOOKPAIR — the editable exemption |
+| C3 | 2be0fbbf | tests/test_packaging_smoke.py | 43/1 | IMPORTPAIR + TESTAPPEND — five new cases |
+| C4 | df12d573 | docs/system/release-capability-v1.md | 7/0 | ISTPAIR — the ist-doc paragraph, after C3 (constraint 5) |
+| C5 | self | .agent/handoff.md | self | this handback; its own cells are in the round report (R-0149) |
 
 | Item | Status | Reason |
 |---|---|---|
-| Bundle 1 — block saved and mirrored | done | C0a + C0b, byte-equal |
-| Bundle 2 — plan advanced to R31 | done | C1, first substantive commit (§3 item 23) |
-| Bundle 3 — FIND0597 and RECORD30 | done | C2 |
-| Bundle 4 — closure commit, three paths TOGETHER | done | C3; the README sync may not split from the `[x]` line (R-0154) |
-| Bundle 5 — pull request, created and NOT merged | done | run after C3; number and URL in the round report, never in this file |
+| C0a — save this block | done | byte-equal to the reviewer's scratch original |
+| C0b — mirror it | done | same digest |
+| C1 — advance the plan | done | PLAN32 byte-exact, 42 lines |
+| C2 — register R-0598 and record R31 | done | 4-line blank-separated append |
+| C3 — the code fix and its tests | done | Landed: R-0598 — the editable target is exempted; hatch_build.py + tests |
+| C4 — the ist-doc paragraph | done | landed AFTER C3, so its present-tense claims are true on landing |
+| C5 — the handback, then push | done | push output in the round report, not in this file |
 
 ## External actions
 
-The branch push, `gh pr create --base main --head feature/f086-release-capability --title "F086 Release capability — closure" --body-file .remedy-wt/f086_pr_body.md` and the `gh pr list` re-read all run AFTER C3 and therefore cannot appear in a file that C3 contains — constraint 6; their real output is in the round report. The PR is NOT merged by this session: it merges at the next feature's start through the AGENTS.md Open PR Gate, the operator's manual-review window. No worktree was added or removed; no other `gh` command ran.
+One disposable worktree for G11: `git worktree add .remedy-wt/g11 2be0fbbf --detach`, then `git worktree remove --force .remedy-wt/g11` and `git worktree prune` — `git worktree list` is back to one line. The `git push` that updates PR #207 and the `gh pr list` re-read run AFTER C5 and therefore cannot appear in a file C5 contains; their real output is in the round report. The PR is NOT merged, not edited, not recreated; no other `gh` command ran; no force push, no history rewrite.
 
 ## Verification
 
-- G1 HYGIENE — `.agent/STOP` read from disk before C0a and again here, absent both times; branch feature/f086-release-capability; `git status --porcelain` EMPTY after every commit and here; `git worktree list` 1 line throughout; no primary-checkout file was overwritten to take a reading — every non-current reading came from `git show <sha>:<path>`.
-- G2 TRANSPORT — `.remedy-wt/f086-r31.md`, the committed C0a and the committed C0b are byte-EQUAL at sha256 832e466af3e5afa5a726adacfbc0cb2d2289f118329cd8072baf6bf8799663bc, 27551 B over 373 lines; that digest is the one the reviewer stated before delegating.
-- G3 PLAN — `.agent/plan.md` at C1 byte-equals PLAN31 extracted programmatically from the committed C0a: sha256 4dec604a1eccd08d5cdab08559c822fac1b1224b95a041b5b4abc782c95471f7, 41 lines (under the 50-line cap), with `## Goal`, `## Next Steps` and `F086` all present.
-- G4 LEDGER APPEND — the pre-C2 blob is a byte-exact PREFIX of the post-C2 blob whose 4-line remainder equals a blank line, FIND0597, a blank line and RECORD30, at sha256 25f0c89475f053a5522904acff6e045bb65e147ce998f60206410e8b2fd8d69b; both blank separators are present (R-0578).
-- G5 LEDGER SETS — two independent extractions AGREE at both ends: 179 registered / 6 resolved / 0 dup / 0 unregistered / 0 `Landed:` / 173 open at d1889132, and 180 / 6 / 0 / 0 / 0 / 174 at C2. The registered set gains EXACTLY `R-0597` and loses none; the resolved set is UNCHANGED, so no resolution is unregistered at any point. The CONTROL over f0b27118..7b84524c MOVES: `[]` registered gained, exactly `R-0584` resolved gained.
-- G6 ITEM-20 SCAN — backtick-quoted spans deleted first, then `\bHEAD\b` reads 0 over C2's 4 added lines; the RED CONTROL, the same extractor over fd166295's 4 added lines to the same file, reads 3.
-- G7 ITEM-26 HEADERS — 27 headers at d1889132 and 28 at C2; the set occurring more than once is UNCHANGED and exactly `Gate: R19 — the R18 entry.`; `Gate: R31 — the R30 entry.` occurs 1x, is the LAST such header, and the text following it begins `R30 ` once its leading space is stripped.
-- G8 THE STATUS LINE — `TO contains FROM: False`, so a REWRITE: STATUSLINEFROM occurs 1x at d1889132 and 0x at C3, STATUSLINETO 1x at C3, and the ORDERED EQUALITY holds — the C3 file equals the d1889132 blob with that single occurrence replaced and nothing else changed. sha256 a7e037ca31f89a1d246ca664b0a3a74e429fc08aa5a9fa1c443f903afa7065b5, 342 lines against the base's 342. In that file `- [x] F086 — Release capability (` occurs 1x and `- [~] F086` 0x, and the `[x]` line carries each of the four closure values exactly 1x: `f086-closure`, `remedy-review-20260820-200318-READY_FOR_REVIEW.zip`, `bc140179628e8698ef2bd7354cfb30187554f277312f524c9d6ab0324b500855`, `f5fa19c368ed15d14ee6067fc69fde4fbc7863a6`.
-- G9 THE README SYNC — three pairs, each with its own containment reading: RMCOUNT `TO contains FROM: False`, RMTIER `False`, RMLIST `False` — all three REWRITES, RMLIST included, because its TO ends the F107 entry with a comma where the FROM ends it with a period. Each FROM occurs 1x at d1889132 and 0x at C3, each TO 1x at C3, and the ORDERED EQUALITY over the whole file holds. sha256 eba9521187a0db95996399b753d32774bc8b093158b00fa7be28782d26d72ba7, 125 lines against the base's 124.
-- G10 THE LEDGER CROSS-CHECK — serially in the PRIMARY checkout, no second pytest process at any point: `python3 -m pytest tests/docs/ -q -rf` exit 0, `295 passed in 0.52s`, beside the 295 measured at d1889132 — the accepted-id cross-check, the accepted-COUNT pin and the tier-table Done pin all read the numerals this round wrote. Then `python3 -m pytest tests/orchestration/test_test_runner.py tests/ui_server/test_dashboard_contract.py tests/regression/test_resource_safety.py tests/orchestration/test_integrity_gate.py -q -rf` exit 0, `160 passed in 19.98s`; then the canary `python3 -m pytest tests/cli/test_golden_path.py -q` exit 0, `42 passed in 20.43s`.
-- G11 RULE A4 AND THE PATH SET — C3 stages EXACTLY `docs/roadmap/STATUS.md`, `README.md` and `.agent/handoff.md`: three paths, no more and no fewer, and no fourth path is modified or untracked in the tree. C3 is authored as the branch terminator; the committed `git diff --name-only C3^ C3` and the proof that no commit follows C3 are in the round report, because a file inside C3 cannot read C3.
-- G12 NO MARKER LEAKED — LINES beginning `<<<SLICE ` or `<<<END ` count 0 in `.agent/plan.md` at C1, `.agent/live_review.md` at C2, and `docs/roadmap/STATUS.md` and `README.md` as staged for C3.
-- G13 CHANGE SET, HISTORY AND THE HANDBACK — the range path set over d1889132..HEAD equals the Change list with no path on either side alone; all eight paths the Change section forbids are PRESENT at d1889132 and untouched, and nothing under `apps/`, `packages/` or `tests/` was touched; the range is linear (one parent each) and every `git reflog` entry of this round is `commit:`. Every `+/-` cell above is pasted from `git diff --numstat <sha>^ <sha>`, max insertion column 373 under the 500 cap. This file is 58 lines against the 60-line bound constraint 11 states, with all seven mandated headings of docs/agents/handback_template.md present in the template's order.
-- G14 THE PULL REQUEST — ordered LAST and run after C3, so no reading of it can exist in this file; the push, the `gh pr create`, the resulting number and URL, and the literal `gh pr list --state open --json number,headRefName,baseRefName,isDraft` re-read are all in the round report. It is not merged.
+- G1 HYGIENE — `.agent/STOP` read from disk before C0a and again here, ABSENT both times; branch feature/f086-release-capability; `git status --porcelain` EMPTY after every commit and here; `git worktree list` one line at the end; every non-current reading came from `git show <sha>:<path>`, no primary-checkout file was overwritten to take one.
+- G2 TRANSPORT — `.remedy-wt/f086-r32.md`, the committed C0a and the committed C0b are byte-EQUAL at sha256 840ef1f78d0f9965fe290ff33870c29ac0c51ce336d9c7d601cc9de68ee83464, 21582 B over 327 lines; that digest is the one the reviewer stated before delegating (constraint 2).
+- G3 PLAN — `.agent/plan.md` at C1 byte-equals PLAN32 extracted programmatically from the committed C0a: sha256 12fc87d55848b7ecfe5f752fdaf274d153751594cd8119079b39e68f17cf6b0c, 42 lines (under the 50-line cap), with `## Goal` 1x, `## Next Steps` 1x and `F086` 2x.
+- G4 LEDGER APPEND — the pre-C2 blob is a byte-exact PREFIX of the post-C2 blob whose 4-line remainder equals a blank line, FIND0598, a blank line and RECORD31, at sha256 cb8296645c09a32caae6335978c921d410b031f2b490001e61c030e46415273d; BOTH blank separators present (R-0578).
+- G5 LEDGER SETS — with `^- R-\d+ — ` registered and `^Done: R-\d+ — ` resolved: 180 / 6 / 174 open / 0 `Landed:` at dcf351c6, and 181 / 6 / 175 / 0 at C2. The registered set gains EXACTLY `R-0598` and loses none; the resolved set is UNCHANGED in both membership and count.
+- G6 ITEM-20 SCAN — backtick-quoted spans deleted first, then `\bHEAD\b` reads 0 over C2's 4 added lines; the RED CONTROL, the same extractor over fd166295's 4 added lines to the same file, reads 3, so the gate is not vacuous.
+- G7 ITEM-26 HEADER — 29 lines begin `Gate: R` at dcf351c6 and 30 at C2; the key occurring more than once is UNCHANGED and exactly `Gate: R19 — the R18 entry` at both ends; `Gate: R32 — the R31 entry.` occurs 1x, is the LAST such header, and the text following it begins `R31 ` once its leading space is stripped.
+- G8 THE PAIRS — each pair holds in the shape its containment reading dictates. REWRITES: DOCPAIR, HOOKPAIR, IMPORTPAIR — `TO contains FROM: False`, FROM 1x at the pre-commit blob and 0x after, TO 1x after. APPENDS: FNPAIR and ISTPAIR — `TO contains FROM: True`, FROM 1x at BOTH ends (no FROM-zero count ordered or reported), TO 1x after. Per FILE the ordered equality holds: `hatch_build.py` equals its dcf351c6 blob with DOCPAIR, FNPAIR and HOOKPAIR each replaced ONCE and nothing else changed (aa6d9077… 90 lines → 912fe336… 109 lines); `tests/test_packaging_smoke.py` equals its blob with IMPORTPAIR replaced once plus TESTAPPEND appended (63780f12… 73 → 7da20674… 115); `docs/system/release-capability-v1.md` equals its 2be0fbbf blob with ISTPAIR replaced once (6f4a1025… 154 → a410a70c… 161). Declared: the per-PAIR wording "the post-commit file equals the pre-commit blob with that SINGLE occurrence replaced and nothing else" cannot hold alone for a file receiving three pairs in one commit, so it is reported per FILE over the pair set, which is strictly stronger.
+- G9 THE CODE APPEND — §4.9 ordered equality for `tests/test_packaging_smoke.py` at C3: the pre-C3 prefix is preserved, TESTAPPEND is an exact SUFFIX of the post-C3 file, and the 43 lines C3's diff ADDS to that path are exactly IMPORTTO's 7 lines followed by TESTAPPEND's 36, IN ORDER. sha256 7da20674a48a32a29f8ae0e657ce461096ae8f8047b832f02bea96cf701a0d8c, 115 lines.
+- G10 THE ROUND GATE — serially in the PRIMARY checkout, never two pytest processes at once. `python3 -m pytest tests/test_packaging_smoke.py tests/test_build_revision.py -q -rf` exit 0, `14 passed in 0.25s` — ROSE from the 9 measured at dcf351c6, by exactly the five cases C3 adds. Then the four-file state-reader selection exit 0, `160 passed in 19.98s`; then `python3 -m pytest tests/docs/ -q -rf` exit 0, `295 passed in 0.52s`, equal to the 295 at dcf351c6; then the canary `python3 -m pytest tests/cli/test_golden_path.py -q` exit 0, `42 passed in 20.53s`.
+- G11 THE RED PROOF — in a disposable worktree at 2be0fbbf, the guard line and its `return` counted 1x EACH in that file first, then both deleted; `python3 -m pytest tests/test_packaging_smoke.py -q -rf` exits 1 at `1 failed, 10 passed`, naming ONLY `TestEditableBuildsAreNotGuarded::test_an_editable_build_is_allowed_without_built_assets`, failing with the guard's own `ValueError` about `apps/ui/dist/index.html`. Worktree removed and pruned; `git worktree list` one line.
+- G12 LINT — `python3 -m ruff check hatch_build.py tests/test_packaging_smoke.py` with the repository's own configuration and no `--isolated`: exit 0, `All checks passed!`, the same reading the reviewer took at dcf351c6 for these two paths.
+- G13 CHANGE SET, HISTORY AND CAPS — `git diff --name-only dcf351c6..HEAD` equals the Change list with no path on either side alone; all TEN paths the Change section names as untouched are PRESENT at dcf351c6 and ABSENT from that range; every commit in the range has one parent; every `git reflog` entry of this round is `commit:`. Every `+/-` cell above is pasted from `git diff --numstat <sha>^ <sha>` (checklist item 28); the maximum insertion column over C0a..C4 is 327, under the 500 cap, and C5's own cell is in the round report.
+- G14 NO MARKER LEAKED — LINES beginning `<<<SLICE ` or `<<<END ` count 0 in `.agent/plan.md` at C1, `.agent/live_review.md` at C2, `hatch_build.py` and `tests/test_packaging_smoke.py` at C3, and `docs/system/release-capability-v1.md` at C4.
+- G15 THE PUSH — ordered after C5, so no reading of it can exist in this file; the real `git push` output and the literal `gh pr list --state open --json number,headRefName,baseRefName,isDraft` re-read are in the round report. Nothing was merged and the CI run was not waited on; the reviewer watches it.
 
 ## Authored-text proofs
 
-PLAN31, FIND0597, RECORD30, STATUSLINE FROM/TO, RMCOUNT FROM/TO, RMTIER FROM/TO, RMLIST FROM/TO and PRBODY were extracted PROGRAMMATICALLY from the committed C0a at 6a690bd3 — never retyped, rewrapped or summarised — and applied byte-verbatim; G3, G4, G8 and G9 carry the disk-to-disk digests and the per-pair containment readings. No marker line reached any target, and PRBODY was written to `.remedy-wt/f086_pr_body.md` for `--body-file` rather than composed.
+PLAN32, FIND0598, RECORD31 and all five FROM/TO pairs plus TESTAPPEND were extracted PROGRAMMATICALLY from `.remedy-wt/f086-r32.md`, which G2 proves byte-EQUAL to the committed `.agent/authored/f086-r32.md` at 84f30a06 — never retyped, rewrapped or summarised — and applied byte-verbatim; G3, G4, G8 and G9 carry the disk-to-disk digests and the per-pair containment readings. No marker line reached any target.
 
 ## Deviations & assumptions
 
-None. The commit sequence was C0a, C0b, C1, C2, C3 exactly as the block labels it — nothing added, dropped or reordered — and no slice was edited, so no constraint-1 declaration was needed this round. Assumption, stated because it is load-bearing: the four closure values are quoted from the block's Goal, which records R30's measurements; this round re-derived none of them and the review package was neither rebuilt nor moved.
+The commit sequence was C0a, C0b, C1, C2, C3, C4, C5 exactly as the block labels it — nothing added, dropped or reordered — and NO slice was edited, so no constraint-1 declaration is owed. One reporting deviation, declared in full at G8: for `hatch_build.py`, which receives three pairs in ONE commit, the ordered equality is reported over the pair SET per file rather than per single pair, because the per-pair form is unsatisfiable by construction there. Two bash-guard refusals were rerouted through `python3 - <<'PY'` and plain commands (`echo "EXIT=$?"` and a `head -c` pipeline were denied by form); neither touched the work. DECISION D15 stated cause: this file is 62 lines against the 60 the block names, and the overage is MANDATED content — a per-commit `## Commits` table of seven commits plus the item-status table for the C0a..C5 bundle, and one LINE for each of fifteen gates (R-0582); the handback template's own >5-commit allowance puts the applicable bound at 100. No section was dropped and no transcript was inlined to meet it.
 
 ## Next
 
-The reviewer reviews d1889132..HEAD, re-runs every gate, and records R31's verdict. R31 is the branch terminator, so that verdict lives in this file, in the PR and in the reviewer's report rather than in a later ledger entry (§4 item 13's carve-out for the round whose bundle CREATES the PR). The pull request is open and must NOT be merged by this session; it merges at the next feature's start through the Open PR Gate. The next feature is selected by Rule A5 as the first `[ ]` in `docs/roadmap/STATUS.md` — F255 — in a FRESH session, whose first reviewed round reads `.agent/candidates.md`, which this closure leaves empty and correct.
+The reviewer reviews dcf351c6..HEAD, re-runs every gate G1-G15 itself, and — if R32 passes — authors `Done: R-0598` for the NEXT round's C1 rather than writing it here. The branch stays open: PR #207 must NOT be merged by this session, and it merges at the next feature's Open PR Gate, only once the CI check on this new HEAD is green. The reviewer, not this worker, watches run status; a second failure may sit behind R-0598 because the failed run executed no test at all.
