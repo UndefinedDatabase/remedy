@@ -355,6 +355,20 @@ end the response with:
       round report instead of in the file. The counter-measure is two readings, not
       a bigger cap: bound the writing commit, bound the appending commit, and state
       which is which.
+      Finding R-0589 adds the SWEEP this item's arithmetic needs and does not state. A
+      constant the block computes for ITSELF — an appended slice's length, and the bound
+      on the earlier commit derived from it — is stated ONCE, in one clause, and every
+      other clause NAMES that clause rather than repeating its numeral. Where a numeral
+      genuinely must appear twice, every occurrence is re-grepped after the LAST edit and
+      before emission, because correcting one occurrence is precisely where the next wrong
+      one lands: R-0486 and R-0488 are that shape, and this instance arrived inside the
+      round whose own clause above requires the block to compute the constant. Computing
+      it once and stating it twice is what this item as first written permits. The R23
+      instance: the block re-measured its VERDICT slice at 44 lines after a trim, corrected
+      constraint 9 to 44 with a C4 bound of 56, and left gate G15 ordering "at most 57" and
+      "exactly (a) plus 43" — so one block held both numerals twice and the second copy was
+      unmeetable for every possible round, while the handback landed at 56 and 100 and met
+      the corrected clause exactly.
   15. **Pair shapes are classified by a containment test, never by eye.** Finding
       R-0508. Before emission every FROM/TO pair is tested MECHANICALLY for whether the
       TO contains the FROM verbatim, and the answer is printed beside that pair in the
@@ -438,6 +452,19 @@ end the response with:
       both halves are individually sound. The R22 instance: probe b ordered
       `wall_timeout_seconds` removed from a test AND asserted that "with the backstop
       the node must FAIL and name `wall_timeout`".
+      Finding R-0591 widens this item from a RED-PROOF's two halves to ANY ordered recipe
+      and the property that recipe is ordered to establish. A block that names a MECHANISM
+      — a copy call, a flag, an environment variable, a shell builtin — is read against
+      what the mechanism must PRESERVE, using its real defaults rather than its intent, and
+      the argument that carries the property is named in the order rather than assumed. The
+      R23 instance: G9 ordered `apps/ui/node_modules` restored into a base worktree "with
+      `shutil.copytree` — NEVER symlink" to give the base run artefact parity, and
+      `copytree` defaults to `symlinks=False`, so it dereferenced npm's 23 bin shims and
+      CAUSED 7 of the 23 base-only failures the parity existed to prevent. The repository's
+      own precedent had it right — `.agent/gate_f085_r72/base_parity.txt` reads "symlinks
+      preserved" — and the block kept the citation while dropping the qualifier, which is
+      how a correct precedent becomes an incorrect order. Where a mechanism's DEFAULT is
+      the hazard, order the argument, not the function.
   19. **A claim about a gate's result names the commit that runs the gate.** Finding
       R-0515. An authored slice may state what a gate showed only when the same block
       fixes that the gate runs BEFORE the commit that writes the slice. Otherwise the
@@ -619,6 +646,24 @@ end the response with:
       reader searches by, so a duplicated one costs more than a stale sentence: order the
       comparison before emission, and never repair it by rewriting the landed entry, which
       item 20 forbids.
+  27. **A conditional gate is read against the case where its condition is FALSE.** Finding
+      R-0590. A done-when of the form "if X, then attribute / report / prove Y" is checked at
+      emission against NOT-X, and wherever the obligation Y survives that case the condition
+      is DROPPED rather than narrowed. A gate that discharges itself the moment its guard
+      fails is indistinguishable on the page from one that binds, and it fails silently and
+      in the safe-looking direction — the vacuous-gate class of R-0438, arriving through a
+      guard rather than through a missing path. Item 8 checks a gate's expected VALUE against
+      the code and item 18 reads an ordered recipe against the property it must establish;
+      neither reaches this one, because the value is right and the recipe is sound and only
+      the REACHABILITY of the demand is wrong. The R23 instance: G10 ordered every base-only
+      failure attributed by direct evidence "if the parity claim went VOID", and at that round
+      parity HELD on both digest and mtime while 23 base-only ids existed — the two are
+      independent, parity being a statement about what the RUN rebuilt and the base-only set
+      about what the base LACKS — so the gate demanded nothing of 23 real failures, over
+      exactly the evidence an integration gate exists to produce.
+      docs/agents/integration_gate.md step 3 makes that attribution unconditional, and the
+      worker attributed all 23 by demonstration on its own initiative and said so, which is
+      the round rescuing the reviewer rather than the gate doing its job.
   Why this is on disk and not a habit: item 2 has recurred six times across
   F104 and F105, and R20 hit four of them in one block. A check that lives
   only in reviewer session memory is the A1 trap §0 names, and this list is the
