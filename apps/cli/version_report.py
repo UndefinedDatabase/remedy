@@ -19,7 +19,11 @@ import sys
 from importlib.metadata import PackageNotFoundError, distribution
 
 DISTRIBUTION_NAME = "remedy"
-REVISION_METADATA_FILE = "REVISION"
+# hatchling prefixes every hook-supplied extra-metadata entry with
+# `extra_metadata/` inside `.dist-info`, so a real wheel answers here and returns
+# None for a bare `REVISION` — measured on a built wheel, not inferred.
+# `hatch_build.py` writes the other half of this pair.
+REVISION_METADATA_FILE = "extra_metadata/REVISION"
 UNKNOWN_MARKER = "dev"
 
 
