@@ -340,6 +340,21 @@ end the response with:
       sequence is fine and only its RANGE is wrong. The R26 instance: gate 19
       covered a six-commit range, so the handback reported five insertion counts
       and called the range "five single-parent commits" while HEAD held six.
+      Finding R-0588 raises this item from the PER-COMMIT reading to the WHOLE-FILE
+      one. A bound on a file that MORE THAN ONE commit builds — the handback this
+      workflow writes at one commit and appends the reviewer's verdict to at the
+      next — is stated per commit and never once over the final state, because the
+      final state does not exist when the text that must respect it is written. The
+      block computes any constant its own appended slices contribute: it SHIPS that
+      slice, so it knows the length, and it fixes the earlier commit's bound as the
+      cap minus that constant. The R21 instance: G14 ordered the handoff "at the
+      commit C5 creates" to be at most 100 lines AND ordered a DECISION D15 line
+      declaring any overage, while C5 appended only the 40-line VERDICT and C4 wrote
+      the 80-line text — so the worker met every content obligation, could not have
+      known the sum in time to declare it, and had to record the arithmetic in the
+      round report instead of in the file. The counter-measure is two readings, not
+      a bigger cap: bound the writing commit, bound the appending commit, and state
+      which is which.
   15. **Pair shapes are classified by a containment test, never by eye.** Finding
       R-0508. Before emission every FROM/TO pair is tested MECHANICALLY for whether the
       TO contains the FROM verbatim, and the answer is printed beside that pair in the
