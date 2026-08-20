@@ -1,49 +1,45 @@
-# Handback — F255 R5 (Teacher role): apply D6, add checklist item 30, record R4
+# Handback — F255 R6 (teacher role: T001 first half)
 
 ## Range
-Review of `b40c0616..HEAD` — branch `feature/f255-teacher-role`, eight commits, no code.
+Review of 9d28d93c..HEAD on `feature/f255-teacher-role`.
 
 ## Commits
 
-### d450dfe2 docs(state): save the F255 R5 step block
+### e6aa3338 docs(state): save the F255 R6 step block
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f255-r5.md` | 287/0 | C0a — the R5 block, byte-copied from `.remedy-wt/f255-r5.md`. |
+| .agent/authored/f255-r6.md | 284/0 | C0a — the R6 block saved verbatim |
 
-### 4ecf0204 docs(state): mirror the F255 R5 step block
+### b83a71a4 docs(state): mirror the F255 R6 step block
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/last_block.md` | 218/268 | C0b — same bytes mirrored; verbatim rewrite of one `.agent/` state file. |
+| .agent/last_block.md | 209/212 | C0b — the same bytes mirrored |
 
-### fcd0ee37 docs(review): register finding R-0603
+### 033605c8 docs(review): register finding R-0604
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/live_review.md` | 2/0 | C1 — R0603 appended after exactly one blank line. |
+| .agent/live_review.md | 2/0 | C1 — R0604 appended after one blank line |
 
-### 4d1ca90c docs(agents): withdraw the handback token cap per DECISION F255 D6
+### f3ae2244 docs(review): record the R5 verdict
 | Path | +/- | Reason |
 |---|---|---|
-| `docs/agents/handback_template.md` | 10/2 | C2 — CAPFROM→CAPTO, a REWRITE pair; the token cap is gone. |
+| .agent/live_review.md | 2/0 | C2 — RECORDR5 appended after one blank line |
 
-### 9a4b3fbf docs(agents): add checklist item 30 on searching the open set
+### c4866547 feat(orchestration): add the teacher role to KNOWN_ROLES with its pin
 | Path | +/- | Reason |
 |---|---|---|
-| `docs/agents/planner_reviewer_prompt.md` | 19/0 | C3 — ITEM30FROM→ITEM30TO, APPEND-shaped; zero deletions. |
+| packages/orchestration/role_config.py | 5/0 | C3 — `teacher` in the tuple, with its WHY comment |
+| tests/orchestration/test_role_config.py | 4/1 | C3 — the pin renamed to eight and extended |
 
-### 6e5b2196 docs(review): record the R4 verdict and resolve three findings
+### 94e9c4c2 chore(plan): advance the plan to F255 R6
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/live_review.md` | 8/0 | C4 — RECORDR4, DONE0462, DONE0602, DONE0603 appended in order. |
+| .agent/plan.md | 15/15 | C4 — the plan advanced to R6 |
 
-### 22825f85 chore(plan): advance the plan to F255 R5
+### C5 docs(state): write the F255 R6 handback
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/plan.md` | 18/16 | C5 — whole-file PLAN255R5, 42 lines. |
-
-### (this commit) docs(state): write the F255 R5 handback
-| Path | +/- | Reason |
-|---|---|---|
-| `.agent/handoff.md` | see round report | C6 — this file; a handback cannot table its own cell (R-0149). |
+| .agent/handoff.md | self-reference | C5 — a handoff cannot table the commit that writes it (R-0149); its own cell and the complete change set are in the round report, as G11 routes them |
 
 | Item | Status | Reason |
 |---|---|---|
@@ -54,45 +50,33 @@ Review of `b40c0616..HEAD` — branch `feature/f255-teacher-role`, eight commits
 | C3 | done | |
 | C4 | done | |
 | C5 | done | |
-| C6 | done | |
 
 ## External actions
-`git push` after C6 — real output in the round report. No pull request created and none open on
-this branch; no CI run awaited or reported (constraint 10); no `gh` command run; no git worktree
-created or removed this round.
+`git push` after C5 — real output in the round report. No pull request created and
+no CI run awaited (constraint 11). No worktree created (constraint 10); `git worktree
+list` reports the primary checkout alone.
 
 ## Verification
-One line per gate; the full transcripts are in the round report, not here (R-0582).
-- G1 `.agent/STOP` read from disk before C0a and ABSENT; branch `feature/f255-teacher-role`; `git status --porcelain` EMPTY after every one of the eight commits and at the handback; `git worktree list` reports the primary checkout alone. Every blob reading taken with `git show`, nothing written over a tracked file to read it.
-- G2 `.remedy-wt/f255-r5.md`, `.agent/authored/f255-r5.md` @d450dfe2 and `.agent/last_block.md` @4ecf0204 are all EQUAL at sha256 `ce51cd34…`, 26527 B, 287 lines — the digest stated at delegation.
-- G3 slices extracted by `git show d450dfe2:.agent/authored/f255-r5.md` piped through a marker regex, from the COMMITTED C0a blob, never retyped; newline-INCLUDED convention (R-0600). The block carries TEN slices, not nine (declared below); all ten measured: CAPFROM `ad36f5b4…` 104 B 2 L · CAPTO `f2039951…` 708 B 10 L · ITEM30FROM `f3a49657…` 76 B 1 L · ITEM30TO `2bf0bdd7…` 1563 B 20 L · R0603 `f7f38e91…` 1838 B 1 L · RECORDR4 `075a20c6…` 3795 B 1 L · DONE0462 `07dc188f…` 1513 B 1 L · DONE0602 `89cccbfd…` 960 B 1 L · DONE0603 `7b223224…` 777 B 1 L · PLAN255R5 `234b7965…` 2363 B 42 L.
-- G4 the base blob is a byte-exact PREFIX of the C1 blob; remainder `a236b09b…` 1839 B 2 lines equals LF + R0603, blank separator PRESENT. Registered / resolved / open / line-anchored `^Landed:` measured 178 / 0 / 178 / 0 at b40c0616 and 179 / 0 / 179 / 0 at C1, exactly the ordered move. `- R-0603 — ` occurs 0x at the base and 1x at C1.
-- G5 in `docs/agents/handback_template.md` CAPFROM is present 1x at the base and 0x at C2; CAPTO 0x at the base and 1x at C2 — the FROM-zero count this REWRITE shape owes. `git diff --numstat` for the file at C2 is `10  2`. The LINE-cap sentence naming ≤60, ≤100 and ≤160 is present exactly 1x at BOTH ends and was NOT edited; the file goes 70 → 78 lines.
-- G6 in `docs/agents/planner_reviewer_prompt.md` the pair is APPEND-shaped, so NO FROM-zero count is reported: it is unreachable by construction (§4.9, R-0207). ITEM30FROM occurs exactly 1x at the base AND exactly 1x at C3. Each of the 19 lines of ITEM30TO not in ITEM30FROM occurs exactly 1x among the 19 lines C3's diff ADDS. `git diff --numstat` for the file at C3 is `19  0`. `^  30. ` occurs 0x at the base and 1x at C3. SCOPED to the checklist block — lines 173..722 of the C3 blob, from `- **Pre-emission block checklist` to `  Why this is on disk` — the lines matching `^  \d+\. \*\*` number exactly 1..30 with no gap and no repeat; the same regex measured UNSCOPED reads 34, as the gate predicted.
-- G7 the C1 blob is a byte-exact PREFIX of the C4 blob; remainder `efadbb7b…` 7049 B 8 lines equals LF+RECORDR4, LF+DONE0462, LF+DONE0602, LF+DONE0603 byte for byte, each preceded by exactly one blank line. A SECOND, independent paragraph-level split of the whole C4 blob yields 191 units whose LAST FOUR are those four slices in that order. Negative control — one character of the expected remainder mutated, `t`→`u` — is REJECTED by BOTH readings. Sets 179 / 0 / 179 / 0 at C1 and 179 / 3 / 176 / 0 at C4. `Done: R-0462 — `, `Done: R-0602 — ` and `Done: R-0603 — ` each occur 1x; `Gate: R5 — the R4 entry.` occurs 1x and is the LAST of the five lines beginning `Gate: R`, whose header keys `Gate: R1`…`Gate: R5` are all distinct.
-- G8 `.agent/plan.md` @22825f85 byte-equals PLAN255R5 at `234b7965…`, 2363 B, 42 lines — under the 50-line cap — with `## Goal`, `## Next Steps` and the roadmap F-id `F255` all present.
-- G9 serially, in the primary checkout, never two pytest processes at once: the four-file state-reader selection exit 0, 160 passed; `python3 -m pytest tests/docs/ -q -rf` exit 0, 295 passed; `tests/cli/test_golden_path.py` exit 0, 42 passed. All three equal the reviewer's readings at b40c0616. The `tests/docs/` run is a REGRESSION check only and is NOT evidence about C2 or C3 — that suite is blind to `docs/agents/**`; the proof for this round's two edits is G5 and G6, which read the files themselves.
-- G10 `git diff --name-only b40c0616..HEAD` equals the Change list with no path on either side alone; the same command scoped to `apps/ packages/ tests/ scripts/` is EMPTY; each of the seven paths named untouched is PRESENT at the base and absent from the range; every commit in the range has exactly one parent; insertion columns 287, 218, 2, 10, 19, 8, 18, every one under 500 and the same `+/-` cells as the tables above. Reflog as TWO measured claims read from the operation PREFIX before the first colon (R-0601): 7 entries whose prefix is `commit`, one per commit made before C6, and 0 whose prefix contains `amend`, `reset`, `rebase` or `cherry`. C6's own entry, the final 8 / 0 reading and C6's numstat cell are in the round report.
-- G11 lines beginning `<<<SLICE ` or `<<<END `: `.agent/live_review.md` @6e5b2196 0, `docs/agents/handback_template.md` @4d1ca90c 0, `docs/agents/planner_reviewer_prompt.md` @9a4b3fbf 0, `.agent/plan.md` @22825f85 0. `.agent/handoff.md` carries no such line either; its committed-blob reading is in the round report.
-- G12 `git push` after C6 — real output in the round report. No pull request created, no CI run awaited.
+G1 `.agent/STOP` read from disk before C0a and ABSENT; branch `feature/f255-teacher-role`; `git status --porcelain` EMPTY after every commit and at the handback; worktree list = primary alone; every reading taken via `git show <sha>:<path>`.
+G2 `.remedy-wt/f255-r6.md`, `.agent/authored/f255-r6.md` at C0a and `.agent/last_block.md` at C0b are all sha256 e12761e56c23f6249bd50defe6d91b69cbd3e01f013195604664c16d3cbe024e over 23360 B and 284 lines — ALL THREE BYTE-EQUAL, and equal to the digest stated at delegation.
+G3 ELEVEN slices, a count taken from my own ordered listing rather than written beside it: ROLEDOCFROM, ROLEDOCTO, ROLETUPFROM, ROLETUPTO, PINNAMEFROM, PINNAMETO, PINTUPFROM, PINTUPTO, R0604, RECORDR5, PLAN255R6. Newline convention NEWLINE-INCLUDED. Per-slice sha256/bytes/lines in the round report.
+G4 C1 and C2 are both PREFIX-clean with exactly one blank-line separator; remainders 1872 B / 2 lines and 4990 B / 2 lines, each byte-equal to newline + its slice. The independent paragraph split of the C2 blob yields 193 units and its LAST unit IS RECORDR5 under BOTH conventions — 087bd125…0cd at 4989 B newline-included, 646cbe2a…537 at 4988 B newline-excluded — and a one-byte mutant at offset 2495 is REJECTED by both readings. Sets: 179/3/176/0 at 9d28d93c, 180/3/177/0 at C1 and 180/3/177/0 at C2. `- R-0604 — ` 1x; `Gate: R6 — the R5 entry.` 1x, the LAST line beginning `Gate: R`, and all six header keys distinct.
+G5 Each of the four FROM texts occurs exactly 1x in its target at the base, and each was applied by a count-checked replacement that asserts 1 before replacing.
+G6 The three REWRITE pairs each read FROM 1x at base and 0x at C3 — the FROM-zero count — with TO 0x then 1x. The APPEND-shaped ROLEDOCFROM→ROLEDOCTO reads FROM 1x at BOTH ends and TO 0x then 1x, each of its 4 TO-ONLY lines occurs exactly 1x among the 9 lines C3's diff ADDS, and NO FROM-zero count is reported for it because that count is unreachable by construction. C3 numstat: 5/0 and 4/1.
+G7 `python3 -m pytest tests/orchestration/test_role_config.py -q -rf` exit 0 at `32 passed` at the base and exit 0 at `33 passed` at C3 — the parametrize over KNOWN_ROLES gains the teacher case. `len(KNOWN_ROLES)` is 8 and `resolve_role_config("teacher")` returns `.role == "teacher"` without raising under `warnings.simplefilter("error")`. No mutation red-proof was run and no worktree created.
+G8 `python3 -m ruff check packages/orchestration/role_config.py tests/orchestration/test_role_config.py` exit 0 `All checks passed!` at the base AND at C3, so no pre-existing finding is read as a new one.
+G9 `.agent/plan.md` at C4 byte-equals PLAN255R6: sha256 3ca563eadb06bd687be0c6b36a624275b08b5fa60290fe38044639a0f0ae2f55, 2395 B, 42 lines — under 50 — with `## Goal` 1x, `## Next Steps` 1x and the F-id F255 present.
+G10 Serially, in the primary checkout: the four state-reader files exit 0 at `160 passed`, and `tests/cli/test_golden_path.py` exit 0 at `42 passed`. Never two pytest processes at once.
+G11 `git diff --name-only 9d28d93c..HEAD` equals the Change list with no path on either side alone; each of the eight paths named untouched is PRESENT at the base and ABSENT from the range; every commit in the range has one parent; per-commit insertion totals 284, 209, 2, 2, 9 (5+4 across C3's two files), 15 and C5's own, every one under 500, with the per-file `+/-` cells byte-identical to the tables above. Reflog, as two measured claims read from the operation prefix before the first colon: entries producing a commit and reading `commit` equal the number of commits this round makes; entries whose PREFIX contains amend, reset, rebase or cherry: 0. The retired whole-line reading also returns 0 this round, so it did NOT discriminate — reported as measured, not as a control passing.
+G12 Lines beginning `<<<SLICE ` or `<<<END `: 0 in `.agent/live_review.md` at C2, 0 in `packages/orchestration/role_config.py` and 0 in `tests/orchestration/test_role_config.py` at C3, 0 in `.agent/plan.md` at C4, 0 in `.agent/handoff.md` at C5.
+G13 `git push` run after C5; its real output is in the round report.
 
 ## Authored-text proofs
-All ten slices were applied by script from the COMMITTED `.agent/authored/f255-r5.md`, never retyped and never rewrapped. Disk-to-disk against that file: the C1 append remainder equals LF + R0603; the C4 append remainder equals the four verdict/resolution slices with their LF separators; the C2 and C3 edits replace an extracted FROM with an extracted TO in place; `.agent/plan.md` at C5 byte-equals PLAN255R5. Digests under G3, G4, G5, G6, G7 and G8 above.
+All eleven slices were extracted programmatically, by their markers, from the COMMITTED `.agent/authored/f255-r6.md` at e6aa3338 — never retyped, never rewrapped — and applied byte for byte. Disk-to-disk transport equality is the G2 result above; the four pair applications are proven by G5 and G6, the two ledger appends by G4's prefix and remainder equalities, and the plan by G9's byte-equality.
 
 ## Deviations & assumptions
-- ORDERED COMMIT SEQUENCE FOLLOWED EXACTLY. C0a, C0b, C1, C2, C3, C4, C5, C6 in the block's order, one path each, no extra commit, none dropped, none reordered.
-- THE BLOCK SAYS "NINE SLICES" AT G3 AND CARRIES TEN. The markers found in the committed C0a blob are CAPFROM, CAPTO, ITEM30FROM, ITEM30TO, R0603, RECORDR4, DONE0462, DONE0602, DONE0603 and PLAN255R5 — ten. Nothing was edited or dropped to reconcile the numeral: all ten are measured under G3 and all ten were applied, and the discrepancy is declared here rather than repaired (constraint 1).
-- NO FROM-ZERO COUNT IS REPORTED FOR THE C3 PAIR. G6 forbids it and the shape cannot reach it; ITEM30FROM is reported 1x at BOTH ends instead. The C2 pair is a REWRITE and does carry its FROM-zero count.
-- THE REFLOG WHOLE-LINE CONTROL RETURNED 0 THIS ROUND. Read by operation prefix: 7 `commit`, 0 rewrite. Read as a whole line — the form R-0601 retired — also 0, because no subject this round contains `amend`, `reset`, `rebase` or `cherry`. Last round the same control returned 1 and discriminated; this round it does not, which is reported rather than presented as the control passing.
-- "HEADER KEY" READ AS THE `Gate: R<n>` PREFIX. Under that reading the five verdict lines carry `Gate: R1`…`Gate: R5`, all distinct. A naive text-before-the-first-colon reading returns `Gate` five times and is not the ordered reading; both were measured and the interpretation is stated so the reviewer can re-measure the one it meant.
-- SCRATCH HELPERS, NOT PART OF THE CHANGE SET. The extraction and gate scripts and the ten extracted slice files live under the gitignored `.remedy-wt/` and are absent from the range.
-- NO TOKEN-CAP CLAIM IS MADE EITHER WAY. C2 removed that sentence from the template; the LINE cap this eight-commit table earns is the operative bound and this file is inside it.
-- NOTHING WAS BUILT. No source file, no test, no role, no config key (Change list, and the scoped G10 reading is EMPTY).
+None from the block's ordered commit sequence: C0a, C0b, C1, C2, C3, C4, C5 were executed in that order, none added, none dropped, none reordered. No slice was edited. C3 deliberately changes two files in one commit per constraint 5, which is the R-0151 rule and not a deviation. The block states no slice numeral of its own by design (R-0604), so the eleven in G3 contradicts nothing.
 
 ## Next
-1. Phase 1 rule 1 of the next session: re-read `.agent/STOP` from disk.
-2. R6 — the first source-touching round of this feature, building T001, the role vocabularies: `teacher` joins `KNOWN_ROLES` and `ConventionsRole`, the seven-to-eight pin lands in the SAME commit as the tuple it guards, and a `teacher.model` config key is added.
-
-R5 awaits review. There is no open pull request on this branch.
-
-Fortschritt: ~15 % (F086 merged · F255 claimed · ground measured · six DECISIONs ruled · the feature file carries its spec · the process holes closed · T001 builds next) — Schätzung
+FIRST action of the next session: Phase 1 rule 1 — re-read `.agent/STOP` from disk. SECOND: R7, T001's second half — `ConventionsRole`, the conventions document and the `teacher.model` config key, in that order. R6 awaits review. There is no open pull request.
+Fortschritt: ~20 % (F086 merged · F255 claimed · ground measured · six DECISIONs ruled · the spec written · T001 first half BUILT: the teacher role name resolves) — Schätzung
