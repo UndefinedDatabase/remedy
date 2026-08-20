@@ -1,8 +1,8 @@
 """
 Role conventions loaders — the conventions prompt segment (F105 T002).
 
-The worker and the reviewer conventions live in ``docs/agents/`` as reviewed
-documents. This module LOADS them, verbatim, and registers each one as the
+Each role's conventions live in ``docs/agents/`` as a reviewed document. This
+module LOADS them, verbatim, and registers each one as the
 ``CONVENTIONS``-ranked segment of a caller's prompt segment registry. The bytes
 that reach a prompt are the bytes on disk: no strip, no re-wrap, no dedent, no
 header, no label. That is what makes "extracting the conventions changed no
@@ -56,6 +56,7 @@ class ConventionsRole(str, Enum):
 
     WORKER = "worker"
     REVIEWER = "reviewer"
+    TEACHER = "teacher"
 
 
 #: Where each role's conventions document lives, relative to the repo root.
@@ -63,6 +64,7 @@ class ConventionsRole(str, Enum):
 CONVENTIONS_DOC_RELATIVE_PATHS: dict[ConventionsRole, str] = {
     ConventionsRole.WORKER: "docs/agents/worker_conventions.md",
     ConventionsRole.REVIEWER: "docs/agents/reviewer_conventions.md",
+    ConventionsRole.TEACHER: "docs/agents/teacher_conventions.md",
 }
 
 #: The segment name each role's conventions register under. Names are stable:
@@ -70,6 +72,7 @@ CONVENTIONS_DOC_RELATIVE_PATHS: dict[ConventionsRole, str] = {
 CONVENTIONS_SEGMENT_NAMES: dict[ConventionsRole, str] = {
     ConventionsRole.WORKER: "worker_conventions",
     ConventionsRole.REVIEWER: "reviewer_conventions",
+    ConventionsRole.TEACHER: "teacher_conventions",
 }
 
 

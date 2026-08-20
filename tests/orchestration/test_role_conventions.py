@@ -41,7 +41,7 @@ def _register(role: ConventionsRole, repo_root: Path | None = None):
 
 
 def _write_repo_root(tmp_path: Path, oversized_role: ConventionsRole | None = None) -> Path:
-    """A throwaway repo root carrying both documents at their real relative paths."""
+    """A throwaway repo root carrying every document at its real relative path."""
     for role, relative in CONVENTIONS_DOC_RELATIVE_PATHS.items():
         target = tmp_path / relative
         target.parent.mkdir(parents=True, exist_ok=True)
@@ -152,6 +152,7 @@ class TestRoleConventionsMappings:
         [
             (ConventionsRole.WORKER, "worker_conventions"),
             (ConventionsRole.REVIEWER, "reviewer_conventions"),
+            (ConventionsRole.TEACHER, "teacher_conventions"),
         ],
     )
     def test_segment_name_mapping_holds_the_expected_literal(self, role, expected_name):
@@ -164,6 +165,7 @@ class TestRoleConventionsMappings:
         [
             (ConventionsRole.WORKER, "docs/agents/worker_conventions.md"),
             (ConventionsRole.REVIEWER, "docs/agents/reviewer_conventions.md"),
+            (ConventionsRole.TEACHER, "docs/agents/teacher_conventions.md"),
         ],
     )
     def test_document_path_mapping_holds_the_expected_literal(self, role, expected_relative):
@@ -205,6 +207,10 @@ class TestConventionsDocumentRuleAnchors:
             (
                 ConventionsRole.REVIEWER,
                 ("## Stance", "## Findings", "## Block conditions"),
+            ),
+            (
+                ConventionsRole.TEACHER,
+                ("## Stance", "## Grounding sources", "## Isolation"),
             ),
         ],
     )
