@@ -24,6 +24,11 @@ packages = ["packages", "apps"]
 # ships no UI. That guard is D1 part (b) and is still owed.
 artifacts = ["apps/ui/dist/**"]
 
+[tool.hatch.build.targets.wheel.hooks.custom]
+# WHY: the carry above is SILENT when apps/ui/dist is absent — the build still
+# exits 0 and ships a wheel with no UI. This hook is DECISION F086 D1 part (b).
+path = "hatch_build.py"
+
 [tool.pytest.ini_options]
 pythonpath = ["."]
 markers = [
