@@ -51,3 +51,48 @@ None. The ordered commit sequence C0a, C0b, C1, C2, C3, C4, C5, C6, C7 was execu
 ## Next
 
 The planner/reviewer reviews `8fe709a8..HEAD` and records R26's verdict as `Gate: R27 — the R26 entry.`; the packaging ist-doc under `docs/system/` with its `docs/README.md` row is the next round's first work, and closure follows it.
+
+## Reviewer's session verdict — authored by the reviewer, applied by the worker
+
+Written because finding R-0571 is that a verdict issued and never put on disk cannot be
+told apart from one never issued. Session of 2026-08-20, self-drive per
+docs/agents/self_drive_protocol.md, resuming at `e33ba23a` under a three-round cap
+declared up front per guardrail G7. The reviewer wrote nothing in the work tree, one
+delegated worker per round made every commit, and every verdict below rests on gates the
+reviewer RE-EXECUTED over the committed diff, never on a handback.
+
+| Round | Range | Verdict |
+|---|---|---|
+| R24 | 39bfc199..e33ba23a | PASS — one finding, R-0592, against the reviewer |
+| R25 | e33ba23a..8fe709a8 | PASS — no finding |
+| R26 | 8fe709a8..this range | verdict not yet on disk; see the last paragraph |
+
+R24 was inherited ungated, so Phase 1 rule 4 reviewed it before any new work was planned.
+R-0592 is a gap in the REVIEWER'S gate coverage, not in the worker's execution: the
+handback's mandated `## Commits` table carried one commit's diff a second time, derived
+from line counts instead of from the diff, and no clause of that block and no item of the
+§3 checklist had ever named that table. R25 registered it and landed checklist item 28,
+which then bound the very round that shipped it — all five measurable cells matched
+`git diff --numstat`, and the same wrong derivation was available and was not taken.
+
+R25 PASSED WITH NO FINDING. All fourteen of its gates reproduce to the byte on the
+reviewer's own runs, including both suites green at exit 0 taken serially.
+
+R26 IS CLOSURE PREPARATION, and it exists because closure cannot legally do this work:
+R-0154 fixes the closure commit's path set at STATUS.md, README.md and `.agent/`, while
+precondition 4 requires the feature file's Built State to be current already. R-0593,
+registered here, is two stale ABSENCE comments in production text — the release gate
+saying nothing calls it, and `pyproject.toml` saying a guard four lines below it is still
+owed — each left behind by the commit that falsified it.
+
+WHAT THIS FEATURE STILL OWES: the packaging ist-doc under `docs/system/` with its
+`docs/README.md` row, then closure. NO INSTALL HAS BEEN PROVEN in this session or any
+other and no round of this workflow can prove one; the release workflow has never been
+dispatched. Closure names both as unproven rather than counting a skipped test as
+coverage, and F083 and F085 are the precedent for closing PASS_WITH_RISKS.
+
+R26 IS NOT A TERMINATOR — F086's pull request is created at closure, which has not
+happened — so this session claims no §4 item 13 carve-out and leaves its last verdict to
+be recorded (R-0583). THE NEXT SESSION'S FIRST ACTIONS are Phase 1 rule 1, then rule 2,
+then rule 4: review this round and record R26's verdict as `Gate: R27 — the R26 entry.`,
+the header shape §3 item 26 binds.
