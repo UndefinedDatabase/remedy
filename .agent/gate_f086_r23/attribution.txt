@@ -1,0 +1,72 @@
+F086 R23 -- ATTRIBUTION (integration_gate.md step 4)
+
+BRANCH-ONLY (comm -13 base_failed.txt branch_failed.txt): 0 ids.
+EMPTY BY CONSTRUCTION: the branch run reported FAILED_COUNT 0 and exit 0, so the
+branch set is empty and no id can be present in it and absent from the base set.
+There is therefore no serial re-run to perform, no xdist-flake class to record and
+no BLOCKER under constraint 10.
+
+BASE-ONLY (comm -23): 23 ids, EVERY ONE attributed below, none silently absent.
+Both classes are the environment class integration_gate.md step 3 names -- the
+throwaway base worktree lacking a usable apps/ui build output -- and each was
+attributed by DEMONSTRATION, not by hypothesis: the artefact was repaired in the
+base worktree and the same node ids were re-run there at 76661dc1.
+
+CLASS A -- DEREFERENCED npm BIN SHIMS (7 ids).
+Artefact: apps/ui/node_modules/.bin/*. shutil.copytree(symlinks=False)
+dereferenced npm's bin shims, so `.bin/vite` and `.bin/vitest` became regular
+files and their relative dist imports resolved from `.bin/` instead of from the
+package dir. Direct evidence in the base log:
+  Error [ERR_MODULE_NOT_FOUND]: Cannot find module
+  '<base-wt>/apps/ui/node_modules/dist/node/cli.js' imported from
+  '<base-wt>/apps/ui/node_modules/.bin/vite'
+Measured: 23 symlinks under apps/ui/node_modules (maxdepth 2) in the primary
+checkout, 0 in the copy. Demonstration: the directory was recopied with
+symlinks=True (the shims point WITHIN node_modules, never into the primary
+checkout, so the F053 R3 write-through hazard does not apply) and all 7 ids
+then PASSED at the base revision. Log: base_rerun_env_restored.txt.
+
+  PASS-at-base-after-repair  tests/orchestration/test_test_runner.py::TestVitestFrontendTestFoundation::test_vitest_passes
+  PASS-at-base-after-repair  tests/runtimes/test_apps_ui_probe.py::TestRealViteAcrossTheCliBoundary::test_vite_survives_the_serve_cli_and_is_probed_and_stopped_separately
+  PASS-at-base-after-repair  tests/runtimes/test_apps_ui_probe.py::TestRealViteProbe::test_a_one_shot_probe_leaves_no_process_and_no_state
+  PASS-at-base-after-repair  tests/runtimes/test_apps_ui_probe.py::TestRealViteProbe::test_a_second_probe_runs_cleanly
+  PASS-at-base-after-repair  tests/runtimes/test_apps_ui_probe.py::TestRealViteProbe::test_serve_then_stop_removes_the_whole_vite_process_tree
+  PASS-at-base-after-repair  tests/runtimes/test_apps_ui_probe.py::TestRealViteProbe::test_the_harness_starts_apps_ui_and_becomes_ready
+  PASS-at-base-after-repair  tests/ui_server/test_dashboard_contract.py::TestJobSummaryCommandContract::test_typescript_compiles
+
+CLASS B -- apps/ui/dist STALE BY CONSTRUCTION (16 ids).
+Artefact: apps/ui/dist/index.html's mtime. _frontend_is_stale() in
+packages/orchestration/ui_server.py at 76661dc1 calls the build stale when ANY
+file under apps/ui/src is NEWER than dist/index.html. `git worktree add` writes
+every source file with mtime = worktree creation time, which is necessarily LATER
+than the preserved mtime of a copied dist, so the base worktree's frontend is
+stale by construction; with REMEDY_UI_NO_AUTO_BUILD=1 the server then refuses to
+start. Direct evidence in the base log, captured stderr of every one of these ids:
+  ERROR: React UI not built.
+Measured in the base worktree: newest apps/ui/src mtime_ns 1787239760020048003 >
+dist/index.html mtime_ns 1787239643036148044. Demonstration: the copied dist's
+mtimes were moved past the source mtimes with os.utime -- NO rebuild, the dist
+digest before and after the touch is identical -- and all 16 ids then PASSED at
+the base revision in 2.08s. Log: base_rerun_mtime_restored.txt.
+
+  PASS-at-base-after-repair  tests/ui_server/test_live_state.py::TestUIServerIntegration::test_api_invalid_token_403
+  PASS-at-base-after-repair  tests/ui_server/test_live_state.py::TestUIServerIntegration::test_api_missing_job_404
+  PASS-at-base-after-repair  tests/ui_server/test_live_state.py::TestUIServerIntegration::test_api_requires_token
+  PASS-at-base-after-repair  tests/ui_server/test_live_state.py::TestUIServerIntegration::test_api_valid_token_returns_dashboard
+  PASS-at-base-after-repair  tests/ui_server/test_live_state.py::TestUIServerIntegration::test_app_shell_served_without_token
+  PASS-at-base-after-repair  tests/ui_server/test_live_state.py::TestUIServerIntegration::test_brain_endpoint
+  PASS-at-base-after-repair  tests/ui_server/test_live_state.py::TestUIServerIntegration::test_context_budget_endpoint
+  PASS-at-base-after-repair  tests/ui_server/test_live_state.py::TestUIServerIntegration::test_dashboard_no_raw_leaks
+  PASS-at-base-after-repair  tests/ui_server/test_live_state.py::TestUIServerIntegration::test_delete_rejected
+  PASS-at-base-after-repair  tests/ui_server/test_live_state.py::TestUIServerIntegration::test_events_endpoint
+  PASS-at-base-after-repair  tests/ui_server/test_live_state.py::TestUIServerIntegration::test_guide_endpoint
+  PASS-at-base-after-repair  tests/ui_server/test_live_state.py::TestUIServerIntegration::test_post_rejected
+  PASS-at-base-after-repair  tests/ui_server/test_live_state.py::TestUIServerIntegration::test_put_rejected
+  PASS-at-base-after-repair  tests/ui_server/test_live_state.py::TestUIServerIntegration::test_readiness_endpoint
+  PASS-at-base-after-repair  tests/ui_server/test_live_state.py::TestUIServerIntegration::test_server_starts_and_writes_info
+  PASS-at-base-after-repair  tests/ui_server/test_live_state.py::TestUIServerIntegration::test_url_is_localhost_only
+
+CONSEQUENCE. No base-only id is unattributed, so none counts as a genuine base
+failure. Both repairs happened in the throwaway worktree AFTER the base run and
+after its before/after parity readings were taken; the primary checkout's
+apps/ui/dist digest and mtime were re-read after each and never moved.

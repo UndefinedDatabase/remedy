@@ -1,0 +1,10 @@
+F086 R23 integration gate -- BASE RUN
+CHECKOUT   .remedy-wt/base-r23 (throwaway worktree, removed after the readings)
+BRANCH     tmp/base-gate-r23 (created for DECISION D3: the self-dogfood guard
+           refuses a detached HEAD; deleted with the worktree)
+REVISION   76661dc1ff5ccc7cd4fe15ab88d53cff82d6d9dc  (git merge-base main HEAD; identical to main and origin/main)
+COMMAND    python3 -m pytest -n auto -q   with REMEDY_UI_NO_AUTO_BUILD=1
+EXIT_CODE  1
+WALL_SECONDS 135.3
+SUMMARY    23 failed, 17110 passed, 19 skipped in 134.81s (0:02:14)
+FAILED_COUNT 23

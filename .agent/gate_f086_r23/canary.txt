@@ -1,0 +1,4 @@
+F086 R23 -- CANARY, run in the PRIMARY checkout after both gate runs ended
+COMMAND    python3 -m pytest tests/cli/test_golden_path.py -q
+EXIT_CODE  0
+SUMMARY    42 passed in 20.52s

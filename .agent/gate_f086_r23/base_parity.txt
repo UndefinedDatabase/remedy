@@ -1,0 +1,24 @@
+F086 R23 -- BASE-RUN PARITY READING (integration_gate.md step 3)
+
+apps/ui/node_modules and apps/ui/dist were restored into the base worktree by
+shutil.copytree, never by symlink: the UI auto-build writes THROUGH a symlink
+into the primary checkout (F053 R3). REMEDY_UI_NO_AUTO_BUILD=1 was set for the
+base run and NOT trusted alone (R-0169). apps/ui/dist was read by DIGEST AND BY
+MTIME before and after that run, because at F085 R72 the digest held still while
+the mtime moved and _frontend_is_stale() decides by MTIME (R-0565).
+
+BEFORE base-worktree apps/ui/dist sha256        c14681f28e79a0c908642a03ceeda315b5d5150f079860fe20fcfbc9d3a26873
+BEFORE base-worktree dist/index.html mtime_ns   1787239643036148044
+BEFORE primary       apps/ui/dist sha256        c14681f28e79a0c908642a03ceeda315b5d5150f079860fe20fcfbc9d3a26873
+BEFORE primary       dist/index.html mtime_ns   1787239643036148044
+AFTER  base-worktree apps/ui/dist sha256        c14681f28e79a0c908642a03ceeda315b5d5150f079860fe20fcfbc9d3a26873
+AFTER  base-worktree dist/index.html mtime_ns   1787239643036148044
+AFTER  primary       apps/ui/dist sha256        c14681f28e79a0c908642a03ceeda315b5d5150f079860fe20fcfbc9d3a26873
+AFTER  primary       dist/index.html mtime_ns   1787239643036148044
+
+VERDICT base worktree: HELD
+VERDICT primary checkout: HELD
+Neither digest nor mtime moved on either side, so nothing was rebuilt during the
+base run and the parity claim HOLDS. The base-only failures recorded in
+attribution.txt are therefore not a rebuild artefact; each is attributed there by
+direct evidence and by demonstration.

@@ -1,0 +1,26 @@
+raw tail of the base run log (last 25 lines)
+
+FAILED tests/orchestration/test_test_runner.py::TestVitestFrontendTestFoundation::test_vitest_passes
+FAILED tests/runtimes/test_apps_ui_probe.py::TestRealViteProbe::test_the_harness_starts_apps_ui_and_becomes_ready
+FAILED tests/runtimes/test_apps_ui_probe.py::TestRealViteProbe::test_a_one_shot_probe_leaves_no_process_and_no_state
+FAILED tests/runtimes/test_apps_ui_probe.py::TestRealViteProbe::test_a_second_probe_runs_cleanly
+FAILED tests/runtimes/test_apps_ui_probe.py::TestRealViteProbe::test_serve_then_stop_removes_the_whole_vite_process_tree
+FAILED tests/runtimes/test_apps_ui_probe.py::TestRealViteAcrossTheCliBoundary::test_vite_survives_the_serve_cli_and_is_probed_and_stopped_separately
+FAILED tests/ui_server/test_dashboard_contract.py::TestJobSummaryCommandContract::test_typescript_compiles
+FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_server_starts_and_writes_info
+FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_app_shell_served_without_token
+FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_api_invalid_token_403
+FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_api_missing_job_404
+FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_put_rejected
+FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_dashboard_no_raw_leaks
+FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_brain_endpoint
+FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_readiness_endpoint
+FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_api_requires_token
+FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_api_valid_token_returns_dashboard
+FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_post_rejected
+FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_url_is_localhost_only
+FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_delete_rejected
+FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_events_endpoint
+FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_guide_endpoint
+FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_context_budget_endpoint
+23 failed, 17110 passed, 19 skipped in 134.81s (0:02:14)
