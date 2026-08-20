@@ -1,32 +1,40 @@
-── STEP R7 — F086 Release capability (T001 part a lands; R6's gate defects registered) ──
+── STEP R8 — F086 Release capability (repair the ledger separation; close the session) ──
 
 Goal:
-Register the four gate defects R6 exposed, record the R6 verdict, rule the
-DECISION that R6's measurement forces, and land the wheel carry itself. The
-measurement that selects the carry mechanism is NOT re-delegated as an open
-question this round: the reviewer executed it at `72e07381` with a build root
-that is not gitignore-matched, and this block orders that same reading back as a
-gate with its own control.
+Repair the defect R7's G5 exposed: four findings landed as ONE paragraph block,
+so the extractor that carries the open set forward at the next feature claim can
+see only the first of them. Register the two defects, restore the separation
+without altering one byte of any finding's text, record the R7 verdict, and close
+this session with the reviewer's own session verdict written to disk. This is the
+LAST round of the session. No code, no test, no PR.
 
 Bundle (ordered, one commit each; no extra commit, none dropped, no reordering):
-  C0a save this block verbatim as `.agent/authored/f086-r7.md`
+  C0a save this block verbatim as `.agent/authored/f086-r8.md`
   C0b mirror the COMMITTED C0a file into `.agent/last_block.md`
-  C1  `.agent/plan.md` := the PLAN7 slice, whole file
-  C2  append the FINDINGS slice to `.agent/live_review.md`
-  C3  append the RECORD5 slice to `.agent/live_review.md`
-  C4  append the DECISION3 slice to `.agent/decisions.md`
-  C5  `pyproject.toml` := the PYFROM→PYTO pair
+  C1  `.agent/plan.md` := the PLAN8 slice, whole file
+  C2  append the FINDINGS2 slice to `.agent/live_review.md`
+  C3  THE REPAIR — separate the R-0574…R-0577 paragraphs in `.agent/live_review.md`
+  C4  append the RESOLUTION slice to `.agent/live_review.md`
+  C5  append the RECORD6 slice to `.agent/live_review.md`
   C6  rewrite `.agent/handoff.md` per docs/agents/handback_template.md
+  C7  append the VERDICT slice to `.agent/handoff.md`
 
 C1 precedes C2 because §3 pre-emission item 23 requires the plan to advance
 before any commit touching the finding ledger. C2 precedes C3 because
 docs/agents/planner_reviewer_prompt.md §4 item 4 requires findings to persist in
-their own commit FIRST, before anything else the round does. C5 comes after C4
-because DECISION3 is what authorises the edit C5 makes.
+their own commit BEFORE the fix, so nothing is lost if the session dies mid-round.
+C4 marks R-0578 resolved and may only follow the commit that actually repairs it.
+
+Why C7 exists and why it APPENDS. Finding R-0571, registered by this feature, is
+that a verdict issued and never written to disk is indistinguishable from one
+never issued: a branch's last round has no on-disk gate entry by construction
+(docs/agents/planner_reviewer_prompt.md §4 item 13). It APPENDS rather than
+rewrites because a rewrite of `.agent/handoff.md` is what destroys a verdict
+already written into it.
 
 Base:
-This round starts from `72e07381`, the tip of `feature/f086-release-capability`
-and the R6 handback commit. Every range gate below names that SHA. Stay on the
+This round starts from `b769ccd7`, the tip of `feature/f086-release-capability`
+and the R7 handback commit. Every range gate below names that SHA. Stay on the
 existing branch — do NOT create one, do NOT run the Open PR Gate, do NOT open a
 PR. The branch stays pushed and unmerged; its PR is created at closure.
 
@@ -34,78 +42,80 @@ Slice convention:
 Each authored unit below sits between a one-line `<<<SLICE NAME>>>` marker and a
 one-line `<<<END NAME>>>` marker. Extract each slice programmatically by its
 markers and apply it byte-verbatim. No marker line ever reaches a target file.
-The slices are PLAN7, FINDINGS, RECORD5, DECISION3, PYFROM and PYTO. PLAN7 is
-the COMPLETE file including its single trailing newline. FINDINGS, RECORD5 and
-DECISION3 are EOF-APPENDS, defined as pure concatenation with each slice's own
-leading blank line INSIDE the slice, so nothing is prepended and nothing is
-stripped. PYFROM→PYTO is the round's only FROM/TO pair.
+The slices are PLAN8, FINDINGS2, RESOLUTION, RECORD6 and VERDICT. PLAN8 is the
+COMPLETE file including its single trailing newline. FINDINGS2, RESOLUTION,
+RECORD6 and VERDICT are EOF-APPENDS, defined as pure concatenation with each
+slice's own leading blank line INSIDE the slice, so nothing is prepended and
+nothing is stripped. No FROM/TO pair exists in this block; C3 is a specified
+transformation, not a pair, and G6 measures it by its properties.
 
-Pair shape, measured not asserted (§3 pre-emission items 4 and 15). The
-containment test was run mechanically on the final bytes of this block, and this
-is its output:
-  PYTO contains PYFROM: true   -> APPEND
-The pair is therefore APPEND-shaped, and G8 orders the §4.9 append obligation —
-PYFROM exactly 1x in the file at `72e07381`, and each TO-ONLY line exactly 1x
-among the lines C5's diff ADDS — and never a "FROM 0x" count, which is
-unattainable by construction for a pair whose TO contains its FROM.
-
-What the reviewer already measured, so you are re-taking a reading and not
-discovering one. At `72e07381`, from a probe worktree at
-`/home/decodeux/remedy-f086r7-base` — OUTSIDE the repository, which is the whole
-point — with `apps/ui/dist` copied in from the primary checkout:
-  base `pyproject.toml`            -> 414 members, 2038283 bytes, 0 under `apps/ui/dist/`
-  with `artifacts`                 -> 417 members, 2155470 bytes, 3 under `apps/ui/dist/`
-  with `force-include`             -> 417 members, 2155479 bytes, 3 under `apps/ui/dist/`
-  with `artifacts`, dist ABSENT    -> 414 members, 2038283 bytes, 0 under `apps/ui/dist/`, exit 0
-Both mechanisms work once the build root is not gitignore-matched. `artifacts`
-is chosen because it needs no source-to-target path mapping and produced the
-smaller wheel of the two. The fourth line is why DECISION3 says part (b) is still
-owed: the carry does not make an absent UI loud.
+FINDINGS2 carries its two findings separated by a BLANK LINE, which is the very
+property R-0578 exists to record. Apply it byte-verbatim and that separation
+arrives with it; G5 measures that both new ids are visible to the paragraph
+extractor and not only to a line-anchored one.
 
 ──────────────────────────────────────────────────────────────
 
 Change:
 
-0. Confirm `git rev-parse HEAD` equals `72e07381`, `git branch --show-current` is
+0. Confirm `git rev-parse HEAD` equals `b769ccd7`, `git branch --show-current` is
    `feature/f086-release-capability`, `git status --porcelain` is EMPTY and
    `.agent/STOP` is absent. If any differs, stop and hand off.
 
 1. C0a — write this ENTIRE block, byte for byte, to
-   `.agent/authored/f086-r7.md`. The reviewer's original is on disk at
-   `.remedy-wt/f086-r7.md`; copy that file rather than retyping it
+   `.agent/authored/f086-r8.md`. The reviewer's original is on disk at
+   `.remedy-wt/f086-r8.md`; copy that file rather than retyping it
    (`shutil.copyfile` is fine; the gate names the byte property, not the tool).
    Commit alone.
 
-2. C0b — copy the COMMITTED `.agent/authored/f086-r7.md` over
+2. C0b — copy the COMMITTED `.agent/authored/f086-r8.md` over
    `.agent/last_block.md`, whole file. Commit alone.
 
-3. C1 — `.agent/plan.md` := the PLAN7 slice, byte-verbatim, whole file. Commit
+3. C1 — `.agent/plan.md` := the PLAN8 slice, byte-verbatim, whole file. Commit
    alone.
 
-4. C2 — append the FINDINGS slice to `.agent/live_review.md` under the append
-   convention. Commit alone. It registers R-0574, R-0575, R-0576 and R-0577; all
-   four are defects in the REVIEWER's own R6 gates, none is a defect of your
-   work, and G5 measures the ledger arithmetic they produce.
+4. C2 — append the FINDINGS2 slice to `.agent/live_review.md` under the append
+   convention. Commit alone. It registers R-0578 and R-0579, both defects in the
+   REVIEWER's own R7 gates and neither a defect of your work.
 
-5. C3 — append the RECORD5 slice to `.agent/live_review.md` under the append
+5. C3 — THE REPAIR. In `.agent/live_review.md`, the lines beginning
+   `- R-0575 — `, `- R-0576 — ` and `- R-0577 — ` each currently follow the
+   previous finding with NO blank line between them. Insert exactly ONE blank
+   line before each of those three lines. Change nothing else: no finding's text
+   may gain, lose or alter a single byte, and no other line in the file may move
+   except by that insertion. Do this PROGRAMMATICALLY — read the file, insert the
+   three newlines, write it back — never by retyping a finding. Commit alone.
+   G6 measures the result by properties, not by a predicted diff shape, so do not
+   try to make any particular numstat appear.
+
+6. C4 — append the RESOLUTION slice to `.agent/live_review.md` under the append
+   convention. Commit alone. It is the reviewer's text marking R-0578 resolved;
+   only reviewer-authored text sets a resolution.
+
+7. C5 — append the RECORD6 slice to `.agent/live_review.md` under the append
    convention. Commit alone. The paragraph begins `Gate:` and registers no
    finding id, so it moves no ledger set.
-
-6. C4 — append the DECISION3 slice to `.agent/decisions.md` under the append
-   convention. Commit alone. `.agent/decisions.md` at `72e07381` must be a
-   byte-exact PREFIX of the file after this commit; G7 measures that.
-
-7. C5 — apply PYFROM→PYTO to `pyproject.toml`, byte-verbatim, exactly once.
-   Commit alone. This is the only non-`.agent/` file the round touches.
 
 8. C6 — rewrite `.agent/handoff.md` per docs/agents/handback_template.md with
    every mandated section in the template's order: Range, Commits, External
    actions, Verification, Authored-text proofs, Deviations & assumptions, Next.
-   Range is `Review of 72e07381..<HEAD>`. If the file exceeds its cap, declare the
-   overage under AGENTS.md DECISION D15 with its cause and drop no section; do NOT
-   write a trim commit afterwards. The `Next` section names, in this order, the
-   next session's first two actions: re-read `.agent/STOP` from disk (Phase 1
-   rule 1), then run the Open PR Gate (Phase 1 rule 2).
+   Range is `Review of b769ccd7..<HEAD>`.
+   BEFORE writing it, measure the VERDICT slice's own line count from the
+   COMMITTED `.agent/authored/f086-r8.md`, because C7 appends exactly those lines
+   to this file. Your `Deviations & assumptions` section states the FINAL line
+   count of `.agent/handoff.md` as it will stand after C7 — your own lines plus
+   the slice's — and, if that total exceeds the cap, declares the overage under
+   AGENTS.md DECISION D15 naming its cause: this round carries the reviewer's
+   authored session verdict, which is mandated content for the round that closes
+   a session, and no section is dropped to meet the cap. Do NOT trim after C7.
+   The `Next` section names, in this order, the next session's first two actions:
+   re-read `.agent/STOP` from disk (Phase 1 rule 1), then run the Open PR Gate
+   (Phase 1 rule 2).
+
+9. C7 — append the VERDICT slice to `.agent/handoff.md` under the append
+   convention. Commit alone. Nothing else in that file changes: the file as
+   written by C6 must be a byte-exact PREFIX of the file at HEAD, and G9 measures
+   exactly that.
 
 ──────────────────────────────────────────────────────────────
 
@@ -115,9 +125,9 @@ Constraints:
    `.agent/plan.md` current before every commit; push after committing.
 2. Every slice is applied BYTE-VERBATIM. If one cannot be applied as-is, stop and
    declare it — never adjust the bytes to make a gate pass.
-3. The only non-`.agent/` path this round may touch is `pyproject.toml`, and only
-   in C5. No path under `packages/`, `apps/`, `tests/`, `docs/` or `scripts/` is
-   touched. G12 measures the change set exactly.
+3. This round writes NO code and NO test. No path under `packages/`, `apps/`,
+   `tests/`, `docs/` or `scripts/`, and not `pyproject.toml`, is touched. G11
+   measures the change set exactly.
 4. Never force-push, never rebase, never amend, never work on `main`, never delete
    a branch, and do not create one. Do NOT create a pull request.
 5. Re-read `.agent/STOP` from disk before the FIRST commit and again at the
@@ -125,136 +135,131 @@ Constraints:
    handoff and end.
 6. If any gate below is red, do not repair it by editing the thing it measures.
    Record the real command, exit code and output, and hand back.
-7. The G9 probe worktree lives OUTSIDE this repository, at
-   `/home/decodeux/remedy-f086r7-tree`. That siting is load-bearing and is finding
-   R-0574: hatchling drops EVERY VCS exclusion pattern when the build root's own
-   path is matched by the `.gitignore` it reads, so a probe tree under
-   `.remedy-wt/` silently carries files no real build would. Wheels, extractions
-   and the build toolchain still go under `.remedy-wt/`, which is gitignored, so
-   the primary checkout's `git status --porcelain` stays EMPTY throughout.
-8. Write no verdict anywhere: a worker-authored verdict is a finding however
-   honestly it is hedged (docs/agents/planner_reviewer_prompt.md §4 item 4).
+7. The VERDICT slice is the reviewer's text. Do not summarise it, do not reformat
+   it, and do not write a verdict of your own anywhere: a worker-authored verdict
+   is a finding however honestly it is hedged
+   (docs/agents/planner_reviewer_prompt.md §4 item 4).
 
 ──────────────────────────────────────────────────────────────
 
-Done when — every command run from the repository root unless a gate says
-otherwise, with `pwd` confirmed, every real exit code recorded:
+Done when — every command run from the repository root with `pwd` confirmed,
+every real exit code recorded:
 
 G1  `git status --porcelain` is EMPTY at the handback. `git worktree list` is ONE
     line. `.agent/STOP` absent. Branch still `feature/f086-release-capability`.
-G2  TRANSPORT: `.remedy-wt/f086-r7.md`, the committed `.agent/authored/f086-r7.md`
+G2  TRANSPORT: `.remedy-wt/f086-r8.md`, the committed `.agent/authored/f086-r8.md`
     and the committed `.agent/last_block.md` are byte-EQUAL and share one sha256.
     Report that digest, the byte count and the line count.
-G3  `.agent/plan.md` at HEAD is byte-equal to the PLAN7 slice extracted from the
-    COMMITTED `.agent/authored/f086-r7.md`, contains `## Goal`, `## Next Steps`
+G3  `.agent/plan.md` at HEAD is byte-equal to the PLAN8 slice extracted from the
+    COMMITTED `.agent/authored/f086-r8.md`, contains `## Goal`, `## Next Steps`
     and a match of `\bF\d{3}\b`, and is under 50 lines. Report sha256 and lines.
-G4  APPEND SHAPES. `.agent/live_review.md` at `72e07381` is a byte-exact PREFIX of
-    the file after C2, and that file is a byte-exact PREFIX of the file at HEAD;
-    the two remainders are exactly FINDINGS and then RECORD5, byte for byte.
-    Report both prefix checks as True or False and both remainders' sha256.
-G5  LEDGER ARITHMETIC. Using a PARAGRAPH extraction — split on runs of blank lines
-    into blocks; a finding paragraph is any block whose FIRST line matches
-    `^- R-\d+ — `, the whole block and never its first line; a resolution is a line
-    matching `^Done: R-\d+ — `; a `Landed:` line is one matching `^Landed: R-\d+`,
-    ANCHORED at line start and never counted as a substring, because these files
-    legitimately quote the token in prose and a substring count is unmeetable by
-    construction (finding R-0575, registered by this very round) — report at
-    `72e07381` and at HEAD: registered, resolved, `Landed:`, duplicate ids,
-    resolutions naming an unregistered id, and the OPEN set size. The reviewer
-    measured at `72e07381`: 156 registered, 1 resolved, 0 anchored `Landed:` lines,
-    0 duplicates, 0 unregistered resolutions, 155 open. REQUIRED at HEAD: 160
-    registered, 1 resolved, 0 anchored `Landed:` lines, 0 duplicates, 0
-    unregistered resolutions, 159 open, and the four ids added are exactly R-0574,
-    R-0575, R-0576 and R-0577 — report the set difference itself, not just its size.
-G6  CARRY STILL INTACT — the R2 repair must not regress. The carried set is the ids
+G4  APPEND SHAPES. `.agent/live_review.md` is a byte-exact PREFIX of itself at each
+    of the three append steps: at `b769ccd7` into the file after C2, after C3 into
+    the file after C4, and after C4 into the file after C5; and the three
+    remainders are exactly FINDINGS2, RESOLUTION and RECORD6, byte for byte.
+    Report each prefix check as True or False and each remainder's sha256. C3 is
+    NOT an append and is excluded from this gate; G6 covers it.
+G5  LEDGER ARITHMETIC, BY BOTH READINGS, WHICH MUST AGREE. Two extractions over
+    `.agent/live_review.md`. PARAGRAPH: split on runs of blank lines into blocks;
+    a finding paragraph is any block whose FIRST line matches `^- R-\d+ — `, the
+    whole block and never its first line. LINE-ANCHORED: every line matching
+    `^- R-\d+ — `. A resolution is a line matching `^Done: R-\d+ — `; a `Landed:`
+    line is one matching `^Landed: R-\d+`, ANCHORED at line start and never
+    counted as a substring (finding R-0575). Report, at `b769ccd7` and at HEAD,
+    under BOTH extractions: registered, resolved, duplicate ids, resolutions
+    naming an unregistered id, anchored `Landed:` lines, and the OPEN set size.
+    The reviewer measured at `b769ccd7`: PARAGRAPH 157 registered, LINE-ANCHORED
+    160 registered — they DISAGREE, and that disagreement is finding R-0578.
+    REQUIRED at HEAD: both extractions report 162 registered, 2 resolved, 0
+    duplicates, 0 unregistered resolutions, 0 anchored `Landed:` lines and 160
+    open, and the ids each adds over `b769ccd7`'s LINE-ANCHORED set are exactly
+    R-0578 and R-0579 — report the set differences themselves, not just their
+    sizes. The two readings agreeing at HEAD while disagreeing at `b769ccd7` is
+    the property this round exists to restore, and `b769ccd7` is its control.
+G6  THE REPAIR CHANGED SEPARATION AND NOTHING ELSE. Between `b769ccd7` and the C3
+    commit, over `.agent/live_review.md`, report all four:
+      (a) the multiset of lines matching `^- R-\d+ — ` is IDENTICAL — same lines,
+          same count, byte for byte. Report the count and that the symmetric
+          difference is empty.
+      (b) the file with ALL blank lines removed is byte-IDENTICAL before and
+          after. Report True or False and both sha256 digests.
+      (c) the byte length increases by exactly 3.
+      (d) `- R-0575 — `, `- R-0576 — ` and `- R-0577 — ` are each preceded by
+          exactly one blank line at the C3 commit, and the count of finding lines
+          NOT preceded by a blank line is 0 across the WHOLE file. The reviewer
+          measured that count as 3 at `b769ccd7`, so this check can fail.
+    Do NOT assert any `git show --numstat` value for C3: a separator insertion
+    serialises as a rewritten hunk and predicting its shape is the defect class
+    this repository already carries.
+G7  RESOLUTION integrity: `Done: R-0578 — ` occurs exactly 1x at HEAD, R-0578 is
+    among the registered ids under BOTH extractions, and no resolution names an id
+    that is not registered.
+G8  `.agent/live_review.md` contains `Steps`, and NO LINE of it begins `<<<SLICE `
+    or `<<<END ` — no marker line leaked. The count is of marker LINES and not of
+    the substring `<<<`, because prose in these files legitimately quotes the
+    marker syntax when describing this very gate, and a whole-file substring count
+    is unmeetable by construction (§3 pre-emission items 2 and 6). Report the
+    marker-line count.
+G9  `.agent/handoff.md`: the file as committed by C6 is a byte-exact PREFIX of the
+    file at HEAD, and the appended remainder is exactly the VERDICT slice, byte
+    for byte. Report the prefix check as True or False and the slice's sha256.
+    Report the file's final line count, that NO LINE of it begins `<<<SLICE ` or
+    `<<<END `, and that the seven mandated section headings of
+    docs/agents/handback_template.md are present.
+G10 CARRY STILL INTACT — the R2 repair must not regress. The carried set is the ids
     present BOTH in the HEAD ledger and in the blob at `76661dc1`. In that blob,
     "unresolved" means carrying no `^Done: R-\d+ — ` line anywhere in the file; the
     reviewer measured 184 finding paragraphs there and 32 such resolutions, leaving
-    152, and verified that this equals the carried set. (Naming that extraction
-    rule is finding R-0576, which R6's block omitted.) For every carried id, its
+    152, and verified that this equals the carried set. For every carried id, its
     paragraph at HEAD is byte-equal to its paragraph in the `76661dc1` blob. Report
     compared and equal; they must agree at 152. NEGATIVE CONTROL, read-only, no
     checkout: the SAME comparison against the blob at `25f7a5af` MUST report
-    strictly fewer equal than compared — the reviewer measured 113 of 152. If both
-    halves agree the check cannot fail; report that and hand back.
-G7  `.agent/decisions.md` at `72e07381` is a byte-exact PREFIX of the file at HEAD
-    and the remainder is exactly DECISION3, byte for byte. Report the prefix check
-    and the remainder's sha256. The heading `## DECISION F086 D3` occurs exactly 1x
-    at HEAD, so no landed DECISION was edited.
-G8  `pyproject.toml`: PYFROM occurs exactly 1x in the file at `72e07381`; PYTO
-    occurs exactly 1x at HEAD; and each line that PYTO adds and PYFROM does not
-    contain occurs exactly 1x among the lines C5's diff ADDS, measured with
-    `git show --numstat` for the total plus a per-line count over that diff's added
-    lines. Do NOT count a "FROM 0x": the pair is APPEND-shaped per the containment
-    output above and that count is unattainable. Also report that `python3 -c
-    "import tomllib; tomllib.load(open('pyproject.toml','rb'))"` exits 0, so the
-    file is still valid TOML.
-G9  THE CARRY IS PROVED, with a control that can fail. Install the toolchain with
-    `python3 -m pip install --no-input --target .remedy-wt/f086r7-pylib build hatchling`.
-    Create the probe worktree OUTSIDE the repository:
-    `git worktree add /home/decodeux/remedy-f086r7-tree <SHA>`, copy the primary
-    checkout's `apps/ui/dist` into it, and build with
-    `--wheel --no-isolation --outdir <out> /home/decodeux/remedy-f086r7-tree`.
-    Take TWO readings from the SAME preparation, reporting for each the exit code,
-    total member count, byte size and the count of members whose name begins
-    `apps/ui/dist/`:
-      (i)  CONTROL, worktree at `72e07381` — that count MUST be 0.
-      (ii) SUBJECT, a second worktree at the C5 commit — that count MUST be 3 and
-           `apps/ui/dist/index.html` MUST be a member.
-    If (i) is not 0 the control is vacuous and the whole gate is void: report that
-    and hand back rather than reading (ii) as evidence. That is finding R-0574
-    recurring, and it is the reason this gate names an out-of-repo worktree.
-    The `PYTHONPATH=... python3 -m build ...` command form is REFUSED by this
-    session's Bash guard, as is `env PYTHONPATH=...`; R6 established the working
-    form and you should reuse it — a `python3 - <<'PY'` wrapper that sets BOTH
-    `sys.path` and `os.environ['PYTHONPATH']` to the absolute
-    `.remedy-wt/f086r7-pylib` and calls `runpy.run_module('build', run_name='__main__')`
-    with `sys.argv` set to the argument vector. Setting `PYTHONPATH` is
-    load-bearing: with only `sys.path` the backend subprocess dies with
-    `BackendUnavailable: Cannot import 'hatchling.build'`.
-    Remove BOTH worktrees and run `git worktree prune` before the handback, and
-    delete `.remedy-wt/f086r7-pylib` and every outdir.
-G10 `python3 -m pytest tests/orchestration/test_test_runner.py tests/ui_server/test_dashboard_contract.py tests/regression/test_resource_safety.py tests/orchestration/test_integrity_gate.py -q -rf`
+    strictly fewer equal than compared — the reviewer measured 113 of 152. Fix the
+    carried set ONCE from `76661dc1` ∩ HEAD and compare that SAME id set against
+    both blobs; re-deriving the set separately per blob answers a different question
+    and will not reproduce these numbers. If both halves agree the check cannot
+    fail; report that and hand back.
+G11 `git diff --name-only b769ccd7..HEAD` lists exactly `.agent/authored/f086-r8.md`,
+    `.agent/handoff.md`, `.agent/last_block.md`, `.agent/live_review.md` and
+    `.agent/plan.md`. Report the real list and flag any difference rather than
+    editing to match. `pyproject.toml` and every path under `packages/`, `apps/`,
+    `tests/`, `docs/` and `scripts/` must be ABSENT; all five of those directories
+    exist at `b769ccd7`, so the clause forbids something real.
+G12 `python3 -m pytest tests/orchestration/test_test_runner.py tests/ui_server/test_dashboard_contract.py tests/regression/test_resource_safety.py tests/orchestration/test_integrity_gate.py -q -rf`
     → exit 0. RUN IN THE PRIMARY CHECKOUT, not a worktree: the reviewer measured
-    `160 passed`, exit 0, at `72e07381`, and the same command in a fresh worktree is
+    `160 passed`, exit 0, at `b769ccd7`, and the same command in a fresh worktree is
     red on `TestVitestFrontendTestFoundation::test_vitest_passes`, which spawns
     `npx vitest run` and cannot resolve `apps/ui/node_modules`, absent from every
     fresh worktree because it is gitignored. That red is the known R-0480
     mechanism, not a base red.
-G11 `python3 -m pytest tests/cli/test_golden_path.py -q` → exit 0, the canary. The
-    reviewer measured `42 passed` at `72e07381`. `tests/docs/` and
+G13 `python3 -m pytest tests/cli/test_golden_path.py -q` → exit 0, the canary. The
+    reviewer measured `42 passed` at `b769ccd7`. `tests/docs/` and
     `tests/orchestration/test_roadmap_index.py` are NOT gated this round: no path
     under `docs/` changes.
-G12 `git diff --name-only 72e07381..HEAD` lists exactly `.agent/authored/f086-r7.md`,
-    `.agent/decisions.md`, `.agent/handoff.md`, `.agent/last_block.md`,
-    `.agent/live_review.md`, `.agent/plan.md` and `pyproject.toml`. Report the real
-    list and flag any difference rather than editing to match. Every path under
-    `packages/`, `apps/`, `tests/`, `docs/` and `scripts/` must be ABSENT; all five
-    of those directories exist at `72e07381`, so the clause forbids something real.
-G13 Per-commit insertions — the `+` column of `git show --numstat` — for C0a, C0b,
-    C1, C2, C3, C4 and C5. None may exceed 500 unless it is the verbatim rewrite of
-    a SINGLE `.agent/**` state file, exempt under AGENTS.md DECISION F104 D1; if you
-    invoke that exemption, name it and the file. C6's own count cannot exist while
-    its text is being written, so report it in your FINAL MESSAGE.
-G14 `git log --format=%p 72e07381..HEAD` shows one parent per commit (linear).
-    `git reflog` over this round shows only `commit:`, `checkout:` and the worktree
-    entries G9 creates — no amend, rebase, reset or force-push.
-G15 `gh pr list --state open --json number,headRefName,baseRefName,isDraft` is run
+G14 Per-commit insertions — the `+` column of `git show --numstat` — for C0a, C0b,
+    C1, C2, C3, C4, C5 and C6. None may exceed 500 unless it is the verbatim
+    rewrite of a SINGLE `.agent/**` state file, exempt under AGENTS.md DECISION
+    F104 D1; if you invoke that exemption, name it and the file. C7's own count
+    cannot exist while C6's text is being written, so report it in your FINAL
+    MESSAGE.
+G15 `git log --format=%p b769ccd7..HEAD` shows one parent per commit (linear).
+    `git reflog` over this round shows only `commit:` and `checkout:` entries — no
+    amend, rebase, reset or force-push.
+G16 `gh pr list --state open --json number,headRefName,baseRefName,isDraft` is run
     READ-ONLY at the handback and its raw output recorded, to prove this round
     opened no pull request. The reviewer measured `[]` before ordering this block;
     report what you actually see and merge nothing whatever it says.
 
 The two pytest gates run SERIALLY, never two at once: concurrent pytest processes
-here produce false reds through port-bound supervisors (R-0518 class). Neither may
-run while a wheel build is in flight.
+here produce false reds through port-bound supervisors (R-0518 class).
 
 Handback:
-Completion report + the handoff written by C6. Push with
+Completion report + the handoff written by C6 and completed by C7. Push with
 `git push origin feature/f086-release-capability`. Do NOT open a PR.
 
 ──────────────────────────────────────────────────────────────
 
-<<<SLICE PLAN7>>>
+<<<SLICE PLAN8>>>
 # Plan — F086 Release capability
 
 Branch: feature/f086-release-capability, pushed and unmerged, cut from `main` at
@@ -272,14 +277,13 @@ path and the UI serve work, the version command matches the tag, and a release
 with a missing changelog entry is refused by the gate.
 
 ## Current Step
-R7, this round: register the four defects R6 exposed in the reviewer's own gates,
-record the R6 verdict, rule DECISION F086 D3, and land T001 part (a) — the
-`artifacts` carry for `apps/ui/dist` in `pyproject.toml`. The carry mechanism was
-selected by a measurement the reviewer executed itself, with a control that can
-fail; R6's own control could not, which is finding R-0574.
+R8, this round: repair the ledger separation R7's G5 caught — four findings landed
+as one paragraph block, so three of them were invisible to the extractor that
+carries the open set forward — then record the R7 verdict and close the session.
+T001 part (a) is landed and proved: the wheel now carries `apps/ui/dist`.
 
 ## Next Steps
-1. R8 — T001 part (b), the packaging-time guard that refuses to produce a wheel
+1. R9 — T001 part (b), the packaging-time guard that refuses to produce a wheel
    whose `apps/ui/dist/index.html` is absent, plus the two-mode resolver TEST that
    DECISION F086 D3 keeps after withdrawing the two-mode resolver CODE. The guard
    is owed because the carry alone is silent: measured at 72e07381, a build with
@@ -292,96 +296,86 @@ fail; R6's own control could not, which is finding R-0574.
   interpreter under `.remedy-wt/`, so that smoke cannot be proved green from a
   session with this posture; the round that writes it must name its execution
   host or it will be unverifiable where it matters.
-- A wheel that carries `apps/ui/dist` is only as honest as the directory it was
-  built from, so a release now requires the UI to be built first — DECISION F086
-  D1's own stated consequence, inherited by CI and by any human cutting a release.
+- A build tool's file selection depends on WHERE the tree is: hatchling drops every
+  VCS exclusion when the build root is itself gitignore-matched, so any future
+  packaging probe uses a worktree OUTSIDE this repository (finding R-0574).
 - Ruff is RED repo-wide at 26 pre-existing errors and is NOT a gate; a round
   touching Python gates ruff scoped to the files it touches, measured against the
   same files at the base.
-<<<END PLAN7>>>
+<<<END PLAN8>>>
 
-<<<SLICE FINDINGS>>>
+<<<SLICE FINDINGS2>>>
 
-- R-0574 — High — A red control whose build root is gitignore-matched cannot fail, and the R6 block forced exactly that siting. R6's M2 ordered a wheel built from a probe worktree with the base `pyproject.toml` and required 0 members under `apps/ui/dist/`; it measured 3, which voided the round's central measurement and cost R6 its deliverable — `pyproject.toml` was correctly left unedited. The cause is mechanical: hatchling 1.32.0 `load_vcs_exclusion_patterns()` builds a `pathspec.GitIgnoreSpec` from the root `.gitignore` and, if that spec matches the build ROOT's own path, returns `[]`, dropping every VCS exclusion for the whole build. `.gitignore` carries a `.remedy-wt/` line and the block's Constraint 7 required all scratch to live under `.remedy-wt/`, so the block's own two clauses could not both hold. This is the R-0364 rule recurring in the reviewer's own text — every gate is EXECUTED at its base before it is ordered — and R6's block ordered a colour the reviewer had never run. The counter-measure that worked, and which R7's G9 orders, is a probe worktree sited OUTSIDE the repository, where no pattern in the repository's own `.gitignore` can match the root; re-measured at `72e07381` from `/home/decodeux/remedy-f086r7-base`, the same control reads 0 members and 414 total, equal to the R3 baseline. The wider lesson is that a build tool's file selection depends on WHERE the tree is, not only on what is in it, so a scratch-siting convention adopted for cleanliness can silently invalidate a measurement.
-- R-0575 — Medium — A ledger gate that counts a token as a bare substring counts the prose that describes the gate. R6's G4 ordered a `Landed:` reading over `.agent/live_review.md` without anchoring it, while the same block's RECORD4 slice appended a paragraph whose own words include the token; the worker read 10 at the base and 11 at HEAD and correctly reported that the difference WAS the new paragraph, and the reviewer's anchored re-reading of the same two blobs found 0 anchored lines at both and 19 then 20 unanchored occurrences. Neither reading is wrong; the gate simply never said which it wanted, and the one it invited moves whenever the round writes about itself. This is the class already carried for the `<<<` marker token — where the counter-measure was to count marker LINES rather than substring occurrences — arriving through a different token, so the fix is the general one: a ledger gate anchors every count at line start, `^Landed: R-\d+` and `^Done: R-\d+ — `, and says so in the gate text. §3 pre-emission items 2 and 6 already forbid a zero-gate that counts a string the same block writes into the target; what they did not reach is a non-zero COUNT gate whose number the block's own prose shifts by one.
-- R-0576 — Low — A set defined by a phrase no extractor implements is a gate the worker cannot evaluate. R6's G6 required the carried set to equal "the set of ids registered-and-unresolved in that blob" and never said what marks an id resolved in a blob written before the current convention; the worker read 184 registered paragraphs at `76661dc1`, found no `Resolved:` line to subtract, and reported honestly that it could not derive 152 by that route. The gate's REQUIRED numbers were unaffected — 152 of 152 equal, and 113 of 152 against the negative control — so nothing was lost, but a clause that only the author can evaluate is a clause that proves nothing when a second reader disagrees. The rule the reviewer actually used is `^Done: R-\d+ — ` anywhere in the blob, which yields 32 resolutions against 184 paragraphs and therefore 152; R7's G6 states that rule inline. This is the R-0492 shape — define a set by the predicate that produces it, never by a phrase that names it — recurring in a gate rather than in an inventory.
-- R-0577 — Medium — A probe recipe that replaces the whole of `sys.path` can only fail, whatever it is probing. R6's M5 ordered `sys.path[:] = ['<site>']` before importing the module under test, which discards the standard library along with the checkout, so the import died at `ui_server`'s own first line with `ModuleNotFoundError: No module named '__future__'` and the probe produced no reading at all. The worker recovered it with `sys.path.insert(0, '<site>')`, which keeps the stdlib while still putting the extraction first, and proved the substitution had taken effect by printing the loaded module's `__file__` — the check that makes such a probe worth running. §3 pre-emission item 12 requires the reviewer to run a gate's EXACT command line before ordering it; the reviewer dry-ran the CHECKOUT form of this probe, which needs no path surgery, and never ran the isolated form it actually ordered. A dry run of a variant is not a dry run, and the isolated form is the only half that could break.
-<<<END FINDINGS>>>
+- R-0578 — High — An authored slice that appends several findings without blank lines between them makes all but the first invisible to the extractor that carries the open set forward. R7's FINDINGS slice laid R-0574, R-0575, R-0576 and R-0577 out as four CONSECUTIVE lines. The ledger's own paragraph rule — split on runs of blank lines, then take any block whose FIRST line matches `^- R-\d+ — ` — therefore reads those four lines as ONE paragraph keyed to R-0574, and R7's G5 went red reading 157 registered where it required 160. Measured at `b769ccd7`: the paragraph extraction yields 157 registered and the line-anchored one yields 160, the block keyed R-0574 spans four lines and itself contains all four ids, and the three finding lines not preceded by a blank line are exactly R-0575, R-0576 and R-0577 — while all 156 findings present at `72e07381` are blank-line separated. Nothing was lost in BYTES; what was lost is machine visibility, and the tool that would have dropped them is the one that carries the open set into the next feature. That is the R-0572 damage shape arriving through layout rather than through truncation, one round after this same reviewer wrote the paragraph rule down to prevent it. The counter-measure is structural and belongs in the block, not in a habit: an authored slice that carries more than one finding separates them with a blank line, and the round that appends it gates BOTH extractions and requires them to AGREE — a single reading can be self-consistently wrong, and two that must match cannot.
 
-<<<SLICE RECORD5>>>
+- R-0579 — Low — A gate whose command cannot run on the host is red at the base and therefore proves nothing. R7's G8 ordered `python3 -c "import tomllib; tomllib.load(open('pyproject.toml','rb'))"` as a validity check on the edited file, and this host's `python3` is 3.10.12 while `tomllib` entered the standard library in 3.11, so the command exits 1 with `ModuleNotFoundError: No module named 'tomllib'` against the edited file and equally against the base blob. The worker reported both readings and substituted a `tomli` parse as an ADDITIONAL reading rather than swapping the gate, which is the correct handling. No harm reached the artifact — the file is valid TOML, and both wheel builds in the same round parsed it and exited 0, which is the stronger evidence anyway. This is R-0364 once more, narrowed to the interpreter's own version: a gate is executed at its base before it is ordered, and "the standard library has this module" is exactly the kind of assumption that never announces itself.
+<<<END FINDINGS2>>>
 
-Gate: R7 — the R6 entry. R6 PASSED. Every gate its block ordered was re-taken by the reviewer over `72e07381..HEAD`'s base range `91459dc1..72e07381` rather than read from the handback. THE TRANSPORT HELD in the PRIMARY cmp-against-scratchpad form: the reviewer's scratch original at `.remedy-wt/f086-r6.md`, together with `.agent/authored/f086-r6.md` and `.agent/last_block.md` AS COMMITTED AT `72e07381`, are byte-EQUAL at sha256 3335f4b7fa6b40ba72534454814c2bbf8906ede3b624fc76dfcb7bd6e5fd492b, 25011 B, 363 lines, and `.agent/plan.md` at `72e07381` is byte-equal to its PLAN6 slice at sha256 ed90971e53568f8d4671541403a07e309d4b797987d55376eb9d9c3bdb2fdedd, 43 lines. THE LEDGER MOVED NOT AT ALL: registered, resolved and OPEN are IDENTICAL sets at `91459dc1` and `72e07381` — 156 registered, 1 resolved, 155 open, 0 duplicate ids, 0 unregistered resolutions, and 0 `Landed:` lines by the ANCHORED reading, against 19 then 20 unanchored occurrences, which is finding R-0575. THE R2 REPAIR HAS NOT REGRESSED: all 152 carried paragraphs at `72e07381` are byte-equal to their originals in the blob at `76661dc1`, while the same comparison against `25f7a5af` reports 113 of 152. THE ROUND CORRECTLY DECLINED TO ACT: `pyproject.toml` is byte-identical at `91459dc1` and `72e07381`, because the block's own halt clause fired when M2's red control read 3 instead of 0, and a worker that had edited anyway would have been acting on a measurement its own block called void. THE CAUSE WAS FOUND AND THE REVIEWER CONFIRMED IT INDEPENDENTLY: the probe tree sat under `.remedy-wt/`, which the repository's `.gitignore` matches, and hatchling drops every VCS exclusion when the build root is itself excluded; re-run at `72e07381` from a worktree OUTSIDE the repository the same control reads 414 members and 0 under `apps/ui/dist/`, and both candidate mechanisms then carry 3. That defect is the reviewer's, not the worker's, and it is registered as R-0574. THE INSTALLED-LAYOUT READING WAS REPRODUCED BY THE REVIEWER rather than accepted: from a copy of `packages/` and `apps/ui/dist` laid out as a wheel root and placed first on `sys.path` with the working directory outside the repository, `_get_frontend_dist()` returned that copy's own `apps/ui/dist` and the loaded module's `__file__` proved the substitution took effect — which is what DECISION F086 D3 rules on. THE SUITES WERE RE-RUN, NOT READ, serially in the primary checkout at `72e07381`: `160 passed` for the four state readers and `42 passed` for the canary, each exit 0. THE HYGIENE HELD: six paths, all under `.agent/`, over six single-parent commits inserting 363, 270, 18, 2, 225 and 60 lines, none over 500 and no exemption needed; `pyproject.toml` and every path under `packages/`, `apps/`, `tests/`, `docs/` and `scripts/` are absent from the range. THE DEVIATIONS WERE ALL DECLARED and all of them were the honest choice: C4 produced no commit, M3 and M4 were run anyway so the reviewer would have raw data, an unordered control was taken from the primary checkout that reproduced the R3 baseline exactly, and two commands first piped into `tail` were re-run unpiped because a pipe masks the exit code. What the reviewer did NOT observe, and accepts on the worker's report because it is unobservable once a round has ended, is the absence of `.agent/STOP` at the points the block names, the serial ordering of the two pytest runs, and the removal of the scratch paths, whose end state — one worktree line and an empty `git status --porcelain` — the reviewer did confirm.
-<<<END RECORD5>>>
+<<<SLICE RESOLUTION>>>
 
-<<<SLICE DECISION3>>>
+Done: R-0578 — Resolved at R8 C3. The three finding lines that followed their predecessor with no blank line — R-0575, R-0576 and R-0577 — each gained exactly one blank line before it, and nothing else in `.agent/live_review.md` changed: the multiset of `^- R-\d+ — ` lines is identical across that commit, the file with all blank lines removed is byte-identical across it, and the byte length grew by exactly 3. The property that matters is not the edit but its result — the paragraph extraction and the line-anchored extraction now return the SAME registered set, where at `b769ccd7` they returned 157 and 160. R8's G5 requires that agreement at HEAD and records the disagreement at `b769ccd7` as its control, so the check can fail; R8's G6 requires the four separation properties above. R-0579 is NOT resolved here: it is a defect in a gate's command rather than in an artifact, there is nothing on disk to repair, and the durable fix is the reviewer executing every gate at its base — which is R-0364, already open.
+<<<END RESOLUTION>>>
 
-## DECISION F086 D3 — the dual-mode resolver is withdrawn; the carry mechanism is `artifacts` (2026-08-20)
+<<<SLICE RECORD6>>>
 
-CHOSEN, and it AMENDS DECISION F086 D1 rather than replacing it. Part (c) of D1
-required `_get_frontend_dist()` to resolve the asset directory in two modes,
-package-relative when installed and repository-relative in a checkout, on the
-stated premise that "its three `.parent` hops land on the environment's
-`site-packages` parent once installed and there is no repository root there to
-find". That premise is FALSE, and the R3 inventory's open question 4 carries the
-same error. The hops land on the wheel ROOT, not its parent:
-`packages/orchestration/ui_server.py` has exactly three ancestors up to the
-archive root, and `apps/` is a sibling of `packages/` at that same root — the
-identical geometry a checkout has. Measured three ways at `72e07381`: from an
-extracted wheel the function returned that extraction's own `apps/ui/dist`; from
-an independent copy of `packages/` plus `apps/ui/dist` laid out the same way and
-placed first on `sys.path` with the working directory outside the repository, it
-returned that copy's directory; and from the checkout it returned the checkout's.
-In every case the loaded module's `__file__` was printed first, so the reading
-could not have come from the wrong copy. No dual-mode code is therefore written,
-because the single expression already satisfies both modes, and a second
-resolution path would be untested surface added to satisfy a measurement error.
+Gate: R8 — the R7 entry. R7 FAILED on G5, and every other gate its block ordered was re-taken by the reviewer over `72e07381..b769ccd7` rather than read from the handback. WHAT FAILED: the FINDINGS slice appended R-0574 through R-0577 as four consecutive lines, so the ledger's paragraph extraction read 157 registered at `b769ccd7` against the required 160, and R-0575, R-0576 and R-0577 are invisible to it while remaining fully present in bytes — the reviewer confirmed all three readings independently, including that the block keyed R-0574 spans four lines and contains all four ids. The defect is the REVIEWER's slice layout, not the worker's application: the worker applied the slice byte-verbatim as ordered, reported both readings, refused to insert separators because doing so would have made the ledger diverge from the authored bytes, and named the interaction correctly. It is registered as R-0578 and repaired by this round's C3. WHAT PASSED, all re-executed: the transport held in the PRIMARY cmp-against-scratchpad form at sha256 3af052ece31a358e6caf5c21660d7e13d56c4cdfc20b15be95de7e4f048fbce0, 32245 B, 387 lines, with `.agent/authored/f086-r7.md` and `.agent/last_block.md` AS COMMITTED AT `b769ccd7` both equal to the reviewer's scratch original; `.agent/plan.md` at `b769ccd7` is byte-equal to its PLAN7 slice at 43 lines; the three ledger appends and the `.agent/decisions.md` append are all true byte-exact prefix-plus-remainder appends whose remainders equal FINDINGS, RECORD5 and DECISION3, with `## DECISION F086 D3` occurring exactly once so no landed DECISION was edited; the carried set of 152 is still byte-equal at `b769ccd7` to the `76661dc1` blob, against a negative control of 113 of 152; 0 marker lines leaked into `.agent/live_review.md` or `.agent/decisions.md` at `b769ccd7`; the suites returned `160 passed` and `42 passed` serially in the primary checkout at `b769ccd7`, each exit 0; seven paths over eight single-parent commits inserting 387, 261, 11, 5, 2, 54, 6 and 65 lines, none over 500 and no exemption needed. THE ROUND'S DELIVERABLE LANDED AND IS PROVED: `pyproject.toml` at `b769ccd7` carries `artifacts = ["apps/ui/dist/**"]`, PYFROM occurs once at the base and PYTO once at HEAD with all six TO-only lines appearing exactly once among that commit's six added lines, and a wheel built from an out-of-repo worktree at the C5 commit holds 417 members, 2155470 bytes and 3 under `apps/ui/dist/` including `index.html`, against a control at `72e07381` from the same preparation holding 414 members and 0 — a control that CAN fail, which is precisely what R6's could not. Those three subject numbers equal the reviewer's own independent measurement of the same configuration, taken before the block was written. THE SECOND RED WAS THE REVIEWER'S TOO: G8's `tomllib` sub-clause cannot run on this host's Python 3.10.12 and is red at the base as well, registered as R-0579. What the reviewer did NOT observe, and accepts on the worker's report because it is unobservable once a round has ended, is the absence of `.agent/STOP` at the points the block names, the serial ordering of the two pytest runs, and the removal of the two out-of-repo probe worktrees, whose end state — one worktree line and an empty `git status --porcelain` — the reviewer did confirm.
+<<<END RECORD6>>>
 
-KEPT from part (c): the test per mode. The property is load-bearing for the
-feature's own DONE condition and nothing currently pins it, so a regression that
-broke installed-mode resolution would be invisible until a user's first serve. A
-test that constructs a wheel-root-shaped layout and asserts the resolver follows
-it is cheap, and it is the artifact that would have caught the premise error
-years earlier than a human would.
+<<<SLICE VERDICT>>>
 
-CONFIRMED and now MEASURED, part (a): the explicit carry is real and both
-candidate mechanisms work. From a probe worktree OUTSIDE the repository with
-`apps/ui/dist` present, `pyproject.toml` AS COMMITTED AT `72e07381` produces 414
-members and 0 under `apps/ui/dist/`; `artifacts = ["apps/ui/dist/**"]` produces 417 members,
-2155470 bytes and 3; a `force-include` table produces 417 members, 2155479 bytes
-and 3. `artifacts` is chosen: it needs no source-to-target path mapping, and it
-is the smaller of the two artifacts by nine bytes. R6's measurement could not
-choose between them because its control was vacuous, which is finding R-0574.
+## Reviewer's session verdict — authored by the reviewer, applied by the worker
 
-STILL OWED, part (b), and this decision sharpens why. The carry does not make an
-absent UI loud: measured at `72e07381`, a build with `artifacts` applied and no
-`apps/ui/dist` present exits 0 and produces the same 414-member wheel with 0 UI
-files. So landing the carry alone is a strict improvement — with assets present
-the wheel now ships them, where before it never did — but it does NOT satisfy
-D1's "never ship a wheel with an empty UI directory silently", and no release may
-be cut until the packaging-time guard exists.
+This section exists because finding R-0571, registered by this feature, is that a
+verdict issued and never written to disk cannot be told apart from one never
+issued. It is appended rather than written into the sections above so that the
+next handback rewrite cannot silently destroy it.
 
-ALTERNATIVE CONSIDERED and rejected: keep part (c) as written and build the
-dual-mode resolver anyway, on the grounds that it is harmless. Rejected because
-it is not harmless — it would add a branch no environment reaches, and a branch
-no environment reaches is a branch no test can honestly red-prove, which this
-repository has already paid for once (finding R-0252).
+Session of 2026-08-20, self-drive per docs/agents/self_drive_protocol.md, and the
+SECOND session on this branch. The reviewer wrote nothing in the work tree; one
+delegated worker per round made every commit; every verdict below rests on gates
+the reviewer re-executed itself over the committed diff, never on a handback's
+summary.
 
-Reverse this decision by deleting this section, which restores D1 part (c) as
-written and reopens the choice between `artifacts` and `force-include`.
-<<<END DECISION3>>>
+| Round | Range | Verdict |
+|---|---|---|
+| R5 | 655661b0..91459dc1 | PASS |
+| R6 | 91459dc1..72e07381 | PASS |
+| R7 | 72e07381..b769ccd7 | FAIL — R-0578 |
 
-<<<SLICE PYFROM>>>
-[tool.hatch.build.targets.wheel]
-packages = ["packages", "apps"]
-<<<END PYFROM>>>
+R5 was inherited unreviewed from the previous session, which ended immediately
+after issuing its own verdict; reviewing it first was Phase 1 rule 4 and it
+passed on every gate. R6 was ordered to choose the wheel carry mechanism by
+measurement and could not: its red control was sited under `.remedy-wt/`, and
+hatchling drops every VCS exclusion when the build root is itself gitignore-matched,
+so the control read 3 where 0 was required. The worker obeyed the block's own halt
+clause, left `pyproject.toml` untouched, found the cause in hatchling's source and
+proved it — the right outcome from a broken order, and the defect is registered as
+R-0574 against the reviewer. R7 then landed the carry for real, with the probe tree
+moved OUTSIDE the repository: `artifacts = ["apps/ui/dist/**"]` is in
+`pyproject.toml` at `b769ccd7`, a wheel built at that commit carries
+`apps/ui/dist/index.html` and both asset bundles, and the control that must read 0
+does read 0. R7 failed only on the layout of the reviewer's own findings slice,
+which R8 repaired.
 
-<<<SLICE PYTO>>>
-[tool.hatch.build.targets.wheel]
-packages = ["packages", "apps"]
-# WHY: apps/ui/dist is build output, untracked and matched by the generic `dist/`
-# ignore at .gitignore:13, so a VCS-aware backend omits it unless it is named
-# here. DECISION F086 D1 (a), mechanism chosen by measurement in DECISION F086 D3.
-# This carry is NOT a guard: with no dist/ present the build still succeeds and
-# ships no UI. That guard is D1 part (b) and is still owed.
-artifacts = ["apps/ui/dist/**"]
-<<<END PYTO>>>
+Every finding this session registered — R-0574 through R-0579 — is a defect in
+the reviewer's own gates rather than in any worker's execution. That is the honest
+summary of the session: the workers were not the weak link, and every round that
+went wrong went wrong in the order, not in the obedience.
+
+DECISION F086 D3 was ruled and is the session's other durable output. It withdraws
+D1 part (c) — the dual-mode asset resolver — because the premise was false, and
+measured false from an extracted wheel, from an independent wheel-root-shaped copy
+and from the checkout: `_get_frontend_dist()`'s three `.parent` hops
+land on the wheel ROOT, where `apps/` is a sibling of `packages/` exactly as in a
+checkout, so the single existing expression already resolves in both modes. The
+test per mode is KEPT. D1 part (b), the packaging-time guard, is still owed and no
+release may be cut before it exists: with the carry applied and no `dist/` present
+a build still exits 0 and ships a wheel with zero UI files.
+
+The open set stands at 160 once this round's own C2 and C4 have landed, which is
+what G5 requires and measures at HEAD, and the next free id is R-0580. By
+docs/agents/planner_reviewer_prompt.md §4 item 13 the LAST round of a branch has no
+on-disk gate entry, so R8's own verdict is the terminator and lives in the
+reviewer's closing report rather than here. That absence is the rule, not an
+omission — and it is precisely the hole R-0571 exists to close.
+<<<END VERDICT>>>
