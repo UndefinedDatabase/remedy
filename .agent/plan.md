@@ -1,10 +1,9 @@
 # Plan — F086 Release capability
 
 Branch: feature/f086-release-capability, pushed and unmerged, cut from `main` at
-76661dc1. No pull request exists: this feature is mid-flight and its PR belongs
-to its closure round. `.agent/live_review.md` is the source of truth for the open
-set, for the next free finding id and for the round map; this file repeats none
-of them.
+76661dc1. No pull request exists: this feature is mid-flight and its PR belongs to
+its closure round. `.agent/live_review.md` is the source of truth for the open set,
+for the next free finding id and for the round map; this file repeats none of them.
 
 ## Goal
 Remedy ships like a normal tool: `pip install` yields the `remedy` CLI with the
@@ -15,27 +14,27 @@ path and the UI serve work, the version command matches the tag, and a release
 with a missing changelog entry is refused by the gate.
 
 ## Current Step
-R14, this round: close the session. Record the R13 verdict, write the reviewer's
-own session verdict to disk (finding R-0571), and apply the R-0582 repair by
-keeping the handback under its cap with the transcript in the round report. No
-code, no test, no PR.
+R15, this round: the DATA and the CALLER. `CHANGELOG.md` with a section for the
+version `pyproject.toml` declares, `scripts/release_gate_check.py` observing a
+release from the built wheel's filename, the changelog on disk and the wheel's
+own size, and tests driving both over this repository's real values. From here
+the gate refuses something real.
 
 ## Next Steps
-1. R15 — the DATA and the CALLER that R13 left out: a keep-a-changelog
-   `CHANGELOG.md` with a section for the version `pyproject.toml` declares, a
-   test that the real changelog covers the real version, and a manual-trigger
-   release workflow calling `refuse_release` with the real tag, version,
-   changelog and wheel size. UNTIL THAT LANDS THE GATE REFUSES NOTHING, because
-   nothing calls it.
+1. R16 — the TRIGGER: a manual-trigger `.github/workflows/release.yml` that
+   builds the wheel, reads the CI run's conclusion for the commit and calls
+   `scripts/release_gate_check.py`, with text guards of the kind
+   `tests/orchestration/test_ci_workflow.py` already applies to `ci.yml`. R15
+   left it out for block budget, not doubt: DECISION F085 D6 caps a block at
+   490 lines and that slice did not fit beside the caller's.
 2. Then the install smoke, the integration gate, and closure. The packaging
    ist-doc is written at closure, when the built state stops moving.
 
 ## Risks
 - The install smoke F086 requires creates a fresh virtualenv and runs the wheel's
   console script. This session's permission layer refuses to execute any
-  interpreter under `.remedy-wt/`, so that smoke cannot be proved green from a
-  session with this posture; the round that writes it must name its execution
-  host or it will be unverifiable where it matters.
+  interpreter under `.remedy-wt/`, so the round that writes it must name its
+  execution host or it will be unverifiable where it matters.
 - A build tool's file selection depends on WHERE the tree is: hatchling drops
   every VCS exclusion when the build root is gitignore-matched, so any packaging
   probe uses a worktree OUTSIDE this repository (finding R-0574).
