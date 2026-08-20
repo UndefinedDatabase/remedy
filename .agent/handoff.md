@@ -48,3 +48,51 @@ None. The commit sequence was C0a, C0b, C1, C2, C3, C4, C5 exactly as the block 
 ## Next
 
 The reviewer reviews 788849bb..HEAD and records R27's verdict as `Gate: R28 — the R27 entry.`; the packaging ist-doc then precedes closure.
+
+## Reviewer's session verdict — authored by the reviewer, applied by the worker
+
+Written because finding R-0571 is that a verdict issued and never put on disk cannot be
+told apart from one never issued. Session of 2026-08-20, self-drive per
+docs/agents/self_drive_protocol.md, resuming at `e33ba23a` under a three-round cap
+declared up front per guardrail G7. This round is the third and the cap is now spent.
+The reviewer wrote nothing in the work tree, one delegated worker per round made every
+commit, and every verdict below rests on gates the reviewer RE-EXECUTED over the
+committed diff, never on a handback.
+
+| Round | Range | Verdict |
+|---|---|---|
+| R24 | 39bfc199..e33ba23a | PASS — one finding, R-0592, against the reviewer |
+| R25 | e33ba23a..8fe709a8 | PASS — no finding |
+| R26 | 8fe709a8..788849bb | PASS — one finding, R-0594, against the reviewer |
+| R27 | 788849bb..this range | verdict not yet on disk; see the last paragraph |
+
+THREE OF THIS SESSION'S FOUR FINDINGS ARE DEFECTS OF THE REVIEWER'S OWN GATE TEXT AND
+NONE IS IN A WORKER'S EXECUTION. R-0592: the handback's mandated `## Commits` table
+carried a value no gate had ever named, and one cell was derived from line counts
+instead of from the diff. R-0594: a gate ordered a lint reading at a base revision and
+named no non-writing mechanism, so the worker overwrote a tracked path, declared it, and
+restored it verified — a correct measurement by a route guardrail G5 forbids. Each
+counter-measure landed on the §3 checklist in the round that registered it, as items 28
+and 29, because a rule written only in a finding body binds nothing.
+
+R-0593 IS THE EXCEPTION AND IT IS THE SPLIT WORKING: two stale ABSENCE comments in
+production text — the release gate saying nothing calls it, and `pyproject.toml` saying
+a guard four lines below it is still owed — each left behind by the commit that
+falsified it, and both found by reading the code rather than the record. R26 retired
+both at their source, naming the commit that falsified each.
+
+F086'S REMAINING WORK IS THE IST-DOC, THEN CLOSURE. Precondition 4 is already met: the
+feature file's `## Built State` landed at `d420e8e5`, which the closure commit itself
+may not carry (R-0154). The packaging ist-doc with its `docs/README.md` row was drafted
+for R27 and CUT when the block measured 418 lines against the 400-line cap — DECISION
+F105 D5 requires the design to change, not the wording to be shaved — so it is the next
+session's first work. NO INSTALL HAS BEEN PROVEN in this session or any other and the
+release workflow has never been dispatched; closure names both as unproven rather than
+counting a skipped test as coverage, and F083 and F085 are the precedent for closing
+PASS_WITH_RISKS.
+
+R27 IS NOT A TERMINATOR — F086's pull request is created at closure, which has not
+happened — so this session claims no §4 item 13 carve-out and leaves its last verdict to
+be recorded (R-0583). THE NEXT SESSION'S FIRST ACTIONS are Phase 1 rule 1, then rule 2,
+then rule 4: review this round and record R27's verdict as `Gate: R28 — the R27 entry.`,
+the header shape §3 item 26 binds.
