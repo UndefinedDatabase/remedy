@@ -489,6 +489,20 @@ end the response with:
       `.agent/last_block.md` "at 757be21c" correctly, then called five copies equal with
       no commit named, while that round's own C0b had already overwritten the working
       copy two commits earlier — four of the five matched, and the sentence claimed five.
+      Finding R-0586 adds the mechanical scan this item has always described and nothing
+      has ever run. Before emission every slice bound for an append-only record is searched
+      for the labels this item forbids: delete each backtick-quoted span first — a token a
+      finding QUOTES is not a token it USES, and a guard that cannot tell the two apart is
+      satisfied by the quotation (R-0584 class) — then require ZERO matches of `\bHEAD\b`
+      in what remains. `main` and `origin/main` are INSPECTED rather than counted to zero,
+      because both also occur as ordinary prose and a zero-gate over them is unmeetable —
+      the R-0563 shape, where a sweep stated too widely protects nothing. Measured at
+      `bc85e5f7`, the `Gate:` entries of `.agent/live_review.md` from R10 through R19
+      carried 3, 2, 2, 6, 3, 1, 1, 0, 4 and 3 unquoted occurrences in that order, every one
+      but R17's carrying at least one: a rule stated for four rounds and broken under
+      itself, because nothing measured it. Those landed entries are NOT rewritten — the
+      counter-measure above is the dated correction — and this scan binds only text that
+      has not yet been written.
   21. **A baseline gate resolves its own paths at the base it names.** Finding R-0532. A
       gate ordered "at `origin/main` as well", or at any commit other than the one under
       review, is checked at emission with `git ls-tree <base> -- <path>` for EVERY path it
@@ -572,6 +586,24 @@ end the response with:
       the control cannot distinguish from its own success. Where the bytes recur inside the named
       file, the control orders a longer UNIQUE byte string instead. Item 24 resolves the paths a
       gate NAMES; this one resolves the BYTES a gate orders CHANGED.
+  26. **A slice joining a file's repeating record format is read against the entries it
+      joins.** Finding R-0587. When an authored slice appends an entry to a file whose
+      existing entries share a header shape — the `Gate: R<n> — the R<n-1> entry.` lines of
+      `.agent/live_review.md`, a changelog's version headings, any keyed series — the
+      slice's own header is compared MECHANICALLY against the headers already in that file
+      before emission, as a pattern match and never by eye. Items 11 and 16 govern numerals
+      a block states about its own text and about a list it names, and item 20 governs a
+      fact about a file's CONTENT; none of them reads a slice's SHAPE against the shape of
+      its neighbours, which is where R-0587 landed. The R20 instance: RECORD18 was headed
+      `Gate: R19 — the R18 entry.` while its body recorded R19 at R20, so the header
+      duplicated the entry directly above it byte for byte and the ledger gained two
+      paragraphs answering to one key — and the handback of the round before had already
+      named the correct string. No gate the block ordered could see it, because those gates
+      measured bytes and ids and the entry was perfect in both; the worker applied it
+      verbatim, as constraint 1 required, and declared it. A header is the key a later
+      reader searches by, so a duplicated one costs more than a stale sentence: order the
+      comparison before emission, and never repair it by rewriting the landed entry, which
+      item 20 forbids.
   Why this is on disk and not a habit: item 2 has recurred six times across
   F104 and F105, and R20 hit four of them in one block. A check that lives
   only in reviewer session memory is the A1 trap §0 names, and this list is the
