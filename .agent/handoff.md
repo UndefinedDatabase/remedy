@@ -105,3 +105,61 @@ was dropped to meet the cap, and nothing is trimmed after C4.
 
 The next session's first two actions, in this order: re-read `.agent/STOP` from disk
 (Phase 1 rule 1), then run the Open PR Gate (Phase 1 rule 2).
+
+## Reviewer's session verdict — authored by the reviewer, applied by the worker
+
+This section exists because finding R-0571, registered by this feature, is that a
+verdict issued and never written to disk cannot be told apart from one never
+issued. It is appended rather than written into the sections above so that the
+next handback rewrite cannot silently destroy it.
+
+Session of 2026-08-20, self-drive per docs/agents/self_drive_protocol.md, and the
+THIRD session on this branch. The reviewer wrote nothing in the work tree; one
+delegated worker per round made every commit; every verdict below rests on gates
+the reviewer re-executed itself over the committed diff, never on a handback's
+summary.
+
+| Round | Range | Verdict |
+|---|---|---|
+| R8 | b769ccd7..419fb683 | PASS — one finding, R-0580, against the reviewer |
+| R9 | 419fb683..e7c219cc | PASS — no finding |
+| R10 | e7c219cc..dea9dc2f | PASS — no finding |
+
+R8 was inherited unreviewed: the previous session ended immediately after issuing
+its own verdict, which is exactly the stranding DECISION F085 D9 warns about, so
+reviewing it first was Phase 1 rule 4. It passed on every gate, and its one defect
+was in the reviewer's own G6, which named a range one commit too wide — three of
+that gate's four clauses hold only ACROSS the repair commit, and the worker
+recorded both readings and declared the contradiction instead of reconciling it.
+That is R-0580, and it is registered against the reviewer, not the worker.
+
+R9 closed T001. `hatch_build.py` now refuses to build a wheel whose
+`apps/ui/dist/index.html` is absent, and the reviewer proved both colours itself
+from a worktree sited OUTSIDE this repository, because hatchling drops every VCS
+exclusion when the build root is gitignore-matched (finding R-0574): with assets
+present the build exits 0 and ships a 417-member wheel carrying 3 UI files, and
+without them it exits non-zero and produces no wheel at all. The red control is
+what makes that worth stating — the same removal at the base exits 0 and ships a
+414-member wheel with 0 UI files, so the defect DECISION F086 D1 part (b) names
+reproduces at the base and is closed at HEAD.
+
+R10 landed T002's reporting surface. `remedy --version` reads the version back
+through package metadata per DECISION F086 D2, so no second literal exists to
+drift, and reports `dev` for what a checkout cannot prove rather than inventing
+it. Unwiring the call turns the CLI-level tests red, which is how this record
+knows the module is wired rather than merely present.
+
+WHAT THIS FEATURE STILL OWES, stated plainly so the next session does not have to
+infer it: T002's REVISION embedding. `resolve_build_revision()` reads a `REVISION`
+file out of the installed distribution's metadata and nothing writes that file, so
+an installed wheel reports `dev` exactly as a checkout does. Then T003 — the
+release CI stage, the changelog and tag gate, the wheel-size budget — then the
+install smoke, the integration gate and closure. No release may be cut before the
+embedding exists, because the release gate compares a tag against a number the
+artifact reports.
+
+Every round of this session passed, and the only finding it registered is a defect
+in the reviewer's own gate text. By docs/agents/planner_reviewer_prompt.md §4 item
+13 the LAST round of a session has no on-disk gate entry, so R11's own verdict is
+the terminator and lives in this handoff and in the reviewer's closing report
+rather than in the ledger. That absence is the rule, not an omission.
