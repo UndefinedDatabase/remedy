@@ -1,83 +1,74 @@
-# Handoff — F086 Release capability, R3 (record + packaging inventory)
+# Handoff — F086 Release capability, R4 (record + the packaging DECISIONs)
 
 Branch: feature/f086-release-capability (continued; no branch created, no PR opened).
-Base 9e855296 · HEAD this commit · Open findings 155 (156 registered, 1 resolved).
-Fortschritt: ~2 % (F086 beansprucht · R1/R2 gegated · Inventar gemessen · T001/T002/T003 offen) — Schätzung
+Base 0cabd17e · HEAD this commit · Open findings 155 (156 registered, 1 resolved).
+Fortschritt: ~3 % (F086 beansprucht · R1-R3 gegated · Paketform entschieden · T001/T002/T003 offen) — Schätzung
 
 ## Range
 
-Review of 9e855296..HEAD
+Review of 0cabd17e..HEAD
 
 ## Commits
 
-### 8f44864d chore(state): save the F086 R3 step block verbatim
+### 2abb622b chore(state): save the F086 R4 authored block
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f086-r3.md | +277/-0 | C0a, `shutil.copyfile` of `.remedy-wt/f086-r3.md` |
+| .agent/authored/f086-r4.md | +302/-0 | C0a, `shutil.copyfile` of `.remedy-wt/f086-r4.md` |
 
-### 3262e76d chore(state): mirror the R3 block into last_block
+### 67d16973 chore(state): mirror the R4 block into last_block
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/last_block.md | +202/-244 | C0b, whole-file mirror of the COMMITTED C0a blob |
+| .agent/last_block.md | +193/-168 | C0b, whole-file mirror of the COMMITTED C0a blob |
 
-### d547042e chore(state): advance the plan to R3
+### a4059de3 chore(state): advance the plan to the F086 R4 record and decision round
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/plan.md | +21/-26 | C1, PLAN3 slice byte-verbatim, whole file |
+| .agent/plan.md | +23/-21 | C1, PLAN4 slice byte-verbatim, whole file |
 
-### 3998a747 chore(state): record the R1 and R2 verdicts in the review ledger
+### 4f812309 chore(review): record the F086 R3 verdict in the review ledger
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/live_review.md | +2/-0 | C2, RECORD slice appended by pure concatenation |
+| .agent/live_review.md | +2/-0 | C2, RECORD2 appended by pure concatenation |
 
-### 01d7edf9 docs(state): add the measured F086 packaging inventory
+### 596eb7b0 docs(decisions): rule the F086 wheel asset carry and the single version literal
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/f086_inventory.md | +290/-0 | C3, NEW, written from this round's own readings |
+| .agent/decisions.md | +78/-0 | C3, DECISION1 then DECISION2 appended; no landed section edited |
 
-### this commit docs(state): write the F086 R3 handback
+### this commit docs(state): write the F086 R4 handback
 | Path | +/- | Reason |
 |---|---|---|
 | .agent/handoff.md | rewrite | C4, cannot table itself (R-0149 pattern) |
 
 ## External actions
 
-`git worktree add .remedy-wt/f086r3-tree 9e855296` → 0; `git worktree remove --force`
-+ `git worktree prune` → 0, list back to ONE line. `python3 -m venv
-.remedy-wt/f086r3-venv` → 0, deleted. `python3 -m pip install --no-input --target
-.remedy-wt/f086r3-pylib build hatchling` → 0 (build 1.5.0, hatchling 1.32.0), deleted.
-`git push origin feature/f086-release-capability` after this commit. No gh, no PR.
+`git push origin feature/f086-release-capability` after this commit. No worktree added
+or removed (`git worktree list` stayed ONE line), no `gh`, no PR, no venv, no build.
 
 ## Verification
 
 | Gate | Exit | Result |
 |---|---|---|
-| G1 | 0 | `git status --porcelain` EMPTY, `git worktree list` ONE line, branch unchanged, `.agent/STOP` absent, no venv under `.remedy-wt/` |
-| G2 | 0 | scratch, committed authored and committed last_block all byte-EQUAL: sha256 f659fccc1911c491903c2eea2986a9a427da6d7d6163db558b0ec9a65d976c88, 20622 B, 277 lines |
-| G3 | 0 | `.agent/plan.md` byte-equal to extracted PLAN3, sha256 3108fb9c…8d5d, 41 lines (<50), has `## Goal`, `## Next Steps`, `F086` |
+| G1 | 0 | `git status --porcelain` EMPTY, `git worktree list` ONE line, `.agent/STOP` absent, branch still feature/f086-release-capability |
+| G2 | 0 | scratch, committed authored and committed last_block all byte-EQUAL: sha256 84485aac89d300e388c7a432af78dca51f6da510784d67de60a653cbcdf53b20, 21879 B, 302 lines |
+| G3 | 0 | `.agent/plan.md` byte-equal to extracted PLAN4, sha256 872e59f1…5682, 43 lines (<50), has `## Goal`, `## Next Steps`, `F086` |
 | G4 | 0 | 156 registered / 1 resolved / 155 open at BOTH SHAs; registered, resolved and OPEN sets IDENTICAL (symdiff empty); 0 dups, 0 unregistered resolutions, 0 `Landed:` |
-| G5a | 0 | REQUIRED: compared 152, equal 152 |
+| G5a | 0 | REQUIRED: compared 152, equal 152 (paragraph extraction, whole block) |
 | G5b | 0 | NEGATIVE CONTROL at 25f7a5af: compared 152, equal 113 — strictly fewer; halves DISAGREE, so the check can fail |
-| G6 | 0 | RECORD present verbatim, begins `Gate:`, no `^- R-\d+ — ` match; `Steps` present; `<<<` occurs 0x |
-| G7 | 0 | inventory NEW at HEAD, 290 lines, `## Method` + `## a.`…`## i.` + `## Open questions for T001` |
-| G8 | 0 | `160 passed in 20.20s`, four state readers, PRIMARY checkout, serial |
-| G9 | 0 | `42 passed in 21.64s`, canary, serial |
-| G10 | 0 | authored/f086-r3.md, f086_inventory.md, last_block.md, live_review.md, plan.md (+ handoff.md with this commit); `pyproject.toml` ABSENT |
-| G11 | 0 | insertions 277, 202, 21, 2, 290 — none over 500, no exemption invoked |
-| G12 | 0 | one parent per commit; reflog shows only `commit:` entries |
-| G13 | 0 | 0 paths matching `\.whl$`, `\.tar\.gz$`, `dist/`, `build/`, `\.egg-info` |
-
-Headline readings (detail in `.agent/f086_inventory.md`): the wheel built from a
-PRISTINE worktree at 9e855296 is `remedy-0.1.0-py3-none-any.whl`, 2038283 B, 414
-members; `apps/ui/dist/index.html` in wheel = **False**; 0 members under
-`apps/ui/dist/` and 0 under `apps/ui/node_modules/`.
+| G6 | 0 | RECORD2 present verbatim, begins `Gate:`, no `^- R-\d+ — ` match; `Steps` present; `<<<` occurs 0x |
+| G7 | 0 | file at 0cabd17e is a byte-exact PREFIX of HEAD = True; remainder == D1+D2 exactly; D1 sha256 998c729d…7dfd (3251 B), D2 sha256 ead658cf…9e4a (2059 B); `## DECISION F086 D1` 1x, `D2` 1x, `<<<` 0x |
+| G8 | 0 | `160 passed in 19.97s`, four state readers, PRIMARY checkout, serial |
+| G9 | 0 | `42 passed in 20.48s`, canary, serial, after G8 finished |
+| G10 | 0 | authored/f086-r4.md, decisions.md, last_block.md, live_review.md, plan.md (+ handoff.md with this commit); `pyproject.toml`, `ui_server.py`, `apps/`, `tests/`, `docs/` ABSENT |
+| G11 | 0 | insertions 302, 193, 23, 2, 78 — none over 500, no exemption invoked |
+| G12 | 0 | one parent per commit (linear); reflog shows only `commit:` entries |
 
 ## Authored-text proofs
 
-PLAN3 and RECORD were extracted PROGRAMMATICALLY by their markers from the COMMITTED
-`.agent/authored/f086-r3.md` and applied byte-verbatim, never retyped: G3 is the plan
-equality, G6 the append equality, `<<<` occurs 0x in both targets. The inventory is
-not authored text.
+PLAN4, RECORD2, DECISION1 and DECISION2 were extracted PROGRAMMATICALLY by their
+one-line markers from the COMMITTED `.agent/authored/f086-r4.md` and applied
+byte-verbatim, never retyped: G3 the plan equality, G6 the ledger append, G7 the
+decisions prefix-plus-remainder equality; `<<<` occurs 0x in every target.
 
 ## Item status
 
@@ -89,38 +80,21 @@ not authored text.
 | C2 | done | |
 | C3 | done | |
 | C4 | done | this commit |
-| a | deviated | build taken (exit 0) but not by the ordered venv — deviation 1 |
-| b | done | |
-| c | done | False |
-| d | done | |
-| e | done | |
-| f | done | |
-| g | done | |
-| h | done | no `--version` anywhere under `apps/` |
-| i | done | guarded seam, not a bare subprocess |
 
 ## Deviations & assumptions
 
-1. BUILD ROUTE. The ordered venv could not be used: this session's permission layer
-   refused `.remedy-wt/f086r3-venv/bin/pip install build`, its `-m pip` form, and also
-   `.remedy-wt/f086r3-venv/bin/python -V`, which installs nothing — so the refusal is
-   on EXECUTING any interpreter under `.remedy-wt/`, not on pip. Toolchain went to
-   `.remedy-wt/f086r3-pylib` via `pip install --target`; build ran as `python3 -m build
-   --wheel --no-isolation` with `PYTHONPATH` there and the pristine worktree as source
-   (default isolation would execute a temp venv interpreter). Isolation was RE-MEASURED:
-   after the install `python3 -c "import hatchling"` still exits 1 in the primary
-   checkout, so nothing entered the system interpreter; all scratch paths were deleted.
-2. CONTRADICTION with the block: it expected index reachability to be the risk, but
-   `urlopen("https://pypi.org/simple/hatchling/")` returned HTTP 200 and `python3 -m pip
-   install` was not refused. The blocker was the session's own posture, not the network.
-3. No other departure: six commits, in order, none extra, dropped or reordered. No
-   production code, test, `docs/` file or `pyproject.toml` touched; nothing the
-   inventory describes was edited; no finding registered.
-4. Handoff length: 126 lines, over the ≤100 cap for >5-commit tables (AGENTS.md D15
-   stated-cause overage). Cause: six per-commit tables, a 14-row verification table and
-   a 15-row item-status table are all mandated content; no section was dropped.
+1. NO departure from the ordered sequence: five commits in block order plus C4, none
+   extra, dropped or reordered. No code, no test, no `docs/` file, no `pyproject.toml`.
+2. NO contradiction found between DECISION F086 D1/D2 and `.agent/f086_inventory.md`:
+   every figure the DECISIONs cite is the inventory's own reading — 414 members /
+   2038283 B / 0 under `apps/ui/dist/` (b, c), 65 src files and the 182948-byte lockfile
+   (b), the generic `dist/` ignore and the absent `artifacts`/`force-include` (f), the
+   three `.parent` hops (g), the reachable npm spawn (i), `pyproject.toml:7` agreeing
+   with the wheel METADATA (e), no `--version` under `apps/` (h).
+3. G5 note: "carried at the F086 claim" = the ids in BOTH the HEAD ledger and the
+   `76661dc1` blob (152); a first pass over all 184 paragraphs there was the wrong set.
 
 ## Next
 
-Reviewer re-runs G1-G13 over `9e855296..HEAD`, reads the inventory, and rules the
-packaging shape for R4 — Phase 1 rule 1 (`.agent/STOP`) before rule 2.
+Reviewer re-runs G1-G12 over `0cabd17e..HEAD` and, on PASS, authors R5 — T001 under
+DECISION F086 D1 — Phase 1 rule 1 (`.agent/STOP`) before rule 2.
