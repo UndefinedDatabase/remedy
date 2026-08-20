@@ -1,100 +1,55 @@
-# Handback — F086 R17, record R16 and repair R-0584 (branch feature/f086-release-capability)
+# Handback — F086 R18, record R17 and rule D4 (branch feature/f086-release-capability)
 
 ## Range
 
-Review of 4750383c..HEAD
+Review of f0b27118..HEAD
 
 ## Commits
 
 | # | Commit | Path | +/- | Reason |
 |---|---|---|---|---|
-| C0a | 8a320ffc | .agent/authored/f086-r17.md | +414/-0 | the R17 block, byte-verbatim |
-| C0b | 44e8843a | .agent/last_block.md | +259/-335 | mirror of the COMMITTED C0a |
-| C1 | 3a29cc10 | .agent/plan.md | +13/-10 | the PLAN17 slice, whole file |
-| C2 | 6d1a7e73 | .agent/live_review.md | +4/-0 | FIND0584 then RECORD15, appended |
-| C3 | 3bedad72 | tests/orchestration/test_release_workflow.py | +3/-3 | the three FROM/TO pairs |
-| C4 | 0dfc945b | .agent/live_review.md | +2/-0 | the one `Landed: R-0584 —` line |
-| C5, C6 | this commit and the next | .agent/handoff.md | rewrite, then +44 | R-0149: cannot table itself; C6 appends VERDICT |
+| C0a | ec618ca1 | .agent/authored/f086-r18.md | +379/-0 | the R18 block, byte-verbatim |
+| C0b | c40f18b2 | .agent/last_block.md | +242/-277 | mirror of the COMMITTED C0a |
+| C1 | a8ed2ba9 | .agent/plan.md | +18/-19 | the PLAN18 slice, whole file |
+| C2 | e4407e7f | .agent/live_review.md | +1/-1 | the `Landed:` line replaced by DONE0584 |
+| C3 | 2ab28780 | .agent/live_review.md | +2/-0 | RECORD16, appended |
+| C4 | 03ac6d05 | .agent/decisions.md | +44/-0 | DECISION4, appended |
+| C5, C6 | this commit and the next | .agent/handoff.md | rewrite, then +42 | R-0149: cannot table itself; C6 appends VERDICT |
 
 ## External actions
 
-`git worktree add --detach .remedy-wt/r17-mut 0dfc945b` and `git worktree add --detach .remedy-wt/r17-base 4750383c` for G9's six runs, then `git worktree remove --force` on each plus `git worktree prune`; `git worktree list` now reads one line. `gh pr list --state open --json number,headRefName,baseRefName,isDraft` → `[]`; no PR created, no branch created, nothing merged. `git push -u origin feature/f086-release-capability` runs after C6 and the round report carries its outcome.
+`gh pr list --state open --json number,headRefName,baseRefName,isDraft` → `[]`; no PR created, no branch created, nothing merged. NO worktree was added or removed: this round orders no mutation, so `git worktree list` read one line from start to finish. `git push -u origin feature/f086-release-capability` runs after C6 and the round report carries its outcome.
 
 ## Verification
 
-G1 primary tree porcelain EMPTY at every commit and at the handback; `.agent/STOP` absent, re-read from disk before C0a and again at the handback; branch `feature/f086-release-capability`, HEAD at 4750383c when the round began.
-G2 `.remedy-wt/f086-r17.md` ≡ the committed authored file ≡ the committed last_block, all three byte-EQUAL at sha256 5edb6fb56580f0060a3506944ce49969060bcc000335180f5d26418364d6c620, 29930 B over 414 lines; re-measured from the COMMITTED file the block is 414 total / 294 prose / 120 slice incl. 20 marker lines — what constraint 6 declares of itself.
-G3 `.agent/plan.md` ≡ PLAN17 at sha256 610d15f861e2b47a83e8b53a6c30ffa7f037e05506c5b6fcaff386a7e9b25c85, 46 lines (under 50), holding `## Goal`, `## Next Steps` and `F086`.
-G4 the pre-C2 ledger blob is a byte-exact PREFIX of the post-C2 blob whose 4-line remainder ≡ FIND0584 followed by RECORD15 at sha256 c7ac0e52078092e599cd225db6dde0b9544e5f6933206c1127c37fcf26e97bc1; the post-C2 blob is in turn a byte-exact PREFIX of the post-C4 blob, whose remainder is one blank line plus exactly one line, verbatim: Landed: R-0584 — the three positive release-workflow guards now assert over `executable_lines()` instead of `workflow_text()`, so a comment can no longer satisfy them; committed as 3bedad72.
-G5 HEAD reads 167 registered / 2 resolved / 0 duplicate ids / 0 unregistered resolutions / 1 `Landed:` line / 165 open under BOTH extractions, and the two registered SETS are EQUAL; the symmetric difference of the HEAD registered set against the 4750383c set is exactly `['R-0584']`, and the same extractor over 6f5a589a..efc021d9 reads `['R-0583']`, so that reading is a difference the extractor can see.
-G6 0 lines beginning `<<<SLICE ` or `<<<END ` in `.agent/plan.md`, `.agent/live_review.md` and `tests/orchestration/test_release_workflow.py` at HEAD; `.agent/handoff.md` can only be counted after C6 and that reading is in the round report.
-G7 in `tests/orchestration/test_release_workflow.py`, each FROM is 1x and each TO 0x at 4750383c and each FROM 0x and each TO 1x at HEAD — six counts before, six after; the base blob with each FROM occurrence replaced by its TO is byte-EQUAL to the file at HEAD, `git diff --numstat` reads 3 insertions and 3 deletions, and the file is sha256 72db2e02767e95b8813c684ee5be5d63de4c43aaea2fcaf28101b39377d0b3bf over 70 lines, unchanged from 70.
-G8 exit 0, 28 passed — the workflow guards, the gate-wiring suite and the gate suite together, primary checkout.
-G9 six runs, one mutation at a time, each fully reverted before the next, in two disposable worktrees — MUT at 0dfc945b and BASE at 4750383c, each target line counted 1x in that worktree's `.github/workflows/release.yml` before it was written: (a) dropping the `missing` fallback from the `conclusion=` echo → MUT exit 1, 1 failed / 6 passed naming ONLY `test_release_workflow_refuses_when_no_ci_run_is_found`, BASE exit 0, 7 passed; (b) commenting out the sole `workflow_dispatch:` line → MUT exit 1, 1 failed / 6 passed naming ONLY `test_release_workflow_is_triggered_by_hand_only`, BASE exit 0, 7 passed; (c) interpolating the tag into the runner's shell line → MUT exit 1 and BASE exit 1, each 1 failed / 6 passed naming ONLY `test_release_workflow_passes_the_tag_through_the_environment`. After the last revert each worktree re-ran at exit 0, 7 passed with its own `git status --porcelain` EMPTY, and each revert was byte-exact against the pre-mutation bytes.
-G10 ruff over `tests/orchestration/test_release_workflow.py`, the round's only Python path: at 4750383c read in the disposable BASE worktree, exit 0 with an EMPTY rule-code multiset, and at HEAD in the primary checkout, exit 0 with an EMPTY rule-code multiset — the two multisets are EQUAL.
-G11 exit 0, 160 passed for the four state readers, then exit 0, 42 passed for the canary. They did NOT overlap: the second process was launched only after the first had ENDED and reported its exit code.
-G12 linear, every commit exactly one parent: 4750383c → 8a320ffc → 44e8843a → 3a29cc10 → 6d1a7e73 → 3bedad72 → 0dfc945b; `git reflog` over this round shows only `commit:` entries — no amend, rebase, reset or force-push. Insertions before C5, from the `+` column of `git show --numstat`: 414, 259, 13, 4, 3, 2 — none over 500, and no DECISION F104 D1 exemption invoked.
-G13 `git diff --name-only 4750383c..HEAD` before C5 is exactly the five paths tabled above other than `.agent/handoff.md`. All seven other paths constraint 2 forbids — `.github/workflows/release.yml`, `scripts/release_gate_check.py`, `packages/orchestration/release_gate.py`, `pyproject.toml`, `hatch_build.py`, `.github/workflows/ci.yml` and `CHANGELOG.md` — EXIST at 4750383c under `git ls-tree`, so the prohibition forbids something real, and nothing under `apps/` or `docs/` is in the range.
-G14 this file is 56 lines as C5 writes it and C6 appends the 44-line VERDICT slice, so the file at HEAD is 100 lines — AT MOST 100, with NO DECISION D15 overage declared — and all seven mandated headings of docs/agents/handback_template.md are present, in the template's order. The post-C6 `wc -l` reading is in the round report.
-G15 C6 appends VERDICT by pure concatenation, nothing else in this file changing; the prefix-and-remainder equality against the blob C5 committed can only be measured after C6, so that measurement is in the round report.
-G16 `gh pr list --state open --json number,headRefName,baseRefName,isDraft` → `[]`. Nothing created, nothing merged.
+G1 primary tree porcelain EMPTY at every commit and at the handback; `.agent/STOP` absent, re-read from disk before C0a and again at the handback; branch `feature/f086-release-capability`, HEAD f0b27118 when the round began; `git worktree list` one line throughout.
+G2 `.remedy-wt/f086-r18.md` ≡ the committed authored file ≡ the committed last_block, all three byte-EQUAL at sha256 3b37ce276cb5dc9ec36b068d0c98092c5672313255c54b6c0444844cdb0778da, 27390 B over 379 lines; re-measured from the COMMITTED file the block is 379 total / 232 prose / 147 slice incl. 12 marker lines — what constraint 6 declares of itself.
+G3 `.agent/plan.md` ≡ PLAN18 at sha256 5dd5975850508f5e7d5c93aa7b8cdc78e4cecdfeeae1a82eed90874fcb4278c1, 45 lines (under 50), holding `## Goal`, `## Next Steps` and `F086`.
+G4 four counts, one by one: LANDEDFROM 1x at f0b27118 and 0x at HEAD, DONE0584 0x at f0b27118 and 1x at HEAD; the blob C2 committed is byte-EQUAL to the f0b27118 blob with that one occurrence replaced and nothing else changed, at sha256 ba9b0dfb79151ba5c9166e851cd24b4e2789bf04a1fa30e344ad7b482fb58ec6, and `git show --numstat e4407e7f -- .agent/live_review.md` reads 1 insertion and 1 deletion.
+G5 the blob C2 committed is a byte-exact PREFIX of the blob C3 committed; the 2-line remainder ≡ RECORD16 at sha256 f8a99b59bf9855ae3b5c705a8f1ee5e59dac707e76601d6a31c89667688f4a78.
+G6 HEAD reads 167 registered / 3 resolved / 0 duplicate ids / 0 unregistered resolutions / 0 `Landed:` lines / 164 open under BOTH extractions, and the two registered SETS are EQUAL; the symmetric difference of the HEAD registered set against the f0b27118 set is the EMPTY set; the RESOLVED set goes from `['R-0572', 'R-0578']` to `['R-0572', 'R-0578', 'R-0584']`, gaining exactly `R-0584`; and the SAME extractor over 4750383c..f0b27118 reads `['R-0584']` for the registered symmetric difference, so the empty reading is an absence of movement and not a blind extractor.
+G7 the pre-C4 blob of `.agent/decisions.md` is a byte-exact PREFIX of the post-C4 blob; the 44-line remainder ≡ DECISION4 at sha256 faf76c32d72bd4e83d6d665ce888779f2b183f0b8d0e421b35e7b58605f2705d, and `grep -c '^## DECISION F086 D' .agent/decisions.md` reads 3 at 2ab28780 and 4 at 03ac6d05.
+G8 0 lines beginning `<<<SLICE ` or `<<<END ` in `.agent/plan.md`, `.agent/live_review.md` and `.agent/decisions.md` at HEAD — counted as marker LINES, while a raw `<<<` substring count reads 21 in the ledger, which is why the gate counts lines; `.agent/handoff.md` can only be counted after C6 and that reading is in the round report.
+G9 exit 0, 160 passed for the four state readers, then exit 0, 42 passed for the canary. They did NOT overlap: the second process was launched only after the first had ENDED and reported its exit code, both in the primary checkout.
+G10 `git diff --name-only f0b27118..HEAD` before C5 is exactly the constraint 2 paths other than `.agent/handoff.md`, which is FIVE paths and not the four the gate's wording names: `.agent/authored/f086-r18.md`, `.agent/decisions.md`, `.agent/last_block.md`, `.agent/live_review.md`, `.agent/plan.md`. All five paths constraint 2 FORBIDS — `tests/orchestration/test_release_workflow.py`, `.github/workflows/release.yml`, `scripts/release_gate_check.py`, `packages/orchestration/ci_stages.py` and `pyproject.toml` — EXIST at f0b27118 under `git ls-tree`, so the prohibition forbids something real, and nothing under `apps/`, `packages/`, `tests/` or `docs/` is in the range.
+G11 linear, every commit exactly one parent: f0b27118 → ec618ca1 → c40f18b2 → a8ed2ba9 → e4407e7f → 2ab28780 → 03ac6d05; `git reflog` over this round shows only `commit:` entries — no amend, rebase, reset or force-push. Insertions before C5, from the `+` column of `git show --numstat`: 379, 242, 18, 1, 2, 44 — none over 500, and no DECISION F104 D1 exemption invoked.
+G12 this file is 55 lines as C5 writes it and C6 appends the 42-line VERDICT slice measured from the COMMITTED C0a file, so the file at HEAD is 97 lines — AT MOST 100, no DECISION D15 overage declared — and all seven mandated headings of docs/agents/handback_template.md are present, in the template's order: Range, Commits, External actions, Verification, Authored-text proofs, Deviations & assumptions, Next. The post-C6 `wc -l` reading is in the round report.
+G13 C6 appends VERDICT by pure concatenation, nothing else in this file changing; the prefix-and-remainder equality against the blob C5 commits can only be measured after C6, so that measurement is in the round report.
+G14 `gh pr list --state open --json number,headRefName,baseRefName,isDraft` → `[]`, re-read at the handback. Nothing created, nothing merged.
 
 ## Authored-text proofs
 
-PLAN17, FIND0584, RECORD15, the six PAIR slices and VERDICT were each extracted programmatically by their one-line `<<<SLICE NAME>>>` / `<<<END NAME>>>` markers from the COMMITTED `.agent/authored/f086-r17.md` and applied byte-verbatim; none was retyped, reformatted or edited, and no marker line reached a target file. Each applied region byte-EQUALS its slice, verified disk-to-disk against the committed blob. Every sha256 is written out in full, at 64 characters, above and in the round report; none is written anywhere in part.
+PLAN18, LANDEDFROM, DONE0584, RECORD16, DECISION4 and VERDICT were each extracted programmatically by their one-line `<<<SLICE NAME>>>` / `<<<END NAME>>>` markers from the COMMITTED `.agent/authored/f086-r18.md` and applied byte-verbatim; none was retyped, reformatted or edited, and no marker line reached a target file. Each applied region byte-EQUALS its slice, verified disk-to-disk against the committed blob. Every sha256 is written out in full, at 64 characters, above and in the round report; none is written anywhere in part.
 
 ## Deviations & assumptions
 
 - ORDERED COMMIT SEQUENCE: no deviation. C0a, C0b, C1, C2, C3, C4, C5, C6 ran in the block's order, one commit each, none extra, none dropped, none reordered.
-- The Verification section above is a per-gate SUMMARY, not the raw transcript this template's wording asks for. The block's step 6 orders that as the R-0582 repair; the full transcript lives in the round report, which no cap binds, and no section is dropped. FINAL length of this file: 56 lines from C5 plus the VERDICT slice's 44 = 100.
-- `Range` names the literal token `HEAD`, the R10-onward convention on this branch: a handoff cannot name the SHA of the commit that writes it. The only text the worker authored into a tracked file this round is C4's single `Landed:` line; FIND0584, RECORD15 and the appended session verdict are the REVIEWER's own text, applied byte-verbatim, and the worker wrote no verdict anywhere.
+- The Verification section above is a per-gate SUMMARY, not the raw transcript this template's wording asks for. The block's step 6 orders that as the R-0582 repair; the full transcript lives in the round report, which no cap binds, and no section is dropped. FINAL length of this file: 55 lines from C5 plus the VERDICT slice's 42 = 97.
+- ASSUMPTION at G10: its wording says "the four paths of constraint 2 other than `.agent/handoff.md`", but constraint 2 names five such paths and the measured change set is those five. The five are listed in the G10 line above; the worker changed nothing to fit the numeral.
+- `Range` names the literal token `HEAD`, the R10-onward convention on this branch: a handoff cannot name the SHA of the commit that writes it. NO text in this round's tracked change set was authored by the worker outside this file: DONE0584, RECORD16, DECISION4 and VERDICT are the REVIEWER's own text applied byte-verbatim, and the worker wrote no verdict anywhere.
 
 ## Next
 
 1. Re-read `.agent/STOP` from disk (Phase 1 rule 1).
 2. Run the Open PR Gate (Phase 1 rule 2): `gh pr list --state open --json number,headRefName,baseRefName,isDraft`.
-3. Then review `4750383c..HEAD` and record R17's verdict in `.agent/live_review.md` (Phase 1 rule 4).
-
-## Reviewer's session verdict — authored by the reviewer, applied by the worker
-
-Written because finding R-0571 is that a verdict issued and never put on disk
-cannot be told apart from one never issued; appended so the next handback rewrite
-cannot silently destroy it. Session of 2026-08-20, self-drive per
-docs/agents/self_drive_protocol.md, a NEW session resuming the branch at
-`4750383c`. The reviewer wrote nothing in the work tree, one delegated worker made
-every commit, and the verdict below rests on gates the reviewer re-executed over
-the committed diff, never on a handback.
-
-| Round | Range | Verdict |
-|---|---|---|
-| R16 | efc021d9..4750383c | PASS — one finding, R-0584, against the reviewer |
-| R17 | 4750383c..HEAD | verdict not yet on disk; see the last paragraph |
-
-R16 was inherited ungated, so Phase 1 rule 4 reviewed it before any new work was
-planned. Its trigger is real and it is manual: the workflow fires on
-`workflow_dispatch` alone, carries the tag through the environment rather than
-into a shell line, calls the gate runner once, and publishes nothing. Every
-transport, ledger, hygiene and suite reading its block ordered reproduces under
-the reviewer's own commands, and the handback held its 100-line cap for the third
-round running.
-
-Its one defect is in the guards the reviewer itself authored, and only a control
-the block never ordered could find it: three of the seven assert a positive
-existence over text that includes the workflow's COMMENTS. Delete the shell
-fallback that keeps an absent CI answer from reading as a green one, and the suite
-stays at 7 passed because the word survives in a comment. Comment out the only
-trigger the workflow has, and the suite stays at 7 passed for the same reason.
-That is R-0584, and this round moves all three positive checks onto the file's
-executable lines, after which both mutations go red naming only their own test
-while the same mutations at `4750383c` stay green.
-
-WHAT THIS FEATURE STILL OWES, unchanged by this round: the install smoke, whose
-fresh-virtualenv step this session's permission posture cannot execute — measured,
-not assumed — then the integration gate and closure. The release workflow has
-never been dispatched, and no round can dispatch it.
-
-R17 IS NOT A TERMINATOR — F086's pull request is created at closure, which has not
-happened — so this session claims no §4 item 13 carve-out and leaves its last
-verdict to be recorded. THE NEXT SESSION'S FIRST ACTIONS are Phase 1 rule 1, then
-rule 2, then rule 4: review `4750383c..HEAD` and record R17's verdict in
-`.agent/live_review.md` as `Gate: R18 — the R17 entry`.
+3. Then review `f0b27118..HEAD` and record R18's verdict in `.agent/live_review.md` (Phase 1 rule 4).
