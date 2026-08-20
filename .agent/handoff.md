@@ -1,58 +1,60 @@
-# Handback — F086 R29
+# Handback — F086 R30
 
 ## Range
 
-Review of 05c6e012..HEAD — 6 commits, C0a C0b C1 C2 C3 C4, one worker, no PR.
+Review of ea4ac5fa..HEAD — 5 commits, C0a C0b C1 C2 C3, one worker, no PR, no `docs/` and no `README.md` change.
 
 ## Commits
 
 | # | SHA | Path | +/- | Reason |
 |---|---|---|---|---|
-| C0a | 9253de0a | .agent/authored/f086-r29.md | 475/0 | save the R29 block |
-| C0b | f6818587 | .agent/last_block.md | 372/250 | mirror the block |
-| C1 | f2aac277 | .agent/plan.md | 18/23 | PLAN29 — plan advanced to R29 |
-| C2 | d4cba0d9 | .agent/live_review.md | 2/0 | RECORD28 appended |
-| C3 | 455e5640 | docs/system/release-capability-v1.md; docs/README.md | 154/0; 2/0 | the ist-doc and BOTH index rows in ONE commit |
-| C4 | self | .agent/handoff.md | self-ref | this handback (R-0149) |
+| C0a | 740c7fbd | .agent/authored/f086-r30.md | 407/0 | save the R30 block |
+| C0b | 9d6bc614 | .agent/last_block.md | 330/398 | mirror the block |
+| C1 | ada2c279 | .agent/plan.md | 27/27 | PLAN30 — plan advanced to R30 |
+| C2 | f5fa19c3 | .agent/live_review.md | 2/0 | RECORD29 appended; ACCEPTED HEAD |
+| C3 | self | .agent/handoff.md | self-ref | this handback (R-0149) |
 
 | Item | Status | Reason |
 |---|---|---|
 | Bundle 1 — block saved and mirrored | done | C0a + C0b |
-| Bundle 2 — plan advanced to R29 | done | C1, first substantive commit per constraint 6 |
-| Bundle 3 — RECORD28 in the ledger | done | C2 |
-| Bundle 4 — ist-doc + two index rows | done | C3, one commit per constraint 5 |
-| Bundle 5 — the handback | done | C4 |
+| Bundle 2 — plan advanced to R30 | done | C1, first substantive commit |
+| Bundle 3 — RECORD29 in the ledger | done | C2 |
+| Bundle 4 — full suite, evidence bundle, review zip | done | all three at C2, none committed |
+| Bundle 5 — the handback | done | C3 |
 
 ## External actions
 
-`gh pr list --state open --json number,headRefName,baseRefName,isDraft` → `[]`; one disposable worktree `.remedy-wt/g10ctl` added at C3 for G10's red control and removed with `git worktree remove --force` plus `git worktree prune` before C4; one `git push` after C4; no PR created or merged.
+`gh pr list --state open --json number,headRefName,baseRefName,isDraft` → `[]`; one `bash scripts/make_review_zip.sh --evidence-dir .remedy-wt/f086_closure_evidence/remedy-job-evidence-f086-closure` build at C2; one `git push` after C3; no worktree added or removed; no PR created, edited or merged.
 
 ## Verification
 
-Raw transcript in the round report per R-0582; one line per gate here.
-- G1 HYGIENE — `.agent/STOP` absent, read from disk before C0a and again at the handback; branch feature/f086-release-capability; `git status --porcelain` empty at every commit and here; `git worktree list` 1 line at every commit and here, the G10 worktree having existed only between C3 and C4 with no commit taken while it did; NO path in the primary checkout was overwritten to take a reading — every non-current reading came from `git show <sha>:<path>` into memory.
-- G2 TRANSPORT — the `.remedy-wt/` scratchpad, the committed C0a and the committed C0b are byte-EQUAL at sha256 3c7aba5f2af0cf4958e4bdf131f5fa728cd35b614c4a9e13b75532803f9193ed, 32762 B over 475 lines.
-- G3 PLAN — `.agent/plan.md` at C1 byte-equals PLAN29 extracted from the committed C0a: sha256 983b73027a5a1922e814e2b9703ab70df0f90333f2e38c4d521716f45abd9123, 44 lines (under 50), with `## Goal`, `## Next Steps` and `F086` all present.
-- G4 LEDGER APPEND — pre-C2 is a byte-exact PREFIX of post-C2 whose 2-line remainder equals a blank line followed by RECORD28, at sha256 8a67100852ff2a3f43e86b2eca35f8e9c659907edff3d4863fd94e8f69b00850.
-- G5 LEDGER SETS — both extractions AGREE at both ends: 179 registered / 6 resolved / 0 dup / 0 unregistered / 0 `Landed:` / 173 open at 05c6e012 and the SAME 179 / 6 / 0 / 0 / 0 / 173 at C2; the registered set at C2 EQUALS the one at 05c6e012 and so does the resolved set, gaining `[]` on both sides; the control over f0b27118..7b84524c MOVES, reading `[]` registered gained and exactly `R-0584` resolved gained.
+- G1 HYGIENE (raw transcript in the round report per R-0582; one line per gate here) — `.agent/STOP` absent, read from disk before C0a and again here; branch feature/f086-release-capability; `git status --porcelain` EMPTY at every commit, immediately BEFORE the zip build and again after it, and here; `git worktree list` 1 line throughout; NO primary-checkout path was overwritten to take a reading — every non-current reading came from `git show <sha>:<path>`.
+- G2 TRANSPORT — the `.remedy-wt/` scratchpad, the committed C0a and the committed C0b are byte-EQUAL at sha256 3902376185df63018b5a60aed27ca8eb8a7e980972863be86fbd84b9e3642492, 28188 B over 407 lines.
+- G3 PLAN — `.agent/plan.md` at C1 byte-equals PLAN30 extracted from the committed C0a: sha256 0558ebda69ce42ada9bb41fcfe15136f2a5df96a53be4cb6308ae9df8735ab1a, 44 lines (under 50), with `## Goal`, `## Next Steps` and `F086` all present.
+- G4 LEDGER APPEND — pre-C2 is a byte-exact PREFIX of post-C2 whose 2-line remainder equals a blank line followed by RECORD29, at sha256 76aff925591b36e4108608b373a242845178c5d1ffde191346f003a8db7f623d.
+- G5 LEDGER SETS — both extractions AGREE at both ends: 179 registered / 6 resolved / 0 dup / 0 unregistered / 0 `Landed:` / 173 open at ea4ac5fa and the SAME 179 / 6 / 0 / 0 / 0 / 173 at C2; the registered set at C2 EQUALS the one at ea4ac5fa and so does the resolved set, each gaining `[]`; the control over f0b27118..7b84524c MOVES, reading `[]` registered gained and exactly `R-0584` resolved gained.
 - G6 ITEM-20 SCAN — backtick-quoted spans deleted first, then `\bHEAD\b` reads 0 over C2's 2 added lines; the RED CONTROL, the same two-step extractor over fd166295's 4 added lines, reads 3.
-- G7 ITEM-26 HEADERS — 25 headers at 05c6e012 and 26 at C2; the set occurring more than once is UNCHANGED and exactly `Gate: R19 — the R18 entry.`; `Gate: R29 — the R28 entry.` occurs 1x, is the LAST such header, and the text after it begins `R28 ` once its leading space is stripped.
-- G8 THE IST-DOC — `git ls-tree` at 05c6e012 prints nothing for the path and at C3 prints its blob; the bytes at C3 equal the DOC slice at sha256 6f4a10254c81df2a53d8e90c5b4609833aed4428b8c255a6540ce542f93224fa over 154 lines, and the 154 lines C3's diff adds for that path are exactly the slice's lines in order.
-- G9 THE INDEX PAIRS — both APPEND-shaped, each containment test printed on its own line: `QUICK — TO contains FROM: True` and `SYS — TO contains FROM: True`; QUICKFROM 1x at 05c6e012 and 1x at C3 with QUICKTO 1x at C3, and the same three readings for SYSFROM/SYSTO; the ORDERED EQUALITY holds — C3 equals the base blob with each FROM's single occurrence replaced by its TO and nothing else — at sha256 4eeb90b7c2998ef2ebf04ecb790966d46672c28c8acc27cf889819f33d984d40, 230 lines against the base's 228; over the 2 lines C3 adds to `docs/README.md` each TO-ONLY row occurs exactly 1x.
-- G10 THE NEW ROWS ARE JUDGED — at C3 in the primary checkout the single case `TestPrimaryDocLinksResolve::test_every_relative_markdown_link_exists[docs/README.md]` PASSES at exit 0 (1 passed), reading the rows C3 added; the RED CONTROL, in the disposable worktree at C3 with both occurrences of `system/release-capability-v1.md` (2x there, 0x at 05c6e012) rewritten to `system/release-capability-v0.md` in `docs/README.md` alone, FAILS the same command at exit 1 with `AssertionError: docs/README.md has broken links: ['system/release-capability-v0.md', 'system/release-capability-v0.md']`; worktree removed and pruned, `git worktree list` back to 1 line and the tree clean before C4.
-- G11 SUITES, serial in the primary checkout, each started after the previous ENDED — `tests/docs/` 295 passed at exit 0, equal to the 295 the reviewer measured at 05c6e012, the count REPORTED and not predicted; then the four-file state-reader selection 160 passed at exit 0; then the canary 42 passed at exit 0.
-- G12 NO MARKER LEAKED — marker LINES beginning `<<<SLICE ` or `<<<END ` count 0 in `.agent/plan.md`, `.agent/live_review.md`, `docs/system/release-capability-v1.md` and `docs/README.md` at C4.
-- G13 CHANGE SET, HISTORY, HANDBACK — the range path set equals the Change list with no path on either side alone; all thirteen forbidden paths are present at 05c6e012 and untouched; the range is linear (each commit one parent) and every `git reflog` entry of this round is `commit:`; every `+/-` cell above is pasted from `git diff --numstat <sha>^ <sha>`, max insertion column 475 under the 500 cap; the `wc -l` of this file is in the round report, measured against the bound constraint 12 states; all seven mandated headings are present in the template's order with no section dropped.
-- G14 OPEN PR GATE — re-read at the handback, literal output `[]`. Nothing created, nothing merged.
+- G7 ITEM-26 HEADERS — 26 headers at ea4ac5fa and 27 at C2; the set occurring more than once is UNCHANGED and exactly `Gate: R19 — the R18 entry.`; `Gate: R30 — the R29 entry.` occurs 1x, is the LAST such header, and the text after it begins `R29 ` once its leading space is stripped.
+- G8 PRECONDITION 3 — met THROUGH THE MODULE `packages.orchestration.integrity_gate`; the `remedy` CLI is denied to this session class and was NOT run. All five `pass`: handler_import `handlers=338`; live_review_verdict (the ledger banner); plan_consistency `unchecked=0, context_complete=False`; relevant_untracked `untracked=0, relevant=0`; high_blockers_open `no open blocker/high findings`.
+- G9 PRECONDITION 2 — `python3 -m pytest -n auto -q` in the primary checkout at C2 with no other pytest process running: exit 0, `17192 passed, 20 skipped in 137.61s (0:02:17)`. Reported beside the integration gate's own `17192 passed, 20 skipped` at 39bfc199: the two readings are identical, and only a FAILURE would have ended the round.
+- G10 EVIDENCE BUNDLE — five `-v` logs written serially, one command each, at 6 / 12 / 9 / 7 / 42 passed with 0 skipped and exit 0 each. EVIDENCESCRIPT was written byte-verbatim to `.remedy-wt/f086_r30_build_evidence.py` (sha256 7d0c46d83cdaa81ed514bbeac6da9d6fb9095d1b511c158a2e18a2f44874cc42, 113 lines) and run unedited; it did not raise. Its per-run lines read vr-0001..vr-0005 selected 6 / 12 / 9 / 7 / 42 with node_ids equal to selected and 1 file each. The JSON summary: `head_commit` f5fa19c368ed15d14ee6067fc69fde4fbc7863a6, `total_passed` 76, `authority_count` 21, `commit_count` 210, `manual_completion` true, T001/T002/T003 partitioned 7/7/7, `verdict` `PASS_WITH_RISKS`. The evidence directory exists at `.remedy-wt/f086_closure_evidence/remedy-job-evidence-f086-closure` (27 entries). The gate's `READY` clause is DECLARED below, not repaired.
+- G11 REVIEW ZIP — `git status --porcelain` confirmed EMPTY first; the build exited 0 with `REVIEW_PACKAGE_CREATED=true`, `PACKAGE_STATUS=READY_FOR_REVIEW`, `REVIEW_SUBJECT_ALIGNMENT=PASS`, 10255 members. FILENAME `remedy-review-20260820-200318-READY_FOR_REVIEW.zip`, SHA-256 `bc140179628e8698ef2bd7354cfb30187554f277312f524c9d6ab0324b500855`. Read back OUT OF THE PACKAGE, `.review_zip_manifest.json` carries `committed_review_subject.base_commit` 76661dc1ff5ccc7cd4fe15ab88d53cff82d6d9dc and `.head_commit` f5fa19c368ed15d14ee6067fc69fde4fbc7863a6 — the head EQUALS C2 and the base EQUALS the branch point. The name ends `READY_FOR_REVIEW.zip`, so this is not a BLOCKED_EVIDENCE package. `git status --porcelain` was still EMPTY after the build.
+- G12 NO MARKER LEAKED — marker LINES count 0 in both `.agent/plan.md` and `.agent/live_review.md` at C3.
+- G13 CHANGE SET, HISTORY, HANDBACK — the range path set equals the Change list with no path on either side alone; `docs/roadmap/STATUS.md`, `README.md` and `.agent/candidates.md` are NOT in it; all thirteen forbidden files are present at ea4ac5fa and untouched, and no path under `apps/`, `packages/`, `tests/` or `docs/agents/` was touched; the range is linear (one parent each) and all four `git reflog` entries of this round are `commit:`; every `+/-` cell above for a commit before C3 is pasted from `git diff --numstat <sha>^ <sha>`, max insertion column 407 under the 500 cap; C3's own row and the `wc -l` of this file are in the round report, measured against the bound constraint 11 states; all seven mandated headings are present in the template's order.
+- G14 OPEN PR GATE — re-read at the handback, literal output `[]`. Nothing created, nothing merged; the PR belongs to R31.
 
 ## Authored-text proofs
 
-PLAN29, RECORD28, DOC, QUICKFROM, QUICKTO, SYSFROM and SYSTO were extracted PROGRAMMATICALLY from the committed C0a at 9253de0a and applied byte-verbatim; G3, G4, G8 and G9 are their disk-to-disk equalities. No slice was retyped, rewrapped or reformatted, and no marker line reached a target.
+PLAN30, RECORD29 and EVIDENCESCRIPT were extracted PROGRAMMATICALLY from the committed C0a at 740c7fbd and applied byte-verbatim; G3, G4 and G10 carry their disk-to-disk digests. No slice was retyped, rewrapped or reformatted, and no marker line reached a target.
 
 ## Deviations & assumptions
 
-None. The commit sequence was C0a, C0b, C1, C2, C3, C4 exactly as the block labels it — nothing added, dropped or reordered, and C3 wrote the ist-doc and both index rows together as constraint 5 requires. No slice needed the constraint 1 declaration.
+The commit sequence was C0a, C0b, C1, C2, C3 exactly as the block labels it — nothing added, dropped or reordered, and nothing was committed between C2 and the zip build. ONE constraint-1 DECLARATION: G10 orders "confirm the summary's final verdict is READY", and the producer emits no such value. `create_manual_completion_bundle` returned `verdict: PASS_WITH_RISKS`, with `final_job_review.json` `PASS` and `fresh_evidence_gate.json` `PASS`; `READY` occurs in the bundle only inside copied commit-patch text. READY is the ZIP's vocabulary, reported by G11 as `PACKAGE_STATUS=READY_FOR_REVIEW`. The script was run exactly as written, unedited, and this clause is declared rather than silently reinterpreted.
 
 ## Next
 
-The reviewer reviews 05c6e012..HEAD and records R29's verdict; CLOSURE is then the next and last round per docs/roadmap/STATUS_closure_protocol.md — evidence job, FRESH review zip, the STATUS line, the README capability sync in that same commit, and the PR.
+The reviewer reviews ea4ac5fa..HEAD and records R30's verdict; R31 is then the CLOSURE COMMIT — the `[x]` STATUS line, the README capability sync in that same commit, closure candidates, and the PR. R31's four measured values, exactly as the tools printed them:
+- evidence job id: `f086-closure`
+- package FILENAME: `remedy-review-20260820-200318-READY_FOR_REVIEW.zip`
+- package SHA-256: `bc140179628e8698ef2bd7354cfb30187554f277312f524c9d6ab0324b500855`
+- accepted HEAD: `f5fa19c368ed15d14ee6067fc69fde4fbc7863a6`
