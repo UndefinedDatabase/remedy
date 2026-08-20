@@ -15,22 +15,20 @@ path and the UI serve work, the version command matches the tag, and a release
 with a missing changelog entry is refused by the gate.
 
 ## Current Step
-R10, this round: land T002's reporting surface — `remedy --version` reading the
-version back through package metadata per DECISION F086 D2, with the build
-revision, the Python version and the platform, and reporting `dev` for whatever
-a checkout cannot prove. Record the R9 verdict. T001 is complete and proved: the
-wheel carries `apps/ui/dist`, and a build without it now fails loudly.
+R11, this round: close the session. Record the R10 verdict and write the
+reviewer's own session verdict to disk, so that no verdict this session issued
+exists only in a transcript (finding R-0571). No code, no test, no PR.
 
 ## Next Steps
-1. R11 — close this session: record the R10 verdict and write the reviewer's
-   session verdict to disk.
-2. Then the REVISION embedding, which T002 still owes: `resolve_build_revision()`
-   reads a `REVISION` file out of the installed distribution's metadata, and
-   nothing writes that file yet, so an installed wheel reports `dev` exactly as a
-   checkout does. The build hook `hatch_build.py` is where it gets written.
-3. Then T003 — the release CI stage, the changelog and tag gate, the wheel-size
-   budget and the seeded-failure tests; then the integration gate; then closure.
-   The packaging ist-doc is written at closure, when the built state stops moving.
+1. R12 — the REVISION embedding T002 still owes. `resolve_build_revision()` in
+   `apps/cli/version_report.py` reads a `REVISION` file out of the installed
+   distribution's metadata and NOTHING WRITES THAT FILE, so an installed wheel
+   reports `dev` exactly as a checkout does. `hatch_build.py` is where it gets
+   written, beside the asset guard that already lives there.
+2. Then T003 — the release CI stage, the changelog and tag gate, the wheel-size
+   budget and the seeded-failure tests.
+3. Then the install smoke, the integration gate, and closure. The packaging
+   ist-doc is written at closure, when the built state stops moving.
 
 ## Risks
 - The install smoke F086 requires creates a fresh virtualenv and runs the wheel's
