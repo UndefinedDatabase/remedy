@@ -14,36 +14,31 @@ path and the UI serve work, the version command matches the tag, and a release
 with a missing changelog entry is refused by the gate.
 
 ## Current Step
-R28: record R27's verdict, and register and fix R-0595 — a false test location in
-the F086 feature file's Built State — and R-0596 — the documentation link gate
-never evaluated the documentation index, because it parametrised by filename and
-two primary docs are both named README.md. The gate is repaired HERE so that R29's
-index rows are judged by a gate that works.
+R29: record R28's verdict and write the packaging ist-doc. `docs/system/` has had
+no page for what F086 built and AGENTS.md requires one; it was drafted for R27 and
+again for R28 and cut both times on the block cap, so DECISION F085 D5 gives it a
+round of its own. It lands with its two `docs/README.md` rows in the SAME commit
+as the file they point at, which is the first change R28's repaired link gate
+judges.
 
 ## Next Steps
-1. THE PACKAGING IST-DOC is R29's work and its FIRST work: `docs/system/` has no
-   page for what F086 built and AGENTS.md requires one. It was drafted for R27 and
-   again for R28, and cut each time on the block cap; DECISION F085 D5 requires the
-   design to change, so it now gets a round of its own. It lands with its two
-   `docs/README.md` rows in the SAME commit as the file they point at, and it must
-   land BEFORE the closure commit, whose path set R-0154 fixes at STATUS.md,
-   README.md and `.agent/`.
-2. CLOSURE then follows, per docs/roadmap/STATUS_closure_protocol.md — evidence
-   job, FRESH review zip, the STATUS line, the README capability sync in that SAME
-   commit, the PR. Precondition 4 is met: `## Built State` landed at `d420e8e5` and
-   R28 corrects one sentence of it. The open set closes PASS_WITH_RISKS, as F083
-   and F085 both did. That round CREATES the PR, so it is the branch terminator §4
-   item 13 describes and its verdict lives in the handoff and the PR.
-3. THE RELEASE WORKFLOW HAS NEVER BEEN RUN and NO INSTALL HAS EVER BEEN PROVEN;
-   no round of this workflow can do either. Both are human actions, and closure
-   names them as unproven rather than counting a skipped test as coverage.
+1. CLOSURE is the next round and the last, per docs/roadmap/STATUS_closure_protocol.md
+   — evidence job, FRESH review zip, the STATUS line, the README capability sync in
+   that SAME commit, the PR. Precondition 4 is met: `## Built State` landed at
+   `d420e8e5` and R28 corrected one sentence of it. The open set closes
+   PASS_WITH_RISKS, as F083 and F085 both did. That round CREATES the PR, so it is
+   the branch terminator §4 item 13 describes, and its verdict lives in the handoff
+   and the PR rather than in a later gate entry.
+2. THE RELEASE WORKFLOW HAS NEVER BEEN RUN and NO INSTALL HAS EVER BEEN PROVEN; no
+   round of this workflow can do either. Both are human actions, and closure names
+   them as unproven rather than counting a skipped test as coverage.
 
 ## Risks
 - Closure needs a FRESH review zip and a zip failure is a closure blocker; the zip
   packages `.remedy-wt/`, which R-0403 registered and which no round has paid down.
 - `tests/test_install_smoke.py` SKIPS everywhere it currently runs. Its unit
   coverage is real; its install coverage is zero until the variable is set.
-- Ruff is RED repo-wide at 26 pre-existing errors and is NOT a gate; a round
-  touching Python gates ruff scoped to the files it touches, by multiset.
+- Ruff is RED repo-wide at 26 pre-existing errors and is NOT a gate; this round
+  touches no Python at all, so it gates ruff nowhere.
 - `remedy integrity check` is denied to this session class, so closure precondition
   3 is met through the underlying module or declared unmet — never assumed.
