@@ -14,27 +14,28 @@ path and the UI serve work, the version command matches the tag, and a release
 with a missing changelog entry is refused by the gate.
 
 ## Current Step
-R15, this round: the DATA and the CALLER. `CHANGELOG.md` with a section for the
-version `pyproject.toml` declares, `scripts/release_gate_check.py` observing a
-release from the built wheel's filename, the changelog on disk and the wheel's
-own size, and tests driving both over this repository's real values. From here
-the gate refuses something real.
+R16, this round: the TRIGGER, and the session closes. A manual-trigger
+`.github/workflows/release.yml` builds the wheel, reads this commit's real CI
+conclusion and calls `scripts/release_gate_check.py`; text guards keep it manual,
+thin and publish-free. Then the R15 verdict is recorded and the reviewer's own
+session verdict is written to disk (finding R-0571).
 
 ## Next Steps
-1. R16 — the TRIGGER: a manual-trigger `.github/workflows/release.yml` that
-   builds the wheel, reads the CI run's conclusion for the commit and calls
-   `scripts/release_gate_check.py`, with text guards of the kind
-   `tests/orchestration/test_ci_workflow.py` already applies to `ci.yml`. R15
-   left it out for block budget, not doubt: DECISION F085 D6 caps a block at
-   490 lines and that slice did not fit beside the caller's.
-2. Then the install smoke, the integration gate, and closure. The packaging
-   ist-doc is written at closure, when the built state stops moving.
+1. The install smoke T2_F086 T001 still owes: a fresh virtualenv, the wheel
+   installed into it, `remedy` on PATH, and the golden path and the UI serve
+   probed from it. The round that writes it must name its execution host.
+2. Then the integration gate (docs/agents/integration_gate.md) and closure. The
+   packaging ist-doc is written at closure, when the built state stops moving.
+3. THE RELEASE WORKFLOW HAS NEVER BEEN RUN. It is gated as TEXT, the way
+   `tests/orchestration/test_ci_workflow.py` gates `ci.yml`. No round can
+   dispatch it; its first real run is a human action, and its guards check what
+   they say and nothing more.
 
 ## Risks
-- The install smoke F086 requires creates a fresh virtualenv and runs the wheel's
-  console script. This session's permission layer refuses to execute any
-  interpreter under `.remedy-wt/`, so the round that writes it must name its
-  execution host or it will be unverifiable where it matters.
+- The install smoke creates a fresh virtualenv and runs the wheel's console
+  script. This session's permission layer refuses to execute any interpreter
+  under `.remedy-wt/`, so the round that writes it must name its execution host
+  or it will be unverifiable where it matters.
 - A build tool's file selection depends on WHERE the tree is: hatchling drops
   every VCS exclusion when the build root is gitignore-matched, so any packaging
   probe uses a worktree OUTSIDE this repository (finding R-0574).
