@@ -15,18 +15,17 @@ the heartbeat holds cadence, and the fallback engages on a disabled EventSource
 and recovers to live.
 
 ## Current Step
-R30 records the R29 verdict and amends R-0429 with the F008 R29 instance: the
-R29 verdict slice reported this branch's `Gate: R` count moving 28 to 29, which
-is R29's OWN movement, where the round it was judging moved 27 to 28 — and the
-clause beside it in the same sentence gave the correct reading. It changes no
-code. T003's client is complete and the DELAYED badge now sits on the live
-pill, gated by a source contract; only the endpoint wiring is left.
+R31 records the R30 verdict — PASS, every gate re-run by the reviewer out of the
+committed blobs — and builds the real `BrainStreamHostDeps` factory over the
+endpoint T001 and T002 shipped: `createBrainStreamHostDeps`, the cursor
+arithmetic that makes a resume replay nothing and skip nothing, and the readers
+for the events-since envelope, each gated by its own vitest tests. The factory
+takes its environment INJECTED, so no global is read yet.
 
 ## Next Steps
-1. R31 builds the real `BrainStreamHostDeps` factory over the endpoint T001 and
-   T002 shipped — `openSource`, `readSnapshotSeq`, `readTail` and `schedule`,
-   with its own vitest tests — then wires `useBrainStream` into `RemedyApp` and
-   passes its status down to the badge: the round in which this feature's two
+1. R32 binds that environment to the browser's EventSource, fetch and timer,
+   wires `useBrainStream` into `RemedyApp` over the new factory and passes its
+   status down to the badge R29 built — the round in which this feature's two
    halves meet.
 2. Then the integration gate before closure.
 
