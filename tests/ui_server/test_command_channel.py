@@ -951,8 +951,69 @@ class TestCommandRateLimiter:
         assert (stale, job) not in _COMMAND_RATE_WINDOWS
         assert (later, job) in _COMMAND_RATE_WINDOWS
 
+    #: How long a thread waits for a flag it expects, or for one it expects NOT to see.
+    #: A second is six orders of magnitude more than an unlocked entry needs — a caller
+    #: that is not excluded reaches the critical section in microseconds — so the gap
+    #: between "excluded" and "not excluded" is not a race this value could decide wrongly.
+    MUTEX_WAIT_SECONDS = 1.0
+
+    def test_the_lock_actually_excludes_a_second_caller(self):
+        """Mutual exclusion OBSERVED, through the `now` injection the function already has.
+
+        Finding R-0634: the eight-thread test below names this lock and cannot detect it —
+        with `_COMMAND_RATE_LOCK` removed it stayed green ten times out of ten, because
+        nothing in it ever holds the critical section long enough for a second thread to
+        collide. This test makes the injected clock the suspension point instead: `now()`
+        is called INSIDE the critical section, so a `now` that blocks there holds the lock
+        while a second thread tries to enter. No production hook is added for it.
+        """
+        from packages.orchestration.ui_server import accept_command_under_rate_limit
+        fingerprint, job = self._fingerprint(), str(uuid4())
+        a_inside = threading.Event()
+        b_attempting = threading.Event()
+        b_entered = threading.Event()
+        seen: dict[str, bool] = {}
+
+        def now_a() -> float:
+            # Called with the lock HELD. Everything below happens inside it.
+            a_inside.set()
+            seen["b_attempted"] = b_attempting.wait(self.MUTEX_WAIT_SECONDS)
+            seen["b_entered_while_a_held"] = b_entered.wait(self.MUTEX_WAIT_SECONDS)
+            return 5000.0
+
+        def now_b() -> float:
+            b_entered.set()
+            return 5000.0
+
+        def call_b() -> None:
+            b_attempting.set()
+            accept_command_under_rate_limit(fingerprint, job, 5, now=now_b)
+
+        thread_a = threading.Thread(
+            target=accept_command_under_rate_limit,
+            args=(fingerprint, job, 5), kwargs={"now": now_a})
+        thread_a.start()
+        assert a_inside.wait(10), "thread A never reached the critical section"
+        thread_b = threading.Thread(target=call_b)
+        thread_b.start()
+        thread_a.join(timeout=10)
+        thread_b.join(timeout=10)
+
+        assert seen.get("b_attempted") is True, (
+            "thread B never attempted entry, so this test proved nothing")
+        assert seen.get("b_entered_while_a_held") is False, (
+            "thread B entered the critical section while thread A held it — no exclusion")
+        assert b_entered.wait(10), (
+            "thread B never entered at all, even after A released — the run was degenerate")
+        assert not thread_a.is_alive() and not thread_b.is_alive()
+
     def test_concurrent_callers_never_oversubscribe_one_budget(self):
-        """The lock is the point: two threads must not both take the last unit."""
+        """A smoke check on the AGGREGATE: eighty attempts against a budget of twenty.
+
+        It does not observe the lock — see `test_the_lock_actually_excludes_a_second_caller`
+        for that (finding R-0634). What it does cover is the arithmetic under real
+        concurrency: the accepted total is exactly the budget, never more and never fewer.
+        """
         from packages.orchestration.ui_server import accept_command_under_rate_limit
         fingerprint, job = self._fingerprint(), str(uuid4())
         limit = 20
