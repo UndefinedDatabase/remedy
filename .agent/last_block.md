@@ -1,128 +1,110 @@
-── STEP R20 — F255 Teacher role · CLOSURE EVIDENCE, REPAIRED ───
-Goal:        Produce the two closure artifacts R19 could not, because the
-             reviewer's own EVIDENCESCRIPT slice was defective. R19's SEVEN
-             commits are all correct and none is redone: the plan, the R-0610
-             resolution, the R18 verdict and the Built State section stay exactly
-             as they landed. This round registers R-0611 against that slice,
-             records the R19 verdict, and then runs a CORRECTED evidence job and
-             builds the review zip. It authors no STATUS line; that is the next
-             round's, because the line quotes values only this round can produce.
+── STEP R21 — F255 Teacher role · CLOSURE ──────────────────────
+Goal:        CLOSE F255. R20 PASSED and built both artifacts: the evidence bundle
+             and a READY_FOR_REVIEW package the reviewer re-hashed off disk. This
+             round records that verdict, then writes the STATUS `[x]` line, syncs
+             the README in the SAME commit, empties the closure-candidate carrier,
+             and opens the pull request. The PR is NOT merged in this session: it
+             merges at the NEXT feature's Open PR Gate, which is the operator's
+             manual-review window.
 
-Bundle:      C0a save this block · C0b mirror it · C1 the plan, FIRST · C2
-             register R-0611 · C3 record the R19 verdict · then the evidence job
-             and the zip, from the clean tree at C3 · C4 the handback, then push.
+Bundle:      C0a save this block · C0b mirror it · C1 the plan, FIRST · C2 record
+             the R20 verdict · C3 THE CLOSURE COMMIT — STATUS, README and the
+             candidate carrier together · then the pull request · C4 the handback,
+             then push.
 
-Change:      Exactly these paths, in this order, one commit each.
-             C0a `.agent/authored/f255-r20.md`
+Change:      Exactly these paths, in this order.
+             C0a `.agent/authored/f255-r21.md`
              C0b `.agent/last_block.md`
              C1  `.agent/plan.md`
              C2  `.agent/live_review.md`
-             C3  `.agent/live_review.md`
+             C3  `docs/roadmap/STATUS.md`, `README.md` and
+                 `.agent/candidates.md` — ONE commit, never three
              C4  `.agent/handoff.md`
-             Nothing else is created, modified, deleted or staged in the TRACKED
-             tree. NO source file and NO test file is touched, and NOTHING R19
-             committed is amended or reverted. THE EVIDENCE DIR AND THE ZIP ARE
-             NEVER COMMITTED. These paths are PRESENT at the base `b42cab39` and
-             must stay untouched: `docs/roadmap/features/T5_F255.md`,
+             Nothing else is created, modified, deleted or staged. NO source file
+             and NO test file is touched. These paths are PRESENT at the base
+             `a4f0fafd` and must stay untouched:
+             `docs/roadmap/features/T5_F255.md`, `.agent/decisions.md`,
              `packages/orchestration/teacher_model.py`,
-             `apps/cli/commands/teach_cmd.py`, `docs/roadmap/STATUS.md`,
-             `README.md`. The last two are R21's closure commit and must not move
-             early.
+             `apps/cli/commands/teach_cmd.py`.
 
-             WHAT WENT WRONG, SO THE REPAIR IS UNDERSTOOD RATHER THAN COPIED. The
-             R19 EVIDENCESCRIPT built its node-id list by matching `-v` output
-             against a pattern requiring a run of NON-WHITESPACE characters after
-             `::`. One id in this feature's own suite is
-             `tests/orchestration/test_teacher_qa.py::TestGroundingSourcesAreLabelled::test_no_code_fact_without_real_code`
-             followed by a parametrised suffix CONTAINING SPACES, so 18 of 19 ids
-             parsed, `len(node_ids) == selected` failed by one, and the script
-             aborted before writing anything. The reviewer reproduced this at
-             `b42cab39`: the same pattern yields 18 while the suite reports 19
-             passed. THE FIX IS THE ROUTE THE CLOSURE PROTOCOL ALREADY NAMES —
-             its producer-pitfall (a) says to run `--collect-only` for real ids —
-             so node ids now come from a `--collect-only -q` listing, one id per
-             line, and are never parsed out of `-v` output. The reviewer measured
-             all six listings at `b42cab39`: 18, 19, 5, 38, 19 and 42 ids, each
-             equal to that suite's passed count, with the whitespace id present
-             and intact in the second.
+             WHY STATUS AND README SHARE ONE COMMIT (R-0154): the README's
+             accepted COUNT and its tier-table Done column are both pinned to the
+             STATUS ledger by `tests/docs/test_docs_consistency.py`, so any
+             committed state in which one has moved and the other has not is RED.
+             They may never disagree in any committed state, which a two-commit
+             split cannot honour. `.agent/candidates.md` joins them because
+             `.agent/**` is already inside the R-0154 path set and the carrier is
+             read at the NEXT feature's bootstrap.
 
-             THE TWELVE CAPTURES, AFTER C3 AND FROM A CLEAN TREE. Run SERIALLY,
-             never two pytest processes at once, writing into
-             `.remedy-wt/.cache/r20_logs/`. For each suite capture BOTH a `-v`
-             log, which supplies the counts, the duration and the stdout summary,
-             and a `--collect-only -q` listing, which supplies the node ids:
-               vr0001  tests/orchestration/test_teacher_model.py      expect 18
-               vr0002  tests/orchestration/test_teacher_qa.py         expect 19
-               vr0003  tests/orchestration/test_teacher_spend.py      expect 5
-               vr0004  tests/orchestration/test_teacher_narration.py  expect 38
-               vr0005  tests/cli/test_teach_cmd.py                    expect 19
-               vr0006  tests/cli/test_golden_path.py                  expect 42
-             naming them `vrNNNN.txt` and `vrNNNN.ids.txt`. The `-v` command is
-             `python3 -m pytest <suite> -v` and the listing command is
-             `python3 -m pytest <suite> --collect-only -q`. Every one must exit 0
-             with 0 failed and 0 skipped. THE FULL SUITE IS DELIBERATELY NOT A
-             VERIFICATION RECORD: a full-suite node-id list packages
-             BLOCKED_EVIDENCE, and that proof rides in the committed
-             `.agent/gate_f255_r18/` evidence instead.
-             Then save the EVIDENCESCRIPT2 slice to
-             `.remedy-wt/.cache/r20_evidence.py` and run it UNEDITED with
-             `python3`. It writes the bundle to
-             `.remedy-wt/f255_closure_evidence/remedy-job-evidence-f255-closure`.
-             If that directory already exists from a previous attempt, DELETE it
-             first so the bundle is built from scratch rather than merged into a
-             stale one. Report the summary dict it prints, in full.
+             WHY THE HANDBACK IS ITS OWN COMMIT AFTER THE PR. Rule A4 makes the
+             STATUS edit the last CONTENT commit, and DECISION F085 D9 rules that
+             A4 does not seal the branch: a verdict or a record that lives only in
+             a chat window is one this project cannot audit. The pull request is
+             created AFTER C3 and its number is a value C3 cannot contain, so the
+             handback that must record it is written after it exists.
 
-             THE REVIEW ZIP, MANDATORY AND FRESH. With the tree still clean and
-             the branch pushed, run
-             `bash scripts/make_review_zip.sh --evidence-dir <the bundle dir>`
-             and report its REAL output: the final zip filename, its SHA-256 and
-             the PACKAGE_STATUS, plus the manifest's `committed_review_subject`
-             base and head commits. A FAILING ZIP BUILD IS A CLOSURE BLOCKER —
-             report the raw error, write the handback and end the round. Do NOT
-             assert the bundle contains the value `READY`: `READY_FOR_REVIEW` is
-             the ZIP's vocabulary while the bundle's own verdicts read `PASS` or
-             `PASS_WITH_RISKS` (R-0597). Report what each artifact really says.
+             THE VALUES IN THE STATUS LINE ARE R20'S, RE-MEASURED BY THE REVIEWER
+             AT `a4f0fafd` RATHER THAN COPIED FROM THE HANDBACK: the package
+             `remedy-review-20260821-051015-READY_FOR_REVIEW.zip` hashes to
+             f142a9935d2730c01a80d98a619d2b297899c144f29ad16fd5c01aa1f493fcc2 over
+             60194458 bytes with `zipfile.testzip()` returning None and 10646
+             members; its own `.review_zip_manifest.json` reads
+             `package_status` READY_FOR_REVIEW with `committed_review_subject`
+             base b35d350b84b1d371064a1f44e43f40da3ccfa540 and head
+             c96f82c3372520bfd0545c7ce640886479197a08, and that head is the commit
+             R20's C3 created. The evidence bundle holds 27 entries and its
+             `final_verifier_report.json` reads verdict PASS_WITH_RISKS.
+
+             THE PULL REQUEST, after C3 and before C4. Title:
+             `F255 — Teacher role (Tier 5)`. The description carries what changed
+             and why, the four DECISIONs D7 through D10, how to review, a
+             changed-files summary, the latest verdict, the open-findings count
+             and the runtime actuals below. DO NOT MERGE IT and do not enable
+             auto-merge. Report the PR number and URL.
+             RUNTIME ACTUALS, observed only — `not-measured` beats a guess:
+             rounds R1 through R21 on this branch; 21 rounds, of which this
+             session drove R16 through R21; models and token cost `not-measured`,
+             because no ledger row covers the reviewer's or the worker's own
+             session; the full suite runs `17315 passed, 20 skipped` in about
+             145 s with `-n auto`.
 
 Constraints:
-1. NO SLICE IS EDITED, including EVIDENCESCRIPT2, which is SAVED AND RUN
-   UNEDITED. If it too proves defective, DECLARE that with the real traceback and
-   end the round; do not repair a reviewer's script on your own initiative. R19's
-   worker did exactly that and it is why this repair is possible.
-2. TRANSPORT. `.remedy-wt/f255-r20.md` is this block on disk. C0a copies that
-   FILE to `.agent/authored/f255-r20.md` and C0b copies the same file to
+1. NO SLICE IS EDITED. Every text between the SLICE and END markers is applied
+   byte for byte, and every FROM is matched EXACTLY once in its target file
+   before its TO replaces it. A slice you believe is wrong is applied anyway and
+   DECLARED. Marker lines never reach a target file.
+2. TRANSPORT. `.remedy-wt/f255-r21.md` is this block on disk. C0a copies that
+   FILE to `.agent/authored/f255-r21.md` and C0b copies the same file to
    `.agent/last_block.md`. Prove all three byte-EQUAL.
 3. THE PLAN COMES FIRST (R-0377, R-0491, R-0548). Only C0a and C0b precede it.
-4. THE FINDING PERSISTS BEFORE THE VERDICT. C2 registers R-0611 and C3 records
-   the R19 verdict, in that order (§4.4). This round registers ONE finding and
-   resolves NONE: registered goes 186 to 187, resolved stays 4, open goes 182 to
-   183.
-5. BOTH APPENDS ARE BLANK-SEPARATED (R-0578), each preceded by exactly one blank
-   line, and FIND0611 and RECORDR19 are EACH single-paragraph — the reviewer
-   measured each for an interior blank line and found none — so the LAST-UNIT
-   paragraph reading is exact for each.
-6. THIS ROUND CONTAINS NO FROM/TO PAIR (§4.9, R-0207).
+4. THIS ROUND REGISTERS NO FINDING AND RESOLVES NONE: registered stays 187,
+   resolved stays 4, open stays 183. RECORDR20 is a `Gate:` paragraph and adds
+   neither kind of line.
+5. RECORDR20 IS SINGLE-PARAGRAPH — the reviewer measured it for an interior blank
+   line and found none — and is appended preceded by exactly one blank line
+   (R-0578), so the LAST-UNIT paragraph reading is exact for it.
+6. THE FOUR PAIRS ARE ALL REWRITES, and the reviewer measured each mechanically
+   rather than by eye (checklist item 15). For every pair, `TO contains FROM:
+   false`, so each owes the REWRITE proof — FROM 0x and TO 1x in the target after
+   the edit — and none owes an append reading. Each FROM occurs EXACTLY 1x in its
+   target at `a4f0fafd`, measured by the reviewer.
 7. YOU NEVER WRITE A `Done:` OR A `Landed:` PARAGRAPH.
-8. THE EVIDENCE DIR AND THE ZIP ARE NEVER COMMITTED, AND THE ZIP IS BUILT FROM A
-   CLEAN TREE AFTER C3 WITH THE BRANCH PUSHED. A package built from a dirty tree
-   is invalid.
-9. `.agent/STOP` is read from disk before C0a. If it exists, stop and write the
+8. `.agent/STOP` is read from disk before C0a. If it exists, stop and write the
    handback instead.
-10. `git status --porcelain` is EMPTY after every commit, immediately BEFORE the
-    zip build, and at the handback. No git worktree is created.
-11. YOU DO NOT WAIT ON ANY CI RUN, YOU CREATE NO PULL REQUEST, and you edit
-    NEITHER `docs/roadmap/STATUS.md` NOR `README.md`.
-12. THE FORTSCHRITT LINE THIS BLOCK MANDATES IS TRUE ONLY IF THE ZIP IS BUILT. If
-    the zip does not build, say so in the handback IN PLACE of that line rather
-    than carrying a sentence the disk contradicts — R19 carried a mandated line
-    whose third clause was false and had to annotate it, and that is the
-    reviewer's defect to avoid repeating, not the worker's to inherit.
+9. `git status --porcelain` is EMPTY after every commit and at the handback. No
+   git worktree is created. The zip and the evidence dir are NOT committed and
+   NOT deleted.
+10. YOU DO NOT MERGE THE PULL REQUEST, you do not enable auto-merge, and you do
+    not wait on the CI run the push starts. If `gh` cannot create the PR, report
+    the raw error, write the handback and end — the branch is still closed on
+    disk and the PR is the only thing missing.
 
-<<<SLICE PLAN255R20
+<<<SLICE PLAN255R21
 # Plan — F255 Teacher role
 
 Branch: feature/f255-teacher-role, cut from `main` at b35d350b, the merge commit
-of pull request #207. No pull request is open for this branch; on this project
-the PR is created by the closure round.
+of pull request #207. The closure pull request is created by THIS round and is
+NOT merged in this session; it merges at the next feature's Open PR Gate.
 `.agent/live_review.md` is the source of truth for the open set, for the next
 free finding id and for the round map; this file repeats none of them.
 
@@ -133,269 +115,194 @@ DONE when passive narration keyed to an enumerated set of ledger events (Stage 1
 deterministic templates, zero tokens) and on-demand Q&A (Stage 2, through the
 teacher role's own model) both work, the three grounding sources are never mixed
 silently, teacher spend is reported as its own role in the F103 ledger, and the
-read-only invariant is proven behaviourally.
+read-only invariant is proven behaviourally. ALL FOUR HOLD and are reviewed.
 
 ## Current Step
-R20 REPAIRS the closure evidence. R19 committed everything correctly and could
-not build its artifacts because the reviewer's evidence script parsed node ids
-out of `-v` output and one parametrised id in this feature's own suite contains
-whitespace. This round registers that as R-0611, records the R19 verdict, and
-re-runs the evidence job with ids taken from `--collect-only`, then builds the
-review zip.
+R21 CLOSES F255. It records the R20 verdict, writes the STATUS `[x]` line with
+the package and `accepted HEAD` values R20 produced, syncs the README count, tier
+table and accepted list in the SAME commit, empties the closure-candidate
+carrier, and opens the pull request.
 
 ## Next Steps
-1. R21 CLOSES THE FEATURE: the reviewer authors the STATUS `[x]` line from the
-   values THIS round's zip reports, the worker applies it verbatim in the SAME
-   commit as the README capability sync (R-0154), writes any closure candidates
-   to `.agent/candidates.md`, and opens the pull request. That PR is NOT merged
-   in its own session; it merges at the NEXT feature's Open PR Gate, which is the
-   operator's manual-review window.
+1. The next session's FIRST action is Phase 1 rule 1, the `.agent/STOP` re-read,
+   and its SECOND is the Open PR Gate, which merges this feature's pull request
+   before any new branch is cut. Rule A5 then selects F008 — SSE event stream —
+   as the next feature, it being the first `[ ]` in STATUS order.
 
 ## Risks
-- A FAILING ZIP IS A CLOSURE BLOCKER, not a retry. The feature goes `[!]` with a
-  stated reason rather than closing without a package.
-- THE CLOSURE PRECONDITIONS OTHER THAN THE PACKAGE ARE MET AND MEASURED: the
-  integrity gate passes with no open blocker or high finding, the Built State
-  section landed at R19, the full suite passed the R18 gate with 0 branch-only
-  failures, and the tree is clean and pushed.
-- R-0607, R-0608, R-0609 AND R-0611 REMAIN OPEN by design: all four are
-  reviewer-process defects whose fixes edit `docs/agents/` or the closure
-  protocol, paths the closure commit's own R-0154 path set cannot reach.
-<<<END PLAN255R20
-<<<SLICE FIND0611
-- R-0611 — Medium — A REVIEWER-AUTHORED EVIDENCE SCRIPT BUILT ITS NODE-ID LIST BY PARSING `-v` OUTPUT, AND A PARAMETRISED ID CONTAINING WHITESPACE MADE THE CLOSURE ARTIFACTS UNBUILDABLE. The EVIDENCESCRIPT slice of the F255 R19 block, committed at `c331d481`, extracted node ids with a pattern requiring `tests/` followed by runs of NON-WHITESPACE around `::`. This feature's own suite contains `tests/orchestration/test_teacher_qa.py::TestGroundingSourcesAreLabelled::test_no_code_fact_without_real_code` with a parametrised suffix whose value is whitespace, so the pattern stopped at the first space and yielded 18 ids for a suite reporting 19 passed. `create_manual_completion_bundle` was never reached: the script's own `len(ids) == selected` assertion fired first, `AssertionError: ('vr-0002', 18, 19)`, and it exited 1 identically on both attempts. NO EVIDENCE DIRECTORY AND NO ZIP WERE PRODUCED, so F255 could not close in that round. Re-measured by the reviewer at `b42cab39`: the same pattern returns 18 ids against 19 passed, while `python3 -m pytest tests/orchestration/test_teacher_qa.py --collect-only -q` returns 19, the whitespace id present and intact; across all six scoped suites the listings return 18, 19, 5, 38, 19 and 42, each equal to that suite's passed count. THE COUNTER-MEASURE WAS ALREADY ON DISK AND THE BLOCK DID NOT USE IT: docs/roadmap/STATUS_closure_protocol.md's producer-pitfall (a) states that verification records need non-empty node ids with `len(node_ids) == selected` and says, in the same clause, to run `--collect-only` for real ids. The reviewer instead re-derived an id extractor from the F086 R30 script, which had never met a parametrised id containing whitespace, and so carried a latent defect forward as though it were proven practice — the R-0452 and R-0454 shape, a rule that lives in a document the block did not consult. THIS IS NOT A DUPLICATE OF R-0448 OR R-0490, and the open set was searched for the DEFECT before this id was minted, as item 30 requires: both are OPEN, both are closure-block defects that produced a BLOCKED_EVIDENCE PACKAGE — an unsorted `test_files` list and an `output_hash` taken over the wrong text — and both were repaired inside their own round because a package existed to diagnose. This one aborts EARLIER, before any bundle is written, so there is no package and no validator message to read, and its fix is a different clause of the same pitfall list. WHY MEDIUM: nothing false reached disk and no work is wrong — R19's seven commits are all correct and none needs redoing — but the round could not meet its goal, the closure slipped a round, and a mandated Fortschritt line claiming the artifacts were built landed in `.agent/handoff.md` at `b42cab39` where the worker had to annotate it as false rather than carry it silently. FIX: node ids for a verification record come from a `--collect-only -q` listing, one id per line, and are never parsed out of `-v` output; the `-v` log supplies only counts, duration and `stdout_summary`. The reviewer runs the script's own assertions against the real logs BEFORE emitting the block that orders it, which is checklist item 12's dry-run rule applied to an authored script rather than to a gate command.
-<<<END FIND0611
-<<<SLICE RECORDR19
-Gate: R20 — the R19 entry. R19'S SEVEN COMMITS ARE ALL CORRECT AND ITS GOAL IS UNMET, and both halves of that sentence are load-bearing. THE CLOSURE ARTIFACTS DO NOT EXIST: the reviewer confirmed at `b42cab39` that `.remedy-wt/f255_closure_evidence` is absent from disk and that no review zip was produced by this round, so nothing in this record may be read as a package, and R21 cannot write a STATUS line until R20 builds one. THE CAUSE IS THE REVIEWER'S OWN SLICE, registered this round as R-0611: the EVIDENCESCRIPT extracted node ids from `-v` output with a non-whitespace pattern, one parametrised id in `tests/orchestration/test_teacher_qa.py` contains spaces, 18 ids parsed against 19 passed, and the script's own assertion aborted it before `create_manual_completion_bundle` was ever called. THE WORKER'S CONDUCT IS THE REASON THE REPAIR IS CHEAP: it saved the slice byte-equal, ran it UNEDITED, reproduced the failure identically twice, measured the exact cause down to the offending id, and then STOPPED — it did not edit the reviewer's script, did not substitute `--job-id` for `--evidence-dir`, did not hand-build a bundle, and did not package an evidence-less NO_EVIDENCE snapshot that would have misreported a feature which is not docs-only. Each of those shortcuts would have produced an artifact and a false record; refusing all four is what constraint 1 exists to produce. EVERYTHING ELSE R19 WAS ASKED FOR LANDED AND VERIFIES, re-measured by the reviewer rather than read from the handback. Transport: `.remedy-wt/f255-r19.md`, `.agent/authored/f255-r19.md` at `c331d481` and `.agent/last_block.md` at `9a67a1c7` byte-EQUAL at sha256 2932c9f6ccae2646699b065991fe11441552557bba7b9b1d7739c111330001ee over 32800 B and 441 lines, the digest stated at delegation. FIVE SLICES, a count from the reviewer's own ordered extraction: PLAN255R19 2293 B 41 lines; DONE0610 1761 B 1 line; RECORDR18 4775 B 1 line; BUILTSTATE 3657 B 53 lines; EVIDENCESCRIPT 4066 B 108 lines. THE PLAN LANDED FIRST at `f8bb754c`, byte-equal to PLAN255R19 at 41 lines, under the 50-line cap, with `## Goal` and `## Next Steps` each once and the F-id present. R-0610 IS RESOLVED at `e49dc4da` and the R18 VERDICT IS RECORDED at `312f236d`, in that order, each a byte-exact prefix-plus-remainder append preceded by exactly one blank line. THE SETS MOVED BY EXACTLY ONE RESOLUTION: 186 registered / 3 resolved / 183 open / 0 line-anchored `Landed:` at `195b6cf3`, then 186 / 4 / 182 / 0 at both `e49dc4da` and `312f236d`, a `Gate:` paragraph adding neither kind of line. CLOSURE PRECONDITION 4 IS NOW TRUE: `## Built State` occurs 0x in `docs/roadmap/features/T5_F255.md` at `195b6cf3` and 1x at `d8a3dda4`, and the section names every module F255 shipped, the four DECISIONs that shaped them and the deliberate absences. CLOSURE PRECONDITION 3 HOLDS, measured through the same code the denied CLI runs: `run_integrity_checks` reports passed=true, fail_count=0 over five checks, with `high_blockers_open` reading "no open blocker/high findings" — which is what makes the whole open set a documented Medium or Low risk rather than a bar to closure — and `relevant_untracked` reading 0. THE SIX SCOPED SUITES ARE GREEN AND SERIAL at 18, 19, 5, 38, 19 and 42 passed, 0 failed and 0 skipped throughout, and the canary and the state-reader four are exit 0 at 42 and 160 passed. THE RANGE HOLDS: six paths over seven single-parent commits, insertions 441, 392, 19, 2, 2, 54 and 41, every one under the 500 cap; neither `docs/roadmap/STATUS.md` nor `README.md` appears in the range, which is what the block required of a round that must not close early; zero marker leaks; the tree clean and `origin/feature/f255-teacher-role` equal to the branch tip. THE HANDBACK IS HONEST ABOUT ITS OWN MANDATED TEXT, which is the detail worth keeping: the Fortschritt line this reviewer ordered verbatim claims the evidence job and review zip were built at that round, the disk says otherwise, and the worker carried the line as ordered while stating directly above it that the clause is false as measured. A handback that contradicts its own mandated sentence rather than quietly rewriting it is the correct resolution of two rules that could not both hold, and the defect is the reviewer's for mandating a sentence about an outcome the round had not yet reached.
-<<<END RECORDR19
-<<<SLICE EVIDENCESCRIPT2
-import json
-import os
-import re
-import subprocess
-from datetime import datetime, timezone
+- FOUR FINDINGS REMAIN OPEN and none is a code defect: R-0607, R-0608, R-0609 and
+  R-0611 are all reviewer-process defects whose fixes edit `docs/agents/` or the
+  closure protocol, paths the closure commit's own R-0154 path set cannot reach.
+  They route to a paydown branch and are named in the pull request.
+- THE PACKAGE PACKAGES `.remedy-wt/` SCRATCH, which is the already-registered
+  R-0403 and not a new condition of this closure.
+<<<END PLAN255R21
+<<<SLICE RECORDR20
+Gate: R21 — the R20 entry. R20 PASSED and BOTH CLOSURE ARTIFACTS EXIST, which is what R19 could not deliver. NO finding is registered against it: the round did exactly what its block ordered and declared no deviation. THE PACKAGE IS REAL AND THE REVIEWER RE-MEASURED IT OFF DISK rather than reading the handback: `remedy-review-20260821-051015-READY_FOR_REVIEW.zip` is 60194458 bytes at sha256 f142a9935d2730c01a80d98a619d2b297899c144f29ad16fd5c01aa1f493fcc2 — the digest R20 reported — with `zipfile.testzip()` returning None and 10646 members, and its own `.review_zip_manifest.json` reading `package_status` READY_FOR_REVIEW over a `committed_review_subject` whose base is b35d350b84b1d371064a1f44e43f40da3ccfa540, whose head is c96f82c3372520bfd0545c7ce640886479197a08 — the commit R20's C3 created — with `base_is_ancestor` true across 136 commits and 61 files. THE EVIDENCE BUNDLE IS COMPLETE: 27 entries under `.remedy-wt/f255_closure_evidence/remedy-job-evidence-f255-closure`, `final_verifier_report.json` reading verdict PASS_WITH_RISKS, the summary dict reading the same with 141 total passed across three attested tasks, and the string `READY` appearing NOWHERE in that report — which is correct, `READY_FOR_REVIEW` being the zip's vocabulary and not the bundle's (R-0597), and the block having asked what the artifacts SAY rather than asserting a value. THE REPAIR WORKED FOR THE REASON IT WAS DESIGNED TO: EVIDENCESCRIPT2 took node ids from `--collect-only -q` listings instead of parsing `-v` output, and the vr0002 listing carried the space-bearing id `tests/orchestration/test_teacher_qa.py::TestGroundingSourcesAreLabelled::test_no_code_fact_without_real_code` with its parametrised suffix intact — the exact id that truncated R19's extractor and produced R-0611. All six records built with `len(node_ids) == selected`: 18, 19, 5, 38, 19 and 42, each equal to its suite's passed count, 0 failed and 0 skipped throughout, every capture serial. THE ROUND'S OWN SHAPE HOLDS, re-measured by the reviewer: transport byte-equal at the delegated digest sha256 6d54e410b577e638a7a8a24acce0ace50b5213336775702857501b7ff9eda25e over 31253 B and 401 lines; FOUR slices; `.agent/plan.md` at `eaffcc07` byte-equal to PLAN255R20 at 43 lines under the cap; FIND0611 appended at `ec6dbcb8` and RECORDR19 at `c96f82c3`, each a byte-exact prefix-plus-remainder preceded by exactly one blank line, the finding landing BEFORE the verdict as §4.4 requires; sets 186 / 4 / 182 / 0 at `b42cab39` becoming 187 / 4 / 183 / 0 at both later commits, `R-0611` occurring 0x at the base and exactly 1x as a registered line; twenty `Gate: R` headers, all distinct, `Gate: R20 — the R19 entry.` last; six single-parent commits with insertions 401, 230, 18, 2, 2 and 80, every one under the 500 cap; the change set exactly the block's five paths with NEITHER `docs/roadmap/STATUS.md` NOR `README.md` among them, which is what a round that must not close early owes; zero marker leaks; the integrity gate passing with fail_count 0 over five checks and `high_blockers_open` reading "no open blocker/high findings"; the canary and the state-reader four exit 0 at 42 and 160 passed; the tree clean, the branch pushed and `gh pr list --state open` returning an empty list. TWO OBSERVATIONS THE WORKER RAISED AND THE REVIEWER CONFIRMS ARE NOT DEVIATIONS: the C0b cell reads 230/270 under plain `git diff --numstat` and 401/441 under break-rewrite detection, both under the cap and both stated; and the package contains `.remedy-wt/` scratch, which is the already-open R-0403 rather than a new condition of this closure. WHAT R20 PROVES ABOUT THE PROCESS is worth recording beside what it produced: R19 failed on a defect in the reviewer's own authored script, the worker refused all four available shortcuts and stopped, the reviewer registered R-0611 against itself and applied that finding's own counter-measure — dry-running the corrected script's assertions against real captured logs BEFORE emitting the block — and the repair then succeeded on its first attempt with no deviation. The cost of the whole episode was one round.
+<<<END RECORDR20
+<<<SLICE STATUSFROM
+- [~] F255 — Teacher role (evidence-grounded live explainer & learn-along tutor)
+<<<END STATUSFROM
+<<<SLICE STATUSTO
+- [x] F255 — Teacher role (evidence-grounded live explainer & learn-along tutor) (T001–T004 complete; accepted 2026-08-21 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f255-closure · package remedy-review-20260821-051015-READY_FOR_REVIEW.zip · SHA-256 f142a9935d2730c01a80d98a619d2b297899c144f29ad16fd5c01aa1f493fcc2 · accepted HEAD c96f82c3372520bfd0545c7ce640886479197a08)
+<<<END STATUSTO
+<<<SLICE COUNTFROM
+52 of 255 registered items accepted. Next: F255 (Teacher role).
+<<<END COUNTFROM
+<<<SLICE COUNTTO
+53 of 255 registered items accepted. Next: F008 (SSE event stream).
+<<<END COUNTTO
+<<<SLICE TIERFROM
+| 5 | Operator Cockpit | 0 | 29 |
+<<<END TIERFROM
+<<<SLICE TIERTO
+| 5 | Operator Cockpit | 1 | 29 |
+<<<END TIERTO
+<<<SLICE ACCEPTEDFROM
+F086 release capability (wheel, `remedy --version`, release gate).
 
-REPO = os.path.abspath(".")
-LOGS = os.path.join(REPO, ".remedy-wt", ".cache", "r20_logs")
-EVIDENCE_DIR = os.path.join(
-    REPO, ".remedy-wt", "f255_closure_evidence", "remedy-job-evidence-f255-closure"
-)
-BASE = "b35d350b84b1d371064a1f44e43f40da3ccfa540"
+Full per-feature state:
+<<<END ACCEPTEDFROM
+<<<SLICE ACCEPTEDTO
+F086 release capability (wheel, `remedy --version`, release gate).
 
-HEAD = subprocess.run(
-    ["git", "-C", REPO, "rev-parse", "HEAD"], capture_output=True, text=True
-).stdout.strip()
-assert len(HEAD) == 40, HEAD
+Accepted in Tier 5 so far:
+F255 teacher role (`remedy teach narrate`, `remedy teach ask`, teacher spend
+reported as its own role in the token ledger).
 
+Full per-feature state:
+<<<END ACCEPTEDTO
+<<<SLICE CANDIDATES
+# Closure Candidates — carrier of record
 
-def _tail(text):
-    """The last 2000 chars on a WHOLE-LINE boundary, path-scrubbed TWICE.
+> Written at closure per docs/roadmap/STATUS_closure_protocol.md
+> ("Closure-candidate findings", disk-vehicle rule, operator ruling
+> 2026-08-01). Read at Window-1 session bootstrap
+> (docs/agents/planner_reviewer_prompt.md §1). One entry per
+> candidate: description · source feature · date. Any entry present
+> at feature-claim time is a block condition.
 
-    job_evidence._scrub_paths only relativises paths under REPO. A short pytest -v
-    log keeps its header inside the 2000-char window and that line ends in the
-    interpreter's own absolute path, which build_review_manifest._unsafe_text
-    correctly rejects as a local absolute path -> BLOCKED_EVIDENCE.
-    """
-    from packages.common.path_redaction import scrub_paths
-    from packages.orchestration.job_evidence import _scrub_paths
-
-    cut = text[-2000:]
-    if len(text) > 2000 and "\n" in cut:
-        cut = cut[cut.index("\n") + 1:]
-    return scrub_paths(_scrub_paths(cut, REPO))
-
-
-def read(name):
-    with open(os.path.join(LOGS, name), encoding="utf-8") as fh:
-        return fh.read()
-
-
-def mkrun(rid, command, log_name, ids_name, expect):
-    """One verification record.
-
-    Node ids come from the --collect-only listing and are NEVER parsed out of -v
-    output: a parametrised id may contain whitespace, and a non-whitespace
-    pattern silently drops it, which is finding R-0611. The -v log supplies only
-    the counts, the duration and the stdout summary.
-    """
-    text = read(log_name)
-    ids = [line for line in read(ids_name).splitlines() if line.startswith("tests/")]
-    passed = sum(int(x) for x in re.findall(r"(\d+) passed", text))
-    failed = sum(int(x) for x in re.findall(r"(\d+) (?:failed|error)", text))
-    skipped = sum(int(x) for x in re.findall(r"(\d+) skipped", text))
-    dur = float(re.findall(r"in ([\d.]+)s", text)[-1])
-    assert passed == expect, (rid, passed, expect)
-    assert failed == 0 and skipped == 0, (rid, failed, skipped)
-    selected = passed + failed + skipped
-    assert len(ids) == selected, (rid, len(ids), selected)
-    assert all(ids), (rid, "empty node id")
-    files = sorted({i.split("::")[0] for i in ids})
-    for f in files:
-        assert os.path.isfile(os.path.join(REPO, f)), f
-    return {
-        "run_id": rid, "command": command, "exit_code": 0,
-        "passed": passed, "failed": failed, "skipped": skipped,
-        "selected": selected, "deselected": 0, "node_ids": ids,
-        "test_files": files, "duration_seconds": dur,
-        "head_sha": HEAD, "stdout_summary": _tail(text),
-    }
-
-
-SUITES = [
-    ("vr-0001", "tests/orchestration/test_teacher_model.py", "vr0001", 18),
-    ("vr-0002", "tests/orchestration/test_teacher_qa.py", "vr0002", 19),
-    ("vr-0003", "tests/orchestration/test_teacher_spend.py", "vr0003", 5),
-    ("vr-0004", "tests/orchestration/test_teacher_narration.py", "vr0004", 38),
-    ("vr-0005", "tests/cli/test_teach_cmd.py", "vr0005", 19),
-    ("vr-0006", "tests/cli/test_golden_path.py", "vr0006", 42),
-]
-
-runs = [
-    mkrun(rid, "python3 -m pytest " + suite + " -v", stem + ".txt", stem + ".ids.txt", expect)
-    for rid, suite, stem, expect in SUITES
-]
-for r in runs:
-    print(r["run_id"], "selected", r["selected"], "node_ids", len(r["node_ids"]),
-          "files", len(r["test_files"]), "dur", r["duration_seconds"])
-
-now = datetime.now(timezone.utc)
-from packages.orchestration.job_evidence import create_manual_completion_bundle  # noqa: E402
-
-result = create_manual_completion_bundle(
-    EVIDENCE_DIR,
-    repo_root=REPO,
-    base_commit=BASE,
-    head_commit=HEAD,
-    job_id="f255-closure",
-    job_title="F255 Teacher role - closure",
-    step_range="T001-T004",
-    prior_job_ids=["f086-closure"],
-    verification_runs=runs,
-    timestamp=now.replace(microsecond=0).isoformat(),
-    generated_at=now.isoformat(),
-    num_tasks=3,
-    note_prefix="operator-attested manual completion - F255 closure",
-    review_feature_id="f255",
-)
-print(json.dumps(result, indent=2, sort_keys=True))
-<<<END EVIDENCESCRIPT2
+The carrier is empty. F255's closure review produced NO candidate: every defect
+this feature surfaced was registered as a numbered finding during the round that
+found it, which is what the closure-candidate mechanism exists to avoid needing.
+Four of those findings are OPEN at closure and none is a code defect — R-0607,
+R-0608, R-0609 and R-0611 are all defects in the reviewer's own block text, and
+their fixes edit `docs/agents/planner_reviewer_prompt.md` or
+`docs/roadmap/STATUS_closure_protocol.md`, paths the closure commit's R-0154 path
+set cannot reach. They route to a paydown branch and are named in the pull
+request rather than carried here, because they are registered findings and not
+candidates.
+<<<END CANDIDATES
 
 Done when:
 G1 HYGIENE. `.agent/STOP` read from disk before C0a and reported absent or
    present; branch is feature/f255-teacher-role; `git status --porcelain` EMPTY
-   after every commit, immediately BEFORE the zip build, and at the handback;
-   `git worktree list` reports the primary checkout alone.
+   after every commit and at the handback; `git worktree list` reports the
+   primary checkout alone.
 G2 TRANSPORT. Report the sha256 and the byte and line counts of
-   `.remedy-wt/f255-r20.md`, of `.agent/authored/f255-r20.md` at C0a and of
+   `.remedy-wt/f255-r21.md`, of `.agent/authored/f255-r21.md` at C0a and of
    `.agent/last_block.md` at C0b, and state whether all three are EQUAL.
 G3 SLICES EXTRACTED, NEVER RETYPED. Extract each slice from the COMMITTED
-   `.agent/authored/f255-r20.md` by its markers; report each slice's name,
+   `.agent/authored/f255-r21.md` by its markers; report each slice's name,
    sha256, byte count and line count, naming the newline convention (R-0600).
    Report the number of slices as a COUNT YOU TOOK FROM THAT LISTING (R-0604).
-   Report also that `.remedy-wt/.cache/r20_evidence.py` byte-equals
-   EVIDENCESCRIPT2.
-G4 THE PLAN, FIRST. `.agent/plan.md` at C1 byte-equals PLAN255R20; report its
+G4 THE PLAN, FIRST. `.agent/plan.md` at C1 byte-equals PLAN255R21; report its
    sha256, byte and line counts, that the line count is under 50, and that
    `## Goal`, `## Next Steps` and a roadmap F-id all occur in it. Report that C1
    is the FIRST commit other than C0a and C0b.
-G5 THE FINDING AND THE VERDICT. Over `.agent/live_review.md`, for C2 and then for
-   C3: the previous blob is a byte-exact PREFIX; the remainder's sha256, byte and
-   line counts; that it equals one newline followed by FIND0611 and by RECORDR19
-   respectively; and that the byte after each leading newline is not a newline.
-   For EACH, a SECOND, INDEPENDENT blank-line paragraph split whose LAST unit is
-   that commit's appended slice, with its sha256 under BOTH newline conventions.
-   Re-measure constraint 5 rather than trusting it. Negative control for each:
-   one character of the expected remainder mutated, rejected by BOTH readings.
+G5 THE R20 VERDICT RECORDED. Over `.agent/live_review.md`: the base blob at
+   `a4f0fafd` is a byte-exact PREFIX of the C2 blob; the remainder's sha256, byte
+   and line counts; that it equals one newline followed by RECORDR20; and that
+   the byte after that leading newline is not a newline. Then a SECOND,
+   INDEPENDENT blank-line paragraph split whose LAST unit is RECORDR20, with its
+   sha256 under BOTH newline conventions. Re-measure constraint 5. Negative
+   control: one character of the expected remainder mutated, rejected by BOTH
+   readings.
 G6 THE SETS AND THE KEYS. Report registered / resolved / open / line-anchored
-   `Landed:` at `b42cab39`, at C2 and at C3, the registered count being lines
-   matching `^- R-\d+ — ` and the resolved count lines matching
-   `^Done: R-\d+ — `: the reviewer measured 186 / 4 / 182 / 0 at `b42cab39`; C2
-   owes 187 / 4 / 183 / 0; and C3 owes the same as C2. Report that `R-0611`
-   occurs 0x at `b42cab39`, that `Gate: R20 — the R19 entry.` occurs 1x at C3 and
+   `Landed:` at `a4f0fafd` and at C2, registered being lines matching
+   `^- R-\d+ — ` and resolved lines matching `^Done: R-\d+ — `: the reviewer
+   measured 187 / 4 / 183 / 0 at `a4f0fafd`, and C2 owes the SAME four numbers.
+   Report that `Gate: R21 — the R20 entry.` occurs 0x at `a4f0fafd` and 1x at C2,
    is the LAST line beginning `Gate: R`, and that every such header key is
-   distinct. COUNT LINE-ANCHORED, never as substrings — R19 correctly reported
-   that its own header string also occurs mid-sentence inside an older finding's
-   prose, which a substring count would have read (R-0584).
-G7 THE TWELVE CAPTURES. Report, per suite, the two exact commands, their exit
-   codes, the `-v` summary line, and the number of lines beginning `tests/` in
-   the `--collect-only` listing. Each `-v` run must be exit 0 with the passed
-   count the Change section states, 0 failed and 0 skipped; each listing's id
-   count must EQUAL that passed count. State that all twelve ran SERIALLY. State
-   explicitly whether the `vr0002` listing contains an id with a space in it, and
-   quote that id.
-G8 THE EVIDENCE JOB. State whether the evidence directory existed before the run
-   and, if so, that it was deleted first. Report the exact command, its exit code
-   and the FULL summary dict `r20_evidence.py` printed, plus the number of
-   entries in the bundle directory. Report the `verdict` values that actually
-   appear in the summary dict and in `final_verifier_report.json` — report what
-   they SAY and assert no particular value (R-0597). If the script aborts,
-   report the real traceback verbatim and end the round under constraint 1.
-G9 THE REVIEW ZIP, from a clean tree after C3 with the branch pushed. Report the
-   exact command, its exit code, the final zip FILENAME, its SHA-256 and the
-   PACKAGE_STATUS, all as the script really printed them, and the manifest's
-   `committed_review_subject` base_commit and head_commit, stating whether that
-   head equals the commit C3 created. A FAILING BUILD IS A BLOCKER: report the
-   raw error, write the handback and end the round.
-G10 THE CANARY AND THE STATE READERS, UNCONDITIONALLY (R-0607's rule), serially
-   in the PRIMARY checkout, never two pytest processes at once:
+   distinct, counted LINE-ANCHORED (R-0584).
+G7 THE FOUR REWRITES, EACH PROVEN IN ITS TARGET AT C3. For each of the pairs
+   STATUS, COUNT, TIER and ACCEPTED, report the FROM's occurrence count in its
+   target at `a4f0fafd` — each must be exactly 1 — and, at C3, that the FROM
+   occurs 0x and the TO occurs 1x. All four are REWRITES and none owes an append
+   reading (constraint 6). Report also that `docs/roadmap/STATUS.md` at C3 holds
+   exactly ONE line matching `^- \[x\] F255 — ` and ZERO matching `^- \[~\] F255`.
+G8 THE LEDGER AND THE README AGREE, which is the pin a split commit would break.
+   At C3 report: the count of lines matching `^- \[x\] F\d{3} — ` in
+   `docs/roadmap/STATUS.md`; the N of the README's `N of 255 registered items
+   accepted.`; and that the two are EQUAL. The reviewer measured 52 at
+   `a4f0fafd`, so C3 owes 53 on both sides. Report the README Tier 5 row's Done
+   cell and that it equals the number of accepted STATUS ids whose feature file
+   carries the `T5_` prefix — the reviewer measured that as 0 before this round
+   and 1 after.
+G9 THE DOCS GATE, because this round's change set includes `docs/roadmap/**`.
+   Serially in the PRIMARY checkout, after C3:
+     `python3 -m pytest tests/docs/ -q -rf`
+     `python3 -m pytest tests/orchestration/test_roadmap_index.py -q -rf`
+   Report each command, exit code and tail. The reviewer measured exit 0 at 295
+   passed and exit 0 at 30 passed at `a4f0fafd`; the F255 closure moves the
+   accepted count, so `test_the_readme_accepted_count_equals_the_status_count`
+   and `test_the_readme_tier_table_done_column_matches_the_ledger` are the two
+   that would go red on a mismatch, and both must be GREEN.
+G10 THE CANARY AND THE STATE READERS, UNCONDITIONALLY (R-0607's rule), serially,
+   never two pytest processes at once:
      `python3 -m pytest tests/orchestration/test_test_runner.py tests/ui_server/test_dashboard_contract.py tests/regression/test_resource_safety.py tests/orchestration/test_integrity_gate.py -q -rf`
      `python3 -m pytest tests/cli/test_golden_path.py -q -rf`
-   The reviewer measured exit 0 at 160 passed and exit 0 at 42 passed at
-   `b42cab39`. Report the exact command, exit code and tail of each.
-G11 THE INTEGRITY GATE, closure precondition 3, re-measured at this round's head.
-   The `remedy` CLI is denied in this session class, so run the SAME code it runs:
-   `run_integrity_checks()` then `export_integrity_json()` from
-   `packages.orchestration.integrity_gate`. Report `passed`, `fail_count` and the
-   status of every named check. The reviewer measured passed=True, fail_count=0
-   over five checks at `b42cab39`.
-G12 CHANGE SET, HISTORY AND CAPS. Report `git diff --name-only b42cab39..<C3>`
+   Report the exact command, exit code and tail of each. The reviewer measured
+   exit 0 at 160 passed and exit 0 at 42 passed at `a4f0fafd`.
+G11 THE PULL REQUEST. Report the exact `gh pr create` command, the PR NUMBER and
+   its URL, and `gh pr view <n> --json state,mergeable,isDraft` showing it OPEN
+   and NOT a draft. State that you did not merge it and did not enable
+   auto-merge. If `gh` fails, report the raw error verbatim and end the round.
+G12 CHANGE SET, HISTORY AND CAPS. Report `git diff --name-only a4f0fafd..<C3>`
    and state that it equals the Change list minus `.agent/handoff.md`, which C4
-   itself adds, with no path on either side alone — and that NEITHER
-   `docs/roadmap/STATUS.md` NOR `README.md` appears in it. Report that each path
-   named untouched is PRESENT at the base and ABSENT from the range; that every
-   commit has one parent; and each commit's insertion column from
-   `git diff --numstat` for C0a through C3, every one under 500, with the same
-   `+/-` cells appearing byte-identically in the handback's `## Commits` table.
-   C4's own cell belongs to the round report (R-0149). Report also that NOTHING
-   R19 committed was amended or reverted: `git log --oneline b42cab39..<C3>`
-   names only this round's commits.
-   THE REFLOG IS TWO MEASURED CLAIMS (R-0601, R-0605): report the count of this
-   round's entries whose OPERATION PREFIX reads exactly `commit`, WITH the commit
-   it was taken at and the number of commits made AT THAT MOMENT, and state the
-   two are equal; state no total (R-0494). Report the count whose prefix contains
-   `amend`, `rebase` or `cherry`, which must be 0, and for EVERY `reset` entry
-   report it with the demonstration that its destination is the commit the branch
-   already pointed at (R-0608).
+   itself adds, with no path on either side alone. Report that each path named
+   untouched is PRESENT at the base and ABSENT from the range; that every commit
+   has one parent; and each commit's insertion column from `git diff --numstat`
+   for C0a through C3, every one under 500, with the same `+/-` cells appearing
+   byte-identically in the handback's `## Commits` table. C4's own cell belongs
+   to the round report (R-0149). Report that C3 is a SINGLE commit carrying all
+   three of its paths — `git show --numstat <C3>` naming exactly
+   `docs/roadmap/STATUS.md`, `README.md` and `.agent/candidates.md`.
+   THE REFLOG IS TWO MEASURED CLAIMS (R-0601, R-0605): the count of this round's
+   entries whose OPERATION PREFIX reads exactly `commit`, WITH the commit it was
+   taken at and the number of commits made AT THAT MOMENT, stating the two are
+   equal; no total (R-0494). The count whose prefix contains `amend`, `rebase` or
+   `cherry` must be 0, and for EVERY `reset` entry report it with the
+   demonstration that its destination is the commit the branch already pointed
+   at (R-0608).
 G13 NO MARKER LEAKED, AND THE PUSH. Report the count of LINES beginning with the
    SLICE or END marker prefixes in `.agent/plan.md` at C1, `.agent/live_review.md`
-   at C3 and `.agent/handoff.md` at C4 — every count 0. `git push` after C3 and
+   at C2, `docs/roadmap/STATUS.md` and `README.md` and `.agent/candidates.md` at
+   C3, and `.agent/handoff.md` at C4 — every count 0. `git push` after C3 and
    again after C4, reporting real output each time; the branch must be pushed
-   BEFORE the zip is built.
+   BEFORE the pull request is created.
 
 Handback:    Rewrite `.agent/handoff.md` per docs/agents/handback_template.md —
              all seven mandated headings in the template's order, the item-status
              table for the C0a..C4 bundle, the `## Commits` table G12 pins, and
              one LINE per gate rather than its transcript (R-0582). Its
-             `## External actions` section records the evidence job and the zip
-             attempt WITH their outcomes — package filename, SHA-256 and
-             PACKAGE_STATUS, or the raw error. Its `## Next` section names the
-             next session's FIRST action as Phase 1 rule 1, the `.agent/STOP`
-             re-read, and its SECOND as R21, the CLOSURE COMMIT: the reviewer
-             authors the STATUS `[x]` line from the values THIS round reports, the
-             worker applies it verbatim in the SAME commit as the README
-             capability sync (R-0154), and opens the pull request, which is NOT
-             merged in its own session. It states that R19's seven commits are all
-             correct and that its goal was unmet, that R-0611 is registered at C2
-             and the R19 verdict recorded at C3, that R-0607, R-0608, R-0609 and
-             R-0611 remain OPEN, and that R20 ITSELF IS THE ROUND WHOSE VERDICT IS
-             NOT ON DISK. It states that no pull request is open.
-             IF AND ONLY IF the zip built, the handback carries this Fortschritt
-             line verbatim (R-0418):
-             Fortschritt: ~97 % (T001 through T004 COMPLETE and REVIEWED · the
+             `## External actions` section records the pull request WITH its
+             number and URL, and states that it was NOT merged and that
+             auto-merge was NOT enabled. Its `## Next` section names the next
+             session's FIRST action as Phase 1 rule 1, the `.agent/STOP` re-read,
+             and its SECOND as the OPEN PR GATE, which merges this feature's pull
+             request before any new branch is cut; Rule A5 then selects F008, the
+             first `[ ]` in STATUS order. It states that F255 is CLOSED with its
+             STATUS line at C3, that R20 PASSED with its verdict ON DISK at C2,
+             that R-0607, R-0608, R-0609 and R-0611 remain OPEN and route to a
+             paydown branch, and that R21 IS THE LAST ROUND OF THIS BRANCH — so
+             its own verdict has no on-disk gate entry BY CONSTRUCTION
+             (planner_reviewer_prompt.md §4 item 13, the terminator), and lives in
+             this handback and in the pull request rather than being a missing
+             gate. The handback carries this Fortschritt line verbatim (R-0418):
+             Fortschritt: 100 % (T001 through T004 COMPLETE and REVIEWED · the
              integration gate PASSED with 0 branch-only failures · evidence job
-             and review zip built at this round · only the STATUS line, the README
-             sync and the pull request remain) — Schätzung
-             If the zip did NOT build, write instead a Fortschritt line of your
-             own that states the real position, and say plainly that the mandated
-             line was withheld because its claim would be false (constraint 12).
+             and READY_FOR_REVIEW package built and re-verified · STATUS `[x]`,
+             README sync and the pull request landed at this round · F255 CLOSED,
+             the PR merges at the next feature's Open PR Gate) — Schätzung
 ──────────────────────────────────────────────────────────────
