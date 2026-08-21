@@ -527,17 +527,19 @@ class _FlakyPeer:
 
 
 def _hammer(monkeypatch: Any, events: list, drop_after: int,
-            reconnects: int = 40) -> list[bytes]:
+            reconnects: int = 40, last_event_id: str | None = None) -> list[bytes]:
     """Reconnect until the ledger is drained, dropping every `drop_after` frames.
 
     This is the acceptance shape the feature file names: a client that keeps
     losing its connection must end up with the ledger and nothing else. Each
     reconnect carries the id of the last frame it kept, exactly as an
     EventSource sends `Last-Event-ID`, and the server decides the span.
+    `last_event_id` seeds that state, so a caller can hand this helper a client
+    that ALREADY holds part of the ledger — which is what makes a resume across
+    a ledger that grew between connections expressible (finding R-0621).
     """
     monkeypatch.setattr(mod, "_load_events", lambda job: events)
     transcript: list[bytes] = []
-    last_event_id: str | None = None
     for _ in range(reconnects):
         peer = _FlakyPeer(drop_after)
         handler = mod._RemedyHandler.__new__(mod._RemedyHandler)
@@ -588,14 +590,21 @@ class TestDisconnectHammer:
             got = b"".join(_hammer(monkeypatch, events, drop_after))
             assert got == _ledger_bytes(events), drop_after
 
-    def test_a_ledger_that_grows_between_connections_still_arrives_whole(self, monkeypatch):
-        # The stream is a reader over a file that is still being appended to.
+    def test_a_resume_crosses_a_ledger_that_grew_between_connections(self, monkeypatch):
+        # The stream reads a file that is still being appended to, so the span
+        # a client misses can straddle the growth. R-0621: the version of this
+        # test written at R14 started its second client from scratch, so the
+        # boundary it is named for was never crossed by a resume at all.
         events = _events(6)
         first = _hammer(monkeypatch, events, 2, reconnects=1)
-        events.extend(_events(10)[6:])
-        rest = _hammer(monkeypatch, events, 3)
-        assert b"".join(rest) == _ledger_bytes(events)
         assert [_parse(f)["id"] for f in first] == ["0", "1"]
+        events.extend(_events(10)[6:])
+        rest = _hammer(monkeypatch, events, 3,
+                       last_event_id=_parse(first[-1])["id"])
+        # 2 through 9: everything after the frame the client kept, across the
+        # boundary, with no duplicate of 1 and no gap at 6.
+        assert [_parse(f)["id"] for f in rest] == [str(i) for i in range(2, 10)]
+        assert b"".join(first + rest) == _ledger_bytes(events)
 
     def test_a_single_clean_connection_needs_no_resume(self, monkeypatch):
         events = _events(4)
