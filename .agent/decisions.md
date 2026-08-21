@@ -6743,3 +6743,15 @@ CHOSEN: `X-Remedy-CSRF` carries that same server token, compared constant-time a
 ALTERNATIVES: (a) accept any non-empty `X-Remedy-CSRF` — rejected, it makes a wiring bug indistinguishable from a working client. (b) mint a separate CSRF secret and embed it in the shell — rejected for this feature: it adds a second secret to serve, rotate and redact, against no attacker the first one does not already stop, and the shell embeds the token by plain string substitution today.
 
 REVERSE by dropping the value comparison and checking only that the header is present; nothing else about the route changes.
+
+## DECISION F009 D12 — a command outside the exposed subset is a typed 400 on the `command` field (2026-08-21)
+
+D4 ruled the exposed subset a `UI_EXPOSED_COMMANDS` frozenset of catalog `command_id` values and ruled that the endpoint imports it, without fixing what the door answers when a well-formed request names an id outside it. The door already has two refusal vocabularies at `98592b72`: 403 with `{"error": ...}` for a credential that fails, and 400 with `{"error": ..., "field": ...}` for a request whose shape is wrong.
+
+CHOSEN: an unexposed `command_id` is 400 with `field` set to `command`, reusing the shape D.4 of the R6 contract established. It is a statement about the request the client sent, and the field it must change to send a different one is `command`.
+
+ALTERNATIVES: (a) 403 — rejected, it means "your credential failed" on this door, and a client that retried authentication on a policy refusal would be chasing the wrong repair. (b) 404 — rejected, a command id is not a resource this API exposes at a URL, and a 404 on the commands path already means the JOB did not resolve. (c) a distinct 422 — rejected, it adds a third vocabulary for a case the second already covers.
+
+THE REFUSAL DELIBERATELY DOES NOT DISTINGUISH an id that is absent from the catalog entirely from one that exists but is not UI-exposed. Both are "not a command this door accepts", and separating them would let an unauthenticated-but-credentialed caller enumerate the CLI surface through the write door.
+
+REVERSE by giving the unexposed case its own status; the field name does not change.
