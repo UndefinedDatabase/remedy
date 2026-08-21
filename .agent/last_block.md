@@ -1,231 +1,200 @@
-── STEP R15/1 — F008 SSE event stream · T002 PAYDOWN ──────────
-Goal:        Pay down T002's two authored defects instead of only recording
-             them. R-0620: `resolve_sse_start` guards with `str(x or "")`, so
-             the INTEGER 0 — the first ledger position — is read as an absent
-             header and falls through to the cursor, which is the opposite of
-             what the same function's docstring promises. The guard becomes an
-             explicit None test and three tests pin the integer forms.
-             R-0621: the grown-ledger test started its second client from
-             scratch, so the boundary its name promised was never crossed by a
-             resume; the hammer helper gains a starting last-event-id and the
-             test is rewritten to resume ACROSS the growth. R15 also records
-             the R14 verdict (PASS) and widens R-0371 a third time.
+── STEP R16/1 — F008 SSE event stream · T003 BEGINS ────────────
+Goal:        Build T003's client-side RULES as a pure module, not yet as a
+             React hook: the status surface live | reconnecting | delayed, the
+             Last-Event-ID resume position, seq gap detection and the reconnect
+             backoff schedule. `apps/ui/vitest.config.ts` sets
+             `environment: "node"` and collects `src/**/*.test.ts`, and the app
+             carries no jsdom and no testing library, so a hook cannot be
+             rendered under any gate this repository owns;
+             `apps/ui/src/cockpitLogic.ts` states that precedent in its own
+             header comment and is the shape this module follows. R16 also
+             records the R15 verdict (PASS), resolves R-0620 and R-0621, and
+             registers R-0622.
 
 Bundle:      C0a save this block · C0b mirror it · C1 advance the plan ·
-             C2 widen R-0371 · C3 register R-0621 and record the R14 verdict ·
-             C4 fix the resume guard · C5 repair the grown-ledger test ·
-             C6 pin the integer header forms · C7 the handback.
+             C2 resolve R-0620 and R-0621, register R-0622 and record the R15
+             verdict · C3 the stream module · C4 its tests · C5 the handback.
 
 Change:      Exactly these paths, and nothing else.
-             - .agent/authored/f008-r15.md        (C0a, new)
-             - .agent/last_block.md               (C0b, rewrite)
-             - .agent/plan.md                     (C1, rewrite)
-             - .agent/live_review.md              (C2 pair, C3 append)
-             - packages/orchestration/ui_server.py (C4, pair)
-             - tests/ui_server/test_sse_stream.py (C5 pairs, C6 append)
-             - .agent/handoff.md                  (C7, rewrite)
+             - .agent/authored/f008-r16.md            (C0a, new)
+             - .agent/last_block.md                   (C0b, rewrite)
+             - .agent/plan.md                         (C1, rewrite)
+             - .agent/live_review.md                  (C2, append)
+             - apps/ui/src/api/brainStream.ts         (C3, new)
+             - apps/ui/src/api/brainStream.test.ts    (C4, new)
+             - .agent/handoff.md                      (C5, rewrite)
 
 Constraints:
  1. Every slice is applied byte for byte out of the COMMITTED
-    .agent/authored/f008-r15.md, extracted by its marker lines — never
-    retyped, rewrapped, reflowed or edited. Each FROM occurs EXACTLY ONCE in
-    its target at the commit named below; if one does not, stop and say so
-    rather than choosing an occurrence. A slice that looks wrong is APPLIED AS
-    WRITTEN and the objection goes in the handback. Each of your last three
-    rounds caught a real reviewer defect exactly that way, and two of them are
-    what this round exists to fix — keep doing it.
+    .agent/authored/f008-r16.md, extracted by its marker lines — never
+    retyped, rewrapped, reflowed or edited. A slice that looks wrong is
+    APPLIED AS WRITTEN and the objection goes in the handback. Each of your
+    last four rounds caught a real reviewer defect exactly that way; keep
+    doing it.
  2. NEWLINE CONVENTION, stated not assumed. A slice body is the lines strictly
-    between its `<<<SLICE X` and `<<<END X` markers. PLANF008R15 is applied
-    with its trailing newline INCLUDED and is the ENTIRE content of its file.
-    R0371FROM and R0371TO are each ONE line with its trailing newline,
-    replaced in place, changing no other byte, so `.agent/live_review.md` has
-    the SAME line count at C2 as at C1. LEDGER15 is a newline plus its body,
-    appended after exactly one blank line. TESTS15 is appended to the test
-    file after exactly TWO blank lines — PEP 8 for a top-level definition, and
-    NOT a property this repository's ruff will catch, E301-E306 being
-    preview-only rules that are not enabled here, so G10 gates those blank
-    lines as bytes. Every file ends with exactly one newline.
- 3. The commit order is exactly C0a, C0b, C1, C2, C3, C4, C5, C6, C7.
-    `.agent/plan.md` advances at C1, ahead of both ledger commits (§3 item
-    23). C2 and C3 stay SEPARATE: C2 edits a line in place and C3 appends, and
-    that separation is what lets G5 prove the edit constructively and G6 prove
-    the append as a byte prefix. C4 precedes C6 because the tests C6 adds FAIL
-    without C4's fix — that is this round's red proof, and inverting the order
+    between its `<<<SLICE X` and `<<<END X` markers, trailing newline
+    INCLUDED. PLANF008R16 is the ENTIRE content of `.agent/plan.md`.
+    BRAINSTREAM and STREAMTESTS are each the ENTIRE content of a file that
+    does not yet exist, so neither is a pair and no FROM is searched for.
+    LEDGER16 is a newline plus its body, appended after exactly one blank
+    line. Every file ends with exactly one newline.
+ 3. The commit order is exactly C0a, C0b, C1, C2, C3, C4, C5. `.agent/plan.md`
+    advances at C1, ahead of the ledger commit (section 3 item 23). C3
+    precedes C4 because C4's file imports C3's; committing the test first
     would land a knowingly red commit.
- 4. LEDGER15 carries TWO paragraphs, blank-line separated, applied together in
-    C3: the R-0621 registration and the `Gate: R15` entry holding the R14
-    verdict. R-0621 is the only id minted, so the next free id becomes R-0622.
-    R-0371 is WIDENED, not re-registered: §3 item 30 forbids a second id for a
-    defect the open set already describes, and this is its third instance.
- 5. SCOPE. The only production change is the ONE line of `resolve_sse_start`
-    that FIXFROM names. No other behaviour changes, no new endpoint, no client
-    code, no docs. T003 is the next round's work and any POST surface belongs
-    to the next feature.
- 6. `git status --porcelain` is empty after each of C0a through C6, and
+ 4. LEDGER16 carries FOUR paragraphs, blank-line separated, applied together
+    in C2: `Done: R-0620`, `Done: R-0621`, the R-0622 registration and the
+    `Gate: R16` entry holding the R15 verdict. R-0622 is the only id minted,
+    so the next free id becomes R-0623. These are the FIRST two `Done:` lines
+    this record carries — before C2 it holds none — which is why G6 reads that
+    count moving from 0 to 2 rather than staying flat.
+ 5. SCOPE. No Python changes at all this round. No React component, no hook,
+    no `EventSource` construction, no polling loop, no CSS, and no new entry
+    in `apps/ui/package.json` — the module is framework-free and imports
+    nothing. T003's hook and its polling fallback are R17's work, and any POST
+    surface belongs to the next feature. R-0622 is REGISTERED and NOT fixed:
+    adding a lint parser is a change to that package's dependency set and
+    routes to a paydown branch.
+ 6. `git status --porcelain` is empty after each of C0a through C4, and
     `git worktree list` names the primary checkout alone once G9's worktree is
-    removed. READINGS OF STATE AT OR AFTER C7 GO IN THE ROUND REPORT, NEVER IN
+    removed. READINGS OF STATE AT OR AFTER C5 GO IN THE ROUND REPORT, NEVER IN
     THE HANDBACK FILE: the tree state after the handback commit cannot be
     recorded inside that commit, and a gate that orders it anyway is finding
-    R-0371, whose third instance this round's own C2 registers. Base bytes
-    reach a tool by `git show <sha>:<path>` or a disposable worktree under the
-    gitignored `.remedy-wt/`, never by overwrite-and-restore in the primary
-    checkout (self_drive_protocol G5).
- 7. Two pytest processes never run at once, and G8's counting suites run in
-    the PRIMARY checkout — a fresh worktree has no `apps/ui/node_modules` and
-    its pass counts are untrustworthy in both directions (R-0518).
- 8. The reviewer's own readings at `305bc30c`, RE-DERIVED by the gates below
-    rather than trusted: `tests/ui_server/test_sse_stream.py` exits 0 at 62,
-    the combined state-reader suite exits 0 at 462, `tests/docs/` exits 0 at
-    295. Count by passed-plus-skipped, never by a bare passed count.
+    R-0371, now three instances deep. Base bytes reach a tool by
+    `git show <sha>:<path>` or a disposable worktree under the gitignored
+    `.remedy-wt/`, never by overwrite-and-restore in the primary checkout
+    (self_drive_protocol G5).
+ 7. Two test processes never run at once. G8's counting suites run in the
+    PRIMARY checkout: a fresh worktree has no `apps/ui/node_modules`, so both
+    its pytest and its vitest readings are untrustworthy in both directions
+    (R-0518). Where G9 needs `node_modules` inside a worktree it SYMLINKS the
+    primary one — `ln -s`, never a copy, because a copy dereferences npm's bin
+    shims and manufactures its own failures (R-0591).
+ 8. The reviewer's own readings at `22dd8d31`, RE-DERIVED by the gates below
+    rather than trusted. In `apps/ui`: `npx vitest run` exits 0 at 4 files and
+    71 tests, `npm run --silent typecheck` exits 0 with no output, and
+    `npm run --silent lint` EXITS 1 at `49 problems (47 errors, 2 warnings)` —
+    that last one is R-0622, is NOT a gate (R-0364), and is not to be repaired
+    as a side effect of this round. From the repository root the combined
+    state-reader suite including the canary exits 0 at 465 passed-plus-skipped.
+    Count by passed-plus-skipped, never by a bare passed count.
  9. DO NOT MERGE, DO NOT OPEN A PULL REQUEST, DO NOT CREATE A BRANCH. T003 is
-    unbuilt, so the branch is not closeable. It is pushed and left open.
+    half-built at the end of this round, so the branch is not closeable. It is
+    pushed and left open.
 
 Done when:
  G1  `.agent/STOP` is absent, read immediately before C0a; the branch is
      feature/f008-sse-event-stream; `git status --porcelain` is empty after
-     each of C0a through C6. Report each reading. Per constraint 6 the
-     post-C7 porcelain and the final `git worktree list` belong to the ROUND
-     REPORT, not to `.agent/handoff.md`.
+     each of C0a through C4. Report each reading. Per constraint 6 the post-C5
+     porcelain and the final `git worktree list` belong to the ROUND REPORT.
  G2  Transport. Report the sha256, byte count and line count of the scratch
-     block the worker was given, of `.agent/authored/f008-r15.md` at C0a and
-     of `.agent/last_block.md` at C0b, and whether all three are EQUAL.
+     block you were given, of `.agent/authored/f008-r16.md` at C0a and of
+     `.agent/last_block.md` at C0b, and whether all three are EQUAL.
  G3  Slice inventory. Extract the slices from the COMMITTED
-     `.agent/authored/f008-r15.md` by their marker lines, take the COUNT from
+     `.agent/authored/f008-r16.md` by their marker lines, take the COUNT from
      that listing, and report each slice's newline-INCLUDED sha256, bytes and
      lines.
  G4  Plan. Report the sha256, bytes and lines of `.agent/plan.md` at C1 and
-     whether it is byte-equal to PLANF008R15. Its line count is under 50,
-     `## Goal` and `## Next Steps` each occur exactly once line-anchored, and
-     `F008` occurs at least once.
- G5  The R-0371 widening, proved CONSTRUCTIVELY. Report that R0371FROM occurs
-     EXACTLY ONCE in `.agent/live_review.md` at C1, replace that one
-     occurrence with R0371TO, and report whether the result is BYTE-EQUAL to
-     that file at C2, giving both sha256s. Report the LINE COUNT at C1 and at
-     C2: they are EQUAL. Report that `- R-0371 — ` occurs exactly once at C2
-     and that the line ENDS with ` OPEN.`
- G6  The ledger append, C3 against C2, two ways that must agree. (a) the C2
-     blob is a byte-exact PREFIX of the C3 blob and the remainder equals a
-     newline plus LEDGER15 — report its sha256, bytes and lines; (b) an
-     INDEPENDENT blank-line split of the C3 file, its terminating newline
-     normalised first, has as its LAST TWO units, in order, the two paragraphs
-     of LEDGER15. NEGATIVE CONTROL: flip one byte of the remainder and report
-     BOTH readings reject it, the unflipped accepted by both.
- G7  The sets, at THREE commits. Report line-anchored counts in
-     `.agent/live_review.md` at C1, C2 and C3: `^- R-\d+ — ` reads 192, 192,
-     193 — C2 edits and only C3 mints — `^Done: R-\d+ — ` is 0 at all three,
-     `^Landed: ` is 0 at all three, `^Gate: R\d+ — ` reads 14, 14, 15 with the
-     fifteen keys DISTINCT, `^- R-0621 — ` reads 0, 0, 1 and `^- R-0622 — ` is
-     0 at all three. Report that LEDGER15's `Gate:` header matches the shape
-     of the entries already in the file, as a pattern match over
-     `^Gate: R(\d+) — the R(\d+) entry\.` requiring the second number to be
-     one less than the first and the R15 pair to occur exactly once (§3 item
-     26). Report the number of `^Gate: ` lines that do NOT match; it is 1, and
-     that line is `Gate: R1 — the F255 R21 entry.`
- G8  The code pairs, proved CONSTRUCTIVELY and not counted. From the
-     `305bc30c` blob of `packages/orchestration/ui_server.py`, verify FIXFROM
-     occurs EXACTLY ONCE, replace it with FIXTO, and report whether the result
-     is BYTE-EQUAL to that file's blob at C4. From the `305bc30c` blob of
-     `tests/ui_server/test_sse_stream.py`, verify HAMMERFROM and GROWFROM each
-     occur EXACTLY ONCE, replace each with its TO, and report whether the
-     result is BYTE-EQUAL to that file's blob at C5. Report the sha256 of both
-     sides of both comparisons.
- G9  The suites are green in the PRIMARY checkout, run SERIALLY, never two
-     pytest processes at once. Report the exit code and `passed + skipped` of
-     each, at C6:
-     `python3 -m pytest tests/ui_server/test_sse_stream.py -q -rf` exits 0.
-     `python3 -m pytest tests/ui_server/ tests/orchestration/test_test_runner.py tests/regression/test_resource_safety.py tests/orchestration/test_integrity_gate.py tests/cli/test_golden_path.py -q -rf` exits 0.
-     `python3 -m pytest tests/docs/ -q -rf` exits 0 and sums to 295.
-     RECONCILE THE ARITHMETIC RATHER THAN ASSERTING A BARE TOTAL: report the
-     number of lines matching `^    def test_` in TESTS15, and report that the
-     first sum equals 62 plus that number and the second equals 462 plus the
-     same number, 62 and 462 being constraint 8's base readings. If any of the
-     three identities fails, report the real values and stop.
- G10 The test append. Report that the C5 blob of
-     `tests/ui_server/test_sse_stream.py` is a byte-exact PREFIX of the C6
-     blob and that the remainder is TWO newlines followed by TESTS15 — two,
-     not one, that being constraint 2's blank-line rule measured as bytes.
-     Report that the lines `git diff C5..C6 -- <that path>` ADDS are the two
-     blank lines followed by TESTS15's lines IN ORDER, that the added-line
-     count equals TESTS15's line count plus two, and that the diff REMOVES
-     nothing.
- G11 RED PROOF — the colour, never a count. The tests C6 adds exist to pin the
-     defect C4 fixes, so they MUST fail without it. In a DISPOSABLE worktree
-     under `.remedy-wt/`, created with `git worktree add --detach` at C6 and
-     removed before the handback: write the `305bc30c` blob of
-     `packages/orchestration/ui_server.py` into that worktree's copy with
-     `git show`, leaving the tests at C6, and report the exit code of
-     `python3 -m pytest tests/ui_server/test_sse_stream.py -q -rf -k ResumeStartTypes`
-     run THERE. It EXITS NON-ZERO. Report which tests failed; two of the three
-     SURVIVE by design, because a string header and an absent header already
-     behaved correctly and only the integer-zero case was broken. Then restore
-     the file to its C4 blob and report that the same command EXITS 0.
- G12 MUTATION CONTROL — the repaired grown-ledger test must still have teeth.
-     In the SAME disposable worktree, replace `        return int(text) + 1`
-     with `        return int(text)` in that worktree's copy of
-     `packages/orchestration/ui_server.py` and report the exit code of
-     `python3 -m pytest tests/ui_server/test_sse_stream.py -q -rf -k DisconnectHammer`.
-     It EXITS NON-ZERO and the failures INCLUDE
-     `test_a_resume_crosses_a_ledger_that_grew_between_connections`. Restore
-     and report EXIT 0. A repaired test that stopped failing under the
-     mutation would have been repaired into a tautology.
- G13 Ruff, scoped to the two touched files, compared as a MULTISET of rule
-     codes and NEVER as an exit code, base against head, in BOTH the default
-     configuration and under `--preview`. Run
-     `python3 -m ruff check --output-format concise` over the two paths at C6
-     and over the SAME two paths at `305bc30c` by feeding each base blob
-     through `git show 305bc30c:<path> | python3 -m ruff check --output-format concise --stdin-filename <path> -`
-     so `per-file-ignores` resolves by path and no file is overwritten (§3
-     item 29); then repeat both sides with `--preview` added. Report all four
-     multisets. The default pair is EQUAL and both EMPTY. The preview pair is
-     EQUAL at `{'E306': 3}` — those three are PRE-EXISTING in
-     `packages/orchestration/ui_server.py` and this round neither adds nor
-     removes one, so the preview side EXITS NON-ZERO on both sides and that
-     exit code is NOT the gate; equality of the multisets is. CONTROL, through
-     the SAME extractor: feed a deliberately unused import to ruff on stdin
-     and report a NON-EMPTY multiset at a non-zero exit (R-0463).
- G14 Range, and NOT self-referential. With BASE `305bc30c`,
-     `git diff --name-only BASE..C6` equals the Change list above MINUS
-     `.agent/handoff.md`, with no path on either side alone. The full
-     `BASE..C7` reading belongs to the ROUND REPORT (constraint 6). Every
-     commit in BASE..C7 has exactly one parent. For every commit BEFORE C7
-     report BOTH numstat figures per path — insertions AND deletions — from
-     `git show --numstat`, report that every insertion count is under 500, and
-     compare EVERY CELL against the `+/-` column of the handback's
-     `## Commits` table, both sides read from `git diff --numstat`. Both
-     cells, not the insertion alone: that half-width reading is R-0619.
- G15 Marker leak. Count LINES BEGINNING with `<<<SLICE ` or `<<<END ` in
-     `.agent/plan.md` at C1, `.agent/live_review.md` at C3,
-     `packages/orchestration/ui_server.py` at C4,
-     `tests/ui_server/test_sse_stream.py` at C6 and `.agent/handoff.md` at C7.
-     Every count is 0.
- G16 History, push and handback. Over this round's OWN reflog entries report
-     the count whose OPERATION — the text before the first `:` in
-     `git reflog --format=%gs` — is `amend`, `rebase` or `cherry`; it is 0,
-     counted by operation and never by substring, with no total asserted.
-     Report the real output of `git push` and of
-     `gh pr list --state open --json number,headRefName,baseRefName,isDraft`,
-     which returns an empty list; nothing is merged. `.agent/handoff.md` at C7
-     carries the sections docs/agents/handback_template.md mandates and an
-     item-status table naming C0a, C0b, C1, C2, C3, C4, C5, C6 and C7 exactly
-     once each; report its line count, the cap being 100 for a round of more
-     than five commits, an overage carrying a DECISION D15 stated-cause line.
-     Its `## Next` section states that the next session's FIRST action is the
-     `.agent/STOP` re-read (Phase 1 rule 1) and its SECOND the Open PR Gate
-     (Phase 1 rule 2), that R15 IS PENDING REVIEW and its verdict is owed by
-     the next round's ledger commit, and that R16's work is T003's client
-     hook.
+     whether it is byte-equal to PLANF008R16. Its line count is under 50, the
+     substring `Steps` occurs, `## Goal` and `## Next Steps` each occur exactly
+     once line-anchored, and a `\bF\d{3}\b` match exists — those four are what
+     `tests/ui_server/test_dashboard_contract.py` and
+     `tests/orchestration/test_test_runner.py` assert about this file.
+ G5  The ledger append, C2 against C1, two ways that must agree. (a) the C1
+     blob is a byte-exact PREFIX of the C2 blob and the remainder equals a
+     newline plus LEDGER16 — report its sha256, bytes and lines; (b) an
+     INDEPENDENT blank-line split of the C2 file, its terminating newline
+     normalised first, has as its LAST FOUR units, in order, the four
+     paragraphs of LEDGER16. NEGATIVE CONTROL: flip one byte of the remainder
+     and report that BOTH readings reject it, and that both accept the
+     unflipped bytes.
+ G6  The sets, at C1 and C2. Report line-anchored counts in
+     `.agent/live_review.md`: `^- R-\d+ — ` reads 193 then 194,
+     `^Done: R-\d+ — ` reads 0 then 2, `^Landed: ` is 0 at both,
+     `^Gate: R\d+ — ` reads 15 then 16 with the sixteen keys DISTINCT,
+     `^- R-0622 — ` reads 0 then 1 and `^- R-0623 — ` is 0 at both. Report
+     that the two `Done:` ids at C2 are exactly R-0620 and R-0621. Report that
+     LEDGER16's `Gate:` header matches the shape of the entries already in the
+     file, as a pattern match over `^Gate: R(\d+) — the R(\d+) entry\.`
+     requiring the second number to be one less than the first and the R16
+     pair to occur exactly once (section 3 item 26). Report the number of
+     `^Gate: ` lines that do NOT match; it is 1, and that line is
+     `Gate: R1 — the F255 R21 entry.`
+ G7  The two new files. Report that `apps/ui/src/api/brainStream.ts` and
+     `apps/ui/src/api/brainStream.test.ts` are both ABSENT at `22dd8d31`,
+     using `git ls-tree 22dd8d31 -- <path>` per path and reporting its empty
+     output. Report the sha256, bytes and lines of the C3 blob of the first
+     and of the C4 blob of the second, and whether each is BYTE-EQUAL to
+     BRAINSTREAM and to STREAMTESTS respectively. Because both files are new,
+     the whole of each commit's diff is additions: report that
+     `git show --numstat` gives each path its slice's own line count against 0
+     deletions.
+ G8  The suites are green in the PRIMARY checkout, run SERIALLY, never two
+     test processes at once. Report the exit code and the counts of each, at
+     C4. In `apps/ui`: `npx vitest run` exits 0 at 5 files and 89 tests, and
+     `npm run --silent typecheck` exits 0. From the repository root:
+     `python3 -m pytest tests/ui_server/ tests/orchestration/test_test_runner.py tests/regression/test_resource_safety.py tests/orchestration/test_integrity_gate.py tests/cli/test_golden_path.py -q -rf`
+     exits 0 at 465 passed-plus-skipped, and
+     `python3 -m pytest tests/ui_contracts/ -q -rf` exits 0 at 397
+     passed-plus-skipped — that suite is gated because
+     `tests/ui_contracts/test_ux_quality.py::test_no_scanlines_in_frontend`
+     rglobs every `.ts` under `apps/ui/src` and therefore READS both files
+     this round adds. Its passed/skipped SPLIT moves between runs at an
+     unchanged tree, so report the SUM and never a bare passed count.
+     RECONCILE THE ARITHMETIC RATHER THAN
+     ASSERTING A BARE TOTAL: report the number of lines matching `^  it(` in
+     STREAMTESTS, and report that 71 plus that number equals the vitest total.
+     Report also `npm run --silent lint`: it EXITS 1 at
+     `51 problems (49 errors, 2 warnings)`, which is constraint 8's base
+     reading plus exactly two errors, one `Parsing error` per new file,
+     because eslint reaches both and parses neither. That is R-0622 and NOT a
+     regression; report the real numbers either way and repair nothing. If any
+     identity fails, report the real values and stop.
+ G9  RED CONTROL, the colour and not a count, in a disposable worktree created
+     at C4 under `.remedy-wt/`, with the primary checkout never touched and
+     `apps/ui/node_modules` reached by the symlink constraint 7 names. Apply
+     each of these three mutations to the worktree's copy of
+     `apps/ui/src/api/brainStream.ts` SEPARATELY, restoring the file
+     byte-exactly between them, and report for each the exit code and the
+     NAMES of the failing tests from
+     `npx vitest run src/api/brainStream.test.ts`:
+     (a) `String(state.lastSeq)` becomes `String(state.lastSeq + 1)`;
+     (b) in the `const isGap =` line, the whole right-hand side becomes
+     `false`;
+     (c) in `brainBackoffDelayMs`, the `Math.min(...)` call becomes its first
+     argument alone.
+     Report the occurrence count of each byte string you replace in that file
+     at C3 BEFORE mutating; each is exactly 1. Each mutation EXITS 1 and each
+     names at least one failing test. Report that the restored file EXITS 0,
+     and remove the worktree before the handback.
+ G10 The range. Report `git diff --name-only 22dd8d31..C4` and that it equals
+     the Change list MINUS `.agent/handoff.md` exactly — six paths, none on
+     either side alone. The full `22dd8d31..C5` reading belongs to the ROUND
+     REPORT (constraint 6). Report that every commit in the range has exactly
+     one parent, and BOTH numstat cells per path from `git show --numstat`,
+     cross-checked against `git diff --numstat`, with every insertion under
+     500 and every cell equal to the `+/-` column of your `## Commits` table,
+     cell by cell (section 3 item 28).
+ G11 Marker leak. Count LINES BEGINNING with `<<<SLICE ` or `<<<END ` in
+     `.agent/plan.md` at C1, `.agent/live_review.md` at C2,
+     `apps/ui/src/api/brainStream.ts` at C3,
+     `apps/ui/src/api/brainStream.test.ts` at C4 and `.agent/handoff.md` at
+     C5. Each is 0.
+ G12 Report this round's own reflog entries counted by the OPERATION before
+     the first `:` in `%gs`: `amend`, `rebase` and `cherry` are each 0. Assert
+     no total. An unstage is not a history rewrite (R-0608).
+ G13 The handback carries every mandated section of
+     docs/agents/handback_template.md and the item-status table, naming C0a,
+     C0b, C1, C2, C3, C4 and C5 exactly once each. Measure it with `wc -l`
+     BEFORE writing it: this round's seven commits allow 100 lines, and an
+     overage needs a DECISION D15 stated-cause line naming the real count.
 
-Handback:   completion report + rewrite .agent/handoff.md.
-
-            Fortschritt: 68 % (F008 beansprucht · fuenfzehn Urteile im Ledger ·
-            T001 KOMPLETT · T002 KOMPLETT und abbezahlt: Resume-Entscheidung,
-            Trennungs-Hammer, und in R15 die beiden selbst gefundenen Defekte
-            R-0620 und R-0621 wirklich behoben statt nur notiert · T003
-            Client-Hook, Backoff, Lueckenerkennung und Polling-Fallback ab R16
-            · danach das Integrationstor) — Schaetzung
+Handback:    completion report + rewrite `.agent/handoff.md`. Its state block
+             repeats this Fortschritt line verbatim:
+             `~72 % (T001 ✅ · T002 ✅ · T003 angefangen) — Schätzung`.
 ──────────────────────────────────────────────────────────────
 
-<<<SLICE PLANF008R15
+<<<SLICE PLANF008R16
 # Plan — F008 SSE event stream
 
 Branch: feature/f008-sse-event-stream, cut from `main` at `7c03adfa`, the merge
@@ -244,134 +213,245 @@ ledger's envelope sequence, the heartbeat holds cadence, and the fallback
 engages on a disabled EventSource and recovers to live.
 
 ## Current Step
-R15 PAYS DOWN T002's two authored defects rather than only recording them.
-R-0620: `resolve_sse_start` guarded with `str(x or "")`, which reads the
-integer 0 — the first ledger position — as an absent header; the guard becomes
-an explicit None test and three tests pin the integer forms. R-0621: the
-grown-ledger test started its second client from scratch, so the boundary its
-name promised was never crossed by a resume; the hammer helper now accepts a
-starting last-event-id and the test resumes across the growth. R15 also
-records the R14 verdict and widens R-0371 a third time.
+R16 BEGINS T003 with the client-side RULES alone, as a pure module rather than
+as a React hook. `apps/ui/vitest.config.ts` sets `environment: "node"` and
+collects `src/**/*.test.ts`, and the app carries no jsdom and no testing
+library, so nothing here can render a hook; `apps/ui/src/cockpitLogic.ts`
+states that same precedent in its own header comment. A new pure module beside
+the existing API client therefore holds the status surface live |
+reconnecting | delayed, the Last-Event-ID resume position, seq gap detection
+and the reconnect backoff schedule, with a test file pinning each. R16 also
+records the R15 verdict, resolves R-0620 and R-0621, and registers R-0622.
 
 ## Next Steps
-1. R16 begins T003: the `useBrainStream` client hook, EventSource with
-   reconnect backoff, gap detection via seq discontinuity, and the status
-   surface live | reconnecting | delayed.
-2. R17 adds T003's polling fallback on the same hook interface and the
-   fixture live-job end-to-end.
-3. Then the integration gate before closure.
+1. R17 wraps that module in the React `useBrainStream` hook, adds T003's
+   polling fallback on the same interface and the fixture live-job
+   end-to-end.
+2. Then the integration gate before closure.
 
 ## Risks
-- The hammer drives `_send_sse_stream` directly rather than over a socket, so
-  it proves the resume CONTRACT and not the transport. The transport stays
-  covered by the framing golden and the drain tests.
-- Repository-wide `ruff check .` is RED and is not a gate (R-0364), and
-  `--preview` reports three pre-existing E306 in
-  `packages/orchestration/ui_server.py`. Ruff is gated scoped to the touched
-  files as a rule-code MULTISET, base against head, so a pre-existing finding
-  is never read as a new one.
-- No open finding is a code defect of F008 reachable from the HTTP path.
-  R-0403, R-0607 through R-0609, R-0611 and R-0613 through R-0621 stay routed
-  to a paydown branch, R-0620 and R-0621 being closed by this round's own
-  commits.
-<<<END PLANF008R15
+- `npm run lint` in `apps/ui` is RED at base and is NOT a gate (R-0364):
+  measured at `22dd8d31` it exits 1 with 49 problems, and every error is a
+  `Parsing error` because that eslint configuration parses no TypeScript at
+  all. That defect is R-0622 and routes to a paydown branch. `npm run
+  typecheck` and `npx vitest run` both exit 0 at that same commit and ARE the
+  gates this round runs.
+- Repository-wide `ruff check .` is RED and is not a gate (R-0364). This round
+  changes no Python, so it moves that reading in neither direction.
+- No open finding is a code defect of F008 reachable from the HTTP path. The
+  open set lives in `.agent/live_review.md` and this file does not repeat it;
+  R-0620 and R-0621 leave it this round and R-0622 enters it.
+<<<END PLANF008R16
+<<<SLICE LEDGER16
+Done: R-0620 — RESOLVED at `8a80ffce` by exactly the one-line fix the finding's own body prescribed: `resolve_sse_start` now opens `text = "" if last_event_id is None else str(last_event_id).strip()`, so only a MISSING header falls back to the cursor and the integer 0 is read as the position it is. THE REVIEWER RE-DERIVED IT rather than reading it back: applying the R15 block's FIXFROM/FIXTO pair to the `305bc30c` blob of `packages/orchestration/ui_server.py`, the FROM occurring exactly once, yields a file BYTE-EQUAL to the C4 blob at sha256 dbf7b3b4, and three new cases pin `(0, "7")` to 1, `(4, "7")` to 5 and `(None, "7")` to 7. THE RED PROOF IS THE COLOUR AND NOT A COUNT, re-run by the reviewer in its own disposable worktree at `1dc011a2` with the primary checkout never touched and `mod.__file__` proved to resolve inside that worktree: with the `305bc30c` blob of that file written back in and the tests left at `1dc011a2`, `pytest tests/ui_server/test_sse_stream.py -k ResumeStartTypes` EXITS 1 and `test_an_integer_zero_is_a_position_and_not_an_absence` fails on `assert 7 == 1`, while `test_an_integer_header_resumes_one_past_it` and `test_none_is_the_only_absence` SURVIVE — the finding's own claim that only the falsy position was ever broken, demonstrated rather than asserted; restored, the same command EXITS 0 at 3 passed. It stays LOW on resolution for the reason it was registered Low: the sole production caller passes `self.headers.get(SSE_LAST_EVENT_ID_HEADER)`, whose value is a string or `None`, so nothing reachable over the wire behaved wrongly on any day. What the fix buys is that the annotation, the docstring and the behaviour now agree, which is what makes the T003 client a safe next caller.
 
-<<<SLICE R0371FROM
-- R-0371 — Low — a block ordered a value that cannot exist at the moment the text carrying it is written. The R5 block told the worker to append to `.agent/live_review.md` "a single line of your own of exactly this shape, with your real commit SHA: `Landed: R-0370 — <one line: what changed, which commit>`" and, six lines later, that "that live_review.md edit belongs to C2, the same commit as the test". A commit's SHA is a hash over a tree that already contains every byte of that commit, so a line inside C2 can never name C2. No correct application of the bundle could satisfy both clauses. The worker was right to declare the deviation, name the commit by its role — "R5's C2, the same commit as this line, whose SHA the handback reports" — and let the handback carry the real value `a01e8a9712aead26eb88888db352d0bb72492cb9`; nothing was fabricated and nothing was edited toward a number. This is the seventh reviewer-gate defect of this feature, after R-0363's unmeasured block length, R-0364's unexecuted ruff gate, R-0367's unreachable numstat, R-0368's wrong-base range gate and R-0369's self-counting string gate, and it is a class none of their counter-measures reach: R-0364 makes the reviewer EXECUTE every gate it orders, but a self-referential SHA is not a gate at all — it is appliable CONTENT whose required value the act of applying it destroys, so there is nothing for the reviewer to execute in advance. `docs/agents/planner_reviewer_prompt.md` §4 item 4 supplies the template verbatim, including the words "which commit", and the template is fine; the defect is pairing it with "your real commit SHA" and "the same commit as the test". Counter-measure, binding from R6 on and additive to all of the above: before ordering any text to be written into a file, the reviewer checks that every value that text must contain already exists at the moment of writing. Commit SHAs, `git show --numstat` outputs and every other post-hoc measurement are ordered into the HANDBACK, which is written after the commits exist, and never into the committed text itself; where a committed line must identify its own commit it names it by its ROLE in the bundle. SECOND INSTANCE, F008 R13, and it lands inside this counter-measure's own escape hatch. The counter-measure routes every post-hoc measurement "into the HANDBACK, which is written after the commits exist" — but the handback IS a commit in the range, so a reading over a range that INCLUDES the handback commit is still unwritable at the moment that file is written. R13's G12 ordered `git diff --name-only BASE..C6` where C6 is the handback commit itself, and the Change list it had to equal contains `.agent/handoff.md`: no pre-C6 reading could match it and no post-C6 reading could be placed inside C6. The worker declared the impossibility rather than fudging it, put the pre-C6 reading in the file and the full BASE..C6 reading in the round report — the R-0149 carve-out applied by hand to a clause that never named it. THE NEAR MISS IS THE INSTRUCTIVE PART: R13's G12 did name that carve-out, but only for the numstat half of the gate ("C6's own numbers belong to the round report") and not for the name-only half three sentences earlier, so one reviewer sentence knew the rule while its neighbour did not. COUNTER-MEASURE WIDENED: a range gate whose range ends at the handback commit either states the carve-out for EVERY reading it orders, or ends its range at the commit BEFORE the handback and names the handback's own path separately. OPEN.
-<<<END R0371FROM
+Done: R-0621 — RESOLVED at `75f02ef3` by widening the hammer helper rather than by renaming the test to match what it did. `_hammer` gains a `last_event_id` parameter so a caller can hand it a client that ALREADY holds part of the ledger, and the test — now `test_a_resume_crosses_a_ledger_that_grew_between_connections` — seeds the second client with the id the first one kept and asserts it receives exactly ids 2 through 9, no duplicate of 1 and no gap at 6, with the two transcripts concatenated byte-equal to the whole ledger. THE REVIEWER PROVED THE REPAIR HAS TEETH rather than trusting that it does: in a disposable worktree at `1dc011a2`, dropping the `+ 1` from `resolve_sse_start` — a byte string occurring exactly once in `packages/orchestration/ui_server.py` — drives `pytest tests/ui_server/test_sse_stream.py -k DisconnectHammer` to EXIT 1 with four failures INCLUDING this repaired test, and the restored file EXITS 0 at 5 passed. That is the reading the finding needed, because the defect it names is a test that passes for the wrong reason: a rename alone would have left the same hole under a truer name. NOTE FOR THE RECORD, not a new finding: the R15 round fixed both this and R-0620 without writing a `Landed:` line for either, so between `75f02ef3` and this paragraph the ledger showed two findings as open whose fixes were already on disk. Section 4 item 4 of `docs/agents/planner_reviewer_prompt.md` reserves that marker for a fix the reviewer has not yet resolved, and these two were reviewer-ORDERED in the block that fixed them, so the window was one round wide and closed by this commit; it is recorded here so the next reader knows the absence was reasoned about rather than overlooked.
 
-<<<SLICE R0371TO
-- R-0371 — Low — a block ordered a value that cannot exist at the moment the text carrying it is written. The R5 block told the worker to append to `.agent/live_review.md` "a single line of your own of exactly this shape, with your real commit SHA: `Landed: R-0370 — <one line: what changed, which commit>`" and, six lines later, that "that live_review.md edit belongs to C2, the same commit as the test". A commit's SHA is a hash over a tree that already contains every byte of that commit, so a line inside C2 can never name C2. No correct application of the bundle could satisfy both clauses. The worker was right to declare the deviation, name the commit by its role — "R5's C2, the same commit as this line, whose SHA the handback reports" — and let the handback carry the real value `a01e8a9712aead26eb88888db352d0bb72492cb9`; nothing was fabricated and nothing was edited toward a number. This is the seventh reviewer-gate defect of this feature, after R-0363's unmeasured block length, R-0364's unexecuted ruff gate, R-0367's unreachable numstat, R-0368's wrong-base range gate and R-0369's self-counting string gate, and it is a class none of their counter-measures reach: R-0364 makes the reviewer EXECUTE every gate it orders, but a self-referential SHA is not a gate at all — it is appliable CONTENT whose required value the act of applying it destroys, so there is nothing for the reviewer to execute in advance. `docs/agents/planner_reviewer_prompt.md` §4 item 4 supplies the template verbatim, including the words "which commit", and the template is fine; the defect is pairing it with "your real commit SHA" and "the same commit as the test". Counter-measure, binding from R6 on and additive to all of the above: before ordering any text to be written into a file, the reviewer checks that every value that text must contain already exists at the moment of writing. Commit SHAs, `git show --numstat` outputs and every other post-hoc measurement are ordered into the HANDBACK, which is written after the commits exist, and never into the committed text itself; where a committed line must identify its own commit it names it by its ROLE in the bundle. SECOND INSTANCE, F008 R13, and it lands inside this counter-measure's own escape hatch. The counter-measure routes every post-hoc measurement "into the HANDBACK, which is written after the commits exist" — but the handback IS a commit in the range, so a reading over a range that INCLUDES the handback commit is still unwritable at the moment that file is written. R13's G12 ordered `git diff --name-only BASE..C6` where C6 is the handback commit itself, and the Change list it had to equal contains `.agent/handoff.md`: no pre-C6 reading could match it and no post-C6 reading could be placed inside C6. The worker declared the impossibility rather than fudging it, put the pre-C6 reading in the file and the full BASE..C6 reading in the round report — the R-0149 carve-out applied by hand to a clause that never named it. THE NEAR MISS IS THE INSTRUCTIVE PART: R13's G12 did name that carve-out, but only for the numstat half of the gate ("C6's own numbers belong to the round report") and not for the name-only half three sentences earlier, so one reviewer sentence knew the rule while its neighbour did not. COUNTER-MEASURE WIDENED: a range gate whose range ends at the handback commit either states the carve-out for EVERY reading it orders, or ends its range at the commit BEFORE the handback and names the handback's own path separately. THIRD INSTANCE, F008 R14 — and it is inside the very round that wrote the widening above, which is the proof the widening was too narrow. That R14 block's G1 ordered `git status --porcelain` to be empty "after every commit AND AT THE HANDBACK". Neither half can be recorded where it was ordered: the state after C5 cannot appear inside C5, and at the instant `handoff.md` is written the tree necessarily holds an uncommitted file, so the honest reading at that moment is not empty at all. The widening one sentence earlier reached only "a range gate whose range ends at the handback commit", and G1 is a HYGIENE gate rather than a range gate, so the counter-measure written to stop this defect failed to cover the next instance of it in its own block. The worker declared it and applied the R-0149 carve-out by hand for the third round running. COUNTER-MEASURE WIDENED AGAIN, this time by the PROPERTY instead of by the gate's genre, which is why the first two attempts kept missing: ANY clause ordering a reading of repository state at or after the handback commit — a range, a porcelain status, a worktree list, a reflog, a push result — names where that reading lands, and the default landing place is the ROUND REPORT and never the handback file. A gate is not exempt because it is short, and a counter-measure scoped to one genre of gate will be evaded by the next genre. OPEN.
-<<<END R0371TO
+- R-0622 — Medium — A LINT CONFIGURATION THAT PARSES NONE OF THE LANGUAGE IT IS AIMED AT, SO THE RULES IT EXISTS TO ENFORCE EVALUATE ON ZERO FILES. `apps/ui/package.json` carries `"lint": "eslint src --ext .ts,.tsx"`, and `apps/ui/eslint.config.js` selects `src/**/*.{ts,tsx}` and enables the `react-hooks` recommended rule set — but it sets no `languageOptions.parser`, and `typescript-eslint` appears in neither the dependencies nor the devDependencies of that package. ESLint therefore parses every TypeScript file with its default JavaScript parser and stops at the first type annotation. MEASURED BY THE REVIEWER at `22dd8d31`, not inferred: `npm run --silent lint` in `apps/ui` EXITS 1 reporting `49 problems (47 errors, 2 warnings)`, and every one of those errors is the `Parsing error` class — `npx eslint src/cockpitLogic.ts src/api/remedyApi.test.ts` returns exactly two problems, `Parsing error: Unexpected token {` and `Parsing error: Unexpected token :`, one per file, which is the same result every `.ts` file in this app produces. WHY MEDIUM RATHER THAN LOW, and why it is registered in THIS feature: the rule set that never evaluates is `react-hooks`, and R17 adds the `useBrainStream` hook — `react-hooks/exhaustive-deps` is precisely the rule that catches the stale-closure bug a reconnecting EventSource hook is prone to, and it will be as silent on that file as it is on every other. It is not vacuous in the R-0438 sense, because it exits 1 loudly rather than passing while blind; the cost is that the loudness is uniform and uninformative, so no one can tell a real finding from the parse failure. THE FIX, out of this feature's scope and routed to a paydown branch: add `typescript-eslint` to `apps/ui` devDependencies and give the `src/**/*.{ts,tsx}` block its parser, then re-measure the problem set and fix or scope whatever real findings appear underneath. F008 must not carry it, because changing that package's dependency set is neither a stream endpoint nor a client rule, and this round gates `npm run typecheck` and `npx vitest run` — both exit 0 at `22dd8d31` — instead of pretending a red lint is a gate (R-0364).
 
-<<<SLICE LEDGER15
-- R-0621 — Low — A TEST NAMED FOR A PROPERTY ITS BODY NEVER EXERCISES, IN THE ROUND THAT EXISTED TO PROVE THAT PROPERTY. `test_a_ledger_that_grows_between_connections_still_arrives_whole`, the TESTS14 slice of the F008 R14 block authored by the reviewer and applied byte for byte at `3c758702`, drives one client over a six-event ledger, extends the ledger to ten, and then calls `_hammer` a SECOND time — but that second call takes no starting last-event-id, so it begins with `last_event_id = None`, resolves to position 0 and replays the grown ledger from the beginning. The growth boundary is therefore never crossed by a resume, which is the one thing the test's name promises. RE-MEASURED BY THE REVIEWER, not read: wrapping `resolve_sse_start` in a spy and running the test body prints the second client's resolve calls as `(None, '0', 0)`, `('2', '0', 3)`, `('5', '0', 6)`, `('8', '0', 9)` — the FIRST is the giveaway, a fresh start rather than a resume from the id `first` kept. WHY IT IS ONLY LOW: the test is not vacuous. Its later reconnects do exercise resume, so it fails under both of the mutations G10 applies, and the property it actually proves — a grown ledger arrives whole — is worth having. The defect is that a reader trusts the NAME, and the name claims coverage of the resume-across-growth case that nothing in the suite then holds. THE FIX, applied by this round rather than deferred: `_hammer` gains a `last_event_id` parameter so a caller can hand it a client that already holds part of the ledger, and the test is renamed `test_a_resume_crosses_a_ledger_that_grew_between_connections` and asserts the second client receives exactly ids 2 through 9 — no duplicate of 1, no gap at 6 — with the two transcripts concatenated byte-equal to the whole ledger. FOUND BY THE WORKER, which applied the slice unedited as constraint 1 required and declared the mismatch; that is the third consecutive round in which a worker's declaration, not a gate, is what put a reviewer-authored defect on the record, and the second in which the defect was invisible to every gate because the gates compared bytes and the bytes were exactly what the reviewer wrote.
+Gate: R16 — the R15 entry. R15 PASSED. No finding is registered against its work: every gate it reported was RE-DERIVED by the reviewer off disk rather than read back out of the handback, and every value matched. TRANSPORT PROVED BY THE DIGEST FALLBACK, declared as such because this is a new session and the previous reviewer's scratch original no longer exists (section 4 item 9): `.agent/authored/f008-r15.md` at `68915bd9` and `.agent/last_block.md` at `ea466d98` are EQUAL at sha256 68062e589fe762d605ce977b0922dd141fc45be26210975e82cd2c7bc4fca5ef over 36909 bytes and 377 lines, which is the value the handback names. ELEVEN SLICES by the reviewer's own ordered extraction out of the committed C0a blob, every newline-included digest matching: PLANF008R15 da4f29b2, R0371FROM d999949c, R0371TO 844b7e06, LEDGER15 83183124, FIXFROM 025c3c5d, FIXTO 55cc7e7a, HAMMERFROM 5c201fcf, HAMMERTO 0f4f0ec4, GROWFROM a83d4938, GROWTO 1dbb14fe and TESTS15 ca994615. THE PLAN LANDED FIRST at `9980764c`, byte-equal to PLANF008R15 at 46 lines under the 50-line cap, which is checklist item 23 met rather than claimed. THE R-0371 WIDENING IS CONSTRUCTIVE: R0371FROM occurs exactly once at `9980764c` and replacing that one occurrence with R0371TO yields a file byte-equal to the `03ecfea1` blob at 042e3f65, the line count being 1030 at both because a one-line slice replaced a one-line slice. THE APPEND at `42347aaf` is a byte-exact prefix plus a 5926-byte remainder equal to a newline plus LEDGER15, agreed by an INDEPENDENT blank-line split into 212 units whose LAST TWO are LEDGER15's paragraphs in order, with a one-byte flip REJECTED by both readings and the unflipped ACCEPTED by both. THE SETS MOVED AS ORDERED — 192, 192, 193 registered, `Done:` and `Landed:` 0 at all three, `Gate: R` 14, 14, 15 over fifteen DISTINCT keys, R-0621 nowhere then once, R-0622 nowhere — so the edit minted nothing and only the append did, and the fifteenth `Gate:` header matched the `Gate: R<n> — the R<n-1> entry.` shape with exactly one non-match, that being the F255 entry which is correctly shaped for what it records. BOTH CODE PAIRS ARE CONSTRUCTIVE: each FROM occurs exactly once in its `305bc30c` blob and the rebuilt files are byte-equal to the C4 and C5 blobs at dbf7b3b4 and 68e9b29b. THE TEST APPEND at `1dc011a2` is a byte-exact prefix whose remainder is TWO newlines plus TESTS15 at 642 bytes and NOT one. THE RUNS ARE THE REVIEWER'S OWN, serial, in the primary checkout: the SSE file exits 0 at 65, the state readers including the canary exit 0 at 465 and `tests/docs/` exits 0 at 295, reconciling 62 plus 3 and 462 plus 3 exactly against TESTS15's three `def test_` lines. RUFF EQUAL ACROSS THE CHANGE as a rule-code multiset read through `--stdin-filename` with nothing written to the checkout: `{}` against `{}` in the default configuration and `{E306: 3}` against `{E306: 3}` under `--preview`, the three being pre-existing and neither added nor removed, behind a control the reviewer re-ran in BOTH configurations after its own first extractor came back blind on the bare-code form — the same trap the handback declared, reproduced and avoided. NINE single-parent commits, insertions 377, 261, 20, 1, 4, 1, 16, 16 and 50, every one under 500 and every cell equal to the handback's `+/-` column including the deletions; zero marker lines in all five targets; a reflog whose operations are `commit` 40 times with amend, rebase and cherry at 0; an 89-line handback under the 100 lines nine commits allow; the tree clean with the primary checkout the only worktree and the branch pushed at `22dd8d31`.
+<<<END LEDGER16
+<<<SLICE BRAINSTREAM
+// Pure, framework-free client state for the SSE brain stream.
+// Extracted from the React hook for the same reason cockpitLogic.ts was
+// extracted from the panels: the node-environment vitest cannot render React,
+// so the reconnect, gap and status rules live here where they can be tested.
 
-Gate: R15 — the R14 entry. R14 PASSED. Its three objections are all against the reviewer's own authored text and none is a defect in the round's work: R-0621 above, R-0371's third instance recorded this round, and an observation on G1 that became that third instance. R14 CLOSED T002 with the disconnect hammer the feature file calls its acceptance heart — a client that keeps losing its connection, reconnecting with the id of the last frame it kept, whose final transcript BYTE-EQUALS the ledger's envelope sequence at every drop cadence from one frame to twelve. THE REVIEWER RE-DERIVED EVERY GATE ITSELF at `305bc30c`, from its own runs. TRANSPORT EQUAL THREE WAYS — the reviewer's scratch file, `.agent/authored/f008-r14.md` at `70f3a3e6` and `.agent/last_block.md` at `3de27ff2` — at sha256 974788f0fe8aedcfbc667dd029d7528ad87bab977483e9968c55dba52acbfe2d over 33050 bytes and 364 lines. FIVE SLICES by the reviewer's own ordered extraction from the committed C0a file, every digest matching: PLANF008R14 058d3d22, R0371FROM 8c1880a0, R0371TO d999949c, LEDGER14 7a7990b0 and TESTS14 9c084fdd. THE PLAN LANDED FIRST at `6acca2a4`, byte-equal at 45 lines under the 50-line cap. THE R-0371 WIDENING IS PROVED CONSTRUCTIVELY, not counted: R0371FROM occurs exactly once in the C1 file, and replacing that one occurrence with R0371TO yields a file BYTE-EQUAL to the C2 blob at 8ae3c4a3, with the line count 1026 at both commits because a one-line slice replaced a one-line slice. THE APPEND at `f02742f9` is a byte-exact prefix plus a 6119-byte remainder equal to a newline plus LEDGER14, agreed by an INDEPENDENT blank-line split into 210 units whose LAST TWO equal LEDGER14's two paragraphs in order, with a one-byte flip REJECTED by both readings and the unflipped ACCEPTED by both. THE SETS MOVED AS ORDERED ACROSS THREE COMMITS — 191, 191, 192 registered, `Done:` and `Landed:` 0 at all three, `Gate: R` 13, 13, 14 over fourteen DISTINCT keys, R-0620 nowhere then once, R-0621 nowhere — so the edit minted nothing and only the append did. THE TEST APPEND at `3c758702` is a byte-exact prefix whose remainder is TWO newlines plus TESTS14 and NOT one, the diff adding 92 lines and removing none, 92 being TESTS14's 90 plus the two blank lines PEP 8 costs — a property no rule in this configuration can see, which is why it was gated as bytes. SEVEN single-parent commits, insertions 364, 278, 23, 1, 4 and 92 before the handback, all under 500, and EVERY CELL of the handback's `+/-` column agreed with `git diff --numstat`, deletions 0, 372, 23, 1, 0 and 0 included. THE RUNS ARE THE REVIEWER'S OWN, serial, in the primary checkout: the SSE file exits 0 at 62, the state readers exit 0 at 462 and `tests/docs/` exits 0 at 295, reconciling 57 + 5 and 457 + 5 exactly. THE MUTATION CONTROL IS THE RIGHT INSTRUMENT AND THE REVIEWER RE-RAN IT in its own disposable worktree: a test-only round over behaviour that already exists cannot be red-proved by reverting a file, so instead dropping the `+ 1` from `resolve_sse_start` and separately making its digit test unreachable each drive the hammer to EXIT 1 with the same four failures, and the unmutated file EXITS 0 — the single survivor being the one-clean-connection test, which never resumes and so cannot be reached by any mutation of the resume rule. RUFF EQUAL ACROSS THE CHANGE, empty multiset at base and head through a `--stdin-filename` read that never touched the checkout, behind a control shown non-empty at exit 1. Zero marker lines in all four targets, a reflog with `amend`, `rebase` and `cherry` at 0, an 80-line handback under its 100-line cap naming C0a through C5 once each, the tree clean with one worktree, the branch pushed and `gh pr list` empty.
-<<<END LEDGER15
+/** What the cockpit badge shows: a live stream, a retrying one, or polling. */
+export type BrainStreamStatus = "live" | "reconnecting" | "delayed";
 
-<<<SLICE FIXFROM
-    text = str(last_event_id or "").strip()
-<<<END FIXFROM
+/** One frame as the server sends it: the ledger position IS the event id. */
+export interface BrainStreamFrame {
+  seq: number;
+  event: unknown;
+}
 
-<<<SLICE FIXTO
-    text = "" if last_event_id is None else str(last_event_id).strip()
-<<<END FIXTO
+export interface BrainStreamState {
+  status: BrainStreamStatus;
+  /** The last seq the client actually HOLDS; null before the first frame. */
+  lastSeq: number | null;
+  /** A seq discontinuity was seen and no snapshot has repaired it yet. */
+  gapDetected: boolean;
+  /** Consecutive failed connection attempts; reset by a successful open. */
+  attempt: number;
+}
 
-<<<SLICE HAMMERFROM
-def _hammer(monkeypatch: Any, events: list, drop_after: int,
-            reconnects: int = 40) -> list[bytes]:
-    """Reconnect until the ledger is drained, dropping every `drop_after` frames.
+/** A client that holds nothing yet, and does not pretend to be live. */
+export function initialBrainStreamState(): BrainStreamState {
+  return { status: "reconnecting", lastSeq: null, gapDetected: false, attempt: 0 };
+}
 
-    This is the acceptance shape the feature file names: a client that keeps
-    losing its connection must end up with the ledger and nothing else. Each
-    reconnect carries the id of the last frame it kept, exactly as an
-    EventSource sends `Last-Event-ID`, and the server decides the span.
-    """
-    monkeypatch.setattr(mod, "_load_events", lambda job: events)
-    transcript: list[bytes] = []
-    last_event_id: str | None = None
-<<<END HAMMERFROM
+/** The `Last-Event-ID` value: the last frame HELD, never the next one wanted.
+ *  The server adds the one — `resolve_sse_start` returns `int(text) + 1` — so
+ *  a client sending its next-wanted seq would skip an event on every
+ *  reconnect. Null means "send no header", which resumes from the cursor. */
+export function resumeEventId(state: BrainStreamState): string | null {
+  return state.lastSeq === null ? null : String(state.lastSeq);
+}
 
-<<<SLICE HAMMERTO
-def _hammer(monkeypatch: Any, events: list, drop_after: int,
-            reconnects: int = 40, last_event_id: str | None = None) -> list[bytes]:
-    """Reconnect until the ledger is drained, dropping every `drop_after` frames.
+/** An open connection is the only thing that makes the badge say live. */
+export function openBrainStream(state: BrainStreamState): BrainStreamState {
+  return { ...state, status: "live", attempt: 0 };
+}
 
-    This is the acceptance shape the feature file names: a client that keeps
-    losing its connection must end up with the ledger and nothing else. Each
-    reconnect carries the id of the last frame it kept, exactly as an
-    EventSource sends `Last-Event-ID`, and the server decides the span.
-    `last_event_id` seeds that state, so a caller can hand this helper a client
-    that ALREADY holds part of the ledger — which is what makes a resume across
-    a ledger that grew between connections expressible (finding R-0621).
-    """
-    monkeypatch.setattr(mod, "_load_events", lambda job: events)
-    transcript: list[bytes] = []
-<<<END HAMMERTO
+/** A dropped connection counts an attempt; the badge stops claiming live. */
+export function failBrainStream(state: BrainStreamState): BrainStreamState {
+  return { ...state, status: "reconnecting", attempt: state.attempt + 1 };
+}
 
-<<<SLICE GROWFROM
-    def test_a_ledger_that_grows_between_connections_still_arrives_whole(self, monkeypatch):
-        # The stream is a reader over a file that is still being appended to.
-        events = _events(6)
-        first = _hammer(monkeypatch, events, 2, reconnects=1)
-        events.extend(_events(10)[6:])
-        rest = _hammer(monkeypatch, events, 3)
-        assert b"".join(rest) == _ledger_bytes(events)
-        assert [_parse(f)["id"] for f in first] == ["0", "1"]
-<<<END GROWFROM
+/** The fallback transport is honest about being slower than the stream. */
+export function degradeBrainStream(state: BrainStreamState): BrainStreamState {
+  return { ...state, status: "delayed" };
+}
 
-<<<SLICE GROWTO
-    def test_a_resume_crosses_a_ledger_that_grew_between_connections(self, monkeypatch):
-        # The stream reads a file that is still being appended to, so the span
-        # a client misses can straddle the growth. R-0621: the version of this
-        # test written at R14 started its second client from scratch, so the
-        # boundary it is named for was never crossed by a resume at all.
-        events = _events(6)
-        first = _hammer(monkeypatch, events, 2, reconnects=1)
-        assert [_parse(f)["id"] for f in first] == ["0", "1"]
-        events.extend(_events(10)[6:])
-        rest = _hammer(monkeypatch, events, 3,
-                       last_event_id=_parse(first[-1])["id"])
-        # 2 through 9: everything after the frame the client kept, across the
-        # boundary, with no duplicate of 1 and no gap at 6.
-        assert [_parse(f)["id"] for f in rest] == [str(i) for i in range(2, 10)]
-        assert b"".join(first + rest) == _ledger_bytes(events)
-<<<END GROWTO
+/** Applying a frame advances the held position and reports a discontinuity.
+ *  A gap is `seq !== lastSeq + 1` — the disconnect hammer forbids both the
+ *  duplicate and the hole, and the client must SEE the hole to ask for a
+ *  snapshot. The first frame of a fresh client can carry any seq, because a
+ *  resume from a cursor starts mid-ledger, so it never reports a gap. A frame
+ *  at or behind the held position is a replay and is dropped. */
+export function receiveBrainFrame(
+  state: BrainStreamState,
+  frame: BrainStreamFrame,
+): BrainStreamState {
+  if (state.lastSeq !== null && frame.seq <= state.lastSeq) return state;
+  const isGap = state.lastSeq !== null && frame.seq !== state.lastSeq + 1;
+  return {
+    ...state,
+    status: state.status === "delayed" ? "delayed" : "live",
+    lastSeq: frame.seq,
+    gapDetected: state.gapDetected || isGap,
+    attempt: 0,
+  };
+}
 
-<<<SLICE TESTS15
-class TestResumeStartTypes:
-    """R-0620: the guard reads a POSITION, and zero is a position."""
+/** A snapshot refetch is what repairs a gap: the held position jumps to the
+ *  snapshot's own seq and the discontinuity is cleared. */
+export function repairBrainGap(
+  state: BrainStreamState,
+  snapshotSeq: number,
+): BrainStreamState {
+  return { ...state, lastSeq: snapshotSeq, gapDetected: false };
+}
 
-    def test_an_integer_zero_is_a_position_and_not_an_absence(self):
-        # The string "0" is truthy and the integer 0 is not, so a truthiness
-        # guard passes the string form and silently fails this one.
-        assert mod.resolve_sse_start(0, "7") == 1
+/** Backoff floor and ceiling, named so the schedule and its tests cannot drift. */
+export const BRAIN_BACKOFF_BASE_MS = 250;
+export const BRAIN_BACKOFF_CAP_MS = 8000;
 
-    def test_an_integer_header_resumes_one_past_it(self):
-        assert mod.resolve_sse_start(4, "7") == 5
+/** Reconnect backoff: doubling from the base, capped so a long outage still
+ *  retries about every eight seconds rather than drifting into minutes. */
+export function brainBackoffDelayMs(attempt: number): number {
+  if (attempt <= 0) return 0;
+  return Math.min(BRAIN_BACKOFF_BASE_MS * 2 ** (attempt - 1), BRAIN_BACKOFF_CAP_MS);
+}
+<<<END BRAINSTREAM
+<<<SLICE STREAMTESTS
+import { describe, it, expect } from "vitest";
+import {
+  BRAIN_BACKOFF_CAP_MS, brainBackoffDelayMs, degradeBrainStream, failBrainStream,
+  initialBrainStreamState, openBrainStream, receiveBrainFrame, repairBrainGap, resumeEventId,
+} from "./brainStream";
+import type { BrainStreamState } from "./brainStream";
 
-    def test_none_is_the_only_absence(self):
-        # Everything else is data; only a missing header falls back.
-        assert mod.resolve_sse_start(None, "7") == 7
-<<<END TESTS15
+/** Drive a state through a run of seqs, as the transport would deliver them. */
+function drive(state: BrainStreamState, seqs: number[]): BrainStreamState {
+  return seqs.reduce((s, seq) => receiveBrainFrame(s, { seq, event: { seq } }), state);
+}
+
+describe("initialBrainStreamState", () => {
+  it("holds nothing and does not claim to be live", () => {
+    const s = initialBrainStreamState();
+    expect(s.lastSeq).toBeNull();
+    expect(s.status).toBe("reconnecting");
+    expect(s.gapDetected).toBe(false);
+  });
+});
+
+describe("resumeEventId", () => {
+  it("sends no header before the first frame", () => {
+    expect(resumeEventId(initialBrainStreamState())).toBeNull();
+  });
+  it("sends the last seq HELD, not the next one wanted", () => {
+    // The server adds the one, so a next-wanted seq would skip an event.
+    expect(resumeEventId(drive(initialBrainStreamState(), [0, 1, 2]))).toBe("2");
+  });
+  it("zero is a position and is still sent", () => {
+    // The client half of the server-side rule that zero is not an absence.
+    expect(resumeEventId(drive(initialBrainStreamState(), [0]))).toBe("0");
+  });
+});
+
+describe("receiveBrainFrame", () => {
+  it("a contiguous run reports no gap and ends live", () => {
+    const s = drive(openBrainStream(initialBrainStreamState()), [0, 1, 2, 3]);
+    expect(s.lastSeq).toBe(3);
+    expect(s.gapDetected).toBe(false);
+    expect(s.status).toBe("live");
+  });
+  it("the first frame of a fresh client is never a gap", () => {
+    // A resume from a cursor starts mid-ledger; that is not a discontinuity.
+    expect(drive(initialBrainStreamState(), [7]).gapDetected).toBe(false);
+  });
+  it("a hole in the sequence is detected", () => {
+    expect(drive(initialBrainStreamState(), [0, 1, 4]).gapDetected).toBe(true);
+  });
+  it("a replayed frame is dropped and does not move the held position", () => {
+    const s = drive(initialBrainStreamState(), [0, 1, 1]);
+    expect(s.lastSeq).toBe(1);
+    expect(s.gapDetected).toBe(false);
+  });
+  it("a detected gap stays set while later frames arrive cleanly", () => {
+    expect(drive(initialBrainStreamState(), [0, 3, 4, 5]).gapDetected).toBe(true);
+  });
+  it("frames over the fallback stay labelled delayed", () => {
+    const s = drive(degradeBrainStream(initialBrainStreamState()), [0, 1]);
+    expect(s.status).toBe("delayed");
+    expect(s.lastSeq).toBe(1);
+  });
+});
+
+describe("repairBrainGap", () => {
+  it("a snapshot clears the discontinuity and sets the held position", () => {
+    const fixed = repairBrainGap(drive(initialBrainStreamState(), [0, 4]), 9);
+    expect(fixed.gapDetected).toBe(false);
+    expect(fixed.lastSeq).toBe(9);
+    expect(resumeEventId(fixed)).toBe("9");
+  });
+});
+
+describe("the status surface", () => {
+  it("moves through live, reconnecting and delayed and back to live", () => {
+    let s = openBrainStream(initialBrainStreamState());
+    expect(s.status).toBe("live");
+    s = failBrainStream(s);
+    expect(s.status).toBe("reconnecting");
+    s = degradeBrainStream(s);
+    expect(s.status).toBe("delayed");
+    s = openBrainStream(s);
+    expect(s.status).toBe("live");
+  });
+  it("a successful open resets the attempt count", () => {
+    const s = openBrainStream(failBrainStream(failBrainStream(initialBrainStreamState())));
+    expect(s.attempt).toBe(0);
+  });
+  it("each drop counts one attempt", () => {
+    expect(failBrainStream(failBrainStream(initialBrainStreamState())).attempt).toBe(2);
+  });
+});
+
+describe("brainBackoffDelayMs", () => {
+  it("the first attempt does not wait", () => {
+    expect(brainBackoffDelayMs(0)).toBe(0);
+  });
+  it("doubles from the base delay", () => {
+    expect([1, 2, 3, 4].map((n) => brainBackoffDelayMs(n))).toEqual([250, 500, 1000, 2000]);
+  });
+  it("is capped so a long outage keeps retrying", () => {
+    expect(brainBackoffDelayMs(20)).toBe(BRAIN_BACKOFF_CAP_MS);
+  });
+  it("never decreases as attempts grow", () => {
+    const d = [0, 1, 2, 3, 4, 5, 6, 7, 8].map((n) => brainBackoffDelayMs(n));
+    expect(d).toEqual([...d].sort((a, b) => a - b));
+  });
+});
+<<<END STREAMTESTS
