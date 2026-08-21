@@ -16,31 +16,34 @@ ledger's envelope sequence, the heartbeat holds cadence, and the fallback
 engages on a disabled EventSource and recovers to live.
 
 ## Current Step
-R16 BEGINS T003 with the client-side RULES alone, as a pure module rather than
-as a React hook. `apps/ui/vitest.config.ts` sets `environment: "node"` and
-collects `src/**/*.test.ts`, and the app carries no jsdom and no testing
-library, so nothing here can render a hook; `apps/ui/src/cockpitLogic.ts`
-states that same precedent in its own header comment. A new pure module beside
-the existing API client therefore holds the status surface live |
-reconnecting | delayed, the Last-Event-ID resume position, seq gap detection
-and the reconnect backoff schedule, with a test file pinning each. R16 also
-records the R15 verdict, resolves R-0620 and R-0621, and registers R-0622.
+R17 CONTINUES T003 with the transport ORCHESTRATION, still pure. R16 built the
+rules a client holds; a new driver module says what it should DO next, as a
+reducer returning effects as DATA — connect, wait, snapshot, poll — so the
+reconnect schedule, the gap-to-snapshot-to-resume path and the polling
+fallback are decided in code the node-environment vitest can run. Nothing
+performs an effect yet: no EventSource, no timer, no fetch. R17 also pins the
+backoff cap against a LITERAL (R-0623), records the R16 verdict and registers
+R-0623 and R-0624.
 
 ## Next Steps
-1. R17 wraps that module in the React `useBrainStream` hook, adds T003's
-   polling fallback on the same interface and the fixture live-job
-   end-to-end.
+1. R18 adds the thin React `useBrainStream` hook interpreting the driver's
+   effects, the visible delayed badge and the fixture live-job end-to-end;
+   R-0624's fix lands there, with the badge that exposes it.
 2. Then the integration gate before closure.
 
 ## Risks
 - `npm run lint` in `apps/ui` is RED at base and is NOT a gate (R-0364):
-  measured at `22dd8d31` it exits 1 with 49 problems, and every error is a
-  `Parsing error` because that eslint configuration parses no TypeScript at
-  all. That defect is R-0622 and routes to a paydown branch. `npm run
-  typecheck` and `npx vitest run` both exit 0 at that same commit and ARE the
-  gates this round runs.
-- Repository-wide `ruff check .` is RED and is not a gate (R-0364). This round
-  changes no Python, so it moves that reading in neither direction.
-- No open finding is a code defect of F008 reachable from the HTTP path. The
-  open set lives in `.agent/live_review.md` and this file does not repeat it;
-  R-0620 and R-0621 leave it this round and R-0622 enters it.
+  measured at `eb2e011c` it exits 1 with 51 problems, every error a
+  `Parsing error`, because that eslint configuration installs no TypeScript
+  parser. That is R-0622, it routes to a paydown branch, and each new `.ts`
+  file adds one more such error. `npm run typecheck` and `npx vitest run`
+  both exit 0 at that commit and ARE the gates.
+- A React hook still cannot be rendered by any gate this repository owns, so
+  R18's hook stays thin enough that typecheck plus the driver's tests cover
+  it. If that stops being true, the honest move is a jsdom dependency and its
+  own round, never an untested hook.
+- Repository-wide `ruff check .` is RED and is not a gate (R-0364); this round
+  changes no Python.
+- No open finding is a code defect of F008 reachable from the HTTP path; the
+  open set lives in `.agent/live_review.md`, not here. R-0623 and R-0624 both
+  ENTER it this round, and R-0623's fix lands here too, so R18 resolves it.
