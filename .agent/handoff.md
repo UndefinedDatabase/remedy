@@ -1,84 +1,74 @@
-# Handback — F008 R4 · cockpit server serves concurrent requests
+# Handback — F008 SSE event stream, R5
+
+Branch `feature/f008-sse-event-stream`. Open findings: 185, unchanged — constraint 5 ordered no registration and none was made.
 
 ## Range
-Branch `feature/f008-sse-event-stream`, no PR open this round. Review of
-`c1e4e3ac`..HEAD, HEAD being C5 — the commit that writes this file, whose SHA
-cannot exist when this line is written and is in the round report.
+
+Review of `9cb131c1`..HEAD, HEAD being the C4 commit that writes this file.
 
 ## Commits
-### 2896fe2d chore(state): save the F008 R4 step block
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/authored/f008-r4.md | +380/-0 | C0a — block saved; every slice extracted from this blob |
 
-### 5112a5d2 chore(state): mirror the F008 R4 step block
+### f0d6d2d6 chore(state): save the F008 R5 step block
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/last_block.md | +300/-254 | C0b — mirror, byte-equal to the C0a blob |
+| .agent/authored/f008-r5.md | +349/-0 | C0a — the step block saved verbatim |
 
-### 9b183953 chore(plan): advance the plan to F008 R4
+### f2532d00 chore(state): mirror the F008 R5 step block
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/plan.md | +21/-20 | C1 — PLANF008R4, 44 lines, first commit after the two saves |
+| .agent/last_block.md | +260/-291 | C0b — mirror, byte-equal to C0a |
 
-### 6292fd51 docs(review): register finding R-0613
+### 627ab499 chore(plan): advance the plan to F008 R5
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/live_review.md | +2/-0 | C2 — FIND0613 appended, before the verdict per §4.4 |
+| .agent/plan.md | +21/-22 | C1 — PLANF008R5, the first substantive commit |
 
-### 6fb06928 docs(review): record the R3 verdict
+### f00360c0 docs(review): record the R4 verdict
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/live_review.md | +2/-0 | C3 — RECORDR3 appended |
+| .agent/live_review.md | +2/-0 | C2 — one `Gate:` paragraph, no finding |
 
-### e5b93f23 fix(ui-server): serve concurrent requests with a threading server
+### 0b1abd81 feat(ui-server): expose the ledger position as seq on events-since
 | Path | +/- | Reason |
 |---|---|---|
-| packages/orchestration/ui_server.py | +2/-2 | C4 — import and instantiation, `HTTPServer` to `ThreadingHTTPServer` |
-| tests/ui_server/test_server_concurrency.py | +110/-0 | C4 — TESTFILE, a `threading.Barrier(2)` both requests must reach |
+| packages/orchestration/ui_server.py | +5/-1 | C3 — SEQFROM rewritten to SEQTO |
+| tests/ui_server/test_event_seq.py | +92/-0 | C3 — TESTFILE, new, pins `seq` |
 
-### C5 docs(state): write the F008 R4 handback
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/handoff.md | in the round report | C5 — a handoff cannot table the commit that writes it (R-0149) |
+### C4 docs(state): write the F008 R5 handback
+`.agent/handoff.md`, rewritten. A handoff cannot table the commit that writes it (R-0149), so its `+/-` is reported in the round report.
 
 ## External actions
-- `git worktree add .remedy-wt/redctl-r4 e5b93f23 --detach` — created, detached at C4; `git worktree remove .remedy-wt/redctl-r4 --force` — removed, `git worktree list` then naming the primary checkout alone.
-- Push: ORDERED by AGENTS.md Push Discipline and executed after C5; a push that follows this commit cannot be asserted by a line inside it, so its real outcome is in the round report.
-- No PR created, edited or merged. No `gh` command run.
+
+- `git worktree add .remedy-wt/redctl-r5 0b1abd81 --detach` — created.
+- `git worktree remove .remedy-wt/redctl-r5 --force` — removed; at this handback `git worktree list` names the primary checkout alone.
+- `git push -u origin feature/f008-sse-event-stream` — ORDERED by Push Discipline, run after this commit; its outcome is reported in the round report rather than asserted here.
+- No PR created, none merged, no `gh` command run.
 
 ## Verification
-- G1 `.agent/STOP` absent before C0a; branch `feature/f008-sse-event-stream`; `git status --porcelain` empty after all 7 commits and at the handback; `git worktree list` = primary alone.
-- G2 block, `.agent/authored/f008-r4.md`@C0a and `.agent/last_block.md`@C0b: sha256 `da369700…`, 26853 B, 380 lines — all three EQUAL.
-- G3 8 slices, count taken from the extraction listing over the C0a blob: PLANF008R4 `76033137…`/2456/44 · FIND0613 `2b93656f…`/2815/1 · RECORDR3 `b307ebcb…`/4668/1 · IMPORTFROM `aad96037…`/59/1 · IMPORTTO `0e5aadf1…`/68/1 · SERVERFROM `dadae59d…`/53/1 · SERVERTO `12ed4c15…`/62/1 · TESTFILE `9a1d28fb…`/3681/110.
-- G4 `.agent/plan.md`@C1 sha256 `76033137…`, 2456 B, 44 lines — byte-equal to PLANF008R4, under 50; `^## Goal$` 1, `^## Next Steps$` 1, `F008` 4; first commit after C0a/C0b.
-- G5 C1→C2 prefix true, remainder `ee3e98ce…`/2816 B/2 lines = newline+FIND0613; blank-line split 192 units, last unit equals the slice; both agree. C2→C3 prefix true, remainder `e466f9c0…`/4669 B/2 lines = newline+RECORDR3; 193 units, last unit equals the slice; both agree. Negative control on C1→C2: one flipped byte REJECTED by both readings, unflipped accepted by both.
-- G6 `^- R-\d+ — ` 184/185/185 · `^Done: R-\d+ — ` 0/0/0 · `^Landed: ` 0/0/0 · `^Gate: R\d+ — ` 3/3/4, the four keys at C3 being R1 R2 R3 R4, distinct · `^- R-0613 — ` 0/1/1.
-- G7 IMPORTFROM 1→0, IMPORTTO 0→1, SERVERFROM 1→0, SERVERTO 0→1 as exact whole lines, base to C4; containment printed `TO contains FROM: False` for both pairs — both REWRITEs, neither owes an append reading. `git show --numstat` on that path reads `2	2`.
-- G8 `tests/ui_server/test_server_concurrency.py`@C4 sha256 `9a1d28fb…`, 3681 B, 110 lines — byte-equal to TESTFILE; `git ls-tree c1e4e3ac -- <path>` printed nothing.
-- G9 primary checkout, serial: new test alone exit 0, `1 passed`; `tests/ui_server/` exit 0, `262 passed` — the 261 measured at base plus this round's one.
-- G10 RED PROOF in `.remedy-wt/redctl-r4` only. (1) Both lines reverted, test file left in place: exit 1, last line `1 failed in 12.49s`, the failure being `threading.BrokenBarrierError` raised inside `gated` — the single-threaded server never gets the second request into the handler. (2) Both lines restored: file sha256 `ad95be28…` byte-identical to C4's blob, worktree `git status --porcelain` empty. (3) Same command: exit 0, `1 passed in 0.58s`.
-- G11 primary checkout, serial, never alongside G9: state-reader four exit 0 `160 passed`; `tests/cli/test_golden_path.py` exit 0 `42 passed`. No resource-safety regression from `daemon_threads`.
-- G12 `git show <sha>:<path>` piped to `ruff check --stdin-filename`, no tracked file written: ui_server.py at `c1e4e3ac` exit 0 multiset `{}`, at C4 exit 0 multiset `{}` — EQUAL; the new test file at C4 exit 0, multiset `{}` (empty), literal form printing `All checks passed!`. Red control through the same stdin path: a two-line file yields `{I001:1, F401:1}` exit 1, so the green is not vacuous.
-- G13 measured after C5 exists, since the range ends at C5; the reading and the cell-by-cell agreement with the table above are in the round report. C0a..C4 insertions 380, 300, 21, 2, 2, 112 — all under 500; every commit has one parent.
-- G14 marker lines beginning `<<<SLICE ` or `<<<END `: plan.md@C1 0 · live_review.md@C3 0 · ui_server.py@C4 0 · the new test@C4 0 · handoff.md@C5 measured after C5, in the round report.
-- G15 over this round's own reflog entries, counting by OPERATION — the text before the first `:` in `git reflog --format=%gs` — entries whose operation is `amend`, `rebase` or `cherry`: 0. No entry total is stated.
-- G16 this file carries the mandated sections and the item-status table below; its line count is in the round report.
+
+- G1 `.agent/STOP` absent, read immediately before C0a; branch `feature/f008-sse-event-stream`; `git status --porcelain` empty after every commit and at this handback; `git worktree list` names the primary checkout alone.
+- G2 block on disk, authored@C0a and last_block@C0b are ALL EQUAL — sha256 `67489603142f567411b9c370351d8e3595cb9f9bcb951de067faa7c6a3e7b23b`, 23217 bytes, 349 lines.
+- G3 5 slices by ordered extraction from the committed file: PLANF008R5 `3c30da07` 2374B/43L · RECORDR4 `36227d97` 4465B/1L · SEQFROM `d8e35c29` 93B/3L · SEQTO `b74eaa8a` 377B/7L · TESTFILE `0b9c7605` 3518B/92L.
+- G4 plan@C1 `3c30da07` 2374B/43L, byte-equal to PLANF008R5; 43 < 50; `## Goal` 1, `## Next Steps` 1, `F008` 3; C1 is the first commit after C0a and C0b.
+- G5 (a) the C1 blob is a byte-exact prefix of the C2 blob and the remainder `42658972` 4466B/2L equals `\n`+RECORDR4; (b) an INDEPENDENT blank-line split yields 194 units whose LAST equals RECORDR4. Negative control: one flipped byte is REJECTED by both readings while the unflipped value is ACCEPTED by both.
+- G6 C1→C2: `^- R-\d+ — ` 185→185 · `^Done: R-\d+ — ` 0→0 · `^Landed: ` 0→0 · `^Gate: R\d+ — ` 4→5 with keys R1 R2 R3 R4 R5 DISTINCT · `^- R-0614 — ` 0 at both.
+- G7 in ui_server.py SEQFROM reads 1 then 0 and SEQTO reads 0 then 1 between `9cb131c1` and C3; the containment test printed `TO contains FROM: false`, a rewrite; `git show --numstat 0b1abd81 -- packages/orchestration/ui_server.py` reads `5	1`.
+- G8 test file@C3 `0b9c7605` 3518B/92L, byte-equal to TESTFILE; `git ls-tree 9cb131c1 -- tests/ui_server/test_event_seq.py` printed nothing.
+- G9 RED PROOF, in the disposable worktree and never in the primary checkout: with SEQTO replaced by SEQFROM and the new tests left in place, `python3 -m pytest tests/ui_server/test_event_seq.py -q -rf` EXITS 1 at `6 failed, 1 passed in 0.21s`, and both `KeyError` and `seq` appear — the decisive line is `E   KeyError: 'seq'`. Restored, the file is byte-identical to C3's blob (sha256 `e2feda53…`) and the same command EXITS 0 at `7 passed in 0.21s`. The one test that passes reverted is `test_a_cursor_past_the_end_returns_nothing_and_invents_no_seq`, which asserts an EMPTY event list and so never reads a `seq` key; the other six all die on the missing field.
+- G10 `python3 -m pytest tests/ui_server/test_event_seq.py -q -rf` in the primary checkout: exit 0, passed 7 + skipped 0 = 7.
+- G11 serially in the primary checkout, never alongside G10: the combined four exit 0 at passed 358 + skipped 0 = 358; `tests/cli/test_golden_path.py` exits 0 at passed 42 + skipped 0 = 42. No skip fired on these runs; per constraint 10 the sums, not bare passed counts, are the readings.
+- G12 `git show <sha>:<path>` piped to `python3 -m ruff check --stdin-filename <path> -`, writing to no tracked file: ui_server@`9cb131c1` exit 0 multiset {} · ui_server@C3 exit 0 {} · test file@C3 exit 0 {} — the two ui_server multisets are EQUAL and the new file's is empty. An UNORDERED red control through the same path returned exit 1 with {I001:1, F811:1, F401:1}, proving the extractor can report a non-empty multiset rather than reading empty always.
+- G13 `git diff --name-only 9cb131c1..C4` equals the Change set with no path on either side alone; every commit in the range has exactly one parent; insertions 349 / 260 / 21 / 2 / 97 are all under 500 and agree cell by cell with the `+/-` column above.
+- G14 lines beginning `<<<SLICE ` or `<<<END `: plan@C1 0 · live_review@C2 0 · ui_server@C3 0 · test file@C3 0 · this file@C4 0.
+- G15 over this round's OWN reflog entries the only OPERATION — the text before the first `:` in `git reflog --format=%gs` — is `commit`; the count whose operation is `amend`, `rebase` or `cherry` is 0. Counted by operation, never by substring (R-0613).
+- G16 this file carries every section `docs/agents/handback_template.md` mandates plus the item table below; its line count is reported in the round report; the cap for this round is 100.
 
 ## Authored-text proofs
-Every slice was extracted from the COMMITTED `.agent/authored/f008-r4.md` by its
-marker lines and applied byte for byte; none was retyped, rewrapped or edited.
-Disk-to-disk equality is the G4/G5/G7/G8 readings above: plan.md byte-equal to
-PLANF008R4, both ledger remainders equal to newline+slice under two independent
-extractors, the new test byte-equal to TESTFILE, the four production lines
-counted as exact whole lines 1→0 and 0→1.
 
-## Deviations & assumptions
-None. The ordered sequence C0a, C0b, C1, C2, C3, C4, C5 was followed exactly —
-no extra commit, none dropped, none reordered; no slice altered; no path outside
-the block's Change list touched; no oversize commit needed.
+Every slice was extracted from the COMMITTED `.agent/authored/f008-r5.md` by its marker lines and applied without retyping, rewrapping or reflowing. Disk-to-disk: `.agent/plan.md`@C1 is byte-equal to PLANF008R5, `tests/ui_server/test_event_seq.py`@C3 to TESTFILE, and the C2 remainder to `\n`+RECORDR4 (G4, G8, G5); the pair landed as SEQFROM 1→0 and SEQTO 0→1 (G7). No slice objection is raised.
 
 ## Item status
+
 | Item | Status | Reason |
 |---|---|---|
 | C0a | done | |
@@ -86,15 +76,17 @@ the block's Change list touched; no oversize commit needed.
 | C1 | done | |
 | C2 | done | |
 | C3 | done | |
-| C4 | done | |
-| C5 | done | this commit |
+| C4 | done | this commit |
 
-Fortschritt: 14 % (F008 beansprucht · vier Urteile im Ledger ·
-Findings-Order gemessen, DECISION F008 D1 verankert · der
-Cockpit-Server bedient jetzt nebenläufige Requests, mit
-Barrier-Beweis statt Stoppuhr · T001 beginnt in R5) —
-Schätzung
+## Deviations & assumptions
+
+None. The ordered sequence C0a, C0b, C1, C2, C3, C4 was followed exactly — no extra commit, none dropped, none reordered.
 
 ## Next
-Review `c1e4e3ac`..C5, then author R5 — T001 proper: the per-job SSE endpoint,
-its 15 s heartbeat, 404 and 429, with seq read from the ledger position.
+
+Reviewer review of `9cb131c1`..HEAD, then R6: the stream endpoint `GET /api/jobs/<jid>/events/stream` with SSE framing, `seq` as the event id, a 15 s heartbeat and 404 for an unknown job. At the next session's start, Phase 1 rule 1 (`.agent/STOP`) precedes rule 2 (the Open PR Gate).
+
+Fortschritt: 18 % (F008 beansprucht · fünf Urteile im Ledger ·
+DECISION F008 D1 vollständig umgesetzt: Server nebenläufig und
+die Ledger-Position als `seq` sichtbar · der Stream-Endpunkt
+selbst beginnt in R6) — Schätzung
