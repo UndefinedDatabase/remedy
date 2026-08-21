@@ -15,24 +15,25 @@ envelope sequence, the heartbeat holds cadence, and the fallback engages on a
 disabled EventSource and recovers to live.
 
 ## Current Step
-R24 pins the stream host R23 landed: twelve tests over an injected source, an
-injected snapshot read, an injected tail read and an injected scheduler, plus
-three red controls — the malformed-frame guard, the close-before-reconnect and
-the polling cursor. Only with this round is the adapter proved rather than
-merely compiled. The round also records the R23 verdict.
+R25 records the R24 verdict and registers R-0629, a defect in the reviewer's
+own R24 block: a red control asserted that its target line occurs once when it
+occurs twice. It changes no code. T003's client side is now rules, driver,
+runner-as-store and the real host, each proved under the node-environment
+vitest.
 
 ## Next Steps
-1. R25 adds the thin `useBrainStream` hook and the visible delayed badge,
-   gated by typecheck and a `tests/ui_contracts/` source contract, the style
-   this repository uses for every React component (R-0628).
+1. R26 adds the thin `useBrainStream` hook over the runner store and the
+   visible delayed badge, gated by `npm run typecheck` and a
+   `tests/ui_contracts/` source contract — the style this repository uses for
+   every React component (R-0628). The hook must call the host's `close` on
+   unmount, or a remounting cockpit leaks one EventSource per mount.
 2. Then the integration gate before closure.
 
 ## Risks
-- The adapter OWNS a socket: `close` sits on the object its factory returns
-  rather than on `BrainStreamHost`, so R25's hook must call it on unmount or
-  a remounting cockpit leaks one EventSource per mount.
 - `npm run lint` in `apps/ui` is RED at base and is NOT a gate (R-0364): that
   config installs no TypeScript parser, which is R-0622 and routes to a
   paydown branch.
-- The badge remains a visual surface docs/ui/design_reference/ binds, with any
+- The badge is a visual surface docs/ui/design_reference/ binds, with any
   deviation owed an assumption_log entry carrying a technical reason.
+- Nothing wires the host to a real job yet: R26 is the first round in which
+  the endpoint T001 built and the client T003 built meet.
