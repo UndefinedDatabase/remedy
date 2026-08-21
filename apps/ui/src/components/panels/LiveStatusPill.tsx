@@ -8,8 +8,11 @@ import styles from "./RightLivePanel.module.css";
  *  visibly ('delayed') instead of pretending to be live"). That is also why
  *  the dashboard arm is LAST: it is the fallback, not the rule.
  *
- *  `streamStatus` is optional because no caller holds one yet — `useBrainStream`
- *  reaches the cockpit at R30, through RightLivePanel. */
+ *  `streamStatus` is optional because the pill outlived the rounds that had no
+ *  transport to give it, not because nothing supplies one: at `a8965b2d`
+ *  RemedyShell began passing a real status down the one chain that reaches
+ *  this pill — RemedyShell to RightLivePanel to here — and at `88c55f5d` that
+ *  was still the only chain either component had. */
 export function LiveStatusPill({ live, streamStatus }: { live: boolean; streamStatus?: BrainStreamStatus | null }) {
   if (streamStatus === "delayed") {
     return <div className={styles.livePill} data-state="delayed"><span className={styles.delayedDot} />DELAYED</div>;
