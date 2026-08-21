@@ -16,25 +16,26 @@ cross-site attempts fail closed and are audited as rejected, and a route-walking
 test plus an import guard prove no other mutating route exists.
 
 ## Current Step
-R7 declares DECISION F009 D4's `UI_EXPOSED_COMMANDS` beside the catalog it
-constrains and puts it in front of the door's seam: a command id outside the set
-is refused with a typed 400 naming the `command` field, per DECISION F009 D12.
-The 501 seam SURVIVES this round and is merely narrowed — only `job.stop` and
-`decision.resolve` now reach it — because a command still has no effect to run
-until D5's effect table lands. R7 also registers R-0633 against the R6 block.
+R8 rate-limits the door per DECISION F009 D9: a typed `ConfigKeySpec` bounds the
+commands one token fingerprint may have accepted for one job per minute, and the
+excess is refused with 429 rather than made to wait, because an inbound request
+is holding a connection. D7's fingerprint — a truncated digest that never carries
+the raw token — is introduced here, where it is first used. DECISION F009 D13
+rules that the limit is consulted only for a request that would otherwise be
+accepted, so a malformed or unexposed command cannot spend a client's budget.
+The 429 is NOT yet audited; the audit record is D6 and lands with the nonce store.
 
 ## Next Steps
-1. R8 the rate limit D9 rules as a typed `ConfigKeySpec` keyed by the pair
-   (token fingerprint, job id), refusing with 429 rather than waiting, with the
-   fingerprint helper D7 rules introduced where it is first used.
-2. R9 the nonce store and the audit record per D6, D7 and D8, so that a replay
-   returns the ORIGINAL body and a rejection is audited.
-3. T003's effect table per D5 — the round that finally retires the 501 seam —
-   with the plan-approval extraction landing as its own commit; then the client
-   wiring that sends both headers, the integration gate, then closure.
+1. R9 the nonce store and the audit record per D6, D7 and D8 — a replay returns
+   the ORIGINAL body, and every refusal this door already makes, the 429
+   included, becomes an audited rejection.
+2. T003's effect table per D5 — the round that finally retires the 501 seam —
+   with the plan-approval extraction landing as its own commit.
+3. Then the client wiring that sends both headers, the integration gate, and
+   closure.
 
 ## Risks
-- `apps/cli/command_catalog.py` is 4824 lines and is imported by the whole CLI.
-  This round adds one module-level name to it and edits no entry of `CATALOG`.
+- The limiter is in-process state on a threaded server, so it is read and written
+  under one lock, and its bucket map must not grow without bound.
 - `npm run lint` in `apps/ui` is RED at base and is NOT a gate (R-0364), which is
   R-0622 and routes to a paydown branch.
