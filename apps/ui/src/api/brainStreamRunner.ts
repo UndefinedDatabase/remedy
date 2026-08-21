@@ -2,7 +2,7 @@
 // brainStreamDriver decides, by turning its effects into calls on an INJECTED
 // host. That is what lets the whole connect, backoff, snapshot and poll cycle
 // run under the node-environment vitest — no EventSource, no timer, no React.
-import { initialBrainStreamState, resumeEventId } from "./brainStream";
+import { initialBrainStreamState } from "./brainStream";
 import type { BrainStreamStatus } from "./brainStream";
 import { stepBrainStream } from "./brainStreamDriver";
 import type { BrainStreamEffect, BrainStreamEvent } from "./brainStreamDriver";
@@ -39,7 +39,7 @@ export interface BrainStreamRunner {
 }
 
 /** Remedy deliberately gives this no change callback yet: nothing subscribes
- *  until R19's hook exists, and a listener with no reader is untestable. */
+ *  until the R21 hook exists, and a listener with no reader is untestable. */
 export function createBrainStreamRunner(host: BrainStreamHost): BrainStreamRunner {
   let state = initialBrainStreamState();
   let settled = false;
@@ -94,7 +94,7 @@ export function createBrainStreamRunner(host: BrainStreamHost): BrainStreamRunne
   return {
     start(): void {
       stopped = false;
-      host.connect(resumeEventId(state));
+      dispatch({ kind: "timer" });
     },
     dispatch,
     stop(): void {
