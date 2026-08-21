@@ -155,3 +155,5 @@
 .advancedToggle { font-size: 12px; color: var(--remedy-faint); align-self: center; padding: 4px 8px; }
 .advancedSection { display: flex; flex-direction: column; gap: 6px; font-size: 12px; color: var(--remedy-muted); padding: 0 6px 8px; }
 .advancedItem strong { color: var(--remedy-ink); }
+.delayedDot { width: 9px; height: 9px; border-radius: 50%; background: var(--remedy-orange-400); box-shadow: 0 0 8px rgba(245,163,78,.6); }
+.reconnectingDot { width: 9px; height: 9px; border-radius: 50%; background: var(--remedy-orange-400); opacity: .55; }

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { RemedyDashboard } from "../../api/types";
+import type { BrainStreamStatus } from "../../api/brainStream";
 import { liveIsActive } from "../../cockpitLogic";
 import { NeedsAttentionCard } from "./NeedsAttentionCard";
 import { ActivityFeedCard } from "./ActivityFeedCard";
@@ -8,12 +9,12 @@ import { LiveStatusPill } from "./LiveStatusPill";
 import { TaskChecklistCard } from "./TaskChecklistCard";
 import styles from "./RightLivePanel.module.css";
 
-export function RightLivePanel({ dashboard, onSelectNode }: { dashboard: RemedyDashboard; onSelectNode: (nodeId: string | null) => void }) {
+export function RightLivePanel({ dashboard, onSelectNode, streamStatus }: { dashboard: RemedyDashboard; onSelectNode: (nodeId: string | null) => void; streamStatus?: BrainStreamStatus | null }) {
   const [showAdvanced, setShowAdvanced] = useState(false);
 
   return (
     <aside className={styles.panel} data-ui="right-live-panel">
-      <LiveStatusPill live={liveIsActive(dashboard)} />
+      <LiveStatusPill live={liveIsActive(dashboard)} streamStatus={streamStatus} />
       <AgentNowCard dashboard={dashboard} />
       <NeedsAttentionCard dashboard={dashboard} />
       <ActivityFeedCard activity={dashboard.activity} />
