@@ -16,30 +16,30 @@ ledger's envelope sequence, the heartbeat holds cadence, and the fallback
 engages on a disabled EventSource and recovers to live.
 
 ## Current Step
-R13 begins T002 with the resume decision itself. `Last-Event-ID` names the last
-frame a client ALREADY holds, so the span it missed starts one PAST it, while
-the query cursor names the position to start AT; conflating the two yields a
-duplicate or a gap, and the acceptance test forbids both. `resolve_sse_start`
-holds that rule alone, the stream branch resolves both inputs before entering
-the writer, and a header that is absent, blank or mangled falls back to the
-cursor rather than refusing the stream. R13 also records the R12 verdict and
-registers R-0619.
+R14 CLOSES T002 with the acceptance test the feature file calls its heart: a
+client that keeps losing its connection reconnects with the id of the last
+frame it kept, and its final transcript must BYTE-EQUAL the ledger's envelope
+sequence — no duplicate, no gap, at every disconnect cadence from one drop per
+frame to none at all. The hammer is a test-only round: T002's resume decision
+landed at R13, so this round proves it rather than building it, and a mutation
+control shows the hammer goes red when resume exactness is broken. R14 also
+records the R13 verdict, registers R-0620 and widens R-0371.
 
 ## Next Steps
-1. R14 adds T002's forced-disconnect hammer: kill the connection mid-stream N
-   times and require the client transcript to byte-equal the ledger's envelope
-   sequence.
-2. Then T003's client hook, backoff, gap detection and polling fallback, then
-   the integration gate before closure.
+1. R15 begins T003: the `useBrainStream` client hook, EventSource with
+   reconnect backoff, gap detection via seq discontinuity, and the status
+   surface live | reconnecting | delayed.
+2. R16 adds T003's polling fallback on the same hook interface and the
+   fixture live-job end-to-end.
+3. Then the integration gate before closure.
 
 ## Risks
-- The slot registry is process-global mutable state. Every test that acquires a
-  slot clears it first and the release runs in a `finally`; if either
-  discipline lapses, a leaked slot makes a later round's 429 test pass for the
-  wrong reason.
-- A `_RemedyHandler` built with `__new__` carries no `headers`, so every test
-  driving `do_GET` into the stream branch must set it. R13 sets it in the
-  shared `_dispatch` helper and in the one test that builds its own handler.
-- No open finding is a code defect of F008. R-0403, R-0607 through R-0609,
-  R-0611 and R-0613 through R-0619 stay routed to a paydown branch, with the
-  fix clauses of R-0387 and R-0573 promoted into the §3 checklist.
+- The hammer drives `_send_sse_stream` directly rather than over a socket, so
+  it proves the resume CONTRACT and not the transport. The transport is
+  covered separately by the framing golden and the drain tests.
+- `resolve_sse_start` narrows a non-string `Last-Event-ID` to the cursor
+  because `str(x or "")` reads an integer 0 as absent. Registered as R-0620;
+  the HTTP path only ever passes strings, so it is latent.
+- No open finding is a code defect of F008 reachable from the HTTP path.
+  R-0403, R-0607 through R-0609, R-0611 and R-0613 through R-0620 stay routed
+  to a paydown branch.
