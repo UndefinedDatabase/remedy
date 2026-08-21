@@ -251,6 +251,136 @@ class TestCommandChannelDoor:
         assert status == 403
         assert body["error"] == "invalid token"
 
+    # -- D.4: request shape, each error naming its field --------------------
+
+    def test_absent_body_is_400_on_field_body(self):
+        port, token = self._start_server()
+        status, body = self._request(
+            port, "POST", self._commands_path(),
+            headers=self._auth_headers(token))
+        assert status == 400
+        assert body["field"] == "body"
+        assert "error" in body
+
+    def test_oversize_body_is_400_on_field_body(self):
+        port, token = self._start_server()
+        oversize = json.dumps({
+            "command": "pause_job",
+            "client_nonce": "nonce-0001",
+            "args": {"filler": "x" * (COMMAND_REQUEST_MAX_BYTES + 1)},
+        })
+        assert len(oversize) > COMMAND_REQUEST_MAX_BYTES
+        status, body = self._request(
+            port, "POST", self._commands_path(), body=oversize,
+            headers=self._auth_headers(token))
+        assert status == 400
+        assert body["field"] == "body"
+        assert "error" in body
+
+    def test_invalid_json_body_is_400_on_field_body(self):
+        port, token = self._start_server()
+        status, body = self._request(
+            port, "POST", self._commands_path(), body="{not json",
+            headers=self._auth_headers(token))
+        assert status == 400
+        assert body["field"] == "body"
+        assert "error" in body
+
+    def test_non_object_body_is_400_on_field_body(self):
+        port, token = self._start_server()
+        status, body = self._request(
+            port, "POST", self._commands_path(), body="[1, 2, 3]",
+            headers=self._auth_headers(token))
+        assert status == 400
+        assert body["field"] == "body"
+        assert "error" in body
+
+    def test_missing_command_is_400_on_field_command(self):
+        port, token = self._start_server()
+        status, body = self._request(
+            port, "POST", self._commands_path(),
+            body=json.dumps({"client_nonce": "nonce-0001"}),
+            headers=self._auth_headers(token))
+        assert status == 400
+        assert body["field"] == "command"
+        assert "error" in body
+
+    def test_non_string_command_is_400_on_field_command(self):
+        port, token = self._start_server()
+        status, body = self._request(
+            port, "POST", self._commands_path(),
+            body=self._valid_body(command=17),
+            headers=self._auth_headers(token))
+        assert status == 400
+        assert body["field"] == "command"
+
+    def test_empty_command_is_400_on_field_command(self):
+        port, token = self._start_server()
+        status, body = self._request(
+            port, "POST", self._commands_path(),
+            body=self._valid_body(command=""),
+            headers=self._auth_headers(token))
+        assert status == 400
+        assert body["field"] == "command"
+
+    def test_missing_client_nonce_is_400_on_field_client_nonce(self):
+        port, token = self._start_server()
+        status, body = self._request(
+            port, "POST", self._commands_path(),
+            body=json.dumps({"command": "pause_job"}),
+            headers=self._auth_headers(token))
+        assert status == 400
+        assert body["field"] == "client_nonce"
+        assert "error" in body
+
+    def test_empty_client_nonce_is_400_on_field_client_nonce(self):
+        port, token = self._start_server()
+        status, body = self._request(
+            port, "POST", self._commands_path(),
+            body=self._valid_body(client_nonce=""),
+            headers=self._auth_headers(token))
+        assert status == 400
+        assert body["field"] == "client_nonce"
+
+    def test_non_object_args_is_400_on_field_args(self):
+        port, token = self._start_server()
+        status, body = self._request(
+            port, "POST", self._commands_path(),
+            body=self._valid_body(args="not-an-object"),
+            headers=self._auth_headers(token))
+        assert status == 400
+        assert body["field"] == "args"
+        assert "error" in body
+
+    # -- D.5: the R7 seam ---------------------------------------------------
+
+    def test_well_formed_command_reaches_the_501_seam(self):
+        port, token = self._start_server()
+        status, body = self._request(
+            port, "POST", self._commands_path(), body=self._valid_body(),
+            headers=self._auth_headers(token))
+        assert status == 501
+        assert body["error"] == "command channel not yet accepting commands"
+        assert body["command"] == "pause_job"
+
+    def test_absent_args_is_valid_and_reaches_the_seam(self):
+        port, token = self._start_server()
+        status, body = self._request(
+            port, "POST", self._commands_path(),
+            body=json.dumps({"command": "resume_job", "client_nonce": "n-2"}),
+            headers=self._auth_headers(token))
+        assert status == 501
+        assert body["command"] == "resume_job"
+
+    def test_present_args_object_is_valid_and_reaches_the_seam(self):
+        port, token = self._start_server()
+        status, body = self._request(
+            port, "POST", self._commands_path(),
+            body=self._valid_body(args={"reason": "operator asked"}),
+            headers=self._auth_headers(token))
+        assert status == 501
+        assert body["command"] == "pause_job"
+
     # -- B: the GET door still behaves as it did ----------------------------
 
     def test_get_door_still_answers_200_for_the_correct_token(self):
