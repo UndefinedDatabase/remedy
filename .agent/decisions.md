@@ -6721,3 +6721,15 @@ CHOSEN: a `ConfigKeySpec` declaring the maximum accepted commands per token fing
 ALTERNATIVES: (a) a module constant like the SSE cap — rejected, the feature file says config and a typed key costs one spec entry. (b) reuse `ProviderRateGovernor` — rejected, it is keyed by provider, it waits rather than refuses, and its own docstring states it neither coordinates across processes nor orders acquirers fairly.
 
 REVERSE by deleting the key spec and reading a module constant.
+
+## DECISION F009 D10 — an open-finding count is stated with the rule that produced it, or not at all (2026-08-21)
+
+Finding R-0632 records that "N findings are open" carries at least three live meanings in this repository — every registered paragraph not answered by a `Done:` line, the small set of findings the current feature must still act on, and the raw registered total — and that three authored texts in the F009 session each stated a different number without naming which they meant.
+
+CHOSEN: the open set is the one `docs/agents/planner_reviewer_prompt.md` §3 item 10 already defines — every line-anchored `^- R-\d+ — ` paragraph minus every line-anchored `^Done: R-\d+ — ` line — and a state file that states a count states BOTH the rule and the commit it was measured at, in the same sentence. Measured at `ab6eeba1` that count is 196. A narrower set may still be stated and is often the useful one, but it is named as what it is — "the findings this feature must still act on" — and never called "open" unqualified.
+
+ALTERNATIVES: (a) add a trailing `OPEN.` marker to every unresolved paragraph and count that — rejected, it would require editing 105 landed paragraphs in an append-only record, which §3 item 20 forbids outright, and the reviewer measured that the marker is currently decoration: 92 of 197 paragraphs carry it while 6 of the 7 ids the F008 closure called open do not. (b) stop stating the number anywhere — rejected, it is genuinely useful in a handback, and item 10 already requires the set to be recomputed at every emission, so the derivation costs nothing beyond naming it.
+
+WHY NO SWEEP: the landed sentences are not rewritten. `.agent/context.md` and `.agent/handoff.md` are rewritten wholesale every round and will carry the ruled form from the next rewrite onward; `.agent/live_review.md` is append-only and is corrected by dating rather than editing.
+
+REVERSE by deleting this decision and R-0632's fix clause; nothing depends on the count.
