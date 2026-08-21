@@ -16,16 +16,16 @@ silently, teacher spend is reported as its own role in the F103 ledger, and the
 read-only invariant is proven behaviourally.
 
 ## Current Step
-R12: a RECORD round. It persists the R11 verdict to `.agent/live_review.md` and
-advances this plan, and it builds nothing — the session that reviewed R11 reached
-its limit, and a verdict that lives only in a chat window is a verdict this
-project cannot audit.
+R13: the BILLING half of T004. It rules how a teacher question is recorded
+(DECISION F255 D7), amends `token_ledger`'s own module text so the ruling and the
+module do not disagree on disk, and builds the one writer that records the row.
+It calls NO model: the model call is R14, over this seam.
 
 ## Next Steps
-1. R13 FINISHES T004, the model half of Stage 2: `remedy teach ask` on the CLI
+1. R14 FINISHES T004, the model half of Stage 2: `remedy teach ask` on the CLI
    over `teacher_qa.build_teacher_context`, the teacher model call through
    `resolve_role_config("teacher")`, the honest refusal when no model is
-   configured, and spend recorded under the role name `teacher`.
+   configured, and the spend row written through `teacher_spend`.
 2. The INTEGRATION GATE round follows T004 — the full suite, per
    docs/agents/integration_gate.md — because T002 and T003 touch the CLI
    catalog, which the parser and the help renderer both read.
@@ -33,10 +33,10 @@ project cannot audit.
    evidence job, fresh review zip, the STATUS line, and the pull request.
 
 ## Risks
-- R13 IS WHERE THE COST STORY IS PROVEN OR LOST. Nothing built so far spends a
-  token; R13 makes the first teacher model call, and its spend must land under
-  the role name `teacher` or DECISION F255 D3 is unmet.
-- THE LEDGER'S ONE ROW IS A TASK RUN. `token_ledger.record_call` is documented
-  as one row per finalized task run, keyed `<job_id>:<task_id>`, and a teacher
-  question is neither. R13 must settle that shape before it writes a row.
-- THE READ-ONLY PROOF COVERS NARRATE ONLY; `teach ask` needs its own.
+- T004 WAS RESLICED INTO TWO ROUNDS by the reviewer at R13, because the billing
+  ruling and the model call did not fit one block under the 490-line cap. The
+  feature file's T004 is unchanged; only the round boundary moved.
+- R14 IS WHERE THE COST STORY IS PROVEN OR LOST. R13 records a row from figures
+  it is GIVEN; R14 must produce real ones from a real call, or D3 is unmet.
+- THE READ-ONLY PROOF COVERS NARRATE ONLY; `teach ask` needs its own, and the
+  ledger row R13 introduces is a WRITE that proof must exclude by name.
