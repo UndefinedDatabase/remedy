@@ -15,23 +15,21 @@ the heartbeat holds cadence, and the fallback engages on a disabled EventSource
 and recovers to live.
 
 ## Current Step
-R35 is the CLOSURE EVIDENCE round. It records the R34 verdict — PASS, the
-integration gate green on both sides with 0 branch-only and 0 base-only
-failures — writes this feature's Built State into
-`docs/roadmap/features/T5_F008.md`, and then produces the two artefacts closure
-cannot happen without: the evidence bundle from
-`create_manual_completion_bundle` and a FRESH review zip, both at the commit
-carrying the Built State.
+R36 CLOSES F008. It records the R35 verdict — PASS, with the evidence bundle and
+the READY_FOR_REVIEW package re-verified from disk by the reviewer — makes the
+one docs pin that hard-codes the claimed feature independent of it, then lands
+the authored STATUS `[x]` line, the README sync and the closure-candidate
+carrier in ONE commit and opens the pull request. That pull request is NOT
+merged this session: it merges at the next feature's Open PR Gate.
 
 ## Next Steps
-1. R36 is the CLOSURE COMMIT round per docs/roadmap/STATUS_closure_protocol.md:
-   the authored STATUS `[x]` line, the README capability sync and the
-   candidates carrier in ONE commit (R-0154), then the pull request, which is
-   NOT merged in its own session.
+1. The next session starts at Phase 1: the `.agent/STOP` re-read, then the Open
+   PR Gate, where this feature's pull request is the one to merge.
+2. Rule A5 then proposes F009 — The single write channel — the first `[ ]` line
+   this ledger carries top to bottom. That feature's first reviewed round
+   registers or resolves the entry `.agent/candidates.md` carries.
 
 ## Risks
-- A failing zip build is a closure BLOCKER, not a retry: the round stops and
-  reports the raw error.
 - `npm run lint` in `apps/ui` is RED at base and is NOT a gate (R-0364): that
-  config installs no TypeScript parser, which is R-0622 and routes to a
-  paydown branch.
+  config installs no TypeScript parser, which is R-0622 and routes to a paydown
+  branch.
