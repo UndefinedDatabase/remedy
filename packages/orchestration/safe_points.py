@@ -232,8 +232,10 @@ def _ensure_control_root(base: Path) -> Path:
     return base
 
 
-def _open_job_control_fd(job_id: str, control_root_path: Path | None, *,
-                         create: bool) -> int | None:
+# The one shared way into a job's private control directory: every writer that needs a
+# handle under `control/jobs/<job_id>` goes through here rather than opening it by name.
+def open_job_control_fd(job_id: str, control_root_path: Path | None, *,
+                        create: bool) -> int | None:
     """A verified directory fd for ``control/jobs/<job_id>``. None when it does not exist.
 
     Every component — the control root, ``jobs``, the job directory — is inspected without
@@ -355,7 +357,7 @@ def request_stop(job_id: str, reason: str = "", source: str = "cli",
     valid pending request is never overwritten.
     """
     jid = validate_job_id(job_id)
-    job_fd = _open_job_control_fd(jid, control_root_path, create=True)
+    job_fd = open_job_control_fd(jid, control_root_path, create=True)
     assert job_fd is not None                     # create=True either makes it or raises
     try:
         existing = _read_request(job_fd)
@@ -390,7 +392,7 @@ def stop_requested(job_id: str, *,
                    control_root_path: Path | None = None) -> StopSignal | None:
     """The safe-point check: is a stop pending? One directory open, one stat, one read."""
     jid = validate_job_id(job_id)
-    job_fd = _open_job_control_fd(jid, control_root_path, create=False)
+    job_fd = open_job_control_fd(jid, control_root_path, create=False)
     if job_fd is None:
         return None
     try:
@@ -421,7 +423,7 @@ def archive_stop(job_id: str, signal: StopSignal, *,
 
     payload = signal.to_json()
     name = f"{signal.request_id}.json"
-    job_fd = _open_job_control_fd(jid, control_root_path, create=True)
+    job_fd = open_job_control_fd(jid, control_root_path, create=True)
     assert job_fd is not None
     archive_fd = None
     try:
@@ -454,7 +456,7 @@ def acknowledge_stop(job_id: str, signal: StopSignal, *,
     requested a *new* stop in the meantime, that request belongs to the next episode.
     """
     jid = validate_job_id(job_id)
-    job_fd = _open_job_control_fd(jid, control_root_path, create=False)
+    job_fd = open_job_control_fd(jid, control_root_path, create=False)
     if job_fd is None:
         return False
     try:
@@ -491,7 +493,7 @@ def consume_stop(job_id: str, *,
 def clear_stop(job_id: str, *, control_root_path: Path | None = None) -> bool:
     """Drop a pending request WITHOUT consuming it (no episode, no archive)."""
     jid = validate_job_id(job_id)
-    job_fd = _open_job_control_fd(jid, control_root_path, create=False)
+    job_fd = open_job_control_fd(jid, control_root_path, create=False)
     if job_fd is None:
         return False
     try:
@@ -511,7 +513,7 @@ def archived_signals(job_id: str, *,
                      control_root_path: Path | None = None) -> list[StopSignal]:
     """Every consumed request, read through held descriptors — no glob, no second walk."""
     jid = validate_job_id(job_id)
-    job_fd = _open_job_control_fd(jid, control_root_path, create=False)
+    job_fd = open_job_control_fd(jid, control_root_path, create=False)
     if job_fd is None:
         return []
     archive_fd = None
