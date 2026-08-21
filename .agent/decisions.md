@@ -6596,3 +6596,26 @@ the absence. R30 then changes one prop at one call site.
 
 Reverse ruling 1 by writing that assumption_log entry and citing this section
 as the reading it overrides; ruling 2 by folding R30 back into one round.
+
+## DECISION F008 D3 — the cockpit subscribes in RemedyShell, not RemedyApp
+
+Chosen: `useBrainStream` is called in `RemedyShell` with `dashboard.jobId`.
+
+Alternatives considered. (a) Call it in `RemedyApp`, as `.agent/plan.md` said
+from R30 until this round. `RemedyApp` reads its job id from the URL and returns
+an error screen when that id is empty, but a React hook cannot be called
+conditionally, so the stream would open against `/api/jobs//events/stream`
+whenever the URL carried no job — a request the server answers 404 and a
+reconnect loop the badge would then report. (b) Pass the id down and subscribe
+lower still, in `RightLivePanel`: rejected because the panel is a presentation
+surface and the status already reaches it as a prop.
+
+`RemedyShell` renders only after `RemedyApp` has loaded a dashboard, so
+`dashboard.jobId` is a job the server has already answered for. The seam
+`RightLivePanel` gained at R29 — an optional `streamStatus` — is unchanged by
+this choice, and `RemedyApp.tsx` is not touched at all, which is the narrowest
+blast radius of the three.
+
+The feature file names no call site, so this decides an implementation question
+rather than amending a spec. Reverse it by moving the call and passing the id
+down; nothing else in the client depends on where the hook is called.
