@@ -1,34 +1,36 @@
-── STEP T003/8 — F008 SSE event stream — ROUND 34 ────────────────────────────
-Round base — the SHA every range gate in this block measures from: 88c55f5d
- (R33's handback, re-read from `git log` at emission, per R-0368.)
+── STEP T003/8 — F008 SSE event stream — ROUND 35 · CLOSURE EVIDENCE ─────────
+Round base — the SHA every range gate in this block measures from: 2bacba10
+ (R34's handback, re-read from `git log` at emission, per R-0368.)
 Goal:
- Record the R33 verdict — PASS, every gate re-run by the reviewer out of the
- committed blobs — retire the one claim R33's own change set left standing in
- shipped code, and RUN THE INTEGRATION GATE per docs/agents/integration_gate.md:
- the full suite once on this branch and once at the merge base, compared and
- attributed id by id. This is the last round before closure.
+ Record the R34 verdict — PASS, the integration gate GREEN and re-run by the
+ reviewer — write this feature's Built State into its roadmap file, and produce
+ the two artefacts closure cannot happen without: the evidence bundle and a
+ FRESH review zip. This round builds and reports them; the NEXT round authors
+ the STATUS line from the values only this round can produce.
 
 Bundle, in this commit order:
- C0a  save the block verbatim to `.agent/authored/f008-r34.md`
+ C0a  save the block verbatim to `.agent/authored/f008-r35.md`
  C0b  mirror the COMMITTED C0a blob to `.agent/last_block.md`
- C1   `.agent/plan.md` <- PLANF008R34, applied whole
- C2   `.agent/live_review.md` <- R0593FROM replaced by R0593TO, a REWRITE
- C3   `.agent/live_review.md` <- LEDGER34, appended
- C4   `apps/ui/src/components/panels/LiveStatusPill.tsx` <- PILLFROM replaced
-      by PILLTO, a REWRITE
- C5   `.agent/gate_f008_r34/` <- the integration gate's evidence files
- C6   `.agent/handoff.md`, the handback
+ C1   `.agent/plan.md` <- PLANF008R35, applied whole
+ C2   `.agent/live_review.md` <- LEDGER35, appended
+ C3   `docs/roadmap/features/T5_F008.md` <- BUILTSTATE, appended
+ then, with NO commit between them: push, the evidence job, the integrity
+ check, the review zip — all at C3, the accepted HEAD they describe
+ C4   `.agent/handoff.md`, the handback
 
 Change set — exactly the paths named here and nothing else:
- `.agent/authored/f008-r34.md`, `.agent/last_block.md`, `.agent/plan.md`,
- `.agent/live_review.md`,
- `apps/ui/src/components/panels/LiveStatusPill.tsx`,
- `.agent/gate_f008_r34/` and the files inside it, `.agent/handoff.md`.
+ `.agent/authored/f008-r35.md`, `.agent/last_block.md`, `.agent/plan.md`,
+ `.agent/live_review.md`, `docs/roadmap/features/T5_F008.md`,
+ `.agent/handoff.md`.
+ The evidence bundle and the review zip are NOT committed and are NOT in that
+ set: `docs/roadmap/STATUS_closure_protocol.md` forbids committing the evidence
+ dir, because a pre-committed bundle lands inside the base..HEAD review subject
+ and packages BLOCKED_EVIDENCE.
 
 Transport:
- This block is on disk at `.remedy-wt/f008-r34.md`, gitignored. Read it there,
+ This block is on disk at `.remedy-wt/f008-r35.md`, gitignored. Read it there,
  verify its sha256 against the value in your task prompt BEFORE using it, and
- copy those bytes to `.agent/authored/f008-r34.md` for C0a. Never retype it. If
+ copy those bytes to `.agent/authored/f008-r35.md` for C0a. Never retype it. If
  the digest does not match, STOP and report both values.
 
 Slice convention:
@@ -38,282 +40,216 @@ Slice convention:
  begins with a blank line, and every count this block orders over a slice is
  taken over those newline-INCLUDED bytes.
 
-Pair shape (§3 item 15). Each line below is the OUTPUT of the reviewer's
-containment test over the final newline-INCLUDED bytes; the label is derived
-from that output beside it and is never written on its own (R-0522):
- R0593FROM/R0593TO      TO contains FROM: false  -> REWRITE
- PILLFROM/PILLTO        TO contains FROM: false  -> REWRITE
- R0593FROM reads as an append by eye and is not one, because it is
- newline-TERMINATED while its TO continues that sentence on the same line. Both
- pairs therefore owe the FROM-0x / TO-1x count a rewrite owes, and neither owes
- the §4.9 append obligation.
- FROM uniqueness, each counted by the reviewer's own script IN the file the
- pair edits, at the round base, and reported as that script's output (item 25):
- R0593FROM occurs 1x in `.agent/live_review.md`; PILLFROM occurs 1x in
- `apps/ui/src/components/panels/LiveStatusPill.tsx`, and the count of LINES in
- that file containing `no caller holds one yet` is also 1 — the two readings
- agree, which is the reading R-0629's widened fix asks for.
- PLANF008R34 is a whole-file write and LEDGER34 an append, so neither is a pair
- and neither carries a containment reading.
+Pair shape (§3 item 15): this block contains NO FROM/TO pair, so no containment
+reading is owed for anything in it. PLANF008R35 is a whole-file write, LEDGER35
+and BUILTSTATE are appends, and EVIDENCESCRIPT is a new file written to the
+gitignored `.remedy-wt/` and never committed as itself — its bytes reach the
+record inside the C0a blob, like every other slice.
 
 Constraints:
  1. APPLY EVERY SLICE BYTE FOR BYTE — never retype, rewrap, reflow, reindent
     or whitespace-adjust one. A slice that looks wrong is applied as written
     and the objection goes in the handback's deviations section.
- 2. The commit order above is fixed: no extra, dropped or reordered commit.
-    C1 is the first substantive commit (§3 item 23), C2 precedes C3 so each
-    ledger proof reads against a single-purpose commit, and C4 precedes the
-    runs of G9 and G10 so the full suite measures the tree this feature will
-    close with. R0593TO's sentence "the fix is this round's C4" is made true by
-    this constraint and by nothing else (§4 item 20, the R-0524 carve-out).
- 3. Nothing outside the change set is touched. No dependency is added, no
-    `apps/ui/**` file other than `LiveStatusPill.tsx` is opened for writing,
-    and PILLTO changes a COMMENT only: the component's code, its props and its
-    three returns are left byte-identical, which is why G8 can order the two
-    contract files that read this component to stay green without a single
-    assertion changing.
- 4. NO FINDING ID IS MINTED: R-0630 stays free. R-0593 is AMENDED, not
-    resolved, and stays OPEN, as do R-0368, R-0429, R-0553, R-0622, R-0628 and
-    R-0629. Write no `Done:` and no `Landed:` line for any of them. The
-    reviewer searched the ledger for the DEFECT before routing it here (item
-    30), and R-0593's subject — a production comment denying code the same
-    feature had already built — is this defect exactly, so it takes the
-    amendment rather than a second id.
+ 2. The commit order above is fixed: no extra, dropped or reordered commit. C1
+    is the first substantive commit (§3 item 23). C3 is the LAST commit before
+    the artefacts, and the push, the evidence job, the integrity check and the
+    zip all run at C3 with a clean tree, in that order — the zip records C3 as
+    the accepted HEAD, and a zip built from a dirty tree is invalid.
+ 3. Nothing outside the change set is touched. NO source file under
+    `packages/`, `apps/` or `tests/` is edited this round: the code is final at
+    `2bacba10` and this round produces artefacts about it.
+ 4. NO FINDING ID IS MINTED and none is resolved: R-0630 stays free, and
+    R-0368, R-0429, R-0553, R-0593, R-0622, R-0628 and R-0629 all stay OPEN.
+    Write no `Done:` and no `Landed:` line. If this round SURFACES a defect,
+    it is a closure CANDIDATE and not a finding — record it in the handback's
+    deviations section and spend no id on it, per
+    docs/roadmap/STATUS_closure_protocol.md "Closure-candidate findings".
  5. END EVERY COMMIT MESSAGE of this round with the trailer line
     `Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>`, preceded by a
     blank line. G13 measures the result. Never repair a missing trailer by
-    amending — protocol G2 forbids it and G13 gates it at 0.
- 6. The post-C6 porcelain, `git worktree list` and push output belong to the
-    ROUND REPORT, not to `.agent/handoff.md` (R-0371).
- 7. Two test processes never run at once. G9's branch run happens in the
-    PRIMARY checkout (R-0518); G10's base run happens in a disposable worktree
-    and is the ONLY thing running while it runs; G11's serial re-runs happen
-    after both have exited.
- 8. DO NOT MERGE, DO NOT OPEN A PULL REQUEST, DO NOT CREATE A BRANCH other than
-    the throwaway `tmp/base-gate-r34` G10 names, which is deleted in the same
-    gate. Push `feature/f008-sse-event-stream` and leave it open;
-    `gh pr list --state open` returned `[]` at the reviewer's Phase 0 probe.
- 9. The session command guard rejects `$(...)`, `; echo $?`, heredocs, shell
+    amending — protocol G2 forbids it.
+ 6. The post-C4 porcelain and any push output after C4 belong to the ROUND
+    REPORT, not to `.agent/handoff.md` (R-0371). The push at C3 and every
+    artefact value DO belong in the handback: the next round's STATUS line is
+    authored from them and they exist nowhere else.
+ 7. DO NOT MERGE, DO NOT OPEN A PULL REQUEST, DO NOT CREATE A BRANCH, DO NOT
+    EDIT `docs/roadmap/STATUS.md` and DO NOT EDIT `README.md`. Those are the
+    NEXT round's closure commit, which must be the last commit on the branch
+    (Rule A4). `gh pr list --state open` returned `[]` at the reviewer's Phase
+    0 probe; run no `gh` command at all this round.
+ 8. The session command guard rejects `$(...)`, `; echo $?`, heredocs, shell
     loops and chained `;` commands BY FORM. Write every multi-step gate to a
     script under the gitignored `.remedy-wt/` and run it there; commit nothing
-    from it. Never `cd` into a worktree and leave the shell there — a later
-    gate then silently measures the wrong tree (R-0463).
- 10. THE HANDBACK QUANTIFIES NOTHING IT DID NOT COUNT (R-0553). Any handback
-    sentence stating "every", "no", "all" or "none" over commits, files, ids or
-    rounds names the command that produced the number. State the particular you
-    measured, or nothing. This binds the attribution of G11 hardest: "all
-    base-only ids are environmental" is a claim about a set, and it is written
-    only beside the per-id evidence that produced it.
- 11. THE HANDBACK'S `## Next` SECTION states, in this order: that the next
+    from it. Never `cd` into a worktree and leave the shell there (R-0463).
+ 9. THE HANDBACK QUANTIFIES NOTHING IT DID NOT COUNT (R-0553). Any handback
+    sentence stating "every", "no", "all" or "none" over commits, files, ids,
+    runs or bundle entries names the command that produced the number.
+ 10. THE HANDBACK'S `## Next` SECTION states, in this order: that the next
     session's FIRST action is the `.agent/STOP` re-read (Phase 1 rule 1) and
-    its SECOND the Open PR Gate (Phase 1 rule 2); that R34 is PENDING REVIEW
+    its SECOND the Open PR Gate (Phase 1 rule 2); that R35 is PENDING REVIEW
     and its verdict is owed by the next round's ledger commit; that the next
     free finding id is R-0630; that R-0368, R-0429, R-0553, R-0593, R-0622,
-    R-0628 and R-0629 are OPEN; and that R35's work is the CLOSURE ROUND per
-    docs/roadmap/STATUS_closure_protocol.md — evidence job, a FRESH review zip,
-    the authored STATUS line and the pull request — unless G11 named a BLOCKER,
-    in which case it names the blocker and the repair round instead.
+    R-0628 and R-0629 are OPEN; and that R36 is the CLOSURE COMMIT round —
+    the authored STATUS `[x]` line, the README capability sync and the
+    `.agent/candidates.md` carrier in ONE commit (R-0154), then the pull
+    request — carrying the package name, the SHA-256, the evidence job id and
+    the accepted HEAD this round reports.
 
 The reviewer's OWN readings, each produced by RUNNING the tool at the round base
-`88c55f5d`, serially, in the PRIMARY checkout, not recalled (R-0625): the
-five-target state reader plus canary EXITS 0 at 465 passed and 0 skipped;
-`python3 -m pytest tests/ui_contracts/ -q -rf` EXITS 0 at 417 passed plus 4
-skipped = 421; and in `apps/ui`, `npm run --silent typecheck` EXITS 0 with a
-zero-byte output stream while `npx vitest run` EXITS 0 at 10 files and 152
-tests. `npm run lint` is RED at base, which is R-0622 and NOT a gate (R-0364).
-The reviewer also DRY-RAN PILLTO (item 12): in a disposable worktree at
-`88c55f5d` with `apps/ui/node_modules` SYMLINKED for a read-only typecheck and
-the primary checkout never written to, G8's exact pytest command EXITS 0 at 98
-passed plus 1 skipped both BEFORE and AFTER the substitution, `npm run --silent
-typecheck` EXITS 0 in both states, and the RED CONTROL — the pill's rendered
-`DELAYED` replaced by another word — EXITS 1 failing exactly
-`TestLiveStatusPillVariants::test_a_delayed_stream_says_delayed`, so the gate
-can fail and its green means something.
-The reviewer has NOT run the full suite at this base: the run IS this round, and
-a colour it has not measured is one it may not order (G4 of the protocol). G9
-and G10 therefore order READINGS — exit code, failure list, wall time — and
-never a colour.
+`2bacba10`, serially, in the PRIMARY checkout, not recalled (R-0625):
+`python3 -m pytest -n auto -q` EXITS 0 at `17412 passed, 20 skipped` in 151.4 s
+with 0 lines beginning FAILED — the reviewer's own re-run of the integration
+gate's branch side, which is precondition 2 of the closure protocol. Per suite,
+`--collect-only -q` id counts against a `-q` run: test_sse_stream.py 65 ids /
+65 passed, test_event_seq.py 7 / 7, test_server_concurrency.py 1 / 1,
+test_brain_stream_hook.py 9 / 9, test_live_status_pill.py 7 / 7,
+test_remedy_shell_stream.py 8 / 8 — every one EXIT 0 with 0 skipped, no id
+containing whitespace, and 97 tests in total, which is exactly the branch run's
+17412 minus the base run's 17315.
+The reviewer ALSO DRY-RAN EVIDENCESCRIPT verbatim (item 12), with its
+`EVIDENCE_DIR` diverted by a one-string patch to
+`.remedy-wt/r35_dry_evidence/` and nothing else changed: EXIT 0, all six runs
+reporting `len(node_ids) == selected`, a 27-entry bundle, and `output_hash`
+equal to the sha256 of `stdout_summary` for all six. That dry bundle is scratch
+and is NOT the one G10 orders — the path G10 names has never existed, which is
+what its pre-existence reading is for.
+The reviewer has NOT run the integrity check or the zip, and does not predict
+their outcome: G11 and G12 order READINGS, and a failing zip is a closure
+BLOCKER the round reports rather than retries.
 
 Done when — run every command, record its REAL exit code and output:
  G1  `.agent/STOP` is absent, read immediately before C0a; the branch is
      feature/f008-sse-event-stream; `git status --porcelain` is EMPTY after
-     each of C0a, C0b, C1, C2, C3, C4 and C5. Per constraint 6 the post-C6
-     readings belong to the round report.
- G2  Transport. Report the sha256, bytes and lines of `.remedy-wt/f008-r34.md`
-     as received, of `.agent/authored/f008-r34.md` at C0a and of
+     each of C0a, C0b, C1, C2 and C3, and again immediately before the zip.
+ G2  Transport. Report the sha256, bytes and lines of `.remedy-wt/f008-r35.md`
+     as received, of `.agent/authored/f008-r35.md` at C0a and of
      `.agent/last_block.md` at C0b, whether all three are EQUAL, and whether
      they match the digest in your task prompt — which this text cannot carry,
      being unable to hold its own (R-0371).
  G3  Slice inventory. Extract the slices from the COMMITTED
-     `.agent/authored/f008-r34.md` with `git show`, by their marker lines, take
+     `.agent/authored/f008-r35.md` with `git show`, by their marker lines, take
      the COUNT from that listing and report it — this block states no numeral
      for it (item 11) — plus each slice's newline-INCLUDED sha256 prefix, bytes
      and lines, that none carries trailing whitespace on any line, and that
      none begins with a blank line.
  G4  Plan. Report the sha256, bytes and lines of `.agent/plan.md` at C1 and
-     whether it is byte-equal to PLANF008R34. Its line count is UNDER 50, the
+     whether it is byte-equal to PLANF008R35. Its line count is UNDER 50, the
      substring `Steps` occurs, `## Goal` and `## Next Steps` each occur exactly
-     once line-anchored, and a `\bF\d{3}\b` match exists — the four properties
-     `tests/ui_server/test_dashboard_contract.py` and
-     `tests/orchestration/test_test_runner.py` assert about this file.
- G5  The REWRITE at C2. Read the base bytes with
-     `git show 88c55f5d:.agent/live_review.md` into scratch or memory — never
-     by writing over the tracked file, which protocol G5 forbids (item 29).
-     Report the count of R0593FROM at the round base (expected 1) and at C2
-     (expected 0), and of R0593TO at the base (expected 0) and at C2 (expected
-     1) — the FROM-0x / TO-1x proof a rewrite owes. Report also that the base
-     blob with that substitution applied ONCE is BYTE-EQUAL to the C2 blob, the
-     blank-line paragraph COUNT unchanged, and EXACTLY ONE paragraph differing,
-     the one beginning `- R-0593 — `.
- G6  The append at C3, against C2, two ways that must agree. (a) the C2 blob is
-     a byte-exact PREFIX of the C3 blob and the remainder equals a newline plus
-     LEDGER34 — report its sha256 prefix, bytes and lines; (b) an INDEPENDENT
-     blank-line split of the WHOLE C3 file, its terminating newline normalised
-     first, has LEDGER34's paragraph as its LAST unit. NEGATIVE CONTROL: flip
-     one PRINTABLE ASCII byte of the remainder to another printable one; BOTH
+     once line-anchored, and a `\bF\d{3}\b` match exists.
+ G5  The append at C2, against the round base, two ways that must agree. Read
+     the base bytes with `git show 2bacba10:.agent/live_review.md` into scratch
+     — never over the tracked file (item 29). (a) the base blob is a byte-exact
+     PREFIX of the C2 blob and the remainder equals a newline plus LEDGER35 —
+     report its sha256 prefix, bytes and lines; (b) an INDEPENDENT blank-line
+     split of the WHOLE C2 file, its terminating newline normalised first, has
+     LEDGER35's paragraph as its LAST unit. NEGATIVE CONTROL: flip one
+     PRINTABLE ASCII byte of the remainder to another printable one; BOTH
      readings must reject it and both accept the unflipped.
- G7  The sets in `.agent/live_review.md`, line-anchored, each reported at the
-     round base, at C2 AND at C3: `^- R-\d+ — ` reads 201 at all three — this
-     round mints no id — `^- R-0630 — ` 0 at all three, `^- R-0593 — `,
-     `^- R-0629 — `, `^- R-0429 — `, `^- R-0553 — `, `^- R-0628 — ` and
-     `^- R-0368 — ` 1 each at all three, `^Done: R-\d+ — ` 6 at all three,
-     `^Landed: ` 0 at all three, and `^Gate: R\d+ — ` 33 at the base and at C2
-     and 34 at C3, over that many DISTINCT keys. HEADER SWEEP at C3 (item 26):
-     report how many `Gate: ` lines match `^Gate: R(\d+) — the R(\d+) entry\.`
-     with the second numeral one below the first, how many do not, the text of
-     each non-match to its first period, and that the R34 pair occurs EXACTLY
-     ONCE.
- G8  The comment retirement at C4. Report the count of PILLFROM at the round
-     base (expected 1) and at C4 (expected 0), of PILLTO at the base (expected
-     0) and at C4 (expected 1), that the base blob with that substitution
-     applied ONCE is BYTE-EQUAL to the C4 blob, and the file's line count at
-     both — 21 at the base, and 24 in the reviewer's dry run of this same
-     slice. Then, from the repository root at C4,
-     `python3 -m pytest tests/ui_contracts/test_live_status_pill.py tests/ui_contracts/test_responsive.py -q -rf`
-     EXITS 0 at a passed-plus-skipped SUM of 99, reported as passed and skipped
-     SEPARATELY as well as their sum — THE SUM IS THE GATE, a bare passed count
-     is not — and in `apps/ui`, `npm run --silent typecheck` EXITS 0 with a
-     zero-byte output stream. Those two test files are the ones that read this
-     component: the first asserts over COMMENT-STRIPPED source and the second
-     asserts `LIVE` in the raw text, so a comment-only edit leaves both true —
-     but the reviewer MEASURED that rather than reasoning it, and the gate is
-     the run and not this sentence.
- G9  THE BRANCH RUN, integration_gate.md step 1, from the repository root in
-     the PRIMARY checkout, AT C4. `python3 -m pytest -n auto -q`, with the raw
-     log written to `.remedy-wt/.cache/gate_r34/branch_run.log` — OUTSIDE the
-     tracked tree, because a log growing inside the repo during a run changes
-     the worktree digest mid-run and fails the manifest-identity ids as false
-     positives (R-0176). Report the exit code, the wall seconds, the summary
-     line verbatim, and the sorted list of `^FAILED` lines as
-     `branch_failed.txt`. An EMPTY failure list is a reading: report it as 0
-     and say which command produced the 0. Over ~5 minutes wall clock, note a
-     perf pass (integration_gate.md step 5).
- G10 THE BASE RUN, integration_gate.md step 2, at the merge base. Report that
-     `git merge-base main HEAD` and `git rev-parse main` both print
-     7c03adfa58519d484df685d38b950c49afaf70a8. Create the worktree ON A BRANCH,
-     never detached — the self-dogfood branch guard refuses a detached HEAD by
-     design (DECISION D3): `git worktree add -b tmp/base-gate-r34
-     .remedy-wt/base-r34 7c03adfa`. Then, in this order:
-     (a) PARITY, restored not assumed. Copy `apps/ui/node_modules` and
-         `apps/ui/dist` from the primary checkout with
-         `shutil.copytree(src, dst, symlinks=True)`. The `symlinks=True`
-         argument is the ORDER and not a detail: `copytree` defaults to
-         `symlinks=False`, which dereferences npm's bin shims and itself causes
-         the base-only failures parity exists to prevent (R-0591). Report for
-         each destination that it exists, is a directory and is NOT a symlink.
-     (b) THE STALENESS THE COPY CREATES, closed deliberately.
-         `_frontend_is_stale` in `packages/orchestration/ui_server.py` decides
-         by MTIME, not by digest (R-0565), and `git worktree add` writes
-         `apps/ui/src` fresh while `copytree` preserves the primary's older
-         mtime on `apps/ui/dist/index.html` — which is exactly why the F255 R18
-         gate recorded nine base-only failures. Report the newest mtime under
-         the base worktree's `apps/ui/src` and the mtime of its
-         `apps/ui/dist/index.html` BEFORE any repair; then set every copied
-         `apps/ui/dist` file's mtime to now, report the two readings again, and
-         report which of the two comparisons holds each time. This preparation
-         step MOVES the mtime on purpose, and it is reported as preparation:
-         the readings that decide the parity claim are the ones taken AFTER it.
-     (c) THE RUN. From that worktree's root, `python3 -m pytest -n auto -q`,
-         with `REMEDY_UI_NO_AUTO_BUILD=1` passed through the `env=` parameter
-         of `subprocess.run` as a copy of `os.environ` with that one key added
-         — never as a `VAR=value` shell prefix, which constraint 9's guard
-         rejects — and the raw log at `.remedy-wt/.cache/gate_r34/base_run.log`.
-         Report the exit code, wall seconds, the summary line and the sorted
-         `^FAILED` lines as `base_failed.txt`.
-     (d) THE NEUTRALISATION, VERIFIED RATHER THAN TRUSTED. Report, for BOTH the
-         primary checkout and the base worktree, BEFORE and AFTER the run: a
-         sha256 folded over `apps/ui/dist` (each file's path and bytes, sorted),
-         the count of regular files under it, and `index.html`'s `st_mtime_ns`.
-         State `PARITY_CLAIM=HELD` only if, across the RUN, every digest, every
-         file count and every mtime is unchanged on both sides; otherwise
-         `PARITY_CLAIM=VOID`. Report also how many lines of the base log match
-         `auto-build (`, which is what a launched npm build would print.
-     (e) Remove the worktree, delete `tmp/base-gate-r34`, prune, and report
-         `git worktree list` naming only the primary checkout and
-         `git branch --list tmp/base-gate-r34` printing nothing.
- G11 COMPARE AND ATTRIBUTE, integration_gate.md steps 3 and 4. Report
-     `comm -13 base_failed.txt branch_failed.txt` as the BRANCH-ONLY set and
-     `comm -23 base_failed.txt branch_failed.txt` as the BASE-ONLY set, each
-     with its count, and an empty set reported as 0 rather than omitted.
-     (a) For EVERY branch-only id: re-run that exact node id SERIALLY in the
-         primary checkout at C4 and report the result. Serial-pass is the
-         xdist-flake class — record it, it is not a blocker. Serial-fail is
-         reproduced at the merge base BEFORE the feature is blamed. A
-         reproducible branch-only failure coupled to this feature's code is a
-         BLOCKER: STOP, write the handback naming it, and do not proceed to
-         C5's evidence claim or to closure — the fix is its own reviewed round.
-     (b) For EVERY base-only id: attribute it by DIRECT evidence, naming per id
-         the artifact or mechanism that produced it. This obligation is
-         UNCONDITIONAL and does not depend on the parity verdict: a gate that
-         discharges itself when its guard passes protects nothing, which is
-         finding R-0590 and cost the R23 gate 23 unattributed ids.
-     (c) State the branch-only and base-only counts as the numbers `comm`
-         printed, and write no sentence about either set that those numbers do
-         not carry (constraint 10).
- G12 THE EVIDENCE, at C5, in `.agent/gate_f008_r34/`, whose file names and
-     shape follow `.agent/gate_f255_r18/`, on disk at the round base: the
-     branch run's meta and tail, `branch_failed.txt`, `base_parity.txt`,
-     `base_failed.txt`, the two `comm` files and `attribution.txt`, plus a
-     provenance file naming where each raw log lives. EVERY member is `.txt`
-     and never `.log`: `.gitignore` drops `*.log` silently and the review-zip
-     guard rejects any `\.log$` member (R-0169). Report the file list with
-     sizes, that 0 of them match `\.log$`, and that `git status --porcelain` is
-     empty after C5.
+ G6  The sets in `.agent/live_review.md`, line-anchored, reported at the round
+     base AND at C2: `^- R-\d+ — ` reads 201 at both — this round mints no id —
+     `^- R-0630 — ` 0 at both, `^- R-0593 — `, `^- R-0629 — `, `^- R-0429 — `,
+     `^- R-0553 — `, `^- R-0628 — ` and `^- R-0368 — ` 1 each at both,
+     `^Done: R-\d+ — ` 6 at both, `^Landed: ` 0 at both, and `^Gate: R\d+ — `
+     34 at the base and 35 at C2, over that many DISTINCT keys. HEADER SWEEP at
+     C2 (item 26): report how many `Gate: ` lines match
+     `^Gate: R(\d+) — the R(\d+) entry\.` with the second numeral one below the
+     first, how many do not, the text of each non-match to its first period,
+     and that the R35 pair occurs EXACTLY ONCE.
+ G7  The Built State append at C3. Report that the base blob of
+     `docs/roadmap/features/T5_F008.md` is a byte-exact PREFIX of the C3 blob
+     and that the remainder equals a newline plus BUILTSTATE, with its sha256
+     prefix, bytes and lines; that the lines that commit's diff ADDS are
+     exactly the remainder's lines IN ORDER; and the count of `^## Built State`
+     in that file at the base (expected 0) and at C3 (expected 1).
+ G8  The docs gate and the canary, at C3, in the PRIMARY checkout, SERIALLY,
+     never two test processes alive at once. This round's change set includes a
+     `docs/roadmap/**` path, which gates with the docs suite in addition to the
+     canary (planner_reviewer_prompt.md §3, verification tier 5):
+     `python3 -m pytest tests/docs/ -q -rf` and
+     `python3 -m pytest tests/cli/test_golden_path.py -q -rf`. Report each
+     command's EXIT CODE and its passed and skipped numbers SEPARATELY as well
+     as their sum. If either fails, report the real values and STOP — a red
+     docs gate means the Built State text broke a ledger pin, and that is a
+     repair, not a closure.
+ G9  Clean tree, pushed, AT C3. `git status --porcelain` EMPTY, then
+     `git push -u origin feature/f008-sse-event-stream`; report its exit code
+     and output. Report `git rev-parse HEAD` and use that value as C3's SHA
+     everywhere below — the artefacts describe THAT commit.
+ G10 THE EVIDENCE JOB, closure protocol Algorithm step 1. Write EVIDENCESCRIPT
+     byte for byte to `.remedy-wt/r35_evidence.py` and run it with `python3`
+     from the repository root. It builds the bundle at
+     `.remedy-wt/f008_closure_evidence/remedy-job-evidence-f008-closure`
+     through `create_manual_completion_bundle`, which is the canonical producer
+     — `write_runtime_integration_gate` alone is NOT a bundle and packages as
+     BLOCKED_EVIDENCE. Report: the exit code, that the directory did not
+     pre-exist, the number of entries in it, and the producer's own printed
+     summary. The script asserts, and you report, the four producer pitfalls
+     the protocol names: per run `len(node_ids) == selected` with ids taken
+     from `--collect-only -q` and never by regexing a `-v` log (finding
+     R-0611), `test_files` entries all FILES and SORTED, every `run_id`
+     matching `^vr-\d{4,}$`, and the full 40-character `base_commit`. Then read
+     the WRITTEN bundle back and report, per verification run, whether
+     `output_hash` equals the sha256 of `stdout_summary` EXACTLY — the pitfall
+     that blocked the F083 closure and is not in that document's list. The
+     bundle is NOT committed and lives under the gitignored `.remedy-wt/`, so
+     it stays outside the base..HEAD review subject.
+ G11 THE INTEGRITY CHECK, closure precondition 3. The `remedy` CLI is DENIED by
+     this session's command guard, so call the same code directly:
+     `from packages.orchestration.integrity_gate import run_integrity_checks`,
+     then `run_integrity_checks()`. Report `passed`, the fail count, and EVERY
+     check's name with its own status — do not summarise them. This is the
+     precedent F255 R20 set, and it reads the same five checks the CLI reads.
+     If any check fails, report it verbatim and STOP: a failed integrity check
+     is a closure precondition failure, not a detail.
+ G12 THE REVIEW ZIP, closure protocol Algorithm step 2 — MANDATORY, fresh,
+     never skipped. From the repository root with the tree still clean:
+     `bash scripts/make_review_zip.sh --evidence-dir <the G10 bundle path>`.
+     Report the exit code, the package FILENAME, its SHA-256 as the script
+     printed it AND as you recompute it from the file on disk with sha256sum,
+     `PACKAGE_STATUS`, the member count, `EVIDENCE_AUTHORITATIVE`, the review
+     subject alignment, and the manifest's `committed_review_subject` base and
+     head — the head MUST equal C3's SHA from G9 and the base MUST be
+     7c03adfa58519d484df685d38b950c49afaf70a8. A FAILING ZIP BUILD IS A CLOSURE
+     BLOCKER: report the raw error and STOP rather than retrying blind. The
+     package will contain `.remedy-wt/` scratch as context; that is the
+     already-registered R-0403 and not a new condition of this closure.
  G13 The range, measured from the round base this block's header names and from
-     no other SHA. Report `git diff --name-only 88c55f5d..C5` and that it equals
-     the Change set MINUS `.agent/handoff.md` exactly, with none on either side
-     alone; the full reading to C6 belongs to the ROUND REPORT (constraint 6).
-     Walk `git rev-list --reverse 88c55f5d..C5` and report ONE reading per
-     commit: that it has exactly ONE parent, and BOTH numstat cells per path
-     from `git show --numstat`, cross-checked against `git diff --numstat`,
-     every insertion under 500 and every cell equal to the `+/-` column of your
-     `## Commits` table, cell by cell (item 28). C6's own numbers cannot exist
-     while C6 is being written, so they belong to the round report (item 14).
-     Count LINES BEGINNING with `<<<SLICE ` or `<<<END ` in the plan at C1, the
-     ledger at C2 and at C3, the pill at C4 and the handback at C6 — each is 0;
-     `.agent/last_block.md` is NOT in that list, being the block's own mirror.
-     Measure constraint 5 with
-     `git log --format=%H%x09%(trailers:key=Co-Authored-By,valueonly) 88c55f5d..HEAD`
-     before C6 and report how many commits it lists and how many return a
+     no other SHA. Report `git diff --name-only 2bacba10..C3` and that it
+     equals the Change set MINUS `.agent/handoff.md` exactly, with none on
+     either side alone. Walk `git rev-list --reverse 2bacba10..C3` and report
+     ONE reading per commit: that it has exactly ONE parent, and BOTH numstat
+     cells per path from `git show --numstat`, cross-checked against
+     `git diff --numstat`, every insertion under 500 and every cell equal to
+     the `+/-` column of your `## Commits` table, cell by cell (item 28). C4's
+     own numbers cannot exist while C4 is being written, so they belong to the
+     round report (item 14). Count LINES BEGINNING with `<<<SLICE ` or
+     `<<<END ` in the plan at C1, the ledger at C2, the feature file at C3 and
+     the handback at C4 — each is 0; `.agent/last_block.md` is NOT in that
+     list, being the block's own mirror. Measure constraint 5 with
+     `git log --format=%H%x09%(trailers:key=Co-Authored-By,valueonly) 2bacba10..HEAD`
+     before C4 and report how many commits it lists and how many return a
      NON-EMPTY value — state it as that measurement and never as a universal.
      Report this round's own reflog entries classified by the OPERATION before
      the first `:` in `%gs`: how many you classified, and `amend`, `rebase` and
      `cherry` at 0. Assert no total over the whole reflog (R-0601).
  G14 The handback carries every mandated section of
-     docs/agents/handback_template.md, the `## Next` content constraint 11
+     docs/agents/handback_template.md, the `## Next` content constraint 10
      names in that order, and an item-status table holding exactly one row for
-     each of C0a, C0b, C1, C2, C3, C4, C5 and C6 — "exactly one row" scoping to
-     that TABLE. Measure its line count with `wc -l` BEFORE committing it; this
-     round's commit count is above five, so the cap is 100, and an overage
-     carries a DECISION D15 stated-cause line naming the real count and the
-     mandated content that caused it. One line per gate here; raw transcripts
-     go in the ROUND REPORT (R-0582) and the gate's own numbers in C5's files.
+     each of C0a, C0b, C1, C2, C3 and C4 — "exactly one row" scoping to that
+     TABLE. It ALSO carries, in its own section, the four values the next
+     round's STATUS line is authored from and which exist nowhere else: the
+     evidence job id, the package filename, its SHA-256 and the accepted HEAD.
+     Measure the file's line count with `wc -l` BEFORE committing it; this
+     round's commit count is six, so the cap is 100, and an overage carries a
+     DECISION D15 stated-cause line naming the real count and the mandated
+     content that caused it. One line per gate here; raw transcripts go in the
+     ROUND REPORT (R-0582).
 
 Handback: completion report + rewrite `.agent/handoff.md`, whose state block repeats verbatim:
- ~99 % (T001 ✅ · T002 ✅ · T003 ✅ — Client, Badge, Deps-Factory, Browser-Env und Cockpit-Wiring komplett; Integrations-Gate in dieser Runde) — Schätzung
+ ~100 % (T001 ✅ · T002 ✅ · T003 ✅ · Integrations-Gate PASSED — Evidence-Job und Review-Zip in dieser Runde; nur STATUS-Zeile, README-Sync und der Pull Request bleiben) — Schätzung
 ──────────────────────────────────────────────────────────────────────────────
 
-<<<SLICE PLANF008R34
+<<<SLICE PLANF008R35
 # Plan — F008 SSE event stream
 
 Branch: feature/f008-sse-event-stream, cut from `main` at `7c03adfa`, the merge
@@ -331,49 +267,203 @@ the heartbeat holds cadence, and the fallback engages on a disabled EventSource
 and recovers to live.
 
 ## Current Step
-R34 records the R33 verdict — PASS, every gate re-run by the reviewer out of the
-committed blobs — retires the stale claim in `LiveStatusPill.tsx` that R33's own
-change set could not reach, and RUNS THE INTEGRATION GATE per
-docs/agents/integration_gate.md: the full suite once on this branch and once at
-the merge base `7c03adfa`, compared, with every branch-only and every base-only
-id attributed by direct evidence.
+R35 is the CLOSURE EVIDENCE round. It records the R34 verdict — PASS, the
+integration gate green on both sides with 0 branch-only and 0 base-only
+failures — writes this feature's Built State into
+`docs/roadmap/features/T5_F008.md`, and then produces the two artefacts closure
+cannot happen without: the evidence bundle from
+`create_manual_completion_bundle` and a FRESH review zip, both at the commit
+carrying the Built State.
 
 ## Next Steps
-1. R35 is the closure round per docs/roadmap/STATUS_closure_protocol.md:
-   evidence job, a FRESH review zip, the authored STATUS line and the pull
-   request — unless the gate names a blocker, which is its own repair round.
+1. R36 is the CLOSURE COMMIT round per docs/roadmap/STATUS_closure_protocol.md:
+   the authored STATUS `[x]` line, the README capability sync and the
+   candidates carrier in ONE commit (R-0154), then the pull request, which is
+   NOT merged in its own session.
 
 ## Risks
+- A failing zip build is a closure BLOCKER, not a retry: the round stops and
+  reports the raw error.
 - `npm run lint` in `apps/ui` is RED at base and is NOT a gate (R-0364): that
   config installs no TypeScript parser, which is R-0622 and routes to a
   paydown branch.
-- The base worktree's copied `apps/ui/dist` looks STALE by mtime to
-  `_frontend_is_stale`, which is what produced nine base-only failures at the
-  F255 R18 gate. This round repairs the mtime before the base run and reports
-  both readings, so a base-only failure is evidence rather than furniture.
-<<<END PLANF008R34
+<<<END PLANF008R35
 
-<<<SLICE R0593FROM
-COUNTER-MEASURE, applied by this round's C3 and C4 rather than asserted here: both comments are retired at their source, each naming the commit that falsified it, and the next block that adds a capability an existing comment calls absent is the one that owes the sweep.
-<<<END R0593FROM
+<<<SLICE LEDGER35
+Gate: R35 — the R34 entry. R34 PASSED, AND ITS INTEGRATION GATE IS GREEN ON BOTH SIDES. The round recorded the R33 verdict, amended R-0593 with the F008 R33 instance, retired the pill comment that denied its own caller, and ran the full suite once on this branch and once at the merge base — and EVERY BYTE PROOF WAS RE-RUN BY THE REVIEWER out of the committed blobs, with the branch-side suite re-run in the primary checkout, rather than read back out of the handback. TRANSPORT EQUAL THREE WAYS: `.agent/authored/f008-r34.md` at `78055070` and `.agent/last_block.md` at `6a9bde0c` are both sha256 b4e9edb5bba7649b6a1cc5bb5df4ee8b7ce1393664b581775ffa7345980e8532 over 32984 bytes and 379 lines, EQUAL to the digest the reviewer emitted and under the 490-line budget DECISION F085 D6 rules. SIX SLICES by the reviewer's own ordered extraction out of the committed C0a blob — PLANF008R35's predecessor PLANF008R34 17b7f5cd at 37 lines, PILLTO 9d7e18ba at 5, PILLFROM f8e95319 at 2, and single-line slices for R0593FROM d7dccc38, R0593TO a06b938c and LEDGER34 0b0f858d — none carrying trailing whitespace on any line, none beginning with a blank line, and each newline-terminated. THE PLAN LANDED FIRST at `340384ca`, byte-equal to PLANF008R34 at 37 lines under the 50-line cap. THE REWRITE at `dd1459d7` reads R0593FROM 1 at the base and 0 at C2 with R0593TO 0 and 1, the base blob with that one substitution is BYTE-EQUAL to the C2 blob, and the blank-line paragraph count is 244 on both sides with EXACTLY ONE paragraph differing, index 174, beginning `- R-0593 — `. THE LEDGER APPEND at `67dc5b6d` is proved twice over: the C2 blob is a byte-exact prefix of it with a 5616-byte remainder equal to a newline plus LEDGER34, and an INDEPENDENT split of the whole file gives 245 units whose LAST is LEDGER34's paragraph, with a one-byte printable flip REJECTED by BOTH readings and the unflipped value ACCEPTED by both. THE SETS HELD — 201 findings at the round base, at C2 and at C3 with NO id minted and R-0630 still 0, `- R-0368`, `- R-0429`, `- R-0553`, `- R-0593`, `- R-0628` and `- R-0629` 1 each and all OPEN, `Done:` 6, `Landed:` 0, `Gate: R` 33 at the base and at C2 and 34 at C3 over 34 DISTINCT keys, 33 of 34 headers matching the shape with `Gate: R1 — the F255 R21 entry.` the single non-match, and the R34 pair occurring exactly once. THE COMMENT RETIREMENT at `8ae77e92` is a REWRITE going PILLFROM 1 to 0 and PILLTO 0 to 1, the base blob with that one substitution BYTE-EQUAL to the C4 blob, 21 lines becoming 24 — and the reviewer measured the property the round's own constraint 3 claimed rather than trusting it: with block comments removed, the component's code at the base and at C4 is BYTE-IDENTICAL, so the edit really did touch nothing but prose. THE GATE IS THE REVIEWER'S OWN ON THE BRANCH SIDE: `python3 -m pytest -n auto -q` in the primary checkout at `2bacba10` EXITS 0 at `17412 passed, 20 skipped` in 151.4 s with 0 lines beginning FAILED — the same 17412 and 20 the worker's run at `8ae77e92` reported, reproduced at a later commit by a different actor. THE BASE SIDE IS THE WORKER'S, and its raw log survives on disk: `.remedy-wt/.cache/gate_r34/base_run.log` recomputes to the sha256 `full_log_provenance.txt` records, carries 0 lines beginning FAILED, and ends `17315 passed, 20 skipped` — its 97-test shortfall against the branch run being exactly the 97 ids the six F008 suites collect. BOTH `comm` SETS ARE 0, so no branch-only failure exists to attribute and no blocker is owed. THE PARITY CLAIM WENT VOID AND THE ROUND SAID SO, which is the honest outcome rather than the convenient one: the base worktree's `dist` digest and mtime both moved inside the run, the round chased the mover to ONE node id with a serial probe — `test_auto_build_runs_by_default`, which pops `REMEDY_UI_NO_AUTO_BUILD` itself and rebuilds into whichever checkout hosts it — and the primary checkout's digest, file count and mtime were unchanged across both runs. That probe also CORRECTS a reading this repository has carried since F255 R18: `auto-build (` appearing 0 times in a suite log means pytest captured it for a passing test, not that no build ran. SEVEN single-parent commits over `88c55f5d`..`3a648238`, insertions 379, 255, 13, 1, 2, 5 and 252 — every one under 500, 379 the maximum — with `git show --numstat` and `git diff --numstat` AGREEING on every cell and every cell equal to the `## Commits` column; the path set exactly the 14 the Change set names minus the handback's own; 0 marker lines in every committed target; 7 of 7 pre-C6 commits carrying `Co-Authored-By` and 8 of 8 after it; and a 93-line handback within the 100 eight commits allow. NO FINDING IS REGISTERED AGAINST THE WORKER, and the round earned more than a pass: it declared the parity void it could have buried, named the mover by direct probe, and corrected a false inference in the repository's own precedent — while every value it reported reproduced.
+<<<END LEDGER35
 
-<<<SLICE R0593TO
-COUNTER-MEASURE, applied by this round's C3 and C4 rather than asserted here: both comments are retired at their source, each naming the commit that falsified it, and the next block that adds a capability an existing comment calls absent is the one that owes the sweep. F008 R33 INSTANCE, AND IT IS THIS FINDING'S OWN COUNTER-MEASURE GOING UNSERVED IN THE ROUND THAT OWED IT — BY THE REVIEWER, IN A CHANGE SET, RATHER THAN BY A WORKER. `apps/ui/src/components/panels/LiveStatusPill.tsx` documents its own optional prop with the sentence that `streamStatus` is optional because no caller holds one yet and that `useBrainStream` reaches the cockpit at R30 through RightLivePanel. F008 R33's C4, `a8965b2d`, is the commit that gave it a caller: `RemedyShell` now passes `streamStatus={stream.status}` to `RightLivePanel`, which passes it to the pill. Measured by the reviewer at `88c55f5d`: that comment sentence occurs 1x in the pill, `RemedyShell` is the only caller of `RightLivePanel` anywhere under `apps/ui/src` and `RightLivePanel` the only caller of the pill, so the comment denies a caller that the one call chain reaching it does contain — and its round number is wrong in the same breath, the wiring having landed at R33 rather than at the R30 the sentence predicts. WHY NO WORKER COULD FIX IT: the R33 block's change set named six paths and that file is not one of them, so its constraint 3 forbade the edit; the worker applied every slice byte for byte and declared no objection, correctly, because the defect is not in any slice. It is in the change set — the reviewer added the capability an existing comment called absent and did not owe itself the sweep this counter-measure has required since it was written. THE FIX IS THIS ROUND'S C4, which retires the claim at its source and names `a8965b2d` as the commit that falsified it, in the order constraint 2 of the R34 block fixes. WHAT THE CLASS NOW COSTS: this is the second feature in which a comment left standing by the commit that falsified it had to be found by a reader rather than by a gate, so the sweep is owed BY THE BLOCK THAT ADDS THE CAPABILITY, and a block that adds a caller for a prop, a caller for a module, or a first use of anything an existing comment calls absent names that comment's file in its own change set.
-<<<END R0593TO
+<<<SLICE BUILTSTATE
+## Built State — what F008 delivered
 
-<<<SLICE LEDGER34
-Gate: R34 — the R33 entry. R33 PASSED. It recorded the R32 verdict, amended R-0629 with a defect in the reviewer's own block text, and WIRED THE COCKPIT — `RemedyShell` now subscribes to its dashboard's job and hands the transport status to the badge R29 built — and EVERY GATE WAS RE-RUN BY THE REVIEWER out of the committed blobs, the suites in the primary checkout and the red control in the reviewer's OWN disposable worktree, rather than read back out of the handback. TRANSPORT EQUAL THREE WAYS: `.agent/authored/f008-r33.md` at `7cb8b381` and `.agent/last_block.md` at `b6485523` are both sha256 a955dd3da8daa659104584fe479687128b071060240266d6daa53fd4fc43ca44 over 32437 bytes and 428 lines, EQUAL to the digest the reviewer emitted and under the 490-line budget DECISION F085 D6 rules. ELEVEN SLICES by the reviewer's own ordered extraction out of the committed C0a blob — PLANF008R33 a768146d at 39 lines, CONTRACT d13c2a38 at 90, SHSIGTO 9c39d503 at 7, SHIMPTO cc831ab7 at 3, and single-line slices for R0629FROM 836d856d, R0629TO 3e9f1830, LEDGER33 db6779e4, SHIMPFROM cd08d314, SHSIGFROM a88ea7bf, SHCALLFROM 85d765c3 and SHCALLTO 26ec012b — none carrying trailing whitespace on any line, none beginning with a blank line, and each newline-terminated. THE PLAN LANDED FIRST at `2befe139`, byte-equal to PLANF008R33 at 39 lines under the 50-line cap, with `## Goal` and `## Next Steps` once each and `F008` its first `\bF\d{3}\b` match. THE REWRITE at `cc40975f` reads R0629FROM 1 at the base and 0 at C2 with R0629TO 0 and 1, the base blob with that one substitution is BYTE-EQUAL to the C2 blob, and the blank-line paragraph count is 243 on both sides with EXACTLY ONE paragraph differing, index 234, beginning `- R-0629 — `. THE LEDGER APPEND at `f112538f` is proved twice over: the C2 blob is a byte-exact prefix of it with a 5470-byte remainder equal to a newline plus LEDGER33, and an INDEPENDENT split of the whole file gives 244 units whose LAST is LEDGER33's paragraph, with a one-byte printable flip REJECTED by BOTH readings and the unflipped value ACCEPTED by both. THE SETS HELD — 201 findings at the round base, at C2 and at C3 with NO id minted and R-0630 still 0, `- R-0368`, `- R-0429`, `- R-0553`, `- R-0622`, `- R-0628` and `- R-0629` 1 each and all OPEN, `Done:` 6, `Landed:` 0, `Gate: R` 32 at the base and at C2 and 33 at C3 over 33 DISTINCT keys, 32 of 33 headers matching the shape with `Gate: R1 — the F255 R21 entry.` the single non-match, and the R33 pair occurring exactly once. THE WIRING at `a8965b2d` carries three pairs in ONE commit and each is proved in the shape it owes: SHIMP and SHSIG are APPEND-shaped, their TOs containing their FROMs, so each FROM reads 1 at the base AND 1 at C4 while its TO goes 0 to 1 — a FROM-zero count being unattainable by construction there — and SHCALL is a REWRITE going 1 to 0 with its TO 0 to 1; covering all three at once, the base blob with SHIMP, SHSIG and SHCALL each substituted ONCE in that order is BYTE-EQUAL to the C4 blob, 2782 bytes and 50 lines becoming 3378 and 58. THE CONTRACT at `9ee1e9a9` is a CREATION — `git ls-tree 9f14a79e` printed a zero-byte output for that path — and its blob is sha256 d13c2a3849164b163dfc22e6acf8b8d1899133f5ce9cdad02e34cc8073336762 over 3855 bytes, byte-equal to the CONTRACT slice extracted from the committed C0a blob. THE RUNS ARE THE REVIEWER'S OWN, serial, in the primary checkout: `npm run --silent typecheck` EXITS 0 with a zero-byte output stream, `npx vitest run` EXITS 0 at 10 files and 152 tests, `python3 -m pytest tests/ui_contracts/ -q -rf` EXITS 0 at 417 passed plus 4 skipped = 421 where the base sum was 413 and CONTRACT's 8 tests are the difference, and the five-target state readers plus canary EXIT 0 at 465 passed plus 0 skipped. THE RED CONTROL DISCRIMINATES, measured by the reviewer in its own disposable worktree at `9ee1e9a9` with NO `node_modules` linked into it and the primary checkout never written to: the 29-byte target containing no backtick occurs EXACTLY ONCE as a substring while the count of LINES containing `streamStatus` is also 1 — the two numbers agreeing, which is the reading R-0629's widened fix asks for — deleting that one occurrence EXITS 1 at 1 failed and 7 passed, failing exactly `TestShellSubscribesToTheStream::test_shell_passes_the_stream_status_to_the_live_panel` and no other, and the restored file returns to sha256 9e6de55c and EXITS 0 at 8 passed, after which `git worktree list` named only the primary checkout and its porcelain read 0 lines. EIGHT single-parent commits over `9f14a79e`..`88c55f5d`, insertions 428, 299, 13, 1, 2, 9, 90 and 42 in commit order — every one under 500, 428 the maximum — with `git show --numstat` and `git diff --numstat` AGREEING for all eight and every cell equal to the `## Commits` column for the seven rows that table gives numbers for; the path set exactly the seven the Change set names; 0 marker lines in all six committed targets; 8 of 8 commits carrying `Co-Authored-By`; and an 83-line handback within the 100 eight commits allow. ONE FINDING, AND IT IS THE REVIEWER'S: registered against R-0593 rather than a new id after the open set was searched for the DEFECT (item 30), because the R33 change set omitted `apps/ui/src/components/panels/LiveStatusPill.tsx`, whose comment still denies the caller C4 gave it — the amendment is above and this round's C4 is the repair. NO FINDING IS REGISTERED AGAINST THE WORKER: every value it reported reproduced, including the three-way transport digest, all eleven slice digests and every count in G5 through G13.
-<<<END LEDGER34
+Read at `2bacba10`. A per-job SSE endpoint that streams the event ledger from a
+cursor, and the cockpit client that consumes it — resume without renumbering,
+an honest polling fallback, and a badge that says DELAYED rather than pretending
+to be live.
 
-<<<SLICE PILLFROM
- *  `streamStatus` is optional because no caller holds one yet — `useBrainStream`
- *  reaches the cockpit at R30, through RightLivePanel. */
-<<<END PILLFROM
+- `packages/orchestration/ui_server.py` — the endpoint. It streams the ledger's
+  OWN monotonic seq as the SSE event id and never assigns one, so a resume is a
+  span of the ledger rather than a renumbering of it; a heartbeat holds the
+  connection at cadence; `Last-Event-ID` replays exactly the missed span; and a
+  connection cap answers over-subscription with 429 rather than with an
+  unbounded thread count. The long-lived response required the server's
+  threading shape to be settled first, which is what T001 measured before
+  anything was built on it.
+- `apps/ui/src/api/brainStream.ts`, `brainStreamDriver.ts`,
+  `brainStreamRunner.ts`, `brainStreamHost.ts`, `brainStreamSession.ts` and
+  `brainStreamDeps.ts` — the client, deliberately NOT React. Every rule the
+  transport has lives in these modules, where the node-environment vitest can
+  reach it: reconnect backoff, gap detection against the carried seq, the
+  fallback that engages when EventSource is absent or fails, and the
+  environment seam that reads its globals as an ARGUMENT — a contract test
+  pins `globalThis` to zero occurrences in that module's COMMENT-STRIPPED
+  source, which is what keeps the seam inside a node-environment vitest's
+  reach. The two occurrences the word does have there are both in comments
+  saying why the module does not read it.
+- `apps/ui/src/api/useBrainStream.ts` — the only React in the feature: subscribe
+  to a store, start it, close it on unmount. `makeDeps` is read through a ref
+  rather than a dependency, because a caller that writes its deps inline hands a
+  new function every render and a memo honouring that identity would tear down
+  the stream and open a fresh EventSource on every parent render.
+- `apps/ui/src/components/shell/RemedyShell.tsx` — where the two halves meet.
+  The subscription sits in the shell rather than in `RemedyApp` (DECISION F008
+  D3) because the shell renders only once a dashboard has loaded, so
+  `dashboard.jobId` is always a real job, where `RemedyApp` would have to open a
+  stream against an empty id on every URL that carries none.
+- `apps/ui/src/components/panels/LiveStatusPill.tsx` and `RightLivePanel.tsx` —
+  the acceptance surface. The TRANSPORT's status outranks the dashboard's
+  liveness, because a client on the polling fallback is not live however active
+  the job is; the dashboard arm is the fallback, not the rule.
 
-<<<SLICE PILLTO
- *  `streamStatus` is optional because the pill outlived the rounds that had no
- *  transport to give it, not because nothing supplies one: at `a8965b2d`
- *  RemedyShell began passing a real status down the one chain that reaches
- *  this pill — RemedyShell to RightLivePanel to here — and at `88c55f5d` that
- *  was still the only chain either component had. */
-<<<END PILLTO
+Tests: `tests/ui_server/test_sse_stream.py`, `test_event_seq.py` and
+`test_server_concurrency.py` on the server side; `tests/ui_contracts/
+test_brain_stream_hook.py`, `test_live_status_pill.py` and
+`test_remedy_shell_stream.py` on the client side, all reading COMMENT-STRIPPED
+source because a guard that counted a token inside a comment would be satisfied
+by the prose describing the code (R-0584); and the vitest suites beside each
+client module, which is where the logic itself is exercised. This repository has
+no DOM environment, which is the reason the React half is as thin as it is.
+<<<END BUILTSTATE
+
+<<<SLICE EVIDENCESCRIPT
+"""F008 closure evidence bundle. Run with python3 from the repository root."""
+import hashlib
+import json
+import os
+import re
+import subprocess
+from datetime import datetime, timezone
+
+REPO = os.path.abspath(".")
+EVIDENCE_DIR = os.path.join(
+    REPO, ".remedy-wt", "f008_closure_evidence", "remedy-job-evidence-f008-closure"
+)
+BASE = "7c03adfa58519d484df685d38b950c49afaf70a8"
+assert len(BASE) == 40, BASE
+
+HEAD = subprocess.run(
+    ["git", "-C", REPO, "rev-parse", "HEAD"], capture_output=True, text=True
+).stdout.strip()
+assert len(HEAD) == 40, HEAD
+
+
+def _tail(text):
+    """The last 2000 chars on a WHOLE-LINE boundary, path-scrubbed TWICE.
+
+    job_evidence._scrub_paths only relativises paths under REPO. A pytest header
+    line can end in the interpreter's own absolute path, which
+    build_review_manifest._unsafe_text correctly rejects as a local absolute
+    path -> BLOCKED_EVIDENCE.
+    """
+    from packages.common.path_redaction import scrub_paths
+    from packages.orchestration.job_evidence import _scrub_paths
+
+    cut = text[-2000:]
+    if len(text) > 2000 and "\n" in cut:
+        cut = cut[cut.index("\n") + 1:]
+    return scrub_paths(_scrub_paths(cut, REPO))
+
+
+def mkrun(rid, path, expect):
+    """One verification record. Node ids come from --collect-only, never from a
+    -v log: a parametrized id can contain whitespace and a regex over -v output
+    splits it (finding R-0611)."""
+    assert re.match(r"^vr-\d{4,}$", rid), rid
+    collect = subprocess.run(
+        ["python3", "-m", "pytest", path, "--collect-only", "-q"],
+        cwd=REPO, capture_output=True, text=True,
+    )
+    assert collect.returncode == 0, (rid, collect.returncode)
+    ids = [ln for ln in collect.stdout.split("\n") if ln.startswith("tests/")]
+    run = subprocess.run(
+        ["python3", "-m", "pytest", path, "-q"],
+        cwd=REPO, capture_output=True, text=True,
+    )
+    text = run.stdout + run.stderr
+    assert run.returncode == 0, (rid, run.returncode, text[-400:])
+    passed = sum(int(x) for x in re.findall(r"(\d+) passed", text))
+    failed = sum(int(x) for x in re.findall(r"(\d+) (?:failed|error)", text))
+    skipped = sum(int(x) for x in re.findall(r"(\d+) skipped", text))
+    dur = float(re.findall(r"in ([\d.]+)s", text)[-1])
+    assert (passed, failed, skipped) == (expect, 0, 0), (rid, passed, failed, skipped)
+    selected = passed + failed + skipped
+    assert len(ids) == selected, (rid, len(ids), selected)
+    files = sorted({i.split("::")[0] for i in ids})
+    assert files == sorted(files), rid
+    for f in files:
+        assert os.path.isfile(os.path.join(REPO, f)), f
+    return {
+        "run_id": rid, "command": "python3 -m pytest " + path + " -q",
+        "exit_code": 0, "passed": passed, "failed": failed, "skipped": skipped,
+        "selected": selected, "deselected": 0, "node_ids": ids,
+        "test_files": files, "duration_seconds": dur,
+        "head_sha": HEAD, "stdout_summary": _tail(text),
+    }
+
+
+runs = [
+    mkrun("vr-0001", "tests/ui_server/test_sse_stream.py", 65),
+    mkrun("vr-0002", "tests/ui_server/test_event_seq.py", 7),
+    mkrun("vr-0003", "tests/ui_server/test_server_concurrency.py", 1),
+    mkrun("vr-0004", "tests/ui_contracts/test_brain_stream_hook.py", 9),
+    mkrun("vr-0005", "tests/ui_contracts/test_live_status_pill.py", 7),
+    mkrun("vr-0006", "tests/ui_contracts/test_remedy_shell_stream.py", 8),
+]
+for r in runs:
+    print(r["run_id"], "selected", r["selected"], "node_ids", len(r["node_ids"]),
+          "files", len(r["test_files"]), "dur", r["duration_seconds"])
+
+now = datetime.now(timezone.utc)
+from packages.orchestration.job_evidence import create_manual_completion_bundle  # noqa: E402
+
+result = create_manual_completion_bundle(
+    EVIDENCE_DIR,
+    repo_root=REPO,
+    base_commit=BASE,
+    head_commit=HEAD,
+    job_id="f008-closure",
+    job_title="F008 SSE event stream - closure",
+    step_range="T001-T003",
+    prior_job_ids=["f255-closure"],
+    verification_runs=runs,
+    timestamp=now.replace(microsecond=0).isoformat(),
+    generated_at=now.isoformat(),
+    num_tasks=3,
+    note_prefix="operator-attested manual completion - F008 closure",
+    review_feature_id="f008",
+)
+print(json.dumps(result, indent=2, sort_keys=True))
+
+# The output_hash preimage rule: sha256 over stdout_summary EXACTLY. This is the
+# pitfall that blocked the F083 closure and it is not in the protocol's list.
+vt = os.path.join(EVIDENCE_DIR, "verification_tests.json")
+if os.path.isfile(vt):
+    with open(vt, encoding="utf-8") as fh:
+        doc = json.load(fh)
+    for row in doc.get("runs", []):
+        want = hashlib.sha256(row.get("stdout_summary", "").encode()).hexdigest()
+        print("OUTPUT_HASH", row.get("run_id"), "matches sha256(stdout_summary):",
+              row.get("output_hash") == want)
+else:
+    print("OUTPUT_HASH no verification_tests.json at", vt)
+<<<END EVIDENCESCRIPT
