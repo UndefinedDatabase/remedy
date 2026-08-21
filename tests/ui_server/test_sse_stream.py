@@ -609,3 +609,19 @@ class TestDisconnectHammer:
     def test_a_single_clean_connection_needs_no_resume(self, monkeypatch):
         events = _events(4)
         assert b"".join(_hammer(monkeypatch, events, 4)) == _ledger_bytes(events)
+
+
+class TestResumeStartTypes:
+    """R-0620: the guard reads a POSITION, and zero is a position."""
+
+    def test_an_integer_zero_is_a_position_and_not_an_absence(self):
+        # The string "0" is truthy and the integer 0 is not, so a truthiness
+        # guard passes the string form and silently fails this one.
+        assert mod.resolve_sse_start(0, "7") == 1
+
+    def test_an_integer_header_resumes_one_past_it(self):
+        assert mod.resolve_sse_start(4, "7") == 5
+
+    def test_none_is_the_only_absence(self):
+        # Everything else is data; only a missing header falls back.
+        assert mod.resolve_sse_start(None, "7") == 7
