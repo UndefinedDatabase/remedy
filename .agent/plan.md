@@ -16,30 +16,30 @@ ledger's envelope sequence, the heartbeat holds cadence, and the fallback
 engages on a disabled EventSource and recovers to live.
 
 ## Current Step
-R8 registers R-0614, records the R6 and R7 verdicts, and re-issues the bundle
-R7 halted on: T001's stream READER — the SSE frame builders, the safe
-per-event envelope both event transports share, and the frame generator that
-carries the ledger position as the event id and heartbeats while idle. R7
-halted because one authored slice reached its worker with the escapes of two
-byte-string literals doubled; those characters are corrected here and every
-other byte of the bundle is unchanged.
+R9 records the R8 verdict, registers R-0615 and R-0616, and closes this
+session at its round cap. This round writes no code. T001's stream READER is
+built and reviewed as of R8: the SSE frame builders, the safe per-event
+envelope both event transports share, and the frame generator that carries the
+ledger position as the event id and heartbeats while idle. No route reaches it
+yet, so no cockpit request can open a stream.
 
 ## Next Steps
-1. R9 wires the reader to the route: `GET /api/jobs/<jid>/events/stream` as a
+1. R10 wires the reader to the route: `GET /api/jobs/<jid>/events/stream` as a
    six-part path branch beside the existing `events-since` handler in
    `_RemedyHandler.do_GET`, the response writer that drains the generator into
    the socket, and 404 for an unknown job before one byte of stream.
-2. R10 adds the per-job connection cap answering 429 beyond it and the framing
+2. R11 adds the per-job connection cap answering 429 beyond it and the framing
    golden the feature file names as T001's contract test.
-3. R11 onward builds T002 — Last-Event-ID resume and the forced-disconnect
+3. R12 onward builds T002 — Last-Event-ID resume and the forced-disconnect
    hammer whose transcript must byte-equal the ledger — then T003's client
    hook and fallback, then the integration gate before closure.
 
 ## Risks
 - A streaming handler holds a socket open. The reader takes `should_continue`
-  from its caller, so R9's writer must bound the loop by the peer's
+  from its caller, so R10's writer must bound the loop by the peer's
   disconnect, and no test may drive that route over a real socket without a
   hard timeout and a guaranteed close.
 - No open finding is a code defect of F008. R-0403, R-0607, R-0608, R-0609,
-  R-0611, R-0613 and R-0614 stay routed to a paydown branch, together with
-  promoting the fix clauses of R-0387 and R-0573 into the §3 checklist.
+  R-0611, R-0613, R-0614, R-0615 and R-0616 stay routed to a paydown branch,
+  together with promoting the fix clauses of R-0387 and R-0573 into the §3
+  checklist.
