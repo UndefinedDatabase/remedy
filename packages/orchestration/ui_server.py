@@ -25,8 +25,10 @@ import os
 import re
 import secrets
 import sys
+import threading
+import time
 from datetime import datetime, timezone
-from http.server import BaseHTTPRequestHandler, HTTPServer
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, urlparse
@@ -2721,19 +2723,174 @@ def _build_events_since_json(job: Any, cursor: str) -> dict[str, Any]:
     if cursor.isdigit():
         start = int(cursor)
     new_events = events[start:]
-    safe = []
-    for e in new_events[:50]:
-        safe.append({
-            "event": e.get("event", ""),
-            "timestamp": e.get("timestamp", ""),
-            "outcome": e.get("outcome", ""),
-        })
+    safe = [
+        _safe_event_summary(start + offset, e)
+        for offset, e in enumerate(new_events[:50])
+    ]
     return {
         "version": 1,
         "job_id": str(job.id),
         "cursor": str(len(events)),
         "events": safe,
     }
+
+
+#: Seconds of silence after which the stream sends a heartbeat comment frame.
+#: Proxies drop idle connections, and an SSE comment is the no-op that holds
+#: one open without ever entering the client's event stream.
+SSE_HEARTBEAT_SECONDS = 15.0
+
+#: Seconds the stream waits before re-reading the ledger for new events.
+SSE_POLL_SECONDS = 1.0
+
+
+def _safe_event_summary(seq: int, event: dict[str, Any]) -> dict[str, Any]:
+    """The safe per-event envelope both event transports carry.
+
+    The cursor endpoint and the SSE stream are one consumer contract over two
+    transports, so this summary has ONE writer: a field added here reaches
+    both or neither. `seq` is the ledger's own position and never a
+    per-response counter, so a client resuming from it lands on the event the
+    server meant (DECISION F008 D1).
+    """
+    return {
+        "seq": seq,
+        "event": event.get("event", ""),
+        "timestamp": event.get("timestamp", ""),
+        "outcome": event.get("outcome", ""),
+    }
+
+
+def sse_event_frame(seq: int, payload: dict[str, Any]) -> bytes:
+    """One SSE event frame whose id is the ledger position it carries."""
+    return f"id: {seq}\ndata: {json.dumps(payload, default=str)}\n\n".encode()
+
+
+def sse_heartbeat_frame() -> bytes:
+    """The SSE comment frame that holds an idle connection open.
+
+    A comment carries no `id:`, `event:` or `data:` field, so a client never
+    surfaces it as an event and a resuming client never asks to replay it.
+    """
+    return b": heartbeat\n\n"
+
+
+def iter_sse_frames(
+    load_events: Any,
+    start: int,
+    *,
+    now: Any,
+    sleep: Any,
+    should_continue: Any,
+    heartbeat_seconds: float = SSE_HEARTBEAT_SECONDS,
+    poll_seconds: float = SSE_POLL_SECONDS,
+) -> Any:
+    """Yield one job's SSE frames from `start`, heartbeating while idle.
+
+    Every collaborator that touches time is injected — `now`, `sleep` and
+    `should_continue` — so cadence is a fact a test asserts rather than a
+    duration it waits out. The response handler that writes these frames to a
+    socket arrives with the route; this is the reader it will drive.
+    """
+    cursor = start
+    last_frame_at = now()
+    while should_continue():
+        events = load_events()
+        if cursor < len(events):
+            for seq in range(cursor, len(events)):
+                yield sse_event_frame(seq, _safe_event_summary(seq, events[seq]))
+            cursor = len(events)
+            last_frame_at = now()
+            continue
+        if now() - last_frame_at >= heartbeat_seconds:
+            yield sse_heartbeat_frame()
+            last_frame_at = now()
+            continue
+        sleep(poll_seconds)
+
+
+def drain_sse_frames(frames: Any, write: Any, flush: Any, stop: Any) -> int:
+    """Write one stream's frames to a socket until the peer goes away.
+
+    A generator suspended in `yield` cannot observe a broken pipe, so the
+    writer is the only actor that can end the loop: on the first failed write
+    it calls `stop`, which is what `iter_sse_frames`' `should_continue` reads.
+    Without that call a departed peer leaks a thread polling the ledger for
+    ever. Returns the number of frames that actually reached the socket.
+    """
+    written = 0
+    for frame in frames:
+        try:
+            write(frame)
+            flush()
+        except (OSError, ValueError):
+            # OSError covers BrokenPipeError and ConnectionResetError; a wfile
+            # already closed by the server raises ValueError instead.
+            stop()
+            break
+        written += 1
+    return written
+
+
+#: Live SSE streams one job may hold at once. A cockpit opens one per tab, so
+#: the cap is what stops a reconnect storm from pinning a thread per attempt.
+SSE_MAX_STREAMS_PER_JOB = 4
+
+_SSE_SLOT_LOCK = threading.Lock()
+_SSE_SLOTS_PER_JOB: dict[str, int] = {}
+
+
+def acquire_sse_slot(job_id: str, limit: int = SSE_MAX_STREAMS_PER_JOB) -> bool:
+    """Take one of a job's stream slots, or refuse once the cap is reached.
+
+    The server is threaded, so the count is read and written under one lock:
+    two tabs opening at the same moment must not both see the last free slot.
+    """
+    with _SSE_SLOT_LOCK:
+        live = _SSE_SLOTS_PER_JOB.get(job_id, 0)
+        if live >= limit:
+            return False
+        _SSE_SLOTS_PER_JOB[job_id] = live + 1
+        return True
+
+
+def release_sse_slot(job_id: str) -> None:
+    """Give a job's stream slot back, forgetting the job once it reaches zero.
+
+    A stream that ended is capacity again, so the caller releases in a
+    `finally`: a handler that raised would otherwise cost that job a slot for
+    the lifetime of the process.
+    """
+    with _SSE_SLOT_LOCK:
+        live = _SSE_SLOTS_PER_JOB.get(job_id, 0) - 1
+        if live > 0:
+            _SSE_SLOTS_PER_JOB[job_id] = live
+        else:
+            _SSE_SLOTS_PER_JOB.pop(job_id, None)
+
+
+#: The header a reconnecting EventSource sends back. Named once so the wire
+#: spelling and the code that reads it cannot drift apart.
+SSE_LAST_EVENT_ID_HEADER = "Last-Event-ID"
+
+
+def resolve_sse_start(last_event_id: Any, cursor: str) -> int:
+    """The ledger position a stream resumes at: header first, query second.
+
+    The two inputs do NOT mean the same thing, which is the whole reason this
+    is a function. `Last-Event-ID` names the last frame the client ALREADY
+    holds, so the span it missed begins at that position PLUS ONE, while
+    `cursor` names the position to start AT. Reading them as one number
+    replays the client's last event on every reconnect or skips the first
+    unseen one — a duplicate or a gap, and the acceptance test for this
+    feature forbids both. A header that is absent, blank or not a position
+    falls back to the cursor rather than refusing the stream: a proxy that
+    mangled the header must not cost a client its connection.
+    """
+    text = "" if last_event_id is None else str(last_event_id).strip()
+    if text.isdigit():
+        return int(text) + 1
+    return int(cursor) if cursor.isdigit() else 0
 
 
 def _get_frontend_dist() -> Path | None:
@@ -2967,6 +3124,33 @@ class _RemedyHandler(BaseHTTPRequestHandler):
                 self._send_json(200, _build_events_since_json(job, cursor))
                 return
 
+        # /api/jobs/<job_id>/events/stream — the SSE transport of events-since
+        if (len(parts) == 6 and parts[1] == "api" and parts[2] == "jobs"
+                and parts[4] == "events" and parts[5] == "stream"):
+            job, err = _load_job(parts[3])
+            if err:
+                # 404 before one byte of stream: once the event-stream headers
+                # are out the status line is spent and cannot say "not found".
+                self._send_json(*err)
+                return
+            if not acquire_sse_slot(str(job.id)):
+                # 429 for the same reason and in the same window: a refused
+                # stream must not consume the capacity it was refused.
+                self._send_json(*_safe_error(429, "too many streams for this job"))
+                return
+            try:
+                # Resolved BEFORE the writer is entered: header-versus-query
+                # precedence is a routing question, and `_send_sse_stream`
+                # takes ONE start position rather than two candidate ones.
+                start = resolve_sse_start(
+                    self.headers.get(SSE_LAST_EVENT_ID_HEADER),
+                    (qs.get("cursor") or ["0"])[0],
+                )
+                self._send_sse_stream(job, str(start))
+            finally:
+                release_sse_slot(str(job.id))
+            return
+
         # /api/layers
         if path == "/api/layers":
             self._send_json(200, _build_layers_json())
@@ -3009,6 +3193,35 @@ class _RemedyHandler(BaseHTTPRequestHandler):
             return
 
         self._send_json(*_safe_error(404, "not found"))
+
+    def _send_sse_stream(self, job: Any, cursor: str, *,
+                         now: Any = time.monotonic,
+                         sleep: Any = time.sleep) -> None:
+        """Stream one job's events to this connection until the peer leaves.
+
+        `now` and `sleep` are injected for the same reason `iter_sse_frames`
+        injects them: cadence is then a fact a test asserts rather than a
+        duration it waits out.
+        """
+        start = int(cursor) if cursor.isdigit() else 0
+        self.send_response(200)
+        self.send_header("Content-Type", "text/event-stream")
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("Connection", "close")
+        self.end_headers()
+        alive = [True]
+
+        def stop() -> None:
+            alive[0] = False
+
+        frames = iter_sse_frames(
+            lambda: _load_events(job),
+            start,
+            now=now,
+            sleep=sleep,
+            should_continue=lambda: alive[0],
+        )
+        drain_sse_frames(frames, self.wfile.write, self.wfile.flush, stop)
 
     def do_POST(self) -> None:  # noqa: N802
         self._send_json(*_safe_error(405, "method not allowed"))
@@ -3119,7 +3332,7 @@ def start_ui_server(
         },
     )
 
-    server = HTTPServer((host, port), handler_class)
+    server = ThreadingHTTPServer((host, port), handler_class)
     actual_port = server.server_address[1]
     url = f"http://127.0.0.1:{actual_port}/?job={job_id}&token={token}"
 

@@ -8,8 +8,16 @@ import { PhaseTimeline } from "../timeline/PhaseTimeline";
 import { DetailPopover } from "../detail/DetailPopover";
 import { DegradedBanner } from "./DegradedBanner";
 import styles from "./RemedyShell.module.css";
+import { browserBrainStreamEnv, createBrainStreamHostDeps } from "../../api/brainStreamDeps";
+import { useBrainStream } from "../../api/useBrainStream";
 
 export function RemedyShell({ dashboard, selectedNodeId, onSelectNode }: { dashboard: RemedyDashboard; selectedNodeId: string | null; onSelectNode: (nodeId: string | null) => void }) {
+  // The cockpit subscribes HERE rather than in RemedyApp: the shell renders
+  // only once a dashboard has loaded, so `dashboard.jobId` is always a real
+  // job, where RemedyApp would have to open a stream against an empty id on
+  // every URL that carries none (DECISION F008 D3).
+  const stream = useBrainStream(dashboard.jobId, (jobId) =>
+    createBrainStreamHostDeps(jobId, browserBrainStreamEnv(window)));
   let selectedNode = selectedNodeId ? (dashboard.graph.nodes.find(n => n.nodeId === selectedNodeId || n.id === selectedNodeId) ?? null) : null;
   // Prompt satellite nodes carry the prompt item id as their node id. Resolve
   // such a selection to its owning task node so the popover (and its Prompt
@@ -42,7 +50,7 @@ export function RemedyShell({ dashboard, selectedNodeId, onSelectNode }: { dashb
           <BrainGraphStage dashboard={dashboard} selectedNodeId={selectedNodeId} onSelectNode={onSelectNode} />
           <PhaseTimeline phases={dashboard.phases} timelineEvents={dashboard.timelineEvents} />
         </main>
-        <RightLivePanel dashboard={dashboard} onSelectNode={onSelectNode} />
+        <RightLivePanel dashboard={dashboard} onSelectNode={onSelectNode} streamStatus={stream.status} />
       </div>
       {selectedNode && <DetailPopover dashboard={dashboard} selectedNode={selectedNode} selectedPromptId={selectedPromptId} onClose={() => onSelectNode(null)} />}
     </div>

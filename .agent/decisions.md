@@ -6514,3 +6514,108 @@ rather than everywhere.
 
 Reverse this decision by deleting this section and changing the `teach.ask`
 entry's `action_class` back to `read_only`.
+
+## DECISION F008 D1 — the server becomes threaded in its own round before T001, and seq is the ledger position (2026-08-21)
+
+CONTEXT. The feature file's Orchestrator brief dispatches T001's
+server-capability question as a findings order before anything is built, and
+R3 discharged it by measuring the source at `da2aabf9` rather than reading the
+feature file's own prediction. Both predictions were false, and finding R-0612
+records the measurement: `packages/orchestration/ui_server.py` instantiates
+`http.server.HTTPServer` bare with no threading mixin anywhere under
+`packages/` or `apps/`, so it serves one request at a time; and `LedgerEvent`
+carries none of a seq, an index or any ordered field, its enumeration position
+being spent inside `_make_event_id` and discarded. T001 as sliced assumed the
+opposite of both.
+
+CHOSEN. Two rulings, one for each measurement.
+
+1. Making the UI server threaded is a PREREQUISITE ROUND before T001, not a
+   step inside it. It is production code on the single path every existing
+   cockpit feature already uses, so it carries its own commit, its own
+   behavioural test — a slow request must stop blocking a concurrent one, an
+   assertion that fails today — and its own gate over the state-reader four
+   and the dashboard contract, which are the suites that would show a
+   regression there.
+2. The stream EXPOSES the ledger's own position as `seq` and assigns nothing.
+   T001 adds the position to the read path rather than minting a parallel
+   counter, so "the stream must not renumber" is satisfied by construction
+   instead of by discipline, and `event_id` keeps its present meaning as an
+   opaque digest rather than being pressed into service as an ordinal.
+
+ALTERNATIVES CONSIDERED and rejected. Folding the threading change into T001 —
+rejected because a blocking-server fix and a new endpoint would land in one
+diff, and a regression in either could not be attributed to the right half.
+Serving the stream from a second, separate threaded server on its own port —
+rejected because it doubles the auth surface the token model has to cover and
+splits the cockpit across two origins for no gain the first option does not
+give. Persisting a new `seq` field onto every ledger event — rejected because
+it rewrites the ledger format, which this feature's Do-not-touch section
+excludes by name, and because the position it would persist is the one already
+available for free. Deriving order from `timestamp` — rejected because
+timestamps are strings of unspecified resolution here and two events can share
+one, which is precisely the gap-detection failure T002 must prove absent.
+
+CONSEQUENCE. T001 is preceded by one prerequisite round, so the feature is one
+round longer than its Task slicing implies; the feature file's "How it fits"
+section now states measured facts where it stated predictions; and the
+Do-not-touch line on the ledger format is preserved rather than negotiated.
+
+Reverse this decision by deleting this section, restoring the two predictions
+in `docs/roadmap/features/T5_F008.md` and resolving R-0612 as rejected.
+
+
+## DECISION F008 D2 — the delayed badge is a pill VARIANT, and the endpoint wiring is its own round (2026-08-21)
+
+CHOSEN, two rulings the R29 block depends on.
+1. DELAYED and RECONNECTING are VARIANTS of the existing `LiveStatusPill`, not
+   a new visual language, so no assumption_log entry is owed. The design
+   reference already gives this component variants — `component_spec.md` reads
+   "LiveStatusPill (exists) — pulse dot; REPLAY variant (violet) for scrub
+   state" — so a label swap plus an accent dot is the mechanism it documents.
+   The accent `--remedy-orange-400` already exists in
+   `apps/ui/src/styles/tokens.css` and in the reference's own `tokens.css`; no
+   token, font, icon, glyph or asset source is added, leaving `assets_spec.md`
+   untouched.
+2. R29 ships the badge and R30 the wiring, where R28's handback proposed one
+   round for both. `BrainStreamHostDeps` needs four real adapters —
+   `openSource`, `readSnapshotSeq`, `readTail`, `schedule` — over the endpoint
+   T001 and T002 built, and owes its own vitest tests. Bundling them would put
+   a new transport adapter and a new visual surface in one diff, where a
+   regression could not be attributed to the right half.
+
+ALTERNATIVES REJECTED. An assumption_log entry anyway — no such file exists
+here, so it would CREATE the register rather than append to it. A fourth
+`BrainStreamStatus` member — rejected at R19, and R-0624 records why. A
+REQUIRED `streamStatus` — `RemedyApp` holds none until R30, so it would force
+callers to invent one.
+
+CONSEQUENCE. The badge is reachable and gated at R29 while nothing yet supplies
+a live value, which the pill's WHY comment states where a reader would look for
+the absence. R30 then changes one prop at one call site.
+
+Reverse ruling 1 by writing that assumption_log entry and citing this section
+as the reading it overrides; ruling 2 by folding R30 back into one round.
+
+## DECISION F008 D3 — the cockpit subscribes in RemedyShell, not RemedyApp
+
+Chosen: `useBrainStream` is called in `RemedyShell` with `dashboard.jobId`.
+
+Alternatives considered. (a) Call it in `RemedyApp`, as `.agent/plan.md` said
+from R30 until this round. `RemedyApp` reads its job id from the URL and returns
+an error screen when that id is empty, but a React hook cannot be called
+conditionally, so the stream would open against `/api/jobs//events/stream`
+whenever the URL carried no job — a request the server answers 404 and a
+reconnect loop the badge would then report. (b) Pass the id down and subscribe
+lower still, in `RightLivePanel`: rejected because the panel is a presentation
+surface and the status already reaches it as a prop.
+
+`RemedyShell` renders only after `RemedyApp` has loaded a dashboard, so
+`dashboard.jobId` is a job the server has already answered for. The seam
+`RightLivePanel` gained at R29 — an optional `streamStatus` — is unchanged by
+this choice, and `RemedyApp.tsx` is not touched at all, which is the narrowest
+blast radius of the three.
+
+The feature file names no call site, so this decides an implementation question
+rather than amending a spec. Reverse it by moving the call and passing the id
+down; nothing else in the client depends on where the hook is called.

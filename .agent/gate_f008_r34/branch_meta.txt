@@ -1,0 +1,24 @@
+F008 R34 integration gate - branch run (G9)
+
+checkout            /home/decodeux/Repos/remedy (PRIMARY)
+branch              feature/f008-sse-event-stream
+revision            8ae77e92c68d3667548ebac673853c907a6c372a (C4)
+command             python3 -m pytest -n auto -q
+REMEDY_UI_NO_AUTO_BUILD  not set for this run (G9)
+exit code           0
+wall seconds        122.8 (measured around subprocess.run)
+summary line        17412 passed, 20 skipped in 122.14s (0:02:02)
+FAILED count        0
+
+The FAILED count is a reading, not an omission: the sorted list of lines
+beginning "FAILED" over the raw log has length 0, and branch_failed.txt is the
+0-byte file that list wrote. The producing command is the Python equivalent of
+grep '^FAILED' <log> | sort, run inside .remedy-wt/r34/s12_g9_branch_run.py.
+
+Wall clock 122.8 s is under the ~5 minute budget of integration_gate.md step 5,
+so no perf pass is noted.
+
+The raw log was written OUTSIDE the tracked tree, at
+.remedy-wt/.cache/gate_r34/branch_run.log, because a log growing inside the repo
+during a run changes the worktree digest mid-run and turns the manifest-identity
+tests into false failures (R-0176).

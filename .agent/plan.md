@@ -1,36 +1,35 @@
-# Plan — F255 Teacher role
+# Plan — F008 SSE event stream
 
-Branch: feature/f255-teacher-role, cut from `main` at b35d350b, the merge commit
-of pull request #207. The closure pull request is created by THIS round and is
-NOT merged in this session; it merges at the next feature's Open PR Gate.
-`.agent/live_review.md` is the source of truth for the open set, for the next
-free finding id and for the round map; this file repeats none of them.
+Branch: feature/f008-sse-event-stream, cut from `main` at `7c03adfa`, the merge
+commit of pull request #208. `.agent/live_review.md` is the source of truth for
+the open set, the next free finding id and the round map.
 
 ## Goal
-A fourth configured role, `teacher`, that narrates a running mission and answers
-operator questions about the operator's own code, and never influences the run.
-DONE when passive narration keyed to an enumerated set of ledger events (Stage 1,
-deterministic templates, zero tokens) and on-demand Q&A (Stage 2, through the
-teacher role's own model) both work, the three grounding sources are never mixed
-silently, teacher spend is reported as its own role in the F103 ledger, and the
-read-only invariant is proven behaviourally. ALL FOUR HOLD and are reviewed.
+A per-job SSE endpoint streaming the event ledger from a cursor — the ledger's
+own monotonic seq carried and never renumbered, a 15 s heartbeat, Last-Event-ID
+resume replaying exactly the missed span — plus a client hook with reconnect
+backoff, gap detection and an honest polling fallback that labels itself
+delayed. DONE when a fake job streams into a test client with zero gaps across
+forced disconnects, the transcript byte-equals the ledger's envelope sequence,
+the heartbeat holds cadence, and the fallback engages on a disabled EventSource
+and recovers to live.
 
 ## Current Step
-R21 CLOSES F255. It records the R20 verdict, writes the STATUS `[x]` line with
-the package and `accepted HEAD` values R20 produced, syncs the README count, tier
-table and accepted list in the SAME commit, empties the closure-candidate
-carrier, and opens the pull request.
+R36 CLOSES F008. It records the R35 verdict — PASS, with the evidence bundle and
+the READY_FOR_REVIEW package re-verified from disk by the reviewer — makes the
+one docs pin that hard-codes the claimed feature independent of it, then lands
+the authored STATUS `[x]` line, the README sync and the closure-candidate
+carrier in ONE commit and opens the pull request. That pull request is NOT
+merged this session: it merges at the next feature's Open PR Gate.
 
 ## Next Steps
-1. The next session's FIRST action is Phase 1 rule 1, the `.agent/STOP` re-read,
-   and its SECOND is the Open PR Gate, which merges this feature's pull request
-   before any new branch is cut. Rule A5 then selects F008 — SSE event stream —
-   as the next feature, it being the first `[ ]` in STATUS order.
+1. The next session starts at Phase 1: the `.agent/STOP` re-read, then the Open
+   PR Gate, where this feature's pull request is the one to merge.
+2. Rule A5 then proposes F009 — The single write channel — the first `[ ]` line
+   this ledger carries top to bottom. That feature's first reviewed round
+   registers or resolves the entry `.agent/candidates.md` carries.
 
 ## Risks
-- FOUR FINDINGS REMAIN OPEN and none is a code defect: R-0607, R-0608, R-0609 and
-  R-0611 are all reviewer-process defects whose fixes edit `docs/agents/` or the
-  closure protocol, paths the closure commit's own R-0154 path set cannot reach.
-  They route to a paydown branch and are named in the pull request.
-- THE PACKAGE PACKAGES `.remedy-wt/` SCRATCH, which is the already-registered
-  R-0403 and not a new condition of this closure.
+- `npm run lint` in `apps/ui` is RED at base and is NOT a gate (R-0364): that
+  config installs no TypeScript parser, which is R-0622 and routes to a paydown
+  branch.
