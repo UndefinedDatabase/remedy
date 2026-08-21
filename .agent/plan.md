@@ -15,23 +15,23 @@ the heartbeat holds cadence, and the fallback engages on a disabled EventSource
 and recovers to live.
 
 ## Current Step
-R34 records the R33 verdict — PASS, every gate re-run by the reviewer out of the
-committed blobs — retires the stale claim in `LiveStatusPill.tsx` that R33's own
-change set could not reach, and RUNS THE INTEGRATION GATE per
-docs/agents/integration_gate.md: the full suite once on this branch and once at
-the merge base `7c03adfa`, compared, with every branch-only and every base-only
-id attributed by direct evidence.
+R35 is the CLOSURE EVIDENCE round. It records the R34 verdict — PASS, the
+integration gate green on both sides with 0 branch-only and 0 base-only
+failures — writes this feature's Built State into
+`docs/roadmap/features/T5_F008.md`, and then produces the two artefacts closure
+cannot happen without: the evidence bundle from
+`create_manual_completion_bundle` and a FRESH review zip, both at the commit
+carrying the Built State.
 
 ## Next Steps
-1. R35 is the closure round per docs/roadmap/STATUS_closure_protocol.md:
-   evidence job, a FRESH review zip, the authored STATUS line and the pull
-   request — unless the gate names a blocker, which is its own repair round.
+1. R36 is the CLOSURE COMMIT round per docs/roadmap/STATUS_closure_protocol.md:
+   the authored STATUS `[x]` line, the README capability sync and the
+   candidates carrier in ONE commit (R-0154), then the pull request, which is
+   NOT merged in its own session.
 
 ## Risks
+- A failing zip build is a closure BLOCKER, not a retry: the round stops and
+  reports the raw error.
 - `npm run lint` in `apps/ui` is RED at base and is NOT a gate (R-0364): that
   config installs no TypeScript parser, which is R-0622 and routes to a
   paydown branch.
-- The base worktree's copied `apps/ui/dist` looks STALE by mtime to
-  `_frontend_is_stale`, which is what produced nine base-only failures at the
-  F255 R18 gate. This round repairs the mtime before the base run and reports
-  both readings, so a base-only failure is evidence rather than furniture.
