@@ -41,7 +41,7 @@ Review of `7c03adfa..HEAD` (six commits: C0a, C0b, C1, C2, C3, C4).
 ### C4 docs(state): write the F008 R1 handback
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/handoff.md | in the round report | C4 cannot table the commit that writes it (R-0149) |
+| .agent/handoff.md | in the round report | C4 and the trailing G15 repair commit, grouped — C4 cannot table the commit that writes it (R-0149) |
 
 ## External actions
 
@@ -70,7 +70,7 @@ Review of `7c03adfa..HEAD` (six commits: C0a, C0b, C1, C2, C3, C4).
 - G12 transcript in External actions; every exit code 0; base SHA `7c03adfa58519d484df685d38b950c49afaf70a8`; the branch descends from it.
 - G13 `git diff --name-only 7c03adfa..C4` = the seven Change paths exactly, no path on either side alone. Every commit has exactly one parent. Insertions: C0a 357, C0b 340, C1 31, C2 17, C3 31, C4 in the round report — all under 500 and agreeing cell by cell with the `+/-` column above.
 - G14 line-anchored `<<<SLICE `/`<<<END ` counts: plan.md 0, live_review.md 0, STATUS.md 0, context.md 0, handoff.md 0.
-- G15 this round's own 9 reflog entries contain 0 with `amend`, `rebase` or `cherry`.
+- G15 over this round's own reflog entries, the count containing `amend`, `rebase` or `cherry` is 0. No entry total is stated: this file cannot count the reflog entries its own commits create.
 - G16 this file carries every mandated section and the item-status table below; line count in the round report; cap 100.
 
 ## Authored-text proofs
@@ -90,7 +90,7 @@ All five applied slices were EXTRACTED from the committed `.agent/authored/f008-
 
 ## Deviations & assumptions
 
-- No departure from the ordered commit sequence: C0a, C0b, C1, C2, C3, C4, in that order, with the Open PR Gate before C0a. No extra, dropped or reordered commit.
+- The ordered sequence C0a, C0b, C1, C2, C3, C4 ran in that order with the Open PR Gate before C0a; none was dropped or reordered. DECLARED EXTRA COMMIT, the seventh: C4 first stated a reflog ENTRY TOTAL of 9, measured before C4 itself existed and therefore false at 10 the instant it was committed. The trailing commit strikes that numeral rather than correcting it — the total is unmeasurable by the file that reports it — and adds this bullet. It touches `.agent/handoff.md` alone.
 - OBJECTION, per constraint 1 — recorded, not acted on. The block's C3/G8 claim and the block's own G10 are mutually unsatisfiable: `tests/docs/test_docs_consistency.py:307` pins F008 to `- [ ] `, so marking it `- [~] ` must turn that suite red. The slice was applied as written and the test was not touched (constraint 8). Repairing it is the reviewer's call for R2 — either the assertion moves with the claim, or the claim does not belong in R1.
 - `git push -u origin feature/f008-sse-event-stream` was run after C3 and before C4 so its real exit code could be reported here; the C4 commit is pushed immediately after this file is committed.
 
