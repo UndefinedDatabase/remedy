@@ -16,32 +16,26 @@ cross-site attempts fail closed and are audited as rejected, and a route-walking
 test plus an import guard prove no other mutating route exists.
 
 ## Current Step
-R5 closes this session. It registers R-0632, rules the open-count derivation as
-DECISION F009 D10, records the R4 verdict, and rewrites the handback with the
-number D10's rule produces. IT IS DECLARED AS A FIFTH ROUND AGAINST A STATED
-FOUR-ROUND CAP: the reviewer found, while auditing the R4 handback, that three
-authored texts this session each stated a different open-finding count and none
-was derived by the only rule this repository has written down. A finding that
-exists only in a session's chat is lost when that session ends, so persisting it
-was worth one short round; taking on NEW work would not have been.
+R6 builds T001's door: the POST route dispatching `/api/jobs/<job_id>/commands`,
+the bearer plus X-Remedy-CSRF pair D2 and D11 rule, request-shape validation
+returning typed errors that name the offending field, and BOTH halves of D3's
+constant-time comparison — compared as BYTES, because `secrets.compare_digest`
+raises TypeError on a non-ASCII str and the query token is attacker-controlled.
+A well-formed authenticated command reaches a 501 seam, which is the honest
+answer while D4's exposed subset is unbuilt. Contract tests go in
+`tests/ui_server/test_command_channel.py` per D1.
 
 ## Next Steps
-1. R6 is the first BUILD round: T001's door — the POST route on `_RemedyHandler`
-   dispatching `/api/jobs/<job_id>/commands`, the bearer plus X-Remedy-CSRF pair
-   D2 rules, request-shape validation with typed errors naming the offending
-   field, and BOTH halves of D3's constant-time comparison in one commit,
-   compared as BYTES rather than as str, because `secrets.compare_digest` raises
-   TypeError on a non-ASCII str and a query parameter is attacker-controlled.
-   `import secrets` is already present, so D3 adds no import. Contract tests go
-   in `tests/ui_server/test_command_channel.py` per D1.
-2. R7 the catalog subset D4 rules and the rate limit D9 rules as a typed
-   `ConfigKeySpec`; R8 the nonce store and audit record per D6, D7 and D8.
+1. R7 replaces the 501 seam with the catalog subset D4 rules, and adds the rate
+   limit D9 rules as a typed `ConfigKeySpec`.
+2. R8 the nonce store and the audit record per D6, D7 and D8, so that a replay
+   returns the ORIGINAL body and a rejection is audited.
 3. T003's effect table per D5, the plan-approval extraction landing as its own
-   commit; then the integration gate, then closure.
+   commit; then the client wiring that sends both headers, the integration gate,
+   then closure.
 
 ## Risks
-- R6 is the first round to touch `packages/orchestration/ui_server.py` on this
-  branch and it changes a live authentication line. It is a SPLIT round and
+- R6 changes a live authentication line on the GET door. It is a SPLIT round and
   `tests/ui_server/test_live_state.py` already asserts the `invalid token`
   response the change must preserve.
 - `npm run lint` in `apps/ui` is RED at base and is NOT a gate (R-0364), which is
