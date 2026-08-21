@@ -36,22 +36,46 @@ export interface BrainStreamRunner {
   dispatch(event: BrainStreamEvent): void;
   stop(): void;
   view(): BrainStreamView;
+  /** Hear about every visible change. The returned function unsubscribes. */
+  subscribe(listener: () => void): () => void;
 }
 
-/** Remedy deliberately gives this no change callback yet: nothing subscribes
- *  until the R21 hook exists, and a listener with no reader is untestable. */
+/** The runner IS a store: `subscribe` plus a `view` whose object identity only
+ *  changes when something visible does are exactly the pair React's
+ *  `useSyncExternalStore` requires, so the hook holds no state of its own. */
 export function createBrainStreamRunner(host: BrainStreamHost): BrainStreamRunner {
   let state = initialBrainStreamState();
   let settled = false;
   let stopped = false;
   let cancelPending: (() => void) | null = null;
+  const listeners = new Set<() => void>();
+  let cachedView: BrainStreamView = {
+    status: null,
+    lastSeq: null,
+    gapDetected: false,
+  };
 
+  /** The SAME object until something a reader can see changes. React's
+   *  `useSyncExternalStore` compares snapshots with `Object.is` and re-renders
+   *  forever if a store hands back a fresh object every call, so this identity
+   *  is a contract of the seam rather than an optimisation. */
   function view(): BrainStreamView {
-    return {
+    return cachedView;
+  }
+
+  /** Recompute what a reader would see; publish and announce it only if it
+   *  actually moved, so a timer that changes nothing wakes nobody. */
+  function publish(): void {
+    const next: BrainStreamView = {
       status: settled ? state.status : null,
       lastSeq: state.lastSeq,
       gapDetected: state.gapDetected,
     };
+    if (next.status === cachedView.status
+      && next.lastSeq === cachedView.lastSeq
+      && next.gapDetected === cachedView.gapDetected) return;
+    cachedView = next;
+    for (const listener of listeners) listener();
   }
 
   /** At most one timer outstanding: a second wait armed over a pending one
@@ -88,6 +112,7 @@ export function createBrainStreamRunner(host: BrainStreamHost): BrainStreamRunne
     const step = stepBrainStream(state, event);
     state = step.state;
     if (event.kind !== "timer") settled = true;
+    publish();
     for (const effect of step.effects) perform(effect);
   }
 
@@ -103,5 +128,9 @@ export function createBrainStreamRunner(host: BrainStreamHost): BrainStreamRunne
       cancelPending = null;
     },
     view,
+    subscribe(listener: () => void): () => void {
+      listeners.add(listener);
+      return () => { listeners.delete(listener); };
+    },
   };
 }
