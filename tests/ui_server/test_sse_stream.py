@@ -418,3 +418,93 @@ class TestStreamCapRoute:
             monkeypatch, "/api/jobs/nope/events/stream?token=tok", None,
             (404, {"error": "job not found"}))
         assert mod._SSE_SLOTS_PER_JOB == {}
+
+
+class TestResumeStart:
+    """T002's resolver: the ledger position a reconnecting client resumes at."""
+
+    def test_a_last_event_id_resumes_one_past_the_event_it_names(self):
+        # The header names what the client ALREADY has, so starting AT it
+        # would hand the same event over twice.
+        assert mod.resolve_sse_start("4", "0") == 5
+
+    def test_the_header_beats_the_query_cursor(self):
+        # A reconnect carries the stale query string it first connected with
+        # and a header the browser keeps current.
+        assert mod.resolve_sse_start("9", "3") == 10
+
+    def test_event_id_zero_is_a_position_and_not_an_absence(self):
+        # The first event is 0; a truthiness test here would resume at 0 and
+        # replay it for ever.
+        assert mod.resolve_sse_start("0", "7") == 1
+
+    def test_an_absent_header_falls_back_to_the_cursor(self):
+        assert mod.resolve_sse_start(None, "6") == 6
+
+    def test_a_blank_header_falls_back_to_the_cursor(self):
+        assert mod.resolve_sse_start("   ", "6") == 6
+
+    def test_a_mangled_header_falls_back_rather_than_refusing(self):
+        assert mod.resolve_sse_start("not-a-seq", "6") == 6
+
+    def test_a_negative_header_is_not_a_position(self):
+        assert mod.resolve_sse_start("-1", "6") == 6
+
+    def test_the_cursor_is_a_start_and_is_never_incremented(self):
+        # Only the header is exclusive; conflating the two is the defect this
+        # whole function exists to prevent.
+        assert mod.resolve_sse_start(None, "7") == 7
+
+    def test_neither_input_starts_at_the_beginning(self):
+        assert mod.resolve_sse_start(None, "junk") == 0
+
+    def test_surrounding_whitespace_is_tolerated(self):
+        assert mod.resolve_sse_start(" 4 ", "0") == 5
+
+
+class TestResumeSpan:
+    def test_the_replayed_span_is_exactly_the_events_the_client_missed(self):
+        # Six in the ledger and two already delivered: 3, 4 and 5 are owed.
+        # Neither a duplicate of 2 nor a gap at 3 is acceptable.
+        start = mod.resolve_sse_start("2", "0")
+        frames = _run(lambda: _events(6), start, 1, _Clock())
+        assert [_parse(f)["id"] for f in frames] == ["3", "4", "5"]
+
+    def test_a_client_that_is_current_is_owed_no_event(self):
+        start = mod.resolve_sse_start("5", "0")
+        frames = _run(lambda: _events(6), start, 1, _Clock())
+        assert [f for f in frames if not f.startswith(b":")] == []
+
+
+class TestResumeRoute:
+    def setup_method(self):
+        mod._SSE_SLOTS_PER_JOB.clear()
+
+    def test_the_header_reaches_the_writer_as_the_next_position(self, monkeypatch):
+        _answered, streamed = _dispatch(
+            monkeypatch, "/api/jobs/J/events/stream?token=tok", _Job(), None,
+            headers={"Last-Event-ID": "4"})
+        assert streamed[0][1] == "5"
+
+    def test_without_a_header_the_query_cursor_still_decides(self, monkeypatch):
+        _answered, streamed = _dispatch(
+            monkeypatch, "/api/jobs/J/events/stream?token=tok&cursor=7", _Job(), None)
+        assert streamed[0][1] == "7"
+
+    def test_the_header_overrides_the_cursor_on_the_wire(self, monkeypatch):
+        _answered, streamed = _dispatch(
+            monkeypatch, "/api/jobs/J/events/stream?token=tok&cursor=7", _Job(), None,
+            headers={"Last-Event-ID": "1"})
+        assert streamed[0][1] == "2"
+
+    def test_a_mangled_header_still_serves_the_stream(self, monkeypatch):
+        answered, streamed = _dispatch(
+            monkeypatch, "/api/jobs/J/events/stream?token=tok&cursor=3", _Job(), None,
+            headers={"Last-Event-ID": "??"})
+        assert answered == []
+        assert streamed[0][1] == "3"
+
+    def test_the_header_name_is_the_one_the_browser_sends(self):
+        # EventSource sends exactly this spelling; a rename breaks resume in
+        # silence, because the fallback path still serves a valid stream.
+        assert mod.SSE_LAST_EVENT_ID_HEADER == "Last-Event-ID"
