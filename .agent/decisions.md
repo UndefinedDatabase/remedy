@@ -6374,3 +6374,40 @@ and no handback claims to meet it.
 
 Reverse this decision by deleting this section and restoring the removed
 sentence.
+
+## DECISION F255 D7 — a teacher question is a ledger row with a NULL task_id (2026-08-21)
+
+CONTEXT. F255's acceptance requires Stage 2 to record exactly one ledger call
+attributed to role `teacher`, and DECISION F255 D3 rules that teacher spend is
+REPORTED through the `role` column the F103 ledger already carries. But
+`packages/orchestration/token_ledger.py` states two invariants that such a write
+breaks as written, both read at `8d8e7a5c`: a row is ONE FINALIZED TASK RUN keyed
+`"<job_id>:<task_id>"` (DECISION D16), and the module has exactly ONE call site,
+`pingpong_evidence.write_evidence_bundle`, because it never parses provider
+output itself. A teacher question is neither a task nor a run, and it has no
+`task_runs/<task_id>/provider_evidence.json`.
+
+CHOSEN. Widen the row's identity by exactly one class rather than fabricate a
+task run: a teacher question is a row whose `task_id` is NULL, and that NULL is
+what MARKS the class. The schema already permits it — `job_id` and `task_id` are
+both nullable and `call_id` alone is the primary key — so no migration is needed.
+`packages/orchestration/teacher_spend.py` is the one writer, it takes no
+`task_id` parameter at all, and it parses no provider output: it records figures
+its caller was given. The `token_ledger` docstring is amended at C4 of the same
+round, so the ruling and the module never disagree on disk.
+
+ALTERNATIVES CONSIDERED and rejected. Giving the question a synthetic
+`<job_id>:<task_id>` identity so the existing seam takes it unchanged — rejected
+because it invents exactly the ids and the evidence file the actuals path exists
+to refuse, and it would make a question indistinguishable from a task run in
+every later query. Giving teacher spend its own table — rejected because D3
+already rules that the separation IS the `role` column, and `query_cost(by=
+"role")` would then answer a question that omits the teacher entirely.
+
+CONSEQUENCE. `query_cost(by="role")` reports a `teacher` bucket beside the
+mission roles with no change to that function. A NULL `task_id` now READS as
+"not a task run"; every row that has one keeps its D16 meaning untouched.
+
+Reverse this decision by deleting this section, deleting
+`packages/orchestration/teacher_spend.py` and its test, and restoring the two
+amended bullets of the `token_ledger` module docstring.
