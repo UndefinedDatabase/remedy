@@ -1,79 +1,65 @@
-── STEP R10 — F255 Teacher role ───────────────────────────────
-Goal:        Record the R9 verdict and finish T002 AND T003: `remedy teach
-             narrate <job_id>` reads a job's run log through the production
-             reader and prints Stage 1 narration, its catalog entry declares
-             `action_class="read_only"`, and a behavioural proof shows every
-             byte under the data root unchanged across the call.
+── STEP R11 — F255 Teacher role ───────────────────────────────
+Goal:        Record the R10 verdict and build the DETERMINISTIC half of T004
+             Stage 2: one pure module carrying the three grounding sources with
+             their honesty rules, the level dial that changes DEPTH and never
+             the claim set, and the small-context assembly — reaching no model,
+             opening no file, spending nothing.
 
 Bundle:      C0a save this block · C0b mirror it · C1 the plan, FIRST · C2
-             record the R9 verdict · C3 the catalog, the handler wiring, the
-             command and its tests, together · C4 the handback, then push.
+             record the R10 verdict · C3 the module and its tests · C4 the
+             handback, then push.
 
 Change:      Exactly these paths, in this order, one commit each.
-             C0a `.agent/authored/f255-r10.md`
+             C0a `.agent/authored/f255-r11.md`
              C0b `.agent/last_block.md`
              C1  `.agent/plan.md`
              C2  `.agent/live_review.md`
-             C3  `apps/cli/command_catalog.py` AND
-                 `apps/cli/commands/__init__.py` AND
-                 `apps/cli/commands/teach_cmd.py` (CREATED) AND
-                 `tests/cli/test_teach_cmd.py` (CREATED) — ONE commit, four
-                 files. The catalog BUILDS the parser and the handler table is
-                 keyed by its command ids, so any subset declares a command that
-                 cannot run or wires a handler nothing dispatches to (R-0151).
+             C3  `packages/orchestration/teacher_qa.py` (CREATED) AND
+                 `tests/orchestration/test_teacher_qa.py` (CREATED) — ONE
+                 commit, two files. The tests are what make the honesty rules
+                 true rather than merely stated, so shipping the module without
+                 them would ship an unfalsifiable claim (R-0151).
              C4  `.agent/handoff.md`
              Nothing else is created, modified, deleted or staged. These paths
-             are PRESENT at the base `de0f666b` and must stay untouched:
-             `packages/orchestration/teacher_narration.py`,
-             `packages/orchestration/timeline.py`,
-             `packages/orchestration/run_log.py`,
-             `packages/orchestration/data_paths.py`,
+             are PRESENT at the base `c6c6fb08` and must stay untouched — the
+             module this round imports, the two seams R12 will need, and the
+             CLI surface R10 built: `packages/orchestration/teacher_narration.py`,
              `packages/orchestration/role_config.py`,
-             `packages/orchestration/config.py`, `apps/cli/grouped.py`,
-             `docs/agents/teacher_conventions.md`,
-             `docs/roadmap/features/T5_F255.md`, `.agent/decisions.md`,
-             `.agent/context.md`, `AGENTS.md`.
+             `packages/orchestration/token_ledger.py`,
+             `apps/cli/command_catalog.py`, `apps/cli/commands/teach_cmd.py`,
+             `docs/roadmap/features/T5_F255.md`.
 
 Constraints:
 1. NO SLICE IS EDITED. Every text between `<<<SLICE x` and `<<<END x` is applied
    byte for byte. A slice you believe is wrong is applied anyway and DECLARED in
    the handback; you never repair it silently. Marker lines never reach a target.
-2. TRANSPORT. `.remedy-wt/f255-r10.md` is this block on disk. C0a copies that
-   FILE to `.agent/authored/f255-r10.md` — copy it, never retype it — and C0b
+2. TRANSPORT. `.remedy-wt/f255-r11.md` is this block on disk. C0a copies that
+   FILE to `.agent/authored/f255-r11.md` — copy it, never retype it — and C0b
    copies the same file to `.agent/last_block.md`. Prove all three byte-EQUAL;
    the reviewer stated the expected digest when it delegated, and that digest
    cannot appear in this file because this file is what it digests.
 3. THE PLAN COMES FIRST. Findings R-0377, R-0491 and R-0548 are OPEN and all
    rule that the `.agent/plan.md` update is the FIRST substantive commit of a
    round with substance to record.
-4. FOUR PAIRS, AND THEIR SHAPES DIFFER. The reviewer ran the containment test
-   over each before emission and quotes each result as the test printed it.
-   GROUPFROM→GROUPTO: `TO contains FROM: True` — APPEND-shaped.
-   ENTRYFROM→ENTRYTO: `True` — APPEND-shaped. IMPORTFROM→IMPORTTO: `False` —
-   REWRITE. MERGEFROM→MERGETO: `False` — REWRITE. G7 orders the FROM-zero count
-   for the two REWRITES ONLY, and never for the two appends, whose FROM the
-   applied file necessarily still carries (§4.9, R-0207).
-5. EVERY FROM IS UNIQUE IN ITS TARGET. The reviewer measured each of the four
-   FROM texts at exactly 1 occurrence in its file at the base. Apply each by a
-   count-checked replacement: assert the FROM occurs exactly once BEFORE
-   replacing, and stop if it does not.
-6. THE TWO CREATED FILES MUST NOT EXIST AT THE BASE. Report both as ABSENT at
-   `de0f666b` before C3 and PRESENT after; if either exists already, stop.
-7. THE LEDGER APPEND IS BLANK-SEPARATED. RECORDR9 at C2 is appended preceded by
+4. THIS ROUND CONTAINS NO FROM/TO PAIR. Both C3 files are CREATED whole from a
+   slice, so no containment reading, no FROM count and no FROM-zero count is
+   owed, ordered or reported anywhere in this round (§4.9, R-0207).
+5. THE TWO CREATED FILES MUST NOT EXIST AT THE BASE. Report both as ABSENT at
+   `c6c6fb08` before C3 and PRESENT after; if either exists already, stop.
+6. THE LEDGER APPEND IS BLANK-SEPARATED. RECORDR10 at C2 is appended preceded by
    exactly one blank line (R-0578). This round registers NO finding and resolves
-   none: the registered count stays 181 and the resolved count stays 3. The
-   `resolved` reading is the count of LINE-ANCHORED `Done:` paragraphs — named
-   here because R9 had to derive it, and constraint 8 forbids you writing one.
-8. YOU NEVER WRITE A `Done:` OR A `Landed:` PARAGRAPH.
-9. NOTHING ELSE IS BUILT. No Stage 2, no `remedy teach ask`, no level dial, no
-   grounding-source labelling, no ledger reader. Those are T004's.
-10. `.agent/STOP` is read from disk before C0a. If it exists, stop and write the
+   none: the registered count stays 181 and the resolved count stays 3.
+7. YOU NEVER WRITE A `Done:` OR A `Landed:` PARAGRAPH.
+8. NOTHING ELSE IS BUILT. No `remedy teach ask`, no CLI surface, no catalog
+   entry, no model call, no ledger write, no config reader — those are R12's. A
+   module that reached a model would make G7's zero-token property unmeasurable.
+9. `.agent/STOP` is read from disk before C0a. If it exists, stop and write the
    handback instead.
-11. `git status --porcelain` is EMPTY after every commit. No worktree is created
-   this round: the reviewer already ran every destructive control G9 reports.
-12. YOU DO NOT WAIT ON ANY CI RUN and you report no run's conclusion.
+10. `git status --porcelain` is EMPTY after every commit. No worktree is created
+   this round: the reviewer already ran every destructive control G7 reports.
+11. YOU DO NOT WAIT ON ANY CI RUN and you report no run's conclusion.
 
-<<<SLICE PLAN255R10
+<<<SLICE PLAN255R11
 # Plan — F255 Teacher role
 
 Branch: feature/f255-teacher-role, cut from `main` at b35d350b, the merge commit
@@ -92,15 +78,15 @@ silently, teacher spend is reported as its own role in the F103 ledger, and the
 read-only invariant is proven behaviourally.
 
 ## Current Step
-R10: record the R9 verdict and finish T002 and T003 — `remedy teach narrate`
-over a real run log, its catalog entry declaring `action_class="read_only"`, and
-the behavioural proof that the command changes no byte under the data root.
+R11: record the R10 verdict and build the DETERMINISTIC half of T004 Stage 2 —
+the grounding-source labelling, the level dial and the small-context assembly,
+as a pure module that reaches no model and opens no file.
 
 ## Next Steps
-1. R11 BUILDS T004, Stage 2 Q&A: `remedy teach ask`, the small context, the
-   three grounding sources labelled per answer, the level dial, and spend
-   recorded under the role name `teacher`. It is the round that gives
-   `teacher.model` its first reader.
+1. R12 FINISHES T004: `remedy teach ask` on the CLI, the teacher model call
+   through the role's own config, the honest refusal when no model is
+   configured, and spend recorded under the role name `teacher` so
+   `query_cost(by="role")` separates it from mission spend.
 2. The INTEGRATION GATE round follows T004 — the full suite, per
    docs/agents/integration_gate.md — because T002 and T003 touch the CLI
    catalog, which the parser and the help renderer both read.
@@ -108,246 +94,286 @@ the behavioural proof that the command changes no byte under the data root.
    evidence job, fresh review zip, the STATUS line, and the pull request.
 
 ## Risks
-- STAGE 2 IS THE ROUND THAT CAN BREAK THE COST STORY. Stage 1 spends nothing
-  because it calls no model; T004 introduces the first teacher model call, and
-  its spend must land under the role name `teacher` in the F103 ledger or
-  DECISION F255 D3 is unmet.
-- THE READ-ONLY PROOF COVERS THE NARRATE PATH ONLY. `remedy teach ask` is a new
-  path and needs its own proof; a proof of one command is not a proof of a role.
-- THE CATALOG IS SHARED GROUND. `teach` is a new command group the parser and
-  the help renderer both build from, so a later round changing its shape re-runs
-  their suites, not only the teacher's own.
-<<<END PLAN255R10
-
-<<<SLICE RECORDR9
-Gate: R10 — the R9 entry. R9 PASSED with NO finding against its work and none against its block. Every gate the R9 block ordered was RE-EXECUTED by the reviewer over `43dc5086..de0f666b` rather than read from the handback, and every one holds. THE TRANSPORT HELD IN THE PRIMARY FORM: `.remedy-wt/f255-r9.md`, the committed `.agent/authored/f255-r9.md` at `ab7e1ddc` and the committed `.agent/last_block.md` at `948a60a5` are byte-EQUAL at sha256 b94ed684d8ff88dba8713f704124a3e54e609d63fb24729cc3b52d2fc2e2c0c0 over 30330 B and 470 lines, the digest stated at delegation. FOUR SLICES, a count the reviewer took from its own ordered extraction of the committed blob, agreeing with the worker's independent count, and NO slice is a FROM or a TO: the round contained no pair, so no containment reading and no FROM-zero count was ordered, owed or reported anywhere in it. THE PLAN LANDED FIRST AGAIN: `.agent/plan.md` at `30bd554c` byte-equals PLAN255R9 at sha256 5ec4ef1ccc2c162eec00b263fd6336853e33cd0d085d9428c0a6728b73b3dd9e over 2795 B and 47 lines, under the 50-line cap, carrying `## Goal` once, `## Next Steps` once and the F-id F255, and `30bd554c` is the first commit after the two block-save commits. THE LEDGER APPEND IS PREFIX-CLEAN: the blob at `43dc5086` is a byte-exact prefix of the blob at `6dfc6dc7` with a 5001 B two-line remainder equal to one newline followed by RECORDR8, and an independent paragraph split of the `6dfc6dc7` blob yields 197 units whose LAST unit is RECORDR8 byte for byte. THE SETS DID NOT MOVE, as a `Gate:` paragraph must not move them: 181 registered / 3 resolved / 178 open / 0 line-anchored `Landed:` at BOTH `43dc5086` and `6dfc6dc7`; `Gate: R9 — the R8 entry.` occurs 1x, sits last among the nine lines beginning `Gate: R`, and all nine header keys are distinct. THE TWO FILES WERE CREATED, NOT EDITED, and each is the authored bytes: `packages/orchestration/teacher_narration.py` and `tests/orchestration/test_teacher_narration.py` are both ABSENT at `43dc5086` under `git ls-tree` and both PRESENT at `1990b8e6`, and each byte-EQUALS its slice — 93 lines and 128 lines, numstat 93/0 and 128/0. STAGE 1 NARRATES AND IT IS DETERMINISTIC, re-measured by the reviewer rather than read from the report: `python3 -m pytest tests/orchestration/test_teacher_narration.py -q -rf` exits 0 at 38 passed, scoped ruff over both created files exits 0 at `All checks passed!`, and narrating the three events `job_created`, `task_run_started` carrying `t7` and `weird_thing` in TWO SEPARATE PROCESSES produces byte-identical output, whose third sentence NAMES `weird_thing` rather than describing it — the honesty rule holding at the only place it can be observed. THE FOUR RED CONTROLS BEHIND G8 WERE RUN BY THE REVIEWER BEFORE DELEGATION, in a disposable worktree since removed: dropping one event from `NARRATED_EVENTS` gives 1 failed / 35 passed, making the unrecognised path raise gives 9 failed / 29 passed, adding a forbidden dependency to the module gives 1 failed / 37 passed, and pointing a template at a field no event carries gives 1 failed / 37 passed — so the enumeration, the honesty path, the zero-cost guard and the templates are each a real tripwire rather than an unfalsifiable assertion. THE NEIGHBOURS AND THE ROUND GATE HOLD, re-run serially in the primary checkout, never two pytest processes at once: the three T001 suites exit 0 at 131 passed, the four state-reader files exit 0 at 160 passed and the canary exits 0 at 42 passed. THE RANGE AND THE HISTORY HOLD: seven paths over six single-parent commits; per-commit insertions 470, 375, 23, 2, 221 and C4's own 33, every one under the 500 cap, with every `+/-` cell of the handback's `## Commits` table byte-identical to `git diff --numstat`; all eleven paths named untouched are PRESENT at the base and ABSENT from the range; zero marker lines in any written file; no trailing whitespace on any handback line; and the handback at `de0f666b` is 75 lines carrying all seven mandated headings in the template's order. THE R-0605 COUNTER-MEASURE HELD A SECOND TIME: the handback states no total for the round anywhere, measured with a pattern rather than by reading, and its reflog claim names `1990b8e6` as the commit the reading was taken at with five commits made at that moment and five prefix-`commit` entries. C4's own entry is recorded here, which is what R-0494 asks of the next gate. ONE DECLARED DEVIATION IS WORTH KEEPING: the R9 block stated the ledger sets as `registered / resolved / open / line-anchored Landed:` without naming the extractor for `resolved`, so the worker measured three candidate readings — 1 for "paragraph contains RESOLVED", 80 for "ends with OPEN.", and 3 for line-anchored `Done:` — chose the only one that reproduces the block's four numbers, and named it. That is the same class the R5 record already keeps as a declared deviation for the two readings of "header key", and it is handled the same way: measured, named, and re-measurable by a later reader. The R10 block names the extractor in its own text so the next worker measures nothing to find it.
-<<<END RECORDR9
-
-<<<SLICE GROUPFROM
-    "memory": GroupDef("memory", "Memory", "Project memory."),
-<<<END GROUPFROM
-
-<<<SLICE GROUPTO
-    "memory": GroupDef("memory", "Memory", "Project memory."),
-    "teach": GroupDef("teach", "Teach", "Explain a run. Read-only, never steers it."),
-<<<END GROUPTO
-
-<<<SLICE ENTRYFROM
-    CommandEntry(
-        command_id="job.attach-repo",
-<<<END ENTRYFROM
-
-<<<SLICE ENTRYTO
-    CommandEntry(
-        command_id="teach.narrate",
-        group_id="teach",
-        subcommand="narrate",
-        description="Narrate a job's run log in plain sentences (read-only).",
-        action_class="read_only",
-        args=(_JOB_ID, _JSON_OPT),
-        supports_json=True,
-        related=("job.show",),
-    ),
-    CommandEntry(
-        command_id="job.attach-repo",
-<<<END ENTRYTO
-
-<<<SLICE IMPORTFROM
-        status_cmd,
-        test_cmds,
-<<<END IMPORTFROM
-
-<<<SLICE IMPORTTO
-        status_cmd,
-        teach_cmd,
-        test_cmds,
-<<<END IMPORTTO
-
-<<<SLICE MERGEFROM
- bench_cmd, ci_cmd):
-<<<END MERGEFROM
-
-<<<SLICE MERGETO
- bench_cmd, ci_cmd, teach_cmd):
-<<<END MERGETO
-
-<<<SLICE TEACHCMD
-"""`remedy teach narrate <job_id>` — Stage 1 of the teacher role (F255 T002/T003).
-
-The FIRST caller of ``packages.orchestration.teacher_narration`` outside its own
-tests. It reads ONE job's run log through the production reader
-``packages.orchestration.timeline.load_run_events`` and prints one plain sentence
-per event.
-
-READ-ONLY by construction AND by test: this command opens the run log for
-reading only, holds no lock, and writes nothing — no run-log entry, no job
-record, no cache, no export. ``tests/cli/test_teach_cmd.py`` proves that
-behaviourally, by hashing every file under the data root before and after the
-call and comparing the two maps.
-
-Remedy deliberately does NOT emit a run-log event for a teach command. A teacher
-that logged its own observation would change what the next observer sees, which
-is exactly the influence this role is forbidden
-(docs/agents/teacher_conventions.md, "Stance").
-
-Zero tokens: narration is a template lookup, so Stage 1 reaches no model and
-spends nothing. The teacher's own model key (``teacher.model``) belongs to the
-Stage 2 question path and is deliberately not read here.
-
-Exit codes:
-* 0 — narrated; an absent or empty run log narrates to nothing and is still 0;
-* 1 or 2 — raised by ``resolve_job_id`` itself: an unusable id, or a short
-  prefix matching more than one job. This command adds no exit path of its own,
-  because a teacher that could fail a run in a new way would not be passive.
+- R12 IS WHERE THE COST STORY IS PROVEN OR LOST. Stage 1 and this round spend
+  nothing because neither calls a model; R12 makes the first teacher model call,
+  and its spend must land under the role name `teacher` or DECISION F255 D3 is
+  unmet.
+- THE LEDGER'S ONE ROW IS A TASK RUN. `token_ledger.record_call` is documented
+  as one row per finalized task run, keyed `<job_id>:<task_id>`, and a teacher
+  question is neither. R12 must settle that shape before it writes a row.
+- THE READ-ONLY PROOF COVERS NARRATE ONLY; `teach ask` needs its own.
+<<<END PLAN255R11
+<<<SLICE RECORDR10
+Gate: R11 — the R10 entry. R10 PASSED with NO finding against its work and none against its block. Every gate the R10 block ordered was RE-EXECUTED by the reviewer over `de0f666b..c6c6fb08` rather than read from the handback, and every one holds. THE TRANSPORT HELD IN THE PRIMARY FORM: `.remedy-wt/f255-r10.md`, the committed `.agent/authored/f255-r10.md` at `a00e60b3` and the committed `.agent/last_block.md` at `5814d65b` are byte-EQUAL at sha256 2970251815a503f9b3cf8fc405da232c828eab62113c57407c1fb4f3439736d8 over 30466 B and 489 lines, the digest stated at delegation. TWELVE SLICES, a count the reviewer took from its own ordered extraction of the committed blob, agreeing with the worker's independent count. THE PLAN LANDED FIRST AGAIN: `.agent/plan.md` at `83c55a73` byte-equals PLAN255R10 at sha256 8772ec24a08b68b3f25fd18011f04d201e2cd7009326fa60f9b2ed54faee4ee4 over 2426 B and 43 lines, under the 50-line cap, carrying `## Goal` once, `## Next Steps` once and the F-id F255, and it is the first commit after the two block-save commits. THE LEDGER APPEND IS PREFIX-CLEAN: the blob at `de0f666b` is a byte-exact prefix of the blob at `f732f92c` with a 5109 B two-line remainder equal to one newline followed by RECORDR9, an independent paragraph split of the `f732f92c` blob yields 198 units whose LAST unit is RECORDR9 byte for byte, and a one-character mutant of the expected remainder is REJECTED by both readings while the real blob is accepted by both. THE SETS DID NOT MOVE, as a `Gate:` paragraph must not move them: 181 registered / 3 resolved / 178 open / 0 line-anchored `Landed:` at BOTH `de0f666b` and `f732f92c`; `Gate: R10 — the R9 entry.` occurs 1x, sits last among the ten lines beginning `Gate: R`, and all ten header keys are distinct. THE TWO FILES WERE CREATED, NOT EDITED, and each is the authored bytes: `apps/cli/commands/teach_cmd.py` and `tests/cli/test_teach_cmd.py` are both ABSENT at `de0f666b` under `git ls-tree` and both PRESENT at `26312742`, and each byte-EQUALS its slice — 64 lines at sha256 46b3cfdb59f0a4c605c8aef5465375e2f4db2a2a1b9a57da37508627151752ec and 108 lines at sha256 cf0f258ec1cd9ad80bdadab05e881cc3e942b69b7cf0cd6a0b052eeba4631860. THE FOUR PAIRS HOLD BY THEIR OWN SHAPES, the containment reading taken mechanically per pair rather than by eye: GROUP and ENTRY are APPEND-shaped with FROM 1x at both ends and TO 0x then 1x, IMPORT and MERGE are REWRITES with FROM 1x then 0x and TO 0x then 1x, and no FROM-zero count is reported for either append. THE RECONSTRUCTION IS THE STRONGER PROOF AND IT PASSES: for each EDITED file, the base blob with its FROM occurrences replaced once each by their TOs in the block's pair order byte-EQUALS the `26312742` blob — `apps/cli/command_catalog.py` at sha256 82deed1ead7163d90f8513868d9305f852b30087ad9704d2ecd5947bfe6f5517 and `apps/cli/commands/__init__.py` at sha256 52ea7d69987764bb513d4cab3d5d3a708fe7d2ac7dbad2fb25e7cbd00e3da7cd. THE COMMAND RUNS FOR REAL, re-run by the reviewer in its own scratch data root rather than read from the report: `python3 -m apps.cli.main teach narrate 3f2b1a90-0000-4000-8000-000000000001` exits 0 over a three-line run log and prints four lines whose third NAMES the unrecognised event `mystery` rather than describing it, and the run log's sha256 a1f6170b3367fae683175fb152a192226712a380ac88d44864a937af9a6f8029 is identical before and after while the whole scratch tree hashes identically — the read-only invariant observed at the only place it can be, a real process. THREE SPOT-CHECKS THE BLOCK DID NOT ORDER WERE RUN, because a declared surface nobody exercises is where this feature would fail quietly: `--json` exits 0 and emits the declared `job_id` / `event_count` / `narration` shape, an unusable id exits 1 through `resolve_job_id` with `Error: invalid job ID`, adding no exit path of the command's own as its docstring claims, and `teach --help` renders the new group and its one command. THE SUITES AND THE LINT HOLD, re-run serially in the primary checkout: the read-only proof exits 0 at 6 passed, the catalog and grouped CLI suites exit 0 at 529 passed, scoped ruff over the four files exits 0 at `All checks passed!` with the two EDITED files also clean at the base through `--stdin-filename`, Stage 1's own suite exits 0 at 38 passed, the four state-reader files exit 0 at 160 passed and the canary exits 0 at 42 passed. THE RANGE AND THE HISTORY HOLD: nine paths over six single-parent commits; per-commit insertions 489, 366, 21, 2, 185 and C4's own 36, every one under the 500 cap, with every `+/-` cell of the handback's `## Commits` table byte-identical to `git diff --numstat`; all twelve paths named untouched are PRESENT at the base and ABSENT from the range; zero marker lines in any written file; no trailing whitespace on any handback line; and the handback at `c6c6fb08` is 78 lines carrying all seven mandated headings in the template's order, within the 100-line allowance its six-commit table earns. C4'S OWN REFLOG ENTRY IS MEASURED HERE, which is what R-0494 asks of the next gate: at `c6c6fb08` the round has made 6 commits and its reflog entries whose operation prefix reads exactly `commit` number 6, with 0 entries whose prefix contains amend, reset, rebase or cherry. THE DECLARED DEVIATION IS SOUND: the session's shell guard rejects the `VAR=value cmd` environment-prefix form, so G8's `REMEDY_DATA_DIR` was set in a runner spawning the block's EXACT argv through `subprocess.run`; the reviewer hit the same guard and reproduced the gate the same way, so the mechanism is the session's and not the worker's, and the command executed is the command the block names.
+<<<END RECORDR10
+<<<SLICE TEACHQA
 """
+Teacher Q&A grounding — the deterministic half of Stage 2 (F255 T004).
+
+Stage 2 answers an operator question through the teacher's own model. THIS
+module is everything about that answer which must not depend on a model: which
+grounding source each fact came from, what the level dial changes, and what is
+refused when no model is configured. Keeping it here makes the honesty rules of
+docs/agents/teacher_conventions.md TESTABLE without a network call.
+
+Remedy deliberately opens NO file here and provides no writer, exactly as
+``teacher_narration`` does not. The caller supplies run events already read by
+``packages.orchestration.timeline.load_run_events`` and code text already read
+read-only, so the read-only invariant stays a property of the whole teacher path
+rather than a claim about part of it (DECISION F255 D5).
+
+Each fact is built ONLY from the input its source names, which is what stops the
+three sources being mixed silently. :func:`claim_set` is computed from the facts
+alone and never from the level, so "the same question at two levels yields
+answers whose claim set is the same" is a property of the type rather than a
+hope about a prompt.
+
+Public API:: ``GROUNDING_SOURCES`` / ``SOURCE_HONESTY``, ``LEVELS`` /
+``DEFAULT_LEVEL`` / ``LEVEL_DEPTH``, ``GroundedFact`` / ``TeacherContext``,
+``build_teacher_context``, ``claim_set``, ``render_prompt``,
+``no_model_refusal``.
+"""
+
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
+from typing import Any
 
-def _cmd_teach_narrate(job_id_str: str, *, json_output: bool = False) -> None:
-    """Narrate one job's run log. READ-ONLY: nothing on this path writes."""
-    import json as _json
+from packages.orchestration.teacher_narration import narrate_run_events
 
-    from packages.orchestration.data_paths import resolve_data_root, resolve_job_id
-    from packages.orchestration.teacher_narration import narrate_run_events
-    from packages.orchestration.timeline import load_run_events
+#: The three grounding sources, in the order
+#: docs/agents/teacher_conventions.md lists them: what is happening, what this
+#: code does, and what a term means.
+SOURCE_LEDGER = "ledger"
+SOURCE_CODE = "code"
+SOURCE_CONCEPT = "concept"
 
-    job_id = resolve_job_id(job_id_str)
-    events = load_run_events(resolve_data_root(), job_id)
-    sentences = narrate_run_events(events)
+GROUNDING_SOURCES: tuple[str, ...] = (SOURCE_LEDGER, SOURCE_CODE, SOURCE_CONCEPT)
 
-    if json_output:
-        print(_json.dumps({
-            "job_id": str(job_id),
-            "event_count": len(events),
-            "narration": sentences,
-        }, indent=2))
-        return
-
-    print(f"Teacher narration for job {str(job_id)[:8]} ({len(events)} events)")
-    if not sentences:
-        print("  no events yet")
-    for sentence in sentences:
-        print(f"  {sentence}")
-
-
-COMMAND_HANDLERS = {
-    "teach.narrate": lambda args: _cmd_teach_narrate(
-        getattr(args, "job_id", "") or "",
-        json_output=bool(getattr(args, "json", False)),
-    ),
+#: The honesty rule each source carries, quoted into the prompt beside its facts
+#: so the model is told the rule at the point it would break it.
+SOURCE_HONESTY: dict[str, str] = {
+    SOURCE_LEDGER: "Assert only what these events show; where they are silent, say unknown.",
+    SOURCE_CODE: "Explain only the code shown; never invent a call site, a flag or a file.",
+    SOURCE_CONCEPT: "General knowledge, explicitly not a claim about this project's state.",
 }
-<<<END TEACHCMD
 
-<<<SLICE TEACHCMDTEST
-"""Tests for `remedy teach narrate` — the teacher's Stage 1 surface (F255 T002/T003).
+#: The level dial. It selects a DEPTH instruction and nothing else.
+LEVELS: tuple[str, ...] = ("student", "beginner", "pro")
 
-The load-bearing property is T003's: the command is READ-ONLY, proven
-BEHAVIOURALLY rather than asserted — every file under the data root is hashed
-before and after the call and the two maps must be identical.
+DEFAULT_LEVEL = "beginner"
 
-Deliberately NOT re-asserted here: the sentences themselves, which
-tests/orchestration/test_teacher_narration.py pins at module level, and the
-parser wiring, which this round's own gate exercises by running the real
-`remedy teach narrate` end to end over a run log.
+#: Depth per level. Every entry asks for the SAME facts at a different length,
+#: which is what keeps :func:`claim_set` level-independent.
+LEVEL_DEPTH: dict[str, str] = {
+    "student": "Explain from scratch in short plain sentences. Define every term you use.",
+    "beginner": "Explain plainly. Define a term the first time it appears.",
+    "pro": "Be brief and precise. Skip definitions of common terms.",
+}
+
+
+@dataclass(frozen=True)
+class GroundedFact:
+    """One fact and the source it is allowed to be asserted from."""
+
+    source: str
+    text: str
+
+
+@dataclass(frozen=True)
+class TeacherContext:
+    """The small context Stage 2 sends: a question, a level, and labelled facts."""
+
+    question: str
+    level: str
+    facts: tuple[GroundedFact, ...]
+
+
+def build_teacher_context(
+    question: str,
+    *,
+    events: Sequence[Mapping[str, Any]] = (),
+    code: str | None = None,
+    code_path: str | None = None,
+    level: str = DEFAULT_LEVEL,
+) -> TeacherContext:
+    """Assemble the small context for one question.
+
+    Ledger facts are the Stage 1 narration of ``events``, reused rather than
+    re-derived. A code fact exists only when code was actually supplied, because
+    a fact about code nobody read is the invention this role must refuse. An
+    unrecognised ``level`` falls back to :data:`DEFAULT_LEVEL` rather than
+    raising: a teacher that could fail a run would not be passive.
+    """
+    if level not in LEVEL_DEPTH:
+        level = DEFAULT_LEVEL
+
+    facts: list[GroundedFact] = [
+        GroundedFact(SOURCE_LEDGER, sentence) for sentence in narrate_run_events(list(events))
+    ]
+    if code is not None and code.strip():
+        where = code_path or "the supplied code"
+        facts.append(GroundedFact(SOURCE_CODE, f"{where}:\n{code}"))
+
+    return TeacherContext(question=question, level=level, facts=tuple(facts))
+
+
+def claim_set(context: TeacherContext) -> tuple[str, ...]:
+    """The facts this answer may assert, as ``"<source>: <text>"`` strings.
+
+    Computed from the facts ALONE: the level is deliberately not an input, so
+    two contexts differing only in level have equal claim sets.
+    """
+    return tuple(f"{fact.source}: {fact.text}" for fact in context.facts)
+
+
+def render_prompt(context: TeacherContext) -> str:
+    """Render the prompt for one question, grouped by grounding source.
+
+    Each block names its source and carries that source's honesty rule, and the
+    question comes last so the cache-stable material sits in front of it.
+    """
+    lines: list[str] = []
+    for source in GROUNDING_SOURCES:
+        texts = [fact.text for fact in context.facts if fact.source == source]
+        if not texts and source != SOURCE_CONCEPT:
+            continue
+        lines.append(f"[{source}] {SOURCE_HONESTY[source]}")
+        lines.extend(texts)
+        lines.append("")
+    lines.append(LEVEL_DEPTH[context.level])
+    lines.append(f"Question: {context.question}")
+    lines.append("Name the source you answer from.")
+    return "\n".join(lines)
+
+
+def no_model_refusal(reason: str) -> str:
+    """The honest refusal when Stage 2 has no model to call.
+
+    Names Stage 1 explicitly, because Stage 1 is offline by construction and
+    keeps working — the operator should be told what they still have.
+    """
+    return (
+        f"I cannot answer that: {reason}. "
+        "Stage 1 narration still works offline: run `remedy teach narrate <job_id>`."
+    )
+<<<END TEACHQA
+<<<SLICE TEACHQATEST
+"""Tests for teacher Q&A grounding — Stage 2's deterministic half (F255 T004).
+
+These pin the three acceptance rules that must NOT depend on a model call:
+every fact names its grounding source, the sources are never mixed silently,
+and the level dial changes depth without changing the claim set.
+
+Deliberately NOT tested here: the model call itself and the ledger attribution,
+which are T004's second round and need a real provider seam to be honest about.
 """
 from __future__ import annotations
-
-import hashlib
-import json
-from pathlib import Path
 
 import pytest
 
-from apps.cli.command_catalog import get_command, get_commands_for_group
-from apps.cli.commands.teach_cmd import COMMAND_HANDLERS, _cmd_teach_narrate
-
-_JOB_ID = "3f2b1a90-0000-4000-8000-000000000001"
+from packages.orchestration.teacher_qa import (
+    DEFAULT_LEVEL,
+    GROUNDING_SOURCES,
+    LEVEL_DEPTH,
+    LEVELS,
+    SOURCE_CODE,
+    SOURCE_CONCEPT,
+    SOURCE_LEDGER,
+    build_teacher_context,
+    claim_set,
+    no_model_refusal,
+    render_prompt,
+)
 
 _EVENTS = [
     {"event": "job_created", "timestamp": "2026-08-21T00:00:01Z"},
     {"event": "task_run_started", "task_id": "t7", "timestamp": "2026-08-21T00:00:02Z"},
-    {"event": "some_unlisted_event", "timestamp": "2026-08-21T00:00:03Z"},
 ]
 
-
-def _write_run_log(root: Path, job_id: str, events: list[dict]) -> Path:
-    """A run log at the real relative path ``load_run_events`` reads."""
-    runs = root / "runs" / job_id
-    runs.mkdir(parents=True, exist_ok=True)
-    log = runs / "run-1.jsonl"
-    log.write_text(
-        "\n".join(json.dumps(e, separators=(",", ":")) for e in events) + "\n",
-        encoding="utf-8",
-    )
-    return log
+_CODE = "def add(a, b):\n    return a + b\n"
 
 
-def _hash_tree(root: Path) -> dict[str, str]:
-    """Every file under ``root``, mapped to the sha256 of its bytes."""
-    return {
-        str(path.relative_to(root)): hashlib.sha256(path.read_bytes()).hexdigest()
-        for path in sorted(root.rglob("*"))
-        if path.is_file()
-    }
+class TestGroundingSourcesAreLabelled:
+    def test_every_fact_carries_a_known_source(self):
+        ctx = build_teacher_context("what happened?", events=_EVENTS, code=_CODE)
+        assert ctx.facts
+        for fact in ctx.facts:
+            assert fact.source in GROUNDING_SOURCES
+
+    def test_ledger_facts_come_only_from_events(self):
+        ctx = build_teacher_context("what happened?", events=_EVENTS)
+        ledger = [f for f in ctx.facts if f.source == SOURCE_LEDGER]
+        assert [f.text for f in ledger] == [
+            "The job was created.",
+            "A task started: t7",
+        ]
+        assert not [f for f in ctx.facts if f.source == SOURCE_CODE]
+
+    @pytest.mark.parametrize("code", [None, "", "   \n"])
+    def test_no_code_fact_without_real_code(self, code):
+        ctx = build_teacher_context("what does add do?", events=_EVENTS, code=code)
+        assert not [f for f in ctx.facts if f.source == SOURCE_CODE]
+
+    def test_a_code_fact_names_where_it_was_read(self):
+        ctx = build_teacher_context("?", code=_CODE, code_path="apps/x.py")
+        code_facts = [f for f in ctx.facts if f.source == SOURCE_CODE]
+        assert len(code_facts) == 1
+        assert code_facts[0].text.startswith("apps/x.py:")
+
+    def test_the_prompt_labels_each_source_block(self):
+        prompt = render_prompt(build_teacher_context("?", events=_EVENTS, code=_CODE))
+        for source in GROUNDING_SOURCES:
+            assert f"[{source}]" in prompt
+
+    def test_an_empty_context_still_declares_the_concept_source(self):
+        prompt = render_prompt(build_teacher_context("what is a mutex?"))
+        assert f"[{SOURCE_CONCEPT}]" in prompt
+        assert f"[{SOURCE_LEDGER}]" not in prompt
+        assert f"[{SOURCE_CODE}]" not in prompt
 
 
-@pytest.fixture()
-def data_root(tmp_path, monkeypatch):
-    root = tmp_path / "data"
-    root.mkdir()
-    monkeypatch.setenv("REMEDY_DATA_DIR", str(root))
-    return root
+class TestTheLevelDialChangesDepthNotFacts:
+    @pytest.mark.parametrize("level", LEVELS)
+    def test_the_claim_set_is_the_same_at_every_level(self, level):
+        baseline = claim_set(build_teacher_context("q", events=_EVENTS, code=_CODE))
+        at_level = claim_set(
+            build_teacher_context("q", events=_EVENTS, code=_CODE, level=level)
+        )
+        assert at_level == baseline
+
+    @pytest.mark.parametrize("level", LEVELS)
+    def test_each_level_asks_for_its_own_depth(self, level):
+        prompt = render_prompt(build_teacher_context("q", events=_EVENTS, level=level))
+        assert LEVEL_DEPTH[level] in prompt
+
+    def test_the_three_levels_ask_for_three_different_depths(self):
+        assert len({LEVEL_DEPTH[level] for level in LEVELS}) == len(LEVELS)
+
+    def test_an_unknown_level_falls_back_and_never_raises(self):
+        ctx = build_teacher_context("q", events=_EVENTS, level="wizard")
+        assert ctx.level == DEFAULT_LEVEL
+
+    def test_every_level_has_a_depth_and_the_default_is_one_of_them(self):
+        assert set(LEVELS) == set(LEVEL_DEPTH)
+        assert DEFAULT_LEVEL in LEVELS
 
 
-class TestTeachNarrateIsReadOnly:
-    """T003: the run's files are byte-identical before and after the command."""
+class TestHonestyWithoutAModel:
+    def test_the_refusal_names_the_reason_and_points_at_stage_1(self):
+        message = no_model_refusal("no teacher model is configured")
+        assert "no teacher model is configured" in message
+        assert "remedy teach narrate" in message
 
-    def test_narrating_changes_no_byte_under_the_data_root(self, data_root, capsys):
-        _write_run_log(data_root, _JOB_ID, _EVENTS)
-        before = _hash_tree(data_root)
-        assert before, "the fixture must put at least one file on disk"
-
-        _cmd_teach_narrate(_JOB_ID)
-        capsys.readouterr()
-
-        assert _hash_tree(data_root) == before
-
-    def test_narrating_creates_and_removes_no_file(self, data_root, capsys):
-        _write_run_log(data_root, _JOB_ID, _EVENTS)
-        before = sorted(p.relative_to(data_root) for p in data_root.rglob("*"))
-        _cmd_teach_narrate(_JOB_ID)
-        capsys.readouterr()
-        assert sorted(p.relative_to(data_root) for p in data_root.rglob("*")) == before
-
-    def test_narrating_appends_no_run_log_event(self, data_root, capsys):
-        log = _write_run_log(data_root, _JOB_ID, _EVENTS)
-        before = log.read_bytes()
-        _cmd_teach_narrate(_JOB_ID)
-        capsys.readouterr()
-        assert log.read_bytes() == before
-
-    def test_a_job_with_no_run_log_writes_nothing_and_says_so(self, data_root, capsys):
-        _cmd_teach_narrate(_JOB_ID)
-        out = capsys.readouterr().out
-        assert "no events yet" in out and "(0 events)" in out
-        assert _hash_tree(data_root) == {}
-
-
-class TestTeachCatalogDeclaration:
-    def test_the_command_is_declared_read_only(self):
-        cmd = get_command("teach.narrate")
-        # T003 declares the action class as well as proving the behaviour: the
-        # catalog is what a permission layer reads, and the tests above are what
-        # make the declaration true rather than merely stated.
-        assert cmd.action_class == "read_only"
-        assert cmd.may_mutate_repo is False
-        assert cmd.may_execute_commands is False
-        assert cmd.requires_permission is False
-
-    def test_the_handler_table_covers_every_declared_teach_command(self):
-        declared = {c.command_id for c in get_commands_for_group("teach")}
-        assert declared == {"teach.narrate"} == set(COMMAND_HANDLERS)
-<<<END TEACHCMDTEST
+    def test_building_a_context_calls_no_model_and_reads_no_file(self):
+        # Zero-token by construction: the context is a pure function of its
+        # arguments, so Stage 2's grounding half costs nothing.
+        ctx = build_teacher_context("q", events=_EVENTS, code=_CODE)
+        assert claim_set(ctx) == claim_set(
+            build_teacher_context("q", events=_EVENTS, code=_CODE)
+        )
+<<<END TEACHQATEST
 
 Done when:
 G1 HYGIENE. `.agent/STOP` read from disk before C0a and reported absent or
@@ -356,97 +382,73 @@ G1 HYGIENE. `.agent/STOP` read from disk before C0a and reported absent or
    primary checkout alone. No reading is taken by overwriting a file in the
    primary checkout — use `git show <sha>:<path>`.
 G2 TRANSPORT. Report the sha256 and the byte and line counts of
-   `.remedy-wt/f255-r10.md`, of `.agent/authored/f255-r10.md` at C0a and of
+   `.remedy-wt/f255-r11.md`, of `.agent/authored/f255-r11.md` at C0a and of
    `.agent/last_block.md` at C0b, and state whether all three are EQUAL.
 G3 SLICES EXTRACTED, NEVER RETYPED. Extract each slice from the COMMITTED
-   `.agent/authored/f255-r10.md` by its markers and report, for EACH slice the
+   `.agent/authored/f255-r11.md` by its markers and report, for EACH slice the
    block contains, its name, sha256, byte count and line count, naming the
    newline convention used (R-0600). Report the number of slices you found as a
    COUNT YOU TOOK FROM THAT LISTING; this block deliberately states no numeral
    of its own for it (R-0604, checklist item 11).
-G4 THE PLAN, FIRST. `.agent/plan.md` at C1 byte-equals PLAN255R10; report its
+G4 THE PLAN, FIRST. `.agent/plan.md` at C1 byte-equals PLAN255R11; report its
    sha256, byte and line counts, that the line count is under 50, and that
    `## Goal`, `## Next Steps` and a roadmap F-id all occur in it. Report also
    that C1 is the FIRST commit of this round other than C0a and C0b.
-G5 THE R9 VERDICT RECORDED. C2 appends RECORDR9 preceded by exactly one blank
+G5 THE R10 VERDICT RECORDED. C2 appends RECORDR10 preceded by exactly one blank
    line. Report the PREFIX property, the remainder's sha256, byte and line
    counts, and that the separator is present. Report a SECOND, independent
-   paragraph-level split whose LAST unit is RECORDR9, giving that unit's sha256
+   paragraph-level split whose LAST unit is RECORDR10, giving that unit's sha256
    under BOTH newline conventions with the byte count of each, and run a
    negative control — one character of the expected remainder mutated — showing
    BOTH readings reject it. Report registered / resolved / open / line-anchored
-   `Landed:` at the base and at C2, using constraint 7's extractors: the
-   reviewer measured 181 / 3 / 178 / 0 at `de0f666b`, and C2 owes the same four,
+   `Landed:` at the base and at C2, the registered count being lines matching
+   `^- R-\d+ — ` and the resolved count lines matching `^Done: R-\d+ — `: the
+   reviewer measured 181 / 3 / 178 / 0 at `c6c6fb08`, and C2 owes the same four,
    because a `Gate:` paragraph adds neither kind of line. Report that
-   `Gate: R10 — the R9 entry.` occurs 1x, is the LAST line beginning `Gate: R`,
+   `Gate: R11 — the R10 entry.` occurs 1x, is the LAST line beginning `Gate: R`,
    and repeats no header key.
-G6 THE FROM TEXTS WERE UNIQUE, AND THE TWO NEW FILES ARE CREATED. For each of
-   the four FROM slices report its occurrence count in its target file at the
-   base `de0f666b`; the reviewer measured each at exactly 1, and a count other
-   than 1 stops the round. Report, with `git ls-tree`, that
-   `apps/cli/commands/teach_cmd.py` and `tests/cli/test_teach_cmd.py` are BOTH
-   ABSENT at `de0f666b` and BOTH PRESENT at C3, and that each byte-equals its
-   slice — TEACHCMD and TEACHCMDTEST respectively — giving each file's sha256,
-   byte count and line count.
-G7 THE FOUR PAIRS, BY THEIR OWN SHAPES. For the two REWRITE pairs — IMPORT and
-   MERGE — report FROM's count at the base and at C3 and TO's count at both
-   ends; each owes FROM 0x and TO 1x after C3. For the two APPEND-shaped pairs —
-   GROUP and ENTRY — report FROM 1x at BOTH ends and TO 0x then 1x, and do NOT
-   report a FROM-zero count for either: that count is unreachable by
-   construction (§4.9, R-0207). Report ALSO, for EACH of the two EDITED files,
-   the RECONSTRUCTION: the blob at C3 byte-EQUALS the blob at the base with that
-   file's FROM occurrences replaced once each by their TOs, in the block's own
-   pair order. Report `git diff --numstat` for all four files at C3.
-G8 THE COMMAND RUNS FOR REAL, END TO END — the gate that matters most, because
-   docs/agents/reviewer_conventions.md rules that a spec naming a runtime route
-   is not accepted until evidence shows that route EXECUTED. In a scratch dir
-   under the gitignored `.remedy-wt/`, write a run log at
-   `<scratch>/runs/3f2b1a90-0000-4000-8000-000000000001/run-1.jsonl` holding
-   three compact JSON lines — `job_created`, `task_run_started` carrying
-   `task_id` `t7`, and `mystery` — then with `REMEDY_DATA_DIR` set to that dir
-   run
-     `python3 -m apps.cli.main teach narrate 3f2b1a90-0000-4000-8000-000000000001`
-   and report its exact command, exit code and full stdout. The reviewer
-   measured exit 0 and four lines: a header naming 3 events, then
-   `The job was created.`, `A task started: t7`, and a third sentence NAMING
-   `mystery`. Report ALSO the scratch run log's sha256 unchanged across that
-   invocation, and leave `git status --porcelain` empty.
-G9 THE READ-ONLY PROOF AND THE CATALOG. Report the exact command, exit code and
-   tail of
-     `python3 -m pytest tests/cli/test_teach_cmd.py -q -rf`
-   at C3. The reviewer measured exit 0 at 6 passed. Do NOT run a mutation
-   red-proof: the reviewer already ran three in a disposable worktree before
-   emitting this block — making the command append a run-log event gives
-   3 failed / 3 passed, making it create one unrelated file under the data root
-   gives 3 failed / 3 passed, and changing the teach entry's `action_class` to
-   `write_metadata` gives 1 failed against
-   `test_the_command_is_declared_read_only` — and constraint 11 forbids you
-   creating a worktree.
-G10 THE CATALOG'S OWN SUITES, because C3 adds a GROUP and a command the parser
-   and the help renderer both build from. Report the exact command, exit code
+G6 THE TWO FILES ARE CREATED, NOT EDITED. Report, with `git ls-tree`, that
+   `packages/orchestration/teacher_qa.py` and
+   `tests/orchestration/test_teacher_qa.py` are BOTH ABSENT at `c6c6fb08` and
+   BOTH PRESENT at C3, that each byte-equals its slice — TEACHQA and TEACHQATEST
+   respectively — giving each file's sha256, byte and line counts, and
+   `git diff --numstat` for both at C3. This round contains NO FROM/TO pair, so
+   no containment reading and no FROM-zero count is owed (§4.9, R-0207).
+G7 THE NEW SUITE. Report the exact command, exit code and tail of
+     `python3 -m pytest tests/orchestration/test_teacher_qa.py -q -rf`
+   at C3. The reviewer measured exit 0 at 19 passed. Do NOT run a mutation
+   red-proof: the reviewer already ran five in a disposable worktree, since
+   removed — level leaking into `claim_set` 2 failed / 17 passed, source label
+   dropped from the prompt 2 failed / 17 passed, a code fact built with no code
+   supplied 5 failed / 14 passed, an unknown level raising 1 failed / 18 passed,
+   the Stage 1 pointer dropped from the refusal 1 failed / 18 passed — after
+   which the module restored byte-identically and the suite returned to 19
+   passed. Constraint 11 forbids you creating a worktree.
+G8 THE REPO-WIDE SWEEPS, because C3 adds a file under `packages/` that three
+   suites sweep by glob rather than by name. Report the exact command, exit code
    and tail of
-     `python3 -m pytest tests/test_command_catalog.py tests/test_grouped_cli.py -q -rf`
-   at C3. The reviewer measured exit 0 at 529 passed with these bytes.
-G11 RUFF, SCOPED TO THE FOUR FILES C3 TOUCHES. Report the exact command, exit
-   code and output of
-     `python3 -m ruff check apps/cli/command_catalog.py apps/cli/commands/__init__.py apps/cli/commands/teach_cmd.py tests/cli/test_teach_cmd.py`
-   at C3; the reviewer measured `All checks passed!`. A base reading is owed for
-   the two EDITED files ONLY, taken with no worktree and no overwrite via
-   `git show de0f666b:<path> | python3 -m ruff check --stdin-filename <path> -`
-   so the path's per-file-ignores resolve (item 29). The two CREATED files are
-   ABSENT at the base, so none is owed for them (item 21).
-G12 THE ROUND GATE, serially in the PRIMARY checkout, never two pytest processes
-   at once. This round rewrites `.agent/` state, so the four state-reader files
-   gate alongside the canary and Stage 1's own suite. Report the exact command,
-   exit code and tail of each:
+     `python3 -m pytest tests/test_path_utils.py tests/test_data_paths.py tests/orchestration/test_autonomy.py -q -rf`
+   at C3. The reviewer measured exit 0 at 132 passed BOTH at `c6c6fb08` and with
+   the module present: the gate proves the new file trips no sweep, not that a
+   count moved.
+G9 RUFF, SCOPED TO THE TWO FILES C3 CREATES. Report the exact command, exit code
+   and output of
+     `python3 -m ruff check packages/orchestration/teacher_qa.py tests/orchestration/test_teacher_qa.py`
+   at C3; the reviewer measured `All checks passed!`. NO base reading is owed:
+   both files are ABSENT at `c6c6fb08`, so there is no base rule-code multiset
+   to compare against (item 21).
+G10 THE ROUND GATE, serially in the PRIMARY checkout, never two pytest processes
+   at once. TEACHQA imports `teacher_narration` and this round rewrites `.agent/`
+   state, so Stage 1's suite and the four state-reader files gate alongside the
+   canary. Report the exact command, exit code and tail of each:
      `python3 -m pytest tests/orchestration/test_teacher_narration.py -q -rf`
      `python3 -m pytest tests/orchestration/test_test_runner.py tests/ui_server/test_dashboard_contract.py tests/regression/test_resource_safety.py tests/orchestration/test_integrity_gate.py -q -rf`
      `python3 -m pytest tests/cli/test_golden_path.py -q -rf`
    The reviewer measured exit 0 at 38 passed, exit 0 at 160 passed and exit 0 at
-   42 passed, all at `de0f666b` in the primary checkout.
-G13 CHANGE SET, HISTORY AND CAPS. Report `git diff --name-only de0f666b..HEAD`
+   42 passed, all at `c6c6fb08` in the primary checkout.
+G11 CHANGE SET, HISTORY AND CAPS. Report `git diff --name-only c6c6fb08..HEAD`
    and state that it equals the Change list with no path on either side alone.
-   Report that each of the twelve paths the Change section names as untouched is
+   Report that each of the paths the Change section names as untouched is
    PRESENT at the base and absent from the range; that every commit in the range
    has one parent; and each commit's insertion column from `git diff --numstat`,
    every one under 500, with the same `+/-` cells appearing byte-identically in
@@ -456,34 +458,33 @@ G13 CHANGE SET, HISTORY AND CAPS. Report `git diff --name-only de0f666b..HEAD`
    AND NEITHER IS A TOTAL FOR THE ROUND (R-0605): report the count of this
    round's reflog entries whose OPERATION PREFIX — the text before the first
    colon of `git reflog --format=%gs` — reads exactly `commit`, TOGETHER WITH
-   the commit that count was taken at and the number of commits the round has
-   made AT THAT MOMENT, and state that those two numbers are equal. Do NOT
-   state a total for the round: C4 is not written when this text is composed, so
-   its own entry cannot be counted here, and the reviewer measures it at the
-   next gate (R-0494). Report also the count whose prefix contains `amend`,
-   `reset`, `rebase` or `cherry`, which must be 0.
-G14 NO MARKER LEAKED. Report the count of LINES beginning `<<<SLICE ` or
-   `<<<END ` in `.agent/plan.md` at C1, `.agent/live_review.md` at C2, all four
+   the commit it was taken at and the number of commits the round has made AT
+   THAT MOMENT, and state that those two numbers are equal. State no total: C4
+   is unwritten when this text is composed, so its entry cannot be counted here
+   and the reviewer measures it at the next gate (R-0494). Report also the count
+   whose prefix contains `amend`, `reset`, `rebase` or `cherry`, which must be 0.
+G12 NO MARKER LEAKED. Report the count of LINES beginning `<<<SLICE ` or
+   `<<<END ` in `.agent/plan.md` at C1, `.agent/live_review.md` at C2, both
    files at C3, and `.agent/handoff.md` at C4. Every count must be 0.
-G15 THE PUSH. After C4, `git push` and report its real output. Do NOT create a
+G13 THE PUSH. After C4, `git push` and report its real output. Do NOT create a
    pull request and do NOT wait on the CI run the push starts (constraint 12).
 
 Handback:    Rewrite `.agent/handoff.md` per docs/agents/handback_template.md —
              all seven mandated headings in the template's order, the
              item-status table for the C0a..C4 bundle, the `## Commits` table
-             G13 pins, and one LINE per gate rather than its transcript
+             G11 pins, and one LINE per gate rather than its transcript
              (R-0582). The LINE cap your commit count earns is the bound. Its
              `## Next` section names the next session's FIRST action as Phase 1
-             rule 1, the `.agent/STOP` re-read, and its SECOND as R11, T004's
-             Stage 2 Q&A — `remedy teach ask`, the small context, the three
-             grounding sources labelled per answer, the level dial, and spend
-             recorded under the role name `teacher` — and states that R10 awaits
-             review and that T002 and T003 are complete. There is no open pull
-             request. Full transcripts go in the round report, never in the
-             file. The handback also carries this Fortschritt line verbatim
-             (R-0418):
-             Fortschritt: ~60 % (T001, T002 and T003 COMPLETE · `remedy teach
-             narrate` runs end to end over a real run log, declared read_only
-             and PROVEN read-only byte for byte · T004 Stage 2, the integration
-             gate and closure remain) — Schätzung
+             rule 1, the `.agent/STOP` re-read, and its SECOND as R12, which
+             finishes T004 — `remedy teach ask`, the teacher model call, the
+             honest refusal with no model configured, and spend under the role
+             name `teacher` — and states that R11 awaits review and that T004's
+             deterministic half is complete while its model half is not. There
+             is no open pull request. Full transcripts go in the round report,
+             never in the file. The handback carries this Fortschritt line
+             verbatim (R-0418):
+             Fortschritt: ~70 % (T001, T002 and T003 COMPLETE · T004 half done —
+             the grounding sources, the level dial and the small context are
+             built and red-proofed, zero tokens · the teacher model call, the
+             integration gate and closure remain) — Schätzung
 ──────────────────────────────────────────────────────────────
