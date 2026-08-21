@@ -1,71 +1,66 @@
-# Handback — F008 SSE event stream, R5
+# Handback — F008 SSE event stream, R6 (session close)
 
-Branch `feature/f008-sse-event-stream`. Open findings: 185, unchanged — constraint 5 ordered no registration and none was made.
+Branch `feature/f008-sse-event-stream`. Open findings: 185, unchanged — constraint 4 ordered no registration and none was made, so the next free id stays R-0614. This round writes NO code: the session reaches its stated round cap here and ends with a written handoff, which self-drive protocol G7 calls a SUCCESS. Nothing was merged, no PR was opened, no branch was created (constraint 9) — F008 is mid-feature and T001's endpoint does not exist yet.
 
 ## Range
 
-Review of `9cb131c1`..HEAD, HEAD being the C4 commit that writes this file.
+Review of `1fae37bf`..HEAD, HEAD being the C4 commit that writes this file.
 
 ## Commits
 
-### f0d6d2d6 chore(state): save the F008 R5 step block
+### 42a923b8 chore(state): save the F008 R6 step block
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f008-r5.md | +349/-0 | C0a — the step block saved verbatim |
+| .agent/authored/f008-r6.md | +258/-0 | C0a — the step block saved verbatim |
 
-### f2532d00 chore(state): mirror the F008 R5 step block
+### a64f05f0 chore(state): mirror the F008 R6 step block
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/last_block.md | +260/-291 | C0b — mirror, byte-equal to C0a |
+| .agent/last_block.md | +188/-279 | C0b — mirror, byte-equal to C0a |
 
-### 627ab499 chore(plan): advance the plan to F008 R5
+### 5916cfa6 chore(plan): advance the plan to F008 R6
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/plan.md | +21/-22 | C1 — PLANF008R5, the first substantive commit |
+| .agent/plan.md | +21/-20 | C1 — PLANF008R6, the first substantive commit |
 
-### f00360c0 docs(review): record the R4 verdict
+### 12a3ac6d docs(review): record the R5 verdict
 | Path | +/- | Reason |
 |---|---|---|
 | .agent/live_review.md | +2/-0 | C2 — one `Gate:` paragraph, no finding |
 
-### 0b1abd81 feat(ui-server): expose the ledger position as seq on events-since
+### 39e872e9 chore(context): refresh the F008 branch context
 | Path | +/- | Reason |
 |---|---|---|
-| packages/orchestration/ui_server.py | +5/-1 | C3 — SEQFROM rewritten to SEQTO |
-| tests/ui_server/test_event_seq.py | +92/-0 | C3 — TESTFILE, new, pins `seq` |
+| .agent/context.md | +25/-21 | C3 — CONTEXTR6, the branch context rewritten |
 
-### C4 docs(state): write the F008 R5 handback
+### C4 docs(state): write the F008 R6 session-closing handback
 `.agent/handoff.md`, rewritten. A handoff cannot table the commit that writes it (R-0149), so its `+/-` is reported in the round report.
 
 ## External actions
 
-- `git worktree add .remedy-wt/redctl-r5 0b1abd81 --detach` — created.
-- `git worktree remove .remedy-wt/redctl-r5 --force` — removed; at this handback `git worktree list` names the primary checkout alone.
+- `gh pr list --state open --json number,headRefName,baseRefName,isDraft` — exit 0, output `[]`. No pull request exists on this branch; nothing was merged and none was created.
 - `git push -u origin feature/f008-sse-event-stream` — ORDERED by Push Discipline, run after this commit; its outcome is reported in the round report rather than asserted here.
-- No PR created, none merged, no `gh` command run.
+- No worktree was added or removed: nothing this round is destructive, so `git worktree list` names the primary checkout alone throughout.
 
 ## Verification
 
 - G1 `.agent/STOP` absent, read immediately before C0a; branch `feature/f008-sse-event-stream`; `git status --porcelain` empty after every commit and at this handback; `git worktree list` names the primary checkout alone.
-- G2 block on disk, authored@C0a and last_block@C0b are ALL EQUAL — sha256 `67489603142f567411b9c370351d8e3595cb9f9bcb951de067faa7c6a3e7b23b`, 23217 bytes, 349 lines.
-- G3 5 slices by ordered extraction from the committed file: PLANF008R5 `3c30da07` 2374B/43L · RECORDR4 `36227d97` 4465B/1L · SEQFROM `d8e35c29` 93B/3L · SEQTO `b74eaa8a` 377B/7L · TESTFILE `0b9c7605` 3518B/92L.
-- G4 plan@C1 `3c30da07` 2374B/43L, byte-equal to PLANF008R5; 43 < 50; `## Goal` 1, `## Next Steps` 1, `F008` 3; C1 is the first commit after C0a and C0b.
-- G5 (a) the C1 blob is a byte-exact prefix of the C2 blob and the remainder `42658972` 4466B/2L equals `\n`+RECORDR4; (b) an INDEPENDENT blank-line split yields 194 units whose LAST equals RECORDR4. Negative control: one flipped byte is REJECTED by both readings while the unflipped value is ACCEPTED by both.
-- G6 C1→C2: `^- R-\d+ — ` 185→185 · `^Done: R-\d+ — ` 0→0 · `^Landed: ` 0→0 · `^Gate: R\d+ — ` 4→5 with keys R1 R2 R3 R4 R5 DISTINCT · `^- R-0614 — ` 0 at both.
-- G7 in ui_server.py SEQFROM reads 1 then 0 and SEQTO reads 0 then 1 between `9cb131c1` and C3; the containment test printed `TO contains FROM: false`, a rewrite; `git show --numstat 0b1abd81 -- packages/orchestration/ui_server.py` reads `5	1`.
-- G8 test file@C3 `0b9c7605` 3518B/92L, byte-equal to TESTFILE; `git ls-tree 9cb131c1 -- tests/ui_server/test_event_seq.py` printed nothing.
-- G9 RED PROOF, in the disposable worktree and never in the primary checkout: with SEQTO replaced by SEQFROM and the new tests left in place, `python3 -m pytest tests/ui_server/test_event_seq.py -q -rf` EXITS 1 at `6 failed, 1 passed in 0.21s`, and both `KeyError` and `seq` appear — the decisive line is `E   KeyError: 'seq'`. Restored, the file is byte-identical to C3's blob (sha256 `e2feda53…`) and the same command EXITS 0 at `7 passed in 0.21s`. The one test that passes reverted is `test_a_cursor_past_the_end_returns_nothing_and_invents_no_seq`, which asserts an EMPTY event list and so never reads a `seq` key; the other six all die on the missing field.
-- G10 `python3 -m pytest tests/ui_server/test_event_seq.py -q -rf` in the primary checkout: exit 0, passed 7 + skipped 0 = 7.
-- G11 serially in the primary checkout, never alongside G10: the combined four exit 0 at passed 358 + skipped 0 = 358; `tests/cli/test_golden_path.py` exits 0 at passed 42 + skipped 0 = 42. No skip fired on these runs; per constraint 10 the sums, not bare passed counts, are the readings.
-- G12 `git show <sha>:<path>` piped to `python3 -m ruff check --stdin-filename <path> -`, writing to no tracked file: ui_server@`9cb131c1` exit 0 multiset {} · ui_server@C3 exit 0 {} · test file@C3 exit 0 {} — the two ui_server multisets are EQUAL and the new file's is empty. An UNORDERED red control through the same path returned exit 1 with {I001:1, F811:1, F401:1}, proving the extractor can report a non-empty multiset rather than reading empty always.
-- G13 `git diff --name-only 9cb131c1..C4` equals the Change set with no path on either side alone; every commit in the range has exactly one parent; insertions 349 / 260 / 21 / 2 / 97 are all under 500 and agree cell by cell with the `+/-` column above.
-- G14 lines beginning `<<<SLICE ` or `<<<END `: plan@C1 0 · live_review@C2 0 · ui_server@C3 0 · test file@C3 0 · this file@C4 0.
-- G15 over this round's OWN reflog entries the only OPERATION — the text before the first `:` in `git reflog --format=%gs` — is `commit`; the count whose operation is `amend`, `rebase` or `cherry` is 0. Counted by operation, never by substring (R-0613).
-- G16 this file carries every section `docs/agents/handback_template.md` mandates plus the item table below; its line count is reported in the round report; the cap for this round is 100.
+- G2 block on disk, authored@C0a and last_block@C0b are ALL EQUAL — sha256 `a3c2fd22641eb0f453ec32eab3f8d659aee5a71092a2c2011b90bdd51fe9c3df`, 20619 bytes, 258 lines.
+- G3 3 slices by ordered extraction from the COMMITTED file, the count taken from that listing: PLANF008R6 `ceb79ebe` 2546B/44L · RECORDR5 `8c7b4f8d` 4925B/1L · CONTEXTR6 `ffeb3687` 3428B/57L.
+- G4 plan@C1 `ceb79ebe` 2546B/44L, byte-equal to PLANF008R6; 44 < 50; `## Goal` 1, `## Next Steps` 1, `F008` 3; C1 is the first substantive commit, after C0a and C0b.
+- G5 (a) the C1 blob is a byte-exact PREFIX of the C2 blob and the remainder `93f0c20a` 4926B/2L equals `\n`+RECORDR5; (b) an INDEPENDENT blank-line split, the single terminating newline normalised first, yields 195 units whose LAST equals RECORDR5. Negative control: one flipped byte (offset 100, `n`→`o`) is REJECTED by both readings while the unflipped value is ACCEPTED by both.
+- G6 C1→C2: `^- R-\d+ — ` 185→185 · `^Done: R-\d+ — ` 0→0 · `^Landed: ` 0→0 · `^Gate: R\d+ — ` 5→6 with keys R1 R2 R3 R4 R5 R6 DISTINCT · `^- R-0614 — ` 0 at both. No id was minted.
+- G7 context@C3 `ffeb3687` 3428B/57L, byte-equal to CONTEXTR6; `## Active Branch` 1 line-anchored · `feature/` 1 · `Steps` 1 · `F008` 3 · `pytest` 3 · `resource` 2.
+- G8 serially in the PRIMARY checkout, never two pytest processes at once: `tests/ui_server/ tests/orchestration/test_test_runner.py tests/regression/test_resource_safety.py tests/orchestration/test_integrity_gate.py tests/cli/test_golden_path.py -q -rf` exits 0 at passed 400 + skipped 0 = 400; `tests/docs/ -q -rf` exits 0 at passed 295 + skipped 0 = 295. Per constraint 8 the SUMS are the readings, not bare passed counts; no skip fired on these two runs and a skip would not have been a failure.
+- G9 `git diff --name-only 1fae37bf..C4` equals the Change set with no path on either side alone; every commit in the range has exactly one parent; insertions 258 / 188 / 21 / 2 / 25 are all under 500 and agree cell by cell with the `+/-` column above. C4's own numbers belong to the round report (R-0149).
+- G10 lines beginning `<<<SLICE ` or `<<<END `: plan@C1 0 · live_review@C2 0 · context@C3 0 · this file@C4 0.
+- G11 over this round's OWN reflog entries the count whose OPERATION — the text before the first `:` in `git reflog --format=%gs` — is `amend`, `rebase` or `cherry` is 0. Counted by operation and never by substring (R-0613); no entry total is stated.
+- G12 the branch is pushed and NO pull request exists: `gh pr list --state open --json number,headRefName,baseRefName,isDraft` returned `[]`. The `git push` transcript is in the round report.
+- G13 this file carries every section `docs/agents/handback_template.md` mandates plus the item table below; its line count is reported in the round report; the cap for this round is 100, this round having more than five commits.
 
 ## Authored-text proofs
 
-Every slice was extracted from the COMMITTED `.agent/authored/f008-r5.md` by its marker lines and applied without retyping, rewrapping or reflowing. Disk-to-disk: `.agent/plan.md`@C1 is byte-equal to PLANF008R5, `tests/ui_server/test_event_seq.py`@C3 to TESTFILE, and the C2 remainder to `\n`+RECORDR4 (G4, G8, G5); the pair landed as SEQFROM 1→0 and SEQTO 0→1 (G7). No slice objection is raised.
+All three slices were extracted from the COMMITTED `.agent/authored/f008-r6.md` by their marker lines and applied without retyping, rewrapping, reflowing or editing. Disk-to-disk: `.agent/plan.md`@C1 is byte-equal to PLANF008R6 (G4), `.agent/context.md`@C3 is byte-equal to CONTEXTR6 (G7), and the C2 remainder is byte-equal to `\n`+RECORDR5 under two independent readings with a negative control (G5). No slice objection is raised.
 
 ## Item status
 
@@ -80,13 +75,14 @@ Every slice was extracted from the COMMITTED `.agent/authored/f008-r5.md` by its
 
 ## Deviations & assumptions
 
-None. The ordered sequence C0a, C0b, C1, C2, C3, C4 was followed exactly — no extra commit, none dropped, none reordered.
+None. The ordered sequence C0a, C0b, C1, C2, C3, C4 was followed exactly — no extra commit, none dropped, none reordered. No commit exceeded the 500-insertion cap, so no oversize declaration is owed.
 
 ## Next
 
-Reviewer review of `9cb131c1`..HEAD, then R6: the stream endpoint `GET /api/jobs/<jid>/events/stream` with SSE framing, `seq` as the event id, a 15 s heartbeat and 404 for an unknown job. At the next session's start, Phase 1 rule 1 (`.agent/STOP`) precedes rule 2 (the Open PR Gate).
+The next session's FIRST action is the `.agent/STOP` re-read (Phase 1 rule 1). Its SECOND action is the Open PR Gate (Phase 1 rule 2), which finds NO open pull request and therefore continues on THIS branch at R7 rather than cutting a new one. R7 then begins T001's endpoint `GET /api/jobs/<jid>/events/stream`: SSE framing with `seq` as the event id, a 15 s heartbeat comment frame, and 404 for an unknown job before any streaming starts — the route seam being a six-part path branch beside the existing `events-since` handler in `_RemedyHandler.do_GET`.
 
-Fortschritt: 18 % (F008 beansprucht · fünf Urteile im Ledger ·
-DECISION F008 D1 vollständig umgesetzt: Server nebenläufig und
-die Ledger-Position als `seq` sichtbar · der Stream-Endpunkt
-selbst beginnt in R6) — Schätzung
+Fortschritt: 20 % (F008 beansprucht · sechs Urteile im Ledger ·
+DECISION F008 D1 vollständig umgesetzt — Server nebenläufig,
+Ledger-Position als `seq` sichtbar · der Stream-Endpunkt selbst
+ist noch nicht gebaut · Session endet an ihrem Rundenlimit mit
+geschriebenem Handoff) — Schätzung
