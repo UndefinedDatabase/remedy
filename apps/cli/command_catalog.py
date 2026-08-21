@@ -269,6 +269,26 @@ CATALOG: tuple[CommandEntry, ...] = (
         related=("job.show",),
     ),
     CommandEntry(
+        # write_metadata, NOT read_only (DECISION F255 D10): answering costs a
+        # model call, and that call is recorded as exactly one token-ledger row.
+        # The invariant this role really carries — never influencing the RUN —
+        # is proven behaviourally in tests/cli/test_teach_cmd.py.
+        command_id="teach.ask",
+        group_id="teach",
+        subcommand="ask",
+        description="Ask the teacher about a run or your code. Records one spend row; never steers the run.",
+        action_class="write_metadata",
+        args=(
+            ArgDef("question", "What you want explained"),
+            ArgDef("--job-id", "Job whose run log grounds the answer", required=False, is_option=True),
+            ArgDef("--level", "Explanation depth: student, beginner or pro", required=False, is_option=True),
+            _PROJECT_SCOPE_OPT,
+            _JSON_OPT,
+        ),
+        supports_json=True,
+        related=("teach.narrate",),
+    ),
+    CommandEntry(
         command_id="job.attach-repo",
         group_id="job",
         subcommand="attach-repo",

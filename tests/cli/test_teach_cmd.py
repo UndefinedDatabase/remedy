@@ -103,6 +103,20 @@ class TestTeachCatalogDeclaration:
         assert cmd.may_execute_commands is False
         assert cmd.requires_permission is False
 
+    def test_ask_is_declared_write_metadata_because_it_writes_a_ledger_row(self):
+        cmd = get_command("teach.ask")
+        # DECISION F255 D10: `ask` writes exactly one token-ledger row, so a
+        # read_only declaration here would be false — and a false declaration
+        # misleads the permission layer that reads this catalog.
+        assert cmd.action_class == "write_metadata"
+        assert cmd.may_mutate_repo is False
+        assert cmd.may_execute_commands is False
+        assert cmd.supports_json is True
+        assert cmd.related == ("teach.narrate",)
+
     def test_the_handler_table_covers_every_declared_teach_command(self):
+        # EQUALITY of the two sets, never a subset: a declared command with no
+        # handler and a handler with no declaration are both defects, and only
+        # equality catches the second one.
         declared = {c.command_id for c in get_commands_for_group("teach")}
-        assert declared == {"teach.narrate"} == set(COMMAND_HANDLERS)
+        assert declared == {"teach.narrate", "teach.ask"} == set(COMMAND_HANDLERS)
