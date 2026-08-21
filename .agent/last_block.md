@@ -1,211 +1,173 @@
-── STEP R17/1 — F008 SSE event stream · T003 ORCHESTRATION ─────
-Goal:        Give T003 its transport orchestration, still pure. R16 built the
-             rules a client HOLDS; this round builds what it should DO next —
-             a reducer over transport events returning effects as DATA
-             (connect, wait, snapshot, poll), so the reconnect schedule, the
-             gap-to-snapshot-to-resume path and the polling fallback are
-             decided in code the node-environment vitest can run. Nothing
-             performs an effect: no EventSource, no timer, no fetch. R17 also
-             pins the backoff cap against a LITERAL (R-0623), records the R16
-             verdict (PASS) and registers R-0623 and R-0624.
+── STEP T003/3 — F008 SSE event stream — ROUND 18 ────────────────────────────
+Goal:
+ T003 continues with the effect RUNNER: the loop that PERFORMS what R17's pure
+ driver decides. Effects become calls on an INJECTED host, so the reconnect,
+ gap and polling-fallback cycle runs headless under the node-environment
+ vitest against a recording host and a hand-fired clock. R18 also fixes R-0624
+ inside that runner, records the R17 verdict, resolves R-0623 and registers
+ R-0625 and R-0626.
 
-Bundle:      C0a save this block · C0b mirror it · C1 advance the plan ·
-             C2 register R-0623 and R-0624 and record the R16 verdict ·
-             C3 pin the backoff cap · C4 the driver module · C5 its tests ·
-             C6 the handback.
+Bundle, in this commit order:
+ C0a  save this block verbatim to `.agent/authored/f008-r18.md`
+ C0b  mirror the COMMITTED C0a blob to `.agent/last_block.md`
+ C1   `.agent/plan.md` <- PLANF008R18, applied whole
+ C2   `.agent/live_review.md` <- LEDGER18, appended
+ C3   `apps/ui/src/api/brainStreamRunner.ts` <- RUNNER, a new file
+ C4   `apps/ui/src/api/brainStreamRunner.test.ts` <- RUNNERTESTS, a new file
+ C5   `.agent/handoff.md`, the handback
 
-Change:      Exactly these paths, and nothing else.
-             - .agent/authored/f008-r17.md                  (C0a, new)
-             - .agent/last_block.md                         (C0b, rewrite)
-             - .agent/plan.md                               (C1, rewrite)
-             - .agent/live_review.md                        (C2, append)
-             - apps/ui/src/api/brainStream.test.ts          (C3, pair)
-             - apps/ui/src/api/brainStreamDriver.ts         (C4, new)
-             - apps/ui/src/api/brainStreamDriver.test.ts    (C5, new)
-             - .agent/handoff.md                            (C6, rewrite)
+Change set — exactly the paths named here and nothing else:
+ `.agent/authored/f008-r18.md`, `.agent/last_block.md`, `.agent/plan.md`,
+ `.agent/live_review.md`, `apps/ui/src/api/brainStreamRunner.ts`,
+ `apps/ui/src/api/brainStreamRunner.test.ts`, `.agent/handoff.md`.
+
+Slice convention:
+ The authored units below are PLANF008R18, LEDGER18, RUNNER and RUNNERTESTS,
+ each delimited by a line beginning `<<<SLICE <name>` and one beginning
+ `<<<END <name>`; marker lines are NOT part of the slice. Every slice is
+ newline-terminated with no trailing whitespace on any line.
 
 Constraints:
- 1. Every slice is applied byte for byte out of the COMMITTED
-    .agent/authored/f008-r17.md, extracted by its marker lines — never
-    retyped, rewrapped, reflowed or edited. A slice that looks wrong is
-    APPLIED AS WRITTEN and the objection goes in the handback: your last two
-    rounds each caught a defect no gate could see, and C2 registers both.
- 2. NEWLINE CONVENTION, stated not assumed. A slice body is the lines strictly
-    between its `<<<SLICE X` and `<<<END X` markers, trailing newline
-    INCLUDED. PLANF008R17 is the ENTIRE content of `.agent/plan.md`. DRIVER
-    and DRIVERTESTS are each the ENTIRE content of a file that does not yet
-    exist, so neither is a pair. LEDGER17 is a newline plus its body, appended
-    after exactly one blank line. Every file ends with exactly one newline.
- 3. PAIR SHAPE, MEASURED NOT ASSERTED. CAPFROM/CAPTO is the only pair this
-    round. The containment test was run before emission and printed
-    `TO contains FROM: false`, so it is a REWRITE and owes the FROM-0x / TO-1x
-    proof of G7 and NOT the append obligation. CAPFROM occurs EXACTLY ONCE in
-    `apps/ui/src/api/brainStream.test.ts` at C2; if it does not, stop and say
-    so rather than choosing an occurrence.
- 4. The commit order is exactly C0a, C0b, C1, C2, C3, C4, C5, C6.
-    `.agent/plan.md` advances at C1, ahead of the ledger commit (section 3
-    item 23). C3 is the R-0623 paydown and lands BEFORE the new module so its
-    suite reading stays comparable with the base. C4 precedes C5 because C5
-    imports C4; committing the test first would land a knowingly red commit.
- 5. LEDGER17 carries THREE paragraphs, blank-line separated, applied together
-    in C2: the R-0623 registration, the R-0624 registration and the
-    `Gate: R17` entry holding the R16 verdict. R-0623 and R-0624 are the only
-    ids minted, so the next free id becomes R-0625. NO `Done:` PARAGRAPH IS
-    WRITTEN THIS ROUND, not even for R-0623 whose fix C3 lands: only
-    reviewer-authored text sets Resolved (section 4 item 4), so R-0623's
-    resolution is owed by R18 and G6 therefore reads the `Done:` count
-    UNCHANGED at 2.
- 6. SCOPE. No Python changes at all. No React component, no hook, no
-    `EventSource` construction, no timer, no `fetch`, no CSS, and no new entry
-    in `apps/ui/package.json`. The driver decides and returns effects; it
-    never performs one. R-0624 is REGISTERED and NOT fixed — its fix needs the
-    badge, which is R18's work. R-0622 likewise stays open: do not add a lint
-    parser.
- 7. `git status --porcelain` is empty after each of C0a through C5, and
-    `git worktree list` names the primary checkout alone once G10's worktree is
-    removed. READINGS OF STATE AT OR AFTER C6 GO IN THE ROUND REPORT, NEVER IN
-    THE HANDBACK FILE: state after the handback commit cannot be recorded
-    inside it, and a gate ordering it anyway is finding R-0371. Base bytes
-    reach a tool by `git show <sha>:<path>` or a disposable worktree under the
-    gitignored `.remedy-wt/`, never by overwrite-and-restore in the primary
-    checkout (self_drive_protocol G5).
- 8. Two test processes never run at once. G9's counting suites run in the
+ 1. APPLY EVERY SLICE BYTE FOR BYTE. Never retype, rewrap, reflow, reindent or
+    whitespace-adjust one. If a slice looks wrong, apply it as written and say
+    so in the handback's deviations section — do not fix it.
+ 2. The commit order above is fixed: no extra commit, no dropped commit, no
+    reordering. C1 is the first substantive commit (§3 item 23).
+ 3. Nothing outside the change set is touched. No dependency is added — in
+    particular no eslint parser and no jsdom.
+ 4. C3 lands the runner before C4 lands its tests. C3 is untested, never red:
+    it adds a new module no other module imports yet.
+ 5. WRITE NO `Done:` PARAGRAPH FOR R-0624, though C3 lands its fix: only
+    reviewer-authored text sets a resolution (§4 item 4) and R19 owes that
+    paragraph, exactly as R17 left R-0623's resolution to this round. LEDGER18
+    already covers the round, so write no `Landed:` line either.
+ 6. R-0622 stays OPEN — do not add a TypeScript parser to make lint green.
+    R-0625 and R-0626 are REGISTERED and NOT fixed here.
+ 7. The post-C5 `git status --porcelain`, `git worktree list` and push output
+    belong to the ROUND REPORT, not to `.agent/handoff.md`: C5 cannot state
+    facts about itself (R-0371).
+ 8. Two test processes never run at once. G8's counting suites run in the
     PRIMARY checkout: a fresh worktree has no `apps/ui/node_modules`, so its
-    counts are untrustworthy in both directions (R-0518). Where G10 needs
-    `node_modules` inside a worktree it SYMLINKS the primary one — `ln -s`,
-    never a copy, because a copy dereferences npm's bin shims and manufactures
-    its own failures (R-0591).
- 9. The reviewer's own base readings at `eb2e011c`, RE-DERIVED by the gates
-    below rather than trusted. In `apps/ui`: `npx vitest run` exits 0 at 6
-    files and 89 tests; `npm run --silent typecheck` exits 0 silently;
-    `npm run --silent lint` EXITS 1 at `51 problems (49 errors, 2 warnings)`,
+    counts are untrustworthy both ways (R-0518). Where G9 needs `node_modules`
+    in a worktree it SYMLINKS the primary one — never a copy, which dereferences
+    npm's bin shims and manufactures failures (R-0591); the session guard
+    rejects `ln` by form, so use `os.symlink`.
+ 9. The reviewer's OWN base readings, each produced by RUNNING the tool at
+    `2c3abc5e` before this block was written rather than recalled (the R-0625
+    counter-measure). In `apps/ui`: `npx vitest run` exits 0 at 6 files and 103
+    tests; `npm run --silent typecheck` exits 0 with no output;
+    `npm run --silent lint` EXITS 1 at `53 problems (51 errors, 2 warnings)`,
     which is R-0622, is NOT a gate (R-0364) and is not repaired here. From the
     root the state readers plus canary exit 0 at 465 and `tests/ui_contracts/`
-    at 397, both passed-plus-skipped — that split moves run to run, so a bare
-    passed count is never the gate value.
+    at 397, both passed-plus-skipped — that split moves run to run at an
+    unchanged tree, so a bare passed count is never a gate.
  10. DO NOT MERGE, DO NOT OPEN A PULL REQUEST, DO NOT CREATE A BRANCH. The
-    branch is not closeable while T003 is unfinished: push it, leave it open.
+    branch is not closeable while T003 is unfinished: push it and leave it
+    open. `gh pr list --state open` returned `[]` at the R18 gate.
 
-Done when:
+Done when — run every command, record its REAL exit code and output:
  G1  `.agent/STOP` is absent, read immediately before C0a; the branch is
-     feature/f008-sse-event-stream; `git status --porcelain` is empty after
-     each of C0a through C5. Report each reading. Per constraint 7 the post-C6
-     porcelain and the final `git worktree list` belong to the ROUND REPORT.
- G2  Transport. Report the sha256, byte count and line count of the scratch
-     block you were given, of `.agent/authored/f008-r17.md` at C0a and of
+     feature/f008-sse-event-stream; `git status --porcelain` is EMPTY after each
+     of C0a, C0b, C1, C2, C3 and C4. Report each reading; per constraint 7 the
+     post-C5 readings belong to the round report.
+ G2  Transport. Report the sha256, bytes and lines of the scratch block you
+     were given, of `.agent/authored/f008-r18.md` at C0a and of
      `.agent/last_block.md` at C0b, and whether all three are EQUAL.
  G3  Slice inventory. Extract the slices from the COMMITTED
-     `.agent/authored/f008-r17.md` by their marker lines, take the COUNT from
-     that listing, and report each slice's newline-INCLUDED sha256, bytes and
-     lines.
+     `.agent/authored/f008-r18.md` by their marker lines, take the COUNT from that
+     listing, and report each slice's newline-INCLUDED sha256, bytes and lines.
+     Expected: PLANF008R18 95960376, LEDGER18 a6db99e5, RUNNER fefd47e6, RUNNERTESTS e600a055.
  G4  Plan. Report the sha256, bytes and lines of `.agent/plan.md` at C1 and
-     whether it is byte-equal to PLANF008R17. Its line count is UNDER 50, the
+     whether it is byte-equal to PLANF008R18. Its line count is UNDER 50, the
      substring `Steps` occurs, `## Goal` and `## Next Steps` each occur exactly
-     once line-anchored, and a `\bF\d{3}\b` match exists — those four are what
+     once line-anchored, and a `\bF\d{3}\b` match exists — the four properties
      `tests/ui_server/test_dashboard_contract.py` and
      `tests/orchestration/test_test_runner.py` assert about this file.
  G5  The ledger append, C2 against C1, two ways that must agree. (a) the C1
      blob is a byte-exact PREFIX of the C2 blob and the remainder equals a
-     newline plus LEDGER17 — report its sha256, bytes and lines; (b) an
-     INDEPENDENT blank-line split of the C2 file, its terminating newline
-     normalised first, has as its LAST THREE units, in order, the three
-     paragraphs of LEDGER17. NEGATIVE CONTROL: flip one byte of the remainder
-     and report that BOTH readings reject it, and that both accept the
-     unflipped bytes.
- G6  The sets, at C1 and C2. Report line-anchored counts in
-     `.agent/live_review.md`: `^- R-\d+ — ` reads 194 then 196,
-     `^Done: R-\d+ — ` is 2 at BOTH (constraint 5), `^Landed: ` is 0 at both,
-     `^Gate: R\d+ — ` reads 16 then 17 with the seventeen keys DISTINCT,
-     `^- R-0623 — ` and `^- R-0624 — ` each read 0 then 1, and
-     `^- R-0625 — ` is 0 at both. Report that the two `Done:` ids at C2 are
-     still exactly R-0620 and R-0621. Report that LEDGER17's `Gate:` header
-     matches the shape of the entries already in the file, as a pattern match
-     over `^Gate: R(\d+) — the R(\d+) entry\.` requiring the second number to
-     be one less than the first and the R17 pair to occur exactly once
-     (section 3 item 26). Report the number of `^Gate: ` lines that do NOT
-     match; it is 1, and that line is `Gate: R1 — the F255 R21 entry.`
- G7  The cap pair, a REWRITE per constraint 3. Report that CAPFROM occurs
-     EXACTLY ONCE in `apps/ui/src/api/brainStream.test.ts` at C2 and ZERO
-     times at C3, and that CAPTO occurs zero times at C2 and exactly once at
-     C3. Then prove it constructively as well: replacing that one occurrence
-     of CAPFROM with CAPTO in the C2 blob yields a file BYTE-EQUAL to the C3
-     blob — report both sha256s.
- G8  The two new files. Report that `apps/ui/src/api/brainStreamDriver.ts` and
-     `apps/ui/src/api/brainStreamDriver.test.ts` are both ABSENT at
-     `eb2e011c`, using `git ls-tree eb2e011c -- <path>` per path and reporting
-     its empty output. Report the sha256, bytes and lines of the C4 blob of
-     the first and the C5 blob of the second, and whether each is BYTE-EQUAL
-     to DRIVER and to DRIVERTESTS respectively. Both files being new, the whole
-     of each commit's diff is additions: report that `git show --numstat`
-     gives each path its slice's own line count against 0 deletions.
- G9  The suites are green in the PRIMARY checkout, run SERIALLY, never two
-     test processes at once. Report the exit code and counts of each. In
-     `apps/ui` AT C3: `npx vitest run` exits 0 at 6 files and 89 tests — the
-     cap pair changed an assertion and added no test, so this equals
-     constraint 9's base reading exactly. In `apps/ui` AT C5: `npx vitest run`
-     exits 0 at 7 files and 103 tests, and `npm run --silent typecheck` exits
-     0. From the repository root AT C5:
+     newline plus LEDGER18 — report its sha256, bytes and lines; (b) an
+     INDEPENDENT blank-line split of the WHOLE C2 file, its terminating newline
+     normalised first, has as its LAST FOUR units, in order, LEDGER18's four
+     paragraphs. NEGATIVE CONTROL: flip one byte of the remainder and report
+     that BOTH readings reject it and both accept the unflipped.
+ G6  The sets, at C1 and C2, line-anchored in `.agent/live_review.md`:
+     `^- R-\d+ — ` reads 196 then 198, `^Done: R-\d+ — ` 2 then 3,
+     `^Landed: ` 0 at both, `^Gate: R\d+ — ` 17 then 18 over that many
+     DISTINCT keys, `^- R-0625 — ` and `^- R-0626 — ` each 0 then 1,
+     `^- R-0627 — ` 0 at both. Report the `Done:` ids at C2 — R-0620, R-0621 and
+     R-0623, no others. HEADER SWEEP at C2: report how many `Gate: ` lines match
+     `^Gate: R(\d+) — the R(\d+) entry\.` with the second numeral one below the
+     first, how many do not, the text of every non-match, and that the R18 pair
+     occurs EXACTLY ONCE.
+ G7  The two new files. Report that `git ls-tree 2c3abc5e -- <path>` returns
+     EMPTY output for each of `apps/ui/src/api/brainStreamRunner.ts` and
+     `apps/ui/src/api/brainStreamRunner.test.ts`, so both are ABSENT at base.
+     Report each file's sha256, bytes and lines at its own commit and whether
+     it is BYTE-EQUAL to its slice, and `git show --numstat` for each: the
+     insertions equal that slice's own line count against 0 deletions.
+ G8  The suites are green in the PRIMARY checkout, run SERIALLY. Report the
+     exit code and counts of each. In `apps/ui` AT C4: `npx vitest run` exits
+     0 at 7 files and 114 tests, and `npm run --silent typecheck` exits 0.
+     From the repository root AT C4:
      `python3 -m pytest tests/ui_server/ tests/orchestration/test_test_runner.py tests/regression/test_resource_safety.py tests/orchestration/test_integrity_gate.py tests/cli/test_golden_path.py -q -rf`
      exits 0 at 465 passed-plus-skipped, and
      `python3 -m pytest tests/ui_contracts/ -q -rf` exits 0 at 397
-     passed-plus-skipped — gated because its `test_no_scanlines_in_frontend`
-     rglobs every `.ts` under `apps/ui/src`, reading both new files.
-     RECONCILE THE ARITHMETIC RATHER THAN ASSERTING A BARE TOTAL: report the
-     number of lines matching
-     `^  it(` in DRIVERTESTS, and report that 89 plus that number equals the
-     C5 vitest total. Report also `npm run --silent lint` at C5: it EXITS 1 at
-     `53 problems (51 errors, 2 warnings)`, which is constraint 9's base
-     reading plus exactly two errors, one `Parsing error` per new file. That
-     is R-0622 and NOT a regression; report the real numbers either way and
-     repair nothing. If any identity fails, report the real values and stop.
- G10 RED CONTROLS, the colour and not a count, in a disposable worktree created
-     at C5 under `.remedy-wt/`, with the primary checkout never touched and
-     `apps/ui/node_modules` reached by the symlink constraint 8 names. Apply
-     each mutation SEPARATELY to the worktree's copy of the named file,
-     restoring it byte-exactly between them, and report for each the exit code
-     and the NAMES of the failing tests:
-     (a) in `apps/ui/src/api/brainStreamDriver.ts`, `brainBackoffDelayMs(next.attempt)` becomes `0`;
-     (b) in the same file, `const opened = next.gapDetected && !state.gapDetected;` becomes `const opened = false;`;
-     (c) in the same file, `return state.status === "delayed";` becomes `return false;`;
-     (d) in `apps/ui/src/api/brainStream.ts`, `export const BRAIN_BACKOFF_CAP_MS = 8000;` becomes `export const BRAIN_BACKOFF_CAP_MS = 60000;` — this one is the R-0623 PROOF, and it is run against BOTH test files: it must EXIT 1 naming
-     `brainBackoffDelayMs > is capped so a long outage keeps retrying`. The
-     same mutation against the C2 blob of `apps/ui/src/api/brainStream.test.ts`
-     EXITS 0 at 18 passed, and that contrast IS the finding — report both.
-     Report the occurrence count of each byte string you replace in its named
-     file BEFORE mutating; each is exactly 1. Each mutation EXITS 1 and names
-     at least one failing test. Report that the restored tree EXITS 0, and
-     remove the worktree before the handback.
- G11 The range. Report `git diff --name-only eb2e011c..C5` and that it equals
-     the Change list MINUS `.agent/handoff.md` exactly — seven paths, none on
-     either side alone. The full `eb2e011c..C6` reading belongs to the ROUND
-     REPORT (constraint 7). Report that every commit in the range has exactly
-     one parent, and BOTH numstat cells per path from `git show --numstat`,
-     cross-checked against `git diff --numstat`, with every insertion under
-     500 and every cell equal to the `+/-` column of your `## Commits` table,
-     cell by cell (section 3 item 28).
- G12 Marker leak. Count LINES BEGINNING with `<<<SLICE ` or `<<<END ` in
-     `.agent/plan.md` at C1, `.agent/live_review.md` at C2,
-     `apps/ui/src/api/brainStream.test.ts` at C3,
-     `apps/ui/src/api/brainStreamDriver.ts` at C4,
-     `apps/ui/src/api/brainStreamDriver.test.ts` at C5 and
-     `.agent/handoff.md` at C6. Each is 0.
- G13 Report this round's own reflog entries counted by the OPERATION before
-     the first `:` in `%gs`: `amend`, `rebase` and `cherry` are each 0. Assert
-     no total. An unstage is not a history rewrite (R-0608).
- G14 The handback carries every mandated section of
-     docs/agents/handback_template.md, and its ITEM-STATUS TABLE holds exactly
-     one row for each of C0a, C0b, C1, C2, C3, C4, C5 and C6 — that table is
-     where the once-each reading is taken, the prose naturally naming a label
-     many times. Measure the file with `wc -l` BEFORE writing it: this round's
-     eight commits allow 100 lines, and an overage needs a DECISION D15
-     stated-cause line naming the real count.
+     passed-plus-skipped — the second gated because its
+     `test_no_scanlines_in_frontend` rglobs every `.ts` under `apps/ui/src`
+     and therefore READS both new files. RECONCILE THE ARITHMETIC RATHER THAN
+     ASSERTING A BARE TOTAL: report the number of lines matching `^  it\(` in
+     RUNNERTESTS, and that 103 plus that number equals the C4 vitest total.
+     Report also `npm run --silent lint` at C4: it EXITS 1 at `55 problems
+     (53 errors, 2 warnings)`, constraint 9's base reading plus exactly two
+     errors, one `Parsing error` per new file. That is R-0622, not a regression;
+     report the real numbers either way and repair nothing. If any identity
+     above fails, report the real values and STOP — unless it is false of the
+     BASE commit too, which makes it reviewer arithmetic and not a red gate (the
+     R-0336 / R-0367 / R-0625 class): then declare it and continue.
+ G9  RED CONTROLS — the colour, never a count — in a disposable worktree
+     created at C4 under the gitignored `.remedy-wt/`, the primary checkout
+     NEVER touched and `apps/ui/node_modules` reached by the symlink
+     constraint 8 names. Report the occurrence count of each byte string you
+     replace in `apps/ui/src/api/brainStreamRunner.ts` BEFORE mutating; each
+     is exactly 1. Apply each mutation SEPARATELY, restore the file
+     BYTE-EXACTLY between them, and for each report the exit code and the
+     NAMES of the failing tests, running
+     `npx vitest run src/api/brainStreamRunner.test.ts`:
+     (a) `status: settled ? state.status : null` becomes `status: state.status`;
+     (b) `if (event.kind !== "timer") settled = true;` becomes `settled = true;`;
+     (c) `arm(effect.ms, () => { host.pollOnce(); dispatch({ kind: "timer" }); });` becomes `arm(effect.ms, () => { dispatch({ kind: "timer" }); });`;
+     (d) the two lines `    if (stopped) return;` and `    const step` at the head of `dispatch` become `    const step` alone.
+     Each EXITS 1 and names at least one failing test. Report that the
+     restored file EXITS 0, and REMOVE the worktree before writing C5.
+ G10 The range. Report `git diff --name-only 2c3abc5e..C4` and that it equals
+     the Change set MINUS `.agent/handoff.md` exactly — six paths, none on
+     either side alone. The full `2c3abc5e..C5` reading belongs to the ROUND
+     REPORT (constraint 7, R-0371). Report that every commit in the range has
+     exactly ONE parent, and BOTH numstat cells per path from
+     `git show --numstat`, cross-checked against `git diff --numstat`, every
+     insertion under 500 and every cell equal to the `+/-` column of your
+     `## Commits` table, cell by cell (§3 item 28).
+ G11 Marker leak. Count LINES BEGINNING with `<<<SLICE ` or `<<<END ` in
+     `.agent/plan.md` at C1, `.agent/live_review.md` at C2, the runner at C3,
+     its test file at C4 and `.agent/handoff.md` at C5. Each is 0.
+ G12 Reflog. Count THIS round's own entries by the OPERATION before the first
+     `:` in `%gs`. All six pre-C5 entries are `commit`; report `amend`, `rebase`
+     and `cherry` at 0, and assert no total.
+ G13 The handback carries every mandated section of
+     docs/agents/handback_template.md and an item-status table holding exactly
+     one row for each of C0a, C0b, C1, C2, C3, C4 and C5 — "exactly one row"
+     scoping to that TABLE, not to the whole file. Measure its line count with
+     `wc -l` BEFORE committing it; seven commits allow 100 lines, and an overage
+     carries a DECISION D15 stated-cause line naming the real count and the
+     mandated content that caused it. One line per gate here; the raw
+     transcripts go in the ROUND REPORT (R-0582).
 
-Handback:    completion report + rewrite `.agent/handoff.md`. Its state block
-             repeats this Fortschritt line verbatim:
-             `~80 % (T001 ✅ · T002 ✅ · T003 Regeln+Treiber ✅, Hook offen) — Schätzung`.
-──────────────────────────────────────────────────────────────
+Handback: completion report + rewrite `.agent/handoff.md`, whose state block
+repeats this Fortschritt line verbatim:
+ ~85 % (T001 ✅ · T002 ✅ · T003 Regeln+Treiber+Runner ✅, Hook offen) — Schätzung
+──────────────────────────────────────────────────────────────────────────────
 
-<<<SLICE PLANF008R17
+<<<SLICE PLANF008R18
 # Plan — F008 SSE event stream
 
 Branch: feature/f008-sse-event-stream, cut from `main` at `7c03adfa`, the merge
@@ -224,267 +186,305 @@ ledger's envelope sequence, the heartbeat holds cadence, and the fallback
 engages on a disabled EventSource and recovers to live.
 
 ## Current Step
-R17 CONTINUES T003 with the transport ORCHESTRATION, still pure. R16 built the
-rules a client holds; a new driver module says what it should DO next, as a
-reducer returning effects as DATA — connect, wait, snapshot, poll — so the
-reconnect schedule, the gap-to-snapshot-to-resume path and the polling
-fallback are decided in code the node-environment vitest can run. Nothing
-performs an effect yet: no EventSource, no timer, no fetch. R17 also pins the
-backoff cap against a LITERAL (R-0623), records the R16 verdict and registers
-R-0623 and R-0624.
+R18 CONTINUES T003 with the effect RUNNER: the loop that PERFORMS what R17's
+driver decides. Effects become calls on an INJECTED host — connect, snapshot,
+poll, schedule — so the reconnect, gap and fallback cycle runs headless under
+the node-environment vitest against a recording host and a hand-fired clock.
+That is the feature file's "fake job streaming into a headless client" at the
+client-logic level, and it is what keeps R19's React hook thin enough to be
+honest. R18 also fixes R-0624 by declining to report a status before the first
+transport event resolves, records the R17 verdict, resolves R-0623 and
+registers R-0625 and R-0626.
 
 ## Next Steps
-1. R18 adds the thin React `useBrainStream` hook interpreting the driver's
-   effects, the visible delayed badge and the fixture live-job end-to-end;
-   R-0624's fix lands there, with the badge that exposes it.
+1. R19 adds the thin React `useBrainStream` hook subscribing to the runner,
+   the visible delayed badge and R-0626's rename; the badge is what finally
+   renders the runner's view.
 2. Then the integration gate before closure.
 
 ## Risks
 - `npm run lint` in `apps/ui` is RED at base and is NOT a gate (R-0364):
-  measured at `eb2e011c` it exits 1 with 51 problems, every error a
-  `Parsing error`, because that eslint configuration installs no TypeScript
-  parser. That is R-0622, it routes to a paydown branch, and each new `.ts`
-  file adds one more such error. `npm run typecheck` and `npx vitest run`
-  both exit 0 at that commit and ARE the gates.
-- A React hook still cannot be rendered by any gate this repository owns, so
-  R18's hook stays thin enough that typecheck plus the driver's tests cover
-  it. If that stops being true, the honest move is a jsdom dependency and its
-  own round, never an untested hook.
-- Repository-wide `ruff check .` is RED and is not a gate (R-0364); this round
-  changes no Python.
-- No open finding is a code defect of F008 reachable from the HTTP path; the
-  open set lives in `.agent/live_review.md`, not here. R-0623 and R-0624 both
-  ENTER it this round, and R-0623's fix lands here too, so R18 resolves it.
-<<<END PLANF008R17
-<<<SLICE LEDGER17
-- R-0623 — Low — A TEST THAT PINS A CONSTANT AGAINST ITSELF, SO THE VALUE IT EXISTS TO GUARD CAN BE CHANGED TO ANYTHING WITHOUT TURNING RED. In the BRAINSTREAM slice of the F008 R16 block, authored by the reviewer and applied byte for byte at `76a89aaf`, `BRAIN_BACKOFF_BASE_MS` and `BRAIN_BACKOFF_CAP_MS` carry the comment `Backoff floor and ceiling, named so the schedule and its tests cannot drift.` — but the STREAMTESTS slice at `06c9dac1` imports only the CAP and asserts `expect(brainBackoffDelayMs(20)).toBe(BRAIN_BACKOFF_CAP_MS)`, which is the constant compared with itself. FOUND BY THE WORKER, which applied both slices unedited as constraint 1 required and declared the mismatch; that is the fourth consecutive round in which a worker's declaration, not a gate, is what put a reviewer-authored defect on the record. THE WORKER NAMED THE BASE AS THE WEAK HALF AND THE REVIEWER'S RE-MEASUREMENT INVERTS THAT, which is why this entry is worth its length: the two constants behave OPPOSITELY, and the one the comment protects least is the one it names last. RE-MEASURED, not reasoned: in a disposable worktree at `eb2e011c`, raising `BRAIN_BACKOFF_CAP_MS` from 8000 to 60000 with the R16 test file in place leaves `npx vitest run src/api/brainStream.test.ts` at EXIT 0 with 18 passed — the cap is pinned by nothing at all — while the base is hardcoded as `[250, 500, 1000, 2000]` in the same file, so changing IT does go red. The comment claims one property for both names and is false of exactly the half that matters. THE FIX, applied by this round rather than deferred: the cap test asserts the LITERAL 8000 on both sides, and the same re-measurement then EXITS 1 on the raised cap, naming `brainBackoffDelayMs > is capped so a long outage keeps retrying`. WHY LOW: no shipped behaviour was ever wrong, the cap being 8000 in the only file that defines it; what was wrong is that a gate reported protection it did not provide, which is the R-0438 vacuous-gate class arriving through an import rather than through a missing path.
+  measured at `2c3abc5e` it exits 1 with 53 problems, every error a
+  `Parsing error`, because that eslint config installs no TypeScript parser.
+  That is R-0622, it routes to a paydown branch, and each new `.ts` file adds
+  one more. `npm run typecheck` and `npx vitest run` both exit 0 there and ARE
+  the gates. Repository-wide `ruff check .` is RED too and is not a gate; this
+  round changes no Python.
+- No React hook can be rendered by any gate this repository owns. R18 adds
+  none: the runner is framework-free on purpose, so R19's hook has no branch
+  left to get wrong. If that stops being true, the honest move is a jsdom
+  dependency and its own round, never an untested hook.
+- R-0624's fix lands here and its `Done:` paragraph is owed by R19, exactly as
+  R17 left R-0623 to this round.
+<<<END PLANF008R18
 
-- R-0624 — Low — AN INITIAL STATE THAT CLAIMS A HISTORY IT DOES NOT HAVE: A CLIENT WHICH HAS NEVER CONNECTED REPORTS `reconnecting`. `initialBrainStreamState()` in the BRAINSTREAM slice at `76a89aaf` returns `status: "reconnecting"`, and `BrainStreamStatus` is the three-member union `"live" | "reconnecting" | "delayed"` that the feature file's Design section fixes verbatim as the status surface, so the module has no member meaning "not yet attempted" and the honest value does not exist to be returned. FOUND BY THE WORKER as its second objection, raised without being asked for one. WHY IT IS REGISTERED RATHER THAN WAVED AWAY: this repository treats a status surface as a truth claim — section 4 item 5 of `docs/agents/planner_reviewer_prompt.md` makes a false live indicator a BLOCK condition — and while `reconnecting` is not a false LIVE indicator, it asserts a prior connection that never happened, which a cockpit badge would render verbatim in the first frames after mount. WHY IT IS NOT FIXED BY THE ROUND THAT REGISTERS IT, stated so the deferral is a decision and not an oversight: the defect is only OBSERVABLE where the badge is, and the badge is R18's work. Widening the union is forbidden without a feature-file amendment, and adding an `everConnected` field to the state now would ship a field with no reader for a round. THE FIX, routed to R18 and named in this round's plan: the hook does not surface a status until its first connection attempt has resolved, so the initial value is never rendered — or, if that proves impossible, the reviewer authors the feature-file amendment that adds the fourth member, as section 4 item 7 requires, rather than letting the badge lie.
+<<<SLICE LEDGER18
+Done: R-0623 — RESOLVED at `b3c80044` by asserting the LITERAL on both sides: the cap test now reads `expect(BRAIN_BACKOFF_CAP_MS).toBe(8000)` beside `expect(brainBackoffDelayMs(20)).toBe(8000)`, so the constant is pinned by a value that does not move with it. RE-MEASURED BY THE REVIEWER at the R18 gate rather than read back out of the handback: in a disposable worktree with `node_modules` symlinked, raising `BRAIN_BACKOFF_CAP_MS` from 8000 to 60000 EXITS 1 against the `b3060d71` tree naming exactly `brainBackoffDelayMs > is capped so a long outage keeps retrying`, while the SAME mutation against the `eb2e011c` blob of `apps/ui/src/api/brainStream.test.ts` — verified byte-identical to the `4b8c289a` blob — EXITS 0 at 18 passed. That contrast IS the resolution: the same command against two trees, red on the pinned one and green on the one that pinned nothing. The comment R-0623 found false is now true of both constants it names.
 
-Gate: R17 — the R16 entry. R16 PASSED. No finding is registered against its work: every gate it reported was RE-DERIVED by the reviewer off disk, and every value matched. Two findings ARE registered this round, R-0623 and R-0624 above, and BOTH are defects in the reviewer's own authored text that the worker declared — the round did exactly what its block ordered. TRANSPORT PROVED PRIMARY, not by the digest fallback: the reviewer authored this block in the same session, so `.remedy-wt/f008-r16.md` still existed at review time and was compared disk-to-disk against `.agent/authored/f008-r16.md` at `212c28aa` and `.agent/last_block.md` at `bbf53bf5` — all three EQUAL at sha256 5f88c012208d3c69e73ad7fc6ea82d62422bcd5221d6f0c1dac650300951f7d6 over 33473 bytes and 457 lines. FOUR SLICES by the reviewer's own ordered extraction out of the committed C0a blob, every newline-included digest matching: PLANF008R16 6c7a8637, LEDGER16 275f099c, BRAINSTREAM 82d1ec28 and STREAMTESTS e0c65062. THE PLAN LANDED FIRST at `0b3147e1`, byte-equal at 46 lines under the 50-line cap, carrying `Steps`, one `## Goal`, one `## Next Steps` and two F-ids — the four properties `tests/ui_server/test_dashboard_contract.py` and `tests/orchestration/test_test_runner.py` actually assert about that file, checked against those readers rather than against the cap alone. THE APPEND at `4e799cdc` is a byte-exact prefix plus a 9239-byte remainder equal to a newline plus LEDGER16, agreed by an INDEPENDENT blank-line split into 216 units whose LAST FOUR are LEDGER16's paragraphs in order, with a one-byte flip REJECTED by both readings and the unflipped ACCEPTED by both. THE SETS MOVED AS ORDERED — 193 to 194 registered, `Done:` 0 to 2 over exactly the ids R-0620 and R-0621, `Landed:` 0 at both, `Gate: R` 15 to 16 over sixteen DISTINCT keys, R-0622 0 to 1 and R-0623 0 at both — so this record's FIRST two resolutions landed and only one id was minted. BOTH NEW FILES ARE ABSENT at `22dd8d31` by `git ls-tree` and byte-equal to their slices at `76a89aaf` and `06c9dac1`, 92 and 108 lines against 0 deletions. THE RUNS ARE THE REVIEWER'S OWN, serial, in the primary checkout: `npx vitest run` exits 0 at 6 files and 89 tests, `npm run --silent typecheck` exits 0 silently, the state readers including the canary exit 0 at 465 and `tests/ui_contracts/` exits 0 at 397 passed-plus-skipped — that last suite gated because its `test_no_scanlines_in_frontend` rglobs every `.ts` under `apps/ui/src` and therefore READS both new files. THE ARITHMETIC RECONCILES: STREAMTESTS holds 18 `it(` lines and 71 plus 18 is 89. LINT IS RED AND DECLARED, never repaired: 51 problems against the base's 49, exactly two more errors, one `Parsing error` per new file — which is R-0622, registered this same round. ALL THREE RED CONTROLS RE-RUN BY THE REVIEWER in its own disposable worktree with `node_modules` SYMLINKED and the primary checkout untouched: each mutated byte string occurs exactly once, each mutation EXITS 1 naming the tests the block predicted, and the restored file EXITS 0 at 18 passed. SEVEN single-parent commits, insertions 457, 411, 24, 8, 92, 108 and 42, all under 500 and every cell equal to the handback's `+/-` column; zero marker lines in all five targets; a reflog of `commit` operations alone with amend, rebase and cherry at 0; an 81-line handback under the 100 that seven commits allow, its item-status table naming C0a through C5 exactly once each. ONE NOTE ON A GATE OF MINE RATHER THAN ON THE ROUND: G13 ordered the handback to name C0a through C5 "exactly once each", and a handback names each label many times by construction — the worker read the clause as scoping to the item-status table, which is the only reading that can be satisfied, and was right to. The clause should have said so.
-<<<END LEDGER17
-<<<SLICE CAPFROM
-    expect(brainBackoffDelayMs(20)).toBe(BRAIN_BACKOFF_CAP_MS);
-<<<END CAPFROM
-<<<SLICE CAPTO
-    // The LITERAL is the gate. Asserting only against the imported constant
-    // tracks any change to it and therefore pins nothing — the cap could be
-    // raised to a minute and this test would stay green (finding R-0623).
-    expect(BRAIN_BACKOFF_CAP_MS).toBe(8000);
-    expect(brainBackoffDelayMs(20)).toBe(8000);
-<<<END CAPTO
-<<<SLICE DRIVER
-// Transport orchestration for the brain stream, as a pure reducer.
-// The rules in brainStream.ts say what a client HOLDS; these say what it
-// should DO next — reconnect, wait, refetch a snapshot, or fall back to
-// polling. Effects are returned as DATA rather than performed, so the whole
-// reconnect and fallback story is testable under the node-environment vitest
-// that cannot render the React hook which will interpret them.
-import {
-  brainBackoffDelayMs, degradeBrainStream, failBrainStream, openBrainStream,
-  receiveBrainFrame, repairBrainGap, resumeEventId,
-} from "./brainStream";
-import type { BrainStreamFrame, BrainStreamState } from "./brainStream";
+- R-0625 — Medium — A MEASURED COUNT MIS-TRANSCRIBED INTO AN APPEND-ONLY RECORD, SO THE AUDIT TRAIL CARRIES A FALSE READING OF A COMMIT NOBODY WILL RE-RUN. The `Gate: R17` entry committed at `4b8c289a` states, as the reviewer's own re-derivation of R16, that `npx vitest run` "exits 0 at 6 files and 89 tests". The TEST total is right and the FILE count is wrong. MEASURED AT THE R18 GATE, not reasoned: `git ls-tree -r eb2e011c -- apps/ui/src` lists exactly FIVE paths ending `.test.ts` — `api/brainStream.test.ts`, `api/remedyApi.test.ts`, `cockpitLogic.test.ts`, `components/graph/buildForceBrainModel.test.ts` and `components/prompt/promptTraceLens.test.ts` — and `apps/ui/vitest.config.ts` at that same commit includes `src/**/*.test.ts` and nothing else, so a sixth file had nowhere to come from. FOUND BY THE WORKER, which hit the same numeral again in gate G9 of the R17 block, declared the deviation and CONTINUED rather than stopping, on the reading that a false identity about the BASE commit is reviewer arithmetic and not a red gate. That reading was right, and this is the fourth consecutive round in which a worker's declaration rather than a gate is what put a reviewer-authored defect on the record. WHY MEDIUM RATHER THAN LOW: no code is wrong and no gate was weakened, but `.agent/live_review.md` is what a later session reads to learn what was verified, and a wrong count there is indistinguishable from a right one without re-running a commit that has already been reviewed and closed. THE FIX IS THIS PARAGRAPH AND EXPLICITLY NOT A REWRITE: §3 item 20 of `docs/agents/planner_reviewer_prompt.md` rules that appending a dated correction is how this record stays honest and that overwriting landed text is worse than a dated wrong sentence, and item 26 repeats it for a header — so the landed entry stands and the correct reading is here. THE CORRECTED VALUE: R16's `apps/ui` suite at `eb2e011c` is FIVE files and 89 tests. THE COUNTER-MEASURE, owed to §3 as a checklist item and not to this body, which binds nothing (the R-0452 class): a numeral a block states about ANOTHER commit's tool output is produced by RUNNING that tool at that commit before emission, never by recollection — R-0364 applied to a value rather than to a colour. It routes to the paydown branch that already carries the promotions owed for R-0387 and R-0573, because no F008 round has a `docs/agents/**` path in its change set.
 
-/** How often the fallback transport re-reads the events tail. */
-export const BRAIN_POLL_INTERVAL_MS = 3000;
+- R-0626 — Low — ONE SPELLING CARRYING TWO CONCEPTS INSIDE ONE `switch`, IN THE MODULE WHERE BOTH MEANINGS ARE LIVE. In `apps/ui/src/api/brainStreamDriver.ts` at `2d49be87`, the `frame` case reads `const opened = next.gapDetected && !state.gapDetected;`, where `opened` means A GAP OPENED, while `case "opened":` five lines above is the transport event meaning A CONNECTION OPENED. AUTHORED BY THE REVIEWER in the R17 block's DRIVER slice and applied byte for byte as constraint 1 required; FOUND AND DECLARED BY THE WORKER as an objection it was never asked for. THE BEHAVIOUR IS CORRECT AND PROVED SO: red control (b) of the R17 gate replaces that line with `const opened = false;` and EXITS 1, naming `a gap in the sequence > asks for a snapshot exactly once, not once per later frame` and `the polling fallback > a gap over the fallback still asks for a snapshot and resumes by polling` — re-run by the reviewer at the R18 gate, not read back. WHAT IS WRONG IS THE NAME: AGENTS.md's Code Discoverability Conventions require one spelling per concept repo-wide and forbid synonym drift, and a name colliding with the event kind it sits beside is the sharper form of that defect, because the reader who misreads it is reading the two lines together. WHY LOW: it is a local `const` with no callers, so no other module can resolve it wrongly, and the collision costs a reader a second glance rather than a wrong belief about behaviour. WHY NOT FIXED BY THE ROUND THAT REGISTERS IT: R18's change set is the runner and the state files, and R19 edits this module's consumer anyway, so the rename lands beside work that already reads these lines. THE FIX, routed to R19 and named in this round's plan: `gapOpened`, which carries the two-to-four-word domain-name rule AGENTS.md states and cannot be confused with the event kind.
 
-/** What the transport tells the driver. `unsupported` is the fallback trigger:
- *  no EventSource in this environment, or the stream failed to construct. */
-export type BrainStreamEvent =
-  | { kind: "opened" }
-  | { kind: "frame"; frame: BrainStreamFrame }
-  | { kind: "closed" }
-  | { kind: "unsupported" }
-  | { kind: "snapshot"; seq: number }
-  | { kind: "timer" };
+Gate: R18 — the R17 entry. R17 PASSED. No finding is registered against its work: every gate it reported was RE-DERIVED by the reviewer off disk rather than read back out of the handback, and every value matched. Two findings ARE registered this round, R-0625 and R-0626 above, and BOTH are defects in the reviewer's own authored text that the worker declared — the round did exactly what its block ordered, and its one declared deviation was correct. TRANSPORT PROVED BY THE DIGEST FALLBACK, declared as such because this is a new session and the previous reviewer's scratch original no longer exists (section 4 item 9): `.agent/authored/f008-r17.md` at `d8d21cc7` and `.agent/last_block.md` at `debaa1f0` are EQUAL at sha256 5d90c4a54fd6cb2807a9b744d414a422fa2437e1ebb5d631ba4db5449087de9d over 34888 bytes and 490 lines, which is the value the handback names. SIX SLICES by the reviewer's own ordered extraction out of the committed C0a blob, every newline-included digest matching: PLANF008R17 8ff56a6d, LEDGER17 dc331d6f, CAPFROM 23996c0e, CAPTO a53bfa48, DRIVER 570ca900 and DRIVERTESTS 7e36247f. THE PLAN LANDED FIRST at `16b48915`, byte-equal to PLANF008R17 at 49 lines under the 50-line cap. THE APPEND at `4b8c289a` is a byte-exact prefix of the `16b48915` blob plus a 7568-byte remainder equal to a newline plus LEDGER17, agreed by an INDEPENDENT blank-line split of the whole file into 219 units whose LAST THREE are LEDGER17's paragraphs in order. THE SETS MOVED AS ORDERED between `16b48915` and `4b8c289a` — 194 to 196 registered, `Done:` 2 at both over exactly the ids R-0620 and R-0621, `Landed:` 0 at both, `Gate: R` 16 to 17 over seventeen DISTINCT keys, R-0623 and R-0624 each 0 then 1, R-0625 0 at both — so the round minted exactly the two ids it was ordered to mint; sixteen of the seventeen headers match the `Gate: R<n> — the R<n-1> entry.` shape with the second numeral one below the first, and the single non-match is the F255 entry, which is correctly shaped for what it records. THE CAP PAIR IS CONSTRUCTIVE: CAPFROM occurs exactly once in the `4b8c289a` blob and zero times at `b3c80044`, CAPTO the reverse, `TO contains FROM` is false, and replacing that one occurrence rebuilds a file byte-equal to the `b3c80044` blob at sha256 7bea89dc. BOTH NEW FILES ARE ABSENT at `eb2e011c` by `git ls-tree` and byte-equal to their slices at `2d49be87` and `b3060d71`, 92 and 119 lines against 0 deletions. THE RUNS ARE THE REVIEWER'S OWN, serial, in the primary checkout: `npx vitest run` exits 0 at 6 files and 103 tests, `npm run --silent typecheck` exits 0 silently, the state readers including the canary exit 0 at 465 passed-plus-skipped and `tests/ui_contracts/` at 397. THE ARITHMETIC RECONCILES: DRIVERTESTS holds 14 lines matching `^  it(` and 89 plus 14 is 103. LINT IS RED AND DECLARED, never repaired: 53 problems against the base's 51, exactly two more errors, one `Parsing error` per new file, which is R-0622 and not a regression. ALL FOUR RED CONTROLS RE-RUN BY THE REVIEWER in its own disposable worktree with `node_modules` symlinked and the primary checkout untouched: each mutated byte string occurs exactly once, each mutation EXITS 1 naming the tests the block predicted, the restored files EXIT 0 at 32 passed, and both halves of the R-0623 proof reproduce. EIGHT single-parent commits, insertions 490, 385, 25, 6, 5, 92, 119 and 50 in that order, every one under 500 and every cell equal to the handback's `+/-` column including the deletions; zero lines beginning with a slice marker in all six targets; the last forty reflog operations all `commit`, with amend, rebase and cherry at 0; the tree clean with the primary checkout the only worktree.
+<<<END LEDGER18
 
-/** What the driver asks its host to do. The host performs these; the driver
- *  never touches a socket, a timer or the network itself. */
-export type BrainStreamEffect =
-  | { kind: "connect"; lastEventId: string | null }
-  | { kind: "wait"; ms: number }
-  | { kind: "snapshot" }
-  | { kind: "poll"; ms: number };
+<<<SLICE RUNNER
+// Effect interpretation for the brain stream: the loop that PERFORMS what
+// brainStreamDriver decides, by turning its effects into calls on an INJECTED
+// host. That is what lets the whole connect, backoff, snapshot and poll cycle
+// run under the node-environment vitest — no EventSource, no timer, no React.
+import { initialBrainStreamState, resumeEventId } from "./brainStream";
+import type { BrainStreamStatus } from "./brainStream";
+import { stepBrainStream } from "./brainStreamDriver";
+import type { BrainStreamEffect, BrainStreamEvent } from "./brainStreamDriver";
 
-export interface BrainStreamStep {
-  state: BrainStreamState;
-  effects: BrainStreamEffect[];
+/** What the runner asks of its environment: an EventSource, setTimeout and two
+ *  api reads in production, four recorders in a test. */
+export interface BrainStreamHost {
+  /** Open a stream from the resume position; frames arrive via `dispatch`. */
+  connect(lastEventId: string | null): void;
+  /** Refetch the state snapshot; its position arrives as a `snapshot` event. */
+  requestSnapshot(): void;
+  /** Read the events tail once, on the polling fallback's cadence. */
+  pollOnce(): void;
+  /** Run `resume` after `ms`. The returned function cancels that pending run. */
+  schedule(ms: number, resume: () => void): () => void;
 }
 
-/** True once the fallback has engaged: `delayed` is sticky for this session,
- *  because a transport that could not be constructed will not spontaneously
- *  become constructible, and a badge that flickered back to `live` would be
- *  claiming a stream the client does not have. */
-function isPolling(state: BrainStreamState): boolean {
-  return state.status === "delayed";
+/** What a badge reads. `status` is NULL until the first transport event has
+ *  resolved, because a client that has never connected has no honest status and
+ *  the initial `reconnecting` would claim a history it does not have (finding
+ *  R-0624). Null is not a fourth status: the union the feature file fixes is
+ *  untouched and the runner simply declines to report before it knows. */
+export interface BrainStreamView {
+  status: BrainStreamStatus | null;
+  lastSeq: number | null;
+  gapDetected: boolean;
 }
 
-/** Resume where the fallback left off, on the same rule as the stream: the
- *  two transports share one consumer contract and one resume position. */
-function resumeEffect(state: BrainStreamState): BrainStreamEffect {
-  return isPolling(state)
-    ? { kind: "poll", ms: BRAIN_POLL_INTERVAL_MS }
-    : { kind: "connect", lastEventId: resumeEventId(state) };
+export interface BrainStreamRunner {
+  start(): void;
+  dispatch(event: BrainStreamEvent): void;
+  stop(): void;
+  view(): BrainStreamView;
 }
 
-/** Advance the client by one transport event, returning the next state and
- *  the effects the host must perform. A gap ALWAYS asks for a snapshot before
- *  anything else: replaying from a position the client never held is how a
- *  hole becomes permanent. */
-export function stepBrainStream(
-  state: BrainStreamState,
-  event: BrainStreamEvent,
-): BrainStreamStep {
-  switch (event.kind) {
-    case "opened":
-      return { state: openBrainStream(state), effects: [] };
+/** Remedy deliberately gives this no change callback yet: nothing subscribes
+ *  until R19's hook exists, and a listener with no reader is untestable. */
+export function createBrainStreamRunner(host: BrainStreamHost): BrainStreamRunner {
+  let state = initialBrainStreamState();
+  let settled = false;
+  let stopped = false;
+  let cancelPending: (() => void) | null = null;
 
-    case "frame": {
-      const next = receiveBrainFrame(state, event.frame);
-      const opened = next.gapDetected && !state.gapDetected;
-      return { state: next, effects: opened ? [{ kind: "snapshot" }] : [] };
-    }
-
-    case "snapshot": {
-      const healed = repairBrainGap(state, event.seq);
-      return { state: healed, effects: [resumeEffect(healed)] };
-    }
-
-    case "closed": {
-      if (isPolling(state)) return { state, effects: [{ kind: "poll", ms: BRAIN_POLL_INTERVAL_MS }] };
-      const next = failBrainStream(state);
-      return { state: next, effects: [{ kind: "wait", ms: brainBackoffDelayMs(next.attempt) }] };
-    }
-
-    case "unsupported": {
-      const next = degradeBrainStream(state);
-      return { state: next, effects: [{ kind: "poll", ms: BRAIN_POLL_INTERVAL_MS }] };
-    }
-
-    case "timer":
-      return { state, effects: [resumeEffect(state)] };
+  function view(): BrainStreamView {
+    return {
+      status: settled ? state.status : null,
+      lastSeq: state.lastSeq,
+      gapDetected: state.gapDetected,
+    };
   }
+
+  /** At most one timer outstanding: a second wait armed over a pending one
+   *  would double the reconnect rate the backoff exists to bound. */
+  function arm(ms: number, resume: () => void): void {
+    if (cancelPending !== null) cancelPending();
+    cancelPending = host.schedule(ms, () => {
+      cancelPending = null;
+      if (!stopped) resume();
+    });
+  }
+
+  function perform(effect: BrainStreamEffect): void {
+    switch (effect.kind) {
+      case "connect":
+        host.connect(effect.lastEventId);
+        return;
+      case "snapshot":
+        host.requestSnapshot();
+        return;
+      case "wait":
+        arm(effect.ms, () => { dispatch({ kind: "timer" }); });
+        return;
+      case "poll":
+        arm(effect.ms, () => { host.pollOnce(); dispatch({ kind: "timer" }); });
+        return;
+    }
+  }
+
+  /** A `timer` is the runner's own bookkeeping, so it never resolves the
+   *  status: only an event the TRANSPORT produced says what to show. */
+  function dispatch(event: BrainStreamEvent): void {
+    if (stopped) return;
+    const step = stepBrainStream(state, event);
+    state = step.state;
+    if (event.kind !== "timer") settled = true;
+    for (const effect of step.effects) perform(effect);
+  }
+
+  return {
+    start(): void {
+      stopped = false;
+      host.connect(resumeEventId(state));
+    },
+    dispatch,
+    stop(): void {
+      stopped = true;
+      if (cancelPending !== null) cancelPending();
+      cancelPending = null;
+    },
+    view,
+  };
 }
-<<<END DRIVER
-<<<SLICE DRIVERTESTS
+<<<END RUNNER
+
+<<<SLICE RUNNERTESTS
 import { describe, it, expect } from "vitest";
-import { initialBrainStreamState, openBrainStream, resumeEventId } from "./brainStream";
-import { BRAIN_POLL_INTERVAL_MS, stepBrainStream } from "./brainStreamDriver";
+import { createBrainStreamRunner } from "./brainStreamRunner";
+import type { BrainStreamHost, BrainStreamRunner } from "./brainStreamRunner";
 import type { BrainStreamEvent } from "./brainStreamDriver";
-import type { BrainStreamState } from "./brainStream";
 
-/** Run a script of transport events, collecting every effect in order. */
-function runScript(state: BrainStreamState, events: BrainStreamEvent[]) {
-  const effects = [];
-  let current = state;
-  for (const event of events) {
-    const step = stepBrainStream(current, event);
-    current = step.state;
-    effects.push(...step.effects);
+interface ArmedTimer { ms: number; resume: () => void; spent: boolean }
+
+/** Records every call and holds its timers until fired by hand, so the
+ *  reconnect and poll cadences are read as data instead of waited for. */
+class RecordingHost implements BrainStreamHost {
+  connects: (string | null)[] = [];
+  snapshots = 0;
+  polls = 0;
+  timers: ArmedTimer[] = [];
+
+  connect(lastEventId: string | null): void { this.connects.push(lastEventId); }
+  requestSnapshot(): void { this.snapshots += 1; }
+  pollOnce(): void { this.polls += 1; }
+  schedule(ms: number, resume: () => void): () => void {
+    const armed: ArmedTimer = { ms, resume, spent: false };
+    this.timers.push(armed);
+    return () => { armed.spent = true; };
   }
-  return { state: current, effects };
+
+  /** Fire the newest live timer — the only one the runner treats as pending. */
+  tick(): void {
+    for (let i = this.timers.length - 1; i >= 0; i -= 1) {
+      const armed = this.timers[i];
+      if (!armed.spent) { armed.spent = true; armed.resume(); return; }
+    }
+    throw new Error("no live timer to fire");
+  }
+
+  live(): number { return this.timers.filter((t) => !t.spent).length; }
+  waits(): number[] { return this.timers.map((t) => t.ms); }
 }
 
-/** The last effect a script produced. `Array.prototype.at` is newer than this
- *  project's TypeScript lib target, so the index is spelled out. */
-function lastOf<T>(items: T[]): T {
-  return items[items.length - 1];
+function started(): { host: RecordingHost; runner: BrainStreamRunner } {
+  const host = new RecordingHost();
+  const runner = createBrainStreamRunner(host);
+  runner.start();
+  return { host, runner };
 }
 
 function frame(seq: number): BrainStreamEvent {
   return { kind: "frame", frame: { seq, event: { seq } } };
 }
 
-describe("a clean stream", () => {
-  it("opening asks for nothing and reports live", () => {
-    const step = stepBrainStream(initialBrainStreamState(), { kind: "opened" });
-    expect(step.effects).toEqual([]);
-    expect(step.state.status).toBe("live");
+describe("a runner that has not connected", () => {
+  it("reports no status at all rather than claiming a reconnect", () => {
+    const host = new RecordingHost();
+    const runner = createBrainStreamRunner(host);
+    expect(runner.view().status).toBe(null);
+    runner.start();
+    expect(runner.view().status).toBe(null);
+    expect(host.connects).toEqual([null]);
   });
-  it("contiguous frames ask for nothing", () => {
-    const r = runScript(initialBrainStreamState(),
-      [{ kind: "opened" }, frame(0), frame(1), frame(2)]);
-    expect(r.effects).toEqual([]);
-    expect(r.state.lastSeq).toBe(2);
-    expect(r.state.status).toBe("live");
+  it("is not resolved by a stray timer, which is its own bookkeeping", () => {
+    const { host, runner } = started();
+    runner.dispatch({ kind: "timer" });
+    expect(runner.view().status).toBe(null);
+    expect(host.connects).toEqual([null, null]);
+  });
+  it("resolves the status on the first transport event", () => {
+    const { runner } = started();
+    runner.dispatch({ kind: "opened" });
+    expect(runner.view().status).toBe("live");
   });
 });
 
 describe("a dropped connection", () => {
-  it("waits the backoff and then reconnects from the frame it holds", () => {
-    const r = runScript(initialBrainStreamState(),
-      [{ kind: "opened" }, frame(0), frame(1), { kind: "closed" }]);
-    expect(r.effects).toEqual([{ kind: "wait", ms: 250 }]);
-    expect(r.state.status).toBe("reconnecting");
-    const resumed = stepBrainStream(r.state, { kind: "timer" });
-    expect(resumed.effects).toEqual([{ kind: "connect", lastEventId: "1" }]);
+  it("arms the backoff and reconnects from the frame it holds", () => {
+    const { host, runner } = started();
+    runner.dispatch({ kind: "opened" });
+    runner.dispatch(frame(7));
+    runner.dispatch({ kind: "closed" });
+    expect(host.waits()).toEqual([250]);
+    expect(host.connects).toEqual([null]);
+    host.tick();
+    expect(host.connects).toEqual([null, "7"]);
   });
-  it("repeated drops lengthen the wait", () => {
-    const r = runScript(initialBrainStreamState(),
-      [{ kind: "closed" }, { kind: "closed" }, { kind: "closed" }]);
-    expect(r.effects.map((e) => ("ms" in e ? e.ms : null))).toEqual([250, 500, 1000]);
+  it("lengthens the armed wait on every further drop", () => {
+    const { host, runner } = started();
+    runner.dispatch({ kind: "closed" });
+    runner.dispatch({ kind: "closed" });
+    runner.dispatch({ kind: "closed" });
+    expect(host.waits()).toEqual([250, 500, 1000]);
   });
-  it("a successful open resets the wait to the floor", () => {
-    const dropped = runScript(initialBrainStreamState(), [{ kind: "closed" }, { kind: "closed" }]);
-    const reopened = stepBrainStream(dropped.state, { kind: "opened" });
-    const again = stepBrainStream(reopened.state, { kind: "closed" });
-    expect(again.effects).toEqual([{ kind: "wait", ms: 250 }]);
-  });
-  it("a client that holds nothing reconnects with no header", () => {
-    const r = runScript(initialBrainStreamState(), [{ kind: "closed" }, { kind: "timer" }]);
-    expect(lastOf(r.effects)).toEqual({ kind: "connect", lastEventId: null });
+  it("keeps at most one timer live so the rate stays bounded", () => {
+    const { host, runner } = started();
+    runner.dispatch({ kind: "closed" });
+    runner.dispatch({ kind: "closed" });
+    expect(host.timers.length).toBe(2);
+    expect(host.live()).toBe(1);
   });
 });
 
 describe("a gap in the sequence", () => {
-  it("asks for a snapshot exactly once, not once per later frame", () => {
-    const r = runScript(openBrainStream(initialBrainStreamState()),
-      [frame(0), frame(4), frame(5), frame(6)]);
-    expect(r.effects).toEqual([{ kind: "snapshot" }]);
+  it("asks the host for a snapshot exactly once", () => {
+    const { host, runner } = started();
+    runner.dispatch({ kind: "opened" });
+    runner.dispatch(frame(0));
+    runner.dispatch(frame(4));
+    runner.dispatch(frame(5));
+    expect(host.snapshots).toBe(1);
   });
-  it("the snapshot heals the hole and resumes from the snapshot position", () => {
-    const gapped = runScript(openBrainStream(initialBrainStreamState()), [frame(0), frame(4)]);
-    const healed = stepBrainStream(gapped.state, { kind: "snapshot", seq: 9 });
-    expect(healed.state.gapDetected).toBe(false);
-    expect(healed.effects).toEqual([{ kind: "connect", lastEventId: "9" }]);
-    expect(resumeEventId(healed.state)).toBe("9");
-  });
-  it("a contiguous run never asks for a snapshot", () => {
-    const r = runScript(openBrainStream(initialBrainStreamState()), [frame(0), frame(1), frame(2)]);
-    expect(r.effects).toEqual([]);
+  it("reconnects from the healed position once the snapshot lands", () => {
+    const { host, runner } = started();
+    runner.dispatch({ kind: "opened" });
+    runner.dispatch(frame(0));
+    runner.dispatch(frame(4));
+    runner.dispatch({ kind: "snapshot", seq: 9 });
+    expect(host.connects).toEqual([null, "9"]);
+    expect(runner.view().gapDetected).toBe(false);
+    expect(runner.view().lastSeq).toBe(9);
   });
 });
 
 describe("the polling fallback", () => {
   it("engages on an unsupported transport and labels itself delayed", () => {
-    const step = stepBrainStream(initialBrainStreamState(), { kind: "unsupported" });
-    expect(step.state.status).toBe("delayed");
-    expect(step.effects).toEqual([{ kind: "poll", ms: BRAIN_POLL_INTERVAL_MS }]);
+    const { host, runner } = started();
+    runner.dispatch({ kind: "unsupported" });
+    expect(runner.view().status).toBe("delayed");
+    expect(host.waits()).toEqual([3000]);
   });
-  it("keeps polling rather than reconnecting once it has engaged", () => {
-    const fallen = stepBrainStream(initialBrainStreamState(), { kind: "unsupported" });
-    const ticked = stepBrainStream(fallen.state, { kind: "timer" });
-    expect(ticked.effects).toEqual([{ kind: "poll", ms: BRAIN_POLL_INTERVAL_MS }]);
-  });
-  it("never claims live again on frames it polls", () => {
-    const fallen = stepBrainStream(initialBrainStreamState(), { kind: "unsupported" });
-    const r = runScript(fallen.state, [frame(0), frame(1)]);
-    expect(r.state.status).toBe("delayed");
-    expect(r.state.lastSeq).toBe(1);
-  });
-  it("a poll that drops keeps polling and does not start a backoff", () => {
-    const fallen = stepBrainStream(initialBrainStreamState(), { kind: "unsupported" });
-    const dropped = stepBrainStream(fallen.state, { kind: "closed" });
-    expect(dropped.effects).toEqual([{ kind: "poll", ms: BRAIN_POLL_INTERVAL_MS }]);
-    expect(dropped.state.attempt).toBe(0);
-  });
-  it("a gap over the fallback still asks for a snapshot and resumes by polling", () => {
-    const fallen = stepBrainStream(initialBrainStreamState(), { kind: "unsupported" });
-    const r = runScript(fallen.state, [frame(0), frame(4)]);
-    expect(lastOf(r.effects)).toEqual({ kind: "snapshot" });
-    const healed = stepBrainStream(r.state, { kind: "snapshot", seq: 4 });
-    expect(healed.effects).toEqual([{ kind: "poll", ms: BRAIN_POLL_INTERVAL_MS }]);
+  it("reads the tail once per tick and re-arms the next one", () => {
+    const { host, runner } = started();
+    runner.dispatch({ kind: "unsupported" });
+    host.tick();
+    expect(host.polls).toBe(1);
+    expect(host.live()).toBe(1);
+    host.tick();
+    expect(host.polls).toBe(2);
+    expect(host.connects).toEqual([null]);
   });
 });
-<<<END DRIVERTESTS
+
+describe("stopping the runner", () => {
+  it("cancels the pending timer and ignores every later event", () => {
+    const { host, runner } = started();
+    runner.dispatch({ kind: "closed" });
+    runner.stop();
+    expect(host.live()).toBe(0);
+    runner.dispatch({ kind: "opened" });
+    expect(runner.view().status).toBe("reconnecting");
+    expect(host.connects).toEqual([null]);
+  });
+});
+<<<END RUNNERTESTS
