@@ -2869,6 +2869,30 @@ def release_sse_slot(job_id: str) -> None:
             _SSE_SLOTS_PER_JOB.pop(job_id, None)
 
 
+#: The header a reconnecting EventSource sends back. Named once so the wire
+#: spelling and the code that reads it cannot drift apart.
+SSE_LAST_EVENT_ID_HEADER = "Last-Event-ID"
+
+
+def resolve_sse_start(last_event_id: Any, cursor: str) -> int:
+    """The ledger position a stream resumes at: header first, query second.
+
+    The two inputs do NOT mean the same thing, which is the whole reason this
+    is a function. `Last-Event-ID` names the last frame the client ALREADY
+    holds, so the span it missed begins at that position PLUS ONE, while
+    `cursor` names the position to start AT. Reading them as one number
+    replays the client's last event on every reconnect or skips the first
+    unseen one — a duplicate or a gap, and the acceptance test for this
+    feature forbids both. A header that is absent, blank or not a position
+    falls back to the cursor rather than refusing the stream: a proxy that
+    mangled the header must not cost a client its connection.
+    """
+    text = str(last_event_id or "").strip()
+    if text.isdigit():
+        return int(text) + 1
+    return int(cursor) if cursor.isdigit() else 0
+
+
 def _get_frontend_dist() -> Path | None:
     """Return path to built React frontend dist/ if it exists."""
     dist = Path(__file__).resolve().parent.parent.parent / "apps" / "ui" / "dist"
@@ -3115,7 +3139,14 @@ class _RemedyHandler(BaseHTTPRequestHandler):
                 self._send_json(*_safe_error(429, "too many streams for this job"))
                 return
             try:
-                self._send_sse_stream(job, (qs.get("cursor") or ["0"])[0])
+                # Resolved BEFORE the writer is entered: header-versus-query
+                # precedence is a routing question, and `_send_sse_stream`
+                # takes ONE start position rather than two candidate ones.
+                start = resolve_sse_start(
+                    self.headers.get(SSE_LAST_EVENT_ID_HEADER),
+                    (qs.get("cursor") or ["0"])[0],
+                )
+                self._send_sse_stream(job, str(start))
             finally:
                 release_sse_slot(str(job.id))
             return
