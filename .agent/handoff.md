@@ -38,15 +38,16 @@ Review of `da2aabf9`..HEAD, HEAD being the C5 commit that writes this file.
 |---|---|---|
 | .agent/decisions.md | +49/-0 | C4 — DECISION1 appended |
 | docs/roadmap/features/T5_F008.md | +25/-8 | C4 — FEATFROM replaced by FEATTO |
-### C5 docs(state): write the F008 R3 handback
+### C5 + trailing correction (grouped; a handoff cannot table its own commit, R-0149)
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/handoff.md | see round report | C5 — a handoff cannot table its own commit (R-0149) |
+| .agent/handoff.md | see round report | C5 wrote this file; the trailing commit corrected its External-actions line only |
 
 ## External actions
 `git worktree add .remedy-wt/redctl-r3 b6a39da6 --detach` — created for G10.
 `git worktree remove .remedy-wt/redctl-r3 --force` — removed before this handback.
-No push, no PR, no `gh` command, no merge.
+`git push -u origin feature/f008-sse-event-stream` — after C5 per AGENTS.md Push Discipline; result in the round report.
+No `gh` command, no PR created, edited or merged.
 
 ## Verification
 G1 `.agent/STOP` absent before C0a; branch feature/f008-sse-event-stream; `git status --porcelain` empty after every commit and here; `git worktree list` names the primary checkout alone.
@@ -61,7 +62,7 @@ G9 `pytest tests/docs/ -q -rf` exit 0, 295 passed. `pytest tests/orchestration/t
 G10 Red control in `.remedy-wt/redctl-r3` only: line 2 occurred exactly 1x; broken → exit 1, `11 failed, 19 passed in 0.53s`; restored byte-equal → exit 0, `30 passed in 0.40s`. The gate reaches the edited file; worktree removed.
 G11 State-reader four exit 0, 160 passed. Canary `tests/cli/test_golden_path.py` exit 0, 42 passed. Serial, primary checkout, never alongside G9.
 G12 (a) `packages/orchestration/ui_server.py:29 from http.server import BaseHTTPRequestHandler, HTTPServer` and `:3122 server = HTTPServer((host, port), handler_class)` — bare, no mixin. (b) the threading grep printed 0 bytes and exited 1. (c) `8 ['event_id', 'event_type', 'job_id', 'run_id', 'timestamp', 'scope', 'outcome', 'metadata']`. All three AGREE with FEATTO and FIND0612; nothing contradicted, so no STOP was owed.
-G13 `git diff --name-only da2aabf9..C5` equals the Change list, no path on either side alone; every commit single-parent; insertions 334, 266, 21, 2, 2, 74 and C5's own — all under 500 — agreeing cell for cell with the `+/-` column above.
+G13 `git diff --name-only da2aabf9..C5` equals the Change list, no path on either side alone; every commit single-parent; insertions 334, 266, 21, 2, 2, 74 and the two handoff commits' own — all under 500 — agreeing cell for cell with the `+/-` column above.
 G14 Marker lines (`<<<SLICE `/`<<<END `): plan@C1 0, live_review@C3 0, feature@C4 0, decisions@C4 0, handoff@C5 0.
 G15 This round's own reflog entries containing `amend`, `rebase` or `cherry`: 0. No entry total is stated.
 G16 This file carries every section `docs/agents/handback_template.md` mandates plus the item-status table; its line count is reported in the round report against the 100-line cap for a >5-commit round.
@@ -73,15 +74,15 @@ Disk-to-disk equality is the G3/G4/G5/G7/G8 evidence above: every applied
 region is byte-equal to its slice, measured off the committed blobs.
 
 ## Deviations & assumptions
-No departure from the ordered commit sequence: C0a, C0b, C1, C2, C3, C4, C5 in
-that order, one commit each, none added, dropped or reordered.
+ONE DEPARTURE: C0a..C5 landed in that order, one commit each, then a SEVENTH
+commit corrects this file's External-actions line, the C5 table heading and the
+G13 line — C5 could not name a push that AGENTS.md requires to follow it.
 No objection to any slice: G12 re-derived both facts independently, and the
 plan slice's branch-point claim (`7c03adfa`, the PR #208 merge) also verifies.
-Tooling note, not a block deviation: G5's independent blank-line extractor first
-rejected the TRUE value because the file's terminating newline rode along on the
-last unit. The normalization was fixed and the gate re-run, and the negative
-control now shows the reading accepting the truth and rejecting a one-byte flip
-— without that control the reading would have been vacuously "green".
+Tooling note: G5's independent blank-line extractor first rejected the TRUE
+value, the file's terminating newline riding along on the last unit. Fixed and
+re-run; the negative control now shows it accepting the truth and rejecting a
+one-byte flip — without it that reading would have been vacuously green.
 
 ## Item status
 | Item | Status | Reason |
