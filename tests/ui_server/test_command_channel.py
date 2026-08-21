@@ -28,6 +28,11 @@ CSRF_HEADER = "X-Remedy-CSRF"
 
 COMMAND_REQUEST_MAX_BYTES = 64 * 1024
 
+# A real catalog command_id that the write door does NOT expose, and a string
+# that names no command anywhere. The door must answer both identically.
+UNEXPOSED_CATALOG_COMMAND = "job.list"
+UNKNOWN_COMMAND = "not.a.command.anywhere"
+
 
 def _make_job() -> Job:
     return Job(
@@ -114,7 +119,9 @@ class TestCommandChannelDoor:
         return headers
 
     def _valid_body(self, **overrides):
-        payload = {"command": "pause_job", "client_nonce": "nonce-0001"}
+        # The default command is UI-exposed so that a body built here is valid
+        # all the way to the seam; tests about the subset name their id inline.
+        payload = {"command": "job.stop", "client_nonce": "nonce-0001"}
         payload.update(overrides)
         return json.dumps(payload)
 
@@ -361,16 +368,16 @@ class TestCommandChannelDoor:
             headers=self._auth_headers(token))
         assert status == 501
         assert body["error"] == "command channel not yet accepting commands"
-        assert body["command"] == "pause_job"
+        assert body["command"] == "job.stop"
 
     def test_absent_args_is_valid_and_reaches_the_seam(self):
         port, token = self._start_server()
         status, body = self._request(
             port, "POST", self._commands_path(),
-            body=json.dumps({"command": "resume_job", "client_nonce": "n-2"}),
+            body=json.dumps({"command": "decision.resolve", "client_nonce": "n-2"}),
             headers=self._auth_headers(token))
         assert status == 501
-        assert body["command"] == "resume_job"
+        assert body["command"] == "decision.resolve"
 
     def test_present_args_object_is_valid_and_reaches_the_seam(self):
         port, token = self._start_server()
@@ -379,7 +386,102 @@ class TestCommandChannelDoor:
             body=self._valid_body(args={"reason": "operator asked"}),
             headers=self._auth_headers(token))
         assert status == 501
-        assert body["command"] == "pause_job"
+        assert body["command"] == "job.stop"
+
+    # -- D.6: the UI-exposed subset (DECISION F009 D4 and D12) --------------
+
+    def test_every_exposed_command_reaches_the_seam(self):
+        """The set itself is the contract, not the two literals above."""
+        from apps.cli.command_catalog import UI_EXPOSED_COMMANDS
+
+        port, token = self._start_server()
+        for index, command_id in enumerate(sorted(UI_EXPOSED_COMMANDS)):
+            status, body = self._request(
+                port, "POST", self._commands_path(),
+                body=self._valid_body(
+                    command=command_id, client_nonce=f"nonce-exposed-{index}"),
+                headers=self._auth_headers(token))
+            assert status == 501, command_id
+            assert body["command"] == command_id
+
+    def test_unexposed_catalog_command_is_400_on_field_command(self):
+        """`job.list` is a real catalog id that the write door does not expose."""
+        from apps.cli.command_catalog import get_command
+
+        assert get_command(UNEXPOSED_CATALOG_COMMAND).command_id == (
+            UNEXPOSED_CATALOG_COMMAND)
+        port, token = self._start_server()
+        status, body = self._request(
+            port, "POST", self._commands_path(),
+            body=self._valid_body(command=UNEXPOSED_CATALOG_COMMAND),
+            headers=self._auth_headers(token))
+        assert status == 400
+        assert body["field"] == "command"
+        assert "error" in body
+
+    def test_command_in_no_catalog_is_400_on_field_command(self):
+        port, token = self._start_server()
+        status, body = self._request(
+            port, "POST", self._commands_path(),
+            body=self._valid_body(command=UNKNOWN_COMMAND),
+            headers=self._auth_headers(token))
+        assert status == 400
+        assert body["field"] == "command"
+        assert "error" in body
+
+    def test_the_two_refusals_are_indistinguishable(self):
+        """D12's non-disclosure, as a tested property rather than a comment.
+
+        A caller must not be able to tell a catalog id it may not use from a
+        string that names no command at all, or the write door becomes a way
+        to enumerate the CLI surface.
+        """
+        port, token = self._start_server()
+        catalog_status, catalog_body = self._request(
+            port, "POST", self._commands_path(),
+            body=self._valid_body(command=UNEXPOSED_CATALOG_COMMAND),
+            headers=self._auth_headers(token))
+        unknown_status, unknown_body = self._request(
+            port, "POST", self._commands_path(),
+            body=self._valid_body(command=UNKNOWN_COMMAND),
+            headers=self._auth_headers(token))
+        assert (catalog_status, catalog_body) == (unknown_status, unknown_body)
+
+    def test_unexposed_command_with_a_bad_bearer_is_403_and_never_400(self):
+        """The subset is policy, so it is decided after the credentials."""
+        port, token = self._start_server()
+        status, body = self._request(
+            port, "POST", self._commands_path(),
+            body=self._valid_body(command=UNEXPOSED_CATALOG_COMMAND),
+            headers=self._auth_headers(token, bearer="Bearer not-the-token"))
+        assert status == 403
+        assert body["error"] == "invalid token"
+        assert "field" not in body
+
+    def test_unexposed_command_on_an_unresolvable_job_is_404(self):
+        """And after the job, for the same reason."""
+        port, token = self._start_server()
+        status, body = self._request(
+            port, "POST", self._commands_path(job_id=str(uuid4())),
+            body=self._valid_body(command=UNEXPOSED_CATALOG_COMMAND),
+            headers=self._auth_headers(token))
+        assert status == 404
+        assert body["error"] == "job not found"
+
+    def test_empty_command_is_still_a_shape_error_not_a_subset_error(self):
+        """Shape is decided before the subset, so the field message is D.4's."""
+        port, token = self._start_server()
+        shape_status, shape_body = self._request(
+            port, "POST", self._commands_path(),
+            body=self._valid_body(command=""),
+            headers=self._auth_headers(token))
+        subset_status, subset_body = self._request(
+            port, "POST", self._commands_path(),
+            body=self._valid_body(command=UNKNOWN_COMMAND),
+            headers=self._auth_headers(token))
+        assert shape_status == subset_status == 400
+        assert shape_body["field"] == subset_body["field"] == "command"
+        assert shape_body["error"] != subset_body["error"]
 
     # -- B: the GET door still behaves as it did ----------------------------
 
@@ -408,6 +510,32 @@ class TestCommandChannelDoor:
             port, "GET", "/api/state?token=" + quote("tökén-ünicöde"))
         assert status == 403
         assert body["error"] == "invalid token"
+
+
+class TestUiExposedCommands:
+    """The exposed subset itself — DECISION F009 D4."""
+
+    def test_the_set_holds_exactly_the_two_ruled_ids(self):
+        from apps.cli.command_catalog import UI_EXPOSED_COMMANDS
+        assert sorted(UI_EXPOSED_COMMANDS) == ["decision.resolve", "job.stop"]
+
+    def test_the_set_is_a_frozenset(self):
+        from apps.cli.command_catalog import UI_EXPOSED_COMMANDS
+        assert isinstance(UI_EXPOSED_COMMANDS, frozenset)
+
+    def test_every_member_resolves_through_get_command(self):
+        """The set cannot drift from the catalog it names."""
+        from apps.cli.command_catalog import UI_EXPOSED_COMMANDS, get_command
+        for command_id in sorted(UI_EXPOSED_COMMANDS):
+            assert get_command(command_id).command_id == command_id
+
+    def test_the_chosen_unexposed_catalog_command_is_really_both(self):
+        """Guards the fixtures the door tests above are built on."""
+        from apps.cli.command_catalog import UI_EXPOSED_COMMANDS, get_command
+        assert get_command(UNEXPOSED_CATALOG_COMMAND)
+        assert UNEXPOSED_CATALOG_COMMAND not in UI_EXPOSED_COMMANDS
+        with pytest.raises(KeyError):
+            get_command(UNKNOWN_COMMAND)
 
 
 class TestServerTokenMatches:

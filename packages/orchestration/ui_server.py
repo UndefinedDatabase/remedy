@@ -3058,6 +3058,13 @@ COMMAND_CSRF_HEADER = "X-Remedy-CSRF"
 #: before a single byte of body is pulled off the socket.
 COMMAND_REQUEST_MAX_BYTES = 64 * 1024
 
+#: The one refusal for every command id this door will not accept. Remedy
+#: deliberately does NOT distinguish an id that is absent from the catalog from
+#: one that exists but is not UI-exposed (DECISION F009 D12): both are "not a
+#: command this door accepts", and telling them apart would let a credentialed
+#: caller enumerate the CLI surface through the write door.
+COMMAND_NOT_EXPOSED_MESSAGE = "command is not available on this channel"
+
 
 # Compared as BYTES: `secrets.compare_digest` raises TypeError on a non-ASCII str.
 def server_token_matches(supplied_token: Any, expected_token: Any) -> bool:
@@ -3295,13 +3302,30 @@ class _RemedyHandler(BaseHTTPRequestHandler):
         if shape_error:
             self._send_json(*shape_error)
             return
-        # The R7 seam: DECISION F009 D4's UI-exposed catalog subset replaces this
-        # answer with a real dispatch. Until it lands, 501 is the honest status —
-        # the door authenticates and validates, and accepts no command yet.
+        if not self._command_is_ui_exposed(payload["command"]):
+            self._send_json(*_command_field_error(
+                "command", COMMAND_NOT_EXPOSED_MESSAGE))
+            return
+        # The seam: DECISION F009 D5's effect table replaces this answer with a
+        # real dispatch, and the round that lands that table is the one that
+        # retires the seam. Until then 501 is the honest status — the door
+        # authenticates, validates and now also checks the exposed subset, but
+        # an accepted command still has no effect to run.
         self._send_json(501, {
             "error": "command channel not yet accepting commands",
             "command": payload["command"],
         })
+
+    def _command_is_ui_exposed(self, command_id: str) -> bool:
+        """True when `command_id` is one of the ids the UI door accepts.
+
+        Imported inside the function, the idiom this module already uses for
+        the same catalog in `do_run`, `proof_chain` and `review_bundle`: the
+        catalog is a large module and the write door must not pull it in at
+        import time.
+        """
+        from apps.cli.command_catalog import UI_EXPOSED_COMMANDS
+        return command_id in UI_EXPOSED_COMMANDS
 
     def _bearer_token_accepted(self) -> bool:
         """True when `Authorization` carries a `Bearer` token matching the server's."""

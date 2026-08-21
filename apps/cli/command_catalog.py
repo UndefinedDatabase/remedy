@@ -14,6 +14,7 @@ Public API::
 
     CATALOG: tuple[CommandEntry, ...]
     GROUPS: dict[str, GroupDef]
+    UI_EXPOSED_COMMANDS: frozenset[str]
     get_group(group_id) -> GroupDef
     get_command(command_id) -> CommandEntry
     get_commands_for_group(group_id) -> list[CommandEntry]
@@ -4799,6 +4800,16 @@ CATALOG: tuple[CommandEntry, ...] = (
         related=("self-repair.proposal-approve",),
     ),
 )
+
+
+# The whole surface of the UI write door: no other `command_id` above is
+# reachable from a browser, and plan approval arrives here as `decision.resolve`
+# carrying an `fp:`-prefixed decision id rather than as a command of its own
+# (DECISION F009 D4).
+UI_EXPOSED_COMMANDS: frozenset[str] = frozenset({
+    "job.stop",
+    "decision.resolve",
+})
 
 
 # ---------------------------------------------------------------------------
