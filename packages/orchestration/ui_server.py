@@ -3359,21 +3359,29 @@ class _RemedyHandler(BaseHTTPRequestHandler):
     def _handle_command_submission(self, job_id_str: str) -> None:
         """Authenticate, resolve and validate one UI-submitted command."""
         if not self._bearer_token_accepted():
+            # DECISION F009 D14, clause one: a caller who has presented nothing gets a
+            # record only where a control directory already exists, and creates none.
+            self._audit_attempt(job_id_str, "rejected_token", create=False)
             self._send_json(*_safe_error(403, "invalid token"))
             return
         if not server_token_matches(self.headers.get(COMMAND_CSRF_HEADER),
                                     self.server_token):
+            self._audit_attempt(job_id_str, "rejected_csrf", create=False)
             self._send_json(*_safe_error(403, "invalid csrf token"))
             return
         job, load_error = _load_job(job_id_str)
         if load_error:
+            self._audit_attempt(job_id_str, "rejected_job", create=True)
             self._send_json(*load_error)
             return
         payload, shape_error = self._read_command_payload()
         if shape_error:
+            self._audit_attempt(str(job.id), "rejected_shape", create=True)
             self._send_json(*shape_error)
             return
         if not self._command_is_ui_exposed(payload["command"]):
+            self._audit_attempt(str(job.id), "rejected_command", create=True,
+                                payload=payload)
             self._send_json(*_command_field_error(
                 "command", COMMAND_NOT_EXPOSED_MESSAGE))
             return
@@ -3383,17 +3391,47 @@ class _RemedyHandler(BaseHTTPRequestHandler):
         # ITSELF out of a job with malformed bodies — a denial of service
         # produced by the guard rather than prevented by it.
         if not self._rate_limit_admits_command(str(job.id)):
+            self._audit_attempt(str(job.id), "rejected_rate", create=True, payload=payload)
             self._send_json(*_safe_error(429, COMMAND_RATE_LIMIT_MESSAGE))
             return
         # The seam: DECISION F009 D5's effect table replaces this answer with a
         # real dispatch, and the round that lands that table is the one that
         # retires the seam. Until then 501 is the honest status — the door
         # authenticates, validates and now also checks the exposed subset, but
-        # an accepted command still has no effect to run.
+        # an accepted command still has no effect to run. `accepted` is therefore
+        # NOT the outcome written here: nothing has been accepted yet.
+        self._audit_attempt(str(job.id), "not_implemented", create=True, payload=payload)
         self._send_json(501, {
             "error": "command channel not yet accepting commands",
             "command": payload["command"],
         })
+
+    def _audit_attempt(self, job_id: str, outcome: str, *, create: bool,
+                       payload: Any = None) -> bool:
+        """Write one audited attempt. NEVER changes the response it is recording.
+
+        DECISION F009 D14, clause four: for a rejection a failed audit write changes
+        nothing. The refusal this door had already decided is sent unchanged and the
+        exception dies here, because a full disk turning a correctly-refused 403 into a 500
+        would convert a working guard into a server fault. The accepted case is not ruled
+        yet and has no call site while the 501 seam stands.
+
+        The raw token never leaves this method: only its D7 fingerprint is handed over.
+        """
+        from packages.orchestration.command_audit import audit_command_attempt
+        body = payload if isinstance(payload, dict) else {}
+        try:
+            return audit_command_attempt(
+                job_id,
+                token_fp=token_fingerprint(self._supplied_bearer_token()),
+                command=body.get("command", ""),
+                args=body.get("args", {}),
+                nonce=body.get("client_nonce", ""),
+                outcome=outcome,
+                create=create,
+            )
+        except Exception:                             # noqa: BLE001 — D14 clause four
+            return False
 
     def _command_is_ui_exposed(self, command_id: str) -> bool:
         """True when `command_id` is one of the ids the UI door accepts.

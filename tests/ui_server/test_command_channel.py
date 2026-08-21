@@ -573,6 +573,208 @@ class TestCommandChannelDoor:
         port, token = self._start_server()
         assert self._post_command(port, token, "nonce-typo")[0] == 501
 
+    # -- D.8: every attempt is audited (DECISION F009 D6 and D14) -----------
+
+    def _audit_path(self, job_id=None) -> Path:
+        from packages.orchestration.command_audit import AUDIT_FILENAME
+        return (self.tmp_path / "control" / "jobs"
+                / (job_id or self.job_id) / AUDIT_FILENAME)
+
+    def _audit_records(self, job_id=None) -> list[dict]:
+        path = self._audit_path(job_id)
+        if not path.exists():
+            return []
+        return [json.loads(line) for line in path.read_bytes().splitlines()]
+
+    def _seed_control_dir(self, port, token) -> None:
+        """One credentialed attempt, so the job's control directory exists.
+
+        DECISION F009 D14 audits a pre-credential refusal only into a directory that is
+        ALREADY there, so a test about such a refusal has to establish one first — and it
+        has to do it the way production does, through the door.
+        """
+        assert self._post_command(port, token, "nonce-seed")[0] == 501
+        assert self._audit_path().exists()
+
+    def test_the_seam_is_audited_as_not_implemented(self):
+        port, token = self._start_server()
+        assert self._post_command(port, token, "nonce-seam")[0] == 501
+
+        records = self._audit_records()
+        assert len(records) == 1
+        assert records[0]["outcome"] == "not_implemented"
+        assert records[0]["command"] == "job.stop"
+        assert records[0]["nonce"] == "nonce-seam"
+
+    def test_a_wrong_bearer_is_audited_as_rejected_token(self):
+        port, token = self._start_server()
+        self._seed_control_dir(port, token)
+
+        status, _ = self._request(
+            port, "POST", self._commands_path(), body=self._valid_body(),
+            headers=self._auth_headers(token, bearer="Bearer not-the-token"))
+
+        assert status == 403
+        assert [r["outcome"] for r in self._audit_records()] == [
+            "not_implemented", "rejected_token"]
+
+    def test_a_wrong_csrf_header_is_audited_as_rejected_csrf(self):
+        port, token = self._start_server()
+        self._seed_control_dir(port, token)
+
+        status, _ = self._request(
+            port, "POST", self._commands_path(), body=self._valid_body(),
+            headers=self._auth_headers(token, csrf="not-the-token"))
+
+        assert status == 403
+        assert [r["outcome"] for r in self._audit_records()][-1] == "rejected_csrf"
+
+    def test_an_unresolvable_job_is_audited_as_rejected_job(self):
+        port, token = self._start_server()
+        other = str(uuid4())
+
+        status, _ = self._request(
+            port, "POST", self._commands_path(job_id=other),
+            body=self._valid_body(), headers=self._auth_headers(token))
+
+        assert status == 404
+        records = self._audit_records(other)
+        assert [r["outcome"] for r in records] == ["rejected_job"]
+        assert self._audit_records() == [], "the record belongs to the job that was asked for"
+
+    def test_a_shape_error_is_audited_as_rejected_shape(self):
+        port, token = self._start_server()
+
+        status, _ = self._request(
+            port, "POST", self._commands_path(), body="{not json",
+            headers=self._auth_headers(token))
+
+        assert status == 400
+        records = self._audit_records()
+        assert [r["outcome"] for r in records] == ["rejected_shape"]
+        # The body never parsed, so there is no command to name — and none is invented.
+        assert records[0]["command"] == ""
+        assert records[0]["nonce"] == ""
+
+    def test_an_unexposed_command_is_audited_as_rejected_command(self):
+        port, token = self._start_server()
+
+        status, _ = self._request(
+            port, "POST", self._commands_path(),
+            body=self._valid_body(command=UNEXPOSED_CATALOG_COMMAND),
+            headers=self._auth_headers(token))
+
+        assert status == 400
+        records = self._audit_records()
+        assert [r["outcome"] for r in records] == ["rejected_command"]
+        assert records[0]["command"] == UNEXPOSED_CATALOG_COMMAND
+
+    def test_a_rate_limited_attempt_is_audited_as_rejected_rate(self, command_rate_limit):
+        limit = command_rate_limit(1)
+        port, token = self._start_server()
+        for index in range(limit):
+            assert self._post_command(port, token, f"nonce-{index}")[0] == 501
+
+        status, _ = self._post_command(port, token, "nonce-over")
+
+        assert status == 429
+        records = self._audit_records()
+        assert [r["outcome"] for r in records] == ["not_implemented", "rejected_rate"]
+        assert records[-1]["command"] == "job.stop"
+        assert records[-1]["nonce"] == "nonce-over"
+
+    def test_every_outcome_the_door_writes_is_in_the_ruled_vocabulary(
+            self, command_rate_limit):
+        """One walk of every refusal, held against DECISION F009 D14's closed set."""
+        from packages.orchestration.command_audit import OUTCOMES
+        limit = command_rate_limit(2)
+        port, token = self._start_server()
+        assert self._post_command(port, token, "nonce-seam")[0] == 501
+        self._request(port, "POST", self._commands_path(), body=self._valid_body(),
+                      headers=self._auth_headers(token, bearer="Bearer wrong"))
+        self._request(port, "POST", self._commands_path(), body=self._valid_body(),
+                      headers=self._auth_headers(token, csrf="wrong"))
+        self._request(port, "POST", self._commands_path(), body="{not json",
+                      headers=self._auth_headers(token))
+        self._post_command(port, token, "n", command=UNEXPOSED_CATALOG_COMMAND)
+        for index in range(limit + 1):
+            self._post_command(port, token, f"nonce-burn-{index}")
+
+        outcomes = [r["outcome"] for r in self._audit_records()]
+        assert set(outcomes) <= set(OUTCOMES), sorted(set(outcomes) - set(OUTCOMES))
+        assert "accepted" not in outcomes, "nothing is accepted while the 501 seam stands"
+        assert set(outcomes) == {
+            "not_implemented", "rejected_token", "rejected_csrf", "rejected_shape",
+            "rejected_command", "rejected_rate"}
+
+    def test_a_wrong_credential_on_a_job_with_no_control_dir_leaves_no_file(self):
+        """D14's stated cost, pinned: no directory means no record, and still a 403."""
+        port, token = self._start_server()
+        assert not self._audit_path().exists()
+        assert not (self.tmp_path / "control").exists()
+
+        status, body = self._request(
+            port, "POST", self._commands_path(), body=self._valid_body(),
+            headers=self._auth_headers(token, bearer="Bearer not-the-token"))
+
+        assert status == 403
+        assert body["error"] == "invalid token"
+        assert not (self.tmp_path / "control").exists(), (
+            "an unauthenticated caller created a control directory")
+
+    def test_the_raw_token_never_reaches_the_audit_file(self):
+        port, token = self._start_server()
+        self._seed_control_dir(port, token)
+
+        self._request(port, "POST", self._commands_path(), body=self._valid_body(),
+                      headers=self._auth_headers(token, bearer="Bearer not-the-token"))
+
+        written = self._audit_path().read_bytes()
+        assert token.encode() not in written
+        assert b"not-the-token" not in written
+        assert len(self._audit_records()) == 2, "the rejected attempt WAS recorded"
+
+    def test_an_audit_writer_that_raises_changes_neither_status_nor_body(
+            self, monkeypatch):
+        """DECISION F009 D14, clause four: a full disk must not turn a 403 into a 500."""
+        port, token = self._start_server()
+        without = {}
+        for label, headers in (
+                ("token", self._auth_headers(token, bearer="Bearer wrong")),
+                ("csrf", self._auth_headers(token, csrf="wrong")),
+                ("seam", self._auth_headers(token))):
+            without[label] = self._request(
+                port, "POST", self._commands_path(), body=self._valid_body(),
+                headers=headers)
+
+        from packages.orchestration import command_audit
+
+        calls = []
+
+        def explode(*_args, **kwargs):
+            calls.append(kwargs.get("outcome"))
+            raise OSError("no space left on device")
+
+        monkeypatch.setattr(command_audit, "audit_command_attempt", explode)
+        records_before = len(self._audit_records())
+
+        with_raise = {}
+        for label, headers in (
+                ("token", self._auth_headers(token, bearer="Bearer wrong")),
+                ("csrf", self._auth_headers(token, csrf="wrong")),
+                ("seam", self._auth_headers(token))):
+            with_raise[label] = self._request(
+                port, "POST", self._commands_path(), body=self._valid_body(),
+                headers=headers)
+
+        # The mutation must REACH the door, or the comparison above proves nothing.
+        assert calls == ["rejected_token", "rejected_csrf", "not_implemented"], calls
+        assert len(self._audit_records()) == records_before, (
+            "the raising writer still wrote a record")
+        assert with_raise == without, f"the raising writer changed a response: {with_raise}"
+        assert without["token"][0] == 403
+        assert without["seam"][0] == 501
+
     # -- B: the GET door still behaves as it did ----------------------------
 
     def test_get_door_still_answers_200_for_the_correct_token(self):
