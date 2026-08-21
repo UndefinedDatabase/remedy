@@ -6563,3 +6563,36 @@ Do-not-touch line on the ledger format is preserved rather than negotiated.
 
 Reverse this decision by deleting this section, restoring the two predictions
 in `docs/roadmap/features/T5_F008.md` and resolving R-0612 as rejected.
+
+
+## DECISION F008 D2 — the delayed badge is a pill VARIANT, and the endpoint wiring is its own round (2026-08-21)
+
+CHOSEN, two rulings the R29 block depends on.
+1. DELAYED and RECONNECTING are VARIANTS of the existing `LiveStatusPill`, not
+   a new visual language, so no assumption_log entry is owed. The design
+   reference already gives this component variants — `component_spec.md` reads
+   "LiveStatusPill (exists) — pulse dot; REPLAY variant (violet) for scrub
+   state" — so a label swap plus an accent dot is the mechanism it documents.
+   The accent `--remedy-orange-400` already exists in
+   `apps/ui/src/styles/tokens.css` and in the reference's own `tokens.css`; no
+   token, font, icon, glyph or asset source is added, leaving `assets_spec.md`
+   untouched.
+2. R29 ships the badge and R30 the wiring, where R28's handback proposed one
+   round for both. `BrainStreamHostDeps` needs four real adapters —
+   `openSource`, `readSnapshotSeq`, `readTail`, `schedule` — over the endpoint
+   T001 and T002 built, and owes its own vitest tests. Bundling them would put
+   a new transport adapter and a new visual surface in one diff, where a
+   regression could not be attributed to the right half.
+
+ALTERNATIVES REJECTED. An assumption_log entry anyway — no such file exists
+here, so it would CREATE the register rather than append to it. A fourth
+`BrainStreamStatus` member — rejected at R19, and R-0624 records why. A
+REQUIRED `streamStatus` — `RemedyApp` holds none until R30, so it would force
+callers to invent one.
+
+CONSEQUENCE. The badge is reachable and gated at R29 while nothing yet supplies
+a live value, which the pill's WHY comment states where a reader would look for
+the absence. R30 then changes one prop at one call site.
+
+Reverse ruling 1 by writing that assumption_log entry and citing this section
+as the reading it overrides; ruling 2 by folding R30 back into one round.
