@@ -303,8 +303,15 @@ class TestPrimaryDocsAreHonest:
         assert "01363c70e13046e2" in f010.group(0), "the accepted Evidence job is missing"
         assert "PASS_WITH_RISKS — ACCEPTED" in f010.group(0)
         assert "2026-07-14" in f010.group(0), "the acceptance date is missing"
-        # ...and nothing after F012 has been started, except F017 (accepted).
-        assert re.search(r"^- \[ \] F008 —", text, re.M)
+        # ...and nothing after F012 has been started except F017 (accepted) and
+        # the ONE feature currently claimed. R-0387 recurrence, F008 R1: this pin
+        # read `[ ]` F008, so it asserted that NO feature was in progress and the
+        # next claim had to break it. The invariant this workflow really holds is
+        # that exactly one `[~]` entry exists (planner_reviewer_prompt.md §1), so
+        # pin that and name its holder instead.
+        in_progress = re.findall(r"^- \[~\] F\d{3} —", text, re.M)
+        assert len(in_progress) == 1, f"exactly one feature is in progress, found {in_progress}"
+        assert re.search(r"^- \[~\] F008 —", text, re.M)
         assert re.search(r"^- \[x\] F017 —", text, re.M)
 
 
