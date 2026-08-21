@@ -1,38 +1,35 @@
 ── STEP T002/3 — F009 ────────────────────────────────────────
-Goal:        Land the NONCE half of T002 — a per-job, create-only store keyed by a
-             validated client nonce, and the door's replay lookup — and close the
-             record for R10: register the reviewer's own spec defect, record the
-             R10 verdict, and resolve R-0634.
+Goal:        Close this session's record: persist the two defects the R11 review
+             found — both of them the reviewer's own — and record the R11
+             verdict. NO PRODUCTION CODE IS WRITTEN.
 
-Bundle:      C0a save this block · C0b mirror it · C1 plan · C2 register R-0635
-             · C3 the R10 verdict · C4 resolve R-0634 · C5 DECISION F009 D15
-             · C6 the nonce store · C7 the door's replay lookup · C8 handback.
+Bundle:      C0a save this block · C0b mirror it · C1 plan · C2 register R-0636
+             · C3 register R-0637 · C4 the R11 verdict · C5 handback.
 
-THE ROUND BASE is `db50d0bbaa0d94ab6d6769c12980f3e78a5e9028`. Every gate reading
-below said to be "at the round base" is measured against that SHA. C8's own SHA
-cannot exist inside C8, so C8 is named by role and the round report carries its
+THE ROUND BASE is `fde072f181e223a32e22b663f315375f753f7d45`. Every gate reading
+below said to be "at the round base" is measured against that SHA. C5's own SHA
+cannot exist inside C5, so C5 is named by role and the round report carries its
 value (R-0371).
 
+THIS ROUND EXISTS BECAUSE A FINDING THAT LIVES ONLY IN A SESSION'S CHAT IS LOST
+WHEN THAT SESSION ENDS. The R11 review found two defects, both in the reviewer's
+own R11 specification rather than in the round's work, and it verified a verdict
+that no on-disk record yet carries. Persisting all three costs one short round of
+no new work. NOTHING under `packages/`, `apps/`, `tests/` or `docs/` is touched.
+
 Change set — these paths and nothing else:
-  `.agent/authored/f009-r11.md`
+  `.agent/authored/f009-r12.md`
   `.agent/last_block.md`
   `.agent/plan.md`
   `.agent/live_review.md`
-  `.agent/decisions.md`
-  `packages/orchestration/command_nonce.py`      (new)
-  `packages/orchestration/ui_server.py`
-  `tests/orchestration/test_command_nonce.py`    (new)
-  `tests/ui_server/test_command_channel.py`
   `.agent/handoff.md`
 
 Slice convention: the authored units below are delimited by `<<<SLICE <NAME>` and
 `<<<END <NAME>` lines. Extract each from the COMMITTED C0a blob by those marker
 lines, with a script, and apply it programmatically. The marker lines themselves
-are never written into any target file. Everything OUTSIDE a slice is a
-specification you implement — the code below is described, not authored, and you
-write it.
+are never written into any target file.
 
-<<<SLICE PLANF009R11
+<<<SLICE PLANF009R12
 # Plan — F009 The single write channel
 
 Branch: feature/f009-single-write-channel, cut from `main` at `ce49348b`, the
@@ -51,239 +48,133 @@ cross-site attempts fail closed and are audited as rejected, and a route-walking
 test plus an import guard prove no other mutating route exists.
 
 ## Current Step
-R11 lands the NONCE half of T002 and closes R10's record. DECISION F009 D15 rules
-where the replay lookup sits in the door's order and what may publish a record: a
-new `packages/orchestration/command_nonce.py` owns the create-only per-nonce
-store, the door validates the nonce as a path component and answers a replay from
-the store, and PUBLICATION waits for the round that retires the 501 seam, because
-a 501 is not a result worth freezing. The round also registers R-0635 against the
-reviewer's own R10 spec and resolves R-0634.
+R12 closes this session and writes no production code. It registers R-0636 and
+R-0637 — both defects in the reviewer's own R11 specification, found by the R11
+review and confirmed by the round's own declared deviations — and records the R11
+verdict. T002 is built except for publication, which D15 routes to T003.
 
 ## Next Steps
-1. T003's effect table per D5 — the round that finally retires the 501 seam —
-   which is also the round that publishes a nonce record and writes the `accepted`
-   audit outcome D14 reserved. The `command.accepted` SSE event lands with it.
+1. T003's effect table per D5 — the round that retires the 501 seam. It is also
+   the round that adds the `publish_nonce_result` call site, writes D14's reserved
+   `accepted` outcome, moves the replay's audit token off `not_implemented`
+   (R-0636) and bounds the published record (R-0637). The plan-approval extraction
+   lands as its own commit and the `command.accepted` SSE event lands with it.
 2. Then the client wiring that sends both headers, the route-walking 405 test and
    the import guard, the integration gate, and closure.
 
 ## Risks
-- Publication and lookup land in different rounds by D15, so until T003 the
-  lookup can only ever miss at the door; its tests seed the store through the
-  module's own publish function rather than through a test-only path.
-- A nonce becomes a FILENAME, so its character class is the guard: it reuses the
-  same `_ID_RE` that already guards the job segment of that directory.
+- R-0636 and R-0637 are both owed by the SAME round, T003, and both are one-line
+  changes there. Neither is owed a change now, and neither may be paid down
+  separately: each depends on the publish call site that round introduces.
 - `npm run lint` in `apps/ui` is RED at base and is NOT a gate (R-0364), which is
   R-0622 and routes to a paydown branch.
-<<<END PLANF009R11
+<<<END PLANF009R12
 
-<<<SLICE R0635
-- R-0635 — Low — A REVIEWER SPEC ORDERED AN ARGUMENT WHOSE REAL BEHAVIOUR CONTRADICTED THE PROPERTY THE SAME SENTENCE DEMANDED, AND ONLY THE WORKER'S MEASUREMENT CAUGHT IT. The R10 block, committed at `6b55de93`, specified C6's audit line as serialised "with `secure_fs.json_bytes(..., indent=0)` onto one line". Those two clauses cannot both hold. Measured by the reviewer at `db50d0bb` over the shipped helper: `json_bytes(record, indent=0, sort_keys=True)` returns 8 newline bytes for the six-field record D6 fixes, because `json.dumps` with `indent=0` still breaks after every element and merely indents by zero — so every record would have carried interior newlines, `append_line_at` refuses exactly those by design, and every audit write in the round would have raised. The gate the same block ordered could not have passed. A SECOND HALF OF THE SAME DEFECT went unstated: `json_bytes` defaults to `sort_keys=True`, which alphabetises the object and would have destroyed the `ts`, `token_fp`, `command`, `args_hash`, `nonce`, `outcome` order that DECISION F009 D6 fixes and that T5_F035 and T9_F167 already plan to read. The block named a MECHANISM and not its arguments, and the mechanism's real defaults destroyed the property the specification existed to establish — the class item 18 of `docs/agents/planner_reviewer_prompt.md` already forbids, widened by R-0591 in exactly these words, and simply not run. WHY LOW: nothing false reached disk and no artifact is wrong. The worker measured `json.dumps` before writing anything, applied the stated PROPERTY — one line, D6's order — with `indent=None, sort_keys=False`, declared the objection with its measurement, and the audit record on disk is correct in both respects. The whole cost is one declared deviation, and the round is otherwise a clean pass. THIS FINDING DELIBERATELY PROPOSES NO NEW CHECKLIST ITEM, on R-0597's reasoning: item 18 is the counter-measure, it is already on disk in the widened form R-0591 gave it, and a checklist that grows an entry every time an existing entry is skipped protects nothing. FIX: none is owed in the code. The reviewer's obligation is to run item 18 against every mechanism a block names — read the argument defaults, not the intent — and this entry is the record that it was not run at R10.
-<<<END R0635
+<<<SLICE R0636
+- R-0636 — Low — A REVIEWER SPEC ORDERED TWO COMMITS WHOSE REQUIREMENTS COULD NOT BOTH BE MET, TWICE IN ONE BLOCK, AND THE WORKER HAD TO SPEND BOTH DEVIATIONS PROVING IT. The R11 block, committed at `45a67196`, specified C6 and C7 independently and never read them against each other. FIRST COLLISION: C6 printed `publish_nonce_result(job_id, nonce, body, *, control_root_path=None)` returning "the body that is in force", while C7 required that the store hold the status too, "a body without its status cannot answer a replay truthfully" — the same block, forty lines apart, ordering an interface that cannot carry what the next commit must read out of it. The worker kept the printed positional shape, added a REQUIRED keyword-only `status` with no default, and returned the record; that resolution is correct and a default would have been worse, since a frozen wrong status is exactly the failure D15 exists to prevent. SECOND COLLISION, and the one with a consequence beyond the round: C7 ordered the replay audited "with the outcome the ORIGINAL attempt would have carried", while DECISION F009 D15's first half rules that only an ACCEPTED command publishes a record — so the original outcome is `accepted`, which DECISION F009 D14 RESERVES, which `packages/orchestration/command_audit.py` excludes from `OUTCOMES`, and which two tests shipped at `8d050bb3` forbid this door to write. The instruction was satisfiable by no implementation. The worker wrote `not_implemented`, which is the honest outcome while the seam stands, and named the collision in a comment at the call site rather than burying it. WHY LOW: nothing false reached disk, both suites are green, and the worker's resolutions are the ones the reviewer would have authored. THE CLASS IS THE BLOCK'S OWN INTERNAL CONSISTENCY, which checklist item 13 of `docs/agents/planner_reviewer_prompt.md` covers for a block's ORDERING and item 16 for a count against a list it NAMES, while neither reaches one commit's stated INTERFACE against another commit's stated REQUIREMENT — R-0527 is the nearest relative and it binds a constraint against a slice, not a spec against a spec. FIX, owed by the round that retires the 501 seam and by no earlier one, because both halves depend on the publish call site that round introduces: when `publish_nonce_result` gains its door caller, the replay's audit token moves off `not_implemented` to whatever that round rules a replay is — and a replay is NOT the same event as the acceptance it repeats, so a distinct token is likely the right answer rather than reusing `accepted`, which would make the two indistinguishable to `T5_F035` and `T9_F167`, the two features that read this file to count what the door did.
+<<<END R0636
 
-<<<SLICE LEDGER11
-Gate: R11 — the R10 entry. R10 PASSED. Every gate the block ordered was re-run by the reviewer and every value reproduced, the two deviations the round declared are both correct, and the one defect found is the reviewer's own and is registered directly above as R-0635. TRANSPORT AND SLICES HELD — the scratch file as emitted, `.agent/authored/f009-r10.md` at `6b55de93` and `.agent/last_block.md` at `d0e7823e` are all sha256 17a2f22543a4ac6f8d3c40d1313e5d611f20703d5bd8500788b3398125458271 over 28368 bytes and 326 lines, and the reviewer's own ordered extraction gives PLANF009R10 8db516d9/2315/41, DECISION14 cd4dd401/4205/13 and LEDGER10 db323595/3614/1. `.agent/plan.md` at `5dcbede4` is BYTE-EQUAL to PLANF009R10 at 41 lines under the 50-line cap. BOTH APPENDS HOLD BY DIRECT COMPARISON: at `728247a9` the round-base blob is a byte-exact prefix and the remainder is exactly a newline plus LEDGER10 over 3615 bytes, and at `7bd32ecd` the same holds for DECISION14 over 4206 bytes into `.agent/decisions.md`, whose line-anchored `^## DECISION F009 D\d+ — ` keys go 13 to 14, all DISTINCT. THE SETS HELD line-anchored at the round base, at `728247a9` and at `1305a9b0`: `^- R-\d+ — ` 200 at all three with every id DISTINCT, `^Done: R-\d+ — ` 1, `^> Next free id` 0, `^Landed: ` 0, 0 and 1, `^Gate: R\d+ — ` 9, 10 and 10 over that many DISTINCT keys, max id R-0634, and item 10's rule giving 199 open at `1305a9b0`. THE RANGE HELD: the path set from the round base to `1305a9b0` is exactly the twelve declared paths other than the handback's, the set difference empty both ways; twelve single-parent commits with `git show --numstat` and `git diff --numstat` AGREEING on every cell and every cell equal to the `## Commits` column, insertions 326, 254, 13, 2, 14, 10, 214, 315, 241, 64, 17 and 80, all under the 500-insertion cap; zero marker lines in the three committed state targets; twelve reflog rows all `commit` with `amend`, `rebase` and `cherry` 0 each; `git ls-files .remedy-wt` 0; and a clean tree. THE SUITES ARE THE REVIEWER'S OWN, run serially in the primary checkout at `db50d0bb`: the three groups EXIT 0 at 106, 42 and 499 passed, each equal to the count the handback reported and none of them predicted by it, and `ruff check` EXITS 0 over all seven paths at `db50d0bb` and over the four that exist at the round base, the baseline half read through `--stdin-filename` so `per-file-ignores` resolved. THE IMPORT SET grew by exactly one module, `packages.orchestration.command_audit`, measured by AST diff over `packages/orchestration/ui_server.py` at 61 modules against 62, with nothing removed. THE R-0634 REPAIR IS A REAL DISCRIMINATOR AND THE REVIEWER PROVED IT INDEPENDENTLY, in its own disposable worktree at `db50d0bb`: the target `with _COMMAND_RATE_LOCK:` is unique in that file by whole-line, indent-agnostic and substring counting alike, and with it replaced by `if True:` the new `test_the_lock_actually_excludes_a_second_caller` FAILED 10 runs out of 10 while the old eight-thread `test_concurrent_callers_never_oversubscribe_one_budget` PASSED 10 out of 10 — the second half being R-0634 reproduced exactly, and the first being the repair doing what the old test could not. Unmutated, the new test passed 3 out of 3, and the source was restored byte-identically. THE AUDIT WIRING IS PINNED: with `audit_command_attempt` made to return False without writing, the door's suite went from 76 passed to 9 failed and 67 passed, and the nine are precisely the audit tests — one per outcome token plus the vocabulary and the raw-token tests. The reviewer's first attempt at the lock mutation used a wrongly-indented target string and therefore changed nothing; it was caught by the whole-line count reading 0 and re-run against the measured line, which is the R-0629 discipline catching the reviewer rather than the worker. BOTH DECLARED DEVIATIONS ARE CORRECT. The extra commit `b60c6393` repairs a real red: `except Exception` in C7 trips the standing AST guard `tests/orchestration/test_test_runner.py::TestNoBroadExceptAndDegradedSignals::test_no_broad_except_exception_in_dashboard`, and the replacement set is right rather than merely narrower — the reviewer confirmed at `db50d0bb` that `StopControlError` and `SecureFsError` are both `RuntimeError` subclasses, so the named tuple genuinely covers what the writer raises. The `indent=0` objection is upheld in full and is the reviewer's defect, not the round's. THE TESTS THEMSELVES WERE READ AND ARE NOT VACUOUS: the raw-token test asserts the token's absence AND that two records exist, so it cannot pass on an empty file; the D14 clause-one test asserts that no `control` directory exists at all after an unauthenticated attempt; and the swallow test asserts `calls == ["rejected_token", "rejected_csrf", "not_implemented"]` before comparing responses, which is R-0633's own rule — the mutation must reach the code — applied by the worker to its own test.
-<<<END LEDGER11
+<<<SLICE R0637
+- R-0637 — Low — THE NONCE RECORD'S SIZE BOUND IS ENFORCED WHERE IT IS READ AND NOT WHERE IT IS WRITTEN, SO A RECORD CAN BE PUBLISHED THAT CAN NEVER BE REPLAYED. Measured by the reviewer at `fde072f1` in `packages/orchestration/command_nonce.py`: `MAX_NONCE_RECORD_BYTES` is 64 KiB and it is passed to `read_verified_file` in `_read_record`, so a larger record is refused at lookup; `publish_nonce_result` does not mention the constant at all, so nothing stops one being written. The consequence is silent and is in the safe direction, which is why it is Low rather than Medium: an oversize record publishes, every later lookup of that nonce reads nothing, and the client's replay re-executes the command instead of being answered — idempotency is simply OFF for that nonce, with no error anywhere and no way for the client to tell. The docstring's own reasoning is what leaves the gap: it says the bound "matches the door's own request ceiling, so nothing that fits through the door fails to fit in the store", and that is true of the REQUEST and says nothing about the RESPONSE, which is what this store actually holds — a body the door composed, not a body the client sent. NOTHING IS BROKEN TODAY and no test is wrong: `publish_nonce_result` has no door call site at all while the 501 seam stands, by DECISION F009 D15, so no oversize record can currently be produced by any path a request can reach. That is also why this is registered rather than repaired here — the repair belongs with the caller. FIX, owed by the round that retires the seam, in the same commit that adds the publish call site: refuse an oversize record AT PUBLICATION, returning None the way every other unusable input to that function already does, so a record that cannot be replayed is never written in the first place; and state the rule in terms of the RESPONSE rather than the request, since those are the bytes being bounded. A test that publishes a record over the bound and asserts the refusal belongs with it, because the current bound has no negative control on the write side at all.
+<<<END R0637
 
-<<<SLICE DONE0634
-Done: R-0634 — Resolved at `1305a9b0`, and the resolution was verified by the reviewer's own mutation rather than accepted from the handback. The repair adds `tests/ui_server/test_command_channel.py::TestCommandRateLimiter::test_the_lock_actually_excludes_a_second_caller`, which turns the EXISTING `now` injection into the suspension point instead of adding a production hook: `accept_command_under_rate_limit` calls `now()` inside the critical section, so thread A's `now` runs while `_COMMAND_RATE_LOCK` is held, waits for thread B to signal that it is attempting entry — failing the test if that signal never arrives, so the check cannot pass vacuously — and then asserts B is STILL not inside after a bounded second. `packages/orchestration/ui_server.py` is unchanged by the repair, which is what the finding required: the lock was always correct and only the test's claim overreached. MEASURED BY THE REVIEWER at `db50d0bb` in a disposable worktree, with the unique line `with _COMMAND_RATE_LOCK:` replaced by `if True:`: the new test FAILED 10 runs out of 10, and unmutated it PASSED 3 out of 3. The old eight-thread test PASSED 10 out of 10 under the same mutation, which is R-0634 reproduced exactly; it is kept as the aggregate smoke check it always was, with a docstring that now names this finding instead of claiming to test the lock.
-<<<END DONE0634
-
-<<<SLICE DECISION15
-## DECISION F009 D15 — the nonce record is published only by an accepted command, and a replay spends no rate budget (2026-08-22)
-
-D8 ruled the nonce store's shape — `commands_nonce/<nonce>.json` in the job's control directory, one create-only file per nonce holding the response body that was returned, the replay window being the job's lifetime. It did not fix WHEN a record is published or WHERE the lookup sits in the door's decision order, and both are observable, so both are ruled here rather than left to the implementation.
-
-FIRST, WHAT MAY PUBLISH. Read at `db50d0bb`, the door's last act is a 501 seam: `_handle_command_submission` authenticates, resolves, validates, checks the exposed subset and the rate limit, and then answers 501 because DECISION F009 D5's effect table does not exist yet. CHOSEN: a nonce record is published ONLY for a command that was ACCEPTED, so while the seam stands nothing publishes at the door at all, and the publish call site lands in the round that retires the seam — the same round that writes D14's reserved `accepted` audit outcome. ALTERNATIVES: (a) publish the 501 body under the nonce, so the store is exercised end to end now — rejected, and this is the whole reason the decision exists: D8's contract is that a seen nonce returns the ORIGINAL result, so a published 501 would be returned for that nonce forever, freezing a transient seam into a permanent answer for the one client that retried during it, and the bug would outlive the seam by the lifetime of the job. (b) publish at the seam but expire such records when the seam retires — rejected, it buys nothing and adds a migration to a store whose whole appeal is that it has none. THE COST IS STATED: until T003 the door's lookup can only miss, so its tests seed the store through this module's own publish function, which is production code exercised by production means rather than a test-only path.
-
-SECOND, WHERE THE LOOKUP SITS AND WHAT IT SPENDS. CHOSEN: the lookup runs after the UI-exposed subset check and BEFORE the rate limit, and a replay that hits returns the stored body while spending NO budget. WHY NOT AFTER THE LIMIT, which would be the simpler insertion: D9's own words are "the maximum accepted commands", and a replay accepts nothing new — it returns a decision the server already made. Charging it would penalise a client for the server's own idempotency guarantee, and the client that retries after a network timeout is precisely the case a nonce exists to serve, so a limit that punished it would break the contract it sits next to. ALTERNATIVES: (a) charge a replay like any request — rejected on the argument above. (b) place the lookup first, before the credentials — rejected outright, it would answer an unauthenticated caller out of the store and turn the nonce into an oracle for other clients' responses.
-
-THIRD, THE NONCE'S CHARACTER CLASS. It becomes a FILENAME, so it is validated before it is used: CHOSEN, `safe_points.is_safe_id`, the same `_ID_RE` that already guards the job segment of the same directory, checked in `_read_command_payload` beside the existing non-empty check. A nonce that fails it is the 400 on field `client_nonce` that shape errors already produce and is audited `rejected_shape` — so D14's closed outcome vocabulary is UNCHANGED and gains no token.
-
-REVERSE by moving the publish call and the lookup; the store's path, shape and window come from D8 and are unchanged by this decision.
-<<<END DECISION15
+<<<SLICE LEDGER12
+Gate: R12 — the R11 entry. R11 PASSED. Every gate was re-run by the reviewer and every value reproduced, both declared deviations are correct and both are the REVIEWER's defects rather than the round's — they are registered directly above as R-0636 — and the review found one further defect of its own reading, R-0637. TRANSPORT AND SLICES HELD — the scratch file as emitted, `.agent/authored/f009-r11.md` at `45a67196` and `.agent/last_block.md` at `9c83f03f` are all sha256 53fb09f242c458fb3da8c9d8f615668ded9330927d5ff5b4e01b44721a96bbb0 over 30270 bytes and 291 lines, and the reviewer's own ordered extraction gives the five slices PLANF009R11, R0635, LEDGER11, DONE0634 and DECISION15. `.agent/plan.md` at `29086a21` is BYTE-EQUAL to PLANF009R11. THE THREE APPENDS HOLD BY DIRECT COMPARISON: at `37bd4fdc`, `90c59662` and `74de46b2` the previous blob is a byte-exact prefix and each remainder is exactly a newline plus its slice, over 2312, 4964 and 3475 bytes. THE ONE REPLACEMENT IS PROVED AS ONE: at `29ee4b08` the reviewer reconstructed the C4 blob independently by replacing the single `^Landed: R-0634 — ` line of the `90c59662` blob with the DONE0634 bytes, and the reconstruction is BYTE-EQUAL to what landed; `^Landed: ` goes 1 to 0 and `^Done: R-0634 — ` 0 to 1, over a `git show --numstat` of one insertion and one deletion, which is the shape of a replacement and not of an append. THE SETS HELD line-anchored at the round base, C2, C3 and C4: `^- R-\d+ — ` 200, 201, 201 and 201 with every id DISTINCT at each, `^- R-0635 — ` 0, 1, 1 and 1, `^Done: R-\d+ — ` 1, 1, 1 and 2, `^Landed: ` 1, 1, 1 and 0, `^> Next free id` 0 throughout, `^Gate: R\d+ — ` 10, 10, 11 and 11 over that many DISTINCT keys, max id R-0635, item 10's rule giving 199 open at `29ee4b08`, and `^## DECISION F009 D\d+ — ` 14 to 15 in `.agent/decisions.md`, all DISTINCT. THE RANGE HELD: the path set from the round base to `e11fe949` is exactly the nine declared paths other than the handback's with the set difference empty both ways; ten single-parent commits with `git show --numstat` and `git diff --numstat` AGREEING on every cell, insertions 291, 187, 17, 2, 2, 1, 12, 448, 152 and 49, all under the 500-insertion cap; zero marker lines in the three committed state targets; `git ls-files .remedy-wt` 0; and a clean tree. THE SUITES ARE THE REVIEWER'S OWN, run serially in the primary checkout at `fde072f1`: the three groups EXIT 0 at 120, 42 and 507 passed, each equal to the count the handback reported and none of them predicted by it, `ruff check` EXITS 0 over the four paths, and the AST import diff over `packages/orchestration/ui_server.py` reads 62 modules against 63 with `packages.orchestration.command_nonce` the only addition and nothing removed. BOTH PROBES ARE THE REVIEWER'S OWN, in its own disposable worktree at `fde072f1` with the source restored byte-identically and the worktree pruned: against a control of 109 passed, making `lookup_nonce_result` return None unconditionally fails SEVEN node ids — the three door-level replay tests and the four store-level publication tests — and making publication overwrite instead of create-only fails TWO, `test_a_second_publish_of_one_nonce_returns_the_first_body` and `test_concurrent_publishers_of_one_nonce_all_receive_the_same_body`, which are precisely the two that assert the race convergence D8 chose one file per nonce to get. Both readings match the handback's id for id. THE CODE WAS READ AND NOT MERELY GATED: `_parse_record` refuses a boolean status explicitly, which matters because `True` is an `int` in Python and would otherwise become a status code; `lookup_nonce_result` answers every unusable input with a miss rather than an exception, so an unreadable store costs a re-execution instead of a 500; the lookup sits after the credentials, so the store can never answer an unauthenticated caller; and the nonce's character class is asked of the module that owns the path rather than copied into the door, which is the one-spelling-per-concept rule applied where it actually prevents drift. THE REVIEWER'S OWN R11 SPECIFICATION IS WHAT COST THIS ROUND ITS TWO DEVIATIONS, and the round handled both the way the protocol asks: it measured before accepting, applied the stated property, and declared the collision instead of quietly reinterpreting it.
+<<<END LEDGER12
 
 Constraints:
-1. Apply PLANF009R11, R0635, LEDGER11, DONE0634 and DECISION15 BYTE FOR BYTE out
-   of the committed C0a blob — those are the slices, and this list is what "every
-   slice" means anywhere below. Do not retype, rewrap, reflow, reindent or
+1. Apply PLANF009R12, R0636, R0637 and LEDGER12 BYTE FOR BYTE out of the
+   committed C0a blob — those are the slices, and this list is what "every slice"
+   means anywhere below. Do not retype, rewrap, reflow, reindent or
    whitespace-adjust any of them. If a slice looks wrong to you, apply it as
    written and record the objection in the handback — an objection is recorded,
    never acted on.
-2. The commit order is C0a, C0b, C1, C2, C3, C4, C5, C6, C7, C8 and nothing comes
-   between them. C1 is the first substantive commit (checklist item 23).
-3. C2, C3 and C5 are APPENDS. C4 is the ONE replacement this round makes: it
-   replaces the single line of `.agent/live_review.md` matching `^Landed: R-0634 — `
-   with the DONE0634 slice. Locate that line BY THAT ANCHOR with a script, confirm
-   it matches exactly 1 line before you touch anything, and stop if it does not.
-   Nothing else in that file is edited, ever — it is an append-only record and the
-   `Landed:` marker is the one exception, replaced by reviewer-authored text at the
-   next gate per docs/agents/planner_reviewer_prompt.md §4 item 4.
-4. C6 and C7 each carry their own tests in the same commit as the code they cover.
-   The handler gains exactly one new import, the nonce module named in the change
-   set, and nothing that opens a file, spawns a process or writes storage directly.
+2. The commit order is C0a, C0b, C1, C2, C3, C4, C5 and nothing comes between
+   them. C1 is the first substantive commit (checklist item 23).
+3. WRITE NO CODE. Touch nothing under `packages/`, `apps/`, `tests/` or `docs/`.
+   R-0636 and R-0637 each name a repair and this round performs NEITHER: both are
+   owed by the round that retires the 501 seam.
+4. C2, C3 and C4 are APPENDS to `.agent/live_review.md`, in that order, one
+   commit each. Nothing in that file is edited — it is an append-only record.
 5. `.remedy-wt/` is gitignored scratch. Every multi-step gate goes into a script
    there; `git status --porcelain` prints 0 lines after each commit.
-6. Push with `git push` after C8, the last commit of this round.
-
-The code you write, by commit:
-
-C6 — `packages/orchestration/command_nonce.py`, new. It owns D8's store and
-nothing else: it decides no status code and never reads a request. Export the
-directory name `commands_nonce`, the file mode `0o600`, and three functions —
-`nonce_is_valid(nonce)`, which is `safe_points.is_safe_id`; `publish_nonce_result(
-job_id, nonce, body, *, control_root_path=None)`, which publishes CREATE-ONLY and
-returns the body that is in force afterwards; and `lookup_nonce_result(job_id,
-nonce, *, control_root_path=None)`, which returns the stored body or None. Reach
-the job's control directory through `safe_points.open_job_control_fd` and the
-nonce subdirectory through `secure_fs.open_verified_dir`, creating it only on the
-publish path. Publish with `secure_fs.write_file_atomically(..., create_only=True)`:
-when it returns False another caller won the race, so READ that winner's file and
-return ITS body — the loser's result never existed, which is `request_stop`'s own
-idiom for the same problem and the reason D8 chose one file per nonce over a map.
-An invalid nonce, a missing directory or an unreadable record is None or False,
-never an exception, for the same reason the audit module raises nothing at its
-callers. Say in a module docstring that PUBLICATION HAS NO DOOR CALL SITE YET and
-name DECISION F009 D15 as the reason, so a reader who greps for the caller finds
-the answer rather than a hole. Tests in `tests/orchestration/test_command_nonce.py`,
-new, covering at least: a published body read back byte-equal; the record's 0o600
-mode and its location under `commands_nonce` inside the job's control directory; a
-second publish of the SAME nonce returning the FIRST body and leaving the file
-unchanged; two different nonces coexisting; a lookup of an unpublished nonce
-returning None; a lookup against a job with no control directory returning None;
-every nonce that fails the character class refused by both functions, with
-`../escape`, an empty string, a 65-character string and a slash-bearing string
-among the cases; and concurrent publishers of one nonce from several threads all
-receiving the SAME body.
-
-C7 — `packages/orchestration/ui_server.py`. Two changes and no more. First, in
-`_read_command_payload`, reject a `client_nonce` that fails `nonce_is_valid` with
-the existing field error on `client_nonce`, beside the non-empty check that is
-already there; it is the same 400 and the same audited `rejected_shape`, so D14's
-vocabulary is untouched. Second, in `_handle_command_submission`, after the
-UI-exposed subset check and BEFORE the rate-limit call, look the nonce up; on a
-hit, send the stored body with its stored status and return, spending no budget,
-and audit that replay with the outcome the ORIGINAL attempt would have carried.
-Store the status alongside the body so a replay can reproduce both — a body
-without its status cannot answer a replay truthfully. Add the tests to
-`tests/ui_server/test_command_channel.py`: a replay of a nonce seeded through
-`publish_nonce_result` returning the stored status and body BYTE-EQUAL; that same
-replay leaving the rate-limit budget untouched, proved by exhausting the budget
-afterwards and counting the accepted attempts; a nonce failing the character class
-answering 400 on field `client_nonce` and auditing `rejected_shape`; an unseeded
-nonce still reaching the 501 seam; and a replay never reaching the seam, proved by
-the response rather than by inspection.
+6. Push with `git push` after C5, the last commit of this session.
 
 Done when:
-- G1 `.agent/STOP` ABSENT, read at Step 0 and again before C8.
+- G1 `.agent/STOP` ABSENT, read at Step 0 and again before C5.
   `git rev-parse --abbrev-ref HEAD` prints `feature/f009-single-write-channel` at
   every reading. `git status --porcelain` prints 0 lines after each of C0a
-  through C8. Report the round base SHA you read at Step 0.
-- G2 Transport EQUAL: the scratch file as received, `.agent/authored/f009-r11.md`
+  through C5. Report the round base SHA you read at Step 0.
+- G2 Transport EQUAL: the scratch file as received, `.agent/authored/f009-r12.md`
   at C0a and `.agent/last_block.md` at C0b all carry the same sha256, byte count
   and line count, equal to the digest in the task prompt. Write C0b from the
   COMMITTED C0a blob, never from the scratch file again.
 - G3 Report, per slice, the newline-included sha256, byte count and line count;
   the COUNT of slices from your own ordered extraction out of the committed C0a
   blob; and the aggregate byte count, line count and slice count over them.
-- G4 `.agent/plan.md` at C1 is BYTE-EQUAL to PLANF009R11. Report its line count
+- G4 `.agent/plan.md` at C1 is BYTE-EQUAL to PLANF009R12. Report its line count
   against the 50-line cap; `^## Goal$` and `^## Next Steps$` each match exactly
   1 line; the first `\bF\d{3}\b` match is `F009`.
-- G5 The appends at C2 and C3 to `.agent/live_review.md` and at C5 to
-  `.agent/decisions.md`, each proved TWICE over independent extractors in the
-  general N-paragraph form: (a) the previous blob is a byte-exact PREFIX and the
-  remainder EQUALS a newline plus the slice, reported with its sha256, bytes and
-  lines; (b) with N COUNTED BY YOUR SCRIPT AND REPORTED, the LAST N blank-line
-  units of the whole file equal the slice's N paragraphs IN ORDER. NEGATIVE
-  CONTROL on the FIRST appended paragraph of each: flip ONE printable ASCII byte
-  and confirm BOTH readings REJECT it while both ACCEPT the unflipped value;
-  report all four outcomes per append. The base for C2 is the round base, for C3
-  the C2 blob, and for C5 the round base.
-- G6 C4 is a REPLACEMENT and is proved as one, not as an append. Report, over
-  `.agent/live_review.md`: `^Landed: R-0634 — ` matching exactly 1 line at C3 and
-  0 lines at C4; `^Done: R-0634 — ` matching 0 lines at C3 and exactly 1 at C4;
-  and that the C4 blob equals the C3 blob with that one line replaced by the
-  DONE0634 slice's bytes, computed by your script as a byte comparison against a
-  reconstruction rather than asserted. Report `git show --numstat` for C4, which
-  is the shape of a one-line replacement and not of an append.
-- G7 Line-anchored over `.agent/live_review.md` at the round base, at C2 and at
-  C4: `^- R-\d+ — ` 200, 201 and 201 with all ids DISTINCT at each;
-  `^- R-0635 — ` 0, 1 and 1; `^Done: R-\d+ — ` 1, 1 and 2; `^Landed: ` 1, 1 and
-  0; `^> Next free id` 0 at all three. Separately, because the `Gate:` entry
-  lands at C3 rather than at C2, report `^Gate: R\d+ — ` at the round base, at C3
-  and at C4: 10, 11 and 11, over that many DISTINCT keys at each. Report the
-  max id at C4 and the count item 10's rule gives at C4 — line-anchored
-  `^- R-\d+ — ` minus line-anchored `^Done: R-\d+ — `. State that value in the
-  handback WITH the rule and the commit beside it, per DECISION F009 D10, and
-  report what your script printed rather than restating it here. Over
-  `.agent/decisions.md` at the round base and at C5 report line-anchored
-  `^## DECISION F009 D\d+ — ` 14 and 15 over that many DISTINCT keys.
-- G8 The BASELINE half, per path, is
-  `git show <round base>:<path> | python3 -m ruff check --stdin-filename <path> -`
-  and it EXITS 0 for `packages/orchestration/ui_server.py` and
-  `tests/ui_server/test_command_channel.py`. USE `--stdin-filename` AND NOTHING
-  ELSE for the base reading: `pyproject.toml` carries `per-file-ignores` keyed by
-  path — `"tests/**" = ["F811"]` among them — so a copy of the base blob read at
-  any other path is linted under rules the file does not live under, and a copy
-  written into the primary checkout is forbidden by guardrail G5 of
-  docs/agents/self_drive_protocol.md. At C7 run `python3 -m ruff check` in the
-  primary checkout over those two paths together with
-  `packages/orchestration/command_nonce.py` and
-  `tests/orchestration/test_command_nonce.py`; it must EXIT 0. The two paths the
-  C7 half adds are the ones this round creates, which is why the baseline half
-  cannot name them. Report both exit codes.
-- G9 In the PRIMARY checkout at C7, run SERIALLY, never two pytest processes at
+- G5 The appends at C2, C3 and C4 to `.agent/live_review.md`, each proved TWICE
+  over independent extractors in the general N-paragraph form: (a) the previous
+  blob is a byte-exact PREFIX and the remainder EQUALS a newline plus the slice,
+  reported with its sha256, bytes and lines; (b) with N COUNTED BY YOUR SCRIPT
+  AND REPORTED, the LAST N blank-line units of the whole file equal the slice's N
+  paragraphs IN ORDER. NEGATIVE CONTROL on the FIRST appended paragraph of each:
+  flip ONE printable ASCII byte and confirm BOTH readings REJECT it while both
+  ACCEPT the unflipped value; report all four outcomes per append. The base for
+  C2 is the round base, for C3 the C2 blob, and for C4 the C3 blob.
+- G6 Line-anchored over `.agent/live_review.md` at the round base, at C3 and at
+  C4: `^- R-\d+ — ` 201, 203 and 203 with all ids DISTINCT at each;
+  `^- R-0636 — ` 0, 1 and 1; `^- R-0637 — ` 0, 1 and 1; `^Done: R-\d+ — ` 2 at
+  all three; `^Landed: ` 0 at all three; `^> Next free id` 0 at all three;
+  `^Gate: R\d+ — ` 11, 11 and 12 over that many DISTINCT keys. Report the max id
+  at C4 and the count item 10's rule gives at C4 — line-anchored `^- R-\d+ — `
+  minus line-anchored `^Done: R-\d+ — `. State that value in the handback WITH
+  the rule and the commit beside it, per DECISION F009 D10, and report what your
+  script printed rather than restating it here. Of the `Gate: ` lines at C4,
+  report how many match `^Gate: R(\d+) — the R(\d+) entry\.` with the second
+  numeral one less than the first, and quote to its first period any that does
+  not — the expected reading is eleven matches and one non-match reading
+  `Gate: R1 — the F008 R36 entry.`
+- G7 In the PRIMARY checkout at C4, run SERIALLY, never two pytest processes at
   once, and report each exit code and its passed-plus-skipped total without
-  predicting either:
-  `python3 -m pytest tests/orchestration/test_command_nonce.py tests/orchestration/test_command_audit.py tests/orchestration/test_safe_points.py -q -rf`
-  then `python3 -m pytest tests/cli/test_golden_path.py -q -rf`
+  predicting either: `python3 -m pytest tests/cli/test_golden_path.py -q -rf`
   then `python3 -m pytest tests/ui_server/ tests/orchestration/test_test_runner.py tests/regression/test_resource_safety.py tests/orchestration/test_integrity_gate.py -q -rf`.
-  All three must EXIT 0. The third is ordered because R-0607's FIX clause
-  requires it of any round whose change set holds an `.agent/` state file.
-- G10 PROBE, not a colour, run ONLY in a disposable worktree at C7 with the
-  source restored byte-identically afterwards and the worktree removed and
-  pruned. Make `lookup_nonce_result` return None unconditionally, run
-  `tests/ui_server/test_command_channel.py` and
-  `tests/orchestration/test_command_nonce.py`, and REPORT which node ids fail and
-  how many. Then, separately and in the same manner, make
-  `publish_nonce_result`'s create-only publication overwrite instead — pass
-  `create_only=False` — and run `tests/orchestration/test_command_nonce.py`,
-  reporting which node ids fail. Name any test that SURVIVES either mutation and
-  say why it legitimately does not measure that property (R-0633).
-- G11 The range from the round base to C7: `git diff --name-only` lists EXACTLY
+  Both must EXIT 0. This gate is ordered because R-0607's FIX clause requires it
+  of any round whose change set holds an `.agent/` state file.
+- G8 The range from the round base to C4: `git diff --name-only` lists EXACTLY
   the paths of the change set above other than `.agent/handoff.md`, the set
-  difference empty in both directions. Walk `git rev-list --reverse` and report,
-  per commit, that it has ONE parent and its `git show --numstat` insertions,
-  with `git diff --numstat` AGREEING on every cell and every cell equal to the
-  `+/-` column of your handback's `## Commits` table (checklist item 28). Every
-  commit stays under the 500-insertion cap of AGENTS.md DECISION F104 D1; a
-  commit that would exceed it is SPLIT before it is made and the split is
-  declared. `^<<<SLICE ` and `^<<<END ` read 0 lines in `.agent/plan.md`,
-  `.agent/live_review.md` and `.agent/decisions.md`. Classify this round's own
-  reflog entries by the operation before the first `:` in `%gs` and report
-  `amend`, `rebase` and `cherry`, which must each be 0; assert no total over the
-  whole reflog (R-0601). Report `git ls-files .remedy-wt` as a count.
-- G12 The door's new import: report the module names
-  `packages/orchestration/ui_server.py` imports at C7 that it did not import at
-  the round base, as a set difference computed by parsing the file's AST rather
-  than by grepping text, and confirm the only addition is the nonce module.
-- G13 The handback carries every mandated section of
+  difference empty in both directions, and holds NO path beginning `packages/`,
+  `apps/`, `tests/` or `docs/` — constraint 3 as a measurement. Walk
+  `git rev-list --reverse` and report, per commit, that it has ONE parent and its
+  `git show --numstat` insertions, with `git diff --numstat` AGREEING on every
+  cell and every cell equal to the `+/-` column of your handback's `## Commits`
+  table (checklist item 28). Every commit stays under the 500-insertion cap of
+  AGENTS.md DECISION F104 D1. `^<<<SLICE ` and `^<<<END ` read 0 lines in
+  `.agent/plan.md` and `.agent/live_review.md`. Classify this round's own reflog
+  entries by the operation before the first `:` in `%gs` and report `amend`,
+  `rebase` and `cherry`, which must each be 0; assert no total over the whole
+  reflog (R-0601). Report `git ls-files .remedy-wt` as a count.
+- G9 The handback carries every mandated section of
   docs/agents/handback_template.md, an item-status table holding exactly one row
-  for each of C0a, C0b, C1, C2, C3, C4, C5, C6, C7 and C8, the round base SHA,
-  and one line per gate — the raw transcripts go in the round report, not in the
-  handback (R-0582). Report its line count against the 100 that a bundle of more
-  than five commits allows, and if it exceeds that, carry the AGENTS.md DECISION
-  D15 stated-cause line naming the count and the mandated content that caused it.
-  Its `## Next` section states: that no `.agent/STOP` is present; that the next
-  session's FIRST action is the `.agent/STOP` re-read (Phase 1 rule 1) and its
-  SECOND the Open PR Gate (Phase 1 rule 2), which is EMPTY because this branch
-  carries no pull request and F009 opens one at its own closure; the open-finding
-  count from G7 WITH item 10's rule and the commit named beside it; that the next
-  free id is derived with `max` over the line-anchored entries and what that
-  gives; that `.agent/candidates.md` is EMPTY; that the next round is T003's
-  effect table per D5, which retires the 501 seam and is what finally publishes a
-  nonce record and writes the `accepted` audit outcome; and that R-0403, R-0607,
-  R-0608, R-0609, R-0611, R-0613, R-0622, R-0630, R-0633 and R-0635 stay routed
-  to a paydown branch.
+  for each of C0a, C0b, C1, C2, C3, C4 and C5, the round base SHA, and one line
+  per gate — the raw transcripts go in the round report, not in the handback
+  (R-0582). Report its line count against the 100 that a bundle of more than five
+  commits allows, and if it exceeds that, carry the AGENTS.md DECISION D15
+  stated-cause line naming the count and the mandated content that caused it. Its
+  `## Next` section states, in this order: that THIS SESSION ENDED HERE and that
+  the round wrote no production code, with the reason; that no `.agent/STOP` is
+  present; that the next session's FIRST action is the `.agent/STOP` re-read
+  (Phase 1 rule 1) and its SECOND the Open PR Gate (Phase 1 rule 2), which is
+  EMPTY because this branch carries no pull request and F009 opens one at its own
+  closure; the open-finding count from G6 WITH item 10's rule and the commit named
+  beside it; that the next free id is derived with `max` over the line-anchored
+  entries and what that gives; that `.agent/candidates.md` is EMPTY; that the next
+  round is T003's effect table per DECISION F009 D5, which retires the 501 seam
+  and is the round that owes the fixes for R-0636 and R-0637; and that R-0403,
+  R-0607, R-0608, R-0609, R-0611, R-0613, R-0622, R-0630, R-0633 and R-0635 stay
+  routed to a paydown branch.
 
 Handback:    completion report + rewrite `.agent/handoff.md`. The state block
              repeats this Fortschritt line verbatim: 60 % (T001 gebaut · T002
