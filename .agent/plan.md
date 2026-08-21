@@ -16,26 +16,26 @@ cross-site attempts fail closed and are audited as rejected, and a route-walking
 test plus an import guard prove no other mutating route exists.
 
 ## Current Step
-R10 lands the AUDIT half of T002 and leaves the nonce store to R11. DECISION F009
-D14 rules the three halves D6 left open, `packages/common/secure_fs.py` gains the
-append-only line writer this repository does not have, a new
-`packages/orchestration/command_audit.py` writes the per-job record, and every
-refusal the door already makes becomes an audited rejection. The round also
-repairs R-0634 in the test file it is already touching.
+R11 lands the NONCE half of T002 and closes R10's record. DECISION F009 D15 rules
+where the replay lookup sits in the door's order and what may publish a record: a
+new `packages/orchestration/command_nonce.py` owns the create-only per-nonce
+store, the door validates the nonce as a path component and answers a replay from
+the store, and PUBLICATION waits for the round that retires the 501 seam, because
+a 501 is not a result worth freezing. The round also registers R-0635 against the
+reviewer's own R10 spec and resolves R-0634.
 
 ## Next Steps
-1. R11 the nonce store per D8 — create-only publication, a validated nonce
-   character class, and a replay that returns the ORIGINAL body. Whether a replay
-   spends rate budget is open and is ruled by that round.
-2. T003's effect table per D5 — the round that finally retires the 501 seam —
-   with the plan-approval extraction landing as its own commit.
-3. Then the client wiring that sends both headers, the integration gate, and
-   closure.
+1. T003's effect table per D5 — the round that finally retires the 501 seam —
+   which is also the round that publishes a nonce record and writes the `accepted`
+   audit outcome D14 reserved. The `command.accepted` SSE event lands with it.
+2. Then the client wiring that sends both headers, the route-walking 405 test and
+   the import guard, the integration gate, and closure.
 
 ## Risks
-- An audit write that fails must never turn a refusal into a 500; D14 rules that
-  a failed write leaves the response it was recording unchanged.
-- The audit runs before the job's control directory is known to exist, so the
-  pre-credential path must never CREATE one — D14 rules that half too.
+- Publication and lookup land in different rounds by D15, so until T003 the
+  lookup can only ever miss at the door; its tests seed the store through the
+  module's own publish function rather than through a test-only path.
+- A nonce becomes a FILENAME, so its character class is the guard: it reuses the
+  same `_ID_RE` that already guards the job segment of that directory.
 - `npm run lint` in `apps/ui` is RED at base and is NOT a gate (R-0364), which is
   R-0622 and routes to a paydown branch.
