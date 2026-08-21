@@ -161,3 +161,43 @@ describe("restarting after the fallback engaged", () => {
     expect(runner.view().status).toBe("delayed");
   });
 });
+
+/** The seam R22's hook reads. `useSyncExternalStore` needs a subscribe and a
+ *  snapshot whose identity is stable, so both are pinned here. */
+describe("the runner as a store", () => {
+  it("hands back the same view object until something visibly changes", () => {
+    const { runner } = started();
+    const first = runner.view();
+    expect(runner.view()).toBe(first);
+    runner.dispatch({ kind: "opened" });
+    const second = runner.view();
+    expect(second).not.toBe(first);
+    expect(runner.view()).toBe(second);
+  });
+  it("tells every listener once per visible change", () => {
+    const { runner } = started();
+    let calls = 0;
+    runner.subscribe(() => { calls += 1; });
+    runner.dispatch({ kind: "opened" });
+    expect(calls).toBe(1);
+    runner.dispatch(frame(3));
+    expect(calls).toBe(2);
+  });
+  it("stays silent when an event changes nothing a reader can see", () => {
+    const { runner } = started();
+    runner.dispatch({ kind: "opened" });
+    let calls = 0;
+    runner.subscribe(() => { calls += 1; });
+    runner.dispatch({ kind: "timer" });
+    expect(calls).toBe(0);
+  });
+  it("stops calling a listener once it unsubscribes", () => {
+    const { runner } = started();
+    let calls = 0;
+    const unsubscribe = runner.subscribe(() => { calls += 1; });
+    runner.dispatch({ kind: "opened" });
+    unsubscribe();
+    runner.dispatch(frame(3));
+    expect(calls).toBe(1);
+  });
+});
