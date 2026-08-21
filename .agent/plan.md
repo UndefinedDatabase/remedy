@@ -16,28 +16,29 @@ ledger's envelope sequence, the heartbeat holds cadence, and the fallback
 engages on a disabled EventSource and recovers to live.
 
 ## Current Step
-R3 discharges the findings order the feature file's Orchestrator brief
-dispatches first. Both preconditions were MEASURED in the source and both
-contradict a prediction the feature file carried: the UI server is not threaded,
-so a long-lived response would block every other request; and `LedgerEvent`
-carries no seq, the enumeration position being consumed into a hash and
-discarded. This round registers that spec defect as R-0612, amends the feature
-file with the measured state and rules the consequence as DECISION F008 D1.
+R4 discharges the prerequisite DECISION F008 D1 ruled. The cockpit server
+instantiated `HTTPServer` bare and served one request at a time, so a single
+long-lived SSE response would have blocked every other cockpit request for its
+whole life. This round changes two lines to `ThreadingHTTPServer` and lands the
+test that proves it: a `threading.Barrier` both requests must reach, which is a
+fact about concurrency rather than a threshold about speed.
 
 ## Next Steps
-1. R4 makes the UI server threaded and proves it behaviourally — a slow
-   request must stop blocking a concurrent one — as its own commit with its
-   own tests. DECISION F008 D1 makes this a prerequisite of T001, not a part
-   of it, because it is production code on a path every cockpit feature uses.
-2. R5 builds T001 proper: the stream endpoint, the heartbeat, 404 and 429,
-   and the framing golden, with seq read from the ledger position.
-3. R6 onward builds T002 and T003 in the feature file's own order.
+1. R5 begins T001 proper: the stream endpoint, its 15 s heartbeat, 404 for an
+   unknown job and 429 beyond the per-job connection cap, with seq read from
+   the ledger position per DECISION F008 D1 and the framing golden as the
+   contract test.
+2. R6 builds T002: Last-Event-ID resume, gap-replay exactness and the
+   forced-disconnect hammer whose transcript must byte-equal the ledger.
+3. R7 onward builds T003 — the client hook, the fallback and the status
+   states — and then the integration gate before closure.
 
 ## Risks
-- Making the server threaded touches a path every existing UI feature shares,
-  so R4's blast radius is wider than its diff: the state-reader four and the
-  dashboard contract are the suites that would show it.
-- 184 findings are open once R-0612 lands and none is a code defect of F008.
+- Threading is live on a path every existing cockpit feature shares. The
+  handler's three attributes are set once at construction and never mutated
+  per request, so there is no shared-state race, but the state-reader four and
+  the dashboard contract are the suites that would show a regression.
+- 185 findings are open once R-0613 lands and none is a code defect of F008.
   Promoting R-0387's clause into the §3 checklist edits `docs/agents/**` and
-  stays routed to the paydown branch with R-0403, R-0607, R-0608, R-0609 and
-  R-0611.
+  stays routed to the paydown branch with R-0403, R-0607, R-0608, R-0609,
+  R-0611 and now R-0613.
