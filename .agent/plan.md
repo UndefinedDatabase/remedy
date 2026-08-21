@@ -16,26 +16,26 @@ cross-site attempts fail closed and are audited as rejected, and a route-walking
 test plus an import guard prove no other mutating route exists.
 
 ## Current Step
-R8 rate-limits the door per DECISION F009 D9: a typed `ConfigKeySpec` bounds the
-commands one token fingerprint may have accepted for one job per minute, and the
-excess is refused with 429 rather than made to wait, because an inbound request
-is holding a connection. D7's fingerprint — a truncated digest that never carries
-the raw token — is introduced here, where it is first used. DECISION F009 D13
-rules that the limit is consulted only for a request that would otherwise be
-accepted, so a malformed or unexposed command cannot spend a client's budget.
-The 429 is NOT yet audited; the audit record is D6 and lands with the nonce store.
+R9 closes this session. It registers R-0634 and records the R8 verdict, and it
+writes no production code. IT IS DECLARED AS A FIFTH ROUND AGAINST A STATED
+FOUR-ROUND CAP: the reviewer's own red-proof of R8 removed the lock that
+`test_concurrent_callers_never_oversubscribe_one_budget` names and measured the
+test green ten times out of ten, so the suite carries a thread-safety claim
+nothing verifies. That finding existed only in the reviewer's session, and a
+finding that is not on disk when a session ends is lost.
 
 ## Next Steps
-1. R9 the nonce store and the audit record per D6, D7 and D8 — a replay returns
+1. R10 the nonce store and the audit record per D6, D7 and D8 — a replay returns
    the ORIGINAL body, and every refusal this door already makes, the 429
-   included, becomes an audited rejection.
+   included, becomes an audited rejection. R-0634's repair is small and belongs
+   to whichever round next touches `tests/ui_server/test_command_channel.py`.
 2. T003's effect table per D5 — the round that finally retires the 501 seam —
    with the plan-approval extraction landing as its own commit.
 3. Then the client wiring that sends both headers, the integration gate, and
    closure.
 
 ## Risks
-- The limiter is in-process state on a threaded server, so it is read and written
-  under one lock, and its bucket map must not grow without bound.
+- The rate limiter's lock is CORRECT and is not the defect; R-0634 is about the
+  test's claim, so no production change is owed and none may be made in its name.
 - `npm run lint` in `apps/ui` is RED at base and is NOT a gate (R-0364), which is
   R-0622 and routes to a paydown branch.
