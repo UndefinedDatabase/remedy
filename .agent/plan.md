@@ -15,21 +15,20 @@ envelope sequence, the heartbeat holds cadence, and the fallback engages on a
 disabled EventSource and recovers to live.
 
 ## Current Step
-R26 lands `brainStreamSession.ts`, the composition seam T003 has been building
-toward: it ties the host to the runner store — a knot neither half can tie, the
-host dispatching into a runner that does not exist when the host is built — and
-gives the React hook one object to hold, whose `close` stops the runner AND the
-socket. Six vitest tests pin start, live, frame delivery, both halves of close
-and the delayed fallback.
+R27 lands `useBrainStream.ts`, the last piece of T003's client and the only
+part of it React owns: it subscribes to the session R26 landed through
+`useSyncExternalStore`, starts it in an effect and closes it in that effect's
+cleanup, so a remounting cockpit cannot leak one EventSource per mount. It
+keys the session on the job id alone and reads its dependency factory through
+a ref, because a caller writing deps inline would otherwise tear the stream
+down on every parent render. A new `tests/ui_contracts/` source contract gates
+it, on comment-stripped source so a WHY comment cannot satisfy a guard.
 
 ## Next Steps
-1. R27 adds `useBrainStream.ts` over this seam and its `tests/ui_contracts/`
-   source contract — the style every React component here is gated by
-   (R-0628) — with the hook closing the session on unmount, or a remounting
-   cockpit leaks one EventSource per mount.
-2. R28 puts the delayed badge on a visible surface and wires the hook's deps
-   to the endpoint T001 and T002 built.
-3. Then the integration gate before closure.
+1. R28 puts the delayed badge on a visible surface and wires the hook's deps
+   to the endpoint T001 and T002 built — the first round in which the server
+   half and the client half of this feature meet.
+2. Then the integration gate before closure.
 
 ## Risks
 - `npm run lint` in `apps/ui` is RED at base and is NOT a gate (R-0364): that
@@ -38,4 +37,4 @@ and the delayed fallback.
 - The badge is a visual surface docs/ui/design_reference/ binds, with any
   deviation owed an assumption_log entry carrying a technical reason.
 - The hook's RENDER behaviour stays unproved until a DOM environment exists:
-  its contract will gate its source, and this seam carries the logic beneath.
+  the contract gates its source, and the session beneath it carries the logic.
