@@ -16,23 +16,25 @@ silently, teacher spend is reported as its own role in the F103 ledger, and the
 read-only invariant is proven behaviourally.
 
 ## Current Step
-R17 persists the R16 verdict and its three findings, then closes the one that is a
-code defect: `remedy teach ask` gains `--file`, so grounding source (2) — the
-workspace code the ruled Design puts in Stage 2's context — finally has a
-production caller instead of only a test one.
+R18 is the INTEGRATION GATE, per docs/agents/integration_gate.md: the full suite
+on this branch and again at the merge base b35d350b, the two failure sets
+compared, every difference attributed by direct evidence, and the whole record
+committed under `.agent/gate_f255_r18/`. It also persists the R17 verdict. It
+changes no source file and no test file.
 
 ## Next Steps
-1. The INTEGRATION GATE round follows, per docs/agents/integration_gate.md: the
-   full suite, because T002, T003 and T004 all touch the CLI catalog, which the
-   parser and the help renderer both read.
-2. The CLOSURE round follows, per docs/roadmap/STATUS_closure_protocol.md:
-   evidence job, fresh review zip, the STATUS line, and the pull request.
+1. The CLOSURE round follows, per docs/roadmap/STATUS_closure_protocol.md:
+   evidence job, FRESH review zip, the STATUS line authored by the reviewer and
+   committed last, and the pull request — which is created there and merged at
+   the NEXT feature's Open PR Gate, never in the session that creates it.
 
 ## Risks
-- T004 WAS REPORTED COMPLETE AT R16 WHILE SOURCE (2) HAD NO CALLER. That is
-  R-0610, and this round closes the code half; the Fortschritt line stops
-  claiming a completeness the CLI did not have until now.
-- R-0608 AND R-0609 BIND FUTURE BLOCKS, NOT THIS CODE. They are reviewer gate
-  defects — a reflog absence clause that reads a harmless `git reset` as history
-  rewriting, and a block that ordered a source and its tests as one oversize
-  commit — and each is answered by the shape of this block rather than by an edit.
+- A BRANCH-ONLY FAILURE COUPLED TO FEATURE CODE IS A BLOCKER, not a repair to
+  fold into this round: it ends the gate and earns its own reviewed round.
+- BASE PARITY CAN BE VOIDED BY A REBUILD THE DIGEST CANNOT SEE. F085 R72 measured
+  a byte-identical `apps/ui/dist` whose mtime had moved, and `_frontend_is_stale`
+  decides by mtime, so this round reads BOTH and claims parity only if neither
+  moved (finding R-0565).
+- THE OPEN SET IS 183 AND NONE OF IT IS PAID DOWN HERE. R-0607, R-0608 and R-0609
+  are reviewer-process findings; R-0610's code half landed at R17 and only the
+  reviewer's own text may resolve it.
