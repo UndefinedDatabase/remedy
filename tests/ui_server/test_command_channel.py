@@ -748,12 +748,18 @@ class TestCommandChannelDoor:
                 headers=headers)
 
         from packages.orchestration import command_audit
+        from packages.orchestration.safe_points import StopControlError
 
         calls = []
+        # One per call site below, so the whole caught set is exercised, not just OSError:
+        # a full disk, a containment refusal and an unserialisable payload alike.
+        failures = [OSError("no space left on device"),
+                    StopControlError("stop-control containment could not be guaranteed"),
+                    TypeError("object is not JSON serializable")]
 
         def explode(*_args, **kwargs):
             calls.append(kwargs.get("outcome"))
-            raise OSError("no space left on device")
+            raise failures[len(calls) - 1]
 
         monkeypatch.setattr(command_audit, "audit_command_attempt", explode)
         records_before = len(self._audit_records())

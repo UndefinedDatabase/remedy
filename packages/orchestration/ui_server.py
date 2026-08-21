@@ -3417,6 +3417,15 @@ class _RemedyHandler(BaseHTTPRequestHandler):
         yet and has no call site while the 501 seam stands.
 
         The raw token never leaves this method: only its D7 fingerprint is handed over.
+
+        The caught set is spelled out rather than written as `except Exception`, which this
+        module is guarded against by
+        `tests/orchestration/test_test_runner.py::TestNoBroadExceptAndDegradedSignals`.
+        It covers what the writer can actually raise: `OSError` from the filesystem,
+        `RuntimeError` — which `safe_points.StopControlError` is — from a containment
+        refusal, and `ValueError` / `TypeError` from serialising a payload. Naming
+        `RuntimeError` rather than importing the error class keeps the door's import set at
+        the one module this round adds.
         """
         from packages.orchestration.command_audit import audit_command_attempt
         body = payload if isinstance(payload, dict) else {}
@@ -3430,7 +3439,7 @@ class _RemedyHandler(BaseHTTPRequestHandler):
                 outcome=outcome,
                 create=create,
             )
-        except Exception:                             # noqa: BLE001 — D14 clause four
+        except (OSError, RuntimeError, ValueError, TypeError):   # D14, clause four
             return False
 
     def _command_is_ui_exposed(self, command_id: str) -> bool:
