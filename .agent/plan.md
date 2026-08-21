@@ -16,26 +16,28 @@ silently, teacher spend is reported as its own role in the F103 ledger, and the
 read-only invariant is proven behaviourally.
 
 ## Current Step
-R19 is the CLOSURE EVIDENCE round. It persists the R18 verdict, resolves R-0610,
-adds the feature file's Built State section — closure precondition 4, measured
-absent — and then produces the two artifacts only a worker can make: the evidence
-job and a FRESH review zip. It authors no STATUS line.
+R20 REPAIRS the closure evidence. R19 committed everything correctly and could
+not build its artifacts because the reviewer's evidence script parsed node ids
+out of `-v` output and one parametrised id in this feature's own suite contains
+whitespace. This round registers that as R-0611, records the R19 verdict, and
+re-runs the evidence job with ids taken from `--collect-only`, then builds the
+review zip.
 
 ## Next Steps
-1. R20 CLOSES THE FEATURE: the reviewer authors the STATUS `[x]` line from the
-   values R19's zip reports, the worker applies it verbatim in the SAME commit as
-   the README capability sync (R-0154), writes any closure candidates to
-   `.agent/candidates.md`, and opens the pull request. That PR is NOT merged in
-   its own session; it merges at the NEXT feature's Open PR Gate, which is the
+1. R21 CLOSES THE FEATURE: the reviewer authors the STATUS `[x]` line from the
+   values THIS round's zip reports, the worker applies it verbatim in the SAME
+   commit as the README capability sync (R-0154), writes any closure candidates
+   to `.agent/candidates.md`, and opens the pull request. That PR is NOT merged
+   in its own session; it merges at the NEXT feature's Open PR Gate, which is the
    operator's manual-review window.
 
 ## Risks
 - A FAILING ZIP IS A CLOSURE BLOCKER, not a retry. The feature goes `[!]` with a
   stated reason rather than closing without a package.
-- THE OPEN SET STAYS LARGE AND THAT IS NOT A BLOCKER: the integrity gate's
-  `high_blockers_open` check reports no open blocker or high finding, so every
-  open item is a documented Medium or Low risk, which is what closure
-  precondition 1 permits.
-- R-0607, R-0608 and R-0609 REMAIN OPEN by design. All three are reviewer-process
-  defects whose fix edits `docs/agents/`, a path the closure commit's own R-0154
-  path set cannot reach; they route to a paydown branch.
+- THE CLOSURE PRECONDITIONS OTHER THAN THE PACKAGE ARE MET AND MEASURED: the
+  integrity gate passes with no open blocker or high finding, the Built State
+  section landed at R19, the full suite passed the R18 gate with 0 branch-only
+  failures, and the tree is clean and pushed.
+- R-0607, R-0608, R-0609 AND R-0611 REMAIN OPEN by design: all four are
+  reviewer-process defects whose fixes edit `docs/agents/` or the closure
+  protocol, paths the closure commit's own R-0154 path set cannot reach.
