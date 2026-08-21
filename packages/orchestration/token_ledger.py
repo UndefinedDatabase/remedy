@@ -27,13 +27,15 @@ does not exist:
 * Remedy deliberately does NOT add an ORM or any third-party database
   dependency for this. The bundled ``sqlite3`` module covers every query this
   feature needs, and the feature's Orchestrator brief rejects the alternative.
-* Remedy deliberately does NOT add a second capture path. This module records
-  what the existing actuals path already produced; it never parses a provider
-  response itself: the usage counters come from ``token_truth``'s existing
-  extractor rather than from a second parse of provider output. Its ONE call
-  site is the seam where actuals are finalized
-  (``pingpong_evidence.write_evidence_bundle``), where it is opt-in and stays
-  inert until a caller names a ledger target.
+* Remedy deliberately does NOT add a second ACTUALS capture path. This module
+  records what the existing actuals path already produced; it never parses a
+  provider response itself: the usage counters come from ``token_truth``'s
+  existing extractor rather than from a second parse of provider output. That
+  seam is ``pingpong_evidence.write_evidence_bundle``, where it is opt-in and
+  stays inert until a caller names a ledger target. DECISION F255 D7 adds the
+  one OTHER writer, ``teacher_spend.record_teacher_question``, which is not an
+  actuals path either: it records figures its caller was GIVEN and parses no
+  provider output at all.
 * Remedy deliberately does NOT store one row per HTTP request. A ROW IS ONE
   FINALIZED TASK RUN, keyed ``"<job_id>:<task_id>"`` (DECISION D16, recorded on
   the feature file): ``task_runs/<task_id>/provider_evidence.json`` is the
@@ -42,7 +44,11 @@ does not exist:
   ``call_segments`` BESIDE it rather than widening it — one row per segment of
   one composed prompt, keyed by the row's ``call_id`` plus the trace line's
   position — so the per-call breakdown lives in its own table and ``calls``
-  keeps its one-row-per-task-run identity untouched.
+  keeps its one-row-per-task-run identity untouched. DECISION F255 D7 widens
+  that identity by exactly ONE class: a teacher question is a row whose
+  ``task_id`` is NULL, because it has no task run to name and inventing one is
+  the fabrication the sentence above refuses. A NULL ``task_id`` therefore READS
+  as "not a task run"; every row that has one keeps the D16 meaning untouched.
 * Remedy deliberately does NOT invent prices. ``cost_usd`` stays NULL unless a
   caller supplies a real figure together with the basis it came from, and a
   call with no reported usage produces NULL counts with basis ``unknown``
