@@ -2887,7 +2887,7 @@ def resolve_sse_start(last_event_id: Any, cursor: str) -> int:
     falls back to the cursor rather than refusing the stream: a proxy that
     mangled the header must not cost a client its connection.
     """
-    text = str(last_event_id or "").strip()
+    text = "" if last_event_id is None else str(last_event_id).strip()
     if text.isdigit():
         return int(text) + 1
     return int(cursor) if cursor.isdigit() else 0
