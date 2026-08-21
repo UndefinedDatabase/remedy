@@ -508,3 +508,95 @@ class TestResumeRoute:
         # EventSource sends exactly this spelling; a rename breaks resume in
         # silence, because the fallback path still serves a valid stream.
         assert mod.SSE_LAST_EVENT_ID_HEADER == "Last-Event-ID"
+
+
+class _FlakyPeer:
+    """A socket that accepts `until` frames and then drops the connection."""
+
+    def __init__(self, until: int) -> None:
+        self.frames: list[bytes] = []
+        self.until = until
+
+    def write(self, frame: bytes) -> None:
+        if len(self.frames) >= self.until:
+            raise BrokenPipeError
+        self.frames.append(frame)
+
+    def flush(self) -> None:
+        return None
+
+
+def _hammer(monkeypatch: Any, events: list, drop_after: int,
+            reconnects: int = 40) -> list[bytes]:
+    """Reconnect until the ledger is drained, dropping every `drop_after` frames.
+
+    This is the acceptance shape the feature file names: a client that keeps
+    losing its connection must end up with the ledger and nothing else. Each
+    reconnect carries the id of the last frame it kept, exactly as an
+    EventSource sends `Last-Event-ID`, and the server decides the span.
+    """
+    monkeypatch.setattr(mod, "_load_events", lambda job: events)
+    transcript: list[bytes] = []
+    last_event_id: str | None = None
+    for _ in range(reconnects):
+        peer = _FlakyPeer(drop_after)
+        handler = mod._RemedyHandler.__new__(mod._RemedyHandler)
+        handler.send_response = lambda code: None
+        handler.send_header = lambda key, value: None
+        handler.end_headers = lambda: None
+        handler.wfile = peer
+        clock = _Clock()
+        start = mod.resolve_sse_start(last_event_id, "0")
+        handler._send_sse_stream(_Job(), str(start), now=clock.now, sleep=clock.sleep)
+        for frame in peer.frames:
+            # A heartbeat carries no id, so a resuming client never asks to
+            # replay one and it never enters the transcript.
+            if frame.startswith(b":"):
+                continue
+            transcript.append(frame)
+            last_event_id = _parse(frame)["id"]
+        if last_event_id is not None and int(last_event_id) == len(events) - 1:
+            break
+    return transcript
+
+
+def _ledger_bytes(events: list) -> bytes:
+    """The envelope sequence the client's transcript must byte-equal."""
+    return b"".join(
+        mod.sse_event_frame(seq, mod._safe_event_summary(seq, events[seq]))
+        for seq in range(len(events))
+    )
+
+
+class TestDisconnectHammer:
+    def test_the_transcript_byte_equals_the_ledger_envelope_sequence(self, monkeypatch):
+        # The feature's acceptance heart, verbatim: bytes, not a summary.
+        events = _events(12)
+        assert b"".join(_hammer(monkeypatch, events, 3)) == _ledger_bytes(events)
+
+    def test_no_event_arrives_twice_and_none_is_missing(self, monkeypatch):
+        # Spelled out as ids too: a byte comparison that failed would not say
+        # WHICH of the two failure modes happened.
+        ids = [_parse(f)["id"] for f in _hammer(monkeypatch, _events(12), 3)]
+        assert ids == [str(i) for i in range(12)]
+
+    def test_every_disconnect_cadence_yields_the_same_transcript(self, monkeypatch):
+        # One drop per frame is the worst case and a single clean connection
+        # the best; the transcript may not depend on which one happened.
+        events = _events(12)
+        for drop_after in (1, 2, 3, 5, 7, 12):
+            got = b"".join(_hammer(monkeypatch, events, drop_after))
+            assert got == _ledger_bytes(events), drop_after
+
+    def test_a_ledger_that_grows_between_connections_still_arrives_whole(self, monkeypatch):
+        # The stream is a reader over a file that is still being appended to.
+        events = _events(6)
+        first = _hammer(monkeypatch, events, 2, reconnects=1)
+        events.extend(_events(10)[6:])
+        rest = _hammer(monkeypatch, events, 3)
+        assert b"".join(rest) == _ledger_bytes(events)
+        assert [_parse(f)["id"] for f in first] == ["0", "1"]
+
+    def test_a_single_clean_connection_needs_no_resume(self, monkeypatch):
+        events = _events(4)
+        assert b"".join(_hammer(monkeypatch, events, 4)) == _ledger_bytes(events)
