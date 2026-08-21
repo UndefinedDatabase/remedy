@@ -38,10 +38,10 @@ Review of `da2aabf9`..HEAD, HEAD being the C5 commit that writes this file.
 |---|---|---|
 | .agent/decisions.md | +49/-0 | C4 — DECISION1 appended |
 | docs/roadmap/features/T5_F008.md | +25/-8 | C4 — FEATFROM replaced by FEATTO |
-### C5 + trailing correction (grouped; a handoff cannot table its own commit, R-0149)
+### C5 + trailing corrections (grouped; a handoff cannot table its own commit, R-0149)
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/handoff.md | see round report | C5 wrote this file; the trailing commit corrected its External-actions line only |
+| .agent/handoff.md | see round report | C5 wrote this file; the two trailing commits corrected its External-actions and G15 lines only |
 
 ## External actions
 `git worktree add .remedy-wt/redctl-r3 b6a39da6 --detach` — created for G10.
@@ -64,7 +64,7 @@ G11 State-reader four exit 0, 160 passed. Canary `tests/cli/test_golden_path.py`
 G12 (a) `packages/orchestration/ui_server.py:29 from http.server import BaseHTTPRequestHandler, HTTPServer` and `:3122 server = HTTPServer((host, port), handler_class)` — bare, no mixin. (b) the threading grep printed 0 bytes and exited 1. (c) `8 ['event_id', 'event_type', 'job_id', 'run_id', 'timestamp', 'scope', 'outcome', 'metadata']`. All three AGREE with FEATTO and FIND0612; nothing contradicted, so no STOP was owed.
 G13 `git diff --name-only da2aabf9..C5` equals the Change list, no path on either side alone; every commit single-parent; insertions 334, 266, 21, 2, 2, 74 and the two handoff commits' own — all under 500 — agreeing cell for cell with the `+/-` column above.
 G14 Marker lines (`<<<SLICE `/`<<<END `): plan@C1 0, live_review@C3 0, feature@C4 0, decisions@C4 0, handoff@C5 0.
-G15 This round's own reflog entries containing `amend`, `rebase` or `cherry`: 0. No entry total is stated.
+G15 Every one of this round's own reflog entries is a `commit:` operation, so the operation-scoped count of `amend`, `rebase` or `cherry` is 0. A literal SUBSTRING count instead reads 1 — the word "amend" inside C4's own subject `docs(roadmap): amend F008 …`, a subject and not an operation (the R-0608 class). No entry total is stated.
 G16 This file carries every section `docs/agents/handback_template.md` mandates plus the item-status table; its line count is reported in the round report against the 100-line cap for a >5-commit round.
 
 ## Authored-text proofs
@@ -74,9 +74,9 @@ Disk-to-disk equality is the G3/G4/G5/G7/G8 evidence above: every applied
 region is byte-equal to its slice, measured off the committed blobs.
 
 ## Deviations & assumptions
-ONE DEPARTURE: C0a..C5 landed in that order, one commit each, then a SEVENTH
-commit corrects this file's External-actions line, the C5 table heading and the
-G13 line — C5 could not name a push that AGENTS.md requires to follow it.
+TWO TRAILING CORRECTIONS follow C0a..C5, which landed in that order one commit
+each: the seventh names the AGENTS.md-mandated push C5 could not name as done,
+the eighth corrects G15, which had reported only its operation-scoped reading.
 No objection to any slice: G12 re-derived both facts independently, and the
 plan slice's branch-point claim (`7c03adfa`, the PR #208 merge) also verifies.
 Tooling note: G5's independent blank-line extractor first rejected the TRUE
