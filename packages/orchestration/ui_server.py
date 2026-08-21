@@ -20,6 +20,7 @@ Public API::
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import re
@@ -3065,6 +3066,24 @@ COMMAND_REQUEST_MAX_BYTES = 64 * 1024
 #: caller enumerate the CLI surface through the write door.
 COMMAND_NOT_EXPOSED_MESSAGE = "command is not available on this channel"
 
+#: The config key that carries this door's minute budget. Named once so the
+#: door, its tests and the registry in packages/orchestration/config.py cannot
+#: drift apart.
+COMMAND_RATE_LIMIT_CONFIG_KEY = "ui.command_rate_limit_per_minute"
+
+#: How long one budget window lasts. DECISION F009 D9 fixes the unit at a
+#: minute. The window TUMBLES rather than slides: a client's budget refills in
+#: one step, which is the behaviour a client can reason about from a 429 alone.
+COMMAND_RATE_WINDOW_SECONDS = 60.0
+
+#: The refusal a client over its budget receives. It mirrors the shape the SSE
+#: door's own 429 already uses, so both limits read the same way on the wire.
+COMMAND_RATE_LIMIT_MESSAGE = "too many commands for this job"
+
+_COMMAND_RATE_LOCK = threading.Lock()
+#: (token fingerprint, job id) -> (window start, commands accepted in it).
+_COMMAND_RATE_WINDOWS: dict[tuple[str, str], tuple[float, int]] = {}
+
 
 # Compared as BYTES: `secrets.compare_digest` raises TypeError on a non-ASCII str.
 def server_token_matches(supplied_token: Any, expected_token: Any) -> bool:
@@ -3083,6 +3102,58 @@ def server_token_matches(supplied_token: Any, expected_token: Any) -> bool:
 # A shape error names the offending field so a client can repair its own request.
 def _command_field_error(field: str, message: str) -> tuple[int, dict[str, Any]]:
     return 400, {"error": message, "field": field}
+
+
+# The rate limiter has to name the client it counts, and the only name a request
+# carries is the secret itself — hence a digest rather than the token.
+def token_fingerprint(token: Any) -> str:
+    """A stable, non-reversible handle for one server token (DECISION F009 D7).
+
+    Sixteen hex characters are sixty-four bits of SHA-256: far more than enough
+    to keep two live tokens apart, and far too few to walk back to the token
+    they name. The raw token is never returned, stored or logged by this
+    function, which is what lets the limiter's keys appear in memory dumps,
+    metrics and — from R9 — audit records without leaking credentials.
+    """
+    digest = hashlib.sha256((token or "").encode("utf-8")).hexdigest()
+    return "tf:" + digest[:16]
+
+
+def accept_command_under_rate_limit(
+    fingerprint: str,
+    job_id: str,
+    limit: int,
+    *,
+    now: Any = time.monotonic,
+) -> bool:
+    """Spend one unit of a (fingerprint, job) minute budget, or refuse.
+
+    The server is threaded, so the window is read and written under one lock:
+    two requests arriving together must not both see the last free unit. That
+    is the idiom `acquire_sse_slot` uses for the same problem in this module.
+    `now` is injected the way `_send_sse_stream` injects it, so a test can
+    assert the window's roll instead of waiting a minute out.
+
+    THE WINDOW MAP IS BOUNDED HERE — this is where a reader looking for the
+    bound will search. Its key holds a per-run token fingerprint and a job id
+    and the process is long-lived, so an unbounded map would be a slow leak
+    across a day of restarts and job switches. Every call therefore first drops
+    the windows that have expired, which leaves exactly one entry per
+    (fingerprint, job) pair seen inside the last window: a live working set,
+    not a growing history.
+    """
+    with _COMMAND_RATE_LOCK:
+        moment = now()
+        expired = [key for key, (start, _count) in _COMMAND_RATE_WINDOWS.items()
+                   if moment - start >= COMMAND_RATE_WINDOW_SECONDS]
+        for key in expired:
+            del _COMMAND_RATE_WINDOWS[key]
+        window = (fingerprint, job_id)
+        start, accepted = _COMMAND_RATE_WINDOWS.get(window, (moment, 0))
+        if accepted >= limit:
+            return False
+        _COMMAND_RATE_WINDOWS[window] = (start, accepted + 1)
+        return True
 
 
 # ---------------------------------------------------------------------------
@@ -3294,7 +3365,7 @@ class _RemedyHandler(BaseHTTPRequestHandler):
                                     self.server_token):
             self._send_json(*_safe_error(403, "invalid csrf token"))
             return
-        _job, load_error = _load_job(job_id_str)
+        job, load_error = _load_job(job_id_str)
         if load_error:
             self._send_json(*load_error)
             return
@@ -3305,6 +3376,14 @@ class _RemedyHandler(BaseHTTPRequestHandler):
         if not self._command_is_ui_exposed(payload["command"]):
             self._send_json(*_command_field_error(
                 "command", COMMAND_NOT_EXPOSED_MESSAGE))
+            return
+        # The budget is spent LAST, by a request that has passed every other
+        # check (DECISION F009 D13). Counting a request that was going to be
+        # refused anyway would let a mid-rollout or simply buggy client lock
+        # ITSELF out of a job with malformed bodies — a denial of service
+        # produced by the guard rather than prevented by it.
+        if not self._rate_limit_admits_command(str(job.id)):
+            self._send_json(*_safe_error(429, COMMAND_RATE_LIMIT_MESSAGE))
             return
         # The seam: DECISION F009 D5's effect table replaces this answer with a
         # real dispatch, and the round that lands that table is the one that
@@ -3327,10 +3406,33 @@ class _RemedyHandler(BaseHTTPRequestHandler):
         from apps.cli.command_catalog import UI_EXPOSED_COMMANDS
         return command_id in UI_EXPOSED_COMMANDS
 
+    def _rate_limit_admits_command(self, job_id: str) -> bool:
+        """True while this token and this job still hold minute budget.
+
+        The limit is read from configuration on every request rather than
+        captured at start-up, so an operator who raises it does not have to
+        restart the cockpit to get the new value. A value that is not a whole
+        number falls back to the registered default rather than raising: a
+        typo in `remedy.toml` must not turn every command into a 500, and the
+        door has to stay limited while the typo is there.
+        """
+        from packages.orchestration.config import get_config, get_key_spec
+        try:
+            limit = int(get_config().get(COMMAND_RATE_LIMIT_CONFIG_KEY))
+        except (TypeError, ValueError):
+            limit = int(get_key_spec(COMMAND_RATE_LIMIT_CONFIG_KEY).default)
+        return accept_command_under_rate_limit(
+            token_fingerprint(self._supplied_bearer_token()), job_id, limit)
+
+    def _supplied_bearer_token(self) -> str:
+        """The token this request presented in `Authorization`, or the empty string."""
+        scheme, _, supplied = (self.headers.get("Authorization") or "").partition(" ")
+        return supplied if scheme == "Bearer" else ""
+
     def _bearer_token_accepted(self) -> bool:
         """True when `Authorization` carries a `Bearer` token matching the server's."""
-        scheme, _, supplied = (self.headers.get("Authorization") or "").partition(" ")
-        if scheme != "Bearer" or not supplied:
+        supplied = self._supplied_bearer_token()
+        if not supplied:
             return False
         return server_token_matches(supplied, self.server_token)
 

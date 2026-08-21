@@ -42,6 +42,27 @@ def _make_job() -> Job:
     )
 
 
+@pytest.fixture
+def command_rate_limit(monkeypatch):
+    """Set the write door's minute budget, and report the value the door reads.
+
+    The configured limit is RETURNED rather than assumed, so a boundary test
+    counts up to the number the server will actually enforce instead of to a
+    literal that could drift away from it. The cached config is cleared on the
+    way in and on the way out: it is process-global state and the server runs
+    in this same process.
+    """
+    from packages.orchestration.config import get_config, reset_config
+
+    def configure(limit: int) -> int:
+        monkeypatch.setenv("REMEDY_UI_COMMAND_RATE_LIMIT_PER_MINUTE", str(limit))
+        reset_config()
+        return get_config().get("ui.command_rate_limit_per_minute")
+
+    yield configure
+    reset_config()
+
+
 class TestCommandChannelDoor:
     """Integration tests that start a real server on a free port."""
 
@@ -483,6 +504,75 @@ class TestCommandChannelDoor:
         assert shape_body["field"] == subset_body["field"] == "command"
         assert shape_body["error"] != subset_body["error"]
 
+    # -- D.7: the rate limit (DECISION F009 D9 and D13) ---------------------
+
+    def _post_command(self, port, token, nonce, **overrides):
+        """One fully credentialed command submission, valid unless overridden."""
+        return self._request(
+            port, "POST", self._commands_path(overrides.pop("job_id", None)),
+            body=self._valid_body(client_nonce=nonce, **overrides),
+            headers=self._auth_headers(token))
+
+    def test_the_last_command_in_budget_is_accepted_and_the_next_is_429(
+            self, command_rate_limit):
+        limit = command_rate_limit(3)
+        port, token = self._start_server()
+        for index in range(limit):
+            status, _ = self._post_command(port, token, f"nonce-in-{index}")
+            assert status == 501, index
+        status, body = self._post_command(port, token, "nonce-over")
+        assert status == 429
+        assert body["error"] == "too many commands for this job"
+        assert "field" not in body
+
+    def test_a_second_job_has_its_own_budget(self, command_rate_limit):
+        """The key is the PAIR, so exhausting one job leaves the other alone."""
+        from packages.orchestration.storage import save_job
+        limit = command_rate_limit(2)
+        other = _make_job()
+        save_job(other)
+        port, token = self._start_server()
+        for index in range(limit):
+            assert self._post_command(port, token, f"nonce-a-{index}")[0] == 501
+        assert self._post_command(port, token, "nonce-a-over")[0] == 429
+        status, _ = self._post_command(
+            port, token, "nonce-b-0", job_id=str(other.id))
+        assert status == 501
+
+    def test_a_shape_error_does_not_spend_budget(self, command_rate_limit):
+        """DECISION F009 D13, from the outside: a 400 costs the client nothing."""
+        limit = command_rate_limit(1)
+        port, token = self._start_server()
+        for _ in range(limit + 3):
+            status, _ = self._request(
+                port, "POST", self._commands_path(), body="{not json",
+                headers=self._auth_headers(token))
+            assert status == 400
+        assert self._post_command(port, token, "nonce-after-shape")[0] == 501
+        assert self._post_command(port, token, "nonce-spent")[0] == 429
+
+    def test_an_unexposed_command_does_not_spend_budget(self, command_rate_limit):
+        """The same property for the subset check, which is decided just before."""
+        limit = command_rate_limit(1)
+        port, token = self._start_server()
+        for _ in range(limit + 3):
+            status, _ = self._post_command(
+                port, token, "nonce-unexposed", command=UNEXPOSED_CATALOG_COMMAND)
+            assert status == 400
+        assert self._post_command(port, token, "nonce-after-subset")[0] == 501
+        assert self._post_command(port, token, "nonce-spent")[0] == 429
+
+    def test_a_mistyped_limit_falls_back_to_the_default_and_still_limits(
+            self, command_rate_limit, monkeypatch):
+        """A typo in configuration must not turn every command into a 500."""
+        from packages.orchestration.config import get_config, reset_config
+        command_rate_limit(3)
+        monkeypatch.setenv("REMEDY_UI_COMMAND_RATE_LIMIT_PER_MINUTE", "lots")
+        reset_config()
+        assert get_config().get("ui.command_rate_limit_per_minute") == "lots"
+        port, token = self._start_server()
+        assert self._post_command(port, token, "nonce-typo")[0] == 501
+
     # -- B: the GET door still behaves as it did ----------------------------
 
     def test_get_door_still_answers_200_for_the_correct_token(self):
@@ -536,6 +626,151 @@ class TestUiExposedCommands:
         assert UNEXPOSED_CATALOG_COMMAND not in UI_EXPOSED_COMMANDS
         with pytest.raises(KeyError):
             get_command(UNKNOWN_COMMAND)
+
+
+class TestCommandRateLimitConfigKey:
+    """DECISION F009 D9's typed key, read by importing it rather than grepping."""
+
+    def test_the_key_resolves_through_get_config(self, monkeypatch):
+        from packages.orchestration.config import get_config, reset_config
+        monkeypatch.delenv("REMEDY_UI_COMMAND_RATE_LIMIT_PER_MINUTE", raising=False)
+        reset_config()
+        try:
+            assert get_config().get("ui.command_rate_limit_per_minute") == 30
+        finally:
+            reset_config()
+
+    def test_the_spec_is_a_typed_int_key_with_the_conventional_env_var(self):
+        from packages.orchestration.config import get_key_spec
+        spec = get_key_spec("ui.command_rate_limit_per_minute")
+        assert spec is not None
+        assert spec.env_var == "REMEDY_UI_COMMAND_RATE_LIMIT_PER_MINUTE"
+        assert spec.value_type is int
+        assert spec.default == 30
+        assert "F009 D9" in spec.description
+
+    def test_the_door_reads_the_limit_from_that_key(self):
+        """The name is shared, so the door and the registry cannot drift apart."""
+        from packages.orchestration.ui_server import COMMAND_RATE_LIMIT_CONFIG_KEY
+        assert COMMAND_RATE_LIMIT_CONFIG_KEY == "ui.command_rate_limit_per_minute"
+
+
+class TestTokenFingerprint:
+    """DECISION F009 D7's fingerprint, introduced where it is first used."""
+
+    def test_the_fingerprint_never_contains_the_raw_token(self):
+        from packages.orchestration.ui_server import token_fingerprint
+        token = "s3cret-token-value-do-not-leak"
+        assert token not in token_fingerprint(token)
+
+    def test_the_fingerprint_is_a_prefixed_truncated_sha256(self):
+        import hashlib
+
+        from packages.orchestration.ui_server import token_fingerprint
+        token = "s3cret-token-value-do-not-leak"
+        expected = hashlib.sha256(token.encode("utf-8")).hexdigest()[:16]
+        assert token_fingerprint(token) == "tf:" + expected
+
+    def test_different_tokens_get_different_fingerprints(self):
+        from packages.orchestration.ui_server import token_fingerprint
+        assert token_fingerprint("token-a") != token_fingerprint("token-b")
+
+    def test_a_missing_token_does_not_raise(self):
+        from packages.orchestration.ui_server import token_fingerprint
+        assert token_fingerprint(None).startswith("tf:")
+
+
+class TestCommandRateLimiter:
+    """The limiter itself, driven by an injected clock instead of a wait."""
+
+    def _fingerprint(self) -> str:
+        """A fingerprint no other test in this process can collide with.
+
+        The limiter's window map is module-level state in a long-lived server,
+        so a test that reused a fingerprint would inherit another test's spent
+        budget when the whole file runs in one pytest process.
+        """
+        from packages.orchestration.ui_server import token_fingerprint
+        return token_fingerprint(f"token-{uuid4()}")
+
+    def test_the_budget_is_per_fingerprint(self):
+        from packages.orchestration.ui_server import accept_command_under_rate_limit
+        job = str(uuid4())
+        spent, fresh = self._fingerprint(), self._fingerprint()
+        assert accept_command_under_rate_limit(spent, job, 1) is True
+        assert accept_command_under_rate_limit(spent, job, 1) is False
+        assert accept_command_under_rate_limit(fresh, job, 1) is True
+
+    def test_the_budget_is_per_job(self):
+        from packages.orchestration.ui_server import accept_command_under_rate_limit
+        fingerprint = self._fingerprint()
+        spent, fresh = str(uuid4()), str(uuid4())
+        assert accept_command_under_rate_limit(fingerprint, spent, 1) is True
+        assert accept_command_under_rate_limit(fingerprint, spent, 1) is False
+        assert accept_command_under_rate_limit(fingerprint, fresh, 1) is True
+
+    def test_the_window_rolls_on_the_injected_clock(self):
+        from packages.orchestration.ui_server import (
+            COMMAND_RATE_WINDOW_SECONDS,
+            accept_command_under_rate_limit,
+        )
+        clock = [1000.0]
+        fingerprint, job = self._fingerprint(), str(uuid4())
+
+        def now():
+            return clock[0]
+
+        assert accept_command_under_rate_limit(fingerprint, job, 2, now=now) is True
+        assert accept_command_under_rate_limit(fingerprint, job, 2, now=now) is True
+        assert accept_command_under_rate_limit(fingerprint, job, 2, now=now) is False
+        clock[0] += COMMAND_RATE_WINDOW_SECONDS - 0.5
+        assert accept_command_under_rate_limit(fingerprint, job, 2, now=now) is False
+        clock[0] += 0.5
+        assert accept_command_under_rate_limit(fingerprint, job, 2, now=now) is True
+
+    def test_an_expired_window_is_dropped_from_the_map(self):
+        """Contract D: the map holds a live working set, not a growing history."""
+        from packages.orchestration.ui_server import (
+            _COMMAND_RATE_WINDOWS,
+            COMMAND_RATE_WINDOW_SECONDS,
+            accept_command_under_rate_limit,
+        )
+        clock = [2000.0]
+        stale, later = self._fingerprint(), self._fingerprint()
+        job = str(uuid4())
+
+        def now():
+            return clock[0]
+
+        accept_command_under_rate_limit(stale, job, 5, now=now)
+        assert (stale, job) in _COMMAND_RATE_WINDOWS
+        clock[0] += COMMAND_RATE_WINDOW_SECONDS
+        accept_command_under_rate_limit(later, job, 5, now=now)
+        assert (stale, job) not in _COMMAND_RATE_WINDOWS
+        assert (later, job) in _COMMAND_RATE_WINDOWS
+
+    def test_concurrent_callers_never_oversubscribe_one_budget(self):
+        """The lock is the point: two threads must not both take the last unit."""
+        from packages.orchestration.ui_server import accept_command_under_rate_limit
+        fingerprint, job = self._fingerprint(), str(uuid4())
+        limit = 20
+        accepted = []
+        lock = threading.Lock()
+        start = threading.Barrier(8)
+
+        def submit():
+            start.wait()
+            for _ in range(10):
+                if accept_command_under_rate_limit(fingerprint, job, limit):
+                    with lock:
+                        accepted.append(1)
+
+        threads = [threading.Thread(target=submit) for _ in range(8)]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join(timeout=10)
+        assert len(accepted) == limit
 
 
 class TestServerTokenMatches:
