@@ -3045,11 +3045,51 @@ def _build_context_budget_json(job: Any) -> dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
+# Command Channel — the single write door (F009 T001)
+# ---------------------------------------------------------------------------
+
+#: The double-submit header the POST door requires alongside the bearer token.
+#: It carries the server token itself (DECISION F009 D11): there is no cookie to
+#: double-submit against, and a cross-site page cannot set a custom header
+#: without a preflight this server never grants.
+COMMAND_CSRF_HEADER = "X-Remedy-CSRF"
+
+#: Largest command request this door reads, decided from `Content-Length`
+#: before a single byte of body is pulled off the socket.
+COMMAND_REQUEST_MAX_BYTES = 64 * 1024
+
+
+# Compared as BYTES: `secrets.compare_digest` raises TypeError on a non-ASCII str.
+def server_token_matches(supplied_token: Any, expected_token: Any) -> bool:
+    """Constant-time equality for the UI server token.
+
+    Both sides arrive from the network — a query parameter on the GET door, a
+    header on the POST door — so the comparison must neither leak the token
+    through timing nor raise on attacker-chosen bytes. A missing header
+    (`None`) is treated as the empty string and never reaches `.encode`.
+    """
+    supplied = (supplied_token or "").encode("utf-8")
+    expected = (expected_token or "").encode("utf-8")
+    return secrets.compare_digest(supplied, expected)
+
+
+# A shape error names the offending field so a client can repair its own request.
+def _command_field_error(field: str, message: str) -> tuple[int, dict[str, Any]]:
+    return 400, {"error": message, "field": field}
+
+
+# ---------------------------------------------------------------------------
 # HTTP Request Handler
 # ---------------------------------------------------------------------------
 
 class _RemedyHandler(BaseHTTPRequestHandler):
-    """Read-only handler. No POST/PUT/DELETE. Token-gated API."""
+    """Token-gated API handler with exactly one mutating door.
+
+    POST `/api/jobs/<job_id>/commands` is the single route that accepts a
+    UI-initiated change (F009). Every other POST path, and every PUT and
+    DELETE, answers 405 — Remedy deliberately exposes no second mutating
+    route, so a reader searching for one finds this sentence instead.
+    """
 
     server_token: str = ""
     target_job_id: str = ""
@@ -3075,7 +3115,7 @@ class _RemedyHandler(BaseHTTPRequestHandler):
 
         # API routes — token required
         token = (qs.get("token") or [""])[0]
-        if token != self.server_token:
+        if not server_token_matches(token, self.server_token):
             self._send_json(*_safe_error(403, "invalid token"))
             return
 
@@ -3224,7 +3264,81 @@ class _RemedyHandler(BaseHTTPRequestHandler):
         drain_sse_frames(frames, self.wfile.write, self.wfile.flush, stop)
 
     def do_POST(self) -> None:  # noqa: N802
+        # Fail closed: only an unambiguous commands path opens the write door.
+        # `path` is read defensively because a request whose line never parsed
+        # has none, and such a request must get 405 rather than an exception.
+        parsed = urlparse(getattr(self, "path", ""))
+        path = parsed.path.rstrip("/") or "/"
+        parts = path.split("/")
+        if (len(parts) == 5 and parts[1] == "api" and parts[2] == "jobs"
+                and parts[4] == "commands"):
+            self._handle_command_submission(parts[3])
+            return
         self._send_json(*_safe_error(405, "method not allowed"))
+
+    # The order below is the contract: authentication is decided BEFORE shape,
+    # so an unauthenticated caller never learns what this door would accept.
+    def _handle_command_submission(self, job_id_str: str) -> None:
+        """Authenticate, resolve and validate one UI-submitted command."""
+        if not self._bearer_token_accepted():
+            self._send_json(*_safe_error(403, "invalid token"))
+            return
+        if not server_token_matches(self.headers.get(COMMAND_CSRF_HEADER),
+                                    self.server_token):
+            self._send_json(*_safe_error(403, "invalid csrf token"))
+            return
+        _job, load_error = _load_job(job_id_str)
+        if load_error:
+            self._send_json(*load_error)
+            return
+        payload, shape_error = self._read_command_payload()
+        if shape_error:
+            self._send_json(*shape_error)
+            return
+        # The R7 seam: DECISION F009 D4's UI-exposed catalog subset replaces this
+        # answer with a real dispatch. Until it lands, 501 is the honest status —
+        # the door authenticates and validates, and accepts no command yet.
+        self._send_json(501, {
+            "error": "command channel not yet accepting commands",
+            "command": payload["command"],
+        })
+
+    def _bearer_token_accepted(self) -> bool:
+        """True when `Authorization` carries a `Bearer` token matching the server's."""
+        scheme, _, supplied = (self.headers.get("Authorization") or "").partition(" ")
+        if scheme != "Bearer" or not supplied:
+            return False
+        return server_token_matches(supplied, self.server_token)
+
+    def _read_command_payload(self) -> tuple[Any, Any]:
+        """Return `(payload, None)` for a well-formed body, else `(None, error)`."""
+        try:
+            length = int(self.headers.get("Content-Length"))
+        except (TypeError, ValueError):
+            return None, _command_field_error("body", "request body required")
+        if length <= 0:
+            return None, _command_field_error("body", "request body required")
+        if length > COMMAND_REQUEST_MAX_BYTES:
+            return None, _command_field_error("body", "request body too large")
+        try:
+            payload = json.loads(self.rfile.read(length).decode("utf-8"))
+        except (UnicodeDecodeError, ValueError):
+            return None, _command_field_error("body", "request body is not valid JSON")
+        if not isinstance(payload, dict):
+            return None, _command_field_error("body", "request body must be a JSON object")
+
+        command = payload.get("command")
+        if not isinstance(command, str) or not command:
+            return None, _command_field_error("command", "command must be a non-empty string")
+        client_nonce = payload.get("client_nonce")
+        if not isinstance(client_nonce, str) or not client_nonce:
+            return None, _command_field_error(
+                "client_nonce", "client_nonce must be a non-empty string")
+        # `args` absent is valid and means the empty object.
+        args = payload.get("args", {})
+        if not isinstance(args, dict):
+            return None, _command_field_error("args", "args must be a JSON object")
+        return {"command": command, "client_nonce": client_nonce, "args": args}, None
 
     def do_PUT(self) -> None:  # noqa: N802
         self._send_json(*_safe_error(405, "method not allowed"))
