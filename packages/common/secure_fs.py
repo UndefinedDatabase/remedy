@@ -53,6 +53,7 @@ __all__ = [
     "require_writable_dir",
     "read_verified_file",
     "write_file_atomically",
+    "append_line_at",
     "unlink_at",
     "list_dir_names",
 ]
@@ -588,6 +589,70 @@ def write_file_atomically(dir_fd: int, name: str, data: bytes, *, create_only: b
         if tmp_created:
             with contextlib.suppress(OSError):
                 os.unlink(tmp_name, dir_fd=dir_fd)
+
+
+#: One record is one line, and a record this long is a bug in the caller, not a stream.
+MAX_APPEND_LINE_BYTES = 64 * 1024
+
+
+def append_line_at(dir_fd: int, name: str, line: bytes, *, file_mode: int = 0o600,
+                   error_cls: ErrorCls = SecureFsError, noun: str = "line") -> None:
+    """Append ONE line to ``name`` through a held directory fd. Append-only, never rewritten.
+
+    Remedy deliberately does not have a general append writer beyond this one:
+    ``write_file_atomically`` publishes a WHOLE file, which is the wrong shape for a log that
+    must only ever grow, and a caller that reads-modifies-writes such a log loses every record
+    a concurrent writer added in between. This is the append half, and nothing more.
+
+    ``line`` must be bytes ending in exactly ONE newline and containing no other newline. A
+    caller handing over two records at once is a bug: the length bound and the newline rule
+    are what keep one call equal to one record.
+
+    THE SINGLE ``os.write`` IS THE POINT, and the reason the obvious retry loop is absent.
+    Under ``O_APPEND`` the kernel seeks to the end and writes in one indivisible step, so a
+    whole record lands at the end of the file even when several processes append at once. A
+    loop that resumed after a partial write would seek to the (new) end for the remainder and
+    interleave the tail of one record with the head of another — precisely the corruption
+    append-only logging exists to avoid. A short write is therefore an ERROR, not a state to
+    recover from.
+    """
+    require_platform(error_cls, noun)
+    require_single_component(name, error_cls=error_cls, noun=noun)
+
+    if not isinstance(line, (bytes, bytearray)):
+        raise error_cls(f"{noun} must be bytes, not {type(line).__name__}")
+    line = bytes(line)
+    if not line.endswith(b"\n"):
+        raise error_cls(f"{noun} must end in a newline")
+    if b"\n" in line[:-1]:
+        raise error_cls(f"{noun} must be a single line: it carries an interior newline")
+    if len(line) > MAX_APPEND_LINE_BYTES:
+        raise error_cls(
+            f"{noun} is {len(line)} bytes, over the {MAX_APPEND_LINE_BYTES}-byte limit for "
+            f"one record")
+
+    require_writable_dir(dir_fd, error_cls=error_cls, noun=noun, label=name)
+
+    flags = (os.O_WRONLY | os.O_CREAT | os.O_APPEND | getattr(os, "O_NOFOLLOW", 0)
+             | getattr(os, "O_CLOEXEC", 0))
+    try:
+        fd = os.open(name, flags, file_mode, dir_fd=dir_fd)
+    except OSError as exc:
+        raise error_cls(
+            f"{noun} could not be opened for append: {type(exc).__name__}: {exc}") from exc
+    try:
+        try:
+            written = os.write(fd, line)
+        except OSError as exc:
+            raise error_cls(
+                f"{noun} could not be appended: {type(exc).__name__}: {exc}") from exc
+        if written != len(line):
+            raise error_cls(
+                f"{noun} was appended only in part ({written} of {len(line)} bytes); the "
+                f"record is not retried, because a second write would interleave")
+        os.fsync(fd)
+    finally:
+        os.close(fd)
 
 
 def exclusive_lock_fd(name: str, dir_fd: int, *, timeout_sec: float = 30.0,
