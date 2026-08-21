@@ -17,28 +17,29 @@ cross-site attempts fail closed and are audited as rejected, and a route-walking
 test plus an import guard prove no other mutating route exists.
 
 ## Current Step
-R3 records the R2 verdict and rules the channel's shape as DECISIONS F009 D1
-through D9, each grounded in a citation R2 measured rather than in the feature
-file's wording: the test home, the auth pair, the token comparison, the exposed
-subset, the effect table, the audit record, the fingerprint, the nonce store and
-the rate limit. It also amends the one feature-file line naming a directory this
-repository does not have.
+R4 registers R-0631 against the reviewer's own R3 gate design and records the R3
+verdict. It writes no code: this session ends here at its stated four-round cap,
+and the build opens the next one with DECISIONS F009 D1 through D9 already ruled.
 
 ## Next Steps
-1. R4 builds T001's first half against D2, D3 and D4: the POST route, the bearer
-   and CSRF checks, the constant-time comparison for both doors, and the typed
-   validation errors, with contract tests in `tests/ui_server/`.
-2. R5 completes T001 with the rate limit as the typed config key D9 rules, then
-   T002's nonce store and audit record per D6, D7 and D8.
-3. T003's effect table and queue-only guards per D5, including the plan-approval
-   extraction, which lands as its own commit before the endpoint uses it.
-4. The integration gate before closure, then the closure round.
+1. R5 lands T001's door: the POST route on `_RemedyHandler` dispatching
+   `/api/jobs/<job_id>/commands`, the bearer plus X-Remedy-CSRF pair D2 rules,
+   the request-shape validation with typed errors naming the offending field,
+   and BOTH halves of D3's constant-time comparison in one commit — the existing
+   GET check at the `token != self.server_token` line and the new POST check —
+   compared as BYTES rather than as str, because `secrets.compare_digest` raises
+   TypeError on a non-ASCII str and a query parameter is attacker-controlled.
+   `import secrets` is already present, so D3 adds no import. Contract tests go
+   in `tests/ui_server/test_command_channel.py` per D1.
+2. R6 the catalog subset D4 rules and the rate limit D9 rules as a typed
+   `ConfigKeySpec`; R7 the nonce store and audit record per D6, D7 and D8.
+3. T003's effect table per D5, the plan-approval extraction landing as its own
+   commit; then the integration gate, then closure.
 
 ## Risks
-- D3 touches the EXISTING GET token check, the only line this feature changes
-  outside its own new surface. It is declared, it is two lines, and the
-  `tests/ui_server/` suite gates it.
-- D5's plan-approval extraction is a refactor of `apps/cli/commands/decision.py`;
-  AGENTS.md forbids mixing it with feature code, so it is its own commit.
+- R5 is the first round to touch `packages/orchestration/ui_server.py` on this
+  branch and it changes a live authentication line. It is a SPLIT round, the
+  `tests/ui_server/` suite gates it, and `tests/ui_server/test_live_state.py`
+  already asserts the `invalid token` response the change must preserve.
 - `npm run lint` in `apps/ui` is RED at base and is NOT a gate (R-0364), which is
   R-0622 and routes to a paydown branch.
