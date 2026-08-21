@@ -11,6 +11,10 @@ excluded set is exactly those paths. Excluding by name is the point: a silent
 exclusion would hide any OTHER write and the proof would claim the opposite of
 what it shows.
 
+`ask --file` is grounding source (2)'s only production caller (finding R-0610),
+so the tests for it assert what the MODEL WAS SHOWN — the prompt captured at the
+transport seam — rather than what the command intended to show it.
+
 NO TEST HERE OPENS A SOCKET. Every `ask` supplies the transport seam of
 ``teacher_model.ask_teacher``, so no test needs a running Ollama.
 
@@ -106,6 +110,21 @@ def _answering(text: str = "here is what happened"):
         return TeacherReply(text=text, usage=TeacherUsage(tokens_in=9, tokens_out=3))
 
     return call
+
+
+def _capturing(text: str = "here is what happened"):
+    """A fake transport seam that KEEPS every prompt it is handed.
+
+    Returns the seam and the list it appends to, so a test can assert what the
+    model really saw instead of trusting the command's own description of it.
+    """
+    prompts: list[str] = []
+
+    def call(prompt: str, *, model: str) -> TeacherReply:
+        prompts.append(prompt)
+        return TeacherReply(text=text, usage=TeacherUsage(tokens_in=9, tokens_out=3))
+
+    return call, prompts
 
 
 def _failing(reason: str = "the Ollama call failed: connection refused"):
@@ -334,3 +353,88 @@ class TestTeachAskOutput:
         assert payload["billed"] is True
         assert payload["call_id"] == _ledger_rows(teacher_ledger)[0]["call_id"]
         assert payload["grounding_sources"] == ["concept"]
+
+
+#: The grounding file every `--file` test points at. Short and unmistakable, so
+#: finding it inside a rendered prompt cannot be a coincidence.
+_CODE_TEXT = "def add_two_numbers(a, b):\n    return a + b\n"
+
+
+class TestTeachAskGroundsInAWorkspaceFile:
+    """T004 / R-0610: `--file` gives grounding source (2) a production caller.
+
+    Before this option existed, `code` and `code_path` were accepted by
+    ``ask_teacher`` and passed by NOTHING outside the tests, so source (2) was
+    reachable from the suite alone. These four hold the option to that fix.
+    """
+
+    def test_the_file_reaches_the_prompt_and_the_grounding_sources(
+        self, tmp_path, data_root, teacher_ledger, capsys
+    ):
+        source = tmp_path / "adder.py"
+        source.write_text(_CODE_TEXT, encoding="utf-8")
+        call, prompts = _capturing()
+
+        _cmd_teach_ask(
+            "what does this do?", file=str(source), call=call, json_output=True
+        )
+
+        payload = json.loads(capsys.readouterr().out)
+        # The model was SHOWN the code and told where it came from — asserting
+        # the prompt, not the intent, is what makes this a caller proof.
+        assert len(prompts) == 1
+        assert _CODE_TEXT in prompts[0]
+        assert str(source) in prompts[0]
+        assert "code" in payload["grounding_sources"]
+
+    def test_without_the_option_no_code_reaches_the_prompt(
+        self, data_root, teacher_ledger, capsys
+    ):
+        call, prompts = _capturing()
+
+        _cmd_teach_ask("what is a task?", call=call, json_output=True)
+
+        payload = json.loads(capsys.readouterr().out)
+        # Unchanged behaviour is part of the fix: the option adds a source, it
+        # does not alter the answer given without it.
+        assert "code" not in payload["grounding_sources"]
+        assert len(prompts) == 1
+        assert "[code]" not in prompts[0]
+
+    def test_an_unreadable_path_is_said_out_loud_and_the_answer_still_comes(
+        self, tmp_path, data_root, teacher_ledger, capsys
+    ):
+        missing = tmp_path / "no-such-file.py"
+        call, prompts = _capturing()
+
+        exit_code = _exit_code(
+            lambda: _cmd_teach_ask("what does this do?", file=str(missing), call=call)
+        )
+
+        out = capsys.readouterr().out
+        # Exit 0 with an answer: a teacher that could fail a run would not be
+        # passive. But NEVER silently — an operator not told would believe the
+        # answer had read code it never opened.
+        assert exit_code == 0
+        assert str(missing) in out
+        assert "here is what happened" in out
+        assert "Grounding sources: concept" in out
+        assert "[code]" not in prompts[0]
+
+    def test_reading_a_file_writes_nothing_and_leaves_it_untouched(
+        self, tmp_path, data_root, teacher_ledger, capsys
+    ):
+        source = tmp_path / "adder.py"
+        source.write_text(_CODE_TEXT, encoding="utf-8")
+        before_source = source.read_bytes()
+        _write_run_log(data_root, _JOB_ID, _EVENTS)
+        before = _hash_tree(data_root, excluding=_LEDGER_NAME_PREFIX)
+        assert before, "the fixture must put at least one file on disk"
+
+        _cmd_teach_ask("what does this do?", file=str(source), call=_answering())
+        capsys.readouterr()
+
+        # The ledger row stays the only write (DECISION F255 D10), and the file
+        # the teacher read is byte-identical afterwards.
+        assert _hash_tree(data_root, excluding=_LEDGER_NAME_PREFIX) == before
+        assert source.read_bytes() == before_source
