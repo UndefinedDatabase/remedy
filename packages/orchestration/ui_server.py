@@ -25,6 +25,7 @@ import os
 import re
 import secrets
 import sys
+import threading
 import time
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -2831,6 +2832,43 @@ def drain_sse_frames(frames: Any, write: Any, flush: Any, stop: Any) -> int:
     return written
 
 
+#: Live SSE streams one job may hold at once. A cockpit opens one per tab, so
+#: the cap is what stops a reconnect storm from pinning a thread per attempt.
+SSE_MAX_STREAMS_PER_JOB = 4
+
+_SSE_SLOT_LOCK = threading.Lock()
+_SSE_SLOTS_PER_JOB: dict[str, int] = {}
+
+
+def acquire_sse_slot(job_id: str, limit: int = SSE_MAX_STREAMS_PER_JOB) -> bool:
+    """Take one of a job's stream slots, or refuse once the cap is reached.
+
+    The server is threaded, so the count is read and written under one lock:
+    two tabs opening at the same moment must not both see the last free slot.
+    """
+    with _SSE_SLOT_LOCK:
+        live = _SSE_SLOTS_PER_JOB.get(job_id, 0)
+        if live >= limit:
+            return False
+        _SSE_SLOTS_PER_JOB[job_id] = live + 1
+        return True
+
+
+def release_sse_slot(job_id: str) -> None:
+    """Give a job's stream slot back, forgetting the job once it reaches zero.
+
+    A stream that ended is capacity again, so the caller releases in a
+    `finally`: a handler that raised would otherwise cost that job a slot for
+    the lifetime of the process.
+    """
+    with _SSE_SLOT_LOCK:
+        live = _SSE_SLOTS_PER_JOB.get(job_id, 0) - 1
+        if live > 0:
+            _SSE_SLOTS_PER_JOB[job_id] = live
+        else:
+            _SSE_SLOTS_PER_JOB.pop(job_id, None)
+
+
 def _get_frontend_dist() -> Path | None:
     """Return path to built React frontend dist/ if it exists."""
     dist = Path(__file__).resolve().parent.parent.parent / "apps" / "ui" / "dist"
@@ -3071,7 +3109,15 @@ class _RemedyHandler(BaseHTTPRequestHandler):
                 # are out the status line is spent and cannot say "not found".
                 self._send_json(*err)
                 return
-            self._send_sse_stream(job, (qs.get("cursor") or ["0"])[0])
+            if not acquire_sse_slot(str(job.id)):
+                # 429 for the same reason and in the same window: a refused
+                # stream must not consume the capacity it was refused.
+                self._send_json(*_safe_error(429, "too many streams for this job"))
+                return
+            try:
+                self._send_sse_stream(job, (qs.get("cursor") or ["0"])[0])
+            finally:
+                release_sse_slot(str(job.id))
             return
 
         # /api/layers
