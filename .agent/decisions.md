@@ -6755,3 +6755,17 @@ ALTERNATIVES: (a) 403 — rejected, it means "your credential failed" on this do
 THE REFUSAL DELIBERATELY DOES NOT DISTINGUISH an id that is absent from the catalog entirely from one that exists but is not UI-exposed. Both are "not a command this door accepts", and separating them would let an unauthenticated-but-credentialed caller enumerate the CLI surface through the write door.
 
 REVERSE by giving the unexposed case its own status; the field name does not change.
+
+## DECISION F009 D13 — the rate limit is consulted only for a request that would otherwise be accepted (2026-08-21)
+
+D9 ruled the limit a typed `ConfigKeySpec` keyed by the pair (token fingerprint, job id) and ruled that exceeding it refuses with 429, without fixing WHERE in the door's decision order the limit is consulted. That position is observable, so it is ruled rather than left to the implementation. The door's order at `43b438e3` is credentials, then job resolution, then request shape, then the UI-exposed subset, then the seam.
+
+CHOSEN: the limit is consulted LAST, immediately before the seam, and only a request that passes every earlier check spends budget. D9's own words are "the maximum accepted commands", and this is the reading that makes them true.
+
+WHY IT IS NOT CONSULTED EARLIER, which is the tempting alternative because an early check is cheaper: budget is spent per token fingerprint, and a client that is mid-rollout or simply buggy would otherwise lock ITSELF out of a job by sending malformed bodies — a self-inflicted denial of service produced by the guard rather than prevented by it. The cheapness argument does not survive contact with the threat model either: the fingerprint is derived from the server token, so anyone able to spend budget at all already holds the credential that grants full read access and every write this door exposes. The limit exists to bound the RATE of accepted change, not to defend the parser.
+
+ALTERNATIVES: (a) consult it immediately after the credentials — rejected on the self-lockout argument above. (b) count every request that reaches the door regardless of outcome — rejected for the same reason, and it would make the 429 depend on traffic the client cannot see.
+
+CONSEQUENCE FOR D6, stated here so the audit round does not have to rediscover it: a 429 is a REJECTION and is audited as one, and because the limit sits last, an audited 429 always names a command that was well formed and UI-exposed.
+
+REVERSE by moving the call earlier in `_handle_command_submission`; the key, the window and the status do not change.
