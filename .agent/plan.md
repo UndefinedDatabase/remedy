@@ -16,30 +16,30 @@ ledger's envelope sequence, the heartbeat holds cadence, and the fallback
 engages on a disabled EventSource and recovers to live.
 
 ## Current Step
-R12 records the R11 verdict, registers R-0618, and closes this session at its
-round cap. This round writes no code. T001 is COMPLETE and reviewed as of R11:
-the frame builders and the shared envelope, the frame generator that carries
-the ledger position as the SSE event id and heartbeats while idle, the
-six-part route, the socket writer that ends the loop when the peer goes away,
-404 before one byte of stream, the per-job slot cap answering 429, and the
-framing golden that pins the wire bytes.
+R13 begins T002 with the resume decision itself. `Last-Event-ID` names the last
+frame a client ALREADY holds, so the span it missed starts one PAST it, while
+the query cursor names the position to start AT; conflating the two yields a
+duplicate or a gap, and the acceptance test forbids both. `resolve_sse_start`
+holds that rule alone, the stream branch resolves both inputs before entering
+the writer, and a header that is absent, blank or mangled falls back to the
+cursor rather than refusing the stream. R13 also records the R12 verdict and
+registers R-0619.
 
 ## Next Steps
-1. R13 begins T002: Last-Event-ID resume, read from the request header and
-   falling back to the query cursor, replaying exactly the missed span from the
-   ledger — which IS the buffer, so there is no in-memory ring to lose.
-2. R14 adds T002's forced-disconnect hammer: kill the connection mid-stream N
+1. R14 adds T002's forced-disconnect hammer: kill the connection mid-stream N
    times and require the client transcript to byte-equal the ledger's envelope
    sequence.
-3. Then T003's client hook, backoff, gap detection and polling fallback, then
+2. Then T003's client hook, backoff, gap detection and polling fallback, then
    the integration gate before closure.
 
 ## Risks
 - The slot registry is process-global mutable state. Every test that acquires a
-  slot clears it first, and the release runs in a `finally`; if either
+  slot clears it first and the release runs in a `finally`; if either
   discipline lapses, a leaked slot makes a later round's 429 test pass for the
   wrong reason.
-- No open finding is a code defect of F008. R-0403, R-0607, R-0608, R-0609,
-  R-0611, R-0613, R-0614, R-0615, R-0616, R-0617 and R-0618 stay routed to a
-  paydown branch, together with promoting the fix clauses of R-0387 and R-0573
-  into the §3 checklist.
+- A `_RemedyHandler` built with `__new__` carries no `headers`, so every test
+  driving `do_GET` into the stream branch must set it. R13 sets it in the
+  shared `_dispatch` helper and in the one test that builds its own handler.
+- No open finding is a code defect of F008. R-0403, R-0607 through R-0609,
+  R-0611 and R-0613 through R-0619 stay routed to a paydown branch, with the
+  fix clauses of R-0387 and R-0573 promoted into the §3 checklist.
