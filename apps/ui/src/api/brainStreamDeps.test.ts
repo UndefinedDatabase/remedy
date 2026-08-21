@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { createBrainStreamHostDeps, cursorAfter, framesOf, snapshotSeqOf } from "./brainStreamDeps";
-import type { BrainStreamEnv } from "./brainStreamDeps";
+import { browserBrainStreamEnv, createBrainStreamHostDeps, cursorAfter, framesOf, snapshotSeqOf } from "./brainStreamDeps";
+import type { BrainStreamEnv, BrainStreamGlobals } from "./brainStreamDeps";
 import type { BrainStreamMessage, BrainStreamSource } from "./brainStreamHost";
 
 /** A source that records nothing but its own construction: these tests are
@@ -118,5 +118,46 @@ describe("the host deps over the real endpoints", () => {
     const cancel = createBrainStreamHostDeps("job-1", r.env).schedule(250, () => {});
     cancel();
     expect(r.timers).toEqual([250, -250]);
+  });
+});
+
+describe("the browser environment", () => {
+  interface Globals extends BrainStreamGlobals { cleared: unknown[]; }
+
+  function globals(options: { source?: boolean; ok?: boolean } = {}): Globals {
+    const cleared: unknown[] = [];
+    const base = {
+      cleared,
+      fetch(_path: string): Promise<{ ok: boolean; status: number; json(): Promise<unknown> }> {
+        return Promise.resolve({
+          ok: options.ok !== false,
+          status: options.ok === false ? 503 : 200,
+          json: (): Promise<unknown> => Promise.resolve({ cursor: "2" }),
+        });
+      },
+      setTimeout(resume: () => void, _ms: number): unknown { resume(); return "handle"; },
+      clearTimeout(handle: unknown): void { cleared.push(handle); },
+    };
+    return options.source === true ? { ...base, EventSource: FakeSource } : base;
+  }
+
+  it("has no source where the runtime lacks EventSource, and one where it has it", () => {
+    expect(browserBrainStreamEnv(globals()).makeSource).toBeNull();
+    const make = browserBrainStreamEnv(globals({ source: true })).makeSource;
+    expect(make).not.toBeNull();
+    expect(make?.("/api/jobs/job-1/events/stream?cursor=0")).toBeInstanceOf(FakeSource);
+  });
+
+  it("parses a successful body and refuses a failed status", async () => {
+    await expect(browserBrainStreamEnv(globals()).fetchJson("/p")).resolves.toEqual({ cursor: "2" });
+    await expect(browserBrainStreamEnv(globals({ ok: false })).fetchJson("/p")).rejects.toThrow("503");
+  });
+
+  it("cancels a scheduled resume through the global it was given", () => {
+    const g = globals();
+    let resumed = 0;
+    browserBrainStreamEnv(g).setTimer(10, () => { resumed += 1; })();
+    expect(resumed).toBe(1);
+    expect(g.cleared).toEqual(["handle"]);
   });
 });
