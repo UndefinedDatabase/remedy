@@ -99,7 +99,11 @@ describe("brainBackoffDelayMs", () => {
     expect([1, 2, 3, 4].map((n) => brainBackoffDelayMs(n))).toEqual([250, 500, 1000, 2000]);
   });
   it("is capped so a long outage keeps retrying", () => {
-    expect(brainBackoffDelayMs(20)).toBe(BRAIN_BACKOFF_CAP_MS);
+    // The LITERAL is the gate. Asserting only against the imported constant
+    // tracks any change to it and therefore pins nothing — the cap could be
+    // raised to a minute and this test would stay green (finding R-0623).
+    expect(BRAIN_BACKOFF_CAP_MS).toBe(8000);
+    expect(brainBackoffDelayMs(20)).toBe(8000);
   });
   it("never decreases as attempts grow", () => {
     const d = [0, 1, 2, 3, 4, 5, 6, 7, 8].map((n) => brainBackoffDelayMs(n));
