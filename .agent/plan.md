@@ -16,19 +16,20 @@ silently, teacher spend is reported as its own role in the F103 ledger, and the
 read-only invariant is proven behaviourally.
 
 ## Current Step
-R14: a RECORD round. It registers finding R-0606 against the R13 block's own G6,
-persists the R13 verdict to `.agent/live_review.md`, and advances this plan. It
-builds nothing — the session that reviewed R13 reached its limit, and a verdict
-that lives only in a chat window is a verdict this project cannot audit.
+R15: a RECORD round. It registers finding R-0607 against the R14 block's omitted
+canary, persists the R14 verdict, and advances this plan. It builds nothing — the
+session that reviewed R14 reached its limit, and a verdict that lives only in a
+chat window is a verdict this project cannot audit.
 
 ## Next Steps
-1. R15 FINISHES T004, the model half of Stage 2: `remedy teach ask` on the CLI
+1. R16 FINISHES T004, the model half of Stage 2: `remedy teach ask` on the CLI
    over `teacher_qa.build_teacher_context`, the teacher model call through
    `resolve_role_config("teacher")`, the honest refusal when no model is
    configured, and the spend row written through the `teacher_spend` seam R13
    built. There is NO generic text-completion provider in this repository today:
-   the providers under `packages/providers/` are role-specific and
-   schema-bound, so R15 must design the teacher's model seam, not discover one.
+   the providers under `packages/providers/` are role-specific and schema-bound,
+   so R16 must DESIGN the teacher's model seam rather than discover one, and
+   that design is the round's first and largest risk.
 2. The INTEGRATION GATE round follows T004 — the full suite, per
    docs/agents/integration_gate.md — because T002 and T003 touch the CLI
    catalog, which the parser and the help renderer both read.
@@ -37,6 +38,6 @@ that lives only in a chat window is a verdict this project cannot audit.
 
 ## Risks
 - `teacher_spend.record_teacher_question` HAS NO CALLER YET. R13 built and
-  red-proofed the seam; until R15 wires it, F255's cost acceptance is unmet.
+  red-proofed the seam; until R16 wires it, F255's cost acceptance is unmet.
 - THE READ-ONLY PROOF COVERS NARRATE ONLY; `teach ask` needs its own, and it
   must exclude the ledger row R13 introduced by name rather than by silence.
