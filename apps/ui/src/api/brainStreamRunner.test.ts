@@ -146,3 +146,18 @@ describe("stopping the runner", () => {
     expect(host.connects).toEqual([null]);
   });
 });
+
+/** The driver is the only author of a `connect`. A restart after the fallback
+ *  engaged must therefore resume on the fallback's terms, not reopen a stream
+ *  the client already learned it cannot have (finding R-0627). */
+describe("restarting after the fallback engaged", () => {
+  it("polls on the driver's authority instead of reopening a stream", () => {
+    const { host, runner } = started();
+    runner.dispatch({ kind: "unsupported" });
+    runner.stop();
+    runner.start();
+    expect(host.connects).toEqual([null]);
+    expect(host.waits()).toEqual([3000, 3000]);
+    expect(runner.view().status).toBe("delayed");
+  });
+});
