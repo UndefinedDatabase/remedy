@@ -16,26 +16,28 @@ cross-site attempts fail closed and are audited as rejected, and a route-walking
 test plus an import guard prove no other mutating route exists.
 
 ## Current Step
-R13 opens T003 with the half DECISION F009 D5 orders to land first and alone: the
-plan approval becomes the package function `resolve_flight_plan_approval` and
-`apps/cli/commands/decision.py` becomes its first caller. It is a refactor, so it
-carries no endpoint change and no new behaviour. The round also records the R12
-verdict.
+R14 closes this session and writes no production code. It records the R13 verdict
+and rules DECISION F009 D16, which cuts the rest of T003 into four rounds and
+retires the 501 seam one COMMAND at a time rather than all at once. The plan
+approval became the package function `resolve_flight_plan_approval` at R13.
 
 ## Next Steps
-1. The effect table itself: the three exposed commands dispatch, the 501 seam is
-   retired, DECISION F009 D14's reserved `accepted` outcome is written,
-   `publish_nonce_result` gains its door call site with R-0637's bound applied at
-   publication, R-0636's replay token moves off `not_implemented`, and the
-   `command.accepted` SSE event lands with it.
-2. Then the queue-only import guard and the per-command side-effect assertions,
-   the route-walking 405 test, the client wiring that sends both headers, the
-   integration gate, and closure.
+1. `job.stop` dispatches to `safe_points.request_stop`. That path writes
+   DECISION F009 D14's reserved `accepted` outcome, publishes the nonce record
+   through `publish_nonce_result` with R-0637's bound applied AT PUBLICATION, and
+   moves R-0636's replay token off `not_implemented`. `decision.resolve` keeps
+   answering 501 until the round after.
+2. Then `decision.resolve` dispatches and the seam is gone; then the
+   `command.accepted` SSE event; then the queue-only import guard, the
+   per-command side-effect assertions and the route-walking 405 test; then the
+   integration gate and closure. DECISION F009 D16 carries the ordering and why.
 
 ## Risks
-- R-0636 and R-0637 are owed by the round that retires the 501 seam, which is the
-  NEXT round and not this one: both depend on the publish call site it adds.
-- A green approval suite proves nothing on its own if it never reaches the new
-  function, so the extraction is gated by a probe as well as by a colour.
+- R-0636 and R-0637 are owed by the round that adds the publish call site, which
+  is the FIRST of the four rounds D16 rules and not this one.
+- Splitting by command means the door is briefly dispatching one exposed id and
+  refusing the other with 501. That is honest — `not_implemented` is exactly what
+  the audit records for a command this door has not yet dispatched — but it is a
+  state the tests must assert deliberately rather than inherit.
 - `npm run lint` in `apps/ui` is RED at base and is NOT a gate (R-0364), which is
   R-0622 and routes to a paydown branch.
