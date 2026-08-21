@@ -145,3 +145,157 @@ class TestHeartbeatCadence:
 
     def test_the_default_interval_is_fifteen_seconds(self):
         assert mod.SSE_HEARTBEAT_SECONDS == 15.0
+
+
+# A job the route can carry: `_load_job` is stubbed, so only the id is read.
+class _Job:
+    id = "11111111-2222-3333-4444-555555555555"
+
+
+class _Socket:
+    """A peer that accepts `until` frames and then goes away."""
+
+    def __init__(self, until: int) -> None:
+        self.frames: list[bytes] = []
+        self.until = until
+
+    def write(self, frame: bytes) -> None:
+        if len(self.frames) >= self.until:
+            raise BrokenPipeError
+        self.frames.append(frame)
+
+    def flush(self) -> None:
+        return None
+
+
+def _dispatch(monkeypatch: Any, path: str, job: Any, err: Any) -> tuple[list, list]:
+    """Drive `do_GET` on a socketless handler and record what it answered."""
+    monkeypatch.setattr(mod, "_load_job", lambda jid: (job, err))
+    handler = mod._RemedyHandler.__new__(mod._RemedyHandler)
+    handler.server_token = "tok"
+    handler.target_job_id = ""
+    handler.path = path
+    answered: list[Any] = []
+    streamed: list[Any] = []
+    handler._send_json = lambda code, data: answered.append((code, data))
+    handler._send_sse_stream = lambda j, cursor: streamed.append((j, cursor))
+    handler.do_GET()
+    return answered, streamed
+
+
+class TestFrameDraining:
+    def test_every_frame_reaches_the_socket_in_order(self):
+        socket = _Socket(3)
+        sent = mod.drain_sse_frames(
+            iter([b"a", b"b", b"c"]), socket.write, socket.flush, lambda: None)
+        assert socket.frames == [b"a", b"b", b"c"]
+        assert sent == 3
+
+    def test_a_broken_pipe_stops_the_reader(self):
+        stopped: list[bool] = []
+        socket = _Socket(0)
+        # The generator is suspended in `yield` and cannot see the pipe break,
+        # so nothing but this call can end its loop.
+        sent = mod.drain_sse_frames(
+            iter([b"a", b"b"]), socket.write, socket.flush,
+            lambda: stopped.append(True))
+        assert sent == 0
+        assert stopped == [True]
+
+    def test_a_disconnect_keeps_the_frames_already_written(self):
+        socket = _Socket(2)
+        sent = mod.drain_sse_frames(
+            iter([b"a", b"b", b"c"]), socket.write, socket.flush, lambda: None)
+        assert socket.frames == [b"a", b"b"]
+        assert sent == 2
+
+    def test_a_closed_socket_ends_the_stream_rather_than_raising(self):
+        # A wfile the server has already closed raises ValueError, not OSError.
+        def flush() -> None:
+            raise ValueError("I/O operation on closed file")
+
+        assert mod.drain_sse_frames(
+            iter([b"a"]), lambda frame: None, flush, lambda: None) == 0
+
+
+class TestStreamRoute:
+    def test_the_stream_path_reaches_the_writer_with_its_cursor(self, monkeypatch):
+        job = _Job()
+        answered, streamed = _dispatch(
+            monkeypatch, "/api/jobs/J/events/stream?token=tok&cursor=7", job, None)
+        assert answered == []
+        assert streamed == [(job, "7")]
+
+    def test_a_stream_without_a_cursor_starts_at_the_beginning(self, monkeypatch):
+        _answered, streamed = _dispatch(
+            monkeypatch, "/api/jobs/J/events/stream?token=tok", _Job(), None)
+        assert streamed[0][1] == "0"
+
+    def test_an_unknown_job_answers_404_before_one_stream_byte(self, monkeypatch):
+        answered, streamed = _dispatch(
+            monkeypatch, "/api/jobs/nope/events/stream?token=tok", None,
+            (404, {"error": "job not found"}))
+        assert streamed == []
+        assert answered == [(404, {"error": "job not found"})]
+
+    def test_a_bad_token_never_reaches_the_stream(self, monkeypatch):
+        answered, streamed = _dispatch(
+            monkeypatch, "/api/jobs/J/events/stream?token=wrong", _Job(), None)
+        assert streamed == []
+        assert answered[0][0] == 403
+
+    def test_the_cursor_endpoint_still_answers_beside_the_stream(self, monkeypatch):
+        # The stream is a SIXTH path part, so the five-part branch is untouched.
+        monkeypatch.setattr(mod, "_load_events", lambda job: _events(2))
+        answered, streamed = _dispatch(
+            monkeypatch, "/api/jobs/J/events-since?token=tok&cursor=0", _Job(), None)
+        assert streamed == []
+        assert answered[0][0] == 200
+        assert [e["seq"] for e in answered[0][1]["events"]] == [0, 1]
+
+
+class TestStreamResponse:
+    def _handler(self, socket: Any) -> Any:
+        handler = mod._RemedyHandler.__new__(mod._RemedyHandler)
+        handler.sent_code = []
+        handler.headers_out = []
+        handler.send_response = handler.sent_code.append
+        handler.send_header = lambda key, value: handler.headers_out.append((key, value))
+        handler.end_headers = lambda: None
+        handler.wfile = socket
+        return handler
+
+    def test_the_response_declares_an_event_stream(self, monkeypatch):
+        monkeypatch.setattr(mod, "_load_events", lambda job: _events(1))
+        handler = self._handler(_Socket(0))
+        clock = _Clock()
+        handler._send_sse_stream(_Job(), "0", now=clock.now, sleep=clock.sleep)
+        assert handler.sent_code == [200]
+        assert dict(handler.headers_out)["Content-Type"] == "text/event-stream"
+        assert dict(handler.headers_out)["Cache-Control"] == "no-store"
+
+    def test_the_cursor_span_reaches_the_socket_without_renumbering(self, monkeypatch):
+        monkeypatch.setattr(mod, "_load_events", lambda job: _events(3))
+        socket = _Socket(2)
+        handler = self._handler(socket)
+        clock = _Clock()
+        handler._send_sse_stream(_Job(), "1", now=clock.now, sleep=clock.sleep)
+        # Resumed at 1, so the ids are the ledger's own and not 0-based.
+        assert [_parse(f)["id"] for f in socket.frames] == ["1", "2"]
+
+    def test_a_non_numeric_cursor_streams_from_the_beginning(self, monkeypatch):
+        monkeypatch.setattr(mod, "_load_events", lambda job: _events(2))
+        socket = _Socket(2)
+        handler = self._handler(socket)
+        clock = _Clock()
+        handler._send_sse_stream(_Job(), "junk", now=clock.now, sleep=clock.sleep)
+        assert [_parse(f)["id"] for f in socket.frames] == ["0", "1"]
+
+    def test_the_departed_peer_ends_the_loop(self, monkeypatch):
+        # Without `stop` this call never returns: the reader would poll the
+        # ledger for ever on a socket nobody is reading.
+        monkeypatch.setattr(mod, "_load_events", lambda job: _events(1))
+        handler = self._handler(_Socket(0))
+        clock = _Clock()
+        handler._send_sse_stream(_Job(), "0", now=clock.now, sleep=clock.sleep)
+        assert handler.wfile.frames == []
