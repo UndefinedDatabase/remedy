@@ -168,13 +168,17 @@ class _Socket:
         return None
 
 
-def _dispatch(monkeypatch: Any, path: str, job: Any, err: Any) -> tuple[list, list]:
+def _dispatch(monkeypatch: Any, path: str, job: Any, err: Any,
+              headers: dict[str, str] | None = None) -> tuple[list, list]:
     """Drive `do_GET` on a socketless handler and record what it answered."""
     monkeypatch.setattr(mod, "_load_job", lambda jid: (job, err))
     handler = mod._RemedyHandler.__new__(mod._RemedyHandler)
     handler.server_token = "tok"
     handler.target_job_id = ""
     handler.path = path
+    # A real handler always carries `headers`; one built with `__new__` does
+    # not, and the stream branch now reads it.
+    handler.headers = headers or {}
     answered: list[Any] = []
     streamed: list[Any] = []
     handler._send_json = lambda code, data: answered.append((code, data))
@@ -397,6 +401,7 @@ class TestStreamCapRoute:
         handler.server_token = "tok"
         handler.target_job_id = ""
         handler.path = "/api/jobs/J/events/stream?token=tok"
+        handler.headers = {}
         handler._send_json = lambda code, data: None
         handler._send_sse_stream = boom
         raised = False
