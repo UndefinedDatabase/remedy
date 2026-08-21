@@ -1,80 +1,89 @@
-# Handback — F009 The single write channel, R7 (THE DOOR IS NARROWED TO THE EXPOSED SUBSET — `UI_EXPOSED_COMMANDS` declared beside the catalog, checked in front of the seam, and every other id refused 400 on field `command`; 47 tests in the module)
+# Handback — F009 R8, the command door's rate limit
+
+Round base `43b438e330f7ea0ec23f958c7a37aacd8b99fbaa`, branch `feature/f009-single-write-channel`. State: 40 % (T001 gebaut · T002 begonnen — Limit steht, Quittung und Wirkung folgen in R9 und T003) — Schätzung
+
 ## Range
-Review of `98592b72`..C6, the handback commit itself (8 commits, branch feature/f009-single-write-channel). THE ROUND BASE IS `98592b721a5aab3da28beb9a19f3fd4074c26b85`, read at Step 0 and the value every "at the round base" gate below is measured against; it is the value the block names. C6's own SHA cannot exist inside C6, so it is named by role and the round report carries the value (R-0371).
+
+Review of `43b438e3..HEAD` — seven commits: C0a, C0b, C1, C2, C3, C4, C5.
+
 ## Commits
-### c7899ebc docs(state): save the F009 R7 step block to the authored record
+
+### 48987aec docs(state): save the F009 R8 step block as an authored artifact
 | Path | +/- | Reason |
-| `.agent/authored/f009-r7.md` | +273/-0 | C0a, the R7 block saved byte for byte |
+|---|---|---|
+| .agent/authored/f009-r8.md | +285/-0 | the round's block, byte-exact |
 
-### 95c6a799 docs(state): mirror the F009 R7 block into the last-block slot
+### 21f0467c docs(state): mirror the F009 R8 step block into last_block
 | Path | +/- | Reason |
-| `.agent/last_block.md` | +171/-179 | C0b, the same bytes mirrored from the COMMITTED C0a blob |
+|---|---|---|
+| .agent/last_block.md | +176/-164 | written from the committed C0a blob |
 
-### 3bf7dc94 docs(state): set the plan to the F009 R7 build round
+### 638d407c docs(state): set the plan to the F009 R8 rate-limit round
 | Path | +/- | Reason |
-| `.agent/plan.md` | +15/-17 | C1, PLANF009R7 applied whole — the first substantive commit |
+|---|---|---|
+| .agent/plan.md | +17/-16 | PLANF009R8, applied byte-equal |
 
-### 4be0ed50 docs(review): register R-0633 against the R6 red-proof gate
+### efba382d docs(decisions): rule where the command rate limit is consulted as F009 D13
 | Path | +/- | Reason |
-| `.agent/live_review.md` | +2/-0 | C2, R0633 appended as the last paragraph after one blank line |
+|---|---|---|
+| .agent/decisions.md | +14/-0 | DECISION13 appended |
 
-### 538e86e6 docs(state): rule the unexposed-command refusal as F009 D12
+### 69394fea docs(review): record the R7 verdict in the live review ledger
 | Path | +/- | Reason |
-| `.agent/decisions.md` | +12/-0 | C3, DECISION12 appended the same way — a SIX-paragraph slice |
+|---|---|---|
+| .agent/live_review.md | +2/-0 | LEDGER8 appended; this round mints no id |
 
-### 6201613c docs(review): record the R6 verdict in the live review ledger
+### 84c63d31 feat(ui-server): rate-limit the command door per token fingerprint and job
 | Path | +/- | Reason |
-| `.agent/live_review.md` | +2/-0 | C4, LEDGER7 appended as the new last paragraph |
+|---|---|---|
+| packages/orchestration/config.py | +15/-0 | the DECISION F009 D9 `ConfigKeySpec` |
+| packages/orchestration/ui_server.py | +105/-3 | the fingerprint, the limiter, the 429 |
+| tests/ui_server/test_command_channel.py | +235/-0 | the contract-G tests |
 
-### b10ef584 feat(ui-server): narrow the command door to the UI-exposed catalog subset
+### C5, this commit, docs(state): write the F009 R8 handback
 | Path | +/- | Reason |
-| `apps/cli/command_catalog.py` | +11/-0 | C5, contract A: `UI_EXPOSED_COMMANDS` beside `CATALOG`, its WHY comment, its `Public API::` line |
-| `packages/orchestration/ui_server.py` | +27/-3 | C5, contracts B–D: the refusal constant, the checking helper with its in-function import, the call in front of the seam, the seam's new WHY comment |
-| `tests/ui_server/test_command_channel.py` | +133/-5 | C5, contract E: the subset tests, the order tests and the set's own unit class |
+|---|---|---|
+| .agent/handoff.md | rewrite | a handback cannot table the commit that writes it |
 
-### C6 docs(state): write the F009 R7 handback
-| Path | +/- | Reason |
-| `.agent/handoff.md` | self | C6 cannot table itself (R-0149); its numbers are in the round report |
-
-## External actions
-- `gh pr list --state open --json number,headRefName,baseRefName,isDraft` printed `[]`. That call is READ-ONLY and establishes the fact the `## Next` section states; NO Open PR Gate was run and NO pull request was created or merged. WORKTREE, added and removed for G10 alone: `git worktree add .remedy-wt/g10-r7 b10ef584` then `git worktree remove --force .remedy-wt/g10-r7` and `git worktree prune`, all EXIT 0; afterwards `git worktree list` names the primary checkout alone, `/home/decodeux/Repos/remedy b10ef584 [feature/f009-single-write-channel]`. NO push had run when this file was written: the single `git push` this session owes follows C6, AGENTS.md push discipline requires it, and no handback can record a push that follows the file being written.
-
-## Verification
-- G1 `.agent/STOP` ABSENT — `ls .agent/STOP` printed `No such file or directory` at Step 0 and again before C5. `git rev-parse --abbrev-ref HEAD` printed `feature/f009-single-write-channel` at every reading. `git status --porcelain` printed 0 lines after each of C0a, C0b, C1, C2, C3, C4 and C5; the post-C6 reading is in the round report. ROUND BASE `98592b721a5aab3da28beb9a19f3fd4074c26b85`.
-- G2 Transport EQUAL three ways — `.remedy-wt/f009-r7.md` as received, `.agent/authored/f009-r7.md` at C0a and `.agent/last_block.md` at C0b — all sha256 0a3ded8c40ef528b99fc9b1884d4c07b6fb74cf0872cd9bbb88b8ec86418b34f over 25939 bytes and 273 lines, EQUAL to the digest in the task prompt. C0b was written from `git show c7899ebc:.agent/authored/f009-r7.md`, never from the scratch file again.
-- G3 FOUR slices, the COUNT taken from an ordered extraction out of the COMMITTED C0a blob by their marker lines; newline-INCLUDED sha256 prefix/bytes/lines: PLANF009R7 7e62f1c0/2353/40, R0633 e3b4cadf/1915/1, DECISION12 f3e51553/1598/11, LEDGER7 21f58096/5483/1. Aggregates over those four: ALL NEWLINE TERMINATED True, ANY LEADING BLANK LINE False, ANY TRAILING WHITESPACE False.
-- G4 `.agent/plan.md` at C1 BYTE-EQUAL to PLANF009R7 (both sha256 7e62f1c0…, 2353 bytes), 40 lines against the 50-line cap; `^## Goal$` 1 line and `^## Next Steps$` 1 line; the FIRST `\bF\d{3}\b` match is `F009`.
-- G5 BOTH appends to `.agent/live_review.md` proved TWICE over independent extractors in the general N-paragraph form. C2, base = the round base: (a) PREFIX holds and the remainder EQUALS a newline plus R0633 — new-file sha256 74197681…, 414038 bytes, 1060 lines; (b) N COUNTED BY THE SCRIPT = 1, the whole C2 file splits into 210 blank-line units by an INDEPENDENT extractor and its LAST 1 unit EQUALS the slice's 1 paragraph IN ORDER. CONTROL on the FIRST appended paragraph (offset 2, `R`→`Z`): (a) ACCEPTS unflipped True / REJECTS flipped True; (b) ACCEPTS unflipped True / REJECTS flipped True. C4, base = the C2 blob: (a) PREFIX holds and the remainder EQUALS a newline plus LEDGER7 — new-file sha256 23a1cb2e…, 419522 bytes, 1062 lines; (b) N COUNTED = 1 against 211 units, LAST 1 EQUAL IN ORDER. CONTROL (offset 0, `G`→`Z`): all four outcomes as required.
-- G6 The append at C3 to `.agent/decisions.md`, base = the round base, proved the same two ways with its OWN control and its OWN counted N. (a) PREFIX holds and the remainder EQUALS a newline plus DECISION12 — new-file sha256 63aed642…, 432544 bytes, 6757 lines. (b) N COUNTED BY THE SCRIPT = 6 paragraphs, agreed by both extractors; the whole C3 file splits into 1109 units and its LAST 6 units EQUAL the slice's 6 paragraphs IN ORDER. CONTROL on the FIRST appended paragraph (offset 3, `D`→`Z`): (a) True/True, (b) True/True. Counts REPORTED rather than predicted: `^## DECISION F009 D\d+ — ` 11 at the round base and 12 at C3; `^## DECISION ` 96 at the round base and 97 at C3. The DISTINCT F009 keys at C3 number 12 over 12 occurrences: D1 through D12.
-- G7 Line-anchored over `.agent/live_review.md` at the round base, at C2 `4be0ed50` and at C4 `6201613c`: `^- R-\d+ — ` 198, 199, 199 with ALL ids DISTINCT at each; `^- R-0633 — ` 0, 1, 1; `^Done: R-\d+ — ` 1 at all three; `^Landed: ` 0 at all three; `^> Next free id` 0 at all three; `^Gate: R\d+ — ` 6, 6, 7 over 6, 6 and 7 DISTINCT keys. THE MAX ID AT C4 IS R-0633. Of the 7 `Gate: ` lines at C4, 6 match `^Gate: R(\d+) — the R(\d+) entry\.` with the second numeral one less than the first, and the 1 non-match reads exactly `Gate: R1 — the F008 R36 entry.` ITEM 10'S OPEN COUNT AT C4, as my script printed it: 198 — line-anchored `^- R-\d+ — ` 199 minus line-anchored `^Done: R-\d+ — ` 1, per `docs/agents/planner_reviewer_prompt.md` §3 item 10 and DECISION F009 D10, measured at `6201613c`.
-- G8 The exposed set read at C5 by IMPORTING it: `sorted(UI_EXPOSED_COMMANDS)` printed `['decision.resolve', 'job.stop']`, length 2, type `frozenset`; both members resolved through `get_command` without raising, each returning its own `command_id`. `len(CATALOG)` is 340 at the round base and 340 at C5 — EQUAL — and the ordered `command_id` list is identical at both, so no catalog entry was edited; `UI_EXPOSED_COMMANDS` does not exist at the round base.
-- G9 In the PRIMARY checkout at C5, serially, never two pytest processes at once: `ruff check` over the three changed paths EXIT 0, `All checks passed!`; `pytest tests/ui_server/test_command_channel.py -q -rf` EXIT 0, 47 passed 0 skipped; `pytest tests/test_command_catalog.py tests/cli/test_command_catalog.py tests/test_grouped_cli.py -q -rf` EXIT 0, 552 passed 0 skipped; `pytest tests/ui_server/ tests/orchestration/test_test_runner.py tests/regression/test_resource_safety.py tests/orchestration/test_integrity_gate.py -q -rf` EXIT 0, 470 passed 0 skipped; `pytest tests/cli/test_golden_path.py -q -rf` EXIT 0, 42 passed 0 skipped. The module contributes 47 tests, taken from `--collect-only -q`, which printed `47 tests collected` — not from a regex over `-v` (R-0611).
-- G10 A red-proof PAIR, both halves inside ONE disposable worktree at `.remedy-wt/g10-r7` checked out at C5, the primary checkout never written to. (a) UNMUTATED: EXIT 0, 47 passed. (b) MUTATED: the byte string `return command_id in UI_EXPOSED_COMMANDS`, whose occurrence count in `packages/orchestration/ui_server.py` at C5 is 1, replaced by `return True`: EXIT 1, 4 failed 43 passed. (b) IS RED WHERE (a) IS GREEN. The failing node ids are the ones that run's own `-rf` summary printed, derived from nothing: `TestCommandChannelDoor::test_unexposed_catalog_command_is_400_on_field_command`, `TestCommandChannelDoor::test_command_in_no_catalog_is_400_on_field_command`, `TestCommandChannelDoor::test_the_two_refusals_are_indistinguishable` and `TestCommandChannelDoor::test_empty_command_is_still_a_shape_error_not_a_subset_error`. Worktree removed and pruned before C6; `git worktree list` then names the primary checkout alone.
-- G11 `git diff --name-only 98592b72..b10ef584` lists 8 paths, EXACTLY the change set minus `.agent/handoff.md`, the set difference EMPTY in both directions. `git rev-list --reverse` gives SEVEN commits, each read to have exactly ONE parent, with `git show --numstat` and `git diff --numstat` AGREEING on every cell and every cell equal to the `+/-` column above: insertions 273, 171, 15, 2, 12, 2 and 171 — every one under the 500 cap of AGENTS.md DECISION F104 D1, so no split and no overage. Lines beginning `<<<SLICE ` or `<<<END `: 0 in each of `.agent/plan.md`, `.agent/live_review.md`, `.agent/decisions.md`, `apps/cli/command_catalog.py`, `packages/orchestration/ui_server.py` and `tests/ui_server/test_command_channel.py`. This round's own reflog entries, taken as the rows whose commit is one of those seven or the round base and classified by the operation before the first `:` in `%gs`: 8 rows, ALL `commit`; `amend` 0, `rebase` 0, `cherry` 0. C6 adds one further `commit` row whose value cannot exist while this sentence is written (R-0371). NO total over the whole reflog is asserted (R-0601). `git ls-files .remedy-wt` = 0.
-- G12 This file carries every mandated section of docs/agents/handback_template.md, the item-status table below holding exactly one row for each of C0a, C0b, C1, C2, C3, C4, C5 and C6, the round base SHA, and one line per gate G1–G12 — the raw transcripts are in the round report (R-0582). Its measured `wc -l` is 80, over the 60-line default and under the 100 AGENTS.md allows a bundle of more than five commits, so no DECISION D15 stated-cause overage is claimed.
-
-## Authored-text proofs
-- `.agent/authored/f009-r7.md` at C0a == the received block byte for byte, and `.agent/last_block.md` at C0b == the same bytes, read out of the COMMITTED C0a blob (G2). All FOUR slices were extracted from that committed blob by their marker lines with a script and applied programmatically — never retyped, rewrapped, reflowed, reindented or whitespace-adjusted. Whole-file byte equality: PLANF009R7 (G4). Prefix-plus-remainder equality with an independent second extractor, a counted N and a negative control on the FIRST appended paragraph: R0633 at N = 1 and LEDGER7 at N = 1 (G5), DECISION12 at N = 6 (G6). G11 confirms 0 marker lines in all six committed targets.
-
-## State — Fortschritt
-30 % (T001 gebaut und auf den freigegebenen Katalog verengt · T002 offen · T003 offen — Limit, Quittung und Wirkung folgen in R8, R9 und T003) — Schätzung
-
-## Item status
 | Item | Status | Reason |
+|---|---|---|
 | C0a | done | |
 | C0b | done | |
-| C1 | done | the first substantive commit |
-| C2 | done | R0633 appended; the id was minted by the reviewer, not by me |
-| C3 | done | DECISION12 appended, ruling the unexposed-command refusal |
-| C4 | done | LEDGER7 appended, recording the R6 PASS |
-| C5 | done | 171 insertions, well under the cap — no split was needed |
-| C6 | done | this commit; the push follows it |
+| C1 | done | |
+| C2 | done | |
+| C3 | done | |
+| C4 | done | |
+| C5 | done | this commit |
+
+## External actions
+
+`git worktree add .remedy-wt/g10 84c63d31` exit 0, then `git worktree remove --force` and `git worktree prune` both exit 0, after which `git worktree list` holds only the primary checkout. `git push` follows C5. No `gh` command ran; this branch carries no pull request.
+
+## Verification
+
+Transcripts are in the round report (R-0582); one line per gate here.
+
+- G1 STOP ABSENT at Step 0 and again before C4; branch `feature/f009-single-write-channel` at every reading; `git status --porcelain` 0 lines after each of C0a through C4; round base as stated above.
+- G2 EQUAL — the scratch file as received, `.agent/authored/f009-r8.md` at C0a and `.agent/last_block.md` at C0b are all sha256 `b646a9886af360bfed256d66fbe7ba46a0606ce08c7e37585d64ce617ba15ddd` over 25972 bytes and 285 lines, equal to the digest the prompt named; C0b was written from the committed C0a blob.
+- G3 3 slices from my own ordered extraction: PLANF009R8 `3f464048…` 2355 bytes 41 lines, DECISION13 `3f864d99…` 2101 bytes 13 lines, LEDGER8 `fa8138cf…` 6135 bytes 1 line; aggregate `49f9c299…` 10591 bytes 55 lines.
+- G4 `.agent/plan.md` at C1 is BYTE-EQUAL to PLANF009R8 at 41 lines against the 50-line cap; `^## Goal$` 1, `^## Next Steps$` 1, first `\bF\d{3}\b` match F009.
+- G5 the C3 append HOLDS under both readers: (a) the C2 blob is a byte-exact prefix and the remainder is `73872996…` 6136 bytes 2 lines, equal to a newline plus LEDGER8; (b) with N COUNTED 1 against 212 blank-line units the last unit equals the slice in order; the one-byte flip of the first appended paragraph is REJECTED by both while the unflipped value is ACCEPTED by both.
+- G6 the C2 append HOLDS the same two ways: remainder `9450fec0…` 2102 bytes 14 lines, N COUNTED 7 against 1116 units, control REJECTED by both and unflipped ACCEPTED by both. Measured, not predicted: `^## DECISION F009 D\d+ — ` 12 at the round base and 13 at C2, `^## DECISION ` 97 and 98, and 13 DISTINCT F009 keys D1 through D13 at C2.
+- G7 line-anchored at the round base and at C3: `^- R-\d+ — ` 199 at both with every id DISTINCT at both, `^Done: R-\d+ — ` 1 at both, `^Landed: ` 0 at both, `^> Next free id` 0 at both, `^Gate: R\d+ — ` 7 then 8 over that many DISTINCT keys. Max id at C3 is R-0633. Of the 8 `Gate: ` lines, 7 match `^Gate: R(\d+) — the R(\d+) entry\.` with the second numeral one less than the first; the single non-match reads `Gate: R1 — the F008 R36 entry.` Item 10's rule gives 198 open at `69394fea`, being line-anchored `^- R-\d+ — ` 199 minus line-anchored `^Done: R-\d+ — ` 1 (DECISION F009 D10).
+- G8 read at C4 by importing both modules: key `ui.command_rate_limit_per_minute`, env_var `REMEDY_UI_COMMAND_RATE_LIMIT_PER_MINUTE`, `value_type` `int`, default 30, and `get_config().get("ui.command_rate_limit_per_minute")` returns 30 from source DEFAULT in a process with that variable absent. Registered specs 54 at the round base and 55 at C4; the set difference is exactly that one key added and nothing removed, and every other spec's full field tuple is unchanged.
+- G9 all five EXIT 0 in the primary checkout, run serially: ruff over the three changed paths printed `All checks passed!`; `tests/ui_server/test_command_channel.py` 64 passed; `tests/orchestration/test_config.py` 63 passed; the state-reader group 487 passed; the canary `tests/cli/test_golden_path.py` 42 passed. This module's contribution from `--collect-only -q` is 64 tests collected.
+- G10 the pair ran inside a disposable worktree at `84c63d31`, the primary checkout never written to: (a) UNMUTATED EXIT 0 at 64 passed; (b) MUTATED EXIT 1 at 8 failed and 56 passed, so (b) is RED where (a) is GREEN. The changed byte string was `if accepted >= limit:` in `packages/orchestration/ui_server.py`, occurrence count 1 in that file at C4 by both a whole-line and an indent-agnostic count. The eight node ids the run printed are in the round report; the worktree was removed and pruned before C5.
+- G11 the range from the round base to C4 lists exactly the eight declared paths with the set difference empty in both directions; six commits, each with ONE parent, `git show --numstat` and `git diff --numstat` agreeing on every cell and every cell equal to the table above, insertions 285, 176, 17, 14, 2 and 355, all under the 500-insertion cap. `^<<<SLICE ` and `^<<<END ` read 0 lines in all six committed targets. This round's reflog rows are all `commit`, with `amend`, `rebase` and `cherry` 0 each and no total asserted over the whole reflog. `git ls-files .remedy-wt` is 0.
+- G12 this handback carries every mandated section of docs/agents/handback_template.md, an item-status table with exactly one row for each of C0a through C5, the round base SHA and one line per gate; its line count against the 100 a bundle of more than five commits allows is in the round report, which measures the file this commit writes.
+
+## Authored-text proofs
+
+All three slices were extracted from the COMMITTED C0a blob by their `<<<SLICE ` and `<<<END ` marker lines with a script and applied programmatically: PLANF009R8 is byte-equal to `.agent/plan.md` at C1 (G4), and DECISION13 and LEDGER8 are proved as appends under two independent readers, each with its own counted N and its own negative control (G6, G5). No marker line reached any target file; nothing was retyped, rewrapped, reflowed or reindented.
 
 ## Deviations & assumptions
-- THREE EXISTING TESTS WERE EDITED, against contract E's "keep the existing 36 tests passing unchanged", because the round's own contract makes their literals unreachable. `_valid_body` defaulted to `command: "pause_job"` and `test_absent_args_is_valid_and_reaches_the_seam` sent `"resume_job"`; neither string is a `command_id` anywhere in `CATALOG`, so under contract C both now answer 400 and the three tests asserting they reach the 501 seam cannot pass by construction. I changed the command ids they carry to `job.stop` and `decision.resolve` and left every assertion's SHAPE and STATUS untouched; no test was deleted, no assertion weakened. The alternative — leaving them red — is the only other honest option and it fails G9. The ordered commit sequence was otherwise exactly C0a, C0b, C1, C2, C3, C4, C5, C6 with nothing between them (R-0485).
-- NO OBJECTION to any slice: all four read as correct and were applied byte for byte regardless.
-- PARTIAL READ, declared against the AGENTS.md File Editing Safety Rule: `.agent/live_review.md` (1058 lines at the round base), `.agent/decisions.md` (6745 lines) and `apps/cli/command_catalog.py` (4824 lines) were not read end to end. The two state edits are pure appends made programmatically over whole-file bytes, with G5's and G6's independent extractors, their negative controls and G7's line-anchored set readings standing in for the human read. In the catalog I read the module docstring, the end of the `CATALOG` tuple and the lookup helpers in full and enumerated its 340 entries by importing them (G8) rather than by eye. `.agent/plan.md` was read in full, as were `tests/ui_server/test_command_channel.py` and the whole command-channel section of `packages/orchestration/ui_server.py`. Every diff was reviewed with `git diff --stat` then `git diff` before its commit.
-- `npm run lint` in `apps/ui` was NOT run and I claim NO colour for it: it is RED at base, is NOT a gate (R-0364), and is registered as R-0622 routed to a paydown branch. No `apps/ui` path was touched.
-- The session command guard rejects `$(...)`, backticks, shell loops and `;`-chained commands BY FORM, so every multi-step gate was written to a script under the gitignored `.remedy-wt/` and run with `python3`. `git status --porcelain` printed 0 lines after each commit and `git ls-files .remedy-wt` is 0, so nothing from that directory was ever staged.
+
+None. The ordered sequence C0a, C0b, C1, C2, C3, C4, C5 ran with nothing between the commits, no commit was added, dropped or reordered, and C4 stayed under 500 insertions so constraint 3's split was not reached. Constraint 6 was NOT exercised: no existing test in `tests/ui_server/test_command_channel.py` was edited, because none became unsatisfiable — every test starts a server with its own random token, so each holds its own budget under the default limit of 30. One judgement inside contract C is worth the reviewer's attention: a configured limit that is not a whole number falls back to the registered default rather than raising, so a typo in `remedy.toml` cannot turn every command into a 500, and a test pins that behaviour.
+
 ## Next
-NO `.agent/STOP` is present. The next session's FIRST action is the `.agent/STOP` re-read (Phase 1 rule 1); its SECOND is the Open PR Gate (Phase 1 rule 2), which is EMPTY — `gh pr list --state open` printed `[]`, this branch carries no pull request, and F009 opens one at its own closure. THE OPEN-FINDING COUNT IS 198, derived by `docs/agents/planner_reviewer_prompt.md` §3 item 10 — line-anchored `^- R-\d+ — ` paragraphs minus line-anchored `^Done: R-\d+ — ` lines, 199 minus 1 — and MEASURED AT `6201613c`, the C4 commit; the rule and the commit travel with the number because DECISION F009 D10 requires it. It is one higher than the round base's 197 because this round registered R-0633 and closed nothing. THE NEXT FREE FINDING ID IS DERIVED WITH `max` OVER THE LINE-ANCHORED `^- R-\d+ — ` ENTRIES of `.agent/live_review.md`, never read from a header — no `^> Next free id` line exists there (G7 reads 0 at all three commits); at `6201613c` that gives R-0633 as the highest registered id, so the next free id is R-0634. `.agent/candidates.md` is EMPTY — it carries no candidate entry, only its header and the sentence recording that F008's one entry became R-0630. THEN R8: D9's rate limit as a typed `ConfigKeySpec` keyed by the pair (token fingerprint, job id), refusing with 429 rather than waiting, with D7's fingerprint helper introduced where it is first used. R-0403, R-0607, R-0608, R-0609, R-0611, R-0613, R-0622 and R-0630 stay routed to a paydown branch.
+
+No `.agent/STOP` is present. The next session's FIRST action is the `.agent/STOP` re-read (Phase 1 rule 1) and its SECOND the Open PR Gate (Phase 1 rule 2), which is EMPTY because this branch carries no pull request and F009 opens one at its own closure. Open findings at `69394fea` are 198 by item 10's rule — line-anchored `^- R-\d+ — ` 199 minus line-anchored `^Done: R-\d+ — ` 1 (DECISION F009 D10). The next free id, derived with `max` over the line-anchored entries, is R-0634. `.agent/candidates.md` is EMPTY. R9 is the nonce store and the audit record per D6, D7 and D8: a replay returns the ORIGINAL body, and every refusal this door already makes, the 429 included, becomes an audited rejection.
