@@ -728,7 +728,29 @@ passage is the table, which this round corrects. THE COUNTER-MEASURE IS NOT A RE
 landed sentence: C3a replaces the paragraph as part of the D8 split, and its replacement states
 the no-wall-timeout rule as a condition each class is tested against rather than as a universal
 over an unenumerated set, while the per-site reading lives in DEC8 beside the SHA it was taken
-at. Found and registered by the reviewer while gating R49.
+at. Found and registered by the reviewer while gating R49. F008 R28 INSTANCE, IN A
+WORKER'S HANDBACK RATHER THAN A REVIEWER'S SLICE, AND WRITTEN INSIDE THE VERY SENTENCE
+THAT WAS CORRECTING THE SAME DEFECT. R28's `.agent/handoff.md` at `4afe1936` objected —
+correctly, and the reviewer re-measured it — that R27's handback claimed "these seven
+subjects carry a `Co-Authored-By: Claude Opus 5` trailer, as R26's did" while all seven
+commits of `a86231c0..c768cf03` return an EMPTY trailer list. In the same breath it wrote
+of its own six commits that they "carry NO `Co-Authored-By` trailer, as no commit on this
+branch does". Measured at `4afe1936` over `7c03adfa..4afe1936`, 19 of this branch's 180
+commits DO carry that trailer, among them all six of R26's — `b00a42f0`, `abef185b`,
+`433e59eb`, `f683ab43`, `931ed066` and `a86231c0` — so the half of R27's sentence the
+objection did not dispute was the TRUE half, and the correction shipped a fresh universal
+nobody counted. THE PARTICULAR IS MEASURED AND TRUE: R28's own six commits carry no
+trailer, which the reviewer confirms by the same command; only the clause beside it is
+false, which is this finding's shape exactly and the R-0486 shape too — a correction is
+where the next wrong claim lands. LOW: no gate consumed the sentence, every R28 gate is
+reproducible and this reviewer reproduced all of them out of the committed blobs, and
+`.agent/handoff.md` is rewritten every round, so the false clause is already off disk and
+survives only in git history. THE FIX IS WIDENED FROM A REVIEWER'S SLICES TO THE HANDBACK,
+which this counter-measure has never reached: it has bound authored slices since F085 and
+binds nothing a worker writes, yet the handback is the map AGENTS.md's Session Resume tells
+the next session to read SECOND. A handback sentence quantifying over commits, files or
+rounds — "every", "no", "all", "as none does" — names the command that produced its number,
+or states only the particular it measured. R29 carries that as constraint 9, gated at G12.
 
 - R-0554 — `.agent/plan.md` claimed FOUR tests for a round that shipped THREE. Low. The R51 block
 authored PLAN5T with the clause "four tests ship with it", and the round it described shipped
