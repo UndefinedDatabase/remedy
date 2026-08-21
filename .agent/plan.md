@@ -16,30 +16,33 @@ ledger's envelope sequence, the heartbeat holds cadence, and the fallback
 engages on a disabled EventSource and recovers to live.
 
 ## Current Step
-R14 CLOSES T002 with the acceptance test the feature file calls its heart: a
-client that keeps losing its connection reconnects with the id of the last
-frame it kept, and its final transcript must BYTE-EQUAL the ledger's envelope
-sequence — no duplicate, no gap, at every disconnect cadence from one drop per
-frame to none at all. The hammer is a test-only round: T002's resume decision
-landed at R13, so this round proves it rather than building it, and a mutation
-control shows the hammer goes red when resume exactness is broken. R14 also
-records the R13 verdict, registers R-0620 and widens R-0371.
+R15 PAYS DOWN T002's two authored defects rather than only recording them.
+R-0620: `resolve_sse_start` guarded with `str(x or "")`, which reads the
+integer 0 — the first ledger position — as an absent header; the guard becomes
+an explicit None test and three tests pin the integer forms. R-0621: the
+grown-ledger test started its second client from scratch, so the boundary its
+name promised was never crossed by a resume; the hammer helper now accepts a
+starting last-event-id and the test resumes across the growth. R15 also
+records the R14 verdict and widens R-0371 a third time.
 
 ## Next Steps
-1. R15 begins T003: the `useBrainStream` client hook, EventSource with
+1. R16 begins T003: the `useBrainStream` client hook, EventSource with
    reconnect backoff, gap detection via seq discontinuity, and the status
    surface live | reconnecting | delayed.
-2. R16 adds T003's polling fallback on the same hook interface and the
+2. R17 adds T003's polling fallback on the same hook interface and the
    fixture live-job end-to-end.
 3. Then the integration gate before closure.
 
 ## Risks
 - The hammer drives `_send_sse_stream` directly rather than over a socket, so
-  it proves the resume CONTRACT and not the transport. The transport is
-  covered separately by the framing golden and the drain tests.
-- `resolve_sse_start` narrows a non-string `Last-Event-ID` to the cursor
-  because `str(x or "")` reads an integer 0 as absent. Registered as R-0620;
-  the HTTP path only ever passes strings, so it is latent.
+  it proves the resume CONTRACT and not the transport. The transport stays
+  covered by the framing golden and the drain tests.
+- Repository-wide `ruff check .` is RED and is not a gate (R-0364), and
+  `--preview` reports three pre-existing E306 in
+  `packages/orchestration/ui_server.py`. Ruff is gated scoped to the touched
+  files as a rule-code MULTISET, base against head, so a pre-existing finding
+  is never read as a new one.
 - No open finding is a code defect of F008 reachable from the HTTP path.
-  R-0403, R-0607 through R-0609, R-0611 and R-0613 through R-0620 stay routed
-  to a paydown branch.
+  R-0403, R-0607 through R-0609, R-0611 and R-0613 through R-0621 stay routed
+  to a paydown branch, R-0620 and R-0621 being closed by this round's own
+  commits.
