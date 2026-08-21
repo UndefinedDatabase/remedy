@@ -781,6 +781,105 @@ class TestCommandChannelDoor:
         assert without["token"][0] == 403
         assert without["seam"][0] == 501
 
+    # -- D.9: the replayed nonce (DECISION F009 D8 and D15) -----------------
+
+    def _seed_nonce(self, nonce, body, status):
+        """Publish one result under `nonce`, the way the door itself will after T003.
+
+        DECISION F009 D15 leaves the door with NO publish call site while the 501 seam
+        stands, so a replay test seeds through the store's own publish function rather
+        than through a test-only path: production code exercised by production means.
+        """
+        from packages.orchestration.command_nonce import publish_nonce_result
+        published = publish_nonce_result(
+            self.job_id, nonce, body, status=status,
+            control_root_path=self.tmp_path / "control")
+        assert published == {"status": status, "body": body}
+        return published
+
+    def _raw_request(self, port, path, body, headers):
+        """One POST whose response BYTES are returned unparsed, for a byte comparison."""
+        conn = HTTPConnection("127.0.0.1", port, timeout=10)
+        try:
+            conn.request("POST", path, body=body, headers=headers)
+            resp = conn.getresponse()
+            return resp.status, resp.read()
+        finally:
+            conn.close()
+
+    def test_a_replayed_nonce_answers_from_the_store_byte_for_byte(self):
+        """D8's contract on the wire: the SAME answer, not merely an equivalent one."""
+        stored = {"effect": "already-run", "command": "job.stop", "run_id": "r-7"}
+        self._seed_nonce("nonce-replayed", stored, 200)
+        port, token = self._start_server()
+
+        status, raw = self._raw_request(
+            port, self._commands_path(),
+            self._valid_body(client_nonce="nonce-replayed"),
+            self._auth_headers(token))
+
+        assert status == 200
+        assert raw == json.dumps(stored).encode()
+
+    def test_an_unseeded_nonce_still_reaches_the_seam(self):
+        """The lookup must MISS by default, or the door would answer from an empty store."""
+        port, token = self._start_server()
+        status, body = self._post_command(port, token, "nonce-unseeded")
+        assert status == 501
+        assert body["error"] == "command channel not yet accepting commands"
+
+    def test_a_replay_never_reaches_the_seam(self):
+        """Proved by the response: the seam's own answer is not what a replay returns."""
+        stored = {"effect": "already-run", "command": "job.stop"}
+        self._seed_nonce("nonce-not-the-seam", stored, 200)
+        port, token = self._start_server()
+
+        seam = self._post_command(port, token, "nonce-fresh")
+        replay = self._post_command(port, token, "nonce-not-the-seam")
+
+        assert seam == (501, {"error": "command channel not yet accepting commands",
+                              "command": "job.stop"})
+        assert replay == (200, stored)
+        assert replay != seam
+
+    def test_a_replay_spends_no_rate_budget(self, command_rate_limit):
+        """DECISION F009 D15: a replay accepts nothing new, so it is charged nothing.
+
+        The budget is counted from the OUTSIDE afterwards — the replays are only free if
+        the full minute budget is still there to be exhausted once they are done.
+        """
+        limit = command_rate_limit(2)
+        self._seed_nonce("nonce-free", {"effect": "already-run"}, 200)
+        port, token = self._start_server()
+
+        for _ in range(limit + 4):
+            assert self._post_command(port, token, "nonce-free")[0] == 200
+
+        accepted = 0
+        for index in range(limit + 2):
+            status, _ = self._post_command(port, token, f"nonce-spend-{index}")
+            if status == 501:
+                accepted += 1
+            else:
+                assert status == 429, index
+        assert accepted == limit, "the replays spent budget the client never used"
+
+    @pytest.mark.parametrize("nonce", ["../escape", "with/slash", "has space", "a" * 65])
+    def test_a_nonce_that_cannot_be_a_filename_is_400_on_its_own_field(self, nonce):
+        """It becomes a path component, so the character class is a SHAPE error."""
+        port, token = self._start_server()
+
+        status, body = self._request(
+            port, "POST", self._commands_path(),
+            body=self._valid_body(client_nonce=nonce),
+            headers=self._auth_headers(token))
+
+        assert status == 400
+        assert body["field"] == "client_nonce"
+        assert [r["outcome"] for r in self._audit_records()] == ["rejected_shape"]
+        assert not (self.tmp_path / "control" / "jobs" / self.job_id
+                    / "commands_nonce").exists()
+
     # -- B: the GET door still behaves as it did ----------------------------
 
     def test_get_door_still_answers_200_for_the_correct_token(self):

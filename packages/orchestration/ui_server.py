@@ -3385,6 +3385,24 @@ class _RemedyHandler(BaseHTTPRequestHandler):
             self._send_json(*_command_field_error(
                 "command", COMMAND_NOT_EXPOSED_MESSAGE))
             return
+        # DECISION F009 D15: the replay lookup sits HERE — after the exposed-subset
+        # check and BEFORE the budget — and a hit spends nothing. D9 limits "the
+        # maximum accepted commands" and a replay accepts nothing new: it returns a
+        # decision this server already made, so charging for it would penalise the
+        # client for the server's own idempotency guarantee, in precisely the
+        # retry-after-a-timeout case the nonce exists to serve.
+        replayed = self._replayed_command_result(str(job.id), payload["client_nonce"])
+        if replayed is not None:
+            # D15 orders the replay audited with the outcome the ORIGINAL attempt
+            # carried. While the 501 seam stands nothing at this door publishes a
+            # record (D15's first half), so the only result a nonce can hold is the
+            # seam's own and `not_implemented` IS that outcome. D14 reserves
+            # `accepted` for the round that retires the seam; that round adds the
+            # publish call site and moves this token in the same change.
+            self._audit_attempt(str(job.id), "not_implemented", create=True,
+                                payload=payload)
+            self._send_json(replayed["status"], replayed["body"])
+            return
         # The budget is spent LAST, by a request that has passed every other
         # check (DECISION F009 D13). Counting a request that was going to be
         # refused anyway would let a mid-rollout or simply buggy client lock
@@ -3453,6 +3471,32 @@ class _RemedyHandler(BaseHTTPRequestHandler):
         from apps.cli.command_catalog import UI_EXPOSED_COMMANDS
         return command_id in UI_EXPOSED_COMMANDS
 
+    def _nonce_is_a_usable_id(self, client_nonce: str) -> bool:
+        """True when this nonce may become a filename in the job's control directory.
+
+        The store owns its own character class, so the door asks it rather than keeping
+        a second copy of the rule that could drift away from the one that guards the
+        path. Imported inside the function, the idiom this door already uses for the
+        catalog and the audit writer.
+        """
+        from packages.orchestration.command_nonce import nonce_is_valid
+        return nonce_is_valid(client_nonce)
+
+    def _replayed_command_result(self, job_id: str, client_nonce: str) -> Any:
+        """The result already in force for this nonce, or None on a first attempt.
+
+        DECISION F009 D15 keeps this AFTER the credentials on purpose: a lookup placed
+        first would answer an unauthenticated caller out of the store and turn a nonce
+        into an oracle for another client's response.
+
+        Nothing here opens a file — `command_nonce` owns the store — and that module
+        answers a store it cannot read with a miss rather than an exception, so an
+        unreadable record costs one re-execution instead of turning this request into a
+        500.
+        """
+        from packages.orchestration.command_nonce import lookup_nonce_result
+        return lookup_nonce_result(job_id, client_nonce)
+
     def _rate_limit_admits_command(self, job_id: str) -> bool:
         """True while this token and this job still hold minute budget.
 
@@ -3507,6 +3551,15 @@ class _RemedyHandler(BaseHTTPRequestHandler):
         if not isinstance(client_nonce, str) or not client_nonce:
             return None, _command_field_error(
                 "client_nonce", "client_nonce must be a non-empty string")
+        # DECISION F009 D15: the nonce becomes a FILENAME in the job's control directory,
+        # so its character class is the guard — the same `_ID_RE` that already validates
+        # the job segment of that same path. A nonce that fails it is the shape error the
+        # field already has, which means the same 400 and the same audited
+        # `rejected_shape`: D14's closed outcome vocabulary gains no token for it.
+        if not self._nonce_is_a_usable_id(client_nonce):
+            return None, _command_field_error(
+                "client_nonce",
+                "client_nonce must be 1-64 characters of letters, digits, '-' or '_'")
         # `args` absent is valid and means the empty object.
         args = payload.get("args", {})
         if not isinstance(args, dict):
