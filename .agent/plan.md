@@ -15,28 +15,24 @@ envelope sequence, the heartbeat holds cadence, and the fallback engages on a
 disabled EventSource and recovers to live.
 
 ## Current Step
-R23 lands the REAL host behind `BrainStreamHost`: an injected EventSource, a
-snapshot read, a tail read and a scheduler, so the driver's effects reach a
-transport. Every dependency is injected, so no DOM is involved. The module
-COMPILES at this round and is not yet exercised: `npm run typecheck` is its
-only gate here, and R24 brings its suite and its red controls. The round also
-records the R22 verdict.
+R24 pins the stream host R23 landed: twelve tests over an injected source, an
+injected snapshot read, an injected tail read and an injected scheduler, plus
+three red controls — the malformed-frame guard, the close-before-reconnect and
+the polling cursor. Only with this round is the adapter proved rather than
+merely compiled. The round also records the R23 verdict.
 
 ## Next Steps
-1. R24 pins the adapter with its own vitest suite and three red controls —
-   the malformed-frame guard, the close-before-reconnect and the polling
-   cursor — and only then is the module proved rather than merely compiled.
-2. R25 adds the thin `useBrainStream` hook and the visible delayed badge,
+1. R25 adds the thin `useBrainStream` hook and the visible delayed badge,
    gated by typecheck and a `tests/ui_contracts/` source contract, the style
    this repository uses for every React component (R-0628).
-3. Then the integration gate before closure.
+2. Then the integration gate before closure.
 
 ## Risks
-- Untested code lands at R23 by design, one round ahead of its suite. The
-  ordering is deliberate — AGENTS.md forbids one commit carrying a change and
-  the tests that pin it — but until R24 the adapter's only evidence is that
-  it typechecks, and no round may claim more for it than that.
-- `npm run lint` in `apps/ui` is RED at base and is NOT a gate (R-0364): that
-  config installs no TypeScript parser, which is R-0622.
 - The adapter OWNS a socket: `close` sits on the object its factory returns
-  rather than on `BrainStreamHost`, and R25's hook must call it on unmount.
+  rather than on `BrainStreamHost`, so R25's hook must call it on unmount or
+  a remounting cockpit leaks one EventSource per mount.
+- `npm run lint` in `apps/ui` is RED at base and is NOT a gate (R-0364): that
+  config installs no TypeScript parser, which is R-0622 and routes to a
+  paydown branch.
+- The badge remains a visual surface docs/ui/design_reference/ binds, with any
+  deviation owed an assumption_log entry carrying a technical reason.
