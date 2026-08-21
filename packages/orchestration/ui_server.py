@@ -26,7 +26,7 @@ import re
 import secrets
 import sys
 from datetime import datetime, timezone
-from http.server import BaseHTTPRequestHandler, HTTPServer
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, urlparse
@@ -3119,7 +3119,7 @@ def start_ui_server(
         },
     )
 
-    server = HTTPServer((host, port), handler_class)
+    server = ThreadingHTTPServer((host, port), handler_class)
     actual_port = server.server_address[1]
     url = f"http://127.0.0.1:{actual_port}/?job={job_id}&token={token}"
 
