@@ -6733,3 +6733,13 @@ ALTERNATIVES: (a) add a trailing `OPEN.` marker to every unresolved paragraph an
 WHY NO SWEEP: the landed sentences are not rewritten. `.agent/context.md` and `.agent/handoff.md` are rewritten wholesale every round and will carry the ruled form from the next rewrite onward; `.agent/live_review.md` is append-only and is corrected by dating rather than editing.
 
 REVERSE by deleting this decision and R-0632's fix clause; nothing depends on the count.
+
+## DECISION F009 D11 — the `X-Remedy-CSRF` header carries the server token (2026-08-21)
+
+D2 ruled that the POST door requires `Authorization: Bearer <token>` AND an `X-Remedy-CSRF` header "double-submitted against the served app", without fixing what value that header carries. There is no cookie to double-submit against: the shell at `/` is served without a token and the React client reads the token from the URL query — `apps/ui/src/RemedyApp.tsx` line 10 at `b6d80e8e` — so the only secret the app holds is the server token itself.
+
+CHOSEN: `X-Remedy-CSRF` carries that same server token, compared constant-time as bytes by the same helper the bearer check uses. A cross-site page cannot set a custom header on a cross-origin request without a preflight this server never grants, so the header's PRESENCE is what defeats CSRF; requiring its VALUE additionally makes the door fail closed on a half-wired client instead of silently accepting one.
+
+ALTERNATIVES: (a) accept any non-empty `X-Remedy-CSRF` — rejected, it makes a wiring bug indistinguishable from a working client. (b) mint a separate CSRF secret and embed it in the shell — rejected for this feature: it adds a second secret to serve, rotate and redact, against no attacker the first one does not already stop, and the shell embeds the token by plain string substitution today.
+
+REVERSE by dropping the value comparison and checking only that the header is present; nothing else about the route changes.
