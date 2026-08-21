@@ -304,14 +304,17 @@ class TestPrimaryDocsAreHonest:
         assert "PASS_WITH_RISKS — ACCEPTED" in f010.group(0)
         assert "2026-07-14" in f010.group(0), "the acceptance date is missing"
         # ...and nothing after F012 has been started except F017 (accepted) and
-        # the ONE feature currently claimed. R-0387 recurrence, F008 R1: this pin
-        # read `[ ]` F008, so it asserted that NO feature was in progress and the
-        # next claim had to break it. The invariant this workflow really holds is
-        # that exactly one `[~]` entry exists (planner_reviewer_prompt.md §1), so
-        # pin that and name its holder instead.
+        # whatever feature is claimed at the time. R-0387, F008 R1: this pin read
+        # `[ ]` F008, so it asserted that NO feature was in progress and the next
+        # claim had to break it. Naming the holder instead moved the same defect
+        # from every claim to every CLOSURE — closing F008 removes the only `[~]`
+        # line, taking the count to 0 (measured at 3035bc2a against the closure
+        # edits in a throwaway worktree: 1 failed, 294 passed, this test). The
+        # invariant the workflow holds is AT MOST one claim
+        # (planner_reviewer_prompt.md §1), true in both states, so this pin
+        # survives a claim and a closure alike.
         in_progress = re.findall(r"^- \[~\] F\d{3} —", text, re.M)
-        assert len(in_progress) == 1, f"exactly one feature is in progress, found {in_progress}"
-        assert re.search(r"^- \[~\] F008 —", text, re.M)
+        assert len(in_progress) <= 1, f"at most one feature is in progress, found {in_progress}"
         assert re.search(r"^- \[x\] F017 —", text, re.M)
 
 
