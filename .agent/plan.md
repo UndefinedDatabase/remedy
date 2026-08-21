@@ -16,16 +16,19 @@ silently, teacher spend is reported as its own role in the F103 ledger, and the
 read-only invariant is proven behaviourally.
 
 ## Current Step
-R13: the BILLING half of T004. It rules how a teacher question is recorded
-(DECISION F255 D7), amends `token_ledger`'s own module text so the ruling and the
-module do not disagree on disk, and builds the one writer that records the row.
-It calls NO model: the model call is R14, over this seam.
+R14: a RECORD round. It registers finding R-0606 against the R13 block's own G6,
+persists the R13 verdict to `.agent/live_review.md`, and advances this plan. It
+builds nothing — the session that reviewed R13 reached its limit, and a verdict
+that lives only in a chat window is a verdict this project cannot audit.
 
 ## Next Steps
-1. R14 FINISHES T004, the model half of Stage 2: `remedy teach ask` on the CLI
+1. R15 FINISHES T004, the model half of Stage 2: `remedy teach ask` on the CLI
    over `teacher_qa.build_teacher_context`, the teacher model call through
    `resolve_role_config("teacher")`, the honest refusal when no model is
-   configured, and the spend row written through `teacher_spend`.
+   configured, and the spend row written through the `teacher_spend` seam R13
+   built. There is NO generic text-completion provider in this repository today:
+   the providers under `packages/providers/` are role-specific and
+   schema-bound, so R15 must design the teacher's model seam, not discover one.
 2. The INTEGRATION GATE round follows T004 — the full suite, per
    docs/agents/integration_gate.md — because T002 and T003 touch the CLI
    catalog, which the parser and the help renderer both read.
@@ -33,10 +36,7 @@ It calls NO model: the model call is R14, over this seam.
    evidence job, fresh review zip, the STATUS line, and the pull request.
 
 ## Risks
-- T004 WAS RESLICED INTO TWO ROUNDS by the reviewer at R13, because the billing
-  ruling and the model call did not fit one block under the 490-line cap. The
-  feature file's T004 is unchanged; only the round boundary moved.
-- R14 IS WHERE THE COST STORY IS PROVEN OR LOST. R13 records a row from figures
-  it is GIVEN; R14 must produce real ones from a real call, or D3 is unmet.
-- THE READ-ONLY PROOF COVERS NARRATE ONLY; `teach ask` needs its own, and the
-  ledger row R13 introduces is a WRITE that proof must exclude by name.
+- `teacher_spend.record_teacher_question` HAS NO CALLER YET. R13 built and
+  red-proofed the seam; until R15 wires it, F255's cost acceptance is unmet.
+- THE READ-ONLY PROOF COVERS NARRATE ONLY; `teach ask` needs its own, and it
+  must exclude the ledger row R13 introduced by name rather than by silence.
