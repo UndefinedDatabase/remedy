@@ -299,3 +299,117 @@ class TestStreamResponse:
         clock = _Clock()
         handler._send_sse_stream(_Job(), "0", now=clock.now, sleep=clock.sleep)
         assert handler.wfile.frames == []
+
+
+#: T001's framing golden: the exact bytes a client parses for a two-event
+#: ledger that then goes idle past the heartbeat interval. Field order, the
+#: blank-line separator and the comment shape are all pinned here, so any
+#: change to the wire format has to be a deliberate edit of this constant.
+GOLDEN_STREAM = (
+    b'id: 0\ndata: {"seq": 0, "event": "e0", "timestamp": "2026-08-21T00:00:00Z", "outcome": "ok"}\n\n'
+    b'id: 1\ndata: {"seq": 1, "event": "e1", "timestamp": "2026-08-21T00:00:01Z", "outcome": "ok"}\n\n'
+    b": heartbeat\n\n"
+)
+
+
+class TestFramingGolden:
+    def test_the_wire_bytes_match_the_golden(self):
+        # 17 passes: one drains both events, fifteen sleep out the interval,
+        # the last emits the single heartbeat that idling earns.
+        joined = b"".join(_run(lambda: _events(2), 0, 17, _Clock()))
+        assert joined == GOLDEN_STREAM
+
+    def test_the_golden_is_what_the_frame_builders_produce(self):
+        # Not a transcription of the constant above: rebuilt from the writers,
+        # so a golden edited without a code change fails here.
+        rebuilt = b"".join([
+            mod.sse_event_frame(seq, mod._safe_event_summary(seq, _events(2)[seq]))
+            for seq in (0, 1)
+        ]) + mod.sse_heartbeat_frame()
+        assert rebuilt == GOLDEN_STREAM
+
+
+class TestStreamSlots:
+    def setup_method(self):
+        mod._SSE_SLOTS_PER_JOB.clear()
+
+    def test_a_job_holds_slots_up_to_the_cap(self):
+        taken = [mod.acquire_sse_slot("j", limit=2) for _ in range(3)]
+        assert taken == [True, True, False]
+
+    def test_a_released_slot_can_be_taken_again(self):
+        assert mod.acquire_sse_slot("j", limit=1)
+        assert not mod.acquire_sse_slot("j", limit=1)
+        mod.release_sse_slot("j")
+        assert mod.acquire_sse_slot("j", limit=1)
+
+    def test_the_registry_forgets_a_job_at_zero(self):
+        mod.acquire_sse_slot("j", limit=1)
+        mod.release_sse_slot("j")
+        # Not a lingering 0: an idle cockpit must not grow the registry.
+        assert "j" not in mod._SSE_SLOTS_PER_JOB
+
+    def test_an_extra_release_never_goes_negative(self):
+        mod.release_sse_slot("j")
+        mod.release_sse_slot("j")
+        assert mod._SSE_SLOTS_PER_JOB.get("j", 0) == 0
+        assert mod.acquire_sse_slot("j", limit=1)
+
+    def test_two_jobs_do_not_share_one_cap(self):
+        assert mod.acquire_sse_slot("a", limit=1)
+        assert mod.acquire_sse_slot("b", limit=1)
+        assert not mod.acquire_sse_slot("a", limit=1)
+
+    def test_the_default_cap_is_four(self):
+        assert mod.SSE_MAX_STREAMS_PER_JOB == 4
+
+
+class TestStreamCapRoute:
+    def setup_method(self):
+        mod._SSE_SLOTS_PER_JOB.clear()
+
+    def test_the_stream_is_refused_with_429_beyond_the_cap(self, monkeypatch):
+        for _ in range(mod.SSE_MAX_STREAMS_PER_JOB):
+            assert mod.acquire_sse_slot(_Job.id)
+        answered, streamed = _dispatch(
+            monkeypatch, "/api/jobs/J/events/stream?token=tok", _Job(), None)
+        assert streamed == []
+        assert answered[0][0] == 429
+
+    def test_a_refused_stream_does_not_consume_a_slot(self, monkeypatch):
+        for _ in range(mod.SSE_MAX_STREAMS_PER_JOB):
+            mod.acquire_sse_slot(_Job.id)
+        _dispatch(monkeypatch, "/api/jobs/J/events/stream?token=tok", _Job(), None)
+        # Still exactly at the cap: the refusal took nothing.
+        assert mod._SSE_SLOTS_PER_JOB[_Job.id] == mod.SSE_MAX_STREAMS_PER_JOB
+
+    def test_a_served_stream_releases_its_slot(self, monkeypatch):
+        _dispatch(monkeypatch, "/api/jobs/J/events/stream?token=tok", _Job(), None)
+        assert _Job.id not in mod._SSE_SLOTS_PER_JOB
+
+    def test_a_raising_stream_still_releases_its_slot(self, monkeypatch):
+        monkeypatch.setattr(mod, "_load_job", lambda jid: (_Job(), None))
+
+        def boom(job, cursor):
+            raise RuntimeError("socket died")
+
+        handler = mod._RemedyHandler.__new__(mod._RemedyHandler)
+        handler.server_token = "tok"
+        handler.target_job_id = ""
+        handler.path = "/api/jobs/J/events/stream?token=tok"
+        handler._send_json = lambda code, data: None
+        handler._send_sse_stream = boom
+        raised = False
+        try:
+            handler.do_GET()
+        except RuntimeError:
+            raised = True
+        assert raised
+        # The `finally` is the whole point: a crash must not leak capacity.
+        assert _Job.id not in mod._SSE_SLOTS_PER_JOB
+
+    def test_an_unknown_job_never_takes_a_slot(self, monkeypatch):
+        _dispatch(
+            monkeypatch, "/api/jobs/nope/events/stream?token=tok", None,
+            (404, {"error": "job not found"}))
+        assert mod._SSE_SLOTS_PER_JOB == {}
