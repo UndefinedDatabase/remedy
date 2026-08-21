@@ -40,8 +40,13 @@ AUDIT_FILE_MODE = 0o600
 AUDIT_FIELD_ORDER = ("ts", "token_fp", "command", "args_hash", "nonce", "outcome")
 
 #: DECISION F009 D14's closed vocabulary. Each token names the CHECK that refused, never
-#: the client's message, so a wording change cannot drift the vocabulary. `accepted` is
-#: reserved for the round that retires the 501 seam: nothing is accepted while that stands.
+#: the client's message, so a wording change cannot drift the vocabulary. `accepted` and
+#: `replayed` are the two NO caller writes yet: DECISION F009 D17 lands the vocabulary one
+#: round ahead of the dispatch that writes them, so the round retiring the 501 seam changes
+#: the door alone. `replayed` is deliberately distinct from `accepted` (finding R-0636): a
+#: replay REPEATS an acceptance rather than being one, and T5_F035 and T9_F167 both read
+#: this file to count what the door did, so one token for both would make them
+#: indistinguishable to the two features that care.
 OUTCOMES = (
     "rejected_token",
     "rejected_csrf",
@@ -50,6 +55,8 @@ OUTCOMES = (
     "rejected_command",
     "rejected_rate",
     "not_implemented",
+    "accepted",
+    "replayed",
 )
 
 

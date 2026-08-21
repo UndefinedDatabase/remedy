@@ -43,7 +43,7 @@ def read_lines(control_root: Path, job_id: str = JOB) -> list[dict]:
 
 
 def test_the_outcome_vocabulary_is_the_closed_set_d14_ruled() -> None:
-    """`accepted` is deliberately ABSENT: nothing is accepted while the 501 seam stands."""
+    """The closed set, in order. `accepted` and `replayed` are DECISION F009 D17's pair."""
     assert OUTCOMES == (
         "rejected_token",
         "rejected_csrf",
@@ -52,8 +52,11 @@ def test_the_outcome_vocabulary_is_the_closed_set_d14_ruled() -> None:
         "rejected_command",
         "rejected_rate",
         "not_implemented",
+        "accepted",
+        "replayed",
     )
-    assert "accepted" not in OUTCOMES
+    assert "accepted" in OUTCOMES
+    assert "replayed" in OUTCOMES, "a replay is not the acceptance it repeats (R-0636)"
     assert len(set(OUTCOMES)) == len(OUTCOMES)
 
 
