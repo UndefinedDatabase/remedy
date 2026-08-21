@@ -1,0 +1,94 @@
+F255 R18 integration gate - attribution of every differing id (G10)
+
+THE TWO COUNTS
+  branch-only failures (comm -13 base_failed.txt branch_failed.txt)   0
+  base-only   failures (comm -23 base_failed.txt branch_failed.txt)   9
+
+  comm was invoked as exact argv - subprocess.run(["comm","-13",...]) and
+  subprocess.run(["comm","-23",...]) - over the two sorted files, not through
+  a shell.
+
+BRANCH-ONLY: NONE
+  A count of 0 branch-only failures is the gate's passing shape, and 0 is the
+  real number here. The branch run exited 0 with 17315 passed, 20 skipped and
+  a FAILED count of 0, so branch_failed.txt is empty and no branch-only id
+  exists to re-run serially, to reproduce at the base, or to weigh against
+  constraint 13's blocker rule. No blocker is declared, because none was found.
+
+BASE-ONLY: NINE, ALL ATTRIBUTED TO THE ENVIRONMENT CLASS BY DIRECT EVIDENCE
+  PARITY_CLAIM=VOID (see base_parity.txt), so each id below is attributed
+  individually rather than covered by a blanket parity claim. An unattributed
+  comm -23 id would count as a genuine base failure and would block the gate
+  verdict; none is left unattributed.
+
+  Common evidence for ids 2-9. Each of the eight carries, in the base run's
+  own captured stderr, the block:
+
+      ERROR: React UI not built.
+        To fix, run:
+          cd apps/ui && npm install && npm run build
+        Or check npm is installed and retry.
+        Disable auto-build: REMEDY_UI_NO_AUTO_BUILD=1
+
+  and fails at tests/ui_server/test_live_state.py:165, "Server did not start
+  in time", because _load_frontend refused to serve. The named missing
+  artifact is apps/ui/dist as judged by _frontend_is_stale: the base
+  worktree's freshly checked-out apps/ui/src (newest mtime_ns
+  1787279477444570086) is newer than the copied dist/index.html (mtime_ns
+  1787279383323951913), so the frontend read as stale and the auto-build was
+  disabled for the base run on purpose. This is the artifact class of the
+  R-0155 amendment, reached through mtime rather than through absence.
+
+  Confirming probe, run SERIALLY at the SAME base commit b35d350b after both
+  suite runs, with REMEDY_UI_NO_AUTO_BUILD=1, once dist/index.html was no
+  longer older than src: every one of the nine passes. That the identical
+  code at the identical commit passes when the artifact reads fresh is the
+  direct evidence that none of the nine is a genuine base defect.
+
+  1  tests/cli/test_review_bundle_runtime.py::TestSubprocessCleanup::test_timeout_raises_with_cleanup
+     class: cross-process interference under xdist, NOT an artifact id.
+     Evidence: the assertion is "Orphan process found after timeout cleanup",
+     failing on a REPO-WIDE pgrep -f "apps.cli.grouped.*--help" that returned
+     0 with stdout "3247941" - a pid belonging to some other worker's CLI
+     subprocess alive at that instant, not to the process this test spawned.
+     The probe is machine-wide, so any concurrent xdist worker running a
+     grouped-CLI test satisfies it. Serial re-run at base: exit 0, 1 passed
+     in 0.32s. Serial-pass => the xdist-flake class (F135/F052); recorded,
+     not a blocker, and base-only so it is not coupled to this feature at all.
+
+  2  tests/ui_server/test_live_state.py::TestUIServerIntegration::test_api_invalid_token_403
+     class: artifact/environment (apps/ui/dist stale by mtime in the base
+     worktree). Serial re-run at base: exit 0, 1 passed in 0.28s.
+  3  tests/ui_server/test_live_state.py::TestUIServerIntegration::test_api_missing_job_404
+     class: artifact/environment (apps/ui/dist stale by mtime).
+     Serial re-run at base: exit 0, 1 passed in 0.34s.
+  4  tests/ui_server/test_live_state.py::TestUIServerIntegration::test_brain_endpoint
+     class: artifact/environment (apps/ui/dist stale by mtime).
+     Serial re-run at base: exit 0, 1 passed in 0.31s.
+  5  tests/ui_server/test_live_state.py::TestUIServerIntegration::test_dashboard_no_raw_leaks
+     class: artifact/environment (apps/ui/dist stale by mtime).
+     Serial re-run at base: exit 0, 1 passed in 0.40s.
+  6  tests/ui_server/test_live_state.py::TestUIServerIntegration::test_put_rejected
+     class: artifact/environment (apps/ui/dist stale by mtime).
+     Serial re-run at base: exit 0, 1 passed in 0.28s.
+  7  tests/ui_server/test_live_state.py::TestUIServerIntegration::test_readiness_endpoint
+     class: artifact/environment (apps/ui/dist stale by mtime).
+     Serial re-run at base: exit 0, 1 passed in 0.33s.
+  8  tests/ui_server/test_live_state.py::TestUIServerIntegration::test_server_starts_and_writes_info
+     class: artifact/environment (apps/ui/dist stale by mtime).
+     Serial re-run at base: exit 0, 1 passed in 0.28s.
+  9  tests/ui_server/test_live_state.py::TestUIServerIntegration::test_url_is_localhost_only
+     class: artifact/environment (apps/ui/dist stale by mtime).
+     Serial re-run at base: exit 0, 1 passed in 0.28s.
+
+WHAT IS NOT CLAIMED HERE
+  Nothing in this file explains WHICH process moved the base worktree's
+  dist/index.html mtime from 1787279383323951913 to 1787279587674706567
+  during the base run. The base log contains 0 lines matching "auto-build (",
+  so packages/orchestration/ui_server.py's own auto-build path did not launch
+  npm; beyond that the mover was not identified and is not asserted. The
+  parity verdict does not depend on identifying it: a moved mtime voids the
+  claim by rule, and the void is honoured by attributing all nine ids
+  individually above.
+
+  The verdict on this gate is the reviewer's to issue, not the worker's.

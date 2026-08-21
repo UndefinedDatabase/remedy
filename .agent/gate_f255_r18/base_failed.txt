@@ -1,0 +1,9 @@
+FAILED tests/cli/test_review_bundle_runtime.py::TestSubprocessCleanup::test_timeout_raises_with_cleanup
+FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_api_invalid_token_403
+FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_api_missing_job_404
+FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_brain_endpoint
+FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_dashboard_no_raw_leaks
+FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_put_rejected
+FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_readiness_endpoint
+FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_server_starts_and_writes_info
+FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_url_is_localhost_only

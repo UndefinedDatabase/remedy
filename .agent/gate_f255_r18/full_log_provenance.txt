@@ -1,0 +1,28 @@
+F255 R18 integration gate - raw log provenance (G10)
+
+The raw pytest logs stay OUTSIDE the tracked tree, under .remedy-wt/.cache/gate_r18/,
+which is inside the gitignored .remedy-wt/ directory. Only the derived
+.txt evidence in .agent/gate_f255_r18/ is committed. Every evidence file
+is named .txt and never .log: .gitignore drops *.log silently and the
+review-zip guard rejects any member ending .log (R-0169).
+
+branch run
+  path        /home/decodeux/Repos/remedy/.remedy-wt/.cache/gate_r18/branch_run.log
+  lines       245
+  sha256      393991f9c162d8d59e5accdf8809b7d5731728bdeb5515ee5f19c8bfd0e60682
+base run
+  path        /home/decodeux/Repos/remedy/.remedy-wt/.cache/gate_r18/base_run.log
+  lines       781
+  sha256      e094f11b0b1ede89f340e5ca2b24b813e3a06f80237bb53b11b2d72076103147
+serial per-id probe
+  path        /home/decodeux/Repos/remedy/.remedy-wt/.cache/gate_r18/serial_probe.txt
+  lines       9
+  sha256      fbf085e80be8ba8882d77857750d92bd4c3e67c174b326d12bc5f05ef3129a25
+parity BEFORE
+  path        /home/decodeux/Repos/remedy/.remedy-wt/.cache/gate_r18/parity_BEFORE.txt
+  lines       2
+  sha256      41b2b8f0dc824e20a917301f0c2db905e2d7f045a45f539051b2dc892340aee5
+parity AFTER
+  path        /home/decodeux/Repos/remedy/.remedy-wt/.cache/gate_r18/parity_AFTER.txt
+  lines       2
+  sha256      2fe7f5ca5646281e5764d4985f3ff3825906b5ced71f0f74500eab5f77c22ea7
