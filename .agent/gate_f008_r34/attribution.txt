@@ -1,0 +1,70 @@
+F008 R34 integration gate - comparison and attribution (G11)
+
+THE TWO COUNTS, AS comm PRINTED THEM
+  branch-only failures (comm -13 base_failed.txt branch_failed.txt)   0
+  base-only   failures (comm -23 base_failed.txt branch_failed.txt)   0
+
+  comm was invoked as exact argv - subprocess.run(["comm","-13",...]) and
+  subprocess.run(["comm","-23",...]) - over the two sorted files, not through a
+  shell. Both invocations exited 0 with an empty stdout, and both wrote a 0-byte
+  file: comm_branch_only_failures.txt and comm_base_only_failures.txt.
+
+  Both inputs are 0-byte files. branch_failed.txt is the sorted list of lines
+  beginning "FAILED" in the branch run's raw log, which had length 0 while that
+  run exited 0 at 17412 passed, 20 skipped. base_failed.txt is the same list
+  over the base run's raw log, length 0, that run exiting 0 at 17315 passed,
+  20 skipped.
+
+BRANCH-ONLY: 0 IDS
+  0 is the number comm -13 printed, and it is the gate's passing shape. With no
+  branch-only id there is nothing to re-run serially, nothing to reproduce at
+  the merge base, and no candidate for the blocker rule of integration_gate.md
+  step 4. NO BLOCKER IS DECLARED, because none was found.
+
+BASE-ONLY: 0 IDS
+  0 is the number comm -23 printed. PARITY_CLAIM=VOID (see base_parity.txt), and
+  the per-id attribution obligation is unconditional rather than discharged by a
+  passing guard (finding R-0590) - so it is discharged here over the set comm
+  actually produced, which has 0 members. 0 ids are unattributed because 0 ids
+  exist; that is the same sentence, not a weaker one.
+
+  The F255 R18 gate recorded nine base-only failures in this same class. They do
+  not appear here because step (b) of G10 repaired the copied dist mtimes before
+  the run, so _frontend_is_stale read False in the base worktree.
+
+WHAT MOVED THE BASE WORKTREE'S dist, IDENTIFIED BY DIRECT PROBE
+  The parity claim is void on the base side alone. The mover was not left
+  unnamed:
+
+  node id  tests/ui_server/test_dashboard_contract.py::TestAutoBuildBehavior::test_auto_build_runs_by_default
+  That test pops REMEDY_UI_NO_AUTO_BUILD from the environment on purpose and
+  calls _auto_build_frontend() for real. _auto_build_frontend resolves its
+  ui_root from Path(__file__), so the build it launches writes into whichever
+  checkout hosts the running module - the base worktree, never the primary.
+
+  PROBE, run serially in the base worktree after both suite runs, with
+  REMEDY_UI_NO_AUTO_BUILD=1 in the environment (which the test itself pops):
+    command  python3 -m pytest <that node id> -q -rf -s
+    exit     0, 1 passed in 1.72s
+    stderr   [remedy-ui] auto-build (missing)...
+             [remedy-ui] build done.
+    base     index_html_st_mtime_ns 1787331765097040341 -> 1787331884835526868
+    primary  dist digest, file count and index.html mtime_ns UNCHANGED
+  One node id, run alone, moves the base worktree's dist and leaves the primary
+  checkout untouched. That is the direct evidence.
+
+  IT ALSO CORRECTS A READING. The base run's log contains 0 lines matching
+  "auto-build (", and at F255 R18 that 0 was read as evidence that no build was
+  launched. The probe shows the message is printed to stderr and CAPTURED by
+  pytest for a passing test: 0 log lines means "not shown", not "not run". The
+  neutralisation held for packages/orchestration/ui_server.py's own startup
+  path; it cannot bind a test that deliberately unsets the variable.
+
+  The rebuilt base dist is the base commit's own source (a smaller JS asset,
+  342268 bytes, against the branch build's 347381), so the base run measured the
+  base tree. The worktree was removed afterwards and nothing of it survives.
+
+WHAT IS NOT CLAIMED HERE
+  Nothing above says the suite is free of flakes, or that a re-run would produce
+  these same two 0s. It says what these two runs produced. The verdict on this
+  gate is the reviewer's to issue, not the worker's.

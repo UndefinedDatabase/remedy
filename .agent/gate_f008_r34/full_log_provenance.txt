@@ -1,0 +1,24 @@
+F008 R34 integration gate - raw log provenance (G12)
+
+The raw pytest logs stay OUTSIDE the tracked tree, under
+.remedy-wt/.cache/gate_r34/, which is inside the gitignored .remedy-wt/
+directory. Only the derived .txt evidence in .agent/gate_f008_r34/ is
+committed. Every evidence file is named .txt and never .log: .gitignore drops
+*.log silently and the review-zip guard rejects any member ending .log
+(R-0169).
+
+branch run
+  path        /home/decodeux/Repos/remedy/.remedy-wt/.cache/gate_r34/branch_run.log
+  lines       247
+  sha256      8fa51732ece02cafad9181848a096e9899e77df7e0ce1014710278d763549721
+base run
+  path        /home/decodeux/Repos/remedy/.remedy-wt/.cache/gate_r34/base_run.log
+  lines       245
+  sha256      79c91b9f5c1abae367866044183c2909f0264cd87cbf3a6159583b72e8a6e193
+dist mover probe
+  path        /home/decodeux/Repos/remedy/.remedy-wt/.cache/gate_r34/mover_probe.txt
+  lines       7
+  sha256      0f0ecd996e23ec784b1f5f8fdd459645be990658541810abf2383258747da60b
+
+The gate scripts that produced every reading live beside them, under
+.remedy-wt/r34/, and are likewise uncommitted.
