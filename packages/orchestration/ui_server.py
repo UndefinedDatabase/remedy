@@ -2722,8 +2722,12 @@ def _build_events_since_json(job: Any, cursor: str) -> dict[str, Any]:
         start = int(cursor)
     new_events = events[start:]
     safe = []
-    for e in new_events[:50]:
+    for offset, e in enumerate(new_events[:50]):
         safe.append({
+            # The ledger's own position, never a per-response counter: F008's
+            # stream uses it as the SSE event id, so a client resuming from
+            # `seq` lands on the event the server meant (DECISION F008 D1).
+            "seq": start + offset,
             "event": e.get("event", ""),
             "timestamp": e.get("timestamp", ""),
             "outcome": e.get("outcome", ""),
