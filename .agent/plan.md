@@ -16,30 +16,28 @@ ledger's envelope sequence, the heartbeat holds cadence, and the fallback
 engages on a disabled EventSource and recovers to live.
 
 ## Current Step
-R2 records the R1 verdict and repairs the red R1 was forbidden to touch. R1
-claimed F008 correctly, but one line of `tests/docs/test_docs_consistency.py`
-pinned F008 to the UNSTARTED marker, so the claim had to turn that suite red
-while R1's own change set excluded every path under `tests/`. This round
-replaces that pin with the invariant the workflow actually holds — exactly one
-`[~]` entry exists and F008 is its holder — which is strictly stronger than
-the sentence it retires. No production code is written here either.
+R3 discharges the findings order the feature file's Orchestrator brief
+dispatches first. Both preconditions were MEASURED in the source and both
+contradict a prediction the feature file carried: the UI server is not threaded,
+so a long-lived response would block every other request; and `LedgerEvent`
+carries no seq, the enumeration position being consumed into a hash and
+discarded. This round registers that spec defect as R-0612, amends the feature
+file with the measured state and rules the consequence as DECISION F008 D1.
 
 ## Next Steps
-1. R3 inventories the ground the feature file's "How it fits" section names,
-   MEASURED in the source rather than read off the feature file: whether
-   ledger entries already carry a monotonic index, how the UI server serves a
-   long-lived response and whether it is threaded, what the Part E envelope
-   contract fixes, and how the existing state endpoint authenticates.
-2. R4 records R3 and rules the stream's shape as a DECISION — threading, the
-   heartbeat cadence, the max-connections guard and the fallback's contract —
-   before any endpoint is written.
-3. R5 onward builds T001, T002 and T003 in the feature file's own order.
+1. R4 makes the UI server threaded and proves it behaviourally — a slow
+   request must stop blocking a concurrent one — as its own commit with its
+   own tests. DECISION F008 D1 makes this a prerequisite of T001, not a part
+   of it, because it is production code on a path every cockpit feature uses.
+2. R5 builds T001 proper: the stream endpoint, the heartbeat, 404 and 429,
+   and the framing golden, with seq read from the ledger position.
+3. R6 onward builds T002 and T003 in the feature file's own order.
 
 ## Risks
-- The server-capability finding gates everything: the feature file's
-  Orchestrator brief dispatches it first, and a stream built on an unthreaded
-  stdlib server would block every other request the cockpit makes.
-- 183 findings stay open and none is a code defect of F008. R1's red was a
-  recurrence of R-0387, not a new id; promoting that finding's clause into the
-  §3 checklist edits `docs/agents/**` and is routed to the paydown branch that
-  already carries R-0403, R-0607, R-0608, R-0609 and R-0611.
+- Making the server threaded touches a path every existing UI feature shares,
+  so R4's blast radius is wider than its diff: the state-reader four and the
+  dashboard contract are the suites that would show it.
+- 184 findings are open once R-0612 lands and none is a code defect of F008.
+  Promoting R-0387's clause into the §3 checklist edits `docs/agents/**` and
+  stays routed to the paydown branch with R-0403, R-0607, R-0608, R-0609 and
+  R-0611.
