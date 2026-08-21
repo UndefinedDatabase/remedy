@@ -16,34 +16,31 @@ ledger's envelope sequence, the heartbeat holds cadence, and the fallback
 engages on a disabled EventSource and recovers to live.
 
 ## Current Step
-R20 makes the driver the single authority on what the client does next and
-writes the record R19 left open. `start()` stops calling `host.connect`
-itself and dispatches the opening event, so `perform` issues the effect the
-driver chose — R-0627's fix. It is not a pure refactor: after the fallback has
-engaged a restart now polls where it used to reopen a stream, so a new test
-pins that. The round also writes the R19 verdict and resolves R-0626, whose
-rename of the driver's gap local landed at `c1051495`.
+R21 turns the runner into a STORE: `subscribe` plus a view whose object
+identity is stable across calls that change nothing. That pair is exactly what
+React's `useSyncExternalStore` requires, and it is the last piece of T003
+provable under the node-environment vitest. The round also writes the R20
+verdict and resolves R-0627, whose fix — the driver as the single author of a
+`connect` — landed at `732091d9`.
 
 ## Next Steps
-1. R21 adds the thin React `useBrainStream` hook over the runner and the
-   visible delayed badge. Neither jsdom nor a testing library is installed, so
-   R21 opens with that dependency decision and owns it.
+1. R22 adds the thin React `useBrainStream` hook over this store and the
+   visible delayed badge. IT IS BLOCKED until a session can install a DOM
+   environment: no jsdom, happy-dom or testing library is present and the
+   R21 session's command guard denied the npm commands that would add one.
 2. Then the integration gate before closure.
 
 ## Risks
 - `npm run lint` in `apps/ui` is RED at base and is NOT a gate (R-0364):
-  measured at `1f10de78` it exits 1 with 55 problems, every error a
+  measured at `b97fb0b7` it exits 1 with 55 problems, every error a
   `Parsing error`, because that eslint config installs no TypeScript parser.
   That is R-0622 and it routes to a paydown branch. `npm run typecheck` and
   `npx vitest run` both exit 0 there and ARE the gates. Repository-wide
   `ruff check .` is RED too and is not a gate; this round changes no Python.
-- `noUnusedLocals` is on, so dropping the `resumeEventId` call orphans its
-  import and turns typecheck red. R20 carries the import line for that reason:
-  one indivisible edit, not scope drift.
-- R21 is the round where a gate this repository owns stops covering the code:
-  no React component can be rendered here today. The runner is framework-free
-  so the hook has almost no branch left to get wrong, but the BADGE is a
-  visual surface and docs/ui/design_reference/ is binding for it, any
-  deviation owed an assumption_log entry with a technical reason.
-- R-0627's fix lands here and its `Done:` paragraph is owed by R21, exactly as
-  R19 left R-0626's resolution to this round.
+- A store that returns a fresh view object on every call sends
+  `useSyncExternalStore` into an endless re-render. Identity stability is
+  therefore a CONTRACT of this seam and not an optimisation, and R21 pins it
+  with its own test and its own red control.
+- The badge remains a visual surface docs/ui/design_reference/ binds, with any
+  deviation owed an assumption_log entry carrying a technical reason. R22
+  owns that, together with the dependency decision it cannot avoid.
