@@ -1,43 +1,36 @@
-# Plan — F086 Release capability
+# Plan — F255 Teacher role
 
-Branch: feature/f086-release-capability, cut from `main` at 76661dc1. Pull request
-#207 is open and unmerged; the CI check on 665c45df, run 32405232165, is green —
-the first green run this branch has had. It merges at the next feature's Open PR
-Gate.
-`.agent/live_review.md` is the source of truth for the open set, for the next free
-finding id and for the round map; this file repeats none of them.
+Branch: feature/f255-teacher-role, cut from `main` at b35d350b, the merge commit
+of pull request #207. The closure pull request is created by THIS round and is
+NOT merged in this session; it merges at the next feature's Open PR Gate.
+`.agent/live_review.md` is the source of truth for the open set, for the next
+free finding id and for the round map; this file repeats none of them.
 
 ## Goal
-Remedy ships like a normal tool: `pip install` yields the `remedy` CLI with the
-UI assets bundled, `remedy --version` reports version and build info, and a
-release is gated by CI plus a semver and changelog discipline. DONE when a wheel
-built from a clean checkout installs into a fresh virtualenv where the golden
-path and the UI serve work, the version command matches the tag, and a release
-with a missing changelog entry is refused by the gate.
+A fourth configured role, `teacher`, that narrates a running mission and answers
+operator questions about the operator's own code, and never influences the run.
+DONE when passive narration keyed to an enumerated set of ledger events (Stage 1,
+deterministic templates, zero tokens) and on-demand Q&A (Stage 2, through the
+teacher role's own model) both work, the three grounding sources are never mixed
+silently, teacher spend is reported as its own role in the F103 ledger, and the
+read-only invariant is proven behaviourally. ALL FOUR HOLD and are reviewed.
 
 ## Current Step
-R35: record R34's verdict in `.agent/live_review.md` so it is not stranded
-(DECISION F085 D9). This round registers no finding, resolves none, and changes
-no source file, test or document.
+R21 CLOSES F255. It records the R20 verdict, writes the STATUS `[x]` line with
+the package and `accepted HEAD` values R20 produced, syncs the README count, tier
+table and accepted list in the SAME commit, empties the closure-candidate
+carrier, and opens the pull request.
 
 ## Next Steps
-1. THE OPEN PR GATE MERGES #207, per AGENTS.md, before any new branch is cut.
-   The operator may merge it manually at any time instead.
-2. R35'S OWN VERDICT IS RECORDED BY THE NEXT FEATURE'S FIRST REVIEWED ROUND,
-   the way F085's closure candidates reached F086 R1. R35 does NOT claim the
-   terminator carve-out: R-0583 gives that to the round creating the branch's
-   pull request, which was R31, so the regress ends at the merge and not here.
-3. F086 STAYS `[x]` IN THE LEDGER. Neither R-0598 nor R-0599 falsifies the
-   closure's own claim, so each correction is a dated ledger entry and never a
-   rewrite of a landed STATUS line.
+1. The next session's FIRST action is Phase 1 rule 1, the `.agent/STOP` re-read,
+   and its SECOND is the Open PR Gate, which merges this feature's pull request
+   before any new branch is cut. Rule A5 then selects F008 — SSE event stream —
+   as the next feature, it being the first `[ ]` in STATUS order.
 
 ## Risks
-- THE FEATURE'S OWN DONE CONDITION IS NOT FULLY PROVEN and closure says so rather
-  than counting a skipped test as coverage: no wheel has been installed into a
-  fresh virtualenv, and `.github/workflows/release.yml` has never been dispatched.
-  Both are human actions and both are named in the STATUS line's PASS_WITH_RISKS.
-- A GREEN CI RUN IS NOT A WHEEL INSTALL. It proves the dev install and the suite,
-  which is what R-0598 broke, and it proves neither risk above.
-- R-0571 IS THE HOLE THIS ROUND ROUTES AROUND BY HAND rather than fixes: a last
-  round whose verdict was written and one whose verdict was never written are
-  indistinguishable on disk, and the fix edits files F086 does not own.
+- FOUR FINDINGS REMAIN OPEN and none is a code defect: R-0607, R-0608, R-0609 and
+  R-0611 are all reviewer-process defects whose fixes edit `docs/agents/` or the
+  closure protocol, paths the closure commit's own R-0154 path set cannot reach.
+  They route to a paydown branch and are named in the pull request.
+- THE PACKAGE PACKAGES `.remedy-wt/` SCRATCH, which is the already-registered
+  R-0403 and not a new condition of this closure.

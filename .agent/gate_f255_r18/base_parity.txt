@@ -1,0 +1,86 @@
+F255 R18 integration gate - base run at artifact parity (G8)
+
+THE WORKTREE, ON A BRANCH, NEVER DETACHED
+  command   git worktree add -b tmp/base-gate-r18 .remedy-wt/base-r18 b35d350b
+  output    Preparing worktree (new branch 'tmp/base-gate-r18')
+            HEAD is now at b35d350b Merge pull request #207 from
+            UndefinedDatabase/feature/f086-release-capability
+  HEAD      b35d350b84b1d371064a1f44e43f40da3ccfa540
+  branch    tmp/base-gate-r18 (git -C .remedy-wt/base-r18 branch --show-current)
+  A detached checkout is refused by the self-dogfood branch guard by design
+  (DECISION D3), so the throwaway branch is the procedure, not a convenience.
+
+  b35d350b is the merge base: git merge-base main HEAD and git rev-parse main
+  both printed b35d350b84b1d371064a1f44e43f40da3ccfa540 at b3146e91.
+
+ARTIFACT PARITY RESTORED BEFORE THE RUN
+  shutil.copytree(src, dst, symlinks=True) for both destinations. The
+  symlinks=True argument is the order and not a detail: copytree defaults to
+  symlinks=False, which DEREFERENCES npm's bin shims and itself causes the
+  base-only failures parity exists to prevent (R-0591).
+
+  apps/ui/node_modules
+    source exists True, source is a symlink False
+    destination .remedy-wt/base-r18/apps/ui/node_modules
+    destination is a directory True, destination is a symlink False
+    REAL DIRECTORY, NOT A SYMLINK: True
+  apps/ui/dist
+    source exists True, source is a symlink False
+    destination .remedy-wt/base-r18/apps/ui/dist
+    destination is a directory True, destination is a symlink False
+    REAL DIRECTORY, NOT A SYMLINK: True
+
+THE RUN
+  cwd         /home/decodeux/Repos/remedy/.remedy-wt/base-r18
+  command     python3 -m pytest -n auto -q
+  environment REMEDY_UI_NO_AUTO_BUILD=1, passed through the env= parameter of
+              subprocess.run as a copy of os.environ with that one key added -
+              never as a VAR=value shell prefix, which this session's guard
+              rejects (constraint 7).
+  exit code   1
+  wall secs   156.0
+  summary     9 failed, 17188 passed, 20 skipped in 155.50s (0:02:35)
+  raw log     .remedy-wt/.cache/gate_r18/base_run.log, outside the tracked tree
+
+THE NEUTRALISATION, VERIFIED RATHER THAN TRUSTED
+  Digest = sha256 over apps/ui/dist, folding each file's path and bytes in
+  sorted order; file count = regular files under that tree.
+
+  BEFORE primary dist_sha256=09463f4379b4702ce090a0396c4b92256e122e0567b30d896cd2919291b03e51 file_count=3 index_html_st_mtime_ns=1787279383323951913
+  BEFORE base    dist_sha256=09463f4379b4702ce090a0396c4b92256e122e0567b30d896cd2919291b03e51 file_count=3 index_html_st_mtime_ns=1787279383323951913
+  AFTER  primary dist_sha256=09463f4379b4702ce090a0396c4b92256e122e0567b30d896cd2919291b03e51 file_count=3 index_html_st_mtime_ns=1787279383323951913
+  AFTER  base    dist_sha256=09463f4379b4702ce090a0396c4b92256e122e0567b30d896cd2919291b03e51 file_count=3 index_html_st_mtime_ns=1787279587674706567
+
+  DIGEST      unchanged on both sides, and the file count stayed 3.
+  MTIME       UNCHANGED in the primary checkout (1787279383323951913 before and
+              after, so nothing wrote through into the primary tree).
+              MOVED in the base worktree: 1787279383323951913 ->
+              1787279587674706567, a shift of 203.7 s inside a 156.0 s run.
+
+  A CHANGED DIGEST OR A MOVED MTIME VOIDS THE CLAIM. The digest is blind to a
+  byte-identical rebuild while _frontend_is_stale in
+  packages/orchestration/ui_server.py decides staleness by MTIME (R-0565), so
+  the mtime is the operative reading and it moved.
+
+PARITY_CLAIM=VOID
+
+  The void verdict forces G10's per-id attribution of every base-only id by
+  direct evidence. That attribution is in attribution.txt and it is complete:
+  all nine base-only ids are attributed to the artifact/environment class and
+  each one passes serially at this same base commit.
+
+WHY THE BASE RUN SAW A STALE FRONTEND, MEASURED
+  git worktree add wrote apps/ui/src into the base worktree at checkout time,
+  while copytree preserved the primary's older mtime on the copied
+  apps/ui/dist/index.html. Measured in the base worktree:
+    newest apps/ui/src mtime_ns   1787279477444570086
+    dist/index.html mtime_ns      1787279383323951913 (as copied)
+  src NEWER than dist => _frontend_is_stale() True => _auto_build_frontend
+  returns None immediately because REMEDY_UI_NO_AUTO_BUILD=1 => _load_frontend
+  falls through to its loud failure, "ERROR: React UI not built.", which is
+  captured on stderr under each of the eight failing ui_server ids.
+  The neutralisation therefore WORKED as code - the base log contains 0 lines
+  matching "auto-build (" so no npm install and no npm run build was launched
+  by that path - and the parity copy is what left the artifact looking stale.
+  This is the artifact class the R-0155 amendment describes, reached by mtime
+  rather than by absence.

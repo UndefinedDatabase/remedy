@@ -1,0 +1,16 @@
+F255 R18 integration gate - branch run (G7)
+
+checkout            /home/decodeux/Repos/remedy (PRIMARY)
+branch              feature/f255-teacher-role
+revision            b926a473c56d9ff50d953c9ff162fa57934bc767
+command             python3 -m pytest -n auto -q
+REMEDY_UI_NO_AUTO_BUILD  not set for this run (G7)
+exit code           0
+wall seconds        145.5 (measured around subprocess.run)
+summary line        17315 passed, 20 skipped in 144.91s (0:02:24)
+FAILED count        0
+
+The raw log was written OUTSIDE the tracked tree, at
+.remedy-wt/.cache/gate_r18/branch_run.log, because a log growing inside the repo during a
+run changes the worktree digest mid-run and turns the manifest-identity
+tests into false failures (R-0176).

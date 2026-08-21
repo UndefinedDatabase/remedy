@@ -6188,3 +6188,329 @@ is the latest and most expensive moment to learn about it.
 
 Reverse this decision by deleting this section, which reopens the choice between
 an opt-in marker, a new CI stage, and a release-workflow step.
+
+## DECISION F255 D1 — the teacher joins BOTH role vocabularies (2026-08-20)
+
+CHOSEN. `teacher` is added to `KNOWN_ROLES` in
+`packages/orchestration/role_config.py`, taking it from seven names to eight,
+AND to the `ConventionsRole` enum in
+`packages/orchestration/role_conventions.py`, because the teacher needs a model
+(the first vocabulary) and a persisted behaviour document (the second). The
+frozen pin `test_all_seven_roles_present` in
+`tests/orchestration/test_role_config.py` is renamed and its tuple extended IN
+THE SAME COMMIT as the vocabulary change, never in a follow-up: a ledger-style
+count and its test pin land together (finding R-0151).
+
+MEASURED at R2, which is why this is a decision and not a preference: the
+registration says the teacher is "resolved through the same role_config
+mechanism as orchestrator/worker/reviewer", but `worker` is NOT in
+`KNOWN_ROLES` — it exists only as `ConventionsRole.WORKER`. The registration
+names two vocabularies as if they were one, and this decision separates them.
+
+DELIBERATELY NOT EXTENDED: `_ROLE_OVERRIDE_ROLES` in `apps/cli/commands/do_cmd.py`
+and the `_ROLE_PROMPT_KEYS` / `_ROLE_ESTIMATED_KEYS` maps in
+`packages/orchestration/token_cost_policy.py`. Those three lists describe the
+roles that perform the BUILD and carry per-role prompt columns; the teacher
+neither builds nor is charged against those columns, and its spend is attributed
+by the ledger `role` column instead (DECISION F255 D3). A role added to a list
+whose meaning it does not share is how a vocabulary rots.
+
+ALTERNATIVE CONSIDERED and rejected: add `teacher` to `KNOWN_ROLES` alone.
+Rejected because `role_conventions.py` is where a role's rules are persisted,
+and a teacher with no conventions document is a prompt with no written rules —
+exactly the state AGENTS.md exists to prevent for every other role.
+
+Reverse this decision by deleting this section and removing the name from both
+tuples, which restores the seven-name pin.
+
+## DECISION F255 D2 — F255 does NOT close its own event-vocabulary dependency (2026-08-20)
+
+CHOSEN. Stage 1 narration keys to an EXPLICITLY ENUMERATED subset of run-log
+event names, declared in ONE place inside the teacher's own module and pinned by
+a test. Every event outside that set is narrated as unknown, under the feature's
+own honesty rule for grounding source 1 — "asserts only what evidence shows,
+says unknown where it is silent". F255 does NOT build a repo-wide named-event
+registry and does NOT make the emitter enforce one.
+
+MEASURED at R2: `RunEvent.event` at `packages/orchestration/run_log.py:66` is an
+unconstrained `str` and `RunLogWriter.log` validates nothing; 39 distinct event
+names are emitted from 14 files; `EVENT_METADATA_SCHEMAS` covers the METADATA
+KEYS of seven event types and has ZERO production callers. The registration's
+declared dependency, "stable ledger event vocabulary (Tier 2)", is therefore NOT
+satisfied today, and this decision refuses to pretend otherwise.
+
+ALTERNATIVE CONSIDERED and rejected: close the dependency first — introduce the
+registry and make every emitter use it. Rejected for THIS feature because it
+edits the 14 emitting files and every event name in the repository, which is a
+Tier 2 infrastructure feature in its own right and is nowhere in F255's scope.
+Widening a Tier 5 feature into a Tier 2 refactor is the scope drift AGENTS.md
+forbids, and doing it inside a teaching feature would bury it.
+
+CONSEQUENCE, stated plainly so no later text overclaims: F255's narration is
+only as stable as the names it enumerates. A rename in an unrelated module
+degrades narration for that event to "unknown" rather than breaking the run —
+which is the failure mode the honesty rule prefers — and the enumerated set is a
+test pin, so such a rename surfaces as a RED TEST rather than as silence.
+
+Reverse this decision by deleting this section, which reopens the choice between
+an enumerated subset and a repo-wide registry.
+
+## DECISION F255 D3 — teacher spend is REPORTED per role, and no new limit axis is built (2026-08-20)
+
+CHOSEN. Teacher spend is separated by the `role` column that already exists on
+the F103 ledger's `calls` table, and is read with `query_cost(by="role")`. F255
+adds NO new budget limit and NO new limit axis. Stage 1 is declared zero-token
+and charges nothing; Stage 2 charges under the role name `teacher`.
+
+MEASURED at R2: a "pool" concept does not exist anywhere in
+`packages/orchestration/` — the only two hits are an unrelated local variable.
+Attribution runs on `_CALL_COLUMNS`'s `role` field; `COST_GROUP_KEYS` is exactly
+`("role", "model", "day")`; and all five enforceable limits in `_LIMIT_ORDER`
+are JOB-scoped, none of them per-role.
+
+WHAT THIS DECISION DELIBERATELY DOES NOT RULE, and says so rather than letting a
+later round discover it: the registration's phrase "its OWN budget pool" is
+satisfied in the REPORTING sense and explicitly NOT in the LIMIT sense. No text
+in this feature may claim the teacher is capped. If a cap is wanted later it is
+a new axis in `budget_guard.py`, ruled then, on its own evidence.
+
+ALTERNATIVE CONSIDERED and rejected: add a per-role limit axis now. Rejected
+because it changes the enforcement path that every job already depends on, in
+order to cap a role that by construction cannot influence the run — the largest
+blast radius in the feature bought for the smallest gain.
+
+Reverse this decision by deleting this section, which reopens per-role limits.
+
+## DECISION F255 D4 — read-only is proven BEHAVIOURALLY, because the annotation proves nothing (2026-08-20)
+
+CHOSEN. The teacher's hard read-only invariant is proven by a BEHAVIOURAL test —
+the command runs and the bytes on disk are unchanged — modelled on
+`tests/orchestration/test_job_budgets.py:1352`, whose comment states the standard
+exactly: `action_class="read_only"` has to be true of the bytes on disk. The
+`action_class="read_only"` declaration is carried as well, but it is the label,
+never the guarantee.
+
+MEASURED at R2: `ActionClass` is a `typing.Literal` at
+`apps/cli/command_catalog.py:31`; a `Literal` annotation is not checked when the
+frozen dataclass is constructed; and NO code path anywhere branches on
+`action_class == "read_only"` to permit or deny an operation. The only
+non-declaration uses are one serialization and one comment. Enforcement today is
+the test suite, and only one test in it is behavioural.
+
+CONSEQUENCE: the registration's "Hard invariants: ActionClass read_only" names a
+DECLARATION. Any later sentence in this feature claiming that the annotation
+enforces the invariant is false, and this decision is the reason a reviewer may
+say so without re-deriving it.
+
+ALTERNATIVE CONSIDERED and rejected: build catalog-wide runtime enforcement, so
+`read_only` is checked at dispatch for every command. Rejected as out of scope —
+it is a trust-core change touching every command's dispatch path, and F255 is a
+Tier 5 teaching feature. It is worth doing: it is registered as a closure
+candidate of this feature rather than silently dropped.
+
+Reverse this decision by deleting this section.
+
+## DECISION F255 D5 — F255 ships `remedy teach` and does NOT build `do watch` (2026-08-20)
+
+CHOSEN. The feature's CLI surface is `remedy teach`. F255 does NOT build
+`remedy do watch`, and it STATES its own isolation rules instead of inheriting
+rules that were never written. The rules it states, taken from what the run log
+actually is: the teacher opens the append-only JSONL run log READ-ONLY, re-reads
+it whole through the existing production reader
+`packages/orchestration/timeline.py:68`, tolerates a malformed trailing line by
+dropping that line, holds no lock, and has no write path to the run at all.
+
+MEASURED at R2: the `do` group holds fifteen commands and none is `watch`; no
+`teach` command exists; and the searches that establish both are recorded in
+`.agent/f255_inventory.md`. The registration's phrase "same isolation rules as
+watch" therefore refers to rules that do not exist, and its CLI phrase
+`remedy do watch --learn` names a command that does not exist.
+
+ALTERNATIVE CONSIDERED and rejected: build `do watch --learn` as the
+registration literally says. Rejected because `do watch` is a general live-run
+viewer that is useful independently of teaching; building it inside F255 would
+silently widen a teaching feature into a cockpit feature, which the
+registration's own Non-goals forbid — "cockpit panel ships with Tier 5, not
+before". A feature that grows a second feature inside itself cannot be reviewed
+against its own Done condition.
+
+CONSEQUENCE: the registration's CLI phrase is SUPERSEDED. R4 writes the
+superseding text into `docs/roadmap/features/T5_F255.md` itself, so the feature
+file and this ruling never disagree on disk — a decision that lives only here
+while the feature file still says `do watch` is the R-0417 staleness class.
+
+Reverse this decision by deleting this section and restoring the `do watch`
+phrasing in the feature file.
+
+## DECISION F255 D6 — the handback token cap is withdrawn; the LINE cap is the operative bound (2026-08-20)
+
+CHOSEN, ruling finding R-0602. The sentence "Hard cap: this file stays ≤800
+tokens — ≤1600 in the >10-commit LARGE case" is REMOVED from
+`docs/agents/handback_template.md`. The line cap in that same file — ≤60, ≤100
+when a >5-commit table requires it, ≤160 in the LARGE case — becomes the single
+operative bound on a handback's size, and the template says so explicitly.
+
+MEASURED: over the twelve most recent commits that rewrote `.agent/handoff.md`,
+every one exceeds the token cap, in a band from 1306 to 2983 by the chars/4
+estimate — 1.6x to 3.7x — while the LINE cap in the same document is met by all
+of them. Two caps on one artifact disagreed, and only one was ever obeyed.
+
+WHY WITHDRAW RATHER THAN RAISE. Raising the number to fit current practice
+blesses whatever the last round happened to write and must be raised again the
+next time a bundle grows. The line cap already scales with commit count, is
+measured with `wc -l` and needs no tokenizer, whereas a token cap depends on an
+estimator nobody has agreed on — chars/4 is itself a guess, and the true count
+differs per model. A cap that cannot be measured identically by two readers
+cannot be enforced by either.
+
+ALTERNATIVE CONSIDERED and rejected: restate the cap at 3000 tokens. Rejected
+for the reason above — it is the current maximum dressed as a rule, and it would
+still leave two caps that can disagree.
+
+WHERE THIS LANDS: the template edit is NOT made by this round, whose change set
+is `.agent/` only. It lands in the docs round that follows the feature-file
+amendment, and until it lands no round is failed against the 800-token number
+and no handback claims to meet it.
+
+Reverse this decision by deleting this section and restoring the removed
+sentence.
+
+## DECISION F255 D7 — a teacher question is a ledger row with a NULL task_id (2026-08-21)
+
+CONTEXT. F255's acceptance requires Stage 2 to record exactly one ledger call
+attributed to role `teacher`, and DECISION F255 D3 rules that teacher spend is
+REPORTED through the `role` column the F103 ledger already carries. But
+`packages/orchestration/token_ledger.py` states two invariants that such a write
+breaks as written, both read at `8d8e7a5c`: a row is ONE FINALIZED TASK RUN keyed
+`"<job_id>:<task_id>"` (DECISION D16), and the module has exactly ONE call site,
+`pingpong_evidence.write_evidence_bundle`, because it never parses provider
+output itself. A teacher question is neither a task nor a run, and it has no
+`task_runs/<task_id>/provider_evidence.json`.
+
+CHOSEN. Widen the row's identity by exactly one class rather than fabricate a
+task run: a teacher question is a row whose `task_id` is NULL, and that NULL is
+what MARKS the class. The schema already permits it — `job_id` and `task_id` are
+both nullable and `call_id` alone is the primary key — so no migration is needed.
+`packages/orchestration/teacher_spend.py` is the one writer, it takes no
+`task_id` parameter at all, and it parses no provider output: it records figures
+its caller was given. The `token_ledger` docstring is amended at C4 of the same
+round, so the ruling and the module never disagree on disk.
+
+ALTERNATIVES CONSIDERED and rejected. Giving the question a synthetic
+`<job_id>:<task_id>` identity so the existing seam takes it unchanged — rejected
+because it invents exactly the ids and the evidence file the actuals path exists
+to refuse, and it would make a question indistinguishable from a task run in
+every later query. Giving teacher spend its own table — rejected because D3
+already rules that the separation IS the `role` column, and `query_cost(by=
+"role")` would then answer a question that omits the teacher entirely.
+
+CONSEQUENCE. `query_cost(by="role")` reports a `teacher` bucket beside the
+mission roles with no change to that function. A NULL `task_id` now READS as
+"not a task run"; every row that has one keeps its D16 meaning untouched.
+
+Reverse this decision by deleting this section, deleting
+`packages/orchestration/teacher_spend.py` and its test, and restoring the two
+amended bullets of the `token_ledger` module docstring.
+
+## DECISION F255 D8 — the teacher gets its OWN model transport, because no generic one exists (2026-08-21)
+
+CONTEXT. T004 requires Stage 2 to answer through the teacher role's own model,
+and the reviewer measured the provider surface at `2e5b8299` before assuming one
+was available. `packages/providers/` holds `claude_agent`, `docker_runtime`,
+`mempalace`, `ollama_builder` and `ollama_planner`; every one is role-specific.
+The closest thing to a general call is `OllamaPlanner.raw_call`, and it is not
+general in either direction: it takes a REQUIRED `schema` and passes it as
+`format=`, and it resolves its model, host, temperature and num_predict from the
+PLANNER's configuration surface. A teacher answer is prose, not a schema, and
+borrowing the planner's configuration would make `teacher.model` decorative.
+
+CHOSEN. Build one narrow transport owned by the teacher, in
+`packages/orchestration/teacher_model.py`, behind an INJECTABLE seam: a `call`
+parameter defaulting to `ollama_teacher_call`. The transport sends one free-text
+chat with no schema, resolves its model through `resolve_role_config("teacher")`
+and its host through the existing `ollama.host` config. `TEACHER_TRANSPORTS`
+names the providers the teacher can call and holds `ollama` alone, because that
+is the only one this round builds. Every test injects the seam, so the suite
+never opens a socket and never needs a running Ollama.
+
+ALTERNATIVES CONSIDERED and rejected. Calling `OllamaPlanner.raw_call` with a
+permissive schema — rejected because it bills the teacher's question to the
+planner's configuration and puts the planner's system prompt in front of a tutor
+answer. Adding a generic completion provider under `packages/providers/` —
+rejected as a strictly larger change than F255 needs, and one that would outlive
+this feature's review; a future feature that needs it can lift this transport.
+Refusing all Q&A until such a provider exists — rejected because it would leave
+T004's acceptance unreachable and the seam R13 built still uncalled.
+
+CONSEQUENCE. `teacher.model` becomes load-bearing for the first time. A provider
+outside `TEACHER_TRANSPORTS` is refused honestly rather than mis-called, which is
+the behaviour DECISION F255 D9 defines.
+
+Reverse this decision by deleting this section, deleting
+`packages/orchestration/teacher_model.py` and its test, and removing the
+`teach.ask` handler and catalog entry.
+
+## DECISION F255 D9 — Stage 2 refuses on NO USABLE TRANSPORT, not on "no model configured" (2026-08-21)
+
+CONTEXT. The feature file's Edge cases say "With no model configured, Stage 2
+refuses with an honest message and Stage 1 keeps working". Read against
+`packages/orchestration/role_config.py` at `2e5b8299`, that state cannot occur:
+`resolve_role_config` fills an unset model from `default_model_for_provider`, and
+`DEFAULT_PROVIDER` is `ollama`, so EVERY role resolves to a model whether or not
+anyone configured one. A test driving "no model configured" would therefore
+assert a branch no configuration reaches — the vacuous gate this project keeps
+paying for.
+
+CHOSEN. Keep the honest refusal and re-point its CONDITION at something real.
+Stage 2 refuses when the resolved provider is not in `TEACHER_TRANSPORTS`, when
+that transport's dependency is absent, or when the call fails — and every refusal
+names the provider and the model it refused for, so the operator can act on it.
+`teacher_qa.no_model_refusal` keeps its job and its wording unchanged; only what
+triggers it is corrected. Stage 1 keeps working, because Stage 1 is offline by
+construction, and the refusal says so.
+
+ALTERNATIVES CONSIDERED and rejected. Adding a sentinel "unconfigured" model so
+the spec's literal words become reachable — rejected because it invents a state
+to satisfy a sentence, and every other role would inherit it. Refusing whenever
+`teacher.model` is absent from the config file — rejected because it would refuse
+the default configuration that works, which is the opposite of honest.
+
+CONSEQUENCE. A REFUSAL IS NEVER BILLED: no model was called, so no ledger row is
+written, and a row claiming one would be the fabrication `token_ledger` refuses.
+The feature file records this supersession beside its earlier three.
+
+Reverse this decision by deleting this section and restoring the Edge-cases
+sentence as the implemented condition.
+
+## DECISION F255 D10 — `teach.ask` declares write_metadata, and its read-only proof names the ledger (2026-08-21)
+
+CONTEXT. The Scope block lists "Hard invariants: ActionClass read_only", and
+`teach.narrate` earns that declaration with the behavioural proof DECISION F255
+D4 required. But DECISION F255 D3 requires Stage 2 to record teacher spend and
+DECISION F255 D7 shapes that row, so `teach ask` writes
+`<data_root>/projects/<project_id>/ledger.sqlite` and its sqlite sidecars. A
+`read_only` declaration on that command would be false, and DECISION F255 D4
+exists precisely because a declaration proves nothing while a false one misleads
+the permission layer that reads the catalog.
+
+CHOSEN. `teach.ask` declares `action_class="write_metadata"`, the class the
+catalog already uses for commands that write Remedy's own records and not the
+user's repository. `teach.narrate` keeps `read_only` unchanged. The invariant the
+Scope actually means — never influencing the RUN — is proven for ask the same
+behavioural way it was proven for narrate, with the ledger file and its sidecars
+EXCLUDED BY EXPLICIT NAME and the exclusion itself asserted, so any other write
+still fails the test.
+
+ALTERNATIVES CONSIDERED and rejected. Declaring `read_only` and arguing the
+ledger is not part of the run — rejected because the catalog's classes describe
+what a command WRITES, not what it means to write, and a permission layer cannot
+read intent. Moving the ledger write out of the command into a later batch —
+rejected because it would separate the cost from the question that incurred it
+and reintroduce the uncalled seam this round exists to close.
+
+CONSEQUENCE. The teacher group now holds one `read_only` command and one
+`write_metadata` command, and F255's read-only claim is stated where it is true
+rather than everywhere.
+
+Reverse this decision by deleting this section and changing the `teach.ask`
+entry's `action_class` back to `read_only`.

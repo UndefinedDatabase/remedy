@@ -106,6 +106,7 @@ GROUPS: dict[str, GroupDef] = {
     "config": GroupDef("config", "Config", "View or change settings."),
     "worker": GroupDef("worker", "Worker", "Manage worker connections."),
     "memory": GroupDef("memory", "Memory", "Project memory."),
+    "teach": GroupDef("teach", "Teach", "Explain a run. Read-only, never steers it."),
     "runtime": GroupDef("runtime", "Runtime", "Start, probe and stop the project dev server."),
     "stats": GroupDef("stats", "Stats", "Honest counts from the evidence on disk."),
     "plan": GroupDef("plan", "Plan", "Read-only roadmap mirror — what is active, what is next. Proposes, never starts."),
@@ -256,6 +257,40 @@ CATALOG: tuple[CommandEntry, ...] = (
         args=(_JOB_ID,),
         supports_json=False,
         related=("job.list", "brain.graph"),
+    ),
+    CommandEntry(
+        command_id="teach.narrate",
+        group_id="teach",
+        subcommand="narrate",
+        description="Narrate a job's run log in plain sentences (read-only).",
+        action_class="read_only",
+        args=(_JOB_ID, _JSON_OPT),
+        supports_json=True,
+        related=("job.show",),
+    ),
+    CommandEntry(
+        # write_metadata, NOT read_only (DECISION F255 D10): answering costs a
+        # model call, and that call is recorded as exactly one token-ledger row.
+        # The invariant this role really carries — never influencing the RUN —
+        # is proven behaviourally in tests/cli/test_teach_cmd.py.
+        command_id="teach.ask",
+        group_id="teach",
+        subcommand="ask",
+        description="Ask the teacher about a run or your code. Records one spend row; never steers the run.",
+        action_class="write_metadata",
+        args=(
+            ArgDef("question", "What you want explained"),
+            ArgDef("--job-id", "Job whose run log grounds the answer", required=False, is_option=True),
+            # Grounding source (2), the workspace code. Read-only: the file is
+            # opened for reading and nothing is written back, so this option
+            # leaves the write_metadata class above untouched.
+            ArgDef("--file", "Source file to ground the answer in; read only, never written", required=False, is_option=True),
+            ArgDef("--level", "Explanation depth: student, beginner or pro", required=False, is_option=True),
+            _PROJECT_SCOPE_OPT,
+            _JSON_OPT,
+        ),
+        supports_json=True,
+        related=("teach.narrate",),
     ),
     CommandEntry(
         command_id="job.attach-repo",
