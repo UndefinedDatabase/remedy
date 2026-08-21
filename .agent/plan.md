@@ -16,25 +16,26 @@ silently, teacher spend is reported as its own role in the F103 ledger, and the
 read-only invariant is proven behaviourally.
 
 ## Current Step
-R18 is the INTEGRATION GATE, per docs/agents/integration_gate.md: the full suite
-on this branch and again at the merge base b35d350b, the two failure sets
-compared, every difference attributed by direct evidence, and the whole record
-committed under `.agent/gate_f255_r18/`. It also persists the R17 verdict. It
-changes no source file and no test file.
+R19 is the CLOSURE EVIDENCE round. It persists the R18 verdict, resolves R-0610,
+adds the feature file's Built State section — closure precondition 4, measured
+absent — and then produces the two artifacts only a worker can make: the evidence
+job and a FRESH review zip. It authors no STATUS line.
 
 ## Next Steps
-1. The CLOSURE round follows, per docs/roadmap/STATUS_closure_protocol.md:
-   evidence job, FRESH review zip, the STATUS line authored by the reviewer and
-   committed last, and the pull request — which is created there and merged at
-   the NEXT feature's Open PR Gate, never in the session that creates it.
+1. R20 CLOSES THE FEATURE: the reviewer authors the STATUS `[x]` line from the
+   values R19's zip reports, the worker applies it verbatim in the SAME commit as
+   the README capability sync (R-0154), writes any closure candidates to
+   `.agent/candidates.md`, and opens the pull request. That PR is NOT merged in
+   its own session; it merges at the NEXT feature's Open PR Gate, which is the
+   operator's manual-review window.
 
 ## Risks
-- A BRANCH-ONLY FAILURE COUPLED TO FEATURE CODE IS A BLOCKER, not a repair to
-  fold into this round: it ends the gate and earns its own reviewed round.
-- BASE PARITY CAN BE VOIDED BY A REBUILD THE DIGEST CANNOT SEE. F085 R72 measured
-  a byte-identical `apps/ui/dist` whose mtime had moved, and `_frontend_is_stale`
-  decides by mtime, so this round reads BOTH and claims parity only if neither
-  moved (finding R-0565).
-- THE OPEN SET IS 183 AND NONE OF IT IS PAID DOWN HERE. R-0607, R-0608 and R-0609
-  are reviewer-process findings; R-0610's code half landed at R17 and only the
-  reviewer's own text may resolve it.
+- A FAILING ZIP IS A CLOSURE BLOCKER, not a retry. The feature goes `[!]` with a
+  stated reason rather than closing without a package.
+- THE OPEN SET STAYS LARGE AND THAT IS NOT A BLOCKER: the integrity gate's
+  `high_blockers_open` check reports no open blocker or high finding, so every
+  open item is a documented Medium or Low risk, which is what closure
+  precondition 1 permits.
+- R-0607, R-0608 and R-0609 REMAIN OPEN by design. All three are reviewer-process
+  defects whose fix edits `docs/agents/`, a path the closure commit's own R-0154
+  path set cannot reach; they route to a paydown branch.
