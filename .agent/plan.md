@@ -16,23 +16,26 @@ cross-site attempts fail closed and are audited as rejected, and a route-walking
 test plus an import guard prove no other mutating route exists.
 
 ## Current Step
-R12 closes this session and writes no production code. It registers R-0636 and
-R-0637 — both defects in the reviewer's own R11 specification, found by the R11
-review and confirmed by the round's own declared deviations — and records the R11
-verdict. T002 is built except for publication, which D15 routes to T003.
+R13 opens T003 with the half DECISION F009 D5 orders to land first and alone: the
+plan approval becomes the package function `resolve_flight_plan_approval` and
+`apps/cli/commands/decision.py` becomes its first caller. It is a refactor, so it
+carries no endpoint change and no new behaviour. The round also records the R12
+verdict.
 
 ## Next Steps
-1. T003's effect table per D5 — the round that retires the 501 seam. It is also
-   the round that adds the `publish_nonce_result` call site, writes D14's reserved
-   `accepted` outcome, moves the replay's audit token off `not_implemented`
-   (R-0636) and bounds the published record (R-0637). The plan-approval extraction
-   lands as its own commit and the `command.accepted` SSE event lands with it.
-2. Then the client wiring that sends both headers, the route-walking 405 test and
-   the import guard, the integration gate, and closure.
+1. The effect table itself: the three exposed commands dispatch, the 501 seam is
+   retired, DECISION F009 D14's reserved `accepted` outcome is written,
+   `publish_nonce_result` gains its door call site with R-0637's bound applied at
+   publication, R-0636's replay token moves off `not_implemented`, and the
+   `command.accepted` SSE event lands with it.
+2. Then the queue-only import guard and the per-command side-effect assertions,
+   the route-walking 405 test, the client wiring that sends both headers, the
+   integration gate, and closure.
 
 ## Risks
-- R-0636 and R-0637 are both owed by the SAME round, T003, and both are one-line
-  changes there. Neither is owed a change now, and neither may be paid down
-  separately: each depends on the publish call site that round introduces.
+- R-0636 and R-0637 are owed by the round that retires the 501 seam, which is the
+  NEXT round and not this one: both depend on the publish call site it adds.
+- A green approval suite proves nothing on its own if it never reaches the new
+  function, so the extraction is gated by a probe as well as by a colour.
 - `npm run lint` in `apps/ui` is RED at base and is NOT a gate (R-0364), which is
   R-0622 and routes to a paydown branch.
