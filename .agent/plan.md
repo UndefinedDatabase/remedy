@@ -16,28 +16,28 @@ cross-site attempts fail closed and are audited as rejected, and a route-walking
 test plus an import guard prove no other mutating route exists.
 
 ## Current Step
-R14 closes this session and writes no production code. It records the R13 verdict
-and rules DECISION F009 D16, which cuts the rest of T003 into four rounds and
-retires the 501 seam one COMMAND at a time rather than all at once. The plan
-approval became the package function `resolve_flight_plan_approval` at R13.
+R15 lands the two package-level prerequisites of the dispatch and changes the
+door not at all. The nonce store refuses an oversize record AT PUBLICATION,
+which pays R-0637, and `command_audit.OUTCOMES` gains the `accepted` and
+`replayed` tokens the door will write next round. The 501 seam still stands.
 
 ## Next Steps
-1. `job.stop` dispatches to `safe_points.request_stop`. That path writes
-   DECISION F009 D14's reserved `accepted` outcome, publishes the nonce record
-   through `publish_nonce_result` with R-0637's bound applied AT PUBLICATION, and
-   moves R-0636's replay token off `not_implemented`. `decision.resolve` keeps
-   answering 501 until the round after.
+1. `job.stop` dispatches to `safe_points.request_stop`, writing `accepted` and
+   publishing the nonce record; the replay audit moves to `replayed`, which
+   pays R-0636. `tests/ui_server/test_command_channel.py` migrates its seam
+   pins in that same round. `decision.resolve` keeps answering 501.
 2. Then `decision.resolve` dispatches and the seam is gone; then the
    `command.accepted` SSE event; then the queue-only import guard, the
    per-command side-effect assertions and the route-walking 405 test; then the
-   integration gate and closure. DECISION F009 D16 carries the ordering and why.
+   integration gate and closure. DECISION F009 D17 carries the ordering.
 
 ## Risks
-- R-0636 and R-0637 are owed by the round that adds the publish call site, which
-  is the FIRST of the four rounds D16 rules and not this one.
-- Splitting by command means the door is briefly dispatching one exposed id and
-  refusing the other with 501. That is honest — `not_implemented` is exactly what
-  the audit records for a command this door has not yet dispatched — but it is a
-  state the tests must assert deliberately rather than inherit.
-- `npm run lint` in `apps/ui` is RED at base and is NOT a gate (R-0364), which is
-  R-0622 and routes to a paydown branch.
+- Splitting by command means the door briefly dispatches one exposed id and
+  refuses the other with 501. That is honest — `not_implemented` is what the
+  audit records for a command this door has not yet dispatched — but the tests
+  must assert it deliberately rather than inherit it.
+- `accepted` and `replayed` enter the vocabulary a round before any caller
+  writes them. `tests/ui_server/test_command_channel.py` still asserts the door
+  writes no `accepted`, which stays true and is what keeps the gap honest.
+- `npm run lint` in `apps/ui` is RED at base and is NOT a gate (R-0364), which
+  is R-0622 and routes to a paydown branch.
