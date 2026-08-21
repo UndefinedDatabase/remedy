@@ -15,26 +15,26 @@ the heartbeat holds cadence, and the fallback engages on a disabled EventSource
 and recovers to live.
 
 ## Current Step
-R29 records the R28 verdict, amends R-0553 with the F008 R28 instance — a
-handback that corrected an unmeasured universal and wrote a fresh one in the
-same sentence — and puts the DELAYED badge on a visible surface. The pill now
-reads the transport's status ahead of the dashboard's liveness, so a client on
-the polling fallback says DELAYED rather than LIVE, this feature's own
-acceptance condition. `streamStatus` is optional on both the pill and the panel
-because no caller holds one until R30.
+R30 records the R29 verdict and amends R-0429 with the F008 R29 instance: the
+R29 verdict slice reported this branch's `Gate: R` count moving 28 to 29, which
+is R29's OWN movement, where the round it was judging moved 27 to 28 — and the
+clause beside it in the same sentence gave the correct reading. It changes no
+code. T003's client is complete and the DELAYED badge now sits on the live
+pill, gated by a source contract; only the endpoint wiring is left.
 
 ## Next Steps
-1. R30 builds the real `BrainStreamHostDeps` factory over the endpoint T001 and
-   T002 shipped, wires `useBrainStream` into `RemedyApp` and passes its status
-   down to the badge: the round in which this feature's two halves meet.
+1. R31 builds the real `BrainStreamHostDeps` factory over the endpoint T001 and
+   T002 shipped — `openSource`, `readSnapshotSeq`, `readTail` and `schedule`,
+   with its own vitest tests — then wires `useBrainStream` into `RemedyApp` and
+   passes its status down to the badge: the round in which this feature's two
+   halves meet.
 2. Then the integration gate before closure.
 
 ## Risks
 - `npm run lint` in `apps/ui` is RED at base and is NOT a gate (R-0364): that
   config installs no TypeScript parser, which is R-0622 and routes to a
   paydown branch.
-- The badge reuses the pill's documented variant mechanism and an existing
-  token, so no assumption_log entry is owed; DECISION F008 D2 in
-  `.agent/decisions.md` records that reading and how to reverse it.
+- The wiring round touches `RemedyApp.tsx`, the one file every cockpit surface
+  renders through, so its blast radius is wider than any round since R4.
 - The hook's RENDER behaviour stays unproved until a DOM environment exists:
   its contract gates its source, and the seam beneath it carries the logic.
