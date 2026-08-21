@@ -96,3 +96,40 @@ export function createBrainStreamHostDeps(jobId: string, env: BrainStreamEnv): B
     },
   };
 }
+
+/** The globals the browser environment is built from, taken as an argument
+ *  rather than read off `globalThis`, so a test can present an environment
+ *  WITHOUT EventSource without depending on which runtime is running it. */
+export interface BrainStreamGlobals {
+  EventSource?: new (url: string) => BrainStreamSource;
+  fetch(path: string, init?: { method: "GET"; credentials: "same-origin" }): Promise<{
+    ok: boolean;
+    status: number;
+    json(): Promise<unknown>;
+  }>;
+  setTimeout(resume: () => void, ms: number): unknown;
+  clearTimeout(handle: unknown): void;
+}
+
+/** Bind the injected environment to real globals. A runtime with no
+ *  EventSource yields `makeSource: null`, which is exactly the `unsupported`
+ *  the polling fallback engages on — the client degrades to DELAYED instead of
+ *  claiming a liveness it does not have. */
+export function browserBrainStreamEnv(globals: BrainStreamGlobals): BrainStreamEnv {
+  const Source = globals.EventSource;
+  return {
+    makeSource: Source === undefined ? null : (url: string): BrainStreamSource => new Source(url),
+    fetchJson(path: string): Promise<unknown> {
+      return globals
+        .fetch(path, { method: "GET", credentials: "same-origin" })
+        .then((response) => {
+          if (!response.ok) throw new Error(`Request failed ${response.status}: ${path}`);
+          return response.json();
+        });
+    },
+    setTimer(ms: number, resume: () => void): () => void {
+      const handle = globals.setTimeout(resume, ms);
+      return (): void => { globals.clearTimeout(handle); };
+    },
+  };
+}
