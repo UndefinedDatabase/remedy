@@ -1,81 +1,75 @@
-# Handback — F008 R1 (SSE event stream)
+# Handback — F008 SSE event stream, R2
 
-Branch: `feature/f008-sse-event-stream`, cut from `main` at `7c03adfa`. Open findings: 183 registered and unresolved; 0 registered and 0 resolved this round.
-
-Fortschritt: 2 % (F008 claimed · the previous feature's pull request merged and its closing verdict recorded · the review record reset with 183 findings carried forward · the stream inventory R2 measures is not yet started) — Schätzung
-
-STATUS OF THE ROUND: the bundle is complete and G10 is RED. `tests/docs/test_docs_consistency.py:307` asserts `^- \[ \] F008 —`, so the C3 claim this block ordered makes that test fail by construction. Constraint 8 forbids touching `tests/`, so it was not repaired. Protocol G8 ends the round here.
+Branch: feature/f008-sse-event-stream. No PR created, merged or open this round.
+Open findings: 183, unchanged. No finding id minted; next free id stays R-0612.
 
 ## Range
 
-Review of `7c03adfa..HEAD` (six commits: C0a, C0b, C1, C2, C3, C4).
+Review of 05894327..HEAD, six commits: C0a, C0b, C1, C2, C3, C4.
 
 ## Commits
 
-### cb225825 chore(state): save the F008 R1 step block
+### 1f214add chore(state): save the F008 R2 step block
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f008-r1.md | +357 −0 | C0a — block saved byte for byte |
+| .agent/authored/f008-r2.md | +246/-0 | C0a — the block saved byte for byte |
 
-### be6d50ff chore(state): mirror the F008 R1 step block
+### 56fdfa38 chore(state): mirror the F008 R2 step block
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/last_block.md | +340 −291 | C0b — same bytes mirrored |
+| .agent/last_block.md | +184/-295 | C0b — mirror of the committed C0a blob |
 
-### 5c4840e2 chore(plan): open F008 SSE event stream at R1
+### c0b3659e chore(plan): advance the plan to F008 R2
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/plan.md | +31 −25 | C1 — PLANF008R1 applied |
+| .agent/plan.md | +18/-15 | C1 — PLANF008R2, first substantive commit |
 
-### 3a0fa900 docs(review): reset the live review for F008 and gate F255 R21
+### 8cdfce8b docs(review): record the R1 verdict
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/live_review.md | +17 −75 | C2 — RESETSCRIPT run unedited |
+| .agent/live_review.md | +2/-0 | C2 — RECORDR1 appended, nothing rewritten |
 
-### aa15ab4f docs(roadmap): claim F008 SSE event stream and set the branch context
+### 84da10ae test(docs): pin F008 by the one-claimed-feature invariant
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/context.md | +30 −25 | C3 — CONTEXTF008 applied |
-| docs/roadmap/STATUS.md | +1 −1 | C3 — the F008 claim pair |
+| tests/docs/test_docs_consistency.py | +9/-2 | C3 — PINFROM rewritten to PINTO |
 
-### C4 docs(state): write the F008 R1 handback
+### C4, this commit — docs(state): write the F008 R2 handback
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/handoff.md | in the round report | C4 and the trailing G15 repair commit, grouped — C4 cannot table the commit that writes it (R-0149) |
+| .agent/handoff.md | in the round report | a handoff cannot table itself (R-0149) |
 
 ## External actions
 
-- `gh pr list --state open --json …` → exit 0, one PR: #208, feature/f255-teacher-role → main, isDraft false.
-- `gh pr view 208 …` → exit 0; mergeable MERGEABLE, mergeStateStatus CLEAN, check `ci` COMPLETED/SUCCESS.
-- `gh pr merge 208 --merge --delete-branch` → exit 0; merge commit `7c03adfa`.
-- `git checkout main` → exit 0. `git pull --ff-only` → exit 0 (already up to date). `git rev-parse main` → `7c03adfa58519d484df685d38b950c49afaf70a8`.
-- `git checkout -b feature/f008-sse-event-stream` → exit 0. `git merge-base --is-ancestor 7c03adfa <branch>` → exit 0.
-- `gh pr list --state open` after the merge → exit 0, empty list.
-- `git push -u origin feature/f008-sse-event-stream` → exit 0, new branch, five commits; the C4 push follows this commit. No worktree was added or removed.
+- `git worktree add .remedy-wt/redctl-r2 84da10ae --detach` — created, G9 only.
+- `git worktree remove .remedy-wt/redctl-r2 --force` — removed before this handback.
+- `git push -u origin feature/f008-sse-event-stream` — after C4; result in the round report.
+- No `gh` command run. No PR created, edited or merged.
 
 ## Verification
 
-- G1 `.agent/STOP` absent (ls exit 2) before C0a and before C4; branch `feature/f008-sse-event-stream`; `git status --porcelain` empty after every commit; `git worktree list` = 1 entry.
-- G2 `.remedy-wt/f008-r1.md`, `.agent/authored/f008-r1.md` (C0a) and `.agent/last_block.md` (C0b) all sha256 `caeb7a6e…08d47`, 24762 B, 357 lines — all three EQUAL.
-- G3 7 slices from the committed C0a file: PLANF008R1 `9f4d537e` 2390 B/42 L · LRHEADER `bdcba417` 1674 B/29 L · GATE1 `6fa28da2` 5397 B/1 L · STATUSFROM `dbd421b5` 32 B/1 L · STATUSTO `9cb58ff9` 32 B/1 L · CONTEXTF008 `da39de3b` 3005 B/53 L · RESETSCRIPT `1b48eeea` 1747 B/53 L.
-- G4 `.agent/plan.md` at C1 sha256 `9f4d537e…cbea6`, 2390 B, 42 lines, byte-equal to PLANF008R1 = true; 42 < 50; `^## Goal` 1, `^## Next Steps` 1, `F008` 3; C1 is the first commit after C0a and C0b.
-- G5a `.agent/live_review.md` at C2 begins with LRHEADER = true, ends with GATE1 = true. G5b `^- R-\d+ — ` 183 · `^Done: R-\d+ — ` 0 · `^Landed: ` 0 · `^Gate: R\d+ — ` 1.
-- G5c base carried set 183, C2 registered set 183, symmetric difference [] (size 0).
-- G6 183 ids compared, 183 byte-EQUAL. Negative control: one byte flipped in R-0361 → 182 equal, mismatch detected = true.
-- G7 `^## Steps` 1, `^## Findings` 1.
-- G8 STATUSFROM whole-line count 1 at `8e08c0da` → 0 at C3; STATUSTO 0 → 1. `^- \[x\] F\d{3} — ` = 53 at `8e08c0da` and 53 at C3. README.md is not in the change set. Containment `TO contains FROM: false`.
-- G9 `.agent/context.md` at C3 sha256 `da39de3b…7e7f19`, 3005 B, 53 lines, byte-equal to CONTEXTF008 = true; `^## Active Branch` 1; `feature/` 1, `Steps` 1, `F008` 2, `pytest` 2, `resource` 2.
-- G10 RED. `pytest tests/docs/ -q -rf` → exit 1, 1 failed / 294 passed; FAILED `tests/docs/test_docs_consistency.py::TestPrimaryDocsAreHonest::test_status_marks_f007_and_f010_accepted_and_nothing_after_them`, whose line 307 asserts `^- \[ \] F008 —`. `pytest tests/orchestration/test_roadmap_index.py -q -rf` → exit 0, 30 passed.
-- G11 state-reader four → exit 0, 160 passed. Canary `tests/cli/test_golden_path.py` → exit 0, 42 passed. Run serially, in the primary checkout, never alongside G10.
-- G12 transcript in External actions; every exit code 0; base SHA `7c03adfa58519d484df685d38b950c49afaf70a8`; the branch descends from it.
-- G13 `git diff --name-only 7c03adfa..C4` = the seven Change paths exactly, no path on either side alone. Every commit has exactly one parent. Insertions: C0a 357, C0b 340, C1 31, C2 17, C3 31, C4 in the round report — all under 500 and agreeing cell by cell with the `+/-` column above.
-- G14 line-anchored `<<<SLICE `/`<<<END ` counts: plan.md 0, live_review.md 0, STATUS.md 0, context.md 0, handoff.md 0.
-- G15 over this round's own reflog entries, the count containing `amend`, `rebase` or `cherry` is 0. No entry total is stated: this file cannot count the reflog entries its own commits create.
-- G16 this file carries every mandated section and the item-status table below; line count in the round report; cap 100.
+- G1 `.agent/STOP` absent before C0a; branch feature/f008-sse-event-stream; `git status --porcelain` empty after all six commits and here; `git worktree list` names the primary checkout alone.
+- G2 `.remedy-wt/f008-r2.md`, `.agent/authored/f008-r2.md` at C0a and `.agent/last_block.md` at C0b: all sha256 fa4f3892…c2b6e over 21496 B, 246 lines — three-way EQUAL.
+- G3 4 slices, count taken from my own ordered extraction of the committed C0a blob: PLANF008R2 6fc59970 2611 B/45 L; PINFROM 0c5f8c52 137 B/2 L; PINTO 986c4293 682 B/9 L; RECORDR1 d51c3a45 6387 B/1 L.
+- G4 `.agent/plan.md` at C1: 6fc59970… 2611 B, 45 lines (<50); `cmp` byte-equal to PLANF008R2; `^## Goal$` 1, `^## Next Steps$` 1, F008 5; C1 is the first commit after C0a/C0b.
+- G5 C1 blob (336984 B/986 L) is a byte-exact PREFIX of C2 (343372 B/988 L); remainder d4d9fe7d… 6388 B/2 L equals `\n`+RECORDR1; independent blank-line split: LAST unit equals RECORDR1; both AGREE. Negative control, one byte flipped at offset 340178 (`r`→`R`): both readings REJECT.
+- G6 `.agent/live_review.md` C1→C2: `^- R-\d+ — ` 183→183, `^Done: R-\d+ — ` 0→0, `^Landed: ` 0→0, `^Gate: R\d+ — ` 1→2, keys [R1] then [R1,R2] DISTINCT, `^Gate: R2 — the R1 entry\.` 0→1. `R-0612` 1 at both, sole occurrence the header line `> Next free id: R-0612.`; `^- R-0612 — ` 0 at both.
+- G7 exact-block counts in tests/docs/test_docs_consistency.py, 05894327→C3: PINFROM 1→0, PINTO 0→1. Containment test printed `TO contains FROM: False`, `FROM contains TO: False` → REWRITE. The `F017` assert line reads 2 at BOTH commits, unchanged.
+- G8 `pytest tests/docs/ -q -rf` exit 0, 295 passed (base was 1 failed + 294 passed = same 295 total). `pytest tests/orchestration/test_roadmap_index.py -q -rf` exit 0, 30 passed. Run serially.
+- G9 red control, in the worktree only. F008 claimed line occurs 1x, F009 open line 1x at C3. (a) F008 → `[ ]`: exit 1, `1 failed, 294 passed in 0.62s`. (b) restored, F009 → `[~]`: exit 1, `1 failed, 294 passed in 0.44s`. (c) restored: exit 0, `295 passed in 0.41s`. The pin binds in BOTH directions; the replacement is strictly stronger.
+- G10 four-suite state-reader gate exit 0, 160 passed; canary `tests/cli/test_golden_path.py` exit 0, 42 passed. Serial, never alongside G8.
+- G11 `ruff check` on tests/docs/test_docs_consistency.py: base read via `git show 05894327:… | ruff check --stdin-filename …` exit 0, rule-code multiset `{}`; at C3 exit 0, multiset `{}`. Multisets EQUAL. No tracked file was overwritten to take the base reading.
+- G12 `git diff --name-only 05894327..C4` equals the Change list, no path on either side alone. All six commits single-parent. Insertions 246, 184, 18, 2, 9 and C4's own — all under 500; each agrees cell for cell with the `+/-` column above.
+- G13 lines beginning `<<<SLICE ` or `<<<END `: 0 in .agent/plan.md at C1, 0 in .agent/live_review.md at C2, 0 in tests/docs/test_docs_consistency.py at C3, 0 in .agent/handoff.md at C4.
+- G14 over this round's OWN reflog entries, the count containing `amend`, `rebase` or `cherry` is 0. No entry total is stated: this file cannot count the entries its own commit creates.
+- G15 this handback carries every section docs/agents/handback_template.md mandates plus the item-status table below; its line count is in the round report, under the 100-line cap for a >5-commit round.
 
 ## Authored-text proofs
 
-All five applied slices were EXTRACTED from the committed `.agent/authored/f008-r1.md` by their marker lines and written as bytes; none was retyped. Disk-to-disk: plan.md == PLANF008R1 true; context.md == CONTEXTF008 true; live_review.md begins with LRHEADER and ends with GATE1, byte for byte, true/true; STATUS.md holds STATUSTO as a whole line once and STATUSFROM zero times. RESETSCRIPT was run unedited and no assertion fired.
+- PLANF008R2 → `.agent/plan.md`: `cmp` against the slice re-extracted from the committed C0a blob, byte-equal.
+- RECORDR1 → `.agent/live_review.md`: prefix+remainder equality plus an independent blank-line extraction, both byte-exact, with a negative control (G5).
+- PINFROM/PINTO → tests/docs/test_docs_consistency.py: exact multi-line block counts 1→0 and 0→1 (G7).
+- Every slice was extracted from the COMMITTED `.agent/authored/f008-r2.md` by its marker lines. None was retyped, rewrapped or edited.
 
 ## Item status
 
@@ -84,16 +78,17 @@ All five applied slices were EXTRACTED from the committed `.agent/authored/f008-
 | C0a | done | |
 | C0b | done | |
 | C1 | done | |
-| C2 | done | RESETSCRIPT run unedited; all assertions passed |
-| C3 | done | applied as written; it is the direct cause of the G10 red |
+| C2 | done | |
+| C3 | done | |
 | C4 | done | this commit |
 
 ## Deviations & assumptions
 
-- The ordered sequence C0a, C0b, C1, C2, C3, C4 ran in that order with the Open PR Gate before C0a; none was dropped or reordered. DECLARED EXTRA COMMIT, the seventh: C4 first stated a reflog ENTRY TOTAL of 9, measured before C4 itself existed and therefore false at 10 the instant it was committed. The trailing commit strikes that numeral rather than correcting it — the total is unmeasurable by the file that reports it — and adds this bullet. It touches `.agent/handoff.md` alone.
-- OBJECTION, per constraint 1 — recorded, not acted on. The block's C3/G8 claim and the block's own G10 are mutually unsatisfiable: `tests/docs/test_docs_consistency.py:307` pins F008 to `- [ ] `, so marking it `- [~] ` must turn that suite red. The slice was applied as written and the test was not touched (constraint 8). Repairing it is the reviewer's call for R2 — either the assertion moves with the claim, or the claim does not belong in R1.
-- `git push -u origin feature/f008-sse-event-stream` was run after C3 and before C4 so its real exit code could be reported here; the C4 commit is pushed immediately after this file is committed.
+- None. The ordered sequence C0a, C0b, C1, C2, C3, C4 was followed exactly; no extra, dropped or reordered commit.
+- No objection under constraint 1: G9 proves PINTO binds where PINFROM could not, so the repair is a strengthening, not a weakening.
 
 ## Next
 
-Reviewer decides G10: either R2 moves the `tests/docs` assertion that pins F008 to `- [ ] `, or R1's claim is reverted. Phase 1 rule 1 (`.agent/STOP`) is checked before rule 2 (Open PR Gate); no PR is open.
+Reviewer re-runs G1-G15 over 05894327..C4 and rules R2. Phase 1 rule 1 (`.agent/STOP`) is checked before rule 2. Then R3 inventories the SSE ground in the source: whether ledger entries carry a monotonic index, whether the UI server is threaded, the Part E envelope contract, and how the state endpoint authenticates.
+
+Fortschritt: 4 % (F008 beansprucht · das R21-Urteil und das R1-Urteil stehen im Ledger · der Pin, den R1 nicht reparieren durfte, ist ersetzt und schärfer als zuvor · die Stream-Inventur R3 misst, hat noch nicht begonnen) — Schätzung
