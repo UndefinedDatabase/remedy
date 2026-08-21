@@ -54,8 +54,11 @@ NONCE_FILE_MODE = 0o600
 #: The order is fixed and the record is built key by key in it, never sorted.
 NONCE_FIELD_ORDER = ("status", "body")
 
-#: A record this large is a bug in the caller, not a response. Matches the door's own
-#: request ceiling, so nothing that fits through the door fails to fit in the store.
+#: A record this large is a bug in the caller, not a response. It bounds the RESPONSE this
+#: store holds — a body the door composed — and not the request the client sent, which is a
+#: different quantity that merely shares the door's ceiling (finding R-0637).
+#: `publish_nonce_result` refuses an oversize record instead of writing one, because
+#: `_read_record` refuses it at every later lookup and it could never be replayed.
 MAX_NONCE_RECORD_BYTES = 64 * 1024
 
 
@@ -161,8 +164,8 @@ def publish_nonce_result(job_id: Any, nonce: Any, body: Any, *, status: int,
 
     The returned record is `{"status": …, "body": …}` — the body that is in force plus the
     status it was returned with, because a replay has to reproduce both. `None` means
-    nothing is in force: an unusable nonce, a job id that is not one, or a control directory
-    that could not be reached.
+    nothing is in force: an unusable nonce, a job id that is not one, a record larger than
+    `MAX_NONCE_RECORD_BYTES`, or a control directory that could not be reached.
 
     Publication never overwrites. When `write_file_atomically` reports that the name already
     existed, another caller won the race between our open and our link: THEIR record is the
@@ -178,12 +181,20 @@ def publish_nonce_result(job_id: Any, nonce: Any, body: Any, *, status: int,
         return None
 
     record = {"status": int(status), "body": body}
+    # Finding R-0637: the bound is enforced HERE, where the record is written, and not in
+    # `_read_record` alone. An oversize record is refused by every later lookup, so
+    # publishing one leaves a nonce that can never be replayed and a client whose retry
+    # silently re-executes the command instead of being answered. Refusing at publication
+    # returns None, which is what every other unusable input to this function returns.
+    raw = _record_bytes(record)
+    if len(raw) > MAX_NONCE_RECORD_BYTES:
+        return None
     dir_fd = _open_nonce_dir_fd(jid, control_root_path, create=True)
     if dir_fd is None:
         return None
     try:
         published = _fs.write_file_atomically(
-            dir_fd, _record_name(nonce), _record_bytes(record),
+            dir_fd, _record_name(nonce), raw,
             create_only=True, file_mode=NONCE_FILE_MODE,
             error_cls=safe_points.StopControlError, noun="command nonce record")
         if published:

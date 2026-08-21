@@ -17,6 +17,7 @@ import pytest
 
 from packages.common import secure_fs as _fs
 from packages.orchestration.command_nonce import (
+    MAX_NONCE_RECORD_BYTES,
     NONCE_DIRNAME,
     NONCE_FIELD_ORDER,
     lookup_nonce_result,
@@ -225,3 +226,44 @@ def test_concurrent_publishers_of_one_nonce_all_receive_the_same_body(
     assert len(unique) == 1, f"publishers disagreed on the answer in force: {unique}"
     assert results[0] == lookup_nonce_result(JOB, NONCE, control_root_path=control)
     assert len(list(nonce_dir(control).iterdir())) == 1
+
+
+# -- the publication bound (finding R-0637) --------------------------------------------
+
+
+def test_a_record_over_the_bound_is_refused_at_publication(control: Path) -> None:
+    """The write side had no negative control at all: a record that can never be replayed
+    must never be written. `_read_record` refuses anything above the bound, so publishing
+    one would turn idempotency OFF for that nonce with no error anywhere."""
+    oversize = {"filler": "x" * (MAX_NONCE_RECORD_BYTES + 1)}
+    assert publish_nonce_result(
+        JOB, NONCE, oversize, status=200, control_root_path=control) is None
+    assert lookup_nonce_result(JOB, NONCE, control_root_path=control) is None
+    assert not record_path(control).exists()
+
+
+def test_a_record_at_the_bound_still_publishes(control: Path) -> None:
+    """The refusal is an upper bound and not an off-by-one: a record whose serialised form
+    is exactly `MAX_NONCE_RECORD_BYTES` long publishes and reads back. The padding is
+    solved for with the serialiser production itself uses, so this arithmetic cannot drift
+    away from `_record_bytes`."""
+    def sized(filler: int) -> int:
+        return len(_fs.json_bytes({"status": 200, "body": {"filler": "x" * filler}},
+                                  indent=None, sort_keys=False))
+
+    pad = MAX_NONCE_RECORD_BYTES - sized(0)
+    assert sized(pad) == MAX_NONCE_RECORD_BYTES
+    body = {"filler": "x" * pad}
+    published = publish_nonce_result(
+        JOB, NONCE, body, status=200, control_root_path=control)
+    assert published == {"status": 200, "body": body}
+    assert record_path(control).stat().st_size == MAX_NONCE_RECORD_BYTES
+
+
+def test_the_bound_refuses_before_the_store_is_created(control: Path) -> None:
+    """An oversize record must not leave the nonce directory behind as litter: the refusal
+    happens before `_open_nonce_dir_fd` is reached, which is why it is ordered that way."""
+    oversize = {"filler": "x" * (MAX_NONCE_RECORD_BYTES + 1)}
+    assert publish_nonce_result(
+        JOB, NONCE, oversize, status=200, control_root_path=control) is None
+    assert not nonce_dir(control).exists()
