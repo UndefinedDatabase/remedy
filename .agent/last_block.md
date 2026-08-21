@@ -1,76 +1,62 @@
-── STEP R1/1 — F009 The single write channel ────────────────────────
-Goal:        Open the F009 branch: merge pull request #209 at the Open PR Gate,
-             claim F009 in the roadmap ledger, reset `.agent/live_review.md` for
-             this branch carrying the open findings forward BY SCRIPT, record the
-             F008 R36 verdict as this record's first `Gate:` paragraph, register
-             the closure candidate F008 carried, resolve R-0406, and empty
-             `.agent/candidates.md`. No production code is touched this round.
+── STEP R2/2 — F009 The single write channel ────────────────────────
+Goal:        Record the R1 verdict, then INVENTORY the ground F009 builds on —
+             the command catalog, the UI server's current authentication, each
+             effect backend, the event-append seam and the test layout — every
+             answer MEASURED in the source and carried as a `path:line` citation
+             rather than read off the feature file. No production code is written
+             this round and no behaviour changes.
 
 Bundle:      C0a save the block · C0b mirror the block · C1 the plan ·
-             C2 the live-review reset · C3 the STATUS claim · C4 the candidates
-             carrier emptied · C5 the context file · C6 the handback.
+             C2 the R1 verdict in the review record · C3 the inventory ·
+             C4 the handback.
 
-Change set:  `.agent/authored/f009-r1.md`, `.agent/last_block.md`,
-             `.agent/plan.md`, `.agent/live_review.md`, `docs/roadmap/STATUS.md`,
-             `.agent/candidates.md`, `.agent/context.md`, `.agent/handoff.md`.
-             Nothing else. No path under `packages/`, `apps/`, `tests/` or
-             `docs/roadmap/features/` is edited this round.
+Change set:  `.agent/authored/f009-r2.md`, `.agent/last_block.md`,
+             `.agent/plan.md`, `.agent/live_review.md`,
+             `.agent/f009_inventory.md`, `.agent/handoff.md`. Nothing else. No
+             path under `packages/`, `apps/`, `tests/`, `docs/` or
+             `docs/roadmap/` is edited this round — this round only READS them.
 
-## Step 0 — the Open PR Gate, BEFORE any commit
-Run, in this order, and record each exit code and its real output:
-
+## Step 0 — before any commit
     ls -la .agent/STOP
     git rev-parse --abbrev-ref HEAD
     git status --porcelain
-    gh pr list --state open --json number,headRefName,baseRefName,isDraft
-    gh pr merge 209 --merge --delete-branch
-    git checkout main
-    git pull --ff-only
     git rev-parse HEAD
-    git checkout -b feature/f009-single-write-channel
 
-`.agent/STOP` MUST be absent; if it exists, stop, write the handoff and end.
-Pull request 209 is `feature/f008-sse-event-stream` into `main`, not a draft,
-and its CI run 32511286935 concluded `success` — the reviewer read that
-conclusion itself. It was created by a PREVIOUS session, so merging it here is
-the Open PR Gate and not a same-session merge. If `gh pr list` shows anything
-other than exactly that one pull request, stop and report.
-
-The SHA that `git rev-parse HEAD` prints after the pull is the BRANCH POINT.
-Record it in the handback; every gate below that says "at the branch point"
-means that value. It is the merge commit of pull request 209 and it cannot be
-named in this block, because it does not exist while this text is written.
+`.agent/STOP` MUST be absent; if it exists, stop, write the handoff and end. The
+branch MUST already be `feature/f009-single-write-channel` — do NOT create a
+branch and do NOT run an Open PR Gate this round: this branch carries no pull
+request and F009 opens one at its own closure. The SHA that `git rev-parse HEAD`
+prints is the ROUND BASE, and it is `87ad9e5c` unless something has moved; report
+the value you read.
 
 ## Transport
-This block lives at `.remedy-wt/f009-r1.md`. Its sha256, byte count and line
+This block lives at `.remedy-wt/f009-r2.md`. Its sha256, byte count and line
 count are stated in the task prompt that handed you that path — a file cannot
-carry its own digest, so the digest travels beside it rather than inside it.
-Verify it BEFORE using any byte of it. Save it byte for byte as
-`.agent/authored/f009-r1.md` (C0a). Then mirror it to `.agent/last_block.md`
-(C0b) FROM THE COMMITTED C0a BLOB — `git show <C0a>:.agent/authored/f009-r1.md`
-— never from this file again and never by retyping.
+carry its own digest, so the digest travels beside it. Verify it BEFORE using any
+byte of it. Save it byte for byte as `.agent/authored/f009-r2.md` (C0a), then
+mirror it to `.agent/last_block.md` (C0b) FROM THE COMMITTED C0a BLOB —
+`git show <C0a>:.agent/authored/f009-r2.md` — never from this file again and
+never by retyping.
 
 ## Slice convention
 The authored units below are delimited by one-line markers, `<<<SLICE <NAME>`
 opening and `<<<END <NAME>` closing. Extract every slice from the COMMITTED C0a
-BLOB by its marker lines, never from this message and never by hand. The marker
-lines are NOT part of any slice. Every slice is newline-terminated, none begins
-with a blank line, and none carries trailing whitespace on any line — report
-those three readings as your script measured them. Marker lines never reach a
-target file: gate `^<<<SLICE ` and `^<<<END ` at 0 lines in every committed
-target.
+BLOB by its marker lines with a script, never from this message and never by
+hand. The marker lines are NOT part of any slice. Every slice is
+newline-terminated, none begins with a blank line, and none carries trailing
+whitespace on any line — report those three readings as your script measured
+them. Marker lines never reach a target file.
 
-## C1 — the plan, the FIRST substantive commit
-This round registers, resolves and renumbers findings, so `.agent/plan.md`
-advances first (checklist item 23). Apply PLANF009R1 as the WHOLE file.
+## C1 — the plan, the first substantive commit
+Apply PLANF009R2 as the WHOLE file.
 
-<<<SLICE PLANF009R1
+<<<SLICE PLANF009R2
 # Plan — F009 The single write channel
 
-Branch: feature/f009-single-write-channel, cut from `main` at the merge commit of
-pull request #209, which R1 merges at the Open PR Gate. `.agent/live_review.md`
-is the source of truth for the open set, the next free finding id and the round
-map.
+Branch: feature/f009-single-write-channel, cut from `main` at `ce49348b`, the
+merge commit of pull request #209. `.agent/live_review.md` is the source of truth
+for the open set, the round map and the finding-id ceiling, which is derived with
+`max` over its line-anchored entries rather than read from a header sentence.
 
 ## Goal
 Exactly ONE door for UI-initiated change: POST /api/jobs/{jid}/commands validates
@@ -84,326 +70,173 @@ cross-site attempts fail closed and are audited as rejected, and a route-walking
 test plus an import guard prove no other mutating route exists.
 
 ## Current Step
-R1 opens the feature. It merges pull request #209 at the Open PR Gate, claims
-F009 in the roadmap ledger, resets this branch's review record while carrying the
-open findings forward by script, records the F008 R36 verdict as that record's
-first `Gate:` paragraph, registers the closure candidate F008 carried, resolves
-R-0406 by dropping the stale next-free-id line the reset is the fix for, and
-empties `.agent/candidates.md`.
+R2 records the R1 verdict and inventories the ground this feature builds on: the
+command catalog and whether a UI-exposed subset already exists, how the UI
+server authenticates today, which module owns each effect backend the feature
+names, where an event reaches the ledger the F008 stream reads, whether any nonce
+or rate-limit machinery exists to reuse, and which test directory the contract
+tests belong in. Every answer is MEASURED in the source and carried as a
+`path:line` citation; an answer of "this does not exist" names the search that
+established the absence.
 
 ## Next Steps
-1. R2 the write-channel inventory, MEASURED in the source rather than read off
-   the feature file: where the UI command catalog lives and which subset it
-   exposes, how `_RemedyHandler` authenticates today, and which module owns each
-   effect backend — the kill-switch control file, the decision queue and the
-   approval consumption.
-2. R3 records R2 and rules the channel's shape as a DECISION: the auth pair, the
-   nonce replay window, the rate-limit configuration and the audit record fields.
-3. R4 onward the built work, in the T001/T002/T003 order the feature file names.
+1. R3 records R2 and rules the channel's shape as a DECISION: the auth pair, the
+   nonce replay window, the rate-limit configuration, the audit record's fields
+   and the effect table for the initially exposed commands.
+2. R4 onward the built work, in the T001/T002/T003 order the feature file's Task
+   slicing names, gated on the SSE stream per its Orchestrator brief.
+3. The integration gate before closure, then the closure round itself.
 
 ## Risks
+- The feature file names `tests/ui_contract/test_command_channel.py` and no such
+  directory exists; the repository has `tests/ui_contracts/`. R2 measures it and
+  R3 rules it, rather than a builder guessing mid-round.
 - `npm run lint` in `apps/ui` is RED at base and is NOT a gate (R-0364): that
   configuration installs no TypeScript parser, which is R-0622 and routes to a
   paydown branch.
-<<<END PLANF009R1
+<<<END PLANF009R2
 
-## C2 — the live-review reset
-One commit, one file. It is the verbatim rewrite of a single `.agent/**` state
-file, which AGENTS.md DECISION F104 D1 exempts from the 500-line commit cap;
-declare that exemption in the handback rather than splitting the file.
+## C2 — the R1 verdict
+Append LEDGER2 to `.agent/live_review.md` as the LAST paragraph, separated from
+the current last paragraph by exactly one blank line. Read the base bytes with
+`git show <round base>:.agent/live_review.md` into `.remedy-wt/` scratch; never
+write a base blob over the tracked file.
 
-Extract LRHEADER, R0630, DONE0406 and GATE1 from the committed C0a blob into
-`.remedy-wt/f009r1_slices/LRHEADER.txt`, `R0630.txt`, `DONE0406.txt` and
-`GATE1.txt`. Then run RESETSCRIPT from the repository root and record every line
-it prints.
+<<<SLICE LEDGER2
+Gate: R2 — the R1 entry. R1 PASSED. NO finding is registered against the worker: every value it reported reproduced when the reviewer re-derived it off disk, and the one thing it got back was a defect in the reviewer's own slice text, declared as an objection and correctly not acted on. THE OPEN PR GATE WAS EXECUTED, NOT ASSUMED: pull request 209 reads `MERGED` with `mergedAt` 2026-08-21T18:35:07Z and `mergeCommit` ce49348b8f5b0374417f5b6c47d8c04966e7108e, which is exactly the branch point this round's commits sit on and an ancestor of the branch tip; `git ls-remote --heads origin feature/f008-sse-event-stream` prints nothing, so the gate's own `--delete-branch` really removed it; and `gh pr list --state open` prints `[]`. That pull request was created by a PREVIOUS session, so merging it here is the Open PR Gate rather than a same-session merge, which guardrail G1 of docs/agents/self_drive_protocol.md forbids. TRANSPORT HELD THREE WAYS AND THE THIRD IS THE REVIEWER'S OWN COPY: `.remedy-wt/f009-r1.md` as emitted, `.agent/authored/f009-r1.md` at `e160f083` and `.agent/last_block.md` at `720b95fc` are all sha256 293b43290fa3180c58209deea79e64927c52df2677611be19a8e9ef712fcf605 over 31011 bytes and 409 lines, so the block the worker applied is byte-identical to the block the reviewer authored rather than merely self-consistent. THE RESET IS THE ROUND'S REAL WORK AND IT WAS RE-DERIVED FROM THE BASE BLOB, not read back: at `ce49348b` the record holds 201 registered paragraphs and 6 line-anchored `Done:` lines, so the open set is 195; at `7a325c37` the record carries 196 registered paragraphs of which 195 are those same ids, the SYMMETRIC DIFFERENCE against the base open set is EMPTY, the ORDER is preserved, and every one of the 195 paragraphs is BYTE-EQUAL to its base original — the reviewer compared the paragraph objects themselves, not their ids. NEGATIVE CONTROL, without which 195 equalities prove only that a comparison ran: one printable byte flipped in the first carried paragraph is REJECTED by the byte-presence check while the unflipped paragraph is ACCEPTED. THE READINGS AT C2 ARE THE REVIEWER'S OWN: `^- R-\d+ — ` 196 with 196 DISTINCT ids, `^Done: R-\d+ — ` 1 naming R-0406, `^Landed: ` 0, `^Gate: R\d+ — ` 1, `^- R-0630 — ` 1, `^> Next free id` 0 lines, 0 marker lines, `Steps` present, max id R-0630, and the single gate header reading `Gate: R1 — the F008 R36 entry.`, whose shape matches the series it opens. R-0406 IS GENUINELY RESOLVED RATHER THAN DECLARED RESOLVED: the retired header claimed `Next free id: R-0612.` while that record's highest registered entry was R-0629, understating the ceiling by seventeen, and the header this round wrote carries no such sentence — the `^> Next free id` reading of 0 is the measurement, anchored at the header's own form because DONE0406 legitimately QUOTES the retired sentence and a bare substring count would have been unmeetable by construction. THE CLAIM PAIR APPLIED CLEANLY: STATUSFROM reads 1 at the branch point and 0 at `0e60102c`, STATUSTO 0 then 1, and the branch-point blob with that ONE substitution is BYTE-EQUAL to the C3 blob, which is also the proof no other line of that ledger moved; `^- \[~\] ` goes 0 to 1 and `^- \[x\] F\d{3} — ` reads 54 at BOTH, so claiming F009 moved nothing into the accepted set, and `README.md` is correctly ABSENT from the change set — a claim round owes no README edit where a closure round does. THE SLICES LANDED WHOLE: `.agent/plan.md`, `.agent/candidates.md` and `.agent/context.md` are each BYTE-EQUAL to their authored slice, the record STARTS with LRHEADER and ENDS with GATE1, and R0630 and DONE0406 each occur exactly once. THE SUITES ARE THE REVIEWER'S OWN, run serially in the primary checkout at the branch tip and reproducing all four of the worker's numbers exactly: `tests/docs/` EXIT 0 at 295 passed, `tests/orchestration/test_roadmap_index.py` EXIT 0 at 30, the state-reader group of `tests/ui_server/` with `test_test_runner.py`, `test_resource_safety.py` and `test_integrity_gate.py` EXIT 0 at 423, and the canary `tests/cli/test_golden_path.py` EXIT 0 at 42. THE RANGE HOLDS: the path set from the branch point is EXACTLY the eight declared paths, seven single-parent commits before the handback with insertions 409, 380, 30, 33, 1, 3 and 35 — every one under the 500 cap — each cell equal to the `+/-` column of the handback's `## Commits` table, 0 marker lines in all five committed targets, `amend`, `rebase` and `cherry` each 0 in this round's reflog entries, an 81-line handback under the 100 its eight commits allow, a clean tree and `git worktree list` naming the primary checkout alone. THE OBJECTION THE WORKER RAISED IS CORRECT AS A READING AND IS NOT A FINDING, and it is recorded here rather than repaired because the text has landed in an append-only record. The LRHEADER paragraph resolving R-0406 reads "ruled the stored value a second source of truth for a number" and continues into a relative clause whose relativizer is elided across a line break, so it scans as a dropped clause; it is grammatical and it states nothing false, which is why no id is minted and why the landed bytes are not rewritten — §3 item 20's counter-measure is a dated correction, never an overwrite. THE DRAFTING LESSON IS THE REVIEWER'S TO CARRY: a restrictive clause with an elided relativizer, split across a line break, reads as truncation to exactly the careful reader this workflow depends on, and the worker was right to stop, say so, and apply the bytes as written rather than improve them.
+<<<END LEDGER2
 
-<<<SLICE RESETSCRIPT
-import hashlib
-import re
-from pathlib import Path
+## C3 — the inventory
+Write `.agent/f009_inventory.md`. THIS FILE'S CONTENT IS YOURS, NOT MINE: it
+records what you MEASURE in the source, and no part of it is authored above. Do
+not guess, do not summarise the feature file, and do not repeat this block's
+wording as if it were a finding.
 
-SL = Path(".remedy-wt/f009r1_slices")
-LR = Path(".agent/live_review.md")
+Answer each question below under its own `## Q<n>` heading, in this order. Every
+factual claim carries at least one citation in the exact form `path:line` or
+`path:line-line`, naming a real file and a real line, and the answer to a
+question whose subject DOES NOT EXIST says so explicitly and names the search
+that established the absence — the command you ran and what it returned. A
+measured absence is a first-class answer here; a guess is not.
 
-old = LR.read_text(encoding="utf-8")
-print("INPUT sha256", hashlib.sha256(old.encode("utf-8")).hexdigest())
-print("INPUT bytes", len(old.encode("utf-8")), "lines", old.count("\n"))
+- **Q1 The catalog.** Where is the command catalog defined, what declares an
+  entry, and does a UI-exposed subset already exist as a declared thing or would
+  F009 be introducing that concept? Name the module, the type or structure an
+  entry has, and how a command's arguments are described today, if they are.
+- **Q2 The current door.** How does the UI server authenticate a request today,
+  exactly — which function, which comparison, which transport carries the token?
+  Does ANY bearer-header or CSRF handling exist anywhere in the server or its
+  client, or would F009 introduce both? Name what `do_POST`, `do_PUT` and
+  `do_DELETE` do today and where the 405 comes from.
+- **Q3 The effect backends.** For each of the three commands the feature file
+  exposes first — stop, decision answer, approve plan — name the module and
+  function that performs the effect TODAY, and how it is invoked now (CLI
+  command, direct call, file write). The feature file calls the stop backend a
+  "kill-switch control file"; establish what that really is in this repository,
+  or that no such thing exists under that or any name you searched.
+- **Q4 The event seam.** Where does an event get APPENDED to the ledger the F008
+  stream reads? Name the writer function and the module, and state whether an
+  emitter reachable from an HTTP handler already exists or whether F009 must
+  introduce one. Name the envelope's required fields as the schema defines them.
+- **Q5 Nonce, rate limit, audit.** Does any nonce, replay-window, rate-limit or
+  per-job audit-log machinery already exist in this repository that F009 could
+  reuse? Search for each of the four separately and report each result, including
+  the negative ones. If a redaction denylist governs what may be written to an
+  audit record, name it and the module that applies it.
+- **Q6 The test home.** The feature file's Do-not-touch section names
+  `tests/ui_contract/test_command_channel.py`. Establish, by listing, which test
+  directories actually exist for this surface and what each currently holds, and
+  state which one a command-channel contract test belongs in. Do not create the
+  file or the directory this round.
 
-units = old.rstrip("\n").split("\n\n")
-reg = [u for u in units if re.match(r"^- R-\d+ — ", u)]
-done = set(re.findall(r"^Done: (R-\d+) — ", old, re.M))
-carried = [u for u in reg if re.match(r"^- (R-\d+) — ", u).group(1) not in done]
-ids = [re.match(r"^- (R-\d+) — ", u).group(1) for u in carried]
-print("REGISTERED", len(reg), "RESOLVED", len(done), "CARRIED", len(carried))
-print("CARRIED IDS DISTINCT", len(set(ids)))
-print("R-0406 CARRIED", "R-0406" in ids)
-print("MAX ID", max(ids))
-
-absent = [i for i in ids if u"- " + i + u" — " not in old]
-print("CARRIED IDS NOT PRESENT IN THE OLD RECORD", len(absent))
-notbytes = [i for i, u in zip(ids, carried) if u not in old]
-print("CARRIED PARAGRAPHS NOT BYTE-PRESENT IN THE OLD RECORD", len(notbytes), notbytes)
-
-header = SL.joinpath("LRHEADER.txt").read_text(encoding="utf-8").rstrip("\n")
-r0630 = SL.joinpath("R0630.txt").read_text(encoding="utf-8").rstrip("\n")
-done406 = SL.joinpath("DONE0406.txt").read_text(encoding="utf-8").rstrip("\n")
-gate1 = SL.joinpath("GATE1.txt").read_text(encoding="utf-8").rstrip("\n")
-
-new = "\n\n".join([header] + carried + [r0630, done406, gate1]) + "\n"
-LR.write_text(new, encoding="utf-8")
-print("OUTPUT sha256", hashlib.sha256(new.encode("utf-8")).hexdigest())
-print("OUTPUT bytes", len(new.encode("utf-8")), "lines", new.count("\n"))
-
-back = new.rstrip("\n").split("\n\n")
-mid = back[len(back) - len(carried) - 3:len(back) - 3]
-print("CARRIED ORDER PRESERVED", mid == carried)
-print("REGISTERED AFTER", len(re.findall(r"^- R-\d+ — ", new, re.M)))
-print("RESOLVED AFTER", len(re.findall(r"^Done: R-\d+ — ", new, re.M)))
-print("LANDED AFTER", len(re.findall(r"^Landed: ", new, re.M)))
-print("GATE LINES AFTER", len(re.findall(r"^Gate: R\d+ — ", new, re.M)))
-print("NEXT FREE ID HEADER LINES", len(re.findall(r"^> Next free id", new, re.M)))
-<<<END RESETSCRIPT
-
-<<<SLICE LRHEADER
-# Live Review — F009 The single write channel
-
-> Round-by-round review record for the F009 branch, reset at the feature claim.
-> The F008 record closed with pull request #209, merged into `main` at this
-> feature's Open PR Gate. That branch's LAST round, R36, has no gate entry in its
-> own record by construction, because a round's verdict is written by the NEXT
-> reviewed round (DECISION F085 D9) and R36 was the last round F008 had; its
-> entry is therefore the first `Gate:` paragraph below. Finding ids continue the
-> monotonic R-XXXX series across the reset.
->
-> This header carries NO next-free-id sentence, and its absence is the fix for
-> R-0406 rather than an omission. That finding ruled the stored value a second
-> source of truth for a number
-> `docs/agents/planner_reviewer_prompt.md` §3 item 10 already requires every
-> emission to recompute mechanically from this record, and named the next
-> feature's reset as the place to drop it. Derive the ceiling with `max` over the
-> line-anchored `^- R-\d+ — ` entries below.
->
-> This reset CARRIES the open set forward rather than dropping it, per DECISION
-> F057 D1 in `.agent/decisions.md` and finding R-0362. The findings open when the
-> F008 record closed are reproduced verbatim below, extracted BY ID out of the
-> previous record by script and never retyped, never rewrapped and never
-> summarised. The pre-reset record held no `Landed:` line.
-
-## Steps
-R1 merge #209 at the Open PR Gate, claim F009 in the ledger, reset this record
-carrying the F008 open set forward, gate R36 and register the candidate F008
-carried → R2 the write-channel inventory: where the UI command catalog lives and
-which subset it exposes, how `_RemedyHandler` authenticates today, and which
-module owns each effect backend — the kill-switch control file, the decision
-queue and the approval consumption — each MEASURED in the source rather than read
-off the feature file → R3 record R2 and rule the channel's shape as a DECISION:
-the auth pair, the nonce replay window, the rate-limit configuration and the
-audit record's fields → R4 onward the built work, in the T001/T002/T003 order the
-feature file's Task slicing names.
-
-## Findings
-<<<END LRHEADER
-
-<<<SLICE R0630
-- R-0630 — Low — A UNIQUENESS OR COUNT GATE OVER `.agent/live_review.md` MUST NAME THE ANCHOR IT IS READ UNDER, BECAUSE THAT FILE LEGITIMATELY QUOTES ITS OWN GATE HEADERS. Carried in `.agent/candidates.md` as a closure candidate of F008, raised by the reviewer during the R35 gate, and registered here because this is F009's first reviewed round; the open set was searched for the DEFECT before the id was minted (§3 item 30), and the only neighbouring entries — R-0584 on a guard satisfied by a quotation and R-0587 on a slice's header shape — describe the token-stripping rule and the header-comparison rule rather than the anchor a count is read under. THE INSTANCE: the F008 R35 block's G6 ordered "the R35 pair occurs EXACTLY ONCE" for the entry header `Gate: R35 — the R34 entry.` without saying LINE-ANCHORED. Measured by the reviewer at `c5ebf179`, that byte string occurs TWICE in the file, the second occurrence inside finding R-0600, which quotes the F086 record's identically-worded round-35 header. The worker read the gate line-anchored over `^Gate: ` lines, which is the entry-key reading §3 item 26 exists for, reported 1, and was right; NOTHING FALSE LANDED and the ledger was healthy at that commit, 35 `Gate: ` lines under 35 distinct keys. WHY IT IS STILL A DEFECT: header strings repeat across features by construction — this record's own R1 header will one day be quoted by a finding — so any round whose header a finding has quoted inherits an unmeetable gate the moment the count is read as a substring, and the two readings differ silently. WHY LOW: the failure mode is a gate that cannot be satisfied rather than a claim that is false, and the worker's reading was the correct one both times it arose. THE FIX, beside §3 item 26 which produced this gate class: a uniqueness or count gate over a file that quotes its own record format STATES the anchor it is read under, and a block ordering such a count orders BOTH readings and labels each — as R-0586 already requires backtick-quoted spans to be deleted before a token is counted. That edit lands in `docs/agents/planner_reviewer_prompt.md`, which F009 does not own and AGENTS.md forbids mixing into a feature branch, so it routes to the paydown branch already carrying R-0403, R-0607, R-0608, R-0609, R-0611 and R-0613, together with promoting the fix clauses of R-0387 and R-0573 into the §3 checklist. OPEN.
-<<<END R0630
-
-<<<SLICE DONE0406
-Done: R-0406 — Resolved by this commit, which is the reset R-0406's own fix clause named: "the header sentence naming a next free id is removed at the next feature's reset". The F008 header carried `Next free id: R-0612.` while that record's highest registered entry was R-0629, so the stored value understated the ceiling by seventeen and a session trusting it would have reused an id seventeen times over. The F009 header this commit writes carries no such sentence, and RESETSCRIPT's `NEXT FREE ID LINE` reading is the measurement that it does not: consumers derive the ceiling with `max` over the line-anchored `^- R-\d+ — ` entries, which is what `docs/agents/planner_reviewer_prompt.md` §3 item 10 has always required. The finding's own conduct ruling stands and is not weakened by this resolution: no round rewrote that header mid-feature, because doing so would have broken the append-only property for a cosmetic gain, and the R2 worker that noticed the staleness and declined to touch it did the right thing.
-<<<END DONE0406
-
-<<<SLICE GATE1
-Gate: R1 — the F008 R36 entry. R36 PASSED AND F008 IS CLOSED. NO finding is registered against it: every value it reported reproduced, and every gate below was RE-EXECUTED by the reviewer off disk rather than read back out of the handback. THE CLOSURE VALUES ARE REAL AND THE REVIEWER MEASURED THEM ITSELF: `remedy-review-20260821-193052-READY_FOR_REVIEW.zip` is present in the repository root and recomputes to sha256 1d827ac756433f3be73f02947d9b1410e7759c4fc9ef6dfd95f5032924b9a366, which is exactly the digest the `[x]` line committed at `e20fe420` quotes, and that same line's `accepted HEAD` value, 870f198ea9c0e4b51075f3386d1025cce805811a, is a real commit — `git cat-file -t` prints `commit` — and an ancestor of the branch tip `7be4cfba`, so the STATUS line names a package that exists on disk and a commit that is really on the branch rather than two values that merely agree with each other. TRANSPORT HELD: `.agent/authored/f008-r36.md` and `.agent/last_block.md` are both sha256 188502199d1931b706c9f016fcf990f435e4754e6f087658d721352576d0fdd9 over 34965 bytes and 490 lines, equal as bytes and equal to the digest carried at delegation, and 490 is exactly the budget DECISION F085 D6 rules rather than a line under it. THE RANGE HOLDS, walked by the reviewer over `3035bc2a`..`7be4cfba`: SEVEN single-parent commits over exactly the eight declared paths plus the handback's own, insertions 490, 402, 13, 2, 10 and 24 for the six pre-handback commits — every one under the 500 cap, 490 the maximum — and each cell equal to the `+/-` column of the handback's `## Commits` table, which is the second derivation §3 item 28 exists to catch and it agreed. Zero lines beginning `<<<SLICE ` or `<<<END ` leaked into any of the six committed targets. THE LEDGER APPEND at `65c9e315` is two lines, a blank separator and one paragraph headed `Gate: R36 — the R35 entry.`, and that header matches the shape of the entries it joins with the second numeral one less than the first — §3 item 26 met by comparison rather than by eye. THE SETS ARE WHAT THE ROUND CLAIMED: 201 registered entries, ALL DISTINCT, 6 line-anchored `Done:` lines naming R-0620, R-0621, R-0623, R-0624, R-0626 and R-0627, 0 `Landed:` lines, 36 `Gate:` lines, and `^- R-0630 — ` reading 0 — the round minted no id, so R-0630 was still free for this record to spend on F008's closure candidate. THE COUNTS AGREE ACROSS TWO FILES at the closure commit: `docs/roadmap/STATUS.md` holds 54 line-anchored `- [x] F` entries, zero `- [~] ` and zero `- [!] `, and `README.md` states 54 in its prose and 2 in the Tier 5 Done cell against the two accepted ids carrying a `T5_` feature file. THE SUITES ARE THE REVIEWER'S OWN, run serially in the primary checkout at the branch tip: `python3 -m pytest tests/docs/ -q -rf` EXITS 0 at 295 passed, and the canary `python3 -m pytest tests/cli/test_golden_path.py -q -rf` EXITS 0 at 42 passed — the same two numbers the handback reported. THE DOCS PIN R36 REPLACED IS STRICTLY STRONGER THAN THE ONE IT RETIRED, which is the one thing a repair of this shape must prove, and the reviewer proved it in its OWN disposable worktree at `7be4cfba` with the primary checkout never written to: with F009 claimed and nothing else changed the suite EXITS 0 at 295 passed, with a SECOND claim injected on the F021 line it EXITS 1 at 1 failed and 294 passed, failing exactly `TestPrimaryDocsAreHonest::test_status_marks_f007_and_f010_accepted_and_nothing_after_them` and naming both claims in its message, and `tests/orchestration/test_roadmap_index.py` EXITS 0 at 30 passed with the claim in place. The retired sentence pinned the HOLDER of the claim, so it went red at every closure; the sentence that replaced it pins AT MOST one claim, which is true at a claim and true at a closure alike, and the worktree was removed and pruned before this verdict with `git worktree list` naming the primary checkout alone. THE HANDBACK'S OWN NUMERAL IS CORRECT: it declares itself 90 lines and `wc -l` reads 90, under the 100 its seven commits allow, and `.agent/plan.md` reads 35 lines under the 50-line cap. THE PULL REQUEST IS REAL AND WAS NOT SELF-MERGED: 209, `feature/f008-sse-event-stream` into `main`, OPEN, MERGEABLE and not a draft when this verdict was written, its CI run 32511286935 concluded `success`, and it was merged at THIS round's Open PR Gate by the next session rather than by the one that created it. WHAT THIS PAIR OF ROUNDS SETTLES is worth recording once: R36 is the LAST round of the F008 branch, so the terminator of §4 item 13 applies and its verdict has no gate entry inside its own record — this paragraph, the first of the F009 record, IS that entry, written by the next reviewed round exactly as DECISION F085 D9 requires, and it is the concrete reason a branch may not end at a verdict without a following round to carry it.
-<<<END GATE1
-
-## C3 — the STATUS claim
-One line, in `docs/roadmap/STATUS.md`. The reviewer's containment test printed
-`STATUS pair — TO contains FROM: False`, and the REWRITE label is derived from
-that output: this pair owes the FROM-0x reading rather than the append obligation
-of §4.9.
-
-<<<SLICE STATUSFROM
-- [ ] F009 — The single write channel
-<<<END STATUSFROM
-
-<<<SLICE STATUSTO
-- [~] F009 — The single write channel
-<<<END STATUSTO
-
-## C4 — the candidates carrier, emptied
-`.agent/candidates.md` becomes CANDIDATES as the WHOLE file. Its single entry is
-registered as R-0630 by C2, so the file empties in the same round that registers
-it, which is what docs/roadmap/STATUS_closure_protocol.md requires.
-
-<<<SLICE CANDIDATES
-# Closure Candidates — carrier of record
-
-> Written at closure per docs/roadmap/STATUS_closure_protocol.md
-> ("Closure-candidate findings", disk-vehicle rule, operator ruling
-> 2026-08-01). Read at Window-1 session bootstrap
-> (docs/agents/planner_reviewer_prompt.md §1). One entry per
-> candidate: description · source feature · date. Any entry present
-> at feature-claim time is a block condition.
-
-EMPTY. The one entry F008 carried — the line-anchoring rule for uniqueness gates
-over `.agent/live_review.md` — is registered as R-0630 in this branch's review
-record, by the same round that empties this file.
-<<<END CANDIDATES
-
-## C5 — the context file
-`.agent/context.md` becomes CONTEXTF009 as the WHOLE file. Its readers span
-several test modules: the dashboard contract asserts the substring "Steps" and a
-`## Active Branch` heading with a `feature/` slug, `test_test_runner.py` asserts a
-roadmap F-id, and `tests/regression/test_resource_safety.py` asserts "resource" or
-"pytest" — validate the applied file against ALL of them, not only the one you
-happen to run.
-
-<<<SLICE CONTEXTF009
-# Context — F009 The single write channel
-
-## Active Branch
-feature/f009-single-write-channel, cut from `main` at the merge commit of pull
-request #209, which R1 merged at the Open PR Gate. Self-drive session per
-docs/agents/self_drive_protocol.md: the main session plans and reviews and writes
-nothing in the work tree, one delegated worker per round makes every commit. The
-branch is fresh and carries no pull request.
-
-## Scope
-In: ONE authenticated POST door for UI-initiated change —
-`/api/jobs/<job_id>/commands` taking {command, args, client_nonce}, validated
-against the UI-exposed subset of the command catalog, authenticated by bearer
-token plus an X-Remedy-CSRF double-submit, rate-limited per token and job,
-deduplicated by nonce so a replay returns the ORIGINAL result, audited per job,
-and ENQUEUEING into the decision, approval and control machinery that already
-exists. Also in: the `command.accepted` event on the F008 stream, and the
-route-walking proof that every other POST, PUT and DELETE answers 405.
-
-Out, per the feature file's Do not touch: the effect backends' semantics, the
-catalog's CLI half, and any file or shell access from a handler — forbidden by
-the P3 contract and enforced by an import guard rather than by convention.
+Close the file with a `## Open questions for R3` section listing every question
+your measurements did NOT settle, one per line. An empty section is a claim; if
+you write one, say what you checked to be able to make it.
 
 ## Constraints
-- Merges only at the Open PR Gate; never force-push; never work on main.
-- Verification is pytest, scoped per round, plus the canary
-  tests/cli/test_golden_path.py. A round touching docs/roadmap/** also gates
-  tests/docs/ and tests/orchestration/test_roadmap_index.py — the second by
-  R-0493, tests/docs/ asserting nothing about a feature file's body — and a round
-  rewriting `.agent/` state or touching the UI server also gates
-  tests/ui_server/, tests/orchestration/test_test_runner.py,
-  tests/regression/test_resource_safety.py and
-  tests/orchestration/test_integrity_gate.py. Destructive and red-proof checks
-  run only inside a disposable git worktree under .remedy-wt/, so resource safety
-  stays intact. Two pytest processes never run at once.
-- COUNT BY PASSED-PLUS-SKIPPED. Data-dependent `pytest.skip(...)` calls in
-  tests/ui_server/ make the split vary run to run at an unchanged tree, so a bare
-  passed count is not a stable gate value and a skip is not a failure.
-- This is a UI-facing feature: docs/ui/design_reference/ is binding for every
-  visual surface and assets_spec.md is the asset authority. Any deviation needs
-  an assumption_log entry carrying a technical reason.
-- Repository-wide `ruff check .` is RED at base and is NOT a gate (R-0364). Ruff
-  is gated scoped to the files a round touches, measured against the SAME files
-  at the base, so a pre-existing error is never read as a new one. `npm run lint`
-  in `apps/ui` is likewise red at base and is R-0622.
-- 196 findings are open after this round's reset and registration, and none is a
-  code defect of F009. R-0403, R-0607, R-0608, R-0609, R-0611, R-0613 and the new
-  R-0630 stay routed to a paydown branch, together with promoting the fix clauses
-  of R-0387 and R-0573 into the §3 checklist.
-
-## Steps
-Stated once, in `.agent/plan.md`. This file tracks scope and constraints only.
-<<<END CONTEXTF009
-
-## Constraints
-1. Apply every slice BYTE FOR BYTE out of the committed C0a blob. Do not retype,
-   rewrap, reflow, reindent or whitespace-adjust any of them. If a slice looks
-   wrong to you, apply it as written and say so in the handback under
-   "Deviations & assumptions" — an objection is recorded, never acted on.
-2. The commit order is C0a, C0b, C1, C2, C3, C4, C5, C6 and nothing else comes
-   between them. C1 is the first substantive commit.
-3. The change set is the eight paths named above. Touch no other path. In
-   particular do not edit `tests/docs/test_docs_consistency.py`: the reviewer
-   dry-ran this round's STATUS claim against that suite and it stays GREEN, so
-   there is nothing to repair there. If any suite named below goes red, STOP,
-   record the raw output, and write the handoff — do not repair a test to buy a
-   green.
+1. Apply PLANF009R2 and LEDGER2 BYTE FOR BYTE out of the committed C0a blob. Do
+   not retype, rewrap, reflow, reindent or whitespace-adjust either. If a slice
+   looks wrong to you, apply it as written and record the objection in the
+   handback under "Deviations & assumptions" — an objection is recorded, never
+   acted on. Your objection last round was correct and correctly handled.
+2. The commit order is C0a, C0b, C1, C2, C3, C4 and nothing comes between them.
+   C1 is the first substantive commit.
+3. The change set is the six paths named above. Touch no other path. In
+   particular, create no file under `tests/` and edit nothing under `packages/`
+   or `apps/` — this round only reads them.
 4. `.remedy-wt/` is gitignored scratch. Every multi-step gate goes into a script
    there and runs from there; `git status --porcelain` prints 0 lines after each
-   commit, so nothing from that directory is ever committed.
-5. Push with `git push -u origin feature/f009-single-write-channel` after C5, and
-   do NOT create a pull request this round — F009 opens its pull request at its
-   own closure.
+   commit.
+5. Push with `git push` after C3. Do NOT create a pull request.
 
 ## Done when
-- G1 `.agent/STOP` ABSENT, read immediately before C0a. `git rev-parse
-  --abbrev-ref HEAD` prints `feature/f009-single-write-channel` from C0a onward.
-  `git status --porcelain` prints 0 lines after each of C0a through C6.
-- G2 Transport EQUAL: `.remedy-wt/f009-r1.md` as received, `.agent/authored/
-  f009-r1.md` at C0a and `.agent/last_block.md` at C0b all carry the same sha256,
-  byte count and line count, and that digest EQUALS the one stated above.
+- G1 `.agent/STOP` ABSENT, read at Step 0 and again immediately before C0a.
+  `git rev-parse --abbrev-ref HEAD` prints `feature/f009-single-write-channel`
+  at every reading. `git status --porcelain` prints 0 lines after each of C0a
+  through C4. Report the round base SHA from Step 0.
+- G2 Transport EQUAL: `.remedy-wt/f009-r2.md` as received, `.agent/authored/
+  f009-r2.md` at C0a and `.agent/last_block.md` at C0b all carry the same sha256,
+  byte count and line count, and that digest EQUALS the one in the task prompt.
 - G3 Report, per slice, the newline-included sha256, byte count and line count,
-  the COUNT of slices taken from your own ordered extraction out of the committed
-  C0a blob, and the three aggregate readings: any trailing whitespace, any
-  leading blank line, all newline-terminated.
-- G4 `.agent/plan.md` at C1 is BYTE-EQUAL to PLANF009R1; report its line count
+  the COUNT of slices from your own ordered extraction out of the committed C0a
+  blob, and the three aggregate readings: any trailing whitespace, any leading
+  blank line, all newline-terminated.
+- G4 `.agent/plan.md` at C1 is BYTE-EQUAL to PLANF009R2; report its line count
   against the 50-line cap; `Steps` occurs; `^## Goal$` and `^## Next Steps$` each
-  match exactly 1 line; and its first `\bF\d{3}\b` match is `F009`.
-- G5 The reset at C2: report every line RESETSCRIPT prints. `CARRIED PARAGRAPHS
-  NOT BYTE-PRESENT IN THE OLD RECORD` MUST read 0 and `CARRIED IDS NOT PRESENT`
-  MUST read 0 — that pair is what makes "extracted by script, never retyped" a
-  measurement instead of a promise. NEGATIVE CONTROL, in scratch and never over
-  the tracked file: flip ONE printable ASCII byte in ONE carried paragraph and
-  re-run the byte-presence check, which MUST then report 1; report both readings
-  and confirm the unflipped value reports 0.
-- G6 At C2, line-anchored: `^- R-\d+ — ` reads 196, all ids DISTINCT;
-  `^Done: R-\d+ — ` reads 1 and names R-0406; `^Landed: ` reads 0; `^Gate: R\d+
-  — ` reads 1; `^- R-0630 — ` reads 1; and `^> Next free id` reads 0 lines —
-  anchored at the header's own form, because DONE0406 QUOTES the retired sentence
-  and a bare substring count would be unmeetable by construction. Report the max
-  id the file carries.
-- G7 The claim at C3. Read the branch-point bytes with `git show <branch
-  point>:docs/roadmap/STATUS.md` into `.remedy-wt/` scratch — never by writing
-  that blob over the tracked file, which guardrail G5 of
-  docs/agents/self_drive_protocol.md forbids. STATUSFROM reads 1 at the branch point and 0 at C3,
-  STATUSTO reads 0 then 1, and the branch-point blob with that substitution
-  applied ONCE is BYTE-EQUAL to the C3 blob — which is also the proof no other
-  line of that file changed. `^- \[~\] ` reads 0 at the branch point and 1 at C3;
-  `^- \[x\] F\d{3} — ` reads 54 at BOTH, so claiming F009 moved nothing into the
-  accepted set. `README.md` is correctly ABSENT from this round's change set.
-- G8 The carrier at C4 is BYTE-EQUAL to CANDIDATES, and `^- ` reads 0 in it.
-  `.agent/context.md` at C5 is BYTE-EQUAL to CONTEXTF009; report the four reader
-  assertions of constraint C5 as four readings taken over the APPLIED file.
-- G9 In the PRIMARY checkout, SERIALLY, one process at a time, at C5:
-  `python3 -m pytest tests/docs/ -q -rf`, then `python3 -m pytest
-  tests/orchestration/test_roadmap_index.py -q -rf`, then `python3 -m pytest
-  tests/ui_server/ tests/orchestration/test_test_runner.py
+  match exactly 1 line; the first `\bF\d{3}\b` match is `F009`.
+- G5 The append at C2, proved TWICE over independent extractors. (a) The round
+  base blob is a byte-exact PREFIX of the C2 blob and the remainder EQUALS a
+  newline plus LEDGER2 — report the remainder's sha256, byte count and line
+  count. (b) An INDEPENDENT blank-line split of the WHOLE C2 file, its
+  terminating newline normalised first, yields N units whose LAST unit is
+  LEDGER2's paragraph — report N. NEGATIVE CONTROL: flip ONE printable ASCII
+  byte of the remainder to another printable one and confirm BOTH readings
+  REJECT it while both ACCEPT the unflipped value; report all four outcomes.
+- G6 At the round base and at C2, line-anchored: `^- R-\d+ — ` 196 and 196 —
+  this round mints NO id — `^Done: R-\d+ — ` 1 and 1, `^Landed: ` 0 and 0,
+  `^- R-0630 — ` 1 and 1, `^> Next free id` 0 and 0, and `^Gate: R\d+ — ` 1 then
+  2 over that many DISTINCT keys. HEADER SHAPE (§3 item 26): of the `Gate: `
+  lines at C2, report how many match `^Gate: R(\d+) — the R(\d+) entry\.` with
+  the second numeral one less than the first, and quote the text to its first
+  period of any that does not — the R1 entry does not match that pattern, because
+  it names the F008 R36 entry rather than an R0, so the expected reading is one
+  match and one non-match whose text is `Gate: R1 — the F008 R36 entry.`
+- G7 The inventory at C3. Report: the count of `## Q` headings, which must be 6
+  and cover Q1 through Q6 with no repeat; the presence of the
+  `## Open questions for R3` heading; and the CITATION AUDIT, run by a script of
+  yours over the committed C3 blob — extract every `path:line` and
+  `path:line-line` token, and for EACH report whether the path exists at C3 and
+  whether the line number is within that file's line count. The count of
+  citations that FAIL either check MUST be 0, and report the total count of
+  citations audited. Report the per-question count of citations, so a question
+  answered with no citation at all is visible rather than averaged away.
+- G8 In the PRIMARY checkout, SERIALLY, one process at a time, at C3:
+  `python3 -m pytest tests/ui_server/ tests/orchestration/test_test_runner.py
   tests/regression/test_resource_safety.py tests/orchestration/test_integrity_gate.py
   -q -rf`, then the canary `python3 -m pytest tests/cli/test_golden_path.py -q
   -rf`. Report each exit code and its passed-plus-skipped sum. The reviewer
-  measured the first two at the F008 branch tip with this round's claim applied
-  in a throwaway worktree: 295 passed and 30 passed, both exit 0.
-- G10 The range from the branch point to C5: `git diff --name-only` lists
-  EXACTLY the seven paths of the change set other than `.agent/handoff.md`, the
-  set difference empty in both directions. Walk `git rev-list --reverse` and
-  report, per commit, that it has ONE parent and its `git show --numstat`
-  insertions, with `git diff --numstat` AGREEING on every cell; every cell must
-  equal the `+/-` column of your `## Commits` table. Name the C2 exemption
-  explicitly. `^<<<SLICE ` and `^<<<END ` read 0 lines in each of
-  `.agent/plan.md`, `.agent/live_review.md`, `docs/roadmap/STATUS.md`,
-  `.agent/candidates.md` and `.agent/context.md`. Classify this round's own
-  reflog entries by the operation before the first `:` in `%gs` and report the
-  counts of `amend`, `rebase` and `cherry`, which must each be 0; assert no total
-  over the whole reflog (R-0601).
-- G11 The Open PR Gate transcript of Step 0, one line per command with its exit
-  code, plus the branch point SHA and the merge commit `gh pr merge` reported.
-- G12 The handback carries every mandated section of
+  measured 423 and 42, both exit 0, at `87ad9e5c`. The docs gate is NOT ordered
+  this round, because no path under `docs/` or `docs/roadmap/` is in the change
+  set — say so rather than running it silently.
+- G9 The range from the round base to C3: `git diff --name-only` lists EXACTLY
+  the five paths of the change set other than `.agent/handoff.md`, the set
+  difference empty in both directions. Walk `git rev-list --reverse` and report,
+  per commit, that it has ONE parent and its `git show --numstat` insertions,
+  with `git diff --numstat` AGREEING on every cell and every cell equal to the
+  `+/-` column of your `## Commits` table. `^<<<SLICE ` and `^<<<END ` read 0
+  lines in each of `.agent/plan.md`, `.agent/live_review.md` and
+  `.agent/f009_inventory.md`. Classify this round's own reflog entries by the
+  operation before the first `:` in `%gs` and report `amend`, `rebase` and
+  `cherry`, which must each be 0; assert no total over the whole reflog (R-0601).
+- G10 The handback carries every mandated section of
   docs/agents/handback_template.md, an item-status table holding exactly one row
-  for each of C0a, C0b, C1, C2, C3, C4, C5 and C6, the branch point SHA, and one
-  line per gate — the raw transcripts belong in the round report, not here
-  (R-0582). Report its line count against the 100 that eight commits allow.
+  for each of C0a, C0b, C1, C2, C3 and C4, the round base SHA, and one line per
+  gate — raw transcripts belong in the round report (R-0582). Report its line
+  count against the 60 that AGENTS.md sets, or carry a DECISION D15 stated-cause
+  line naming the mandated content that caused an overage.
 
 Handback:    completion report + rewrite `.agent/handoff.md`. The state block
-             repeats this Fortschritt line verbatim: 0 % (T001 offen · T002
-             offen · T003 offen — R1 hat das Feature beansprucht, den
-             Review-Record zurückgesetzt und das F008-R36-Urteil eingetragen;
+             repeats this Fortschritt line verbatim: 5 % (T001 offen · T002
+             offen · T003 offen — R1 hat beansprucht, R2 hat den Boden vermessen;
              gebaut wurde noch nichts) — Schätzung
 ──────────────────────────────────────────────────────────────
