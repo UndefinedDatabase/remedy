@@ -2721,23 +2721,90 @@ def _build_events_since_json(job: Any, cursor: str) -> dict[str, Any]:
     if cursor.isdigit():
         start = int(cursor)
     new_events = events[start:]
-    safe = []
-    for offset, e in enumerate(new_events[:50]):
-        safe.append({
-            # The ledger's own position, never a per-response counter: F008's
-            # stream uses it as the SSE event id, so a client resuming from
-            # `seq` lands on the event the server meant (DECISION F008 D1).
-            "seq": start + offset,
-            "event": e.get("event", ""),
-            "timestamp": e.get("timestamp", ""),
-            "outcome": e.get("outcome", ""),
-        })
+    safe = [
+        _safe_event_summary(start + offset, e)
+        for offset, e in enumerate(new_events[:50])
+    ]
     return {
         "version": 1,
         "job_id": str(job.id),
         "cursor": str(len(events)),
         "events": safe,
     }
+
+
+#: Seconds of silence after which the stream sends a heartbeat comment frame.
+#: Proxies drop idle connections, and an SSE comment is the no-op that holds
+#: one open without ever entering the client's event stream.
+SSE_HEARTBEAT_SECONDS = 15.0
+
+#: Seconds the stream waits before re-reading the ledger for new events.
+SSE_POLL_SECONDS = 1.0
+
+
+def _safe_event_summary(seq: int, event: dict[str, Any]) -> dict[str, Any]:
+    """The safe per-event envelope both event transports carry.
+
+    The cursor endpoint and the SSE stream are one consumer contract over two
+    transports, so this summary has ONE writer: a field added here reaches
+    both or neither. `seq` is the ledger's own position and never a
+    per-response counter, so a client resuming from it lands on the event the
+    server meant (DECISION F008 D1).
+    """
+    return {
+        "seq": seq,
+        "event": event.get("event", ""),
+        "timestamp": event.get("timestamp", ""),
+        "outcome": event.get("outcome", ""),
+    }
+
+
+def sse_event_frame(seq: int, payload: dict[str, Any]) -> bytes:
+    """One SSE event frame whose id is the ledger position it carries."""
+    return f"id: {seq}\ndata: {json.dumps(payload, default=str)}\n\n".encode()
+
+
+def sse_heartbeat_frame() -> bytes:
+    """The SSE comment frame that holds an idle connection open.
+
+    A comment carries no `id:`, `event:` or `data:` field, so a client never
+    surfaces it as an event and a resuming client never asks to replay it.
+    """
+    return b": heartbeat\n\n"
+
+
+def iter_sse_frames(
+    load_events: Any,
+    start: int,
+    *,
+    now: Any,
+    sleep: Any,
+    should_continue: Any,
+    heartbeat_seconds: float = SSE_HEARTBEAT_SECONDS,
+    poll_seconds: float = SSE_POLL_SECONDS,
+) -> Any:
+    """Yield one job's SSE frames from `start`, heartbeating while idle.
+
+    Every collaborator that touches time is injected — `now`, `sleep` and
+    `should_continue` — so cadence is a fact a test asserts rather than a
+    duration it waits out. The response handler that writes these frames to a
+    socket arrives with the route; this is the reader it will drive.
+    """
+    cursor = start
+    last_frame_at = now()
+    while should_continue():
+        events = load_events()
+        if cursor < len(events):
+            for seq in range(cursor, len(events)):
+                yield sse_event_frame(seq, _safe_event_summary(seq, events[seq]))
+            cursor = len(events)
+            last_frame_at = now()
+            continue
+        if now() - last_frame_at >= heartbeat_seconds:
+            yield sse_heartbeat_frame()
+            last_frame_at = now()
+            continue
+        sleep(poll_seconds)
 
 
 def _get_frontend_dist() -> Path | None:
