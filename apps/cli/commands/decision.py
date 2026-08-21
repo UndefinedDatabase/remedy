@@ -266,7 +266,7 @@ def _cmd_decision_resolve(
         print(f"Resume the run: remedy job run-loop {job_id_str} --json")
     elif decision_id.startswith("fp:"):
         from packages.orchestration.data_paths import resolve_job_id as _rji
-        from packages.orchestration.storage import JobNotFoundError, load_job, save_job
+        from packages.orchestration.storage import JobNotFoundError, load_job
 
         job_id = _rji(job_id_str)
         try:
@@ -276,10 +276,9 @@ def _cmd_decision_resolve(
             sys.exit(1)
 
         from packages.orchestration.flight_plan import (
-            apply_clarification_answers,
             clarifications_already_resolved,
             open_clarification_questions,
-            write_assumptions_md,
+            resolve_flight_plan_approval,
         )
 
         fp = getattr(job, "flight_plan", None)
@@ -324,16 +323,8 @@ def _cmd_decision_resolve(
             sys.exit(1)
 
         if reason == "approve":
-            if questions:
-                fp["clarifications_resolved"] = apply_clarification_answers(
-                    fp.get("clarifications_resolved"), answers)
-            fp["_approval"] = "approved"
-            job.flight_plan = fp
-            save_job(job)
-            from packages.orchestration.data_paths import job_evidence_export_dir
-            log_path = write_assumptions_md(
-                fp.get("clarifications_resolved"),
-                job_evidence_export_dir(str(job.id)))
+            log_path = resolve_flight_plan_approval(
+                job, reason="approve", answers=answers, questions=questions)
             print(f"Flight plan approved for job {job_id_str}.")
             for q in questions:
                 qid = q["id"]
@@ -346,9 +337,8 @@ def _cmd_decision_resolve(
             if as_mission:
                 _create_mission_for_job(job)
         else:
-            fp["_approval"] = "rejected"
-            job.flight_plan = fp
-            save_job(job)
+            resolve_flight_plan_approval(
+                job, reason="reject", answers=answers, questions=questions)
             print(f"Flight plan rejected for job {job_id_str}.")
             print(f"Run: remedy do replan {job_id_str}")
     else:
