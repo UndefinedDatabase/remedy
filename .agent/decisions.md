@@ -6411,3 +6411,106 @@ mission roles with no change to that function. A NULL `task_id` now READS as
 Reverse this decision by deleting this section, deleting
 `packages/orchestration/teacher_spend.py` and its test, and restoring the two
 amended bullets of the `token_ledger` module docstring.
+
+## DECISION F255 D8 — the teacher gets its OWN model transport, because no generic one exists (2026-08-21)
+
+CONTEXT. T004 requires Stage 2 to answer through the teacher role's own model,
+and the reviewer measured the provider surface at `2e5b8299` before assuming one
+was available. `packages/providers/` holds `claude_agent`, `docker_runtime`,
+`mempalace`, `ollama_builder` and `ollama_planner`; every one is role-specific.
+The closest thing to a general call is `OllamaPlanner.raw_call`, and it is not
+general in either direction: it takes a REQUIRED `schema` and passes it as
+`format=`, and it resolves its model, host, temperature and num_predict from the
+PLANNER's configuration surface. A teacher answer is prose, not a schema, and
+borrowing the planner's configuration would make `teacher.model` decorative.
+
+CHOSEN. Build one narrow transport owned by the teacher, in
+`packages/orchestration/teacher_model.py`, behind an INJECTABLE seam: a `call`
+parameter defaulting to `ollama_teacher_call`. The transport sends one free-text
+chat with no schema, resolves its model through `resolve_role_config("teacher")`
+and its host through the existing `ollama.host` config. `TEACHER_TRANSPORTS`
+names the providers the teacher can call and holds `ollama` alone, because that
+is the only one this round builds. Every test injects the seam, so the suite
+never opens a socket and never needs a running Ollama.
+
+ALTERNATIVES CONSIDERED and rejected. Calling `OllamaPlanner.raw_call` with a
+permissive schema — rejected because it bills the teacher's question to the
+planner's configuration and puts the planner's system prompt in front of a tutor
+answer. Adding a generic completion provider under `packages/providers/` —
+rejected as a strictly larger change than F255 needs, and one that would outlive
+this feature's review; a future feature that needs it can lift this transport.
+Refusing all Q&A until such a provider exists — rejected because it would leave
+T004's acceptance unreachable and the seam R13 built still uncalled.
+
+CONSEQUENCE. `teacher.model` becomes load-bearing for the first time. A provider
+outside `TEACHER_TRANSPORTS` is refused honestly rather than mis-called, which is
+the behaviour DECISION F255 D9 defines.
+
+Reverse this decision by deleting this section, deleting
+`packages/orchestration/teacher_model.py` and its test, and removing the
+`teach.ask` handler and catalog entry.
+
+## DECISION F255 D9 — Stage 2 refuses on NO USABLE TRANSPORT, not on "no model configured" (2026-08-21)
+
+CONTEXT. The feature file's Edge cases say "With no model configured, Stage 2
+refuses with an honest message and Stage 1 keeps working". Read against
+`packages/orchestration/role_config.py` at `2e5b8299`, that state cannot occur:
+`resolve_role_config` fills an unset model from `default_model_for_provider`, and
+`DEFAULT_PROVIDER` is `ollama`, so EVERY role resolves to a model whether or not
+anyone configured one. A test driving "no model configured" would therefore
+assert a branch no configuration reaches — the vacuous gate this project keeps
+paying for.
+
+CHOSEN. Keep the honest refusal and re-point its CONDITION at something real.
+Stage 2 refuses when the resolved provider is not in `TEACHER_TRANSPORTS`, when
+that transport's dependency is absent, or when the call fails — and every refusal
+names the provider and the model it refused for, so the operator can act on it.
+`teacher_qa.no_model_refusal` keeps its job and its wording unchanged; only what
+triggers it is corrected. Stage 1 keeps working, because Stage 1 is offline by
+construction, and the refusal says so.
+
+ALTERNATIVES CONSIDERED and rejected. Adding a sentinel "unconfigured" model so
+the spec's literal words become reachable — rejected because it invents a state
+to satisfy a sentence, and every other role would inherit it. Refusing whenever
+`teacher.model` is absent from the config file — rejected because it would refuse
+the default configuration that works, which is the opposite of honest.
+
+CONSEQUENCE. A REFUSAL IS NEVER BILLED: no model was called, so no ledger row is
+written, and a row claiming one would be the fabrication `token_ledger` refuses.
+The feature file records this supersession beside its earlier three.
+
+Reverse this decision by deleting this section and restoring the Edge-cases
+sentence as the implemented condition.
+
+## DECISION F255 D10 — `teach.ask` declares write_metadata, and its read-only proof names the ledger (2026-08-21)
+
+CONTEXT. The Scope block lists "Hard invariants: ActionClass read_only", and
+`teach.narrate` earns that declaration with the behavioural proof DECISION F255
+D4 required. But DECISION F255 D3 requires Stage 2 to record teacher spend and
+DECISION F255 D7 shapes that row, so `teach ask` writes
+`<data_root>/projects/<project_id>/ledger.sqlite` and its sqlite sidecars. A
+`read_only` declaration on that command would be false, and DECISION F255 D4
+exists precisely because a declaration proves nothing while a false one misleads
+the permission layer that reads the catalog.
+
+CHOSEN. `teach.ask` declares `action_class="write_metadata"`, the class the
+catalog already uses for commands that write Remedy's own records and not the
+user's repository. `teach.narrate` keeps `read_only` unchanged. The invariant the
+Scope actually means — never influencing the RUN — is proven for ask the same
+behavioural way it was proven for narrate, with the ledger file and its sidecars
+EXCLUDED BY EXPLICIT NAME and the exclusion itself asserted, so any other write
+still fails the test.
+
+ALTERNATIVES CONSIDERED and rejected. Declaring `read_only` and arguing the
+ledger is not part of the run — rejected because the catalog's classes describe
+what a command WRITES, not what it means to write, and a permission layer cannot
+read intent. Moving the ledger write out of the command into a later batch —
+rejected because it would separate the cost from the question that incurred it
+and reintroduce the uncalled seam this round exists to close.
+
+CONSEQUENCE. The teacher group now holds one `read_only` command and one
+`write_metadata` command, and F255's read-only claim is stated where it is true
+rather than everywhere.
+
+Reverse this decision by deleting this section and changing the `teach.ask`
+entry's `action_class` back to `read_only`.
