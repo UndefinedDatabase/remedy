@@ -15,19 +15,21 @@ envelope sequence, the heartbeat holds cadence, and the fallback engages on a
 disabled EventSource and recovers to live.
 
 ## Current Step
-R25 records the R24 verdict and registers R-0629, a defect in the reviewer's
-own R24 block: a red control asserted that its target line occurs once when it
-occurs twice. It changes no code. T003's client side is now rules, driver,
-runner-as-store and the real host, each proved under the node-environment
-vitest.
+R26 lands `brainStreamSession.ts`, the composition seam T003 has been building
+toward: it ties the host to the runner store — a knot neither half can tie, the
+host dispatching into a runner that does not exist when the host is built — and
+gives the React hook one object to hold, whose `close` stops the runner AND the
+socket. Six vitest tests pin start, live, frame delivery, both halves of close
+and the delayed fallback.
 
 ## Next Steps
-1. R26 adds the thin `useBrainStream` hook over the runner store and the
-   visible delayed badge, gated by `npm run typecheck` and a
-   `tests/ui_contracts/` source contract — the style this repository uses for
-   every React component (R-0628). The hook must call the host's `close` on
-   unmount, or a remounting cockpit leaks one EventSource per mount.
-2. Then the integration gate before closure.
+1. R27 adds `useBrainStream.ts` over this seam and its `tests/ui_contracts/`
+   source contract — the style every React component here is gated by
+   (R-0628) — with the hook closing the session on unmount, or a remounting
+   cockpit leaks one EventSource per mount.
+2. R28 puts the delayed badge on a visible surface and wires the hook's deps
+   to the endpoint T001 and T002 built.
+3. Then the integration gate before closure.
 
 ## Risks
 - `npm run lint` in `apps/ui` is RED at base and is NOT a gate (R-0364): that
@@ -35,5 +37,5 @@ vitest.
   paydown branch.
 - The badge is a visual surface docs/ui/design_reference/ binds, with any
   deviation owed an assumption_log entry carrying a technical reason.
-- Nothing wires the host to a real job yet: R26 is the first round in which
-  the endpoint T001 built and the client T003 built meet.
+- The hook's RENDER behaviour stays unproved until a DOM environment exists:
+  its contract will gate its source, and this seam carries the logic beneath.
