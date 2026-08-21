@@ -6514,3 +6514,52 @@ rather than everywhere.
 
 Reverse this decision by deleting this section and changing the `teach.ask`
 entry's `action_class` back to `read_only`.
+
+## DECISION F008 D1 — the server becomes threaded in its own round before T001, and seq is the ledger position (2026-08-21)
+
+CONTEXT. The feature file's Orchestrator brief dispatches T001's
+server-capability question as a findings order before anything is built, and
+R3 discharged it by measuring the source at `da2aabf9` rather than reading the
+feature file's own prediction. Both predictions were false, and finding R-0612
+records the measurement: `packages/orchestration/ui_server.py` instantiates
+`http.server.HTTPServer` bare with no threading mixin anywhere under
+`packages/` or `apps/`, so it serves one request at a time; and `LedgerEvent`
+carries none of a seq, an index or any ordered field, its enumeration position
+being spent inside `_make_event_id` and discarded. T001 as sliced assumed the
+opposite of both.
+
+CHOSEN. Two rulings, one for each measurement.
+
+1. Making the UI server threaded is a PREREQUISITE ROUND before T001, not a
+   step inside it. It is production code on the single path every existing
+   cockpit feature already uses, so it carries its own commit, its own
+   behavioural test — a slow request must stop blocking a concurrent one, an
+   assertion that fails today — and its own gate over the state-reader four
+   and the dashboard contract, which are the suites that would show a
+   regression there.
+2. The stream EXPOSES the ledger's own position as `seq` and assigns nothing.
+   T001 adds the position to the read path rather than minting a parallel
+   counter, so "the stream must not renumber" is satisfied by construction
+   instead of by discipline, and `event_id` keeps its present meaning as an
+   opaque digest rather than being pressed into service as an ordinal.
+
+ALTERNATIVES CONSIDERED and rejected. Folding the threading change into T001 —
+rejected because a blocking-server fix and a new endpoint would land in one
+diff, and a regression in either could not be attributed to the right half.
+Serving the stream from a second, separate threaded server on its own port —
+rejected because it doubles the auth surface the token model has to cover and
+splits the cockpit across two origins for no gain the first option does not
+give. Persisting a new `seq` field onto every ledger event — rejected because
+it rewrites the ledger format, which this feature's Do-not-touch section
+excludes by name, and because the position it would persist is the one already
+available for free. Deriving order from `timestamp` — rejected because
+timestamps are strings of unspecified resolution here and two events can share
+one, which is precisely the gap-detection failure T002 must prove absent.
+
+CONSEQUENCE. T001 is preceded by one prerequisite round, so the feature is one
+round longer than its Task slicing implies; the feature file's "How it fits"
+section now states measured facts where it stated predictions; and the
+Do-not-touch line on the ledger format is preserved rather than negotiated.
+
+Reverse this decision by deleting this section, restoring the two predictions
+in `docs/roadmap/features/T5_F008.md` and resolving R-0612 as rejected.
