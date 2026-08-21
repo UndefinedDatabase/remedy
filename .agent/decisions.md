@@ -6619,3 +6619,105 @@ blast radius of the three.
 The feature file names no call site, so this decides an implementation question
 rather than amending a spec. Reverse it by moving the call and passing the id
 down; nothing else in the client depends on where the hook is called.
+
+## DECISION F009 D1 — the command-channel contract test lives in `tests/ui_server/` (2026-08-21)
+
+The feature file's Do not touch section named `tests/ui_contract/test_command_channel.py`. Measured at R2: that directory does not exist. Two candidates do — `tests/ui_contracts/`, whose modules are Python files asserting over React `.tsx` SOURCE, and `tests/ui_server/`, which holds every HTTP route contract this server has, including `test_sse_stream.py` and `test_auth_redaction.py`.
+
+CHOSEN: `tests/ui_server/test_command_channel.py`. The surface under test is an HTTP route on `_RemedyHandler`, which is what every module in that directory already tests, and AGENTS.md's discoverability rules ask for one spelling per concept and a test file named after the source it covers.
+
+ALTERNATIVES: (a) create `tests/ui_contract/` as the feature file names it — rejected, it would be a third directory one character from an existing one, which is precisely the synonym drift those rules forbid. (b) `tests/ui_contracts/` — rejected, its subject is component source, not server behaviour.
+
+REVERSE by moving the file and restoring the feature-file line; C4 of this round is the amendment and it is a two-line pair.
+
+## DECISION F009 D2 — POST authenticates by bearer plus CSRF, and the GET routes keep their query token (2026-08-21)
+
+Measured at R2: the only authentication is a query-string token compared inside `do_GET`, the React client appends that token as a query parameter, and no bearer or CSRF handling exists anywhere in the server or the client.
+
+CHOSEN: the new POST route requires `Authorization: Bearer <token>` AND an `X-Remedy-CSRF` header double-submitted against the served app; the existing GET routes keep the query parameter unchanged in this feature. Two token transports therefore coexist deliberately, and the code says so where a reader would search.
+
+WHY THE GET HALF DOES NOT MIGRATE, and this is a technical constraint rather than a scope preference: the cockpit consumes the event stream through the browser `EventSource` API, which cannot set request headers at all. A bearer-only server would make the F008 stream unauthenticatable. The query token is what a stream can carry, and a header is what a write must carry so it cannot be replayed out of a URL, a referrer or a shell history.
+
+ALTERNATIVES: (a) migrate every route to bearer — rejected on the EventSource constraint above. (b) accept the query token on POST too — rejected: it puts a mutating credential in URLs and defeats the CSRF pair's purpose.
+
+REVERSE by deleting the two header checks and reading the query token in the POST path; nothing else depends on the choice.
+
+## DECISION F009 D3 — the token comparison becomes constant-time, for both doors, inside this feature (2026-08-21)
+
+Measured at R2: the comparison is a plain `!=` and `secrets.compare_digest` occurs zero times in the module.
+
+CHOSEN: T001 replaces that comparison with `secrets.compare_digest` for the existing GET check AND the new POST check. This is the one line this feature changes outside its own new surface, and it is declared here rather than discovered in review.
+
+WHY IT IS IN SCOPE: the feature's own Acceptance requires that unauthenticated attempts fail closed. Putting a write door behind a token whose comparison leaks its prefix in timing, while leaving the weaker half untouched because it predates the feature, would be shipping a knowingly weaker guard on the same secret. The change is two lines and the `tests/ui_server/` suite already covers both paths.
+
+ALTERNATIVES: (a) leave it and register a finding — rejected, a finding routes work to a paydown branch that has no scheduled round, and this feature is the reason it now matters. (b) constant-time on POST only — rejected, both doors accept the same secret.
+
+REVERSE by restoring `!=`; the behaviour is identical for every non-attacker input.
+
+## DECISION F009 D4 — the exposed subset is catalog ids, declared beside the catalog (2026-08-21)
+
+Measured at R2: the catalog is `apps/cli/command_catalog.py` with 340 entries over 60 groups, no UI-exposed subset exists as a declared thing, and the UI server never imports the catalog. Measured by the reviewer at R3: the three commands the feature file names map onto only TWO `command_id` values — `job.stop` and `decision.resolve` — because plan approval has no id of its own and reaches the CLI as a `fp:`-prefixed decision id routed inside `decision.resolve`.
+
+CHOSEN: a `UI_EXPOSED_COMMANDS` frozenset of `command_id` values declared in `apps/cli/command_catalog.py` beside `CATALOG`, holding `job.stop` and `decision.resolve`. The API's `command` field IS a catalog `command_id`; plan approval reaches the channel as `decision.resolve` carrying a `decision_id` argument with the `fp:` prefix, exactly as the CLI spells it. The endpoint imports that set, which is the single source the feature file's How-it-fits section requires.
+
+ALTERNATIVES: (a) invent a third API command name for plan approval — rejected, it would be a second spelling for one concept and the prefix routing would still have to exist underneath. (b) declare the subset in the server — rejected, it separates the subset from the catalog it constrains.
+
+REVERSE by deleting the frozenset and inlining the two ids at the endpoint.
+
+## DECISION F009 D5 — the effect table, and the plan-approval extraction lands as its own commit (2026-08-21)
+
+Measured at R2: `safe_points.request_stop` is an importable package function with no CLI coupling; `escalation.answer_task_decision` is likewise importable and does not persist, its CLI caller invoking `save_job` afterwards; the plan approval is inline CLI code that mutates the flight plan, calls `save_job`, writes an assumptions log and prints; and `decision_queue.py` is a read-only aggregation with no write target at all.
+
+CHOSEN: stop maps to `request_stop`. A decision answer maps to `answer_task_decision` followed by `save_job`. Plan approval maps to a NEW package-level function extracted from `apps/cli/commands/decision.py`, keeping the CLI as its first caller so the extraction is provably behaviour-preserving; the printing stays in the CLI and does not move into the package. That extraction is a refactor, so per AGENTS.md it is ITS OWN COMMIT and lands before any endpoint code calls it.
+
+WHAT "QUEUE-ONLY SIDE EFFECTS" MEANS HERE, since the feature file's phrase does not resolve against the source: the handler may import exactly the three effect functions plus the audit writer, and nothing that opens a file, spawns a process or writes storage directly. The import guard asserts that set, and the per-command tests assert that the effect function was called and that no other file under the job's tree changed.
+
+ALTERNATIVES: (a) duplicate the approval guard sequence in the handler — rejected, it is the coupling the P3 contract exists to prevent and it would drift from the CLI. (b) build a real queue for decision answers to enqueue into — rejected as this feature's work; nothing consumes such a queue today and inventing one would widen F009 into the machinery it is supposed to reuse.
+
+REVERSE by re-inlining the extracted function into the CLI command.
+
+## DECISION F009 D6 — the audit record: per-job, private, append-only, and its fields are fixed here (2026-08-21)
+
+Measured at R2: `commands_audit.jsonl` exists nowhere, while `docs/roadmap/features/T5_F035.md` and `docs/roadmap/features/T9_F167.md` already plan to READ it. Two later features therefore depend on this choice, which is why it is ruled now rather than at T002.
+
+CHOSEN: `commands_audit.jsonl` in the per-job control directory `job_control_dir(job_id)` — the private 0o700 directory `safe_points` already owns — written through `packages.common.secure_fs` with the 0o600 file mode that directory's other files use. One JSON object per line, append-only, never rewritten. Fields, in this order: `ts`, `token_fp`, `command`, `args_hash`, `nonce`, `outcome`.
+
+EVERY ATTEMPT IS AUDITED, not only accepted ones: the feature's Acceptance requires wrong or missing auth to be audited as rejected, so `outcome` carries the rejection reason and a rejected attempt writes a record before the response is sent.
+
+ALTERNATIVES: (a) the evidence export directory — rejected, it is packaged into review zips and an audit log carrying token fingerprints does not belong in a shareable artefact. (b) the run log — rejected, it is per RUN and keyed to a run id, while this record is per JOB and must survive across runs.
+
+REVERSE by changing the path helper; the field set is the half two other features depend on and should be changed only with them.
+
+## DECISION F009 D7 — the token fingerprint is a truncated digest, and rotation deliberately changes it (2026-08-21)
+
+The feature file asks for fingerprints "stable per token id, not raw tokens". Measured at R2: there is no token-id concept in this repository — `start_ui_server` mints a token per run with `secrets.token_urlsafe(24)` — so "token id" has no referent and is read here as the token VALUE.
+
+CHOSEN: `token_fp` is `"tf:" + sha256(token.encode()).hexdigest()[:16]`. It never carries the raw value, which the redaction denylist in `packages/orchestration/stream_evidence.py` forbids writing at all.
+
+ROTATION CHANGES THE FINGERPRINT, and that is the intended reading rather than a limitation: the audit answers which credential acted, not which human, and a rotated token is a different credential. A record that survived rotation would be claiming an identity this system does not model.
+
+ALTERNATIVES: (a) a random per-token id stored beside the token — rejected, it adds a persisted mapping for no gain. (b) the full digest — rejected, sixteen hex characters distinguish every token a job will ever see and keep the line readable.
+
+REVERSE by changing the helper; the field name does not change.
+
+## DECISION F009 D8 — the nonce store is one create-only file per nonce, and the window is the job (2026-08-21)
+
+Measured at R2: no nonce, replay-window or deduplication machinery exists; the run log is append-only and per run, so it cannot return a body; and the closest in-repo precedent is `request_stop`, which publishes create-only so a race converges on one record.
+
+CHOSEN: `commands_nonce/<nonce>.json` inside the same per-job control directory, one file per nonce, holding the response body that was returned. Publication is CREATE-ONLY through the same `secure_fs` path `request_stop` uses: the loser of a race reads the winner's file and returns the SAME body, which is exactly the "a seen nonce returns the ORIGINAL result, idempotent, not an error" contract the feature file states. The replay window is the JOB's lifetime — the directory dies with the job — rather than a duration.
+
+ALTERNATIVES: (a) a time-bounded window with a sweeper — rejected, it adds a background concern and a clock dependency to buy an expiry nobody has asked for. (b) a single map file — rejected, concurrent writers would have to lock it, where one file per nonce gets atomicity from the filesystem, which is the precedent that already works here.
+
+The nonce is a client-supplied string and becomes a PATH component, so it is validated against a strict character class and a length bound before it is used, the way `validate_job_id` guards the job segment of the same directory. A nonce that fails validation is a typed 4xx and is audited as rejected.
+
+REVERSE by replacing the directory with another store; the endpoint contract does not change.
+
+## DECISION F009 D9 — the rate limit is a typed config key, per token and job (2026-08-21)
+
+The feature file says "rate limit per token+job (config)" without naming a config source. Measured at R2: the only limiter is `packages/orchestration/rate_governor.py`, which is OUTBOUND and per provider and inherits nothing here, and the only inbound precedent is the hard-coded `SSE_MAX_STREAMS_PER_JOB`. Measured by the reviewer at R3: `packages/orchestration/config.py` is a typed system with `ConfigKeySpec`, env-over-TOML-over-default precedence and a `get_config()` accessor, so "config" resolves to it.
+
+CHOSEN: a `ConfigKeySpec` declaring the maximum accepted commands per token fingerprint and job per minute, with a built-in default, resolved through `get_config()`. The key is the pair `(token_fp, job_id)`. Exceeding it REFUSES with a typed 429 and audits the attempt as rejected — it does not wait, which is what the outbound governor does and would be wrong for an inbound request holding a connection.
+
+ALTERNATIVES: (a) a module constant like the SSE cap — rejected, the feature file says config and a typed key costs one spec entry. (b) reuse `ProviderRateGovernor` — rejected, it is keyed by provider, it waits rather than refuses, and its own docstring states it neither coordinates across processes nor orders acquirers fairly.
+
+REVERSE by deleting the key spec and reading a module constant.
