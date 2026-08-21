@@ -25,6 +25,7 @@ import os
 import re
 import secrets
 import sys
+import time
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -2807,6 +2808,29 @@ def iter_sse_frames(
         sleep(poll_seconds)
 
 
+def drain_sse_frames(frames: Any, write: Any, flush: Any, stop: Any) -> int:
+    """Write one stream's frames to a socket until the peer goes away.
+
+    A generator suspended in `yield` cannot observe a broken pipe, so the
+    writer is the only actor that can end the loop: on the first failed write
+    it calls `stop`, which is what `iter_sse_frames`' `should_continue` reads.
+    Without that call a departed peer leaks a thread polling the ledger for
+    ever. Returns the number of frames that actually reached the socket.
+    """
+    written = 0
+    for frame in frames:
+        try:
+            write(frame)
+            flush()
+        except (OSError, ValueError):
+            # OSError covers BrokenPipeError and ConnectionResetError; a wfile
+            # already closed by the server raises ValueError instead.
+            stop()
+            break
+        written += 1
+    return written
+
+
 def _get_frontend_dist() -> Path | None:
     """Return path to built React frontend dist/ if it exists."""
     dist = Path(__file__).resolve().parent.parent.parent / "apps" / "ui" / "dist"
@@ -3038,6 +3062,18 @@ class _RemedyHandler(BaseHTTPRequestHandler):
                 self._send_json(200, _build_events_since_json(job, cursor))
                 return
 
+        # /api/jobs/<job_id>/events/stream — the SSE transport of events-since
+        if (len(parts) == 6 and parts[1] == "api" and parts[2] == "jobs"
+                and parts[4] == "events" and parts[5] == "stream"):
+            job, err = _load_job(parts[3])
+            if err:
+                # 404 before one byte of stream: once the event-stream headers
+                # are out the status line is spent and cannot say "not found".
+                self._send_json(*err)
+                return
+            self._send_sse_stream(job, (qs.get("cursor") or ["0"])[0])
+            return
+
         # /api/layers
         if path == "/api/layers":
             self._send_json(200, _build_layers_json())
@@ -3080,6 +3116,35 @@ class _RemedyHandler(BaseHTTPRequestHandler):
             return
 
         self._send_json(*_safe_error(404, "not found"))
+
+    def _send_sse_stream(self, job: Any, cursor: str, *,
+                         now: Any = time.monotonic,
+                         sleep: Any = time.sleep) -> None:
+        """Stream one job's events to this connection until the peer leaves.
+
+        `now` and `sleep` are injected for the same reason `iter_sse_frames`
+        injects them: cadence is then a fact a test asserts rather than a
+        duration it waits out.
+        """
+        start = int(cursor) if cursor.isdigit() else 0
+        self.send_response(200)
+        self.send_header("Content-Type", "text/event-stream")
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("Connection", "close")
+        self.end_headers()
+        alive = [True]
+
+        def stop() -> None:
+            alive[0] = False
+
+        frames = iter_sse_frames(
+            lambda: _load_events(job),
+            start,
+            now=now,
+            sleep=sleep,
+            should_continue=lambda: alive[0],
+        )
+        drain_sse_frames(frames, self.wfile.write, self.wfile.flush, stop)
 
     def do_POST(self) -> None:  # noqa: N802
         self._send_json(*_safe_error(405, "method not allowed"))
