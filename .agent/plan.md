@@ -16,15 +16,15 @@ silently, teacher spend is reported as its own role in the F103 ledger, and the
 read-only invariant is proven behaviourally.
 
 ## Current Step
-R10: record the R9 verdict and finish T002 and T003 — `remedy teach narrate`
-over a real run log, its catalog entry declaring `action_class="read_only"`, and
-the behavioural proof that the command changes no byte under the data root.
+R11: record the R10 verdict and build the DETERMINISTIC half of T004 Stage 2 —
+the grounding-source labelling, the level dial and the small-context assembly,
+as a pure module that reaches no model and opens no file.
 
 ## Next Steps
-1. R11 BUILDS T004, Stage 2 Q&A: `remedy teach ask`, the small context, the
-   three grounding sources labelled per answer, the level dial, and spend
-   recorded under the role name `teacher`. It is the round that gives
-   `teacher.model` its first reader.
+1. R12 FINISHES T004: `remedy teach ask` on the CLI, the teacher model call
+   through the role's own config, the honest refusal when no model is
+   configured, and spend recorded under the role name `teacher` so
+   `query_cost(by="role")` separates it from mission spend.
 2. The INTEGRATION GATE round follows T004 — the full suite, per
    docs/agents/integration_gate.md — because T002 and T003 touch the CLI
    catalog, which the parser and the help renderer both read.
@@ -32,12 +32,11 @@ the behavioural proof that the command changes no byte under the data root.
    evidence job, fresh review zip, the STATUS line, and the pull request.
 
 ## Risks
-- STAGE 2 IS THE ROUND THAT CAN BREAK THE COST STORY. Stage 1 spends nothing
-  because it calls no model; T004 introduces the first teacher model call, and
-  its spend must land under the role name `teacher` in the F103 ledger or
-  DECISION F255 D3 is unmet.
-- THE READ-ONLY PROOF COVERS THE NARRATE PATH ONLY. `remedy teach ask` is a new
-  path and needs its own proof; a proof of one command is not a proof of a role.
-- THE CATALOG IS SHARED GROUND. `teach` is a new command group the parser and
-  the help renderer both build from, so a later round changing its shape re-runs
-  their suites, not only the teacher's own.
+- R12 IS WHERE THE COST STORY IS PROVEN OR LOST. Stage 1 and this round spend
+  nothing because neither calls a model; R12 makes the first teacher model call,
+  and its spend must land under the role name `teacher` or DECISION F255 D3 is
+  unmet.
+- THE LEDGER'S ONE ROW IS A TASK RUN. `token_ledger.record_call` is documented
+  as one row per finalized task run, keyed `<job_id>:<task_id>`, and a teacher
+  question is neither. R12 must settle that shape before it writes a row.
+- THE READ-ONLY PROOF COVERS NARRATE ONLY; `teach ask` needs its own.
