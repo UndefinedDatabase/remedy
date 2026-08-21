@@ -281,6 +281,10 @@ CATALOG: tuple[CommandEntry, ...] = (
         args=(
             ArgDef("question", "What you want explained"),
             ArgDef("--job-id", "Job whose run log grounds the answer", required=False, is_option=True),
+            # Grounding source (2), the workspace code. Read-only: the file is
+            # opened for reading and nothing is written back, so this option
+            # leaves the write_metadata class above untouched.
+            ArgDef("--file", "Source file to ground the answer in; read only, never written", required=False, is_option=True),
             ArgDef("--level", "Explanation depth: student, beginner or pro", required=False, is_option=True),
             _PROJECT_SCOPE_OPT,
             _JSON_OPT,
