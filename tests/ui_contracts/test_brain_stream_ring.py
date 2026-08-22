@@ -361,3 +361,38 @@ class TestTheTransportClockIsInjected:
             assert "Date.now()" not in code.replace("globals.Date.now()", ""), (
                 f"{path.name} reads a real clock; inject it instead"
             )
+
+
+class TestEveryFrameIsStampedOnArrival:
+    """The dot subtracts two numbers, so a frame must reach the client carrying
+    one. The stamp is taken in the HOST — the one place a real clock legitimately
+    lives — and travels on the transport event, so the driver stays a pure
+    reducer and the ring can read the instant without asking what time it is.
+    Pinning the SEAM rather than a value: a behavioural test cannot see which
+    clock the number came from."""
+
+    def test_the_transport_event_carries_the_arrival_stamp(self):
+        code = strip_ts_comments(DRIVER.read_text())
+        assert "receivedAtMs: number" in code, (
+            "the frame event must declare the stamp it carries"
+        )
+
+    def test_the_host_stamps_from_the_injected_clock(self):
+        code = strip_ts_comments(HOST.read_text())
+        assert "receivedAtMs: deps.now()" in code, (
+            "the stamp comes from the injected clock, never a real one"
+        )
+
+    def test_the_driver_does_not_stamp_anything_itself(self):
+        code = strip_ts_comments(DRIVER.read_text())
+        assert "now()" not in code, (
+            "the driver is a pure reducer; only the host reads a clock"
+        )
+
+    def test_only_one_module_dispatches_a_stamped_frame(self):
+        sites = 0
+        for path in (HOST, DRIVER, STATE, DEPS):
+            sites += strip_ts_comments(path.read_text()).count('kind: "frame", frame')
+        assert sites == 1, (
+            f"exactly one dispatch site may stamp a frame, found {sites}"
+        )
