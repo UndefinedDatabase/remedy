@@ -545,3 +545,52 @@ class TestTheFeedScrollRuleIsWiredToTheCard:
         assert "overflow: auto" in css, (
             "a box that cannot overflow makes every scroll rule unreachable"
         )
+
+
+class TestAFeedRowJumpsToItsNode:
+    """T003's click-jump, gated by source because there is no DOM here.
+
+    The rule itself is `nodeIdForFeedRow` and has its own vitest neighbour.
+    What no vitest run can see is whether the COMPONENT calls it, which is the
+    half that was missing when `feedScroll.ts` sat pure, tested and imported by
+    nothing for fourteen rounds."""
+
+    def test_the_card_resolves_a_row_through_the_rule(self):
+        code = strip_ts_comments(CARD.read_text())
+        assert "nodeIdForFeedRow(row, tasks)" in code, (
+            "the row must be resolved by the shared rule, not by a second "
+            "mapping the component invents (DECISION F021 D2)"
+        )
+
+    def test_only_a_resolvable_row_becomes_a_button(self):
+        code = strip_ts_comments(CARD.read_text())
+        assert "onClick={() => onSelectNode(nodeId)}" in code, (
+            "a clickable row emits focus for the node it resolved"
+        )
+        # The conditional is the honesty: a row that cannot jump must not
+        # render an affordance that says it can.
+        assert "return nodeId ? (" in code, (
+            "a row with no linkage stays the article it always was"
+        )
+
+    def test_the_panel_hands_the_card_what_the_rule_needs(self):
+        # Anchored to the ActivityFeedCard ELEMENT, never to the file: the
+        # TaskChecklistCard line beside it has carried both of these props
+        # since long before F021, so a file-wide search would pass at a base
+        # where the feed gets neither.
+        panel = strip_ts_comments(PANEL.read_text())
+        element = [l for l in panel.splitlines() if "<ActivityFeedCard" in l]
+        assert len(element) == 1, "expected exactly one ActivityFeedCard element"
+        assert "tasks={dashboard.tasks}" in element[0], (
+            "the resolution reads the task list the dashboard already carries"
+        )
+        assert "onSelectNode={onSelectNode}" in element[0], (
+            "the feed focuses the same graph store the checklist already does"
+        )
+
+    def test_the_jump_row_has_its_button_reset(self):
+        css = (UI_SRC / "components" / "panels" / "RightLivePanel.module.css").read_text()
+        assert ".activityItemJump" in css, (
+            "a button carrying a row needs its chrome removed or the feed "
+            "renders two visually different kinds of row"
+        )
