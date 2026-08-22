@@ -16,30 +16,33 @@ cross-site attempts fail closed and are audited as rejected, and a route-walking
 test plus an import guard prove no other mutating route exists.
 
 ## Current Step
-R17 records the R16 verdict, rules DECISION F009 D18 — which splits D17's round
-two and fixes the accepted response, the two write-failure rules and the
-dispatch-failure token — and lands `rejected_effect` in the audit vocabulary
-with its pin. The door is not touched and keeps answering 501.
+R18 records the R17 verdict and rules DECISION F009 D19, which cuts the
+`job.stop` dispatch into two rounds on a measurement of the pin migration. It
+writes no production code. The `rejected_effect` token and DECISION F009 D18's
+four rulings landed at R17; the door still answers 501.
 
 ## Next Steps
-1. Round two of DECISION F009 D18: `packages/orchestration/ui_server.py`
+1. Round one of DECISION F009 D19: `packages/orchestration/ui_server.py`
    dispatches `job.stop` to `safe_points.request_stop` under D18's ruled order —
-   effect, then the `accepted` audit line, then the nonce publication — and pays
-   R-0636 by moving the replay token to `replayed`. The seam pins in
-   `tests/ui_server/test_command_channel.py` migrate in that same round, and
-   `test_every_exposed_command_reaches_the_seam` splits because after it one
-   exposed id dispatches and the other still answers 501.
-2. Then `decision.resolve` dispatches and the seam is gone; then the
+   effect, then the `accepted` audit line, then the nonce publication — pays
+   R-0636, and moves every seam pin that must move for the suite to stay green.
+   Three of those migrations are uniform byte-string transformations the
+   reviewer counted at `6101ca20`: `[0] == 501` 9 times, all `job.stop` through
+   `_post_command`; `assert status == 501` 7 times, of which the
+   `decision.resolve` one keeps the seam; and `"not_implemented"` 5 times.
+2. Round two of D19: the effect assertions in a NEW file — the stop request the
+   dispatch published, the nonce record it wrote, and a retry audited
+   `replayed`.
+3. Then `decision.resolve` dispatches and the seam is gone; then the
    `command.accepted` SSE event; then the queue-only import guard, the
    per-command side-effect assertions and the route-walking 405 test; then the
    integration gate and closure.
 
 ## Risks
-- Three vocabulary tokens now exist with no caller. The door's own guard still
-  asserts it writes no `accepted`, which keeps the gap visible rather than
-  papered over, and it is unedited by this round.
-- The seam-pin migration is the largest single piece left: 21 lines of
-  `tests/ui_server/test_command_channel.py` mention the literal 501, measured at
-  `e7c621fc`, and most reach the door through a helper defaulting to `job.stop`.
+- Three vocabulary tokens exist with no caller. The door's own guard still
+  asserts it writes no `accepted`, unedited, which keeps the gap visible.
+- `test_an_audit_writer_that_raises_changes_neither_status_nor_body` submits the
+  SAME default nonce in both of its loops, so once the door publishes, its second
+  seam call becomes a REPLAY. D19's first round handles that site by itself.
 - `npm run lint` in `apps/ui` is RED at base and is NOT a gate (R-0364), which
   is R-0622 and routes to a paydown branch.
