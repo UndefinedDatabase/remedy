@@ -1,24 +1,31 @@
-── STEP CORRECT-THE-GROUND — F021 ──
-Goal:        Record the R4 verdict, add the new evidence to the OPEN finding
-             R-0419, and rule DECISION F021 D3, which corrects the seed
-             DECISION F021 D1 chose for T001's coverage constant. The reviewer
-             re-measured the emitter sweep D1 rests on and it reads 82 call
-             sites and 60 distinct literals over three roots where the
-             `packages/`-only sweep read 35 and 23, so T001 is built at R6 on
-             ground this round makes correct. This round BUILDS NOTHING and
-             touches no file under `apps/`, `packages/` or `tests/`.
+── STEP T001 — F021 ──
+Goal:        Build T001 on the ground R5 corrected: the humanize catalog and its
+             honest generic line, the vitest behaviour tests, and the contract
+             test DECISION F021 D3 rules, which re-derives the stream's kind
+             vocabulary from the Python emitters and asserts it EQUALS the
+             catalog's key set so drift goes red from either side. This round
+             also records the R5 verdict and promotes the rule R-0449 and
+             R-0494 have now cost three rounds into the §3 checklist, because a
+             rule that lives only in a finding body binds nothing.
 
-Fortschritt: ~12 % (T001 offen · T002 offen · T003 offen; R1 beansprucht, R2
-             vermessen, R3 und R5 entschieden, R4 verdiktiert — R5 korrigiert
-             den Boden, gebaut wird ab R6) — Schätzung
+Fortschritt: ~30 % (T001 gebaut · T002 offen · T003 offen; R1-R5 Anspruch,
+             Vermessung, Entscheidung, Verdikt und Korrektur — R6 ist die erste
+             Runde, die Produktionscode liefert) — Schätzung
 
-Bundle:      C0a save this block · C0b mirror it · C1 plan · C2 the R4 verdict
-             with the R-0419 evidence · C3 DECISION F021 D3 · C4 the handback.
+Bundle:      C0a save this block · C0b mirror it · C1 plan · C2 the R5 verdict
+             with the R-0449 and R-0494 evidence · C3 the §3 checklist item ·
+             C4 the humanize module · C5 the catalog data · C6 the vitest
+             behaviour tests · C7 the contract test · C8 the handback.
 
 Change:      Exactly these paths, and nothing else:
-             `.agent/authored/f021-r5.md` (NEW, C0a) · `.agent/last_block.md`
+             `.agent/authored/f021-r6.md` (NEW, C0a) · `.agent/last_block.md`
              (C0b) · `.agent/plan.md` (C1) · `.agent/live_review.md` (C2) ·
-             `.agent/decisions.md` (C3) · `.agent/handoff.md` (C4).
+             `docs/agents/planner_reviewer_prompt.md` (C3) ·
+             `apps/ui/src/api/humanize.ts` (NEW, C4) ·
+             `apps/ui/src/api/humanizeCatalog.ts` (NEW, C5) ·
+             `apps/ui/src/api/humanize.test.ts` (NEW, C6) ·
+             `tests/ui_contracts/test_humanize_catalog.py` (NEW, C7) ·
+             `.agent/handoff.md` (C8).
              Resolve any count in this block against that list rather than
              against a numeral written elsewhere.
 
@@ -26,157 +33,209 @@ Constraints:
  1. Apply every slice BYTE FOR BYTE. Never retype, rewrap, reflow, reindent or
     whitespace-adjust one. If a slice looks wrong, STOP and say so in the
     handback rather than fixing it.
- 2. Commit order is C0a, C0b, C1, C2, C3, C4 and is not negotiable. C1 precedes
-    the ledger commit because the plan must be current before it (§3 checklist
-    item 23). C3 lands DECIDE3 at the commit DIRECTLY AFTER the one that lands
-    RECORD4, which is the ordering RECORD4's closing sentence names and the
-    only thing that makes that sentence true. C4 carries only the handback.
+ 2. Commit order is C0a, C0b, C1, C2, C3, C4, C5, C6, C7, C8 and is not
+    negotiable. C1 precedes the ledger commit because the plan must be current
+    before it (§3 checklist item 23). C3 precedes the code because RECORD5 says
+    the checklist edit is ordered by this block and C2 must not be the last word
+    on it. C8 carries only the handback.
+    ROUND BASE is `82fcc7c0272d366e36ebda5020dbc1697d98e32b` and is the commit
+    every "round base" in this block names.
  3. THIS ROUND MINTS NO FINDING ID AND RESOLVES NOTHING. It writes no `- R-`
     entry, no `Done:` line and no `Landed:` line. R-0648 stays the maximum
-    registered id and R-0649 is the next free one. The one defect this round
-    records is the REVIEWER'S OWN, in DECISION F021 D1's CONTEXT, and it is
-    recorded as evidence against the OPEN finding R-0419 inside RECORD4 rather
-    than under a new id, because §3 checklist item 30 requires the open set to
-    be searched for the DEFECT first and that search returned R-0419 holding
-    exactly it — its standing rule is that a repository-wide absence claim
-    needs a repository-wide search.
- 4. ONE WHOLE-FILE REPLACEMENT AND TWO APPENDS. PLANF021R5 replaces
-    `.agent/plan.md` at C1 in full. RECORD4 appends to `.agent/live_review.md`
-    at C2 and DECIDE3 appends to `.agent/decisions.md` at C3, both based on the
-    ROUND BASE, which is `91d14c88a0b2a083fa83bde57df1d6d248e2de52` and is the
-    commit every "round base" in this block names. There is NO FROM/TO pair
-    this round, so no containment reading
-    is owed and none is stated. Measured by the reviewer on the slices' own
-    bytes before emission: RECORD4 is ONE blank-line unit and DECIDE3 is FIVE,
-    which is the property G6's reader (b) depends on for each of them.
- 5. NO PRODUCTION FILE IS EDITED. You may READ anything. Do not create, modify
-    or delete a file under `apps/`, `packages/` or `tests/`, and run no
-    formatter or linter that rewrites a file in place.
- 6. Do NOT create a pull request and do NOT merge one. The branch stays open and
+    registered id and R-0649 is the next free one. The two defects this round
+    records are the REVIEWER'S OWN and are added as evidence to the OPEN
+    findings R-0449 and R-0494 rather than under new ids, because §3 checklist
+    item 30 requires the open set to be searched for the DEFECT first and that
+    search returned both holding exactly these shapes.
+ 4. SLICE SHAPES. PLANF021R6 replaces `.agent/plan.md` at C1 in full and
+    HUMANIZE creates `apps/ui/src/api/humanize.ts` at C4 in full; both are
+    proved with `cmp`. RECORD5 appends to `.agent/live_review.md` at C2, based
+    on the ROUND BASE. CHECKFROM and CHECKTO are the ONE FROM/TO pair of this
+    round, applied to `docs/agents/planner_reviewer_prompt.md` at C3. The
+    reviewer ran the containment test on that pair before emission and its
+    output is `TO contains FROM: true`, so the pair is APPEND-shaped and the
+    §4.9 append obligation applies to it — FROM exactly 1x, and each TO-ONLY
+    line exactly 1x among the lines C3's diff ADDS. Do NOT order or report a
+    "FROM 0x" count for it; that count is unattainable for an append by
+    construction. Measured by the reviewer on the slices' own bytes before
+    emission: RECORD5 is ONE blank-line unit.
+ 5. THE CATALOG IS YOURS TO WRITE; ITS KEY SET IS NOT. `humanizeCatalog.ts` at
+    C5 exports exactly one symbol, `STREAM_EVENT_CATALOG`, typed
+    `Readonly<Record<string, string>>`. Its keys are EXACTLY the static stream
+    vocabulary G5 derives, ASCII-sorted, one entry per line in the form
+    `  "<key>": "<line>",` — two-space indent, double-quoted key, colon, one
+    space, double-quoted value, trailing comma — because the contract test
+    extracts keys by scanning those lines and a different shape silently
+    shrinks the set it reads. Each value is a complete English sentence ending
+    in a full stop, non-empty, and the values are DISTINCT from one another. No
+    value may equal `<key> event`: that is the generic form the module produces
+    for kinds nobody can enumerate, and using it as a template is a stub
+    wearing a catalog entry's clothes.
+ 6. WRITE THE TESTS YOURSELF, to the conventions the repository already uses.
+    `humanize.test.ts` at C6 follows the vitest style of
+    `apps/ui/src/components/graph/buildForceBrainModel.test.ts` — no fakes, one
+    invariant per `it`. `tests/ui_contracts/test_humanize_catalog.py` at C7
+    follows `tests/ui_contracts/test_brain_stream_hook.py`: it reads SOURCE
+    TEXT, it strips comments before asserting on it, and it carries a test that
+    proves its own stripper really removes a comment the file really carries
+    (finding R-0584). It must ALSO prove its own key extractor: a test that the
+    extractor finds a key the catalog really carries, and a test that a key
+    written only inside a comment is NOT extracted.
+ 7. THE CONTRACT TEST ASSERTS SET EQUALITY, NEVER A LITERAL COUNT. It derives
+    the kind set from the Python sources by the G5 predicate and asserts that
+    set EQUALS the catalog's extracted key set, reporting the symmetric
+    difference by name on failure, and it separately asserts both sets are
+    non-empty. It must NOT hard-code 83 or any other size: a literal there
+    becomes a second source of truth that drifts, and the equality is what the
+    drift protection actually needs.
+ 8. NO OTHER PRODUCTION FILE IS EDITED. You may READ anything. Beyond the four
+    NEW files this block names, do not create, modify or delete anything under
+    `apps/`, `packages/` or `tests/`, and run no formatter or linter that
+    rewrites a file in place.
+ 9. Do NOT create a pull request and do NOT merge one. The branch stays open and
     unmerged: F021 is mid-feature. Push the branch.
- 7. DECIDE3 NAMES `apps/ui/src/api/humanize.ts` AND A TEST UNDER
-    `tests/ui_contracts/` AS FUTURE WORK. Neither is created this round. The
-    directory `tests/ui_contracts/` exists at the round base; the module does
-    not, and DECIDE3 says so in the future tense on purpose.
- 8. Block size, measured on these final bytes AFTER the last edit: TOTAL 238
+10. Block size, measured on these final bytes AFTER the last edit: TOTAL 357
     lines against DECISION F085 D6's 490, and PROSE — TOTAL minus the slice
-    CONTENT lines — 186 against DECISION F085 D5's 400. Marker lines count as
+    CONTENT lines — 251 against DECISION F085 D5's 400. Marker lines count as
     prose.
 
 Done when:
  G1  `.agent/STOP` is ABSENT immediately before C0a and again immediately before
-     C4; the branch is `feature/f021-live-activity-feed`; and
-     `git status --porcelain` prints 0 lines after each of C0a, C0b, C1, C2 and
-     C3. C4's own reading goes in the round report (§3 checklist item 14).
- G2  TRANSPORT: sha256 over `.agent/authored/f021-r5.md` at C0a, over
+     C8; the branch is `feature/f021-live-activity-feed`; and
+     `git status --porcelain` prints 0 lines after each of C0a through C7. C8's
+     own reading is ordered NOWHERE — the reviewer measures it at the next gate
+     and records it there, which is the counter-measure the §3 item C3 adds
+     states and which R-0494 exists because two rounds did not apply.
+ G2  TRANSPORT: sha256 over `.agent/authored/f021-r6.md` at C0a, over
      `.agent/last_block.md` at C0b, over the bytes you received, and over the
-     reviewer's own emitted copy still on disk at `.remedy-wt/f021-r5.md` are
+     reviewer's own emitted copy still on disk at `.remedy-wt/f021-r6.md` are
      all equal. Write C0b FROM the committed C0a blob. Report the digest with
      the byte and line counts.
  G3  SLICES: extract the slices from the COMMITTED C0a blob by their
      `<<<SLICE `/`<<<END ` marker LINES and report how many slices and how many
-     CONTENT lines that extractor printed. Re-measure constraint 8's two
+     CONTENT lines that extractor printed. Re-measure constraint 10's two
      numerals from that same blob and report both against their caps.
- G4  `.agent/plan.md` at C1 is byte-equal to PLANF021R5, proved with `cmp` at
-     exit 0 against the slice extracted from the committed C0a blob, with a
-     NEGATIVE CONTROL against DECIDE3 that must exit 1. Report both exit codes,
-     plus `^## Goal$` 1, `^## Next Steps$` 1, and `wc -l` at most 50.
- G5  THE EMITTER RE-DERIVATION, the reading DECIDE3 rests on, taken by YOU and
-     not read back from this block. Walk `packages/`, `apps/` and `scripts/`
-     with `ast.parse` over every `*.py` that parses, and count a call site when
-     the callee is an attribute named `log` or `append_run_event`, or a bare
-     name `append_run_event`, AND an event argument is present — the first
-     positional argument for `log`, or the `event=` keyword for either. Report:
-     total call sites, DISTINCT string-constant names, and how many event
-     arguments are NOT string constants. Then report how many of those distinct
-     names lie in the union of `NARRATED_EVENTS`
-     (`packages/orchestration/teacher_narration.py`), `EVENT_METADATA_SCHEMAS`
-     (`packages/orchestration/event_schemas.py`), `TRACE_EVENT_KINDS` and the
-     VALUES of `_STREAM_EVENT_KINDS` (both
-     `packages/orchestration/agent_run_trace.py`). The expected readings are 82,
-     60, 11 and 15. RED CONTROL, in the same run: restrict the roots to
-     `packages/` alone and report the same four numbers again; they must read
-     35, 23, 10 and 1, which is the `.agent/f021_inventory.md` reading at
-     `4a7b5cbf` and is what makes the sweep provably scope-sensitive rather
-     than merely differently written. Report the static stream vocabulary too —
-     the distinct literals over the three roots, plus `TRACE_EVENT_KINDS`, plus
-     the values of `_STREAM_EVENT_KINDS`, plus the value of
-     `COMMAND_ACCEPTED_EVENT` in `packages/orchestration/ui_server.py` — as a
-     single size, expected 83, together with the size of the intersection of
-     the literals with those trace sets, expected 0. Every one of these numbers
-     appears in DECIDE3; a disagreement is reported RED and the round stops
-     rather than being reconciled.
- G6  THE TWO APPENDS, each under TWO INDEPENDENT READERS. Obtain every base blob
-     with `git show <round base>:<path>` into memory or into scratch under
-     `.remedy-wt/`; never overwrite a tracked file to read an older revision,
-     which docs/agents/self_drive_protocol.md guardrail G5 forbids outright.
-     For C2 over
-     `.agent/live_review.md` and again for C3 over `.agent/decisions.md`:
-     reader (a) — the round-base blob is a byte-exact PREFIX of the committed
-     file and the remainder is EXACTLY one newline plus the slice; report the
-     remainder's sha256, byte count and line count, and the file's byte and
-     line counts before and after. Reader (b), the SET-WISE form — split BOTH
-     blobs on the blank line into units and confirm the new unit LIST equals
-     the base unit list followed by the slice's own units, compared ELEMENTWISE
-     over the whole list and not at the tail; report N at both points and the
-     slice's own unit count. NEGATIVE CONTROL, run once per file: replace one
-     printable byte of the FIRST paragraph of the committed file at equal
-     length and confirm BOTH readers REJECT that mutant while BOTH ACCEPT the
-     true file; name the file, the byte offset and the substitution. Run every
-     destructive step inside a disposable worktree under `.remedy-wt/`, never
-     in the primary checkout, and remove and prune it before the handback.
- G7  THE LEDGER SETS, line-anchored at line start, at the round base then at C2:
+ G4  `.agent/plan.md` at C1 is byte-equal to PLANF021R6 and
+     `apps/ui/src/api/humanize.ts` at C4 is byte-equal to HUMANIZE, each proved
+     with `cmp` at exit 0 against the slice extracted from the committed C0a
+     blob, each with a NEGATIVE CONTROL against the other slice that must exit
+     1. Report all four exit codes, plus `^## Goal$` 1, `^## Next Steps$` 1 and
+     `wc -l` at most 50 for the plan.
+ G5  THE EMITTER DERIVATION, taken by YOU. Walk `packages/`, `apps/` and
+     `scripts/` with `ast.parse` over every `*.py` that parses, and count a call
+     site when the callee is an attribute named `log` or `append_run_event`, or
+     a bare name `append_run_event`, AND an event argument is present — the
+     first positional argument for `log`, or the `event=` keyword for either.
+     The STATIC STREAM VOCABULARY is: the distinct string-constant names from
+     that walk, plus `TRACE_EVENT_KINDS`, plus the VALUES of
+     `_STREAM_EVENT_KINDS` (both in
+     `packages/orchestration/agent_run_trace.py`), plus the value of the
+     module constant `COMMAND_ACCEPTED_EVENT` in
+     `packages/orchestration/ui_server.py`. Report its size, expected 83, and
+     the four G5 readings DECISION F021 D3 states — 82 call sites, 60 distinct
+     literals, 11 non-constant event arguments, 15 names inside the union of
+     the four defined sets. A disagreement is reported RED and the round stops.
+ G6  THE APPEND at C2 over `.agent/live_review.md`, under TWO INDEPENDENT
+     READERS. Obtain the base blob with `git show <round base>:<path>` into
+     memory or into scratch under `.remedy-wt/`; never overwrite a tracked file
+     to read an older revision, which docs/agents/self_drive_protocol.md
+     guardrail G5 forbids outright. Reader (a): the round-base blob is a
+     byte-exact PREFIX of the committed file and the remainder is EXACTLY one
+     newline plus RECORD5 — report the remainder's sha256, byte count and line
+     count, and the file's byte and line counts before and after. Reader (b),
+     the SET-WISE form: split BOTH blobs on the blank line into units and
+     confirm the new unit LIST equals the base unit list followed by RECORD5's
+     own units, compared ELEMENTWISE over the whole list and not at the tail;
+     report N at both points. NEGATIVE CONTROL: replace one printable byte of
+     the FIRST paragraph of the committed file at equal length and confirm BOTH
+     readers REJECT that mutant while BOTH ACCEPT the true file; name the byte
+     offset and the substitution. Run every destructive step inside a
+     disposable worktree under `.remedy-wt/`, and remove and prune it before
+     the handback.
+ G7  THE PAIR at C3 over `docs/agents/planner_reviewer_prompt.md`, under the
+     §4.9 APPEND obligation constraint 4 fixes: report CHECKFROM's occurrence
+     count in the file at the ROUND BASE, which must be 1, and its count at C3,
+     which must also be 1 because the TO contains it; then report, over the
+     lines C3's diff ADDS, that each TO-ONLY line occurs exactly 1x. Report the
+     file's line count before and after and `git show --numstat` for C3. Also
+     report `^  31\. \*\*` in that file, expected 0 at the base and 1 at C3, and
+     `^  32\. \*\*`, expected 0 at both.
+ G8  THE LEDGER SETS, line-anchored at line start, at the round base then at C2:
      `- R-` entries and how many are DISTINCT; `Done: R-` lines; `Landed: `
-     lines; `Gate: R` keys and how many are DISTINCT; `Gate: R5` occurrences;
+     lines; `Gate: R` keys and how many are DISTINCT; `Gate: R6` occurrences;
      and the MAXIMUM registered id. Report each at BOTH points. Nothing is
-     minted, so the maximum reads R-0648 at both and `Gate: R5` reads 0 then 1.
-     Report `- R-0419 —` at both points as well; it must read 1 at both, since
-     this round adds evidence to that finding and does not re-register it.
- G8  THE DECISION HEADINGS, line-anchored, at the round base then at C3:
-     `^## DECISION ` in `.agent/decisions.md`, expected 112 then 113, and
-     `^## DECISION F021 D3 ` expected 0 then 1, so the append lands once and
-     not twice. Report both at both points.
- G9  THE CONTRACT SUITES, run in the PRIMARY checkout and SERIALLY after C4:
+     minted, so the maximum reads R-0648 at both and `Gate: R6` reads 0 then 1.
+     Report `- R-0449 —` and `- R-0494 —` at both points as well; each must
+     read 1 at both, since this round adds evidence and re-registers nothing.
+ G9  THE CATALOG, measured at C5 from the committed blob: the number of exported
+     symbols, expected 1; the number of extracted keys, which must EQUAL the G5
+     vocabulary size; that the key list is ASCII-sorted and holds no duplicate;
+     that the values are DISTINCT and their count equals the key count; that
+     every value is non-empty and ends in a full stop; and that 0 values equal
+     `<key> event` for their own key. Report every one of those numbers.
+G10  TYPECHECK, in the PRIMARY checkout: `npx tsc --noEmit` with cwd `apps/ui`.
+     Report the exit code at the ROUND BASE and at C7. The reviewer measured
+     exit 0 at the round base, so a non-zero reading at C7 is this round's own
+     regression and is reported RED rather than explained.
+G11  VITEST, in the PRIMARY checkout, run at C7: `npx vitest run` with cwd
+     `apps/ui`. Report the exit code, the test-file count and the test count at
+     the ROUND BASE and at C7. The reviewer measured exit 0, 10 files and 152
+     tests at the round base; the file count must therefore read 11 at C7 and
+     the test count must exceed 152. Report the wall time too, because
+     `tests/orchestration/test_test_runner.py` runs this same command under a
+     hard 30-second timeout.
+G12  THE NEW CONTRACT TEST, run at C7 in the PRIMARY checkout:
+     `python3 -m pytest tests/ui_contracts/ -q -rf`. Report the exit code and
+     the passed-plus-skipped total; the reviewer measured exit 0 with 417
+     passed and 4 skipped, so the total must exceed 421 by the number of tests
+     C7 adds, which you also report. RED CONTROL, inside a disposable worktree
+     at C7 and never in the primary checkout: delete ONE entry line from
+     `apps/ui/src/api/humanizeCatalog.ts` and re-run
+     `python3 -m pytest tests/ui_contracts/test_humanize_catalog.py -q -rf`.
+     It must FAIL, and the failure output must NAME the key you deleted. Report
+     the key, the exit code and the naming line. A green run here means the
+     equality assertion is vacuous and the round stops RED.
+G13  THE CONTRACT SUITES, run at C7 in the PRIMARY checkout and SERIALLY:
      `python3 -m pytest tests/ui_server/ tests/orchestration/test_test_runner.py
      tests/regression/test_resource_safety.py -q -rf`. Report the exit code and
-     the passed-plus-skipped total, counting BY PASSED PLUS SKIPPED. No docs
-     gate is ordered because the `Change:` list holds no `docs/roadmap/**`
+     the passed-plus-skipped total, counting BY PASSED PLUS SKIPPED. The
+     reviewer measured exit 0 and 511 at the round base. No docs gate is owed:
+     the `Change:` list holds a `docs/agents/` path and no `docs/roadmap/**`
      path — check that against the list before you accept this sentence.
- G10 CANARY, run serially and after G9 has finished:
+G14  CANARY, run at C7, serially, and after G13 has finished:
      `python3 -m pytest tests/cli/test_golden_path.py -q -rf`. Report the exit
      code and the total.
- G11 NO PRODUCTION FILE CHANGED: report that the range from the round base to C4
-     holds 0 paths beginning `apps/`, `packages/` or `tests/`, and that
-     `git ls-files .remedy-wt` reads 0.
- G12 RANGE, executed after C4: the range from the round base to C4 lists exactly
+     Gates G10 through G14 run at C7 and NOT after C8, so every reading the
+     handback states already exists when C8 writes it. That ordering is the
+     whole point of the §3 item C3 adds; do not defer any of them past C8.
+G15  RANGE, executed at C8: the range from the round base to C8 lists exactly
      the paths of this block's `Change:` list, with the set difference EMPTY in
      both directions. Report both differences. Then: every commit single-parent;
      `git show --numstat` and `git diff --numstat` agreeing cell by cell with
      the handback's own `## Commits` table (§3 checklist item 28); every
-     insertion count for C0a through C3 under the 500 cap, with C4's own count
-     reported in the round report rather than here (§3 checklist item 14);
-     leading `<<<SLICE ` and `<<<END ` reading 0 LINES in all three files a
-     slice lands in; and this round's reflog rows classified with `amend`,
-     `rebase` and `cherry` each 0 in the operation field.
- G13 NO PULL REQUEST: report `gh pr list --state open --json number,headRefName`
+     insertion count for C0a through C7 under the 500 cap; leading `<<<SLICE `
+     and `<<<END ` reading 0 LINES in every file a slice lands in; and this
+     round's reflog rows classified with `amend`, `rebase` and `cherry` each 0
+     in the operation field. `git ls-files .remedy-wt` reads 0.
+G16  NO PULL REQUEST: report `gh pr list --state open --json number,headRefName`
      and state that neither `gh pr create` nor `gh pr merge` was run. The
      expected reading is an EMPTY list.
- G14 THE HANDBACK carries every mandated section of
-     docs/agents/handback_template.md, an item-status row for each of C0a, C0b,
-     C1, C2, C3 and C4, the round base SHA, ONE LINE PER GATE with the
-     transcripts kept in the round report rather than in the file (R-0582), the
-     block's `Fortschritt:` line verbatim across all three of its lines, and a
-     `## Next` section naming R6 and T001 as the next work. Its own `wc -l` is
-     reported against the 60-line cap, with a DECISION D15 line declaring any
-     overage and naming the mandated content that caused it. Every commit
-     heading in the `## Commits` table carries that commit's FULL subject, and
-     where a commit cannot name its own SHA the role and the reason are written
-     INSIDE the heading rather than left to a channel that ends with this
-     session — that omission is finding R-0494.
+G17  THE HANDBACK carries every mandated section of
+     docs/agents/handback_template.md, an item-status row for each of C0a
+     through C8, the round base SHA, ONE LINE PER GATE with the transcripts kept
+     in the round report rather than in the file (R-0582), the block's
+     `Fortschritt:` line verbatim across all three of its lines, and a `## Next`
+     section naming R7 and T002. Its own `wc -l` is reported against the
+     100-line allowance a nine-commit bundle carries, with a DECISION D15 line
+     declaring any overage and naming the mandated content that caused it.
+     Every commit heading in the `## Commits` table carries that commit's FULL
+     subject, and where a commit cannot name its own SHA the role and the reason
+     are written INSIDE the heading rather than left to a channel that ends with
+     this session — that omission is finding R-0494.
 
 Handback:   completion report + rewrite `.agent/handoff.md`.
 
-<<<SLICE PLANF021R5
+<<<SLICE PLANF021R6
 # Plan — F021 Live activity feed + now-card
 
 Branch: feature/f021-live-activity-feed, cut from `main` at `4548995d`, the merge
@@ -195,44 +254,104 @@ jump-to-node focuses the right node, and the steering input renders DISABLED wit
 its honest tooltip until F030 lands.
 
 ## Current Step
-R5 records the R4 verdict, adds new evidence to the open finding R-0419, and
-rules DECISION F021 D3, which corrects the seed DECISION F021 D1 chose for
-T001's coverage constant. It edits no production file: T001 is built at R6, on
-ground this round makes correct.
+R6 builds T001: the humanize module with its honest generic line, the catalog
+data whose key set the contract test pins to the Python emitters, the vitest
+behaviour tests, and that contract test. It also records the R5 verdict and
+promotes the rule R-0449 and R-0494 carry into the §3 pre-emission checklist.
 
 ## Next Steps
-1. R6 builds T001 headless-first: `apps/ui/src/api/humanize.ts` with the catalog
-   and its honest generic line, the vitest generic-path test, and the
-   `tests/ui_contracts/` derivation test DECISION F021 D3 rules.
-2. R7 rules the frontend test environment, which today collects no component
-   test, and the single-subscription fan-out, before T002 needs them.
-3. R8 onward T002 then T003, in the feature file's Task slicing order.
+1. R7 rules the frontend test environment, which today collects no component
+   test at all, and the single-subscription fan-out — both are infrastructure
+   DECISIONS T002 needs before it can be written.
+2. R8 builds T002: the feed, its rows and the NowCard over fixture streams, with
+   the scroll discipline that never yanks a reader who has scrolled up.
+3. R9 onward T003: graph-focus wiring, the disabled steering input, and the
+   additive envelope field DECISION F021 D2 permits.
 
 ## Risks
-- The vocabulary DECISION F021 D3 rules is 83 kinds wide. If a catalog entry per
-  kind pushes T001 past the 500-insertion commit cap, R6 splits it by source —
-  the run-log half and the JobPlan-trace half — in two commits of one round.
 - T002 cannot be tested until the frontend test environment changes: measured at
-  `4a7b5cbf`, `apps/ui/vitest.config.ts` sets `environment: "node"` and
-  `include: ["src/**/*.test.ts"]`, so no `.test.tsx` is collected at all.
+  `82fcc7c0`, `apps/ui/vitest.config.ts` sets `environment: "node"` and
+  `include: ["src/**/*.test.ts"]`, so no `.test.tsx` is collected at all. R7
+  rules it.
+- The catalog cannot cover the kinds whose names are computed at runtime; G5
+  measures eleven such writers. The generic line is the whole of their coverage,
+  which is why T001 ships its test rather than treating it as a nicety.
 - Jump-to-node needs the additive envelope field DECISION F021 D2 permits. That
   is the one production seam this feature opens, and it stays one field.
 - The open set holds no code defect of F021; R-0403, R-0607, R-0608, R-0609,
   R-0611 and R-0613 stay routed to a paydown branch.
-<<<END PLANF021R5
+<<<END PLANF021R6
 
-<<<SLICE RECORD4
-Gate: R5 — the R4 entry. R4 PASSED ON EVERY GATE, RE-MEASURED INDEPENDENTLY RATHER THAN READ BACK. The reviewer re-derived all twelve gates from the round base `1674333f` and every number the handback states reproduces. TRANSPORT: `.agent/authored/f021-r4.md` at `1141b7ee` and `.agent/last_block.md` at `e77a3128` are byte-equal at sha256 72c0ae517777a33ccd9c0fcddedf3bb92f38fe4bbce36acfb7ada7fe28d8c013 over 16628 bytes and 192 lines. SLICES: the marker extractor over the committed C0a blob prints 2 slices over 43 CONTENT lines, with TOTAL 192 against DECISION F085 D6's 490 and PROSE 149 against D5's 400. PLAN: `.agent/plan.md` at `92aabc95` is byte-equal to PLANF021R4 at 42 lines under the 50 cap, with `^## Goal$` and `^## Next Steps$` each 1. THE APPEND: `.agent/live_review.md` at `5ba3e60a` is the base blob plus one newline plus RECORD3, remainder sha256 9b743544679208c680633ffcfad930549db19c867f7f49e95dc0a5e98f67dc05 over 4494 bytes and 2 lines, the file going 431116 bytes and 1074 lines to 435610 bytes and 1076 lines; reader (b) in its SET-WISE elementwise form reads 218 units at the base, 1 unit of RECORD3 and 219 at C2, with all 219 positions equal. THE NEGATIVE CONTROL WAS REPRODUCED AND IT REALLY DISCRIMINATES: swapping the single printable byte at offset 2 of the C2 file from `L` to `l` at equal length is REJECTED by reader (a) and by reader (b) at carried index 0 of 219, ACCEPTED by the tail-only form the R3 block had ordered, and both readers ACCEPT the true file — the R-0631 evidence RECORD3 records, holding under the reviewer's own run rather than only under the worker's. THE LEDGER SETS reproduce line-anchored at the base then at C2: 211 entries all DISTINCT at both, `Done: R-` 0, `Landed: ` 0, `Gate: R` keys 3 then 4 all DISTINCT, `Gate: R4` 0 then 1, maximum registered id R-0648 at both. THE RANGE reproduces: five commits every one single-parent, the path set EQUAL to the block's five with both set differences EMPTY, 0 paths beginning `apps/`, `packages/` or `tests/`, `git ls-files .remedy-wt` 0, per-commit insertions 192, 119, 15, 2 and 77 with the maximum under the 500 cap, `<<<SLICE ` and `<<<END ` reading 0 lines in both files a slice lands in, and this round's reflog rows all `commit:` with `amend`, `rebase` and `cherry` each 0. THE SUITES ARE THE REVIEWER'S OWN, run serially in the primary checkout: the three contract suites at exit 0 and 511 passed, and the canary `tests/cli/test_golden_path.py` at exit 0 and 42 passed. `git worktree list` shows the primary checkout alone and `gh pr list --state open` prints the empty list. NEW EVIDENCE FOR THE OPEN FINDING R-0419, ADDED HERE RATHER THAN UNDER A NEW ID because §3 checklist item 30 requires the open set to be searched for the DEFECT before minting and that search returned R-0419 holding exactly this shape. R-0419's standing rule is that a block may state a repository-wide absence — "nothing does X", "only one Y exists" — only after a repository-wide search, and that an absence claimed from a narrower search is an unrun claim. DECISION F021 D1, landed in `.agent/decisions.md` at `14060467`, breaks it: its CONTEXT states that "of the distinct literals actually passed at run-log emission sites, only one appears in any of those four sets". That reading came from `.agent/f021_inventory.md` at `4a7b5cbf`, which HONESTLY named its own scope as "an AST sweep of `packages/**/*.py`" — the DECISION dropped the scope and kept the number. Measured by the reviewer at `91d14c88` over `packages/`, `apps/` and `scripts/` with the same AST predicate, the run log has 82 emission call sites, 60 distinct literal names and 11 names computed at runtime, and FIFTEEN of the 60 lie in those four sets rather than one — including every one of `NARRATED_EVENTS`' eleven members, which are emitted from `apps/cli/commands/job.py` and its siblings and which a `packages/`-only sweep cannot see. THE CLAIM WAS LOAD-BEARING, which is why this is evidence against a Medium rather than a note: D1's CHOSEN seeds T001's authoritative coverage constant from that same reading, so the catalog it ordered would have covered 23 of the 83 kinds the stream can statically carry and would have dropped `task_run_started`, `verification_passed` and every other name the feature file's own Goal quotes as an example of a readable story into the unknown-kind fallback. WHY R4 IS PASS AND NOT FAIL: the defect is neither R4's work nor R4's gate. R4 recorded a verdict and closed a session, it minted nothing, it edited no file this evidence concerns, and every gate it ran reproduces exactly. The correction is DECISION F021 D3, which constraint 2 of the block committing this entry orders at the commit directly after it.
-<<<END RECORD4
+<<<SLICE RECORD5
+Gate: R6 — the R5 entry. R5 PASSED ON EVERY GATE, RE-MEASURED INDEPENDENTLY RATHER THAN READ BACK, AND IT SURFACED TWO DEFECTS THAT ARE BOTH THE REVIEWER'S. THE ARTEFACTS WERE REBUILT, NOT CHECKED: the reviewer re-derived every applied artefact from the round base `91d14c88` and each is byte-identical to what landed. TRANSPORT HELD IN ITS STRONGEST FORM: `.agent/authored/f021-r5.md` at `d5f9d141`, `.agent/last_block.md` at `464bab56` and the bytes the reviewer EMITTED, still on disk at `.remedy-wt/f021-r5.md`, are all sha256 8a489735b3da1261ad4ada770591a063bca6fcd03c635d77c8c1e15e9312950b over 23112 bytes and 238 lines, so §4.9's primary cmp-against-scratchpad proof was available and used rather than the digest fallback. SLICES: 3 over 52 CONTENT lines, TOTAL 238 against DECISION F085 D6's 490 and PROSE 186 against D5's 400. PLAN: `.agent/plan.md` at `f8705c3e` is byte-equal to PLANF021R5 at 42 lines under the 50 cap, with `^## Goal$` and `^## Next Steps$` each 1 and the negative control against DECIDE3 differing at byte 2. THE TWO APPENDS HELD UNDER BOTH READERS, AND THE STRONGEST EVIDENCE IS THAT THE REVIEWER PREDICTED THEIR REMAINDER DIGESTS BEFORE DELEGATING: `.agent/live_review.md` at `c8cfd46d` is the base blob plus one newline plus RECORD4, remainder sha256 c727dc5be62ed3976394b220fbf05b4ddd73776638a866e278a59aa3b193f459 over 4730 bytes, the file going 435610 bytes and 1076 lines to 440340 and 1078, units 219 plus 1 to 220 with every position equal; `.agent/decisions.md` at `03421366` is the base blob plus one newline plus DECIDE3, remainder sha256 5eb1fee3bfbe4c5b88a949985669db9d7cf2940629a5d56f736fa88051dbdca0 over 3644 bytes, the file going 489346 bytes and 6979 lines to 492990 and 6989, units 1220 plus 5 to 1225 with every position equal. Both first-paragraph mutants at byte offset 2 are REJECTED by both readers and both true files ACCEPTED. THE EMITTER RE-DERIVATION REPRODUCED EXACTLY, which is the reading DECISION F021 D3 rests on: 82 call sites, 60 distinct literals, 11 non-constant event arguments and 15 names inside the four defined sets over `packages/`, `apps/` and `scripts/`, against 35, 23, 10 and 1 for the `packages/`-only red control, with a static stream vocabulary of 83 and an empty intersection between the literals and the trace sets. THE SETS HELD line-anchored: 211 entries all DISTINCT at both points, `Done: R-` 0, `Landed: ` 0, `Gate: R` keys 4 to 5 all DISTINCT, `Gate: R5` 0 then 1, maximum registered id R-0648 at both, `- R-0419 —` 1 at both; and `^## DECISION ` went 112 to 113 with `^## DECISION F021 D3 ` 0 to 1. THE RANGE HELD: six commits every one single-parent, the path set EQUAL to the block's six with both differences EMPTY, 0 paths beginning `apps/`, `packages/` or `tests/`, `git ls-files .remedy-wt` 0, markers 0 in all three files a slice landed in, and every reflog row `commit:`. THE SUITES ARE THE REVIEWER'S OWN, run serially in the primary checkout: the three contract suites at exit 0 and 511 passed, and the canary `tests/cli/test_golden_path.py` at exit 0 and 42 passed. NEW EVIDENCE FOR THE OPEN FINDING R-0449, added here rather than under a new id because §3 checklist item 30 requires the open set to be searched for the DEFECT first: R-0449's standing rule is that before ordering any value INTO an artefact the block names the commit that writes the artefact and the step that produces the value, and that if the producer is not strictly earlier than the writer the block orders the value reported elsewhere. The R5 block broke it. Its G14 required `.agent/handoff.md` — written at C4 — to carry ONE LINE PER GATE, while its G9, G10 and G12 ordered the suites and the range reading AFTER C4, so the numbers those gate lines had to state did not exist when the file was authored. The worker resolved it correctly and declared it, running the suites once on the C3 tree so the handback could state a MEASURED total and once again where the block ordered them, both readings agreeing at 511 and 42. This is the SECOND consecutive instance: the R4 handback declared the same contradiction as a MEASUREMENT-ORDER NOTE, and the R4 verdict did not act on it. NEW EVIDENCE FOR THE OPEN FINDING R-0494, on the same commits and for the same reason: R-0494 records that under self-drive a gate reading routed to the "round report" is written to a channel that dies with the session, and its own text declares the counter-measure APPLIED in the block that registered it — the handback commit's own numbers are ordered nowhere and the reviewer measures them at the next gate. The R5 block ordered C4's `git status --porcelain` reading and C4's insertion count into the round report anyway, which is the THIRD instance and the first one committed by the reviewer who registered the finding. Measured rather than assumed, and this is why the cost is real: those two readings exist nowhere on disk, and the reviewer re-took them at this gate — `git status --porcelain` is 0 lines at `82fcc7c0` and C4's insertion count is 69, both under the 500 cap. WHY R5 IS PASS AND NOT FAIL: neither defect is the worker's, neither put a false sentence on disk, every gate the block did order reproduces under the reviewer's own execution, and the worker declared the one contradiction it hit before the reviewer read the diff — which is the behaviour this workflow exists to produce. THE COUNTER-MEASURE IS PROMOTED, NOT RESTATED: both findings already carried this rule in their bodies and both were broken under it, so the block committing this entry orders the rule into the §3 pre-emission checklist as a numbered item, because a rule that lives only in a finding body is a rule the next block does not read.
+<<<END RECORD5
 
-<<<SLICE DECIDE3
-## DECISION F021 D3 (2026-08-22) — T001's coverage constant is DERIVED from the Python sources by a contract test rather than hand-seeded, and D1's seeding reading is corrected
+<<<SLICE CHECKFROM
+  Why this is on disk and not a habit: item 2 has recurred six times across
+  F104 and F105, and R20 hit four of them in one block. A check that lives
+  only in reviewer session memory is the A1 trap §0 names, and this list is the
+  standing counter-example to it.
+<<<END CHECKFROM
 
-CONTEXT, measured by the reviewer at `91d14c88` over `packages/`, `apps/` and `scripts/`. DECISION F021 D1 seeds T001's authoritative coverage constant from "the emission literals that can be enumerated STATICALLY", and supports that with "of the distinct literals actually passed at run-log emission sites, only one appears in any of those four sets". Both readings come from `.agent/f021_inventory.md` at `4a7b5cbf`, which named its own scope as an AST sweep of `packages/**/*.py` and was correct within it; D1 dropped the scope and kept the number. The same AST predicate over all three roots reads 82 emission call sites, 60 distinct string-constant names and 11 event arguments that are not string constants, and 15 of the 60 lie in the four defined sets — every one of `NARRATED_EVENTS`' eleven among them, emitted from `apps/cli/commands/job.py` and its siblings. A second omission compounds it: `_load_events` in `packages/orchestration/ui_server.py` has TWO branches, and the JobPlan branch `_load_job_plan_events` writes the trace event kind straight into the envelope's `event` field, so `TRACE_EVENT_KINDS` and the values of `_STREAM_EVENT_KINDS` in `packages/orchestration/agent_run_trace.py` — 16 and 6 names, whose intersection with the 60 is empty — also reach a reader. With `command.accepted`, emitted through the module constant `COMMAND_ACCEPTED_EVENT` rather than as a call-site literal, the vocabulary that can be enumerated statically is 83 names, not 23. D1's own text is NOT rewritten here: `.agent/decisions.md` is append-only and §3 checklist item 20 makes the dated correction the counter-measure rather than an edit.
+<<<SLICE CHECKTO
+  31. **A gate whose reading the handback must carry runs at a commit STRICTLY
+      EARLIER than the handback commit.** Findings R-0449 and R-0494. When a block
+      requires the handback to state a gate's result — "one line per gate" is the
+      usual form — every one of those gates is ordered at a commit that precedes
+      the commit writing the handback, and the block says which commit that is. A
+      gate ordered "after the last commit" cannot be quoted by a file that last
+      commit already wrote, so the worker must either run it twice or commit a
+      number it has not seen, and only the first is honest. The same clause
+      settles where the handback commit's OWN numbers go: nowhere. Under
+      self-drive there is no second window, and docs/agents/self_drive_protocol.md
+      rules that the handoff is the only return channel, so a value routed to the
+      "round report" — item 14's answer for the two-window relay — is written to a
+      channel that ends with the session. The reviewer measures those numbers at
+      the next gate and records them in that round's ledger entry instead. Item 13
+      governs the ORDER a block imposes on the worker's runs and item 14 which
+      commits a per-commit gate can honestly reach; neither reaches this one,
+      because here the gate's own sequence is sound and its range is right, and
+      the defect is that the ARTEFACT quoting it is written first. This is an item
+      rather than a habit for the reason the list itself exists: R-0449 and R-0494
+      each stated exactly this counter-measure in a finding BODY, R-0494 declared
+      it already applied in the block that registered it, and the class then
+      recurred in two consecutive rounds — the second of them authored by the
+      reviewer who had registered it.
 
-CHOSEN: the coverage constant is DERIVED rather than written down. T001 ships a pytest contract test under `tests/ui_contracts/` that re-derives the static kind set from the Python sources — the AST predicate above over the three roots, plus `TRACE_EVENT_KINDS`, plus the values of `_STREAM_EVENT_KINDS`, plus the value of any module-level string constant a run-log call site passes by name — and asserts it EQUALS the key set of the catalog in `apps/ui/src/api/humanize.ts`, read as source text in the manner the files under `tests/ui_contracts/` already use for the stream hook. Drift then goes red from EITHER side: a new Python emitter with no catalog entry, and a catalog entry no emitter can produce. D1's unknown-kind rule stands exactly as ruled and carries the 11 runtime-computed names, which no static derivation can reach, so T001 still ships the generic-path test beside the coverage test.
+  Why this is on disk and not a habit: item 2 has recurred six times across
+  F104 and F105, and R20 hit four of them in one block. A check that lives
+  only in reviewer session memory is the A1 trap §0 names, and this list is the
+  standing counter-example to it.
+<<<END CHECKTO
 
-ALTERNATIVES CONSIDERED. Hand-list the names in the humanize module as D1's constant, corrected to 83: rejected, it is the same maintenance contract with none of the drift protection, because a hand list is exactly the artefact that was wrong here and nothing would ever re-measure it. Generate the TypeScript constant from Python at build time: rejected, `apps/ui` has no generator step and adding one is a build-system change far outside F021. Keep the 23 `packages/` literals and route the rest to the generic line: rejected, it would send `task_run_started` and `verification_passed` — names the feature file's Goal quotes as examples of the story it wants — into the fallback that exists for names nobody can enumerate.
+<<<SLICE HUMANIZE
+// The catalog turns a raw stream event into a sentence a human can read.
+// Remedy deliberately keeps the catalog DATA in humanizeCatalog.ts: its key set is
+// gated against the Python run-log emitters by
+// tests/ui_contracts/test_humanize_catalog.py, and a data-only module keeps that
+// extractor's job a line scan rather than a parse.
+import { STREAM_EVENT_CATALOG } from "./humanizeCatalog";
 
-REVERSE IT by deleting the contract test and its equality assertion; the catalog and the unknown-kind rule stand without them, which is the reversal D1 already described.
-<<<END DECIDE3
+/** One humanized stream event: the line a feed row renders, and whether the
+ *  catalog recognised the kind at all. `known` is what a dev console note counts. */
+export interface HumanizedStreamEvent {
+  line: string;
+  known: boolean;
+}
+
+// The honest generic line, and the load-bearing half of this module's contract.
+// Eleven run-log writers compute their event name at runtime, so no static
+// catalog can ever be complete; an unrecognised kind renders as itself rather
+// than vanishing from the story the feed is supposed to tell.
+export function humanizeStreamEvent(kind: unknown): HumanizedStreamEvent {
+  if (typeof kind !== "string" || kind === "") {
+    return { line: "unknown event", known: false };
+  }
+  // hasOwnProperty, never a bare lookup: a kind named `toString` or `constructor`
+  // resolves against Object.prototype and would be reported as known.
+  if (!Object.prototype.hasOwnProperty.call(STREAM_EVENT_CATALOG, kind)) {
+    return { line: `${kind} event`, known: false };
+  }
+  return { line: STREAM_EVENT_CATALOG[kind], known: true };
+}
+<<<END HUMANIZE
