@@ -1120,6 +1120,164 @@ class TestCommandChannelDoor:
         assert body["error"] == "invalid token"
 
 
+class TestCommandDoorImportGuard:
+    """F009's P3 contract as a guard: the write door ENQUEUES, it never applies.
+
+    The feature file's Design makes this mechanical rather than conventional —
+    "the handler may not import applicators/storage-writers (import guard — the
+    P3 contract in CI)" — and its Acceptance requires the guard to FAIL on a
+    handler touching storage directly, which is what the violation fixture
+    below is. Detection is AST-based, following the repo's guard-test pattern
+    in `tests/test_no_interactive_guard.py`: a module named in a docstring is
+    prose, and a guard that cannot tell prose from an `import` gets muted by
+    its own false positives.
+
+    Every import the door makes is function-scoped, so the scan is per method
+    and an import added anywhere else in `ui_server.py` is out of scope by
+    construction.
+    """
+
+    #: The methods that together ARE the write door. `test_every_named_method_exists`
+    #: is what stops this tuple from silently emptying itself under a rename —
+    #: a guard that scans nothing passes, which is the worst way for it to fail.
+    DOOR_METHODS = (
+        "_handle_command_submission",
+        "_dispatch_job_stop",
+        "_dispatch_decision_resolve",
+        "_publish_command_result",
+        "_emit_command_accepted_event",
+        "_audit_attempt",
+        "_command_is_ui_exposed",
+        "_replayed_command_result",
+        "_rate_limit_admits_command",
+        "_read_command_payload",
+    )
+
+    #: Every (module, name) the door is allowed to import, each because a ruled
+    #: DECISION puts it there. Adding an entry means widening the P3 contract,
+    #: so it belongs in the same commit as the decision that widens it.
+    ALLOWED_IMPORTS = frozenset({
+        ("datetime", "datetime"),                                   # D21's `now`
+        ("datetime", "timezone"),                                   # D21's `now`
+        ("apps.cli.command_catalog", "UI_EXPOSED_COMMANDS"),        # D4's subset
+        ("packages.orchestration.command_audit",
+         "audit_command_attempt"),                                  # D6's audit
+        ("packages.orchestration.command_nonce", "lookup_nonce_result"),   # D8
+        ("packages.orchestration.command_nonce", "publish_nonce_result"),  # D8
+        ("packages.orchestration.config", "get_config"),            # D9's limit
+        ("packages.orchestration.config", "get_key_spec"),          # D9's limit
+        ("packages.orchestration.data_paths", "resolve_data_root"), # D23's root
+        ("packages.orchestration.escalation", "answer_task_decision"),     # D5
+        ("packages.orchestration.safe_points", "request_stop"),            # D5
+        ("packages.orchestration.storage", "save_job"),                    # D21
+        ("packages.orchestration.timeline", "append_run_event"),           # D23
+    })
+
+    #: Modules the door may NEVER import from, whatever the name. These are the
+    #: applicators and the shell/filesystem writers the P3 contract exists to
+    #: keep out of an HTTP handler. Every path here resolves on disk.
+    FORBIDDEN_MODULES = frozenset({
+        "packages.orchestration.source_apply",
+        "packages.orchestration.patch_apply",
+        "packages.orchestration.diff_repair_apply",
+        "packages.orchestration.job_fulfillment",
+        "packages.orchestration.exec_guard",
+        "packages.orchestration.workspace",
+        "packages.common.secure_fs",
+        "subprocess",
+        "shutil",
+    })
+
+    #: `storage` is the one write-side module the door may reach, and only for
+    #: the single name DECISION F009 D21 puts in the effect table: the answer is
+    #: durable only once `save_job` returns. Any OTHER name from it is the
+    #: "handler touching storage directly" the Acceptance forbids.
+    STORAGE_MODULE = "packages.orchestration.storage"
+    STORAGE_ALLOWED_NAMES = frozenset({"save_job"})
+
+    @staticmethod
+    def _door_imports(source: str, method_names) -> set:
+        """Every (module, name) imported inside the named methods of the handler."""
+        import ast
+
+        wanted = set(method_names)
+        found = set()
+        for node in ast.walk(ast.parse(source)):
+            if not (isinstance(node, ast.ClassDef) and node.name == "_RemedyHandler"):
+                continue
+            for member in node.body:
+                if not isinstance(member, ast.FunctionDef) or member.name not in wanted:
+                    continue
+                for sub in ast.walk(member):
+                    if isinstance(sub, ast.ImportFrom):
+                        for alias in sub.names:
+                            found.add((sub.module or "", alias.name))
+                    elif isinstance(sub, ast.Import):
+                        for alias in sub.names:
+                            found.add((alias.name, alias.name))
+        return found
+
+    def _server_source(self) -> str:
+        from pathlib import Path
+
+        from packages.orchestration import ui_server
+
+        return Path(ui_server.__file__).read_text(encoding="utf-8")
+
+    def test_every_named_method_exists(self):
+        """Without this the guard empties itself the first time a method is renamed."""
+        import ast
+
+        handler = [n for n in ast.walk(ast.parse(self._server_source()))
+                   if isinstance(n, ast.ClassDef) and n.name == "_RemedyHandler"]
+        assert len(handler) == 1, handler
+        defined = {n.name for n in handler[0].body if isinstance(n, ast.FunctionDef)}
+        missing = sorted(set(self.DOOR_METHODS) - defined)
+        assert missing == [], missing
+
+    def test_the_door_imports_exactly_the_allowed_set(self):
+        """Equality, not containment: a NEW import is a finding until it is ruled."""
+        found = self._door_imports(self._server_source(), self.DOOR_METHODS)
+        assert found == set(self.ALLOWED_IMPORTS), {
+            "unruled": sorted(found - set(self.ALLOWED_IMPORTS)),
+            "vanished": sorted(set(self.ALLOWED_IMPORTS) - found),
+        }
+
+    def test_the_door_imports_nothing_from_a_forbidden_module(self):
+        """The P3 contract stated as the class of module it keeps out."""
+        found = self._door_imports(self._server_source(), self.DOOR_METHODS)
+        offending = sorted((m, n) for m, n in found if m in self.FORBIDDEN_MODULES)
+        assert offending == [], offending
+
+    def test_the_door_reaches_storage_only_for_the_name_D21_rules(self):
+        found = self._door_imports(self._server_source(), self.DOOR_METHODS)
+        from_storage = {n for m, n in found if m == self.STORAGE_MODULE}
+        assert from_storage <= self.STORAGE_ALLOWED_NAMES, sorted(from_storage)
+
+    def test_the_guard_fails_on_a_handler_that_touches_storage_directly(self):
+        """The violation fixture the feature file's Acceptance requires.
+
+        A guard nobody has watched fail is a guard nobody knows works. This runs
+        the SAME extractor over a synthetic handler, so the proof costs no
+        mutation of the real file and cannot leave one behind.
+        """
+        violation = (
+            "class _RemedyHandler:\n"
+            "    def _dispatch_job_stop(self):\n"
+            "        from packages.orchestration.source_apply import apply_source_patch\n"
+            "        from packages.orchestration.storage import delete_job\n"
+            "        return apply_source_patch, delete_job\n"
+        )
+        found = self._door_imports(violation, self.DOOR_METHODS)
+        assert ("packages.orchestration.source_apply",
+                "apply_source_patch") in found, found
+        # Each of the three assertions above would now fail, which is the point.
+        assert found != set(self.ALLOWED_IMPORTS)
+        assert [(m, n) for m, n in found if m in self.FORBIDDEN_MODULES] != []
+        assert not {n for m, n in found
+                    if m == self.STORAGE_MODULE} <= self.STORAGE_ALLOWED_NAMES
+
+
 class TestUiExposedCommands:
     """The exposed subset itself — DECISION F009 D4."""
 
