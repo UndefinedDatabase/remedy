@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { feedRowOf as projectRow } from "./feedRow";
+import { STREAM_EVENT_CATALOG } from "./humanizeCatalog";
 
 // The cases below predate the arrival stamp and assert nothing about it, so
 // they call through a shim supplying a fixed one. The stamp's own contract is
@@ -7,7 +8,6 @@ import { feedRowOf as projectRow } from "./feedRow";
 function feedRowOf(frame: { seq: number; event: unknown }) {
   return projectRow(frame, 0);
 }
-import { STREAM_EVENT_CATALOG } from "./humanizeCatalog";
 
 /** A frame as `framesOf` builds one: the envelope IS the frame's event field. */
 function frameOf(seq: number, envelope: unknown) {
