@@ -1,23 +1,21 @@
-── STEP DECIDE-INFRA — F021 ──
-Goal:        Record the R7 verdict with the two readings §3 checklist item 31
-             leaves to this gate, add the R7 evidence to the open finding
-             R-0585, and RULE the two infrastructure DECISIONS T002 depends on
-             — the frontend test environment and the single-subscription
-             fan-out — so that the next round can build T002 without deciding
-             anything. This round BUILDS NOTHING and touches no file under
-             `apps/`, `packages/` or `tests/`.
+── STEP T002-A — F021 ──
+Goal:        Record the R8 verdict and ship the FIRST production code of T002 on
+             the ground DECISION F021 D4 rules: one pure module that projects a
+             brain-stream frame into the row an activity feed renders, plus its
+             node-vitest tests. It adds no DOM, no component and no state; the
+             ring DECISION F021 D5 rules is R10's work and is NOT built here.
 
-Fortschritt: ~35 % (T001 fertig und verifiziert · T002 offen · T003 offen; R7
-             schrieb das R6-Verdikt, R8 faellt die beiden Infrastruktur-
-             ENTSCHEIDUNGEN, T002 wird in R9 gebaut) — Schaetzung
+Fortschritt: ~40 % (T001 fertig · T002 begonnen — die Projektion Frame→Zeile
+             landet in dieser Runde, der Ring und die Komponenten folgen in R10
+             und R11; T003 offen) — Schaetzung
 
-Bundle:      C0a save this block · C0b mirror it · C1 plan · C2 the two
-             DECISIONS · C3 the R7 verdict with the R-0585 evidence · C4 the
-             handback.
+Bundle:      C0a save this block · C0b mirror it · C1 plan · C2 the feedRow
+             module and its tests · C3 the R8 verdict · C4 the handback.
 
 Change:      Exactly these paths, and nothing else:
-             `.agent/authored/f021-r8.md` (NEW, C0a) · `.agent/last_block.md`
-             (C0b) · `.agent/plan.md` (C1) · `.agent/decisions.md` (C2) ·
+             `.agent/authored/f021-r9.md` (NEW, C0a) · `.agent/last_block.md`
+             (C0b) · `.agent/plan.md` (C1) · `apps/ui/src/api/feedRow.ts` (NEW,
+             C2) · `apps/ui/src/api/feedRow.test.ts` (NEW, C2) ·
              `.agent/live_review.md` (C3) · `.agent/handoff.md` (C4).
              Resolve any count in this block against that list rather than
              against a numeral written elsewhere.
@@ -25,59 +23,65 @@ Change:      Exactly these paths, and nothing else:
 Constraints:
  1. Apply every slice BYTE FOR BYTE. Never retype, rewrap, reflow, reindent or
     whitespace-adjust one. If a slice looks wrong, STOP and say so in the
-    handback rather than fixing it.
+    handback rather than fixing it. This binds the two CODE slices most of all:
+    the reviewer typechecked those exact bytes and a reformatting would void
+    that evidence.
  2. Commit order is C0a, C0b, C1, C2, C3, C4 and is not negotiable. C1 precedes
-    both record commits because the plan must be current before them (§3
-    checklist item 23). C2 precedes C3 because the `Gate: R8` paragraph states
-    that this round's DECISIONS have landed, and §3 checklist item 20 as
-    narrowed by R-0524 lets a slice describe the round's OWN change only by
-    naming the ordering constraint that fixes it — this clause is that
-    constraint. C4 carries only the handback.
-    ROUND BASE is `fc56d4cc7b4aeccce460560ce1275192db0e8e10` and is the commit
+    the ledger commit because the plan must be current before it (§3 checklist
+    item 23). C2 ships both new files in ONE commit because the test is the
+    module's only caller and a commit holding the module alone would add
+    unreached code. C4 carries only the handback.
+    ROUND BASE is `f5f0158526342247abf4f8215b7dbdfbd007789c` and is the commit
     every "round base" in this block names.
- 3. THIS ROUND MINTS NO FINDING ID AT ALL and resolves nothing. It writes no
-    `Done:` line and no `Landed:` line. R-0649 stays the maximum registered id
-    and R-0650 stays the next free one. The one defect R7 surfaced — its own
-    constraint 7(c) contradicting its PLANF021R7 slice about which round rules
-    these DECISIONS — is added as evidence to the OPEN finding R-0585 inside
-    RECORD7 rather than under a new id, because §3 checklist item 30 requires
-    the open set to be searched for the DEFECT first and that search returned
-    R-0585 holding exactly the clause-versus-clause shape. That defect is the
-    REVIEWER'S OWN.
- 4. ONE WHOLE-FILE REPLACEMENT AND TWO APPENDS. PLANF021R8 replaces
-    `.agent/plan.md` at C1 in full. DECIDE45 appends to `.agent/decisions.md`
-    at C2 and RECORD7 appends to `.agent/live_review.md` at C3, both based on
-    the ROUND BASE. There is NO FROM/TO pair this round, so no containment
-    reading is owed and none is stated. Measured by the reviewer on the slices'
-    own bytes before emission: RECORD7 is ONE blank-line unit and DECIDE45 is
-    TEN, and G5's and G7's reader (b) depend on those counts.
- 5. NO PRODUCTION FILE IS EDITED. You may READ anything. Do not create, modify
-    or delete a file under `apps/`, `packages/` or `tests/`, and run no
-    formatter or linter that rewrites a file in place. In particular: the two
-    DECISIONS this round rules describe changes to `apps/ui/vitest.config.ts`
-    and to the brain-stream modules, and NONE of those changes is made this
-    round. R9 builds them.
+ 3. THIS ROUND MINTS NO FINDING ID and resolves nothing. It writes no `Done:`
+    line and no `Landed:` line. R-0649 stays the maximum registered id and
+    R-0650 stays the next free one.
+ 4. ONE WHOLE-FILE REPLACEMENT, TWO NEW FILES AND ONE APPEND. PLANF021R9
+    replaces `.agent/plan.md` at C1 in full. FEEDROW and FEEDROWTEST are the
+    ENTIRE contents of two files that do not exist at the round base, created
+    at C2. RECORD8 appends to `.agent/live_review.md` at C3, based on the ROUND
+    BASE. There is NO FROM/TO pair this round, so no containment reading is
+    owed and none is stated. Measured by the reviewer on the slices' own bytes
+    before emission: RECORD8 is ONE blank-line unit, and G6's reader (b)
+    depends on that count.
+ 5. NO EXISTING PRODUCTION FILE IS EDITED. The two files C2 creates are new;
+    nothing already under `apps/`, `packages/` or `tests/` is modified or
+    deleted, and no import of `feedRow` is added to any existing module. The
+    module is deliberately UNCALLED by production code this round — its caller
+    arrives with the ring in R10 — so do not wire it into anything to make it
+    look used. Run no formatter or linter that rewrites a file in place.
  6. Do NOT create a pull request and do NOT merge one. The branch stays open and
-    unmerged: F021 is mid-feature, so there is nothing to open a pull request
-    for and nothing to merge. Push the branch.
+    unmerged: F021 is mid-feature. Push the branch.
  7. THE HANDBACK IS ALSO THE SESSION HANDOFF. Beyond the mandated sections it
     states, in its `## Next` section and in this order, the four things the next
     session needs and cannot recompute cheaply: (a) that the next session's
     FIRST action is docs/agents/self_drive_protocol.md Phase 1 rule 1, the
-    `.agent/STOP` check, BEFORE rule 2's Open PR Gate — naming rule 1 ahead of
-    rule 2 is required by that protocol's Phase 2 and by finding R-0347; (b)
-    that the Open PR Gate will find NO open pull request, so rule 5 applies and
-    F021 continues on `feature/f021-live-activity-feed`; (c) that the next
-    build is T002 and that DECISIONS F021 D4 and D5, ruled at C2 of THIS round,
-    are the ground it is built on, so T002 needs no further infrastructure
-    ruling; (d) that the C4 handback commit of this round has never had its own
-    `git status --porcelain` reading or insertion count recorded, because §3
-    checklist item 31 orders them nowhere, and that the next reviewer takes both
-    at its first gate and records them in that round's entry.
- 8. Block size, measured on these final bytes AFTER the last edit: TOTAL 259
+    `.agent/STOP` check, BEFORE rule 2's Open PR Gate — required by that
+    protocol's Phase 2 and by finding R-0347; (b) that the Open PR Gate will
+    find NO open pull request, so rule 5 applies and F021 continues on
+    `feature/f021-live-activity-feed`; (c) that R10's work is the bounded ring
+    DECISION F021 D5 rules — `recent` on `BrainStreamState` and on
+    `BrainStreamView` — and that the append belongs inside `receiveBrainFrame`
+    in `apps/ui/src/api/brainStream.ts` rather than in the runner's `dispatch`,
+    because that function already drops a frame whose `seq` is not ahead of
+    `lastSeq` and an append in `dispatch` would duplicate a row on every
+    reconnect replay; (d) that the C4 handback commit of this round has never
+    had its own `git status --porcelain` reading or insertion count recorded,
+    because §3 checklist item 31 orders them nowhere, and that the next
+    reviewer takes both at its first gate and records them in that round's
+    entry.
+ 8. WHAT THE REVIEWER COULD AND COULD NOT PRE-EXECUTE, stated so no gate below
+    is read as carrying more evidence than it does. `npx tsc --noEmit` WAS run
+    by the reviewer over these exact authored bytes, in a disposable worktree
+    at the round base with `apps/ui/node_modules` symlinked in, and exited 0;
+    that worktree was removed and pruned. `npx vitest run` is DENIED to the
+    reviewer's session and was NOT run by it at all, so G9's colour is ordered
+    on the strength of G10's red control rather than on a reviewer measurement,
+    and G10 is therefore not optional.
+ 9. Block size, measured on these final bytes AFTER the last edit: TOTAL 389
     lines against DECISION F085 D6's 490, and PROSE — TOTAL minus the slice
-    CONTENT lines — 193 against DECISION F085 D5's 400. Marker lines count
-    as prose.
+    CONTENT lines — 221 against DECISION F085 D5's 400. Marker lines count as
+    prose.
 
 Done when:
  G1  `.agent/STOP` is ABSENT immediately before C0a and again immediately before
@@ -86,89 +90,110 @@ Done when:
      C3. C4's own reading is ordered NOWHERE — §3 checklist item 31 rules that
      the handback commit's own numbers are measured by the reviewer at the next
      gate and recorded there.
- G2  TRANSPORT: sha256 over `.agent/authored/f021-r8.md` at C0a, over
+ G2  TRANSPORT: sha256 over `.agent/authored/f021-r9.md` at C0a, over
      `.agent/last_block.md` at C0b, over the bytes you received, and over the
-     reviewer's own emitted copy still on disk at `.remedy-wt/f021-r8.md` are
+     reviewer's own emitted copy still on disk at `.remedy-wt/f021-r9.md` are
      all equal. Write C0b FROM the committed C0a blob. Report the digest with
      the byte and line counts.
  G3  SLICES: extract the slices from the COMMITTED C0a blob by their
      `<<<SLICE `/`<<<END ` marker LINES and report how many slices and how many
-     CONTENT lines that extractor printed. Re-measure constraint 8's two
+     CONTENT lines that extractor printed. Re-measure constraint 9's two
      numerals from that same blob and report both against their caps.
- G4  `.agent/plan.md` at C1 is byte-equal to PLANF021R8, proved with `cmp` at
+ G4  `.agent/plan.md` at C1 is byte-equal to PLANF021R9, proved with `cmp` at
      exit 0 against the slice extracted from the committed C0a blob, with a
-     NEGATIVE CONTROL against RECORD7 that must exit 1. Report both exit codes,
+     NEGATIVE CONTROL against RECORD8 that must exit 1. Report both exit codes,
      plus `^## Goal$` 1, `^## Next Steps$` 1, and `wc -l` at most 50.
- G5  THE DECISIONS APPEND at C2, under TWO INDEPENDENT READERS. Obtain the base
+ G5  THE TWO NEW FILES at C2 are byte-equal to their slices. Confirm with
+     `git ls-tree <round base> -- apps/ui/src/api/feedRow.ts
+     apps/ui/src/api/feedRow.test.ts` that BOTH are ABSENT at the round base,
+     then `cmp` each committed file against its slice extracted from the C0a
+     blob at exit 0, each with the OTHER slice as a negative control at exit 1.
+     Report all four exit codes and both files' line counts.
+ G6  THE LEDGER APPEND at C3, under TWO INDEPENDENT READERS. Obtain the base
      blob with `git show <round base>:<path>` into memory or into scratch under
      `.remedy-wt/`; never overwrite a tracked file to read an older revision,
      which docs/agents/self_drive_protocol.md guardrail G5 forbids outright.
-     Reader (a): the round-base blob of `.agent/decisions.md` is a byte-exact
-     PREFIX of the C2 file and the remainder is EXACTLY one newline plus
-     DECIDE45 — report the remainder's sha256, byte count and line count, and
-     the file's byte and line counts before and after. Reader (b), the SET-WISE
-     form: split BOTH blobs on the blank line into units and confirm the C2 unit
-     LIST equals the base unit list followed by DECIDE45's own units, compared
+     Reader (a): the round-base blob of `.agent/live_review.md` is a byte-exact
+     PREFIX of the C3 file and the remainder is EXACTLY one newline plus
+     RECORD8 — report the remainder's sha256, byte count and line count, and the
+     file's byte and line counts before and after. Reader (b), the SET-WISE
+     form: split BOTH blobs on the blank line into units and confirm the C3 unit
+     LIST equals the base unit list followed by RECORD8's own units, compared
      ELEMENTWISE over the whole list and not at the tail; report N at both
-     points and DECIDE45's own unit count against constraint 4's TEN. NEGATIVE
-     CONTROL: replace one printable byte of the FIRST paragraph of the C2 file
+     points and RECORD8's own unit count against constraint 4's ONE. NEGATIVE
+     CONTROL: replace one printable byte of the FIRST paragraph of the C3 file
      at equal length and confirm BOTH readers REJECT that mutant while BOTH
      ACCEPT the true file; name the byte offset and the substitution.
- G6  THE DECISION KEYS, line-anchored at line start, at the round base then at
-     C2: `^## DECISION ` headings; `^## DECISION F021 D4 `; `^## DECISION F021
-     D5 `; and how many `^## DECISION ` headings are DISTINCT. Exactly two are
-     added, so the heading total rises by 2, D4 and D5 each read 0 then 1, and
-     the headings are DISTINCT at BOTH points. Report each at BOTH points.
- G7  THE LEDGER APPEND at C3, under the SAME two readers and the same negative
-     control as G5, over `.agent/live_review.md` and RECORD7, based on the round
-     base. Report the same values, with RECORD7's own unit count against
-     constraint 4's ONE. Run the destructive halves of G5 and G7 inside a
-     disposable worktree under `.remedy-wt/` whose name no directory already
-     uses, and remove and prune it before the handback.
- G8  THE LEDGER SETS, line-anchored at line start, at the round base then at C3:
+ G7  THE LEDGER SETS, line-anchored at line start, at the round base then at C3:
      `- R-` entries and how many are DISTINCT; `Done: R-` lines; `Landed: `
-     lines; `Gate: R` keys and how many are DISTINCT; `Gate: R8` occurrences;
+     lines; `Gate: R` keys and how many are DISTINCT; `Gate: R9` occurrences;
      and the MAXIMUM registered id. Report each at BOTH points. NO id is minted,
      so `- R-` reads 212 at BOTH points with both DISTINCT, the maximum reads
-     R-0649 at BOTH points, `Gate: R` keys read 7 then 8 with both DISTINCT, and
-     `Gate: R8` reads 0 then 1. Report `- R-0585 —` too, expected 1 at BOTH
-     points because this round adds evidence to it and does not re-register it.
- G9  THE CONTRACT SUITES, run at C3 in the PRIMARY checkout and SERIALLY:
+     R-0649 at BOTH points, `Gate: R` keys read 8 then 9 with both DISTINCT, and
+     `Gate: R9` reads 0 then 1.
+ G8  TYPECHECK, run at C2 from `apps/ui` in the PRIMARY checkout:
+     `npx tsc --noEmit`. Report the exit code, which must be 0. The reviewer
+     measured exit 0 over these exact authored bytes at the round base — see
+     constraint 8 for how, and for what it does not cover.
+ G9  THE FRONTEND SUITE, run at C2 from `apps/ui` in the PRIMARY checkout and
+     SERIALLY, never while a pytest process is alive: `npx vitest run`. Report
+     the exit code, the FILE count and the TEST count. Take the SAME reading at
+     the ROUND BASE as well, by stashing nothing and instead reading the base in
+     a disposable worktree under `.remedy-wt/` with `apps/ui/node_modules`
+     SYMLINKED in — never copied, because a copy dereferences npm's bin shims
+     (finding R-0591) — and report both readings. The file count must rise by
+     exactly 1 and the test count by exactly 8, those being the one file and the
+     eight `it(` blocks FEEDROWTEST contains. Do NOT report a base reading you
+     did not take.
+G10  THE RED CONTROL, and it is not optional — G9's colour is ordered on its
+     strength (constraint 8). In a disposable worktree under `.remedy-wt/` whose
+     name no directory already uses, at C2, with `apps/ui/node_modules`
+     SYMLINKED in: in `apps/ui/src/api/feedRow.ts` replace the single line
+     `    seq: frame.seq,` with `    seq: 0,` and run `npx vitest run` again.
+     That byte string occurs exactly ONCE in that file, counted whole-line and
+     ignoring indentation, both readings agreeing. Report that the run goes RED
+     and NAME the failing test; the reviewer expects
+     `carries the frame's own seq rather than any envelope field` among the
+     failures. Then restore the worktree file and confirm the run is GREEN
+     again, so the control discriminates in both directions. Remove and prune
+     that worktree before the handback; the PRIMARY checkout is never mutated.
+G11  THE CONTRACT SUITES, run at C3 in the PRIMARY checkout and SERIALLY, after
+     every `npx vitest` process has exited:
      `python3 -m pytest tests/ui_server/ tests/orchestration/test_test_runner.py
      tests/regression/test_resource_safety.py -q -rf`. Report the exit code and
      the passed-plus-skipped total, counting BY PASSED PLUS SKIPPED. The
      reviewer measured exit 0 and 511 at the round base. No docs gate is owed:
      the `Change:` list holds no `docs/` path at all — check that against the
      list before you accept this sentence.
-G10  CANARY, run at C3, serially, and after G9 has finished:
+G12  CANARY, run at C3, serially, after G11 has finished:
      `python3 -m pytest tests/cli/test_golden_path.py -q -rf`. Report the exit
      code and the total. The reviewer measured exit 0 and 42 at the round base.
-G11  THE T001 CONTRACT TEST STILL HOLDS, run at C3, serially, after G10:
+G13  THE T001 CONTRACT TESTS STILL HOLD, run at C3, serially, after G12:
      `python3 -m pytest tests/ui_contracts/ -q -rf`. Report the exit code and
      the passed-plus-skipped total; the reviewer measured exit 0 with 426 passed
-     and 4 skipped at the round base. This round changes no file it reads, so a
-     different reading is a regression from outside this round and is reported
-     RED rather than explained.
-G12  NO PRODUCTION FILE CHANGED: report that the range from the round base to C3
-     holds 0 paths beginning `apps/`, `packages/` or `tests/`, and that
-     `git ls-files .remedy-wt` reads 0.
-G13  RANGE, executed at C3 and covering the round base to C3 — NOT to C4, because
+     and 4 skipped at the round base. This round adds no catalog entry and no
+     Python emitter, so the humanize-catalog equality must be UNCHANGED; a
+     different reading is reported RED rather than explained.
+G14  RANGE, executed at C3 and covering the round base to C3 — NOT to C4, because
      C4 writes the file that must quote this gate and §3 checklist item 31
      forbids ordering a reading the quoting artefact cannot yet hold. Report:
-     the base-to-C3 path set against the five paths of this block's `Change:`
+     the base-to-C3 path set against the six paths of this block's `Change:`
      list other than `.agent/handoff.md`, with the set difference EMPTY in both
      directions; every commit single-parent; `git show --numstat` and
      `git diff --numstat` agreeing cell by cell with the handback's `## Commits`
      table for C0a, C0b, C1, C2 and C3 (§3 checklist item 28); every insertion
      count under the 500 cap; leading `<<<SLICE ` and `<<<END ` reading 0 LINES
-     in `.agent/plan.md`, `.agent/decisions.md` and `.agent/live_review.md`; and
-     this round's reflog rows so far classified with `amend`, `rebase` and
-     `cherry` each 0 in the operation field.
-G14  NO PULL REQUEST: report `gh pr list --state open --json number,headRefName`
+     in `.agent/plan.md`, `.agent/live_review.md` and BOTH new files; that the
+     base-to-C3 range MODIFIES no path that existed at the round base under
+     `apps/`, `packages/` or `tests/` — the only two such paths in the range are
+     ADDED (status `A` in `git diff --name-status`); `git ls-files .remedy-wt`
+     reading 0; and this round's reflog rows so far classified with `amend`,
+     `rebase` and `cherry` each 0 in the operation field.
+G15  NO PULL REQUEST: report `gh pr list --state open --json number,headRefName`
      and state that neither `gh pr create` nor `gh pr merge` was run. The
      expected reading is an EMPTY list, which is also the fact constraint 7(b)
      tells the next session to expect.
-G15  THE HANDBACK carries every mandated section of
+G16  THE HANDBACK carries every mandated section of
      docs/agents/handback_template.md, an item-status row for each of C0a, C0b,
      C1, C2, C3 and C4, the round base SHA, ONE LINE PER GATE with the
      transcripts kept out of the file (R-0582), the block's `Fortschritt:` line
@@ -183,7 +208,7 @@ G15  THE HANDBACK carries every mandated section of
 
 Handback:   completion report + rewrite `.agent/handoff.md`.
 
-<<<SLICE PLANF021R8
+<<<SLICE PLANF021R9
 # Plan — F021 Live activity feed + now-card
 
 Branch: feature/f021-live-activity-feed, cut from `main` at `4548995d`, the merge
@@ -202,58 +227,163 @@ jump-to-node focuses the right node, and the steering input renders DISABLED wit
 its honest tooltip until F030 lands.
 
 ## Current Step
-R8 records the R7 verdict, adds the R7 evidence to R-0585, and rules the two
-infrastructure DECISIONS T002 depends on: F021 D4 on the frontend test
-environment and F021 D5 on the single-subscription fan-out. It mints no finding
-id and builds nothing. The branch is mid-feature and carries no pull request by
-design.
+R9 records the R8 verdict and ships T002's first production code: the pure
+projection from a brain-stream frame to a feed row, with its node-vitest tests,
+under the test discipline DECISION F021 D4 rules. It mints no finding id. The
+module is deliberately uncalled until R10 wires it to the ring.
 
 ## Next Steps
-1. R9 builds T002 on the ground D4 and D5 rule: the feed, its rows and the
-   NowCard over fixture streams, with the scroll discipline that never yanks a
-   reader who has scrolled up.
-2. R10 onward T003: graph-focus wiring, the disabled steering input, and the
+1. R10 builds the bounded ring DECISION F021 D5 rules: `recent` on
+   `BrainStreamState` and on `BrainStreamView`, appended inside
+   `receiveBrainFrame` rather than in the runner's `dispatch`, so a reconnect
+   replay cannot duplicate a row.
+2. R11 builds the feed and NowCard components over fixture streams, with the
+   scroll discipline that never yanks a reader who has scrolled up, gated by a
+   Python source contract under `tests/ui_contracts/`.
+3. R12 onward T003: graph-focus wiring, the disabled steering input, and the
    additive envelope field DECISION F021 D2 permits.
 
 ## Risks
-- T002's rules land in pure `.ts` modules under the node vitest D4 keeps, and
-  its `.tsx` components are gated by a Python source contract under
-  `tests/ui_contracts/`. A rule that reaches for the DOM is a sign it was put in
-  the wrong half.
-- The event ring D5 rules is the first state the brain-stream runner retains per
-  event rather than in aggregate, so the view-identity contract that runner
-  documents is the thing most likely to break under it.
+- The ring is the one place a reconnect can duplicate rows. `receiveBrainFrame`
+  already drops a frame whose seq is not ahead of `lastSeq`; an append written
+  anywhere else silently bypasses that guard.
+- The view-identity contract `createBrainStreamRunner` documents is what R10 is
+  most likely to break: `useSyncExternalStore` compares with `Object.is`, so a
+  freshly built array on every call re-renders forever.
 - Jump-to-node needs the additive envelope field DECISION F021 D2 permits. That
   is the one production seam this feature opens, and it stays one field.
-- T001 is built and verified but its catalog covers only what a static walk can
-  see. The generic line carries the eleven runtime-computed emitters, and R-0649
-  records that the walk's roots also reach vendored third-party Python.
+- The catalog covers only what a static walk can see. The generic line carries
+  the eleven runtime-computed emitters, and R-0649 records that the walk's roots
+  also reach vendored third-party Python.
 - The open set holds no code defect of F021; R-0403, R-0607, R-0608, R-0609,
   R-0611 and R-0613 stay routed to a paydown branch.
-<<<END PLANF021R8
+<<<END PLANF021R9
 
-<<<SLICE DECIDE45
-## DECISION F021 D4 (2026-08-22) — T002 adds no DOM test environment; its rules go into node-testable `.ts` modules and its components are gated by a Python source contract
+<<<SLICE FEEDROW
+// One activity-feed row, projected from one brain-stream frame. T002's rows
+// render THIS and never the raw envelope, so the naming trap below is resolved
+// once here instead of in every component that reads a stream event.
+import { humanizeStreamEvent } from "./humanize";
+import type { BrainStreamFrame } from "./brainStream";
 
-CONTEXT, measured by the reviewer at `fc56d4cc`. `apps/ui/vitest.config.ts` sets `environment: "node"` with `include: ["src/**/*.test.ts"]`, so no `.tsx` test is collected and no DOM exists to render into; `find apps -name '*.test.tsx' -not -path '*/node_modules/*'` returns 0 files, and `jsdom`, `testing-library` and `happy-dom` occur 0 times in `apps/ui/package.json` and `apps/ui/vitest.config.ts`. T002 is component work, so the naive reading is that the environment must change. It must not, because this repository has already answered the question and written the answer down at the seam: the header comment of `apps/ui/src/api/useBrainStream.ts` states that it is "deliberately the ONLY part of it that is React at all: every rule this client has lives in brainStream.ts, brainStreamDriver.ts, brainStreamRunner.ts and brainStreamSession.ts, where the node-environment vitest can reach it", and that what remains is "gated by a tests/ui_contracts/ source contract, the style this repository uses for every React component". `tests/ui_contracts/` holds eleven such Python contract modules, `test_remedy_shell_stream.py` among them. The brain-stream family is that pattern at scale: six logic modules, each with a `.test.ts` neighbour the node vitest collects, behind one thin hook.
+/** What one activity-feed row shows. `seq` is the ledger position the row
+ *  carries and jumps to; `known` is what a dev console note counts. */
+export interface FeedRow {
+  seq: number;
+  kind: string;
+  line: string;
+  known: boolean;
+  timestamp: string;
+  outcome: string;
+}
 
-CHOSEN: T002 changes neither `environment` nor `include`. Every rule T002 needs becomes a pure module under `apps/ui/src/` with a `.test.ts` neighbour — the projection of a stream event into a feed row, the ACTION-class subset the NowCard shows, the recency state of the activity dot, and the scroll discipline as a `(pinnedToBottom, newEventArrived) -> shouldScroll` function. The `.tsx` components read an already-projected view and render it, and their structure is gated by a new Python source contract under `tests/ui_contracts/` written in the manner of `test_remedy_shell_stream.py`. The scroll rule is called out because it is the acceptance criterion that sounds least like a pure function and is one: "never yank a reader who has scrolled up" is entirely a decision about whether to scroll, and the only DOM left after that decision is a single `scrollTop` assignment no assertion is worth.
+// The naming trap this module exists to resolve, measured at `f5f01585` in
+// `_safe_event_summary` (packages/orchestration/ui_server.py): a frame's
+// `event` field holds the whole SAFE ENVELOPE — seq, event, timestamp and
+// outcome — and the envelope's OWN `event` field is the kind string. The kind
+// is therefore `frame.event.event`, which reads like a typo and is not one.
+function envelopeOf(frame: BrainStreamFrame): Record<string, unknown> {
+  return typeof frame.event === "object" && frame.event !== null
+    ? frame.event as Record<string, unknown>
+    : {};
+}
 
-ALTERNATIVES CONSIDERED. Add `jsdom` and `@testing-library/react` and widen `include` to `.test.tsx`: rejected, it introduces a second test environment and three devDependencies into a package that deliberately has neither, to buy assertions about markup that the Python source contracts already make more cheaply and in the language every other gate in this repository is written in; it also stacks a React-DOM test suite on top of `apps/ui`'s lint config, which finding R-0622 measures as parsing none of the TypeScript it is aimed at, so the new files would be as unlinted as the old ones. Rewrite the components as render functions returning plain data: rejected, that is the chosen option with an extra layer of indirection and no additional coverage. Gate the feed through the Python source contracts ALONE: rejected, a source contract can assert that a component maps over its rows, and it cannot assert that the scroll never yanks — which the Acceptance section names outright.
+/** Read one envelope field as a string, defaulting to "" for anything else.
+ *  The envelope is parsed JSON from a server this client does not control, so
+ *  every field is CHECKED rather than asserted. */
+function stringField(envelope: Record<string, unknown>, name: string): string {
+  const value = envelope[name];
+  return typeof value === "string" ? value : "";
+}
 
-REVERSE IT by adding `jsdom` and `@testing-library/react` to `apps/ui` devDependencies, setting `environment: "jsdom"` and widening `include` to `src/**/*.test.{ts,tsx}`. The `.ts` logic modules and their tests stay valid under that change, so the reversal is purely additive and costs no rewrite of anything T002 ships.
+/** Project one frame into the row a feed renders. Total by construction: every
+ *  frame yields a row, because an event the catalog cannot name still happened
+ *  and a feed that dropped it would tell a story with holes in it. */
+export function feedRowOf(frame: BrainStreamFrame): FeedRow {
+  const envelope = envelopeOf(frame);
+  const kind = stringField(envelope, "event");
+  const humanized = humanizeStreamEvent(kind);
+  return {
+    seq: frame.seq,
+    kind,
+    line: humanized.line,
+    known: humanized.known,
+    timestamp: stringField(envelope, "timestamp"),
+    outcome: stringField(envelope, "outcome"),
+  };
+}
+<<<END FEEDROW
 
-## DECISION F021 D5 (2026-08-22) — the fan-out is a bounded event ring inside the existing brain-stream runner, published on the existing view
+<<<SLICE FEEDROWTEST
+import { describe, it, expect } from "vitest";
+import { feedRowOf } from "./feedRow";
+import { STREAM_EVENT_CATALOG } from "./humanizeCatalog";
 
-CONTEXT, measured by the reviewer at `fc56d4cc`. The single subscription the feature file's Orchestrator brief demands ALREADY EXISTS and is not what is missing: `useBrainStream` occurs at three lines across `apps/ui/src/` — its definition, its import in `apps/ui/src/components/shell/RemedyShell.tsx`, and the one call in that shell — and the shell passes `stream.status` down into `RightLivePanel`. What is missing is the events themselves. `BrainStreamView` in `apps/ui/src/api/brainStreamRunner.ts` carries `status`, `lastSeq` and `gapDetected` and nothing else, and `BrainStreamState` in `apps/ui/src/api/brainStream.ts` adds only `attempt`: the runner dispatches every event and RETAINS none of them. That is why `ActivityFeedCard` is fed a `RemedyActivityItem[]` off the REST dashboard today — the current feed is a second DATA PATH rather than a second connection, and it is not live.
+/** A frame as `framesOf` builds one: the envelope IS the frame's event field. */
+function frameOf(seq: number, envelope: unknown) {
+  return { seq, event: envelope };
+}
 
-CHOSEN: T002 adds to `BrainStreamState` a `recent` ring of at most 500 projected rows, appended on dispatch and dropped from the front past the bound, and publishes it on `BrainStreamView` under the object-identity contract `createBrainStreamRunner` already documents — `view()` returns the SAME object until something visible changes, because `useSyncExternalStore` compares snapshots with `Object.is` and re-renders forever otherwise. The rows reach the feed and the NowCard by being passed down from the ONE `useBrainStream` call `RemedyShell` already makes, exactly as `stream.status` is passed down today. No second `useBrainStream` call, no new hook, and no `EventSource` constructed outside `apps/ui/src/api/brainStreamDeps.ts`. The drop past the bound is OBSERVABLE and never silent: once the ring has dropped anything, the feed says so and points at the timeline, which is what this feature file's own edge-case paragraph requires of a bounded window. The bound is a number rather than a promise because nothing upstream supplies one — `packages/orchestration/ui_server.py` caps concurrent streams per job at `SSE_MAX_STREAMS_PER_JOB = 4` and caps event COUNT nowhere — and 500 is far past the five rows the current card shows and far short of a memory concern.
+describe("feedRowOf over a well-formed envelope", () => {
+  it("carries the frame's own seq rather than any envelope field", () => {
+    const row = feedRowOf(frameOf(41, { seq: 7, event: "task_run_started" }));
+    expect(row.seq).toBe(41);
+  });
 
-ALTERNATIVES CONSIDERED. Call `useBrainStream` a second time in `RightLivePanel`: rejected outright, because that hook builds one session per call and each session opens its own `EventSource`, which is the second connection the Orchestrator brief rejects as an architecture line. A module-level singleton store outside React: rejected, it re-introduces exactly the connection-lifetime bug the cleanup comment in `useBrainStream` exists to prevent, and it makes two jobs on one page impossible. Keep feeding the feed from the REST dashboard's activity list: rejected, it is not the live stream, so the NowCard's recency dot would be honest about nothing and the feature's Goal — that the STREAM becomes a story a human can follow — would go unmet while looking met. An unbounded log: rejected, a long job grows it without limit and the feature file already calls for a bounded window.
+  it("resolves the kind from the envelope's own event field", () => {
+    const row = feedRowOf(frameOf(1, { event: "task_run_started" }));
+    expect(row.kind).toBe("task_run_started");
+    expect(row.line).toBe(STREAM_EVENT_CATALOG["task_run_started"]);
+    expect(row.known).toBe(true);
+  });
 
-REVERSE IT by deleting the `recent` field from `BrainStreamState` and `BrainStreamView` and restoring `ActivityFeedCard`'s dashboard-fed props. The graph, the status badge and the gap detection read none of it, so nothing else on the surface changes.
-<<<END DECIDE45
+  it("carries timestamp and outcome through unchanged", () => {
+    const row = feedRowOf(frameOf(2, {
+      event: "task_run_started", timestamp: "2026-08-22T10:00:00Z", outcome: "ok",
+    }));
+    expect(row.timestamp).toBe("2026-08-22T10:00:00Z");
+    expect(row.outcome).toBe("ok");
+  });
+});
 
-<<<SLICE RECORD7
-Gate: R8 — the R7 entry. R7 PASSED ON EVERY GATE, RE-MEASURED INDEPENDENTLY RATHER THAN READ BACK. R7 was a record-and-close round that built nothing, and every one of its thirteen gates reproduces under the reviewer's own execution. TRANSPORT HELD IN ITS STRONGEST FORM: `.agent/authored/f021-r7.md` at `487ac619`, `.agent/last_block.md` at `9bb77da3`, the working copy of `.agent/last_block.md`, and the bytes the reviewer EMITTED, still on disk at `.remedy-wt/f021-r7.md`, are all sha256 5d0eebbe12a16d57a1a3696944ef8f24f696e99ac1e2c69d990dde632b86957e over 21611 bytes and 223 lines, so §4.9's primary cmp-against-scratchpad proof was available and used rather than the digest fallback. SLICES: 2 over 47 CONTENT lines, TOTAL 223 against DECISION F085 D6's 490 and PROSE 176 against D5's 400, both equal to that block's constraint 8. THE WHOLE-FILE SLICE IS BYTE-EQUAL to what landed: `.agent/plan.md` at `0882ba7b` equals PLANF021R7 over 42 lines against the 50 cap, with RECORD6 as a negative control that differs. THE APPEND at `30a09f4b` is the round-base blob plus exactly one newline plus RECORD6, remainder sha256 2c4560714396bfc4c24d2ac451ca80f85324048fc9afdd98f48a706fc77a11ef over 7529 bytes, the file going 446046 bytes and 1080 lines to 453575 and 1086, units 221 plus RECORD6's own 3 to 224 with every base position equal elementwise. THE LEDGER SETS RECONCILE at this gate: 212 `- R-` entries all DISTINCT, maximum id R-0649, `Done: R-` 0 and `Landed: ` 0, and `Gate: R` keys R1 through R7 all DISTINCT. THE SUITES ARE THE REVIEWER'S OWN, run serially in the primary checkout at `fc56d4cc`: the three contract suites exit 0 with 511 passed, the canary exit 0 with 42 passed, and `tests/ui_contracts/` exit 0 with 426 passed and 4 skipped — all three equal to R7's reported readings, so nothing regressed from outside that round. THE RANGE HELD: five commits every one single-parent, the path set EQUAL to that block's five `Change:` paths with both differences EMPTY, 0 paths beginning `apps/`, `packages/` or `tests/`, markers 0 in every file a slice landed in, `git ls-files .remedy-wt` 0, `git worktree list` ending with the primary checkout alone, and all five reflog rows `commit:` — amend 0, rebase 0, cherry 0, so no history was rewritten and nothing was force-pushed. THE TWO READINGS §3 CHECKLIST ITEM 31 LEAVES TO THIS GATE, taken here because the commits that would have had to state them are the very commits that wrote the quoting files: the R6 handback commit `6f5078d7` is single-parent, changes `.agent/handoff.md` alone at 72 insertions and 47 deletions, and the R7 handback commit `fc56d4cc` is single-parent, changes `.agent/handoff.md` alone at 39 insertions and 72 deletions — both far under the 500-insertion cap DECISION F104 D1 counts, and `git status --porcelain` reads 0 lines at `fc56d4cc`, which is the reading R7's G1 correctly declined to order for itself. WHY R7 IS PASS: every gate reproduces, the ledger arithmetic is exact, and the one deviation it declared is the reviewer's own block defect rather than a worker error. EVIDENCE FOR R-0585: the R7 block's constraint 7(c) ordered the handback to tell the next session that "R7 must FIRST rule the two infrastructure DECISIONS" while the block itself IS R7, states in its own Goal that it "BUILDS NOTHING", and ships a PLANF021R7 slice — committed at `0882ba7b` in that same round — assigning those DECISIONS to R8 and T002 to R9. Two clauses of one block, disagreeing about which round does the work, which is R-0585's exact clause-versus-clause shape; and the reach that finding already carries is the right one, because the list constraint 7(c) contradicts does not sit beneath it but fifty lines away inside a slice. Nothing false landed on disk: the worker wrote the substance of 7(c) into `## Next` without the round attribution, declared the contradiction, and left the numbering to this gate — which now settles it in the only direction the record permits, namely the plan's, since R7 demonstrably ruled neither DECISION and this round rules both.
-<<<END RECORD7
+describe("feedRowOf on envelopes the client does not control", () => {
+  it("an uncatalogued kind still yields a row, on the generic line", () => {
+    const row = feedRowOf(frameOf(3, { event: "some_runtime_computed_kind" }));
+    expect(row.line).toBe("some_runtime_computed_kind event");
+    expect(row.known).toBe(false);
+    expect(row.seq).toBe(3);
+  });
+
+  it("a non-object event field yields a row rather than throwing", () => {
+    for (const broken of [null, "a string", 7, undefined]) {
+      const row = feedRowOf(frameOf(4, broken));
+      expect(row.kind).toBe("");
+      expect(row.line).toBe("unknown event");
+      expect(row.known).toBe(false);
+    }
+  });
+
+  it("missing string fields read as the empty string, never undefined", () => {
+    const row = feedRowOf(frameOf(5, { event: "task_run_started" }));
+    expect(row.timestamp).toBe("");
+    expect(row.outcome).toBe("");
+  });
+
+  it("a non-string field is rejected rather than coerced", () => {
+    const row = feedRowOf(frameOf(6, { event: 42, timestamp: 1, outcome: [] }));
+    expect(row.kind).toBe("");
+    expect(row.timestamp).toBe("");
+    expect(row.outcome).toBe("");
+  });
+
+  it("a kind colliding with an Object prototype member is not reported known", () => {
+    const row = feedRowOf(frameOf(7, { event: "constructor" }));
+    expect(row.known).toBe(false);
+    expect(row.line).toBe("constructor event");
+  });
+});
+<<<END FEEDROWTEST
+
+<<<SLICE RECORD8
+Gate: R9 — the R8 entry. R8 PASSED ON EVERY GATE, RE-MEASURED INDEPENDENTLY RATHER THAN READ BACK. R8 was a decide-and-record round that built nothing, and every one of its fifteen gates reproduces under the reviewer's own execution. TRANSPORT HELD IN ITS STRONGEST FORM: `.agent/authored/f021-r8.md` at `741923b9`, `.agent/last_block.md` at `b9f8f136`, the working copy of `.agent/last_block.md`, and the bytes the reviewer EMITTED, still on disk at `.remedy-wt/f021-r8.md`, are all sha256 a9d295e3283d08603d50f62407c95f81628545aeecb5adff4be5099135c3b1f4 over 26644 bytes and 259 lines, so §4.9's primary cmp-against-scratchpad proof was available and used rather than the digest fallback. SLICES: 3 over 66 CONTENT lines, TOTAL 259 against DECISION F085 D6's 490 and PROSE 193 against D5's 400, both equal to that block's constraint 8. THE WHOLE-FILE SLICE IS BYTE-EQUAL to what landed: `.agent/plan.md` at `fd1e3b4f` equals PLANF021R8 over 46 lines against the 50 cap, with RECORD7 as a negative control that differs. THE TWO APPENDS HELD UNDER THE REVIEWER'S OWN READERS. `.agent/decisions.md` at `9c7fdfc2` is the round-base blob plus exactly one newline plus DECIDE45, remainder sha256 f128493ecd04a7d2a9c9172cfa2f27da1826955eb9777c5e88fa80136aa39f2c over 7147 bytes and 20 lines, the file going 492990 bytes and 6989 lines to 500137 and 7009, units 1225 plus DECIDE45's own 10 to 1235 with every base position equal elementwise, and `## DECISION ` headings 113 to 115, all DISTINCT at both points, with F021 D4 and D5 each reading 0 then 1. `.agent/live_review.md` at `17b9fce7` is the round-base blob plus exactly one newline plus RECORD7, remainder sha256 d2c9ec8f5ae67ca84d9cf4514e368254af95f379c696baaed7a926b60ab2c323 over 4075 bytes, units 224 plus RECORD7's own 1 to 225, again elementwise. THE REVIEWER RE-RAN BOTH NEGATIVE CONTROLS ITSELF rather than accepting the worker's: mutating byte offset 2 of each file — `D` to `Q` in `.agent/decisions.md` and `L` to `Q` in `.agent/live_review.md` — is REJECTED by reader (a) and reader (b) alike, while the true file is ACCEPTED by both, which is the same offset and the same outcome the worker reported. THE LEDGER SETS ARE UNMOVED, as a round minting nothing requires: 212 `- R-` entries all DISTINCT at both points, maximum id R-0649 at both, `Done: R-` 0 and `Landed: ` 0 at both, `- R-0585 —` 1 at both, and `Gate: R` keys 7 to 8 with `Gate: R8` going 0 to 1. THE SUITES ARE THE REVIEWER'S OWN, run serially in the primary checkout at `f5f01585`: the three contract suites exit 0 with 511 passed, the canary exit 0 with 42 passed, and `tests/ui_contracts/` exit 0 with 426 passed and 4 skipped — all three equal to the round-base readings, so nothing regressed. THE RANGE HELD: six commits every one single-parent, the base-to-C3 path set EQUAL to that block's five non-handoff `Change:` paths with both differences EMPTY, 0 paths beginning `apps/`, `packages/` or `tests/`, insertions 259, 161, 16, 20 and 2 every one far under the 500 cap, markers 0 in every file a slice landed in, `git ls-files .remedy-wt` 0, `git worktree list` ending with the primary checkout alone, and all six reflog rows `commit:` — amend 0, rebase 0, cherry 0. THE READING §3 CHECKLIST ITEM 31 LEAVES TO THIS GATE: the R8 handback commit `f5f01585` is single-parent and changes `.agent/handoff.md` alone at 47 insertions and 38 deletions, far under the 500-insertion cap, and `git status --porcelain` reads 0 lines at that commit. That numstat is NOT the file's line counts — the handoff went from 88 lines to 97 — and the difference is git's matched-line accounting rather than a defect; §3 checklist item 28 exists because those two readings diverge exactly here, and the worker flagged the divergence itself before the reviewer looked. WHY R8 IS PASS: every gate reproduces, the ledger arithmetic is exact, the two DECISIONS it ruled rest on measurements the reviewer took first-hand, and the round declared no deviation because it needed none.
+<<<END RECORD8
