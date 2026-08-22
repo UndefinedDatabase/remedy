@@ -14,25 +14,23 @@ renders fixture streams per the binding CSS, jump-to-node focuses the right
 node, and the steering input renders DISABLED with its tooltip until F030.
 
 ## Current Step
-R37 records R36 and ends the session. THE BUILD IS COMPLETE: T001's catalog and
-its derived coverage contract, T002's ring, feed, NowCard, recency dot and
-scroll discipline, and T003's envelope linkage, row resolver, click-jump and
-disabled steering input are all on disk and gated. Nothing of the feature's
-change set remains unwritten. One correction is appended against OPEN finding
-R-0629, minting no id.
+R38 is the INTEGRATION-GATE round, the first of the three that close F021. The
+full suite runs at the branch tip and at the merge base in a disposable worktree
+per docs/agents/integration_gate.md, and the feature file's Goal & Done is
+resolved clause by clause to the path, symbol and test node id that satisfy it.
+The round MAY ONLY CONFIRM: it writes no product code, mints no finding id, and
+hands back on the first branch-only failure coupled to F021 code or the first
+clause nothing on disk satisfies. R37's PASS is recorded at C2.
 
 ## Next Steps
-1. The INTEGRATION-GATE round: the whole suite at the branch tip, and the
-   feature file's Goal & Done read clause by clause against what is on disk —
-   the round that may only confirm, never build.
-2. The evidence round, then the STATUS-commit round
+1. The evidence round, then the STATUS-commit round
    (docs/roadmap/STATUS_closure_protocol.md; the two are never one round).
-3. The pull request, opened at closure and merged only at the Open PR Gate.
+2. The pull request, opened at closure and merged only at the Open PR Gate.
 
 ## Risks
-- The build being complete is a claim about the CHANGE SET, not about the
-  acceptance criteria. Only the integration-gate round can read Goal & Done
-  clause by clause, and it may find a clause nothing on disk satisfies.
+- A green gate is not an accepted feature. Only the clause-by-clause read can
+  show that an acceptance criterion has nothing on disk behind it, and a suite
+  that passes says nothing about a criterion no test reaches.
 - No DOM environment exists here, so components are gated by `npx tsc --noEmit`
   and by Python source contracts. VITEST DOES NOT TYPECHECK.
 - Nothing here renders CSS. R-0661's pin proves the unresolved-property SET has
