@@ -1,5 +1,7 @@
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { RemedyActivityItem } from "../../api/types";
 import type { FeedRow } from "../../api/feedRow";
+import { FEED_SCROLL_START, nextFeedScroll, shouldFollowNewest, shouldShowNewRowsPill } from "../../api/feedScroll";
 import { BuilderGlyph, ReviewerGlyph, PersonGlyph, GearGlyph } from "../icons/RemedyGlyphs";
 import styles from "./RightLivePanel.module.css";
 
@@ -14,19 +16,70 @@ function formatTokenEstimate(tokens: number): string {
   return tokens >= 1000 ? `${(tokens / 1000).toFixed(1)}k` : String(tokens);
 }
 
-/** How many live rows the side panel shows. The ring holds up to
- *  BRAIN_RECENT_LIMIT; this card is a glance and the timeline is the archive. */
-const LIVE_ROWS_SHOWN = 5;
+/** How many live rows the side panel keeps. DECISION F021 D10 raised this from
+ *  5 to 40 deliberately: the feature file's binding CSS gives the feed a 52vh
+ *  box, and a window that always fits inside its box can never scroll, which
+ *  would leave feedScroll.ts's never-yank rule unreachable in the product. The
+ *  ring still holds BRAIN_RECENT_LIMIT and the timeline is still the archive. */
+const LIVE_ROWS_SHOWN = 40;
 
 /** The live half of the card: rows projected from the SSE stream, NEWEST
  *  FIRST. Remedy deliberately does not merge these with the dashboard's REST
  *  activity list — two clocks in one list would order neither honestly — so
- *  live rows REPLACE that list as soon as the stream has produced any. */
+ *  live rows REPLACE that list as soon as the stream has produced any.
+ *
+ *  Because rows render newest FIRST, the newest edge is the TOP of the box, so
+ *  `distanceFromNewest` is `scrollTop` (DECISION F021 D10). feedScroll.ts owns
+ *  every decision about following and unseen counts; this component owns only
+ *  the DOM reads that rule cannot make, which is what keeps the rule testable
+ *  in a repository with no DOM. */
 function LiveFeed({ recent, recentDropped }: { recent: readonly FeedRow[]; recentDropped: number }) {
   const newestFirst = recent.slice(-LIVE_ROWS_SHOWN).reverse();
+  const boxRef = useRef<HTMLDivElement | null>(null);
+  const [scrollState, setScrollState] = useState(FEED_SCROLL_START);
+  // What the reader has already been shown. A ref rather than state: it is read
+  // and written inside the arrival effect and must never itself cause a render.
+  const seenCountRef = useRef(recent.length);
+
+  const readDistanceFromNewest = useCallback((): number => {
+    return boxRef.current ? boxRef.current.scrollTop : 0;
+  }, []);
+
+  useEffect(() => {
+    const arrived = Math.max(0, recent.length - seenCountRef.current);
+    seenCountRef.current = recent.length;
+    if (arrived === 0) {
+      return;
+    }
+    const distance = readDistanceFromNewest();
+    setScrollState(prev => nextFeedScroll(prev, arrived, distance));
+    // NEVER YANK: only a reader already at the newest edge is moved. A reader
+    // who scrolled up keeps their position and accumulates an unseen count.
+    if (shouldFollowNewest(distance) && boxRef.current) {
+      boxRef.current.scrollTop = 0;
+    }
+  }, [recent.length, readDistanceFromNewest]);
+
+  // Returning to the edge clears the unseen count, through the same rule that
+  // accumulated it: no row arrives here, so `arrived` is 0.
+  const handleFeedScroll = useCallback(() => {
+    setScrollState(prev => nextFeedScroll(prev, 0, readDistanceFromNewest()));
+  }, [readDistanceFromNewest]);
+
+  const jumpToLive = useCallback(() => {
+    if (boxRef.current) {
+      boxRef.current.scrollTop = 0;
+    }
+    setScrollState(FEED_SCROLL_START);
+  }, []);
 
   return (
-    <div className={styles.activityList}>
+    <div className={styles.activityList} ref={boxRef} onScroll={handleFeedScroll}>
+      {shouldShowNewRowsPill(scrollState) ? (
+        <button type="button" className={styles.jumpToLivePill} onClick={jumpToLive}>
+          Jump to live · {scrollState.unseenRows} new
+        </button>
+      ) : null}
       {recentDropped > 0 ? (
         <p className={styles.emptyState}>
           {recentDropped} earlier {recentDropped === 1 ? "event" : "events"} left this window — the timeline keeps them all.
