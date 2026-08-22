@@ -14,30 +14,26 @@ renders fixture streams per the binding CSS, jump-to-node focuses the right
 node, and the steering input renders DISABLED with its tooltip until F030.
 
 ## Current Step
-R39 records R38's PASS and registers what the integration gate and the
-acceptance read turned up. THE GATE IS GREEN: the branch-only failure set is
-empty against the merge base `4548995d` and no acceptance clause is UNSATISFIED.
-Four ids are minted — R-0662, R-0663, R-0664 and R-0665 — and three further
-candidates are not, because R-0445, R-0444 and R-0645 already describe them.
-The round writes no product code.
+R40 is closure round one. It records the R39 verdict, then builds the two
+artefacts the STATUS line quotes: the closure evidence bundle for job
+`f021-closure` and a FRESH review zip, both covering the accepted HEAD this
+round creates. No STATUS line, no README edit and no pull request happen here.
 
 ## Next Steps
-1. The evidence round: the closure bundle and a fresh review zip, per
-   docs/roadmap/STATUS_closure_protocol.md.
-2. The STATUS-commit round; the two are never one round.
-3. The pull request, opened at closure and merged only at the Open PR Gate.
+1. Closure round two: the authored STATUS `[x]` line and the README capability
+   sync in the SAME commit (R-0154), then the pull request.
+2. The PR is NOT merged in this session; it merges at the next feature's start
+   via the Open PR Gate, which is the operator's manual-review window.
 
 ## Risks
-- R-0663 is an ACCEPTANCE deviation rather than a process one: the closure round
-  must either rule the CSS-module realization sufficient for "per the binding
-  CSS" or order the one-line repair in its own reviewer-gated round.
-- No DOM environment exists here, so components are gated by `npx tsc --noEmit`
-  and by Python source contracts. VITEST DOES NOT TYPECHECK.
-- Nothing here renders CSS. R-0661's pin proves the unresolved-property SET has
-  not grown; it cannot prove any rule's computed value.
-- `npm run lint` is RED tree-wide under R-0622, still open.
-- No code defect of F021 blocks the gate. R-0364, R-0369, R-0402, R-0403,
-  R-0419, R-0439, R-0444, R-0445, R-0587, R-0607 through R-0609, R-0611,
-  R-0613, R-0618, R-0622, R-0629, R-0630, R-0644, R-0645, R-0651, R-0653
-  through R-0659, R-0661, R-0662, R-0664 and R-0665 stay routed to a paydown
-  branch.
+- The zip is a closure BLOCKER, not a formality: a PACKAGE_STATUS other than
+  READY_FOR_REVIEW stops closure rather than being worked around.
+- R-0663 is an ACCEPTANCE deviation and closure round two must rule on it: the
+  shipped `.activityItem` sets `gap: 12px` where T5_F021's binding CSS says
+  `gap:10px`. Either a DECISION accepts the CSS-module realization or a repair
+  round changes it; the closure may not do both and may not do neither.
+- Inherited High findings from closed features are documented risks rather than
+  F021 defects, which is why the F021 verdict is PASS_WITH_RISKS, exactly as
+  F008 and F009 closed before it.
+- `npm run lint` in `apps/ui` is RED at base and is NOT a gate (R-0364), which
+  is R-0622 and routes to a paydown branch.
