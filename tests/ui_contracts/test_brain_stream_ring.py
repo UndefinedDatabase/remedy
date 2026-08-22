@@ -91,3 +91,38 @@ class TestNoSecondAppendSite:
     def test_the_runner_does_not_project_rows(self):
         code = strip_ts_comments(RUNNER.read_text())
         assert "feedRowOf" not in code, "dispatch runs for replays too"
+
+
+class TestViewPublishesTheRing:
+    """The runner half of DECISION F021 D5. These pin the two facts a
+    behavioural test states less directly: that the ring reaches the view at
+    all, and that its identity is compared by reference rather than rebuilt."""
+
+    def test_the_view_type_carries_the_ring(self):
+        code = strip_ts_comments(RUNNER.read_text())
+        start = code.index("export interface BrainStreamView {")
+        view = code[start:code.index("}", start)]
+        assert "recent: readonly FeedRow[];" in view
+        assert "recentDropped: number;" in view
+
+    def test_cached_view_is_seeded_from_the_state(self):
+        code = strip_ts_comments(RUNNER.read_text())
+        init = code[code.index("let cachedView"):code.index("function view()")]
+        assert "recent: state.recent," in init, (
+            "a fresh [] here is a different array from the initial state's "
+            "ring, so the first timer would announce a change nobody made"
+        )
+        assert "recent: []" not in init
+
+    def test_publish_compares_the_ring_by_reference(self):
+        code = strip_ts_comments(RUNNER.read_text())
+        body = code[code.index("function publish()"):code.index("function arm(")]
+        assert "next.recent === cachedView.recent" in body, (
+            "useSyncExternalStore compares with Object.is; a deep compare here "
+            "would still hand back a fresh object and re-render forever"
+        )
+        assert "next.recentDropped === cachedView.recentDropped" in body
+
+    def test_the_runner_still_does_not_project_rows_itself(self):
+        code = strip_ts_comments(RUNNER.read_text())
+        assert "feedRowOf" not in code, "the projection belongs behind the guard"
