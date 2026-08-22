@@ -1,82 +1,94 @@
-# Handback — F021 R16 (worker)
+# Handback — F021 R17 (the feed's scroll discipline as a pure rule)
+
+Feature F021, round R17. Branch `feature/f021-live-activity-feed`.
+Round base `0328426b40c633c479fd77085a5991eb280a75c9`, the R16 handback commit.
+
+Fortschritt: ~82 % (T002 — Feed und NowCard haengen am Stream, die Scroll-Regel
+             liegt als reine Funktion vor; es fehlen ihre Verdrahtung, der
+             Recency-Dot und T003) — Schaetzung
 
 ## Range
-Review of 2d0532dad72e74ed0e8ecb2dd6292d12e6144673..HEAD — round base `2d0532da`, six commits C0a..C4.
+
+Review of 0328426b..HEAD, where HEAD is C4, the commit that writes this file.
+
+## Item status
+
+| Item | Status | Reason |
+|------|--------|--------|
+| C0a | done | block saved as authored text |
+| C0b | done | mirrored from the committed C0a blob |
+| C1 | done | plan rewritten to PLANF021R17 |
+| C2 | done | R16 verdict recorded, R-0652 registered |
+| C3 | done | pure rule, its vitest and its contract |
+| C4 | done | this commit |
 
 ## Commits
 
-### 5c0b114f docs(state): save the F021 R16 step block
+### 8f676acb docs(state): save the F021 R17 step block as authored text
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f021-r16.md | +383/-0 | C0a, the block saved verbatim |
+| .agent/authored/f021-r17.md | +465/-0 | the block, byte for byte, NEW |
 
-### 00535702 docs(state): mirror the F021 R16 block into last_block
+### 8223f301 docs(state): mirror the F021 R17 block into last_block
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/last_block.md | +242/-297 | C0b, written FROM the committed C0a blob |
+| .agent/last_block.md | +378/-296 | written FROM the committed C0a blob |
 
-### 3c90509c docs(state): point the F021 plan at R16 and the now-card wiring
+### b45d0242 docs(state): point the F021 plan at R17 and the pure scroll rule
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/plan.md | +16/-18 | C1, PLANF021R16 + one terminator |
+| .agent/plan.md | +19/-13 | PLANF021R17 plus one terminating newline |
 
-### 52d01adc docs(review): record the R15 verdict as PASS and register R-0651
+### bbf28b28 docs(review): record the R16 verdict as PASS and register R-0652
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/live_review.md | +6/-0 | C2, RECORD16 appended |
+| .agent/live_review.md | +6/-0 | RECORD17 appended |
 
-### e9b0dc0b feat(ui): show the newest stream action in the agent now-card
+### cd1d56e2 feat(ui): decide feed scroll follow and unseen rows as a pure rule
 | Path | +/- | Reason |
 |---|---|---|
-| apps/ui/src/components/panels/AgentNowCard.tsx | +11/-4 | C3, ANCFILE whole-file write REPLACING a tracked file |
-| apps/ui/src/components/panels/RightLivePanel.tsx | +1/-1 | C3, RLP3 pair |
-| tests/ui_contracts/test_brain_stream_ring.py | +26/-0 | C3, CONTRACTPATHS3 pair then CONTRACTNOW append |
+| apps/ui/src/api/feedScroll.ts | +50/-0 | FEEDSCROLL, NEW |
+| apps/ui/src/api/feedScroll.test.ts | +64/-0 | FEEDSCROLLTEST, NEW |
+| tests/ui_contracts/test_brain_stream_ring.py | +33/-0 | CONTRACTPATHS4 pair, then CONTRACTSCROLL append |
 
-### C4 — this commit, whose SHA a handoff cannot name from inside itself (R-0494) — docs(state): hand back F021 R16
+### C4, this commit, which cannot name its own SHA — docs(state): hand back F021 R17
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/handoff.md | rewrite | C4, this file |
-
-## Item status
-| Item | Status | Reason |
-|---|---|---|
-| C0a | done | |
-| C0b | done | |
-| C1 | done | |
-| C2 | done | |
-| C3 | done | |
-| C4 | done | this commit |
+| .agent/handoff.md | rewrite | this handback |
 
 ## External actions
-`git worktree add --detach .remedy-wt/redctl-r16 e9b0dc0b` — created for G13, a name no directory already used; `git worktree remove --force .remedy-wt/redctl-r16` + `git worktree prune` — removed, `git worktree list` now the primary checkout alone. `gh pr list --state open --json number,headRefName` — `[]`. `git push -u origin feature/f021-live-activity-feed` — run after C4. NO `gh pr create`, NO `gh pr merge`, no force-push, no history rewrite.
 
-## Verification
-G1 exit 0 — `.agent/STOP` ABSENT before C0a and again before C4; branch `feature/f021-live-activity-feed`; `git status --porcelain` 0 lines after each of C0a, C0b, C1, C2, C3. Owed reading from R15: `2d0532da` is single-parent (parent `0e1fe68f`) and touches `.agent/handoff.md` alone at +43, under the 500-insertion cap.
-G2 exit 0 — sha256 `20b0e961a63693b03ef3913d6947803545f5e9b4b75d19dcff3a9e68a91258a5`, 31506 bytes, 383 lines, EQUAL across the received bytes, `.remedy-wt/f021-r16.md`, the C0a blob and the C0b file; C0b written from `git show 5c0b114f:.agent/authored/f021-r16.md`.
-G3 exit 0 — extractor over the COMMITTED C0a blob by marker LINES printed 8 slices and 109 CONTENT lines; TOTAL 383 (cap 490) and PROSE 383-109 = 274 (cap 400), both equal to constraint 9.
-G4 exit 0 / control exit 1 — `cmp .agent/plan.md` vs PLANF021R16+NL exit 0, vs the bare slice exit 1 (EOF after byte 2455); last byte is a newline; `^## Goal$` 1; `^## Next Steps$` 1; `wc -l` 42, at most 50.
-G5 exit 0 — reader (a): base blob is a byte-exact PREFIX, remainder = NL+RECORD16+NL at 8272 bytes, 6 lines, sha256 `51e76c6dfce675845102190ca27cce38c1560f4086cb60ec5f8f8cb6cb048e4d`; file 492980 B / 1106 L before, 501252 B / 1112 L after. Reader (b) SET-WISE: units 234 -> 237 ELEMENTWISE equal, RECORD16 exactly 3 units (= the reviewer's THREE: finding, FIX, gate entry). NEGATIVE CONTROL at offset 2 of the FIRST paragraph, `L` -> `X`, equal length: reader (a) rejected ("base is not a prefix"), reader (b) rejected ("unit 0 differs"), both ACCEPTED the true file.
-G6 exit 0 — base -> C2, all line-anchored: `- R-` 213 -> 214, DISTINCT at both; maximum `R-0650` -> `R-0651`; `Done: R-` 0 -> 0; `Landed: ` 0 -> 0; `Gate: R` keys 15 -> 16, DISTINCT at both; `Gate: R16` 0 -> 1. ONE id minted, none resolved.
-G7 exit 0 — whole-string search over raw bytes, all eight numbers: CONTRACTPATHS3 (append-shaped) FROM 1 / TO 0 at the round base, FROM 1 / TO 1 at C3; RLP3 (replacing) FROM 1 / TO 0 at the round base, FROM 0 / TO 1 at C3. Both base FROM counts were 1, so no occurrence had to be chosen.
-G8 exit 0 — the CONTRACTPATHS3-SUBSTITUTED base blob (9431 bytes, from 9367 B / 210 L at base) is a byte-exact PREFIX of the C3 file (10535 B / 236 L); remainder is EXACTLY NL+CONTRACTNOW+NL at 1104 bytes, 25 lines, sha256 `eff284d5939063acf1ce9f0d974160e2e5fc29806927e67aaa5232ff5cd5ea62` — identical to the reviewer's measurement. No per-line count used.
-G9 exit 0 — blank lines immediately before CONTRACTNOW's `class ` line in the C3 file: 2. COUNTED, not delegated to ruff.
-G10 exit 0 / control exit 1 — `apps/ui/src/components/panels/AgentNowCard.tsx` cmp vs ANCFILE+NL exit 0, vs the bare slice exit 1; 1517 bytes, 33 lines, sha256 `0418f0805c142ca82beea3dfc249299fc6f5f061303faea09e313f13a4a238f0` — the reviewer's digest exactly. At the round base the same path is 1009 bytes / 26 lines and `git ls-tree 2d0532da` DOES list it (blob `5e876b0b`), so this REPLACED a tracked file.
-G11 exit 0 — `npx tsc --noEmit`, working directory `/home/decodeux/Repos/remedy/apps/ui` (PRIMARY checkout), stdout and stderr both EMPTY. Not red, so nothing was widened.
-G12 exit 0 — `npm run test:unit` from `/home/decodeux/Repos/remedy/apps/ui` (PRIMARY checkout), the script defined as `vitest run` at apps/ui/package.json line 11: 13 test files, 185 tests, all passed. UNCHANGED from the round base, as the block predicted; this round adds no vitest case. No deviation was needed — the substituted form R-0651 documents is the form the block ordered.
-G13 exit 0 then exit 1 — disposable worktree `.remedy-wt/redctl-r16` at `e9b0dc0b`: GREEN FIRST, exit 0, 24 passed. Target `      <AgentNowCard dashboard={dashboard} recent={recent} />` occurs EXACTLY ONCE, whole-line 1 and indent-agnostic 1, the two AGREEING. Unwired to `      <AgentNowCard dashboard={dashboard} />`: exit 1, 1 failed and 23 passed, the failure `tests/ui_contracts/test_brain_stream_ring.py::TestTheNowCardShowsTheNewestAction::test_the_panel_hands_the_ring_to_the_now_card` with `AssertionError: the NowCard is wired to nothing and shows the fallback forever`. Tree removed and pruned.
-G14 exit 0 / 0 / 0 — SERIALLY from `/home/decodeux/Repos/remedy` (REPOSITORY ROOT), counting by passed plus skipped: `tests/ui_contracts/` 450 passed + 4 skipped = 454, the ordered rise of 3 over the base's 451; `tests/ui_server/ tests/orchestration/test_test_runner.py tests/regression/test_resource_safety.py` 511; `tests/cli/test_golden_path.py` 42 (canary). No docs gate owed.
-G15 exit 0 — base..C3 path set EQUALS the seven non-handoff `Change:` paths, both differences EMPTY; five commits, EVERY one single-parent; `git show --numstat` and `git diff --numstat` agree cell by cell with `## Commits` above, no disagreement; insertions 383, 242, 16, 6, 38, all under 500; `git ls-files .remedy-wt` 0; `git worktree list` the primary checkout alone; `gh pr list --state open` `[]`, and neither `gh pr create` nor `gh pr merge` was run. Markers counted LINE-ANCHORED (first characters `<<<SLICE ` / `<<<END `): 0 in each of the five files a slice landed in — plan.md, live_review.md, AgentNowCard.tsx, RightLivePanel.tsx, test_brain_stream_ring.py; live_review.md reads 2 under the containment reading, which is why the clause is anchored. Reflog read by OPERATION field only (text before the first `:`) over this round's 6 rows: every one `commit`, and `amend`, `rebase`, `cherry` each 0 in that field.
+- `git worktree add --detach .remedy-wt/r17-red cd1d56e2` — created for G13; `git worktree remove --force .remedy-wt/r17-red` then `git worktree prune` — pruned, list is the primary checkout alone.
+- `gh pr list --state open --json number,headRefName` — `[]`. Neither `gh pr create` nor `gh pr merge` was run; F021 is mid-feature.
+- `git push -u origin feature/f021-live-activity-feed` after C4 — result in the round report.
+
+## Verification — one line per gate, transcripts kept in the round report (R-0582)
+
+- G1 PASS — `.agent/STOP` ABSENT immediately before C0a and again before C4; branch `feature/f021-live-activity-feed`; `git status --porcelain` 0 lines after each of C0a, C0b, C1, C2, C3. Owed reading from R16: `0328426b` is single-parent (parent `e9b0dc0b`) and touches `.agent/handoff.md` alone at 36 insertions, under the 500 cap.
+- G2 PASS — the received bytes, `.remedy-wt/f021-r17.md`, `.agent/authored/f021-r17.md` at C0a and `.agent/last_block.md` at C0b are ALL FOUR sha256 `7732815b36f47b159610793c81933df3973e7d22266ef6be0f5487229a4e75e3` over 33614 bytes and 465 lines; C0b was written FROM the committed C0a blob.
+- G3 PASS — the marker-LINE extractor over the committed C0a blob printed 7 slices and 201 CONTENT lines; re-measured from that same blob, TOTAL 465 against D6's 490 and PROSE 264 against D5's 400, both equal to constraint 9.
+- G4 PASS — `cmp .agent/plan.md` against PLANF021R17 plus one newline exit 0; NEGATIVE CONTROL against the bare slice exit 1; last byte is a newline; `^## Goal$` 1, `^## Next Steps$` 1, `wc -l` 48, at most 50.
+- G5 PASS — reader (a): the base blob (501252 B, 1112 L, sha256 `bfcbd70a…b39f`) is a byte-exact PREFIX and the remainder is EXACTLY one newline plus RECORD17 plus one newline at 7534 B, 6 L, sha256 `14feb550812a3b6cd59b96cfa13341d9c8d72591053057c7ac3d9dc230f81dc3`; the file goes 501252→508786 B and 1112→1118 L. Reader (b), SET-WISE and ELEMENTWISE over the whole list: 237 units → 240, RECORD17 exactly 3. NEGATIVE CONTROL at offset 2 of the FIRST paragraph, printable byte `L`→`X` at equal length: BOTH readers REJECTED the mutant and ACCEPTED the true file.
+- G6 PASS — round base then C2, line-anchored: `- R-` 214 → 215, all DISTINCT at both points; maximum R-0651 → R-0652; `Done: R-` 0 → 0; `Landed: ` 0 → 0; `Gate: R` keys 16 → 17, both DISTINCT; `Gate: R17` 0 → 1.
+- G7 PASS — CONTRACTPATHS4 by WHOLE-STRING search over raw bytes: round base FROM 1, TO 0; C3 FROM 1, TO 1, the append-shaped reading the block predicted. The base FROM count was 1, so no occurrence was chosen.
+- G8 PASS — the contract at the round base (10535 B, 236 L) WITH CONTRACTPATHS4 substituted in memory (10570 B) is a byte-exact PREFIX of the file at C3, which reads 11962 B and 269 L; the prefix side IS the substituted blob; the remainder is EXACTLY one newline plus CONTRACTSCROLL plus one newline at 1392 B, 32 L, sha256 `224ed5417f81cc6a80dca71a5f0d756f631bc40a8180abd20cf29e857cf989f4`, equal to the digest the block predicted. No per-line count was used.
+- G9 PASS — blank lines immediately before CONTRACTSCROLL's `class ` line in the C3 file: 2, COUNTED and not delegated to ruff.
+- G10 PASS — both paths are ABSENT from `git ls-tree 0328426b`, so this round CREATES them and replaces nothing. `feedScroll.ts` 2254 B, 50 L, sha256 `18ef679bdef07998b0179c5013056a67a0999671f377be2b215c50c34737e205`; `feedScroll.test.ts` 2043 B, 64 L, sha256 `816df6037f463746aaedda9a7417ecb6595f0d24dc2a505699d84871acabbcd6`; `cmp` against slice-plus-newline exit 0 and 0, NEGATIVE CONTROLS against the bare slices exit 1 and 1.
+- G11 PASS — `npx tsc --noEmit` in `/home/decodeux/Repos/remedy/apps/ui`, the PRIMARY checkout: exit 0, output EMPTY.
+- G12 PASS — `npm run test:unit` in `/home/decodeux/Repos/remedy/apps/ui`, the PRIMARY checkout: exit 0, 14 test files and 196 tests, the exact reading the block ordered for one added file and eleven added cases.
+- G13 PASS — disposable worktree `.remedy-wt/r17-red` at C3, a name no directory already used: GREEN FIRST at 28 passed. The target `    return FEED_SCROLL_START;` occurs EXACTLY ONCE, whole-line 1 and indent-agnostic 1, the two counts agreeing. With `    return prev;` in its place: exactly 1 failed, 27 passed, the failure `TestTheFeedScrollRuleIsPureAndHeadless::test_the_unseen_count_clears_at_the_newest_edge`, assertion text "returning to the edge clears the unseen count rather than decrementing it". Tree pruned.
+- G14 PASS — SERIALLY, never two at once, from `/home/decodeux/Repos/remedy`, the REPOSITORY ROOT, exit 0 each, counted by PASSED PLUS SKIPPED: `tests/ui_contracts/` 454 passed + 4 skipped = 458; `tests/ui_server/` with `tests/orchestration/test_test_runner.py` and `tests/regression/test_resource_safety.py` 511 passed + 0 skipped = 511; the canary `tests/cli/test_golden_path.py` 42 passed + 0 skipped = 42.
+- G15 PASS — base-to-C3 path set equals the seven non-handoff `Change:` paths, the difference EMPTY BOTH WAYS; all five commits single-parent; `git show --numstat` and `git diff --numstat` agree cell by cell with the `## Commits` tables above; insertions 465, 378, 19, 6 and 147, every one under the 500 cap; `git ls-files .remedy-wt` 0 lines; `git worktree list` ends with the primary checkout alone; `gh pr list --state open` EMPTY. LINE-ANCHORED marker sweep, first characters `<<<SLICE ` or `<<<END `: 0 in every one of the five files a slice landed in, while `.agent/live_review.md` reads 2 under the containment reading, which is exactly why the anchored form is the gate. Reflog read BY OPERATION FIELD — the text before the first `:` — over this round's 5 rows: every operation is `commit`, and `amend`, `rebase` and `cherry` each occur 0 times in that field.
 
 ## Authored-text proofs
-All eight slices were extracted MECHANICALLY from the committed C0a blob by their marker LINES and applied byte for byte; none was retyped, rewrapped, reflowed or reindented. Disk-to-disk: `.agent/plan.md` cmp 0 against PLANF021R16+NL with the bare-slice control at 1 (G4); `AgentNowCard.tsx` cmp 0 against ANCFILE+NL with the bare-slice control at 1 (G10); the two appends are proved by prefix + remainder digest instead of cmp, `51e76c6d…8e4d` for RECORD16 (G5) and `eff284d5…ea62` for CONTRACTNOW (G8); the two pairs by the eight whole-string counts (G7). Constraint 5 honoured: `test_brain_stream_ring.py` took CONTRACTPATHS3 FIRST and CONTRACTNOW SECOND.
+
+`.agent/authored/f021-r17.md` at C0a is byte-identical to the received block and to the reviewer's emitted `.remedy-wt/f021-r17.md` at sha256 `7732815b…e75e3` (G2). Every slice was extracted MECHANICALLY from the committed C0a blob by its marker LINES and applied byte for byte, never retyped: the disk-to-disk `cmp` results are under G4 (plan) and G10 (both modules), and the two append proofs are under G5 (ledger) and G8 (contract).
 
 ## Deviations & assumptions
-NONE. The ordered commit sequence C0a, C0b, C1, C2, C3, C4 was followed exactly, with no extra, dropped or reordered commit, and no gate clause was edited around. Exactly ONE finding id was minted and none resolved: 214 open, maximum R-0651, next free R-0652. Only the paths in `Change:` were touched. `npm run lint` was neither run nor repaired (constraint 8).
-D15 — this file is 82 lines against the 60-line cap. Cause is MANDATED content only: six per-commit changed-file tables (>5 commits, so AGENTS.md permits up to 100), the item-status table, fifteen one-line gate results, and the authored-text proofs. No section was dropped and no transcript was inlined (R-0582).
+
+None. The block's ordered commit sequence C0a, C0b, C1, C2, C3, C4 was followed exactly — no extra commit, none dropped, no reordering — and only paths on the `Change:` list were touched.
+DECISION D15 overage: this file is 94 lines against the 60-line cap. The cause is mandated content: six per-commit changed-files tables plus one line for each of fifteen gates. AGENTS.md permits up to 100 lines when per-commit tables of more than five commits require it, which this round's six commits do. No section was dropped to meet the cap.
 
 ## Next
-THIS SESSION ENDS with C4. The next session's FIRST action is docs/agents/self_drive_protocol.md Phase 1 rule 1 — the `.agent/STOP` check — BEFORE rule 2's Open PR Gate (R-0347). Rule 2 will find NO open pull request (`gh pr list --state open` reads `[]`), so rule 5 applies and F021 continues on `feature/f021-live-activity-feed`. R16's OWN verdict is UNRECORDED and the next round's C2 owes it. R17 is the scroll discipline that never yanks a reader who has scrolled up.
 
-Fortschritt: ~80 % (T002 fast fertig — Feed und NowCard haengen jetzt beide am
-             Stream; es fehlen Scroll-Disziplin, der Recency-Dot und T003)
-             — Schaetzung
+THIS SESSION ENDS with C4. The next session's FIRST action is docs/agents/self_drive_protocol.md Phase 1 rule 1 — the `.agent/STOP` check — BEFORE rule 2's Open PR Gate (R-0347). Rule 2 will find NO open pull request, so rule 5 applies and F021 continues on this branch. R17's own verdict is UNRECORDED and the next round's C2 owes it. R18 is the recency dot, which also OWES the R-0652 repair: the NowCard's live badge must fade back to idle under that same pure recency rule instead of latching on forever once any action has entered the ring.
