@@ -14,35 +14,34 @@ renders fixture streams per the binding CSS, jump-to-node focuses the right
 node, and the steering input renders DISABLED with its tooltip until F030.
 
 ## Current Step
-R30 records R29, which PASSED, and corrects the two defects it surfaced. Both
-are the reviewer's and neither mints an id: a ledger count gate anchored on the
-loose `- R-` prefix rather than on the registration pattern goes to R-0630, and
-a correction paragraph that wore the registration shape — plus an append
-convention that landed two blank lines into `.agent/decisions.md` — goes to
-R-0587. The corrections are appended and name the landed text.
+R31 wires `feedScroll.ts` into the live feed's scroll container — the rule this
+feature built at R17 and has left unread since — with the "jump to live"
+affordance the feature file binds, the 52vh scroll box its binding CSS fixes,
+and contract pins plus a red control, because no DOM test here can reach a
+React hook. The same round records R30, which PASSED, and appends the one
+correction it owes: a count RECORD30 stated about `.agent/decisions.md` was
+hand-read and is wrong by one in both numerals, which is open finding R-0644's
+standing rule failing while its SHA clause was obeyed. No id is minted.
 
 ## Next Steps
-1. R31: `feedScroll.ts` into the feed's scroll container with the new-rows pill
-   component_spec.md line 86 binds. Headless since R17 and the last rule this
-   feature has built and left unread.
-2. R32: the row click-jump to the graph store, then T003's disabled steering
-   input with the tooltip naming F030.
-3. Closure: the integration-gate round, the evidence round, then the
+1. R32: T003 — the row click-jump to the graph store, then the disabled
+   steering input with the tooltip naming F030.
+2. Closure: the integration-gate round, the evidence round, then the
    STATUS-commit round.
 
 ## Risks
 - No DOM environment exists here, so components are gated by `npx tsc --noEmit`
   and by Python source contracts. VITEST DOES NOT TYPECHECK, so `tsc` stays a
   load-bearing gate of every round that touches `apps/`.
-- The dot's fade is driven by an interval the card owns. No headless test can
-  reach a React hook here, so its guard is the source contract plus the purity
-  of `recency.ts`, which vitest does cover.
+- The scroll wiring is a React effect over a ref. Nothing here can execute it,
+  so its guard is the source contract plus the purity of `feedScroll.ts`, which
+  vitest does cover, plus a red control that deletes the follow branch.
 - `npm run lint` is RED tree-wide at every commit: the eslint config has no
   TypeScript parser, so it reports a parsing error per file and is blind to
   style. That is R-0622, still open.
-- This ledger now carries two `- R-0618` lines under a LOOSE `- R-` reading and
-  one under the canonical `^- R-\d+ — ` pattern. The canonical reading is the
-  open set; C2 of this round says so on disk.
+- This ledger carries two `- R-0618` lines under a LOOSE `- R-` reading and one
+  under the canonical `^- R-\d+ — ` pattern. The canonical reading is the open
+  set; R30's C2 says so on disk.
 - No code defect of F021 is open; R-0364, R-0403, R-0587, R-0607 through R-0609,
-  R-0611, R-0613, R-0618, R-0622, R-0630, R-0651 and R-0653 through R-0659 stay
-  routed to a paydown branch.
+  R-0611, R-0613, R-0618, R-0622, R-0630, R-0644, R-0651 and R-0653 through
+  R-0659 stay routed to a paydown branch.
