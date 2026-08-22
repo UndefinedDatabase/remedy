@@ -1,54 +1,13 @@
-# Handback — F021 R22 (the injected transport clock)
+# Handback — F021 R23 (the arrival stamp on the transport event)
 
-Feature F021 Live activity feed + now-card · round R22 · branch `feature/f021-live-activity-feed`
-Round base: `bf0c50bfa61991f80925c4e48b33b5e5663a4029` (the R21 handback commit).
-Fortschritt: ~88 % (T002 — die vier reinen Regeln stehen; die Verdrahtung ist in
-             vier kleine Runden zerlegt, R22 legt die Uhr als Abhaengigkeit)
+Feature F021 Live activity feed + now-card · round R23 · branch `feature/f021-live-activity-feed`
+Round base: `16186186e44ac4489a16e82b53e4d60f650ed578` (the R22 handback commit).
+Fortschritt: ~89 % (T002 — die Uhr ist injiziert, der Frame traegt ab dieser
+             Runde seinen Ankunftsstempel; es fehlen Ring, NowCard und Feed)
              — Schaetzung
 
 ## Range
-Review of `bf0c50bf`..`329a1727` (C0a–C4); C5 below is the commit that writes this file.
-
-## Commits
-
-### 1580fded docs(state): save the F021 R22 step block
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/authored/f021-r22.md | +417/-0 | C0a — the R22 block, NEW |
-
-### 75a439ea docs(state): mirror the F021 R22 step block into last_block
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/last_block.md | +358/-168 | C0b — written FROM the committed C0a blob |
-
-### 0f100c6c docs(state): point the F021 plan at R22, the clock round
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/plan.md | +19/-16 | C1 — PLANF021R22 plus one terminating newline |
-
-### 33b44b4a docs(review): record the R21 verdict and DECISION F021 D6
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/live_review.md | +4/-0 | C2 — RECORD22 appended; no older entry opened |
-
-### 8aca4145 feat(ui): inject the client clock into the brain-stream transport
-| Path | +/- | Reason |
-|---|---|---|
-| apps/ui/src/api/brainStreamHost.ts | +4/-0 | C3 — HOSTDEPSNOW: `now()` on BrainStreamHostDeps |
-| apps/ui/src/api/brainStreamDeps.ts | +15/-0 | C3 — ENVNOW, DEPSRETURNNOW, GLOBALSDATE, BROWSERNOW |
-| apps/ui/src/api/brainStreamHost.test.ts | +3/-0 | C3 — HOSTFAKENOW |
-| apps/ui/src/api/brainStreamSession.test.ts | +3/-0 | C3 — SESSIONFAKENOW, the pair `tsc` forced |
-| apps/ui/src/api/brainStreamDeps.test.ts | +13/-0 | C3 — RECORDERNOW, DEPSFORWARDCASE, GLOBALSFAKEDATE, BROWSERNOWCASE |
-
-### 329a1727 test(ui-contracts): pin the injected transport clock
-| Path | +/- | Reason |
-|---|---|---|
-| tests/ui_contracts/test_brain_stream_ring.py | +37/-0 | C4 — CONTRACTHOSTPATH pair + CONTRACTCLOCK append |
-
-### C5 docs(state): hand back F021 R22 — the handback commit, which cannot name its own SHA (R-0494)
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/handoff.md | rewrite | C5 — this file |
+Review of `16186186`..`3cd2eeeb` (C0a–C4); C5 below is the commit that writes this file.
 
 ## Item status
 | Item | Status | Reason |
@@ -57,34 +16,76 @@ Review of `bf0c50bf`..`329a1727` (C0a–C4); C5 below is the commit that writes 
 | C0b | done | |
 | C1 | done | |
 | C2 | done | |
-| C3 | done | eleven pairs, all APPEND-shaped |
-| C4 | done | the twelfth pair plus the contract append |
-| C5 | done | this commit |
+| C3 | done | |
+| C4 | done | |
+| C5 | done | this file; its own SHA is unquotable from inside itself |
+
+## Commits
+
+### 4dc0c06c docs(state): save the F021 R23 step block
+| Path | +/- | Reason |
+|---|---|---|
+| .agent/authored/f021-r23.md | +357/-0 | C0a — the R23 block, NEW |
+
+### d78eba54 docs(state): mirror the F021 R23 step block into last_block
+| Path | +/- | Reason |
+|---|---|---|
+| .agent/last_block.md | +210/-270 | C0b — written FROM the committed C0a blob |
+
+### fbb5a5ee docs(state): point the F021 plan at R23, the arrival stamp
+| Path | +/- | Reason |
+|---|---|---|
+| .agent/plan.md | +17/-16 | C1 — PLANF021R23, whole-file write |
+
+### a8215a65 docs(review): record the R22 verdict and register the two block-text findings
+| Path | +/- | Reason |
+|---|---|---|
+| .agent/live_review.md | +10/-0 | C2 — RECORD23 appended; R-0656 and R-0657 registered |
+
+### ba396370 feat(ui): stamp each transport frame with its arrival instant
+| Path | +/- | Reason |
+|---|---|---|
+| apps/ui/src/api/brainStreamDriver.ts | +9/-2 | DRIVEREVENTSTAMP — the frame member carries `receivedAtMs` |
+| apps/ui/src/api/brainStreamHost.ts | +1/-1 | HOSTTELLSTAMP — the host stamps from `deps.now()` |
+| apps/ui/src/api/brainStreamDriver.test.ts | +1/-1 | DRIVERTESTFRAME — literal feeds the new field |
+| apps/ui/src/api/brainStreamRunner.test.ts | +1/-1 | RUNNERTESTFRAME — literal feeds the new field |
+| apps/ui/src/api/brainStreamHost.test.ts | +3/-3 | HOSTTESTONEFRAME + HOSTTESTPOLLFRAMES |
+
+### 3cd2eeeb test(ui-contracts): pin the arrival stamp on the transport event
+| Path | +/- | Reason |
+|---|---|---|
+| tests/ui_contracts/test_brain_stream_ring.py | +35/-0 | C4 — CONTRACTSTAMP appended ALONE (constraint 8) |
+
+### C5 — the handback commit, which cannot table its own SHA (R-0494)
+| Path | +/- | Reason |
+|---|---|---|
+| .agent/handoff.md | rewrite | C5 — this file |
 
 ## External actions
-`git push -u origin feature/f021-live-activity-feed` runs immediately after C5; a handoff cannot table its own push, so the outcome is in the round report. No PR created, no PR merged, no worktree added or removed. `gh pr list --state open --json number,headRefName` → `[]`.
+`gh pr list --state open --json number,headRefName` → `[]`. `git push -u origin feature/f021-live-activity-feed` after C5. No `gh pr create`, no `gh pr merge`, no worktree add/remove, no force-push, no history rewrite.
 
-## Verification — one line per gate; transcripts kept in the round report (R-0582)
-G1 PASS — `.agent/STOP` ABSENT before C0a and again before C5; branch `feature/f021-live-activity-feed`; `git status --porcelain` 0 lines after each of C0a, C0b, C1, C2, C3 and C4. Owed reading: `bf0c50bf` is single-parent and touches `.agent/handoff.md` alone at +41/-57, under the 500-insertion cap.
-G2 PASS — sha256 `d36c446a31dd7b1dafda420f97ee58511bc1c96f01601da4c730e8315449f136`, 26881 bytes, 417 lines, EQUAL across all four copies (bytes read, `.remedy-wt/f021-r22.md`, the C0a blob, the C0b blob); C0b was written FROM the committed C0a blob.
-G3 PASS with a reported discrepancy — the marker-line extractor over the committed C0a blob read 12 PAIRS and 3 whole-text slices (PLANF021R22, RECORD22, CONTRACTCLOCK) over 162 CONTENT lines; TOTAL 417 against D6's 490 and PROSE 255 against D5's 400, both EQUAL to constraint 8. G3's prose says "the two whole texts"; the MEASURED count is 3 and constraint 8's arithmetic counts all 3 — see Deviations.
-G4 PASS — all twelve pairs: ANCHOR count at the round base EXACTLY 1, and ANCHOR-plus-newline-plus-ADD EXACTLY 1 at the commit that applied it (eleven at `8aca4145`, CONTRACTHOSTPATH at `329a1727`). The twelve-row table is in the round report. No FROM-zero count was ordered or taken (constraint 4).
-G5 PASS on the append, with a reported discrepancy on the prefix clause — remainder EXACTLY one newline + CONTRACTCLOCK + one newline, sha256 `18c9ab17288e29a09be4b78ceed2f8ba9a4c83d43dbf1b00f66bdb0996aea203`, 1713 bytes, 36 lines; the file is 14374 B / 326 L at C3, 14412 B / 327 L after CONTRACTHOSTPATH and 16125 B / 363 L at C4. ORDERED EQUALITY: C4's 37 added lines are CONTRACTHOSTPATH's single ADD line, then the convention's one newline, then CONTRACTCLOCK's 35 lines IN ORDER. The C3 blob is NOT a byte-prefix of the C4 file, because the same commit's pair inserts mid-file — see Deviations.
-G6 PASS — `cmp` of `.agent/plan.md` against PLANF021R22 plus one terminator exit 0; NEGATIVE CONTROL against the bare slice exit 1; last byte is a newline; `wc -l` reads EXACTLY 46, the ordered and measured value; `^## Goal$` 1 and `^## Next Steps$` 1.
-G7 PASS — reader (a): the base blob is a byte-exact PREFIX, remainder exactly one newline + RECORD22 + one newline, sha256 `43408753c14e405b6159deb4c69fb43575f75b9bf55271175e8865d3ae6c6e82`, 5163 bytes, 4 lines; file 529237 B / 1136 L before, 534400 B / 1140 L after. reader (b): units 249 → 251 ELEMENTWISE over the whole list, RECORD22 exactly 2 units. NEGATIVE CONTROL at offset 5, inside the FIRST paragraph, `e` → `X` at equal length: BOTH readers REJECT it and BOTH accept the true file. The base blob was read with `git show` into `.remedy-wt/`; no tracked file was overwritten.
-G8 PASS — round base → C2: `- R-` 218 → 218, all DISTINCT at both points; maximum `R-0655` at both; `Done: R-` 0 and `Landed: ` 0 at both; `Gate: R` keys 20 → 21, both DISTINCT; `Gate: R22` 0 → 1. No id minted, none resolved.
-G9 PASS — run SERIALLY, never two at once, counting by passed plus skipped. cwd `/home/decodeux/Repos/remedy/apps/ui`: `npx tsc --noEmit` exit 0 with output EMPTY (0 bytes on stdout and stderr) — the load-bearing gate; `npm run test:unit` exit 0 at 15 files / 209 tests. cwd `/home/decodeux/Repos/remedy`: `tests/ui_contracts/` exit 0 at 465 passed + 4 skipped = 469; the three state-reading suites exit 0 at 511; the golden-path canary exit 0 at 42. Every total equals the ordered value. No docs gate is owed.
-G10 PASS — base..C4: 6 commits, every one single-parent; the path set EQUALS the ten non-handoff `Change:` paths with both differences EMPTY; `git show --numstat` and `git diff --numstat` agree cell by cell with the tables above; insertions 417, 358, 19, 4, 38 and 37, each under the 500 cap; `git ls-files .remedy-wt` 0; `git worktree list` the primary checkout alone, no worktree created; `gh pr list --state open` `[]`, and neither `gh pr create` nor `gh pr merge` was run; the LINE-ANCHORED marker sweep reads 0 for all four marker prefixes in each of the eight files a slice landed in; the reflog read BY OPERATION shows this round's six rows all `commit`, with `amend`, `rebase` and `cherry` each 0 in that field.
+## Verification
+One line per gate; full transcripts are in the round report, not this file (R-0582). Every exit code below is real.
+- G1 PASS — `.agent/STOP` absent before C0a and before C5; branch `feature/f021-live-activity-feed`; `git status --porcelain` 0 lines after each of C0a, C0b, C1, C2, C3, C4. Owed reading: `16186186` is single-parent and touches `.agent/handoff.md` alone at +51/-32, under the 500 cap.
+- G2 PASS — sha256 `f3b960d05beb4a87807e72037dd0514aeb6605567493951c100d2450b9329b40`, 28934 bytes, 357 lines, equal over all four copies (reviewer's `.remedy-wt/` emission, the bytes read, C0a, C0b).
+- G3 PASS — my extractor read, over the committed C0a blob: 6 pairs, 3 whole-text slices, 127 CONTENT lines. Re-measured caps: TOTAL 357 ≤ 490 (D6), PROSE 357−127 = 230 ≤ 400 (D5).
+- G4 PASS — six REWRITES, table `Pair | FROM@base | FROM@C3 | TO@C3`: DRIVEREVENTSTAMP 1/0/1 · HOSTTELLSTAMP 1/0/1 · DRIVERTESTFRAME 1/0/1 · RUNNERTESTFRAME 1/0/1 · HOSTTESTONEFRAME 1/0/1 · HOSTTESTPOLLFRAMES 1/0/1.
+- G5 PASS with one declared reading — C3 blob is a byte-exact PREFIX of the C4 file (True); remainder is EXACTLY one newline + CONTRACTSTAMP + one newline (True), sha256 `db6d3ede8cfb42c507cb54af98db8f863e4da3708b7db9f96f89c5e95a6e34b0`, 1531 bytes / 35 lines; file 16125 B / 363 L before, 17656 B / 398 L after; 0 deleted lines; EXACTLY 2 blank lines precede the new top-level class, counted from the blob, not from a linter. Ordered equality: see Deviations.
+- G6 PASS — `cmp` C1 blob vs PLANF021R23+newline exit 0; NEGATIVE CONTROL vs the bare slice exit 1; last byte is a newline; `wc -l` 47, the MEASURED value the block ordered; `^## Goal$` 1, `^## Next Steps$` 1.
+- G7 PASS — reader (a): base blob a byte-exact prefix, remainder one newline + RECORD23 + one newline, sha256 `5ea2081037cb47b125d539495ae835305f26620cb4bfec649c2c5c784edeaf9e`, 8533 B / 10 L; file 534400 B / 1140 L → 542933 B / 1150 L. Reader (b) ELEMENTWISE over the whole list: 251 → 256 units, RECORD23 exactly 5 units. NEGATIVE CONTROL at offset 4 of the C2 file's FIRST paragraph (`v`→`X`, equal length): BOTH readers REJECT it, BOTH accept the true file. Base blob read via `git show` into `.remedy-wt/` scratch; no tracked file was overwritten.
+- G8 PASS — base → C2: `- R-` 218 → 220, DISTINCT at both; maximum R-0655 → R-0657; `Done: R-` 0 → 0; `Landed: ` 0 → 0; `Gate: R` keys 21 → 22, DISTINCT at both; `Gate: R23` 0 → 1.
+- G9 PASS — serially, at C4, in the primary checkout: `npx tsc --noEmit` in `apps/ui` exit 0, output EMPTY (0 bytes); `npm run test:unit` in `apps/ui` exit 0, 15 files / 209 tests, UNCHANGED from base; `python3 -m pytest tests/ui_contracts/ -q -rf` from the repo root exit 0, 469 passed + 4 skipped = 473; the three state-reading suites from the repo root exit 0, 511 passed = 511; `tests/cli/test_golden_path.py` from the repo root exit 0, 42 passed = 42. Every total equals the block's.
+- G10 PASS — base→C4: 10 paths, both differences against the ten non-handoff `Change:` paths EMPTY; 6 commits, every one single-parent; insertions 357, 210, 17, 10, 15, 35, each under 500; `git show --numstat` and `git diff --numstat` agree cell by cell with the `## Commits` tables above, all 10 cells; `git ls-files .remedy-wt` 0; `git worktree list` the primary checkout alone; `gh pr list --state open` EMPTY, and neither `gh pr create` nor `gh pr merge` was run. Marker sweep, line-anchored over the eight files a slice landed in: 0 for each of `<<<SLICE `, `<<<END `, `<<<PAIR `, `<<<FROM`, `<<<TO`, `<<<ENDPAIR`, and 0 for any line starting `<<<`. Reflog BY OPERATION over this round's 6 rows: every operation `commit`; `amend`, `rebase`, `cherry` each 0 in that field.
 
 ## Authored-text proofs
-`.agent/authored/f021-r22.md` at C0a and `.agent/last_block.md` at C0b are byte-identical to the block as read, at the G2 digest. PLANF021R22 → `.agent/plan.md` by `cmp` exit 0 with the bare-slice control at exit 1 (G6). RECORD22 → `.agent/live_review.md` under two independent readers with a rejected mutant (G7). CONTRACTCLOCK → `tests/ui_contracts/test_brain_stream_ring.py` by remainder equality and ordered line equality (G5). All three slices and all twelve pairs were extracted MECHANICALLY from the committed C0a blob by their marker LINES; nothing was hand-copied, retyped or reflowed.
+All three whole-text slices and all twelve pair halves were extracted MECHANICALLY by marker line from the committed C0a blob `4dc0c06c`, never hand-copied. PLANF021R23: `cmp` exit 0 against slice+newline, exit 1 against the bare slice (G6). RECORD23: byte-exact remainder under two independent readers plus a same-length negative control (G7). CONTRACTSTAMP: byte-exact remainder, 0 deletions (G5). Six pairs: FROM 1 at base, FROM 0 and TO 1 at C3 (G4).
 
 ## Deviations & assumptions
-No departure from the ordered commit sequence: C0a, C0b, C1, C2, C3, C4, C5 exactly — no extra commit, none dropped, no reordering. No slice was altered and no path outside `Change:` was written.
-Reported discrepancy 1 (block text, NOT repaired): G3 calls the `<<<SLICE `/`<<<END ` texts "the two whole texts"; the extractor read THREE — PLANF021R22, RECORD22 and CONTRACTCLOCK. Constraint 8's own arithmetic counts all three (162 CONTENT lines, PROSE 255), so the numeral "two" in G3 is the outlier. Nothing was adjusted to close the gap.
-Reported discrepancy 2 (gate text, NOT repaired): G5 asks that the PRE-COMMIT blob of the contract file be a byte-exact PREFIX of the post-commit file. C4 also applies pair CONTRACTHOSTPATH, which inserts a line MID-FILE, so that clause is unmeetable as literally written; measured, the C3 blob is not a prefix (reported False). The append itself was gated against the post-pair blob, where the prefix holds and the remainder is exactly one newline + CONTRACTCLOCK + one newline, and the ordered-equality clause was met over C4's whole added-line list.
-DECISION D15 — this handback is 90 lines against the 60-line base cap, within the ≤100 the template allows when per-commit tables of more than five commits require it. Cause, mandated content only: seven per-commit changed-files tables, the item-status table, and one line for each of ten gates whose readings ARE the evidence. No section was dropped and no transcript was inlined.
+No departure from the ordered commit sequence: C0a, C0b, C1, C2, C3, C4, C5 exactly, no extra commit, none dropped, none reordered. No slice was retyped, rewrapped or adjusted. Two observations about the BLOCK's own text, reported rather than reconciled (constraint 1):
+1. G5's ordered-equality clause reads "the lines C4's diff ADDS to that file are exactly the slice's lines IN ORDER". Measured strictly, that is FALSE: the diff adds 35 lines and CONTRACTSTAMP has 34. The extra line is the separator newline that constraint 5's own append convention mandates ("one newline, then the slice, then one terminator"), so `added[0]` is the empty separator line and `added[1:]` equals the slice's 34 lines ELEMENTWISE IN ORDER — measured True. The two clauses of the block cannot both be literally satisfied by any conforming append; I applied the convention and report both readings. This is the R-0657 family (a clause read against the property it must establish), one degree milder.
+2. G10 says "each of the four marker prefixes", but G3 names SIX marker tokens (`<<<SLICE `, `<<<END `, `<<<PAIR `, `<<<FROM`, `<<<TO`, `<<<ENDPAIR`). Rather than guess the intended partition of four, I swept all six line-anchored plus any line starting `<<<`; every one reads 0 in all eight files. This is the R-0656 family (a hand-counted numeral about the block's own parts).
+Assumption: none beyond the block.
+Size: this file is 91 lines, measured with `wc -l` on these final bytes. DECISION D15 declared overage against the 60-line cap (the 7-commit tables put it in AGENTS.md's ≤100 band anyway): the mandated content causing it is the seven per-commit changed-files tables, the item-status table, the one-line-per-gate verification block for ten gates, and the authored-text proofs — no prose padding and no transcripts.
 
 ## Next
-The next round is R23: the frame event carries `receivedAtMs` — `brainStreamDriver.ts`'s event union and `brainStreamHost.ts`'s `tell`, stamped from the clock THIS round installed, with their vitest cases and a contract line. DECISION F021 D6, written into `.agent/live_review.md` at C2, holds the four-round decomposition (R22 the clock, R23 the frame stamp, R24 the ring's row, R25 the NowCard's badge and dot, R26 the scroll container and pill) and the two rejected alternatives. R22's own verdict is UNRECORDED and R23's C2 owes it. A new session begins at docs/agents/self_drive_protocol.md Phase 1 rule 1 — the `.agent/STOP` check — BEFORE rule 2's Open PR Gate (R-0347); rule 2 will find no open pull request, so F021 continues on this branch.
-Open findings: 218 open, maximum R-0655, next free R-0656 — none registered this round, none resolved.
+Reviewer verdict on R23. Then R24 puts the stamp on the RING's row: `feedRow.ts` gains `receivedAtMs` on `FeedRow` and `feedRowOf` takes it, and `brainStream.ts`'s `receiveBrainFrame` threads it from the event this round created. R24 is the first round to touch the ring, whose append placement DECISION F021 D5 governs. Next session: Phase 1 rule 1 (`.agent/STOP`) before rule 2 (Open PR Gate).
