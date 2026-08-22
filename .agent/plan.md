@@ -16,16 +16,16 @@ cross-site attempts fail closed and are audited as rejected, and a route-walking
 test plus an import guard prove no other mutating route exists.
 
 ## Current Step
-R25 records the R24 verdict. It writes no code and rules nothing. The dispatch
-half of T003 is COMPLETE: both UI-exposed ids reach a real effect, the 501 is a
-guard rather than a placeholder, and every path — 200, 409, 500 and 501 — is
-reached by a test that fails against the pre-dispatch door.
+R26 lands the `command.accepted` event and records the R25 verdict. An accepted
+command now appends the event to the job's run log, which is where the F008 SSE
+stream reads, so the UI sees its own writes on the channel it already watches.
+Refusals and replays announce nothing.
 
 ## Next Steps
-1. The `command.accepted` SSE event on the F008 stream.
-2. The queue-only import guard, whose allowed set includes `save_job` because
-   DECISION F009 D5's own effect mapping names it.
-3. Then the route-walking 405 test proving every other mutating method answers
+1. The queue-only import guard, whose allowed set includes `save_job` because
+   DECISION F009 D5's own effect mapping names it, and `append_run_event`
+   because DECISION F009 D23's emission needs it.
+2. Then the route-walking 405 test proving every other mutating method answers
    405; then the integration gate and closure.
 
 ## Risks
