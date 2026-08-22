@@ -1,39 +1,38 @@
-# Plan — F021 Live activity feed + now-card
+# Plan — F022 Live cost ticker
 
-Branch: feature/f021-live-activity-feed, cut from `main` at `4548995d`, the merge
-commit of pull request #210. `.agent/live_review.md` is the source of truth for
+Branch: feature/f022-live-cost-ticker, cut from `main` at `c34ef32b`, the merge
+commit of pull request #211. `.agent/live_review.md` is the source of truth for
 the open set, the round map and the finding-id ceiling.
 
 ## Goal
-The raw SSE event stream becomes a story a human can follow: a humanization
-catalog maps event kinds to plain lines, a NowCard shows the newest ACTION-class
-event with a recency dot, and feed rows carry their seq and click-jump to their
-node. DONE when the catalog covers the kind set DECISION F021 D3 rules and an
-unknown kind renders an honest generic line rather than vanishing, the feed
-renders fixture streams per the binding CSS, jump-to-node focuses the right
-node, and the steering input renders DISABLED with its tooltip until F030.
+Money is visible while it burns, honestly: the MetricsBar's COST metric renders
+from budget tick events {spent, limit, basis} — bar fill against the limit, a
+'~' prefix plus tooltip whenever the basis is estimated, warn colour at ≥85% —
+and the final figure reconciles with the ledger at terminal. DONE when the
+ticker tracks a fixture stream exactly, basis changes flip the prefix and
+tooltip live, the warn threshold triggers per tokens, limitless jobs render the
+spent-only variant with no fake denominator, and the terminal reconciliation
+displays the ledger figure with any delta labelled.
 
 ## Current Step
-R41 is closure round two and the LAST round of this branch. It records the R40
-verdict, rules R-0663 by DECISION rather than by a patch, then writes the STATUS
-`[x]` line, the README capability sync and the closure candidates in ONE commit
-and opens the pull request. That request is NOT merged in this session.
+R1 claims F022. It creates the branch, rescues the three F021 DECISIONS that
+live only in the review record into `.agent/decisions.md`, resets that record
+carrying the F021 open set forward by ENTRY rather than by unit, gates F021 R41,
+registers R-0666, R-0667, R-0668 and R-0669, empties the candidates file and
+moves the roadmap row to `[~]`. It builds nothing.
 
 ## Next Steps
-1. The pull request merges at the next feature's start via the Open PR Gate,
-   which is the operator's manual-review window.
-2. The next session's FIRST reviewed round registers every entry
-   `.agent/candidates.md` carries, or resolves it as a DECISION, and empties
-   that file in the same round.
+1. R2 the cost inventory: where the budget guard evaluates spent-vs-limits, what
+   the Part E event vocabulary already defines, and what MetricsBar renders
+   today — each MEASURED in the source rather than read off the feature file.
+2. R3 record R2 and rule the tick envelope as a DECISION: the payload's field
+   set, the basis vocabulary and the no-client-arithmetic contract.
+3. R4 onward the built work, in the T001/T002/T003 order the feature file's Task
+   slicing names.
 
 ## Risks
-- This round's own verdict has no on-disk gate entry by construction
-  (`docs/agents/planner_reviewer_prompt.md` §4 item 13). It lives in
-  `.agent/handoff.md` and in the pull request, and that absence is the branch
-  terminator rather than a missing gate.
-- The two High findings open at closure, R-0495 and R-0574, are inherited from
-  the already-closed F085 and F086 and are documented risks rather than F021
-  defects. That is why the verdict is PASS_WITH_RISKS, exactly as F008 and F009
-  closed before it.
+- The two High findings carried forward, R-0495 and R-0574, are inherited from
+  the already-closed F085 and F086 and are documented risks rather than F022
+  defects.
 - `npm run lint` in `apps/ui` is RED at base and is NOT a gate (R-0364), which
   is R-0622 and routes to a paydown branch.
