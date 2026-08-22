@@ -16,29 +16,27 @@ jump-to-node focuses the right node, and the steering input renders DISABLED wit
 its honest tooltip until F030 lands.
 
 ## Current Step
-R6 builds T001: the humanize module with its honest generic line, the catalog
-data whose key set the contract test pins to the Python emitters, the vitest
-behaviour tests, and that contract test. It also records the R5 verdict and
-promotes the rule R-0449 and R-0494 carry into the §3 pre-emission checklist.
+R7 records the R6 verdict, registers R-0649, adds evidence to R-0449 and R-0585,
+and closes the reviewer's session at its stated round cap. It builds nothing. The
+branch is mid-feature and carries no pull request by design.
 
 ## Next Steps
-1. R7 rules the frontend test environment, which today collects no component
-   test at all, and the single-subscription fan-out — both are infrastructure
-   DECISIONS T002 needs before it can be written.
-2. R8 builds T002: the feed, its rows and the NowCard over fixture streams, with
+1. R8 rules the two infrastructure DECISIONS T002 depends on: the frontend test
+   environment, which collects no component test at all today, and the
+   single-subscription fan-out. T002 cannot be written before both.
+2. R9 builds T002: the feed, its rows and the NowCard over fixture streams, with
    the scroll discipline that never yanks a reader who has scrolled up.
-3. R9 onward T003: graph-focus wiring, the disabled steering input, and the
+3. R10 onward T003: graph-focus wiring, the disabled steering input, and the
    additive envelope field DECISION F021 D2 permits.
 
 ## Risks
 - T002 cannot be tested until the frontend test environment changes: measured at
-  `82fcc7c0`, `apps/ui/vitest.config.ts` sets `environment: "node"` and
-  `include: ["src/**/*.test.ts"]`, so no `.test.tsx` is collected at all. R7
-  rules it.
-- The catalog cannot cover the kinds whose names are computed at runtime; G5
-  measures eleven such writers. The generic line is the whole of their coverage,
-  which is why T001 ships its test rather than treating it as a nicety.
+  `6f5078d7`, `apps/ui/vitest.config.ts` sets `environment: "node"` and
+  `include: ["src/**/*.test.ts"]`, so no `.test.tsx` is collected at all.
 - Jump-to-node needs the additive envelope field DECISION F021 D2 permits. That
   is the one production seam this feature opens, and it stays one field.
+- T001 is built and verified but its catalog covers only what a static walk can
+  see. The generic line carries the eleven runtime-computed emitters, and R-0649
+  records that the walk's roots also reach vendored third-party Python.
 - The open set holds no code defect of F021; R-0403, R-0607, R-0608, R-0609,
   R-0611 and R-0613 stay routed to a paydown branch.
