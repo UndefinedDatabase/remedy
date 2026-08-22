@@ -14,30 +14,30 @@ renders fixture streams per the binding CSS, jump-to-node focuses the right
 node, and the steering input renders DISABLED with its tooltip until F030.
 
 ## Current Step
-R20 builds the activity dot's rule as a PURE function in `recency.ts` with its
-vitest and a source contract — the work R19 halted before reaching. It also
-records R19, which HALTED at a self-contradicting gate of the reviewer's own
-making, and registers R-0654.
+R21 records R20, which PASSED all fifteen gates, registers R-0655 and corrects
+in a NEW entry the false numeral R20 left in the ledger. No code changes: the
+four pure rules are built and the wiring round has not begun.
 
 ## Next Steps
-1. R21 wires BOTH pure rules: `recency.ts` becomes the ONE liveness source for
-   the NowCard's badge AND its dot, and `feedScroll.ts` drives the feed's scroll
-   container and the new-rows pill component_spec.md line 86 binds.
-2. R22 gives each row its click-jump to the node, then T003: the disabled
+1. R22 is THE WIRING ROUND and the largest component change of this feature:
+   `recency.ts` becomes the ONE liveness source for the NowCard's badge AND its
+   new dot, and `feedScroll.ts` drives the feed's scroll container and the
+   new-rows pill component_spec.md line 86 binds. It is the first round needing
+   CSS, so `docs/ui/design_reference/assets_spec.md` is the asset authority.
+2. R23 gives each row its click-jump to the node, then T003: the disabled
    steering input with its honest tooltip.
 3. Closure: the evidence round, then the STATUS-commit round.
 
 ## Risks
 - No DOM environment exists here, so components are gated by `npx tsc --noEmit`
-  and by Python source contracts, and behaviour lives in PURE modules vitest can
-  reach. The wiring round is the risky one.
+  and by Python source contracts. R22 wires four rules at once and is where that
+  gap bites hardest; consider splitting it if its block exceeds the cap.
 - Vitest is reviewer-runnable as `npm run test:unit` (R-0651) but only GREEN: a
   worktree has no `node_modules` (R-0518), so no vitest case has been
   mutation-proved. The Python contract is the mutation-proved guard (R-0653).
-- A source contract must assert a DISCRIMINATING string: `"none"` also appears
-  in the `RecencyLevel` union, so the pre-stream guard asserts the whole return
-  statement rather than the bare token.
-- A plan slice is MEASURED before its gate is written: R19 died because its gate
-  demanded a line count its own slice could not have (R-0654).
+- A gate that names a line count states the MEASURED value, never a bound the
+  slice was not checked against (R-0654); and a numeral corrected in one place
+  is swept everywhere the block quotes it (R-0655).
 - No code defect of F021 is open; R-0364, R-0403, R-0607, R-0608, R-0609,
-  R-0611, R-0613, R-0622, R-0651 and R-0653 stay routed to a paydown branch.
+  R-0611, R-0613, R-0622, R-0651, R-0653, R-0654 and R-0655 stay routed to a
+  paydown branch.
