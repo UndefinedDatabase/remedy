@@ -14,17 +14,17 @@ renders fixture streams per the binding CSS, jump-to-node focuses the right
 node, and the steering input renders DISABLED with its tooltip until F030.
 
 ## Current Step
-R31 wires `feedScroll.ts` into the live feed's scroll container — the rule this
-feature built at R17 and has left unread since — with the "jump to live"
-affordance the feature file binds, the 52vh scroll box its binding CSS fixes,
-and contract pins plus a red control, because no DOM test here can reach a
-React hook. The same round records R30, which PASSED, and appends the one
-correction it owes: a count RECORD30 stated about `.agent/decisions.md` was
-hand-read and is wrong by one in both numerals, which is open finding R-0644's
-standing rule failing while its SHA clause was obeyed. No id is minted.
+R32 records R31, which PASSED, and pays for the one live defect it shipped: the
+jump-to-live pill asked for `--remedy-radius-pill`, which the design reference
+has always defined and the shipped stylesheet never adopted, so the property
+resolved to nothing and the pill rendered square. This round defines the token,
+pins the unresolved-custom-property set so it can never grow silently, and
+registers the class as R-0661 — four OTHER properties were already unresolved
+before F021 began. R31's two text defects are appended as corrections naming
+open findings R-0629 and R-0587; neither mints an id.
 
 ## Next Steps
-1. R32: T003 — the row click-jump to the graph store, then the disabled
+1. R33: T003 — the row click-jump to the graph store, then the disabled
    steering input with the tooltip naming F030.
 2. Closure: the integration-gate round, the evidence round, then the
    STATUS-commit round.
@@ -33,15 +33,16 @@ standing rule failing while its SHA clause was obeyed. No id is minted.
 - No DOM environment exists here, so components are gated by `npx tsc --noEmit`
   and by Python source contracts. VITEST DOES NOT TYPECHECK, so `tsc` stays a
   load-bearing gate of every round that touches `apps/`.
-- The scroll wiring is a React effect over a ref. Nothing here can execute it,
-  so its guard is the source contract plus the purity of `feedScroll.ts`, which
-  vitest does cover, plus a red control that deletes the follow branch.
+- Nothing in this repository renders CSS, so a custom property that resolves to
+  nothing is invisible to every suite. R-0661's pin closes that for the SET but
+  still cannot prove any rule's computed value.
 - `npm run lint` is RED tree-wide at every commit: the eslint config has no
   TypeScript parser, so it reports a parsing error per file and is blind to
   style. That is R-0622, still open.
 - This ledger carries two `- R-0618` lines under a LOOSE `- R-` reading and one
   under the canonical `^- R-\d+ — ` pattern. The canonical reading is the open
   set; R30's C2 says so on disk.
-- No code defect of F021 is open; R-0364, R-0403, R-0587, R-0607 through R-0609,
-  R-0611, R-0613, R-0618, R-0622, R-0630, R-0644, R-0651 and R-0653 through
-  R-0659 stay routed to a paydown branch.
+- No code defect of F021 is open once R-0661's own use is fixed; R-0364,
+  R-0403, R-0587, R-0607 through R-0609, R-0611, R-0613, R-0618, R-0622,
+  R-0629, R-0630, R-0644, R-0651, R-0653 through R-0659 and R-0661's four
+  surviving properties stay routed to a paydown branch.
