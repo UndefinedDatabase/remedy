@@ -790,3 +790,46 @@ def replan(
         new_plan, evidence_dir, version=new_version,
         transformations=transformations)
     return new_plan_dict, new_version
+
+
+def resolve_flight_plan_approval(
+    job: Any,
+    *,
+    reason: str,
+    answers: dict[str, str],
+    questions: list[dict[str, Any]],
+) -> Path | None:
+    """Approve or reject a job's pending flight plan and persist the outcome.
+
+    Extracted from `apps/cli/commands/decision.py` for DECISION F009 D5, so the UI
+    write door can reach the SAME code the CLI has always run instead of growing a
+    second copy of the approval sequence beside it — the duplication the P3 contract
+    exists to prevent. The CLI stays the first caller and keeps every `print`: this
+    function performs the mutation, the save and the assumption log, and hands the
+    log path back for the caller to report.
+
+    The caller validates `reason` and the plan's pending state before calling,
+    because the CLI and the write door word their refusals differently and neither
+    wording belongs in a package. Any `reason` other than `"approve"` rejects, which
+    is the branch the extracted code already had.
+
+    Returns the assumption-log path on an approval and None on a rejection.
+    """
+    from packages.orchestration.storage import save_job
+
+    fp = job.flight_plan
+    if reason != "approve":
+        fp["_approval"] = "rejected"
+        job.flight_plan = fp
+        save_job(job)
+        return None
+    if questions:
+        fp["clarifications_resolved"] = apply_clarification_answers(
+            fp.get("clarifications_resolved"), answers)
+    fp["_approval"] = "approved"
+    job.flight_plan = fp
+    save_job(job)
+    from packages.orchestration.data_paths import job_evidence_export_dir
+    return write_assumptions_md(
+        fp.get("clarifications_resolved"),
+        job_evidence_export_dir(str(job.id)))

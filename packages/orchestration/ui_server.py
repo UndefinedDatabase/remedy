@@ -20,6 +20,7 @@ Public API::
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import re
@@ -3045,11 +3046,158 @@ def _build_context_budget_json(job: Any) -> dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
+# Command Channel — the single write door (F009 T001)
+# ---------------------------------------------------------------------------
+
+#: The double-submit header the POST door requires alongside the bearer token.
+#: It carries the server token itself (DECISION F009 D11): there is no cookie to
+#: double-submit against, and a cross-site page cannot set a custom header
+#: without a preflight this server never grants.
+COMMAND_CSRF_HEADER = "X-Remedy-CSRF"
+
+#: Largest command request this door reads, decided from `Content-Length`
+#: before a single byte of body is pulled off the socket.
+COMMAND_REQUEST_MAX_BYTES = 64 * 1024
+
+#: The one refusal for every command id this door will not accept. Remedy
+#: deliberately does NOT distinguish an id that is absent from the catalog from
+#: one that exists but is not UI-exposed (DECISION F009 D12): both are "not a
+#: command this door accepts", and telling them apart would let a credentialed
+#: caller enumerate the CLI surface through the write door.
+COMMAND_NOT_EXPOSED_MESSAGE = "command is not available on this channel"
+
+#: The config key that carries this door's minute budget. Named once so the
+#: door, its tests and the registry in packages/orchestration/config.py cannot
+#: drift apart.
+COMMAND_RATE_LIMIT_CONFIG_KEY = "ui.command_rate_limit_per_minute"
+
+#: How long one budget window lasts. DECISION F009 D9 fixes the unit at a
+#: minute. The window TUMBLES rather than slides: a client's budget refills in
+#: one step, which is the behaviour a client can reason about from a 429 alone.
+COMMAND_RATE_WINDOW_SECONDS = 60.0
+
+#: The refusal a client over its budget receives. It mirrors the shape the SSE
+#: door's own 429 already uses, so both limits read the same way on the wire.
+COMMAND_RATE_LIMIT_MESSAGE = "too many commands for this job"
+
+#: What an effect that RAISED answers (DECISION F009 D18 clause four, D20). The
+#: exception's own text never reaches the wire: it is written by code this door
+#: does not own and may name a control path the client may not learn.
+COMMAND_EFFECT_FAILED_MESSAGE = "command could not be carried out"
+
+#: The `source` every effect dispatched here is attributed to, so a UI stop is
+#: told apart from a `remedy job stop` inside the signal (DECISION F009 D20).
+COMMAND_EFFECT_SOURCE = "ui"
+
+#: What a `decision.resolve` naming no answerable decision returns (DECISION F009
+#: D21). The effect RAN and DECLINED, so this is neither a shape error nor a
+#: server fault, and it goes out through `_safe_error` like every other refusal
+#: this door issues (DECISION F009 D22, third clause).
+COMMAND_DECISION_STATE_MESSAGE = "decision is not open"
+
+#: What an id that `_command_is_ui_exposed` admits but no dispatch clause matches
+#: returns. DECISION F009 D22 keeps the 501 as a GUARD rather than a placeholder:
+#: without it such a request falls off the end of the handler with no response
+#: written at all.
+COMMAND_NOT_DISPATCHED_MESSAGE = "command is exposed but not dispatched"
+
+#: The event one ACCEPTED command appends to the job's run log, and through it
+#: to the F008 SSE stream (DECISION F009 D23). The spelling is the feature file's.
+COMMAND_ACCEPTED_EVENT = "command.accepted"
+
+#: The two ids this door dispatches. Named rather than inlined so that each
+#: second call site greps to this line.
+JOB_STOP_COMMAND_ID = "job.stop"
+DECISION_RESOLVE_COMMAND_ID = "decision.resolve"
+
+_COMMAND_RATE_LOCK = threading.Lock()
+#: (token fingerprint, job id) -> (window start, commands accepted in it).
+_COMMAND_RATE_WINDOWS: dict[tuple[str, str], tuple[float, int]] = {}
+
+
+# Compared as BYTES: `secrets.compare_digest` raises TypeError on a non-ASCII str.
+def server_token_matches(supplied_token: Any, expected_token: Any) -> bool:
+    """Constant-time equality for the UI server token.
+
+    Both sides arrive from the network — a query parameter on the GET door, a
+    header on the POST door — so the comparison must neither leak the token
+    through timing nor raise on attacker-chosen bytes. A missing header
+    (`None`) is treated as the empty string and never reaches `.encode`.
+    """
+    supplied = (supplied_token or "").encode("utf-8")
+    expected = (expected_token or "").encode("utf-8")
+    return secrets.compare_digest(supplied, expected)
+
+
+# A shape error names the offending field so a client can repair its own request.
+def _command_field_error(field: str, message: str) -> tuple[int, dict[str, Any]]:
+    return 400, {"error": message, "field": field}
+
+
+# The rate limiter has to name the client it counts, and the only name a request
+# carries is the secret itself — hence a digest rather than the token.
+def token_fingerprint(token: Any) -> str:
+    """A stable, non-reversible handle for one server token (DECISION F009 D7).
+
+    Sixteen hex characters are sixty-four bits of SHA-256: far more than enough
+    to keep two live tokens apart, and far too few to walk back to the token
+    they name. The raw token is never returned, stored or logged by this
+    function, which is what lets the limiter's keys appear in memory dumps,
+    metrics and — from R9 — audit records without leaking credentials.
+    """
+    digest = hashlib.sha256((token or "").encode("utf-8")).hexdigest()
+    return "tf:" + digest[:16]
+
+
+def accept_command_under_rate_limit(
+    fingerprint: str,
+    job_id: str,
+    limit: int,
+    *,
+    now: Any = time.monotonic,
+) -> bool:
+    """Spend one unit of a (fingerprint, job) minute budget, or refuse.
+
+    The server is threaded, so the window is read and written under one lock:
+    two requests arriving together must not both see the last free unit. That
+    is the idiom `acquire_sse_slot` uses for the same problem in this module.
+    `now` is injected the way `_send_sse_stream` injects it, so a test can
+    assert the window's roll instead of waiting a minute out.
+
+    THE WINDOW MAP IS BOUNDED HERE — this is where a reader looking for the
+    bound will search. Its key holds a per-run token fingerprint and a job id
+    and the process is long-lived, so an unbounded map would be a slow leak
+    across a day of restarts and job switches. Every call therefore first drops
+    the windows that have expired, which leaves exactly one entry per
+    (fingerprint, job) pair seen inside the last window: a live working set,
+    not a growing history.
+    """
+    with _COMMAND_RATE_LOCK:
+        moment = now()
+        expired = [key for key, (start, _count) in _COMMAND_RATE_WINDOWS.items()
+                   if moment - start >= COMMAND_RATE_WINDOW_SECONDS]
+        for key in expired:
+            del _COMMAND_RATE_WINDOWS[key]
+        window = (fingerprint, job_id)
+        start, accepted = _COMMAND_RATE_WINDOWS.get(window, (moment, 0))
+        if accepted >= limit:
+            return False
+        _COMMAND_RATE_WINDOWS[window] = (start, accepted + 1)
+        return True
+
+
+# ---------------------------------------------------------------------------
 # HTTP Request Handler
 # ---------------------------------------------------------------------------
 
 class _RemedyHandler(BaseHTTPRequestHandler):
-    """Read-only handler. No POST/PUT/DELETE. Token-gated API."""
+    """Token-gated API handler with exactly one mutating door.
+
+    POST `/api/jobs/<job_id>/commands` is the single route that accepts a
+    UI-initiated change (F009). Every other POST path, and every PUT and
+    DELETE, answers 405 — Remedy deliberately exposes no second mutating
+    route, so a reader searching for one finds this sentence instead.
+    """
 
     server_token: str = ""
     target_job_id: str = ""
@@ -3075,7 +3223,7 @@ class _RemedyHandler(BaseHTTPRequestHandler):
 
         # API routes — token required
         token = (qs.get("token") or [""])[0]
-        if token != self.server_token:
+        if not server_token_matches(token, self.server_token):
             self._send_json(*_safe_error(403, "invalid token"))
             return
 
@@ -3224,7 +3372,386 @@ class _RemedyHandler(BaseHTTPRequestHandler):
         drain_sse_frames(frames, self.wfile.write, self.wfile.flush, stop)
 
     def do_POST(self) -> None:  # noqa: N802
+        # Fail closed: only an unambiguous commands path opens the write door.
+        # `path` is read defensively because a request whose line never parsed
+        # has none, and such a request must get 405 rather than an exception.
+        parsed = urlparse(getattr(self, "path", ""))
+        path = parsed.path.rstrip("/") or "/"
+        parts = path.split("/")
+        if (len(parts) == 5 and parts[1] == "api" and parts[2] == "jobs"
+                and parts[4] == "commands"):
+            self._handle_command_submission(parts[3])
+            return
         self._send_json(*_safe_error(405, "method not allowed"))
+
+    # The order below is the contract: authentication is decided BEFORE shape,
+    # so an unauthenticated caller never learns what this door would accept.
+    def _handle_command_submission(self, job_id_str: str) -> None:
+        """Authenticate, resolve and validate one UI-submitted command."""
+        if not self._bearer_token_accepted():
+            # DECISION F009 D14, clause one: a caller who has presented nothing gets a
+            # record only where a control directory already exists, and creates none.
+            self._audit_attempt(job_id_str, "rejected_token", create=False)
+            self._send_json(*_safe_error(403, "invalid token"))
+            return
+        if not server_token_matches(self.headers.get(COMMAND_CSRF_HEADER),
+                                    self.server_token):
+            self._audit_attempt(job_id_str, "rejected_csrf", create=False)
+            self._send_json(*_safe_error(403, "invalid csrf token"))
+            return
+        job, load_error = _load_job(job_id_str)
+        if load_error:
+            self._audit_attempt(job_id_str, "rejected_job", create=True)
+            self._send_json(*load_error)
+            return
+        payload, shape_error = self._read_command_payload()
+        if shape_error:
+            self._audit_attempt(str(job.id), "rejected_shape", create=True)
+            self._send_json(*shape_error)
+            return
+        if not self._command_is_ui_exposed(payload["command"]):
+            self._audit_attempt(str(job.id), "rejected_command", create=True,
+                                payload=payload)
+            self._send_json(*_command_field_error(
+                "command", COMMAND_NOT_EXPOSED_MESSAGE))
+            return
+        # DECISION F009 D15: the replay lookup sits HERE — after the exposed-subset
+        # check and BEFORE the budget — and a hit spends nothing. D9 limits "the
+        # maximum accepted commands" and a replay accepts nothing new: it returns a
+        # decision this server already made, so charging for it would penalise the
+        # client for the server's own idempotency guarantee, in precisely the
+        # retry-after-a-timeout case the nonce exists to serve.
+        replayed = self._replayed_command_result(str(job.id), payload["client_nonce"])
+        if replayed is not None:
+            # D15 audits the replay with the ORIGINAL attempt's outcome, and finding
+            # R-0636 rules what that token may be: a replay REPEATS an acceptance
+            # rather than being one, so `replayed` is its own token. T5_F035 and
+            # T9_F167 read this file to count what the door did, and one token for
+            # both events would make them indistinguishable to both. R-0636's payer.
+            self._audit_attempt(str(job.id), "replayed", create=True,
+                                payload=payload)
+            self._send_json(replayed["status"], replayed["body"])
+            return
+        # The budget is spent LAST, by a request that has passed every other
+        # check (DECISION F009 D13). Counting a request that was going to be
+        # refused anyway would let a mid-rollout or simply buggy client lock
+        # ITSELF out of a job with malformed bodies — a denial of service
+        # produced by the guard rather than prevented by it.
+        if not self._rate_limit_admits_command(str(job.id)):
+            self._audit_attempt(str(job.id), "rejected_rate", create=True, payload=payload)
+            self._send_json(*_safe_error(429, COMMAND_RATE_LIMIT_MESSAGE))
+            return
+        # D5 maps `job.stop` to `safe_points.request_stop`; D18 fixes the order of
+        # the three writes an ACCEPTED command performs: the effect FIRST, since
+        # the body is unknown until it returns; then the `accepted` audit line,
+        # since the record of what this door did must not depend on a store whose
+        # key the client picks; then the publication LAST, since D8's replay
+        # returns the ORIGINAL result and there is none before the other two.
+        if payload["command"] == JOB_STOP_COMMAND_ID:
+            try:
+                accepted_body = self._dispatch_job_stop(str(job.id), payload)
+            except (OSError, RuntimeError, ValueError, TypeError):
+                # D18, clause four: an effect that RAISED is neither `accepted`,
+                # which would be false, nor unaudited, which would break D6.
+                self._audit_attempt(str(job.id), "rejected_effect", create=True,
+                                    payload=payload)
+                self._send_json(*_safe_error(500, COMMAND_EFFECT_FAILED_MESSAGE))
+                return
+            # D18, clause three: BOTH writes below fail SOFT. The stop is already
+            # durable, so refusing after the fact would report a stop that really
+            # was requested as one that was not.
+            self._audit_attempt(str(job.id), "accepted", create=True, payload=payload)
+            self._publish_command_result(str(job.id), payload["client_nonce"],
+                                         accepted_body)
+            self._emit_command_accepted_event(str(job.id), accepted_body)
+            self._send_json(200, accepted_body)
+            return
+        # D5 maps `decision.resolve` to `answer_task_decision` followed by
+        # `save_job`; DECISION F009 D21 rules that BOTH are the effect, because
+        # the answer is durable only once `save_job` returns. D18's write order
+        # above is unchanged: effect, then the audit line, then the publication.
+        if payload["command"] == DECISION_RESOLVE_COMMAND_ID:
+            try:
+                accepted_body = self._dispatch_decision_resolve(job, payload)
+            except (OSError, RuntimeError, ValueError, TypeError):
+                # D18, clause four: an effect that RAISED is neither `accepted`,
+                # which would be false, nor unaudited, which would break D6.
+                self._audit_attempt(str(job.id), "rejected_effect", create=True,
+                                    payload=payload)
+                self._send_json(*_safe_error(500, COMMAND_EFFECT_FAILED_MESSAGE))
+                return
+            if accepted_body is None:
+                # D21, clause three: the effect RAN and DECLINED — the decision
+                # is absent or is no longer open. Nothing changed on disk, so
+                # nothing is published and a retry cannot answer it differently.
+                self._audit_attempt(str(job.id), "rejected_state", create=True,
+                                    payload=payload)
+                self._send_json(*_safe_error(409, COMMAND_DECISION_STATE_MESSAGE))
+                return
+            # D18, clause three, re-examined by D21 and standing: both writes
+            # below fail SOFT. The answer is already persisted, so refusing
+            # after the fact would report an answer that really was written as
+            # one that was not.
+            self._audit_attempt(str(job.id), "accepted", create=True, payload=payload)
+            self._publish_command_result(str(job.id), payload["client_nonce"],
+                                         accepted_body)
+            self._emit_command_accepted_event(str(job.id), accepted_body)
+            self._send_json(200, accepted_body)
+            return
+        # An id `_command_is_ui_exposed` admitted that no clause above dispatches.
+        # DECISION F009 D22: this is a GUARD, not a placeholder — unreachable
+        # while the exposed subset holds exactly the two ids named above, and the
+        # alternative is a request that gets no response at all.
+        self._audit_attempt(str(job.id), "not_implemented", create=True, payload=payload)
+        self._send_json(*_safe_error(501, COMMAND_NOT_DISPATCHED_MESSAGE))
+
+    def _dispatch_job_stop(self, job_id: str, payload: Any) -> dict[str, Any]:
+        """Run `job.stop`'s effect and build the body DECISION F009 D18 rules for it.
+
+        DECISION F009 D20 rules the two arguments no client supplies: `source` is
+        this door, and a non-string `reason` degrades to "" rather than raising,
+        because D14 types `args` as an object but never types what is inside it.
+        """
+        from packages.orchestration.safe_points import request_stop
+        args = payload.get("args")
+        reason = args.get("reason") if isinstance(args, dict) else ""
+        signal = request_stop(
+            job_id, reason=reason if isinstance(reason, str) else "",
+            source=COMMAND_EFFECT_SOURCE)
+        return {"command": payload["command"], "outcome": "accepted",
+                "request_id": signal.request_id}
+
+    def _dispatch_decision_resolve(self, job: Any,
+                                   payload: Any) -> dict[str, Any] | None:
+        """Answer one task decision and PERSIST it. None means the effect declined.
+
+        DECISION F009 D21: `answer_task_decision` and `save_job` are BOTH the
+        effect, because the answer is durable only once `save_job` returns, so a
+        raise from either is D18 clause four's `rejected_effect`. A None return
+        is NOT a failure — the decision is absent or is no longer open — and the
+        caller answers it 409 and audits it `rejected_state`.
+
+        DECISION F009 D22: `source` is deliberately NOT passed, so the answer
+        takes `answer_task_decision`'s default of `human`. `answer_source` names
+        WHO DECIDED over a closed two-value vocabulary that
+        `escalation.escalation_assumptions_md` COUNTS, and a person answering
+        through the UI is a human; passing this door's own name would land the
+        record in neither tally. This is deliberately NOT DECISION F009 D20's
+        rule for `request_stop`, whose `source` names the TRANSPORT instead.
+        The door's own attribution lives in `commands_audit.jsonl` (D6).
+
+        `decision_id` and `answer` degrade to "" when absent or non-string, for
+        the reason D20 gave for `reason`: D14 types `args` as an object and never
+        types what is inside it. An empty id matches no record, so the refusal
+        path answers it rather than an exception.
+        """
+        from datetime import datetime, timezone
+
+        from packages.orchestration.escalation import answer_task_decision
+        from packages.orchestration.storage import save_job
+        args = payload.get("args")
+        args = args if isinstance(args, dict) else {}
+        decision_id = args.get("decision_id")
+        answer = args.get("answer")
+        record = answer_task_decision(
+            job, decision_id if isinstance(decision_id, str) else "",
+            answer=answer if isinstance(answer, str) else "",
+            now=datetime.now(timezone.utc))
+        if record is None:
+            return None
+        save_job(job)
+        return {"command": payload["command"], "outcome": "accepted",
+                "decision_id": str(record.get("decision_id", ""))}
+
+    def _publish_command_result(self, job_id: str, client_nonce: str,
+                                body: dict[str, Any]) -> None:
+        """Publish one accepted result under its nonce. NEVER changes the response.
+
+        D18 clause three: a failed publication leaves a client whose retry re-runs
+        the command, tolerable only because every effect in D5's table is
+        idempotent at its own layer — `request_stop` provably so.
+        """
+        from packages.orchestration.command_nonce import publish_nonce_result
+        try:
+            publish_nonce_result(job_id, client_nonce, body, status=200)
+        except (OSError, RuntimeError, ValueError, TypeError):   # D18, clause three
+            return
+
+    def _emit_command_accepted_event(self, job_id: str,
+                                     body: dict[str, Any]) -> None:
+        """Announce one accepted command on the job's own event stream.
+
+        DECISION F009 D23: this is D18's FOURTH write and it runs LAST, after
+        the publication D18 orders third. A client that sees this frame and
+        replays its nonce must find the published result, so emitting first
+        would let a fast client race the door into running one effect twice.
+
+        It fails SOFT for D18 clause three's reason: the effect is already
+        durable, and a failed notification must not report a command that
+        really ran as one that did not.
+
+        `outcome` is a NAMED parameter of `RunLogWriter.log` rather than
+        metadata, which is why it survives into `_safe_event_summary`'s
+        envelope and reaches the SSE frame at all. The command id rides in
+        metadata, where that summary drops it: the stream is the job's own
+        channel and DECISION F009 D6 keeps this door's attribution in
+        `commands_audit.jsonl`. This is not D6's rejected alternative (b)
+        arriving by the back door — that record is per JOB and must outlive a
+        run, while this is a live NOTIFICATION and the run log is exactly
+        where the stream reads.
+        """
+        from packages.orchestration.data_paths import resolve_data_root
+        from packages.orchestration.timeline import append_run_event
+        try:
+            append_run_event(
+                resolve_data_root(), job_id,
+                event=COMMAND_ACCEPTED_EVENT,
+                metadata={"outcome": "accepted",
+                          "command": str(body.get("command", ""))})
+        except (OSError, RuntimeError, ValueError, TypeError):   # D23, clause two
+            return
+
+    def _audit_attempt(self, job_id: str, outcome: str, *, create: bool,
+                       payload: Any = None) -> bool:
+        """Write one audited attempt. NEVER changes the response it is recording.
+
+        DECISION F009 D14, clause four: for a rejection a failed audit write changes
+        nothing. The refusal this door had already decided is sent unchanged and the
+        exception dies here, because a full disk turning a correctly-refused 403 into a 500
+        would convert a working guard into a server fault. The accepted case is not ruled
+        yet and has no call site while the 501 seam stands.
+
+        The raw token never leaves this method: only its D7 fingerprint is handed over.
+
+        The caught set is spelled out rather than written as `except Exception`, which this
+        module is guarded against by
+        `tests/orchestration/test_test_runner.py::TestNoBroadExceptAndDegradedSignals`.
+        It covers what the writer can actually raise: `OSError` from the filesystem,
+        `RuntimeError` — which `safe_points.StopControlError` is — from a containment
+        refusal, and `ValueError` / `TypeError` from serialising a payload. Naming
+        `RuntimeError` rather than importing the error class keeps the door's import set at
+        the one module this round adds.
+        """
+        from packages.orchestration.command_audit import audit_command_attempt
+        body = payload if isinstance(payload, dict) else {}
+        try:
+            return audit_command_attempt(
+                job_id,
+                token_fp=token_fingerprint(self._supplied_bearer_token()),
+                command=body.get("command", ""),
+                args=body.get("args", {}),
+                nonce=body.get("client_nonce", ""),
+                outcome=outcome,
+                create=create,
+            )
+        except (OSError, RuntimeError, ValueError, TypeError):   # D14, clause four
+            return False
+
+    def _command_is_ui_exposed(self, command_id: str) -> bool:
+        """True when `command_id` is one of the ids the UI door accepts.
+
+        Imported inside the function, the idiom this module already uses for
+        the same catalog in `do_run`, `proof_chain` and `review_bundle`: the
+        catalog is a large module and the write door must not pull it in at
+        import time.
+        """
+        from apps.cli.command_catalog import UI_EXPOSED_COMMANDS
+        return command_id in UI_EXPOSED_COMMANDS
+
+    def _nonce_is_a_usable_id(self, client_nonce: str) -> bool:
+        """True when this nonce may become a filename in the job's control directory.
+
+        The store owns its own character class, so the door asks it rather than keeping
+        a second copy of the rule that could drift away from the one that guards the
+        path. Imported inside the function, the idiom this door already uses for the
+        catalog and the audit writer.
+        """
+        from packages.orchestration.command_nonce import nonce_is_valid
+        return nonce_is_valid(client_nonce)
+
+    def _replayed_command_result(self, job_id: str, client_nonce: str) -> Any:
+        """The result already in force for this nonce, or None on a first attempt.
+
+        DECISION F009 D15 keeps this AFTER the credentials on purpose: a lookup placed
+        first would answer an unauthenticated caller out of the store and turn a nonce
+        into an oracle for another client's response.
+
+        Nothing here opens a file — `command_nonce` owns the store — and that module
+        answers a store it cannot read with a miss rather than an exception, so an
+        unreadable record costs one re-execution instead of turning this request into a
+        500.
+        """
+        from packages.orchestration.command_nonce import lookup_nonce_result
+        return lookup_nonce_result(job_id, client_nonce)
+
+    def _rate_limit_admits_command(self, job_id: str) -> bool:
+        """True while this token and this job still hold minute budget.
+
+        The limit is read from configuration on every request rather than
+        captured at start-up, so an operator who raises it does not have to
+        restart the cockpit to get the new value. A value that is not a whole
+        number falls back to the registered default rather than raising: a
+        typo in `remedy.toml` must not turn every command into a 500, and the
+        door has to stay limited while the typo is there.
+        """
+        from packages.orchestration.config import get_config, get_key_spec
+        try:
+            limit = int(get_config().get(COMMAND_RATE_LIMIT_CONFIG_KEY))
+        except (TypeError, ValueError):
+            limit = int(get_key_spec(COMMAND_RATE_LIMIT_CONFIG_KEY).default)
+        return accept_command_under_rate_limit(
+            token_fingerprint(self._supplied_bearer_token()), job_id, limit)
+
+    def _supplied_bearer_token(self) -> str:
+        """The token this request presented in `Authorization`, or the empty string."""
+        scheme, _, supplied = (self.headers.get("Authorization") or "").partition(" ")
+        return supplied if scheme == "Bearer" else ""
+
+    def _bearer_token_accepted(self) -> bool:
+        """True when `Authorization` carries a `Bearer` token matching the server's."""
+        supplied = self._supplied_bearer_token()
+        if not supplied:
+            return False
+        return server_token_matches(supplied, self.server_token)
+
+    def _read_command_payload(self) -> tuple[Any, Any]:
+        """Return `(payload, None)` for a well-formed body, else `(None, error)`."""
+        try:
+            length = int(self.headers.get("Content-Length"))
+        except (TypeError, ValueError):
+            return None, _command_field_error("body", "request body required")
+        if length <= 0:
+            return None, _command_field_error("body", "request body required")
+        if length > COMMAND_REQUEST_MAX_BYTES:
+            return None, _command_field_error("body", "request body too large")
+        try:
+            payload = json.loads(self.rfile.read(length).decode("utf-8"))
+        except (UnicodeDecodeError, ValueError):
+            return None, _command_field_error("body", "request body is not valid JSON")
+        if not isinstance(payload, dict):
+            return None, _command_field_error("body", "request body must be a JSON object")
+
+        command = payload.get("command")
+        if not isinstance(command, str) or not command:
+            return None, _command_field_error("command", "command must be a non-empty string")
+        client_nonce = payload.get("client_nonce")
+        if not isinstance(client_nonce, str) or not client_nonce:
+            return None, _command_field_error(
+                "client_nonce", "client_nonce must be a non-empty string")
+        # DECISION F009 D15: the nonce becomes a FILENAME in the job's control directory,
+        # so its character class is the guard — the same `_ID_RE` that already validates
+        # the job segment of that same path. A nonce that fails it is the shape error the
+        # field already has, which means the same 400 and the same audited
+        # `rejected_shape`: D14's closed outcome vocabulary gains no token for it.
+        if not self._nonce_is_a_usable_id(client_nonce):
+            return None, _command_field_error(
+                "client_nonce",
+                "client_nonce must be 1-64 characters of letters, digits, '-' or '_'")
+        # `args` absent is valid and means the empty object.
+        args = payload.get("args", {})
+        if not isinstance(args, dict):
+            return None, _command_field_error("args", "args must be a JSON object")
+        return {"command": command, "client_nonce": client_nonce, "args": args}, None
 
     def do_PUT(self) -> None:  # noqa: N802
         self._send_json(*_safe_error(405, "method not allowed"))

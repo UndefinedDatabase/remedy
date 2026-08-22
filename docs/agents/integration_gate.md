@@ -43,9 +43,14 @@
    checkout (F053 R3 evidence); `REMEDY_UI_NO_AUTO_BUILD=1` is set
    for the base run but NOT trusted alone — a spawned build path
    ignored it once (R-0169, F069 R2: dist/ rewritten mid-run).
-   VERIFY the neutralization: hash `apps/ui/dist` before and after
-   the base run; a changed hash voids the parity claim and forces
-   per-id attribution; or run the same install/build there), or
+   VERIFY the neutralization by measuring the EVENT, not the outcome
+   (R-0444, recurring at F009 R29): record the mtime of every file under
+   `apps/ui/dist` before and after the base run and report the window; ANY
+   mtime falling inside the run window voids the parity claim and forces
+   per-id attribution. A content hash may accompany that reading but never
+   stands alone, because equal content is consistent both with no rebuild
+   and with a byte-identical one — the case F009 R29 actually hit; or run
+   the same install/build there), or
    attribute
    EVERY `comm -23` id to the environment class by direct evidence
    (the missing artifact named per id). An unattributed `comm -23`

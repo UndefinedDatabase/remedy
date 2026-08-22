@@ -1,35 +1,36 @@
-# Plan — F008 SSE event stream
+# Plan — F009 The single write channel
 
-Branch: feature/f008-sse-event-stream, cut from `main` at `7c03adfa`, the merge
-commit of pull request #208. `.agent/live_review.md` is the source of truth for
-the open set, the next free finding id and the round map.
+Branch: feature/f009-single-write-channel, cut from `main` at `ce49348b`, the
+merge commit of pull request #209. `.agent/live_review.md` is the source of truth
+for the open set, the round map and the finding-id ceiling.
 
 ## Goal
-A per-job SSE endpoint streaming the event ledger from a cursor — the ledger's
-own monotonic seq carried and never renumbered, a 15 s heartbeat, Last-Event-ID
-resume replaying exactly the missed span — plus a client hook with reconnect
-backoff, gap detection and an honest polling fallback that labels itself
-delayed. DONE when a fake job streams into a test client with zero gaps across
-forced disconnects, the transcript byte-equals the ledger's envelope sequence,
-the heartbeat holds cadence, and the fallback engages on a disabled EventSource
-and recovers to live.
+Exactly ONE door for UI-initiated change: POST /api/jobs/{jid}/commands validates
+against the UI-exposed catalog subset, authenticates with a bearer token plus an
+X-Remedy-CSRF double-submit, rate-limits per token and job, deduplicates by
+client nonce, and ENQUEUES into the existing decision, approval and control
+machinery without touching files, jobs or shells directly. Every other POST, PUT
+and DELETE answers 405. DONE when the exposed commands round-trip through their
+effects on fixtures, replayed nonces are idempotent, unauthenticated and
+cross-site attempts fail closed and are audited as rejected, and a route-walking
+test plus an import guard prove no other mutating route exists.
 
 ## Current Step
-R36 CLOSES F008. It records the R35 verdict — PASS, with the evidence bundle and
-the READY_FOR_REVIEW package re-verified from disk by the reviewer — makes the
-one docs pin that hard-codes the claimed feature independent of it, then lands
-the authored STATUS `[x]` line, the README sync and the closure-candidate
-carrier in ONE commit and opens the pull request. That pull request is NOT
-merged this session: it merges at the next feature's Open PR Gate.
+R34 is closure round two and the last round of this branch. It records the R33
+verdict, then one commit carries the STATUS `[x]` line, the README capability
+sync and the closure candidate, and the pull request is created from it.
 
 ## Next Steps
-1. The next session starts at Phase 1: the `.agent/STOP` re-read, then the Open
-   PR Gate, where this feature's pull request is the one to merge.
-2. Rule A5 then proposes F009 — The single write channel — the first `[ ]` line
-   this ledger carries top to bottom. That feature's first reviewed round
-   registers or resolves the entry `.agent/candidates.md` carries.
+1. Nothing remains on this branch. The pull request is NOT merged in this
+   session.
+2. The next session's Open PR Gate merges it before any new feature is claimed,
+   which is the operator's manual-review window.
 
 ## Risks
-- `npm run lint` in `apps/ui` is RED at base and is NOT a gate (R-0364): that
-  config installs no TypeScript parser, which is R-0622 and routes to a paydown
-  branch.
+- The STATUS edit must be the LAST commit on the branch (Rule A4), so the
+  handback is written inside that same commit rather than after it.
+- README and STATUS may never disagree in any committed state (R-0154), which
+  is why both land in one commit and the docs gate runs at it.
+- Two open High findings, R-0495 from F085 and R-0574 from F086, are inherited
+  from closed features and are documented risks, not F009 defects; the verdict
+  is PASS_WITH_RISKS, exactly as F008 closed one feature ago.

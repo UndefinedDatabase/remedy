@@ -178,6 +178,21 @@ _CONFIG_KEY_SPECS: tuple[ConfigKeySpec, ...] = (
         default=8765,
     ),
     ConfigKeySpec(
+        key="ui.command_rate_limit_per_minute",
+        env_var="REMEDY_UI_COMMAND_RATE_LIMIT_PER_MINUTE",
+        description=(
+            "Commands the UI write door accepts for one token fingerprint and "
+            "one job per minute (DECISION F009 D9). The excess is refused with "
+            "429 rather than made to wait, because an inbound request is "
+            "holding a connection. 30 is the default because a human cockpit "
+            "stays an order of magnitude below it — an operator clicking a "
+            "control manages a few commands a minute — while a client stuck in "
+            "a retry loop is stopped inside two seconds of real traffic."
+        ),
+        value_type=int,
+        default=30,
+    ),
+    ConfigKeySpec(
         key="tests.pytest_timeout_seconds",
         env_var="REMEDY_PYTEST_TIMEOUT_SECONDS",
         description="Default pytest timeout in seconds",

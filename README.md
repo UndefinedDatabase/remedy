@@ -16,7 +16,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-54 of 255 registered items accepted. Next: F009 (The single write channel).
+55 of 255 registered items accepted. Next: F021 (Live activity feed + "agent is doing now").
 
 | Tier | Name | Done | Total |
 |------|------|-----:|------:|
@@ -25,7 +25,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 | 2 | Minimal Self-Build Runtime | 14 | 14 |
 | 3 | Full Token Economy & Autonomy | 0 | 26 |
 | 4 | Memory & Learning | 0 | 16 |
-| 5 | Operator Cockpit | 2 | 29 |
+| 5 | Operator Cockpit | 3 | 29 |
 | 6 | Design-to-Code | 0 | 16 |
 | 7 | Quality & Trust | 0 | 15 |
 | 8 | Worker Ecosystem & Neutrality | 0 | 12 |
@@ -67,6 +67,9 @@ reported as its own role in the token ledger).
 F008 sse event stream (per-job SSE endpoint with heartbeat and Last-Event-ID
 resume, a cockpit client with reconnect backoff and a polling fallback that
 labels itself delayed instead of pretending to be live).
+F009 the single write channel (one authenticated, CSRF-guarded, rate-limited
+and nonce-idempotent POST endpoint for UI-initiated commands, every other
+mutating route answering 405 under a route-walking test).
 
 Full per-feature state: [`docs/roadmap/STATUS.md`](docs/roadmap/STATUS.md)
 
