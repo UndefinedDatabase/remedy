@@ -382,13 +382,13 @@ class TestCommandChannelDoor:
 
     # -- D.5: the R7 seam ---------------------------------------------------
 
-    def test_well_formed_command_reaches_the_501_seam(self):
+    def test_well_formed_command_is_dispatched_and_accepted(self):
         port, token = self._start_server()
         status, body = self._request(
             port, "POST", self._commands_path(), body=self._valid_body(),
             headers=self._auth_headers(token))
-        assert status == 501
-        assert body["error"] == "command channel not yet accepting commands"
+        assert status == 200
+        assert body["outcome"] == "accepted"
         assert body["command"] == "job.stop"
 
     def test_absent_args_is_valid_and_reaches_the_seam(self):
@@ -397,22 +397,25 @@ class TestCommandChannelDoor:
             port, "POST", self._commands_path(),
             body=json.dumps({"command": "decision.resolve", "client_nonce": "n-2"}),
             headers=self._auth_headers(token))
-        assert status == 501
-        assert body["command"] == "decision.resolve"
+        assert (status, body["command"]) == (501, "decision.resolve")
 
-    def test_present_args_object_is_valid_and_reaches_the_seam(self):
+    def test_present_args_object_is_valid_and_is_accepted(self):
         port, token = self._start_server()
         status, body = self._request(
             port, "POST", self._commands_path(),
             body=self._valid_body(args={"reason": "operator asked"}),
             headers=self._auth_headers(token))
-        assert status == 501
+        assert status == 200
         assert body["command"] == "job.stop"
 
     # -- D.6: the UI-exposed subset (DECISION F009 D4 and D12) --------------
 
-    def test_every_exposed_command_reaches_the_seam(self):
-        """The set itself is the contract, not the two literals above."""
+    def test_every_exposed_command_reaches_the_answer_its_effect_gives(self):
+        """The set itself is the contract, not the two literals above.
+
+        `job.stop` dispatches and answers 200; `decision.resolve` keeps the seam
+        until its own round, which is then ONE edit to the expectation below.
+        """
         from apps.cli.command_catalog import UI_EXPOSED_COMMANDS
 
         port, token = self._start_server()
@@ -422,7 +425,8 @@ class TestCommandChannelDoor:
                 body=self._valid_body(
                     command=command_id, client_nonce=f"nonce-exposed-{index}"),
                 headers=self._auth_headers(token))
-            assert status == 501, command_id
+            expected = 200 if command_id == "job.stop" else 501
+            assert status == expected, command_id
             assert body["command"] == command_id
 
     def test_unexposed_catalog_command_is_400_on_field_command(self):
@@ -519,7 +523,7 @@ class TestCommandChannelDoor:
         port, token = self._start_server()
         for index in range(limit):
             status, _ = self._post_command(port, token, f"nonce-in-{index}")
-            assert status == 501, index
+            assert status == 200, index
         status, body = self._post_command(port, token, "nonce-over")
         assert status == 429
         assert body["error"] == "too many commands for this job"
@@ -533,11 +537,11 @@ class TestCommandChannelDoor:
         save_job(other)
         port, token = self._start_server()
         for index in range(limit):
-            assert self._post_command(port, token, f"nonce-a-{index}")[0] == 501
+            assert self._post_command(port, token, f"nonce-a-{index}")[0] == 200
         assert self._post_command(port, token, "nonce-a-over")[0] == 429
         status, _ = self._post_command(
             port, token, "nonce-b-0", job_id=str(other.id))
-        assert status == 501
+        assert status == 200
 
     def test_a_shape_error_does_not_spend_budget(self, command_rate_limit):
         """DECISION F009 D13, from the outside: a 400 costs the client nothing."""
@@ -548,7 +552,7 @@ class TestCommandChannelDoor:
                 port, "POST", self._commands_path(), body="{not json",
                 headers=self._auth_headers(token))
             assert status == 400
-        assert self._post_command(port, token, "nonce-after-shape")[0] == 501
+        assert self._post_command(port, token, "nonce-after-shape")[0] == 200
         assert self._post_command(port, token, "nonce-spent")[0] == 429
 
     def test_an_unexposed_command_does_not_spend_budget(self, command_rate_limit):
@@ -559,7 +563,7 @@ class TestCommandChannelDoor:
             status, _ = self._post_command(
                 port, token, "nonce-unexposed", command=UNEXPOSED_CATALOG_COMMAND)
             assert status == 400
-        assert self._post_command(port, token, "nonce-after-subset")[0] == 501
+        assert self._post_command(port, token, "nonce-after-subset")[0] == 200
         assert self._post_command(port, token, "nonce-spent")[0] == 429
 
     def test_a_mistyped_limit_falls_back_to_the_default_and_still_limits(
@@ -571,7 +575,7 @@ class TestCommandChannelDoor:
         reset_config()
         assert get_config().get("ui.command_rate_limit_per_minute") == "lots"
         port, token = self._start_server()
-        assert self._post_command(port, token, "nonce-typo")[0] == 501
+        assert self._post_command(port, token, "nonce-typo")[0] == 200
 
     # -- D.8: every attempt is audited (DECISION F009 D6 and D14) -----------
 
@@ -593,16 +597,16 @@ class TestCommandChannelDoor:
         ALREADY there, so a test about such a refusal has to establish one first — and it
         has to do it the way production does, through the door.
         """
-        assert self._post_command(port, token, "nonce-seed")[0] == 501
+        assert self._post_command(port, token, "nonce-seed")[0] == 200
         assert self._audit_path().exists()
 
-    def test_the_seam_is_audited_as_not_implemented(self):
+    def test_a_dispatched_command_is_audited_as_accepted(self):
         port, token = self._start_server()
-        assert self._post_command(port, token, "nonce-seam")[0] == 501
+        assert self._post_command(port, token, "nonce-seam")[0] == 200
 
         records = self._audit_records()
         assert len(records) == 1
-        assert records[0]["outcome"] == "not_implemented"
+        assert records[0]["outcome"] == "accepted"
         assert records[0]["command"] == "job.stop"
         assert records[0]["nonce"] == "nonce-seam"
 
@@ -616,7 +620,7 @@ class TestCommandChannelDoor:
 
         assert status == 403
         assert [r["outcome"] for r in self._audit_records()] == [
-            "not_implemented", "rejected_token"]
+            "accepted", "rejected_token"]
 
     def test_a_wrong_csrf_header_is_audited_as_rejected_csrf(self):
         port, token = self._start_server()
@@ -673,13 +677,13 @@ class TestCommandChannelDoor:
         limit = command_rate_limit(1)
         port, token = self._start_server()
         for index in range(limit):
-            assert self._post_command(port, token, f"nonce-{index}")[0] == 501
+            assert self._post_command(port, token, f"nonce-{index}")[0] == 200
 
         status, _ = self._post_command(port, token, "nonce-over")
 
         assert status == 429
         records = self._audit_records()
-        assert [r["outcome"] for r in records] == ["not_implemented", "rejected_rate"]
+        assert [r["outcome"] for r in records] == ["accepted", "rejected_rate"]
         assert records[-1]["command"] == "job.stop"
         assert records[-1]["nonce"] == "nonce-over"
 
@@ -689,7 +693,7 @@ class TestCommandChannelDoor:
         from packages.orchestration.command_audit import OUTCOMES
         limit = command_rate_limit(2)
         port, token = self._start_server()
-        assert self._post_command(port, token, "nonce-seam")[0] == 501
+        assert self._post_command(port, token, "nonce-seam")[0] == 200
         self._request(port, "POST", self._commands_path(), body=self._valid_body(),
                       headers=self._auth_headers(token, bearer="Bearer wrong"))
         self._request(port, "POST", self._commands_path(), body=self._valid_body(),
@@ -702,9 +706,9 @@ class TestCommandChannelDoor:
 
         outcomes = [r["outcome"] for r in self._audit_records()]
         assert set(outcomes) <= set(OUTCOMES), sorted(set(outcomes) - set(OUTCOMES))
-        assert "accepted" not in outcomes, "nothing is accepted while the 501 seam stands"
+        assert "accepted" in outcomes, "the dispatched job.stop was never accepted"
         assert set(outcomes) == {
-            "not_implemented", "rejected_token", "rejected_csrf", "rejected_shape",
+            "accepted", "rejected_token", "rejected_csrf", "rejected_shape",
             "rejected_command", "rejected_rate"}
 
     def test_a_wrong_credential_on_a_job_with_no_control_dir_leaves_no_file(self):
@@ -774,21 +778,24 @@ class TestCommandChannelDoor:
                 headers=headers)
 
         # The mutation must REACH the door, or the comparison above proves nothing.
-        assert calls == ["rejected_token", "rejected_csrf", "not_implemented"], calls
+        # The third call is a REPLAY, not an acceptance: both loops submit the same
+        # default nonce, so the first loop published it and the second one hits it.
+        assert calls == ["rejected_token", "rejected_csrf", "replayed"], calls
         assert len(self._audit_records()) == records_before, (
             "the raising writer still wrote a record")
         assert with_raise == without, f"the raising writer changed a response: {with_raise}"
         assert without["token"][0] == 403
-        assert without["seam"][0] == 501
+        assert without["seam"][0] == 200
 
     # -- D.9: the replayed nonce (DECISION F009 D8 and D15) -----------------
 
     def _seed_nonce(self, nonce, body, status):
         """Publish one result under `nonce`, the way the door itself will after T003.
 
-        DECISION F009 D15 leaves the door with NO publish call site while the 501 seam
-        stands, so a replay test seeds through the store's own publish function rather
-        than through a test-only path: production code exercised by production means.
+        The door publishes for itself from R19 onward, but only for the ids it
+        dispatches. This helper seeds a result directly so that a replay test can
+        name the stored body it expects, byte for byte, instead of depending on
+        whatever the effect of the moment happens to return.
         """
         from packages.orchestration.command_nonce import publish_nonce_result
         published = publish_nonce_result(
@@ -821,14 +828,14 @@ class TestCommandChannelDoor:
         assert status == 200
         assert raw == json.dumps(stored).encode()
 
-    def test_an_unseeded_nonce_still_reaches_the_seam(self):
+    def test_an_unseeded_nonce_is_dispatched_rather_than_replayed(self):
         """The lookup must MISS by default, or the door would answer from an empty store."""
         port, token = self._start_server()
         status, body = self._post_command(port, token, "nonce-unseeded")
-        assert status == 501
-        assert body["error"] == "command channel not yet accepting commands"
+        assert status == 200
+        assert body["outcome"] == "accepted"
 
-    def test_a_replay_never_reaches_the_seam(self):
+    def test_a_replay_is_not_the_acceptance_it_repeats(self):
         """Proved by the response: the seam's own answer is not what a replay returns."""
         stored = {"effect": "already-run", "command": "job.stop"}
         self._seed_nonce("nonce-not-the-seam", stored, 200)
@@ -837,8 +844,9 @@ class TestCommandChannelDoor:
         seam = self._post_command(port, token, "nonce-fresh")
         replay = self._post_command(port, token, "nonce-not-the-seam")
 
-        assert seam == (501, {"error": "command channel not yet accepting commands",
-                              "command": "job.stop"})
+        assert seam[0] == 200
+        assert seam[1]["outcome"] == "accepted"
+        assert seam[1]["command"] == "job.stop"
         assert replay == (200, stored)
         assert replay != seam
 
@@ -858,7 +866,7 @@ class TestCommandChannelDoor:
         accepted = 0
         for index in range(limit + 2):
             status, _ = self._post_command(port, token, f"nonce-spend-{index}")
-            if status == 501:
+            if status == 200:
                 accepted += 1
             else:
                 assert status == 429, index

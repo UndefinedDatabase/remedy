@@ -3080,6 +3080,19 @@ COMMAND_RATE_WINDOW_SECONDS = 60.0
 #: door's own 429 already uses, so both limits read the same way on the wire.
 COMMAND_RATE_LIMIT_MESSAGE = "too many commands for this job"
 
+#: What an effect that RAISED answers (DECISION F009 D18 clause four, D20). The
+#: exception's own text never reaches the wire: it is written by code this door
+#: does not own and may name a control path the client may not learn.
+COMMAND_EFFECT_FAILED_MESSAGE = "command could not be carried out"
+
+#: The `source` every effect dispatched here is attributed to, so a UI stop is
+#: told apart from a `remedy job stop` inside the signal (DECISION F009 D20).
+COMMAND_EFFECT_SOURCE = "ui"
+
+#: The one id this door dispatches for real; `decision.resolve` still answers the
+#: seam. Named rather than inlined so its second call site greps to this line.
+JOB_STOP_COMMAND_ID = "job.stop"
+
 _COMMAND_RATE_LOCK = threading.Lock()
 #: (token fingerprint, job id) -> (window start, commands accepted in it).
 _COMMAND_RATE_WINDOWS: dict[tuple[str, str], tuple[float, int]] = {}
@@ -3393,13 +3406,12 @@ class _RemedyHandler(BaseHTTPRequestHandler):
         # retry-after-a-timeout case the nonce exists to serve.
         replayed = self._replayed_command_result(str(job.id), payload["client_nonce"])
         if replayed is not None:
-            # D15 orders the replay audited with the outcome the ORIGINAL attempt
-            # carried. While the 501 seam stands nothing at this door publishes a
-            # record (D15's first half), so the only result a nonce can hold is the
-            # seam's own and `not_implemented` IS that outcome. D14 reserves
-            # `accepted` for the round that retires the seam; that round adds the
-            # publish call site and moves this token in the same change.
-            self._audit_attempt(str(job.id), "not_implemented", create=True,
+            # D15 audits the replay with the ORIGINAL attempt's outcome, and finding
+            # R-0636 rules what that token may be: a replay REPEATS an acceptance
+            # rather than being one, so `replayed` is its own token. T5_F035 and
+            # T9_F167 read this file to count what the door did, and one token for
+            # both events would make them indistinguishable to both. R-0636's payer.
+            self._audit_attempt(str(job.id), "replayed", create=True,
                                 payload=payload)
             self._send_json(replayed["status"], replayed["body"])
             return
@@ -3412,17 +3424,68 @@ class _RemedyHandler(BaseHTTPRequestHandler):
             self._audit_attempt(str(job.id), "rejected_rate", create=True, payload=payload)
             self._send_json(*_safe_error(429, COMMAND_RATE_LIMIT_MESSAGE))
             return
-        # The seam: DECISION F009 D5's effect table replaces this answer with a
-        # real dispatch, and the round that lands that table is the one that
-        # retires the seam. Until then 501 is the honest status — the door
-        # authenticates, validates and now also checks the exposed subset, but
-        # an accepted command still has no effect to run. `accepted` is therefore
-        # NOT the outcome written here: nothing has been accepted yet.
+        # D5 maps `job.stop` to `safe_points.request_stop`; D18 fixes the order of
+        # the three writes an ACCEPTED command performs: the effect FIRST, since
+        # the body is unknown until it returns; then the `accepted` audit line,
+        # since the record of what this door did must not depend on a store whose
+        # key the client picks; then the publication LAST, since D8's replay
+        # returns the ORIGINAL result and there is none before the other two.
+        if payload["command"] == JOB_STOP_COMMAND_ID:
+            try:
+                accepted_body = self._dispatch_job_stop(str(job.id), payload)
+            except (OSError, RuntimeError, ValueError, TypeError):
+                # D18, clause four: an effect that RAISED is neither `accepted`,
+                # which would be false, nor unaudited, which would break D6.
+                self._audit_attempt(str(job.id), "rejected_effect", create=True,
+                                    payload=payload)
+                self._send_json(*_safe_error(500, COMMAND_EFFECT_FAILED_MESSAGE))
+                return
+            # D18, clause three: BOTH writes below fail SOFT. The stop is already
+            # durable, so refusing after the fact would report a stop that really
+            # was requested as one that was not.
+            self._audit_attempt(str(job.id), "accepted", create=True, payload=payload)
+            self._publish_command_result(str(job.id), payload["client_nonce"],
+                                         accepted_body)
+            self._send_json(200, accepted_body)
+            return
+        # `decision.resolve` keeps the seam until its own round: D5 maps it to
+        # `answer_task_decision` followed by `save_job`, and that effect is not
+        # wired here yet, so 501 is still the honest status for it.
         self._audit_attempt(str(job.id), "not_implemented", create=True, payload=payload)
         self._send_json(501, {
             "error": "command channel not yet accepting commands",
             "command": payload["command"],
         })
+
+    def _dispatch_job_stop(self, job_id: str, payload: Any) -> dict[str, Any]:
+        """Run `job.stop`'s effect and build the body DECISION F009 D18 rules for it.
+
+        DECISION F009 D20 rules the two arguments no client supplies: `source` is
+        this door, and a non-string `reason` degrades to "" rather than raising,
+        because D14 types `args` as an object but never types what is inside it.
+        """
+        from packages.orchestration.safe_points import request_stop
+        args = payload.get("args")
+        reason = args.get("reason") if isinstance(args, dict) else ""
+        signal = request_stop(
+            job_id, reason=reason if isinstance(reason, str) else "",
+            source=COMMAND_EFFECT_SOURCE)
+        return {"command": payload["command"], "outcome": "accepted",
+                "request_id": signal.request_id}
+
+    def _publish_command_result(self, job_id: str, client_nonce: str,
+                                body: dict[str, Any]) -> None:
+        """Publish one accepted result under its nonce. NEVER changes the response.
+
+        D18 clause three: a failed publication leaves a client whose retry re-runs
+        the command, tolerable only because every effect in D5's table is
+        idempotent at its own layer — `request_stop` provably so.
+        """
+        from packages.orchestration.command_nonce import publish_nonce_result
+        try:
+            publish_nonce_result(job_id, client_nonce, body, status=200)
+        except (OSError, RuntimeError, ValueError, TypeError):   # D18, clause three
+            return
 
     def _audit_attempt(self, job_id: str, outcome: str, *, create: bool,
                        payload: Any = None) -> bool:
