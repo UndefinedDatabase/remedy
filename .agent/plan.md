@@ -1,36 +1,43 @@
-# Plan — F009 The single write channel
+# Plan — F021 Live activity feed + now-card
 
-Branch: feature/f009-single-write-channel, cut from `main` at `ce49348b`, the
-merge commit of pull request #209. `.agent/live_review.md` is the source of truth
-for the open set, the round map and the finding-id ceiling.
+Branch: feature/f021-live-activity-feed, cut from `main` at `4548995d`, the merge
+commit of pull request #210, which the reviewer merged at the Open PR Gate before
+this branch was created. `.agent/live_review.md` is the source of truth for the
+open set, the round map and the finding-id ceiling.
 
 ## Goal
-Exactly ONE door for UI-initiated change: POST /api/jobs/{jid}/commands validates
-against the UI-exposed catalog subset, authenticates with a bearer token plus an
-X-Remedy-CSRF double-submit, rate-limits per token and job, deduplicates by
-client nonce, and ENQUEUES into the existing decision, approval and control
-machinery without touching files, jobs or shells directly. Every other POST, PUT
-and DELETE answers 405. DONE when the exposed commands round-trip through their
-effects on fixtures, replayed nonces are idempotent, unauthenticated and
-cross-site attempts fail closed and are audited as rejected, and a route-walking
-test plus an import guard prove no other mutating route exists.
+The raw SSE event stream becomes a story a human can follow: a humanization
+catalog maps every Part E event kind to a plain line, a NowCard shows the newest
+ACTION-class event with a recency-driven activity dot, and feed rows carry their
+seq and click-jump to their node in the graph. DONE when the catalog covers every
+Part E kind and an unknown kind renders an honest generic line rather than
+vanishing, the feed renders fixture streams per the binding CSS, jump-to-node
+focuses the right node, and the steering input renders DISABLED with its honest
+tooltip until F030 lands.
 
 ## Current Step
-R34 is closure round two and the last round of this branch. It records the R33
-verdict, then one commit carries the STATUS `[x]` line, the README capability
-sync and the closure candidate, and the pull request is created from it.
+R1 is the claim round. It creates the branch, resets the review record carrying
+the F009 open set forward, gates F009 R34, registers the one closure candidate
+F009 carried, empties the candidates file and claims F021 in the roadmap ledger.
+It builds nothing.
 
 ## Next Steps
-1. Nothing remains on this branch. The pull request is NOT merged in this
-   session.
-2. The next session's Open PR Gate merges it before any new feature is claimed,
-   which is the operator's manual-review window.
+1. R2 the inventory, MEASURED in the source rather than read off the feature
+   file: which module owns the F008 SSE subscription and how the client store
+   fans it out, where the Part E event-kind list is defined, and what the graph
+   already exposes as a focus API.
+2. R3 record R2 and rule the feed's shape as a DECISION: the humanize catalog's
+   module and its coverage-test contract, the ACTION-class subset the NowCard
+   reads, and the disabled-steering flag.
+3. R4 onward the built work, in the T001 then T002 then T003 order the feature
+   file's Task slicing names.
 
 ## Risks
-- The STATUS edit must be the LAST commit on the branch (Rule A4), so the
-  handback is written inside that same commit rather than after it.
-- README and STATUS may never disagree in any committed state (R-0154), which
-  is why both land in one commit and the docs gate runs at it.
-- Two open High findings, R-0495 from F085 and R-0574 from F086, are inherited
-  from closed features and are documented risks, not F009 defects; the verdict
-  is PASS_WITH_RISKS, exactly as F008 closed one feature ago.
+- F021 is a UI feature, so docs/ui/design_reference/ is binding for every visual
+  surface and assets_spec.md is the asset authority; any visual deviation needs
+  an assumption_log entry with a technical reason.
+- One SSE subscription with client-side fan-out is an architecture line from the
+  feature file's Orchestrator brief: a second EventSource is rejected.
+- The open set carried into the review record at C3 holds no code defect of
+  F021; R-0403, R-0607, R-0608, R-0609, R-0611 and R-0613 stay routed to a
+  paydown branch.
