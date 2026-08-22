@@ -742,6 +742,28 @@ end the response with:
       it already applied in the block that registered it, and the class then
       recurred in two consecutive rounds — the second of them authored by the
       reviewer who had registered it.
+  32. **A clause naming a KIND of the block's own parts states no COUNT of that
+      kind.** Finding R-0656, and its recurrence one round later inside the very
+      round that registered it. A gate or a constraint that names a CATEGORY of
+      the block's own slices — the whole texts, the marker prefixes, the pairs —
+      names that category and gives no numeral for it. The numeral is
+      hand-counted while the extraction standing beside it is measured, so the
+      two drift apart the moment the block is edited, and the hand-counted half
+      is the one nobody re-reads. Where a count is genuinely owed, the block
+      orders the WORKER to report the number IT measured rather than naming one
+      itself. Items 11 and 16 are the same family and neither reaches this case:
+      item 11 forbids the numeral in a CONVENTION PARAGRAPH and item 16 in a
+      HEADING or any quantifying sentence, while a GATE's own text is neither.
+      That is where R-0656 landed, and then landed again — R22's G3 ordered the
+      extraction "for the two whole texts" over a block carrying three, and
+      R23's G10 bound the marker sweep to "every one of the four marker
+      prefixes" over the six that block's G3 names, as the recurrence paragraph
+      committed at `bdc242b4` records — and in each the block's arithmetic was
+      right while only the adjective was wrong, which is why no gate the block
+      ordered could see it and the WORKER caught each. This is an item rather
+      than a habit for the reason the list itself exists: R-0656's FIX clause
+      stated exactly this counter-measure in a finding BODY, and the class
+      recurred in the next block the reviewer wrote.
 
   Why this is on disk and not a habit: item 2 has recurred six times across
   F104 and F105, and R20 hit four of them in one block. A check that lives
