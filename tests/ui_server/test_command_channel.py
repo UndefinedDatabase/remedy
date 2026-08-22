@@ -979,6 +979,118 @@ class TestCommandChannelDoor:
         assert not (self.tmp_path / "control" / "jobs" / self.job_id
                     / "commands_nonce").exists()
 
+    # -- E: an accepted command announces itself (DECISION F009 D23) --------
+
+    def _run_events(self):
+        """Every run-log event for this job, read the way the stream reads them."""
+        from packages.orchestration.data_paths import resolve_data_root
+        from packages.orchestration.timeline import load_run_events
+        return load_run_events(resolve_data_root(), self.job_id)
+
+    def _accepted_events(self):
+        from packages.orchestration.ui_server import COMMAND_ACCEPTED_EVENT
+        return [e for e in self._run_events()
+                if e.get("event") == COMMAND_ACCEPTED_EVENT]
+
+    def test_an_accepted_command_reaches_the_sse_frame_it_announces(self):
+        """The ledger event AND the frame the stream builds out of it.
+
+        `_safe_event_summary` is the one writer both event transports share, so
+        a field it drops never reaches a client however faithfully the ledger
+        recorded it. `outcome` survives only because `RunLogWriter.log` takes it
+        as a NAMED parameter: the same value passed as plain metadata would sit
+        one level down and arrive on the wire as the empty string.
+        """
+        from packages.orchestration.ui_server import (
+            COMMAND_ACCEPTED_EVENT,
+            _safe_event_summary,
+            sse_event_frame,
+        )
+
+        port, token = self._start_server()
+        status, body = self._request(
+            port, "POST", self._commands_path(),
+            body=self._valid_body(client_nonce="nonce-sse-accept"),
+            headers=self._auth_headers(token))
+        assert status == 200, body
+
+        events = self._run_events()
+        matches = [(seq, e) for seq, e in enumerate(events)
+                   if e.get("event") == COMMAND_ACCEPTED_EVENT]
+        assert len(matches) == 1, events
+        seq, event = matches[0]
+        assert event["outcome"] == "accepted", event
+        assert event["metadata"]["command"] == "job.stop", event
+
+        frame = sse_event_frame(seq, _safe_event_summary(seq, event))
+        payload = json.loads(frame.decode().split("data: ", 1)[1])
+        assert payload["event"] == COMMAND_ACCEPTED_EVENT, payload
+        assert payload["outcome"] == "accepted", payload
+        assert payload["seq"] == seq, payload
+        # The args never reach the stream: the safe summary is a fixed envelope,
+        # and D6 keeps this door's own attribution in the audit file.
+        assert "command" not in payload, payload
+
+    def test_a_refused_command_announces_nothing(self):
+        """The discriminator. A `decision.resolve` with no args is D21's 409.
+
+        Its effect RAN and DECLINED, so the door leaves on a refusal path this
+        round must keep silent — without this test the emission could sit on
+        every exit of the handler and still look correct.
+        """
+        port, token = self._start_server()
+        status, _ = self._request(
+            port, "POST", self._commands_path(),
+            body=self._valid_body(command="decision.resolve",
+                                  client_nonce="nonce-sse-refused"),
+            headers=self._auth_headers(token))
+        assert status == 409
+        assert self._accepted_events() == []
+
+    def test_a_replay_announces_nothing_a_second_time(self):
+        """A replay REPEATS an acceptance rather than being one (R-0636's rule).
+
+        The UI would otherwise see two frames for one effect and count a retry
+        after a timeout as a second write.
+        """
+        port, token = self._start_server()
+        for _ in range(2):
+            status, _ = self._request(
+                port, "POST", self._commands_path(),
+                body=self._valid_body(client_nonce="nonce-sse-replay"),
+                headers=self._auth_headers(token))
+            assert status == 200
+        assert len(self._accepted_events()) == 1
+
+    def test_an_event_writer_that_raises_changes_neither_status_nor_body(
+            self, monkeypatch):
+        """DECISION F009 D23 clause two, proved rather than asserted.
+
+        The effect is already durable when this write runs, so a full disk must
+        not turn an accepted command into a 500 reporting it as refused.
+        """
+        from packages.orchestration import timeline
+
+        calls = []
+
+        def _raise_no_space(*_args, **_kwargs):
+            calls.append(1)
+            raise OSError("no space left on device")
+
+        monkeypatch.setattr(timeline, "append_run_event", _raise_no_space)
+        port, token = self._start_server()
+        status, body = self._request(
+            port, "POST", self._commands_path(),
+            body=self._valid_body(client_nonce="nonce-sse-raises"),
+            headers=self._auth_headers(token))
+        assert status == 200, body
+        assert body["outcome"] == "accepted", body
+        # The counter is what makes this a test of the SOFT FAILURE rather than
+        # of a door that never emits: a handler with no call site at all would
+        # satisfy every line above it.
+        assert calls == [1], calls
+        assert self._accepted_events() == []
+
     # -- B: the GET door still behaves as it did ----------------------------
 
     def test_get_door_still_answers_200_for_the_correct_token(self):
