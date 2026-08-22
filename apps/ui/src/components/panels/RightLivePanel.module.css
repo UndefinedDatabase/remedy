@@ -54,6 +54,22 @@
 .liveSmall { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 700; color: var(--remedy-green); }
 .liveSmall span { width: 7px; height: 7px; border-radius: 50%; background: var(--remedy-green); }
 
+/* The NowCard's activity dot (assets_spec.md line 178). The level lives in a
+   data attribute rather than in the class name, so the rule that computes it
+   stays in recency.ts and this file only says what each level LOOKS like.
+   Reduced motion needs no rule here: globals.css already flattens every
+   animation to a single 0.001ms iteration. */
+.activityDot { width: 8px; height: 8px; border-radius: 50%; background: var(--remedy-live); align-self: center; margin-left: auto; flex: 0 0 auto; }
+.activityDot[data-recency="none"] { background: var(--remedy-faint); opacity: 0.45; }
+.activityDot[data-recency="fresh"] { animation: remedyLivePulse var(--remedy-dur-pulse) ease-in-out infinite; }
+.activityDot[data-recency="fading"] { opacity: 0.55; }
+.activityDot[data-recency="idle"] { background: var(--remedy-faint); opacity: 0.7; }
+
+@keyframes remedyLivePulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.45; transform: scale(0.82); }
+}
+
 .agentNow { display: flex; gap: 12px; align-items: flex-start; }
 .agentNow strong { display: block; font-size: 14px; color: var(--remedy-ink-strong); }
 .agentNow p { margin: 3px 0 0; font-size: 13px; color: var(--remedy-muted); line-height: 1.45; }
