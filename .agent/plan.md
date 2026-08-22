@@ -15,27 +15,25 @@ renders fixture streams per the binding CSS, jump-to-node focuses the right
 node, and the steering input renders DISABLED with its tooltip until F030.
 
 ## Current Step
-R12 builds the STATE half of the bounded ring DECISION F021 D5 rules: `recent`
-and `recentDropped` on `BrainStreamState`, appended inside `receiveBrainFrame`
-behind its replay guard, bounded at `BRAIN_RECENT_LIMIT` with the drop counted.
-It also records the R11 verdict, which was PASS on every gate.
+R13 publishes the ring on `BrainStreamView`: `recent` and `recentDropped` join
+the view, `publish()` compares the ring by reference, and `cachedView` is seeded
+from the initial state so the first timer announces nothing. It also records the
+R12 verdict, which was PASS on every gate.
 
 ## Next Steps
-1. R13 publishes the ring on `BrainStreamView` in `brainStreamRunner.ts`.
-   `publish()` compares `recent` BY REFERENCE, sound only because
-   `receiveBrainFrame` returns the identical state object when it drops a
-   replay, and `cachedView` is seeded FROM the initial state rather than from a
-   fresh `[]`, or the very first publish fires on nothing.
-2. R14 builds the feed and NowCard over fixture streams, with the scroll
-   discipline that never yanks a reader who has scrolled up, and the
+1. R14 builds the feed and NowCard components over the published ring, read
+   from the ONE `useBrainStream` call `RemedyShell` already makes — no second
+   call, no new `EventSource`. `recentDropped` above zero renders the
    dropped-rows notice that points at the timeline.
-3. R15 onward T003: graph-focus wiring, the disabled steering input, and the
+2. R15 adds the scroll discipline that never yanks a reader who has scrolled
+   up, over fixture streams, gated by a Python source contract.
+3. R16 onward T003: graph-focus wiring, the disabled steering input, and the
    additive envelope field DECISION F021 D2 permits.
 
 ## Risks
-- The view-identity contract `createBrainStreamRunner` documents is what R13 is
-  most likely to break: `useSyncExternalStore` compares with `Object.is`, so a
-  freshly built array on every call re-renders forever.
+- `useSyncExternalStore` compares with `Object.is`. Any later edit that rebuilds
+  the view or the ring on every call re-renders forever; the contract tests in
+  `tests/ui_contracts/test_brain_stream_ring.py` are what hold that line.
 - `npx vitest run` is DENIED to the reviewer's session class, so a frontend
   round's vitest colour rests on the worker's transcript. `npx tsc --noEmit`
   and the Python source contracts ARE reviewer-runnable, so every frontend
