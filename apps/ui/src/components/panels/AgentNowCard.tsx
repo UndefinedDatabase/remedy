@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import type { RemedyDashboard } from "../../api/types";
 import type { FeedRow } from "../../api/feedRow";
 import { newestActionRow } from "../../api/actionClass";
-import { recencyLevel } from "../../api/recency";
+import { recencyLevel, isLiveByRecency } from "../../api/recency";
 import { deriveAgentStatus } from "../../cockpitLogic";
 import { SparkGlyph, TaskCurrentGlyph } from "../icons/RemedyGlyphs";
 import styles from "./RightLivePanel.module.css";
@@ -35,17 +35,22 @@ export function AgentNowCard({ dashboard, recent }: { dashboard: RemedyDashboard
   // Both instants subtracted here sit on ONE clock: `receivedAtMs` is the
   // arrival stamp the host took from this same `Date.now`, never the envelope's
   // server-clock string, which a server running behind would render as a dead
-  // agent. Remedy deliberately does NOT feed the badge from this level yet: the
-  // dot may say "acted 20s ago" while the job has ended, and a badge saying
-  // "Live" beside the word "Idle" is the R-0652 defect. The badge keeps the
-  // agent's own running flag until that trade-off is ruled on its own.
+  // agent.
   const level = recencyLevel(liveAction ? liveAction.receivedAtMs : null, nowMs);
+  // DECISION F021 D9: RUNNING AND RECENT, never either alone. Recency alone
+  // stays true for the whole quiet window after a job ends, which renders
+  // "Live" beside the word "Idle" -- R-0652 with a fuse instead of a latch.
+  // `isRunning` alone claims life while the dot below has already faded. The
+  // conjunction cannot contradict either the status word or the dot, and
+  // `deriveAgentStatus` says "Working" on exactly the condition that makes
+  // `isRunning` true, so the badge structurally cannot sit beside "Idle".
+  const isLive = isRunning && isLiveByRecency(level);
 
   return (
     <section className={styles.card}>
       <header className={styles.cardHeader}>
         <h2>Agent is doing now</h2>
-        {isRunning && <span className={styles.liveSmall}><span /> Live</span>}
+        {isLive && <span className={styles.liveSmall}><span /> Live</span>}
       </header>
       <div className={styles.agentNow}>
         <div className={styles.actorIcon}>
