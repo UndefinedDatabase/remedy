@@ -22,6 +22,7 @@ ACTION = API_DIR / "actionClass.ts"
 SCROLL = API_DIR / "feedScroll.ts"
 RECENCY = API_DIR / "recency.ts"
 CARD = UI_SRC / "components" / "panels" / "ActivityFeedCard.tsx"
+CHAT_INPUT = UI_SRC / "components" / "panels" / "ChatInput.tsx"
 PANEL = UI_SRC / "components" / "panels" / "RightLivePanel.tsx"
 SHELL = UI_SRC / "components" / "shell" / "RemedyShell.tsx"
 NOWCARD = UI_SRC / "components" / "panels" / "AgentNowCard.tsx"
@@ -593,4 +594,50 @@ class TestAFeedRowJumpsToItsNode:
         assert ".activityItemJump" in css, (
             "a button carrying a row needs its chrome removed or the feed "
             "renders two visually different kinds of row"
+        )
+
+
+class TestTheSteeringInputIsHonestlyDisabled:
+    """The steering input ships VISIBLE and INERT until F030 gives it a back
+    end. ux_spec.md §11.3 is binding for this surface and fixes both the
+    placement and the sentence; DECISION F021 D11 records why that wording
+    rather than the feature file's shorter paraphrase."""
+
+    REASON = "Steering arrives with a later feature — watching only for now."
+
+    def test_the_component_exists_where_the_spec_puts_it(self):
+        assert CHAT_INPUT.exists(), (
+            "component_spec.md names components/panels/ChatInput.tsx so that "
+            "enabling steering later is a change in one file"
+        )
+
+    def test_the_input_and_its_button_are_both_disabled(self):
+        code = strip_ts_comments(CHAT_INPUT.read_text())
+        # Two controls, so two disabled attributes: an enabled send button
+        # beside a dead field would still promise something it cannot do.
+        assert code.count("disabled={disabled}") == 2, (
+            "the field and the send button are both inert until F030"
+        )
+
+    def test_the_reason_is_the_binding_sentence(self):
+        card = strip_ts_comments(CARD.read_text())
+        assert self.REASON in card, (
+            "ux_spec.md §11.3 fixes this sentence; a paraphrase would make the "
+            "design reference and the shipped surface disagree"
+        )
+
+    def test_the_reason_reaches_the_reader_and_not_only_the_tooltip(self):
+        code = strip_ts_comments(CHAT_INPUT.read_text())
+        # A title attribute alone is invisible to a keyboard or screen-reader
+        # user, which is the reader most likely to wonder why nothing happens.
+        assert "aria-describedby" in code, (
+            "the honest reason is announced, not only hovered"
+        )
+
+    def test_the_card_renders_it(self):
+        card = strip_ts_comments(CARD.read_text())
+        # Both branches: the live feed and the pre-stream fallback. A reader
+        # who has not started a job must see the same honest surface.
+        assert card.count("<ChatInput disabled") == 2, (
+            "the input belongs to the card, not to one of its two branches"
         )
