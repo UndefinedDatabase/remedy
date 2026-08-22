@@ -85,7 +85,22 @@
   box-shadow: 0 4px 12px rgba(47, 111, 255, 0.35);
 }
 
-.activityList { display: flex; flex-direction: column; gap: 14px; }
+/* DECISION F021 D10: the 52vh box the feature file's binding CSS fixes. The
+   feed renders newest-first, so the newest edge is scrollTop 0; the pill is
+   sticky at the TOP of the box, which is the edge it invites a jump back to. */
+.activityList { display: flex; flex-direction: column; gap: 14px; max-height: 52vh; overflow: auto; }
+.jumpToLivePill {
+  position: sticky;
+  top: 0;
+  align-self: center;
+  border: 0;
+  cursor: pointer;
+  padding: 4px 12px;
+  border-radius: var(--remedy-radius-pill);
+  font: 500 12px/1.4 var(--remedy-font-ui);
+  background: var(--remedy-blue);
+  color: var(--remedy-ink-strong);
+}
 .activityItem { display: flex; gap: 12px; }
 .activityItem .actorIcon { width: 30px; height: 30px; }
 .activityMeta { display: flex; align-items: baseline; gap: 8px; }
