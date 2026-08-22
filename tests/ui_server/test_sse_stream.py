@@ -87,7 +87,31 @@ class TestFrameShape:
 
     def test_the_envelope_carries_the_safe_fields_only(self):
         summary = mod._safe_event_summary(2, {"event": "x", "timestamp": "t", "outcome": "ok"})
-        assert set(summary) == {"seq", "event", "timestamp", "outcome"}
+        assert set(summary) == {"seq", "event", "timestamp", "outcome", "task_id"}
+        # No linkage in either place is not an error: the row cannot jump.
+        assert summary["task_id"] == ""
+
+    def test_the_envelope_carries_the_linkage_from_both_event_sources(self):
+        """DECISION F021 D2's single additive field, resolved from TWO places.
+
+        `load_run_events` yields run-log rows whose `task_id` is TOP-LEVEL,
+        while `_load_job_plan_events` nests it under `metadata`. A summary
+        reading only the top level would leave jump-to-node dead for every
+        trace-driven job while every run-log job worked -- a silent half
+        feature, and the failure mode no suite here would have surfaced.
+        """
+        from_run_log = mod._safe_event_summary(
+            1, {"event": "task_started", "task_id": "T-7"})
+        assert from_run_log["task_id"] == "T-7"
+
+        from_trace = mod._safe_event_summary(
+            2, {"event": "task_started", "metadata": {"task_id": "T-9"}})
+        assert from_trace["task_id"] == "T-9"
+
+        # Top level wins when both carry one: the run log is the ledger.
+        both = mod._safe_event_summary(3, {
+            "event": "x", "task_id": "T-1", "metadata": {"task_id": "T-2"}})
+        assert both["task_id"] == "T-1"
 
     def test_the_cursor_endpoint_and_the_stream_share_one_envelope(self, monkeypatch):
         monkeypatch.setattr(mod, "_load_events", lambda job: _events(3))
@@ -310,8 +334,8 @@ class TestStreamResponse:
 #: blank-line separator and the comment shape are all pinned here, so any
 #: change to the wire format has to be a deliberate edit of this constant.
 GOLDEN_STREAM = (
-    b'id: 0\ndata: {"seq": 0, "event": "e0", "timestamp": "2026-08-21T00:00:00Z", "outcome": "ok"}\n\n'
-    b'id: 1\ndata: {"seq": 1, "event": "e1", "timestamp": "2026-08-21T00:00:01Z", "outcome": "ok"}\n\n'
+    b'id: 0\ndata: {"seq": 0, "event": "e0", "timestamp": "2026-08-21T00:00:00Z", "outcome": "ok", "task_id": ""}\n\n'
+    b'id: 1\ndata: {"seq": 1, "event": "e1", "timestamp": "2026-08-21T00:00:01Z", "outcome": "ok", "task_id": ""}\n\n'
     b": heartbeat\n\n"
 )
 

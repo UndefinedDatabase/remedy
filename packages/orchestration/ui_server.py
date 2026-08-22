@@ -2753,12 +2753,25 @@ def _safe_event_summary(seq: int, event: dict[str, Any]) -> dict[str, Any]:
     both or neither. `seq` is the ledger's own position and never a
     per-response counter, so a client resuming from it lands on the event the
     server meant (DECISION F008 D1).
+
+    `task_id` is DECISION F021 D2's single additive field, and it is resolved
+    from TWO places because this repository has two event sources: the run log
+    carries it as a top-level `RunEvent` field, while `_load_job_plan_events`
+    nests it under `metadata`. Reading only the top level would leave the
+    feed's jump-to-node dead for exactly the trace-driven jobs while every
+    run-log job worked, which is a half-feature rather than a visible failure.
+    Empty string when neither source carries one: a row with no linkage simply
+    does not jump.
     """
+    metadata = event.get("metadata")
+    nested = metadata.get("task_id", "") if isinstance(metadata, dict) else ""
+    linkage = event.get("task_id") or nested
     return {
         "seq": seq,
         "event": event.get("event", ""),
         "timestamp": event.get("timestamp", ""),
         "outcome": event.get("outcome", ""),
+        "task_id": linkage if isinstance(linkage, str) else "",
     }
 
 
