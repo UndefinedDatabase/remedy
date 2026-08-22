@@ -16,20 +16,20 @@ jump-to-node focuses the right node, and the steering input renders DISABLED wit
 its honest tooltip until F030 lands.
 
 ## Current Step
-R10 records the R9 verdict, adds R9's one surfaced defect as evidence to R-0437,
-and closes the reviewer's session at its stated round cap of three delegated
-rounds. It builds nothing and mints no finding id. The branch is mid-feature and
-carries no pull request by design.
+R11 records the R10 verdict, registers R-0650 — the reviewer's own newline
+convention, stated for all slice kinds at R10, stripped the terminator from this
+file — restores that terminator, and closes the session. It ships no feature
+code.
 
 ## Next Steps
-1. R11 builds the bounded ring DECISION F021 D5 rules: `recent` on
+1. R12 builds the bounded ring DECISION F021 D5 rules: `recent` on
    `BrainStreamState` and on `BrainStreamView`, appended inside
    `receiveBrainFrame` rather than in the runner's `dispatch`, so a reconnect
    replay cannot duplicate a row. `feedRowOf` is the projection it feeds.
-2. R12 builds the feed and NowCard components over fixture streams, with the
+2. R13 builds the feed and NowCard components over fixture streams, with the
    scroll discipline that never yanks a reader who has scrolled up, gated by a
    Python source contract under `tests/ui_contracts/`.
-3. R13 onward T003: graph-focus wiring, the disabled steering input, and the
+3. R14 onward T003: graph-focus wiring, the disabled steering input, and the
    additive envelope field DECISION F021 D2 permits.
 
 ## Risks
@@ -42,7 +42,7 @@ carries no pull request by design.
 - `npx vitest run` is DENIED to the reviewer's session class, so a frontend
   round's colour rests on the worker's transcript plus a red control the
   reviewer can verify from the authored bytes. Order the red control every time.
-- Jump-to-node needs the additive envelope field DECISION F021 D2 permits. That
-  is the one production seam this feature opens, and it stays one field.
+- A block's newline convention is stated PER SLICE KIND, never once for all of
+  them: R-0650 is that rule arriving the expensive way.
 - The open set holds no code defect of F021; R-0403, R-0607, R-0608, R-0609,
   R-0611 and R-0613 stay routed to a paydown branch.
