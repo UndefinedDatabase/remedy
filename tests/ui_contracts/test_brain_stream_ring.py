@@ -18,6 +18,7 @@ UI_SRC = REPO_ROOT / "apps" / "ui" / "src"
 STATE = API_DIR / "brainStream.ts"
 DEPS = API_DIR / "brainStreamDeps.ts"
 ACTION = API_DIR / "actionClass.ts"
+SCROLL = API_DIR / "feedScroll.ts"
 CARD = UI_SRC / "components" / "panels" / "ActivityFeedCard.tsx"
 PANEL = UI_SRC / "components" / "panels" / "RightLivePanel.tsx"
 SHELL = UI_SRC / "components" / "shell" / "RemedyShell.tsx"
@@ -233,4 +234,36 @@ class TestTheNowCardShowsTheNewestAction:
         code = strip_ts_comments(NOWCARD.read_text())
         assert "liveAction ? liveAction.line : detail" in code, (
             "with no action yet the card still says what the dashboard knows"
+        )
+
+
+class TestTheFeedScrollRuleIsPureAndHeadless:
+    """The scroll half of T5_F021. component_spec.md line 86 binds the feed to
+    pinned-to-newest-unless-scrolled-up with a new-rows pill, and the rule that
+    decides it is a PURE function here because this repository has no DOM in
+    which a scroll side effect could be tested at all."""
+
+    def test_the_scroll_rule_is_headless_data(self):
+        code = strip_ts_comments(SCROLL.read_text())
+        assert "import" not in code, (
+            "a rule that imports anything is a component effect in disguise"
+        )
+
+    def test_the_rule_never_follows_a_reader_who_scrolled_up(self):
+        code = strip_ts_comments(SCROLL.read_text())
+        assert "shouldFollowNewest" in code, (
+            "the feed must ask before scrolling itself to the newest row"
+        )
+        assert "isPinnedToNewest" in code
+
+    def test_the_unseen_count_clears_at_the_newest_edge(self):
+        code = strip_ts_comments(SCROLL.read_text())
+        assert "return FEED_SCROLL_START" in code, (
+            "returning to the edge clears the unseen count rather than decrementing it"
+        )
+
+    def test_the_unseen_count_accumulates_while_away(self):
+        code = strip_ts_comments(SCROLL.read_text())
+        assert "prev.unseenRows + arrived" in code, (
+            "rows arriving while the reader is away must accumulate unseen"
         )
