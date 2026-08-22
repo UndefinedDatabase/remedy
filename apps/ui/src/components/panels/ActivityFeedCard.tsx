@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { RemedyActivityItem } from "../../api/types";
 import type { FeedRow } from "../../api/feedRow";
+import type { FocusableTask } from "../../api/feedFocus";
+import { nodeIdForFeedRow } from "../../api/feedFocus";
 import { FEED_SCROLL_START, nextFeedScroll, shouldFollowNewest, shouldShowNewRowsPill } from "../../api/feedScroll";
 import { BuilderGlyph, ReviewerGlyph, PersonGlyph, GearGlyph } from "../icons/RemedyGlyphs";
 import styles from "./RightLivePanel.module.css";
@@ -33,7 +35,12 @@ const LIVE_ROWS_SHOWN = 40;
  *  every decision about following and unseen counts; this component owns only
  *  the DOM reads that rule cannot make, which is what keeps the rule testable
  *  in a repository with no DOM. */
-function LiveFeed({ recent, recentDropped }: { recent: readonly FeedRow[]; recentDropped: number }) {
+function LiveFeed({ recent, recentDropped, tasks, onSelectNode }: {
+  recent: readonly FeedRow[];
+  recentDropped: number;
+  tasks: readonly FocusableTask[];
+  onSelectNode: (nodeId: string | null) => void;
+}) {
   const newestFirst = recent.slice(-LIVE_ROWS_SHOWN).reverse();
   const boxRef = useRef<HTMLDivElement | null>(null);
   const [scrollState, setScrollState] = useState(FEED_SCROLL_START);
@@ -85,25 +92,45 @@ function LiveFeed({ recent, recentDropped }: { recent: readonly FeedRow[]; recen
           {recentDropped} earlier {recentDropped === 1 ? "event" : "events"} left this window — the timeline keeps them all.
         </p>
       ) : null}
-      {newestFirst.map(row => (
-        <article key={row.seq} className={styles.activityItem}>
-          <div className={styles.actorIcon}><GearGlyph style={{ width: 16, height: 16, color: "white" }} /></div>
-          <div>
-            <div className={styles.activityMeta}>
-              <strong>{row.kind || "event"}</strong>
-              {row.timestamp ? <span>{row.timestamp}</span> : null}
-              <span className={styles.activityTag}>#{row.seq}</span>
-              {row.outcome ? <span className={styles.activityTag}>{row.outcome}</span> : null}
+      {newestFirst.map(row => {
+        const nodeId = nodeIdForFeedRow(row, tasks);
+        const body = (
+          <>
+            <div className={styles.actorIcon}><GearGlyph style={{ width: 16, height: 16, color: "white" }} /></div>
+            <div>
+              <div className={styles.activityMeta}>
+                <strong>{row.kind || "event"}</strong>
+                {row.timestamp ? <span>{row.timestamp}</span> : null}
+                <span className={styles.activityTag}>#{row.seq}</span>
+                {row.outcome ? <span className={styles.activityTag}>{row.outcome}</span> : null}
+              </div>
+              <p>{row.line}</p>
             </div>
-            <p>{row.line}</p>
-          </div>
-        </article>
-      ))}
+          </>
+        );
+        // A row with no node renders as the article it always was. Only a row
+        // that can really jump becomes a button, so the affordance never lies.
+        return nodeId ? (
+          <button key={row.seq} type="button" title="Show this task in the graph"
+            className={`${styles.activityItem} ${styles.activityItemJump}`}
+            onClick={() => onSelectNode(nodeId)}>
+            {body}
+          </button>
+        ) : (
+          <article key={row.seq} className={styles.activityItem}>{body}</article>
+        );
+      })}
     </div>
   );
 }
 
-export function ActivityFeedCard({ activity, recent, recentDropped }: { activity: RemedyActivityItem[]; recent?: readonly FeedRow[]; recentDropped?: number }) {
+export function ActivityFeedCard({ activity, recent, recentDropped, tasks, onSelectNode }: {
+  activity: RemedyActivityItem[];
+  recent?: readonly FeedRow[];
+  recentDropped?: number;
+  tasks?: readonly FocusableTask[];
+  onSelectNode?: (nodeId: string | null) => void;
+}) {
   const hasActivity = activity.length > 0;
   const live = recent ?? [];
 
@@ -113,7 +140,8 @@ export function ActivityFeedCard({ activity, recent, recentDropped }: { activity
     return (
       <section className={styles.card}>
         <header className={styles.cardHeader}><h2>Activity</h2></header>
-        <LiveFeed recent={live} recentDropped={recentDropped ?? 0} />
+        <LiveFeed recent={live} recentDropped={recentDropped ?? 0}
+          tasks={tasks ?? []} onSelectNode={onSelectNode ?? (() => {})} />
       </section>
     );
   }

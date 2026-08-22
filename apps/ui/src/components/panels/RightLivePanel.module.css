@@ -102,6 +102,13 @@
   color: var(--remedy-ink-strong);
 }
 .activityItem { display: flex; gap: 12px; }
+/* A feed row that can jump is a button, so it needs the button chrome
+   removed before it can look like the article beside it. No custom property
+   is used here on purpose: an unresolved one renders nothing and no suite in
+   this repository would see it (R-0661). */
+.activityItemJump { width: 100%; padding: 0; border: 0; background: none;
+  font: inherit; color: inherit; text-align: left; cursor: pointer; }
+.activityItemJump:hover { background: rgba(76, 131, 255, 0.06); border-radius: 8px; }
 .activityItem .actorIcon { width: 30px; height: 30px; }
 .activityMeta { display: flex; align-items: baseline; gap: 8px; }
 .activityMeta strong { font-size: 13px; color: var(--remedy-ink-strong); }
