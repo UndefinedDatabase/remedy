@@ -57,6 +57,10 @@
   --remedy-radius-lg: 20px;
   --remedy-radius-md: 14px;
   --remedy-radius-sm: 10px;
+  /* The pill radius the design reference has always carried. Added at F021 R32
+     because the shipped sheet had never adopted it, so every `var()` naming it
+     resolved to nothing and the rule was silently dropped (R-0661). */
+  --remedy-radius-pill: 999px;
 
   --remedy-shadow-card: 0 14px 40px rgba(55, 86, 138, 0.10);
   --remedy-shadow-soft: 0 8px 24px rgba(55, 86, 138, 0.08);
