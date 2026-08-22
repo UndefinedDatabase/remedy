@@ -16,26 +16,22 @@ cross-site attempts fail closed and are audited as rejected, and a route-walking
 test plus an import guard prove no other mutating route exists.
 
 ## Current Step
-R23 dispatches `decision.resolve` and retires the 501 placeholder. Both exposed
-ids now reach a real effect: the answer is written and PERSISTED per DECISION
-F009 D21, a declined answer is 409 and `rejected_state`, and DECISION F009 D22
-rules the `answer_source` trap and turns the 501 into a guard.
+R24 pays DECISION F009 D22's fifth clause, which scheduled it by name. R23's
+dispatch had only its 409 refusal path under test; this round reaches the 200
+acceptance path and the 501 guard, and asserts all three writes D18 orders for
+an accepted command. It touches no production file.
 
 ## Next Steps
-1. R24 adds the tests DECISION F009 D22's fifth clause defers, purely
-   additively: the 200 acceptance path, the 501 guard, and the disk-level
-   `decision.resolve` effect assertions in `test_command_dispatch.py` — the
-   reads that file already does for `job.stop`. Until it lands, `save_job`
-   running and the accepted body's `decision_id` are asserted by nothing.
-2. Then the `command.accepted` SSE event on the F008 stream.
-3. Then the queue-only import guard, whose allowed set includes `save_job`
-   because DECISION F009 D5's own effect mapping names it; then the
-   route-walking 405 test; then the integration gate and closure.
+1. The `command.accepted` SSE event on the F008 stream.
+2. The queue-only import guard, whose allowed set includes `save_job` because
+   DECISION F009 D5's own effect mapping names it.
+3. Then the route-walking 405 test proving every other mutating method answers
+   405; then the integration gate and closure.
 
 ## Risks
 - `answer_source` is a two-valued field the escalation assumption log COUNTS.
-  D22 rules that this door must NOT pass its own source into it, which is the
-  opposite of D20's rule for `request_stop`; a later round that generalises one
-  to the other silently drops answers from both tallies.
+  DECISION F009 D22 rules that this door must NOT pass its own source into it,
+  the opposite of D20's rule for `request_stop`; a later round that generalises
+  one to the other silently drops answers from both tallies.
 - `npm run lint` in `apps/ui` is RED at base and is NOT a gate (R-0364), which
   is R-0622 and routes to a paydown branch.
