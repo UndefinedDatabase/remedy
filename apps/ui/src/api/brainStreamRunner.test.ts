@@ -44,7 +44,7 @@ function started(): { host: RecordingHost; runner: BrainStreamRunner } {
 }
 
 function frame(seq: number): BrainStreamEvent {
-  return { kind: "frame", frame: { seq, event: { seq } } };
+  return { kind: "frame", frame: { seq, event: { seq } }, receivedAtMs: 0 };
 }
 
 describe("a runner that has not connected", () => {

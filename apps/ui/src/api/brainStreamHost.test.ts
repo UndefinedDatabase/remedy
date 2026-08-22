@@ -93,7 +93,7 @@ describe("an open stream", () => {
     h.host.connect(null);
     h.sources[0].emit("message", { data: payload(4) });
     expect(h.events).toEqual([
-      { kind: "frame", frame: { seq: 4, event: JSON.parse(payload(4)) } },
+      { kind: "frame", frame: { seq: 4, event: JSON.parse(payload(4)) }, receivedAtMs: 1000 },
     ]);
   });
   it("drops a malformed frame instead of dispatching a broken one", () => {
@@ -162,8 +162,8 @@ describe("the polling fallback", () => {
     await settle();
     expect(h.tails).toEqual([5]);
     expect(h.events.slice(1)).toEqual([
-      { kind: "frame", frame: { seq: 6, event: null } },
-      { kind: "frame", frame: { seq: 7, event: null } },
+      { kind: "frame", frame: { seq: 6, event: null }, receivedAtMs: 1000 },
+      { kind: "frame", frame: { seq: 7, event: null }, receivedAtMs: 1000 },
     ]);
   });
   it("reports a closed transport when the tail read fails", async () => {

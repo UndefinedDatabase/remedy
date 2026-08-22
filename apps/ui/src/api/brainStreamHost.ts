@@ -58,7 +58,7 @@ export function createBrainStreamHost(
    *  fallback resumes where the stream stopped instead of replaying it. */
   function tell(frame: BrainStreamFrame): void {
     held = frame.seq;
-    dispatch({ kind: "frame", frame });
+    dispatch({ kind: "frame", frame, receivedAtMs: deps.now() });
   }
 
   /** Closing is idempotent and always forgets the socket first: an `error`
