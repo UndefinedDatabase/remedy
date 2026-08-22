@@ -17,6 +17,7 @@ API_DIR = REPO_ROOT / "apps" / "ui" / "src" / "api"
 UI_SRC = REPO_ROOT / "apps" / "ui" / "src"
 STATE = API_DIR / "brainStream.ts"
 DEPS = API_DIR / "brainStreamDeps.ts"
+ACTION = API_DIR / "actionClass.ts"
 CARD = UI_SRC / "components" / "panels" / "ActivityFeedCard.tsx"
 PANEL = UI_SRC / "components" / "panels" / "RightLivePanel.tsx"
 SHELL = UI_SRC / "components" / "shell" / "RemedyShell.tsx"
@@ -173,3 +174,37 @@ class TestTheFeedIsFedFromTheStream:
                     "only brainStreamDeps.ts may construct the transport"
                 )
         assert calls == 2, "one definition plus one call, never a second"
+
+
+class TestTheActionClassIsDocumentedAndHeadless:
+    """T5_F021 rules the NowCard over "a documented subset -- heartbeats and
+    bookkeeping excluded". Behaviour is pinned by vitest in actionClass.test.ts;
+    these pin the facts a behavioural test cannot see, against COMMENT-STRIPPED
+    source so that prose above a definition cannot satisfy a guard (R-0584)."""
+
+    def test_the_action_class_stays_headless(self):
+        code = strip_ts_comments(ACTION.read_text())
+        assert "components/" not in code, (
+            "the action class is data the CLI can reuse, not a component import"
+        )
+        assert "useState" not in code and "useSyncExternalStore" not in code
+
+    def test_the_inspection_suffixes_are_excluded(self):
+        code = strip_ts_comments(ACTION.read_text())
+        for suffix in ("_inspected", "_read", "_loaded", "_recalled", "_assessed"):
+            assert '"' + suffix + '"' in code, (
+                suffix + " is bookkeeping the NowCard must stay quiet about"
+            )
+
+    def test_an_unknown_kind_stays_in_the_action_class(self):
+        code = strip_ts_comments(ACTION.read_text())
+        assert "BOOKKEEPING_SUFFIXES.some" in code, (
+            "classification is by EXCLUSION: an allow-list would demote every "
+            "kind computed at runtime and the NowCard would go quiet"
+        )
+
+    def test_the_newest_scan_runs_backwards(self):
+        code = strip_ts_comments(ACTION.read_text())
+        assert "recent.length - 1" in code, (
+            "recent is oldest-first, so the newest action is found from the end"
+        )
