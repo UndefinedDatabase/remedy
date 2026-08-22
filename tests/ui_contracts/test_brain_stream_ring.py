@@ -16,6 +16,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 API_DIR = REPO_ROOT / "apps" / "ui" / "src" / "api"
 UI_SRC = REPO_ROOT / "apps" / "ui" / "src"
 STATE = API_DIR / "brainStream.ts"
+ROW = API_DIR / "feedRow.ts"
 DEPS = API_DIR / "brainStreamDeps.ts"
 ACTION = API_DIR / "actionClass.ts"
 SCROLL = API_DIR / "feedScroll.ts"
@@ -79,12 +80,12 @@ class TestAppendSitsBehindTheReplayGuard:
 
     def test_the_projection_is_called_inside_receive_brain_frame(self):
         body = receive_body(strip_ts_comments(STATE.read_text()))
-        assert "feedRowOf(frame)" in body
+        assert "feedRowOf(frame, receivedAtMs)" in body
 
     def test_the_replay_guard_returns_before_the_append(self):
         body = receive_body(strip_ts_comments(STATE.read_text()))
         guard = body.index("frame.seq <= state.lastSeq) return state;")
-        assert guard < body.index("feedRowOf(frame)"), (
+        assert guard < body.index("feedRowOf(frame, receivedAtMs)"), (
             "an append ahead of the guard duplicates a row on reconnect replay"
         )
 
