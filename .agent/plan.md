@@ -16,29 +16,25 @@ cross-site attempts fail closed and are audited as rejected, and a route-walking
 test plus an import guard prove no other mutating route exists.
 
 ## Current Step
-R19 is round one of DECISION F009 D19: the door dispatches `job.stop` to
-`safe_points.request_stop`, answers 200 with the body DECISION F009 D18 rules,
-audits a raised effect as `rejected_effect`, pays R-0636 by moving the replay
-token to `replayed`, and migrates the seam pins. `decision.resolve` keeps the
-501 seam. DECISION F009 D20 rules the two arguments the client does not supply
-and records the migration's MEASURED shape, correcting D19 per finding R-0638.
+R20 is round two of DECISION F009 D19 and is purely additive: a new
+`tests/ui_server/test_command_dispatch.py` asserts DECISION F009 D18's three
+writes from the outside — the published stop request, the nonce record, a retry
+audited `replayed` — and the `rejected_effect` path that R19 shipped with no
+test reaching it. It also records the R19 verdict and registers R-0639.
 
 ## Next Steps
-1. Round two of D19: the effect assertions in a NEW file,
-   `tests/ui_server/test_command_dispatch.py` — that the stop request the
-   dispatch published exists and carries the door's source, that the nonce
-   record holds the body the client received, and that a retry of the same
-   nonce is audited `replayed`. Purely additive; it edits no existing test.
-2. Then `decision.resolve` dispatches and the seam is gone; then the
-   `command.accepted` SSE event; then the queue-only import guard, the
-   per-command side-effect assertions and the route-walking 405 test; then the
-   integration gate and closure.
+1. `decision.resolve` dispatches to `answer_task_decision` followed by
+   `save_job` per DECISION F009 D5, and the 501 seam is gone entirely. That
+   round re-examines D18's clause three against a non-idempotent effect, as D18
+   requires of it, and migrates the two pins that still expect 501.
+2. Then the `command.accepted` SSE event on the F008 stream.
+3. Then the queue-only import guard, the per-command side-effect assertions and
+   the route-walking 405 test; then the integration gate and closure.
 
 ## Risks
-- `rejected_effect` is written from R19 but no shipped test reaches it; the
-  reviewer's own worktree probe did, and round two owes it a permanent test.
-- `test_an_audit_writer_that_raises_changes_neither_status_nor_body` submits the
-  SAME default nonce in both of its loops, so its second seam call is now a
-  REPLAY. R19 moves that site to `replayed` by its own FROM/TO pair.
+- DECISION F009 D18's clause three ruled soft failure for BOTH later writes on
+  the strength of `request_stop` being idempotent. `answer_task_decision`
+  followed by `save_job` is not obviously so, and D18 already names that as the
+  next round's obligation rather than an inheritance.
 - `npm run lint` in `apps/ui` is RED at base and is NOT a gate (R-0364), which
   is R-0622 and routes to a paydown branch.
