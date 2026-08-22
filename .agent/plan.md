@@ -14,19 +14,19 @@ renders fixture streams per the binding CSS, jump-to-node focuses the right
 node, and the steering input renders DISABLED with its tooltip until F030.
 
 ## Current Step
-R23 puts the arrival stamp on the TRANSPORT EVENT: the host reads the clock R22
-injected, once per frame, and `BrainStreamEvent`'s frame member carries the
-number. The driver stays a pure reducer that transports it without asking the
-time. Nothing renders yet.
+R24 records R23, which PASSED all ten gates, registers R-0658 and writes down a
+recurrence of R-0656 beside that finding rather than minting a second id. No
+code changes: the clock is injected and every transport frame now carries its
+arrival instant, but nothing consumes the stamp yet.
 
 ## Next Steps
-1. R24: the ring's row carries the stamp — `FeedRow` gains `receivedAtMs`,
-   `feedRowOf` takes it and `receiveBrainFrame` threads it. First round to touch
-   the ring, whose append placement DECISION F021 D5 governs.
-2. R25: the NowCard reads `recency.ts` for BOTH its badge and its new dot, with
+1. R25 is THE RING ROUND: `FeedRow` gains `receivedAtMs`, `feedRowOf` takes it,
+   and `receiveBrainFrame` threads it from the transport event. First round to
+   touch the ring, whose append placement DECISION F021 D5 governs.
+2. R26: the NowCard reads `recency.ts` for BOTH its badge and its new dot, with
    the CSS `docs/ui/design_reference/assets_spec.md` governs.
-3. R26: `feedScroll.ts` drives the feed's scroll container and the new-rows pill
-   component_spec.md line 86 binds; then R27, the row click-jump, and T003's
+3. R27: `feedScroll.ts` drives the feed's scroll container and the new-rows pill
+   component_spec.md line 86 binds; then R28, the row click-jump, and T003's
    disabled steering input.
 4. Closure: the evidence round, then the STATUS-commit round.
 
@@ -39,9 +39,9 @@ time. Nothing renders yet.
   mutation-proved. The Python contract is the mutation-proved guard (R-0653).
 - A worktree also lacks `apps/ui/dist/`, so `tests/ui_contracts/` skips one more
   case there than in the primary checkout. COUNT BY PASSED PLUS SKIPPED.
-- A block states pair shapes it MEASURED for its own pairs and never carries the
-  previous round's reading over: R22's twelve were all APPEND, R23's six are all
-  REWRITE (R-0656 and R-0657 are the cost of the reviewer's own drift here).
+- The reviewer's block text is where this feature's last four findings came
+  from, all caught by workers: R-0654 through R-0658. Before R25 the reviewer
+  promotes R-0656's rule into planner_reviewer_prompt.md §3.
 - No code defect of F021 is open; R-0364, R-0403, R-0607, R-0608, R-0609,
-  R-0611, R-0613, R-0622, R-0651, R-0653, R-0654, R-0655, R-0656 and R-0657 stay
-  routed to a paydown branch.
+  R-0611, R-0613, R-0622, R-0651, R-0653 through R-0658 stay routed to a
+  paydown branch.
