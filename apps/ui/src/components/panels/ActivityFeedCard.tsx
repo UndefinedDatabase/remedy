@@ -5,6 +5,7 @@ import type { FocusableTask } from "../../api/feedFocus";
 import { nodeIdForFeedRow } from "../../api/feedFocus";
 import { FEED_SCROLL_START, nextFeedScroll, shouldFollowNewest, shouldShowNewRowsPill } from "../../api/feedScroll";
 import { BuilderGlyph, ReviewerGlyph, PersonGlyph, GearGlyph } from "../icons/RemedyGlyphs";
+import { ChatInput } from "./ChatInput";
 import styles from "./RightLivePanel.module.css";
 
 const iconByActor: Record<string, typeof BuilderGlyph> = {
@@ -24,6 +25,12 @@ function formatTokenEstimate(tokens: number): string {
  *  would leave feedScroll.ts's never-yank rule unreachable in the product. The
  *  ring still holds BRAIN_RECENT_LIMIT and the timeline is still the archive. */
 const LIVE_ROWS_SHOWN = 40;
+
+/** The disabled steering input's honest reason, quoted from ux_spec.md
+ *  §11.3, which is binding for this surface. DECISION F021 D11 records why
+ *  this wording rather than the feature file's shorter paraphrase. */
+const STEERING_DISABLED_REASON =
+  "Steering arrives with a later feature — watching only for now.";
 
 /** The live half of the card: rows projected from the SSE stream, NEWEST
  *  FIRST. Remedy deliberately does not merge these with the dashboard's REST
@@ -142,6 +149,7 @@ export function ActivityFeedCard({ activity, recent, recentDropped, tasks, onSel
         <header className={styles.cardHeader}><h2>Activity</h2></header>
         <LiveFeed recent={live} recentDropped={recentDropped ?? 0}
           tasks={tasks ?? []} onSelectNode={onSelectNode ?? (() => {})} />
+        <ChatInput disabled reason={STEERING_DISABLED_REASON} />
       </section>
     );
   }
@@ -170,6 +178,7 @@ export function ActivityFeedCard({ activity, recent, recentDropped, tasks, onSel
           <p className={styles.emptyState}>No activity yet. Events will appear here as the agent works.</p>
         )}
       </div>
+      <ChatInput disabled reason={STEERING_DISABLED_REASON} />
     </section>
   );
 }

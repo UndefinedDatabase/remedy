@@ -109,6 +109,19 @@
 .activityItemJump { width: 100%; padding: 0; border: 0; background: none;
   font: inherit; color: inherit; text-align: left; cursor: pointer; }
 .activityItemJump:hover { background: rgba(76, 131, 255, 0.06); border-radius: 8px; }
+/* The steering input (ux_spec.md §11.3): 40px field, radius 12, bg-2 fill,
+   1px line border, 36px send button. Every custom property named here is
+   defined in the shipped tokens sheet — checked, because an unresolved one
+   renders nothing and only R-0661's pin would ever notice. */
+.chatInputRow { display: flex; gap: 8px; align-items: center; margin-top: 12px; flex-wrap: wrap; }
+.chatInput { flex: 1; min-width: 0; height: 40px; border-radius: 12px;
+  background: var(--remedy-bg-2); border: 1px solid var(--remedy-line);
+  padding: 0 14px; font: 500 13px/1.45 var(--remedy-font-ui); color: var(--remedy-ink); }
+.chatInput:disabled { cursor: not-allowed; }
+.chatSend { width: 36px; height: 36px; border-radius: 12px; border: 0;
+  background: var(--remedy-blue); color: #fff; font-size: 15px; cursor: pointer; }
+.chatSend:disabled { cursor: not-allowed; opacity: 0.5; }
+.chatInputReason { flex-basis: 100%; margin: 0; font-size: 11px; color: var(--remedy-ink-soft); }
 .activityItem .actorIcon { width: 30px; height: 30px; }
 .activityMeta { display: flex; align-items: baseline; gap: 8px; }
 .activityMeta strong { font-size: 13px; color: var(--remedy-ink-strong); }
