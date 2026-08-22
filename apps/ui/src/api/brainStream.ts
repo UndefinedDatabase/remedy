@@ -86,10 +86,11 @@ export function degradeBrainStream(state: BrainStreamState): BrainStreamState {
 export function receiveBrainFrame(
   state: BrainStreamState,
   frame: BrainStreamFrame,
+  receivedAtMs: number,
 ): BrainStreamState {
   if (state.lastSeq !== null && frame.seq <= state.lastSeq) return state;
   const isGap = state.lastSeq !== null && frame.seq !== state.lastSeq + 1;
-  const appended = [...state.recent, feedRowOf(frame)];
+  const appended = [...state.recent, feedRowOf(frame, receivedAtMs)];
   const overflow = Math.max(0, appended.length - BRAIN_RECENT_LIMIT);
   return {
     ...state,

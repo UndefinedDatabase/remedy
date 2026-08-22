@@ -5,9 +5,15 @@ import { humanizeStreamEvent } from "./humanize";
 import type { BrainStreamFrame } from "./brainStream";
 
 /** What one activity-feed row shows. `seq` is the ledger position the row
- *  carries and jumps to; `known` is what a dev console note counts. */
+ *  carries and jumps to; `known` is what a dev console note counts.
+ *  `receivedAtMs` is the arrival instant the host stamped from the injected
+ *  clock (R23). The recency dot subtracts it from that SAME clock, which the
+ *  envelope's own `timestamp` could not serve: it is a server-clock string
+ *  ui_server.py passes through unparsed, empty where the run log has none, so
+ *  a server running behind would render as a dead agent. */
 export interface FeedRow {
   seq: number;
+  receivedAtMs: number;
   kind: string;
   line: string;
   known: boolean;
@@ -37,12 +43,16 @@ function stringField(envelope: Record<string, unknown>, name: string): string {
 /** Project one frame into the row a feed renders. Total by construction: every
  *  frame yields a row, because an event the catalog cannot name still happened
  *  and a feed that dropped it would tell a story with holes in it. */
-export function feedRowOf(frame: BrainStreamFrame): FeedRow {
+export function feedRowOf(
+  frame: BrainStreamFrame,
+  receivedAtMs: number,
+): FeedRow {
   const envelope = envelopeOf(frame);
   const kind = stringField(envelope, "event");
   const humanized = humanizeStreamEvent(kind);
   return {
     seq: frame.seq,
+    receivedAtMs,
     kind,
     line: humanized.line,
     known: humanized.known,

@@ -72,7 +72,7 @@ export function stepBrainStream(
       return { state: openBrainStream(state), effects: [] };
 
     case "frame": {
-      const next = receiveBrainFrame(state, event.frame);
+      const next = receiveBrainFrame(state, event.frame, event.receivedAtMs);
       const gapOpened = next.gapDetected && !state.gapDetected;
       return { state: next, effects: gapOpened ? [{ kind: "snapshot" }] : [] };
     }

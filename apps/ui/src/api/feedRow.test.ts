@@ -1,5 +1,12 @@
 import { describe, it, expect } from "vitest";
-import { feedRowOf } from "./feedRow";
+import { feedRowOf as projectRow } from "./feedRow";
+
+// The cases below predate the arrival stamp and assert nothing about it, so
+// they call through a shim supplying a fixed one. The stamp's own contract is
+// the last case in this file, which calls `projectRow` directly.
+function feedRowOf(frame: { seq: number; event: unknown }) {
+  return projectRow(frame, 0);
+}
 import { STREAM_EVENT_CATALOG } from "./humanizeCatalog";
 
 /** A frame as `framesOf` builds one: the envelope IS the frame's event field. */
@@ -63,5 +70,10 @@ describe("feedRowOf on envelopes the client does not control", () => {
     const row = feedRowOf(frameOf(7, { event: "constructor" }));
     expect(row.known).toBe(false);
     expect(row.line).toBe("constructor event");
+  });
+
+  it("carries the arrival stamp the caller supplies, unchanged", () => {
+    const row = projectRow(frameOf(8, { event: "task_run_started" }), 1717);
+    expect(row.receivedAtMs).toBe(1717);
   });
 });

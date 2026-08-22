@@ -8,7 +8,7 @@ import type { BrainStreamState } from "./brainStream";
 
 /** Drive a state through a run of seqs, as the transport would deliver them. */
 function drive(state: BrainStreamState, seqs: number[]): BrainStreamState {
-  return seqs.reduce((s, seq) => receiveBrainFrame(s, { seq, event: { seq } }), state);
+  return seqs.reduce((s, seq) => receiveBrainFrame(s, { seq, event: { seq } }, seq * 10), state);
 }
 
 describe("initialBrainStreamState", () => {
@@ -127,7 +127,7 @@ describe("the recent ring", () => {
 
   it("a replayed frame appends nothing and returns the identical state", () => {
     const s = drive(initialBrainStreamState(), [1, 2]);
-    const again = receiveBrainFrame(s, { seq: 2, event: { seq: 2 } });
+    const again = receiveBrainFrame(s, { seq: 2, event: { seq: 2 } }, 999);
     expect(again).toBe(s);
     expect(again.recent).toBe(s.recent);
     expect(again.recent.map((r) => r.seq)).toEqual([1, 2]);
@@ -145,9 +145,21 @@ describe("the recent ring", () => {
   it("the row carries the humanized projection, not the raw envelope", () => {
     const s = receiveBrainFrame(initialBrainStreamState(), {
       seq: 3, event: { event: "task_run_started", outcome: "ok" },
-    });
+    }, 1234);
     expect(s.recent[0].kind).toBe("task_run_started");
     expect(s.recent[0].known).toBe(true);
     expect(s.recent[0].outcome).toBe("ok");
+  });
+
+  it("the row carries the arrival stamp the transport handed in", () => {
+    const s = receiveBrainFrame(initialBrainStreamState(), {
+      seq: 3, event: { event: "task_run_started" },
+    }, 1234);
+    expect(s.recent[0].receivedAtMs).toBe(1234);
+  });
+
+  it("each row keeps its OWN stamp as the ring fills", () => {
+    const s = drive(initialBrainStreamState(), [1, 2, 3]);
+    expect(s.recent.map((r) => r.receivedAtMs)).toEqual([10, 20, 30]);
   });
 });
