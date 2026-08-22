@@ -3101,6 +3101,10 @@ COMMAND_DECISION_STATE_MESSAGE = "decision is not open"
 #: written at all.
 COMMAND_NOT_DISPATCHED_MESSAGE = "command is exposed but not dispatched"
 
+#: The event one ACCEPTED command appends to the job's run log, and through it
+#: to the F008 SSE stream (DECISION F009 D23). The spelling is the feature file's.
+COMMAND_ACCEPTED_EVENT = "command.accepted"
+
 #: The two ids this door dispatches. Named rather than inlined so that each
 #: second call site greps to this line.
 JOB_STOP_COMMAND_ID = "job.stop"
@@ -3459,6 +3463,7 @@ class _RemedyHandler(BaseHTTPRequestHandler):
             self._audit_attempt(str(job.id), "accepted", create=True, payload=payload)
             self._publish_command_result(str(job.id), payload["client_nonce"],
                                          accepted_body)
+            self._emit_command_accepted_event(str(job.id), accepted_body)
             self._send_json(200, accepted_body)
             return
         # D5 maps `decision.resolve` to `answer_task_decision` followed by
@@ -3490,6 +3495,7 @@ class _RemedyHandler(BaseHTTPRequestHandler):
             self._audit_attempt(str(job.id), "accepted", create=True, payload=payload)
             self._publish_command_result(str(job.id), payload["client_nonce"],
                                          accepted_body)
+            self._emit_command_accepted_event(str(job.id), accepted_body)
             self._send_json(200, accepted_body)
             return
         # An id `_command_is_ui_exposed` admitted that no clause above dispatches.
@@ -3569,6 +3575,40 @@ class _RemedyHandler(BaseHTTPRequestHandler):
         try:
             publish_nonce_result(job_id, client_nonce, body, status=200)
         except (OSError, RuntimeError, ValueError, TypeError):   # D18, clause three
+            return
+
+    def _emit_command_accepted_event(self, job_id: str,
+                                     body: dict[str, Any]) -> None:
+        """Announce one accepted command on the job's own event stream.
+
+        DECISION F009 D23: this is D18's FOURTH write and it runs LAST, after
+        the publication D18 orders third. A client that sees this frame and
+        replays its nonce must find the published result, so emitting first
+        would let a fast client race the door into running one effect twice.
+
+        It fails SOFT for D18 clause three's reason: the effect is already
+        durable, and a failed notification must not report a command that
+        really ran as one that did not.
+
+        `outcome` is a NAMED parameter of `RunLogWriter.log` rather than
+        metadata, which is why it survives into `_safe_event_summary`'s
+        envelope and reaches the SSE frame at all. The command id rides in
+        metadata, where that summary drops it: the stream is the job's own
+        channel and DECISION F009 D6 keeps this door's attribution in
+        `commands_audit.jsonl`. This is not D6's rejected alternative (b)
+        arriving by the back door — that record is per JOB and must outlive a
+        run, while this is a live NOTIFICATION and the run log is exactly
+        where the stream reads.
+        """
+        from packages.orchestration.data_paths import resolve_data_root
+        from packages.orchestration.timeline import append_run_event
+        try:
+            append_run_event(
+                resolve_data_root(), job_id,
+                event=COMMAND_ACCEPTED_EVENT,
+                metadata={"outcome": "accepted",
+                          "command": str(body.get("command", ""))})
+        except (OSError, RuntimeError, ValueError, TypeError):   # D23, clause two
             return
 
     def _audit_attempt(self, job_id: str, outcome: str, *, create: bool,
