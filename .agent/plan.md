@@ -16,17 +16,17 @@ cross-site attempts fail closed and are audited as rejected, and a route-walking
 test plus an import guard prove no other mutating route exists.
 
 ## Current Step
-R26 lands the `command.accepted` event and records the R25 verdict. An accepted
-command now appends the event to the job's run log, which is where the F008 SSE
-stream reads, so the UI sees its own writes on the channel it already watches.
-Refusals and replays announce nothing.
+R27 makes the P3 contract mechanical and records the R26 verdict. An AST guard
+pins the exact import set the door's own methods may make, names the applicator
+and shell/filesystem modules they may never reach, admits `save_job` alone out of
+storage because DECISION F009 D5's effect mapping names it, and carries both the
+violation fixture the feature file's Acceptance demands and a test that stops the
+guard from emptying its own scan under a rename.
 
 ## Next Steps
-1. The queue-only import guard, whose allowed set includes `save_job` because
-   DECISION F009 D5's own effect mapping names it, and `append_run_event`
-   because DECISION F009 D23's emission needs it.
-2. Then the route-walking 405 test proving every other mutating method answers
-   405; then the integration gate and closure.
+1. The route-walking 405 test proving every other mutating POST, PUT and DELETE
+   answers 405 — the last piece of T003.
+2. Then the integration gate, then closure.
 
 ## Risks
 - `answer_source` is a two-valued field the escalation assumption log COUNTS.
