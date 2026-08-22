@@ -444,6 +444,82 @@ class TestCommandChannelDoor:
                 assert status == 409, command_id
                 assert body["error"] == "decision is not open", command_id
 
+    def test_a_decision_resolve_naming_an_open_decision_is_answered_and_saved(self):
+        """DECISION F009 D21's success path, read back off disk.
+
+        The two writes D21 rules to be ONE effect are both checked: the record is
+        `answered` in memory only if `answer_task_decision` ran, and it is that
+        way in a job RELOADED from storage only if `save_job` ran too. The
+        `answer_source` assertion is DECISION F009 D22 made testable — `human`,
+        never this door's own name, because the escalation assumption log counts
+        that field into exactly two buckets and "ui" is in neither.
+        """
+        from datetime import datetime, timezone
+
+        from packages.orchestration.command_nonce import lookup_nonce_result
+        from packages.orchestration.escalation import (
+            enqueue_task_decision,
+            find_task_decision,
+        )
+        from packages.orchestration.storage import load_job, save_job
+
+        record = enqueue_task_decision(
+            self.job, task_id=self.job.tasks[0].id,
+            question="Which database should the task use?",
+            now=datetime.now(timezone.utc))
+        save_job(self.job)
+        decision_id = record["decision_id"]
+
+        port, token = self._start_server()
+        status, body = self._request(
+            port, "POST", self._commands_path(),
+            body=self._valid_body(
+                command="decision.resolve", client_nonce="nonce-resolve",
+                args={"decision_id": decision_id, "answer": "postgres"}),
+            headers=self._auth_headers(token))
+
+        assert status == 200, body
+        assert body["outcome"] == "accepted", body
+        assert body["decision_id"] == decision_id, body
+        answered = find_task_decision(load_job(self.job.id), decision_id)
+        assert answered["status"] == "answered", answered
+        assert answered["answer"] == "postgres", answered
+        assert answered["answer_source"] == "human", answered
+        assert self._audit_records()[-1]["outcome"] == "accepted"
+        # D18's third write. With the effect and the audit line above, all three
+        # writes D18 orders for an ACCEPTED command are now asserted for
+        # `decision.resolve`, as they already were for `job.stop`.
+        assert lookup_nonce_result(
+            self.job_id, "nonce-resolve",
+            control_root_path=self.tmp_path / "control") == {"status": 200,
+                                                             "body": body}
+
+    def test_an_exposed_id_with_no_dispatch_branch_is_the_501_guard(self, monkeypatch):
+        """DECISION F009 D22's guard, and the only test that reaches it.
+
+        Reachable only by exposing an id this door does not dispatch, which is
+        exactly the mistake the guard exists to catch: without it such a request
+        falls off the end of the handler with no response written at all.
+        """
+        from apps.cli import command_catalog
+
+        monkeypatch.setattr(
+            command_catalog, "UI_EXPOSED_COMMANDS",
+            frozenset(["job.stop", "decision.resolve", UNEXPOSED_CATALOG_COMMAND]))
+        port, token = self._start_server()
+        status, body = self._request(
+            port, "POST", self._commands_path(),
+            body=self._valid_body(
+                command=UNEXPOSED_CATALOG_COMMAND, client_nonce="nonce-guard"),
+            headers=self._auth_headers(token))
+        assert status == 501, body
+        # The MESSAGE is what tells the guard apart from the placeholder it
+        # replaced: the deleted seam answered 501 for this request too, so a test
+        # that pinned only the status would pass against either door.
+        assert body["error"] == "command is exposed but not dispatched", body
+        assert "command" not in body, body
+        assert self._audit_records()[-1]["outcome"] == "not_implemented"
+
     def test_unexposed_catalog_command_is_400_on_field_command(self):
         """`job.list` is a real catalog id that the write door does not expose."""
         from apps.cli.command_catalog import get_command
