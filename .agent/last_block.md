@@ -1,145 +1,149 @@
-── STEP T002/WIRING-1 — F021 ──
-Goal:        Give the brain-stream transport an INJECTED CLOCK. The activity dot
-             R20 built is a pure function of two NUMBERS, and this client holds
-             no numeric instant anywhere: a row's `timestamp` is a server-clock
-             STRING that `ui_server.py` passes through unparsed and empty when
-             the run log carries none. Parsing it would let a server clock that
-             runs behind read as a dead agent, which is the one failure
-             `recency.ts` says it must never make. So the stamp will be taken on
-             ARRIVAL, on the client's own clock, and this round installs the
-             clock as a dependency: `BrainStreamEnv`, `BrainStreamHostDeps` and
-             `BrainStreamGlobals` each learn `now()`, and the real environment
-             binds it from the injected global. NOTHING CONSUMES IT YET — the
-             frame event carries it at R23 and the ring's row at R24.
+── STEP T002/WIRING-2 — F021 ──
+Goal:        Put the arrival stamp ON THE TRANSPORT EVENT. R22 installed the
+             clock as an injected dependency and nothing consumed it; this round
+             the host reads it once per frame and the driver's event union
+             carries the value. The driver stays a PURE reducer — it transports
+             the number and never asks what time it is — so the ring can read an
+             instant at R24 without a clock of its own. Still nothing renders:
+             the NowCard is R25 and the feed's scroll container is R26.
 
-Fortschritt: ~88 % (T002 — die vier reinen Regeln stehen; die Verdrahtung ist in
-             vier kleine Runden zerlegt, R22 legt die Uhr als Abhaengigkeit)
+Fortschritt: ~89 % (T002 — die Uhr ist injiziert, der Frame traegt ab dieser
+             Runde seinen Ankunftsstempel; es fehlen Ring, NowCard und Feed)
              — Schaetzung
 
-Bundle:      C0a save this block · C0b mirror it · C1 plan · C2 the R21 verdict
-             and DECISION F021 D6 · C3 the twelve TypeScript pairs · C4 the
-             source contract · C5 handback.
+Bundle:      C0a save this block · C0b mirror it · C1 plan · C2 the R22 verdict
+             and the two findings it surfaced · C3 the six TypeScript pairs ·
+             C4 the source contract · C5 handback.
 
 Change:      Exactly these paths, and nothing else:
-             `.agent/authored/f021-r22.md` (NEW, C0a) · `.agent/last_block.md`
+             `.agent/authored/f021-r23.md` (NEW, C0a) · `.agent/last_block.md`
              (C0b) · `.agent/plan.md` (C1) · `.agent/live_review.md` (C2) ·
+             `apps/ui/src/api/brainStreamDriver.ts`,
              `apps/ui/src/api/brainStreamHost.ts`,
-             `apps/ui/src/api/brainStreamDeps.ts`,
-             `apps/ui/src/api/brainStreamHost.test.ts`,
-             `apps/ui/src/api/brainStreamSession.test.ts`,
-             `apps/ui/src/api/brainStreamDeps.test.ts` (C3) ·
+             `apps/ui/src/api/brainStreamDriver.test.ts`,
+             `apps/ui/src/api/brainStreamRunner.test.ts`,
+             `apps/ui/src/api/brainStreamHost.test.ts` (C3) ·
              `tests/ui_contracts/test_brain_stream_ring.py` (C4) ·
              `.agent/handoff.md` (C5).
-             Resolve any count in this block against that list. NO component,
-             no CSS and no `docs/` file is touched this round.
+             Resolve any count in this block against that list. NO component, no
+             CSS and no `docs/` file is touched this round.
 
 Constraints:
  1. Apply every slice BYTE FOR BYTE. Never retype, rewrap, reflow, reindent or
     whitespace-adjust one. If a slice looks wrong, STOP and say so in the
-    handback rather than fixing it.
+    handback rather than fixing it. R22's worker did exactly that twice and both
+    reports became the findings this round registers.
  2. Commit order is C0a, C0b, C1, C2, C3, C4, C5 and is not negotiable. C1
     precedes the ledger commit because the plan must be current before it (§3
-    checklist item 23). ROUND BASE is `bf0c50bf` — resolve its full form with
+    checklist item 23). ROUND BASE is `16186186` — resolve its full form with
     `git rev-parse` and report it — and it is the commit every "round base" in
     this block names.
- 3. THIS ROUND REGISTERS NO FINDING AND RESOLVES NONE. Before and after: 218
-    open, maximum R-0655, next free R-0656. The plan defect this round repairs
-    is routed to PLANNING as DECISION F021 D6 under §4 item 7, not minted as an
-    id: a wrong plan is a spec fault, and §3 checklist item 30's search of the
-    open set found no entry describing it.
- 4. PAIR FORM AND ITS PROOF. Every pair below is given as an ANCHOR and an ADD.
-    The TO is the ANCHOR, then one newline, then the ADD; nothing else changes.
-    The reviewer ran the containment test MECHANICALLY over all twelve pairs
-    before emission and it printed `TO contains FROM: true` for every one, so
-    all twelve are APPEND-shaped and NO "FROM 0x" count is ordered for any of
-    them (§4.9, §3 checklist item 15). Each ANCHOR was measured to occur
-    EXACTLY ONCE in its own target file at the round base.
+ 3. THIS ROUND REGISTERS EXACTLY TWO FINDINGS AND RESOLVES NONE. Before: 218
+    open, maximum R-0655. RECORD23 registers R-0656 and R-0657, so after C2: 220
+    open, maximum R-0657, next free R-0658. Both are defects of the REVIEWER's
+    own R22 block text, surfaced by that round's worker; §3 checklist item 30's
+    search of the open set found no entry describing either, and they are two
+    ids rather than one because they break different rules in different places.
+ 4. PAIR FORM AND ITS PROOF. Every pair below is given as a FROM and a TO. The
+    reviewer ran the containment test MECHANICALLY over all six before emission
+    and it printed `TO contains FROM: false` for EVERY one, so all six are
+    REWRITES and each one's proof is the pair of counts G4 orders. This is the
+    opposite shape from R22, whose twelve pairs all printed `true` — do not
+    carry that round's reading over (§3 checklist item 15).
  5. THE NEWLINE CONVENTION, PER SLICE KIND. Every slice is quoted WITHOUT a
-    trailing newline. A WHOLE-FILE write (PLANF021R22) is the slice PLUS one
-    terminator. An APPEND to a record (RECORD22, CONTRACTCLOCK) is one newline,
+    trailing newline. A WHOLE-FILE write (PLANF021R23) is the slice PLUS one
+    terminator. An APPEND to a record (RECORD23, CONTRACTSTAMP) is one newline,
     then the slice, then one terminator, so the target keeps exactly one.
  6. THE LEDGER IS APPEND-ONLY. No older entry is opened or edited (R-0470).
  7. Run no formatter or linter that rewrites a file in place. Create and merge
     NO pull request: F021 is mid-feature. Push the branch after C5. Run NO
     destructive check and create NO worktree: the red control for C4's contract
     was already reproduced by the reviewer and is re-run by it at the verdict.
- 8. Block size, measured on these final bytes AFTER the last edit: TOTAL 417
+ 8. C4 CARRIES THE APPEND ALONE. No pair targets
+    `tests/ui_contracts/test_brain_stream_ring.py` this round, so the prefix
+    reading G5 orders is reachable — R-0657 records what happened when R22
+    bundled a mid-file pair into the same commit as its append and made that
+    same clause unmeetable.
+ 9. Block size, measured on these final bytes AFTER the last edit: TOTAL 357
     lines against DECISION F085 D6's 490, and PROSE — TOTAL minus the slice
-    CONTENT lines — 255 against DECISION F085 D5's 400. Markers count as prose.
+    CONTENT lines — 230 against DECISION F085 D5's 400. Markers count as prose.
 
 Done when:
  G1  `.agent/STOP` is ABSENT immediately before C0a and again before C5; the
      branch is `feature/f021-live-activity-feed`; `git status --porcelain`
      prints 0 lines after each of C0a, C0b, C1, C2, C3 and C4. C5's own reading
      is ordered NOWHERE — §3 item 31 leaves it to the next session. Report also,
-     as the reading THIS round owes from the last, that the R21 handback commit
-     `bf0c50bf` is single-parent and touches `.agent/handoff.md` alone at 41
+     as the reading THIS round owes from the last, that the R22 handback commit
+     `16186186` is single-parent and touches `.agent/handoff.md` alone at 51
      insertions, under the 500-insertion cap.
- G2  TRANSPORT: sha256 over `.agent/authored/f021-r22.md` at C0a, over
+ G2  TRANSPORT: sha256 over `.agent/authored/f021-r23.md` at C0a, over
      `.agent/last_block.md` at C0b, over the bytes you read, and over the
-     reviewer's emitted copy at `.remedy-wt/f021-r22.md` are all equal. Write
+     reviewer's emitted copy at `.remedy-wt/f021-r23.md` are all equal. Write
      C0b FROM the committed C0a blob. Report the digest, bytes and lines.
  G3  SLICES: extract them from the COMMITTED C0a blob by their marker LINES —
-     `<<<SLICE `/`<<<END ` for the two whole texts, `<<<PAIR `/`<<<ANCHOR`/
-     `<<<ADD`/`<<<ENDPAIR` for the twelve pairs. Report how many pairs, how many
-     whole-text slices, and how many CONTENT lines that extractor printed, and
-     re-measure constraint 8's two numerals from that same blob against caps.
- G4  THE PAIRS AT C3 AND C4. For EACH of the twelve, report over its target
-     file: the ANCHOR's count at the round base, which must be EXACTLY 1; and
-     at the commit that applied it, the count of ANCHOR-plus-newline-plus-ADD,
-     which must be EXACTLY 1. No FROM-zero count is ordered — constraint 4 says
-     why. Report the twelve rows as a table, not as a sentence.
+     `<<<SLICE `/`<<<END ` for the whole texts, `<<<PAIR `/`<<<FROM`/`<<<TO`/
+     `<<<ENDPAIR` for the pairs. Report how many pairs, how many whole-text
+     slices, and how many CONTENT lines that extractor printed — state each as
+     the number YOU measured and never as a number this block predicts — and
+     re-measure constraint 9's two numerals from that same blob against caps.
+ G4  THE SIX REWRITES AT C3. For EACH, report over its target file: the FROM's
+     count at the round base, which must be EXACTLY 1; and at C3, the FROM's
+     count, which must be EXACTLY 0, and the TO's count, which must be EXACTLY
+     1. Report the six rows as a table, not as a sentence. All six are REWRITES
+     by the measurement constraint 4 states, so all three counts are owed for
+     every one of them.
  G5  THE CONTRACT APPEND at C4, as ORDERED EQUALITY (R-0531, because this slice
-     is CODE and its lines repeat structurally): the pre-commit blob of
+     is CODE and its lines repeat structurally): the C3 blob of
      `tests/ui_contracts/test_brain_stream_ring.py` is a byte-exact PREFIX of
-     the post-commit file, the remainder is EXACTLY one newline plus
-     CONTRACTCLOCK plus one newline, and the lines C4's diff ADDS to that file
-     are exactly the slice's lines IN ORDER. Report the remainder's sha256,
-     bytes and lines, and the file's bytes and lines before and after.
- G6  `.agent/plan.md` at C1 equals PLANF021R22 PLUS ONE TERMINATING NEWLINE, by
+     the C4 file, the remainder is EXACTLY one newline plus CONTRACTSTAMP plus
+     one newline, and the lines C4's diff ADDS to that file are exactly the
+     slice's lines IN ORDER. Constraint 8 is what makes the prefix half
+     reachable. Report the remainder's sha256, bytes and lines, and the file's
+     bytes and lines before and after. Report also that EXACTLY TWO blank lines
+     precede the new top-level class, counted rather than delegated to a linter
+     that does not evaluate E301-E306 outside preview (R-0558).
+ G6  `.agent/plan.md` at C1 equals PLANF021R23 PLUS ONE TERMINATING NEWLINE, by
      `cmp` at exit 0 against that byte string built from the slice extracted
      from the committed C0a blob, with a NEGATIVE CONTROL against the bare slice
      that must exit 1. Report both exit codes, that the last byte is a newline,
      `^## Goal$` 1 and `^## Next Steps$` 1. THE LINE-COUNT CLAUSE IS MEASURED:
-     the reviewer counted PLANF021R22 at 46 lines, so the file is 46 lines and
-     `wc -l` must read EXACTLY 46, satisfying AGENTS.md's "keep it short (<50
-     lines)". If the count you measure is not 46, STOP and report — do NOT trim
+     the reviewer counted PLANF021R23 at 47 lines, so the file is 47 lines and
+     `wc -l` must read EXACTLY 47, satisfying AGENTS.md's "keep it short (<50
+     lines)". If the count you measure is not 47, STOP and report — do NOT trim
      the file to reach it, which is the error R-0654 records.
  G7  THE LEDGER APPEND at C2, under TWO INDEPENDENT READERS. Read the base blob
      with `git show <round base>:<path>` into memory or scratch under
      `.remedy-wt/`; never overwrite a tracked file to read an older revision
      (self_drive_protocol.md guardrail G5). Reader (a): the base blob is a
      byte-exact PREFIX of the C2 file, remainder EXACTLY one newline plus
-     RECORD22 plus one newline — report its sha256, byte and line counts, and
+     RECORD23 plus one newline — report its sha256, byte and line counts, and
      the file's byte and line counts before and after. Reader (b), SET-WISE:
      strip the one trailing terminator from BOTH blobs, split each on the blank
      line into units, and confirm the C2 unit LIST equals the base list followed
-     by RECORD22's own units, ELEMENTWISE over the whole list, not at the tail;
-     report N at both points and RECORD22's unit count, measured by the reviewer
-     as TWO — the gate entry and the DECISION. NEGATIVE CONTROL: alter one
-     printable byte of the C2 file's FIRST paragraph at equal length; BOTH
-     readers must REJECT it and ACCEPT the true file. Name the offset and the
-     change.
+     by RECORD23's own units, ELEMENTWISE over the whole list, not at the tail;
+     report N at both points and RECORD23's unit count as the number YOU
+     measured. NEGATIVE CONTROL: alter one printable byte of the C2 file's FIRST
+     paragraph at equal length; BOTH readers must REJECT it and ACCEPT the true
+     file. Name the offset and the change.
  G8  THE LEDGER SETS, line-anchored at line start, at the round base then C2:
      `- R-` entries and how many DISTINCT; `Done: R-`; `Landed: `; `Gate: R`
-     keys and how many DISTINCT; `Gate: R22`; the MAXIMUM registered id. NO id
-     is minted and none resolved, so `- R-` reads 218 at BOTH points with both
-     DISTINCT, the maximum R-0655 at both, `Done: R-` and `Landed: ` 0 at both,
-     `Gate: R` keys 20 then 21 both DISTINCT, `Gate: R22` 0 then 1.
+     keys and how many DISTINCT; `Gate: R23`; the MAXIMUM registered id. Two ids
+     are minted and none resolved, so `- R-` reads 218 then 220 with both
+     DISTINCT, the maximum R-0655 then R-0657, `Done: R-` and `Landed: ` 0 at
+     both, `Gate: R` keys 21 then 22 both DISTINCT, `Gate: R23` 0 then 1.
  G9  THE SUITES, at C4 in the PRIMARY checkout, SERIALLY, from the directory
      each command names — a shell left elsewhere makes the pytest ones exit 4
      having run no test, which is vacuous and not green. Never run two at once.
      Report each one's exit code, its working directory, and its total, counting
      BY PASSED PLUS SKIPPED:
        in `apps/ui`: `npx tsc --noEmit` — exit 0 with output EMPTY. THIS IS THE
-       LOAD-BEARING GATE OF THIS ROUND. Vitest does not typecheck: the
-       reviewer's own dry run was GREEN under vitest while `tsc` was RED on a
-       deps literal in `brainStreamSession.test.ts` the block had missed, and
-       the twelfth pair exists because `tsc` caught it.
-       in `apps/ui`: `npm run test:unit` — 15 files and 209 tests, the base's 15
-       and 207 plus the TWO cases DEPSFORWARDCASE and BROWSERNOWCASE add.
+       LOAD-BEARING GATE OF THIS ROUND: every one of the six pairs changes a
+       TYPE or a literal that must satisfy one, and vitest does not typecheck.
+       in `apps/ui`: `npm run test:unit` — 15 files and 209 tests, UNCHANGED
+       from the base: this round adds no vitest case, and the four test-file
+       pairs only feed the new required field to literals that already existed.
        from the repository root: `python3 -m pytest tests/ui_contracts/ -q -rf`
-       — 469, the base's 465 plus the FOUR cases CONTRACTCLOCK adds.
+       — 473, the base's 469 plus the FOUR cases CONTRACTSTAMP adds.
        from the repository root: `python3 -m pytest tests/ui_server/
        tests/orchestration/test_test_runner.py
        tests/regression/test_resource_safety.py -q -rf` — 511, and they READ
@@ -163,7 +167,7 @@ Done when:
      IN — `.agent/plan.md`, `.agent/live_review.md`, the five `apps/ui` files
      and `tests/ui_contracts/test_brain_stream_ring.py`, each of which must read
      0 for every one of the four marker prefixes.
-     `.agent/authored/f021-r22.md` and `.agent/last_block.md` ARE the block and
+     `.agent/authored/f021-r23.md` and `.agent/last_block.md` ARE the block and
      read nonzero BY CONSTRUCTION; they are not in scope.
      THE REFLOG CLAUSE NAMES ITS FIELD (R-0613): read `git reflog --format=%gs`,
      take the OPERATION only — the text BEFORE the first `:` — and scope to THIS
@@ -179,13 +183,14 @@ Handback:   completion report + rewrite `.agent/handoff.md` with every mandated
             line declaring any overage and its mandated cause. Every
             `## Commits` heading carries that commit's FULL subject, and where a
             commit cannot name its own SHA the role and reason go INSIDE the
-            heading (R-0494). `## Next` states that the next round is R23, which
-            puts `receivedAtMs` on the frame event — `brainStreamDriver.ts`'s
-            event union and `brainStreamHost.ts`'s `tell`, stamped from the
-            clock THIS round installed — and that DECISION F021 D6 in
-            `.agent/live_review.md` at C2 holds the four-round decomposition.
+            heading (R-0494). `## Next` states that the next round is R24, which
+            puts the stamp on the RING's row — `feedRow.ts` gains
+            `receivedAtMs` on `FeedRow` and `feedRowOf` takes it, and
+            `brainStream.ts`'s `receiveBrainFrame` threads it from the event
+            this round created — and that R24 is the first round to touch the
+            ring, whose append placement DECISION F021 D5 governs.
 
-<<<SLICE PLANF021R22
+<<<SLICE PLANF021R23
 # Plan — F021 Live activity feed + now-card
 
 Branch: feature/f021-live-activity-feed, cut from `main` at `4548995d`, the merge
@@ -202,216 +207,151 @@ renders fixture streams per the binding CSS, jump-to-node focuses the right
 node, and the steering input renders DISABLED with its tooltip until F030.
 
 ## Current Step
-R22 gives the transport an INJECTED CLOCK. DECISION F021 D6 replaced the single
-wiring round with four, because `recencyLevel` takes two NUMBERS and this client
-holds no numeric instant: a row's `timestamp` is a server-clock string that
-`ui_server.py` passes through unparsed. R22 adds `now()` to the environment, the
-deps and the host contract; nothing consumes it yet.
+R23 puts the arrival stamp on the TRANSPORT EVENT: the host reads the clock R22
+injected, once per frame, and `BrainStreamEvent`'s frame member carries the
+number. The driver stays a pure reducer that transports it without asking the
+time. Nothing renders yet.
 
 ## Next Steps
-1. R23: the frame event carries `receivedAtMs`, stamped by the host from that
-   clock — `brainStreamDriver.ts` and `brainStreamHost.ts` with their tests.
-2. R24: the ring's row carries the stamp — `feedRow.ts` and `brainStream.ts`.
-3. R25: the NowCard reads `recency.ts` for BOTH its badge and its new dot, with
+1. R24: the ring's row carries the stamp — `FeedRow` gains `receivedAtMs`,
+   `feedRowOf` takes it and `receiveBrainFrame` threads it. First round to touch
+   the ring, whose append placement DECISION F021 D5 governs.
+2. R25: the NowCard reads `recency.ts` for BOTH its badge and its new dot, with
    the CSS `docs/ui/design_reference/assets_spec.md` governs.
-4. R26: `feedScroll.ts` drives the feed's scroll container and the new-rows pill
+3. R26: `feedScroll.ts` drives the feed's scroll container and the new-rows pill
    component_spec.md line 86 binds; then R27, the row click-jump, and T003's
    disabled steering input.
-5. Closure: the evidence round, then the STATUS-commit round.
+4. Closure: the evidence round, then the STATUS-commit round.
 
 ## Risks
 - No DOM environment exists here, so components are gated by `npx tsc --noEmit`
-  and by Python source contracts. VITEST DOES NOT TYPECHECK: R22's dry run was
-  green under vitest while `tsc` was red on a deps literal it had missed, so
-  `tsc` is the load-bearing gate of every round in this chain.
+  and by Python source contracts. VITEST DOES NOT TYPECHECK, so `tsc` is the
+  load-bearing gate of every round in this chain.
 - Vitest is reviewer-runnable as `npm run test:unit` (R-0651) but only GREEN: a
   worktree has no `node_modules` (R-0518), so no vitest case has been
   mutation-proved. The Python contract is the mutation-proved guard (R-0653).
 - A worktree also lacks `apps/ui/dist/`, so `tests/ui_contracts/` skips one more
   case there than in the primary checkout. COUNT BY PASSED PLUS SKIPPED.
+- A block states pair shapes it MEASURED for its own pairs and never carries the
+  previous round's reading over: R22's twelve were all APPEND, R23's six are all
+  REWRITE (R-0656 and R-0657 are the cost of the reviewer's own drift here).
 - No code defect of F021 is open; R-0364, R-0403, R-0607, R-0608, R-0609,
-  R-0611, R-0613, R-0622, R-0651, R-0653, R-0654 and R-0655 stay routed to a
-  paydown branch.
-<<<END PLANF021R22
+  R-0611, R-0613, R-0622, R-0651, R-0653, R-0654, R-0655, R-0656 and R-0657 stay
+  routed to a paydown branch.
+<<<END PLANF021R23
 
-<<<SLICE RECORD22
-Gate: R22 — the R21 entry. R21 PASSED ON EVERY ONE OF ITS NINE GATES, EACH RE-MEASURED INDEPENDENTLY BY THE REVIEWER RATHER THAN READ BACK FROM THE HANDBACK. R21 was a record-only round: it recorded R20's verdict, registered R-0655 and corrected in a NEW entry the false numeral R20 left in this ledger, touching no code. TRANSPORT HELD ACROSS ALL FOUR COPIES at sha256 d7ed04859b43ec3a52e6993e96605b13c54fd86849865372a539d70e176c0599 over 22534 bytes and 227 lines. SLICES: the reviewer's own marker-line extractor read 2 slices over 48 CONTENT lines from the committed C0a blob, TOTAL 227 against DECISION F085 D6's 490 and PROSE 179 against D5's 400, both equal to that block's constraint 7. THE PLAN WRITE HELD: `.agent/plan.md` at `e317ed2c` is byte-equal to PLANF021R21 plus one terminating newline and NOT to the bare slice, `wc -l` reads exactly 43 — the MEASURED value that block ordered — with `^## Goal$` 1 and `^## Next Steps$` 1. THE LEDGER APPEND HELD UNDER BOTH READERS: the base blob at `a2740317` is a byte-exact prefix of the `ff33eab4` file, remainder sha256 5b19434918b0663d6d58a3ae5044f99a6b4fdf013772f0a637d5218c263c3aac over 7741 bytes and 6 lines, the file 521496 B / 1130 L before and 529237 B / 1136 L after, units 246 to 249 ELEMENTWISE equal with RECORD21 exactly 3 units, and a negative control at offset 5 inside the FIRST paragraph that BOTH readers rejected while both accepted the true file. THE SETS MOVED ONLY AS ORDERED: `- R-` 217 to 218 all DISTINCT at both points, maximum R-0654 to R-0655, `Done: R-` and `Landed: ` 0 at both, `Gate: R` keys 19 to 20 both DISTINCT, `Gate: R21` 0 to 1. THE CORRECTION LANDED AND THE OLD ENTRY SURVIVED UNEDITED: over the C2 file `EXACTLY 47` occurs exactly twice, at lines 1128 and 1132 — RECORD20's original and the verbatim quotation of it inside R-0655 — and `EXACTLY 43` exactly once at line 1134, while `git diff a2740317..ff33eab4 -- .agent/live_review.md` adds 6 lines and DELETES 0, so `acb688a9`'s blob is byte-identical at both commits. THE SUITES ARE THE REVIEWER'S OWN, run serially from the repository root and counting by passed plus skipped: the three state-reading suites 511, the canary 42, and `tests/ui_contracts/` 461 passed plus 4 skipped = 465, UNCHANGED as ordered. THE RANGE HELD: four commits base to C2, every one single-parent, the path set EQUAL to that block's four non-handoff `Change:` paths with both differences EMPTY, insertions 227, 143, 16 and 6 every one under the 500 cap and each agreeing cell by cell with the handback's `## Commits` table, `git ls-files .remedy-wt` 0, `git worktree list` the primary checkout alone, `gh pr list --state open` EMPTY, the LINE-ANCHORED marker sweep 0 in both files a slice landed in, and the reflog read BY OPERATION every row `commit` with `amend`, `rebase` and `cherry` each 0 in that field. THE HANDBACK DECLARED ITS OWN OVERAGE HONESTLY at 71 lines against the 60-line cap with a DECISION D15 cause naming only mandated content, and the `Fortschritt:` line is present verbatim across all three of its lines. WHY R21 IS PASS: every slice is byte-identical to the slices the reviewer extracted itself from the committed blob, both ledger readers accept the true file and reject a same-length mutant, and every numeral the round reports was re-derived by the reviewer rather than copied.
+<<<SLICE RECORD23
+- R-0656 — Low, A GATE COUNTED THE BLOCK'S OWN WHOLE-TEXT SLICES AND STATED TWO WHERE ITS EXTRACTOR READS THREE. Raised by the reviewer against its own R22 block, and caught by that round's WORKER, which reported it in the handback rather than silently reconciling a numeral constraint 1 forbade it to touch. R22's G3 ordered the slices extracted "by their marker LINES — `<<<SLICE `/`<<<END ` for the two whole texts", and the block carries THREE such texts: PLANF021R22, RECORD22 and CONTRACTSTAMP's predecessor CONTRACTCLOCK. The block's own arithmetic was right — constraint 8's CONTENT of 162 lines and PROSE of 255 count all three, and both the worker's extractor and the reviewer's independent one read `pairs 12 | whole-text slices 3 | CONTENT 162` from the committed C0a blob at `1580fded` — so only the word "two" was wrong. This is the R-0402 / R-0436 / R-0526 family: a hand-counted numeral about the author's OWN parts, standing beside a measurement that was correct. §3 checklist item 11 forbids exactly this and item 16 sweeps it from headings into any quantifying sentence, and a gate's own text is the one place neither item was applied. Low: no gate read the numeral, the extraction it describes is unambiguous without it, and the round's counts were all correct.
 
-DECISION F021 D6, 2026-08-22, taken by the reviewer under §4 item 7 and recorded here rather than asked: THE SINGLE WIRING ROUND THE PLAN CARRIED SINCE R19 IS UNBUILDABLE AS WRITTEN AND IS REPLACED BY FOUR SMALLER ONES. The plan ordered R22 to make `recency.ts` the NowCard's liveness source AND to drive the feed's scroll container from `feedScroll.ts`. `recencyLevel(lastActionAtMs: number | null, nowMs: number)` takes two NUMBERS, and measured at `bf0c50bf` this client holds no numeric instant at all: `FeedRow.timestamp` is a STRING that `feedRowOf` copies out of the safe envelope, `_safe_event_summary` fills it from the run log's own `timestamp`, and `ui_server.py` passes that through unparsed and empty where the log carries none. CHOSEN: stamp each frame on ARRIVAL from the CLIENT's clock, installed as an injected dependency — R22 the clock, R23 the frame event's `receivedAtMs`, R24 the ring's row, R25 the NowCard's badge and dot, R26 the feed's scroll container and pill. Both operands of the subtraction then sit on ONE clock, so the skew case cannot arise. CONSIDERED AND REJECTED: parsing the envelope's string, because a server clock running BEHIND the client yields a large positive elapsed and the dot reads a working agent as idle — the exact failure `recency.ts` names as the one it must never make — and an empty or unparsable stamp yields NaN, which falls through every window comparison to `idle` for the same wrong reason. CONSIDERED AND REJECTED: holding the stamp in the NowCard as component state, which touches no existing file but resets on every remount and measures when the CARD first saw an action rather than when the CLIENT received it. REVERSE THIS by deleting this paragraph and restoring the plan's single R22; the cost is that the dot has no honest number to read.
-<<<END RECORD22
+  FIX, applied by this entry: STANDING, BINDING THE REVIEWER — a clause naming a KIND of slice states no count of that kind. Write "for the whole texts" and never "for the two whole texts"; where a count is genuinely owed, the block orders the WORKER to report the number IT measured, which is the form R23's own G3 uses. The reviewer's pre-emission sweep runs the extractor over the final bytes and reads every numeral in the block against what it printed, not against what the author remembers writing.
 
-<<<PAIR HOSTDEPSNOW apps/ui/src/api/brainStreamHost.ts
-<<<ANCHOR
-  schedule(ms: number, resume: () => void): () => void;
-<<<ADD
-  /** The client's own clock. Injected like every other capability here, so a
-   *  test hands it a counter and a browser hands it Date.now, and no module in
-   *  this chain has to reach for a global to learn what time it is. */
-  now(): number;
+- R-0657 — Low, A GATE ORDERED A PREFIX READING OVER A COMMIT THE SAME BLOCK ALSO GAVE A MID-FILE EDIT, MAKING THE CLAUSE UNMEETABLE BY CONSTRUCTION. Raised by the reviewer against its own R22 block, and caught by that round's WORKER, which measured the clause False and declared it rather than quietly gating something else. R22's G5 ordered, for the contract append, that "the pre-commit blob of `tests/ui_contracts/test_brain_stream_ring.py` is a byte-exact PREFIX of the post-commit file". Its C4 commit carried BOTH the CONTRACTCLOCK append AND the pair CONTRACTHOSTPATH, which inserts `HOST = API_DIR / "brainStreamHost.ts"` at line 28 — a mid-file insertion — so the C3 blob cannot be a prefix of the C4 file whatever the append does, and the worker reported False. The append itself was sound: measured by the reviewer at the verdict, the C4 file is byte-identical to an independent reconstruction from the reviewer's own slice bytes at sha256 66ba001cc3fca36eabc064caa7297d13f10b9f722992484af58b9e2363dc32a3, C4's diff deletes 0 lines, and the two blank lines before the new class are present. So the round lost nothing but a declared deviation proving a reviewer mistake. This is the §3 checklist item 18 and item 27 family — a recipe read against the property it must establish — arriving through the COMMIT PARTITION rather than through the recipe's own words, which is why neither item caught it: both halves were individually sound and only their placement in one commit was wrong.
+
+  FIX, applied by this entry: STANDING, BINDING THE REVIEWER — when a block orders an ORDERED-EQUALITY or PREFIX reading over a file, that file receives NOTHING ELSE in the same commit, and the block says so as a constraint the worker can check before it starts. R23's constraint 8 is that clause, and its C4 carries the append alone. Where a round genuinely needs both, it gives them separate commits and gates each on its own property; the prefix reading is never weakened to accommodate a bundled pair.
+
+Gate: R23 — the R22 entry. R22 PASSED ON EVERY ONE OF ITS TEN GATES, EACH RE-MEASURED INDEPENDENTLY BY THE REVIEWER RATHER THAN READ BACK FROM THE HANDBACK, AND IT SURFACES THE TWO FINDINGS REGISTERED IMMEDIATELY ABOVE — BOTH OF THEM DEFECTS IN THE REVIEWER'S OWN BLOCK TEXT, FOUND BY THE WORKER. R22 installed the client clock as an injected dependency of the brain-stream transport: `BrainStreamEnv`, `BrainStreamHostDeps` and `BrainStreamGlobals` each learned `now()`, `createBrainStreamHostDeps` forwards it and `browserBrainStreamEnv` binds it from the injected global, so `RemedyShell.tsx`'s `browserBrainStreamEnv(window)` still compiles because `window.Date` satisfies the new member structurally. Nothing consumes the clock yet by design. WHY THE CLOCK AT ALL, recorded as DECISION F021 D6 at `33b44b4a`: `recencyLevel` takes two NUMBERS and this client held no numeric instant, because `FeedRow.timestamp` is a server-clock STRING `ui_server.py` passes through unparsed, so parsing it would let a server running behind read as a dead agent — the one failure `recency.ts` says it must never make. TRANSPORT HELD ACROSS ALL THREE COPIES at sha256 d36c446a31dd7b1dafda420f97ee58511bc1c96f01601da4c730e8315449f136 over 26881 bytes and 417 lines. SLICES: the reviewer's own extractor read 12 pairs and 3 whole-text slices over 162 CONTENT lines from the committed C0a blob, TOTAL 417 against DECISION F085 D6's 490 and PROSE 255 against D5's 400, both equal to that block's constraint 8. ALL TWELVE PAIRS APPLIED EXACTLY AS AUTHORED: every ANCHOR occurred exactly once in its target at the round base and ANCHOR-plus-newline-plus-ADD exactly once at the commit that applied it, measured by the reviewer over the committed blobs, and no FROM-zero count was ordered because the containment test had printed true for all twelve. THE PLAN WRITE HELD: `.agent/plan.md` at `0f100c6c` is byte-equal to PLANF021R22 plus one terminating newline and NOT to the bare slice, `wc -l` reads exactly 46 — the MEASURED value that block ordered — with `^## Goal$` 1 and `^## Next Steps$` 1. THE LEDGER APPEND HELD UNDER BOTH READERS: base blob a byte-exact prefix of the C2 file, remainder sha256 43408753c14e405b6159deb4c69fb43575f75b9bf55271175e8865d3ae6c6e82 over 5163 bytes and 4 lines, the file 529237 B / 1136 L before and 534400 B / 1140 L after, units 249 to 251 ELEMENTWISE equal with RECORD22 exactly 2 units, a negative control at offset 5 inside the FIRST paragraph rejected by BOTH readers while both accepted the true file, and 0 deleted lines in the diff. THE SETS MOVED ONLY AS ORDERED: `- R-` 218 at BOTH points all DISTINCT, maximum R-0655 at both, `Done: R-` and `Landed: ` 0 at both, `Gate: R` keys 20 to 21 both DISTINCT, `Gate: R22` 0 to 1. THE SUITES ARE THE REVIEWER'S OWN, run serially: `npx tsc --noEmit` in `apps/ui` exit 0 with output EMPTY; `npm run test:unit` 15 files and 209 tests, the base's 207 plus the two cases DEPSFORWARDCASE and BROWSERNOWCASE add; `tests/ui_contracts/` 465 passed plus 4 skipped = 469, the base's 465 plus the four CONTRACTCLOCK adds; the three state-reading suites 511; the canary 42. THE RED CONTROL REPRODUCED IN THE REVIEWER'S OWN DISPOSABLE WORKTREE at `16186186`: green first at 39 passed, then with `      return globals.Date.now();` replaced by `      return Date.now();` — a target the reviewer confirmed occurs EXACTLY ONCE, whole-line and indent-agnostic counts agreeing — exactly 2 failed and 37 passed, the failures being `TestTheTransportClockIsInjected::test_the_browser_environment_reads_the_clock_off_its_global` and `::test_no_module_in_the_transport_chain_calls_the_clock_directly`, and restoring the byte returned it to 39 passed. THE RANGE HELD: six commits base to C4, every one single-parent, the path set EQUAL to that block's ten non-handoff `Change:` paths with both differences EMPTY, insertions 417, 358, 19, 4, 38 and 37 every one under the 500 cap and each agreeing cell by cell with the handback's tables, `git ls-files .remedy-wt` 0, `git worktree list` the primary checkout alone, `gh pr list --state open` EMPTY, the LINE-ANCHORED marker sweep 0 in all eight files a slice landed in, and the reflog read BY OPERATION every row `commit` with `amend`, `rebase` and `cherry` each 0 in that field. WHY R22 IS PASS: every applied byte is reproducible from the committed block — the contract file at C4 equals an independent reconstruction from the reviewer's own slice bytes, digest for digest — the red control fails in the reviewer's own worktree on the named tests, and both of the round's discrepancies were defects in the ORDER rather than in the work, declared by a worker that applied what it was given and said so.
+<<<END RECORD23
+
+<<<PAIR DRIVEREVENTSTAMP apps/ui/src/api/brainStreamDriver.ts
+<<<FROM
+/** What the transport tells the driver. `unsupported` is the fallback trigger:
+ *  no EventSource in this environment, or the stream failed to construct. */
+export type BrainStreamEvent =
+  | { kind: "opened" }
+  | { kind: "frame"; frame: BrainStreamFrame }
+<<<TO
+/** What the transport tells the driver. `unsupported` is the fallback trigger:
+ *  no EventSource in this environment, or the stream failed to construct.
+ *
+ *  A frame carries `receivedAtMs`: the instant the HOST saw it, read from the
+ *  clock R22 injected. T5_F021's activity dot subtracts two numbers, and the
+ *  envelope's own `timestamp` is a server-clock string ui_server.py passes
+ *  through unparsed and empty where the run log has none — so a server running
+ *  behind would read as a dead agent. Stamping on arrival keeps both operands
+ *  on ONE clock. The driver only CARRIES the value; the ring consumes it. */
+export type BrainStreamEvent =
+  | { kind: "opened" }
+  | { kind: "frame"; frame: BrainStreamFrame; receivedAtMs: number }
 <<<ENDPAIR
 
-<<<PAIR ENVNOW apps/ui/src/api/brainStreamDeps.ts
-<<<ANCHOR
-  setTimer(ms: number, resume: () => void): () => void;
-<<<ADD
-  /** The client's own clock, carried beside the transport whose frames it will
-   *  stamp. Injected for the same reason the timer is: real time is the one
-   *  dependency a headless test cannot wait for. */
-  now(): number;
+<<<PAIR HOSTTELLSTAMP apps/ui/src/api/brainStreamHost.ts
+<<<FROM
+    dispatch({ kind: "frame", frame });
+<<<TO
+    dispatch({ kind: "frame", frame, receivedAtMs: deps.now() });
 <<<ENDPAIR
 
-<<<PAIR DEPSRETURNNOW apps/ui/src/api/brainStreamDeps.ts
-<<<ANCHOR
-    schedule(ms: number, resume: () => void): () => void {
-      return env.setTimer(ms, resume);
-    },
-<<<ADD
-    now(): number {
-      return env.now();
-    },
+<<<PAIR DRIVERTESTFRAME apps/ui/src/api/brainStreamDriver.test.ts
+<<<FROM
+function frame(seq: number): BrainStreamEvent {
+  return { kind: "frame", frame: { seq, event: { seq } } };
+}
+<<<TO
+function frame(seq: number): BrainStreamEvent {
+  return { kind: "frame", frame: { seq, event: { seq } }, receivedAtMs: 0 };
+}
 <<<ENDPAIR
 
-<<<PAIR GLOBALSDATE apps/ui/src/api/brainStreamDeps.ts
-<<<ANCHOR
-  clearTimeout(handle: unknown): void;
-<<<ADD
-  /** Taken as an injected global like the others rather than called directly,
-   *  so a test can present a clock it controls without touching real time.
-   *  `window.Date` satisfies this structurally, which is what keeps
-   *  RemedyShell.tsx's `browserBrainStreamEnv(window)` compiling unchanged. */
-  Date: { now(): number };
+<<<PAIR RUNNERTESTFRAME apps/ui/src/api/brainStreamRunner.test.ts
+<<<FROM
+function frame(seq: number): BrainStreamEvent {
+  return { kind: "frame", frame: { seq, event: { seq } } };
+}
+<<<TO
+function frame(seq: number): BrainStreamEvent {
+  return { kind: "frame", frame: { seq, event: { seq } }, receivedAtMs: 0 };
+}
 <<<ENDPAIR
 
-<<<PAIR BROWSERNOW apps/ui/src/api/brainStreamDeps.ts
-<<<ANCHOR
-    setTimer(ms: number, resume: () => void): () => void {
-      const handle = globals.setTimeout(resume, ms);
-      return (): void => { globals.clearTimeout(handle); };
-    },
-<<<ADD
-    now(): number {
-      return globals.Date.now();
-    },
+<<<PAIR HOSTTESTONEFRAME apps/ui/src/api/brainStreamHost.test.ts
+<<<FROM
+      { kind: "frame", frame: { seq: 4, event: JSON.parse(payload(4)) } },
+<<<TO
+      { kind: "frame", frame: { seq: 4, event: JSON.parse(payload(4)) }, receivedAtMs: 1000 },
 <<<ENDPAIR
 
-<<<PAIR HOSTFAKENOW apps/ui/src/api/brainStreamHost.test.ts
-<<<ANCHOR
-    schedule(ms: number, resume: () => void): () => void {
-      waits.push(ms);
-      resume();
-      return () => { events.push({ kind: "timer" }); };
-    },
-<<<ADD
-    now(): number {
-      return 1000;
-    },
+<<<PAIR HOSTTESTPOLLFRAMES apps/ui/src/api/brainStreamHost.test.ts
+<<<FROM
+      { kind: "frame", frame: { seq: 6, event: null } },
+      { kind: "frame", frame: { seq: 7, event: null } },
+<<<TO
+      { kind: "frame", frame: { seq: 6, event: null }, receivedAtMs: 1000 },
+      { kind: "frame", frame: { seq: 7, event: null }, receivedAtMs: 1000 },
 <<<ENDPAIR
 
-<<<PAIR SESSIONFAKENOW apps/ui/src/api/brainStreamSession.test.ts
-<<<ANCHOR
-    schedule(ms: number, resume: () => void): () => void {
-      waits.push({ ms, resume });
-      return () => {};
-    },
-<<<ADD
-    now(): number {
-      return 2000;
-    },
-<<<ENDPAIR
+<<<SLICE CONTRACTSTAMP
 
-<<<PAIR RECORDERNOW apps/ui/src/api/brainStreamDeps.test.ts
-<<<ANCHOR
-      setTimer(ms: number, _resume: () => void): () => void {
-        timers.push(ms);
-        return (): void => { timers.push(-ms); };
-      },
-<<<ADD
-      now(): number {
-        return 4242;
-      },
-<<<ENDPAIR
+class TestEveryFrameIsStampedOnArrival:
+    """The dot subtracts two numbers, so a frame must reach the client carrying
+    one. The stamp is taken in the HOST — the one place a real clock legitimately
+    lives — and travels on the transport event, so the driver stays a pure
+    reducer and the ring can read the instant without asking what time it is.
+    Pinning the SEAM rather than a value: a behavioural test cannot see which
+    clock the number came from."""
 
-<<<PAIR DEPSFORWARDCASE apps/ui/src/api/brainStreamDeps.test.ts
-<<<ANCHOR
-  it("hands the backoff straight to the environment's timer", () => {
-    const r = recorder();
-    const cancel = createBrainStreamHostDeps("job-1", r.env).schedule(250, () => {});
-    cancel();
-    expect(r.timers).toEqual([250, -250]);
-  });
-<<<ADD
+    def test_the_transport_event_carries_the_arrival_stamp(self):
+        code = strip_ts_comments(DRIVER.read_text())
+        assert "receivedAtMs: number" in code, (
+            "the frame event must declare the stamp it carries"
+        )
 
-  it("reads the clock through the environment rather than a real one", () => {
-    const r = recorder();
-    expect(createBrainStreamHostDeps("job-1", r.env).now()).toBe(4242);
-  });
-<<<ENDPAIR
-
-<<<PAIR GLOBALSFAKEDATE apps/ui/src/api/brainStreamDeps.test.ts
-<<<ANCHOR
-      setTimeout(resume: () => void, _ms: number): unknown { resume(); return "handle"; },
-      clearTimeout(handle: unknown): void { cleared.push(handle); },
-<<<ADD
-      Date: { now: (): number => 777 },
-<<<ENDPAIR
-
-<<<PAIR BROWSERNOWCASE apps/ui/src/api/brainStreamDeps.test.ts
-<<<ANCHOR
-  it("cancels a scheduled resume through the global it was given", () => {
-    const g = globals();
-    let resumed = 0;
-    browserBrainStreamEnv(g).setTimer(10, () => { resumed += 1; })();
-    expect(resumed).toBe(1);
-    expect(g.cleared).toEqual(["handle"]);
-  });
-<<<ADD
-
-  it("reads the clock off the injected global, never a real one", () => {
-    expect(browserBrainStreamEnv(globals()).now()).toBe(777);
-  });
-<<<ENDPAIR
-
-<<<PAIR CONTRACTHOSTPATH tests/ui_contracts/test_brain_stream_ring.py
-<<<ANCHOR
-DRIVER = API_DIR / "brainStreamDriver.ts"
-<<<ADD
-HOST = API_DIR / "brainStreamHost.ts"
-<<<ENDPAIR
-
-<<<SLICE CONTRACTCLOCK
-
-class TestTheTransportClockIsInjected:
-    """T5_F021's activity dot needs to know how long ago the agent last acted.
-    The envelope's own `timestamp` is a server-clock STRING that ui_server.py
-    passes through unparsed, and empty when the run log carries none, so the
-    dot is stamped on ARRIVAL instead — both operands on one clock, so a skewed
-    server can never read as a dead agent. That stamp is only honest if the
-    clock is injected: a module calling Date.now() directly cannot be tested
-    without waiting for real time, and this suite pins the seam rather than the
-    value."""
-
-    def test_the_host_contract_asks_for_a_clock(self):
+    def test_the_host_stamps_from_the_injected_clock(self):
         code = strip_ts_comments(HOST.read_text())
-        assert "now(): number;" in code, (
-            "BrainStreamHostDeps must name the clock it is handed"
+        assert "receivedAtMs: deps.now()" in code, (
+            "the stamp comes from the injected clock, never a real one"
         )
 
-    def test_the_environment_carries_the_clock_to_the_deps(self):
-        code = strip_ts_comments(DEPS.read_text())
-        assert "return env.now();" in code, (
-            "createBrainStreamHostDeps forwards the injected clock, never its own"
+    def test_the_driver_does_not_stamp_anything_itself(self):
+        code = strip_ts_comments(DRIVER.read_text())
+        assert "now()" not in code, (
+            "the driver is a pure reducer; only the host reads a clock"
         )
 
-    def test_the_browser_environment_reads_the_clock_off_its_global(self):
-        code = strip_ts_comments(DEPS.read_text())
-        assert "return globals.Date.now();" in code, (
-            "the one real clock is bound from the injected global, as EventSource is"
+    def test_only_one_module_dispatches_a_stamped_frame(self):
+        sites = 0
+        for path in (HOST, DRIVER, STATE, DEPS):
+            sites += strip_ts_comments(path.read_text()).count('kind: "frame", frame')
+        assert sites == 1, (
+            f"exactly one dispatch site may stamp a frame, found {sites}"
         )
-
-    def test_no_module_in_the_transport_chain_calls_the_clock_directly(self):
-        for path in (HOST, DEPS, DRIVER, STATE):
-            code = strip_ts_comments(path.read_text())
-            assert "Date.now()" not in code.replace("globals.Date.now()", ""), (
-                f"{path.name} reads a real clock; inject it instead"
-            )
-<<<END CONTRACTCLOCK
+<<<END CONTRACTSTAMP
