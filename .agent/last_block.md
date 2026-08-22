@@ -1,29 +1,30 @@
-── STEP T003 (the queue-only import guard) — F009 ──
-Goal:        Make the P3 contract mechanical. The write door ENQUEUES; it never
-             applies. An AST guard over the door's own methods pins the exact
-             set of imports it may make, names the applicator and shell/
-             filesystem modules it may never reach, and carries the violation
-             fixture the feature file's Acceptance demands. The round also
-             registers R-0642 against the reviewer's own R26 block, records the
-             R26 verdict, and rules DECISION F009 D24.
+── STEP T003 (the route-walking 405 proof — T003 closes) — F009 ──
+Goal:        Prove the 405 discipline by WALKING the routes the server really
+             serves rather than a list someone wrote down. The job endpoints are
+             derived from `do_GET`'s own dict literal by AST, so a new one joins
+             the walk for free, and a drift test fails the moment a literal route
+             appears that the walk does not know. This is the last piece of
+             T003. The round also registers R-0643 against the reviewer's own
+             R27 block, records the R27 verdict, and rules DECISION F009 D25.
 
-Fortschritt: ~96 % (T001 gebaut · T002 gebaut · T003 fast fertig: beide
-             Kommandos dispatchen, melden sich auf dem SSE-Strom und sind jetzt
-             import-seitig eingezäunt; offen bleibt nur noch die
-             405-Routenprobe) — Schätzung
+Fortschritt: ~98 % (T001 gebaut · T002 gebaut · T003 gebaut: beide Kommandos
+             dispatchen, melden sich auf dem SSE-Strom, sind import-seitig
+             eingezäunt und jede andere mutierende Route ist begangen und
+             beweisbar 405; offen bleiben nur Integrations-Gate und Closure) —
+             Schätzung
 
-Bundle:      C0a save this block · C0b mirror it · C1 plan · C2 register R-0642 ·
-             C3 the R26 verdict · C4 DECISION F009 D24 · C5 the guard · C6
+Bundle:      C0a save this block · C0b mirror it · C1 plan · C2 register R-0643 ·
+             C3 the R27 verdict · C4 DECISION F009 D25 · C5 the route walk · C6
              handback.
 
 Change:      Exactly these paths, and nothing else:
-             `.agent/authored/f009-r27.md` (NEW, C0a) · `.agent/last_block.md`
+             `.agent/authored/f009-r28.md` (NEW, C0a) · `.agent/last_block.md`
              (C0b) · `.agent/plan.md` (C1) · `.agent/live_review.md` (C2 and
              C3) · `.agent/decisions.md` (C4) ·
              `tests/ui_server/test_command_channel.py` (C5) ·
              `.agent/handoff.md` (C6). NOTHING under `packages/`, `apps/` or
-             `docs/` is touched: this round adds a guard over code that already
-             satisfies it and changes no production line.
+             `docs/` is touched: the 405 behaviour already exists and this round
+             proves it, changing no production line.
 
 Constraints:
  1. Apply every slice BYTE FOR BYTE. Never retype, rewrap, reflow, reindent or
@@ -32,43 +33,41 @@ Constraints:
  2. Commit order is C0a, C0b, C1, C2, C3, C4, C5, C6 and is not negotiable. C1
     precedes both ledger commits because the plan must be current before them
     (checklist item 23). C2 precedes C3 because a finding persists in its OWN
-    commit BEFORE anything else in the round (§4.4, clause a): a session that
-    dies mid-round must not lose it.
- 3. THIS ROUND MINTS R-0642 AND RESOLVES NOTHING. It writes no `Done:` line and
-    no `Landed:` line. The next free id is R-0643 when the round ends. R-0642
+    commit BEFORE anything else in the round (§4.4, clause a).
+ 3. THIS ROUND MINTS R-0643 AND RESOLVES NOTHING. It writes no `Done:` line and
+    no `Landed:` line. The next free id is R-0644 when the round ends. R-0643
     was minted only after the reviewer searched the OPEN set for the DEFECT
-    rather than for an id (checklist item 30): R-0629 asserts a uniqueness it
-    never measured and R26's G10 did measure one, R-0560 quotes a line that is
-    not unique and R26's was unique at 2 whole-line and 2 indent-agnostic, and
-    R-0591 governs a mechanism whose DEFAULT is the hazard where this has no
-    mechanism at all — so no open finding holds it.
+    rather than for an id (checklist item 30); FINDING643 states inside itself
+    which OPEN finding is its nearest neighbour and why that one's clause does
+    not reach it.
  4. PAIR SHAPE, printed by the reviewer's own containment test on the exact
     bytes below:
-      GUARD  — `TO contains FROM: true`  → APPEND-shaped, §4.9 code obligation.
+      WALK  — `TO contains FROM: true`  → APPEND-shaped, §4.9 code obligation.
     Its FROM occurs EXACTLY 1 time in `tests/ui_server/test_command_channel.py`
-    at the round base, which the reviewer counted on the base bytes. The
-    obligation is ORDERED EQUALITY per §4.9 as R-0531 narrowed it, NEVER a
-    per-line count and NEVER a FROM-zero count: the slice is CODE and repeats
-    lines structurally.
+    at the round base, which the reviewer counted on the base bytes whole-line
+    and indent-agnostic with both agreeing. The obligation is ORDERED EQUALITY
+    per §4.9 as R-0531 narrowed it, NEVER a per-line count and NEVER a
+    FROM-zero count: the slice is CODE and repeats lines structurally.
  5. THREE APPENDS, each based on a DIFFERENT commit, and the difference is the
-    point. FINDING642 appends to `.agent/live_review.md` at C2 based on the
-    ROUND BASE. LEDGER27 appends to `.agent/live_review.md` at C3 based on
+    point. FINDING643 appends to `.agent/live_review.md` at C2 based on the
+    ROUND BASE. LEDGER28 appends to `.agent/live_review.md` at C3 based on
     **C2**, not on the round base, because C2 already grew that file — a gate
     that reads C3 against the round base measures two slices and reports one
-    (R-0368's class). DECISION24 appends to `.agent/decisions.md` at C4 based on
-    the round base. All three targets end in exactly ONE newline at the commit
-    each is based on, which the reviewer measured on the bytes for the two the
-    round base fixes and which the worker measures for the third at C2, so each
-    append is one newline followed by its slice.
- 6. FINDING642 and LEDGER27 each carry ONE paragraph. DECISION24 carries more
+    (R-0368's class). DECISION25 appends to `.agent/decisions.md` at C4 based on
+    the round base. Each target ends in exactly ONE newline at the commit its
+    own append is based on; the reviewer measured that on the bytes for the two
+    the round base fixes, and the worker measures it for the third at C2. So
+    each append is one newline followed by its slice.
+ 6. FINDING643 and LEDGER28 each carry ONE paragraph. DECISION25 carries more
     than one; count them with your script rather than from this sentence.
  7. The `Fortschritt:` line above is relayed deliberately (finding R-0418); the
-    handback's state block repeats it VERBATIM across all FOUR of its lines.
-    Four is the reviewer's own count of this block's bytes.
+    handback's state block repeats it VERBATIM across all FIVE of its lines.
+    Five is the reviewer's own count of this block's bytes, and it is five
+    rather than the usual four because T003 closing needed the extra clause.
  8. SIZE, measured at emission by reading it back out of the assembled bytes and
     computing PROSE as TOTAL minus the slices' CONTENT lines, with marker lines
-    counted as prose per DECISION F085 D5: this block is 438 lines TOTAL against
-    DECISION F085 D6's 490 cap, 226 of them PROSE against D5's 400. Re-measure
+    counted as prose per DECISION F085 D5: this block is 431 lines TOTAL against
+    DECISION F085 D6's 490 cap, 242 of them PROSE against D5's 400. Re-measure
     both from the committed C0a blob; a disagreement is a finding.
 
 Done when — run every gate and record its REAL exit code and output:
@@ -77,7 +76,7 @@ Done when — run every gate and record its REAL exit code and output:
      `feature/f009-single-write-channel`, and `git status --porcelain` prints 0
      lines after each of C0a, C0b, C1, C2, C3, C4 and C5. Report the round base
      SHA you read at step 0.
- G2  TRANSPORT: `.agent/authored/f009-r27.md` at C0a and `.agent/last_block.md`
+ G2  TRANSPORT: `.agent/authored/f009-r28.md` at C0a and `.agent/last_block.md`
      at C0b are byte-equal to each other and to the block you received; report
      sha256, bytes and lines for both. C0b is written FROM the committed C0a
      blob, never from the scratch copy again.
@@ -87,15 +86,15 @@ Done when — run every gate and record its REAL exit code and output:
      script printed. State no slice count you did not count. Re-measure
      constraint 8's two numbers from that same blob — TOTAL, and PROSE as TOTAL
      minus the summed slice-CONTENT lines — and report both.
- G4  `.agent/plan.md` at C1 is BYTE-EQUAL to PLANF009R27 — report `cmp` exit and
+ G4  `.agent/plan.md` at C1 is BYTE-EQUAL to PLANF009R28 — report `cmp` exit and
      both sha256, with a negative control against another file exiting non-zero
      — and `wc -l` against the 50-line cap of AGENTS.md. Line-anchored,
      `^## Goal$` and `^## Next Steps$` each read 1.
  G5  APPENDS, under TWO independent readers, each with a negative control on the
      FIRST appended paragraph (finding R-0631). Run this THREE times, and for
      each state which commit you based it on, exactly as constraint 5 fixes:
-     FINDING642 at C2 based on the round base; LEDGER27 at C3 based on **C2**;
-     DECISION24 at C4 based on the round base. For each: (a) the base blob is a
+     FINDING643 at C2 based on the round base; LEDGER28 at C3 based on **C2**;
+     DECISION25 at C4 based on the round base. For each: (a) the base blob is a
      byte-exact PREFIX and the remainder equals a newline plus that slice —
      report its sha256, bytes and lines; (b) N is counted BY YOUR SCRIPT and the
      last N blank-line units equal the slice's N paragraphs IN ORDER. Then flip
@@ -105,15 +104,15 @@ Done when — run every gate and record its REAL exit code and output:
  G6  Line-anchored at line START over `.agent/live_review.md` at the round base,
      at C2 and at C3 (finding R-0630): a leading `- R-` id with every captured
      id DISTINCT at each; a leading `Done: R-` id; a leading `Landed: `; a
-     leading `Gate: R` key over that many DISTINCT keys; the `Gate: R27` key;
-     and a leading `- R-0642` entry. The reviewer's base readings, which yours
-     must reproduce: entries 207, `Done:` 3, `Landed: ` 0, `Gate: R` keys 26,
-     `Gate: R27` 0, `- R-0642` 0. Report the max REGISTERED id and the open
+     leading `Gate: R` key over that many DISTINCT keys; the `Gate: R28` key;
+     and a leading `- R-0643` entry. The reviewer's base readings, which yours
+     must reproduce: entries 208, `Done:` 3, `Landed: ` 0, `Gate: R` keys 27,
+     `Gate: R28` 0, `- R-0643` 0. Report the max REGISTERED id and the open
      count by DECISION F009 D10's rule at all three points. Read every one of
      these at line START and not as a bare substring: this file legitimately
      QUOTES ids and gate keys inside its own verdict prose, so an unanchored
      scan reports a maximum that was never registered (finding R-0630).
- G7  PAIR. For the GUARD pair report, on whole lines and again
+ G7  PAIR. For the WALK pair report, on whole lines and again
      indent-agnostically, with the two readings required to AGREE: the FROM
      count in `tests/ui_server/test_command_channel.py` at the round base and
      at C5, and the TO count at both. The reviewer's base readings, which yours
@@ -126,8 +125,9 @@ Done when — run every gate and record its REAL exit code and output:
  G8  ORDERED EQUALITY for C5, which is §4.9's obligation for a code append as
      R-0531 narrowed it: the lines C5's diff ADDS are exactly the applied
      slice's lines IN ORDER, compared as a list, plus `git show --numstat` for
-     it. The reviewer measured 158 insertions and 0 deletions on its own dry
-     run; report the numbers YOU measure and flag any difference rather than
+     it. The reviewer measured 135 insertions and 0 deletions by applying this
+     block's OWN slice to the base blob; report the numbers YOU measure and flag
+     any difference rather than
      reconciling it.
  G9  SUITES, run SERIALLY in the PRIMARY checkout, never two pytest processes at
      once and never in a worktree (finding R-0518). Report each command's REAL
@@ -143,38 +143,54 @@ Done when — run every gate and record its REAL exit code and output:
      module (finding R-0607). The reviewer ran all four at the round base before
      ordering them: each exits 0, so each can fail honestly (R-0364).
  G10 RED PROOF, in a DISPOSABLE worktree under `.remedy-wt/` at C5 and NEVER in
-     the primary checkout (§4.10, guardrail G5). A guard nobody has watched fail
-     is a guard nobody knows works. Three mutations of
+     the primary checkout (§4.10, guardrail G5). EVERY expected set below is
+     measured under ONE named selection, and that selection is the WHOLE FILE:
+     `python3 -m pytest tests/ui_server/test_command_channel.py -q -rf`, with no
+     `-k` and no node id. Naming the selection is finding R-0643's own rule,
+     applied in the round that registers it — an expected-failure set is a
+     property of a selection, and a set stated without one is unreachable at
+     some other scope the worker may reasonably pick. Three mutations of
      `packages/orchestration/ui_server.py`, each REVERTED and the file confirmed
-     byte-equal to its C5 blob before the next, each reported with the ids that
-     failed. In every one, the line to insert is quoted BELOW at the exact
-     indentation of the site it goes to — eight leading spaces, matching the
-     `from packages.orchestration.safe_points import request_stop` line it is
-     placed directly beneath inside `_dispatch_job_stop`, which occurs EXACTLY
-     1 time in that file at C5, counted by the reviewer whole-line and
-     indent-agnostic and both agreeing. This clause is finding R-0642's own
-     rule, applied in the round that registers it.
-     (a) insert, directly below that anchor line:
-         `        from packages.orchestration.source_apply import apply_source_patch`
+     byte-equal to its C5 blob before the next. Each FROM below occurs EXACTLY 1
+     time in that file at C5, counted by the reviewer whole-line and
+     indent-agnostic with both agreeing, and each replacement is quoted at the
+     indentation of the site it lands in (R-0642's rule). Mutation (a)'s FROM
+     spans TWO lines for that reason and not by accident: its second line alone
+     occurs 3 times in that file — `do_POST`, `do_PUT` and `do_DELETE` all
+     refuse with the same bytes — so the `def` line above it is what makes the
+     target unique, and a one-line FROM there would be R-0629's defect exactly
+     (checklist item 25). The reviewer counted all three FROMs on the base bytes.
+     (a) REPLACE these two lines
+           `    def do_PUT(self) -> None:  # noqa: N802`
+           `        self._send_json(*_safe_error(405, "method not allowed"))`
+         with these two
+           `    def do_PUT(self) -> None:  # noqa: N802`
+           `        self._send_json(200, {"ok": True})`
          EXPECT exactly the ids listed here to fail:
-         `test_the_door_imports_exactly_the_allowed_set` and
-         `test_the_door_imports_nothing_from_a_forbidden_module`.
-     (b) instead insert, directly below that same anchor line:
-         `        from packages.orchestration.storage import delete_job`
-         EXPECT exactly the ids listed here to fail:
-         `test_the_door_imports_exactly_the_allowed_set` and
-         `test_the_door_reaches_storage_only_for_the_name_D21_rules`.
-     (c) instead rename one door method: replace
-         `    def _publish_command_result(self` with
-         `    def _publish_command_result_renamed(self`
-         EXPECT exactly the ids listed here to fail:
-         `test_every_named_method_exists` and
-         `test_the_door_imports_exactly_the_allowed_set`.
-     Mutation (c) is the one that matters most: it proves the guard cannot
-     silently empty its own scan under a rename, which is how a guard of this
-     shape usually dies. Report the ids that actually failed and flag any
-     difference from the three sets above rather than reconciling it. Remove the
-     worktree and report `git worktree list` at 1 line before C6.
+         `test_an_unknown_path_is_405_for_every_mutating_method`,
+         `test_every_route_the_server_serves_refuses_post_put_and_delete` and
+         `test_put_is_405_even_on_the_commands_path`.
+     (b) instead REPLACE, in `do_POST`, the two-line condition
+           `        if (len(parts) == 5 and parts[1] == "api" and parts[2] == "jobs"`
+           `                and parts[4] == "commands"):`
+         with
+           `        if (len(parts) >= 5 and parts[1] == "api" and parts[2] == "jobs"`
+           `                and parts[4].startswith("command")):`
+         EXPECT exactly the id named here to fail:
+         `test_a_near_miss_of_the_commands_path_is_405`.
+     (c) instead INSERT, directly ABOVE the line
+           `        if path == "/api/layers":`
+         these three lines, at the indentation shown:
+           `        if path == "/api/newthing":`
+           `            self._send_json(200, {})`
+           `            return`
+         EXPECT exactly the id named here to fail:
+         `test_the_walk_knows_every_route_the_source_dispatches`.
+     Mutation (c) is the one that matters most: it proves the walk cannot
+     silently stop covering the server, which is how a route-walking test
+     usually dies. Report the ids that actually failed and flag any difference
+     from the three sets above rather than reconciling it. Remove the worktree
+     and report `git worktree list` at 1 line before C6.
  G11 RANGE: the range from the round base to C5 lists EXACTLY the declared paths
      other than `.agent/handoff.md`, the set difference EMPTY in both
      directions, and 0 paths beginning `packages/`, `apps/` or `docs/`, which is
@@ -196,7 +212,7 @@ Done when — run every gate and record its REAL exit code and output:
      docs/agents/handback_template.md, an item-status row for each of C0a, C0b,
      C1, C2, C3, C4, C5 and C6, the round base SHA, one line per gate with the
      transcripts in the round report and not in the file (R-0582), and this
-     block's `Fortschritt:` line VERBATIM across all four of its lines. Report
+     block's `Fortschritt:` line VERBATIM across all five of its lines. Report
      its `wc -l` against the 100-line cap AGENTS.md allows for a per-commit
      table of more than five commits, which the commit sequence constraint 2
      fixes is. EVERY numeral this file states about the round's own measurements
@@ -207,7 +223,7 @@ Handback:    completion report + rewrite `.agent/handoff.md`. Push after C6.
              Create NO pull request: F009 opens one at its own closure.
 ─────────────────────────────────────────────────────────────────────────────
 
-<<<SLICE PLANF009R27
+<<<SLICE PLANF009R28
 # Plan — F009 The single write channel
 
 Branch: feature/f009-single-write-channel, cut from `main` at `ce49348b`, the
@@ -226,213 +242,190 @@ cross-site attempts fail closed and are audited as rejected, and a route-walking
 test plus an import guard prove no other mutating route exists.
 
 ## Current Step
-R27 makes the P3 contract mechanical and records the R26 verdict. An AST guard
-pins the exact import set the door's own methods may make, names the applicator
-and shell/filesystem modules they may never reach, admits `save_job` alone out of
-storage because DECISION F009 D5's effect mapping names it, and carries both the
-violation fixture the feature file's Acceptance demands and a test that stops the
-guard from emptying its own scan under a rename.
+R28 closes T003 and records the R27 verdict. Every route `do_GET` dispatches is
+walked with POST, PUT and DELETE and answers 405; the job endpoints come out of
+`do_GET`'s own dict literal by AST so a new one joins the walk automatically, and
+a drift test fails the moment a literal route appears the walk does not know.
+With T001, T002 and T003 built, what remains is verification rather than
+construction.
 
 ## Next Steps
-1. The route-walking 405 test proving every other mutating POST, PUT and DELETE
-   answers 405 — the last piece of T003.
-2. Then the integration gate, then closure.
+1. The integration gate per docs/agents/integration_gate.md — the full suite,
+   once, before closure.
+2. Then closure per docs/roadmap/STATUS_closure_protocol.md: evidence job, a
+   FRESH review zip, the authored STATUS line, and the pull request.
 
 ## Risks
-- `answer_source` is a two-valued field the escalation assumption log COUNTS.
-  DECISION F009 D22 rules that this door must NOT pass its own source into it,
-  the opposite of D20's rule for `request_stop`; a later round that generalises
-  one to the other silently drops answers from both tallies.
+- Closure needs TWO rounds, not one: the evidence-and-zip round produces the
+  values the STATUS line quotes, and a separate round commits that line. Ending
+  right after a verdict strands it (DECISION F085 D9).
 - `npm run lint` in `apps/ui` is RED at base and is NOT a gate (R-0364), which
   is R-0622 and routes to a paydown branch.
-<<<END PLANF009R27
+<<<END PLANF009R28
 
-<<<SLICE FINDING642
-- R-0642 — Low — A DESTRUCTIVE CONTROL'S INSERT HALF QUOTED A LINE AT THE INDENTATION OF WHERE IT CAME FROM RATHER THAN WHERE IT WAS GOING. The defect is the reviewer's, in the F009 R26 block saved at `232e5a6a`, and it was FOUND AND DECLARED BY THE WORKER as that round's only deviation. G10 mutation (b) ordered "that SAME line, with `payload` in place of `accepted_body`, directly BELOW the `rejected_state` audit call in the `decision.resolve` clause". The line it calls "the SAME" is the one mutation (a) quotes, and (a) quotes it with its own TWELVE leading spaces, because twelve is the indentation of the two accepted exits it is deleted FROM; the `rejected_state` audit call sits at SIXTEEN, nested one level deeper inside `if accepted_body is None:`. Applied as quoted, the insertion is an `IndentationError` that reddens the whole module — so the property the same gate states, that exactly `test_a_refused_command_announces_nothing` fails, is unreachable by the recipe written to establish it, and the worker was left choosing between an unmeetable order and a silent repair. It chose correctly: it inserted at sixteen spaces, matching the clause the sentence names, and declared the substitution. WHY NO EXISTING ITEM REACHES THIS. Checklist item 25 governs the BYTES a destructive control orders CHANGED and requires them unique inside a named file, and R26's G10 did measure exactly that, at 2 whole-line and 2 indent-agnostic and both agreeing — the deletion half was sound. Item 18 as R-0591 widened it reads an ordered MECHANISM against what it must preserve, and this order names no mechanism. Nothing governs the POSITION an INSERT half puts its bytes at, and in Python indentation is part of a line's MEANING while being no part of its IDENTITY, so a line can be correctly counted, correctly unique and still wrong at its destination. Low, because the worker caught it, the substitution it declared is the very one the reviewer's own pre-delegation dry run had used, and the ordered outcome held exactly, so nothing false reached disk. Standing rule from here, and it belongs in §3 item 25 beside the uniqueness rule that item already carries: a destructive control that orders a line INSERTED quotes that line as it must appear AT the insertion site, and a control that deletes a line at one indentation and re-inserts it at another quotes it TWICE, once per site, rather than calling the second occurrence "the SAME line". The R27 block's own G10 is the first control written under this rule. OPEN.
-<<<END FINDING642
+<<<SLICE FINDING643
+- R-0643 — Low — A REVIEWER GATE ORDERED AN EXPECTED-FAILURE SET WITHOUT NAMING THE SELECTION IT IS MEASURED OVER, AND THE SET IS TRUE AT ONE SCOPE AND FALSE AT THE OTHER. The defect is the reviewer's, in the F009 R27 block saved at `f8bf6c7f`, and it was FOUND AND DECLARED BY THE WORKER as that round's first deviation. G10 ordered three mutations and after each wrote "EXPECT exactly the ids listed here to fail", naming two ids per mutation, while the block named no pytest selection anywhere in that gate — no node id, no `-k`, no command line. At the guard class `TestCommandDoorImportGuard` all three ordered sets reproduce EXACTLY; at the whole file each mutation additionally reddens 21 or 22 unrelated HTTP tests, because all three mutate methods that sit on the live dispatch path, so at that scope "exactly the ids listed" is false of every one of them. The worker ran BOTH scopes, reported both, and said which one makes the order reachable — the reviewer reproduced all six readings independently at the landed head and confirms every ordered set is a subset of its whole-file reds. WHY R-0393 DOES NOT REACH THIS, stated because it is the nearest OPEN neighbour and checklist item 30 requires the open set to be searched for the DEFECT before an id is minted. R-0393 governs a HANDBACK's transcript that measures its green run and its mutated run at DIFFERENT `-k` selections, and its fix clause is that "a red-proof states ONE selection string and uses it for the green run and every mutated run, or it declares the change of scope in the same sentence as the numbers". The R27 worker OBEYED that clause: it used one selection per reading, reported both, and declared the scope beside the numbers. The gap is one step upstream, in the ORDER rather than in the report — a block that states an expected set while leaving the selection to the worker has not stated a measurable property at all, because an expected-failure set is a property OF a selection and means nothing without one. Low, because the worker resolved it correctly and nothing false reached disk. Standing rule from here: a gate that orders an expected-failure set names, in the same gate, the exact command the set is measured under — and where the reviewer measured the set at a narrower scope than the suite command the same block orders elsewhere, it says so rather than leaving the two to be reconciled. The R28 block's own G10 is the first such gate written under this rule, and it names the whole file. OPEN.
+<<<END FINDING643
 
-<<<SLICE LEDGER27
-Gate: R27 — the R26 entry. R26 PASSED. Every gate was RE-EXECUTED by the reviewer off disk rather than read back out of the handback, and every value reproduced; the round's one deviation is the reviewer's own block defect, registered above as R-0642 and not counted against the round. TRANSPORT HELD IN ITS STRONGEST FORM: `.agent/authored/f009-r26.md` at `232e5a6a`, `.agent/last_block.md` at `392a94eb` and the bytes the reviewer EMITTED, still on disk at `.remedy-wt/f009-r26.md`, are all sha256 9db61842f2287d052a03e144b7437d0584fcd3b25aa98b2245a608345bdfa068 over 33832 bytes and 451 lines, compared against the emitted original rather than against a recorded digest — the primary §4.9 proof, not the fallback R25 had to use. The reviewer's own extraction out of the committed C0a blob prints an aggregate of 11 slices over 218 CONTENT lines, and constraint 9's numerals re-measure as 451 TOTAL and 233 PROSE, both under DECISION F085 D6's 490 and D5's 400. `.agent/plan.md` at `58b9932a` is BYTE-EQUAL to that round's PLANF009R26 slice at sha256 `05884bfa…`, 37 lines against the 50-line cap, with `^## Goal$` and `^## Next Steps$` each reading 1 and a negative control against another file differing. THE THREE APPLICATIONS ARE PROVED IN THE STRONGEST FORM AVAILABLE, which is stronger than any gate the block ordered: the reviewer applied the COMMITTED slices to the COMMITTED base blobs with its own script and the results are BYTE-IDENTICAL to what landed — `packages/orchestration/ui_server.py` at `69b5f890` and `tests/ui_server/test_command_channel.py` at `77114cd4` both compare equal — so no line of either file was hand-edited, reflowed or reconciled anywhere in the round. BOTH APPENDS HOLD UNDER THE REVIEWER'S OWN TWO READERS: at `a573210c` the round-base blob is a byte-exact prefix of `.agent/live_review.md` with the remainder exactly a newline plus LEDGER26 at sha256 `6b5e0603…` over 5692 bytes and 2 lines, 530425 to 536117 bytes and 1118 to 1120 lines, N counted at 1 BY THE SCRIPT; at `f36f46b2` the same holds for `.agent/decisions.md` with the remainder a newline plus DECISION23 at sha256 `1f88275c…` over 3623 bytes and 16 lines, 473798 to 477421 bytes and 6909 to 6925 lines, N counted at 8 BY THE SCRIPT; in both an equal-length printable-byte flip in the FIRST appended paragraph makes BOTH readers REJECT while both ACCEPT the true file. THE PAIRS HELD: base FROM counts CONST 1, METH 1, PUB 2 and TESTS 1 with every TO 0, and after application every TO reads its FROM's base count while the one REWRITE pair, PUB, reads FROM 0 — the containment reading printed `true` for CONST, METH and TESTS and `false` for PUB, so no FROM-zero count was ordered for an append-shaped pair, which is finding R-0522's rule holding. THE SETS HELD line-anchored at line start, round base and C2: entries 207 at BOTH with every id DISTINCT at each — R26 minted none — leading `Done:` ids 3 at both, leading `Landed: ` 0 at both, `Gate: R` keys 25 and 26 over that many DISTINCT keys, the `Gate: R26` key 0 and 1, a leading `- R-0642` entry 0 at both, max REGISTERED id R-0641 at both, and 204 open at both by DECISION F009 D10's rule. THE LEDGER HEADER WAS COMPARED AGAINST THE SERIES IT JOINS, which is checklist item 26 run rather than recalled: `Gate: R26 — the R25 entry.` matches the shape of every entry above it, and of the 26 keys the ONE that does not match that shape is `Gate: R1 — the F008 R36 entry.`, which names the previous feature's closing round correctly and is not a defect. THE SUITES ARE THE REVIEWER'S OWN, re-run serially in the primary checkout: ruff over the two changed paths EXITS 0, `test_command_channel.py` EXITS 0 at 90 passed, the canary EXITS 0 at 42 passed, and the four-path state-reader group EXITS 0 at 517 passed — the 513 of R25 grown by exactly the four tests this round adds, and not one of the four predicted by the handback. THE RED PROOF IS THE REVIEWER'S OWN, re-run at the LANDED head in a disposable worktree rather than accepted from the report: the target line reads 2 whole-line and 2 indent-agnostic with both agreeing, deleting both call sites fails exactly `test_an_accepted_command_reaches_the_sse_frame_it_announces`, `test_a_replay_announces_nothing_a_second_time` and `test_an_event_writer_that_raises_changes_neither_status_nor_body`, and making D21's 409 announce fails exactly `test_a_refused_command_announces_nothing` — the two sets the block ordered, neither reaching the other, and the file restored byte-equal after each. That the soft-failure test discriminates at all is the reviewer's own pre-delegation repair: measured before the round was delegated, it PASSED against a door with no call site whatsoever, so a call counter was added and it now fails under mutation (a) with the other two. THE RANGE HELD: the range base→`c98d57f0` lists exactly the declared paths, set difference EMPTY in both directions, and 0 paths beginning `apps/` or `docs/`; every commit has ONE parent; `git show --numstat` and `git diff --numstat` agree on every cell and every cell equals the `+/-` column of the handback's own tables, at 451/0, 366/91, 8/8, 2/0, 16/0, 40/0 and 112/0; pre-handback insertions 451, 366, 8, 2, 16, 40 and 112, every one under the 500 cap; zero leading `<<<SLICE ` and `<<<END ` LINES in all five slice targets; `git ls-files .remedy-wt` 0; the reflog rows all classify as `commit` with `amend`, `rebase` and `cherry` each 0 and no total asserted over the whole reflog; one worktree and a clean tree at the verdict. THE HANDBACK IS 99 LINES against the 100 AGENTS.md allows a per-commit table of more than five commits, so R25's overage is gone rather than merely smaller: R-0582's cheaper repair, ordered for the second round running, has brought this workflow back inside its own cap.
-<<<END LEDGER27
+<<<SLICE LEDGER28
+Gate: R28 — the R27 entry. R27 PASSED. Every gate was RE-EXECUTED by the reviewer off disk rather than read back out of the handback, and every value reproduced; the round's one substantive deviation is the reviewer's own block defect, registered above as R-0643 and not counted against the round. TRANSPORT HELD IN ITS STRONGEST FORM: `.agent/authored/f009-r27.md` at `f8bf6c7f`, `.agent/last_block.md` at `80df4d3a` and the bytes the reviewer EMITTED, still on disk at `.remedy-wt/f009-r27.md`, are all sha256 69e3b24fd4ba79b881c22ef4d50994df1b5be4fec8d38c79d50fd66bc4a3c2b8 over 35935 bytes and 438 lines, compared against the emitted original rather than against a recorded digest. The reviewer's own extraction out of the committed C0a blob prints an aggregate of 6 slices over 212 CONTENT lines, and constraint 8's numerals re-measure as 438 TOTAL and 226 PROSE, both under DECISION F085 D6's 490 and D5's 400. `.agent/plan.md` at `b40e79a4` is BYTE-EQUAL to that round's PLANF009R27 slice, 37 lines against the 50-line cap, with `^## Goal$` and `^## Next Steps$` each reading 1 and a negative control against another file differing. THE APPLICATION IS PROVED IN THE STRONGEST FORM AVAILABLE, which is stronger than the gate the block ordered: the reviewer applied the COMMITTED GUARD slice to the COMMITTED base blob with its own script and the result is BYTE-IDENTICAL to `tests/ui_server/test_command_channel.py` at `ced6e1eb`, so no line of it was hand-edited, reflowed or reconciled anywhere in the round; base FROM reads 1 and TO reads 0, the containment reading printed `true`, and no FROM-zero count was ordered for an append-shaped pair. ALL THREE APPENDS HOLD UNDER THE REVIEWER'S OWN TWO READERS, AND THE ONE THAT MATTERS MOST IS THE SECOND: FINDING642 at `56926662` is based on the round base, 536117 to 538649 bytes and 1120 to 1122 lines, N counted at 1 BY THE SCRIPT; LEDGER27 at `3ee65a8b` is based on **C2** rather than on the round base, exactly as constraint 5 fixed, its base blob reading 538649 bytes and 1122 lines — the reading a round-base comparison would have got wrong by one whole slice — going to 544465 bytes and 1124 lines, N counted at 1; DECISION24 at `e2b6fb96` is based on the round base, 477421 to 480292 bytes and 6925 to 6939 lines, N counted at 7 BY THE SCRIPT. In all three an equal-length printable-byte flip in the FIRST appended paragraph makes BOTH readers REJECT while both ACCEPT the true file. THE SETS HELD line-anchored at line start across all THREE points: at the round base entries 207, `Done:` 3, `Landed: ` 0, `Gate: R` keys 26, `Gate: R27` 0 and a leading `- R-0642` entry 0, max REGISTERED id R-0641, 204 open; at C2 entries 208 all DISTINCT with `- R-0642` at 1, max id R-0642 and 205 open; at C3 the `Gate: R` keys reach 27 over 27 DISTINCT keys with `Gate: R27` at 1. The ledger header was compared against the series it joins and `Gate: R27 — the R26 entry.` matches it. THE SUITES ARE THE REVIEWER'S OWN, re-run serially in the primary checkout: ruff over the changed path EXITS 0, `test_command_channel.py` EXITS 0 at 95 passed, the canary EXITS 0 at 42 passed, and the four-path state-reader group EXITS 0 at 522 passed — the 517 of R26 grown by exactly the five tests this round adds, and not one of the five predicted by the handback. THE RED PROOF IS THE REVIEWER'S OWN, re-run at the LANDED head in a disposable worktree at BOTH scopes rather than accepted from the report: the anchor line reads 1 whole-line and 1 indent-agnostic with both agreeing at eight leading spaces, and at the guard class all three ordered sets reproduce EXACTLY — a forbidden applicator import reddens the equality test and the forbidden-module test, a second name out of storage reddens the equality test and the storage test, and a renamed door method reddens `test_every_named_method_exists` with the equality test. THAT THIRD MUTATION IS THE ONE WORTH RECORDING: it proves the guard cannot silently empty its own scan, which is how a guard of this shape usually dies, and it is the reason the vacuity test was written rather than assumed. THE RANGE HELD: the range base→`a164317b` lists exactly the declared paths, set difference EMPTY in both directions, and 0 paths beginning `packages/`, `apps/` or `docs/`, which is that round's no-production-code constraint as a measurement; every commit has ONE parent; `git show --numstat` and `git diff --numstat` agree on every cell and every cell equals the `+/-` column of the handback's own tables, at 438/0, 349/362, 9/9, 2/0, 2/0, 14/0 and 158/0; pre-handback insertions 438, 349, 9, 2, 2, 14 and 158, every one under the 500 cap; zero leading `<<<SLICE ` and `<<<END ` LINES in all four slice targets; `git ls-files .remedy-wt` 0; the reflog rows all classify as `commit` with `amend`, `rebase` and `cherry` each 0 and no total asserted over the whole reflog; one worktree and a clean tree at the verdict. THE HANDBACK IS 99 LINES against the 100 AGENTS.md allows a per-commit table of more than five commits, so R-0582's repair has now held for two rounds running.
+<<<END LEDGER28
 
-<<<SLICE DECISION24
-## DECISION F009 D24 — the P3 import contract: what the door may reach, stated as a set (2026-08-22)
+<<<SLICE DECISION25
+## DECISION F009 D25 — the 405 proof is a WALK over derived routes, not a list (2026-08-22)
 
-Measured by the reviewer at `c98d57f0`, before this round was delegated, by walking `_RemedyHandler` with `ast` rather than by reading it: the write door is twelve methods and every import any of them makes is FUNCTION-SCOPED, so the door's import surface is exactly thirteen `(module, name)` pairs and an AST scan over those methods is exact rather than approximate. That is the fact this decision is built on, and it is what makes the guard cheap.
+Measured by the reviewer at `a164317b`, before this round was delegated, by reading `do_GET` end to end rather than by grepping it: the server dispatches four routes by a bare `path ==` or prefix comparison, thirteen job endpoints out of a single `handlers` dict literal, and six more STRUCTURALLY, by splitting `path` on "/" and comparing the parts — `events-since`, the SSE stream at `events/stream`, and three `nodes/<node>/…detail` routes. An AST scan for `path ==` literals alone therefore finds four of twenty-three, which is the trap this decision exists to avoid: such a scan reports a confident, small, WRONG inventory and a walk built on it would prove almost nothing while looking rigorous.
 
-FIRST, ALLOWLIST OR DENYLIST. CHOSEN: BOTH, with the allowlist as the mechanism. The scan's union must EQUAL a named frozen set, so a new import is a failing test until a decision adds it; the forbidden-module set then says WHY that allowlist is the shape it is. ALTERNATIVES: (a) denylist alone — rejected, it passes silently on any import nobody thought to forbid, which is the whole failure mode of a contract enforced by convention. (b) allowlist alone — rejected, it pins the present without stating the rule, so a later reader cannot tell a ruled entry from an accident.
+FIRST, WHERE THE WALK'S ROUTE LIST COMES FROM. CHOSEN: derive what can be derived, spell out the rest, and gate the boundary. The thirteen job endpoints are read out of the `handlers` dict literal by AST, so adding an endpoint puts it in the walk with no test edit at all; the four literal routes are read the same way and compared for EQUALITY against a named set; the six structural routes are written out, because nothing exists to derive them from. ALTERNATIVES: (a) a fully hand-written list — rejected, it proves the list rather than the server and goes stale silently. (b) a fully derived list — rejected as impossible, since a structural match has no literal to extract, and pretending otherwise is how the four-of-twenty-three inventory gets shipped.
 
-SECOND, `save_job`. CHOSEN: `packages.orchestration.storage` is reachable for the single name `save_job` and no other. DECISION F009 D21 rules that `answer_task_decision` and `save_job` are BOTH one effect, because the answer is durable only once `save_job` returns, so banning it would ban the effect table D5 already ruled. Any OTHER name out of that module is the "handler touching storage directly" the feature file's Acceptance forbids, and the guard says so as its own test.
+SECOND, THE DRIFT TEST. CHOSEN: the derived literal set must EQUAL the named set, and every derived endpoint must appear among the walked paths. A route added as a new `path ==` comparison then fails the equality immediately, and a route added to the dict is walked automatically rather than being missed. The remaining hole is a new STRUCTURAL route, which neither half can see; it is named here as the known limit rather than papered over, and the sentence a reader will search for is in the class docstring.
 
-THIRD, WHERE THE GUARD LIVES. CHOSEN: `tests/ui_server/test_command_channel.py`, as a class beside the file's existing non-HTTP classes. DECISION F009 D1 rules that file the command channel's contract home, and this is a contract over the same door; the repo's guard-test pattern in `tests/test_no_interactive_guard.py` keeps the scan in the test rather than in production, so no production line exists only to be checked.
+THIRD, WHAT THE WALK ASSERTS. CHOSEN: for every walked path, POST, PUT and DELETE each answer 405 AND carry the body `{"error": "method not allowed"}`, plus a count assertion that the walk ran the number of requests it claims. A status-only walk passes against a server that answers 405 by accident from a different code path, and a walk that silently iterates an empty list is the vacuous case this repository keeps paying for.
 
-FOURTH, THE VACUITY TEST. CHOSEN: the method list is itself asserted against the class. A guard of this shape dies by scanning nothing — rename a method and the union becomes empty, the equality against a non-empty allowlist then fails loudly, but a rename plus an allowlist trimmed to match would pass while guarding nothing. `test_every_named_method_exists` is what makes that a two-step mistake instead of a one-step one, and the red proof this round runs exercises it.
+FOURTH, THE OTHER HALF OF THE CLAIM. CHOSEN: the same class asserts that the commands path DOES answer 200, that an unknown path is 405 rather than 404 for a mutating verb, and that four near misses of the commands path — a trailing segment, a singular spelling, a missing job id and a case change — are all 405. "Every OTHER route is 405" is only meaningful beside a demonstration that this one is not, and the near misses are where a fail-open would actually arrive.
 
-REVERSE the first by deleting either half and keeping the other; the second by removing `save_job` once the effect table stops naming it; the third by moving the class to its own module, which costs a rename and nothing else; the fourth by deleting that one test, which is also how to make the guard vacuous, so the two are deliberately the same act.
-<<<END DECISION24
+REVERSE the first by hand-writing the list, which reintroduces exactly the staleness the derivation removes; the second by deleting the drift test, which is also how to make the walk stop covering the server, so the two are deliberately the same act; the third by dropping to a status-only assertion; the fourth by removing the near-miss cases, which is the only part of this a later round might reasonably move into its own module.
+<<<END DECISION25
 
-<<<SLICE GUARD_FROM
-class TestUiExposedCommands:
-<<<END GUARD_FROM
+<<<SLICE WALK_FROM
+    # -- B: the GET door still behaves as it did ----------------------------
+<<<END WALK_FROM
 
-<<<SLICE GUARD_TO
-class TestCommandDoorImportGuard:
-    """F009's P3 contract as a guard: the write door ENQUEUES, it never applies.
+<<<SLICE WALK_TO
+    # -- F: the route walk, F009's 405 discipline ---------------------------
 
-    The feature file's Design makes this mechanical rather than conventional —
-    "the handler may not import applicators/storage-writers (import guard — the
-    P3 contract in CI)" — and its Acceptance requires the guard to FAIL on a
-    handler touching storage directly, which is what the violation fixture
-    below is. Detection is AST-based, following the repo's guard-test pattern
-    in `tests/test_no_interactive_guard.py`: a module named in a docstring is
-    prose, and a guard that cannot tell prose from an `import` gets muted by
-    its own false positives.
-
-    Every import the door makes is function-scoped, so the scan is per method
-    and an import added anywhere else in `ui_server.py` is out of scope by
-    construction.
-    """
-
-    #: The methods that together ARE the write door. `test_every_named_method_exists`
-    #: is what stops this tuple from silently emptying itself under a rename —
-    #: a guard that scans nothing passes, which is the worst way for it to fail.
-    DOOR_METHODS = (
-        "_handle_command_submission",
-        "_dispatch_job_stop",
-        "_dispatch_decision_resolve",
-        "_publish_command_result",
-        "_emit_command_accepted_event",
-        "_audit_attempt",
-        "_command_is_ui_exposed",
-        "_replayed_command_result",
-        "_rate_limit_admits_command",
-        "_read_command_payload",
-    )
-
-    #: Every (module, name) the door is allowed to import, each because a ruled
-    #: DECISION puts it there. Adding an entry means widening the P3 contract,
-    #: so it belongs in the same commit as the decision that widens it.
-    ALLOWED_IMPORTS = frozenset({
-        ("datetime", "datetime"),                                   # D21's `now`
-        ("datetime", "timezone"),                                   # D21's `now`
-        ("apps.cli.command_catalog", "UI_EXPOSED_COMMANDS"),        # D4's subset
-        ("packages.orchestration.command_audit",
-         "audit_command_attempt"),                                  # D6's audit
-        ("packages.orchestration.command_nonce", "lookup_nonce_result"),   # D8
-        ("packages.orchestration.command_nonce", "publish_nonce_result"),  # D8
-        ("packages.orchestration.config", "get_config"),            # D9's limit
-        ("packages.orchestration.config", "get_key_spec"),          # D9's limit
-        ("packages.orchestration.data_paths", "resolve_data_root"), # D23's root
-        ("packages.orchestration.escalation", "answer_task_decision"),     # D5
-        ("packages.orchestration.safe_points", "request_stop"),            # D5
-        ("packages.orchestration.storage", "save_job"),                    # D21
-        ("packages.orchestration.timeline", "append_run_event"),           # D23
-    })
-
-    #: Modules the door may NEVER import from, whatever the name. These are the
-    #: applicators and the shell/filesystem writers the P3 contract exists to
-    #: keep out of an HTTP handler. Every path here resolves on disk.
-    FORBIDDEN_MODULES = frozenset({
-        "packages.orchestration.source_apply",
-        "packages.orchestration.patch_apply",
-        "packages.orchestration.diff_repair_apply",
-        "packages.orchestration.job_fulfillment",
-        "packages.orchestration.exec_guard",
-        "packages.orchestration.workspace",
-        "packages.common.secure_fs",
-        "subprocess",
-        "shutil",
-    })
-
-    #: `storage` is the one write-side module the door may reach, and only for
-    #: the single name DECISION F009 D21 puts in the effect table: the answer is
-    #: durable only once `save_job` returns. Any OTHER name from it is the
-    #: "handler touching storage directly" the Acceptance forbids.
-    STORAGE_MODULE = "packages.orchestration.storage"
-    STORAGE_ALLOWED_NAMES = frozenset({"save_job"})
+    #: Routes `do_GET` dispatches with a bare `path ==` comparison.
+    LITERAL_GET_ROUTES = frozenset({"/", "/api/state", "/api/layers"})
 
     @staticmethod
-    def _door_imports(source: str, method_names) -> set:
-        """Every (module, name) imported inside the named methods of the handler."""
+    def _do_get_route_facts():
+        """The route literals and endpoint keys `do_GET` carries, read by AST.
+
+        Derived rather than transcribed: a walk over a hand-written list proves
+        that list, not the server. The thirteen job endpoints live in a dict
+        literal inside `do_GET`, so adding one puts it in the walk for free.
+
+        The known limit, written where a reader will search for it: a route
+        matched STRUCTURALLY — by splitting `path` and comparing parts, as
+        `events-since`, `events/stream` and the three `nodes/…detail` routes are
+        — has no literal to extract, so it is spelled out in `_walkable_paths`
+        and a NEW one of that kind is the one case neither half of the drift
+        test can see.
+        """
         import ast
-
-        wanted = set(method_names)
-        found = set()
-        for node in ast.walk(ast.parse(source)):
-            if not (isinstance(node, ast.ClassDef) and node.name == "_RemedyHandler"):
-                continue
-            for member in node.body:
-                if not isinstance(member, ast.FunctionDef) or member.name not in wanted:
-                    continue
-                for sub in ast.walk(member):
-                    if isinstance(sub, ast.ImportFrom):
-                        for alias in sub.names:
-                            found.add((sub.module or "", alias.name))
-                    elif isinstance(sub, ast.Import):
-                        for alias in sub.names:
-                            found.add((alias.name, alias.name))
-        return found
-
-    def _server_source(self) -> str:
         from pathlib import Path
 
         from packages.orchestration import ui_server
 
-        return Path(ui_server.__file__).read_text(encoding="utf-8")
+        tree = ast.parse(Path(ui_server.__file__).read_text(encoding="utf-8"))
+        do_get = None
+        for node in ast.walk(tree):
+            if isinstance(node, ast.ClassDef) and node.name == "_RemedyHandler":
+                for member in node.body:
+                    if (isinstance(member, ast.FunctionDef)
+                            and member.name == "do_GET"):
+                        do_get = member
+        assert do_get is not None, "do_GET not found"
 
-    def test_every_named_method_exists(self):
-        """Without this the guard empties itself the first time a method is renamed."""
-        import ast
+        literals, endpoints = set(), set()
+        for sub in ast.walk(do_get):
+            if (isinstance(sub, ast.Compare) and isinstance(sub.left, ast.Name)
+                    and sub.left.id == "path"):
+                for op, comp in zip(sub.ops, sub.comparators):
+                    if (isinstance(op, ast.Eq) and isinstance(comp, ast.Constant)
+                            and isinstance(comp.value, str)):
+                        literals.add(comp.value)
+            if isinstance(sub, ast.Dict) and sub.keys:
+                keys = [k.value for k in sub.keys
+                        if isinstance(k, ast.Constant) and isinstance(k.value, str)]
+                if len(keys) == len(sub.keys):
+                    endpoints |= set(keys)
+        return literals, endpoints
 
-        handler = [n for n in ast.walk(ast.parse(self._server_source()))
-                   if isinstance(n, ast.ClassDef) and n.name == "_RemedyHandler"]
-        assert len(handler) == 1, handler
-        defined = {n.name for n in handler[0].body if isinstance(n, ast.FunctionDef)}
-        missing = sorted(set(self.DOOR_METHODS) - defined)
-        assert missing == [], missing
+    def _walkable_paths(self):
+        """Every concrete GET path this job exposes, ready to be POSTed at.
 
-    def test_the_door_imports_exactly_the_allowed_set(self):
-        """Equality, not containment: a NEW import is a finding until it is ruled."""
-        found = self._door_imports(self._server_source(), self.DOOR_METHODS)
-        assert found == set(self.ALLOWED_IMPORTS), {
-            "unruled": sorted(found - set(self.ALLOWED_IMPORTS)),
-            "vanished": sorted(set(self.ALLOWED_IMPORTS) - found),
-        }
-
-    def test_the_door_imports_nothing_from_a_forbidden_module(self):
-        """The P3 contract stated as the class of module it keeps out."""
-        found = self._door_imports(self._server_source(), self.DOOR_METHODS)
-        offending = sorted((m, n) for m, n in found if m in self.FORBIDDEN_MODULES)
-        assert offending == [], offending
-
-    def test_the_door_reaches_storage_only_for_the_name_D21_rules(self):
-        found = self._door_imports(self._server_source(), self.DOOR_METHODS)
-        from_storage = {n for m, n in found if m == self.STORAGE_MODULE}
-        assert from_storage <= self.STORAGE_ALLOWED_NAMES, sorted(from_storage)
-
-    def test_the_guard_fails_on_a_handler_that_touches_storage_directly(self):
-        """The violation fixture the feature file's Acceptance requires.
-
-        A guard nobody has watched fail is a guard nobody knows works. This runs
-        the SAME extractor over a synthetic handler, so the proof costs no
-        mutation of the real file and cannot leave one behind.
+        The structural routes are spelled out here for the reason the docstring
+        above gives: there is no literal to derive them from.
         """
-        violation = (
-            "class _RemedyHandler:\n"
-            "    def _dispatch_job_stop(self):\n"
-            "        from packages.orchestration.source_apply import apply_source_patch\n"
-            "        from packages.orchestration.storage import delete_job\n"
-            "        return apply_source_patch, delete_job\n"
-        )
-        found = self._door_imports(violation, self.DOOR_METHODS)
-        assert ("packages.orchestration.source_apply",
-                "apply_source_patch") in found, found
-        # Each of the three assertions above would now fail, which is the point.
-        assert found != set(self.ALLOWED_IMPORTS)
-        assert [(m, n) for m, n in found if m in self.FORBIDDEN_MODULES] != []
-        assert not {n for m, n in found
-                    if m == self.STORAGE_MODULE} <= self.STORAGE_ALLOWED_NAMES
+        _, endpoints = self._do_get_route_facts()
+        paths = ["/", "/api/state", "/api/layers", "/assets/index.js"]
+        paths += [f"/api/jobs/{self.job_id}/{name}" for name in sorted(endpoints)]
+        paths += [
+            f"/api/jobs/{self.job_id}/events-since",
+            f"/api/jobs/{self.job_id}/events/stream",
+            f"/api/jobs/{self.job_id}/nodes/node-1/detail",
+            f"/api/jobs/{self.job_id}/nodes/node-1/human-detail",
+            f"/api/jobs/{self.job_id}/nodes/node-1/debug-detail",
+        ]
+        return paths
 
+    def test_the_walk_knows_every_route_the_source_dispatches(self):
+        """The drift detector. A new literal route the walk misses fails HERE.
 
-class TestUiExposedCommands:
-<<<END GUARD_TO
+        Without it the walk silently shrinks to whatever it was written for and
+        a route added later is never walked — the way a guard of this shape
+        usually stops guarding.
+        """
+        literals, endpoints = self._do_get_route_facts()
+        assert literals == set(self.LITERAL_GET_ROUTES), {
+            "unwalked": sorted(literals - set(self.LITERAL_GET_ROUTES)),
+            "vanished": sorted(set(self.LITERAL_GET_ROUTES) - literals),
+        }
+        walked = set(self._walkable_paths())
+        missing = sorted(name for name in endpoints
+                         if f"/api/jobs/{self.job_id}/{name}" not in walked)
+        assert missing == [], missing
+        assert endpoints, "the endpoint dict came back empty, so the walk is vacuous"
+
+    def test_every_route_the_server_serves_refuses_post_put_and_delete(self):
+        """The walk itself: one real request per route per mutating method."""
+        port, token = self._start_server()
+        seen = []
+        for path in self._walkable_paths():
+            for method in ("POST", "PUT", "DELETE"):
+                status, body = self._request(
+                    port, method, f"{path}?token={token}",
+                    body=self._valid_body(),
+                    headers=self._auth_headers(token))
+                seen.append((method, path, status, body.get("error")))
+        wrong = [row for row in seen if row[2] != 405]
+        assert wrong == [], wrong
+        assert {row[3] for row in seen} == {"method not allowed"}, seen
+        # A walk is only worth the name if it walked what it says it walked.
+        assert len(seen) == len(self._walkable_paths()) * 3
+
+    def test_the_commands_path_is_the_only_post_that_is_not_405(self):
+        """The other half: the one door really is open, so 405 above means 405."""
+        port, token = self._start_server()
+        status, body = self._request(
+            port, "POST", self._commands_path(),
+            body=self._valid_body(client_nonce="nonce-405-walk"),
+            headers=self._auth_headers(token))
+        assert status == 200, body
+        assert body["outcome"] == "accepted", body
+
+    def test_an_unknown_path_is_405_for_every_mutating_method(self):
+        """404 belongs to GET; a mutating verb never gets that far."""
+        port, token = self._start_server()
+        for method in ("POST", "PUT", "DELETE"):
+            status, body = self._request(
+                port, method, f"/api/nothing/here?token={token}",
+                body=self._valid_body(),
+                headers=self._auth_headers(token))
+            assert status == 405, (method, status, body)
+
+    def test_a_near_miss_of_the_commands_path_is_405(self):
+        """Fail closed: only an UNAMBIGUOUS commands path opens the door."""
+        port, token = self._start_server()
+        for path in (f"/api/jobs/{self.job_id}/commands/extra",
+                     f"/api/jobs/{self.job_id}/command",
+                     "/api/jobs/commands",
+                     f"/api/JOBS/{self.job_id}/commands"):
+            status, body = self._request(
+                port, "POST", path, body=self._valid_body(),
+                headers=self._auth_headers(token))
+            assert status == 405, (path, status, body)
+
+    # -- B: the GET door still behaves as it did ----------------------------
+<<<END WALK_TO
