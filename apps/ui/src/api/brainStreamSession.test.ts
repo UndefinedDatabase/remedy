@@ -47,6 +47,9 @@ function harness(options: { absent?: boolean; tail?: BrainStreamFrame[] } = {}) 
       waits.push({ ms, resume });
       return () => {};
     },
+    now(): number {
+      return 2000;
+    },
   });
   return { sources, opens, tails, waits, session };
 }

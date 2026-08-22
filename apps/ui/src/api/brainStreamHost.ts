@@ -38,6 +38,10 @@ export interface BrainStreamHostDeps {
   readTail(afterSeq: number | null): Promise<BrainStreamFrame[]>;
   /** setTimeout in a browser, a hand-fired fake in a test. */
   schedule(ms: number, resume: () => void): () => void;
+  /** The client's own clock. Injected like every other capability here, so a
+   *  test hands it a counter and a browser hands it Date.now, and no module in
+   *  this chain has to reach for a global to learn what time it is. */
+  now(): number;
 }
 
 /** The adapter OWNS its socket, so `close` sits on the returned object rather

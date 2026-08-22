@@ -63,6 +63,9 @@ function harness(options: { absent?: boolean; snapshot?: number | null; tail?: B
       resume();
       return () => { events.push({ kind: "timer" }); };
     },
+    now(): number {
+      return 1000;
+    },
   });
   return { events, sources, opens, tails, waits, host };
 }

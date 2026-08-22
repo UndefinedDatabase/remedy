@@ -39,6 +39,9 @@ function recorder(options: { absent?: boolean; payload?: unknown } = {}): Record
         timers.push(ms);
         return (): void => { timers.push(-ms); };
       },
+      now(): number {
+        return 4242;
+      },
     },
   };
 }
@@ -119,6 +122,11 @@ describe("the host deps over the real endpoints", () => {
     cancel();
     expect(r.timers).toEqual([250, -250]);
   });
+
+  it("reads the clock through the environment rather than a real one", () => {
+    const r = recorder();
+    expect(createBrainStreamHostDeps("job-1", r.env).now()).toBe(4242);
+  });
 });
 
 describe("the browser environment", () => {
@@ -137,6 +145,7 @@ describe("the browser environment", () => {
       },
       setTimeout(resume: () => void, _ms: number): unknown { resume(); return "handle"; },
       clearTimeout(handle: unknown): void { cleared.push(handle); },
+      Date: { now: (): number => 777 },
     };
     return options.source === true ? { ...base, EventSource: FakeSource } : base;
   }
@@ -159,5 +168,9 @@ describe("the browser environment", () => {
     browserBrainStreamEnv(g).setTimer(10, () => { resumed += 1; })();
     expect(resumed).toBe(1);
     expect(g.cleared).toEqual(["handle"]);
+  });
+
+  it("reads the clock off the injected global, never a real one", () => {
+    expect(browserBrainStreamEnv(globals()).now()).toBe(777);
   });
 });

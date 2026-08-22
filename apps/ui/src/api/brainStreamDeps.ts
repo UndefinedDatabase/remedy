@@ -29,6 +29,10 @@ export interface BrainStreamEnv {
   /** setTimeout in a browser, a hand-fired fake in a test. The returned
    *  function cancels the pending resume. */
   setTimer(ms: number, resume: () => void): () => void;
+  /** The client's own clock, carried beside the transport whose frames it will
+   *  stamp. Injected for the same reason the timer is: real time is the one
+   *  dependency a headless test cannot wait for. */
+  now(): number;
 }
 
 /** The cursor arithmetic, in the ONE place that builds requests. The client
@@ -94,6 +98,9 @@ export function createBrainStreamHostDeps(jobId: string, env: BrainStreamEnv): B
     schedule(ms: number, resume: () => void): () => void {
       return env.setTimer(ms, resume);
     },
+    now(): number {
+      return env.now();
+    },
   };
 }
 
@@ -109,6 +116,11 @@ export interface BrainStreamGlobals {
   }>;
   setTimeout(resume: () => void, ms: number): unknown;
   clearTimeout(handle: unknown): void;
+  /** Taken as an injected global like the others rather than called directly,
+   *  so a test can present a clock it controls without touching real time.
+   *  `window.Date` satisfies this structurally, which is what keeps
+   *  RemedyShell.tsx's `browserBrainStreamEnv(window)` compiling unchanged. */
+  Date: { now(): number };
 }
 
 /** Bind the injected environment to real globals. A runtime with no
@@ -130,6 +142,9 @@ export function browserBrainStreamEnv(globals: BrainStreamGlobals): BrainStreamE
     setTimer(ms: number, resume: () => void): () => void {
       const handle = globals.setTimeout(resume, ms);
       return (): void => { globals.clearTimeout(handle); };
+    },
+    now(): number {
+      return globals.Date.now();
     },
   };
 }
