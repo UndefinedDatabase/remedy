@@ -46,7 +46,12 @@ AUDIT_FIELD_ORDER = ("ts", "token_fp", "command", "args_hash", "nonce", "outcome
 #: the door alone. `replayed` is deliberately distinct from `accepted` (finding R-0636): a
 #: replay REPEATS an acceptance rather than being one, and T5_F035 and T9_F167 both read
 #: this file to count what the door did, so one token for both would make them
-#: indistinguishable to the two features that care.
+#: indistinguishable to the two features that care. `rejected_effect` is DECISION F009
+#: D18's third token with no writer, landed here for the same reason as the other two: it
+#: names a dispatch that RAISED, so an effect which failed is never recorded as the
+#: acceptance it is not, and D6's "every attempt is audited" survives an effect function
+#: that refuses. Without it a failed effect would be unaudited or recorded as `accepted`,
+#: and the two reading features cannot tell those apart from the outside.
 OUTCOMES = (
     "rejected_token",
     "rejected_csrf",
@@ -57,6 +62,7 @@ OUTCOMES = (
     "not_implemented",
     "accepted",
     "replayed",
+    "rejected_effect",
 )
 
 
