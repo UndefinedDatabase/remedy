@@ -397,3 +397,32 @@ class TestEveryFrameIsStampedOnArrival:
         assert sites == 1, (
             f"exactly one dispatch site may stamp a frame, found {sites}"
         )
+
+
+class TestTheRingCarriesTheArrivalStamp:
+    """R23 stamped the transport event; this pins the rest of the path. The ring
+    is where the stamp becomes durable, so `feedRowOf` must TAKE it rather than
+    read a clock, `receiveBrainFrame` must thread it, and the driver must hand
+    over the event's own stamp. A behavioural test sees the number and not its
+    provenance, which is why the seam is pinned here."""
+
+    def test_the_projection_takes_the_stamp_rather_than_reading_a_clock(self):
+        code = strip_ts_comments(ROW.read_text())
+        assert "receivedAtMs: number" in code, (
+            "FeedRow must declare the stamp and feedRowOf must take it"
+        )
+        assert "Date.now()" not in code, (
+            "feedRow.ts must never read a real clock; the host stamps"
+        )
+
+    def test_the_ring_threads_the_stamp_into_the_row(self):
+        code = strip_ts_comments(STATE.read_text())
+        assert "feedRowOf(frame, receivedAtMs)" in code, (
+            "receiveBrainFrame must pass the arrival instant to the projection"
+        )
+
+    def test_the_driver_hands_over_the_events_own_stamp(self):
+        code = strip_ts_comments(DRIVER.read_text())
+        assert "receiveBrainFrame(state, event.frame, event.receivedAtMs)" in code, (
+            "the driver must thread the transport event's stamp, not invent one"
+        )
