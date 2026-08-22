@@ -267,3 +267,28 @@ class TestTheFeedScrollRuleIsPureAndHeadless:
         assert "prev.unseenRows + arrived" in code, (
             "rows arriving while the reader is away must accumulate unseen"
         )
+
+
+class TestTheNowCardBadgeTracksTheAgent:
+    """R-0652. The card's live badge must key on the agent's own running flag
+    and never on the stream ring: brainStream.ts only appends to `recent` and
+    trims it, so a row outlives the job that produced it and a ring-keyed badge
+    reads "Live" beside the word "Idle" forever."""
+
+    def test_the_badge_is_not_keyed_to_the_ring(self):
+        code = strip_ts_comments(NOWCARD.read_text())
+        assert "isActive" not in code, (
+            "a badge keyed to the ring latches on once any action has arrived"
+        )
+
+    def test_the_badge_reads_the_running_flag(self):
+        code = strip_ts_comments(NOWCARD.read_text())
+        assert "{isRunning && <span" in code, (
+            "the live badge must track the agent, not the presence of a row"
+        )
+
+    def test_the_detail_line_still_prefers_the_newest_action(self):
+        code = strip_ts_comments(NOWCARD.read_text())
+        assert "liveAction ? liveAction.line : detail" in code, (
+            "the R16 wiring stays; only the badge changes"
+        )
