@@ -273,10 +273,13 @@ class TestTheFeedScrollRuleIsPureAndHeadless:
 
 
 class TestTheNowCardBadgeTracksTheAgent:
-    """R-0652. The card's live badge must key on the agent's own running flag
-    and never on the stream ring: brainStream.ts only appends to `recent` and
-    trims it, so a row outlives the job that produced it and a ring-keyed badge
-    reads "Live" beside the word "Idle" forever."""
+    """R-0652 and DECISION F021 D9. The card's live badge must key on the
+    agent's own running flag AND on the recency rule, never on the stream ring
+    and never on either source alone: brainStream.ts only appends to `recent`
+    and trims it, so a row outlives the job that produced it and a ring-keyed
+    badge reads "Live" beside the word "Idle" forever, while recency alone
+    reads live for the whole quiet window after a job has ended and renders the
+    same words with a fuse instead of a latch."""
 
     def test_the_badge_is_not_keyed_to_the_ring(self):
         code = strip_ts_comments(NOWCARD.read_text())
@@ -284,10 +287,13 @@ class TestTheNowCardBadgeTracksTheAgent:
             "a badge keyed to the ring latches on once any action has arrived"
         )
 
-    def test_the_badge_reads_the_running_flag(self):
+    def test_the_badge_needs_running_and_recent_together(self):
         code = strip_ts_comments(NOWCARD.read_text())
-        assert "{isRunning && <span" in code, (
-            "the live badge must track the agent, not the presence of a row"
+        assert "isRunning && isLiveByRecency(" in code, (
+            "recency alone puts Live beside Idle for the whole quiet window"
+        )
+        assert "{isLive && <span" in code, (
+            "the badge must render the conjunction, not one of its halves"
         )
 
     def test_the_detail_line_still_prefers_the_newest_action(self):
@@ -433,11 +439,12 @@ class TestTheActivityDotReadsTheRecencyRule:
     to idle after a quiet window. The rule is `recency.ts` and it is pure, so
     what a behavioural test cannot see is WHERE the card gets its two operands.
     Both must sit on ONE clock -- the row's arrival stamp and a `Date.now` the
-    card reads itself. The BADGE is deliberately not wired to this level yet:
-    the dot may read fresh for the quiet window after a job has ended, and a
-    badge saying "Live" beside the word "Idle" is exactly R-0652. That trade-off
-    is ruled in its own round, and TestTheNowCardBadgeTracksTheAgent above still
-    pins the badge to the agent's running flag until then."""
+    card reads itself. The DOT reads the recency level ALONE and answers how
+    long since the agent last acted, which stays true after a job ends. The
+    BADGE is the conjunction DECISION F021 D9 rules, pinned by
+    TestTheNowCardBadgeTracksTheAgent above: recency alone would read live for
+    the whole quiet window after a job ends, which is R-0652's rendering with a
+    fuse instead of a latch."""
 
     def test_the_card_reads_the_shared_recency_rule(self):
         code = strip_ts_comments(NOWCARD.read_text())
