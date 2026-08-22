@@ -1091,6 +1091,141 @@ class TestCommandChannelDoor:
         assert calls == [1], calls
         assert self._accepted_events() == []
 
+    # -- F: the route walk, F009's 405 discipline ---------------------------
+
+    #: Routes `do_GET` dispatches with a bare `path ==` comparison.
+    LITERAL_GET_ROUTES = frozenset({"/", "/api/state", "/api/layers"})
+
+    @staticmethod
+    def _do_get_route_facts():
+        """The route literals and endpoint keys `do_GET` carries, read by AST.
+
+        Derived rather than transcribed: a walk over a hand-written list proves
+        that list, not the server. The thirteen job endpoints live in a dict
+        literal inside `do_GET`, so adding one puts it in the walk for free.
+
+        The known limit, written where a reader will search for it: a route
+        matched STRUCTURALLY — by splitting `path` and comparing parts, as
+        `events-since`, `events/stream` and the three `nodes/…detail` routes are
+        — has no literal to extract, so it is spelled out in `_walkable_paths`
+        and a NEW one of that kind is the one case neither half of the drift
+        test can see.
+        """
+        import ast
+        from pathlib import Path
+
+        from packages.orchestration import ui_server
+
+        tree = ast.parse(Path(ui_server.__file__).read_text(encoding="utf-8"))
+        do_get = None
+        for node in ast.walk(tree):
+            if isinstance(node, ast.ClassDef) and node.name == "_RemedyHandler":
+                for member in node.body:
+                    if (isinstance(member, ast.FunctionDef)
+                            and member.name == "do_GET"):
+                        do_get = member
+        assert do_get is not None, "do_GET not found"
+
+        literals, endpoints = set(), set()
+        for sub in ast.walk(do_get):
+            if (isinstance(sub, ast.Compare) and isinstance(sub.left, ast.Name)
+                    and sub.left.id == "path"):
+                for op, comp in zip(sub.ops, sub.comparators):
+                    if (isinstance(op, ast.Eq) and isinstance(comp, ast.Constant)
+                            and isinstance(comp.value, str)):
+                        literals.add(comp.value)
+            if isinstance(sub, ast.Dict) and sub.keys:
+                keys = [k.value for k in sub.keys
+                        if isinstance(k, ast.Constant) and isinstance(k.value, str)]
+                if len(keys) == len(sub.keys):
+                    endpoints |= set(keys)
+        return literals, endpoints
+
+    def _walkable_paths(self):
+        """Every concrete GET path this job exposes, ready to be POSTed at.
+
+        The structural routes are spelled out here for the reason the docstring
+        above gives: there is no literal to derive them from.
+        """
+        _, endpoints = self._do_get_route_facts()
+        paths = ["/", "/api/state", "/api/layers", "/assets/index.js"]
+        paths += [f"/api/jobs/{self.job_id}/{name}" for name in sorted(endpoints)]
+        paths += [
+            f"/api/jobs/{self.job_id}/events-since",
+            f"/api/jobs/{self.job_id}/events/stream",
+            f"/api/jobs/{self.job_id}/nodes/node-1/detail",
+            f"/api/jobs/{self.job_id}/nodes/node-1/human-detail",
+            f"/api/jobs/{self.job_id}/nodes/node-1/debug-detail",
+        ]
+        return paths
+
+    def test_the_walk_knows_every_route_the_source_dispatches(self):
+        """The drift detector. A new literal route the walk misses fails HERE.
+
+        Without it the walk silently shrinks to whatever it was written for and
+        a route added later is never walked — the way a guard of this shape
+        usually stops guarding.
+        """
+        literals, endpoints = self._do_get_route_facts()
+        assert literals == set(self.LITERAL_GET_ROUTES), {
+            "unwalked": sorted(literals - set(self.LITERAL_GET_ROUTES)),
+            "vanished": sorted(set(self.LITERAL_GET_ROUTES) - literals),
+        }
+        walked = set(self._walkable_paths())
+        missing = sorted(name for name in endpoints
+                         if f"/api/jobs/{self.job_id}/{name}" not in walked)
+        assert missing == [], missing
+        assert endpoints, "the endpoint dict came back empty, so the walk is vacuous"
+
+    def test_every_route_the_server_serves_refuses_post_put_and_delete(self):
+        """The walk itself: one real request per route per mutating method."""
+        port, token = self._start_server()
+        seen = []
+        for path in self._walkable_paths():
+            for method in ("POST", "PUT", "DELETE"):
+                status, body = self._request(
+                    port, method, f"{path}?token={token}",
+                    body=self._valid_body(),
+                    headers=self._auth_headers(token))
+                seen.append((method, path, status, body.get("error")))
+        wrong = [row for row in seen if row[2] != 405]
+        assert wrong == [], wrong
+        assert {row[3] for row in seen} == {"method not allowed"}, seen
+        # A walk is only worth the name if it walked what it says it walked.
+        assert len(seen) == len(self._walkable_paths()) * 3
+
+    def test_the_commands_path_is_the_only_post_that_is_not_405(self):
+        """The other half: the one door really is open, so 405 above means 405."""
+        port, token = self._start_server()
+        status, body = self._request(
+            port, "POST", self._commands_path(),
+            body=self._valid_body(client_nonce="nonce-405-walk"),
+            headers=self._auth_headers(token))
+        assert status == 200, body
+        assert body["outcome"] == "accepted", body
+
+    def test_an_unknown_path_is_405_for_every_mutating_method(self):
+        """404 belongs to GET; a mutating verb never gets that far."""
+        port, token = self._start_server()
+        for method in ("POST", "PUT", "DELETE"):
+            status, body = self._request(
+                port, method, f"/api/nothing/here?token={token}",
+                body=self._valid_body(),
+                headers=self._auth_headers(token))
+            assert status == 405, (method, status, body)
+
+    def test_a_near_miss_of_the_commands_path_is_405(self):
+        """Fail closed: only an UNAMBIGUOUS commands path opens the door."""
+        port, token = self._start_server()
+        for path in (f"/api/jobs/{self.job_id}/commands/extra",
+                     f"/api/jobs/{self.job_id}/command",
+                     "/api/jobs/commands",
+                     f"/api/JOBS/{self.job_id}/commands"):
+            status, body = self._request(
+                port, "POST", path, body=self._valid_body(),
+                headers=self._auth_headers(token))
+            assert status == 405, (path, status, body)
+
     # -- B: the GET door still behaves as it did ----------------------------
 
     def test_get_door_still_answers_200_for_the_correct_token(self):
