@@ -391,13 +391,22 @@ class TestCommandChannelDoor:
         assert body["outcome"] == "accepted"
         assert body["command"] == "job.stop"
 
-    def test_absent_args_is_valid_and_reaches_the_seam(self):
+    def test_absent_args_is_valid_and_reaches_the_effect(self):
+        """Absent `args` is a SHAPE success: it reaches the effect, which declines.
+
+        DECISION F009 D21: no `decision_id` names no answerable decision, so the
+        effect RUNS and REFUSES, which is 409 and `rejected_state` — not the 400
+        a shape error would give and not the 501 this pin asserted while the
+        dispatch was a placeholder.
+        """
         port, token = self._start_server()
         status, body = self._request(
             port, "POST", self._commands_path(),
             body=json.dumps({"command": "decision.resolve", "client_nonce": "n-2"}),
             headers=self._auth_headers(token))
-        assert (status, body["command"]) == (501, "decision.resolve")
+        assert status == 409, body
+        assert body["error"] == "decision is not open", body
+        assert self._audit_records()[-1]["outcome"] == "rejected_state"
 
     def test_present_args_object_is_valid_and_is_accepted(self):
         port, token = self._start_server()
@@ -413,8 +422,11 @@ class TestCommandChannelDoor:
     def test_every_exposed_command_reaches_the_answer_its_effect_gives(self):
         """The set itself is the contract, not the two literals above.
 
-        `job.stop` dispatches and answers 200; `decision.resolve` keeps the seam
-        until its own round, which is then ONE edit to the expectation below.
+        BOTH exposed ids now dispatch. `job.stop` answers 200. A
+        `decision.resolve` built by `_valid_body` carries no `args`, so it names
+        no answerable decision and its effect RUNS and DECLINES: DECISION F009
+        D21's 409, whose body carries `error` and not `command` because every
+        refusal on this door goes out through the same safe-error shape.
         """
         from apps.cli.command_catalog import UI_EXPOSED_COMMANDS
 
@@ -425,9 +437,12 @@ class TestCommandChannelDoor:
                 body=self._valid_body(
                     command=command_id, client_nonce=f"nonce-exposed-{index}"),
                 headers=self._auth_headers(token))
-            expected = 200 if command_id == "job.stop" else 501
-            assert status == expected, command_id
-            assert body["command"] == command_id
+            if command_id == "job.stop":
+                assert status == 200, command_id
+                assert body["command"] == command_id
+            else:
+                assert status == 409, command_id
+                assert body["error"] == "decision is not open", command_id
 
     def test_unexposed_catalog_command_is_400_on_field_command(self):
         """`job.list` is a real catalog id that the write door does not expose."""

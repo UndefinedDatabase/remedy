@@ -3089,9 +3089,22 @@ COMMAND_EFFECT_FAILED_MESSAGE = "command could not be carried out"
 #: told apart from a `remedy job stop` inside the signal (DECISION F009 D20).
 COMMAND_EFFECT_SOURCE = "ui"
 
-#: The one id this door dispatches for real; `decision.resolve` still answers the
-#: seam. Named rather than inlined so its second call site greps to this line.
+#: What a `decision.resolve` naming no answerable decision returns (DECISION F009
+#: D21). The effect RAN and DECLINED, so this is neither a shape error nor a
+#: server fault, and it goes out through `_safe_error` like every other refusal
+#: this door issues (DECISION F009 D22, third clause).
+COMMAND_DECISION_STATE_MESSAGE = "decision is not open"
+
+#: What an id that `_command_is_ui_exposed` admits but no dispatch clause matches
+#: returns. DECISION F009 D22 keeps the 501 as a GUARD rather than a placeholder:
+#: without it such a request falls off the end of the handler with no response
+#: written at all.
+COMMAND_NOT_DISPATCHED_MESSAGE = "command is exposed but not dispatched"
+
+#: The two ids this door dispatches. Named rather than inlined so that each
+#: second call site greps to this line.
 JOB_STOP_COMMAND_ID = "job.stop"
+DECISION_RESOLVE_COMMAND_ID = "decision.resolve"
 
 _COMMAND_RATE_LOCK = threading.Lock()
 #: (token fingerprint, job id) -> (window start, commands accepted in it).
@@ -3448,14 +3461,43 @@ class _RemedyHandler(BaseHTTPRequestHandler):
                                          accepted_body)
             self._send_json(200, accepted_body)
             return
-        # `decision.resolve` keeps the seam until its own round: D5 maps it to
-        # `answer_task_decision` followed by `save_job`, and that effect is not
-        # wired here yet, so 501 is still the honest status for it.
+        # D5 maps `decision.resolve` to `answer_task_decision` followed by
+        # `save_job`; DECISION F009 D21 rules that BOTH are the effect, because
+        # the answer is durable only once `save_job` returns. D18's write order
+        # above is unchanged: effect, then the audit line, then the publication.
+        if payload["command"] == DECISION_RESOLVE_COMMAND_ID:
+            try:
+                accepted_body = self._dispatch_decision_resolve(job, payload)
+            except (OSError, RuntimeError, ValueError, TypeError):
+                # D18, clause four: an effect that RAISED is neither `accepted`,
+                # which would be false, nor unaudited, which would break D6.
+                self._audit_attempt(str(job.id), "rejected_effect", create=True,
+                                    payload=payload)
+                self._send_json(*_safe_error(500, COMMAND_EFFECT_FAILED_MESSAGE))
+                return
+            if accepted_body is None:
+                # D21, clause three: the effect RAN and DECLINED — the decision
+                # is absent or is no longer open. Nothing changed on disk, so
+                # nothing is published and a retry cannot answer it differently.
+                self._audit_attempt(str(job.id), "rejected_state", create=True,
+                                    payload=payload)
+                self._send_json(*_safe_error(409, COMMAND_DECISION_STATE_MESSAGE))
+                return
+            # D18, clause three, re-examined by D21 and standing: both writes
+            # below fail SOFT. The answer is already persisted, so refusing
+            # after the fact would report an answer that really was written as
+            # one that was not.
+            self._audit_attempt(str(job.id), "accepted", create=True, payload=payload)
+            self._publish_command_result(str(job.id), payload["client_nonce"],
+                                         accepted_body)
+            self._send_json(200, accepted_body)
+            return
+        # An id `_command_is_ui_exposed` admitted that no clause above dispatches.
+        # DECISION F009 D22: this is a GUARD, not a placeholder — unreachable
+        # while the exposed subset holds exactly the two ids named above, and the
+        # alternative is a request that gets no response at all.
         self._audit_attempt(str(job.id), "not_implemented", create=True, payload=payload)
-        self._send_json(501, {
-            "error": "command channel not yet accepting commands",
-            "command": payload["command"],
-        })
+        self._send_json(*_safe_error(501, COMMAND_NOT_DISPATCHED_MESSAGE))
 
     def _dispatch_job_stop(self, job_id: str, payload: Any) -> dict[str, Any]:
         """Run `job.stop`'s effect and build the body DECISION F009 D18 rules for it.
@@ -3472,6 +3514,48 @@ class _RemedyHandler(BaseHTTPRequestHandler):
             source=COMMAND_EFFECT_SOURCE)
         return {"command": payload["command"], "outcome": "accepted",
                 "request_id": signal.request_id}
+
+    def _dispatch_decision_resolve(self, job: Any,
+                                   payload: Any) -> dict[str, Any] | None:
+        """Answer one task decision and PERSIST it. None means the effect declined.
+
+        DECISION F009 D21: `answer_task_decision` and `save_job` are BOTH the
+        effect, because the answer is durable only once `save_job` returns, so a
+        raise from either is D18 clause four's `rejected_effect`. A None return
+        is NOT a failure — the decision is absent or is no longer open — and the
+        caller answers it 409 and audits it `rejected_state`.
+
+        DECISION F009 D22: `source` is deliberately NOT passed, so the answer
+        takes `answer_task_decision`'s default of `human`. `answer_source` names
+        WHO DECIDED over a closed two-value vocabulary that
+        `escalation.escalation_assumptions_md` COUNTS, and a person answering
+        through the UI is a human; passing this door's own name would land the
+        record in neither tally. This is deliberately NOT DECISION F009 D20's
+        rule for `request_stop`, whose `source` names the TRANSPORT instead.
+        The door's own attribution lives in `commands_audit.jsonl` (D6).
+
+        `decision_id` and `answer` degrade to "" when absent or non-string, for
+        the reason D20 gave for `reason`: D14 types `args` as an object and never
+        types what is inside it. An empty id matches no record, so the refusal
+        path answers it rather than an exception.
+        """
+        from datetime import datetime, timezone
+
+        from packages.orchestration.escalation import answer_task_decision
+        from packages.orchestration.storage import save_job
+        args = payload.get("args")
+        args = args if isinstance(args, dict) else {}
+        decision_id = args.get("decision_id")
+        answer = args.get("answer")
+        record = answer_task_decision(
+            job, decision_id if isinstance(decision_id, str) else "",
+            answer=answer if isinstance(answer, str) else "",
+            now=datetime.now(timezone.utc))
+        if record is None:
+            return None
+        save_job(job)
+        return {"command": payload["command"], "outcome": "accepted",
+                "decision_id": str(record.get("decision_id", ""))}
 
     def _publish_command_result(self, job_id: str, client_nonce: str,
                                 body: dict[str, Any]) -> None:
