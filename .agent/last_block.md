@@ -1,180 +1,147 @@
-── STEP T003 (round 1 of the five DECISION F009 D17 rules) — F009 ────────────
-Goal:        Put the two package-level prerequisites of the dispatch on disk —
-             the nonce store's publication bound (finding R-0637) and the audit
-             vocabulary's `accepted` and `replayed` tokens — with their tests,
-             and change the door not at all. The 501 seam still stands when this
-             round ends, and `tests/ui_server/test_command_channel.py` is
-             untouched by design.
+── STEP T003 (record round, between rounds 1 and 2 of DECISION F009 D17) — F009 ──
+Goal:        Put this session's remaining judgements on disk before the session
+             ends. The round records the R15 verdict, resolves R-0637 with the
+             reviewer's own verification, and adds the three R15 recurrences to
+             the OPEN findings that already describe them. It writes NO
+             production code, which is what it exists for: a verdict that lives
+             only in a session's chat is lost when that session ends.
 
-Bundle:      C0a save this block · C0b mirror it · C1 plan · C2 the R14 verdict ·
-             C3 DECISION F009 D17 · C4 the publication bound and its tests ·
-             C5 the audit vocabulary and its pin · C6 the `Landed:` line ·
-             C7 handback.
+Fortschritt: ~70 % (T001 gebaut · T002 gebaut, jetzt mit Publikations-Bound ·
+             T003 begonnen: Extraktion und Vorbedingungen stehen, der Dispatch
+             fehlt) — Schätzung
+
+Bundle:      C0a save this block · C0b mirror it · C1 plan · C2 the R15 verdict
+             and the three recurrences · C3 resolve R-0637 · C4 handback.
 
 Change:      Exactly these paths, and nothing else:
-             `.agent/authored/f009-r15.md` (NEW, C0a)
+             `.agent/authored/f009-r16.md` (NEW, C0a)
              `.agent/last_block.md` (C0b)
              `.agent/plan.md` (C1)
-             `.agent/live_review.md` (C2, C6)
-             `.agent/decisions.md` (C3)
-             `packages/orchestration/command_nonce.py` (C4)
-             `tests/orchestration/test_command_nonce.py` (C4)
-             `packages/orchestration/command_audit.py` (C5)
-             `tests/orchestration/test_command_audit.py` (C5)
-             `.agent/handoff.md` (C7)
-             NOTHING under `apps/`, `docs/`, `tests/ui_server/` or
-             `tests/cli/` is touched. `packages/orchestration/ui_server.py` is
-             NOT edited this round: the dispatch is round 2.
+             `.agent/live_review.md` (C2, C3)
+             `.agent/handoff.md` (C4)
+             NOTHING under `packages/`, `apps/`, `tests/` or `docs/` is touched.
+             This round writes no production code and pays no finding in code.
 
 Constraints:
  1. Apply every slice BYTE FOR BYTE. Never retype, rewrap, reflow, reindent or
     whitespace-adjust one. If a slice looks wrong, STOP and say so in the
-    handback rather than fixing it — an objection is cheaper than a silent edit.
- 2. Every FROM/TO pair below was classified MECHANICALLY by the reviewer before
-    emission, by testing whether the TO contains the FROM verbatim. The script
-    printed `TO contains FROM: false` for ALL SIX pairs, so all six are
-    REWRITES and each carries the FROM-0x / TO-1x obligation. NONE of them is
-    an append, including `NONCE_TESTIMPORT`, whose TO keeps its anchor line but
-    does not contain its FROM contiguously. `NONCE_TESTAPPEND` is not a pair at
-    all: it is a code APPEND to the end of its file and carries the §4.9
-    ordered-equality obligation instead.
- 3. Each FROM below occurs EXACTLY ONCE in its target file at the round base;
-    the reviewer counted each one. Replace that single occurrence.
- 4. Commit order is C0a, C0b, C1, C2, C3, C4, C5, C6, C7 and is not negotiable.
-    C1 is the first substantive commit because this round writes the finding
-    ledger and the plan must be current before it (§3 item 23).
- 5. The reviewer's own dry run of C4 and C5 ran in a disposable worktree at the
-    round base and is already green; the two red controls below were run there
-    too. Reproduce the gates, do not trust this sentence.
- 6. This round is SPLIT type: it changes `packages/`, so nothing here is
-    self-certified.
+    handback rather than fixing it.
+ 2. C2 is an APPEND to `.agent/live_review.md`. C3 is the ONE sanctioned
+    non-append edit to that file: docs/agents/planner_reviewer_prompt.md §4.4
+    requires the reviewer's `Done:` text to REPLACE the worker's `Landed:`
+    line, and commit `29ee4b08` on this branch is the precedent — a 1-line-for-
+    1-line replacement. DONE0637_FROM is that whole single line; it occurs
+    EXACTLY ONCE in the file at the round base, which the reviewer measured.
+    Nothing else in the file is touched by either commit.
+ 3. The pair DONE0637_FROM → DONE0637_TO was classified MECHANICALLY before
+    emission: the script printed `TO contains FROM: false`, so it is a REWRITE
+    and carries the FROM-0x / TO-1x obligation, not an append obligation.
+ 4. Commit order is C0a, C0b, C1, C2, C3, C4 and is not negotiable. C1 is the
+    first substantive commit because this round writes the finding ledger and
+    the plan must be current before it (§3 item 23).
+ 5. This round mints NO new finding id. All three R15 recurrences are added to
+    findings the open set ALREADY holds — R-0585, R-0629 and R-0418 — because
+    §3 item 30 requires the open set to be searched for the DEFECT before an id
+    is minted, and the reviewer searched it and found all three. The next free
+    id is therefore still R-0638 when this round ends.
+ 6. The `Fortschritt:` line above is relayed deliberately. The R15 block carried
+    none, the worker had to declare that as an assumption, and finding R-0418 is
+    exactly that defect; the handback's state block repeats this line VERBATIM.
 
 Done when — run every gate and record its REAL exit code and output:
- G1  Before C0a and again before C7: `.agent/STOP` is ABSENT,
+ G1  Before C0a and again before C4: `.agent/STOP` is ABSENT,
      `git rev-parse --abbrev-ref HEAD` prints
      `feature/f009-single-write-channel`, and `git status --porcelain` prints 0
-     lines after each of C0a through C7. Report the round base SHA you read at
+     lines after each of C0a through C4. Report the round base SHA you read at
      step 0.
- G2  TRANSPORT: `.agent/authored/f009-r15.md` at C0a and `.agent/last_block.md`
+ G2  TRANSPORT: `.agent/authored/f009-r16.md` at C0a and `.agent/last_block.md`
      at C0b are byte-equal to each other and to the block you received. Report
      sha256, byte count and line count for both. C0b is written FROM the
      committed C0a blob, never from the scratch copy again.
  G3  SLICES: extract every slice from the COMMITTED C0a blob by its
      `<<<SLICE ` and `<<<END ` marker lines with a script, and apply them
      programmatically. Report each slice's sha256, bytes and lines, plus the
-     aggregate count your script printed. Do not state a slice count you have
-     not counted.
- G4  `.agent/plan.md` at C1 is BYTE-EQUAL to PLANF009R15 — report `cmp` exit
+     aggregate count your script printed. State no slice count you did not
+     count.
+ G4  `.agent/plan.md` at C1 is BYTE-EQUAL to PLANF009R16 — report `cmp` exit
      and both sha256 — and `wc -l` reads it against the 50-line cap of
      AGENTS.md. Line-anchored, `^## Goal$` and `^## Next Steps$` each read 1.
- G5  APPENDS, each under TWO independent readers with a negative control on its
-     FIRST appended paragraph (finding R-0631). For C2 over
-     `.agent/live_review.md` with the round base as base, and for C3 over
-     `.agent/decisions.md` with the C2 commit's blob of that file as base:
-     (a) the base blob is a byte-exact PREFIX and the remainder equals a
-     newline plus the slice — report the remainder's sha256, bytes and lines;
-     (b) N is counted BY YOUR SCRIPT, not asserted, and the last N blank-line
-     units of the file equal the slice's N paragraphs IN ORDER. Then flip one
-     printable byte in the FIRST appended paragraph and report that BOTH
-     readers REJECT the flip while both accept the true file. Report the
-     before/after byte and line counts. Nothing already in either file is
-     edited.
- G6  Line-anchored over `.agent/live_review.md` at the round base and at C6
+ G5  APPEND, under TWO independent readers with a negative control on the FIRST
+     appended paragraph (finding R-0631). For C2 over `.agent/live_review.md`
+     with the round base as base: (a) the base blob is a byte-exact PREFIX and
+     the remainder equals a newline plus LEDGER16 — report the remainder's
+     sha256, bytes and lines; (b) N is counted BY YOUR SCRIPT, not asserted,
+     and the last N blank-line units of the file equal LEDGER16's N paragraphs
+     IN ORDER. Then flip one printable byte in the FIRST appended paragraph and
+     report that BOTH readers REJECT the flip while both accept the true file.
+     Report the before/after byte and line counts.
+ G6  C3 IS A REPLACEMENT, NOT AN APPEND, so prove it as one. At C3 in
+     `.agent/live_review.md`: DONE0637_FROM reads 0 and DONE0637_TO reads 1,
+     with the whole-line and the indent-agnostic counts BOTH taken and
+     AGREEING. Then show that the C2 blob of that file with the single pair
+     applied is BYTE-EQUAL to what C3 landed, so no other byte of the file
+     changed. Report `git show --numstat` for C3 over that path and state
+     whether it reads 1 insertion and 1 deletion.
+ G7  Line-anchored over `.agent/live_review.md` at the round base and at C3
      (finding R-0630 — state that the anchor is line-start): `^- R-\d+ — ` with
-     every captured id DISTINCT at each reading; `^Done: R-\d+ — `;
-     `^Landed: R-\d+ — `; `^Gate: R\d+ — ` over that many DISTINCT keys; and
-     `^Gate: R15 — `. Report each pair of readings and the max id. Report the
-     open count by DECISION F009 D10's rule — line-anchored entries minus
-     line-anchored `Done:` lines — at C6.
- G7  Line-anchored over `.agent/decisions.md` at the round base and at C3:
-     `^## DECISION F009 D\d+ — ` with every captured number DISTINCT at each,
-     `^## DECISION F009 D17 — `, and the `^## DECISION ` total.
- G8  PAIRS: for each of the six REWRITE pairs report, in the file it targets
-     and at the commit that applies it, the FROM count reading 0 and the TO
-     count reading 1, with the whole-line and the indent-agnostic counts BOTH
-     taken and AGREEING. Then show that applying the three
-     `command_nonce.py` pairs to the round-base blob in the order NONCE_CONST,
-     NONCE_DOC, NONCE_PUB yields a file BYTE-EQUAL to what C4 landed, so no
-     byte of that file changed beyond the authored pairs; do the same for
-     `command_audit.py` with its single pair at C5.
- G9  APPEND, ordered equality (§4.9, finding R-0531), scoped to ONE path and
-     read against BOTH changes C4 makes to it (finding R-0615). C4 changes
-     `tests/orchestration/test_command_nonce.py` in two ways — the
-     NONCE_TESTIMPORT rewrite and the NONCE_TESTAPPEND append — so the
-     round-base blob is NOT a prefix of the result and this gate does not claim
-     it is; the reviewer measured that and it reads false. Prove instead, in
-     three separate readings: take the round-base blob of that path, apply
-     NONCE_TESTIMPORT to it ALONE, and show (i) the result is a byte-exact
-     PREFIX of the file C4 landed, (ii) NONCE_TESTAPPEND is an exact SUFFIX of
-     that landed file, and (iii) the landed file EQUALS that prefix followed by
-     that slice with NOTHING between them. Report all three.
- G10 SUITES, run SERIALLY in the PRIMARY checkout, never two pytest processes
-     at once, and never in a worktree. Report each command's REAL exit code and
+     every captured id DISTINCT at each; `^Done: R-\d+ — `; `^Landed: `;
+     `^Gate: R\d+ — ` over that many DISTINCT keys; `^Gate: R16 — `; and
+     `^- R-0638 — `, which must read 0 at both because this round mints no id.
+     Report each pair of readings, the max id, and the open count by DECISION
+     F009 D10's rule — line-anchored entries minus line-anchored `Done:` lines
+     — at C3. The `Done:` reading is EXPECTED to rise by one and the `Landed:`
+     reading to fall to 0; report what you measure, not what this sentence
+     predicts.
+ G8  The three findings this round adds evidence to are named in LEDGER16 and
+     each already exists: report `^- R-0585 — `, `^- R-0629 — ` and
+     `^- R-0418 — ` each reading 1 at the round base, line-anchored. This gate
+     exists because §3 item 30 forbids a second id for a defect the open set
+     already holds, and a claim that an id is already there is worth measuring.
+ G9  SUITES, run SERIALLY in the PRIMARY checkout, never two pytest processes
+     at once and never in a worktree. Report each command's REAL exit code and
      the count IT printed — predict no number:
-       `python3 -m ruff check packages/orchestration/command_nonce.py
-        packages/orchestration/command_audit.py
-        tests/orchestration/test_command_nonce.py
-        tests/orchestration/test_command_audit.py`
-       `python3 -m pytest tests/orchestration/test_command_nonce.py
-        tests/orchestration/test_command_audit.py -q -rf`
        `python3 -m pytest tests/cli/test_golden_path.py -q -rf`
        `python3 -m pytest tests/ui_server/ tests/orchestration/test_test_runner.py
         tests/regression/test_resource_safety.py
         tests/orchestration/test_integrity_gate.py -q -rf`
      The canary is unconditional and the four-path group is owed because this
      round's change set holds `.agent/` state files (finding R-0607). The
-     reviewer measured the first two at the round base before ordering them:
-     ruff exits 0 and the pair of suites exits 0, so both can fail honestly.
- G11 RED CONTROLS, in a DISPOSABLE worktree only, never in the primary
-     checkout, removed and pruned afterwards — report `git worktree list`:
-     (a) Run this control at C4, NOT at the round base: the bytes it removes do
-         not exist before C4 creates them. In
-         `packages/orchestration/command_nonce.py` delete the two lines
-         `    if len(raw) > MAX_NONCE_RECORD_BYTES:` and `        return None`
-         that directly follow the line `    raw = _record_bytes(record)`. The
-         reviewer measured that three-line sequence AS C4 LANDS IT at exactly
-         1 occurrence in that file, whole-line and indent-agnostic readings
-         both reading 1 (§3 item 25); the bare line `    return None` occurs 14
-         times there, which is why the control names the three-line sequence
-         and not that line. Re-run the nonce suite and report WHICH node ids
-         fail and the colour — report no count you were given. Restore the
-         worktree.
-     (b) Run this control at C5. In `packages/orchestration/command_audit.py`
-         delete the two lines `    "accepted",` and `    "replayed",` from
-         `OUTCOMES`. The reviewer measured that two-line sequence AS C5 LANDS
-         IT at exactly 1 occurrence, both readings agreeing. Re-run
-         `tests/orchestration/test_command_audit.py` and report which node id
-         fails and the colour.
-     Both controls exist because a suite that cannot go red proves nothing when
-     it is green.
- G12 RANGE: the range from the round base to C6 lists EXACTLY the nine declared
-     paths other than `.agent/handoff.md`, the set difference EMPTY in both
-     directions, and holds 0 paths beginning `apps/`, `docs/`,
-     `tests/ui_server/` or `tests/cli/` and 0 equal to
-     `packages/orchestration/ui_server.py`. Each commit has ONE parent;
-     `git show --numstat` and `git diff --numstat` AGREE on every cell; every
-     cell equals the `+/-` column of the handback's `## Commits` table (§3 item
-     28) — compare them cell by cell and say so. Report each pre-handback
-     commit's insertions against the 500 cap of AGENTS.md DECISION F104 D1; the
-     handback commit's own numbers belong in the round report, not here (§3
-     item 14). `^<<<SLICE ` and `^<<<END ` read 0 lines in ALL SIX committed
-     targets. `git ls-files .remedy-wt` reads 0. Classify THIS ROUND's reflog
-     rows by the operation before the first `:` and report `amend`, `rebase`
-     and `cherry` each reading 0; assert no total over the whole reflog
-     (finding R-0601).
- G13 The handback carries every mandated section of
+     reviewer ran both at the round base before ordering them: each exits 0, so
+     each can fail honestly.
+ G10 RANGE: the range from the round base to C3 lists EXACTLY the four declared
+     paths other than `.agent/handoff.md` — `.agent/authored/f009-r16.md`,
+     `.agent/last_block.md`, `.agent/plan.md` and `.agent/live_review.md` — the
+     set difference EMPTY in both directions, and holds 0 paths beginning
+     `packages/`, `apps/`, `tests/` or `docs/`, which is this round's
+     no-production-code constraint as a measurement. Each commit has ONE
+     parent; `git show --numstat` and `git diff --numstat` AGREE on every cell;
+     every cell equals the `+/-` column of the handback's `## Commits` table
+     (§3 item 28) — compare them cell by cell and say so. Report each
+     pre-handback commit's insertions against the 500 cap of AGENTS.md DECISION
+     F104 D1; the handback commit's own numbers belong in the round report, not
+     here (§3 item 14). `^<<<SLICE ` and `^<<<END ` read 0 lines in BOTH files
+     any slice lands in — `.agent/plan.md` and `.agent/live_review.md`; that
+     set has two members and the reviewer counted it. `git ls-files .remedy-wt`
+     reads 0. Classify THIS ROUND's reflog rows by the operation before the
+     first `:` and report `amend`, `rebase` and `cherry` each reading 0; assert
+     no total over the whole reflog (finding R-0601). Create NO worktree: no
+     gate this round needs one, so `git worktree list` prints 1 line throughout.
+ G11 The handback carries every mandated section of
      docs/agents/handback_template.md, an item-status table with exactly one
-     row for each of C0a, C0b, C1, C2, C3, C4, C5, C6 and C7, the round base
-     SHA, one line per gate with the transcripts in the round report rather
-     than in the file (finding R-0582), and the Fortschritt line verbatim.
+     row for each of C0a, C0b, C1, C2, C3 and C4, the round base SHA, one line
+     per gate with the transcripts in the round report rather than in the file
+     (finding R-0582), and the `Fortschritt:` line of this block VERBATIM.
      Report its `wc -l` against the 100 lines a bundle of more than five
      commits allows.
 
-Handback:    completion report + rewrite `.agent/handoff.md`. Push after C7.
-             Create NO pull request: F009 opens one at its own closure.
+Handback:    completion report + rewrite `.agent/handoff.md`. Push after C4.
+             Create NO pull request: F009 opens one at its own closure. This is
+             the LAST round of the session; the handback's `## Next` names
+             Phase 1 rule 1 (the `.agent/STOP` re-read) as the next session's
+             FIRST action and the Open PR Gate as its SECOND.
 ─────────────────────────────────────────────────────────────────────────────
 
-<<<SLICE PLANF009R15
+<<<SLICE PLANF009R16
 # Plan — F009 The single write channel
 
 Branch: feature/f009-single-write-channel, cut from `main` at `ce49348b`, the
@@ -193,237 +160,44 @@ cross-site attempts fail closed and are audited as rejected, and a route-walking
 test plus an import guard prove no other mutating route exists.
 
 ## Current Step
-R15 lands the two package-level prerequisites of the dispatch and changes the
-door not at all. The nonce store refuses an oversize record AT PUBLICATION,
-which pays R-0637, and `command_audit.OUTCOMES` gains the `accepted` and
-`replayed` tokens the door will write next round. The 501 seam still stands.
+R16 closes this session and writes no production code. It records the R15
+verdict, resolves R-0637 with the reviewer's own verification, and adds the
+three R15 recurrences to the open findings that already describe them — no new
+id is minted. The nonce store's publication bound and the `accepted` and
+`replayed` audit tokens landed at R15.
 
 ## Next Steps
-1. `job.stop` dispatches to `safe_points.request_stop`, writing `accepted` and
-   publishing the nonce record; the replay audit moves to `replayed`, which
-   pays R-0636. `tests/ui_server/test_command_channel.py` migrates its seam
-   pins in that same round. `decision.resolve` keeps answering 501.
+1. Round 2 of DECISION F009 D17: `packages/orchestration/ui_server.py`
+   dispatches `job.stop` to `safe_points.request_stop`, writes the `accepted`
+   outcome, publishes the nonce record, and moves the replay audit token to
+   `replayed`, which pays R-0636. The seam pins in
+   `tests/ui_server/test_command_channel.py` migrate in that same round —
+   roughly seventeen sites, which is why D17 gave that round its own budget.
+   `decision.resolve` keeps answering 501.
 2. Then `decision.resolve` dispatches and the seam is gone; then the
    `command.accepted` SSE event; then the queue-only import guard, the
    per-command side-effect assertions and the route-walking 405 test; then the
-   integration gate and closure. DECISION F009 D17 carries the ordering.
+   integration gate and closure.
 
 ## Risks
-- Splitting by command means the door briefly dispatches one exposed id and
-  refuses the other with 501. That is honest — `not_implemented` is what the
-  audit records for a command this door has not yet dispatched — but the tests
-  must assert it deliberately rather than inherit it.
-- `accepted` and `replayed` enter the vocabulary a round before any caller
-  writes them. `tests/ui_server/test_command_channel.py` still asserts the door
-  writes no `accepted`, which stays true and is what keeps the gap honest.
+- The door will briefly dispatch one exposed id and refuse the other with 501.
+  That is honest, but the tests must assert it deliberately rather than inherit
+  it, and `test_every_exposed_command_reaches_the_seam` loops over both ids and
+  must be split when that round lands.
+- `accepted` and `replayed` are in the vocabulary with no caller. The door's own
+  guard still asserts it writes no `accepted`, which keeps the gap visible.
 - `npm run lint` in `apps/ui` is RED at base and is NOT a gate (R-0364), which
   is R-0622 and routes to a paydown branch.
-<<<END PLANF009R15
+<<<END PLANF009R16
 
-<<<SLICE LEDGER15
-Gate: R15 — the R14 entry. R14 PASSED. The round wrote no production code, which is what it existed for, and every value it reported reproduced under the reviewer's own re-execution off disk rather than being read back out of the handback. TRANSPORT HELD: `.agent/authored/f009-r14.md` at `6d1df108` and `.agent/last_block.md` at `17f7a75b` are both sha256 654dfd57dbf72a9dae005417f1594ac9e4136af4cd9acec2df30d7295b143abb over 21051 bytes and 208 lines, equal as bytes and equal to the digest the round declared. THE SLICES ARE THE REVIEWER'S OWN ORDERED EXTRACTION out of the committed C0a blob: exactly PLANF009R14 `d22036cc…` 2550 B 43 L, LEDGER14 `82e6f1c0…` 5086 B 1 L and DECISION16 `9f8e2c4c…` 3607 B 13 L, aggregating to 11243 bytes over 57 lines. `.agent/plan.md` at `130c2ef3` is BYTE-EQUAL to PLANF009R14 at 43 lines against the 50-line cap, with `^## Goal$` and `^## Next Steps$` reading 1 each and `F009` the first `\bF\d{3}\b` match. BOTH APPENDS HOLD UNDER BOTH READERS WITH THE REVIEWER'S OWN NEGATIVE CONTROLS: at `dd6cdfe8` the live-review base blob is a byte-exact prefix and the remainder is a newline plus LEDGER14, sha256 `1a542238…` over 5087 bytes and 2 lines, the file going 458487 to 463574 bytes and 1084 to 1086 lines; at `5a8fb3b0` the decisions base blob is a byte-exact prefix and the remainder is a newline plus DECISION16, sha256 `eeb7a60c…` over 3608 bytes and 14 lines, the file going 442327 to 445935 bytes and 6797 to 6811 lines; the paragraph reader counted N as 1 and 7 respectively and matched the appended units in order, and a single flipped printable byte in the FIRST appended paragraph of each was REJECTED by both readers while both accepted the true file. THE SETS HELD line-anchored at the round base and at C2: `^- R-\d+ — ` 203 and 203 with every id DISTINCT at each, `^Done: R-\d+ — ` 2 at both, `^Landed: ` 0 at both, `^Gate: R\d+ — ` 13 and 14 over that many DISTINCT keys, `^Gate: R14 — ` 0 and 1, max id R-0637, and 201 open by DECISION F009 D10's rule. THE DECISIONS FILE HELD: `^## DECISION F009 D\d+ — ` 15 and 16 with every number DISTINCT, `^## DECISION F009 D16 — ` 0 and 1, and the `^## DECISION ` total 100 and 101. THE HEADER MATCHES THE SHAPE IT JOINS: of the 14 `Gate: ` lines at C2, 13 read `Gate: R<n> — the R<n-1> entry.` and the one that does not is `Gate: R1 — the F008 R36 entry.`, which records the previous feature's closing verdict and has no R0 to name — so the ledger gained no duplicate key (§3 item 26). THE SUITES ARE THE REVIEWER'S OWN, run serially in the primary checkout: `python3 -m pytest tests/cli/test_golden_path.py -q -rf` EXITS 0 at 42 passed and the four-path state-reader group EXITS 0 at 507 passed, the same two numbers the handback reported and neither of them predicted. THE RANGE HELD, walked by the reviewer: six single-parent commits over exactly the five declared paths plus the handback's own, the set difference empty in both directions and 0 paths under `packages/`, `apps/`, `tests/` or `docs/`, which is the no-production-code constraint as a measurement; insertions 208, 121, 19, 2 and 14 for the five pre-handback commits, every one under the 500 cap; `^<<<SLICE ` and `^<<<END ` reading 0 in all three committed targets; `git ls-files .remedy-wt` 0; and one worktree, the primary checkout alone. THE VERDICT TEXT IT CARRIED IS ITSELF TRUE, which a shape gate cannot reach and the reviewer therefore measured: LEDGER14's R13 claims reproduce — `.agent/authored/f009-r13.md` at `97f364be` and `.agent/last_block.md` at `19aec738` are both sha256 23b45930601cfdfe083f267acb946475c378f41c24331daa7ca4aaa380a63ed8 over 23444 bytes and 351 lines, its nine slices aggregate to 11031 bytes over 149 lines, `.agent/plan.md` at `f9c51774` is byte-equal to PLANF009R13 at 41 lines, `packages/orchestration/flight_plan.py` at `c204f0b5` is sha256 2298635f1e4151f8d9712786b7d5224223bc642f8cb3c95d6f123cb858a1730d, R13's per-commit insertions are 351, 286, 17, 2, 49 and 34, and its handback is 82 lines. DECISION F009 D16'S OWN MEASUREMENT IS TRUE TOO: `UI_EXPOSED_COMMANDS` in `apps/cli/command_catalog.py` at `1e7539be` holds exactly `job.stop` and `decision.resolve`, and `resolve_flight_plan_approval` is defined in `packages/orchestration/flight_plan.py` at `c204f0b5`. NO FINDING is registered against R14.
-<<<END LEDGER15
+<<<SLICE LEDGER16
+Gate: R16 — the R15 entry. R15 PASSED. Every gate was RE-EXECUTED by the reviewer off disk rather than read back out of the handback, and every value reproduced. TRANSPORT HELD IN ITS STRONGEST FORM: `.agent/authored/f009-r15.md` at `89919dbd` and `.agent/last_block.md` at `4ea0aef3` are both sha256 9267d80767b2069481d1cfdf66363804f9ae832dec5086653f9734da03b22f15 over 30644 bytes and 429 lines, and the reviewer compared them not merely against the digest it had recorded but against the emitted bytes THEMSELVES, which were still on disk — `cmp`-against-original, not the digest fallback of §4.9. The reviewer's own ordered extraction out of the committed C0a blob gives 16 slices aggregating 18149 bytes over 206 lines, the same aggregate the handback printed. `.agent/plan.md` at `c92a41b7` is BYTE-EQUAL to PLANF009R15 at 43 lines against the 50-line cap, `^## Goal$` and `^## Next Steps$` reading 1 each. THE APPENDS HOLD UNDER THE REVIEWER'S OWN READERS: at `db2c6c23` the base blob is a byte-exact prefix and the remainder is exactly a newline plus LEDGER15, sha256 `09ef4431…` over 4343 bytes and 2 lines, the file going 463574 to 467917 bytes and 1086 to 1088 lines; at `5188259d` the C2 blob is a byte-exact prefix and the remainder is exactly a newline plus DECISION17, sha256 `d3d79605…` over 4121 bytes and 16 lines, the file going 445935 to 450056 bytes and 6811 to 6827 lines. THE CODE IS EXACTLY THE AUTHORED SLICES AND NOTHING MORE, which is the reading that matters for a round that touches `packages/`: the reviewer rebuilt each of the four changed files from its round-base blob by applying only the authored pairs, and all four reconstructions are BYTE-EQUAL to what landed — `command_nonce.py` and `test_command_nonce.py` at `f52d6534`, `command_audit.py` and `test_command_audit.py` at `8604e557`. For `tests/orchestration/test_command_nonce.py` the three-reading proof holds as the block ordered it: the round-base blob is NOT a prefix of the result, the blob with NONCE_TESTIMPORT applied alone IS a byte-exact prefix, NONCE_TESTAPPEND is an exact suffix, and the landed file equals prefix plus slice with nothing between. THE SETS HELD line-anchored at the round base and at C6: `^- R-\d+ — ` 203 and 203 with every id DISTINCT at each, `^Done: R-\d+ — ` 2 at both, `^Landed: R-\d+ — ` 0 and 1, `^Gate: R\d+ — ` 14 and 15 over that many DISTINCT keys, `^Gate: R15 — ` 0 and 1, max id R-0637, and 201 open by DECISION F009 D10's rule. `^## DECISION F009 D\d+ — ` reads 16 and 17 with every number DISTINCT, and the `^## DECISION ` total 101 and 102. THE SUITES ARE THE REVIEWER'S OWN, run serially in the primary checkout: ruff over the four changed paths EXITS 0, the nonce and audit pair EXITS 0 at 45 passed, the canary EXITS 0 at 42 passed and the four-path state-reader group EXITS 0 at 507 passed — the same four results the handback reported and not one of them predicted by it. THE RED CONTROLS ARE REAL, and the reviewer had run both itself in a disposable worktree BEFORE the round was delegated: removing the publication bound fails exactly `test_a_record_over_the_bound_is_refused_at_publication` and `test_the_bound_refuses_before_the_store_is_created`, and removing the two vocabulary tokens fails exactly `test_the_outcome_vocabulary_is_the_closed_set_d14_ruled` — so the three tests this round ships genuinely reach the code it changed. THE DOOR IS UNTOUCHED, which this round existed to guarantee: the range holds 0 paths equal to `packages/orchestration/ui_server.py` and 0 under `tests/ui_server/`, and that suite passes UNMODIFIED inside the 507. THE RANGE HELD: nine single-parent commits over exactly the nine declared paths plus the handback's own, the set difference empty in both directions, pre-handback insertions 429, 395, 18, 2, 16, 58, 14 and 2, every one under the 500 cap; zero `^<<<SLICE ` and `^<<<END ` lines in all seven slice targets; `git ls-files .remedy-wt` 0; a clean tree and one worktree. THREE DEVIATIONS WERE DECLARED AND ALL THREE ARE THE REVIEWER'S OWN BLOCK DEFECTS, found by the worker, confirmed by the reviewer's measurement, and each belonging to a finding THIS RECORD ALREADY HOLDS OPEN — so no id is minted for any of them, on §3 item 30's rule that the open set is searched for the DEFECT and not merely for an id. FIRST, G12 ordered the marker count over "ALL SIX committed targets" while the slice-target set is SEVEN files; all seven read 0, so the property held over a set one larger than the numeral, and the gate named no list a reader could have checked the numeral against. That is R-0585 recurring — a done-when counting a list it does not name — and its counter-measure, prefer naming the list over counting it, is what would have caught it. SECOND, G11a stated that the bare line `    return None` occurs 14 times in `command_nonce.py` at C4; measured whole-line at its real eight-space indent it occurs 12, and 14 is the indent-agnostic reading, so the gate stated one numeral without naming which of the two readings produced it. The block's point stands under both — the bare line is not unique, the three-line sequence is, and the reviewer re-measured that sequence at 1 under both readings — but R-0629's counter-measure is precisely that a destructive control's target is counted under BOTH readings with both reported, and only one was. That is R-0629 recurring inside the block that was obeying it. THIRD, the R15 block relayed NO `Fortschritt:` line while its own G13 ordered the handback to carry one, so the worker correctly declared an assumption and carried R14's line forward verbatim rather than inventing a number. That is R-0418 exactly — a self-drive block that does not carry the operator brief leaves the worker with no source for it — and the R16 block that carries this entry ships a `Fortschritt:` slice, which is the counter-measure applied rather than merely recorded. NONE of the three put a false statement on disk: each was measured and declared by the worker before the reviewer looked, which is the handback working as designed. NO NEW CHECKLIST ITEM IS PROPOSED, on R-0635's and R-0597's reasoning: all three counter-measures are already on disk, and a checklist that grows an entry every time an existing entry goes unrun protects nothing.
+<<<END LEDGER16
 
-<<<SLICE DECISION17
-## DECISION F009 D17 — D16's first round splits in two, and the audit vocabulary lands a round before its writer (2026-08-22)
+<<<SLICE DONE0637_FROM
+Landed: R-0637 — `publish_nonce_result` now serialises the record first and returns None when it exceeds `MAX_NONCE_RECORD_BYTES`, so a record `_read_record` could never replay is refused at publication instead of written; landed at `f52d6534` with three tests in `tests/orchestration/test_command_nonce.py` covering over, at and before-the-store.
+<<<END DONE0637_FROM
 
-Measured at `de1e5c00` by the reviewer, before this round was delegated: retiring the 501 seam for `job.stop` alone moves far more than the door. `tests/ui_server/test_command_channel.py` mentions the literal `501` on 21 lines, and its `_post_command` helper submits `job.stop` by default — `test_the_seam_is_audited_as_not_implemented` asserts exactly that — so roughly seventeen pinned sites change status the moment that one id dispatches, including `test_every_exposed_command_reaches_the_seam`, which loops over both exposed ids and must split because after that round one of them dispatches and the other still answers 501. Two further pins sit outside that file: `tests/orchestration/test_command_audit.py` fixes `OUTCOMES` as an exact tuple and separately asserts `"accepted" not in OUTCOMES`.
-
-CHOSEN: DECISION F009 D16's FIRST round becomes two, so D16's four become five and nothing else in its ordering changes. Round one — this one — lands only what the dispatch DEPENDS on, with no door edit at all: the nonce store's publication bound, which pays R-0637, and the `accepted` and `replayed` tokens in `command_audit.OUTCOMES` with the pin that fixes them. Round two edits `packages/orchestration/ui_server.py`, migrates the seam pins in `tests/ui_server/test_command_channel.py` and pays R-0636. Rounds three, four and five are D16's second, third and fourth unchanged.
-
-WHY, measured rather than estimated: DECISION F085 D6 caps a step block at 490 lines TOTAL. The dispatch, the publication call site, the two finding fixes and roughly seventeen test-pin migrations do not fit in one, and D16 itself rules that a block which does not fit is not delivered — it becomes a declared deviation on a round that did nothing wrong. The cut also keeps D16's own criterion intact: each round is independently testable end to end. This one ships two package functions with their own tests and leaves the door provably unchanged, which is a stronger property than a half-wired dispatch, not a weaker one.
-
-WHY THE VOCABULARY MOVES EARLY, and why that is not a claim about behaviour. `accepted` and `replayed` enter the closed set here while NO caller writes either, and the door's own guard — `tests/ui_server/test_command_channel.py` asserting that no record the door wrote carries `accepted` — stays TRUE and unedited, which is what keeps the gap visible rather than papered over. The reviewer ran that file against this change in a disposable worktree at the round base and it passed unmodified. Landing the vocabulary here buys round two a change set of one production file and one test file.
-
-WHY R-0637 IS PAID HERE THOUGH ITS OWN FIX CLAUSE SAYS OTHERWISE. That clause reads "owed by the round that retires the seam, in the same commit that adds the publish call site". Paying it one round EARLIER is strictly stronger and not a deviation from its intent: the bound is in force BEFORE any door path can reach publication, so the window in which an unreplayable record could be written is never opened rather than merely closed on arrival. R-0636 does NOT move, because its fix genuinely depends on the door caller it names.
-
-ALTERNATIVES: (a) keep D16's four rounds and let the first exceed the block cap — rejected on the cap, which is a measurement and not a preference. (b) split by LAYER instead, landing a dispatch module first — rejected for the same reason D16 rejected it: DECISION F009 D5 rules that the handler imports the effect functions directly and that the import guard asserts exactly that set. (c) migrate the seam pins in THIS round and dispatch in the next — rejected because a test pinning a status the door does not yet return is a test asserting a falsehood, and the suite would have to be red between the two rounds.
-
-REVERSE by collapsing rounds one and two back into a single block, which is possible only if DECISION F085 D6's cap changes; the effect mapping comes from D5 and the round ordering from D16, and neither is altered here.
-<<<END DECISION17
-
-<<<SLICE NONCE_CONST_FROM
-#: A record this large is a bug in the caller, not a response. Matches the door's own
-#: request ceiling, so nothing that fits through the door fails to fit in the store.
-MAX_NONCE_RECORD_BYTES = 64 * 1024
-<<<END NONCE_CONST_FROM
-
-<<<SLICE NONCE_CONST_TO
-#: A record this large is a bug in the caller, not a response. It bounds the RESPONSE this
-#: store holds — a body the door composed — and not the request the client sent, which is a
-#: different quantity that merely shares the door's ceiling (finding R-0637).
-#: `publish_nonce_result` refuses an oversize record instead of writing one, because
-#: `_read_record` refuses it at every later lookup and it could never be replayed.
-MAX_NONCE_RECORD_BYTES = 64 * 1024
-<<<END NONCE_CONST_TO
-
-<<<SLICE NONCE_DOC_FROM
-    status it was returned with, because a replay has to reproduce both. `None` means
-    nothing is in force: an unusable nonce, a job id that is not one, or a control directory
-    that could not be reached.
-<<<END NONCE_DOC_FROM
-
-<<<SLICE NONCE_DOC_TO
-    status it was returned with, because a replay has to reproduce both. `None` means
-    nothing is in force: an unusable nonce, a job id that is not one, a record larger than
-    `MAX_NONCE_RECORD_BYTES`, or a control directory that could not be reached.
-<<<END NONCE_DOC_TO
-
-<<<SLICE NONCE_PUB_FROM
-    record = {"status": int(status), "body": body}
-    dir_fd = _open_nonce_dir_fd(jid, control_root_path, create=True)
-    if dir_fd is None:
-        return None
-    try:
-        published = _fs.write_file_atomically(
-            dir_fd, _record_name(nonce), _record_bytes(record),
-            create_only=True, file_mode=NONCE_FILE_MODE,
-            error_cls=safe_points.StopControlError, noun="command nonce record")
-<<<END NONCE_PUB_FROM
-
-<<<SLICE NONCE_PUB_TO
-    record = {"status": int(status), "body": body}
-    # Finding R-0637: the bound is enforced HERE, where the record is written, and not in
-    # `_read_record` alone. An oversize record is refused by every later lookup, so
-    # publishing one leaves a nonce that can never be replayed and a client whose retry
-    # silently re-executes the command instead of being answered. Refusing at publication
-    # returns None, which is what every other unusable input to this function returns.
-    raw = _record_bytes(record)
-    if len(raw) > MAX_NONCE_RECORD_BYTES:
-        return None
-    dir_fd = _open_nonce_dir_fd(jid, control_root_path, create=True)
-    if dir_fd is None:
-        return None
-    try:
-        published = _fs.write_file_atomically(
-            dir_fd, _record_name(nonce), raw,
-            create_only=True, file_mode=NONCE_FILE_MODE,
-            error_cls=safe_points.StopControlError, noun="command nonce record")
-<<<END NONCE_PUB_TO
-
-<<<SLICE NONCE_TESTIMPORT_FROM
-from packages.orchestration.command_nonce import (
-    NONCE_DIRNAME,
-<<<END NONCE_TESTIMPORT_FROM
-
-<<<SLICE NONCE_TESTIMPORT_TO
-from packages.orchestration.command_nonce import (
-    MAX_NONCE_RECORD_BYTES,
-    NONCE_DIRNAME,
-<<<END NONCE_TESTIMPORT_TO
-
-<<<SLICE NONCE_TESTAPPEND
-
-
-# -- the publication bound (finding R-0637) --------------------------------------------
-
-
-def test_a_record_over_the_bound_is_refused_at_publication(control: Path) -> None:
-    """The write side had no negative control at all: a record that can never be replayed
-    must never be written. `_read_record` refuses anything above the bound, so publishing
-    one would turn idempotency OFF for that nonce with no error anywhere."""
-    oversize = {"filler": "x" * (MAX_NONCE_RECORD_BYTES + 1)}
-    assert publish_nonce_result(
-        JOB, NONCE, oversize, status=200, control_root_path=control) is None
-    assert lookup_nonce_result(JOB, NONCE, control_root_path=control) is None
-    assert not record_path(control).exists()
-
-
-def test_a_record_at_the_bound_still_publishes(control: Path) -> None:
-    """The refusal is an upper bound and not an off-by-one: a record whose serialised form
-    is exactly `MAX_NONCE_RECORD_BYTES` long publishes and reads back. The padding is
-    solved for with the serialiser production itself uses, so this arithmetic cannot drift
-    away from `_record_bytes`."""
-    def sized(filler: int) -> int:
-        return len(_fs.json_bytes({"status": 200, "body": {"filler": "x" * filler}},
-                                  indent=None, sort_keys=False))
-
-    pad = MAX_NONCE_RECORD_BYTES - sized(0)
-    assert sized(pad) == MAX_NONCE_RECORD_BYTES
-    body = {"filler": "x" * pad}
-    published = publish_nonce_result(
-        JOB, NONCE, body, status=200, control_root_path=control)
-    assert published == {"status": 200, "body": body}
-    assert record_path(control).stat().st_size == MAX_NONCE_RECORD_BYTES
-
-
-def test_the_bound_refuses_before_the_store_is_created(control: Path) -> None:
-    """An oversize record must not leave the nonce directory behind as litter: the refusal
-    happens before `_open_nonce_dir_fd` is reached, which is why it is ordered that way."""
-    oversize = {"filler": "x" * (MAX_NONCE_RECORD_BYTES + 1)}
-    assert publish_nonce_result(
-        JOB, NONCE, oversize, status=200, control_root_path=control) is None
-    assert not nonce_dir(control).exists()
-<<<END NONCE_TESTAPPEND
-
-<<<SLICE AUDIT_OUTCOMES_FROM
-#: DECISION F009 D14's closed vocabulary. Each token names the CHECK that refused, never
-#: the client's message, so a wording change cannot drift the vocabulary. `accepted` is
-#: reserved for the round that retires the 501 seam: nothing is accepted while that stands.
-OUTCOMES = (
-    "rejected_token",
-    "rejected_csrf",
-    "rejected_job",
-    "rejected_shape",
-    "rejected_command",
-    "rejected_rate",
-    "not_implemented",
-)
-<<<END AUDIT_OUTCOMES_FROM
-
-<<<SLICE AUDIT_OUTCOMES_TO
-#: DECISION F009 D14's closed vocabulary. Each token names the CHECK that refused, never
-#: the client's message, so a wording change cannot drift the vocabulary. `accepted` and
-#: `replayed` are the two NO caller writes yet: DECISION F009 D17 lands the vocabulary one
-#: round ahead of the dispatch that writes them, so the round retiring the 501 seam changes
-#: the door alone. `replayed` is deliberately distinct from `accepted` (finding R-0636): a
-#: replay REPEATS an acceptance rather than being one, and T5_F035 and T9_F167 both read
-#: this file to count what the door did, so one token for both would make them
-#: indistinguishable to the two features that care.
-OUTCOMES = (
-    "rejected_token",
-    "rejected_csrf",
-    "rejected_job",
-    "rejected_shape",
-    "rejected_command",
-    "rejected_rate",
-    "not_implemented",
-    "accepted",
-    "replayed",
-)
-<<<END AUDIT_OUTCOMES_TO
-
-<<<SLICE AUDIT_TEST_FROM
-def test_the_outcome_vocabulary_is_the_closed_set_d14_ruled() -> None:
-    """`accepted` is deliberately ABSENT: nothing is accepted while the 501 seam stands."""
-    assert OUTCOMES == (
-        "rejected_token",
-        "rejected_csrf",
-        "rejected_job",
-        "rejected_shape",
-        "rejected_command",
-        "rejected_rate",
-        "not_implemented",
-    )
-    assert "accepted" not in OUTCOMES
-    assert len(set(OUTCOMES)) == len(OUTCOMES)
-<<<END AUDIT_TEST_FROM
-
-<<<SLICE AUDIT_TEST_TO
-def test_the_outcome_vocabulary_is_the_closed_set_d14_ruled() -> None:
-    """The closed set, in order. `accepted` and `replayed` are DECISION F009 D17's pair."""
-    assert OUTCOMES == (
-        "rejected_token",
-        "rejected_csrf",
-        "rejected_job",
-        "rejected_shape",
-        "rejected_command",
-        "rejected_rate",
-        "not_implemented",
-        "accepted",
-        "replayed",
-    )
-    assert "accepted" in OUTCOMES
-    assert "replayed" in OUTCOMES, "a replay is not the acceptance it repeats (R-0636)"
-    assert len(set(OUTCOMES)) == len(OUTCOMES)
-<<<END AUDIT_TEST_TO
+<<<SLICE DONE0637_TO
+Done: R-0637 — Resolved at `f52d6534`, and the resolution was verified by the reviewer's own red control rather than accepted from the handback. `publish_nonce_result` now serialises the record BEFORE it opens anything, refuses it with `None` when the serialised form exceeds `MAX_NONCE_RECORD_BYTES`, and passes those same bytes to `write_file_atomically` instead of serialising a second time — so a record `_read_record` would refuse at every later lookup is never written, and the refusal takes the same `None` route every other unusable input to that function already takes. The finding asked for three things and all three landed: the bound is enforced at the WRITE side, the constant's own comment now states the rule in terms of the RESPONSE this store holds rather than the request the client sent, and the write side gained the negative control it had never had. MEASURED BY THE REVIEWER in a disposable worktree, at content byte-identical to what landed: with the two guard lines deleted, `tests/orchestration/test_command_nonce.py` EXITS 1 and fails exactly `test_a_record_over_the_bound_is_refused_at_publication` and `test_the_bound_refuses_before_the_store_is_created`, and restored it EXITS 0 — so the shipped tests genuinely reach the guard rather than passing beside it. The third test, `test_a_record_at_the_bound_still_publishes`, pins the boundary as an upper bound rather than an off-by-one and solves its own padding with `secure_fs.json_bytes` at the same arguments `_record_bytes` uses, so its arithmetic cannot drift away from production's serialiser. R-0637's fix clause said the repair was owed "in the same commit that adds the publish call site"; it landed one round EARLIER instead, which DECISION F009 D17 rules and which is strictly stronger — the bound is in force before any door path can reach publication, so the window in which an unreplayable record could be written is never opened rather than closed on arrival.
+<<<END DONE0637_TO
