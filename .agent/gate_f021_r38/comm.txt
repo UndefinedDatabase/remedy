@@ -1,0 +1,17 @@
+F021 R38 — COMPARE (integration_gate.md step 3)
+command: comm -13 base_failed.txt branch_failed.txt   # branch-only failures
+  count: 0
+  list: (empty)
+command: comm -23 base_failed.txt branch_failed.txt   # failures the branch fixed / the base lacks
+  count: 0
+  list: (empty)
+
+ATTRIBUTION (step 4, unconditional under the block's G5(g)):
+  comm -13 ids to re-run serially by exact node id: NONE — the set is empty.
+  comm -23 ids to attribute to the environment class: NONE — the set is empty.
+  Node ids, when needed, come from `python3 -m pytest --collect-only -q`
+  (17671 collected), never from a regex over a -v run (R-0611).
+
+PASS COUNTS (not a comm reading; recorded because the sets are both empty):
+  branch 17651 passed, 20 skipped   base 17572 passed, 20 skipped
+  difference +79 passed, which is the branch's own new tests; 0 failed on both sides.

@@ -1,0 +1,26 @@
+F021 R38 — WORKTREE LIFECYCLE (integration_gate.md step 2, block G5(h))
+
+created: git worktree add -b tmp/f021-r38-base .remedy-wt/base-gate-f021-r38 \
+           4548995de3e46dc5304d3584dc249262d54edac9
+         -> 'Preparing worktree (new branch tmp/f021-r38-base)'
+            'HEAD is now at 4548995d Merge pull request #210 ...'
+         ON A BRANCH, never detached: the self-dogfood guard refuses a
+         detached HEAD by design (DECISION D3).
+
+removed: git worktree remove --force .remedy-wt/base-gate-f021-r38
+pruned:  git worktree prune
+deleted: git branch -D tmp/f021-r38-base
+         -> 'Deleted branch tmp/f021-r38-base (was 4548995d).'
+
+proof after removal:
+  git worktree list   -> /home/decodeux/Repos/remedy  dee2e6d8 [feature/f021-live-activity-feed]
+                         (ONE entry, the primary checkout)
+  git branch --list 'tmp/*'  -> printed NOTHING (0 lines)
+  git status --porcelain     -> 0 lines
+
+EXACTLY ONE disposable worktree existed this round (block constraint 10).
+
+LOG DISCIPLINE (R-0176): every suite wrote its log to
+~/remedy-gate-scratch/, OUTSIDE any repository worktree, while it ran; the
+readings were copied into this directory only after each run exited. Every
+file here is named .txt and none is named .log (R-0169).
