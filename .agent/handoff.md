@@ -1,15 +1,15 @@
-# Handback — F021 R6 (T001: the humanize module, its catalog and the contract test)
+# Handback — F021 R7 (record the R6 verdict, register R-0649, close the session)
 
-Branch: feature/f021-live-activity-feed · Round base: `82fcc7c0272d366e36ebda5020dbc1697d98e32b`
-Open findings: 211 registered, maximum id R-0648, nothing minted and nothing resolved this round.
+Branch: feature/f021-live-activity-feed · Round base: `6f5078d77c3fb3e2e60a0aa32c8e0e49d9aef391`
+Open findings: 212 registered, maximum id R-0649, next free R-0650. One id minted, nothing resolved.
 
-Fortschritt: ~30 % (T001 gebaut · T002 offen · T003 offen; R1-R5 Anspruch,
-             Vermessung, Entscheidung, Verdikt und Korrektur — R6 ist die erste
-             Runde, die Produktionscode liefert) — Schätzung
+Fortschritt: ~30 % (T001 fertig und verifiziert · T002 offen · T003 offen; R6
+             lieferte Modul, Katalog und den Contract-Test, R7 schreibt das
+             Verdikt und schließt die Session — T002 beginnt in R8) — Schätzung
 
 ## Range
 
-Review of `82fcc7c0`..HEAD — ten commits, C0a through C8.
+Review of `6f5078d7`..HEAD — five commits, C0a through C3.
 
 ## Item status
 
@@ -20,102 +20,69 @@ Review of `82fcc7c0`..HEAD — ten commits, C0a through C8.
 | C1 | done | |
 | C2 | done | |
 | C3 | done | |
-| C4 | done | |
-| C5 | done | |
-| C6 | done | |
-| C7 | done | |
-| C8 | done | |
 
 ## Commits
 
-### 1fe225c0 docs(state): save the F021 R6 T001 block as authored text
+### 487ac619 docs(state): save the F021 R7 record-and-close block as authored text
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f021-r6.md | +357/-0 | the block, copied byte-for-byte |
+| .agent/authored/f021-r7.md | +223/-0 | the block, copied byte-for-byte |
 
-### 757094ce docs(state): mirror the F021 R6 T001 block into last_block
+### 9bb77da3 docs(state): mirror the F021 R7 record-and-close block into last_block
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/last_block.md | +284/-165 | written FROM the committed C0a blob |
+| .agent/last_block.md | +157/-291 | written FROM the committed C0a blob |
 
-### 7c3eb24d docs(state): point the F021 plan at the R6 build round
+### 0882ba7b docs(state): point the F021 plan at the R7 record-and-close round
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/plan.md | +17/-15 | slice PLANF021R6, full replacement |
+| .agent/plan.md | +13/-15 | slice PLANF021R7, full replacement |
 
-### 5d4e3bef docs(review): record the R5 verdict and widen the R-0449 and R-0494 evidence
+### 30a09f4b docs(review): record the R6 verdict and register R-0649
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/live_review.md | +2/-0 | slice RECORD5, appended |
+| .agent/live_review.md | +6/-0 | slice RECORD6, appended |
 
-### 426ee2a1 docs(agents): add the pre-emission checklist item on gate ordering
-| Path | +/- | Reason |
-|---|---|---|
-| docs/agents/planner_reviewer_prompt.md | +24/-0 | pair CHECKFROM to CHECKTO, §3 item 31 |
-
-### e9568263 feat(ui): add the humanize module and its honest generic line
-| Path | +/- | Reason |
-|---|---|---|
-| apps/ui/src/api/humanize.ts | +29/-0 | slice HUMANIZE, new file |
-
-### 9c782704 feat(ui): add the stream event humanization catalog
-| Path | +/- | Reason |
-|---|---|---|
-| apps/ui/src/api/humanizeCatalog.ts | +92/-0 | 83 entries, keys = the G5 vocabulary |
-
-### ef67e7b0 test(ui): cover the humanize module behaviour and its generic path
-| Path | +/- | Reason |
-|---|---|---|
-| apps/ui/src/api/humanize.test.ts | +57/-0 | 8 vitest cases, catalog and generic path |
-
-### 2750a726 test(ui): pin the catalog key set to the python run-log emitters
-| Path | +/- | Reason |
-|---|---|---|
-| tests/ui_contracts/test_humanize_catalog.py | +231/-0 | 9 pytest cases, set equality |
-
-### C8 docs(state): hand back F021 R6 — role: the handback commit, which writes this file and therefore cannot name its own SHA or its own numstat; G1 orders those readings NOWHERE and the reviewer takes them at the next gate (finding R-0494)
+### C3 docs(state): hand back F021 R7 and close the reviewer session — role: the handback commit, which writes this file and therefore cannot name its own SHA or its own numstat; §3 checklist item 31 orders those readings NOWHERE and the next reviewer takes them at its first gate (finding R-0494)
 | Path | +/- | Reason |
 |---|---|---|
 | .agent/handoff.md | measured at the next gate | this handback |
 
 ## External actions
 
-- `git worktree add` + `git worktree remove --force` + `git worktree prune`, three times, all disposable and all removed: `.remedy-wt/g6-wt` at `5d4e3bef` (G6 mutant), `.remedy-wt/base-wt` at `82fcc7c0` with the primary `apps/ui/node_modules` symlinked in and unlinked before teardown (G10/G11 round-base readings), `.remedy-wt/g12-wt` at `2750a726` (G12 red control). `git worktree list` ends with the primary checkout alone.
+- `git worktree add --detach .remedy-wt/f021r7g5neg 30a09f4b`, then `git worktree remove --force` and `git worktree prune`; `git worktree list` ends with the primary checkout alone. G5's destructive half only.
 - `gh pr list --state open --json number,headRefName` → `[]`. No `gh pr create`, no `gh pr merge`.
-- `git push -u origin feature/f021-live-activity-feed` after C8.
+- `git push -u origin feature/f021-live-activity-feed` after C3.
 
 ## Verification
 
-- G1 EXECUTED: `.agent/STOP` absent before C0a and before C8; branch `feature/f021-live-activity-feed`; `git status --porcelain` 0 lines after each of C0a-C7; C8's own reading ordered nowhere.
-- G2 EXECUTED: authored blob, `.agent/last_block.md`, the received bytes and the reviewer's `.remedy-wt/f021-r6.md` are all sha256 `08dbd76e98e0ace307889876d49ff897cf5b2e2531daf2a72f17a45156bbbd77`, 28636 bytes, 357 lines.
-- G3 EXECUTED: 5 slices over 106 CONTENT lines from the committed C0a blob; TOTAL 357 against 490, PROSE 251 against 400.
-- G4 EXECUTED: `cmp` exit 0 for plan-vs-PLANF021R6 and humanize-vs-HUMANIZE; negative controls exit 1 and 1; plan `^## Goal$` 1, `^## Next Steps$` 1, `wc -l` 44 against the 50 cap.
-- G5 EXECUTED: 82 call sites, 60 distinct literals, 11 non-constant event arguments, 15 names inside the four defined sets; static stream vocabulary 83; literals-vs-trace-sets intersection empty. All four ordered readings reproduce.
-- G6 EXECUTED: reader (a) prefix holds, remainder sha256 `3567c4a03d02248b04258ba786445ab4295860bfc7e6996ac233a61c89b9061c`, 5706 bytes, 2 lines; file 440340 bytes/1078 lines to 446046/1080; reader (b) units 220 + 1 = 221, every position equal; the byte-7 `R`→`X` mutant of the first paragraph is REJECTED by both readers and the true file ACCEPTED by both.
-- G7 EXECUTED: CHECKFROM 1 at the round base and 1 at C3 (APPEND-shaped); all 24 TO-ONLY lines occur exactly 1x among C3's 24 added lines; file 920 to 944 lines; numstat `24 0`; `^  31\. \*\*` 0 then 1, `^  32\. \*\*` 0 at both.
-- G8 EXECUTED, base then C2: `- R-` 211/211 both DISTINCT at both; `Done: R-` 0/0; `Landed: ` 0/0; `Gate: R` keys 5 then 6, all DISTINCT; `Gate: R6` 0 then 1; maximum id R-0648 at both; `- R-0449 —` 1/1; `- R-0494 —` 1/1.
-- G9 EXECUTED at the C5 blob: 1 exported symbol; 83 extracted keys equal to the 83-name G5 vocabulary; ASCII-sorted; 0 duplicate keys; 83 values, 83 distinct, 0 empty, 0 not ending in a full stop, 0 equal to `<key> event`.
-- G10 EXECUTED: `npx tsc --noEmit` in `apps/ui` — exit 0 at the round base and exit 0 at C7.
-- G11 EXECUTED: `npx vitest run` in `apps/ui` — round base exit 0, 10 files, 152 tests, 0.7 s wall; C7 exit 0, 11 files, 160 tests, 0.7 s wall.
-- G12 EXECUTED: `python3 -m pytest tests/ui_contracts/ -q -rf` exit 0, 426 passed + 4 skipped = 430 = 421 + the 9 tests C7 adds. RED CONTROL in a worktree: deleting the `worktree_retained` entry FAILS the equality test at exit 1 and names `['worktree_retained']`; deleting `verification_passed` fails it and names that key too.
-- G13 EXECUTED: `python3 -m pytest tests/ui_server/ tests/orchestration/test_test_runner.py tests/regression/test_resource_safety.py -q -rf` exit 0, 511 passed + 0 skipped = 511. No docs gate owed: the Change list holds one `docs/agents/` path and zero `docs/roadmap/**` paths.
-- G14 EXECUTED after G13, serially: `python3 -m pytest tests/cli/test_golden_path.py -q -rf` exit 0, 42 passed.
-- G15 EXECUTED over `82fcc7c0`..C7 plus the one path C8 writes: 9 range paths, both set differences against the 10-path Change list EMPTY once `.agent/handoff.md` is counted; 9 commits all single-parent; insertions 357/284/17/2/24/29/92/57/231, every one under 500; leading `<<<SLICE ` and `<<<END ` 0 lines in all four files a slice landed in; `git ls-files .remedy-wt` 0; this round's 9 reflog rows all `commit:` — amend 0, rebase 0, cherry 0.
-- G16 EXECUTED: `gh pr list --state open --json number,headRefName` → `[]`. Neither `gh pr create` nor `gh pr merge` was run.
-- G17 EXECUTED: this file — every mandated section, an item-status row per C0a-C8, the round base SHA, one line per gate, the `Fortschritt:` line verbatim, and a `## Next` naming R7 and T002.
+- G1 EXECUTED: `.agent/STOP` absent before C0a and before C3; branch `feature/f021-live-activity-feed`; `git status --porcelain` 0 lines after each of C0a, C0b, C1 and C2. C3's own reading is ordered nowhere and is not stated here.
+- G2 EXECUTED: the authored blob at C0a, `.agent/last_block.md` at C0b, the bytes received and the reviewer's own `.remedy-wt/f021-r7.md` are all sha256 `5d0eebbe12a16d57a1a3696944ef8f24f696e99ac1e2c69d990dde632b86957e`, 21611 bytes, 223 lines — 1 distinct digest across 5 readings.
+- G3 EXECUTED: 2 slices over 47 CONTENT lines extracted from the committed C0a blob by marker line; TOTAL 223 against D6's 490 and PROSE 176 against D5's 400, both equal to constraint 8.
+- G4 EXECUTED: `cmp .agent/plan.md` against PLANF021R7 exit 0, negative control against RECORD6 exit 1; `^## Goal$` 1, `^## Next Steps$` 1, `wc -l` 42 against the 50 cap.
+- G5 EXECUTED: reader (a) — the round-base blob is a byte-exact prefix, remainder sha256 `2c4560714396bfc4c24d2ac451ca80f85324048fc9afdd98f48a706fc77a11ef`, 7529 bytes, 6 lines, file 446046 bytes/1080 lines to 453575/1086. Reader (b) — units 221 then 224, RECORD6's own 3 against constraint 4's THREE, every one of the 224 positions equal elementwise. The byte-offset-2 `L`→`Z` mutant of the FIRST paragraph is REJECTED by both readers and the true file ACCEPTED by both.
+- G6 EXECUTED, round base then C2: `- R-` 211 then 212, DISTINCT at both; `Done: R-` 0/0; `Landed: ` 0/0; `Gate: R` keys 6 then 7, all DISTINCT; `Gate: R7` 0 then 1; maximum id R-0648 then R-0649; `- R-0649 —` 0 then 1; `- R-0449 —` 1/1; `- R-0585 —` 1/1.
+- G7 EXECUTED at C2 in the primary checkout: `python3 -m pytest tests/ui_server/ tests/orchestration/test_test_runner.py tests/regression/test_resource_safety.py -q -rf` exit 0, 511 passed + 0 skipped = 511, equal to the reviewer's round-base reading. No docs gate owed: the Change list is five `.agent/` paths and zero `docs/` paths.
+- G8 EXECUTED at C2, serially, after G7 finished: `python3 -m pytest tests/cli/test_golden_path.py -q -rf` exit 0, 42 passed + 0 skipped = 42.
+- G9 EXECUTED at C2, serially, after G8: `python3 -m pytest tests/ui_contracts/ -q -rf` exit 0, 426 passed and 4 skipped — identical to the reviewer's round-base reading, so no regression from outside this round.
+- G10 EXECUTED: the `6f5078d7`..C2 range holds 4 paths and 0 of them begin `apps/`, `packages/` or `tests/`; `git ls-files .remedy-wt` reads 0.
+- G11 EXECUTED at C2 over `6f5078d7`..C2, not to C3: 4 range paths with both set differences against the four non-handoff Change paths EMPTY; all 4 commits single-parent; `git show --numstat` equals `git diff --numstat` cell by cell for C0a, C0b, C1 and C2 and both agree with the tables above; insertions 223, 157, 13, 6, every one under the 500 cap; leading `<<<SLICE ` and `<<<END ` read 0 lines in `.agent/plan.md` and in `.agent/live_review.md`; this round's 4 reflog rows are all `commit:` — amend 0, rebase 0, cherry 0.
+- G12 EXECUTED: `gh pr list --state open --json number,headRefName` → `[]`. Neither `gh pr create` nor `gh pr merge` was run this round.
+- G13 EXECUTED: this file carries every mandated section, an item-status row for each of C0a, C0b, C1, C2 and C3, the round base SHA, one line per gate with the transcripts kept in the round report, the `Fortschritt:` line verbatim across all three of its lines, and the four `## Next` items constraint 7 requires in its order.
 
 ## Authored-text proofs
 
-`.agent/authored/f021-r6.md` at `1fe225c0` is byte-identical to the emitted block. Every slice was extracted programmatically from that committed blob by its marker lines; no slice was retyped. `.agent/plan.md` at C1 and `apps/ui/src/api/humanize.ts` at C4 each `cmp` at exit 0 against their extracted slice, each with a negative control at exit 1 (G4).
+`.agent/authored/f021-r7.md` at `487ac619` is byte-identical to the block the reviewer emitted and to `.agent/last_block.md` at `9bb77da3` — one sha256 over all of them (G2). Both slices were extracted programmatically from that committed blob by their marker lines; neither was retyped, rewrapped or reindented, and no marker line landed in a target file (G11). `.agent/plan.md` at C1 compares at exit 0 against PLANF021R7 with RECORD6 as a negative control at exit 1 (G4); `.agent/live_review.md` at C2 is the round-base blob plus one newline plus RECORD6 under two independent readers with a first-paragraph mutant control (G5).
 
 ## Deviations & assumptions
 
-- The ordered commit sequence C0a, C0b, C1, C2, C3, C4, C5, C6, C7, C8 was followed exactly: no extra commit, none dropped, none reordered.
-- G17 calls this "a nine-commit bundle"; it is a TEN-commit bundle (C0a through C8). The 100-line allowance the sentence names is what this file is measured against, and the item-status table carries all ten rows.
-- G15's range reading was taken at C7 over `82fcc7c0`..C7, plus the single path C8 writes, which is why `.agent/handoff.md` shows as the only Change-list path outside that range. C8's own numstat, insertion count and `git status --porcelain` reading are ordered NOWHERE by G1 and are not stated here.
-- Assumption, declared: the round-base readings of G10 and G11 were taken in a disposable worktree at `82fcc7c0` with the primary checkout's `apps/ui/node_modules` symlinked in, because a fresh worktree has no `node_modules`; the symlink and the worktree were removed before this handback.
-- DECISION D15, stated-cause overage: this file is 121 lines against the 100-line allowance. The cause is mandated content only — ten per-commit changed-files tables (40 lines), the ten-row item-status table, and one line for each of the seventeen gates G17 requires. No section was dropped and no transcript was copied in; the transcripts live in the round report.
+- The ordered commit sequence C0a, C0b, C1, C2, C3 was followed exactly: no extra commit, none dropped, none reordered.
+- Constraint 7(c) and the PLANF021R7 slice DISAGREE on round numbering, and both are in this block. Constraint 7(c) calls T002 "R8's work" and says "R7 must FIRST rule the two infrastructure DECISIONS"; PLANF021R7, committed at C1 this round, assigns those DECISIONS to R8 and T002 to R9. R7 is THIS round, it built nothing and it ruled neither DECISION. `## Next` item (c) therefore carries the substance — T002 is the next build and both DECISIONS are ruled before it — without the round attribution, because writing "R7 must first rule them" into a handback written BY R7 after R7 ruled nothing would put a false sentence on disk. NOT reconciled; the next reviewer owns the numbering. This is the R-0585 clause-versus-clause shape, in the same block that records an R-0585 instance.
+- DECISION D15, stated-cause overage: this file is 88 lines against the 60-line allowance a five-commit round has. The cause is mandated content only — five per-commit changed-files tables at 4 lines each, the five-row item-status table, the three verbatim `Fortschritt:` lines, one line for each of the thirteen gates G13 requires, and the four `## Next` items constraint 7 mandates in full. No section was dropped and no transcript was copied in; the transcripts live in the round report.
 
 ## Next
 
-R7 rules the frontend test environment and the single-subscription fan-out — the two infrastructure DECISIONS T002 needs before the feed, its rows and the NowCard can be written. The reviewer's first action is Phase 1 rule 1: re-read `.agent/STOP` from disk, then the Open PR Gate.
+1. FIRST action, before anything else: docs/agents/self_drive_protocol.md Phase 1 rule 1 — re-read `.agent/STOP` from disk. Phase 0 is one-shot but G6 binds at any point, so rule 1 comes BEFORE rule 2's Open PR Gate; that ordering is required by the protocol's Phase 2 and by finding R-0347. Never delete the sentinel.
+2. The Open PR Gate will find NO open pull request — measured at G12 this round as `[]` — so rule 5 applies and F021 continues on `feature/f021-live-activity-feed`. The branch is mid-feature by design; nothing is owed a merge and nothing is owed a PR.
+3. The next build is T002 — the feed, its rows and the NowCard over fixture streams, with the scroll discipline that never yanks a reader who has scrolled up. It cannot be written until the two infrastructure DECISIONS it depends on are RULED FIRST: the frontend test environment, which collects no component test at all today (`apps/ui/vitest.config.ts` sets `environment: "node"` with `include: ["src/**/*.test.ts"]`, measured at `6f5078d7`), and the single-subscription fan-out.
+4. The R6 handback commit `6f5078d7` has never had its own `git status --porcelain` reading or its own insertion count recorded, because §3 checklist item 31 orders them nowhere. The next reviewer takes both at its first gate and records them in that round's entry. The same is true of this round's C3, for the same reason.
