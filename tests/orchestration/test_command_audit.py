@@ -43,7 +43,7 @@ def read_lines(control_root: Path, job_id: str = JOB) -> list[dict]:
 
 
 def test_the_outcome_vocabulary_is_the_closed_set_d14_ruled() -> None:
-    """The closed set, in order. The last three are the tokens no caller writes yet."""
+    """The closed set, in order. The last four are the tokens no caller writes yet."""
     assert OUTCOMES == (
         "rejected_token",
         "rejected_csrf",
@@ -55,10 +55,12 @@ def test_the_outcome_vocabulary_is_the_closed_set_d14_ruled() -> None:
         "accepted",
         "replayed",
         "rejected_effect",
+        "rejected_state",
     )
     assert "accepted" in OUTCOMES
     assert "replayed" in OUTCOMES, "a replay is not the acceptance it repeats (R-0636)"
     assert "rejected_effect" in OUTCOMES, "an effect that raised is not the acceptance it failed to be"
+    assert "rejected_state" in OUTCOMES, "an effect that refused is not the one that raised"
     assert len(set(OUTCOMES)) == len(OUTCOMES)
 
 

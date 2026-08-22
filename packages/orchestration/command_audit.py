@@ -52,6 +52,12 @@ AUDIT_FIELD_ORDER = ("ts", "token_fp", "command", "args_hash", "nonce", "outcome
 #: acceptance it is not, and D6's "every attempt is audited" survives an effect function
 #: that refuses. Without it a failed effect would be unaudited or recorded as `accepted`,
 #: and the two reading features cannot tell those apart from the outside.
+#: `rejected_state` is DECISION F009 D21's token and the fourth landed with no writer,
+#: one round ahead of the door for the reason D17 and D18 both gave. It names an effect
+#: that RAN and REFUSED — `answer_task_decision` returning None because the decision is
+#: absent or is no longer open — which is neither `rejected_effect`, reserved for a
+#: dispatch that RAISED, nor `accepted`, which would be false. The two reading features
+#: count what the door DID, and an effect that declined is not one that broke.
 OUTCOMES = (
     "rejected_token",
     "rejected_csrf",
@@ -63,6 +69,7 @@ OUTCOMES = (
     "accepted",
     "replayed",
     "rejected_effect",
+    "rejected_state",
 )
 
 
