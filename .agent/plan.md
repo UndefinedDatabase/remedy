@@ -16,28 +16,31 @@ cross-site attempts fail closed and are audited as rejected, and a route-walking
 test plus an import guard prove no other mutating route exists.
 
 ## Current Step
-R15 lands the two package-level prerequisites of the dispatch and changes the
-door not at all. The nonce store refuses an oversize record AT PUBLICATION,
-which pays R-0637, and `command_audit.OUTCOMES` gains the `accepted` and
-`replayed` tokens the door will write next round. The 501 seam still stands.
+R16 closes this session and writes no production code. It records the R15
+verdict, resolves R-0637 with the reviewer's own verification, and adds the
+three R15 recurrences to the open findings that already describe them — no new
+id is minted. The nonce store's publication bound and the `accepted` and
+`replayed` audit tokens landed at R15.
 
 ## Next Steps
-1. `job.stop` dispatches to `safe_points.request_stop`, writing `accepted` and
-   publishing the nonce record; the replay audit moves to `replayed`, which
-   pays R-0636. `tests/ui_server/test_command_channel.py` migrates its seam
-   pins in that same round. `decision.resolve` keeps answering 501.
+1. Round 2 of DECISION F009 D17: `packages/orchestration/ui_server.py`
+   dispatches `job.stop` to `safe_points.request_stop`, writes the `accepted`
+   outcome, publishes the nonce record, and moves the replay audit token to
+   `replayed`, which pays R-0636. The seam pins in
+   `tests/ui_server/test_command_channel.py` migrate in that same round —
+   roughly seventeen sites, which is why D17 gave that round its own budget.
+   `decision.resolve` keeps answering 501.
 2. Then `decision.resolve` dispatches and the seam is gone; then the
    `command.accepted` SSE event; then the queue-only import guard, the
    per-command side-effect assertions and the route-walking 405 test; then the
-   integration gate and closure. DECISION F009 D17 carries the ordering.
+   integration gate and closure.
 
 ## Risks
-- Splitting by command means the door briefly dispatches one exposed id and
-  refuses the other with 501. That is honest — `not_implemented` is what the
-  audit records for a command this door has not yet dispatched — but the tests
-  must assert it deliberately rather than inherit it.
-- `accepted` and `replayed` enter the vocabulary a round before any caller
-  writes them. `tests/ui_server/test_command_channel.py` still asserts the door
-  writes no `accepted`, which stays true and is what keeps the gap honest.
+- The door will briefly dispatch one exposed id and refuse the other with 501.
+  That is honest, but the tests must assert it deliberately rather than inherit
+  it, and `test_every_exposed_command_reaches_the_seam` loops over both ids and
+  must be split when that round lands.
+- `accepted` and `replayed` are in the vocabulary with no caller. The door's own
+  guard still asserts it writes no `accepted`, which keeps the gap visible.
 - `npm run lint` in `apps/ui` is RED at base and is NOT a gate (R-0364), which
   is R-0622 and routes to a paydown branch.
