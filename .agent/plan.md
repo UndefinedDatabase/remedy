@@ -16,22 +16,22 @@ cross-site attempts fail closed and are audited as rejected, and a route-walking
 test plus an import guard prove no other mutating route exists.
 
 ## Current Step
-R30 is closure preparation. It records the R29 verdict and the integration-gate
-verdict, registers R-0645, repairs docs/agents/integration_gate.md so the base
-run's neutralisation check measures the EVENT rather than the outcome — R-0444
-recurred at R29 under its own standing rule — and adds the `## Built State`
-section that closure precondition 4 requires of the feature file. The build
-itself is done: the integration gate found an EMPTY branch-only set.
+R31 closes the session. It records the R30 verdict and writes the two
+reviewer-block defects R30 surfaced into `.agent/candidates.md`, which is the
+carrier of record across a session boundary. The build and its integration gate
+are done; what remains is closure.
 
 ## Next Steps
-1. Closure per docs/roadmap/STATUS_closure_protocol.md, in TWO rounds: the
-   evidence job and a FRESH review zip first, then the authored STATUS line,
-   the README capability sync and the pull request.
+1. Register or resolve both entries of `.agent/candidates.md` and empty that
+   file — the FIRST reviewed round of the next session owes this.
+2. Closure round one: the evidence job and a FRESH review zip, whose values the
+   STATUS line quotes.
+3. Closure round two: the authored STATUS line, the README capability sync in
+   the SAME commit, and the pull request.
 
 ## Risks
-- Closure needs TWO rounds, not one: the evidence-and-zip round produces the
-  values the STATUS line quotes, and a separate round commits that line. Ending
-  right after a verdict strands it (DECISION F085 D9).
+- Closure needs TWO rounds, not one: ending right after a verdict strands it
+  (DECISION F085 D9).
 - `npm run lint` in `apps/ui` is RED at base and is NOT a gate (R-0364), which
   is R-0622 and routes to a paydown branch.
 - The closure zip's known blockers are on disk, not in memory: sorted
