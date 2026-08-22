@@ -1,50 +1,40 @@
-# Context — F021 Live activity feed + now-card
+# Context — F022 Live cost ticker
 
 ## Active Branch
-feature/f021-live-activity-feed, cut from `main` at `4548995d`, the merge commit
-of pull request #210, which the reviewer merged at the Open PR Gate before this
-branch existed. Self-drive session per docs/agents/self_drive_protocol.md: the
-main session plans and reviews and writes nothing in the work tree, and one
-delegated worker per round makes every commit. The branch carries no pull
-request; F021 opens one at its closure.
+feature/f022-live-cost-ticker, cut from `main` at `c34ef32b`, the merge commit
+of pull request #211 which closed F021.
 
 ## Scope
-In: the humanization catalog that maps every Part E event kind to a plain line
-with an honest generic fallback for unknown kinds; the activity feed and its
-rows, carrying seq and emitting focus to the graph store on click; the NowCard
-over the ACTION-class subset with its recency-driven activity dot; the
-scroll discipline that never yanks a reader who has scrolled up; and the
-steering input rendered DISABLED with the tooltip its not-yet feature warrants.
+F022 only: the budget tick emission, the MetricsBar COST metric and the terminal
+reconciliation. The roadmap feature file is
+`docs/roadmap/features/T5_F022.md` and its Task slicing fixes the order.
 
-Out, per the feature file's Do not touch: steering's backend, which is F030; the
-event schema; and graph internals beyond the focus API.
+## Do not touch
+Budget enforcement, the pricing and basis rules, and MetricsBar's other metrics.
+The feature file's own Do-not-touch section governs and is not narrowed here.
+
+## Assumptions
+- The UI never computes money. The backend is the single arithmetic home and the
+  client's only arithmetic is the fill ratio.
+- `budget.tick` is an ADDITIVE event kind in the Part E vocabulary; the SSE layer
+  built by F008 carries it without change.
+- No currency field is emitted unless a price basis exists, so no invented
+  dollars reach the display.
 
 ## Constraints
-- Merges only at the Open PR Gate; never force-push; never work on main.
-- One SSE subscription feeds both graph and feed, with fan-out in the client
-  store. A second EventSource is rejected rather than negotiated — the feature
-  file's Orchestrator brief states it as an architecture line.
-- docs/ui/design_reference/ is binding for every visual surface and
-  assets_spec.md is the asset authority. No new font, icon, glyph style or asset
-  source without an assets_spec.md update and an assumption_log entry.
-- Verification is pytest, scoped per round, plus the canary
-  tests/cli/test_golden_path.py. A round touching docs/roadmap/** also gates
-  tests/docs/ and tests/orchestration/test_roadmap_index.py, the second because
-  tests/docs/ asserts nothing about a roadmap row's own content (R-0493). A
-  round rewriting .agent/ state also gates tests/ui_server/,
-  tests/orchestration/test_test_runner.py,
-  tests/regression/test_resource_safety.py and
-  tests/orchestration/test_integrity_gate.py. Frontend rounds additionally gate
-  the apps/ui suite the R2 inventory identifies.
-- COUNT BY PASSED-PLUS-SKIPPED. Data-dependent skips in tests/ui_server/ make
-  the split vary run to run at an unchanged tree.
-- Destructive and red-proof checks run only inside a disposable git worktree
-  under .remedy-wt/, so resource safety stays intact and the primary checkout
-  satisfies an empty `git status --porcelain` at every verdict. Two pytest
-  processes never run at once.
-- Repository-wide `ruff check .` is RED at base and is NOT a gate (R-0364); ruff
-  is gated scoped to the files a round touches, measured against the SAME files
-  at the base. `npm run lint` in apps/ui is likewise red at base and is R-0622.
+- A round touching `docs/roadmap/**` also gates
+  `tests/orchestration/test_roadmap_index.py` beside `tests/docs/`.
+- A round rewriting `.agent/` state gates the four state readers:
+  `tests/ui_server/`, `tests/orchestration/test_test_runner.py`,
+  `tests/regression/test_resource_safety.py` and
+  `tests/orchestration/test_integrity_gate.py`.
+- Every handback runs the canary `pytest tests/cli/test_golden_path.py`.
+- Destructive verification runs only inside a disposable git worktree under
+  `.remedy-wt/`, never in the primary checkout, which satisfies
+  `git status --porcelain` empty at every verdict.
+- This is a UI feature, so `docs/ui/design_reference/` is binding and any visual
+  deviation is documented with a technical reason.
 
 ## Steps
-Stated once, in `.agent/plan.md`. This file tracks scope and constraints only.
+R1 claim and reset → R2 the cost inventory → R3 the envelope DECISION → R4
+onward T001, T002 and T003 in the feature file's order.
