@@ -1,52 +1,52 @@
-# Handback — F009 R26 (the `command.accepted` SSE event)
+# Handback — F009 R27 (the queue-only import guard)
 
 ## Range
 
-Review of `cd77e969`..HEAD. Round base SHA `cd77e969c97a885325d2b6b31be086750e7f0df0`, branch `feature/f009-single-write-channel`, no pull request created. The block's `Fortschritt:` line follows VERBATIM across all four of its lines:
+Review of `c98d57f0`..HEAD. Round base SHA `c98d57f03309b9ac82c54ac5e9e4e82b19b48494`, branch `feature/f009-single-write-channel`, no pull request created. The block's `Fortschritt:` line follows VERBATIM across all four of its lines:
 
-Fortschritt: ~93 % (T001 gebaut · T002 gebaut · T003 fast fertig: beide
-             Kommandos dispatchen, sind beidseitig wirkungsgeprüft und melden
-             sich jetzt auf dem SSE-Strom; offen bleiben der Import-Guard und
-             die 405-Routenprobe) — Schätzung
+Fortschritt: ~96 % (T001 gebaut · T002 gebaut · T003 fast fertig: beide
+             Kommandos dispatchen, melden sich auf dem SSE-Strom und sind jetzt
+             import-seitig eingezäunt; offen bleibt nur noch die
+             405-Routenprobe) — Schätzung
 
 ## Commits
 
-### 232e5a6a docs(state): save the F009 R26 block
+### f8bf6c7f docs(state): save the F009 R27 guard block
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f009-r26.md | 451/0 | C0a — the received block, copied byte for byte |
+| .agent/authored/f009-r27.md | 438/0 | C0a — the received block, copied byte for byte |
 
-### 392a94eb docs(state): mirror the F009 R26 block into last_block
+### 80df4d3a docs(state): mirror the F009 R27 block into last_block
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/last_block.md | 366/91 | C0b — written from the committed C0a blob |
+| .agent/last_block.md | 349/362 | C0b — written from the committed C0a blob |
 
-### 58b9932a docs(state): set the plan to the F009 R26 event round
+### b40e79a4 docs(state): set the plan to the F009 R27 guard round
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/plan.md | 8/8 | C1 — PLANF009R26, byte-equal |
+| .agent/plan.md | 9/9 | C1 — PLANF009R27, byte-equal |
 
-### a573210c docs(review): record the R25 verdict as clean
+### 56926662 docs(review): register R-0642 against the R26 block
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/live_review.md | 2/0 | C2 — LEDGER26 appended |
+| .agent/live_review.md | 2/0 | C2 — FINDING642 appended, based on the round base |
 
-### f36f46b2 docs(decisions): rule DECISION F009 D23 for the accepted event
+### 3ee65a8b docs(review): record the R26 verdict as PASS
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/decisions.md | 16/0 | C3 — DECISION23 appended |
+| .agent/live_review.md | 2/0 | C3 — LEDGER27 appended, based on C2 and not on the round base |
 
-### 69b5f890 feat(ui-server): announce an accepted command on the job event stream
+### e2b6fb96 docs(decisions): rule F009 D24, the P3 import contract as a set
 | Path | +/- | Reason |
 |---|---|---|
-| packages/orchestration/ui_server.py | 40/0 | C4 — CONST, METH, and PUB at both accepted exits |
+| .agent/decisions.md | 14/0 | C4 — DECISION24 appended, based on the round base |
 
-### 77114cd4 test(ui-server): pin the accepted event, its frame and its silences
+### ced6e1eb test(ui-server): guard the write door import set as F009 D24 rules
 | Path | +/- | Reason |
 |---|---|---|
-| tests/ui_server/test_command_channel.py | 112/0 | C5 — TESTS: four tests and two helpers |
+| tests/ui_server/test_command_channel.py | 158/0 | C5 — the GUARD pair, append-shaped |
 
-### C6 docs(state): write the F009 R26 handback (this commit)
+### C6 docs(state): write the F009 R27 handback (this commit)
 | Path | +/- | Reason |
 |---|---|---|
 | .agent/handoff.md | see report | C6 — this file; a handback cannot table its own commit, so its numstat is in the round report |
@@ -66,34 +66,34 @@ Fortschritt: ~93 % (T001 gebaut · T002 gebaut · T003 fast fertig: beide
 
 ## External actions
 
-- `git worktree add .remedy-wt/r26final 77114cd4 --detach` — created for G10's red proof; `git worktree remove --force` then `git worktree prune` removed it and `git worktree list` reads 1 line.
-- `git push -u origin feature/f009-single-write-channel` — `cd77e969..77114cd4`, C0a through C5 pushed. C6 is pushed immediately after it is committed; that outcome is in the round report.
+- `git worktree add --detach .remedy-wt/g10 ced6e1eb` — created for G10's red proof; `git worktree remove .remedy-wt/g10` then `git worktree prune` removed it and `git worktree list` reads 1 line.
+- `git push origin feature/f009-single-write-channel` — C0a through C5 pushed; C6 is pushed immediately after it is committed and that outcome is in the round report.
 - No `gh` command was run. No PR created, edited or merged.
 
 ## Verification
 
-- G1 — `.agent/STOP` ABSENT before C0a and again before C6; `git rev-parse --abbrev-ref HEAD` prints `feature/f009-single-write-channel`; `git status --porcelain` prints 0 lines after each of C0a, C0b, C1, C2, C3, C4 and C5; round base read at step 0 is `cd77e969c97a885325d2b6b31be086750e7f0df0`.
-- G2 — the authored blob at C0a and `.agent/last_block.md` at C0b are both sha256 `9db61842f2287d052a03e144b7437d0584fcd3b25aa98b2245a608345bdfa068`, 33832 bytes, 451 lines, and byte-equal to each other and to the block received; C0b was written from the committed C0a blob.
-- G3 — the script extracted 11 slices over 218 CONTENT lines from the committed C0a blob; constraint 9 re-measures to TOTAL 451 and PROSE 233, both the block's own numerals.
-- G4 — `cmp .agent/plan.md <PLANF009R26>` exits 0, both sha256 `05884bfa0fa6e8835e90ae2c68d0f7ab593d893378b8b7fafe65563722a97d35`; the negative control against `.agent/last_block.md` exits 1; `wc -l` 37 against the 50-line cap; `^## Goal$` 1 and `^## Next Steps$` 1.
-- G5 — both appends pass both readers: (a) the base blob is a byte-exact prefix and the remainder is a newline plus the slice — LEDGER26 remainder `6b5e0603…` 5692 bytes 2 lines, DECISION23 remainder `1f88275c…` 3623 bytes 16 lines; (b) N counted BY THE SCRIPT is 1 and 8 and the last N blank-line units match in order; an equal-length printable-byte flip in the FIRST appended paragraph is REJECTED by both readers while both ACCEPT the true file; live_review 530425→536117 bytes and 1118→1120 lines, decisions 473798→477421 bytes and 6909→6925 lines.
-- G6 — line-anchored at line START, round base then C2: leading `- R-` entries 207 and 207 with every id DISTINCT at each, leading `Done: R-` 3 and 3, leading `Landed: ` 0 and 0, leading `Gate: R` keys 25 and 26 over that many DISTINCT keys, the `Gate: R26` key 0 and 1, leading `- R-0642` 0 and 0; max REGISTERED id R-0641 at both; open by DECISION F009 D10's rule (line-anchored entries minus line-anchored `Done:` lines) 204 at C2.
-- G7 — base FROM counts CONST 1, PUB 2, METH 1, TESTS 1 with every TO 0, whole-line and indent-agnostic AGREEING on every cell, read via `git show <base>:<path>` and never over the tracked file; after application every TO reads its FROM's base count (1, 2, 1, 1) and the REWRITE pair PUB reads FROM 0; my own script printed `TO contains FROM: true` for CONST, METH and TESTS and `false` for PUB.
-- G8 — ordered equality holds: C4's diff adds exactly the 40 lines the CONST, METH and PUB applications introduce, compared as a list in file order, and C5's adds exactly the 112 lines of TESTS; `git show --numstat` reads 40/0 and 112/0, the two numbers the reviewer measured on its own dry run.
-- G9 — run serially in the primary checkout: ruff over the two paths exit 0 "All checks passed!"; `tests/ui_server/test_command_channel.py` exit 0, 90 passed; the `tests/cli/test_golden_path.py` canary exit 0, 42 passed; the four-path group exit 0, 517 passed.
-- G10 — in the disposable worktree only: the target line reads 2 whole-line and 2 indent-agnostic at C5, both agreeing; mutation (a) deleted both and exactly `test_an_accepted_command_reaches_the_sse_frame_it_announces`, `test_a_replay_announces_nothing_a_second_time` and `test_an_event_writer_that_raises_changes_neither_status_nor_body` failed (exit 1, 3 failed 87 passed); mutation (b) made the 409 clause announce and exactly `test_a_refused_command_announces_nothing` failed (exit 1, 1 failed 89 passed); neither set reaches the other; the worktree was removed and `git worktree list` reads 1 line.
-- G11 — the range base→C5 lists exactly the 7 declared paths with the set difference EMPTY in both directions and 0 paths under `apps/` or `docs/`; every commit has ONE parent; `git show --numstat` and `git diff --numstat` agree cell by cell and every cell equals the `+/-` column above; pre-handback insertions 451, 366, 8, 2, 16, 40 and 112, each under the 500 cap; leading `<<<SLICE ` and `<<<END ` read 0 LINES in all five slice targets; `git ls-files .remedy-wt` reads 0; this round's 7 reflog rows all classify as `commit`, with `amend`, `rebase` and `cherry` each 0 and no total asserted over the whole reflog.
+- G1 — `.agent/STOP` ABSENT before C0a and again before C6; `git rev-parse --abbrev-ref HEAD` prints `feature/f009-single-write-channel`; `git status --porcelain` prints 0 lines after each of C0a, C0b, C1, C2, C3, C4 and C5; round base read at step 0 is `c98d57f03309b9ac82c54ac5e9e4e82b19b48494`.
+- G2 — the authored blob at C0a, `.agent/last_block.md` at C0b and the bytes received are all sha256 `69e3b24fd4ba79b881c22ef4d50994df1b5be4fec8d38c79d50fd66bc4a3c2b8`, 35935 bytes, 438 lines, and byte-equal to one another; C0b was written from the committed C0a blob and never from the scratch copy.
+- G3 — the script extracted 6 slices over 212 CONTENT lines from the committed C0a blob; constraint 8 re-measures off that same blob to TOTAL 438 and PROSE 226, both the block's own numerals, under DECISION F085 D6's 490 and D5's 400.
+- G4 — `cmp .agent/plan.md <PLANF009R27>` exits 0, both sha256 `e8ff301fc5bc3499e798b545cdd51c857932196a20f6cc358c56eea94baeddff`; the negative control against `.agent/last_block.md` exits 1; `wc -l` 37 against the 50-line cap; `^## Goal$` 1 and `^## Next Steps$` 1.
+- G5 — all three appends pass both readers, each against the commit constraint 5 fixes: (a) the base blob is a byte-exact prefix and the remainder is exactly a newline plus the slice — FINDING642 at C2 on the round base `7670e9fc…` 2531 bytes 1 line, LEDGER27 at C3 on C2 `e73f5ac3…` 5815 bytes 1 line, DECISION24 at C4 on the round base `c8f82097…` 2870 bytes 13 lines; (b) N counted BY THE SCRIPT is 1, 1 and 7 and the last N blank-line units match the slice's paragraphs in order; an equal-length printable-byte flip in the FIRST appended paragraph is REJECTED by both readers in all three while both ACCEPT the true file; live_review 536117→538649 bytes and 1120→1122 lines at C2, then 538649→544465 and 1122→1124 at C3; decisions 477421→480292 bytes and 6925→6939 lines at C4.
+- G6 — line-anchored at line START at the round base, C2 and C3: leading `- R-` entries 207, 208 and 208 with every id DISTINCT at each; leading `Done: R-` 3, 3 and 3; leading `Landed: ` 0, 0 and 0; leading `Gate: R` keys 26, 26 and 27 over that many DISTINCT keys; the `Gate: R27` key 0, 0 and 1; a leading `- R-0642` entry 0, 1 and 1; max REGISTERED id R-0641 then R-0642 then R-0642; open by DECISION F009 D10's rule (line-anchored `- R-` entries minus line-anchored `Done: R-` lines) 204, 205 and 205.
+- G7 — for the GUARD pair, whole-line and indent-agnostic AGREEING on every cell: at the round base FROM 1 and TO 0, at C5 FROM 1 and TO 1; the base side was read with `git show <base>:<path>` into scratch and never written over the tracked file; my own script printed `TO contains FROM: true`, so the pair is APPEND-shaped and no FROM-zero count was ordered for it.
+- G8 — ordered equality holds: C5's diff adds exactly the 158 lines the GUARD application introduces, compared as a list in file order against the slice's own lines; `git show --numstat` reads 158/0, the two numbers the reviewer measured on its own dry run, so there is no difference to flag.
+- G9 — run serially in the primary checkout, never two pytest processes at once and never in a worktree: `python3 -m ruff check tests/ui_server/test_command_channel.py` exit 0, "All checks passed!"; `tests/ui_server/test_command_channel.py` exit 0, 95 passed; the `tests/cli/test_golden_path.py` canary exit 0, 42 passed; the four-path group exit 0, 522 passed.
+- G10 — in the disposable worktree only: the anchor line reads 1 whole-line and 1 indent-agnostic at C5, both agreeing, inside `_dispatch_job_stop`; the unmutated control passes 5; mutation (a) failed exactly `test_the_door_imports_exactly_the_allowed_set` and `test_the_door_imports_nothing_from_a_forbidden_module`, (b) exactly `test_the_door_imports_exactly_the_allowed_set` and `test_the_door_reaches_storage_only_for_the_name_D21_rules`, (c) exactly `test_every_named_method_exists` and `test_the_door_imports_exactly_the_allowed_set` — the three ordered sets, with nothing to flag; each mutation was reverted and the file confirmed byte-equal to its C5 blob at sha256 `9e0f3880…` before the next; the worktree was removed and pruned and `git worktree list` reads 1 line.
+- G11 — the range base→C5 lists exactly the 6 declared paths other than `.agent/handoff.md`, the set difference EMPTY in both directions, and 0 paths beginning `packages/`, `apps/` or `docs/`; every commit has ONE parent; `git show --numstat` and `git diff --numstat` agree cell by cell and every cell equals the `+/-` column above; pre-handback insertions 438, 349, 9, 2, 2, 14 and 158, each under the 500 cap of DECISION F104 D1; leading `<<<SLICE ` and `<<<END ` read 0 LINES in all four slice targets; `git ls-files .remedy-wt` reads 0; this round's 7 reflog rows all classify as `commit`, with `amend`, `rebase` and `cherry` each 0 and no total asserted over the whole reflog.
 - G12 — this file, whose own `wc -l` against the 100-line cap is reported with the full gate transcripts in the round report rather than here (R-0582).
 
 ## Authored-text proofs
 
-The reviewer's emitted original still exists on disk at `.remedy-wt/f009-r26.md` and was verified at step 0, before C0a, as sha256 `9db61842…` over 33832 bytes and 451 lines — so the primary disk-to-disk proof was available this round. Every slice was extracted from the COMMITTED C0a blob by its `<<<SLICE `/`<<<END ` marker lines and applied by script: `.agent/plan.md` `cmp`s exit 0 against PLANF009R26 with a negative control at exit 1, both appends are byte-exact prefix-plus-remainder under two independent readers, and C4 and C5 pass §4.9 ordered equality against their slices.
+The bytes received were verified at step 0, before C0a, as sha256 `69e3b24f…` over 35935 bytes and 438 lines against the three values the delegation stated, and the emitted original is still on disk at `.remedy-wt/f009-r27.md` and compares byte-equal to both committed copies. Every slice was extracted from the COMMITTED C0a blob by its `<<<SLICE `/`<<<END ` marker lines and applied by script, never hand-transcribed: `.agent/plan.md` `cmp`s exit 0 against PLANF009R27 with a negative control at exit 1, all three appends are byte-exact prefix-plus-remainder under two independent readers with a flip control each, and C5 passes §4.9 ordered equality against GUARD_TO.
 
 ## Deviations & assumptions
 
-- G10 mutation (b) — the block orders "that SAME line, with `payload` in place of `accepted_body`, directly BELOW the `rejected_state` audit call". That call sits at 16-space indentation inside `if accepted_body is None:`, so inserting the line at its own 12 spaces is an IndentationError that would redden the whole module instead of the one named id. It was inserted at 16 spaces, matching the clause. Declared rather than silently repaired; the ordered outcome held exactly.
-- No departure from the ordered commit sequence: C0a, C0b, C1, C2, C3, C4, C5, C6 in that order, with no extra commit, no dropped commit and no reordering. No id was minted and none resolved; the next free id is R-0642, exactly as at the round start.
+- ASSUMPTION, G10 scope — the block fixes the three expected failure sets but names no pytest node for them. Each mutation was measured at the guard class `TestCommandDoorImportGuard`, where all three sets reproduce EXACTLY, and again at whole-file scope, where each mutation additionally reddens 21 or 22 unrelated HTTP tests because the mutated method sits on the live dispatch path. Both readings are in the round report; only the guard-class scope makes "exactly the ids listed" reachable, and all three ordered sets are subsets of the whole-file reds.
+- No departure from the ordered commit sequence: C0a, C0b, C1, C2, C3, C4, C5, C6 in that order, with no extra commit, no dropped commit and no reordering. R-0642 was minted and nothing was resolved — no `Done:` line and no `Landed:` line was written — so the next free id is R-0643.
 
 ## Next
 
-The reviewer reviews `cd77e969`..HEAD and issues the R26 verdict; the round after that lands the queue-only import guard.
+The reviewer reviews `c98d57f0`..HEAD and issues the R27 verdict; the round after that lands the route-walking 405 test, the last piece of T003.
