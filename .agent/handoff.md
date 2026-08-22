@@ -1,115 +1,115 @@
-# F021 R33 handback — record R32, land the envelope's task linkage
+# F021 R34 handback — record R33, land the row's task linkage and its resolver
 
-Fortschritt: ~98 % (T002 fertig; T003 hat mit dem Server-Feld begonnen, es fehlen
-             Klick-Sprung und Steuer-Eingang) — Schaetzung
+Fortschritt: ~98 % (T003 zur Haelfte: Server-Feld und Aufloeser stehen, es fehlen
+             die Verdrahtung und der Steuer-Eingang) — Schaetzung
 
 ## Range
-Review of 6e529304456c17b284ad65ad0b0315bf1bd06663..HEAD — round base `6e529304`,
+Review of a14f02947d262a1b38a3b7e87f6735efc6cbcd9c..HEAD — round base `a14f0294`,
 branch `feature/f021-live-activity-feed`. Open findings 223, by
 `planner_reviewer_prompt.md` §3 item 10 — `^- R-\d+ — ` 224 minus
-`^Done: R-\d+ — ` 1 — measured at C2 `6d937573` (DECISION F009 D10).
+`^Done: R-\d+ — ` 1 — measured at C2 `55353f79` (DECISION F009 D10).
 
 ## Item status
 | Item | Status | Reason |
 |---|---|---|
-| C0a `d773dc1a` | done | |
-| C0b `3eb8d32b` | done | |
-| C1 `220d73ba` | done | |
-| C2 `6d937573` | done | |
-| C3 `94dc7add` | done | source pair AND both test pairs, one commit (constraint 3) |
+| C0a `6c5151bf` | done | |
+| C0b `093e84a2` | done | |
+| C1 `8e9a396d` | done | |
+| C2 `55353f79` | done | |
+| C3 `8b68dcaf` | done | both source pairs, the test pair and both new files, one commit (constraint 3) |
 | C4 (this file) | done | its own SHA is unnameable from inside it |
 
 ## Commits
 
-### d773dc1a chore(agent): save the F021 R33 step block
+### 6c5151bf chore(agent): save the F021 R34 step block
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f021-r33.md | +312/-0 | the block saved verbatim (C0a) |
+| .agent/authored/f021-r34.md | +358/-0 | the block saved verbatim (C0a) |
 
-### 3eb8d32b chore(agent): mirror the R33 block into last_block
+### 093e84a2 chore(agent): mirror the R34 block into last_block
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/last_block.md | +252/-270 | written FROM the committed C0a blob (C0b) |
+| .agent/last_block.md | +268/-222 | written FROM the committed C0a blob `cdc59f80` (C0b) |
 
-### 220d73ba docs(state): point the F021 plan at R33, the record and envelope-field round
+### 8e9a396d docs(state): point the F021 plan at R34, the record and resolver round
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/plan.md | +22/-21 | PLANF021R33 whole-file write (C1) |
+| .agent/plan.md | +23/-24 | PLANF021R34 whole-file write (C1) |
 
-### 6d937573 docs(review): record the R32 PASS and correct two reviewer defects against open findings
+### 55353f79 docs(review): record the R33 PASS and three reviewer defects against open findings
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/live_review.md | +6/-0 | RECORD33 appended, ONE blank line at the join (C2) |
+| .agent/live_review.md | +8/-0 | RECORD34 appended, ONE blank line at the join (C2) |
 
-### 94dc7add feat(ui-server): carry the task linkage in the shared event envelope
+### 8b68dcaf feat(ui): resolve a feed row to the graph node its task owns
 | Path | +/- | Reason |
 |---|---|---|
-| packages/orchestration/ui_server.py | +13/-0 | SUMMARYPAIR — `task_id` from two sources (C3) |
-| tests/ui_server/test_sse_stream.py | +27/-3 | PINPAIR then GOLDENPAIR (C3) |
+| apps/ui/src/api/feedRow.ts | +5/-0 | ROWFIELD then ROWPROJECT (C3) |
+| apps/ui/src/api/feedFocus.ts | +36/-0 | FEEDFOCUS, new module, no caller yet (C3) |
+| apps/ui/src/api/feedFocus.test.ts | +42/-0 | FEEDFOCUSTEST, 6 tests (C3) |
+| apps/ui/src/api/actionClass.test.ts | +1/-1 | ACTIONROW, the typechecking repair (C3) |
 
-### C4 docs(state): hand back F021 R33 — SHA unnameable: this is the commit that writes this file
+### C4 docs(state): hand back F021 R34 — SHA unnameable: this is the commit that writes this file
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/handoff.md | owed to R34 | the handback itself (C4) |
+| .agent/handoff.md | owed to R35 | the handback itself (C4) |
 
 ## External actions
 `git push -u origin feature/f021-live-activity-feed` after C4. `gh pr list --state
-open --json number,headRefName,baseRefName,isDraft` exit 0, output `[]`; no
-`gh pr create`, no `gh pr merge`. ONE worktree, added and removed: `git worktree
-add --detach .remedy-wt/g6 6e529304` then `git worktree remove --force` (G6).
+open --json number,headRefName,baseRefName,isDraft` exit 0, output `[]`; no `gh pr
+create`, no `gh pr merge`. ONE worktree, added and removed: `git worktree add
+--detach .remedy-wt/g6 8b68dcaf` then `git worktree remove --force` (G6).
 
 ## Verification — one line per gate, transcripts in the round report (R-0582)
 G1 `.agent/STOP` ABSENT before C0a and again before C4; branch `feature/f021-live-activity-feed`; `git status --porcelain` 0 lines after each of C0a, C0b, C1, C2, C3.
-G2 sha256 `8b2ac868303ef15f1b8deb954b43aa8e33dbff00fcaa33a978aed0eed50ae5ce`, 23727 bytes, 312 lines — EQUAL across `.remedy-wt/f021-r33.md`, `.agent/authored/f021-r33.md` at C0a and `.agent/last_block.md` at C0b (both blob `d4f63ac2`). My extractor printed 2 whole texts, 3 pairs, 113 CONTENT lines; TOTAL 312 against 490, PROSE 199 against 400.
-G3 `cmp` plan.md vs PLANF021R33+newline exit 0; NEGATIVE CONTROL vs the bare slice exit 1; last byte is a newline; `^## Goal$` 1, `^## Next Steps$` 1; `wc -l` 49, under 50.
-G4 SUMMARYPAIR/PINPAIR/GOLDENPAIR FROM each 1x at base and 0x at C3, in that application order; every non-blank TO-only line exactly once in C3's 40 added lines (12, 21 and 2 lines). `"task_id"` in the test file 0 then 11. TWO ORDERED NUMERALS ARE FALSE — Deviations 1 and 2: `, "outcome": "ok"}` is 5 then 3, not 5 then 5, and `task_id` in ui_server.py is 44 then 48, not 0 then a count.
-G5 canonical `^- R-\d+ — ` 224→224, ALL DISTINCT at both, max R-0661 at both; loose `^- R-` 225→225, gap to canonical 1 at both; `^Done: R-` 1→1 line-anchored (35→35 unanchored, unchanged under either reading — Deviations 5); `^Gate: R` 31→32, DISTINCT at both; `^Gate: R33` 0→1; `^Recurrence: ` 5→7; `^Recurrence: R-0661 — ` 0→1; `^Recurrence: R-0607 — ` 0→1; `^- R-0661 — ` 1→1; `^- R-0607 — ` 1→1. RECORD33 paragraphs opening with the bytes `- R-` = 0 of 3. Base blob a byte-exact PREFIX of C2, remainder EXACTLY one newline + RECORD33 + one newline.
-G6 RED-PROOF in `.remedy-wt/g6` at `6e529304`, PINPAIR and GOLDENPAIR applied WITHOUT SUMMARYPAIR (FROM still 1x in the worktree source): `4 failed, 62 passed`, the failures being `TestFrameShape::test_the_envelope_carries_the_safe_fields_only`, `TestFrameShape::test_the_envelope_carries_the_linkage_from_both_event_sources`, `TestFramingGolden::test_the_wire_bytes_match_the_golden` and `TestFramingGolden::test_the_golden_is_what_the_frame_builders_produce`. Worktree removed; `git status --porcelain` 0 lines; `git worktree list` the primary checkout ALONE.
-G7 SERIAL, PRIMARY checkout, repo root: `tests/ui_server/` exit 0, 439 passed (438 at the base, measured in the G6 worktree before its pairs were applied — the difference is PINPAIR's one new test); the FOUR state readers exit 0 — that ui_server run plus 89 over `test_test_runner.py`, `test_resource_safety.py` and `test_integrity_gate.py`, 528 together, the fourth file being the one R-0607 rules in; canary `tests/cli/test_golden_path.py` exit 0, 42; `python3 -m ruff check packages/orchestration/ui_server.py tests/ui_server/test_sse_stream.py` exit 0, "All checks passed!". Constraint 12's 405 pair did NOT fail in any run.
-G8 `git diff --name-only 6e529304..94dc7add` EQUALS the six non-handoff `Change:` paths, BOTH set differences EMPTY; at C4 the set is those six plus `.agent/handoff.md`, the seventh `Change:` path (Deviations 4). 6 commits, every one single-parent; `git show --numstat` and `git diff --numstat` agree cell by cell and agree with the tables above; insertions 312, 252, 22, 6, 40 and C4's own, each under 500. Marker sweep LINE-ANCHORED 0 for each of `<<<SLICE `, `<<<END `, `<<<FROM `, `<<<TO ` in all four target files; unanchored `<<<` 0 in three of them and 18 in `.agent/live_review.md`, unchanged from the base (Deviations 3). Reflog BY OPERATION: every one of this round's rows is `commit`, `amend`/`rebase`/`cherry` 0 each. `gh pr list --state open` printed `[]`.
+G2 sha256 `d75dbec5f6eb8c3d5e564af5f6a1c9fcf272edb272d1d41bbde9ca5701da8e04`, 25519 bytes, 358 lines — EQUAL over the bytes I read, `.remedy-wt/f021-r34.md`, `.agent/authored/f021-r34.md` at C0a and `.agent/last_block.md` at C0b (both blob `cdc59f80`). My extractor printed 4 whole texts, 3 pairs, 152 CONTENT lines, 17 marker lines; TOTAL 358 against 490, PROSE 206 against 400 — both re-measured from that blob and both matching constraint 12.
+G3 `cmp` plan.md vs PLANF021R34+newline exit 0; NEGATIVE CONTROL vs the bare slice exit 1; last byte `0a`; `^## Goal$` 1, `^## Next Steps$` 1; `wc -l` 48, under 50.
+G4 ROWFIELD/ROWPROJECT/ACTIONROW FROM each 1x at base and 0x at C3, applied in that order; `TO contains FROM` False for all three. Neither new path existed at base (`git cat-file -e` exit 128 for both); `cmp` vs slice+newline exit 0 and vs bare slice exit 1 for both; `wc -l` 36 and 42. Over C3's 84 added lines every non-blank TO-only line appears exactly once (4+1+1 lines). `taskId` reported as a DELTA only, never as a gate: 0→2 in feedRow.ts, 0→1 in actionClass.test.ts.
+G5 canonical `^- R-\d+ — ` 224→224, ALL DISTINCT at both, max R-0661 at both; loose `^- R-` 225→225, gap 1 at both; `^Done: R-` 1→1 line-anchored (34→34 unanchored — Deviation 4); `^Gate: R` 32→33, labels DISTINCT at both; `^Gate: R34` 0→1; `^Recurrence: ` 7→10; `^Recurrence: R-0369 — ` 0→1; `^Recurrence: R-0419 — ` 0→1; `^Recurrence: R-0630 — ` 1→2 as ordered; `^- R-0369 — `, `^- R-0419 — `, `^- R-0630 — ` 1→1 each. RECORD34 paragraphs opening with the bytes `- R-` = 0 of 4. Base blob a byte-exact PREFIX of C2, remainder EXACTLY one newline + RECORD34 + one newline, 5781 bytes both measured and predicted.
+G6 RED-PROOF in `.remedy-wt/g6` at C3, `owner.nodeId`→`owner.id` in `feedFocus.ts` (1 occurrence before, 0 after): `2 failed | 4 passed`, the failures being `nodeIdForFeedRow > resolves a row to the node of the task that owns it` and `nodeIdForFeedRow > reads the task's nodeId and never assumes it equals the task id` — the second is the test the gate names. Worktree removed; `git status --porcelain` 0 lines; `git worktree list` the primary checkout ALONE.
+G7 SERIAL, PRIMARY checkout: `npm run test:unit` in `apps/ui` exit 0, 16 files and 218 tests, against 15 and 212 which I measured MYSELF in the same checkout at C2 before C3 — difference one file and six tests, exactly FEEDFOCUSTEST. `npx tsc --noEmit` in `apps/ui` exit 0 with EMPTY stdout and stderr, and exit 0 with empty output at C2 too, so the green is the change's and not a pre-existing pass being reported. FOUR state readers exit 0, 528 passed. `tests/ui_contracts/` exit 0, 486 passed 4 skipped. Canary `tests/cli/test_golden_path.py` exit 0, 42 passed. No ruff gate ordered; `npm run lint` neither run nor reported (constraint 9).
+G8 `git diff --name-only a14f0294..HEAD` at C3 EQUALS the non-handoff `Change:` paths, BOTH set differences EMPTY — but that set has EIGHT members, not the seven G8 names (Deviation 1); at C4 it is those eight plus `.agent/handoff.md` (Deviation 2). 6 commits, every one single-parent; `git show --numstat` and `git diff --numstat` agree cell by cell on all five measurable commits; insertions 358, 268, 23, 8, 84 and C4's own, each under 500 (Deviation 3). Marker sweep LINE-ANCHORED 0 for each of `<<<SLICE `, `<<<END `, `<<<FROM `, `<<<TO ` over all five named files; UNANCHORED `<<<` 0 over each of the three `apps/` files. Reflog BY OPERATION: all five of this round's rows are `commit`, `amend`/`rebase`/`cherry` 0 each. `gh pr list --state open` printed `[]`.
 
 ## Authored-text proofs
-All five texts were extracted BY MARKER LINE from the COMMITTED C0a blob
-`d773dc1a:.agent/authored/f021-r33.md`, never retyped. `.agent/plan.md`: `cmp`
-exit 0 against PLANF021R33 + one newline, exit 1 against the bare slice.
-`.agent/live_review.md`: base blob a byte-exact PREFIX, remainder EXACTLY one
-newline + RECORD33 + one newline. The three pairs: each FROM asserted present
-EXACTLY once immediately before its replacement by the applying script, which
-refuses any other count; PINPAIR before GOLDENPAIR (constraint 11).
+All seven texts — four slices, three pairs — were extracted BY MARKER LINE from
+the COMMITTED C0a blob `6c5151bf:.agent/authored/f021-r34.md`, never retyped.
+`plan.md`, `feedFocus.ts`, `feedFocus.test.ts`: `cmp` exit 0 against slice + one
+newline, exit 1 against the bare slice. `live_review.md`: base blob a byte-exact
+PREFIX, remainder EXACTLY one newline + RECORD34 + one newline. Each pair's FROM
+was asserted present EXACTLY once immediately before its replacement by the
+applying script, which refuses any other count; ROWFIELD before ROWPROJECT.
 
 ## Deviations & assumptions
 None repaired; constraint 1 forbids editing reviewer text, so each is declared.
-1. G4's "`, "outcome": "ok"}` 5 then 5 — UNCHANGED" is FALSE: MEASURED 5 then 3,
-   because GOLDENPAIR's own TO rewrites that tail on both `GOLDEN_STREAM` lines.
-   The clause's PROPERTY holds: the 3 survivors are the 3 INPUT fixtures at
-   unchanged lines 19, 76, 89, and 5 − 2 = 3 accounts for the delta.
-2. G4's "`task_id` 0 at base" for `ui_server.py` is FALSE: MEASURED 44 then 48,
-   delta 4 = SUMMARYPAIR's new occurrences; the file carried task ids long
-   before F021.
-3. G8's "0 for any `<<<` at all" is UNMEETABLE over `.agent/live_review.md`: 18
-   at base, 18 at C2, RECORD33 contributing 0; reaching 0 means editing landed
-   ledger text, which constraint 7 forbids. R-0630/R-0587 class; the
-   line-anchored readings, the load-bearing ones, are all 0.
-4. G8's path-set clause and its "6 commits" clause cannot hold at one HEAD: the
-   six-path set holds at C3, and the sixth commit C4 adds the seventh path.
-   Both readings reported rather than one chosen.
-5. The block writes `Done: R-` unanchored where constraint 8 wants a named
-   pattern. Both readings reported; both unchanged across C2.
-6. The ONE ordered worktree was ALSO used, before its pairs were applied, for
-   the base `tests/ui_server/` reading (438). No second worktree was created.
-7. No departure from the ordered commit sequence: exactly C0a, C0b, C1, C2, C3,
-   C4 — none extra, dropped or reordered.
-8. DECISION D15, size: 115 lines, over the ≤100 tier this round's six commit
+1. G8's "the seven non-handoff `Change:` paths" is FALSE: the `Change:` list
+   enumerates EIGHT of them, nine with `.agent/handoff.md`. The load-bearing
+   property holds — both set differences over those eight are EMPTY at C3.
+2. G8's path-set clause and its "6 commits" clause cannot hold at one HEAD: the
+   eight-path set holds at C3, where the range has 5 commits; the sixth commit
+   C4 adds the ninth path. Both readings reported rather than one chosen.
+3. C0b's insertions are 268 under `git show --numstat` and `git diff --numstat`,
+   which agree, while that commit's own `--stat` summary printed 358/312 under
+   rewrite detection (`rewrite .agent/last_block.md (79%)`). Both readings are
+   under 500; the numstat pair is the one G8 orders.
+4. G5 writes `Done: R-` where constraint 8 wants a named pattern. Both readings
+   reported: line-anchored 1→1, unanchored 34→34, unchanged under either.
+5. `.agent/live_review.md` carries 18 unanchored `<<<` occurrences at base and
+   24 at C2, RECORD34 contributing 6 as it quotes the marker names. G8 rightly
+   does NOT order that count — it is the R-0630 class C2 records.
+6. No departure from the ordered commit sequence: exactly C0a, C0b, C1, C2, C3,
+   C4 — none extra, dropped or reordered. No finding id minted or resolved.
+7. DECISION D15, size: 115 lines, over the ≤100 tier this round's six commit
    tables earn. Mandated cause: six commit tables, eight gate lines, the
-   item-status table, the authored-text section and eight deviations, of which
+   item-status table, the authored-text section and seven deviations, of which
    four are false or unmeetable gate clauses that must be evidenced rather than
    asserted. No section was dropped and no transcript is restated here.
 
 ## Next
-R33's OWN VERDICT IS UNRECORDED and the next round's ledger commit owes it, with
-the two readings C4 cannot state about itself: C4's insertion count and its
-`wc -l`. R34 is the CLIENT half of T003 — `feedRow.ts` carries the `task_id` the
-envelope now emits and a row click resolves it to a node id, emitting
-`onSelectNode`. R35 is the disabled steering input with the F030 tooltip, after
-which F021 reaches its integration-gate round. The next session's first action is
-Phase 1 rule 1, re-reading `.agent/STOP` from disk, before rule 2.
+R34's OWN VERDICT IS UNRECORDED and the next round's ledger commit owes it, with
+the three readings C4 cannot state about itself: C4's SHA, its insertion count
+and its `wc -l`. R35 is the WIRING — `ActivityFeedCard` renders a resolvable row
+as a button emitting `onSelectNode`, `RightLivePanel` passes the task list down,
+and a `tests/ui_contracts/` contract pins that the component really calls
+`nodeIdForFeedRow`, which lands this round with no caller. R36 is the disabled
+steering input with the F030 tooltip. The next session's first action is Phase 1
+rule 1, re-reading `.agent/STOP` from disk, before rule 2.
