@@ -323,3 +323,49 @@ class TestDetailPanelOutcome:
     def test_no_cli_command_primary(self):
         tsx = (ROOT / "apps" / "ui" / "src" / "components" / "detail" / "DetailPopover.tsx").read_text()
         assert "next.command" not in tsx
+
+
+class TestEveryCustomPropertyResolves:
+    """R-0661. A `var(--x)` with no definition and no fallback makes a browser
+    drop the whole declaration silently, and nothing in this repository renders
+    CSS, so the failure is invisible to every other suite. F021 R31 shipped
+    exactly that and the pill rendered square.
+
+    This is an ALLOWLIST rather than an emptiness assertion on purpose: four
+    properties were already unresolved before F021 began, each needing a value
+    decided against the design reference, and R-0364 forbids ordering a gate
+    that is red before the round that adds it. The set may shrink freely; it
+    cannot grow without turning this red."""
+
+    KNOWN_UNRESOLVED = {
+        "--remedy-mono",
+        "--remedy-warning-bg",
+        "--remedy-warning-border",
+        "--remedy-warning-fg",
+    }
+
+    def _unresolved(self):
+        css_root = ROOT / "apps" / "ui" / "src"
+        defined, used = set(), {}
+        for path in sorted(css_root.rglob("*.css")):
+            text = path.read_text(encoding="utf-8")
+            defined.update(re.findall(r"(--remedy-[a-z0-9-]+)\s*:", text))
+            for name in re.findall(r"var\(\s*(--remedy-[a-z0-9-]+)", text):
+                used.setdefault(name, set()).add(path.name)
+        return {name: files for name, files in used.items() if name not in defined}
+
+    def test_the_unresolved_set_has_not_grown(self):
+        unresolved = self._unresolved()
+        new = set(unresolved) - self.KNOWN_UNRESOLVED
+        assert not new, (
+            "these custom properties are used but never defined under "
+            f"apps/ui/src, so the declarations using them are dropped: "
+            f"{ {name: sorted(unresolved[name]) for name in sorted(new)} }"
+        )
+
+    def test_the_pill_radius_is_defined(self):
+        tokens = (ROOT / "apps" / "ui" / "src" / "styles" / "tokens.css").read_text()
+        assert "--remedy-radius-pill:" in tokens, (
+            "the jump-to-live pill (DECISION F021 D10) asks for this token; "
+            "docs/ui/design_reference/tokens.css defines it as 999px"
+        )
