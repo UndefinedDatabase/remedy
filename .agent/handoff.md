@@ -1,85 +1,101 @@
-# Handback — F021 R25 (the discharge round: checklist item 32, the R24 verdict, the recovered R18 verdict)
+# Handback — F021 R26, the ring round
 
-Feature F021 Live activity feed + now-card · Round R25 · branch `feature/f021-live-activity-feed`.
-Round base `1ae048937a12e247c410ed79e771adc25514f07b` (`1ae04893`). Open findings after C3: 222, maximum R-0659, next free R-0660. NO CODE CHANGES this round.
-Fortschritt: ~89 % (T002 — Uhr injiziert und Ankunftsstempel auf dem Transport-
-             Event; es fehlen Ring, NowCard und Feed-Scroll)
+Branch `feature/f021-live-activity-feed`. ROUND BASE `d121dd0935bfc072d96c5f6035a37d0df6b4099e` (short `d121dd09`).
+
+Fortschritt: ~92 % (T002 — Uhr, Ankunftsstempel und Ring verdrahtet; es fehlen
+             NowCard-Punkt und Feed-Scroll)
              — Schaetzung
 
 ## Range
-
-Review of `1ae04893..34e14d02`, plus the C4 handoff commit that writes this file.
+Review of `d121dd09`..HEAD, HEAD being C6 — the commit that carries this file.
 
 ## Commits
 
-### c5c9a183 docs(state): save the F021 R25 step block
+### 6541c3d3 docs(state): save the F021 R26 step block
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f021-r25.md | +303/-0 | C0a — the reviewer's block saved verbatim |
+| `.agent/authored/f021-r26.md` | +490/-0 | C0a — the block saved verbatim, byte for byte |
 
-### c9bc5094 docs(state): mirror the F021 R25 step block into last_block
+### 8381ef96 docs(state): mirror the F021 R26 step block into last_block
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/last_block.md | +195/-122 | C0b — written FROM the committed C0a blob |
+| `.agent/last_block.md` | +411/-224 | C0b — written FROM the committed C0a blob |
 
-### d8395de9 docs(state): point the F021 plan at R25, the discharge round
+### 9ba0f2ef docs(state): point the F021 plan at R26, the ring round
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/plan.md | +16/-14 | C1 — PLANF021R25 plus one terminating newline |
+| `.agent/plan.md` | +18/-19 | C1 — PLANF021R26 plus one terminator; 48 lines |
 
-### 796bef72 docs(agents): promote the R-0656 rule into the section 3 checklist as item 32
+### 7eb82ed0 feat(ui): thread the arrival stamp through the feed ring
 | Path | +/- | Reason |
 |---|---|---|
-| docs/agents/planner_reviewer_prompt.md | +22/-0 | C2 — the ITEM32 pair, append-shaped |
+| `apps/ui/src/api/feedRow.ts` | +12/-2 | C2 — FEEDROWFIELD, FEEDROWSIG, FEEDROWRET |
+| `apps/ui/src/api/brainStream.ts` | +2/-1 | C2 — RECVSIG, RECVCALL |
+| `apps/ui/src/api/brainStreamDriver.ts` | +1/-1 | C2 — DRIVERTHREAD |
+| `apps/ui/src/api/brainStream.test.ts` | +15/-3 | C2 — TESTDRIVE, TESTREPLAY, TESTPROJ, TESTSTAMP |
+| `apps/ui/src/api/feedRow.test.ts` | +13/-1 | C2 — FEEDTESTSHIM, FEEDTESTSTAMP |
+| `apps/ui/src/api/actionClass.test.ts` | +1/-1 | C2 — ACTIONROW |
 
-### 34e14d02 docs(review): record the R24 verdict, register R-0659 and recover the lost R18 verdict
+### 024727c2 test(ui-contracts): retarget the ring seam pins at the stamped projection
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/live_review.md | +10/-0 | C3 — the RECORD25 append |
+| `tests/ui_contracts/test_brain_stream_ring.py` | +3/-2 | C3 — CONTRACTPATHROW, CONTRACTCALL, CONTRACTGUARD; both existing guards retargeted, neither deleted nor loosened |
 
-### C4 — the handback commit, which writes this file and therefore cannot name its own SHA or its own numstat (R-0149 pattern, R-0494 heading rule)
+### 350cb7bc test(ui-contracts): pin the arrival stamp along the whole ring path
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/handoff.md | not tabled | C4 — this rewrite; its numbers do not exist when this text is written |
+| `tests/ui_contracts/test_brain_stream_ring.py` | +29/-0 | C4 — CONTRACTRINGSTAMP, carried ALONE |
 
-## Item status
-
-| Item | Status | Reason |
+### 3cdbdd65 docs(review): record the R25 verdict and DECISION F021 D8
+| Path | +/- | Reason |
 |---|---|---|
-| C0a | done | |
-| C0b | done | |
-| C1 | done | |
-| C2 | done | |
-| C3 | done | |
-| C4 | done | this commit |
+| `.agent/live_review.md` | +4/-0 | C5 — RECORD26 appended; no id minted, none resolved |
+
+### C6 docs(state): hand back F021 R26 — SHA unnameable here, since this table sits inside the commit it describes (R-0494)
+| Path | +/- | Reason |
+|---|---|---|
+| `.agent/handoff.md` | rewrite | C6 — this file |
 
 ## External actions
-
-`gh pr list --state open --json number,headRefName` → `[]`, exit 0. `git push -u origin feature/f021-live-activity-feed` after C4. NEITHER `gh pr create` NOR `gh pr merge` was run. No worktree added or removed, no destructive check, no force-push, no history rewrite.
+- `git worktree add .remedy-wt/r26-red 3cdbdd65` → exit 0, detached HEAD (G11 only).
+- `apps/ui/node_modules` SYMLINKED into that worktree (`os.symlink`, `ln -s` semantics — never a copy, R-0591); unlinked before removal.
+- `git worktree remove .remedy-wt/r26-red` → exit 0; `git worktree prune` → exit 0; `git worktree list` = the primary checkout ALONE.
+- `gh pr list --state open --json number,headRefName` → exit 0, `[]`. NO `gh pr create` and NO `gh pr merge` was run this round.
+- `git push -u origin feature/f021-live-activity-feed` → runs immediately AFTER C6; a commit cannot record the push that carries it. Its result is in the round report.
 
 ## Verification
-
-One line per gate; the transcripts stay in the round report (R-0582). Every numeral below is one this worker measured.
-- G1 PASS — `.agent/STOP` absent immediately before C0a and again before C4; branch `feature/f021-live-activity-feed`; `git status --porcelain` 0 lines after each of C0a, C0b, C1, C2 and C3; C4's own reading is left to the next session (§3 item 31). Owed reading from the last round: `1ae04893` is single-parent and touches `.agent/handoff.md` alone at 33 insertions, under the 500 cap.
-- G2 PASS — transport: the reviewer's emitted `.remedy-wt/f021-r25.md`, the `.agent/authored/f021-r25.md` blob at C0a and the `.agent/last_block.md` blob at C0b are ALL byte-identical at sha256 `85ac405392030d0846796af87f0a39e8b43d1624561ff87ce1014ee77abe2613` over 34697 bytes and 303 lines. C0b was written from the committed C0a blob.
-- G3 PASS — the marker-line extractor over the committed C0a blob printed 2 whole texts (PLANF021R25 49 lines, RECORD25 9 lines), 1 pair (ITEM32: FROM 2 lines, TO 24 lines) and 84 CONTENT lines. Re-measured from that same blob: TOTAL 303 against D6's 490, PROSE 219 against D5's 400 — both equal to constraint 9's numerals.
-- G4 PASS — `cmp .agent/plan.md` against PLANF021R25 plus one terminating newline exit 0; NEGATIVE CONTROL against the bare slice exit 1. Last byte is a newline; `wc -l` 49, the MEASURED value the block ordered; `^## Goal$` 1, `^## Next Steps$` 1.
-- G5 PASS — ITEM32 over `docs/agents/planner_reviewer_prompt.md`: FROM 1 at the round base and 1 at C2; TO 0 at the round base and 1 at C2. Ordered equality: 22 added lines, 22 TO-only lines, ELEMENTWISE equal in order, 0 deletions. Checklist items run 1..32 consecutively with no duplicate (31 items at the base); item 32 sits between item 31 and the "Why this is on disk and not a habit" paragraph; file 944 lines before, 966 after.
-- G6 PASS — reader (a): the base blob is a byte-exact PREFIX of the C3 file and the remainder is exactly one newline plus RECORD25 plus one terminator, sha256 `6da288742762c35dba1c0619d714a18addfddf36d21245e94526999e0f21ab45` over 14930 bytes and 10 lines; file 551086 B / 1158 L before, 566016 B / 1168 L after. Reader (b), set-wise and ELEMENTWISE over the whole list: N 260 → 265, RECORD25 exactly 5 units. NEGATIVE CONTROL at byte offset 4 of the FIRST paragraph, `v` → `X` at equal length: BOTH readers REJECTED it and BOTH accepted the true file.
-- G7 PASS — ledger sets, line-anchored, round base → C3: `- R-` 221 → 222, DISTINCT at both; maximum R-0658 → R-0659; `Done: R-` 0 → 0; `Landed: ` 0 → 0; `Gate: R` keys 23 → 24, DISTINCT at both; `Gate: R25` 0 → 1; `Gate: R19` 0 at BOTH; `- R-0656` exactly ONCE at BOTH. Base key sequence measured as R1-R18 and R20-R24, R19 absent, which is the gap R-0659 registers.
-- G8 PASS — `git diff 1ae04893..34e14d02 -- .agent/live_review.md` has 0 deleted lines and 10 added. The `.agent/live_review.md` blob at `acb688a9` (521496 B / 1130 L) is a byte-exact PREFIX of the C3 file.
-- G9 PASS — all four suites run SERIALLY from `/home/decodeux/Repos/remedy`, each exit 0, counted by passed plus skipped: state-readers `tests/ui_server/ tests/orchestration/test_test_runner.py tests/regression/test_resource_safety.py` 511 (511 passed); `tests/docs/` 295; canary `tests/cli/test_golden_path.py` 42; `tests/ui_contracts/` 473 (469 passed + 4 skipped), UNCHANGED. `npx tsc --noEmit` and `npm run test:unit` were NOT run and are not reported, as the block ordered.
-- G10 PASS — base-to-C3: path set equals the five non-handoff `Change:` paths with BOTH differences EMPTY; all 5 commits single-parent; `git show --numstat` and `git diff --numstat` agree cell by cell with every cell of the `## Commits` tables above; insertions 303, 195, 16, 22, 10, each under 500; `git ls-files .remedy-wt` 0; `git worktree list` is the primary checkout alone; `gh pr list --state open` EMPTY. Marker sweep, line-anchored over the three files a slice or pair landed in: I counted 6 marker prefixes in this block (`<<<SLICE `, `<<<END `, `<<<PAIR `, `<<<FROM`, `<<<TO`, `<<<ENDPAIR`) and each reads 0 in each file, as does any line starting `<<<`. Reflog by OPERATION field over this round's 5 rows: every one `commit`; `amend`, `rebase` and `cherry` each 0.
+G1 PASS — `.agent/STOP` ABSENT immediately before C0a and again before C6; branch `feature/f021-live-activity-feed`; `git status --porcelain` printed 0 lines after each of C0a, C0b, C1, C2, C3, C4 and C5 (C6's own reading is ordered nowhere). Owed reading from R25: `d121dd09` is single-parent and touches `.agent/handoff.md` alone at +51/-40, under the 500-insertion cap.
+G2 PASS — sha256 `8c57ed2d6ba2f60dd466c84e83209f92829fa738082fccb5a18a4659714dd059`, 32107 bytes, 490 lines, EQUAL over all four copies: the reviewer's `.remedy-wt/f021-r26.md`, the bytes I read, `.agent/authored/f021-r26.md` at C0a and `.agent/last_block.md` at C0b, the last written FROM the committed C0a blob.
+G3 PASS — my marker-line extractor over the COMMITTED C0a blob printed 3 whole texts (PLANF021R26, RECORD26, CONTRACTRINGSTAMP), 16 pairs and 180 CONTENT lines; 0 stray `<<<` lines. Re-measured from that same blob: TOTAL 490 against DECISION F085 D6's 490, PROSE 310 against D5's 400 — both equal to constraint 11.
+G4 PASS — `cmp .agent/plan.md <PLANF021R26 + one newline>` exit 0; NEGATIVE CONTROL `cmp` against the bare slice exit 1 (EOF after byte 2875, line 48). Last byte is a newline; `wc -l` reads EXACTLY 48, equal to the reviewer's count; `^## Goal$` 1 and `^## Next Steps$` 1.
+G5 PASS — all SIXTEEN FROMs read exactly 1 in their target at `d121dd09`. The FOURTEEN REWRITES read FROM 0 / TO 1 after their applying commit. FEEDROWRET and CONTRACTPATHROW, whose containment I re-measured TRUE, read FROM 1 / TO 1 and carry NO zero count. Deletions: C2 `7eb82ed0` 9, C3 `024727c2` 2.
+G6 PASS — the C3 blob of `tests/ui_contracts/test_brain_stream_ring.py` (17713 B / 399 L) is a byte-exact PREFIX of the C4 file (19073 B / 428 L); remainder sha256 `910eba3e8773a44a36557c408a8a9e57794a3e82e4880d04701cbdc3e07f6aa3`, 1360 B, 29 lines. C4 ADDS 29 lines and DELETES 0; those 29 are ELEMENTWISE and IN ORDER the convention's TWO blank separator lines followed by CONTRACTRINGSTAMP's own 27 lines. Counted directly, not by a linter: EXACTLY 2 blank lines precede the new top-level class.
+G7 PASS — reader (a): the `d121dd09` blob is a byte-exact PREFIX of the C5 file and the remainder is EXACTLY one newline + RECORD26 + one newline, sha256 `84c68a86710d8c786977d6888384b25a3fa0b2f70647a6071f352345a2b04d77`, 6200 B, 4 lines; file 566016 B / 1168 L before, 572216 B / 1172 L after. Reader (b), SET-WISE: units 265 → 267 with RECORD26 exactly 2 units, ELEMENTWISE equal over the WHOLE list. NEGATIVE CONTROL at offset 4 of the FIRST paragraph, byte `v` → `X` at equal length: BOTH readers REJECTED it and BOTH ACCEPTED the true file.
+G8 PASS — base then C5: `- R-` 222 → 222, DISTINCT 222 at both; MAXIMUM registered id R-0659 at BOTH; `Done: R-` 0 → 0; `Landed: ` 0 → 0; `Gate: R` keys 24 → 25, DISTINCT at both; `Gate: R26` 0 → 1. The C5 diff has 0 deletion lines.
+G9 PASS — PRIMARY checkout, from `apps/ui`, run SERIALLY: `npx tsc --noEmit` exit 0 with EMPTY stdout and stderr; `npm run test:unit` exit 0 at 15 files and 212 tests — the reviewer's base reading was 15 and 209, and this round adds exactly the 3 new cases.
+G10 PASS — PRIMARY checkout, working directory `/home/decodeux/Repos/remedy`, run SERIALLY, counted BY PASSED PLUS SKIPPED: `tests/ui_contracts/` exit 0 at 472 passed + 4 skipped = 476; `tests/ui_server/ tests/orchestration/test_test_runner.py tests/regression/test_resource_safety.py` exit 0 at 511 passed = 511; canary `tests/cli/test_golden_path.py` exit 0 at 42.
+G11 PASS, ALL THREE WENT RED — disposable worktree `.remedy-wt/r26-red` at `3cdbdd65`, `node_modules` symlinked, NEVER the primary checkout. Green first: tsc 0, vitest 15 files / 212 tests, `tests/ui_contracts/` 471 passed + 5 skipped = 476 (one more skip than primary, for want of `apps/ui/dist/`). The target line measured 1 occurrence whole-line AND 1 indent-agnostic, agreeing. Mutated to pass a literal `0`: `npx tsc --noEmit` exit 2, `src/api/brainStream.ts(89,3): error TS6133: 'receivedAtMs' is declared but its value is never read.`; `npm run test:unit` exit 1, 2 failed — `the recent ring > the row carries the arrival stamp the transport handed in` and `the recent ring > each row keeps its OWN stamp as the ring fills`; `pytest tests/ui_contracts/` exit 1, 3 failed — `test_brain_stream_ring.py::TestAppendSitsBehindTheReplayGuard::test_the_projection_is_called_inside_receive_brain_frame`, `::TestAppendSitsBehindTheReplayGuard::test_the_replay_guard_returns_before_the_append`, `::TestTheRingCarriesTheArrivalStamp::test_the_ring_threads_the_stamp_into_the_row`. Byte restored, file byte-identical (sha256 `9c4412851b0761b1f8e95262e8d5b0574615679aaeda297f9604a4e1a6cf1d3a`), all three green again.
+G12 PASS — `d121dd09`..`3cdbdd65`: path set EQUAL to the eleven non-handoff `Change:` paths, difference EMPTY BOTH ways; all seven commits single-parent; `git show --numstat` and `git diff --numstat` agree cell by cell with every `## Commits` table above; insertions 490, 411, 18, 44, 3, 29, 4 — each under the 500 cap; `git ls-files .remedy-wt` 0; `git worktree list` the primary checkout ALONE; `gh pr list --state open` EMPTY. Marker sweep, LINE-ANCHORED over all SIX prefixes this block uses (`<<<SLICE `, `<<<END `, `<<<PAIR `, `<<<FROM`, `<<<TO`, `<<<ENDPAIR`) plus any line starting `<<<`: 0 in each of the nine files a slice or pair LANDED in; the two block mirrors read 70 by construction. Reflog BY OPERATION FIELD (text before the first `:`), scoped to this round's seven rows: every operation is `commit`, and `amend`, `rebase` and `cherry` each occur 0 times in that field.
 
 ## Authored-text proofs
-
-Every applied byte was extracted MECHANICALLY from the committed C0a blob by marker LINES, never copied by eye. PLANF021R25 sha256 `548cae252db642666c39d2a76f2c0641a78a128156be3669b3451b363a2d0f0c` (2855 B); RECORD25 sha256 `c4fca2deff8a0f55653808a7bf451009b6bbbead42113b10083922c4dd8876bf` (14928 B); ITEM32 FROM sha256 `f290ae45159246694b9b6573345c23942b66e5b9d48c108b07ccfbbfa0dcbb4b` (117 B), TO sha256 `0cb8575957e6fa8a947d7345c208e3b9638a3b94f3f06149a50e5fc90d802180` (1820 B). `.agent/plan.md` proved by `cmp` at exit 0 with a red control at exit 1 (G4); the ledger append proved by two independent readers with a same-length mutant both rejected (G6); the pair proved by ordered equality against the TO-only lines (G5).
+PLANF021R26 — `cmp` against the slice extracted from the committed C0a blob plus one terminator: exit 0; negative control against the bare slice: exit 1. RECORD26 — prefix-plus-remainder equality under two independent readers with a same-length mutant rejected (G7). CONTRACTRINGSTAMP — prefix equality plus elementwise ordered equality of the added lines (G6). All 16 pair halves were extracted MECHANICALLY from the committed C0a blob by their marker lines and applied by exact byte replacement, refusing unless FROM occurred exactly once; not one half was retyped, rewrapped, reflowed or reindented.
 
 ## Deviations & assumptions
+None. The ordered sequence C0a, C0b, C1, C2, C3, C4, C5, C6 was executed exactly: no extra commit, none dropped, none reordered. C2 was kept as ONE commit across all six TypeScript files per constraint 3, and no default value was added anywhere.
+Observations, no action taken and no slice altered: (a) FEEDTESTSHIM places its shim `function feedRowOf` BETWEEN two `import` statements in `feedRow.test.ts`; that is legal TypeScript and it was applied byte for byte rather than tidied. (b) `.agent/decisions.md` was not touched — DECISION F021 D8 lives in `.agent/live_review.md`, which is the only path the `Change:` list allows for it.
+DECISION D15 overage, declared: this file measures 101 lines by `wc -l`. That is over the 60-line baseline cap AND one line over the ≤100 tier the template grants a handback with per-commit tables for more than 5 commits; this round has 8. Cause is mandated content only — eight per-commit changed-files tables for C0a through C6, twelve one-line gate results, the item-status table, the external-actions list and the authored-text proofs. No section was dropped and no transcript was inlined (R-0582).
 
-NONE. The ordered commit sequence C0a, C0b, C1, C2, C3, C4 was executed exactly, in order, with no extra, dropped or reordered commit. No slice or pair half was retyped, rewrapped, reflowed, reindented or whitespace-adjusted. Nothing in the block was found wrong: every numeral it predicted — TOTAL 303, PROSE 219, plan 49 lines, `- R-` 221 → 222, maximum R-0658 → R-0659, `Gate: R` keys 23 → 24, `Gate: R19` 0 at both, suite totals 511 / 295 / 42 / 473 — matched the value this worker measured independently.
-DECISION D15, stated-cause overage: this file is 85 lines against the 60-line cap and within the 100 AGENTS.md permits for per-commit tables of more than five commits. Cause is mandated content only — six per-commit changed-files tables, the item-status table, the ten one-line gate results with their measured numerals, and the authored-text proofs. No section was dropped to meet the cap.
+## Item status
+| Item | Status | Reason |
+|---|---|---|
+| C0a | done | `6541c3d3` |
+| C0b | done | `8381ef96` |
+| C1 | done | `9ba0f2ef` |
+| C2 | done | `7eb82ed0`, one commit, six files |
+| C3 | done | `024727c2` |
+| C4 | done | `350cb7bc`, alone |
+| C5 | done | `3cdbdd65` |
+| C6 | done | this commit |
 
 ## Next
-
-THIS SESSION IS OVER. The NEXT session begins at docs/agents/self_drive_protocol.md Phase 1 rule 1 — the `.agent/STOP` check — BEFORE rule 2's Open PR Gate (R-0347). Rule 2 will find NO open pull request, so rule 5 applies and F021 continues on this branch. R25's own verdict is UNRECORDED and the next round's ledger commit owes it. The next round is R26, THE RING ROUND, moved there by DECISION F021 D7: `FeedRow` gains `receivedAtMs`, `feedRowOf` takes it, and `receiveBrainFrame` threads it from the transport event R23 stamped. R26 is the first round to touch the ring, whose append placement DECISION F021 D5 governs. The reviewer's promotion debt is now DISCHARGED: R-0656's rule is §3 checklist item 32 as of C2, so a later block reads it from the checklist rather than from a finding body.
+THIS SESSION IS OVER. The NEXT session begins at docs/agents/self_drive_protocol.md Phase 1 rule 1 — the `.agent/STOP` check — BEFORE rule 2's Open PR Gate (R-0347); that gate will find NO open pull request, so rule 5 applies and F021 continues on this branch. R26's own verdict is UNRECORDED and the next round's ledger commit owes it. R27 builds the NowCard's recency dot from `recency.ts` with the CSS `docs/ui/design_reference/assets_spec.md` governs — the first round able to subtract two instants on ONE clock.
