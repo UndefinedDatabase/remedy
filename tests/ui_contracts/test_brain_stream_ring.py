@@ -25,6 +25,7 @@ PANEL = UI_SRC / "components" / "panels" / "RightLivePanel.tsx"
 SHELL = UI_SRC / "components" / "shell" / "RemedyShell.tsx"
 NOWCARD = UI_SRC / "components" / "panels" / "AgentNowCard.tsx"
 DRIVER = API_DIR / "brainStreamDriver.ts"
+HOST = API_DIR / "brainStreamHost.ts"
 RUNNER = API_DIR / "brainStreamRunner.ts"
 
 
@@ -324,3 +325,39 @@ class TestTheRecencyRuleIsPureAndHeadless:
         assert "isLiveByRecency" in code, (
             "the badge and the dot must share one rule or they will disagree (R-0652)"
         )
+
+
+class TestTheTransportClockIsInjected:
+    """T5_F021's activity dot needs to know how long ago the agent last acted.
+    The envelope's own `timestamp` is a server-clock STRING that ui_server.py
+    passes through unparsed, and empty when the run log carries none, so the
+    dot is stamped on ARRIVAL instead — both operands on one clock, so a skewed
+    server can never read as a dead agent. That stamp is only honest if the
+    clock is injected: a module calling Date.now() directly cannot be tested
+    without waiting for real time, and this suite pins the seam rather than the
+    value."""
+
+    def test_the_host_contract_asks_for_a_clock(self):
+        code = strip_ts_comments(HOST.read_text())
+        assert "now(): number;" in code, (
+            "BrainStreamHostDeps must name the clock it is handed"
+        )
+
+    def test_the_environment_carries_the_clock_to_the_deps(self):
+        code = strip_ts_comments(DEPS.read_text())
+        assert "return env.now();" in code, (
+            "createBrainStreamHostDeps forwards the injected clock, never its own"
+        )
+
+    def test_the_browser_environment_reads_the_clock_off_its_global(self):
+        code = strip_ts_comments(DEPS.read_text())
+        assert "return globals.Date.now();" in code, (
+            "the one real clock is bound from the injected global, as EventSource is"
+        )
+
+    def test_no_module_in_the_transport_chain_calls_the_clock_directly(self):
+        for path in (HOST, DEPS, DRIVER, STATE):
+            code = strip_ts_comments(path.read_text())
+            assert "Date.now()" not in code.replace("globals.Date.now()", ""), (
+                f"{path.name} reads a real clock; inject it instead"
+            )
