@@ -16,23 +16,22 @@ cross-site attempts fail closed and are audited as rejected, and a route-walking
 test plus an import guard prove no other mutating route exists.
 
 ## Current Step
-R32 clears the block condition this session inherited. It records the R31
-verdict, registers as R-0646 and R-0647 the two reviewer-block defects the
-closure-candidate carrier held, and empties that carrier in the same round. The
-build and its integration gate are done; what remains is closure.
+R33 is closure round one. It records the R32 verdict, then builds the two
+artefacts the STATUS line quotes: the closure evidence bundle for job
+`f009-closure` and a FRESH review zip, both covering the accepted HEAD this
+round creates. No STATUS line, no README edit and no pull request happen here.
 
 ## Next Steps
-1. Closure round one: the evidence job and a FRESH review zip, whose values the
-   STATUS line quotes.
-2. Closure round two: the authored STATUS line, the README capability sync in
-   the SAME commit, and the pull request.
+1. Closure round two: the authored STATUS `[x]` line and the README capability
+   sync in the SAME commit (R-0154), then the pull request.
+2. The PR is NOT merged in this session; it merges at the next feature's start
+   via the Open PR Gate, which is the operator's manual-review window.
 
 ## Risks
-- Closure needs TWO rounds, not one: ending right after a verdict strands it
-  (DECISION F085 D9).
+- The zip is a closure BLOCKER, not a formality: a PACKAGE_STATUS other than
+  READY_FOR_REVIEW stops closure rather than being worked around.
+- Two open High findings, R-0495 from F085 and R-0574 from F086, are inherited
+  from closed features and are documented risks, not F009 defects. F008 closed
+  the same way one feature ago, so the F009 verdict is PASS_WITH_RISKS.
 - `npm run lint` in `apps/ui` is RED at base and is NOT a gate (R-0364), which
   is R-0622 and routes to a paydown branch.
-- The closure zip's known blockers are on disk, not in memory: sorted
-  `verification_runs[].test_files`, an `output_hash` that is sha256 of
-  `stdout_summary` exactly, node ids from `--collect-only`, and no full-suite
-  node-id list (STATUS_closure_protocol.md, algorithm step 1).
