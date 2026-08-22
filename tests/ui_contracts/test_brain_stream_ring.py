@@ -19,6 +19,7 @@ STATE = API_DIR / "brainStream.ts"
 DEPS = API_DIR / "brainStreamDeps.ts"
 ACTION = API_DIR / "actionClass.ts"
 SCROLL = API_DIR / "feedScroll.ts"
+RECENCY = API_DIR / "recency.ts"
 CARD = UI_SRC / "components" / "panels" / "ActivityFeedCard.tsx"
 PANEL = UI_SRC / "components" / "panels" / "RightLivePanel.tsx"
 SHELL = UI_SRC / "components" / "shell" / "RemedyShell.tsx"
@@ -291,4 +292,35 @@ class TestTheNowCardBadgeTracksTheAgent:
         code = strip_ts_comments(NOWCARD.read_text())
         assert "liveAction ? liveAction.line : detail" in code, (
             "the R16 wiring stays; only the badge changes"
+        )
+
+
+class TestTheRecencyRuleIsPureAndHeadless:
+    """The dot's half of T5_F021 line 63: the activity dot pulses on recency
+    and fades to idle after a quiet window. The rule is a PURE function of two
+    numbers, so the fade is testable without waiting and without faking time,
+    and it never reads a clock of its own."""
+
+    def test_the_recency_rule_is_headless_data(self):
+        code = strip_ts_comments(RECENCY.read_text())
+        assert "import" not in code, (
+            "a rule that imports anything is a component effect in disguise"
+        )
+
+    def test_the_rule_reads_no_clock_of_its_own(self):
+        code = strip_ts_comments(RECENCY.read_text())
+        assert "Date.now" not in code, (
+            "now is passed in; a rule reading the clock cannot be tested without one"
+        )
+
+    def test_the_pre_stream_state_is_not_idle(self):
+        code = strip_ts_comments(RECENCY.read_text())
+        assert 'return "none";' in code, (
+            "nothing-has-acted-yet is a distinct level from acted-then-went-quiet"
+        )
+
+    def test_one_liveness_source_feeds_badge_and_dot(self):
+        code = strip_ts_comments(RECENCY.read_text())
+        assert "isLiveByRecency" in code, (
+            "the badge and the dot must share one rule or they will disagree (R-0652)"
         )
