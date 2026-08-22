@@ -1,0 +1,51 @@
+# Summary — F009 R29 integration gate
+round base: 986b40ee5784043a1f75c87d809892b641cb34d3
+merge base: ce49348b8f5b0374417f5b6c47d8c04966e7108e  (git merge-base origin/main HEAD)
+
+## BRANCH RUN (step 1) — python3 -m pytest -n auto -q, repo root
+exit code: 0
+wall time: 152.2 s (measured by the harness); pytest printed 151.59s
+collected: 17592 (17572 passed + 20 skipped, the numbers the run printed)
+raw tail:
+  ........................................................................ [ 99%]
+  ........................                                                 [100%]
+  17572 passed, 20 skipped in 151.59s (0:02:31)
+
+## BASE RUN (step 2) — same command, throwaway worktree at ce49348b on branch tmp/base-gate-f009r29
+exit code: 1
+wall time: 126.7 s (measured by the harness); pytest printed 126.14s
+collected: 17432 (6 failed + 17406 passed + 20 skipped, the numbers the run printed)
+REMEDY_UI_NO_AUTO_BUILD=1 was set for this run
+raw tail:
+  =========================== short test summary info ============================
+  FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_server_starts_and_writes_info
+  FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_api_requires_token
+  FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_api_missing_job_404
+  FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_delete_rejected
+  FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_brain_endpoint
+  FAILED tests/ui_server/test_server_concurrency.py::TestServerServesConcurrentRequests::test_two_requests_are_in_flight_at_once
+  6 failed, 17406 passed, 20 skipped in 126.14s (0:02:06)
+
+## apps/ui/dist recursive sha256 in the base worktree (content+paths+symlink targets)
+BEFORE base run: 2139f2fed1c79bb2fc41f0df64e65243629e7fefad22947ea8aff9c329501dc8
+AFTER  base run: 2139f2fed1c79bb2fc41f0df64e65243629e7fefad22947ea8aff9c329501dc8
+EQUAL — the block's parity criterion is met and the parity claim is NOT voided by it.
+REPORTED HONESTLY ANYWAY: REMEDY_UI_NO_AUTO_BUILD=1 did NOT prevent a rebuild. Every file under the base
+worktree's apps/ui/dist carries mtime 1787376153.535 (07:22:33), ~81 s into a run that started at 07:21:12,
+while the copy left them at 1787375952.935. The tree was rewritten mid-run with byte-identical content, so the
+CONTENT digest is blind to it — and mtime is exactly the property _frontend_is_stale() reads. R-0169 class.
+
+## COMPARE (step 3)
+comm -13 base_failed.txt branch_failed.txt  -> 0 lines (branch-only)
+comm -23 base_failed.txt branch_failed.txt  -> 6 lines (base-only)
+branch-only flake-class count: 0
+
+## RAW LOGS (not committed, by R-0176; written outside the repo worktree during both runs)
+~/.cache/remedy-gate-f009-r29/branch_raw.txt  249 lines
+~/.cache/remedy-gate-f009-r29/base_raw.txt    624 lines
+
+## CANARY (tier 2) — python3 -m pytest tests/cli/test_golden_path.py -q -rf, primary checkout, serial
+exit code: 0; the run printed: 42 passed in 20.52s
+
+No verdict is issued here: only the reviewer issues the integration-gate verdict
+(docs/agents/integration_gate.md, header).

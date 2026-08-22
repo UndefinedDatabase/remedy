@@ -1,0 +1,22 @@
+# Attribution — F009 R29 integration gate, one line per id in BOTH comm sets
+# branch-only set (comm -13 base_failed.txt branch_failed.txt): 0 ids — nothing to attribute, no blocker, flake class 0
+# base-only set (comm -23): 6 ids, ALL attributed to the environment class below by direct evidence.
+# EVIDENCE (shared, measured, not inferred):
+#   captured stderr of each id: 'ERROR: React UI not built.' emitted at packages/orchestration/ui_server.py:3016,
+#   reached from _load_frontend() when _frontend_is_stale() reads True and _auto_build_frontend() returns None
+#   under REMEDY_UI_NO_AUTO_BUILD=1; start_ui_server then sys.exit(1) and the test's server thread never binds.
+#   MISSING ARTIFACT, per id: an apps/ui/dist build NEWER than the throwaway worktree's freshly checked-out apps/ui/src.
+#   shutil.copytree/copy2 PRESERVES the source mtime (verified in this session): primary dist mtime 1787375952.935
+#   == base-worktree dist mtime immediately after the copy, while `git worktree add` stamped apps/ui/src at 1787376060.806.
+#   dist older than src => _frontend_is_stale() True. CONTROLLED PROOF at ce49348b in the disposable worktree:
+#   with dist/index.html mtime set older than src, test_server_starts_and_writes_info FAILS with that exact error (exit 1);
+#   with the mtime restored and no byte of content changed, it PASSES (exit 0).
+#   The base apps/ui/dist tree was then rewritten at 1787376153.535, ~81 s into the base run, with BYTE-IDENTICAL content
+#   (recursive sha256 before == after), so every one of these ids passes on a serial re-run taken after that moment.
+
+base-only	tests/ui_server/test_live_state.py::TestUIServerIntegration::test_api_missing_job_404	ENVIRONMENT (missing artifact: fresh apps/ui/dist newer than apps/ui/src; ui_server.py:3016 'React UI not built')	serial re-run at ce49348b exit=0 (pass)
+base-only	tests/ui_server/test_live_state.py::TestUIServerIntegration::test_api_requires_token	ENVIRONMENT (missing artifact: fresh apps/ui/dist newer than apps/ui/src; ui_server.py:3016 'React UI not built')	serial re-run at ce49348b exit=0 (pass)
+base-only	tests/ui_server/test_live_state.py::TestUIServerIntegration::test_brain_endpoint	ENVIRONMENT (missing artifact: fresh apps/ui/dist newer than apps/ui/src; ui_server.py:3016 'React UI not built')	serial re-run at ce49348b exit=0 (pass)
+base-only	tests/ui_server/test_live_state.py::TestUIServerIntegration::test_delete_rejected	ENVIRONMENT (missing artifact: fresh apps/ui/dist newer than apps/ui/src; ui_server.py:3016 'React UI not built')	serial re-run at ce49348b exit=0 (pass)
+base-only	tests/ui_server/test_live_state.py::TestUIServerIntegration::test_server_starts_and_writes_info	ENVIRONMENT (missing artifact: fresh apps/ui/dist newer than apps/ui/src; ui_server.py:3016 'React UI not built')	serial re-run at ce49348b exit=0 (pass)
+base-only	tests/ui_server/test_server_concurrency.py::TestServerServesConcurrentRequests::test_two_requests_are_in_flight_at_once	ENVIRONMENT (missing artifact: fresh apps/ui/dist newer than apps/ui/src; ui_server.py:3016 'React UI not built')	serial re-run at ce49348b exit=0 (pass)

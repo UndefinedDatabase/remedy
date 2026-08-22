@@ -1,0 +1,6 @@
+FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_api_missing_job_404
+FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_api_requires_token
+FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_brain_endpoint
+FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_delete_rejected
+FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_server_starts_and_writes_info
+FAILED tests/ui_server/test_server_concurrency.py::TestServerServesConcurrentRequests::test_two_requests_are_in_flight_at_once
