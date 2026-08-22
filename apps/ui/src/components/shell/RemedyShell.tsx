@@ -50,7 +50,7 @@ export function RemedyShell({ dashboard, selectedNodeId, onSelectNode }: { dashb
           <BrainGraphStage dashboard={dashboard} selectedNodeId={selectedNodeId} onSelectNode={onSelectNode} />
           <PhaseTimeline phases={dashboard.phases} timelineEvents={dashboard.timelineEvents} />
         </main>
-        <RightLivePanel dashboard={dashboard} onSelectNode={onSelectNode} streamStatus={stream.status} />
+        <RightLivePanel dashboard={dashboard} onSelectNode={onSelectNode} streamStatus={stream.status} recent={stream.recent} recentDropped={stream.recentDropped} />
       </div>
       {selectedNode && <DetailPopover dashboard={dashboard} selectedNode={selectedNode} selectedPromptId={selectedPromptId} onClose={() => onSelectNode(null)} />}
     </div>

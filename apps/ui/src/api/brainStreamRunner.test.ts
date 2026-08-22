@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { createBrainStreamRunner } from "./brainStreamRunner";
+import { BRAIN_RECENT_LIMIT } from "./brainStream";
 import type { BrainStreamHost, BrainStreamRunner } from "./brainStreamRunner";
 import type { BrainStreamEvent } from "./brainStreamDriver";
 
@@ -43,7 +44,7 @@ function started(): { host: RecordingHost; runner: BrainStreamRunner } {
 }
 
 function frame(seq: number): BrainStreamEvent {
-  return { kind: "frame", frame: { seq, event: { seq } } };
+  return { kind: "frame", frame: { seq, event: { seq } }, receivedAtMs: 0 };
 }
 
 describe("a runner that has not connected", () => {
@@ -199,5 +200,43 @@ describe("the runner as a store", () => {
     unsubscribe();
     runner.dispatch(frame(3));
     expect(calls).toBe(1);
+  });
+});
+
+describe("the view publishes the ring", () => {
+  it("seeds the cached view from the state, so start alone announces nothing", () => {
+    const host = new RecordingHost();
+    const runner = createBrainStreamRunner(host);
+    let calls = 0;
+    runner.subscribe(() => { calls += 1; });
+    runner.start();
+    expect(calls).toBe(0);
+    expect(runner.view().recent).toEqual([]);
+    expect(runner.view().recentDropped).toBe(0);
+  });
+
+  it("carries each accepted frame's projected row onto the view", () => {
+    const { runner } = started();
+    runner.dispatch(frame(4));
+    runner.dispatch(frame(5));
+    expect(runner.view().recent.map((r) => r.seq)).toEqual([4, 5]);
+  });
+
+  it("holds the ring's identity across a replay, so no re-render is asked for", () => {
+    const { runner } = started();
+    runner.dispatch(frame(4));
+    const before = runner.view();
+    runner.dispatch(frame(4));
+    expect(runner.view()).toBe(before);
+    expect(runner.view().recent).toBe(before.recent);
+  });
+
+  it("publishes the drop count once the bound is passed", () => {
+    const { runner } = started();
+    for (let seq = 1; seq <= BRAIN_RECENT_LIMIT + 3; seq += 1) {
+      runner.dispatch(frame(seq));
+    }
+    expect(runner.view().recent.length).toBe(BRAIN_RECENT_LIMIT);
+    expect(runner.view().recentDropped).toBe(3);
   });
 });

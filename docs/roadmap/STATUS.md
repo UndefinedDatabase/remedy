@@ -76,7 +76,7 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
 - [x] F255 — Teacher role (evidence-grounded live explainer & learn-along tutor) (T001–T004 complete; accepted 2026-08-21 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f255-closure · package remedy-review-20260821-051015-READY_FOR_REVIEW.zip · SHA-256 f142a9935d2730c01a80d98a619d2b297899c144f29ad16fd5c01aa1f493fcc2 · accepted HEAD c96f82c3372520bfd0545c7ce640886479197a08)
 - [x] F008 — SSE event stream (T001–T003 complete; accepted 2026-08-21 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f008-closure · package remedy-review-20260821-193052-READY_FOR_REVIEW.zip · SHA-256 1d827ac756433f3be73f02947d9b1410e7759c4fc9ef6dfd95f5032924b9a366 · accepted HEAD 870f198ea9c0e4b51075f3386d1025cce805811a)
 - [x] F009 — The single write channel (T001–T003 complete; accepted 2026-08-22 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f009-closure · package remedy-review-20260822-085607-READY_FOR_REVIEW.zip · SHA-256 ca7a77704beb2e9f29ef80f365e54665851a7655f2a0944cdb5d5744cf5dff9f · accepted HEAD 97d028980b5781cbf22a0f651f7e879eea1a0485)
-- [ ] F021 — Live activity feed + "agent is doing now"
+- [x] F021 — Live activity feed + "agent is doing now" (T001–T003 complete; accepted 2026-08-23 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f021-closure · package remedy-review-20260823-005026-READY_FOR_REVIEW.zip · SHA-256 be70b65dd4a397ac7697a3c37b2f5cfb1a52197c9434cde67dec4a0a502e3dd8 · accepted HEAD a0a883f7bf47e92bd3c084d127bf56f5f4feaad2)
 - [ ] F022 — Live cost ticker
 - [ ] F031 — Decision inbox
 - [ ] F032 — Approval with the evidence triple

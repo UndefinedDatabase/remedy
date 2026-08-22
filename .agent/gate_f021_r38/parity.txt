@@ -1,0 +1,24 @@
+F021 R38 — PARITY BY THE BUILD ROUTE (block G5(c)), NOT THE COPY ROUTE
+
+node_modules, copied with shutil.copytree(src, dst, symlinks=True):
+  source: apps/ui/node_modules in the PRIMARY checkout
+  target: .remedy-wt/base-gate-f021-r38/apps/ui/node_modules
+  symlinks under apps/ui/node_modules/.bin —
+    PRIMARY: 23 entries, 23 of them symlinks
+    COPY:    23 entries, 23 of them symlinks
+    the two AGREE, so npm's bin shims were not dereferenced (R-0591).
+
+apps/ui/dist was NOT copied. It was BUILT from BASE sources instead:
+  command: npm run build  (vite build), cwd .remedy-wt/base-gate-f021-r38/apps/ui
+  exit code: 0        wall: 1.7 s
+  vite v6.4.2, 962 modules transformed, built in 1.42s
+  digests it produced (sha256, full):
+    assets/index-B7jJdQY8.css  26510 bytes  a878d3e7d40b10979f59a7251cc563fcf68f058b9dc7f59618ba7a0048f86099
+    assets/index-CnnaxzYa.js  347381 bytes  44e4fb0f817a12c2d7cc68cb325d37566bb6c3afe27d39f3a27687345dd6ba6d
+    index.html  414 bytes  19a336e84432806689e3b48dcffc56f1ba74059bdb0fcb5588d8d00f508f3bac
+
+WHY THE BUILD ROUTE: the reviewer executed the COPY route at 24a6b899 and
+measured 78 base-only failures from it — apps/ui/dist is built from BRANCH
+sources, so the base run rebuilds it mid-flight and the content-identity
+checks watch their own assets change under them. This round's build route
+produced 0 base failures. See summary.txt.

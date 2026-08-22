@@ -14,10 +14,17 @@ import type { BrainStreamFrame, BrainStreamState } from "./brainStream";
 export const BRAIN_POLL_INTERVAL_MS = 3000;
 
 /** What the transport tells the driver. `unsupported` is the fallback trigger:
- *  no EventSource in this environment, or the stream failed to construct. */
+ *  no EventSource in this environment, or the stream failed to construct.
+ *
+ *  A frame carries `receivedAtMs`: the instant the HOST saw it, read from the
+ *  clock R22 injected. T5_F021's activity dot subtracts two numbers, and the
+ *  envelope's own `timestamp` is a server-clock string ui_server.py passes
+ *  through unparsed and empty where the run log has none — so a server running
+ *  behind would read as a dead agent. Stamping on arrival keeps both operands
+ *  on ONE clock. The driver only CARRIES the value; the ring consumes it. */
 export type BrainStreamEvent =
   | { kind: "opened" }
-  | { kind: "frame"; frame: BrainStreamFrame }
+  | { kind: "frame"; frame: BrainStreamFrame; receivedAtMs: number }
   | { kind: "closed" }
   | { kind: "unsupported" }
   | { kind: "snapshot"; seq: number }
@@ -65,7 +72,7 @@ export function stepBrainStream(
       return { state: openBrainStream(state), effects: [] };
 
     case "frame": {
-      const next = receiveBrainFrame(state, event.frame);
+      const next = receiveBrainFrame(state, event.frame, event.receivedAtMs);
       const gapOpened = next.gapDetected && !state.gapDetected;
       return { state: next, effects: gapOpened ? [{ kind: "snapshot" }] : [] };
     }

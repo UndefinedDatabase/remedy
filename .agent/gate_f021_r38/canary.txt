@@ -1,0 +1,9 @@
+F021 R38 — CANARY, SERIAL, PRIMARY CHECKOUT (verification tier 2)
+command: python3 -m pytest tests/cli/test_golden_path.py -q -rf
+exit code: 0
+wall time: 24.4 s
+sorted ^FAILED lines: 0
+
+last 6 lines:
+..........................................                               [100%]
+42 passed in 22.13s

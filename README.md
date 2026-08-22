@@ -16,7 +16,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-55 of 255 registered items accepted. Next: F021 (Live activity feed + "agent is doing now").
+56 of 255 registered items accepted. Next: F022 (Live cost ticker).
 
 | Tier | Name | Done | Total |
 |------|------|-----:|------:|
@@ -25,7 +25,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 | 2 | Minimal Self-Build Runtime | 14 | 14 |
 | 3 | Full Token Economy & Autonomy | 0 | 26 |
 | 4 | Memory & Learning | 0 | 16 |
-| 5 | Operator Cockpit | 3 | 29 |
+| 5 | Operator Cockpit | 4 | 29 |
 | 6 | Design-to-Code | 0 | 16 |
 | 7 | Quality & Trust | 0 | 15 |
 | 8 | Worker Ecosystem & Neutrality | 0 | 12 |
@@ -70,6 +70,10 @@ labels itself delayed instead of pretending to be live).
 F009 the single write channel (one authenticated, CSRF-guarded, rate-limited
 and nonce-idempotent POST endpoint for UI-initiated commands, every other
 mutating route answering 405 under a route-walking test).
+F021 live activity feed and now-card (a humanization catalog that turns every
+Part E event kind into a plain line with an honest generic fallback for an
+unknown kind, a NowCard over the ACTION-class subset with a recency dot, and
+feed rows that carry their seq and focus their node on click).
 
 Full per-feature state: [`docs/roadmap/STATUS.md`](docs/roadmap/STATUS.md)
 

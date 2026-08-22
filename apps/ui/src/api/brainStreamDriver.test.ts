@@ -23,7 +23,7 @@ function lastOf<T>(items: T[]): T {
 }
 
 function frame(seq: number): BrainStreamEvent {
-  return { kind: "frame", frame: { seq, event: { seq } } };
+  return { kind: "frame", frame: { seq, event: { seq } }, receivedAtMs: 0 };
 }
 
 describe("a clean stream", () => {

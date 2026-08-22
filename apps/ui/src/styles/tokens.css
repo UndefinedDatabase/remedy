@@ -31,6 +31,14 @@
   --remedy-orange-400: #f5a34e;
   --remedy-red-500: #ef6363;
 
+  /* Liveness and its pulse, transcribed from docs/ui/design_reference/tokens.css
+     so assets_spec.md line 178 -- the live-activity dot, 8px, --remedy-live,
+     1.6s pulse -- names a token that resolves. Same value as --remedy-green by
+     the reference's own definition; the two spellings are the design system's,
+     not a drift this file introduced. */
+  --remedy-live: #34c27e;
+  --remedy-dur-pulse: 1600ms;
+
   --remedy-line: rgba(44, 82, 150, 0.14);
   --remedy-line-strong: rgba(44, 82, 150, 0.26);
 
@@ -49,6 +57,10 @@
   --remedy-radius-lg: 20px;
   --remedy-radius-md: 14px;
   --remedy-radius-sm: 10px;
+  /* The pill radius the design reference has always carried. Added at F021 R32
+     because the shipped sheet had never adopted it, so every `var()` naming it
+     resolved to nothing and the rule was silently dropped (R-0661). */
+  --remedy-radius-pill: 999px;
 
   --remedy-shadow-card: 0 14px 40px rgba(55, 86, 138, 0.10);
   --remedy-shadow-soft: 0 8px 24px rgba(55, 86, 138, 0.08);

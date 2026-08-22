@@ -1,36 +1,39 @@
-# Plan — F009 The single write channel
+# Plan — F021 Live activity feed + now-card
 
-Branch: feature/f009-single-write-channel, cut from `main` at `ce49348b`, the
-merge commit of pull request #209. `.agent/live_review.md` is the source of truth
-for the open set, the round map and the finding-id ceiling.
+Branch: feature/f021-live-activity-feed, cut from `main` at `4548995d`, the merge
+commit of pull request #210. `.agent/live_review.md` is the source of truth for
+the open set, the round map and the finding-id ceiling.
 
 ## Goal
-Exactly ONE door for UI-initiated change: POST /api/jobs/{jid}/commands validates
-against the UI-exposed catalog subset, authenticates with a bearer token plus an
-X-Remedy-CSRF double-submit, rate-limits per token and job, deduplicates by
-client nonce, and ENQUEUES into the existing decision, approval and control
-machinery without touching files, jobs or shells directly. Every other POST, PUT
-and DELETE answers 405. DONE when the exposed commands round-trip through their
-effects on fixtures, replayed nonces are idempotent, unauthenticated and
-cross-site attempts fail closed and are audited as rejected, and a route-walking
-test plus an import guard prove no other mutating route exists.
+The raw SSE event stream becomes a story a human can follow: a humanization
+catalog maps event kinds to plain lines, a NowCard shows the newest ACTION-class
+event with a recency dot, and feed rows carry their seq and click-jump to their
+node. DONE when the catalog covers the kind set DECISION F021 D3 rules and an
+unknown kind renders an honest generic line rather than vanishing, the feed
+renders fixture streams per the binding CSS, jump-to-node focuses the right
+node, and the steering input renders DISABLED with its tooltip until F030.
 
 ## Current Step
-R34 is closure round two and the last round of this branch. It records the R33
-verdict, then one commit carries the STATUS `[x]` line, the README capability
-sync and the closure candidate, and the pull request is created from it.
+R41 is closure round two and the LAST round of this branch. It records the R40
+verdict, rules R-0663 by DECISION rather than by a patch, then writes the STATUS
+`[x]` line, the README capability sync and the closure candidates in ONE commit
+and opens the pull request. That request is NOT merged in this session.
 
 ## Next Steps
-1. Nothing remains on this branch. The pull request is NOT merged in this
-   session.
-2. The next session's Open PR Gate merges it before any new feature is claimed,
+1. The pull request merges at the next feature's start via the Open PR Gate,
    which is the operator's manual-review window.
+2. The next session's FIRST reviewed round registers every entry
+   `.agent/candidates.md` carries, or resolves it as a DECISION, and empties
+   that file in the same round.
 
 ## Risks
-- The STATUS edit must be the LAST commit on the branch (Rule A4), so the
-  handback is written inside that same commit rather than after it.
-- README and STATUS may never disagree in any committed state (R-0154), which
-  is why both land in one commit and the docs gate runs at it.
-- Two open High findings, R-0495 from F085 and R-0574 from F086, are inherited
-  from closed features and are documented risks, not F009 defects; the verdict
-  is PASS_WITH_RISKS, exactly as F008 closed one feature ago.
+- This round's own verdict has no on-disk gate entry by construction
+  (`docs/agents/planner_reviewer_prompt.md` §4 item 13). It lives in
+  `.agent/handoff.md` and in the pull request, and that absence is the branch
+  terminator rather than a missing gate.
+- The two High findings open at closure, R-0495 and R-0574, are inherited from
+  the already-closed F085 and F086 and are documented risks rather than F021
+  defects. That is why the verdict is PASS_WITH_RISKS, exactly as F008 and F009
+  closed before it.
+- `npm run lint` in `apps/ui` is RED at base and is NOT a gate (R-0364), which
+  is R-0622 and routes to a paydown branch.

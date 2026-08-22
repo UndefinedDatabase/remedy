@@ -4,6 +4,7 @@
 // run under the node-environment vitest — no EventSource, no timer, no React.
 import { initialBrainStreamState } from "./brainStream";
 import type { BrainStreamStatus } from "./brainStream";
+import type { FeedRow } from "./feedRow";
 import { stepBrainStream } from "./brainStreamDriver";
 import type { BrainStreamEffect, BrainStreamEvent } from "./brainStreamDriver";
 
@@ -29,6 +30,12 @@ export interface BrainStreamView {
   status: BrainStreamStatus | null;
   lastSeq: number | null;
   gapDetected: boolean;
+  /** The bounded ring `receiveBrainFrame` maintains, oldest first. Compared by
+   *  REFERENCE below, so it is the same array until a frame is accepted. */
+  recent: readonly FeedRow[];
+  /** Rows dropped past the bound. Above zero, the feed says so rather than
+   *  quietly showing a window (DECISION F021 D5). */
+  recentDropped: number;
 }
 
 export interface BrainStreamRunner {
@@ -49,10 +56,16 @@ export function createBrainStreamRunner(host: BrainStreamHost): BrainStreamRunne
   let stopped = false;
   let cancelPending: (() => void) | null = null;
   const listeners = new Set<() => void>();
+  // Seeded FROM `state`, never from a fresh `[]`. `publish` compares the ring
+  // by reference, and an empty literal here is a DIFFERENT array from the
+  // equally empty one the initial state holds, so the first timer — which
+  // changes nothing a reader can see — would announce a change nobody made.
   let cachedView: BrainStreamView = {
     status: null,
     lastSeq: null,
     gapDetected: false,
+    recent: state.recent,
+    recentDropped: state.recentDropped,
   };
 
   /** The SAME object until something a reader can see changes. React's
@@ -70,10 +83,14 @@ export function createBrainStreamRunner(host: BrainStreamHost): BrainStreamRunne
       status: settled ? state.status : null,
       lastSeq: state.lastSeq,
       gapDetected: state.gapDetected,
+      recent: state.recent,
+      recentDropped: state.recentDropped,
     };
     if (next.status === cachedView.status
       && next.lastSeq === cachedView.lastSeq
-      && next.gapDetected === cachedView.gapDetected) return;
+      && next.gapDetected === cachedView.gapDetected
+      && next.recent === cachedView.recent
+      && next.recentDropped === cachedView.recentDropped) return;
     cachedView = next;
     for (const listener of listeners) listener();
   }

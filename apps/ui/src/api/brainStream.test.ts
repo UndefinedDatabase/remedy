@@ -1,13 +1,14 @@
 import { describe, it, expect } from "vitest";
 import {
-  BRAIN_BACKOFF_CAP_MS, brainBackoffDelayMs, degradeBrainStream, failBrainStream,
-  initialBrainStreamState, openBrainStream, receiveBrainFrame, repairBrainGap, resumeEventId,
+  BRAIN_BACKOFF_CAP_MS, BRAIN_RECENT_LIMIT, brainBackoffDelayMs, degradeBrainStream,
+  failBrainStream, initialBrainStreamState, openBrainStream, receiveBrainFrame,
+  repairBrainGap, resumeEventId,
 } from "./brainStream";
 import type { BrainStreamState } from "./brainStream";
 
 /** Drive a state through a run of seqs, as the transport would deliver them. */
 function drive(state: BrainStreamState, seqs: number[]): BrainStreamState {
-  return seqs.reduce((s, seq) => receiveBrainFrame(s, { seq, event: { seq } }), state);
+  return seqs.reduce((s, seq) => receiveBrainFrame(s, { seq, event: { seq } }, seq * 10), state);
 }
 
 describe("initialBrainStreamState", () => {
@@ -108,5 +109,57 @@ describe("brainBackoffDelayMs", () => {
   it("never decreases as attempts grow", () => {
     const d = [0, 1, 2, 3, 4, 5, 6, 7, 8].map((n) => brainBackoffDelayMs(n));
     expect(d).toEqual([...d].sort((a, b) => a - b));
+  });
+});
+
+describe("the recent ring", () => {
+  it("a fresh client holds no rows and has dropped none", () => {
+    const s = initialBrainStreamState();
+    expect(s.recent).toEqual([]);
+    expect(s.recentDropped).toBe(0);
+  });
+
+  it("each accepted frame appends one projected row, oldest first", () => {
+    const s = drive(initialBrainStreamState(), [4, 5, 6]);
+    expect(s.recent.map((r) => r.seq)).toEqual([4, 5, 6]);
+    expect(s.recentDropped).toBe(0);
+  });
+
+  it("a replayed frame appends nothing and returns the identical state", () => {
+    const s = drive(initialBrainStreamState(), [1, 2]);
+    const again = receiveBrainFrame(s, { seq: 2, event: { seq: 2 } }, 999);
+    expect(again).toBe(s);
+    expect(again.recent).toBe(s.recent);
+    expect(again.recent.map((r) => r.seq)).toEqual([1, 2]);
+  });
+
+  it("the ring never grows past BRAIN_RECENT_LIMIT, dropping the OLDEST", () => {
+    const seqs = Array.from({ length: BRAIN_RECENT_LIMIT + 5 }, (_, i) => i + 1);
+    const s = drive(initialBrainStreamState(), seqs);
+    expect(s.recent.length).toBe(BRAIN_RECENT_LIMIT);
+    expect(s.recentDropped).toBe(5);
+    expect(s.recent[0].seq).toBe(6);
+    expect(s.recent[s.recent.length - 1].seq).toBe(BRAIN_RECENT_LIMIT + 5);
+  });
+
+  it("the row carries the humanized projection, not the raw envelope", () => {
+    const s = receiveBrainFrame(initialBrainStreamState(), {
+      seq: 3, event: { event: "task_run_started", outcome: "ok" },
+    }, 1234);
+    expect(s.recent[0].kind).toBe("task_run_started");
+    expect(s.recent[0].known).toBe(true);
+    expect(s.recent[0].outcome).toBe("ok");
+  });
+
+  it("the row carries the arrival stamp the transport handed in", () => {
+    const s = receiveBrainFrame(initialBrainStreamState(), {
+      seq: 3, event: { event: "task_run_started" },
+    }, 1234);
+    expect(s.recent[0].receivedAtMs).toBe(1234);
+  });
+
+  it("each row keeps its OWN stamp as the ring fills", () => {
+    const s = drive(initialBrainStreamState(), [1, 2, 3]);
+    expect(s.recent.map((r) => r.receivedAtMs)).toEqual([10, 20, 30]);
   });
 });

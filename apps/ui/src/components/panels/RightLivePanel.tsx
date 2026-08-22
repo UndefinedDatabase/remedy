@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { RemedyDashboard } from "../../api/types";
 import type { BrainStreamStatus } from "../../api/brainStream";
+import type { FeedRow } from "../../api/feedRow";
 import { liveIsActive } from "../../cockpitLogic";
 import { NeedsAttentionCard } from "./NeedsAttentionCard";
 import { ActivityFeedCard } from "./ActivityFeedCard";
@@ -9,15 +10,15 @@ import { LiveStatusPill } from "./LiveStatusPill";
 import { TaskChecklistCard } from "./TaskChecklistCard";
 import styles from "./RightLivePanel.module.css";
 
-export function RightLivePanel({ dashboard, onSelectNode, streamStatus }: { dashboard: RemedyDashboard; onSelectNode: (nodeId: string | null) => void; streamStatus?: BrainStreamStatus | null }) {
+export function RightLivePanel({ dashboard, onSelectNode, streamStatus, recent, recentDropped }: { dashboard: RemedyDashboard; onSelectNode: (nodeId: string | null) => void; streamStatus?: BrainStreamStatus | null; recent?: readonly FeedRow[]; recentDropped?: number }) {
   const [showAdvanced, setShowAdvanced] = useState(false);
 
   return (
     <aside className={styles.panel} data-ui="right-live-panel">
       <LiveStatusPill live={liveIsActive(dashboard)} streamStatus={streamStatus} />
-      <AgentNowCard dashboard={dashboard} />
+      <AgentNowCard dashboard={dashboard} recent={recent} />
       <NeedsAttentionCard dashboard={dashboard} />
-      <ActivityFeedCard activity={dashboard.activity} />
+      <ActivityFeedCard activity={dashboard.activity} recent={recent} recentDropped={recentDropped} tasks={dashboard.tasks} onSelectNode={onSelectNode} />
       <TaskChecklistCard tasks={dashboard.tasks} jobId={dashboard.jobId} onSelectNode={onSelectNode} />
       <button
         type="button"

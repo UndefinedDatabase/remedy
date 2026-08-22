@@ -1,0 +1,16 @@
+F021 R38 — NEGATIVE CONTROLS for the two empty readings above
+
+1. THE ^FAILED EXTRACTOR IS LIVE. A two-test module (one pass, one
+   `assert False`) was run OUTSIDE the repository, in
+   ~/remedy-gate-scratch/r38_extractor_control/:
+     command: python3 -m pytest -q -rf --no-header -p no:cacheprovider .
+     exit code: 1        summary: 1 failed, 1 passed in 0.01s
+     the same startswith('FAILED') extractor found 1 line:
+       FAILED test_control.py::test_fails_on_purpose - assert False
+   So `0 FAILED lines` on both real runs is a measurement, not a silent miss.
+
+2. THE comm ROUTE REPORTS. Synthetic pair, one shared id and one unique id
+   on each side:
+     comm -13 -> FAILED tests/c.py::t_branch_only   (count 1)
+     comm -23 -> FAILED tests/b.py::t_base_only     (count 1)
+   So the two empty sets are not an artifact of the comparison itself.

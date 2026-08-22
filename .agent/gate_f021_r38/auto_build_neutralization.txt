@@ -1,0 +1,28 @@
+F021 R38 — AUTO-BUILD NEUTRALIZATION, MEASURED BY THE EVENT (R-0444)
+
+REMEDY_UI_NO_AUTO_BUILD=1 was set for the base run.
+base run window (epoch): 1787436292.744 .. 1787436452.802
+
+every file under the BASE worktree's apps/ui/dist, before and after:
+  path | mtime BEFORE | mtime AFTER | inside window? | sha256 equal? | sha256
+  assets/index-B7jJdQY8.css | 1787436279.923 | 1787436366.861 | YES | YES | a878d3e7d40b10979f59a7251cc563fcf68f058b9dc7f59618ba7a0048f86099
+  assets/index-CnnaxzYa.js | 1787436279.923 | 1787436366.861 | YES | YES | 44e4fb0f817a12c2d7cc68cb325d37566bb6c3afe27d39f3a27687345dd6ba6d
+  index.html | 1787436279.922 | 1787436366.861 | YES | YES | 19a336e84432806689e3b48dcffc56f1ba74059bdb0fcb5588d8d00f508f3bac
+
+READING: 3 of 3 files carry an mtime INSIDE the run window (1787436366.861,
+about 74 s into the run) while all 3 sha256 digests are UNCHANGED.
+
+THE PARITY CLAIM IS THEREFORE VOID by the rule the block states: any mtime
+inside the window voids it. Equal content with a moved mtime is a
+BYTE-IDENTICAL REBUILD, not an absent one — the two readings together say
+which happened, and only together (R-0444, F009 R29).
+
+CONSEQUENCE THIS ROUND: none for the verdict. Attribution is unconditional
+under the block's G5(g) anyway, and BOTH comm sets are empty, so there is no
+base-only id for a mid-run rebuild to have masked. The rebuild was
+byte-identical, so the artifacts the base suite read are the ones this
+evidence names.
+
+REPORTED, NOT MINTED (block constraint 3): REMEDY_UI_NO_AUTO_BUILD=1 did not
+prevent the rebuild EVENT here. That is the R-0169/R-0444 class recurring at
+F021 R38. Minting its id belongs to the reviewer's next round.

@@ -54,6 +54,22 @@
 .liveSmall { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 700; color: var(--remedy-green); }
 .liveSmall span { width: 7px; height: 7px; border-radius: 50%; background: var(--remedy-green); }
 
+/* The NowCard's activity dot (assets_spec.md line 178). The level lives in a
+   data attribute rather than in the class name, so the rule that computes it
+   stays in recency.ts and this file only says what each level LOOKS like.
+   Reduced motion needs no rule here: globals.css already flattens every
+   animation to a single 0.001ms iteration. */
+.activityDot { width: 8px; height: 8px; border-radius: 50%; background: var(--remedy-live); align-self: center; margin-left: auto; flex: 0 0 auto; }
+.activityDot[data-recency="none"] { background: var(--remedy-faint); opacity: 0.45; }
+.activityDot[data-recency="fresh"] { animation: remedyLivePulse var(--remedy-dur-pulse) ease-in-out infinite; }
+.activityDot[data-recency="fading"] { opacity: 0.55; }
+.activityDot[data-recency="idle"] { background: var(--remedy-faint); opacity: 0.7; }
+
+@keyframes remedyLivePulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.45; transform: scale(0.82); }
+}
+
 .agentNow { display: flex; gap: 12px; align-items: flex-start; }
 .agentNow strong { display: block; font-size: 14px; color: var(--remedy-ink-strong); }
 .agentNow p { margin: 3px 0 0; font-size: 13px; color: var(--remedy-muted); line-height: 1.45; }
@@ -69,8 +85,43 @@
   box-shadow: 0 4px 12px rgba(47, 111, 255, 0.35);
 }
 
-.activityList { display: flex; flex-direction: column; gap: 14px; }
+/* DECISION F021 D10: the 52vh box the feature file's binding CSS fixes. The
+   feed renders newest-first, so the newest edge is scrollTop 0; the pill is
+   sticky at the TOP of the box, which is the edge it invites a jump back to. */
+.activityList { display: flex; flex-direction: column; gap: 14px; max-height: 52vh; overflow: auto; }
+.jumpToLivePill {
+  position: sticky;
+  top: 0;
+  align-self: center;
+  border: 0;
+  cursor: pointer;
+  padding: 4px 12px;
+  border-radius: var(--remedy-radius-pill);
+  font: 500 12px/1.4 var(--remedy-font-ui);
+  background: var(--remedy-blue);
+  color: var(--remedy-ink-strong);
+}
 .activityItem { display: flex; gap: 12px; }
+/* A feed row that can jump is a button, so it needs the button chrome
+   removed before it can look like the article beside it. No custom property
+   is used here on purpose: an unresolved one renders nothing and no suite in
+   this repository would see it (R-0661). */
+.activityItemJump { width: 100%; padding: 0; border: 0; background: none;
+  font: inherit; color: inherit; text-align: left; cursor: pointer; }
+.activityItemJump:hover { background: rgba(76, 131, 255, 0.06); border-radius: 8px; }
+/* The steering input (ux_spec.md §11.3): 40px field, radius 12, bg-2 fill,
+   1px line border, 36px send button. Every custom property named here is
+   defined in the shipped tokens sheet — checked, because an unresolved one
+   renders nothing and only R-0661's pin would ever notice. */
+.chatInputRow { display: flex; gap: 8px; align-items: center; margin-top: 12px; flex-wrap: wrap; }
+.chatInput { flex: 1; min-width: 0; height: 40px; border-radius: 12px;
+  background: var(--remedy-bg-2); border: 1px solid var(--remedy-line);
+  padding: 0 14px; font: 500 13px/1.45 var(--remedy-font-ui); color: var(--remedy-ink); }
+.chatInput:disabled { cursor: not-allowed; }
+.chatSend { width: 36px; height: 36px; border-radius: 12px; border: 0;
+  background: var(--remedy-blue); color: #fff; font-size: 15px; cursor: pointer; }
+.chatSend:disabled { cursor: not-allowed; opacity: 0.5; }
+.chatInputReason { flex-basis: 100%; margin: 0; font-size: 11px; color: var(--remedy-ink-soft); }
 .activityItem .actorIcon { width: 30px; height: 30px; }
 .activityMeta { display: flex; align-items: baseline; gap: 8px; }
 .activityMeta strong { font-size: 13px; color: var(--remedy-ink-strong); }

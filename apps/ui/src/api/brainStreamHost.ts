@@ -38,6 +38,10 @@ export interface BrainStreamHostDeps {
   readTail(afterSeq: number | null): Promise<BrainStreamFrame[]>;
   /** setTimeout in a browser, a hand-fired fake in a test. */
   schedule(ms: number, resume: () => void): () => void;
+  /** The client's own clock. Injected like every other capability here, so a
+   *  test hands it a counter and a browser hands it Date.now, and no module in
+   *  this chain has to reach for a global to learn what time it is. */
+  now(): number;
 }
 
 /** The adapter OWNS its socket, so `close` sits on the returned object rather
@@ -54,7 +58,7 @@ export function createBrainStreamHost(
    *  fallback resumes where the stream stopped instead of replaying it. */
   function tell(frame: BrainStreamFrame): void {
     held = frame.seq;
-    dispatch({ kind: "frame", frame });
+    dispatch({ kind: "frame", frame, receivedAtMs: deps.now() });
   }
 
   /** Closing is idempotent and always forgets the socket first: an `error`

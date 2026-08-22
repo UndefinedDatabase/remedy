@@ -1,0 +1,42 @@
+F021 R38 — INTEGRATION GATE SUMMARY (evidence, not a verdict)
+
+Only the reviewer issues the gate verdict (integration_gate.md step 5).
+These are the readings the worker measured.
+
+| step | reading |
+|---|---|
+| branch run | exit 0, 17651 passed, 20 skipped, 0 failed, 160.9 s |
+| base run | exit 0, 17572 passed, 20 skipped, 0 failed, 160.1 s |
+| canary | exit 0, 42 passed, 24.4 s, serial, primary checkout |
+| comm -13 (branch-only) | 0 ids, list empty |
+| comm -23 (base-only) | 0 ids, list empty |
+| attribution | nothing to attribute or re-run: both sets empty |
+| merge base | 4548995de3e46dc5304d3584dc249262d54edac9 |
+| worktrees after | 1 (the primary); tmp/f021-r38-base deleted |
+| wall clock | both runs under the ~5 min threshold: no perf note owed |
+
+NO BLOCKER FOUND under integration_gate.md step 4: a reproducible
+branch-only failure coupled to F021 code is what stops the round, and the
+branch-only set is empty.
+
+TWO THINGS THE REVIEWER IS OWED, REPORTED AND NOT MINTED (constraint 3):
+
+1. THE COPY ROUTE IS THE TRAP THE BLOCK NAMED, AND THE NUMBER IS 78 vs 0.
+   The reviewer measured 78 base-only failures at 24a6b899 by copying
+   apps/ui/dist into the base worktree. This round took the BUILD route
+   integration_gate.md step 3 also offers — `npm run build` inside the base
+   worktree, from base sources — and measured 0. The 78 were an artifact of
+   the copy, not of the base tree. integration_gate.md step 3 still lists
+   `apps/ui/dist` among the artifacts to COPY, which is the wording that
+   produces them; see parity.txt.
+
+2. REMEDY_UI_NO_AUTO_BUILD=1 DID NOT PREVENT THE REBUILD EVENT.
+   All 3 files under the base worktree's apps/ui/dist moved their mtime
+   INSIDE the base run window with sha256 unchanged: a byte-identical
+   rebuild. The parity claim is void by rule; nothing turns on it here
+   because both comm sets are empty. See auto_build_neutralization.txt.
+
+Files in this directory: acceptance_read.md (written at C4), auto_build_
+neutralization.txt, base_failed.txt (empty), base_run.txt, branch_failed.txt
+(empty), branch_run.txt, canary.txt, comm.txt, controls.txt, parity.txt,
+summary.txt, worktree.txt.
