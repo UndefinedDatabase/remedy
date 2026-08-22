@@ -19,6 +19,10 @@ export interface FeedRow {
   known: boolean;
   timestamp: string;
   outcome: string;
+  /** The task this event belongs to, or "" when it belongs to none. Carried by
+   *  the envelope since DECISION F021 D2; `feedFocus.ts` turns it into the
+   *  graph node a row click jumps to. */
+  taskId: string;
 }
 
 // The naming trap this module exists to resolve, measured at `f5f01585` in
@@ -58,5 +62,6 @@ export function feedRowOf(
     known: humanized.known,
     timestamp: stringField(envelope, "timestamp"),
     outcome: stringField(envelope, "outcome"),
+    taskId: stringField(envelope, "task_id"),
   };
 }

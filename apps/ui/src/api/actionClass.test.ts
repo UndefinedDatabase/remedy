@@ -4,7 +4,7 @@ import { STREAM_EVENT_CATALOG } from "./humanizeCatalog";
 import type { FeedRow } from "./feedRow";
 
 function rowOf(seq: number, kind: string): FeedRow {
-  return { seq, kind, line: kind, known: true, timestamp: "", outcome: "", receivedAtMs: 0 };
+  return { seq, kind, line: kind, known: true, timestamp: "", outcome: "", receivedAtMs: 0, taskId: "" };
 }
 
 describe("isActionKind", () => {
