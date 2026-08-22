@@ -719,6 +719,30 @@ end the response with:
       two entries could have been resolved in contradictory directions. When a
       duplicate is discovered, retire the NEWER id as the duplicate, keep the
       older one as the record, and say in both resolutions which is which.
+  31. **A gate whose reading the handback must carry runs at a commit STRICTLY
+      EARLIER than the handback commit.** Findings R-0449 and R-0494. When a block
+      requires the handback to state a gate's result — "one line per gate" is the
+      usual form — every one of those gates is ordered at a commit that precedes
+      the commit writing the handback, and the block says which commit that is. A
+      gate ordered "after the last commit" cannot be quoted by a file that last
+      commit already wrote, so the worker must either run it twice or commit a
+      number it has not seen, and only the first is honest. The same clause
+      settles where the handback commit's OWN numbers go: nowhere. Under
+      self-drive there is no second window, and docs/agents/self_drive_protocol.md
+      rules that the handoff is the only return channel, so a value routed to the
+      "round report" — item 14's answer for the two-window relay — is written to a
+      channel that ends with the session. The reviewer measures those numbers at
+      the next gate and records them in that round's ledger entry instead. Item 13
+      governs the ORDER a block imposes on the worker's runs and item 14 which
+      commits a per-commit gate can honestly reach; neither reaches this one,
+      because here the gate's own sequence is sound and its range is right, and
+      the defect is that the ARTEFACT quoting it is written first. This is an item
+      rather than a habit for the reason the list itself exists: R-0449 and R-0494
+      each stated exactly this counter-measure in a finding BODY, R-0494 declared
+      it already applied in the block that registered it, and the class then
+      recurred in two consecutive rounds — the second of them authored by the
+      reviewer who had registered it.
+
   Why this is on disk and not a habit: item 2 has recurred six times across
   F104 and F105, and R20 hit four of them in one block. A check that lives
   only in reviewer session memory is the A1 trap §0 names, and this list is the
