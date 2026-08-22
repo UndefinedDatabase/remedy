@@ -16,31 +16,33 @@ jump-to-node focuses the right node, and the steering input renders DISABLED wit
 its honest tooltip until F030 lands.
 
 ## Current Step
-R8 records the R7 verdict, adds the R7 evidence to R-0585, and rules the two
-infrastructure DECISIONS T002 depends on: F021 D4 on the frontend test
-environment and F021 D5 on the single-subscription fan-out. It mints no finding
-id and builds nothing. The branch is mid-feature and carries no pull request by
-design.
+R9 records the R8 verdict and ships T002's first production code: the pure
+projection from a brain-stream frame to a feed row, with its node-vitest tests,
+under the test discipline DECISION F021 D4 rules. It mints no finding id. The
+module is deliberately uncalled until R10 wires it to the ring.
 
 ## Next Steps
-1. R9 builds T002 on the ground D4 and D5 rule: the feed, its rows and the
-   NowCard over fixture streams, with the scroll discipline that never yanks a
-   reader who has scrolled up.
-2. R10 onward T003: graph-focus wiring, the disabled steering input, and the
+1. R10 builds the bounded ring DECISION F021 D5 rules: `recent` on
+   `BrainStreamState` and on `BrainStreamView`, appended inside
+   `receiveBrainFrame` rather than in the runner's `dispatch`, so a reconnect
+   replay cannot duplicate a row.
+2. R11 builds the feed and NowCard components over fixture streams, with the
+   scroll discipline that never yanks a reader who has scrolled up, gated by a
+   Python source contract under `tests/ui_contracts/`.
+3. R12 onward T003: graph-focus wiring, the disabled steering input, and the
    additive envelope field DECISION F021 D2 permits.
 
 ## Risks
-- T002's rules land in pure `.ts` modules under the node vitest D4 keeps, and
-  its `.tsx` components are gated by a Python source contract under
-  `tests/ui_contracts/`. A rule that reaches for the DOM is a sign it was put in
-  the wrong half.
-- The event ring D5 rules is the first state the brain-stream runner retains per
-  event rather than in aggregate, so the view-identity contract that runner
-  documents is the thing most likely to break under it.
+- The ring is the one place a reconnect can duplicate rows. `receiveBrainFrame`
+  already drops a frame whose seq is not ahead of `lastSeq`; an append written
+  anywhere else silently bypasses that guard.
+- The view-identity contract `createBrainStreamRunner` documents is what R10 is
+  most likely to break: `useSyncExternalStore` compares with `Object.is`, so a
+  freshly built array on every call re-renders forever.
 - Jump-to-node needs the additive envelope field DECISION F021 D2 permits. That
   is the one production seam this feature opens, and it stays one field.
-- T001 is built and verified but its catalog covers only what a static walk can
-  see. The generic line carries the eleven runtime-computed emitters, and R-0649
-  records that the walk's roots also reach vendored third-party Python.
+- The catalog covers only what a static walk can see. The generic line carries
+  the eleven runtime-computed emitters, and R-0649 records that the walk's roots
+  also reach vendored third-party Python.
 - The open set holds no code defect of F021; R-0403, R-0607, R-0608, R-0609,
   R-0611 and R-0613 stay routed to a paydown branch.
