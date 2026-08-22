@@ -16,10 +16,10 @@ cross-site attempts fail closed and are audited as rejected, and a route-walking
 test plus an import guard prove no other mutating route exists.
 
 ## Current Step
-R24 pays DECISION F009 D22's fifth clause, which scheduled it by name. R23's
-dispatch had only its 409 refusal path under test; this round reaches the 200
-acceptance path and the 501 guard, and asserts all three writes D18 orders for
-an accepted command. It touches no production file.
+R25 records the R24 verdict. It writes no code and rules nothing. The dispatch
+half of T003 is COMPLETE: both UI-exposed ids reach a real effect, the 501 is a
+guard rather than a placeholder, and every path — 200, 409, 500 and 501 — is
+reached by a test that fails against the pre-dispatch door.
 
 ## Next Steps
 1. The `command.accepted` SSE event on the F008 stream.
