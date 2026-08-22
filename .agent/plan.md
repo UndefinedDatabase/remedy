@@ -16,23 +16,27 @@ jump-to-node focuses the right node, and the steering input renders DISABLED wit
 its honest tooltip until F030 lands.
 
 ## Current Step
-R7 records the R6 verdict, registers R-0649, adds evidence to R-0449 and R-0585,
-and closes the reviewer's session at its stated round cap. It builds nothing. The
-branch is mid-feature and carries no pull request by design.
+R8 records the R7 verdict, adds the R7 evidence to R-0585, and rules the two
+infrastructure DECISIONS T002 depends on: F021 D4 on the frontend test
+environment and F021 D5 on the single-subscription fan-out. It mints no finding
+id and builds nothing. The branch is mid-feature and carries no pull request by
+design.
 
 ## Next Steps
-1. R8 rules the two infrastructure DECISIONS T002 depends on: the frontend test
-   environment, which collects no component test at all today, and the
-   single-subscription fan-out. T002 cannot be written before both.
-2. R9 builds T002: the feed, its rows and the NowCard over fixture streams, with
-   the scroll discipline that never yanks a reader who has scrolled up.
-3. R10 onward T003: graph-focus wiring, the disabled steering input, and the
+1. R9 builds T002 on the ground D4 and D5 rule: the feed, its rows and the
+   NowCard over fixture streams, with the scroll discipline that never yanks a
+   reader who has scrolled up.
+2. R10 onward T003: graph-focus wiring, the disabled steering input, and the
    additive envelope field DECISION F021 D2 permits.
 
 ## Risks
-- T002 cannot be tested until the frontend test environment changes: measured at
-  `6f5078d7`, `apps/ui/vitest.config.ts` sets `environment: "node"` and
-  `include: ["src/**/*.test.ts"]`, so no `.test.tsx` is collected at all.
+- T002's rules land in pure `.ts` modules under the node vitest D4 keeps, and
+  its `.tsx` components are gated by a Python source contract under
+  `tests/ui_contracts/`. A rule that reaches for the DOM is a sign it was put in
+  the wrong half.
+- The event ring D5 rules is the first state the brain-stream runner retains per
+  event rather than in aggregate, so the view-identity contract that runner
+  documents is the thing most likely to break under it.
 - Jump-to-node needs the additive envelope field DECISION F021 D2 permits. That
   is the one production seam this feature opens, and it stays one field.
 - T001 is built and verified but its catalog covers only what a static walk can
