@@ -426,3 +426,61 @@ class TestTheRingCarriesTheArrivalStamp:
         assert "receiveBrainFrame(state, event.frame, event.receivedAtMs)" in code, (
             "the driver must thread the transport event's stamp, not invent one"
         )
+
+
+class TestTheActivityDotReadsTheRecencyRule:
+    """T5_F021 line 62: the NowCard's activity dot pulses on recency and fades
+    to idle after a quiet window. The rule is `recency.ts` and it is pure, so
+    what a behavioural test cannot see is WHERE the card gets its two operands.
+    Both must sit on ONE clock -- the row's arrival stamp and a `Date.now` the
+    card reads itself. The BADGE is deliberately not wired to this level yet:
+    the dot may read fresh for the quiet window after a job has ended, and a
+    badge saying "Live" beside the word "Idle" is exactly R-0652. That trade-off
+    is ruled in its own round, and TestTheNowCardBadgeTracksTheAgent above still
+    pins the badge to the agent's running flag until then."""
+
+    def test_the_card_reads_the_shared_recency_rule(self):
+        code = strip_ts_comments(NOWCARD.read_text())
+        assert "recencyLevel(" in code, (
+            "the dot must ask recency.ts rather than compare instants itself"
+        )
+
+    def test_the_dot_subtracts_the_arrival_stamp(self):
+        code = strip_ts_comments(NOWCARD.read_text())
+        assert "liveAction.receivedAtMs" in code, (
+            "the dot's operand is the arrival stamp, never the server's string"
+        )
+
+    def test_the_card_ticks_its_own_clock(self):
+        code = strip_ts_comments(NOWCARD.read_text())
+        assert "setInterval" in code, (
+            "with no tick the dot cannot fade until an unrelated render happens"
+        )
+        assert "clearInterval" in code, (
+            "an interval a component never clears outlives the component"
+        )
+
+    def test_the_level_reaches_the_dom_as_data(self):
+        code = strip_ts_comments(NOWCARD.read_text())
+        assert "data-recency={level}" in code, (
+            "the level must reach the markup, or the CSS has nothing to select"
+        )
+
+    def test_the_dot_css_covers_every_level(self):
+        css = (UI_SRC / "components" / "panels" / "RightLivePanel.module.css").read_text()
+        for level in ("none", "fresh", "fading", "idle"):
+            assert f'.activityDot[data-recency="{level}"]' in css, (
+                f"the {level} level renders unstyled"
+            )
+        assert "--remedy-dur-pulse" in css, (
+            "the pulse must use the motion token, not a literal duration"
+        )
+
+    def test_the_liveness_tokens_resolve(self):
+        tokens = (UI_SRC / "styles" / "tokens.css").read_text()
+        assert "--remedy-live:" in tokens, (
+            "assets_spec.md line 178 names a token this file must define"
+        )
+        assert "--remedy-dur-pulse:" in tokens, (
+            "motion_spec.md line 13 gives the LIVE dot a 1600ms pulse token"
+        )
