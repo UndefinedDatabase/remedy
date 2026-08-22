@@ -491,3 +491,57 @@ class TestTheActivityDotReadsTheRecencyRule:
         assert "--remedy-dur-pulse:" in tokens, (
             "motion_spec.md line 13 gives the LIVE dot a 1600ms pulse token"
         )
+
+class TestTheFeedScrollRuleIsWiredToTheCard:
+    """DECISION F021 D10 and T5_F021's scroll clause. feedScroll.ts was pure and
+    UNIMPORTED from R17 until R31: every function it exports was covered by
+    vitest and reachable from no screen, which is a rule that ships unread. This
+    suite pins the wiring a repository with no DOM cannot execute."""
+
+    def test_the_card_imports_the_rule_rather_than_reimplementing_it(self):
+        code = strip_ts_comments(CARD.read_text())
+        assert 'from "../../api/feedScroll"' in code, (
+            "the scroll rule lives in feedScroll.ts; a card that re-derives it "
+            "leaves the tested copy unread"
+        )
+
+    def test_the_card_never_scrolls_without_asking_the_rule(self):
+        code = strip_ts_comments(CARD.read_text())
+        assert "shouldFollowNewest(distance)" in code, (
+            "the follow branch must be guarded by the rule, or a reader who "
+            "scrolled up gets yanked to the newest row"
+        )
+
+    def test_the_distance_is_measured_from_the_edge_the_rows_render_at(self):
+        code = strip_ts_comments(CARD.read_text())
+        assert "recent.slice(-LIVE_ROWS_SHOWN).reverse()" in code
+        assert "boxRef.current.scrollTop" in code, (
+            "rows render newest FIRST, so the newest edge is scrollTop 0 "
+            "(DECISION F021 D10); measuring from the bottom would invert the rule"
+        )
+
+    def test_the_unseen_count_comes_from_the_rule(self):
+        code = strip_ts_comments(CARD.read_text())
+        assert "nextFeedScroll(prev" in code, (
+            "the unseen count must come from the pure rule, which clears it at "
+            "the edge, rather than from a counter the component increments"
+        )
+
+    def test_the_jump_to_live_affordance_is_rendered(self):
+        code = strip_ts_comments(CARD.read_text())
+        assert "shouldShowNewRowsPill(scrollState)" in code, (
+            "the pill appears only when the rule says rows went unseen"
+        )
+        assert "Jump to live" in code, (
+            "T5_F021 binds the wording; an arrow pointing down would point away "
+            "from the newest edge under DECISION F021 D10"
+        )
+
+    def test_the_feed_box_can_actually_scroll(self):
+        css = (UI_SRC / "components" / "panels" / "RightLivePanel.module.css").read_text()
+        assert "max-height: 52vh" in css, (
+            "T5_F021's binding CSS fixes the feed box at 52vh"
+        )
+        assert "overflow: auto" in css, (
+            "a box that cannot overflow makes every scroll rule unreachable"
+        )
