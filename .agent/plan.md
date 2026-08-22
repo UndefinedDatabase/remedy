@@ -16,18 +16,17 @@ cross-site attempts fail closed and are audited as rejected, and a route-walking
 test plus an import guard prove no other mutating route exists.
 
 ## Current Step
-R29 records the R28 verdict, registers R-0644 against the reviewer's own R28
-block and appends the dated correction DECISION F009 D25's route inventory
-needs, then runs the integration gate per docs/agents/integration_gate.md: the
-full suite on this branch, the full suite at the merge base `ce49348b` in a
-throwaway worktree with `apps/ui` build parity restored, and a per-id
-attribution of every difference in both directions. T001, T002 and T003 are
-built and verified; this is the last gate before closure.
+R30 is closure preparation. It records the R29 verdict and the integration-gate
+verdict, registers R-0645, repairs docs/agents/integration_gate.md so the base
+run's neutralisation check measures the EVENT rather than the outcome — R-0444
+recurred at R29 under its own standing rule — and adds the `## Built State`
+section that closure precondition 4 requires of the feature file. The build
+itself is done: the integration gate found an EMPTY branch-only set.
 
 ## Next Steps
 1. Closure per docs/roadmap/STATUS_closure_protocol.md, in TWO rounds: the
-   evidence job and a FRESH review zip first, then the authored STATUS line and
-   the pull request.
+   evidence job and a FRESH review zip first, then the authored STATUS line,
+   the README capability sync and the pull request.
 
 ## Risks
 - Closure needs TWO rounds, not one: the evidence-and-zip round produces the
@@ -35,5 +34,7 @@ built and verified; this is the last gate before closure.
   right after a verdict strands it (DECISION F085 D9).
 - `npm run lint` in `apps/ui` is RED at base and is NOT a gate (R-0364), which
   is R-0622 and routes to a paydown branch.
-- A reproducible branch-only failure coupled to feature code is a BLOCKER, and
-  its fix is its own reviewer-gated round (integration_gate.md step 4).
+- The closure zip's known blockers are on disk, not in memory: sorted
+  `verification_runs[].test_files`, an `output_hash` that is sha256 of
+  `stdout_summary` exactly, node ids from `--collect-only`, and no full-suite
+  node-id list (STATUS_closure_protocol.md, algorithm step 1).
