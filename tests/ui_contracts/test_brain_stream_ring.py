@@ -14,7 +14,12 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 API_DIR = REPO_ROOT / "apps" / "ui" / "src" / "api"
+UI_SRC = REPO_ROOT / "apps" / "ui" / "src"
 STATE = API_DIR / "brainStream.ts"
+DEPS = API_DIR / "brainStreamDeps.ts"
+CARD = UI_SRC / "components" / "panels" / "ActivityFeedCard.tsx"
+PANEL = UI_SRC / "components" / "panels" / "RightLivePanel.tsx"
+SHELL = UI_SRC / "components" / "shell" / "RemedyShell.tsx"
 DRIVER = API_DIR / "brainStreamDriver.ts"
 RUNNER = API_DIR / "brainStreamRunner.ts"
 
@@ -126,3 +131,45 @@ class TestViewPublishesTheRing:
     def test_the_runner_still_does_not_project_rows_itself(self):
         code = strip_ts_comments(RUNNER.read_text())
         assert "feedRowOf" not in code, "the projection belongs behind the guard"
+
+
+class TestTheFeedIsFedFromTheStream:
+    """The surface half of DECISION F021 D5. The rows must reach the card by
+    being passed DOWN from the one subscription the shell already holds, so
+    these pin the path rather than the pixels — this repository has no DOM
+    environment and never renders a component in a test."""
+
+    def test_the_shell_hands_the_ring_to_the_panel(self):
+        code = strip_ts_comments(SHELL.read_text())
+        assert "recent={stream.recent}" in code, (
+            "the ring is published on the view but never handed to the panel"
+        )
+        assert "recentDropped={stream.recentDropped}" in code
+
+    def test_the_panel_hands_the_ring_to_the_card(self):
+        code = strip_ts_comments(PANEL.read_text())
+        assert "recent={recent}" in code
+        assert "recentDropped={recentDropped}" in code
+
+    def test_the_card_renders_the_rows_and_says_when_it_dropped_some(self):
+        code = strip_ts_comments(CARD.read_text())
+        assert "recent.slice(-LIVE_ROWS_SHOWN).reverse()" in code, (
+            "the feed shows the newest rows first"
+        )
+        assert "recentDropped > 0" in code, (
+            "a bounded window that never says it dropped anything is the "
+            "silent drop D5 forbids"
+        )
+
+    def test_there_is_still_exactly_one_subscription(self):
+        calls = 0
+        for path in sorted(UI_SRC.rglob("*.ts")) + sorted(UI_SRC.rglob("*.tsx")):
+            if path.name.endswith((".test.ts", ".test.tsx")):
+                continue
+            code = strip_ts_comments(path.read_text())
+            calls += code.count("useBrainStream(")
+            if path != DEPS:
+                assert "EventSource" not in code, (
+                    "only brainStreamDeps.ts may construct the transport"
+                )
+        assert calls == 2, "one definition plus one call, never a second"
