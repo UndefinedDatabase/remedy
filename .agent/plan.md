@@ -16,17 +16,15 @@ cross-site attempts fail closed and are audited as rejected, and a route-walking
 test plus an import guard prove no other mutating route exists.
 
 ## Current Step
-R31 closes the session. It records the R30 verdict and writes the two
-reviewer-block defects R30 surfaced into `.agent/candidates.md`, which is the
-carrier of record across a session boundary. The build and its integration gate
-are done; what remains is closure.
+R32 clears the block condition this session inherited. It records the R31
+verdict, registers as R-0646 and R-0647 the two reviewer-block defects the
+closure-candidate carrier held, and empties that carrier in the same round. The
+build and its integration gate are done; what remains is closure.
 
 ## Next Steps
-1. Register or resolve both entries of `.agent/candidates.md` and empty that
-   file — the FIRST reviewed round of the next session owes this.
-2. Closure round one: the evidence job and a FRESH review zip, whose values the
+1. Closure round one: the evidence job and a FRESH review zip, whose values the
    STATUS line quotes.
-3. Closure round two: the authored STATUS line, the README capability sync in
+2. Closure round two: the authored STATUS line, the README capability sync in
    the SAME commit, and the pull request.
 
 ## Risks
