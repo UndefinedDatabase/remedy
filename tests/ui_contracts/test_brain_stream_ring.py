@@ -21,6 +21,7 @@ ACTION = API_DIR / "actionClass.ts"
 CARD = UI_SRC / "components" / "panels" / "ActivityFeedCard.tsx"
 PANEL = UI_SRC / "components" / "panels" / "RightLivePanel.tsx"
 SHELL = UI_SRC / "components" / "shell" / "RemedyShell.tsx"
+NOWCARD = UI_SRC / "components" / "panels" / "AgentNowCard.tsx"
 DRIVER = API_DIR / "brainStreamDriver.ts"
 RUNNER = API_DIR / "brainStreamRunner.ts"
 
@@ -207,4 +208,29 @@ class TestTheActionClassIsDocumentedAndHeadless:
         code = strip_ts_comments(ACTION.read_text())
         assert "recent.length - 1" in code, (
             "recent is oldest-first, so the newest action is found from the end"
+        )
+
+
+class TestTheNowCardShowsTheNewestAction:
+    """The NowCard half of T5_F021. The card must read the ACTION class rather
+    than the raw ring, and the panel must hand it the ring at all -- a card
+    wired to nothing renders the pre-stream fallback forever."""
+
+    def test_the_now_card_reads_the_action_class(self):
+        code = strip_ts_comments(NOWCARD.read_text())
+        assert "newestActionRow" in code, (
+            "the NowCard must select through the ACTION class, not the raw ring"
+        )
+        assert "recent ?? []" in code
+
+    def test_the_panel_hands_the_ring_to_the_now_card(self):
+        code = strip_ts_comments(PANEL.read_text())
+        assert "<AgentNowCard dashboard={dashboard} recent={recent} />" in code, (
+            "the NowCard is wired to nothing and shows the fallback forever"
+        )
+
+    def test_the_now_card_falls_back_when_nothing_acted(self):
+        code = strip_ts_comments(NOWCARD.read_text())
+        assert "liveAction ? liveAction.line : detail" in code, (
+            "with no action yet the card still says what the dashboard knows"
         )

@@ -16,7 +16,7 @@ export function RightLivePanel({ dashboard, onSelectNode, streamStatus, recent, 
   return (
     <aside className={styles.panel} data-ui="right-live-panel">
       <LiveStatusPill live={liveIsActive(dashboard)} streamStatus={streamStatus} />
-      <AgentNowCard dashboard={dashboard} />
+      <AgentNowCard dashboard={dashboard} recent={recent} />
       <NeedsAttentionCard dashboard={dashboard} />
       <ActivityFeedCard activity={dashboard.activity} recent={recent} recentDropped={recentDropped} />
       <TaskChecklistCard tasks={dashboard.tasks} jobId={dashboard.jobId} onSelectNode={onSelectNode} />
