@@ -16,18 +16,18 @@ cross-site attempts fail closed and are audited as rejected, and a route-walking
 test plus an import guard prove no other mutating route exists.
 
 ## Current Step
-R28 closes T003 and records the R27 verdict. Every route `do_GET` dispatches is
-walked with POST, PUT and DELETE and answers 405; the job endpoints come out of
-`do_GET`'s own dict literal by AST so a new one joins the walk automatically, and
-a drift test fails the moment a literal route appears the walk does not know.
-With T001, T002 and T003 built, what remains is verification rather than
-construction.
+R29 records the R28 verdict, registers R-0644 against the reviewer's own R28
+block and appends the dated correction DECISION F009 D25's route inventory
+needs, then runs the integration gate per docs/agents/integration_gate.md: the
+full suite on this branch, the full suite at the merge base `ce49348b` in a
+throwaway worktree with `apps/ui` build parity restored, and a per-id
+attribution of every difference in both directions. T001, T002 and T003 are
+built and verified; this is the last gate before closure.
 
 ## Next Steps
-1. The integration gate per docs/agents/integration_gate.md — the full suite,
-   once, before closure.
-2. Then closure per docs/roadmap/STATUS_closure_protocol.md: evidence job, a
-   FRESH review zip, the authored STATUS line, and the pull request.
+1. Closure per docs/roadmap/STATUS_closure_protocol.md, in TWO rounds: the
+   evidence job and a FRESH review zip first, then the authored STATUS line and
+   the pull request.
 
 ## Risks
 - Closure needs TWO rounds, not one: the evidence-and-zip round produces the
@@ -35,3 +35,5 @@ construction.
   right after a verdict strands it (DECISION F085 D9).
 - `npm run lint` in `apps/ui` is RED at base and is NOT a gate (R-0364), which
   is R-0622 and routes to a paydown branch.
+- A reproducible branch-only failure coupled to feature code is a BLOCKER, and
+  its fix is its own reviewer-gated round (integration_gate.md step 4).
