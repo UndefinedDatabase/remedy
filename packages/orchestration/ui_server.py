@@ -2748,9 +2748,12 @@ SSE_POLL_SECONDS = 1.0
 #: clause one). Spelled here as its own constant rather than imported from
 #: `packages.orchestration.safe_points`, where DECISION F022 D2 clause two
 #: requires the emitter to pass the name as an INLINE literal so the humanize
-#: catalog's AST walk can see it. `tests/ui_contracts/test_humanize_catalog.py`
-#: pins that catalog equal to the emitters, so the two spellings cannot drift
-#: apart without a red suite.
+#: catalog's AST walk can see it. The guard against THIS constant drifting from
+#: that literal is `tests/ui_server/test_budget_tick_envelope.py`, which was
+#: MEASURED to go red when this value is renamed; the humanize-catalog test is
+#: not, because it pins the catalog against the emitter's own literal in
+#: `packages.orchestration.safe_points` and never reads this constant at all
+#: (finding R-0670, measured by mutation at `f685a707`).
 BUDGET_TICK_EVENT = "budget.tick"
 
 #: The outer metadata keys of a budget tick that reach a client, and the only
