@@ -1,104 +1,137 @@
-# Handback — F022 Live cost ticker, Runde 11 (the source ruling, no code)
+# Handback — F022 Live cost ticker · Runde 12 (T003b-a)
 
-Fortschritt: ~75 % (T001 fertig · T002 fertig · T003a fertig · T003b offen;
-             diese Runde baut nichts, sie entscheidet die Quelle der
-             Schluss-Zahl und schreibt das R10-Urteil auf Platte) — Schaetzung
+Fortschritt: ~80 % (T001 fertig · T002 fertig · T003a fertig · T003b halb —
+             diese Runde liefert die Server-Seite der Schluss-Zahl, repariert
+             R-0670 und schreibt das R11-Urteil auf Platte) — Schaetzung
 
-Branch `feature/f022-live-cost-ticker`. Round base `3e1d3fae`.
+Branch `feature/f022-live-cost-ticker`. Round base `f6259860`.
+Deviations, declared: this handback is 137 lines, over the 100-line cap, under
+DECISION D15 — the cause is the mandated per-commit tables for 9 commits plus
+the 14 one-line gate rows and the 9-row item-status table.
 
 ## Range
-Review of 3e1d3fae..ae58934d (C0a–C5) plus this handoff commit (C6).
+
+Review of `f6259860`..`HEAD` (C7 below).
 
 ## Commits
-### 575336af docs(state): save the F022 R11 step block as authored text
+
+### f5508057 docs(state): save the F022 R12 step block as authored text (C0a)
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f022-r11.md | +381/-0 | C0a, the block saved byte-for-byte |
+| .agent/authored/f022-r12.md | +349/-0 | the block file copied byte-for-byte |
 
-### 5f6bbfb8 docs(state): mirror the F022 R11 block into last_block
+### 63987ec8 docs(state): mirror the F022 R12 block into last_block (C0b)
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/last_block.md | +269/-370 | C0b, same bytes, same git blob `410794db` |
+| .agent/last_block.md | +241/-273 | same bytes; full-file state rewrite |
 
-### 7760e77d docs(state): point the F022 plan at R11 and the source ruling
+### fe6da915 docs(state): point the F022 plan at R12, the server final figure (C1)
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/plan.md | +17/-19 | C1, slice PLANF022R11 whole-file |
+| .agent/plan.md | +17/-18 | PLANF022R12 replaces the file whole |
 
-### 60edc932 docs(state): repair the F022 round map for R11 through R14
+### cbe4f643 docs(state): repair the F022 round map for R12 through R15 (C2)
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/live_review.md | +5/-3 | C2, the MAPFROM11→MAPTO11 pair |
+| .agent/live_review.md | +4/-3 | MAPFROM12 → MAPTO12, one replacement |
 
-### 9933144c docs(state): record the F022 R10 verdict and the R-0625 recurrence
+### d0d5e94b docs(state): record the F022 R11 verdict and two recurrences (C3)
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/live_review.md | +4/-0 | C3, LEDGER11's two paragraphs, appended |
+| .agent/live_review.md | +6/-0 | LEDGER12's three paragraphs appended |
 
-### 5ca8c326 docs(state): rule DECISION F022 D7 on the ledger figure source
+### df8ae445 docs(comment): name the measured guard for the budget tick constant (C4)
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/decisions.md | +60/-0 | C4, slice DEC7, appended |
+| packages/orchestration/ui_server.py | +6/-3 | GUARDFROM → GUARDTO, R-0670's repair |
 
-### ae58934d docs(roadmap): amend the F022 terminal reconciliation source
+### 417d7136 feat(ui-server): serve the ledger final budget figure on the dashboard (C5)
 | Path | +/- | Reason |
 |---|---|---|
-| docs/roadmap/features/T5_F022.md | +13/-4 | C5, the SPECFROM→SPECTO pair |
+| packages/orchestration/ui_server.py | +31/-0 | `_build_budget_final` + the `budget_final` key |
+| tests/ui_server/test_budget_final_section.py | +185/-0 | NEW, 15 tests over the section |
 
-### C6 (this commit) — `.agent/handoff.md`, rewritten whole. A handoff cannot table the commit that writes it (R-0149).
+### 11a379ee docs(state): resolve R-0670 by naming the measured guard (C6)
+| Path | +/- | Reason |
+|---|---|---|
+| .agent/live_review.md | +2/-0 | DONE670 appended |
+
+### C7 docs(state): hand back the F022 R12 server final-figure round
+| Path | +/- | Reason |
+|---|---|---|
+| .agent/handoff.md | rewrite | this file; a handoff cannot table its own commit |
 
 ## External actions
-- `git worktree add .remedy-wt/g6ctl HEAD --detach` → G6 negative control; `git worktree remove .remedy-wt/g6ctl` → removed, `git worktree list` back to 1 line.
-- `gh pr list --state open --json number,headRefName` → `[]` verbatim.
-- `git push` → see Next. No PR created, nothing merged (G12).
+
+`git worktree add/remove .remedy-wt/g6 11a379ee --detach` → ok, both (G6
+controls). `git worktree add/remove .remedy-wt/g8 417d7136 --detach` → ok, both
+(G8 mutation). `gh pr list --state open --json number,headRefName` → `[]`.
+`git push` → after C7. No PR created, nothing merged.
 
 ## Verification
-Every gate run by me; every exit code real. Transcripts are in the round report, not here (R-0582).
-- G1 exit 0 — `.agent/STOP` absent, read from disk before C0a and again before C6; branch `feature/f022-live-cost-ticker`; `git status --porcelain` 0 lines after each of C0a..C5.
-- G2 exit 0 — one sha256 `47a1a3db…5bbaa0e`, 31617 bytes, 381 lines across all FOUR readings (reviewer's `.remedy-wt/f022-r11.md`, the committed C0a blob, the committed C0b blob, `.agent/last_block.md` on disk); the delegation's digest is the fifth reading and agrees; C0a and C0b resolve to the SAME git blob `410794db`.
-- G3 exit 0 — the extractor over the committed C0a blob found the slices by their marker LINES and printed 7 slices over 137 CONTENT lines, so TOTAL 381 and PROSE 244. Constraint 9's three numerals reproduce exactly; nothing to reconcile.
-- G4 exit 0 — `.agent/plan.md` at C1 is 2607 bytes = PLANF022R11's 2606 + exactly one newline; the NEGATIVE CONTROL against the BARE 2606-byte slice is False; `^## Goal$` 1, `^## Next Steps$` 1, `wc -l` 46 ≤ 50.
-- G5 exit 0 — both pairs printed `TO contains FROM: false`, matching the convention block, one reading per pair. In `.agent/live_review.md` at C2: MAPFROM11 1 at base → 0, MAPTO11 0 → 1, bytes 542726 → 542903, delta 177 = len(MAPTO11) 423 − len(MAPFROM11) 246, `^## Steps$` 1. In `docs/roadmap/features/T5_F022.md` at C5: SPECFROM 1 → 0, SPECTO 0 → 1, bytes 4756 → 5303, delta 547 = 814 − 267. For BOTH, the committed file equals the base file with only that replacement applied and nothing else.
-- G6 exit 0 — C3: the C2 blob is a byte-exact PREFIX and the remainder is 8047 = 1 + LEDGER11's 8045 + 1; reader (b) counted N=2 paragraphs in the slice and the file's last 2 of 269 units (267 at C2) equal them IN ORDER. C4: prefix byte-exact, remainder 3761 = 1 + DEC7's 3759 + 1; N=7, last 7 of 1310 units (1303 at C3) equal in order. NEGATIVE CONTROL in the disposable `.remedy-wt/g6ctl`: one byte flipped at BYTE offset 543025, inside LEDGER11's first appended paragraph which spans bytes 542904..545583 (`TOOL EVER BEING RUN ` → `TOOL EVER XEING RUN `), and at BYTE offset 544676 inside DEC7's first, spanning 544666..544747 (`## DECISION F022 D7 ` → `## DECISIOX F022 D7 `) — both readers REJECTED both mutants and ACCEPTED both true files. Worktree removed; `git worktree list` 1 line.
-- G7 exit 0 — `.agent/live_review.md`, base vs C3: lines matching `^- R-\d+ — ` 234 → 234, all DISTINCT at both, MAXIMUM id `R-0673` at both; ids ADDED the EMPTY SET and ids REMOVED the EMPTY SET, so NO ID WAS MINTED. `^Done: R-` 1 → 1 over the single id `R-0653`; `^Landed: ` 0 → 0; `^Recurrence: R-` 4 → 5, gaining `R-0625` over ids R-0445, R-0644, R-0645, R-0672; `^Gate: R` 10 → 11 over 10 → 11 distinct keys, gaining `R10`. `^- R-0625 — ` is exactly 1 at both, so the recurrence APPENDED and rewrote nothing. Every base numeral the block quoted reproduced.
-- G8 exit 0 — `^## DECISION F022 D7 ` in `.agent/decisions.md`: 1 in the C4 blob, 0 in the round-base blob.
-- G9 exit 0 — from the REPOSITORY ROOT, serially: `python3 -m pytest tests/docs/ -q` 295 passed, `python3 -m pytest tests/orchestration/test_roadmap_index.py -q` 30 passed. Both match the base reference of 295 and 30.
-- G10 exit 0 — serially in the PRIMARY checkout at C5: `tests/ui_server/` 455, `tests/orchestration/test_test_runner.py` 52, `tests/regression/test_resource_safety.py` 21, `tests/orchestration/test_integrity_gate.py` 16 — 544 across the four; canary `tests/cli/test_golden_path.py` 42. Both match the base reference. No two pytest processes ran at once.
-- G11 exit 0 — all 7 commits before C6 single-parent; insertions 381, 269, 17, 5, 4, 60, 13 (total 749), each under the 500 cap; the range path set matches the Change set with the difference EMPTY in BOTH directions (`.agent/handoff.md` excluded, it is C6's); `git show --numstat` agrees cell by cell with every `## Commits` row above; the LINE-ANCHORED `^<<<SLICE ` and `^<<<END ` count 0 in `.agent/plan.md`, `.agent/live_review.md`, `.agent/decisions.md` and `docs/roadmap/features/T5_F022.md`; `git ls-files .remedy-wt` 0; one worktree; the round's 8 reflog rows carry amend 0, rebase 0, cherry 0 measured on the reflog OPERATION field — an unanchored substring count returns amend 1, which is the word "amend" inside C5's own commit subject and not an operation (R-0608 class), and both readings are reported.
-- G12 exit 0 — `gh pr list --state open --json number,headRefName` printed `[]`. No PR created, nothing merged.
-- G13 exit 0 — checked, and ONE RESIDUAL. Every file-fact C1..C5 land re-measures TRUE at C5: `packages/orchestration/ui_server.py` contains the string `stats` 0 times and dispatches its job endpoints from one 13-key `handlers` dict plus `events-since`; `_build_token_usage` returns `"estimated": True` and `"source": "event_metadata"` and attributes to `context`, `memory`, `repair`, `planner`, `other`; `BUDGET_TICK_RUN_ID = "budget-ticks"` in `safe_points.py` and `_emit_budget_tick` writes through `RunLogWriter`; `_budget_tick_summary_payload` exists in `ui_server.py`; `measured_token_total` and `measured_cost_usd` are `BudgetCounters` fields in `budget_guard.py`; `git merge-base main HEAD` is `c34ef32b`; `72 problems` occurs exactly once in each of `.agent/authored/f022-r7.md`, `f022-r8.md`, `f022-r9.md` and `f022-r10.md`, as LEDGER11's recurrence states. THE RESIDUAL: MAPTO11's last line joins the sentence that followed MAPFROM11, leaving line 53 of `.agent/live_review.md` at 99 characters where that paragraph otherwise wraps at 72–80. Reported, not repaired — a slice is never edited to fix one.
-- NOT A GATE and reported only because C1's risk sentence states it: `npm run lint` in `apps/ui` is RED at HEAD with 78 problems (76 errors, 2 warnings), identical to the reviewer's reading at `3e1d3fae` — no file under `apps/` is in this round's Change set. That sentence states no numeral, so it cannot have gone stale; LEDGER11's `R-0625` recurrence corrects the 72 the four earlier blocks carried.
+
+One line per gate; transcripts stay in the round report (R-0582).
+
+- G1 exit 0 — `.agent/STOP` absent before C0a and again before C7; branch `feature/f022-live-cost-ticker`; `git status --porcelain` 0 lines after each of C0a–C6.
+- G2 exit 0 — five readings of the block are EQUAL: sha256 `1891867831bb…2ee8`, 31863 bytes, 349 lines (scratch `.remedy-wt/f022-r12.md`, C0a blob, C0b blob, `.agent/last_block.md` on disk, the delegation's digest); C0a and C0b are the same blob `31c21b07`.
+- G3 exit 0 — extractor over the COMMITTED C0a blob printed 7 slices over 69 CONTENT lines; TOTAL 349, PROSE 280 — constraint 9's numerals reproduce exactly.
+- G4 exit 0 — `.agent/plan.md` at `fe6da915` is 2559 bytes = PLANF022R12's 2558 + 1 newline; NEGATIVE CONTROL against the bare slice is FALSE; `^## Goal$` 1x, `^## Next Steps$` 1x, `wc -l` 45 ≤ 50.
+- G5 exit 0 — both pairs printed `TO contains FROM: false`. `.agent/live_review.md` at `cbe4f643`: MAPFROM12 1→0, MAPTO12 0→1, byte delta 51 = 305 − 254, file == base with ONLY that replacement, `^## Steps$` 1x, and the `## Steps` paragraph's longest line is 80 chars (99 at base, R-0431's line). `packages/orchestration/ui_server.py` at `df8ae445`: GUARDFROM 1→0, GUARDTO 0→1, byte delta 255 = 520 − 265, file == base with ONLY that replacement.
+- G6 exit 0 — C3: prefix byte-exact, remainder 8279 = 1 + LEDGER12's 8277 + 1, reader (b) N=3 paragraphs equal in order over 269→272 blank-line units. C6: remainder 1648 = 1 + DONE670's 1646 + 1, N=1, 272→273. NEGATIVE CONTROLS in `.remedy-wt/g6`: one BYTE flipped in the FIRST appended paragraph at offsets 551402 (`r paragraph whose tr` → `r paragrapH whose tr`) and 559681 (`measurement was a re` → `measuremenT was a re`) — both readers REJECT both mutants and ACCEPT both true files. Worktree removed.
+- G7 exit 0 — `^- R-\d+ — ` records: 234 at base and 234 at C6, all DISTINCT at both, MAXIMUM `R-0673` at both; ids ADDED and ids REMOVED are both the EMPTY SET, so NO ID WAS MINTED. `^Done: R-` 1→2 gaining `R-0670` (ids `R-0653`, `R-0670`); `^Landed: ` 0→0; `^Recurrence: R-` 5→7 gaining `R-0431` and `R-0413`; `^Gate: R` 11→12 over 11→12 distinct keys, gaining `R11`. `^- R-0670 — `, `^- R-0431 — ` and `^- R-0413 — ` are each exactly 1 at both points. Every reference figure the block states for the base reproduced.
+- G8 exit 0 (the gate's requirement met; the mutant run is RED by design) — in `.remedy-wt/g8` at C5, `BUDGET_TICK_EVENT` rewritten to `"budget.ticks"` and nothing else (1 file, +1/-1): `tests/ui_server/test_budget_tick_envelope.py` exit 1, 11 failed 5 passed — the newly named guard IS red; `tests/ui_contracts/test_humanize_catalog.py` exit 0, 9 passed — the previously named guard is blind, exactly as R-0670 measured. Unmutated control in the same worktree: both exit 0 (16 and 9 passed), and `ui_server.__file__` resolved to the worktree copy. Worktree removed.
+- G9 exit 0 — `python3 -m pytest tests/ui_server/ -q` from the REPOSITORY ROOT: 470 passed. Base was 455; the +15 is exactly the 15 tests in the new `tests/ui_server/test_budget_final_section.py`.
+- G10 exit 0 — `python3 -m pytest tests/ui_contracts/ -q` from the REPOSITORY ROOT (not from `apps/ui`): 518 passed, 4 skipped — identical to the base figures.
+- G11 exit 0 — serially in the primary checkout at C6, never two pytest processes at once: `tests/ui_server/` 470, `tests/orchestration/test_test_runner.py` 52, `tests/regression/test_resource_safety.py` 21, `tests/orchestration/test_integrity_gate.py` 16 → 559 (base 544, +15 from G9); canary `tests/cli/test_golden_path.py` 42, matching base.
+- G12 exit 0 — 8 commits before C7, every one single-parent; insertions 349, 241, 17, 4, 6, 6, 216, 2 — each under the 500 cap; the range path set is exactly the 6 declared non-handoff paths with the difference EMPTY in BOTH directions; `git show --numstat` agrees cell by cell with every `## Commits` row above; line-anchored `^<<<SLICE ` and `^<<<END ` count 0 in `.agent/plan.md` and 0 in `.agent/live_review.md`; `git ls-files .remedy-wt` 0; one worktree; the round's 8 reflog rows all carry the action `commit` — amend 0, rebase 0, cherry 0 (the single `amend` string in the last 40 rows is a PREVIOUS round's commit SUBJECT at `HEAD@{9}`, not an action).
+- G13 exit 0 — `gh pr list --state open --json number,headRefName` printed `[]`. No PR created, nothing merged.
+- G14 — CHECKED, every C1–C6 sentence stating a fact about a file re-measured at C6. Confirmed: branch and `c34ef32b` merge-base; `budget_final` added with no new endpoint; R-0672, R-0625, R-0495, R-0574, R-0622, R-0665 still open records and R-0670 now `Done:`; base line 53 = 99 chars and the repaired paragraph 80; `.agent/plan.md` at `7760e77d` = 2607 bytes; the R11 constraint-3 text LEDGER12 quotes is verbatim in `.agent/authored/f022-r11.md`. ONE RESIDUAL and two carried statements, all under Deviations — no slice was edited.
 
 ## Authored-text proofs
-Seven slices, all extracted PROGRAMMATICALLY by marker line from the committed C0a blob `575336af`, none retyped, rewrapped or reflowed:
-- PLANF022R11 2606 bytes / 46 content lines → `.agent/plan.md` at C1, byte-equal plus one newline (G4).
-- MAPFROM11 246 / 4 and MAPTO11 423 / 6 → the pair at C2, applied whole (G5).
-- SPECFROM 267 / 5 and SPECTO 814 / 14 → the pair at C5, applied whole (G5).
-- LEDGER11 8045 / 3 → appended at C3, both readers plus a byte-flip control (G6).
-- DEC7 3759 / 59 → appended at C4, both readers plus a byte-flip control (G6).
-`.agent/authored/f022-r11.md`, `.agent/last_block.md` and the reviewer's `.remedy-wt/f022-r11.md` are byte-identical (G2), so the disk-to-disk comparison the fidelity protocol asks for held in its strongest form.
+
+Seven slices extracted PROGRAMMATICALLY by marker line from the committed C0a
+blob and applied byte-for-byte, never retyped: PLANF022R12 2558 B, MAPFROM12
+254 / MAPTO12 305, GUARDFROM 265 / GUARDTO 520, LEDGER12 8277, DONE670 1646.
+Disk-to-disk equality is G2, G4 (with the bare-slice control FALSE), G5 (both
+pairs surgical) and G6 (both appends, two readers, byte-flip controls).
 
 ## Deviations & assumptions
-- DECISION D15 stated cause: this handback is 104 lines, over the 100 the block sets for this commit count. The overage is mandated content — 7 per-commit changed-files tables plus the C6 self-reference line, 13 one-line gate results several of which must carry base-vs-measured pairs and named byte offsets, the item-status table's 8 rows, and the authored-text proof list. No section was dropped and no transcript is included.
-- NO DEPARTURE from the block's ordered commit sequence: C0a, C0b, C1, C2, C3, C4, C5, C6 were committed in exactly that order, none added, none dropped, none merged, none reordered.
-- NO SLICE WAS EDITED. One tension inside the block, declared rather than resolved: constraint 3 says "Both pairs are applied before either append reads its file", while the same constraint fixes an order in which the SPECFROM/SPECTO pair (C5) lands AFTER the C3 and C4 appends. The ordered sequence governs and I followed it; the R-0639/R-0640 property it protects is per-file and holds, because the only pair over `.agent/live_review.md` is C2's and it precedes C3's append, while `docs/roadmap/features/T5_F022.md` carries no append.
-- NO PRODUCTION CODE AND NO TESTS: nothing under `apps/`, `packages/` or `tests/` is in the range (constraint 4), and no open finding was repaired — R-0670 still waits for the next round that touches `packages/orchestration/ui_server.py` on its own account (constraint 5).
-- `docs/roadmap/ROADMAP.md` was NOT touched; C5 edits only the feature detail file `docs/roadmap/features/T5_F022.md`, which AGENTS.md permits (constraint 6).
+
+- ORDERED COMMIT SEQUENCE: none. C0a, C0b, C1, C2, C3, C4, C5, C6, C7 landed
+  exactly as constraint 3 fixes them — no extra commit, none dropped, no
+  reordering. LEDGER12's three paragraphs landed in the ONE commit C3.
+- RESIDUAL (G14, reported not repaired; per constraint 1 the slice was applied
+  byte-for-byte anyway): DONE670 states "R8 through R11 held no Python path in
+  their change sets". Measured at C6: R8's `68cf3c16` (+270) and R10's
+  `48f63b1e` (+69) both changed `tests/ui_contracts/test_cost_metric_render.py`.
+  The narrower routing claim the finding made IS true — no round R8–R11 touched
+  `packages/orchestration/ui_server.py`.
+- CARRIED, NOT RE-MEASURED: PLANF022R12's sentence that `npm run lint` in
+  `apps/ui` is red at base — the block's "NOT A GATE" clause excludes it.
+- NUANCE on GUARDTO (not a residual): `test_humanize_catalog.py` does name
+  `ui_server.py` as a scanned module path (`UI_SERVER_MODULE`) but never reads
+  this constant's VALUE — G8 confirms exit 0 under the rename.
+- No measurement of mine differed from a reference numeral the block states for
+  the base, so nothing needed reconciling.
 
 ## Item status
+
 | Item | Status | Reason |
 |---|---|---|
 | C0a save this block | done | |
 | C0b mirror it into last_block | done | |
 | C1 the plan | done | |
 | C2 repair the round map | done | |
-| C3 the R10 verdict and the R-0625 recurrence | done | |
-| C4 DECISION F022 D7 | done | |
-| C5 the feature-file amendment | done | |
-| C6 the handback | done | this commit |
+| C3 the R11 verdict and two recurrences | done | |
+| C4 R-0670's comment repair | done | |
+| C5 the final-figure section and its tests | done | |
+| C6 resolve R-0670 | done | |
+| C7 the handback | done | this commit |
 
 ## Next
-1. Phase 1 rule 1 — re-read `.agent/STOP` from disk before anything else (R-0347).
-2. The Open PR Gate: `gh pr list --state open --json number,headRefName,baseRefName,isDraft`; it printed `[]` at C5.
-3. R12 — T003b, built against DECISION F022 D7 and in its two halves: the SERVER's final-figure section, exposing the last `budget.tick` of the job's `budget-ticks` run log in the whitelisted shape `_budget_tick_summary_payload` already produces, and the CLIENT's terminal reconciliation rendering it in place of the live value with any delta labelled as a TRANSPORT statement. R12 touches `packages/orchestration/ui_server.py` on its own account, so it owes R-0670 its repair.
-4. R11's own verdict is NOT yet on disk. R12's ledger commit owes it (DECISION F085 D9).
+
+1. Phase 1 rule 1 FIRST: re-read `.agent/STOP` from disk before anything else.
+2. The Open PR Gate (`gh pr list --state open …`); it printed `[]` at G13.
+3. R13, T003b's client half: read `budget_final` into the dashboard type and
+   render the terminal reconciliation with its delta label, per DECISION F022 D7.
+4. R12's own verdict is NOT on disk — R13's ledger commit owes it.
