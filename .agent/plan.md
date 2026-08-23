@@ -15,19 +15,18 @@ spent-only variant with no fake denominator, and the terminal reconciliation
 displays the ledger figure with any delta labelled.
 
 ## Current Step
-R3 records the R2 verdict, repairs the round map that R2 shifted without
-repairing, and takes the cost inventory. The inventory MEASURES three things in
-the source rather than reading them off the feature file: every call site that
-evaluates spent-vs-limits, the event kinds the ledger stream carries today on
-both the Python and the TypeScript side, and what the metrics bar renders now.
-It mints no id and builds nothing.
+R4 records the R3 verdict, carries a recurrence of the open finding R-0553 that
+R3's own context slice landed, and rules the budget tick envelope as DECISION
+F022 D1 — the emission site, the payload's field set, the basis vocabulary and
+the no-client-arithmetic contract — on the ground the R3 inventory measured. It
+mints no id and builds nothing.
 
 ## Next Steps
-1. R4 record R3 and rule the tick envelope as a DECISION: the payload's field
-   set, the basis vocabulary and the no-client-arithmetic contract.
-2. R5 T001 the tick emission, at the evaluation sites the inventory names.
-3. R6 T002 the COST metric, R7 T003 the terminal reconciliation, then the
-   integration gate and closure.
+1. R5 T001 the tick emission in `should_stop`, with its backend tests, the
+   humanize-catalog key and the catalog pin gated in the same commit.
+2. R6 T002 the COST metric on fixture streams; R7 T003 the terminal
+   reconciliation and the delta labelling.
+3. R8 the integration gate, then closure.
 
 ## Risks
 - The two High findings carried forward, R-0495 and R-0574, are inherited from
@@ -35,5 +34,6 @@ It mints no id and builds nothing.
   defects.
 - `npm run lint` in `apps/ui` is RED at base and is NOT a gate (R-0364), which
   is R-0622 and routes to a paydown branch.
-- The feature file states its preconditions as settled fact, which is the R-0612
-  class. The inventory measures them instead, and reports any disagreement.
+- T002 widens a CLOSED union and a value type that has nowhere to put a limit or
+  a basis, both measured in the R3 inventory. That is a type-level change, not an
+  additive one, and R6 is sized for it.
