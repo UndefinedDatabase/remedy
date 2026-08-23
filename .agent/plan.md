@@ -15,30 +15,29 @@ spent-only variant with no fake denominator, and the terminal reconciliation
 displays the ledger figure with any delta labelled.
 
 ## Current Step
-R7 records the R6 verdict, registers R-0670, rules DECISION F022 D4, and lands
-T002's LOGIC half: `apps/ui/src/api/costMetric.ts` turns one budget tick into
-every render decision the COST metric needs — unit, denominator, fill,
-threshold, estimate marker and tooltip — with vitest tests for each.
+R8 records the R7 verdict, resolves R-0653, registers R-0671 and R-0672, rules
+DECISION F022 D5, and closes T002 with the RENDER half: the coin glyph, the
+formatted value, the estimate marker, the fill track and the threshold
+treatment, pinned by fixture-stream goldens and a source contract.
 
 ## Next Steps
-1. R8 T002's RENDER half: the COST metric in `TopMetricsBar.tsx`, its CSS
-   tokens, the `remedyApi.ts` wiring and the shell seam that feeds it the live
-   tick, plus the ui_contracts source guard.
-2. R9 T003 the terminal reconciliation and the delta labelling.
-3. R10 the integration gate, then closure.
+1. R9 T003 the terminal reconciliation, the delta labelling, the live wiring
+   through `remedyApi.ts` and `RemedyShell.tsx`, and the fake-job end-to-end.
+2. R10 the integration gate.
+3. R11 closure.
 
 ## Risks
-- T002 is split across R7 and R8 because its logic half is testable under the
-  node-environment vitest and its render half is not testable at all: the
-  config collects `src/**/*.test.ts` only, so the component is gated by
-  `tests/ui_contracts/` source contracts instead. Splitting keeps each round's
-  evidence answerable by its own gates.
+- T002 was split across R7 and R8 because its logic half is testable under the
+  node-environment vitest and its render half is not: the config collects
+  `src/**/*.test.ts` only, so the component is gated by a `tests/ui_contracts/`
+  source contract instead. The live WIRING moved to R9 with T003, where the
+  feature file already puts the end-to-end.
 - The two High findings carried forward, R-0495 and R-0574, are inherited from
   the already-closed F085 and F086 and are documented risks rather than F022
   defects.
 - `npm run lint` in `apps/ui` is RED at base and is NOT a gate (R-0364), which
   is R-0622 and routes to a paydown branch.
-- R8 is the round that touches the shipped stylesheet, where the design_reference
-  sheet defines tokens the shipped one never adopted; grep the shipped CSS, never
-  the reference, when a token is claimed to exist (R-0661). There is no warn
-  token in the shipped sheet today.
+- R-0665 is open and this feature needs its route: every UI feature is told to
+  record visual deviations in an `assumption_log` that does not exist. F022
+  records them as DECISIONs in `.agent/decisions.md` and says so, which is a
+  route rather than a fix.
