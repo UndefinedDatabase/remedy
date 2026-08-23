@@ -2744,6 +2744,70 @@ SSE_HEARTBEAT_SECONDS = 15.0
 #: Seconds the stream waits before re-reading the ledger for new events.
 SSE_POLL_SECONDS = 1.0
 
+#: The ONE event kind whose figures cross the event envelope (DECISION F022 D3,
+#: clause one). Spelled here as its own constant rather than imported from
+#: `packages.orchestration.safe_points`, where DECISION F022 D2 clause two
+#: requires the emitter to pass the name as an INLINE literal so the humanize
+#: catalog's AST walk can see it. `tests/ui_contracts/test_humanize_catalog.py`
+#: pins that catalog equal to the emitters, so the two spellings cannot drift
+#: apart without a red suite.
+BUDGET_TICK_EVENT = "budget.tick"
+
+#: The outer metadata keys of a budget tick that reach a client, and the only
+#: ones (DECISION F022 D3, clause two). DECISION F022 D1 fixes this field set.
+BUDGET_TICK_SUMMARY_FIELDS = (
+    "spent_tokens",
+    "spent_usd",
+    "limit_tokens",
+    "limit_usd",
+    "unmeasured_calls",
+)
+
+#: The keys inside a tick's `basis` object that reach a client. A nested
+#: pass-through is the same leak one level down, so this level carries its own
+#: whitelist (DECISION F022 D3, clause two).
+BUDGET_TICK_BASIS_FIELDS = ("tokens", "cost")
+
+
+def _budget_tick_summary_payload(metadata: Any) -> dict[str, Any]:
+    """The whitelisted figures of ONE budget tick, copied key by key.
+
+    This is a REDACTION boundary, not a projection: event metadata is untrusted
+    input — the reason this package carries `redaction_patterns` at all — so a
+    key is copied because it is NAMED here and never because a tick happened to
+    carry it. Passing the dict through wholesale would make any key a run-log
+    writer ever places on a tick reachable by every stream subscriber, and
+    `basis` is whitelisted separately because a nested pass-through leaks the
+    same way one level down (DECISION F022 D3, clause two).
+
+    AN ABSENT KEY STAYS ABSENT. No default, no null and no zero stands in for a
+    limit the tick never carried: the acceptance criterion that a limitless job
+    renders no fabricated denominator is enforced by the SHAPE of this payload,
+    and a default supplied here would undo at the last hop what the emitter was
+    careful about at the first (DECISION F022 D3, clause three).
+
+    Metadata that is missing or is not a dict yields an empty payload rather
+    than an error — this runs for every event on the stream and may not fail on
+    one.
+    """
+    if not isinstance(metadata, dict):
+        return {}
+    payload: dict[str, Any] = {
+        field: metadata[field]
+        for field in BUDGET_TICK_SUMMARY_FIELDS
+        if field in metadata
+    }
+    basis = metadata.get("basis")
+    if isinstance(basis, dict):
+        kept = {
+            field: basis[field]
+            for field in BUDGET_TICK_BASIS_FIELDS
+            if field in basis
+        }
+        if kept:
+            payload["basis"] = kept
+    return payload
+
 
 def _safe_event_summary(seq: int, event: dict[str, Any]) -> dict[str, Any]:
     """The safe per-event envelope both event transports carry.
@@ -2762,17 +2826,30 @@ def _safe_event_summary(seq: int, event: dict[str, Any]) -> dict[str, Any]:
     run-log job worked, which is a half-feature rather than a visible failure.
     Empty string when neither source carries one: a row with no linkage simply
     does not jump.
+
+    `budget` is DECISION F022 D3's field and it is CONDITIONAL on the event
+    kind: a `budget.tick` gains it and every other kind's frame stays
+    byte-identical to what it was. That condition is the design, not caution —
+    `tests/ui_server/test_sse_stream.py` pins this envelope's key set with an
+    exact set equality AND pins a golden byte stream it rebuilds from the frame
+    writers, so an unconditional widening would turn both red in the same
+    commit as a new feature and leave two independent changes sharing one
+    failure.
     """
     metadata = event.get("metadata")
     nested = metadata.get("task_id", "") if isinstance(metadata, dict) else ""
     linkage = event.get("task_id") or nested
-    return {
+    kind = event.get("event", "")
+    summary: dict[str, Any] = {
         "seq": seq,
-        "event": event.get("event", ""),
+        "event": kind,
         "timestamp": event.get("timestamp", ""),
         "outcome": event.get("outcome", ""),
         "task_id": linkage if isinstance(linkage, str) else "",
     }
+    if kind == BUDGET_TICK_EVENT:
+        summary["budget"] = _budget_tick_summary_payload(metadata)
+    return summary
 
 
 def sse_event_frame(seq: int, payload: dict[str, Any]) -> bytes:
