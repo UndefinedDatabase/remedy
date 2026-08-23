@@ -1,145 +1,234 @@
-── STEP RECORD/3 — F022 Live cost ticker · Runde 13 ──────────────────────────
+── STEP T003b-b/3 — F022 Live cost ticker · Runde 14 ──────────────────────────
 
-Fortschritt: ~80 % (T001 fertig · T002 fertig · T003a fertig · T003b halb —
-             diese Runde baut nichts, sie schreibt das R12-Urteil auf Platte
-             und uebergibt die Sitzung sauber) — Schaetzung
+Fortschritt: ~88 % (T001 fertig · T002 fertig · T003a fertig · T003b-a fertig —
+             diese Runde baut die Client-Haelfte: die Schluss-Abrechnung gegen
+             die Ledger-Zahl mit ihrem Delta-Label) — Schaetzung
 
-Goal:        Record the R12 verdict and one recurrence, repair the round map,
-             and hand the session over cleanly. This round writes NO production
-             code: R12 shipped backend code and a verdict that lives only in a
-             handoff is a verdict the next session must re-derive, which is what
-             DECISION F085 D9 exists to prevent.
+Goal:        Render the terminal reconciliation in the COST tile: at terminal the
+             ledger's final figure replaces the live one, and a difference
+             between what the client RECEIVED and what the ledger HOLDS is
+             labelled as the transport statement DECISION F022 D7 rules it to be.
+             This closes T003b and with it the last unbuilt half of F022.
 
 Bundle:      C0a save this block · C0b mirror it into last_block · C1 the plan ·
-             C2 repair the round map · C3 the R12 verdict and the R-0533
-             recurrence · C4 the session-ending handback.
+             C2 the R13 verdict · C3 DECISION F022 D8 · C4 the reconciliation
+             module and its tests · C5 the transport, type and mapping · C6 the
+             render and its contract · C7 the handback.
 
 Change:      Exactly these paths, nothing else:
-               .agent/authored/f022-r13.md    (C0a)
-               .agent/last_block.md           (C0b)
-               .agent/plan.md                 (C1)
-               .agent/live_review.md          (C2, C3)
-               .agent/handoff.md              (C4)
+               .agent/authored/f022-r14.md                        (C0a)
+               .agent/last_block.md                               (C0b)
+               .agent/plan.md                                     (C1)
+               .agent/live_review.md                              (C2)
+               .agent/decisions.md                                (C3)
+               apps/ui/src/api/costReconciliation.ts              (C4)
+               apps/ui/src/api/costReconciliation.test.ts         (C4)
+               apps/ui/src/api/types.ts                           (C5, C6)
+               apps/ui/src/api/remedyApi.ts                       (C5)
+               apps/ui/src/api/remedyApi.test.ts                  (C5)
+               apps/ui/src/components/shell/RemedyShell.tsx       (C6)
+               apps/ui/src/components/metrics/TopMetricsBar.tsx   (C6)
+               tests/ui_contracts/test_cost_metric_render.py      (C6)
+               .agent/handoff.md                                  (C7)
 
 ─── Slice convention ──────────────────────────────────────────────────────────
 Each authored text below begins at its `<<<SLICE <name>` line and ends at its
 `<<<END <name>` line; neither marker line is part of the slice, and no slice
 contains a marker line. Extract them PROGRAMMATICALLY by marker line out of the
 committed C0a blob — never retype, never rewrap, never reflow. The whole-text
-slices are PLANF022R13 and LEDGER13. MAPFROM13 and MAPTO13 are the halves of a
-FROM/TO pair, and this block carries no other pair. Every slice is quoted
-WITHOUT its trailing newline; PLANF022R13 replaces its file whole, and LEDGER13
-lands as one newline plus the slice plus one newline.
+slices are PLANF022R14, LEDGER14 and DEC14. This block carries NO FROM/TO pair
+at all, so it states no containment reading: there is nothing to classify.
+Every slice is quoted WITHOUT its trailing newline. PLANF022R14 replaces its
+file whole; LEDGER14 and DEC14 each land as one newline plus the slice plus one
+newline, appended to the end of their files.
 
-CONTAINMENT TEST, run by the reviewer on the final bytes, output quoted:
-  MAPFROM13/MAPTO13 — `TO contains FROM: false` → REWRITE.
-That is the reading for every pair this block carries, taken per pair.
+THE PRODUCTION CODE OF C4, C5 AND C6 IS NOT A SLICE. It is SPECIFIED below and
+you author it, under the self-review loop AGENTS.md mandates. Only the three
+`.agent/` texts above are byte-for-byte transport.
 
 Constraints:
  1. NEVER edit a slice. Apply it byte for byte. If a slice contradicts a fact
     you measure, apply it anyway and DECLARE the contradiction in the handback
-    under Deviations. Repair nothing outside your slices; rule on nothing.
+    under Deviations. Repair nothing outside your Change set; rule on nothing.
  2. C1 is the FIRST substantive commit (§3 checklist item 23): this round
     touches the finding ledger, so the plan advances before anything else but
     the two block-save commits.
- 3. COMMIT ORDER IS C0a, C0b, C1, C2, C3, C4 and no other. Within
-    `.agent/live_review.md` the pair at C2 precedes that file's append at C3
-    (R-0639/R-0640), so the append reads a remainder no pair will change.
- 4. LEDGER13 holds, in this order and separated by ONE blank line: the
-    `Recurrence: R-0533` paragraph and the `Gate: R12` paragraph. It lands in
-    ONE commit, C3, or neither does: the gate paragraph states that the
-    recurrence is written in that same commit, and THIS constraint is what makes
-    that true (§3 item 20, R-0524 carve-out).
- 5. NO PRODUCTION CODE, NO TESTS, NO `docs/`. Nothing under `apps/`,
-    `packages/`, `tests/` or `docs/` is in the Change set. If something looks
-    broken, it is the next session's work and it goes in the handback.
- 6. NO REPAIR of any open finding. R-0533's recurrence is RECORDED, not fixed;
-    the false sentence it concerns is in a landed slice and §3 item 20 forbids
-    rewriting landed text.
- 7. Destructive verification runs ONLY inside a disposable worktree under
+ 3. COMMIT ORDER IS C0a, C0b, C1, C2, C3, C4, C5, C6, C7 and no other. C4
+    precedes C5 and C5 precedes C6, because the module must exist before the
+    type names its output and the type must exist before the shell composes it.
+ 4. THE SINGLE ARITHMETIC HOME IS NOT MOVED. `apps/ui/src/api/costMetric.ts`
+    stays the only shipped source whose CODE names `spent_usd`, `spent_tokens`,
+    `limit_usd` or `limit_tokens`. `costReconciliation.ts` therefore takes the
+    figures as an opaque payload and hands them to `costMetricOf`; it reads
+    only the already-decided view fields. A COMMENT may name a field — the
+    guard strips comments before scanning — but no line of code may. This is
+    not advice: `tests/ui_contracts/test_cost_metric_render.py` asserts the
+    home list equals exactly one path, `apps/ui/src/api/costMetric.ts`,
+    measured green at the round base, and a new name there turns it red.
+ 5. NO SECOND MONEY ARITHMETIC. `costReconciliation.ts` performs no division,
+    no subtraction and no multiplication on any figure. It compares two strings
+    that `costMetricOf` already produced. The delta is NAMED, never COMPUTED —
+    DECISION F022 D7's closing clause and DECISION F022 D8 clause 3.
+ 6. THE SHELL'S EXISTING SEAM SURVIVES VERBATIM. The substring
+    `metricsWithCostTicker(dashboard.metrics, stream.budget)` must still occur
+    in `RemedyShell.tsx` after C6, because a contract test pins it; wrap that
+    call, never replace it. `metrics={dashboard.metrics}` must still be absent.
+ 7. NO NEW `docs/` PATH AND NO ROADMAP EDIT. DECISION F022 D7 already amended
+    the feature file's Terminal-reconciliation bullet; this round builds against
+    it and changes no specification.
+ 8. Destructive verification runs ONLY inside a disposable worktree under
     `.remedy-wt/`. The primary checkout satisfies `git status --porcelain`
     empty at every commit and at the handback.
- 8. Every numeral this block states about the ROUND BASE `ee40613e` was produced
+ 9. Every numeral this block states about the ROUND BASE `5d3e6045` was produced
     by a reviewer script or tool run at that commit and is a REFERENCE to report
     against, not a target to reproduce. Where your measurement differs, report
     BOTH and reconcile NOTHING.
- 9. Size, measured by the reviewer on the final bytes of this block and stated
-    once here: this block is 262 lines TOTAL with 54 CONTENT lines inside its
-    slices, so PROSE is 208 — under DECISION F085 D6's 490 and D5's 400.
+10. Size, measured by the reviewer on the final bytes of this block and stated
+    once here: this block is 393 lines TOTAL with 116 CONTENT
+    lines inside its slices, so PROSE is 277 — under DECISION F085 D6's
+    490 and D5's 400.
+
+─── What C4 builds ────────────────────────────────────────────────────────────
+
+`apps/ui/src/api/costReconciliation.ts`, a new module that is the single home
+for every decision DECISION F022 D8 rules, and for nothing else. It exports one
+pure function that takes the bar's metrics, the LEDGER figures, the RECEIVED
+figures and whether the job is still running, and returns the metrics array with
+the cost tile reconciled — by REFERENCE and unchanged whenever there is nothing
+to say, exactly as `costTicker.ts` already does for the live tick.
+
+Its behaviour is DECISION F022 D8 and nothing beyond it:
+  · running, or no ledger figure → the metrics array comes back BY REFERENCE.
+  · terminal with a ledger figure → the cost tile's view becomes the LEDGER's,
+    produced by `costMetricOf`, so the tile shows the ledger's own display,
+    unit, marker, fill, level and tooltip.
+  · the note is attached only when a received figure exists AND its display
+    differs from the ledger's, and it reads exactly
+    `final (ledger): X — live estimate was Y` with X the ledger display and Y
+    the received one.
+  · no received figure → the ledger view with NO note.
+The module's header carries the one-line WHY above its export and the
+"Remedy deliberately does not" sentence AGENTS.md's discoverability rules ask
+for, naming what it refuses to do: compute a difference.
+
+`apps/ui/src/api/costReconciliation.test.ts` covers, each as its own case: the
+by-reference return while running; the by-reference return with a null ledger
+figure; the ledger view replacing the live one at terminal; the note's exact
+text when the displays differ; the ABSENCE of the note when they are equal; the
+absence of the note when no figure was received; a metrics array carrying no
+cost tile coming back by reference; and the source guard — the module's code,
+comments stripped, names no figure field. Give that guard a POSITIVE CONTROL,
+as `costMetric.test.ts` does for its own scan, so a guard that scans nothing
+cannot pass.
+
+─── What C5 builds ────────────────────────────────────────────────────────────
+
+The ledger figure reaches the client. In `apps/ui/src/api/types.ts` the
+`RemedyDashboard` interface gains `budgetFinal: BudgetTickFigures | null`,
+imported as a type from `./costMetric` beside the existing `CostMetricView`
+import. In `apps/ui/src/api/remedyApi.ts` the mapper reads the wire's
+`budget_final` into it, defaulting to `null` — the server returns `None` for a
+job that emitted no tick, and an absent figure stays absent rather than becoming
+an empty object. `remedyApi.test.ts` gains cases for the mapped figure, for the
+null, and for a payload with no `budget_final` key at all.
+
+─── What C6 builds ────────────────────────────────────────────────────────────
+
+The render. `RemedyMetric` in `types.ts` gains an optional already-composed
+`costFinalNote?: string` — the component composes no sentence, the same rule
+that put `cost` there as a decided view. `RemedyShell.tsx` wraps its existing
+call so the reconciliation runs over the ticker's output, passing
+`dashboard.budgetFinal`, `stream.budget` and `dashboard.live.running`.
+`TopMetricsBar.tsx` renders the note under the value when it is present, reusing
+an existing caption class from `TopMetricsBar.module.css` rather than adding a
+rule, and adding no arithmetic of any kind to that component.
+`tests/ui_contracts/test_cost_metric_render.py` gains a class pinning this new
+seam the way `TestTheLiveTickReachesTheBar` pins the live one: the shell
+composes both functions, the import is real, the bar renders the note off its
+own field, and the bar still divides nothing.
 
 ─── Why this round exists ─────────────────────────────────────────────────────
 
-R12 passed every gate and its verdict is not on disk. Under this workflow a
-round records the PREVIOUS round's verdict, so the last reviewed round of any
-session strands its own — DECISION F085 D9 rules that a PASS is written by the
-next round's ledger commit, and docs/agents/self_drive_protocol.md rules that
-the handoff is the only return channel. R12 shipped backend code, so leaving its
-verdict unwritten would make the next session re-derive a review that has
-already happened. The session's round budget is spent, so rather than open
-T003b's client half and leave it part-built, this round closes the books.
-
-One item also came out of the R12 gate and belongs on disk before the session
-ends: a recurrence of a finding the reviewer's own slice re-committed. It is
-recorded, not repaired — constraint 6.
+R12 gave the dashboard a `budget_final` section and MEASURED that no client
+reads it. A ledger figure that reaches a payload and no screen is the shape
+`tests/ui_contracts/test_cost_metric_render.py` already complains about in its
+own docstring for the live tick — "the tile a user saw was not merely empty — it
+was absent". This round closes that path, and with it the last DONE clause of
+the feature's own Goal that no code answers.
 
 ─── Done when ─────────────────────────────────────────────────────────────────
 
 Run every gate below yourself, record its REAL exit code, and put ONE LINE per
 gate in the handback with the transcripts kept out of it (R-0582). G1 through
-G9 run after C3 and BEFORE C4, so the handback can quote all of them (§3
-checklist item 31). The round base is `ee40613e` throughout.
+G13 run after C6 and BEFORE C7, so the handback can quote all of them (§3
+checklist item 31). The round base is `5d3e6045` throughout.
 
- G1  `.agent/STOP` absent, read from disk before C0a and again before C4.
+ G1  `.agent/STOP` absent, read from disk before C0a and again before C7.
      Branch `feature/f022-live-cost-ticker`. `git status --porcelain` 0 lines
-     after every one of C0a, C0b, C1 and C2 and C3.
- G2  TRANSPORT. sha256 over the block file the reviewer wrote at
-     `.remedy-wt/f022-r13.md`, over the committed C0a blob, over the committed
-     C0b blob and over `.agent/last_block.md` on disk: report all four digests,
-     byte counts and line counts, and require them EQUAL. The digest the
-     delegation names is the fifth reading and must agree.
+     after every one of C0a, C0b, C1, C2, C3, C4, C5 and C6.
+ G2  TRANSPORT. sha256 over the block file at `.remedy-wt/f022-r14.md`, over the
+     committed C0a blob, over the committed C0b blob and over
+     `.agent/last_block.md` on disk: report all four digests, byte counts and
+     line counts, and require them EQUAL. The digest the delegation names is the
+     fifth reading and must agree.
  G3  EXTRACTION. Run an extractor over the COMMITTED C0a blob that finds the
      slices by their marker LINES and report how many slices and how many
      CONTENT lines it printed, plus the block's TOTAL and PROSE line counts.
-     Report those against constraint 9's numerals; reconcile nothing.
- G4  `.agent/plan.md` at C1 is byte-equal to PLANF022R13 plus exactly one
+     Report those against constraint 10's numerals; reconcile nothing.
+ G4  `.agent/plan.md` at C1 is byte-equal to PLANF022R14 plus exactly one
      newline. NEGATIVE CONTROL: the same comparison against the BARE slice must
      be FALSE, and report both byte counts. `^## Goal$` once, `^## Next Steps$`
      once, `wc -l` at most 50.
- G5  THE PAIR at C2 in `.agent/live_review.md`. Report the containment output
-     and require it to match the convention block. MAPFROM13 1x at the round
-     base and 0x at C2; MAPTO13 0x at base and 1x at C2; the file's byte length
-     changing by exactly `len(MAPTO13) - len(MAPFROM13)`; `^## Steps$` still
-     exactly once; and the committed file equal to the base file with only that
-     replacement applied and nothing else. ALSO report the longest line length
-     of the `## Steps` paragraph at C2: no line in it may exceed 84 characters
-     (R-0431).
- G6  APPEND at C3, proved twice. The C2 blob is a byte-exact PREFIX of the
-     committed file and the remainder is exactly one newline plus the slice plus
-     one newline — report the remainder's byte count and the slice's. Then an
-     INDEPENDENT reader: split both files on blank lines, let N be the number of
-     paragraphs YOUR script counts in the slice, and require the LAST N units of
-     the committed file to equal the slice's N paragraphs IN ORDER. Report N; do
-     not take it from this block. NEGATIVE CONTROL, in a disposable worktree,
-     applied to the FIRST appended paragraph: flip ONE byte at an offset you
-     name and confirm BOTH readers reject the mutant while both accept the true
-     file. THE OFFSET IS A BYTE OFFSET — the file carries multi-byte em dashes,
-     so a CHARACTER offset lands early, outside the appended region, where
-     reader (b) accepts the mutant and the control proves nothing. Report the
-     ~20 bytes surrounding the flip. Remove the worktree; `git worktree list`
-     back to one line.
- G7  LEDGER INTEGRITY, base versus C3. Report for both points: the count of
+ G5  THE TWO APPENDS, C2 into `.agent/live_review.md` and C3 into
+     `.agent/decisions.md`, each proved twice. Reader (a): the pre-commit blob
+     is a byte-exact PREFIX of the committed file and the remainder is exactly
+     one newline plus the slice plus one newline — report the remainder's byte
+     count and the slice's, per file. Reader (b), INDEPENDENT: split both files
+     on blank lines, let N be the number of paragraphs YOUR script counts in the
+     slice, and require the LAST N units of the committed file to equal the
+     slice's N paragraphs IN ORDER. Report N per file; do not take it from this
+     block. NEGATIVE CONTROL, in a disposable worktree, applied to the FIRST
+     appended paragraph of EACH file: flip ONE byte at an offset you name and
+     confirm BOTH readers reject the mutant while both accept the true file. THE
+     OFFSET IS A BYTE OFFSET — these files carry multi-byte em dashes, so a
+     CHARACTER offset lands early, outside the appended region, where reader (b)
+     accepts the mutant and the control proves nothing. Report the ~20 bytes
+     surrounding each flip. Remove the worktree; `git worktree list` back to one
+     line.
+ G6  LEDGER INTEGRITY, base versus C2. Report for both points: the count of
      lines matching `^- R-\d+ — `, whether they are all DISTINCT, the MAXIMUM
      id, the count of `^Done: R-` with its distinct ids, of `^Landed: `, of
-     `^Recurrence: R-` with its distinct ids, and of `^Gate: R` with its
-     distinct keys. Report the ids ADDED and REMOVED as sets. At base the
-     reviewer measured 234 records, all distinct, maximum `R-0673`, 2 `Done:`
-     lines over `R-0653` and `R-0670`, 0 `Landed:`, 7 `Recurrence:` lines and 12
-     `Gate:` lines over 12 distinct keys. This round MINTS NO NEW ID: it is
-     expected to add no record, to take `^Recurrence: R-` to 8 by gaining
-     `R-0533`, and to add `Gate: R12`. Report what you measure. `R-0533` must
-     still occur exactly once as a `^- R-0533 — ` record.
- G8  THE FOUR STATE READERS plus THE CANARY, serially in the PRIMARY checkout at
-     C3, exit 0: `tests/ui_server/`,
+     `^Recurrence: R-`, and of `^Gate: R` with its distinct keys. Report the ids
+     ADDED and REMOVED as sets. At base the reviewer measured 234 records, all
+     distinct, maximum `R-0673`, 2 `Done:` lines over `R-0653` and `R-0670`, 0
+     `Landed:`, 8 `Recurrence:` lines and 13 `Gate:` lines over 13 distinct
+     keys. This round MINTS NO NEW ID: it is expected to add no record, to leave
+     `^Recurrence: R-` at 8, and to add exactly the key `R13`. Report what you
+     measure.
+ G7  THE SINGLE ARITHMETIC HOME, measured and not asserted. Over every shipped
+     `.ts`/`.tsx` under `apps/ui/src` that is not a `.test.ts`/`.test.tsx`, with
+     comments stripped, report the LIST of files whose code names any of
+     `spent_usd`, `spent_tokens`, `limit_usd`, `limit_tokens`. Require that list
+     to be exactly one path, `apps/ui/src/api/costMetric.ts`. Report how many
+     files the scan actually read, so a scan that read nothing is visible.
+ G8  THE CLIENT SUITES, in the PRIMARY checkout at C6, exit 0 for each:
+     `npx vitest run` and `npx tsc --noEmit`, both with `apps/ui` as the working
+     directory, and `python3 -m pytest tests/ui_contracts/ -q` from the
+     repository root. The reviewer measured, at the round base, vitest at 19
+     files and 268 tests, `tsc` at exit 0 with no output, and
+     `tests/ui_contracts/` at 518 passed and 4 skipped. Report your own figures
+     beside those. NOT A GATE and not run: `npm run lint` in `apps/ui`, which is
+     RED at base for reasons this round does not touch (R-0622, R-0364).
+ G9  MUTATION, in a disposable worktree at C6 and NEVER in the primary checkout,
+     with the positive control reported first. Make the note render
+     unconditionally — delete the guard that withholds it when the two displays
+     are EQUAL — and report which tests fail and how many. Then restore, and
+     make the reconciliation run while the job is still RUNNING, and report the
+     same. If either mutation leaves every test green, say so plainly: that is a
+     true report about an unguarded property and it is worth more than a colour.
+     Remove the worktree; `git worktree list` back to one line.
+ G10 THE FOUR STATE READERS plus THE CANARY, serially in the PRIMARY checkout at
+     C6, exit 0: `tests/ui_server/`,
      `tests/orchestration/test_test_runner.py`,
      `tests/regression/test_resource_safety.py`,
      `tests/orchestration/test_integrity_gate.py`, then
@@ -147,27 +236,23 @@ checklist item 31). The round base is `ee40613e` throughout.
      for 559 across the four, and 42 for the canary, at the round base. Never
      run two pytest processes at once. This round rewrites `.agent/` state and
      those four are its readers.
- G9  STRUCTURE, reported for the commits BEFORE C4 and for the range as a whole
-     (C4's own numbers belong to the next session's ledger entry, not here):
+ G11 STRUCTURE, reported for the commits BEFORE C7 and for the range as a whole
+     (C7's own numbers belong to the next round's ledger entry, not here):
      every commit single-parent; each commit's INSERTION count, each under the
      500 cap; the range path set against the Change set above with the
      difference reported in BOTH directions; `git show --numstat` agreeing cell
      by cell with the handback's `## Commits` table; the LINE-ANCHORED patterns
-     `^<<<SLICE ` and `^<<<END ` counting 0 in `.agent/plan.md` and
-     `.agent/live_review.md`; `git ls-files .remedy-wt` 0; one worktree; and the
-     round's reflog rows with amend, rebase and cherry counts, each 0.
- G10 `gh pr list --state open --json number,headRefName`. Report it verbatim.
-     Create no PR and merge nothing. THIS IS THE LAST ROUND OF THE SESSION AND
-     IT STILL CREATES NO PR: T003b's client half is unbuilt, the integration
-     gate has not run, and a PR now would offer an incomplete feature for merge
-     at the next session's Open PR Gate.
- G11 STALENESS. Every sentence C1 and C2 and C3 land that states a fact about a
-     file is re-measured at C3, and any that has gone stale is reported as a
+     `^<<<SLICE ` and `^<<<END ` counting 0 in `.agent/plan.md`,
+     `.agent/live_review.md` and `.agent/decisions.md`; `git ls-files .remedy-wt`
+     0; one worktree; and the round's reflog rows with amend, rebase and cherry
+     counts, each 0.
+ G12 `gh pr list --state open --json number,headRefName`. Report it verbatim.
+     Create no PR and merge nothing: the integration gate has not run, and the
+     closure protocol creates the PR at closure.
+ G13 STALENESS. Every sentence C1, C2 and C3 land that states a fact about a
+     file is re-measured at C6, and any that has gone stale is reported as a
      residual rather than repaired. Report explicitly that you checked, and name
      any residual. Slices are NEVER edited to fix one.
-
-NOT A GATE and not run this round: `npm run lint`, `npm run typecheck` and
-`npm run test:unit`. The Change set holds no file under `apps/`.
 
 Handback:    Rewrite `.agent/handoff.md` per docs/agents/handback_template.md —
              every mandated section in order, one changed-files table per
@@ -178,24 +263,11 @@ Handback:    Rewrite `.agent/handoff.md` per docs/agents/handback_template.md �
              counted in (R-0442). The cap is 60 lines for this commit count;
              declare a DECISION D15 stated cause with your own measured numeral
              in the declaring line if the mandated content genuinely does not
-             fit.
-             THIS HANDBACK ENDS THE SESSION, so its `## Next` section names, in
-             this order: (1) Phase 1 rule 1 — re-read `.agent/STOP` from disk
-             before anything else; (2) the Open PR Gate,
-             `gh pr list --state open --json number,headRefName,baseRefName,isDraft`,
-             expected to print `[]` because this session created none; (3) R14,
-             T003b's client half — read `budget_final` into the dashboard type
-             and render the terminal reconciliation with its delta label, per
-             DECISION F022 D7, remembering that the delta is a TRANSPORT
-             statement and never a second arithmetic; (4) that R13's own verdict
-             is the branch TERMINATOR under §4 item 13 — the last round of a
-             session has no on-disk gate entry by construction, and the next
-             session gates R13 as its first act. State plainly that the session
-             ended at its declared round budget with every PRODUCTION round's
-             verdict on disk, which is a clean stop and not a blocker.
+             fit. `## Next` names R15, the integration gate, per
+             docs/agents/integration_gate.md.
 ──────────────────────────────────────────────────────────────────────────────
 
-<<<SLICE PLANF022R13
+<<<SLICE PLANF022R14
 # Plan — F022 Live cost ticker
 
 Branch: feature/f022-live-cost-ticker, cut from `main` at `c34ef32b`, the merge
@@ -213,50 +285,109 @@ spent-only variant with no fake denominator, and the terminal reconciliation
 displays the ledger figure with any delta labelled.
 
 ## Current Step
-R13 records the R12 verdict, registers the R-0533 recurrence, repairs the round
-map and ends the session cleanly. It builds nothing: T003a is complete, the
-server half of T003b is complete, the session's round budget is spent, and a
-verdict that lives only in a session is a verdict that did not happen.
+R14 builds T003b's client half: a reconciliation module ruled by DECISION F022
+D8, the `budgetFinal` transport into the dashboard type, and the render of the
+ledger figure with its delta label. It also records the R13 verdict. This is the
+last unbuilt half of the feature.
 
 ## Next Steps
-1. R14 T003b-b — read `budget_final` into the dashboard type and render the
-   terminal reconciliation with its delta label, per DECISION F022 D7.
-2. R15 the integration gate.
-3. R16 closure.
+1. R15 the integration gate, per docs/agents/integration_gate.md.
+2. R16 closure, per docs/roadmap/STATUS_closure_protocol.md.
 
 ## Risks
 - The delta R14 renders is a TRANSPORT statement, not arithmetic: both sides are
   the same quantity from the same producer, so a difference means frames were
   missed. A round that reads it as drift would reintroduce the fabricated
   honesty moment DECISION F022 D7 exists to prevent.
+- A contract test in `tests/ui_contracts/test_cost_metric_render.py` pins, as
+  measured at `5d3e6045`, `costMetric.ts` as the ONLY shipped client source
+  whose code names a figure field. The new module must stay outside that list,
+  which is why it takes the payload opaquely and delegates every reading.
 - Open F022 findings: R-0672 and R-0625 want their next-DECISION and
   next-numeral clauses honoured; R-0431, R-0413 and R-0533 are reviewer-block
   defects already recorded and already paid for.
 - The two High findings carried forward, R-0495 and R-0574, are inherited from
   the already-closed F085 and F086 and are documented risks, not F022 defects.
 - `npm run lint` in `apps/ui` is RED at base and is NOT a gate (R-0364), which
-  is R-0622 and routes to a paydown branch. Its measured value is in the
-  `R-0625` recurrence, not in this sentence.
+  is R-0622 and routes to a paydown branch.
 - R-0665 is open and this feature needs its route: every UI feature is told to
   record visual deviations in an `assumption_log` that does not exist. F022
   records them as DECISIONs in `.agent/decisions.md`, a route rather than a fix.
-<<<END PLANF022R13
+<<<END PLANF022R14
 
-<<<SLICE MAPFROM13
-final-figure section, R-0670's repair and the R11 verdict → R13 T003b-b the
-client's reconciliation with its delta label → R14 the integration gate → R15
-closure. This section is the only place the round map is stated, per
-<<<END MAPFROM13
+<<<SLICE LEDGER14
+Gate: R13 — the F022 R13 entry. R13 PASSED ON EVERY ONE OF ITS ELEVEN GATES, AND THE REVIEWER RE-EXECUTED EVERY MEASURABLE ONE OF THEM ITSELF OFF DISK IN THE PRIMARY CHECKOUT. R13 built nothing: it recorded the R12 verdict, registered the R-0533 recurrence, repaired the round map and ended its session at its declared round budget, which DECISION F085 D9 rules is how a PASS reaches disk at all. TRANSPORT HELD IN ITS STRONGEST FORM: the committed C0a blob, the committed C0b blob and `.agent/last_block.md` on disk are ALL sha256 `c0b9ac7b6766e84c0428830865e2b0e0c9dce4de0b1c6fece209f0cff7caaaf0` over 24816 bytes and 262 lines, and C0a and C0b resolve to the SAME git blob `6ad04752`. THE EXTRACTION, run over the committed C0a blob by the reviewer's own marker-line extractor, printed 4 slices over 54 CONTENT lines against a TOTAL of 262, so PROSE is 208 and constraint 9 reproduces exactly. `.agent/plan.md` at `9a65c1a6` is 2473 bytes = PLANF022R13's 2472 plus exactly one newline, with the BARE-slice control FALSE, `^## Goal$` and `^## Next Steps$` once each and 44 lines against the cap of 50. THE PAIR IS EXACT AND SURGICAL: the containment test printed `TO contains FROM: false`, MAPFROM13 went 1 to 0 and MAPTO13 0 to 1 in `.agent/live_review.md` at `3b4bb3e6`, byte length 560928 to 561000 with the delta 72 equal to MAPTO13's 300 minus MAPFROM13's 228, and the committed file equals the base file with ONLY that replacement applied — the reviewer reproduced that by applying the replacement to the base blob and comparing bytes. `^## Steps$` stays exactly once and the `## Steps` paragraph's longest line reads 80 characters against R-0431's 84. THE APPEND HOLDS UNDER BOTH READERS at `d3109219`: the C2 blob is a byte-exact PREFIX of the C3 file and the remainder is 8169 bytes = 1 + LEDGER13's 8167 + 1, while the reviewer's own independent blank-line split counted N=2 paragraphs in the slice and found the LAST 2 units of the committed file equal to them IN ORDER over 273 units becoming 275. THE SETS MOVED EXACTLY WHERE THE ROUND PROMISED: 234 records at base and at C3, all DISTINCT at both with maximum `R-0673`, ids ADDED and ids REMOVED both the EMPTY SET so NO ID WAS MINTED, `^Done: R-` 2 and 2 over `R-0653` and `R-0670`, `^Landed: ` 0 and 0, `^Recurrence: R-` 7 becoming 8 by gaining `R-0533`, `^Gate: R` 12 becoming 13 by gaining the key `R12`, and `^- R-0533 — ` exactly 1 at both points. THE SUITES ARE THE REVIEWER'S OWN, run serially in the primary checkout with never two pytest processes alive at once: `tests/ui_server/` 470, `tests/orchestration/test_test_runner.py` 52, `tests/regression/test_resource_safety.py` 21 and `tests/orchestration/test_integrity_gate.py` 16 for 559 across the four, and the canary `tests/cli/test_golden_path.py` 42 — every one exit 0 and every one matching the block's reference figure exactly. THE REVIEWER'S OWN SPOT-CHECK WAS THE R-0533 RECURRENCE'S RANGE WALK, because that recurrence is the only new claim the round put on disk and a correction that is itself unmeasured would be worse than the sentence it corrects: walking each round's own range with `git diff --name-only`, R8 `142af5e4..e5c86774` and R10 `a8952614..3e1d3fae` each changed `tests/ui_contracts/test_cost_metric_render.py` while R9 `e5c86774..a8952614` and R11 `3e1d3fae..fe6da915` changed no `.py` path at all, and NONE of the four touched `packages/orchestration/ui_server.py` — so both halves of the recurrence reproduce: the "held no Python path" clause really is false for two of the four rounds, and the routing conclusion it was written to support really is true and really was measured. `git merge-base main HEAD` is `c34ef32b`, the SHA the plan and the context file both name. STRUCTURE HELD: 5 commits before the handback, every one single-parent, insertions 262, 146, 14, 4 and 4, each far under the 500 cap; the range path set is exactly the five declared paths with the difference EMPTY in BOTH directions; `git show --numstat` agrees cell by cell with all five `## Commits` rows including the full-file rewrite at `13fb4285`, which reads plus 146 minus 233 in the table and 146 then 233 from the tool — the R-0592 shape, correct here; the anchored markers `^<<<SLICE ` and `^<<<END ` count 0 in both state files; `git ls-files .remedy-wt` is 0; one worktree; and all 6 reflog rows of the round carry the action `commit`, with amend, rebase and cherry each 0. THE HANDBACK IS COMPLIANT at 123 lines with a DECISION D15 stated cause naming that same 123, every mandated section present exactly once and in order, and the three-line `Fortschritt:` block byte-identical to the block's. THE OPEN PR GATE printed an empty JSON array and no PR was created. THE VERDICT IS PASS: every numeral R13 states reproduced under the reviewer's own measurement, no slice was edited, no id was minted, the map now describes the rounds that remain, and R12's verdict — the one this round existed to rescue — is on disk where the next session reads it.
+<<<END LEDGER14
 
-<<<SLICE MAPTO13
-final-figure section, R-0670's repair and the R11 verdict → R13 record the R12
-verdict and end that session at its round budget → R14 T003b-b the client's
-reconciliation with its delta label → R15 the integration gate → R16 closure.
-This section is the only place the round map is stated, per
-<<<END MAPTO13
+<<<SLICE DEC14
+## DECISION F022 D8 — when the ledger figure replaces the live one, and what the delta says
 
-<<<SLICE LEDGER13
-Recurrence: R-0533 — A SENTENCE QUANTIFYING ACROSS A RANGE OF ROUNDS WAS WRITTEN FROM RECOLLECTION INSTEAD OF FROM A WALK OF THE RANGE. Second instance, at F022 R12, in the reviewer's own resolution text. NO NEW ID IS MINTED: §3 checklist item 30 requires the open set searched for the DEFECT before an id, and item 22 of the same checklist already names this class — "a sentence quantifying across COMMITS is measured over the whole range by walking it mechanically, `git rev-list --reverse <base>..<head>`, one reading per commit, and written as the list that walk produced, never generalised from the commits the author happened to read". Item 22 cites R-0530 and R-0533; only R-0533 is a record in this ledger, because the F022 R1 reset carried the open set forward rather than the whole history, so this recurrence is registered against R-0533 and R-0530 is named here for the reader who goes looking for it. THE INSTANCE: the `Done: R-0670` paragraph committed at `11a379ee` explains why the fix waited three rounds and says "R8 through R11 held no Python path in their change sets and R12 is the first round that does". MEASURED at `ee40613e` by walking each round's own range with `git diff --name-only`: R8 (`142af5e4..e5c86774`) changed `tests/ui_contracts/test_cost_metric_render.py` and R10 (`a8952614..3e1d3fae`) changed the same file, so two of those four rounds DID hold a Python path; R9 and R11 held none. THE ROUTING CLAIM THE SENTENCE EXISTS TO SUPPORT IS TRUE AND WAS MEASURED IN THE SAME WALK: none of R8, R9, R10 or R11 touched `packages/orchestration/ui_server.py`, which is the path R-0670's own routing clause names, so the finding really did wait for the first round that touches that file and the wait really was the rule working. FOUND BY THE WORKER, which measured the slice it had been ordered to apply byte for byte, applied it anyway as constraint 1 required, and declared the contradiction — the sixth consecutive round in which a worker's declaration rather than a gate is what put a reviewer-authored defect on the record. WHY LOW: no gate consumed the sentence, the conclusion it supports is correct and independently measured, and the cost is one wrong clause beside a right one. WHY IT IS REGISTERED AT ALL: `.agent/live_review.md` is what a later session reads to learn what was verified, and "held no Python path" is the kind of clause a later round would cite when deciding where a fix belongs. THE LANDED PARAGRAPH IS NOT REWRITTEN, per §3 item 20: this correction is dated by the commit that carries it. Both instances stay OPEN under R-0533, and the addition this one earns is one clause: a sentence quantifying over a range of ROUNDS is walked the same way a sentence quantifying over commits is, because a round is only a range of commits wearing a name.
+CONTEXT. DECISION F022 D7 ruled the SOURCE of the terminal reconciliation: the
+last `budget.tick` in the job's run log, served as the dashboard's
+`budget_final`. It deliberately ruled nothing about WHEN the client swaps the
+live value for that one, nor about what counts as a delta worth showing, because
+no client code existed to rule over. Measured at `5d3e6045`: the shell holds the
+latest received tick on `stream.budget` and hands it to the bar through
+`metricsWithCostTicker`, while `budget_final` reaches the payload and has NO
+client reader at all — the dashboard type does not name it.
 
-Gate: R12 — the F022 R12 entry. R12 PASSED ON EVERY ONE OF ITS FOURTEEN GATES, AND THE REVIEWER RE-RAN EVERY ONE OF THEM ITSELF AND ADDED FOUR MUTATIONS THE BLOCK NEVER ORDERED. The recurrence above is written in THIS SAME COMMIT, which the R13 block's constraint 4 fixes. THE ROUND'S SUBSTANCE IS THAT THE LEDGER'S FINAL FIGURE IS NOW SERVED. `_build_budget_final` returns the whitelisted payload of the LAST event whose kind is `BUDGET_TICK_EVENT` and `None` when the job emitted none, the dashboard gained `"budget_final"` beside `"token_usage"`, and neither needed a new endpoint or a byte of new I/O because `_load_events` already globs the `budget-ticks` run log and `load_run_events` already sorts by timestamp — the half of DECISION F022 D7 that made it cheap. THE ROUND ALSO CLOSED R-0670, which had waited since R7 for a round that touches `packages/orchestration/ui_server.py` on its own account. TRANSPORT HELD IN ITS STRONGEST FORM: the reviewer's scratch original, the committed C0a blob, the committed C0b blob, `.agent/last_block.md` on disk and `.agent/authored/f022-r12.md` on disk are ALL sha256 `1891867831bb3a2b985e2b70986d8abf3949378053031d4ebfec5c2e288b2ee8` over 31863 bytes and 349 lines, and C0a and C0b resolve to the SAME git blob. THE EXTRACTION printed 7 slices over 69 CONTENT lines, TOTAL 349 and PROSE 280, reproducing constraint 9 exactly. `.agent/plan.md` at `fe6da915` is 2559 bytes = PLANF022R12's 2558 plus one newline, the bare-slice control DIFFERING, headings once each, 45 lines against the cap of 50. BOTH PAIRS ARE EXACT, BOTH PRINTED `TO contains FROM: false`, AND BOTH ARE SURGICAL — each committed file equals its base with ONLY that replacement applied: in `.agent/live_review.md` at `cbe4f643` MAPFROM12 1→0 and MAPTO12 0→1 with byte delta 51 = 305 − 254, and in `packages/orchestration/ui_server.py` at `df8ae445` GUARDFROM 1→0 and GUARDTO 0→1 with byte delta 255 = 520 − 265. THE MAP PAIR ALSO REPAIRED R-0431's LANDED LINE: the `## Steps` paragraph's longest line reads 80 characters at `cbe4f643` against 99 at the round base, which is the measurement that pair was widened to make. BOTH APPENDS HOLD UNDER BOTH READERS: at `d0d5e94b` the remainder is 8279 = 1 + LEDGER12's 8277 + 1 with N=3 paragraphs equal in order over 269→272 units; at `11a379ee` the remainder is 1648 = 1 + DONE670's 1646 + 1 with N=1 over 272→273. THE SETS MOVED EXACTLY WHERE THE ROUND PROMISED: 234 records at base and at C6, ids ADDED and REMOVED both the EMPTY SET so NO ID WAS MINTED, `^Done: R-` 1→2 gaining `R-0670`, `^Recurrence: R-` 5→7 gaining `R-0431` and `R-0413`, `^Gate: R` 11→12 gaining the key `R11`, and `R-0670`, `R-0431` and `R-0413` each still exactly one `^- R-\d+ — ` record. THE MUTATION GATE IS THE ONE THAT MATTERED: G8 re-ran R-0670's own rename in a disposable worktree at C5, and `tests/ui_server/test_budget_tick_envelope.py` — the guard the repaired comment now names — went RED at 11 failed and 5 passed while `tests/ui_contracts/test_humanize_catalog.py` stayed green at 9 passed, which is exactly what the finding measured and exactly why the old sentence was wrong. The comment now names a guard that has been measured twice. THE SUITES ARE THE REVIEWER'S OWN, run serially in the primary checkout: `tests/ui_server/` 470 against the base's 455, the +15 being the new file's fifteen tests; `tests/ui_contracts/` 518 passed and 4 skipped, unchanged; the four state readers 470, 52, 21 and 16 for 559; and the canary 42. THE REVIEWER'S FOUR UNORDERED MUTATIONS ALL RAN IN A DISPOSABLE WORKTREE WITH THE PRIMARY CHECKOUT NEVER WRITTEN, against a positive control of 15 passed: taking the FIRST tick instead of the last failed 5 tests naming `test_the_later_tick_wins_over_the_earlier_one`; returning `{}` instead of `None` failed 5 naming `test_it_is_none_and_not_an_empty_object_or_a_zero`; passing the raw metadata through instead of the whitelist failed 3 naming `test_an_unnamed_key_inside_basis_never_reaches_the_dashboard`, so the REDACTION boundary is pinned and not merely described; and deleting the dashboard key failed 3 naming `test_the_dashboard_carries_the_final_figure`. Every property the block ordered is genuinely guarded. STRUCTURE HELD: eight commits before the handback, every one single-parent, insertions 349, 241, 17, 4, 6, 6, 216 and 2, each under the 500 cap; the range path set is exactly the declared seven-path Change set with the difference EMPTY in both directions; `git show --numstat` agrees cell by cell with all nine `## Commits` rows; anchored markers 0 in both state files; one worktree; 0 amend, 0 rebase and 0 cherry. THE HANDBACK IS COMPLIANT at 137 lines with a DECISION D15 stated cause naming that same 137, every mandated section present and in order, and the three-line `Fortschritt:` block byte-identical to the block's. THE ROUND'S ONE SUBSTANTIVE DEVIATION IS CORRECT AND IT CORRECTS THE REVIEWER: the `Done: R-0670` range claim is the R-0533 recurrence above. THE VERDICT IS PASS: every numeral R12 states reproduced under the reviewer's own measurement, four unordered mutations went red against the right tests, no slice was edited, no id was minted, a finding that had waited five rounds for the right carrier was resolved with its guard re-measured, and the terminal reconciliation now has a real figure to read.
-<<<END LEDGER13
+CHOSEN, clause by clause.
+
+1. THE TRIGGER is terminal AND a ledger figure: the reconciliation runs exactly
+when the dashboard's `live.running` is false and the ledger figure is not null.
+While the job runs, the ledger's last tick and the client's last tick are the
+same event, so rendering one as "final" would claim a finality the run has not
+earned — and it would do so in the feature built to stop exactly that.
+
+2. THE FIGURE SHOWN IS THE LEDGER'S, and it is rendered through `costMetricOf`
+like any other tick. The reconciliation module chooses no unit, no denominator,
+no marker and no threshold; it hands the ledger payload to the module that
+already owns those rules. This is what keeps the arithmetic home single, and
+`tests/ui_contracts/test_cost_metric_render.py` enforces it independently, as
+measured at `5d3e6045`.
+
+3. THE DELTA IS LABELLED WHEN THE DISPLAYS DIFFER, and it is named rather than
+computed. The comparison is between the ledger view's `display` string and the
+received view's `display` string. Comparing the DISPLAYS rather than the raw
+figures is the deliberate half: both sides are the same producer's counters, so
+a real missed frame moves the shown value, while a difference below the display
+precision would render as a label naming two identical figures — a sentence that
+contradicts itself on the reader's screen and teaches them to ignore the next
+one. ACCEPTED COST, stated rather than hidden: a transport gap smaller than two
+decimal places, or smaller than the token formatter's own rounding, is not
+surfaced. The figure shown is the ledger's and therefore correct either way;
+what is lost is only the notice, and a notice nobody can verify against the
+screen is worth less than the trust it spends.
+
+4. AN ABSENT SIDE IS ABSENT. No received figure at terminal renders the ledger
+figure with NO label, because a label naming an em dash as the live estimate
+would invent a reading the client never took. No ledger figure changes nothing
+at all and the live tile stands, which is the same honesty rule that stops a
+limitless job fabricating a denominator.
+
+ALTERNATIVES CONSIDERED. Comparing the raw figures: rejected for the
+self-contradicting on-screen label clause 3 describes. Reconciling whenever a
+ledger figure exists, without the running check: rejected because it claims
+finality mid-run. Rendering the difference itself as a magnitude: rejected twice
+over, because the feature file's own wording names both values rather than their
+difference, and a magnitude is the second arithmetic D7's closing clause forbids
+the client. Holding the reconciliation in `costTicker.ts` instead of a new
+module: rejected because that module's contract is the LIVE tick, and a second
+responsibility there would put the terminal rules where nobody searching for
+them would look.
+
+REVERSE IT path by path, derived from this round's Change set rather than from
+the files most in mind. Delete `apps/ui/src/api/costReconciliation.ts` and
+`apps/ui/src/api/costReconciliation.test.ts`. In `apps/ui/src/api/types.ts`
+remove `budgetFinal` from `RemedyDashboard` and `costFinalNote` from
+`RemedyMetric`. In `apps/ui/src/api/remedyApi.ts` remove the `budget_final`
+mapping, and in `apps/ui/src/api/remedyApi.test.ts` its three cases. In
+`apps/ui/src/components/shell/RemedyShell.tsx` unwrap the call so
+`metricsWithCostTicker(dashboard.metrics, stream.budget)` is again the whole
+argument. In `apps/ui/src/components/metrics/TopMetricsBar.tsx` remove the note
+render, and in `tests/ui_contracts/test_cost_metric_render.py` the class that
+pins it. In `.agent/plan.md` and `.agent/live_review.md` nothing is reversed:
+those record round history rather than this decision. That is every path this
+round's Change set holds, which is what R-0672 and its recurrence require of a
+reversal instruction.
+<<<END DEC14
