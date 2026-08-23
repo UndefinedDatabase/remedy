@@ -21,6 +21,11 @@ export interface RemedyMetric {
    *  hold a limit, a basis or a threshold, so the whole cost reading arrives as
    *  one already-decided view — see DECISION F022 D4. */
   cost?: CostMetricView;
+  /** Present only on a RECONCILED `cost` metric, and only when the ledger's
+   *  display differs from the one the client received. Already worded, because
+   *  the component composes no sentence — the same rule that put `cost` here as
+   *  a decided view. See DECISION F022 D8 clause 3. */
+  costFinalNote?: string;
 }
 
 /** Safe aggregate snapshot / apply-record truth. "unknown" when data root is unavailable. */

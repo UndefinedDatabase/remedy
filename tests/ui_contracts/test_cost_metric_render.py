@@ -21,6 +21,7 @@ SHEET = UI_SRC / "components" / "metrics" / "TopMetricsBar.module.css"
 SHELL = UI_SRC / "components" / "shell" / "RemedyShell.tsx"
 TICKER = UI_SRC / "api" / "costTicker.ts"
 METRIC = UI_SRC / "api" / "costMetric.ts"
+RECONCILIATION = UI_SRC / "api" / "costReconciliation.ts"
 
 #: The wire's own names for the figures a cost reading is derived from. Whoever
 #: names one of these is doing the arithmetic, so the set of files naming any of
@@ -323,6 +324,77 @@ class TestTheLiveTickReachesTheBar:
         assert "apps/ui/src/api/costTicker.ts" in scanned
         assert "apps/ui/src/api/budgetTick.ts" in scanned
         assert len(scanned) > 40, f"the scan collected only {len(scanned)} files"
+
+
+class TestTheLedgerFigureReachesTheBar:
+    """The PATH F022 R14 built. F022 R12 gave the dashboard a `budget_final`
+    section and MEASURED that no client read it, which is the same absence the
+    live-tick class above exists for: a figure that reaches a payload and never
+    a screen. These pin the TERMINAL seam, ruled by DECISION F022 D8."""
+
+    def test_the_shell_composes_the_reconciliation_over_the_ticker(self):
+        code = code_of(SHELL)
+        assert "metricsWithCostTicker(dashboard.metrics, stream.budget)" in code, (
+            "the live seam survives verbatim — the reconciliation WRAPS it rather "
+            "than replacing it, or the running job loses its ticking tile"
+        )
+        assert "metricsWithCostReconciliation(" in code, (
+            "without this call the ledger figure has no client reader again"
+        )
+        assert "dashboard.budgetFinal" in code, (
+            "the ledger's own figure is what the reconciliation renders"
+        )
+        assert "dashboard.live.running" in code, (
+            "DECISION F022 D8 clause 1: the swap happens only at terminal, so the "
+            "running flag must reach the decision"
+        )
+        assert 'from "../../api/costReconciliation"' in code, (
+            "the composition must be imported, not redeclared in the component"
+        )
+
+    def test_the_reconciliation_delegates_every_render_decision(self):
+        code = code_of(RECONCILIATION)
+        assert "costMetricOf(" in code, (
+            "the ledger payload is rendered by the module that already owns the "
+            "unit, the denominator, the marker and the thresholds"
+        )
+        assert "costFinalNote" in code, (
+            "the note is composed here, where DECISION F022 D8 clause 3 rules it"
+        )
+
+    def test_the_reconciliation_names_the_delta_rather_than_computing_it(self):
+        arithmetic = arithmetic_of(RECONCILIATION.read_text())
+        for operator in ("/", " - ", " * "):
+            assert operator not in arithmetic, (
+                f"{operator!r} would COMPUTE a difference DECISION F022 D8 clause 3 "
+                f"rules is only NAMED — and it would be a second arithmetic home "
+                f"for money"
+            )
+
+    def test_the_operator_scan_can_actually_see_an_operator(self):
+        salted = arithmetic_of("const gap = ledger - received;\n" + RECONCILIATION.read_text())
+        assert " - " in salted, "the scan must be able to fail, or its green means nothing"
+
+    def test_the_bar_renders_the_note_off_its_own_field(self):
+        code = code_of(BAR)
+        assert (
+            "{m.costFinalNote && <div className={styles.estimated}>{m.costFinalNote}</div>}"
+            in code
+        ), "the note renders when and only when the reconciliation composed one"
+        assert "final (ledger)" not in code, (
+            "the component composes no sentence: the note arrives already worded"
+        )
+
+    def test_the_note_added_no_arithmetic_to_the_bar(self):
+        assert "/" not in arithmetic_of(BAR.read_text()), (
+            "the terminal tile is still a field lookup (DECISION F022 D5 clause 1)"
+        )
+
+    def test_the_note_reuses_a_class_the_sheet_already_carries(self):
+        assert ".estimated" in SHEET.read_text(), (
+            "the note reuses the caption rule rather than adding one, so the bar "
+            "gains no new stylesheet surface"
+        )
 
 
 class TestTheStylesheetUsesNamedTokens:

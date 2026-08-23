@@ -11,6 +11,7 @@ import styles from "./RemedyShell.module.css";
 import { browserBrainStreamEnv, createBrainStreamHostDeps } from "../../api/brainStreamDeps";
 import { useBrainStream } from "../../api/useBrainStream";
 import { metricsWithCostTicker } from "../../api/costTicker";
+import { metricsWithCostReconciliation } from "../../api/costReconciliation";
 
 export function RemedyShell({ dashboard, selectedNodeId, onSelectNode }: { dashboard: RemedyDashboard; selectedNodeId: string | null; onSelectNode: (nodeId: string | null) => void }) {
   // The cockpit subscribes HERE rather than in RemedyApp: the shell renders
@@ -46,7 +47,17 @@ export function RemedyShell({ dashboard, selectedNodeId, onSelectNode }: { dashb
       <div className={`${styles.shell} remedy-journey-shell`} data-ui="remedy-visual-v2">
         <LeftBrandRail dashboard={dashboard} />
         <main className={styles.main} data-testid="main-column">
-          <TopMetricsBar metrics={metricsWithCostTicker(dashboard.metrics, stream.budget)} />
+          {/* The live tick composes the tile while the job runs; the terminal
+              reconciliation WRAPS that output and replaces the tile with the
+              ledger's own figure once the job has stopped (DECISION F022 D8). */}
+          <TopMetricsBar
+            metrics={metricsWithCostReconciliation(
+              metricsWithCostTicker(dashboard.metrics, stream.budget),
+              dashboard.budgetFinal,
+              stream.budget,
+              dashboard.live.running,
+            )}
+          />
           <CommandBar nextAction={dashboard.nextAction} onJump={handleJump} />
           <BrainGraphStage dashboard={dashboard} selectedNodeId={selectedNodeId} onSelectNode={onSelectNode} />
           <PhaseTimeline phases={dashboard.phases} timelineEvents={dashboard.timelineEvents} />
