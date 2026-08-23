@@ -7318,3 +7318,124 @@ pins it. In `.agent/plan.md` and `.agent/live_review.md` nothing is reversed:
 those record round history rather than this decision. That is every path this
 round's Change set holds, which is what R-0672 and its recurrence require of a
 reversal instruction.
+
+## DECISION F031 D1 (2026-08-23) — what "the decision queue" IS: a derived read view, and where its durability actually lives
+
+CHOSEN. The decision queue is a DERIVED READ VIEW, not a store.
+`packages/orchestration/decision_queue.py` performs no I/O — measured at
+`f4311bf6`, it imports only `dataclasses`, `typing` and `Job`, and the literals
+open-paren-preceded `open` and `Path` occur 0 times in it — and `list_decisions`
+re-derives every `HumanDecision` on each call from an already-loaded job plus
+its event list. Durability lives UPSTREAM: `enqueue_task_decision` in
+`packages/orchestration/escalation.py` stores task-decision records on the job,
+and `save_job` in `packages/orchestration/storage.py` writes the job to disk.
+
+The feature file's "the decision queue is and stays FILE-BASED (the established
+store with its CLI)" is therefore TRUE OF THE JOB RECORD and false of the
+module that bears the name. Both readings had a real referent, which is why the
+contradiction survived into the feature file.
+
+CONSEQUENCE FOR F031. T001 adds NO storage and NO second source of truth: the
+read endpoint calls `list_decisions` over a loaded job and computes the extra
+card fields on the way out. The feature file's "Do not touch — queue
+storage/format" binds the escalation record shape and `save_job`, and it does
+NOT freeze `decision_queue.py`, which is a view and may gain derived fields —
+the blocked-subtree size of D-nothing-else being the first.
+
+ALTERNATIVES CONSIDERED. Reading "FILE-BASED" as binding on the module and
+adding a real store: rejected, because the module's own docstring calls itself
+"a read-only aggregation" and "Not a second source of truth", and a store there
+would duplicate the job record. Treating the contradiction as a feature-file
+error to be deleted: rejected, because the sentence is true of the durable
+record and deleting it invites the database the sentence exists to prevent.
+
+REVERSE IT by deleting this DECISION and the D1 paragraph of the
+`## Design amendments` section of `docs/roadmap/features/T5_F031.md`. No code
+depends on it yet, because no T-slice has started.
+
+## DECISION F031 D2 (2026-08-23) — the badge is fed by RE-DERIVATION on refetch, and F031 introduces no new event kind
+
+CHOSEN. The inbox badge counts open decisions by RE-DERIVING them — the same
+`list_decisions` derivation the read endpoint uses — refetched when the existing
+SSE stream signals that the job changed. F031 emits NO `decision.requested` and
+NO `decision.resolved` event, and adds no kind to
+`packages/orchestration/event_schemas.py`.
+
+THE MEASUREMENT THAT FORCES IT, taken at `f4311bf6`. The kinds the feature file
+names do not exist: a repository-wide grep for `decision.requested`,
+`decision_requested`, `decision.resolved` and `decision_resolved` finds those
+strings only inside `docs/roadmap/features/T5_F031.md` itself. The differently
+named `human_decision_requested` has 7 occurrences across 3 files and NOT ONE IS
+AN EMITTER — they are a filter, three map keys, two counts and one test fixture
+— and `human_decision_resolved` has 0 occurrences anywhere. Consequently the
+`decision_count` local of `_build_dashboard` and the `open_decisions` sum of
+`_build_live_state_json`, both in `packages/orchestration/ui_server.py`, are a
+CONSTANT ZERO in production, and F031 must replace both rather than feed them.
+A third `decision_count`, in `_build_orchestrator_section` of that same file, is
+fed by `orchestrator_brain.list_decisions`, is not always zero, and is not part
+of this feature.
+
+WHY RE-DERIVATION AND NOT EMISSION. There is no producer to emit from. Every
+decision is constructed inside `list_decisions` across the eight branches of
+that one function, and each branch reads an upstream signal that ALREADY rides
+the stream — `test_run_completed`, `git_status_read`, `job_stopped`, the
+approval queue, the flight plan, the escalation records. Emitting a decision
+kind would mean adding a writer at eight sites whose only job is to restate,
+in a second vocabulary, something the stream already carries; the module
+docstring's "Not a second source of truth" names precisely that hazard. Two of
+the eight branches do have real upstream writers, so a partial emission design
+is available and is worse: it would make the badge correct for two types and
+silently wrong for six.
+
+CONSEQUENCE FOR F031. The feature file's "live via decision.requested/resolved
+events driving the badge" and its "(decision.requested/resolved kinds —
+envelope coordination if not yet present)" are AMENDED by the appended
+`## Design amendments` section rather than rewritten in place. The badge's
+liveness is a refetch on the existing stream, and its correctness is pinned by a
+test that derives the count from a fixture job rather than from an event kind.
+The snapshot-refetch fallback the feature file already names becomes the primary
+path rather than the fallback.
+
+ALTERNATIVES CONSIDERED. Emitting the two kinds at all eight branches: rejected
+above. Emitting only where a real writer exists: rejected as the partial design
+that is wrong for six types. Polling on a timer: rejected because the stream
+already delivers the signal and a timer would add latency and load for nothing.
+
+REVERSE IT by deleting this DECISION and the D2 paragraph of the
+`## Design amendments` section of `docs/roadmap/features/T5_F031.md`, which
+restores the feature file's original event-driven wording as the live spec.
+
+## DECISION F031 D3 (2026-08-23) — the acceptance loop covers PRODUCING types, and the two unproduced names stay declared
+
+CHOSEN. `DECISION_TYPES` keeps all ten members. The acceptance criterion "every
+producer type renders and answers correctly from fixtures" is read as the eight
+types that a branch of `list_decisions` actually produces, and the fixture set
+and its loop test are derived from THOSE BRANCHES rather than from the
+frozenset. `worker_approval` and `revert_missing` get no fixture.
+
+THE MEASUREMENT, taken at `f4311bf6`: a repository-wide grep over Python sources
+for either name returns exactly one line, the `DECISION_TYPES` declaration
+itself, so neither has a producer, a reader, or a test. The remaining eight each
+have a producing branch, named per type in `.agent/f031_inventory.md` under Q3.
+
+WHY THEY STAY DECLARED. Removing a member changes decision semantics, which the
+feature file's "Do not touch" forbids outright, and the set is advisory in any
+case — `HumanDecision.type` is annotated plain `str` and no production module
+imports `DECISION_TYPES`, so the two names constrain nothing at runtime and cost
+nothing by remaining. Deriving the fixture set from the frozenset instead would
+make the loop test unsatisfiable by construction for two of its ten members.
+
+WHY THIS COSTS NO COVERAGE. The renderer is generic over the decision's options
+payload, so an unproduced type needs no per-type work; the extensibility test —
+a novel fixture type with novel options rendering generically — is exactly the
+case that covers a type nobody produces yet. When a producer for either name
+lands, the loop test picks it up because it reads the branches.
+
+ALTERNATIVES CONSIDERED. Deleting the two names from the frozenset: rejected as
+a decision-semantics change the feature file forbids. Fixturing them anyway
+against a hand-written decision no code can produce: rejected because a fixture
+with no producer pins the fixture rather than the system, and the loop test's
+whole point is that new producers must join the set.
+
+REVERSE IT by deleting this DECISION and the D3 paragraph of the
+`## Design amendments` section of `docs/roadmap/features/T5_F031.md`.
