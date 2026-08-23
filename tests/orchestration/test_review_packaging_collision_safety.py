@@ -37,7 +37,10 @@ def _run(repo: Path):
     return subprocess.run(
         ["bash", "scripts/make_review_zip.sh", "--evidence-dir", str(repo / "nonexistent-ev")],
         cwd=repo, capture_output=True, text=True, timeout=120,
-        env={"PYTHONPATH": str(REPO_ROOT), "PATH": __import__("os").environ["PATH"]})
+        # A CLOSED environment: no HOME, so the packaging script cannot resolve its default archive
+        # target. REMEDY_REVIEW_DIR="." names this mini repository explicitly instead.
+        env={"PYTHONPATH": str(REPO_ROOT), "PATH": __import__("os").environ["PATH"],
+             "REMEDY_REVIEW_DIR": "."})
 
 
 class TestTrackedOutputCollisionRefused:

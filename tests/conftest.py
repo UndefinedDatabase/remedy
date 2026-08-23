@@ -8,6 +8,32 @@ import pytest
 
 
 @pytest.fixture(autouse=True)
+def _review_packages_stay_out_of_the_operator_archive():
+    """Keep every packaging test's review ZIP inside its own temporary repository.
+
+    ``scripts/make_review_zip.sh`` publishes to ``$HOME/Repos/remedy-history/zips`` by default
+    (package-hygiene amendment, 2026-08-23), so a test running the real script with an inherited
+    environment would write an 80 MB package into the operator's archive AND then fail, because the
+    test globs its own mini repository for the output. The script resolves a RELATIVE
+    ``REMEDY_REVIEW_DIR`` against the repository root it is invoked in, so ``.`` sends each test's
+    package to that test's own repository root — which is exactly where those assertions look.
+
+    A test that wants a different target still sets the variable itself; this only supplies the
+    default, and only when the environment does not already carry one.
+    """
+    import os
+    had = "REMEDY_REVIEW_DIR" in os.environ
+    previous = os.environ.get("REMEDY_REVIEW_DIR")
+    if not had:
+        os.environ["REMEDY_REVIEW_DIR"] = "."
+    yield
+    if had:
+        os.environ["REMEDY_REVIEW_DIR"] = previous or ""
+    else:
+        os.environ.pop("REMEDY_REVIEW_DIR", None)
+
+
+@pytest.fixture(autouse=True)
 def _reset_config_cache():
     """Keep the process-global config cache from leaking between tests.
 

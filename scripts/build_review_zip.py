@@ -58,6 +58,18 @@ def _final_path_for(final_template: str, package_status: str) -> str:
     return final_template.replace("{package_status}", package_status)
 
 
+def _reported_final_path(final_path: str, repo_root: str) -> str:
+    """The published path as the shell should name it: repository-root-relative while the package is
+    published INSIDE the repository, and absolute once it is published to the operator's archive
+    outside it (package-hygiene amendment, 2026-08-23). A `../..`-style relative path would be
+    correct only for a caller whose cwd is the repository root, so it is never reported."""
+    ap = os.path.abspath(final_path)
+    root = os.path.abspath(repo_root)
+    if ap == root or ap.startswith(root + os.sep):
+        return os.path.relpath(ap, root).replace(os.sep, "/")
+    return ap
+
+
 def _derive_generated_outputs(brm, repo_root: str, outputs, manifest_rel: str) -> frozenset:
     """F3 (round 29) / F1 (round 34): the exact repository-ROOT-relative outputs THIS invocation
     generates — every candidate final ZIP path (the status-name template realized for each possible
@@ -584,7 +596,7 @@ def main() -> int:
                       "authoritative_count": authoritative,
                       "symlink_count": symlinks,
                       "tombstone_count": len(plan.tombstones),
-                      "final_path": os.path.relpath(os.path.abspath(final_path), os.path.abspath(args.repo_root)).replace(os.sep, "/"),
+                      "final_path": _reported_final_path(final_path, args.repo_root),
                       "final_sha256": published_sha256,
                       "publication_capability": _pub_capability,
                       **verified_status}))

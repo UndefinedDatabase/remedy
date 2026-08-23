@@ -1,3 +1,0 @@
-=== Round 1: operator-attested manual completion ===
-Verification recorded in verification_tests.json; no per-task pytest re-run.
-0 passed, 0 failed
