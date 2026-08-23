@@ -1,42 +1,44 @@
-# Handback — F022 Live cost ticker · Runde 19 (CLOSURE 3/3)
+# Handback — F031 Decision inbox · Runde 1 (CLAIM)
 
-Fortschritt: ~100 % (T001, T002 und T003 gebaut und verifiziert ·
-             Integrations-Gate BESTANDEN · Evidence-Job und Review-Zip gebaut ·
-             STATUS-Zeile, README-Sync und Pull Request in dieser Runde —
-             danach ist F022 fertig) — Schaetzung
+Fortschritt: ~0 % (F031 claimed; the round map's R1 is this round · no
+             T-slice started · the decision-inbox inventory is R3) —
+             Schaetzung
 
-Branch `feature/f022-live-cost-ticker` · round base `9a1e677f` · accepted HEAD `f215ced4998f6eb6e5ca82117d889b70777ffe12` (R18's C2, the head the verdict and the package cover)
-THE PACKAGE WAS NOT REBUILT this round (constraint 10): R18 built it from a clean tree and the STATUS line names that head deliberately.
+Branch `feature/f031-decision-inbox` · round base `6325ac2fad76ca94e23f7bd02c80427d28e05f1f`, the merge commit of pull request #213 which closed F022 and the tip of `main`. Every base reading the block states reproduced under my own runs.
 
 ## Range
-Review of 9a1e677f..HEAD.
+Review of 6325ac2f..HEAD. C0a `83f73f8f` · C0b `6d9cfbc7` · C1 `5abc41ed` · C2 `c4a8f5a7` · C3 `d542d4bb` · C4 `6dab419d` · C5 is this commit, whose SHA cannot appear inside it (R-0371) and is reported to the reviewer instead.
 
 ## Commits
-### 0d2e82b9 docs(state): save the F022 R19 closure step block
+### 83f73f8f docs(state): save the F031 R1 claim step block
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f022-r19.md | +356/-0 | C0a, the R19 block saved as authored text |
-### e1bb7e9e docs(state): mirror the F022 R19 block into last_block
+| .agent/authored/f031-r1.md | +404/-0 | C0a, the R1 block saved as authored text |
+### 6d9cfbc7 docs(state): mirror the F031 R1 block into last_block
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/last_block.md | +247/-349 | C0b, byte-identical mirror of the C0a blob (same git blob `8ba85f9d`) |
-### 1c71b751 docs(state): advance the plan to the F022 R19 closure round
+| .agent/last_block.md | +385/-337 | C0b, byte-identical mirror of the C0a blob (same git blob `fa6194d5`) |
+### 5abc41ed docs(state): advance the plan to the F031 R1 claim round
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/plan.md | +15/-17 | C1, slice PLANF022R19 replaces the file whole |
-### 97de7f33 docs(review): record the F022 R18 PASS in the finding ledger
+| .agent/plan.md | +35/-35 | C1, slice PLANF031R1 replaces the file whole |
+### c4a8f5a7 docs(roadmap): claim F031 in the execution ledger
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/live_review.md | +2/-0 | C2, slice LEDGER19 appended: the R18 gate entry, no id minted |
-### (this commit) docs(roadmap): close F022 with the STATUS line, the README sync and the closure candidate
+| docs/roadmap/STATUS.md | +1/-1 | C2, pair STATUSFROM→STATUSTO: `[ ] F031` becomes `[~] F031`, applied exactly once |
+### d542d4bb docs(review): reset the record for F031, gate F022 R19 and register R-0677
 | Path | +/- | Reason |
 |---|---|---|
-| docs/roadmap/STATUS.md | n/a | C3, pair STATUSFROM→STATUSTO: `[~] F022` becomes `[x] F022` with the closure values |
-| README.md | n/a | C3, pairs RM1, RM2 and RM3: count 56→57, Tier 5 Done 4→5, F022 capability paragraph — SAME commit as the STATUS edit (R-0154) |
-| .agent/candidates.md | n/a | C3, slice CANDIDATES replaces the file whole; one candidate, no id spent |
-| .agent/handoff.md | n/a | C3, this handback (self-reference, R-0149) |
-
-C3's numstat cells, C3's own SHA and the PR number are `n/a` for ONE reason, stated once: this file IS part of C3, so no value that only exists after C3 is written can appear inside it (§3 item 31, finding R-0371). They are reported to the reviewer instead.
+| .agent/live_review.md | +24/-96 | C3, scripted rebuild per constraint 10: LRHEADER over the header block, LRSTEPS over the `## Steps` body, all 19 `Gate:` paragraphs deleted, GATE19 and RECORD677 appended; no finding record pruned |
+### 6dab419d docs(state): empty the candidate carrier and set the F031 branch context
+| Path | +/- | Reason |
+|---|---|---|
+| .agent/candidates.md | +4/-27 | C4, slice CANDIDATES replaces the file whole; the carrier is now EMPTY |
+| .agent/context.md | +20/-22 | C4, slice CONTEXT replaces the file whole |
+### (this commit) docs(state): hand back the F031 R1 claim round
+| Path | +/- | Reason |
+|---|---|---|
+| .agent/handoff.md | n/a | C5, this handback (self-reference, R-0149); its numstat cell and C5's SHA are `n/a` because no value that exists only after C5 can be written inside C5 |
 
 ## Item status
 | Item | Status | Reason |
@@ -44,57 +46,50 @@ C3's numstat cells, C3's own SHA and the PR number are `n/a` for ONE reason, sta
 | C0a save this block | done | |
 | C0b mirror it into last_block | done | |
 | C1 the plan | done | |
-| C2 the R18 verdict | done | gate entry only; no id minted, no finding repaired |
-| C3 the closure commit | done | this commit: STATUS + all three README pairs + candidates + handback TOGETHER |
-| the pull request | intent | created after the push; NOT merged this session (closure protocol step 6) |
-
-## Closure values
-| Value | Reading |
-|---|---|
-| Verdict (R18, recorded at C2) | PASS |
-| Live-review verdict on the STATUS line | PASS_WITH_RISKS — ACCEPTED |
-| Accepted HEAD | `f215ced4998f6eb6e5ca82117d889b70777ffe12` |
-| Evidence job | `f022-closure` |
-| Package | `remedy-review-20260823-135731-READY_FOR_REVIEW.zip` (not rebuilt this round) |
-| Package SHA-256 | `85fe27aaeefe0b885b6b2fe081187cff51a0e070ae7d9d5320e7d57d1e150f58` |
-| STATUS `[~]` count | pattern `^- \[~\] F\d+ — ` in `docs/roadmap/STATUS.md`: 1 at base `9a1e677f` → 0 at C3 |
-| STATUS `[x]` count | pattern `^- \[x\] F\d+ — ` in `docs/roadmap/STATUS.md`: 56 at base `9a1e677f` → 57 at C3 |
-| README accepted count | the RM1 pair moves the sentence in `README.md` from `56 of 255` to `57 of 255`; the RM2 pair moves the Tier 5 row's Done cell from 4 to 5 |
-| Open findings | 12 distinct `R-\d{4}` in the `## Risks` section of `.agent/plan.md` at `1c71b751`: R-0403, R-0413, R-0431, R-0445, R-0495, R-0533, R-0574, R-0625, R-0672, R-0674, R-0675, R-0676 — of which R-0495 and R-0574 are the two Highs inherited from the already-closed F085 and F086 |
+| C2 the STATUS claim | done | one pair, one application |
+| C3 the review-record reset | done | scripted rebuild; 237 records in, 238 out, none removed |
+| C4 the carrier and the context | done | |
+| C5 the handback | done | this commit |
+| the push | intent | runs after C5 per G13; its outcome is reported to the reviewer and is deliberately not a value of any file this round writes (R-0371) |
 
 ## External actions
-`git worktree add .remedy-wt/f022r19-g5 97de7f33` → created for the G5 byte-flip control; `git worktree remove --force /home/decodeux/Repos/remedy/.remedy-wt/f022r19-g5` → removed BY ITS EXACT PATH, never by a glob (R-0662); `git worktree list` back to 1 line.
-`gh pr list --state open --json number,headRefName,baseRefName,isDraft` before C3 → printed verbatim `[]`.
-`git push origin feature/f022-live-cost-ticker` — INTENT, runs after this commit.
-`gh pr create --base main --head feature/f022-live-cost-ticker` — INTENT, runs after the push. NOT merged. Per G12 the push outcome and the PR number are reported to the reviewer and are deliberately absent from this file.
-No package was built, deleted or rebuilt this round.
+`gh pr list --state open --json number,headRefName,baseRefName,isDraft` before the branch was cut → printed verbatim `[]`; the Open PR Gate passed with no PR open.
+`git checkout -b feature/f031-decision-inbox 6325ac2fad76ca94e23f7bd02c80427d28e05f1f` → "Switched to a new branch"; nothing was committed to `main`.
+`git worktree add --detach .remedy-wt/nc-f031-r1 HEAD` → created solely for the G7 and G8 negative controls; `git worktree remove --force /home/decodeux/Repos/remedy/.remedy-wt/nc-f031-r1` → removed BY ITS EXACT PATH, never by a glob (R-0662), before the G12 suites ran.
+`git push -u origin feature/f031-decision-inbox` — INTENT, runs after this commit. No `--force`, no `--force-with-lease`, no history rewrite, no branch deletion.
+No pull request was created, nothing was merged, and no package was built, deleted or rebuilt this round.
 
 ## Verification
-G1 PASS — `.agent/STOP` read from disk and ABSENT before C0a and again before C3; branch `feature/f022-live-cost-ticker`; `git status --porcelain` 0 lines after each of C0a, C0b, C1 and C2.
-G2 PASS — sha256 `43ff9ad400bbb051bc2dff872c1aafa7619d3fc3df60861759ce671fa9d16876`, 27431 bytes, 356 lines for ALL FOUR readings: `.remedy-wt/f022-r19.md`, the committed C0a blob, the committed C0b blob and `.agent/last_block.md` on disk; the delegation's fifth reading agrees; C0a and C0b resolve to the same git blob `8ba85f9d`.
-G3 PASS — the extractor over the COMMITTED C0a blob printed 11 slices over 97 CONTENT lines, TOTAL 356, PROSE 259; constraint 9's 356/97/259 reproduce exactly, nothing to reconcile.
-G4 PASS — `.agent/plan.md` at `1c71b751` is 2544 bytes = PLANF022R19's 2543 + exactly one newline (equal TRUE); NEGATIVE CONTROL against the BARE slice FALSE; `^## Goal$` 1, `^## Next Steps$` 1; `wc -l` 44, strictly under 50.
-G5 PASS — reader (a): the base blob is a byte-exact PREFIX and the remainder is 5291 bytes = 1 + LEDGER19's 5289 + 1. reader (b), independent blank-line split with exactly one trailing newline removed as a line terminator: N=1 paragraph counted by my own script, 286 units → 287, the LAST 1 equal IN ORDER. CONTROL in the disposable worktree at BYTE offset 612666 inside the FIRST appended paragraph, `R`→`r`, context `HE REVIEWEr RE-RAN EV` against the true `HE REVIEWER RE-RAN EV`: BOTH readers reject the mutant and BOTH accept the true file; worktree removed by its exact path, `git worktree list` 1 line.
-G6 PASS — in `.agent/live_review.md`, `^- R-\d+ — ` 237 at base `9a1e677f` and 237 at C2, all DISTINCT at both, maximum `R-0676` UNCHANGED; ids ADDED the EMPTY SET and ids REMOVED the EMPTY SET; `^Done: R-` 2 and 2 over R-0653 and R-0670; `^Landed: ` 0 and 0; `^Recurrence: R-` 11 lines over 9 DISTINCT ids at both; `^Gate: R` 18 lines/18 keys → 19/19 by gaining exactly the key `R18`, which was absent at base. Every base numeral the block cited reproduced; this round minted no id.
-G7 PASS — containment on the slice bytes, one reading per pair, none generalised: STATUSFROM/STATUSTO `TO contains FROM: false`; RM1FROM/RM1TO `false`; RM2FROM/RM2TO `false`; RM3FROM/RM3TO `false`. Each pair applied EXACTLY ONCE and BEFORE any whole-file write; every FROM 1 at base → 0 at C3 and every TO 0 → 1 (STATUSFROM/TO in `docs/roadmap/STATUS.md`; RM1, RM2, RM3 in `README.md`). `^- \[~\] F\d+ — ` in `docs/roadmap/STATUS.md` 1 → 0 and `^- \[x\] F\d+ — ` 56 → 57. Each edited file equals its base blob with ONLY its own pairs applied: TRUE for both files.
-G8 PASS — in the PRIMARY checkout at the C3 tree, run SERIALLY, never two pytest processes at once: `python3 -m pytest tests/docs/ -q` REAL exit 0, `295 passed in 0.43s`; `python3 -m pytest tests/orchestration/test_roadmap_index.py -q` REAL exit 0, `30 passed in 0.34s`; canary `python3 -m pytest tests/cli/test_golden_path.py -q` REAL exit 0, `42 passed in 20.61s`. The reviewer's base readings 295, 30 and 42 all reproduce. THE FULL SUITE WAS NOT RE-RUN: R18 ran it and the reviewer re-ran it at `f215ced4`, both `17722 passed, 20 skipped`.
-G9 PASS — the 4 commits before C3 are each single-parent; INSERTIONS 356, 247, 15 and 2, each under the 500 cap, agreeing cell by cell with the `## Commits` tables above; range path set MINUS Change set EMPTY, Change set MINUS range exactly the four C3 paths `.agent/candidates.md`, `.agent/handoff.md`, `README.md`, `docs/roadmap/STATUS.md`; line-anchored `^<<<SLICE ` and `^<<<END ` both 0 in each of `.agent/plan.md`, `.agent/live_review.md`, `docs/roadmap/STATUS.md`, `README.md` and `.agent/candidates.md`; `git ls-files .remedy-wt` 0 and `git ls-files` over the published zip 0; 1 worktree; reflog OPERATION field before the first colon over this round's rows — amend 0, rebase 0, cherry 0 (operations seen: checkout, commit, `pull --ff-only origin main`).
-G10 PASS — `gh pr list --state open --json number,headRefName,baseRefName,isDraft` run BEFORE C3 printed verbatim `[]`, matching the reviewer's reading; no second PR risk, so C3 proceeded.
-G11 INTENT — `git push origin feature/f022-live-cost-ticker` runs after this commit. No `--force`, no `--force-with-lease`, no history rewrite, no branch deletion.
-G12 INTENT — `gh pr create --base main --head feature/f022-live-cost-ticker` runs after the push, and the PR is NOT merged. Its number and the push outcome are reported to the reviewer, not written here.
+G1 PASS — `git branch --show-current` printed `feature/f031-decision-inbox` and not `main`; `.agent/STOP` read from disk and ABSENT before C0a and again before C5; `git status --porcelain` 0 lines after each of C0a, C0b, C1, C2, C3 and C4.
+G2 PASS — sha256 `81b1ef8a490792e091c1c24857cdc6b921fbe322743e2ccf77b2a08fb51b0864`, 30543 bytes, 404 lines for ALL FOUR readings: `.remedy-wt/f031-r1.md` before C0a, the committed C0a blob, the committed C0b blob, and `.agent/last_block.md` off disk after C0b; C0a's and C0b's file resolve to the SAME git blob `fa6194d54982328e24b9dedd94ac252785c10033`.
+G3 PASS — my extractor over the COMMITTED C0a blob printed 9 slices, 127 CONTENT lines inside markers, and 404 TOTAL lines; the block states none of those numbers and I copied none.
+G4 PASS — in `docs/roadmap/STATUS.md`, STATUSFROM 1 at `6325ac2f` → 0 at C2 and STATUSTO 0 → 1, one application; `^- \[~\] F\d+ — ` 0 → 1 and `^- \[x\] F\d+ — ` 57 → 57 UNCHANGED; my script printed `True` for "C2 equals the `6325ac2f` blob with only that one replacement applied", and the pre-edit file equalled the base blob.
+G5 PASS — `.agent/plan.md` at `5abc41ed` is 2491 bytes = PLANF031R1's 2490 plus exactly one newline (equality `True`); NEGATIVE CONTROL against the same slice with its trailing newline REMOVED printed `False`, so the equality distinguishes them; `^## Goal$` 1, `^## Next Steps$` 1, `wc -l` 44, strictly under 50.
+G6 PASS — in `.agent/live_review.md`, `^Gate: R\d+ — ` 19 at `6325ac2f` → exactly 1 at C3 and that key is `R19`; `^# Live Review — F031 Decision inbox` 1 and `^# Live Review — F022` 0; `^## Steps$` 1 and `^## Findings$` 1.
+G7 PASS — `^- R-\d+ — ` 237 at `6325ac2f` → 238 at C3, all DISTINCT at both; ids REMOVED the EMPTY SET; ids ADDED exactly `{R-0677}`; maximum `R-0676` → `R-0677`; `^Done: R-` 2 → 2 and `^Recurrence: R-` 11 → 11. NEGATIVE CONTROL in the disposable worktree with one record's `- R-` prefix broken: the same extractor printed 237 instead of 238 and R-0677 left the set, so the count really does drop.
+G8 PASS — the appended region equals the extracted GATE19 bytes (4785) and, separately, the extracted RECORD677 bytes (3520), each preceded by a blank line and the file ending in exactly one newline. Arithmetic: base 617860 bytes, C3 518732, difference −99128; the two slices plus my 3 separator newlines contribute +8308, so the header and `## Steps` replacements plus the 19 deleted `Gate:` paragraphs account for −107436. NEGATIVE CONTROL: one byte flipped inside the FIRST appended paragraph in the worktree — my equality check REJECTED the mutant on both the tail test and the GATE19 region while ACCEPTING the true file on all three readings.
+G9 PASS — `.agent/candidates.md` at C4 is 634 bytes = CANDIDATES' 633 plus exactly one newline, `^EMPTY\.` 1, `^NON-EMPTY\.` 0, and it names `R-0677` once; `.agent/context.md` at C4 is 2139 bytes = CONTEXT's 2138 plus one newline with `^# Context — F031 Decision inbox$` 1; the trailing-newline-removed control printed `False` for BOTH files.
+G10 PASS — line-anchored `^<<<SLICE ` and `^<<<END ` both count 0 in each of `.agent/plan.md`, `docs/roadmap/STATUS.md`, `.agent/live_review.md`, `.agent/candidates.md` and `.agent/context.md` at C4.
+G11 PASS — C0a..C4 are each single-parent; INSERTIONS 404, 385, 35, 1, 24 and 24, each far under the 500 cap and agreeing with the `## Commits` tables above; the range path set MINUS the change set is EMPTY and the change set MINUS the range is exactly `.agent/handoff.md`; `git ls-files .remedy-wt` 0, `git ls-files '*.zip'` 0, `git worktree list` 1 line, `git status --porcelain` 0 lines; the reflog OPERATION field over this round's rows carries amend 0, rebase 0 and cherry 0.
+G12 PASS — in the PRIMARY checkout at the C4 tree, run SERIALLY with never two pytest processes alive, every one REAL exit code 0: `tests/docs/` 295 passed, `tests/orchestration/test_roadmap_index.py` 30, `tests/ui_server/` 470, `tests/orchestration/test_test_runner.py` 52, `tests/regression/test_resource_safety.py` 21, `tests/orchestration/test_integrity_gate.py` 16, `tests/cli/test_golden_path.py` 42 — cell for cell the reviewer's readings at `6325ac2f`, so there is no difference to account for. The disposable worktree was removed first and `git worktree list` printed 1 line immediately before the first pytest command, so the R-0518 artefact constraint 12 warns about never arose and only the no-worktree reading exists.
+G13 INTENT — `git push -u origin feature/f031-decision-inbox` runs after this commit; no pull request is created. Its outcome is reported to the reviewer, not written into any file this round commits.
+
+Open findings: 13 — R-0403, R-0413, R-0431, R-0445, R-0495, R-0533, R-0574, R-0625, R-0672, R-0674, R-0675 and R-0676 carried in from F022 per C1's `## Risks` section, plus R-0677 minted at C3. The two Highs, R-0495 and R-0574, are inherited from the closed F085 and F086 and are neither F031 defects.
 
 ## Authored-text proofs
-All eleven slices were extracted PROGRAMMATICALLY by their marker LINES out of the COMMITTED C0a blob (`0d2e82b9:.agent/authored/f022-r19.md`); none was retyped, rewrapped, reflowed or edited.
-PLANF022R19 → `.agent/plan.md` at `1c71b751`: byte-equal to the slice plus exactly one newline (2543 → 2544); bare-slice control FALSE.
-LEDGER19 → `.agent/live_review.md` at `97de7f33`: landed as one newline + 5289 bytes + one newline = 5291; accepted by both G5 readers, mutant rejected by both.
-CANDIDATES → `.agent/candidates.md` at C3: byte-equal to the slice plus exactly one newline (2297 → 2298); bare-slice control FALSE.
-The eight pair halves STATUSFROM/TO, RM1FROM/TO, RM2FROM/TO and RM3FROM/TO were applied as byte substitutions of the extracted FROM by the extracted TO, one application each, proved by the G7 counts.
+All nine slices were extracted PROGRAMMATICALLY by their marker LINES out of the COMMITTED C0a blob (`83f73f8f:.agent/authored/f031-r1.md`), never by hand and never from the prompt; none was retyped, rewrapped, reflowed or edited, and no marker line reached a target file (G10).
+PLANF031R1 → `.agent/plan.md` at `5abc41ed`: byte-equal to the slice plus exactly one newline (2490 → 2491); newline-removed control FALSE.
+CANDIDATES → `.agent/candidates.md` at `6dab419d`: byte-equal to the slice plus exactly one newline (633 → 634); newline-removed control FALSE.
+CONTEXT → `.agent/context.md` at `6dab419d`: byte-equal to the slice plus exactly one newline (2138 → 2139); newline-removed control FALSE.
+LRHEADER (11 lines) and LRSTEPS (12 lines) were substituted as whole line ranges by the C3 script; GATE19 and RECORD677 landed as region-exact appends proved by G8; the pair halves STATUSFROM/STATUSTO were applied as one single-occurrence byte substitution proved by G4.
 
 ## Deviations & assumptions
-CONTRADICTION DECLARED, constraint 1: the Handback paragraph orders the `Fortschritt:` block "carried VERBATIM across all five of its lines", but that block occupies FOUR lines in the block file — lines 3 to 6 of `.agent/authored/f022-r19.md`, the next line being blank. I carried all four verbatim and edited nothing. The numeral five is the only reading that did not reproduce; I reconciled nothing.
-Handback cap, DECISION D15 stated cause: this round has FIVE commits, so AGENTS.md `### handoff.md`'s condition `>5 per-commit tables` is FALSE and the tier that applies is 60 lines. This file measures 100 lines by `wc -l`. The overage is caused only by mandated content: the four-line `Fortschritt:` block, five per-commit changed-files tables, the six-row item-status table, the ten-row closure-values table the block orders, and one line per gate for twelve gates. No section was dropped to fit and no transcripts are carried here — they are in the round report (R-0582).
-NO COMMIT WAS MADE BEYOND THE SEQUENCE CONSTRAINT 3 NAMES: C0a, C0b, C1, C2, C3 and no other — no extra commit, none dropped, no reordering (finding R-0675).
-Apart from the Fortschritt numeral above, no slice was edited and every numeral the block stated about the round base `9a1e677f` reproduced under my own runs.
+CONTRADICTION DECLARED, constraint 1 — the Handback paragraph asserts "The 60-line cap applies (this round has fewer than six per-commit tables)", but the block's own constraint 3 fixes SEVEN commits and its own Handback sentence orders an item-status table covering seven, so this round has SEVEN per-commit tables and the AGENTS.md condition ">5 per-commit tables" is TRUE. The tier that applies is therefore 100 lines, not 60. I reconciled nothing, wrote the tables the block mandates, and measured: this file is 95 lines, within the 100-line tier, so no DECISION D15 overage is claimed and no section was dropped. This is the shape finding R-0676 registers.
+NEWLINE CONVENTION, stated once and used by every equality gate above: a slice's content ends at its last content line WITHOUT that line's terminating newline, and a whole-file target is written as the slice bytes plus exactly one newline.
+COMMIT-GATE ORDERING, noted not deviated — the block's fixed sequence commits C0a and C0b before C1 advances `.agent/plan.md`, so at C0a and C0b the plan still described F022 R19. Constraint 3 forbids reordering, so I did not reorder.
+G3's three numbers and G8's byte arithmetic are MY OWN measurements; the block ordered no expected value for either, and I copied no numeral out of it.
+NO COMMIT WAS MADE BEYOND THE SEQUENCE CONSTRAINT 3 NAMES: C0a, C0b, C1, C2, C3, C4, C5 and no other — no extra commit, none dropped, no reordering (finding R-0675). No amend, rebase, cherry-pick or force-push; no branch deleted; nothing merged.
+No other slice disagreement was found: every reading the block states about the base `6325ac2f` reproduced exactly under my own runs, including the 237 records, the 19 gate keys, the 57 `[x]` rows and the three agreeing target-uniqueness readings of constraint 8.
 
 ## Next
-F022 IS CLOSED. The pull request into `main` is OPEN and NOT MERGED: the gap is the operator's manual-review window, and the next session's Open PR Gate merges it before any new feature is claimed (closure protocol step 6). That session's FIRST reviewed round registers or rules the single entry `.agent/candidates.md` carries — five historical review packages written at one instant during this session with nothing in the record accounting for it — and empties that file in the same round. Phase 1 rule 1 first: re-read `.agent/STOP` from disk.
+R2 records this round's verdict on disk and rules how the open set is to be derived — the gap C1's plan registers as not mechanically derivable from `.agent/live_review.md`.
