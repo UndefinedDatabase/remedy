@@ -7132,3 +7132,58 @@ CORRECTION TO DECISION F022 D4, appended here because §3 checklist item 20 forb
 ALTERNATIVES CONSIDERED. Give the threshold its own token pair rather than reusing the primitives: rejected, a token minted for one metric is a token the reference does not carry, which is the R-0661 divergence created deliberately instead of inherited. Signal the threshold by colour alone and rely on the tooltip: rejected under clause 3 — a tooltip is a hover, and a state a keyboard reader cannot reach is a state it does not have. Reuse `.progressTrack` for the cost fill: rejected under clause 5, since the two specs differ and sharing the rule would silently migrate the progress metric's appearance inside a cost feature. Put the formatting in the component and keep the module pure of strings: rejected under clause 1 and D4 clause 5, because the format is part of what "renders honestly" means — `"—"` versus `"$0.00"` is the whole of the no-fake-zeros rule.
 
 REVERSE IT by deleting the cost rules from `TopMetricsBar.module.css`, the cost branches from `TopMetricsBar.tsx`, `CoinGlyph` from `RemedyGlyphs.tsx` and `tests/ui_contracts/test_cost_metric_render.py` entirely, and by dropping the goldens describe block from `costMetric.test.ts`. That is the whole of this round's production surface and it is stated here as a complete list, which is the obligation R-0672 exists to remember.
+
+## DECISION F022 D6 — where the live tick is held, and how it reaches the bar
+
+CONTEXT. `costMetricOf` has been correct since R7 and drawn since R8 and has no
+production caller: measured at `a8952614` by reading every `.ts` and `.tsx`
+under `apps/ui/src` except `*.test.ts` and `*.test.tsx`, the only non-test file
+containing `costMetricOf(` is `costMetric.ts` itself. The tick reaches the
+client already — `_safe_event_summary` puts a `budget` key on a `budget.tick`
+frame and on no other kind — and nothing reads it.
+
+CHOSEN. The latest tick's figures are held as ONE field on `BrainStreamState`,
+folded in `receiveBrainFrame` behind the replay guard, carried forward BY
+REFERENCE on every non-tick frame, published on `BrainStreamView` and compared
+there with `===`. The shell composes the bar's metrics through one pure
+function, `metricsWithCostTicker`, which calls `costMetricOf` and decides
+nothing else.
+
+WHY. `receiveBrainFrame` is the single ingest point every frame passes through
+and the only place a reconnect replay has already been ruled on, so a fold there
+inherits the replay guard instead of re-deriving it. Reference-carrying is not
+an optimisation: the runner's `publish` compares with `===`, so a fresh object
+of equal content would announce a change nobody made and re-render the cockpit
+on every heartbeat. A pure composition function keeps the wiring under the
+node-environment vitest, which cannot render React — the same reason
+`cockpitLogic.ts` and `brainStream.ts` were extracted from their components.
+
+ALTERNATIVES CONSIDERED. A second store subscribed to the same stream: rejected,
+because `tests/ui_contracts/test_brain_stream_ring.py` pins exactly one
+`useBrainStream(` call site and a second subscription is a second socket.
+Deriving the figures inside `TopMetricsBar` from the feed ring: rejected,
+because `FeedRow` deliberately drops the `budget` payload and widening it would
+put the whole envelope behind a projection built for a feed. Fetching the
+figures over the dashboard endpoint: rejected, because a ticker that polls is
+not live and the transport already carries the value.
+
+REVERSE IT path by path, derived from this round's Change set rather than from
+the files most in mind. Delete `apps/ui/src/api/budgetTick.ts` and
+`apps/ui/src/api/budgetTick.test.ts`; delete `apps/ui/src/api/costTicker.ts` and
+`apps/ui/src/api/costTicker.test.ts`; in `apps/ui/src/api/brainStream.ts` remove
+the `budget` field from `BrainStreamState`, its `null` seed in
+`initialBrainStreamState` and the fold in `receiveBrainFrame`; in
+`apps/ui/src/api/brainStreamRunner.ts` remove the `budget` field from
+`BrainStreamView`, its seed in `cachedView` and its comparison in `publish`; in
+`apps/ui/src/api/remedyApi.ts` remove the eighth `cost` entry from the `metrics`
+literal and the deliberate-absence comment in `normalizeApiFailure`; in
+`apps/ui/src/components/shell/RemedyShell.tsx` pass `dashboard.metrics` to
+`TopMetricsBar` unwrapped; drop the budget cases from
+`apps/ui/src/api/brainStream.test.ts` and
+`apps/ui/src/api/brainStreamRunner.test.ts`, and restore the seven-key
+assertions and the original test name in `apps/ui/src/api/remedyApi.test.ts`;
+remove the wiring class from `tests/ui_contracts/test_cost_metric_render.py`.
+The R-0671 assertion in `apps/ui/src/api/costMetric.test.ts` is NOT part of this
+decision and a reversal keeps it. That is every production and test path this
+round's Change set holds, which is what R-0672 and its recurrence require of a
+reversal instruction and what DECISION F022 D5 did not do.
