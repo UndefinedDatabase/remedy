@@ -15,28 +15,34 @@ spent-only variant with no fake denominator, and the terminal reconciliation
 displays the ledger figure with any delta labelled.
 
 ## Current Step
-R9 records the R8 verdict, registers R-0673, records the R-0672 recurrence and
-ends the session cleanly. It builds nothing: T001 and T002 are complete, the
-session's round budget is spent, and a verdict that lives only in a session is
-a verdict that did not happen.
+R10 is T003a, the live wiring. It records the R9 verdict and the R-0644
+recurrence, repairs the round map, rules DECISION F022 D6, and then carries the
+latest budget tick from the stream's one ingest point through the runner view
+and the shell into the metrics bar — the step that gives `costMetricOf`, correct
+since R7 and drawn since R8, its first production caller. It also pins R-0671's
+missing assertion.
 
 ## Next Steps
-1. R10 T003 — the terminal reconciliation, the delta labelling, the live wiring
-   through `remedyApi.ts` and `RemedyShell.tsx`, and the fake-job end-to-end.
-2. R11 the integration gate.
-3. R12 closure.
+1. R11 T003b — the terminal reconciliation, the delta labelling and the
+   fake-job end-to-end, opening with the DECISION that rules where the ledger's
+   final figure is read from.
+2. R12 the integration gate.
+3. R13 closure.
 
 ## Risks
-- Three F022 findings are open and all are Low: R-0671 wants one assertion in
-  `costMetric.test.ts` pinning a negative spend as the limitless view; R-0672
-  and its recurrence want the next DECISION on this ground to state a complete
-  reversal; R-0673 is a reviewer-gate defect that has already been paid for.
+- The feature file names "the stats endpoint" as the source of the ledger figure
+  for the terminal reconciliation, and no such endpoint exists among the job
+  endpoints `ui_server.py` dispatches. R11 opens by ruling that source as a
+  DECISION rather than by building against a name.
+- Open F022 findings, each with the round that owns it: R-0670 waits for the
+  next round touching `packages/orchestration/ui_server.py` on its own account;
+  R-0672 and its recurrence want a path-by-path reversal, which DECISION F022 D6
+  carries; R-0673 wants a whole-file absence run at the base first, which G12
+  does; R-0644's recurrence is the correction this round appends.
 - The two High findings carried forward, R-0495 and R-0574, are inherited from
-  the already-closed F085 and F086 and are documented risks rather than F022
-  defects.
+  the already-closed F085 and F086 and are documented risks, not F022 defects.
 - `npm run lint` in `apps/ui` is RED at base and is NOT a gate (R-0364), which
   is R-0622 and routes to a paydown branch.
 - R-0665 is open and this feature needs its route: every UI feature is told to
   record visual deviations in an `assumption_log` that does not exist. F022
-  records them as DECISIONs in `.agent/decisions.md` and says so, which is a
-  route rather than a fix.
+  records them as DECISIONs in `.agent/decisions.md`, a route rather than a fix.
