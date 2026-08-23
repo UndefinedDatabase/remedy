@@ -1,38 +1,42 @@
-# Handback — F022 Live cost ticker · Runde 18 (CLOSURE 2/3)
+# Handback — F022 Live cost ticker · Runde 19 (CLOSURE 3/3)
 
-Fortschritt: ~98 % (T001 fertig · T002 fertig · T003 fertig · Integration Gate
-             bestanden · R17 gegatet mit PASS · Built State steht — diese Runde
-             baut den Evidence-Job und das Review-Zip, die einzigen Werte, aus
-             denen R19 die STATUS-Zeile schreiben kann) — Schaetzung
+Fortschritt: ~100 % (T001, T002 und T003 gebaut und verifiziert ·
+             Integrations-Gate BESTANDEN · Evidence-Job und Review-Zip gebaut ·
+             STATUS-Zeile, README-Sync und Pull Request in dieser Runde —
+             danach ist F022 fertig) — Schaetzung
 
-Branch `feature/f022-live-cost-ticker` · round base `7c13dd11` · reviewed head (C2) `f215ced4998f6eb6e5ca82117d889b70777ffe12`
-Evidence job `f022-closure` · evidence dir `.remedy-wt/f022_closure_evidence/remedy-job-evidence-f022-closure` (gitignored, in no commit)
-Package `remedy-review-20260823-135731-READY_FOR_REVIEW.zip` · SHA-256 `85fe27aaeefe0b885b6b2fe081187cff51a0e070ae7d9d5320e7d57d1e150f58` · PACKAGE_STATUS `READY_FOR_REVIEW`
+Branch `feature/f022-live-cost-ticker` · round base `9a1e677f` · accepted HEAD `f215ced4998f6eb6e5ca82117d889b70777ffe12` (R18's C2, the head the verdict and the package cover)
+THE PACKAGE WAS NOT REBUILT this round (constraint 10): R18 built it from a clean tree and the STATUS line names that head deliberately.
 
 ## Range
-Review of 7c13dd11..HEAD.
+Review of 9a1e677f..HEAD.
 
 ## Commits
-### 8b8a978f chore(state): save the F022 R18 step block as authored text
+### 0d2e82b9 docs(state): save the F022 R19 closure step block
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f022-r18.md | +458/-0 | C0a, the R18 block saved as authored text |
-### d065e999 chore(state): mirror the F022 R18 block into last_block
+| .agent/authored/f022-r19.md | +356/-0 | C0a, the R19 block saved as authored text |
+### e1bb7e9e docs(state): mirror the F022 R19 block into last_block
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/last_block.md | +350/-280 | C0b, byte-identical mirror of the C0a blob |
-### 3d4678b8 docs(state): point the F022 plan at R18 evidence and package build
+| .agent/last_block.md | +247/-349 | C0b, byte-identical mirror of the C0a blob (same git blob `8ba85f9d`) |
+### 1c71b751 docs(state): advance the plan to the F022 R19 closure round
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/plan.md | +17/-20 | C1, PLANF022R18 replaces the file whole |
-### f215ced4 docs(state): record the F022 R17 verdict, finding R-0676 and the R-0371 recurrence
+| .agent/plan.md | +15/-17 | C1, slice PLANF022R19 replaces the file whole |
+### 97de7f33 docs(review): record the F022 R18 PASS in the finding ledger
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/live_review.md | +6/-0 | C2, LEDGER18 appended: record, recurrence, gate |
-### (this commit) docs(state): hand back the F022 R18 closure artifact round
+| .agent/live_review.md | +2/-0 | C2, slice LEDGER19 appended: the R18 gate entry, no id minted |
+### (this commit) docs(roadmap): close F022 with the STATUS line, the README sync and the closure candidate
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/handoff.md | (self-reference) | C3, this handback; a handoff cannot table its own numerals (R-0149) |
+| docs/roadmap/STATUS.md | n/a | C3, pair STATUSFROM→STATUSTO: `[~] F022` becomes `[x] F022` with the closure values |
+| README.md | n/a | C3, pairs RM1, RM2 and RM3: count 56→57, Tier 5 Done 4→5, F022 capability paragraph — SAME commit as the STATUS edit (R-0154) |
+| .agent/candidates.md | n/a | C3, slice CANDIDATES replaces the file whole; one candidate, no id spent |
+| .agent/handoff.md | n/a | C3, this handback (self-reference, R-0149) |
+
+C3's numstat cells, C3's own SHA and the PR number are `n/a` for ONE reason, stated once: this file IS part of C3, so no value that only exists after C3 is written can appear inside it (§3 item 31, finding R-0371). They are reported to the reviewer instead.
 
 ## Item status
 | Item | Status | Reason |
@@ -40,44 +44,57 @@ Review of 7c13dd11..HEAD.
 | C0a save this block | done | |
 | C0b mirror it into last_block | done | |
 | C1 the plan | done | |
-| C2 the R17 verdict, R-0676, the R-0371 recurrence | done | |
-| the EVIDENCE JOB | done | job `f022-closure`, exit 0, 4 scoped runs |
-| the REVIEW ZIP | done | READY_FOR_REVIEW, exit 0 |
-| C3 the handback | done | this commit |
+| C2 the R18 verdict | done | gate entry only; no id minted, no finding repaired |
+| C3 the closure commit | done | this commit: STATUS + all three README pairs + candidates + handback TOGETHER |
+| the pull request | intent | created after the push; NOT merged this session (closure protocol step 6) |
+
+## Closure values
+| Value | Reading |
+|---|---|
+| Verdict (R18, recorded at C2) | PASS |
+| Live-review verdict on the STATUS line | PASS_WITH_RISKS — ACCEPTED |
+| Accepted HEAD | `f215ced4998f6eb6e5ca82117d889b70777ffe12` |
+| Evidence job | `f022-closure` |
+| Package | `remedy-review-20260823-135731-READY_FOR_REVIEW.zip` (not rebuilt this round) |
+| Package SHA-256 | `85fe27aaeefe0b885b6b2fe081187cff51a0e070ae7d9d5320e7d57d1e150f58` |
+| STATUS `[~]` count | pattern `^- \[~\] F\d+ — ` in `docs/roadmap/STATUS.md`: 1 at base `9a1e677f` → 0 at C3 |
+| STATUS `[x]` count | pattern `^- \[x\] F\d+ — ` in `docs/roadmap/STATUS.md`: 56 at base `9a1e677f` → 57 at C3 |
+| README accepted count | the RM1 pair moves the sentence in `README.md` from `56 of 255` to `57 of 255`; the RM2 pair moves the Tier 5 row's Done cell from 4 to 5 |
+| Open findings | 12 distinct `R-\d{4}` in the `## Risks` section of `.agent/plan.md` at `1c71b751`: R-0403, R-0413, R-0431, R-0445, R-0495, R-0533, R-0574, R-0625, R-0672, R-0674, R-0675, R-0676 — of which R-0495 and R-0574 are the two Highs inherited from the already-closed F085 and F086 |
 
 ## External actions
-`git worktree add .remedy-wt/f022-r18-control f215ced4 --detach` → created; `git worktree remove --force /home/decodeux/Repos/remedy/.remedy-wt/f022-r18-control` → removed BY ITS EXACT PATH, `git worktree list` back to 1 line.
-`gh pr list --state open --json number,headRefName` → `[]`. No PR created, nothing merged.
-`rm -f /home/decodeux/Repos/remedy/remedy-review-20260823-135650-READY_FOR_REVIEW.zip` → the superseded first zip build, removed BY ITS EXACT PATH, never by a glob (R-0662).
-`git push origin feature/f022-live-cost-ticker` — INTENT, run after this commit. Per G14 its outcome is reported to the reviewer and is NOT a value of this file: no exit code and no remote tip are recorded here.
+`git worktree add .remedy-wt/f022r19-g5 97de7f33` → created for the G5 byte-flip control; `git worktree remove --force /home/decodeux/Repos/remedy/.remedy-wt/f022r19-g5` → removed BY ITS EXACT PATH, never by a glob (R-0662); `git worktree list` back to 1 line.
+`gh pr list --state open --json number,headRefName,baseRefName,isDraft` before C3 → printed verbatim `[]`.
+`git push origin feature/f022-live-cost-ticker` — INTENT, runs after this commit.
+`gh pr create --base main --head feature/f022-live-cost-ticker` — INTENT, runs after the push. NOT merged. Per G12 the push outcome and the PR number are reported to the reviewer and are deliberately absent from this file.
+No package was built, deleted or rebuilt this round.
 
 ## Verification
-G1 PASS — `.agent/STOP` read from disk and ABSENT before C0a and again before C3; branch `feature/f022-live-cost-ticker`; `git status --porcelain` 0 lines after each of C0a, C0b, C1, C2 and again immediately before the zip build.
-G2 PASS — sha256 `3b4a5683ae7ebd92dd9ffb5588c3ea756ca574406bc21434987be887147d4ad6`, 36770 bytes, 458 lines for ALL FOUR: `.remedy-wt/f022-r18.md`, the committed C0a blob, the committed C0b blob and `.agent/last_block.md` on disk; the delegation's fifth reading agrees; C0a and C0b resolve to the same git blob `dc52827b`.
-G3 PASS — extractor over the committed C0a blob printed 3 slices (PLANF022R18, LEDGER18, EVIDENCESCRIPT) over 190 CONTENT lines, TOTAL 458, PROSE 268; constraint 9's 458/190/268 reproduce exactly.
-G4 PASS — `.agent/plan.md` at 3d4678b8 is 2671 bytes = PLANF022R18's 2670 + one newline (equal TRUE); NEGATIVE CONTROL against the BARE slice FALSE; `^## Goal$` 1, `^## Next Steps$` 1; `wc -l` 46, strictly under 50.
-G5 PASS — reader (a): base blob a byte-exact PREFIX, remainder 9891 bytes = 1 + LEDGER18's 9889 + 1. reader (b): N=3 paragraphs counted by my own script, 283 units → 286, LAST 3 equal IN ORDER. CONTROL in the disposable worktree at BYTE offset 602979 inside the FIRST appended paragraph, `i`→`I`, context `nes for thIs commit c` (true text `nes for this commit c`): BOTH readers reject the mutant and BOTH accept the true file; worktree removed by exact path, `git worktree list` 1 line.
-G6 PASS — `^- R-\d+ — ` 236 at base → 237 at C2, all DISTINCT at both; maximum `R-0675` → `R-0676`; ids ADDED exactly {R-0676}, ids REMOVED the EMPTY SET; `^Done: R-` 2 → 2 over R-0653 and R-0670; `^Landed: ` 0 → 0; `^Recurrence: R-` 10 lines/8 distinct → 11 lines/9 distinct by gaining a FIRST `R-0371`; `^Gate: R` 17 lines/17 keys → 18/18 by gaining exactly `R17`. Every base numeral the block cited reproduced.
-G7 PASS — `python3 -m pytest -n auto -q` in the primary checkout at C2, REAL exit code 0, summary verbatim `17722 passed, 20 skipped in 137.75s (0:02:17)`, wall clock 138.3 s, count of lines matching `^FAILED` = 0; the same extractor over a control string containing `FAILED tests/x.py::test_y - AssertionError` matched 1, so the zero is a reading.
-G8 PASS — `packages.orchestration.integrity_gate.run_integrity_checks()` → `passed: true`, `fail_count: 0`, `check_count: 5`, all five `pass`, `high_blockers_open` = `no open blocker/high findings`, `relevant_untracked` = `untracked=0, relevant=0`; `git status --porcelain` 0 lines at that moment.
-G9 PASS — EVIDENCESCRIPT written to `.remedy-wt/f022_evidence.py` as 5670 + 1 = 5671 bytes byte-exact; REAL exit code 0; vr-0001/2/3/4 selected 10/16/15/30 with node_ids 10/16/15/30, deselected 0, 1 test_file each; `SCAN rejected strings: 0`; red control `_unsafe_text` truthy (`a local absolute path`); `output_hash` == sha256(stdout_summary) TRUE on all four; bundle head `f215ced4998f6eb6e5ca82117d889b70777ffe12`, verdict PASS_WITH_RISKS, total_passed 71.
-G10 PASS — `bash scripts/make_review_zip.sh --evidence-dir <G9 dir>` with `git status --porcelain` 0 lines, REAL exit code 0; package `remedy-review-20260823-135731-READY_FOR_REVIEW.zip`; SHA-256 computed BY ME over the published file `85fe27aaeefe0b885b6b2fe081187cff51a0e070ae7d9d5320e7d57d1e150f58`, identical to the script's `final_sha256`; `PACKAGE_STATUS=READY_FOR_REVIEW`; manifest `committed_review_subject.base_commit` `c34ef32b0ac3e6a7af161fa724f42ba1c3167786` as required and `.head_commit` `f215ced4998f6eb6e5ca82117d889b70777ffe12`, which IS the commit C2 created.
-G11 PASS — the 4 commits before C3 are each single-parent; INSERTIONS 458, 350, 17 and 6, each under the 500 cap, agreeing cell by cell with the `## Commits` tables above; range path set MINUS Change set EMPTY, Change set MINUS range exactly `.agent/handoff.md` (C3's own); `^<<<SLICE ` and `^<<<END ` both 0 in `.agent/plan.md` and in `.agent/live_review.md`; `git ls-files .remedy-wt` 0, over the evidence dir 0, over the published zip 0; 1 worktree; reflog OPERATION field before the first colon over this round's rows: amend 0, rebase 0, cherry 0 (operations seen: checkout, commit, pull --ff-only origin main).
-G12 PASS — `gh pr list --state open --json number,headRefName` printed verbatim `[]`. No PR created, nothing merged; closure has not run.
-G13 PASS — every file-fact C1 and C2 land was re-measured at C2: branch merge-base `c34ef32b` (subject `Merge pull request #211 …`); `^## Built State$` 1 in `docs/roadmap/features/T5_F022.md`; a `^- R-\d+ — ` record present for each of R-0672, R-0625, R-0431, R-0413, R-0533, R-0674, R-0675, R-0676, R-0445, R-0495, R-0574, R-0622, R-0403; AGENTS.md still carries the quoted `≤60 lines (≤100 when per-commit tables of >5 commits require it — sections are never dropped)`; the R17 block still reads `The cap is 60 lines for this commit count`; `.agent/handoff.md` at 7c13dd11 is 99 lines; `.agent/plan.md` at 4f714490 is 2860 bytes / 49 lines; the R17 last_block is sha256 `377accba…5628d77e` over 35851 bytes / 388 lines with C0a and C0b both blob `f052956c`. NO RESIDUAL: nothing had gone stale, and no slice was edited.
-G14 INTENT — `git push origin feature/f022-live-cost-ticker` runs after this commit; its exit code and the resulting remote tip are reported to the reviewer and are deliberately absent from this file.
+G1 PASS — `.agent/STOP` read from disk and ABSENT before C0a and again before C3; branch `feature/f022-live-cost-ticker`; `git status --porcelain` 0 lines after each of C0a, C0b, C1 and C2.
+G2 PASS — sha256 `43ff9ad400bbb051bc2dff872c1aafa7619d3fc3df60861759ce671fa9d16876`, 27431 bytes, 356 lines for ALL FOUR readings: `.remedy-wt/f022-r19.md`, the committed C0a blob, the committed C0b blob and `.agent/last_block.md` on disk; the delegation's fifth reading agrees; C0a and C0b resolve to the same git blob `8ba85f9d`.
+G3 PASS — the extractor over the COMMITTED C0a blob printed 11 slices over 97 CONTENT lines, TOTAL 356, PROSE 259; constraint 9's 356/97/259 reproduce exactly, nothing to reconcile.
+G4 PASS — `.agent/plan.md` at `1c71b751` is 2544 bytes = PLANF022R19's 2543 + exactly one newline (equal TRUE); NEGATIVE CONTROL against the BARE slice FALSE; `^## Goal$` 1, `^## Next Steps$` 1; `wc -l` 44, strictly under 50.
+G5 PASS — reader (a): the base blob is a byte-exact PREFIX and the remainder is 5291 bytes = 1 + LEDGER19's 5289 + 1. reader (b), independent blank-line split with exactly one trailing newline removed as a line terminator: N=1 paragraph counted by my own script, 286 units → 287, the LAST 1 equal IN ORDER. CONTROL in the disposable worktree at BYTE offset 612666 inside the FIRST appended paragraph, `R`→`r`, context `HE REVIEWEr RE-RAN EV` against the true `HE REVIEWER RE-RAN EV`: BOTH readers reject the mutant and BOTH accept the true file; worktree removed by its exact path, `git worktree list` 1 line.
+G6 PASS — in `.agent/live_review.md`, `^- R-\d+ — ` 237 at base `9a1e677f` and 237 at C2, all DISTINCT at both, maximum `R-0676` UNCHANGED; ids ADDED the EMPTY SET and ids REMOVED the EMPTY SET; `^Done: R-` 2 and 2 over R-0653 and R-0670; `^Landed: ` 0 and 0; `^Recurrence: R-` 11 lines over 9 DISTINCT ids at both; `^Gate: R` 18 lines/18 keys → 19/19 by gaining exactly the key `R18`, which was absent at base. Every base numeral the block cited reproduced; this round minted no id.
+G7 PASS — containment on the slice bytes, one reading per pair, none generalised: STATUSFROM/STATUSTO `TO contains FROM: false`; RM1FROM/RM1TO `false`; RM2FROM/RM2TO `false`; RM3FROM/RM3TO `false`. Each pair applied EXACTLY ONCE and BEFORE any whole-file write; every FROM 1 at base → 0 at C3 and every TO 0 → 1 (STATUSFROM/TO in `docs/roadmap/STATUS.md`; RM1, RM2, RM3 in `README.md`). `^- \[~\] F\d+ — ` in `docs/roadmap/STATUS.md` 1 → 0 and `^- \[x\] F\d+ — ` 56 → 57. Each edited file equals its base blob with ONLY its own pairs applied: TRUE for both files.
+G8 PASS — in the PRIMARY checkout at the C3 tree, run SERIALLY, never two pytest processes at once: `python3 -m pytest tests/docs/ -q` REAL exit 0, `295 passed in 0.43s`; `python3 -m pytest tests/orchestration/test_roadmap_index.py -q` REAL exit 0, `30 passed in 0.34s`; canary `python3 -m pytest tests/cli/test_golden_path.py -q` REAL exit 0, `42 passed in 20.61s`. The reviewer's base readings 295, 30 and 42 all reproduce. THE FULL SUITE WAS NOT RE-RUN: R18 ran it and the reviewer re-ran it at `f215ced4`, both `17722 passed, 20 skipped`.
+G9 PASS — the 4 commits before C3 are each single-parent; INSERTIONS 356, 247, 15 and 2, each under the 500 cap, agreeing cell by cell with the `## Commits` tables above; range path set MINUS Change set EMPTY, Change set MINUS range exactly the four C3 paths `.agent/candidates.md`, `.agent/handoff.md`, `README.md`, `docs/roadmap/STATUS.md`; line-anchored `^<<<SLICE ` and `^<<<END ` both 0 in each of `.agent/plan.md`, `.agent/live_review.md`, `docs/roadmap/STATUS.md`, `README.md` and `.agent/candidates.md`; `git ls-files .remedy-wt` 0 and `git ls-files` over the published zip 0; 1 worktree; reflog OPERATION field before the first colon over this round's rows — amend 0, rebase 0, cherry 0 (operations seen: checkout, commit, `pull --ff-only origin main`).
+G10 PASS — `gh pr list --state open --json number,headRefName,baseRefName,isDraft` run BEFORE C3 printed verbatim `[]`, matching the reviewer's reading; no second PR risk, so C3 proceeded.
+G11 INTENT — `git push origin feature/f022-live-cost-ticker` runs after this commit. No `--force`, no `--force-with-lease`, no history rewrite, no branch deletion.
+G12 INTENT — `gh pr create --base main --head feature/f022-live-cost-ticker` runs after the push, and the PR is NOT merged. Its number and the push outcome are reported to the reviewer, not written here.
 
 ## Authored-text proofs
-All three slices were extracted PROGRAMMATICALLY by their marker lines out of the COMMITTED C0a blob; none was retyped, rewrapped or edited.
-PLANF022R18 → `.agent/plan.md` at 3d4678b8: byte-equal to the slice plus one newline (2670 → 2671), bare-slice control FALSE.
-LEDGER18 → `.agent/live_review.md` at f215ced4: landed as one newline + 9889 bytes + one newline = 9891; accepted by both G5 readers, mutant rejected by both.
-EVIDENCESCRIPT → `.remedy-wt/f022_evidence.py`: 5670 + 1 = 5671 bytes, byte-exact; a gitignored scratch path that is in NO commit.
+All eleven slices were extracted PROGRAMMATICALLY by their marker LINES out of the COMMITTED C0a blob (`0d2e82b9:.agent/authored/f022-r19.md`); none was retyped, rewrapped, reflowed or edited.
+PLANF022R19 → `.agent/plan.md` at `1c71b751`: byte-equal to the slice plus exactly one newline (2543 → 2544); bare-slice control FALSE.
+LEDGER19 → `.agent/live_review.md` at `97de7f33`: landed as one newline + 5289 bytes + one newline = 5291; accepted by both G5 readers, mutant rejected by both.
+CANDIDATES → `.agent/candidates.md` at C3: byte-equal to the slice plus exactly one newline (2297 → 2298); bare-slice control FALSE.
+The eight pair halves STATUSFROM/TO, RM1FROM/TO, RM2FROM/TO and RM3FROM/TO were applied as byte substitutions of the extracted FROM by the extracted TO, one application each, proved by the G7 counts.
 
 ## Deviations & assumptions
-Handback cap, DECISION D15 stated cause: this round has FIVE commits, so `>5 per-commit tables` is FALSE and the tier that applies under AGENTS.md `### handoff.md` is 60 lines. This file measures 83 lines by `wc -l`. The overage is caused only by mandated content: the four-line `Fortschritt:` block carried verbatim, five per-commit changed-files tables, the seven-row item-status table, one line per gate for fourteen gates, and the closure values R19 must read. No section was dropped to fit and no transcripts are carried here — they are in the round report (R-0582).
-Double execution of two artifact builds: this session's shell guard rejects `echo $?`, so the first run of the evidence script and the first run of `make_review_zip.sh` had no measurable exit code. Both were re-run through a `subprocess.run` wrapper, which reported exit 0 for each. The round's package is the SECOND build, `…-135731-…`; the superseded first zip `…-135650-…` was deleted by its exact path. Both builds reported `READY_FOR_REVIEW`.
+CONTRADICTION DECLARED, constraint 1: the Handback paragraph orders the `Fortschritt:` block "carried VERBATIM across all five of its lines", but that block occupies FOUR lines in the block file — lines 3 to 6 of `.agent/authored/f022-r19.md`, the next line being blank. I carried all four verbatim and edited nothing. The numeral five is the only reading that did not reproduce; I reconciled nothing.
+Handback cap, DECISION D15 stated cause: this round has FIVE commits, so AGENTS.md `### handoff.md`'s condition `>5 per-commit tables` is FALSE and the tier that applies is 60 lines. This file measures 100 lines by `wc -l`. The overage is caused only by mandated content: the four-line `Fortschritt:` block, five per-commit changed-files tables, the six-row item-status table, the ten-row closure-values table the block orders, and one line per gate for twelve gates. No section was dropped to fit and no transcripts are carried here — they are in the round report (R-0582).
 NO COMMIT WAS MADE BEYOND THE SEQUENCE CONSTRAINT 3 NAMES: C0a, C0b, C1, C2, C3 and no other — no extra commit, none dropped, no reordering (finding R-0675).
-No slice was edited and no slice contradicted a measurement: every numeral the block stated about the round base `7c13dd11` reproduced under my own runs.
+Apart from the Fortschritt numeral above, no slice was edited and every numeral the block stated about the round base `9a1e677f` reproduced under my own runs.
 
 ## Next
-R19, the closure round: the reviewer authors the STATUS line from evidence job `f022-closure`, package `remedy-review-20260823-135731-READY_FOR_REVIEW.zip` and SHA-256 `85fe27aaeefe0b885b6b2fe081187cff51a0e070ae7d9d5320e7d57d1e150f58` with accepted HEAD `f215ced4998f6eb6e5ca82117d889b70777ffe12`; the worker commits it LAST with the README capability sync in the SAME commit, empties `.agent/candidates.md`, then creates the PR — which is NOT merged this session. Phase 1 rule 1 first: re-read `.agent/STOP` from disk.
+F022 IS CLOSED. The pull request into `main` is OPEN and NOT MERGED: the gap is the operator's manual-review window, and the next session's Open PR Gate merges it before any new feature is claimed (closure protocol step 6). That session's FIRST reviewed round registers or rules the single entry `.agent/candidates.md` carries — five historical review packages written at one instant during this session with nothing in the record accounting for it — and empties that file in the same round. Phase 1 rule 1 first: re-read `.agent/STOP` from disk.

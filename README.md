@@ -16,7 +16,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-56 of 255 registered items accepted. Next: F022 (Live cost ticker).
+57 of 255 registered items accepted. Next: F031 (Decision inbox).
 
 | Tier | Name | Done | Total |
 |------|------|-----:|------:|
@@ -25,7 +25,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 | 2 | Minimal Self-Build Runtime | 14 | 14 |
 | 3 | Full Token Economy & Autonomy | 0 | 26 |
 | 4 | Memory & Learning | 0 | 16 |
-| 5 | Operator Cockpit | 4 | 29 |
+| 5 | Operator Cockpit | 5 | 29 |
 | 6 | Design-to-Code | 0 | 16 |
 | 7 | Quality & Trust | 0 | 15 |
 | 8 | Worker Ecosystem & Neutrality | 0 | 12 |
@@ -74,6 +74,11 @@ F021 live activity feed and now-card (a humanization catalog that turns every
 Part E event kind into a plain line with an honest generic fallback for an
 unknown kind, a NowCard over the ACTION-class subset with a recency dot, and
 feed rows that carry their seq and focus their node on click).
+F022 live cost ticker (the COST tile renders from budget tick events with a bar
+fill against the limit, a '~' prefix and tooltip whenever the basis is
+estimated, a warn band at 85 % of the token limit, a spent-only variant for
+limitless jobs, and the ledger's own final figure replacing the live one at
+terminal with any delta labelled).
 
 Full per-feature state: [`docs/roadmap/STATUS.md`](docs/roadmap/STATUS.md)
 
