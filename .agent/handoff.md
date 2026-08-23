@@ -1,133 +1,96 @@
-# Handoff — F021 R41, closure round two and the LAST round of this branch
+# Handback — F022 R1, the feature claim
 
-Round base: `4db0a2e46f2fb0a6fe78364eea84c8220987a848` · branch
-`feature/f021-live-activity-feed` · block `.agent/authored/f021-r41.md`.
+Round base `c34ef32b` · branch `feature/f022-live-cost-ticker` · 8 commits · 0 findings resolved, 4 minted (R-0666..R-0669), open set 230.
+
+Fortschritt: ~0 % (T001 offen · T002 offen · T003 offen; diese Runde beansprucht
+             das Feature, rettet drei Entscheidungen, setzt das Review-Record
+             zurueck, gatet F021 R41 und registriert vier Findings — gebaut wird
+             ab R3) — Schaetzung
 
 ## Range
-
-Review of `4db0a2e46f2fb0a6fe78364eea84c8220987a848`..HEAD
-
-## Commits
-
-### 461b8e6f chore(agent): save the F021 R41 closure step block
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/authored/f021-r41.md | +295/-0 | C0a, the block saved byte for byte |
-
-### f6bf1c16 chore(agent): mirror the R41 block into last_block
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/last_block.md | +254/-379 | C0b, written from the committed C0a blob |
-
-### d9015922 docs(state): point the F021 plan at R41, closure round two
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/plan.md | +17/-17 | C1, the PLANF021R41 slice plus one newline |
-
-### 83428700 docs(review): record the R40 PASS and rule R-0663 by decision
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/live_review.md | +4/-0 | C2, RECORD41 and DONE0663 appended |
-
-### C3, this commit — docs(roadmap): close F021 with the STATUS line, the README sync and the closure candidates
-| Path | +/- | Reason |
-|---|---|---|
-| docs/roadmap/STATUS.md | n/a | the STATUSLINE slice replaces the `[~]` F021 line |
-| README.md | n/a | three capability-sync pairs |
-| .agent/candidates.md | n/a | the CANDIDATES slice, three closure candidates |
-| .agent/handoff.md | n/a | this file |
-
-`n/a`: C3's own numstat cannot exist inside the file C3 writes (§3 item 31).
+Review of `c34ef32b`..HEAD.
 
 ## Item status
+| Item | Commit | Status | Reason |
+|---|---|---|---|
+| C0a save this block | 6e39b9c0 | done | |
+| C0b mirror it | 23bf7ef5 | done | written from the C0a blob |
+| C1 plan | 6f9a7e16 | done | |
+| C2 context | df004de7 | done | |
+| C3 decision rescue | 388c6ccf | done | 3 units selected |
+| C4 review-record reset | 3c5b3f26 | done | 226 carried + 4 minted + GATE41 |
+| C5 empty candidates | f70e10c7 | done | |
+| C6 roadmap claim + handback | self-reference | done | SHA owed to the next round's ledger |
 
-| Item | Status | Reason |
-|---|---|---|
-| C0a save this block | done | |
-| C0b mirror it | done | |
-| C1 the plan | done | |
-| C2 the ledger, RECORD41 and DONE0663 | done | |
-| C3 the closure commit and the PR | done | the PR is created after this commit and is NOT merged |
+## Commits
+### 6e39b9c0 chore(agent): save the F022 R1 claim step block
+| Path | +/- | Reason |
+| `.agent/authored/f022-r1.md` | +419/-0 | byte-for-byte copy of the block |
+
+### 23bf7ef5 chore(agent): mirror the F022 R1 block into last_block
+| Path | +/- | Reason |
+| `.agent/last_block.md` | +392/-268 | mirrored from the committed C0a blob |
+
+### 6f9a7e16 docs(state): point the plan at F022 R1, the feature claim
+| Path | +/- | Reason |
+| `.agent/plan.md` | +26/-27 | PLANF022R1 whole-file replacement |
+
+### df004de7 docs(state): reset the context for the F022 branch
+| Path | +/- | Reason |
+| `.agent/context.md` | +31/-41 | CONTEXTF022R1 whole-file replacement |
+
+### 388c6ccf docs(state): rescue the three F021 decisions into decisions
+| Path | +/- | Reason |
+| `.agent/decisions.md` | +10/-0 | scripted append of D6, D7, D8 + RESCUENOTE |
+
+### 3c5b3f26 docs(state): reset the review record for F022 and register four findings
+| Path | +/- | Reason |
+| `.agent/live_review.md` | +38/-143 | scripted ENTRY-level rebuild |
+
+### f70e10c7 docs(state): empty the closure candidates file after registration
+| Path | +/- | Reason |
+| `.agent/candidates.md` | +4/-52 | CANDIDATES1 whole-file replacement |
+
+### C6 docs(roadmap): claim F022 in the status ledger (this commit)
+| Path | +/- | Reason |
+| `docs/roadmap/STATUS.md` | +1/-1 | CLAIM pair, `[ ]` → `[~]` |
+| `.agent/handoff.md` | self-reference | this file; cells owed to the next round |
 
 ## External actions
-
-- `git push -u origin feature/f021-live-activity-feed`, after C3.
-- `gh pr list --state open --json number,headRefName,baseRefName,isDraft` before and after create.
-- `gh pr create --base main --head feature/f021-live-activity-feed`. It runs AFTER
-  this commit, so its number cannot exist in the file C3 writes (§3 item 31); it is
-  carried in the round report and readable from `gh pr list`.
-- No `gh pr merge`, no worktree add or remove, no force push, no history rewrite.
+- `git fetch origin main` → `c34ef32b`, equal to local `main`.
+- `gh pr list --state open --json number,headRefName,baseRefName,isDraft` → `[]` (Open PR Gate, before the branch was cut).
+- `git checkout -b feature/f022-live-cost-ticker` at `c34ef32b`.
+- `git worktree add .remedy-wt/f022r1-wt HEAD` then `git worktree remove` → `git worktree list` back to 1 line.
+- `git push -u origin feature/f022-live-cost-ticker` follows C6; its outcome is in the round report, not here.
+- No `gh pr create`, no `gh pr merge`.
 
 ## Verification
-
-One line per gate; the transcripts stay in the round report.
-- G1 `.agent/STOP` ABSENT before C0a and again before C3, branch correct at both; `git status --porcelain` 0 lines after each of C0a, C0b, C1, C2; round base `4db0a2e46f2fb0a6fe78364eea84c8220987a848`.
-- G2 transport sha256 `5d70acad7ce3b7bd114be8d256db6a844fe5efc99320179bc5ddcf187298c70d`, 27341 bytes, 295 lines, EQUAL over the scratch file, the committed C0a blob and `.agent/last_block.md` at C0b.
-- G3 11 slices, 22 marker lines matched, CONTENT 116, TOTAL 295, PROSE 179 — TOTAL ≤ 490 (D6), PROSE ≤ 400 (D5); per-slice digests in the round report.
-- G4 `.agent/plan.md` == PLANF021R41 + one newline TRUE, negative control against the bare slice FALSE; 2107 bytes, last byte `0x0a`, `wc -l` 39 under 50, `^## Goal$` 1, `^## Next Steps$` 1.
-- G5 reader (a) base blob is a byte-exact PREFIX and the remainder is the ordered 9048 bytes — ACCEPT; reader (b) own blank-line split, 308 units, last two EQUAL RECORD41 then DONE0663 — ACCEPT; negative control, first byte of the RECORD41 paragraph flipped at unchanged length, REJECTED by BOTH readers; first 20 bytes `Gate: R41 — the R4`.
-- G6 base then C2: canonical `^- R-\d+ — ` 228 then 228; loose `^- R-` 229 then 229; `^Done: R-` 1 then 2; `^Done: R-0663 — ` 0 then 1; `^Landed: ` 0 then 0; `^Gate: R` 39 then 40; `^Gate: R41` 0 then 1; `^Recurrence: ` 16 then 16; ids ALL DISTINCT and maximum R-0665 at BOTH; OPEN 227 then 226.
-- G7 the FROM string counts 1 in its target for each of the four; after the edits `^- \[~\] F\d+ — ` 0 and `^- \[x\] F\d+ — ` 56 in `docs/roadmap/STATUS.md`.
-- G8 on the edited tree before `git commit`, serially, REAL exit codes: `tests/docs/` 0 at `295 passed`; `tests/orchestration/test_roadmap_index.py` 0 at `30 passed`; the four state readers 0 at `528 passed`, so passed+skipped 528; the canary `tests/cli/test_golden_path.py` 0 at `42 passed`. As-gated sha256 `35c44507…` for STATUS.md and `4fb40edf…` for README.md, each EQUAL to `git show C3:<path>` (round report).
-- G9 `git diff --name-only` set difference against `Change:` EMPTY at C2 and at C3; 4 commits before C3, every one single-parent, insertions 295, 254, 17, 4, each under 500; `^<<<SLICE ` and `^<<<END ` 0 for each of plan.md, live_review.md, STATUS.md, README.md, candidates.md; `git ls-files .remedy-wt` 0; `git worktree list` 1; every reflog row of this round reads `commit`, with 0 amend, 0 rebase and 0 cherry.
-- G10 `gh pr list` prints `[]`, then `gh pr create`; NOT merged.
-- G11 this file.
+- G1 `.agent/STOP` ABSENT before C0a and before C6; branch `feature/f022-live-cost-ticker`; `git status --porcelain` 0 lines after each of C0a, C0b, C1, C2, C3, C4, C5.
+- G2 sha256 `e07ad805e616fd573108041da87c341115e79b598df6c057fdbf411aa9f730a3` over 35426 bytes and 419 lines, EQUAL across the source file, the C0a blob, the C0b blob and the delegation's digest.
+- G3 extractor read 12 slices, 142 CONTENT lines, 24 marker lines from the C0a blob; TOTAL 419 ≤ 490 and PROSE 277 ≤ 400 — both reproduce constraint 10.
+- G4 plan/context/candidates each byte-equal to its slice plus one newline: True, True, True; the three bare-slice NEGATIVE CONTROLS each DIFFER: False, False, False.
+- G5 selector matched 3 units (`DECISION F021 D6/D7/D8`); in `.agent/decisions.md` `^## Rescued from the F021 review record` 0→1 and `^DECISION F021 D` 0→3; base blob is a byte-exact PREFIX, remainder 5489 bytes containing each unit exactly 1x; `.agent/live_review.md` at C3 unchanged at sha256 `71c8403f…`.
+- G6 `plan.md` `^## Goal$` 1, `^## Next Steps$` 1, `wc -l` 38 ≤ 50; `context.md` `^## Active Branch$` 1, `feature/` 1, `Steps` 1, `pytest` 1, `\bF\d{3}\b` 4; `live_review.md` `Steps` 17.
+- G7 exit 0, 528 passed + 0 skipped = 528.
+- G8 `tests/docs/` exit 0 at 295 passed; `tests/orchestration/test_roadmap_index.py` exit 0 at 30 passed.
+- G9 canary `tests/cli/test_golden_path.py` exit 0 at 42 passed.
+- G10 reader (a) base 228 entries / 2 `Done:` / 226 carried / 12 multi-unit, C4 230 entries / 0 `Done:`; reader (b) base 228 and 2, C4 230 and 0 — the two readers AGREE at both points. Control 1 (one printable byte at offset 12 of the FIRST carried entry, R-0570) REJECTED, true file ACCEPTED before and after; control 2 (delete R-0649's `  FIX:` continuation unit) REJECTED, while a unit-level reader read 230 ids in both files and could not fail it. Worktree removed; `git worktree list` 1 line.
+- G11 at C4: `^- R-` 230; `^- R-\d+ — ` 230, DISTINCT 230; `^Done: R-` 0; `^Landed: ` 0; `^Gate: R` keys 1, DISTINCT 1 (`Gate: R41`); `^Gate: R1` 0; MAXIMUM id `R-0669`, next free `R-0670`.
+- G12 base `^- \[~\] ` 0, `^- \[~\] F022 — ` 0, `^- \[ \] F022 — ` 1, `^- \[x\] ` 56 → at C6 1, 1, 0, 56.
+- G13 RANGE runs after C6 and reads C6; its reading is owed to the next round's ledger entry (§3 item 31) and is in the round report.
+- G14 no pull request created and none merged this round; the post-C6 `gh pr list` reading is likewise owed to the next round's ledger.
+- G15 this file; `wc -l` 96, within the ≤100 line cap a >5-commit bundle carries.
 
 ## Authored-text proofs
-
-Every slice was extracted from the COMMITTED C0a blob `461b8e6f` by its marker
-line, never from the prompt, and applied byte for byte. Transport digest EQUAL at
-all three points per G2; per-slice sha256, byte and line counts in the round report.
-
-## Closure values
-
-| Value | Reading |
-|---|---|
-| Verdict | PASS_WITH_RISKS — ACCEPTED |
-| Accepted HEAD | `a0a883f7bf47e92bd3c084d127bf56f5f4feaad2` |
-| Evidence job | `f021-closure` |
-| Package | `remedy-review-20260823-005026-READY_FOR_REVIEW.zip` |
-| Package SHA-256 | `be70b65dd4a397ac7697a3c37b2f5cfb1a52197c9434cde67dec4a0a502e3dd8` |
-| STATUS | `[~]` count 0, `[x]` count 56 |
-| README | 56 of 255 accepted, Tier 5 done 4 |
-| Open findings | 226 |
-| Resolved this round | R-0663, by DECISION, not by a patch |
-| Ids minted | none |
-
-## Fortschritt
-
-Fortschritt: ~100 % (T001, T002 und T003 gebaut und verifiziert ·
-             Integrations-Gate BESTANDEN · Evidence-Job und Review-Zip gebaut ·
-             STATUS-Zeile, README-Sync und Pull Request in dieser Runde —
-             danach ist F021 fertig) — Schaetzung
+- `.agent/authored/f022-r1.md` == the source block == the delegation digest (G2).
+- Every applied text was EXTRACTED from the committed C0a blob by marker line, never retyped: PLANF022R1, CONTEXTF022R1, CANDIDATES1 (all byte-equal plus one newline, G4), LRHEAD/R0666/R0667/R0668/R0669/GATE41 (all 38 added lines of C4 matched a slice line, 0 unsourced), RESCUENOTE, CLAIMFROM/CLAIMTO.
+- CLAIM pair: `TO contains FROM` false → REWRITE; FROM occurred exactly 1x BEFORE the replacement and 0x after; TO 1x after.
 
 ## Deviations & assumptions
-
-1. This file is 133 lines, over the ≤60 tier for a 5-commit round. Declared under
-   DECISION D15. The cause is mandated content: five per-commit tables, the
-   item-status table, eleven gate lines carrying both points of every two-point
-   reading, the `## Closure values` table and the verbatim Fortschritt block. No
-   section was dropped.
-2. Newline convention: a slice is the bytes strictly between its marker lines with
-   no terminating newline. `.agent/plan.md` and `.agent/candidates.md` are each
-   written as the slice plus exactly one terminating newline; G4 proves that for
-   plan.md against a negative control.
-3. `.agent/candidates.md` is a WHOLE-FILE replacement by the CANDIDATES slice. The
-   `Change:` list names the path and the slice is a complete document carrying the
-   same header, but no gate states its shape, so the reading is declared here.
-4. Reader (b) of G5 is defined as: a unit is a maximal run of non-blank lines,
-   joined with newlines and carrying no terminating newline. It found 308 units.
-5. C3's own numstat, its SHA, its `git status --porcelain` reading and the PR
-   number cannot exist inside the file C3 writes (§3 item 31) and are owed to the
-   next round's ledger entry.
-6. This round's own verdict has no on-disk gate entry by construction (§4 item 13,
-   block constraint 3). It lives in this file and in the pull request, and no
-   repair round is opened for that gap.
-7. No departure from the ordered commit sequence: C0a, C0b, C1, C2, C3, none
-   extra, none dropped, none reordered.
+- DECLARED, ordering: none. The bundle ran C0a, C0b, C1, C2, C3, C4, C5, C6 exactly as ordered, no extra and no dropped commit.
+- DECLARED, gate timing: G7, G8 and G9 ran against the C6 TREE (STATUS.md applied) immediately BEFORE the C6 commit rather than after it, because their results are mandated content of the handback that C6 itself carries. `.agent/handoff.md` is the only file that differed at run time, and no test in those five suites reads it (measured by grep over the gated paths).
+- MEASURED DISAGREEMENT with the block, reported and NOT reconciled (constraint 8): constraint 7 says 12 findings carry a `  FIX:` continuation unit; my script counts 11 such units across 12 multi-unit carried entries (the 12th, R-0665, carries two `Recurrence: ` units instead). R-0669's prose says the reset "drops the 16 `Recurrence:` paragraphs"; `^Recurrence: ` reads 16 at base and 2 at C4 — R-0665's two survive as continuation units of an open entry, exactly the mechanism R-0669 describes for D7.
+- DECISION D15 overage: NONE to declare. This handback measures 96 lines against the ≤100 cap a >5-commit bundle carries; no section was dropped and no transcript is inlined.
 
 ## Next
-
-The operator merges the pull request at the next feature's start through the Open
-PR Gate; the next session's FIRST reviewed round registers or rules every entry
-`.agent/candidates.md` carries and empties that file in the same round.
+The reviewer reviews `c34ef32b`..HEAD and issues the R1 verdict; R2 is the cost inventory.
