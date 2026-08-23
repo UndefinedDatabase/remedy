@@ -502,3 +502,34 @@ describe("snapshot + continuation summaries", () => {
     expect(result.continuation).toBeNull();
   });
 });
+
+// ---------------------------------------------------------------------------
+// The ledger's final budget figure (DECISION F022 D7 serves it, D8 renders it)
+// ---------------------------------------------------------------------------
+
+describe("budget_final transport", () => {
+  it("maps the ledger figure through unchanged", () => {
+    const payload = makeDashboardPayload({
+      budget_final: { spent_usd: 4.2, limit_usd: 8, basis: { cost: "actual" }, unmeasured_calls: 0 },
+    });
+    const result = normalizeDashboardPayload("abc-123", payload);
+    expect(result.budgetFinal).toEqual({
+      spent_usd: 4.2, limit_usd: 8, basis: { cost: "actual" }, unmeasured_calls: 0,
+    });
+  });
+
+  it("a null section stays null — the server says so for a job with no tick", () => {
+    const payload = makeDashboardPayload({ budget_final: null });
+    const result = normalizeDashboardPayload("abc-123", payload);
+    expect(result.budgetFinal).toBeNull();
+  });
+
+  it("a payload with no budget_final key at all yields null, never an empty object", () => {
+    const result = normalizeDashboardPayload("abc-123", makeDashboardPayload());
+    expect(result.budgetFinal).toBeNull();
+  });
+
+  it("the failure dashboard carries no ledger figure", () => {
+    expect(normalizeApiFailure("abc-123", ["dashboard"]).budgetFinal).toBeNull();
+  });
+});

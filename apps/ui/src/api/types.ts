@@ -1,7 +1,7 @@
 // The cost view is imported FROM `./costMetric` and never the other way round:
 // that module declares its own input and output types precisely so this import
 // direction stays acyclic.
-import type { CostMetricView } from "./costMetric";
+import type { BudgetTickFigures, CostMetricView } from "./costMetric";
 
 export type RemedyState = "done" | "current" | "pending" | "blocked" | "suggested";
 export type RemedyTaskKind = "goal" | "task" | "approval" | "apply" | "test" | "review" | "memory" | "proof" | "change";
@@ -208,4 +208,9 @@ export interface RemedyWorkerStatus {
   redaction: string;
 }
 
-export interface RemedyDashboard { jobId: string; title: string; description: string; conceptLabel: string; metrics: RemedyMetric[]; phases: RemedyPhase[]; tasks: RemedyTaskItem[]; activity: RemedyActivityItem[]; graph: { nodes: RemedyGraphNode[]; edges: RemedyGraphEdge[]; }; nextAction: RemedyNextAction; live: RemedyLiveState; apiHealth: RemedyApiHealth; pipeline: RemedyPipeline | null; resume: RemedyResume | null; projectSummary: RemedyProjectSummary | null; workerStatus: RemedyWorkerStatus | null; timelineEvents?: RemedyTimelineEvent[]; snapshot: RemedySnapshotSummary | null; continuation: RemedyContinuationSummary | null; promptTrace?: RemedyPromptTraceSummary | null; }
+/** `budgetFinal` is the LEDGER's own last budget tick, served as the dashboard's
+ *  `budget_final` (DECISION F022 D7). It is carried as the arriving payload
+ *  rather than as a decided view because `costReconciliation.ts` hands it to
+ *  `costMetricOf` unread — see DECISION F022 D8 clause 2. `null` means the job
+ *  emitted no tick at all, which stays absent rather than becoming a zero. */
+export interface RemedyDashboard { jobId: string; title: string; description: string; conceptLabel: string; metrics: RemedyMetric[]; budgetFinal: BudgetTickFigures | null; phases: RemedyPhase[]; tasks: RemedyTaskItem[]; activity: RemedyActivityItem[]; graph: { nodes: RemedyGraphNode[]; edges: RemedyGraphEdge[]; }; nextAction: RemedyNextAction; live: RemedyLiveState; apiHealth: RemedyApiHealth; pipeline: RemedyPipeline | null; resume: RemedyResume | null; projectSummary: RemedyProjectSummary | null; workerStatus: RemedyWorkerStatus | null; timelineEvents?: RemedyTimelineEvent[]; snapshot: RemedySnapshotSummary | null; continuation: RemedyContinuationSummary | null; promptTrace?: RemedyPromptTraceSummary | null; }

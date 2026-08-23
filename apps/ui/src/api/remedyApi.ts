@@ -159,6 +159,11 @@ export function normalizeDashboardPayload(
     description,
     conceptLabel: "Concept 01 of 10",
     metrics,
+    // The ledger's last budget tick, carried OPAQUELY: this mapper reads no
+    // figure out of it and decides nothing about it, which is what keeps
+    // `costMetric.ts` the single client-side arithmetic home. An absent section
+    // stays absent as `null` — never an empty object, never a zero.
+    budgetFinal: dashboard.budget_final ?? null,
     phases: phases.length > 0 ? phases : buildDefaultPhases(tasks),
     tasks,
     activity,
@@ -315,6 +320,8 @@ export function normalizeApiFailure(jobId: string, failedEndpoints: string[]): R
       { key: "done", label: "Done", value: 0 },
       { key: "progress", label: "Progress", value: 0, suffix: "%" },
     ],
+    // No endpoint answered, so there is no ledger figure either.
+    budgetFinal: null,
     phases: [],
     tasks: [],
     activity: [],
