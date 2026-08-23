@@ -168,6 +168,18 @@ describe("U6 malformed input is not an error", () => {
   it("a non-object basis marks the figure estimated", () => {
     expect(costMetricOf({ spent_usd: 1, limit_usd: 4, basis: "actual" }).estimated).toBe(true);
   });
+
+  it("a NEGATIVE spend with a usable limit is limitless, not a negative fill", () => {
+    // Finding R-0671: `usableFigure` already rejects a negative and the module
+    // was correct; the missing thing was the proof. A spend read as absent
+    // leaves no pair to divide, so the limitless variant is the answer rather
+    // than a bar drawn backwards.
+    const view = costMetricOf({ spent_usd: -1, limit_usd: 4 });
+    expect(view.fill).toBeNull();
+    expect(view.level).toBeNull();
+    expect(view.limitless).toBe(true);
+    expect(view.display).toBe("—");
+  });
 });
 
 describe("U7 no price arithmetic in the frontend", () => {
