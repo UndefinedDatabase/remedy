@@ -18,6 +18,14 @@ UI_SRC = REPO_ROOT / "apps" / "ui" / "src"
 BAR = UI_SRC / "components" / "metrics" / "TopMetricsBar.tsx"
 GLYPHS = UI_SRC / "components" / "icons" / "RemedyGlyphs.tsx"
 SHEET = UI_SRC / "components" / "metrics" / "TopMetricsBar.module.css"
+SHELL = UI_SRC / "components" / "shell" / "RemedyShell.tsx"
+TICKER = UI_SRC / "api" / "costTicker.ts"
+METRIC = UI_SRC / "api" / "costMetric.ts"
+
+#: The wire's own names for the figures a cost reading is derived from. Whoever
+#: names one of these is doing the arithmetic, so the set of files naming any of
+#: them IS the set of arithmetic homes.
+FIGURE_FIELDS = ("spent_usd", "spent_tokens", "limit_usd", "limit_tokens")
 
 #: The two banded levels. `normal` is deliberately absent: it is the state that
 #: needs no extra signal, so the never-colour-alone rule has nothing to say
@@ -87,6 +95,18 @@ def arithmetic_of(text: str) -> str:
     """The source with comments, quoted literals and JSX tag punctuation gone,
     leaving only operators the component actually evaluates."""
     return blank_quoted_literals(strip_ts_comments(text)).replace("</", "").replace("/>", "")
+
+
+def non_test_sources() -> list[Path]:
+    """Every shipped `.ts`/`.tsx` under `apps/ui/src`. Test files are excluded
+    because a fixture naming a wire field is describing the payload, not
+    deriving anything from it."""
+    return sorted(
+        path
+        for pattern in ("*.ts", "*.tsx")
+        for path in UI_SRC.rglob(pattern)
+        if not path.name.endswith((".test.ts", ".test.tsx"))
+    )
 
 
 def css_rules_naming(marks: tuple[str, ...]) -> list[tuple[str, str]]:
@@ -254,6 +274,55 @@ class TestTheOtherSevenMetricsAreUntouched:
         code = code_of(BAR)
         assert '{m.key === "progress" && (' in code, "the progress track keeps its own guard"
         assert "className={styles.progressTrack}" in code, "and its own class"
+
+
+class TestTheLiveTickReachesTheBar:
+    """The PATH F022 R10 built. `costMetricOf` was correct from R7 and drawn
+    from R8 while having no production caller at all, so the tile a user saw was
+    not merely empty — it was absent. These pin the seam that fixes that."""
+
+    def test_the_shell_hands_the_stream_budget_to_the_bar(self):
+        code = code_of(SHELL)
+        assert "metricsWithCostTicker(dashboard.metrics, stream.budget)" in code, (
+            "the bar's metrics must be composed with the live tick, or the cost "
+            "tile renders the load-time em dash forever"
+        )
+        assert "metrics={dashboard.metrics}" not in code, (
+            "the bare metrics array would bypass the ticker entirely"
+        )
+        assert 'from "../../api/costTicker"' in code, (
+            "the composition must be imported, not redeclared in the component"
+        )
+
+    def test_the_ticker_delegates_every_decision_to_the_cost_module(self):
+        code = code_of(TICKER)
+        assert "costMetricOf(" in code, (
+            "the ticker's whole job is to call the module that already decides "
+            "the unit, the denominator, the marker and the thresholds"
+        )
+        assert "/" not in arithmetic_of(TICKER.read_text()), (
+            "a division here would be a second arithmetic home for money"
+        )
+
+    def test_the_figure_fields_have_a_single_home(self):
+        homes = [
+            path.relative_to(REPO_ROOT).as_posix()
+            for path in non_test_sources()
+            if any(field in code_of(path) for field in FIGURE_FIELDS)
+        ]
+        assert homes == ["apps/ui/src/api/costMetric.ts"], (
+            "the backend is the single arithmetic home for money and "
+            f"{METRIC.name} is its only client-side reader; found {homes}"
+        )
+
+    def test_the_scan_reaches_the_one_file_it_asserts_about(self):
+        # Without this the clause above would pass just as happily over an empty
+        # file list, which is the vacuous-absence trap R-0559 records.
+        scanned = [path.relative_to(REPO_ROOT).as_posix() for path in non_test_sources()]
+        assert "apps/ui/src/api/costMetric.ts" in scanned
+        assert "apps/ui/src/api/costTicker.ts" in scanned
+        assert "apps/ui/src/api/budgetTick.ts" in scanned
+        assert len(scanned) > 40, f"the scan collected only {len(scanned)} files"
 
 
 class TestTheStylesheetUsesNamedTokens:

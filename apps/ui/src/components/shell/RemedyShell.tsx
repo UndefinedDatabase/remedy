@@ -10,6 +10,7 @@ import { DegradedBanner } from "./DegradedBanner";
 import styles from "./RemedyShell.module.css";
 import { browserBrainStreamEnv, createBrainStreamHostDeps } from "../../api/brainStreamDeps";
 import { useBrainStream } from "../../api/useBrainStream";
+import { metricsWithCostTicker } from "../../api/costTicker";
 
 export function RemedyShell({ dashboard, selectedNodeId, onSelectNode }: { dashboard: RemedyDashboard; selectedNodeId: string | null; onSelectNode: (nodeId: string | null) => void }) {
   // The cockpit subscribes HERE rather than in RemedyApp: the shell renders
@@ -45,7 +46,7 @@ export function RemedyShell({ dashboard, selectedNodeId, onSelectNode }: { dashb
       <div className={`${styles.shell} remedy-journey-shell`} data-ui="remedy-visual-v2">
         <LeftBrandRail dashboard={dashboard} />
         <main className={styles.main} data-testid="main-column">
-          <TopMetricsBar metrics={dashboard.metrics} />
+          <TopMetricsBar metrics={metricsWithCostTicker(dashboard.metrics, stream.budget)} />
           <CommandBar nextAction={dashboard.nextAction} onJump={handleJump} />
           <BrainGraphStage dashboard={dashboard} selectedNodeId={selectedNodeId} onSelectNode={onSelectNode} />
           <PhaseTimeline phases={dashboard.phases} timelineEvents={dashboard.timelineEvents} />
