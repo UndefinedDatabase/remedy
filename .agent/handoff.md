@@ -1,99 +1,100 @@
-# Handback — F022 Live cost ticker · Runde 7 (T002a)
+# Handback — F022 Live cost ticker · Runde 8 (T002b)
 
-Fortschritt: ~40 % (T001 fertig · T002 zur Haelfte nach dieser Runde · T003
-             offen; ab hier rechnet der Client die Fuellung und sonst nichts)
-             — Schaetzung
-
-Branch `feature/f022-live-cost-ticker`, round base `d97cdbb2`. Open set after C2: 231 records, maximum `R-0670`, two High carried forward (R-0495, R-0574), both inherited from closed features.
+Fortschritt: ~55 % (T001 fertig · T002 fertig nach dieser Runde · T003 offen;
+             der COST-Wert wird ab hier wirklich gezeichnet, mit Fuellung,
+             Schwelle und Schaetzmarke) — Schaetzung
 
 ## Range
-Review of d97cdbb2..HEAD — seven commits, C0a C0b C1 C2 C3 C4 C5, in the block's order.
+Review of 142af5e4..HEAD — eight commits, C0a C0b C1 C2 C3 C4 C5 C6, in the block's order. Branch `feature/f022-live-cost-ticker`, round base `142af5e4`. Open set after C2: 233 records, maximum `R-0672`, two High carried forward (R-0495, R-0574), both inherited from closed features.
 
 ## Commits
-### 1be0fff5 docs(state): save the F022 R7 step block
+### b88f3553 docs(state): save the F022 R8 step block as authored text
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f022-r7.md | +362/-0 | C0a — the block verbatim, 36027 bytes / 362 lines |
+| .agent/authored/f022-r8.md | +382/-0 | C0a — the block verbatim, 42013 bytes / 382 lines |
 
-### 77e3a0ad docs(state): mirror the F022 R7 block into last_block
+### d92cdf92 docs(state): mirror the F022 R8 block into last_block
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/last_block.md | +240/-166 | C0b — written from the committed C0a blob `bc1a9f5b` |
+| .agent/last_block.md | +245/-225 | C0b — written from the committed C0a blob `9d573bbd` |
 
-### a6ec63ab docs(state): point the F022 plan at R7
+### 8051fd56 docs(state): point the F022 plan at R8
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/plan.md | +18/-14 | C1 — slice PLANF022R7, whole-text replacement |
+| .agent/plan.md | +17/-18 | C1 — slice PLANF022R8, whole-text replacement |
 
-### fd530b7c docs(state): record the F022 R6 verdict and register R-0670
+### 6034b603 docs(state): record the F022 R7 verdict, resolve R-0653 and register two findings
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/live_review.md | +4/-0 | C2 — slice LEDGER7, finding and gate paragraph in ONE commit |
+| .agent/live_review.md | +8/-0 | C2 — slice LEDGER8: `Done: R-0653`, R-0671, R-0672 and `Gate: R7` in ONE commit |
 
-### c6b026bf docs(state): rule the client cost reading as DECISION F022 D4
+### 4d2681c4 docs(state): rule the F022 cost render as DECISION F022 D5
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/decisions.md | +18/-0 | C3 — slice DEC4, appended |
+| .agent/decisions.md | +20/-0 | C3 — slice DEC5, appended |
 
-### 8e34539b feat(ui): read one budget tick into the COST metric's render decisions
+### 4d728bf2 test(ui): pin the cost view with fixture-stream goldens
 | Path | +/- | Reason |
 |---|---|---|
-| apps/ui/src/api/costMetric.ts | +210/-0 | C4 — the pure module: unit, denominator, fill, level, marker, tooltip |
-| apps/ui/src/api/costMetric.test.ts | +212/-0 | C4 — U1–U7, 17 tests |
-| apps/ui/src/api/types.ts | +10/-1 | C4 — `RemedyMetricKey` gains `cost`, `RemedyMetric.cost?` added |
+| apps/ui/src/api/costMetric.test.ts | +91/-0 | C4 — GO1 tick stream, GO2 four hand-written goldens, GO3 coverage; no production byte |
 
-### C5 docs(state): hand back the F022 R7 cost-module round
+### 68cf3c16 feat(ui): draw the COST metric with its coin, marker, track and threshold
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/handoff.md | rewrite | C5 — this file; a handoff cannot table its own commit (R-0149) |
+| apps/ui/src/components/icons/RemedyGlyphs.tsx | +13/-0 | C5 — `CoinGlyph`, the coin `assets_spec.md` line 179 already specifies |
+| apps/ui/src/components/metrics/TopMetricsBar.module.css | +45/-0 | C5 — the cost track, its two banded patterns, the marker and the tooltip rows |
+| apps/ui/src/components/metrics/TopMetricsBar.tsx | +57/-13 | C5 — cost arm, estimate marker, fill track, tooltip, accessible name |
+| tests/ui_contracts/test_cost_metric_render.py | +270/-0 | C5 — P1–P8, 19 tests over comment-stripped source |
+
+### C6 docs(state): hand back the F022 R8 render round
+| Path | +/- | Reason |
+|---|---|---|
+| .agent/handoff.md | rewrite | C6 — this file; a handoff cannot table its own commit (R-0149) |
 
 ## Item status
 | Item | Status | Reason |
 |---|---|---|
-| C0a block save | done | |
-| C0b last_block mirror | done | |
+| C0a save this block | done | |
+| C0b mirror it into last_block | done | |
 | C1 the plan | done | |
-| C2 R6 verdict + R-0670 | done | |
-| C3 DECISION F022 D4 | done | |
-| C4 types + module + tests | done | |
-| C5 the handback | done | |
+| C2 the R7 verdict, one resolution and two findings | done | |
+| C3 DECISION F022 D5 | done | |
+| C4 the fixture-stream goldens | done | |
+| C5 the render and its source contract | deviated | `formatTokens` also removed from the component — P6 cannot pass while it stands; see Deviations |
+| C6 the handback | done | |
 
 ## External actions
-- `git worktree add .remedy-wt/g5 HEAD --detach` then `git worktree remove` — G5 mutation controls; removed, `git worktree list` back to one line.
-- `git worktree add .remedy-wt/g9 HEAD --detach` then `git worktree remove` — G9 red proofs; removed, `git worktree list` back to one line.
+- `git worktree add .remedy-wt/r8g5 68cf3c16` then `git worktree remove` (G5 controls), and `git worktree add .remedy-wt/r8g9 68cf3c16` then `git worktree remove` (G9 red proofs) — both removed, `git worktree list` back to one line.
 - `gh pr list --state open --json number,headRefName` → `[]`. No PR created, nothing merged.
-- `git push` on `feature/f022-live-cost-ticker` after C5 — the only remote write this round.
+- `git push` on `feature/f022-live-cost-ticker` after C6 — the only remote write this round.
 
 ## Verification
-- G1 EXIT 0 — `.agent/STOP` absent, read from disk before C0a and again before C5; branch `feature/f022-live-cost-ticker`; `git status --porcelain` 0 lines after each of C0a, C0b, C1, C2, C3 and C4.
-- G2 EXIT 0 — five readings (`.remedy-wt/f022-r7.md`, C0a blob `bc1a9f5b`, C0b blob `bc1a9f5b`, `.agent/last_block.md` on disk, `.agent/authored/f022-r7.md` on disk) are ALL sha256 `2ca2930d614185ef4b32f1db7c1885cc5f8793340cafac51be75c2d84377d831` over 36027 bytes and 362 lines; the digest the delegation names agrees.
-- G3 EXIT 0 — the extractor over the committed C0a blob printed 3 slices over 64 CONTENT lines; TOTAL re-measures at 362 and PROSE at 298, so constraint 11's numerals reproduce exactly.
-- G4 EXIT 0 — `.agent/plan.md` at `a6ec63ab` is byte-equal to PLANF022R7 plus exactly one newline, 2418 bytes against the bare slice's 2417; the bare-slice control is FALSE; `^## Goal$` 1, `^## Next Steps$` 1, 44 lines against the cap of 50.
-- G5 EXIT 0 — C2: round-base blob is a byte-exact PREFIX, remainder 8875 = 1 + 8873 + 1, independent splitter 256→258 with BOTH LEDGER7 paragraphs equal IN ORDER. C3: prefix holds, remainder 5128 = 1 + 5126 + 1, splitter 1278→1287 with all 9 DEC4 paragraphs equal in order, `^## DECISION F022 D4 ` counts 1. Controls in `.remedy-wt/g5`: bytes 504784 `R`→`r` and 506988 `t`→`T` (C2), 529223 `N`→`n` and 533968 SPACE→NUL (C3) — both readers rejected all four mutants and accepted the true file.
-- G6 EXIT 0 — base `d97cdbb2`: 230 records, all DISTINCT, maximum `R-0669`, `^Done: R-` 0, `^Landed: ` 0, `^Gate: R` 6 over 6 distinct keys. C2: 231 records, all DISTINCT, maximum `R-0670`, 0, 0, 7 over 7 distinct keys. ids ADDED {R-0670}, ids REMOVED {} — exactly the expected pair; `^## Steps$` 1; the map paragraph is byte-identical at base and at C2 (1065 bytes).
-- G7 EXIT 0 — `npm run typecheck` from `apps/ui` at C4, no output, agreeing with the reviewer's base reading.
-- G8 EXIT 0 — `npm run test:unit` from `apps/ui` at C4: 17 test files and 235 tests passed, against the base's 16 and 218 — a difference of +1 file and +17 tests, all in `costMetric.test.ts`. Node names: U1 "shows usd and divides by the usd limit", "enumerates BOTH limits with their own fills, usd line first"; U2 "takes the unit and the denominator from the token limit", "pins all three levels and both boundaries"; U3 "spend with no limit renders the spent-only variant", "never borrows the other unit's limit as a denominator"; U4 "only an actual basis of the shown unit clears the marker", "a tokens view reads the TOKENS basis and ignores the cost basis"; U5 "states a zero and pins singular against plural", "an absent count adds no line"; U6 "every shape yields a view and throws nothing", "a limit of zero is limitless rather than a division by zero", "a non-object basis marks the figure estimated"; U7 "the comment stripper actually removes something", "the code names no price, rate or tariff", "every numeric literal is one DECISION F022 D4 clause 5 permits"; and "formats dollars to two decimals and tokens on the 1k/1M rule".
-- G9 EXIT 1 on every mutant, all three inside `.remedy-wt/g9` driven from the primary install by constraint 8's route; the unmutated worktree ran 17 passed first. (a) denominator falls back to the OTHER unit's limit → 3 failed / 14 passed: both U2 cases and U3 "spend with no limit renders the spent-only variant"; U3's serialised-view case stayed GREEN — said plainly under Deviations. (b) warn threshold 0.85 → 0.95 → 2 failed / 15 passed: U2 "pins all three levels and both boundaries" as ordered, plus U7's literal guard catching the unpermitted 0.95. (c) `estimated` driven from `basis.cost` for every unit → 1 failed / 16 passed: exactly U4's tokens-unit discriminator. Before (b), before (c) and after (c) the worktree file was BYTE-EQUAL to blob `8e34539b:apps/ui/src/api/costMetric.ts`, sha256 prefix `476474f0de48b184`.
-- G10 EXIT 0 ×4, serially in the primary checkout at C4: `tests/ui_server/` 455 passed, `tests/orchestration/test_test_runner.py` 52, `tests/regression/test_resource_safety.py` 21, `tests/orchestration/test_integrity_gate.py` 16 — 544 in total, equal to the reviewer's base reading.
-- G11 EXIT 0 — `python3 -m pytest tests/ui_contracts/ -q`: 495 passed, 4 skipped, equal to the base reading; the two repo-wide sweeps take the new module in and stay green.
+- G1 EXIT 0 — `.agent/STOP` absent, read from disk before C0a and again before C6; branch `feature/f022-live-cost-ticker`; `git status --porcelain` 0 lines after every one of C0a, C0b, C1, C2, C3, C4 and C5.
+- G2 EXIT 0 — `.remedy-wt/f022-r8.md`, the committed C0a blob, the committed C0b blob and `.agent/last_block.md` on disk are ALL sha256 `a077de71476f731f7d7c857916269e002d2e66dcc3e29bfe7f9850fdefdb278d` over 42013 bytes and 382 lines, and the digest the delegation names is the fifth reading and agrees; C0a and C0b are the SAME git blob `9d573bbd`.
+- G3 EXIT 0 — the extractor over the committed C0a blob printed 3 slices (PLANF022R8, LEDGER8, DEC5) over 69 CONTENT lines; TOTAL re-measures at 382 and PROSE at 313 as TOTAL − CONTENT, so constraint 10's three numerals reproduce exactly.
+- G4 EXIT 0 — `.agent/plan.md` at `8051fd56` is byte-equal to PLANF022R8 plus exactly one newline, 2297 bytes against the bare slice's 2296; the bare-slice control is FALSE; `^## Goal$` 1, `^## Next Steps$` 1, 43 lines against the cap of 50.
+- G5 EXIT 0 — C2: the round-base blob is a byte-exact PREFIX, remainder 12211 = 1 + 12209 + 1, independent blank-line splitter 258→262 with ALL FOUR LEDGER8 paragraphs equal IN ORDER. C3: prefix holds, remainder 6761 = 1 + 6759 + 1, splitter 1287→1297 with all ten DEC5 paragraphs equal in order, `^## DECISION F022 D5 ` counts 1. Controls in `.remedy-wt/r8g5`: byte 513657 `D`→`E` and byte 525865 `.`→`/` (C2), byte 534341 `#`→`$` and byte 541099 `.`→`/` (C3) — both readers rejected all four mutants and accepted the true file.
+- G6 EXIT 0 — base `142af5e4`: 231 records, all DISTINCT, maximum `R-0670`, `^Done: R-` 0, `^Landed: ` 0, `^Gate: R` 7 over 7 distinct keys. C2: 233 records, all DISTINCT, maximum `R-0672`, `^Done: R-` 1 with distinct ids {R-0653}, `^Landed: ` 0, `^Gate: R` 8 over 8 distinct keys. ids ADDED {R-0671, R-0672}, ids REMOVED the EMPTY SET; `^- R-0653 — ` still occurs exactly once; `^## Steps$` 1; the map paragraph is byte-identical at base and at C2 (1074 bytes).
+- G7 EXIT 0 — `npm run typecheck` from `apps/ui` at C5, no output, agreeing with the reviewer's base reading.
+- G8 EXIT 0 — `npm run test:unit` from `apps/ui` at C5: 17 test files and 241 tests passed against the base's 17 and 235, so the file count holds and the test count rises by 6, every one of them C4's in `costMetric.test.ts` (17→23 tests in that file).
+- G9 EXIT 1 on every mutant, all three in `.remedy-wt/r8g9`; the unmutated worktree ran 19 passed and the unmutated scoped vitest 23 passed first. (a) the fill track rendered unconditionally with the `m.cost.fill !== null` guard dropped → 1 failed / 18 passed, `TestNoFakeDenominatorAtTheRenderLayer::test_the_track_is_guarded_on_a_real_fill`, which is P4. (b) the marker driven from `level === "warn"` instead of `estimated` → 2 failed / 17 passed, `TestTheMarkerIsTheBasisNotTheThreshold::test_the_marker_is_named_once_and_rendered_off_estimated` and `::test_no_expression_joins_the_marker_to_a_level`, which is P3 entire. (c) one figure in one golden, the warn entry's `fill: 0.85`→`0.84`, run as `npx vitest run src/api/costMetric.test.ts --root <wt>/apps/ui --config <primary>/apps/ui/vitest.config.ts` from the primary `apps/ui` → 1 failed / 22 passed, naming the entry `tick 1 renders $3.40 at level warn`, which is GO2. No mutation left the suite green; before each next mutation the worktree file was BYTE-EQUAL to its committed blob at `68cf3c16`.
+- G10 EXIT 0 ×4, serially in the primary checkout at C5: `tests/ui_server/` 455 passed, `tests/orchestration/test_test_runner.py` 52, `tests/regression/test_resource_safety.py` 21, `tests/orchestration/test_integrity_gate.py` 16 — 544 in total, equal to the reviewer's base reading.
+- G11 EXIT 0 — `python3 -m pytest tests/ui_contracts/ -q`: 514 passed and 4 skipped against the base's 495 and 4, a difference of exactly +19, which is C5's new file entire; both repo-wide sweeps read the edited component and stay green.
 - G12 EXIT 0 — `python3 -m pytest tests/cli/test_golden_path.py -q`: 42 passed, equal to the base reading.
-- G13 EXIT 0 — six commits before C5, every one single-parent; insertions 362, 240, 18, 4, 18 and 432, each under the 500 cap; the range path set equals the block's Change set minus `.agent/handoff.md`, the difference EMPTY in BOTH directions; `git show --numstat` agrees cell by cell with the tables above; lines BEGINNING `<<<SLICE ` or `<<<END ` count 0 in all three slice targets (6 each in the two block carriers, by construction); `git ls-files .remedy-wt` 0; one worktree; the six round reflog rows all carry operation `commit`, so amend 0, rebase 0, cherry 0.
-- G14 EXIT 0 — `gh pr list --state open --json number,headRefName` printed verbatim: `[]`.
-- G15 CHECKED, re-measured at C4 — branch point `c34ef32b` is the merge commit of PR #211; the vitest config still reads `environment: "node"` with `include: ["src/**/*.test.ts"]`; no `warn` token in `apps/ui/src/styles/tokens.css` or `globals.css`; R-0495 and R-0574 are both still on record; the `BUDGET_TICK_EVENT` comment R-0670 describes is unchanged in `packages/orchestration/ui_server.py`; `RemedyMetric.value` is still `number | "—"`; `costMetric.ts` carries NO import statement at all; `TopMetricsBar.tsx` still holds its private `formatTokens`; there is no `@types/node` in this workspace. Two residuals and one carried sentence are named under Deviations; no slice was edited.
+- G13 EXIT 0 — seven commits before C6, every one single-parent; insertions 382, 245, 17, 8, 20, 91 and 385, each under the 500 cap; the range path set is the block's Change set minus `.agent/handoff.md`, the difference EMPTY in both directions otherwise; `git show --numstat` agrees cell by cell with the tables above; lines BEGINNING `<<<SLICE ` or `<<<END ` count 0 in all three slice targets; `git ls-files .remedy-wt` 0; one worktree; `git status --porcelain` 0; the seven round reflog rows all carry operation `commit`, so 0 amend, 0 rebase and 0 cherry.
+- G14 EXIT 0 — `gh pr list --state open --json number,headRefName` printed verbatim: `[]`. No PR created, nothing merged.
+- G15 CHECKED, re-measured at C5 — branch point `c34ef32b` is still the merge base with `main`; the vitest config still reads `include: ["src/**/*.test.ts"]`; no tracked path contains `assumption` and `assumption_log` is still named by 76 docs; `usableFigure`'s quoted clause, U6's `{ spent_usd: -1, limit_usd: 4 }` case, `types.ts`'s type-only import and its optional `cost` field all read exactly as C2 states, and `costMetric.ts` is untouched by this round; each of the seven tokens constraint 9 names is defined exactly once in BOTH sheets; `assets_spec.md` line 179 is still the coin row; `ux_spec.md` §10 still carries both the 4-segment opening and the 6px/radius-3/`--remedy-blue-100`/350ms track; `.progressTrack` is still 5px over `rgba(76, 131, 255, 0.16)` at 600ms; `remedyApi.ts` is untouched and still builds seven metrics. One residual and one carried sentence are named below; no slice was edited.
 
 ## Authored-text proofs
-All three slices were extracted PROGRAMMATICALLY by marker line out of the committed C0a blob `bc1a9f5b`; none was retyped, rewrapped or reflowed.
-- PLANF022R7 → `.agent/plan.md` at `a6ec63ab`: byte-equal to the slice plus one newline, 2418 against the bare slice's 2417; the bare-slice control is FALSE.
-- LEDGER7 → `.agent/live_review.md` at `fd530b7c`: the round-base blob is a byte-exact prefix, remainder 8875 = 1 + 8873 + 1; the independent paragraph reader goes 256→258 with both slice paragraphs equal in order.
-- DEC4 → `.agent/decisions.md` at `c6b026bf`: prefix holds, remainder 5128 = 1 + 5126 + 1; the paragraph reader goes 1278→1287 with all 9 slice paragraphs equal in order.
+- PLANF022R8 → `.agent/plan.md` at `8051fd56`: extracted PROGRAMMATICALLY by marker line out of the committed C0a blob `9d573bbd`, never retyped, rewrapped or reflowed; byte-equal to the slice plus one newline, 2297 against the bare slice's 2296, with the bare-slice control FALSE.
+- LEDGER8 → `.agent/live_review.md` at `6034b603`: same extraction; the round-base blob is a byte-exact prefix and the remainder is 12211 = 1 + 12209 + 1; the independent paragraph reader goes 258→262 with all four slice paragraphs equal in order.
+- DEC5 → `.agent/decisions.md` at `4d2681c4`: same extraction; prefix holds and the remainder is 6761 = 1 + 6759 + 1; the paragraph reader goes 1287→1297 with all ten slice paragraphs equal in order.
 
 ## Deviations & assumptions
-- COMMIT SEQUENCE: no departure. C0a, C0b, C1, C2, C3, C4 and C5 landed in the block's order — seven commits, none added, none dropped, none reordered.
-- DECLARED CONTRADICTION (constraint 1): DEC4's REVERSE clause names deleting `costMetric.ts` with its test file and narrowing `RemedyMetricKey` back to seven strings, but does not name removing `RemedyMetric.cost`, which C4 also adds. The slice was applied byte for byte and not repaired.
-- DECLARED CONTRADICTION (constraint 1): DEC4's CONTEXT calls `RemedyMetricKey` a closed union of seven strings at `types.ts:3`; at C4 it holds eight members and sits at line 8. DEC4 scopes that sentence to `d97cdbb2` in its own opening words, so it reads as a base measurement rather than a stale claim; either way the slice was not edited.
-- G9(a) PARTIAL, said plainly: the mutation reddened U3's fill/level/limitless case as ordered, but U3's SECOND case — the serialised-view assertion — stayed GREEN under it, because the borrowed denominator leaks into `fill` while both tooltip lines stay separately guarded and empty. The ordered shape (ii) is red and the file is red; the serialised-view case simply does not reach that leak. Reported rather than repaired — strengthening it would need a second C4.
-- G15 RESIDUAL: PLANF022R7 states that `npm run lint` is red at base. The block's NOT A GATE paragraph forbids running it, so that sentence is CARRIED from the reviewer's base measurement rather than re-measured here.
-- ASSUMPTION, U7's reader: `costMetric.test.ts` reaches `node:fs` and `node:url` through `await import(<variable>)` rather than a static specifier. There is no `@types/node` in this workspace and the static form fails `npm run typecheck` with TS2307 on both modules — measured — while G7 gates that command at exit 0. Same modules, same file read off disk, with the two function shapes declared locally.
+- COMMIT SEQUENCE: no departure. C0a, C0b, C1, C2, C3, C4, C5 and C6 landed in the block's order — eight commits, none added, none dropped, none reordered.
+- DEVIATION FROM C5's "gains, and nothing more" LIST, AND THE CONTRADICTION IT EXPOSES (constraint 1): `TopMetricsBar.tsx` also LOST its private `formatTokens` and now imports `formatTokenCount` from `costMetric.ts` — P6 forbids any `/` outside a JSX tag or a string over the comment-stripped `.tsx`, `formatTokens` divides three times, so the ordered guard cannot pass while it stands, and `costMetric.ts`'s own comment already names R8 as the round that removes it; the two are the same algorithm, so the tokens metric's rendered output is unchanged, which is what constraint 6 asks for. DEC5's REVERSE clause then calls its four-item list "the whole of this round's production surface" WITHOUT naming that removal, so a reversal performed exactly as written leaves the component importing a formatter from a module D4's own reversal deletes, with no local replacement — the R-0672 shape recurring inside the clause R-0672 was raised about. The slice was applied byte for byte and NOT repaired.
+- G15 CARRIED SENTENCE: PLANF022R8 states that `npm run lint` is RED at base. The block's NOT A GATE paragraph forbids running it, so that one sentence is carried from the reviewer's base measurement rather than re-measured here. Every other file fact C1 through C5 land was re-measured at C5 and holds.
+- AS THE BLOCK ORDERS IT SAID: `.costTrack` and `.progressTrack` now DIFFER on disk — 6px, radius 3, `--remedy-blue-100`, 350ms against 5px, `rgba(76, 131, 255, 0.16)`, 600ms. `ux_spec.md` §10 specifies the first; `.progressTrack` predates that sentence and MetricsBar's other metrics are on this feature's Do-not-touch list, so the older rule was left exactly as it was (DECISION F022 D5 clause 5).
 
 ## Next
-R8 — T002's RENDER half: the COST metric in `TopMetricsBar.tsx`, its CSS tokens, the `remedyApi.ts` wiring and the shell seam that feeds it the live tick, plus the `tests/ui_contracts/` source guard. Before authoring it, Phase 1 rule 1: re-read `.agent/STOP` from disk, then the Open PR Gate.
+R9 — T003: the terminal reconciliation with its delta label, the live wiring through `remedyApi.ts` and `RemedyShell.tsx`, and the fake-job end-to-end. Before authoring it, Phase 1 rule 1: re-read `.agent/STOP` from disk, then the Open PR Gate.
