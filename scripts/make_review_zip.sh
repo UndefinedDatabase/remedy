@@ -5,12 +5,34 @@ ROOT="$(git rev-parse --show-toplevel)"
 cd "$ROOT"
 
 STAMP="$(date +%Y%m%d-%H%M%S)"
+
+# --- Publication target (package-hygiene amendment, 2026-08-23) ---
+# Finished packages are OPERATOR artifacts, not repository state, so they are published to a
+# sibling archive instead of the repository root. Two failures came from publishing into the root:
+# a worker cleaning up with `glob('remedy-review-*.zip')` reached ~78 of them, and every package
+# showed up in `git status` as an 80 MB untracked file. REMEDY_REVIEW_DIR redirects the target; a
+# RELATIVE value resolves against the repository root, which is how the test suites point the
+# pipeline at their own mini repository instead of the operator's archive.
+if [[ -z "${REMEDY_REVIEW_DIR:-}" ]]; then
+  if [[ -z "${HOME:-}" ]]; then
+    echo "REVIEW_ZIP_ERROR: neither REMEDY_REVIEW_DIR nor HOME is set; cannot resolve the" >&2
+    echo "package target directory. Set REMEDY_REVIEW_DIR explicitly." >&2
+    exit 2
+  fi
+  REMEDY_REVIEW_DIR="$HOME/Repos/remedy-history/zips"
+fi
+case "$REMEDY_REVIEW_DIR" in
+  /*) ;;
+  *) REMEDY_REVIEW_DIR="$ROOT/$REMEDY_REVIEW_DIR" ;;
+esac
+mkdir -p "$REMEDY_REVIEW_DIR"
+
 # Round 34 F1: there is NO public intermediate ZIP. The Python coordinator derives the exact
 # status-bearing final path from the verified in-memory manifest and publishes its private `.part`
 # DIRECTLY to it. This shell never creates, deletes, validates or renames a public temporary ZIP; it
 # only passes the final-name TEMPLATE (with a {package_status} placeholder) and trusts the coordinator's
 # verified JSON result. The single publication and all Git/publication decisions live in `safe_publish`.
-FINAL_TEMPLATE="remedy-review-${STAMP}-{package_status}.zip"
+FINAL_TEMPLATE="${REMEDY_REVIEW_DIR}/remedy-review-${STAMP}-{package_status}.zip"
 
 # F3 (round 29) collision safety for the ONE remaining root scratch path this invocation writes — the
 # root manifest. NEVER delete or overwrite a TRACKED project file that collides with it — refuse loudly
@@ -246,6 +268,8 @@ find . \
     -path './*/.tox' -o \
     -path './.coverage_reports' -o \
     -path './*/.coverage_reports' -o \
+    -path './.remedy-wt' -o \
+    -path './*/.remedy-wt' -o \
     "${EVIDENCE_EXCLUDE_ARGS[@]}" \
     -false \
   \) -prune -o \
@@ -488,13 +512,22 @@ _ALIGN_FROM_RESULT="$(_result_field review_subject_alignment)"
 ALIGNMENT_VERDICT="${_ALIGN_FROM_RESULT:-$ALIGNMENT_VERDICT}"
 OUT="$(_result_field final_path)"
 FINAL_SHA="$(_result_field final_sha256)"
+# The coordinator returns a repository-relative path when it published INSIDE the repository and an
+# absolute one when it published to the archive outside it. Resolve both to the one full path every
+# status line and every read-only check below names, so the operator is never shown a bare filename
+# they then have to guess the directory for.
+if [[ "$OUT" == /* ]]; then
+  ZIP_FULL_PATH="$OUT"
+else
+  ZIP_FULL_PATH="${ROOT}/${OUT}"
+fi
 
-if [[ -z "$OUT" || ! -f "$OUT" ]]; then
+if [[ -z "$OUT" || ! -f "$ZIP_FULL_PATH" ]]; then
   echo "REVIEW_ZIP_ERROR: coordinator reported no published ZIP (final_path='$OUT')." >&2
   exit 3
 fi
 # The published ZIP must be the exact bytes the coordinator verified before publication.
-ACTUAL_SHA="$(sha256sum "$OUT" | awk '{print $1}')"
+ACTUAL_SHA="$(sha256sum "$ZIP_FULL_PATH" | awk '{print $1}')"
 if [[ -n "$FINAL_SHA" && "$ACTUAL_SHA" != "$FINAL_SHA" ]]; then
   echo "REVIEW_ZIP_ERROR: published ZIP sha256 ($ACTUAL_SHA) != coordinator-verified sha256 ($FINAL_SHA)." >&2
   exit 3
@@ -504,9 +537,9 @@ fi
 # The coordinator already verified typed membership and hashes; these are a defensive, READ-ONLY
 # re-scan of the published ZIP. On any problem the shell exits non-zero and reports it, but NEVER
 # deletes or rewrites the published, coordinator-verified package.
-ZIP_LISTING="$(unzip -Z1 "$OUT")"
+ZIP_LISTING="$(unzip -Z1 "$ZIP_FULL_PATH")"
 
-BAD="$(echo "$ZIP_LISTING" | grep -E '(^|/)(__pycache__|node_modules|\.git|\.data|\.venv|venv|htmlcov|\.tox|\.coverage_reports)(/|$)|\.pyc$|\.pyo$|(^|/)\.env($|\.)|\.log$|(^|/)\.coverage$|(^|/)coverage\.xml$' || true)"
+BAD="$(echo "$ZIP_LISTING" | grep -E '(^|/)(__pycache__|node_modules|\.git|\.data|\.venv|venv|htmlcov|\.tox|\.coverage_reports|\.remedy-wt)(/|$)|\.pyc$|\.pyo$|(^|/)\.env($|\.)|\.log$|(^|/)\.coverage$|(^|/)coverage\.xml$' || true)"
 if [[ -n "$BAD" ]]; then
   echo "REVIEW_ZIP_ERROR: unsafe file found in published zip (not deleting the coordinator-verified package):"
   echo "$BAD"
@@ -584,7 +617,8 @@ echo "PACKAGING_CWD=$(pwd)"
 echo "EVIDENCE_DIR=${EVIDENCE_DIR:-(none)}"
 echo "REVIEW_SUBJECT_ALIGNMENT=${ALIGNMENT_VERDICT}"
 echo "EVIDENCE_AUTHORITATIVE=${EVIDENCE_AUTH}"
-echo "ZIP_PATH=${ROOT}/${OUT}"
+echo "REVIEW_PACKAGE_DIR=${REMEDY_REVIEW_DIR}"
+echo "ZIP_PATH=${ZIP_FULL_PATH}"
 if [[ "$PACKAGE_STATUS" != "READY_FOR_REVIEW" ]]; then
   echo "DO_NOT_COMMIT=true"
   echo "============================================"
@@ -598,7 +632,7 @@ else
   echo
 fi
 
-du -h "$OUT"
+du -h "$ZIP_FULL_PATH"
 echo "Included files: $(echo "$ZIP_LISTING" | wc -l | tr -d ' ')"
 echo "Branch: $BRANCH"
 echo "Commit: $COMMIT"

@@ -1,9 +1,0 @@
-{
- "changed_files": [
-  "packages/core/models.py",
-  "tests/cli/test_golden_path.py"
- ],
- "schema_version": "1.0.0",
- "task_id": "T003",
- "task_title": "Task T003"
-}

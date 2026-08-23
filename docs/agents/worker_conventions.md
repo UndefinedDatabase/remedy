@@ -23,6 +23,9 @@
    Deviation only on technical impossibility, with an assumption_log entry.
 6. Verify before claiming (P1). Run the task's verification commands and
    include real output. "Should work" is not a status.
+7. Never delete by glob or pattern. Delete only paths the task names one by
+   one, plus your own round's scratch. Operator artifacts (packages, evidence,
+   logs) are never deleted — move only on explicit order (2026-08-23).
 
 ## Completion report (required fields)
 

@@ -182,13 +182,25 @@ def verify_published_identity(source_fd: int, final_path: str,
 def git_tracked_status(path: str, repo_root: str) -> tuple[str, str]:
     """Round 33 F2: interpret ``git ls-files --error-unmatch`` by EXACT exit code, never by
     ``returncode != 0``. Returns ``(status, diagnostic)`` where status is one of ``TRACKED`` (exit 0),
-    ``UNTRACKED`` (exit 1 — the exact "path is not tracked" result), ``GIT_FAILED`` (any other exit,
-    e.g. 128 repo/index/permission error), ``GIT_TIMED_OUT`` or ``GIT_UNAVAILABLE``. Only ``UNTRACKED``
-    lets publication proceed; every other state (including a Git-internal failure) blocks."""
+    ``UNTRACKED`` (exit 1 — the exact "path is not tracked" result), ``OUTSIDE_REPO`` (the path does
+    not lie under ``repo_root``, so it cannot be a tracked file OF that repository and Git is never
+    consulted), ``GIT_FAILED`` (any other exit, e.g. 128 repo/index/permission error),
+    ``GIT_TIMED_OUT`` or ``GIT_UNAVAILABLE``. Only ``UNTRACKED`` and ``OUTSIDE_REPO`` let publication
+    proceed; every other state (including a Git-internal failure) blocks.
+
+    ``OUTSIDE_REPO`` exists because the review package is published to the operator's archive next to
+    the repository (package-hygiene amendment, 2026-08-23). Asking Git about such a path yields exit
+    128 ("is outside repository"), which this function must keep reading as a hard block for paths it
+    was actually asked about — so the out-of-repo case is decided by path containment BEFORE the
+    subprocess runs, never by reinterpreting a Git error."""
     try:
-        rel = os.path.relpath(os.path.abspath(path), os.path.abspath(repo_root))
+        abs_path = os.path.abspath(path)
+        abs_root = os.path.abspath(repo_root)
+        rel = os.path.relpath(abs_path, abs_root)
     except ValueError:
-        return "GIT_FAILED", "output path is not within the repository root"
+        return "OUTSIDE_REPO", "output path is not within the repository root"
+    if abs_path != abs_root and not abs_path.startswith(abs_root + os.sep):
+        return "OUTSIDE_REPO", ""
     try:
         r = subprocess.run(["git", "ls-files", "--error-unmatch", "-z", "--", rel],
                            cwd=repo_root, capture_output=True, text=True, timeout=10)
@@ -210,7 +222,7 @@ def _assert_untracked(path: str, repo_root: str) -> None:
     if status == "TRACKED":
         raise PublishCollisionError(
             f"refusing to write output over TRACKED project file {path!r}")
-    if status != "UNTRACKED":
+    if status not in ("UNTRACKED", "OUTSIDE_REPO"):
         # A repository/index/permission/invocation/Git-internal failure is NEVER interpreted as
         # untracked — publication fails closed with a bounded diagnostic.
         raise PublishCollisionError(
