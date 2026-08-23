@@ -15,23 +15,22 @@ spent-only variant with no fake denominator, and the terminal reconciliation
 displays the ledger figure with any delta labelled.
 
 ## Current Step
-R8 records the R7 verdict, resolves R-0653, registers R-0671 and R-0672, rules
-DECISION F022 D5, and closes T002 with the RENDER half: the coin glyph, the
-formatted value, the estimate marker, the fill track and the threshold
-treatment, pinned by fixture-stream goldens and a source contract.
+R9 records the R8 verdict, registers R-0673, records the R-0672 recurrence and
+ends the session cleanly. It builds nothing: T001 and T002 are complete, the
+session's round budget is spent, and a verdict that lives only in a session is
+a verdict that did not happen.
 
 ## Next Steps
-1. R9 T003 the terminal reconciliation, the delta labelling, the live wiring
+1. R10 T003 — the terminal reconciliation, the delta labelling, the live wiring
    through `remedyApi.ts` and `RemedyShell.tsx`, and the fake-job end-to-end.
-2. R10 the integration gate.
-3. R11 closure.
+2. R11 the integration gate.
+3. R12 closure.
 
 ## Risks
-- T002 was split across R7 and R8 because its logic half is testable under the
-  node-environment vitest and its render half is not: the config collects
-  `src/**/*.test.ts` only, so the component is gated by a `tests/ui_contracts/`
-  source contract instead. The live WIRING moved to R9 with T003, where the
-  feature file already puts the end-to-end.
+- Three F022 findings are open and all are Low: R-0671 wants one assertion in
+  `costMetric.test.ts` pinning a negative spend as the limitless view; R-0672
+  and its recurrence want the next DECISION on this ground to state a complete
+  reversal; R-0673 is a reviewer-gate defect that has already been paid for.
 - The two High findings carried forward, R-0495 and R-0574, are inherited from
   the already-closed F085 and F086 and are documented risks rather than F022
   defects.
