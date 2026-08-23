@@ -42,11 +42,17 @@ stream carries today on both the Python and the TypeScript side, and what the
 metrics bar renders now, each MEASURED in the source → R4 rule the tick envelope
 as a DECISION → R5 T001a the tick emission in `should_stop`, its
 humanize-catalog key and its backend tests → R6 T001b the SSE envelope, which
-carries none of the tick's figures today → R7 T002 the COST metric → R8 T003
-the terminal reconciliation and the delta labelling → R9 the integration gate →
-R10 closure. This section is the only place the round map is stated, per
+carries none of the tick's figures today → R7 T002a the COST metric module and
+the DECISION that rules its semantics → R8 T002b the render, its goldens and its
+source contract → R9 record the R8 verdict and end that session at its round
+budget → R10 T003a the live wiring, which gives the cost module its first
+production caller, plus the R9 verdict and this map repair → R11 T003b the
+terminal reconciliation and the delta labelling → R12 the integration gate →
+R13 closure. This section is the only place the round map is stated, per
 R-0447's remedy, and a round whose scope this map does not describe repairs the
-map in that same block or is not emitted, per R-0455.
+map in that same block or is not emitted, per R-0455. The map is repaired at R10
+rather than at R9 because R9 discovered the drift and had no pair over this file
+in its change set.
 
 ## Findings
 
