@@ -1,6 +1,11 @@
+// The cost view is imported FROM `./costMetric` and never the other way round:
+// that module declares its own input and output types precisely so this import
+// direction stays acyclic.
+import type { CostMetricView } from "./costMetric";
+
 export type RemedyState = "done" | "current" | "pending" | "blocked" | "suggested";
 export type RemedyTaskKind = "goal" | "task" | "approval" | "apply" | "test" | "review" | "memory" | "proof" | "change";
-export type RemedyMetricKey = "open" | "planned" | "done" | "progress" | "tests" | "proof" | "tokens";
+export type RemedyMetricKey = "open" | "planned" | "done" | "progress" | "tests" | "proof" | "tokens" | "cost";
 
 export interface RemedyMetric {
   key: RemedyMetricKey;
@@ -12,6 +17,10 @@ export interface RemedyMetric {
   state?: "pass" | "fail" | "none";
   /** True when the value is not derivable (e.g. data root unavailable). */
   unknown?: boolean;
+  /** Present only on the `cost` metric. `value`, `suffix` and `tooltip` cannot
+   *  hold a limit, a basis or a threshold, so the whole cost reading arrives as
+   *  one already-decided view — see DECISION F022 D4. */
+  cost?: CostMetricView;
 }
 
 /** Safe aggregate snapshot / apply-record truth. "unknown" when data root is unavailable. */
