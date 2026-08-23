@@ -7247,3 +7247,74 @@ no production path is reversed here; a later round that builds against it
 reverses its own paths under its own decision. That is every path this round's
 Change set holds, which is what R-0672 and its recurrence require of a reversal
 instruction.
+
+## DECISION F022 D8 — when the ledger figure replaces the live one, and what the delta says
+
+CONTEXT. DECISION F022 D7 ruled the SOURCE of the terminal reconciliation: the
+last `budget.tick` in the job's run log, served as the dashboard's
+`budget_final`. It deliberately ruled nothing about WHEN the client swaps the
+live value for that one, nor about what counts as a delta worth showing, because
+no client code existed to rule over. Measured at `5d3e6045`: the shell holds the
+latest received tick on `stream.budget` and hands it to the bar through
+`metricsWithCostTicker`, while `budget_final` reaches the payload and has NO
+client reader at all — the dashboard type does not name it.
+
+CHOSEN, clause by clause.
+
+1. THE TRIGGER is terminal AND a ledger figure: the reconciliation runs exactly
+when the dashboard's `live.running` is false and the ledger figure is not null.
+While the job runs, the ledger's last tick and the client's last tick are the
+same event, so rendering one as "final" would claim a finality the run has not
+earned — and it would do so in the feature built to stop exactly that.
+
+2. THE FIGURE SHOWN IS THE LEDGER'S, and it is rendered through `costMetricOf`
+like any other tick. The reconciliation module chooses no unit, no denominator,
+no marker and no threshold; it hands the ledger payload to the module that
+already owns those rules. This is what keeps the arithmetic home single, and
+`tests/ui_contracts/test_cost_metric_render.py` enforces it independently, as
+measured at `5d3e6045`.
+
+3. THE DELTA IS LABELLED WHEN THE DISPLAYS DIFFER, and it is named rather than
+computed. The comparison is between the ledger view's `display` string and the
+received view's `display` string. Comparing the DISPLAYS rather than the raw
+figures is the deliberate half: both sides are the same producer's counters, so
+a real missed frame moves the shown value, while a difference below the display
+precision would render as a label naming two identical figures — a sentence that
+contradicts itself on the reader's screen and teaches them to ignore the next
+one. ACCEPTED COST, stated rather than hidden: a transport gap smaller than two
+decimal places, or smaller than the token formatter's own rounding, is not
+surfaced. The figure shown is the ledger's and therefore correct either way;
+what is lost is only the notice, and a notice nobody can verify against the
+screen is worth less than the trust it spends.
+
+4. AN ABSENT SIDE IS ABSENT. No received figure at terminal renders the ledger
+figure with NO label, because a label naming an em dash as the live estimate
+would invent a reading the client never took. No ledger figure changes nothing
+at all and the live tile stands, which is the same honesty rule that stops a
+limitless job fabricating a denominator.
+
+ALTERNATIVES CONSIDERED. Comparing the raw figures: rejected for the
+self-contradicting on-screen label clause 3 describes. Reconciling whenever a
+ledger figure exists, without the running check: rejected because it claims
+finality mid-run. Rendering the difference itself as a magnitude: rejected twice
+over, because the feature file's own wording names both values rather than their
+difference, and a magnitude is the second arithmetic D7's closing clause forbids
+the client. Holding the reconciliation in `costTicker.ts` instead of a new
+module: rejected because that module's contract is the LIVE tick, and a second
+responsibility there would put the terminal rules where nobody searching for
+them would look.
+
+REVERSE IT path by path, derived from this round's Change set rather than from
+the files most in mind. Delete `apps/ui/src/api/costReconciliation.ts` and
+`apps/ui/src/api/costReconciliation.test.ts`. In `apps/ui/src/api/types.ts`
+remove `budgetFinal` from `RemedyDashboard` and `costFinalNote` from
+`RemedyMetric`. In `apps/ui/src/api/remedyApi.ts` remove the `budget_final`
+mapping, and in `apps/ui/src/api/remedyApi.test.ts` its three cases. In
+`apps/ui/src/components/shell/RemedyShell.tsx` unwrap the call so
+`metricsWithCostTicker(dashboard.metrics, stream.budget)` is again the whole
+argument. In `apps/ui/src/components/metrics/TopMetricsBar.tsx` remove the note
+render, and in `tests/ui_contracts/test_cost_metric_render.py` the class that
+pins it. In `.agent/plan.md` and `.agent/live_review.md` nothing is reversed:
+those record round history rather than this decision. That is every path this
+round's Change set holds, which is what R-0672 and its recurrence require of a
+reversal instruction.
