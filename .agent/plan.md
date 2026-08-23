@@ -1,44 +1,44 @@
-# Plan — F022 Live cost ticker
+# Plan — F031 Decision inbox
 
-Branch: feature/f022-live-cost-ticker, cut from `main` at `c34ef32b`, the merge
-commit of pull request #211. `.agent/live_review.md` is the source of truth for
-the open set, the round map and the finding-id ceiling.
+Branch: feature/f031-decision-inbox, cut from `main` at `6325ac2f`, the merge
+commit of pull request #213 which closed F022. `.agent/live_review.md` is the
+source of truth for the open set, the round map and the finding-id ceiling.
 
 ## Goal
-Money is visible while it burns, honestly: the MetricsBar's COST metric renders
-from budget tick events {spent, limit, basis} — bar fill against the limit, a
-'~' prefix plus tooltip whenever the basis is estimated, warn colour at ≥85% —
-and the final figure reconciles with the ledger at terminal. DONE when the
-ticker tracks a fixture stream exactly, basis changes flip the prefix and
-tooltip live, the warn threshold triggers per tokens, limitless jobs render the
-spent-only variant with no fake denominator, and the terminal reconciliation
-displays the ledger figure with any delta labelled.
+Every open question in one calm place: the inbox renders decision cards — type,
+age, blocked-subtree size — from the file-based decision queue, live via
+decision.requested and decision.resolved events driving the badge, with
+branch-only blocking semantics intact. DONE when the inbox lists fixture
+decisions of every producing type with correct blocked-size math, answering from
+a card round-trips through the write channel into the same effects the CLI
+produces, the badge tracks live, and ordering follows a documented rule over age
+and blocked size rather than vibes.
 
 ## Current Step
-R19 closes F022. It records the R18 verdict, flips the STATUS line to `[x]`
-with the evidence job, package and SHA-256 that R18 produced, syncs the README
-capability list in that same commit, writes this closure's one candidate to
-`.agent/candidates.md`, and opens the pull request without merging it.
+R1 claims F031. It advances this plan, flips the STATUS line to `[~]`, resets
+the review record for the new feature, writes the F022 R19 gate entry that
+closes that feature's record, registers the single candidate F022 carried as
+R-0677, and empties `.agent/candidates.md` in the same round.
 
 ## Next Steps
-1. The next session's Open PR Gate merges this pull request before any new
-   feature is claimed, which is the operator's manual-review window.
-2. That session's FIRST reviewed round registers or rules the candidate this
-   round records and empties `.agent/candidates.md` in the same round.
+1. R2 records the R1 verdict on disk.
+2. R3 takes the decision-inbox inventory in the source and MEASURES each part:
+   the file-based queue store and its CLI, every producer that writes a
+   decision, the DAG module's blocked-subtree entry point, and the decision
+   event kinds the stream carries today on the Python and the TypeScript side.
+3. T001 follows the feature file's Task slicing once that inventory is on disk.
 
 ## Risks
-- The closure PR is created but NOT merged by the round that makes it. Merging
-  it here would close the operator's only review window.
-- This round's own verdict has no on-disk gate entry by construction (§4 item
-  13). It lives in `.agent/handoff.md` and in the pull request, and no repair
-  round is opened for that gap.
-- Open F022 findings: R-0672 and R-0625 want their next-DECISION and
-  next-numeral clauses honoured; R-0431, R-0413 and R-0533 are recorded and
-  already paid for; R-0674, R-0675 and R-0676 are registered and repaired by
-  none, their subjects being landed append-only text; and R-0445 is a standing
-  defect of `docs/agents/integration_gate.md`, routed by the finding itself.
-- The two High findings carried forward, R-0495 and R-0574, are inherited from
-  the already-closed F085 and F086 and are documented risks, not F022 defects.
-- R-0403 is open and this package shows it: `.remedy-wt/` scratch is a large
-  share of every review zip built on this machine. It routes to a paydown
-  branch and is not an F022 defect.
+- The open set carried into F031 is R-0403, R-0413, R-0431, R-0445, R-0495,
+  R-0533, R-0574, R-0625, R-0672, R-0674, R-0675 and R-0676, each re-read in the
+  record at `6325ac2f` and carrying no resolution line there, plus R-0677 which
+  R1 mints. R-0495 and R-0574 are the two Highs, both inherited from the
+  already-closed F085 and F086 and neither an F031 defect.
+- That set is NOT mechanically derivable from `.agent/live_review.md`. The
+  record carries no machine-readable resolution marker, so the §3 item 10 rule
+  yields 235 where the practice yields 12, and the plan's Risks section is the
+  only carrier. R3 rules how the open set is to be derived; until it does, this
+  bullet is the set.
+- F031 depends on F009, F050 and F051. F009 is closed; whether F050 and F051 are
+  built is UNMEASURED at this commit and R3's inventory settles it before any
+  T-slice is planned.
