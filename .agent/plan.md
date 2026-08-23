@@ -15,26 +15,26 @@ spent-only variant with no fake denominator, and the terminal reconciliation
 displays the ledger figure with any delta labelled.
 
 ## Current Step
-R15 runs the integration gate over the whole suite, branch against base, and
-records the R14 verdict with two recurrences. It builds nothing: T001, T002 and
-T003 are all complete, and what remains unmeasured is whether this branch broke
-anything outside its own scoped gates.
+R16 records the R15 verdict, registers the R-0445 recurrence, repairs the round
+map and ends the session cleanly. It builds nothing: T001, T002 and T003 are
+complete, the integration gate has passed, and a verdict that lives only in a
+session is a verdict that did not happen.
 
 ## Next Steps
-1. R16 closure, per docs/roadmap/STATUS_closure_protocol.md — evidence job, a
-   FRESH review zip, the authored STATUS line, and the PR created last.
+1. R17 closure, per docs/roadmap/STATUS_closure_protocol.md — the evidence job
+   and a FRESH review zip are mandatory, the reviewer authors the STATUS line,
+   and the worker commits it last and creates the PR.
 
 ## Risks
-- A branch-only failure that reproduces serially and touches feature code is a
-  BLOCKER, not a note. It ends R15 and buys its own reviewer-gated repair round
-  before closure can start.
-- The base worktree needs `apps/ui/node_modules` copied with its symlinks
-  PRESERVED. Dereferencing them is what turned a parity restore into 7 base-only
-  failures at F085 R23, and the copy call's default is the dereferencing one.
+- The closure PR is created but NOT merged by the round that makes it: it merges
+  at the NEXT feature's Open PR Gate, which is what preserves the operator's
+  manual-review window.
 - Open F022 findings: R-0672 and R-0625 want their next-DECISION and
   next-numeral clauses honoured, and R-0672 gained a third instance at R14;
-  R-0431, R-0413 and R-0533 are reviewer-block defects already recorded and
-  already paid for.
+  R-0431, R-0413, R-0533 and R-0445 are already recorded and already paid for.
+- R-0445 is a standing defect of `docs/agents/integration_gate.md` itself, not
+  of this branch: its repair is routed to a follow-up branch by the finding, and
+  performing it from here would be scope drift into a process doc.
 - The two High findings carried forward, R-0495 and R-0574, are inherited from
   the already-closed F085 and F086 and are documented risks, not F022 defects.
 - `npm run lint` in `apps/ui` is RED at base and is NOT a gate (R-0364), which
