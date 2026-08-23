@@ -1952,6 +1952,7 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
         "orchestrator": _build_orchestrator_section(job),
         "local_advisor": _build_local_advisor_section(job),
         "token_usage": _build_token_usage(events),
+        "budget_final": _build_budget_final(events),
         "tasks": task_items,
         "activity": activity_items,
         "phases": phases,
@@ -2234,6 +2235,36 @@ def _build_token_usage(events: list[dict[str, Any]]) -> dict[str, Any]:
         "by_role": by_role if by_role else {},
         "missing_sources": missing,
     }
+
+
+#: WHY: the ledger's own last word on a job's spend — the authority DECISION F022 D7 rules for the reconciliation.
+def _build_budget_final(events: list[dict[str, Any]]) -> dict[str, Any] | None:
+    """The whitelisted figures of the job's LAST budget tick, or `None`.
+
+    THIS IS NOT `token_usage`. That section sums `metadata.estimated_tokens`
+    over a different event population and reports `"estimated": True`, while
+    these figures are the emitter's measured counters carried on a
+    `budget.tick`. Reconciling a ticker against the estimate would subtract two
+    unrelated quantities and label the difference a delta — a fabricated
+    honesty moment in the one feature built to prevent those, which is why
+    DECISION F022 D7 rules THIS figure the terminal reconciliation's authority.
+
+    "LAST" is the last matching element of `events`, with no re-sorting here:
+    `packages.orchestration.timeline.load_run_events` has already sorted every
+    run-log row by timestamp before `_load_events` hands the list over.
+
+    The payload is `_budget_tick_summary_payload`'s and carries no field of its
+    own. That whitelist is a REDACTION boundary (DECISION F022 D3, clause two),
+    and a second projection beside it would be a second place for a key to leak.
+
+    A job that emitted no tick yields `None`, never an empty object and never a
+    zero: an absent figure is absent — the same honesty rule that stops a
+    limitless job rendering a fabricated denominator.
+    """
+    for event in reversed(events):
+        if event.get("event") == BUDGET_TICK_EVENT:
+            return _budget_tick_summary_payload(event.get("metadata"))
+    return None
 
 
 def _build_pipeline_section(job: Any, events: list[dict[str, Any]]) -> dict[str, Any]:
