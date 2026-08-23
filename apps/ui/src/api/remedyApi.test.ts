@@ -340,11 +340,26 @@ describe("pipeline in dashboard", () => {
 // ---------------------------------------------------------------------------
 
 describe("token usage metric", () => {
-  it("tokens is the last metric, order is open/planned/done/progress/tests/proof/tokens", () => {
+  it("cost is the last metric, order is open/planned/done/progress/tests/proof/tokens/cost", () => {
     const result = normalizeDashboardPayload("abc-123", makeDashboardPayload());
-    expect(result.metrics).toHaveLength(7);
+    expect(result.metrics).toHaveLength(8);
     expect(result.metrics.map(m => m.key)).toEqual([
-      "open", "planned", "done", "progress", "tests", "proof", "tokens",
+      "open", "planned", "done", "progress", "tests", "proof", "tokens", "cost",
+    ]);
+  });
+
+  it("cost loads unknown with an em dash, because no tick has arrived yet", () => {
+    const result = normalizeDashboardPayload("abc-123", makeDashboardPayload());
+    const cost = result.metrics.find(m => m.key === "cost");
+    expect(cost!.value).toBe("—");
+    expect(cost!.unknown).toBe(true);
+    expect(cost!.cost).toBeUndefined();
+  });
+
+  it("the degraded path carries no cost tile it could not honour", () => {
+    const degraded = normalizeApiFailure("abc-123", ["dashboard"]);
+    expect(degraded.metrics.map(m => m.key)).toEqual([
+      "open", "planned", "done", "progress",
     ]);
   });
 

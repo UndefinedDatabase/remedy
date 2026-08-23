@@ -92,6 +92,11 @@ export function normalizeDashboardPayload(
     metricTests(dm.tests),
     metricProof(dm.proof),
     { key: "tokens", label: "Tokens", value: tokenKnown ? tokenTotal : "—", tooltip: tokenTooltip, unknown: !tokenKnown },
+    // The eighth tile. It is `unknown` at load because no budget tick has
+    // arrived yet, which is the honest em dash ux_spec.md §10 requires for a
+    // value that is not yet derivable — never a fake zero. `metricsWithCostTicker`
+    // fills it from the live stream in the shell (DECISION F022 D6).
+    { key: "cost", label: "Cost", value: "—", unknown: true },
   ];
 
   // Phases from dashboard
@@ -298,6 +303,12 @@ export function normalizeApiFailure(jobId: string, failedEndpoints: string[]): R
     title: "Mission Control",
     description: "",
     conceptLabel: "",
+    // Remedy deliberately does NOT give the degraded path a `cost` tile, and
+    // this is where a reader would search for it: a dashboard whose endpoints
+    // failed has no stream figures either, so a cost tile here would be a
+    // promise this path cannot keep. `metricsWithCostTicker` returns an array
+    // with no cost entry unchanged and by reference, which is what makes the
+    // absence safe rather than merely tolerated.
     metrics: [
       { key: "open", label: "Open", value: 0 },
       { key: "planned", label: "Planned", value: 0 },
