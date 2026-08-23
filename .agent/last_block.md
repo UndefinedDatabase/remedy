@@ -1,44 +1,46 @@
-── STEP RULE/3 — F022 Live cost ticker · Runde 11 ────────────────────────────
+── STEP T003b-a/3 — F022 Live cost ticker · Runde 12 ─────────────────────────
 
-Fortschritt: ~75 % (T001 fertig · T002 fertig · T003a fertig · T003b offen;
-             diese Runde baut nichts, sie entscheidet die Quelle der
-             Schluss-Zahl und schreibt das R10-Urteil auf Platte) — Schaetzung
+Fortschritt: ~80 % (T001 fertig · T002 fertig · T003a fertig · T003b halb —
+             diese Runde liefert die Server-Seite der Schluss-Zahl, repariert
+             R-0670 und schreibt das R11-Urteil auf Platte) — Schaetzung
 
-Goal:        Rule where the terminal reconciliation's ledger figure comes from,
-             and amend the feature file that names a source which does not
-             exist. Record the R10 verdict and one recurrence on the way. This
-             round writes NO production code: T003b cannot be built against a
-             name, and the reviewer measured that both the named source and its
-             obvious substitute are wrong.
+Goal:        Serve the ledger's final budget figure. DECISION F022 D7 rules the
+             last `budget.tick` in the job's run log as the authority for the
+             terminal reconciliation; this round puts it on the dashboard
+             payload so the next round's client half has something real to read.
+             It also repairs R-0670, whose fix has been waiting for a round that
+             touches `ui_server.py` on its own account, and records the R11
+             verdict with two recurrences.
 
 Bundle:      C0a save this block · C0b mirror it into last_block · C1 the plan ·
-             C2 repair the round map · C3 the R10 verdict and the R-0625
-             recurrence · C4 DECISION F022 D7 · C5 the feature-file amendment ·
-             C6 the handback.
+             C2 repair the round map · C3 the R11 verdict and two recurrences ·
+             C4 R-0670's comment repair · C5 the final-figure section and its
+             tests · C6 resolve R-0670 · C7 the handback.
 
 Change:      Exactly these paths, nothing else:
-               .agent/authored/f022-r11.md          (C0a)
-               .agent/last_block.md                 (C0b)
-               .agent/plan.md                       (C1)
-               .agent/live_review.md                (C2, C3)
-               .agent/decisions.md                  (C4)
-               docs/roadmap/features/T5_F022.md     (C5)
-               .agent/handoff.md                    (C6)
+               .agent/authored/f022-r12.md                     (C0a)
+               .agent/last_block.md                            (C0b)
+               .agent/plan.md                                  (C1)
+               .agent/live_review.md                           (C2, C3, C6)
+               packages/orchestration/ui_server.py             (C4, C5)
+               tests/ui_server/test_budget_final_section.py    (C5, NEW)
+               .agent/handoff.md                               (C7)
 
 ─── Slice convention ──────────────────────────────────────────────────────────
 Each authored text below begins at its `<<<SLICE <name>` line and ends at its
 `<<<END <name>` line; neither marker line is part of the slice, and no slice
 contains a marker line. Extract them PROGRAMMATICALLY by marker line out of the
 committed C0a blob — never retype, never rewrap, never reflow. The whole-text
-slices are PLANF022R11, LEDGER11 and DEC7. MAPFROM11/MAPTO11 and SPECFROM/SPECTO
-are FROM/TO pairs, and this block carries no other pair. Every slice is quoted
-WITHOUT its trailing newline; PLANF022R11 replaces its file whole, and LEDGER11
-and DEC7 each land as one newline plus the slice plus one newline.
+slices are PLANF022R12, LEDGER12 and DONE670. MAPFROM12/MAPTO12 and
+GUARDFROM/GUARDTO are FROM/TO pairs, and this block carries no other pair. Every
+slice is quoted WITHOUT its trailing newline; PLANF022R12 replaces its file
+whole, and LEDGER12 and DONE670 each land as one newline plus the slice plus one
+newline.
 
 CONTAINMENT TEST, run by the reviewer on the final bytes, output quoted, one
 reading per pair and none of it generalised from another:
-  MAPFROM11/MAPTO11 — `TO contains FROM: false` → REWRITE.
-  SPECFROM/SPECTO   — `TO contains FROM: false` → REWRITE.
+  MAPFROM12/MAPTO12 — `TO contains FROM: false` → REWRITE.
+  GUARDFROM/GUARDTO — `TO contains FROM: false` → REWRITE.
 
 Constraints:
  1. NEVER edit a slice. Apply it byte for byte. If a slice contradicts a fact
@@ -47,75 +49,103 @@ Constraints:
  2. C1 is the FIRST substantive commit (§3 checklist item 23): this round
     touches the finding ledger, so the plan advances before anything else but
     the two block-save commits.
- 3. COMMIT ORDER IS C0a, C0b, C1, C2, C3, C4, C5, C6 and no other. Both pairs
-    are applied before either append reads its file (R-0639/R-0640). LEDGER11's
-    two paragraphs land in ONE commit, C3, or neither: its `Gate: R10` paragraph
-    states that the recurrence is written in that same commit, and THIS
-    constraint is what makes that true (§3 item 20, R-0524 carve-out).
- 4. NO PRODUCTION CODE, NO TESTS. Nothing under `apps/`, `packages/` or `tests/`
-    is in the Change set. T003b is the NEXT round's work and this round exists
-    to make that round buildable.
- 5. NO REPAIR of any open finding. R-0670 still waits for the next round that
-    touches `packages/orchestration/ui_server.py` on its own account, which this
-    round is not.
- 6. C5 EDITS A ROADMAP FEATURE FILE, which AGENTS.md permits for feature detail
-    files under `docs/roadmap/features/` — only `docs/roadmap/ROADMAP.md` needs
-    an explicit operator request, and it is NOT in the Change set. Because the
-    Change set holds a `docs/roadmap/**` path, G9 gates `tests/docs/` and
-    `tests/orchestration/test_roadmap_index.py` beside the state readers.
+ 3. COMMIT ORDER IS C0a, C0b, C1, C2, C3, C4, C5, C6, C7 and no other. Within
+    `.agent/live_review.md` the pair at C2 precedes both of that file's appends,
+    at C3 and C6 (R-0639/R-0640); `packages/orchestration/ui_server.py` carries
+    a pair at C4 and no append. C3 lands BEFORE the repair so the findings
+    persist first (§4.4a), and C6 lands AFTER it so DONE670 describes work that
+    is already on disk — THIS constraint is what makes DONE670's claim true
+    (§3 item 20, R-0524 carve-out), and it is why the two ledger appends are
+    two commits rather than one.
+ 4. LEDGER12 holds, in this order and each separated by ONE blank line: the
+    `Recurrence: R-0431` paragraph, the `Recurrence: R-0413` paragraph and the
+    `Gate: R11` paragraph. It lands in ONE commit, C3, or none of it does.
+ 5. C5 IS THE ONLY COMMIT THAT ADDS BEHAVIOUR, and it adds exactly one read-only
+    section to an existing payload. It changes no existing key, no envelope and
+    no event. If a golden or a key-set assertion goes red, that is a real
+    finding about the addition and it goes in the handback — do NOT weaken an
+    assertion to accommodate it.
+ 6. NO CLIENT CHANGE. Nothing under `apps/` is in the Change set. The client
+    half of T003b — the reconciliation and its delta label — is R13's work and
+    the map this block repairs says so.
  7. Destructive verification runs ONLY inside a disposable worktree under
     `.remedy-wt/`. The primary checkout satisfies `git status --porcelain`
     empty at every commit and at the handback. Run no suite concurrently with a
     working-tree reading (R-0479).
- 8. Every numeral this block states about the ROUND BASE `3e1d3fae` was produced
-    by a reviewer script or a reviewer tool run at that commit and is a
-    REFERENCE to report against, not a target to reproduce. Where your
-    measurement differs, report BOTH and reconcile NOTHING.
+ 8. Every numeral this block states about the ROUND BASE `f6259860` was produced
+    by a reviewer script or tool run at that commit and is a REFERENCE to report
+    against, not a target to reproduce. Where your measurement differs, report
+    BOTH and reconcile NOTHING.
  9. Size, measured by the reviewer on the final bytes of this block and stated
-    once here: this block is 381 lines TOTAL with 137 CONTENT lines inside its
-    slices, so PROSE is 244 — under DECISION F085 D6's 490 and D5's 400.
+    once here: this block is 349 lines TOTAL with 69 CONTENT lines inside its
+    slices, so PROSE is 280 — under DECISION F085 D6's 490 and D5's 400.
 
-─── What the reviewer measured at `3e1d3fae`, and why this round rules ────────
+─── What the reviewer measured at `f6259860`, and the change specified ────────
 
-THE FEATURE FILE NAMES A SOURCE THAT DOES NOT EXIST. Its Design section orders
-the terminal reconciliation to "fetch the ledger's job figure (the stats
-endpoint)". `packages/orchestration/ui_server.py` dispatches its job endpoints
-from one `handlers` dict plus `events-since`; there is no `stats` among them,
-and no endpoint literal anywhere in that file contains the string.
+THE FIGURES ARE ALREADY LOADED. `_load_events(job)` returns
+`load_run_events(resolve_data_root(), job.id)`, and that function globs EVERY
+`*.jsonl` under `runs/<job_id>/` and sorts the result by timestamp. The budget
+ticks live in `budget-ticks.jsonl` under exactly that directory, because
+`_emit_budget_tick` writes them through `RunLogWriter` with the stable run id
+`BUDGET_TICK_RUN_ID`. So the dashboard builder already holds every tick the job
+emitted, in timestamp order, and needs no new I/O and no new endpoint — which is
+the half of DECISION F022 D7 that makes it cheap.
 
-THE OBVIOUS SUBSTITUTE IS WRONG, and this is the measurement that decides the
-round. The dashboard payload already carries `token_usage`, which reads like the
-ledger figure and is not one. `_build_token_usage` sums `metadata.
-estimated_tokens` over the job's events and returns `"estimated": True` with
-`"source": "event_metadata"`; it attributes those tokens to `context`, `memory`,
-`repair`, `planner` and `other` from event kinds such as
-`source_context_injected` and `project_memory_recalled`. The ticker's figures
-come from `BudgetCounters.measured_token_total` and `measured_cost_usd`, which
-count PROVIDER CALLS. The two count different populations, so a "delta" between
-them would not be a reconciliation — it would be a fabricated honesty moment,
-which is the one thing this feature exists to avoid. A round that wired them
-together would have shipped a number that looks like truth and is not.
+C4 — R-0670's REPAIR, and it is the pair GUARDFROM/GUARDTO. The
+`BUDGET_TICK_EVENT` comment names `tests/ui_contracts/test_humanize_catalog.py`
+as the guard that catches a rename of that constant. The finding measured, by
+mutation at `f685a707`, that the catalog test is EXIT 0 under exactly that
+rename while `tests/ui_server/test_budget_tick_envelope.py` is EXIT 1 — the
+named guard is blind to the drift the sentence promises it catches. The pair
+names the guard that was MEASURED to catch it. Nothing but the comment changes.
 
-WHAT DOES EXIST is the run log. `_emit_budget_tick` writes every tick through
-`RunLogWriter` under the stable run id `budget-ticks`, so the LAST tick in that
-log is the ledger's own record of the final measured figures, in the same
-whitelisted shape `_budget_tick_summary_payload` already puts on the wire. That
-is a real authority and it is already on disk; DECISION F022 D7 below rules it
-as the source and fixes the delta as a statement about TRANSPORT rather than
-about arithmetic.
+C5 — THE FINAL-FIGURE SECTION. Add one module-level function to
+`packages/orchestration/ui_server.py`, beside the other `_build_*` section
+builders, and one key to the dashboard dict `_build_dashboard` returns:
+
+  `_build_budget_final(events)` returns the whitelisted payload of the LAST
+  event whose `event` field equals `BUDGET_TICK_EVENT`, and `None` when the job
+  emitted no tick. "Last" is the last in the list, because `load_run_events`
+  has already sorted by timestamp — say so in the comment rather than re-sorting,
+  and name the function that guarantees it. It reuses
+  `_budget_tick_summary_payload` and adds NO field of its own: the whitelist is
+  a redaction boundary (DECISION F022 D3 clause two) and a second projection
+  beside it would be a second place for a key to leak. A job with no tick yields
+  `None` and NEVER an empty object or a zero — an absent figure is absent, which
+  is the same honesty rule that stops a limitless job rendering a denominator.
+
+  The dashboard gains `"budget_final": _build_budget_final(events)` beside
+  `"token_usage"`. It is ADDITIVE: no existing key changes.
+
+  Carry the one-line WHY above the definition, per AGENTS.md's discoverability
+  conventions, and say in it what this figure IS — the ledger's own last word on
+  a job's spend, as distinct from `token_usage`, which is an ESTIMATE summed
+  from `metadata.estimated_tokens` over a different event population and is not
+  a reconciliation source. A reader who confuses the two ships a fabricated
+  delta, so the distinction belongs where they would search for it.
+
+  `tests/ui_server/test_budget_final_section.py` is NEW and pins, at minimum:
+  the last tick wins when several exist; the payload equals what
+  `_budget_tick_summary_payload` returns for that tick's metadata; a job with no
+  tick yields `None`; a tick whose metadata carries an unwhitelisted key does
+  NOT leak it; and the key is present on the dashboard payload. Write the tests
+  in the style of the neighbouring `tests/ui_server/` files.
+
+C6 — DONE670 resolves the finding. It is the reviewer's authored text and the
+only thing that sets Resolved (§4.4).
 
 ─── Done when ─────────────────────────────────────────────────────────────────
 
 Run every gate below yourself, record its REAL exit code, and put ONE LINE per
 gate in the handback with the transcripts kept out of it (R-0582). G1 through
-G12 run after C5 and BEFORE C6, so the handback can quote all of them (§3
-checklist item 31). The round base is `3e1d3fae` throughout.
+G13 run after C6 and BEFORE C7, so the handback can quote all of them (§3
+checklist item 31). The round base is `f6259860` throughout.
 
- G1  `.agent/STOP` absent, read from disk before C0a and again before C6.
+ G1  `.agent/STOP` absent, read from disk before C0a and again before C7.
      Branch `feature/f022-live-cost-ticker`. `git status --porcelain` 0 lines
-     after every one of C0a through C5.
+     after every one of C0a through C6.
  G2  TRANSPORT. sha256 over the block file the reviewer wrote at
-     `.remedy-wt/f022-r11.md`, over the committed C0a blob, over the committed
+     `.remedy-wt/f022-r12.md`, over the committed C0a blob, over the committed
      C0b blob and over `.agent/last_block.md` on disk: report all four digests,
      byte counts and line counts, and require them EQUAL. The digest the
      delegation names is the fifth reading and must agree.
@@ -123,86 +153,92 @@ checklist item 31). The round base is `3e1d3fae` throughout.
      slices by their marker LINES and report how many slices and how many
      CONTENT lines it printed, plus the block's TOTAL and PROSE line counts.
      Report those against constraint 9's numerals; reconcile nothing.
- G4  `.agent/plan.md` at C1 is byte-equal to PLANF022R11 plus exactly one
+ G4  `.agent/plan.md` at C1 is byte-equal to PLANF022R12 plus exactly one
      newline. NEGATIVE CONTROL: the same comparison against the BARE slice must
      be FALSE, and report both byte counts. `^## Goal$` once, `^## Next Steps$`
      once, `wc -l` at most 50.
  G5  THE TWO PAIRS. Report each pair's containment output and require it to
-     match the convention block. At C2 in `.agent/live_review.md`: MAPFROM11 1x
-     at the round base and 0x at C2, MAPTO11 0x at base and 1x at C2, the file's
-     byte length changing by exactly `len(MAPTO11) - len(MAPFROM11)`, and
-     `^## Steps$` still exactly once. At C5 in
-     `docs/roadmap/features/T5_F022.md`: SPECFROM 1x at the round base and 0x at
-     C5, SPECTO 0x at base and 1x at C5, and the same byte-length identity.
-     Report each count as a number. Confirm for BOTH that the committed file
-     equals the base file with only that replacement applied and nothing else.
- G6  APPEND at C3, and the same two readers at C4. For each: the previous
-     commit's blob is a byte-exact PREFIX of the committed file and the
-     remainder is exactly one newline plus the slice plus one newline — report
-     the remainder's byte count and the slice's. Then an INDEPENDENT reader:
-     split both files on blank lines, let N be the number of paragraphs YOUR
-     script counts in the slice, and require the LAST N units of the committed
-     file to equal the slice's N paragraphs IN ORDER. Report N; do not take it
-     from this block. NEGATIVE CONTROL, in a disposable worktree, applied to the
-     FIRST appended paragraph of LEDGER11 and to the FIRST of DEC7: flip ONE
-     byte at an offset you name and confirm BOTH readers reject each mutant
-     while both accept the true file. THE OFFSET IS A BYTE OFFSET — both files
-     carry multi-byte em dashes and arrows, so a CHARACTER offset lands
-     thousands of bytes early, outside the appended region, where reader (b)
-     accepts the mutant and the control proves nothing. Report the ~20 bytes
-     surrounding each flip. Remove the worktree; `git worktree list` back to one
-     line.
- G7  LEDGER INTEGRITY, base versus C3. Report for both points: the count of
+     match the convention block. At C2 in `.agent/live_review.md`: MAPFROM12 1x
+     at the round base and 0x at C2, MAPTO12 0x at base and 1x at C2, the byte
+     length changing by exactly `len(MAPTO12) - len(MAPFROM12)`, and `^## Steps$`
+     still exactly once. At C4 in `packages/orchestration/ui_server.py`:
+     GUARDFROM 1x at base and 0x at C4, GUARDTO 0x at base and 1x at C4, and the
+     same byte-length identity. Confirm for BOTH that the committed file equals
+     the base file with only that replacement applied and nothing else. ALSO
+     report the longest line length of the `## Steps` paragraph at C2: no line
+     in it may exceed 84 characters, because the R11 map pair left a 99-character
+     line where its TO joined the sentence that followed it (R-0431), and this
+     pair spans that join precisely so it can fix it.
+ G6  APPEND at C3, and the same two readers at C6. For each: the previous
+     commit's blob of that file is a byte-exact PREFIX and the remainder is
+     exactly one newline plus the slice plus one newline — report the
+     remainder's byte count and the slice's. Then an INDEPENDENT reader: split
+     both files on blank lines, let N be the number of paragraphs YOUR script
+     counts in the slice, and require the LAST N units of the committed file to
+     equal the slice's N paragraphs IN ORDER. Report N; do not take it from this
+     block. NEGATIVE CONTROL, in a disposable worktree, applied to the FIRST
+     appended paragraph of LEDGER12 and to the FIRST of DONE670: flip ONE byte
+     at an offset you name and confirm BOTH readers reject each mutant while
+     both accept the true file. THE OFFSET IS A BYTE OFFSET — the file carries
+     multi-byte em dashes, so a CHARACTER offset lands early, outside the
+     appended region, where reader (b) accepts the mutant and the control proves
+     nothing. Report the ~20 bytes surrounding each flip. Remove the worktree.
+ G7  LEDGER INTEGRITY, base versus C6. Report for both points: the count of
      lines matching `^- R-\d+ — `, whether they are all DISTINCT, the MAXIMUM
      id, the count of `^Done: R-` with its distinct ids, of `^Landed: `, of
      `^Recurrence: R-` with its distinct ids, and of `^Gate: R` with its
      distinct keys. Report the ids ADDED and REMOVED as sets. At base the
      reviewer measured 234 records, all distinct, maximum `R-0673`, 1 `Done:`
-     line for `R-0653`, 0 `Landed:`, 4 `Recurrence:` lines and 10 `Gate:` lines
-     over 10 distinct keys. This round MINTS NO NEW ID: it is expected to add no
-     record, to take `^Recurrence: R-` to 5 by gaining `R-0625`, and to add
-     `Gate: R10`. Report what you measure. `R-0625` must still occur exactly once
-     as a `^- R-0625 — ` record.
- G8  DECISIONS at C4. `^## DECISION F022 D7 ` occurs exactly once in
-     `.agent/decisions.md` at C4 and 0 times at the round base. Report both.
- G9  THE DOCS GATES, because C5 touches `docs/roadmap/**`: from the REPOSITORY
-     ROOT, `python3 -m pytest tests/docs/ -q` and
-     `python3 -m pytest tests/orchestration/test_roadmap_index.py -q`, each exit
-     0, run SERIALLY. The reviewer measured 295 and 30 at the round base.
- G10 THE FOUR STATE READERS plus THE CANARY, serially in the PRIMARY checkout at
-     C5, exit 0: `tests/ui_server/`,
+     line for `R-0653`, 0 `Landed:`, 5 `Recurrence:` lines and 11 `Gate:` lines
+     over 11 distinct keys. This round MINTS NO NEW ID: it is expected to add no
+     record, to take `^Recurrence: R-` to 7 by gaining `R-0431` and `R-0413`, to
+     add `Gate: R11`, and to take `^Done: R-` to 2 by gaining `R-0670`. Report
+     what you measure. `R-0670`, `R-0431` and `R-0413` must each still occur
+     exactly once as a `^- R-\d+ — ` record.
+ G8  THE MUTATION R-0670 EXISTS FOR, re-run so the repaired comment is not taken
+     on trust. In a disposable worktree at C5, rewrite `BUDGET_TICK_EVENT`'s
+     value to `"budget.ticks"` and change nothing else, then run BOTH
+     `tests/ui_contracts/test_humanize_catalog.py` and
+     `tests/ui_server/test_budget_tick_envelope.py` and report each exit code
+     and count. The comment the round installs names the SECOND as the guard, so
+     the second must be RED and the first is reported whatever it shows. Remove
+     the worktree. If the second is green, the repaired comment is as wrong as
+     the one it replaced — say so and do not repair it further.
+ G9  `python3 -m pytest tests/ui_server/ -q` from the REPOSITORY ROOT, exit 0.
+     The reviewer measured 455 passed at the round base; this round adds a test
+     file, so report the difference and name what the new file contributes.
+ G10 `python3 -m pytest tests/ui_contracts/ -q` from the REPOSITORY ROOT, exit 0.
+     The reviewer measured 518 passed and 4 skipped at the round base. Run it
+     from the repository root and say so: the same command from `apps/ui`
+     collects nothing and exits reporting no failure (R-0463).
+ G11 THE FOUR STATE READERS plus THE CANARY, serially in the PRIMARY checkout at
+     C6, exit 0: `tests/ui_server/`,
      `tests/orchestration/test_test_runner.py`,
      `tests/regression/test_resource_safety.py`,
      `tests/orchestration/test_integrity_gate.py`, then
-     `tests/cli/test_golden_path.py`. The reviewer measured 544 passed across
-     the four and 42 for the canary at the round base. Never run two pytest
+     `tests/cli/test_golden_path.py`. The reviewer measured 544 across the four
+     and 42 for the canary at the round base; `tests/ui_server/` moves by
+     whatever G9 reports and the other three do not. Never run two pytest
      processes at once.
- G11 STRUCTURE, reported for the commits BEFORE C6 and for the range as a whole
-     (C6's own numbers belong to the next round's ledger entry, not here):
+ G12 STRUCTURE, reported for the commits BEFORE C7 and for the range as a whole
+     (C7's own numbers belong to the next round's ledger entry, not here):
      every commit single-parent; each commit's INSERTION count, each under the
      500 cap; the range path set against the Change set above with the
      difference reported in BOTH directions; `git show --numstat` agreeing cell
      by cell with the handback's `## Commits` table; the LINE-ANCHORED patterns
-     `^<<<SLICE ` and `^<<<END ` counting 0 in `.agent/plan.md`,
-     `.agent/live_review.md`, `.agent/decisions.md` and
-     `docs/roadmap/features/T5_F022.md` — ANCHORED because a slice of this block
-     legitimately quotes those markers mid-line inside backticks, so an
-     unanchored count would be unsatisfiable for every possible round (§3
-     checklist item 2); `git ls-files .remedy-wt` 0; one worktree; and the
+     `^<<<SLICE ` and `^<<<END ` counting 0 in `.agent/plan.md` and
+     `.agent/live_review.md`; `git ls-files .remedy-wt` 0; one worktree; and the
      round's reflog rows with amend, rebase and cherry counts, each 0.
- G12 `gh pr list --state open --json number,headRefName`. Report it verbatim.
-     Create no PR and merge nothing this round: T003b is unbuilt and the
+ G13 `gh pr list --state open --json number,headRefName`. Report it verbatim.
+     Create no PR and merge nothing: T003b's client half is unbuilt and the
      integration gate has not run.
- G13 STALENESS. Every sentence C1 through C5 land that states a fact about a
-     file is re-measured at C5, and any that has gone stale is reported as a
+ G14 STALENESS. Every sentence C1 through C6 land that states a fact about a
+     file is re-measured at C6, and any that has gone stale is reported as a
      residual rather than repaired. Report explicitly that you checked, and name
      any residual. Slices are NEVER edited to fix one.
 
 NOT A GATE and not run this round: `npm run lint`, `npm run typecheck` and
-`npm run test:unit`. The Change set holds no file under `apps/`, so none of the
-three can say anything about it. For the lint reading specifically, see
-LEDGER11's `R-0625` recurrence, which corrects a numeral three earlier blocks
-carried.
+`npm run test:unit`. The Change set holds no file under `apps/`.
 
 Handback:    Rewrite `.agent/handoff.md` per docs/agents/handback_template.md —
              every mandated section in order, one changed-files table per
@@ -213,16 +249,16 @@ Handback:    Rewrite `.agent/handoff.md` per docs/agents/handback_template.md �
              counted in (R-0442). The cap is 100 lines for this commit count;
              declare a DECISION D15 stated cause with your own measured numeral
              in the declaring line if the mandated content genuinely does not
-             fit. THIS HANDBACK MAY END THE SESSION, so its `## Next` section
-             names, in this order: (1) Phase 1 rule 1 — re-read `.agent/STOP`
-             from disk before anything else; (2) the Open PR Gate; (3) R12,
-             T003b, built against DECISION F022 D7 and naming its two halves —
-             the server's final-figure section and the client's reconciliation
-             with the delta label; (4) that R11's own verdict is NOT yet on
-             disk and R12's ledger commit owes it.
+             fit. THIS HANDBACK LIKELY ENDS THE SESSION, so its `## Next`
+             section names, in this order: (1) Phase 1 rule 1 — re-read
+             `.agent/STOP` from disk before anything else; (2) the Open PR Gate;
+             (3) R13, the client half of T003b — reading `budget_final` into the
+             dashboard type and rendering the terminal reconciliation with its
+             delta label, per DECISION F022 D7; (4) that R12's own verdict is
+             NOT on disk and R13's ledger commit owes it.
 ──────────────────────────────────────────────────────────────────────────────
 
-<<<SLICE PLANF022R11
+<<<SLICE PLANF022R12
 # Plan — F022 Live cost ticker
 
 Branch: feature/f022-live-cost-ticker, cut from `main` at `c34ef32b`, the merge
@@ -240,28 +276,27 @@ spent-only variant with no fake denominator, and the terminal reconciliation
 displays the ledger figure with any delta labelled.
 
 ## Current Step
-R11 rules the terminal reconciliation's source and builds nothing. The feature
-file named "the stats endpoint", which does not exist, and the dashboard's
-`token_usage` — the obvious substitute — is an estimate summed over a different
-event population, so a delta against it would be fabricated. DECISION F022 D7
-rules the run log's last budget tick as the authority and this round amends the
-feature file to match. It also records the R10 verdict and the R-0625
-recurrence.
+R12 is the server half of T003b. It adds one read-only section to the dashboard
+payload carrying the ledger's last budget tick, which DECISION F022 D7 rules as
+the authority for the terminal reconciliation, and it needs no new endpoint
+because the dashboard builder already loads every tick the job emitted. It also
+repairs R-0670, whose fix waited for a round that touches `ui_server.py` on its
+own account, and records the R11 verdict with two recurrences.
 
 ## Next Steps
-1. R12 T003b — the server's final-figure section and the client's terminal
-   reconciliation with the delta label, built against DECISION F022 D7.
-2. R13 the integration gate.
-3. R14 closure.
+1. R13 T003b-b — the client half: read `budget_final` into the dashboard type
+   and render the terminal reconciliation with its delta label.
+2. R14 the integration gate.
+3. R15 closure.
 
 ## Risks
-- T003b is now a TWO-SIDED slice: D7 puts a final-figure section on the server
-  as well as the reconciliation on the client, so R12 is larger than T003a was
-  and may need splitting at its own block.
-- Open F022 findings, each with the round that owns it: R-0670 waits for the
-  next round touching `packages/orchestration/ui_server.py` on its own account,
-  which R12 will be; R-0672 and R-0625 want their next-DECISION and next-numeral
-  clauses honoured, which DECISION F022 D7 and this round's ledger entry do.
+- The delta R13 renders is a TRANSPORT statement, not arithmetic: both sides are
+  the same quantity from the same producer, so a difference means frames were
+  missed. A round that reads it as drift would reintroduce the fabricated
+  honesty moment DECISION F022 D7 exists to prevent.
+- Open F022 findings after this round: R-0672 and R-0625 want their
+  next-DECISION and next-numeral clauses honoured; R-0431 and R-0413, recorded
+  this round, are reviewer-block defects already paid for.
 - The two High findings carried forward, R-0495 and R-0574, are inherited from
   the already-closed F085 and F086 and are documented risks, not F022 defects.
 - `npm run lint` in `apps/ui` is RED at base and is NOT a gate (R-0364), which
@@ -269,113 +304,46 @@ recurrence.
 - R-0665 is open and this feature needs its route: every UI feature is told to
   record visual deviations in an `assumption_log` that does not exist. F022
   records them as DECISIONs in `.agent/decisions.md`, a route rather than a fix.
-<<<END PLANF022R11
+<<<END PLANF022R12
 
-<<<SLICE MAPFROM11
-budget → R10 T003a the live wiring, which gives the cost module its first
-production caller, plus the R9 verdict and this map repair → R11 T003b the
-terminal reconciliation and the delta labelling → R12 the integration gate →
-R13 closure.
-<<<END MAPFROM11
-
-<<<SLICE MAPTO11
-budget → R10 T003a the live wiring, which gives the cost module its first
-production caller, plus the R9 verdict and this map repair → R11 rule the
-terminal reconciliation's SOURCE, because the feature file named an endpoint
+<<<SLICE MAPFROM12
 that does not exist, and record the R10 verdict → R12 T003b the server's
 final-figure section and the client's reconciliation with its delta label →
-R13 the integration gate → R14 closure.
-<<<END MAPTO11
+R13 the integration gate → R14 closure. This section is the only place the round map is stated, per
+<<<END MAPFROM12
 
-<<<SLICE SPECFROM
-- Terminal reconciliation: on the terminal event, fetch the
-  ledger's job figure (the stats endpoint) and render it as the
-  final value; a delta beyond rounding renders "final (ledger):
-  X — live estimate was Y" (the honesty moment, small type,
-  per reference).
-<<<END SPECFROM
+<<<SLICE MAPTO12
+that does not exist, and record the R10 verdict → R12 T003b-a the server's
+final-figure section, R-0670's repair and the R11 verdict → R13 T003b-b the
+client's reconciliation with its delta label → R14 the integration gate → R15
+closure. This section is the only place the round map is stated, per
+<<<END MAPTO12
 
-<<<SLICE SPECTO
-- Terminal reconciliation: on the terminal event, read the
-  ledger's final budget tick — the last `budget.tick` in the
-  job's `budget-ticks` run log, in the same whitelisted shape
-  the stream already carries — and render it as the final
-  value; a delta beyond rounding renders "final (ledger):
-  X — live estimate was Y" (the honesty moment, small type,
-  per reference). AMENDED at F022 R11 per DECISION F022 D7:
-  this bullet previously named "the stats endpoint", which
-  `ui_server.py` does not dispatch, and the nearest substitute
-  (`token_usage`) is an estimate over a different event
-  population, so a delta against it would be fabricated. The
-  delta this bullet asks for is a TRANSPORT statement — what
-  the client received against what the ledger holds — and
-  never a second arithmetic.
-<<<END SPECTO
+<<<SLICE GUARDFROM
+#: requires the emitter to pass the name as an INLINE literal so the humanize
+#: catalog's AST walk can see it. `tests/ui_contracts/test_humanize_catalog.py`
+#: pins that catalog equal to the emitters, so the two spellings cannot drift
+#: apart without a red suite.
+<<<END GUARDFROM
 
-<<<SLICE LEDGER11
-Recurrence: R-0625 — A NUMERAL ABOUT ANOTHER COMMIT'S TOOL OUTPUT WAS CARRIED ACROSS FOUR BLOCKS WITHOUT THE TOOL EVER BEING RUN AT THAT COMMIT, AND IT WAS MISLABELLED AT ITS ORIGIN. Second instance, at F022 R7 through R10. NO NEW ID IS MINTED: §3 checklist item 30 requires the open set searched for the DEFECT before an id, and R-0625 already holds this class with the counter-measure that a numeral a block states about ANOTHER commit's tool output is produced by RUNNING that tool at that commit before emission, never by recollection — R-0364 applied to a value rather than to a colour. THE INSTANCE: the F022 R7, R8, R9 and R10 blocks each state that `npm run lint` in `apps/ui` is red at their base "at 72 problems". MEASURED by the reviewer at the R10 base `a8952614`, by running the primary checkout's own eslint binary against a disposable worktree of that commit with the primary config passed explicitly, and against the primary tree as a matched control in the same pass: the base reports 74 problems (72 errors, 2 warnings) over 71 files, while `3e1d3fae` reports 78 problems (76 errors, 2 warnings) over 75 files. SO THE NUMERAL WAS THE ERROR COUNT WEARING THE WORD "problems", which is eslint's own summary term for errors plus warnings, and the two differ by exactly the 2 warnings. THE CORRECTED VALUE AT `a8952614` IS 74 PROBLEMS, OF WHICH 72 ARE ERRORS. WHY IT SURVIVED FOUR BLOCKS: the sentence was true enough to never be checked — lint IS red, it IS R-0622, and it IS not a gate — so no gate consumed it and each block copied it from the one before rather than re-running a tool it had already excluded from its gates. THE ROUND'S OWN DELTA IS CLEAN AND WAS MEASURED IN THE SAME PASS: the four files reported at `3e1d3fae` and not at the base are exactly `budgetTick.ts`, `budgetTick.test.ts`, `costTicker.ts` and `costTicker.test.ts`, each contributing exactly one `Parsing error`, and no file's count changed, so R10 introduced no lint rule violation and R-0622's characterisation is untouched. WHY LOW: nothing consumed the number, it was explicitly not a gate, and the R10 worker reported its own 78 against the block's 72 and reconciled NOTHING, exactly as that block's constraint 9 ordered — the process worked and only the value was stale. THE LANDED BLOCKS ARE NOT REWRITTEN, per §3 item 20: this correction is dated by the commit that carries it. Both instances stay OPEN under R-0625, and the fix is the one it already names, with one addition this instance earns: a tool's summary line is quoted with the WORD the tool uses, because "72 problems" and "72 errors" are different readings of the same run and only one of them was taken.
+<<<SLICE GUARDTO
+#: requires the emitter to pass the name as an INLINE literal so the humanize
+#: catalog's AST walk can see it. The guard against THIS constant drifting from
+#: that literal is `tests/ui_server/test_budget_tick_envelope.py`, which was
+#: MEASURED to go red when this value is renamed; the humanize-catalog test is
+#: not, because it pins the catalog against the emitter's own literal in
+#: `packages.orchestration.safe_points` and never reads this constant at all
+#: (finding R-0670, measured by mutation at `f685a707`).
+<<<END GUARDTO
 
-Gate: R10 — the F022 R10 entry. R10 PASSED ON EVERY ONE OF ITS SIXTEEN GATES, AND THE REVIEWER RE-RAN EVERY ONE OF THEM ITSELF AND ADDED FOUR MUTATIONS THE BLOCK NEVER ORDERED. The recurrence above is written in THIS SAME COMMIT, which the R11 block's constraint 3 fixes. THE ROUND'S SUBSTANCE IS THAT THE FEATURE STOPPED BEING INVISIBLE: `costMetricOf` was correct from R7 and drawn from R8 while having NO production caller — measured at `a8952614` over every non-test `.ts`/`.tsx` under `apps/ui/src`, the only file naming `costMetricOf(` was `costMetric.ts` itself — and `normalizeDashboardPayload` built seven metrics with no `cost` among them, so the tile a user saw was not empty but ABSENT. R10 built the path: `budgetTickFiguresOf` reads one frame, `receiveBrainFrame` folds the latest tick onto `BrainStreamState` behind the replay guard and carries it forward BY REFERENCE, the runner publishes it on `BrainStreamView` and compares it with `===`, `metricsWithCostTicker` fills the eighth tile, and `RemedyShell` composes the bar through it. TRANSPORT HELD IN ITS STRONGEST FORM: the reviewer's scratch original, the committed C0a blob, the committed C0b blob, `.agent/last_block.md` on disk and `.agent/authored/f022-r10.md` on disk are ALL sha256 `49f733db1d02020f7823874a566e8ea359b64cadf38065dbd19ab4f59b566c23` over 38270 bytes and 482 lines, and C0a and C0b resolve to the SAME git blob `a763f93d`. THE EXTRACTION printed 5 slices over 121 CONTENT lines, so TOTAL re-measures at 482 and PROSE at 361, and constraint 10's numerals reproduce exactly. `.agent/plan.md` at `63119805` is 2727 bytes = PLANF022R10's 2726 plus one newline, the bare-slice control DIFFERING, headings once each, 48 lines against the cap of 50. THE PAIR AT `593c26c6` IS EXACT: `TO contains FROM: false`, MAPFROM 1→0, MAPTO 0→1, byte delta 439 = 810 − 371, and the committed file equals the base with ONLY that replacement applied. BOTH APPENDS HOLD UNDER BOTH READERS: at `44063bf0` the prefix is byte-exact and the remainder is 6606 = 1 + LEDGER10's 6604 + 1 with N=2 paragraphs equal in order over 265→267 units; at `d8ca0f11` the remainder is 3564 = 1 + DEC6's 3562 + 1 with N=6 equal in order over 1297→1303. THE SETS MOVED EXACTLY WHERE THE ROUND PROMISED: 234 records at base and 234 at C3, ids ADDED and ids REMOVED both the EMPTY SET so NO ID WAS MINTED, `^Recurrence: R-` 3→4 gaining `R-0644`, `^Gate: R` 9→10 gaining the key `R10`'s predecessor `R9`, and `^- R-0644 — ` exactly 1 at both so the recurrence APPENDED rather than rewrote. THE SUITES ARE THE REVIEWER'S OWN: `npm run typecheck` clean; `npm run test:unit` 19 files and 268 tests against the base's 17 and 241, the +27 accounted for file by file; `tests/ui_contracts/` 518 passed and 4 skipped from the REPOSITORY ROOT against the base's 514 and 4, the +4 being C8's new class; the four state readers 455, 52, 21 and 16 for 544; and the canary 42. STRUCTURE HELD: eleven commits before the handback, every one single-parent, insertions 482, 402, 22, 10, 4, 55, 92, 151, 128, 71 and 12, each under the 500 cap; the range path set is exactly the declared nineteen-path Change set with the difference EMPTY in both directions; `git show --numstat` agrees cell by cell with all nineteen `## Commits` rows, the full-file `.agent/last_block.md` row reading `+402/-148` in both; anchored markers 0 in all three state files; `git ls-files .remedy-wt` 0; one worktree; 0 amend, 0 rebase and 0 cherry. THE FOUR MUTATIONS ARE THE REVIEWER'S OWN AND ALL RAN IN A DISPOSABLE WORKTREE WITH THE PRIMARY CHECKOUT NEVER WRITTEN: reverting the shell to the bare `dashboard.metrics` failed exactly `test_the_shell_hands_the_stream_budget_to_the_bar`; making the ticker name a figure field failed exactly `test_the_figure_fields_have_a_single_home`; replacing the by-reference carry-forward with a spread copy failed 3 tests across `brainStream.test.ts` and `brainStreamRunner.test.ts`, which is the round's subtlest property and it is genuinely pinned; and deleting the kind check in `budgetTickFiguresOf` failed `budgetTick.test.ts` — with the unmutated worktree green at 23 passed as the positive control. THE FIRST TWO OF THOSE CONTROLS WERE VACUOUS ON THE REVIEWER'S FIRST ATTEMPT, because the contract resolves `REPO_ROOT` from its own `__file__` and pytest was pointed at the PRIMARY copy while the mutation sat in the worktree; re-running against the worktree's own test file turned both red, and the first reading is recorded here because a control that cannot fail is the thing this record exists to catch. THE CONTRACT C8 ADDS IS BETTER THAN ORDERED: the block asked for three assertions and the worker added a fourth, `test_the_scan_reaches_the_one_file_it_asserts_about`, which pins that the absence scan reaches a non-empty file list — the vacuous-absence guard of R-0559, supplied unprompted. THE HANDBACK IS COMPLIANT at 136 lines with a DECISION D15 stated cause naming that same 136, every mandated section present and in order, and the three-line `Fortschritt:` block byte-identical to the block's. THE VERDICT IS PASS: every numeral R10 states reproduced under the reviewer's own measurement, four unordered mutations went red against the right tests, no slice was edited, no id was minted, and the COST metric now has a production caller for the first time since R7 built it.
-<<<END LEDGER11
+<<<SLICE LEDGER12
+Recurrence: R-0431 — A NARROWED REWRITE PAIR DID NOT REPRODUCE THE WRAP WIDTH OF THE SHAPE IT LANDED IN. Second instance, at F022 R11, in the reviewer's own map pair. NO NEW ID IS MINTED: §3 checklist item 30 requires the open set searched for the DEFECT before an id, and R-0431 already holds this class with the standing rule that a REWRITE pair extends to the whole sentence, bullet or paragraph whose truth value the edit changes, and that a TO slice landing inside a shaped block reproduces that block's continuation indent AND WRAP WIDTH, because a slice is applied into a shape it cannot see. THE INSTANCE: the R11 block's MAPFROM11 ended at `R13 closure.` and the file's own line continued past that point with the sentence that follows the arrow chain, so MAPTO11's last line joined it. MEASURED at `f6259860`: line 53 of `.agent/live_review.md` is 99 characters where every other line of that paragraph is 72 to 80. WHY IT HAPPENED: the pair was NARROWED on purpose, to bring the R11 block under DECISION F085 D6's line cap, and narrowing a pair moves its boundary INTO a line rather than onto one — which is exactly the case R-0431's rule covers and exactly the case the narrowing decision did not re-check. THE CAP AND THE RULE PULL IN OPPOSITE DIRECTIONS and the block honoured only one of them. WHY LOW: nothing is red, the map's TEXT is correct, and the cost is one over-long line in a markdown paragraph that no gate reads and no renderer breaks. THE FIX IS THIS ROUND'S OWN MAP PAIR, whose FROM deliberately spans the join and whose G5 orders the paragraph's longest line reported and bounded — so the repair is measured rather than asserted, and the landed line is corrected by a pair rather than by a rewrite of history. Both instances stay OPEN under R-0431, and the addition this instance earns is one clause: when a pair is narrowed to meet a cap, its FROM ends at a LINE boundary of the target or spans the join, and the block gates the resulting longest line.
 
-<<<SLICE DEC7
-## DECISION F022 D7 — the source of the terminal reconciliation's ledger figure
+Recurrence: R-0413 — A BLOCK CONSTRAINT CONTRADICTED THE COMMIT SEQUENCE THE SAME CONSTRAINT FIXED, IN ONE SENTENCE. Second instance, at F022 R11, found by the WORKER and confirmed by the reviewer by reading the block's own bytes. NO NEW ID IS MINTED: R-0413 holds the clause-versus-clause class, where a block's two halves are each defensible and disagree with each other, and §3 checklist item 30 sends this here rather than to a new id. THE INSTANCE: the R11 block's constraint 3 reads "COMMIT ORDER IS C0a, C0b, C1, C2, C3, C4, C5, C6 and no other. Both pairs are applied before either append reads its file (R-0639/R-0640)." Its own ordered sequence puts the SPEC pair at C5, AFTER the appends at C3 and C4, so the second sentence is false of the first. THE WORKER FOLLOWED THE ORDERED SEQUENCE, which was the right half to obey, and declared the tension rather than resolving it silently. NOTHING WAS ACTUALLY AT RISK, and the reviewer confirms the worker's reasoning: R-0639/R-0640's property is PER FILE — a bulk read must run over a remainder no pair will later change — and `.agent/live_review.md`'s only pair at C2 does precede its C3 append, while `docs/roadmap/features/T5_F022.md` carries a pair and no append at all. So the ordering was correct and only the sentence generalising it was wrong. WHY LOW: no gate could fail, nothing false reached a durable record beyond the block mirror, and the worker's declaration is the whole cost. THE COUNTER-MEASURE, and it is what THIS block's constraint 3 does: state the pair-before-append property PER FILE, naming the file and the commits, rather than as a universal over "both pairs" — a universal across files is a claim nobody checked, which is the R-0526 shape arriving in an ordering clause.
 
-CONTEXT. `docs/roadmap/features/T5_F022.md` orders the terminal reconciliation
-to "fetch the ledger's job figure (the stats endpoint)". Measured at `3e1d3fae`:
-`packages/orchestration/ui_server.py` dispatches its job endpoints from one
-`handlers` dict plus `events-since`, and no `stats` endpoint is among them. The
-spec names a source that has never existed, so T003b could not be built as
-written.
+Gate: R11 — the F022 R11 entry. R11 PASSED ON EVERY ONE OF ITS THIRTEEN GATES, AND THE REVIEWER RE-RAN EVERY ONE OF THEM ITSELF. The two recurrences above are written in THIS SAME COMMIT, which the R12 block's constraint 4 fixes. THE ROUND'S SUBSTANCE IS THAT IT REFUSED TO BUILD AGAINST A NAME. The feature file ordered the terminal reconciliation to fetch "the ledger's job figure (the stats endpoint)", and the reviewer measured that `packages/orchestration/ui_server.py` dispatches no such endpoint; it then measured the substitute a builder would most likely reach for and found it worse than useless — `_build_token_usage` sums `metadata.estimated_tokens` over kinds like `source_context_injected` and returns `"estimated": True`, while the ticker's figures are `BudgetCounters.measured_token_total` and `measured_cost_usd`, which count provider calls, so a delta between them would have been a fabricated honesty moment in the one feature built to prevent those. DECISION F022 D7 rules the run log's last `budget.tick` as the authority and C5 amended the feature file to match, which is §4 item 7 working exactly as written: a wrong spec became an authored amendment, a loud persisted DECISION and a reversal path, with nothing waiting on an operator answer. TRANSPORT HELD IN ITS STRONGEST FORM: the reviewer's scratch original, the committed C0a blob, the committed C0b blob, `.agent/last_block.md` on disk and `.agent/authored/f022-r11.md` on disk are ALL sha256 `47a1a3dbe5ee90d582476b60fea355330239c1732fab481297286002f5bbaa0e` over 31617 bytes and 381 lines, and C0a and C0b resolve to the SAME git blob. THE EXTRACTION printed 7 slices over 137 CONTENT lines, TOTAL 381 and PROSE 244, reproducing constraint 9 exactly. `.agent/plan.md` at `7760e77d` is 2607 bytes = PLANF022R11's 2606 plus one newline, the bare-slice control DIFFERING, headings once each, 46 lines against the cap of 50. BOTH PAIRS ARE EXACT AND BOTH PRINTED `TO contains FROM: false`: in `.agent/live_review.md` at `60edc932` MAPFROM11 1→0 and MAPTO11 0→1 with byte delta 177 = 423 − 246; in `docs/roadmap/features/T5_F022.md` at `ae58934d` SPECFROM 1→0 and SPECTO 0→1 with byte delta 547 = 814 − 267; and each committed file equals its base with ONLY that replacement applied. BOTH APPENDS HOLD UNDER BOTH READERS: at `9933144c` the remainder is 8047 = 1 + LEDGER11's 8045 + 1 with N=2 paragraphs equal in order over 267→269 units; at `5ca8c326` the remainder is 3761 = 1 + DEC7's 3759 + 1 with N=7 equal in order over 1303→1310. THE SETS MOVED EXACTLY WHERE THE ROUND PROMISED: 234 records at base and at C3, ids ADDED and REMOVED both the EMPTY SET so NO ID WAS MINTED, `^Recurrence: R-` 4→5 gaining `R-0625`, `^Gate: R` 10→11 gaining the key `R10`, and `^- R-0625 — ` exactly 1 at both. THE SUITES ARE THE REVIEWER'S OWN, run serially in the primary checkout: `tests/docs/` 295 and `tests/orchestration/test_roadmap_index.py` 30, both matching the base and both re-run by the reviewer against the amended feature file BEFORE the round was delegated, in a disposable worktree, so the docs gate was known green rather than hoped green; the four state readers 455, 52, 21 and 16 for 544; and the canary 42. STRUCTURE HELD: seven commits before the handback, every one single-parent, insertions 381, 269, 17, 5, 4, 60 and 13, each under the 500 cap; the range path set is exactly the declared seven-path Change set with the difference EMPTY in both directions; `git show --numstat` agrees cell by cell with all seven `## Commits` rows, the full-file `.agent/last_block.md` row reading `+269/-370` in both; anchored markers 0 in all four named files; one worktree; 0 amend, 0 rebase and 0 cherry. THE HANDBACK IS COMPLIANT at 104 lines with a DECISION D15 stated cause naming that same 104, every mandated section present and in order, and the three-line `Fortschritt:` block byte-identical to the block's. THE ROUND'S TWO SUBSTANTIVE DEVIATIONS ARE BOTH CORRECT AND BOTH CORRECT THE REVIEWER — the constraint-3 contradiction is the R-0413 recurrence above and the 99-character map line is the R-0431 recurrence, and the worker found the first by reading the block's own bytes against its own sequence, which is the check no gate in that block performed. THE VERDICT IS PASS: every numeral R11 states reproduced under the reviewer's own measurement, no slice was edited, no id was minted, and the feature's last unbuildable instruction became a ruled, reversible decision with the spec corrected to match it.
+<<<END LEDGER12
 
-REJECTED, and this is the substantive half of the ruling. The dashboard payload
-already carries `token_usage`, which reads like the ledger figure. It is not
-one. `_build_token_usage` sums `metadata.estimated_tokens` across the job's
-events and returns `"estimated": True` with `"source": "event_metadata"`,
-attributing tokens to `context`, `memory`, `repair`, `planner` and `other` from
-kinds such as `source_context_injected` and `project_memory_recalled`. The
-ticker's figures are `BudgetCounters.measured_token_total` and
-`measured_cost_usd`, which count PROVIDER CALLS. The two populations are
-disjoint in intent and in practice, so a delta between them measures neither
-drift nor drop — it measures the difference between two unrelated questions.
-Rendering it under the words "final (ledger)" would be the fabricated honesty
-moment this feature exists to prevent, and it would be indistinguishable on
-screen from a real one.
-
-CHOSEN. The ledger figure is the LAST `budget.tick` in the job's run log.
-`_emit_budget_tick` writes every tick through `RunLogWriter` under the stable
-run id `budget-ticks`, so that log is the ledger's own record of the final
-measured figures, already in the whitelisted shape
-`_budget_tick_summary_payload` puts on the wire. The server exposes it as a
-final-figure section; the client renders it at terminal in place of the live
-value.
-
-CONSEQUENTLY THE DELTA IS A TRANSPORT STATEMENT, never a second arithmetic. Both
-sides of the comparison are the SAME quantity from the same producer: what the
-client received over the stream, against what the ledger holds. A delta
-therefore means frames were missed — an SSE gap, a disconnect, a ring overflow,
-or a final tick emitted after the client stopped listening — which is exactly
-what a reader deserves to be told, and it is measurable rather than guessed. The
-client still performs no money arithmetic: it compares two figures the backend
-produced and labels the difference.
-
-ALTERNATIVES CONSIDERED. Adding the `stats` endpoint the spec names: rejected,
-because it would be a new public surface invented to satisfy a sentence rather
-than a need, and the figures already exist. Treating the last tick the CLIENT
-holds as final: rejected, because it makes the reconciliation vacuous — the
-client would compare a value with itself and could never show a delta, which is
-the R-0438 vacuous-gate shape arriving in a feature. Recomputing the final
-figure from the event stream in the client: rejected, because the UI never
-computes money, which is this feature's founding constraint.
-
-REVERSE IT path by path, derived from this round's Change set rather than from
-the files most in mind. In `docs/roadmap/features/T5_F022.md` restore the
-Terminal-reconciliation bullet's previous wording, which named the stats
-endpoint and which this round's C5 replaced whole. In `.agent/live_review.md`
-nothing is reversed, because the map repair at C2 and the ledger entry at C3
-record round history rather than this decision. This decision ships no code, so
-no production path is reversed here; a later round that builds against it
-reverses its own paths under its own decision. That is every path this round's
-Change set holds, which is what R-0672 and its recurrence require of a reversal
-instruction.
-<<<END DEC7
+<<<SLICE DONE670
+Done: R-0670 — RESOLVED AT F022 R12 BY NAMING THE GUARD THAT WAS MEASURED. The `BUDGET_TICK_EVENT` comment in `packages/orchestration/ui_server.py` no longer names `tests/ui_contracts/test_humanize_catalog.py` as the guard against that constant drifting from the emitter's inline literal; it names `tests/ui_server/test_budget_tick_envelope.py`, and it says in the same sentence that the measurement was a rename mutation at `f685a707` and that the catalog test is blind to it because it pins the catalog against the emitter's own literal in `packages.orchestration.safe_points` without ever reading this constant. THE REPAIR LANDED BEFORE THIS PARAGRAPH: the R12 block's constraint 3 orders the comment pair at C4 and this resolution at C6, which is what lets this text speak in the past tense about a change on disk rather than predicting one. THE ROUND DID NOT TAKE THE NEW SENTENCE ON TRUST EITHER — its G8 re-ran the finding's own mutation against the repaired file, rewriting the constant to `"budget.ticks"` in a disposable worktree and requiring the newly named guard to go RED, so the comment names a guard that was measured twice: once when the finding was raised and once when it was resolved. WHY THE FIX WAITED THREE ROUNDS: R-0670 was raised at R7 and its own text routed it to the next round that touches `packages/orchestration/ui_server.py` on its own account, because rewriting a landed comment inside an unrelated commit is the move R-0427 records as the wrong one; R8 through R11 held no Python path in their change sets and R12 is the first round that does. The wait was the rule working, not the finding being forgotten.
+<<<END DONE670
