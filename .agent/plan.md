@@ -15,28 +15,27 @@ spent-only variant with no fake denominator, and the terminal reconciliation
 displays the ledger figure with any delta labelled.
 
 ## Current Step
-R11 rules the terminal reconciliation's source and builds nothing. The feature
-file named "the stats endpoint", which does not exist, and the dashboard's
-`token_usage` — the obvious substitute — is an estimate summed over a different
-event population, so a delta against it would be fabricated. DECISION F022 D7
-rules the run log's last budget tick as the authority and this round amends the
-feature file to match. It also records the R10 verdict and the R-0625
-recurrence.
+R12 is the server half of T003b. It adds one read-only section to the dashboard
+payload carrying the ledger's last budget tick, which DECISION F022 D7 rules as
+the authority for the terminal reconciliation, and it needs no new endpoint
+because the dashboard builder already loads every tick the job emitted. It also
+repairs R-0670, whose fix waited for a round that touches `ui_server.py` on its
+own account, and records the R11 verdict with two recurrences.
 
 ## Next Steps
-1. R12 T003b — the server's final-figure section and the client's terminal
-   reconciliation with the delta label, built against DECISION F022 D7.
-2. R13 the integration gate.
-3. R14 closure.
+1. R13 T003b-b — the client half: read `budget_final` into the dashboard type
+   and render the terminal reconciliation with its delta label.
+2. R14 the integration gate.
+3. R15 closure.
 
 ## Risks
-- T003b is now a TWO-SIDED slice: D7 puts a final-figure section on the server
-  as well as the reconciliation on the client, so R12 is larger than T003a was
-  and may need splitting at its own block.
-- Open F022 findings, each with the round that owns it: R-0670 waits for the
-  next round touching `packages/orchestration/ui_server.py` on its own account,
-  which R12 will be; R-0672 and R-0625 want their next-DECISION and next-numeral
-  clauses honoured, which DECISION F022 D7 and this round's ledger entry do.
+- The delta R13 renders is a TRANSPORT statement, not arithmetic: both sides are
+  the same quantity from the same producer, so a difference means frames were
+  missed. A round that reads it as drift would reintroduce the fabricated
+  honesty moment DECISION F022 D7 exists to prevent.
+- Open F022 findings after this round: R-0672 and R-0625 want their
+  next-DECISION and next-numeral clauses honoured; R-0431 and R-0413, recorded
+  this round, are reviewer-block defects already paid for.
 - The two High findings carried forward, R-0495 and R-0574, are inherited from
   the already-closed F085 and F086 and are documented risks, not F022 defects.
 - `npm run lint` in `apps/ui` is RED at base and is NOT a gate (R-0364), which
