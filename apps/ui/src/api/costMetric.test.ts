@@ -210,3 +210,94 @@ describe("the formatters this module exports", () => {
     expect(formatTokenCount(2500000)).toBe("2.5M");
   });
 });
+
+describe("GO the fixture tick stream against a hand-written golden table", () => {
+  // GO1 The stream in ARRIVAL order: one job walked from its first tick to over
+  // its limit — normal, then warn, then exceeded — with the cost basis flipping
+  // from `lower_bound` to `actual` mid-stream, then a limitless job's tick.
+  // These are envelope payloads verbatim, snake_case and optional throughout,
+  // and not view models.
+  const BUDGET_TICK_STREAM: unknown[] = [
+    {
+      spent_usd: 1, limit_usd: 4, spent_tokens: 2000, limit_tokens: 8000,
+      unmeasured_calls: 3, basis: { cost: "lower_bound", tokens: "actual" },
+    },
+    {
+      spent_usd: 3.4, limit_usd: 4, spent_tokens: 6800, limit_tokens: 8000,
+      unmeasured_calls: 1, basis: { cost: "lower_bound", tokens: "actual" },
+    },
+    {
+      spent_usd: 4.6, limit_usd: 4, spent_tokens: 9200, limit_tokens: 8000,
+      unmeasured_calls: 0, basis: { cost: "actual", tokens: "actual" },
+    },
+    { spent_usd: 0.75, basis: { cost: "lower_bound" } },
+  ];
+
+  // GO2 One golden per tick, each the WHOLE view. Written out by hand from
+  // DECISION F022 D4's clauses; a table printed from the module would agree
+  // with whatever the module does and would pin nothing.
+  const COST_VIEW_GOLDENS = [
+    {
+      display: "$1.00", unit: "usd", estimated: true, fill: 0.25,
+      level: "normal", limitless: false,
+      tooltip: [
+        "Cost $1.00 of $4.00 (25%)",
+        "Tokens 2.0k of 8.0k (25%)",
+        "Figures are an estimate",
+        "3 unmeasured calls",
+      ],
+    },
+    {
+      display: "$3.40", unit: "usd", estimated: true, fill: 0.85,
+      level: "warn", limitless: false,
+      tooltip: [
+        "Cost $3.40 of $4.00 (85%)",
+        "Tokens 6.8k of 8.0k (85%)",
+        "Figures are an estimate",
+        "1 unmeasured call",
+      ],
+    },
+    {
+      display: "$4.60", unit: "usd", estimated: false, fill: 1.15,
+      level: "exceeded", limitless: false,
+      tooltip: [
+        "Cost $4.60 of $4.00 (115%)",
+        "Tokens 9.2k of 8.0k (115%)",
+        "Figures are actual",
+        "No unmeasured calls",
+      ],
+    },
+    {
+      display: "$0.75", unit: "usd", estimated: true, fill: null,
+      level: null, limitless: true,
+      tooltip: [
+        "Spent $0.75, with no limit to measure it against",
+        "Figures are an estimate",
+      ],
+    },
+  ];
+
+  it("carries exactly one golden per tick", () => {
+    expect(COST_VIEW_GOLDENS).toHaveLength(BUDGET_TICK_STREAM.length);
+  });
+
+  BUDGET_TICK_STREAM.forEach((payload, index) => {
+    const golden = COST_VIEW_GOLDENS[index];
+    it(`tick ${index} renders ${golden.display} at level ${golden.level ?? "none"}`, () => {
+      expect(costMetricOf(payload)).toEqual(golden);
+    });
+  });
+
+  // GO3 The table is asserted over ITSELF, so a later edit cannot quietly drop a
+  // state and leave a green suite behind. Each failure names what is missing.
+  it("the table still covers every level and both bases", () => {
+    const levels: (string | null)[] = COST_VIEW_GOLDENS.map(g => g.level);
+    for (const level of ["normal", "warn", "exceeded"]) {
+      expect(levels, `the golden table carries no ${level} level`).toContain(level);
+    }
+    expect(levels, "the golden table carries no null level, so the limitless variant is unpinned").toContain(null);
+    const bases: boolean[] = COST_VIEW_GOLDENS.map(g => g.estimated);
+    expect(bases, "the golden table carries no estimated figure").toContain(true);
+    expect(bases, "the golden table carries no actual figure").toContain(false);
+  });
+});
