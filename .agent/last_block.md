@@ -1,49 +1,66 @@
-── STEP R3 — F031 Decision inbox ─────────────────────────────
-Goal:        Record the R2 verdict, then take the decision-inbox
-             inventory: what exists in the source today for the queue,
-             its CLI, the producers, the blocked-subtree computation,
-             the decision event kinds and the write channel — each
-             MEASURED by you in the source, never recalled. No
-             production code changes.
+── STEP R4 — F031 Decision inbox ─────────────────────────────
+Goal:        Record the R3 verdict and the one recurrence its review
+             surfaced, and carry the inventory's consequences into the
+             plan so the next session can rule the design and plan
+             T001 without re-measuring anything. State only.
 
-Fortschritt: ~2 % (F031 claimed; R1 and R2 landed and gated · the
-             inventory is this round · no T-slice started) —
-             Schaetzung
+Fortschritt: ~3 % (F031 claimed; R1, R2 and R3 landed and gated · the
+             source inventory is on disk · the design rulings and T001
+             are next · no T-slice started) — Schaetzung
 
 Bundle:      C0a save this block · C0b mirror it into last_block ·
-             C1 the plan · C2 the R2 gate entry · C3 the inventory
-             file · C4 the handback.
+             C1 the plan · C2 the R3 gate entry and the recurrence ·
+             C3 the handback.
 
 Change set:  exactly these paths, nothing else —
-             .agent/authored/f031-r3.md
+             .agent/authored/f031-r4.md
              .agent/last_block.md
              .agent/plan.md
              .agent/live_review.md
-             .agent/f031_inventory.md
              .agent/handoff.md
              This list bounds the round's WRITES, not its ACTIONS: the
              push named in gate G9 is ordered explicitly and is not a
              file (finding R-0674).
 
 ── Base ──────────────────────────────────────────────────────
-The round base is `9e773d4afd0da714c5d7423fd8bd4c9c6039bee6`, the C3 of
-F031 R2 and the tip of `feature/f031-decision-inbox`, which is also the
-remote tip. Stay on that branch; create none, never commit to `main`.
+The round base is `f26c5da5e5b60e8b7a3b2ba1a4b1a0e5c0ff5a0d`'s branch —
+resolve the base as the current tip of `feature/f031-decision-inbox`,
+which is the C4 of F031 R3 and equals the remote tip. Stay on that
+branch; create none, never commit to `main`.
 
-Readings the reviewer MEASURED at `9e773d4a`, re-checkable there:
+Readings the reviewer MEASURED at that tip, re-checkable there:
 - `.agent/live_review.md`: `^- R-\d+ — ` 238 all DISTINCT, maximum
   `R-0677`; `^Done: R-\d+ — ` 2; `^Recurrence: R-` 13;
-  `^Gate: R\d+ — ` 2, the keys `R19` and `R1`.
+  `^Gate: R\d+ — ` 3, the keys `R19`, `R1` and `R2`.
 - The §3 item 10 open set — every `^- R-\d+ — ` paragraph minus every
   `^Done: R-\d+ — ` line — is 238 − 2 = 236 at that commit.
-- `.agent/plan.md` 43 lines. `.agent/f031_inventory.md` does NOT exist.
-- These paths all resolve at the base:
-  `packages/orchestration/decision_queue.py`,
-  `apps/cli/commands/decision.py`,
-  `packages/orchestration/dag_schedule.py`,
-  `packages/orchestration/ui_server.py`,
-  `apps/ui/src/api/humanizeCatalog.ts`,
-  `docs/roadmap/features/T5_F031.md`.
+- `.agent/plan.md` 44 lines. `.agent/f031_inventory.md` exists, 225
+  lines, with `TO BE MEASURED` occurring 0 times in it.
+
+── Why this round exists ─────────────────────────────────────
+R3 passed on every one of its ten gates under the reviewer's own
+execution, and the reviewer additionally re-measured all six of the
+inventory's `## Observations` against the source and found every one
+true. C2 records that verdict.
+
+The review also found ONE defect, and it is the reviewer's own: G8 of
+the R3 block ordered "the reflog OPERATION field with amend, rebase and
+cherry each 0" and named NO SCOPE, where the R1 and R2 blocks had both
+written "over this round's rows". Read literally the clause is
+repository-wide and unmeetable — the worker measured 17 amend, 26
+rebase-family and 60 cherry-pick entries in the repo-wide reflog, all
+predating this branch — while over the branch's own 18 entries all
+three are 0. The worker reported BOTH scopes and declared the
+ambiguity, which is the correct response and the only reason nothing
+false reached the record. NO NEW ID IS MINTED: the open set was
+searched for the defect (§3 item 30) and R-0601 already holds this
+exact family — a reflog gate whose SCOPE makes it unmeetable — so C2
+records a `Recurrence:` paragraph against it.
+
+C1 carries the inventory's consequences into the plan. This round rules
+NOTHING about the design: the contradictions the inventory found are
+real and deserve a decision written with room to think, so the plan
+names them as R5's work rather than settling them in a record round.
 
 ── Constraints ───────────────────────────────────────────────
 1. Apply every authored slice BYTE FOR BYTE. Never retype, rewrap,
@@ -52,189 +69,120 @@ Readings the reviewer MEASURED at `9e773d4a`, re-checkable there:
    this block is the reviewer's defect, not yours: state it, reconcile
    nothing.
 2. Slice transport. This block is saved verbatim as
-   `.agent/authored/f031-r3.md` at C0a and mirrored byte-identically
+   `.agent/authored/f031-r4.md` at C0a and mirrored byte-identically
    into `.agent/last_block.md` at C0b. Extract every slice
    PROGRAMMATICALLY out of the COMMITTED C0a blob by its marker LINES —
    a line equal to `<<<SLICE <NAME>` opens it, a line equal to
    `<<<END <NAME>` closes it. Marker lines never reach a target file.
-3. Commit sequence, exactly: C0a, C0b, C1, C2, C3, C4. No extra commit,
+3. Commit sequence, exactly: C0a, C0b, C1, C2, C3. No extra commit,
    none dropped, no reordering. If you must correct a landed commit, do
    NOT add a commit outside this sequence — declare it (R-0675). The
-   push runs after C4.
+   push runs after C3.
 4. Never amend, rebase, cherry-pick, force-push or rewrite history;
    never delete a branch; never merge; create no pull request.
 5. `git status --porcelain` prints 0 lines after every commit. Read
-   `.agent/STOP` from disk before C0a and again before C4; if present,
+   `.agent/STOP` from disk before C0a and again before C3; if present,
    finish the commit in hand, write the handback and stop (G6).
-6. The slices this block carries are the whole text PLANF031R3, the
-   appended paragraph GATE2, and the inventory scaffold INVENTORY.
-   This paragraph names them and states no count of them; G3 orders you
-   to report the count YOUR extractor measured.
-7. C2 appends GATE2 to `.agent/live_review.md`, separated from the
-   preceding text by exactly one blank line, the file ending in exactly
-   one newline. This block carries no FROM/TO pair, so no containment
-   reading is owed and none is stated.
+6. The slices this block carries are the whole text PLANF031R4 and the
+   two appended paragraphs GATE3 and RECUR601. This paragraph names
+   them and states no count of them; G3 orders you to report the count
+   YOUR extractor measured.
+7. C2 appends GATE3 then RECUR601 to `.agent/live_review.md` in that
+   order, each separated from the preceding text and from each other by
+   exactly one blank line, the file ending in exactly one newline. This
+   block carries no FROM/TO pair, so no containment reading is owed and
+   none is stated.
 8. THIS ROUND MINTS NO FINDING ID and changes no finding record.
    `^- R-\d+ — ` must be 238 before and after and the maximum must stay
-   `R-0677`. If your inventory uncovers a DEFECT, do NOT mint an id for
-   it: record it in the inventory's `## Observations` section as an
-   observation with its measurement, and the reviewer rules it next
-   round. An inventory round that mints ids is a scope breach.
-9. THE INVENTORY IS YOURS TO MEASURE, NOT TO COPY, AND IT IS THE ONE
-   SLICE CONSTRAINT 1 DOES NOT BIND WHOLE. The INVENTORY slice is a
-   SCAFFOLD: headings and question text, with each answer line left as
-   the literal `ANSWER: TO BE MEASURED`. Its STRUCTURE LINES — every
-   line that is not an `ANSWER: ` line — are covered by constraint 1
-   and land verbatim, in order, unedited. Its ANSWER lines are yours:
-   replace each with what YOUR OWN commands printed against the source
-   at the base commit. So `.agent/f031_inventory.md` as COMMITTED at C3
-   contains no `TO BE MEASURED` token, and G7 proves both halves —
-   the structure verbatim, the answers replaced. Committing the
-   scaffold unreplaced and fixing it in a later commit would breach
-   constraint 3; do the replacement before C3.
-   Every answer names the file and the symbol it was read from, and
-   every citation is `path` plus a SYMBOL name — never a bare line
-   number, which the next edit invalidates (§3 item 9). Where a
-   question asks whether something exists and it does not, the answer
-   says so explicitly and names the command whose empty output proves
-   it; "deliberately does not exist" is a finding-grade fact in this
-   repository and is written as one (AGENTS.md, Code Discoverability).
-   The reviewer has measured every one of these answers independently
-   and will compare; a disagreement is a real signal, so report what
-   you measured even where it surprises you.
-10. Do not touch any path under `packages/`, `apps/`, `tests/`,
-    `docs/` or `README.md`. This round reads production code and writes
-    only `.agent/` state. No production behaviour changes.
+   `R-0677`.
+9. Do not touch any path under `packages/`, `apps/`, `tests/`, `docs/`
+   or `README.md`, and do not touch `.agent/f031_inventory.md` — the
+   inventory is landed evidence and is corrected by dating in a later
+   round, never by editing (§3 item 20, findings R-0417 and R-0525).
+10. Destructive verification, if any, runs ONLY in a disposable
+    `git worktree` under `.remedy-wt/`, removed BY ITS EXACT PATH
+    (R-0662) and BEFORE the G8 suites — a worktree present makes
+    `tests/orchestration/test_test_runner.py::`
+    `TestVitestFrontendTestFoundation::test_vitest_passes` fail on a
+    missing `node_modules` (the R-0518 shape), which is an artefact of
+    the measurement and not a regression.
 
 ── Authored slices ───────────────────────────────────────────
 
-<<<SLICE PLANF031R3
+<<<SLICE PLANF031R4
 # Plan — F031 Decision inbox
 
 Branch: feature/f031-decision-inbox, cut from `main` at `6325ac2f`, the merge
 commit of pull request #213 which closed F022. `.agent/live_review.md` is the
-source of truth for the record, the round map and the finding-id ceiling.
+source of truth for the record, the round map and the finding-id ceiling;
+`.agent/f031_inventory.md` is the measured source inventory R3 landed.
 
 ## Goal
 Every open question in one calm place: the inbox renders decision cards — type,
-age, blocked-subtree size — from the file-based decision queue, live via
-decision.requested and decision.resolved events driving the badge, with
-branch-only blocking semantics intact. DONE when the inbox lists fixture
-decisions of every producing type with correct blocked-size math, answering from
-a card round-trips through the write channel into the same effects the CLI
-produces, the badge tracks live, and ordering follows a documented rule over age
-and blocked size rather than vibes.
+age, blocked-subtree size — from the decision queue, live via decision events
+driving the badge, with branch-only blocking semantics intact. DONE when the
+inbox lists fixture decisions of every producing type with correct blocked-size
+math, answering from a card round-trips through the write channel into the same
+effects the CLI produces, the badge tracks live, and ordering follows a
+documented rule over age and blocked size rather than vibes.
 
 ## Current Step
-R3 records the R2 verdict and takes the decision-inbox inventory into
-`.agent/f031_inventory.md`: the queue store and its types, the CLI surface, the
-producers, the blocked-subtree computation, the decision event kinds on both
-sides, the write-channel command, and what the UI has today — each measured in
-the source, no T-slice planned until it is on disk.
+R4 records the R3 verdict and the R-0601 recurrence, and carries the inventory's
+consequences into this plan. It rules nothing: the design questions below are
+R5's, written with room to think rather than settled in a record round.
 
 ## Next Steps
-1. R4 records the R3 verdict and rules the tick-shaped questions the inventory
-   leaves open — chiefly the event-kind envelope, since the feature file says
-   "envelope coordination if not yet present" and the inventory settles which.
-2. T001 follows the feature file's Task slicing: the read endpoint, the
-   blocked-size computation, scoping, and contract tests per producer type.
+1. R5 rules three things the inventory forces, each as a DECISION in
+   `.agent/decisions.md`: (a) what "the decision queue" IS, since
+   `decision_queue.py` performs no I/O and re-derives decisions from the job's
+   events, so the feature file's "FILE-BASED (the established store with its
+   CLI)" describes the event log rather than the module; (b) whether the badge
+   is fed by EMITTING the decision event kinds that do not exist today or by
+   re-deriving on snapshot refetch; (c) whether the two declared-but-unproduced
+   types stay in the set, since a fixture per producing type is the acceptance
+   criterion and two types have no producer to fixture.
+2. R6 records the R5 verdict and plans T001 against whatever R5 ruled.
 
 ## Risks
 - Open findings, stated with the rule and the commit DECISION F009 D10 requires:
   by §3 item 10 — every `^- R-\d+ — ` paragraph minus every `^Done: R-\d+ — `
-  line — the open set is 236 measured at `9e773d4a`.
+  line — the open set is 236, measured at R3's C4.
 - The findings THIS FEATURE MUST STILL ACT ON — a narrower set, named as what it
   is and not called "open" — are R-0403, R-0413, R-0431, R-0445, R-0495, R-0533,
-  R-0574, R-0625, R-0632, R-0672, R-0674, R-0675, R-0676 and R-0677. R-0495 and
-  R-0574 are the two Highs, both inherited from the closed F085 and F086.
-- F031 depends on F009, F050 and F051. All three are marked `[x]` in
-  `docs/roadmap/STATUS.md`, measured at `9e773d4a`; R3's inventory confirms what
-  each actually left behind in the source rather than trusting the mark.
+  R-0574, R-0601, R-0625, R-0632, R-0672, R-0674, R-0675, R-0676 and R-0677, of
+  which R-0495 and R-0574 are the two Highs, inherited from F085 and F086.
+- THE BADGE F031 IS ASKED TO DRIVE IS A CONSTANT ZERO TODAY. `decision_count`
+  and the `open_decisions` sum both count `human_decision_requested`, which no
+  producer emits and which `event_schemas.py` does not declare. This is the
+  largest gap between the feature file and the source, and no T-slice estimate
+  is sound until R5 rules item 1(b).
 - The record holds `Gate: R19` from F022 as its seed entry. If F031 reaches its
   own R19 that key collides — the §3 item 26 defect. A round before then renames
   the seed or the scheme; this bullet is the reminder.
-<<<END PLANF031R3
+<<<END PLANF031R4
 
-<<<SLICE GATE2
-Gate: R2 — the F031 R2 entry. R2 PASSED ON EVERY ONE OF ITS TEN GATES, AND THE REVIEWER RE-RAN EVERY ONE OF THEM ITSELF RATHER THAN READING THE HANDBACK'S WORD FOR ANY OF THEM. THE ROUND'S SUBSTANCE IS THE R1 VERDICT AND TWO RECURRENCES, AND BOTH RECURRENCES ARE THE REVIEWER'S OWN DEFECTS IN TEXT THE REVIEWER AUTHORED — which is the workflow behaving as designed, because the worker caught the first while applying it and the reviewer caught the second while gating it. TRANSPORT HELD IN ITS STRONGEST FORM: the reviewer's own scratch original at `.remedy-wt/f031-r2.md`, the committed C0a blob, the committed C0b blob and `.agent/last_block.md` read off disk are ALL sha256 `aa3ec89faf1e94bced71de1ca99db00e2ce5adf8bf527918c02ff372cf0ff188` over 26090 bytes and 290 lines, and C0a and C0b resolve to the SAME git blob `bdec9eb4`. THE EXTRACTION over the committed C0a blob printed 4 slices across 46 content lines against 290 total, reproducing the worker's own reading. `.agent/plan.md` at `696e18a9` is 2567 bytes and 43 lines, byte-equal to PLANF031R2 with the trailing-newline-removed control FALSE, `^## Goal$` and `^## Next Steps$` once each, strictly under the cap of 50. THE THREE APPENDS LANDED REGION-EXACT UNDER TWO INDEPENDENT READERS AND A CONTROL: the base blob is a byte-exact PREFIX of the C2 file, the byte delta is 9696 against slice lengths 4749, 2517 and 2427 plus three separator newlines, an independent blank-line split went 271 units to 274 with the LAST THREE equal to GATE1, RECUR632 and RECUR676 IN ORDER, and the worker's byte-flip control inside the FIRST appended paragraph was rejected by both readers while both accepted the true file — the reviewer ran its OWN mutant beside it and got the same answer. THE SETS MOVED ONLY WHERE CONSTRAINT 8 ALLOWED, which is the reading this round existed to protect: `^- R-\d+ — ` 238 to 238 with ids ADDED the EMPTY SET and ids REMOVED the EMPTY SET, maximum `R-0677` UNCHANGED, `^Done: R-` 2 to 2, `^Recurrence: R-` 11 to 13 gaining exactly one `R-0632` line and one `R-0676` line, and `^Gate: R\d+ — ` 1 to 2 gaining exactly the key `R1` with `R19` still present. A ROUND THAT REGISTERS TWO DEFECTS WITHOUT MINTING AN ID IS THE POINT OF §3 ITEM 30, and this is the first round in this record to do it deliberately. STRUCTURE HELD: five commits, each single-parent, insertions 290, 218, 19, 6 and 44, each far under the 500 cap and each agreeing cell for cell with the handback's `## Commits` tables under the reviewer's own `git diff --numstat`; the range path set MINUS the change set is EMPTY and the change set MINUS the range is EMPTY once the handback commit is counted; the anchored markers are 0 in both edited files; `git ls-files .remedy-wt` 0 and the zip glob 0; one worktree; `git status --porcelain` 0; amend, rebase and cherry each 0 in the reflog OPERATION field. THE FIVE SUITES ARE THE REVIEWER'S OWN, run serially with never two pytest processes alive, every one exit 0: 470, 52, 21, 16 and 42, cell for cell the base readings. THE PUSH DISCHARGED to `9e773d4a` and the remote tip equals the local tip; no pull request, nothing merged. THE TIER COUNTER-MEASURE WORKED THE FIRST TIME IT WAS TRIED, which is the round's quiet result: the block deliberately stated NO handback cap and NO tier and ordered the worker to derive both from AGENTS.md against the commit count constraint 3 fixes, and the worker derived five commits, resolved the condition ">5 per-commit tables" to FALSE, named the 60-line tier, measured its own file at 79 lines and declared a DECISION D15 stated-cause overage itemising the mandated content that caused it. That is the R-0676 recurrence's replacement counter-measure discharging correctly one round after it was written, by the actor that can count the commits after they exist. THE VERDICT IS PASS: every gate reproduced under the reviewer's own execution, no id was minted, no finding record moved, and the two defects this round records are both against text the reviewer wrote.
-<<<END GATE2
+<<<SLICE GATE3
+Gate: R3 — the F031 R3 entry. R3 PASSED ON EVERY ONE OF ITS TEN GATES, AND THE REVIEWER RE-RAN EVERY ONE OF THEM ITSELF RATHER THAN READING THE HANDBACK'S WORD FOR ANY OF THEM. THE ROUND'S SUBSTANCE IS THE SOURCE INVENTORY, and it is the first round of this feature to read production code rather than state. TRANSPORT HELD IN ITS STRONGEST FORM: the reviewer's own scratch original at `.remedy-wt/f031-r3.md`, the committed C0a blob, the committed C0b blob and `.agent/last_block.md` off disk are ALL sha256 `ec113810c7d85451dbd56e8bc45ee79e5b4a41a441006310dc5b5cdca0e08966` over 24005 bytes and 363 lines, and C0a and C0b resolve to the SAME git blob. THE EXTRACTION printed 3 slices across 104 content lines against 363 total. `.agent/plan.md` at C1 is 2617 bytes and 44 lines, byte-equal to its slice with the trailing-newline-removed control FALSE, `^## Goal$` and `^## Next Steps$` once each, strictly under the cap of 50. THE APPEND HELD UNDER BOTH READERS AND A CONTROL: the base blob is a byte-exact PREFIX, the delta is 4014 bytes against a 4013-byte slice plus one separator, an independent blank-line split went 274 units to 275 with the LAST equal to GATE2, and a byte-flip mutant was rejected by both readers while both accepted the true file — the reviewer ran its own mutant beside the worker's and agreed. THE SETS MOVED ONLY WHERE CONSTRAINT 8 ALLOWED: `^- R-\d+ — ` 238 to 238, ids ADDED and ids REMOVED both the EMPTY SET, maximum `R-0677` UNCHANGED, `^Done: R-` 2 to 2, `^Recurrence: R-` 13 to 13, and `^Gate: R\d+ — ` 2 to 3 gaining exactly the key `R2`. THE INVENTORY GATE IS THE ONE THAT MATTERED AND IT HELD IN EVERY LIMB: the scaffold's structure lines landed verbatim in strict lockstep, the Q-headings agree on both sides, the literal `TO BE MEASURED` occurs 0 times in the committed file while occurring a nonzero number of times in the slice — so the reading distinguishes a replaced file from an unreplaced one rather than passing on a string that was never there — every `## ` heading carries exactly one `ANSWER: `, every repository path the file names resolves at the base, and every symbol it attributes to a file is found in that file. THE REVIEWER DID NOT STOP AT THE GATE. All six of the inventory's `## Observations` were re-measured independently against the source and ALL SIX ARE TRUE: `packages/orchestration/decision_queue.py` imports only `dataclasses`, `typing` and `Job` and performs NO I/O, so it re-derives decisions rather than storing them and the feature file's "FILE-BASED" describes the event log rather than the module; `human_decision_requested` has seven occurrences of which every one is a reader, a label-map key, a count or a test fixture and NONE is an emission, and it is absent from `event_schemas.py`, so `decision_count` and the `open_decisions` sum are both always 0 in production and the badge F031 must drive is a constant zero; `human_decision_resolved` has zero occurrences anywhere; `worker_approval` and `revert_missing` occur ONLY inside the `DECISION_TYPES` frozenset while `patch_approval` and `token_budget` each have a real producer beside their declaration, so two declared types are produced by nobody; `HumanDecision.type` is annotated plain `str` and `DECISION_TYPES` is imported only under `tests/`, so the set constrains nothing at runtime; and `ui_server.py` contains no `fp:` handling at all while `_dispatch_decision_resolve` reaches only `answer_task_decision`. AN INVENTORY THAT CONTRADICTS ITS OWN FEATURE FILE IN ITS FIRST ROUND IS THE INVENTORY WORKING, and the worker declared the contradiction against the block's own Goal rather than quietly writing the answer the block expected — which is what constraint 1 exists to produce. STRUCTURE HELD: six commits, each single-parent, insertions 363, 252, 18, 2, 225 and 126, each far under the 500 cap; the range path set MINUS the change set is EMPTY and the change set MINUS the range is EMPTY once the handback commit is counted; NO path under `packages/`, `apps/`, `tests/` or `docs/` appears in the range, so the round read production code and changed none of it; `git ls-files .remedy-wt` 0 and the zip glob 0; one worktree; `git status --porcelain` 0. THE SEVEN SUITES ARE THE REVIEWER'S OWN, run serially with never two pytest processes alive, every one exit 0: 470, 52, 21, 16, 29, 26 and 42, the five previously measured reproducing cell for cell and the two decision suites measured here for the first time. THE PUSH DISCHARGED and the remote tip equals the local tip; no pull request, nothing merged. THE VERDICT IS PASS, and the round's one declared imprecision is the reviewer's own reflog clause, recorded in the paragraph below.
+<<<END GATE3
 
-<<<SLICE INVENTORY
-# F031 Inventory — the decision inbox as the source has it today
-
-> MEASURED, not recalled. Every answer below was produced by a command run
-> against the working tree at the round base named in `.agent/handoff.md`, and
-> every answer names the file and the SYMBOL it was read from rather than a bare
-> line number. Where a thing does not exist, the answer says so and names the
-> command whose empty output proves it. This file is state, not documentation:
-> it is superseded by the T-slices it exists to plan.
-
-## Q1 — the queue store
-Which module owns the decision queue, is it file-based, and what is its public
-read surface?
-ANSWER: TO BE MEASURED
-
-## Q2 — the decision types
-What is the exact set of decision types the queue recognises, where is it
-defined, and how many members does it have?
-ANSWER: TO BE MEASURED
-
-## Q3 — the producers
-Which call sites actually WRITE a decision into the queue, and which of the Q2
-types does each produce?
-ANSWER: TO BE MEASURED
-
-## Q4 — the CLI surface
-What decision commands exist, what are their command ids, and which module
-implements them?
-ANSWER: TO BE MEASURED
-
-## Q5 — the blocked-subtree computation
-Which symbol computes what a waiting task blocks downstream, in which module,
-and what does it take and return?
-ANSWER: TO BE MEASURED
-
-## Q6 — the decision event kinds
-Does the event stream carry a decision-requested or decision-resolved event kind
-today, on the Python side and in the TypeScript humanize catalog? Name the
-search you ran and its result on each side.
-ANSWER: TO BE MEASURED
-
-## Q7 — the write channel
-Is there already a write-channel command that resolves a decision? Name the
-command id, the constant that holds it, and the dispatch symbol.
-ANSWER: TO BE MEASURED
-
-## Q8 — the UI today
-Does any inbox or decision component exist under `apps/ui/src`? Name the search
-and its result.
-ANSWER: TO BE MEASURED
-
-## Q9 — the dependencies
-F031 depends on F009, F050 and F051. For each, give the STATUS mark and the one
-thing it left behind that F031 will build on.
-ANSWER: TO BE MEASURED
-
-## Observations
-Defects or surprises found while measuring, each with its measurement. No
-finding id is minted here (block constraint 8); the reviewer rules these.
-ANSWER: TO BE MEASURED
-<<<END INVENTORY
+<<<SLICE RECUR601
+Recurrence: R-0601 — A REFLOG GATE WAS ORDERED WITH NO SCOPE AT ALL, SO ITS LITERAL READING IS REPOSITORY-WIDE AND UNMEETABLE. SECOND INSTANCE, at F031 R3, and it is the reviewer's own. NO NEW ID IS MINTED: R-0601 already holds this family — a reflog gate whose SCOPE is wrong makes the ordered universal impossible for the round to satisfy — and its counter-measure already replaces the unmeetable universal with claims measured over the round's own entries. THE MEASUREMENT, taken by the worker and confirmed by the reviewer: G8 of the R3 block orders "the reflog OPERATION field with amend, rebase and cherry each 0" and names no scope, where G11 of the R1 block and G8 of the R2 block had both written "over this round's rows". Over the branch's own 18 reflog entries the three counts are 0, 0 and 0 and the gate is met; over the repository-wide reflog of 5928 entries they are 17 `commit (amend)`, 26 rebase-family and 60 `cherry-pick`, the most recent dated 2026-08-19, 2026-07-24 and 2026-08-03 and ALL of them predating this branch, so under the literal reading the gate can never pass and never could have. WHAT MAKES IT A RECURRENCE RATHER THAN A NEW CLASS: R-0601's instance was a reflog universal that the round's own navigation made unmeetable, and this is the same gate family losing the same qualifier from the other direction — there the scope was stated and too wide for the round, here it was not stated at all and defaults to the widest scope there is. THE WORKER RESOLVED IT THE RIGHT WAY ROUND: it reported BOTH readings, named the operation counts under each, dated the repo-wide hits to show they precede the branch, and declared the ambiguity rather than picking the reading that suited it — so nothing false reached the record and the property the gate protects, the ABSENCE of history rewriting by THIS round, is affirmatively measured. WHY IT RECURRED IS WORTH THE PARAGRAPH: the scope qualifier survived two blocks by being copied forward and was lost the one time the gate was re-typed rather than copied, which is the failure mode of every rule that lives in a sentence rather than in a check. THE COUNTER-MEASURE IS EXTENDED, binding on every block from here: a gate that counts anything in the reflog states the SCOPE and the FIELD in the same clause — the entries of THIS round, read by the operation prefix before the first colon of `git reflog --format=%gs` — and a block that omits either is defective even when the round happens to satisfy it. The scope half is this recurrence; the field half is finding R-0613, and the two are one clause, so a block writes them together or writes neither correctly.
+<<<END RECUR601
 
 ── Done when ─────────────────────────────────────────────────
 Run every gate yourself, record its REAL exit code and REAL output, and
 report ONE LINE PER GATE in the handback with transcripts kept out of it
 (finding R-0582). "Green" as a word is a finding. Every gate runs at a
-commit STRICTLY EARLIER than C4, which writes the handback (§3 item 31).
+commit STRICTLY EARLIER than C3, which writes the handback (§3 item 31).
 
 G1  Branch and cleanliness. `git branch --show-current` prints
     `feature/f031-decision-inbox` and NOT `main`. `.agent/STOP` read
-    from disk is ABSENT before C0a and again before C4. Report
-    `git status --porcelain` line count after each of C0a, C0b, C1, C2
-    and C3; each must be 0.
+    from disk is ABSENT before C0a and again before C3. Report
+    `git status --porcelain` line count after each of C0a, C0b, C1 and
+    C2; each must be 0.
 
 G2  Transport. Report sha256, byte count and line count for FOUR
-    readings: `.remedy-wt/f031-r3.md` before C0a, the committed C0a
+    readings: `.remedy-wt/f031-r4.md` before C0a, the committed C0a
     blob, the committed C0b blob, and `.agent/last_block.md` off disk
     after C0b. All four must be EQUAL. Report the git blob id of C0a's
     and C0b's file; they must be the SAME id.
@@ -243,102 +191,79 @@ G3  Extraction. Run your extractor over the COMMITTED C0a blob and
     report the slice count, the CONTENT lines inside markers, and the
     TOTAL line count. Report the numbers YOUR extractor printed.
 
-G4  The plan. `.agent/plan.md` at C1 is byte-equal to PLANF031R3 under
+G4  The plan. `.agent/plan.md` at C1 is byte-equal to PLANF031R4 under
     your stated newline convention; report the slice length, the file
     length and the convention. NEGATIVE CONTROL: the file is NOT
     byte-equal to the same slice with its trailing newline REMOVED.
     `^## Goal$` 1, `^## Next Steps$` 1, `wc -l` STRICTLY under 50.
 
-G5  The append. Report that the region of `.agent/live_review.md` at C2
-    equals the extracted GATE2 bytes, that the base blob is a byte-exact
-    PREFIX of the C2 file, and the byte arithmetic. Report a SECOND,
-    INDEPENDENT reading: split the C2 file on blank lines and confirm
-    the LAST unit equals GATE2; report the unit count before and after.
-    NEGATIVE CONTROL: flip ONE byte inside the appended paragraph in a
-    disposable worktree and report that BOTH readers reject the mutant
-    while BOTH accept the true file.
+G5  The two appends. For GATE3 and RECUR601 separately, report that the
+    corresponding region of `.agent/live_review.md` at C2 equals the
+    extracted slice bytes, that the base blob is a byte-exact PREFIX of
+    the C2 file, and the byte arithmetic. Report a SECOND, INDEPENDENT
+    reading: split the C2 file on blank lines and confirm the LAST TWO
+    units equal the two slices IN ORDER; report the unit count before
+    and after. NEGATIVE CONTROL: flip ONE byte inside the FIRST
+    appended paragraph in a disposable worktree and report that BOTH
+    readers reject the mutant while BOTH accept the true file.
 
 G6  The sets moved only where constraint 8 allows. In
-    `.agent/live_review.md`, base `9e773d4a` versus C2: `^- R-\d+ — `
+    `.agent/live_review.md`, the round base versus C2: `^- R-\d+ — `
     238 → 238, ids ADDED the EMPTY SET, ids REMOVED the EMPTY SET,
-    maximum `R-0677` → `R-0677` UNCHANGED, `^Done: R-` 2 → 2,
-    `^Recurrence: R-` 13 → 13. `^Gate: R\d+ — ` 2 → 3, gaining exactly
-    the key `R2`, with `R19` and `R1` still present.
+    maximum `R-0677` → `R-0677` UNCHANGED, `^Done: R-` 2 → 2.
+    `^Recurrence: R-` 13 → 14, gaining exactly one `R-0601` line.
+    `^Gate: R\d+ — ` 3 → 4, gaining exactly the key `R3`, with `R19`,
+    `R1` and `R2` still present.
 
-G7  The inventory is answered and its citations resolve. At C3, in
-    `.agent/f031_inventory.md`:
-    (a) STRUCTURE VERBATIM: take the INVENTORY slice, drop every line
-        beginning `ANSWER: `, and confirm the remaining lines appear in
-        the committed file verbatim, in the same order, with nothing
-        between them but the replaced answer lines. Report the number
-        of structure lines compared and the number that matched, and
-        they must be EQUAL. Report `^## Q\d+ — ` measured on the slice
-        and on the file, and they must be EQUAL;
-    (b) the literal token `TO BE MEASURED` occurs 0 times — every
-        placeholder was replaced. Report also that it occurs a NONZERO
-        number of times in the INVENTORY slice itself, so this reading
-        distinguishes a replaced file from an unreplaced one rather
-        than passing on a string that was never there;
-    (c) `^ANSWER: ` occurs once under every `## ` heading of the file —
-        report the heading count and the ANSWER count and that they
-        are EQUAL;
-    (d) EVERY repository path the file names — extract them
-        mechanically, do not list them by hand — resolves at the base
-        with `git ls-tree 9e773d4a -- <path>`; report the number of
-        paths extracted and the number that resolved, and they must be
-        EQUAL. Report the extracted list in the ROUND's scratch, not in
-        the handback;
-    (e) EVERY symbol the file names as a definition site is grepped
-        back in the file it is attributed to and found; report the
-        number checked and the number found, and they must be EQUAL.
-        This is the gate that makes the inventory a measurement rather
-        than an essay (finding R-0338's class: never attribute a name
-        to a file without resolving it there).
+G7  Markers and untouched paths. Line-anchored `^<<<SLICE ` and
+    `^<<<END ` both count 0 in `.agent/plan.md` and
+    `.agent/live_review.md` at C2. Report that
+    `git diff --name-only <base>..C2` names NO path under `packages/`,
+    `apps/`, `tests/` or `docs/` and does NOT name
+    `.agent/f031_inventory.md` (constraint 9).
 
-G8  Structure and hygiene, over C0a..C3. Report per commit: that it is
+G8  Structure and hygiene, over C0a..C2. Report per commit: that it is
     single-parent, and its INSERTION count — the `+` column only, per
     AGENTS.md DECISION F104 D1 — each under 500. Report the range path
     set MINUS the change set (must be EMPTY) and the change set MINUS
-    the range (must be exactly `.agent/handoff.md`, which C4 writes).
+    the range (must be exactly `.agent/handoff.md`, which C3 writes).
     Report `git ls-files .remedy-wt` as 0, `git ls-files` over the
-    pattern `*.zip` as 0, `git worktree list` as 1 line, and the reflog
-    OPERATION field with amend, rebase and cherry each 0. Report that
-    `git diff --name-only 9e773d4a..C3` names NO path under
-    `packages/`, `apps/`, `tests/` or `docs/` (constraint 10).
+    pattern `*.zip` as 0, and `git worktree list` as 1 line. FOR THE
+    REFLOG, state the SCOPE and the FIELD in the reading itself, as
+    this round's own RECUR601 slice requires: over THIS ROUND'S reflog
+    entries only, read by the OPERATION PREFIX before the first colon
+    of `git reflog --format=%gs`, report `amend`, `rebase` and `cherry`
+    each 0, and report how many entries you scoped the reading to.
 
 G9  Suites, run SERIALLY, never two pytest processes at once, in the
-    PRIMARY checkout at the C3 tree, with `git worktree list` reported
+    PRIMARY checkout at the C2 tree, with `git worktree list` reported
     as 1 line immediately BEFORE the first pytest command. All must
     exit 0; report the real exit code and the counts:
       python3 -m pytest tests/ui_server/ -q
       python3 -m pytest tests/orchestration/test_test_runner.py -q
       python3 -m pytest tests/regression/test_resource_safety.py -q
       python3 -m pytest tests/orchestration/test_integrity_gate.py -q
-      python3 -m pytest tests/cli/test_decision_answers.py -q
-      python3 -m pytest tests/cli/test_open_decisions_view.py -q
       python3 -m pytest tests/cli/test_golden_path.py -q
-    The reviewer executed the first four and the last at `6325ac2f`
-    with no worktree present and measured 470, 52, 21, 16 and 42, every
-    one exit 0. The two decision suites are ordered here because this
-    round reads their subject; the reviewer has NOT measured their
-    counts, so report whatever YOUR run prints and do not reconcile it
-    against any number. `tests/docs/` is NOT ordered: no `docs/` path
-    is in the change set.
+    The reviewer executed all five at R3's C4 with no worktree present
+    and measured, in the order listed: 470, 52, 21, 16 and 42, every
+    one exit 0. Report yours against those and account for any
+    difference. `tests/docs/` is NOT ordered: no `docs/` path is in the
+    change set.
 
-G10 The push. AFTER C4, run `git push origin feature/f031-decision-inbox`.
+G10 The push. AFTER C3, run `git push origin feature/f031-decision-inbox`.
     No `--force`, no `--force-with-lease`, no history rewrite, no branch
     deletion, no pull request. This gate's outcome is REPORTED TO THE
     REVIEWER and is NOT a value of any file this round writes (finding
     R-0371's extended counter-measure).
 
 ── Handback ──────────────────────────────────────────────────
-Rewrite `.agent/handoff.md` at C4 per docs/agents/handback_template.md:
+Rewrite `.agent/handoff.md` at C3 per docs/agents/handback_template.md:
 feature and round, branch, base and commit SHAs, a changed-files table
-per commit, the item-status table covering C0a, C0b, C1, C2, C3, C4 and
-the push, ONE LINE PER GATE with its real result, the finding counts,
-and the next expected action. Carry the `Fortschritt:` block above
-VERBATIM across the lines it occupies — count them yourself and carry
-exactly those; this block states no numeral for them.
+per commit, the item-status table covering C0a, C0b, C1, C2, C3 and the
+push, ONE LINE PER GATE with its real result, the finding counts, and
+the next expected action. Carry the `Fortschritt:` block above VERBATIM
+across the lines it occupies — count them yourself and carry exactly
+those; this block states no numeral for them.
 
 THE HANDBACK LINE CAP: this block states no cap and no tier. Resolve it
 yourself from AGENTS.md under `### handoff.md` against the number of
@@ -354,10 +279,13 @@ COMMIT it was measured at, in the same sentence, per DECISION F009 D10.
 A narrower set is named "the findings this feature must still act on"
 and is never called "open" unqualified.
 
-Do NOT restate the inventory's answers in the handback — it is a
-committed file the reviewer reads directly, and copying it in would
-duplicate a record that can then drift (R-0417). Report only that G7's
-readings passed and what they measured.
+THIS IS THE LAST ROUND OF THE SESSION. Your `## Next` section is the
+only thing the next session reads first, so make it name, in order:
+Phase 1 rule 1 (re-read `.agent/STOP` from disk), then that no pull
+request exists for this branch and none should be created yet, then
+that R5 rules the three design questions `.agent/plan.md` names, then
+that R5's first commit also records the R4 verdict, which by DECISION
+F085 D9 no artefact of this round can carry.
 
 Declare every deviation, contradiction and assumption.
 ──────────────────────────────────────────────────────────────
