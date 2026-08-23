@@ -1,130 +1,131 @@
-# Handback — F022 Live cost ticker · Runde 14 (T003b-b, die Client-Haelfte)
+# Handback — F022 Live cost ticker · Runde 15 (das Integration Gate)
 
-Fortschritt: ~88 % (T001 fertig · T002 fertig · T003a fertig · T003b-a fertig —
-             diese Runde baut die Client-Haelfte: die Schluss-Abrechnung gegen
-             die Ledger-Zahl mit ihrem Delta-Label) — Schaetzung
+Fortschritt: ~95 % (T001 fertig · T002 fertig · T003 fertig — diese Runde baut
+             nichts, sie MISST: das Integration Gate ueber die ganze Suite, plus
+             das R14-Urteil auf Platte) — Schaetzung
 
-Branch `feature/f022-live-cost-ticker`. Round base `5d3e6045`.
-Deviations, declared: this handback is 148 lines, over the 60-line cap, under
-DECISION D15 — the cause is the mandated per-commit tables for 9 commits, the
-13 one-line gate rows, the 9-row item-status table and the ordered-sequence and
-tooling deviations §4 requires in prose.
+Branch `feature/f022-live-cost-ticker`. Round base `8d5c73c4`.
+Deviations, declared: this handback is 147 lines, over the 60-line cap the
+block sets, under DECISION D15 — the cause is the mandated per-commit tables for
+6 commits, the 15 one-line gate rows, the 6-row item-status table and the
+ordered-sequence deviations §4 requires in prose.
 
 ## Range
 
-Review of `5d3e6045`..`HEAD` (C7 below).
+Review of `8d5c73c4`..`HEAD` (C4 below).
 
 ## Commits
 
-### 2690329d chore(state): save the F022 R14 step block as authored text (C0a)
+### 94873415 chore(state): save the F022 R15 step block as authored text (C0a)
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f022-r14.md | +393/-0 | the block file copied byte-for-byte |
+| .agent/authored/f022-r15.md | +296/-0 | the block file copied byte-for-byte |
 
-### 3a55afb4 chore(state): mirror the F022 R14 block into last_block (C0b)
+### bee7ca97 chore(state): mirror the F022 R15 block into last_block (C0b)
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/last_block.md | +291/-160 | same bytes, from the C0a blob; full-file rewrite |
+| .agent/last_block.md | +195/-292 | same bytes, from the C0a blob; full-file rewrite |
 
-### ca3273be docs(state): point the F022 plan at R14, the client reconciliation (C1)
+### a97dfac3 docs(state): point the F022 plan at R15, the integration gate (C1)
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/plan.md | +11/-10 | PLANF022R14 replaces the file whole |
+| .agent/plan.md | +15/-16 | PLANF022R15 replaces the file whole |
 
-### 39d07ada docs(state): record the F022 R13 verdict in the live review ledger (C2)
+### 0486eddf docs(state): record the F022 R14 verdict and the R-0672 recurrence (C2)
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/live_review.md | +2/-0 | LEDGER14 appended, one paragraph |
+| .agent/live_review.md | +4/-0 | LEDGER15 appended, two paragraphs |
 
-### 5c6d4fc6 docs(state): rule DECISION F022 D8 for the terminal reconciliation (C3)
+### 36a43e04 test(gate): record the F022 R15 integration gate evidence (C3)
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/decisions.md | +71/-0 | DEC14 appended, nine paragraphs |
+| .agent/gate_f022_r15/ | +474/-0 | 11 files: attribution.txt 176, base_failed.txt 63, controls.txt 46, base_run.txt 39, summary.txt 37, auto_build_neutralization.txt 32, branch_run.txt 31, comm.txt 21, parity.txt 19, canary.txt 10, branch_failed.txt 0 |
 
-### c2e78b32 feat(ui): add the terminal cost reconciliation module per DECISION F022 D8 (C4)
-| Path | +/- | Reason |
-|---|---|---|
-| apps/ui/src/api/costReconciliation.ts | +74/-0 | the new module, authored not sliced |
-| apps/ui/src/api/costReconciliation.test.ts | +145/-0 | 13 cases incl. the guarded source scan |
-
-### 318a85a1 feat(ui): carry the ledger budget figure into the dashboard type (C5)
-| Path | +/- | Reason |
-|---|---|---|
-| apps/ui/src/api/types.ts | +7/-2 | `budgetFinal` on `RemedyDashboard` |
-| apps/ui/src/api/remedyApi.ts | +7/-0 | `budget_final` mapped opaquely, `null` default |
-| apps/ui/src/api/remedyApi.test.ts | +31/-0 | the `budget_final transport` describe |
-
-### 4e460b2e feat(ui): render the terminal ledger figure with its delta label (C6)
-| Path | +/- | Reason |
-|---|---|---|
-| apps/ui/src/api/types.ts | +5/-0 | `costFinalNote` on `RemedyMetric` |
-| apps/ui/src/components/shell/RemedyShell.tsx | +12/-1 | the reconciliation wraps the ticker |
-| apps/ui/src/components/metrics/TopMetricsBar.tsx | +3/-0 | the note rendered off its own field |
-| tests/ui_contracts/test_cost_metric_render.py | +72/-0 | `TestTheLedgerFigureReachesTheBar` |
-
-### C7 docs(state): hand back the F022 R14 client reconciliation round
+### C4 docs(state): hand back the F022 R15 integration gate round
 | Path | +/- | Reason |
 |---|---|---|
 | .agent/handoff.md | rewrite | this file; a handoff cannot table its own commit |
 
 ## External actions
 
-`git worktree add .remedy-wt/g5wt HEAD --detach` → ok; `git worktree remove
---force .remedy-wt/g5wt` → ok, list back to 1 line (G5 control). `git worktree
-add .remedy-wt/g9wt HEAD --detach` → ok; `git worktree remove --force
-.remedy-wt/g9wt` → ok, list back to 1 line (G9 mutations). `gh pr list --state
-open --json number,headRefName` → `[]`. `git push` → after C7. No PR created,
-nothing merged.
+`git worktree add -b tmp/f022-r15-base .remedy-wt/f022r15-base c34ef32b` → ok, ON
+A BRANCH per constraint 5. `git worktree add -b tmp/f022-r15-ctl
+.remedy-wt/f022r15-ctl HEAD` → ok, for the G5 and G12 controls. `git worktree
+remove --force` on both → ok; `git worktree prune`; `git branch -D
+tmp/f022-r15-base tmp/f022-r15-ctl` → both deleted; `git worktree list` back to 1
+line. `gh pr list --state open --json number,headRefName` → `[]`. `git push` →
+after C4. No PR created, nothing merged.
 
 ## Verification
 
-One line per gate; transcripts stay in the round report (R-0582).
+One line per gate; the transcripts stay in `.agent/gate_f022_r15/` (R-0582).
 
-- G1 exit 0 — `.agent/STOP` absent, read from disk before C0a and again before C7; branch `feature/f022-live-cost-ticker`; `git status --porcelain` 0 lines after each of C0a, C0b, C1, C2, C3, C4, C5 and C6.
-- G2 exit 0 — five readings of the block are EQUAL: sha256 `1c827a3f558a…b5b5`, 30949 bytes, 393 lines (scratch `.remedy-wt/f022-r14.md`, the committed C0a blob, the committed C0b blob, `.agent/last_block.md` on disk, the delegation's digest); C0a and C0b resolve to the SAME git blob `ac070803`.
-- G3 exit 0 — the extractor over the COMMITTED C0a blob, matching the line-anchored markers `<<<SLICE ` / `<<<END `, printed 3 slices over 116 CONTENT lines; TOTAL 393, PROSE 277 — constraint 10's numerals reproduce exactly, nothing to reconcile.
-- G4 exit 0 — `.agent/plan.md` at `ca3273be` is 2608 bytes = PLANF022R14's 2607 + exactly one newline; NEGATIVE CONTROL against the BARE slice is FALSE (2608 vs 2607); `^## Goal$` 1x, `^## Next Steps$` 1x, `wc -l` 45 ≤ 50.
-- G5 exit 0 (both files), controls exit 1 — reader (a): each pre-commit blob is a byte-exact PREFIX and the remainder is 1 + slice + 1 — `.agent/live_review.md` at `39d07ada` 5004 = 1 + LEDGER14's 5002 + 1, `.agent/decisions.md` at `5c6d4fc6` 4512 = 1 + DEC14's 4510 + 1. Reader (b), independent blank-line splitter: N = 1 for LEDGER14 (275 → 276 units) and N = 9 for DEC14 (1310 → 1319 units), the LAST N units equal the slice's paragraphs IN ORDER in both. NEGATIVE CONTROL in `.remedy-wt/g5wt`: one BYTE flipped at BYTE offset 569200 in live_review (`22 R13 entry. R13 PA` → `22 R13 entsy. R13 PA`) and at BYTE offset 548460 in decisions (` when the ledger fig` → ` when the medger fig`), both inside the FIRST appended paragraph — BOTH readers REJECT both mutants and BOTH ACCEPT both true files. Worktree removed; `git worktree list` 1 line.
-- G6 exit 0 — `^- R-\d+ — ` records 234 at base `5d3e6045` and 234 at C2, all DISTINCT at both, MAXIMUM `R-0673` at both; ids ADDED and ids REMOVED are both the EMPTY SET, so NO ID WAS MINTED. `^Done: R-` 2 → 2 over `R-0653` and `R-0670`; `^Landed: ` 0 → 0; `^Recurrence: R-` 8 → 8; `^Gate: R` 13 → 14 over 13 → 14 distinct keys, gaining exactly the key `R13`. Every base reference numeral the block states reproduced under my own measurement.
-- G7 exit 0 — the AST-free scan read 61 shipped `.ts`/`.tsx` files under `apps/ui/src` (test files excluded) and, with comments stripped, the LIST of files whose code names `spent_usd`, `spent_tokens`, `limit_usd` or `limit_tokens` is exactly `['apps/ui/src/api/costMetric.ts']`. `costReconciliation.ts` IS in the scanned set and its RAW source DOES name a field, so the comment-stripping half is not vacuous either.
-- G8 exit 0 ×3 — in the PRIMARY checkout at C6: `vitest run` 20 files / 285 tests passed (base reference 19 / 268; +1 file, +17 tests, all mine); `tsc --noEmit` exit 0 with NO output (base reference identical); `python3 -m pytest tests/ui_contracts/ -q` 525 passed, 4 skipped (base reference 518 / 4; +7 = the new contract class). `npm run lint` NOT RUN, per the block.
-- G9 — POSITIVE CONTROL FIRST, then two mutations, all in `.remedy-wt/g9wt` and never in the primary checkout. Control: unmutated worktree, `costReconciliation.test.ts` 13/13 passed, exit 0. MUTATION 1, deleting `if (received.display === ledger.display) return undefined;` so the note renders unconditionally: exit 1, exactly 1 test failed — "says NOTHING when the two displays are equal", which received `final (ledger): $4.20 — live estimate was $4.20`, the self-contradicting label DECISION F022 D8 clause 3 exists to prevent. Restored (worktree `git status --porcelain` 0 lines). MUTATION 2, deleting `if (running) return metrics as RemedyMetric[];` so the reconciliation runs mid-run: exit 1, exactly 1 test failed — "a RUNNING job gets the SAME array". Worktree removed; `git worktree list` 1 line.
-- G10 exit 0 ×5 — serially in the PRIMARY checkout at C6, never two pytest processes at once, `python3 -m pytest <path> -q` from the repository root: `tests/ui_server/` 470 passed, `tests/orchestration/test_test_runner.py` 52, `tests/regression/test_resource_safety.py` 21, `tests/orchestration/test_integrity_gate.py` 16 → 559 across the four; canary `tests/cli/test_golden_path.py` 42. All five match the block's reference figures exactly.
-- G11 exit 0 — 8 commits before C7, every one single-parent; insertions 393, 291, 11, 2, 71, 219, 45 and 92, each under the 500 cap; the range path set is exactly the 13 declared non-handoff paths with the difference EMPTY in BOTH directions (`.agent/handoff.md` is C7's and still pending); `git show --numstat` agrees cell by cell with every `## Commits` row above; the LINE-ANCHORED `^<<<SLICE ` and `^<<<END ` each count 0 in `.agent/plan.md`, 0 in `.agent/live_review.md` and 0 in `.agent/decisions.md`; `git ls-files .remedy-wt` 0; one worktree; the round's 8 reflog rows all carry the action `commit` — amend 0, rebase 0, cherry 0.
-- G12 exit 0 — `gh pr list --state open --json number,headRefName` printed, verbatim, `[]`. No PR created, nothing merged: the integration gate has not run and the closure protocol creates the PR at closure.
-- G13 — CHECKED, ONE RESIDUAL, reported and NOT repaired. Re-measured at C6: `git merge-base main HEAD` IS `c34ef32b`; R-0672, R-0625, R-0431, R-0413, R-0533, R-0495, R-0574, R-0622 and R-0665 are each exactly one `^- R-\d+ — ` record; the plan's single-arithmetic-home sentence still holds at C6 (G7); DEC14's `Measured at 5d3e6045` clause is SCOPED and verified true there — `budgetFinal` occurs 0x in `types.ts` at `5d3e6045` and 2x at C6, `costFinalNote` 1x at C6, which is the change this round exists to make and not a staleness. RESIDUAL: DEC14's reversal instruction says `remedyApi.test.ts` gained "its three cases" while the `budget_final transport` describe holds 4 `it(` cases — the block's three plus one pinning `normalizeApiFailure`'s new `budgetFinal: null`. CARRIED, NOT RE-MEASURED: PLANF022R14's sentence that `npm run lint` in `apps/ui` is RED at base — G8's "NOT A GATE and not run" clause excludes it.
+- G1 exit 0 — `.agent/STOP` absent, read from disk before C0a and again before C4; branch `feature/f022-live-cost-ticker`; `git status --porcelain` 0 lines after each of C0a, C0b, C1, C2 and C3.
+- G2 exit 0 — five readings EQUAL: sha256 `639788e02382…6ad8`, 29128 bytes, 296 lines, over the scratch `.remedy-wt/f022-r15.md`, the committed C0a blob, the committed C0b blob, `.agent/last_block.md` on disk, and the delegation's digest; C0a and C0b resolve to the SAME git blob `3f1d412d`.
+- G3 exit 0 — the extractor over the COMMITTED C0a blob, matching the line-anchored `<<<SLICE ` / `<<<END ` markers, found 2 of each and printed 2 slices over 47 CONTENT lines (PLANF022R15 44, LEDGER15 3); TOTAL 296, PROSE 249 — constraint 10's 296/47/249 reproduce exactly, nothing to reconcile.
+- G4 exit 0 — `.agent/plan.md` at `a97dfac3` is 2508 bytes = PLANF022R15's 2507 + exactly one newline; NEGATIVE CONTROL against the BARE slice is FALSE; `^## Goal$` 1x and `^## Next Steps$` 1x in that file; `wc -l` 44 ≤ 50.
+- G5 exit 0, control rejected — reader (a): the C1 blob of `.agent/live_review.md` is a byte-exact PREFIX and the remainder is 9861 = 1 + LEDGER15's 9859 + 1. Reader (b), an independent blank-line splitter: N = 2 paragraphs, 276 → 278 units, the LAST 2 equal the slice's 2 IN ORDER. NEGATIVE CONTROL in `.remedy-wt/f022r15-ctl`: BYTE offset 574400, inside the FIRST appended paragraph's byte span [574174, 578439), flipped 116 → 84 (`2 R14, in the review` → `2 R14, in The review`) — BOTH readers REJECT the mutant while BOTH ACCEPT the true file.
+- G6 exit 0 — in `.agent/live_review.md`, base `8d5c73c4` → C2 `0486eddf`: `^- R-\d+ — ` 234 → 234, all DISTINCT at both, MAXIMUM `R-0673` at both; ids ADDED and ids REMOVED are both the EMPTY SET, so NO ID WAS MINTED; `^Done: R-` 2 → 2 over `R-0653` and `R-0670`; `^Landed: ` 0 → 0; `^Recurrence: R-` 8 → 9 over 8 DISTINCT ids at both, the ninth line being a SECOND `R-0672`; `^Gate: R` 14 → 15 over 14 → 15 distinct keys, gaining exactly `R14`; `^- R-0672 — ` exactly 1 at both. Every base reference numeral the block states reproduced.
+- G7 exit 0 — the BRANCH RUN, `python3 -m pytest -n auto -q` from the repository root in the PRIMARY checkout at C2: `17722 passed, 20 skipped in 177.04s`, wall 177.6 s, and 0 lines matching `^FAILED` in `branch_failed.txt`.
+- G8 exit 1 — the BASE RUN, identical command, in the branch worktree `tmp/f022-r15-base` at `c34ef32b` with `REMEDY_UI_NO_AUTO_BUILD=1` and parity restored FIRST by `shutil.copytree(src, dst, symlinks=True)`: `63 failed, 17588 passed, 20 skipped in 162.61s`, wall 163.1 s, 63 lines matching `^FAILED` in `base_failed.txt`. RED CONTROL for the restore: symlinks under `apps/ui/node_modules/.bin` counted 0 in the base worktree before the copy (the directory was absent) and 23 after, equal to the primary's 23.
+- G9 exit 0, PARITY CLAIM VOID — all 3 files under the base worktree's `apps/ui/dist` carry an mtime INSIDE the run window 1787467222.256 .. 1787467385.399; both asset FILENAMES changed (`index-CQ9qmyYl.css`/`index-DKdEM9lB.js` → `index-DCl1uvTK.css`/`index-DNUAMteT.js`) and no sha256 matched its pre-run value, so this is a real REBUILD FROM BASE SOURCES about 100 s in, not a byte-identical one. Per-id attribution of every `comm -23` id was therefore mandatory and was performed.
+- G10 exit 0 twice — `comm -13 base_failed.txt branch_failed.txt`, the BRANCH-ONLY set, count 0 and the list EMPTY; `comm -23`, the BASE-ONLY set, count 63 and the list identical to `base_failed.txt`. An independent python set difference over the same two files agrees in BOTH directions.
+- G11 — THE BRANCH-ONLY SET IS EMPTY, reported as the reading it is and not as a discharge: 0 ids, so no serial re-run, no flake to classify and NO BLOCKER under constraint 4. All 63 base-only ids are attributed to ONE environment class by three evidences: `_frontend_is_stale()` returns True in the base worktree at the copied `dist/index.html` mtime (92 of 92 `apps/ui/src` files newer) and False at the post-run mtime; 63 of 63 failure sections carry BOTH `Failed: Server did not start in time` and `ERROR: React UI not built.`; and all 63 ids, re-run SERIALLY at `c34ef32b` once the artifact was fresh, gave exit 0 and `63 passed in 8.02s`.
+- G12 exit 0 — the CANARY, `python3 -m pytest tests/cli/test_golden_path.py -q` in the PRIMARY checkout at C2: `42 passed in 20.43s`, matching the block's reference figure of 42. RED CONTROL in `.remedy-wt/f022r15-ctl`: line 71's `assert "State: planned" in out` was mutated to a non-existent state → exit 1, `1 failed, 41 passed in 20.55s`, the `^FAILED` line naming `TestDoMission::test_do_mission_creates_planned_job`.
+- G13 exit 0 — the 5 commits BEFORE C4, every one single-parent; insertions 296, 195, 15, 4 and 474, each under the 500 cap; the range `8d5c73c4..HEAD` touches 15 paths, range−ChangeSet is EMPTY and ChangeSet−range is exactly `.agent/handoff.md` (C4's own, still pending); `git show --numstat` agrees cell by cell with every `## Commits` row above; the LINE-ANCHORED `^<<<SLICE ` and `^<<<END ` each count 0 in `.agent/plan.md` and 0 in `.agent/live_review.md`; `git ls-files .remedy-wt` 0; `git worktree list` 1 line with `tmp/f022-r15-base` and `tmp/f022-r15-ctl` both deleted; the round's 5 reflog rows all carry the action `commit` — amend 0, rebase 0, cherry 0.
+- G14 exit 0 — `gh pr list --state open --json number,headRefName` printed, verbatim, `[]`. No PR created and nothing merged; the closure protocol creates the PR at R16.
+- G15 — CHECKED, NO RESIDUAL. Re-measured at C3: `git merge-base` IS `c34ef32b` and that commit's subject names pull request #211; the ceiling `R-0673` still holds in `.agent/live_review.md`; R-0672, R-0625, R-0431, R-0413, R-0533, R-0364, R-0622, R-0665, R-0495 and R-0574 are each exactly one `^- R-\d+ — ` record there; `^- R-0526 — ` and `^- R-0530 — ` are each 0; `^Recurrence: R-0672 ` is 2; R-0672's body still carries the sentence LEDGER15 quotes; D8's paragraph in `.agent/decisions.md` still says "its three cases" and still closes with the universal LEDGER15 calls false; the diff `c2e78b32..318a85a1` still adds 4 lines matching `^\+\s*it\(` to `apps/ui/src/api/remedyApi.test.ts`; R14's transport values (sha256 `1c827a3f…b5b5`, 30949 bytes, 393 lines, blob `ac070803`), its plan's 2608 bytes and its remainders 5004 and 4512 all reproduce; the 61 shipped non-test `.ts`/`.tsx` files under `apps/ui/src` still put the four figure fields in exactly `costMetric.ts` with comments stripped, with `costReconciliation.ts` naming one raw; and `git ls-files` matches 0 paths containing `assumption`, so R-0665's premise holds. NOT RE-MEASURED: PLANF022R15's `npm run lint` sentence — that same file states it is NOT a gate (R-0622).
 
 ## Authored-text proofs
 
-Three slices extracted PROGRAMMATICALLY by their marker LINES from the COMMITTED
-C0a blob and applied byte-for-byte, never retyped or reflowed: PLANF022R14
-2607 B, LEDGER14 5002 B, DEC14 4510 B. Disk-to-disk equality is G2, G4
-(bare-slice control FALSE) and G5 (two independent readers per file, byte-flip
-controls). The C4/C5/C6 production code is AUTHORED, not transported, exactly as
-the block's slice convention states.
+Two slices were extracted PROGRAMMATICALLY by their marker LINES out of the
+COMMITTED C0a blob and applied byte for byte, never retyped and never reflowed:
+PLANF022R15 2507 B and LEDGER15 9859 B. The disk-to-disk equality is G2, G4
+(with the bare-slice control FALSE) and G5 (two independent readers plus a
+byte-flip control). The 11 files under `.agent/gate_f022_r15/` are NOT slices:
+they are my own measurements, generated from the JSON the runs produced, exactly
+as the block's "What C3 writes" section requires.
 
 ## Deviations & assumptions
 
-- ORDERED COMMIT SEQUENCE: none. C0a, C0b, C1, C2, C3, C4, C5, C6, C7 landed
-  exactly as constraint 3 fixes them — no extra commit, none dropped, no
-  reordering.
-- NO SLICE WAS EDITED. One slice contradicts what I measured, declared under
-  constraint 1 and repeated in G13: DEC14's reversal says `remedyApi.test.ts`
-  gained "its three cases"; it gained four. The fourth pins `normalizeApiFailure`
-  returning `budgetFinal: null`, a line C5 had to add for `tsc` to pass once the
-  field became non-optional. I left the slice and the test both alone.
-- TOOLING: `npx` is DENIED to this worker session-wide, so G8's `npx vitest run`
-  and `npx tsc --noEmit` ran as `npm run --prefix apps/ui test:unit` and
-  `npm run --prefix apps/ui typecheck`, whose package.json bodies are literally
-  `vitest run` and `tsc --noEmit`. `--prefix` replaces the block's "with `apps/ui`
-  as the working directory"; vitest's own banner confirmed the root each time.
-- BY CONSTRUCTION of constraint 3's order, C4 references `costFinalNote` before
-  C6 declares it, so C4 and C5 do not typecheck in isolation. G8 measures C6,
-  where they do. Nothing was reordered to hide this.
+- ORDERED COMMIT SEQUENCE: none. C0a, C0b, C1, C2, C3 and C4 landed exactly as
+  constraint 3 fixes them — no extra commit, none dropped, no reordering.
+- A SECOND DISPOSABLE WORKTREE. Constraint 5 names `tmp/f022-r15-base` only; G5
+  and G12 each order a control "in a disposable worktree" without naming one, so
+  `tmp/f022-r15-ctl` was created at `0486eddf` to host both. Both worktrees were
+  removed and both branches deleted (G13).
+- GATE ORDER. G7-G12 PRODUCE the files C3 commits, so their RUNS necessarily
+  precede C3; G1-G6 and G13-G15 ran after C3 and before C4 as the block directs.
+- CONSTRAINT 6 ORDERED THE COPY ROUTE, AND THE COPY ROUTE IS WHAT PRODUCED ALL
+  63 BASE-ONLY FAILURES. It was applied as written per constraint 1.
+  `shutil.copytree` copies with `copy2`, which PRESERVES the source mtime, so the
+  copied `apps/ui/dist/index.html` (mtime 1787467082) landed OLDER than every one
+  of the base worktree's 92 freshly checked-out `apps/ui/src` files (newest
+  1787467200); `_frontend_is_stale()` fired, and `REMEDY_UI_NO_AUTO_BUILD=1`
+  turned the auto-build into `sys.exit(1)` before the UI server could bind.
+  `.agent/gate_f021_r38/parity.txt` records that same copy route producing 78
+  base-only failures at `24a6b899` and the BUILD route producing 0. Not repaired:
+  constraint 4 forbids it, and G10's attribution obligation was discharged instead.
+- G9's REBUILD IS THE R-0169/R-0444 CLASS RECURRING — `REMEDY_UI_NO_AUTO_BUILD=1`
+  was set and the base `dist` was rebuilt anyway, so the variable did not reach
+  the path that built it. Reported, not minted: an id is the reviewer's to mint.
+- TWO CONTROLS BEYOND THE ORDERED SET, because both headline readings this round
+  are EMPTY: a `^FAILED` extractor liveness control (a synthetic one-pass
+  one-fail module run OUTSIDE the repository, exit 1, extractor found 1 line) and
+  a `comm` route control (a synthetic pair putting exactly 1 id in each
+  direction). Both are recorded in `controls.txt`.
+- TWO OF MY OWN FIRST G15 READINGS WERE WRONG-SET READINGS, NOT STALENESS, and
+  are named so nobody re-derives them: "61 shipped `.ts`/`.tsx` files" counts the
+  NON-TEST set (81 with tests, 61 without), and D8's closing universal is present
+  but WRAPS a line, so a single-line grep misses it. Both LEDGER15 sentences
+  re-measure TRUE.
+- The canary ran twice, both exit 0 and both `42 passed`; the second run exists
+  only because the first did not capture its own metadata. Nothing else ran twice,
+  and no two pytest processes were ever alive at once.
 - No measurement of mine differed from a reference numeral the block states for
-  the base `5d3e6045`, so nothing needed reconciling under constraint 9.
-- G11's numbers cover the 8 commits BEFORE C7; C7's own belong to the next
-  round's ledger entry, as the block directs.
+  the round base `8d5c73c4`, so nothing needed reconciling under constraint 9.
+- WALL CLOCK: branch 177.6 s and base 163.1 s, both under the ~5 min threshold of
+  docs/agents/integration_gate.md step 5, so no perf-pass note is raised.
 
 ## Item status
 
@@ -133,16 +134,14 @@ the block's slice convention states.
 | C0a save this block | done | |
 | C0b mirror it into last_block | done | |
 | C1 the plan | done | |
-| C2 the R13 verdict | done | |
-| C3 DECISION F022 D8 | done | |
-| C4 the reconciliation module and its tests | done | |
-| C5 the transport, type and mapping | done | |
-| C6 the render and its contract | done | |
-| C7 the handback | done | this commit |
+| C2 the R14 verdict and two recurrences | done | |
+| C3 the gate evidence | done | 11 files under `.agent/gate_f022_r15/` |
+| C4 the handback | done | this commit |
 
 ## Next
 
 1. Phase 1 rule 1 FIRST: re-read `.agent/STOP` from disk before anything else.
-2. Gate R14 — this round is ungated and its verdict is the next round's C1.
-3. R15, the integration gate, per docs/agents/integration_gate.md. T003b is now
-   complete on both halves, so F022 has no unbuilt clause left in its Goal.
+2. Gate R15 — this round is ungated and its verdict is the next round's C1.
+3. R16, closure, per docs/roadmap/STATUS_closure_protocol.md. G11 found NO
+   blocker: the branch-only set is empty, so no repair round stands between here
+   and closure.
