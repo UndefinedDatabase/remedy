@@ -2741,6 +2741,13 @@ def _build_task_progress_json(job: Any) -> dict[str, Any]:
     return build_task_progress(job, events)
 
 
+def _build_decisions_json(job: Any) -> dict[str, Any]:
+    """Build the decision inbox payload — every open question of one job."""
+    from packages.orchestration.decision_inbox import build_decision_inbox
+    events = _load_events(job)
+    return build_decision_inbox(job, events)
+
+
 def _build_next_action_json(job: Any) -> dict[str, Any]:
     """Build next-action suggestion."""
     from packages.orchestration.ui_view_model import build_next_action
@@ -3376,6 +3383,7 @@ class _RemedyHandler(BaseHTTPRequestHandler):
                 "brain-view-model": _build_brain_view_model_json,
                 "live-state": _build_live_state_json,
                 "task-progress": _build_task_progress_json,
+                "decisions": _build_decisions_json,
                 "next-action": _build_next_action_json,
                 "guide": _build_guide_json,
                 "events": _build_events_json,
