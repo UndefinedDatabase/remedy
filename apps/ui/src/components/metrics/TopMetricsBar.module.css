@@ -68,6 +68,51 @@
   transition: width 600ms ease;
 }
 
+/* The COST fill track, built to ux_spec.md §10's own numbers — 6px, radius 3,
+   --remedy-blue-100 base, 350ms width transition — and deliberately NOT to
+   .progressTrack above, whose 5px, rgba base and 600ms predate that sentence
+   (DECISION F022 D5 clause 5). */
+.costTrack {
+  width: 120px;
+  height: 6px;
+  margin-top: 4px;
+  border-radius: 3px;
+  background: var(--remedy-blue-100);
+  overflow: hidden;
+}
+.costTrack > span {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  transition: width 350ms ease;
+}
+.costNormal > span { background-color: var(--remedy-ink-strong); }
+
+/* DECISION F022 D5 clause 3: each threshold carries a non-colour signal beside
+   its tint, so the two bands differ in PATTERN as well — diagonal hatching at
+   warn, vertical barring at exceeded. */
+.costWarn > span {
+  background-color: var(--remedy-orange-400);
+  background-image: repeating-linear-gradient(
+    45deg, transparent, transparent 3px, var(--remedy-blue-100) 3px, var(--remedy-blue-100) 6px
+  );
+}
+.costExceeded > span {
+  background-color: var(--remedy-red-500);
+  background-image: repeating-linear-gradient(
+    90deg, transparent, transparent 2px, var(--remedy-blue-100) 2px, var(--remedy-blue-100) 4px
+  );
+}
+
+.estimateMark { color: var(--remedy-muted); margin-right: 2px; }
+
+.costTooltipRow {
+  font-size: 12px;
+  color: var(--remedy-muted);
+  padding: 3px 0;
+  white-space: nowrap;
+}
+
 .estimated { font-size: 10px; color: var(--remedy-faint); letter-spacing: 0.04em; }
 
 .stateDot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; }
