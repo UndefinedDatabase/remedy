@@ -52,7 +52,9 @@ that does not exist, and record the R10 verdict → R12 T003b-a the server's
 final-figure section, R-0670's repair and the R11 verdict → R13 record the R12
 verdict and end that session at its round budget → R14 T003b-b the client's
 reconciliation with its delta label → R15 the integration gate → R16 record the
-R15 verdict and end that session at its round budget → R17 closure. This
+R15 verdict and end that session at its round budget → R17 record the R16
+verdict, register two findings and write the feature file's Built State → R18
+the evidence job and the review zip → R19 closure. This
 section is the only place the round map is stated, per
 R-0447's remedy, and a round whose scope this map does not describe repairs the
 map in that same block or is not emitted, per R-0455. The map is repaired at R10
