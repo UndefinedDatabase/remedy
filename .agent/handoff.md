@@ -38,7 +38,7 @@ Review of `f51be462`..HEAD. Round base `f51be462`, branch
 - `git worktree add --detach .remedy-wt/g6 c27f255e` — created, for the G6 control.
 - `git worktree remove .remedy-wt/g6 --force` — removed; `git worktree list` 1 line.
 - `gh pr list --state open --json number,headRefName` — printed `[]`.
-- No push, no PR created, nothing merged.
+- `git push -u origin feature/f022-live-cost-ticker` — REAL exit 0; remote tip `f50615d8` when this line was written, and the handoff-correction commit that follows is pushed after it, advancing the remote by exactly that one commit. No force, no history rewrite. Still no PR created and nothing merged.
 
 ## Verification
 G1 PASS — `.agent/STOP` absent on both disk reads (before C0a, before C4); branch `feature/f022-live-cost-ticker`; `git status --porcelain` 0 lines after each of C0a, C0b, C1, C2, C3.
@@ -66,7 +66,7 @@ All four slices were extracted PROGRAMMATICALLY from the committed C0a blob by m
 - G6 reader (b), first attempt, rejected the TRUE file: it split on blank lines WITHOUT first stripping the single document-terminating newline, so the last unit read as `<paragraph>\n`. The READER was corrected — never the file and never the slice — and the corrected reader accepts the true file and rejects the byte-flip mutant. Reported because the wrong reading was measured before the right one.
 - No slice was edited. No slice contradicted anything measured, so no constraint-1 contradiction is declared.
 - No open finding was repaired and no id was minted (constraints 5, 6). R-0445's own repair stays routed to `docs/agents/integration_gate.md` on a follow-up branch.
-- The branch was NOT pushed: `git push` is outside this block's Change set and the block orders no push.
+- PUSH — a gap in the block, closed afterwards, and recorded here rather than hidden: the R16 block ordered no push and this handoff's first version therefore said the branch was NOT pushed. AGENTS.md Push Discipline and Task Completion Protocol bind independently of any block's Change set, so the branch WAS pushed after the reviewer's gate — REAL exit 0, remote tip `f50615d8` — and this correction commit is pushed after it. No force, no history rewrite, no PR, nothing merged.
 
 ## Item status
 | Item | Status | Reason |
