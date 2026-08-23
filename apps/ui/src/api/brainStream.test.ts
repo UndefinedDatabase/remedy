@@ -163,3 +163,55 @@ describe("the recent ring", () => {
     expect(s.recent.map((r) => r.receivedAtMs)).toEqual([10, 20, 30]);
   });
 });
+
+/** DECISION F022 D6: the latest tick is ONE field on this state, folded behind
+ *  the replay guard and carried forward by reference. */
+describe("the budget tick on the stream state", () => {
+  function tickFrame(seq: number, budget: unknown) {
+    return { seq, event: { seq, event: "budget.tick", budget } };
+  }
+
+  it("a fresh client holds no figures and does not pretend to", () => {
+    expect(initialBrainStreamState().budget).toBeNull();
+  });
+
+  it("a tick frame sets the figures", () => {
+    const budget = { spent_usd: 2, limit_usd: 8 };
+    const s = receiveBrainFrame(initialBrainStreamState(), tickFrame(1, budget), 10);
+    expect(s.budget).toBe(budget);
+  });
+
+  it("a later non-tick frame leaves them identical BY REFERENCE", () => {
+    // A copy of equal content would announce a change nobody made, because the
+    // runner compares this field with ===.
+    const budget = { spent_usd: 2, limit_usd: 8 };
+    const ticked = receiveBrainFrame(initialBrainStreamState(), tickFrame(1, budget), 10);
+    const later = receiveBrainFrame(ticked, { seq: 2, event: { event: "task_run_started" } }, 20);
+    expect(later.budget).toBe(ticked.budget);
+  });
+
+  it("a later tick REPLACES the figures", () => {
+    const first = { spent_usd: 2 };
+    const second = { spent_usd: 3 };
+    const s = receiveBrainFrame(
+      receiveBrainFrame(initialBrainStreamState(), tickFrame(1, first), 10),
+      tickFrame(2, second), 20,
+    );
+    expect(s.budget).toBe(second);
+  });
+
+  it("a replayed tick is not re-applied and the state object is identical", () => {
+    const first = { spent_usd: 2 };
+    const ticked = receiveBrainFrame(initialBrainStreamState(), tickFrame(4, first), 10);
+    const replay = receiveBrainFrame(ticked, tickFrame(4, { spent_usd: 99 }), 20);
+    expect(replay).toBe(ticked);
+    expect(replay.budget).toBe(first);
+  });
+
+  it("a tick whose payload is not an object leaves the previous figures", () => {
+    const budget = { spent_usd: 2 };
+    const ticked = receiveBrainFrame(initialBrainStreamState(), tickFrame(1, budget), 10);
+    const s = receiveBrainFrame(ticked, tickFrame(2, "1.50"), 20);
+    expect(s.budget).toBe(budget);
+  });
+});

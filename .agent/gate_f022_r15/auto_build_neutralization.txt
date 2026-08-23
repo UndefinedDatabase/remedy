@@ -1,0 +1,32 @@
+F022 R15 — AUTO-BUILD NEUTRALIZATION, MEASURED BY THE EVENT (G9, R-0444)
+
+REMEDY_UI_NO_AUTO_BUILD=1 was set for the base run.
+base run window (epoch): 1787467222.2559404 .. 1787467385.3992395
+
+the base worktree's apps/ui/dist BEFORE the run, as the copy left it:
+  path | mtime | size | sha256
+  assets/index-CQ9qmyYl.css | 1787467082.0774689 | 29223 bytes | 0e2b45085ade5e19cbe04e244b41a037efeba522ac0113e90bad10279c0d525b
+  assets/index-DKdEM9lB.js | 1787467082.0774689 | 361034 bytes | 637257228f82af945a8f3d41d2d28e5f722c1cd65ce8eb393d5c7cf4aaa29c1f
+  index.html | 1787467082.0774689 | 414 bytes | 5b7a4148d4e529cdf604fdb8db021e47e59de0446d6563f612c698565b434d75
+
+the same directory AFTER the run:
+  path | mtime BEFORE | mtime AFTER | inside window? | sha256 equal? | sha256
+  assets/index-DCl1uvTK.css | None | 1787467322.5914698 | YES | NO | 3f4eb9af9cc96551ee4519bf9dbe93ca280849b078d8d43af47312ac794c689e
+  assets/index-DNUAMteT.js | None | 1787467322.5914698 | YES | NO | bff511cf789803124a48104e8bf7d1818e67c30b7d1a864cac668072e31cfabd
+  index.html | 1787467082.0774689 | 1787467322.5914698 | YES | NO | 66c341c4528c56f9c0fc39b1a0adec469ff5d7c50fb10af4e78817d6ce4222fe
+
+READING: 3 of 3 files carry an mtime INSIDE the run window, the two asset
+FILENAMES changed (the copied index-CQ9qmyYl.css / index-DKdEM9lB.js are gone
+and index-DCl1uvTK.css / index-DNUAMteT.js stand in their place), and no sha256
+matches its pre-run value. This is not a byte-identical rebuild — it is a
+REBUILD FROM BASE SOURCES, roughly 100 s into a 163.1 s run.
+
+THE PARITY CLAIM IS THEREFORE VOID by the rule G9 states: any mtime inside the
+window voids it, and here the content moved too. Per-id attribution of every
+comm -23 id by direct evidence is consequently MANDATORY, and attribution.txt
+carries it for all 63 of them.
+
+REPORTED, NOT MINTED (constraint 1 and 4): REMEDY_UI_NO_AUTO_BUILD=1 did not
+prevent the rebuild EVENT. The in-process guard at ui_server._auto_build_frontend
+honours the variable, so the build came through a path that does not inherit it —
+the R-0169/R-0444 class recurring. Minting an id belongs to the reviewer.

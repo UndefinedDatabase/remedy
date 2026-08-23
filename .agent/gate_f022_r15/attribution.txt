@@ -1,0 +1,176 @@
+F022 R15 — ATTRIBUTION (G11, integration_gate.md step 4)
+
+PART 1 — THE BRANCH-ONLY SET, which is the set this gate exists to attribute.
+
+count: 0. The set is EMPTY. That is the reading, not a discharge: the gate
+was executed over it, and the instrument that produced it is shown live in
+controls.txt controls 1 and 2. There is therefore no serial re-run to perform,
+no xdist-flake to classify, and NO BLOCKER under constraint 4 — no failure on
+this branch is coupled to feature code, because there is no failure on this
+branch at all (0 FAILED lines over 17722 passed, 20 skipped in 177.04s (0:02:57)).
+
+PART 2 — THE BASE-ONLY SET, 63 ids, attributed by direct evidence because G9
+voided the parity claim and G10 makes an unattributed comm -23 id a blocker.
+
+THE CLASS, named and then proved three ways:
+`packages/orchestration/ui_server.py::_load_frontend` serves apps/ui/dist only
+when `_frontend_is_stale()` is False. That predicate returns True when ANY file
+under apps/ui/src is newer than dist/index.html. The base worktree was checked
+out AFTER the primary's dist was last written, and shutil.copytree uses copy2,
+which PRESERVES the source mtime — so the copied dist/index.html arrived older
+than every base source file. Stale ⇒ `_auto_build_frontend()` ⇒
+REMEDY_UI_NO_AUTO_BUILD=1 ⇒ None ⇒ `sys.exit(1)` before the server binds. Every
+test that starts the UI server therefore fails on the START, not on its subject.
+
+EVIDENCE A — the predicate, measured in the base worktree itself:
+  module under test: /home/decodeux/Repos/remedy/.remedy-wt/f022r15-base/packages/orchestration/ui_server.py
+  dist/index.html mtime as the copy left it: 1787467082.0774689
+  files under apps/ui/src scanned: 92; newer than that mtime: 92
+  newest source file: apps/ui/src/types/react-force-graph-2d.d.ts at 1787467200.83286
+  _frontend_is_stale() with the pre-run mtime  -> True
+  _frontend_is_stale() with the post-run mtime -> False
+  the file's mtime was restored afterwards: True
+
+EVIDENCE B — the per-id signature. Every one of the 63 failure sections in
+base_run's log was sliced out by header and searched. 63 of 63 carry BOTH
+'Failed: Server did not start in time' and the captured stderr
+'ERROR: React UI not built.'; 0 carry any other signature.
+
+EVIDENCE C — the ids pass at base once the environment is right. After the
+mid-run rebuild left the base worktree with a dist BUILT FROM BASE SOURCES (so
+_frontend_is_stale() is False), all 63 ids were re-run SERIALLY in that same
+worktree at c34ef32b:
+  command: python3 -m pytest -q -p no:randomly <63 node ids>
+  cwd: /home/decodeux/Repos/remedy/.remedy-wt/f022r15-base
+  exit code: 0   wall: 10.5 s
+  result: 63 passed in 8.02s
+A base failure that disappears when only the build artifact changes is an
+environment failure, not base code.
+
+PER-ID TABLE — all 63 ids with their two markers:
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_decision_resolve_naming_an_open_decision_is_answered_and_saved
+    section found: True | 'Server did not start in time': True | 'ERROR: React UI not built.': True
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_dispatched_command_is_audited_as_accepted
+    section found: True | 'Server did not start in time': True | 'ERROR: React UI not built.': True
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_mistyped_limit_falls_back_to_the_default_and_still_limits
+    section found: True | 'Server did not start in time': True | 'ERROR: React UI not built.': True
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_nonce_that_cannot_be_a_filename_is_400_on_its_own_field[../escape]
+    section found: True | 'Server did not start in time': True | 'ERROR: React UI not built.': True
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_nonce_that_cannot_be_a_filename_is_400_on_its_own_field[aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa]
+    section found: True | 'Server did not start in time': True | 'ERROR: React UI not built.': True
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_nonce_that_cannot_be_a_filename_is_400_on_its_own_field[has space]
+    section found: True | 'Server did not start in time': True | 'ERROR: React UI not built.': True
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_nonce_that_cannot_be_a_filename_is_400_on_its_own_field[with/slash]
+    section found: True | 'Server did not start in time': True | 'ERROR: React UI not built.': True
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_rate_limited_attempt_is_audited_as_rejected_rate
+    section found: True | 'Server did not start in time': True | 'ERROR: React UI not built.': True
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_replay_is_not_the_acceptance_it_repeats
+    section found: True | 'Server did not start in time': True | 'ERROR: React UI not built.': True
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_replayed_nonce_answers_from_the_store_byte_for_byte
+    section found: True | 'Server did not start in time': True | 'ERROR: React UI not built.': True
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_second_job_has_its_own_budget
+    section found: True | 'Server did not start in time': True | 'ERROR: React UI not built.': True
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_shape_error_does_not_spend_budget
+    section found: True | 'Server did not start in time': True | 'ERROR: React UI not built.': True
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_shape_error_is_audited_as_rejected_shape
+    section found: True | 'Server did not start in time': True | 'ERROR: React UI not built.': True
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_wrong_bearer_is_audited_as_rejected_token
+    section found: True | 'Server did not start in time': True | 'ERROR: React UI not built.': True
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_wrong_credential_on_a_job_with_no_control_dir_leaves_no_file
+    section found: True | 'Server did not start in time': True | 'ERROR: React UI not built.': True
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_wrong_csrf_header_is_audited_as_rejected_csrf
+    section found: True | 'Server did not start in time': True | 'ERROR: React UI not built.': True
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_absent_args_is_valid_and_reaches_the_effect
+    section found: True | 'Server did not start in time': True | 'ERROR: React UI not built.': True
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_absent_body_is_400_on_field_body
+    section found: True | 'Server did not start in time': True | 'ERROR: React UI not built.': True
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_an_accepted_command_reaches_the_sse_frame_it_announces
+    section found: True | 'Server did not start in time': True | 'ERROR: React UI not built.': True
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_an_audit_writer_that_raises_changes_neither_status_nor_body
+    section found: True | 'Server did not start in time': True | 'ERROR: React UI not built.': True
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_an_exposed_id_with_no_dispatch_branch_is_the_501_guard
+    section found: True | 'Server did not start in time': True | 'ERROR: React UI not built.': True
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_an_unexposed_command_does_not_spend_budget
+    section found: True | 'Server did not start in time': True | 'ERROR: React UI not built.': True
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_an_unexposed_command_is_audited_as_rejected_command
+    section found: True | 'Server did not start in time': True | 'ERROR: React UI not built.': True
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_an_unknown_path_is_405_for_every_mutating_method
+    section found: True | 'Server did not start in time': True | 'ERROR: React UI not built.': True
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_an_unresolvable_job_is_audited_as_rejected_job
+    section found: True | 'Server did not start in time': True | 'ERROR: React UI not built.': True
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_an_unseeded_nonce_is_dispatched_rather_than_replayed
+    section found: True | 'Server did not start in time': True | 'ERROR: React UI not built.': True
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_bearer_without_a_token_is_403
+    section found: True | 'Server did not start in time': True | 'ERROR: React UI not built.': True
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_delete_is_405_even_on_the_commands_path
+    section found: True | 'Server did not start in time': True | 'ERROR: React UI not built.': True
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_empty_client_nonce_is_400_on_field_client_nonce
+    section found: True | 'Server did not start in time': True | 'ERROR: React UI not built.': True
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_empty_command_is_400_on_field_command
+    section found: True | 'Server did not start in time': True | 'ERROR: React UI not built.': True
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_empty_command_is_still_a_shape_error_not_a_subset_error
+    section found: True | 'Server did not start in time': True | 'ERROR: React UI not built.': True
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_every_exposed_command_reaches_the_answer_its_effect_gives
+    section found: True | 'Server did not start in time': True | 'ERROR: React UI not built.': True
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_every_outcome_the_door_writes_is_in_the_ruled_vocabulary
+    section found: True | 'Server did not start in time': True | 'ERROR: React UI not built.': True
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_every_route_the_server_serves_refuses_post_put_and_delete
+    section found: True | 'Server did not start in time': True | 'ERROR: React UI not built.': True
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_get_door_answers_403_for_a_non_ascii_token
+    section found: True | 'Server did not start in time': True | 'ERROR: React UI not built.': True
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_invalid_json_body_is_400_on_field_body
+    section found: True | 'Server did not start in time': True | 'ERROR: React UI not built.': True
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_job_id_is_checked_after_the_credentials
+    section found: True | 'Server did not start in time': True | 'ERROR: React UI not built.': True
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_malformed_bearer_is_403
+    section found: True | 'Server did not start in time': True | 'ERROR: React UI not built.': True
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_missing_bearer_is_403
+    section found: True | 'Server did not start in time': True | 'ERROR: React UI not built.': True
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_missing_client_nonce_is_400_on_field_client_nonce
+    section found: True | 'Server did not start in time': True | 'ERROR: React UI not built.': True
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_missing_command_is_400_on_field_command
+    section found: True | 'Server did not start in time': True | 'ERROR: React UI not built.': True
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_missing_csrf_header_is_403
+    section found: True | 'Server did not start in time': True | 'ERROR: React UI not built.': True
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_non_ascii_bearer_is_403_and_does_not_raise
+    section found: True | 'Server did not start in time': True | 'ERROR: React UI not built.': True
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_non_object_args_is_400_on_field_args
+    section found: True | 'Server did not start in time': True | 'ERROR: React UI not built.': True
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_non_string_command_is_400_on_field_command
+    section found: True | 'Server did not start in time': True | 'ERROR: React UI not built.': True
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_oversize_body_is_400_on_field_body
+    section found: True | 'Server did not start in time': True | 'ERROR: React UI not built.': True
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_post_to_job_dashboard_is_405
+    section found: True | 'Server did not start in time': True | 'ERROR: React UI not built.': True
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_post_to_non_commands_path_is_405
+    section found: True | 'Server did not start in time': True | 'ERROR: React UI not built.': True
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_present_args_object_is_valid_and_is_accepted
+    section found: True | 'Server did not start in time': True | 'ERROR: React UI not built.': True
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_put_is_405_even_on_the_commands_path
+    section found: True | 'Server did not start in time': True | 'ERROR: React UI not built.': True
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_the_commands_path_is_the_only_post_that_is_not_405
+    section found: True | 'Server did not start in time': True | 'ERROR: React UI not built.': True
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_the_last_command_in_budget_is_accepted_and_the_next_is_429
+    section found: True | 'Server did not start in time': True | 'ERROR: React UI not built.': True
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_the_raw_token_never_reaches_the_audit_file
+    section found: True | 'Server did not start in time': True | 'ERROR: React UI not built.': True
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_the_two_refusals_are_indistinguishable
+    section found: True | 'Server did not start in time': True | 'ERROR: React UI not built.': True
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_unexposed_catalog_command_is_400_on_field_command
+    section found: True | 'Server did not start in time': True | 'ERROR: React UI not built.': True
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_unexposed_command_on_an_unresolvable_job_is_404
+    section found: True | 'Server did not start in time': True | 'ERROR: React UI not built.': True
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_unexposed_command_with_a_bad_bearer_is_403_and_never_400
+    section found: True | 'Server did not start in time': True | 'ERROR: React UI not built.': True
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_unresolvable_job_id_is_404
+    section found: True | 'Server did not start in time': True | 'ERROR: React UI not built.': True
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_unresolvable_job_id_matches_the_get_door
+    section found: True | 'Server did not start in time': True | 'ERROR: React UI not built.': True
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_wrong_bearer_is_403
+    section found: True | 'Server did not start in time': True | 'ERROR: React UI not built.': True
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_wrong_csrf_header_is_403
+    section found: True | 'Server did not start in time': True | 'ERROR: React UI not built.': True
+  tests/ui_server/test_command_dispatch.py::TestJobStopDispatchEffects::test_the_dispatch_publishes_the_stop_request_the_body_names
+    section found: True | 'Server did not start in time': True | 'ERROR: React UI not built.': True
+  tests/ui_server/test_command_dispatch.py::TestJobStopDispatchEffects::test_the_nonce_record_holds_the_body_the_client_received
+    section found: True | 'Server did not start in time': True | 'ERROR: React UI not built.': True

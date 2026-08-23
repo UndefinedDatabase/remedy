@@ -1,0 +1,19 @@
+F022 R15 — BASE PARITY BY COPY WITH SYMLINKS PRESERVED (G8, constraint 6)
+
+the two calls, exactly as they were made:
+  shutil.copytree('/home/decodeux/Repos/remedy/apps/ui/node_modules', '/home/decodeux/Repos/remedy/.remedy-wt/f022r15-base/apps/ui/node_modules', symlinks=True)
+  shutil.copytree('/home/decodeux/Repos/remedy/apps/ui/dist', '/home/decodeux/Repos/remedy/.remedy-wt/f022r15-base/apps/ui/dist', symlinks=True)
+
+symlinks under apps/ui/node_modules/.bin — the G8 RED CONTROL for the restore:
+  PRIMARY  before: 23 entries, 23 symlinks
+  BASE     before: 0 entries, 0 symlinks (directory exists: False)
+  PRIMARY  after:  23 entries, 23 symlinks
+  BASE     after:  23 entries, 23 symlinks
+  The base side moved from 0 to 23 and now EQUALS the primary's 23,
+  so the restore is visible as an event and copytree's default symlinks=False —
+  which dereferences those shims and caused 7 base-only failures at F085 R23
+  (R-0591) — was demonstrably not the call that ran.
+
+apps/ui/dist was COPIED by the same call, not built. What happened to it during
+the base run is measured in auto_build_neutralization.txt, and the answer is not
+the one this copy intended.

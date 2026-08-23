@@ -340,11 +340,26 @@ describe("pipeline in dashboard", () => {
 // ---------------------------------------------------------------------------
 
 describe("token usage metric", () => {
-  it("tokens is the last metric, order is open/planned/done/progress/tests/proof/tokens", () => {
+  it("cost is the last metric, order is open/planned/done/progress/tests/proof/tokens/cost", () => {
     const result = normalizeDashboardPayload("abc-123", makeDashboardPayload());
-    expect(result.metrics).toHaveLength(7);
+    expect(result.metrics).toHaveLength(8);
     expect(result.metrics.map(m => m.key)).toEqual([
-      "open", "planned", "done", "progress", "tests", "proof", "tokens",
+      "open", "planned", "done", "progress", "tests", "proof", "tokens", "cost",
+    ]);
+  });
+
+  it("cost loads unknown with an em dash, because no tick has arrived yet", () => {
+    const result = normalizeDashboardPayload("abc-123", makeDashboardPayload());
+    const cost = result.metrics.find(m => m.key === "cost");
+    expect(cost!.value).toBe("—");
+    expect(cost!.unknown).toBe(true);
+    expect(cost!.cost).toBeUndefined();
+  });
+
+  it("the degraded path carries no cost tile it could not honour", () => {
+    const degraded = normalizeApiFailure("abc-123", ["dashboard"]);
+    expect(degraded.metrics.map(m => m.key)).toEqual([
+      "open", "planned", "done", "progress",
     ]);
   });
 
@@ -485,5 +500,36 @@ describe("snapshot + continuation summaries", () => {
     const result = normalizeApiFailure("abc-123", ["dashboard"]);
     expect(result.snapshot).toBeNull();
     expect(result.continuation).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The ledger's final budget figure (DECISION F022 D7 serves it, D8 renders it)
+// ---------------------------------------------------------------------------
+
+describe("budget_final transport", () => {
+  it("maps the ledger figure through unchanged", () => {
+    const payload = makeDashboardPayload({
+      budget_final: { spent_usd: 4.2, limit_usd: 8, basis: { cost: "actual" }, unmeasured_calls: 0 },
+    });
+    const result = normalizeDashboardPayload("abc-123", payload);
+    expect(result.budgetFinal).toEqual({
+      spent_usd: 4.2, limit_usd: 8, basis: { cost: "actual" }, unmeasured_calls: 0,
+    });
+  });
+
+  it("a null section stays null — the server says so for a job with no tick", () => {
+    const payload = makeDashboardPayload({ budget_final: null });
+    const result = normalizeDashboardPayload("abc-123", payload);
+    expect(result.budgetFinal).toBeNull();
+  });
+
+  it("a payload with no budget_final key at all yields null, never an empty object", () => {
+    const result = normalizeDashboardPayload("abc-123", makeDashboardPayload());
+    expect(result.budgetFinal).toBeNull();
+  });
+
+  it("the failure dashboard carries no ledger figure", () => {
+    expect(normalizeApiFailure("abc-123", ["dashboard"]).budgetFinal).toBeNull();
   });
 });

@@ -1,6 +1,11 @@
+// The cost view is imported FROM `./costMetric` and never the other way round:
+// that module declares its own input and output types precisely so this import
+// direction stays acyclic.
+import type { BudgetTickFigures, CostMetricView } from "./costMetric";
+
 export type RemedyState = "done" | "current" | "pending" | "blocked" | "suggested";
 export type RemedyTaskKind = "goal" | "task" | "approval" | "apply" | "test" | "review" | "memory" | "proof" | "change";
-export type RemedyMetricKey = "open" | "planned" | "done" | "progress" | "tests" | "proof" | "tokens";
+export type RemedyMetricKey = "open" | "planned" | "done" | "progress" | "tests" | "proof" | "tokens" | "cost";
 
 export interface RemedyMetric {
   key: RemedyMetricKey;
@@ -12,6 +17,15 @@ export interface RemedyMetric {
   state?: "pass" | "fail" | "none";
   /** True when the value is not derivable (e.g. data root unavailable). */
   unknown?: boolean;
+  /** Present only on the `cost` metric. `value`, `suffix` and `tooltip` cannot
+   *  hold a limit, a basis or a threshold, so the whole cost reading arrives as
+   *  one already-decided view — see DECISION F022 D4. */
+  cost?: CostMetricView;
+  /** Present only on a RECONCILED `cost` metric, and only when the ledger's
+   *  display differs from the one the client received. Already worded, because
+   *  the component composes no sentence — the same rule that put `cost` here as
+   *  a decided view. See DECISION F022 D8 clause 3. */
+  costFinalNote?: string;
 }
 
 /** Safe aggregate snapshot / apply-record truth. "unknown" when data root is unavailable. */
@@ -199,4 +213,9 @@ export interface RemedyWorkerStatus {
   redaction: string;
 }
 
-export interface RemedyDashboard { jobId: string; title: string; description: string; conceptLabel: string; metrics: RemedyMetric[]; phases: RemedyPhase[]; tasks: RemedyTaskItem[]; activity: RemedyActivityItem[]; graph: { nodes: RemedyGraphNode[]; edges: RemedyGraphEdge[]; }; nextAction: RemedyNextAction; live: RemedyLiveState; apiHealth: RemedyApiHealth; pipeline: RemedyPipeline | null; resume: RemedyResume | null; projectSummary: RemedyProjectSummary | null; workerStatus: RemedyWorkerStatus | null; timelineEvents?: RemedyTimelineEvent[]; snapshot: RemedySnapshotSummary | null; continuation: RemedyContinuationSummary | null; promptTrace?: RemedyPromptTraceSummary | null; }
+/** `budgetFinal` is the LEDGER's own last budget tick, served as the dashboard's
+ *  `budget_final` (DECISION F022 D7). It is carried as the arriving payload
+ *  rather than as a decided view because `costReconciliation.ts` hands it to
+ *  `costMetricOf` unread — see DECISION F022 D8 clause 2. `null` means the job
+ *  emitted no tick at all, which stays absent rather than becoming a zero. */
+export interface RemedyDashboard { jobId: string; title: string; description: string; conceptLabel: string; metrics: RemedyMetric[]; budgetFinal: BudgetTickFigures | null; phases: RemedyPhase[]; tasks: RemedyTaskItem[]; activity: RemedyActivityItem[]; graph: { nodes: RemedyGraphNode[]; edges: RemedyGraphEdge[]; }; nextAction: RemedyNextAction; live: RemedyLiveState; apiHealth: RemedyApiHealth; pipeline: RemedyPipeline | null; resume: RemedyResume | null; projectSummary: RemedyProjectSummary | null; workerStatus: RemedyWorkerStatus | null; timelineEvents?: RemedyTimelineEvent[]; snapshot: RemedySnapshotSummary | null; continuation: RemedyContinuationSummary | null; promptTrace?: RemedyPromptTraceSummary | null; }

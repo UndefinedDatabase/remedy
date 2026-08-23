@@ -1952,6 +1952,7 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
         "orchestrator": _build_orchestrator_section(job),
         "local_advisor": _build_local_advisor_section(job),
         "token_usage": _build_token_usage(events),
+        "budget_final": _build_budget_final(events),
         "tasks": task_items,
         "activity": activity_items,
         "phases": phases,
@@ -2234,6 +2235,36 @@ def _build_token_usage(events: list[dict[str, Any]]) -> dict[str, Any]:
         "by_role": by_role if by_role else {},
         "missing_sources": missing,
     }
+
+
+#: WHY: the ledger's own last word on a job's spend — the authority DECISION F022 D7 rules for the reconciliation.
+def _build_budget_final(events: list[dict[str, Any]]) -> dict[str, Any] | None:
+    """The whitelisted figures of the job's LAST budget tick, or `None`.
+
+    THIS IS NOT `token_usage`. That section sums `metadata.estimated_tokens`
+    over a different event population and reports `"estimated": True`, while
+    these figures are the emitter's measured counters carried on a
+    `budget.tick`. Reconciling a ticker against the estimate would subtract two
+    unrelated quantities and label the difference a delta — a fabricated
+    honesty moment in the one feature built to prevent those, which is why
+    DECISION F022 D7 rules THIS figure the terminal reconciliation's authority.
+
+    "LAST" is the last matching element of `events`, with no re-sorting here:
+    `packages.orchestration.timeline.load_run_events` has already sorted every
+    run-log row by timestamp before `_load_events` hands the list over.
+
+    The payload is `_budget_tick_summary_payload`'s and carries no field of its
+    own. That whitelist is a REDACTION boundary (DECISION F022 D3, clause two),
+    and a second projection beside it would be a second place for a key to leak.
+
+    A job that emitted no tick yields `None`, never an empty object and never a
+    zero: an absent figure is absent — the same honesty rule that stops a
+    limitless job rendering a fabricated denominator.
+    """
+    for event in reversed(events):
+        if event.get("event") == BUDGET_TICK_EVENT:
+            return _budget_tick_summary_payload(event.get("metadata"))
+    return None
 
 
 def _build_pipeline_section(job: Any, events: list[dict[str, Any]]) -> dict[str, Any]:
@@ -2744,6 +2775,73 @@ SSE_HEARTBEAT_SECONDS = 15.0
 #: Seconds the stream waits before re-reading the ledger for new events.
 SSE_POLL_SECONDS = 1.0
 
+#: The ONE event kind whose figures cross the event envelope (DECISION F022 D3,
+#: clause one). Spelled here as its own constant rather than imported from
+#: `packages.orchestration.safe_points`, where DECISION F022 D2 clause two
+#: requires the emitter to pass the name as an INLINE literal so the humanize
+#: catalog's AST walk can see it. The guard against THIS constant drifting from
+#: that literal is `tests/ui_server/test_budget_tick_envelope.py`, which was
+#: MEASURED to go red when this value is renamed; the humanize-catalog test is
+#: not, because it pins the catalog against the emitter's own literal in
+#: `packages.orchestration.safe_points` and never reads this constant at all
+#: (finding R-0670, measured by mutation at `f685a707`).
+BUDGET_TICK_EVENT = "budget.tick"
+
+#: The outer metadata keys of a budget tick that reach a client, and the only
+#: ones (DECISION F022 D3, clause two). DECISION F022 D1 fixes this field set.
+BUDGET_TICK_SUMMARY_FIELDS = (
+    "spent_tokens",
+    "spent_usd",
+    "limit_tokens",
+    "limit_usd",
+    "unmeasured_calls",
+)
+
+#: The keys inside a tick's `basis` object that reach a client. A nested
+#: pass-through is the same leak one level down, so this level carries its own
+#: whitelist (DECISION F022 D3, clause two).
+BUDGET_TICK_BASIS_FIELDS = ("tokens", "cost")
+
+
+def _budget_tick_summary_payload(metadata: Any) -> dict[str, Any]:
+    """The whitelisted figures of ONE budget tick, copied key by key.
+
+    This is a REDACTION boundary, not a projection: event metadata is untrusted
+    input — the reason this package carries `redaction_patterns` at all — so a
+    key is copied because it is NAMED here and never because a tick happened to
+    carry it. Passing the dict through wholesale would make any key a run-log
+    writer ever places on a tick reachable by every stream subscriber, and
+    `basis` is whitelisted separately because a nested pass-through leaks the
+    same way one level down (DECISION F022 D3, clause two).
+
+    AN ABSENT KEY STAYS ABSENT. No default, no null and no zero stands in for a
+    limit the tick never carried: the acceptance criterion that a limitless job
+    renders no fabricated denominator is enforced by the SHAPE of this payload,
+    and a default supplied here would undo at the last hop what the emitter was
+    careful about at the first (DECISION F022 D3, clause three).
+
+    Metadata that is missing or is not a dict yields an empty payload rather
+    than an error — this runs for every event on the stream and may not fail on
+    one.
+    """
+    if not isinstance(metadata, dict):
+        return {}
+    payload: dict[str, Any] = {
+        field: metadata[field]
+        for field in BUDGET_TICK_SUMMARY_FIELDS
+        if field in metadata
+    }
+    basis = metadata.get("basis")
+    if isinstance(basis, dict):
+        kept = {
+            field: basis[field]
+            for field in BUDGET_TICK_BASIS_FIELDS
+            if field in basis
+        }
+        if kept:
+            payload["basis"] = kept
+    return payload
+
 
 def _safe_event_summary(seq: int, event: dict[str, Any]) -> dict[str, Any]:
     """The safe per-event envelope both event transports carry.
@@ -2762,17 +2860,30 @@ def _safe_event_summary(seq: int, event: dict[str, Any]) -> dict[str, Any]:
     run-log job worked, which is a half-feature rather than a visible failure.
     Empty string when neither source carries one: a row with no linkage simply
     does not jump.
+
+    `budget` is DECISION F022 D3's field and it is CONDITIONAL on the event
+    kind: a `budget.tick` gains it and every other kind's frame stays
+    byte-identical to what it was. That condition is the design, not caution —
+    `tests/ui_server/test_sse_stream.py` pins this envelope's key set with an
+    exact set equality AND pins a golden byte stream it rebuilds from the frame
+    writers, so an unconditional widening would turn both red in the same
+    commit as a new feature and leave two independent changes sharing one
+    failure.
     """
     metadata = event.get("metadata")
     nested = metadata.get("task_id", "") if isinstance(metadata, dict) else ""
     linkage = event.get("task_id") or nested
-    return {
+    kind = event.get("event", "")
+    summary: dict[str, Any] = {
         "seq": seq,
-        "event": event.get("event", ""),
+        "event": kind,
         "timestamp": event.get("timestamp", ""),
         "outcome": event.get("outcome", ""),
         "task_id": linkage if isinstance(linkage, str) else "",
     }
+    if kind == BUDGET_TICK_EVENT:
+        summary["budget"] = _budget_tick_summary_payload(metadata)
+    return summary
 
 
 def sse_event_frame(seq: int, payload: dict[str, Any]) -> bytes:

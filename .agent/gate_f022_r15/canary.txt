@@ -1,0 +1,10 @@
+F022 R15 — THE CANARY (G12)
+command: python3 -m pytest tests/cli/test_golden_path.py -q
+cwd: /home/decodeux/Repos/remedy (PRIMARY checkout), commit 0486eddf (C2)
+exit code: 0
+wall time: 20.7 s
+run window (epoch): 1787467830.336115 .. 1787467850.9998937
+result: 42 passed in 20.43s
+the block's reference figure at the round base 8d5c73c4 is 42; this run
+measured 42, so the two agree.
+the RED CONTROL that makes this pass mean something is control 3 in controls.txt.

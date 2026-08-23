@@ -240,3 +240,74 @@ describe("the view publishes the ring", () => {
     expect(runner.view().recentDropped).toBe(3);
   });
 });
+
+/** DECISION F022 D6: the view carries the latest tick and compares it with
+ *  `===`, which is the whole reason the state carries it forward by reference. */
+describe("the view publishes the budget tick", () => {
+  function tick(seq: number, budget: unknown): BrainStreamEvent {
+    return { kind: "frame", frame: { seq, event: { seq, event: "budget.tick", budget } }, receivedAtMs: 0 };
+  }
+
+  it("seeds the cached view from the state, so start alone announces nothing", () => {
+    const host = new RecordingHost();
+    const runner = createBrainStreamRunner(host);
+    let calls = 0;
+    runner.subscribe(() => { calls += 1; });
+    runner.start();
+    expect(calls).toBe(0);
+    expect(runner.view().budget).toBeNull();
+  });
+
+  it("publishes a tick's figures once", () => {
+    const { runner } = started();
+    let calls = 0;
+    runner.subscribe(() => { calls += 1; });
+    const budget = { spent_usd: 2, limit_usd: 8 };
+    runner.dispatch(tick(1, budget));
+    expect(runner.view().budget).toBe(budget);
+    expect(calls).toBe(1);
+  });
+
+  it("a tick that changes nothing else still publishes exactly once", () => {
+    // Honest about its own reach: an accepted frame always moves `lastSeq` and
+    // the ring too, so this case cannot single out the `budget` comparison. It
+    // pins the count — one wake per tick, never two — and the replay case below
+    // is what pins that an UNaccepted tick wakes nobody.
+    const { runner } = started();
+    runner.dispatch(tick(1, { spent_usd: 1 }));
+    let calls = 0;
+    runner.subscribe(() => { calls += 1; });
+    runner.dispatch(tick(2, { spent_usd: 2 }));
+    expect(calls).toBe(1);
+  });
+
+  it("a replayed tick republishes nothing and keeps the view identity", () => {
+    const { runner } = started();
+    const budget = { spent_usd: 2 };
+    runner.dispatch(tick(4, budget));
+    const before = runner.view();
+    let calls = 0;
+    runner.subscribe(() => { calls += 1; });
+    runner.dispatch(tick(4, { spent_usd: 99 }));
+    expect(runner.view()).toBe(before);
+    expect(runner.view().budget).toBe(budget);
+    expect(calls).toBe(0);
+  });
+
+  it("a non-tick frame that follows leaves the figures reference-identical", () => {
+    const { runner } = started();
+    const budget = { spent_usd: 2 };
+    runner.dispatch(tick(1, budget));
+    runner.dispatch(frame(2));
+    expect(runner.view().budget).toBe(budget);
+  });
+
+  it("a timer that changes nothing publishes not at all", () => {
+    const { runner } = started();
+    runner.dispatch(tick(1, { spent_usd: 2 }));
+    let calls = 0;
+    runner.subscribe(() => { calls += 1; });
+    runner.dispatch({ kind: "timer" });
+    expect(calls).toBe(0);
+  });
+});

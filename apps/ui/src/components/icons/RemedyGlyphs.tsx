@@ -126,6 +126,19 @@ export function ShieldCheckGlyph(p: G) {
   );
 }
 
+/** The budget/cost mark `assets_spec.md` line 179 already specifies — a coin,
+ *  circle plus an inner cent-bar — so the COST metric conforms to the asset
+ *  authority rather than minting a new glyph. */
+export function CoinGlyph(p: G) {
+  return (
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" {...p}>
+      <circle cx="8" cy="8" r="5.5" />
+      <line x1="8" y1="3.8" x2="8" y2="12.2" />
+      <path d="M9.8 5.9a2.8 2.8 0 100 4.2" />
+    </svg>
+  );
+}
+
 // Activity glyphs
 export function BuilderGlyph(p: G) {
   return (

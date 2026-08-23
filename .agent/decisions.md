@@ -7032,3 +7032,289 @@ CHOSEN: the ux_spec sentence ships verbatim, as the constant `STEERING_DISABLED_
 ALTERNATIVES CONSIDERED. Ship the feature file's phrase: rejected, it inverts the stated precedence and would put the shipped surface at odds with the document the round is gated against. Merge both, naming F030 inside the reference sentence: rejected, it edits binding copy to carry an internal identifier, which is the same category error as the first. Ship neither and hide the input until F030: rejected outright, because ux_spec §11.3 places the control on this surface and the feature file's own brief calls for "visible honesty over hidden UI".
 
 REVERSE IT by changing the constant and the contract's `REASON` together; they are asserted equal, so neither can drift alone.
+
+## Rescued from the F021 review record (F022 R1)
+
+These rulings were taken during F021 and recorded ONLY in `.agent/live_review.md`, which is rebuilt at every feature claim. F022 R1 moved them here verbatim, extracted by script from that file at `c34ef32b` and never retyped, immediately before the rebuild that would otherwise have deleted them. Finding R-0669 registers the defect this rescue works around. The paragraphs below are the originals; their round context is in the `Gate:` paragraphs of that file at `c34ef32b`, which git history keeps.
+
+DECISION F021 D6, 2026-08-22, taken by the reviewer under §4 item 7 and recorded here rather than asked: THE SINGLE WIRING ROUND THE PLAN CARRIED SINCE R19 IS UNBUILDABLE AS WRITTEN AND IS REPLACED BY FOUR SMALLER ONES. The plan ordered R22 to make `recency.ts` the NowCard's liveness source AND to drive the feed's scroll container from `feedScroll.ts`. `recencyLevel(lastActionAtMs: number | null, nowMs: number)` takes two NUMBERS, and measured at `bf0c50bf` this client holds no numeric instant at all: `FeedRow.timestamp` is a STRING that `feedRowOf` copies out of the safe envelope, `_safe_event_summary` fills it from the run log's own `timestamp`, and `ui_server.py` passes that through unparsed and empty where the log carries none. CHOSEN: stamp each frame on ARRIVAL from the CLIENT's clock, installed as an injected dependency — R22 the clock, R23 the frame event's `receivedAtMs`, R24 the ring's row, R25 the NowCard's badge and dot, R26 the feed's scroll container and pill. Both operands of the subtraction then sit on ONE clock, so the skew case cannot arise. CONSIDERED AND REJECTED: parsing the envelope's string, because a server clock running BEHIND the client yields a large positive elapsed and the dot reads a working agent as idle — the exact failure `recency.ts` names as the one it must never make — and an empty or unparsable stamp yields NaN, which falls through every window comparison to `idle` for the same wrong reason. CONSIDERED AND REJECTED: holding the stamp in the NowCard as component state, which touches no existing file but resets on every remount and measures when the CARD first saw an action rather than when the CLIENT received it. REVERSE THIS by deleting this paragraph and restoring the plan's single R22; the cost is that the dot has no honest number to read.
+
+DECISION F021 D7 — THE RING ROUND MOVES FROM R25 TO R26 AND R25 BECOMES THE DISCHARGE ROUND. CHOSEN: spend this round on the record — promote R-0656's rule into §3 as checklist item 32, record R24, and register and repair the gap above — and give the ring a round with nothing else in it. WHY: R-0656 recurred in the block written immediately after the one registering it, which is exactly the ⚠️ condition docs/agents/planner_reviewer_prompt.md §2 defines, and §2's prescribed response to ⚠️ is that the reviewer APPLIES smaller steps rather than offering the operator a choice. R-0654 through R-0659 are all defects in the reviewer's own block text or record and none is a worker's execution error, so adding the ring's pairs to a block already carrying a checklist amendment and three ledger paragraphs is the change most likely to produce the next one. ALTERNATIVES CONSIDERED: folding the promotion into the ring round, which does fit the 490-line budget and was rejected because it puts a code change and three record obligations into one block against a ⚠️ momentum flag; and deferring the promotion until after the ring, rejected because the recurrence paragraph at `bdc242b4` states the reviewer owes it BEFORE R25 and a rule living only in a finding body has now demonstrably failed to bind twice. HOW TO REVERSE: any later relay may order the ring and the record in one block; D7 binds no round after R26, and DECISION F021 D5 still governs the ring's append placement whenever it runs.
+
+DECISION F021 D8 — A VITEST RED CONTROL IS NOW REACHABLE, SO THE FEATURE'S BEHAVIOURAL TESTS STOP BEING UNPROVED. CHOSEN: run destructive vitest and tsc checks inside a disposable `git worktree` with `apps/ui/node_modules` SYMLINKED from the primary checkout, and require a mutation red proof of any vitest case a round newly relies on. WHY: this chain has recorded since R-0518 that "no vitest case has been mutation-proved" because a fresh worktree has no `node_modules`, and guardrail G5 forbids mutating the primary checkout — so the strongest guard the UI has was also the least proven. MEASURED BEFORE THIS ROUND WAS DESIGNED, at `d121dd09` in a disposable worktree: with the symlink in place `npx tsc --noEmit` exits 0 and `npm run test:unit` reads 15 files and 209 tests all passing, identical to the primary checkout; forcing `overflow` to 0 in `receiveBrainFrame` turned exactly 2 of those red and restoring the byte returned all 209 to green. A SYMLINK AND NEVER A COPY: `shutil.copytree` defaults to `symlinks=False` and dereferences npm's bin shims, which is the mechanism R-0591 registered, so the argument is named here rather than left to the caller. R-0518 STAYS OPEN and is NOT resolved by this entry — a worktree still ships no `node_modules` of its own and a round that forgets the symlink still reads a false red — but the limitation it describes no longer blocks a red proof. HOW TO REVERSE: drop the symlink step and the vitest red-proof obligation from later blocks; nothing else depends on it, and the Python source contracts remain the durable seam pins they were.
+
+## DECISION F022 D1 (2026-08-23) — the budget tick envelope: where it emits, what it carries, and why the basis is not a new vocabulary
+
+CONTEXT, measured by the reviewer at `5f53471f` and recorded in `.agent/f022_inventory.md` at that commit. `docs/roadmap/features/T5_F022.md` says the budget guard "already evaluates spent-vs-limits at safe points" and that the tick emits "at those same evaluations", which reads as though every evaluation site is a candidate. The inventory measures four production call sites of `evaluate_budget`. Three of them — `apps/cli/commands/job.py:2127`, `:2172` and `:2221` — sit inside `_cmd_job_budget`, the handler the dispatch table binds to `job.budget` at `apps/cli/commands/job.py:2374`, so they run when a human asks for a budget report and never during a job. The fourth, `packages/orchestration/safe_points.py:616`, sits inside `should_stop`, whose own docstring at lines 601-602 calls it "the SINGLE entry point for safe-point evaluation", and which the run path reaches from `packages/orchestration/long_run_executor.py:1389` and `:1403`, `packages/orchestration/pingpong_job.py:1970` and `apps/cli/commands/do_cmd.py:793`.
+
+CHOSEN (1), THE EMISSION SITE, AND IT IS ABOVE THE EXHAUSTION TEST. The tick emits in `should_stop`, immediately after the `evaluate_budget` call at `packages/orchestration/safe_points.py:616` and BEFORE the `if evaluation.exhausted` test at `:617`. Emitting inside that branch would fire the ticker only at exhaustion, which is the one moment a live cost ticker is no longer needed. The three `_cmd_job_budget` sites emit nothing: a reporting command that ticked would write ledger events for a read. Note a consequence rather than a bug: `should_stop` returns at `:606` on an operator stop, before the budget block, so a safe point stopped by the operator evaluates no budget and emits no tick. No evaluation, no figure — stated here so a later round does not read the gap as a defect.
+
+CHOSEN (2), THE PAYLOAD CARRIES ABSOLUTE VALUES ONLY, AND CURRENCY ONLY WHEN PRICED. Fields: `spent_tokens` always; `spent_usd` only when a cost figure exists; `limit_tokens` and `limit_usd` only when that limit is configured; `basis`; `unmeasured_calls`. An absent limit is an ABSENT KEY, never null and never zero, so the acceptance criterion that the limitless variant never fabricates a denominator is enforced by the envelope's shape rather than by the client's care. `_LIMIT_ORDER` at `packages/orchestration/budget_guard.py:245` fixes five limit kinds, of which cost is one, so a job may be budget-limited with no money limit at all and the spent-only variant is the normal case rather than the edge.
+
+CHOSEN (3), THE BASIS IS THE TWO BOOLEANS THAT ALREADY EXIST, NOT A THIRD SPELLING. `BudgetEvaluation` at `packages/orchestration/budget_guard.py:216` already carries `token_lower_bound` at `:223` and `cost_lower_bound` at `:225`, the second commented "True when the cost figure is a floor, not a total: some call was unpriced". `basis` is therefore an object with one key per figure, each reading `actual` or `lower_bound`, and the cost key additionally able to read `absent`, mapped mechanically from those two fields plus the presence of a cost figure. The feature file's basis strings — "estimated — class defaults", "actuals with N unmeasured calls" — are DISPLAY text, composed in the client from this object and `unmeasured_calls`, and are not transported.
+
+CHOSEN (4), NO CLIENT ARITHMETIC BEYOND THE FILL RATIO. The client computes the fill of spent against the configured limit and nothing else: no currency conversion, no price constant, no summation, no unit scaling. The tick carries every figure the display needs as an absolute value. This is the feature file's verbatim order material and it is testable as an ABSENCE, which is how T002 should gate it: no price-like constant under `apps/ui/src`.
+
+CONSEQUENCE THIS DECISION BINDS, found by the R3 inventory. A `budget`-named tick is genuinely additive on the transport — `_safe_event_summary` at `packages/orchestration/ui_server.py:2748` passes the ledger event name through against no whitelist, and `sse_event_frame` emits no SSE event field — but it is NOT additive on the humanize catalog, where `apps/ui/src/api/humanizeCatalog.ts` is pinned EQUAL to the Python static vocabulary by `tests/ui_contracts/test_humanize_catalog.py:222`. The round that emits the first such event therefore adds the catalog key in the SAME commit and gates that suite, which no F022 round had gated before this one. The dotted name needs no new rule: `command.accepted`, at `packages/orchestration/ui_server.py:3119`, is already in that vocabulary.
+
+ALTERNATIVES CONSIDERED. Emit at all four evaluation sites: rejected, three of them are a CLI report and would put ledger writes on a read path. Emit inside the exhaustion branch, where the evaluation is already consumed: rejected for the reason in (1) — it is the smallest diff and it produces a ticker that ticks once, at the end. A single flat basis enum such as actuals or estimated or mixed: rejected, it loses WHICH of the two figures is a floor, and the display must mark the spend and the cost independently. Carry the display sentence on the wire: rejected, it moves copy into the backend and makes the honesty text untranslatable and untestable at the component level. Send a null cost limit for a limitless job: rejected, a null denominator is the fake denominator the acceptance criteria forbid, and an absent key cannot be divided by accident.
+
+REVERSE IT by deleting the emission from `should_stop` and the humanize-catalog key together; they are pinned equal, so neither can drift alone. Rulings (2), (3) and (4) reverse independently of the site choice in (1), and none of them binds MetricsBar's other metrics, which this feature does not touch.
+
+## DECISION F022 D2 (2026-08-23) — the tick's WRITER, its file, and the transport gap D1 did not reach
+
+CONTEXT, measured by the reviewer at `94694b3f` by building the change end to end in a disposable worktree before this block was written. DECISION F022 D1 ruled WHERE the tick emits and WHAT it carries. It ruled neither HOW it is written nor whether what it carries survives the journey to a client, and both gaps are load-bearing: the first would have shipped a ticker that is silently dead on the main long-running job shape, and the second is the difference between a feature and an event nobody can render.
+
+CHOSEN (1), THE WRITER IS `RunLogWriter` AND NOT `timeline.append_run_event`. Every other one-shot emitter in this repository — `_emit_command_accepted_event` at `packages/orchestration/ui_server.py:3619` is the model — takes the short route through `append_run_event`, and that route cannot serve this call site. `append_run_event` resolves its id with `UUID(str(job_id))` at `packages/orchestration/timeline.py:63`, while a JobPlan's `job_id` is `uuid4().hex[:16]` at `packages/orchestration/pingpong_job.py:205` — sixteen hex characters, which `UUID()` rejects with `ValueError`. Measured in the worktree: the ping-pong shaped id emits ONE tick through `RunLogWriter` and would have emitted NONE through `append_run_event`, and because the emission fails soft the loss would have been silent. `RunLogWriter.__init__` does only `str(job_id)` at `packages/orchestration/run_log.py:112`, and `packages/orchestration/pingpong_job.py:2887` already logs through it with exactly that id, so this is the repository's own precedent rather than a new mechanism.
+
+CHOSEN (2), THE EVENT NAME IS AN INLINE LITERAL AT THE CALL SITE. `tests/ui_contracts/test_humanize_catalog.py` builds the Python stream vocabulary by an AST walk whose `_event_argument` keeps a name only when it is an `ast.Constant` string, so a module constant is an `ast.Name` and is invisible to it. `command.accepted` survives as a constant only through a hard-coded hatch that names `ui_server.py` and reaches nothing else. Measured: with the literal inline the derived vocabulary moves from 83 kinds to 84 and equals the catalog exactly; with the catalog line deleted the pin fails naming `budget.tick`, so the pin is not merely green, it BITES.
+
+CHOSEN (3), ALL OF A JOB'S TICKS SHARE ONE RUN-LOG FILE. `RunLogWriter` mints a fresh run id per instance and the emitter is constructed per evaluation, so the default would leave one `.jsonl` file per safe point for the length of a long job. A stable run id is passed instead. Nothing in this repository parses a run-log file name — `load_run_events` at `packages/orchestration/timeline.py:79` globs `*.jsonl` and sorts by timestamp — so the stable name costs nothing and was measured to produce exactly one file per job across the probe runs.
+
+CHOSEN (4), IT FAILS SOFT AND THE ROUND'S TESTS PIN THAT IT DOES. A notification that breaks the run it reports on is worse than a missing frame, which is `_emit_command_accepted_event`'s own stated reason. Note a consequence rather than a bug, measured at the base and unchanged by this round: `apps/cli/commands/do_cmd.py:793` calls `should_stop` with an EMPTY job id, and that call raises `StopControlError` out of `validate_job_id` BEFORE the budget block is reached — at the base commit as well as after this change. That path therefore evaluates no budget and emits no tick, and it did not begin doing so here. It is recorded as an open question for the branch that owns that file, not as F022 work.
+
+THE GAP THIS DECISION OPENS AND R6 CLOSES. `_safe_event_summary` at `packages/orchestration/ui_server.py:2748` returns exactly `{seq, event, timestamp, outcome, task_id}` and DROPS the event's `metadata`, which is where every figure D1 ruled lives. A client subscribing to the stream today would receive `budget.tick` frames carrying no spend, no limit and no basis, so D1's payload is correct and, on its own, unreachable. That is not a defect of D1 and it is not repaired here: the summary's key set is pinned by an exact equality at `tests/ui_server/test_sse_stream.py:90` and its frames are a golden byte stream at `:353`, so widening it unconditionally turns both red. R6 widens it CONDITIONALLY, by event kind, which leaves every existing frame byte-identical and both pins green. The round map is split accordingly and `.agent/plan.md` carries the risk.
+
+ALTERNATIVES CONSIDERED. Route through `append_run_event` and normalise the job id to a UUID first: rejected, it would invent an identity the rest of the run log does not use and would break the join with ping-pong's own events. Give each tick its own run id, as every other writer does: rejected, those writers are one-per-invocation while this one is one-per-safe-point, and the file count is unbounded in the length of the job. Emit the display sentence on the wire so the client needs no basis object: rejected by D1 already, and rejected again here because it would move copy into the backend. Widen `_safe_event_summary` unconditionally in this round: rejected, it turns an exact key-set pin and a golden byte stream red in the same commit as a new emitter, which would leave two independent changes sharing one red and no way to tell which caused it.
+
+REVERSE IT by deleting the emitter, its call and the catalog key together — they are pinned equal and none can drift alone — which also reverses D1's clause (1). Rulings (2), (3) and (4) reverse independently of the writer choice in (1). The transport paragraph rules nothing yet; it records a measured gap and names the round that closes it.
+
+## DECISION F022 D3 (2026-08-23) — the tick's figures cross the envelope, for that kind alone and through a whitelist
+
+CONTEXT, measured by the reviewer at `9b854cf5` by applying this change end to end in a disposable worktree before this block was written. DECISION F022 D1 ruled the tick's payload and DECISION F022 D2 ruled its writer. Neither reached the transport, and the transport is where the payload stopped: `_safe_event_summary` at `packages/orchestration/ui_server.py` returns exactly `{seq, event, timestamp, outcome, task_id}` and drops the event's `metadata`, which is where every figure D1 rules lives. Until this round a client subscribing to the stream received `budget.tick` frames carrying no spend, no limit and no basis — a correct payload nobody could render.
+
+CHOSEN (1), THE WIDENING IS CONDITIONAL ON THE EVENT KIND. The summary gains its extra key for `budget.tick` and for nothing else, so every other kind's frame is byte-identical to what it was. This is not caution for its own sake: `tests/ui_server/test_sse_stream.py` asserts the summary's key set with an exact set equality, and it pins a GOLDEN BYTE STREAM that it rebuilds from the frame writers rather than transcribing, so the golden cannot be edited into agreement without a code change. Measured: the key-set assertion feeds the summary an event named `x` and the golden's events are named `e0` and `e1`, so neither is a tick, and with the conditional widening applied both files stay green at 66 and 100 passed. An unconditional widening turns both red in the same commit as a new feature, which would leave two independent changes sharing one failure.
+
+CHOSEN (2), THE PAYLOAD IS WHITELISTED KEY BY KEY, AT BOTH LEVELS. The `safe` in `_safe_event_summary` is load-bearing — it is a redaction boundary, and this repository carries a `redaction_patterns` module of forbidden field names and secret patterns because event metadata is not trusted input. Passing a tick's metadata through wholesale would make any key a run-log writer ever placed on a tick reachable by any stream subscriber. The outer fields D1 rules are copied by name, and the two keys inside `basis` are copied by name as well, because a nested pass-through is the same leak one level down. Measured in the worktree: a plausible secret placed in a tick's metadata does not appear anywhere in the serialised summary, and neither does an unnamed key placed inside `basis`.
+
+CHOSEN (3), AN ABSENT KEY STAYS ABSENT AND A MALFORMED TICK YIELDS AN EMPTY PAYLOAD. No default, no null and no zero is supplied for a limit the tick never carried, so the acceptance criterion that a limitless job never renders a fabricated denominator survives the last hop as well as the first. A tick with no metadata, or with metadata that is not a dict, produces an empty payload and raises nothing: the summary is built for every event on the stream and may not fail on one.
+
+CHOSEN (4), NO CLIENT CHANGE THIS ROUND. The TypeScript envelope type and the COST metric that reads it are T002's work. Landing them here would put a UI slice in the same commit as a transport change and would mix the two rounds' evidence.
+
+ALTERNATIVES CONSIDERED. Widen unconditionally and update the two pins: rejected under (1), and rejected more strongly because the golden exists to make a wire-format change a deliberate edit, so editing it to accommodate an incidental one is exactly the discipline it was built to enforce. Send the whole metadata dict for ticks only: rejected under (2) — the condition limits WHICH events leak, not WHAT leaks from them. Add a second endpoint for tick figures rather than widening the envelope: rejected, the summary's docstring records that the cursor endpoint and the SSE stream are one consumer contract over two transports with ONE writer, and a second endpoint would give the ticker a different resume story from the feed it rides beside. Have the client re-read the ledger for figures it saw a tick for: rejected, it turns one push into a poll and reintroduces the client-side arithmetic D1's clause four forbids.
+
+REVERSE IT by deleting the conditional branch and its whitelist helper together; nothing else in the summary changes and every existing frame is already unaffected. Ruling (2) survives any reversal of (1) that keeps a payload at all, and rulings (3) and (4) are independent of both.
+
+## DECISION F022 D4 (2026-08-23) — the client's cost reading: one denominator, one estimate marker, two thresholds, and no arithmetic beyond the ratio
+
+CONTEXT, measured by the reviewer at `d97cdbb2`. DECISION F022 D1 ruled the tick's payload, D2 its writer and D3 its passage across the envelope. The figures now reach a client that has no vocabulary for them: `RemedyMetricKey` at `apps/ui/src/api/types.ts:3` is a closed union of seven strings and `RemedyMetric.value` is `number | "—"`, with `suffix` a display string, `tooltip` a `Record<string, number>`, `state` a three-value union and `unknown` a boolean — nowhere for a limit, a basis or a threshold. The feature file's Design and its Goal & Done also disagree on the surface: Design rules the fill against "the strongest configured limit (usd preferred when both)" while Done requires "the warn threshold triggers per tokens". Both are satisfiable at once, and this decision says how, so that no round has to guess.
+
+CHOSEN (1), THE UNIT IS CHOSEN BY WHICH LIMIT EXISTS, USD FIRST. When `limit_usd` and `spent_usd` are both present the metric is in usd; otherwise when `limit_tokens` and `spent_tokens` are both present it is in tokens; otherwise there is no usable denominator and clause 3 applies. That is Design's "usd preferred when both" read as a statement about the LIMITS, and it satisfies Done's "warn threshold triggers per tokens" exactly, because a job configured with a token limit alone lands in the tokens unit and takes its threshold from the token fill. The denominator is ALWAYS the limit of the unit shown: the other unit's limit is never substituted, because a dollar spend over a token limit is a fabricated ratio wearing a real number's clothes.
+
+CHOSEN (2), THE ESTIMATE MARKER READS THE BASIS OF THE FIGURE ACTUALLY SHOWN. A usd metric reads `basis.cost`, a tokens metric reads `basis.tokens`, and `estimated` is false ONLY for the exact string `"actual"`. `"lower_bound"`, `"absent"`, any unrecognised string and a missing or non-object `basis` all mark the figure estimated, because unknown provenance is not an actual and the `~` is cheap while a false claim of exactness is not. The tooltip text is composed in the client from that vocabulary; DECISION F022 D1 clause four already forbids a display sentence on the wire, and this decision does not reopen it.
+
+CHOSEN (3), NO LIMIT MEANS NO DENOMINATOR ANYWHERE. A missing limit, a limit that is not a finite number, and a limit of zero all produce the spent-only variant: `fill` null, `level` null, `limitless` true, and no tooltip line naming a limit. A zero limit is included deliberately — it is the shape that would otherwise divide by zero and render `Infinity` as a fill — and the acceptance criterion is that a limitless job never renders a fabricated denominator, which is a statement about what the user SEES and therefore binds the tooltip as much as the bar.
+
+CHOSEN (4), THE THRESHOLDS ARE ON THE RATIO AND THEY ARE TWO. `fill >= 1` is `"exceeded"`, `fill >= 0.85` is `"warn"`, anything less is `"normal"`, and `level` is null whenever `fill` is. The comparisons are inclusive at both boundaries so that exactly 85% warns and exactly 100% is exceeded; a bar that waited for 85.1% would tell the truth late, and the budget stop the feature file mentions lands moments after 100% either way.
+
+CHOSEN (5), THE ONLY ARITHMETIC IS THE RATIO AND ONE PERCENTAGE OF IT. `costMetricOf` divides spend by limit and multiplies that ratio by 100 for the tooltip's percentage, and does nothing else numeric. It never sums figures, never converts tokens to money, never applies a rate and never carries a price constant — the backend is the single arithmetic home and this is the whole of the client's share. The permitted numeric literals are therefore `0`, `1`, `100`, `0.85`, and the formatting constants `2`, `1000` and `1000000`; the test file's source guard enumerates exactly those.
+
+ALTERNATIVES CONSIDERED. Compute the render decisions inside `TopMetricsBar.tsx`: rejected — the vitest config collects `src/**/*.test.ts` under a node environment, so a rule that lived in the component would ship with no test that can reach it, and F021 already established the pure-module shape for exactly this reason. Show the TIGHTEST fill across both limits rather than preferring usd: rejected, because "tightest" changes unit mid-run as spending moves and a metric whose unit flickers is worse than one that is merely conservative; the tooltip enumerates both fills, so nothing is hidden. Let an absent limit fall back to the other unit's limit: rejected under clause 1. Emit the composed tooltip strings from the backend: rejected, it reopens D1 clause four and puts display copy in the ledger.
+
+REVERSE IT by deleting `apps/ui/src/api/costMetric.ts` with its test file and narrowing `RemedyMetricKey` back to seven strings; nothing else reads either. Clauses 1 to 4 are independent of each other and any one can be re-ruled alone, while clause 5 is a consequence of the no-client-arithmetic rule the feature file's Acceptance section already binds and cannot be reversed here.
+
+## DECISION F022 D5 (2026-08-23) — the COST metric is drawn from the view and decides nothing, and its threshold is never colour alone
+
+CONTEXT, measured by the reviewer at `142af5e4`. DECISION F022 D4 put every render decision into `costMetricOf`, and nothing draws them. `TopMetricsBar.tsx` is generic over the array it is handed, hardcodes no metric list and falls back to `ChartGlyph` for an unknown key, so an eighth metric already renders; what it cannot do is show a formatted string, a prefix, a limit-relative fill or a threshold. Three of this repository's own authorities bear on how it should: `docs/ui/design_reference/ux_spec.md` §10 specifies the metrics bar's track as 6px, radius 3, `--remedy-blue-100` base with a 350ms width transition, `docs/ui/design_reference/assets_spec.md` line 179 already specifies the budget/cost glyph as a coin — circle plus inner cent-bar, stroke, 16 DOM — with a warn tint at or above 85 per cent of budget, and §14 of the same spec rules that a state change is never colour alone.
+
+CHOSEN (1), THE COMPONENT IS A FIELD LOOKUP AND ITS ONLY ARITHMETIC IS THE CLAMP. Every branch reads a field of `CostMetricView`: `display` for the value, `estimated` for the marker, `fill` for the track's width, `level` for its treatment, `tooltip` for the rows. The component formats nothing, chooses no unit, picks no denominator and composes no sentence. The one number it computes is the track's width — an already-computed ratio expressed as a percentage and clamped into the track — because a fill over 100 per cent must render as a full bar rather than overflow its container. Where the render appears to need a value the view does not carry, that is the view's gap and it is a finding, never a computation moved back into the component.
+
+CHOSEN (2), THE EIGHTH SEGMENT IS ADDED AND THE DEVIATION IS RECORDED HERE. `ux_spec.md` §10 opens "One hero glass card; 4 segments" while the shipped bar renders seven, so the built state already departs from that count and this round makes it eight. The departure is deliberate and pre-existing: the four-segment sentence describes an earlier composition, while the same section's binding rules — the divider, the icon disc, the kicker, the 30/700 value, the track, the honest em dash — are followed exactly by every segment including this one. THE ROUTE FOR THIS RECORD IS ITSELF THE POINT: the feature file's header orders visual deviations into an `assumption_log`, and finding R-0665 measured that no such file exists anywhere in this repository while seventy-six tracked documents name it — re-measured at `142af5e4`, where `git ls-tree -r --name-only` matches no path containing `assumption` and `git grep -l assumption_log -- docs/` still returns seventy-six. F022 therefore records its visual deviations as DECISIONs in `.agent/decisions.md`, which is the operative decision record this workflow actually reads, and says so rather than writing to a file that is not there. R-0665 stays OPEN; this is a route, not its fix.
+
+CHOSEN (3), THE THRESHOLD IS NEVER COLOUR ALONE. `ux_spec.md` §14 rules that a state change never happens by colour only, and a money bar is the worst place to break that: the reader who cannot distinguish the warn tint from the normal one is exactly the reader a budget warning is for. At `warn` and at `exceeded` the metric therefore carries the level in its ACCESSIBLE NAME in words, and the track carries a non-colour signal of its own beside the tint. The estimate marker is a separate channel from the threshold and the two may never be driven from one another: a `~` that appeared at 85 per cent would claim the figure had become an estimate, which is a false statement about provenance rather than a loud one about spend.
+
+CHOSEN (4), THE TINTS COME FROM THE PRIMITIVES BOTH SHEETS ALREADY CARRY. `--remedy-orange-400` at `warn` and `--remedy-red-500` at `exceeded`, each defined exactly once in `apps/ui/src/styles/tokens.css` and exactly once in `docs/ui/design_reference/tokens.css` — measured, because those two sheets are known to disagree elsewhere and finding R-0661 is what that costs. No new token is minted, no literal hex enters a cost rule, and `assets_spec.md` needs no amendment because the glyph this round draws is one it already specifies.
+
+CHOSEN (5), THE COST TRACK FOLLOWS THE SPEC AND THE PROGRESS TRACK IS LEFT ALONE. The new track is 6px at radius 3 over `--remedy-blue-100` with a 350ms transition, as §10 rules. The neighbouring `.progressTrack` is 5px over an rgba base at 600ms and predates that sentence; it is out of this feature's scope and MetricsBar's other metrics are on its Do-not-touch list, so the two will differ on disk until a round owns that file for its own reasons. Saying so here is cheaper than a reader discovering it and assuming one of them is a typo.
+
+CORRECTION TO DECISION F022 D4, appended here because §3 checklist item 20 forbids rewriting a landed paragraph. D4's REVERSE clause names deleting `costMetric.ts` with its test file and narrowing `RemedyMetricKey`, and adds "nothing else reads either". That is incomplete and the completed form is: also remove the optional `cost?: CostMetricView` field from `RemedyMetric` and the `import type { CostMetricView } from "./costMetric";` line above it in `apps/ui/src/api/types.ts`, without which the reversal leaves an import of a deleted module and `npm run typecheck` goes red. Registered as finding R-0672.
+
+ALTERNATIVES CONSIDERED. Give the threshold its own token pair rather than reusing the primitives: rejected, a token minted for one metric is a token the reference does not carry, which is the R-0661 divergence created deliberately instead of inherited. Signal the threshold by colour alone and rely on the tooltip: rejected under clause 3 — a tooltip is a hover, and a state a keyboard reader cannot reach is a state it does not have. Reuse `.progressTrack` for the cost fill: rejected under clause 5, since the two specs differ and sharing the rule would silently migrate the progress metric's appearance inside a cost feature. Put the formatting in the component and keep the module pure of strings: rejected under clause 1 and D4 clause 5, because the format is part of what "renders honestly" means — `"—"` versus `"$0.00"` is the whole of the no-fake-zeros rule.
+
+REVERSE IT by deleting the cost rules from `TopMetricsBar.module.css`, the cost branches from `TopMetricsBar.tsx`, `CoinGlyph` from `RemedyGlyphs.tsx` and `tests/ui_contracts/test_cost_metric_render.py` entirely, and by dropping the goldens describe block from `costMetric.test.ts`. That is the whole of this round's production surface and it is stated here as a complete list, which is the obligation R-0672 exists to remember.
+
+## DECISION F022 D6 — where the live tick is held, and how it reaches the bar
+
+CONTEXT. `costMetricOf` has been correct since R7 and drawn since R8 and has no
+production caller: measured at `a8952614` by reading every `.ts` and `.tsx`
+under `apps/ui/src` except `*.test.ts` and `*.test.tsx`, the only non-test file
+containing `costMetricOf(` is `costMetric.ts` itself. The tick reaches the
+client already — `_safe_event_summary` puts a `budget` key on a `budget.tick`
+frame and on no other kind — and nothing reads it.
+
+CHOSEN. The latest tick's figures are held as ONE field on `BrainStreamState`,
+folded in `receiveBrainFrame` behind the replay guard, carried forward BY
+REFERENCE on every non-tick frame, published on `BrainStreamView` and compared
+there with `===`. The shell composes the bar's metrics through one pure
+function, `metricsWithCostTicker`, which calls `costMetricOf` and decides
+nothing else.
+
+WHY. `receiveBrainFrame` is the single ingest point every frame passes through
+and the only place a reconnect replay has already been ruled on, so a fold there
+inherits the replay guard instead of re-deriving it. Reference-carrying is not
+an optimisation: the runner's `publish` compares with `===`, so a fresh object
+of equal content would announce a change nobody made and re-render the cockpit
+on every heartbeat. A pure composition function keeps the wiring under the
+node-environment vitest, which cannot render React — the same reason
+`cockpitLogic.ts` and `brainStream.ts` were extracted from their components.
+
+ALTERNATIVES CONSIDERED. A second store subscribed to the same stream: rejected,
+because `tests/ui_contracts/test_brain_stream_ring.py` pins exactly one
+`useBrainStream(` call site and a second subscription is a second socket.
+Deriving the figures inside `TopMetricsBar` from the feed ring: rejected,
+because `FeedRow` deliberately drops the `budget` payload and widening it would
+put the whole envelope behind a projection built for a feed. Fetching the
+figures over the dashboard endpoint: rejected, because a ticker that polls is
+not live and the transport already carries the value.
+
+REVERSE IT path by path, derived from this round's Change set rather than from
+the files most in mind. Delete `apps/ui/src/api/budgetTick.ts` and
+`apps/ui/src/api/budgetTick.test.ts`; delete `apps/ui/src/api/costTicker.ts` and
+`apps/ui/src/api/costTicker.test.ts`; in `apps/ui/src/api/brainStream.ts` remove
+the `budget` field from `BrainStreamState`, its `null` seed in
+`initialBrainStreamState` and the fold in `receiveBrainFrame`; in
+`apps/ui/src/api/brainStreamRunner.ts` remove the `budget` field from
+`BrainStreamView`, its seed in `cachedView` and its comparison in `publish`; in
+`apps/ui/src/api/remedyApi.ts` remove the eighth `cost` entry from the `metrics`
+literal and the deliberate-absence comment in `normalizeApiFailure`; in
+`apps/ui/src/components/shell/RemedyShell.tsx` pass `dashboard.metrics` to
+`TopMetricsBar` unwrapped; drop the budget cases from
+`apps/ui/src/api/brainStream.test.ts` and
+`apps/ui/src/api/brainStreamRunner.test.ts`, and restore the seven-key
+assertions and the original test name in `apps/ui/src/api/remedyApi.test.ts`;
+remove the wiring class from `tests/ui_contracts/test_cost_metric_render.py`.
+The R-0671 assertion in `apps/ui/src/api/costMetric.test.ts` is NOT part of this
+decision and a reversal keeps it. That is every production and test path this
+round's Change set holds, which is what R-0672 and its recurrence require of a
+reversal instruction and what DECISION F022 D5 did not do.
+
+## DECISION F022 D7 — the source of the terminal reconciliation's ledger figure
+
+CONTEXT. `docs/roadmap/features/T5_F022.md` orders the terminal reconciliation
+to "fetch the ledger's job figure (the stats endpoint)". Measured at `3e1d3fae`:
+`packages/orchestration/ui_server.py` dispatches its job endpoints from one
+`handlers` dict plus `events-since`, and no `stats` endpoint is among them. The
+spec names a source that has never existed, so T003b could not be built as
+written.
+
+REJECTED, and this is the substantive half of the ruling. The dashboard payload
+already carries `token_usage`, which reads like the ledger figure. It is not
+one. `_build_token_usage` sums `metadata.estimated_tokens` across the job's
+events and returns `"estimated": True` with `"source": "event_metadata"`,
+attributing tokens to `context`, `memory`, `repair`, `planner` and `other` from
+kinds such as `source_context_injected` and `project_memory_recalled`. The
+ticker's figures are `BudgetCounters.measured_token_total` and
+`measured_cost_usd`, which count PROVIDER CALLS. The two populations are
+disjoint in intent and in practice, so a delta between them measures neither
+drift nor drop — it measures the difference between two unrelated questions.
+Rendering it under the words "final (ledger)" would be the fabricated honesty
+moment this feature exists to prevent, and it would be indistinguishable on
+screen from a real one.
+
+CHOSEN. The ledger figure is the LAST `budget.tick` in the job's run log.
+`_emit_budget_tick` writes every tick through `RunLogWriter` under the stable
+run id `budget-ticks`, so that log is the ledger's own record of the final
+measured figures, already in the whitelisted shape
+`_budget_tick_summary_payload` puts on the wire. The server exposes it as a
+final-figure section; the client renders it at terminal in place of the live
+value.
+
+CONSEQUENTLY THE DELTA IS A TRANSPORT STATEMENT, never a second arithmetic. Both
+sides of the comparison are the SAME quantity from the same producer: what the
+client received over the stream, against what the ledger holds. A delta
+therefore means frames were missed — an SSE gap, a disconnect, a ring overflow,
+or a final tick emitted after the client stopped listening — which is exactly
+what a reader deserves to be told, and it is measurable rather than guessed. The
+client still performs no money arithmetic: it compares two figures the backend
+produced and labels the difference.
+
+ALTERNATIVES CONSIDERED. Adding the `stats` endpoint the spec names: rejected,
+because it would be a new public surface invented to satisfy a sentence rather
+than a need, and the figures already exist. Treating the last tick the CLIENT
+holds as final: rejected, because it makes the reconciliation vacuous — the
+client would compare a value with itself and could never show a delta, which is
+the R-0438 vacuous-gate shape arriving in a feature. Recomputing the final
+figure from the event stream in the client: rejected, because the UI never
+computes money, which is this feature's founding constraint.
+
+REVERSE IT path by path, derived from this round's Change set rather than from
+the files most in mind. In `docs/roadmap/features/T5_F022.md` restore the
+Terminal-reconciliation bullet's previous wording, which named the stats
+endpoint and which this round's C5 replaced whole. In `.agent/live_review.md`
+nothing is reversed, because the map repair at C2 and the ledger entry at C3
+record round history rather than this decision. This decision ships no code, so
+no production path is reversed here; a later round that builds against it
+reverses its own paths under its own decision. That is every path this round's
+Change set holds, which is what R-0672 and its recurrence require of a reversal
+instruction.
+
+## DECISION F022 D8 — when the ledger figure replaces the live one, and what the delta says
+
+CONTEXT. DECISION F022 D7 ruled the SOURCE of the terminal reconciliation: the
+last `budget.tick` in the job's run log, served as the dashboard's
+`budget_final`. It deliberately ruled nothing about WHEN the client swaps the
+live value for that one, nor about what counts as a delta worth showing, because
+no client code existed to rule over. Measured at `5d3e6045`: the shell holds the
+latest received tick on `stream.budget` and hands it to the bar through
+`metricsWithCostTicker`, while `budget_final` reaches the payload and has NO
+client reader at all — the dashboard type does not name it.
+
+CHOSEN, clause by clause.
+
+1. THE TRIGGER is terminal AND a ledger figure: the reconciliation runs exactly
+when the dashboard's `live.running` is false and the ledger figure is not null.
+While the job runs, the ledger's last tick and the client's last tick are the
+same event, so rendering one as "final" would claim a finality the run has not
+earned — and it would do so in the feature built to stop exactly that.
+
+2. THE FIGURE SHOWN IS THE LEDGER'S, and it is rendered through `costMetricOf`
+like any other tick. The reconciliation module chooses no unit, no denominator,
+no marker and no threshold; it hands the ledger payload to the module that
+already owns those rules. This is what keeps the arithmetic home single, and
+`tests/ui_contracts/test_cost_metric_render.py` enforces it independently, as
+measured at `5d3e6045`.
+
+3. THE DELTA IS LABELLED WHEN THE DISPLAYS DIFFER, and it is named rather than
+computed. The comparison is between the ledger view's `display` string and the
+received view's `display` string. Comparing the DISPLAYS rather than the raw
+figures is the deliberate half: both sides are the same producer's counters, so
+a real missed frame moves the shown value, while a difference below the display
+precision would render as a label naming two identical figures — a sentence that
+contradicts itself on the reader's screen and teaches them to ignore the next
+one. ACCEPTED COST, stated rather than hidden: a transport gap smaller than two
+decimal places, or smaller than the token formatter's own rounding, is not
+surfaced. The figure shown is the ledger's and therefore correct either way;
+what is lost is only the notice, and a notice nobody can verify against the
+screen is worth less than the trust it spends.
+
+4. AN ABSENT SIDE IS ABSENT. No received figure at terminal renders the ledger
+figure with NO label, because a label naming an em dash as the live estimate
+would invent a reading the client never took. No ledger figure changes nothing
+at all and the live tile stands, which is the same honesty rule that stops a
+limitless job fabricating a denominator.
+
+ALTERNATIVES CONSIDERED. Comparing the raw figures: rejected for the
+self-contradicting on-screen label clause 3 describes. Reconciling whenever a
+ledger figure exists, without the running check: rejected because it claims
+finality mid-run. Rendering the difference itself as a magnitude: rejected twice
+over, because the feature file's own wording names both values rather than their
+difference, and a magnitude is the second arithmetic D7's closing clause forbids
+the client. Holding the reconciliation in `costTicker.ts` instead of a new
+module: rejected because that module's contract is the LIVE tick, and a second
+responsibility there would put the terminal rules where nobody searching for
+them would look.
+
+REVERSE IT path by path, derived from this round's Change set rather than from
+the files most in mind. Delete `apps/ui/src/api/costReconciliation.ts` and
+`apps/ui/src/api/costReconciliation.test.ts`. In `apps/ui/src/api/types.ts`
+remove `budgetFinal` from `RemedyDashboard` and `costFinalNote` from
+`RemedyMetric`. In `apps/ui/src/api/remedyApi.ts` remove the `budget_final`
+mapping, and in `apps/ui/src/api/remedyApi.test.ts` its three cases. In
+`apps/ui/src/components/shell/RemedyShell.tsx` unwrap the call so
+`metricsWithCostTicker(dashboard.metrics, stream.budget)` is again the whole
+argument. In `apps/ui/src/components/metrics/TopMetricsBar.tsx` remove the note
+render, and in `tests/ui_contracts/test_cost_metric_render.py` the class that
+pins it. In `.agent/plan.md` and `.agent/live_review.md` nothing is reversed:
+those record round history rather than this decision. That is every path this
+round's Change set holds, which is what R-0672 and its recurrence require of a
+reversal instruction.
