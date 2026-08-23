@@ -49,9 +49,10 @@ budget → R10 T003a the live wiring, which gives the cost module its first
 production caller, plus the R9 verdict and this map repair → R11 rule the
 terminal reconciliation's SOURCE, because the feature file named an endpoint
 that does not exist, and record the R10 verdict → R12 T003b-a the server's
-final-figure section, R-0670's repair and the R11 verdict → R13 T003b-b the
-client's reconciliation with its delta label → R14 the integration gate → R15
-closure. This section is the only place the round map is stated, per
+final-figure section, R-0670's repair and the R11 verdict → R13 record the R12
+verdict and end that session at its round budget → R14 T003b-b the client's
+reconciliation with its delta label → R15 the integration gate → R16 closure.
+This section is the only place the round map is stated, per
 R-0447's remedy, and a round whose scope this map does not describe repairs the
 map in that same block or is not emitted, per R-0455. The map is repaired at R10
 rather than at R9 because R9 discovered the drift and had no pair over this file
