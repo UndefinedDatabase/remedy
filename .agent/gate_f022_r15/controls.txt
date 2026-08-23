@@ -1,0 +1,46 @@
+F022 R15 — THE RED CONTROLS
+
+CONTROL 1 — THE ^FAILED EXTRACTOR IS LIVE (backs the branch run's 0).
+  A two-test module (one pass, one `assert False`) was run OUTSIDE the
+  repository, in /home/decodeux/remedy-gate-scratch/f022r15:
+    command: python3 -m pytest -q -rf --no-header -p no:cacheprovider .
+    exit code: 1    summary: 1 failed, 1 passed in 0.01s
+    the same startswith('FAILED ') extractor found 1 line:
+      test_control.py::test_fails_on_purpose - assert False
+  So '0 FAILED lines' on the branch run is a measurement, not a silent miss.
+
+CONTROL 2 — THE comm ROUTE REPORTS (backs the empty branch-only set).
+  Synthetic pair, one shared id and one unique id on each side:
+    comm -13 ctl_base_failed.txt ctl_branch_failed.txt -> FAILED tests/c.py::t_branch_only   (count 1)
+    comm -23 ctl_base_failed.txt ctl_branch_failed.txt -> FAILED tests/b.py::t_base_only   (count 1)
+  So the empty comm -13 is not an artifact of the comparison itself.
+
+CONTROL 3 — THE CANARY COMMAND CAN GO RED (G12).
+  In the disposable worktree /home/decodeux/Repos/remedy/.remedy-wt/f022r15-ctl, line 71 of
+  tests/cli/test_golden_path.py was mutated:
+    FROM: assert "State: planned" in out
+    TO:   assert "State: PLANNED-NOT-A-REAL-STATE" in out
+    command: python3 -m pytest tests/cli/test_golden_path.py -q
+    exit code: 1    wall: 20.8 s
+    1 failed, 41 passed in 20.55s
+    the FAILED line names the mutated test: FAILED tests/cli/test_golden_path.py::TestDoMission::test_do_mission_creates_planned_job
+  The file was restored (True) and the worktree left clean (True).
+
+CONTROL 4 — THE PARITY RESTORE IS VISIBLE (G8).
+  Reported in full in parity.txt: symlinks under apps/ui/node_modules/.bin in
+  the base worktree went from 0 (directory absent) to 23, equal to the
+  primary's 23.
+
+CONTROL 5 — THE APPEND READERS REJECT A MUTANT (G5).
+  In the disposable worktree /home/decodeux/Repos/remedy/.remedy-wt/f022r15-ctl, ONE BYTE of the committed
+  .agent/live_review.md was flipped at BYTE offset 574400, inside the FIRST
+  appended paragraph whose byte span is [574174, 578439):
+    byte 116 -> 84
+    ~20 bytes there, true:   '2 R14, in the review'
+    ~20 bytes there, mutant: '2 R14, in The review'
+    reader (a) on the true file: True | on the mutant: False
+    reader (b) on the true file: True | on the mutant: False
+  The offset is a BYTE offset, not a character offset: the file carries
+  multi-byte em dashes, and a character offset would land early, outside the
+  appended region, where reader (b) accepts the mutant. The worktree file was
+  restored (True) and the worktree removed.

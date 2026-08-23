@@ -1,0 +1,21 @@
+F022 R15 — THE COMPARE (G10, integration_gate.md step 3)
+
+inputs: base_failed.txt 63 lines, branch_failed.txt 0 lines
+
+command: comm -13 base_failed.txt branch_failed.txt   (BRANCH-ONLY)
+exit code: 0
+count: 0
+list: (EMPTY — the branch introduces no failure the base does not already have)
+
+command: comm -23 base_failed.txt branch_failed.txt   (BASE-ONLY)
+exit code: 0
+count: 63
+list: identical to base_failed.txt, since branch_failed.txt is empty; the 63
+      ids are reproduced there in full and attributed one by one in
+      attribution.txt.
+
+INDEPENDENT SECOND READING: a python set difference over the same two files
+agrees with comm in both directions — branch-only True, base-only True.
+
+LIVENESS: the empty branch-only reading is backed by control 2 in controls.txt,
+where a synthetic pair puts exactly one id in each direction.

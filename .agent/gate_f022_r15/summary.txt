@@ -1,0 +1,37 @@
+F022 R15 — INTEGRATION GATE, THE RESULT ON ONE PAGE
+
+round base 8d5c73c4 · gate run at C2 0486eddf · merge base c34ef32b0ac3e6a7af161fa724f42ba1c3167786
+
+BRANCH RUN   python3 -m pytest -n auto -q in the PRIMARY checkout
+             exit 0, 177.6 s, 17722 passed, 20 skipped in 177.04s (0:02:57)
+             ^FAILED lines: 0
+BASE RUN     the identical command in the branch worktree tmp/f022-r15-base at
+             c34ef32b, REMEDY_UI_NO_AUTO_BUILD=1, parity restored by
+             shutil.copytree(..., symlinks=True)
+             exit 1, 163.1 s, 63 failed, 17588 passed, 20 skipped in 162.61s (0:02:42)
+             ^FAILED lines: 63
+COMPARE      branch-only (comm -13): 0
+             base-only  (comm -23): 63
+CANARY       exit 0, 42 passed in 20.43s — the block's reference figure is 42
+
+THE GATE'S READING
+1. THE BRANCH INTRODUCES NO FAILURE. The branch-only set is empty over a full
+   suite that ended `17722 passed, 20 skipped in 177.04s (0:02:57)`. That is the claim this tier exists to make, and
+   it is made here for the first time on this branch.
+2. NO BLOCKER under constraint 4. A blocker requires a reproducible branch-only
+   failure coupled to feature code; there is no branch-only failure at all.
+3. THE 63 BASE-ONLY IDS ARE ALL ATTRIBUTED to one environment class — the
+   copied apps/ui/dist arrived older than the freshly checked-out apps/ui/src,
+   `_frontend_is_stale()` fired, and REMEDY_UI_NO_AUTO_BUILD=1 turned the
+   auto-build into `sys.exit(1)`. Three independent evidences in
+   attribution.txt: the predicate measured in the base worktree, the identical
+   per-id stderr signature on 63 of 63, and a serial re-run of all 63
+   at c34ef32b passing with exit 0 once the build artifact was fresh.
+4. THE PARITY CLAIM IS VOID and is reported as void, not repaired. G9 caught a
+   real rebuild inside the base run window — new asset filenames, new digests.
+   That is why point 3 is per-id evidence rather than a class assertion.
+5. WALL CLOCK: branch 177.6 s, base 163.1 s. Both under the ~5 min threshold
+   of integration_gate.md step 5, so no perf-pass note is raised.
+
+THE VERDICT ON THIS GATE IS THE REVIEWER'S, not this file's. What this file
+records is what was run and what it printed.

@@ -1,0 +1,39 @@
+F022 R15 — INTEGRATION GATE, BASE RUN (G8, integration_gate.md step 2)
+command: python3 -m pytest -n auto -q
+cwd: /home/decodeux/Repos/remedy/.remedy-wt/f022r15-base
+env added: REMEDY_UI_NO_AUTO_BUILD=1
+merge base, as `git merge-base feature/f022-live-cost-ticker main` resolved it:
+  c34ef32b0ac3e6a7af161fa724f42ba1c3167786
+worktree: created ON A BRANCH per constraint 5 —
+  git worktree add -b tmp/f022-r15-base <path> c34ef32b
+  the worktree reported branch tmp/f022-r15-base and HEAD c34ef32b0ac3e6a7af161fa724f42ba1c3167786
+exit code: 1
+wall time: 163.1 s (under the ~5 min perf note threshold, step 5)
+run window (epoch): 1787467222.2559404 .. 1787467385.3992395
+sorted ^FAILED lines: 63 (see base_failed.txt)
+
+ALL 63 ARE BASE-ONLY and ALL 63 ARE ATTRIBUTED to the environment class.
+See auto_build_neutralization.txt for the rebuild event, attribution.txt for the
+per-id evidence, and summary.txt for the reading.
+
+last 20 lines of the run:
+FAILED tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_the_commands_path_is_the_only_post_that_is_not_405
+FAILED tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_an_exposed_id_with_no_dispatch_branch_is_the_501_guard
+FAILED tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_the_last_command_in_budget_is_accepted_and_the_next_is_429
+FAILED tests/ui_server/test_command_dispatch.py::TestJobStopDispatchEffects::test_the_dispatch_publishes_the_stop_request_the_body_names
+FAILED tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_wrong_bearer_is_audited_as_rejected_token
+FAILED tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_every_outcome_the_door_writes_is_in_the_ruled_vocabulary
+FAILED tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_nonce_that_cannot_be_a_filename_is_400_on_its_own_field[aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa]
+FAILED tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_get_door_answers_403_for_a_non_ascii_token
+FAILED tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_wrong_csrf_header_is_403
+FAILED tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_replay_is_not_the_acceptance_it_repeats
+FAILED tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_non_object_args_is_400_on_field_args
+FAILED tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_invalid_json_body_is_400_on_field_body
+FAILED tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_an_unknown_path_is_405_for_every_mutating_method
+FAILED tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_unexposed_catalog_command_is_400_on_field_command
+FAILED tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_second_job_has_its_own_budget
+FAILED tests/ui_server/test_command_dispatch.py::TestJobStopDispatchEffects::test_the_nonce_record_holds_the_body_the_client_received
+FAILED tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_wrong_csrf_header_is_audited_as_rejected_csrf
+FAILED tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_wrong_credential_on_a_job_with_no_control_dir_leaves_no_file
+FAILED tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_an_accepted_command_reaches_the_sse_frame_it_announces
+63 failed, 17588 passed, 20 skipped in 162.61s (0:02:42)
