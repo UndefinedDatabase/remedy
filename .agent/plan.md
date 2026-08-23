@@ -15,30 +15,28 @@ spent-only variant with no fake denominator, and the terminal reconciliation
 displays the ledger figure with any delta labelled.
 
 ## Current Step
-R10 is T003a, the live wiring. It records the R9 verdict and the R-0644
-recurrence, repairs the round map, rules DECISION F022 D6, and then carries the
-latest budget tick from the stream's one ingest point through the runner view
-and the shell into the metrics bar — the step that gives `costMetricOf`, correct
-since R7 and drawn since R8, its first production caller. It also pins R-0671's
-missing assertion.
+R11 rules the terminal reconciliation's source and builds nothing. The feature
+file named "the stats endpoint", which does not exist, and the dashboard's
+`token_usage` — the obvious substitute — is an estimate summed over a different
+event population, so a delta against it would be fabricated. DECISION F022 D7
+rules the run log's last budget tick as the authority and this round amends the
+feature file to match. It also records the R10 verdict and the R-0625
+recurrence.
 
 ## Next Steps
-1. R11 T003b — the terminal reconciliation, the delta labelling and the
-   fake-job end-to-end, opening with the DECISION that rules where the ledger's
-   final figure is read from.
-2. R12 the integration gate.
-3. R13 closure.
+1. R12 T003b — the server's final-figure section and the client's terminal
+   reconciliation with the delta label, built against DECISION F022 D7.
+2. R13 the integration gate.
+3. R14 closure.
 
 ## Risks
-- The feature file names "the stats endpoint" as the source of the ledger figure
-  for the terminal reconciliation, and no such endpoint exists among the job
-  endpoints `ui_server.py` dispatches. R11 opens by ruling that source as a
-  DECISION rather than by building against a name.
+- T003b is now a TWO-SIDED slice: D7 puts a final-figure section on the server
+  as well as the reconciliation on the client, so R12 is larger than T003a was
+  and may need splitting at its own block.
 - Open F022 findings, each with the round that owns it: R-0670 waits for the
-  next round touching `packages/orchestration/ui_server.py` on its own account;
-  R-0672 and its recurrence want a path-by-path reversal, which DECISION F022 D6
-  carries; R-0673 wants a whole-file absence run at the base first, which G12
-  does; R-0644's recurrence is the correction this round appends.
+  next round touching `packages/orchestration/ui_server.py` on its own account,
+  which R12 will be; R-0672 and R-0625 want their next-DECISION and next-numeral
+  clauses honoured, which DECISION F022 D7 and this round's ledger entry do.
 - The two High findings carried forward, R-0495 and R-0574, are inherited from
   the already-closed F085 and F086 and are documented risks, not F022 defects.
 - `npm run lint` in `apps/ui` is RED at base and is NOT a gate (R-0364), which
