@@ -15,18 +15,18 @@ spent-only variant with no fake denominator, and the terminal reconciliation
 displays the ledger figure with any delta labelled.
 
 ## Current Step
-R4 records the R3 verdict, carries a recurrence of the open finding R-0553 that
-R3's own context slice landed, and rules the budget tick envelope as DECISION
-F022 D1 — the emission site, the payload's field set, the basis vocabulary and
-the no-client-arithmetic contract — on the ground the R3 inventory measured. It
-mints no id and builds nothing.
+R5 records the R4 verdict, splits T001 across two rounds in the round map, rules
+the tick's writer as DECISION F022 D2, and builds the first half: one budget
+tick per safe-point evaluation in `should_stop`, the matching humanize-catalog
+key in the SAME commit, and a backend test file pinning the payload's honesty,
+the cadence and the ping-pong job-id shape.
 
 ## Next Steps
-1. R5 T001 the tick emission in `should_stop`, with its backend tests, the
-   humanize-catalog key and the catalog pin gated in the same commit.
-2. R6 T002 the COST metric on fixture streams; R7 T003 the terminal
+1. R6 the second half of T001 — the SSE envelope, which drops `metadata` today
+   and therefore carries none of the tick's figures to any client.
+2. R7 T002 the COST metric on fixture streams; R8 T003 the terminal
    reconciliation and the delta labelling.
-3. R8 the integration gate, then closure.
+3. R9 the integration gate, then closure.
 
 ## Risks
 - The two High findings carried forward, R-0495 and R-0574, are inherited from
@@ -34,6 +34,8 @@ mints no id and builds nothing.
   defects.
 - `npm run lint` in `apps/ui` is RED at base and is NOT a gate (R-0364), which
   is R-0622 and routes to a paydown branch.
-- T002 widens a CLOSED union and a value type that has nowhere to put a limit or
-  a basis, both measured in the R3 inventory. That is a type-level change, not an
-  additive one, and R6 is sized for it.
+- R6 widens `_safe_event_summary`, whose key set is pinned exactly and whose
+  frames are a golden byte stream, both in `tests/ui_server/test_sse_stream.py`.
+  The widening is conditional on the event kind or both readings go red.
+- R7 widens a CLOSED union and a value type with nowhere to put a limit or a
+  basis, both measured in the R3 inventory. That is a type-level change.
