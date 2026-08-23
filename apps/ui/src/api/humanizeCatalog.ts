@@ -12,6 +12,7 @@ export const STREAM_EVENT_CATALOG: Readonly<Record<string, string>> = {
   "api_retry": "A provider API call failed and was retried.",
   "brain_node_inspected": "A node in the project brain was inspected.",
   "brain_viewer_prepared": "The brain viewer's data was prepared for display.",
+  "budget.tick": "The job's budget spend was measured at a safe point.",
   "builder_completed": "The builder finished its work on the task.",
   "builder_output_received": "The builder's output came back from the provider.",
   "builder_prompt_created": "The builder's prompt was assembled.",

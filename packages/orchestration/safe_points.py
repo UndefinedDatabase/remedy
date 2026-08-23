@@ -588,6 +588,96 @@ class ShouldStopResult:
         return d
 
 
+#: Every budget tick of ONE job shares ONE run-log file. `RunLogWriter` mints a
+#: fresh run id per instance and the emitter below is constructed per safe-point
+#: evaluation, so the default would leave one `.jsonl` file per safe point for the
+#: length of a long job (DECISION F022 D2, clause three). Nothing in Remedy parses
+#: a run-log file NAME — `timeline.load_run_events` globs `*.jsonl` and sorts by
+#: timestamp — so a stable name costs nothing.
+BUDGET_TICK_RUN_ID = "budget-ticks"
+
+
+def _budget_tick_payload(evaluation: Any) -> dict[str, Any]:
+    """The absolute figures one budget tick carries, and the basis of each.
+
+    DECISION F022 D1 fixes this field set. A key exists only when its value does:
+    an unconfigured limit is an ABSENT KEY, never a null and never a zero, which
+    is what stops a limitless job from rendering a fabricated denominator. No
+    display sentence is transported; the basis strings are composed in the client.
+
+    `basis.cost` reads `absent` before it reads anything else, because an unpriced
+    run has no cost figure to call a lower bound — `evaluate_budget` sets
+    `cost_lower_bound` in that case too, and it means "the limit cannot be decided",
+    not "the figure is a floor".
+
+    No key here collides with a NAMED parameter of `RunLogWriter.log` (`task_id`,
+    `artifact_id`, `provider`, `role`, `model`, `outcome`, `message`); a colliding
+    key would be hijacked out of `metadata` into the event envelope.
+    `TestPayloadKeysNeverCollide` pins that against the live signature.
+    """
+    counters = evaluation.counters
+    limits = evaluation.configured_limits
+    payload: dict[str, Any] = {
+        "spent_tokens": counters.measured_token_total,
+        "unmeasured_calls": counters.unmeasured_call_count,
+    }
+    if counters.measured_cost_usd is not None:
+        payload["spent_usd"] = counters.measured_cost_usd
+    if limits is not None:
+        if limits.max_total_tokens is not None:
+            payload["limit_tokens"] = limits.max_total_tokens
+        if limits.max_cost_usd is not None:
+            payload["limit_usd"] = limits.max_cost_usd
+    if counters.measured_cost_usd is None:
+        cost_basis = "absent"
+    elif evaluation.cost_lower_bound:
+        cost_basis = "lower_bound"
+    else:
+        cost_basis = "actual"
+    payload["basis"] = {
+        "tokens": "lower_bound" if evaluation.token_lower_bound else "actual",
+        "cost": cost_basis,
+    }
+    return payload
+
+
+def _emit_budget_tick(job_id: str, evaluation: Any) -> None:
+    """Write ONE budget tick beside the safe-point decision, never into it.
+
+    The tick is a NOTIFICATION: `should_stop`'s result, its reason and its source
+    are the same whether this writes or raises. DECISION F022 D1 puts the emission
+    ABOVE the exhaustion test so the evaluation that stops a job still reports the
+    money it spent.
+
+    The writer is `RunLogWriter` and NOT `timeline.append_run_event` (DECISION F022
+    D2, clause one): `append_run_event` resolves its id with `UUID(str(job_id))`,
+    while a JobPlan's `job_id` is `uuid4().hex[:16]` — sixteen hex characters, which
+    `UUID()` rejects. The short route would raise on every ping-pong safe point and
+    the soft failure below would swallow it, leaving the ticker silently dead on the
+    one job shape that runs long enough to need it.
+
+    The event name is an INLINE string literal (DECISION F022 D2, clause two):
+    `tests/ui_contracts/test_humanize_catalog.py` derives the Python stream
+    vocabulary with an AST walk that keeps a name only when it is an `ast.Constant`,
+    so a module constant would be invisible to it and the catalog key would sit
+    unpaired.
+
+    It FAILS SOFT for `_emit_command_accepted_event`'s reason: a notification that
+    breaks the run it reports on is worse than a missing frame. The caught set is
+    spelled out rather than written as `except Exception` — `OSError` from the
+    filesystem, `RuntimeError`, and `ValueError` / `TypeError` from serialising the
+    payload.
+    """
+    from packages.orchestration.data_paths import runs_dir
+    from packages.orchestration.run_log import RunLogWriter
+
+    try:
+        writer = RunLogWriter(job_id, run_id=BUDGET_TICK_RUN_ID, runs_root=runs_dir())
+        writer.log("budget.tick", **_budget_tick_payload(evaluation))
+    except (OSError, RuntimeError, ValueError, TypeError):   # D2, clause four
+        return
+
+
 def should_stop(
     job_id: str,
     *,
@@ -614,6 +704,7 @@ def should_stop(
         from packages.orchestration.budget_guard import evaluate_budget
 
         evaluation = evaluate_budget(budgets, counters, now=now)
+        _emit_budget_tick(job_id, evaluation)
         if evaluation.exhausted:
             limit = evaluation.first_exhausted_limit or "unknown"
             return ShouldStopResult(
