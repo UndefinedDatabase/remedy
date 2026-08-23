@@ -15,29 +15,30 @@ produces, the badge tracks live, and ordering follows a documented rule over age
 and blocked size rather than vibes.
 
 ## Current Step
-R2 records the F031 R1 verdict — PASS on all thirteen gates, each re-run by the
-reviewer — and registers the two recurrences that review surfaced, R-0632 and
-R-0676, both reviewer-block defects and neither a new id.
+R3 records the R2 verdict and takes the decision-inbox inventory into
+`.agent/f031_inventory.md`: the queue store and its types, the CLI surface, the
+producers, the blocked-subtree computation, the decision event kinds on both
+sides, the write-channel command, and what the UI has today — each measured in
+the source, no T-slice planned until it is on disk.
 
 ## Next Steps
-1. R3 takes the decision-inbox inventory in the source and MEASURES each part:
-   the file-based queue store and its CLI, every producer that writes a
-   decision, the DAG module's blocked-subtree entry point, and the decision
-   event kinds the stream carries today on the Python and the TypeScript side.
-2. R3 also settles whether F050 and F051 are built, since F031 depends on both.
-3. T001 follows the feature file's Task slicing once that inventory is on disk.
+1. R4 records the R3 verdict and rules the tick-shaped questions the inventory
+   leaves open — chiefly the event-kind envelope, since the feature file says
+   "envelope coordination if not yet present" and the inventory settles which.
+2. T001 follows the feature file's Task slicing: the read endpoint, the
+   blocked-size computation, scoping, and contract tests per producer type.
 
 ## Risks
 - Open findings, stated with the rule and the commit DECISION F009 D10 requires:
   by §3 item 10 — every `^- R-\d+ — ` paragraph minus every `^Done: R-\d+ — `
-  line — the open set is 236 measured at `ae5e989d`. R1's plan and handback each
-  called a twelve-id set "open" unqualified, which D10 forbids and which the
-  R-0632 recurrence this round records.
+  line — the open set is 236 measured at `9e773d4a`.
 - The findings THIS FEATURE MUST STILL ACT ON — a narrower set, named as what it
   is and not called "open" — are R-0403, R-0413, R-0431, R-0445, R-0495, R-0533,
-  R-0574, R-0625, R-0672, R-0674, R-0675, R-0676, R-0677 and R-0632. R-0495 and
+  R-0574, R-0625, R-0632, R-0672, R-0674, R-0675, R-0676 and R-0677. R-0495 and
   R-0574 are the two Highs, both inherited from the closed F085 and F086.
-- The record now holds `Gate: R19` from F022 as its seed entry. If F031 reaches
-  its own R19, that key collides and the ledger gains two paragraphs answering
-  to one key — the §3 item 26 defect. A round before then renames the seed or
-  the scheme; this bullet is the reminder, measured at `ae5e989d`.
+- F031 depends on F009, F050 and F051. All three are marked `[x]` in
+  `docs/roadmap/STATUS.md`, measured at `9e773d4a`; R3's inventory confirms what
+  each actually left behind in the source rather than trusting the mark.
+- The record holds `Gate: R19` from F022 as its seed entry. If F031 reaches its
+  own R19 that key collides — the §3 item 26 defect. A round before then renames
+  the seed or the scheme; this bullet is the reminder.
