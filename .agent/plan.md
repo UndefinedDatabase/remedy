@@ -15,26 +15,30 @@ spent-only variant with no fake denominator, and the terminal reconciliation
 displays the ledger figure with any delta labelled.
 
 ## Current Step
-R6 records the R5 verdict, rules the envelope widening as DECISION F022 D3, and
-closes T001: `_safe_event_summary` carries the budget tick's whitelisted figures
-for that ONE event kind, so every other kind's frame stays byte-identical and
-the tick's numbers reach a client for the first time.
+R7 records the R6 verdict, registers R-0670, rules DECISION F022 D4, and lands
+T002's LOGIC half: `apps/ui/src/api/costMetric.ts` turns one budget tick into
+every render decision the COST metric needs — unit, denominator, fill,
+threshold, estimate marker and tooltip — with vitest tests for each.
 
 ## Next Steps
-1. R7 T002 the COST metric on fixture streams — the client type widening, the
-   fill, the '~' prefix and tooltip, the thresholds and the no-limit variant.
-2. R8 T003 the terminal reconciliation and the delta labelling.
-3. R9 the integration gate, then closure.
+1. R8 T002's RENDER half: the COST metric in `TopMetricsBar.tsx`, its CSS
+   tokens, the `remedyApi.ts` wiring and the shell seam that feeds it the live
+   tick, plus the ui_contracts source guard.
+2. R9 T003 the terminal reconciliation and the delta labelling.
+3. R10 the integration gate, then closure.
 
 ## Risks
+- T002 is split across R7 and R8 because its logic half is testable under the
+  node-environment vitest and its render half is not testable at all: the
+  config collects `src/**/*.test.ts` only, so the component is gated by
+  `tests/ui_contracts/` source contracts instead. Splitting keeps each round's
+  evidence answerable by its own gates.
 - The two High findings carried forward, R-0495 and R-0574, are inherited from
   the already-closed F085 and F086 and are documented risks rather than F022
   defects.
 - `npm run lint` in `apps/ui` is RED at base and is NOT a gate (R-0364), which
   is R-0622 and routes to a paydown branch.
-- R7 widens a CLOSED union, `RemedyMetricKey`, and a value type with nowhere to
-  put a limit or a basis, both measured in the R3 inventory. That is a
-  type-level change rather than an additive one, and R7 is sized for it.
-- R7 is the first F022 round to touch `apps/ui/src`, where the shipped stylesheet
-  and the design_reference sheet define different token sets; grep the shipped
-  CSS, never the reference, when a token is claimed to exist.
+- R8 is the round that touches the shipped stylesheet, where the design_reference
+  sheet defines tokens the shipped one never adopted; grep the shipped CSS, never
+  the reference, when a token is claimed to exist (R-0661). There is no warn
+  token in the shipped sheet today.
