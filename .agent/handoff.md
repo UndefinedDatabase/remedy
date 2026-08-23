@@ -1,41 +1,43 @@
-# Handback — F022 R4 (record the R3 verdict · recur R-0553 · rule DECISION F022 D1)
+# Handback — F022 R5 (record the R4 verdict · split T001 · rule DECISION F022 D2 · build the tick emission)
 
-Round base `33a0c6c1` · branch `feature/f022-live-cost-ticker` · builds nothing, mints nothing · max registered id `R-0669` at base AND at C4 · R-0553 stays OPEN, because a recurrence is evidence added to an open finding and not a resolution.
+Round base `94694b3f` · branch `feature/f022-live-cost-ticker` · the first F022 round to ship production code · max registered id `R-0669` at base AND at C2, no id minted, no `Done:` and no `Landed:` line written.
 
-Fortschritt: ~5 % (T001 offen · T002 offen · T003 offen; R3 hat den Boden
-             vermessen, R4 entscheidet die Tick-Huelle — gebaut wird ab R5, und
-             der Bauplan steht danach fest) — Schaetzung
+Fortschritt: ~15 % (T001 halb — R5 baut die Emission, R6 den Umschlag · T002
+             offen · T003 offen; ab hier entsteht Produktionscode, der Bauplan
+             steht seit R4 fest) — Schaetzung
 
 ## Range
 
-Review of `33a0c6c1..3c7afdf9`. C5 writes this file, so its own readings are owed to the next round's ledger entry.
+Review of `94694b3f..HEAD`. C5 writes this file, so its own readings are owed to the next round's ledger entry.
 
 ## Commits
 
-### 43558c78 chore(agent): save the F022 R4 record step block
+### d43b0a3b chore(agent): save the F022 R5 step block
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f022-r4.md | +306/-0 | C0a — the block saved byte for byte |
-### dbe1f01d chore(agent): mirror the F022 R4 block into last_block
+| .agent/authored/f022-r5.md | +366/-0 | C0a — the block saved byte for byte |
+### d63cab91 chore(agent): mirror the F022 R5 block into last_block
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/last_block.md | +163/-151 | C0b — written FROM the committed C0a blob |
-### aa3a076a chore(agent): point the F022 plan at R5
+| .agent/last_block.md | +336/-276 | C0b — written FROM the committed C0a blob |
+### ec0916aa docs(state): advance the F022 plan to R5
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/plan.md | +13/-13 | C1 — PLANF022R4, current step R4, next steps R5..R8 |
-### 067500e7 docs(state): record the F022 R3 verdict in the review record
+| .agent/plan.md | +14/-12 | C1 — PLANF022R5, current step R5, next steps R6..R9 |
+### 0c8d9712 docs(state): record the F022 R4 verdict and split T001 in the round map
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/live_review.md | +2/-0 | C2 — GATE3 appended, the R3 PASS and the R-0553 recurrence |
-### ddb53137 docs(state): rule the F022 budget tick envelope as DECISION F022 D1
+| .agent/live_review.md | +7/-3 | C2 — the STEPSF022R5 map pair rewritten, GATE4 appended |
+### 7fa31892 docs(state): rule the F022 tick writer as DECISION F022 D2
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/decisions.md | +18/-0 | C3 — DEC1 appended, 9 paragraphs |
-### 3c7afdf9 chore(agent): refresh the F022 context for the ruled tick envelope
+| .agent/decisions.md | +18/-0 | C3 — DEC2 appended, 9 units |
+### 7f6033ca feat(orchestration): emit one budget tick per safe-point evaluation
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/context.md | +10/-6 | C4 — CONTEXTF022R4, the self-contradicting Steps sentence replaced |
+| packages/orchestration/safe_points.py | +91/-0 | C4 — `_emit_budget_tick` above the exhaustion test, `_budget_tick_payload`, `BUDGET_TICK_RUN_ID` |
+| apps/ui/src/api/humanizeCatalog.ts | +1/-0 | C4 — the `budget.tick` key, pinned equal to the Python vocabulary |
+| tests/orchestration/test_budget_tick.py | +333/-0 | C4 — new file, T1-T10 |
 ### C5 (grouped, R-0149 self-reference exception)
 | Path | +/- | Reason |
 |---|---|---|
@@ -45,53 +47,53 @@ Review of `33a0c6c1..3c7afdf9`. C5 writes this file, so its own readings are owe
 
 | Item | Status | Reason |
 |---|---|---|
-| C0a `.agent/authored/f022-r4.md` | done | |
+| C0a `.agent/authored/f022-r5.md` | done | |
 | C0b `.agent/last_block.md` | done | |
 | C1 `.agent/plan.md` | done | |
 | C2 `.agent/live_review.md` | done | |
 | C3 `.agent/decisions.md` | done | |
-| C4 `.agent/context.md` | done | |
+| C4 emission + catalog key + backend tests | done | one commit, not split |
 | C5 `.agent/handoff.md` | done | |
 
 ## External actions
 
-`git worktree add .remedy-wt/f022r4-neg 3c7afdf9` then `git worktree remove --force` — the G5/G6 negative control; `git worktree list` back to 1 line.
-`gh pr list --state open --json number,headRefName` → `[]`. No `gh pr create`, no `gh pr merge`. `git push` at the end of the round.
+`git worktree add .remedy-wt/f022r5-wt 7f6033ca --detach` then `git worktree remove .remedy-wt/f022r5-wt` — the G5 negative control and the G9/G10/G11 red proofs; `git worktree list` back to 1 line.
+`gh pr list --state open --json number,headRefName` → `[]`. No `gh pr create`, no `gh pr merge`, no merge of any kind.
+`git push` at the end of the round.
 
 ## Verification
 
-Transcripts are in the round report (R-0582), one line per gate here. Every gate ran after C4 and before C5.
-- G1 PASS — `.agent/STOP` absent before C0a and again before C5; branch `feature/f022-live-cost-ticker`; `git status --porcelain` 0 lines after each of C0a, C0b, C1, C2, C3, C4.
-- G2 PASS — sha256 `3bd226db72ab54c5529af1b787bf3ccb06e9264a8cbe567ed2f7a902f6330354` over 31028 bytes / 306 lines, equal at all four: the C0a blob, the C0b blob, the source file, the delegation's named digest.
-- G3 PASS — the extractor over the committed C0a blob printed 4 slices over 103 CONTENT lines; TOTAL 306 ≤ 490 (D6) and PROSE 203 ≤ 400 (D5), both re-measuring to constraint 8's numerals.
-- G4 PASS — `.agent/plan.md` == PLANF022R4 + one newline True; NEGATIVE CONTROL against the BARE slice False (2046 vs 2045 bytes); `^## Goal$` 1, `^## Next Steps$` 1, `wc -l` 39 ≤ 50.
-- G5 PASS — (a) the round-base blob is a byte-exact PREFIX and the remainder is 7705 bytes = 1 + GATE3's 7703 + 1; (b) an independent blank-line splitter reads 253 units at the base and 254 at C2 with the LAST equal to GATE3 exactly; the control in `.remedy-wt/f022r4-neg` flipped offset 483919 `G`→`H` at unchanged length and BOTH readers REJECT that mutant while ACCEPTING the true file; worktree removed, `git worktree list` 1 line.
-- G6 PASS — (a) prefix True, remainder 5852 = 1 + DEC1's 5850 + 1; (b) units 1252 → 1261 with the LAST equal to DEC1's own last paragraph; lines beginning `## DECISION F022 D1 ` = 1.
-- G7 PASS — base → C2: `^- R-\d+ — ` 230 → 230, all DISTINCT at both points; `^Done: R-` 0 → 0; `^Landed: ` 0 → 0; `^Gate: R` 3 → 4 with distinct keys 3 → 4, gaining `Gate: R3`; `^Gate: R3 ` 0 → 1; MAXIMUM `R-0669` → `R-0669`; ids added EMPTY SET, ids removed EMPTY SET. Every base figure the block stated reproduced exactly.
-- G8 PASS — `.agent/context.md` == CONTEXTF022R4 + one newline True; NEGATIVE CONTROL False (2294 vs 2293); `wc -l` 46; `## Active Branch` once; the `feature/f022-live-cost-ticker` slug, `Steps`, `pytest` and `F022` each present.
-- G9 PASS — whitespace-normalised `names no round numbers` 1 at the base → 0 at C4, with the RAW count 0 at both, so the pair shows the normalisation is what makes the gate bite; `\bR\d+\b` `['R2']` → `[]`; `→` 0 → 0 in `.agent/context.md` and 0 → 0 in `.agent/plan.md`, reported as a REGRESSION guard rather than a change.
-- G10 PASS — the range path set difference is EMPTY in both directions with 0 paths under `packages/`, `apps/` or `tests/`; all six commits single-parent; `git show --numstat` and `git diff --numstat` agree cell by cell with the tables above; insertions 306, 163, 13, 2, 18, 10, every one under the 500 cap, so C3's 18 needs no exemption; the slice marker lines read 0 in all four slice targets; `git ls-files .remedy-wt` 0; 7 reflog rows this round with amend 0, rebase 0 and cherry 0.
-- G11 PASS — the four state readers, primary checkout, serial: exit 0, 528 passed. Matches the block's `33a0c6c1` reading.
-- G12 PASS — `tests/ui_contracts/test_humanize_catalog.py`: exit 0, 9 passed. Matches the block.
-- G13 PASS — canary `tests/cli/test_golden_path.py`: exit 0, 42 passed. Matches the block.
-- G14 PASS — all 20 of DEC1's citations resolve at C4, including the three whose claim spans more than one line: `safe_points.py:606` is the operator-stop `return ShouldStopResult(` and it returns before the budget block at `:613`; the "floor, not a total" comment sits at `budget_guard.py:224`, directly above `cost_lower_bound` at `:225`; `_LIMIT_ORDER` at `:245` fixes five limit kinds including `max_cost_usd`. NO disagreement to report.
-- G15 PASS — no stale sentence found and no residual. Re-measured: plan.md's "two High findings … R-0495 and R-0574" — the severity-anchored `^- R-\d+ — High` set is exactly 2 and exactly those ids; DEC1's "four production call sites of `evaluate_budget`" — an AST Call predicate over 975 tracked `.py` files gives exactly 4, at the cited lines, with 47 under `tests/` and 51 repo-wide; every path context.md and DEC1 name resolves at C4; live_review.md's `## Steps` heading occurs once, so the single-map claim holds; GATE3's "seven commits over `66f87edc..33a0c6c1`" measures 7 and its "FIFTEEN GATES" measures 15 gate labels in the R3 block.
-- G16 PASS — `gh pr list --state open --json number,headRefName` → `[]`. This round ran neither `gh pr create` nor `gh pr merge`.
-- G17 PASS — this file carries every mandated section in template order, an item-status row per Bundle commit, the round base SHA, one line per gate with the transcripts kept in the round report, and the block's `Fortschritt:` verbatim across all three of its lines. `wc -l` reported in Deviations.
+Transcripts are in the round report (R-0582), one line per gate here. G1-G14 ran after C4 and before C5, so this file can quote all of them.
+- G1 PASS — `.agent/STOP` absent, read from disk before C0a and again before C5; branch `feature/f022-live-cost-ticker`; `git status --porcelain` 0 lines after each of C0a, C0b, C1, C2, C3 and C4.
+- G2 PASS — sha256 `657abe6c545fe74321dd533fc0bd919f942a1111e3c1df004b954964b9b70e88` over 33039 bytes / 366 lines, EQUAL at all four readings — the reviewer's file `.remedy-wt/f022-r5.md`, the committed C0a blob, the committed C0b blob and `.agent/last_block.md` on disk — and equal to the delegation's fifth reading.
+- G3 PASS — the extractor over the COMMITTED C0a blob found the slices by their marker LINES and printed 5 slices over 67 CONTENT lines, with TOTAL 366 and PROSE 299. Constraint 9's numerals reproduce exactly: 366 ≤ 490 (D6), 299 ≤ 400 (D5). No slice contains a marker line.
+- G4 PASS — `.agent/plan.md` at `ec0916aa` is byte-equal to PLANF022R5 plus exactly one newline (2234 bytes against the bare slice's 2233); NEGATIVE CONTROL against the BARE slice is FALSE; `^## Goal$` 1, `^## Next Steps$` 1, `wc -l` 41 ≤ 50.
+- G5 PASS — RECONSTRUCTION: the round-base blob with the FROM string replaced exactly once by the TO string, then one newline + GATE4 + one newline, is BYTE-EQUAL to `0c8d9712:.agent/live_review.md` — both 497163 bytes, both sha256 `17842f0ae2d9658ab2524084af288eb31eeae1299662748d56ed35a67122425c`. FROM counts 1 → 0 and TO 0 → 1, base → C2. NEGATIVE CONTROL inside `.remedy-wt/f022r5-wt`: flipping offset 491769 from `G` to `H` at unchanged length makes the equality FAIL. Worktree removed, `git worktree list` 1 line.
+- G6 PASS — the round-base blob of `.agent/decisions.md` is a byte-exact PREFIX at C3; the remainder is 5662 bytes = 1 + DEC2's 5660 + 1. INDEPENDENT reader: a blank-line splitter reads 1261 units at base and 1270 at C3, with the LAST unit at C3 equal to DEC2's own last paragraph. Lines beginning `## DECISION F022 D2 ` count 1.
+- G7 PASS — base → C2: `^- R-\d+ — ` 230 → 230, all DISTINCT at both points; MAXIMUM id `R-0669` → `R-0669`; `^Done: R-` 0 → 0; `^Landed: ` 0 → 0; `^Gate: R` 4 → 5 with distinct keys 4 → 5, gaining `Gate: R4` beside `Gate: R1`, `Gate: R2`, `Gate: R3` and `Gate: R41`; ids ADDED the EMPTY SET, ids REMOVED the EMPTY SET. Every round-base figure the block states reproduced under my own measurement.
+- G8 PASS — `^## Steps$` occurs exactly 1× in `.agent/live_review.md` at C2. Arrow `→` counts base → C2: 29 → 30 in `.agent/live_review.md`, 0 → 0 in `.agent/plan.md`.
+- G9 PASS — `python3 -m ruff check packages/orchestration/safe_points.py tests/orchestration/test_budget_tick.py` at C4, repository configuration and NOT `--isolated`: exit 0, "All checks passed!". RED CONTROL in the disposable worktree, a one-line file whose only content is `import json`: exit 1, `F401 imported but unused`. Deleted by exact path; worktree `git status --porcelain` 0.
+- G10 PASS — `python3 -m pytest tests/ui_contracts/test_humanize_catalog.py -q` at C4: exit 0, 9 passed. I measure 84 catalog keys and a derived vocabulary of 84, sets EQUAL, against the reviewer's 83 at the round base — `budget.tick` is the single addition and the only kind whose name begins `budget`. RED CONTROL: with that one catalog line deleted in the worktree the suite is exit 1, 1 failed / 8 passed, at `TestCatalogCoversTheStreamVocabulary::test_catalog_keys_equal_the_static_stream_vocabulary`, naming `budget.tick` as emitted but not catalogued. Worktree restored with `git checkout --`.
+- G11 PASS — `python3 -m pytest tests/orchestration/test_budget_tick.py -q` at C4: exit 0, 10 passed. Node ids, all under `tests/orchestration/test_budget_tick.py`: `TestTickPayload::test_priced_job_with_both_limits_emits_one_full_tick` (T1), `::test_a_limitless_money_side_leaves_the_keys_out` (T2), `::test_no_budgets_and_no_counters_emit_nothing` (T3), `::test_unmeasured_calls_make_the_token_basis_a_lower_bound` (T4), `::test_an_unpriced_call_makes_the_cost_basis_a_lower_bound` (T5); `TestTickCadenceAndShape::test_a_pingpong_shaped_job_id_still_emits` (T6), `::test_an_exhausted_budget_still_ticks_and_still_stops` (T7), `::test_three_calls_write_three_ticks_into_one_file` (T8), `::test_a_failing_write_never_changes_the_decision` (T9); `TestPayloadKeysNeverCollide::test_no_payload_key_is_a_named_parameter_of_the_writer` (T10). RED-PROOF (i), the emission routed through `timeline.append_run_event`: the file goes RED, 2 failed / 8 passed, and the failures are T6 and T8 — T6 is among them, as ordered. RED-PROOF (ii), the emission moved inside `if evaluation.exhausted:`: the file goes RED, 9 failed / 1 passed, and T7 is among the failures, as ordered. Each mutation ran in `.remedy-wt/f022r5-wt` and was reverted before the next; the primary checkout was never mutated.
+- G12 PASS — serially in the PRIMARY checkout at C4, each exit 0: `tests/orchestration/test_safe_points.py` 78, `test_budget_stop_integration.py` 39, `test_job_budgets.py` 135, `test_long_run_executor.py` 74, `test_predictive_budget.py` 75, `tests/ui_server/test_sse_stream.py` 66 — all six equal to the block's round-base references. Never two pytest processes at once.
+- G13 PASS — the four state readers, serially at C4, each exit 0: `tests/ui_server/` 439, `tests/orchestration/test_test_runner.py` 52, `tests/regression/test_resource_safety.py` 21, `tests/orchestration/test_integrity_gate.py` 16 — 528 passed in total, matching the block's 528.
+- G14 PASS — the canary `python3 -m pytest tests/cli/test_golden_path.py -q` at C4: exit 0, 42 passed. Matches the block's 42.
+- G15 PASS — 6 commits before C5, every one single-parent; insertions 366, 336, 14, 7, 18 and 425, each under the 500 cap; `git show --numstat` agrees cell by cell with the `## Commits` tables above; the range path union is 8, and against the Change set the difference is `.agent/handoff.md` in one direction (C5 has not landed yet) and the EMPTY SET in the other; lines beginning `<<<SLICE ` or `<<<END ` count 0 in all six files a slice landed in; `git ls-files .remedy-wt` 0; `git worktree list` 1 line; 6 reflog rows this round, amend 0, rebase 0, cherry 0.
+- G16 PASS — `gh pr list --state open --json number,headRefName` printed verbatim: `[]`. No PR created, nothing merged.
+- G17 PASS — CHECKED, and no sentence C1-C4 landed has gone stale at C4. Re-measured: the plan's branch point is `git merge-base HEAD main` = `c34ef32b`; its "two High findings … R-0495 and R-0574" is the severity-anchored `^- R-\d+ — High` set exactly; its R6 risk resolves — `_safe_event_summary` appears 6× in `tests/ui_server/test_sse_stream.py` and that file names a golden 8×; GATE4's transport claim re-measures (`43558c78:.agent/authored/f022-r4.md` is sha256 `3bd226db…` over 31028 bytes / 306 lines) and its `## DECISION F022 D1 ` count is 1; all ten of DEC2's file:line pointers resolve at C4 with the two granularity readings named under Deviations; my own C4 docstring's transcription of `RunLogWriter.log`'s named parameters re-derives from the signature as `event, task_id, artifact_id, provider, role, model, outcome, message`, and T10 pins it. No residual to report.
 
 ## Authored-text proofs
 
-All four slices were extracted programmatically by their marker LINES from the COMMITTED C0a blob `43558c78:.agent/authored/f022-r4.md`, never retyped. PLANF022R4 → `.agent/plan.md` byte-equal plus one newline, bare-slice control DIFFERS; CONTEXTF022R4 → `.agent/context.md` byte-equal plus one newline, bare-slice control DIFFERS; GATE3 → the C2 remainder is exactly one newline + GATE3 + one newline; DEC1 → the C3 remainder is exactly one newline + DEC1 + one newline.
+All five slices were extracted PROGRAMMATICALLY by their marker LINES out of the COMMITTED C0a blob `d43b0a3b:.agent/authored/f022-r5.md`, never retyped and never rewrapped. PLANF022R5 → `.agent/plan.md` byte-equal plus one newline with the bare-slice control DIFFERING; STEPSF022R5-FROM/-TO → the C2 file reconstructs BYTE-EQUAL from the base blob by one replacement, and the FROM-0×/TO-1× proof holds; GATE4 → the C2 remainder is exactly one newline + GATE4 + one newline; DEC2 → the C3 remainder is exactly one newline + DEC2 + one newline. No slice was edited.
 
 ## Deviations & assumptions
 
-- `wc -l` of this file is 97, within the ≤100 bound the >5-commit case allows (7 commits). No DECISION D15 overage is claimed.
-- NO departure from the ordered commit sequence: C0a, C0b, C1, C2, C3, C4, C5 exactly as the Bundle lists — no extra commit, none dropped, none reordered.
-- ADDED beyond the block: a negative control for G6 as well as for G5. G6 orders "the same two readers as G5" but names no mutant; one was run anyway inside the same disposable worktree, and both readers rejected it. Nothing in the primary checkout was touched by it.
-- TOOLING, not scope: this session's bash guard rejects `$?`, `${PIPESTATUS[0]}` and any command line carrying the literal slice-marker prefix, so the gate measurements were routed through scripts under the gitignored `.remedy-wt/f022r4-scratch/` and exit codes were captured by a python driver. `git ls-files .remedy-wt` reads 0.
-- Sweep scoping under the staleness gate: `.agent/authored/f022-r4.md` and `.agent/last_block.md` are byte-identical copies of the block, so their count-sentences are constraint 8's numerals, re-measured green above. `.agent/live_review.md` and `.agent/decisions.md` were swept over the text this round ADDED; their landed text is append-only and §3 item 20 forbids rewriting it.
-- No finding id minted, no `Done:` line and no `Landed:` line written.
+- `wc -l` of this file is 99, within the ≤100 bound the >5-commit case allows (7 commits). No DECISION D15 overage is claimed.
+- NO departure from the ordered commit sequence: C0a, C0b, C1, C2, C3, C4, C5 exactly as the Bundle lists — no extra commit, none dropped, none reordered. C4 was NOT split.
+- T7 measures MORE than its sentence describes, deliberately. "An EXHAUSTED budget still emits its tick" pins nothing about the emission SITE on its own: a test exercising only the exhausted arm stays GREEN under G11's mutation (ii), because that mutation still emits when exhausted. T7 therefore asserts BOTH arms in one test — the evaluation under the limit ticks, the one over it ticks too, and the second call's `should_stop`, reason and source are unchanged — which is what makes "still" measurable and what makes T7 fail under (ii) as G11 requires.
+- G17 granularity, reported and NOT repaired (constraint 1): two of DEC2's ten pointers are function-level rather than statement-level. `packages/orchestration/ui_server.py:3619` is the `append_run_event(` call inside `_emit_command_accepted_event`, whose `def` is at `:3593`; `packages/orchestration/pingpong_job.py:2887` is the `def _append_job_stopped_event` line, whose `RunLogWriter(` construction is at `:2903`. Both read identically at `94694b3f` and at C4, so neither went stale this round and neither claim is false — the line named is the function that does the thing, not the statement.
+- TOOLING, not scope: this session's bash guard rejects `$?`, loops and command lines carrying the literal slice-marker prefix, so every measurement was routed through python scripts under the gitignored `.remedy-wt/f022r5-scratch/`. `git ls-files .remedy-wt` reads 0.
 
 ## Next
 
-Reviewer verdict on R4; then R5 builds T001 — the tick emission in `should_stop`, its backend tests, the humanize-catalog key and the catalog pin gated in the same commit.
+Reviewer verdict on R5; then R6 builds the second half of T001 — widening `_safe_event_summary` CONDITIONALLY by event kind so the tick's `metadata` reaches a client without turning the exact key-set pin or the golden byte stream in `tests/ui_server/test_sse_stream.py` red.
