@@ -7187,3 +7187,63 @@ The R-0671 assertion in `apps/ui/src/api/costMetric.test.ts` is NOT part of this
 decision and a reversal keeps it. That is every production and test path this
 round's Change set holds, which is what R-0672 and its recurrence require of a
 reversal instruction and what DECISION F022 D5 did not do.
+
+## DECISION F022 D7 — the source of the terminal reconciliation's ledger figure
+
+CONTEXT. `docs/roadmap/features/T5_F022.md` orders the terminal reconciliation
+to "fetch the ledger's job figure (the stats endpoint)". Measured at `3e1d3fae`:
+`packages/orchestration/ui_server.py` dispatches its job endpoints from one
+`handlers` dict plus `events-since`, and no `stats` endpoint is among them. The
+spec names a source that has never existed, so T003b could not be built as
+written.
+
+REJECTED, and this is the substantive half of the ruling. The dashboard payload
+already carries `token_usage`, which reads like the ledger figure. It is not
+one. `_build_token_usage` sums `metadata.estimated_tokens` across the job's
+events and returns `"estimated": True` with `"source": "event_metadata"`,
+attributing tokens to `context`, `memory`, `repair`, `planner` and `other` from
+kinds such as `source_context_injected` and `project_memory_recalled`. The
+ticker's figures are `BudgetCounters.measured_token_total` and
+`measured_cost_usd`, which count PROVIDER CALLS. The two populations are
+disjoint in intent and in practice, so a delta between them measures neither
+drift nor drop — it measures the difference between two unrelated questions.
+Rendering it under the words "final (ledger)" would be the fabricated honesty
+moment this feature exists to prevent, and it would be indistinguishable on
+screen from a real one.
+
+CHOSEN. The ledger figure is the LAST `budget.tick` in the job's run log.
+`_emit_budget_tick` writes every tick through `RunLogWriter` under the stable
+run id `budget-ticks`, so that log is the ledger's own record of the final
+measured figures, already in the whitelisted shape
+`_budget_tick_summary_payload` puts on the wire. The server exposes it as a
+final-figure section; the client renders it at terminal in place of the live
+value.
+
+CONSEQUENTLY THE DELTA IS A TRANSPORT STATEMENT, never a second arithmetic. Both
+sides of the comparison are the SAME quantity from the same producer: what the
+client received over the stream, against what the ledger holds. A delta
+therefore means frames were missed — an SSE gap, a disconnect, a ring overflow,
+or a final tick emitted after the client stopped listening — which is exactly
+what a reader deserves to be told, and it is measurable rather than guessed. The
+client still performs no money arithmetic: it compares two figures the backend
+produced and labels the difference.
+
+ALTERNATIVES CONSIDERED. Adding the `stats` endpoint the spec names: rejected,
+because it would be a new public surface invented to satisfy a sentence rather
+than a need, and the figures already exist. Treating the last tick the CLIENT
+holds as final: rejected, because it makes the reconciliation vacuous — the
+client would compare a value with itself and could never show a delta, which is
+the R-0438 vacuous-gate shape arriving in a feature. Recomputing the final
+figure from the event stream in the client: rejected, because the UI never
+computes money, which is this feature's founding constraint.
+
+REVERSE IT path by path, derived from this round's Change set rather than from
+the files most in mind. In `docs/roadmap/features/T5_F022.md` restore the
+Terminal-reconciliation bullet's previous wording, which named the stats
+endpoint and which this round's C5 replaced whole. In `.agent/live_review.md`
+nothing is reversed, because the map repair at C2 and the ledger entry at C3
+record round history rather than this decision. This decision ships no code, so
+no production path is reversed here; a later round that builds against it
+reverses its own paths under its own decision. That is every path this round's
+Change set holds, which is what R-0672 and its recurrence require of a reversal
+instruction.
