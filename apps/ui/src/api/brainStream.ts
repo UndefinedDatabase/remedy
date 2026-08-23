@@ -4,6 +4,8 @@
 // so the reconnect, gap and status rules live here where they can be tested.
 import { feedRowOf } from "./feedRow";
 import type { FeedRow } from "./feedRow";
+import { budgetTickFiguresOf } from "./budgetTick";
+import type { BudgetTickFigures } from "./costMetric";
 
 // One-directional at RUNTIME though feedRow.ts names this module back: it takes
 // `BrainStreamFrame` with `import type`, which TypeScript erases, so the emitted
@@ -39,13 +41,18 @@ export interface BrainStreamState {
   /** How many rows the ring has DROPPED past its bound. The drop is never
    *  silent: above zero the feed says so and points at the timeline. */
   recentDropped: number;
+  /** The LATEST budget tick's figures, or null before the first one arrives.
+   *  DECISION F022 D6 holds them as one field here rather than in a second
+   *  store, because this is the only ingest point every frame passes through
+   *  and the only place a reconnect replay has already been ruled on. */
+  budget: BudgetTickFigures | null;
 }
 
 /** A client that holds nothing yet, and does not pretend to be live. */
 export function initialBrainStreamState(): BrainStreamState {
   return {
     status: "reconnecting", lastSeq: null, gapDetected: false, attempt: 0,
-    recent: [], recentDropped: 0,
+    recent: [], recentDropped: 0, budget: null,
   };
 }
 
@@ -81,8 +88,13 @@ export function degradeBrainStream(state: BrainStreamState): BrainStreamState {
  *  feed row is appended HERE, behind that same early return — the only
  *  placement a reconnect replay cannot duplicate, since the runner's dispatch
  *  and the driver's reducer both see a frame before the guard has ruled on it
- *  (DECISION F021 D5). Dropping a replay returns the IDENTICAL state object,
- *  ring included, which is what lets a reader compare the ring by reference. */
+ *  (DECISION F021 D5). The budget tick is folded behind that SAME guard and for
+ *  that same reason: a reconnect replay must not re-apply a tick. A frame that
+ *  is not a tick carries the previous figures forward BY REFERENCE — never a
+ *  copy — because the runner compares this field with `===`, so a fresh object
+ *  of equal content would announce a change nobody made (DECISION F022 D6).
+ *  Dropping a replay returns the IDENTICAL state object, ring and budget
+ *  included, which is what lets a reader compare both by reference. */
 export function receiveBrainFrame(
   state: BrainStreamState,
   frame: BrainStreamFrame,
@@ -92,6 +104,7 @@ export function receiveBrainFrame(
   const isGap = state.lastSeq !== null && frame.seq !== state.lastSeq + 1;
   const appended = [...state.recent, feedRowOf(frame, receivedAtMs)];
   const overflow = Math.max(0, appended.length - BRAIN_RECENT_LIMIT);
+  const tick = budgetTickFiguresOf(frame);
   return {
     ...state,
     status: state.status === "delayed" ? "delayed" : "live",
@@ -100,6 +113,7 @@ export function receiveBrainFrame(
     attempt: 0,
     recent: overflow === 0 ? appended : appended.slice(overflow),
     recentDropped: state.recentDropped + overflow,
+    budget: tick === null ? state.budget : tick,
   };
 }
 

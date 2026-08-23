@@ -4,6 +4,7 @@
 // run under the node-environment vitest — no EventSource, no timer, no React.
 import { initialBrainStreamState } from "./brainStream";
 import type { BrainStreamStatus } from "./brainStream";
+import type { BudgetTickFigures } from "./costMetric";
 import type { FeedRow } from "./feedRow";
 import { stepBrainStream } from "./brainStreamDriver";
 import type { BrainStreamEffect, BrainStreamEvent } from "./brainStreamDriver";
@@ -36,6 +37,12 @@ export interface BrainStreamView {
   /** Rows dropped past the bound. Above zero, the feed says so rather than
    *  quietly showing a window (DECISION F021 D5). */
   recentDropped: number;
+  /** The latest budget tick's figures, null before the first tick. Compared by
+   *  REFERENCE below, which is why `receiveBrainFrame` carries the previous
+   *  value forward rather than copying it (DECISION F022 D6). The type is
+   *  NAMED and never an inline object literal: `test_brain_stream_ring.py`
+   *  slices this interface at its first closing brace. */
+  budget: BudgetTickFigures | null;
 }
 
 export interface BrainStreamRunner {
@@ -66,6 +73,7 @@ export function createBrainStreamRunner(host: BrainStreamHost): BrainStreamRunne
     gapDetected: false,
     recent: state.recent,
     recentDropped: state.recentDropped,
+    budget: state.budget,
   };
 
   /** The SAME object until something a reader can see changes. React's
@@ -85,12 +93,14 @@ export function createBrainStreamRunner(host: BrainStreamHost): BrainStreamRunne
       gapDetected: state.gapDetected,
       recent: state.recent,
       recentDropped: state.recentDropped,
+      budget: state.budget,
     };
     if (next.status === cachedView.status
       && next.lastSeq === cachedView.lastSeq
       && next.gapDetected === cachedView.gapDetected
       && next.recent === cachedView.recent
-      && next.recentDropped === cachedView.recentDropped) return;
+      && next.recentDropped === cachedView.recentDropped
+      && next.budget === cachedView.budget) return;
     cachedView = next;
     for (const listener of listeners) listener();
   }
