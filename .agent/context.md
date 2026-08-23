@@ -36,5 +36,7 @@ The feature file's own Do-not-touch section governs and is not narrowed here.
   deviation is documented with a technical reason.
 
 ## Steps
-R1 claim and reset → R2 the cost inventory → R3 the envelope DECISION → R4
-onward T001, T002 and T003 in the feature file's order.
+The round map lives in the `## Steps` section of `.agent/live_review.md` and is
+stated there and nowhere else, per R-0447's remedy. This file names no round
+numbers, so it cannot fall out of step with the map the way it did when R2 took
+a scope the map did not describe.
