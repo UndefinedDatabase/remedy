@@ -1,96 +1,68 @@
-# Handback — F022 R1, the feature claim
+# Handback — F022 R2, the R1 record
 
-Round base `c34ef32b` · branch `feature/f022-live-cost-ticker` · 8 commits · 0 findings resolved, 4 minted (R-0666..R-0669), open set 230.
+Round base `e62e8747` · branch `feature/f022-live-cost-ticker` · 4 commits · 0 findings resolved, 0 minted, open set 230, ceiling `R-0669`.
 
-Fortschritt: ~0 % (T001 offen · T002 offen · T003 offen; diese Runde beansprucht
-             das Feature, rettet drei Entscheidungen, setzt das Review-Record
-             zurueck, gatet F021 R41 und registriert vier Findings — gebaut wird
-             ab R3) — Schaetzung
+Fortschritt: ~0 % (T001 offen · T002 offen · T003 offen; R1 hat das Feature
+             beansprucht und das Record zurueckgesetzt, diese Runde schreibt nur
+             das R1-Verdikt auf Platte — gebaut wird ab R4) — Schaetzung
 
 ## Range
-Review of `c34ef32b`..HEAD.
+Review of `e62e8747`..HEAD.
 
 ## Item status
 | Item | Commit | Status | Reason |
 |---|---|---|---|
-| C0a save this block | 6e39b9c0 | done | |
-| C0b mirror it | 23bf7ef5 | done | written from the C0a blob |
-| C1 plan | 6f9a7e16 | done | |
-| C2 context | df004de7 | done | |
-| C3 decision rescue | 388c6ccf | done | 3 units selected |
-| C4 review-record reset | 3c5b3f26 | done | 226 carried + 4 minted + GATE41 |
-| C5 empty candidates | f70e10c7 | done | |
-| C6 roadmap claim + handback | self-reference | done | SHA owed to the next round's ledger |
+| C0a save this block | 58224b09 | done | |
+| C0b mirror it | 6067feb3 | done | written from the committed C0a blob |
+| C1 plan | 0dcb9ea6 | done | |
+| C2 the ledger append | self-reference | done | SHA owed to the next round's ledger |
 
 ## Commits
-### 6e39b9c0 chore(agent): save the F022 R1 claim step block
+### 58224b09 chore(agent): save the F022 R2 record step block
 | Path | +/- | Reason |
-| `.agent/authored/f022-r1.md` | +419/-0 | byte-for-byte copy of the block |
+| `.agent/authored/f022-r2.md` | +165/-0 | byte-for-byte copy of the block |
 
-### 23bf7ef5 chore(agent): mirror the F022 R1 block into last_block
+### 6067feb3 chore(agent): mirror the F022 R2 block into last_block
 | Path | +/- | Reason |
-| `.agent/last_block.md` | +392/-268 | mirrored from the committed C0a blob |
+| `.agent/last_block.md` | +96/-350 | mirrored from the committed C0a blob |
 
-### 6f9a7e16 docs(state): point the plan at F022 R1, the feature claim
+### 0dcb9ea6 chore(agent): point the F022 plan at R3
 | Path | +/- | Reason |
-| `.agent/plan.md` | +26/-27 | PLANF022R1 whole-file replacement |
+| `.agent/plan.md` | +7/-8 | PLANF022R2 whole-file replacement |
 
-### df004de7 docs(state): reset the context for the F022 branch
+### C2 docs(state): record the F022 R1 verdict in the review record (this commit)
 | Path | +/- | Reason |
-| `.agent/context.md` | +31/-41 | CONTEXTF022R1 whole-file replacement |
-
-### 388c6ccf docs(state): rescue the three F021 decisions into decisions
-| Path | +/- | Reason |
-| `.agent/decisions.md` | +10/-0 | scripted append of D6, D7, D8 + RESCUENOTE |
-
-### 3c5b3f26 docs(state): reset the review record for F022 and register four findings
-| Path | +/- | Reason |
-| `.agent/live_review.md` | +38/-143 | scripted ENTRY-level rebuild |
-
-### f70e10c7 docs(state): empty the closure candidates file after registration
-| Path | +/- | Reason |
-| `.agent/candidates.md` | +4/-52 | CANDIDATES1 whole-file replacement |
-
-### C6 docs(roadmap): claim F022 in the status ledger (this commit)
-| Path | +/- | Reason |
-| `docs/roadmap/STATUS.md` | +1/-1 | CLAIM pair, `[ ]` → `[~]` |
+| `.agent/live_review.md` | +2/-0 | GATE1 appended as a blank line plus one paragraph |
 | `.agent/handoff.md` | self-reference | this file; cells owed to the next round |
 
 ## External actions
-- `git fetch origin main` → `c34ef32b`, equal to local `main`.
-- `gh pr list --state open --json number,headRefName,baseRefName,isDraft` → `[]` (Open PR Gate, before the branch was cut).
-- `git checkout -b feature/f022-live-cost-ticker` at `c34ef32b`.
-- `git worktree add .remedy-wt/f022r1-wt HEAD` then `git worktree remove` → `git worktree list` back to 1 line.
-- `git push -u origin feature/f022-live-cost-ticker` follows C6; its outcome is in the round report, not here.
+- `git worktree add .remedy-wt/f022r2-neg HEAD --detach` then `git worktree remove` → `git worktree list` back to 1 line.
+- `gh pr list --state open --json number,headRefName` → `[]`.
+- `git push` follows C2; its outcome is in the round report, not here.
 - No `gh pr create`, no `gh pr merge`.
 
 ## Verification
-- G1 `.agent/STOP` ABSENT before C0a and before C6; branch `feature/f022-live-cost-ticker`; `git status --porcelain` 0 lines after each of C0a, C0b, C1, C2, C3, C4, C5.
-- G2 sha256 `e07ad805e616fd573108041da87c341115e79b598df6c057fdbf411aa9f730a3` over 35426 bytes and 419 lines, EQUAL across the source file, the C0a blob, the C0b blob and the delegation's digest.
-- G3 extractor read 12 slices, 142 CONTENT lines, 24 marker lines from the C0a blob; TOTAL 419 ≤ 490 and PROSE 277 ≤ 400 — both reproduce constraint 10.
-- G4 plan/context/candidates each byte-equal to its slice plus one newline: True, True, True; the three bare-slice NEGATIVE CONTROLS each DIFFER: False, False, False.
-- G5 selector matched 3 units (`DECISION F021 D6/D7/D8`); in `.agent/decisions.md` `^## Rescued from the F021 review record` 0→1 and `^DECISION F021 D` 0→3; base blob is a byte-exact PREFIX, remainder 5489 bytes containing each unit exactly 1x; `.agent/live_review.md` at C3 unchanged at sha256 `71c8403f…`.
-- G6 `plan.md` `^## Goal$` 1, `^## Next Steps$` 1, `wc -l` 38 ≤ 50; `context.md` `^## Active Branch$` 1, `feature/` 1, `Steps` 1, `pytest` 1, `\bF\d{3}\b` 4; `live_review.md` `Steps` 17.
-- G7 exit 0, 528 passed + 0 skipped = 528.
-- G8 `tests/docs/` exit 0 at 295 passed; `tests/orchestration/test_roadmap_index.py` exit 0 at 30 passed.
-- G9 canary `tests/cli/test_golden_path.py` exit 0 at 42 passed.
-- G10 reader (a) base 228 entries / 2 `Done:` / 226 carried / 12 multi-unit, C4 230 entries / 0 `Done:`; reader (b) base 228 and 2, C4 230 and 0 — the two readers AGREE at both points. Control 1 (one printable byte at offset 12 of the FIRST carried entry, R-0570) REJECTED, true file ACCEPTED before and after; control 2 (delete R-0649's `  FIX:` continuation unit) REJECTED, while a unit-level reader read 230 ids in both files and could not fail it. Worktree removed; `git worktree list` 1 line.
-- G11 at C4: `^- R-` 230; `^- R-\d+ — ` 230, DISTINCT 230; `^Done: R-` 0; `^Landed: ` 0; `^Gate: R` keys 1, DISTINCT 1 (`Gate: R41`); `^Gate: R1` 0; MAXIMUM id `R-0669`, next free `R-0670`.
-- G12 base `^- \[~\] ` 0, `^- \[~\] F022 — ` 0, `^- \[ \] F022 — ` 1, `^- \[x\] ` 56 → at C6 1, 1, 0, 56.
-- G13 RANGE runs after C6 and reads C6; its reading is owed to the next round's ledger entry (§3 item 31) and is in the round report.
-- G14 no pull request created and none merged this round; the post-C6 `gh pr list` reading is likewise owed to the next round's ledger.
-- G15 this file; `wc -l` 96, within the ≤100 line cap a >5-commit bundle carries.
+- G1 `.agent/STOP` ABSENT before C0a and before C2; branch `feature/f022-live-cost-ticker`; `git status --porcelain` 0 lines after each of C0a, C0b and C1. C2's own reading is owed to the next round's ledger entry (§3 item 31).
+- G2 sha256 `0bcf5d79c67bcd6f0faa5ff89c6ab1d7cbf4812ba32e097c1f727771926a96cf` over 16136 bytes and 165 lines, EQUAL across the source file, the C0a blob, the C0b blob and the delegation's digest; C0b was written FROM the committed C0a blob.
+- G3 the marker-line extractor read 2 slices over 38 CONTENT lines from the C0a blob; TOTAL 165 ≤ 490 and PROSE 127 ≤ 400 — both reproduce constraint 6.
+- G4 `.agent/plan.md` byte-equal to PLANF022R2 plus one terminating newline: True; the BARE-slice NEGATIVE CONTROL DIFFERS: False. `^## Goal$` 1, `^## Next Steps$` 1, `wc -l` 37 ≤ 50.
+- G5 reader (a): the base blob is a byte-exact PREFIX and the remainder is 6356 bytes == one newline + GATE1's 6354 + one newline. Reader (b): the LAST blank-line unit equals GATE1 exactly; units 251 at base, 252 at C2. NEGATIVE CONTROL in a disposable worktree (offset 470720, `G`→`H`, unchanged length): BOTH readers REJECT the mutant and ACCEPT the true file. Worktree removed; `git worktree list` 1 line.
+- G6 base → C2, line-anchored: `^- R-\d+ — ` 230 → 230 with DISTINCT 230 → 230; `^Done: R-` 0 → 0; `^Landed: ` 0 → 0; `^Gate: R` 1 → 2 with DISTINCT 1 → 2 (`Gate: R41`, joined by `Gate: R1`); `^Gate: R1 ` 0 → 1; MAXIMUM registered id `R-0669` at BOTH. Every base reading reproduces the block's.
+- G7 `tests/ui_server/ tests/orchestration/test_test_runner.py tests/regression/test_resource_safety.py tests/orchestration/test_integrity_gate.py` exit 0, 528 passed + 0 skipped = 528, run serially in the primary checkout.
+- G8 canary `tests/cli/test_golden_path.py` exit 0, 42 passed + 0 skipped = 42, run serially after G7.
+- G9 range `e62e8747`..C2 lists exactly the 5 paths of the `Change:` list, set difference EMPTY in both directions, 0 paths beginning `packages/`, `apps/` or `tests/`; every commit single-parent; `git show --numstat` and `git diff --numstat` agree cell by cell with the `## Commits` table above, the `.agent/handoff.md` cell excepted as self-reference (R-0149); insertions 165, 96, 7 and 2, each under the 500 cap; `^<<<SLICE ` and `^<<<END ` read 0 LINES in `.agent/plan.md` and `.agent/live_review.md`; `git ls-files .remedy-wt` 0; this round's reflog rows are 4 `commit` operations with `amend` 0, `rebase` 0 and `cherry` 0.
+- G10 `gh pr list --state open --json number,headRefName` → `[]`; this round ran neither `gh pr create` nor `gh pr merge`.
+- G11 this file; `wc -l` 68.
 
 ## Authored-text proofs
-- `.agent/authored/f022-r1.md` == the source block == the delegation digest (G2).
-- Every applied text was EXTRACTED from the committed C0a blob by marker line, never retyped: PLANF022R1, CONTEXTF022R1, CANDIDATES1 (all byte-equal plus one newline, G4), LRHEAD/R0666/R0667/R0668/R0669/GATE41 (all 38 added lines of C4 matched a slice line, 0 unsourced), RESCUENOTE, CLAIMFROM/CLAIMTO.
-- CLAIM pair: `TO contains FROM` false → REWRITE; FROM occurred exactly 1x BEFORE the replacement and 0x after; TO 1x after.
+- `.agent/authored/f022-r2.md` == the source file this block was read from == `.agent/last_block.md` == the delegation's digest (G2).
+- Both applied texts were EXTRACTED from the committed C0a blob by their marker LINES and never retyped: PLANF022R2 (byte-equal plus one newline, with a bare-slice control, G4) and GATE1 (byte-equal under both independent readers, with a mutant control, G5).
 
 ## Deviations & assumptions
-- DECLARED, ordering: none. The bundle ran C0a, C0b, C1, C2, C3, C4, C5, C6 exactly as ordered, no extra and no dropped commit.
-- DECLARED, gate timing: G7, G8 and G9 ran against the C6 TREE (STATUS.md applied) immediately BEFORE the C6 commit rather than after it, because their results are mandated content of the handback that C6 itself carries. `.agent/handoff.md` is the only file that differed at run time, and no test in those five suites reads it (measured by grep over the gated paths).
-- MEASURED DISAGREEMENT with the block, reported and NOT reconciled (constraint 8): constraint 7 says 12 findings carry a `  FIX:` continuation unit; my script counts 11 such units across 12 multi-unit carried entries (the 12th, R-0665, carries two `Recurrence: ` units instead). R-0669's prose says the reset "drops the 16 `Recurrence:` paragraphs"; `^Recurrence: ` reads 16 at base and 2 at C4 — R-0665's two survive as continuation units of an open entry, exactly the mechanism R-0669 describes for D7.
-- DECISION D15 overage: NONE to declare. This handback measures 96 lines against the ≤100 cap a >5-commit bundle carries; no section was dropped and no transcript is inlined.
+- DECLARED, ordering: none. The bundle ran C0a, C0b, C1, C2 exactly as ordered — no extra commit, no dropped commit, no reordering.
+- DECLARED, gate timing: G7, G8 and G9 were measured against the C2 TREE immediately BEFORE the C2 commit, because their results are mandated content of the handback that C2 itself carries, and all three were RE-RUN after C2 with identical results. `.agent/handoff.md` is the only file that differed between the two runs and no suite in G7 or G8 reads it.
+- MEASURED DISAGREEMENT with the block: NONE. Every numeral the block states reproduced under my own measurement — 165 TOTAL and 127 PROSE, the base ledger sets 230/0/0/1/0 with ceiling `R-0669`, G7's exit 0 at 528 and G8's exit 0 at 42.
+- DECISION D15 overage: this handback measures 68 lines against the ≤60-line cap a ≤5-commit bundle carries. The overage is caused by mandated content only — the item-status table, four per-commit changed-files tables, and one line per gate for eleven gates; no section was dropped and no transcript is inlined (R-0582).
 
 ## Next
-The reviewer reviews `c34ef32b`..HEAD and issues the R1 verdict; R2 is the cost inventory.
+The reviewer reviews `e62e8747`..HEAD and issues the R2 verdict; R3 is the cost inventory.
