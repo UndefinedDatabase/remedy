@@ -15,19 +15,18 @@ spent-only variant with no fake denominator, and the terminal reconciliation
 displays the ledger figure with any delta labelled.
 
 ## Current Step
-R1 claims F022. It creates the branch, rescues the three F021 DECISIONS that
-live only in the review record into `.agent/decisions.md`, resets that record
-carrying the F021 open set forward by ENTRY rather than by unit, gates F021 R41,
-registers R-0666, R-0667, R-0668 and R-0669, empties the candidates file and
-moves the roadmap row to `[~]`. It builds nothing.
+R2 records the R1 verdict on disk and nothing else. R1 PASSED, and a verdict
+that exists only in a session dies with it (finding R-0571), so this round
+appends the gate entry and carries the reviewer's dated correction to one
+sentence R1 landed inside R-0669. It mints no id and builds nothing.
 
 ## Next Steps
-1. R2 the cost inventory: where the budget guard evaluates spent-vs-limits, what
+1. R3 the cost inventory: where the budget guard evaluates spent-vs-limits, what
    the Part E event vocabulary already defines, and what MetricsBar renders
    today — each MEASURED in the source rather than read off the feature file.
-2. R3 record R2 and rule the tick envelope as a DECISION: the payload's field
+2. R4 record R3 and rule the tick envelope as a DECISION: the payload's field
    set, the basis vocabulary and the no-client-arithmetic contract.
-3. R4 onward the built work, in the T001/T002/T003 order the feature file's Task
+3. R5 onward the built work, in the T001/T002/T003 order the feature file's Task
    slicing names.
 
 ## Risks
