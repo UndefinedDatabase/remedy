@@ -15,19 +15,19 @@ spent-only variant with no fake denominator, and the terminal reconciliation
 displays the ledger figure with any delta labelled.
 
 ## Current Step
-R2 records the R1 verdict on disk and nothing else. R1 PASSED, and a verdict
-that exists only in a session dies with it (finding R-0571), so this round
-appends the gate entry and carries the reviewer's dated correction to one
-sentence R1 landed inside R-0669. It mints no id and builds nothing.
+R3 records the R2 verdict, repairs the round map that R2 shifted without
+repairing, and takes the cost inventory. The inventory MEASURES three things in
+the source rather than reading them off the feature file: every call site that
+evaluates spent-vs-limits, the event kinds the ledger stream carries today on
+both the Python and the TypeScript side, and what the metrics bar renders now.
+It mints no id and builds nothing.
 
 ## Next Steps
-1. R3 the cost inventory: where the budget guard evaluates spent-vs-limits, what
-   the Part E event vocabulary already defines, and what MetricsBar renders
-   today — each MEASURED in the source rather than read off the feature file.
-2. R4 record R3 and rule the tick envelope as a DECISION: the payload's field
+1. R4 record R3 and rule the tick envelope as a DECISION: the payload's field
    set, the basis vocabulary and the no-client-arithmetic contract.
-3. R5 onward the built work, in the T001/T002/T003 order the feature file's Task
-   slicing names.
+2. R5 T001 the tick emission, at the evaluation sites the inventory names.
+3. R6 T002 the COST metric, R7 T003 the terminal reconciliation, then the
+   integration gate and closure.
 
 ## Risks
 - The two High findings carried forward, R-0495 and R-0574, are inherited from
@@ -35,3 +35,5 @@ sentence R1 landed inside R-0669. It mints no id and builds nothing.
   defects.
 - `npm run lint` in `apps/ui` is RED at base and is NOT a gate (R-0364), which
   is R-0622 and routes to a paydown branch.
+- The feature file states its preconditions as settled fact, which is the R-0612
+  class. The inventory measures them instead, and reports any disagreement.
