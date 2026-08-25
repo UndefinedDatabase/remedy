@@ -79,3 +79,50 @@ class TestExhaustedBudgetStillStops:
 
         assert report["final_status"] == "stopped"
         assert report["total_rounds"] == 0
+
+
+class TestStartupHeaderNamesTheModel:
+    """The bare `remedy do run` path says which model will answer it.
+
+    Operator dogfooding on 2026-08-25 ran two real claude-cli jobs on this path
+    and was never told which model served them: the path passes no model, so
+    the `claude` CLI silently used the operator's own default. The header now
+    says so. Each answer below is pinned against what the provider really does,
+    so the line cannot drift into a comfortable fiction.
+    """
+
+    def test_claude_cli_reports_the_inherited_cli_default(self):
+        from apps.cli.commands.do_cmd import pingpong_effective_model
+        from packages.orchestration.pingpong_provider import build_claude_cli_args
+
+        # The claim is "no --model passed", so prove the argument is absent.
+        argv = build_claude_cli_args("/usr/bin/claude", "prompt", model="")
+        assert "--model" not in argv
+
+        assert pingpong_effective_model("claude-cli") == "CLI default (no --model passed)"
+
+    def test_direct_api_reports_the_provider_s_own_default(self):
+        from apps.cli.commands.do_cmd import pingpong_effective_model
+        from packages.orchestration import pingpong_provider
+
+        reported = pingpong_effective_model("claude")
+        assert pingpong_provider._DEFAULT_CLAUDE_MODEL in reported
+
+    def test_fake_reports_that_no_model_is_called(self):
+        from apps.cli.commands.do_cmd import pingpong_effective_model
+
+        assert pingpong_effective_model("fake") == "none (fake provider makes no model call)"
+
+    def test_header_prints_a_model_line_for_each_role(self, tmp_path, monkeypatch, capsys):
+        from apps.cli.commands.do_cmd import _cmd_do_pingpong
+
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        (repo / "README.md").write_text("# demo\n")
+
+        _cmd_do_pingpong("add a docstring", repo=str(repo), max_rounds=1)
+        out = capsys.readouterr().out
+
+        assert "Builder model: none (fake provider makes no model call)" in out
+        assert "Reviewer model: none (fake provider makes no model call)" in out

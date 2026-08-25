@@ -686,6 +686,47 @@ def _cmd_do_continue(
         print(summarize_continue_result(result))
 
 
+#: What the bare `remedy do run` path prints for a role whose provider is
+#: handed no model and has no built-in default of its own to name. The `claude`
+#: CLI then picks whatever the OPERATOR configured it to pick, and Remedy cannot
+#: name that id without running the binary — so it says exactly that instead of
+#: printing a guess.
+_INHERITED_CLI_MODEL_LABEL = "CLI default (no --model passed)"
+
+
+def pingpong_effective_model(provider_name: str) -> str:
+    """The model one role of a bare `remedy do run` actually uses.
+
+    THIS PATH TAKES NO MODEL OPTION. `_cmd_do_pingpong` passes none to
+    ``run_pingpong``, whose ``builder_model``/``reviewer_model`` therefore stay
+    empty, so the id is decided entirely by the provider that was named. Two
+    real claude-cli runs during operator dogfooding on 2026-08-25 were never
+    told which model answered them; printing this at startup is what makes that
+    visible.
+
+    Remedy deliberately does NOT add a model option to this path. `remedy do
+    job-run` is the path that carries `--builder-model` and `--reviewer-model`;
+    this function only reports, and adding an option here is recorded as an
+    operator finding rather than built.
+
+    ``tests/cli/test_do_cmd_pingpong_budget.py`` pins each answer against what
+    the provider really does, so this cannot drift into a comfortable fiction.
+    """
+    if provider_name == "claude-cli":
+        # ClaudeCliProvider passes --model only when it HAS one
+        # (`pingpong_provider.build_claude_cli_args`), so an empty model means
+        # the argument is never on the command line at all.
+        return _INHERITED_CLI_MODEL_LABEL
+    if provider_name == "claude":
+        # The direct-API provider names its own built-in default, which comes
+        # from the one F254 alias table.
+        from packages.orchestration.model_aliases import resolve_model_alias
+        return f"{resolve_model_alias('claude-workhorse')} (Remedy built-in default)"
+    if provider_name == "fake":
+        return "none (fake provider makes no model call)"
+    return "unknown"
+
+
 def _cmd_do_pingpong(
     goal: str,
     *,
@@ -741,7 +782,9 @@ def _cmd_do_pingpong(
         print("Job: ping-pong run")
         print(f"Mode: {mode}")
         print(f"Builder: {effective_builder}")
+        print(f"Builder model: {pingpong_effective_model(effective_builder)}")
         print(f"Reviewer: {effective_reviewer}")
+        print(f"Reviewer model: {pingpong_effective_model(effective_reviewer)}")
         print(f"Max rounds: {max_rounds}")
         if test_command:
             print(f"Test command: {test_command}")
