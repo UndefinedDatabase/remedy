@@ -420,10 +420,13 @@ def _cmd_doctor_core(ns: argparse.Namespace) -> None:
         """Record an ADVISORY finding: never a blocker, never moves `ready`.
 
         Deliberately separate from :func:`_check` (F254,
-        docs/roadmap/features/T2_F254.md): Remedy's own shipped defaults sit
-        on the known-dead list today, so routing that through `checks` would
-        report NOT READY on a freshly cloned repo and teach operators to
-        ignore the one word this command exists to say.
+        docs/roadmap/features/T2_F254.md): a shipped default landing on the
+        known-dead list is expected — it is exactly what happens between a
+        provider retiring an id and an operator repointing the alias — so
+        routing that through `checks` would report NOT READY on a freshly
+        cloned repo and teach operators to ignore the one word this command
+        exists to say. That state was live until 2026-08-25, when the operator
+        repointed `claude-flagship` and `claude-workhorse`; it will recur.
 
         Two renderings of the SAME finding, because the two readers differ:
         `summary` is the one compact line text mode prints, `detail` is the

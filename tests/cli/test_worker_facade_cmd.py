@@ -515,6 +515,20 @@ class _FakeConfig:
         return self._values.get(key)
 
 
+def a_builtin_model_id() -> str:
+    """One model id that IS a built-in default of THIS build, read from the table.
+
+    Not spelled as a literal. These tests make the doctor warn by declaring a
+    built-in default dead, so the id has to be one the alias table currently
+    holds. The F254 table is repointed whenever an operator retires a value —
+    the first such repoint was 2026-08-25 — and a spelled id turned every one
+    of these tests silently vacuous on that day: the fixture declared a string
+    dead that no alias pointed at any more, so no warning fired.
+    """
+    from packages.orchestration.model_aliases import resolve_model_alias
+    return resolve_model_alias("claude-flagship")
+
+
 def _patch_dead_list(monkeypatch, entries, extra_ids=()):
     """Point the doctor's dead-model sources at fixtures.
 
@@ -554,7 +568,7 @@ class TestDoctorCoreDeadModels:
         _cmd_doctor_core(_ns(json=True))
         without_dead = json.loads(capsys.readouterr().out)
 
-        _patch_dead_list(monkeypatch, [_dead_entry("claude-opus-4-20250514")])
+        _patch_dead_list(monkeypatch, [_dead_entry(a_builtin_model_id())])
         _cmd_doctor_core(_ns(json=True))
         with_dead = json.loads(capsys.readouterr().out)
 
@@ -629,18 +643,18 @@ class TestDoctorCoreDeadModels:
     def test_text_output_shows_warnings_without_claiming_not_ready(
             self, monkeypatch, capsys):
         from apps.cli.commands.worker_facade_cmd import _cmd_doctor_core
-        _patch_dead_list(monkeypatch, [_dead_entry("claude-opus-4-20250514")])
+        _patch_dead_list(monkeypatch, [_dead_entry(a_builtin_model_id())])
         _cmd_doctor_core(_ns(json=False))
         out = capsys.readouterr().out
         assert "[WARN] dead_builtin_model:" in out
-        assert "claude-opus-4-20250514" in out
+        assert a_builtin_model_id() in out
         assert "do not affect READY" in out
         assert "NOT READY" not in out
 
     def test_warning_states_operator_maintained_provenance(self, monkeypatch, capsys):
         """No false live indicator: the verdict is a data file, not a provider."""
         from apps.cli.commands.worker_facade_cmd import _cmd_doctor_core
-        _patch_dead_list(monkeypatch, [_dead_entry("claude-opus-4-20250514")])
+        _patch_dead_list(monkeypatch, [_dead_entry(a_builtin_model_id())])
         _cmd_doctor_core(_ns(json=True))
         out = json.loads(capsys.readouterr().out)
         detail = out["warnings"][0]["detail"]
@@ -657,7 +671,7 @@ class TestDoctorCoreDeadModels:
         which is the one thing this feature must never imply.
         """
         from apps.cli.commands.worker_facade_cmd import _cmd_doctor_core
-        _patch_dead_list(monkeypatch, [_dead_entry("claude-opus-4-20250514")])
+        _patch_dead_list(monkeypatch, [_dead_entry(a_builtin_model_id())])
         _cmd_doctor_core(_ns(json=True))
         out = json.loads(capsys.readouterr().out)
         summary = out["warnings"][0]["summary"]
@@ -670,7 +684,7 @@ class TestDoctorCoreDeadModels:
         from apps.cli.commands.worker_facade_cmd import _cmd_doctor_core
         _patch_dead_list(monkeypatch, [
             _dead_entry(
-                "claude-opus-4-20250514",
+                a_builtin_model_id(),
                 reason="A May-2025 dated id several generations stale as of "
                        "Aug 2026; no replacement id is named here because "
                        "nothing in this repository states one.",
@@ -688,7 +702,7 @@ class TestDoctorCoreDeadModels:
         """R-0215: the ~700-character wall stays out of the check list."""
         from apps.cli.commands.worker_facade_cmd import _cmd_doctor_core
         _patch_dead_list(monkeypatch, [
-            _dead_entry("claude-opus-4-20250514",
+            _dead_entry(a_builtin_model_id(),
                         reason="RECORDED-REASON-SENTINEL"),
         ])
         _cmd_doctor_core(_ns(json=False))
@@ -712,7 +726,7 @@ class TestDoctorCoreDeadModels:
         """
         from apps.cli.commands.worker_facade_cmd import _cmd_doctor_core
         _patch_dead_list(monkeypatch, [
-            _dead_entry("claude-opus-4-20250514",
+            _dead_entry(a_builtin_model_id(),
                         reason="retired; no replacement is named here",
                         superseded=""),
         ])
@@ -725,7 +739,7 @@ class TestDoctorCoreDeadModels:
     def test_known_replacement_is_named(self, monkeypatch, capsys):
         from apps.cli.commands.worker_facade_cmd import _cmd_doctor_core
         _patch_dead_list(monkeypatch, [
-            _dead_entry("claude-opus-4-20250514", superseded="some-live-id"),
+            _dead_entry(a_builtin_model_id(), superseded="some-live-id"),
         ])
         _cmd_doctor_core(_ns(json=True))
         out = json.loads(capsys.readouterr().out)
@@ -774,6 +788,45 @@ class TestDoctorCoreDeadModels:
         _cmd_doctor_core(_ns(json=True))
         detail = self._dead_list_detail(json.loads(capsys.readouterr().out))
         assert detail == "1 shipped + 0 config-only dead ids (1 total)"
+
+
+class TestShippedDefaultsAreNotOnTheShippedDeadList:
+    """The shipped build warns about none of its OWN defaults.
+
+    Operator decision 2026-08-25 (dogfooding): `claude-flagship` and
+    `claude-workhorse` were repointed off the retired May-2025 ids that
+    scripts/dead_models.json lists, so `remedy doctor core` no longer warns
+    about Remedy's own built-in defaults. Read with the REAL loader and the
+    REAL table — nothing is patched here — because the claim is about what
+    this build ships, not about what a fixture can be made to say.
+    """
+
+    def test_no_builtin_default_is_on_the_shipped_dead_list(self):
+        from packages.orchestration.dead_model_list import dead_model_ids
+        from packages.orchestration.model_aliases import builtin_model_ids
+
+        overlap = sorted(set(builtin_model_ids()) & set(dead_model_ids()))
+        assert overlap == [], (
+            f"built-in defaults still on the dead list: {overlap}"
+        )
+
+    def test_doctor_core_emits_no_dead_builtin_warning(self, capsys):
+        from apps.cli.commands.worker_facade_cmd import _cmd_doctor_core
+
+        _cmd_doctor_core(_ns(json=True))
+        out = json.loads(capsys.readouterr().out)
+
+        dead_builtin = [w for w in out["warnings"]
+                        if w["warning"] == "dead_builtin_model"]
+        assert dead_builtin == []
+
+    def test_both_repointed_aliases_resolve_to_live_ids(self):
+        from packages.orchestration.dead_model_list import dead_model_ids
+        from packages.orchestration.model_aliases import resolve_model_alias
+
+        dead = dead_model_ids()
+        assert resolve_model_alias("claude-flagship") not in dead
+        assert resolve_model_alias("claude-workhorse") not in dead
 
 
 class TestCollectHandlers:
