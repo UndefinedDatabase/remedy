@@ -13,9 +13,13 @@ otherwise recorded as a dated "Operator finding (2026-08-25, dogfooding)"
 paragraph in the owning file under docs/roadmap/features/.
 
 ## Current Step
-All six items are decided and committed. Remaining: push, open the pull
-request, watch the hosted CI run to green, merge it, and confirm zero open
-pull requests.
+All six items are decided and committed. The first hosted CI run was RED with
+seven failures, all of this round's own making, and repairing them is this
+round's work (AGENTS.md amend0820 gate autonomy). Remaining: land the repair,
+re-watch the hosted run to green, merge, and confirm zero open pull requests.
+
+The seven failures, their causes and their repairs are tabled in
+`.agent/handoff.md`; they are not restated here.
 
 | Item | Status | Reason |
 |------|--------|--------|
