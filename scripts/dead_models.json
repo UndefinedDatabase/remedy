@@ -4,13 +4,13 @@
   "dead_models": [
     {
       "id": "claude-opus-4-20250514",
-      "reason": "A May-2025 dated id, and the built-in default behind the claude-flagship alias in packages/orchestration/model_aliases.py. docs/roadmap/features/T2_F254.md ('How it fits') records it as several generations stale as of Aug 2026. No replacement id is named here because nothing in this repository states one: choosing the successor is F232's job (the model upgrade playbook).",
-      "superseded_by": ""
+      "reason": "A May-2025 dated id, and until 2026-08-25 the built-in default behind the claude-flagship alias in packages/orchestration/model_aliases.py. docs/roadmap/features/T2_F254.md ('How it fits') records it as several generations stale as of Aug 2026. The alias no longer points here: an operator decision of 2026-08-25, taken while dogfooding after remedy doctor warned on this id, repointed it. The id stays listed because config may still name it and a shipped entry is a guarantee, never a preference.",
+      "superseded_by": "claude-opus-4-8"
     },
     {
       "id": "claude-sonnet-4-20250514",
-      "reason": "A May-2025 dated id, and the built-in default behind the claude-workhorse alias in packages/orchestration/model_aliases.py. docs/roadmap/features/T2_F254.md ('How it fits') records it as several generations stale as of Aug 2026. No replacement id is named here because nothing in this repository states one: choosing the successor is F232's job (the model upgrade playbook).",
-      "superseded_by": ""
+      "reason": "A May-2025 dated id, and until 2026-08-25 the built-in default behind the claude-workhorse alias in packages/orchestration/model_aliases.py. docs/roadmap/features/T2_F254.md ('How it fits') records it as several generations stale as of Aug 2026. The alias no longer points here: the same operator decision of 2026-08-25 repointed it. The id stays listed for the reason given on the entry above.",
+      "superseded_by": "claude-sonnet-4-6"
     }
   ]
 }

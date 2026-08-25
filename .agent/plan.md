@@ -1,44 +1,46 @@
-# Plan — F022 Live cost ticker
+# Plan — amend0825-dogfood-findings
 
-Branch: feature/f022-live-cost-ticker, cut from `main` at `c34ef32b`, the merge
-commit of pull request #211. `.agent/live_review.md` is the source of truth for
-the open set, the round map and the finding-id ceiling.
+Branch: feature/amend0825-dogfood-findings, cut from `main` at `6325ac2f`, the
+merge commit of pull request #213. Operator collection order amend0825, no
+self-drive loop; the operator prompt carries the authorization for the alias
+repoint and for merging this branch's own pull request.
 
 ## Goal
-Money is visible while it burns, honestly: the MetricsBar's COST metric renders
-from budget tick events {spent, limit, basis} — bar fill against the limit, a
-'~' prefix plus tooltip whenever the basis is estimated, warn colour at ≥85% —
-and the final figure reconciles with the ledger at terminal. DONE when the
-ticker tracks a fixture stream exactly, basis changes flip the prefix and
-tooltip live, the warn threshold triggers per tokens, limitless jobs render the
-spent-only variant with no fake denominator, and the terminal reconciliation
-displays the ledger figure with any delta labelled.
+Six findings from the first operator dogfooding run (project ~/demo-remedy,
+jobs edbbc42bba4c4b00 and e984ec1943bb422f) triaged by ONE rule: repaired in
+code only when the repair is surgical AND a regression test proves it,
+otherwise recorded as a dated "Operator finding (2026-08-25, dogfooding)"
+paragraph in the owning file under docs/roadmap/features/.
 
 ## Current Step
-R19 closes F022. It records the R18 verdict, flips the STATUS line to `[x]`
-with the evidence job, package and SHA-256 that R18 produced, syncs the README
-capability list in that same commit, writes this closure's one candidate to
-`.agent/candidates.md`, and opens the pull request without merging it.
+All six items are decided and committed. The first hosted CI run was RED with
+seven failures, all of this round's own making, and repairing them is this
+round's work (AGENTS.md amend0820 gate autonomy). Remaining: land the repair,
+re-watch the hosted run to green, merge, and confirm zero open pull requests.
+
+The seven failures, their causes and their repairs are tabled in
+`.agent/handoff.md`; they are not restated here.
+
+| Item | Status | Reason |
+|------|--------|--------|
+| 1 — do run budget crash | done | repaired; tests/cli/test_do_cmd_pingpong_budget.py |
+| 2 — teacher blind to job runs | done | resolver repaired; narration residue recorded in T5_F255.md |
+| 3 — empty token ledger | deviated | design gap, not wiring — recorded in T2_F103.md |
+| 4 — promotion dead end | done | recorded in T0_F017.md, three facets, guard untouched |
+| 5 — doctor lanes from a foreign cwd | done | repaired; tests/cli/test_worker_facade_cmd.py |
+| 6 — dead built-in model ids | done | aliases repointed; do run header names the model |
 
 ## Next Steps
-1. The next session's Open PR Gate merges this pull request before any new
-   feature is claimed, which is the operator's manual-review window.
-2. That session's FIRST reviewed round registers or rules the candidate this
-   round records and empties `.agent/candidates.md` in the same round.
+1. `gh pr create`, then `gh run watch` until the hosted run is green.
+2. Merge the pull request and delete the branch; end at zero open PRs.
+3. The next session's first reviewed round decides what to do with the three
+   recorded findings; none of them is claimed here.
 
 ## Risks
-- The closure PR is created but NOT merged by the round that makes it. Merging
-  it here would close the operator's only review window.
-- This round's own verdict has no on-disk gate entry by construction (§4 item
-  13). It lives in `.agent/handoff.md` and in the pull request, and no repair
-  round is opened for that gap.
-- Open F022 findings: R-0672 and R-0625 want their next-DECISION and
-  next-numeral clauses honoured; R-0431, R-0413 and R-0533 are recorded and
-  already paid for; R-0674, R-0675 and R-0676 are registered and repaired by
-  none, their subjects being landed append-only text; and R-0445 is a standing
-  defect of `docs/agents/integration_gate.md`, routed by the finding itself.
-- The two High findings carried forward, R-0495 and R-0574, are inherited from
-  the already-closed F085 and F086 and are documented risks, not F022 defects.
-- R-0403 is open and this package shows it: `.remedy-wt/` scratch is a large
-  share of every review zip built on this machine. It routes to a paydown
-  branch and is not an F022 defect.
+- `.agent/STOP` is on disk, untracked, from the stopped F031 R10 round. It
+  governs the self-drive loop, not this order, and is never deleted here.
+- Finding 3 leaves job-path cost invisible until one of the three shapes the
+  F103 entry weighs is chosen. Nothing in this branch narrows that choice.
+- Finding 4 leaves a blocked promotion with no next step in the output. The
+  guardrail is correct and was deliberately not touched.
+- `remedy plan next` reports F031, not F022: F022 closed on 2026-08-23.

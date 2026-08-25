@@ -46,9 +46,14 @@ One hard check plus advisory warnings:
   config-only ids (ids config added that were not shipped already).
 - Each dead id found among the built-in defaults or among the resolved
   `*.model` config keys produces a WARNING. Warnings never change `ready`
-  and never enter `blockers` — Remedy's own shipped defaults are on the
-  list today, and reporting NOT READY on a fresh clone would teach
-  operators to ignore the word.
+  and never enter `blockers`: a shipped default landing on the list is
+  the expected state between a provider retiring an id and an operator
+  repointing the alias, and reporting NOT READY on a fresh clone would
+  teach operators to ignore the word. That was the live state until
+  2026-08-25, when an operator decision repointed `claude-flagship` and
+  `claude-workhorse` off the two retired May-2025 ids; a fresh clone now
+  warns about none of its own defaults, and will again the next time a
+  provider retires one.
 
 Every warning names the id, where it came from (the alias to repoint, or
 the config key to change), and the fix. Text mode prints one compact line

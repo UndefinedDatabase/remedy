@@ -282,8 +282,10 @@ class JobPlan:
 # ---------------------------------------------------------------------------
 
 def _jobs_dir() -> Path:
-    from packages.orchestration.data_paths import resolve_data_root
-    return resolve_data_root() / "task_jobs"
+    # One spelling of "where the task jobs live": data_paths owns it, so the
+    # readers that resolve an id there cannot drift from the writer here.
+    from packages.orchestration.data_paths import task_jobs_dir
+    return task_jobs_dir()
 
 
 def _persist_job(job: JobPlan) -> Path:

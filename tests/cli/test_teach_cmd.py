@@ -188,6 +188,76 @@ class TestTeachNarrateIsReadOnly:
         assert _hash_tree(data_root) == {}
 
 
+class TestTeachReachesTaskJobs:
+    """The teacher can explain a `remedy do job-run` job, not only a classic one.
+
+    Operator dogfooding on 2026-08-25: `remedy teach narrate edbbc42bba4c4b00`
+    answered "no job matches prefix" while that job's run log sat in
+    `<data_root>/runs/edbbc42bba4c4b00/`. `resolve_job_id` searched
+    `jobs/*.json` and returned a UUID; a task job is a DIRECTORY under
+    `task_jobs/` named by sixteen hex characters, which is not a UUID. The
+    teacher was built against the classic store and could not see a job-based
+    run at all.
+    """
+
+    #: The real shape: `pingpong_job` mints `uuid4().hex[:16]`.
+    TASK_JOB_ID = "edbbc42bba4c4b00"
+
+    def _write_task_job(self, data_root: Path, job_id: str) -> None:
+        job_dir = data_root / "task_jobs" / job_id
+        job_dir.mkdir(parents=True)
+        (job_dir / "job.json").write_text(
+            json.dumps({"job_id": job_id, "status": "completed"}), encoding="utf-8")
+
+    def test_narrate_finds_a_task_job_and_reads_its_run_log(self, data_root, capsys):
+        self._write_task_job(data_root, self.TASK_JOB_ID)
+        _write_run_log(data_root, self.TASK_JOB_ID, _EVENTS)
+
+        assert _exit_code(lambda: _cmd_teach_narrate(self.TASK_JOB_ID)) == 0
+        out = capsys.readouterr().out
+
+        assert "no job matches prefix" not in out
+        assert f"({len(_EVENTS)} events)" in out
+        assert "The job was created." in out
+
+    def test_narrate_accepts_a_task_job_prefix(self, data_root, capsys):
+        self._write_task_job(data_root, self.TASK_JOB_ID)
+        _write_run_log(data_root, self.TASK_JOB_ID, _EVENTS)
+
+        assert _exit_code(lambda: _cmd_teach_narrate(self.TASK_JOB_ID[:8])) == 0
+        assert f"({len(_EVENTS)} events)" in capsys.readouterr().out
+
+    def test_narrating_a_task_job_still_writes_nothing(self, data_root, capsys):
+        """The read-only stance survives the wider resolver."""
+        self._write_task_job(data_root, self.TASK_JOB_ID)
+        _write_run_log(data_root, self.TASK_JOB_ID, _EVENTS)
+        before = _hash_tree(data_root)
+        assert before
+
+        _cmd_teach_narrate(self.TASK_JOB_ID)
+        capsys.readouterr()
+
+        assert _hash_tree(data_root) == before
+
+    def test_a_classic_job_still_resolves(self, data_root, capsys):
+        """The wider resolver ADDS a store; it takes none away."""
+        _write_run_log(data_root, _JOB_ID, _EVENTS)
+
+        assert _exit_code(lambda: _cmd_teach_narrate(_JOB_ID)) == 0
+        assert f"({len(_EVENTS)} events)" in capsys.readouterr().out
+
+    def test_an_unknown_id_still_exits_one(self, data_root, capsys):
+        assert _exit_code(lambda: _cmd_teach_narrate("dddddddddddddddd")) == 1
+        assert "no job matches prefix" in capsys.readouterr().err
+
+    def test_a_directory_without_a_job_file_is_not_a_job(self, data_root, capsys):
+        """A half-created or hand-made directory must not resolve as a job."""
+        (data_root / "task_jobs" / self.TASK_JOB_ID).mkdir(parents=True)
+
+        assert _exit_code(lambda: _cmd_teach_narrate(self.TASK_JOB_ID)) == 1
+        assert "no job matches prefix" in capsys.readouterr().err
+
+
 class TestTeachCatalogDeclaration:
     def test_the_command_is_declared_read_only(self):
         cmd = get_command("teach.narrate")

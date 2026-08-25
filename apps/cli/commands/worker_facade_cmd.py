@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import sys
 from collections.abc import Callable
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, NoReturn
 
 if TYPE_CHECKING:
@@ -389,9 +390,26 @@ def _cmd_mission_report(ns: argparse.Namespace) -> None:
 # ---------------------------------------------------------------------------
 
 
-def _cmd_doctor_core(ns: argparse.Namespace) -> None:
-    from pathlib import Path
+def remedy_scripts_dir() -> Path:
+    """The shipped ``scripts/`` directory of THIS Remedy installation.
 
+    Anchored on this file's own location and NEVER on the process working
+    directory. `remedy doctor core` is a command an operator runs from their
+    OWN project — that is the whole point of a doctor — so a cwd-relative
+    ``scripts/remedy_test_fast.sh`` reported both test lanes missing, and the
+    installation NOT READY, from every directory except the Remedy checkout
+    itself (operator dogfooding, 2026-08-25).
+
+    Same anchor as
+    ``packages.orchestration.dead_model_list.default_dead_list_path``, whose
+    file the dead-model check below reads out of this very directory. This file
+    is ``apps/cli/commands/worker_facade_cmd.py``, so the root is three levels
+    up.
+    """
+    return Path(__file__).resolve().parents[3] / "scripts"
+
+
+def _cmd_doctor_core(ns: argparse.Namespace) -> None:
     checks: list[dict[str, str | bool]] = []
     warnings: list[dict[str, str]] = []
 
@@ -402,10 +420,13 @@ def _cmd_doctor_core(ns: argparse.Namespace) -> None:
         """Record an ADVISORY finding: never a blocker, never moves `ready`.
 
         Deliberately separate from :func:`_check` (F254,
-        docs/roadmap/features/T2_F254.md): Remedy's own shipped defaults sit
-        on the known-dead list today, so routing that through `checks` would
-        report NOT READY on a freshly cloned repo and teach operators to
-        ignore the one word this command exists to say.
+        docs/roadmap/features/T2_F254.md): a shipped default landing on the
+        known-dead list is expected — it is exactly what happens between a
+        provider retiring an id and an operator repointing the alias — so
+        routing that through `checks` would report NOT READY on a freshly
+        cloned repo and teach operators to ignore the one word this command
+        exists to say. That state was live until 2026-08-25, when the operator
+        repointed `claude-flagship` and `claude-workhorse`; it will recur.
 
         Two renderings of the SAME finding, because the two readers differ:
         `summary` is the one compact line text mode prints, `detail` is the
@@ -460,11 +481,17 @@ def _cmd_doctor_core(ns: argparse.Namespace) -> None:
     _try_import("approval_policy", "packages.orchestration.execution_approval_policy",
                 "evaluate_execution_approval_policy")
 
-    fast_lane = Path("scripts/remedy_test_fast.sh")
-    _check("fast_test_lane", fast_lane.exists(), str(fast_lane))
+    # The DETAIL stays installation-relative while the EXISTENCE test is
+    # absolute: an absolute detail would print the operator's home directory
+    # into `--json`, which `TestDoctorCore.test_core_error_messages_safe`
+    # forbids for every check in this command.
+    scripts = remedy_scripts_dir()
 
-    full_lane = Path("scripts/remedy_test_full.sh")
-    _check("full_test_lane", full_lane.exists(), str(full_lane))
+    _check("fast_test_lane", (scripts / "remedy_test_fast.sh").exists(),
+           "scripts/remedy_test_fast.sh")
+
+    _check("full_test_lane", (scripts / "remedy_test_full.sh").exists(),
+           "scripts/remedy_test_full.sh")
 
     # -----------------------------------------------------------------
     # F254 — known-dead model ids: one HARD check, then ADVISORY warnings.

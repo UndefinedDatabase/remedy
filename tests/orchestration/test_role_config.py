@@ -88,7 +88,7 @@ class TestPrecedence:
             config_file={"provider": "claude", "effort": "low"},
         )
         assert cfg.provider == "claude"   # from config file
-        assert cfg.model == "claude-opus-4-20250514"  # provider-aware default
+        assert cfg.model == resolve_model_alias("claude-flagship")  # provider-aware default
         assert cfg.effort == "max"         # CLI overrides config file
 
 
@@ -162,14 +162,25 @@ class TestRoleConfigModel:
 
 
 class TestProviderAwareDefaults:
-    def test_claude_cli_defaults_to_opus(self):
+    """Every expected id is READ from the alias table, never spelled.
+
+    These tests assert which built-in default a provider resolves to, so the
+    expected value must come from the table that decides it. Spelling the id
+    instead made five of them fail the moment an operator repointed
+    `claude-flagship` on 2026-08-25 — they were asserting the STRING rather
+    than the contract, and the contract ("claude-cli defaults to the flagship
+    alias") had not changed at all. The ollama cases below already read the
+    table; the Claude ones had been left behind when F254 landed.
+    """
+
+    def test_claude_cli_defaults_to_the_flagship_alias(self):
         cfg = resolve_role_config("builder", cli_args={"provider": "claude-cli"})
         assert cfg.provider == "claude-cli"
-        assert cfg.model == "claude-opus-4-20250514"
+        assert cfg.model == resolve_model_alias("claude-flagship")
 
-    def test_claude_defaults_to_opus(self):
+    def test_claude_defaults_to_the_flagship_alias(self):
         cfg = resolve_role_config("builder", cli_args={"provider": "claude"})
-        assert cfg.model == "claude-opus-4-20250514"
+        assert cfg.model == resolve_model_alias("claude-flagship")
 
     def test_ollama_defaults_to_the_alias_default(self):
         cfg = resolve_role_config("builder", cli_args={"provider": "ollama"})
@@ -177,7 +188,7 @@ class TestProviderAwareDefaults:
 
     def test_fake_provider_default(self):
         cfg = resolve_role_config("builder", cli_args={"provider": "fake"})
-        assert cfg.model == "fake-model"
+        assert cfg.model == resolve_model_alias("fake")
 
     def test_explicit_model_overrides_provider_default(self):
         cfg = resolve_role_config(
@@ -188,7 +199,7 @@ class TestProviderAwareDefaults:
 
     def test_config_file_provider_sets_model_default(self):
         cfg = resolve_role_config("reviewer", config_file={"provider": "claude-cli"})
-        assert cfg.model == "claude-opus-4-20250514"
+        assert cfg.model == resolve_model_alias("claude-flagship")
 
     def test_config_file_model_overrides_provider_default(self):
         cfg = resolve_role_config(
@@ -198,8 +209,8 @@ class TestProviderAwareDefaults:
         assert cfg.model == "my-model"
 
     def test_default_model_for_provider_helper(self):
-        assert default_model_for_provider("claude-cli") == "claude-opus-4-20250514"
-        assert default_model_for_provider("claude") == "claude-opus-4-20250514"
+        assert default_model_for_provider("claude-cli") == resolve_model_alias("claude-flagship")
+        assert default_model_for_provider("claude") == resolve_model_alias("claude-flagship")
         assert default_model_for_provider("ollama") == resolve_model_alias("ollama-default")
         assert default_model_for_provider("unknown") == DEFAULT_MODEL
 
