@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import sys
 from collections.abc import Callable
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, NoReturn
 
 if TYPE_CHECKING:
@@ -389,9 +390,26 @@ def _cmd_mission_report(ns: argparse.Namespace) -> None:
 # ---------------------------------------------------------------------------
 
 
-def _cmd_doctor_core(ns: argparse.Namespace) -> None:
-    from pathlib import Path
+def remedy_scripts_dir() -> Path:
+    """The shipped ``scripts/`` directory of THIS Remedy installation.
 
+    Anchored on this file's own location and NEVER on the process working
+    directory. `remedy doctor core` is a command an operator runs from their
+    OWN project — that is the whole point of a doctor — so a cwd-relative
+    ``scripts/remedy_test_fast.sh`` reported both test lanes missing, and the
+    installation NOT READY, from every directory except the Remedy checkout
+    itself (operator dogfooding, 2026-08-25).
+
+    Same anchor as
+    ``packages.orchestration.dead_model_list.default_dead_list_path``, whose
+    file the dead-model check below reads out of this very directory. This file
+    is ``apps/cli/commands/worker_facade_cmd.py``, so the root is three levels
+    up.
+    """
+    return Path(__file__).resolve().parents[3] / "scripts"
+
+
+def _cmd_doctor_core(ns: argparse.Namespace) -> None:
     checks: list[dict[str, str | bool]] = []
     warnings: list[dict[str, str]] = []
 
@@ -460,11 +478,17 @@ def _cmd_doctor_core(ns: argparse.Namespace) -> None:
     _try_import("approval_policy", "packages.orchestration.execution_approval_policy",
                 "evaluate_execution_approval_policy")
 
-    fast_lane = Path("scripts/remedy_test_fast.sh")
-    _check("fast_test_lane", fast_lane.exists(), str(fast_lane))
+    # The DETAIL stays installation-relative while the EXISTENCE test is
+    # absolute: an absolute detail would print the operator's home directory
+    # into `--json`, which `TestDoctorCore.test_core_error_messages_safe`
+    # forbids for every check in this command.
+    scripts = remedy_scripts_dir()
 
-    full_lane = Path("scripts/remedy_test_full.sh")
-    _check("full_test_lane", full_lane.exists(), str(full_lane))
+    _check("fast_test_lane", (scripts / "remedy_test_fast.sh").exists(),
+           "scripts/remedy_test_fast.sh")
+
+    _check("full_test_lane", (scripts / "remedy_test_full.sh").exists(),
+           "scripts/remedy_test_full.sh")
 
     # -----------------------------------------------------------------
     # F254 — known-dead model ids: one HARD check, then ADVISORY warnings.

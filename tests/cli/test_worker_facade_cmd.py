@@ -390,6 +390,42 @@ class TestDoctorCore:
         assert "READY" in out
 
 
+class TestDoctorCoreFromAnotherDirectory:
+    """The doctor diagnoses the INSTALLATION, not the working directory.
+
+    Operator dogfooding on 2026-08-25: run from ~/demo-remedy, `remedy doctor
+    core` reported `fast_test_lane` and `full_test_lane` as blockers and the
+    installation NOT READY, because both lanes were resolved as
+    `Path("scripts/remedy_test_fast.sh")` — relative to the process working
+    directory. The scripts were present in the Remedy checkout the whole time.
+    """
+
+    def test_lanes_resolve_outside_the_checkout(self, tmp_path, monkeypatch, capsys):
+        monkeypatch.chdir(tmp_path)
+
+        from apps.cli.commands.worker_facade_cmd import _cmd_doctor_core
+        _cmd_doctor_core(_ns(json=True))
+        out = json.loads(capsys.readouterr().out)
+
+        by_name = {c["check"]: c for c in out["checks"]}
+        assert by_name["fast_test_lane"]["ok"] is True
+        assert by_name["full_test_lane"]["ok"] is True
+        assert "fast_test_lane" not in out["blockers"]
+        assert "full_test_lane" not in out["blockers"]
+
+    def test_lane_detail_stays_installation_relative(self, tmp_path, monkeypatch, capsys):
+        """An absolute detail would print the operator's home into `--json`."""
+        monkeypatch.chdir(tmp_path)
+
+        from apps.cli.commands.worker_facade_cmd import _cmd_doctor_core
+        _cmd_doctor_core(_ns(json=True))
+        out = json.loads(capsys.readouterr().out)
+
+        by_name = {c["check"]: c for c in out["checks"]}
+        assert by_name["fast_test_lane"]["detail"] == "scripts/remedy_test_fast.sh"
+        assert by_name["full_test_lane"]["detail"] == "scripts/remedy_test_full.sh"
+
+
 class TestDoctorCoreSafeErr:
     def test_private_paths_redacted(self, monkeypatch, capsys):
         import importlib
