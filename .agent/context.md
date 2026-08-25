@@ -1,46 +1,33 @@
-# Context — F022 Live cost ticker
+# Context — amend0825 dogfooding findings
 
 ## Active Branch
-feature/f022-live-cost-ticker, cut from `main` at `c34ef32b`, the merge commit
-of pull request #211 which closed F021.
+feature/amend0825-dogfood-findings, cut from `main` at `6325ac2f`, the merge
+commit of pull request #213 which closed F022.
 
 ## Scope
-F022 only: the budget tick emission, the MetricsBar COST metric and the terminal
-reconciliation. The roadmap feature file is
-`docs/roadmap/features/T5_F022.md` and its Task slicing fixes the order.
+The six findings of the operator collection order amend0825, and nothing else.
+Three are repaired in code with regression tests; three are recorded as dated
+operator findings in the feature file that owns them. This is not feature work
+and claims no STATUS line.
 
 ## Do not touch
-Budget enforcement, the pricing and basis rules, and MetricsBar's other metrics.
-The feature file's own Do-not-touch section governs and is not narrowed here.
+`validate_job_id`, the promotion blocked-path guard and its all-or-nothing
+rule, F232's model-upgrade playbook, and `docs/roadmap/ROADMAP.md`. The
+untracked `.agent/STOP` from the stopped F031 R10 round stays on disk.
 
 ## Assumptions
-- The UI never computes money. The backend is the single arithmetic home and the
-  client's only arithmetic is the fill ratio.
-- No currency field is emitted unless a price basis exists, so no invented
-  dollars reach the display.
-- The tick is additive on the SSE transport, which enumerates no event kinds, and
-  is NOT additive on the humanize catalog, which is pinned equal to the Python
-  vocabulary. Both halves were measured in `.agent/f022_inventory.md`.
+- The operator prompt carries the authorization for the alias repoint, for the
+  self-merge of this branch's pull request, and for every triage call below.
+- A finding whose repair is not surgical, or whose repair no test could prove,
+  is recorded rather than half-built. That rule decided findings 3 and 4, and
+  decided the residue of finding 2.
+- Findings are NOT written to `.agent/candidates.md`: a candidate there blocks
+  the next feature claim, and these are feature-owned defects, not closure
+  candidates.
 
 ## Constraints
-- A round touching `docs/roadmap/**` also gates
-  `tests/orchestration/test_roadmap_index.py` beside `tests/docs/`.
-- A round rewriting `.agent/` state gates the four state readers:
-  `tests/ui_server/`, `tests/orchestration/test_test_runner.py`,
-  `tests/regression/test_resource_safety.py` and
-  `tests/orchestration/test_integrity_gate.py`.
-- A round that emits a new Python event kind adds the matching key in
-  `apps/ui/src/api/humanizeCatalog.ts` in the SAME commit and gates
-  `tests/ui_contracts/test_humanize_catalog.py`; the two sets are pinned EQUAL
-  and neither may move alone (DECISION F022 D1).
-- Every handback runs the canary `pytest tests/cli/test_golden_path.py`.
-- Destructive verification runs only inside a disposable git worktree under
-  `.remedy-wt/`, never in the primary checkout, which satisfies
-  `git status --porcelain` empty at every verdict.
-- This is a UI feature, so `docs/ui/design_reference/` is binding and any visual
-  deviation is documented with a technical reason.
-
-## Steps
-The round map lives in the `## Steps` section of `.agent/live_review.md`, per
-R-0447's remedy, and this file deliberately does not restate it: a second copy
-of the map is what fell out of step and cost this feature a finding.
+- No new STATUS line was registered: every finding had an owning feature file,
+  so the registration protocol (Package 1 line, TOTAL_FEATURES pin, README
+  counter in one commit) was not entered.
+- `remedy plan next` reports F031, not F022. F022 closed on 2026-08-23 with
+  pull request #213; the operator's expectation of F022 predates that merge.
