@@ -33,12 +33,17 @@ function openCardEntry(): DecisionInboxEntry {
   };
 }
 
+/** The addressed job and the credential that opens its door, as the ONE value
+ *  the builder takes. Rebuilt per call so no test can mutate another's target. */
+function sendTarget() {
+  return { jobId: JOB_ID, serverToken: SERVER_TOKEN };
+}
+
 /** The one well-formed call, so a test about headers does not restate a call
  *  about the body. */
 function openRequest() {
   return buildDecisionSendRequest(
-    JOB_ID,
-    SERVER_TOKEN,
+    sendTarget(),
     modelFrom(openCardEntry()),
     "keep first",
     GOOD_NONCE,
@@ -93,14 +98,39 @@ describe("buildDecisionSendRequest", () => {
 
   it("refuses an empty token, which is a request the door answers 403", () => {
     expect(
-      buildDecisionSendRequest(JOB_ID, "", modelFrom(openCardEntry()), "keep first", GOOD_NONCE),
+      buildDecisionSendRequest(
+        { jobId: JOB_ID, serverToken: "" },
+        modelFrom(openCardEntry()),
+        "keep first",
+        GOOD_NONCE,
+      ),
     ).toBeNull();
   });
 
   it("refuses an empty job id, because it addresses no job", () => {
     expect(
-      buildDecisionSendRequest("", SERVER_TOKEN, modelFrom(openCardEntry()), "keep first", GOOD_NONCE),
+      buildDecisionSendRequest(
+        { jobId: "", serverToken: SERVER_TOKEN },
+        modelFrom(openCardEntry()),
+        "keep first",
+        GOOD_NONCE,
+      ),
     ).toBeNull();
+  });
+
+  it("reads the job and the token from NAMED fields, so their ORDER cannot matter", () => {
+    // The swap finding R-0684 describes is stopped by `tsc`, not by this test:
+    // with one named object there is no positional pair left to transpose. What
+    // a test CAN pin is that writing the two fields the other way round builds
+    // the very same request, and still keeps the credential out of the path.
+    const reversed = buildDecisionSendRequest(
+      { serverToken: SERVER_TOKEN, jobId: JOB_ID },
+      modelFrom(openCardEntry()),
+      "keep first",
+      GOOD_NONCE,
+    );
+    expect(reversed).toEqual(openRequest());
+    expect(reversed?.path).not.toContain(SERVER_TOKEN);
   });
 
   it("propagates the body builder's refusal as null, never as a request with no body", () => {
@@ -108,7 +138,14 @@ describe("buildDecisionSendRequest", () => {
     expect(resolved.isOpen).toBe(false);
     expect(buildDecisionResolveCommand(resolved, "keep first", GOOD_NONCE)).toBeNull();
     expect(
-      buildDecisionSendRequest(JOB_ID, SERVER_TOKEN, resolved, "keep first", GOOD_NONCE),
+      buildDecisionSendRequest(sendTarget(), resolved, "keep first", GOOD_NONCE),
+    ).toBeNull();
+  });
+
+  it("propagates the blank-answer refusal, so no whitespace answer is sendable", () => {
+    expect(buildDecisionResolveCommand(modelFrom(openCardEntry()), "   ", GOOD_NONCE)).toBeNull();
+    expect(
+      buildDecisionSendRequest(sendTarget(), modelFrom(openCardEntry()), "   ", GOOD_NONCE),
     ).toBeNull();
   });
 });

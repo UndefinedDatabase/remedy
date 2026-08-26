@@ -7843,3 +7843,47 @@ that reaches access logs, shell history and referrers.
 
 REVERSE IT by changing that module's header map alone, should the server ever mint a
 CSRF secret distinct from the bearer token.
+
+## DECISION F031 D14 (2026-08-26) — the browser refuses a blank answer the server would accept, and the send builder takes ONE named target
+
+CHOSEN, A DELIBERATE DIVERGENCE RATHER THAN A MIRROR. `buildDecisionResolveCommand`
+in `apps/ui/src/api/decisionAnswer.ts` refuses a whitespace-only answer, although
+`packages/orchestration/ui_server.py` accepts one. Every other refusal that module
+makes is a second copy of a server-enforced rule; this one has no server counterpart
+at all. `_dispatch_decision_resolve` reads `args["answer"]` and hands it to
+`answer_task_decision`, which validates nothing and writes `record["answer"]` ONCE —
+its own docstring records that answers are written once so a late second answer
+cannot overwrite the one the run acted on. So a decision resolved with whitespace is
+answered 200, persisted, and the correction is answered 409. The browser is the only
+place left where a blank answer can still be stopped. Finding R-0685 records the
+trace.
+
+CHOSEN, THE ANSWER IS TRIMMED BEFORE IT IS SENT. The same trim that decides the
+refusal supplies `args.answer`, so the durable record carries no incidental leading
+or trailing whitespace. Inner spacing is the operator's and is left alone.
+
+CHOSEN, ONE NAMED TARGET INSTEAD OF TWO ADJACENT STRINGS.
+`buildDecisionSendRequest` in `apps/ui/src/api/decisionSend.ts` takes the job id and
+the per-run server token as the fields of one `DecisionSendTarget`, because two
+adjacent bare `string` parameters make a transposition type-check — and that swap
+spends the token as the job id, writing the credential into the request PATH, which
+is the one thing that module's header forbids. This is AGENTS.md's Code
+Discoverability rule "use distinct ID/value types where an argument swap is
+plausible" applied before the first call site exists. Finding R-0684 records it. The
+neighbouring `answerText`/`clientNonce` pair is deliberately left positional: a swap
+there fails loudly against `COMMAND_NONCE_PATTERN`, so the rule would buy nothing.
+
+ALTERNATIVE CONSIDERED. Validating the answer on the SERVER instead, in
+`answer_task_decision` or at the command door: that is the better long-term home,
+because a second client — the CLI included — would still write a blank answer, and
+the browser fix does not discharge that half. Rejected for THIS round because F031's
+change set is the browser and the write door belongs to F009. It is ROUTED to F009
+rather than reached across a feature boundary, and finding R-0685 stays open to
+carry it.
+
+ALTERNATIVE CONSIDERED. Branded string types for every id in this seam: rejected as
+more machinery than one swappable pair earns, and it would spread through modules
+this feature has no business editing.
+
+REVERSE THE DIVERGENCE by deleting the trim refusal, and the target by inlining its
+two fields back into the parameter list.

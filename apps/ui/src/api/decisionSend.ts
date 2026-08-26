@@ -8,9 +8,11 @@
 //
 // IT COMPOSES, IT DOES NOT RE-DERIVE. The body is whatever
 // `buildDecisionResolveCommand` answers, serialised; the path is whatever
-// `jobCommandsPath` answers. Both come from `./decisionAnswer`, so the four
-// refusals that door would answer 400 or 409 stay defined in exactly ONE place
-// and this module adds only the two a missing credential earns.
+// `jobCommandsPath` answers. Both come from `./decisionAnswer`, so every refusal
+// that door owes — a card with no id, a blank answer, a nonce outside the
+// server's class, a decision that is not open — stays defined in exactly ONE
+// place, NAMED rather than counted so the sentence cannot go stale, and this
+// module adds only what a missing credential earns.
 //
 // THE TWO TOKEN HEADERS CARRY ONE SECRET, NOT TWO. In
 // `packages/orchestration/ui_server.py` the bearer check and the double-submit
@@ -45,24 +47,36 @@ export interface DecisionSendRequest {
   body: string;
 }
 
-/** THE BUILDER: a job, its token, one card, one answer and one caller-supplied
- *  nonce become the exact request the commands endpoint accepts — or `null`
- *  whenever that request would be UNSENDABLE. It answers `null` for the four
- *  bodies `buildDecisionResolveCommand` already refuses, and for two more of
- *  its own: an empty job id addresses no job, and an empty token is a request
- *  the door answers 403. Both are refused one round trip earlier, where the
- *  operator is still looking. */
+/** THE ADDRESSED JOB AND THE CREDENTIAL THAT OPENS ITS DOOR, as ONE value with
+ *  NAMED fields. They travelled as two adjacent bare `string` parameters until
+ *  finding R-0684: both are opaque ids of the same type, so transposing them at
+ *  a call site type-checked, and the swap spent the token as the job id — which
+ *  writes the credential into the request PATH, the one thing this module's
+ *  header forbids. Named fields make that transposition inexpressible, which is
+ *  AGENTS.md's "use distinct ID/value types where an argument swap is plausible"
+ *  applied at the cheapest moment: before the first call site exists. */
+export interface DecisionSendTarget {
+  jobId: string;
+  serverToken: string;
+}
+
+/** THE BUILDER: an addressed job with its token, one card, one answer and one
+ *  caller-supplied nonce become the exact request the commands endpoint accepts
+ *  — or `null` whenever that request would be UNSENDABLE. It answers `null` for
+ *  every body `buildDecisionResolveCommand` already refuses, and for what a
+ *  missing credential earns it: an empty job id addresses no job, and an empty
+ *  token is a request the door answers 403. Both are refused one round trip
+ *  earlier, where the operator is still looking. */
 export function buildDecisionSendRequest(
-  jobId: string,
-  serverToken: string,
+  target: DecisionSendTarget,
   model: DecisionCardModel,
   answerText: string,
   clientNonce: string,
 ): DecisionSendRequest | null {
-  if (jobId === "") {
+  if (target.jobId === "") {
     return null;
   }
-  if (serverToken === "") {
+  if (target.serverToken === "") {
     return null;
   }
   const commandBody = buildDecisionResolveCommand(model, answerText, clientNonce);
@@ -70,11 +84,11 @@ export function buildDecisionSendRequest(
     return null;
   }
   return {
-    path: jobCommandsPath(jobId),
+    path: jobCommandsPath(target.jobId),
     method: "POST",
     headers: {
-      Authorization: `Bearer ${serverToken}`,
-      "X-Remedy-CSRF": serverToken,
+      Authorization: `Bearer ${target.serverToken}`,
+      "X-Remedy-CSRF": target.serverToken,
       "Content-Type": "application/json",
     },
     body: JSON.stringify(commandBody),

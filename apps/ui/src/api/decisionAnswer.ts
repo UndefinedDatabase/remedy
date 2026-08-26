@@ -1,8 +1,10 @@
 // The decision inbox's ANSWER COMMAND, as PURE functions over the models
 // `decisionCard.ts` builds (T5_F031 T003). It turns a card plus the answer the
 // operator chose into the exact request body `/api/jobs/<job_id>/commands`
-// already accepts, and returns `null` for the four bodies that door would refuse
-// anyway — refused one round trip earlier, where the operator is still looking.
+// already accepts, and returns `null` for a card with no id, a blank answer, a
+// nonce outside the server's class and a decision that is not open — each
+// refused one round trip earlier, where the operator is still looking. The set
+// is NAMED rather than counted, so adding one cannot make this sentence stale.
 //
 // DECISION F031 D5 rules F031's logic into this layer: the shipped vitest config
 // collects `src/**/*.test.ts` only and no DOM harness exists, so everything that
@@ -18,10 +20,20 @@
 // all. A reader searching this file for a request, a retry, a header or a token
 // is searching for something this module refuses to have.
 //
-// THE DUPLICATION IS DELIBERATE AND IS NOT AN AUTHORITY. Every refusal below is
-// a SECOND copy of a rule `packages/orchestration/ui_server.py` already
-// enforces. The server's check stays the only authority; this one exists to
+// THE REFUSALS ARE NOT ALL MIRRORS, AND NONE OF THEM IS AN AUTHORITY. The
+// missing-id refusal, the nonce refusal and the not-open refusal are each a
+// SECOND copy of a rule `packages/orchestration/ui_server.py` already enforces:
+// for those the server's check stays the only authority, and this one exists to
 // spare the operator a round trip, never to replace it.
+//
+// THE BLANK-ANSWER REFUSAL IS THE BROWSER'S ALONE and mirrors nothing. The
+// server validates the answer's CONTENT not at all — `_dispatch_decision_resolve`
+// hands `args["answer"]` straight to `answer_task_decision`, which writes it and
+// returns — and answers are written ONCE, so a decision resolved with whitespace
+// is accepted 200, persisted, and can never be re-answered through this door.
+// That makes this the only place a blank answer can still be stopped. DECISION
+// F031 D14 rules the divergence deliberate and routes the server-side check to
+// F009, which owns the write door.
 import type { DecisionCardModel } from "./decisionCard";
 
 /** The command id the server routes a decision answer by, in the server's OWN
@@ -72,21 +84,26 @@ export function jobCommandsPath(jobId: string): string {
 }
 
 /** THE BUILDER: one card, one answer and one caller-supplied nonce become the
- *  exact body the commands endpoint accepts — or `null`, for exactly four
- *  reasons, each of them a body the server would refuse anyway. The model has no
- *  `id`, so no record could match it; the answer text is empty, so the decision
- *  would resolve with nothing; the nonce is outside the class the server
- *  enforces; or the decision is NOT open, which the server answers 409 because
- *  the record is absent or already resolved. */
+ *  exact body the commands endpoint accepts — or `null`, for the reasons named
+ *  here and no others. The model has no `id`, so no record could match it; the
+ *  answer text is blank once trimmed, so the decision would resolve with
+ *  nothing; the nonce is outside the class the server enforces; or the decision
+ *  is NOT open, which the server answers 409 because the record is absent or
+ *  already resolved. The answer it does send is the TRIMMED one. */
 export function buildDecisionResolveCommand(
   model: DecisionCardModel,
   answerText: string,
   clientNonce: string,
 ): DecisionResolveCommandBody | null {
+  // Trimmed once, then used for BOTH halves: the record is durable, so leading
+  // and trailing space is noise no reader asked for.
+  const trimmedAnswer = answerText.trim();
   if (model.id === "") {
     return null;
   }
-  if (answerText === "") {
+  // Refused because the record is written ONCE and the server checks nothing:
+  // a decision resolved with whitespace can never be re-answered.
+  if (trimmedAnswer === "") {
     return null;
   }
   if (!isUsableCommandNonce(clientNonce)) {
@@ -100,7 +117,7 @@ export function buildDecisionResolveCommand(
     client_nonce: clientNonce,
     args: {
       decision_id: model.id,
-      answer: answerText,
+      answer: trimmedAnswer,
     },
   };
 }

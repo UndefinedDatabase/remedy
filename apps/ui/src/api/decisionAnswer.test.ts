@@ -114,6 +114,23 @@ describe("buildDecisionResolveCommand", () => {
     expect(buildDecisionResolveCommand(modelFrom(openCardEntry()), "", GOOD_NONCE)).toBeNull();
   });
 
+  it("refuses a whitespace-only answer, which the server accepts and writes ONCE", () => {
+    const model = modelFrom(openCardEntry());
+    expect(buildDecisionResolveCommand(model, "   ", GOOD_NONCE)).toBeNull();
+    expect(buildDecisionResolveCommand(model, "\t", GOOD_NONCE)).toBeNull();
+    expect(buildDecisionResolveCommand(model, "\n \r\n", GOOD_NONCE)).toBeNull();
+  });
+
+  it("trims the answer it sends, so the write-once record carries no stray space", () => {
+    const body = buildDecisionResolveCommand(modelFrom(openCardEntry()), "  keep first\n", GOOD_NONCE);
+    expect(body?.args.answer).toBe("keep first");
+  });
+
+  it("trims only the edges, leaving the operator's own inner spacing alone", () => {
+    const body = buildDecisionResolveCommand(modelFrom(openCardEntry()), " keep  the first one ", GOOD_NONCE);
+    expect(body?.args.answer).toBe("keep  the first one");
+  });
+
   it("refuses a nonce outside the class the server enforces", () => {
     expect(buildDecisionResolveCommand(modelFrom(openCardEntry()), "keep first", "-bad/nonce")).toBeNull();
   });
