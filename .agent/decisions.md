@@ -8044,3 +8044,52 @@ split D17 chose is unchanged; only the round numbers moved.
 
 REVERSE IT by deleting the deadline seam and awaiting the submit directly. The
 outcome vocabulary needs no change, because nothing was added to it.
+
+## DECISION F031 D19 (2026-08-27) — the card offers no answer the door will refuse, and the door learns the one verb F009 extracted for it
+
+CHOSEN, THE ENDPOINT DERIVES ANSWERABILITY AND THE BROWSER NEVER GUESSES IT.
+`packages/orchestration/decision_inbox.py::build_decision_inbox` gains a THIRD
+derived key beside `age_seconds` and `blocked_count`, computed with the SAME
+predicate the door runs — whether `escalation.find_task_decision` finds the
+decision's id — so the rule that decides what may be posted is written once, on
+the side that owns the record. The docstring's "exactly two extra keys" sentence
+moves with the code. The alternative of branching on `card.type` in
+`decisionCard.ts` is REJECTED: `decisionAnswers` carries the architecture line
+"MUST NOT branch on `card.type`", which is what lets a type this repository has
+never produced render generically, and a second copy of the door's rule in the
+browser is exactly the drift that line exists to prevent.
+
+CHOSEN, A CARD THE DOOR CANNOT TAKE SHOWS ITS CLI LINE AS TEXT, NOT AS A BUTTON.
+The `next_actions` strings are already the exact command an operator can paste —
+`escalation.task_decision_answer_command` and `decision_queue`'s own `_actions`
+build them for that purpose — so they stay visible and stop being posted. The
+alternative of posting anyway and rendering the 409 is REJECTED: that is
+R-0693's defect stated as a design, and it teaches the operator only by failing.
+
+CHOSEN, F031 BUILDS THE `fp:`-PREFIXED DISPATCH RATHER THAN ROUTING IT AWAY.
+`.agent/decisions.md` records under F009 that the door would dispatch an
+`fp:`-prefixed id to `resolve_flight_plan_approval`, and that function exists
+with a docstring saying it was extracted "so the UI write door can reach the
+SAME code the CLI has always run" — so this is an unshipped CALL SITE for a verb
+already built for this caller, not a new capability, and it touches neither the
+nonce nor the audit behaviour `.agent/context.md` puts out of scope. Routing it
+to F009 as DECISION F031 D14 routed the blank-answer check is REJECTED here for
+one reason: F009 is CLOSED, and without this dispatch T003's clarification form
+has no destination and the feature's own Acceptance stays unmeetable.
+
+CHOSEN, THE OTHER SIX PREFIXES STAY UNANSWERABLE IN THE BROWSER FOR NOW. `pa:`,
+`sr:`, `tf:`, `dirty_repo`, the budget id and `mem:` have no package-level
+resolve verb at all, so each is a feature rather than a call site. They render,
+they show their CLI line, and F031 claims nothing else about them.
+
+CHOSEN, THE PROGRAMME IS THREE ROUNDS AND THE FORM IS LAST. R43 the derived key
+and the card; R44 the `fp:` dispatch; R45 the clarification FORM over
+`payload.clarifications`, whose records are `id`, `question`, `default_answer`
+and `impact` and whose answers reach the CLI's `--answer <id>=<value>` semantics
+through `apps/cli/commands/decision.py::parse_answer_options`. Building the form
+first is REJECTED: it would post into a 409 and add a second false affordance.
+
+REVERSE IT by deleting the third derived key, restoring the unconditional button
+and dropping the `fp:` branch from the door. Nothing in the read endpoint's
+existing two keys or in the CLI changes, so the reversal touches no other
+feature.
