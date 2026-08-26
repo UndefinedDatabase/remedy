@@ -1,52 +1,57 @@
-# Handback — F031 Decision inbox, round R42
+# Handback — F031 Decision inbox, ROUND R43
 
-Branch `feature/f031-decision-inbox`, tip `398e60e9` at C5 plus this C6. A state round: no code, no test, seven paths, all inside the block's change set.
+Branch: `feature/f031-decision-inbox` (never left; no branch created, no force-push,
+no amend/rebase/cherry-pick). Deviations, declared: 117 lines against the 100-line
+tier — cause is the mandated content itself (8 per-commit tables, an 18-row
+item-status table and nine one-line gate rows), per AGENTS.md DECISION D15.
 
 ## Range
 
-Review of `59521bf5`..HEAD (C0a `d4114fcb` through C6, this commit).
+Review of `5b810e33`..`HEAD` — C0a `02e8563b` through C6, the commit that writes
+this file and therefore cannot name its own SHA.
 
 ## Commits
 
-### d4114fcb docs(agent): save the F031 R42 block
+### 02e8563b docs(agent): save the F031 R43 step block
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f031-r42.md | +301/-0 | C0a — the block, copied byte for byte |
+| .agent/authored/f031-r43.md | +293/-0 | C0a, `shutil.copyfile` of the block |
 
-### 77eaab0f docs(agent): mirror the F031 R42 block into last_block
+### 558c7484 docs(agent): mirror the F031 R43 block into last_block
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/last_block.md | +239/-122 | C0b — same git blob as C0a |
+| .agent/last_block.md | +224/-232 | C0b, same git blob `2b7bd186` as C0a |
 
-### b75a5dc9 docs(agent): point the F031 plan at R42
+### dfce9f74 docs(agent): point the F031 plan at R43
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/plan.md | +23/-25 | C1 — whole-file PLANF031R42, 49 lines |
+| .agent/plan.md | +22/-22 | C1, PLANF031R43 byte for byte |
 
-### 773b4483 docs(agent): register the two findings the F031 R41 gate raised
+### 758e0344 docs(agent): register the finding the F031 R42 gate raised
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/live_review.md | +4/-0 | C2 — FINDINGS42 appended |
+| .agent/live_review.md | +2/-0 | C2, FINDINGS43 appended (R-0694) |
 
-### b00246cf docs(agent): record the F031 R41 verdict
+### a9b0d29f docs(agent): record the F031 R42 verdict
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/live_review.md | +2/-0 | C3 — LEDGER42 appended |
+| .agent/live_review.md | +2/-0 | C3, LEDGER43 appended (`Gate: F031 R42`) |
 
-### 845f2aba docs(agent): land DECISION F031 D19
+### 7cbff830 docs(agent): land DECISION F031 D20 splitting the D19 programme
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/decisions.md | +49/-0 | C4 — DECISION19 appended |
+| .agent/decisions.md | +22/-0 | C4, DECISION20 appended |
 
-### 398e60e9 docs(roadmap): mirror DECISION F031 D19 into the feature file
+### f86c0b8f feat(orchestration): derive whether the write door can answer a decision card
 | Path | +/- | Reason |
 |---|---|---|
-| docs/roadmap/features/T5_F031.md | +26/-0 | C5 — AMEND42 appended |
+| packages/orchestration/decision_inbox.py | +34/-4 | C5, S1–S5 |
+| tests/orchestration/test_decision_inbox.py | +31/-3 | C5, S6–S8 |
 
-### C6 — this commit (self-reference, R-0149 pattern)
+### C6 (this commit) docs(agent): write the F031 R43 handback
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/handoff.md | self | C6 — a handoff cannot table the commit that writes it |
+| .agent/handoff.md | whole-file rewrite | C6 cannot table itself (R-0149 pattern) |
 
 ## Item status
 
@@ -59,37 +64,54 @@ Review of `59521bf5`..HEAD (C0a `d4114fcb` through C6, this commit).
 | C3 | done | |
 | C4 | done | |
 | C5 | done | |
-| C6 | done | |
-| push | done | ordered after C6; its reading is the reviewer's at the next gate |
+| C6 | done | this file |
+| S1 | done | decision_inbox.py:29 `find_task_decision` import; acyclic, verified |
+| S2 | done | decision_inbox.py:75-96, body is the `is not None` expression alone |
+| S3 | done | decision_inbox.py:88-94, the deliberate absence in as many words |
+| S4 | done | decision_inbox.py:122-124, third key, existing two unchanged |
+| S5 | done | 2 stale sentences found in that file: line 6 module docstring, line 106 `build_decision_inbox` docstring; both corrected. Post-C5 sweep for `two`/standalone `2` in decision_inbox.py returns 0 lines |
+| S6 | done | test file:281 comment, 285 rename to `..._plus_exactly_three`, 288-292 expected set |
+| S7 | done | test file:39-43 `ANSWERABLE_DECISION_TYPES`, 310-318 the parametrized test over the existing `PRODUCING_FIXTURES`; no new fixture |
+| S8 | done | test file:179-180 presence + `isinstance(..., bool)` |
+| S9 | done | diff shows no other change; no test deleted, no assertion weakened |
+| push | done | `git push origin feature/f031-decision-inbox` after C6 |
 
 ## External actions
 
-`git push origin feature/f031-decision-inbox` after C6. No PR, no `gh` command, no
-worktree added — so none was removed; `.remedy-wt/f031-r42-block.md` left in place.
+- `git worktree add .remedy-wt/r43-mut f86c0b8f` — created for G7 only.
+- `git worktree remove .remedy-wt/r43-mut` — removed by exact path; `git worktree list` 1 line.
+- `git push origin feature/f031-decision-inbox` after C6. No PR create/edit/merge, no `gh`.
 
-## Verification — one line per gate, real exit codes
+## Verification
 
-- G1 exit 0. Branch `feature/f031-decision-inbox`; `git status --porcelain` printed 0 lines after each of C0a, C0b, C1, C2, C3, C4 and C5; `.agent/STOP` read from disk before C0a and again before C6, ABSENT both times; the block reads sha256 `e5c6458b420a0730f40fd3788e7c66e568d09a2e8fbdab495841060af88a94ae`, 28680 bytes, 301 lines as the C0a blob, as the C0b blob and off disk at C5 — all three EQUAL — and C0a and C0b are the SAME git blob `e5402d9d`.
-- G2 exit 0. The extractor printed 5 slices from the COMMITTED C0a blob by their marker LINES (PLANF031R42 49, FINDINGS42 3, LEDGER42 1, DECISION19 48, AMEND42 25): CONTENT 126, TOTAL 301, PROSE 175 with the 10 marker lines counted as PROSE — 175 ≤ 400 and 301 ≤ 490.
-- G3 exit 0. `.agent/plan.md` at C1 is BYTE-EQUAL to PLANF031R42 newline-included at 2932 bytes TRUE; the negative control against the slice minus its trailing newline is FALSE; `^## Goal$` 1, `^## Next Steps$` 1, `wc -l` 49 — STRICTLY under 50, so R-0692's on-disk breach is repaired and this gate is green.
-- G4 exit 0. C2: 825662 + 1 + 5345 = 831008 against an actual 831008, the pre-commit blob a byte-exact prefix, reader B's blank-line units 343 → 345 with the last unit equal to FINDINGS42's final paragraph and units 0–342 unchanged, the in-slice ordered swap of its two paragraphs FALSE, three in-memory byte flips REJECTED by both readers. C3: 831008 + 1 + 3589 = 834598 against an actual 834598, prefix exact, units 345 → 346 with the last unit equal to LEDGER42's paragraph; LEDGER42 is ONE paragraph so its in-slice reversal is the identity and is declared DEGENERATE, the cross-slice swap against FINDINGS42's last paragraph is FALSE in both directions, and three flips are REJECTED by both readers. The tracked file was never mutated for a control.
-- G5 exit 0. Before C2 / after C2 / after C3 — `^- R-\d+ — ` 252 / 254 / 254 with ADDED across C2 exactly the pair `R-0692` and `R-0693` and REMOVED empty, and ADDED and REMOVED both empty across C3; `^Done: R-\d+ — ` 5 / 5 / 5; `^Landed: R-` 0 / 0 / 0; `^Gate: R\d+ — ` 19 / 19 / 19; `^Gate: F\d+ R\d+ — ` 22 / 22 / 23 with the ADDED key across C3 exactly `F031 R41` and REMOVED empty. All ids DISTINCT at all three points; the maximum id is `R-0691` before C2 and `R-0693` after. Open set (`^- R-\d+ — ` minus `^Done: R-\d+ — `) 247 before C2 and 249 after C3.
-- G6 exit 0. `.agent/decisions.md` at C4: 599241 + 1 + 3253 = 602495 against an actual 602495, prefix exact, blank-line units 1439 → 1446 with the last unit equal to DECISION19's final paragraph, `^## DECISION F031 D\d+ ` 18 before and 19 after, three in-memory flips REJECTED by both readers. `docs/roadmap/features/T5_F031.md` at C5: 9804 + 1 + 1647 = 11452 against an actual 11452, prefix exact, units 21 → 24 with the last unit equal to AMEND42's final paragraph, `^## Design amendments ` 3 before and 4 after, three flips REJECTED by both readers.
-- G7 exit 0. Line-anchored `^<<<SLICE ` and `^<<<END ` are 0 and 0 in `.agent/plan.md` at C1, `.agent/live_review.md` at C3, `.agent/decisions.md` at C4 and the feature file at C5, against a live CONTROL of 5 and 5 over the C0a blob. `git diff --name-only 3afdb209..398e60e9` prints 8 paths and equals the expected UNION of R41's five (`authored/f031-r41.md`, `last_block.md`, `plan.md`, `live_review.md`, `handoff.md`) and this round's six (`authored/f031-r42.md`, `last_block.md`, `plan.md`, `live_review.md`, `decisions.md`, `T5_F031.md`) EXACTLY in BOTH directions — range minus union empty, union minus range empty. Insertions from `git diff --numstat`: 301, 239, 23, 4, 2, 49, 26 — each single-parent and each far under 500. `git ls-files .remedy-wt` 0 lines; `git worktree list` 1 line. All 7 reflog operations for this round read `commit`; `amend`, `rebase` and `cherry` are 0 each.
-- G8 exit 0 on every suite, run SERIALLY in the PRIMARY checkout at C5 with never two pytest processes alive: `tests/ui_server/` 480 passed, `tests/orchestration/test_test_runner.py` 52, `tests/regression/test_resource_safety.py` 21, `tests/orchestration/test_integrity_gate.py` 16, `tests/docs/` 295, `tests/orchestration/test_roadmap_index.py` 30, the canary `tests/cli/test_golden_path.py` 42 — every count identical to the `59521bf5` baseline — and `tests/ui_contracts/` 556 passed with 4 skipped, UNCHANGED. No suite went red, so no `FAILED` node ids existed to capture and no five-fold re-run was owed; the reviewer's one unreproduced red of `test_test_runner.py` did not recur.
+- G1 exit 0 — branch correct; `git status --porcelain` 0 lines after C0a/C0b/C1/C2/C3/C4/C5; `.agent/STOP` ABSENT before C0a and before C6. Block at C0a, at C0b and off disk at C5 all sha256 `e75fd033eea7922a3d4c222c906a9ce3f84b7f0697aefaf314a54d566a3d4c70`, 26648 bytes, 293 lines — all three EQUAL; C0a and C0b are the SAME git blob `2b7bd186`.
+- G2 exit 0 — extractor printed 4 slices from the committed C0a blob. TOTAL 293, CONTENT 72, PROSE 221 (markers counted as prose). 221 ≤ 400, 293 ≤ 490.
+- G3 exit 0 — `.agent/plan.md` at C1 byte-equal to PLANF031R43 TRUE (newline-included); minus-trailing-newline control FALSE; `^## Goal$` 1, `^## Next Steps$` 1, `wc -l` 49 (< 50).
+- G4 exit 0 — C2: 834598 + 1 + 2735 = 837334, reader A TRUE, N=1, units 346→347, reader B TRUE. C3: 837334 + 1 + 4159 = 841494, reader A TRUE, N=1, units 347→348, reader B TRUE. C4: 602495 + 1 + 1427 = 603923, reader A TRUE, N=4, units 1446→1450, reader B TRUE. N counted by my script, never read from the block. Negative control (one byte flipped in memory in appended paragraph 1) REJECTED by BOTH readers on all three. For FINDINGS43 and LEDGER43 N is 1, so paragraph 1 is also the last. No tracked file mutated.
+- G5 exit 0 — `^- R-\d+ — ` 254 → 255 → 255, ADDED across C2 exactly {R-0694}, REMOVED empty, none added/removed at C3; all ids DISTINCT, max `R-0694`. `^Done: R-\d+ — ` 5, `^Landed: R-` 0, `^Gate: R\d+ — ` 19 at all three points. `^Gate: F\d+ R\d+ — ` 23 → 23 → 24, ADDED key exactly `F031 R42`. Open set 249 before C2, 250 after C3. `^## DECISION F031 D\d+ ` 19 before C4, 20 after.
+- G6 exit 0 — S1–S9 all DONE with file:line above. Sweep of decision_inbox.py at C5 for `two` or standalone `2`: 0 lines. `python3 -m ruff check` on both changed files REAL exit 0, "All checks passed!". `assert` statements in the test file (AST count) 18 before, 21 after.
+- G7 exit 0 primary / 1 + 1 mutated — primary at C5: `pytest tests/orchestration/test_decision_inbox.py -q` REAL exit 0, 33 passed (25 at `5b810e33`). Mutation (a) helper returns True unconditionally: REAL exit 1, 7 failed / 26 passed, FAILED `test_answerable_key_matches_what_the_write_door_accepts[{patch_approval,stop_reason,test_failure,repo_dirty,token_budget,memory_review,flight_plan_approval}]`. Mutation (b) S4 assignment deleted: REAL exit 1, 17 failed / 16 passed, FAILED all 8 `test_card_appears_for_each_producing_type[...]`, `test_card_keys_are_the_export_keys_plus_exactly_three`, and all 8 `test_answerable_key_matches_what_the_write_door_accepts[...]`. Both ran only in `.remedy-wt/r43-mut`, restored between them (byte-equality re-checked TRUE both times).
+- G8 exit 0 — `^<<<SLICE `/`^<<<END ` are 0/0 in plan.md@C1, live_review.md@C3, decisions.md@C4 and BOTH files C5 touches, against a live CONTROL of 4/4 over the C0a blob. `git diff --name-only 59521bf5..f86c0b8f` is 10 paths; range MINUS expected union = [], union MINUS range = [] — exact both ways. Insertions 293, 224, 22, 2, 2, 22, 65 — each single-parent and under 500. `git ls-files .remedy-wt` 0; `git worktree list` 1 line at C5 after removal. Every reflog entry for the 7 commits reads `commit:`; `amend` 0, `rebase` 0, `cherry` 0.
+- G9 exit 0 — serially in the primary checkout at C5, one pytest process at a time: `tests/ui_server/` 480 passed; `tests/orchestration/test_test_runner.py` 52 passed; `tests/regression/test_resource_safety.py` 21 passed; `tests/orchestration/test_integrity_gate.py` 16 passed; canary `tests/cli/test_golden_path.py` 42 passed; `tests/ui_contracts/` 556 passed, 4 skipped. Every one REAL exit 0 and identical to the `5b810e33` baseline. NO RED — the unreproduced `test_test_runner.py` red the reviewer saw in dry runs did not recur, so no five-times re-run was triggered.
 
 ## Authored-text proofs
 
-All five slices were extracted from the COMMITTED C0a blob `e5402d9d` by their marker LINES — never from the prompt, never from `.remedy-wt/`. Disk-to-disk: the C0a file, `.agent/last_block.md` and `.remedy-wt/f031-r42-block.md` all read sha256 `e5c6458b…` at 28680 bytes and 301 lines, and C0a and C0b are one git blob. Each slice's landing is proved byte-exactly under G3, G4 and G6 above.
-
-## Findings
-
-R-0692 (Medium) and R-0693 (High) were REGISTERED at C2 and NEITHER was fixed here, per constraint 4: R-0692's repair IS C1's plan slice, now 49 lines, and R-0693's is the three-round programme DECISION F031 D19 rules, which starts at R43. Open findings: 249.
+Disk-to-disk against the COMMITTED `.agent/authored/f031-r43.md` blob (`2b7bd186`), never the prompt:
+- PLANF031R43 → `.agent/plan.md` at C1: byte-equal TRUE, negative control FALSE.
+- FINDINGS43 → `.agent/live_review.md` at C2: appended exactly, both readers TRUE, flip REJECTED.
+- LEDGER43 → `.agent/live_review.md` at C3: appended exactly, both readers TRUE, flip REJECTED.
+- DECISION20 → `.agent/decisions.md` at C4: appended exactly, both readers TRUE, flip REJECTED.
+- The C5 Python is authored to section S's SPEC, not sliced. No slice was retyped, reflowed or corrected.
 
 ## Deviations & assumptions
 
-None. The ordered sequence C0a, C0b, C1, C2, C3, C4, C5, C6 ran in exactly that order — no extra commit, none dropped, none reordered — and no path outside the block's change set was written. Nothing under `apps/`, `tests/` or `packages/` was touched. No worktree was created, so none was removed.
+- No departure from the ordered commit sequence: C0a, C0b, C1, C2, C3, C4, C5, C6 landed in that order, no extra commit, none dropped, none reordered.
+- BLOCK TEXT DISCREPANCY, reported not corrected: constraint 2 says "the five marked SLICES", but the block carries FOUR (PLANF031R43, FINDINGS43, LEDGER43, DECISION20) and my extractor printed 4 against a CONTROL of 4/4 markers. The bundle line and the `Change:` list are consistent with four; I applied four and changed nothing.
+- R-0694: REGISTERED at C2 as Low — a fix clause saying "binding on the next block" that lives only in ledger prose, so R42's block did not apply R-0631's clause. It is deliberately NOT FIXED here: the repair is a new item in `docs/agents/planner_reviewer_prompt.md` §3, which is the reviewer's own file and is not in this round's change set. R43's G4 applied R-0631's clause by hand instead.
+- Open findings after C3: 250 (255 `^- R-\d+ — ` minus 5 `^Done: R-\d+ — `).
 
 ## Next
 
-Re-read `.agent/STOP` from disk FIRST, then the Open PR Gate, then review this round's handback, then R43 — `build_decision_inbox`'s third derived key and the card that renders no button the door refuses.
+Re-read `.agent/STOP` from disk FIRST; then the Open PR Gate; then review this
+round's handback; then R44 — the browser half of DECISION F031 D19: the model
+field and the card that renders no button the door refuses.
