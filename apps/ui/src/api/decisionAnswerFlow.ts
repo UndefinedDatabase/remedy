@@ -39,7 +39,7 @@
 // IT OPENS NO SOCKET OF ITS OWN and touches no storage. The network is reached
 // only through the injected submit, which is still `decisionSubmit.ts`.
 // IT RENDERS NOTHING AND KNOWS NO COMPONENT. It answers a value; the card that
-// shows it is R37's.
+// shows it is `DecisionInboxCard.tsx`.
 import type { DecisionCardModel } from "./decisionCard";
 import { mintDecisionClientNonce } from "./decisionNonce";
 import { buildDecisionSendRequest } from "./decisionSend";

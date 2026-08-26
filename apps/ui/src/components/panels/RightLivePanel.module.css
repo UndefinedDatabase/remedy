@@ -275,6 +275,19 @@
    applies — every colour resolves to a custom property
    apps/ui/src/styles/tokens.css already defines. */
 .decisionOutcome { flex-basis: 100%; margin: 0; font-size: 12px; line-height: 1.45; }
+/* THE EMPTY REGION IS COLLAPSED, NEVER REMOVED (finding R-0686). The card
+   renders this paragraph from a decision row's FIRST render, before it has
+   anything to say, because assistive technology registers a live region when
+   the node ENTERS the accessibility tree and announces later MUTATIONS of it —
+   a region inserted already populated announces nothing. THREE MECHANISMS ARE
+   EXCLUDED HERE ON PURPOSE, so the next reader does not tidy this up with one
+   of them: display: none, visibility: hidden and the hidden attribute each
+   REMOVE the node from that tree, which would reinstate R-0686 in a form that
+   looks fixed. Taking the empty paragraph OUT OF FLOW collapses it instead —
+   it has no content, .decisionOutcome above gives it no margin, and an
+   out-of-flow box forces no flex line on the .decisionAnswers strip, whose
+   gap would otherwise show as a stray 8px after every button. */
+.decisionOutcomeQuiet { position: absolute; }
 .decisionOutcomeOk { color: var(--remedy-green-500); }
 .decisionOutcomeWarn { color: var(--remedy-orange-400); }
 .decisionOutcomeError { color: var(--remedy-red-500); }

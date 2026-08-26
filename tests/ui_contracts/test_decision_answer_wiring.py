@@ -25,6 +25,7 @@ SHELL = UI_SRC / "components" / "shell" / "RemedyShell.tsx"
 PANEL = UI_SRC / "components" / "panels" / "RightLivePanel.tsx"
 CARD = UI_SRC / "components" / "panels" / "DecisionInboxCard.tsx"
 CARD_CSS = UI_SRC / "components" / "panels" / "RightLivePanel.module.css"
+FLOW = UI_SRC / "api" / "decisionAnswerFlow.ts"
 
 
 def strip_ts_comments(text: str) -> str:
@@ -44,6 +45,19 @@ def strip_ts_comments(text: str) -> str:
             out.append(text[i])
             i += 1
     return "".join(out)
+
+
+def decision_outcome_css_rules(css: str) -> str:
+    """Every rule in the stylesheet whose selector names a `.decisionOutcome`
+    class, comments already gone. Scoped on purpose: `overflow: hidden` and
+    friends live elsewhere in this sheet quite legitimately, and a whole-file
+    sweep for a hiding mechanism would read them as this region's."""
+    rules: list[str] = []
+    for chunk in strip_ts_comments(css).split("}"):
+        selector, brace, body = chunk.partition("{")
+        if brace and selector.strip().startswith(".decisionOutcome"):
+            rules.append(f"{selector.strip()} {{{body}}}")
+    return "\n".join(rules)
 
 
 class TestCommentStripping:
@@ -177,8 +191,9 @@ class TestTheRetiredAndDeliberateAbsences:
 
     def test_the_buttons_are_not_unconditionally_disabled(self):
         code = strip_ts_comments(CARD.read_text())
-        assert "disabled={sendingKey === answerKey}" in code, (
-            "a button is disabled only while ITS OWN answer is on the wire"
+        assert "disabled={sendingKeys.has(answerKey)}" in code, (
+            "a button is disabled only while ITS OWN answer is on the wire, and "
+            "it reads its own key alone to know that (finding R-0687)"
         )
 
     def test_the_card_never_dispatches_on_a_decisions_type_or_status(self):
@@ -196,3 +211,90 @@ class TestTheRetiredAndDeliberateAbsences:
                 "reaches, which is the absence this component's own header "
                 "promises (DECISION F031 D5)"
             )
+
+
+class TestTheOutcomeRegionExistsBeforeItSpeaks:
+    """Finding R-0686. Assistive technology registers a live region when the node
+    ENTERS the accessibility tree and announces later MUTATIONS of it, so the
+    region must be rendered from a row's first render and only its TEXT may be
+    conditional. No source predicate can see the accessibility tree, so what is
+    pinned here is the SHAPE that produces it — and, just as hard, the three
+    hiding mechanisms that would quietly undo it."""
+
+    def test_the_region_is_rendered_empty_rather_than_created_with_its_sentence(self):
+        code = strip_ts_comments(CARD.read_text())
+        assert '{outcome === null ? "" : outcome.sentence}' in code, (
+            "the paragraph carrying aria-live must exist before there is an "
+            "outcome; only the sentence inside it may be conditional"
+        )
+
+    def test_the_region_is_never_conditionally_created(self):
+        code = strip_ts_comments(CARD.read_text())
+        assert "outcome === null ? null :" not in code, (
+            "a region inserted already populated announces nothing, which is "
+            "exactly the shape finding R-0686 registered"
+        )
+
+    def test_the_empty_region_is_collapsed_out_of_flow(self):
+        rules = decision_outcome_css_rules(CARD_CSS.read_text())
+        assert ".decisionOutcomeQuiet { position: absolute; }" in rules, (
+            "the empty region is collapsed by leaving the flow, which keeps the "
+            "node in the accessibility tree and forces no flex line on the "
+            "answer strip"
+        )
+
+    def test_the_outcome_rules_never_use_a_mechanism_that_removes_the_node(self):
+        rules = decision_outcome_css_rules(CARD_CSS.read_text())
+        for forbidden in ("display: none", "visibility: hidden"):
+            assert forbidden not in rules, (
+                f"{forbidden} removes the region from the accessibility tree "
+                "and reinstates R-0686 in a form that looks fixed"
+            )
+
+    def test_the_card_never_hides_the_region_with_the_hidden_attribute(self):
+        code = strip_ts_comments(CARD.read_text())
+        assert "hidden" not in code, (
+            "the hidden attribute removes the node from the accessibility tree "
+            "just as surely as display: none does; the WHY comment naming all "
+            "three is stripped before this assertion, so only real markup counts"
+        )
+
+
+class TestOnePressTouchesOnlyItsOwnButton:
+    """Finding R-0687. A button must stay disabled until ITS OWN send settles,
+    which a single in-flight key could not promise: a second press overwrote it
+    and re-enabled the first answer's button mid-flight."""
+
+    def test_a_press_removes_only_its_own_key_when_it_settles(self):
+        code = strip_ts_comments(CARD.read_text())
+        assert "setSendingKeys((sofar) => withoutAnswerKey(sofar, answerKey))" in code, (
+            "a settled send clears its own key out of the set and no other, so "
+            "one answer's outcome can never re-enable another's button"
+        )
+
+    def test_no_third_writer_can_clear_the_in_flight_set(self):
+        code = strip_ts_comments(CARD.read_text())
+        assert code.count("setSendingKeys(") == 2, (
+            "exactly two writers — the press that adds its key and the settle "
+            "that removes it; a third would be the bulk clear this finding is "
+            "about"
+        )
+
+
+class TestTheFlowHeaderNamesItsCard:
+    """Finding R-0688. A forward reference written as a ROUND NUMBER resolves to
+    nothing a reader can open and goes stale on a schedule nobody tracks."""
+
+    def test_the_header_names_the_component_that_shows_the_sentence(self):
+        raw = FLOW.read_text()
+        assert "DecisionInboxCard.tsx" in raw, (
+            "the card that shows the flow's sentence is a path a reader can "
+            "open, and it is the one this header must name"
+        )
+
+    def test_the_header_routes_no_reader_to_a_round_number(self):
+        raw = FLOW.read_text()
+        assert "R37" not in raw, (
+            "the sentence being fixed IS a comment, so this one reads the RAW "
+            "text: stripping would delete the very evidence"
+        )

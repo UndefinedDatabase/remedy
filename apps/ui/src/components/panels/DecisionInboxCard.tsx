@@ -43,7 +43,8 @@
 // the request, posts it and says what happened, all behind the one call
 // `answerDecisionCard` below makes on a click, so the buttons ship ENABLED and a
 // press really reaches `/api/jobs/<job_id>/commands`. This component owns only
-// WHICH answer is in flight, WHERE its sentence appears and WHAT COLOUR it takes.
+// WHICH answers are in flight, WHERE their sentences appear and WHAT COLOUR
+// each one takes.
 import { Fragment, useState } from "react";
 import { countOpenDecisions } from "../../api/decisionCard";
 import type { DecisionCardModel } from "../../api/decisionCard";
@@ -77,6 +78,23 @@ function decisionRowKey(decisionIndex: number, decisionId: string): string {
 
 function decisionAnswerKey(decisionIndex: number, decisionId: string, answerIndex: number): string {
   return `${decisionRowKey(decisionIndex, decisionId)}-${answerIndex}`;
+}
+
+/** ONE PRESS TOUCHES ONLY ITS OWN KEY, and that is the whole point of these two
+ *  (finding R-0687). Each copies the in-flight set before changing it, so React
+ *  sees a new identity and no press can add, clear or re-enable another answer's
+ *  button; mutating the set in place would both skip the re-render and make one
+ *  press the owner of every other answer's disabled state. */
+function withAnswerKey(sending: ReadonlySet<string>, answerKey: string): ReadonlySet<string> {
+  const next = new Set(sending);
+  next.add(answerKey);
+  return next;
+}
+
+function withoutAnswerKey(sending: ReadonlySet<string>, answerKey: string): ReadonlySet<string> {
+  const next = new Set(sending);
+  next.delete(answerKey);
+  return next;
 }
 
 /** What the chip strip is called for a reader who cannot see it grouped. It is
@@ -119,10 +137,16 @@ export function DecisionInboxCard({ decisions, tasks, jobId, serverToken, onSele
   onSelectNode: (nodeId: string | null) => void;
 }) {
   const [chosenType, setChosenType] = useState<string>(DECISION_FILTER_ALL);
-  // WHICH answer is waiting on the wire, as ONE key rather than a set: an
-  // operator can only have pressed one button last, and a single key is what
-  // makes "no other button is disabled" true by construction.
-  const [sendingKey, setSendingKey] = useState<string | null>(null);
+  // WHICH answers are waiting on the wire, as a SET of keys rather than one key
+  // (finding R-0687). The guarantee this shape makes, and the weaker one a
+  // single key made, are not the same sentence: a button stays disabled until
+  // ITS OWN send settles, because membership is tested per answer key and each
+  // press adds and removes only its own. A single key held only "no other button
+  // is disabled at this instant", so a second press re-enabled the first
+  // answer's button while its request was still on the wire and the operator
+  // could send it twice — a 409 and a sentence about a decision they had just
+  // answered.
+  const [sendingKeys, setSendingKeys] = useState<ReadonlySet<string>>(new Set());
   // Keyed per ANSWER, never per decision: a row's key already carries the
   // model's position, so an id two cards share cannot make them speak as one.
   const [outcomes, setOutcomes] = useState<Record<string, DecisionOutcomeMessage | undefined>>({});
@@ -221,33 +245,41 @@ export function DecisionInboxCard({ decisions, tasks, jobId, serverToken, onSele
                   {decision.answers.map((answer, answerIndex) => {
                     const answerKey = decisionAnswerKey(decisionIndex, decision.id, answerIndex);
                     const outcome = outcomes[answerKey] ?? null;
+                    // THE REGION EXISTS BEFORE IT HAS ANYTHING TO SAY, so only
+                    // its CLASS is chosen here (finding R-0686). Quiet is the
+                    // empty state's collapse, and RightLivePanel.module.css
+                    // says there why it is done out of flow rather than with
+                    // display: none, visibility: hidden or the hidden
+                    // attribute — each of those would take the region out of
+                    // the accessibility tree and silence it again.
+                    const outcomeClass = outcome === null
+                      ? `${styles.decisionOutcome} ${styles.decisionOutcomeQuiet}`
+                      : `${styles.decisionOutcome} ${DECISION_OUTCOME_CLASS[outcome.tone]}`;
                     return (
                       <Fragment key={answerKey}>
                         <button
                           type="button"
                           className={styles.decisionAnswer}
-                          disabled={sendingKey === answerKey}
+                          disabled={sendingKeys.has(answerKey)}
                           onClick={async () => {
-                            setSendingKey(answerKey);
+                            setSendingKeys((sofar) => withAnswerKey(sofar, answerKey));
                             const message = await answerDecisionCard(target, decision, answer.value);
-                            setSendingKey(null);
+                            setSendingKeys((sofar) => withoutAnswerKey(sofar, answerKey));
                             setOutcomes((sofar) => ({ ...sofar, [answerKey]: message }));
                           }}
                         >
                           {answer.label}
                         </button>
-                        {/* It ANNOUNCES itself: this sentence appears under a
-                            control the operator just pressed, so a silent
-                            insertion would leave a screen reader on the button
-                            with nothing said. */}
-                        {outcome === null ? null : (
-                          <p
-                            className={`${styles.decisionOutcome} ${DECISION_OUTCOME_CLASS[outcome.tone]}`}
-                            aria-live="polite"
-                          >
-                            {outcome.sentence}
-                          </p>
-                        )}
+                        {/* It ANNOUNCES itself, which is why the paragraph is
+                            rendered EMPTY from this row's first render and
+                            filled in later: a screen reader registers a live
+                            region when the node enters the accessibility tree
+                            and announces later MUTATIONS of it, so a region
+                            created together with its first sentence would leave
+                            the operator on the button with nothing said. */}
+                        <p className={outcomeClass} aria-live="polite">
+                          {outcome === null ? "" : outcome.sentence}
+                        </p>
                       </Fragment>
                     );
                   })}
