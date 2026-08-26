@@ -7887,3 +7887,42 @@ this feature has no business editing.
 
 REVERSE THE DIVERGENCE by deleting the trim refusal, and the target by inlining its
 two fields back into the parameter list.
+
+## DECISION F031 D15 (2026-08-26) — the decision card's deep link is its OWN control in the chip row, and a card that cannot jump shows nothing
+
+CHOSEN, THE FEED'S RULE WITHOUT THE FEED'S SHAPE. A decision card's jump is a
+single `<button>` inside the existing `.decisionChips` strip of
+`apps/ui/src/components/panels/DecisionInboxCard.tsx`, after the age, blocked-size
+and type chips. `ActivityFeedCard` makes the ENTIRE row the button under the
+comment "Only a row that can really jump becomes a button, so the affordance never
+lies", and that RULE is copied here verbatim in intent. Its SHAPE is not: a
+decision row already contains the answer buttons, so wrapping the row would nest
+one interactive control inside another — invalid HTML, and a nesting no keyboard
+user can unpick, because the inner buttons stop being reachable as themselves.
+Two rows, two shapes, one rule.
+
+CHOSEN, A NULL RENDERS NOTHING AT ALL. When `nodeIdForDecisionCard` answers
+`null` — a decision naming no task, or naming one this dashboard does not carry —
+the card renders no control, not a disabled one and not a placeholder. That is
+`apps/ui/src/api/decisionFocus.ts`'s own contract ("a null is NOT a failure") and
+DECISION F031 D12's reasoning applied at the call site: an affordance that cannot
+act must not appear to offer the action. THE DISABLED ANSWER BUTTONS BESIDE IT ARE
+A DIFFERENT CASE and deliberately stay: there the action EXISTS and is merely not
+built yet, which is what `ANSWER_PENDING_TITLE` says on the control itself, so a
+disabled control is the honest rendering rather than a lie.
+
+ALTERNATIVE CONSIDERED. Making the card's TITLE the button: rejected because the
+title is CONTENT — the decision's own text, projected from its model — and turning
+it into a control erases the line between reading a decision and navigating away
+from it. A reader would lose the one string on the card that is purely the
+question being asked.
+
+WHAT GATES THIS. No test reaches this markup: the shipped vitest config collects
+`src/**/*.test.ts` and this repository has no DOM harness (DECISION F031 D5). The
+wiring is gated by `tsc` — the panel's hand-down is REQUIRED, not optional, so a
+dropped prop is a type error rather than a silent `undefined` — by
+`tests/ui_contracts/` for the new `.decisionJumpChip` rule, and by review. That is
+the known cost of D5, which is also why the resolver itself shipped tested first.
+
+REVERSE IT by deleting the control and its `.decisionJumpChip` rule; nothing else
+depends on either.

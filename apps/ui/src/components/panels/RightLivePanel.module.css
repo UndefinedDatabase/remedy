@@ -226,6 +226,32 @@
   font-size: 11px;
   color: var(--remedy-muted);
 }
+/* The card's DEEP LINK chip (T5_F031 T003, DECISION F031 D15). It rides in the
+   .decisionChips strip above, so it takes .decisionFilterChip as its model —
+   that is this card's existing INTERACTIVE chip, and the scale both of them use
+   is the .decisionChip scale directly above rather than the glass dock. The
+   focus ring names --remedy-blue-strong and not the reference sheet's
+   --remedy-focus, for the reason .decisionFilterChip:focus-visible records
+   below: tokens.css has never adopted that name, and an unresolved custom
+   property would drop the whole declaration (R-0661). */
+.decisionJumpChip {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: var(--remedy-radius-pill);
+  background: var(--remedy-bg-2);
+  border: 1px solid var(--remedy-line-strong);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--remedy-muted);
+  cursor: pointer;
+}
+.decisionJumpChip:hover { border-color: var(--remedy-blue-strong); color: var(--remedy-ink); }
+.decisionJumpChip:focus-visible {
+  outline: 2px solid var(--remedy-blue-strong);
+  outline-offset: 2px;
+}
+
 .decisionAnswers { display: flex; flex-wrap: wrap; gap: 8px; }
 .decisionAnswer {
   height: 30px;

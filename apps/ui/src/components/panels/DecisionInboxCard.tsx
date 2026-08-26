@@ -1,8 +1,13 @@
-// The decision inbox's CARD, as a pure PROJECTION of the models `decisionCard.ts`
+// The decision inbox's CARD, as a PROJECTION of the models `decisionCard.ts`
 // builds (T5_F031 T002a, DECISION F031 D4). It reads `dashboard.decisionInbox`
-// through its one prop and adds nothing of its own: every string it displays is
-// a FIELD — of a model, or of a chip `decisionFilter.ts` derived — never a value
-// this file chose.
+// through its own prop, and takes the dashboard's task list and the
+// node-selecting callback beside it. The two halves of what a reader sees are
+// split on purpose: the CONTENT of a card is always a FIELD — of a model, or of
+// a chip `decisionFilter.ts` derived — and no string this file invented ever
+// reaches it, while the FIXED AFFORDANCE LABELS are this file's own and every
+// one of them is declared as a `const` directly below rather than written
+// inline at its control, so the whole vocabulary this component adds is
+// readable in one place.
 //
 // THE ARCHITECTURE LINE, written down here because a reader looking for the
 // missing code will search this file for it: Remedy deliberately does NOT
@@ -33,6 +38,8 @@ import { useState } from "react";
 import { countOpenDecisions } from "../../api/decisionCard";
 import type { DecisionCardModel } from "../../api/decisionCard";
 import { DECISION_FILTER_ALL, decisionInboxView } from "../../api/decisionFilter";
+import { nodeIdForDecisionCard } from "../../api/decisionFocus";
+import type { FocusableTask } from "../../api/feedFocus";
 import styles from "./RightLivePanel.module.css";
 
 /** Why answering does nothing yet, said on the control itself rather than left
@@ -51,10 +58,24 @@ const FILTER_CHIPS_LABEL = "Filter decisions by type";
  *  needs no plural branch in this markup, which no test reaches. */
 const OPEN_COUNT_LABEL = "Open decisions waiting";
 
+/** The jump control's own word, kept chip-row short because it rides in the
+ *  strip beside the age, blocked-size and type chips. */
+const DECISION_JUMP_LABEL = "In graph";
+
+/** Where that control goes, said on the control itself in the same idiom as
+ *  ANSWER_PENDING_TITLE above. A `title` rather than an `aria-label`: an
+ *  `aria-label` REPLACES the button's content in the accessibility tree, and the
+ *  visible word would then be missing from the accessible name it explains. */
+const DECISION_JUMP_TITLE = "Show this decision's task in the graph";
+
 /** Every open question in one calm place. With no models this renders nothing at
  *  all — an empty inbox is not news, exactly as `NeedsAttentionCard` shows
  *  nothing when it has no item. */
-export function DecisionInboxCard({ decisions }: { decisions: DecisionCardModel[] }) {
+export function DecisionInboxCard({ decisions, tasks, onSelectNode }: {
+  decisions: DecisionCardModel[];
+  tasks: readonly FocusableTask[];
+  onSelectNode: (nodeId: string | null) => void;
+}) {
   const [chosenType, setChosenType] = useState<string>(DECISION_FILTER_ALL);
 
   // THE EMPTY-STATE TRAP, guarded here rather than explained after someone falls
@@ -110,32 +131,54 @@ export function DecisionInboxCard({ decisions }: { decisions: DecisionCardModel[
           in silence under a control the operator just pressed. */}
       <div aria-live="polite">
         {view.emptyMessage === null ? (
-          view.visible.map((decision, decisionIndex) => (
-            // The key pairs a model's POSITION with its id, so two cards carrying
-            // the same id still get distinct keys and a card with an empty id
-            // still gets a stable one.
-            <article key={`${decisionIndex}-${decision.id}`} className={styles.decisionRow}>
-              <strong className={styles.decisionTitle}>{decision.title}</strong>
-              <div className={styles.decisionChips}>
-                <span className={styles.decisionChip}>{decision.ageLabel}</span>
-                <span className={styles.decisionChip}>{decision.blockedLabel}</span>
-                <span className={styles.decisionChip}>{decision.type}</span>
-              </div>
-              <div className={styles.decisionAnswers}>
-                {decision.answers.map((answer, answerIndex) => (
-                  <button
-                    key={`${answerIndex}-${answer.value}`}
-                    type="button"
-                    className={styles.decisionAnswer}
-                    disabled
-                    title={ANSWER_PENDING_TITLE}
-                  >
-                    {answer.label}
-                  </button>
-                ))}
-              </div>
-            </article>
-          ))
+          view.visible.map((decision, decisionIndex) => {
+            // Resolved ONCE per decision, beside the badge and the view above.
+            // A null is not a failure: it is a decision naming no task, or one
+            // this dashboard does not carry, and that card must not OFFER the
+            // jump — the resolver's own contract.
+            const jumpNodeId = nodeIdForDecisionCard(decision, tasks);
+            return (
+              // The key pairs a model's POSITION with its id, so two cards carrying
+              // the same id still get distinct keys and a card with an empty id
+              // still gets a stable one.
+              <article key={`${decisionIndex}-${decision.id}`} className={styles.decisionRow}>
+                <strong className={styles.decisionTitle}>{decision.title}</strong>
+                <div className={styles.decisionChips}>
+                  <span className={styles.decisionChip}>{decision.ageLabel}</span>
+                  <span className={styles.decisionChip}>{decision.blockedLabel}</span>
+                  <span className={styles.decisionChip}>{decision.type}</span>
+                  {/* Only a decision that can really jump gets the control, so the
+                      affordance never lies. That is ActivityFeedCard's rule, but
+                      NOT its shape: a decision row already contains the answer
+                      buttons, so making the row itself the button would nest
+                      interactive controls (DECISION F031 D15). */}
+                  {jumpNodeId ? (
+                    <button
+                      type="button"
+                      className={styles.decisionJumpChip}
+                      title={DECISION_JUMP_TITLE}
+                      onClick={() => onSelectNode(jumpNodeId)}
+                    >
+                      {DECISION_JUMP_LABEL}
+                    </button>
+                  ) : null}
+                </div>
+                <div className={styles.decisionAnswers}>
+                  {decision.answers.map((answer, answerIndex) => (
+                    <button
+                      key={`${answerIndex}-${answer.value}`}
+                      type="button"
+                      className={styles.decisionAnswer}
+                      disabled
+                      title={ANSWER_PENDING_TITLE}
+                    >
+                      {answer.label}
+                    </button>
+                  ))}
+                </div>
+              </article>
+            );
+          })
         ) : (
           <p className={styles.emptyState}>{view.emptyMessage}</p>
         )}

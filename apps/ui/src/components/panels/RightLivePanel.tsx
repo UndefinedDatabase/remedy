@@ -20,7 +20,7 @@ export function RightLivePanel({ dashboard, onSelectNode, streamStatus, recent, 
       <LiveStatusPill live={liveIsActive(dashboard)} streamStatus={streamStatus} />
       <AgentNowCard dashboard={dashboard} recent={recent} />
       <NeedsAttentionCard dashboard={dashboard} />
-      <DecisionInboxCard decisions={orderDecisionInbox(dashboard.decisionInbox)} />
+      <DecisionInboxCard decisions={orderDecisionInbox(dashboard.decisionInbox)} tasks={dashboard.tasks} onSelectNode={onSelectNode} />
       <ActivityFeedCard activity={dashboard.activity} recent={recent} recentDropped={recentDropped} tasks={dashboard.tasks} onSelectNode={onSelectNode} />
       <TaskChecklistCard tasks={dashboard.tasks} jobId={dashboard.jobId} onSelectNode={onSelectNode} />
       <button
