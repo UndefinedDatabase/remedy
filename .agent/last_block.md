@@ -1,124 +1,223 @@
-── STEP R37 — F031 Decision inbox ────────────────────────────
-Goal:        Record R36's PASS and R-0582's recurrence — the handback line cap
-             that has been declared against, never met, for four rounds running
-             — and APPLY that finding's own cheaper repair in this block's own
-             Handback section, so the next handback is the first in this branch
-             to fit its tier. THIS ROUND WRITES NO CODE: the whole change set is
-             `.agent/` state.
+── STEP T003 component wiring / F031 — ROUND R38 ──────────────────────
+Goal:        Make the decision inbox ANSWERABLE: the server token reaches the
+             card, an answer click calls `answerDecisionCard`, the sentence it
+             answers is rendered by its tone, the buttons ship enabled, and the
+             three sentences saying nothing posts yet are retired. This is the
+             LAST step of T003. The round also records R37's PASS.
+Bundle:      C0a save this block · C0b mirror it into `last_block` · C1 the plan
+             · C2 the R37 gate entry · C3 the wiring (one commit, see
+             constraint 5) · C4 the contract test · C5 handback · then the push.
+Change:      Exactly these paths, nothing else. `.agent/authored/f031-r38.md`,
+             `.agent/last_block.md`, `.agent/plan.md`, `.agent/live_review.md`,
+             `apps/ui/src/RemedyApp.tsx`,
+             `apps/ui/src/components/shell/RemedyShell.tsx`,
+             `apps/ui/src/components/panels/RightLivePanel.tsx`,
+             `apps/ui/src/components/panels/DecisionInboxCard.tsx`,
+             `apps/ui/src/components/panels/RightLivePanel.module.css`,
+             `apps/ui/src/api/decisionCard.ts`,
+             `apps/ui/src/api/decisionAnswer.ts`,
+             `tests/ui_contracts/test_decision_answer_wiring.py`,
+             `.agent/handoff.md`. No file under `docs/`, `packages/` or
+             `apps/cli/` is touched, and no other file under `tests/`.
 
-Fortschritt: ~98 % (F031 claimed; R1 through R36 landed, R36 gated here ·
-             T001 SHIPPED · T002 COMPLETE · T003 answer command, request,
-             deep-link, submit, nonce, outcome sentence and answer flow all
-             shipped; component wiring is the last T003 step) — Schaetzung
+Constraints:
+ 1. EVERY SLICE IS APPLIED BYTE FOR BYTE. Never retype one, never reflow one,
+    never fix one. If a slice looks wrong, STOP and say so in the handback
+    instead of correcting it — a corrected slice destroys the transport proof.
+ 2. THE COMMIT ORDER IS FIXED: C0a, C0b, C1, C2, C3, C4, C5. One path per
+    commit except C3, which carries the wiring's files together.
+ 3. C0a AND C0b LAND WHILE `.agent/plan.md` STILL DESCRIBES R37. That is
+    ordered, not an oversight: the plan becomes current at C1, which is the
+    FIRST substantive commit of the round (§3 item 23).
+ 4. THE PRODUCTION CHANGE IS DESCRIBED, NOT SLICED. S1 through S9 below fix
+    behaviour, seam and public surface; you write the code under AGENTS.md's
+    self-review loop and you may name things better than the spec does.
+ 5. THE WIRING IS ONE COMMIT BECAUSE THE COMPILER SAYS SO. `apps/ui/tsconfig.json`
+    sets `noUnusedLocals` and `noUnusedParameters` true and `strict` true, so a
+    component that declares a prop no child accepts, or accepts one it does not
+    pass on, fails `tsc --noEmit`. Landing the chain in pieces would put a red
+    compiler between two green commits. Measured at `a1bf1f5d`, not assumed.
+ 6. NO NEW BRANCH ENTERS THE MARKUP. DECISION F031 D5 keeps every real rule in
+    a module the shipped vitest config reaches, and it reaches
+    `src/**/*.test.ts` only. A `Record` lookup and a null check are projections
+    and are allowed; a `switch`, an `if` chain over a tone, or any comparison
+    against a decision's `type` or `status` is not.
+ 7. NO INVENTED DESIGN TOKEN. The three tone colours are
+    `--remedy-green-500`, `--remedy-orange-400` and `--remedy-red-500`, each
+    already DEFINED in `apps/ui/src/styles/tokens.css` — verified there at
+    `a1bf1f5d`. Do not add a token, and do not write a raw hex.
+ 8. THE STALENESS SWEEP IS STANDING. Every sentence this round writes or leaves
+    behind in a file it edits must be true of that file at C4. A comment that
+    says a thing is absent, arrives later, or is owed by a future round is
+    exactly what S6 exists to retire — sweep the WHOLE header of each file you
+    touch, not only the sentence the spec quotes.
+ 9. THE LEDGER SETS MOVE ONLY HERE. Across C2, `^- R-\d+ — ` stays 246 with the
+    ids ADDED and the ids REMOVED both EMPTY, `^Done: R-\d+ — ` stays 5,
+    `^Landed: R-` stays 0, `^Gate: R\d+ — ` stays 19, and
+    `^Gate: F\d+ R\d+ — ` moves 18 to 19 with the ADDED key exactly `F031 R37`.
+    This round mints no finding id and resolves none.
+10. RE-READ `.agent/STOP` FROM DISK before C0a and again before C5. If it
+    exists at either reading, finish the commit in hand, write the handback and
+    STOP. Never create it, never delete it.
+11. SCRATCH LIVES UNDER `.remedy-wt/` and is removed BY ITS EXACT PATH, never
+    by a glob. Nothing under `.remedy-wt/` is ever committed.
+12. THIS SESSION'S COMMAND GUARD rejects shell loops, `$?`, `$( )` inside a
+    compound, `cp`, and every form of environment assignment (`VAR=x cmd`,
+    `env VAR=x cmd`, `export VAR=x; cmd`). Route anything that counts, hashes
+    or compares through `python3 - <<'PY'`, read real exit codes from
+    `subprocess.run(...).returncode`, and copy with `shutil.copyfile`.
 
-Bundle:      C0a save this block · C0b mirror it into last_block · C1 the plan ·
-             C2 the R36 gate entry and R-0582's recurrence · C3 handback.
+Spec — the wiring:
+ S1. THREAD THE TOKEN, WHOLE CHAIN. `RemedyApp` already holds `token` from
+     `readUrlState`. Pass it down as a REQUIRED prop named `serverToken`
+     through `RemedyShell` and `RightLivePanel` to `DecisionInboxCard`. Every
+     hop declares it in its own props type, and the name is `serverToken` at
+     every hop — one spelling per concept, AGENTS.md's discoverability rule.
+ S2. THE JOB ID COMES FROM THE DASHBOARD, NOT THE URL. `DecisionInboxCard`
+     builds its `DecisionSendTarget` as `{ jobId, serverToken }` with `jobId`
+     taken from `dashboard.jobId` — the value `RemedyShell` already trusts for
+     the stream (DECISION F008 D3) — threaded to the card the same way. Named
+     fields make the transposition finding R-0684 forbade inexpressible; keep
+     them named, and never spread a bare pair of strings into that type.
+ S3. ONE CLICK, ONE FLOW. An answer button's `onClick` calls
+     `answerDecisionCard(target, decision, answer.value)` from
+     `../../api/decisionAnswerFlow` and awaits the `DecisionOutcomeMessage` it
+     answers. Nothing else in this component reaches the network, mints a
+     nonce, builds a request or names a status.
+ S4. STATE IS KEYED BY THE ROW KEY THE CARD ALREADY COMPUTES. The outcome
+     message and the in-flight marker are stored per ANSWER under a key built
+     from the same `${decisionIndex}-${decision.id}` pair the `article` key
+     uses, extended by the answer's own index. Two cards carrying one id must
+     not share a sentence. Keep the key expression in ONE place.
+ S5. WHAT THE OPERATOR SEES. While a send is in flight that answer's button is
+     `disabled` and no other button is. When the flow answers, render
+     `message.sentence` in that row, its class chosen from a
+     `Record<DecisionOutcomeTone, string>` constant — `ok`, `warn` and `error`
+     mapping to three classes you add to `RightLivePanel.module.css` under
+     constraint 7. The sentence region carries `aria-live="polite"`, because it
+     appears under a control the operator just pressed. No sentence text is
+     invented here: every word an operator reads comes from `decisionOutcome.ts`.
+ S6. RETIRE THE THREE SENTENCES, each true only while no component calls the
+     flow. In `apps/ui/src/api/decisionCard.ts` the clause beginning "What is
+     still genuinely absent is the SEND"; in `apps/ui/src/api/decisionAnswer.ts`
+     the clause saying the sender round owns the request call; in
+     `DecisionInboxCard.tsx` the clause beginning "What is still absent is the
+     SEND", together with the `ANSWER_PENDING_TITLE` constant and its
+     `title`/`disabled` use. Replace each with what is now TRUE, naming where
+     the send lives. All three were read at `a1bf1f5d`.
+ S7. THE NEW WHY COMMENTS carry one fact each, directly above the definition:
+     on the tone map, that colour and placement are the component's and the
+     sentence never is; on the key expression, that two cards may carry one id;
+     on the `serverToken` prop, that it is a credential and never reaches a URL
+     path. Say plainly in `DecisionInboxCard.tsx` that no DOM test reaches this
+     markup, and name the contract test that guards it instead.
 
-Change set:  exactly these paths, nothing else —
-             .agent/authored/f031-r37.md                             (C0a)
-             .agent/last_block.md                                    (C0b)
-             .agent/plan.md                                          (C1)
-             .agent/live_review.md                                   (C2)
-             .agent/handoff.md                                       (C3)
-             This list bounds the round's WRITES, not its ACTIONS: the push
-             named in G8 is ordered explicitly and is not a file (R-0674).
-             `.agent/decisions.md` is NOT in it — this round rules nothing new.
+Spec — the guard:
+ S8. ADD `tests/ui_contracts/test_decision_answer_wiring.py`, modelled on
+     `tests/ui_contracts/test_remedy_shell_stream.py`, the precedent for this
+     whole shape. Copy its `strip_ts_comments` helper and run EVERY assertion
+     over COMMENT-STRIPPED source — these files carry long prose headers naming
+     the very symbols being asserted, so an unstripped guard would be satisfied
+     by the comment describing the code rather than by the code (finding
+     R-0584). Include its self-test shape too: assert that some comment really
+     present in the raw source is GONE after stripping, so a stripper that
+     silently did nothing cannot make every other assertion vacuous.
+ S9. WHAT IT MUST PIN, over stripped source: that `RemedyApp` passes
+     `serverToken` to `RemedyShell`; that `RemedyShell` passes it to
+     `RightLivePanel`; that `RightLivePanel` passes it to `DecisionInboxCard`;
+     that `DecisionInboxCard` imports `answerDecisionCard` from
+     `../../api/decisionAnswerFlow` AND calls it; that the three tone keys and
+     their classes are present; and that `ANSWER_PENDING_TITLE` occurs ZERO
+     times in that component's stripped source. Pin the ABSENCE the component's
+     own header promises as well: no comparison against `decision.type` or
+     `decision.status` anywhere in its stripped source.
 
-── Base ──────────────────────────────────────────────────────
-The round base is `cc7f72e6e341ae9ef9b89b293010a984025ef425`, the R36 handback
-commit and the tip of `feature/f031-decision-inbox`; the reviewer read the local
-tip, the remote-tracking ref and `git ls-remote origin` at the R36 gate and all
-three agreed. Stay on that branch; never commit to `main`. Every SHA-shaped
-token here resolved under `git cat-file -t`.
+Done when — run every gate yourself and record its REAL exit code. G1 through
+G9 run at commits STRICTLY EARLIER than C5, so the handback can quote them
+(§3 item 31); the push is ordered after C5 and its reading is NOT written into
+the handback — the reviewer takes that reading at the next gate.
+ G1. BRANCH, CLEANLINESS, TRANSPORT. Branch is `feature/f031-decision-inbox`.
+     `git status --porcelain` prints 0 lines after each of C0a, C0b, C1, C2, C3
+     and C4. `.agent/STOP` read from disk before C0a and before C5, both
+     ABSENT. Report the sha256, byte count and line count of this block as
+     saved at C0a, as mirrored at C0b, and as read off disk at C4 — all three
+     readings must be EQUAL — and say whether C0a and C0b are the same git blob.
+ G2. EXTRACTION AND CAPS. Extract the slices from the COMMITTED C0a blob by
+     their marker LINES, never from the prompt. Report how many slices your
+     extractor printed, the CONTENT line total, the TOTAL line count of the
+     block, and PROSE as TOTAL minus CONTENT. PROSE must be at most 400
+     (DECISION F085 D5) and TOTAL at most 490 (DECISION F085 D6).
+ G3. THE PLAN. `.agent/plan.md` at C1 is BYTE-EQUAL to PLANF031R38 under the
+     newline-INCLUDED convention. Run the negative control: compare against the
+     slice MINUS its trailing newline and report that FALSE. Report `^## Goal$`
+     1, `^## Next Steps$` 1, and `wc -l` strictly under 50.
+ G4. THE APPEND. `.agent/live_review.md` at C2 equals its pre-commit blob plus
+     ONE newline plus LEDGER38, as one whole-file byte equality — report both
+     byte counts and the sum. Confirm with a SECOND, independent reader: split
+     the file on blank lines, report how the unit count moves, and check that
+     the last units equal LEDGER38's paragraphs IN ORDER; then run the SWAPPED
+     comparison and report it FALSE. Run a negative control by flipping ONE
+     byte IN MEMORY and report that both readers REJECT it. Never mutate the
+     tracked file.
+ G5. THE LEDGER SETS. Report every count constraint 9 names, before and after
+     C2, plus the ids ADDED and the ids REMOVED as sets, whether all ids are
+     DISTINCT, and the maximum id. Report the open set at C2 as
+     `^- R-\d+ — ` minus `^Done: R-\d+ — `.
+ G6. MARKERS, PATHS, COMMITS. Line-anchored `^<<<SLICE ` and `^<<<END ` are 0
+     and 0 in `.agent/plan.md` at C1 and in `.agent/live_review.md` at C2,
+     against a CONTROL count over the C0a blob, which is not 0. Report
+     `git diff --name-only a1bf1f5d..C4` and compare it BOTH WAYS against the
+     change set above. Report each commit's insertions from
+     `git diff --numstat`, confirm each is single-parent and each under 500,
+     and confirm the numbers agree with `git commit`'s own summary. Report
+     `git ls-files .remedy-wt` as 0 and `git worktree list` as 1 line at C4.
+     Report the reflog for this round's commits: every operation prefix must
+     read `commit`, and `amend`, `rebase` and `cherry` must be 0 each.
+ G7. THE COMPILER. `npx tsc --noEmit` in `apps/ui`, run at C3 and again at C4,
+     REAL exit 0 both times. This gate is why constraint 5 exists. It reads
+     exit 0 at the base `a1bf1f5d`, measured before this block was written, so
+     a red here belongs to this round.
+ G8. THE UNIT SUITE. `npx vitest run` in `apps/ui` at C4, REAL exit 0. Report
+     the test-file count and the test count. At `a1bf1f5d` they are 30 and 448;
+     this round adds no `.test.ts`, so both must be IDENTICAL. If either moved,
+     report the numbers and which files changed rather than explaining it away.
+ G9. THE GUARD, ITS RED PROOF, AND THE READERS. Run
+     `python3 -m pytest tests/ui_contracts/test_decision_answer_wiring.py -q`
+     at C4: REAL exit 0, and report how many tests it collected. Then PROVE IT
+     CAN FAIL, in a DISPOSABLE WORKTREE and never in the primary checkout: add
+     one at C4 under `.remedy-wt/r38red`; there count the exact bytes
+     `serverToken={serverToken}` in
+     `apps/ui/src/components/shell/RemedyShell.tsx` and report the count, which
+     must be 1; then delete that ONE occurrence IN THE WORKTREE and re-run the
+     same test file against the worktree's copy. Report WHICH node ids failed
+     and HOW MANY. A GREEN result there is the honest thing to declare, not
+     something to paper over: it would mean the guard does not reach the chain
+     and the round needs a repair, so say so plainly. Remove the worktree by
+     its exact path and report `git worktree list` back to 1 line. Then, in the
+     PRIMARY checkout at C4 and SERIALLY — never two pytest processes alive at
+     once, which produces false reds — run and report the real exit code and
+     count of each: `tests/ui_server/`,
+     `tests/orchestration/test_test_runner.py`,
+     `tests/regression/test_resource_safety.py`,
+     `tests/orchestration/test_integrity_gate.py`, `tests/ui_contracts/`, and
+     the canary `tests/cli/test_golden_path.py`. At `a1bf1f5d` these read 480,
+     52, 21, 16, 525 passed with 4 skipped, and 42; `tests/ui_contracts/` MUST
+     grow by exactly the number G9's first command collected, and any other
+     movement is reported as a number, never explained away.
+Handback:    Rewrite `.agent/handoff.md` per docs/agents/handback_template.md at
+             C5: feature and round, branch, the per-commit changed-files table
+             with the `+/-` column taken from `git diff --numstat` itself and
+             agreeing cell for cell with G6, the item-status table covering
+             C0a, C0b, C1, C2, C3, C4, C5 and the push, ONE LINE PER GATE for
+             G1 through G9 with its real exit code, the open-findings count,
+             and the next expected action. Derive your line cap from AGENTS.md
+             yourself, from the commit count you actually made; if the mandated
+             content genuinely does not fit, declare the DECISION D15 overage
+             with its stated cause. Then push with
+             `git push origin feature/f031-decision-inbox`.
+──────────────────────────────────────────────────────────────────────
 
-Readings the reviewer MEASURED at that base, re-checkable there:
-- `.agent/live_review.md` 783847 bytes and 1289 lines, ending in a newline;
-  `^- R-\d+ — ` 246 all DISTINCT, maximum `R-0685`; `^Done: R-\d+ — ` 5, so the
-  §3 item 10 open set is 241; `^Recurrence: R-` 25; `^Landed: R-` 0. THE GATE
-  SERIES IS SPLIT by DECISION F031 D7: `^Gate: R\d+ — ` 19, frozen, and
-  `^Gate: F\d+ R\d+ — ` 17. `^Gate: F031 R36 — ` occurs 0 times, so LEDGER37's
-  header is the first of its key, and the three headers above it read
-  `Gate: F031 R33 — the F031 R33 entry.`, `Gate: F031 R34 — the F031 R34
-  entry.` and `Gate: F031 R35 — the F031 R35 entry.`, which is the shape its
-  own header matches (§3 item 26).
-- `- R-0582 — ` occurs exactly ONCE line-anchored, `^Done: R-0582 — ` is 0 and
-  `^Recurrence: R-0582` is 0: that finding is OPEN and has no recurrence yet.
-  THIS ROUND MINTS NO NEW ID. The reviewer searched the open set for the DEFECT
-  itself rather than for an id (§3 item 30) and R-0582 already names it.
-- `.agent/plan.md` 2695 bytes and 48 lines. `.agent/decisions.md` 599241 bytes
-  and 8046 lines, its last entry `## DECISION F031 D18 (2026-08-26)`, and this
-  round does not touch it.
-- `docs/roadmap/**` is UNTOUCHED and no file under `apps/` moves, so neither the
-  §3 docs-round gate nor any `apps/ui` command is earned. DO NOT RUN ONE.
-- The six Python suites at that base, run SERIALLY by the reviewer, every one a
-  REAL exit 0: `tests/ui_server/` 480, `test_test_runner` 52,
-  `test_resource_safety` 21, `test_integrity_gate` 16, `tests/ui_contracts/`
-  525 passed with 4 skipped, and the canary `test_golden_path` 42.
-- `git status --porcelain` 0 lines, `git worktree list` 1 line,
-  `git ls-files .remedy-wt` 0 and the tracked zip glob 0.
-- THIS BLOCK'S OWN TWO CAPS, measured on its final bytes before emission and
-  stated so your re-measurement can disagree with the reviewer's, are 490 lines
-  TOTAL (DECISION F085 D6) and 400 lines PROSE (DECISION F085 D5). G2 orders
-  you to report both from the COMMITTED blob.
-
-── Constraints ───────────────────────────────────────────────
-1. Apply every authored SLICE BYTE FOR BYTE. Never retype, rewrap or "fix" one.
-   If a slice looks wrong, apply it verbatim and DECLARE the disagreement: a
-   contradiction in this block is the reviewer's defect, not yours to repair.
-2. Slice transport. The reviewer's original is on disk at
-   `.remedy-wt/f031-r37.md`. COPY that file to `.agent/authored/f031-r37.md` at
-   C0a — never retype it — and mirror it byte-identically into
-   `.agent/last_block.md` at C0b. THIS BLOCK STATES NO DIGEST OF ITSELF: a file
-   cannot carry its own sha256, so the proof is G1's disk-to-disk comparison
-   over four readings, which docs/agents/self_drive_protocol.md substitutes for
-   the hash-stamp ritual when there is no transport. Report the digest YOU
-   measure. Extract every slice PROGRAMMATICALLY out of the COMMITTED C0a blob
-   by its marker LINES — `<<<SLICE <NAME>` opens, `<<<END <NAME>` closes.
-   Markers never reach a target file.
-3. Commit sequence, exactly: C0a, C0b, C1, C2, C3 — none extra, none dropped,
-   none reordered. C1 is FIRST substantive because this round writes the finding
-   ledger (§3 item 23). To correct a landed commit do NOT add one outside this
-   sequence — declare it, with its own `## Commits` and item-status rows.
-4. Never amend, rebase, cherry-pick, force-push or rewrite history; never delete
-   a branch; never merge; create no pull request.
-5. `git status --porcelain` prints 0 lines after every commit. Read
-   `.agent/STOP` from disk before C0a and again before C3, and REPORT WHAT YOU
-   READ rather than the value this block expects; if it is present, finish the
-   commit in hand, write the handback and stop. NEVER delete that sentinel
-   (R-0347).
-6. The slices this block carries are the whole text PLANF031R37 and the appended
-   text LEDGER37. This paragraph names them and states no count; G2 orders you
-   to report the count YOUR extractor measured.
-7. THE APPEND'S SHAPE, STATED ONCE HERE, WITH EVERY GATE NAMING THIS PARAGRAPH
-   RATHER THAN RESTATING IT. Under the newline-INCLUDED convention each slice
-   already ends in a newline, so `.agent/live_review.md` after C2 is EXACTLY its
-   blob before that commit, then one newline, then LEDGER37. It receives NOTHING
-   ELSE in that commit and nothing in any other commit of this round (R-0657).
-   Paragraph counts are yours to measure.
-8. THIS BLOCK CARRIES NO FROM/TO PAIR, so no containment test is reported and no
-   FROM-zero count is ordered (§3 item 15). The plan is a WHOLE-FILE
-   replacement; LEDGER37 is an append.
-9. THIS ROUND MINTS NO FINDING ID AND RESOLVES NONE. LEDGER37 carries no `- R-`
-   paragraph and no `Done:` line, so `^- R-\d+ — ` stays 246 with the maximum
-   still `R-0685` and `^Done: R-\d+ — ` stays 5, leaving the §3 item 10 open set
-   UNCHANGED at 241. It carries ONE `Recurrence:` line, so `^Recurrence: R-`
-   moves 25 → 26 and `^Recurrence: R-0582` moves 0 → 1. It carries ONE
-   `Gate: F\d+ R\d+ — ` header, so that count moves 17 → 18 with the added key
-   exactly `F031 R36`. `^Landed: R-` stays 0: WRITE NO `Landed:` LINE — R-0582
-   stays OPEN, because this round applies its cheaper repair to ONE block's
-   handback section and the finding asks for the practice to change, not for one
-   round to comply. No landed finding paragraph is edited (§3 item 20).
-10. THIS ROUND WRITES NO PRODUCTION CODE AND NO TEST. Touch nothing under
-    `docs/`, `packages/`, `tests/` or `apps/`, and no `.agent/` file other than
-    the five the change set names.
-11. Destructive verification runs ONLY inside a disposable `git worktree` under
-    `.remedy-wt/`, removed BY ITS EXACT PATH (R-0662). This round needs none:
-    G4's negative control runs IN MEMORY and never on the tracked file.
-    Everything already under `.remedy-wt/` is pre-existing scratch belonging to
-    no commit, this block's own file included — delete nothing you did not
-    create.
-
-<<<SLICE PLANF031R37
+<<<SLICE PLANF031R38
 # Plan — F031 Decision inbox
 
 Branch: feature/f031-decision-inbox, cut from `main` at `6325ac2f`, the pull
@@ -132,35 +231,32 @@ branch-only blocking semantics intact, ordered by a documented rule over age and
 blocked size, and answerable from the card through the write channel.
 
 ## Current Step
-R37 records R36's PASS and R-0582's recurrence, and applies that finding's own
-cheaper repair: the gate transcript moves to the round report and the handback
-keeps only the state the next session needs. This round writes no code.
+R38 is the COMPONENT round and the LAST step of T003: the server token reaches
+the card, an answer click calls `answerDecisionCard`, the sentence it answers is
+rendered by its tone, the buttons ship enabled, and the three sentences saying
+nothing posts yet are retired. The round also records R37's PASS.
 
 ## Next Steps
-1. R38, the COMPONENT round and the LAST step of T003: thread the server token
-   from `RemedyApp`'s `readUrlState` through `RemedyShell` and `RightLivePanel`,
-   call `answerDecisionCard` on an answer click, render the message's sentence
-   keyed by its tone, enable the buttons, and retire the three "nothing posts
-   yet" sentences in `decisionCard.ts`, `decisionAnswer.ts` and
-   `DecisionInboxCard.tsx`, which are true only while no component calls the
-   flow.
-2. The clarification FORM, and the ruling on `NeedsAttentionCard`'s decision
+1. The clarification FORM, and the ruling on `NeedsAttentionCard`'s decision
    branch (DECISION F031 D4).
-3. The integration-gate round per `docs/agents/integration_gate.md`, whose
-   block also carries the §3 checklist items R-0683, R-0377, R-0419, R-0429,
-   R-0560, R-0582, R-0583 and R-0633 route there, then closure per
+2. The integration-gate round per `docs/agents/integration_gate.md`, whose block
+   also carries the checklist items R-0683, R-0377, R-0419, R-0429, R-0560,
+   R-0582, R-0583 and R-0633 route there, then closure per
    `docs/roadmap/STATUS_closure_protocol.md`.
 
 ## Risks
 - THE DEFAULT DEADLINE CREATES A TIMER IT CANNOT CANCEL, as
-  `decisionAnswerFlow.ts`'s own header records: the `() => Promise<void>` seam
-  DECISION F031 D18 chose carries no handle, so when the submit wins the
-  20-second timer still fires. Named here because R38 wires it to a real click.
+  `decisionAnswerFlow.ts`'s own header records: the seam DECISION F031 D18 chose
+  carries no handle, so when the submit wins the 20-second timer still fires.
+  This round is the one that wires it to a real click.
 - THE SERVER STILL ACCEPTS A BLANK ANSWER AND WRITES IT ONCE. R29 stopped it in
   the browser only; DECISION F031 D14 routes that check to F009, not fixed here.
-- Open findings, by the rule and commit DECISION F009 D10 requires: per §3 item
-  10 — every `^- R-\d+ — ` paragraph minus every `^Done: R-\d+ — ` line — the
-  set is 241 at `cc7f72e6` and this round leaves it there.
+- NO DOM HARNESS REACHES THIS ROUND'S MARKUP. The shipped vitest config collects
+  `src/**/*.test.ts`, so the wiring is gated by comment-stripped SOURCE reading
+  in `tests/ui_contracts/` and by `tsc --noEmit`, never by a rendered click.
+- Open findings, by the rule and commit DECISION F009 D10 requires — every
+  `^- R-\d+ — ` paragraph minus every `^Done: R-\d+ — ` line — the set is 241 at
+  `a1bf1f5d` and this round leaves it there.
 - The findings THIS FEATURE MUST STILL ACT ON are R-0377, R-0403, R-0413,
   R-0419, R-0429, R-0431, R-0441, R-0445, R-0471, R-0495, R-0533, R-0560,
   R-0574, R-0582, R-0583, R-0593, R-0601, R-0622, R-0625, R-0632, R-0633,
@@ -168,153 +264,8 @@ keeps only the state the next session needs. This round writes no code.
   R-0685; R-0495 and R-0574 are the two Highs.
 - BLOCK CAPS ARE TWO: 490 lines TOTAL (DECISION F085 D6) and 400 lines PROSE
   (DECISION F085 D5); every block states and re-measures both.
-<<<END PLANF031R37
+<<<END PLANF031R38
 
-<<<SLICE LEDGER37
-Gate: F031 R36 — the F031 R36 entry. R36 PASSED ON EVERY ONE OF ITS ELEVEN GATES, AND THE REVIEWER RE-RAN EVERY ONE ITSELF off disk rather than reading the handback back; every value that handback states reproduced cell for cell. THIS WAS THE ROUND R34 NEVER STARTED, re-delegated under a new number because R34 landed a commit and earned its key (§3 item 26), and it shipped both pure modules T003 still owed. TRANSPORT HELD IN ITS STRONGEST FORM for the eighth round running: the reviewer's own scratchpad original `.remedy-wt/f031-r36.md`, the C0a blob committed at `2761e82c`, the C0b blob committed at `306e43b3` and `.agent/last_block.md` read off disk at `cc7f72e6` are ALL FOUR byte-identical at sha256 `a030211898ef02e5c973fcf337f3df061e48d723fc029f1865e13b7fae3882c7` over 37871 bytes and 481 lines, C0a and C0b resolving to the SAME git blob. THE EXTRACTION printed 3 slices, 81 content lines and 481 total, so PROSE was 400 against the 400-line cap DECISION F085 D5 sets — met EXACTLY, with zero headroom — and TOTAL 481 against the 490 DECISION F085 D6 sets. THE PLAN at `20551e0d` equals PLANF031R36 exactly at 2695 bytes and 48 lines, with the trailing-newline-removed control FALSE, `^## Goal$` 1 and `^## Next Steps$` 1, and 48 strictly under the 50 AGENTS.md sets. BOTH APPENDS SATISFIED WHOLE-FILE EQUALITY in the shape that block's constraint 7 states: `.agent/decisions.md` at `20551e0d` is its base blob plus one newline plus DECISIOND18, at 597218 + 1 + 2022 = 599241 against an actual 599241, and `.agent/live_review.md` at `d68fd069` is its C1 blob plus one newline plus LEDGER36, at 778079 + 1 + 5767 = 783847 against an actual 783847. THE SECOND, INDEPENDENT READER AGREED on the decisions append — a blank-line split moves the unit count 1433 to 1439, N is 6 by that split, the last six units equal DECISIOND18's six paragraphs IN ORDER with trailing newlines rstripped on BOTH sides, and the same six SWAPPED are rejected — while LEDGER36 is a single paragraph, so no order reading was ordered or taken for it. THE NEGATIVE CONTROLS WERE RUN IN MEMORY, never on a tracked file: one byte flipped inside each appended text, and each reader REJECTS its mutant while ACCEPTING the true file. THE SETS MOVED EXACTLY WHERE THAT BLOCK'S CONSTRAINT 9 ALLOWED AND NOWHERE ELSE: `^- R-\d+ — ` 246 to 246 with the ids ADDED and the ids REMOVED BOTH the EMPTY SET and all 246 DISTINCT, maximum `R-0685` unmoved; `^Done: R-\d+ — ` 5 to 5 with the ids ADDED the EMPTY SET; `^Landed: R-` 0 to 0; `^Recurrence: R-` 25 to 25, no recurrence being ordered; `^Gate: R\d+ — ` 19 to 19 frozen and `^Gate: F\d+ R\d+ — ` 16 to 17, the added key exactly `F031 R35`, all keys DISTINCT. The §3 item 10 open set is 241 at `d68fd069`. THE TWO NEW MODULES ARE WHAT S1 THROUGH S5 ORDERED, read off the C4 blobs. In `decisionOutcome.ts` `fetch`, `setTimeout`, `Date.now` and `localStorage` are 0 each, so it is pure; the five statuses are NAMED constants and the mapping is a `switch` with an honest `default`, so no range arithmetic and no `>= 500` branch exists; every sentence is a module-scope `const`; no sentence literal contains a digit, a header name or a URL; and both exported functions return a FRESH object literal rather than a shared constant. The tone rule is S2's exactly — `accepted` `ok`, `unreachable` `warn`, 429 `warn`, and 403, 400, 409, 501 and any unlisted status `error`. In `decisionAnswerFlow.ts` `fetch` and `localStorage` are 0, all four seams are optional with shipped defaults so the exported function is callable as `answerDecisionCard(target, model, text)`, both `null` paths return before the `try` block and therefore reach no submit, and the race is wrapped so no injected seam's rejection escapes. `decisionSubmit.ts` is BYTE-IDENTICAL to its base blob, so the closed outcome union is UNEDITED at `"accepted" | "refused" | "unreachable"`. In both new test files `vi.` and `globalThis` are 0, so no global was patched. THE UI GATES ARE THE REVIEWER'S OWN, run in the primary `apps/ui`: `npm run typecheck` REAL exit 0 with zero diagnostics, and `npm run test:unit` REAL exit 0 at 30 files and 448 tests, the FILE count moving 28 to 30 and the TEST total 419 to 448, a delta of exactly 29 accounted for by `decisionOutcome.test.ts` at 16 and `decisionAnswerFlow.test.ts` at 13, with all eight pre-existing decision test files UNMOVED at `decisionAnswer` 20, `decisionCard` 36, `decisionFilter` 20, `decisionFocus` 7, `decisionNonce` 9, `decisionOrder` 16, `decisionSend` 12 and `decisionSubmit` 10. THE MUTATION PROBES ARE THE REVIEWER'S OWN AND BOTH DISCRIMINATE, run in a disposable worktree created at a path that did not exist and removed BY THAT EXACT PATH, with the primary's `git status --porcelain` 0 lines after the last restore and `git worktree list` 1 line after removal. Unmutated: REAL exit 0 at 2 files and 29 tests. Probe (a), the 429 branch's tone changed from `warn` to `error` over a 61-byte string occurring exactly ONCE: REAL exit 1, 2 failed and 27 passed, the failures being the rate-budget test in `decisionOutcome.test.ts` AND the status-carrying test in `decisionAnswerFlow.test.ts`, so the flow's own tests reach the outcome module's table. Probe (b), the race replaced by a bare `await sent` over a 66-byte string occurring exactly ONCE: REAL exit 1, 3 failed and 26 passed, the three being the never-settles test, the deadline-wins test and the submit-wins-the-race test — two of them by a real 5-second timeout, which is the deadline seam genuinely failing to bound the wait. NO MUTATION CAME BACK GREEN, so neither spec left a branch unreached (R-0633). HYGIENE HELD: line-anchored `^<<<SLICE ` and `^<<<END ` are 0 in the plan and decisions at C1, in the ledger at C2 and in all four files C3 and C4 write, against a CONTROL of 3 and 3 over the C0a blob; the range `cc7f72e6`'s predecessor `ce4da4a1`..`7ac45594` names 9 paths, none under `docs/`, `packages/` or `tests/` and neither `.agent/context.md` nor either inventory file, with range-minus-change-set EMPTY and change-set-minus-range exactly `.agent/handoff.md`; the seven commits `2761e82c` through `cc7f72e6` are each SINGLE-PARENT with insertions 481, 341, 52, 2, 300, 436 and 168 read from `git diff --numstat`, each under the 500 cap AGENTS.md DECISION F104 D1 sets; `git ls-files .remedy-wt` 0, the zip glob 0, `git worktree list` 1 line and `git status --porcelain` 0. THE BLOCK'S OWN OBJECT IDS RESOLVE: 17 SHA-shaped occurrences, 9 distinct, 8 `commit` and 1 `blob`, failing set EMPTY. THE REFLOG, scoped to this round's entries, reads `commit` throughout, so `amend`, `rebase` and `cherry` are 0 each. THE SIX PYTHON SUITES ARE THE REVIEWER'S OWN, run SERIALLY, never two alive at once, every one a REAL exit 0 and every count identical to the base: `tests/ui_server/` 480, `test_test_runner` 52, `test_resource_safety` 21, `test_integrity_gate` 16, `tests/ui_contracts/` 525 passed with 4 skipped, and the canary `test_golden_path` 42. THE PUSH DISCHARGED: the local tip, the remote-tracking ref and `git ls-remote origin` all read `cc7f72e6e341ae9ef9b89b293010a984025ef425`, no pull request was created, no branch deleted and nothing merged. THE SIX DECLARED ITEMS ARE ADJUDICATED AND NONE IS A DEFECT OF THE WORKER. Three of them are the round's best work, because each names a place the reviewer's own spec stopped short and none was papered over: S1 and S2 fix a tone for `accepted`, `unreachable` and every `refused` status but state NONE for the unsendable message, and the worker derived `warn` from S2's general rule that `warn` is where sending again could plausibly help — the correct derivation, and the spec should have said so; S4's "IT NEVER THROWS" required a `try`/`catch` the block never ordered, mapping an injected seam's rejection onto the same `unreachable` message a deadline win takes, which is the only reading that satisfies the property as written; and the default deadline creates a timer it cannot cancel, because the `() => Promise<void>` seam S5 chose carries no handle, so when the submit wins that timer still fires — a residue the worker wrote into the module header rather than hiding, and one now carried in the plan's Risks because R38 wires it to a real click. The remaining three are the block being obeyed: C0a and C0b landing while the plan still described R35 is what constraint 3 orders, exit codes read through `subprocess.run(...).returncode` is a method difference over verbatim argv, and no contradiction was found inside the block. ITS `## Next` STATES NO VERDICT, NO COLOUR AND NO PASS for itself, so R-0583's defect did not recur. THE ONE DEFECT IS THE REVIEWER'S AND IT IS R-0582's, recorded beside this entry: the handback is 197 lines against the 100-line tier its 7 commits earn. THE VERDICT IS PASS.
-
-Recurrence: R-0582 — SECOND INSTANCE, and the first outside F086. The defect is the REVIEWER'S, and it is now measurable as a TREND rather than as one round's overage: across the four rounds this branch has gated since, every single handback has declared a DECISION D15 stated-cause overage and not one has met its tier — R33 78 lines against 60, R34 132 against 100, R35 90 against 60 and R36 197 against 100, the last of those very nearly double. R-0582's closing sentence names precisely this outcome as the one that must not happen: "leaving the cap in place and declaring against it forever." WHY IT IS THE SAME FINDING AND NOT A NEW ID, per §3 item 30: R-0582 already rules that the reviewer's blocks ORDER more mandated content than the cap admits, and a second id would be two things to resolve for one rule. WHAT THIS INSTANCE ADDS, AND IT SHARPENS THE DIAGNOSIS. R-0582 read the growth as more mandated CONTENT, and at R36 that is only half true: the reviewer measured the R36 handback's `## Verification` at 80 physical lines carrying ONE entry per gate for eleven gates, hard-wrapped at 87 columns, with no transcript quoted and no section dropped — while R35's handback carried its eight gate entries UNWRAPPED, one enormous physical line each, and measured 90 lines in total. The same content therefore passes or fails a LINE cap according to the wrap width the worker happens to choose, which means the cap as written rewards the least readable formatting and measures a typographic decision rather than a quantity of evidence. That is a second, independent reason the number has stopped carrying information, and it is not one a larger cap would fix. THE CHEAPER REPAIR R-0582 ALREADY NAMED IS APPLIED BY THIS VERY BLOCK, which is the only reason this is a recurrence and not a third round of drift: the reviewer "stops ordering the full transcript into the handback and orders it into the ROUND REPORT instead, keeping the handback to the state the next session needs." R37's Handback section does exactly that — it orders the per-gate detail into the worker's final message and keeps `.agent/handoff.md` to the state AGENTS.md actually names, with verification "real, trimmed" as one line per gate. R-0582 STAYS OPEN, because one block complying is not the practice changing: the standing edit belongs to the §3 checklist and is routed to the integration-gate round's block, beside the items R-0683, R-0377, R-0419, R-0429, R-0560, R-0583 and R-0633 already route there.
-<<<END LEDGER37
-
-── Done when ─────────────────────────────────────────────────
-Run every gate yourself and record its REAL exit code and REAL output. "Green"
-as a word is a finding. Every gate runs at a commit STRICTLY EARLIER than C3
-(§3 item 31); G8's push follows it. WHERE TO REPORT WHAT, and this differs from
-earlier rounds of this branch on purpose (R-0582): the FULL per-gate detail —
-every count, digest, boolean and byte arithmetic below — goes in YOUR FINAL
-MESSAGE, which is the round report. `.agent/handoff.md` gets ONE LINE PER GATE:
-the gate's name, whether it held, and the one or two values that would matter to
-someone resuming cold. Nothing is dropped; it moves.
-
-G1  Branch, cleanliness, transport. `git branch --show-current` prints
-    `feature/f031-decision-inbox` and NOT `main`; report what `.agent/STOP` read
-    from disk actually was before C0a and again before C3, per constraint 5;
-    `git status --porcelain` line count after each commit through C2 is 0. Then
-    report sha256, byte count and line count for FOUR readings —
-    `.remedy-wt/f031-r37.md` before C0a, the committed C0a blob, the committed
-    C0b blob, and `.agent/last_block.md` off disk after C0b — ALL FOUR EQUAL,
-    and the git blob id of C0a's and C0b's file, the SAME id.
-
-G2  Extraction and the block's own two caps. Run your extractor over the
-    COMMITTED C0a blob and report the slice count, the CONTENT lines inside
-    markers, and the TOTAL — the numbers YOUR extractor printed — then PROSE as
-    TOTAL minus CONTENT, against the two caps the Base names. If either is
-    exceeded say so plainly and continue; it is the reviewer's to fix.
-
-G3  The plan. `.agent/plan.md` at C1 is byte-equal to PLANF031R37 under your
-    stated newline convention; report slice length, file length and convention.
-    NEGATIVE CONTROL: NOT byte-equal to that slice MINUS its trailing newline.
-    `^## Goal$` 1, `^## Next Steps$` 1, `wc -l` STRICTLY under 50.
-
-G4  The append, as ONE equality over the whole file, in the shape constraint 7
-    states — name that paragraph, do not restate its formula. Report the boolean
-    and the byte arithmetic for `.agent/live_review.md` at C2 against the
-    pre-commit length you measure yourself. Then report a SECOND, INDEPENDENT
-    reading: split the committed file on blank lines, take the LAST N units, and
-    confirm they equal LEDGER37's paragraphs IN ORDER, where N is the number
-    YOUR split measured; give the unit count before and after, and STATE YOUR
-    TRAILING-NEWLINE HANDLING, because a naive split reports FALSE on a
-    byte-perfect file. That slice carries MORE THAN ONE paragraph, so ORDER is
-    load-bearing: report the SWAPPED comparison too, and it must be false.
-    NEGATIVE CONTROL: flip ONE byte inside the appended text; BOTH readers must
-    reject the mutant and BOTH accept the true file, IN MEMORY only.
-
-G5  The ledger sets, base versus C2 in `.agent/live_review.md`, in the shape
-    constraint 9 states — report each side of every movement it names, that the
-    `- R-` ids ADDED and REMOVED are BOTH the EMPTY SET, that all `^- R-\d+ — `
-    ids are DISTINCT, that the maximum is still `R-0685`, and that the
-    `^Done: R-\d+ — ` ids ADDED are ALSO the EMPTY SET. `^Gate: R\d+ — ` 19 → 19
-    UNCHANGED, and `^Gate: F\d+ R\d+ — ` 17 → 18, the ADDED key being exactly
-    `F031 R36`, all keys DISTINCT (§3 item 26). Report `^Recurrence: R-` 25 → 26,
-    that `^Recurrence: R-0582` moves 0 → 1, and `^Landed: R-` 0 → 0. Report the
-    §3 item 10 open set at C2 and that `- R-0582 — ` still occurs exactly ONCE
-    line-anchored, so its landed paragraph was not edited.
-
-G6  Markers, paths, commit shapes and object ids. Line-anchored `^<<<SLICE ` and
-    `^<<<END ` are both 0 in `.agent/plan.md` at C1 and in `.agent/live_review.md`
-    at C2, against the same counts over the COMMITTED C0a blob as a CONTROL,
-    where they are NOT 0. ONLY the line-anchored reading is ordered — this block
-    quotes both markers inside backticks mid-line, so a raw SUBSTRING count is
-    unmeetable and is NOT ordered. `git diff --name-only <base>..C2` names NO
-    path under `docs/`, `packages/`, `tests/` or `apps/`, and neither
-    `.agent/context.md` nor `.agent/decisions.md` nor either inventory file; the
-    range path set MINUS the change set is EMPTY and the change set MINUS the
-    range is exactly `.agent/handoff.md`, which C3 writes. Over C0a..C2 report
-    per commit that it is single-parent and its INSERTION count — the `+` column
-    only, per AGENTS.md DECISION F104 D1 — each under 500; those same numbers
-    fill the `+/-` column of the `## Commits` table, derived from
-    `git diff --numstat` and NOT from `git commit`'s own summary, and you report
-    that the two agree cell for cell (§3 item 28). Report `git ls-files
-    .remedy-wt` as 0, the tracked zip glob as 0, and `git worktree list` as
-    1 line at C2. FOR THE REFLOG state SCOPE and FIELD: over THIS ROUND'S
-    entries only, by the OPERATION PREFIX before the first colon of
-    `git reflog --format=%gs`, report `amend`, `rebase` and `cherry` each 0 and
-    how many entries you scoped to. Finally extract every SHA-shaped token from
-    the COMMITTED C0a blob with the word-bounded pattern matching 7 to 40 hex
-    characters — whose boundaries do NOT match the 64-char sha256 digests this
-    block also carries — pass each to `git cat-file -t`, and report the token
-    count YOUR extractor measured, the type per token, and the FAILING SET,
-    which MUST BE EMPTY.
-
-G7  The state readers and the canary, in the PRIMARY checkout at the C2 tree,
-    all REAL exit 0, run SERIALLY and never two alive at once, by these exact
-    command lines with no extra flag:
-      python3 -m pytest tests/ui_server/ -q
-      python3 -m pytest tests/orchestration/test_test_runner.py -q
-      python3 -m pytest tests/regression/test_resource_safety.py -q
-      python3 -m pytest tests/orchestration/test_integrity_gate.py -q
-      python3 -m pytest tests/ui_contracts/ -q
-      python3 -m pytest tests/cli/test_golden_path.py -q
-    These are the four state readers a round rewriting `.agent/` state gates,
-    plus `tests/ui_contracts/` and the canary. Account for any difference from
-    the Base's counts. Report `git worktree list` as 1 line immediately BEFORE
-    the first of them. RUN NO `apps/ui` COMMAND: no file under `apps/` moves
-    this round, so neither `npm run typecheck` nor `npm run test:unit` is earned
-    and neither is ordered.
-
-G8  The push. AFTER C3, run `git push origin feature/f031-decision-inbox`, then
-    report that the local tip, the remote-tracking ref and `git ls-remote
-    origin` for this branch all read the SAME sha. No `--force`, no
-    `--force-with-lease`, no history rewrite, no branch deletion, no pull
-    request, nothing merged.
-
-── Handback ──────────────────────────────────────────────────
-THIS SECTION IS DELIBERATELY SHORTER THAN THIS BRANCH'S EARLIER ONES, and the
-change is finding R-0582's own cheaper repair, applied rather than quoted. Four
-handbacks running have declared a DECISION D15 overage; this one is ordered to
-FIT. Nothing is dropped — the per-gate detail moves to your final message.
-
-Rewrite `.agent/handoff.md` at C3 per docs/agents/handback_template.md, carrying
-exactly: feature and round; branch, base and the commit SHAs; a changed-files
-table per commit; an item-status table covering every commit and the push; the
-verification as AGENTS.md words it, "real, trimmed" — ONE LINE PER GATE naming
-the gate, whether it held, and the value a cold reader would need; the open
-findings count with the RULE and the COMMIT it was measured at (F009 D10); your
-deviations; and `## Next`. Give the item-status table and the finding counts
-their own headings, named as the template names them. Carry the `Fortschritt:`
-block above VERBATIM — count its lines yourself; no numeral is stated here — and
-if any clause of it is false of the round that actually happened, carry the
-ordered bytes UNCHANGED and write the correction BESIDE them. EVERY NUMERAL YOUR
-HANDBACK STATES ABOUT A LIST IS COUNTED MECHANICALLY BEFORE YOU COMMIT IT, or
-the list is named and NO numeral is given (R-0441).
-
-THE HANDBACK LINE CAP: this block states no cap and no tier. Resolve it from
-AGENTS.md under `### handoff.md` against the commit count constraint 3 fixes,
-and report BOTH that count and the tier. MEASURE THE FILE BEFORE YOU COMMIT IT.
-If it is over the tier, that is a real result and you declare it as one — but do
-not reach for DECISION D15 before you have first moved detail into the round
-report, because that is the move this section exists to make.
-
-YOUR `## Next` SECTION STATES NO VERDICT, NO COLOUR AND NO PASS for this round:
-the reviewer has not read the diff when you write it, and a handback that
-predicts its own gate is finding R-0583's second instance. Name instead, in
-order: that the next session reads `.agent/STOP` from disk as Phase 1 rule 1
-BEFORE the Open PR Gate as rule 2; that R37's verdict is NOT YET on disk and the
-next reviewed round records it as the `Gate: F031 R37` entry; and that R38 is
-the component round and the last step of T003 — the token threaded from
-`RemedyApp`'s `readUrlState` through `RemedyShell` and `RightLivePanel`,
-`answerDecisionCard` called on a click, its sentence rendered by tone, the
-buttons enabled and the three "nothing posts yet" sentences retired.
-
-Declare every deviation, contradiction and assumption.
-──────────────────────────────────────────────────────────────
+<<<SLICE LEDGER38
+Gate: F031 R37 — the F031 R37 entry. R37 PASSED ON EVERY ONE OF ITS EIGHT GATES, AND THE REVIEWER RE-RAN EVERY ONE ITSELF at a later session off disk rather than reading the handback back; every value that handback states reproduced exactly. THE VERDICT ARRIVES ONE ROUND LATE BY CONSTRUCTION (§4 item 13 and the record-round rule), not by omission. TRANSPORT HELD IN ITS STRONGEST FORM for the ninth round running: the C0a blob at `e05eb4be`, the C0b blob at `1b163954`, `.agent/authored/f031-r37.md` at `a1bf1f5d` and both working copies read off disk are ALL FIVE byte-identical at sha256 `dd86faeeababbedbe55716c95fe5137c51c5365551d65e23a5dbc2d66e6a09e3` over 32499 bytes and 320 lines, C0a and C0b resolving to the SAME git blob `50671be5`. THE EXTRACTION printed 2 slices, 52 content lines and 320 total, so PROSE was 268 against the 400 DECISION F085 D5 sets and TOTAL 320 against the 490 DECISION F085 D6 sets. THE PLAN at `f2aac4d8` equals PLANF031R37 exactly at 2831 bytes and 49 lines, with the trailing-newline-removed control FALSE, `^## Goal$` 1, `^## Next Steps$` 1, and 49 strictly under the 50 AGENTS.md sets. THE APPEND at `0d399389` satisfied whole-file equality in the shape that block's constraint 7 states, at 783847 + 1 + 11315 = 795163 against an actual 795163, with the pre-commit blob a byte-exact PREFIX. THE SETS MOVED EXACTLY WHERE THAT BLOCK'S CONSTRAINT 9 ALLOWED AND NOWHERE ELSE: `^- R-\d+ — ` 246 to 246 with the ids ADDED and the ids REMOVED BOTH the EMPTY SET and all 246 DISTINCT, maximum `R-0685` unmoved; `^Done: R-\d+ — ` 5 to 5; `^Landed: R-` 0 to 0; `^Recurrence: R-` 25 to 26 and `^Recurrence: R-0582` 0 to 1; `^Gate: R\d+ — ` 19 to 19; `^Gate: F\d+ R\d+ — ` 17 to 18 with the ADDED key exactly `F031 R36`, all keys DISTINCT. The open set is 241 at `0d399389`. MARKERS STAYED OUT OF THE TARGETS: line-anchored `^<<<SLICE ` and `^<<<END ` are 0 and 0 in the plan at `f2aac4d8` and in the ledger at `0d399389`, against a live CONTROL of 2 and 2 over the C0a blob. THE FIVE COMMITS ARE EACH SINGLE-PARENT at insertions 320, 193, 19, 4 and 39 read from `git diff --numstat`, each under the 500 AGENTS.md DECISION F104 D1 counts, each touching exactly one path, and the range names exactly the five paths of that block's change set. The reflog scoped to those five reads `commit` in every operation prefix, so `amend`, `rebase` and `cherry` are 0 each; `git ls-files .remedy-wt` is 0 and `git worktree list` is 1 line. THE SIX SUITES WERE RE-RUN SERIALLY IN THE PRIMARY CHECKOUT at `a1bf1f5d` and every count is IDENTICAL to that handback's: `tests/ui_server/` 480, `test_test_runner` 52, `test_resource_safety` 21, `test_integrity_gate` 16, `tests/ui_contracts/` 525 passed with 4 skipped, and the canary `test_golden_path` 42, every one a REAL exit 0. THE TWO READINGS THAT HANDBACK COULD NOT CARRY ARE RECORDED HERE, which is where §3 item 31 rules they belong: its own commit `a1bf1f5d` inserts 39 lines against 176 deleted, and the push landed, `git rev-parse` reading the local tip and `origin/feature/f031-decision-inbox` as the same `a1bf1f5d`. THE HANDBACK MET ITS CAP AT EXACTLY 60 LINES with no DECISION D15 overage declared, which is R-0582's own cheaper repair working as intended — the per-gate detail moved out of the handback and the round still proved every claim. ONE CAUTION IS REGISTERED WITHOUT A NEW ID, because R-0582 is OPEN and already carries this fix: the channel that detail moved INTO is a round report, and §3 item 31 rules that under self-drive such a report ends with the session. Nothing was lost this time only because the next session re-measured everything from disk. The durable half of that repair is THIS entry, not the report.
+<<<END LEDGER38
