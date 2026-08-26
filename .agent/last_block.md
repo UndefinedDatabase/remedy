@@ -1,118 +1,156 @@
-── STEP T003 record and hand off / F031 — ROUND R41 ───────────────────
-Goal:        Register the one finding the R40 gate raised, record R40's PASS,
-             and leave the branch in a state the next session can resume from
-             without reading this one. No code and no test changes this round.
+── STEP T003 rule and record / F031 — ROUND R42 ───────────────────────
+Goal:        Record R41's PASS, register the two findings its gate raised,
+             repair the 51-line plan R41 shipped, and land DECISION F031 D19
+             with its roadmap mirror. No code and no test changes this round.
 Bundle:      C0a save this block · C0b mirror it into `last_block` · C1 the plan
-             · C2 the finding, in its own commit · C3 the R40 gate entry · C4
+             · C2 the two findings, in their own commit · C3 the R41 gate entry
+             · C4 DECISION F031 D19 · C5 the feature-file amendment · C6
              handback · then push.
-Change:      Exactly these paths, nothing else. `.agent/authored/f031-r41.md`,
+Change:      Exactly these paths, nothing else. `.agent/authored/f031-r42.md`,
              `.agent/last_block.md`, `.agent/plan.md`, `.agent/live_review.md`,
-             `.agent/handoff.md`. NO FILE OUTSIDE `.agent/` — a single path
-             under `apps/`, `tests/`, `docs/`, `packages/` or anywhere else is a
-             block condition, not a deviation.
+             `.agent/decisions.md`, `docs/roadmap/features/T5_F031.md`,
+             `.agent/handoff.md`. NO FILE UNDER `apps/`, `tests/` or
+             `packages/` — a single path there is a block condition, not a
+             deviation.
 
 Constraints:
  1. EVERY SLICE IS APPLIED BYTE FOR BYTE. Never retype one, never reflow one,
-    never fix one. If a slice looks wrong, STOP and say so in the handback
-    instead of correcting it — a corrected slice destroys the transport proof.
- 2. THE COMMIT ORDER IS FIXED: C0a, C0b, C1, C2, C3, C4. The finding lands at C2
-    BEFORE the gate entry, so a session that dies mid-round still leaves the
-    record complete. C2 and C3 may not be reordered.
- 3. C0a AND C0b LAND WHILE `.agent/plan.md` STILL DESCRIBES R40. That is
+    never fix one. If a slice looks wrong, say so in the handback and finish the
+    round anyway — a corrected slice destroys the transport proof, and stopping
+    early would lose the record this round exists to write. This wording
+    replaces R41's "STOP and say so", which R-0692 records as unmeetable beside
+    constraint 2.
+ 2. THE COMMIT ORDER IS FIXED: C0a, C0b, C1, C2, C3, C4, C5, C6. The findings
+    land at C2 BEFORE the gate entry at C3, so a session that dies mid-round
+    still leaves the record complete. No pair may be reordered.
+ 3. C0a AND C0b LAND WHILE `.agent/plan.md` STILL DESCRIBES R41. That is
     ordered: the plan becomes current at C1, the FIRST substantive commit.
- 4. THE FINDING IS THE REVIEWER'S TEXT. You never write a `Done:` paragraph and
-    never edit a finding's wording. R-0691 is registered here and deliberately
-    NOT fixed here — its fix is routed to the integration-gate round, which the
-    plan slice says in as many words.
- 5. THE LEDGER SETS MOVE TWICE, AND ONLY AS STATED. Across C2 `^- R-\d+ — `
-    moves 251 to 252, the id ADDED is exactly `R-0691`, the ids REMOVED are
-    EMPTY, and all ids stay DISTINCT. Across C3 `^Gate: F\d+ R\d+ — ` moves 21
-    to 22 with the ADDED key exactly `F031 R40`. Across BOTH,
-    `^Done: R-\d+ — ` stays 5, `^Landed: R-` stays 0 and `^Gate: R\d+ — ` stays
-    19. The open set is 246 before C2 and 247 after.
- 6. RE-READ `.agent/STOP` FROM DISK before C0a and again before C4. If it exists
+ 4. THE FINDINGS AND THE DECISION ARE THE REVIEWER'S TEXT. You never write a
+    `Done:` paragraph, never edit a finding's wording, and never edit D19.
+    R-0692 and R-0693 are registered here and deliberately NOT fixed here: the
+    plan repair R-0692 asks for IS C1's slice, and R-0693's repair is the
+    three-round programme D19 rules, which starts at R43.
+ 5. THE FOUR APPEND TARGETS EACH GAIN EXACTLY ONE BLOCK OF TEXT, appended as
+    ONE newline plus the slice, and nothing anywhere else in those files
+    changes. `.agent/live_review.md` twice, `.agent/decisions.md` once,
+    `docs/roadmap/features/T5_F031.md` once. `.agent/plan.md` is the only
+    WHOLE-FILE replacement.
+ 6. RE-READ `.agent/STOP` FROM DISK before C0a and again before C6. If it exists
     at either reading, finish the commit in hand, write the handback and STOP.
     Never create it, never delete it.
  7. SCRATCH LIVES UNDER `.remedy-wt/` and is removed BY ITS EXACT PATH, never by
     a glob. Nothing under `.remedy-wt/` is ever committed. This round needs no
     worktree; if you create none, report that rather than reporting a removal
-    you did not perform.
+    you did not perform. `.remedy-wt/f031-r42-block.md` is the reviewer's own
+    scratch copy of this block — leave it alone, do not delete it.
  8. THIS SESSION'S COMMAND GUARD rejects shell loops, `$?`, `$( )` inside a
-    compound, `cp`, and every form of environment assignment. Route anything
-    that counts, hashes or compares through `python3 - <<'PY'`, read real exit
-    codes from `subprocess.run(...).returncode`, and copy with
-    `shutil.copyfile`. Keep each heredoc modest in size — a very long one is
-    rejected by the parser outright.
+    compound, `cp`, brace literals containing a quote character, and every form
+    of environment assignment. Route anything that counts, hashes or compares
+    through `python3 - <<'PY'`, read real exit codes from
+    `subprocess.run(...).returncode`, build dicts with `dict(key=value)` rather
+    than a brace literal, and copy with `shutil.copyfile`. Keep each heredoc
+    modest in size — a very long one is rejected by the parser outright.
 
-Done when — run every gate yourself and record its REAL exit code. G1 through G6
-run at commits STRICTLY EARLIER than C4, so the handback can quote them; the
-push is ordered after C4 and its reading is NOT written into the handback — the
+Done when — run every gate yourself and record its REAL exit code. G1 through G8
+run at commits STRICTLY EARLIER than C6, so the handback can quote them; the
+push is ordered after C6 and its reading is NOT written into the handback — the
 reviewer takes that reading at the next gate.
  G1. BRANCH, CLEANLINESS, TRANSPORT. Branch is `feature/f031-decision-inbox`.
-     `git status --porcelain` prints 0 lines after each of C0a, C0b, C1, C2 and
-     C3. `.agent/STOP` read from disk before C0a and before C4, both ABSENT.
-     Report the sha256, byte count and line count of this block as saved at C0a,
-     as mirrored at C0b, and as read off disk at C3 — all three must be EQUAL —
-     and say whether C0a and C0b are the same git blob.
+     `git status --porcelain` prints 0 lines after each of C0a, C0b, C1, C2, C3,
+     C4 and C5. `.agent/STOP` read from disk before C0a and before C6, both
+     ABSENT. Report the sha256, byte count and line count of this block as saved
+     at C0a, as mirrored at C0b, and as read off disk at C5 — all three must be
+     EQUAL — and say whether C0a and C0b are the same git blob.
  G2. EXTRACTION AND CAPS. Extract the slices from the COMMITTED C0a blob by
      their marker LINES, never from the prompt. Report how many slices your
      extractor printed, the CONTENT line total, the TOTAL line count, and PROSE
      as TOTAL minus CONTENT. MARKERS ARE PROSE — the `<<<SLICE` and `<<<END`
-     lines count toward PROSE, not CONTENT, and R40's two readers agreed on that
-     convention. PROSE must be at most 400 and TOTAL at most 490.
- G3. THE PLAN. `.agent/plan.md` at C1 is BYTE-EQUAL to PLANF031R41 under the
+     lines count toward PROSE, not CONTENT, which is the convention R40's and
+     R41's readers both used. PROSE must be at most 400 and TOTAL at most 490.
+ G3. THE PLAN. `.agent/plan.md` at C1 is BYTE-EQUAL to PLANF031R42 under the
      newline-INCLUDED convention. Run the negative control against the slice
      MINUS its trailing newline and report it FALSE. Report `^## Goal$` 1,
-     `^## Next Steps$` 1, and `wc -l` strictly under 50.
- G4. THE TWO APPENDS, EACH PROVED SEPARATELY. `.agent/live_review.md` at C2
-     equals its pre-commit blob plus ONE newline plus FINDINGS41, and at C3
-     equals ITS pre-commit blob plus ONE newline plus LEDGER41 — report both
-     byte counts and the sum for EACH; the pre-commit blob for C2 is 817669
+     `^## Next Steps$` 1, and `wc -l` STRICTLY UNDER 50. This gate is why the
+     round exists: R41 shipped 51 and R-0692 records it, so a red here is a
+     block condition rather than a declared deviation.
+ G4. THE TWO LEDGER APPENDS, EACH PROVED SEPARATELY. `.agent/live_review.md` at
+     C2 equals its pre-commit blob plus ONE newline plus FINDINGS42, and at C3
+     equals ITS pre-commit blob plus ONE newline plus LEDGER42 — report both
+     byte counts and the sum for EACH; the pre-commit blob for C2 is 825662
      bytes. For EACH, confirm with a SECOND, independent reader: split on blank
-     lines, report how the unit count moves from 341, and check the last unit
-     equals that slice's paragraph. BOTH SLICES ARE SINGLE PARAGRAPHS this
-     round, so an in-slice ordered-swap control is degenerate for each — a
-     one-element reversal is the identity. Run the swap CROSS-SLICE instead,
-     FINDINGS41's paragraph against LEDGER41's, and report it FALSE both ways,
-     rather than reporting a passing control neither slice can produce. For
-     EACH, flip ONE byte IN MEMORY and report that both readers REJECT it. Never
-     mutate the tracked file.
- G5. THE LEDGER SETS. Report every count constraint 5 names at three points —
-     before C2, after C2, after C3 — plus the ids ADDED and REMOVED as sets at
-     each step, whether all ids are DISTINCT, and the maximum id. Report the
-     open set as `^- R-\d+ — ` minus `^Done: R-\d+ — ` before C2 and after C3.
- G6. MARKERS, PATHS, COMMITS. Line-anchored `^<<<SLICE ` and `^<<<END ` are 0
-     and 0 in `.agent/plan.md` at C1 and in `.agent/live_review.md` at C3,
-     against a CONTROL count over the C0a blob, which is not 0. Report
-     `git diff --name-only 3afdb209..C3` and compare it BOTH WAYS against the
-     change set above. Report each commit's insertions from `git diff --numstat`,
-     confirm each is single-parent and under 500. Report `git ls-files .remedy-wt`
-     as 0 and `git worktree list` as 1 line at C3. Report the reflog for this
-     round's commits: every operation prefix must read `commit`, and `amend`,
-     `rebase` and `cherry` must be 0 each.
- G7. THE STATE READERS AND THE CANARY, in the PRIMARY checkout at C3 and
-     SERIALLY — never two pytest processes alive at once, which produces false
-     reds. This round rewrites `.agent/` state, which is exactly what these
-     four read. Run and report the real exit code and count of each:
+     lines, report how the unit count moves from 343, and check that the last
+     unit equals that slice's final paragraph. FINDINGS42 IS TWO PARAGRAPHS
+     SEPARATED BY A BLANK LINE, so its in-slice ordered-swap control is REAL —
+     run it and report it FALSE. LEDGER42 is a single paragraph, so its own
+     reversal is the identity: declare that degenerate and run the swap
+     CROSS-SLICE against FINDINGS42's last paragraph instead, FALSE both ways.
+     For EACH, flip ONE byte IN MEMORY and report that both readers REJECT it.
+     Never mutate the tracked file.
+ G5. THE LEDGER SETS. Report at three points — before C2, after C2, after C3 —
+     the line-anchored counts of `^- R-\d+ — `, `^Done: R-\d+ — `,
+     `^Landed: R-`, `^Gate: R\d+ — ` and `^Gate: F\d+ R\d+ — `, plus the ids
+     ADDED and REMOVED as SETS at each step, whether all ids are DISTINCT, and
+     the maximum id. Across C2 `^- R-\d+ — ` moves 252 to 254 with ADDED exactly
+     the pair `R-0692` and `R-0693` and REMOVED empty; across C3 it does not
+     move. `^Gate: F\d+ R\d+ — ` moves 22 to 23 across C3 with the ADDED key
+     exactly `F031 R41`. `^Done: R-\d+ — ` stays 5, `^Landed: R-` stays 0 and
+     `^Gate: R\d+ — ` stays 19 at all three points. Report the open set as
+     `^- R-\d+ — ` minus `^Done: R-\d+ — `: 247 before C2 and 249 after C3.
+ G6. THE DECISION AND THE AMENDMENT, EACH PROVED THE SAME WAY. `.agent/decisions.md`
+     at C4 equals its pre-commit blob of 599241 bytes plus ONE newline plus
+     DECISION19, and `docs/roadmap/features/T5_F031.md` at C5 equals its
+     pre-commit blob of 9804 bytes plus ONE newline plus AMEND42. Report both
+     byte counts and the sum for EACH, and confirm each with the blank-line
+     reader: decisions.md moves from 1439 units and the feature file from 21,
+     and in EACH the last unit equals that slice's final paragraph. Report
+     `^## DECISION F031 D\d+ ` in `.agent/decisions.md` as 18 before C4 and 19
+     after, and `^## Design amendments ` in the feature file as 3 before C5 and
+     4 after. Flip ONE byte IN MEMORY for EACH and report that both readers
+     REJECT it.
+ G7. MARKERS, PATHS, COMMITS. Line-anchored `^<<<SLICE ` and `^<<<END ` are 0
+     and 0 in `.agent/plan.md` at C1, in `.agent/live_review.md` at C3, in
+     `.agent/decisions.md` at C4 and in the feature file at C5, against a
+     CONTROL count over the C0a blob, which is not 0. Report
+     `git diff --name-only 3afdb209..C5` and compare it BOTH WAYS against this
+     block's change set — the range covers R41's four paths as well, so state
+     the expected union rather than the five paths this round writes. Report
+     each commit's insertions from `git diff --numstat`, confirm each is
+     single-parent and under 500. Report `git ls-files .remedy-wt` as 0 and
+     `git worktree list` as 1 line at C5. Report the reflog for this round's
+     commits: every operation prefix must read `commit`, and `amend`, `rebase`
+     and `cherry` must be 0 each.
+ G8. THE READERS, THE DOCS GATES AND THE CANARY, in the PRIMARY checkout at C5
+     and SERIALLY — never two pytest processes alive at once, which produces
+     false reds. This round rewrites `.agent/` state, which the four state
+     readers read, and it edits `docs/roadmap/**`, which the two docs gates
+     read. Run and report the real exit code and count of each:
      `tests/ui_server/`, `tests/orchestration/test_test_runner.py`,
      `tests/regression/test_resource_safety.py`,
-     `tests/orchestration/test_integrity_gate.py`, and the canary
-     `tests/cli/test_golden_path.py`. At `3afdb209` these read 480, 52, 21, 16
-     and 42. ALSO run `tests/ui_contracts/`, which must be UNCHANGED at 556
-     passed with 4 skipped — this round adds no test, so any movement there is a
-     real finding and not a number to absorb. Any other movement is a reported
-     number, not a silence.
+     `tests/orchestration/test_integrity_gate.py`, `tests/docs/`,
+     `tests/orchestration/test_roadmap_index.py`, and the canary
+     `tests/cli/test_golden_path.py`. At `59521bf5` these read 480, 52, 21, 16,
+     295, 30 and 42. ALSO run `tests/ui_contracts/`, which must be UNCHANGED at
+     556 passed with 4 skipped — this round adds no test, so any movement there
+     is a real finding and not a number to absorb. Any other movement is a
+     reported number, not a silence. ON ANY RED, CAPTURE THE `FAILED` NODE IDS
+     BEFORE ANYTHING ELSE and re-run that suite ALONE five more times, reporting
+     every reading and every node id. The reviewer saw ONE unexplained red of
+     `tests/orchestration/test_test_runner.py` in 20 dry-run executions of this
+     round's own slices and could not reproduce it; a red you cannot reproduce
+     is reported WITH its node ids, never absorbed and never retried into
+     silence.
 Handback:    Rewrite `.agent/handoff.md` per docs/agents/handback_template.md at
-             C4: feature and round, branch, the per-commit changed-files table
+             C6: feature and round, branch, the per-commit changed-files table
              with the `+/-` column taken from `git diff --numstat` itself and
-             agreeing cell for cell with G6, the item-status table covering C0a,
-             C0b, C1, C2, C3, C4 and the push, ONE LINE PER GATE for G1 through
-             G7 with its real exit code, an explicit line for R-0691 saying what
-             was registered and that it was deliberately NOT fixed here, the
-             open-findings count, and the next expected action. THE NEXT ACTION
-             SECTION NAMES, IN THIS ORDER: re-read `.agent/STOP` from disk
-             first, then the Open PR Gate, then review this round's handback,
-             then the clarification FORM round. That order is Phase 1 of
+             agreeing cell for cell with G7, the item-status table covering C0a,
+             C0b, C1, C2, C3, C4, C5, C6 and the push, ONE LINE PER GATE for G1
+             through G8 with its real exit code, an explicit line for R-0692 and
+             R-0693 saying what was registered and that neither was fixed here,
+             the open-findings count, and the next expected action. THE NEXT
+             ACTION SECTION NAMES, IN THIS ORDER: re-read `.agent/STOP` from
+             disk first, then the Open PR Gate, then review this round's
+             handback, then R43 — the endpoint's third derived key and the card
+             that renders no button the door refuses. That order is Phase 1 of
              docs/agents/self_drive_protocol.md and a handoff that inverts it
              sends the next session past a sentinel it must honour. Derive your
              line cap from AGENTS.md yourself, from the commit count you
@@ -121,12 +159,12 @@ Handback:    Rewrite `.agent/handoff.md` per docs/agents/handback_template.md at
              with `git push origin feature/f031-decision-inbox`.
 ──────────────────────────────────────────────────────────────────────
 
-<<<SLICE PLANF031R41
+<<<SLICE PLANF031R42
 # Plan — F031 Decision inbox
 
 Branch: feature/f031-decision-inbox, cut from `main` at `6325ac2f`, the pull
 request #213 merge closing F022. `.agent/live_review.md` is the record and the
-id ceiling, `.agent/decisions.md` D1–D18.
+id ceiling, `.agent/decisions.md` D1–D19.
 
 ## Goal
 Every open question in one calm place: the inbox renders decision cards — type,
@@ -135,50 +173,129 @@ branch-only blocking semantics intact, ordered by a documented rule over age and
 blocked size, and answerable from the card through the write channel.
 
 ## Current Step
-R41 registers the one finding the R40 gate raised and records R40's PASS. It is
-a state round: no code, no test. R-0691 is registered and deliberately NOT fixed
-here — a substring guard cannot hold an "and nothing else" clause, so the repair
-is a naming repair and it is routed to the integration-gate round rather than
-earning a fourth consecutive round of guard hardening.
+R42 records R41's PASS, registers the two findings that gate raised, repairs the
+51-line plan R41 shipped, and lands DECISION F031 D19 with its roadmap mirror.
+It is a state round: no code, no test. Neither finding is fixed here — R-0692's
+repair IS this file, and R-0693's is the three-round programme D19 rules.
 
 ## Next Steps
-1. The clarification FORM, and the ruling on `NeedsAttentionCard`'s decision
-   branch (DECISION F031 D4).
-2. The integration-gate round per `docs/agents/integration_gate.md`, whose block
-   also carries the checklist items R-0683, R-0377, R-0419, R-0429, R-0560,
-   R-0582, R-0583, R-0633 and R-0691 route there, then closure per
-   `docs/roadmap/STATUS_closure_protocol.md`.
+1. R43: `build_decision_inbox` gains a third derived key and the card renders no
+   button the door refuses — D19 clause one and clause three.
+2. R44: the `fp:`-prefixed dispatch DECISION F009 D5 planned and did not ship,
+   reusing `flight_plan.resolve_flight_plan_approval`. Then R45: the
+   clarification FORM over `payload.clarifications`.
+3. The integration-gate round per `docs/agents/integration_gate.md`, then
+   closure per `docs/roadmap/STATUS_closure_protocol.md`.
 
 ## Risks
-- NO DOM HARNESS REACHES THE INBOX MARKUP, and it has now produced findings in
-  three consecutive rounds. The shipped vitest config collects
+- SEVEN OF THE EIGHT PRODUCING TYPES CANNOT BE ANSWERED THROUGH THE DOOR, and
+  every one ships an enabled button today. `escalation.find_task_decision`
+  matches escalation records alone, so at `59521bf5` every id but a task
+  decision's is answered 409. R-0693 measures it and D19 rules the repair.
+- NO DOM HARNESS REACHES THE INBOX MARKUP. `apps/ui/vitest.config.ts` collects
   `src/**/*.test.ts`, so the wiring is gated by comment-stripped SOURCE reading
-  and by `tsc --noEmit`, never by a rendered click. R-0686 and R-0687 were the
-  markup itself; R-0689, R-0690 and R-0691 are the guards written to close them.
-  A guard over source text pins what a string CONTAINS and what an enumerated
-  list EXCLUDES; it cannot pin "and nothing else", and a name that says
-  otherwise is the recurring defect.
+  and by `tsc --noEmit`, never by a rendered click. R-0689, R-0690 and R-0691
+  guard that gap, and a source guard pins containment, not completeness.
 - THE DEFAULT DEADLINE CREATES A TIMER IT CANNOT CANCEL, as
   `decisionAnswerFlow.ts`'s own header records: the seam DECISION F031 D18 chose
   carries no handle, so when the submit wins the 20-second timer still fires.
-- THE SERVER STILL ACCEPTS A BLANK ANSWER AND WRITES IT ONCE. R29 stopped it in
-  the browser only; DECISION F031 D14 routes that check to F009, not fixed here.
-- Open findings, by the rule and commit DECISION F009 D10 requires — every
-  `^- R-\d+ — ` paragraph minus every `^Done: R-\d+ — ` line — the set is 246 at
-  `3afdb209` and this round takes it to 247.
+- Open findings, by the rule DECISION F009 D10 requires — every `^- R-\d+ — `
+  paragraph minus every `^Done: R-\d+ — ` line — the set is 247 at `59521bf5`
+  and this round takes it to 249.
 - The findings THIS FEATURE MUST STILL ACT ON are R-0377, R-0403, R-0413,
   R-0419, R-0429, R-0431, R-0441, R-0445, R-0471, R-0495, R-0533, R-0560,
   R-0574, R-0582, R-0583, R-0593, R-0601, R-0622, R-0625, R-0632, R-0633,
   R-0672, R-0674, R-0675, R-0676, R-0677, R-0678, R-0679, R-0683, R-0684,
-  R-0685 and R-0691; R-0495 and R-0574 are the two Highs.
+  R-0685, R-0691, R-0692 and R-0693; R-0495, R-0574 and R-0693 are the Highs.
 - BLOCK CAPS ARE TWO: 490 lines TOTAL (DECISION F085 D6) and 400 lines PROSE
   (DECISION F085 D5); every block states and re-measures both.
-<<<END PLANF031R41
+<<<END PLANF031R42
 
-<<<SLICE FINDINGS41
-- R-0691 — Low, AN ASSERTION NAMED "AND NOTHING ELSE" CHECKS A PRESENCE AND AN EXCLUSION LIST, WHICH IS NOT THE SAME CLAIM. Raised by the reviewer at the R40 gate against `tests/ui_contracts/test_decision_answer_wiring.py` as committed at `05bdeae1`. THE MEASUREMENT, run by the reviewer in a disposable worktree at `3afdb209` and never in the primary checkout: adding a second, foreign key inside `withAnswerKey` — `next.add(answerKey);` followed by `next.add(answerKey + "-x");` — marks an answer in flight that nobody pressed and disables a button the operator never touched, which is R-0687's consequence reached from the other side, and `python3 -m pytest tests/ui_contracts/test_decision_answer_wiring.py -q` stayed at REAL exit 0 with all 31 passing. `test_the_add_helper_adds_the_passed_key_and_nothing_else` requires `next.add(answerKey)` to be PRESENT and `test_neither_helper_carries_a_bulk_operation` excludes `.clear(` and `new Set()`; neither can see an extra operation that is on the enumerated list of neither. The remover carries the same gap by the same construction. THE WORKER IS NOT AT FAULT AND ITS SIX RED PROOFS ARE CORRECT AS RUN: S1 of the R40 block ordered "touch ONLY the passed key", which is an obligation no substring predicate can fully discharge, and the worker wrote the strongest pair of predicates that shape allows — presence plus an exclusion list — and proved each capable of failing. THE SEVERITY IS LOW AND THE REASON IS PART OF THE FINDING: the surviving mutation is contrived, no refactorer writes a second `add` of a synthesised key, and every natural regression the reviewer tried was caught, including the two that survived R39 and a decoy `aria-live` node planted to misaim the R40 reader. WHAT IS ACTUALLY WRONG IS THE NAME: "and nothing else" is a completeness claim, the predicate underneath it is a containment claim, and a reader who trusts the name stops looking. THE FIX IS A NAMING FIX, NOT MORE GUARD: rename both assertions to say what they hold — that the helper adds, or deletes, the key it was handed — and state the residual in the class docstring, so the next reader knows a source guard's reach ends where "and nothing else" begins. Routed to the integration-gate round; three consecutive rounds of guard hardening is enough, and this one changes no behaviour.
-<<<END FINDINGS41
+<<<SLICE FINDINGS42
+- R-0692 — Medium, REVIEWER-BLOCK DEFECT, A WHOLE-FILE PLAN SLICE WAS EMITTED AT 51 LINES AGAINST ITS OWN BLOCK'S UNDER-50 CLAUSE, AND `.agent/plan.md` HAS BEEN OVER THE AGENTS.md CAP ON DISK SINCE `813aa914`. Raised by the reviewer against its OWN R41 block. THE MEASUREMENT, re-run at `59521bf5`: `.agent/plan.md` at `813aa914` is byte-equal to PLANF031R41 newline-included at 3002 bytes, the minus-trailing-newline control is FALSE, `^## Goal$` is 1 and `^## Next Steps$` is 1 — every clause of G3 holds except `wc -l`, which reads 51 against a clause requiring strictly under 50, and AGENTS.md's own `plan.md` rule ("keep it short (<50 lines)") is therefore broken on disk at HEAD. THIS IS THE THIRD OCCURRENCE OF ONE CLASS: R-0423 recorded a 52-line slice against an under-50 constraint, R-0654 recorded a 51-line slice against an at-most-50 clause of the same gate, and both wrote the same remedy — measure a whole-file slice against the cap that binds its TARGET before emission. WHAT IS NEW AND WHAT MAKES THIS MEDIUM RATHER THAN LOW IS THAT THE REMEDY ALREADY REACHED THE CHECKLIST AND STILL DID NOT BIND: docs/agents/planner_reviewer_prompt.md §3 item 3 reads "Count every authored full-replacement text against its own file's cap before emission: `.agent/plan.md` under 50 lines (AGENTS.md)" and the R41 block was emitted anyway, so the failure is not a missing rule but an unexecuted one, and no gate in this repository reads the reviewer's compliance with §3 before a block is delegated. THE WORKER IS NOT AT FAULT: item 3's own last sentence rules that "a worker required to apply a slice byte for byte cannot trim it, so an oversize replacement lands a live rule violation on disk and the worker is right to declare it rather than fix it", which is exactly what the R41 worker did. A SECOND DEFECT OF THE SAME BLOCK IS RECORDED HERE RATHER THAN SEPARATELY, because it has one repair: R41's constraint 1 says "If a slice looks wrong, STOP and say so in the handback", while its constraint 2 says the finding must land at C2 before the gate entry at C3 "so a session that dies mid-round still leaves the record complete" — a worker that obeyed the STOP literally would have lost the record the round existed to write, and R-0654's worker DID halt at C1 on this same conjunction and was ruled correct, so the two precedents point opposite ways. THE FIX IS THIS ROUND: C1 of R42 carries a plan slice measured under 50 before emission, and R42's constraint 1 replaces "STOP and say so" with "say so in the handback and finish the round anyway". No code and no test is involved in either half.
 
-<<<SLICE LEDGER41
-Gate: F031 R40 — the F031 R40 entry. R40 PASSED ON EVERY ONE OF ITS EIGHT GATES, AND THE REVIEWER RE-RAN EVERY ONE ITSELF off disk rather than reading the handback back; every value that handback states reproduced exactly, including all seven per-commit insertion counts, every cell of its `## Commits` table and all eight suite counts. THIS IS THE ROUND THAT GAVE THE GUARDS THE REACH THEIR NAMES CLAIMED. R-0689 is FIXED: the new class `TestTheInFlightHelpersTouchOnlyTheirOwnKey` reads the EXTRACTED BODY of `withAnswerKey` and of `withoutAnswerKey` through a brace-matching reader `ts_function_body` rather than sweeping the file, and pins per body that it copies before it changes, that it names the key it was handed, and that it carries no bulk operation — with a cross-check that neither body is the other's, which is the failure mode a brace reader actually has. R-0690 is FIXED: `jsx_between_answer_button_and_live_paragraph` takes the comment-stripped source between the answer button's closing tag and the `<p` carrying the last `aria-live="polite"`, and the new `test_the_region_is_created_under_no_conditional_operator_at_all` forbids `?`, `&&` and `||` anywhere in it, while the old literal check is kept VERBATIM and only renamed to `test_the_null_ternary_shape_r0686_was_registered_against_is_absent` — the rename is the single deletion in the whole commit. TRANSPORT HELD for the twelfth round running: the C0a blob, the C0b blob and both working copies read off disk are ALL FOUR byte-identical at sha256 `236f665d12e4dc7d9dda32a512b531dc9b982f3038fd698ce42027bc1a8e8f7a` over 24444 bytes and 241 lines, C0a and C0b resolving to the SAME git blob `662d158d`. THE CAPS HELD AND BOTH READERS AGREED THIS TIME, which is the R39 lesson landing: 3 slices, TOTAL 241, CONTENT 52, PROSE 189, markers counted as PROSE by the worker's extractor and by the reviewer's alike, against caps of 490 and 400. THE PLAN at `ef3bd0d3` equals PLANF031R40 exactly at 2771 bytes and 48 lines, minus-newline control FALSE, `^## Goal$` 1, `^## Next Steps$` 1. THE TWO APPENDS ARE EXACT: 809140 + 1 + 3246 = 812387 against an actual 812387, and 812387 + 1 + 5281 = 817669 against an actual 817669, each pre-commit blob a byte-exact prefix, blank-line units 338 to 340 to 341 with the last units equal to each slice's paragraphs IN ORDER, the in-slice swap FALSE for FINDINGS40 and the cross-slice swap FALSE for the single-paragraph LEDGER40, whose own reversal the worker correctly declared degenerate rather than reporting as a passing control. THE SETS MOVED ONLY WHERE CONSTRAINT 7 ALLOWED: `^- R-\d+ — ` 249 to 251 to 251 with ADDED across C2 exactly {`R-0689`, `R-0690`}, ADDED across C3 EMPTY, REMOVED EMPTY at both, all 251 DISTINCT, maximum `R-0690`; `^Done: R-\d+ — ` 5 throughout, `^Landed: R-` 0 throughout, `^Gate: R\d+ — ` 19 throughout, `^Gate: F\d+ R\d+ — ` 20 to 20 to 21 with the ADDED key exactly `F031 R39`; open set 244 before C2 and 246 after C3. MARKERS 0 and 0 in the plan at `ef3bd0d3` and the ledger at `cbb021d6` against a live CONTROL of 3 and 3. THE CHANGE SET IS EXACT IN BOTH DIRECTIONS at 6 paths over the full range and 5 over `14fde389`..`05bdeae1`, declared-minus-range exactly `.agent/handoff.md` which C4 writes, and — the constraint this round existed to honour — NOT ONE PATH UNDER `apps/`: the component was not edited to suit a guard. THE SIX COMMITS BEFORE THE HANDBACK ARE EACH SINGLE-PARENT at insertions 241, 139, 13, 4, 2 and 103, each under the 500 DECISION F104 D1 counts, the handback itself 42; the reflog reads `commit` in every prefix, so `amend`, `rebase` and `cherry` are 0 each; `git ls-files .remedy-wt` is 0 and `git worktree list` is 1 line. THE GATES THE REVIEWER RE-RAN: `npx tsc --noEmit` REAL exit 0 with no diagnostic, `npx vitest run` REAL exit 0 at 30 files and 448 tests IDENTICAL to base as a round touching no compiled file must be, the guard file at 31 collected against 25 at base, and the state readers and canary SERIALLY at 480, 52, 21, 16, 556 passed with 4 skipped, and 42 — `tests/ui_contracts/` moving 550 to 556, which is EXACTLY the 6 test functions the guard file gained. THE REVIEWER THEN RAN FOUR MUTATIONS OF ITS OWN AND THREE WENT RED, INCLUDING BOTH THAT SURVIVED R39: `next.delete(answerKey)` becoming `next.clear()` now fails `::test_the_remove_helper_deletes_the_passed_key_and_nothing_else` and `::test_neither_helper_carries_a_bulk_operation` at REAL exit 1, 2 failed and 29 passed; wrapping the live paragraph in `{outcome === null ? undefined : ( ... )}` now fails `::test_the_region_is_created_under_no_conditional_operator_at_all` at REAL exit 1; and the same wrap PLUS a decoy `<p aria-live="polite">` planted after it — an attempt to misaim the new reader's `rindex` at the wrong node — fails identically, so the reader's aim survives the attack its own docstring worries about. The fourth survived and is registered as R-0691. THE ONE DEVIATION THE WORKER DECLARED IS ACCEPTED AND IS NOT A BLOCK CONDITION: S2 said the region between the button and the paragraph "is whitespace once comments are stripped" while on disk it is whitespace plus the bare `{}` the stripper leaves where the JSX comment stood; the worker shipped the assertion exactly as ordered rather than rewording the spec or touching the component, and `{}` holds none of `?`, `&&` or `||`, so the assertion is tight and the reviewer's sentence was merely imprecise. NO BLOCK CONDITION AROSE: no fabricated value, no false live indicator, no missing table, no unverified claim, no silent scope change. R40 closed both of R39's findings and left one narrower than either.
-<<<END LEDGER41
+- R-0693 — High, SEVEN OF THE EIGHT PRODUCING DECISION TYPES CANNOT BE ANSWERED THROUGH THE WRITE DOOR, AND THE INBOX SHIPS AN ENABLED BUTTON FOR EVERY ONE OF THEM. Raised by the reviewer at the R41 gate while measuring the seam the clarification FORM round would have built on. THE MEASUREMENT, run in-memory at `59521bf5` against stub jobs and never against a stored job: `packages/orchestration/ui_server.py::_dispatch_decision_resolve` calls `escalation.answer_task_decision` and nothing else, and a None return is audited `rejected_state` and answered 409 at line 3634, which that method's own docstring states. `escalation.find_task_decision` iterates `escalation_records(job)` alone, so of the eight branches of `decision_queue.list_decisions` only branch 8 — task decisions, whose id IS `record["decision_id"]` — can be found. Probed directly, `answer_task_decision` returned None for `pa:i1`, `sr:s1`, `tf:t1`, `dirty_repo`, `budget:b1`, `mem:k1` and `fp:approval`, and returned a record for `td:abc12345`. `apps/ui/src/components/panels/DecisionInboxCard.tsx` renders EVERY entry of `decision.answers` as an enabled `<button>` whose `onClick` posts `answer.value` through `answerDecisionCard`, and `decisionCard.ts::decisionAnswers` falls back to `next_actions` as `kind: "command"` when the payload carries no `options` — so a flight-plan card offers a button labelled `remedy decision resolve abcdef12 fp:approval --reason approve` which posts that CLI line as the answer text and is refused 409. THE FEATURE'S OWN ACCEPTANCE IS UNMEETABLE AS WRITTEN while this stands: T5_F031 requires that "every producer type renders and answers correctly from fixtures" and that answering "round-trips through the write channel into the same effects the CLI produces". PART OF THIS IS AN UNSHIPPED HALF OF ANOTHER FEATURE'S OWN PLAN: `.agent/decisions.md` records under F009 that "`decision.resolve` dispatches — a task decision to `escalation.answer_task_decision` followed by `save_job`, an `fp:`-prefixed id to `resolve_flight_plan_approval` — and the seam is gone when that round ends", and `flight_plan.resolve_flight_plan_approval` exists and its docstring says it was extracted "so the UI write door can reach the SAME code the CLI has always run" — yet `grep resolve_flight_plan_approval packages/orchestration/ui_server.py` returns nothing and the CLI is its only caller. HIGH BECAUSE IT IS OPERATOR-VISIBLE AND SILENT ON THE WAY IN: the button looks live, the failure is a toast after a round trip, and the operator has no way to learn from the surface which of their questions this door can take. DECISION F031 D19, landed at C4 of this round, rules the repair in three rounds and none of it happens here.
+<<<END FINDINGS42
+
+<<<SLICE LEDGER42
+Gate: F031 R41 — the F031 R41 entry. R41 PASSED ON EVERY GATE IT COULD CONTROL AND ITS ONE RED IS THE REVIEWER'S OWN, AND THE REVIEWER RE-RAN ALL SEVEN GATES ITSELF off disk rather than reading the handback back; every value that handback states reproduced exactly. G1: the block is byte-identical at sha256 `0a70adced995e7ed78d9d14cdd91ea660f13192ea77413918ca50dab8fe4fe38` over 20004 bytes and 184 lines as the C0a blob, as the C0b blob and as both working copies read off disk, C0a and C0b resolving to the SAME git blob `491e5cd3` — the thirteenth round running that transport held. G2: 3 slices, TOTAL 184, CONTENT 53, PROSE 131 against caps of 490 and 400, markers counted as PROSE by both readers as R40 agreed. G3 IS THE RED AND IT IS THE BLOCK AUTHOR'S: `.agent/plan.md` at `813aa914` is byte-equal to PLANF031R41 at 3002 bytes with the minus-newline control FALSE, `^## Goal$` 1 and `^## Next Steps$` 1, and `wc -l` reads 51 against a clause requiring strictly under 50 — the two clauses of the reviewer's own gate cannot both hold, the worker shipped the slice byte for byte as constraint 1 requires and declared the breach rather than trimming it, which docs/agents/planner_reviewer_prompt.md §3 item 3 rules is the correct choice, and the defect is registered as R-0692 against the reviewer. G4: 817669 + 1 + 2338 = 820008 against an actual 820008 and 820008 + 1 + 5653 = 825662 against an actual 825662, each pre-commit blob a byte-exact prefix and each whole-file identity TRUE, blank-line units 341 to 342 to 343 with the last unit equal to each slice's paragraph, both cross-slice swaps FALSE, both in-memory byte flips REJECTED by both readers, and the single-paragraph in-slice reversals correctly declared degenerate rather than reported as passing controls. G5: `^- R-\d+ — ` 251 to 252 to 252 with ADDED across C2 exactly `R-0691`, ADDED across C3 EMPTY, REMOVED EMPTY at both, all ids DISTINCT at all three points and the maximum `R-0691`; `^Done: R-\d+ — ` 5, `^Landed: R-` 0 and `^Gate: R\d+ — ` 19 throughout; `^Gate: F\d+ R\d+ — ` 21 to 21 to 22 with the ADDED key exactly `F031 R40`; open set 246 before C2 and 247 after C3. G6: markers 0 and 0 in the plan at `813aa914` and the ledger at `51a1b735` against a live CONTROL of 3 and 3 over the C0a blob; the change set is exact in BOTH directions at 4 paths over `3afdb209`..`51a1b735`, all under `.agent/`, declared-minus-range exactly `.agent/handoff.md` which C4 writes; insertions 184, 112, 17, 2 and 2, each single-parent and each far under 500, the handback itself 35; every reflog prefix reads `commit` so `amend`, `rebase` and `cherry` are 0 each; `git ls-files .remedy-wt` is 0 and `git worktree list` is 1 line. G7: the four state readers, the canary and the contracts suite re-run SERIALLY by the reviewer in the primary checkout at REAL exit 0 and at 480, 52, 21, 16, 42 and 556 passed with 4 skipped — every reading IDENTICAL to the `3afdb209` baseline, as a round that adds no test must show. THE HANDBACK ITSELF WAS AUDITED AS AN ARTIFACT: every `+/-` cell equals `git diff --numstat`, the item-status table covers all seven ordered items, one line per gate carries a real exit code, and its 85 lines sit inside the 100-line tier that six tabled commits earn. NO BLOCK CONDITION AROSE: nothing fabricated, no false green — the red gate is declared, not claimed — no missing table, no unverified completion claim and no silent scope change. R41 registered R-0691, recorded R40's PASS, and cost the branch one finding that belongs to the block author rather than to the worker.
+<<<END LEDGER42
+
+<<<SLICE DECISION19
+## DECISION F031 D19 (2026-08-27) — the card offers no answer the door will refuse, and the door learns the one verb F009 extracted for it
+
+CHOSEN, THE ENDPOINT DERIVES ANSWERABILITY AND THE BROWSER NEVER GUESSES IT.
+`packages/orchestration/decision_inbox.py::build_decision_inbox` gains a THIRD
+derived key beside `age_seconds` and `blocked_count`, computed with the SAME
+predicate the door runs — whether `escalation.find_task_decision` finds the
+decision's id — so the rule that decides what may be posted is written once, on
+the side that owns the record. The docstring's "exactly two extra keys" sentence
+moves with the code. The alternative of branching on `card.type` in
+`decisionCard.ts` is REJECTED: `decisionAnswers` carries the architecture line
+"MUST NOT branch on `card.type`", which is what lets a type this repository has
+never produced render generically, and a second copy of the door's rule in the
+browser is exactly the drift that line exists to prevent.
+
+CHOSEN, A CARD THE DOOR CANNOT TAKE SHOWS ITS CLI LINE AS TEXT, NOT AS A BUTTON.
+The `next_actions` strings are already the exact command an operator can paste —
+`escalation.task_decision_answer_command` and `decision_queue`'s own `_actions`
+build them for that purpose — so they stay visible and stop being posted. The
+alternative of posting anyway and rendering the 409 is REJECTED: that is
+R-0693's defect stated as a design, and it teaches the operator only by failing.
+
+CHOSEN, F031 BUILDS THE `fp:`-PREFIXED DISPATCH RATHER THAN ROUTING IT AWAY.
+`.agent/decisions.md` records under F009 that the door would dispatch an
+`fp:`-prefixed id to `resolve_flight_plan_approval`, and that function exists
+with a docstring saying it was extracted "so the UI write door can reach the
+SAME code the CLI has always run" — so this is an unshipped CALL SITE for a verb
+already built for this caller, not a new capability, and it touches neither the
+nonce nor the audit behaviour `.agent/context.md` puts out of scope. Routing it
+to F009 as DECISION F031 D14 routed the blank-answer check is REJECTED here for
+one reason: F009 is CLOSED, and without this dispatch T003's clarification form
+has no destination and the feature's own Acceptance stays unmeetable.
+
+CHOSEN, THE OTHER SIX PREFIXES STAY UNANSWERABLE IN THE BROWSER FOR NOW. `pa:`,
+`sr:`, `tf:`, `dirty_repo`, the budget id and `mem:` have no package-level
+resolve verb at all, so each is a feature rather than a call site. They render,
+they show their CLI line, and F031 claims nothing else about them.
+
+CHOSEN, THE PROGRAMME IS THREE ROUNDS AND THE FORM IS LAST. R43 the derived key
+and the card; R44 the `fp:` dispatch; R45 the clarification FORM over
+`payload.clarifications`, whose records are `id`, `question`, `default_answer`
+and `impact` and whose answers reach the CLI's `--answer <id>=<value>` semantics
+through `apps/cli/commands/decision.py::parse_answer_options`. Building the form
+first is REJECTED: it would post into a 409 and add a second false affordance.
+
+REVERSE IT by deleting the third derived key, restoring the unconditional button
+and dropping the `fp:` branch from the door. Nothing in the read endpoint's
+existing two keys or in the CLI changes, so the reversal touches no other
+feature.
+<<<END DECISION19
+
+<<<SLICE AMEND42
+## Design amendments (F031 R42, 2026-08-27)
+
+> This ruling SUPERSEDES the sentences it names above, on the same terms as the
+> R5, R11 and R18 sections: the originals stay so this file records what was
+> planned and then what was ruled. Rationale, alternatives and the reversal path
+> are in `.agent/decisions.md` under DECISION F031 D19.
+
+- **D19 — the card offers no answer the door will refuse.** "Acceptance" says
+  "every producer type renders and answers correctly from fixtures" and "Goal &
+  Done" says answering "round-trips through the write channel". Measured at
+  `59521bf5`, `ui_server.py::_dispatch_decision_resolve` calls only
+  `escalation.answer_task_decision`, whose `find_task_decision` matches
+  escalation records alone, so of the eight producing branches of
+  `list_decisions` only task decisions can be answered; the other seven are
+  refused 409 while `DecisionInboxCard.tsx` renders an enabled button for each.
+  Finding R-0693 carries the measurement. The read endpoint therefore derives a
+  THIRD key saying whether the door can take this card, the card renders a
+  non-answerable decision's `next_actions` as pasteable TEXT rather than as a
+  posting button, and F031 ships the `fp:`-prefixed dispatch to
+  `flight_plan.resolve_flight_plan_approval` that DECISION F009 D5 planned and
+  did not land. "Answers correctly from fixtures" is read as TASK DECISIONS plus
+  flight-plan approvals when this feature closes; `pa:`, `sr:`, `tf:`,
+  `dirty_repo`, the budget id and `mem:` have no package-level resolve verb and
+  are out of F031's scope. The clarification form of T003 lands after the
+  dispatch, not before it.
+<<<END AMEND42
