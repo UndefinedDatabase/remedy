@@ -12,7 +12,7 @@ import { LiveStatusPill } from "./LiveStatusPill";
 import { TaskChecklistCard } from "./TaskChecklistCard";
 import styles from "./RightLivePanel.module.css";
 
-export function RightLivePanel({ dashboard, onSelectNode, streamStatus, recent, recentDropped }: { dashboard: RemedyDashboard; onSelectNode: (nodeId: string | null) => void; streamStatus?: BrainStreamStatus | null; recent?: readonly FeedRow[]; recentDropped?: number }) {
+export function RightLivePanel({ dashboard, serverToken, onSelectNode, streamStatus, recent, recentDropped }: { dashboard: RemedyDashboard; serverToken: string; onSelectNode: (nodeId: string | null) => void; streamStatus?: BrainStreamStatus | null; recent?: readonly FeedRow[]; recentDropped?: number }) {
   const [showAdvanced, setShowAdvanced] = useState(false);
 
   return (
@@ -20,7 +20,10 @@ export function RightLivePanel({ dashboard, onSelectNode, streamStatus, recent, 
       <LiveStatusPill live={liveIsActive(dashboard)} streamStatus={streamStatus} />
       <AgentNowCard dashboard={dashboard} recent={recent} />
       <NeedsAttentionCard dashboard={dashboard} />
-      <DecisionInboxCard decisions={orderDecisionInbox(dashboard.decisionInbox)} tasks={dashboard.tasks} onSelectNode={onSelectNode} />
+      {/* The inbox addresses the job the DASHBOARD names, the same value the
+          stream is opened against (DECISION F008 D3), never one re-read from
+          the URL beside it. */}
+      <DecisionInboxCard decisions={orderDecisionInbox(dashboard.decisionInbox)} tasks={dashboard.tasks} jobId={dashboard.jobId} serverToken={serverToken} onSelectNode={onSelectNode} />
       <ActivityFeedCard activity={dashboard.activity} recent={recent} recentDropped={recentDropped} tasks={dashboard.tasks} onSelectNode={onSelectNode} />
       <TaskChecklistCard tasks={dashboard.tasks} jobId={dashboard.jobId} onSelectNode={onSelectNode} />
       <button

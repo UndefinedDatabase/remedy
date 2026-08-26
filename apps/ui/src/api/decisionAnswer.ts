@@ -13,12 +13,15 @@
 //
 // THE DELIBERATE ABSENCES, written down here because a reader looking for the
 // missing code will search this file for it. This module does NOT issue the
-// request: it opens no socket, and the sender round owns that call. It does NOT
-// mint the nonce either — the caller supplies one, which is precisely what keeps
-// this module free of a clock, of a random source and of any injection seam, so
-// every one of its answers is a value a test can assert. It reads no clock at
-// all. A reader searching this file for a request, a retry, a header or a token
-// is searching for something this module refuses to have.
+// request: it opens no socket. `./decisionSend.ts` turns this body into a
+// request value, `./decisionSubmit.ts` is the one call that crosses the wire,
+// and `./decisionAnswerFlow.ts` sequences the two behind the single function
+// `DecisionInboxCard` calls on a click. It does NOT mint the nonce either — the
+// caller supplies one, which is precisely what keeps this module free of a
+// clock, of a random source and of any injection seam, so every one of its
+// answers is a value a test can assert. It reads no clock at all. A reader
+// searching this file for a request, a retry, a header or a token is searching
+// for something this module refuses to have.
 //
 // THE REFUSALS ARE NOT ALL MIRRORS, AND NONE OF THEM IS AN AUTHORITY. The
 // missing-id refusal, the nonce refusal and the not-open refusal are each a

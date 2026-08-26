@@ -23,10 +23,11 @@
 // how many cards are still waiting, and the badge that shows that number is
 // rendered by `../components/panels/DecisionInboxCard`. ANSWERING is not
 // missing everywhere any more either: the command body an answer becomes is
-// built by `./decisionAnswer.ts`. What is still genuinely absent is the SEND —
-// nothing in this browser posts that body to the command endpoint yet, and that
-// is T003's sender round. This module reads no clock either — an age arrives as
-// the endpoint's own `age_seconds`, exactly as `recency.ts` takes `nowMs`.
+// built by `./decisionAnswer.ts`, and the SEND is `./decisionAnswerFlow.ts` —
+// mint, build, post and one sentence — which `DecisionInboxCard` calls on a
+// click, so a card built here is answerable end to end. This module reads no
+// clock either — an age arrives as the endpoint's own `age_seconds`, exactly as
+// `recency.ts` takes `nowMs`.
 
 /** What kind of affordance a card offers. `free_text` is the fallback the
  *  producer never has to ask for: a question is never shown without some way to

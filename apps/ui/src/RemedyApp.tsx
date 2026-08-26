@@ -34,5 +34,8 @@ export default function RemedyApp() {
 
   if (error) return <div data-ui="remedy-app" style={{ display: "grid", placeItems: "center", height: "100%", color: "#14254b" }}>{error}</div>;
   if (!dashboard) return <div data-ui="remedy-app" style={{ display: "grid", placeItems: "center", height: "100%" }}><CircularProgress /></div>;
-  return <ReducedMotionProvider><RemedyShell dashboard={dashboard} selectedNodeId={selectedNodeId} onSelectNode={setSelectedNodeId} /></ReducedMotionProvider>;
+  // The per-run token travels as a PROP from here to the decision inbox's answer
+  // buttons, because this is the only place that reads it and a component that
+  // re-read the URL would be a second source for one credential.
+  return <ReducedMotionProvider><RemedyShell dashboard={dashboard} serverToken={token} selectedNodeId={selectedNodeId} onSelectNode={setSelectedNodeId} /></ReducedMotionProvider>;
 }

@@ -263,9 +263,21 @@
   font-size: 12px;
   font-weight: 600;
 }
-/* Answering is T003's work; until it lands the control says so rather than
-   looking live. */
+/* A button is disabled only while ITS OWN answer is on the wire, so the dimming
+   below reads as "this one is being sent" and never as "answering is off". */
 .decisionAnswer:disabled { cursor: not-allowed; opacity: 0.55; }
+
+/* What became of ONE sent answer (T5_F031 T003). The sentence is
+   decisionOutcome.ts's; only the colour and the placement are this card's, and
+   the three tones below are that module's closed union. flex-basis: 100% puts
+   the sentence on its own line inside the .decisionAnswers strip, under the
+   buttons rather than between them. The same R-0661 rule as the blocks above
+   applies — every colour resolves to a custom property
+   apps/ui/src/styles/tokens.css already defines. */
+.decisionOutcome { flex-basis: 100%; margin: 0; font-size: 12px; line-height: 1.45; }
+.decisionOutcomeOk { color: var(--remedy-green-500); }
+.decisionOutcomeWarn { color: var(--remedy-orange-400); }
+.decisionOutcomeError { color: var(--remedy-red-500); }
 
 /* The inbox's TYPE FILTER chips (T5_F031 T002b, DECISION F031 D8). They take the
    CARD's own chip scale that .decisionChip sets above, NOT the glass dock
