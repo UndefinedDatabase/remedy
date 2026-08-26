@@ -8115,3 +8115,31 @@ scope ruling that leaves six prefixes out of F031. Only the round numbers move.
 
 REVERSE IT by rejoining the two halves in one round, which the block cap will
 refuse; that refusal is the evidence for this entry.
+
+## DECISION F031 D21 (2026-08-27) — the answerability key mirrors the door's REFUSAL conditions, not its route to the record, and the browser half moves to R45
+
+SUPERSEDING A ROUND ATTRIBUTION IN DECISION F031 D20: that entry rules "R44
+lands the browser half — the model field and the card that renders a
+non-answerable decision's `next_actions` as text". The key R43 landed, read at
+`46ae059f`, is false for an answered task decision, so R44 becomes the endpoint
+repair, the browser half
+becomes R45, the `fp:` dispatch R46 and the clarification FORM R47. D20's split
+at the wire is not weakened by this — it is what made the repair cheap, because
+the fact was caught on the wire before any component rendered it.
+
+CHOSEN, THE KEY IS COMPUTED FROM WHAT THE DOOR REFUSES. A derived key that
+claims another module will accept something is computed from that module's
+REFUSAL conditions in full, not from its route to the data. `answer_task_decision`
+refuses on two conditions — no record, or a record that is not OPEN — so
+`_answerable_by_decision_resolve` tests both, reading the escalation record the
+door reads rather than the card's own `status` field, so the two cannot drift.
+Nothing else D19 CHOSE changes: not the key's name, not the refusal to branch on
+`card.type`, not the scope ruling that leaves six prefixes out of F031.
+
+CONSIDERED AND REJECTED: reading the card's `status` key instead. It is the same
+value today, derived by `list_decisions` from the same record, but it is a
+SECOND derivation of the door's input and would make the inbox agree with itself
+rather than with the door — which is the failure this entry exists to correct.
+
+REVERSE IT by narrowing the helper back to an existence test, which the test
+R44 adds will refuse; that refusal is the evidence for this entry.
