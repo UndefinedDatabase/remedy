@@ -2,6 +2,9 @@
 // that module declares its own input and output types precisely so this import
 // direction stays acyclic.
 import type { BudgetTickFigures, CostMetricView } from "./costMetric";
+// The decision inbox's card MODEL is imported FROM `./decisionCard` for the same
+// reason: that module imports nothing from here, so the direction stays acyclic.
+import type { DecisionCardModel } from "./decisionCard";
 
 export type RemedyState = "done" | "current" | "pending" | "blocked" | "suggested";
 export type RemedyTaskKind = "goal" | "task" | "approval" | "apply" | "test" | "review" | "memory" | "proof" | "change";
@@ -217,5 +220,14 @@ export interface RemedyWorkerStatus {
  *  `budget_final` (DECISION F022 D7). It is carried as the arriving payload
  *  rather than as a decided view because `costReconciliation.ts` hands it to
  *  `costMetricOf` unread — see DECISION F022 D8 clause 2. `null` means the job
- *  emitted no tick at all, which stays absent rather than becoming a zero. */
-export interface RemedyDashboard { jobId: string; title: string; description: string; conceptLabel: string; metrics: RemedyMetric[]; budgetFinal: BudgetTickFigures | null; phases: RemedyPhase[]; tasks: RemedyTaskItem[]; activity: RemedyActivityItem[]; graph: { nodes: RemedyGraphNode[]; edges: RemedyGraphEdge[]; }; nextAction: RemedyNextAction; live: RemedyLiveState; apiHealth: RemedyApiHealth; pipeline: RemedyPipeline | null; resume: RemedyResume | null; projectSummary: RemedyProjectSummary | null; workerStatus: RemedyWorkerStatus | null; timelineEvents?: RemedyTimelineEvent[]; snapshot: RemedySnapshotSummary | null; continuation: RemedyContinuationSummary | null; promptTrace?: RemedyPromptTraceSummary | null; }
+ *  emitted no tick at all, which stays absent rather than becoming a zero.
+ *
+ *  `decisionInbox` is the `/api/jobs/<job_id>/decisions` document projected
+ *  through `decisionCardModels` (T5_F031 T002a). It is deliberately NOT
+ *  optional: a non-optional field makes `tsc` name every site that builds a
+ *  dashboard, so an inbox can never be silently absent from one. An endpoint
+ *  that did not answer yields the EMPTY array — an empty inbox is a real
+ *  answer, `undefined` would not be. Remedy deliberately does NOT order,
+ *  filter or count the cards here; that rule is T002b's subject and lives in
+ *  `decisionCard.ts` when it lands. */
+export interface RemedyDashboard { jobId: string; title: string; description: string; conceptLabel: string; metrics: RemedyMetric[]; budgetFinal: BudgetTickFigures | null; phases: RemedyPhase[]; tasks: RemedyTaskItem[]; activity: RemedyActivityItem[]; graph: { nodes: RemedyGraphNode[]; edges: RemedyGraphEdge[]; }; nextAction: RemedyNextAction; live: RemedyLiveState; apiHealth: RemedyApiHealth; pipeline: RemedyPipeline | null; resume: RemedyResume | null; projectSummary: RemedyProjectSummary | null; workerStatus: RemedyWorkerStatus | null; timelineEvents?: RemedyTimelineEvent[]; snapshot: RemedySnapshotSummary | null; continuation: RemedyContinuationSummary | null; promptTrace?: RemedyPromptTraceSummary | null; decisionInbox: DecisionCardModel[]; }
