@@ -1,65 +1,91 @@
-── STEP R23 — F031 Decision inbox ────────────────────────────
-Goal:        T002b FILTERING, THE HALF THAT SHOWS. `DecisionInboxCard` owns
-             the chosen type in its own state, draws the chips
-             `decisionTypeChoices` derives and shows the quiet line
-             `decisionInboxView` returns when none survive — the seam R22
-             built the view shape for. The two remaining `R-0593` comments in
-             this feature's reach are repaired, and the R22 verdict written.
+── STEP R24 — F031 Decision inbox ────────────────────────────
+Goal:        T002b BADGE, THE HALF THAT COUNTS — server side. DECISION F031
+             D2's two CONSTANT-ZERO counters in `ui_server.py` are replaced by
+             one re-derivation over `decision_queue.list_decisions`, so
+             `metrics.open` and `open_decision_count` finally answer with the
+             number of open decisions a job really has. The R23 verdict, the
+             third `R-0593` instance and one new finding are written first.
 
-Fortschritt: ~78 % (F031 claimed; R1 through R22 landed, R22 gated here ·
+Fortschritt: ~82 % (F031 claimed; R1 through R23 landed, R23 gated here ·
              T001 SHIPPED · T002a MODEL shipped, wired and RENDERED ·
-             T002b ORDERING SHIPPED and gated · T002b FILTER shipped whole
-             here, model at R22 and control now · T002b badge und T003 offen)
+             T002b ORDERING and FILTERING SHIPPED and gated · T002b badge
+             SERVER half here, its UI half at R25 · T003 offen)
              — Schaetzung
 
 Bundle:      C0a save this block · C0b mirror it into last_block · C1 the
-             plan · C2 the R22 gate entry · C3 the control, its styles, the
-             two comment repairs and DECISION F031 D8 · C4 handback.
+             plan · C2 the R23 gate entry, the R-0593 recurrence and the new
+             finding · C3 the counter re-derivation, its tests and DECISION
+             F031 D9 · C4 handback.
 
 Change set:  exactly these paths, nothing else —
-             .agent/authored/f031-r23.md                       (C0a)
-             .agent/last_block.md                              (C0b)
-             .agent/plan.md                                    (C1)
-             .agent/live_review.md                             (C2)
-             apps/ui/src/components/panels/DecisionInboxCard.tsx     (C3)
-             apps/ui/src/components/panels/RightLivePanel.module.css (C3)
-             apps/ui/src/api/decisionCard.ts                   (C3, comment)
-             .agent/decisions.md                               (C3, D8)
-             .agent/handoff.md                                 (C4)
+             .agent/authored/f031-r24.md                (C0a)
+             .agent/last_block.md                       (C0b)
+             .agent/plan.md                             (C1)
+             .agent/live_review.md                      (C2)
+             packages/orchestration/ui_server.py        (C3)
+             tests/ui_server/test_live_state.py         (C3)
+             tests/ui_server/test_dashboard_contract.py (C3)
+             .agent/decisions.md                        (C3, D9)
+             .agent/handoff.md                          (C4)
              This list bounds the round's WRITES, not its ACTIONS: the push
              named in G9 is ordered explicitly and is not a file (R-0674).
-             `RightLivePanel.tsx` is NOT here: it keeps handing
-             `orderDecisionInbox(dashboard.decisionInbox)` to the card, and
-             the state lives in the card — the shape `component_spec.md`
-             fixes for `GraphFilterChips` ("state stays in BrainGraphStage").
+             NOTHING under `apps/` is written this round. The badge's MARKUP
+             is R25's, and so are the two comment repairs C2 records.
 
 ── Base ──────────────────────────────────────────────────────
-The round base is `879bd137a008c982c6f54ffc9e7caf13d45a3dc0`, the R22
+The round base is `030a43d1597dfc3b00933dacb50e882728a434e7`, the R23
 handback commit and the tip of `feature/f031-decision-inbox`, local and
-remote EQUAL — the reviewer measured both with `git ls-remote` at the R22
+remote EQUAL — the reviewer measured both with `git ls-remote` at the R23
 gate. Stay on that branch; create none, never commit to `main`. Every
 SHA-shaped token here resolved under `git cat-file -t` before emission;
 the types are NOT all `commit`, and G8 does not ask them to be.
 
 Readings the reviewer MEASURED at that base, re-checkable there:
-- `.agent/live_review.md` 657516 bytes; `^- R-\d+ — ` 242 all DISTINCT,
+- `.agent/live_review.md` 665858 bytes; `^- R-\d+ — ` 242 all DISTINCT,
   maximum `R-0681`; `^Done: R-\d+ — ` 4, so the §3 item 10 open set is
   238; `^Recurrence: R-` 18; `^Landed: R-` 0. THE GATE SERIES IS SPLIT by
   DECISION F031 D7: `^Gate: R\d+ — ` 19, frozen, and
-  `^Gate: F\d+ R\d+ — ` 3, those three being `F031 R19`, `F031 R20` and
-  `F031 R21`.
-- `.agent/plan.md` 48 lines, 2811 bytes. `docs/roadmap/**` is UNTOUCHED,
-  so the §3 docs-round gate is not earned and is not ordered.
-- `apps/ui`: `npm run typecheck` exit 0, zero diagnostics; `npm run
-  test:unit` exit 0 at 23 files and 352 tests, of which `decisionCard.test.ts`
-  is 27, `decisionOrder.test.ts` 16 and `decisionFilter.test.ts` 20.
+  `^Gate: F\d+ R\d+ — ` 4, those four being `F031 R19`, `F031 R20`,
+  `F031 R21` and `F031 R22`.
+- `.agent/plan.md` 45 lines, 2581 bytes. `docs/roadmap/**` is UNTOUCHED,
+  so the §3 docs-round gate is not earned and is not ordered. `apps/ui`
+  is untouched too, so no `npm` command is ordered anywhere in G1–G9.
 - The Python suites, every one exit 0: `tests/ui_server/` 474,
-  `test_test_runner` 52, `test_resource_safety` 21, `test_integrity_gate` 16,
-  `tests/ui_contracts/` 525 passed with 4 skipped, `test_golden_path` 42.
-- THE SUITE GUARDS OVER THE FILES C3 REWRITES were read first (§3 item 7):
-  `tests/ui_contracts/test_ux_quality.py` reads `RightLivePanel.module.css`
-  by SUBSTRING PRESENCE only, and NO `count(` or `== 1` assertion over
-  either `apps/` file exists under `tests/`, so appending classes is safe.
+  `test_test_runner` 52, `test_resource_safety` 21, `test_integrity_gate`
+  16, `test_autonomy` 81, `test_golden_path` 42. `python3 -m ruff check`
+  over the three Python paths the change set names: "All checks passed!".
+- THE TWO COUNTERS ARE CONSTANT ZERO, which is WHY this round exists.
+  `_build_dashboard` computes `decision_count` by scanning events for
+  `human_decision_requested`, and `_build_live_state_json` computes its
+  local `open_decisions` the same way; `blocker_count`, the other addend
+  of `metrics.open`, scans for `stop_reason_recorded`. The reviewer
+  grepped the whole repository outside `tests/` and `.agent/` for BOTH
+  event names: every occurrence is a READER, there is NO EMITTER, and the
+  only writers of either string are test fixtures. So `metrics.open` and
+  `open_decision_count` are BOTH constant zero in production today, which
+  is one fact more than DECISION F031 D2 records.
+- THE DERIVATION ALREADY EXISTS AND IS CHEAP. `decision_queue` exports
+  `list_decisions(job, events)` and `open_decisions(decisions)`; measured
+  on a Core `Job` of 50 tasks against 500 events at 0.309 ms per combined
+  call, so calling it per dashboard build costs nothing to design around.
+- THE FIXTURES ARE MEASURED, NOT ASSUMED (§3 item 8). At this base, with
+  `list_decisions` called directly: a `Job` carrying NO `target_repo` in
+  its metadata and one task yields exactly ONE open decision, of type
+  `stop_reason` and severity `blocker` — the "No target repository
+  attached to job." reason `stop_reasons.derive_stop_reasons` raises. The
+  SAME job with `target_repo` set and no events yields ZERO, and with
+  `target_repo` set plus three `human_decision_requested` events STILL
+  yields ZERO. That third shape is the discriminator S3 needs: the old
+  event scan answers 3 for it and the new derivation answers 0.
+- THE SUITE GUARDS OVER `ui_server.py` were read first (§3 item 7): the
+  only `.count(...) ==` assertion over that file anywhere under `tests/`
+  is `source.count("exec_guard.run_guarded_runtime_build_command(") == 2`
+  in `tests/ui_server/test_dashboard_contract.py`, which S1 does not
+  touch, and no `== 1` assertion reads it at all. Adding a symbol is safe.
+- THE EVENT-INJECTION IDIOM this repository already uses for these
+  builders is `patch("packages.orchestration.ui_server._load_events",
+  return_value=events)`, as `tests/test_repair_context_reviewer_memory.py`
+  does: both builders take only `job` and load their own events.
 - THIS BLOCK'S OWN TWO CAPS, measured on its final bytes before emission
   and stated so your re-measurement can disagree with the reviewer's, are
   490 lines TOTAL (DECISION F085 D6) and 400 lines PROSE (DECISION F085
@@ -69,14 +95,15 @@ Readings the reviewer MEASURED at that base, re-checkable there:
 1. Apply every authored SLICE BYTE FOR BYTE. Never retype, rewrap or
    "fix" one. If a slice looks wrong, apply it verbatim and DECLARE the
    disagreement: a contradiction in this block is the reviewer's defect.
-2. THE PRODUCTION CHANGE AND DECISION D8 ARE DESCRIBED, NOT SLICED. The
-   numbered specification S1 through S4 fixes behaviour, structure, style
-   and copy; YOU write that code and that decision entry under AGENTS.md's
-   Mandatory Self-Review Loop and its File Editing Safety Rules. Where the
-   spec is silent, prefer the idiom the neighbouring module already uses.
-   Where the spec is WRONG, say so in the handback and do the right thing.
+2. THE PRODUCTION CHANGE, ITS TESTS AND DECISION D9 ARE DESCRIBED, NOT
+   SLICED. The numbered specification S1 through S4 fixes behaviour,
+   structure and naming; YOU write that code, those tests and that
+   decision entry under AGENTS.md's Mandatory Self-Review Loop and its
+   File Editing Safety Rules. Where the spec is silent, prefer the idiom
+   the neighbouring code already uses. Where the spec is WRONG, say so in
+   the handback and do the right thing.
 3. Slice transport. This block is saved verbatim as
-   `.agent/authored/f031-r23.md` at C0a and mirrored byte-identically into
+   `.agent/authored/f031-r24.md` at C0a and mirrored byte-identically into
    `.agent/last_block.md` at C0b. Extract every slice PROGRAMMATICALLY out
    of the COMMITTED C0a blob by its marker LINES — `<<<SLICE <NAME>` opens,
    `<<<END <NAME>` closes. Marker lines never reach a target file.
@@ -91,36 +118,36 @@ Readings the reviewer MEASURED at that base, re-checkable there:
    `.agent/STOP` from disk before C0a and again before C4; if present,
    finish the commit in hand, write the handback and stop. NEVER delete
    that sentinel (R-0347).
-7. The slices this block carries are the whole text PLANF031R23 and the
-   appended text LEDGER23. This paragraph names them and states no count;
+7. The slices this block carries are the whole text PLANF031R24 and the
+   appended text LEDGER24. This paragraph names them and states no count;
    G2 orders you to report the count YOUR extractor measured.
 8. THE ONE APPEND'S SHAPE, STATED ONCE HERE, WITH EVERY GATE NAMING THIS
    PARAGRAPH RATHER THAN RESTATING IT. Under the newline-INCLUDED
    convention each slice already ends in a newline, so `.agent/live_review.md`
-   after C2 is EXACTLY: its blob at C1, then one newline, then LEDGER23 —
-   and it receives NOTHING ELSE in that commit (R-0657). LEDGER23's own
+   after C2 is EXACTLY: its blob at C1, then one newline, then LEDGER24 —
+   and it receives NOTHING ELSE in that commit (R-0657). LEDGER24's own
    paragraph count is yours to measure; this paragraph states no number.
    `.agent/decisions.md` also GROWS at C3, but by text YOU author under S4,
    so no equality gate is ordered over it and none may be reported.
 9. THIS BLOCK CARRIES NO FROM/TO PAIR, so no containment test is reported
    and no FROM-zero count is ordered (§3 item 15). The plan is a WHOLE-FILE
-   replacement and LEDGER23 is an append.
-10. THIS ROUND MINTS NO FINDING ID AND RESOLVES NONE. `^- R-\d+ — ` must
-    be 242 before and after, maximum staying `R-0681`, and `^Done: R-` and
-    `^Landed: R-` UNCHANGED at 4 and 0, so the §3 item 10 open set stays
-    238. `^Recurrence: R-` stays 18. WRITE NO `Landed:` LINE FOR R-0593
-    even though S3 repairs its last two instances inside this feature: the
-    instances in `packages/orchestration/release_gate.py` and
-    `pyproject.toml` are OUTSIDE F031 and untouched, so R-0593 stays OPEN,
-    and only reviewer-authored text may record what a repair settled
-    (§4.4). R-0593's landed paragraph and its `Recurrence:` paragraph are
-    NOT edited (§3 item 20).
-11. TOUCH NO DOCUMENT AND NO OTHER CODE. Nothing under `docs/`,
-    `packages/` or `tests/` is edited, and neither `.agent/context.md` nor
-    either `f031_*_inventory.md`. Inside `apps/` only the three paths the
-    change set names are written — NOT `RightLivePanel.tsx`, NOT
-    `decisionFilter.ts`, NOT `decisionOrder.ts`, no test file. THIS ROUND
-    ADDS NO TEST: D5 rules no test reaches this markup, and G6 MEASURES it.
+   replacement and LEDGER24 is an append.
+10. THIS ROUND MINTS EXACTLY ONE FINDING ID AND RESOLVES NONE. LEDGER24
+    carries `R-0682`, so `^- R-\d+ — ` moves 242 → 243 with the maximum
+    moving `R-0681` → `R-0682`, and `^Recurrence: R-` moves 18 → 19. Both
+    `^Done: R-` and `^Landed: R-` stay UNCHANGED at 4 and 0, so the §3
+    item 10 open set moves 238 → 239. WRITE NO `Landed:` LINE and no
+    `Done:` line: R-0593 stays OPEN and R-0682 is minted OPEN, their fixes
+    routed to R25 by the plan. R-0593's landed paragraph and its earlier
+    `Recurrence:` paragraph are NOT edited (§3 item 20) — LEDGER24 appends
+    a SECOND recurrence paragraph beside them.
+11. TOUCH NO DOCUMENT AND NO OTHER CODE. Nothing under `docs/` or
+    `apps/`, and neither `.agent/context.md` nor either
+    `f031_*_inventory.md`. Inside `packages/` only `ui_server.py` is
+    written — NOT `decision_queue.py`, NOT `decision_inbox.py`, NOT
+    `stop_reasons.py`. Inside `tests/` only the two files the change set
+    names. THE FEATURE FILE IS NOT EDITED: DECISION F031 D2 already
+    amended it for this round and S4 adds no amendment to it.
 12. Destructive verification runs ONLY in a disposable `git worktree`
     under `.remedy-wt/`, removed BY ITS EXACT PATH (R-0662) and before the
     G7 suites. Everything already there is pre-existing scratch belonging
@@ -128,86 +155,79 @@ Readings the reviewer MEASURED at that base, re-checkable there:
     existing path, and delete nothing you did not create.
 
 ── Specification (S1–S4) — the production change ─────────────
-S1  THE CONTROL, in `apps/ui/src/components/panels/DecisionInboxCard.tsx`.
-    Import `useState` from `react` — the idiom
-    `components/graph/BrainGraphStage.tsx` uses — and `DECISION_FILTER_ALL`
-    plus `decisionInboxView` from `../../api/decisionFilter`. Hold the
-    chosen type as `useState<string>(DECISION_FILTER_ALL)`.
-    THE GUARD IS THE LOAD-BEARING LINE: the existing
-    `if (decisions.length === 0) return null;` keeps reading the UNFILTERED
-    prop and is NOT rewritten to read the filtered list, or the card would
-    unmount with its own control inside it and strand the operator.
-    Then compute the view ONCE per render from the prop and the state, draw
-    one `<button>` per `choices` entry, list `visible` through the existing
-    `decisionRow` markup UNCHANGED, and where `emptyMessage` is non-null
-    render that single line INSTEAD of the list. Every string still comes
-    from a field, so this file chooses no copy of its own, and NO NEW
-    BRANCH ON A DECISION'S `type` OR `status` enters it: adding a filter
-    leaves the header's architecture line true, because the filter
-    dispatches on nothing.
-    A11y, per `component_spec.md`'s FilterChips entry: each chip is a
-    `<button type="button">` carrying `aria-pressed` for whether it is the
-    chosen value, the chip row carries an `aria-label`, and the region
-    holding the list carries `aria-live="polite"` so a filter change
-    announces instead of silently reflowing.
+S1  THE ONE DERIVATION, in `packages/orchestration/ui_server.py`. Add a
+    single module-level private helper — name it for what it answers, two
+    to four words carrying the domain word, in the shape AGENTS.md's Code
+    Discoverability Conventions fix — which takes the job and its already
+    loaded events and returns the NUMBER of open decisions as an `int`.
+    It imports `list_decisions` and `open_decisions` from
+    `packages.orchestration.decision_queue` INSIDE the function, the idiom
+    every other derivation here uses, and catches the same narrow exception
+    set `_build_orchestrator_section` catches, returning 0 rather than
+    propagating, because both fields it feeds are typed `int` with no
+    unknown state. Say that in the one-line WHY comment above it.
+    THE NAME MUST NOT COLLIDE. `ui_server.py` already imports a DIFFERENT
+    `list_decisions`, from `orchestrator_brain`, inside
+    `_build_orchestrator_section`; keep the two distinguishable at the
+    call site rather than letting one spelling mean two functions.
 
-S2  THE STYLES, appended to
-    `apps/ui/src/components/panels/RightLivePanel.module.css` — new class
-    names only; EDIT NO EXISTING RULE, since `test_ux_quality.py` reads
-    this file for `taskRow`, `done`, `current`, `suggested`, `overflow` and
-    `.panel`. A row class for the chip strip and a chip class on the CARD's
-    own chip scale that `.decisionChip` sets — pill radius via
-    `var(--remedy-radius-pill)`, the `--remedy-line` border, small type —
-    plus a selected state under DECISION F031 D8, with colour from
-    `--remedy-*` tokens wherever one exists. The selected chip is NEVER
-    distinguished by colour alone (`ux_spec.md` §14: "never color-only
-    state changes"): it also carries weight or a border change. Give it a
-    `:focus-visible` ring, since §14 rules focus a 2px `--remedy-focus`
-    outer ring and these are the panel's first interactive chips.
+S2  THE TWO CALL SITES, in the same file, each becoming one call to S1's
+    helper. (a) In `_build_live_state_json`, the local `open_decisions`
+    computed by scanning events for `human_decision_requested` is REPLACED
+    — note that its current local NAME is the same word as the
+    `decision_queue` export S1 imports, so do not leave a shadow standing.
+    `open_decision_count` in the returned payload keeps its key and its
+    type. (b) In `_build_dashboard`, `decision_count` is replaced the same
+    way. `blocker_count` then has NO remaining reader, since `metrics.open`
+    is its only use: RETIRE IT with the expression that used it, under
+    DECISION F031 D9 below, rather than leaving a dead local behind.
+    `metrics.open` keeps its key, its type and its position; only the
+    number it carries changes.
 
-S3  THE LAST TWO `R-0593` REPAIRS IN THIS FEATURE'S REACH, at C3.
-    (a) `DecisionInboxCard.tsx`'s header still reads that Remedy
-    "deliberately does NOT sort, filter, count or answer here: ordering
-    over age and blocked size and the inbox badge are T002b's subject".
-    FILTERING IS HERE as of this round, so that sentence is about to be
-    false as well as undiscoverable. Rewrite it for what is true after S1:
-    the chosen type lives in this component's state while the RULES live in
-    `../../api/decisionFilter`, ordering in `../../api/decisionOrder`, the
-    badge's COUNT is still absent everywhere, answering still T003's.
-    (b) `apps/ui/src/api/decisionCard.ts`'s `decisionCardModels` docstring
-    still reads "the rule over age and blocked size is T002b's subject" —
-    the same one-directional gap the R22 handback registered as its
-    deviation 5 and left here. Rewrite that sentence to NAME
-    `./decisionOrder.ts` as the module holding the rule, keeping the point
-    it already makes: that a model which quietly re-sorted would make the
-    rule impossible to see. CHANGE NOTHING ELSE IN THAT FILE — no export,
-    no signature, no behaviour — which is why `decisionCard.test.ts` must
-    still measure exactly 27 at G7.
+S3  THE TESTS, in the two files the change set names, each beside the
+    tests already covering that builder and following that file's existing
+    fixture idiom, using the `_load_events` patch the Base section names.
+    Cover, at minimum, these three properties, which the Base section
+    measured at this round's base and which the OLD code fails:
+    (a) the repo-less job — no `target_repo`, one task, no events — makes
+    `_build_live_state_json(...)["open_decision_count"]` and
+    `_build_dashboard(...)["metrics"]["open"]` BOTH answer the number
+    `open_decisions(list_decisions(...))` gives for that same job, which
+    is not zero;
+    (b) a job with `target_repo` set and no events makes both answer zero,
+    so the count is not merely "always positive";
+    (c) THE DISCRIMINATOR: a job with `target_repo` set plus several
+    `human_decision_requested` events makes both STILL answer zero — the
+    proof that the event ledger no longer feeds either field. Derive each
+    expected number from `open_decisions(list_decisions(job, events))` in
+    the test itself rather than hardcoding it, so the tests pin the
+    DERIVATION and not one fixture's arithmetic. Name every test for the
+    property it pins, not for a step number.
 
-S4  DECISION F031 D8, appended to `.agent/decisions.md` in the shape D1
-    through D7 already use there, ruling the ONE visual deviation this round
-    takes — `.agent/context.md` binds `docs/ui/design_reference/` and wants a
-    technical reason for any departure. CHOSEN: the chips take the CARD's
-    chip scale, not the glass dock of `ux_spec.md` §13, keeping §13's
-    selected-chip treatment and `component_spec.md`'s `aria-pressed`. WHY:
-    §13 specifies that dock for the GRAPH STAGE — a floating overlay on the
-    dark canvas, radius 999, backdrop blur, 30px chips — and the inbox is a
-    card inside the right panel, which already supplies the glass, so a dock
-    there would outweigh the 13px titles above it and double the glass.
-    ALTERNATIVE: reusing `GraphFilterChips` verbatim, rejected because its
-    `GraphFilter` union is a FIXED four-value list while the inbox's choices
-    are DERIVED, so adopting it would reintroduce the hardcoded type list
-    `decisionFilter.ts` refuses to have. REVERSE by giving the chip class
-    the `GraphFilterChips.module.css` dock values.
+S4  DECISION F031 D9, appended to `.agent/decisions.md` in the shape D1
+    through D8 already use there, ruling what `metrics.open` MEANS now.
+    CHOSEN: `metrics.open` is the count of OPEN DECISIONS alone, so
+    `blocker_count` leaves that sum and the `stop_reason_recorded` scan
+    retires with it. WHY: `decision_queue` is already the aggregation of
+    everything a human must act on and its own branch 2 derives a
+    `stop_reason` decision from `derive_stop_reasons`, so keeping the
+    addend would double-count the same blocker the day either event name
+    gains an emitter — and TODAY it adds a measured constant zero, so
+    nothing observable is lost by removing it. Record the measurement the
+    Base section states: neither `human_decision_requested` nor
+    `stop_reason_recorded` has any emitter outside tests. ALTERNATIVE:
+    keeping `blocker_count + <new count>`, rejected as a latent
+    double-count that no test would catch while both addends are zero.
+    REVERSE by restoring the addend and its scan.
 
 ── Authored slices ───────────────────────────────────────────
 
-<<<SLICE PLANF031R23
+<<<SLICE PLANF031R24
 # Plan — F031 Decision inbox
 
 Branch: feature/f031-decision-inbox, cut from `main` at `6325ac2f`, the pull
 request #213 merge closing F022. `.agent/live_review.md` is the record and the
-id ceiling, `f031_*_inventory.md` the inventories, `.agent/decisions.md` D1–D8.
+id ceiling, `f031_*_inventory.md` the inventories, `.agent/decisions.md` D1–D9.
 
 ## Goal
 Every open question in one calm place: the inbox renders decision cards — type,
@@ -216,43 +236,49 @@ branch-only blocking semantics intact, ordered by a documented rule over age and
 blocked size, and answerable from the card through the write channel.
 
 ## Current Step
-R23 CLOSES T002b's filtering half: `DecisionInboxCard` holds the chosen type in
-its own state, draws the chips `decisionTypeChoices` derives and shows the quiet
-line `decisionInboxView` returns when none survive. It also repairs the last two
-`R-0593` comments inside this feature and writes the R22 verdict.
+R24 OPENS T002b's badge with its SERVER half: one re-derivation over
+`decision_queue.list_decisions` replaces the two constant-zero counters DECISION
+F031 D2 names in `ui_server.py`, so `metrics.open` and `open_decision_count`
+answer with a real number, pinned by tests in both builder suites.
 
 ## Next Steps
-1. T002b BADGE under DECISION F031 D2: it re-derives on refetch over the
-   existing SSE stream, no new event kind, D2's two constant-zero counters
-   replaced.
+1. R25 the badge's UI half — the count rendered where the operator sees it —
+   plus the two comment repairs R-0682 and the R-0593 recurrence route there.
 2. T003 wires answering through the existing write channel and rules
    `NeedsAttentionCard` (DECISION F031 D4).
 3. The integration-gate round per `docs/agents/integration_gate.md`, then
    closure per `docs/roadmap/STATUS_closure_protocol.md`.
 
 ## Risks
-- THE EMPTY-STATE TRAP IS LIVE THIS ROUND: `DecisionInboxCard` opens with
-  `if (decisions.length === 0) return null;`, and that guard must keep reading
-  the UNFILTERED prop. Filtering to zero would otherwise unmount the card AND
-  its own control and strand the operator with no way back, which is the whole
-  reason `decisionInboxView` returns a quiet line instead.
-- NO TEST REACHES THE MARKUP under DECISION F031 D5, so this round's `.tsx` is
-  pinned by `tsc`, by structure and by review alone. Every branch that could
-  live in `apps/ui/src/api/` already does, and R23 adds no test by design.
+- THE COUNT IS A NEW READ ON A HOT PATH: `_build_live_state_json` answers the
+  cockpit's poll, so the derivation it now calls must stay total and cheap. It
+  is measured at 0.309 ms for 50 tasks against 500 events, and every branch of
+  `list_decisions` already guards itself, but a raise escaping it would break
+  the dashboard rather than the badge.
+- A FAILURE READS AS ZERO, because both fields are typed `int` and carry no
+  unknown state. That is honest only while the WHY comment above the helper
+  says so and names `_build_orchestrator_section` as the richer shape.
+- NO EVENT KIND IS ADDED, per DECISION F031 D2. A round that "fixes" the badge
+  by emitting `decision.requested` has left this design, not completed it.
 - Open findings, by the rule and commit DECISION F009 D10 requires: per §3 item
   10 — every `^- R-\d+ — ` paragraph minus every `^Done: R-\d+ — ` line — the
-  set is 238 at `aa48d967`, unchanged by this round.
+  set is 238 at `f548277e`, and this round's C2 raises it to 239 by minting
+  R-0682, in the commit order the R24 block's constraint 4 fixes.
 - The findings THIS FEATURE MUST STILL ACT ON are R-0403, R-0413, R-0431,
   R-0441, R-0445, R-0471, R-0495, R-0533, R-0574, R-0593, R-0601, R-0622,
-  R-0625, R-0632, R-0672, R-0674, R-0675, R-0676, R-0677, R-0678 and R-0679;
-  R-0495 and R-0574 are the two Highs.
+  R-0625, R-0632, R-0672, R-0674, R-0675, R-0676, R-0677, R-0678, R-0679 and
+  R-0682; R-0495 and R-0574 are the two Highs.
 - BLOCK CAPS ARE TWO, not one: 490 lines TOTAL (DECISION F085 D6) and 400 lines
   PROSE (DECISION F085 D5); every block states and re-measures both.
-<<<END PLANF031R23
+<<<END PLANF031R24
 
-<<<SLICE LEDGER23
-Gate: F031 R22 — the F031 R22 entry. R22 PASSED ON EVERY ONE OF ITS NINE GATES, AND THE REVIEWER RE-RAN EVERY ONE ITSELF off disk rather than reading the handback back; every value that handback states reproduced exactly, and R22 earns no finding. TRANSPORT HELD IN ITS STRONGEST FORM, cmp-against-scratchpad rather than the digest fallback: the reviewer's own emitted `.remedy-wt/f031-r22.md`, the C0a blob committed at `7de87810`, the C0b blob committed at `296ea957`, and `.agent/last_block.md` read off disk at `879bd137` are ALL FOUR byte-identical at sha256 `1c305462638d726b6bf15a3321e04022d4d6a3914f4663637a0c317aa7e95298` over 34109 bytes and 446 lines, C0a and C0b resolving to the SAME git blob `52f6a0ca81202278eeb67aee5ffaa7f7fa501f9e`. THE EXTRACTION printed 2 slices, 49 content lines and 446 total, so PROSE was 446 − 49 = 397 against the 400-line cap DECISION F085 D5 sets and TOTAL 446 against the 490 DECISION F085 D6 sets — inside both, and the reviewer notes that 397 against 400 is three lines of margin, which is why R23's design was measured against the caps before its spec was written rather than after. THE PLAN at `b5eb6cd0` equals PLANF031R22 exactly at 2811 bytes and 48 lines, with the trailing-newline-removed control FALSE, `^## Goal$` 1 and `^## Next Steps$` 1, and 48 strictly under the 50 AGENTS.md sets. THE C2 APPEND SATISFIED WHOLE-FILE EQUALITY: `.agent/live_review.md` at `aa48d967` is its C1 blob plus one newline plus LEDGER22, at 651806 + 1 + 5709 = 657516 against an actual 657516, and the SECOND, INDEPENDENT READER AGREED — a blank-line split moves the unit count 304 to 305 and its last 1 unit equals LEDGER22's paragraph once trailing newlines are rstripped on BOTH sides, the handling the R21 entry already recorded as necessary. THE NEGATIVE CONTROL WAS RUN IN MEMORY, never on disk, flipping one byte inside the appended region: both readers REJECT the mutant and both ACCEPT the true file, so neither reading is vacuous. THE SETS MOVED ONLY WHERE CONSTRAINT 10 ALLOWED: `^- R-\d+ — ` 242 to 242 all DISTINCT, ids ADDED and ids REMOVED both the EMPTY SET, maximum `R-0681` unchanged, `^Done: R-` 4 to 4, `^Landed: R-` 0 to 0 and `^Recurrence: R-` 18 to 18. THE SPLIT SERIES BEHAVED AS DECISION F031 D7 RULES for a third round running: `^Gate: R\d+ — ` 19 to 19, frozen, and `^Gate: F\d+ R\d+ — ` 2 to 3, the added key exactly `F031 R21`, all keys DISTINCT, so the §3 item 26 header collision this series exists to prevent did not occur. The §3 item 10 open set is 238 at `aa48d967`, and `- R-0593 — ` occurs exactly ONCE line-anchored and `^Recurrence: R-0593` exactly ONCE, so its paragraphs were not edited. THE PROBES ARE THE REVIEWER'S OWN MUTANTS, written in a disposable worktree at `22fc6193` and removed by exact path, `git worktree list` 1 line and `git status --porcelain` 0 after: UNMUTATED exit 0 at 1 file and 20 tests; PROBE B, the `DECISION_FILTER_ALL` special case removed from `filterDecisionsByType`, REAL exit 1 with 2 failed, exactly the two the handback names — `filterDecisionsByType > yields every model under the all value` and `decisionInboxView > reports no empty message while something is visible`. PROBE A DIVERGED FROM THE HANDBACK AND THE DIVERGENCE IS THE MUTANT, NOT THE RECORD: the reviewer's fixed choice list kept the All chip's `count: models.length`, so it went REAL exit 1 with 7 failed where the handback reports 9, its 7 being 6 `decisionTypeChoices` tests plus `decisionInboxView > never throws, however broken the models it is handed`. The two the reviewer's weaker mutant spared are precisely the two that read the All chip's count — `puts the all choice first and counts every model on it` and `still offers the all choice when the filter emptied the list, so the operator can get back` — so the handback's 9 is the honest reading of a more aggressive fixed list, both mutants kill the extensibility test first, and the derivation is pinned under either. THE SUITES ARE THE REVIEWER'S OWN, run SERIALLY, never two alive at once, every one a REAL exit 0: `npm run typecheck` with ZERO diagnostics, its stdout holding only npm's two script-echo lines and its stderr empty; `npm run test:unit` at 23 files and 352 tests with `decisionCard.test.ts` 27 and `decisionOrder.test.ts` 16 both UNMOVED and the new `decisionFilter.test.ts` at 20, which is the whole of the 22-to-23 and 332-to-352 movement; and in Python `tests/ui_server/` 474, `test_test_runner` 52, `test_resource_safety` 21, `test_integrity_gate` 16, `tests/ui_contracts/` 525 passed with 4 skipped and `test_golden_path` 42 — every count identical to the base readings. THE MODULE'S SURFACE IS WHAT S1 ORDERED: `decisionFilter.ts` at `22fc6193` carries exactly ONE import line, `import type { DecisionCardModel } from "./decisionCard";`, its `switch` count is 0 raw AND comment-stripped beside `brainStreamDriver.ts` at 1, and each of the six S1 names grep to exactly one `export` there. THE UNTYPED-CHIP CLAIM WAS CHECKED AGAINST THE CODE IT DESCRIBES rather than taken on trust: `cardText` in `decisionCard.ts` returns `typeof value === "string" ? value : ""`, so `buildDecisionCardModel` really does default a missing `type` to the empty string, and `modelType` mirrors that same coercion — the comment is true and the empty-type chip reaches real cards. HYGIENE HELD: line-anchored `^<<<SLICE ` and `^<<<END ` are 0 in `.agent/plan.md` at `b5eb6cd0`, `.agent/live_review.md` at `aa48d967` and all three `apps/` files at `22fc6193`, against a CONTROL of 2 and 2 over the C0a blob; the range names 7 paths, none under `docs/`, `packages/` or `tests/` and none of `.agent/decisions.md`, `.agent/context.md`, either inventory or `DecisionInboxCard.tsx`, with range-minus-change-set EMPTY and change-set-minus-range exactly `.agent/handoff.md`; the six commits of `f13b92c0`..`879bd137` are each SINGLE-PARENT with insertions 446, 323, 20, 2, 314 and 66 read from `git diff --numstat`, each under the 500 cap AGENTS.md DECISION F104 D1 sets, and the first five agree CELL FOR CELL with the `+/-` column of that handback's `## Commits` table, which is the §3 item 28 reading; `git ls-files .remedy-wt` 0 and the zip glob 0. THE BLOCK'S OWN OBJECT IDS RESOLVE: 19 SHA-shaped occurrences, 9 distinct, failing set EMPTY, 8 `commit` and one `blob`, that blob being `599e6675d9e5aa79fb038ca357f7b20e1498daf2`. THE PUSH DISCHARGED, which is the outcome G9 routed to the reviewer rather than to any file R22 wrote: measured with `git ls-remote`, `refs/heads/feature/f031-decision-inbox` and the local tip are both `879bd137a008c982c6f54ffc9e7caf13d45a3dc0`, and no pull request was created, no branch deleted and nothing merged. THE HANDBACK FITS ITS TIER WITH NO OVERAGE: 97 lines against the 100 AGENTS.md allows for its 6 commits, every mandated section present. THE FIVE DECLARED DEVIATIONS ARE ADJUDICATED AND NONE IS A FINDING. Deviation 1, routing the two `apps/ui` lines and the six pytest lines through `subprocess.run`, changed HOW and not WHAT and preserved REAL exit codes a pipe would have swallowed. Deviation 2 IS THE REVIEWER'S OWN DEFECT, correctly declared: the delegating message stated 34097 bytes for a block that is 34109, and since the sha256 in that same message matched the real bytes the worker was right to authenticate by digest and proceed — the wrong numeral never reached disk, it has no carrier left to repair, and it is recorded here rather than minted as an id because the class already sits OPEN as the R-0441 family. Deviation 3 is the gate quoting its own marker, a known shape: `- R-0593 — ` is line-anchored once as constraint 10 ordered, and its second raw-substring occurrence is LEDGER22's own sentence quoting the pattern. Deviation 4 IS A REAL DESIGN CATCH BY THE WORKER, not a deviation to forgive: `DECISION_FILTER_ALL` is the ordinary string `"all"`, so a decision typed literally `"all"` would have produced a second chip with a duplicate `value`, and excluding the sentinel from the concrete choices while the All chip keeps counting and showing those cards is the right resolution, pinned by its own named test, which the reviewer's PROBE A killed. Deviation 5 registers the `decisionCardModels` docstring left unrepaired under S4's CHANGE-NOTHING-ELSE clause, and R23's S3(b) carries it. THE VERDICT IS PASS.
-<<<END LEDGER23
+<<<SLICE LEDGER24
+Gate: F031 R23 — the F031 R23 entry. R23 PASSED ON EVERY ONE OF ITS NINE GATES, AND THE REVIEWER RE-RAN EVERY ONE ITSELF off disk rather than reading the handback back; every value that handback states reproduced exactly. TRANSPORT HELD IN ITS STRONGEST FORM, cmp-against-scratchpad rather than the digest fallback: the reviewer's own emitted `.remedy-wt/f031-r23.md`, the C0a blob committed at `85bd1995`, the C0b blob committed at `15919a4d`, and `.agent/last_block.md` read off disk at `030a43d1` are ALL FOUR byte-identical at sha256 `aeae1dd3f6c7c9ee7aeb3ac059b54501d81bf827d636dc1242818a1845014623` over 37051 bytes and 443 lines, C0a and C0b resolving to the SAME git blob `e0d5e6231a89c5069f79d6e6e740e1cea8392972`. THE EXTRACTION printed 2 slices, 46 content lines and 443 total, so PROSE was 443 − 46 = 397 against the 400-line cap DECISION F085 D5 sets and TOTAL 443 against the 490 DECISION F085 D6 sets — three lines of prose margin for a second round running, which is why R24's design was measured against the caps before its spec was written. THE PLAN at `114394a0` equals PLANF031R23 exactly at 2581 bytes and 45 lines, with the trailing-newline-removed control FALSE, `^## Goal$` 1 and `^## Next Steps$` 1, and 45 strictly under the 50 AGENTS.md sets. THE C2 APPEND SATISFIED WHOLE-FILE EQUALITY: `.agent/live_review.md` at `f548277e` is its C1 blob plus one newline plus LEDGER23, at 657516 + 1 + 8341 = 665858 against an actual 665858, and the SECOND, INDEPENDENT READER AGREED — a blank-line split moves the unit count 305 to 306 and its last 1 unit equals LEDGER23's paragraph once trailing newlines are rstripped on BOTH sides, the handling the R21 and R22 entries already record as necessary. THE NEGATIVE CONTROL WAS RUN IN MEMORY, never on disk, flipping one byte inside the appended region: both readers REJECT the mutant and both ACCEPT the true file. THE SETS MOVED ONLY WHERE CONSTRAINT 10 ALLOWED: `^- R-\d+ — ` 242 to 242 all DISTINCT, ids ADDED and ids REMOVED both the EMPTY SET, maximum `R-0681` unchanged, `^Done: R-` 4 to 4, `^Landed: R-` 0 to 0 and `^Recurrence: R-` 18 to 18. THE SPLIT SERIES BEHAVED AS DECISION F031 D7 RULES for a fourth round running: `^Gate: R\d+ — ` 19 to 19, frozen, and `^Gate: F\d+ R\d+ — ` 3 to 4, the added key exactly `F031 R22`, all keys DISTINCT. The §3 item 10 open set is 238 at `f548277e`, and `- R-0593 — ` occurs exactly ONCE line-anchored and `^Recurrence: R-0593` exactly ONCE, so its paragraphs were not edited. THE SUITES ARE THE REVIEWER'S OWN, run SERIALLY, never two alive at once, every one a REAL exit 0: `npm run typecheck` with ZERO diagnostics on stdout and stderr; `npm run test:unit` at 23 files and 352 tests with `decisionCard.test.ts` 27, `decisionOrder.test.ts` 16 and `decisionFilter.test.ts` 20, every one UNMOVED as a round adding no test requires; and in Python `tests/ui_server/` 474, `test_test_runner` 52, `test_resource_safety` 21, `test_integrity_gate` 16, `tests/ui_contracts/` 525 passed with 4 skipped and `test_golden_path` 42 — every count identical to the base readings. G6(b)'s GREEN IS CORRECT BY CONSTRUCTION AND THE REVIEWER CONFIRMED IT WITHOUT MUTATING ANYTHING: `apps/ui` collects 23 `.test.ts` files and not one of them imports `DecisionInboxCard`, whose only importer anywhere under `apps/ui/src` is `RightLivePanel.tsx`, so no test can reach that guard and the empty-state trap really is pinned by `tsc`, structure and review alone — the gap DECISION F031 D5 accepts, measured rather than assumed. THE ORDERING SEAM SURVIVED THE FILTER, which is the property R23 could most easily have broken: `RightLivePanel.tsx` still passes `orderDecisionInbox(dashboard.decisionInbox)` to the card, `filterDecisionsByType` returns `models.slice()` or `Array.prototype.filter`, and neither re-sorts, so DECISION F031 D6's rule reaches the rendered list unchanged. DEVIATION 2 IS A REAL SPEC CATCH BY THE WORKER, not a deviation to forgive, and the reviewer measured its ground: `--remedy-focus` is defined in `docs/ui/design_reference/tokens.css` and occurs ZERO times in `apps/ui/src/styles/tokens.css`, while every one of the eight custom properties the C3/C3b sheet does name — `--remedy-radius-pill`, `--remedy-bg-2`, `--remedy-line`, `--remedy-line-strong`, `--remedy-muted`, `--remedy-ink`, `--remedy-blue-50` and `--remedy-blue-strong` — is defined in BOTH sheets, so the shipped ring resolves and the fallback form really would have turned `TestEveryCustomPropertyResolves` red. `.emptyState` occurs exactly once in `RightLivePanel.module.css`, so deviation 4's reuse names a class that exists. HYGIENE HELD: line-anchored `^<<<SLICE ` and `^<<<END ` are 0 in `.agent/plan.md` at `114394a0`, `.agent/live_review.md` at `f548277e` and all four files C3 and C3b write, against a CONTROL of 2 and 2 over the C0a blob; the range `879bd137`..`44435f81` names 8 paths, none under `docs/`, `packages/` or `tests/` and none of `.agent/context.md`, either inventory, `RightLivePanel.tsx` or `decisionFilter.ts`, with range-minus-change-set EMPTY and change-set-minus-range exactly `.agent/handoff.md`; the seven commits of `879bd137`..`030a43d1` are each SINGLE-PARENT with insertions 443, 251, 17, 2, 168, 26 and 70 read from `git diff --numstat`, each under the 500 cap AGENTS.md DECISION F104 D1 sets, and the first six agree CELL FOR CELL with the `+/-` column of that handback's `## Commits` table, which is the §3 item 28 reading; `git ls-files .remedy-wt` 0, the zip glob 0, `git worktree list` 1 line and `git status --porcelain` 0. THE BLOCK'S OWN OBJECT IDS RESOLVE: 24 SHA-shaped occurrences, 11 distinct, failing set EMPTY, 9 `commit` and 2 `blob`. THE REFLOG read by OPERATION PREFIX over this round's seven entries is `commit` seven times, with amend 0, rebase 0 and cherry 0. THE PUSH DISCHARGED, which is the outcome G9 routed to the reviewer rather than to any file R23 wrote: measured with `git ls-remote`, `refs/heads/feature/f031-decision-inbox` and the local tip are both `030a43d1597dfc3b00933dacb50e882728a434e7`, and no pull request was created, no branch deleted and nothing merged. THE HANDBACK FITS ITS TIER WITH NO OVERAGE: 93 lines against the 100 AGENTS.md allows for its 7 commits, every mandated section present, and C3b correctly carried its own `## Commits` and item-status rows as R-0675 requires. THE VERDICT IS PASS. What R23 earns is not a finding against its execution but two entries against the REVIEWER'S OWN change set, appended beside this one.
+
+Recurrence: R-0593 — A THIRD INSTANCE IN `apps/ui`, AND IT IS THIS FINDING'S BINDING FIX CLAUSE GOING UNSERVED FOR THE SECOND TIME BY THE REVIEWER, IN A CHANGE SET, EXACTLY AS THE F008 R33 PARAGRAPH OF THE LANDED ENTRY DESCRIBES. Measured by the reviewer at `030a43d1` by reading both files. `apps/ui/src/api/decisionFilter.ts` still carries the header sentence R22 wrote: "THE SEAM IS NOT WIRED YET — `RightLivePanel.tsx` still hands `orderDecisionInbox(...)` straight to the card — and `decisionInboxView` is the shape that wiring will call, which is why it exists a round before its caller does." R23's C3, `6147efc4`, GAVE IT THAT CALLER: `DecisionInboxCard.tsx` imports `DECISION_FILTER_ALL` and `decisionInboxView` from `../../api/decisionFilter` and calls the view once per render. The middle clause stays literally TRUE — `RightLivePanel.tsx` really does still hand `orderDecisionInbox(dashboard.decisionInbox)` to the card, and R23 deliberately left it that way — and the clauses either side of it are now false: the seam IS wired, and the module no longer exists a round before its caller. THAT IS THE SAME ONE-DIRECTIONAL DISCOVERABILITY GAP the earlier recurrence records, arriving in the module the earlier recurrence's own fix created: a reader who searches `decisionFilter.ts` for its consumer is told there is none. NO NEW ID IS MINTED for it (§3 item 30): R-0593 is the record of exactly this defect and holds the fix clause this instance breaks — "a block that adds a caller for a prop, a caller for a module, or a first use of anything an existing comment calls absent names that comment's file in its own change set". The R23 block did the OPPOSITE, and did it explicitly: its constraint 11 listed `decisionFilter.ts` among the files the round must NOT write, and its G8 gated the range for that file's ABSENCE. The worker applied every slice byte for byte and was right to, so the false sentence landed under a round that earns a PASS — which is what makes this the reviewer's entry rather than the worker's. THE COUNTER-MEASURE THIS TIME IS MECHANICAL RATHER THAN REMEMBERED: before an `apps/ui` change set is fixed, grep the modules it will newly IMPORT for the words "not wired", "no caller", "before its caller" and "still absent", and name any file that matches. R-0593 stays OPEN with its instances in `packages/orchestration/release_gate.py` and `pyproject.toml` untouched; its landed paragraph and its first `Recurrence:` paragraph are not edited (§3 item 20), and the fix for this instance is routed to R25 by `.agent/plan.md` at this round's C1.
+
+- R-0682 — Low, A CHIP ROW'S GROUP LABEL IS ANNOUNCED TO NOBODY, AND THE BLOCK THAT ORDERED IT CITED A DESIGN-REFERENCE ENTRY THAT DOES NOT ORDER IT. Raised by the reviewer at the F031 R23 gate, by reading the shipped markup against the spec it cites. MEASURED at `030a43d1`: `apps/ui/src/components/panels/DecisionInboxCard.tsx` renders the chip strip as `<div className={styles.decisionFilterRow} aria-label={FILTER_CHIPS_LABEL}>` with NO `role` attribute, and `apps/ui/src/components/graph/GraphFilterChips.tsx` has carried the same shape since before this feature, as `<div className={styles.chips} aria-label="Graph filters">`. A `div` with no role maps to the ARIA `generic` role, and `generic` prohibits an accessible name, so NEITHER label reaches the accessibility tree: both strings are computed, shipped and dropped. THE CITATION IS THE OTHER HALF. The R23 block's S1 ordered "the chip row carries an `aria-label`" and attributed that to `component_spec.md`'s FilterChips entry, and that entry — measured at the same commit — reads "A11y: aria-pressed buttons; filter changes announce via polite live region" and names no row label at all. So a requirement the design reference does not make was attributed to it, which is the R-0338 class, and the attribution is what stopped anyone asking how the label would be exposed. WHY LOW AND NOT MEDIUM: everything `component_spec.md` DOES order is shipped and works — `aria-pressed` sits on every chip and the list sits inside `aria-live="polite"` — so the control is operable, its state is announced and its changes are announced; the whole loss is the group's NAME, and a screen-reader user reaches the same chips with the same states either way. WHY IT IS A FINDING AT ALL: an inert attribute is worse than an absent one, because it reads on the page as accessibility work already done, and the next reader copies the pattern — which is precisely how it reached the second file. FIX, routed to R25 with the R-0593 recurrence because R24's change set holds no `apps/` path: add `role="group"` beside the existing `aria-label` in BOTH files, the ARIA pattern that makes a labelled group nameable, and consider pinning it in `tests/ui_contracts/`, which already reads both files. SEARCHED BEFORE MINTING per §3 item 30: at `f548277e` the strings `aria-label`, `accessib`, `aria-pressed` and `screen reader` each occur ZERO times in `.agent/live_review.md` and `role=` occurs once, inside an unrelated entry, so no open finding describes this defect and no id is being duplicated.
+<<<END LEDGER24
 
 ── Done when ─────────────────────────────────────────────────
 Run every gate yourself, record its REAL exit code and REAL output, and
@@ -266,7 +292,7 @@ G1  Branch, cleanliness, transport. `git branch --show-current` prints
     disk is ABSENT before C0a and again before C4; `git status --porcelain`
     line count after each of C0a, C0b, C1, C2 and C3 is 0. Then report
     sha256, byte count and line count for FOUR readings —
-    `.remedy-wt/f031-r23.md` before C0a, the committed C0a blob, the
+    `.remedy-wt/f031-r24.md` before C0a, the committed C0a blob, the
     committed C0b blob, and `.agent/last_block.md` off disk after C0b — all
     four EQUAL, and the git blob id of C0a's and C0b's file, the SAME id.
 
@@ -278,7 +304,7 @@ G2  Extraction and the block's own two caps. Run your extractor over the
     continue: an oversize block is the reviewer's defect to record, not
     yours to fix.
 
-G3  The plan. `.agent/plan.md` at C1 is byte-equal to PLANF031R23 under
+G3  The plan. `.agent/plan.md` at C1 is byte-equal to PLANF031R24 under
     your stated newline convention; report slice length, file length and
     convention. NEGATIVE CONTROL: NOT byte-equal to that slice with its
     trailing newline REMOVED. `^## Goal$` 1, `^## Next Steps$` 1, `wc -l`
@@ -289,104 +315,87 @@ G4  The C2 append, as ONE equality over the whole file, in the shape
     Report the boolean and the byte arithmetic against the C1 length you
     measure yourself. Report a SECOND, INDEPENDENT reading: split the
     committed file on blank lines, take the LAST N units, and confirm they
-    equal LEDGER23's paragraphs IN ORDER, where N is the number YOUR split
+    equal LEDGER24's paragraphs IN ORDER, where N is the number YOUR split
     measured; give the unit count before and after, and STATE YOUR
-    TRAILING-NEWLINE HANDLING, because the R21 and R22 entries both record
-    that a naive split reports FALSE on a byte-perfect file. NEGATIVE
+    TRAILING-NEWLINE HANDLING, because the R21, R22 and R23 entries all
+    record that a naive split reports FALSE on a byte-perfect file. This
+    slice carries MORE THAN ONE paragraph, so the ORDER of the last N units
+    is load-bearing and a set comparison does not discharge it. NEGATIVE
     CONTROL: flip ONE byte inside the appended text; BOTH readers must
     reject the mutant and BOTH accept the true file. Do that flip in memory
     or under a disposable worktree per constraint 12, never on the tracked
     file.
 
-G5  The ledger sets, base versus C2 in `.agent/live_review.md`:
-    `^- R-\d+ — ` 242 → 242 all DISTINCT, ids ADDED and REMOVED both the
-    EMPTY SET, maximum `R-0681` → `R-0681`; `^Done: R-` 4 → 4,
-    `^Landed: R-` 0 → 0 and `^Recurrence: R-` 18 → 18, all UNCHANGED.
-    `^Gate: R\d+ — ` 19 → 19 UNCHANGED, and `^Gate: F\d+ R\d+ — ` 3 → 4,
-    the ADDED key being exactly `F031 R22`, all keys DISTINCT (§3 item 26).
-    Report the §3 item 10 open set at C2 — paragraphs minus `Done:` lines —
-    which must be 238. Report that `- R-0593 — ` still occurs exactly ONCE
-    line-anchored and that `^Recurrence: R-0593` still occurs exactly ONCE,
-    since constraint 10 forbids editing either paragraph.
+G5  The ledger sets, base versus C2 in `.agent/live_review.md`, in the
+    shape constraint 10 states — report each side of every movement it
+    names, plus that the ids ADDED are exactly `R-0682` and the ids REMOVED
+    are the EMPTY SET, and that all `^- R-\d+ — ` ids are DISTINCT.
+    `^Gate: R\d+ — ` 19 → 19 UNCHANGED, and `^Gate: F\d+ R\d+ — ` 4 → 5,
+    the ADDED key being exactly `F031 R23`, all keys DISTINCT (§3 item 26).
+    Report the §3 item 10 open set at C2 — paragraphs minus `Done:` lines.
+    Report that `- R-0593 — ` still occurs exactly ONCE line-anchored, and
+    report the `^Recurrence: R-0593` count, which constraint 10 moves.
 
-G6  THE COVERAGE GAP, MEASURED RATHER THAN ASSUMED, in a disposable
-    worktree at C3 per constraint 12, with vitest run from the PRIMARY
-    checkout's `apps/ui` so the primary's `node_modules` resolves:
-      npx vitest run --config <PRIMARY>/apps/ui/vitest.config.ts \
-        --root <WORKTREE>/apps/ui src/api/
-    (a) THE TYPECHECK'S REACH, PROVED WITHOUT A MUTATION: tsc cannot run in
-    a fresh worktree at all — the reviewer tried, and got 797 diagnostics at
-    the base because a worktree has no `node_modules` and every `react`
-    import fails to resolve (the R-0518 class). Instead, in the PRIMARY at
-    `apps/ui`, run `npx tsc --noEmit --listFiles`, report its REAL exit code
-    and the file count YOUR run printed, and report that the list holds
-    `DecisionInboxCard.tsx` exactly ONCE — the evidence G7's typecheck is
-    not blind to this markup. The reviewer measured exit 0 and 996 files at
-    `879bd137`; account for any difference.
-    (b) THE MARKUP PROBE, ordered as a PROBE and NOT as a colour because
-    §3 item 5 forbids ordering a red whose branch no test reaches: change
-    the guard so it reads the FILTERED list — the empty-state trap S1 names
-    — then run the vitest line above and REPORT WHETHER ANY TEST FAILS AT
-    ALL. The reviewer EXPECTS GREEN, and green is the honest answer to
-    record: it MEASURES the gap DECISION F031 D5 accepts, and is the
-    evidence this `.tsx` is pinned by `tsc`, structure and review rather
-    than by the suite. A RED means a test does reach the markup, which is
-    better news and is reported as such. Restore the file. Report
-    `git worktree list` as 1 line after the removals, naming exact paths.
+G6  THE RED PROOF, in a disposable worktree at C3 per constraint 12, so the
+    primary checkout is never mutated. In `packages/orchestration/ui_server.py`
+    INSIDE THAT WORKTREE, change the body of the S1 helper so it returns the
+    literal `0` and nothing else, leaving every other byte of the file alone
+    — which restores EXACTLY the behaviour the Base section measured at this
+    round's base, where both fields are constant zero. Then run, from the
+    worktree root:
+      python3 -m pytest tests/ui_server/test_live_state.py -q
+      python3 -m pytest tests/ui_server/test_dashboard_contract.py -q
+    BOTH must go RED. Report the REAL exit code of each, the NAMES of the
+    tests that failed, and the failure count YOUR run measured — this block
+    states no number for it. A GREEN here means S3's tests do not reach the
+    change and is reported as such rather than worked around. Restore
+    nothing in the primary; remove the worktree BY ITS EXACT PATH and report
+    `git worktree list` as 1 line after, naming that path.
 
-G7  The card's structure, then the suites. Over
-    `apps/ui/src/components/panels/DecisionInboxCard.tsx` at C3 report, as
-    counts YOU measured: that `aria-pressed` occurs at least once, that
-    `aria-live` occurs at least once, that `useState` occurs, that the
-    literal guard `if (decisions.length === 0) return null;` occurs exactly
-    ONCE and that the token `decisions.length` does NOT appear inside any
-    line also containing `visible` — the empty-state trap, checked as text
-    because no test reaches it. Report the `switch` count over that file,
-    which must be 0 both raw and comment-stripped, beside the count over
-    `apps/ui/src/api/brainStreamDriver.ts`, which the reviewer measured as
-    exactly 1 at `879bd137`, so a zero here is a measurement and not a blind
-    command. Then in the PRIMARY checkout at the C3 tree, all REAL exit 0,
-    run SERIALLY and never two alive at once, with `git worktree list`
-    reported as 1 line immediately BEFORE the first of them. At `apps/ui`:
-    `npm run typecheck` with ZERO diagnostics on stdout and stderr;
-    `npm run test:unit`, reporting the file and test counts YOUR run
-    measured — `decisionCard.test.ts` must still be exactly 27,
-    `decisionOrder.test.ts` exactly 16 and `decisionFilter.test.ts` exactly
-    20, any movement in any of the three being a finding, and since this
-    round adds no test the totals must stay at the 23 files and 352 tests
-    the Base section records. Then in Python, by these exact command lines
-    with no extra flag:
+G7  Structure, then the suites. Over `packages/orchestration/ui_server.py`
+    at C3 report, as counts YOU measured: that the S1 helper's name occurs
+    exactly ONCE as a `def`, that it occurs at each of the two call sites S2
+    names, that `human_decision_requested` no longer occurs inside either
+    `_build_dashboard` or `_build_live_state_json` — read the function
+    bodies, not the whole file, since the humanize maps elsewhere in the
+    module legitimately keep that string — and that `blocker_count` occurs
+    ZERO times in the whole file. Then in the PRIMARY checkout at the C3
+    tree, all REAL exit 0, run SERIALLY and never two alive at once, with
+    `git worktree list` reported as 1 line immediately BEFORE the first of
+    them, by these exact command lines with no extra flag:
+      python3 -m ruff check packages/orchestration/ui_server.py tests/ui_server/test_live_state.py tests/ui_server/test_dashboard_contract.py
       python3 -m pytest tests/ui_server/ -q
       python3 -m pytest tests/orchestration/test_test_runner.py -q
       python3 -m pytest tests/regression/test_resource_safety.py -q
       python3 -m pytest tests/orchestration/test_integrity_gate.py -q
-      python3 -m pytest tests/ui_contracts/ -q
+      python3 -m pytest tests/orchestration/test_autonomy.py -q
       python3 -m pytest tests/cli/test_golden_path.py -q
     These are the four state readers a round rewriting `.agent/` state
-    gates, plus `tests/ui_contracts/` — which READS
-    `RightLivePanel.module.css`, so it is the gate S2's appended classes
-    must not disturb — plus the canary. The reviewer ran all six at
-    `879bd137` with these exact lines and measured in that order 474, 52,
-    21, 16, 525 passed with 4 skipped, and 42, every one exit 0. Account
-    for any difference.
+    gates, plus `test_autonomy.py` — which asserts `"open" in metrics` over
+    the dashboard S2 changes — plus the canary. The reviewer ran all seven
+    at `030a43d1` with these exact lines and measured, in that order, "All
+    checks passed!" and then 474, 52, 21, 16, 81 and 42, every one exit 0.
+    `tests/ui_server/` MUST EXCEED 474 by exactly the number of tests S3
+    adds: report BOTH numbers and their difference, and account for any
+    other difference.
 
 G8  Markers, paths, commit shapes and object ids. Line-anchored
     `^<<<SLICE ` and `^<<<END ` both 0 in `.agent/plan.md` at C1,
     `.agent/live_review.md` at C2 and every file C3 writes, against the
     same counts over the COMMITTED C0a blob as a CONTROL, where they are
-    NOT 0. ONLY the line-anchored reading is ordered — LEDGER23 quotes both
+    NOT 0. ONLY the line-anchored reading is ordered — LEDGER24 quotes both
     markers inside backticks mid-line, so a raw SUBSTRING count is
-    unmeetable and is NOT ordered (the R22 deviation 3 shape, pre-empted). `git diff --name-only <base>..C3` names NO path under `docs/`,
-    `packages/` or `tests/`, and neither `.agent/context.md` nor either
-    inventory file nor `apps/ui/src/components/panels/RightLivePanel.tsx`
-    nor `apps/ui/src/api/decisionFilter.ts`; the range path set MINUS the
-    change set is EMPTY and the change set MINUS the range is exactly
-    `.agent/handoff.md`, which C4 writes. Over C0a..C3 report per commit
-    that it is single-parent and its INSERTION count — the `+` column only,
-    per AGENTS.md DECISION F104 D1 — each under 500; those same numbers
-    fill the `+/-` column of the `## Commits` table, derived from
-    `git diff --numstat` and NOT from `git commit`'s own summary, and you
-    report that the two agree cell for cell (§3 item 28). Report
+    unmeetable and is NOT ordered. `git diff --name-only <base>..C3` names
+    NO path under `docs/` or `apps/`, and neither `.agent/context.md` nor
+    either inventory file nor `packages/orchestration/decision_queue.py`
+    nor `packages/orchestration/decision_inbox.py`; the range path set
+    MINUS the change set is EMPTY and the change set MINUS the range is
+    exactly `.agent/handoff.md`, which C4 writes. Over C0a..C3 report per
+    commit that it is single-parent and its INSERTION count — the `+`
+    column only, per AGENTS.md DECISION F104 D1 — each under 500; those
+    same numbers fill the `+/-` column of the `## Commits` table, derived
+    from `git diff --numstat` and NOT from `git commit`'s own summary, and
+    you report that the two agree cell for cell (§3 item 28). Report
     `git ls-files .remedy-wt` as 0 and `git ls-files` over `*.zip` as 0.
     FOR THE REFLOG state SCOPE and FIELD: over THIS ROUND'S entries only,
     by the OPERATION PREFIX before the first colon of
@@ -394,18 +403,17 @@ G8  Markers, paths, commit shapes and object ids. Line-anchored
     and how many entries you scoped to. Finally extract every SHA-shaped
     token from the COMMITTED C0a blob with the word-bounded pattern
     matching 7 to 40 hex characters — whose boundaries do NOT match the
-    64-char sha256 digests this block also carries — pass each to
+    64-char sha256 digest this block also carries — pass each to
     `git cat-file -t`, and report the token count YOUR extractor measured,
     the type per token, and the FAILING SET, which MUST BE EMPTY. THE TYPES
-    ARE NOT ALL `commit`: LEDGER23 quotes the git BLOB ids
-    `599e6675d9e5aa79fb038ca357f7b20e1498daf2` and
-    `52f6a0ca81202278eeb67aee5ffaa7f7fa501f9e`, both resolved before emission.
+    ARE NOT ALL `commit`: LEDGER24 quotes the git BLOB id
+    `e0d5e6231a89c5069f79d6e6e740e1cea8392972`, resolved before emission.
 
 G9  The push. AFTER C4, run `git push origin feature/f031-decision-inbox`.
     No `--force`, no `--force-with-lease`, no history rewrite, no branch
     deletion, no pull request. THAT PUSH'S OUTCOME IS NOT A VALUE OF ANY
     FILE THIS ROUND WRITES: the reviewer measures the pushed tips at the
-    next gate and records them in the R23 entry of `.agent/live_review.md`.
+    next gate and records them in the R24 entry of `.agent/live_review.md`.
     In `## External actions` write the push COMMAND and that sentence. In
     the item-status table the push row is `done`, reason "ordered after C4;
     outcome carried by G9 to the reviewer". Report the real outcome in your
@@ -434,10 +442,9 @@ content behind it. Never drop a section to fit; claim no token cap.
 THIS ROUND ENDS THE SESSION, so your `## Next` section is the next
 session's first instruction and names, in order: that it reads
 `.agent/STOP` from disk as Phase 1 rule 1 BEFORE the Open PR Gate as rule
-2; that the R23 verdict is UNRECORDED and owed by the next round's ledger
-commit (DECISION F085 D9); and that R24 is the T002b BADGE under DECISION
-F031 D2, which re-derives on refetch over the existing SSE stream with no
-new event kind and replaces D2's two constant-zero counters.
+2; that the R24 verdict is UNRECORDED and owed by the next round's ledger
+commit (DECISION F085 D9); and that R25 is the badge's UI half, which also
+carries the R-0682 fix and the third `R-0593` instance C2 records.
 
 Declare every deviation, contradiction and assumption.
 ──────────────────────────────────────────────────────────────
