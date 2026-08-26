@@ -1,118 +1,97 @@
-# Handback — F031 Decision inbox, round R13
+# Handback — F031 Decision inbox, round R14
 
-Feature F031 · round R13 · branch `feature/f031-decision-inbox` · base
-`13306809da092eef995061b5809dd70e5a93f505`. Five commits, so the AGENTS.md
-`### handoff.md` tier is the ≤60-line one (≤100 needs >5 commits).
+Branch `feature/f031-decision-inbox`; base `d63a146fb9c7f0a782887dd768ec7c5bb6f7dcf6`, the R13 handback. Commits this round: 11c013fb, 2f80a495, 597c20ce, e97264fd, 475f0f36 and the C4 commit that writes this file.
 
-Fortschritt: ~40 % (F031 claimed; R1 through R12 landed and gated ·
-             T001 SHIPPED · T002a's MODEL shipped and red-proofed ·
-             the `.tsx` projection, T002b ordering/filtering/badge and
-             T003 offen) — Schaetzung
+Fortschritt: ~45 % (F031 claimed; R1 through R13 landed and gated ·
+             T001 SHIPPED · T002a's MODEL shipped, red-proofed and now
+             WIRED · the `.tsx` projection, T002b ordering/filtering/
+             badge and T003 offen) — Schaetzung
 
 ## Range
 
-Review of `13306809da092eef995061b5809dd70e5a93f505`..HEAD (C3).
+Review of d63a146f..HEAD.
 
 ## Commits
 
-### 09b6cd82 chore(agent): save the F031 R13 step block verbatim
+### 11c013fb chore(agent): save the F031 R14 step block verbatim
 | Path | +/- | Reason |
-| `.agent/authored/f031-r13.md` | +345/-0 | C0a — the block saved verbatim |
+|---|---|---|
+| .agent/authored/f031-r14.md | +444/-0 | C0a — the block, saved verbatim |
 
-### f010184a chore(agent): mirror the R13 block into last_block
+### 2f80a495 chore(agent): mirror the R14 block into last_block
 | Path | +/- | Reason |
-| `.agent/last_block.md` | +203/-308 | C0b — mirrored from the committed C0a blob |
+|---|---|---|
+| .agent/last_block.md | +266/-167 | C0b — byte-identical mirror of C0a |
 
-### a48e0144 docs(agent): restore the seed-key risk to the F031 plan at R13
+### 597c20ce docs(agent): point the F031 plan at the R14 wiring step
 | Path | +/- | Reason |
-| `.agent/plan.md` | +31/-31 | C1 — PLANF031R13, carrying the R-0680 repair |
+|---|---|---|
+| .agent/plan.md | +18/-18 | C1 — slice PLANF031R14, whole file |
 
-### bae304bc docs(agent): record the F031 R12 verdict and register R-0680
+### e97264fd docs(agent): record the F031 R13 verdict and resolve R-0680
 | Path | +/- | Reason |
-| `.agent/live_review.md` | +4/-0 | C2 — LEDGER13 appended, and nothing else |
+|---|---|---|
+| .agent/live_review.md | +4/-0 | C2 — slice LEDGER14, appended |
 
-### C3 — this commit, docs(agent): write the F031 R13 handback
+### 475f0f36 feat(ui): project the decision inbox into the dashboard payload
 | Path | +/- | Reason |
-| `.agent/handoff.md` | rewrite | C3 — a handoff cannot table its own commit (R-0149) |
+|---|---|---|
+| apps/ui/src/api/types.ts | +14/-2 | S1 — non-optional `decisionInbox` field |
+| apps/ui/src/api/remedyApi.ts | +29/-2 | S2 projection, S3 `/decisions` fetch |
+| apps/ui/src/api/remedyApi.test.ts | +40/-0 | S4 — four appended cases, none edited |
+
+### C4 docs(agent): write the F031 R14 handback
+| Path | +/- | Reason |
+|---|---|---|
+| .agent/handoff.md | this file | a handoff cannot table its own commit (R-0149) |
 
 ## Item status
 
 | Item | Status | Reason |
-|------|--------|--------|
-| C0a  | done   | |
-| C0b  | done   | |
-| C1   | done   | |
-| C2   | done   | |
-| C3   | done   | this commit |
-| push | done   | ordered after C3; outcome carried by G10 to the reviewer |
+|---|---|---|
+| C0a | done | |
+| C0b | done | |
+| C1 | done | |
+| C2 | done | |
+| C3 | done | |
+| C4 | done | this commit |
+| push (G11) | done | ordered after C4; outcome carried by G11 to the reviewer |
 
 ## External actions
 
-`git push origin feature/f031-decision-inbox`, run after C3, no force and no rewrite.
-This gate's outcome is not a value of any file this round writes: the reviewer
-measures the pushed tips at the next gate and records them in the R13 entry of
-`.agent/live_review.md`. Also `git worktree add --detach .remedy-wt/f031-r13-mutant
-bae304bc` and `git worktree remove --force` at that exact path, for the G5 negative
-control. `gh pr list --state open` read as `[]`. No PR created, none merged.
+`git worktree add --detach .remedy-wt/wt-r14 475f0f36` → rc 0; `git worktree remove --force .remedy-wt/wt-r14` → rc 0, path gone, list back to 1 line.
+`git push origin feature/f031-decision-inbox`, run after C4. Its outcome is not a value of any file this round writes: the reviewer measures the pushed tips at the next gate and records them in the R14 entry of `.agent/live_review.md`.
+No pull request created, edited or merged; no `gh` command run; no force flag, no history rewrite, no branch deletion.
 
 ## Verification
 
-G1 PASS — `git branch --show-current` = `feature/f031-decision-inbox`, not `main`; `.agent/STOP` ABSENT on disk before C0a and again before C3; `git status --porcelain` 0 lines after each of C0a, C0b, C1 and C2.
-G2 PASS — all FOUR readings equal at sha256 `77ed31a73bb85778af3de70bcf3eb29eec311c639d692b03f117d80e27add5c8`, 29728 bytes, 345 lines; C0a's and C0b's file resolve to the SAME blob id `15e71b0dbeabdd80100b08cb9c236d1a013258d7`.
-G3 PASS — my extractor over the committed C0a blob printed 2 slices (PLANF031R13, LEDGER13), 52 CONTENT lines inside markers, 345 TOTAL lines.
-G4 PASS — `.agent/plan.md` at `a48e0144` byte-equal to PLANF031R13 under the newline-INCLUDED convention, slice 2910 bytes and file 2910 bytes, both 49 lines; NEGATIVE CONTROL against the slice with its trailing newline removed FALSE; `^## Goal$` 1, `^## Next Steps$` 1, `wc -l` 49, strictly under 50. THE REPAIR MEASURED, NOT ASSUMED: `R19` occurs 0 times in `.agent/plan.md` at the base `13306809` and 2 times at C1.
-G5 PASS — the one equality over the whole file in the shape constraint 7 states: TRUE, arithmetic 588533 + 1 + 9147 = 597681 against an actual 597681. SECOND, INDEPENDENT reader: blank-line split, N = 2 paragraphs as my own split measured, the last 2 units equal LEDGER13's 2 paragraphs IN ORDER TRUE; unit count 288 before, 290 after. NEGATIVE CONTROL, written only inside the disposable worktree: one byte flipped at offset 591682 inside the FIRST paragraph the append added — BOTH readers reject the mutant and BOTH accept the true file.
-G6 PASS — `^- R-\d+ — ` 240 → 241, all DISTINCT at both ends, ids ADDED exactly `R-0680`, ids REMOVED the EMPTY SET, maximum `R-0679` → `R-0680`; `^Done: R-` 2 → 2 and `^Recurrence: R-` 15 → 15, both UNCHANGED; `^Gate: R\d+ — ` 12 → 13 gaining exactly the key `R12`, with `R19` and `R1` through `R11` still present and all 13 DISTINCT. The §3 item 10 open set at C2 is 239.
-G7 PASS — `^<<<SLICE ` and `^<<<END ` both 0 in `.agent/plan.md` at C1 and `.agent/live_review.md` at C2; `git diff --name-only 13306809..bae304bc` names NO path under `packages/`, `apps/`, `tests/` or `docs/`, and neither `.agent/decisions.md` nor `.agent/context.md` nor either inventory; per commit over C0a..C2 each single-parent with `git diff --numstat` insertions 345, 203, 31 and 4, each under 500 and each equal cell for cell to the `## Commits` table above; range path set MINUS change set EMPTY, change set MINUS range exactly `.agent/handoff.md`; `git ls-files .remedy-wt` 0 and `git ls-files *.zip` 0. REFLOG, scoped to this round's 4 entries and read by the OPERATION PREFIX before the first colon of `git reflog --format=%gs`: all 4 are `commit`, so `amend` 0, `rebase` 0 and `cherry` 0.
-G8 PASS — `npm run test:unit` in `apps/ui` exit 0 at 21 files and 312 tests, unchanged from the base's 21 and 312, which is the expected reading since this round adds no test; `npm run typecheck` in `apps/ui` exit 0 with zero diagnostics. No lint command was ordered and none was run.
-G9 PASS — my extractor measured 12 SHA-shaped tokens, 6 distinct, in the committed C0a blob; every one resolves under `git cat-file -t` to type `commit` (`13306809`, `13306809da092eef995061b5809dd70e5a93f505`, `6325ac2f`, `8b4e2295`, `8df27c6e`, `f94ca4f5`) and the FAILING SET is EMPTY. `git worktree list` printed 1 line immediately before the first pytest. The five suites ran SERIALLY in the primary checkout at the C2 tree, never two alive at once, every one a real exit 0 at 474, 52, 21, 16 and 42 — identical to the reviewer's base readings, so there is no difference to account for.
-G10 — ordered and run after C3; see `## External actions` for the command and its named carrier. The real outcome is reported in the round report.
+G1 — `git branch --show-current` printed `feature/f031-decision-inbox`, not `main`; `.agent/STOP` read from disk was ABSENT before C0a and again before C4; `git status --porcelain` printed 0 lines after each of C0a, C0b, C1, C2, C3.
+G2 — all four readings (scratch before C0a, committed C0a blob, committed C0b blob, `.agent/last_block.md` off disk) are sha256 `1a6e1b0f6058637e59e8cc84122a414d46729a97f551b4bbcea0e205665b9827`, 32941 bytes, 444 lines, EQUAL; C0a's and C0b's file is the same git blob `cb5e9ea8188e9ec89b9419238a53bfa4813e0ebe`.
+G3 — my extractor over the committed C0a blob printed: 2 slices (PLANF031R14, LEDGER14), 52 content lines inside markers, 444 total lines.
+G4 — convention newline-INCLUDED; `.agent/plan.md` at C1 is byte-equal to PLANF031R14, 2925 slice bytes = 2925 file bytes, TRUE; negative control against the slice with its trailing newline REMOVED is FALSE; `^## Goal$` 1, `^## Next Steps$` 1, `wc -l` 49, strictly under 50.
+G5 — reader (a), the whole-file equality in the shape constraint 7 states: TRUE, arithmetic 597681 + 1 + 6373 = 604055 against an actual 604055; reader (b), blank-line units 290 → 292, N = 2 as MY split of the slice measured it, and the last 2 units equal LEDGER14's 2 paragraphs IN ORDER; negative control, one byte flipped 100 bytes into the FIRST paragraph the append added, written only inside the disposable worktree: both readers REJECT the mutant and both ACCEPT the true file.
+G6 — `^- R-\d+ — ` 241 → 241, all DISTINCT at both ends, ids ADDED the EMPTY SET, ids REMOVED the EMPTY SET, maximum `R-0680` UNCHANGED; `^Done: R-` 2 → 3 with the ids added exactly `R-0680`; `^Recurrence: R-` 15 → 15; `^Gate: R\d+ — ` 13 → 14, gaining exactly the key `R13`, `R19` and `R1` through `R12` still present, all 14 DISTINCT; §3 item 10 open set at C2 = 238.
+G7 — `^<<<SLICE `/`^<<<END ` count 0/0 in `.agent/plan.md` at C1, `.agent/live_review.md` at C2 and each of the three `apps/` files at C3; `git diff --name-only d63a146f..475f0f36` names no path under `packages/`, `tests/` or `docs/`, no `apps/` path beyond section 5's three, and neither `.agent/decisions.md` nor `.agent/context.md` nor either inventory; per commit single-parent TRUE with insertions 444, 266, 18, 4, 83, each under 500, every one derived from `git diff --numstat` and agreeing cell for cell with the `## Commits` tables above (§3 item 28); range path set MINUS change set is EMPTY, change set MINUS range is exactly `.agent/handoff.md`; `git ls-files .remedy-wt` 0 and `git ls-files '*.zip'` 0; reflog scoped to THIS ROUND'S 5 entries and read by the OPERATION PREFIX before the first colon of `git reflog --format=%gs` — all 5 are `commit`, so amend 0, rebase 0, cherry 0.
+G8 — in `apps/ui` at C3, `npm run typecheck` real exit 0 with ZERO diagnostics, so S1's non-optional field named no third construction site; `npm run test:unit` real exit 0 at 21 files, UNCHANGED, and 316 tests, strictly greater than the base's 312 by a difference of +4; `git diff d63a146f..475f0f36 -- apps/ui` deletes 0 lines in `remedyApi.test.ts`.
+G9 — unmutated control at the worktree root: exit 0, 1 file, 56 tests passed; then `normalizeDashboardPayload` mutated in the WORKTREE ONLY so `decisionInbox` is the empty array for every input, same command re-run: exit 1, the run is RED, 1 failed and 55 passed, and the only failing test is `decisionInbox projection > projects every card of the document, in the endpoint's order`, which is S4 case (a); worktree removed by its exact path, `git worktree list` 1 line and `git status --porcelain` 0 lines in the primary checkout.
+G10 — 22 SHA-shaped tokens with repeats, 9 distinct, FAILING SET EMPTY; `15e71b0dbeabdd80100b08cb9c236d1a013258d7` resolves to type `blob` and the other eight (`13306809`, `6325ac2f`, `8b4e2295`, `8df27c6e`, `a48e0144`, `bae304bc`, `d63a146f`, `d63a146fb9c7f0a782887dd768ec7c5bb6f7dcf6`) to type `commit`; `git worktree list` was 1 line immediately before the first pytest; the five suites ran SERIALLY, never two alive, every one a real exit 0 — tests/ui_server/ 474, test_test_runner 52, test_resource_safety 21, test_integrity_gate 16, test_golden_path 42, identical to the reviewer's base readings, so there is no difference to account for.
+G11 — the push runs after C4; the command and its named carrier are in `## External actions`.
 
 ## Authored-text proofs
 
-Both slices were extracted PROGRAMMATICALLY from the COMMITTED C0a blob by their
-`<<<SLICE` / `<<<END` marker LINES; no marker line reached a target file (G7).
-PLANF031R13 → `.agent/plan.md` at C1: disk-to-disk byte-equal TRUE, trailing-newline
--removed control FALSE. LEDGER13 → `.agent/live_review.md` at C2: whole-file equality
-against base blob + one newline + slice TRUE, corroborated by the independent
-blank-line reader. Both measured under G4 and G5 above.
+Both slices were extracted PROGRAMMATICALLY from the committed C0a blob `11c013fb:.agent/authored/f031-r14.md` by their `<<<SLICE`/`<<<END` marker lines and never retyped.
+Disk-to-disk: `.agent/plan.md` at C1 is byte-equal to PLANF031R14 (G4); `.agent/live_review.md` at C2 equals its base blob plus one newline plus LEDGER14 (G5, two independent readers plus a rejected mutant).
 
 ## Deviations & assumptions
 
-1. HANDBACK CAP OVERAGE, declared under DECISION D15: this file is 118 lines against
-   the ≤60-line tier that 5 commits earn. The mandated content behind it: five
-   per-commit tables, the six-row item-status table, one line per gate for ten
-   gates, the authored-text proofs, the finding counts and the verbatim
-   `Fortschritt:` block, whose 4 lines I counted myself. No section was dropped.
-2. COMMIT SEQUENCE: no departure — C0a, C0b, C1, C2, C3 exactly as constraint 3
-   orders, no extra commit, none dropped, no reordering.
-3. ASSUMPTION, as G4 requires it stated: the convention is newline-INCLUDED, so each
-   slice ends in the newline its last content line carries.
-4. TOOLING DEVIATION, no change of meaning: the shell rejected `cd apps/ui && npm …`
-   and `gh … ; echo $?` by shape, so those command lines were run with the working
-   directory set through a `python3` subprocess. Every exit code above is real.
-5. CONTRADICTIONS: none. Every value the block predicted reproduced exactly, and no
-   clause of it disagreed with another.
-
-## Findings
-
-Per DECISION F009 D10 each count carries its rule and its commit. By the §3 item 10
-rule — every `^- R-\d+ — ` paragraph in `.agent/live_review.md` minus every
-`^Done: R-\d+ — ` line — the open set is 239, measured at C2 `bae304bc`, up from 238
-at the base `13306809`. This round minted exactly one id, `R-0680`, and wrote no
-`Recurrence:` and no `Done:` line. The findings THIS FEATURE MUST STILL ACT ON — a
-narrower set, never called "open" unqualified — are the twenty the plan lists at C1,
-of which R-0495 and R-0574 are the two Highs.
+The ordered sequence C0a, C0b, C1, C2, C3, C4 ran exactly: no extra commit, none dropped, none reordered, and no contradiction was found inside the block.
+Assumption declared: section 5 left the fourth parameter's TYPE unstated, so I used `any`, matching `dashboard: any` and `brainDetail?: any` in the same signature inside the file's existing `no-explicit-any` disable region.
+Handback tier, derived rather than quoted: constraint 3 fixes SIX commits, and 6 > 5, so AGENTS.md `### handoff.md` puts this file at the ≤100-line tier, which it meets.
+Finding counts per DECISION F009 D10: by the §3 item 10 rule — every `^- R-\d+ — ` paragraph minus every `^Done: R-\d+ — ` line — the open set is 238, measured in `.agent/live_review.md` at commit e97264fd; the findings THIS FEATURE MUST STILL ACT ON are the eighteen named in `.agent/plan.md` at 597c20ce, and R-0680 is no longer among them.
 
 ## Next
 
-1. Phase 1 rule 1: re-read `.agent/STOP` from disk. It was ABSENT at this round's
-   two reads; the next session reads it again rather than inheriting that.
-2. Phase 1 rule 2, the Open PR Gate: `gh pr list --state open` is EMPTY and NO pull
-   request exists for `feature/f031-decision-inbox` in any state, so none is merged
-   and none is created yet.
-3. The R13 verdict is UNRECORDED. It is owed by the NEXT round's ledger commit,
-   which by DECISION F085 D9 no artefact of this round could carry.
-4. The next build step projects the shipped `decisionCard.ts` model into a `.tsx`
-   card per DECISION F031 D4, mounted in `RightLivePanel`, with no branching of its
-   own — every decision it makes must already exist in `decisionCard.ts`.
+1. Phase 1 rule 1: re-read `.agent/STOP` from disk.
+2. Phase 1 rule 2, the Open PR Gate: run `gh pr list --state open`, and report what it printed and whether any pull request exists for this branch.
+3. The R14 verdict is UNRECORDED and is owed by the next round's ledger commit — by DECISION F085 D9 no artefact of this round can carry it.
+4. The next build step is the `.tsx` projection per DECISION F031 D4: a card built from the shipped `RightLivePanel.module.css` shell, mounted in `RightLivePanel`, reading `dashboard.decisionInbox`, with no branching of its own.
