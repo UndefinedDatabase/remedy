@@ -7964,3 +7964,50 @@ teardown and cannot leak between tests.
 
 REVERSE IT by inlining the module at its single call site; nothing else depends
 on it.
+
+## DECISION F031 D17 (2026-08-26) — the client nonce is its own module, answers `null` when it cannot mint, and borrows the server's class rather than copying it
+
+CHOSEN, T003'S REMAINING WORK IS SPLIT ACROSS ROUNDS. The nonce minter lands here
+in `apps/ui/src/api/decisionNonce.ts`; the operator's outcome sentence and the
+wiring — the server token threaded from `RemedyApp` through `RemedyShell` and
+`RightLivePanel`, the async click handler, the enabled buttons and the three
+"nothing posts yet" sentences — land in R33. Specifying the nonce, that sentence
+vocabulary, the threading through three components and an async handler in ONE
+block exceeds the caps DECISION F085 D5 and D6 set: the reviewer measured a
+two-module draft of the R32 block at 435 prose lines against a cap of 400 and cut
+the ITEM rather than the wording, because a block that trims its own reasoning to
+fit is the failure mode those caps exist to prevent.
+
+CHOSEN, THE MINTER ANSWERS `null` RATHER THAN THROWING OR FALLING BACK TO A
+CONSTANT. Every other door in this chain already does: `buildDecisionResolveCommand`
+answers `null` for a card with no id, a blank answer, a nonce outside the class and
+a decision that is not open, and `buildDecisionSendRequest` adds an empty job id and
+an empty token. A caller already branching on `null` gains no new shape from a
+minter that cannot mint. A throw would become an unhandled rejection inside a click
+handler, and a constant fallback would make every unsendable answer collide on one
+nonce — which is the one property a nonce exists to deny.
+
+CHOSEN, THE CHARACTER CLASS KEEPS EXACTLY ONE MIRROR IN THIS BROWSER. The module
+imports `isUsableCommandNonce` from `./decisionAnswer` and gives it the LAST word
+over whatever it composed; it never restates `COMMAND_NONCE_PATTERN`, which is
+itself the single copy of `safe_points._ID_RE`. The sanitising step needs a
+per-CHARACTER verdict and the predicate judges a whole nonce, so a character is
+probed by asking the predicate about the shortest nonce that could hold it — one
+leading letter, then the character — rather than by a second regex literal. That
+costs one predicate call per character of a UUID and buys one authority instead of
+two.
+
+ALTERNATIVE CONSIDERED, minting the nonce inline in the click handler: rejected
+because the sanitising branch would then ship untested. Nothing in the shipped
+vitest config reaches a component (DECISION F031 D5), and an unfiltered nonce
+becomes a FILENAME in the job's control directory, so the untested branch would be
+the one that turns an id into a path.
+
+ALTERNATIVE CONSIDERED, a nonce built from a clock: rejected because a clock read
+twice in the same millisecond yields a reused value, and a reused value is a replay
+the write door would have to catch; and because a module that reads a clock cannot
+be tested without freezing one, while an injected source needs no teardown and
+cannot leak between tests.
+
+REVERSE IT by inlining the module at its single call site; nothing else depends on
+it.
