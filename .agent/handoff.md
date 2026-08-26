@@ -1,100 +1,118 @@
-# Handback — F031 Decision inbox, R12 · T002a ships the decision-card pure model
+# Handback — F031 Decision inbox, round R13
 
-Branch `feature/f031-decision-inbox`. Base `8b4e229534c64111a1bb9391b65182631c8d57de`. Commits in order:
-C0a `a0e545eb` · C0b `2e26a5ba` · C1 `f94ca4f5` · C2 `769fd515` · C3 `8df27c6e` · C4 is this commit,
-whose SHA no artefact of it can carry. Constraint 4 fixes the bundle at 6 commits, so the AGENTS.md
-`### handoff.md` tier is the >5-per-commit-table one, <=100 lines.
+Feature F031 · round R13 · branch `feature/f031-decision-inbox` · base
+`13306809da092eef995061b5809dd70e5a93f505`. Five commits, so the AGENTS.md
+`### handoff.md` tier is the ≤60-line one (≤100 needs >5 commits).
 
-Fortschritt: ~40 % (F031 claimed; R1 through R10 landed and gated ·
-             T001 SHIPPED · T002a ships the card MODEL and its tests
-             here · T002b ordering, filtering and the badge offen ·
+Fortschritt: ~40 % (F031 claimed; R1 through R12 landed and gated ·
+             T001 SHIPPED · T002a's MODEL shipped and red-proofed ·
+             the `.tsx` projection, T002b ordering/filtering/badge and
              T003 offen) — Schaetzung
 
 ## Range
-Review of 8b4e2295..HEAD.
+
+Review of `13306809da092eef995061b5809dd70e5a93f505`..HEAD (C3).
 
 ## Commits
-### a0e545eb docs(state): save the F031 R12 step block verbatim
-| Path | +/- | Reason |
-| --- | --- | --- |
-| .agent/authored/f031-r12.md | +450/-0 | C0a, the block saved verbatim so slices extract from a commit |
 
-### 2e26a5ba docs(state): mirror the R12 block into last_block
+### 09b6cd82 chore(agent): save the F031 R13 step block verbatim
 | Path | +/- | Reason |
-| --- | --- | --- |
-| .agent/last_block.md | +331/-371 | C0b, written from the committed C0a blob; same git blob id |
+| `.agent/authored/f031-r13.md` | +345/-0 | C0a — the block saved verbatim |
 
-### f94ca4f5 docs(state): the R12 plan, T002a ships the card model
+### f010184a chore(agent): mirror the R13 block into last_block
 | Path | +/- | Reason |
-| --- | --- | --- |
-| .agent/plan.md | +17/-17 | C1, the PLANF031R12 slice applied byte for byte |
+| `.agent/last_block.md` | +203/-308 | C0b — mirrored from the committed C0a blob |
 
-### 769fd515 docs(state): record the F031 R11 round verdict
+### a48e0144 docs(agent): restore the seed-key risk to the F031 plan at R13
 | Path | +/- | Reason |
-| --- | --- | --- |
-| .agent/live_review.md | +2/-0 | C2, the GATE11 slice appended; the commit carries nothing else |
+| `.agent/plan.md` | +31/-31 | C1 — PLANF031R13, carrying the R-0680 repair |
 
-### 8df27c6e feat(ui): add the decision card pure model with its tests
+### bae304bc docs(agent): record the F031 R12 verdict and register R-0680
 | Path | +/- | Reason |
-| --- | --- | --- |
-| apps/ui/src/api/decisionCard.ts | +194/-0 | C3, the SPEC S1-S9 pure model; created, not edited |
-| apps/ui/src/api/decisionCard.test.ts | +226/-0 | C3, the SPEC T1-T6 tests, 27 cases |
+| `.agent/live_review.md` | +4/-0 | C2 — LEDGER13 appended, and nothing else |
 
-### C4 (this commit) docs(state): the R12 handback
+### C3 — this commit, docs(agent): write the F031 R13 handback
 | Path | +/- | Reason |
-| --- | --- | --- |
-| .agent/handoff.md | self-referential | a handoff cannot table its own numstat (R-0149) |
+| `.agent/handoff.md` | rewrite | C3 — a handoff cannot table its own commit (R-0149) |
+
+## Item status
+
+| Item | Status | Reason |
+|------|--------|--------|
+| C0a  | done   | |
+| C0b  | done   | |
+| C1   | done   | |
+| C2   | done   | |
+| C3   | done   | this commit |
+| push | done   | ordered after C3; outcome carried by G10 to the reviewer |
 
 ## External actions
-`git push origin feature/f031-decision-inbox`, run after C4; its outcome is carried by G12 to the reviewer, who measures the pushed tips and records them in the R12 entry of `.agent/live_review.md`.
-`gh pr list --state open` -> `[]`. For G9: `git worktree add --detach .remedy-wt/f031r12-redproof 8df27c6e`, then `git worktree remove --force` on that exact path; two scratch JSON files created and deleted by exact path.
+
+`git push origin feature/f031-decision-inbox`, run after C3, no force and no rewrite.
+This gate's outcome is not a value of any file this round writes: the reviewer
+measures the pushed tips at the next gate and records them in the R13 entry of
+`.agent/live_review.md`. Also `git worktree add --detach .remedy-wt/f031-r13-mutant
+bae304bc` and `git worktree remove --force` at that exact path, for the G5 negative
+control. `gh pr list --state open` read as `[]`. No PR created, none merged.
 
 ## Verification
-G1 PASS. Branch `feature/f031-decision-inbox`, not `main`; `.agent/STOP` ABSENT on disk before C0a and again before C4; `git status --porcelain` 0 lines after each of C0a, C0b, C1, C2 and C3.
-G2 PASS. All four readings EQUAL at sha256 31c83344a8fab82fa57a8a34cbd2deacd57fa8447a9cb97d22b75b0b77ec1071, 32697 bytes, 450 lines; C0a and C0b share git blob id 08303b6eeb779680ffd5d7836f6bdff10d384c51.
-G3 PASS. My extractor over the committed C0a blob printed 2 slices, 50 CONTENT lines inside markers, and 450 TOTAL lines.
-G4 PASS. plan.md at C1 byte-equal to PLANF031R12 under the newline-INCLUDED convention, slice and file both 2918 bytes and 49 lines; negative control against the trailing-newline-removed slice FALSE; `^## Goal$` 1, `^## Next Steps$` 1, wc -l 49, strictly under 50.
-G5 PASS. The one equality in the shape constraint 8 states is TRUE: 582367 + 1 + 6165 = 588533, actual 588533. Second reader: blank-line units 287 -> 288, N=1 by my own split, the last 1 unit equal to GATE11's 1 paragraph in order. Negative control, one byte flipped in the first appended paragraph: BOTH readers reject the mutant and BOTH accept the true file; computed in memory, so no mutant byte was written to any path.
-G6 PASS. `^- R-\d+ — ` 240 -> 240 all DISTINCT, ids ADDED and ids REMOVED both the EMPTY SET, maximum `R-0679` -> `R-0679`, `^Done: R-` 2 -> 2, `^Recurrence: R-` 15 -> 15, `^Gate: R\d+ — ` 11 -> 12 gaining exactly the key `R11`, with `R19` and `R1` through `R10` still present and all 12 keys DISTINCT.
-G7 PASS. `git ls-tree` at the base printed NOTHING for either path, and both are present at C3, so C3 created both and edited no existing file; decisionCard.ts 194 lines and decisionCard.test.ts 226 lines; `git diff --name-only <base>..C3` names exactly those two paths under `apps/`.
-G8 PASS. `npm run test:unit` in apps/ui exit 0 at 21 test files and 312 tests; the base is 20 and 285, so the delta is +1 file and +27 tests, all 27 contributed by my decisionCard.test.ts. `npm run typecheck` exit 0 with no diagnostic. No lint command was run and none is reported.
-G9 PASS. In a disposable worktree at C3, decisionAnswers mutated to return the empty array when card.type equals warp_core_alignment: exit 1 with 2 FAILING tests, named "decisionAnswers renders a NOVEL decision type generically, from its payload alone" (T4) and "decisionAnswers gives two cards that differ ONLY in type identical answers" (T5). The unmutated control at the same root was 303 passed and 0 failed. Worktree removed by its exact path; `git worktree list` 1 line.
-G10 PASS. `^<<<SLICE ` and `^<<<END ` both 0 in plan.md at C1, live_review.md at C2 and both C3 files; base..C3 names nothing under `packages/`, `tests/` or `docs/`, and no vitest.config.ts, package.json, lockfile, .tsx or .module.css; every commit single-parent with insertions 450, 331, 17, 2 and 420, each under 500 by the `+` column only (DECISION F104 D1) and equal cell for cell to the `## Commits` tables above; range MINUS change set EMPTY, change set MINUS range exactly `.agent/handoff.md`; `git ls-files .remedy-wt` 0 and `git ls-files` over `*.zip` 0; reflog SCOPE the 5 entries of this round, FIELD the operation prefix before the first colon of `git reflog --format=%gs`, giving amend 0, rebase 0, cherry 0 and every prefix `commit`.
-G11 PASS. 11 SHA-shaped tokens by the word-bounded `[0-9a-f]{7,40}` over the committed C0a blob, 6 distinct, FAILING SET EMPTY: 25af0eed… is a blob, and 6325ac2f, 8b4e2295, 8b4e2295…8d57de, 99d77d5c and e391ed80 are all commits. `git worktree list` 1 line immediately before the first pytest; the five suites ran SERIALLY in the primary checkout at the C3 tree, never two at once, every one exit 0 at 474, 52, 21, 16 and 42 — identical to the base readings, so there is nothing to account for.
-G12 DONE. `git push origin feature/f031-decision-inbox` is ordered after C4: no force, no lease, no history rewrite, no branch deletion, no pull request. Its outcome is not a value of any file this round writes, so its carrier is the reviewer's R12 ledger entry; the real outcome is stated in the round report.
+
+G1 PASS — `git branch --show-current` = `feature/f031-decision-inbox`, not `main`; `.agent/STOP` ABSENT on disk before C0a and again before C3; `git status --porcelain` 0 lines after each of C0a, C0b, C1 and C2.
+G2 PASS — all FOUR readings equal at sha256 `77ed31a73bb85778af3de70bcf3eb29eec311c639d692b03f117d80e27add5c8`, 29728 bytes, 345 lines; C0a's and C0b's file resolve to the SAME blob id `15e71b0dbeabdd80100b08cb9c236d1a013258d7`.
+G3 PASS — my extractor over the committed C0a blob printed 2 slices (PLANF031R13, LEDGER13), 52 CONTENT lines inside markers, 345 TOTAL lines.
+G4 PASS — `.agent/plan.md` at `a48e0144` byte-equal to PLANF031R13 under the newline-INCLUDED convention, slice 2910 bytes and file 2910 bytes, both 49 lines; NEGATIVE CONTROL against the slice with its trailing newline removed FALSE; `^## Goal$` 1, `^## Next Steps$` 1, `wc -l` 49, strictly under 50. THE REPAIR MEASURED, NOT ASSUMED: `R19` occurs 0 times in `.agent/plan.md` at the base `13306809` and 2 times at C1.
+G5 PASS — the one equality over the whole file in the shape constraint 7 states: TRUE, arithmetic 588533 + 1 + 9147 = 597681 against an actual 597681. SECOND, INDEPENDENT reader: blank-line split, N = 2 paragraphs as my own split measured, the last 2 units equal LEDGER13's 2 paragraphs IN ORDER TRUE; unit count 288 before, 290 after. NEGATIVE CONTROL, written only inside the disposable worktree: one byte flipped at offset 591682 inside the FIRST paragraph the append added — BOTH readers reject the mutant and BOTH accept the true file.
+G6 PASS — `^- R-\d+ — ` 240 → 241, all DISTINCT at both ends, ids ADDED exactly `R-0680`, ids REMOVED the EMPTY SET, maximum `R-0679` → `R-0680`; `^Done: R-` 2 → 2 and `^Recurrence: R-` 15 → 15, both UNCHANGED; `^Gate: R\d+ — ` 12 → 13 gaining exactly the key `R12`, with `R19` and `R1` through `R11` still present and all 13 DISTINCT. The §3 item 10 open set at C2 is 239.
+G7 PASS — `^<<<SLICE ` and `^<<<END ` both 0 in `.agent/plan.md` at C1 and `.agent/live_review.md` at C2; `git diff --name-only 13306809..bae304bc` names NO path under `packages/`, `apps/`, `tests/` or `docs/`, and neither `.agent/decisions.md` nor `.agent/context.md` nor either inventory; per commit over C0a..C2 each single-parent with `git diff --numstat` insertions 345, 203, 31 and 4, each under 500 and each equal cell for cell to the `## Commits` table above; range path set MINUS change set EMPTY, change set MINUS range exactly `.agent/handoff.md`; `git ls-files .remedy-wt` 0 and `git ls-files *.zip` 0. REFLOG, scoped to this round's 4 entries and read by the OPERATION PREFIX before the first colon of `git reflog --format=%gs`: all 4 are `commit`, so `amend` 0, `rebase` 0 and `cherry` 0.
+G8 PASS — `npm run test:unit` in `apps/ui` exit 0 at 21 files and 312 tests, unchanged from the base's 21 and 312, which is the expected reading since this round adds no test; `npm run typecheck` in `apps/ui` exit 0 with zero diagnostics. No lint command was ordered and none was run.
+G9 PASS — my extractor measured 12 SHA-shaped tokens, 6 distinct, in the committed C0a blob; every one resolves under `git cat-file -t` to type `commit` (`13306809`, `13306809da092eef995061b5809dd70e5a93f505`, `6325ac2f`, `8b4e2295`, `8df27c6e`, `f94ca4f5`) and the FAILING SET is EMPTY. `git worktree list` printed 1 line immediately before the first pytest. The five suites ran SERIALLY in the primary checkout at the C2 tree, never two alive at once, every one a real exit 0 at 474, 52, 21, 16 and 42 — identical to the reviewer's base readings, so there is no difference to account for.
+G10 — ordered and run after C3; see `## External actions` for the command and its named carrier. The real outcome is reported in the round report.
 
 ## Authored-text proofs
-Both slices were extracted PROGRAMMATICALLY from the committed C0a blob by their `<<<SLICE`/`<<<END` marker lines and never retyped. PLANF031R12: `.agent/plan.md` at C1 is byte-equal at 2918 bytes (G4).
-GATE11: `.agent/live_review.md` at C2 equals its base blob plus one newline plus the slice exactly, under two independent readers (G5). No marker line reached any target file (G10).
 
-## Item status and findings
-| Item | Status | Reason |
-| --- | --- | --- |
-| C0a | done | |
-| C0b | done | |
-| C1 | done | |
-| C2 | done | |
-| C3 | done | |
-| C4 | done | this commit |
-| push | done | ordered after C4; outcome carried by G12 to the reviewer |
-
-Findings: by §3 item 10 — every `^- R-\d+ — ` paragraph minus every `^Done: R-\d+ — ` line — the open set is 238, measured at `769fd515`. This round minted no id and wrote no `Recurrence:` line;
-R-0622 gained evidence rather than a second id (§3 item 30). The findings this feature must still act on are the 19 listed in `.agent/plan.md`, of which R-0495 and R-0574 are the two Highs.
+Both slices were extracted PROGRAMMATICALLY from the COMMITTED C0a blob by their
+`<<<SLICE` / `<<<END` marker LINES; no marker line reached a target file (G7).
+PLANF031R13 → `.agent/plan.md` at C1: disk-to-disk byte-equal TRUE, trailing-newline
+-removed control FALSE. LEDGER13 → `.agent/live_review.md` at C2: whole-file equality
+against base blob + one newline + slice TRUE, corroborated by the independent
+blank-line reader. Both measured under G4 and G5 above.
 
 ## Deviations & assumptions
-This file is 100 lines, inside the <=100 tier constraint 4's 6 commits earn, and no section was dropped. The ordered sequence C0a, C0b, C1, C2, C3, C4 was followed exactly: no extra commit, none dropped, no reordering.
-`npx` is denied session-wide here, so G9's run went through `npm run test:unit -- --root <worktree>/apps/ui --config <primary>/apps/ui/vitest.config.ts` — the same vitest and the same config, over the worktree's tree.
-A git worktree carries no `node_modules`, so its own vitest.config.ts cannot resolve `vitest`; that is why the primary config was named. The same absence makes `src/components/prompt/promptTraceLens.test.ts` (9 tests) fail to COLLECT there, since it reaches a `.tsx` needing `react/jsx-dev-runtime`.
-That collection failure is a harness artifact and not the mutation: it appears identically in the unmutated CONTROL run at the same root, which was 303 passed and 0 failed. Running that control is what lets G9's effect be named as exactly 2 tests. Worktree totals are therefore 303, while the primary's 312 at G8 is the round's real count.
-G5's negative control ran IN MEMORY, so no mutant byte was written to any path — strictly stronger than the disposable-worktree route constraint 11 permits.
-SPEC S4 assumption: a non-finite `age_seconds` (NaN, Infinity) folds into `unknown age` beside `null`. S4 names only null; without that guard the largest-unit chain would render "NaNd".
-SPEC S9 assumption: `next_actions`, `payload` and `decisions` are typed `unknown` rather than array types, so the runtime narrowing S6 and S8 require is real and testable without a cast. No endpoint key was renamed (DECISION F031 D1).
-G10's "Over C0a..C3" is read as the INCLUSIVE bundle C0a through C3, five commits; the exclusive git range would drop C0a, whose insertion count the gate plainly wants.
-The sandbox rejected several command SHAPES rather than contents — compound `&&` with git, `$?`, `2>&1`, `npx`, `ln`. Every affected measurement was re-obtained through a differently shaped command with the same semantics; none was skipped, softened or inferred.
-No contradiction was found inside the block. Every base reading it states reproduced exactly: plan.md 49 lines and 2894 bytes, handoff.md 93 lines, the ledger at 582367 bytes and 1201 lines with all five set counts, the unit suite at 20 files and 285 tests, and the five Python suites at 474, 52, 21, 16 and 42.
+
+1. HANDBACK CAP OVERAGE, declared under DECISION D15: this file is 118 lines against
+   the ≤60-line tier that 5 commits earn. The mandated content behind it: five
+   per-commit tables, the six-row item-status table, one line per gate for ten
+   gates, the authored-text proofs, the finding counts and the verbatim
+   `Fortschritt:` block, whose 4 lines I counted myself. No section was dropped.
+2. COMMIT SEQUENCE: no departure — C0a, C0b, C1, C2, C3 exactly as constraint 3
+   orders, no extra commit, none dropped, no reordering.
+3. ASSUMPTION, as G4 requires it stated: the convention is newline-INCLUDED, so each
+   slice ends in the newline its last content line carries.
+4. TOOLING DEVIATION, no change of meaning: the shell rejected `cd apps/ui && npm …`
+   and `gh … ; echo $?` by shape, so those command lines were run with the working
+   directory set through a `python3` subprocess. Every exit code above is real.
+5. CONTRADICTIONS: none. Every value the block predicted reproduced exactly, and no
+   clause of it disagreed with another.
+
+## Findings
+
+Per DECISION F009 D10 each count carries its rule and its commit. By the §3 item 10
+rule — every `^- R-\d+ — ` paragraph in `.agent/live_review.md` minus every
+`^Done: R-\d+ — ` line — the open set is 239, measured at C2 `bae304bc`, up from 238
+at the base `13306809`. This round minted exactly one id, `R-0680`, and wrote no
+`Recurrence:` and no `Done:` line. The findings THIS FEATURE MUST STILL ACT ON — a
+narrower set, never called "open" unqualified — are the twenty the plan lists at C1,
+of which R-0495 and R-0574 are the two Highs.
 
 ## Next
-1. Phase 1 rule 1: re-read `.agent/STOP` from disk before anything else.
-2. NO pull request exists for this branch — `gh pr list --state open` returned `[]` — and none should be created yet.
-3. The next round projects this model into a `.tsx` card per DECISION F031 D4 and mounts it in `RightLivePanel`; the component carries no branching of its own.
-4. That round's ledger commit also records the R12 verdict, which by DECISION F085 D9 no artefact of this round can carry.
+
+1. Phase 1 rule 1: re-read `.agent/STOP` from disk. It was ABSENT at this round's
+   two reads; the next session reads it again rather than inheriting that.
+2. Phase 1 rule 2, the Open PR Gate: `gh pr list --state open` is EMPTY and NO pull
+   request exists for `feature/f031-decision-inbox` in any state, so none is merged
+   and none is created yet.
+3. The R13 verdict is UNRECORDED. It is owed by the NEXT round's ledger commit,
+   which by DECISION F085 D9 no artefact of this round could carry.
+4. The next build step projects the shipped `decisionCard.ts` model into a `.tsx`
+   card per DECISION F031 D4, mounted in `RightLivePanel`, with no branching of its
+   own — every decision it makes must already exist in `decisionCard.ts`.
