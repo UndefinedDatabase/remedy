@@ -8093,3 +8093,25 @@ REVERSE IT by deleting the third derived key, restoring the unconditional button
 and dropping the `fp:` branch from the door. Nothing in the read endpoint's
 existing two keys or in the CLI changes, so the reversal touches no other
 feature.
+
+## DECISION F031 D20 (2026-08-27) — D19's programme splits the endpoint from the browser, and the round numbers move by one
+
+SUPERSEDING A ROUND ATTRIBUTION IN DECISION F031 D19: that entry's last CHOSEN
+paragraph reads "R43 the derived key and the card; R44 the `fp:` dispatch; R45
+the clarification FORM". Sized against the code rather than against the
+sentence, R43 as written spans two languages, six files and two test harnesses —
+the Python endpoint with its contract tests, the TypeScript model with its unit
+tests, and the component with a `tsc --noEmit` and a `vitest` gate on top of the
+state readers. That is not one reviewable round, and the block cap of 490 lines
+would decide the split by accident rather than by choice.
+
+CHOSEN, THE SPLIT IS AT THE WIRE. R43 lands the endpoint's third derived key and
+its tests alone, so the fact travels on the wire before anything renders it. R44
+lands the browser half — the model field and the card that renders a
+non-answerable decision's `next_actions` as text. R45 becomes the `fp:` dispatch
+and R46 the clarification FORM. Nothing D19 CHOSE changes: not the key, not the
+predicate it is computed from, not the refusal to branch on `card.type`, not the
+scope ruling that leaves six prefixes out of F031. Only the round numbers move.
+
+REVERSE IT by rejoining the two halves in one round, which the block cap will
+refuse; that refusal is the evidence for this entry.
