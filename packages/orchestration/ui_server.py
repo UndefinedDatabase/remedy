@@ -1667,6 +1667,23 @@ def _build_job_plan_dashboard(job: Any) -> dict[str, Any]:
     }
 
 
+# WHY: `metrics.open` and `open_decision_count` are both typed `int` with no "unknown"
+# state, so a failure here reads as 0 instead of propagating — unlike
+# `_build_orchestrator_section`, the richer shape that can answer "unknown". The event
+# scans this replaces were constant zero in production: neither `human_decision_requested`
+# nor `stop_reason_recorded` has an emitter outside tests (DECISION F031 D2 / D9).
+def _count_open_decisions(job: Any, events: list[dict[str, Any]]) -> int:
+    """Number of still-open human decisions for a job, derived from the decision queue."""
+    try:
+        from packages.orchestration.decision_queue import (
+            list_decisions as list_queue_decisions,
+        )
+        from packages.orchestration.decision_queue import open_decisions
+        return len(open_decisions(list_queue_decisions(job, events)))
+    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
+        return 0
+
+
 def _build_dashboard(job: Any) -> dict[str, Any]:
     """Build safe dashboard payload for a job."""
     if getattr(job, "_is_job_plan", False):
@@ -1699,11 +1716,10 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
             if approval == "pending":
                 pending_approvals += 1
 
-    # Blockers / decisions
-    blocker_count = sum(1 for e in events if e.get("event") == "stop_reason_recorded"
-                        and e.get("outcome") != "resolved")
-    decision_count = sum(1 for e in events if e.get("event") == "human_decision_requested"
-                         and e.get("outcome") != "resolved")
+    # Decisions — re-derived from the decision queue, not counted off the event ledger.
+    # DECISION F031 D9 retires the blocker addend and its `stop_reason_recorded` scan
+    # with it: `decision_queue` already derives a `stop_reason` decision of its own.
+    decision_count = _count_open_decisions(job, events)
 
     # Latest proof
     proof_events = [e for e in events if e.get("event") == "proof_collected"]
@@ -1917,7 +1933,7 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
             "confidence": "high" if has_real_events else "none",
         },
         "metrics": {
-            "open": blocker_count + decision_count,
+            "open": decision_count,
             "planned": sum(1 for t in job.tasks if (t.status.value if hasattr(t.status, "value") else "") == "pending"),
             "done": sum(1 for t in job.tasks if (t.status.value if hasattr(t.status, "value") else "") == "completed"),
             "progress_percent": round((sum(1 for t in job.tasks if (t.status.value if hasattr(t.status, "value") else "") == "completed") / max(task_count, 1)) * 100),
@@ -2638,12 +2654,9 @@ def _build_live_state_json(job: Any) -> dict[str, Any]:
         }
         stage = stage_map.get(last_event, "active")
 
-    # Open decisions
-    open_decisions = sum(
-        1 for e in events
-        if e.get("event") == "human_decision_requested"
-        and e.get("outcome") != "resolved"
-    )
+    # Open decisions — re-derived from the decision queue, not counted off the event
+    # ledger (DECISION F031 D9). The old local shadowed `decision_queue.open_decisions`.
+    open_decision_count = _count_open_decisions(job, events)
 
     # Test status
     test_events = [e for e in events if e.get("event") == "test_run_completed"]
@@ -2712,7 +2725,7 @@ def _build_live_state_json(job: Any) -> dict[str, Any]:
         "latest_event_at": latest_at,
         "node_count": node_count,
         "edge_count": 0,
-        "open_decision_count": open_decisions,
+        "open_decision_count": open_decision_count,
         "active_task_id": active_task_id,
         "latest_completed_task_id": latest_completed_task_id,
         "test_status": test_status,

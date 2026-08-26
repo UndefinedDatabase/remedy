@@ -11,7 +11,7 @@ import threading
 import time
 from http.client import HTTPConnection
 from pathlib import Path
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
@@ -462,6 +462,49 @@ class TestLiveGrowthUX:
     def test_main_ts_has_ribbon_polling(self):
         src = (Path(__file__).parent.parent.parent / "apps" / "ui" / "src" / "RemedyApp.tsx").read_text()
         assert "setInterval" in src or "timer" in src
+
+
+def _decision_requested_events(count: int) -> list[dict]:
+    """`human_decision_requested` events — the ledger shape the badge no longer reads."""
+    return [
+        {"event": "human_decision_requested", "run_id": "r1", "job_id": "j1",
+         "timestamp": f"2026-01-01T00:0{i}:00", "outcome": "pending", "metadata": {}}
+        for i in range(count)
+    ]
+
+
+class TestOpenDecisionCountComesFromTheDecisionQueue:
+    """`open_decision_count` re-derives from `decision_queue` (DECISION F031 D9)."""
+
+    @staticmethod
+    def _live_count(job, events):
+        from packages.orchestration.ui_server import _build_live_state_json
+        with patch("packages.orchestration.ui_server._load_events", return_value=events):
+            return _build_live_state_json(job)["open_decision_count"]
+
+    @staticmethod
+    def _queue_count(job, events):
+        from packages.orchestration.decision_queue import list_decisions, open_decisions
+        return len(open_decisions(list_decisions(job, events)))
+
+    def test_repo_less_job_reports_its_open_decisions(self):
+        job = _make_job()
+        expected = self._queue_count(job, [])
+        assert expected > 0, "a job with no target_repo must raise a stop-reason decision"
+        assert self._live_count(job, []) == expected
+
+    def test_job_with_nothing_open_reports_zero(self):
+        job = _make_job(metadata={"target_repo": "."})
+        expected = self._queue_count(job, [])
+        assert expected == 0
+        assert self._live_count(job, []) == expected
+
+    def test_human_decision_requested_events_do_not_raise_the_count(self):
+        job = _make_job(metadata={"target_repo": "."})
+        events = _decision_requested_events(3)
+        expected = self._queue_count(job, events)
+        assert expected == 0
+        assert self._live_count(job, events) == expected
 
 
 # ---------------------------------------------------------------------------

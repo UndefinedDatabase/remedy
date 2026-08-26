@@ -7667,3 +7667,40 @@ REVERSE IT by deleting this decision and giving `.decisionFilterChip` and
 `.decisionFilterChipOn` in
 `apps/ui/src/components/panels/RightLivePanel.module.css` the dock values from
 `apps/ui/src/components/graph/GraphFilterChips.module.css`.
+
+## DECISION F031 D9 (2026-08-26) — `metrics.open` counts OPEN DECISIONS alone, and the blocker addend retires with its scan
+
+CHOSEN. `metrics.open` in the cockpit dashboard, and `open_decision_count` in the
+live-state payload, are BOTH the length of
+`decision_queue.open_decisions(decision_queue.list_decisions(job, events))`, computed
+by the one module-level helper `_count_open_decisions` in
+`packages/orchestration/ui_server.py`. The `blocker_count` local that used to be the
+other addend of `metrics.open` is REMOVED, and the `stop_reason_recorded` event scan
+that produced it goes with it. Both keys keep their name, their `int` type and their
+position in the payload; only the number they carry changes.
+
+WHY. `decision_queue` is already the aggregation of everything a human must act on,
+and its own branch 2 derives a `stop_reason` decision from
+`stop_reasons.derive_stop_reasons`. Keeping `blocker_count` as a second addend would
+therefore DOUBLE-COUNT the same blocker the day either event name gains an emitter.
+
+WHY NOTHING OBSERVABLE IS LOST TODAY. The measurement DECISION F031 D2 started is
+finished here: neither `human_decision_requested` nor `stop_reason_recorded` has any
+emitter anywhere in this repository outside `tests/` and `.agent/` — every occurrence
+in production code is a READER, and the only writers of either string are test
+fixtures. So both scans were CONSTANT ZERO in production, `metrics.open` and
+`open_decision_count` were constant zero with them, and removing the addend subtracts
+a measured zero. The derivation replacing them is cheap: 0.309 ms for a 50-task job
+against 500 events, per call.
+
+A FAILURE READS AS ZERO. `_count_open_decisions` catches the same narrow exception set
+`_build_orchestrator_section` catches and returns `0` rather than propagating, because
+both fields it feeds are typed `int` and carry no "unknown" state the way that richer
+section does. The WHY comment above the helper says so at the place a reader lands.
+
+ALTERNATIVE CONSIDERED. Keeping `blocker_count + <the new count>`: rejected as a
+latent double-count that NO test would catch while both addends are zero — the bug
+would ship green and surface only once an emitter existed.
+
+REVERSE IT by restoring the `blocker_count` local and its `stop_reason_recorded` scan
+in `_build_dashboard`, and summing it into `metrics.open` again.
