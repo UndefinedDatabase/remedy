@@ -8011,3 +8011,36 @@ cannot leak between tests.
 
 REVERSE IT by inlining the module at its single call site; nothing else depends on
 it.
+
+## DECISION F031 D18 (2026-08-26) — the answer flow owns the only clock in the chain, and a deadline win reuses the `unreachable` outcome
+
+CHOSEN, THE FLOW BOUNDS THE SEND AND THE SUBMIT STILL DOES NOT. DECISION F031
+D16 rules that `submitDecisionSendRequest` sets no timeout, reads no clock and
+never retries, and `decisionAnswer.ts`, `decisionSend.ts` and `decisionNonce.ts`
+each state in their own headers that they read no clock either. A send that
+never settles therefore had no deadline anywhere, which would leave a button
+disabled forever the moment R37 wires one. The deadline lands in
+`apps/ui/src/api/decisionAnswerFlow.ts` as an INJECTED SEAM with a default, so
+exactly one module in this chain creates a timer and every other module's
+no-clock claim stays true.
+
+CHOSEN, A DEADLINE WIN IS `unreachable` AT STATUS 0 RATHER THAN A FOURTH
+OUTCOME. `decisionSubmit.ts` declares its outcome union closed at three and
+fixes status 0 as the one number no door answers. From the operator's seat a
+request that was never answered and a request that never arrived are the same
+sentence, so a fourth member would add a branch every future caller must handle
+to say something nobody reads differently.
+
+CHOSEN, THE SEND IS NOT CANCELLED. The flow stops WAITING; the request may still
+arrive and be written. Judging when a write may be abandoned belongs to whoever
+knows what the write meant, which is not this layer, and an `AbortController`
+here would promise a withdrawal the server never agreed to.
+
+SUPERSEDING A ROUND ATTRIBUTION IN DECISION F031 D17: that entry says the
+outcome sentence and the wiring both land in R33. R33 and R35 became record
+rounds and R34 stopped on the `.agent/STOP` sentinel without starting, so the
+outcome sentence and the flow land in R36 and the component wiring is R37. The
+split D17 chose is unchanged; only the round numbers moved.
+
+REVERSE IT by deleting the deadline seam and awaiting the submit directly. The
+outcome vocabulary needs no change, because nothing was added to it.
