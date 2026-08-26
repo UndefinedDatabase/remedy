@@ -43,6 +43,10 @@ export interface DecisionCardModel {
   severity: string;
   title: string;
   ageLabel: string;
+  /** The raw age the label above formats, carried so that a comparator has a
+   *  NUMBER to order by — `orderDecisionInbox` needs one and a formatted label
+   *  is not one. `null` is the endpoint's own answer for an unreadable stamp. */
+  ageSeconds: number | null;
   blockedLabel: string;
   blockedCount: number;
   isOpen: boolean;
@@ -175,6 +179,7 @@ export function buildDecisionCardModel(card: DecisionInboxEntry): DecisionCardMo
     severity: cardText(card.severity),
     title: cardText(card.safe_summary),
     ageLabel: decisionAgeLabel(ageSeconds),
+    ageSeconds,
     blockedLabel: decisionBlockedLabel(blockedCount),
     blockedCount,
     isOpen: card.status === "open",
