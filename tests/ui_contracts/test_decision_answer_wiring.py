@@ -60,6 +60,39 @@ def decision_outcome_css_rules(css: str) -> str:
     return "\n".join(rules)
 
 
+def ts_function_body(code: str, name: str) -> str:
+    """The BODY of one top-level `function <name>(...) { ... }`, comments already
+    gone. Scoped on purpose (finding R-0689): "only its own key" is implemented
+    inside these braces, and a whole-file sweep for a bulk operation would read
+    the `useState` initialiser two hundred lines away as this helper's."""
+    head = code.index(f"function {name}(")
+    opened = code.index("{", head)
+    depth = 0
+    for i in range(opened, len(code)):
+        if code[i] == "{":
+            depth += 1
+        elif code[i] == "}":
+            depth -= 1
+            if depth == 0:
+                return code[opened + 1:i]
+    raise AssertionError(f"function {name} never closes its body brace")
+
+
+def jsx_between_answer_button_and_live_paragraph(code: str) -> str:
+    """Everything the source puts BETWEEN the answer button's closing tag and the
+    opening `<p` of the outcome paragraph, comments already gone. ANY conditional
+    operator in here gates the live region on something, which is conditional
+    creation however it is spelled (finding R-0690)."""
+    live = code.rindex('aria-live="polite"')
+    tag = code.rindex("<", 0, live)
+    assert code.startswith("<p", tag), (
+        "the LAST aria-live in this file must be the outcome paragraph's; if it "
+        "is not, this reader is aimed at the wrong node and pins nothing"
+    )
+    closing = code.rindex("</button>", 0, tag) + len("</button>")
+    return code[closing:tag]
+
+
 class TestCommentStripping:
     """Without this, a stripper that silently returned its input would make every
     assertion below vacuous — each one would pass on the prose alone."""
@@ -228,12 +261,25 @@ class TestTheOutcomeRegionExistsBeforeItSpeaks:
             "outcome; only the sentence inside it may be conditional"
         )
 
-    def test_the_region_is_never_conditionally_created(self):
+    def test_the_null_ternary_shape_r0686_was_registered_against_is_absent(self):
         code = strip_ts_comments(CARD.read_text())
         assert "outcome === null ? null :" not in code, (
             "a region inserted already populated announces nothing, which is "
             "exactly the shape finding R-0686 registered"
         )
+
+    def test_the_region_is_created_under_no_conditional_operator_at_all(self):
+        region = jsx_between_answer_button_and_live_paragraph(
+            strip_ts_comments(CARD.read_text())
+        )
+        for operator in ("?", "&&", "||"):
+            assert operator not in region, (
+                f"{operator} between the answer button and the paragraph gates "
+                "the live region on something, and a region that arrives with "
+                "its first sentence already in it announces nothing. That is "
+                "R-0686 whatever the spelling, and the literal check above "
+                "holds only one member of the family (finding R-0690)"
+            )
 
     def test_the_empty_region_is_collapsed_out_of_flow(self):
         rules = decision_outcome_css_rules(CARD_CSS.read_text())
@@ -279,6 +325,62 @@ class TestOnePressTouchesOnlyItsOwnButton:
             "that removes it; a third would be the bulk clear this finding is "
             "about"
         )
+
+
+class TestTheInFlightHelpersTouchOnlyTheirOwnKey:
+    """Finding R-0689. The two assertions above read CALL SITES, and a call site
+    cannot say what the function it calls does: `next.delete(answerKey)` becoming
+    `next.clear()` leaves every one of them green while a settled send clears
+    EVERY answer's key and reinstates R-0687. These read the two helper BODIES,
+    which is where "only its own" is actually implemented."""
+
+    def test_the_add_helper_copies_the_set_before_it_changes_it(self):
+        body = ts_function_body(strip_ts_comments(CARD.read_text()), "withAnswerKey")
+        assert "new Set(sending)" in body, (
+            "mutating the passed set in place would both skip React's re-render "
+            "and make one press the owner of every other answer's disabled state"
+        )
+        assert "next.delete(" not in body, (
+            "and this really is the adder's body alone: the two helpers are "
+            "adjacent, so a reader that overshot a closing brace would sweep "
+            "both as one and prove nothing about either"
+        )
+
+    def test_the_add_helper_adds_the_passed_key_and_nothing_else(self):
+        body = ts_function_body(strip_ts_comments(CARD.read_text()), "withAnswerKey")
+        assert "next.add(answerKey)" in body, (
+            "a press marks ITS OWN answer in flight, named by the key it was "
+            "handed rather than by anything this body decides for itself"
+        )
+
+    def test_the_remove_helper_copies_the_set_before_it_changes_it(self):
+        body = ts_function_body(strip_ts_comments(CARD.read_text()), "withoutAnswerKey")
+        assert "new Set(sending)" in body, (
+            "the settle path copies too, so a resolved send never edits the set "
+            "a still-pending press is holding"
+        )
+        assert "next.add(" not in body, (
+            "and this really is the remover's body alone, by the same argument "
+            "the adder's makes"
+        )
+
+    def test_the_remove_helper_deletes_the_passed_key_and_nothing_else(self):
+        body = ts_function_body(strip_ts_comments(CARD.read_text()), "withoutAnswerKey")
+        assert "next.delete(answerKey)" in body, (
+            "a settled send takes ITS OWN key out of the set and no other, which "
+            "is the whole of finding R-0687 in a single line"
+        )
+
+    def test_neither_helper_carries_a_bulk_operation(self):
+        code = strip_ts_comments(CARD.read_text())
+        for name in ("withAnswerKey", "withoutAnswerKey"):
+            body = ts_function_body(code, name)
+            for forbidden in (".clear(", "new Set()"):
+                assert forbidden not in body, (
+                    f"{forbidden} in {name} empties the in-flight set, which "
+                    "re-enables every other answer's button mid-flight and "
+                    "reinstates R-0687 with every call site left untouched"
+                )
 
 
 class TestTheFlowHeaderNamesItsCard:
