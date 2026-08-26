@@ -23,9 +23,12 @@
 // quiet empty line live in `../../api/decisionFilter`, the ordering rule lives
 // in `../../api/decisionOrder`, and the header badge's count is
 // `countOpenDecisions` in `../../api/decisionCard` — every one of them a module
-// the shipped vitest config reaches, which this markup is not. What is still
-// absent is ANSWERING, which is T003's — which is why the answer buttons ship
-// DISABLED rather than looking live while doing nothing.
+// the shipped vitest config reaches, which this markup is not. ANSWERING is no
+// longer wholly absent — this round added `../../api/decisionAnswer`, which
+// builds the exact command body `/api/jobs/<job_id>/commands` accepts, and that
+// module is what falsified the sentence that stood here. What is still absent is
+// the SEND: nothing in this browser posts that body yet, which is why the answer
+// buttons still ship DISABLED rather than looking live while doing nothing.
 import { useState } from "react";
 import { countOpenDecisions } from "../../api/decisionCard";
 import type { DecisionCardModel } from "../../api/decisionCard";
@@ -85,7 +88,7 @@ export function DecisionInboxCard({ decisions }: { decisions: DecisionCardModel[
           {openCount} open
         </output>
       </header>
-      <div className={styles.decisionFilterRow} aria-label={FILTER_CHIPS_LABEL}>
+      <div className={styles.decisionFilterRow} role="group" aria-label={FILTER_CHIPS_LABEL}>
         {view.choices.map((choice) => (
           <button
             key={choice.value}

@@ -7740,3 +7740,34 @@ keeps the number inside the tested region.
 REVERSE THE SURFACE by moving the count into a shell affordance once one exists in
 the design reference; REVERSE THE LIVENESS by subscribing the card to the stream
 and dropping the interval's claim on it.
+
+## DECISION F031 D11 (2026-08-26) — the answer path ships as a PURE builder now and a side-effecting sender later
+
+CHOSEN, THE SPLIT. `apps/ui/src/api/decisionAnswer.ts` turns a `DecisionCardModel`,
+the answer the operator chose and a caller-supplied nonce into the exact body
+`/api/jobs/<job_id>/commands` accepts — and does not post it. DECISION F031 D5 leaves
+this feature's markup reached by no test, so everything that CAN be a value is made
+one and the untested remainder shrinks to the single call that crosses the wire. The
+body's shape, its key spellings and every refusal are therefore pinned by
+`decisionAnswer.test.ts`; only the send is left to review.
+
+CHOSEN, THE NONCE IS THE CALLER'S. The builder takes a nonce rather than minting one,
+so it needs no clock, no random source and no injection seam — which is what makes it
+pure and every one of its answers a value a test can assert. Minting and replay belong
+to the sender round, where the nonce's lifetime is actually observable.
+
+CHOSEN, THE FOUR REFUSALS ARE A COURTESY, NEVER AN AUTHORITY. The builder answers
+`null` for an empty `id`, an empty answer, a nonce outside `safe_points._ID_RE`'s class
+and a decision that is not open — four bodies `packages/orchestration/ui_server.py`
+would refuse anyway, with 400 or 409. That duplication exists to spare the operator a
+round trip. The server's check stays the ONLY authority, and this decision records the
+drift risk rather than pretending the two cannot diverge.
+
+ALTERNATIVE CONSIDERED. One function that builds AND sends: rejected because it puts
+the body's shape beyond every test this repository can run — the shipped vitest config
+collects `src/**/*.test.ts` with no DOM and no server, so a fetch-bearing function is
+verified by review alone, and the key spellings the door depends on would be the part
+review is worst at checking.
+
+REVERSE IT by folding the builder into the sender once a DOM harness lands and the
+whole round trip can be asserted in one test.
