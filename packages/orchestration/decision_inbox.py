@@ -3,8 +3,9 @@
 Derives the inbox from ``decision_queue.list_decisions`` and adds nothing to
 storage: DECISION F031 D1 rules the decision queue a derived read view, so this
 module performs NO I/O, opens no path and keeps no state of its own.  It exists
-to add the two things a card needs and the queue does not carry: how long the
-question has been waiting, and how much work waits behind it.
+to add the three things a card needs and the queue does not carry: how long the
+question has been waiting, how much work waits behind it, and whether the write
+door can answer it at all.
 
 Scoping is BY JOB and the route enforces it: ``/api/jobs/<job_id>/decisions``
 loads exactly one job through ``ui_server._load_job``.  Remedy deliberately does
@@ -25,6 +26,7 @@ from uuid import UUID
 
 from packages.orchestration.dag_schedule import blocked_downstream
 from packages.orchestration.decision_queue import export_decision_json, list_decisions
+from packages.orchestration.escalation import find_task_decision
 
 #: Payload version of the inbox document.  The three top-level key spellings
 #: below are the ones ``remedy decision list --json`` already prints, so the
@@ -70,6 +72,30 @@ def _blocked_subtree_size(job: Any, payload: Any) -> int:
     return len(blocked_downstream(tasks, seeds))
 
 
+def _answerable_by_decision_resolve(job: Any, decision_id: Any) -> bool:
+    """Whether the write door's ``decision.resolve`` can answer this card.
+
+    MEASURED against the door itself, not against the card's type:
+    ``ui_server._dispatch_decision_resolve`` calls
+    ``escalation.answer_task_decision`` and nothing else, that function reaches
+    a record only through ``find_task_decision``, and ``find_task_decision``
+    iterates the job's ESCALATION RECORDS alone.  So of the eight producing
+    branches of ``list_decisions`` only ``task_decision`` mints an id that list
+    holds; every other id is refused.  Finding R-0693 carries the measurement
+    and DECISION F031 D19 rules that this key is computed from the door's own
+    predicate.
+
+    Remedy deliberately does NOT branch on the card's ``type`` here, and a
+    reader searching this file for such a branch should stop here: no fixture
+    in this repository can tell that predicate apart from a type check, because
+    the ``task_decision`` branch derives its id FROM the escalation record, so
+    type and door-answerability coincide on every buildable fixture.  The
+    door's own predicate is used because it is the door's rule, not because a
+    test can currently catch the difference.
+    """
+    return find_task_decision(job, str(decision_id)) is not None
+
+
 def build_decision_inbox(
     job: Any,
     events: list[dict[str, Any]],
@@ -77,8 +103,9 @@ def build_decision_inbox(
 ) -> dict[str, Any]:
     """The inbox document for one job: every decision as a renderable card.
 
-    Additive over ``export_decision_json``: each card carries exactly two extra
-    keys, ``age_seconds`` and ``blocked_count``.  No input makes this function
+    Additive over ``export_decision_json``: each card carries exactly three
+    extra keys, ``age_seconds``, ``blocked_count`` and
+    ``answerable_by_decision_resolve``.  No input makes this function
     raise — an unreadable ``created_at`` gives a None age, a task id that is not
     a UUID gives 0 blocked, and the card still renders.  Being honest about an
     unreadable entry is the point; hiding it would lose the question.
@@ -92,6 +119,9 @@ def build_decision_inbox(
         card = export_decision_json(decision)
         card["age_seconds"] = _decision_age_seconds(decision.created_at, moment)
         card["blocked_count"] = _blocked_subtree_size(job, decision.payload)
+        card["answerable_by_decision_resolve"] = _answerable_by_decision_resolve(
+            job, decision.id
+        )
         cards.append(card)
 
     return {

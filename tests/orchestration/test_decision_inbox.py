@@ -36,6 +36,12 @@ PRODUCING_DECISION_TYPES = (
     "task_decision",
 )
 
+#: DECISION F031 D19 — the types the write door's ``decision.resolve`` can
+#: actually answer.  ``_dispatch_decision_resolve`` reaches a record only
+#: through ``escalation.find_task_decision``, which iterates escalation records
+#: alone, so ``task_decision`` is the whole set and finding R-0693 measures it.
+ANSWERABLE_DECISION_TYPES = ("task_decision",)
+
 FIXED_NOW = datetime(2026, 8, 23, 12, 0, 0, tzinfo=timezone.utc)
 
 
@@ -170,6 +176,8 @@ def test_card_appears_for_each_producing_type(decision_type):
     assert "age_seconds" in card
     assert "blocked_count" in card
     assert isinstance(card["blocked_count"], int)
+    assert "answerable_by_decision_resolve" in card
+    assert isinstance(card["answerable_by_decision_resolve"], bool)
 
 
 # ---------------------------------------------------------------------------
@@ -270,14 +278,18 @@ def test_job_without_tasks_reports_zero_and_raises_nothing():
 
 
 # ---------------------------------------------------------------------------
-# (f) Shape — exactly the queue's keys plus the two additive ones
+# (f) Shape — exactly the queue's keys plus the three additive ones
 # ---------------------------------------------------------------------------
 
 
-def test_card_keys_are_the_export_keys_plus_exactly_two():
+def test_card_keys_are_the_export_keys_plus_exactly_three():
     job, events = _fixture_task_decision()
     decision = list_decisions(job, events)[0]
-    expected = set(export_decision_json(decision)) | {"age_seconds", "blocked_count"}
+    expected = set(export_decision_json(decision)) | {
+        "age_seconds",
+        "blocked_count",
+        "answerable_by_decision_resolve",
+    }
 
     inbox = build_decision_inbox(job, events, now=FIXED_NOW)
     for card in inbox["decisions"]:
@@ -288,3 +300,19 @@ def test_inbox_top_level_keys_match_the_cli_json_spelling():
     job, events = _fixture_task_decision()
     inbox = build_decision_inbox(job, events, now=FIXED_NOW)
     assert set(inbox) == {"version", "job_id", "decisions"}
+
+
+# ---------------------------------------------------------------------------
+# (g) Answerability — the write door's own predicate (DECISION F031 D19)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("decision_type", PRODUCING_DECISION_TYPES)
+def test_answerable_key_matches_what_the_write_door_accepts(decision_type):
+    """Every producing type's own card reports whether the door can answer it."""
+    job, events = PRODUCING_FIXTURES[decision_type]()
+    inbox = build_decision_inbox(job, events, now=FIXED_NOW)
+    card = _cards_by_type(inbox)[decision_type]
+    assert card["answerable_by_decision_resolve"] == (
+        decision_type in ANSWERABLE_DECISION_TYPES
+    ), f"{decision_type}: door answerability disagrees with ANSWERABLE_DECISION_TYPES"
