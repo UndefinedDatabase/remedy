@@ -14,15 +14,17 @@
 // refuses to have, and `decisionCard.test.ts` measures that refusal rather than
 // trusting this comment.
 //
-// Remedy also deliberately does NOT sort, filter or count here, and a reader
-// searching this file for any of the three is told WHERE each one lives rather
-// than which future slice owns it: the ordering rule over age and blocked size
-// is `./decisionOrder.ts`, the type filter is `./decisionFilter.ts`, and
-// `decisionCardModels` preserves the endpoint's order exactly for both of them.
-// What is still genuinely absent everywhere is COUNTING — the inbox badge is
-// the piece of T002b nothing derives yet. This module reads no clock either —
-// an age arrives as the endpoint's own `age_seconds`, exactly as `recency.ts`
-// takes `nowMs`.
+// Remedy also deliberately does NOT sort or filter here, and a reader searching
+// this file for either is told WHERE it lives rather than which future slice
+// owns it: the ordering rule over age and blocked size is `./decisionOrder.ts`,
+// the type filter is `./decisionFilter.ts`, and `decisionCardModels` preserves
+// the endpoint's order exactly for both of them. COUNTING is neither absent nor
+// elsewhere any more: `countOpenDecisions` at the foot of this module answers
+// how many cards are still waiting, and the badge that shows that number is
+// rendered by `../components/panels/DecisionInboxCard`. What is still genuinely
+// absent everywhere is ANSWERING, which is T003's. This module reads no clock
+// either — an age arrives as the endpoint's own `age_seconds`, exactly as
+// `recency.ts` takes `nowMs`.
 
 /** What kind of affordance a card offers. `free_text` is the fallback the
  *  producer never has to ask for: a question is never shown without some way to
@@ -201,4 +203,16 @@ export function decisionCardModels(inbox: DecisionInboxDocument): DecisionCardMo
     return [];
   }
   return inbox.decisions.map((card) => buildDecisionCardModel(card as DecisionInboxEntry));
+}
+
+/** How many of the inbox's cards are still waiting on an answer — the number the
+ *  card header's badge shows. It reads each model's own `isOpen`, which
+ *  `buildDecisionCardModel` already derived from the endpoint's `status`, so the
+ *  status string is compared in exactly ONE place in this layer and a producer
+ *  renaming it breaks one line rather than two. Total by construction: an empty
+ *  inbox answers 0 and no input makes this throw. It counts and does nothing
+ *  else — the order is `./decisionOrder.ts`'s and the type filter is
+ *  `./decisionFilter.ts`'s. */
+export function countOpenDecisions(models: readonly DecisionCardModel[]): number {
+  return models.reduce((total, model) => (model.isOpen ? total + 1 : total), 0);
 }

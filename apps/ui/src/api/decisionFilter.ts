@@ -15,10 +15,12 @@
 //
 // Remedy deliberately does NOT order or count here either: the rule over age
 // and blocked size lives in `./decisionOrder.ts`, and the inbox badge's count
-// is the piece of T002b still genuinely absent everywhere. THE SEAM IS NOT
-// WIRED YET — `RightLivePanel.tsx` still hands `orderDecisionInbox(...)`
-// straight to the card — and `decisionInboxView` is the shape that wiring will
-// call, which is why it exists a round before its caller does.
+// lives in `./decisionCard.ts` as `countOpenDecisions`. THE SEAM IS WIRED —
+// commit `6147efc4` gave this module its caller, and that caller is
+// `../components/panels/DecisionInboxCard.tsx`, which imports
+// `DECISION_FILTER_ALL` and `decisionInboxView` and calls the view once per
+// render — while `RightLivePanel.tsx` still hands `orderDecisionInbox(...)`
+// straight to that card, which is the ORDERING seam and deliberately unchanged.
 import type { DecisionCardModel } from "./decisionCard";
 
 /** The filter value that means "no filter", and the value the control's first

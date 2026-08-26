@@ -7704,3 +7704,39 @@ would ship green and surface only once an emitter existed.
 
 REVERSE IT by restoring the `blocker_count` local and its `stop_reason_recorded` scan
 in `_build_dashboard`, and summing it into `metrics.open` again.
+
+## DECISION F031 D10 (2026-08-26) — the badge is the inbox CARD's own header count, refreshed by the dashboard poll that already exists
+
+CHOSEN, THE SURFACE. The T002b badge is a count rendered in
+`DecisionInboxCard`'s existing `cardHeader`, beside the "Decision inbox" heading —
+not "the shell's inbox icon" the feature file's Design section names. Measured at
+this round's base: the shipped shell has NO inbox icon, and
+`docs/ui/design_reference/component_spec.md` specifies none, so there is no icon to
+hang a count on. Inventing one would be a new shell affordance the design reference
+does not order, on the same day the card that shows the decisions is already on
+screen. The number is `countOpenDecisions` in `apps/ui/src/api/decisionCard.ts`,
+computed from the UNFILTERED `decisions` prop — never from `view.visible`, or the
+badge would report what the chosen chip left rather than what the job waits on.
+
+CHOSEN, THE LIVENESS. DECISION F031 D2 rules the badge "refetched on an SSE
+signal". What ships is the five-second `window.setInterval(load, 5000)` reload in
+`apps/ui/src/RemedyApp.tsx`, which already reloads the whole dashboard and with it
+`decisionInbox`, so the badge is live with NO new wiring at all. D2's INTENT is met
+in full — no new event kind is added and the count is RE-DERIVED rather than
+emitted — and only its MECHANISM differs. Recording that measurement is honest;
+adding a second refetch path beside a working one is not.
+
+ALTERNATIVE CONSIDERED. A stream-driven refetch on the existing SSE channel:
+rejected as a second path to the same data whose only gain is latency under five
+seconds, on a panel that is read rather than raced. Two refetch paths to one
+payload is also two places for a future divergence to hide.
+
+WHY THE COUNT IS A PURE FUNCTION AND NOT A LINE OF MARKUP. Under DECISION F031 D5
+no test in this repository reaches this component's markup, so the badge's
+RENDERING is pinned by `tsc`, by structure and by review, while its NUMBER is
+pinned by `decisionCard.test.ts`. Keeping the derivation out of the `.tsx` is what
+keeps the number inside the tested region.
+
+REVERSE THE SURFACE by moving the count into a shell affordance once one exists in
+the design reference; REVERSE THE LIVENESS by subscribing the card to the stream
+and dropping the interval's claim on it.

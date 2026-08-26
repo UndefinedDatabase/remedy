@@ -20,12 +20,14 @@
 // Remedy deliberately does NOT decide here WHICH cards survive, in WHAT ORDER
 // they arrive, or HOW MANY there are. The chosen type is the one piece of state
 // this component owns; the RULES that turn it into chips, a visible list and a
-// quiet empty line live in `../../api/decisionFilter`, and the ordering rule
-// lives in `../../api/decisionOrder` — both modules the shipped vitest config
-// reaches, which this markup is not. The inbox badge's COUNT is still genuinely
-// absent everywhere, and answering is T003's — which is why the answer buttons
-// ship DISABLED rather than looking live while doing nothing.
+// quiet empty line live in `../../api/decisionFilter`, the ordering rule lives
+// in `../../api/decisionOrder`, and the header badge's count is
+// `countOpenDecisions` in `../../api/decisionCard` — every one of them a module
+// the shipped vitest config reaches, which this markup is not. What is still
+// absent is ANSWERING, which is T003's — which is why the answer buttons ship
+// DISABLED rather than looking live while doing nothing.
 import { useState } from "react";
+import { countOpenDecisions } from "../../api/decisionCard";
 import type { DecisionCardModel } from "../../api/decisionCard";
 import { DECISION_FILTER_ALL, decisionInboxView } from "../../api/decisionFilter";
 import styles from "./RightLivePanel.module.css";
@@ -37,6 +39,14 @@ const ANSWER_PENDING_TITLE = "Answering arrives with T003";
 /** What the chip strip is called for a reader who cannot see it grouped. It is
  *  announced, never displayed, so the projection rule above still holds. */
 const FILTER_CHIPS_LABEL = "Filter decisions by type";
+
+/** What the header's number counts, said in words for a reader who meets it
+ *  without the heading beside it. It PREFIXES the number rather than standing in
+ *  for it: an `aria-label` REPLACES an element's content in the accessibility
+ *  tree, so a label naming only the word would hide the very digit it explains.
+ *  The colon form is used because it stays grammatical at every count and so
+ *  needs no plural branch in this markup, which no test reaches. */
+const OPEN_COUNT_LABEL = "Open decisions waiting";
 
 /** Every open question in one calm place. With no models this renders nothing at
  *  all — an empty inbox is not news, exactly as `NeedsAttentionCard` shows
@@ -52,11 +62,29 @@ export function DecisionInboxCard({ decisions }: { decisions: DecisionCardModel[
   // case rather than an empty list.
   if (decisions.length === 0) return null;
 
+  // THE BADGE COUNTS THE PROP, NEVER `view.visible`: it says how many questions
+  // the job is waiting on, which is not the same number as how many the chosen
+  // chip left on screen. Counting the view instead would shrink the badge every
+  // time the operator narrowed the list and report a queue draining that had not.
+  const openCount = countOpenDecisions(decisions);
   const view = decisionInboxView(decisions, chosenType);
 
   return (
     <section className={styles.card} data-ui="decision-inbox-card">
-      <header className={styles.cardHeader}><h2>Decision inbox</h2></header>
+      <header className={styles.cardHeader}>
+        <h2>Decision inbox</h2>
+        {/* An `output` rather than a `span`: a bare `div`/`span` maps to the ARIA
+            `generic` role, which prohibits an accessible name, so the label would
+            be computed and dropped (finding R-0682). The word ships in the
+            VISIBLE text too, because a lone digit beside a heading reads as
+            nothing in particular either way. */}
+        <output
+          className={styles.decisionOpenCount}
+          aria-label={`${OPEN_COUNT_LABEL}: ${openCount}`}
+        >
+          {openCount} open
+        </output>
+      </header>
       <div className={styles.decisionFilterRow} aria-label={FILTER_CHIPS_LABEL}>
         {view.choices.map((choice) => (
           <button

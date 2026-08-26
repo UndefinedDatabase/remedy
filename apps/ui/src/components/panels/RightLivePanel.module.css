@@ -288,3 +288,20 @@
 /* The count rides the chip's own color at reduced strength, so one rule covers
    both the chosen chip and the rest. */
 .decisionFilterCount { opacity: 0.7; font-variant-numeric: tabular-nums; }
+
+/* The inbox header's OPEN COUNT (T5_F031 T002b, DECISION F031 D10). It takes the
+   CARD's own chip scale that .decisionChip sets above rather than inventing a
+   badge shape of its own, and it carries no state color at all: the number and
+   the word beside it are the whole signal, so ux_spec.md §14's color-only rule
+   has nothing here to bite on. The same R-0661 rule as the blocks above applies —
+   every value resolves to a custom property apps/ui/src/styles/tokens.css already
+   defines. */
+.decisionOpenCount {
+  padding: 2px 8px;
+  border-radius: var(--remedy-radius-pill);
+  background: var(--remedy-bg-2);
+  border: 1px solid var(--remedy-line);
+  font-size: 11px;
+  color: var(--remedy-muted);
+  font-variant-numeric: tabular-nums;
+}

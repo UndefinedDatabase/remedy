@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   buildDecisionCardModel,
+  countOpenDecisions,
   decisionAgeLabel,
   decisionAnswers,
   decisionBlockedLabel,
@@ -224,5 +225,54 @@ describe("decisionCardModels", () => {
 
   it("gives no cards when decisions is not an array", () => {
     expect(decisionCardModels({ decisions: "not an array" })).toEqual([]);
+  });
+});
+
+describe("countOpenDecisions", () => {
+  it("answers zero for an inbox with no cards at all", () => {
+    expect(countOpenDecisions([])).toBe(0);
+  });
+
+  it("counts only the open cards of a mixed list", () => {
+    const models = decisionCardModels({
+      decisions: [
+        { id: "a", status: "open" },
+        { id: "b", status: "resolved" },
+        { id: "c", status: "open" },
+        { id: "d", status: "cancelled" },
+      ],
+    });
+    expect(countOpenDecisions(models)).toBe(2);
+  });
+
+  it("answers zero when every card in the list is already resolved", () => {
+    const models = decisionCardModels({
+      decisions: [
+        { id: "a", status: "resolved" },
+        { id: "b", status: "resolved" },
+      ],
+    });
+    expect(countOpenDecisions(models)).toBe(0);
+  });
+
+  it("reads isOpen rather than an open-SOUNDING status string", () => {
+    // "reopened" is open-sounding and is NOT the endpoint's open status, so a
+    // count that compared status text of its own would answer 1 here. The model
+    // makes that comparison once, in buildDecisionCardModel, and this pins that
+    // the count trusts it rather than repeating it.
+    const model = buildDecisionCardModel({ id: "a", status: "reopened" });
+    expect(model.isOpen).toBe(false);
+    expect(countOpenDecisions([model])).toBe(0);
+  });
+
+  it("ignores the type filter's business entirely, counting across every type", () => {
+    const models = decisionCardModels({
+      decisions: [
+        { id: "a", type: "task_decision", status: "open" },
+        { id: "b", type: NOVEL_TYPE, status: "open" },
+        { id: "c", type: NOVEL_TYPE, status: "resolved" },
+      ],
+    });
+    expect(countOpenDecisions(models)).toBe(2);
   });
 });
