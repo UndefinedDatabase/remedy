@@ -1,60 +1,46 @@
-# Handoff — F031 Decision inbox, round R30
+# Handback — F031 Decision inbox, R31
 
-Branch: feature/f031-decision-inbox · Base: def633e988f638efb2db2d816c720f419400b9bb (R29 handback, branch tip)
-Fortschritt: ~95 % (F031 claimed; R1 through R29 landed, R29 gated here ·
+Branch `feature/f031-decision-inbox`; base `5ee3024b`. Commit count 6, so the tier
+AGENTS.md `### handoff.md` sets is 100 lines. C0a `34ed2495`, C0b `5310e3fb`, C1
+`eb10e19d`, C2 `e54dc525`, C3 `f0254e78`, and C4 is this commit.
+
+Fortschritt: ~96 % (F031 claimed; R1 through R30 landed, R30 gated here ·
              T001 SHIPPED · T002 COMPLETE · T003 answer command, request and
-             deep-link seams shipped, deep link WIRED here, send open)
-             — Schaetzung
+             deep-link seams shipped and wired, submit seam here, click
+             handler open) — Schaetzung
 
 ## Range
-Review of def633e9..HEAD
+Review of `5ee3024b`..HEAD.
 
 ## Commits
-### 3cdced7f docs(agent): save the F031 R30 step block
+### 34ed2495 docs(agent): save the F031 R31 step block
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f031-r30.md | +448 | C0a — the reviewer's original, copied, never retyped |
-### a4a35350 docs(agent): mirror the F031 R30 block into last_block
+| .agent/authored/f031-r31.md | +451/-0 | C0a: the reviewer's original, copied unretyped |
+### 5310e3fb docs(agent): mirror the F031 R31 block into last_block
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/last_block.md | +261/-264 | C0b — mirror written from the C0a blob |
-### 277d1f61 docs(agent): point the F031 plan at R30
+| .agent/last_block.md | +261/-258 | C0b: mirror of the C0a blob, same blob id |
+### eb10e19d docs(agent): point the F031 plan at R31
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/plan.md | +20/-19 | C1 — whole-file replacement by slice PLANF031R30 |
-### eaf80e31 docs(agent): record the F031 R29 verdict
+| .agent/plan.md | +22/-21 | C1: whole-file replacement by slice PLANF031R31 |
+### e54dc525 docs(agent): record the F031 R30 verdict and R-0560's recurrence
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/live_review.md | +2 | C2 — append of slice LEDGER30, nothing else |
-### 572f7298 feat(ui): jump from a decision card to its task's graph node
+| .agent/live_review.md | +4/-0 | C2: append of slice LEDGER31 and nothing else |
+### f0254e78 feat(ui): send a decision answer and map the door's verdict
 | Path | +/- | Reason |
 |---|---|---|
-| apps/ui/src/components/panels/RightLivePanel.tsx | +1/-1 | S1 — hands tasks and onSelectNode down |
-| apps/ui/src/components/panels/DecisionInboxCard.tsx | +74/-31 | S2 — resolver call, jump control, labels, header |
-| apps/ui/src/components/panels/RightLivePanel.module.css | +26 | S3 — .decisionJumpChip beside .decisionChip |
-| .agent/decisions.md | +39 | S4 — DECISION F031 D15 |
-### C4 (this commit) docs(agent): write the F031 R30 handback
+| apps/ui/src/api/decisionSubmit.ts | +83/-0 | C3 S1: the one network call, send injected |
+| apps/ui/src/api/decisionSubmit.test.ts | +145/-0 | C3 S2: 10 tests, no global touched |
+| .agent/decisions.md | +38/-0 | C3 S3: DECISION F031 D16 |
+### C4 docs(agent): write the F031 R31 handback
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/handoff.md | rewrite | C4 — this file; a handoff cannot table its own SHA (R-0149) |
+| .agent/handoff.md | self-referential | C4: a handoff cannot table its own diff |
 
-## External actions
-- `git worktree add --detach .remedy-wt/r30-red 572f7298` — created; path did not exist before.
-- `git worktree remove /home/decodeux/Repos/remedy/.remedy-wt/r30-red` — removed BY THAT EXACT PATH; `git worktree list` 1 line after.
-- `git push origin feature/f031-decision-inbox` — ordered after C4. That push's outcome is not a value of any file this round writes: the reviewer measures the pushed tips at the next gate and records them in the R30 entry of `.agent/live_review.md`.
-- No PR created, no branch deleted, nothing merged, no force push.
-
-## Verification
-- G1 PASS. `git branch --show-current` = feature/f031-decision-inbox. `.agent/STOP` ABSENT before C0a and before C4. `git status --porcelain` 0 lines after each of C0a, C0b, C1, C2, C3. FOUR readings — scratch, C0a blob, C0b blob, last_block.md on disk — ALL EQUAL at sha256 350809178e8c5c50e14d709836d60b251aa294061816550bd2b173ee95fcb2c9, 36722 bytes, 448 lines; C0a and C0b resolve to the SAME blob id 537c08aa7b7a7d371d381570e40dfb72555b5bb5.
-- G2 PASS. Extractor over the committed C0a blob: 2 slices (PLANF031R30, LEDGER30), 49 CONTENT lines, 448 TOTAL, so PROSE = 448 − 49 = 399. Caps met: TOTAL 448 ≤ 490 (F085 D6), PROSE 399 ≤ 400 (F085 D5).
-- G3 PASS. Convention: newline-INCLUDED. `.agent/plan.md` at 277d1f61 byte-equal to PLANF031R30, slice 2774 bytes = file 2774 bytes. NEGATIVE CONTROL equal-to-slice-minus-trailing-newline: FALSE. `^## Goal$` 1, `^## Next Steps$` 1, `wc -l` 48, strictly under 50.
-- G4 PASS. Reader A, the whole-file equality constraint 8 states: TRUE, 729516 + 1 + 7312 = 736829 against an actual 736829. Reader B, independent: blank-line split moves 321 → 322 units and the LAST 1 unit equals LEDGER30's 1 paragraph in order; trailing newlines rstripped on BOTH sides before splitting. NEGATIVE CONTROL, in memory only: one byte flipped at offset 729567, inside the appended text — BOTH readers reject the mutant, BOTH accept the true file. `git diff --name-only` over C3 does NOT name `.agent/live_review.md`.
-- G5 PASS. `^- R-\d+ — ` 246 → 246, ids ADDED EMPTY and REMOVED EMPTY, all 246 DISTINCT, maximum still R-0685. `^Done: R-\d+ — ` 5 → 5, ids ADDED EMPTY. `^Landed: R-` 0 → 0. `^Recurrence: R-` 22 → 22. `^Gate: R\d+ — ` 19 → 19 UNCHANGED. `^Gate: F\d+ R\d+ — ` 10 → 11, ADDED key exactly `F031 R29`, all keys DISTINCT. §3 item 10 open set at eaf80e31: 241.
-- G6 PASS, both controls REAL RED in one disposable worktree at 572f7298. (a) TYPE WIRING: target uniqueness — the naive attribute text ` onSelectNode={onSelectNode}` occurs 3 times in that file, so the unique target used was the whole `<DecisionInboxCard … />` element, occurrences 1, and the attribute was deleted inside it. Route (declared below): exit 2, single diagnostic `RightLivePanel.tsx(23,8): error TS2741: Property 'onSelectNode' is missing in type ... but required in type ...`. GREEN CONTROL on the unmutated worktree by the same route: exit 0, 0 diagnostics. (b) CSS CONTRACT: `--remedy-blue-strong` → `--remedy-focus` in S3's new rule (target occurrences 1); `python3 -m pytest tests/ui_contracts/test_design_drift.py -q` from that worktree exit 1, failing id `TestEveryCustomPropertyResolves::test_the_unresolved_set_has_not_grown`, message naming `--remedy-focus` in RightLivePanel.module.css. Each file restored byte-identically; worktree `git status --porcelain` 0 after each restore; worktree removed by exact path, `git worktree list` 1 line.
-- G7 PASS. Structure at 572f7298: `nodeIdForDecisionCard` imported once — line 41 `import { nodeIdForDecisionCard } from "../../api/decisionFocus";` — and CALLED exactly once — line 139 `const jumpNodeId = nodeIdForDecisionCard(decision, tasks);`. Line 42 `import type { FocusableTask } from "../../api/feedFocus";`; local interface/type named FocusableTask: 0. `fetch(` 0; the answer button still carries a bare `disabled` (1). `never a value this file chose` 0. Tokens named by S3's new rule, all 6 DEFINED in tokens.css (1 definition each): --remedy-bg-2, --remedy-blue-strong, --remedy-ink, --remedy-line-strong, --remedy-muted, --remedy-radius-pill. Suites, PRIMARY checkout at the C3 tree, run SERIALLY, `git worktree list` 1 line immediately before the first: `npm run typecheck` exit 0, ZERO diagnostics on stdout and stderr; `npm run test:unit` exit 0 at 26 files and 400 tests, EXACTLY the Base reading. Python, exact command lines, all exit 0: tests/ui_server/ 480; test_test_runner 52; test_resource_safety 21; test_integrity_gate 16; tests/ui_contracts/ 525 passed 4 skipped; test_golden_path 42. Every count identical to the Base — no difference to account for.
-- G8 PASS. Line-anchored `^<<<SLICE ` and `^<<<END ` both 0 in `.agent/plan.md` at C1, `.agent/live_review.md` at C2 and all four files C3 writes; CONTROL over the committed C0a blob 2 and 2. `git diff --name-only def633e9..572f7298` names 8 paths, NONE under docs/, packages/ or tests/, none an inventory file, none of the nine forbidden paths; range MINUS change set EMPTY, change set MINUS range exactly `.agent/handoff.md`. Commit shapes, insertions from `git diff --numstat` (not from `git commit`), each single-parent and under 500: 3cdced7f 448, a4a35350 261, 277d1f61 20, eaf80e31 2, 572f7298 140 — the same numbers fill the `+/-` column above, so the two agree cell for cell. `git ls-files .remedy-wt` 0; `git ls-files -- '*.zip'` 0. REFLOG scoped to THIS ROUND'S 5 entries (C0a..C3), field = the operation prefix before the first colon of `git reflog --format=%gs`: all 5 read `commit`; amend 0, rebase 0, cherry 0. SHA-shaped tokens in the C0a blob by `\b[0-9a-f]{7,40}\b`: 19 matched, 10 distinct, 9 `commit` and 1 `blob`, FAILING SET EMPTY.
-- G9 — see `## External actions`; outcome reported to the reviewer, not written to a file.
-
+## Item status
 | Item | Status | Reason |
 |---|---|---|
 | C0a | done | |
@@ -63,26 +49,45 @@ Review of def633e9..HEAD
 | C2 | done | |
 | C3 | done | |
 | C4 | done | this commit |
-| S1 | done | |
-| S2 | deviated | two label constants, not one — see Deviations |
+| S1 | done | the default send is an inline arrow NAMING `fetch`; deviation 1 |
+| S2 | done | 10 tests; the spec's "AT LEAST" widened by a 429 case, deviation 2 |
 | S3 | done | |
-| S4 | done | |
 | push | done | ordered after C4; outcome carried by G9 to the reviewer |
 
+## Findings
+MINTED NO ID, RESOLVED NONE. By §3 item 10 — every `^- R-\d+ — ` paragraph minus every `^Done: R-\d+ — ` line, the rule and the commit DECISION F009 D10 requires — the open set is 241 at `e54dc525`, unmoved from 241 at `5ee3024b`. ONE `Recurrence:` line was appended against R-0560, which stays OPEN.
+The narrower set, the findings THIS FEATURE MUST STILL ACT ON, is the list `.agent/plan.md` names at `eb10e19d`; it is unchanged by this round except that R-0560 now sits in it.
+
+## External actions
+`git worktree add --detach .remedy-wt/f031-r31-red f0254e78` exit 0, at a path that did not exist; `git worktree remove /home/decodeux/Repos/remedy/.remedy-wt/f031-r31-red` exit 0, with `git worktree list` 1 line after. After C4: `git push origin feature/f031-decision-inbox`. No pull request was created, no branch deleted and nothing merged.
+THAT PUSH'S OUTCOME IS NOT A VALUE OF ANY FILE THIS ROUND WRITES: the reviewer measures the pushed tips at the next gate and records them in the R31 entry of `.agent/live_review.md`.
+
+## Verification
+G1 `git branch --show-current` is `feature/f031-decision-inbox` and NOT `main`; `.agent/STOP` read off disk is ABSENT before C0a and again before C4; `git status --porcelain` is 0 lines after each of C0a, C0b, C1, C2 and C3. The FOUR readings — the scratchpad original `.remedy-wt/f031-r31.md` before C0a, the committed C0a blob, the committed C0b blob, and `.agent/last_block.md` off disk after C0b — are ALL FOUR EQUAL at sha256 `57f92a38820a7d1f9d192715f6cbcaf5fe67f5152cfc5f50d249b1c709b7d91b`, 40419 bytes and 451 lines, and C0a's and C0b's file is the SAME git blob `a87532620322c59bd7f0303c98da2b93ac3b8db9`.
+G2 My extractor over the COMMITTED C0a blob printed 2 slices, 52 CONTENT lines inside markers and 451 TOTAL, so PROSE is 451 − 52 = 399. Neither cap is exceeded: 399 against the 400-line PROSE cap (DECISION F085 D5) and 451 against the 490-line TOTAL cap (DECISION F085 D6).
+G3 `.agent/plan.md` at C1 is byte-equal to PLANF031R31 under the newline-INCLUDED convention, where each slice line carries its own trailing newline: 2823 bytes and 49 lines on BOTH sides, equality TRUE. NEGATIVE CONTROL against that slice MINUS its trailing newline: FALSE. `^## Goal$` 1, `^## Next Steps$` 1, and `wc -l` 49, strictly under the 50 AGENTS.md sets.
+G4 Constraint 8's shape holds as ONE equality over the whole file: TRUE, with 736829 + 1 + 10712 = 747542 against an actual 747542. The SECOND, INDEPENDENT reader agrees: a blank-line split moves the unit count 322 → 324, N = 2 by my own split, and the LAST 2 units equal LEDGER31's 2 paragraphs IN ORDER. TRAILING-NEWLINE HANDLING: newlines are rstripped off the whole text before splitting and off each unit on BOTH sides of the comparison. NEGATIVE CONTROL, run in memory and never on the tracked file: one byte flipped at offset 742186, inside the appended text — BOTH readers REJECT the mutant and BOTH ACCEPT the true file.
+G5 Base `5ee3024b` → C2 `e54dc525`: `^- R-\d+ — ` 246 → 246 with the ids ADDED and the ids REMOVED BOTH the EMPTY SET, all 246 DISTINCT and the maximum still `R-0685`; `^Done: R-\d+ — ` 5 → 5 with the ids ADDED ALSO the EMPTY SET; `^Gate: R\d+ — ` 19 → 19 UNCHANGED; `^Gate: F\d+ R\d+ — ` 11 → 12 with the ADDED key exactly `F031 R30` and all keys DISTINCT; `^Recurrence: R-` 22 → 23; `^Recurrence: R-0560` 0 → 1; `^Landed: R-` 0 → 0. The §3 item 10 open set is 241 at C2. `- R-0560 — ` still occurs exactly ONCE line-anchored, so its landed paragraph was not edited, and `git diff --name-only` over C3 names 3 paths and does NOT name `.agent/live_review.md`.
+G6 A disposable worktree at `/home/decodeux/Repos/remedy/.remedy-wt/f031-r31-red`, created at C3 at a path that did not exist. UNMUTATED, the ordered line run from the PRIMARY `apps/ui` with `--config <PRIMARY>/apps/ui/vitest.config.ts --root <WORKTREE>/apps/ui src/api/`: REAL exit 0 at 24 files and 385 tests. THE MUTATION TARGET IS MINE TO NAME and I measured it in that file: the 11-byte string `: "refused"`, COUNT 1 — the SHORTEST byte string in `decisionSubmit.ts` that occurs exactly once and expresses the status mapping — replaced by `: "accepted"` so that EVERY answered request maps to the accepted outcome, every other byte left alone. The same line again: REAL exit 1 at 3 failed and 382 passed of 385, the three failing tests being `maps a 403 to refused CARRYING 403, which is how a card names a credential problem`, `maps a 409 to refused CARRYING 409, which is how a card names a decision already answered` and `maps a 429 to refused CARRYING 429, so the rate budget is not read as a credential problem`, all in `src/api/decisionSubmit.test.ts`. The file was restored byte-identical to the primary's copy, that worktree's `git status --porcelain` was 0, the worktree was removed BY THAT EXACT PATH, and `git worktree list` is 1 line after, naming only `/home/decodeux/Repos/remedy`.
+G7 Over `decisionSubmit.ts` at C3: its ONLY import line is `import type { DecisionSendRequest } from "./decisionSend";`, so the request arrives as a TYPE; the send parameter's signature reads `send: DecisionSendFunction = (sent) =>` continuing onto `fetch(sent.path, { method: sent.method, headers: sent.headers, body: sent.body }),`, so the DEFAULT names the global `fetch`; `setTimeout` 0, `Date.now` 0 and `crypto` 0; and it reaches into no decision field, with `answerText` 0, `decision_id` 0, `client_nonce` 0, `taskId` 0 and `buildDecision` 0. Over `decisionSubmit.test.ts`: `vi.` 0 and `globalThis` 0, so no global was patched. `git worktree list` was 1 line immediately BEFORE the first suite. Then in the PRIMARY checkout at the C3 tree, SERIALLY and never two alive at once, every one a REAL exit 0: `npm run typecheck` exit 0 with ZERO diagnostics on stdout and on stderr; `npm run test:unit` exit 0 at 27 files and 410 tests, the FILE count 26 → 27 with the one added being `decisionSubmit.test.ts` at 10 tests of its own, and `decisionSend.test.ts` 12, `decisionAnswer.test.ts` 20, `decisionCard.test.ts` 36, `decisionFilter.test.ts` 20, `decisionOrder.test.ts` 16 and `decisionFocus.test.ts` 7, all six UNMOVED. Then by the block's exact command lines, in order: `tests/ui_server/` 480, `test_test_runner` 52, `test_resource_safety` 21, `test_integrity_gate` 16, `tests/ui_contracts/` 525 passed with 4 skipped, and the canary `test_golden_path` 42 — every one exit 0 and every count identical to the reviewer's base reading, so there is no difference to account for.
+G8 Line-anchored `^<<<SLICE ` and `^<<<END ` are both 0 in `.agent/plan.md` at C1, in `.agent/live_review.md` at C2 and in all three files C3 writes, against a CONTROL of 2 and 2 over the COMMITTED C0a blob. `git diff --name-only 5ee3024b..f0254e78` names 7 paths, none under `docs/`, `packages/` or `tests/` and none of `.agent/context.md`, either inventory file or the nine forbidden `apps/` paths; the range path set MINUS the change set is EMPTY and the change set MINUS the range is exactly `.agent/handoff.md`. C0a through C3 are each SINGLE-PARENT with insertions 451, 261, 22, 4 and 266 read from `git diff --numstat` and not from `git commit`'s summary, each under the 500 AGENTS.md DECISION F104 D1 sets, and those five numbers agree cell for cell with the `+/-` column of the tables above. `git ls-files .remedy-wt` is 0 and `git ls-files` over the zip glob is 0. THE REFLOG, SCOPE this round's 5 entries C0a through C3 and FIELD the operation prefix before the first colon of `git reflog --format=%gs`, reads `commit` throughout, so `amend` 0, `rebase` 0 and `cherry` 0. Every SHA-shaped token in the C0a blob, extracted word-bounded at 7 to 40 hex characters: 21 occurrences, 10 distinct, 9 of type `commit` and 1 of type `blob`, FAILING SET EMPTY.
+G9 Ordered after C4 and run there; its real outcome is in this round's final message, and the pushed tips are the reviewer's to measure at the next gate.
+
 ## Authored-text proofs
-Two slices, both extracted programmatically from the COMMITTED C0a blob by marker LINES and compared disk-to-disk: PLANF031R30 → `.agent/plan.md` byte-equal (G3); LEDGER30 → the C2 append, equal under both readers (G4). Block transport: four readings equal, one blob id (G1). No marker line reached any target (G8).
+Both slices were extracted PROGRAMMATICALLY out of the COMMITTED C0a blob by their marker LINES and applied unretyped, and no marker line reached a target file (G8). The disk-to-disk comparisons that the self-drive protocol substitutes for the hash stamp are G1's four-way sha256 equality over the block itself, G3's plan equality with its negative control, and G4's two independent append readers with theirs.
+`.agent/decisions.md` grows at C3 by text I authored under S3, so no equality gate is ordered over it and none is reported (constraint 8).
 
 ## Deviations & assumptions
-1. S2(d)/(e) name ONE new constant; I wrote TWO — `DECISION_JUMP_LABEL` ("In graph", visible) and `DECISION_JUMP_TITLE` ("Show this decision's task in the graph", the `title`). (e) orders a header sentence saying the fixed affordance labels are declared as constants at the top; leaving the title inline would have made the sentence I was ordered to write FALSE, and `ANSWER_PENDING_TITLE` is this file's existing idiom for exactly a button `title`. Declared per constraint 2.
-2. G6(a) orders the deleted byte count to be 1. The attribute text alone is NOT a unique target: ` onSelectNode={onSelectNode}` occurs 3 times in `RightLivePanel.tsx` (the DecisionInboxCard, ActivityFeedCard and TaskChecklistCard elements). I made the whole `<DecisionInboxCard … />` element the destructive target — occurrences 1 — and deleted the attribute inside it. The reported 1 is the target actually used.
-3. G6(a) tsc route, NAMED because `npm run typecheck` cannot be pointed at a worktree: a fresh worktree has no `apps/ui/node_modules` and symlinking is denied, and `--project <worktree>/apps/ui/tsconfig.json` alone yields 816 diagnostics that are all missing-module noise. Route used: `npx tsc --noEmit --project .remedy-wt/r30-red-tsconfig.json`, run from the PRIMARY `apps/ui` so the primary's installed compiler and `node_modules` are used, where that gitignored scratch config carries the shipped compiler options, an `include` of the WORKTREE's `apps/ui/src`, and `baseUrl`/`paths`/`typeRoots` pointing at the primary's `node_modules`. It is not blind: the same route on the UNMUTATED worktree is exit 0 with 0 diagnostics. The config lives OUTSIDE the worktree, so the worktree's `git status --porcelain` stayed 0.
-4. `DecisionInboxCard.tsx`'s map gained a block body, so the returned JSX was re-indented by two spaces — 39 whitespace-only lines inside C3's diff, no other content change there.
-5. The props are REQUIRED, not optional. S2(a) says "typed as `ActivityFeedCard` types its own", and that component's EXPORTED props are optional while its inner `LiveFeed` types the same pair required. I took the required spelling, because G6(a) orders a dropped `onSelectNode` to go RED and an optional prop cannot.
-6. `--remedy-focus` appears ONCE in S3's new rule, inside the COMMENT that records why it is not used. It appears in no `var()`; the ordered reading is the `var(--remedy-…)` set, which is the 6 names listed in G7.
-7. Zip glob read as `git ls-files -- '*.zip'` (the block names no pattern). "The answer button still carries `disabled`" read as a bare `disabled` attribute line, count 1.
-8. Scratch created under `.remedy-wt/` this round, all gitignored and belonging to no commit: `r30-extract/`, `r30-red-tsconfig.json`, `r30-g7-structure.py`, `r30-g8.py`. Nothing pre-existing there was deleted. `git ls-files .remedy-wt` 0.
-9. Commit sequence C0a, C0b, C1, C2, C3, C4 followed EXACTLY — no extra commit, none dropped, no reordering. No amend, rebase, cherry-pick, force-push, branch deletion, merge or PR.
-10. No finding id minted and none resolved, per constraint 10. `docs/` was not touched: constraint 11 forbids it, and the deep link's behaviour is documented nowhere under `docs/` that this round falsifies.
+1. S1 orders BOTH a NARROW local reply type rather than the DOM `Response` AND a default naming the global `fetch`. `fetch` itself is `(input, init) => Promise<Response>` and is not assignable to a one-parameter `DecisionSendFunction`, so the default is an inline arrow that NAMES `fetch` and passes the request's own four values through unchanged — no adapter object, no wrapper module. That is the conservative reading satisfying both clauses; G7 quotes the signature it produced.
+2. S2 says "assert AT LEAST", so I added one property beyond its list: a 429 mapping to refused CARRYING 429, so a rate-budget refusal cannot be read as a credential problem. Ten tests in the file. A widening of an "at least", not a departure from the order.
+3. G6 deliberately states no target. I chose `: "refused"` and report its measured count of 1 above. No SHORTER unique candidate exists: `"refused"` alone occurs 2 times, in the union type and in the mapping, and `"accepted"` likewise occurs 2 times.
+4. C0a and C0b were committed while `.agent/plan.md` still described R30, because constraint 4 fixes C1 as the FIRST substantive commit. That sits against the AGENTS.md Commit Gate's plan-currency item; the block's ordering wins under constraints 1 and 4, and this line is the declaration.
+5. The C4 row's `+/-` reads `self-referential`, under the handback template's own `## Commits` self-reference exception. G8 orders insertion counts over C0a..C3 only, and a predicted numeral for the commit being written would be an unmeasured value.
+6. SCRATCH I CREATED AND OWN, both under `.remedy-wt/` and neither tracked: the worktree `.remedy-wt/f031-r31-red` and the extractor output directory `.remedy-wt/f031r31-extract/`, each removed BY ITS EXACT PATH. I deleted nothing I did not create (constraint 12).
+7. NO CONTRADICTION FOUND in the block: every gate resolved against something real on disk and every ordered numeral reproduced. Nothing calls `decisionSubmit.ts` yet — that is the block's own design and R32's work, not an omission here.
+8. THE COMMIT SEQUENCE WAS EXACTLY C0a, C0b, C1, C2, C3, C4 — no extra commit, none dropped, none reordered — and no amend, rebase, cherry-pick, force-push, branch deletion, merge or pull request occurred.
 
 ## Next
-The next session reads `.agent/STOP` from disk as Phase 1 rule 1 BEFORE the Open PR Gate as rule 2. The R30 verdict is UNRECORDED and is owed by the next round's ledger commit (DECISION F085 D9). Then T003's SEND round, the last of the seam, which owns the only `fetch` in this feature.
+The next session reads `.agent/STOP` from disk as Phase 1 rule 1 BEFORE the Open PR Gate as rule 2.
+THE R31 VERDICT IS UNRECORDED and is owed by the next round's ledger commit (DECISION F085 D9).
+R32 is T003's LAST wiring round — the server token threaded to the card, the nonce minted, this module called on an answer click, the disabled buttons enabled — and it is the FIRST round that falsifies the three "nothing posts yet" sentences in `decisionCard.ts`, `decisionAnswer.ts` and `DecisionInboxCard.tsx`.
