@@ -55,7 +55,7 @@ export interface DecisionCardModel {
  *  one way, so no key is renamed on the way in. Every field is optional and the
  *  untrusted ones are `unknown`, because the payload comes from a producer this
  *  module does not control and must still type-check. */
-export interface DecisionInboxCard {
+export interface DecisionInboxEntry {
   id?: string;
   type?: string;
   status?: string;
@@ -142,7 +142,7 @@ function entriesAsAnswers(entries: unknown[], kind: DecisionAnswerKind): Decisio
  *  answer. This function MUST NOT branch on `card.type` — the type is data
  *  here, never control flow — which is exactly what lets a decision type this
  *  repository has never produced render generically. */
-export function decisionAnswers(card: DecisionInboxCard): DecisionAnswer[] {
+export function decisionAnswers(card: DecisionInboxEntry): DecisionAnswer[] {
   const options = nonEmptyEntries(payloadOptions(card.payload));
   if (options.length > 0) {
     return entriesAsAnswers(options, "option");
@@ -162,7 +162,7 @@ function cardText(value: unknown): string {
 
 /** One endpoint card as the model a renderer projects. Total by construction:
  *  every field has a fallback, so a half-written card still renders. */
-export function buildDecisionCardModel(card: DecisionInboxCard): DecisionCardModel {
+export function buildDecisionCardModel(card: DecisionInboxEntry): DecisionCardModel {
   const blockedCount =
     typeof card.blocked_count === "number" && Number.isFinite(card.blocked_count)
       ? card.blocked_count
@@ -190,5 +190,5 @@ export function decisionCardModels(inbox: DecisionInboxDocument): DecisionCardMo
   if (!Array.isArray(inbox.decisions)) {
     return [];
   }
-  return inbox.decisions.map((card) => buildDecisionCardModel(card as DecisionInboxCard));
+  return inbox.decisions.map((card) => buildDecisionCardModel(card as DecisionInboxEntry));
 }

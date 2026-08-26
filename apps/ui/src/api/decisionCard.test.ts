@@ -6,7 +6,7 @@ import {
   decisionBlockedLabel,
   decisionCardModels,
 } from "./decisionCard";
-import type { DecisionInboxCard } from "./decisionCard";
+import type { DecisionInboxEntry } from "./decisionCard";
 
 /** A decision type this repository has never produced. It exists here to prove
  *  the renderer is generic; if a producer ever emits it, pick another. */
@@ -70,7 +70,7 @@ describe("decisionBlockedLabel", () => {
 
 describe("decisionAnswers", () => {
   it("offers one option answer per payload option", () => {
-    const card: DecisionInboxCard = {
+    const card: DecisionInboxEntry = {
       type: "task_decision",
       payload: { options: ["retry", "skip"] },
     };
@@ -81,7 +81,7 @@ describe("decisionAnswers", () => {
   });
 
   it("offers the next actions as commands when the payload names no options", () => {
-    const card: DecisionInboxCard = {
+    const card: DecisionInboxEntry = {
       type: "task_decision",
       next_actions: ["remedy resume", "remedy abort"],
     };
@@ -98,7 +98,7 @@ describe("decisionAnswers", () => {
   });
 
   it("falls through an options key that is present but empty", () => {
-    const card: DecisionInboxCard = {
+    const card: DecisionInboxEntry = {
       type: "task_decision",
       payload: { options: [] },
       next_actions: ["remedy resume"],
@@ -116,7 +116,7 @@ describe("decisionAnswers", () => {
   });
 
   it("renders a non-string option rather than dropping the question", () => {
-    const card: DecisionInboxCard = {
+    const card: DecisionInboxEntry = {
       type: "task_decision",
       payload: { options: [7, true] },
     };
@@ -127,7 +127,7 @@ describe("decisionAnswers", () => {
   });
 
   it("renders a NOVEL decision type generically, from its payload alone", () => {
-    const card: DecisionInboxCard = {
+    const card: DecisionInboxEntry = {
       type: NOVEL_TYPE,
       safe_summary: "Realign the warp core before the next burn",
       payload: { options: ["realign now", "defer one cycle"] },
@@ -140,8 +140,8 @@ describe("decisionAnswers", () => {
 
   it("gives two cards that differ ONLY in type identical answers", () => {
     const payload = { options: ["approve", "reject"] };
-    const known: DecisionInboxCard = { type: "task_decision", payload };
-    const novel: DecisionInboxCard = { type: NOVEL_TYPE, payload };
+    const known: DecisionInboxEntry = { type: "task_decision", payload };
+    const novel: DecisionInboxEntry = { type: NOVEL_TYPE, payload };
     expect(decisionAnswers(novel)).toEqual(decisionAnswers(known));
     expect(decisionAnswers(novel)).toHaveLength(2);
   });
@@ -149,7 +149,7 @@ describe("decisionAnswers", () => {
 
 describe("buildDecisionCardModel", () => {
   it("flattens a full card into the fields a renderer projects", () => {
-    const card: DecisionInboxCard = {
+    const card: DecisionInboxEntry = {
       id: "d-1",
       type: "task_decision",
       status: "open",
