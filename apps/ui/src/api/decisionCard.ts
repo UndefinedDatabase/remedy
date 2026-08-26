@@ -14,11 +14,15 @@
 // refuses to have, and `decisionCard.test.ts` measures that refusal rather than
 // trusting this comment.
 //
-// Remedy also deliberately does NOT sort, filter or count here: ordering over
-// age and blocked size is T002b's subject and `decisionCardModels` preserves
-// the endpoint's order exactly. This module reads no clock either — an age
-// arrives as the endpoint's own `age_seconds`, exactly as `recency.ts` takes
-// `nowMs`.
+// Remedy also deliberately does NOT sort, filter or count here, and a reader
+// searching this file for any of the three is told WHERE each one lives rather
+// than which future slice owns it: the ordering rule over age and blocked size
+// is `./decisionOrder.ts`, the type filter is `./decisionFilter.ts`, and
+// `decisionCardModels` preserves the endpoint's order exactly for both of them.
+// What is still genuinely absent everywhere is COUNTING — the inbox badge is
+// the piece of T002b nothing derives yet. This module reads no clock either —
+// an age arrives as the endpoint's own `age_seconds`, exactly as `recency.ts`
+// takes `nowMs`.
 
 /** What kind of affordance a card offers. `free_text` is the fallback the
  *  producer never has to ask for: a question is never shown without some way to
