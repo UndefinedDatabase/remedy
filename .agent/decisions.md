@@ -7588,3 +7588,36 @@ and every later reviewer would relitigate it.
 REVERSE IT by deleting this DECISION and its bullet in the `## Design
 amendments` section of `docs/roadmap/features/T5_F031.md` that names R18, and by
 restoring the literal product in the comparator this rule names.
+
+## DECISION F031 D7 (2026-08-26) — the finding ledger's gate key is feature-qualified from the R19 entry onward
+
+CHOSEN. Every `Gate:` entry `.agent/live_review.md` gains from this round onward
+is headed `Gate: F031 R<n> — the F031 R<n> entry.` The unqualified `Gate: R<n> — `
+form is retired for new entries on this branch, and no landed entry is touched.
+
+WHY. This branch's record carries a `Gate: R19` line whose body is F022's, a seed
+inherited when the ledger was reset from that feature's, alongside the keys `R1`
+through `R18` from F031's own rounds. The series is keyed by the round an entry is
+ABOUT, not by the round that writes it, and DECISION F085 D9 owes R19's verdict to
+the NEXT round's ledger commit — so the entry recording it keys `Gate: R19` and
+duplicates that seed on the exact string a later reader searches by. That is the
+§3 item 26 defect, whose earlier instance left two paragraphs answering to one key.
+
+WHY NOT REWRITE THE SEED. §3 item 20 forbids editing landed record text: a dated
+correction is how this record stays honest, and an overwritten entry is worse than
+a stale one. The seed also belongs to F022's history, which this branch has no
+standing to edit.
+
+WHY NOT SKIP THE ENTRY. R19's verdict would then live only in `.agent/handoff.md`,
+which every round rewrites, so it would be unrecoverable one round later. The §4
+item 13 terminator carve-out reaches only the LAST round of a branch, and R19 is
+not that round.
+
+CONSEQUENCE, declared so no later gate reads the split series as drift. The file
+carries two header shapes for the rest of this branch: `^Gate: R\d+ — ` stops
+growing where it stands, and `^Gate: F\d+ R\d+ — ` is the series that grows from
+here. A gate counting gate entries names BOTH patterns, because neither alone is
+the count.
+
+REVERSE IT. Delete this decision and its heading, and head later entries
+`Gate: R<n> — ` again, accepting the duplicate key. No code reads either shape.
