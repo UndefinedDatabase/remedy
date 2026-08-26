@@ -7805,3 +7805,41 @@ and the wiring follows in T003's sender round.
 
 REVERSE IT by projecting the payload wholesale once a card needs more of it than
 the task id.
+
+## DECISION F031 D13 (2026-08-26) — the write door takes the token the browser ALREADY holds, in both of its headers
+
+CHOSEN, NO NEW SECRET. The decision inbox authenticates its answer with the SAME
+per-run server token the browser has held since F008. `packages/orchestration/ui_server.py`
+mints it with `secrets.token_urlsafe(24)` and injects it into the served `index.html`;
+`apps/ui/src/RemedyApp.tsx` reads it out of `window.location.search` in `readUrlState`
+and REFUSES TO RENDER without it; `apps/ui/src/api/remedyApi.ts` already spends it on
+every dashboard read. So no new secret, no new endpoint and no server change is
+required, and the "design ruling" `.agent/plan.md` named as a blocker on T003's sender
+round is ruled UNNECESSARY. That blocker was an unrun absence claim — one module's
+deliberate absence written out as a property of the whole browser — and it is recorded
+as the second instance of finding R-0419 rather than quietly dropped.
+
+CHOSEN, ONE VALUE IN TWO HEADERS. `Authorization` carries `Bearer ` plus that token and
+`X-Remedy-CSRF` carries the token unmodified, because `_bearer_token_accepted` and the
+`COMMAND_CSRF_HEADER` check BOTH call `server_token_matches(supplied, self.server_token)`,
+and DECISION F009 D11 already rules that the double-submit header carries the server
+token itself — there is no cookie to double-submit against. Two headers, one secret.
+
+CHOSEN, THE REQUEST IS A VALUE. `apps/ui/src/api/decisionSend.ts` composes
+`buildDecisionResolveCommand` and `jobCommandsPath` into a path, a method, a header map
+and a body STRING, and issues nothing; the caller owns the origin, the nonce and the
+call. That is DECISION F031 D5's split applied one layer out, and it is what lets
+`decisionSend.test.ts` assert the header map that no test could reach inside a `fetch`.
+
+ALTERNATIVE CONSIDERED. Minting a SECOND, distinct CSRF secret, or adding a token
+endpoint for the browser to fetch: rejected because D11 already fixes that header's
+value, and a second secret is a second thing to mint, ship, rotate and get wrong for no
+gain in a single-origin, single-run server.
+
+ALTERNATIVE CONSIDERED. Carrying the token as a query parameter the way the READS do:
+rejected because the write door reads its credential from headers only — it
+authenticates before it looks at anything else — and a query string is the part of a URL
+that reaches access logs, shell history and referrers.
+
+REVERSE IT by changing that module's header map alone, should the server ever mint a
+CSRF secret distinct from the bearer token.
