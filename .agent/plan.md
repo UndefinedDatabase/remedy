@@ -16,16 +16,15 @@ produces, the badge tracks live, and ordering follows a documented rule over age
 and blocked size rather than vibes.
 
 ## Current Step
-R11 records the R9 and R10 verdicts in one ledger commit and rules the two
-measured gaps as DECISION F031 D4 and D5, routing both into the feature file.
-R10 was this same bundle and stopped on the now-absent `.agent/STOP` sentinel.
-T001 is SHIPPED: the module, the route and 29 tests are green.
+R12 records the R11 verdict and ships T002a's tested layer: the decision-card
+PURE MODEL at `apps/ui/src/api/decisionCard.ts` with `decisionCard.test.ts`
+beside it, per DECISION F031 D5. The generic options renderer lives here and
+derives every affordance from the decision's own payload, never from its type.
 
 ## Next Steps
-1. T002a builds the inbox card and the GENERIC options renderer as PURE model
-   functions under `apps/ui/src/api/` with `.test.ts` beside them, per D5, and
-   the card shell D4 fixes; the extensibility test covers a novel options
-   payload at the model layer.
+1. T002a's second round projects that model into a `.tsx` card built from the
+   shipped `RightLivePanel.module.css` shell per DECISION F031 D4 and mounts it
+   in `RightLivePanel`; the component carries no branching of its own.
 2. T002b adds ordering over age and blocked size, filtering, and the badge,
    where DECISION F031 D2 binds: the badge re-derives on refetch over the
    existing SSE stream, no new event kind ships, and the two constant-zero
@@ -36,14 +35,15 @@ T001 is SHIPPED: the module, the route and 29 tests are green.
 ## Risks
 - Open findings, stated with the rule and the commit DECISION F009 D10 requires:
   by §3 item 10 — every `^- R-\d+ — ` paragraph minus every `^Done: R-\d+ — `
-  line — the open set is 238, measured at `99d77d5c`.
+  line — the open set is 238, measured at `8b4e2295`.
 - The findings THIS FEATURE MUST STILL ACT ON — a narrower set, named as what it
   is and not called "open" — are R-0403, R-0413, R-0431, R-0445, R-0471, R-0495,
-  R-0533, R-0574, R-0601, R-0625, R-0632, R-0672, R-0674, R-0675, R-0676, R-0677,
-  R-0678 and R-0679; R-0495 and R-0574 are the two Highs, from F085 and F086.
-- D5 leaves the card's rendered markup reached by NO test, deliberately and
-  scheduled rather than discovered. Every branch lives in the pure model; if a
-  branch ever migrates into the component, it leaves the tested region.
-- The record holds `Gate: R19` from F022 as its seed entry. If F031 reaches its
-  own R19 that key collides — the §3 item 26 defect. A round before then renames
-  the seed or the scheme; this bullet is the reminder.
+  R-0533, R-0574, R-0601, R-0622, R-0625, R-0632, R-0672, R-0674, R-0675,
+  R-0676, R-0677, R-0678 and R-0679; R-0495 and R-0574 are the two Highs.
+- R-0622 is live ground, not history: `npm run lint` exits 1 at 80 problems and
+  eslint parses no TypeScript here, so no round of this feature can gate on it
+  and every `.ts` file ships unlinted. `npm run typecheck` is the only static
+  reader that works.
+- The rendered markup stays reached by NO test until a DOM harness lands, which
+  DECISION F031 D5 rules is its own feature. Every branch must therefore stay in
+  the pure model; a branch that migrates into a `.tsx` leaves the tested region.
