@@ -7926,3 +7926,41 @@ the known cost of D5, which is also why the resolver itself shipped tested first
 
 REVERSE IT by deleting the control and its `.decisionJumpChip` rule; nothing else
 depends on either.
+
+## DECISION F031 D16 (2026-08-26) — the one network call lives in its own module and takes its send function as a defaulted parameter
+
+CHOSEN, THE IMPURE EDGE STAYS REACHABLE BY A TEST. F031's single network call is
+`apps/ui/src/api/decisionSubmit.ts`, and the function that actually touches the
+wire is a PARAMETER with a default rather than a global reached for inside the
+body. That is DECISION F031 D5's rule — the logic lives where the shipped vitest
+config can run it — followed to its last step instead of abandoned at the wire.
+The alternative was to let the one part of this feature that can fail in
+production be the one part no test ever executes.
+
+CHOSEN, A CLOSED THREE-VALUE OUTCOME PLUS A NUMERIC STATUS, never a `Response`.
+The module answers `accepted`, `refused` or `unreachable` with the status beside
+it, as a union of string literals so a fourth outcome costs no caller its arity.
+A body is not handed out because this feature has no use for one and returning it
+would invite a caller to read it. The status IS carried, because
+`packages/orchestration/ui_server.py` answers 403 for a credential, 409 for a
+decision already answered or closed and 429 for the rate budget, and a card that
+cannot tell those apart can only say "it did not work".
+
+CHOSEN, ONE ATTEMPT, NEVER A RETRY, AND NEVER A THROW. A rejected send becomes
+the unreachable result with status 0, because a promise that rejects inside a
+click handler is an unhandled rejection and a card that renders nothing. Judging
+when replaying a WRITE is safe belongs to whoever knows what the write meant, and
+that is not this module.
+
+ALTERNATIVE CONSIDERED, calling `fetch` directly in the component: rejected
+because nothing in the shipped test config reaches a component (DECISION F031
+D5), so the mapping from status to meaning would ship untested — which is exactly
+the mapping a reader of a failed answer depends on.
+
+ALTERNATIVE CONSIDERED, patching the global `fetch` in the tests: rejected
+because no test under `apps/ui/src` does that today, and a leaked global is a
+failure that shows up in an unrelated file. An injected parameter needs no
+teardown and cannot leak between tests.
+
+REVERSE IT by inlining the module at its single call site; nothing else depends
+on it.
