@@ -1,40 +1,45 @@
-# Handback — F031 Decision inbox, R16
+# Handback — F031 Decision inbox, Runde 17
 
-Feature F031 · Round R16 · Branch `feature/f031-decision-inbox` · Base `4fc7dc77`
-Fortschritt: ~55 % (F031 claimed; R1 through R15 landed and gated ·
+Feature F031 (Tier 5) · Runde 17 · branch `feature/f031-decision-inbox` · base `a48d1234` · the block's constraint 3 fixes 7 commits, and >5 commits puts the AGENTS.md `### handoff.md` tier at 100 lines.
+
+Fortschritt: ~57 % (F031 claimed; R1 through R16 landed and gated ·
              T001 SHIPPED · T002a MODEL shipped, wired and RENDERED ·
-             T002b ordering/filtering/badge und T003 offen)
-             — Schaetzung
+             R-0681 repaired here · T002b ordering/filtering/badge
+             und T003 offen) — Schaetzung
 
 ## Range
-Review of `4fc7dc77c37bc0a8ef158cdd34b02009a52fbc0f..HEAD`, where HEAD is the C3 commit that writes this file — its own SHA cannot exist in the text it writes.
+Review of `a48d1234`..HEAD, where HEAD is the C5 commit this file IS; its SHA cannot exist while this text is written.
 
 ## Commits
-
-### c3bb2ea7 chore(agent): save the F031 R16 step block verbatim
+### 8e4e55d6 chore(agent): save the F031 R17 step block verbatim
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f031-r16.md | +365/-0 | C0a, the block saved verbatim |
-
-### e7a38903 chore(agent): mirror the R16 block into last_block
+| `.agent/authored/f031-r17.md` | +460/-0 | C0a: the R17 block saved verbatim |
+### e15458f9 chore(agent): mirror the R17 block into last_block
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/last_block.md | +174/-260 | C0b, byte-identical mirror of the C0a blob |
-
-### 877fc883 docs(agent): point the F031 plan at the R-0681 rename
+| `.agent/last_block.md` | +290/-195 | C0b: mirror written FROM the committed C0a blob |
+### 0faf773c docs(agent): point the F031 plan at the R17 rename round
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/plan.md | +18/-18 | C1, PLANF031R16 applied whole |
-
-### 7d031ab1 docs(agent): record the F031 R15 verdict and register R-0681
+| `.agent/plan.md` | +15/-15 | C1: PLANF031R17 applied as the whole file |
+### 564998a0 docs(agent): record the F031 R16 verdict
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/live_review.md | +4/-0 | C2, LEDGER16 appended |
-
-### C3 docs(agent): write the F031 R16 handback
+| `.agent/live_review.md` | +2/-0 | C2: LEDGER17 appended, and nothing else |
+### 6ede183c refactor(ui): rename the decision inbox entry interface
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/handoff.md | self-reference | C3 writes this file; its own numstat cannot exist while the text is written (R-0149) |
+| `apps/ui/src/api/decisionCard.ts` | +4/-4 | C3 S1: the interface renamed on its 4 lines |
+| `apps/ui/src/api/decisionCard.test.ts` | +9/-9 | C3 S2: the same identifier on its 9 lines |
+### c7a0b099 docs(agent): mark R-0681 landed at the R17 rename
+| Path | +/- | Reason |
+|---|---|---|
+| `.agent/live_review.md` | +2/-0 | C4: LANDED17 appended, and nothing else |
+### C5 docs(agent): write the F031 R17 handback
+| Path | +/- | Reason |
+|---|---|---|
+| `.agent/handoff.md` | self-reference | C5: this file; a handoff cannot table the commit that writes it (R-0149) |
 
 ## Item status
 | Item | Status | Reason |
@@ -44,41 +49,47 @@ Review of `4fc7dc77c37bc0a8ef158cdd34b02009a52fbc0f..HEAD`, where HEAD is the C3
 | C1 | done | |
 | C2 | done | |
 | C3 | done | |
-| push | done | ordered after C3; outcome carried by G10 to the reviewer |
+| C4 | done | |
+| C5 | done | this commit |
+| push | done | ordered after C5; outcome carried by G12 to the reviewer |
 
 ## External actions
-- `git worktree add --detach .remedy-wt/wt-f031-r16 7d031ab1` rc 0, then `git worktree remove --force /home/decodeux/Repos/remedy/.remedy-wt/wt-f031-r16` rc 0 — the G5 mutant, removed by that exact path.
-- `git push origin feature/f031-decision-inbox`, run after C3. The reviewer measures the pushed tips at the next gate and records them in the R16 entry of `.agent/live_review.md`.
-- `gh pr list --state open` printed `[]` and `gh pr list --state all --head feature/f031-decision-inbox` printed `[]`; both read-only, taken to ground the `## Next` statement below. No pull request created, edited or merged; no history rewritten; no branch created or deleted.
+- `git worktree add --detach .remedy-wt/r17-neg 564998a0` → created for the G5 negative control; `git worktree remove --force .remedy-wt/r17-neg` → removed BY ITS EXACT PATH.
+- `git worktree add --detach .remedy-wt/r17-redctl 6ede183c` → created for the G10 red control; `git worktree remove --force .remedy-wt/r17-redctl` → removed BY ITS EXACT PATH.
+- `git push origin feature/f031-decision-inbox` — run AFTER C5. Its outcome is not a value of any file this round writes: the reviewer measures the pushed tips at the next gate and records them in the R17 entry of `.agent/live_review.md`.
+- No `gh` command run; no pull request created, edited or merged; no branch created or deleted; no amend, rebase, cherry-pick or force-push.
 
 ## Verification
-- G1 — `git branch --show-current` printed `feature/f031-decision-inbox`, not `main`. `.agent/STOP` read from disk: ABSENT before C0a and ABSENT before C3. `git status --porcelain` 0 lines after each of C0a, C0b, C1 and C2.
-- G2 — four readings (`.remedy-wt/f031-r16.md` before C0a, the committed C0a blob, the committed C0b blob, `.agent/last_block.md` off disk after C0b) all sha256 `1a101776247772758a13c23238ac5415757dbf02074abbf141d6183434edd603`, 29626 bytes, 365 lines, ALL FOUR EQUAL. C0a's and C0b's file is the SAME git blob `5845552a2f9f2164a774bce6aa12edffb95737cd`.
-- G3 — my extractor over the committed C0a blob printed: 2 slices, 52 content lines inside markers, 365 total lines.
-- G4 — `.agent/plan.md` at C1 byte-equal to PLANF031R16, 2985 bytes each, under the newline-INCLUDED convention (the slice ends in a newline and nothing follows it). NEGATIVE CONTROL against that slice with its trailing newline removed: FALSE. `^## Goal$` 1, `^## Next Steps$` 1, `wc -l` 49, strictly under 50.
-- G5 — the one equality in the shape constraint 7 states: TRUE, with 611720 + 1 + 7870 = 619591 against an actual 619591. Independent reader: blank-line units 294 before and 296 after; my split of LEDGER16 measured N = 2, and the last 2 units equal the slice's 2 paragraphs IN ORDER. NEGATIVE CONTROL, written only inside the disposable worktree `.remedy-wt/wt-f031-r16`: one byte flipped at file offset 611771, inside the FIRST paragraph the append added — BOTH readers reject the mutant and BOTH accept the true file.
-- G6 — `^- R-\d+ — ` 241 → 242, all 242 DISTINCT, ids ADDED exactly `R-0681` and ids REMOVED the EMPTY SET, maximum `R-0680` → `R-0681`. `^Done: R-` 3 → 3 and `^Recurrence: R-` 16 → 16, both UNCHANGED. `^Gate: R\d+ — ` 15 → 16, gaining exactly the key `R15`, with `R19` and `R1` through `R14` still present and all 16 keys DISTINCT. §3 item 10 open set at C2: 239.
-- G7 — `^<<<SLICE ` and `^<<<END ` both 0 in `.agent/plan.md` at C1 and `.agent/live_review.md` at C2. `git diff --name-only 4fc7dc77..7d031ab1` names four paths, none under `packages/`, `apps/`, `tests/` or `docs/`, and neither `.agent/decisions.md` nor `.agent/context.md` nor either inventory file. Range MINUS change set: EMPTY. Change set MINUS range: exactly `.agent/handoff.md`. Every commit C0a..C2 single-parent; `git diff --numstat` insertions C0a 365, C0b 174, C1 18, C2 4, each under the 500 cap and each equal cell for cell to the `## Commits` table above, whose `+/-` column is derived from `git diff --numstat` and not from `git commit`'s own summary. `git ls-files .remedy-wt` 0; `git ls-files` over the zip glob 0. Reflog scoped to this round's entries only — 4 of them — read by the operation prefix before the first colon of `git reflog --format=%gs`: all 4 are `commit`, so `amend` 0, `rebase` 0, `cherry` 0.
-- G8 — `npm run typecheck` in `apps/ui` real exit 0, ZERO diagnostics on stdout and stderr. `npm run test:unit` real exit 0 at 21 test files and 316 tests, both UNCHANGED from the base's 21 and 316. `git diff --name-only 4fc7dc77..7d031ab1` contains no path beginning `apps/` — the same reading G7 takes — so no code moved under these two counts.
-- G9 — SHA-shaped `[0-9a-f]{7,40}` tokens in the committed C0a blob: my extractor measured 14 occurrences, 7 distinct. FAILING SET EMPTY. Types: `dc1cc6863a19439c9a6b3983d87cac7a7a11fd64` is `blob`; `4fc7dc77`, `4fc7dc77c37bc0a8ef158cdd34b02009a52fbc0f`, `58506912`, `6325ac2f`, `7add6592` and `e12a4d46` are `commit`. `git worktree list` 1 line immediately before the first pytest. Run SERIALLY, never two alive at once, in the primary checkout at the C2 tree: `tests/ui_server/` rc 0 at 474 passed; `test_test_runner.py` rc 0 at 52; `test_resource_safety.py` rc 0 at 21; `test_integrity_gate.py` rc 0 at 16; `test_golden_path.py` rc 0 at 42 — identical to the reviewer's base readings, so there is no difference to account for.
-- G10 — run after C3; the command is in `## External actions` and its outcome is carried by the reviewer into the R16 ledger entry, not by any file this round writes.
+- G1 `git branch --show-current` printed `feature/f031-decision-inbox`, not `main`; `.agent/STOP` read from disk was ABSENT before C0a and ABSENT again before C5; `git status --porcelain` printed 0 lines after each of C0a, C0b, C1, C2, C3 and C4.
+- G2 All FOUR readings EQUAL: sha256 `8323814916eb60f8bf506bacd32cbc571fb5090a455a2ae0818ae0c5832e0673`, 31846 bytes, 460 lines, for the scratch file before C0a, the committed C0a blob, the committed C0b blob and `.agent/last_block.md` off disk after C0b. C0a's and C0b's file resolve to the SAME git blob `87dbf588669fe871237e703f21b0fc5bd175d7f1`.
+- G3 My extractor over the COMMITTED C0a blob printed: 3 slices (PLANF031R17, LEDGER17, LANDED17), 51 CONTENT lines inside markers, 460 TOTAL lines.
+- G4 `.agent/plan.md` at C1 is byte-equal to PLANF031R17 under the newline-INCLUDED convention — slice 2892 bytes, file 2892 bytes, 49 lines. NEGATIVE CONTROL against that slice with its trailing newline REMOVED: FALSE. `^## Goal$` 1, `^## Next Steps$` 1, `wc -l` 49, strictly under 50.
+- G5 In the shape constraint 7 states. C2: reader A TRUE, 619591 + 1 + 4171 = 623763 against an actual 623763; reader B split on blank lines gave N=1 paragraph, units 296 → 297, last N units EQUAL to the slice's paragraphs in order. C4: reader A TRUE, 623763 + 1 + 373 = 624137 against an actual 624137; reader B N=1, units 297 → 298, EQUAL in order. NEGATIVE CONTROL for C2, inside worktree `.remedy-wt/r17-neg`: one byte flipped at offset 619692 (`E` → `e`) inside the paragraph the append added, same file length — BOTH readers REJECTED the mutant and BOTH ACCEPTED the true file.
+- G6 base → C4 in `.agent/live_review.md`: `^- R-\d+ — ` 242 → 242, all 242 DISTINCT, ids ADDED the EMPTY SET and ids REMOVED the EMPTY SET, maximum `R-0681` → `R-0681`; `^Done: R-` 3 → 3; `^Recurrence: R-` 16 → 16; `^Landed: R-` 0 → 1, gaining exactly `R-0681`; `^Gate: R\d+ — ` 16 → 17, gaining exactly the key `R16`, with `R19` and `R1` through `R15` still present and all 17 DISTINCT. The §3 item 10 open set at C4 is 242 − 3 = 239.
+- G7 Line-anchored `^<<<SLICE ` and `^<<<END ` both 0 in `.agent/plan.md` at C1 and in `.agent/live_review.md` at C2 and at C4; the same pattern counts 6 in the C0a blob, so the reading is not vacuous. `git diff --name-only a48d1234..c7a0b099` names 6 paths: no path under `packages/`, `tests/` or `docs/`, no `apps/` path other than the two the change set names, and neither `.agent/decisions.md` nor `.agent/context.md` nor either inventory file. Range MINUS change set is EMPTY; change set MINUS range is exactly `.agent/handoff.md`. Every commit C0a..C4 is single-parent, with INSERTIONS 460, 290, 15, 2, 13 and 2 — each under 500. The `## Commits` `+/-` column above is derived from `git diff --numstat`, not from `git commit`'s summary, and agrees with this gate cell for cell.
+- G8 `git ls-files .remedy-wt` 0 and `git ls-files '*.zip'` 0. Reflog SCOPE: this round's entries only, `HEAD@{0}`..`HEAD@{5}`, 6 entries; FIELD: the operation prefix before the first colon of `git reflog --format=%gs`, which is `commit` for all 6 — `amend` 0, `rebase` 0, `cherry` 0. `git worktree list` printed 1 line immediately before the first pytest command of G11.
+- G9 In the PRIMARY checkout, never in a worktree: `npm run typecheck` in `apps/ui` EXIT 0 with ZERO diagnostics on stdout and stderr; `npm run test:unit` EXIT 0 at 21 files and 316 tests, both counts UNCHANGED from the base's 21 and 316. THE LIMIT constraint 13 names: no red control was run against typecheck, so this reading proves CONSISTENCY and not SENSITIVITY.
+- G10 At the C3 tree, `git grep -n` over `apps/ui/src`: `DecisionInboxCard` on exactly 3 lines in exactly `apps/ui/src/components/panels/DecisionInboxCard.tsx` and `apps/ui/src/components/panels/RightLivePanel.tsx`, and 0 times anywhere under `apps/ui/src/api/`; `DecisionInboxEntry` on exactly 13 lines in exactly `apps/ui/src/api/decisionCard.ts` and `apps/ui/src/api/decisionCard.test.ts`. `git diff --numstat a48d1234..6ede183c` names exactly those two api files, 4 insertions and 4 deletions for `decisionCard.ts` and 9 and 9 for `decisionCard.test.ts`; total line counts UNCHANGED at 194 and 226. RED CONTROL, inside worktree `.remedy-wt/r17-redctl` at C3 and never in the primary checkout: `export interface DecisionInboxEntry {` counted EXACTLY 1 before replacing; after replacing it with `export interface DecisionInboxCard {` the first reading moved 3 → 4 and the `apps/ui/src/api/` reading moved 0 → 1 — BOTH moved. Worktree removed by its exact path.
+- G11 SHA-shaped tokens in the COMMITTED C0a blob under the word-bounded `[0-9a-f]{7,40}`: 17 occurrences, 7 DISTINCT, FAILING SET EMPTY. Types: `5845552a2f9f2164a774bce6aa12edffb95737cd` → `blob`; `4fc7dc77`, `6325ac2f`, `7d031ab1`, `877fc883`, `a48d1234` and `a48d1234a5c82797a7760adadf1fa00140b92019` → `commit`. The five Python suites, SERIALLY in the PRIMARY checkout at the C4 tree, never two alive at once, each with its REAL exit code: `tests/ui_server/` EXIT 0, 474 passed; `tests/orchestration/test_test_runner.py` EXIT 0, 52; `tests/regression/test_resource_safety.py` EXIT 0, 21; `tests/orchestration/test_integrity_gate.py` EXIT 0, 16; `tests/cli/test_golden_path.py` EXIT 0, 42. Every count equals the reviewer's base reading, so there is no difference to account for.
+- G12 `git push origin feature/f031-decision-inbox`, run after C5, with no `--force`, no `--force-with-lease`, no history rewrite, no branch deletion and no pull request. Carrier as ordered: the reviewer measures the pushed tips at the next gate and records them in the R17 entry of `.agent/live_review.md`.
+
+## Findings
+The §3 item 10 open set — every `^- R-\d+ — ` paragraph minus every `^Done: R-\d+ — ` line, the rule DECISION F009 D10 requires — is 239 at `c7a0b099`. The narrower set `.agent/plan.md` names "the findings this feature must still act on" is 21 distinct ids at `c7a0b099`, counted mechanically off that bullet; it is not the open set. This round minted no finding id, wrote no `Done:` line and no `Recurrence:` line.
 
 ## Authored-text proofs
-- PLANF031R16 — extracted programmatically from the COMMITTED C0a blob by its marker lines, written to `.agent/plan.md`. Disk-to-disk equality against the extracted slice: TRUE, 2985 bytes each; negative control FALSE.
-- LEDGER16 — extracted the same way, appended to `.agent/live_review.md`. Whole-file equality against base blob plus one newline plus the slice: TRUE at 619591 bytes, corroborated by the independent blank-line reader and by the byte-flip mutant both readers reject.
+- All three slices were extracted PROGRAMMATICALLY from the COMMITTED C0a blob by their `<<<SLICE`/`<<<END` marker LINES; nothing was retyped, rewrapped or hand-corrected, and no marker line reached a target file (G7).
+- PLANF031R17 → `.agent/plan.md` at C1: byte-equal to the extracted slice, 2892 bytes both, with the trailing-newline-removed negative control FALSE (G4).
+- LEDGER17 → `.agent/live_review.md` at C2 and LANDED17 → the same file at C4: each proven by whole-file equality against the commit's PARENT blob plus one newline plus the slice, and independently by the blank-line paragraph reader (G5).
 
 ## Deviations & assumptions
-- No departure from the block's ordered commit sequence: C0a, C0b, C1, C2, C3 — five commits, none extra, none dropped, none reordered.
-- NO CODE TOUCHED, per constraint 9: the range names no path under `packages/`, `apps/`, `tests/` or `docs/`. The rename R-0681 orders was deliberately NOT performed here; it is the next session's first build round, and `## Next Steps` item 1 of `.agent/plan.md` at `877fc883` carries it.
-- DECLARED SOURCE (the `+/-` column): taken from `git diff --numstat` as G7 orders and as the R15 declaration requires. `git commit`'s own rewrite-detected summary was not read this round, so this file states no figure for it.
-- SCRATCH HYGIENE: one disposable worktree created and removed BY ITS EXACT PATH (`.remedy-wt/wt-f031-r16`); the three scratch files I created myself removed by exact path (`.remedy-wt/f031r16_slice_PLANF031R16`, `.remedy-wt/f031r16_slice_LEDGER16`, `.remedy-wt/f031r16_handoff_draft.md`). Nothing pre-existing under `.remedy-wt/` was created, moved or deleted, this round's own block file included.
-- NO CONTRADICTION FOUND inside the block: every base reading it states reproduced at `4fc7dc77` — the ledger sets and their maximum, the 611720 bytes and 1215 lines, the 294 blank-line units, the plan's 49 lines and 2894 bytes, the handoff's 94 lines, and both `apps/ui` readings. The `Fortschritt:` block is carried verbatim above; I counted it at 4 lines.
-- FINDINGS. This round mints exactly one id, `R-0681`, and writes no `Done:` line and no `Recurrence:` line. By §3 item 10 — every `^- R-\d+ — ` paragraph minus every `^Done: R-\d+ — ` line — the set is 239, measured at C2 `7d031ab1`. The narrower set, the findings this feature must still act on, is the list `.agent/plan.md` names at `877fc883`: R-0403, R-0413, R-0431, R-0441, R-0445, R-0471, R-0495, R-0533, R-0574, R-0601, R-0622, R-0625, R-0632, R-0672, R-0674, R-0675, R-0676, R-0677, R-0678, R-0679 and R-0681 — counted mechanically at 21 distinct ids, of which R-0495 and R-0574 are the two Highs. Every numeral in this paragraph was counted by script before this file was committed, which is the widened R-0441 rule the R15 ledger entry registers.
-- HANDBACK TIER AND DECISION D15 OVERAGE, declared: constraint 3 fixes the round at 5 commits, which is not more than 5, so AGENTS.md `### handoff.md` gives the base tier of ≤60 lines. This file measures 84 lines with `wc -l` and exceeds that tier. The cause is mandated content only: the five per-commit tables the template requires (lines 14–37), the item-status table AGENTS.md mandates with one row per ordered item (lines 39–47), the one-line gate results the block orders (lines 55–64) and the authored-text proofs (lines 67–68). No section was dropped and no transcript is carried; no token cap is claimed, that cap having been withdrawn by DECISION F255 D6.
+- COMMIT SEQUENCE: C0a, C0b, C1, C2, C3, C4, C5 applied exactly as constraint 3 orders — no extra commit, none dropped, no reordering.
+- G9 DEVIATION, declared: the block orders `npm run typecheck` and `npm run test:unit` "at the C3 tree". Both were first run with HEAD at C3 and a clean tree, and their REAL exit codes were then captured with HEAD at C4. `git diff --name-only 6ede183c..c7a0b099 -- apps/ui` names 0 paths, so the `apps/ui` tree at C4 IS the C3 tree; the output was identical across both runs.
+- TOOL DEVIATION, declared: this session's command guard rejected several shell forms (`npm --prefix`, `$?`, shell redirection into `.remedy-wt/`, and a `for` statement inside a python heredoc). The C3 rename was therefore applied with the editor's whole-file identifier substitution instead of a line-scoped script. This is safe here and was checked rather than assumed: in BOTH files EVERY occurrence of `DecisionInboxCard` is a rename target the Base section names, so the substitution touched exactly the 4 and the 9 named lines and no other line — which the 4/4 and 9/9 numstat and the G10 greps measure.
+- NO CONTRADICTION was found inside the block. Every reading it states about the base — the ledger counts, the plan and handoff sizes, the 16 identifier lines and their split into 13 interface and 3 component, the 194 and 226 line counts, and the five suite counts — reproduced exactly when measured here.
+- Scratch files this round created under `.remedy-wt/` were the two worktrees named above, both removed by exact path, plus three extracted slice files; nothing pre-existing there was touched or deleted.
+- HANDBACK SIZE, per DECISION D15: this file measures 95 lines against the 100-line tier, so no overage is claimed.
 
 ## Next
-1. Phase 1 rule 1: re-read `.agent/STOP` from disk.
-2. Phase 1 rule 2, the Open PR Gate: run `gh pr list --state open` and report what it printed, and report whether any pull request exists for `feature/f031-decision-inbox`. At `7d031ab1` that command printed `[]`, and NO pull request has ever been opened for this branch, so it carries R1 through R16 unmerged.
-3. The R16 verdict is UNRECORDED and is owed by the next round's ledger commit — by DECISION F085 D9 no artefact of this round can carry it.
-4. The next BUILD round repairs R-0681 by the rename `## Next Steps` item 1 of `.agent/plan.md` describes: rename the INTERFACE in `apps/ui/src/api/decisionCard.ts`, carry its three use sites and its `decisionCard.test.ts` import, leave the component alone.
-5. T002b follows that repair, under DECISION F031 D2.
+1. The R17 verdict is UNRECORDED and is owed by the NEXT round's ledger commit — by DECISION F085 D9 no artefact of this round can carry it.
+2. The `Landed: R-0681` line is an UNREVIEWED fix until the reviewer replaces it with authored `Done:` text at that gate.
+3. T002b is the next build step, under DECISION F031 D2.
