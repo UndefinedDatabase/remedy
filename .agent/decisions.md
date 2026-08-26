@@ -7629,8 +7629,8 @@ already sets inside that card — pill radius, 11px type, the `--remedy-line`
 border — and NOT on the floating dock `docs/ui/design_reference/ux_spec.md` §13
 specifies. What is kept from §13 is everything that carries meaning: the selected
 chip's treatment, which under §14 is never colour alone and here gains weight and
-a stronger border as well, the 2px `--remedy-focus` ring, and the `aria-pressed`
-shape `docs/ui/design_reference/component_spec.md` gives FilterChips.
+a stronger border as well, the 2px focus ring, and the `aria-pressed` shape
+`docs/ui/design_reference/component_spec.md` gives FilterChips.
 
 WHY. `.agent/context.md` makes `docs/ui/design_reference/` binding and asks for a
 technical reason behind any departure, and this is it: §13 specifies that dock for
@@ -7641,20 +7641,27 @@ the glass, and 30px chips would outweigh the 13px decision titles directly below
 them. The panel is 372px wide; a dock strip there would also wrap before the third
 chip on a real inbox.
 
-THE ONE VALUE THAT DOES NOT RESOLVE, declared rather than left to render as
-nothing (R-0661): `--remedy-focus` is defined in
-`docs/ui/design_reference/tokens.css` and has never been adopted into
-`apps/ui/src/styles/tokens.css`, which this round's change set does not include.
-The rule therefore ships as `var(--remedy-focus, var(--remedy-blue-strong))`,
-whose fallback is the same `#2f6fff` the reference sheet gives `--remedy-focus`,
-so the ring exists today and picks up the token unchanged on the day it lands.
+THE FOCUS RING NAMES A DIFFERENT TOKEN THAN §14 DOES, and this is why.
+`--remedy-focus` is defined in `docs/ui/design_reference/tokens.css` and has
+never been adopted into `apps/ui/src/styles/tokens.css`, which this round's
+change set does not include. A `var()` on an unadopted name makes the browser
+drop the whole declaration (R-0661), and
+`tests/ui_contracts/test_design_drift.py::TestEveryCustomPropertyResolves`
+measures exactly that — it turned RED on the first draft of this rule, including
+on the fallback form `var(--remedy-focus, var(--remedy-blue-strong))`, because it
+matches the NAME inside `var(` and does not read fallbacks. The ring therefore
+names `--remedy-blue-strong`, which the reference sheet gives the same `#2f6fff`
+it gives `--remedy-focus`, so the shipped colour is §14's colour. Adopting
+`--remedy-focus` into the shipped sheet is the better fix and belongs to
+whichever round next touches that sheet, the way F021 R32 adopted
+`--remedy-radius-pill`.
 
 ALTERNATIVES CONSIDERED. Reusing `GraphFilterChips` verbatim: rejected because its
 `GraphFilter` union is a FIXED four-value list, so adopting it would reintroduce
 the hardcoded type list `decisionFilter.ts` exists to refuse, while the inbox's
 choices are DERIVED from the models present. Adding `--remedy-focus` to the
-shipped token sheet instead of using a fallback: rejected as out of this round's
-change set, and it is the better fix for whichever round next touches that sheet.
+shipped token sheet: rejected as out of this round's change set, which names no
+file under `apps/ui/src/styles/`.
 
 REVERSE IT by deleting this decision and giving `.decisionFilterChip` and
 `.decisionFilterChipOn` in
