@@ -157,12 +157,13 @@ describe("buildDecisionCardModel", () => {
       severity: "blocker",
       safe_summary: "Two migrations claim the same table",
       next_actions: ["remedy decision answer d-1"],
-      payload: { options: ["keep first", "keep second"] },
+      payload: { options: ["keep first", "keep second"], task_id: "T-7" },
       age_seconds: 7320,
       blocked_count: 3,
     };
     expect(buildDecisionCardModel(card)).toEqual({
       id: "d-1",
+      taskId: "T-7",
       type: "task_decision",
       status: "open",
       severity: "blocker",
@@ -179,6 +180,29 @@ describe("buildDecisionCardModel", () => {
     });
   });
 
+  it("projects the task the decision is about from the payload's own key", () => {
+    const card: DecisionInboxEntry = {
+      id: "d-2",
+      payload: { task_id: "T-4" },
+    };
+    expect(buildDecisionCardModel(card).taskId).toBe("T-4");
+  });
+
+  it("gives the empty task id for a card carrying no payload at all", () => {
+    expect(buildDecisionCardModel({ id: "d-3" }).taskId).toBe("");
+  });
+
+  it("gives the empty task id for a payload that is not an object", () => {
+    expect(buildDecisionCardModel({ id: "d-4", payload: "T-4" }).taskId).toBe("");
+    expect(buildDecisionCardModel({ id: "d-5", payload: null }).taskId).toBe("");
+  });
+
+  it("gives the empty task id for a non-string task_id rather than a number", () => {
+    // A producer sending 7 would otherwise put a number where every consumer
+    // expects a string; the resolver must see an id it can compare.
+    expect(buildDecisionCardModel({ id: "d-6", payload: { task_id: 7 } }).taskId).toBe("");
+  });
+
   it("does not treat a resolved decision as open", () => {
     expect(buildDecisionCardModel({ status: "resolved" }).isOpen).toBe(false);
   });
@@ -187,6 +211,7 @@ describe("buildDecisionCardModel", () => {
     expect(() => buildDecisionCardModel({})).not.toThrow();
     expect(buildDecisionCardModel({})).toEqual({
       id: "",
+      taskId: "",
       type: "",
       status: "",
       severity: "",

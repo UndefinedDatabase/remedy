@@ -7771,3 +7771,37 @@ review is worst at checking.
 
 REVERSE IT by folding the builder into the sender once a DOM harness lands and the
 whole round trip can be asserted in one test.
+
+## DECISION F031 D12 (2026-08-26) — the decision's deep link resolves through the dashboard's OWN task list, by task id
+
+CHOSEN, THE MAPPING. A decision card's jump is resolved by
+`apps/ui/src/api/decisionFocus.ts`, which takes the decision's `taskId` and the
+readonly task list the dashboard already carries and answers that task's `nodeId`
+or `null`. It REUSES `FocusableTask` and the null-means-no-jump contract from
+`apps/ui/src/api/feedFocus.ts` rather than declaring either again. DECISION F021 D2
+already rejected inventing a second client-side mapping for the activity feed's
+jump, and the same reasoning binds here: two mappings to one graph is two places
+for a future divergence to hide, and one spelling per concept is AGENTS.md's rule.
+
+CHOSEN, THE PROJECTION. `DecisionCardModel` gains ONE plain string field, `taskId`,
+projected from the payload's own key spelling `task_id` — the spelling
+`decision_inbox._blocked_subtree_size` reads on the server, per DECISION F031 D1 —
+rather than the whole payload. The card therefore never reads an untyped blob and
+the resolver stays narrow enough that an unrelated model field cannot churn it. The
+projection is TOTAL like every other field of that model: an absent payload, a
+non-object payload and a non-string `task_id` each give the EMPTY STRING, and an
+empty task id resolves to `null`, so no card has to test for `undefined`.
+
+ALTERNATIVE CONSIDERED. Matching a decision's OWN id against the graph: rejected
+because a decision id is not a node id and nothing on the wire relates them, so
+such a link would jump somewhere arbitrary exactly when it looked like it worked.
+
+WHY A NULL IS NOT A FAILURE. A job-level question carries no task linkage at all,
+and the inbox and the dashboard are two reads of one job that can disagree for a
+moment. Both cases must render as a card that does not OFFER the jump.
+
+NOTHING CALLS THIS YET, deliberately, under DECISION F031 D5: the seam ships tested
+and the wiring follows in T003's sender round.
+
+REVERSE IT by projecting the payload wholesale once a card needs more of it than
+the task id.

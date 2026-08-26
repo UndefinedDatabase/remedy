@@ -21,10 +21,12 @@
 // the endpoint's order exactly for both of them. COUNTING is neither absent nor
 // elsewhere any more: `countOpenDecisions` at the foot of this module answers
 // how many cards are still waiting, and the badge that shows that number is
-// rendered by `../components/panels/DecisionInboxCard`. What is still genuinely
-// absent everywhere is ANSWERING, which is T003's. This module reads no clock
-// either — an age arrives as the endpoint's own `age_seconds`, exactly as
-// `recency.ts` takes `nowMs`.
+// rendered by `../components/panels/DecisionInboxCard`. ANSWERING is not
+// missing everywhere any more either: the command body an answer becomes is
+// built by `./decisionAnswer.ts`. What is still genuinely absent is the SEND —
+// nothing in this browser posts that body to the command endpoint yet, and that
+// is T003's sender round. This module reads no clock either — an age arrives as
+// the endpoint's own `age_seconds`, exactly as `recency.ts` takes `nowMs`.
 
 /** What kind of affordance a card offers. `free_text` is the fallback the
  *  producer never has to ask for: a question is never shown without some way to
@@ -44,6 +46,11 @@ export interface DecisionAnswer {
  *  displays it needs no formatting rule and therefore no branch of its own. */
 export interface DecisionCardModel {
   id: string;
+  /** The id of the task this decision is about, taken from the payload's own
+   *  `task_id`. The EMPTY STRING when the payload names none, so the deep-link
+   *  resolver `./decisionFocus.ts` has a total input and no card has to test
+   *  for `undefined`. */
+  taskId: string;
   type: string;
   status: string;
   severity: string;
@@ -138,6 +145,16 @@ function payloadOptions(payload: unknown): unknown {
   return (payload as { options?: unknown }).options;
 }
 
+/** `payload.task_id` when the payload is an object carrying it, else undefined.
+ *  Same tolerance as `payloadOptions`: a missing, null or non-object payload is
+ *  not an error, it is simply a decision with no task linkage. */
+function payloadTaskId(payload: unknown): unknown {
+  if (typeof payload !== "object" || payload === null) {
+    return undefined;
+  }
+  return (payload as { task_id?: unknown }).task_id;
+}
+
 /** Entries rendered as answers of one kind. A non-string entry goes through
  *  `String` rather than being dropped, for the same reason. */
 function entriesAsAnswers(entries: unknown[], kind: DecisionAnswerKind): DecisionAnswer[] {
@@ -180,6 +197,11 @@ export function buildDecisionCardModel(card: DecisionInboxEntry): DecisionCardMo
   const ageSeconds = typeof card.age_seconds === "number" ? card.age_seconds : null;
   return {
     id: cardText(card.id),
+    // WHY here: the payload's `task_id` is the ONLY linkage on the wire from a
+    // decision to the task it is about — `decision_inbox._blocked_subtree_size`
+    // reads that same spelling on the server — and `./decisionFocus.ts` turns it
+    // into the graph node the card jumps to.
+    taskId: cardText(payloadTaskId(card.payload)),
     type: cardText(card.type),
     status: cardText(card.status),
     severity: cardText(card.severity),
