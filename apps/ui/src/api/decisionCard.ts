@@ -193,8 +193,9 @@ export function buildDecisionCardModel(card: DecisionInboxEntry): DecisionCardMo
 
 /** Every card of one inbox document, in the order the endpoint sent them.
  *  Remedy deliberately imposes NO ordering here: the rule over age and blocked
- *  size is T002b's subject, and a model that quietly re-sorted would make that
- *  rule impossible to see. An absent or non-array `decisions` gives no cards. */
+ *  size lives in `./decisionOrder.ts`, and a model that quietly re-sorted would
+ *  make that rule impossible to see. An absent or non-array `decisions` gives no
+ *  cards. */
 export function decisionCardModels(inbox: DecisionInboxDocument): DecisionCardModel[] {
   if (!Array.isArray(inbox.decisions)) {
     return [];

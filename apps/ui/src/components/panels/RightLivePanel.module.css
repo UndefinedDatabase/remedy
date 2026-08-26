@@ -240,3 +240,48 @@
 /* Answering is T003's work; until it lands the control says so rather than
    looking live. */
 .decisionAnswer:disabled { cursor: not-allowed; opacity: 0.55; }
+
+/* The inbox's TYPE FILTER chips (T5_F031 T002b, DECISION F031 D8). They take the
+   CARD's own chip scale that .decisionChip sets above, NOT the glass dock
+   ux_spec.md §13 gives the graph stage: the dock floats over the dark canvas,
+   while these sit inside .card, which already supplies the glass. The same
+   R-0661 rule as the block above applies — every value here resolves to a custom
+   property apps/ui/src/styles/tokens.css already defines, except the focus
+   colour, which carries an explicit fallback because --remedy-focus lives only
+   in docs/ui/design_reference/tokens.css and would otherwise drop the ring. */
+.decisionFilterRow { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.decisionFilterChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: var(--remedy-radius-pill);
+  background: var(--remedy-bg-2);
+  border: 1px solid var(--remedy-line);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--remedy-muted);
+  cursor: pointer;
+}
+.decisionFilterChip:hover { border-color: var(--remedy-line-strong); color: var(--remedy-ink); }
+/* ux_spec.md §14 forbids color-only state: the chosen chip also gains weight and
+   a stronger border, so it stays legible without color perception. */
+.decisionFilterChipOn {
+  background: var(--remedy-blue-50);
+  border: 1px solid var(--remedy-blue-strong);
+  font-weight: 700;
+  color: var(--remedy-blue-strong);
+}
+/* The hover rule above is one class more specific than the selected rule, so
+   without this line hovering the chosen chip would repaint it as an unchosen
+   one. Same reason GraphFilterChips.module.css carries a .chipActive:hover. */
+.decisionFilterChipOn:hover { border-color: var(--remedy-blue-strong); color: var(--remedy-blue-strong); }
+/* §14 rules a 2px focus ring; these are the right panel's first interactive
+   chips, so they are the first place in it that ring has to exist. */
+.decisionFilterChip:focus-visible {
+  outline: 2px solid var(--remedy-focus, var(--remedy-blue-strong));
+  outline-offset: 2px;
+}
+/* The count rides the chip's own color at reduced strength, so one rule covers
+   both the chosen chip and the rest. */
+.decisionFilterCount { opacity: 0.7; font-variant-numeric: tabular-nums; }
