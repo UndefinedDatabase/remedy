@@ -208,3 +208,35 @@
 .advancedItem strong { color: var(--remedy-ink); }
 .delayedDot { width: 9px; height: 9px; border-radius: 50%; background: var(--remedy-orange-400); box-shadow: 0 0 8px rgba(245,163,78,.6); }
 .reconnectingDot { width: 9px; height: 9px; border-radius: 50%; background: var(--remedy-orange-400); opacity: .55; }
+
+/* The decision inbox's rows (T5_F031 T002a, DECISION F031 D4). The .card shell
+   above is reused unchanged: an inbox styled unlike the cards beside it would
+   read as a different surface. Every value below resolves to a custom property
+   apps/ui/src/styles/ already defines — an unresolved one renders nothing and
+   no suite in this repository would see it (R-0661). */
+.decisionRow { display: flex; flex-direction: column; gap: 8px; padding: 10px 2px; border-bottom: 1px solid var(--remedy-line); }
+.decisionRow:last-child { border-bottom: none; }
+.decisionTitle { display: block; font-size: 13px; color: var(--remedy-ink-strong); line-height: 1.45; }
+.decisionChips { display: flex; flex-wrap: wrap; gap: 6px; }
+.decisionChip {
+  padding: 2px 8px;
+  border-radius: var(--remedy-radius-pill);
+  background: var(--remedy-bg-2);
+  border: 1px solid var(--remedy-line);
+  font-size: 11px;
+  color: var(--remedy-muted);
+}
+.decisionAnswers { display: flex; flex-wrap: wrap; gap: 8px; }
+.decisionAnswer {
+  height: 30px;
+  padding: 0 12px;
+  border-radius: var(--remedy-radius-sm);
+  border: 1px solid var(--remedy-line-strong);
+  background: var(--remedy-blue-50);
+  color: var(--remedy-blue-strong);
+  font-size: 12px;
+  font-weight: 600;
+}
+/* Answering is T003's work; until it lands the control says so rather than
+   looking live. */
+.decisionAnswer:disabled { cursor: not-allowed; opacity: 0.55; }

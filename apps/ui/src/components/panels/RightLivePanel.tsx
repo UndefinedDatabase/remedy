@@ -4,6 +4,7 @@ import type { BrainStreamStatus } from "../../api/brainStream";
 import type { FeedRow } from "../../api/feedRow";
 import { liveIsActive } from "../../cockpitLogic";
 import { NeedsAttentionCard } from "./NeedsAttentionCard";
+import { DecisionInboxCard } from "./DecisionInboxCard";
 import { ActivityFeedCard } from "./ActivityFeedCard";
 import { AgentNowCard } from "./AgentNowCard";
 import { LiveStatusPill } from "./LiveStatusPill";
@@ -18,6 +19,7 @@ export function RightLivePanel({ dashboard, onSelectNode, streamStatus, recent, 
       <LiveStatusPill live={liveIsActive(dashboard)} streamStatus={streamStatus} />
       <AgentNowCard dashboard={dashboard} recent={recent} />
       <NeedsAttentionCard dashboard={dashboard} />
+      <DecisionInboxCard decisions={dashboard.decisionInbox} />
       <ActivityFeedCard activity={dashboard.activity} recent={recent} recentDropped={recentDropped} tasks={dashboard.tasks} onSelectNode={onSelectNode} />
       <TaskChecklistCard tasks={dashboard.tasks} jobId={dashboard.jobId} onSelectNode={onSelectNode} />
       <button
