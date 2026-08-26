@@ -20,7 +20,10 @@ from packages.orchestration.decision_inbox import (
     build_decision_inbox,
 )
 from packages.orchestration.decision_queue import export_decision_json, list_decisions
-from packages.orchestration.escalation import enqueue_task_decision
+from packages.orchestration.escalation import (
+    answer_task_decision,
+    enqueue_task_decision,
+)
 
 #: DECISION F031 D3 — the eight types a branch of ``list_decisions`` actually
 #: produces.  ``worker_approval`` and ``revert_missing`` have no producer at
@@ -316,3 +319,30 @@ def test_answerable_key_matches_what_the_write_door_accepts(decision_type):
     assert card["answerable_by_decision_resolve"] == (
         decision_type in ANSWERABLE_DECISION_TYPES
     ), f"{decision_type}: door answerability disagrees with ANSWERABLE_DECISION_TYPES"
+
+
+def test_answerable_key_goes_false_once_the_decision_has_been_answered():
+    """The door refuses a record that is not OPEN, so the key must too (R-0695).
+
+    A type check cannot tell these two states apart: both cards read
+    ``task_decision``.  The transition is pinned in ONE test so a helper that
+    answers only the existence half is caught.
+    """
+    job, events = _fixture_task_decision()
+    before = _cards_by_type(build_decision_inbox(job, events, now=FIXED_NOW))
+    open_card = before["task_decision"]
+    assert open_card["status"] == "open"
+    assert open_card["answerable_by_decision_resolve"] is True
+
+    answered = answer_task_decision(job, open_card["id"], answer="postgres",
+                                    now=FIXED_NOW)
+    assert answered is not None
+
+    # The door's real refusal, asserted rather than assumed: the second answer
+    # is what `_dispatch_decision_resolve` turns into 409 `rejected_state`.
+    assert answer_task_decision(job, open_card["id"], answer="sqlite",
+                                now=FIXED_NOW) is None
+
+    card = _cards_by_type(build_decision_inbox(job, events, now=FIXED_NOW))["task_decision"]
+    assert card["status"] == "resolved"
+    assert card["answerable_by_decision_resolve"] is False
