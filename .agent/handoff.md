@@ -1,78 +1,132 @@
-# Handback — F031 Decision inbox, R33
+# Handback — F031 Decision inbox, R34
 
-Branch `feature/f031-decision-inbox`; base `1d29f32264eaea16379ad98207c2a4388705a20b`.
-Commit count 5, so the tier AGENTS.md `### handoff.md` sets is 60 lines — the 100-line
-tier needs per-commit tables of MORE THAN 5 commits. C0a `41b1bc8a`, C0b `891596c7`,
-C1 `06bde28a`, C2 `82200953`, and C3 is this commit. THIS ROUND WROTE NO CODE.
+Branch `feature/f031-decision-inbox`; base `ef1708f086322fb40d20cb28b7330989d771914d`.
+THE ROUND EXECUTED NOTHING. `.agent/STOP` was read from disk before C0a, as constraint 5,
+self_drive_protocol.md Phase 1 rule 1 and guardrail G6 all require, and was PRESENT — so
+C0a through C4 were not run and this handback is the round's only commit. The tier is 100
+lines, from the 7 commits constraint 3 orders; R-0676 settles that the tier follows the
+ordered count, not the count reached.
 
-Fortschritt: ~97 % (F031 claimed; R1 through R32 landed, R32 gated here ·
+Fortschritt: ~97 % (F031 claimed; R1 through R33 landed, R33 gated here ·
              T001 SHIPPED · T002 COMPLETE · T003 answer command, request,
              deep-link, submit and nonce seams shipped; outcome sentence and
-             click wiring open) — Schaetzung
+             flow land here, component wiring open) — Schaetzung
+
+CARRIED VERBATIM AS ORDERED, 4 lines, AND CORRECTED HERE, since it describes the planned
+round and not the one that happened: R33 is NOT gated here (LEDGER34 was never committed;
+`^Gate: F031 R33 — ` is still 0), and the outcome sentence and flow did NOT land here —
+`decisionOutcome.ts` and `decisionAnswerFlow.ts` do not exist. T001, T002 and the five
+shipped T003 seams are unaffected and remain true.
 
 ## Range
-Review of `1d29f322`..HEAD.
+Review of `ef1708f0`..HEAD — ONE commit.
 
 ## Commits
-### 41b1bc8a docs(agent): save the F031 R33 step block
+### C5 docs(agent): stop the F031 R34 round on the STOP sentinel
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f031-r33.md | +311/-0 | C0a: the reviewer's original, copied unretyped |
-### 891596c7 docs(agent): mirror the F031 R33 block into last_block
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/last_block.md | +164/-288 | C0b: mirror of the C0a blob, same blob id |
-### 06bde28a docs(agent): point the F031 plan at R34
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/plan.md | +13/-13 | C1: whole-file replacement by slice PLANF031R33 |
-### 82200953 docs(agent): record the F031 R32 verdict and R-0633's recurrence
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/live_review.md | +4/-0 | C2: append of slice LEDGER33 and nothing else |
-### C3 docs(agent): write the F031 R33 handback
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/handoff.md | self-referential | C3: a handoff cannot table its own diff |
+| .agent/handoff.md | self-referential | C5: a handoff cannot table its own diff |
+
+NO OTHER PATH MOVED: `.agent/authored/f031-r34.md` does not exist, and `last_block.md`,
+`plan.md`, `decisions.md`, `live_review.md` and every file under `apps/` are byte-identical
+to their base blobs.
 
 ## Item status
 | Item | Status | Reason |
 |---|---|---|
-| C0a | done | |
-| C0b | done | |
-| C1 | done | |
-| C2 | done | |
-| C3 | done | this commit |
-| push | done | ordered after C3; outcome reported in the final message |
+| C0a save the block | skipped | STOP present on disk before C0a (constraint 5) |
+| C0b mirror into last_block | skipped | same |
+| C1 plan + DECISION F031 D18 | skipped | same |
+| C2 R33 gate entry + R-0583 recurrence | skipped | same |
+| C3 decisionOutcome.ts + its test | skipped | same |
+| C4 decisionAnswerFlow.ts + its test | skipped | same |
+| C5 handback | done | this commit; the round's only commit |
+| push (G11) | done | ordered after C5; outcome in this round's final message |
 
 ## Findings
-MINTED NO ID, RESOLVED NONE. By §3 item 10 — every `^- R-\d+ — ` paragraph (246) minus every `^Done: R-\d+ — ` line (5), the rule and the commit DECISION F009 D10 requires — the open set is 241 in `.agent/live_review.md` at `82200953`, unmoved from 241 at `1d29f322`. ONE `Recurrence:` line was written, for `R-0633`, which stays OPEN because this round widens its evidence rather than discharging it. NO `Done:` and NO `Landed:` line was written anywhere, in the ledger or in this handback.
+MINTED NO ID, RESOLVED NONE, WROTE NO LEDGER LINE. By §3 item 10 — every `^- R-\d+ — `
+paragraph (246) minus every `^Done: R-\d+ — ` line (5), the rule and commit DECISION F009
+D10 requires — the open set is 241 in `.agent/live_review.md` at `ef1708f0`; that file is
+untouched here, so it is 241 at HEAD too. All 246 ids DISTINCT, maximum `R-0685`.
+`^Recurrence: R-` 24 and `^Recurrence: R-0583` 0: R-0583's second instance was NOT recorded
+because C2 did not run. It stays OPEN and UNWIDENED; a later round must still write it.
 
 ## External actions
-After C3: `git push origin feature/f031-decision-inbox`. THAT PUSH'S OUTCOME IS NOT A VALUE OF ANY FILE THIS ROUND WRITES: R33 is the last round this session runs, so its outcome is reported in this round's final message and nowhere on disk. No `--force`, no `--force-with-lease`, no history rewrite, no branch deletion, no pull request, nothing merged. No worktree was added or removed this round.
+After C5: `git push origin feature/f031-decision-inbox`; its outcome is not a value any
+file this round writes, so it is in this round's final message. No `--force`, no
+`--force-with-lease`, no history rewrite, no branch deletion, no PR, nothing merged. NO
+WORKTREE created or removed — G9 never ran; `git worktree list` is 1 line.
 
 ## Verification
-G1 `git branch --show-current` is `feature/f031-decision-inbox` and NOT `main`; `.agent/STOP` read off disk is ABSENT before C0a and again before C3; `git status --porcelain` is 0 lines after each of C0a, C0b, C1 and C2. The FOUR readings — the reviewer's original `.remedy-wt/f031-r33.md` before C0a, the committed C0a blob, the committed C0b blob, and `.agent/last_block.md` off disk after C0b — are ALL FOUR EQUAL at sha256 `60348cb1f361162d337abdc162da4dbd492eb365621d9d47781d4ed57302f40c`, 29784 bytes and 311 lines, and C0a's and C0b's file is the SAME git blob `b7eedff2cfe5779c463e1917a2a53bc0d63a366a`.
-G2 My extractor over the COMMITTED C0a blob printed 2 slices, 52 CONTENT lines inside markers and 311 TOTAL, so PROSE is 311 − 52 = 259. NEITHER CAP IS EXCEEDED: 259 against the 400-line PROSE cap (DECISION F085 D5) and 311 against the 490-line TOTAL cap (DECISION F085 D6).
-G3 `.agent/plan.md` at C1 is byte-equal to PLANF031R33 under the newline-INCLUDED convention, where each slice line carries its own trailing newline: 2772 bytes on BOTH sides, equality TRUE. NEGATIVE CONTROL against that slice MINUS its trailing newline: FALSE. `^## Goal$` 1, `^## Next Steps$` 1, and `wc -l` 49, strictly under the 50 AGENTS.md sets.
-G4 Constraint 7's shape holds as ONE equality over the whole file: TRUE, with 755073 + 1 + 9793 = 764867 against an actual 764867. The SECOND, INDEPENDENT reader agrees: a blank-line split moves the unit count 325 → 327, N = 2 by my own split, and the LAST 2 units equal LEDGER33's 2 paragraphs IN ORDER. TRAILING-NEWLINE HANDLING: each unit is rstripped of newlines on BOTH sides of the comparison. NEGATIVE CONTROL, run IN MEMORY and never on the tracked file: one byte flipped at offset 759970, inside the appended text — BOTH readers REJECT the mutant and BOTH ACCEPT the true file. Because ORDER is load-bearing here I also ran an unordered control: the same two paragraphs SWAPPED are REJECTED by the second reader.
-G5 Base `1d29f322` → C2 `82200953`: `^- R-\d+ — ` 246 → 246 with the ids ADDED and the ids REMOVED BOTH the EMPTY SET, all 246 DISTINCT and the maximum still `R-0685`; `^Done: R-\d+ — ` 5 → 5 with the ids ADDED ALSO the EMPTY SET; `^Gate: R\d+ — ` 19 → 19 UNCHANGED; `^Gate: F\d+ R\d+ — ` 13 → 14 with the ADDED key exactly `F031 R32` and all keys DISTINCT; `^Recurrence: R-` 23 → 24 and `^Recurrence: R-0633` 0 → 1; `^Landed: R-` 0 → 0. The §3 item 10 open set is 241 at C2, and `- R-0633 — ` still occurs exactly ONCE line-anchored, so its finding paragraph was not edited.
-G6 Line-anchored `^<<<SLICE ` and `^<<<END ` are both 0 in `.agent/plan.md` at C1 and in `.agent/live_review.md` at C2, against a CONTROL of 2 and 2 over the COMMITTED C0a blob. `git diff --name-only 1d29f322..82200953` names 4 paths, all under `.agent/`: none under `docs/`, `packages/`, `tests/` or `apps/`, and neither `.agent/context.md` nor `.agent/decisions.md` nor either inventory file; the range path set MINUS the change set is EMPTY and the change set MINUS the range is exactly `.agent/handoff.md`, which C3 writes. C0a through C2 are each SINGLE-PARENT with insertions 311, 164, 13 and 4 read from `git diff --numstat` and NOT from `git commit`'s own summary, each under the 500 AGENTS.md DECISION F104 D1 sets, and those four numbers agree cell for cell with the `+/-` column of the tables above. `git ls-files .remedy-wt` is 0, `git ls-files` over the zip glob is 0, and `git worktree list` is 1 line. THE REFLOG, SCOPE this round's 4 entries C0a through C2 and FIELD the operation prefix before the first colon of `git reflog --format=%gs`, reads `commit` throughout, so `amend` 0, `rebase` 0 and `cherry` 0. Every SHA-shaped token in the C0a blob, extracted word-bounded at 7 to 40 hex characters: 21 occurrences, 10 distinct, 9 of type `commit` and 1 of type `blob`, FAILING SET EMPTY — the 64-char sha256 digest the block also carries is not matched, as the word boundaries predict.
-G7 `git worktree list` was 1 line immediately BEFORE the first suite. Then in the PRIMARY checkout at the C2 tree, SERIALLY and never two alive at once, by the block's exact command lines with no extra flag, every one a REAL exit 0: `tests/ui_server/` 480 passed; `test_test_runner` 52 passed; `test_resource_safety` 21 passed; `test_integrity_gate` 16 passed; `tests/ui_contracts/` 525 passed with 4 skipped; and the canary `test_golden_path` 42 passed. Every count is identical to the reviewer's base reading, so there is NO difference to account for. NO `apps/ui` COMMAND WAS RUN AND NONE IS REPORTED: the change set holds no file under `apps/`.
-G8 Ordered after C3 and run there; its real outcome is in this round's final message and in `## External actions` above. Every gate above ran at a commit STRICTLY EARLIER than C3.
+G1 PARTIALLY RUN, and it is the gate that ended the round. `git branch --show-current` is
+`feature/f031-decision-inbox`, NOT `main`. `.agent/STOP` before C0a is PRESENT, not the
+ABSENT G1 predicts: untracked, 0 bytes, mtime 2026-08-26T19:43:26 — 18 minutes LATER than
+base `ef1708f0` (2026-08-26T19:24:51), so raised against R34, not left over. Read again
+before C5: still present, NOT deleted (R-0347). `git status --porcelain` is 1 line, that
+line being the sentinel. THE FOUR-WAY TRANSPORT READING COULD NOT BE TAKEN — only reading
+one exists, the block itself at 39206 bytes and 483 lines, matching the receipt exactly:
+`0eb6fb668433d0479b1464316436f06ec73b839856cec57961765eb97a1eae26`. The C0a blob, the C0b
+blob and a rewritten `last_block.md` were never created; `last_block.md` still holds the
+R33 block, sha256 `60348cb1…`, 29784 bytes, 311 lines.
+G2 NOT RUN — no committed C0a blob to extract from; the block's two caps are unmeasured.
+G3 NOT RUN — C1 did not run; `.agent/plan.md` is its base blob, 2772 bytes, 49 lines.
+G4 NOT RUN — neither append made; `decisions.md` 597218 bytes/8013 lines, `live_review.md`
+764867 bytes/1281 lines, both base blobs.
+G5 NOT RUN as a movement, but both sides were read and are the SAME side: at `ef1708f0` and
+HEAD alike `^- R-\d+ — ` 246, `^Done: R-\d+ — ` 5, `^Recurrence: R-` 24, `^Landed: R-` 0,
+`^Gate: R\d+ — ` 19, `^Gate: F\d+ R\d+ — ` 14, `^Gate: F031 R33 — ` 0, `- R-0583 — ` 1
+line-anchored. Every one equals the Base's stated reading.
+G6 NOT RUN — no C4 to range against. `git ls-files .remedy-wt` 0; `git worktree list` 1.
+G7 NOT RUN — the two modules were never written.
+G8 NOT RUN — no `apps/ui` command was executed.
+G9 NOT RUN — no worktree was created, which is why none was removed.
+G10 NOT RUN — no suite was executed.
+G11 the push, ordered after C5; see `## External actions`.
+Every "NOT RUN" is a real reading of what happened, not a substitute for a gate.
 
 ## Authored-text proofs
-Both slices were extracted PROGRAMMATICALLY out of the COMMITTED C0a blob by their marker LINES and applied unretyped, and no marker line reached a target file (G6). The disk-to-disk comparisons that docs/agents/self_drive_protocol.md substitutes for the hash-stamp ritual are G1's four-way sha256 equality over the block itself, G3's plan equality with its negative control, and G4's two independent append readers with theirs. NO FROM/TO PAIR EXISTS THIS ROUND (constraint 8), so no containment test and no FROM-zero count is reported.
+NONE APPLIED. No slice was extracted and no authored text reached any file: PLANF031R34,
+DECISIOND18 and LEDGER34 remain only in the reviewer's original `.remedy-wt/f031-r34.md`,
+left untouched and proved intact and re-delegatable byte for byte by G1's receipt.
 
 ## Deviations & assumptions
-1. HANDBACK LINE-CAP OVERAGE, DECLARED under the AGENTS.md stated-cause ruling (DECISION D15). This file is 78 lines against the 60-line tier its 5 commits earn. CAUSE: the mandated content itself — five per-commit tables, the item-status table, one entry per gate for eight gates, the finding counts with their rule and commit, the authored-text proofs and the `## Next` section the block dictates — does not fit in 60 lines. NO SECTION WAS DROPPED and no transcript is carried.
-2. EXIT CODES WERE READ THROUGH PYTHON, not the shell. This session's command guard refuses `$?`, `${PIPESTATUS[@]}` and shell loops, so every gate's REAL exit code came from `subprocess.run(...).returncode`. The command lines G7 names were run VERBATIM as argv, with no extra flag and no shell in between.
-3. C0a and C0b were committed while `.agent/plan.md` still described R32, because constraint 3 fixes C1 as the FIRST substantive commit. That sits against the AGENTS.md Commit Gate's plan-currency item; the block's ordering wins under constraints 1 and 3, and this line is the declaration.
-4. The C3 row's `+/-` reads `self-referential`, under the handback template's own `## Commits` self-reference exception. G6 orders insertion counts over C0a..C2 only, and a predicted numeral for the commit being written would be an unmeasured value.
-5. SCRATCH I CREATED AND OWN, both under `.remedy-wt/` and neither tracked: the two extracted slice files `.remedy-wt/_r33_slice_PLANF031R33` and `.remedy-wt/_r33_slice_LEDGER33`, each removed BY ITS EXACT PATH before C3. NO WORKTREE WAS CREATED — G4's negative control ran in memory, which constraint 11 explicitly allows. The reviewer's own `.remedy-wt/f031-r33.md` was left untouched and I deleted nothing I did not create.
-6. THE COMMIT SEQUENCE WAS EXACTLY C0a, C0b, C1, C2, C3 — no extra commit, none dropped, none reordered — and no amend, rebase, cherry-pick, force-push, branch deletion, merge or pull request occurred. NO CONTRADICTION WAS FOUND IN THIS BLOCK: every value it predicted at the base reproduced, and every gate behaved as it stated.
+1. THE ORDERED COMMIT SEQUENCE WAS NOT COMPLETED — the central deviation: six commits
+   DROPPED, C5 alone made. Constraint 3 fixes C0a..C5 with none dropped, constraint 5
+   orders the stop; they conflict only in appearance, since 5 names the terminating
+   condition and so wins over the sequence it terminates.
+2. "WRITE THE HANDBACK AND STOP" READ AS COMMIT-AND-PUSH, not as leaving a dirty tree: an
+   uncommitted handoff is not durable and self_drive_protocol.md calls it the only channel.
+3. `git status --porcelain` READS 1 LINE, NOT THE ORDERED 0 — the untracked sentinel, which
+   R-0347 forbids deleting, so the ordered value is unreachable by any correct worker.
+4. `.agent/plan.md` LEFT UNTOUCHED and now stale (`## Current Step` still describes R33).
+   Advancing it is C1's job under PLANF031R34; substituting self-written prose for an
+   authored slice would be worse. Sits against the Commit Gate's plan-currency item.
+5. G1 AND THE DELEGATING PROMPT BOTH PREDICTED AN ABSENT SENTINEL AND A CLEAN TREE; both
+   were false on disk. Per constraint 1 I followed constraint 5 and declared rather than
+   repaired. NO OTHER CONTRADICTION: every other base reading reproduced at `ef1708f0`.
+6. READINGS CAME THROUGH PYTHON, not the shell — this session's guard refuses `$?`,
+   `${PIPESTATUS[@]}` and shell loops, so `git` ran as argv via `subprocess.run(...)`.
+7. NO SCRATCH FILE AND NO WORKTREE WERE CREATED, so nothing of mine needed removing and I
+   deleted nothing under `.remedy-wt/` I did not create. No amend, rebase, cherry-pick,
+   force-push, branch deletion, merge or PR occurred.
+8. HANDBACK LINE-CAP OVERAGE, DECLARED under the AGENTS.md stated-cause ruling DECISION
+   D15: this file is 132 lines against the 100-line tier its 7 ordered commits earn
+   (R-0676). CAUSE is the mandated content itself — an 8-row item-status table, one entry
+   for each of eleven gates, the finding counts with rule and commit, and the four-item
+   `## Next` the block dictates. NO SECTION WAS DROPPED and no transcript is carried.
 
 ## Next
-1. The next session reads `.agent/STOP` from disk as Phase 1 rule 1, BEFORE the Open PR Gate as rule 2.
-2. THIS ROUND'S OWN VERDICT HAS NO ON-DISK GATE ENTRY BY CONSTRUCTION. R33 is the LAST round of this session (§4.13, the terminator), so no later round of this session writes its `Gate: F031 R33` paragraph into `.agent/live_review.md`; the reviewer's PASS for R33 lives in THIS handoff and in the session's final message, and a future session that wants it on disk must carry it from here.
-3. R34 IS T003's WIRING ROUND — `decisionOutcome.ts`, the server token threaded from `RemedyApp`'s `readUrlState` through `RemedyShell` and `RightLivePanel`, the nonce, request, submit and outcome modules called on an answer click, the buttons enabled — and it is the FIRST round that falsifies the three "nothing posts yet" sentences in `decisionCard.ts`, `decisionAnswer.ts` and `DecisionInboxCard.tsx`. IT MUST BOUND A SEND THAT NEVER SETTLES: `submitDecisionSendRequest` sets no timeout by design (DECISION F031 D16), so a button must not stay disabled forever on a promise that never resolves.
+1. The next session reads `.agent/STOP` from disk as Phase 1 rule 1, BEFORE the Open PR
+   Gate as rule 2. The sentinel is still present and was not deleted.
+2. R34'S VERDICT IS NOT YET ON DISK. This handback states no verdict, no colour and no PASS
+   for R34 — the reviewer has not read this diff — and the next reviewed round records it
+   as the `Gate: F031 R34` entry in `.agent/live_review.md`.
+3. R35 IS THE COMPONENT ROUND: the token threaded from `RemedyApp`'s `readUrlState` through
+   `RemedyShell` and `RightLivePanel`, the flow called on a click, its sentence rendered
+   and the buttons enabled.
+4. CORRECTION TO 3, since the block's `## Next` was written for a round that shipped its
+   modules and this one shipped none: R34's OWN work is still open, so the component round
+   cannot be next. The two modules, their tests, the plan, DECISION F031 D18 and the R33
+   ledger entry all remain to be written; `.remedy-wt/f031-r34.md` is intact for
+   re-delegation under whatever number the reviewer assigns — R10's precedent moved the
+   number forward rather than reusing a key a landed commit had earned (§3 item 26).
