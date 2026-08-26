@@ -7532,3 +7532,59 @@ REVERSE IT by deleting this DECISION and its bullet in the `## Design amendments
 section of `docs/roadmap/features/T5_F031.md` that names R11. Should a later
 feature add a DOM harness to `apps/ui`, the component gains render tests without
 touching the pure layer or any test this decision orders.
+
+## DECISION F031 D6 (2026-08-26) — the urgency rule is `(blockedCount + 1) × ageSeconds`, ordered open-first and totalised by `id`
+
+CHOSEN. T002b orders the inbox by a rule stated here and pinned by a test, not
+by a tooltip sentence. A card's URGENCY is `(blockedCount + 1) * ageSeconds`.
+The inbox is ordered by three keys in this order: OPEN cards before closed ones;
+then urgency DESCENDING; then `id` ASCENDING. An `ageSeconds` of `null` — the
+endpoint's own answer for an unreadable `created_at`, which `decisionAgeLabel`
+already renders as "unknown age" — scores 0 and therefore sorts last within its
+group, because an unreadable stamp is not evidence of urgency.
+
+WHY THE `+ 1`, the only departure from the feature file's own words.
+`docs/roadmap/features/T5_F031.md` writes the rule as "age × blocked size" and
+as "urgency = f(age, blocked_count)". A literal product collapses every decision
+that blocks nothing to exactly 0 whatever its age, so an unblocking question
+asked a week ago and one asked a second ago TIE and their order becomes whatever
+the endpoint happened to send. DECISION F031 D3 fixes the acceptance set at the
+eight PRODUCING types, among which blocking nothing is ordinary rather than an
+edge, so the collapse would be the common case. Adding one keeps the product the
+file asks for, keeps blocked size dominant — one blocked task doubles a card's
+score — and leaves age as the total order among cards that block nothing.
+
+WHY THE OTHER TWO KEYS EXIST. Open-first is a SEPARATE key because a resolved
+decision is not urgent at any age or blocked size, and folding that into the
+score means picking a constant large enough to dominate every possible product,
+which a boolean key needs not. `id` is the FINAL key because without a total
+order the result depends on the input order, and the test pinning this rule must
+feed it a shuffled document and get exactly one answer back;
+`buildDecisionCardModel` defaults `id` to the empty string, so the comparator is
+total by construction.
+
+WHAT THIS DOES NOT CHANGE. `decisionCardModels` keeps the endpoint's order and
+so does the projection in `remedyApi.ts`: the two tests pinning that —
+`decisionCard.test.ts` "preserves the order the endpoint sent" and
+`remedyApi.test.ts` "projects every card of the document, in the endpoint's
+order" — stay true and keep meaning what their names say. The rule ships as its
+own comparator, applied where the inbox is handed to the card.
+
+WHAT IT COSTS, declared so the round paying it is not read as scope drift.
+`DecisionCardModel` gains a numeric age field, the model having a formatted
+`ageLabel` and no number to sort by; that is additive, and the two `toEqual`
+blocks in `decisionCard.test.ts` asserting the model's EXACT shape gain one line
+each. WHAT IS NOT BUILDABLE IS NOT RULED: the file asks for "filters by
+type/job", `DecisionInboxEntry` carries no job field at this commit, so T002b
+filters by TYPE only and the job filter waits on T003's deep links.
+
+ALTERNATIVES CONSIDERED. The literal product with no `+ 1`: rejected for the
+collapse above. A lexicographic rule ranking blocked size first and age second:
+rejected because it is not the multiplicative rule the file asks for and it puts
+an ancient unblocking decision permanently behind any card blocking one task. A
+tunable weighted sum: rejected because the weight is a number nobody can defend
+and every later reviewer would relitigate it.
+
+REVERSE IT by deleting this DECISION and its bullet in the `## Design
+amendments` section of `docs/roadmap/features/T5_F031.md` that names R18, and by
+restoring the literal product in the comparator this rule names.
