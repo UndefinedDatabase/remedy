@@ -7439,3 +7439,96 @@ whole point is that new producers must join the set.
 
 REVERSE IT by deleting this DECISION and the D3 paragraph of the
 `## Design amendments` section of `docs/roadmap/features/T5_F031.md`.
+
+## DECISION F031 D4 (2026-08-26) — the inbox card reuses the SHIPPED shell, because the design reference carries no inbox component to follow
+
+CHOSEN. T002's decision card is built from the shell `apps/ui/src` already ships:
+the `card` and `cardHeader` classes of
+`apps/ui/src/components/panels/RightLivePanel.module.css`, a root `<section>`
+carrying its own `data-ui` value, mounted inside `RightLivePanel` beside the
+cards already there, and styled ONLY with the `--remedy-*` custom properties
+`apps/ui/src/styles/tokens.css` defines. The `decision` glyph of `assets_spec.md`
+is reused as the type mark rather than redrawn.
+
+THE MEASUREMENT, taken at `99d77d5c` and recorded per file and symbol in
+`.agent/f031_ui_inventory.md`: `component_spec.md` names no decision, inbox or
+queue COMPONENT — its one occurrence of the word `decision` is prose naming a
+renderer choice in `graph_tech_recommendation.md`; the only `inbox` string
+anywhere in `docs/ui/design_reference/` is `ux_spec.md:163`, which places mobile
+status, digest and inbox surfaces expressly OUT of scope; and the one piece of
+decision visual authority that does exist, `assets_spec.md:174`, is a glyph row
+for a GRAPH NODE rather than for a card. `tokens.css` defines 58 such properties
+and `globals.css` defines none; two of them, `--remedy-state-open` and
+`--remedy-state-blocked`, already name states a decision card shows.
+
+WHY REUSE RATHER THAN INVENT. The feature file's CANONICAL DESIGN REFERENCE
+banner forbids builders inventing a new visual language, and a component spec
+minted by a builder is exactly that. The shipped shell is not an invention: six
+components other than `NeedsAttentionCard` already import that same module, so
+reusing it adds no visual vocabulary at all.
+
+THE OVERLAP THIS DECISION ALSO SETTLES. `NeedsAttentionCard` already renders a
+card headed "Needs your decision", a string occurring 6 times across 4 files
+under `apps/ui/src`, while NOTHING under `apps/ui/src/api/` reads the T001 route
+— a surface answering to the inbox's name ships today and its data path does
+not. The two stay DISTINCT in T002: that card derives from
+`workerStatus.lifecycle_state` and offers a clipboard copy, while the inbox
+derives from the decision queue and answers through the write channel. The inbox
+card is therefore titled distinctly, and whether the older card's decision branch
+is retired is T003's question, when answering actually ships.
+
+ALTERNATIVES CONSIDERED. Extending `docs/ui/design_reference/` with an inbox
+component spec first: rejected because that folder is the operator's visual
+authority and a builder writing into it is the improvisation the banner names.
+Improvising a card from the reference tokens alone: rejected for the same reason,
+and with less precedent behind it than the shipped shell has. Deferring T002
+until the operator supplies a spec: rejected because it blocks the feature on an
+asynchronous human while a conforming shell already exists.
+
+REVERSE IT by deleting this DECISION and its bullet in the `## Design amendments`
+section of `docs/roadmap/features/T5_F031.md` that names R11. Should an inbox
+component later reach `component_spec.md`, the card is restyled to it; nothing
+else in F031 depends on this choice, because the read endpoint and the ordering
+rule are independent of the shell.
+
+## DECISION F031 D5 (2026-08-26) — the inbox is tested at the PURE layer, because the shipped UI toolchain collects no component test
+
+CHOSEN. F031 follows the UI test strategy the repository already has instead of
+changing the toolchain. T002's logic — the generic options renderer's model, the
+ordering rule over age and blocked size, and the badge count — lands as PURE
+functions under `apps/ui/src/api/` with `.test.ts` files beside them, and the
+extensibility test that a novel options payload renders generically is a test
+over that MODEL. The `.tsx` component becomes a thin projection of the model and
+carries no branching of its own.
+
+THE MEASUREMENT, taken at `99d77d5c` and recorded under Q4 and Q5 of
+`.agent/f031_ui_inventory.md`: `apps/ui/vitest.config.ts` sets the environment to
+`node` and carries the single include `src/**/*.test.ts`; 20 files match that
+glob and 0 match `src/**/*.test.tsx`, so a `.tsx` test would not even be
+COLLECTED; and `apps/ui/package.json` carries no line naming `jsdom`,
+`happy-dom` or `testing-library`, so no DOM exists to render into. Three sampled
+test files import pure functions and types only. The feature file's T002 asks for
+"component tests", and no round could have executed that phrase as written.
+
+ALTERNATIVES CONSIDERED. Adding a DOM harness and widening the include to
+`.test.tsx`: rejected FOR THIS FEATURE, not on merit — it changes
+`apps/ui/package.json`, `vitest.config.ts` and the lockfile, it needs an install
+that a round's own gates cannot perform in a fresh worktree, where
+`apps/ui/node_modules` is absent, and F031's scope does not authorize a toolchain
+migration. It is worth doing as its own feature, and this DECISION is the record
+that it is owed. Testing the cards only through the Python side: rejected because
+that reaches the endpoint, which T001 already covers, and never reaches the
+renderer's genericity, which the feature file calls the architecture line.
+Shipping the cards untested: rejected outright.
+
+WHAT THIS DELIBERATELY LEAVES UNTESTED, stated because DECISION F009 D16 forbids
+leaving a mechanism no test can reach without saying so. The card's rendered
+markup is reached by NO test under this decision. The gap is explicit and
+scheduled rather than discovered, and it is bounded by the same sentence that
+creates it: every branch lives in the pure model, so a branch migrating into the
+component is the event that makes this gap matter, and reviewers gate on it.
+
+REVERSE IT by deleting this DECISION and its bullet in the `## Design amendments`
+section of `docs/roadmap/features/T5_F031.md` that names R11. Should a later
+feature add a DOM harness to `apps/ui`, the component gains render tests without
+touching the pure layer or any test this decision orders.
