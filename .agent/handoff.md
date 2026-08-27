@@ -1,60 +1,69 @@
-# Handback — F031 Decision inbox, ROUND R43
+# Handback — F031 Decision inbox, ROUND R44
 
-Branch: `feature/f031-decision-inbox` (never left; no branch created, no force-push,
-no amend/rebase/cherry-pick). Deviations, declared: 117 lines against the 100-line
-tier — cause is the mandated content itself (8 per-commit tables, an 18-row
-item-status table and nine one-line gate rows), per AGENTS.md DECISION D15.
-
-## Range
-
-Review of `5b810e33`..`HEAD` — C0a `02e8563b` through C6, the commit that writes
-this file and therefore cannot name its own SHA.
+Branch: `feature/f031-decision-inbox`. Range: Review of `46ae059f`..HEAD (C6).
+Block `.agent/authored/f031-r44.md`: sha256 `87e21495a88fef3c7aed52b8a6ec42f5a96e49859d4cda083cf04177d481275f`, 28458 bytes, 300 lines.
 
 ## Commits
 
-### 02e8563b docs(agent): save the F031 R43 step block
+### 3f308748 docs(agent): save the F031 R44 step block
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f031-r43.md | +293/-0 | C0a, `shutil.copyfile` of the block |
+| .agent/authored/f031-r44.md | +300/-0 | C0a — the reviewer's block, byte for byte |
 
-### 558c7484 docs(agent): mirror the F031 R43 block into last_block
+### 0206d71a docs(agent): mirror the F031 R44 block into last_block
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/last_block.md | +224/-232 | C0b, same git blob `2b7bd186` as C0a |
+| .agent/last_block.md | +194/-187 | C0b — same bytes, same git blob as C0a |
 
-### dfce9f74 docs(agent): point the F031 plan at R43
+### 0cbf4911 docs(agent): make the plan current for F031 R44
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/plan.md | +22/-22 | C1, PLANF031R43 byte for byte |
+| .agent/plan.md | +20/-22 | C1 — PLANF031R44 replaces the file whole |
 
-### 758e0344 docs(agent): register the finding the F031 R42 gate raised
+### d886c49e docs(agent): register the F031 R44 finding R-0695
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/live_review.md | +2/-0 | C2, FINDINGS43 appended (R-0694) |
+| .agent/live_review.md | +2/-0 | C2 — FINDINGS44 appended |
 
-### a9b0d29f docs(agent): record the F031 R42 verdict
+### cfef2a48 docs(agent): record the F031 R43 verdict
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/live_review.md | +2/-0 | C3, LEDGER43 appended (`Gate: F031 R42`) |
+| .agent/live_review.md | +2/-0 | C3 — LEDGER44 appended |
 
-### 7cbff830 docs(agent): land DECISION F031 D20 splitting the D19 programme
+### 862bdea2 docs(agent): land DECISION F031 D21
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/decisions.md | +22/-0 | C4, DECISION20 appended |
+| .agent/decisions.md | +28/-0 | C4 — DECISION21 appended |
 
-### f86c0b8f feat(orchestration): derive whether the write door can answer a decision card
+### 50e97f81 fix(orchestration): answerability key mirrors the door OPEN refusal
 | Path | +/- | Reason |
 |---|---|---|
-| packages/orchestration/decision_inbox.py | +34/-4 | C5, S1–S5 |
-| tests/orchestration/test_decision_inbox.py | +31/-3 | C5, S6–S8 |
+| packages/orchestration/decision_inbox.py | +28/-16 | C5 — S1–S5, the OPEN condition |
+| tests/orchestration/test_decision_inbox.py | +31/-1 | C5 — S6, the discriminating test |
 
-### C6 (this commit) docs(agent): write the F031 R43 handback
+### C6 docs(agent): write the F031 R44 handback
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/handoff.md | whole-file rewrite | C6 cannot table itself (R-0149 pattern) |
+| .agent/handoff.md | self-referential (R-0149 pattern) | C6 — this file; its numstat cannot exist before it is written, and G1–G9 all ran strictly earlier |
+
+## External actions
+`git worktree add --detach .remedy-wt/f031-r44-g7 50e97f81` — created for G7; `git worktree remove /home/decodeux/Repos/remedy/.remedy-wt/f031-r44-g7` — removed by exact path, `git worktree list` back to 1 line. `git push origin feature/f031-decision-inbox` after C6 (its reading is not written here, per the block).
+
+## Verification — one line per gate, REAL exit codes
+- G1 exit 0 — `git status --porcelain` 0 lines after C0a, C0b, C1, C2, C3, C4, C5; `.agent/STOP` ABSENT before C0a and before C6; C0a blob = C0b blob = disk@C5 = sha256 `87e21495…d481275f`, 28458 bytes, 300 lines, SAME git blob `d84e4272`.
+- G2 exit 0 — extractor over the COMMITTED C0a blob printed 4 slices; CONTENT 76, TOTAL 300, PROSE 224 (≤400), TOTAL ≤490.
+- G3 exit 0 — plan@C1 byte-equal to PLANF031R44 (newline-included) TRUE; minus-trailing-newline control FALSE; `^## Goal$` 1, `^## Next Steps$` 1, `wc -l` 47 (<50).
+- G4 exit 0 — 841494+1+3235=844730, 844730+1+4888=849619, 603923+1+1809=605733, all three identities TRUE; reader 2 N=1, 1, 5 (script-counted), units 348→349→350 and 1450→1455, last-N in order equal; N=1 for both ledger slices so paragraph 1 is also the last; byte flip in paragraph 1 REJECTED by BOTH readers on all three; no tracked file mutated.
+- G5 exit 0 — `^- R-\d+ — ` 255→256→256, ADDED {R-0695} at C2 and none REMOVED; `^Gate: F\d+ R\d+ — ` 24→24→25, ADDED {F031 R43} at C3; `^Done: R-\d+ — ` 5, `^Landed: R-` 0, `^Gate: R\d+ — ` 19 throughout; ids DISTINCT, max R-0695; open set 250 before C2, 251 after C3; `^## DECISION F031 D\d+ ` 20→21.
+- G6 exit 0 — S1 DONE decision_inbox.py:29-32; S2 DONE :107-108; S3 DONE :80-93; S4 DONE :95-105; S5 DONE — C5's diff on that file holds exactly TWO hunks, `@@ -26,7 +26,10 @@` and `@@ -75,25 +78,34 @@`, and an AST comparison of C4 vs C5 shows module docstring UNCHANGED and `build_decision_inbox` source UNCHANGED; S6 DONE test file :24-27 and :324-348; S7 DONE — no function removed, `ANSWERABLE_DECISION_TYPES` unchanged. `python3 -m ruff check` on both files REAL exit 0 ("All checks passed!"). AST `assert` count 21 → 27.
+- G7 primary exit 0 — `pytest tests/orchestration/test_decision_inbox.py -q` 34 collected, 34 passed (33 at 46ae059f). In the disposable worktree: (a) red control, existence-only return, REAL exit 1, "1 failed, 33 passed", FAILED `tests/orchestration/test_decision_inbox.py::test_answerable_key_goes_false_once_the_decision_has_been_answered`; (b) return True unconditionally, REAL exit 1, "8 failed, 26 passed", FAILED the 7 non-`task_decision` params of `test_answerable_key_matches_what_the_write_door_accepts` plus the new test; (c) return False unconditionally, REAL exit 1, "2 failed, 32 passed", FAILED `…test_answerable_key_matches_what_the_write_door_accepts[task_decision]` and the new test. Tree restored byte-equal after each; worktree porcelain 0.
+- G8 exit 0 — `^<<<SLICE `/`^<<<END ` 0/0 in plan@C1, live_review@C3, decisions@C4 and BOTH files C5 touches, against a live CONTROL of 4/4 over the C0a blob; `git diff --name-only 46ae059f..50e97f81` equals the expected 7-path set BOTH WAYS; insertions 300, 194, 20, 2, 2, 28, 59 — each single-parent and under 500; `git ls-files .remedy-wt` 0; `git worktree list` 1 line; all 7 reflog entries for THIS round read `commit:`, with `amend`/`rebase`/`cherry` 0 each among them.
+- G9 exit 0 (all six, run SERIALLY in the primary checkout) — `tests/ui_server/` 480 passed; `tests/orchestration/test_test_runner.py` 52 passed; `tests/regression/test_resource_safety.py` 21 passed; `tests/orchestration/test_integrity_gate.py` 16 passed; canary `tests/cli/test_golden_path.py` 42 passed; `tests/ui_contracts/` 556 passed, 4 skipped — every reading identical to the `46ae059f` baseline, no red, no FAILED node id.
+
+## Authored-text proofs
+Four slices, extracted from the COMMITTED C0a blob by marker line and applied BYTE FOR BYTE: PLANF031R44 (whole-file replace), FINDINGS44, LEDGER44, DECISION21 (appends of existing bytes + exactly one newline + slice). Every identity proved in G3/G4. C0a and C0b are the same git blob as the reviewer's `.remedy-wt/f031-r44-block.md`, which was left in place.
 
 ## Item status
-
 | Item | Status | Reason |
 |---|---|---|
 | C0a | done | |
@@ -64,54 +73,25 @@ this file and therefore cannot name its own SHA.
 | C3 | done | |
 | C4 | done | |
 | C5 | done | |
-| C6 | done | this file |
-| S1 | done | decision_inbox.py:29 `find_task_decision` import; acyclic, verified |
-| S2 | done | decision_inbox.py:75-96, body is the `is not None` expression alone |
-| S3 | done | decision_inbox.py:88-94, the deliberate absence in as many words |
-| S4 | done | decision_inbox.py:122-124, third key, existing two unchanged |
-| S5 | done | 2 stale sentences found in that file: line 6 module docstring, line 106 `build_decision_inbox` docstring; both corrected. Post-C5 sweep for `two`/standalone `2` in decision_inbox.py returns 0 lines |
-| S6 | done | test file:281 comment, 285 rename to `..._plus_exactly_three`, 288-292 expected set |
-| S7 | done | test file:39-43 `ANSWERABLE_DECISION_TYPES`, 310-318 the parametrized test over the existing `PRODUCING_FIXTURES`; no new fixture |
-| S8 | done | test file:179-180 presence + `isinstance(..., bool)` |
-| S9 | done | diff shows no other change; no test deleted, no assertion weakened |
-| push | done | `git push origin feature/f031-decision-inbox` after C6 |
+| C6 | done | this commit |
+| S1 | done | |
+| S2 | done | |
+| S3 | done | |
+| S4 | done | |
+| S5 | done | proved by AST equality, not by the word |
+| S6 | done | |
+| S7 | done | |
+| push | done | ordered after C6; its reading is not recorded here |
 
-## External actions
+## R-0695
+Registered at C2 as Medium: `answerable_by_decision_resolve` reported True for an already-answered task decision, which `_dispatch_decision_resolve` refuses 409 `rejected_state`. Its CODE half LANDED at C5 — the helper now tests EXISTENCE and `ESCALATION_STATUS_OPEN`, and the new test pins the True→False transition. Its PROCESS half — the `docs/agents/planner_reviewer_prompt.md` §3 item it shares with R-0694 — is NOT in this round's change set and stays OPEN.
 
-- `git worktree add .remedy-wt/r43-mut f86c0b8f` — created for G7 only.
-- `git worktree remove .remedy-wt/r43-mut` — removed by exact path; `git worktree list` 1 line.
-- `git push origin feature/f031-decision-inbox` after C6. No PR create/edit/merge, no `gh`.
-
-## Verification
-
-- G1 exit 0 — branch correct; `git status --porcelain` 0 lines after C0a/C0b/C1/C2/C3/C4/C5; `.agent/STOP` ABSENT before C0a and before C6. Block at C0a, at C0b and off disk at C5 all sha256 `e75fd033eea7922a3d4c222c906a9ce3f84b7f0697aefaf314a54d566a3d4c70`, 26648 bytes, 293 lines — all three EQUAL; C0a and C0b are the SAME git blob `2b7bd186`.
-- G2 exit 0 — extractor printed 4 slices from the committed C0a blob. TOTAL 293, CONTENT 72, PROSE 221 (markers counted as prose). 221 ≤ 400, 293 ≤ 490.
-- G3 exit 0 — `.agent/plan.md` at C1 byte-equal to PLANF031R43 TRUE (newline-included); minus-trailing-newline control FALSE; `^## Goal$` 1, `^## Next Steps$` 1, `wc -l` 49 (< 50).
-- G4 exit 0 — C2: 834598 + 1 + 2735 = 837334, reader A TRUE, N=1, units 346→347, reader B TRUE. C3: 837334 + 1 + 4159 = 841494, reader A TRUE, N=1, units 347→348, reader B TRUE. C4: 602495 + 1 + 1427 = 603923, reader A TRUE, N=4, units 1446→1450, reader B TRUE. N counted by my script, never read from the block. Negative control (one byte flipped in memory in appended paragraph 1) REJECTED by BOTH readers on all three. For FINDINGS43 and LEDGER43 N is 1, so paragraph 1 is also the last. No tracked file mutated.
-- G5 exit 0 — `^- R-\d+ — ` 254 → 255 → 255, ADDED across C2 exactly {R-0694}, REMOVED empty, none added/removed at C3; all ids DISTINCT, max `R-0694`. `^Done: R-\d+ — ` 5, `^Landed: R-` 0, `^Gate: R\d+ — ` 19 at all three points. `^Gate: F\d+ R\d+ — ` 23 → 23 → 24, ADDED key exactly `F031 R42`. Open set 249 before C2, 250 after C3. `^## DECISION F031 D\d+ ` 19 before C4, 20 after.
-- G6 exit 0 — S1–S9 all DONE with file:line above. Sweep of decision_inbox.py at C5 for `two` or standalone `2`: 0 lines. `python3 -m ruff check` on both changed files REAL exit 0, "All checks passed!". `assert` statements in the test file (AST count) 18 before, 21 after.
-- G7 exit 0 primary / 1 + 1 mutated — primary at C5: `pytest tests/orchestration/test_decision_inbox.py -q` REAL exit 0, 33 passed (25 at `5b810e33`). Mutation (a) helper returns True unconditionally: REAL exit 1, 7 failed / 26 passed, FAILED `test_answerable_key_matches_what_the_write_door_accepts[{patch_approval,stop_reason,test_failure,repo_dirty,token_budget,memory_review,flight_plan_approval}]`. Mutation (b) S4 assignment deleted: REAL exit 1, 17 failed / 16 passed, FAILED all 8 `test_card_appears_for_each_producing_type[...]`, `test_card_keys_are_the_export_keys_plus_exactly_three`, and all 8 `test_answerable_key_matches_what_the_write_door_accepts[...]`. Both ran only in `.remedy-wt/r43-mut`, restored between them (byte-equality re-checked TRUE both times).
-- G8 exit 0 — `^<<<SLICE `/`^<<<END ` are 0/0 in plan.md@C1, live_review.md@C3, decisions.md@C4 and BOTH files C5 touches, against a live CONTROL of 4/4 over the C0a blob. `git diff --name-only 59521bf5..f86c0b8f` is 10 paths; range MINUS expected union = [], union MINUS range = [] — exact both ways. Insertions 293, 224, 22, 2, 2, 22, 65 — each single-parent and under 500. `git ls-files .remedy-wt` 0; `git worktree list` 1 line at C5 after removal. Every reflog entry for the 7 commits reads `commit:`; `amend` 0, `rebase` 0, `cherry` 0.
-- G9 exit 0 — serially in the primary checkout at C5, one pytest process at a time: `tests/ui_server/` 480 passed; `tests/orchestration/test_test_runner.py` 52 passed; `tests/regression/test_resource_safety.py` 21 passed; `tests/orchestration/test_integrity_gate.py` 16 passed; canary `tests/cli/test_golden_path.py` 42 passed; `tests/ui_contracts/` 556 passed, 4 skipped. Every one REAL exit 0 and identical to the `5b810e33` baseline. NO RED — the unreproduced `test_test_runner.py` red the reviewer saw in dry runs did not recur, so no five-times re-run was triggered.
-
-## Authored-text proofs
-
-Disk-to-disk against the COMMITTED `.agent/authored/f031-r43.md` blob (`2b7bd186`), never the prompt:
-- PLANF031R43 → `.agent/plan.md` at C1: byte-equal TRUE, negative control FALSE.
-- FINDINGS43 → `.agent/live_review.md` at C2: appended exactly, both readers TRUE, flip REJECTED.
-- LEDGER43 → `.agent/live_review.md` at C3: appended exactly, both readers TRUE, flip REJECTED.
-- DECISION20 → `.agent/decisions.md` at C4: appended exactly, both readers TRUE, flip REJECTED.
-- The C5 Python is authored to section S's SPEC, not sliced. No slice was retyped, reflowed or corrected.
+Open findings: 251 (`^- R-\d+ — ` 256 minus `^Done: R-\d+ — ` 5).
 
 ## Deviations & assumptions
+Commit sequence executed exactly as ordered: C0a, C0b, C1, C2, C3, C4, C5, C6 — no extra commit, none dropped, none reordered. No slice was corrected; nothing in the block read as wrong to me. No file under `apps/` or `docs/` was touched. Nothing under `.remedy-wt/` is committed and the reviewer's block copy was not deleted.
 
-- No departure from the ordered commit sequence: C0a, C0b, C1, C2, C3, C4, C5, C6 landed in that order, no extra commit, none dropped, none reordered.
-- BLOCK TEXT DISCREPANCY, reported not corrected: constraint 2 says "the five marked SLICES", but the block carries FOUR (PLANF031R43, FINDINGS43, LEDGER43, DECISION20) and my extractor printed 4 against a CONTROL of 4/4 markers. The bundle line and the `Change:` list are consistent with four; I applied four and changed nothing.
-- R-0694: REGISTERED at C2 as Low — a fix clause saying "binding on the next block" that lives only in ledger prose, so R42's block did not apply R-0631's clause. It is deliberately NOT FIXED here: the repair is a new item in `docs/agents/planner_reviewer_prompt.md` §3, which is the reviewer's own file and is not in this round's change set. R43's G4 applied R-0631's clause by hand instead.
-- Open findings after C3: 250 (255 `^- R-\d+ — ` minus 5 `^Done: R-\d+ — `).
+No DECISION D15 overage is declared: 8 commits earn the 100-line cap and this file measures under it with every mandated section present.
 
 ## Next
-
-Re-read `.agent/STOP` from disk FIRST; then the Open PR Gate; then review this
-round's handback; then R44 — the browser half of DECISION F031 D19: the model
-field and the card that renders no button the door refuses.
+1. Re-read `.agent/STOP` from disk (Phase 1 rule 1). 2. The Open PR Gate. 3. Review this round's handback and the `46ae059f`..HEAD diff. 4. Then R45 — the browser half of D19: `DecisionCardModel` gains the field and `DecisionInboxCard` renders no button for a card the door refuses.
