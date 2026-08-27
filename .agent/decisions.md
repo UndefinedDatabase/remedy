@@ -8637,3 +8637,56 @@ builder reads it.
 
 REVERSE by deleting this decision, renaming the module and its three types back
 to the bare spellings, and accepting the two collisions.
+
+## DECISION F032 D5 (2026-08-27) — the migration marker is PER CARD, and enforcement is opt-in per type
+
+THE QUESTION, in two halves that share one answer. FIRST, how does a reader
+tell a decision recorded before F032 from one that simply has poor receipts?
+The feature file asks for a "migration story for legacy entries" and an honest
+"recorded before evidence requirements" placeholder rather than fake triples
+(`docs/roadmap/features/T5_F032.md:28-31`). The obvious carrier is the document
+version stamp, and inventory Q7 measured that it cannot work: `DECISION_INBOX_VERSION`
+(`packages/orchestration/decision_inbox.py:37`) is WRITE-ONLY — the only code
+that compares it is the test that compares it against the constant the same
+process just wrote, and the browser does not model the key at all
+(`apps/ui/src/api/decisionCard.ts:124-126` declares the document with no
+`version` key). A migration story told through a stamp nothing reads is a story
+nothing tells. SECOND, DECISION F032 D1 puts the gate at `list_decisions`, and
+if the gate became fatal the moment it landed, all eight existing producers
+would fail at once, because not one of them carries a triple. T001 would then
+either break the suite or ship a gate that gates nothing until T002 finished.
+
+CHOSEN, AND THE TWO HALVES ARE ONE MECHANISM. Every card carries its own
+`evidence_status`, either `present` or the literal
+`recorded_before_evidence_requirements`, emitted by `export_decision_json`
+beside an always-present `evidence_refs` and `outcomes` that are EMPTY when
+there is no triple — never absent, because a key that appears only sometimes
+forces every reader to branch, and never fabricated, which is the failure the
+feature file names. And `TRIPLE_REQUIRED_TYPES` starts EMPTY: a decision type
+enters it in T002, in the same commit that gives its producer a real triple, so
+the gate is live and pinned by the canary from the first commit while changing
+no existing producer's behaviour. When all eight types are in the set, the gate
+is fully live and the opt-in set has become a formality — which is the point at
+which it can be deleted.
+
+WHY THE GATE RAISES RATHER THAN DROPS. Dropping a tripleless decision would
+lose a human question, which is exactly what `decision_inbox.py:141-143` says
+this subsystem will not do. A producer that ships an ENFORCED type with no
+triple is a programming error, and "a canary producer missing a field fails CI"
+(`docs/roadmap/features/T5_F032.md:25`) is a statement about CI, not about
+runtime refusal. Because the set only ever holds upgraded types, the raise can
+fire only on a regression.
+
+ALTERNATIVES CONSIDERED. Bumping `DECISION_INBOX_VERSION` to 2: rejected on
+Q7's measurement — it would have to acquire its first reader before it could
+carry anything, and a per-card marker is needed regardless, since a single job
+can hold legacy and upgraded decisions side by side. Making the gate fatal
+immediately and upgrading all eight producers in T001: rejected because it
+merges T001 and T002 into one unreviewable round, against the feature file's
+own slicing and against AGENTS.md's change-size limits. A warning list instead
+of a raise: rejected because nothing reads warnings and it would make the
+canary unassertable.
+
+REVERSE by deleting this decision, dropping `TRIPLE_REQUIRED_TYPES` and
+`evidence_status`, and making the triple unconditionally required at the emit
+point.
