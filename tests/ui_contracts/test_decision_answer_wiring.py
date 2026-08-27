@@ -556,3 +556,128 @@ class TestTheClarificationFormIsFilledFromTheCard:
                 f"{class_name} has no rule behind it, so the field renders with "
                 "the browser's defaults and none of this card's"
             )
+
+
+class TestTheCardShowsTheEvidenceTriple:
+    """T5_F032 T003b. The model has carried the triple since T003a — a card's
+    `evidenceRefs` and `evidenceNote`, and each answer's own `expectedOutcome`
+    and `downside` — and until this round nothing rendered any of it, which is
+    the whole of F032's promise unkept: no decision without its receipts.
+
+    TWO THINGS ARE PINNED HERE AND THEY PULL IN OPPOSITE DIRECTIONS. That the
+    four fields really reach the markup, and that the ONE field beside them
+    never does: §17 of docs/ui/design_reference/ux_spec.md forbids the default
+    UI to show a raw id, and a ref's `target` is frequently exactly one — a test
+    run id, an escalation id — carried on the model only for the deep link the
+    next task adds."""
+
+    # Every empty state this round introduces, collapsed the way the outcome
+    # region already is. Named once, here, so the two readings below — that the
+    # collapse EXISTS and that it uses no mechanism removing the node — can
+    # never drift apart and leave one selector read by only one of them.
+    COLLAPSE_SELECTORS = (
+        ".decisionEvidence:empty",
+        ".decisionEvidenceNote:empty",
+        ".decisionExpectedOutcome:empty",
+        ".decisionDownside:empty",
+    )
+
+    def test_the_card_maps_the_models_evidence_refs(self):
+        code = strip_ts_comments(CARD.read_text())
+        assert "decision.evidenceRefs.map(" in code, (
+            "the receipts behind a decision must reach the operator who is "
+            "being asked to approve it; the model has carried them since T003a"
+        )
+
+    def test_the_card_renders_the_note_that_says_why_there_are_none(self):
+        code = strip_ts_comments(CARD.read_text())
+        assert "{decision.evidenceNote}" in code, (
+            "a card with no receipts says so in the model's own sentence — the "
+            "raw evidence_status is the present/missing signal §17 excludes, "
+            "which is why the model turns it into prose before it gets here"
+        )
+
+    def test_each_answer_shows_its_own_expected_outcome_and_downside(self):
+        code = strip_ts_comments(CARD.read_text())
+        for field in ("{answer.expectedOutcome}", "{answer.downside}"):
+            assert field in code, (
+                f"{field} must ride under the answer it belongs to: consent is "
+                "informed by the option actually being pressed, which is why "
+                "T003a hung both on the ANSWER rather than on the card"
+            )
+
+    def test_no_refs_target_ever_reaches_the_markup(self):
+        code = strip_ts_comments(CARD.read_text())
+        assert code.count(".target") == 1, (
+            "a ref's target is frequently a raw id and §17 forbids the default "
+            "UI to show one, so the only `.target` this component may carry is "
+            "the DOM event's; a second occurrence is the leak arriving under "
+            "whatever name the map's variable happens to have"
+        )
+        assert "const typed = event.target.value;" in code, (
+            "and the survivor really is the clarification input's own event "
+            "target, which has nothing to do with a ref's"
+        )
+
+    def test_every_receipt_class_the_card_names_has_a_rule_of_its_own(self):
+        code = strip_ts_comments(CARD.read_text())
+        css = CARD_CSS.read_text()
+        for class_name in (
+            "decisionEvidence",
+            "decisionEvidenceChip",
+            "decisionEvidenceNote",
+            "decisionExpectedOutcome",
+            "decisionDownside",
+        ):
+            assert f"styles.{class_name}" in code, f"the card must name {class_name}"
+            assert css_rule_body(css, f".{class_name}").strip(), (
+                f"{class_name} has no rule behind it, so the receipt renders "
+                "with the browser's defaults and none of this card's"
+            )
+
+    def test_every_new_empty_state_is_collapsed_out_of_flow(self):
+        css = CARD_CSS.read_text()
+        for selector in self.COLLAPSE_SELECTORS:
+            assert "position: absolute" in css_rule_body(css, selector), (
+                f"{selector} must leave the flow: a card with no receipts and "
+                "an answer with no stakes would otherwise still claim their "
+                "parent's gap and show as stray blank bands"
+            )
+
+    def test_the_new_collapse_rules_never_remove_the_node(self):
+        css = CARD_CSS.read_text()
+        for selector in self.COLLAPSE_SELECTORS:
+            body = css_rule_body(css, selector)
+            for forbidden in ("display: none", "visibility: hidden"):
+                assert forbidden not in body, (
+                    f"{forbidden} in {selector} removes the node from the "
+                    "accessibility tree, which is finding R-0686 reinstated in "
+                    "a form that looks tidy"
+                )
+        code = strip_ts_comments(CARD.read_text())
+        assert "hidden" not in code, (
+            "and the attribute spelling is excluded here too, over the whole "
+            "file: the regions this class pins live in it, so a class name or "
+            "an attribute carrying it would hide one of them just as surely"
+        )
+
+    def test_the_answer_stakes_sit_after_the_live_region_and_add_no_operator(self):
+        code = strip_ts_comments(CARD.read_text())
+        # The module's own reader, not a second one of the same shape: it
+        # asserts the LAST aria-live in the file is still the outcome
+        # paragraph's, which is exactly what a stakes paragraph carrying one of
+        # its own would break.
+        region = jsx_between_answer_button_and_live_paragraph(code)
+        for operator in ("?", "&&", "||"):
+            assert operator not in region, (
+                f"{operator} between the answer button and the paragraph gates "
+                "the live region on something (finding R-0690); the stakes are "
+                "strings the model guarantees, EMPTY rather than absent, so "
+                "rendering them needs no operator at all"
+            )
+        live = code.rindex('aria-live="polite"')
+        for field in ("{answer.expectedOutcome}", "{answer.downside}"):
+            assert code.index(field) > live, (
+                f"{field} must sit AFTER the outcome paragraph in source order "
+                "or the reader above aims at the wrong node and pins nothing"
+            )
