@@ -821,6 +821,130 @@ def list_decisions(
                 task_decision_answer_command(job_id, str(record.get("decision_id")), opt)
                 for opt in (options or ["<your answer>"])
             ) if is_open else ()
+            # F032 T002g, the EIGHTH AND LAST producing type, and the only one
+            # whose options are not known when this code is written: they come
+            # from the escalation record and are arbitrary strings.  So its
+            # outcomes are BUILT per option rather than written out, and the
+            # same code satisfies rule (g) when the record offers choices and
+            # rule (h) when it offers none.  BOTH ARMS ARE ENFORCED TOGETHER
+            # (DECISION F032 D7): `enforce_decision_evidence` selects by TYPE
+            # ALONE and never reads `status`, so the resolved card owes a real
+            # triple too, and its refs are the audit trail the answer left.
+            #
+            # THE CARD'S OWN ID IS EMITTED UNGUARDED, and that is what keeps
+            # rule (a) satisfied on every record this branch can reach:
+            # `escalation.py::enqueue_task_decision` is the only writer of these
+            # records and always sets `decision_id`, so it is never the empty
+            # string rule (c) would refuse — and it is the value this card's
+            # `id` is already built from just below.
+            _td_refs = [DecisionEvidenceRef(
+                kind="decision",
+                target=str(record.get("decision_id", "")),
+                label="the escalation record this decision was raised from",
+            )]
+            for _xref in (record.get("cross_references") or []):
+                _xref_id = str(_xref)
+                if _xref_id:
+                    _td_refs.append(DecisionEvidenceRef(
+                        kind="decision",
+                        target=_xref_id,
+                        label=(
+                            "the same question raised again and "
+                            "cross-referenced by the queue"
+                        ),
+                    ))
+            # The answer and where it came from are what a RESOLVED record has
+            # that an open one does not.  Each is emitted ONLY when it is
+            # non-empty, which is also what keeps the pair off an OPEN card
+            # without a second `status` test: `enqueue_task_decision` writes
+            # both as the empty string until the record is answered, and rule
+            # (c) refuses a ref pointing at nothing — it would refuse the whole
+            # card rather than just the ref.
+            _td_answer = str(record.get("answer", "") or "")
+            if _td_answer:
+                _td_refs.append(DecisionEvidenceRef(
+                    kind="decision",
+                    target=_td_answer,
+                    label="the answer that was recorded",
+                ))
+            _td_answer_source = str(record.get("answer_source", "") or "")
+            if _td_answer_source:
+                _td_refs.append(DecisionEvidenceRef(
+                    kind="decision",
+                    target=_td_answer_source,
+                    label="where that answer came from",
+                ))
+            # The record knows two things that tell one option from another and
+            # the text uses both: whether the option IS the record's
+            # `safe_default`, and the record's own `impact` — which amendment A3
+            # of `docs/roadmap/features/T5_F032.md` carried forward to T002 as
+            # the nearest thing to an `expected_outcome` already on disk, and
+            # this is where it is finally used.  Each sentence is built AROUND
+            # the option rather than emitting the option alone, so an option
+            # word that is itself a member of `BOILERPLATE_PHRASES` stays a
+            # legal key with a legal outcome: rule (f) reads the two halves and
+            # never the key.
+            _td_default = str(record.get("safe_default", "") or "")
+            _td_impact = str(record.get("impact", "") or "")
+            _td_impact_note = (
+                f"  The task states this consequence: {_td_impact}"
+                if _td_impact else ""
+            )
+            _td_outcomes: list[DecisionOptionOutcome] = []
+            for _option in options:
+                if _td_default and _option == _td_default:
+                    _expected = (
+                        f"Answering {_option} is the course the task itself "
+                        f"proposed as safe, so the waiting branch resumes on "
+                        f"the path the run was already prepared for."
+                    )
+                    _downside = (
+                        "A default accepted without reading the question is "
+                        "how an assumption nobody checked becomes a finished "
+                        "result."
+                    )
+                elif _td_default:
+                    _expected = (
+                        f"The waiting branch resumes on {_option} instead of "
+                        f"the course the task proposed."
+                    )
+                    _downside = (
+                        "The run departs from what the task prepared for, so "
+                        "work already done for that path may be spent again."
+                    )
+                else:
+                    # The record named no default, so no option is the one the
+                    # task proposed and every option gets the same neutral pair
+                    # rather than a comparison the record cannot support.
+                    _expected = (
+                        f"The waiting branch resumes on {_option}, the course "
+                        f"this answer chooses."
+                    )
+                    _downside = (
+                        "The tasks blocked behind this question stay blocked "
+                        "until it is answered, and a course chosen without "
+                        "reading the question is paid for downstream."
+                    )
+                _td_outcomes.append(DecisionOptionOutcome(
+                    option=_option,
+                    expected_outcome=_expected + _td_impact_note,
+                    downside=_downside,
+                ))
+            if not _td_outcomes:
+                # The record offered no choices, so the answer is free text and
+                # rule (h) applies: EXACTLY ONE outcome, keyed `UNKEYED_OPTION`.
+                _td_outcomes.append(DecisionOptionOutcome(
+                    option=UNKEYED_OPTION,
+                    expected_outcome=(
+                        "An answer in free text resumes the waiting branch, "
+                        "which continues with that answer recorded on its task."
+                    ) + _td_impact_note,
+                    downside=(
+                        "A question left unanswered blocks everything behind "
+                        "it, and this branch of the run makes no progress "
+                        "until it is answered."
+                    ),
+                ))
             decisions.append(HumanDecision(
                 id=str(record.get("decision_id", "")),
                 type=DECISION_TYPE_TASK_DECISION,
@@ -848,6 +972,15 @@ def list_decisions(
                     "cross_references": [
                         str(x) for x in (record.get("cross_references") or [])],
                 },
+                # THE OUTCOMES ARE BUILT FROM `options`, THE SAME LIST THIS
+                # PAYLOAD CARRIES, and not from a re-read of the record: rule
+                # (g) compares the outcome keys against `payload["options"]` in
+                # BOTH directions, so any list that could differ from the one
+                # above would fail the card it was built for.
+                evidence=DecisionEvidenceTriple(
+                    refs=tuple(_td_refs),
+                    outcomes=tuple(_td_outcomes),
+                ),
             ))
     except (ImportError, ValueError, OSError, AttributeError):
         pass
