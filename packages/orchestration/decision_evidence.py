@@ -117,7 +117,7 @@ DECISION_EVIDENCE_STATUS_LEGACY = "recorded_before_evidence_requirements"
 #: has become a formality, which is when it can be deleted.
 TRIPLE_REQUIRED_TYPES: frozenset[str] = frozenset({
     "token_budget", "test_failure", "patch_approval", "stop_reason",
-    "repo_dirty",
+    "repo_dirty", "memory_review",
 })
 
 

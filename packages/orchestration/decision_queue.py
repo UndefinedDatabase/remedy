@@ -535,6 +535,38 @@ def list_decisions(
                 reason = "is stale"
             else:
                 reason = "is flagged for review"
+            # F032 T002e: R5 gave this card a reason and cited neither the card
+            # it names nor the fields that reason was read off.  All three refs
+            # are GUARDED and none of them alone would do: `MemoryEntry.key`
+            # defaults to the empty string (`packages/memory/models.py`), and
+            # each of the two field refs fires only in the arm that selected the
+            # card, so an unguarded one would target the empty string and rule
+            # (c) of `evidence_triple_problems` would refuse the whole card.
+            # RULE (a) IS STILL SATISFIABLE WITH NO KEY AT ALL, and that is the
+            # argument the key's guard rests on: the selecting predicate above
+            # admits a card only when it is stale or flagged, so at least one of
+            # the last two refs always fires.  The two booleans are the ones R5
+            # already computed for the summary, so the receipts and the sentence
+            # cannot drift apart.
+            _mr_refs: list[DecisionEvidenceRef] = []
+            if me.key:
+                _mr_refs.append(DecisionEvidenceRef(
+                    kind="decision",
+                    target=me.key,
+                    label="the memory card this review is about",
+                ))
+            if is_stale:
+                _mr_refs.append(DecisionEvidenceRef(
+                    kind="failure",
+                    target=me.validity,
+                    label="the validity the card carries",
+                ))
+            if is_flagged_for_review:
+                _mr_refs.append(DecisionEvidenceRef(
+                    kind="failure",
+                    target=me.review_status,
+                    label="the review status the card carries",
+                ))
             decisions.append(HumanDecision(
                 id=f"mem:{me.key}",
                 type="memory_review",
@@ -548,6 +580,28 @@ def list_decisions(
                 next_actions=(f"remedy memory card-show {me.key}",),
                 created_at="",
                 resolved_at=None,
+                # NO `payload` IS ADDED HERE, deliberately.  This branch's one
+                # `next_action` is a `remedy memory card-show` command rather
+                # than a choice, so DECISION F032 D3's optionless case applies
+                # and rule (h) requires EXACTLY ONE outcome, keyed
+                # `UNKEYED_OPTION`.
+                evidence=DecisionEvidenceTriple(
+                    refs=tuple(_mr_refs),
+                    outcomes=(DecisionOptionOutcome(
+                        option=UNKEYED_OPTION,
+                        expected_outcome=(
+                            "Opening the named card shows what it claims and "
+                            "when that was last confirmed, so it can be "
+                            "re-approved, corrected or superseded instead of "
+                            "trusted blind."
+                        ),
+                        downside=(
+                            "Reading it takes time now, and a card left in "
+                            "place while it is checked keeps feeding whatever "
+                            "already reads it."
+                        ),
+                    ),),
+                ),
             ))
     except (ImportError, ValueError, OSError):
         pass
