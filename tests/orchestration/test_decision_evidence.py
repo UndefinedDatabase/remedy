@@ -12,6 +12,7 @@ expected problem list is written out in full rather than searched.
 from __future__ import annotations
 
 from dataclasses import replace
+from datetime import datetime, timezone
 
 import pytest
 
@@ -37,6 +38,10 @@ from packages.orchestration.decision_queue import (
     HumanDecision,
     export_decision_json,
     list_decisions,
+)
+from packages.orchestration.escalation import (
+    answer_task_decision,
+    enqueue_task_decision,
 )
 from packages.orchestration.stop_reasons import StopReason
 
@@ -285,10 +290,16 @@ def test_the_shipped_required_type_set_holds_exactly_the_upgraded_producers():
     commit, every job carrying that type starts raising.  It is pinned to EXACT
     membership rather than to containment, so adding a type ahead of its
     producer's upgrade fails here first.
+
+    T002g CLOSED THE SET: all EIGHT producing types are named below, so the gate
+    is fully live.  The two types this list still omits are the two
+    ``decision_queue.DECISION_TYPES`` holds with NO PRODUCER AT ALL —
+    ``worker_approval`` and ``revert_missing``, per DECISION F031 D3 — which is
+    why the constant is a set and not an unconditional check.
     """
     assert TRIPLE_REQUIRED_TYPES == frozenset({
         "token_budget", "test_failure", "patch_approval", "stop_reason",
-        "repo_dirty", "memory_review", "flight_plan_approval",
+        "repo_dirty", "memory_review", "flight_plan_approval", "task_decision",
     })
 
 
@@ -1818,4 +1829,288 @@ def test_a_resolved_flight_plan_decision_without_a_triple_is_refused():
     message = str(excinfo.value)
     assert "fp:approval" in message
     assert "flight_plan_approval" in message
+    assert "evidence_refs is empty: a decision must cite at least one ref." in message
+
+
+# ---------------------------------------------------------------------------
+# The task decision (F032 T002g) — the EIGHTH and LAST producing type, and the
+# only one whose outcomes are BUILT rather than written out: its options come
+# from the escalation record and are arbitrary strings.  Every case below drives
+# the REAL branch through `list_decisions`, with records built by
+# `enqueue_task_decision` exactly as the rest of the suite that reaches this
+# branch does, so a test can never pass against a hand-made record shape no
+# writer produces.
+# ---------------------------------------------------------------------------
+
+TASK_DECISION_QUESTION = "Retry the migration or skip it?"
+TASK_DECISION_OPTIONS = ["retry", "skip"]
+TASK_DECISION_IMPACT = "the release branch stays unbuilt until this is answered"
+_TASK_DECISION_NOW = datetime(2026, 8, 28, 12, 0, 0, tzinfo=timezone.utc)
+
+
+def _escalation_job(**kwargs) -> tuple[Job, dict]:
+    """A job carrying ONE escalation record, built by its only real writer."""
+    job = Job(name="task-decision-evidence")
+    record = enqueue_task_decision(
+        job,
+        task_id=kwargs.pop("task_id", "task-1"),
+        question=kwargs.pop("question", TASK_DECISION_QUESTION),
+        now=_TASK_DECISION_NOW,
+        **kwargs,
+    )
+    return job, record
+
+
+def _task_decisions(job: Job) -> list[HumanDecision]:
+    return [d for d in list_decisions(job, [])
+            if d.type == "task_decision"]
+
+
+def _one_task_decision(job: Job) -> HumanDecision:
+    decisions = _task_decisions(job)
+    assert len(decisions) == 1
+    return decisions[0]
+
+
+def _keyed_open_task_decision() -> HumanDecision:
+    job, _ = _escalation_job(options=TASK_DECISION_OPTIONS, safe_default="retry")
+    return _one_task_decision(job)
+
+
+def _defaultless_open_task_decision() -> HumanDecision:
+    job, _ = _escalation_job(options=TASK_DECISION_OPTIONS)
+    return _one_task_decision(job)
+
+
+def _optionless_open_task_decision() -> HumanDecision:
+    job, _ = _escalation_job()
+    return _one_task_decision(job)
+
+
+def _impact_task_decision() -> HumanDecision:
+    job, _ = _escalation_job(
+        options=TASK_DECISION_OPTIONS,
+        safe_default="retry",
+        impact=TASK_DECISION_IMPACT,
+    )
+    return _one_task_decision(job)
+
+
+def _cross_referenced_task_decisions() -> list[HumanDecision]:
+    """TWO records asking the SAME question, so `cross_references` fills."""
+    job, first = _escalation_job(task_id="task-1", options=TASK_DECISION_OPTIONS)
+    second = enqueue_task_decision(
+        job,
+        task_id="task-2",
+        question=TASK_DECISION_QUESTION,
+        options=TASK_DECISION_OPTIONS,
+        now=_TASK_DECISION_NOW,
+    )
+    assert second["cross_references"] == [first["decision_id"]]
+    return _task_decisions(job)
+
+
+def _resolved_task_decision() -> HumanDecision:
+    job, record = _escalation_job(
+        options=TASK_DECISION_OPTIONS, safe_default="retry")
+    answer_task_decision(
+        job, record["decision_id"], answer="skip",
+        source="human", now=_TASK_DECISION_NOW)
+    return _one_task_decision(job)
+
+
+def test_the_task_decision_keys_one_built_outcome_to_each_option():
+    """RULE (g), and the default is told apart from the option beside it.
+
+    The keys are values this code never chose — they are the record's own option
+    strings — so this is the one producer where a key can only be right by being
+    built from the same list the payload carries.
+    """
+    decision = _keyed_open_task_decision()
+
+    assert decision.payload["options"] == TASK_DECISION_OPTIONS
+    assert [o.option for o in decision.evidence.outcomes] == TASK_DECISION_OPTIONS
+    outcomes = {o.option: o for o in decision.evidence.outcomes}
+    assert "retry" in outcomes["retry"].expected_outcome
+    assert "skip" in outcomes["skip"].expected_outcome
+    assert outcomes["retry"].expected_outcome != outcomes["skip"].expected_outcome
+    assert outcomes["retry"].downside != outcomes["skip"].downside
+
+
+def test_the_default_option_says_it_is_the_course_the_task_proposed():
+    decision = _keyed_open_task_decision()
+    outcomes = {o.option: o for o in decision.evidence.outcomes}
+
+    assert "proposed as safe" in outcomes["retry"].expected_outcome
+    assert "instead of" in outcomes["skip"].expected_outcome
+
+
+def test_a_record_with_no_safe_default_gives_every_option_the_neutral_pair():
+    """No option IS the default, so none may claim the task proposed it."""
+    decision = _defaultless_open_task_decision()
+    outcomes = {o.option: o for o in decision.evidence.outcomes}
+
+    assert [o.option for o in decision.evidence.outcomes] == TASK_DECISION_OPTIONS
+    assert outcomes["retry"].downside == outcomes["skip"].downside
+    assert outcomes["retry"].expected_outcome != outcomes["skip"].expected_outcome
+    for outcome in decision.evidence.outcomes:
+        assert "proposed as safe" not in outcome.expected_outcome
+        assert "instead of" not in outcome.expected_outcome
+
+
+def test_a_record_with_no_options_carries_exactly_one_unkeyed_outcome():
+    """RULE (h): the same branch, reached with an empty options list."""
+    decision = _optionless_open_task_decision()
+
+    assert decision.payload["options"] == []
+    assert [o.option for o in decision.evidence.outcomes] == [UNKEYED_OPTION]
+    assert decision.evidence.outcomes[0].expected_outcome.strip()
+    assert decision.evidence.outcomes[0].downside.strip()
+
+
+def test_the_records_own_impact_reaches_every_option():
+    """Amendment A3 carried ``impact`` forward to T002; this is the use."""
+    decision = _impact_task_decision()
+
+    assert decision.evidence.outcomes
+    for outcome in decision.evidence.outcomes:
+        assert TASK_DECISION_IMPACT in outcome.expected_outcome
+    without_impact = _keyed_open_task_decision()
+    for outcome in without_impact.evidence.outcomes:
+        assert TASK_DECISION_IMPACT not in outcome.expected_outcome
+
+
+def test_the_task_decision_cites_the_escalation_record_it_was_raised_from():
+    decision = _optionless_open_task_decision()
+
+    assert [(r.kind, r.target, r.label) for r in decision.evidence.refs] == [
+        ("decision", decision.id,
+         "the escalation record this decision was raised from"),
+    ]
+
+
+def test_a_cross_referenced_question_cites_the_record_it_duplicates():
+    first, second = _cross_referenced_task_decisions()
+
+    assert [(r.kind, r.target, r.label) for r in second.evidence.refs] == [
+        ("decision", second.id,
+         "the escalation record this decision was raised from"),
+        ("decision", first.id,
+         "the same question raised again and cross-referenced by the queue"),
+    ]
+    assert [(r.kind, r.target, r.label) for r in first.evidence.refs] == [
+        ("decision", first.id,
+         "the escalation record this decision was raised from"),
+        ("decision", second.id,
+         "the same question raised again and cross-referenced by the queue"),
+    ]
+
+
+def test_the_resolved_record_cites_the_answer_and_where_it_came_from():
+    """The audit trail the answer left, which is what a resolved card holds."""
+    decision = _resolved_task_decision()
+
+    assert decision.status == "resolved"
+    assert [(r.kind, r.target, r.label) for r in decision.evidence.refs] == [
+        ("decision", decision.id,
+         "the escalation record this decision was raised from"),
+        ("decision", "skip", "the answer that was recorded"),
+        ("decision", "human", "where that answer came from"),
+    ]
+
+
+def test_an_open_record_cites_neither_an_answer_nor_its_source():
+    """PINS THE TWO GUARDS: an OPEN record carries both as the empty string.
+
+    Emitted unconditionally either ref would target nothing, which rule (c)
+    refuses — and that refusal would take the whole card down, not just the ref.
+    """
+    decision = _keyed_open_task_decision()
+
+    labels = [r.label for r in decision.evidence.refs]
+    assert "the answer that was recorded" not in labels
+    assert "where that answer came from" not in labels
+    assert labels == ["the escalation record this decision was raised from"]
+
+
+@pytest.mark.parametrize(
+    "make_decision",
+    [
+        _keyed_open_task_decision,
+        _defaultless_open_task_decision,
+        _optionless_open_task_decision,
+        _impact_task_decision,
+        _resolved_task_decision,
+    ],
+    ids=["keyed", "defaultless", "optionless", "impact", "resolved"],
+)
+def test_no_task_decision_ref_ever_points_at_nothing(make_decision):
+    decision = make_decision()
+
+    assert decision.evidence.refs
+    assert all(r.target.strip() for r in decision.evidence.refs)
+
+
+@pytest.mark.parametrize(
+    "make_decision",
+    [
+        _keyed_open_task_decision,
+        _defaultless_open_task_decision,
+        _optionless_open_task_decision,
+        _impact_task_decision,
+        _resolved_task_decision,
+    ],
+    ids=["keyed", "defaultless", "optionless", "impact", "resolved"],
+)
+def test_the_task_decision_triple_satisfies_its_own_options(make_decision):
+    """The options passed here are THE CARD'S OWN, or the wrong rule is tested.
+
+    Passing a hand-written list would check rule (g) against something the gate
+    never sees; passing ``[]`` would silently check rule (h) instead.
+    """
+    decision = make_decision()
+
+    assert evidence_triple_problems(
+        decision.evidence, options=decision.payload["options"]) == []
+
+
+@pytest.mark.parametrize(
+    "make_decision",
+    [
+        _keyed_open_task_decision,
+        _defaultless_open_task_decision,
+        _optionless_open_task_decision,
+        _impact_task_decision,
+        _resolved_task_decision,
+    ],
+    ids=["keyed", "defaultless", "optionless", "impact", "resolved"],
+)
+def test_the_task_decision_card_exports_the_present_status(make_decision):
+    wire = export_decision_json(make_decision())
+
+    assert wire["evidence_status"] == "present"
+    assert wire["evidence_status"] == DECISION_EVIDENCE_STATUS_PRESENT
+    assert wire["evidence_status"] != DECISION_EVIDENCE_STATUS_LEGACY
+
+
+def test_a_cross_referenced_pair_both_export_the_present_status():
+    for decision in _cross_referenced_task_decisions():
+        assert export_decision_json(decision)["evidence_status"] == "present"
+
+
+def test_a_task_decision_without_a_triple_is_refused():
+    """`task_decision` is ENFORCED from T002g, which closes the gate set."""
+    decision = _decision(
+        decision_id="td:task-1",
+        decision_type="task_decision",
+        evidence=None,
+        payload={"options": TASK_DECISION_OPTIONS},
+    )
+
+    with pytest.raises(DecisionEvidenceError) as excinfo:
+        enforce_decision_evidence([decision])
+
+    message = str(excinfo.value)
+    assert "td:task-1" in message
+    assert "task_decision" in message
     assert "evidence_refs is empty: a decision must cite at least one ref." in message
