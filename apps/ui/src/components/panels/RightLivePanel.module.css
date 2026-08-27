@@ -267,6 +267,25 @@
    below reads as "this one is being sent" and never as "answering is off". */
 .decisionAnswer:disabled { cursor: not-allowed; opacity: 0.55; }
 
+/* A REFUSED ANSWER IS TEXT, NOT A CONTROL (finding R-0693, DECISION F031 D22).
+   The write door `decision.resolve` answers exactly one of the eight producing
+   decision types, so decisionCard.ts stamps posts: false on every answer of the
+   other seven and this is what those render as. NO BUTTON CHROME ON PURPOSE —
+   no background, no border, no pointer cursor — because the chrome is precisely
+   what made the old affordance claim a send the door would refuse. The mono
+   face says it is a command, the muted colour says it is not the loudest thing
+   on the card, and user-select: all makes ONE click take the whole command,
+   which is the entire point of leaving it on screen. The same R-0661 rule as
+   the blocks around it applies — every value here resolves to a custom property
+   apps/ui/src/styles/tokens.css already defines. */
+.decisionAnswerText {
+  align-self: center;
+  font-family: var(--remedy-font-mono);
+  font-size: 12px;
+  color: var(--remedy-muted);
+  user-select: all;
+}
+
 /* What became of ONE sent answer (T5_F031 T003). The sentence is
    decisionOutcome.ts's; only the colour and the placement are this card's, and
    the three tones below are that module's closed union. flex-basis: 100% puts

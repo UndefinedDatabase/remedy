@@ -41,10 +41,21 @@
 // the shipped vitest config reaches, which this markup is not. ANSWERING IS NO
 // LONGER ABSENT ANYWHERE: `../../api/decisionAnswerFlow` mints the nonce, builds
 // the request, posts it and says what happened, all behind the one call
-// `answerDecisionCard` below makes on a click, so the buttons ship ENABLED and a
-// press really reaches `/api/jobs/<job_id>/commands`. This component owns only
-// WHICH answers are in flight, WHERE their sentences appear and WHAT COLOUR
-// each one takes.
+// `answerDecisionCard` below makes on a click.
+//
+// ONLY AN ANSWER WHOSE `posts` IS TRUE SHIPS AS A BUTTON, and for that answer
+// the press really does reach `/api/jobs/<job_id>/commands`. An answer whose
+// `posts` is false ships as PASTEABLE TEXT carrying the command instead, because
+// the write door `decision.resolve` would refuse it and an enabled control that
+// cannot post is the dishonest affordance finding R-0693 registered
+// (DECISION F031 D22). Remedy deliberately does NOT read a decision's `type` or
+// its `status` to decide which of the two it renders — a reader searching this
+// file for that comparison is searching for something this component refuses to
+// have. It projects `answer.posts`, a per-answer boolean `decisionCard.ts`
+// already derived from the endpoint's own `answerable_by_decision_resolve`, so
+// DECISION F031 D5's rule stands and the guard that pins it stays green. This
+// component owns only WHICH answers are in flight, WHERE their sentences appear
+// and WHAT COLOUR each one takes.
 import { Fragment, useState } from "react";
 import { countOpenDecisions } from "../../api/decisionCard";
 import type { DecisionCardModel } from "../../api/decisionCard";
@@ -257,19 +268,38 @@ export function DecisionInboxCard({ decisions, tasks, jobId, serverToken, onSele
                       : `${styles.decisionOutcome} ${DECISION_OUTCOME_CLASS[outcome.tone]}`;
                     return (
                       <Fragment key={answerKey}>
-                        <button
-                          type="button"
-                          className={styles.decisionAnswer}
-                          disabled={sendingKeys.has(answerKey)}
-                          onClick={async () => {
-                            setSendingKeys((sofar) => withAnswerKey(sofar, answerKey));
-                            const message = await answerDecisionCard(target, decision, answer.value);
-                            setSendingKeys((sofar) => withoutAnswerKey(sofar, answerKey));
-                            setOutcomes((sofar) => ({ ...sofar, [answerKey]: message }));
-                          }}
-                        >
-                          {answer.label}
-                        </button>
+                        {/* THE CHOICE IS MADE BEFORE THE BUTTON, NEVER AFTER IT.
+                            `posts` is the discriminator and the button is the
+                            FIRST arm on purpose: the guard in
+                            tests/ui_contracts/test_decision_answer_wiring.py
+                            reads everything between the LAST `</button>` and the
+                            outcome `<p` and rejects `?`, `&&` and `||` there
+                            (finding R-0690), so writing this ternary the other
+                            way round would put its `?` inside that region and
+                            fail a check about the live region for a reason that
+                            has nothing to do with one. A refused answer renders
+                            as TEXT rather than as a disabled control: a disabled
+                            button keeps the shape R-0693 called dishonest and is
+                            skipped by keyboard navigation, which would put the
+                            command out of reach of the operators most likely to
+                            want to paste it (DECISION F031 D22). */}
+                        {answer.posts ? (
+                          <button
+                            type="button"
+                            className={styles.decisionAnswer}
+                            disabled={sendingKeys.has(answerKey)}
+                            onClick={async () => {
+                              setSendingKeys((sofar) => withAnswerKey(sofar, answerKey));
+                              const message = await answerDecisionCard(target, decision, answer.value);
+                              setSendingKeys((sofar) => withoutAnswerKey(sofar, answerKey));
+                              setOutcomes((sofar) => ({ ...sofar, [answerKey]: message }));
+                            }}
+                          >
+                            {answer.label}
+                          </button>
+                        ) : (
+                          <code className={styles.decisionAnswerText}>{answer.value}</code>
+                        )}
                         {/* It ANNOUNCES itself, which is why the paragraph is
                             rendered EMPTY from this row's first render and
                             filled in later: a screen reader registers a live

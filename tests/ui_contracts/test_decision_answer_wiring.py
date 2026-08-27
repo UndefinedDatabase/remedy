@@ -60,6 +60,20 @@ def decision_outcome_css_rules(css: str) -> str:
     return "\n".join(rules)
 
 
+def css_rule_body(css: str, selector: str) -> str:
+    """The BODY of the one rule whose selector is exactly `selector`, comments
+    already gone. Scoped for the same reason `decision_outcome_css_rules` is: a
+    whole-file sweep would read a neighbouring block's declarations as this
+    rule's, and the point of asking for this class is that it has declarations
+    of its OWN. The empty string when no such rule exists, which is what an
+    absent class looks like to a stylesheet and therefore to a browser."""
+    for chunk in strip_ts_comments(css).split("}"):
+        head, brace, body = chunk.partition("{")
+        if brace and head.strip().rpartition("\n")[2].strip() == selector:
+            return body
+    return ""
+
+
 def ts_function_body(code: str, name: str) -> str:
     """The BODY of one top-level `function <name>(...) { ... }`, comments already
     gone. Scoped on purpose (finding R-0689): "only its own key" is implemented
@@ -400,3 +414,76 @@ class TestTheFlowHeaderNamesItsCard:
             "the sentence being fixed IS a comment, so this one reads the RAW "
             "text: stripping would delete the very evidence"
         )
+
+
+class TestARefusedAnswerIsTextRatherThanAButton:
+    """Finding R-0693, DECISION F031 D22. The write door answers exactly one of
+    the eight producing decision types, so an enabled button on the other seven
+    claims a send that would be refused. The model stamps `posts` per answer and
+    this component projects it; without the guards below the text branch is
+    UNGUARDED — the existing R-0686 region reader forbids the wrong ORDER but
+    never requires the right RENDER, so a component that simply kept posting
+    buttons everywhere would leave every assertion above green."""
+
+    def test_the_card_discriminates_on_the_per_answer_posts_flag(self):
+        code = strip_ts_comments(CARD.read_text())
+        assert "answer.posts ?" in code, (
+            "the choice between a control and pasteable text is made from the "
+            "boolean decisionCard.ts derived, which is the only reading that "
+            "keeps DECISION F031 D5's rule out of markup no vitest reaches"
+        )
+
+    def test_a_refused_answer_renders_its_value_as_pasteable_text(self):
+        code = strip_ts_comments(CARD.read_text())
+        assert "<code className={styles.decisionAnswerText}>{answer.value}</code>" in code, (
+            "the command must stay ON SCREEN and carry the answer's own value: "
+            "hiding a refused answer would lose the question, which is the one "
+            "thing this inbox exists not to do"
+        )
+
+    def test_the_conditional_sits_before_the_button_and_never_after_it(self):
+        code = strip_ts_comments(CARD.read_text())
+        choice = code.index("answer.posts ?")
+        live = code.rindex('aria-live="polite"')
+        tag = code.rindex("<", 0, live)
+        closing = code.rindex("</button>", 0, tag)
+        assert choice < closing, (
+            "the button is the ternary's TRUE arm, so the `?` lands before the "
+            "button's closing tag rather than inside the region the reader "
+            "below sweeps; the other order fails a live-region check for a "
+            "reason that has nothing to do with the live region"
+        )
+
+    def test_the_region_after_the_button_still_carries_no_conditional_operator(self):
+        region = jsx_between_answer_button_and_live_paragraph(
+            strip_ts_comments(CARD.read_text())
+        )
+        for operator in ("?", "&&", "||"):
+            assert operator not in region, (
+                f"{operator} survives between the last </button> and the "
+                "outcome paragraph, so the text branch was written in the order "
+                "R-0690 forbids and the live region is gated again"
+            )
+
+    def test_the_pasteable_text_class_really_has_a_rule_in_the_stylesheet(self):
+        body = css_rule_body(CARD_CSS.read_text(), ".decisionAnswerText")
+        assert body.strip(), (
+            "a className with no rule behind it renders the command with the "
+            "browser's default `code` styling and none of this card's"
+        )
+        assert "user-select: all" in body, (
+            "one click must select the whole command — pasteable is the point "
+            "of the affordance, not a description of it"
+        )
+        assert "var(--remedy-font-mono)" in body, (
+            "it is a command, and it says so in the mono face this repository "
+            "already defines rather than in a font this rule invents"
+        )
+
+    def test_the_pasteable_text_is_not_dressed_as_a_control(self):
+        body = css_rule_body(CARD_CSS.read_text(), ".decisionAnswerText")
+        for forbidden in ("cursor: pointer", "background:", "border:"):
+            assert forbidden not in body, (
+                f"{forbidden} gives the text button chrome, and the chrome is "
+                "exactly what made the refused affordance lie (R-0693)"
+            )
