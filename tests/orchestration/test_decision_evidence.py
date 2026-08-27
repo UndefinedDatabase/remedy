@@ -413,3 +413,46 @@ def test_a_needs_review_memory_card_raises_a_memory_review_decision(monkeypatch)
     decisions = _memory_review_decisions(monkeypatch, entry)
 
     assert [d.id for d in decisions] == ["mem:api-contract"]
+
+
+# ---------------------------------------------------------------------------
+# R-0711 — the card states WHY it is in the inbox, not whether it is valid
+# ---------------------------------------------------------------------------
+
+
+def test_a_stale_only_card_reads_as_stale(monkeypatch):
+    entry = MemoryEntry(key="deploy-target", validity="stale")
+    decisions = _memory_review_decisions(monkeypatch, entry)
+
+    assert [d.safe_summary for d in decisions] == [
+        "Memory 'deploy-target' is stale."
+    ]
+
+
+def test_a_flagged_only_card_reads_as_flagged_and_never_as_active(monkeypatch):
+    """The half R-0710 surfaced, rendering the one fact that explains nothing.
+
+    ``review_status`` and ``validity`` are independent fields, so a card flagged
+    for review normally still carries ``validity`` ``active``.  A summary built
+    from the validity therefore told the human that a card raised FOR REVIEW is
+    active -- true, and silent about why anyone should look at it.
+    """
+    entry = MemoryEntry(key="api-contract", review_status="needs_review")
+    assert entry.validity == "active"
+
+    decisions = _memory_review_decisions(monkeypatch, entry)
+
+    assert [d.safe_summary for d in decisions] == [
+        "Memory 'api-contract' is flagged for review."
+    ]
+    assert "active" not in decisions[0].safe_summary
+
+
+def test_a_stale_and_flagged_card_names_both_reasons(monkeypatch):
+    entry = MemoryEntry(
+        key="db-dsn", validity="stale", review_status="needs_review")
+    decisions = _memory_review_decisions(monkeypatch, entry)
+
+    assert [d.safe_summary for d in decisions] == [
+        "Memory 'db-dsn' is stale and flagged for review."
+    ]
