@@ -97,6 +97,29 @@ def list_decisions(
         intents = list_patch_intents(job)
         for pi in intents:
             if pi.get("state") == APPROVAL_PENDING:
+                # F032 T002c: the richest evidence in the queue was the least
+                # cited — the intent this card is about and the file it would
+                # change are BOTH already on the record the branch reads, so the
+                # receipts are taken from `pi` rather than derived afresh.  The
+                # intent id is built by `list_patch_intents` from the artifact's
+                # short id and the explanation's index, so it is never empty and
+                # the branch already indexes it unguarded above.  The target
+                # path is OPTIONAL — `related_file` on this same card already
+                # defaults it to the empty string — and rule (c) of
+                # `evidence_triple_problems` refuses a ref that points at
+                # nothing, so that ref is emitted only when the value is there.
+                _pa_target_path = str(pi.get("target_path", "") or "")
+                _pa_refs = [DecisionEvidenceRef(
+                    kind="decision",
+                    target=pi["intent_id"],
+                    label="the patch intent awaiting approval",
+                )]
+                if _pa_target_path:
+                    _pa_refs.append(DecisionEvidenceRef(
+                        kind="file",
+                        target=_pa_target_path,
+                        label="the file this patch would change",
+                    ))
                 decisions.append(HumanDecision(
                     id=f"pa:{pi['intent_id']}",
                     type="patch_approval",
@@ -113,6 +136,38 @@ def list_decisions(
                     ),
                     created_at=pi.get("created_at", ""),
                     resolved_at=None,
+                    # NO `payload` IS ADDED HERE, deliberately.  This branch's
+                    # `next_actions` are two full `remedy patch` command lines
+                    # rather than two option words, so growing an options list
+                    # would change what the browser renders as answers —
+                    # `apps/ui/src/api/decisionCard.ts::decisionAnswers` prefers
+                    # `payload.options` over `next_actions` — and amendment A3
+                    # of `docs/roadmap/features/T5_F032.md` puts that OUT of
+                    # F032's scope.  DECISION F032 D6 moved the budget stop's
+                    # options only because its `next_actions` were ALREADY the
+                    # two option words, so nothing new was grown there.  The
+                    # optionless case of DECISION F032 D3 therefore applies and
+                    # rule (h) requires EXACTLY ONE outcome, keyed
+                    # `UNKEYED_OPTION`.
+                    evidence=DecisionEvidenceTriple(
+                        refs=tuple(_pa_refs),
+                        outcomes=(DecisionOptionOutcome(
+                            option=UNKEYED_OPTION,
+                            expected_outcome=(
+                                "The named file's pending change is settled "
+                                "either way: approving applies the patch and "
+                                "unblocks the task that produced it, while "
+                                "rejecting leaves the working tree untouched."
+                            ),
+                            downside=(
+                                "The judgement is made from the intent's "
+                                "summary and target path rather than from the "
+                                "applied diff, so a patch that is wrong in a "
+                                "way the summary does not reveal is approved "
+                                "as easily as a correct one."
+                            ),
+                        ),),
+                    ),
                 ))
     except (ImportError, ValueError, OSError, AttributeError):
         pass

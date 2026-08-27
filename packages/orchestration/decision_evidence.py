@@ -115,7 +115,9 @@ DECISION_EVIDENCE_STATUS_LEGACY = "recorded_before_evidence_requirements"
 #: gate can fire on a regression and never on a card nobody has upgraded yet.
 #: When all eight types are in the set the gate is fully live and this constant
 #: has become a formality, which is when it can be deleted.
-TRIPLE_REQUIRED_TYPES: frozenset[str] = frozenset({"token_budget", "test_failure"})
+TRIPLE_REQUIRED_TYPES: frozenset[str] = frozenset({
+    "token_budget", "test_failure", "patch_approval",
+})
 
 
 # One checkable reference behind a decision: WHAT kind of thing, WHICH one, and
