@@ -494,6 +494,102 @@ class TestCommandChannelDoor:
             control_root_path=self.tmp_path / "control") == {"status": 200,
                                                              "body": body}
 
+    # -- D.7: the `fp:` branch DECISION F031 D24 rules ----------------------
+
+    def _save_flight_plan(self, approval: str) -> None:
+        """Give the stored job a flight plan in one approval state.
+
+        The door re-loads the job from storage on every request, so the state
+        the dispatch reads is the one written here rather than the one this
+        test holds in memory.
+        """
+        from packages.orchestration.storage import save_job
+
+        self.job.flight_plan = {"_approval": approval}
+        save_job(self.job)
+
+    def _resolve_flight_plan(self, port, token, nonce, answer):
+        return self._request(
+            port, "POST", self._commands_path(),
+            body=self._valid_body(
+                command="decision.resolve", client_nonce=nonce,
+                args={"decision_id": "fp:approval", "answer": answer}),
+            headers=self._auth_headers(token))
+
+    def test_an_fp_approval_answered_approve_is_accepted(self):
+        """DECISION F031 D24's first accepted word, answered by the door itself.
+
+        The body is asserted as a SET rather than key by key: the three keys the
+        task-decision path returns are the three this path must return too, and
+        a fourth key added here would be a vocabulary the browser never agreed
+        to. `decision_id` echoes the id the client sent, because the flight
+        plan mints no record of its own to read one back from.
+        """
+        self._save_flight_plan("pending")
+        port, token = self._start_server()
+        status, body = self._resolve_flight_plan(port, token, "nonce-fp-approve",
+                                                 "approve")
+
+        assert status == 200, body
+        assert sorted(body) == ["command", "decision_id", "outcome"], body
+        assert body["command"] == "decision.resolve", body
+        assert body["outcome"] == "accepted", body
+        assert body["decision_id"] == "fp:approval", body
+
+    def test_an_fp_approval_answered_reject_is_accepted(self):
+        """The second word, and the reason strict equality is against a PAIR.
+
+        A rejection is an ANSWER, not a refusal: the door accepts it 200 and
+        `resolve_flight_plan_approval` writes `rejected`. A guard that only
+        pinned `approve` would let a later edit drop `reject` and leave the
+        inbox offering a button the door answers 409.
+        """
+        self._save_flight_plan("pending")
+        port, token = self._start_server()
+        status, body = self._resolve_flight_plan(port, token, "nonce-fp-reject",
+                                                 "reject")
+
+        assert status == 200, body
+        assert sorted(body) == ["command", "decision_id", "outcome"], body
+        assert body["outcome"] == "accepted", body
+        assert body["decision_id"] == "fp:approval", body
+
+    def test_an_fp_approval_on_a_plan_that_is_not_pending_is_409(self):
+        """The first of the door's two refusals: the plan is already decided.
+
+        Answering an approved plan again would overwrite a decision an operator
+        already made, so it takes the SAME 409 and `rejected_state` the
+        task-decision path gives a record that is no longer open.
+        """
+        self._save_flight_plan("approved")
+        port, token = self._start_server()
+        status, body = self._resolve_flight_plan(port, token, "nonce-fp-settled",
+                                                 "approve")
+
+        assert status == 409, body
+        assert body["error"] == "decision is not open", body
+        assert self._audit_records()[-1]["outcome"] == "rejected_state"
+
+    def test_an_fp_approval_answered_with_a_next_action_string_is_409(self):
+        """The second refusal, pinning shut the exact bug finding R-0693 measured.
+
+        Before the pending card carried `payload.options`, `decisionAnswers`
+        fell back to `next_actions` and the browser posted the WHOLE CLI line as
+        the answer. Strict equality against `approve` and `reject` refuses that,
+        and this test uses the literal string R-0693 measured rather than an
+        invented one, so what it pins is the bug that really happened.
+        """
+        self._save_flight_plan("pending")
+        port, token = self._start_server()
+        status, body = self._resolve_flight_plan(
+            port, token, "nonce-fp-nextaction",
+            f"remedy decision resolve {self.job_id[:8]} fp:approval "
+            f"--reason approve")
+
+        assert status == 409, body
+        assert body["error"] == "decision is not open", body
+        assert self._audit_records()[-1]["outcome"] == "rejected_state"
+
     def test_an_exposed_id_with_no_dispatch_branch_is_the_501_guard(self, monkeypatch):
         """DECISION F009 D22's guard, and the only test that reaches it.
 

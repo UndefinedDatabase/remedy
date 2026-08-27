@@ -141,3 +141,95 @@ class TestJobStopDispatchEffects:
         assert status == 500, body
         assert "containment" not in json.dumps(body), "the exception text reached the wire"
         assert self._audit_outcomes() == ["rejected_effect"]
+
+
+class TestFlightPlanApprovalDispatchEffects:
+    """What an accepted `fp:` decision DID, read off disk (DECISION F031 D24).
+
+    Its sibling `test_command_channel.py` pins what the door ANSWERS for the
+    same requests. This class exists because a 200 proves only that the door
+    chose a status: whether `resolve_flight_plan_approval` ran, and how many
+    times the answer was persisted, is visible nowhere on the wire.
+    """
+
+    @pytest.fixture(autouse=True)
+    def _setup_pending_plan(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from packages.orchestration.storage import save_job
+        self.job = _make_job()
+        self.job.flight_plan = {"_approval": "pending"}
+        save_job(self.job)
+        self.job_id = str(self.job.id)
+        self.tmp_path = tmp_path
+
+    def _start_server(self):
+        import secrets
+
+        from packages.orchestration.ui_server import start_ui_server
+
+        info_file = str(self.tmp_path / "server_info.json")
+        token = secrets.token_urlsafe(16)
+
+        def run():
+            try:
+                start_ui_server(self.job_id, host="127.0.0.1", port=0, token=token,
+                                open_browser=False, info_file=info_file)
+            except (SystemExit, KeyboardInterrupt):
+                pass
+
+        threading.Thread(target=run, daemon=True).start()
+        for _ in range(50):
+            if Path(info_file).exists():
+                return json.loads(Path(info_file).read_text())["port"], token
+            time.sleep(0.1)
+        pytest.fail("Server did not start in time")
+
+    def _approve(self, port, token, nonce):
+        payload = {"command": "decision.resolve", "client_nonce": nonce,
+                   "args": {"decision_id": "fp:approval", "answer": "approve"}}
+        conn = HTTPConnection("127.0.0.1", port, timeout=10)
+        try:
+            conn.request("POST", f"/api/jobs/{self.job_id}/commands",
+                         body=json.dumps(payload),
+                         headers={"Authorization": f"Bearer {token}",
+                                  CSRF_HEADER: token,
+                                  "Content-Type": "application/json"})
+            resp = conn.getresponse()
+            return resp.status, json.loads(resp.read())
+        finally:
+            conn.close()
+
+    def test_an_accepted_fp_approval_really_resolved_the_plan(self):
+        """The effect ran: the plan is `approved` in a job RELOADED from storage."""
+        from packages.orchestration.storage import load_job
+
+        port, token = self._start_server()
+        status, body = self._approve(port, token, "nonce-fp-effect")
+
+        assert status == 200, body
+        reloaded = load_job(self.job.id)
+        assert reloaded.flight_plan["_approval"] == "approved", reloaded.flight_plan
+
+    def test_the_accepted_fp_approval_saves_the_job_exactly_once(self, monkeypatch):
+        """The only guard on the door's DELIBERATE omission of its own `save_job`.
+
+        `resolve_flight_plan_approval` saves on both of its arms, so the door
+        does not save again — and a reader who finds that absence surprising is
+        one edit away from "fixing" it into a double write. Counting the calls
+        is what makes the omission a decision rather than an oversight.
+        """
+        from packages.orchestration import storage
+
+        real_save_job = storage.save_job
+        saves = []
+
+        def counting_save_job(job, *args, **kwargs):
+            saves.append(str(job.id))
+            return real_save_job(job, *args, **kwargs)
+
+        port, token = self._start_server()
+        monkeypatch.setattr(storage, "save_job", counting_save_job)
+        status, body = self._approve(port, token, "nonce-fp-save-once")
+
+        assert status == 200, body
+        assert saves == [self.job_id], saves
