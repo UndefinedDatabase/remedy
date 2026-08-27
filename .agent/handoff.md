@@ -1,52 +1,26 @@
-# Handback — F031 CLOSURE 2 OF 3 — HALTED BY `.agent/STOP`
-Feature F031 decision inbox, closure round 2 of 3. Branch `feature/f031-decision-inbox`. Round base `44fd8df9`.
-THE ROUND DID NOT RUN. `.agent/STOP` EXISTS ON DISK and was read there before C0a, the first of the two readings constraint 8 orders. Constraint 8 and `docs/agents/self_drive_protocol.md` G6 both halt the round at that reading, so C0a, C0b, C1 and C2 were never made, the evidence job was never run and the review zip was never built.
-NO COMMIT WAS IN HAND when the sentinel was read — the round had made none. The only commit on this branch beyond the base is the handback commit itself.
-NO FINDING MOVED IN EITHER DIRECTION: none registered, none resolved. Open findings 251, unchanged from the base, and `.agent/live_review.md` was not touched. NOTHING UNDER `apps/`, `packages/`, `tests/` OR `docs/` CHANGED, and neither did `.agent/plan.md`, `.agent/last_block.md`, `.agent/authored/` or `.agent/decisions.md`.
-THE SENTINEL WAS NOT CREATED BY ME AND WAS NOT DELETED. It is a 0-byte untracked file at `.agent/STOP`, mtime 2026-08-27 10:35:37 — 7 minutes AFTER the base commit `44fd8df9` was written at 10:28:22 — the newest entry in `.agent/`, not matched by `.gitignore`, and never present in git history.
-## Range
-Review of 44fd8df9..HEAD.
-## Commits
-### C3 docs(agent): halt the F031 closure 2 round at the STOP sentinel (this commit — R-0149 self-reference)
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/handoff.md | rewrite | the only write of this round; a handback cannot table the commit that writes it |
-## Item status
-| Item | Status | Reason |
-|---|---|---|
-| C0a save this block | skipped | `.agent/STOP` present at the ordered pre-C0a reading |
-| C0b mirror into last_block | skipped | same |
-| C1 the plan | skipped | same |
-| C2 the CLOSURE 1 verdict | skipped | same |
-| EVIDENCE JOB | skipped | ordered after C2; the round halted before C0a. No bundle exists |
-| REVIEW ZIP | skipped | ordered after the evidence job; never attempted. No package exists |
-| C3 the handback | done | the one thing constraint 8 orders on a STOP |
-| push | done | G14; the block keeps its reading out of this file |
-## External actions
-`git push origin feature/f031-decision-inbox` — run after C3; G14 orders its exit code and the resulting remote tip kept out of this file and reported to the reviewer instead. NO worktree created, removed or pruned. No branch created or deleted. No `gh` command run and no PR action taken. No evidence bundle written. No review zip built.
-## Verification
-G1 RED — branch `feature/f031-decision-inbox` CORRECT. `.agent/STOP` read from disk at BOTH ordered points, before C0a and again before C3: PRESENT at both, unchanged at 0 bytes and mtime 10:35:37. The first reading is the halt. `git status --porcelain` 1 line, `?? .agent/STOP`, and that untracked sentinel is the whole of it; `git check-ignore -v .agent/STOP` exits 1, so it is not ignored, and I may not delete it — a 0-line reading is unreachable this round. The per-commit 0-line readings ordered after C0a, C0b, C1 and C2 have no subject, and neither does the pre-zip reading.
-G2 NOT RUN — no C0a, C0b or C2 blob exists to compare. `.remedy-wt/f031-r68.md` was READ (442 lines, 30862 bytes) but deliberately NOT copied to `.agent/authored/f031-r68.md`: that copy IS C0a.
-G3 NOT RUN — no committed C0a blob to extract slices from.
-G4 NOT RUN — `.agent/plan.md` untouched; PLANF031R68 was not applied.
-G5 NOT RUN — `.agent/live_review.md` untouched; LEDGER68 was not applied.
-G6 NOT RUN — no C2, so the ledger sets have no before/after pair; they stand at the base reading.
-G7 NOT RUN — the full suite is closure precondition 2 and the block orders it at C2; C2 does not exist. No frontend warm-up was performed either.
-G8 NOT RUN — the integrity gate is closure precondition 3; not reached.
-G9 NOT RUN — EVIDENCESCRIPT was not written to `.remedy-wt/f031_evidence.py` and no evidence bundle exists.
-G10 NOT RUN — no review zip was built. This is not a failed build; it is a build never attempted, because the round halted four commits earlier.
-G11 NOT RUN — no `44fd8df9..C2` range exists.
-G12 NOT RUN — the Open PR Gate read is ordered before C3 in a round that reached C3 only by halting; no `gh` command was issued.
-G13 NOT RUN — C1 and C2 landed no sentence, so no sentence of theirs could go stale.
-G14 — ordered after C3 and run; its own text keeps its reading out of this file.
-## Closure values
-NONE EXIST. The evidence job id, the package FILENAME, the package SHA-256, the PACKAGE_STATUS and the manifest `committed_review_subject.head_commit` are ALL ABSENT, because neither artifact was built. CLOSURE 3 CANNOT BE AUTHORED until a CLOSURE 2 round actually runs. Constraint 7 is NOT triggered: no build failed and no package reported a status other than `READY_FOR_REVIEW`, because no build was attempted.
-## Authored-text proofs
-None applied. No slice of `.remedy-wt/f031-r68.md` — PLANF031R68, LEDGER68 or EVIDENCESCRIPT — reached any file, and `.agent/authored/f031-r68.md` does not exist.
-## Deviations & assumptions
-THE ORDERED SEQUENCE WAS NOT FOLLOWED. C0a, C0b, C1, C2, the evidence job and the zip were all DROPPED and C3 was made alone. That departure is the STOP procedure itself — constraint 8, plus self_drive_protocol.md G6 and Phase 1 rule 1 — and not a judgement of mine. Constraint 13's stated next action, CLOSURE 3 OF 3, is likewise superseded: it presumed this round produced the three closure values, and it did not.
-`.agent/plan.md` WAS NOT UPDATED WITH THE BLOCKER, a departure from AGENTS.md If-Blocked item 2. Reason: constraint 4 pins plan.md to its CLOSURE 1 text until C1, PLANF031R68 is the only replacement the reviewer authored for that file, and constraint 5 forbids me substituting my own text on a file this block governs. The blocker is recorded here instead. The reviewer should rule on this.
-NO DEFECT WAS FOUND AND NONE IS ALLEGED. I do not know why the sentinel was placed and did not guess; I report only that it is there, that it is empty and untracked, and when it was written.
-The Bundle orders FIVE commits, which is not more than five, so the AGENTS.md handoff rule gives this file a 60-line cap. No DECISION D15 declaration is made or needed.
-## Next
-Phase 1 rule 1 of `docs/agents/self_drive_protocol.md` — re-read `.agent/STOP` from disk. While it exists, no round is authored and no work is done. Once the operator removes it, the next expected action is CLOSURE 2 OF 3 again, unchanged: the feature-scoped evidence bundle, then the FRESH review zip from a clean tree at the reviewed head. Both are still unbuilt, and only after they exist can CLOSURE 3 OF 3 be authored. No round number is given to either: §3 item 35 forbids numbering a round that has not begun.
+# Handoff — F031 Decision inbox — SESSION TERMINATED BY `.agent/STOP`
+Branch `feature/f031-decision-inbox`, tip `9460ece6`, pushed. Tree clean apart from the untracked sentinel itself.
+THE SENTINEL IS REAL AND WAS VERIFIED BY THE REVIEWER, NOT TAKEN ON REPORT: `.agent/STOP` is a 0-byte untracked file, not matched by `.gitignore`, never present in git history, mtime 2026-08-27 10:35:37 — SEVEN MINUTES AFTER the CLOSURE 1 handback `44fd8df9` was committed at 10:28:22. It therefore appeared MID-SESSION, after Phase 0 had already read its absence. Neither the reviewer nor any worker created it; none deleted it. It is still there.
+THIS FILE REPLACES A ROUND HANDBACK WITH THE SESSION'S OWN STATE. The halted round's handback at `9460ece6` is correct about that round and is preserved in git history; what it could not carry is the session-level fact below, because a worker executes one round and cannot see a verdict the reviewer never wrote to disk.
+## What this session did
+Two rounds were delegated. CLOSURE 1 OF 3 landed as `d84118b2`..`44fd8df9`. CLOSURE 2 OF 3 halted at its ordered pre-C0a reading of `.agent/STOP` and made only its handback commit.
+## THE UNRECORDED VERDICT — the first thing the next session must fix
+CLOSURE 1 OF 3 (`44fd8df9`) PASSED. The reviewer re-ran ALL EIGHT of its gates itself and reproduced every number: transport sha256 `a951f18adedb9a754696574a5040704118cd24f6577220405851f8a8956ea165` over 26203 bytes and 310 lines across the scratch file, C0a, C0b and the working copy, with C0a and C0b the SAME blob `b3f1bce99b0e`; extraction 3 slices at 45, 3 and 75, CONTENT 123, TOTAL 310, PROSE 187; the plan byte-equal to PLANF031R67 with `wc -l` 45; the ledger append 986008 + 1 + 5365 = 991374 with N 2 and units 395 to 397; the Built State append 11452 + 1 + 5163 = 16616 with N 5, units 24 to 29, `^## Built State$` 0 to 1 and `^## Design amendments` 4 at both points; the sets moving exactly twice, `^Gate: F\d+ R\d+ — ` 47 to 48 adding `F031 R66` and `^Done: R-\d+ — ` 16 to 17 adding `R-0693`, open 252 to 251; both path residues EMPTY; and all eight suites at their base counts — 42, 566 passed with 4 skipped, 489, 52, 21, 16, 295 and 30, every one a REAL exit 0.
+THAT VERDICT IS NOT ON DISK. `.agent/live_review.md` carries NO `Gate: F031 R67` entry, because the round that would have written it is the one that halted. THIS IS THE EXACT CLASS OF REGISTERED FINDING R-0659 — a halted round's unwritten verdict never inherited, leaving a passing round absent from an append-only record — so the NEXT reviewed round MUST write it before anything else. The text is already authored: the `LEDGER68` slice inside `.remedy-wt/f031-r68.md` is that entry verbatim and needs no rewriting.
+## Closure state — where F031 actually stands
+Preconditions of `docs/roadmap/STATUS_closure_protocol.md`, each checked by the reviewer at `44fd8df9`:
+1. MET. R-0693 — the only open High this feature raised — was resolved at CLOSURE 1 with its DECISION F031 D19 repair read on disk in all three parts. R-0495 and R-0574 remain open Highs but are INHERITED from the already-closed F085 and F086 and have ridden through six prior closures as documented risks, which is what `PASS_WITH_RISKS` records. Open set 251.
+2. MET, WITH A CONDITION THE NEXT ROUND MUST HONOUR. `python3 -m pytest -n auto -q` is GREEN at a REAL exit 0, 17817 passed and 20 skipped with ZERO `^FAILED` lines, reproducing the R65 integration gate — BUT ONLY WITH A WARM FRONTEND BUILD. See the candidate below.
+3. MET. `packages.orchestration.integrity_gate.run_integrity_checks()` returns all five checks PASS. The `remedy` CLI is denied in this session class, so the module is the route. REPORTED, NOT RELIED ON: open finding R-0648 records that `high_blockers_open` cannot parse this ledger and therefore always passes.
+4. MET. `docs/roadmap/features/T5_F031.md` gained its `## Built State` section at `de534027`.
+5. MET. Tree clean, branch pushed.
+NEITHER ARTIFACT EXISTS. There is no evidence bundle, no review zip, no package filename and no SHA-256, so the STATUS line cannot be authored: `.agent/authored/f031-r68.md`, `.remedy-wt/f031_evidence.py` and `.remedy-wt/f031_closure_evidence/` are all absent.
+## Closure candidate — carry to `.agent/candidates.md` in the closure commit
+A COLD `apps/ui/dist` TURNS THE FULL SUITE RED, AND NOTHING WARNS THE RUNNER. Found by the reviewer running closure precondition 2 at `44fd8df9`. With `apps/ui/dist` absent the run exits 1: `tests/ui_server/test_live_state.py::TestUIServerIntegration::test_api_invalid_token_403` fails `Failed: Server did not start in time` with captured stderr `React UI not built`, because the server's auto-build is still running when that test's 5-second wait expires — 1 failed, 17816 passed, 20 skipped. Re-run with `dist` present and newer than `apps/ui/src` the same suite is 17817 passed, 20 skipped at exit 0. The colour of closure precondition 2 therefore depends on a gitignored build directory no gate names. Source feature F031, 2026-08-27. NO R-ID IS SPENT: the closure protocol records findings raised during a closure review as CANDIDATES, and the next session's first reviewed round registers or resolves it.
+## Next session — in this order
+1. RE-READ `.agent/STOP` FROM DISK FIRST. It was PRESENT at every reading this session took after 10:35:37. While it exists, Phase 1 rule 1 binds: write the handoff and do nothing else. Only the operator removes it.
+2. The Open PR Gate per AGENTS.md. No PR was open at Phase 0 and none was created this session.
+3. Record the CLOSURE 1 verdict above, using the `LEDGER68` slice already authored in `.remedy-wt/f031-r68.md`.
+4. CLOSURE 2 OF 3 — the feature-scoped evidence bundle, then the FRESH review zip from a clean tree at the reviewed head. The block for it is written and validated at `.remedy-wt/f031-r68.md`, sha256 `6425dc4dd89418b41c1868c4a68c894dbb54c39b925f5a0dea90d05c24dabc60`, 30862 bytes, 442 lines, TOTAL 442 and PROSE 253 against the 490 and 400 caps; its G7 already carries the warm-dist condition and both measured colours. Its four scoped suites were measured clean at 35, 4, 41 and 7, node ids equal to selected, zero deselected, zero strings rejected by the packager's own `_unsafe_text`.
+5. CLOSURE 3 OF 3 — the STATUS line from the values CLOSURE 2 produces, the README capability sync in the SAME commit, the candidate above written to `.agent/candidates.md`, then the PR, which is NOT merged in the session that creates it.
+No round number is given to any of them: §3 item 35 forbids numbering a round that has not begun.
