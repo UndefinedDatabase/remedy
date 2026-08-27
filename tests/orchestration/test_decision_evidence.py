@@ -282,7 +282,7 @@ def test_the_shipped_required_type_set_holds_exactly_the_upgraded_producers():
     membership rather than to containment, so adding a type ahead of its
     producer's upgrade fails here first.
     """
-    assert TRIPLE_REQUIRED_TYPES == frozenset({"token_budget"})
+    assert TRIPLE_REQUIRED_TYPES == frozenset({"token_budget", "test_failure"})
 
 
 def test_an_unenforced_tripleless_decision_is_left_alone():
@@ -647,4 +647,164 @@ def test_a_token_budget_decision_without_a_triple_is_refused_by_the_gate():
     message = str(excinfo.value)
     assert "budget:regression" in message
     assert "token_budget" in message
+    assert "evidence_refs is empty: a decision must cite at least one ref." in message
+
+
+# ---------------------------------------------------------------------------
+# F032 T002b — the test-failure card, and R-0712, the key it reads
+#
+# These drive the REAL branch through `list_decisions` from the event the test
+# runner actually emits, for the same reason the budget tests above do: a
+# hand-built card would pass while the shipped producer stayed wrong.  R-0712
+# was exactly that failure — the branch read a key no producer writes and the
+# only guard over the card asserted that it APPEARED.
+# ---------------------------------------------------------------------------
+
+#: Neither half of the one unkeyed outcome varies with what the event carried,
+#: so both are written once and pinned wherever the outcome is asserted.
+TEST_FAILURE_EXPECTED_OUTCOME = (
+    "Reading the named run's output shows which assertion failed, so the "
+    "repair targets the real cause instead of a guess."
+)
+TEST_FAILURE_DOWNSIDE = (
+    "The job stays blocked while that output is read, and a failure caused by "
+    "the environment rather than by the change spends that time for nothing."
+)
+
+
+def _test_failure_decision(metadata: dict) -> HumanDecision:
+    """The card the real branch builds from one failed `test_run_completed`."""
+    events = [{
+        "event": "test_run_completed",
+        "timestamp": "2026-08-27T11:00:00Z",
+        "metadata": dict(metadata, status="failed"),
+    }]
+    decisions = [d for d in list_decisions(_StubJob(), events)
+                 if d.type == "test_failure"]
+    assert len(decisions) == 1
+    return decisions[0]
+
+
+def test_the_test_failure_card_names_the_command_its_emitter_writes():
+    """R-0712: `test_execution_service` writes `command_safe`, never `command`."""
+    decision = _test_failure_decision({
+        "command_safe": "pytest tests/orchestration -q",
+        "test_run_id": "run-abc-123",
+    })
+
+    assert decision.safe_summary == "Test 'pytest tests/orchestration -q' failed."
+
+
+def test_the_test_failure_card_still_reads_the_older_command_key():
+    """The fallback is not dead code: the inbox guard's own fixture writes it."""
+    decision = _test_failure_decision({
+        "command": "pytest -q",
+        "test_run_id": "run-def-456",
+    })
+
+    assert decision.safe_summary == "Test 'pytest -q' failed."
+
+
+def test_the_test_failure_card_reads_command_safe_first_never_command():
+    """THE R-0712 PIN: an event carrying BOTH keys must render the emitter's.
+
+    Every other test here would stay green if the branch went back to reading
+    `command` first, because no other event carries both keys.  This one is the
+    discriminator: it fails, and only it fails, on that exact regression.
+    """
+    decision = _test_failure_decision({
+        "command_safe": "pytest tests/orchestration/test_decision_evidence.py -q",
+        "command": "the key no producer writes",
+        "test_run_id": "run-ghi-789",
+    })
+
+    assert decision.safe_summary == (
+        "Test 'pytest tests/orchestration/test_decision_evidence.py -q' failed.")
+    assert "the key no producer writes" not in decision.safe_summary
+
+
+def test_a_test_failure_card_with_no_command_at_all_stays_honest():
+    """The placeholder is correct here and wrong everywhere else."""
+    decision = _test_failure_decision({"test_run_id": "run-jkl-012"})
+
+    assert decision.safe_summary == "Test '?' failed."
+
+
+def test_the_test_failure_card_cites_the_run_and_the_command():
+    decision = _test_failure_decision({
+        "command_safe": "pytest tests/orchestration -q",
+        "test_run_id": "run-abc-123",
+    })
+
+    assert [(r.kind, r.target) for r in decision.evidence.refs] == [
+        ("failure", "run-abc-123"),
+        ("failure", "pytest tests/orchestration -q"),
+    ]
+    assert [r.label for r in decision.evidence.refs] == [
+        "the test run that failed",
+        "the command that was run",
+    ]
+
+
+def test_the_test_failure_card_omits_the_command_ref_it_cannot_fill():
+    """A ref to the `?` placeholder would cite a question mark as a command."""
+    decision = _test_failure_decision({"test_run_id": "run-jkl-012"})
+
+    assert [(r.kind, r.target) for r in decision.evidence.refs] == [
+        ("failure", "run-jkl-012"),
+    ]
+
+
+def test_the_test_failure_card_cites_the_unknown_run_rather_than_nothing():
+    """The id's own default is honest; an empty target rule (c) would refuse."""
+    decision = _test_failure_decision({"command_safe": "pytest -q"})
+
+    assert decision.id == "tf:unknown"
+    assert [(r.kind, r.target) for r in decision.evidence.refs] == [
+        ("failure", "unknown"),
+        ("failure", "pytest -q"),
+    ]
+    assert [r for r in decision.evidence.refs if not r.target.strip()] == []
+
+
+def test_the_test_failure_card_carries_exactly_one_unkeyed_outcome():
+    """This branch offers no options, so DECISION F032 D3's rule (h) applies."""
+    decision = _test_failure_decision({
+        "command_safe": "pytest tests/orchestration -q",
+        "test_run_id": "run-abc-123",
+    })
+
+    assert decision.payload == {}
+    assert [(o.option, o.expected_outcome, o.downside)
+            for o in decision.evidence.outcomes] == [
+        (UNKEYED_OPTION, TEST_FAILURE_EXPECTED_OUTCOME, TEST_FAILURE_DOWNSIDE),
+    ]
+
+
+def test_the_test_failure_card_exports_the_present_status():
+    decision = _test_failure_decision({
+        "command_safe": "pytest tests/orchestration -q",
+        "test_run_id": "run-abc-123",
+    })
+    wire = export_decision_json(decision)
+
+    assert wire["evidence_status"] == "present"
+    assert wire["evidence_status"] == DECISION_EVIDENCE_STATUS_PRESENT
+    assert wire["evidence_status"] != DECISION_EVIDENCE_STATUS_LEGACY
+
+
+def test_a_test_failure_decision_without_a_triple_is_refused_by_the_gate():
+    """`test_failure` is ENFORCED from this round, so a dropped triple raises."""
+    decision = _decision(
+        decision_id="tf:regression",
+        decision_type="test_failure",
+        evidence=None,
+    )
+
+    with pytest.raises(DecisionEvidenceError) as excinfo:
+        enforce_decision_evidence([decision])
+
+    message = str(excinfo.value)
+    assert "tf:regression" in message
+    assert "test_failure" in message
     assert "evidence_refs is empty: a decision must cite at least one ref." in message
