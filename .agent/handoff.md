@@ -1,81 +1,83 @@
-# Handback — F032 R11 (T002f: the flight plan, both arms, and the ruling they need)
+# Handback — F032 R12 (T002g: the last producer, and the gate goes fully live)
 
 ## Session
 
-SESSION 3 of feature F032 · round R11 · rounds so far 11
+SESSION 3 of feature F032 · round R12 · rounds so far 12
 
 Session 1 was R1 through R5, session 2 was R6 through R9, and session 3 began at
-R10 and continues here at R11. Eleven rounds across three sessions is inside the
+R10 and continues here at R12. Twelve rounds across three sessions is inside the
 soft limit of 25 rounds or 7 sessions, so no limit report is owed.
 
 ## State
 
-- Feature: F032, approval with the evidence triple. Round R11, task slice T002f.
-- Branch: `feature/f032-evidence-triple`, round base `91b00286` (the commit that
-  handed back R10), as constraint 12 names.
-- Commits this round: `cd88a6c6`, `7b4c3c65`, `1bed03cc`, `44c9668c`, `09f0ebaf`,
-  `8b115a64`, `0d027074`, plus this handback commit.
+- Feature: F032, approval with the evidence triple. Round R12, task slice T002g.
+- Branch: `feature/f032-evidence-triple`, round base `da6b64fc` (the commit that
+  handed back R11), as constraint 12 names.
+- Commits this round: `9857f7ee`, `7f1ca6f6`, `868a26a7`, `c9616a88`, `6439bc5b`,
+  `a83abda3`, plus this handback commit.
+- **T002 IS COMPLETE.** `task_decision` was the eighth and last producing type,
+  and it joined `TRIPLE_REQUIRED_TYPES` in C3, the same commit that gave its
+  producer a real triple.
+- **THE EMIT GATE IS FULLY LIVE OVER ALL EIGHT PRODUCING TYPES**: `token_budget`,
+  `test_failure`, `patch_approval`, `stop_reason`, `repo_dirty`, `memory_review`,
+  `flight_plan_approval` and `task_decision`. Measured, not asserted: every
+  member of `PRODUCING_DECISION_TYPES` in
+  `tests/orchestration/test_decision_inbox.py` is in the set, and the residue is
+  the empty list. That is the end condition the constant documented for itself.
+- The constant is NOT deleted, and C3 states why in its own comment: the two
+  types in `DECISION_TYPES` with NO producer at all — `worker_approval` and
+  `revert_missing`, per DECISION F031 D3 — are why a set is still needed rather
+  than an unconditional check, and two tests depend on `revert_missing` staying
+  outside it.
 - Open findings after C2: 250 (274 registered ids minus 24 resolved). Maximum id
-  `R-0713`. C2 registers no id and resolves none — it books the R10 gate verdict
-  and one prose-slip line.
-- SEVEN of the eight producing types are now enforced: `token_budget`,
-  `test_failure`, `patch_approval`, `stop_reason`, `repo_dirty`, `memory_review`
-  and `flight_plan_approval`. Only `task_decision` remains.
-- DECISION F032 D7 is on disk at C3; it is the authority for the resolved arm's
-  triple and for the gate keeping its type-only selection.
+  `R-0713`. C2 registers no id and resolves none — it books the R11 gate verdict.
 - No pull request was created and nothing was merged.
 
 ## Range
 
-Review of `91b00286`..HEAD.
+Review of `da6b64fc`..HEAD.
 
 ## Commits
 
-Every `+/-` below is read from `git diff --numstat <sha>~1 <sha>`. The same
-reading produces the insertion counts reported under G8; both were derived from
-one `git diff --numstat` pass, compared cell by cell, and they agree.
+Every `+/-` below is read from `git diff --numstat <sha>^ <sha>`. The insertion
+counts reported under G8 come from that same single pass; the two were compared
+cell by cell and they AGREE.
 
-### cd88a6c6 docs(agent): save the F032 R11 step block
+### 9857f7ee docs(agent): save the F032 R12 step block
 | Path | +/- | Reason |
 |------|-----|--------|
-| .agent/authored/f032-r11.md | +415 / -0 | C0a — byte-preserving copy of `.remedy-wt/f032-r11.md` |
+| .agent/authored/f032-r12.md | +357 / -0 | C0a — byte-preserving copy of `.remedy-wt/f032-r12.md` |
 
-### 7b4c3c65 docs(agent): mirror the R11 block into last_block
+### 7f1ca6f6 docs(agent): mirror the R12 block into last_block
 | Path | +/- | Reason |
 |------|-----|--------|
-| .agent/last_block.md | +301 / -218 | C0b — same bytes as C0a; git resolves both to blob `9f8f4292` |
+| .agent/last_block.md | +244 / -302 | C0b — same bytes as C0a; git resolves both to blob `be1d3fe9` |
 
-### 1bed03cc docs(agent): set the plan to the R11 round
+### 868a26a7 docs(agent): set the plan to the R12 round
 | Path | +/- | Reason |
 |------|-----|--------|
-| .agent/plan.md | +23 / -23 | C1 — the PLANF032R11 slice, applied byte for byte |
+| .agent/plan.md | +25 / -24 | C1 — the PLANF032R12 slice, applied byte for byte |
 
-### 44c9668c docs(agent): book the R10 verdict and record one prose slip
+### c9616a88 docs(agent): book the R11 verdict for both flight-plan arms
 | Path | +/- | Reason |
 |------|-----|--------|
-| .agent/live_review.md | +2 / -0 | C2 — the LEDGER11 slice appended; the only commit touching the ledger |
-| .agent/prose_slips.md | +6 / -0 | C2 — the SLIP11 slice appended; the only commit touching the slip file |
+| .agent/live_review.md | +2 / -0 | C2 — the LEDGER12 slice appended; the only commit touching the ledger |
 
-### 09f0ebaf docs(agent): record DECISION F032 D7 on the resolved arm triple
+### 6439bc5b feat(orchestration): the task-decision card builds an outcome per option
 | Path | +/- | Reason |
 |------|-----|--------|
-| .agent/decisions.md | +54 / -0 | C3 — the DECISION11 slice appended; the only commit touching the decision record |
+| packages/orchestration/decision_queue.py | +133 / -0 | C3 — S2 to S4 and S6: the refs, the built outcomes, the unkeyed fallback |
+| packages/orchestration/decision_evidence.py | +12 / -3 | C3 — S5: `task_decision` joins `TRIPLE_REQUIRED_TYPES` and the constant's comment records the end condition |
 
-### 8b115a64 feat(orchestration): both flight-plan arms carry their evidence triple
+### a83abda3 test(orchestration): pin the built task-decision outcomes and close the gate set
 | Path | +/- | Reason |
 |------|-----|--------|
-| packages/orchestration/decision_queue.py | +114 / -0 | C4 — S2 to S5: the pending arm's refs and keyed outcomes, the resolved arm's refs and one unkeyed outcome |
-| packages/orchestration/decision_evidence.py | +1 / -1 | C4 — S6: `flight_plan_approval` joins `TRIPLE_REQUIRED_TYPES` in the same commit |
+| tests/orchestration/test_decision_evidence.py | +296 / -1 | C4 — S7: the new T002g tests and the exact-membership assertion updated to eight |
 
-### 0d027074 test(orchestration): pin both flight-plan arms and stabilise the guards
+### C5 — this handback
 | Path | +/- | Reason |
 |------|-----|--------|
-| tests/orchestration/test_decision_evidence.py | +354 / -7 | C5 — S7 and S8: the new T002f tests, both guards repointed to `revert_missing`, the exact-membership assertion updated to seven |
-
-### C6 — this handback
-| Path | +/- | Reason |
-|------|-----|--------|
-| .agent/handoff.md | not tabled | A handoff cannot table the commit that writes it (R-0149 pattern); C6's own numstat is not a value this round writes anywhere |
+| .agent/handoff.md | not tabled | A handoff cannot table the commit that writes it (R-0149 pattern); C5's own numstat is not a value this round writes anywhere |
 
 ## Item status
 
@@ -84,25 +86,23 @@ one `git diff --numstat` pass, compared cell by cell, and they agree.
 | C0a save this block | done | |
 | C0b mirror into `last_block` | done | |
 | C1 the plan | done | |
-| C2 the R10 verdict and one prose-slip line | done | |
-| C3 DECISION F032 D7 | done | |
-| C4 both arms and the gate entry | done | one commit, per constraint 7 |
-| C5 the tests and the repointed guards | done | |
-| C6 the handback | done | this commit |
-| S1 read first, and the readings that make the guards load-bearing | done | confirmed on disk at `91b00286`; see Deviations |
-| S2 the pending arm's refs | done | one unguarded `fp:approval` ref, one guarded ref per open question with a non-empty `id`; no mission-offer ref |
-| S3 the pending arm's keyed outcomes | done | exactly `approve` and `reject`; wording is the worker's, no half is a `BOILERPLATE_PHRASES` member |
-| S4 the resolved arm's refs | done | unguarded `fp:approval`, guarded `reason` reusing the branch's own variable, guarded `mode` |
-| S5 the resolved arm's unkeyed outcome | done | no `payload`; one outcome keyed `UNKEYED_OPTION`, stating the consequence of the answer already recorded |
-| S6 `flight_plan_approval` joins `TRIPLE_REQUIRED_TYPES` in C4 | done | same commit as both arms' triples |
-| S7 end the guard churn permanently | done | both guards repointed to `revert_missing`, docstrings state why via DECISION F031 D3; exact-membership assertion updated |
-| S8 the new tests | done | 11 new test functions, taking the file from 74 to 85 and its collected cases from 86 to 108; all drive the real branches through `list_decisions` |
+| C2 the R11 verdict | done | the only commit touching the ledger |
+| C3 the triple, the gate entry and the constant's comment | done | one commit, per constraint 7 and DECISION F032 D5 |
+| C4 the tests | done | |
+| C5 the handback | done | this commit |
+| S1 read first, and the measurements the design rests on | done | confirmed on disk at `da6b64fc`; see Deviations |
+| S2 the refs come from the record, and one is unguarded | done | unguarded `decision_id` ref, one guarded ref per non-empty `cross_references` entry, guarded `answer` and `answer_source`; no ref targets the empty string |
+| S3 the outcomes are built, not written out | done | one `DecisionOptionOutcome` per option, keyed with the option's own string from the SAME list the payload carries; `UNKEYED_OPTION` when the list is empty |
+| S4 what each built outcome says | done | default / non-default / neutral pairs, plus the record's own `impact` appended to every expected outcome; wording is the worker's and no half is a `BOILERPLATE_PHRASES` member. See Deviations for the unkeyed case |
+| S5 `task_decision` joins `TRIPLE_REQUIRED_TYPES` in C3 | done | same commit as the triple; the constant's comment now states the end condition is reached and why the constant survives it |
+| S6 do not change `payload`, `next_actions`, `safe_summary`, id, status, severity | done | the C3 diff over branch 8 adds only `evidence=` and the values that build it; no existing line of the `HumanDecision(...)` call was touched |
+| S7 the new tests | done | 14 new test functions in `tests/orchestration/test_decision_evidence.py` and nowhere else, taking the file from 85 to 99 test functions; `pytest --collect-only -q` now reports `134 tests collected`. The two guards R11 repointed to `revert_missing` were NOT moved |
 
 ## External actions
 
-- `git worktree add --detach .remedy-wt/f032-r11-mut 0d027074` — created, used for
-  the four G7 mutations, then `git worktree remove --force` + `git worktree prune`.
-  `git worktree list` is back to 1 line.
+- `git worktree add --detach .remedy-wt/f032-r12-mut a83abda3` — created, used for
+  the four G7 mutations, then `git worktree remove .remedy-wt/f032-r12-mut` +
+  `git worktree prune`. `git worktree list` is back to 1 line.
 - `gh pr list --state open --json number,headRefName,baseRefName,isDraft` — `[]`.
   Nothing merged, nothing created, as the block orders.
 - `git push -u origin feature/f032-evidence-triple` after this commit.
@@ -112,137 +112,159 @@ one `git diff --numstat` pass, compared cell by cell, and they agree.
 ## Verification
 
 - G1 HYGIENE, BASE AND THE SENTINEL — `git rev-parse HEAD` before C0a printed
-  `91b002868e0269b9f302a06567a729a920b8f1ce`, the round base of constraint 12;
+  `da6b64fc1f4bd46d6ff95f663cd29d0ebc8e2d75`, the round base of constraint 12;
   `git rev-parse --abbrev-ref HEAD` printed `feature/f032-evidence-triple`;
-  `git status --porcelain | wc -l` printed 0 after each of C0a, C0b, C1, C2, C3,
-  C4 and C5 — seven readings, each 0. `ls -la .agent/STOP` printed
-  `ls: cannot access '.agent/STOP': No such file or directory` at BOTH readings
-  constraint 9 orders, once before C0a and once before C6, so the sentinel does
-  not exist.
+  `git status --porcelain | wc -l` printed 0 after each of C0a, C0b, C1, C2, C3
+  and C4 — five readings after the five commits G1 covers, plus the reading taken
+  before C0a, every one of them 0. `.agent/STOP` was re-read FROM DISK at both
+  readings constraint 9 orders — once before C0a and once before C5 — with
+  `python3 -c "import os; print(os.path.exists('.agent/STOP'))"`, and printed
+  `False` both times, so the sentinel does not exist.
 - G2 TRANSPORT — sha256
-  `fefaa48f3641824d64c93247a7517f36042f7ee6bae6fa801ccf4bc15d2f7761` over 32994
-  bytes and 415 lines is EQUAL for all three artefacts: the reviewer's scratch
-  original `.remedy-wt/f032-r11.md`, the committed `.agent/authored/f032-r11.md`
-  blob at `cd88a6c6` and the committed `.agent/last_block.md` blob at `7b4c3c65`.
+  `54d38edecca151a2d01a5c59dc0369dcba942975eeaaef718e4e13e021b9217d` over 29343
+  bytes and 357 lines is EQUAL for all three artefacts: the reviewer's scratch
+  original `.remedy-wt/f032-r12.md`, the committed `.agent/authored/f032-r12.md`
+  blob at `9857f7ee` and the committed `.agent/last_block.md` blob at `7f1ca6f6`.
   A byte-for-byte comparison of the three payloads is also True. `git rev-parse`
   on both committed paths returns the SAME blob,
-  `9f8f4292d0fdab734660b54eebdba655d24b4e5a`. This proves the reviewer's scratch
+  `be1d3fe9c07c2882249bcf632fcdf161f4460590`. This proves the reviewer's scratch
   original, the saved copy and the mirror agree; it says NOTHING about the bytes
   of any prompt.
-- G3 EXTRACTION AND CAPS — from the committed C0a blob: region `PLANF032R11`
-  with 48 content lines, region `LEDGER11` with 1 content line, region `SLIP11`
-  with 5 content lines, region `DECISION11` with 53 content lines. 4 regions.
-  CONTENT total 107. TOTAL 415 lines. PROSE = 415 − 107 = 308. PROSE under 400 =
+- G3 EXTRACTION AND CAPS — from the committed C0a blob: region `PLANF032R12`
+  with 49 content lines, region `LEDGER12` with 1 content line. 2 regions.
+  CONTENT total 50. TOTAL 357 lines. PROSE = 357 − 50 = 307. PROSE under 400 =
   True. TOTAL under 490 = True.
-- G4 THE PLAN AND THE SLIP — `.agent/plan.md` at `1bed03cc` is byte-equal to
-  slice PLANF032R11 under constraint 2 (True). NEGATIVE CONTROL with the trailing
-  newline removed: False, as required. `wc -l` = 48, under 50 = True.
-  `^## Goal$` = 1, `^## Next Steps$` = 1. `.agent/prose_slips.md` at `44c9668c`
-  equals its pre-commit blob plus ONE newline plus slice SLIP11 byte for byte:
-  1971 + 1 + 356 = 2328, actual 2328, byte-equal True.
-- G5 THE TWO RECORD APPENDS — both read with `git show <sha>:<path>`, never by
-  writing over the tracked file.
-  - `.agent/live_review.md` at C2 (`44c9668c`): READER 1, byte identity —
-    1076472 + 1 + 5050 = 1081523, actual 1081523, MATCH True; byte-equal to
-    pre-commit blob + `\n` + slice True; the pre-commit blob is a byte PREFIX
-    True. The `91b00286` blob measures 1076472 bytes over 427 blank-line units,
-    matching the reviewer's stated measurement exactly. READER 2, structural —
-    the LEDGER11 slice is 1 blank-line paragraph as my script counts it, and the
-    LAST 1 unit of the file matches that paragraph IN ORDER, True. NEGATIVE
-    CONTROL, one byte flipped in memory inside the FIRST appended paragraph:
-    reader 1 rejects True, reader 2 rejects True.
-  - `.agent/decisions.md` at C3 (`09f0ebaf`): READER 1 — 642072 + 1 + 3617 =
-    645690, actual 645690, MATCH True; byte-equal True; pre-commit blob is a byte
-    PREFIX True. READER 2 — the DECISION11 slice is 6 paragraphs, and the LAST 6
-    units match those 6 paragraphs IN ORDER, True. NEGATIVE CONTROL as above:
-    both readers reject, True and True.
-  - Counts before → after C2: `^Gate: F\d+ R\d+ — ` 62 → 63; `^- R-\d+ — ` 274 →
+- G4 THE PLAN — `.agent/plan.md` at `868a26a7` is byte-equal to slice
+  PLANF032R12 under constraint 2 (True). NEGATIVE CONTROL with the trailing
+  newline removed: False, as required, so the comparison is not vacuous.
+  `wc -l` = 49, under 50 = True. `^## Goal$` = 1, `^## Next Steps$` = 1.
+- G5 THE LEDGER APPEND — read with `git show da6b64fc:.agent/live_review.md`,
+  never by writing over the tracked file.
+  - READER 1, byte identity — 1081523 + 1 + 5227 = 1086751, actual 1086751,
+    MATCH True; the C2 blob is byte-equal to the base blob + `\n` + the LEDGER12
+    slice, True; the base blob is a byte PREFIX of the C2 blob, True. The
+    `da6b64fc` blob measures 1081523 bytes over 428 blank-line units, matching
+    the reviewer's stated measurement exactly.
+  - READER 2, independent structural — the LEDGER12 slice is N = 1 blank-line
+    paragraph as my script counts it, and the LAST 1 unit of the whole file
+    matches that paragraph IN ORDER, True. The file has 429 blank-line units
+    after C2.
+  - NEGATIVE CONTROL — one byte flipped in memory at offset 1081524, inside the
+    FIRST appended paragraph (`G` → `H`): reader 1 rejects True, reader 2
+    rejects True.
+  - Counts before → after C2: `^Gate: F\d+ R\d+ — ` 63 → 64; `^- R-\d+ — ` 274 →
     274; `^Done: R-\d+ — ` 24 → 24; `^Landed: R-` 1 → 1; `^Gate: R\d+ — ` 19 →
     19. Open set (registered minus resolved) 250 → 250. Maximum id `R-0713`
-    before and after. Gate keys ADDED: `F032 R10`, exactly one, none removed. Ids
-    ADDED to the resolved set: none. All five base numbers, the base open set of
-    250 and the base maximum `R-0713` match what the block states.
-  - `^## DECISION F032 D\d+ ` in `.agent/decisions.md`: 6 before C3, 7 after.
+    before and after. Gate keys ADDED: `F032 R11`, exactly one, none removed.
+    Ids ADDED to the resolved set: none. All five base numbers, the base open set
+    of 250 and the base maximum `R-0713` match what the block states.
 - G6 THE CODE, LINTED AND READ BACK —
   `python3 -m ruff check packages/orchestration/decision_queue.py packages/orchestration/decision_evidence.py`
-  exit code 0, verbatim output `All checks passed!`. Calling `list_decisions` at
-  C4:
-  - THE MINIMAL PENDING JOB of S1, `Job(name="t", flight_plan={"_approval": "pending"})` —
-    refs `[('decision', 'fp:approval', 'the flight-plan approval this job is waiting on')]`;
-    outcomes `[('approve', "The run starts and the plan's tasks execute in the order it records, so the work that follows is the work that was reviewed.", 'Work begins against whatever the plan assumed, and an assumption nobody checked is paid for in rework.'), ('reject', 'Nothing executes and the plan goes back for revision, so a wrong scope costs a replan rather than a run.', 'The job makes no progress until a new plan is approved, and the context this planning built is spent again.')]`;
-    own options `['approve', 'reject']`; `evidence_triple_problems` with THOSE
-    options `[]`; `evidence_status` `present`, `status` `open`.
-  - A PENDING JOB WITH TWO OPEN CLARIFICATIONS (`q1`, `q2`) — refs
-    `[('decision', 'fp:approval', 'the flight-plan approval this job is waiting on'), ('decision', 'q1', 'the open question that ships with this plan'), ('decision', 'q2', 'the open question that ships with this plan')]`;
-    the same two outcomes; own options `['approve', 'reject']`;
-    `evidence_triple_problems` with those options `[]`; `evidence_status`
-    `present`, `status` `open`.
-  - THE RESOLVED ARM, audit `{"reason": "approved"}` — refs
-    `[('decision', 'fp:approval', 'the flight-plan approval this record answers'), ('decision', 'approved', 'the reason recorded when the plan was approved')]`;
-    outcomes `[('', 'The run executes the plan this approval named, so the tasks it carries out are the agreed scope.', 'A plan approved on an assumption that has since changed keeps the run pointed at the old scope until someone revisits it.')]`;
+  exit code 0, verbatim output `All checks passed!`. Calling `list_decisions`
+  at C3, with every record built by `enqueue_task_decision`:
+  - AN OPEN RECORD WITH TWO OPTIONS AND `safe_default="retry"` — refs
+    `[('decision', 'td:t1', 'the escalation record this decision was raised from')]`;
+    outcomes `[('retry', 'Answering retry is the course the task itself proposed as safe, so the waiting branch resumes on the path the run was already prepared for.', 'A default accepted without reading the question is how an assumption nobody checked becomes a finished result.'), ('skip', 'The waiting branch resumes on skip instead of the course the task proposed.', 'The run departs from what the task prepared for, so work already done for that path may be spent again.')]`;
+    own `payload["options"]` `['retry', 'skip']`; `evidence_triple_problems` with
+    THOSE options `[]`; `evidence_status` `present`, `status` `open`.
+  - AN OPEN RECORD WITH TWO OPTIONS AND NO `safe_default` — the same single ref
+    (`td:t2`); outcomes
+    `[('retry', 'The waiting branch resumes on retry, the course this answer chooses.', 'The tasks blocked behind this question stay blocked until it is answered, and a course chosen without reading the question is paid for downstream.'), ('skip', 'The waiting branch resumes on skip, the course this answer chooses.', 'The tasks blocked behind this question stay blocked until it is answered, and a course chosen without reading the question is paid for downstream.')]`;
+    own options `['retry', 'skip']`; `evidence_triple_problems` `[]`;
+    `evidence_status` `present`, `status` `open`.
+  - AN OPEN RECORD WITH NO OPTIONS AT ALL — the single ref (`td:t3`); outcomes
+    `[('', 'An answer in free text resumes the waiting branch, which continues with that answer recorded on its task.', 'A question left unanswered blocks everything behind it, and this branch of the run makes no progress until it is answered.')]`;
     own options `[]`; `evidence_triple_problems` with those options `[]`;
-    `evidence_status` `present`, `status` `resolved`.
-  - THE RESOLVED ARM, audit `{"reason": "approved", "mode": "auto"}` — refs
-    `[('decision', 'fp:approval', 'the flight-plan approval this record answers'), ('decision', 'approved', 'the reason recorded when the plan was approved'), ('decision', 'auto', 'how the approval was given')]`;
-    the same one outcome; own options `[]`; `evidence_triple_problems` `[]`;
-    `evidence_status` `present`, `status` `resolved`.
+    `evidence_status` `present`, `status` `open`.
+  - A RECORD WITH A NON-EMPTY `impact` (`the release branch stays unbuilt`) — the
+    single ref (`td:t4`); outcomes
+    `[('retry', 'Answering retry is the course the task itself proposed as safe, so the waiting branch resumes on the path the run was already prepared for.  The task states this consequence: the release branch stays unbuilt', 'A default accepted without reading the question is how an assumption nobody checked becomes a finished result.'), ('skip', 'The waiting branch resumes on skip instead of the course the task proposed.  The task states this consequence: the release branch stays unbuilt', 'The run departs from what the task prepared for, so work already done for that path may be spent again.')]`;
+    own options `['retry', 'skip']`; `evidence_triple_problems` `[]`;
+    `evidence_status` `present`, `status` `open`.
+  - A RECORD WHOSE `cross_references` IS NON-EMPTY (the same question raised
+    twice) — the FIRST card's refs
+    `[('decision', 'td:t5', 'the escalation record this decision was raised from'), ('decision', 'td:t6', 'the same question raised again and cross-referenced by the queue')]`
+    and the SECOND card's refs
+    `[('decision', 'td:t6', 'the escalation record this decision was raised from'), ('decision', 'td:t5', 'the same question raised again and cross-referenced by the queue')]`;
+    both carry the two neutral-pair outcomes above; own options `['retry', 'skip']`
+    on each; `evidence_triple_problems` `[]` on each; `evidence_status` `present`,
+    `status` `open` on each.
+  - A RESOLVED RECORD (answered `skip`, source `human`) — refs
+    `[('decision', 'td:t7', 'the escalation record this decision was raised from'), ('decision', 'skip', 'the answer that was recorded'), ('decision', 'human', 'where that answer came from')]`;
+    outcomes identical to the first case's; own options `['retry', 'skip']`;
+    `evidence_triple_problems` with those options `[]`; `evidence_status`
+    `present`, `status` `resolved`.
 
   `sorted(TRIPLE_REQUIRED_TYPES)` =
-  `['flight_plan_approval', 'memory_review', 'patch_approval', 'repo_dirty', 'stop_reason', 'test_failure', 'token_budget']`.
+  `['flight_plan_approval', 'memory_review', 'patch_approval', 'repo_dirty', 'stop_reason', 'task_decision', 'test_failure', 'token_budget']`.
+  `sorted(PRODUCING_DECISION_TYPES)` from
+  `tests/orchestration/test_decision_inbox.py` is the SAME eight strings, and the
+  residue `set(PRODUCING_DECISION_TYPES) - set(TRIPLE_REQUIRED_TYPES)` is `[]`, so
+  EVERY producing type is now enforced.
 - G7 TESTS GREEN, THEN RED UNDER MUTATION, AND THE WIDER SUITES UNMOVED —
-  `python3 -B -m pytest tests/orchestration/test_decision_evidence.py -q` in the
-  PRIMARY checkout at C5: exit code 0, `108 passed in 0.38s`, 0 `^FAILED` lines.
-  In the disposable worktree `.remedy-wt/f032-r11-mut` at `0d027074`, with
+  `python3 -m pytest tests/orchestration/test_decision_evidence.py -q` in the
+  PRIMARY checkout at C4: exit code 0, `134 passed in 0.35s`, 0 `^FAILED` lines.
+  In the disposable worktree `.remedy-wt/f032-r12-mut` at `a83abda3`, with
   `__pycache__` purged and `-B` passed before every run, and each exact byte
   string counted 1 in its file before it was applied and the file restored byte
-  for byte afterwards:
-  - CONTROL before any mutation — exit 0, `108 passed in 0.40s`, 0 `^FAILED`.
-  - mutation (a), the non-empty-`id` guard of S2 removed so every clarification
-    emits a ref (`                if _question_id:` → `                if True:`
-    in `decision_queue.py`, count 1) — exit 1, `4 failed, 104 passed in 0.50s`,
-    4 `^FAILED`.
-  - mutation (b), the `mode` ref of S4 emitted unconditionally
-    (`            if _fp_mode:` → `            if True:` in
-    `decision_queue.py`, count 1) — exit 1, `4 failed, 104 passed in 0.54s`, 4
-    `^FAILED`.
-  - mutation (c), `flight_plan_approval` removed from `TRIPLE_REQUIRED_TYPES`
-    (`"repo_dirty", "memory_review", "flight_plan_approval",` →
-    `"repo_dirty", "memory_review",` in `decision_evidence.py`, count 1) — exit
-    1, `3 failed, 105 passed in 0.43s`, 3 `^FAILED`.
-  - mutation (d), the `reject` outcome of S3 deleted so the pending arm keys only
-    `approve` (its whole `DecisionOptionOutcome(...)` block in
-    `decision_queue.py`, count 1, replaced with nothing) — exit 1,
-    `12 failed, 96 passed in 0.70s`, 12 `^FAILED`.
-  - CONTROL after all four restorations — exit 0, `108 passed in 0.39s`, 0
+  for byte afterwards (each restoration verified by re-reading the file and
+  comparing to the pre-mutation text, True in all four cases):
+  - CONTROL before any mutation — exit 0, `134 passed in 0.43s`, 0 `^FAILED`.
+  - mutation (a), the built outcome keyed with a constant string instead of with
+    the option it was built for (`                    option=_option,` →
+    `                    option="a-constant-key",` in
+    `packages/orchestration/decision_queue.py`, count 1) — exit 1,
+    `20 failed, 114 passed in 1.11s`, 20 `^FAILED`. This is the rule (g)
+    violation in BOTH directions: the payload offers `retry` and `skip` that no
+    outcome answers, and the outcomes name `a-constant-key`, which the card does
+    not offer.
+  - mutation (b), the `answer` ref of S2 emitted unconditionally
+    (`            if _td_answer:` → `            if True:` in
+    `packages/orchestration/decision_queue.py`, count 1) — exit 1,
+    `21 failed, 113 passed in 1.15s`, 21 `^FAILED`. On an OPEN record `answer`
+    is the empty string, so rule (c) refuses the card.
+  - mutation (c), `task_decision` removed from `TRIPLE_REQUIRED_TYPES`
+    (`"repo_dirty", "memory_review", "flight_plan_approval", "task_decision",` →
+    `"repo_dirty", "memory_review", "flight_plan_approval",` in
+    `packages/orchestration/decision_evidence.py`, count 1) — exit 1,
+    `2 failed, 132 passed in 0.46s`, 2 `^FAILED`.
+  - mutation (d), the safe-default branch of S4 made unreachable so every option
+    gets the neutral pair
+    (`            _td_default = str(record.get("safe_default", "") or "")` →
+    `            _td_default = ""` in
+    `packages/orchestration/decision_queue.py`, count 1) — exit 1,
+    `2 failed, 132 passed in 0.46s`, 2 `^FAILED`. See Deviations for why the
+    mutation was applied at the assignment rather than at the branch.
+  - CONTROL after all four restorations — exit 0, `134 passed in 0.42s`, 0
     `^FAILED`, and the worktree's `git status --porcelain` was the empty string,
     0 lines.
 
   Then, as ONE pytest process in the primary checkout:
-  `python3 -B -m pytest tests/orchestration/test_decision_evidence.py tests/orchestration/test_decision_inbox.py tests/orchestration/test_mission_state.py tests/orchestration/test_bundled_clarification.py -q`
-  — exit code 0, `263 passed in 0.75s`, 0 `^FAILED` lines.
+  `python3 -m pytest tests/orchestration/test_decision_evidence.py tests/orchestration/test_decision_inbox.py tests/orchestration/test_run_report.py tests/orchestration/test_watchdog.py tests/cli/test_open_decisions_view.py -q`
+  — exit code 0, `303 passed in 0.85s`, 0 `^FAILED` lines.
 - G8 STRUCTURE, CANARY AND THE PR GATE —
-  `python3 -B -m pytest tests/cli/test_golden_path.py -q` exit code 0,
-  `42 passed in 20.66s`, 0 `^FAILED` lines.
-  `git diff --name-only 91b00286..0d027074` yields exactly
-  `.agent/authored/f032-r11.md`, `.agent/decisions.md`, `.agent/last_block.md`,
-  `.agent/live_review.md`, `.agent/plan.md`, `.agent/prose_slips.md`,
-  `packages/orchestration/decision_evidence.py`,
+  `python3 -m pytest tests/cli/test_golden_path.py -q` exit code 0,
+  `42 passed in 20.64s`, 0 `^FAILED` lines.
+  `git diff --name-only da6b64fc..a83abda3` yields exactly
+  `.agent/authored/f032-r12.md`, `.agent/last_block.md`, `.agent/live_review.md`,
+  `.agent/plan.md`, `packages/orchestration/decision_evidence.py`,
   `packages/orchestration/decision_queue.py`,
-  `tests/orchestration/test_decision_evidence.py` — the nine Change-set paths
+  `tests/orchestration/test_decision_evidence.py` — the seven Change-set paths
   other than `.agent/handoff.md`. BOTH residues are EMPTY: changed-but-not-listed
   `[]`, listed-but-unchanged `[]`.
-  `git diff --stat 91b00286..0d027074 -- apps/` and the same for `-- docs/` are
-  both the empty string. Per-commit insertions, each single-parent (1 parent) and
-  each under 500: `cd88a6c6` 415, `7b4c3c65` 301, `1bed03cc` 23, `44c9668c` 8,
-  `09f0ebaf` 54, `8b115a64` 115, `0d027074` 354. Those counts and the `+/-`
-  column of the `## Commits` section above are one reading written twice, both
-  derived from `git diff --numstat`, compared cell by cell, and they AGREE.
-  Marker sweep at C5, counts of `^<<<SLICE ` and `^<<<END `: `.agent/plan.md`
-  0/0, `.agent/live_review.md` 0/0, `.agent/prose_slips.md` 0/0,
-  `.agent/decisions.md` 0/0, `packages/orchestration/decision_queue.py` 0/0,
+  `git diff --stat da6b64fc..a83abda3 -- apps/` and the same for `-- docs/` are
+  both the empty string, so no docs-round gate is owed.
+  Per-commit insertions, each single-parent (1 parent) and each under 500:
+  `9857f7ee` 357, `7f1ca6f6` 244, `868a26a7` 25, `c9616a88` 2, `6439bc5b` 145,
+  `a83abda3` 296. Those counts and the `+/-` column of the `## Commits` section
+  above are one reading written twice, both derived from `git diff --numstat`,
+  compared cell by cell, and they AGREE.
+  Marker sweep at C4, counts of `^<<<SLICE ` and `^<<<END `: `.agent/plan.md`
+  0/0, `.agent/live_review.md` 0/0,
+  `packages/orchestration/decision_queue.py` 0/0,
   `packages/orchestration/decision_evidence.py` 0/0,
   `tests/orchestration/test_decision_evidence.py` 0/0 — against the CONTROL over
-  the committed C0a blob, which is 4/4 and therefore non-zero.
+  the committed C0a blob, which is 2/2 and therefore non-zero.
   `git ls-files .remedy-wt` 0 lines, `git worktree list` 1 line,
   `git branch --list "tmp/*"` 0 lines.
   `gh pr list --state open --json number,headRefName,baseRefName,isDraft`
@@ -250,66 +272,82 @@ one `git diff --numstat` pass, compared cell by cell, and they agree.
 
 ## Authored-text proofs
 
-Four reviewer-authored slices were applied, plus the block itself.
+Two reviewer-authored slices were applied, plus the block itself.
 
-- The BLOCK — `.remedy-wt/f032-r11.md`, the committed `.agent/authored/f032-r11.md`
+- The BLOCK — `.remedy-wt/f032-r12.md`, the committed `.agent/authored/f032-r12.md`
   blob and the committed `.agent/last_block.md` blob all carry sha256
-  `fefaa48f3641824d64c93247a7517f36042f7ee6bae6fa801ccf4bc15d2f7761` over 32994
-  bytes and 415 lines, and the two committed paths are the same git blob
-  `9f8f4292d0fdab734660b54eebdba655d24b4e5a`. Disk-to-disk comparison: EQUAL.
-- Slice PLANF032R11 — `.agent/plan.md` at `1bed03cc` is byte-equal to the slice
+  `54d38edecca151a2d01a5c59dc0369dcba942975eeaaef718e4e13e021b9217d` over 29343
+  bytes and 357 lines, and the two committed paths are the same git blob
+  `be1d3fe9c07c2882249bcf632fcdf161f4460590`. Disk-to-disk comparison: EQUAL.
+- Slice PLANF032R12 — `.agent/plan.md` at `868a26a7` is byte-equal to the slice
   extracted from the committed C0a blob under convention 2. The negative control
   (trailing newline removed) is False, so the comparison is not vacuous.
-- Slice LEDGER11 — `.agent/live_review.md` at `44c9668c` is byte-equal to the
-  `1bed03cc` blob plus one newline plus the slice, proven by two independent
-  readers, with a one-byte negative control that both readers reject.
-- Slice SLIP11 — `.agent/prose_slips.md` at `44c9668c` is byte-equal to its
-  pre-commit blob plus one newline plus the slice: 1971 + 1 + 356 = 2328.
-- Slice DECISION11 — `.agent/decisions.md` at `09f0ebaf` is byte-equal to the
-  `44c9668c` blob plus one newline plus the slice, proven by the same two
-  readers, with the same one-byte negative control that both reject.
+- Slice LEDGER12 — `.agent/live_review.md` at `c9616a88` is byte-equal to the
+  `da6b64fc` blob plus one newline plus the slice, proven by two independent
+  readers, with a one-byte negative control inside the first appended paragraph
+  that both readers reject.
 
 No slice was edited. Nothing looked wrong enough to report under constraint 1.
 
 ## Deviations & assumptions
 
-- COMMIT ORDER WAS EXACTLY C0a, C0b, C1, C2, C3, C4, C5, C6, with no commit
-  between them, no extra commit and no reordering. C2 is the only commit touching
-  `.agent/live_review.md` and `.agent/prose_slips.md`; C3 is the only commit
-  touching `.agent/decisions.md`; C4 carries both arms and the gate entry
-  together, as constraint 7 requires.
-- ONE IMPORT NOT IN THE SPEC. `tests/orchestration/test_decision_evidence.py`
-  now imports `replace` from `dataclasses`. S8 orders a test proving a resolved
-  `flight_plan_approval` card with its triple dropped still raises, and
-  `HumanDecision` is a frozen dataclass whose local `_decision` helper hardcodes
-  `status="open"`; `replace` builds the resolved variant without duplicating the
-  twelve-field constructor. `python3 -m ruff check` is exit 0.
-- THE SUITE WAS NOT RUN AT C4, and no claim is made about its colour there. C4
-  enforces `flight_plan_approval` while the two S7 guards still name it, and S7's
-  repointing lands at C5 — constraint 7 requires that order. Every colour
-  reported under G7 was measured at C5 or later.
-- MUTATIONS (a) AND (b) WERE APPLIED AS `if <expr>:` → `if True:` rather than by
-  deleting the `if` line and de-indenting its body. That is a faithful removal of
-  the guard — the ref is emitted on every pass — and it keeps the mutation to a
-  single exact byte string whose count in the file is 1, which is what the gate
-  asks to be reported.
-- GATE SCRATCH LIVES IN `.remedy-wt/`. The G2 through G8 measurement scripts were
-  written there because it is gitignored; `git ls-files .remedy-wt` is 0 lines and
-  the primary checkout is clean at every commit.
-- S1 CONFIRMED ON DISK at `91b00286`. `tests/orchestration/test_mission_state.py`
-  builds `Job(name="t", flight_plan={"_approval": "pending"})` with no
-  clarifications and no intake; `tests/orchestration/test_decision_inbox.py`
-  drives the resolved arm with `_approval_audit` `{"reason": "approved"}` and no
-  `mode` key, through `_fixture_flight_plan_approval` and the auto-approved job at
-  its line 367; `open_clarification_questions` returns records carrying `id`,
-  `question`, `default_answer` and `impact`, each defaulted to the empty string.
-  So the `id` guard of S2 and the `mode` guard of S4 are load-bearing rather than
-  defensive, which mutations (a) and (b) confirm.
-- S7'S SECOND GUARD ALSO GAINED A DOCSTRING.
-  `test_a_tripleless_decision_exports_empty_lists_and_the_legacy_status` had none;
-  S7 orders the WHY to be stated in the docstring, so one was written naming
-  DECISION F031 D3. The first guard's existing docstring was rewritten for the
-  same reason.
+- COMMIT ORDER WAS EXACTLY C0a, C0b, C1, C2, C3, C4, C5, with no commit between
+  them, no extra commit and no reordering. C2 is the only commit touching
+  `.agent/live_review.md`; C3 carries the triple, the gate entry and the
+  constant's comment together, as constraint 7 and DECISION F032 D5 require.
+- THE `answer` AND `answer_source` REFS ARE GUARDED ON EMPTINESS ALONE, with no
+  `status` test. S2 orders them "for a RESOLVED record only … each ONLY when its
+  value is non-empty, because an OPEN record carries both as the empty string".
+  `enqueue_task_decision` writes both fields as `""` until the record is
+  answered, so the emptiness guard IS the resolved-only restriction and a second
+  `status` branch would be dead code. It also keeps the guard load-bearing, which
+  is what makes mutation (b) reach the tests instead of being vacuous.
+- THE `impact` NOTE IS APPENDED TO THE UNKEYED OUTCOME TOO. S4 orders it appended
+  to "EVERY option's expected outcome" and states the UNKEYED sentence
+  separately, which leaves the optionless case unaddressed. The note is appended
+  uniformly to every outcome the branch emits, because a record can carry an
+  `impact` with no options at all and dropping the task's own stated consequence
+  there would lose the only thing the record knows about the cost of waiting.
+  This is a superset of what S4 orders and satisfies its assertion either way.
+- MUTATION (d) WAS APPLIED AT THE ASSIGNMENT, NOT AT THE BRANCH. G7 orders "the
+  safe-default branch of S4 removed so every option gets the neutral pair".
+  Deleting the `if`/`elif` arms would need a multi-line excision with no single
+  exact byte string to count; setting `_td_default = ""` makes both arms
+  unreachable and routes EVERY option to the neutral pair, which is precisely the
+  ordered effect, at a single byte string whose count in the file is 1 — the
+  property G7 asks to be reported.
+- TWO IMPORT LINES NOT IN THE SPEC. `tests/orchestration/test_decision_evidence.py`
+  now imports `datetime, timezone` from `datetime` and `answer_task_decision,
+  enqueue_task_decision` from `packages.orchestration.escalation`. S7 orders the
+  records to be built by `enqueue_task_decision`, whose `now` parameter is
+  keyword-only and required, and orders a RESOLVED case, which only
+  `answer_task_decision` can produce. `python3 -m ruff check` on the file is exit
+  0 with `All checks passed!`.
+- SIX NEW TEST HELPERS CARRY `task_decision` IN THEIR NAMES. The first draft named
+  one of them `_resolved_decision`, which SHADOWED the flight-plan helper of the
+  same name that R11 added to this file, and eight R11 tests went red with
+  `TypeError: _resolved_decision() takes 0 positional arguments but 1 was given`.
+  All six factories were renamed to
+  `_keyed_open_task_decision`, `_defaultless_open_task_decision`,
+  `_optionless_open_task_decision`, `_impact_task_decision`,
+  `_cross_referenced_task_decisions` and `_resolved_task_decision` before C4 was
+  committed, per the one-spelling-per-concept rule in AGENTS.md. No R11 test was
+  altered; the collision was in the new code only.
+- S1 CONFIRMED ON DISK at `da6b64fc`. `escalation.py::enqueue_task_decision` is
+  the only writer of these records and always sets `decision_id`, `safe_default`,
+  `impact` and `cross_references`, defaulting the last three to `""`, `""` and a
+  list, so the unguarded `decision_id` ref of S2 can never target the empty
+  string. Branch 8's `payload` always carries an `options` key whose value is the
+  branch's own `options` list, and the outcomes are built from that SAME object,
+  not from a re-read of the record.
+- THE SUITE WAS NOT RUN AT C3, and no claim is made about its colour there. C3
+  enforces `task_decision` while the exact-membership assertion still names seven
+  types; S7's update lands at C4 and constraint 7 fixes that order. Every colour
+  reported under G7 was measured at C4 or later.
+- GATE SCRATCH LIVES IN `.remedy-wt/`. The G2 through G8 measurement scripts and
+  the mutation harness were written there because it is gitignored;
+  `git ls-files .remedy-wt` is 0 lines and the primary checkout is clean at every
+  commit.
 
 ## Next
 
@@ -319,7 +357,6 @@ No slice was edited. Nothing looked wrong enough to report under constraint 1.
 2. The Open PR Gate —
    `gh pr list --state open --json number,headRefName,baseRefName,isDraft`. It
    returned `[]` at this handback; re-run it, do not assume.
-3. `task_decision`, the last producer. Its options come from the escalation
-   record and are arbitrary strings, so its outcomes are built per option rather
-   than written out, and its resolved arm is already ruled on by DECISION F032
-   D7. With it the gate set is complete and T002 ends.
+3. T003: card enrichment and the chip deep links. It is the first F032 work to
+   touch `apps/`, and therefore the first round bound by the canonical design
+   reference in `docs/ui/design_reference/`.
