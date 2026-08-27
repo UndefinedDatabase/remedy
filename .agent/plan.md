@@ -3,7 +3,7 @@
 Branch: feature/f032-evidence-triple, cut from `main` at `a399a330`, the merge
 commit of pull request #216 which closed the amend0827 process-diet order.
 `.agent/live_review.md` is the review record and the finding-id ceiling;
-`.agent/decisions.md` carries the DECISION series, F032 D1 through D6.
+`.agent/decisions.md` carries the DECISION series, F032 D1 through D7.
 
 ## Goal
 No decision without its receipts. Every decision a human is asked to answer
@@ -13,36 +13,36 @@ fails its own test. `docs/roadmap/features/T5_F032.md` holds Goal & Done, the
 task slicing and the design amendments that reconcile it with the source.
 
 ## Current Step
-R10 opens session 3 with the two producers that cite nothing at all: the
-dirty-repo card, whose whole evidence is one run-log event, and the
-memory-review card, which names a key and states a reason it never cites. Both
-branches are optionless, so each owes exactly one unkeyed outcome. The round
-also books the R9 verdict and writes the `Done:` text for `R-0713`, fixed in
-code at R9 and open in the record since. Six of the eight producing types are
-enforced when it ends.
+R11 upgrades the flight-plan approval, the first producing type with TWO arms:
+a pending card carrying the two options the write door accepts, and a resolved
+card carrying none. The emit gate selects on type alone and never reads
+`status`, so both arms are enforced together — DECISION F032 D7 records why
+that is the right reading and what a resolved card's outcome then means. The
+round also books the R10 verdict and repoints the two unenforced-type guards to
+a type with no producer, so they stop moving every round.
 
 | Item | Status | Reason |
 |------|--------|--------|
 | C0a and C0b, save and mirror the block | ordered | |
 | C1 the plan | ordered | first substantive commit |
-| C2 the R9 verdict and `Done: R-0713` | ordered | the record is touched first |
-| C3 the repo-dirty triple and its gate entry | ordered | S2 and S3 |
-| C4 the memory-review triple and its gate entry | ordered | S4 and S5 |
-| C5 the tests, and the two guards C4 falsifies | ordered | S6 and S7 |
+| C2 the R10 verdict and one prose-slip line | ordered | the record first |
+| C3 DECISION F032 D7 | ordered | the ruling S5 rests on |
+| C4 both arms and the gate entry | ordered | S2 to S6, one commit |
+| C5 the tests and the repointed guards | ordered | S7 and S8 |
 | C6 the handback | ordered | |
 
 ## Next Steps
-1. The flight-plan approval, whose PENDING arm carries `payload["options"]`
-   while its RESOLVED arm carries none. The emit gate does not branch on
-   status, so enforcing that type needs a ruling on what a resolved card owes.
-2. The task decision, whose options come from the escalation record and are
-   arbitrary, so its outcomes are built per option rather than written out.
-   With it the gate set is complete and T002 ends.
-3. T003 card enrichment and the chip deep links, then the integration gate.
+1. The task decision, the last producing type. Its options come from the
+   escalation record and are arbitrary strings, so its outcomes are built per
+   option rather than written out, and it has a resolved arm that DECISION
+   F032 D7 already rules on. With it the gate set is complete and T002 ends.
+2. T003 card enrichment and the chip deep links, which is the first F032 work
+   to touch `apps/` and therefore the design reference.
+3. The integration gate, then the closure sequence.
 
 ## Risks
-- Two tests in `tests/orchestration/test_decision_evidence.py` use
-  `memory_review` as their example of an UNENFORCED type. C4 makes that false
-  and C5 repoints both, so the pair has to land in one round.
-- Six types are enforced from this round on, so a later change that regresses
+- Rule (g) compares outcome keys against the options list in both directions,
+  so the pending arm is the first producer where a mis-keyed outcome raises
+  rather than merely reading oddly.
+- Seven types are enforced from this round on, so a later change that regresses
   any of their triples raises instead of rendering. That is the intent.
