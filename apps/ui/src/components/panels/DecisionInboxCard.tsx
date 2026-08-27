@@ -23,6 +23,9 @@
 // derived data, and never against a type this file names. THE OUTCOME MAP DOES
 // NOT BREAK IT EITHER: it is a `Record` lookup keyed by a tone
 // `decisionOutcome.ts` already chose, which is a projection and not a branch.
+// NOR DOES THE CLARIFICATION BLOCK: it tests how MANY questions the model
+// carries, which is a length and not a kind, and every question it then renders
+// is a field of that model.
 //
 // NO DOM TEST REACHES THIS MARKUP. The shipped vitest config collects
 // `src/**/*.test.ts` and this repository has no DOM environment, so nothing here
@@ -54,12 +57,18 @@
 // have. It projects `answer.posts`, a per-answer boolean `decisionCard.ts`
 // already derived from the endpoint's own `answerable_by_decision_resolve`, so
 // DECISION F031 D5's rule stands and the guard that pins it stays green. This
-// component owns only WHICH answers are in flight, WHERE their sentences appear
-// and WHAT COLOUR each one takes.
+// component owns only WHICH answers are in flight, WHERE their sentences appear,
+// WHAT COLOUR each one takes and WHAT THE OPERATOR HAS TYPED into each open
+// clarification field. It owns no RULE about that typing:
+// `../../api/decisionClarificationForm` names a field's key and collects one
+// card's fields into the map the write door takes, and `decisionAnswer.ts`'s
+// `clarificationAnswersArg` decides what a blank value means — the same D5
+// reason keeps both of those out of this file.
 import { Fragment, useState } from "react";
 import { countOpenDecisions } from "../../api/decisionCard";
 import type { DecisionCardModel } from "../../api/decisionCard";
 import { answerDecisionCard } from "../../api/decisionAnswerFlow";
+import { collectDecisionClarificationAnswers, decisionClarificationFieldKey } from "../../api/decisionClarificationForm";
 import { DECISION_FILTER_ALL, decisionInboxView } from "../../api/decisionFilter";
 import { nodeIdForDecisionCard } from "../../api/decisionFocus";
 import type { DecisionOutcomeMessage, DecisionOutcomeTone } from "../../api/decisionOutcome";
@@ -130,6 +139,22 @@ const DECISION_JUMP_LABEL = "In graph";
  *  visible word would then be missing from the accessible name it explains. */
 const DECISION_JUMP_TITLE = "Show this decision's task in the graph";
 
+/** What the plan will take for a question the operator leaves alone. It
+ *  PREFIXES the model's own `defaultAnswer` and never replaces it: the value is
+ *  the question's and only this noun is the card's. It is a WORD BESIDE AN EMPTY
+ *  FIELD rather than the field's own value on purpose — the server reads a blank
+ *  or absent answer as "accept this question's default" (DECISION F031 D24), so
+ *  a prefilled input would post the default as though it had been typed, and an
+ *  operator who only glanced at the form would have answered it. */
+const DECISION_CLARIFICATION_DEFAULT_LABEL = "Default";
+
+/** What changes depending on how the question is answered. It PREFIXES the
+ *  model's own `impact`, which `open_clarification_questions` already wrote —
+ *  this card supplies the noun and never the sentence. Both nouns ride in ONE
+ *  meta line joined by a middle dot; the dot is punctuation between two labelled
+ *  values, and the two labels above are the only words this block adds. */
+const DECISION_CLARIFICATION_IMPACT_LABEL = "Impact";
+
 /** Every open question in one calm place. With no models this renders nothing at
  *  all — an empty inbox is not news, exactly as `NeedsAttentionCard` shows
  *  nothing when it has no item. */
@@ -161,6 +186,15 @@ export function DecisionInboxCard({ decisions, tasks, jobId, serverToken, onSele
   // Keyed per ANSWER, never per decision: a row's key already carries the
   // model's position, so an id two cards share cannot make them speak as one.
   const [outcomes, setOutcomes] = useState<Record<string, DecisionOutcomeMessage | undefined>>({});
+  // WHAT THE OPERATOR HAS TYPED INTO EVERY CLARIFICATION FIELD ON SCREEN, as ONE
+  // FLAT STORE keyed by `decisionClarificationFieldKey` rather than as a map per
+  // card. That flatness is exactly why `collectDecisionClarificationAnswers`
+  // iterates a DECISION'S OWN questions instead of walking this store: the store
+  // holds every card's fields at once, so a collector that read its keys would
+  // carry one card's text into another card's post. A field nobody touched is
+  // simply ABSENT here, and absent is what that collector answers as the empty
+  // string — which is the blank the server reads as "accept this default".
+  const [clarificationValues, setClarificationValues] = useState<Record<string, string>>({});
 
   // NAMED FIELDS, never a bare pair of strings: both are opaque ids of the same
   // type, so a positional call would let the token be spent as the job id and
@@ -226,6 +260,18 @@ export function DecisionInboxCard({ decisions, tasks, jobId, serverToken, onSele
             // this dashboard does not carry, and that card must not OFFER the
             // jump — the resolver's own contract.
             const jumpNodeId = nodeIdForDecisionCard(decision, tasks);
+            // ONE MAP PER ROW, collected here beside the jump target rather than
+            // inside a click handler, so every answer on this card sends the
+            // same answers and the rule that builds them stays in a module the
+            // shipped vitest config reaches (DECISION F031 D5). This card owns
+            // no rule about what an empty map, a blank value or an untyped
+            // field MEANS — `clarificationAnswersArg` in decisionAnswer.ts owns
+            // the trimming and the omission, and the collector owns the keys.
+            const clarificationAnswers = collectDecisionClarificationAnswers(
+              clarificationValues,
+              decisionIndex,
+              decision,
+            );
             return (
               // The key pairs a model's POSITION with its id, so two cards carrying
               // the same id still get distinct keys and a card with an empty id
@@ -252,6 +298,65 @@ export function DecisionInboxCard({ decisions, tasks, jobId, serverToken, onSele
                     </button>
                   ) : null}
                 </div>
+                {/* THE STILL-OPEN QUESTIONS, ABOVE THE ANSWER STRIP: the
+                    operator reads what the plan is waiting on before pressing
+                    the control that resolves it. A card carrying none renders
+                    nothing here at all, which is every card but a pending
+                    flight-plan approval. */}
+                {decision.clarifications.length > 0 ? (
+                  <div className={styles.decisionClarifications}>
+                    {decision.clarifications.map((clarification, clarificationIndex) => {
+                      const fieldKey = decisionClarificationFieldKey(
+                        decisionIndex,
+                        decision.id,
+                        clarification.id,
+                      );
+                      const defaultText = `${DECISION_CLARIFICATION_DEFAULT_LABEL}: ${clarification.defaultAnswer}`;
+                      const impactText = `${DECISION_CLARIFICATION_IMPACT_LABEL}: ${clarification.impact}`;
+                      return (
+                        // THE KEY PAIRS THE QUESTION'S POSITION WITH ITS FIELD
+                        // KEY, because the endpoint does not guarantee distinct
+                        // question ids: neither `open_clarification_questions`
+                        // in packages/orchestration/flight_plan.py nor
+                        // `cardClarifications` in decisionCard.ts deduplicates
+                        // them, so a key built from the id alone would let React
+                        // reuse ONE node for TWO questions and the operator's
+                        // typing would appear under the wrong one. The collected
+                        // MAP still collapses a duplicate id to one entry, and
+                        // that is not this component's to change: the write
+                        // door's contract is keyed by question id.
+                        <div key={`${clarificationIndex}-${fieldKey}`} className={styles.decisionClarification}>
+                          <label className={styles.decisionClarificationQuestion} htmlFor={fieldKey}>
+                            {clarification.question}
+                          </label>
+                          {/* THE FIELD STARTS EMPTY AND STAYS THE OPERATOR'S.
+                              Its value is read from the flat store under this
+                              field's own key and falls back to the EMPTY STRING
+                              — never to `clarification.defaultAnswer`, which is
+                              shown as text below instead: a blank answer is what
+                              the server reads as "accept this default"
+                              (DECISION F031 D24), so prefilling it would post
+                              the default as though it had been typed. */}
+                          <input
+                            id={fieldKey}
+                            type="text"
+                            className={styles.decisionClarificationInput}
+                            value={clarificationValues[fieldKey] ?? ""}
+                            onChange={(event) => {
+                              const typed = event.target.value;
+                              // ONE FIELD'S KEY AND NO OTHER, by the same rule
+                              // the in-flight set follows: the store is copied
+                              // and exactly this key is written, so typing in
+                              // one question can never edit another's text.
+                              setClarificationValues((sofar) => ({ ...sofar, [fieldKey]: typed }));
+                            }}
+                          />
+                          <p className={styles.decisionClarificationMeta}>{`${defaultText} · ${impactText}`}</p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : null}
                 <div className={styles.decisionAnswers}>
                   {decision.answers.map((answer, answerIndex) => {
                     const answerKey = decisionAnswerKey(decisionIndex, decision.id, answerIndex);
@@ -290,7 +395,7 @@ export function DecisionInboxCard({ decisions, tasks, jobId, serverToken, onSele
                             disabled={sendingKeys.has(answerKey)}
                             onClick={async () => {
                               setSendingKeys((sofar) => withAnswerKey(sofar, answerKey));
-                              const message = await answerDecisionCard(target, decision, answer.value);
+                              const message = await answerDecisionCard(target, decision, answer.value, clarificationAnswers);
                               setSendingKeys((sofar) => withoutAnswerKey(sofar, answerKey));
                               setOutcomes((sofar) => ({ ...sofar, [answerKey]: message }));
                             }}

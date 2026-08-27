@@ -185,7 +185,7 @@ class TestAnswerClickCallsTheFlow:
 
     def test_card_calls_the_flow_with_the_target_the_decision_and_the_answer(self):
         code = strip_ts_comments(CARD.read_text())
-        assert "answerDecisionCard(target, decision, answer.value)" in code, (
+        assert "answerDecisionCard(target, decision, answer.value, clarificationAnswers)" in code, (
             "one click, one flow: the card must really call it, not merely import it"
         )
 
@@ -475,4 +475,84 @@ class TestARefusedAnswerIsTextRatherThanAButton:
             assert forbidden not in body, (
                 f"{forbidden} gives the text button chrome, and the chrome is "
                 "exactly what made the refused affordance lie (R-0693)"
+            )
+
+
+class TestTheClarificationFormIsFilledFromTheCard:
+    """DECISION F031 D24. A pending flight-plan approval carries still-open
+    questions, and until now no caller ever filled the `answers` map that
+    `answerDecisionCard` has accepted since the write channel learned it. The
+    card now renders one field per question and hands the collected map on.
+
+    THE ONE RULE THAT CANNOT BE SPELLED HERE IS A PREFILL. The server reads a
+    blank or absent answer as "accept this question's default", so a field
+    carrying the default as its VALUE would post the default as though the
+    operator had typed it — silently answering a question nobody read. The
+    default is shown as text BESIDE the field, and the two assertions below are
+    what make that difference mechanical rather than a matter of care."""
+
+    def test_the_card_imports_both_form_rules_from_their_own_module(self):
+        code = strip_ts_comments(CARD.read_text())
+        assert (
+            'import { collectDecisionClarificationAnswers, decisionClarificationFieldKey } '
+            'from "../../api/decisionClarificationForm";'
+        ) in code, (
+            "the key rule and the collection rule live in a module the shipped "
+            "vitest config reaches (DECISION F031 D5); a card that reimplemented "
+            "either would put it where no suite can see it"
+        )
+
+    def test_the_field_reads_the_store_under_its_own_key_and_falls_back_to_empty(self):
+        code = strip_ts_comments(CARD.read_text())
+        assert 'value={clarificationValues[fieldKey] ?? ""}' in code, (
+            "the field's value is the operator's typing under THIS field's key "
+            "and nothing else; the fallback is the EMPTY STRING, because the "
+            "blank is exactly what the server reads as accepting the default"
+        )
+
+    def test_a_questions_default_is_never_an_inputs_value(self):
+        code = strip_ts_comments(CARD.read_text())
+        for forbidden in (
+            "value={clarification.defaultAnswer}",
+            "?? clarification.defaultAnswer",
+            "|| clarification.defaultAnswer",
+        ):
+            assert forbidden not in code, (
+                f"{forbidden} prefills the field with the default, which posts "
+                "it as though it had been typed (DECISION F031 D24)"
+            )
+        assert code.count("clarification.defaultAnswer") == 1, (
+            "the default is read exactly once, for the line that SHOWS it; a "
+            "second reader is the prefill arriving under another spelling"
+        )
+        shown = code[code.index("clarification.defaultAnswer"):]
+        assert shown.startswith("clarification.defaultAnswer}`;"), (
+            "and that one reader is the visible meta line, not an attribute"
+        )
+
+    def test_the_field_block_sits_above_the_answer_strip(self):
+        code = strip_ts_comments(CARD.read_text())
+        fields = code.index("styles.decisionClarifications")
+        answers = code.index("styles.decisionAnswers")
+        assert fields < answers, (
+            "the operator reads what the plan is waiting on BEFORE the control "
+            "that resolves it, and the guard reading the live region sweeps "
+            "everything after the last answer button (finding R-0690): a field "
+            "block below the strip would land inside that region"
+        )
+
+    def test_every_field_class_the_card_names_has_a_rule_of_its_own(self):
+        code = strip_ts_comments(CARD.read_text())
+        css = CARD_CSS.read_text()
+        for class_name in (
+            "decisionClarifications",
+            "decisionClarification",
+            "decisionClarificationQuestion",
+            "decisionClarificationInput",
+            "decisionClarificationMeta",
+        ):
+            assert f"styles.{class_name}" in code, f"the card must name {class_name}"
+            assert css_rule_body(css, f".{class_name}").strip(), (
+                f"{class_name} has no rule behind it, so the field renders with "
+                "the browser's defaults and none of this card's"
             )
