@@ -1,221 +1,191 @@
-── STEP CODE ROUND / F031 — ROUND R47 ─────────────────────────────────
-Goal:        Make the flight-plan approval answerable THROUGH THE WRITE DOOR —
-             the half of DECISION F009 D5 that was planned and never shipped —
-             and retire the duplicate contract guard R-0696 names. When this
-             round ends, `grep resolve_flight_plan_approval
-             packages/orchestration/ui_server.py` returns a line, an `fp:`
-             card's answer strip offers the two words the door accepts, and
-             `answerable_by_decision_resolve` is TRUE for exactly the cards the
-             door would take.
+── STEP REPAIR ROUND / F031 — ROUND R48 ───────────────────────────────
+Goal:        Finish what R47 started and left red. `tests/ui_server/` FAILS on
+             the branch tip at `20eabead` — one test, the door's import guard —
+             because R47's block ordered two new imports into the door without
+             ordering the guard that pins them. Green the tip FIRST, then land
+             the three things R47 never reached: the door's own tests, the
+             answerability mirror, and the browser-side proof. Register the
+             three defects, all of which are the REVIEWER'S, before repairing
+             any of them.
 Bundle:      C0a save this block · C0b mirror it into `last_block` · C1 the plan
-             · C2 the R46 verdict · C3 DECISION F031 D24 · C4 retire the
-             duplicate guard · C5 the `Done:` line for R-0696 · C6 the door's
-             `fp:` dispatch · C7 the `options` payload · C8 the predicate
-             mirror · C9 the browser-side proof · C10 handback · then push.
+             · C2 the three findings · C3 the R47 verdict · C4 DECISION F031
+             D25 · C5 GREEN THE TIP · C6 the door's tests · C7 the
+             answerability mirror · C8 the browser proof · C9 handback · then
+             push.
 Change:      Exactly these paths, nothing else.
-             `.agent/authored/f031-r47.md`, `.agent/last_block.md`,
+             `.agent/authored/f031-r48.md`, `.agent/last_block.md`,
              `.agent/plan.md`, `.agent/live_review.md`, `.agent/decisions.md`,
-             `.agent/handoff.md`, `packages/orchestration/ui_server.py`,
-             `packages/orchestration/decision_queue.py`,
+             `.agent/handoff.md`,
              `packages/orchestration/decision_inbox.py`,
-             `tests/ui_contracts/test_decision_answer_wiring.py`,
              `tests/ui_server/test_command_channel.py`,
              `tests/ui_server/test_command_dispatch.py`,
              `tests/orchestration/test_decision_inbox.py`,
-             `tests/orchestration/test_bundled_clarification.py`,
              `apps/ui/src/api/decisionCard.test.ts`.
-             NO FILE UNDER `docs/` CHANGES and that is checked, not assumed:
-             the reviewer grepped `docs/` for `decision.resolve`,
-             `_dispatch_decision_resolve`, `write door` and `write channel`
-             and every hit outside `docs/roadmap/` was
-             `docs/ui/design_reference/codebase_audit.md`, which does not name
-             this command at all. No ist-doc holds a dispatch table this round
-             would make stale.
-             THE TWO `tests/ui_server/` FILES ARE BOTH LISTED BECAUSE THE REPO
-             SPLITS THEM ON PURPOSE, and S12 obeys that split rather than
-             inventing one. `test_command_dispatch.py`'s own module docstring
-             states the boundary: its sibling `test_command_channel.py` "pins
-             what the door ANSWERS", while it pins "the three writes DECISION
-             F009 D18 orders behind that answer". Putting all of S12 in one
-             file would collapse a distinction that file says exists so that a
-             right status over an effect that never ran stays detectable.
+             NO PRODUCTION FILE OUTSIDE `decision_inbox.py` CHANGES. In
+             particular `packages/orchestration/ui_server.py` and
+             `packages/orchestration/decision_queue.py` are FINISHED: R47
+             landed both and the reviewer read both diffs and found them
+             faithful to their spec. If you believe either needs a change, that
+             is a finding for the handback, not an edit.
+             NO FILE UNDER `docs/` CHANGES, for the reason R47's block gave and
+             the reviewer re-checked: no ist-doc names this command.
 
 Constraints:
  1. EVERY SLICE IS APPLIED BYTE FOR BYTE. Never retype one, never reflow one,
-    never fix one. Slices are `.agent/` text ONLY. The production code below is
-    DESCRIBED as a numbered SPEC, not sliced: you write that code yourself,
-    reading each named file before you touch it, and AGENTS.md's file-editing
-    safety rules bind every one of those edits.
- 2. THE COMMIT ORDER IS FIXED: C0a, C0b, C1, C2, C3, C4, C5, C6, C7, C8, C9,
-    C10. Two orderings are load-bearing and neither may be swapped. C5's
-    `Done:` line asserts a deletion that C4 makes, so it lands AFTER it. C8
-    flips the predicate to TRUE for `fp:` cards, and it lands AFTER C6 gives
-    the door something to accept and AFTER C7 gives the browser a value it can
-    post — a predicate that turns true first would re-ship R-0693's enabled
-    button for the length of two commits.
- 3. C0a AND C0b LAND WHILE `.agent/plan.md` STILL DESCRIBES R46. That is
+    never fix one. Slices are `.agent/` text ONLY. The code below is DESCRIBED
+    as a numbered SPEC: you write it yourself, reading each named file before
+    you touch it, and AGENTS.md's file-editing safety rules bind every edit.
+ 2. THE COMMIT ORDER IS FIXED: C0a, C0b, C1, C2, C3, C4, C5, C6, C7, C8, C9.
+    Two orderings are load-bearing. The findings land at C2 BEFORE any repair,
+    which is what `docs/agents/planner_reviewer_prompt.md` §4 item 4 requires.
+    And C5 greens the tip BEFORE C6 adds tests to the same suite, so that a red
+    at C6 is unambiguously C6's own.
+ 3. RUN THE SUITE A COMMIT GATES BEFORE YOU MAKE THAT COMMIT, not after. R47's
+    worker recorded this as its own lesson and it is right: it committed the
+    door's code and only then ran `tests/ui_server/`, so a guard that was
+    already red travelled one commit further than it needed to. For every
+    commit below that touches code, run its suite on the WORKING TREE first,
+    read the real exit code, and only then commit.
+ 4. C0a AND C0b LAND WHILE `.agent/plan.md` STILL DESCRIBES R47. That is
     ordered: the plan becomes current at C1.
- 4. EVERY SLICE IS THE REVIEWER'S TEXT. You never write a `Done:` paragraph of
-    your own, never edit a finding's wording, never edit D24. If the SPEC reads
-    wrong to you, say so in the handback and implement it as written anyway —
-    except where item 9 applies.
- 5. THE LEDGER SETS MOVE EXACTLY THREE TIMES. Across C2 `^Gate: F\d+ R\d+ — `
-    moves 27 to 28 with the ADDED key exactly `F031 R46`. Across C3
-    `^## DECISION F031 D\d+ ` moves 23 to 24. Across C5 `^Done: R-\d+ — `
-    moves 5 to 6 with the ADDED id exactly `R-0696`. Across the WHOLE round
-    `^- R-\d+ — ` stays 257, `^Landed: R-` stays 0 and `^Gate: R\d+ — ` stays
-    19. The open set is 252 before C2 and 251 after C5.
- 6. RE-READ `.agent/STOP` FROM DISK before C0a and again before C10. If it
+ 5. EVERY SLICE IS THE REVIEWER'S TEXT. You never write a finding, a `Done:`
+    paragraph or a decision of your own. THREE FINDINGS ARE REGISTERED THIS
+    ROUND AND NONE OF THEM IS YOURS: all three are defects in the R47 block,
+    which the reviewer wrote. R47's worker executed that block correctly,
+    including its refusal to edit a test to clear a red it was not told to
+    expect, and the findings say so.
+ 6. THE LEDGER SETS MOVE EXACTLY THREE TIMES. Across C2 `^- R-\d+ — ` moves
+    257 to 260 with the ADDED ids exactly `R-0697`, `R-0698` and `R-0699`.
+    Across C3 `^Gate: F\d+ R\d+ — ` moves 28 to 29 with the ADDED key exactly
+    `F031 R47`. Across C4 `^## DECISION F031 D\d+ ` moves 24 to 25. Across the
+    WHOLE round `^Done: R-\d+ — ` stays 6, `^Landed: R-` stays 0 and
+    `^Gate: R\d+ — ` stays 19. The open set is 251 before C2 and 254 after C3.
+    NO `Done:` LINE IS WRITTEN THIS ROUND for R-0697, R-0698 or R-0699: a
+    finding registered and repaired inside one round is still recorded by the
+    NEXT round's reviewer, who has to verify the repair first.
+ 7. RE-READ `.agent/STOP` FROM DISK before C0a and again before C9. If it
     exists at either reading, finish the commit in hand, write the handback and
     STOP. Never create it, never delete it.
- 7. NOTHING UNDER `.remedy-wt/` IS EVER COMMITTED and `git status --porcelain`
-    reads 0 lines at every commit. `.remedy-wt/f031-r47-block.md` is the
-    reviewer's scratch copy — leave it alone, do not delete it. Any red-proof
-    or mutation you choose to run for your own confidence runs in a disposable
-    `git worktree` and never in the primary checkout; if you create one, remove
-    it before C10 and say so in the handback.
- 8. THIS SESSION'S COMMAND GUARD rejects shell loops, `$?`, `$( )` inside a
+ 8. NOTHING UNDER `.remedy-wt/` IS EVER COMMITTED and `git status --porcelain`
+    reads 0 lines at every commit. `.remedy-wt/f031-r48-block.md` is the
+    reviewer's scratch copy — leave it alone. R47's worker left its own scratch
+    under `.remedy-wt/r47slices/` and three `r47_*` files there; leave those
+    alone too, and never delete anything under that directory by glob.
+ 9. THIS SESSION'S COMMAND GUARD rejects shell loops, `$?`, `$( )` inside a
     compound, `cp`, brace literals containing a quote character, and every form
     of environment assignment. Route anything that counts, hashes or compares
     through `python3 - <<'PY'`, read real exit codes from
-    `subprocess.run(...).returncode`, and copy with `shutil.copyfile`. Keep
-    each heredoc modest in size. Run pytest SERIALLY — never two pytest
-    processes alive at once.
- 9. NEVER WEAKEN AN ASSERTION TO MAKE A GATE GREEN. S9 changes two existing
-    assertions and it is the only such change this block orders; both stay
-    EXACT equality. If any other existing test turns red, that is a finding to
-    report in the handback, not a test to edit — stop, write the handback and
-    hand back, because a red you were not told to expect is exactly the
-    ambiguity G8 of the self-drive protocol ends the round on.
+    `subprocess.run(...).returncode`, and copy with `shutil.copyfile`. Run
+    pytest SERIALLY — never two pytest processes alive at once.
+10. NEVER WEAKEN AN ASSERTION TO MAKE A GATE GREEN. S1 and S6 each widen a
+    guard's ruled set, which is the mechanism those guards document for exactly
+    this case — not a weakening. Nothing else existing may change. If any other
+    test turns red, that is a finding for the handback and a hand-back.
 
-SPEC — the production code. Read each file before editing it.
- S1. `packages/orchestration/ui_server.py::_dispatch_decision_resolve` gains an
-     `fp:` branch taken BEFORE the existing `answer_task_decision` call,
-     entered when the `decision_id` it already reads from `args` starts with
-     `fp:`. Nothing else in that method changes: the `args` degradation rules
-     its docstring states, the task-decision path, and the return shape all
-     stay as they are.
- S2. THE BRANCH REFUSES BY RETURNING None, which the caller already answers 409
-     `rejected_state` at `ui_server.py:3632`, in exactly two cases, and it
-     refuses in NO other case. (a) `job.flight_plan` is not a dict, or its
-     `_approval` is not the string `"pending"`. (b) The `answer` read from
-     `args` is not exactly `"approve"` or exactly `"reject"` — strict equality
-     against those two literals, NO case folding and NO trimming, mirroring
-     `apps/cli/commands/decision.py:299`, which the reviewer read and which
-     compares `reason not in ("approve", "reject")`.
- S3. ON ACCEPTANCE the branch calls
-     `flight_plan.resolve_flight_plan_approval(job, reason=<the answer>,
-     answers={}, questions=<the open questions>)`, where the questions come
-     from `flight_plan.open_clarification_questions(fp.get(
-     "clarifications_resolved"))` — the same call
-     `apps/cli/commands/decision.py:308` makes. IT DOES NOT CALL `save_job`.
-     That is not an omission: `resolve_flight_plan_approval` calls `save_job`
-     itself on both of its arms, at `packages/orchestration/flight_plan.py:824`
-     and `:831`, which the reviewer read. A second save would write the same
-     object twice. Put that reason in a comment where a reader searching for
-     the missing `save_job` will land, because the task-decision branch three
-     lines away DOES call it and the difference will otherwise read as a bug.
- S4. `answers={}` IS DELIBERATE AND DECISION F031 D24 RULES IT: through this
-     door every open clarification takes its own `default_answer`. The
-     docstring says that in plain words — an operator approving from the inbox
-     is accepting the defaults — and names R48 as where a FORM gives them any
-     other choice. Do not invent a way to pass answers here.
- S5. THE ACCEPTED BODY is `{"command": payload["command"], "outcome":
-     "accepted", "decision_id": <the id as a string>}` — the same three keys
-     the task-decision return already builds, so the client sees one shape.
- S6. `--as-mission` IS DELIBERATELY NOT REACHABLE THROUGH THIS DOOR, and the
-     docstring says so where a reader would search for it: F056 makes the
-     mission opt-in an explicit flag whose default is NO, so a door that
-     cannot carry the flag creates no mission and silently creating one would
-     be the opposite of that default.
- S7. `packages/orchestration/decision_queue.py`, in the PENDING arm of branch 7
-     ONLY — the `_fp_approval == "pending"` block that begins at line 246 —
-     sets `_payload["options"] = ["approve", "reject"]` unconditionally,
-     before the `HumanDecision` is constructed. THE RESOLVED ARM AT LINE 299 IS
-     UNTOUCHED: a resolved plan offers nothing to answer.
- S8. `options` IS NOT A NEW VOCABULARY, and the one-line WHY comment above S7's
-     assignment says so: branch 8 already exports an `"options"` key in its
-     payload at line 356, and `apps/ui/src/api/decisionCard.ts::decisionAnswers`
-     prefers `payload.options` over `next_actions` for EVERY card without
-     branching on the card's type. That preference is why S7 is the entire
-     browser-side production change — the answer strip becomes two
-     `kind: "option"` affordances whose values are exactly the two literals S2
-     accepts, and no `.tsx` or non-test `.ts` file is edited this round.
- S9. `tests/orchestration/test_bundled_clarification.py` asserts
-     `bundled.payload == {}` at line 385 and `d.payload == {}` at line 406 for
-     a pending fp decision. BOTH become the same EXACT equality against the new
-     truth, `== {"options": ["approve", "reject"]}`. Neither test's intent
-     changes, neither assertion is loosened, and neither may become a subset
-     check, an `in`, or a key-count assertion. These two lines are the only
-     existing assertions this block orders changed.
-S10. `packages/orchestration/decision_inbox.py::_answerable_by_decision_resolve`
-     gains the mirror of S2: an id starting `fp:` is answerable if and only if
-     `job.flight_plan` is a dict whose `_approval` is `"pending"` — the SAME
-     two conditions, read the same way. Ids that do not start `fp:` keep the
-     existing `find_task_decision` plus open-status read, unchanged.
-S11. S10 IS NOT THE `card.type` BRANCH THAT DOCSTRING FORBIDS, and it must say
-     why in one sentence, because the next reader will think it is: the door
-     itself dispatches on the ID PREFIX, so mirroring the door means reading
-     the prefix. A type branch would read `flight_plan_approval` — which the
-     RESOLVED card also carries while the door refuses it — and would be wrong
-     for exactly the reason the existing note about answered task decisions
-     gives.
-S12. TESTS FOR THE DOOR, SPLIT ACROSS THE TWO FILES BY THE BOUNDARY THEIR OWN
-     DOCSTRINGS DRAW. In `tests/ui_server/test_command_channel.py`, which pins
-     WHAT THE DOOR ANSWERS: an approval answered 200 with S5's three keys; a
-     rejection answered the same; a plan that is not pending answered 409 with
-     a `rejected_state` audit line; and an `answer` that is neither literal
-     answered 409 with that same audit line — for that last one use the full
-     CLI line `remedy decision resolve <id> fp:approval --reason approve`,
-     because that is precisely what R-0693 measured the browser posting before
-     this round, so the test pins the old bug shut. In
-     `tests/ui_server/test_command_dispatch.py`, which pins THE EFFECT BEHIND
-     the answer: one test that an accepted approval really reached
-     `resolve_flight_plan_approval` and left the plan `_approval` reading
-     `approved` on disk, and one that `save_job` ran EXACTLY ONCE for it —
-     that count being the only guard on S3's deliberate omission, and a
-     guard that belongs in the effect file rather than the answer file.
-S13. TESTS FOR THE PREDICATE, in `tests/orchestration/test_decision_inbox.py`:
-     a pending flight plan gives `answerable_by_decision_resolve` TRUE on the
-     `fp:approval` card; an approved plan gives FALSE on the resolved
-     `fp:approval` card; and the existing task-decision cases still read as
-     they did, which you confirm by the suite count rather than by editing
-     them.
-S14. THE BROWSER-SIDE PROOF, one test in `apps/ui/src/api/decisionCard.test.ts`:
-     feed `decisionAnswers` a card shaped like the endpoint's PENDING
-     `fp:approval` — `payload` carrying `options: ["approve", "reject"]` and
-     `answerable_by_decision_resolve: true` — and assert it gives EXACTLY two
-     answers, both `kind: "option"`, with values `approve` then `reject` in
-     that order, each carrying `posts: true`. This is the only evidence
-     available that the browser half of this round works, because no DOM
-     harness reaches the component.
-S15. C4 RETIRES THE DUPLICATE R-0696 NAMES by deleting the function
-     `test_the_region_after_the_button_still_carries_no_conditional_operator`
-     from `tests/ui_contracts/test_decision_answer_wiring.py`, where it begins
-     at line 457. KEEP `test_the_region_is_created_under_no_conditional_operator_at_all`
-     at line 285. The reviewer measured which is which rather than guessing:
-     `git log -S` puts the keeper in `05bdeae1` and the deleted one in
-     `9236e617`, the R45 commit, so the NEWER is retired exactly as §3 item 30
-     rules for a duplicate. Delete the function and its body and the blank line
-     that separated it from its neighbour, and nothing else in that file — the
-     shared reader `jsx_between_answer_button_and_live_paragraph` at line 95
-     STAYS, because the keeper calls it.
+SPEC — read each file before editing it.
+ S1. GREEN THE TIP (C5). `tests/ui_server/test_command_channel.py`'s
+     `TestCommandDoorImportGuard.ALLOWED_IMPORTS` gains exactly two entries:
+     `("packages.orchestration.flight_plan", "open_clarification_questions")`
+     and `("packages.orchestration.flight_plan", "resolve_flight_plan_approval")`.
+     THIS IS THE MECHANISM THAT GUARD DOCUMENTS, not a weakening of it: its own
+     comment says every entry is there "because a ruled DECISION puts it there"
+     and that adding one "belongs in the same commit as the decision that
+     widens it". DECISION F031 D24, landed at R47's C3, is that decision, and
+     it is what R47's block failed to carry into this file. Follow the existing
+     idiom: each entry carries a trailing comment naming its ruling, and
+     because the surrounding entries cite F009 decisions as bare `D5` and `D21`,
+     yours must read `F031 D24` so the two families cannot be confused. Keep
+     the set's existing ordering convention. Change NOTHING else in that class:
+     `DOOR_METHODS` and `FORBIDDEN_MODULES` stay exactly as they are, and
+     `packages.orchestration.flight_plan` is correctly absent from the
+     forbidden set already — the reviewer checked.
+ S2. TESTS FOR THE DOOR (C6), split across the two files by the boundary their
+     own docstrings draw — `test_command_dispatch.py`'s module docstring says
+     its sibling `test_command_channel.py` "pins what the door ANSWERS" while
+     it pins "the three writes DECISION F009 D18 orders behind that answer".
+     The door's `fp:` branch landed at R47's C6 with NO test of its own; that
+     is finding R-0699 and this item is its repair.
+ S3. IN `tests/ui_server/test_command_channel.py`, four tests of what the door
+     ANSWERS: an `fp:approval` on a PENDING plan with the answer `approve`
+     answered 200, whose body carries exactly `command`, `outcome` reading
+     `accepted`, and `decision_id`; the same with `reject`, also 200; the same
+     on a plan whose `_approval` is NOT pending, answered 409 with a
+     `rejected_state` audit line; and an answer that is neither literal
+     answered 409 with that same audit line. For that last one use the exact
+     string `remedy decision resolve <id> fp:approval --reason approve`,
+     because finding R-0693 measured that as what the browser posted before
+     R47 — so the test pins the old bug shut rather than inventing a case.
+ S4. IN `tests/ui_server/test_command_dispatch.py`, two tests of the EFFECT
+     behind that answer: that an accepted approval really ran
+     `resolve_flight_plan_approval`, evidenced by the job's `flight_plan`
+     reading `_approval` == `approved` ON DISK after the request; and that
+     `save_job` ran EXACTLY ONCE for it. That count is the only guard on the
+     door's deliberate omission of its own `save_job` call — R47's C6 left a
+     comment at that spot explaining why it is absent, and this test is what
+     stops a later reader from "fixing" the absence.
+ S5. THE ANSWERABILITY MIRROR (C7).
+     `packages/orchestration/decision_inbox.py::_answerable_by_decision_resolve`
+     gains the mirror of the door's `fp:` branch: an id starting `fp:` is
+     answerable if and only if `job.flight_plan` is a dict whose `_approval` is
+     `"pending"` — the SAME two conditions the door reads at
+     `ui_server.py`, which you should read before writing this so the two
+     cannot drift. Ids that do not start `fp:` keep the existing
+     `find_task_decision` plus open-status read, unchanged. Extend that
+     function's docstring: it currently states that `task_decision` "is the
+     whole set", which this change makes FALSE, and leaving that sentence
+     standing would be a stale claim beside correct code.
+ S6. IT IS NOT A `card.type` BRANCH and the docstring must say why in one
+     sentence, because that same docstring forbids one and the next reader will
+     think the rule was broken: the door itself dispatches on the ID PREFIX, so
+     mirroring the door means reading the prefix. A type branch would read
+     `flight_plan_approval` — which the RESOLVED card also carries while the
+     door refuses it — and would be wrong for exactly the reason the existing
+     note about answered task decisions already gives.
+ S7. `tests/orchestration/test_decision_inbox.py`'s `ANSWERABLE_DECISION_TYPES`
+     becomes `("flight_plan_approval", "task_decision")`, and its comment —
+     which today says `_dispatch_decision_resolve` "reaches a record only
+     through `escalation.find_task_decision` … so `task_decision` is the whole
+     set" — is rewritten to state what is now true and to name DECISION F031
+     D24 as what changed it. THIS IS NOT WEAKENING THE PARAMETRIZED GUARD: that
+     tuple is compared against the card each PRODUCING FIXTURE builds, and
+     `_fixture_flight_plan_approval` builds `{"_approval": "pending"}`, which
+     the door now genuinely accepts. The reviewer read that fixture rather than
+     assuming its state.
+ S8. THE RESOLVED CASE GETS ITS OWN TEST, a sibling of the existing
+     `test_answerable_key_goes_false_once_the_decision_has_been_answered` and
+     for the identical reason its docstring gives — a type check cannot tell an
+     open card from a resolved one, because both carry the same `type`. Assert
+     that a job whose `flight_plan._approval` reads `approved` yields an
+     `fp:approval` card with `answerable_by_decision_resolve` FALSE. Without
+     this, S7's tuple entry would be the only statement about the type and it
+     would read as "every flight-plan card is answerable", which is false.
+ S9. THE BROWSER PROOF (C8), one test in `apps/ui/src/api/decisionCard.test.ts`,
+     written in that file's existing idiom — the reviewer read it: the
+     neighbouring cases build a `DecisionInboxEntry` literal and compare
+     `decisionAnswers(card)` with `toEqual` against the full expected array.
+     Feed it a card shaped like the endpoint's PENDING `fp:approval`: `type`
+     `"flight_plan_approval"`, `payload` carrying
+     `options: ["approve", "reject"]`, and `answerable_by_decision_resolve`
+     true. Assert `toEqual` against exactly two entries, both `kind: "option"`,
+     with `label` and `value` both `approve` then both `reject` in that order,
+     each carrying `posts: true`. This is the only evidence available that the
+     browser half works, because no DOM harness reaches the component.
 
-Done when — run every gate yourself and record its REAL exit code. G1 through G9
-run at commits STRICTLY EARLIER than C10, so the handback can quote them; the
-push is ordered after C10 and its reading is NOT written into the handback.
+Done when — run every gate yourself and record its REAL exit code. G1 through G8
+run at commits STRICTLY EARLIER than C9, so the handback can quote them; the
+push is ordered after C9 and its reading is NOT written into the handback.
  G1. BRANCH, CLEANLINESS, TRANSPORT. Branch is `feature/f031-decision-inbox`.
-     `git status --porcelain` prints 0 lines after every commit from C0a to C9.
-     `.agent/STOP` read from disk before C0a and before C10, both ABSENT.
-     Report the sha256, byte count and line count of this block as saved at
-     C0a, as mirrored at C0b, and as read off disk at C9 — all three must be
-     EQUAL — and say whether C0a and C0b are the same git blob.
+     `git status --porcelain` prints 0 lines after every commit from C0a to C8.
+     `.agent/STOP` read from disk before C0a and before C9, both ABSENT. Report
+     the sha256, byte count and line count of this block as saved at C0a, as
+     mirrored at C0b, and as read off disk at C8 — all three must be EQUAL —
+     and say whether C0a and C0b are the same git blob.
  G2. EXTRACTION AND CAPS. Extract the slices from the COMMITTED C0a blob by
      their marker LINES, never from the prompt. Report how many slices your
      extractor printed, the CONTENT line total, the TOTAL line count, and PROSE
      as TOTAL minus CONTENT. MARKERS ARE PROSE. PROSE must be at most 400 and
      TOTAL at most 490.
- G3. THE PLAN. `.agent/plan.md` at C1 is BYTE-EQUAL to PLANF031R47 under the
+ G3. THE PLAN. `.agent/plan.md` at C1 is BYTE-EQUAL to PLANF031R48 under the
      newline-INCLUDED convention. Run the negative control against the slice
      MINUS its trailing newline and report it FALSE. Report `^## Goal$` 1,
      `^## Next Steps$` 1, and `wc -l` STRICTLY UNDER 50.
@@ -223,128 +193,110 @@ push is ordered after C10 and its reading is NOT written into the handback.
      APPENDED REGION. Read every non-current revision with
      `git show <rev>:<path>` into memory; never write a past blob over a
      tracked file to read it. `.agent/live_review.md` at C2 equals its
-     pre-commit blob plus ONE newline plus LEDGER47; `.agent/decisions.md` at
-     C3 equals ITS pre-commit blob plus ONE newline plus DECISION24;
-     `.agent/live_review.md` at C5 equals whatever C2 left plus ONE newline
-     plus DONE696, which you READ rather than take from this block. The
-     reviewer measured the two BASE blobs at `a73c137e` itself:
-     `.agent/live_review.md` is 863212 bytes and `.agent/decisions.md` is
-     608934. If either reads differently before C2 or C3, something moved that
-     this round did not order — stop and hand back. For EACH append report both
-     byte counts and the sum. Then confirm EACH with a
-     SECOND, independent reader: split the whole file on blank lines, let N be
-     the number of paragraphs YOUR SCRIPT COUNTS in that slice — never a number
-     this block asserts — and compare the LAST N units of the file against the
-     slice's N paragraphs IN ORDER. Report N and the unit count before and
-     after for each. THE NEGATIVE CONTROL GOES ON THE FIRST APPENDED PARAGRAPH,
-     which is the position a tail-only reading cannot see: flip ONE byte IN
-     MEMORY inside paragraph 1 of each slice and report that BOTH readers
-     REJECT it. For any slice whose N is 1, say so and note that paragraph 1 is
-     also the last. Never mutate the tracked file.
+     pre-commit blob plus ONE newline plus FINDINGS48; at C3 equals ITS OWN
+     pre-commit blob — which you READ rather than take from this block — plus
+     ONE newline plus LEDGER48; `.agent/decisions.md` at C4 equals ITS
+     pre-commit blob plus ONE newline plus DECISION25. The reviewer measured
+     the two BASE blobs at `20eabead` itself: `.agent/live_review.md` is 868456
+     bytes and `.agent/decisions.md` is 611101. If either reads differently
+     before its commit, something moved that this round did not order — stop
+     and hand back. For EACH append report both byte counts and the sum. Then
+     confirm EACH with a SECOND, independent reader: split the whole file on
+     blank lines, let N be the number of paragraphs YOUR SCRIPT COUNTS in that
+     slice — never a number this block asserts — and compare the LAST N units
+     of the file against the slice's N paragraphs IN ORDER. Report N and the
+     unit count before and after for each. THE NEGATIVE CONTROL GOES ON THE
+     FIRST APPENDED PARAGRAPH, which is the position a tail-only reading cannot
+     see: flip ONE byte IN MEMORY inside paragraph 1 of each slice and report
+     that BOTH readers REJECT it. For any slice whose N is 1, say so and note
+     that paragraph 1 is also the last. Never mutate the tracked file.
  G5. THE LEDGER SETS. Report at four points — before C2, after C2, after C3,
-     after C5 — the line-anchored counts of `^- R-\d+ — `, `^Done: R-\d+ — `,
+     after C4 — the line-anchored counts of `^- R-\d+ — `, `^Done: R-\d+ — `,
      `^Landed: R-`, `^Gate: R\d+ — ` and `^Gate: F\d+ R\d+ — `, plus the ids
      and gate keys ADDED and REMOVED as SETS at each step, whether all ids are
-     DISTINCT, and the maximum id. Every movement constraint 5 names is checked
-     here, INCLUDING the ones that must NOT move. Report the open set as
-     `^- R-\d+ — ` minus `^Done: R-\d+ — ` before C2 and after C5. Also report
-     `^## DECISION F031 D\d+ ` in `.agent/decisions.md` before and after C3.
- G6. THE DUPLICATE IS GONE AND ITS NEIGHBOUR IS NOT. At C4 report, over
-     `tests/ui_contracts/test_decision_answer_wiring.py`, the line-anchored
-     count of `^    def test_` before and after, the SET of names REMOVED and
-     the SET ADDED, and confirm REMOVED is exactly
-     {`test_the_region_after_the_button_still_carries_no_conditional_operator`}
-     and ADDED is EMPTY. The reviewer counted the deleted name in that file at
-     `a73c137e` with its own script and it reads 1, so the deletion has a
-     single target and cannot take a neighbour with it. Confirm
-     `jsx_between_answer_button_and_live_paragraph` is still DEFINED and still
-     CALLED: the reviewer counted that name at `a73c137e` and it reads 3 — one
-     definition and two calls — so it must read exactly 2 at C4. Then run
-     `python3 -m pytest tests/ui_contracts/ -q` and report the real exit code
-     and count: it reads 562 passed with 4 skipped at `a73c137e`, measured by
-     the reviewer, and must read 561 passed with 4 skipped at C4. A different
-     number means you deleted something else — stop and hand back.
- G7. THE DOOR AND THE PREDICATE, PROVED BY A RED CONTROL, NOT BY A GREEN COUNT.
-     At C9, in a DISPOSABLE WORKTREE and never in the primary checkout, make
-     the door's `fp:` branch accept ANY answer string — that is, delete S2's
-     clause (b) alone — and report that `tests/ui_server/` turns RED at a real
-     exit code of 1, naming which tests fail. Restore, then in the same
-     worktree make `_answerable_by_decision_resolve` return the OLD value for
-     `fp:` ids — that is, delete S10's branch alone — and report that
-     `tests/orchestration/test_decision_inbox.py` turns RED at a real exit code
-     of 1, naming which tests fail. Report the colour of each mutation as a
-     REAL exit code, never as a word, and confirm the worktree is removed
-     afterwards and `git worktree list` is back to 1 line. If EITHER mutation
-     leaves its suite GREEN, that is a finding to report in the handback and
-     the round hands back on it: a guard that survives the deletion of what it
-     guards is not a guard.
-     BOTH MUTATIONS ARE NAMED SEMANTICALLY — "S2's clause (b)", "S10's branch"
-     — rather than as a byte string with a measured occurrence count, and that
-     is deliberate rather than an omission of the standing rule for destructive
-     controls. That rule binds a control that deletes or replaces bytes in an
-     EXISTING file at a known SHA, where the reviewer can count the target
-     itself; here the target is code THIS ROUND writes, so no such count can
-     exist when this block is written. You supply it instead: before each
-     mutation, report the exact lines you removed and confirm you removed
-     nothing else.
- G8. THE SUITES, SERIALLY, IN THE PRIMARY CHECKOUT AT C9, one pytest process at
-     a time, each with its REAL exit code and count. The canary
-     `tests/cli/test_golden_path.py` 42; `tests/ui_server/` 480 at `a73c137e`
-     and HIGHER at C9 by exactly S12's new tests, which you state as a number;
+     DISTINCT, and the maximum id. Every movement constraint 6 names is checked
+     here, INCLUDING the ones that must NOT move. Report the open set before C2
+     and after C3. Also report `^## DECISION F031 D\d+ ` in
+     `.agent/decisions.md` before and after C4.
+ G6. THE TIP IS GREEN AND THE GUARD STILL BITES. Run
+     `python3 -m pytest tests/ui_server/ -q` at `20eabead` BEFORE C5 and report
+     the REAL exit code and counts: the reviewer measured 1 failed and 479
+     passed at exit 1, naming
+     `TestCommandDoorImportGuard::test_the_door_imports_exactly_the_allowed_set`.
+     Run it again after C5 and report 480 passed at exit 0. Then, in a
+     DISPOSABLE WORKTREE and never in the primary checkout, prove the widened
+     guard still bites: remove ONE of S1's two new entries and report that the
+     same test turns RED at a real exit code of 1; restore it, remove the
+     other, report the same. A guard that passes with an entry missing is a
+     guard that stopped reading the door. Report each colour as a REAL exit
+     code, never as a word, say exactly which lines you removed for each
+     mutation, and confirm the worktree is removed afterwards and
+     `git worktree list` is back to 1 line.
+ G7. THE NEW TESTS FAIL WITHOUT THE CODE THEY PIN. In the same disposable
+     worktree at C8, run three mutations, each restored before the next.
+     (a) Delete the door's `answer not in ("approve", "reject")` refusal and
+     report that `tests/ui_server/` turns RED at exit 1. (b) Delete the door's
+     call to `resolve_flight_plan_approval` and its return, so the `fp:` branch
+     falls through, and report that `tests/ui_server/` turns RED at exit 1.
+     (c) Delete S5's `fp:` branch from `_answerable_by_decision_resolve` and
+     report that `tests/orchestration/test_decision_inbox.py` turns RED at exit
+     1. For each, name which tests failed — do not predict the names, report
+     what you observed. IF ANY MUTATION LEAVES ITS SUITE GREEN, that is a
+     finding for the handback and the round hands back on it: a guard that
+     survives the deletion of what it guards is not a guard.
+ G8. THE SUITES AND THE PATHS, at C8, SERIALLY in the primary checkout, one
+     pytest process at a time, each with its REAL exit code and count. Every
+     figure below was measured by the reviewer at `20eabead`, not copied. The
+     canary `tests/cli/test_golden_path.py` 42; `tests/ui_server/` 480 at C8
+     — that is 479 passing plus the guard S1 repairs — RISING by exactly S3's
+     and S4's six new tests, which you state as a number;
      `tests/orchestration/test_test_runner.py` 52;
      `tests/regression/test_resource_safety.py` 21;
      `tests/orchestration/test_integrity_gate.py` 16;
-     `tests/orchestration/test_decision_inbox.py` 34 at `a73c137e` and higher
-     at C9 by exactly S13's new tests; `tests/orchestration/test_bundled_clarification.py`
-     38 and UNCHANGED at 38, because S9 edits two assertions and adds no test;
-     `tests/cli/test_decision_answers.py` 29 and UNCHANGED;
-     `tests/cli/test_plan_approval.py` 27 and UNCHANGED. Every one of those
-     `a73c137e` readings was measured by the reviewer, not copied. The last
-     three are ordered BECAUSE S7 changes a payload the CLI path also reads: if
-     any of them moves, S7 changed CLI semantics, which `.agent/context.md`
-     forbids, and that is a hand-back. Then the browser side at C9: `npx tsc
-     --noEmit` and `npx vitest run`, each with its REAL exit code, reporting
-     the file and test counts — 30 files and 454 tests at `a73c137e` — and the
-     count must rise by exactly S14's one test.
- G9. MARKERS, PATHS, COMMITS. Line-anchored `^<<<SLICE ` and `^<<<END ` are 0
-     and 0 in `.agent/plan.md` at C1, `.agent/live_review.md` at C5 and
-     `.agent/decisions.md` at C3, against a CONTROL count over the C0a blob,
-     which is not 0. Compare the path set of `git diff --name-only a73c137e..C9`
-     BOTH WAYS against this round's expected set and report both residues,
-     which must BOTH be EMPTY. THE EXPECTED SET FOR THAT RANGE IS THE CHANGE
-     LINE'S LIST MINUS `.agent/handoff.md`, and the exclusion is the point of
-     saying so: the handback is written at C10, which is OUTSIDE a range
-     ending at C9, so an expected set that kept it would leave a residue that
-     is not a defect and would read as one.
-     Report each commit's insertions from
-     `git diff --numstat`, confirm each is single-parent and under 500. Report
-     `git ls-files .remedy-wt` as 0 and `git worktree list` as 1 line at C9.
-     Report the reflog FOR THIS ROUND'S OWN COMMITS ONLY: every operation
-     prefix must read `commit`, and among those entries `amend`, `rebase` and
-     `cherry` must be 0 each. Do not count those words over the whole reflog,
-     which holds this repository's entire history and is not what this gate
-     asks.
+     `tests/ui_contracts/` 561 passed with 4 skipped and UNCHANGED;
+     `tests/orchestration/test_decision_inbox.py` 34, rising by exactly S8's
+     one test; `tests/orchestration/test_bundled_clarification.py` 38 and
+     UNCHANGED; `tests/cli/test_decision_answers.py` 29 and UNCHANGED;
+     `tests/cli/test_plan_approval.py` 27 and UNCHANGED. The last four are
+     ordered because they read the same payload and the same CLI path this
+     feature has been changing: if any of them moves, say so and hand back.
+     Then the browser side: `npx tsc --noEmit` and `npx vitest run`, each with
+     its REAL exit code, reporting file and test counts — 30 files and 454
+     tests at `20eabead` — with the count rising by exactly S9's one test.
+     Finally: line-anchored `^<<<SLICE ` and `^<<<END ` are 0 and 0 in
+     `.agent/plan.md` at C1, `.agent/live_review.md` at C3 and
+     `.agent/decisions.md` at C4, against a CONTROL count over the C0a blob
+     which is not 0; compare the path set of
+     `git diff --name-only 20eabead..C8` BOTH WAYS against the Change line's
+     list MINUS `.agent/handoff.md` — excluded because the handback is written
+     at C9, outside a range ending at C8 — and report both residues EMPTY;
+     report each commit's insertions from `git diff --numstat`, each
+     single-parent and under 500; `git ls-files .remedy-wt` 0 and
+     `git worktree list` 1 line; and the reflog FOR THIS ROUND'S OWN COMMITS
+     ONLY, every operation prefix reading `commit`, with `amend`, `rebase` and
+     `cherry` 0 each among those entries. Do not count those words over the
+     whole reflog.
 Handback:    Rewrite `.agent/handoff.md` per docs/agents/handback_template.md at
-             C10: feature and round, branch, the per-commit changed-files table
+             C9: feature and round, branch, the per-commit changed-files table
              with the `+/-` column taken from `git diff --numstat` itself and
-             agreeing cell for cell with G9, the item-status table covering
-             C0a, C0b and C1 through C9, C10 and the push, ONE LINE PER GATE
-             for G1 through G9 with its real exit code, an explicit line naming
-             R-0696 as FIXED at C4 and recorded at C5, the open-findings count,
-             and the next expected action. Say plainly how S12's tests split
-             across the two `tests/ui_server/` files and why. Derive
-             your line cap from AGENTS.md yourself, from the commit count you
-             actually made; if the mandated content genuinely does not fit,
-             declare the DECISION D15 overage with its stated cause. Then push
-             with `git push origin feature/f031-decision-inbox`.
+             agreeing cell for cell with G8, the item-status table covering C0a,
+             C0b, C1 through C8, C9 and the push, ONE LINE PER GATE for G1
+             through G8 with its real exit code, an explicit line saying the
+             branch tip was RED at `20eabead` and is GREEN at C8 with the
+             measured counts on both sides, the open-findings count, and the
+             next expected action. Derive your line cap from AGENTS.md
+             yourself, from the commit count you actually made; if the mandated
+             content genuinely does not fit, declare the DECISION D15 overage
+             with its stated cause and name the mandated content that caused
+             it. Then push with `git push origin feature/f031-decision-inbox`.
 ──────────────────────────────────────────────────────────────────────
 
-<<<SLICE PLANF031R47
+<<<SLICE PLANF031R48
 # Plan — F031 Decision inbox
 
 Branch: feature/f031-decision-inbox, cut from `main` at `6325ac2f`, the pull
 request #213 merge closing F022. `.agent/live_review.md` is the record and the
-id ceiling, `.agent/decisions.md` D1–D24.
+id ceiling, `.agent/decisions.md` D1–D25.
 
 ## Goal
 Every open question in one calm place: the inbox renders decision cards — type,
@@ -353,83 +305,85 @@ branch-only blocking semantics intact, ordered by a documented rule over age and
 blocked size, and answerable from the card through the write channel.
 
 ## Current Step
-R47 makes the flight-plan approval answerable through the write door, which is
-the half of DECISION F009 D5 that was planned and never shipped: the door
-dispatches an `fp:`-prefixed id to `flight_plan.resolve_flight_plan_approval`,
-the pending decision carries `approve` and `reject` as payload options, and
-`_answerable_by_decision_resolve` mirrors the door's own two conditions. The
-round also retires the duplicate contract guard R-0696 named.
+R48 finishes R47 and repairs it. R47 landed the door's `fp:` dispatch and the
+`approve`/`reject` options but left `tests/ui_server/` RED on an import guard
+its block never widened, and never reached the door's tests, the answerability
+mirror or the browser proof. R48 registers the three defects — all three in the
+reviewer's block, not in the worker's execution — greens the tip, then lands
+the three missing pieces.
 
 ## Next Steps
-1. R48: the clarification FORM over `payload.clarifications`, which is what lets
+1. R49: the clarification FORM over `payload.clarifications`, which is what lets
    an operator answer a question instead of accepting its default.
-2. A reviewer-file round landing the §3 checklist item R-0694, R-0695 and R-0696
-   share: a block reads the TARGET — a predicate's refusal conditions, a test
-   file's existing guards, a payload's exact-equality assertions — before
-   ordering anything against it.
+2. A reviewer-file round landing the §3 checklist item R-0694 through R-0699 now
+   share: a block reads the TARGET before ordering anything against it — every
+   guard whose ruled set the change widens, every constant a test compares
+   against, and every fixture whose state decides an outcome.
 3. The integration-gate round per `docs/agents/integration_gate.md`, then
    closure per `docs/roadmap/STATUS_closure_protocol.md`.
 
 ## Risks
 - SIX OF THE EIGHT PRODUCING TYPES STILL CANNOT BE ANSWERED THROUGH THE DOOR
   once this round lands. R-0693 measures the gap and names `fp:` as the one
-  round R47 closes; the rest are outside F031's scope, and the inbox tells the
-  truth about every one of them rather than offering a button that is refused.
+  R47 and R48 close between them; the rest are outside F031's scope, and the
+  inbox tells the truth about every one of them.
 - APPROVING FROM THE INBOX ACCEPTS EVERY CLARIFICATION DEFAULT. DECISION F031
-  D24 rules that and R48 is where an operator gains any other choice; the
-  endpoint says so in its own docstring and nothing in the browser claims more.
-- NO DOM HARNESS REACHES THE INBOX MARKUP, so the browser half is evidenced
-  only by `apps/ui/src/api/decisionCard.test.ts` over `decisionAnswers` and by
-  the comment-stripped source guards in
-  `tests/ui_contracts/test_decision_answer_wiring.py`.
+  D24 rules that and R49 is where an operator gains any other choice.
+- SIX CONSECUTIVE ROUNDS HAVE NOW RAISED A REVIEWER-SPEC DEFECT with one root
+  cause — a block ordering something against a file it had not read. Step 2
+  above is the fix and it is the highest-value work left in this feature.
 - Open findings, by the rule DECISION F009 D10 requires — every `^- R-\d+ — `
-  paragraph minus every `^Done: R-\d+ — ` line — the set is 252 at `a73c137e`
-  and this round takes it to 251.
+  paragraph minus every `^Done: R-\d+ — ` line — the set is 251 at `20eabead`
+  and this round takes it to 254.
 - BLOCK CAPS ARE TWO: 490 lines TOTAL (DECISION F085 D6) and 400 lines PROSE
   (DECISION F085 D5); every block states and re-measures both.
-<<<END PLANF031R47
+<<<END PLANF031R48
 
-<<<SLICE LEDGER47
-Gate: F031 R46 — the F031 R46 entry. R46 PASSED ON EVERY ONE OF ITS SEVEN GATES, AND THE REVIEWER RE-RAN EVERY ONE ITSELF off disk rather than reading the handback back; every value that handback states reproduced cell for cell. TRANSPORT HELD IN ITS STRONGEST FORM AVAILABLE TO THIS WORKFLOW for the fourth round running: the reviewer's OWN scratch original `.remedy-wt/f031-r46-block.md`, the C0a blob, the C0b blob, `.agent/last_block.md` at C4 and the same file read off disk are ALL FIVE byte-identical at sha256 `fdd7f22e…6f69b0` over 23159 bytes and 226 lines, with C0a and C0b resolving to the SAME git blob `bb822e3e`. THE EXTRACTION printed 4 slices, CONTENT 75 and TOTAL 226, so PROSE was 151 against 400 and TOTAL 226 against 490. THE PLAN at C1 is byte-equal to PLANF031R46 at 2814 bytes with the minus-newline control FALSE, `^## Goal$` 1, `^## Next Steps$` 1 and `wc -l` 48 against a cap that is STRICTLY under 50. THE THREE APPENDS ARE EXACT: 854809 + 1 + 2880 = 857690 and 857690 + 1 + 5521 = 863212 in the ledger, and 607381 + 1 + 1552 = 608934 in `.agent/decisions.md`; blank-line units 351 to 352, 352 to 353 and 1461 to 1466; N counted by the reviewer's own script at 1, 1 and 5, with the first two noted as slices whose paragraph 1 is also the last; both whole-file identities TRUE on all three, and the byte flip placed on the FIRST appended paragraph REJECTED by BOTH readers on all three. THE SETS MOVED ONLY WHERE CONSTRAINT 5 ALLOWED, AND THE ONES THAT MUST NOT MOVE DID NOT: `^- R-\d+ — ` 256 to 257 to 257 with the ADDED id across C2 exactly `R-0696` and NOTHING removed at either step; `^Done: R-\d+ — ` 5 at all three points, `^Landed: R-` 0 and `^Gate: R\d+ — ` 19 throughout; `^Gate: F\d+ R\d+ — ` 26 to 26 to 27 with the ADDED key across C3 exactly `F031 R45`; all ids DISTINCT with the maximum `R-0696`; open set 251 before C2 and 252 after C3; `^## DECISION F031 D\d+ ` 22 before C4 and 23 after. NOTHING EXECUTABLE MOVED AND THE REVIEWER PROVED IT RATHER THAN READING IT BACK: `git diff --name-only d53bdb9b..98e033e0` is 5 paths, every one beginning with `.agent/` and none outside it, and `git diff --stat` restricted to `apps/`, `packages/`, `tests/` and `docs/` is EMPTY for all four. THE FIVE SUITES A STATE REWRITE CAN BREAK WERE RE-RUN SERIALLY IN THE PRIMARY CHECKOUT, one pytest process at a time, each at a REAL exit code of 0: the canary `tests/cli/test_golden_path.py` 42, `tests/ui_server/` 480, `tests/orchestration/test_test_runner.py` 52, `tests/regression/test_resource_safety.py` 21 and `tests/orchestration/test_integrity_gate.py` 16 — every count equal to its `d53bdb9b` reading. MARKERS are 0 and 0 in all three written targets against a live CONTROL of 4 and 4 over the C0a blob, and the path set matches BOTH WAYS with both residues EMPTY. THE SEVEN COMMITS ARE EACH SINGLE-PARENT at insertions 226, 161, 27, 2, 2, 26 and 32, every one far under 500, and the six figures the handback tables agree cell for cell with `git diff --numstat` including the deletion column at -0, -273, -27, -0, -0 and -0; the reflog SCOPED to those seven entries reads `commit` on every one, so `amend`, `rebase` and `cherry` are 0 each among them; `git ls-files .remedy-wt` is 0 and `git worktree list` is 1 line. THE HANDBACK WAS AUDITED AS AN ARTIFACT: 75 lines against the 100-line tier seven tabled commits earn, one line per gate carrying a real exit code, an item-status table covering all eight ordered items, the plain statement that the round changed no executable file, the explicit R-0696 line saying it was registered and deliberately not fixed, the open count 252, and a next-action section naming Phase 1 rule 1 before the Open PR Gate exactly as the self-drive protocol requires. THE ONE THING THE HANDBACK DID NOT NUMBER IS THE ONE THING IT COULD NOT: C5's own `+/-` cell reads "per numstat" rather than a figure, which is correct rather than a lapse — a handoff cannot table the numstat of the commit that writes it, and inventing the number would have been the self-referential value §3 forbids. NO BLOCK CONDITION AROSE: nothing fabricated, no false green, no missing table, no unverified completion claim and no silent scope change. R46 put the R45 verdict, the finding it raised and the decision that re-numbered the programme on disk, which is the whole of what a record round owes.
-<<<END LEDGER47
+<<<SLICE FINDINGS48
+- R-0697 — High, A BLOCK ORDERED TWO NEW IMPORTS INTO THE WRITE DOOR AND DID NOT WIDEN THE EQUALITY GUARD THAT PINS THE DOOR'S IMPORT SET, SO THE BRANCH TIP SHIPPED RED. Raised by the reviewer at the R47 gate against its OWN R47 block, and reported by the worker before the reviewer reached it. THE MEASUREMENT, read at `20eabead`: `python3 -m pytest tests/ui_server/ -q` exits 1 with 1 failed and 479 passed, the single failure being `tests/ui_server/test_command_channel.py::TestCommandDoorImportGuard::test_the_door_imports_exactly_the_allowed_set`, whose assertion message names the two unruled entries `('packages.orchestration.flight_plan', 'open_clarification_questions')` and `('packages.orchestration.flight_plan', 'resolve_flight_plan_approval')` with `vanished` empty. THE CAUSE IS IN THE BLOCK, NOT IN THE ROUND: R47's SPEC items S1 and S3 ordered the door to import and call `resolve_flight_plan_approval` and `open_clarification_questions`, and that guard's own comment states that every allowed entry is there "because a ruled DECISION puts it there" and that adding one "belongs in the same commit as the decision that widens it" — so the block owed C6 those two entries and never named them, because it never read `tests/ui_server/test_command_channel.py`. HIGH BECAUSE THE TIP IS RED AND WAS PUSHED: a branch whose suite fails is not reviewable, and every later round on it starts from a red baseline that masks the next real failure. THE WORKER'S CONDUCT WAS CORRECT AND IS THE REASON THIS COST ONE ROUND RATHER THAN A SILENT WEAKENING: constraint 9 of that block forbade editing a test to clear an unexpected red, so it stopped, reported the guard and its exact assertion output, and handed back with the round unfinished rather than widening the set on its own authority. THE FIX IS TO ADD THE TWO ENTRIES WITH DECISION F031 D24 NAMED AS THEIR RULING, which is the mechanism the guard documents rather than an exception to it, and it lands at R48 C5.
 
-<<<SLICE DONE696
-Done: R-0696 — FIXED at C4 of R47 by deleting `test_the_region_after_the_button_still_carries_no_conditional_operator` from `tests/ui_contracts/test_decision_answer_wiring.py`, retiring the NEWER of the pair exactly as §3 item 30 rules for a duplicate. The reviewer measured which was newer rather than assuming it: `git log -S` puts the surviving `test_the_region_is_created_under_no_conditional_operator_at_all` in `05bdeae1` and the deleted one in `9236e617`, the R45 commit whose item S10 ordered it. The shared reader `jsx_between_answer_button_and_live_paragraph` STAYS, because the keeper calls it, and the property is still pinned once. The root cause the finding names — three consecutive rounds ordering something against a file the block had not read — is NOT closed by this line: it closes when the §3 checklist gains the item, which the plan's step 2 carries.
-<<<END DONE696
+- R-0698 — Medium, A BLOCK ORDERED A PREDICATE'S BEHAVIOUR CHANGED WITHOUT ORDERING THE CONSTANT A PARAMETRIZED TEST COMPARES THAT PREDICATE AGAINST. Raised by the reviewer at the R47 gate against its OWN R47 block, after the worker measured it and correctly declined to commit the change. THE MEASUREMENT: `tests/orchestration/test_decision_inbox.py` defines `ANSWERABLE_DECISION_TYPES = ("task_decision",)` at line 46 and `test_answerable_key_matches_what_the_write_door_accepts` is parametrized over all eight producing types, asserting each card's `answerable_by_decision_resolve` equals whether its type is in that tuple; `_fixture_flight_plan_approval` at line 135 builds `{"_approval": "pending"}`, which the door accepts once R47's C6 landed, so R47's S10 mirror would have turned the `flight_plan_approval` parameter red. THE CAUSE IS THE SAME AS R-0697's: the block ordered a change against a file it had not read. THE WORKER'S ANALYSIS WENT ONE STEP FURTHER THAN THE FACTS SUPPORT and the reviewer records the correction here rather than leaving it in a handback: it reported that a per-type tuple "cannot express fp answerability at all" because a resolved `fp:approval` card carries the same type. That reasoning would apply equally to `task_decision`, which the tuple already holds — and the file already answers it. The tuple is compared only against the card each PRODUCING FIXTURE builds, and the resolved transition is pinned separately by `test_answerable_key_goes_false_once_the_decision_has_been_answered`, whose docstring says in as many words that a type check cannot tell the two states apart and that this is why the transition gets its own test. MEDIUM RATHER THAN HIGH because nothing landed and nothing was lost: the worker reverted its working-tree edit, committed nothing, and the branch carries no trace of it. THE FIX IS A TUPLE ENTRY, A REWRITTEN COMMENT AND A SIBLING TEST FOR THE RESOLVED CASE, landing together at R48 C7.
 
-<<<SLICE DECISION24
-## DECISION F031 D24 (2026-08-27) — the write door approves a flight plan on the defaults, and the inbox offers the two words the door takes
+- R-0699 — Medium, A BLOCK'S COMMIT BUNDLE GAVE PRODUCTION CODE A SLOT AND ITS TESTS NONE, SO THE DISPATCH LANDED UNTESTED. Raised by the reviewer at the R47 gate against its OWN R47 block. THE MEASUREMENT, read at `20eabead`: `git diff --name-only a73c137e..HEAD` holds ten paths and not one is under `tests/ui_server/`, while `git show d69a1bfb --stat` shows R47's C6 changing `packages/orchestration/ui_server.py` alone at 46 insertions. So the door's whole `fp:` branch — two refusal conditions, one effect call and one response body — sits on the branch with no test naming it. THE CAUSE IS AN INTERNAL DISAGREEMENT IN THE BLOCK: its Bundle line described C6 as "the door's `fp:` dispatch" and gave no commit to S12's tests, while SPEC item S12 described six tests across two files; the worker followed the Bundle, which is the enumeration that told it when to commit. A block whose bundle and whose spec describe different work is a block that will be executed twice differently. THIS ALSO COST THE ROUND ITS RED CONTROL: R47's G7 ordered a mutation of the door's refusal clause and expected `tests/ui_server/` to turn red, which no test on the branch could have made happen — so the gate that exists to prove the guards are load-bearing had nothing to bite on and was never run. MEDIUM BECAUSE THE CODE IS CORRECT AS FAR AS THE REVIEWER CAN READ IT — the diff was read line by line at the gate and implements its spec faithfully — but "correct as read" is exactly the claim this repository does not accept in place of a run. THE FIX IS THE SIX TESTS, split across the two `tests/ui_server/` files by the boundary their own docstrings draw, landing at R48 C6, with R48's G7 running the red control R47 could not.
+<<<END FINDINGS48
 
-THE GAP DECISION F009 D5 LEFT: that entry rules that `decision.resolve`
-dispatches "an `fp:`-prefixed id to `resolve_flight_plan_approval`, and the seam
-is gone when that round ends". The extraction shipped and the dispatch did not,
-which finding R-0693 measured — `resolve_flight_plan_approval` exists, its
-docstring says it was extracted "so the UI write door can reach the SAME code
-the CLI has always run", and the CLI remained its only caller.
+<<<SLICE LEDGER48
+Gate: F031 R47 — the F031 R47 entry. R47 FAILED, IT LEFT THE BRANCH TIP RED, AND ALL THREE DEFECTS ARE THE REVIEWER'S OWN BLOCK RATHER THAN THE WORKER'S EXECUTION — registered in the same round as R-0697, R-0698 and R-0699. WHAT THE WORKER GOT RIGHT, stated first because it is the reason this cost one round and not a corrupted suite: transport verified before it acted, at sha256 `77cfe894…65c2d8` over 34685 bytes and 435 lines; the fixed commit order honoured; every slice applied byte for byte; and, when `tests/ui_server/` turned red on a guard the block had not mentioned, it stopped, reported the exact assertion output, reverted its uncommitted working-tree edit for the item it could not satisfy, and handed back with the round unfinished — which is precisely what constraint 9 asked of it and the opposite of what a weakened assertion would have looked like. It also volunteered a process lesson the reviewer has adopted as a standing constraint: it had committed the door's code before running the suite that gates it, and running the suite first would have caught the guard one commit earlier. WHAT LANDED AND WAS VERIFIED BY THE REVIEWER OFF DISK: ten commits `d003c4f1` through `20eabead`, each single-parent; C4 `8037f052` retiring the duplicate guard at 11 deletions, leaving `tests/ui_contracts/` at 561 passed with 4 skipped, exactly the 562 the reviewer measured at `a73c137e` minus one; C6 `d69a1bfb` implementing the door's `fp:` branch, whose diff the reviewer read line by line and found faithful to S1 through S6 — the branch sits before `answer_task_decision`, refuses on exactly the two ruled conditions with strict equality against `approve` and `reject`, calls `resolve_flight_plan_approval` with `answers={}` and the open questions, deliberately omits `save_job` with a comment saying why and citing the two lines in `flight_plan.py` that save, and returns the same three keys the task-decision path returns; and C7 `c4bad853` adding `options` to the pending arm alone with both of the ruled exact-equality assertions in `tests/orchestration/test_bundled_clarification.py` updated to the new truth and neither loosened. THE LEDGER MOVED EXACTLY AS ORDERED: `^Gate: F\d+ R\d+ — ` 27 to 28 with the added key `F031 R46`, `^Done: R-\d+ — ` 5 to 6 with the added id `R-0696`, `^## DECISION F031 D\d+ ` 23 to 24, open set 252 to 251, and the must-not-move sets did not move. WHAT DID NOT LAND: C8 and C9 were never made, so `packages/orchestration/decision_inbox.py`, `tests/orchestration/test_decision_inbox.py`, `apps/ui/src/api/decisionCard.test.ts` and both `tests/ui_server/` files are untouched across the whole range — the reviewer confirmed each with `git diff --name-only` rather than reading it back from the handback. THE TIP IS RED AND THE REVIEWER RE-RAN IT ITSELF: `tests/ui_server/` exits 1 at `20eabead` with 1 failed and 479 passed, the failure being the door's import guard, and the reviewer read the full failure output rather than the summary line. ONE PROCEDURAL QUESTION THE WORKER ESCALATED IS RULED IN DECISION F031 D25 rather than left in a handback: AGENTS.md's "If Blocked" wants the blocker written into `.agent/plan.md`, while the block reserved that file's text to the reviewer, and the worker obeyed the block and said so instead of choosing silently. AGENTS.md wins, it says so itself, and D25 carves out the exception so the next early hand-back has an answer. THE HANDBACK IS 185 LINES against the 100-line tier, declared as a DECISION D15 stated-cause overage with its cause named; the reviewer accepts the declaration for a round that had to carry two findings, a partial gate table and a blocked-round narrative, and notes that a shorter round would not have earned it. NO BLOCK CONDITION AROSE FROM THE WORKER: nothing fabricated, no false green, no missing table, no unverified completion claim and no silent scope change. The verdict is FAIL, the repair is R48, and the lesson is the one the last six rounds have all taught.
+<<<END LEDGER48
 
-CHOSEN, THE DOOR APPROVES ON THE DEFAULTS. The `fp:` branch passes
-`answers={}`, so every open clarification takes its own `default_answer`. An
-operator approving from the inbox is accepting the defaults, the endpoint's
-docstring says exactly that, and R48's FORM over `payload.clarifications` is
-where any other choice comes from. The alternative — holding the dispatch back
-until the FORM exists — keeps a blocker decision unanswerable through the only
-surface the operator has, to protect a choice that today's card cannot offer
-anyway.
+<<<SLICE DECISION25
+## DECISION F031 D25 (2026-08-27) — a worker handing back early writes the blocker into the plan, and the reviewer's slice does not stop it
 
-CHOSEN, THE ANSWER VOCABULARY IS THE CLI'S. The door accepts exactly `approve`
-and `reject`, by strict equality, mirroring `apps/cli/commands/decision.py`'s
-own `reason not in ("approve", "reject")`. The pending decision therefore
-carries those two strings as `payload.options`, and `decisionAnswers` — which
-prefers options over next actions for every card, without branching on type —
-turns them into the card's affordances. That is why no component changes: the
-browser already renders whatever the payload offers.
+THE CONFLICT R47 SURFACED, escalated by the worker rather than resolved
+silently, which is why it is being ruled at all: AGENTS.md's "If Blocked"
+section orders the agent to "update `.agent/plan.md` with the exact blocker",
+while R47's block constrained every slice — `.agent/plan.md` among them — to be
+the reviewer's text applied byte for byte and never edited. A worker that hands
+back mid-round therefore had two instructions it could not both obey.
 
-CONSIDERED AND REJECTED: parsing the `next_actions` CLI line the card used to
-post. It would make the door reverse-engineer its own help text, and a
-punctuation change in a printed hint would silently become a refused approval.
+CHOSEN, AGENTS.md WINS AND THE CARVE-OUT IS EXPLICIT. AGENTS.md states that it
+has the highest priority and that conflicting files lose, so the question was
+already answered in principle; what was missing was permission specific enough
+that a worker under a byte-for-byte constraint could act on it. A worker ending
+a round early MAY append a section headed `## Blocked` to `.agent/plan.md`,
+after every section the reviewer's slice supplied, naming what stopped it and
+which ordered items it did and did not complete. It never edits the reviewer's
+text above that section, and the next round's slice replaces the whole file
+including the appended section.
 
-REVERSE IT by deleting the `fp:` branch from `_dispatch_decision_resolve`, the
-`options` assignment from the pending arm of `decision_queue`, and the `fp:`
-mirror from `_answerable_by_decision_resolve` — the three land as three commits
-so that reversal is three reverts.
-<<<END DECISION24
+WHY APPEND RATHER THAN EDIT: the transport proof for a plan slice is a
+byte-for-byte comparison against the reviewer's original, and an edit inside it
+destroys that proof for no gain. An append leaves the original bytes intact as a
+prefix, so the same comparison still runs — against the file's first N bytes —
+and the blocker still reaches the next session through the file AGENTS.md names
+as the bridge.
+
+CONSIDERED AND REJECTED: leaving the blocker in the handback alone, which is
+what R47 did. It works only while `handoff.md` survives, and `plan.md` is the
+file the Session Resume protocol reads second and the one AGENTS.md calls the
+bridge. Two files disagreeing about whether a round finished is the state this
+repository has paid for before.
+
+REVERSE IT by deleting this entry and the `## Blocked` carve-out from the block
+template, which returns the worker to reporting blockers in the handback only.
+<<<END DECISION25
