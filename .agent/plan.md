@@ -2,7 +2,7 @@
 
 Branch: feature/f031-decision-inbox, cut from `main` at `6325ac2f`, the pull
 request #213 merge closing F022. `.agent/live_review.md` is the record and the
-id ceiling, `.agent/decisions.md` D1–D21.
+id ceiling, `.agent/decisions.md` D1–D22.
 
 ## Goal
 Every open question in one calm place: the inbox renders decision cards — type,
@@ -11,37 +11,38 @@ branch-only blocking semantics intact, ordered by a documented rule over age and
 blocked size, and answerable from the card through the write channel.
 
 ## Current Step
-R44 repairs the key R43 landed. `answerable_by_decision_resolve` reported True
-for an ALREADY-ANSWERED task decision, which the door refuses 409, so the helper
-gains the OPEN condition the door itself applies, with the test that
-discriminates it. The round also records R43's PASS, registers R-0695 and lands
-DECISION F031 D21, which moves the browser half to R45.
+R45 carries answerability into the browser, which is DECISION F031 D19's second
+clause and the half D20 split off. `DecisionCardModel` gains the endpoint's third
+key, every answer gains a `posts` flag derived from it, and `DecisionInboxCard`
+renders a non-posting answer as pasteable TEXT rather than as a button the write
+door would refuse. It also records R44's PASS and lands DECISION F031 D22.
 
 ## Next Steps
-1. R45: the browser half of D19 — `DecisionCardModel` gains the field and
-   `DecisionInboxCard` renders a non-answerable card's `next_actions` as
-   pasteable TEXT rather than as a posting button.
-2. R46: the `fp:`-prefixed dispatch DECISION F009 D5 planned and did not ship,
+1. R46: the `fp:`-prefixed dispatch DECISION F009 D5 planned and did not ship,
    reusing `flight_plan.resolve_flight_plan_approval`. Then R47: the
    clarification FORM over `payload.clarifications`.
-3. A reviewer-file round landing the §3 checklist item R-0694 and R-0695 share.
-4. The integration-gate round per `docs/agents/integration_gate.md`, then
+2. A reviewer-file round landing the §3 checklist item R-0694 and R-0695 share:
+   a block computing a value from another module's predicate reads that
+   predicate's OWN refusal conditions, not merely its route to the data.
+3. The integration-gate round per `docs/agents/integration_gate.md`, then
    closure per `docs/roadmap/STATUS_closure_protocol.md`.
 
 ## Risks
-- SEVEN OF THE EIGHT PRODUCING TYPES CANNOT BE ANSWERED THROUGH THE DOOR, and
-  every one still ships an enabled button until R45. R-0693 measures it, D19
-  rules it, and the wire carries the fact from R43 on.
-- THE DOOR'S PREDICATE IS TWO CONDITIONS, NOT ONE: the record must EXIST and be
-  OPEN. R43 encoded only the first, no fixture answered a decision before
-  reading the card, and the suite stayed green over a value that was false for
-  every answered task decision. R-0695 carries the measurement.
+- AFTER THIS ROUND THE INBOX STILL OFFERS NO WAY TO ANSWER SEVEN OF THE EIGHT
+  PRODUCING TYPES — it stops LYING about them, which is D19's whole claim, and
+  R46 is where the `fp:` prefix gains a real dispatch. R-0693 measures the gap.
 - NO DOM HARNESS REACHES THE INBOX MARKUP. `apps/ui/vitest.config.ts` collects
-  `src/**/*.test.ts`, so R45's component change will be gated by
-  comment-stripped SOURCE reading and by `tsc --noEmit`, never by a rendered
-  click. R-0689, R-0690 and R-0691 are the guards written against that gap.
+  `src/**/*.test.ts` and no DOM environment ships, so this round's component
+  change is gated by comment-stripped SOURCE reading in
+  `tests/ui_contracts/test_decision_answer_wiring.py` and by `tsc --noEmit`.
+- THE REGION GUARD FORBIDS AN OPERATOR, NOT AN ORDER: the reader between the
+  last `</button>` and the outcome `<p` rejects `?`, `&&` and `||`, so a correct
+  render written in the other order goes red for an unrelated-looking reason.
+- THE DEFAULT DEADLINE CREATES A TIMER IT CANNOT CANCEL, as
+  `decisionAnswerFlow.ts`'s own header records: the seam DECISION F031 D18 chose
+  carries no handle, so when the submit wins the 20-second timer still fires.
 - Open findings, by the rule DECISION F009 D10 requires — every `^- R-\d+ — `
-  paragraph minus every `^Done: R-\d+ — ` line — the set is 250 at `46ae059f`
-  and this round takes it to 251.
+  paragraph minus every `^Done: R-\d+ — ` line — the set is 251 at `f98a91cd`
+  and this round does not move it.
 - BLOCK CAPS ARE TWO: 490 lines TOTAL (DECISION F085 D6) and 400 lines PROSE
   (DECISION F085 D5); every block states and re-measures both.
