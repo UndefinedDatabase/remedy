@@ -32,6 +32,7 @@ from packages.core.models import Job
 from packages.orchestration.decision_evidence import (
     DECISION_EVIDENCE_STATUS_LEGACY,
     DECISION_EVIDENCE_STATUS_PRESENT,
+    UNKEYED_OPTION,
     DecisionEvidenceRef,
     DecisionEvidenceTriple,
     DecisionOptionOutcome,
@@ -155,8 +156,27 @@ def list_decisions(
         # writes `command`, and dropping the fallback would leave that card
         # showing the placeholder instead.
         cmd = str(meta.get("command_safe") or meta.get("command") or "?")
+        # F032 T002b: both receipts come from THIS event, so the card cites the
+        # same run the branch selected rather than a fresh derivation.  The run
+        # id keeps its `unknown` default as a target — that is what the decision
+        # id is already built from, and it is honest where an empty target,
+        # which rule (c) of `evidence_triple_problems` refuses, would point at
+        # nothing.  The command is cited only when it was actually resolved: the
+        # `?` placeholder names no command and would be a ref to a question mark.
+        _test_run_id = str(meta.get("test_run_id", "unknown"))
+        _tf_refs = [DecisionEvidenceRef(
+            kind="failure",
+            target=_test_run_id,
+            label="the test run that failed",
+        )]
+        if cmd and cmd != "?":
+            _tf_refs.append(DecisionEvidenceRef(
+                kind="failure",
+                target=cmd,
+                label="the command that was run",
+            ))
         decisions.append(HumanDecision(
-            id=f"tf:{meta.get('test_run_id', 'unknown')[:8]}",
+            id=f"tf:{_test_run_id[:8]}",
             type="test_failure",
             status="open",
             severity="blocker",
@@ -168,6 +188,26 @@ def list_decisions(
             next_actions=("Review test output.", f"remedy test run {job_id[:8]}"),
             created_at=str(tf.get("timestamp", "")),
             resolved_at=None,
+            # This branch offers no options — it carries no `payload` and its
+            # `next_actions` are instructions rather than choices — so DECISION
+            # F032 D3's optionless case applies and rule (h) requires EXACTLY
+            # ONE outcome, keyed `UNKEYED_OPTION`.
+            evidence=DecisionEvidenceTriple(
+                refs=tuple(_tf_refs),
+                outcomes=(DecisionOptionOutcome(
+                    option=UNKEYED_OPTION,
+                    expected_outcome=(
+                        "Reading the named run's output shows which assertion "
+                        "failed, so the repair targets the real cause instead "
+                        "of a guess."
+                    ),
+                    downside=(
+                        "The job stays blocked while that output is read, and "
+                        "a failure caused by the environment rather than by "
+                        "the change spends that time for nothing."
+                    ),
+                ),),
+            ),
         ))
 
     # 4. Dirty repo

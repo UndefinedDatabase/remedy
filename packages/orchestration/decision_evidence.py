@@ -63,7 +63,7 @@ DECISION_EVIDENCE_REF_KINDS = frozenset({"file", "failure", "coverage", "decisio
 #: words rather than inventing a risk or leaving the field blank.
 NO_MATERIAL_DOWNSIDE = "no material downside identified"
 
-#: The option key of a decision that offers no options at all — six of the
+#: The option key of a decision that offers no options at all — five of the
 #: eight producing branches carry no options list (DECISION F032 D3), and they
 #: still owe one outcome.  The empty string keeps the wire shape identical for
 #: keyed and unkeyed decisions instead of making ``option`` nullable.
@@ -115,7 +115,7 @@ DECISION_EVIDENCE_STATUS_LEGACY = "recorded_before_evidence_requirements"
 #: gate can fire on a regression and never on a card nobody has upgraded yet.
 #: When all eight types are in the set the gate is fully live and this constant
 #: has become a formality, which is when it can be deleted.
-TRIPLE_REQUIRED_TYPES: frozenset[str] = frozenset({"token_budget"})
+TRIPLE_REQUIRED_TYPES: frozenset[str] = frozenset({"token_budget", "test_failure"})
 
 
 # One checkable reference behind a decision: WHAT kind of thing, WHICH one, and
@@ -187,7 +187,7 @@ def evidence_triple_problems(
 
     Returns the EMPTY list when the triple is acceptable, so a caller reads it
     as a gate.  ``options`` is the decision's own options list and may be
-    empty — six of the eight producing branches carry none (DECISION F032 D3).
+    empty — five of the eight producing branches carry none (DECISION F032 D3).
 
     NO INPUT MAKES THIS RAISE, and that is load-bearing rather than defensive
     politeness: T001b calls it on every card in the inbox, and an exception
