@@ -7319,6 +7319,92 @@ those record round history rather than this decision. That is every path this
 round's Change set holds, which is what R-0672 and its recurrence require of a
 reversal instruction.
 
+## DECISION amend0825 D1 (2026-08-25) — the job-less run answers only the budget
+
+The bare `remedy do run` ping-pong path evaluates the BUDGET GUARD directly at
+its safe point instead of calling `safe_points.should_stop`, and asks the
+operator-stop layer nothing at all.
+
+WHY. `should_stop`'s first act is the operator-stop lookup, which is addressed
+by job id: `remedy job stop <id>` writes a request under
+`<data_root>/control/<job-id>/`. This path mints no job, persists no job record
+and prints no id, so an operator has no target to name and the run has nothing
+to look up. The reviewed build asked anyway with a hardcoded `""`, and
+`validate_job_id` correctly refused it, so every budgeted `remedy do run` died
+with `StopControlError: invalid job id ''` before the first provider call.
+
+ALTERNATIVES CONSIDERED. Minting a real job id for this path and threading it
+through: rejected for this round — it makes the job-less path a job path, which
+is a behaviour change to what `remedy do run` IS, not a repair of a crash, and
+`remedy do job-run` already exists for operators who want a stoppable run.
+Weakening `validate_job_id` to accept an empty id: rejected outright, and the
+operator order forbids it; the id rule is what keeps a control path off
+`<control>/` root. Emitting a budget tick anyway: rejected, because a tick is
+filed under `<data_root>/runs/<job-id>/` and there is no id to file it under —
+the F022 ticker has nothing to attach to on a run with no job.
+
+CONSEQUENCE. A budgeted `remedy do run` cannot be stopped by an operator
+mid-run; it can only be stopped by its budget or by the terminal. That is not
+new — no such stop ever worked on this path — but it is now the deliberate,
+documented shape rather than a crash that hid the question.
+
+REVERSE IT by restoring the `should_stop` call in `_cmd_do_pingpong._stop_check`
+in `apps/cli/commands/do_cmd.py` together with the `operator` branch it had, and
+deleting `tests/cli/test_do_cmd_pingpong_budget.py`'s two budget classes. The
+crash returns with it.
+
+## DECISION amend0825 D2 (2026-08-25) — a second resolver, not a widened one
+
+`data_paths.resolve_job_id` is unchanged and still searches the classic store
+only; the new `resolve_any_job_id` searches both stores and returns a `str`.
+
+WHY. `resolve_job_id` returns a `UUID`, and a task-job id is `uuid4().hex[:16]`
+— sixteen hex characters, which `UUID()` rejects. Widening the function
+therefore means changing its return type, and thirty call sites across
+`apps/cli/commands/` consume it. The two stores mint different id shapes, so
+one function that returns a `UUID` is CORRECT for the store it searches; the
+honest fix is a second function whose signature says it covers both.
+
+ALTERNATIVES CONSIDERED. Changing `resolve_job_id` to return `str`: rejected on
+blast radius, and because it would silently strip the parse guarantee its
+existing callers rely on. Teaching `teach_cmd` to try one resolver and then the
+other: rejected because `resolve_job_id` exits the process on no match, so the
+second attempt is unreachable. Making the task-job store's ids UUIDs: rejected
+as a data migration far outside this order.
+
+CONSEQUENCE. Two resolvers exist and a reader must pick. The docstrings state
+which store each covers and the module's Public API block lists both with that
+distinction, which is the counter-measure.
+
+REVERSE IT by deleting `resolve_any_job_id`, `task_jobs_dir`,
+`_classic_job_id_matches`, `_task_job_id_matches` and `_exit_ambiguous` from
+`packages/orchestration/data_paths.py` and restoring the inlined body of
+`resolve_job_id`; restoring the two `resolve_job_id` call sites in
+`apps/cli/commands/teach_cmd.py` and its exit-code docstring paragraph;
+restoring the literal `resolve_data_root() / "task_jobs"` in
+`packages/orchestration/pingpong_job.py:_jobs_dir`; and deleting
+`TestTeachReachesTaskJobs` from `tests/cli/test_teach_cmd.py`.
+
+## DECISION amend0825 D3 (2026-08-25) — the doctor's fixtures read the live table
+
+`tests/cli/test_worker_facade_cmd.py` derives its dead-model fixture id from
+`MODEL_ALIASES` via `a_builtin_model_id()` instead of spelling one.
+
+WHY. Eight tests spelled `claude-opus-4-20250514` to make the doctor warn about
+a built-in default. The 2026-08-25 repoint moved the table off that string, and
+all eight became vacuous in the same instant: they declared a string dead that
+no alias pointed at any more, so no warning fired and the assertions failed on
+an empty list. A fixture that names what it is testing ABOUT must read it from
+the thing under test, or the next repoint silently repeats this.
+
+CONSEQUENCE. These tests now depend on `claude-flagship` existing in the table.
+That is a weaker coupling than the id, and `test_every_alias_resolves_to_a_
+non_empty_id` already pins it.
+
+REVERSE IT by deleting `a_builtin_model_id` from
+`tests/cli/test_worker_facade_cmd.py` and putting the current
+`resolve_model_alias("claude-flagship")` value back at its nine call sites.
+
 ## DECISION F031 D1 (2026-08-23) — what "the decision queue" IS: a derived read view, and where its durability actually lives
 
 CHOSEN. The decision queue is a DERIVED READ VIEW, not a store.

@@ -40,9 +40,11 @@ Exit codes:
 * 0 — narrated, answered, OR REFUSED; an absent or empty run log narrates to
   nothing and is still 0, and a refusal is still 0 because a teacher that could
   fail a run would not be passive;
-* 1 or 2 — raised by ``resolve_job_id`` itself: an unusable id, or a short
+* 1 or 2 — raised by ``resolve_any_job_id`` itself: an unusable id, or a short
   prefix matching more than one job. These commands add no exit path of their
-  own.
+  own. Both job stores are searched — the classic ``jobs/<uuid>.json`` one and
+  the ``task_jobs/<16-hex>/`` one `remedy do job-run` writes — so a job-based
+  run is narratable; the exit codes and messages are unchanged.
 """
 from __future__ import annotations
 
@@ -51,11 +53,17 @@ def _cmd_teach_narrate(job_id_str: str, *, json_output: bool = False) -> None:
     """Narrate one job's run log. READ-ONLY: nothing on this path writes."""
     import json as _json
 
-    from packages.orchestration.data_paths import resolve_data_root, resolve_job_id
+    from packages.orchestration.data_paths import resolve_any_job_id, resolve_data_root
     from packages.orchestration.teacher_narration import narrate_run_events
     from packages.orchestration.timeline import load_run_events
 
-    job_id = resolve_job_id(job_id_str)
+    # BOTH job stores, not just the classic one: `remedy do job-run` files its
+    # jobs under `task_jobs/<16-hex>/` with 16-hex ids, and `resolve_job_id`
+    # searches `jobs/*.json` and returns a UUID. The teacher answered "no job
+    # matches prefix" for every job-based run, whose run log was on disk the
+    # whole time (operator dogfooding, 2026-08-25). Still read-only: the
+    # resolver opens directories and writes nothing.
+    job_id = resolve_any_job_id(job_id_str)
     events = load_run_events(resolve_data_root(), job_id)
     sentences = narrate_run_events(events)
 
@@ -140,7 +148,7 @@ def _cmd_teach_ask(
     """
     import json as _json
 
-    from packages.orchestration.data_paths import resolve_data_root, resolve_job_id
+    from packages.orchestration.data_paths import resolve_any_job_id, resolve_data_root
     from packages.orchestration.project_scope import resolve_scope
     from packages.orchestration.teacher_model import ask_teacher
     from packages.orchestration.teacher_qa import DEFAULT_LEVEL, build_teacher_context
@@ -154,7 +162,8 @@ def _cmd_teach_ask(
     resolved_job: str | None = None
     events: list[dict] = []
     if job_id:
-        resolved_job = str(resolve_job_id(job_id))
+        # Both job stores, for the reason `narrate` states above.
+        resolved_job = resolve_any_job_id(job_id)
         events = load_run_events(resolve_data_root(), resolved_job)
 
     code: str | None = None

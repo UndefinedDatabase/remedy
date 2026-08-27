@@ -40,9 +40,15 @@ from __future__ import annotations
 #: repoints one line here instead of touching every caller.
 MODEL_ALIASES: dict[str, str] = {
     # Top-tier Claude model: the built-in default for both Claude providers.
-    "claude-flagship": "claude-opus-4-20250514",
+    # Operator decision 2026-08-25 (dogfooding): repointed off the retired
+    # claude-opus-4-20250514, which `remedy doctor` warned about from the
+    # shipped dead-model list. Maintenance of a dead value, not a routing
+    # strategy — F232 still owns the upgrade playbook.
+    "claude-flagship": "claude-opus-4-8",
     # Mid-tier Claude model: the built-in default for the direct-API provider.
-    "claude-workhorse": "claude-sonnet-4-20250514",
+    # Operator decision 2026-08-25 (dogfooding): repointed off the retired
+    # claude-sonnet-4-20250514, for the reason on the line above.
+    "claude-workhorse": "claude-sonnet-4-6",
     # The local Ollama default, and Remedy's global default model.
     # Operator decision 2026-08-13: Muse Glimmer is the local default.
     "ollama-default": "muse-glimmer:latest",

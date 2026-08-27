@@ -16,6 +16,9 @@ Public API::
 
     resolve_data_root() -> Path
     jobs_dir(root: Path | None = None) -> Path
+    task_jobs_dir(root: Path | None = None) -> Path
+    resolve_job_id(raw) -> UUID              # the classic store
+    resolve_any_job_id(raw) -> str           # both stores
     runs_dir(root: Path | None = None) -> Path
     projects_dir(root: Path | None = None) -> Path
     workspaces_dir(root: Path | None = None) -> Path
@@ -55,6 +58,21 @@ def resolve_data_root() -> Path:
 def jobs_dir(root: Path | None = None) -> Path:
     """Return the jobs storage directory (<root>/jobs)."""
     return (root if root is not None else resolve_data_root()) / "jobs"
+
+
+def task_jobs_dir(root: Path | None = None) -> Path:
+    """Return the ping-pong task-job storage directory (<root>/task_jobs).
+
+    Remedy has TWO job stores and they are shaped differently. The classic
+    store above holds one ``<uuid>.json`` file per job. This one holds one
+    DIRECTORY per job, named by a 16-hex id (``uuid4().hex[:16]``), containing
+    ``job.json`` and the run's artifacts; ``packages.orchestration.pingpong_job``
+    writes it and ``remedy do job-run`` fills it.
+
+    Named here, beside the store it is a sibling of, so the two spellings of
+    "where the task jobs live" cannot drift apart.
+    """
+    return (root if root is not None else resolve_data_root()) / "task_jobs"
 
 
 def runs_dir(root: Path | None = None) -> Path:
@@ -132,8 +150,54 @@ def control_dir(root: Path | None = None) -> Path:
 _SHORT_HEX_RE = re.compile(r"[0-9a-fA-F]{4,32}")
 
 
+def _classic_job_id_matches(prefix: str) -> list[str]:
+    """Every id in the CLASSIC job store starting with ``prefix``.
+
+    One ``<uuid>.json`` file per job, so the id is the file stem.
+    """
+    jdir = jobs_dir()
+    if not jdir.exists():
+        return []
+    lower = prefix.lower()
+    return [
+        p.stem for p in jdir.glob("*.json")
+        if p.stem.lower().startswith(lower)
+    ]
+
+
+def _task_job_id_matches(prefix: str) -> list[str]:
+    """Every id in the TASK-JOB store starting with ``prefix``.
+
+    One directory per job, so the id is the directory name. A directory
+    without a ``job.json`` is not a job — a half-created or hand-made
+    directory must not be resolvable as one.
+    """
+    tdir = task_jobs_dir()
+    if not tdir.exists():
+        return []
+    lower = prefix.lower()
+    return [
+        p.name for p in tdir.iterdir()
+        if p.is_dir()
+        and p.name.lower().startswith(lower)
+        and (p / "job.json").is_file()
+    ]
+
+
+def _exit_ambiguous(raw: str, matches: list[str]) -> None:
+    print(f"Error: ambiguous job id prefix '{raw}' matches "
+          f"{len(matches)} jobs:", file=sys.stderr)
+    for m in sorted(matches):
+        print(f"  {m[:8]}", file=sys.stderr)
+    sys.exit(2)
+
+
 def resolve_job_id(raw: str) -> UUID:
     """Parse a full UUID or resolve a short hex prefix to a unique job UUID.
+
+    Searches the CLASSIC job store only, and its return type says so: a
+    task-job id is sixteen hex characters and ``UUID()`` rejects it. Callers
+    that must reach both stores use :func:`resolve_any_job_id`.
 
     Exits with code 1 on invalid input, code 2 on ambiguous prefix.
     """
@@ -146,24 +210,58 @@ def resolve_job_id(raw: str) -> UUID:
         print(f"Error: invalid job ID: {raw!r}", file=sys.stderr)
         sys.exit(1)
 
-    jdir = jobs_dir()
-    if not jdir.exists():
-        print(f"Error: no job matches prefix {raw!r}", file=sys.stderr)
-        sys.exit(1)
-
-    lower = raw.lower()
-    matches = [
-        p.stem for p in jdir.glob("*.json")
-        if p.stem.lower().startswith(lower)
-    ]
+    matches = _classic_job_id_matches(raw)
     if len(matches) == 1:
         return UUID(matches[0])
     if len(matches) > 1:
-        print(f"Error: ambiguous job id prefix '{raw}' matches "
-              f"{len(matches)} jobs:", file=sys.stderr)
-        for m in sorted(matches):
-            print(f"  {m[:8]}", file=sys.stderr)
-        sys.exit(2)
+        _exit_ambiguous(raw, matches)
+
+    print(f"Error: no job matches prefix {raw!r}", file=sys.stderr)
+    sys.exit(1)
+
+
+def resolve_any_job_id(raw: str) -> str:
+    """Resolve a job id across BOTH job stores, and return it as a string.
+
+    Remedy runs jobs into two stores. ``<data_root>/jobs/<uuid>.json`` is the
+    classic one; ``<data_root>/task_jobs/<16-hex>/job.json`` is the one
+    ``remedy do job-run`` writes. Both file their run logs the same way, under
+    ``<data_root>/runs/<job-id>/``, so ``timeline.load_run_events`` reaches
+    either — but :func:`resolve_job_id` searches only the classic store and
+    returns a ``UUID``, which a 16-hex task-job id can never be.
+
+    That is why `remedy teach narrate <task-job-id>` answered "no job matches
+    prefix" for a job whose run log was sitting on disk the whole time
+    (operator dogfooding, 2026-08-25). The teacher was built against the
+    classic store and could not see a job-based run at all.
+
+    The return type is ``str`` rather than ``UUID`` because the two stores mint
+    different id shapes and only one of them is a UUID. Callers print it or
+    join it onto a path; nothing needs the parsed form.
+
+    READ-ONLY: this opens directories and stats files, and writes nothing —
+    which is what lets the teacher, whose whole stance is passivity, use it.
+
+    Exits with code 1 on invalid input or no match, code 2 on an ambiguous
+    prefix — the same codes, and the same messages, :func:`resolve_job_id`
+    uses, so no caller gains a new exit path by switching.
+    """
+    try:
+        return str(UUID(raw))
+    except ValueError:
+        pass
+
+    if not _SHORT_HEX_RE.fullmatch(raw):
+        print(f"Error: invalid job ID: {raw!r}", file=sys.stderr)
+        sys.exit(1)
+
+    # A single id could in principle live in both stores; dedupe so that is a
+    # match rather than a false ambiguity.
+    matches = sorted(set(_classic_job_id_matches(raw)) | set(_task_job_id_matches(raw)))
+    if len(matches) == 1:
+        return matches[0]
+    if len(matches) > 1:
+        _exit_ambiguous(raw, matches)
 
     print(f"Error: no job matches prefix {raw!r}", file=sys.stderr)
     sys.exit(1)
