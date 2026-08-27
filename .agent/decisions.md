@@ -8417,3 +8417,75 @@ The closure commit is a single commit touching `docs/roadmap/STATUS.md`,
 `README.md` and `.agent/` state, so reverting it restores the prior state
 exactly; the pull request it opens is not merged in the session that creates it,
 which is the operator's window to do so.
+
+## DECISION amend0827 D1 (2026-08-27) — a closure records WHERE its package went, not only its name and hash
+
+THE QUESTION, raised as an F031 closure candidate and narrowed by the correction
+appended beside it. Closure records a review package by filename, byte size and
+SHA-256, and records nothing about its location. At the F031 closure the package
+`remedy-review-20260827-122441-READY_FOR_REVIEW.zip` existed nowhere under the
+repository, while the F022 package from four days earlier still sat in the
+repository root; `.gitignore` excludes the archive by design, so this is neither
+a failed build nor a breach. What no later session can do is CONFIRM that the
+operator's review window is still open, because the only durable pointer names
+the package and not its place, and a session whose sandbox stops at the
+repository boundary cannot search for it.
+
+CHOSEN: THE ARCHIVED PATH JOINS THE RECORDED VALUES. From this date the closure
+handback's "Closure values" block, and the STATUS line where it carries package
+values, name the package's ARCHIVED PATH beside its name, size, SHA-256 and
+status — the directory the package was moved to, written as an absolute path,
+or the literal `NOT ARCHIVED` when it was left where it was built. One field, in
+a block that already exists, written by the round that builds the package and
+therefore knows the answer.
+
+ALTERNATIVES CONSIDERED. (a) Order closure to VERIFY the package still exists.
+Rejected: closure would then depend on a path outside the repository that a
+sandboxed session may be refused, turning a green closure red for a reason
+unrelated to the feature — and DECISION amend0823 deliberately moved packages
+OUT of the repository. (b) State plainly that a package is handed over and
+expected to vanish, and record nothing. Rejected: it answers the asymmetry but
+throws away the one fact that makes the handover auditable, and the operator's
+review window is exactly the thing a later session needs to reason about.
+
+REVERSAL. Delete the path field from the closure-values block in
+`docs/roadmap/STATUS_closure_protocol.md` and stop writing it; nothing else
+reads it.
+
+NOTE ON THE CANDIDATE'S OWN REACH. The candidate as first written closed with
+the claim that the review window "cannot be reopened from this machine without a
+rebuild". That claim was wider than the session's measurement, which reached
+only the repository, and a prior session's record places the archive at
+`/home/decodeux/Repos/remedy-history/zips/` — outside it. The overreach is the
+class `R-0709` already names, and it is recorded as a prose slip rather than
+given an id of its own, per amend0827 rule 2.
+
+## DECISION amend0827 D2 (2026-08-27) — the closure protocol admits a candidates-only commit after the closure commit
+
+THE QUESTION, raised as an F031 closure candidate by the reviewer that hit it. A
+defect found while GATING the closure commit can reach no file: the disk-vehicle
+rule puts candidates in `.agent/candidates.md` "inside the closure commit", and
+the closure protocol's rendering of Rule A4 makes the STATUS edit the LAST commit
+on the branch. The two together leave the last reviewer of a branch with a
+finding and no carrier, which is exactly the F056 candidate loss the disk-vehicle
+rule was written to prevent, arriving one commit later.
+
+CHOSEN: A `.agent/candidates.md`-ONLY COMMIT AFTER THE CLOSURE COMMIT IS
+EXPLICITLY PERMITTED, and is declared as such in the handback. Its path set is
+exactly that one file. It is not a deviation to be argued for each time; it is
+the carrier the protocol owes the closure gate. Rule A4 as stated in
+`docs/roadmap/ROADMAP.md` requires only "STATUS.md updated in the same PR", which
+such a commit does not disturb, and the R-0154 pin the rendering protects is
+README/STATUS agreement, which a candidates-only commit cannot touch.
+
+ALTERNATIVES CONSIDERED. (a) Order the closure GATE to run BEFORE the closure
+commit, so the carrier is still open. Rejected: the closure commit is precisely
+what the closure gate must review — moving the gate earlier means the STATUS
+flip and the README sync are the one change nobody gates, which trades a
+recording gap for a verification gap. (b) Let the candidate ride in the handback
+only. Rejected by name: a brief-only candidate is what the F056 closure lost and
+is the reason `.agent/candidates.md` exists at all.
+
+REVERSAL. Delete the permitting paragraph from
+`docs/roadmap/STATUS_closure_protocol.md`; the disk-vehicle rule then reads as
+it did before this date.
