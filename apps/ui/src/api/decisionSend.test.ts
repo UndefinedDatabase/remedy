@@ -149,3 +149,78 @@ describe("buildDecisionSendRequest", () => {
     ).toBeNull();
   });
 });
+
+describe("buildDecisionSendRequest clarification answers", () => {
+  /** The pending flight-plan approval this form exists for, carrying one open
+   *  question on the same card. It is the entry `decisionAnswer.ts`'s own
+   *  clarification tests use, so both layers pin the same seam rather than two
+   *  literals that could drift apart. */
+  function pendingPlanEntry(): DecisionInboxEntry {
+    return {
+      id: "fp:approval",
+      type: "flight_plan_approval",
+      status: "open",
+      safe_summary: "Flight plan awaiting approval (1 open question).",
+      payload: {
+        options: ["approve", "reject"],
+        clarifications: [{ id: "q1", question: "Which store?", default_answer: "postgres" }],
+      },
+      answerable_by_decision_resolve: true,
+    };
+  }
+
+  /** One approval request, built with whatever map the caller chose to pass —
+   *  or with none at all, which is what every call site written before this
+   *  form passes. */
+  function planRequest(clarificationAnswers?: Record<string, string>) {
+    return buildDecisionSendRequest(
+      sendTarget(),
+      modelFrom(pendingPlanEntry()),
+      "approve",
+      GOOD_NONCE,
+      clarificationAnswers,
+    );
+  }
+
+  /** The `args` object the request's SERIALISED body parses back to. Read
+   *  through the body rather than through the command builder, because what is
+   *  under test here is what this module actually put on the wire. */
+  function sentArgs(request: ReturnType<typeof planRequest>) {
+    expect(request).not.toBeNull();
+    return JSON.parse(request!.body).args as Record<string, unknown>;
+  }
+
+  it("sends NO answers key at all when the caller passes no fifth argument", () => {
+    const args = sentArgs(planRequest());
+    expect(Object.keys(args).sort()).toEqual(["answer", "decision_id"]);
+    expect(args["answers"]).toBeUndefined();
+  });
+
+  it("forwards a filled map under the server's own args key, with its value TRIMMED", () => {
+    const args = sentArgs(planRequest({ q1: "  sqlite\n" }));
+    expect(Object.keys(args).sort()).toEqual(["answer", "answers", "decision_id"]);
+    expect(args["answers"]).toEqual({ q1: "sqlite" });
+  });
+
+  it("sends NO answers key for a map whose every value is blank after trimming", () => {
+    const args = sentArgs(planRequest({ q1: "   ", q2: "\n\t", q3: "" }));
+    expect(Object.keys(args)).not.toContain("answers");
+    expect(args["answers"]).toBeUndefined();
+  });
+
+  it("lets the map reach the BODY alone, never the path and never the headers", () => {
+    // The transposition finding R-0684 is about a value landing in a part of
+    // the request that was never meant to carry it, and the path and the
+    // headers are exactly those parts one layer up from where it was found.
+    const request = planRequest({ q1: "sqlite" });
+    expect(request).not.toBeNull();
+    expect(request!.path).toBe(jobCommandsPath(JOB_ID));
+    expect(request!.path).toBe(planRequest()?.path);
+    expect(request!.headers).toEqual(planRequest()?.headers);
+    for (const carried of ["q1", "sqlite"]) {
+      expect(request!.path).not.toContain(carried);
+      expect(JSON.stringify(request!.headers)).not.toContain(carried);
+      expect(request!.body).toContain(carried);
+    }
+  });
+});

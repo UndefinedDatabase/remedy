@@ -13,6 +13,13 @@
 // server's class, a decision that is not open — stays defined in exactly ONE
 // place, NAMED rather than counted so the sentence cannot go stale, and this
 // module adds only what a missing credential earns.
+// THE CLARIFICATION ANSWERS ARE FORWARDED, NOT READ HERE. The map crosses this
+// function untouched — not trimmed, not filtered against blanks, not checked
+// against the card's own questions, not validated at all. Every refusal it can
+// earn is still `decisionAnswer.ts`'s, which is where the `answers` key of the
+// args is built and where the one rule about this map lives. OMITTING the
+// argument builds the BYTE-IDENTICAL request every existing call site already
+// builds, because an absent map is precisely what those callers already pass.
 //
 // THE TWO TOKEN HEADERS CARRY ONE SECRET, NOT TWO. In
 // `packages/orchestration/ui_server.py` the bearer check and the double-submit
@@ -66,12 +73,15 @@ export interface DecisionSendTarget {
  *  every body `buildDecisionResolveCommand` already refuses, and for what a
  *  missing credential earns it: an empty job id addresses no job, and an empty
  *  token is a request the door answers 403. Both are refused one round trip
- *  earlier, where the operator is still looking. */
+ *  earlier, where the operator is still looking. The fifth argument is OPTIONAL
+ *  and every call site written before DECISION F031 D26 omits it: passing
+ *  nothing builds the byte-identical request those callers already built. */
 export function buildDecisionSendRequest(
   target: DecisionSendTarget,
   model: DecisionCardModel,
   answerText: string,
   clientNonce: string,
+  clarificationAnswers?: Record<string, string>,
 ): DecisionSendRequest | null {
   if (target.jobId === "") {
     return null;
@@ -79,7 +89,12 @@ export function buildDecisionSendRequest(
   if (target.serverToken === "") {
     return null;
   }
-  const commandBody = buildDecisionResolveCommand(model, answerText, clientNonce);
+  const commandBody = buildDecisionResolveCommand(
+    model,
+    answerText,
+    clientNonce,
+    clarificationAnswers,
+  );
   if (commandBody === null) {
     return null;
   }
