@@ -765,6 +765,33 @@ end the response with:
       stated exactly this counter-measure in a finding BODY, and the class
       recurred in the next block the reviewer wrote.
 
+  33. **A colour ordered inside a worktree names the runner's configuration, SCOPES
+      its selection, and reports the UNMUTATED control beside the mutated one.**
+      Finding R-0703. A block may order a vitest red-proof in the disposable
+      worktree §4 item 10 and docs/agents/self_drive_protocol.md G5 require, only
+      when it ALSO names `--config <primary>/apps/ui/vitest.config.ts` and narrows
+      the run to the sources under proof. `apps/ui/node_modules` is gitignored, so
+      a fresh worktree carries neither the runner nor a config that can import it;
+      and an UNSCOPED run additionally collects
+      `src/components/prompt/promptTraceLens.test.ts`, which fails to resolve under
+      `--root` and is a worktree artifact rather than a result. Both halves were
+      already on disk, in R-0653's own RESOLUTION, and neither had been promoted
+      here — which is how a block came to reproduce a defect a RESOLVED finding had
+      already solved, the rule-in-a-finding-body class of R-0548 reaching a
+      resolution instead of a fix clause. Order the control in the SAME worktree
+      BEFORE the mutation and require its exit code beside the mutated one: a
+      colour with no baseline is not evidence. Item 5 decides WHETHER a colour may
+      be ordered and item 12 pairs the reviewer's own dry run with a red control;
+      this one governs whether the ordered command can produce a reading AT ALL in
+      the one environment the guardrails permit it to run in, which neither
+      reaches, because the recipe is sound and only the ENVIRONMENT defeats it.
+      Measured at `fd6e70a9`: as ordered the run exits 1 having loaded nothing;
+      with the config but the whole root the UNMUTATED control is still exit 1 at
+      466 passed, so red was the answer either way; scoped to `src/api/` the
+      unmutated control is a REAL exit 0 at 450 passed and the two mutations are
+      exit 1 at 6 and 5 failures. The gate that cannot fail and the gate that
+      cannot pass are the same defect wearing two faces.
+
   Why this is on disk and not a habit: item 2 has recurred six times across
   F104 and F105, and R20 hit four of them in one block. A check that lives
   only in reviewer session memory is the A1 trap §0 names, and this list is the
