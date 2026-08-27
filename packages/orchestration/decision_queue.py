@@ -331,6 +331,33 @@ def list_decisions(
     if git_reads:
         last = git_reads[-1].get("metadata", {})
         if last.get("dirty"):
+            # F032 T002e: the thinnest branch in the queue cited nothing at all.
+            # THE EVENT NAME IS THE ONE RECEIPT THIS BRANCH IS GUARANTEED TO
+            # HAVE — the branch exists because that event was read — so it is
+            # emitted unguarded, which is also what keeps rule (a) of
+            # `evidence_triple_problems` satisfiable for the thin event
+            # `_fixture_repo_dirty` in `tests/orchestration/test_decision_inbox.py`
+            # writes, whose `metadata` carries `dirty` and nothing else.  The
+            # status fingerprint is OPTIONAL for exactly that reason: only
+            # `apps/cli/commands/repo.py` writes `status_hash`, so an
+            # unguarded ref on it would point at nothing on that fixture and
+            # rule (c) would refuse the whole card.  NOTHING IS EMITTED for
+            # `branch`, `head_sha` or `changed_file_count`: no kind in
+            # `DECISION_EVIDENCE_REF_KINDS` types a branch name, a commit or a
+            # count without lying about what it is, and amendment A2 of
+            # `docs/roadmap/features/T5_F032.md` forbids inventing vocabulary.
+            _rd_refs = [DecisionEvidenceRef(
+                kind="failure",
+                target="git_status_read",
+                label="the run-log event that reported the working tree dirty",
+            )]
+            _rd_status_hash = str(last.get("status_hash", "") or "")
+            if _rd_status_hash:
+                _rd_refs.append(DecisionEvidenceRef(
+                    kind="failure",
+                    target=_rd_status_hash,
+                    label="the status fingerprint that reading recorded",
+                ))
             decisions.append(HumanDecision(
                 id="dirty_repo",
                 type="repo_dirty",
@@ -344,6 +371,26 @@ def list_decisions(
                 next_actions=("Commit or stash changes in target repo.",),
                 created_at=str(git_reads[-1].get("timestamp", "")),
                 resolved_at=None,
+                # NO `payload` IS ADDED HERE, deliberately.  This branch's one
+                # `next_action` is an instruction rather than a choice, so
+                # DECISION F032 D3's optionless case applies and rule (h)
+                # requires EXACTLY ONE outcome, keyed `UNKEYED_OPTION`.
+                evidence=DecisionEvidenceTriple(
+                    refs=tuple(_rd_refs),
+                    outcomes=(DecisionOptionOutcome(
+                        option=UNKEYED_OPTION,
+                        expected_outcome=(
+                            "Committing or stashing the target repository's "
+                            "changes leaves a clean tree, so a later diff "
+                            "shows only what this job did."
+                        ),
+                        downside=(
+                            "The job waits while that happens, and stashing "
+                            "work that is not this job's can hide changes "
+                            "their author still needs."
+                        ),
+                    ),),
+                ),
             ))
 
     # 5. Budget exhaustion — check job fields, metadata, AND stop events
