@@ -35,3 +35,9 @@
   replacement wrapped across two source lines, so the markdown table rendered
   one ordered item as two rows; the worker applied it byte for byte and
   declared it, and the next round's plan rewrite clears it.
+
+- 2026-08-28 · F032 R10 · The block's Done-when preamble put every gate at a
+  commit strictly earlier than C6 while G1 asked for the `git status
+  --porcelain` count after C6, so one clause of one gate was unmeetable by
+  construction; the worker declared it and reported the reading outside the
+  file, and the reviewer measured it at `91b00286` as 0.
