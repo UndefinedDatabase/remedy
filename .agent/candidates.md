@@ -6,7 +6,15 @@
 > candidate: description · source feature · date. Any entry present at
 > feature-claim time is a block condition.
 
-EMPTY. The one candidate F022 carried was registered as finding R-0677 in
-`.agent/live_review.md` by F031 R1, the first reviewed round after that closure,
-and this file was emptied in the same round exactly as the closure protocol
-requires.
+- The closure package a STATUS line names is absent from disk at closure time.
+  `remedy-review-20260827-122441-READY_FOR_REVIEW.zip` was built and verified at
+  F031 CLOSURE 2 — 20155047 bytes over 3596 members, SHA-256 recomputed
+  independently by the reviewer — and no copy of it exists anywhere under the
+  repository at the closure round, while the F022 package from four days earlier
+  still sits in the repository root. `.gitignore` excludes the archive by design
+  and the durable pointer is the STATUS line, so this is not a failed build and
+  not a protocol breach; what is unexplained is the ASYMMETRY, and the operator's
+  review window for F031 cannot be reopened from this machine without a rebuild.
+  Decide whether closure should verify the package still exists, or state
+  plainly that it is handed over and expected to vanish. · source F031 ·
+  2026-08-27
