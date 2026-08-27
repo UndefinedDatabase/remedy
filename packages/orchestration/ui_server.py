@@ -3698,9 +3698,10 @@ class _RemedyHandler(BaseHTTPRequestHandler):
         plan that is not pending, with the same None the task-decision path
         returns. `answers={}` is DELIBERATE: through this door every open
         clarification takes its own `default_answer`, so an operator approving
-        from the inbox is ACCEPTING THE DEFAULTS. Round R48's form over
-        `payload.clarifications` is where any other choice comes from, and there
-        is deliberately no way to pass answers here.
+        from the inbox is ACCEPTING THE DEFAULTS. The FORM over
+        `payload.clarifications` that DECISION F031 D24 points forward to is
+        where any other choice comes from, and there is deliberately no way to
+        pass answers here.
 
         `--as-mission` is deliberately NOT reachable through this door, and a
         reader searching for it should stop here: F056 makes the mission opt-in
