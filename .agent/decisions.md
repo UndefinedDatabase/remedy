@@ -8231,3 +8231,38 @@ REVERSE IT by deleting the `fp:` branch from `_dispatch_decision_resolve`, the
 `options` assignment from the pending arm of `decision_queue`, and the `fp:`
 mirror from `_answerable_by_decision_resolve` — the three land as three commits
 so that reversal is three reverts.
+
+## DECISION F031 D25 (2026-08-27) — a worker handing back early writes the blocker into the plan, and the reviewer's slice does not stop it
+
+THE CONFLICT R47 SURFACED, escalated by the worker rather than resolved
+silently, which is why it is being ruled at all: AGENTS.md's "If Blocked"
+section orders the agent to "update `.agent/plan.md` with the exact blocker",
+while R47's block constrained every slice — `.agent/plan.md` among them — to be
+the reviewer's text applied byte for byte and never edited. A worker that hands
+back mid-round therefore had two instructions it could not both obey.
+
+CHOSEN, AGENTS.md WINS AND THE CARVE-OUT IS EXPLICIT. AGENTS.md states that it
+has the highest priority and that conflicting files lose, so the question was
+already answered in principle; what was missing was permission specific enough
+that a worker under a byte-for-byte constraint could act on it. A worker ending
+a round early MAY append a section headed `## Blocked` to `.agent/plan.md`,
+after every section the reviewer's slice supplied, naming what stopped it and
+which ordered items it did and did not complete. It never edits the reviewer's
+text above that section, and the next round's slice replaces the whole file
+including the appended section.
+
+WHY APPEND RATHER THAN EDIT: the transport proof for a plan slice is a
+byte-for-byte comparison against the reviewer's original, and an edit inside it
+destroys that proof for no gain. An append leaves the original bytes intact as a
+prefix, so the same comparison still runs — against the file's first N bytes —
+and the blocker still reaches the next session through the file AGENTS.md names
+as the bridge.
+
+CONSIDERED AND REJECTED: leaving the blocker in the handback alone, which is
+what R47 did. It works only while `handoff.md` survives, and `plan.md` is the
+file the Session Resume protocol reads second and the one AGENTS.md calls the
+bridge. Two files disagreeing about whether a round finished is the state this
+repository has paid for before.
+
+REVERSE IT by deleting this entry and the `## Blocked` carve-out from the block
+template, which returns the worker to reporting blockers in the handback only.
