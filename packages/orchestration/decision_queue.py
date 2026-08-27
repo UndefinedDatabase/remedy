@@ -277,6 +277,15 @@ def list_decisions(
                     f"remedy decision resolve {job_id[:8]} fp:approval "
                     f"--reason approve --answer {_questions[0]['id']}=\"...\""))
             _payload: dict[str, Any] = {}
+            # `options` is NOT a new vocabulary here: branch 8 already exports an
+            # `options` key in its own payload below, and
+            # `apps/ui/src/api/decisionCard.ts::decisionAnswers` prefers
+            # `payload.options` over `next_actions` for EVERY card without
+            # branching on the card's type. So the two words the write door
+            # accepts (DECISION F031 D24) become this card's answer affordances
+            # with no component change at all. The RESOLVED arm below carries no
+            # options, because a resolved plan offers nothing to answer.
+            _payload["options"] = ["approve", "reject"]
             if _questions:
                 _payload["clarifications"] = _questions
             if _mission_offer:
