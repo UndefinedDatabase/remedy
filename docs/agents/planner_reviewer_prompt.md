@@ -871,6 +871,61 @@ end the response with:
       sentence about it is true except the numeral — which is the half no reader
       re-derives, since deriving it means counting the rounds that have not happened.
 
+  36. **A multi-paragraph append is proved by a second reader that covers the WHOLE
+      appended region, and its negative control sits on the FIRST appended
+      paragraph.** Findings R-0631 and R-0694. When a block orders an append to a
+      record file, reading (b) — the independent structural reader that exists
+      because a byte reader and a structural reader fail differently — compares the
+      LAST N blank-line units of the whole file against the slice's N paragraphs IN
+      ORDER, where N is a value the worker's script COUNTS and never a number the
+      block asserts, and the negative control flips a byte inside the FIRST appended
+      paragraph rather than the last. A single-paragraph append is the N=1 case of
+      that same sentence, so one wording covers both shapes and no block has to
+      decide which it is holding. A reader worded "the last unit equals the slice's
+      final paragraph" is a TOTAL check only at N=1, and against a longer slice it
+      degenerates to a check of one paragraph: R-0631 records a fifty-one-paragraph
+      append, measured at `f19abdfb`, in which a byte flipped in the FIRST appended
+      paragraph was REJECTED by reading (a) and ACCEPTED by reading (b) as worded,
+      so the independence the gate claimed covered one paragraph in fifty-one. A
+      control placed on the LAST paragraph hides the same gap from the other side,
+      because the byte reader rejects it alone and reading (b) is then never
+      exercised while the gate still reports a pass. Item 22 governs a sentence
+      quantifying across COMMITS and item 28 a value the handback template also
+      carries; neither reaches this one, because here every number is measured and
+      every range is right, and only the REGION the second reader covers is too
+      small. This is an item rather than a habit for the reason the list itself
+      exists: R-0631 stated exactly this counter-measure in a finding BODY and
+      labelled it binding on the next block that orders a multi-paragraph append,
+      and R-0694 is the record of the next such block ordering three of them with
+      both gates worded tail-only and no control on a first paragraph — because a
+      rule living in ledger prose binds nobody.
+
+  37. **A verdict states what its transport proof COVERS, and a block's frame carries
+      no run of repeated characters whose length is not stated.** Finding R-0705.
+      Under docs/agents/self_drive_protocol.md there is no paste relay: the block
+      travels inside the worker's prompt and the worker TYPES it into
+      `.agent/authored/`, so every transport gate this workflow can run compares the
+      saved copy to its mirror to the working copy — three artefacts that are all
+      the worker's own output. Such a chain proves the worker was SELF-CONSISTENT
+      and says nothing about whether it received what was sent. Two obligations
+      follow and neither is a new gate. FIRST, no line of a block is a run of a
+      single repeated character unless its length is stated beside it: a run has no
+      length a reader recovers by eye, so it is the one part of a block that fails
+      to survive retyping without leaving a trace, and a fixed short rule or a
+      stated count makes the bytes recoverable. SECOND, a verdict names the chain
+      its proof actually walked — the saved copy, its mirror, the working copy — and
+      never claims the EMITTED bytes, because that claim is unmeasurable in this
+      workflow and an unmeasurable claim in a verdict is the thing this record
+      exists to prevent. Item 12 governs the reviewer's own pre-emission runs and
+      item 33 whether an ordered command can produce a reading at all; neither
+      reaches this one, because here every ordered command runs and returns a true
+      reading, and the defect is that the property the reading is reported as
+      establishing is strictly larger than the property it establishes. LOW and
+      structural rather than lucky: nothing appliable travels in a block's frame —
+      the appliable bytes are the slices, each proved against its TARGET by its own
+      gate — so a frame line that drifts cannot reach any file this repository
+      keeps.
+
   Why this is on disk and not a habit: item 2 has recurred six times across
   F104 and F105, and R20 hit four of them in one block. A check that lives
   only in reviewer session memory is the A1 trap §0 names, and this list is the
