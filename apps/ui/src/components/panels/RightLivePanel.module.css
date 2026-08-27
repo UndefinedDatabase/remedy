@@ -252,6 +252,41 @@
   outline-offset: 2px;
 }
 
+/* THE RECEIPTS BEHIND A DECISION (T5_F032 T003b). One chip per evidence ref,
+   at the .decisionChip scale above rather than a shape of this block's own:
+   they sit one row under the age/blocked/type strip inside the same card, and a
+   second chip scale in one card would read as a second kind of thing. A chip
+   carries the ref's SCRUBBED LABEL only — §17 of
+   docs/ui/design_reference/ux_spec.md keeps raw ids out of the default UI and a
+   ref's target is frequently one — so there is deliberately nothing here that
+   styles a target, and the note below is prose rather than a status word for
+   the same reason. The same R-0661 rule as the blocks around it applies: every
+   value resolves to a custom property apps/ui/src/styles/tokens.css already
+   defines.
+   AN EMPTY STRIP AND AN EMPTY NOTE LEAVE THE FLOW, never display: none, never
+   visibility: hidden and never the hidden attribute — each of those REMOVES the
+   node from the accessibility tree (finding R-0686), which is the mechanism
+   .decisionOutcomeQuiet below records at length. Out of flow additionally drops
+   the 8px .decisionRow gap an empty box would still claim, which an operator
+   would otherwise read as a stray blank band on every card with no receipts. */
+.decisionEvidence { display: flex; flex-wrap: wrap; gap: 6px; }
+.decisionEvidence:empty { position: absolute; }
+.decisionEvidenceChip {
+  padding: 2px 8px;
+  border-radius: var(--remedy-radius-pill);
+  background: var(--remedy-bg-2);
+  border: 1px solid var(--remedy-line);
+  font-size: 11px;
+  color: var(--remedy-muted);
+}
+.decisionEvidenceNote {
+  margin: 0;
+  font-size: 11px;
+  color: var(--remedy-muted);
+  line-height: 1.45;
+}
+.decisionEvidenceNote:empty { position: absolute; }
+
 /* THE CLARIFICATION FORM'S FIELDS (T5_F031 T003, DECISION F031 D24). One group
    per still-open question the flight plan is waiting on, sitting ABOVE the
    .decisionAnswers strip because the operator reads the questions before the
@@ -367,6 +402,40 @@
 .decisionOutcomeOk { color: var(--remedy-green-500); }
 .decisionOutcomeWarn { color: var(--remedy-orange-400); }
 .decisionOutcomeError { color: var(--remedy-red-500); }
+
+/* WHAT ONE ANSWER IS EXPECTED TO DO, AND WHAT IT COSTS (T5_F032 T003b). Both
+   ride in the .decisionAnswers strip beside the sentence above, so both take
+   its flex-basis: 100% and land on their own line UNDER the answer they belong
+   to rather than between two buttons. THE DOWNSIDE IS NOT TOLD BY COLOUR
+   ALONE: it carries a left rule as well as the warn tint, because ux_spec.md
+   §14 forbids a difference an operator has to perceive colour to read. The same
+   R-0661 rule as the blocks above applies — every value resolves to a custom
+   property apps/ui/src/styles/tokens.css already defines.
+   AN EMPTY OUTCOME AND AN EMPTY DOWNSIDE LEAVE THE FLOW, never display: none,
+   never visibility: hidden and never the hidden attribute: each of those
+   REMOVES the node from the accessibility tree (finding R-0686), and out of
+   flow additionally forces no flex line on the strip, whose 8px gap would
+   otherwise show as a stray band under every answer carrying neither. */
+.decisionExpectedOutcome {
+  flex-basis: 100%;
+  margin: 0;
+  border-left: 2px solid var(--remedy-line-strong);
+  padding-left: 8px;
+  font-size: 11px;
+  color: var(--remedy-muted);
+  line-height: 1.45;
+}
+.decisionExpectedOutcome:empty { position: absolute; }
+.decisionDownside {
+  flex-basis: 100%;
+  margin: 0;
+  border-left: 2px solid var(--remedy-orange-400);
+  padding-left: 8px;
+  font-size: 11px;
+  color: var(--remedy-orange-400);
+  line-height: 1.45;
+}
+.decisionDownside:empty { position: absolute; }
 
 /* The inbox's TYPE FILTER chips (T5_F031 T002b, DECISION F031 D8). They take the
    CARD's own chip scale that .decisionChip sets above, NOT the glass dock
