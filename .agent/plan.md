@@ -13,36 +13,37 @@ fails its own test. `docs/roadmap/features/T5_F032.md` holds Goal & Done, the
 task slicing and the design amendments that reconcile it with the source.
 
 ## Current Step
-R11 upgrades the flight-plan approval, the first producing type with TWO arms:
-a pending card carrying the two options the write door accepts, and a resolved
-card carrying none. The emit gate selects on type alone and never reads
-`status`, so both arms are enforced together — DECISION F032 D7 records why
-that is the right reading and what a resolved card's outcome then means. The
-round also books the R10 verdict and repoints the two unenforced-type guards to
-a type with no producer, so they stop moving every round.
+R12 upgrades `task_decision`, the eighth and last producing type, and ends
+T002. It is the only branch whose options are not known when the code is
+written — they come from the escalation record — so its outcomes are BUILT per
+option and the same code must satisfy rule (g) when the record offers choices
+and rule (h) when it offers none. It is also the branch that drops the record's
+`impact`, which amendment A3 carried forward to T002, and this round uses it.
+When the type joins the set the emit gate is fully live.
 
 | Item | Status | Reason |
 |------|--------|--------|
 | C0a and C0b, save and mirror the block | ordered | |
 | C1 the plan | ordered | first substantive commit |
-| C2 the R10 verdict and one prose-slip line | ordered | the record first |
-| C3 DECISION F032 D7 | ordered | the ruling S5 rests on |
-| C4 both arms and the gate entry | ordered | S2 to S6, one commit |
-| C5 the tests and the repointed guards | ordered | S7 and S8 |
-| C6 the handback | ordered | |
+| C2 the R11 verdict | ordered | the record is touched first |
+| C3 the triple, the gate entry and the comment | ordered | S2 to S6 |
+| C4 the tests | ordered | S7 |
+| C5 the handback | ordered | |
 
 ## Next Steps
-1. The task decision, the last producing type. Its options come from the
-   escalation record and are arbitrary strings, so its outcomes are built per
-   option rather than written out, and it has a resolved arm that DECISION
-   F032 D7 already rules on. With it the gate set is complete and T002 ends.
-2. T003 card enrichment and the chip deep links, which is the first F032 work
-   to touch `apps/` and therefore the design reference.
-3. The integration gate, then the closure sequence.
+1. T003: card enrichment and the chip deep links. It is the first F032 work to
+   touch `apps/`, so it is the first round bound by the canonical design
+   reference in `docs/ui/design_reference/`, and its rounds carry the
+   assumption_log obligation that comes with it.
+2. The integration gate — the full suite, run per docs/agents/integration_gate.md.
+3. The closure sequence: evidence job, a fresh review zip, the STATUS line and
+   the pull request, per docs/roadmap/STATUS_closure_protocol.md.
 
 ## Risks
-- Rule (g) compares outcome keys against the options list in both directions,
-  so the pending arm is the first producer where a mis-keyed outcome raises
-  rather than merely reading oddly.
-- Seven types are enforced from this round on, so a later change that regresses
-  any of their triples raises instead of rendering. That is the intent.
+- Built outcomes are keyed with values the code never chose, so an option
+  string that is itself a member of `BOILERPLATE_PHRASES` would be a legal key
+  with an illegal-looking outcome; the text is built around the option rather
+  than from it, which is what keeps rule (f) clear of the key.
+- All eight producing types are enforced from this round on, so any later
+  change that regresses a triple raises instead of rendering. That is the
+  intent, and it is what the constant was created to reach.
