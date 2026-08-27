@@ -15,23 +15,25 @@ F031 closure are worked off in the same order, which unblocks the next
 feature claim.
 
 ## Current Step
-C0 lands this file and `.agent/context.md`. Then the amendments, then the
-candidates.
+All six rules are on disk and the candidates file is empty. C7 writes the
+state files and the branch is pushed for review.
 
 | Item | Status | Reason |
 |------|--------|--------|
-| C0 — plan and context | in progress | |
-| C1 — prose_slips.md + AGENTS.md (rules 1, 2, 3, 6) | open | |
-| C2 — planner_reviewer_prompt.md (rules 1-6) | open | |
-| C3 — self_drive_protocol.md (rules 1, 4, 5, 6) | open | |
-| C4 — candidates worked off; R-0430/0582/0676/0700 resolved | open | rule 3 |
-| C5 — handoff | open | |
+| C0 — plan and context | done | |
+| C1 — prose_slips.md + AGENTS.md (rules 1, 2, 3, 6) | done | |
+| C1b — cap sweep: handback_template, split_workflow | done | rule 3 lived in 4 files |
+| C2 — planner_reviewer_prompt.md (rules 1-6) | done | |
+| C3 — self_drive_protocol.md (rules 1, 4, 5, 6) | done | |
+| C4 — candidates worked off; R-0430/0582/0676/0700 resolved | done | rule 3 |
+| C5 — session number in template and operator brief | done | rule 6 |
+| C6 — state files, push, PR | in progress | |
 
 ## Next Steps
-1. Land C1 through C5, gate each against the four state readers and the
-   docs gate, then push and open the pull request.
-2. The next session claims the next feature per Rule A5 with an empty
-   `.agent/candidates.md`.
+1. Push, open the pull request, watch the hosted run to green, merge at the
+   Open PR Gate.
+2. The next session claims the next feature per Rule A5. `.agent/candidates.md`
+   is EMPTY, so no block condition stands.
 
 ## Risks
 - The change set includes `AGENTS.md`, which the single-session micro-round
@@ -42,4 +44,4 @@ candidates.
   does not read the `Done:` texts as evidence of a fix that never ran.
 - Open findings, by the rule DECISION F009 D10 requires — every `^- R-\d+ — `
   paragraph minus every `^Done: R-\d+ — ` line — the set is 253 at this
-  branch point and 249 after C4.
+  branch point and 249 now, measured: findings 270 unchanged, Done 17 to 21.

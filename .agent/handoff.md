@@ -1,121 +1,148 @@
-# Handoff — F031 Decision inbox · CLOSURE 3 OF 3 · R72 · terminal branch state
-Branch `feature/f031-decision-inbox` · round base `f7cc2dd2`. F031 IS CLOSED, its
-`docs/roadmap/STATUS.md` line reads `[x]`, and PR #215 is OPEN, not a draft and
-NOT MERGED. SESSION: ONE round was delegated, this terminating CLOSURE ROUND,
-extended by a reviewer-ordered addendum and correction.
+# Handoff — amend0827 process diet · operator collection order · terminal state
+
+## Session
+SESSION 1 of order amend0827 · round 1 · rounds so far 1. Not a feature, so
+no STATUS line is claimed and the 25-round / 7-session soft limit does not
+bind; this section is written because rule 6 of this very order makes it
+mandatory from 2026-08-27, and an order that exempts itself from its own
+first handback is not a rule.
+
 ## Range
-Review of `f7cc2dd2`..HEAD, HEAD being C7, the commit that writes this file.
+Review of `f4eae1d4`..HEAD, `f4eae1d4` being the merge commit of pull
+request #215 which closed F031. HEAD is C7, the commit that writes this file.
+
 ## Commits
-### 995bd311 C0a docs(agent): save the F031 R72 closure block
+### 68f52760 C0 docs(agent): open the amend0827 process-diet order
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f031-r72.md | +390/-0 | byte copy of the reviewer block |
-### 4879d3c9 C0b docs(agent): mirror the F031 R72 block into last_block
+| .agent/context.md | +33/-23 | scope, assumptions, four standing constraints carried forward |
+| .agent/plan.md | +35/-33 | goal and item table for this order |
+
+### 2c2ea885 C1 docs(agents): amend0827 rules 1, 2, 3 and 6 in AGENTS.md
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/last_block.md | +280/-158 | same git blob as C0a |
-### 50a3c6d2 C1 docs(agent): move the F031 plan to the closure round
+| .agent/prose_slips.md | +32/-0 | new standing file, rule 2; two slips from the F031 closure |
+| AGENTS.md | +66/-13 | handoff cap withdrawn, prose_slips registered, carrier rule, session number |
+
+### dab1347d C2 docs(agents): sweep the withdrawn handback cap out of the two remaining docs
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/plan.md | +24/-29 | PLANF031R72, byte for byte |
-### 26c454ab C2 docs(agent): record the F031 R71 verdict and register R-0709
+| docs/agents/handback_template.md | +30/-20 | all three tiers withdrawn; write-once rule kept |
+| docs/agents/split_workflow.md | +8/-4 | the 60/100 pair removed from the handoff description |
+
+### 01518381 C3 docs(agents): amend0827 rules 1 through 6 in the planner/reviewer prompt
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/live_review.md | +4/-0 | LEDGER72 appended |
-### 6cdf3236 C3 docs(agent): record DECISION F031 D27 on closure precondition 2
+| docs/agents/planner_reviewer_prompt.md | +107/-5 | all six rules at their §1, §3 and §4 homes |
+
+### 2fc22841 C4 docs(agents): amend0827 rules 1, 4, 5 and 6 in the self-drive protocol
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/decisions.md | +35/-0 | DECISION27 appended |
-### e00caa58 C4 docs(roadmap): close F031 and sync the README capability
+| docs/agents/self_drive_protocol.md | +58/-4 | round loop, G7 and session end |
+
+### 2e9d37a1 C5 docs(agent): work off the four F031 closure candidates and book rule 3's findings
 | Path | +/- | Reason |
 |---|---|---|
-| docs/roadmap/STATUS.md | +1/-1 | the F031 line `[~]` to `[x]` |
-| README.md | +6/-2 | RTO1, RTO2, RTO3 capability sync, same commit |
-| .agent/candidates.md | +12/-4 | CANDIDATES, the package-absence entry |
-| .agent/handoff.md | +77/-40 | the closure-round handback |
-### d803a304 C5 docs(agent): register the two closure candidates from the gate
+| .agent/decisions.md | +72/-0 | DECISION amend0827 D1 and D2 appended |
+| .agent/live_review.md | +10/-0 | four Done: bookings and the disposition note appended |
+| .agent/candidates.md | +11/-70 | EMPTIED; block condition lifted |
+| docs/roadmap/STATUS_closure_protocol.md | +35/-2 | D1's package path, D2's carrier commit, rule 1's closure exception |
+
+### a3764d13 C6 docs(agents): carry the session number where rule 6 says every handback carries it
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/candidates.md | +34/-0 | CANDIDATES2 appended, reviewer-ordered |
-### ad90960b C6 docs(agent): correct the reach of the package-absence candidate
+| docs/agents/handback_template.md | +14/-0 | mandatory `## Session` section |
+| docs/agents/planner_reviewer_prompt.md | +6/-1 | operator brief Feature row |
+
+### C7 docs(agent): close the amend0827 order in the state files — self, per R-0149
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/candidates.md | +24/-0 | CORRECTION1 appended, reviewer-ordered |
-### C7 refresh the handoff over the whole branch — self, per R-0149
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/handoff.md | self | this file; the C4 handback stopped at C4 |
+| .agent/plan.md | self | item table to done |
+| .agent/handoff.md | self | this file |
+
 ## Item status
 | Item | Status | Reason |
 |---|---|---|
-| C0a save the block | done | |
-| C0b mirror into last_block | done | |
-| C1 the plan | done | |
-| C2 the ledger append | done | |
-| C3 the decision | done | |
-| C4 the closure commit | done | |
-| C5 the candidates append | done | reviewer-ordered addendum |
-| C6 the candidates correction | done | reviewer-ordered correction |
-| C7 this handoff refresh | done | reviewer-ordered |
-| push and PR #215 | done | pushed after C4, C5, C6; PR created, NOT merged |
+| Part 0(a) merge PR #215 | done | conflict resolved, CI green, merged as `f4eae1d4` |
+| Part 0(b) four candidates worked off | done | no id spent; file EMPTY |
+| Part 1 round measurement | done | reported to the operator; no disk artifact ordered |
+| Rule 1 verdict booking | done | AGENTS.md, §4 item 6, self-drive Phase 2, closure exception |
+| Rule 2 two-class findings | done | AGENTS.md section, prose_slips.md, §4 item 4 |
+| Rule 3 cap reform | done | four files swept; four findings booked |
+| Rule 4 checklist freeze | done | §3 header, self-drive session end; list measured at 37 |
+| Rule 5 gate budget | done | §3 gate-budget bullet, self-drive Phase 2 |
+| Rule 6 session budget | done | §3, §1, G7, session end, template, operator brief |
+| push and PR | pending | this file is committed first |
+
 ## External actions
-- `gh pr list --state open …` before C4: exit 0, verbatim `[]`. Merged nothing.
-- `git push origin feature/f031-decision-inbox` after C4, C5 and C6 — exit 0 each,
-  remote tip equal to the local tip at each. C7 is pushed after this commit, so
-  its outcome is in the round report, not in this file.
-- `gh pr create` exit 0 giving PR #215 into `main`; `gh pr edit 215 --body-file`
-  twice, exit 0 each. NOT MERGED. No worktree, no branch deletion, no rewrite.
+- `gh pr list` before the branch: exactly PR #215, `feature/*` → `main`, not a
+  draft, `mergeable: CONFLICTING`, `statusCheckRollup` EMPTY. Reported to the
+  operator, who ruled option 1.
+- Conflict resolved on `feature/f031-decision-inbox` as merge commit `40ed12ba`;
+  pushed; the first CI run PR #215 ever had, `33076078540`, completed `success`.
+- `gh pr merge 215 --merge --delete-branch` exit 0 → `f4eae1d4` on `main`;
+  `gh pr list --state open` then `[]`.
+- No worktree was left behind, no force-push, no history rewrite.
+
 ## Verification
-- G1 exit 0 — branch correct, status 0 lines after every commit, STOP absent twice.
-- G2 exit 0 — scratch, C0a, C0b and the C3 working copy ALL FOUR EQUAL at 31437 bytes and 390 lines, C0a and C0b the same blob; it covers those four points and NOT the bytes of any prompt.
-- G3 exit 0 — 12 slices, CONTENT 112, TOTAL 390, PROSE 278, both caps met.
-- G4 exit 0 — plan.md at C1 byte-equal to PLANF031R72, control FALSE, `wc -l` 43.
-- G5 exit 0 — 1012298 + 1 + 6596 = 1018895 committed, N 2, units 402 to 404, byte-offset flip 1012359 rejected by both readers.
-- G6 exit 0 — findings 269 to 270 adding only R-0709, `Done:` 17, `Landed:` 0, `Gate: R` 19, `Gate: F` 52 to 53 adding only F031 R71, open set 252 to 253.
-- G7 exit 0 — 615235 + 1 + 2192 = 617428 committed, prefix held, ADDED key exactly `## DECISION F031 D27`.
-- G8 REAL exit 0 — `620 passed in 67.56s (0:01:07)`, `^FAILED` 0, extractor sighted.
-- G9 REAL exit 0 — `325 passed in 0.61s`; at C4 the three REWRITE pairs read 0 and 1, the APPEND pair proved by its added lines.
-- G10 exit 0 — residues EMPTY, code trees EMPTY, insertions 390, 280, 24, 4, 35 single-parent and under 500, markers 0 against a CONTROL of 12.
-- H1 exit 0 — branch correct, status 0 lines after C5, STOP absent.
-- H2 exit 0 — 1274 + 1 + 2415 = 3690 committed, prefix held, N 2, units 3 to 5, byte-offset flip 1315 rejected by both readers.
-- H3 exit 0 — path set exactly `.agent/candidates.md`, 34 insertions, single-parent, under 500, code trees EMPTY.
-- H4 REAL exit 0 — `325 passed in 0.69s`, and neither STATUS.md nor README.md is in the path set.
-- H5 exit 0 — `.remedy-wt` 0 tracked, worktree 1 line, no `tmp/*` branch.
-- K1 exit 0 — branch correct, status 0 lines after C6, STOP absent.
-- K2 exit 0 — 3690 + 1 + 1693 = 5384 committed, prefix held, N 1, units 5 to 6, byte-offset flip 3721 rejected by both readers.
-- K3 exit 0 — path set exactly `.agent/candidates.md`, 24 insertions, single-parent, under 500, code trees EMPTY.
-- K4 exit 0 — the three landed candidate entries each still occur EXACTLY ONCE.
-- K5 exit 0 — `.remedy-wt` 0 tracked, worktree 1 line, no `tmp/*` branch.
-## Authored-text proofs
-C0a is a `shutil.copyfile` of `.remedy-wt/f031-r72.md`, proved by G2, and every
-slice came from the COMMITTED C0a blob applied byte for byte. The C5 and C6
-slices carry no authored copy by their own order; the reviewer holds the
-scratch originals and gates them by byte-equality.
+- Conflict resolution, `.agent/decisions.md`: base is a byte PREFIX of the
+  result; the main delta (4972 B) and the branch delta (64490 B) each occur
+  verbatim and contiguously; result == base + main delta + branch delta at
+  622400 B; both seams `.\n` → `\n#`; keys 126/129/153 → 156 = 126 + 3 + 27,
+  zero duplicates, zero lost.
+- Local gates before the push of `40ed12ba`: canary + three state readers
+  `131 passed`; `tests/ui_server/` `489 passed`; docs + roadmap index
+  `325 passed`.
+- C1: `tests/docs/` + roadmap index + canary `367 passed`.
+- C2, C3, C6: `tests/docs/` + `tests/test_agent_tooling.py` + canary
+  `347 passed, 1 skipped` at each.
+- C4: same suite `347 passed, 1 skipped`; the six substrings
+  `tests/test_agent_tooling.py` pins in the self-drive protocol all survive
+  (Open PR Gate 2x, Never force-push 1x, .agent/STOP 3x, worker subagent 1x,
+  git worktree 1x, handoff 12x).
+- C5: `tests/docs/` + roadmap index + the four state readers + canary
+  `456 passed`.
+- Ledger movement at C5, measured against `HEAD~`: `^- R-\d+ — ` 270 unchanged,
+  `^Done: R-\d+ — ` 17 → 21 adding exactly R-0430, R-0582, R-0676, R-0700,
+  `^Landed: R-` 0, `^Gate: R\d+ — ` 19 unchanged, `^Gate: F\d+ R\d+ — ` 53
+  unchanged, open set 253 → 249, no duplicate resolved id, and both appended
+  files keep their pre-commit content as a byte prefix.
+- §3 pre-emission checklist re-counted after every edit: 37 items, numbered
+  1..37 with no gap — the number rule 4 freezes.
+- §4 item numbering re-counted after the rule 1 insertion: 1..13, strictly
+  increasing, no duplicate. Rule 1 was rewritten as a continuation of item 6
+  precisely so `§4 item 7` keeps meaning what STATUS_closure_protocol.md and
+  §1 of the same file say it means.
+
 ## Deviations & assumptions
-- C5, C6 AND C7 ARE THREE COMMITS BEYOND THE CLOSURE COMMIT. Each touches only
-  `.agent/`, each was reviewer-ordered, and together they are a DECLARED deviation
-  from the closure protocol rendering that makes the STATUS edit the last commit
-  on the branch. Rule A4 as stated in `docs/roadmap/ROADMAP.md` requires only
-  "STATUS.md updated in the same PR", which holds; the R-0154 pin that rendering
-  protects is README/STATUS agreement, which none of the three touches — both
-  blobs are bit-identical to C4.
-- DECLARED CONTRADICTION, APPLIED ANYWAY PER CONSTRAINT 2: DECISION27 and
-  PLANF031R72 route the `R-0708` repair away because "`tests/ui_server/` is outside
-  F031 change set", which the `Gate: F031 R69` ledger entry had already measured
-  FALSE and narrowed to the failing CLASS, its HELPER and the failing TEST.
-  Neither slice was edited; C5 and C6 carry the correction to disk instead.
-- DECISION D15 STATED-CAUSE OVERAGE: this file measures 121 lines against the
-  100-line cap its 9-commit range earns. The cause is mandated content only —
-  nine per-commit changed-files tables, a ten-row item-status table and twenty
-  one-line gate results across three reviewer-ordered bundles. No section was
-  dropped and no transcript is restated.
-## Closure values
-Evidence job `f031-closure` · package
-`remedy-review-20260827-122441-READY_FOR_REVIEW.zip` · SHA-256
-`4b862bf093f4082821662357d730042c28ad6c16078dfa5bced812aca0db4bfa` · status
-`READY_FOR_REVIEW` · manifest head `f0dad9a8076e8cfc4208dbe5a7097619a31d4cd5`,
-the accepted HEAD the STATUS line names. Open findings after this round: 253.
-`.agent/candidates.md` IS NON-EMPTY — three entries and one correction — and is a
-BLOCK CONDITION for the first reviewed round of the next feature.
+- SINGLE-SESSION MICRO-ROUND, and the change set includes `AGENTS.md`, which
+  that round type does not name among its allowed paths (docs/, tests/,
+  .agent/**, roadmap files). The operator prompt authorizes the AGENTS.md
+  amendments by name. No file under `packages/` or `apps/` is touched and no
+  test is added, changed or deleted, so the production-code bar the type
+  protects is not approached.
+- RULE 3 REACHED FOUR FILES, NOT THE TWO THE ORDER NAMED. The withdrawn cap
+  lived in AGENTS.md, `docs/agents/handback_template.md`,
+  `docs/agents/split_workflow.md` and `docs/agents/planner_reviewer_prompt.md`.
+  Leaving any of them would have left the rule alive where a worker actually
+  reads it, so the sweep is wider than the order's file list and narrower than
+  its intent by nothing.
+- FINDING R-0700 IS PARTLY WRONG AND THE CORRECTION IS RECORDED RATHER THAN
+  QUIETLY DROPPED. It calls the >10-commit 160-line tier "a tier AGENTS.md does
+  not define"; the tier was defined in `docs/agents/handback_template.md`, a
+  file AGENTS.md itself makes mandatory. The finding resolves either way under
+  rule 3, but its Medium severity rested on a worker inventing a tier, and the
+  worker was applying one. Recorded in the Done: text and beside the withdrawn
+  tier in the template.
+- The four rule-3 findings are booked RESOLVED BY AMENDMENT, not by repair, and
+  each Done: text says so in those words. Nothing was fixed; a rule was
+  withdrawn.
+- PART 1 PRODUCED NO DISK ARTIFACT. The round classification was ordered as a
+  report to the operator and delivered as one; it is not written into `.agent/`
+  because no rule asks for it and an unbidden state file is the kind of
+  bookkeeping this order exists to cut.
+
 ## Next
-MERGE PR #215 at the next feature start, through the AGENTS.md Open PR Gate.
+Push, open the pull request into `main`, watch the hosted run, and merge at the
+Open PR Gate. `.agent/candidates.md` is EMPTY, so the next session may claim the
+next feature per Rule A5 with no block condition standing.
