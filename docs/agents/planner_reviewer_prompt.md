@@ -792,6 +792,70 @@ end the response with:
       exit 1 at 6 and 5 failures. The gate that cannot fail and the gate that
       cannot pass are the same defect wearing two faces.
 
+  34. **Every file a block orders a change against is READ at emission, for what it
+      already holds.** Findings R-0694, R-0695, R-0697 and R-0698, with R-0696 as the
+      resolved instance whose own `Done:` paragraph routes its root cause here. Before
+      a block orders an addition, a call, an import or a computed value into a file,
+      the reviewer reads that file and the guards that bind it, and writes what it
+      found beside the order. The kinds of target that have each cost this branch a
+      round are the ones to read. The TESTS that already guard the path, because a
+      guard may already assert what the order asks for: R45's item S10 ordered a
+      contract guard `tests/ui_contracts/test_decision_answer_wiring.py` already
+      carried, and the suite gained a second test calling the same reader over the
+      same source for the same property (R-0696). The EQUALITY GUARD that pins a
+      closed set the order widens: R47's items S1 and S3 ordered two imports into the
+      write door without naming `TestCommandDoorImportGuard` in
+      `tests/ui_server/test_command_channel.py`, so the branch tip shipped RED at 1
+      failed and 479 passed (R-0697). The CONSTANT a parametrized test compares the
+      changed behaviour against: `ANSWERABLE_DECISION_TYPES` in
+      `tests/orchestration/test_decision_inbox.py`, which the ordered predicate change
+      would have turned red for the `flight_plan_approval` parameter (R-0698). The
+      REFUSAL CONDITIONS of a predicate whose value the order computes, and not merely
+      its route to the data: `_answerable_by_decision_resolve` in
+      `packages/orchestration/decision_inbox.py` tested existence alone while
+      `escalation.answer_task_decision` returns None for any record not OPEN, so the
+      key read True in exactly the state the write door refuses (R-0695). And the OPEN
+      SET itself, which is a target of the same kind: a fix clause labelled binding on
+      the next block binds nothing unless the next block greps for it, so the open set
+      is read for such clauses before emission and each one is applied or named as
+      declined (R-0694 — whose own fix clause asks in addition for R-0631's
+      append-reader rule as an item of its own, which this item is not and does not
+      discharge). Items 6, 7 and 8 are the neighbours and none of them reaches this
+      one: item 6 binds a ZERO-GATE to the target's existing content, item 7 an
+      addition an existing count guard makes UNSATISFIABLE, and item 8 a gate whose
+      expected VALUE the code contradicts — each of those describes an order that
+      FAILS, while every instance here is an order that SUCCEEDS against a file the
+      block never read. Nothing is unsatisfiable when the target already satisfies the
+      order, and nothing goes red until a guard the block never named finally runs.
+
+  35. **A description and the enumeration it points at are read against each other,
+      and the enumeration is the half that gets executed.** Findings R-0699 and
+      R-0704. Where a block or a state slice both DESCRIBES work in prose and LISTS
+      it — a Bundle beside a SPEC, a Current Step beside a Next Steps list, a heading
+      beside its own body — the prose is resolved against the list before emission,
+      item by item, and anything the prose names that the list does not hold is added
+      to the list or struck from the prose. The list is the half that is executed: a
+      worker commits by the Bundle, and a resuming session reads `.agent/plan.md` by
+      its numbered steps, so a promise living only in the prose is a promise nothing
+      performs. R-0699 is that shape inside a block: R47's Bundle described C6 as the
+      door's `fp:` dispatch and gave no commit to the tests its own item S12
+      described, the worker followed the Bundle because the enumeration is what tells
+      it when to commit, and the dispatch landed with no test naming it — which also
+      left that round's ordered red control with nothing to bite on. R-0704 is the
+      same shape inside a state file: the PLANF031R54 slice's Current Step promised a
+      checklist round while its own Next Steps held neither, so the file AGENTS.md's
+      Session Resume tells the next session to read SECOND routed that session past
+      the round it had been re-sequenced to put first. A further instance was found at
+      the R55 gate in the reviewer's PLANF031R55 slice and recorded in that round's
+      ledger entry without a new id, per item 30: the list held an unnumbered
+      checklist round ahead of an item labelled R56, so that label was already wrong
+      by one before the round it named had begun. Items 16 and 17 are the neighbours.
+      Item 16 resolves a COUNT to the list it names, and item 17 makes a pair that
+      changes a structure's ARITY span the whole structure; neither reaches a prose
+      sentence naming an ITEM the list does not hold, because no numeral is stated and
+      no arity changes — the list is well-formed, correctly numbered, and simply
+      missing the thing the paragraph beside it promised.
+
   Why this is on disk and not a habit: item 2 has recurred six times across
   F104 and F105, and R20 hit four of them in one block. A check that lives
   only in reviewer session memory is the A1 trap §0 names, and this list is the
