@@ -8143,3 +8143,30 @@ rather than with the door — which is the failure this entry exists to correct.
 
 REVERSE IT by narrowing the helper back to an existence test, which the test
 R44 adds will refuse; that refusal is the evidence for this entry.
+
+## DECISION F031 D22 (2026-08-27) — answerability reaches the renderer as a PER-ANSWER flag, and a refused affordance is pasteable text rather than a disabled button
+
+CHOSEN, THE FLAG IS STAMPED ON THE ANSWER, NOT READ FROM THE CARD BY THE
+MARKUP. `decisionAnswers` computes `posts` once from the endpoint's
+`answerable_by_decision_resolve` and stamps it on every affordance it returns,
+and the component projects that boolean. DECISION F031 D5 rules every real
+branch into `decisionCard.ts`, where the shipped vitest config can reach it, and
+a component reading the card's key directly would put the rule in markup no
+suite renders. The reading is strict `=== true`, so a payload from a server
+older than R43 renders no posting button at all.
+
+CHOSEN, A REFUSED AFFORDANCE IS SHOWN AS PASTEABLE TEXT. The value stays on
+screen — it is the exact `remedy` command that answers the question — and it is
+selectable, so the operator can still act on it in a terminal. The affordance
+simply stops claiming the browser will do it for them.
+
+CONSIDERED AND REJECTED: a DISABLED button. It keeps the control's shape while
+removing its function, which is the shape R-0693 already found dishonest, and a
+disabled control is skipped by keyboard navigation, so the command would become
+unreachable for exactly the operators most likely to want to paste it.
+
+CONSIDERED AND REJECTED: hiding a refused answer entirely. That loses the
+question, which is the one thing this inbox exists not to do.
+
+REVERSE IT by stamping `posts: true` unconditionally in `decisionAnswers`, which
+the tests R45 adds will refuse; that refusal is the evidence for this entry.
