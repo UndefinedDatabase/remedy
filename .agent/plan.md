@@ -11,37 +11,33 @@ branch-only blocking semantics intact, ordered by a documented rule over age and
 blocked size, and answerable from the card through the write channel.
 
 ## Current Step
-CLOSURE 2 of 3. This round records the CLOSURE 1 verdict, then builds the two
-artifacts closure cannot be authored without: a fresh feature-scoped evidence
-bundle and a FRESH review zip built from a clean tree at the reviewed head. It
-builds no product code. T001, T002 and T003 are complete, the integration gate
-PASSED, and the Built State section landed last round, so closure preconditions
-1 through 5 are all either met or re-confirmed by this round's own gates.
+RECORD ROUND. CLOSURE 2 of 3 PASSED and this round writes that verdict, which
+would otherwise evaporate exactly as registered finding R-0659 describes. It
+also registers R-0708, the intermittent server-start failure the reviewer hit
+while running closure precondition 2. It writes NO STATUS line, syncs NO README
+and creates NO pull request: closure is deferred to the operator.
 
 ## Next Steps
-1. CLOSURE 3 of 3 — the reviewer authors the STATUS line from the evidence job
-   id, the package filename and the package SHA-256 this round produces; the
-   worker commits it LAST with the README capability sync in the SAME commit,
-   writes any candidates to `.agent/candidates.md`, and creates the PR. The PR
-   is NOT merged in this session: the gap is the operator's review window.
+1. CLOSURE 3 of 3 — the STATUS line from `[~]` to `[x]` with the README
+   capability sync in the SAME commit, then the pull request, which is NOT
+   merged in the session that creates it. The three closure values it needs
+   already exist and are carried in the handoff; the package is NOT rebuilt.
 
 ## Risks
-- A FAILING ZIP BUILD IS A CLOSURE BLOCKER, never a thing to work around. The
-  feature does not close without the package, and a package built from a dirty
-  tree is invalid.
-- THE STATUS LINE CANNOT BE AUTHORED BEFORE THE PACKAGE EXISTS. Its evidence
-  job id, filename and SHA-256 do not exist until this round produces them, so
-  splitting closure across two rounds is forced by the record, not chosen.
-- R-0693 IS RESOLVED and was the only open High this feature raised. R-0495 and
-  R-0574 are inherited standing Highs from the already-closed F085 and F086,
-  documented risks rather than F031 defects, and they rode through six prior
-  closures on the same footing.
-- R-0648 IS OPEN AND THIS ROUND'S G8 SHOWS IT: the `high_blockers_open` check
-  cannot parse this ledger, so its PASS is a tool reading and not evidence
-  about findings. The High question is answered by the record above, not by it.
-- R-0403 IS OPEN AND THIS PACKAGE WILL SHOW IT: `.remedy-wt/` scratch is a large
-  share of every review zip built on this machine. It routes to a paydown
-  branch and is not an F031 defect.
+- CLOSURE PRECONDITION 2 IS INTERMITTENT RATHER THAN GREEN, AND THAT IS WHY
+  CLOSURE DID NOT HAPPEN IN THE SESSION THAT PRODUCED THE PACKAGE. The reviewer
+  ran `python3 -m pytest -n auto -q` five times at the reviewed head and measured
+  four GREEN at 17817 passed with 20 skipped, and one RED at 17816 passed with
+  one failed. The red is R-0708. It is not an F031 defect: this feature changed
+  nothing under `apps/`, `packages/` or `tests/`.
+- WHETHER AN INTERMITTENTLY GREEN PRECONDITION MAY CARRY AN `[x]` IS AN OPERATOR
+  QUESTION. The rules do not answer it, and guardrail G8 of the self-drive
+  protocol ends a session on exactly that kind of question rather than guessing.
+- THE CLOSURE PACKAGE ALREADY EXISTS and does not need rebuilding. It was built
+  from a clean tree at the reviewed head and its manifest names that head.
+- R-0495 and R-0574 are inherited standing Highs from the already-closed F085
+  and F086, documented risks rather than F031 defects, and they rode through six
+  prior closures on the same footing.
 - Open findings, by the rule DECISION F009 D10 requires — every `^- R-\d+ — `
-  paragraph minus every `^Done: R-\d+ — ` line — the set is 251 and this round
-  moves it by nothing.
+  paragraph minus every `^Done: R-\d+ — ` line — the set is 251 before this
+  round and 252 after it, R-0708 being the one entry that moves.
