@@ -657,6 +657,33 @@ def list_decisions(
                 _payload["clarifications"] = _questions
             if _mission_offer:
                 _payload["mission_offer"] = _mission_offer
+            # F032 T002f, the PENDING arm.  The card's own id is the one receipt
+            # this arm is guaranteed to hold — the branch exists because the
+            # plan asked for approval — so it is emitted UNGUARDED, and that is
+            # what keeps rule (a) of `evidence_triple_problems` satisfied for
+            # the minimal job `tests/orchestration/test_mission_state.py` builds,
+            # `Job(name="t", flight_plan={"_approval": "pending"})`, which
+            # supplies no clarifications and no intake at all.  Each open
+            # question is cited only when it HAS an id: `open_clarification_
+            # questions` defaults that field to the empty string, and rule (c)
+            # refuses a ref pointing at nothing, which would refuse the whole
+            # card.  NOTHING IS EMITTED for the mission offer — it is an OFFER
+            # attached to this card rather than evidence for the plan, and
+            # amendment A2 of `docs/roadmap/features/T5_F032.md` forbids
+            # inventing vocabulary to carry it.
+            _fp_refs = [DecisionEvidenceRef(
+                kind="decision",
+                target="fp:approval",
+                label="the flight-plan approval this job is waiting on",
+            )]
+            for _question in _questions:
+                _question_id = str(_question.get("id", "") or "")
+                if _question_id:
+                    _fp_refs.append(DecisionEvidenceRef(
+                        kind="decision",
+                        target=_question_id,
+                        label="the open question that ships with this plan",
+                    ))
             decisions.append(HumanDecision(
                 id="fp:approval",
                 type="flight_plan_approval",
@@ -671,10 +698,76 @@ def list_decisions(
                 created_at="",
                 resolved_at=None,
                 payload=_payload,
+                # THE OUTCOMES ARE KEYED, not unkeyed: `_payload["options"]` is
+                # set above on every pass, so rule (g) rather than rule (h)
+                # applies and it compares the outcome keys against that list in
+                # BOTH directions — exactly one outcome per option word, and no
+                # option word this card does not offer.
+                evidence=DecisionEvidenceTriple(
+                    refs=tuple(_fp_refs),
+                    outcomes=(
+                        DecisionOptionOutcome(
+                            option="approve",
+                            expected_outcome=(
+                                "The run starts and the plan's tasks execute "
+                                "in the order it records, so the work that "
+                                "follows is the work that was reviewed."
+                            ),
+                            downside=(
+                                "Work begins against whatever the plan "
+                                "assumed, and an assumption nobody checked is "
+                                "paid for in rework."
+                            ),
+                        ),
+                        DecisionOptionOutcome(
+                            option="reject",
+                            expected_outcome=(
+                                "Nothing executes and the plan goes back for "
+                                "revision, so a wrong scope costs a replan "
+                                "rather than a run."
+                            ),
+                            downside=(
+                                "The job makes no progress until a new plan is "
+                                "approved, and the context this planning built "
+                                "is spent again."
+                            ),
+                        ),
+                    ),
+                ),
             ))
         elif _fp_approval == "approved" and _flight_plan.get("_approval_audit"):
             audit = _flight_plan["_approval_audit"]
             reason = audit.get("reason", "auto-approved")
+            # F032 T002f, the RESOLVED arm.  DECISION F032 D7 is why it owes a
+            # triple at all: `enforce_decision_evidence` selects by TYPE ALONE
+            # and never reads `status`, so both arms are enforced the moment
+            # `flight_plan_approval` joins `TRIPLE_REQUIRED_TYPES`, and this card
+            # is still RENDERED by `build_decision_inbox`.  Its refs are the
+            # audit trail the answer actually left.  The card's own id is again
+            # unguarded; `reason` reuses the variable computed above rather than
+            # re-reading the dict, and both it and `mode` are GUARDED because
+            # `tests/orchestration/test_decision_inbox.py` drives this arm with
+            # an audit of `{"reason": "approved"}` and no `mode` key at all — an
+            # unguarded `mode` ref would target the empty string there and rule
+            # (c) would refuse the card.
+            _fp_resolved_refs = [DecisionEvidenceRef(
+                kind="decision",
+                target="fp:approval",
+                label="the flight-plan approval this record answers",
+            )]
+            if reason:
+                _fp_resolved_refs.append(DecisionEvidenceRef(
+                    kind="decision",
+                    target=str(reason),
+                    label="the reason recorded when the plan was approved",
+                ))
+            _fp_mode = str(audit.get("mode", "") or "")
+            if _fp_mode:
+                _fp_resolved_refs.append(DecisionEvidenceRef(
+                    kind="decision",
+                    target=_fp_mode,
+                    label="how the approval was given",
+                ))
             decisions.append(HumanDecision(
                 id="fp:approval",
                 type="flight_plan_approval",
@@ -688,6 +781,27 @@ def list_decisions(
                 next_actions=(),
                 created_at="",
                 resolved_at="",
+                # NO `payload` IS ADDED HERE, deliberately: a resolved plan
+                # offers nothing to answer, so DECISION F032 D3's optionless
+                # case applies and rule (h) requires EXACTLY ONE outcome, keyed
+                # `UNKEYED_OPTION`.  Per DECISION F032 D7 it states the
+                # consequence of the answer that WAS recorded rather than of one
+                # still to come.
+                evidence=DecisionEvidenceTriple(
+                    refs=tuple(_fp_resolved_refs),
+                    outcomes=(DecisionOptionOutcome(
+                        option=UNKEYED_OPTION,
+                        expected_outcome=(
+                            "The run executes the plan this approval named, so "
+                            "the tasks it carries out are the agreed scope."
+                        ),
+                        downside=(
+                            "A plan approved on an assumption that has since "
+                            "changed keeps the run pointed at the old scope "
+                            "until someone revisits it."
+                        ),
+                    ),),
+                ),
             ))
 
     # 8. Task decisions raised mid-run (F051).  Derived from the escalation
