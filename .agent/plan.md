@@ -1,43 +1,47 @@
-# Plan — F031 Decision inbox
+# Plan — amend0827-process-diet
 
-Branch: feature/f031-decision-inbox, cut from `main` at `6325ac2f`, the pull
-request #213 merge closing F022. `.agent/live_review.md` is the record and the
-id ceiling, `.agent/decisions.md` D1-D27.
+Branch: feature/amend0827-process-diet, cut from `main` at `f4eae1d4`, the
+merge commit of pull request #215 which closed F031. Operator collection
+order amend0827, no self-drive loop; the operator prompt carries the
+authorization for every decision below, including the six process rules.
 
 ## Goal
-Every open question in one calm place: the inbox renders decision cards — type,
-age, blocked-subtree size — from the decision queue, live via the badge, with
-branch-only blocking semantics intact, ordered by a documented rule over age and
-blocked size, and answerable from the card through the write channel.
+Cut the process overhead the F031 measurement exposed. Six operator-decided
+rules land as dated amendments in AGENTS.md,
+docs/agents/planner_reviewer_prompt.md and
+docs/agents/self_drive_protocol.md, each with one sentence of reason and a
+reversal instruction. The four `.agent/candidates.md` entries left by the
+F031 closure are worked off in the same order, which unblocks the next
+feature claim.
 
 ## Current Step
-CLOSURE 3 OF 3. The RECORD ROUND passed every gate its block ordered and this
-round writes that verdict. It registers ONE new finding, `R-0709`, for a defect
-the open set does not hold: a block ordered its handback to put a ruling request
-to the operator, which `docs/agents/planner_reviewer_prompt.md` §2 forbids, and
-the session ended with nothing closed. It records DECISION F031 D27, which rules
-closure precondition 2 met on the evidence and carries `R-0708` as a documented
-open Medium risk. Then it flips the STATUS line to `[x]` with the README sync in
-the SAME commit and opens the pull request, which is NOT merged this session.
+All six rules are on disk and the candidates file is empty. C7 writes the
+state files and the branch is pushed for review.
+
+| Item | Status | Reason |
+|------|--------|--------|
+| C0 — plan and context | done | |
+| C1 — prose_slips.md + AGENTS.md (rules 1, 2, 3, 6) | done | |
+| C1b — cap sweep: handback_template, split_workflow | done | rule 3 lived in 4 files |
+| C2 — planner_reviewer_prompt.md (rules 1-6) | done | |
+| C3 — self_drive_protocol.md (rules 1, 4, 5, 6) | done | |
+| C4 — candidates worked off; R-0430/0582/0676/0700 resolved | done | rule 3 |
+| C5 — session number in template and operator brief | done | rule 6 |
+| C6 — state files, push, PR | in progress | |
 
 ## Next Steps
-1. MERGE THE CLOSURE PULL REQUEST at the next feature's start, through the
-   AGENTS.md Open PR Gate. It is not merged in the session that creates it; the
-   gap is the operator's manual-review window.
+1. Push, open the pull request, watch the hosted run to green, merge at the
+   Open PR Gate.
+2. The next session claims the next feature per Rule A5. `.agent/candidates.md`
+   is EMPTY, so no block condition stands.
 
 ## Risks
-- `R-0708` IS CARRIED OPEN AND IS NOT AN F031 DEFECT. Closure precondition 2
-  measured four GREEN and one RED in five runs at the reviewed head. The red is
-  a fixed five-second server-start budget in `tests/ui_server/test_live_state.py`
-  losing a CPU race under `-n auto`; the same test passes SOLO at exit 0 in
-  0.32s. DECISION F031 D27 rules the precondition met and routes the repair to a
-  follow-up, because `tests/ui_server/` is outside F031's change set.
-- R-0495 and R-0574 are inherited standing Highs from the already-closed F085
-  and F086, documented risks rather than F031 defects.
-- THE CLOSURE PACKAGE IS NOT ON DISK. It was built and verified at CLOSURE 2 and
-  its five values are carried unchanged; `.gitignore` excludes the archive and
-  the durable pointer is the STATUS line. This is registered as a closure
-  candidate rather than a finding.
+- The change set includes `AGENTS.md`, which the single-session micro-round
+  type does not name among its allowed paths. The operator prompt authorizes
+  it explicitly; it is declared in the handoff rather than assumed.
+- Rule 3 resolves four open findings by amendment rather than by repair.
+  That is the operator's decision and is recorded as such, so a later reader
+  does not read the `Done:` texts as evidence of a fix that never ran.
 - Open findings, by the rule DECISION F009 D10 requires — every `^- R-\d+ — `
-  paragraph minus every `^Done: R-\d+ — ` line — the set is 253 after this
-  round, which mints `R-0709` and resolves nothing.
+  paragraph minus every `^Done: R-\d+ — ` line — the set is 253 at this
+  branch point and 249 now, measured: findings 270 unchanged, Done 17 to 21.

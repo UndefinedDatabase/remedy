@@ -66,6 +66,13 @@
    BASE..HEAD and the zip import check passes. Record `package <filename>`
    and `SHA-256 <hash>`. **A failing zip build is a closure BLOCKER** —
    fix or go `[!]`; never close without the package.
+   DECISION amend0827 D1 (2026-08-27): record the package's ARCHIVED PATH
+   beside its name and hash — the absolute directory the package was moved
+   to, or the literal `NOT ARCHIVED` when it was left where it was built.
+   The round that builds the package is the only actor that knows the
+   answer, and without it no later session can tell whether the operator's
+   review window is still open or whether the archive is simply somewhere it
+   is not allowed to look. Reverse by dropping the field.
    Docs-only features without a runtime evidence job close with an honest
    NO_EVIDENCE package (code-only snapshot); the STATUS line then omits the
    Evidence-job segment and records the NO_EVIDENCE package + SHA-256.
@@ -83,12 +90,18 @@
    models, tokens/cost where the ledger has them; `not-measured` beats a
    guess. → PR description + final report.
 4. **STATUS line (reviewer authors, worker applies verbatim).** Template:
-   `[x] <Fxxx> — <Name> (<T-slices> complete; accepted <YYYY-MM-DD> · live review <PASS|PASS_WITH_RISKS> — ACCEPTED[ · external verdict <V> — ACCEPTED] · Evidence job <job_id> · package <zip filename> · SHA-256 <hash> · accepted HEAD <full sha>)`
+   `[x] <Fxxx> — <Name> (<T-slices> complete; accepted <YYYY-MM-DD> · live review <PASS|PASS_WITH_RISKS> — ACCEPTED[ · external verdict <V> — ACCEPTED] · Evidence job <job_id> · package <zip filename> · SHA-256 <hash> · package path <absolute dir|NOT ARCHIVED> · accepted HEAD <full sha>)`
+   The `package path` segment is DECISION amend0827 D1's; it is the DURABLE
+   carrier of the archived location, because `.agent/handoff.md` is rewritten
+   at every handback and keeps nothing.
    `accepted HEAD` = the reviewed head the verdict and zip cover (manifest
    committed_review_subject.head_commit). External-verdict segment only
    when an external round happened. Touch no other line.
 5. **Final commit + PR (worker).** STATUS edit is the last commit on the
-   branch (Rule A4). Ordering (R-0154, F252 lesson): the README
+   branch (Rule A4), with ONE permitted successor — see DECISION amend0827 D2
+   under "Closure-candidate findings": a commit whose path set is exactly
+   `.agent/candidates.md`, carrying a candidate the closure GATE raised, may
+   follow it and is declared in the handback. Ordering (R-0154, F252 lesson): the README
    capability sync lands in the SAME commit as the STATUS `[x]` edit —
    README and STATUS may never disagree in any committed state (the
    ledger cross-check pin). The closure commit touches exactly
@@ -133,6 +146,26 @@ if it is non-empty, the FIRST reviewed round registers each entry
 empties the file in that same round. A non-empty candidates file at
 feature-claim time is itself a block condition
 (planner_reviewer_prompt.md §1).
+
+DECISION amend0827 D2 (2026-08-27), the carrier for a candidate raised at the
+CLOSURE GATE: a reviewer gating the closure commit itself has, under the two
+rules above, no file left to write to — the disk vehicle wants the candidate
+"inside the closure commit" and Rule A4's rendering makes that commit the last
+on the branch. A `.agent/candidates.md`-ONLY COMMIT AFTER THE CLOSURE COMMIT IS
+THEREFORE EXPLICITLY PERMITTED. Its path set is exactly that one file, it is
+declared as such in the handback, and it is not a deviation to be argued case by
+case. Rule A4 as stated in `docs/roadmap/ROADMAP.md` asks only that "STATUS.md
+[is] updated in the same PR", which such a commit does not disturb, and the
+R-0154 pin the rendering protects is README/STATUS agreement, which it cannot
+touch. The rejected alternative was to move the closure gate BEFORE the closure
+commit; that would leave the STATUS flip and the README sync as the one change
+nobody gates, trading a recording gap for a verification gap. Reverse by
+deleting this paragraph.
+
+Operator amendment amend0827-process-diet (2026-08-27), rule 1 — the closure
+sequence is the ONE exception to the ban on pure bookkeeping rounds. Registering
+or resolving these candidates, and the verdict bookkeeping the closure needs, may
+occupy rounds of their own here and only here.
 
 ## Canonical zip build sequence
 Explicit evidence selection is mandatory. Deprecated root-dir auto-selection

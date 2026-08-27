@@ -5,26 +5,52 @@
 > in order. A missing or incomplete section is a Medium finding; the
 > second occurrence within one feature is High and blocks until a
 > compliant handback exists. (A wholly missing changed-files table remains
-> the R-0070 block condition.) Stay within the AGENTS.md handoff cap —
-> ≤60 lines, ≤100 when per-commit tables of >5 commits require it,
-> ≤160 when a LARGE bundle's >10-commit tables require it
-> (DECISION 2026-08-03, F070 R1 precedent: 16 commits) — by
-> trimming transcripts to command + exit code + decisive lines and by
-> summarizing evidence directories — never by dropping a section.
-> That LINE cap is the single operative bound on a handback's size: it
-> scales with the commit count, is measured with `wc -l`, and needs no
-> tokenizer to agree on. A "≤800 tokens — ≤1600 in the >10-commit LARGE
-> case" hard cap stood here until 2026-08-20, when DECISION F255 D6
-> withdrew it (findings R-0462 and R-0602): twelve consecutive rounds
-> exceeded it, from roughly 1306 to 2983 tokens at a chars/4 estimate,
-> while every one of them met the line cap. A cap two readers cannot
-> measure identically is not enforceable by either, and a cap no round
-> has met in twelve rounds binds nothing. Do not restate a token cap
-> here without re-measuring what the mandated sections actually cost.
-> Write-once rule (PH v3): draft the handback in the session
-> scratchpad, measure it there (`wc -l`) against the cap, then write
-> and commit `.agent/handoff.md` ONCE — trim commits against the cap
-> are a smell, not a workflow (F251 lesson: 116→91→110→103→100).
+> the R-0070 block condition.) Keep transcripts trimmed to command, exit
+> code and decisive lines, and summarize evidence directories — never drop
+> a section.
+>
+> Operator amendment amend0827-process-diet (2026-08-27), rule 3 — A
+> HANDBACK HAS NO SIZE CAP OF ANY KIND. The three LINE tiers stated here
+> until this date — ≤60, ≤100 when per-commit tables of >5 commits require
+> it, ≤160 for a LARGE bundle's >10 commits (DECISION 2026-08-03, F070 R1
+> precedent) — are WITHDRAWN, together with the AGENTS.md DECISION D15
+> stated-cause overage ceremony they fed. A handback is VALID when it
+> carries its mandated sections; its length is not measured, not declared
+> and never the subject of a finding. Reason: the tiers stopped bounding
+> anything and started generating work — measured across F031, 63 of 75
+> handbacks exceeded the 60-line base tier and 12 exceeded 100, at a median
+> of 93 lines and a maximum of 198, every one of them through the
+> declared-overage route, so the ceremony cost a paragraph per handback and
+> bought no brevity. Note for anyone reading finding R-0700,
+> which calls the ≤160 tier one "AGENTS.md does not define": the tier was
+> real and was defined HERE, in this file, and only here.
+>
+> A "≤800 tokens — ≤1600 in the >10-commit LARGE case" hard cap also stood
+> here until 2026-08-20, when DECISION F255 D6 withdrew it (findings
+> R-0462 and R-0602). Do not restate a cap of either kind without
+> re-measuring what the mandated sections actually cost.
+>
+> Write-once rule (PH v3), which SURVIVES this amendment: write and commit
+> `.agent/handoff.md` ONCE per handback. Trim commits against a handback
+> are a smell, not a workflow (F251 lesson: 116→91→110→103→100); with no
+> cap left to trim against there is even less reason for a second write.
+>
+> Reverse the amendment by restoring the tier paragraph from git history
+> at `f4eae1d4`, here and in the three other files that carried it.
+
+## Session
+
+One line, MANDATORY from 2026-08-27 (operator amendment
+amend0827-process-diet, rule 6):
+`SESSION <n> of feature <Fxxx> · round <r> · rounds so far <total>`.
+`<n>` counts loop sessions on this feature, read from the previous handback
+and incremented at session start; `<total>` counts delegated rounds across
+the whole feature. Both counts exist so the 25-round / 7-session soft limit
+is visible WHILE it is being approached rather than after. At or past the
+limit this section additionally carries the scope report the limit obliges —
+what is finished, what is missing, and the proposal — and the session output
+carries the line `SITZUNGS-LIMIT ERREICHT — OPERATOR-BERICHT IN DER
+ÜBERGABE`. Reverse by deleting this section.
 
 ## Range
 

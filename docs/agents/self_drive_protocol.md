@@ -90,6 +90,29 @@ first action names Phase 1 rule 1 before rule 2.
    findings persist to `.agent/live_review.md` in their own commit
    FIRST, then the repair round.
 
+Operator amendment amend0827-process-diet (2026-08-27), rule 1 — A VERDICT
+NEVER BUYS A ROUND OF ITS OWN. The committed and pushed `.agent/handoff.md`
+is a durable carrier: a verdict, a finding draft or a pending registration
+written there is persisted, and it is booked into `.agent/live_review.md` in
+the FIRST COMMIT of the next round that is happening anyway. A round whose
+entire change set is verdicts, registrations or corrections is FORBIDDEN,
+with one exception — a feature's closure sequence. "Findings persist FIRST,
+in their own commit" is unchanged; only the ROUND that commit belongs to
+moves. Reason: 20 of F031's 70 rounds were pure bookkeeping — 106 commits between
+them, 15 rounds of five commits, 4 of six and 1 of seven, and not one line
+outside `.agent/` in any of them. Reverse by deleting this
+paragraph.
+
+Operator amendment amend0827-process-diet (2026-08-27), rule 5 — GATE
+BUDGET. A round orders AT MOST EIGHT gates. The transport proof is ONE
+digest comparison. Full byte forensics — slice reconstruction, append
+arithmetic with a negative control — is reserved for production-code files
+and for the append into the record; a `.agent/` prose file gets at most a
+byte-equality check of the plan slice. G4 below is untouched, and mutation
+red-proofs for production code stay mandatory in full: this rule spends the
+forensics that were aimed at prose, nothing else.
+docs/agents/planner_reviewer_prompt.md §3 carries the full wording.
+
 Verification tiers, the canary, the integration gate and the closure
 protocol are unchanged; this file adds no exception to any of them.
 
@@ -113,16 +136,48 @@ protocol are unchanged; this file adds no exception to any of them.
 - **G7 Session limits.** The session states its round cap and wall-clock
   cap up front and honours them. A session that ends at its limit with a
   written handoff is a SUCCESS, not a failure.
+  Operator amendment amend0827-process-diet (2026-08-27), rule 6 — the
+  DEFAULT plan is FOUR TO FIVE delegated rounds per session, against an
+  operator target of five to seven sessions per feature. A session ends
+  early ONLY on demonstrably exhausted context, or on a round that
+  explicitly needs a fresh session; stopping "at a nice seam" after two
+  rounds is a protocol violation, not a clean end, and G7 may not be cited
+  for it. The SOFT LIMIT is 25 rounds OR 7 sessions per feature, whichever
+  comes first; on reaching it the obligation is a scope report, not more
+  work — see "Ending a session". Reverse by deleting this paragraph.
 - **G8 Ambiguity ends the round.** Any red gate, contradiction, or
   question the rules do not answer → write the handoff and end cleanly.
   Never guess, never widen scope to route around a block.
 
 ## Ending a session
 Always through `.agent/handoff.md` (F079 machinery,
-docs/agents/handback_template.md): feature and round, branch, commit
-SHAs, changed-files table, real verification results, open-findings
-count, next expected action. The handoff is the only return channel, and
-a session with no handoff did not happen.
+docs/agents/handback_template.md): feature and round, the SESSION NUMBER of
+the running feature, branch, commit SHAs, changed-files table, real
+verification results, open-findings count, next expected action. The handoff
+is the only return channel, and a session with no handoff did not happen. It
+has no length cap (amend0827 rule 3); it is valid when its mandated sections
+are present.
+
+Operator amendment amend0827-process-diet (2026-08-27), rule 6 — AT THE SOFT
+LIMIT, REPORT INSTEAD OF ROWING ON. When a feature reaches 25 rounds or 7
+sessions, whichever first, the session's next obligation is a SCOPE REPORT in
+the handoff: what is finished, what is missing, and a proposal — split the
+remaining scope off as a DECISION, or split the feature into two STATUS lines.
+The second is a DOCUMENTED PROPOSAL TO THE OPERATOR and is never executed on
+the session's own authority. The session output additionally carries one
+unmissable line:
+
+    SITZUNGS-LIMIT ERREICHT — OPERATOR-BERICHT IN DER ÜBERGABE
+
+Continuing quietly past the limit is a protocol violation. Reverse by deleting
+this paragraph.
+
+Operator amendment amend0827-process-diet (2026-08-27), rule 4 — the
+pre-emission checklist of docs/agents/planner_reviewer_prompt.md §3 is FROZEN
+while a feature is open. A lesson learned mid-feature goes into
+`.agent/prose_slips.md` as one dated line, or into this handoff, and waits for
+the single consolidation pass in the closure sequence, which may not lengthen
+the list. Reverse by deleting this paragraph.
 
 ## What stays with the operator
 The review zip (`scripts/make_review_zip.sh`) remains the operator's

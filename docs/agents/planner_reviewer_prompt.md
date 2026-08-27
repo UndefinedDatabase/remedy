@@ -25,7 +25,12 @@ Read, in order, and nothing more unless a step below demands it:
    (Goal & Done, Design, Task slicing, Acceptance, Orchestrator brief —
    addressed to YOU — Do-not-touch, Built State).
 3. .agent/handoff.md (latest worker state), .agent/plan.md,
-   .agent/live_review.md → locate the exact round and what is awaited.
+   .agent/live_review.md → locate the exact round and what is awaited,
+   and read the SESSION NUMBER the handback carries (rule 6, §3): this
+   session is that number plus one, and it is carried forward in every
+   handback of this session. Any verdict or finding draft the handback
+   carries but the ledger does not is booked in THIS session's first
+   round-commit (rule 1, §4 item 6) — never in a round of its own.
 4. .agent/candidates.md (operator ruling 2026-08-01, F056-candidate
    loss): if non-empty, the FIRST reviewed round registers each
    entry (next free ID) or resolves it inline as a §4.7 DECISION,
@@ -45,13 +50,18 @@ step 1 work. Resuming → first paste block is the next step or repair round.
 
 | | |
 |---|---|
-| **Feature** | F081 — remedy init (Tier 0) · Runde 3 |
+| **Feature** | F081 — remedy init (Tier 0) · Runde 3 · Sitzung 2/7 |
 | **Fortschritt** | ~60 % (T001 ✅ · T002 im Review · T003 offen) — Schätzung |
 | **Läuft's rund?** | ✅ Ja — jede Runde schließt Punkte, nichts kommt zurück |
 | **Geschätzte Laufzeit** | ~45–90 min (Kampagne: 10 Runs × Wall-Budget; Suite ~3 min) — Schätzung |
 | **Remedy kann jetzt** | <1–2 Zeilen, nur gemergte+verifizierte Fähigkeiten> |
 | **Remedy kann bald** | <1–2 Zeilen, was dieses Feature freischaltet> |
 | **Nächster Schritt** | <eine Zeile: was der Paste-Block unten tut> |
+
+The Feature row's `Sitzung <n>/7` segment is operator amendment
+amend0827-process-diet (2026-08-27), rule 6: the running session number
+against the soft limit, read from the previous handback's Session section.
+At `7/7` the row is followed by the scope report, not by another step.
 
 "Läuft's rund?" is binary and simple: ✅ = each round closes items and
 nothing previously fixed comes back. ⚠️ = the same problem needs fixing a
@@ -148,6 +158,38 @@ end the response with:
 ########################################################
 
 ## 3. Planning contract — bundle for ~1 hour
+- **Session and round budget (operator amendment amend0827-process-diet,
+  2026-08-27, rule 6).** The operator's target is FIVE TO SEVEN loop sessions
+  per feature. Two obligations follow.
+
+  FIRST, a session PLANS FOUR TO FIVE DELEGATED ROUNDS by default. It ends
+  earlier only when the context is demonstrably exhausted, or when the next
+  round is one that explicitly needs a fresh session. Stopping "at a nice
+  seam" after two rounds is NOT a valid reason to end a session and counts as
+  a protocol violation — name the real reason or keep going.
+
+  SECOND, the SOFT LIMIT is 25 ROUNDS **or** 7 SESSIONS per feature,
+  whichever is reached first. On reaching it the next obligation is NOT more
+  work, it is a SCOPE REPORT in the handback: what is done, what is missing,
+  and a proposal — either split the remaining scope off as a DECISION, or
+  split the feature into two STATUS lines. The second of those is a
+  DOCUMENTED PROPOSAL TO THE OPERATOR ONLY and is never carried out on the
+  reviewer's own authority. The session output additionally carries one
+  unmissable line:
+
+      SITZUNGS-LIMIT ERREICHT — OPERATOR-BERICHT IN DER ÜBERGABE
+
+  Quietly rowing on past the limit is a protocol violation. To make the count
+  auditable, EVERY handback from now on carries the SESSION NUMBER of the
+  running feature (AGENTS.md, `### handoff.md`), and the operator brief's
+  Feature row names it beside the round.
+
+  Reason: F031 took 70 delegated rounds against a soft limit of 25, and no
+  artifact on disk made the round count — let alone the session count, which
+  nothing recorded at all — visible while it was happening. That missing
+  session count is why this rule adds one rather than only a limit.
+  Reverse by deleting this bullet.
+
 - Default step size: a coherent bundle of ≈45–90 minutes of worker effort —
   a full T-slice or several related items — so the operator relays roughly
   once per hour, not every 10 minutes. MULTIPLE commits per step are
@@ -173,6 +215,19 @@ end the response with:
 - **Pre-emission block checklist (DECISION F105 D8, finding R-0250).** Run EVERY
   check below mechanically, on the FINAL bytes, after the last edit, before any
   block leaves the reviewer. Each one has already cost this repository a round.
+
+  Operator amendment amend0827-process-diet (2026-08-27), rule 4 — THIS LIST IS
+  FROZEN FOR THE DURATION OF A FEATURE. No item is added, split or reworded
+  while a feature is open. A lesson learned mid-feature is a one-line entry in
+  `.agent/prose_slips.md` or a paragraph in the handback, and it waits.
+  Consolidation happens EXACTLY ONCE per feature, inside the closure sequence
+  and as part of a round that is running anyway, and the list must come out of
+  it the SAME LENGTH OR SHORTER — merging two items into one is the intended
+  move, growing the list is forbidden. The list stood at 37 items on
+  2026-08-27, which is the number the next consolidation measures against.
+  Reason: a checklist that grows every round is read less carefully every
+  round, and it grew fastest exactly where it was already being skimmed.
+  Reverse by deleting this paragraph.
   1. **Size.** Count the block's lines. Over 400 (DECISION F105 D5) → split or
      cut BEFORE emitting. A worker must save the block verbatim, so an oversize
      block cannot be fixed downstream; it becomes a declared deviation on a
@@ -185,10 +240,14 @@ end the response with:
      reach a target file.
   3. **Cap-bounded replacements.** Count every authored full-replacement text
      against its own file's cap before emission: `.agent/plan.md` under 50 lines
-     (AGENTS.md), `.agent/handoff.md` under 60 or carrying a DECISION D15
-     stated-cause line. A worker required to apply a slice byte for byte cannot
+     (AGENTS.md). A worker required to apply a slice byte for byte cannot
      trim it, so an oversize replacement lands a live rule violation on disk and
-     the worker is right to declare it rather than fix it.
+     the worker is right to declare it rather than fix it. Operator amendment
+     amend0827-process-diet (2026-08-27), rule 3 — `.agent/handoff.md` was named
+     here too, at "under 60 or carrying a DECISION D15 stated-cause line"; the
+     handback has NO length cap any more, so it is out of this item entirely and
+     a block never bounds it. Reverse by restoring the clause from git history
+     at `f4eae1d4`.
   4. **Pair shape, verified not asserted.** Declare a pair APPEND only after
      checking that the TO literally CONTAINS the FROM (§4.9). A TO that edits
      the FROM line at all — dropping a trailing "OPEN.", rewrapping, changing
@@ -349,7 +408,8 @@ end the response with:
       slice, so it knows the length, and it fixes the earlier commit's bound as the
       cap minus that constant. The R21 instance: G14 ordered the handoff "at the
       commit C5 creates" to be at most 100 lines AND ordered a DECISION D15 line
-      declaring any overage, while C5 appended only the 40-line VERDICT and C4 wrote
+      declaring any overage (both withdrawn by amend0827 rule 3 — the instance is
+      kept as the arithmetic lesson it is, not as a live bound on a handback), while C5 appended only the 40-line VERDICT and C4 wrote
       the 80-line text — so the worker met every content obligation, could not have
       known the sum in time to declare it, and had to record the arithmetic in the
       round report instead of in the file. The counter-measure is two readings, not
@@ -931,6 +991,25 @@ end the response with:
   only in reviewer session memory is the A1 trap §0 names, and this list is the
   standing counter-example to it.
 
+- **Gate budget (operator amendment amend0827-process-diet, 2026-08-27, rule
+  5).** A block orders AT MOST EIGHT gates. Within that budget:
+  - The TRANSPORT proof is ONE digest comparison — the committed
+    `.agent/authored/` blob against the digest in the reviewer's own emitted
+    BEGIN marker, or the `cmp` against the scratchpad original where it exists.
+    One reading, not a chain.
+  - FULL byte forensics — slice reconstruction, append arithmetic with a
+    negative control, byte-offset flip rejection — is reserved for exactly two
+    targets: a change to a PRODUCTION CODE file, and the APPEND into the record
+    (`.agent/live_review.md`, `.agent/decisions.md`). Nothing else earns it.
+  - A `.agent/` PROSE file gets at most a byte-equality check of the plan slice.
+    Not an arithmetic proof, not a negative control, not a marker sweep.
+  - MUTATION RED-PROOFS FOR PRODUCTION CODE ARE UNTOUCHED and stay mandatory in
+    full. This rule spends nothing there; it spends the forensics that were
+    being aimed at prose.
+  Reason: gate count per round had outgrown what a round could honestly execute,
+  and the surplus was aimed at `.agent/` prose where no product state can be
+  wrong. Reverse by deleting this bullet; the tiers below are unaffected.
+
 - Verification tiers (operator decision 2026-07-26):
   1. **Round gate** = ONLY the scoped verification command(s) you author in
      the step block's "Done when". The full suite is NOT part of round
@@ -986,6 +1065,23 @@ end the response with:
    dies; (b) then fix finding by finding, marking `Done: R-XXXX`;
    (c) handback. Severity per the canonical scale in review_protocol.md;
    IDs continue monotonically. Only your authored text sets Resolved.
+   Operator amendment amend0827-process-diet (2026-08-27), rule 2 — AN R-ID IS
+   SPENT ONLY ON A DEFECT WITH PRODUCT EFFECT: wrong state on disk under
+   `packages/`, `apps/`, `tests/` or `docs/`, or a gate over production code
+   demonstrably blind or unmeetable. A reviewer-prose inaccuracy that left
+   nothing wrong on disk — a miscounted line, a stale byte or digit, a block
+   over its cap, a wording contradiction the worker declared and applied anyway
+   — is ONE dated line in `.agent/prose_slips.md`: no id, no severity, no
+   recurrence entry, no correction round. A correction round is permitted only
+   when a LOAD-BEARING factual claim landed false in the append-only record, and
+   at most one per defect; a non-load-bearing inaccuracy is a deviation in the
+   handback and never a round. Findings already landed are NOT reclassified —
+   the record is append-only and this rule binds forward only. Reason: ids were
+   being spent on the reviewer's own prose as readily as on the product, and
+   such an id buys no repair because there is nothing on disk to repair. When
+   this order opened the record held 270 findings, 253 of them still open
+   against 17 ever resolved. Reverse by deleting this
+   paragraph and `.agent/prose_slips.md`.
    Because only your text sets Resolved, the worker never writes a `Done:`
    paragraph of its own (F104 R7 closure candidate, swept at F105 R1): when
    a fix lands before you have authored the resolution, the worker marks it
@@ -1006,6 +1102,21 @@ end the response with:
    "scoped commands green + diff clean" — the operator brief names the
    verification tier that ran (§3). Only the integration-gate round may
    claim "full suite green".
+   **A verdict does not buy its own round (operator amendment
+   amend0827-process-diet, 2026-08-27, rule 1).** A committed and PUSHED
+   `.agent/handoff.md` is a full, durable carrier for a pending verdict, a
+   finding draft and a pending registration. Book them into
+   `.agent/live_review.md` in the FIRST COMMIT of the next round that is
+   happening anyway. A PURE BOOKKEEPING ROUND — one whose whole change set is
+   verdicts, registrations or corrections — IS FORBIDDEN, with exactly one
+   exception: a feature's closure sequence. Reason: "a verdict must not exist
+   only in my session" is satisfied by a pushed file; reading it as "therefore
+   its own round" is what made 20 of F031's 70 rounds pure bookkeeping. It does
+   NOT weaken item 4 above — findings still persist FIRST, in their own commit,
+   before any repair; what changes is which ROUND that commit sits in. Reverse
+   by deleting this paragraph. The item numbering of this section is deliberately
+   left alone: `§4 item 7` is referenced by name from
+   `docs/roadmap/STATUS_closure_protocol.md` and from §1 of this file.
 7. A wrong spec is a finding routed to planning — the reviewer authors
    the concrete feature-file amendment INTO the current paste block,
    records it as an operator-visible DECISION (chosen option,

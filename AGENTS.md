@@ -416,6 +416,40 @@ Rules:
 - keep entries concise
 - move durable architectural knowledge to `docs/`
 
+### prose_slips.md
+
+Location:
+
+    .agent/prose_slips.md
+
+Operator amendment amend0827-process-diet (2026-08-27), rule 2 — FINDINGS
+ARE TWO CLASSES AND ONLY ONE OF THEM SPENDS AN ID. An R-id in
+`.agent/live_review.md` is now reserved for a defect with PRODUCT EFFECT:
+wrong state on disk under `packages/`, `apps/`, `tests/` or `docs/`, or a
+gate over production code shown to be blind or unmeetable. A reviewer-prose
+inaccuracy that damaged nothing on disk — a miscounted line, a stale byte
+or digit, a block over its cap, a wording contradiction the worker declared
+— is appended to this file instead, as ONE line carrying date, round and a
+single sentence: no id, no severity, no recurrence bookkeeping, no
+correction round.
+
+Rules:
+
+- append only; never rewritten, never renumbered
+- never a block condition: nothing here gates a claim, a closure or a round
+- landed findings are NOT reclassified — the record is append-only and this
+  rule binds forward from 2026-08-27 only
+- a correction round is permitted ONLY when a LOAD-BEARING factual claim
+  landed false in the append-only record, and at most once per defect;
+  a non-load-bearing inaccuracy goes in the handback's deviations and
+  never earns a round of its own
+
+Reason: ids were being spent on the reviewer's own prose as readily as on
+the product, and such an id buys no repair because there is nothing on disk
+to repair. When this order opened the record held 270 findings, 253 of
+them still open against 17 ever resolved. Reverse by deleting this section and the file;
+the severity scale in `.agent/review_protocol.md` is unchanged.
+
 ### handoff.md
 
 Location:
@@ -424,22 +458,43 @@ Location:
 
 Purpose: the fast-resume snapshot for the planner/reviewer. Rewritten
 (never appended) by the worker at every handback; only the latest state;
-≤60 lines (≤100 when per-commit tables of >5 commits require it —
-sections are never dropped); git history is the archive. Contents:
-feature + round, branch, last commit SHAs, changed-files table,
+git history is the archive. Contents: feature + round, the SESSION NUMBER
+of the running feature, branch, last commit SHAs, changed-files table,
 verification results (real, trimmed), open findings count, next expected
 action.
 
-Stated-cause overage (operator ruling 2026-08-08, F254 finding R-0214,
-resolved as DECISION D15): a handback MAY exceed the cap when the
-MANDATED content above genuinely does not fit, and only then. Such a
-handoff carries a "Deviations, declared" line naming its actual line
-count and the specific mandated content that caused the overage — the
-verification table, the transport and pair proofs, the item-status
-table, the closure values. Sections are NEVER dropped to meet the cap:
-dropping a mandated section is a finding, while exceeding the cap with a
-stated cause is not. Verbosity is not a cause — prose padding, verbatim
-transcripts and restated procedure remain findings at any length.
+Operator amendment amend0827-process-diet (2026-08-27), rule 3 — THE
+HANDBACK HAS NO LINE CAP. The former tiers — ≤60 lines, ≤100 when
+per-commit tables of >5 commits require it, ≤160 for a LARGE bundle's >10
+commits (the last of the three stated only in
+`docs/agents/handback_template.md`, never here) — and the DECISION D15
+stated-cause overage ceremony that sat on top of them, are WITHDRAWN. A handback is VALID when it carries its
+mandated sections — the state block, the deviations, the next steps and the
+contents listed above. Its LENGTH is not measured, is never declared, and
+is never the subject of a finding. Reason: the cap stopped bounding
+anything and started generating work — measured across F031, 63 of 75
+handbacks exceeded the 60-line base tier and 12 exceeded 100, at a median of
+93 lines and a maximum of 198, every one of them through the declared-overage
+route, so the ceremony cost a paragraph per handback and bought no brevity. Dropping a mandated section is still a finding; that is
+the obligation the cap was standing in for, and it is now stated directly
+instead of through a length. Reverse by restoring the two tiers and the
+D15 paragraph from git history at `f4eae1d4`, in all four files that
+carried them: this one, `docs/agents/handback_template.md`,
+`docs/agents/split_workflow.md` and
+`docs/agents/planner_reviewer_prompt.md`. This rule reaches the
+HANDBACK only — the block caps the reviewer writes against, and the under-50
+rule for `.agent/plan.md` above, are deliberately untouched, because those
+force scoping at authoring time rather than after it.
+
+Operator amendment amend0827-process-diet (2026-08-27), rule 1 — THE
+COMMITTED HANDBACK IS A DURABLE CARRIER. A verdict, a finding draft or a
+registration that is written into `.agent/handoff.md`, committed and pushed
+counts as persisted: it is booked into `.agent/live_review.md` in the FIRST
+commit of the next round that happens anyway. Reason: "a verdict must not
+exist only in my session" is satisfied by a pushed file, and reading it as
+"therefore a round of its own" is what produced the pure bookkeeping rounds
+this order removes. Reverse by deleting this paragraph; the ledger rules
+themselves are unchanged.
 
 - Every artifact-build attempt (evidence bundle, review zip)
   appears in the handoff with its status, including failed
