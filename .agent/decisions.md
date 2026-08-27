@@ -8196,3 +8196,38 @@ the length of a session that might not survive to write it.
 
 REVERSE IT by merging R46's commits into R47 and renumbering back, which costs
 nothing on disk — this entry moves labels, not work.
+
+## DECISION F031 D24 (2026-08-27) — the write door approves a flight plan on the defaults, and the inbox offers the two words the door takes
+
+THE GAP DECISION F009 D5 LEFT: that entry rules that `decision.resolve`
+dispatches "an `fp:`-prefixed id to `resolve_flight_plan_approval`, and the seam
+is gone when that round ends". The extraction shipped and the dispatch did not,
+which finding R-0693 measured — `resolve_flight_plan_approval` exists, its
+docstring says it was extracted "so the UI write door can reach the SAME code
+the CLI has always run", and the CLI remained its only caller.
+
+CHOSEN, THE DOOR APPROVES ON THE DEFAULTS. The `fp:` branch passes
+`answers={}`, so every open clarification takes its own `default_answer`. An
+operator approving from the inbox is accepting the defaults, the endpoint's
+docstring says exactly that, and R48's FORM over `payload.clarifications` is
+where any other choice comes from. The alternative — holding the dispatch back
+until the FORM exists — keeps a blocker decision unanswerable through the only
+surface the operator has, to protect a choice that today's card cannot offer
+anyway.
+
+CHOSEN, THE ANSWER VOCABULARY IS THE CLI'S. The door accepts exactly `approve`
+and `reject`, by strict equality, mirroring `apps/cli/commands/decision.py`'s
+own `reason not in ("approve", "reject")`. The pending decision therefore
+carries those two strings as `payload.options`, and `decisionAnswers` — which
+prefers options over next actions for every card, without branching on type —
+turns them into the card's affordances. That is why no component changes: the
+browser already renders whatever the payload offers.
+
+CONSIDERED AND REJECTED: parsing the `next_actions` CLI line the card used to
+post. It would make the door reverse-engineer its own help text, and a
+punctuation change in a printed hint would silently become a refused approval.
+
+REVERSE IT by deleting the `fp:` branch from `_dispatch_decision_resolve`, the
+`options` assignment from the pending arm of `decision_queue`, and the `fp:`
+mirror from `_answerable_by_decision_resolve` — the three land as three commits
+so that reversal is three reverts.
