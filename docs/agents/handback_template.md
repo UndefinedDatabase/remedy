@@ -36,6 +36,20 @@
 > Reverse the amendment by restoring the tier paragraph from git history
 > at `f4eae1d4`, here and in the three other files that carried it.
 
+## Session
+
+One line, MANDATORY from 2026-08-27 (operator amendment
+amend0827-process-diet, rule 6):
+`SESSION <n> of feature <Fxxx> · round <r> · rounds so far <total>`.
+`<n>` counts loop sessions on this feature, read from the previous handback
+and incremented at session start; `<total>` counts delegated rounds across
+the whole feature. Both counts exist so the 25-round / 7-session soft limit
+is visible WHILE it is being approached rather than after. At or past the
+limit this section additionally carries the scope report the limit obliges —
+what is finished, what is missing, and the proposal — and the session output
+carries the line `SITZUNGS-LIMIT ERREICHT — OPERATOR-BERICHT IN DER
+ÜBERGABE`. Reverse by deleting this section.
+
 ## Range
 
 One line: `Review of <LAST_REVIEWED_SHA>..<HEAD>`.

@@ -50,13 +50,18 @@ step 1 work. Resuming → first paste block is the next step or repair round.
 
 | | |
 |---|---|
-| **Feature** | F081 — remedy init (Tier 0) · Runde 3 |
+| **Feature** | F081 — remedy init (Tier 0) · Runde 3 · Sitzung 2/7 |
 | **Fortschritt** | ~60 % (T001 ✅ · T002 im Review · T003 offen) — Schätzung |
 | **Läuft's rund?** | ✅ Ja — jede Runde schließt Punkte, nichts kommt zurück |
 | **Geschätzte Laufzeit** | ~45–90 min (Kampagne: 10 Runs × Wall-Budget; Suite ~3 min) — Schätzung |
 | **Remedy kann jetzt** | <1–2 Zeilen, nur gemergte+verifizierte Fähigkeiten> |
 | **Remedy kann bald** | <1–2 Zeilen, was dieses Feature freischaltet> |
 | **Nächster Schritt** | <eine Zeile: was der Paste-Block unten tut> |
+
+The Feature row's `Sitzung <n>/7` segment is operator amendment
+amend0827-process-diet (2026-08-27), rule 6: the running session number
+against the soft limit, read from the previous handback's Session section.
+At `7/7` the row is followed by the scope report, not by another step.
 
 "Läuft's rund?" is binary and simple: ✅ = each round closes items and
 nothing previously fixed comes back. ⚠️ = the same problem needs fixing a
