@@ -3668,7 +3668,7 @@ class _RemedyHandler(BaseHTTPRequestHandler):
 
     def _dispatch_decision_resolve(self, job: Any,
                                    payload: Any) -> dict[str, Any] | None:
-        """Answer one task decision and PERSIST it. None means the effect declined.
+        """Answer one decision and PERSIST it. None means the effect declined.
 
         DECISION F009 D21: `answer_task_decision` and `save_job` are BOTH the
         effect, because the answer is durable only once `save_job` returns, so a
@@ -3689,6 +3689,24 @@ class _RemedyHandler(BaseHTTPRequestHandler):
         the reason D20 gave for `reason`: D14 types `args` as an object and never
         types what is inside it. An empty id matches no record, so the refusal
         path answers it rather than an exception.
+
+        DECISION F031 D24 rules what an `fp:`-prefixed id means here: the door
+        approves or rejects the job's PENDING flight plan through
+        `flight_plan.resolve_flight_plan_approval`, and it accepts exactly
+        `approve` and `reject` by strict equality — the CLI's own vocabulary at
+        `apps/cli/commands/decision.py` — refusing every other answer, and every
+        plan that is not pending, with the same None the task-decision path
+        returns. `answers={}` is DELIBERATE: through this door every open
+        clarification takes its own `default_answer`, so an operator approving
+        from the inbox is ACCEPTING THE DEFAULTS. Round R48's form over
+        `payload.clarifications` is where any other choice comes from, and there
+        is deliberately no way to pass answers here.
+
+        `--as-mission` is deliberately NOT reachable through this door, and a
+        reader searching for it should stop here: F056 makes the mission opt-in
+        an explicit flag whose default is NO, so a door that cannot carry the
+        flag creates no mission, and silently creating one would be the opposite
+        of that default.
         """
         from datetime import datetime, timezone
 
@@ -3698,6 +3716,33 @@ class _RemedyHandler(BaseHTTPRequestHandler):
         args = args if isinstance(args, dict) else {}
         decision_id = args.get("decision_id")
         answer = args.get("answer")
+        # DECISION F031 D24: an `fp:`-prefixed id names the FLIGHT PLAN's own
+        # approval, so it is dispatched HERE, before `answer_task_decision` —
+        # which reads escalation records alone and refuses every id that is not
+        # one. This closes the half of DECISION F009 D5 that shipped the
+        # extraction without the dispatch (finding R-0693).
+        if isinstance(decision_id, str) and decision_id.startswith("fp:"):
+            from packages.orchestration.flight_plan import (
+                open_clarification_questions,
+                resolve_flight_plan_approval,
+            )
+            fp = getattr(job, "flight_plan", None)
+            if not isinstance(fp, dict) or fp.get("_approval") != "pending":
+                return None
+            if answer not in ("approve", "reject"):
+                return None
+            resolve_flight_plan_approval(
+                job, reason=answer, answers={},
+                questions=open_clarification_questions(
+                    fp.get("clarifications_resolved")))
+            # `save_job` is deliberately NOT called here, and a reader who came
+            # looking for it should stop here: `resolve_flight_plan_approval`
+            # saves on BOTH of its arms, at flight_plan.py:824 and :831, so a
+            # second save would write the same object twice. The task-decision
+            # path just below DOES call it, because `answer_task_decision` saves
+            # nothing itself, and the difference reads as a bug without this.
+            return {"command": payload["command"], "outcome": "accepted",
+                    "decision_id": str(decision_id)}
         record = answer_task_decision(
             job, decision_id if isinstance(decision_id, str) else "",
             answer=answer if isinstance(answer, str) else "",
