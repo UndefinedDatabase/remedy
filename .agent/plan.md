@@ -3,43 +3,43 @@
 Branch: feature/f032-evidence-triple, cut from `main` at `a399a330`, the merge
 commit of pull request #216 which closed the amend0827 process-diet order.
 `.agent/live_review.md` is the review record and the finding-id ceiling;
-`.agent/decisions.md` carries the DECISION series, F032 from D1.
+`.agent/decisions.md` carries the DECISION series, F032 D1 through D4.
 
 ## Goal
 No decision without its receipts. Every decision a human is asked to answer
 carries the evidence triple — `evidence_refs[]`, `expected_outcome` and
 `downside` — the inbox card renders all three, and a producer that omits one
 fails its own test. `docs/roadmap/features/T5_F032.md` holds Goal & Done, the
-task slicing and, from this round, the design amendments that reconcile it
-with the source.
+task slicing and the design amendments that reconcile it with the source.
 
 ## Current Step
-R2 books R1's verdict and the one defect with product effect that R1's
-inventory found, and rules the three conflicts between the feature file's
-suggested Design and the measured source: there is no enqueue seam, there is no
-typed provenance vocabulary, and six of the eight producing branches carry no
-options list. Each is settled as a DECISION and written into the feature file
-so T001 is specified against what the source has.
+R3 is T001a: the schema and its validator, wired to nothing. One new module
+`packages/orchestration/decision_evidence.py` and one new test file. The emit
+gate DECISION F032 D1 rules is deliberately held back to T001b so that the
+wiring round can spend its whole gate budget on the guards it moves, which
+inventory Q8 lists. DECISION F032 D4 settles the names against the two
+collisions the reviewer measured in the source.
 
 | Item | Status | Reason |
 |------|--------|--------|
-| C0a/C0b save and mirror the block | ordered | |
+| C0a and C0b, save and mirror the block | ordered | |
 | C1 the plan | ordered | first substantive commit |
-| C2 gate F032 R1 and register R-0710 | ordered | one finding, none resolved |
-| C3 DECISION F032 D1, D2 and D3 | ordered | the three spec conflicts |
-| C4 feature-file design amendments | ordered | the same three, where a
-  builder reads them |
-| C5 the handback | ordered | |
+| C2 DECISION F032 D4 and one prose slip | ordered | names, and a wrapped row |
+| C3 the feature file amendment A4 | ordered | where a builder reads it |
+| C4 the new module | ordered | S1 through S8 |
+| C5 the new tests | ordered | S9, then the red-proofs |
+| C6 the handback | ordered | |
 
 ## Next Steps
-1. T001a: the evidence-triple schema and the emit gate at the derivation
-   point D1 names, with the guards R1's inventory Q8 lists red-proved.
-2. T001b: legacy rendering for records without a triple, and the CI canary
-   that a tripleless producer must fail.
-3. T002 the per-producer upgrades, then T003 card enrichment and chip links.
+1. T001b: the emit gate at `list_decisions`, legacy rendering for records with
+   no triple, and the CI canary a tripleless producer must fail. That round
+   first edits `packages/orchestration/decision_queue.py`, so `R-0710`'s fix
+   clause binds it.
+2. T002 the per-producer upgrades, with the content goldens.
+3. T003 card enrichment and the chip deep links.
 
 ## Risks
-- D2 builds a minimal ref type inside F032 rather than waiting for F066, which
-  is unclaimed. If F066 later lands a different vocabulary, the reversal is
-  named in D2 and is a rename, not a redesign.
-- The open set stands at 250 after this round. None of it blocks F032.
+- The schema lands at C4 with no test until C5. That is ordered rather than
+  accidental, and the round does not end between them.
+- `R-0710` stays open through this round by design; it is not a `while I am
+  here` edit and its fix has a named owner.
