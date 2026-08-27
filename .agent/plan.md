@@ -11,25 +11,28 @@ branch-only blocking semantics intact, ordered by a documented rule over age and
 blocked size, and answerable from the card through the write channel.
 
 ## Current Step
-RECORD ROUND. CLOSURE 2 of 3 PASSED and this round writes that verdict, which
-would otherwise evaporate exactly as registered finding R-0659 describes. It
-also registers R-0708, the intermittent server-start failure the reviewer hit
-while running closure precondition 2. It writes NO STATUS line, syncs NO README
-and creates NO pull request: closure is deferred to the operator.
+CORRECTION ROUND. The RECORD ROUND passed every gate, and this round writes that
+verdict together with a correction to a clause the reviewer itself authored
+inside `R-0708`. The finding's conclusion stands and this round proves it from
+the diff; only the supporting clause was wrong. It writes NO STATUS line, syncs
+NO README and creates NO pull request: closure is deferred to the operator.
 
 ## Next Steps
 1. CLOSURE 3 of 3 — the STATUS line from `[~]` to `[x]` with the README
    capability sync in the SAME commit, then the pull request, which is NOT
-   merged in the session that creates it. The three closure values it needs
+   merged in the session that creates it. The five closure values it needs
    already exist and are carried in the handoff; the package is NOT rebuilt.
 
 ## Risks
-- CLOSURE PRECONDITION 2 IS INTERMITTENT RATHER THAN GREEN, AND THAT IS WHY
-  CLOSURE DID NOT HAPPEN IN THE SESSION THAT PRODUCED THE PACKAGE. The reviewer
-  ran `python3 -m pytest -n auto -q` five times at the reviewed head and measured
+- CLOSURE PRECONDITION 2 IS INTERMITTENT RATHER THAN GREEN. The reviewer ran
+  `python3 -m pytest -n auto -q` five times at the reviewed head and measured
   four GREEN at 17817 passed with 20 skipped, and one RED at 17816 passed with
-  one failed. The red is R-0708. It is not an F031 defect: this feature changed
-  nothing under `apps/`, `packages/` or `tests/`.
+  one failed. The red is `R-0708`.
+- `R-0708` IS NOT AN F031 DEFECT, AND THE REASON IS NARROWER THAN THIS PLAN
+  ONCE CLAIMED. F031 does change `tests/ui_server/`, five files of it, one of
+  them `test_live_state.py` itself. What F031 does to that file is APPEND one
+  test class that starts no server; the failing class, its five-second helper
+  and the failing test are untouched by this branch.
 - WHETHER AN INTERMITTENTLY GREEN PRECONDITION MAY CARRY AN `[x]` IS AN OPERATOR
   QUESTION. The rules do not answer it, and guardrail G8 of the self-drive
   protocol ends a session on exactly that kind of question rather than guessing.
@@ -39,5 +42,5 @@ and creates NO pull request: closure is deferred to the operator.
   and F086, documented risks rather than F031 defects, and they rode through six
   prior closures on the same footing.
 - Open findings, by the rule DECISION F009 D10 requires — every `^- R-\d+ — `
-  paragraph minus every `^Done: R-\d+ — ` line — the set is 251 before this
-  round and 252 after it, R-0708 being the one entry that moves.
+  paragraph minus every `^Done: R-\d+ — ` line — the set is 252 and this round
+  moves it by nothing.
