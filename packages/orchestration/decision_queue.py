@@ -32,7 +32,9 @@ from packages.core.models import Job
 from packages.orchestration.decision_evidence import (
     DECISION_EVIDENCE_STATUS_LEGACY,
     DECISION_EVIDENCE_STATUS_PRESENT,
+    DecisionEvidenceRef,
     DecisionEvidenceTriple,
+    DecisionOptionOutcome,
     enforce_decision_evidence,
     export_decision_evidence,
 )
@@ -219,6 +221,60 @@ def list_decisions(
                 break
         _decision_id = (f"budget:{_budget_request_id}"
                         if _budget_request_id else "budget_exhausted")
+        # F032 T002a: the receipts behind the budget stop are built from what
+        # this branch ALREADY read out of the stop event, so the card cites the
+        # same evidence the guard acted on rather than a fresh derivation.  A
+        # ref whose target is empty points at nothing and rule (c) of
+        # `evidence_triple_problems` refuses it, so the optional two are emitted
+        # only when the stop event actually carried them.
+        _budget_refs = [DecisionEvidenceRef(
+            kind="failure",
+            target=budget_error,
+            label="the stop reason the budget guard recorded",
+        )]
+        if _budget_limit:
+            _budget_refs.append(DecisionEvidenceRef(
+                kind="failure",
+                target=_budget_limit,
+                label="the budget limit that was exhausted",
+            ))
+        if _budget_request_id:
+            _budget_refs.append(DecisionEvidenceRef(
+                kind="decision",
+                target=_budget_request_id,
+                label="the request in flight when the budget was exhausted",
+            ))
+        # The limit is named as a WHOLE NOUN PHRASE and not interpolated as a
+        # bare word, because the sentence has to read as English in both cases:
+        # substituting the value alone produces "a raised the exhausted limit"
+        # when the stop event carried no `exhausted_limit`.
+        _limit_phrase = (f"the exhausted limit of {_budget_limit}"
+                         if _budget_limit else "the exhausted limit")
+        _budget_outcomes = (
+            DecisionOptionOutcome(
+                option="extend",
+                expected_outcome=(
+                    "The job resumes from its last safe point with "
+                    f"{_limit_phrase} raised, and the work already paid for "
+                    "is kept."
+                ),
+                downside=(
+                    "Spend continues past the ceiling that was set, and the "
+                    "same stop recurs if the run is not converging."
+                ),
+            ),
+            DecisionOptionOutcome(
+                option="abandon",
+                expected_outcome=(
+                    "The job stops with the artifacts it has, and nothing "
+                    f"further is spent against {_limit_phrase}."
+                ),
+                downside=(
+                    "The work in flight is left unfinished, and a later "
+                    "resume pays again for the context this run had built."
+                ),
+            ),
+        )
         decisions.append(HumanDecision(
             id=_decision_id,
             type="token_budget",
@@ -232,6 +288,15 @@ def list_decisions(
             next_actions=("extend", "abandon"),
             created_at=_budget_created_at,
             resolved_at=None,
+            # DECISION F032 D6: the two choices are stated where the emit gate
+            # and the browser both already look.  `next_actions` is unchanged —
+            # `decisionCard.decisionAnswers` prefers `payload.options` and
+            # yields the same two answers in the same order.
+            payload={"options": ["extend", "abandon"]},
+            evidence=DecisionEvidenceTriple(
+                refs=tuple(_budget_refs),
+                outcomes=_budget_outcomes,
+            ),
         ))
 
     # 6. Stale/needs_review memory cards
@@ -410,7 +475,9 @@ def list_decisions(
     # THE EMIT GATE (DECISION F032 D1): this derivation point is the one seam
     # every producer funnels through, so it is where an enforced decision type
     # is refused for arriving without its receipts.  It enforces only the types
-    # in `TRIPLE_REQUIRED_TYPES`, which is EMPTY until T002 upgrades a producer.
+    # in `TRIPLE_REQUIRED_TYPES`, which T002a made non-empty: `token_budget` is
+    # in it from the commit that gave the budget stop a real triple, and each
+    # remaining producer joins the same way, in its own upgrade commit.
     enforce_decision_evidence(decisions)
     return decisions
 

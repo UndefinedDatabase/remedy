@@ -106,13 +106,16 @@ DECISION_EVIDENCE_STATUS_PRESENT = "present"
 #: carrying a fabricated triple that no producer ever wrote.
 DECISION_EVIDENCE_STATUS_LEGACY = "recorded_before_evidence_requirements"
 
-#: The decision types the emit gate actually enforces — EMPTY at T001b, and
-#: that emptiness is the whole safety argument of this round: no existing
-#: producer changes behaviour while the gate is live and pinned by the canary.
-#: A type is added here by T002 ONLY in the same commit that gives its producer
-#: a real triple.  When all eight types are in the set the gate is fully live
-#: and this constant has become a formality, which is when it can be deleted.
-TRIPLE_REQUIRED_TYPES: frozenset[str] = frozenset()
+#: The decision types the emit gate actually enforces.  It held ``token_budget``
+#: alone from T002a, which is the commit that gave the budget stop of
+#: ``decision_queue`` a real triple — it was EMPTY at T001b, and that emptiness
+#: stopped being true the moment a producer was upgraded.  THE RULE BY WHICH A
+#: TYPE JOINS IS UNCHANGED (DECISION F032 D5): a type is added here ONLY in the
+#: same commit that gives its producer a real triple, never ahead of one, so the
+#: gate can fire on a regression and never on a card nobody has upgraded yet.
+#: When all eight types are in the set the gate is fully live and this constant
+#: has become a formality, which is when it can be deleted.
+TRIPLE_REQUIRED_TYPES: frozenset[str] = frozenset({"token_budget"})
 
 
 # One checkable reference behind a decision: WHAT kind of thing, WHICH one, and
