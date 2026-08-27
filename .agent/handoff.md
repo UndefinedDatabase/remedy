@@ -1,59 +1,52 @@
-# Handback — F031 CLOSURE 1 OF 3
-Feature F031 decision inbox, closure round 1 of 3. Branch `feature/f031-decision-inbox`.
-NOTHING UNDER `apps/`, `packages/` OR `tests/` CHANGED. Each of those three is EMPTY in the range, and so are `docs/roadmap/STATUS.md` and `README.md`; no file under `.agent/gate_f031_r65/` was edited and `.agent/decisions.md` was not touched.
-THE ONLY FINDING THAT MOVED IS R-0693 AND IT MOVED TO RESOLVED. No finding was registered. Open findings after this round: 251 — the number G5 measured after C2, down from 252 before it.
-BUILT STATE. `docs/roadmap/features/T5_F031.md` now carries a `## Built State` section and closure precondition 4 is met.
+# Handback — F031 CLOSURE 2 OF 3 — HALTED BY `.agent/STOP`
+Feature F031 decision inbox, closure round 2 of 3. Branch `feature/f031-decision-inbox`. Round base `44fd8df9`.
+THE ROUND DID NOT RUN. `.agent/STOP` EXISTS ON DISK and was read there before C0a, the first of the two readings constraint 8 orders. Constraint 8 and `docs/agents/self_drive_protocol.md` G6 both halt the round at that reading, so C0a, C0b, C1 and C2 were never made, the evidence job was never run and the review zip was never built.
+NO COMMIT WAS IN HAND when the sentinel was read — the round had made none. The only commit on this branch beyond the base is the handback commit itself.
+NO FINDING MOVED IN EITHER DIRECTION: none registered, none resolved. Open findings 251, unchanged from the base, and `.agent/live_review.md` was not touched. NOTHING UNDER `apps/`, `packages/`, `tests/` OR `docs/` CHANGED, and neither did `.agent/plan.md`, `.agent/last_block.md`, `.agent/authored/` or `.agent/decisions.md`.
+THE SENTINEL WAS NOT CREATED BY ME AND WAS NOT DELETED. It is a 0-byte untracked file at `.agent/STOP`, mtime 2026-08-27 10:35:37 — 7 minutes AFTER the base commit `44fd8df9` was written at 10:28:22 — the newest entry in `.agent/`, not matched by `.gitignore`, and never present in git history.
 ## Range
-Review of eed7e010..HEAD.
+Review of 44fd8df9..HEAD.
 ## Commits
-### d84118b2 docs(agent): save the F031 R67 step block
+### C3 docs(agent): halt the F031 closure 2 round at the STOP sentinel (this commit — R-0149 self-reference)
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f031-r67.md | +310/-0 | C0a — the block copied byte for byte from `.remedy-wt/f031-r67.md` |
-### 7b7e5f28 docs(agent): mirror the F031 R67 block into last_block
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/last_block.md | +252/-152 | C0b — identical bytes, same git blob as C0a |
-### 13c54cca docs(agent): advance the plan to the F031 closure 1 round
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/plan.md | +22/-21 | C1 — PLANF031R67 applied whole-file |
-### b6a1e084 docs(agent): record the F031 R66 verdict and resolve R-0693
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/live_review.md | +4/-0 | C2 — LEDGER67 appended: the R66 gate entry and the R-0693 resolution |
-### de534027 docs(roadmap): give F031 a Built State section
-| Path | +/- | Reason |
-|---|---|---|
-| docs/roadmap/features/T5_F031.md | +76/-0 | C3 — BUILTSTATE67 appended; no pre-existing line changed, reordered or removed |
-### C4 docs(agent): write the F031 closure 1 handback (this commit — R-0149 self-reference)
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/handoff.md | rewrite | C4 — this file; a handback cannot table the commit that writes it |
+| .agent/handoff.md | rewrite | the only write of this round; a handback cannot table the commit that writes it |
 ## Item status
 | Item | Status | Reason |
 |---|---|---|
-| C0a save this block | done | |
-| C0b mirror into last_block | done | |
-| C1 the plan | done | |
-| C2 the ledger entry and the resolution | done | |
-| C3 the Built State section | done | |
-| C4 the handback | done | |
-| push | done | ordered after C4; the block keeps its reading out of this file |
+| C0a save this block | skipped | `.agent/STOP` present at the ordered pre-C0a reading |
+| C0b mirror into last_block | skipped | same |
+| C1 the plan | skipped | same |
+| C2 the CLOSURE 1 verdict | skipped | same |
+| EVIDENCE JOB | skipped | ordered after C2; the round halted before C0a. No bundle exists |
+| REVIEW ZIP | skipped | ordered after the evidence job; never attempted. No package exists |
+| C3 the handback | done | the one thing constraint 8 orders on a STOP |
+| push | done | G14; the block keeps its reading out of this file |
 ## External actions
-`git push origin feature/f031-decision-inbox` — run after C4; the block orders its reading kept out of this handback. NO worktree was created, removed or pruned, no branch was created or deleted, and no `gh` command and no PR action was run.
+`git push origin feature/f031-decision-inbox` — run after C3; G14 orders its exit code and the resulting remote tip kept out of this file and reported to the reviewer instead. NO worktree created, removed or pruned. No branch created or deleted. No `gh` command run and no PR action taken. No evidence bundle written. No review zip built.
 ## Verification
-G1 exit 0 — branch `feature/f031-decision-inbox`; `git status --porcelain` 0 lines after each of C0a, C0b, C1, C2 and C3; `.agent/STOP` read from disk before C0a and before C4, ABSENT at both. Block sha256 `a951f18a…956ea165`, 26203 bytes, 310 lines — as read from `.remedy-wt/f031-r67.md`, as saved at C0a, as mirrored at C0b and as read off disk at C3, all four EQUAL; C0a and C0b are the SAME git blob `b3f1bce99b0e`; lines that are a run of one repeated character: NONE. THIS PROOF COVERS THE SCRATCH FILE, THE SAVED COPY, ITS MIRROR AND THE WORKING COPY — AND NOT THE BYTES OF ANY PROMPT, per §3 item 37.
-G2 exit 0 — the extractor read the COMMITTED C0a blob `d84118b2` by its marker LINES and printed 3 slices: PLANF031R67 45 content lines, LEDGER67 3, BUILTSTATE67 75. CONTENT 123, TOTAL 310, PROSE 187 with markers counted as prose. 187 ≤ 400 and 310 ≤ 490.
-G3 exit 0 — `.agent/plan.md` at C1 byte-equal to PLANF031R67 TRUE under the newline-INCLUDED convention; negative control against the slice minus its trailing newline FALSE; `^## Goal$` 1; `^## Next Steps$` 1; `wc -l` 45, strictly under 50.
-G4 exit 0 — the pre-C2 blob is 986008 bytes over 395 blank-line units, exactly the reviewer's base reading at `eed7e010`; nothing had moved. Reader A: 986008 + 1 + 5365 = 991374 and the committed blob is 991374, equality TRUE. Reader B: N counted by my own script is 2, units 395 before and 397 after, and the last 2 units equal the slice's 2 paragraphs IN ORDER. Negative control flipped ONE byte IN MEMORY inside the FIRST appended paragraph (offset 10): reader A REJECTS and reader B REJECTS. The tracked file was never mutated.
-G5 exit 0 — before→after C2: `^- R-\d+ — ` 268→268, `^Done: R-\d+ — ` 16→17, `^Landed: R-` 0→0, `^Gate: R\d+ — ` 19→19, `^Gate: F\d+ R\d+ — ` 47→48. Gate keys ADDED exactly `F031 R66`, REMOVED none; RESOLVED ids ADDED exactly `R-0693`, REMOVED none; finding ids ADDED none, REMOVED none. All ids DISTINCT at both points, maximum id R-0707 at both. Open set 252 before, 251 after.
-G6 exit 0 — the pre-C3 blob is 11452 bytes over 197 lines and 24 blank-line units, exactly the reviewer's base reading at `eed7e010`. Reader A: 11452 + 1 + 5163 = 16616 and the committed blob is 16616, equality TRUE. Reader B: N counted by my own script is 5, units 24 before and 29 after, the last 5 units equal the slice's 5 paragraphs IN ORDER; a one-byte flip IN MEMORY inside the FIRST appended paragraph is REJECTED by BOTH readers. `^## Built State$` occurs 1 time at C3 and 0 times at `eed7e010`; `^## Design amendments` occurs 4 times at BOTH points.
-G7 exit 0 — both path residues over `eed7e010..de534027` EMPTY against the expected set, the Change list MINUS `.agent/handoff.md`; 5 paths. `git diff --stat` restricted to `apps/`, `packages/`, `tests/`, `docs/roadmap/STATUS.md` and `README.md` — each EMPTY. `git diff --name-only eed7e010..de534027 -- .agent/gate_f031_r65/` 0 lines. Markers `^<<<SLICE ` and `^<<<END ` 0 and 0 in `.agent/plan.md` at C1, `.agent/live_review.md` at C2 and `docs/roadmap/features/T5_F031.md` at C3, against a CONTROL of 3 and 3 over the C0a blob. Insertions 310, 252, 22, 4 and 76 for C0a through C3, each commit single-parent and each under 500. `git ls-files .remedy-wt` 0 lines, `git worktree list` 1 line, `git branch --list "tmp/*"` 0 lines, `git ls-files --others --exclude-standard` 0 lines at C3.
-G8 exit 0 ×8 — in the PRIMARY checkout at C3, run SERIALLY with never two pytest processes alive at once, each a REAL returncode of 0: canary `tests/cli/test_golden_path.py` 42 passed; `tests/ui_contracts/` 566 passed 4 skipped; `tests/ui_server/` 489 passed; `tests/orchestration/test_test_runner.py` 52 passed; `tests/regression/test_resource_safety.py` 21 passed; `tests/orchestration/test_integrity_gate.py` 16 passed; `tests/docs/` 295 passed; `tests/orchestration/test_roadmap_index.py` 30 passed — every count EQUAL to the reviewer's reading at `eed7e010`. Nothing moved.
+G1 RED — branch `feature/f031-decision-inbox` CORRECT. `.agent/STOP` read from disk at BOTH ordered points, before C0a and again before C3: PRESENT at both, unchanged at 0 bytes and mtime 10:35:37. The first reading is the halt. `git status --porcelain` 1 line, `?? .agent/STOP`, and that untracked sentinel is the whole of it; `git check-ignore -v .agent/STOP` exits 1, so it is not ignored, and I may not delete it — a 0-line reading is unreachable this round. The per-commit 0-line readings ordered after C0a, C0b, C1 and C2 have no subject, and neither does the pre-zip reading.
+G2 NOT RUN — no C0a, C0b or C2 blob exists to compare. `.remedy-wt/f031-r68.md` was READ (442 lines, 30862 bytes) but deliberately NOT copied to `.agent/authored/f031-r68.md`: that copy IS C0a.
+G3 NOT RUN — no committed C0a blob to extract slices from.
+G4 NOT RUN — `.agent/plan.md` untouched; PLANF031R68 was not applied.
+G5 NOT RUN — `.agent/live_review.md` untouched; LEDGER68 was not applied.
+G6 NOT RUN — no C2, so the ledger sets have no before/after pair; they stand at the base reading.
+G7 NOT RUN — the full suite is closure precondition 2 and the block orders it at C2; C2 does not exist. No frontend warm-up was performed either.
+G8 NOT RUN — the integrity gate is closure precondition 3; not reached.
+G9 NOT RUN — EVIDENCESCRIPT was not written to `.remedy-wt/f031_evidence.py` and no evidence bundle exists.
+G10 NOT RUN — no review zip was built. This is not a failed build; it is a build never attempted, because the round halted four commits earlier.
+G11 NOT RUN — no `44fd8df9..C2` range exists.
+G12 NOT RUN — the Open PR Gate read is ordered before C3 in a round that reached C3 only by halting; no `gh` command was issued.
+G13 NOT RUN — C1 and C2 landed no sentence, so no sentence of theirs could go stale.
+G14 — ordered after C3 and run; its own text keeps its reading out of this file.
+## Closure values
+NONE EXIST. The evidence job id, the package FILENAME, the package SHA-256, the PACKAGE_STATUS and the manifest `committed_review_subject.head_commit` are ALL ABSENT, because neither artifact was built. CLOSURE 3 CANNOT BE AUTHORED until a CLOSURE 2 round actually runs. Constraint 7 is NOT triggered: no build failed and no package reported a status other than `READY_FOR_REVIEW`, because no build was attempted.
 ## Authored-text proofs
-All three slices were extracted from the COMMITTED C0a blob `b3f1bce99b0e` by their `<<<SLICE`/`<<<END` marker lines and applied programmatically; none was retyped, reflowed or corrected, and no marker line reached a target. PLANF031R67 → `.agent/plan.md` byte-equal TRUE (G3). LEDGER67 → `.agent/live_review.md` pre-blob + ONE newline + slice TRUE (G4). BUILTSTATE67 → `docs/roadmap/features/T5_F031.md` pre-blob + ONE newline + slice TRUE (G6).
+None applied. No slice of `.remedy-wt/f031-r68.md` — PLANF031R68, LEDGER68 or EVIDENCESCRIPT — reached any file, and `.agent/authored/f031-r68.md` does not exist.
 ## Deviations & assumptions
-None. The ordered sequence C0a, C0b, C1, C2, C3, C4 then push was followed exactly — no extra commit, none dropped, none reordered, none merged. NO SLICE LOOKED WRONG. The Bundle orders SIX commits, which is more than five, so the AGENTS.md handoff rule gives this file a 100-line cap and it meets it; no DECISION D15 declaration is made or needed.
+THE ORDERED SEQUENCE WAS NOT FOLLOWED. C0a, C0b, C1, C2, the evidence job and the zip were all DROPPED and C3 was made alone. That departure is the STOP procedure itself — constraint 8, plus self_drive_protocol.md G6 and Phase 1 rule 1 — and not a judgement of mine. Constraint 13's stated next action, CLOSURE 3 OF 3, is likewise superseded: it presumed this round produced the three closure values, and it did not.
+`.agent/plan.md` WAS NOT UPDATED WITH THE BLOCKER, a departure from AGENTS.md If-Blocked item 2. Reason: constraint 4 pins plan.md to its CLOSURE 1 text until C1, PLANF031R68 is the only replacement the reviewer authored for that file, and constraint 5 forbids me substituting my own text on a file this block governs. The blocker is recorded here instead. The reviewer should rule on this.
+NO DEFECT WAS FOUND AND NONE IS ALLEGED. I do not know why the sentinel was placed and did not guess; I report only that it is there, that it is empty and untracked, and when it was written.
+The Bundle orders FIVE commits, which is not more than five, so the AGENTS.md handoff rule gives this file a 60-line cap. No DECISION D15 declaration is made or needed.
 ## Next
-CLOSURE 2 OF 3 — the feature-scoped evidence bundle and a FRESH review zip built from a clean tree at the reviewed head, per `docs/roadmap/STATUS_closure_protocol.md`; a failing zip build is a closure BLOCKER, never something to work around. No round number is given to it: §3 item 35 forbids numbering a round that has not begun. Before it: re-read `.agent/STOP` from disk — ABSENT at both of this round's readings, but that reading is one-shot and does not carry forward — then the Open PR Gate, then this round's verdict.
+Phase 1 rule 1 of `docs/agents/self_drive_protocol.md` — re-read `.agent/STOP` from disk. While it exists, no round is authored and no work is done. Once the operator removes it, the next expected action is CLOSURE 2 OF 3 again, unchanged: the feature-scoped evidence bundle, then the FRESH review zip from a clean tree at the reviewed head. Both are still unbuilt, and only after they exist can CLOSURE 3 OF 3 be authored. No round number is given to either: §3 item 35 forbids numbering a round that has not begun.
