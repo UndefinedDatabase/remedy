@@ -241,9 +241,23 @@ def list_decisions(
         # `validity` and `review_status` are SEPARATE fields on the memory card
         # (`packages/memory/models.py:44-45`): "needs_review" is a value of
         # `review_status` only, so reading it out of `validity` selected nothing.
-        stale = [e for e in entries
-                 if e.validity == "stale" or e.review_status == "needs_review"]
-        for me in stale[:5]:
+        memory_cards_to_review = [e for e in entries
+                                  if e.validity == "stale"
+                                  or e.review_status == "needs_review"]
+        for me in memory_cards_to_review[:5]:
+            # F032 R5 (R-0711): the card's one line has to say WHY a human is
+            # being asked to look, and the predicate above admits cards for two
+            # INDEPENDENT reasons — so the reason is derived from both fields.
+            # Reading `validity` alone made a card flagged for review announce
+            # itself as "active", which is true and explains nothing.
+            is_stale = me.validity == "stale"
+            is_flagged_for_review = me.review_status == "needs_review"
+            if is_stale and is_flagged_for_review:
+                reason = "is stale and flagged for review"
+            elif is_stale:
+                reason = "is stale"
+            else:
+                reason = "is flagged for review"
             decisions.append(HumanDecision(
                 id=f"mem:{me.key}",
                 type="memory_review",
@@ -253,7 +267,7 @@ def list_decisions(
                 related_node_id="",
                 related_intent_id="",
                 related_file="",
-                safe_summary=f"Memory '{me.key}' is {me.validity}.",
+                safe_summary=f"Memory '{me.key}' {reason}.",
                 next_actions=(f"remedy memory card-show {me.key}",),
                 created_at="",
                 resolved_at=None,
