@@ -40,10 +40,16 @@ PRODUCING_DECISION_TYPES = (
 )
 
 #: DECISION F031 D19 — the types the write door's ``decision.resolve`` can
-#: actually answer.  ``_dispatch_decision_resolve`` reaches a record only
-#: through ``escalation.find_task_decision``, which iterates escalation records
-#: alone, so ``task_decision`` is the whole set and finding R-0693 measures it.
-ANSWERABLE_DECISION_TYPES = ("task_decision",)
+#: actually answer, EACH IN THE STATE ITS PRODUCING FIXTURE BUILDS.  Until
+#: DECISION F031 D24 the door reached a record only through
+#: ``escalation.find_task_decision``, so ``task_decision`` was the whole set and
+#: finding R-0693 measured it; D24 added the ``fp:`` branch, which accepts a
+#: flight plan whose ``_approval`` is ``"pending"`` — exactly what
+#: ``_fixture_flight_plan_approval`` builds.  This tuple says nothing about a
+#: RESOLVED flight plan, which carries the same type and is refused;
+#: ``test_an_approved_flight_plan_card_is_not_answerable`` pins that case, for
+#: the reason its task-decision sibling gives.
+ANSWERABLE_DECISION_TYPES = ("flight_plan_approval", "task_decision")
 
 FIXED_NOW = datetime(2026, 8, 23, 12, 0, 0, tzinfo=timezone.utc)
 
@@ -344,5 +350,25 @@ def test_answerable_key_goes_false_once_the_decision_has_been_answered():
                                 now=FIXED_NOW) is None
 
     card = _cards_by_type(build_decision_inbox(job, events, now=FIXED_NOW))["task_decision"]
+    assert card["status"] == "resolved"
+    assert card["answerable_by_decision_resolve"] is False
+
+
+def test_an_approved_flight_plan_card_is_not_answerable():
+    """A settled plan is refused by the door, so the key must be False (D24).
+
+    Sibling of the test above and for the identical reason its docstring
+    gives: a type check cannot tell an open card from a resolved one, because
+    both read ``flight_plan_approval``.  Without this,
+    ``ANSWERABLE_DECISION_TYPES`` would be the only statement about the type
+    and it would read as "every flight-plan card is answerable", which the
+    door's ``_approval == "pending"`` condition makes false.
+    """
+    job = _make_job(flight_plan={"_approval": "approved",
+                                 "_approval_audit": {"reason": "approved"}})
+    card = _cards_by_type(
+        build_decision_inbox(job, [], now=FIXED_NOW))["flight_plan_approval"]
+
+    assert card["id"] == "fp:approval"
     assert card["status"] == "resolved"
     assert card["answerable_by_decision_resolve"] is False

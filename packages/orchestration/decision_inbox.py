@@ -78,32 +78,48 @@ def _blocked_subtree_size(job: Any, payload: Any) -> int:
 def _answerable_by_decision_resolve(job: Any, decision_id: Any) -> bool:
     """Whether the write door's ``decision.resolve`` can answer this card.
 
-    MEASURED against the door itself, not against the card's type, and the
-    door's predicate is TWO conditions rather than one.  The door
-    ``ui_server._dispatch_decision_resolve`` calls
-    ``escalation.answer_task_decision`` and nothing else, and that function
-    refuses on both.  EXISTENCE is enforced by
+    MEASURED against the door itself, not against the card's type.  The door
+    ``ui_server._dispatch_decision_resolve`` now has TWO branches, and each
+    refuses on exactly two conditions, so this predicate mirrors both.
+
+    An ``fp:``-prefixed id is DECISION F031 D24's branch: the door hands it to
+    ``flight_plan.resolve_flight_plan_approval`` and refuses unless
+    ``job.flight_plan`` is a dict whose ``_approval`` is ``"pending"``.  Those
+    are the same two readings of the same object the door makes, taken from the
+    job rather than from the card, so the two cannot drift apart silently.
+
+    Every OTHER id reaches ``escalation.answer_task_decision``, which refuses
+    on two conditions of its own.  EXISTENCE is enforced by
     ``find_task_decision``, which iterates the job's ESCALATION RECORDS alone,
     so of the eight producing branches of ``list_decisions`` only
-    ``task_decision`` mints an id that list holds; every other id is refused.
-    BEING OPEN is enforced one line later in ``answer_task_decision`` itself,
-    which returns None unless ``record.get("status")`` equals
-    ``ESCALATION_STATUS_OPEN``, and the caller answers that None with 409
-    ``rejected_state``.  Both conditions are read here from the same record the
-    door reads.  Finding R-0693 carries the first measurement and R-0695 the
-    second; DECISION F031 D19 rules that this key is computed from the door's
-    own predicate and DECISION F031 D21 that it mirrors what the door REFUSES.
+    ``task_decision`` mints a non-``fp:`` id that list holds; every other such
+    id is refused.  BEING OPEN is enforced one line later in
+    ``answer_task_decision`` itself, which returns None unless
+    ``record.get("status")`` equals ``ESCALATION_STATUS_OPEN``, and the caller
+    answers that None with 409 ``rejected_state``.  Both conditions are read
+    here from the same record the door reads.  Finding R-0693 carries the first
+    measurement and R-0695 the second; DECISION F031 D19 rules that this key is
+    computed from the door's own predicate and DECISION F031 D21 that it
+    mirrors what the door REFUSES.
 
     Remedy deliberately does NOT branch on the card's ``type`` here, and a
     reader searching this file for such a branch should stop here: a type check
     and the door's predicate NO LONGER COINCIDE, because an ANSWERED task
     decision still yields a card of type ``task_decision`` — branch 8 of
     ``list_decisions`` appends every escalation record and lets ``is_open``
-    decide only the status — while the door refuses that record.  Section (g)
-    of ``tests/orchestration/test_decision_inbox.py`` builds exactly that
-    fixture, so this file no longer rests on an absence: the difference between
-    the two predicates is caught by a test.
+    decide only the status — while the door refuses that record.  The ``fp:``
+    test above reads the ID PREFIX rather than the type for that very reason
+    and not in defiance of it: the door dispatches on the prefix, while the
+    type ``flight_plan_approval`` is also what the RESOLVED card carries and
+    the door refuses that one.  Section (g) of
+    ``tests/orchestration/test_decision_inbox.py`` builds exactly those
+    fixtures, so this file no longer rests on an absence: the difference
+    between the two predicates is caught by a test.
     """
+    if str(decision_id).startswith("fp:"):
+        flight_plan = getattr(job, "flight_plan", None)
+        return (isinstance(flight_plan, dict)
+                and flight_plan.get("_approval") == "pending")
     record = find_task_decision(job, str(decision_id))
     return record is not None and record.get("status") == ESCALATION_STATUS_OPEN
 
