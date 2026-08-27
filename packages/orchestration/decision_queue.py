@@ -129,7 +129,15 @@ def list_decisions(
                     related_node_id=f"pi:{pi['intent_id']}",
                     related_intent_id=pi["intent_id"],
                     related_file=pi.get("target_path", ""),
-                    safe_summary=f"Patch intent for {pi.get('target_path', '?')} awaits approval.",
+                    # F032 R9 (R-0713): the old `pi.get('target_path', '?')`
+                    # default could never fire — `list_patch_intents` ALWAYS
+                    # sets `target_path`, to the empty string when the
+                    # explanation named no file, so the key is present-and-empty
+                    # rather than absent and the card read "Patch intent for
+                    #  awaits approval."  Reuse the value the ref guard above
+                    # already computed and fall back on emptiness, so the
+                    # placeholder this line was written to show finally shows.
+                    safe_summary=f"Patch intent for {_pa_target_path or '?'} awaits approval.",
                     next_actions=(
                         f"remedy patch approve {job_id[:8]} {pi['intent_id']}",
                         f"remedy patch reject {job_id[:8]} {pi['intent_id']}",
