@@ -1,100 +1,60 @@
-# Handback — F031 R57 (the resolution sweep, and item 35 widened)
+# Handback — F031 R58
 
-Branch: `feature/f031-decision-inbox`. NO PRODUCTION CODE CHANGED — nothing under
-`apps/`, `packages/` or `tests/` moved. The ONLY `docs/` file touched is
-`docs/agents/planner_reviewer_prompt.md`, whose §3 item 35 grew by 15 lines. THIS
-ROUND RESOLVED **R-0695, R-0697, R-0698, R-0699** and MINTED NO ID. Open findings
-AFTER this round: **253**.
+Feature F031 decision inbox, round R58, a RECORD round. Branch `feature/f031-decision-inbox`. NO FILE OUTSIDE `.agent/` CHANGED — no production code, no `docs/` file, no decision.
+R-0704 IS NOW RESOLVED and R-0705 IS NOW OPEN. Open findings after this round: 253. THE OPEN COUNT IS UNCHANGED BECAUSE ONE CLOSED AND ONE OPENED in the same commit.
 
 ## Range
-
-Review of `941b8966..e7ce5f1e` (C4, the handoff commit, follows it).
+Review of 75bd8210..HEAD.
 
 ## Commits
-
-### d5db8fb6 docs(agent): save the F031 R57 resolution sweep block
+### 480e6ef3 docs(agent): save the F031 R58 step block
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f031-r57.md | +253/-0 | C0a — the block saved byte for byte |
-
-### 45d9deee docs(agent): mirror the F031 R57 block into last_block
+| .agent/authored/f031-r58.md | +201/-0 | C0a — the block saved verbatim |
+### dbfb2a0b docs(agent): mirror the F031 R58 block into last_block
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/last_block.md | +130/-170 | C0b — mirror; same git blob as C0a |
-
-### 97fd96ec docs(agent): advance the plan to the F031 R57 resolution sweep
+| .agent/last_block.md | +104/-156 | C0b — identical bytes, same git blob |
+### d2f1d3e0 docs(agent): advance the plan to the F031 R58 record round
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/plan.md | +20/-21 | C1 — PLANF031R57 |
-
-### dc034c31 docs(agent): record the F031 R56 verdict and resolve four findings
+| .agent/plan.md | +13/-13 | C1 — PLANF031R58 applied whole-file |
+### e26acb8c docs(agent): record the F031 R57 verdict, resolve R-0704 and register R-0705
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/live_review.md | +10/-0 | C2 — LEDGER57: the R56 gate entry + 4 `Done:` |
-
-### e7ce5f1e docs(agent): widen the prose-versus-list item to a wrong round label
+| .agent/live_review.md | +6/-0 | C2 — LEDGER58 appended |
+### C3 docs(agent): write the F031 R58 handback (this commit — R-0149 self-reference)
 | Path | +/- | Reason |
 |---|---|---|
-| docs/agents/planner_reviewer_prompt.md | +15/-0 | C3 — S4NEW extends §3 item 35 |
-
-### C4 docs(agent): write the F031 R57 handback
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/handoff.md | self | C4 — a handback cannot table its own commit (R-0149) |
+| .agent/handoff.md | rewrite | C3 — this file |
 
 ## Item status
-
 | Item | Status | Reason |
 |---|---|---|
-| C0a save the block | done | |
+| C0a save this block | done | |
 | C0b mirror into last_block | done | |
 | C1 the plan | done | |
-| C2 the R56 gate entry and the four resolutions | done | |
-| C3 the item 35 widening | done | |
-| C4 handback | done | this commit |
-| push | pending | `git push origin feature/f031-decision-inbox`, run right after C4 |
+| C2 gate entry, resolution, registration | done | |
+| C3 handback | done | |
+| push | done | ordered after C3 |
 
 ## External actions
-
-`git push origin feature/f031-decision-inbox` after C4; its reading is not written here, per the block. No PR, no gh command, no worktree add or remove.
+`git push origin feature/f031-decision-inbox` — run after C3; the block orders its reading kept out of this handback. No PR, no gh command, no worktree.
 
 ## Verification
-
-- G1 BRANCH/CLEAN/TRANSPORT — exit 0. Branch `feature/f031-decision-inbox`; `git status --porcelain` 0 lines after C0a, C0b, C1, C2 and C3. `.agent/STOP` ABSENT, read from disk before C0a and again before C4. Block sha256 `6da46cc9…84b044bf`, 26103 bytes, 253 lines — EQUAL at C0a, at C0b and off disk at C3; C0a and C0b are the SAME git blob `10d6732f37f4`.
-- G2 EXTRACTION AND CAPS — exit 0. 3 slices printed from the COMMITTED C0a blob (PLANF031R57 47, LEDGER57 9, S4NEW 16). CONTENT 72, TOTAL 253, PROSE 181. PROSE 181 ≤ 400, TOTAL 253 ≤ 490.
-- G3 THE PLAN — exit 0. `.agent/plan.md` at C1 BYTE-EQUAL to PLANF031R57 (newline-included) TRUE; minus-trailing-newline control FALSE. `^## Goal$` 1, `^## Next Steps$` 1, `wc -l` 47 (< 50).
-- G4 THE APPEND, TWICE — exit 0. Pre-commit blob 923830 — exactly the byte count the block predicted — + 1 + 9232 = 933063; committed blob 933063; reader 1 ACCEPT. Reader 2: N counted by my own script = 5, units 374 before → 379 after, the last 5 units match the slice's 5 paragraphs IN ORDER. Negative control flipped one byte IN MEMORY inside the FIRST appended paragraph (offset 923871, the R56 gate entry, four paragraphs above the tail): BOTH readers REJECT. Tracked file never mutated; past blobs read with `git show`.
-- G5 THE LEDGER SETS — exit 0. Before C2 → after C2: `^- R-\d+ — ` 265→265, `^Done: R-\d+ — ` 8→12, `^Landed: R-` 0→0, `^Gate: R\d+ — ` 19→19, `^Gate: F\d+ R\d+ — ` 37→38. ADDED finding ids EMPTY, REMOVED EMPTY; ADDED resolved ids exactly {R-0695, R-0697, R-0698, R-0699}, REMOVED EMPTY; ADDED gate keys exactly `F031 R56`, REMOVED EMPTY. Ids DISTINCT, maximum `R-0704` unmoved. Open set 257 before, 253 after. Every ADDED resolved id also occurs as a `^- R-\d+ — ` paragraph in the same file: TRUE.
-- G6 THE PAIR — exit 0. At `941b8966`: S4NEW's own first line 1x, `^  36\. \*\*` 0x, 1057 lines. Containment test output `TO contains FROM: true`, so this is an APPEND and NO FROM-zero count was ordered or reported. At C3: S4NEW 1x, its first line still 1x, `^  36\. \*\*` 0x, 1072 lines; delta 15 = S4NEW's own 16 lines minus one, measured from the slice. Each of the 15 TO-ONLY lines occurs exactly 1x among the lines the commit's diff ADDS. `git diff --name-only dc034c31..e7ce5f1e` = `docs/agents/planner_reviewer_prompt.md` and nothing else; numstat `15 0` — ZERO deleted lines.
-- G7 NOTHING ELSE MOVED — exit 0. `941b8966..e7ce5f1e` path set: both residues EMPTY over the 5 expected paths (the Change list minus `.agent/handoff.md`). `--stat` restricted to `apps/`, `packages/`, `tests/`, `docs/roadmap/` each EMPTY. `^<<<SLICE `/`^<<<END ` = 0/0 in the plan at C1, live_review at C2 and the reviewer prompt at C3, against a CONTROL of 3/3 over the C0a blob. Insertions 253, 130, 20, 10, 15 — each single-parent and under 500. `git ls-files .remedy-wt` 0 lines; `git worktree list` 1 line; `git ls-files --others --exclude-standard` 0 lines at C3.
-- G8 DOCS READERS, CANARY, STATE READERS — all exit 0, run SERIALLY (one pytest process at a time), every count EQUAL to the base reading: `tests/docs/` 295 passed; `tests/test_agent_tooling.py` 10 passed 1 skipped; `tests/orchestration/test_role_conventions.py` 35 passed; `tests/cli/test_golden_path.py` 42 passed (canary); `tests/ui_server/` 489 passed; `tests/orchestration/test_test_runner.py` 52 passed; `tests/regression/test_resource_safety.py` 21 passed; `tests/orchestration/test_integrity_gate.py` 16 passed. The three `docs/agents/` readers did not move.
+G1 exit 0 — branch `feature/f031-decision-inbox`; `git status --porcelain` 0 lines after C0a, C0b, C1 and C2; `.agent/STOP` ABSENT at both ordered readings; block sha256 `9aaf4726…37632c48`, 21646 bytes, 201 lines at C0a, at C0b and off disk at C2, all three EQUAL; C0a and C0b are the SAME git blob `8e170e184964`; lines that are a run of one repeated character: NONE.
+G2 exit 0 — extractor read the COMMITTED C0a blob by marker lines and printed 2 slices: PLANF031R58 47 content lines, LEDGER58 5. CONTENT 52, TOTAL 201, PROSE 149 (markers counted as prose). 149 ≤ 400 and 201 ≤ 490.
+G3 exit 0 — `.agent/plan.md` at C1 byte-equal to PLANF031R58 TRUE; negative control against the slice minus its trailing newline FALSE; `^## Goal$` 1; `^## Next Steps$` 1; `wc -l` 47, strictly under 50.
+G4 exit 0 — 933063 + 1 + 8520 = 941584 and the committed blob is 941584; reader A equality TRUE. Reader B: N counted by the script is 3, units 379 before and 382 after, last 3 units equal the slice's 3 paragraphs IN ORDER. Negative control flipped one byte IN MEMORY inside the FIRST appended paragraph (unit index 379, the first appended unit): reader A REJECTS, reader B REJECTS. The tracked file was never mutated.
+G5 exit 0 — before→after C2: `^- R-\d+ — ` 265→266, `^Done: R-\d+ — ` 12→13, `^Landed: R-` 0→0, `^Gate: R\d+ — ` 19→19, `^Gate: F\d+ R\d+ — ` 38→39. ADDED finding ids {R-0705}, REMOVED none; ADDED resolved ids {R-0704}, REMOVED none; ADDED gate keys {F031 R57}, REMOVED none. All ids DISTINCT, maximum id R-0705. Open set 253 before and 253 after. R-0704 also occurs as a `^- R-\d+ — ` paragraph: TRUE. R-0705 occurs as a `^Done:` line: FALSE.
+G6 exit 0 — both path residues over `75bd8210..e26acb8c` EMPTY against the expected set. `git diff --stat` restricted to `apps/`, `packages/`, `tests/` and `docs/` (WHOLE) each EMPTY. Markers `^<<<SLICE `/`^<<<END ` 0 and 0 in plan.md at C1 and live_review.md at C2, against a CONTROL of 2 and 2 over the C0a blob. Insertions 201, 104, 13, 6 — each single-parent and under 500. `git ls-files .remedy-wt` 0 lines, `git worktree list` 1 line, `git ls-files --others --exclude-standard` 0 lines.
+G7 exit 0 — run SERIALLY in the primary checkout at C2, each a REAL `returncode` of 0: canary `tests/cli/test_golden_path.py` 42 passed; `tests/ui_server/` 489 passed; `tests/orchestration/test_test_runner.py` 52 passed; `tests/regression/test_resource_safety.py` 21 passed; `tests/orchestration/test_integrity_gate.py` 16 passed. Every count EQUAL to the base reading at `75bd8210`; nothing moved.
 
 ## Authored-text proofs
-
-All three slices were extracted from the COMMITTED C0a blob by their `<<<SLICE`
-and `<<<END` marker lines and applied byte for byte; none was retyped from the
-prompt and no marker line reached a target. PLANF031R57 → `.agent/plan.md`
-byte-equal (G3); LEDGER57 → `.agent/live_review.md` byte-equal append (G4);
-S4NEW → `docs/agents/planner_reviewer_prompt.md`, 1 occurrence, 16 lines, zero
-deletions (G6). The block round-trips at one sha256 across C0a, C0b and disk (G1).
-No slice looked wrong; none was corrected. The four red controls the resolutions quote were the REVIEWER's, in a worktree already removed; I re-ran none (cons. 7).
+Both slices were extracted from the COMMITTED C0a blob by their `<<<SLICE`/`<<<END` marker lines and applied programmatically; neither was retyped and no marker line reached a target. PLANF031R58 → `.agent/plan.md` byte-equal TRUE (G3). LEDGER58 → `.agent/live_review.md` pre-blob + one newline + slice TRUE (G4).
 
 ## Deviations & assumptions
-
-None. The ordered sequence C0a, C0b, C1, C2, C3, C4 ran exactly as given, no
-commit added, dropped or reordered; C0a and C0b landed while `.agent/plan.md`
-still described R56. No worktree was created and nothing destructive ran;
-`.agent/decisions.md` and `docs/roadmap/` were not touched. Scratch scripts under
-the gitignored `.remedy-wt/r57/` carried the extraction and the gates, and were
-deleted BY EXACT PATH before C4; `git ls-files .remedy-wt` reads 0. Cap DERIVED,
-not quoted: the Bundle orders SIX commits, more than five, so the 100-line tier
-applies and this handback is within it. The push row reads `pending`, not `done`:
-C4 is written before the push and cannot observe it.
+None. The ordered sequence C0a, C0b, C1, C2, C3 then push was followed exactly — no extra commit, none dropped, none reordered, none merged. No slice defect was found, so nothing was applied against its text. The handback cap was derived from the Bundle's FIVE commits, which is not MORE THAN FIVE, so the cap is 60 lines and this file is within it; no DECISION D15 line is needed.
 
 ## Next
-
-1. Re-read `.agent/STOP` from disk.
-2. The Open PR Gate (`gh pr list --state open --json number,headRefName,baseRefName,isDraft`).
-3. Review this round's handback.
-4. The round that measures the widened §3 item 35 on disk and resolves R-0704, landing with it the item R-0694's fix clause asks for (R-0631's append-reader rule).
-5. Only then the COMPONENT half of the markup. Neither of those two carries a round number here: a pre-assigned label has gone stale twice, and item 35 as widened by this round forbids it.
+THIS IS THE LAST ROUND OF ITS SESSION, so this section is what the next session resumes from, in this order: (1) re-read `.agent/STOP` from disk first — Phase 1 rule 1 before rule 2; (2) the Open PR Gate per AGENTS.md; (3) review THIS round's handback and record its verdict; (4) the round that lands BOTH the §3 item R-0694's fix clause asks for, which states R-0631's append-reader rule, AND R-0705's two-part counter-measure — the no-unstated-repeat-run rule and the verdict clause that states what a transport proof covers; (5) only then the COMPONENT half of the markup. No round number is given to any of them: §3 item 35 as widened at R57 forbids numbering a round that has not begun.
