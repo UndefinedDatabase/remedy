@@ -79,8 +79,12 @@ def _answerable_by_decision_resolve(job: Any, decision_id: Any) -> bool:
     """Whether the write door's ``decision.resolve`` can answer this card.
 
     MEASURED against the door itself, not against the card's type.  The door
-    ``ui_server._dispatch_decision_resolve`` now has TWO branches, and each
-    refuses on exactly two conditions, so this predicate mirrors both.
+    ``ui_server._dispatch_decision_resolve`` now has TWO branches, and this
+    predicate mirrors every refusal of theirs that is a property of the JOB.
+    The door ALSO refuses a malformed ``args.answers`` (DECISION F031 D26), and
+    this predicate deliberately does NOT mirror that one: it is a property of
+    the REQUEST BODY, invisible to a card, and a card is answerable whenever a
+    well-formed request would be accepted.
 
     An ``fp:``-prefixed id is DECISION F031 D24's branch: the door hands it to
     ``flight_plan.resolve_flight_plan_approval`` and refuses unless
