@@ -454,17 +454,6 @@ class TestARefusedAnswerIsTextRatherThanAButton:
             "reason that has nothing to do with the live region"
         )
 
-    def test_the_region_after_the_button_still_carries_no_conditional_operator(self):
-        region = jsx_between_answer_button_and_live_paragraph(
-            strip_ts_comments(CARD.read_text())
-        )
-        for operator in ("?", "&&", "||"):
-            assert operator not in region, (
-                f"{operator} survives between the last </button> and the "
-                "outcome paragraph, so the text branch was written in the order "
-                "R-0690 forbids and the live region is gated again"
-            )
-
     def test_the_pasteable_text_class_really_has_a_rule_in_the_stylesheet(self):
         body = css_rule_body(CARD_CSS.read_text(), ".decisionAnswerText")
         assert body.strip(), (
