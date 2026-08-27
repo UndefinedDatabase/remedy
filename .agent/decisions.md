@@ -8731,3 +8731,57 @@ omission: this card has two choices, and only its options LIST was missing.
 REVERSE by deleting `payload` from the budget branch's `HumanDecision` and
 collapsing its two outcomes into one keyed `UNKEYED_OPTION`; the gate accepts
 that shape with no other change.
+
+## DECISION F032 D7 (2026-08-28) — a RESOLVED card owes the same triple as an open one, and its outcome speaks of the answer already recorded
+
+CONTEXT, measured at `91b00286`. Two of the eight producing branches of
+`packages/orchestration/decision_queue.py::list_decisions` have TWO ARMS. Branch
+7 builds an open `flight_plan_approval` when the plan's `_approval` is
+`pending`, and a card whose `status` is `resolved`, whose `next_actions` are
+empty and which carries no `payload` at all when the plan was already approved
+and left an `_approval_audit`. Branch 8 has the same shape for `task_decision`.
+`decision_evidence.enforce_decision_evidence` selects the decisions it checks by
+TYPE ALONE and never reads `status`, so the moment either type joins
+`TRIPLE_REQUIRED_TYPES` both of its arms are enforced together. The resolved arm
+is not hypothetical: `tests/orchestration/test_decision_inbox.py` drives it
+directly. The question this decision settles is what a triple MEANS on a card
+whose question has already been answered, since `expected_outcome` and
+`downside` are written in the language of a choice still to come.
+
+CHOSEN. The gate keeps its type-only selection, and a resolved card carries a
+real triple like any other. Its REFS are the audit trail the answer actually
+left — the card's own id, and the recorded reason and mode where the record
+carries them. Its single outcome, keyed `UNKEYED_OPTION` because the arm passes
+no payload, states the consequence of the answer THAT WAS RECORDED rather than
+of one still open: what the run now proceeds to do, and what it costs if the
+ground the answer rested on has since moved.
+
+WHY. Three reasons, in the order they bind. FIRST, the gate's reach would
+otherwise depend on a field each producer sets on its own: `status` is written
+independently by eight branches, and a gate that reads it becomes eight gates
+whose behaviour a reader has to reconstruct per branch, where today the entry
+rule is one sentence — a type is enforced or it is not. SECOND, a resolved card
+is still RENDERED. `build_decision_inbox` returns it, the browser draws it, and
+a reader looking at a plan that was auto-approved has exactly the question the
+triple answers: on what, and at what cost. Enforcement that stopped at
+`status == "open"` would leave that card carrying the honest-legacy placeholder
+forever, which is a false statement about a card this feature did upgrade.
+THIRD, the alternative silently halves the enforcement of both two-armed types:
+`flight_plan_approval` and `task_decision` would report as enforced while the
+arm nobody tested went unchecked, and `docs/roadmap/features/T5_F032.md` makes
+"a canary producer missing a field fails CI" the acceptance criterion, not "a
+canary producer missing a field on one arm".
+
+REJECTED, and why. Guarding the gate with `status == "open"`, so a resolved card
+is left entirely alone. It is the smaller diff and it reads as principled — the
+triple exists so a human can decide, and a resolved card asks nothing. It was
+rejected because the card is still shown, because it makes the enforced set a
+weaker statement than it appears, and because the audit refs a resolved card
+carries are the most checkable evidence in this whole feature: they are the only
+place the record says what was actually answered.
+
+REVERSE by adding `if _text(getattr(decision, "status", None)) != "open":
+continue` to the loop in `enforce_decision_evidence` and deleting the resolved
+arms' triples from branches 7 and 8; no other change is required, and the
+per-arm tests named in the F032 R11 and R12 blocks are the ones that then go
+red.
