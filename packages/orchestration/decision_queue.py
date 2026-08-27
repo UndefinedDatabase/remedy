@@ -145,7 +145,16 @@ def list_decisions(
                   and e.get("metadata", {}).get("status") == "failed"]
     for tf in test_fails[-3:]:
         meta = tf.get("metadata", {})
-        cmd = str(meta.get("command", "?"))
+        # F032 R7 (R-0712): the ONLY emitter that produces this event,
+        # `test_execution_service._safe_event_meta`, writes the key
+        # `command_safe` and never `command` — `repair_loop` reads
+        # `command_safe` off the same event in two places — so reading
+        # `command` first rendered "Test '?' failed." on every real failure.
+        # The older key is STILL HONOURED and is NOT dead code:
+        # `_fixture_test_failure` in `tests/orchestration/test_decision_inbox.py`
+        # writes `command`, and dropping the fallback would leave that card
+        # showing the placeholder instead.
+        cmd = str(meta.get("command_safe") or meta.get("command") or "?")
         decisions.append(HumanDecision(
             id=f"tf:{meta.get('test_run_id', 'unknown')[:8]}",
             type="test_failure",
