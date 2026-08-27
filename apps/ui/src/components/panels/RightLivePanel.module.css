@@ -252,6 +252,63 @@
   outline-offset: 2px;
 }
 
+/* THE CLARIFICATION FORM'S FIELDS (T5_F031 T003, DECISION F031 D24). One group
+   per still-open question the flight plan is waiting on, sitting ABOVE the
+   .decisionAnswers strip because the operator reads the questions before the
+   control that answers them. The field takes .chatInput above as its model —
+   that is this panel's own existing text input — at the .decisionChip scale the
+   rest of this card uses, and the focus ring takes .decisionFilterChip:focus-
+   visible's shape together with its --remedy-blue-strong for the reason
+   recorded there: tokens.css has never adopted --remedy-focus, and an
+   unresolved custom property drops the whole declaration (R-0661). The same
+   R-0661 rule as the blocks around it applies to every value here.
+   THE DEFAULT IS SHOWN AND NEVER PREFILLED, which is why there is a
+   .decisionClarificationMeta line at all: the server reads a blank answer as
+   "accept this question's default", so the default has to be READABLE beside
+   an empty field rather than sitting inside it, where it would post as though
+   the operator had typed it. NO POINTER CURSOR ON THE INPUT — it is a text
+   field and the browser's own caret is the honest affordance for one. */
+.decisionClarifications {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 2px;
+}
+.decisionClarification {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.decisionClarificationQuestion {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--remedy-ink-strong);
+  line-height: 1.45;
+}
+.decisionClarificationInput {
+  height: 32px;
+  border-radius: var(--remedy-radius-sm);
+  background: var(--remedy-bg-2);
+  border: 1px solid var(--remedy-line);
+  padding: 0 10px;
+  font: 500 12px/1.45 var(--remedy-font-ui);
+  color: var(--remedy-ink);
+}
+/* globals.css turns every input's outline off, so the ring has to be reinstated
+   by a rule specific enough to win — a class with a pseudo-class beats a bare
+   element selector — or these fields would be the one place in the right panel
+   a keyboard operator loses the focus indicator ux_spec.md §14 requires. */
+.decisionClarificationInput:focus-visible {
+  outline: 2px solid var(--remedy-blue-strong);
+  outline-offset: 2px;
+}
+.decisionClarificationMeta {
+  margin: 0;
+  font-size: 11px;
+  color: var(--remedy-muted);
+  line-height: 1.45;
+}
+
 .decisionAnswers { display: flex; flex-wrap: wrap; gap: 8px; }
 .decisionAnswer {
   height: 30px;
