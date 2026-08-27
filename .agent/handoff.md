@@ -1,212 +1,217 @@
-# Handoff — F032 R8 (T002c, the patch-approval card and the owed sweep)
+# Handback — F032 R9 (T002d, the stop-reason card, and the session's close)
 
 ## Session
 
-SESSION 2 of feature F032 · round R8 · rounds so far 8
+SESSION 2 of feature F032 · round R9 · rounds so far 9
 
-Session 1 was R1 through R5; this session began at R6. The soft limit is 25
-rounds or 7 sessions, whichever comes first, and neither is near.
+SESSION 2 ENDS HERE. It delegated four rounds, R6 through R9; session 1 was
+R1 through R5. Nine rounds across two sessions is inside the soft limit of 25
+rounds or 7 sessions, so no limit report is owed.
 
 ## Range
 
-Review of `6286f76194c10f4b8da10f62c84f8e00efb364f6`..`428d7920` plus this
-handoff commit. Branch: `feature/f032-evidence-triple`. Round base: `6286f761`.
+Review of `c23e7cc6` (round base) .. C5 `9aa51005`, plus C6, which is the
+commit writing this file and cannot table itself.
 
 ## Commits
 
-### d34393be docs(agent): save the F032 R8 step block
+### 3dee8a49 docs(agent): save the F032 R9 step block
 | Path | +/- | Reason |
 |------|-----|--------|
-| .agent/authored/f032-r8.md | +356 / -0 | C0a, byte-for-byte copy of the scratch block |
+| .agent/authored/f032-r9.md | +350 / -0 | C0a, the block saved byte for byte from `.remedy-wt/f032-r9.md` |
 
-### fb914d3e docs(agent): mirror the R8 block into last_block
+### 80e3c96f docs(agent): mirror the R9 block into last_block
 | Path | +/- | Reason |
 |------|-----|--------|
-| .agent/last_block.md | +194 / -173 | C0b, same blob as C0a |
+| .agent/last_block.md | +192 / -198 | C0b, the mirror; same git blob as C0a |
 
-### 68152fe0 docs(agent): make the plan current for R8
+### de45b9e0 docs(agent): point the plan at R9 and the stop-reason producer
 | Path | +/- | Reason |
 |------|-----|--------|
-| .agent/plan.md | +18 / -16 | C1, whole-file replacement from slice PLANF032R8 |
+| .agent/plan.md | +21 / -19 | C1, slice PLANF032R9 |
 
-### 30b84255 docs(agent): book the R7 verdict and resolve R-0712
+### 298f25ce docs(agent): book the R8 verdict and register R-0713
 | Path | +/- | Reason |
 |------|-----|--------|
-| .agent/live_review.md | +4 / -0 | C2, pure append of slice LEDGER8 |
+| .agent/live_review.md | +4 / -0 | C2, slice LEDGER9 appended; `F032 R8` gate key and `R-0713` |
 
-### a12d608b feat(orchestration): the patch-approval card cites its intent and its file
+### f0ec4b09 fix(orchestration): the patch card shows its placeholder again
 | Path | +/- | Reason |
 |------|-----|--------|
-| packages/orchestration/decision_queue.py | +55 / -0 | C3, S1–S3: the refs and the one unkeyed outcome |
-| packages/orchestration/decision_evidence.py | +3 / -1 | C3, S4: `patch_approval` joins `TRIPLE_REQUIRED_TYPES` |
+| packages/orchestration/decision_queue.py | +9 / -1 | C3, the `R-0713` fix (S2) |
 
-### 14f82fc9 docs(orchestration): retire the stale options-list branch counts
+### e26e95e0 feat(orchestration): the stop-reason card cites its own record
 | Path | +/- | Reason |
 |------|-----|--------|
-| docs/roadmap/features/T5_F032.md | +5 / -1 | C4, S5: A3 corrected by APPENDING, its measurement left standing |
-| tests/orchestration/test_decision_evidence.py | +1 / -1 | C4, S5: "six-branch case" → "five-branch case" |
+| packages/orchestration/decision_evidence.py | +1 / -1 | C4, `stop_reason` joins `TRIPLE_REQUIRED_TYPES` (S5) |
+| packages/orchestration/decision_queue.py | +53 / -0 | C4, the stop-reason refs and the unkeyed outcome (S3, S4) |
 
-### 428d7920 test(orchestration): pin the patch-approval refs, its outcome and the gate
+### 9aa51005 test(orchestration): pin the stop-reason triple and the patch placeholder
 | Path | +/- | Reason |
 |------|-----|--------|
-| tests/orchestration/test_decision_evidence.py | +153 / -1 | C5, S6: exact membership plus the T002c tests |
+| tests/orchestration/test_decision_evidence.py | +176 / -2 | C5, S6 |
 
-### C6 docs(agent): hand back F032 R8
+### C6 docs(agent): hand back F032 R9 and close session 2
 | Path | +/- | Reason |
 |------|-----|--------|
-| .agent/handoff.md | self | a handoff cannot table the commit that writes it (R-0149) |
+| .agent/handoff.md | self | C6 cannot table its own numstat (R-0149) |
 
 ## Item status
 
 | Item | Status | Reason |
 |------|--------|--------|
 | C0a save this block | done | |
-| C0b mirror it into `last_block` | done | same git blob as C0a |
-| C1 the plan | done | byte-equal to PLANF032R8 |
-| C2 the R7 verdict and `Done: R-0712` | done | pure append, sets moved as ordered |
-| C3 the patch-approval triple and the gate set | done | |
-| C4 the stale-count sweep | done | |
+| C0b mirror it into `last_block` | done | |
+| C1 the plan | done | |
+| C2 the R8 verdict and `R-0713` | done | |
+| C3 the `R-0713` fix | done | |
+| C4 the stop-reason triple and the gate set | done | |
 | C5 its tests | done | |
-| C6 the handback | done | self |
-| push | done | reported in the completion report, not here |
-| S1 read the branch first | done | intent record read; `type="patch_approval",` occurs once |
-| S2 the refs come from the intent record | done | `decision` always, `file` only when non-empty |
-| S3 the outcome is unkeyed, no payload | done | one outcome keyed `UNKEYED_OPTION`, payload stays `{}` |
-| S4 `patch_approval` joins the gate set | done | same commit as its triple |
-| S5 the sweep by property | done | search and every hit listed below |
-| S6 the tests | done | both cases, the conditional pinned by name |
+| C6 the session-closing handback | done | this commit |
+| push | done | reported to the operator only; see `## External actions` |
+| S1 read the branch and the measured record first | done | branch, `StopReason` and `derive_stop_reasons` read before writing |
+| S2 the `R-0713` fix, one line | done | uses `_pa_target_path or '?'` |
+| S3 the refs come from the stop record | done | id always, reason code and related file guarded |
+| S4 the outcome is unkeyed | done | one outcome keyed `UNKEYED_OPTION`, no `payload` added |
+| S5 `stop_reason` joins the gate set | done | same commit as its triple, C4 |
+| S6 the tests | done | 63 tests in the file, up from 55 |
 
 ## External actions
 
-- `git worktree add --detach .remedy-wt/r8-mut 428d7920` — exit 0.
-- `git worktree remove --force .remedy-wt/r8-mut` — exit 0; `git worktree prune` — exit 0.
-- `gh pr list --state open --json number,headRefName,baseRefName,isDraft` — `[]`.
-  Nothing merged, nothing created.
-- `git push origin feature/f032-evidence-triple` — INTENT after C6. Its outcome is
-  not a value of any file this round writes, so no exit code and no remote tip are
-  recorded here; both are in the round's completion report.
+- `git worktree add --detach .remedy-wt/f032-r9-mut 9aa51005` — exit 0, used for
+  the two G7 mutation red-proofs only.
+- `git worktree remove .remedy-wt/f032-r9-mut` then `git worktree prune` — both
+  exit 0; `git worktree list` back to 1 line.
+- `gh pr list --state open --json number,headRefName,baseRefName,isDraft` —
+  exit 0, output `[]`. Nothing merged, nothing created.
+- `git push origin feature/f032-evidence-triple` — INTENT, run after this
+  commit. Its exit code and the resulting remote tip are not values any file
+  this round writes and are reported in the round report instead.
 
 ## Verification
 
-One line per gate, each executed, each exit code real.
-
-- G1 hygiene, base and the sentinel — exit 0. `git rev-parse HEAD` before C0a was
-  `6286f76194c10f4b8da10f62c84f8e00efb364f6`, the round base; branch
+- G1 hygiene, base and sentinel — `git rev-parse HEAD` before C0a
+  `c23e7cc633fb2adf8b6dce5b1c576a8440055e52`, the round base; branch
   `feature/f032-evidence-triple`; `git status --porcelain` 0 lines after each of
-  C0a–C6; `.agent/STOP` absent at both readings.
-- G2 transport — exit 0. sha256
-  `2330a04d4f4aa3bea3709684b667e217719dcf9d994b52da7baf9f95950c51e3`, 30021 bytes,
-  356 lines, IDENTICAL across the scratch file, the committed authored blob and the
-  committed mirror; C0a and C0b are the SAME git blob `2289deea8679`. This proves the
-  scratch original, the saved copy and the mirror agree — NOT the bytes of any prompt.
-- G3 extraction and caps — exit 0. 2 regions: PLANF032R8 46 content lines, LEDGER8 3.
-  CONTENT 49, TOTAL 356, PROSE 307. PROSE under 400: yes. TOTAL under 490: yes.
-- G4 the plan — exit 0. Byte-equal to PLANF032R8 True; minus-trailing-newline negative
-  control False; `wc -l` 46, under 50; `^## Goal$` 1; `^## Next Steps$` 1.
-- G5 the ledger append — exit 0. 1059172 + 1 + 6251 = 1065424, matching the committed
-  file; base a byte PREFIX. Second reader: N 2, last 2 blank-line units EQUAL IN ORDER
-  to the slice's paragraphs (421 units before, 423 after). Negative control, one byte
-  flipped in the FIRST appended paragraph in memory only, REJECTED by both readers.
-  Sets: `^Gate: F\d+ R\d+ — ` 59→60 adding exactly `F032 R7`; `^Done: R-\d+ — ` 22→23
-  adding exactly `R-0712`; `^- R-\d+ — ` 273→273; `^Landed: R-` 1→1; `^Gate: R\d+ — `
-  19→19. Open set 251→250; maximum id `R-0712` before and after.
-- G6 the code and the sweep — exit 0. `ruff check` on both modules printed
-  `All checks passed!`. The real branch was driven twice; both cases and the sweep are
-  written out in the completion report.
-- G7 tests green then red under mutation — exit 0 green, exit 1 both mutations.
-  Scoped file `55 passed` at exit 0 in the primary checkout; worktree control
-  `55 passed` exit 0; mutation (a), `patch_approval` dropped from the gate set,
-  exit 1 `2 failed, 53 passed`; mutation (b), the file ref made unconditional,
-  exit 1 `4 failed, 51 passed`; control after both restorations `55 passed` exit 0.
-  The nine decision-schema guard files as ONE process: exit 0, `324 passed`, 0 `^FAILED`.
-- G8 structure, canary, PR gate — exit 0. `tests/cli/test_golden_path.py` `42 passed`
-  exit 0; `tests/docs/` `295 passed` exit 0; both path residues EMPTY; `apps/` diff
-  EMPTY; insertions 356, 194, 18, 4, 58, 6, 153, each single-parent and under 500;
-  `^<<<SLICE `/`^<<<END ` 0/0 in all six written files against a CONTROL of 2/2 over
-  the C0a blob; `git ls-files .remedy-wt` 0 lines; `git worktree list` 1 line;
-  `git branch --list "tmp/*"` 0 lines; Open PR Gate `[]`.
-
-## What the gate enforces after this round
-
-`TRIPLE_REQUIRED_TYPES` is now `frozenset({"token_budget", "test_failure",
-"patch_approval"})` — three of the eight producing branches. The five producing
-branches still carrying the legacy placeholder `recorded_before_evidence_requirements`
-are `stop_reason`, `repo_dirty`, `memory_review`, `flight_plan_approval` (BOTH arms —
-neither the pending nor the resolved construction passes `evidence=`) and
-`task_decision`.
-
-## The S5 sweep — every sentence the search returned
-
-Searched by PROPERTY, not by list: every sentence in `packages/orchestration/`,
-`tests/orchestration/test_decision_evidence.py` and
-`docs/roadmap/features/T5_F032.md` stating HOW MANY producing branches do or do not
-carry an options list. The measurement was taken by an AST walk of `list_decisions`,
-not from prose: eight numbered producing branches, `payload["options"]` set at three
-(the budget stop, the flight plan's PENDING arm, the task decision), so FIVE carry none.
-
-CHANGED (2):
-
-1. `tests/orchestration/test_decision_evidence.py:333`, the docstring of
-   `test_an_enforced_optionless_decision_reads_no_options_from_the_payload`, from
-   `A payload with no ``options`` key is the six-branch case (DECISION F032 D3).`
-   to `A payload with no ``options`` key is the five-branch case (DECISION F032 D3).`
-2. `docs/roadmap/features/T5_F032.md`, amendment A3. Its measurement — "Only two of
-   the eight producing branches carry an options list" and "the other six branches" —
-   is LEFT STANDING as ordered, and one sentence was APPENDED: "That count moved once
-   and only once, under A6 below, which had the budget stop state in `payload` the two
-   options its `next_actions` already offered: three of the eight producing branches
-   now carry an options list and five carry none, and A3's scope ruling is unchanged —
-   no branch has GROWN options it did not already have."
-
-FOUND AND ALREADY CORRECT, left untouched (2): `decision_evidence.py:66-67` "five of
-the eight producing branches carry no options list" and `decision_evidence.py:190`
-"five of the eight producing branches carry none". Both match the measurement; R7
-corrected these two.
-
-FOUND BUT OUTSIDE THE PROPERTY, left untouched (2), reported because the search
-returned them: `packages/orchestration/decision_inbox.py:98` "of the eight producing
-branches of ``list_decisions`` only ``task_decision`` mints a non-``fp:`` id" — a count
-of producing branches (eight, correct) but not of options lists; and
-`docs/roadmap/features/T5_F032.md:162` A6 "A3 counts the branches carrying an options
-list and the budget stop is not among them" — states the relationship and no numeral.
+  C0a..C6; `.agent/STOP` ABSENT at both readings. Exit 0.
+- G2 transport — sha256
+  `80008f17ccd928a18b9530814ab7d805688e53eea89144e5f2ea0a2b6a933a33`, 29489
+  bytes, 350 lines, EQUAL across the scratch original, the committed
+  `.agent/authored/f032-r9.md` blob and the committed `.agent/last_block.md`
+  blob; both paths are the SAME git blob `31ca746bb33c`. This proves the
+  scratch original, the saved copy and the mirror agree; it says NOTHING about
+  the bytes of any prompt. Exit 0.
+- G3 extraction and caps — 2 regions from the committed C0a blob, PLANF032R9 48
+  content lines and LEDGER9 3; CONTENT 51, TOTAL 350, PROSE 299; PROSE under
+  400 TRUE, TOTAL under 490 TRUE. Exit 0.
+- G4 the plan — byte-equal to PLANF032R9 TRUE, minus-trailing-newline negative
+  control FALSE, `wc -l` 48 and under 50, `^## Goal$` 1, `^## Next Steps$` 1.
+  Exit 0.
+- G5 the ledger append — 1065424 + 1 + 6286 = 1071711, matching the file; the
+  pre-commit blob is a byte PREFIX. Second reader: N 2 paragraphs, the last 2
+  blank-line units EQUAL IN ORDER; one byte flipped inside the FIRST appended
+  paragraph was REJECTED by both readers, in memory only. Counts before → after
+  C2: `^Gate: F\d+ R\d+ — ` 60 → 61, `^- R-\d+ — ` 273 → 274,
+  `^Done: R-\d+ — ` 23 → 23, `^Landed: R-` 1 → 1, `^Gate: R\d+ — ` 19 → 19;
+  open set 250 → 251, maximum id `R-0712` → `R-0713`; ADDED gate keys
+  `{F032 R8}`, ADDED ids `{R-0713}`. Exit 0.
+- G6 the code, linted and read back — `python3 -m ruff check` over both modules
+  exit 0, output verbatim `All checks passed!`. `list_decisions` read back:
+  patch intent naming no file → `'Patch intent for ? awaits approval.'`,
+  naming `README.md` → `'Patch intent for README.md awaits approval.'`. Stop
+  reason with EMPTY `related_file`: id `'sr:derived_no_repo'`, payload `{}`,
+  refs `('failure', 'derived_no_repo', 'the stop record that raised this
+  decision')` and `('failure', 'no_target_repo', 'the reason code the run
+  recorded')`, ONE outcome `('', 'Clearing the named blocker lets the run
+  continue from where it stopped, with the work already done still in place.',
+  'Until it is cleared the run makes no further progress, and a blocker cleared
+  without understanding why it fired can fire again.')`, `evidence_status`
+  `'present'`. Stop reason naming a file: same shape plus
+  `('file', 'packages/core/models.py', 'the file this stop is about')`.
+  `TRIPLE_REQUIRED_TYPES` = `patch_approval`, `stop_reason`, `test_failure`,
+  `token_budget`. Exit 0.
+- G7 tests green, then red under mutation, guards unmoved —
+  `python3 -m pytest tests/orchestration/test_decision_evidence.py -q` in the
+  primary checkout exit 0, `63 passed in 0.30s`. In the disposable worktree at
+  C5: CONTROL exit 0 `63 passed in 0.29s`; mutation (a), the `R-0713` fix
+  reverted to `pi.get('target_path', '?')` (exact bytes counted 1 before
+  applying), exit 1 `1 failed, 62 passed in 0.31s`, 1 `^FAILED` line; mutation
+  (b), the `related_file` ref made unconditional (exact two-line string counted
+  1 before applying), exit 1 `4 failed, 59 passed in 0.37s`, 4 `^FAILED`
+  lines; CONTROL after both restorations exit 0 `63 passed in 0.29s` with the
+  worktree's `git status --porcelain` empty. `__pycache__` purged and `-B`
+  passed before every run. The nine decision-schema guard files as ONE pytest
+  process: exit 0, `324 passed in 6.87s`, `^FAILED` count 0, the extractor
+  sighted on a two-line probe string and returned 2.
+- G8 structure, canary, PR gate — `tests/cli/test_golden_path.py -q` exit 0,
+  `42 passed in 20.97s`. Path set of `git diff --name-only c23e7cc6..9aa51005`
+  against the expected seven-path set: BOTH residues EMPTY.
+  `git diff --stat c23e7cc6..9aa51005 -- apps/` EMPTY, `-- docs/` EMPTY.
+  Insertions 350, 192, 21, 4, 9, 54 and 176 across C0a..C5, each single-parent
+  and under 500. `^<<<SLICE ` and `^<<<END ` are 0 and 0 in `.agent/plan.md`,
+  `.agent/live_review.md`, `packages/orchestration/decision_queue.py`,
+  `packages/orchestration/decision_evidence.py` and
+  `tests/orchestration/test_decision_evidence.py`, against a CONTROL of 2 and 2
+  over the C0a blob. `git ls-files .remedy-wt` 0 lines, `git worktree list` 1
+  line, `git branch --list "tmp/*"` 0 lines. Open PR Gate `[]`.
 
 ## Authored-text proofs
 
-Two slices applied, both disk-to-disk against the committed
-`.agent/authored/f032-r8.md`:
-
-- PLANF032R8 → `.agent/plan.md` at C1: byte-equal True; minus-trailing-newline
-  negative control False.
-- LEDGER8 → `.agent/live_review.md` at C2: appended byte for byte, base a byte
-  prefix, arithmetic 1059172 + 1 + 6251 = 1065424, and the independent
-  paragraph reader agreeing in order.
-
-No FROM/TO replacement pairs existed this round (constraint 13).
+- PLANF032R9 — extracted from the COMMITTED `.agent/authored/f032-r9.md` blob
+  and compared disk to disk against `.agent/plan.md` at C1: byte-equal TRUE,
+  negative control FALSE.
+- LEDGER9 — extracted from the same committed blob; `.agent/live_review.md` at
+  C2 equals its pre-commit blob plus one newline plus the slice, byte for byte,
+  confirmed twice by two independent readers.
+- The block itself — `.remedy-wt/f032-r9.md`, `.agent/authored/f032-r9.md` and
+  `.agent/last_block.md` all sha256
+  `80008f17ccd928a18b9530814ab7d805688e53eea89144e5f2ea0a2b6a933a33`.
 
 ## Deviations & assumptions
 
-- The ordered commit sequence C0a, C0b, C1, C2, C3, C4, C5, C6 was followed exactly.
-  NO extra commit was made, none was dropped, and none was reordered.
-- No slice contradicted anything measured, so nothing was applied over a contradiction.
-- No finding id, `Gate:`, `Done:` or `Landed:` text was authored (constraint 7). The
-  only text entering `.agent/live_review.md` is the LEDGER8 slice.
-- OBSERVATION FOR THE REVIEWER, NOT REGISTERED (constraint 7 forbids minting an id):
-  when a patch intent carries no `file` key, `list_patch_intents` returns
-  `target_path` as `""` rather than omitting it, so the card's PRE-EXISTING
-  `safe_summary` renders `Patch intent for  awaits approval.` — a double space where
-  the `'?'` default was intended, because `pi.get('target_path', '?')` finds the key
-  present and empty. This round did not touch that line and the tests do not assert
-  on it. The evidence refs are unaffected: the file ref is correctly omitted.
-- The reviewer's reference numerals for the round base all reproduced exactly:
-  ledger base 1059172 bytes / 421 units, `All checks passed!` at exit 0, `324 passed`,
-  `42 passed`, Open PR Gate `[]`. No divergence to reconcile.
-- The block's slice-content total is measured here as 49 lines over 2 regions
-  (PLANF032R8 46, LEDGER8 3), TOTAL 356, PROSE 307; the block states no numeral of its
-  own for these, as G3 requires.
+- NO DEPARTURE FROM THE ORDERED COMMIT SEQUENCE. The commits are exactly C0a,
+  C0b, C1, C2, C3, C4, C5, C6 in that order, with no extra commit, no dropped
+  commit and no reordering. No commit was made beyond the ordered sequence, so
+  no extra `## Commits` row and no extra item-status row is owed.
+- No slice contradicted anything measured. Every numeral the block stated about
+  the round base reproduced exactly at `c23e7cc633fb`: 1065424 ledger bytes,
+  423 blank-line units, 60/273/23/1/19, open set 250, maximum `R-0712`,
+  `All checks passed!` at ruff exit 0, `324 passed`, `42 passed` and `[]` at
+  the Open PR Gate.
+- ASSUMPTION, declared because it is the one design choice S6 left open: no arm
+  of `derive_stop_reasons` sets `related_file`, so the related-file case is
+  driven by substituting `stop_reasons.derive_stop_reasons` for the duration of
+  the test — the same technique the memory-review tests in this file already
+  use for `local_gateway.list_memory`. The branch under test is still the
+  queue's real one, reached through `list_decisions`.
+- The `R-0713` fix carries an eight-line WHY comment above the changed line, so
+  C3's insertion count is 9 rather than 1. The changed expression is one line.
+- No new finding was authored. Nothing this round exposed looked like a defect
+  the reviewer has not already registered.
+
+## Gate enforcement after this round
+
+The emit gate enforces FOUR of the eight producing decision types:
+`token_budget`, `test_failure`, `patch_approval` and `stop_reason`. A card of
+any of those four that is built without a valid triple now RAISES
+`DecisionEvidenceError` at derivation.
+
+The remaining FOUR still carry the honest legacy placeholder
+`recorded_before_evidence_requirements`: `repo_dirty`, `memory_review`,
+`flight_plan_approval` and `task_decision`.
+
+`R-0713` is FIXED IN CODE at C3 but remains OPEN in the record until a reviewer
+authors its `Done:` text. Open findings after this round: 251.
 
 ## Next
 
-The reviewer re-runs G1 through G8 at `428d7920` and records the F032 R8 verdict.
-Open findings after this round: 250. T002 then continues with the memory-review and
-stop-reason producers, each joining `TRIPLE_REQUIRED_TYPES` in the commit that gives
-it a real triple.
+1. Re-read `.agent/STOP` from disk — Phase 1 rule 1 of
+   `docs/agents/self_drive_protocol.md` — before anything else.
+2. Then the Open PR Gate: `gh pr list --state open --json
+   number,headRefName,baseRefName,isDraft`.
+3. Then the remaining T002 producers: `repo_dirty`, `memory_review`,
+   `flight_plan_approval` and `task_decision`. Repo-dirty's event carries the
+   thinnest evidence of the eight; the flight plan has two arms and only one
+   offers options, so enforcing that type needs a ruling on what a RESOLVED
+   decision owes. Along the way, author `Done: R-0713` against the fix this
+   round landed.
