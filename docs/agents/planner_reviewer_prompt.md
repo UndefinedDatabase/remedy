@@ -184,8 +184,10 @@ end the response with:
   running feature (AGENTS.md, `### handoff.md`), and the operator brief's
   Feature row names it beside the round.
 
-  Reason: F031 took 70 rounds across far more sessions than the target, and
-  no artifact on disk made either count visible while it was happening.
+  Reason: F031 took 70 delegated rounds against a soft limit of 25, and no
+  artifact on disk made the round count — let alone the session count, which
+  nothing recorded at all — visible while it was happening. That missing
+  session count is why this rule adds one rather than only a limit.
   Reverse by deleting this bullet.
 
 - Default step size: a coherent bundle of ≈45–90 minutes of worker effort —
@@ -1075,8 +1077,10 @@ end the response with:
    at most one per defect; a non-load-bearing inaccuracy is a deviation in the
    handback and never a round. Findings already landed are NOT reclassified —
    the record is append-only and this rule binds forward only. Reason: ids were
-   being spent on the reviewer's own prose faster than on the product, which
-   made the open set unreadable and bought no repair. Reverse by deleting this
+   being spent on the reviewer's own prose as readily as on the product, and
+   such an id buys no repair because there is nothing on disk to repair. When
+   this order opened the record held 270 findings, 253 of them still open
+   against 17 ever resolved. Reverse by deleting this
    paragraph and `.agent/prose_slips.md`.
    Because only your text sets Resolved, the worker never writes a `Done:`
    paragraph of its own (F104 R7 closure candidate, swept at F105 R1): when

@@ -98,8 +98,9 @@ the FIRST COMMIT of the next round that is happening anyway. A round whose
 entire change set is verdicts, registrations or corrections is FORBIDDEN,
 with one exception — a feature's closure sequence. "Findings persist FIRST,
 in their own commit" is unchanged; only the ROUND that commit belongs to
-moves. Reason: 20 of F031's 70 rounds were pure bookkeeping, each one five
-commits that touched nothing outside `.agent/`. Reverse by deleting this
+moves. Reason: 20 of F031's 70 rounds were pure bookkeeping — 106 commits between
+them, 15 rounds of five commits, 4 of six and 1 of seven, and not one line
+outside `.agent/` in any of them. Reverse by deleting this
 paragraph.
 
 Operator amendment amend0827-process-diet (2026-08-27), rule 5 — GATE

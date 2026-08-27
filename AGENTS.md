@@ -444,9 +444,10 @@ Rules:
   a non-load-bearing inaccuracy goes in the handback's deviations and
   never earns a round of its own
 
-Reason: ids were being spent on the reviewer's own prose at a rate that
-made the open set unreadable and bought no repair, because there was
-nothing on disk to repair. Reverse by deleting this section and the file;
+Reason: ids were being spent on the reviewer's own prose as readily as on
+the product, and such an id buys no repair because there is nothing on disk
+to repair. When this order opened the record held 270 findings, 253 of
+them still open against 17 ever resolved. Reverse by deleting this section and the file;
 the severity scale in `.agent/review_protocol.md` is unchanged.
 
 ### handoff.md

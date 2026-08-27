@@ -152,6 +152,16 @@ request #215 which closed F031. HEAD is C7, the commit that writes this file.
   `docs/agents/handback_template.md` carry the corrected numbers directly; the
   ledger, being append-only, carries an appended correction. ONE correction, per
   rule 2's own limit of at most one per defect.
+- THREE MORE OF THIS ORDER'S OWN CLAIMS WERE RE-GROUNDED BEFORE THE PR WENT
+  GREEN, all found by re-reading the amendments rather than by a gate. The
+  self-drive rule-1 text said the 20 bookkeeping rounds were "each one five
+  commits"; measured, they are 106 commits — 15 rounds of five, 4 of six and 1
+  of seven. The rule-6 text said F031 ran "across far more sessions than the
+  target"; nothing recorded F031's session count, so the sentence now names the
+  70 rounds against a soft limit of 25 and says plainly that the session count
+  was never recorded, which is why the rule adds one. The rule-2 text called the
+  open set "unreadable"; it now states what was counted — 270 findings, 253 open
+  against 17 ever resolved when this order opened.
 - PART 1 PRODUCED NO DISK ARTIFACT. The round classification was ordered as a
   report to the operator and delivered as one; it is not written into `.agent/`
   because no rule asks for it and an unbidden state file is the kind of
