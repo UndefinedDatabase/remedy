@@ -11,34 +11,35 @@ branch-only blocking semantics intact, ordered by a documented rule over age and
 blocked size, and answerable from the card through the write channel.
 
 ## Current Step
-R66 is a record round and touches no file outside `.agent/`. It writes the R65
-verdict — the integration gate PASSED, with an EMPTY branch-only set and an
-EMPTY base-only set, both full-suite runs re-run by the reviewer itself — and it
-corrects one factual error the R65 handback carried. It is the LAST round of its
-session: its handback is the session terminator. No finding is resolved and none
-is registered, no production code and no decision this round.
+CLOSURE 1 of 3. This round writes the R66 verdict, resolves R-0693 — the only
+open High this feature raised, whose DECISION F031 D19 repair landed in full —
+and gives `docs/roadmap/features/T5_F031.md` the `## Built State` section it has
+never had, which is the closure protocol's precondition 4. No production code
+and no new decision. STATUS.md and README.md are NOT touched here: the closure
+commit owns them and it is two rounds away.
 
 ## Next Steps
-1. Closure per `docs/roadmap/STATUS_closure_protocol.md`, whose first step is
-   the evidence bundle and the review zip.
+1. CLOSURE 2 of 3 — the feature-scoped evidence bundle and a FRESH review zip
+   built from a clean tree at the reviewed head. A failing zip build is a
+   closure BLOCKER, never something to work around.
+2. CLOSURE 3 of 3 — the STATUS line from `[~]` to `[x]` with the README
+   capability sync in the SAME commit, the candidates file, and the pull
+   request. The PR is NOT merged in this session.
 
 ## Risks
-- A SESSION LINE IS NOT DERIVABLE BY THE WORKER THAT WRITES IT. A worker runs
-  ONE round and cannot see a session boundary, so a block ordering that line
-  must SUPPLY the round list; R65's block did not, its worker reconstructed the
-  window from branch history, declared the assumption, and got it wrong by two
-  rounds. The repair is in the block, not in the worker.
+- R-0693 IS THE ONLY OPEN HIGH THIS FEATURE RAISED, and its repair is on disk:
+  the `fp:` dispatch in the write door, the third endpoint key, and a card that
+  posts nothing the door would refuse. R-0495 and R-0574 are inherited standing
+  Highs that rode through six prior closures and ride through this one as
+  documented risks, which is what PASS_WITH_RISKS means.
+- SIX OF THE EIGHT PRODUCING TYPES STILL CANNOT BE ANSWERED THROUGH THE DOOR.
+  DECISION F031 D19 rules them out of F031's scope, and the inbox tells the
+  truth about every one of them rather than offering a refused button.
 - THE PARITY CLAIM OF THE R65 GATE IS VOID AND STAYS VOID. A rebuild ran inside
   the base run window and the evidence says so; it costs nothing only because
   the base-only set is empty, so no id was owed an attribution.
-- SIX OF THE EIGHT PRODUCING TYPES STILL CANNOT BE ANSWERED THROUGH THE DOOR.
-  R-0693 measures the gap; the rest are outside F031's scope, and the inbox
-  tells the truth about every one of them rather than offering a refused button.
-- THIS FILE NAMES NO ROUND NUMBER IT HAS NOT BEGUN. Twice a pre-assigned label
-  went stale the moment a round was inserted ahead of it; a step is named by
-  what it does, and its number is knowable only when it starts.
 - Open findings, by the rule DECISION F009 D10 requires — every `^- R-\d+ — `
-  paragraph minus every `^Done: R-\d+ — ` line — the set is 252 at `033484f6`
-  and this round moves it by nothing.
+  paragraph minus every `^Done: R-\d+ — ` line — the set is 252 before this
+  round and 251 after it, R-0693 being the one entry that moves.
 - BLOCK CAPS ARE TWO: 490 lines TOTAL (DECISION F085 D6) and 400 lines PROSE
   (DECISION F085 D5); every block states and re-measures both.
