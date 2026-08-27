@@ -72,7 +72,8 @@ request #215 which closed F031. HEAD is C7, the commit that writes this file.
 | Rule 4 checklist freeze | done | §3 header, self-drive session end; list measured at 37 |
 | Rule 5 gate budget | done | §3 gate-budget bullet, self-drive Phase 2 |
 | Rule 6 session budget | done | §3, §1, G7, session end, template, operator brief |
-| push and PR | pending | this file is committed first |
+| push and PR | done | PR #216 into `main` |
+| self-caught correction of the F031 reach claim | done | one correction, rule 2's limit |
 
 ## External actions
 - `gh pr list` before the branch: exactly PR #215, `feature/*` → `main`, not a
@@ -137,6 +138,20 @@ request #215 which closed F031. HEAD is C7, the commit that writes this file.
 - The four rule-3 findings are booked RESOLVED BY AMENDMENT, not by repair, and
   each Done: text says so in those words. Nothing was fixed; a rule was
   withdrawn.
+- SELF-CAUGHT AND CORRECTED IN THIS SAME ROUND, AND IT IS AN `R-0709` INSTANCE.
+  C1, C2 and C5 all wrote that "across F031 the declared overage was every round
+  and growing", leaning on the numerals 113, 165 and 223 — which are `R-0582`'s
+  own, taken on the branch that registered it and NOT on F031, whose R10 wrote no
+  handback at all. The claim was wider than any measurement this order had taken.
+  Re-measured over `6325ac2f..40ed12ba` across the 75 commits that wrote
+  `.agent/handoff.md`: 63 of 75 exceed the 60-line base tier and 12 exceed 100, at
+  a median of 93 and a maximum of 198 — 84 per cent, not every, and not
+  monotonic. The conclusion is untouched, since a cap 84 per cent of handbacks
+  pass by declaration is nominal, which is `R-0582`'s diagnosis either way; only
+  the REACH of one supporting sentence was wrong. `AGENTS.md` and
+  `docs/agents/handback_template.md` carry the corrected numbers directly; the
+  ledger, being append-only, carries an appended correction. ONE correction, per
+  rule 2's own limit of at most one per defect.
 - PART 1 PRODUCED NO DISK ARTIFACT. The round classification was ordered as a
   report to the operator and delivered as one; it is not written into `.agent/`
   because no rule asks for it and an unbidden state file is the kind of

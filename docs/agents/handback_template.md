@@ -17,9 +17,11 @@
 > stated-cause overage ceremony they fed. A handback is VALID when it
 > carries its mandated sections; its length is not measured, not declared
 > and never the subject of a finding. Reason: the tiers stopped bounding
-> anything and started generating work — across F031 the declared overage
-> was every round and growing, so the ceremony cost a paragraph per
-> handback and bought no brevity. Note for anyone reading finding R-0700,
+> anything and started generating work — measured across F031, 63 of 75
+> handbacks exceeded the 60-line base tier and 12 exceeded 100, at a median
+> of 93 lines and a maximum of 198, every one of them through the
+> declared-overage route, so the ceremony cost a paragraph per handback and
+> bought no brevity. Note for anyone reading finding R-0700,
 > which calls the ≤160 tier one "AGENTS.md does not define": the tier was
 > real and was defined HERE, in this file, and only here.
 >

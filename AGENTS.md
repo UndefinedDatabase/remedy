@@ -471,9 +471,10 @@ stated-cause overage ceremony that sat on top of them, are WITHDRAWN. A handback
 mandated sections — the state block, the deviations, the next steps and the
 contents listed above. Its LENGTH is not measured, is never declared, and
 is never the subject of a finding. Reason: the cap stopped bounding
-anything and started generating work — across F031 the declared overage was
-every round and growing, so the ceremony cost a paragraph per handback and
-bought no brevity. Dropping a mandated section is still a finding; that is
+anything and started generating work — measured across F031, 63 of 75
+handbacks exceeded the 60-line base tier and 12 exceeded 100, at a median of
+93 lines and a maximum of 198, every one of them through the declared-overage
+route, so the ceremony cost a paragraph per handback and bought no brevity. Dropping a mandated section is still a finding; that is
 the obligation the cap was standing in for, and it is now stated directly
 instead of through a length. Reverse by restoring the two tiers and the
 D15 paragraph from git history at `f4eae1d4`, in all four files that
