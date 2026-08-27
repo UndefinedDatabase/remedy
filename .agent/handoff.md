@@ -1,52 +1,56 @@
-# Handback — F031 Decision inbox, Round R50 (repair round)
+# Handback — F031 Decision inbox, Round R51
 
-Branch: `feature/f031-decision-inbox` · tip `f4545e3c` (C5), then C6 = this file. `.agent/STOP` read from disk before C0a and again before C6: ABSENT both times.
+Feature/round: F031 R51 — the SERVER half of the clarification form.
+Branch: `feature/f031-decision-inbox`. Tip before C6: `dac7a471`.
 
 ## Range
 
-Review of `cd676e4c`..`HEAD`.
+Review of `242144ff..HEAD`.
 
 ## Commits
 
-### ef3dc85a docs(agent): save the F031 R50 step block
+### 0cb63fd6 docs(agent): save the F031 R51 step block
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f031-r50.md | +346/-0 | C0a: the R50 block, verbatim |
+| .agent/authored/f031-r51.md | +441/-0 | C0a — the block saved verbatim |
 
-### 4233b651 docs(agent): mirror the F031 R50 block into last_block
+### 2b12be4a docs(agent): mirror the F031 R51 block into last_block
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/last_block.md | +280/-149 | C0b: same bytes, same git blob as C0a |
+| .agent/last_block.md | +317/-222 | C0b — same bytes, same blob `516c218a` |
 
-### a6db8474 docs(agent): advance the plan to the F031 R50 repair round
+### 596ff616 docs(agent): advance the plan to the F031 R51 form round
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/plan.md | +14/-15 | C1: PLANF031R50 |
+| .agent/plan.md | +14/-16 | C1 — PLANF031R51 |
 
-### 9bd1a153 docs(agent): record the F031 R49 verdict
+### 024f3730 docs(agent): record the F031 R50 verdict
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/live_review.md | +2/-0 | C2: LEDGER50 appended |
+| .agent/live_review.md | +2/-0 | C2 — LEDGER51 appended |
 
-### ed4e1b2a docs(ui-server): name the decision, not a round, in the resolve docstring
+### 8fb2b0de docs(agent): rule DECISION F031 D26 on the clarification form
 | Path | +/- | Reason |
 |---|---|---|
-| packages/orchestration/ui_server.py | +4/-3 | C3: the S1 pair — R-0702 |
+| .agent/decisions.md | +30/-0 | C3 — DECISION26 appended |
 
-### c94c3ecb refactor(tests): extract the shared UI-server start helper to module level
+### 1ff29dda feat(ui-server): accept validated clarification answers on flight-plan approval
 | Path | +/- | Reason |
 |---|---|---|
-| tests/ui_server/test_command_dispatch.py | +37/-50 | C4: S2, S3, S4 — R-0701 |
+| packages/orchestration/ui_server.py | +49/-9 | C4 — S1 helper, S2 call site, S3 docstring |
+| packages/orchestration/decision_inbox.py | +6/-2 | C4 — S4, the door's third refusal |
 
-### f4545e3c docs(agent): resolve the two F031 R48 code findings
+### dac7a471 test(ui-server): pin the operator answer reaching the stored record
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/live_review.md | +4/-0 | C5: DONE50 appended |
+| tests/ui_server/test_command_dispatch.py | +27/-2 | C5 — S5 optional `answers`, S6 effect test |
 
-### C6 — this commit (self-reference exception)
+### C6 docs(agent): write the F031 R51 handback
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/handoff.md | n/a | C6: this handback; a handoff cannot table itself |
+| .agent/handoff.md | rewrite | C6 — this file; a handback cannot table its own commit (R-0149) |
+
+Every `+/-` cell above is read from `git diff --numstat` itself and agrees cell for cell with G7.
 
 ## Item status
 
@@ -62,35 +66,33 @@ Review of `cd676e4c`..`HEAD`.
 | C6 | done | |
 | push | done | ordered after C6; its reading is not quoted here |
 
-## Verification
-
-- G1 exit 0 — branch `feature/f031-decision-inbox`; `git status --porcelain` 0 lines after each of C0a, C0b, C1, C2, C3, C4, C5; STOP ABSENT at both readings; the block reads sha256 `18709505…5fd11e24`, 25929 bytes, 346 lines as saved at C0a, as mirrored at C0b and as read off disk at C5 — all three EQUAL; C0a and C0b are the SAME git blob `5fbb344f`.
-- G2 exit 0 — the extractor printed 9 slices from the COMMITTED C0a blob; CONTENT 113, TOTAL 346, PROSE 233 (cap 400), TOTAL 346 (cap 490).
-- G3 exit 0 — `.agent/plan.md` at C1 byte-equal to PLANF031R50 TRUE; minus-trailing-newline control FALSE; `^## Goal$` 1, `^## Next Steps$` 1, `wc -l` 47 (strictly under 50).
-- G4 exit 0 — C2: 888399 + 1 + 3486 = 891886, the pre-C2 blob equal to the 888399-byte base the block named; N counted at 1, units 363→364, last-N in order TRUE — N is 1, so paragraph 1 is also the last. C5: pre-commit blob READ at 891886, 891886 + 1 + 1932 = 893819; N counted at 2, units 364→366, last-N in order TRUE. A byte flipped IN MEMORY inside paragraph 1 of each slice was REJECTED by BOTH readers both times. The tracked file was never mutated.
-- G5 exit 0 — before C2 / after C2 / after C5: `^- R-\d+ — ` 263/263/263, `^Done: R-\d+ — ` 6/6/8, `^Landed: R-` 0/0/0, `^Gate: R\d+ — ` 19/19/19, `^Gate: F\d+ R\d+ — ` 30/31/31. ADDED across C2: the gate key `F031 R49` and nothing else. ADDED across C5: `R-0701` and `R-0702` and nothing else. Nothing REMOVED at either step; no finding id minted. All ids DISTINCT, maximum `R-0702`. Open set 257 before C2, 255 after C5.
-- G6 exit 0 — (a) at C3: S1FROM 0x, S1TO 1x, and over the whole file `R48` 0x and `Round R` 0x; `git diff --name-only 9bd1a153..ed4e1b2a` is that one path only. (b) at C4: S2DEL 0x, S3HELPER 1x, S4FROM 0x, S4TO 6x, `def _start_server` 0x, `def _start_ui_server_for_job` 1x; `git diff --name-only ed4e1b2a..c94c3ecb` is that one path only. (c) `python3 -m ruff check packages/orchestration/ui_server.py tests/ui_server/test_command_dispatch.py` REAL exit 0, "All checks passed!". (d) the probe ran in the disposable worktree `.remedy-wt/f031r50-probe`: the return line counted 1, was replaced with `return 1, token`, and `python3 -m pytest tests/ui_server/test_command_dispatch.py -q` gave a REAL exit code of 1 — non-zero — with the output naming BOTH `TestJobStopDispatchEffects` and `TestFlightPlanApprovalDispatchEffects`; the worktree was then removed by its exact path and `git worktree list` is back to 1 line.
-- G7 exit 0 — the path set of `git diff --name-only cd676e4c..f4545e3c` is exactly the six expected paths, BOTH residues EMPTY; `git diff --stat` restricted to `apps/` and to `docs/` is EMPTY for each. `^<<<SLICE ` / `^<<<END ` read 0 and 0 in `.agent/plan.md` at C1, `.agent/live_review.md` at C5, `packages/orchestration/ui_server.py` at C3 and `tests/ui_server/test_command_dispatch.py` at C4, against a CONTROL of 9 and 9 over the C0a blob. Insertions from `git diff --numstat`: 346, 280, 14, 2, 4, 37, 4 — each commit single-parent and under 500. `git ls-files .remedy-wt` 0 lines and `git worktree list` 1 line at C5. The reflog for this round's OWN 7 commits reads prefix `commit` on every one, with `amend` 0, `rebase` 0 and `cherry` 0 among those entries.
-- G8 exit 0 on all five, run SERIALLY in the primary checkout at C5 — canary `tests/cli/test_golden_path.py` 42 passed; `tests/ui_server/` 486 passed; `tests/orchestration/test_test_runner.py` 52 passed; `tests/regression/test_resource_safety.py` 21 passed; `tests/orchestration/test_integrity_gate.py` 16 passed. Every count matches the reviewer's own measurement at `cd676e4c`.
-
-THE BRANCH TIP IS GREEN. G6's PROBE RETURNED A REAL EXIT CODE OF 1, non-zero, with both dispatch-effect classes named in its output — which is what proves the single module-level helper is the LIVE path for each class rather than merely present. R-0701 AND R-0702 ARE RESOLVED THIS ROUND: R-0701 by C4 `c94c3ecb`, R-0702 by C3 `ed4e1b2a`. Open findings after C5: 255.
-
 ## External actions
 
-- `git worktree add .remedy-wt/f031r50-probe HEAD --detach` — created for G6(d); `git worktree remove --force .remedy-wt/f031r50-probe` — removed by its exact path before C5, list back to 1 line.
-- `git push origin feature/f031-decision-inbox` — ordered after C6. No `gh` command; no PR created, edited, merged or commented on; `.agent/STOP` was only ever read.
+`git worktree add --detach .remedy-wt/f031-r51-probe dac7a471` — created for G6(d).
+`git worktree remove --force .remedy-wt/f031-r51-probe` — removed by exact path; list back to 1 line.
+`git push origin feature/f031-decision-inbox` — run after C6. No `gh` command, no PR action.
+
+## Verification — one line per gate, REAL exit codes
+
+- G1 exit 0 — branch correct; `git status --porcelain` 0 lines after C0a, C0b, C1, C2, C3, C4, C5; `.agent/STOP` read off disk before C0a and before C6, ABSENT both times; the block is sha256 `fe15be6b…a92825f0`, 30931 bytes, 441 lines at C0a, at C0b and as read off disk at C5 — all three EQUAL — and C0a and C0b are the SAME git blob `516c218a`.
+- G2 exit 0 — extractor printed 13 slices from the COMMITTED C0a blob; CONTENT 178, TOTAL 441, PROSE 263. PROSE 263 ≤ 400 and TOTAL 441 ≤ 490.
+- G3 exit 0 — `.agent/plan.md` at C1 byte-equal to PLANF031R51 TRUE; minus-trailing-newline control FALSE; `^## Goal$` 1, `^## Next Steps$` 1, `wc -l` 45 (<50).
+- G4 exit 0 — live_review base read 893819 as the block named: 893819 + 1 + 4236 = 898056 = post. N counted by my script = 1, so paragraph 1 IS also the last; units 366→367; reader 2 matches. decisions base read 613277 as named: 613277 + 1 + 1957 = 615235 = post; N = 4; units 1478→1482; reader 2 matches. The byte flipped in memory inside paragraph 1 of each slice is REJECTED by BOTH readers on BOTH appends. No tracked file was mutated; past blobs read via `git show`.
+- G5 exit 0 — before C2 / after C2 / after C5: `^- R-\d+ — ` 263/263/263, `^Done: R-\d+ — ` 8/8/8, `^Landed: R-` 0/0/0, `^Gate: R\d+ — ` 19/19/19, `^Gate: F\d+ R\d+ — ` 31/32/32 with gate keys ADDED {F031 R50} and REMOVED {} at C2 and both empty at C5; no id added or removed anywhere; all ids DISTINCT, maximum `R-0702`; open set 255 before C2 and 255 after C5. `^## DECISION F031 D\d+ ` 25 before C3 and 26 after, ADDED {D26}, REMOVED {}.
+- G6 exit 0 — (a) at C4 ui_server.py: S1HELPER 1x, S2FROM 0x, S2TO 1x, S3FROM 0x, S3TO 1x, `answers={}` 0x over the whole file; decision_inbox.py: S4FROM 0x, S4TO 1x, `exactly two conditions` 0x; `git diff --name-only C3..C4` is exactly those two paths. (b) at C5: S5FROM 0x, S5TO 1x, S6NEW 1x; `git diff --name-only C4..C5` is that one path only. (c) `python3 -m ruff check` over the three files at C5 REAL exit 0. (d) the three-line sequence counted 1 in the worktree copy; after replacing it, pytest in that worktree returned a REAL exit code of 1 — non-zero, as required; worktree removed by exact path, `git worktree list` back to 1 line.
+- G7 exit 0 — path set of `242144ff..dac7a471` both residues EMPTY against the expected eight paths; `git diff --stat` restricted to `apps/` and to `docs/` both EMPTY; `^<<<SLICE ` and `^<<<END ` are 0 and 0 in plan.md at C1, live_review.md at C2, decisions.md at C3, ui_server.py at C4 and test_command_dispatch.py at C5, against a CONTROL of 13 and 13 over the C0a blob; insertions 441, 317, 14, 2, 30, 55, 27, each commit single-parent and under 500; `git ls-files .remedy-wt` 0 lines; `git worktree list` 1 line at C5; the reflog entries for THIS round's seven commits all read prefix `commit`, with `amend`, `rebase` and `cherry` 0 each among them.
+- G8 exit 0 — all eight suites REAL exit 0, run serially: canary 42, `tests/ui_server/` 487, test_test_runner.py 52, test_resource_safety.py 21, test_integrity_gate.py 16, test_decision_inbox.py 35, test_plan_approval.py 27, test_decision_answers.py 29.
+
+THE BRANCH TIP IS GREEN. G6's PROBE RETURNED A REAL EXIT CODE OF 1 — non-zero, so reverting the feature turns the effect test red and the door carries the answers rather than dropping them. THE THREE MUST-NOT-MOVE SUITES DID NOT MOVE: 35, 27 and 29, exactly as measured at `242144ff`. `tests/ui_server/` reads 487 against the reviewer's 486 — one higher, the one test S6 adds, and no other test under that path changed.
 
 ## Authored-text proofs
 
-Every slice was applied byte for byte from the COMMITTED C0a blob, never from the prompt: PLANF031R50 (G3 byte-equality plus a FALSE control), LEDGER50 and DONE50 (G4, two independent readers each plus a first-paragraph negative control), and S1FROM/S1TO, S2DEL, S3HELPER, S4FROM/S4TO (G6 a and b occurrence counts). No slice was retyped, reflowed or corrected, and no slice looked wrong.
+All 13 slices were extracted from the COMMITTED C0a blob, never from the prompt, and applied byte for byte by exact-substring replacement with a pre-count assertion of 1 on every FROM and anchor. Post-application counts are in G6. Base counts at `242144ff` matched the block's claims exactly: S2FROM 1x, S3FROM 1x, S4FROM 1x, S5FROM 1x, both anchors 1x, and `TO contains FROM` false for all four pairs.
 
 ## Deviations & assumptions
 
-None. The ordered sequence C0a, C0b, C1, C2, C3, C4, C5, C6 was executed exactly in that order — no extra commit, none dropped, none reordered, none merged. `.agent/decisions.md` was deliberately left untouched per the Change line. The handback cap is 100 lines, derived from the Bundle's 8 commits (more than five); this file is inside it, so no DECISION D15 overage line is due.
+None. The ordered sequence C0a, C0b, C1, C2, C3, C4, C5, C6 was followed exactly, with no extra, dropped or reordered commit. No finding was registered or resolved. Open findings: 255.
 
 ## Next
 
-1. Re-read `.agent/STOP` from disk.
-2. The Open PR Gate.
-3. Review this round's handback.
-4. R51 — the clarification FORM over `payload.clarifications`.
+1. Re-read `.agent/STOP` from disk. 2. Run the Open PR Gate. 3. Review this round's handback. 4. R52 — the BROWSER half of the form plus the tests pinning DECISION F031 D26's two refusals.
