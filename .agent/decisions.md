@@ -8690,3 +8690,44 @@ canary unassertable.
 REVERSE by deleting this decision, dropping `TRIPLE_REQUIRED_TYPES` and
 `evidence_status`, and making the triple unconditionally required at the emit
 point.
+
+## DECISION F032 D6 (2026-08-27) — the budget stop states its options explicitly, so its outcomes can be keyed per choice
+
+CONTEXT, measured at `59c8bcd0e589`. `docs/roadmap/features/T5_F032.md` Goal &
+Done requires `expected_outcome` and `downside` PER OPTION, and its Design names
+this producer's content by example: the budget stop's extend/abandon consequence
+math, with the arithmetic as refs into the budget evidence. DECISION F032 D3
+then narrowed the keying to "per option only where options exist", counting the
+branches that carry an options list. The budget branch of
+`packages/orchestration/decision_queue.py` is not one of them, and yet it does
+offer the human two real choices: it sets `next_actions=("extend", "abandon")`
+and carries no `payload` at all, while
+`decision_evidence.enforce_decision_evidence` reads a decision's options from
+`payload.get("options")` and from nowhere else. So the gate sees an OPTIONLESS
+decision, and rule (h) of `evidence_triple_problems` would refuse the very
+per-choice outcomes the feature file asks this producer for.
+
+CHOSEN. The budget card states its options where the gate and the browser both
+already look: `payload={"options": ["extend", "abandon"]}`, with one
+`DecisionOptionOutcome` keyed to each. `next_actions` is NOT changed.
+
+WHY THIS IS BEHAVIOUR-PRESERVING, MEASURED RATHER THAN ASSUMED.
+`apps/ui/src/api/decisionCard.ts::decisionAnswers` resolves a card's answers in
+the order options, then next actions, then free text, without branching on the
+card's type. This card's `next_actions` are already exactly `extend` and
+`abandon`, so serving those two from `payload.options` yields the same two
+answers in the same order. The write door is untouched:
+`decision_inbox._answerable_by_decision_resolve` branches on the decision's ID
+PREFIX and on its escalation record, never on a payload, so the budget card
+stays not-answerable-by-`decision.resolve` and `ANSWERABLE_DECISION_TYPES` in
+`tests/orchestration/test_decision_inbox.py` remains correct for this type.
+
+REJECTED, and why. One unkeyed outcome under `UNKEYED_OPTION`, which the gate
+accepts for an optionless decision and which would have required no wire
+change. It loses exactly the per-choice consequence math the feature file names
+for this producer, and it would record as a design intention what is really an
+omission: this card has two choices, and only its options LIST was missing.
+
+REVERSE by deleting `payload` from the budget branch's `HumanDecision` and
+collapsing its two outcomes into one keyed `UNKEYED_OPTION`; the gate accepts
+that shape with no other change.
