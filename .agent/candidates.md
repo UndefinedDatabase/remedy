@@ -52,3 +52,27 @@
   protocol should permit this commit explicitly, or should instead order the
   closure gate to run BEFORE the closure commit so the carrier is still open. ·
   source F031 · 2026-08-27
+
+- CORRECTION to the package-absence candidate above, appended rather than
+  applied to it, because `.agent/candidates.md` is corrected by appending and
+  never by revising a landed entry. THAT ENTRY OVERSTATES ITS REACH. What the
+  reviewer actually measured is that no copy of
+  `remedy-review-20260827-122441-READY_FOR_REVIEW.zip` exists anywhere UNDER THE
+  REPOSITORY at the closure round; it measured NOTHING outside the repository,
+  because this session's sandbox confines reads to
+  `/home/decodeux/Repos/remedy` and refused both a `find` and an `ls` beyond it.
+  The entry's closing clause — that the operator's review window "cannot be
+  reopened from this machine without a rebuild" — therefore asserts a reach no
+  command in this session established, and a prior session's own record places
+  the archive at `/home/decodeux/Repos/remedy-history/zips/`, OUTSIDE the
+  repository, which if correct explains the asymmetry with the F022 package
+  completely and leaves nothing unexplained. The narrow question that survives
+  is worth keeping: closure records a package by name and SHA-256 and never
+  records WHERE it went, so no later session can confirm the operator's review
+  window is still open without searching paths it may not be allowed to read.
+  Decide whether the STATUS line, or the closure handback, should carry the
+  package's archived PATH beside its name and hash. NOTE THE CLASS: this
+  correction is itself an instance of `R-0709`, registered by this same round —
+  a reviewer asserting a conclusion wider than the measurement that supports it
+  — and it is recorded here rather than quietly fixed for exactly that reason. ·
+  source F031 · 2026-08-27
