@@ -11,35 +11,37 @@ branch-only blocking semantics intact, ordered by a documented rule over age and
 blocked size, and answerable from the card through the write channel.
 
 ## Current Step
-CLOSURE 1 of 3. This round writes the R66 verdict, resolves R-0693 — the only
-open High this feature raised, whose DECISION F031 D19 repair landed in full —
-and gives `docs/roadmap/features/T5_F031.md` the `## Built State` section it has
-never had, which is the closure protocol's precondition 4. No production code
-and no new decision. STATUS.md and README.md are NOT touched here: the closure
-commit owns them and it is two rounds away.
+CLOSURE 2 of 3. This round records the CLOSURE 1 verdict, then builds the two
+artifacts closure cannot be authored without: a fresh feature-scoped evidence
+bundle and a FRESH review zip built from a clean tree at the reviewed head. It
+builds no product code. T001, T002 and T003 are complete, the integration gate
+PASSED, and the Built State section landed last round, so closure preconditions
+1 through 5 are all either met or re-confirmed by this round's own gates.
 
 ## Next Steps
-1. CLOSURE 2 of 3 — the feature-scoped evidence bundle and a FRESH review zip
-   built from a clean tree at the reviewed head. A failing zip build is a
-   closure BLOCKER, never something to work around.
-2. CLOSURE 3 of 3 — the STATUS line from `[~]` to `[x]` with the README
-   capability sync in the SAME commit, the candidates file, and the pull
-   request. The PR is NOT merged in this session.
+1. CLOSURE 3 of 3 — the reviewer authors the STATUS line from the evidence job
+   id, the package filename and the package SHA-256 this round produces; the
+   worker commits it LAST with the README capability sync in the SAME commit,
+   writes any candidates to `.agent/candidates.md`, and creates the PR. The PR
+   is NOT merged in this session: the gap is the operator's review window.
 
 ## Risks
-- R-0693 IS THE ONLY OPEN HIGH THIS FEATURE RAISED, and its repair is on disk:
-  the `fp:` dispatch in the write door, the third endpoint key, and a card that
-  posts nothing the door would refuse. R-0495 and R-0574 are inherited standing
-  Highs that rode through six prior closures and ride through this one as
-  documented risks, which is what PASS_WITH_RISKS means.
-- SIX OF THE EIGHT PRODUCING TYPES STILL CANNOT BE ANSWERED THROUGH THE DOOR.
-  DECISION F031 D19 rules them out of F031's scope, and the inbox tells the
-  truth about every one of them rather than offering a refused button.
-- THE PARITY CLAIM OF THE R65 GATE IS VOID AND STAYS VOID. A rebuild ran inside
-  the base run window and the evidence says so; it costs nothing only because
-  the base-only set is empty, so no id was owed an attribution.
+- A FAILING ZIP BUILD IS A CLOSURE BLOCKER, never a thing to work around. The
+  feature does not close without the package, and a package built from a dirty
+  tree is invalid.
+- THE STATUS LINE CANNOT BE AUTHORED BEFORE THE PACKAGE EXISTS. Its evidence
+  job id, filename and SHA-256 do not exist until this round produces them, so
+  splitting closure across two rounds is forced by the record, not chosen.
+- R-0693 IS RESOLVED and was the only open High this feature raised. R-0495 and
+  R-0574 are inherited standing Highs from the already-closed F085 and F086,
+  documented risks rather than F031 defects, and they rode through six prior
+  closures on the same footing.
+- R-0648 IS OPEN AND THIS ROUND'S G8 SHOWS IT: the `high_blockers_open` check
+  cannot parse this ledger, so its PASS is a tool reading and not evidence
+  about findings. The High question is answered by the record above, not by it.
+- R-0403 IS OPEN AND THIS PACKAGE WILL SHOW IT: `.remedy-wt/` scratch is a large
+  share of every review zip built on this machine. It routes to a paydown
+  branch and is not an F031 defect.
 - Open findings, by the rule DECISION F009 D10 requires — every `^- R-\d+ — `
-  paragraph minus every `^Done: R-\d+ — ` line — the set is 252 before this
-  round and 251 after it, R-0693 being the one entry that moves.
-- BLOCK CAPS ARE TWO: 490 lines TOTAL (DECISION F085 D6) and 400 lines PROSE
-  (DECISION F085 D5); every block states and re-measures both.
+  paragraph minus every `^Done: R-\d+ — ` line — the set is 251 and this round
+  moves it by nothing.
