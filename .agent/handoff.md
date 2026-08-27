@@ -1,9 +1,10 @@
-# Handoff — F031 Decision inbox · CLOSURE 3 OF 3 · R72
-Branch `feature/f031-decision-inbox` · round base `f7cc2dd2` · F031 IS CLOSED.
-SESSION: exactly ONE round was delegated, this terminating CLOSURE ROUND; per §4
-item 13 it gets NO ledger gate entry of its own and that absence IS the terminator.
+# Handoff — F031 Decision inbox · CLOSURE 3 OF 3 · R72 · terminal branch state
+Branch `feature/f031-decision-inbox` · round base `f7cc2dd2`. F031 IS CLOSED, its
+`docs/roadmap/STATUS.md` line reads `[x]`, and PR #215 is OPEN, not a draft and
+NOT MERGED. SESSION: ONE round was delegated, this terminating CLOSURE ROUND,
+extended by a reviewer-ordered addendum and correction.
 ## Range
-Review of `f7cc2dd2`..HEAD, HEAD being C4, the commit that writes this file.
+Review of `f7cc2dd2`..HEAD, HEAD being C7, the commit that writes this file.
 ## Commits
 ### 995bd311 C0a docs(agent): save the F031 R72 closure block
 | Path | +/- | Reason |
@@ -25,76 +26,96 @@ Review of `f7cc2dd2`..HEAD, HEAD being C4, the commit that writes this file.
 | Path | +/- | Reason |
 |---|---|---|
 | .agent/decisions.md | +35/-0 | DECISION27 appended |
-### C4 the closure commit — self, per R-0149 it cannot table its own numstat
+### e00caa58 C4 docs(roadmap): close F031 and sync the README capability
 | Path | +/- | Reason |
 |---|---|---|
-| docs/roadmap/STATUS.md | self | SFROM to STO, the F031 line `[~]` to `[x]` |
-| README.md | self | RTO1, RTO2, RTO3 — the capability sync, same commit |
-| .agent/candidates.md | self | CANDIDATES slice, the package-absence entry |
-| .agent/handoff.md | self | this file |
+| docs/roadmap/STATUS.md | +1/-1 | the F031 line `[~]` to `[x]` |
+| README.md | +6/-2 | RTO1, RTO2, RTO3 capability sync, same commit |
+| .agent/candidates.md | +12/-4 | CANDIDATES, the package-absence entry |
+| .agent/handoff.md | +77/-40 | the closure-round handback |
+### d803a304 C5 docs(agent): register the two closure candidates from the gate
+| Path | +/- | Reason |
+|---|---|---|
+| .agent/candidates.md | +34/-0 | CANDIDATES2 appended, reviewer-ordered |
+### ad90960b C6 docs(agent): correct the reach of the package-absence candidate
+| Path | +/- | Reason |
+|---|---|---|
+| .agent/candidates.md | +24/-0 | CORRECTION1 appended, reviewer-ordered |
+### C7 refresh the handoff over the whole branch — self, per R-0149
+| Path | +/- | Reason |
+|---|---|---|
+| .agent/handoff.md | self | this file; the C4 handback stopped at C4 |
 ## Item status
 | Item | Status | Reason |
 |---|---|---|
-| C0a save this block | done | |
-| C0b mirror it into last_block | done | |
+| C0a save the block | done | |
+| C0b mirror into last_block | done | |
 | C1 the plan | done | |
 | C2 the ledger append | done | |
 | C3 the decision | done | |
 | C4 the closure commit | done | |
-| push | deviated | ordered AFTER C4 by G11; INTENT only, see below |
-| create the pull request | deviated | ordered AFTER the push by G12; INTENT |
+| C5 the candidates append | done | reviewer-ordered addendum |
+| C6 the candidates correction | done | reviewer-ordered correction |
+| C7 this handoff refresh | done | reviewer-ordered |
+| push and PR #215 | done | pushed after C4, C5, C6; PR created, NOT merged |
 ## External actions
-- `gh pr list --state open --json number,headRefName,baseRefName,isDraft` read
-  BEFORE C4, exit 0, output verbatim `[]`. NOTHING WAS MERGED.
-- `git push origin feature/f031-decision-inbox` — INTENT, ordered by G11 AFTER
-  C4; no exit code and no remote tip here, both in the round report.
-- `gh pr create` into `main`, title `F031 — Decision inbox` — INTENT, ordered by
-  G12 AFTER the push. NOT MERGED THIS SESSION; number and exit code in that
-  report. No worktree, no branch deletion, no history rewrite.
+- `gh pr list --state open …` before C4: exit 0, verbatim `[]`. Merged nothing.
+- `git push origin feature/f031-decision-inbox` after C4, C5 and C6 — exit 0 each,
+  remote tip equal to the local tip at each. C7 is pushed after this commit, so
+  its outcome is in the round report, not in this file.
+- `gh pr create` exit 0 giving PR #215 into `main`; `gh pr edit 215 --body-file`
+  twice, exit 0 each. NOT MERGED. No worktree, no branch deletion, no rewrite.
 ## Verification
-- G1 exit 0 — branch correct, status 0 lines after all six commits, `.agent/STOP`
-  ABSENT before C0a and before C4.
-- G2 exit 0 — scratch, C0a, C0b and the C3 working copy ALL FOUR EQUAL at 31437
-  bytes, 390 lines, sha256 `bccecf663c6ec65efe6c2131549077e7ee8d7d5df5f28253bf7d0495ba3ddf99`, C0a and C0b the SAME blob `9f7152af`, no repeated-character run;
-  IT COVERS THE SCRATCH FILE, THE SAVED COPY, ITS MIRROR AND THE WORKING COPY, AND NOT THE BYTES OF ANY PROMPT.
-- G3 exit 0 — 12 slices at 43, 3, 34, 1, 1, 1, 1, 1, 1, 1, 5, 20; CONTENT 112,
-  TOTAL 390, PROSE 278, both caps met.
-- G4 exit 0 — plan.md at C1 BYTE-EQUAL to PLANF031R72 at 2517 bytes, control
-  FALSE, `^## Goal$` 1, `^## Next Steps$` 1, `wc -l` 43.
-- G5 exit 0 — 1012298 + 1 + 6596 = 1018895 committed; reader two N 2, units 402
-  to 404, last 2 EQUAL IN ORDER, byte-offset flip 1012359 REJECTED by BOTH.
-- G6 exit 0 — findings 269 to 270 adding only R-0709, `Done:` 17, `Landed:` 0, `Gate: R` 19,
-  `Gate: F` 52 to 53 adding only F031 R71, none removed, ids DISTINCT, max R-0708 then R-0709, open set 252 to 253.
-- G7 exit 0 — 615235 + 1 + 2192 = 617428 committed, C3 prefixed by its pre-commit
-  blob, `^## DECISION F031 D` 26 to 27, ADDED `## DECISION F031 D27`.
-- G8 REAL exit 0 — `620 passed in 67.56s (0:01:07)`, `^FAILED` 0, one pytest
-  process, extractor proved sighted on a probe string it matched.
-- G9 REAL exit 0 — `325 passed in 0.61s` before C4; at C4 SFROM 0 / STO 1, RFROM1 0 / RTO1 1,
-  RFROM2 0 / RTO2 1, RFROM3 EXACTLY ONCE and each of its 4 other RTO3 lines once among the C4 README adds.
-- G10 exit 0 — residues EMPTY both ways, `apps/` `packages/` `tests/` `docs/` EMPTY, insertions
-  390, 280, 24, 4, 35 single-parent and under 500, markers 0 and 0 against a CONTROL of 12 and 12, `.remedy-wt` 0, status 0, worktree 1.
+- G1 exit 0 — branch correct, status 0 lines after every commit, STOP absent twice.
+- G2 exit 0 — scratch, C0a, C0b and the C3 working copy ALL FOUR EQUAL at 31437 bytes and 390 lines, C0a and C0b the same blob; it covers those four points and NOT the bytes of any prompt.
+- G3 exit 0 — 12 slices, CONTENT 112, TOTAL 390, PROSE 278, both caps met.
+- G4 exit 0 — plan.md at C1 byte-equal to PLANF031R72, control FALSE, `wc -l` 43.
+- G5 exit 0 — 1012298 + 1 + 6596 = 1018895 committed, N 2, units 402 to 404, byte-offset flip 1012359 rejected by both readers.
+- G6 exit 0 — findings 269 to 270 adding only R-0709, `Done:` 17, `Landed:` 0, `Gate: R` 19, `Gate: F` 52 to 53 adding only F031 R71, open set 252 to 253.
+- G7 exit 0 — 615235 + 1 + 2192 = 617428 committed, prefix held, ADDED key exactly `## DECISION F031 D27`.
+- G8 REAL exit 0 — `620 passed in 67.56s (0:01:07)`, `^FAILED` 0, extractor sighted.
+- G9 REAL exit 0 — `325 passed in 0.61s`; at C4 the three REWRITE pairs read 0 and 1, the APPEND pair proved by its added lines.
+- G10 exit 0 — residues EMPTY, code trees EMPTY, insertions 390, 280, 24, 4, 35 single-parent and under 500, markers 0 against a CONTROL of 12.
+- H1 exit 0 — branch correct, status 0 lines after C5, STOP absent.
+- H2 exit 0 — 1274 + 1 + 2415 = 3690 committed, prefix held, N 2, units 3 to 5, byte-offset flip 1315 rejected by both readers.
+- H3 exit 0 — path set exactly `.agent/candidates.md`, 34 insertions, single-parent, under 500, code trees EMPTY.
+- H4 REAL exit 0 — `325 passed in 0.69s`, and neither STATUS.md nor README.md is in the path set.
+- H5 exit 0 — `.remedy-wt` 0 tracked, worktree 1 line, no `tmp/*` branch.
+- K1 exit 0 — branch correct, status 0 lines after C6, STOP absent.
+- K2 exit 0 — 3690 + 1 + 1693 = 5384 committed, prefix held, N 1, units 5 to 6, byte-offset flip 3721 rejected by both readers.
+- K3 exit 0 — path set exactly `.agent/candidates.md`, 24 insertions, single-parent, under 500, code trees EMPTY.
+- K4 exit 0 — the three landed candidate entries each still occur EXACTLY ONCE.
+- K5 exit 0 — `.remedy-wt` 0 tracked, worktree 1 line, no `tmp/*` branch.
 ## Authored-text proofs
-`.agent/authored/f031-r72.md` came from `.remedy-wt/f031-r72.md` by
-`shutil.copyfile`, never retyped; the disk-to-disk comparison is G2, and every
-slice was extracted from the COMMITTED C0a blob and applied byte for byte.
+C0a is a `shutil.copyfile` of `.remedy-wt/f031-r72.md`, proved by G2, and every
+slice came from the COMMITTED C0a blob applied byte for byte. The C5 and C6
+slices carry no authored copy by their own order; the reviewer holds the
+scratch originals and gates them by byte-equality.
 ## Deviations & assumptions
-- NO DEPARTURE FROM THE ORDERED COMMIT SEQUENCE: C0a, C0b, C1, C2, C3, C4 in that
-  order, none added, dropped or reordered.
+- C5, C6 AND C7 ARE THREE COMMITS BEYOND THE CLOSURE COMMIT. Each touches only
+  `.agent/`, each was reviewer-ordered, and together they are a DECLARED deviation
+  from the closure protocol rendering that makes the STATUS edit the last commit
+  on the branch. Rule A4 as stated in `docs/roadmap/ROADMAP.md` requires only
+  "STATUS.md updated in the same PR", which holds; the R-0154 pin that rendering
+  protects is README/STATUS agreement, which none of the three touches — both
+  blobs are bit-identical to C4.
 - DECLARED CONTRADICTION, APPLIED ANYWAY PER CONSTRAINT 2: DECISION27 and
   PLANF031R72 route the `R-0708` repair away because "`tests/ui_server/` is outside
-  F031 change set", which the ledger gate entry `F031 R69` already measured FALSE —
-  five files there change on this branch, `test_live_state.py` among them — and
-  narrowed to the failing CLASS, its HELPER and the failing TEST. Nothing was edited.
-- push and the pull request read `deviated` only because no permitted status value
-  says "ordered, executed after this commit, reported per G11 and G12".
+  F031 change set", which the `Gate: F031 R69` ledger entry had already measured
+  FALSE and narrowed to the failing CLASS, its HELPER and the failing TEST.
+  Neither slice was edited; C5 and C6 carry the correction to disk instead.
+- DECISION D15 STATED-CAUSE OVERAGE: this file measures 121 lines against the
+  100-line cap its 9-commit range earns. The cause is mandated content only —
+  nine per-commit changed-files tables, a ten-row item-status table and twenty
+  one-line gate results across three reviewer-ordered bundles. No section was
+  dropped and no transcript is restated.
 ## Closure values
 Evidence job `f031-closure` · package
 `remedy-review-20260827-122441-READY_FOR_REVIEW.zip` · SHA-256
 `4b862bf093f4082821662357d730042c28ad6c16078dfa5bced812aca0db4bfa` · status
 `READY_FOR_REVIEW` · manifest head `f0dad9a8076e8cfc4208dbe5a7097619a31d4cd5`,
-the accepted HEAD the STATUS line names. F031 IS CLOSED. Open findings after this
-round: 253. THE PULL REQUEST IS NOT MERGED THIS SESSION; it merges at the next
-feature start through the AGENTS.md Open PR Gate.
+the accepted HEAD the STATUS line names. Open findings after this round: 253.
+`.agent/candidates.md` IS NON-EMPTY — three entries and one correction — and is a
+BLOCK CONDITION for the first reviewed round of the next feature.
 ## Next
-MERGE THE CLOSURE PULL REQUEST at the next feature start, through the AGENTS.md
-Open PR Gate. That gap is the operator manual-review window.
+MERGE PR #215 at the next feature start, through the AGENTS.md Open PR Gate.
