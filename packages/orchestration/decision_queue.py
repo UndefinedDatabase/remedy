@@ -186,6 +186,34 @@ def list_decisions(
         stops = derive_stop_reasons(job, events)
         for sr in stops:
             if sr.status == "active":
+                # F032 T002d: this branch COPIES a structured record into a card
+                # and cited none of the identifiers it already holds.  All three
+                # receipts are read off `sr` rather than derived afresh: the
+                # record's own id — the value `sr:` above is already built from,
+                # so it names the same record the card came from — the reason
+                # code the run wrote, and the file the stop is about.  The last
+                # two are OPTIONAL on the record: `_load_stops` defaults both to
+                # the empty string and `derive_stop_reasons`' no-target-repo case
+                # leaves `related_file` empty, so rule (c) of
+                # `evidence_triple_problems`, which refuses a ref pointing at
+                # nothing, would fire on a real card if either were unguarded.
+                _sr_refs = [DecisionEvidenceRef(
+                    kind="failure",
+                    target=sr.id,
+                    label="the stop record that raised this decision",
+                )]
+                if sr.reason_code:
+                    _sr_refs.append(DecisionEvidenceRef(
+                        kind="failure",
+                        target=sr.reason_code,
+                        label="the reason code the run recorded",
+                    ))
+                if sr.related_file:
+                    _sr_refs.append(DecisionEvidenceRef(
+                        kind="file",
+                        target=sr.related_file,
+                        label="the file this stop is about",
+                    ))
                 decisions.append(HumanDecision(
                     id=f"sr:{sr.id}",
                     type="stop_reason",
@@ -199,6 +227,31 @@ def list_decisions(
                     next_actions=sr.next_actions,
                     created_at=sr.created_at,
                     resolved_at=None,
+                    # NO `payload` IS ADDED HERE, deliberately.  This branch
+                    # copies the record's own `next_actions`, which are command
+                    # lines rather than option words, so growing an options list
+                    # would change what the browser renders as answers and
+                    # amendment A3 of `docs/roadmap/features/T5_F032.md` puts
+                    # that OUT of F032's scope — exactly as it did for the patch
+                    # approval at R8.  DECISION F032 D3's optionless case
+                    # therefore applies and rule (h) requires EXACTLY ONE
+                    # outcome, keyed `UNKEYED_OPTION`.
+                    evidence=DecisionEvidenceTriple(
+                        refs=tuple(_sr_refs),
+                        outcomes=(DecisionOptionOutcome(
+                            option=UNKEYED_OPTION,
+                            expected_outcome=(
+                                "Clearing the named blocker lets the run "
+                                "continue from where it stopped, with the work "
+                                "already done still in place."
+                            ),
+                            downside=(
+                                "Until it is cleared the run makes no further "
+                                "progress, and a blocker cleared without "
+                                "understanding why it fired can fire again."
+                            ),
+                        ),),
+                    ),
                 ))
     except (ImportError, ValueError, OSError, AttributeError):
         pass
