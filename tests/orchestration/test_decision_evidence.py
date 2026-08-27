@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import pytest
 
+from packages.core.models import Artifact, Job
 from packages.memory import local_gateway
 from packages.memory.models import MemoryEntry
 from packages.orchestration import decision_evidence
@@ -282,7 +283,9 @@ def test_the_shipped_required_type_set_holds_exactly_the_upgraded_producers():
     membership rather than to containment, so adding a type ahead of its
     producer's upgrade fails here first.
     """
-    assert TRIPLE_REQUIRED_TYPES == frozenset({"token_budget", "test_failure"})
+    assert TRIPLE_REQUIRED_TYPES == frozenset({
+        "token_budget", "test_failure", "patch_approval",
+    })
 
 
 def test_an_unenforced_tripleless_decision_is_left_alone():
@@ -807,4 +810,153 @@ def test_a_test_failure_decision_without_a_triple_is_refused_by_the_gate():
     message = str(excinfo.value)
     assert "tf:regression" in message
     assert "test_failure" in message
+    assert "evidence_refs is empty: a decision must cite at least one ref." in message
+
+
+# ---------------------------------------------------------------------------
+# F032 T002c — the patch-approval card, the richest evidence in the queue
+#
+# These drive the REAL branch through `list_decisions` from a job built the way
+# `approval_queue.list_patch_intents` requires — an `Artifact` whose metadata
+# carries `patch_intent_explanations` — for the same reason the budget and
+# test-failure tests above do: a hand-built card would pass while the shipped
+# producer stayed wrong.
+# ---------------------------------------------------------------------------
+
+#: Neither half of the one unkeyed outcome varies with what the intent carried,
+#: so both are written once and pinned wherever the outcome is asserted.
+PATCH_APPROVAL_EXPECTED_OUTCOME = (
+    "The named file's pending change is settled either way: approving applies "
+    "the patch and unblocks the task that produced it, while rejecting leaves "
+    "the working tree untouched."
+)
+PATCH_APPROVAL_DOWNSIDE = (
+    "The judgement is made from the intent's summary and target path rather "
+    "than from the applied diff, so a patch that is wrong in a way the summary "
+    "does not reveal is approved as easily as a correct one."
+)
+
+
+def _patch_approval_decision(explanation: dict) -> HumanDecision:
+    """The card the real branch builds from one pending patch intent."""
+    artifact = Artifact(
+        name="patch",
+        content="",
+        metadata={"patch_intent_explanations": [explanation]},
+    )
+    job = Job(
+        name="f032-t002c-job",
+        user_prompt="Drive the patch-approval branch",
+        tasks=[],
+        artifacts=[artifact],
+        metadata={"target_repo": "/tmp/repo"},
+    )
+    decisions = [d for d in list_decisions(job, []) if d.type == "patch_approval"]
+    assert len(decisions) == 1
+    return decisions[0]
+
+
+def _named_target_explanation() -> dict:
+    return {
+        "file": "README.md",
+        "action": "modify",
+        "risk": "low",
+        "reason": "docs",
+        "summary": "touch the readme",
+    }
+
+
+def _no_target_explanation() -> dict:
+    """The same intent with NO `file` key — `target_path` comes back empty."""
+    return {
+        "action": "preview-only",
+        "risk": "unknown",
+        "reason": "no path could be derived",
+        "summary": "a patch whose target was never resolved",
+    }
+
+
+def test_the_patch_approval_card_cites_the_intent_and_the_file():
+    decision = _patch_approval_decision(_named_target_explanation())
+
+    assert [(r.kind, r.target, r.label) for r in decision.evidence.refs] == [
+        ("decision", decision.related_intent_id,
+         "the patch intent awaiting approval"),
+        ("file", "README.md", "the file this patch would change"),
+    ]
+
+
+def test_the_patch_approval_card_omits_the_file_ref_when_no_path_was_named():
+    """PINS THE CONDITIONAL: made unconditional, this ref targets the empty
+    string, which rule (c) of ``evidence_triple_problems`` refuses outright.
+    """
+    decision = _patch_approval_decision(_no_target_explanation())
+
+    assert [(r.kind, r.target, r.label) for r in decision.evidence.refs] == [
+        ("decision", decision.related_intent_id,
+         "the patch intent awaiting approval"),
+    ]
+
+
+@pytest.mark.parametrize(
+    "explanation",
+    [_named_target_explanation(), _no_target_explanation()],
+    ids=["target-named", "no-target"],
+)
+def test_no_patch_approval_ref_ever_points_at_nothing(explanation):
+    decision = _patch_approval_decision(explanation)
+
+    assert decision.evidence.refs
+    assert all(r.target for r in decision.evidence.refs)
+    assert evidence_triple_problems(decision.evidence, options=[]) == []
+
+
+@pytest.mark.parametrize(
+    "explanation",
+    [_named_target_explanation(), _no_target_explanation()],
+    ids=["target-named", "no-target"],
+)
+def test_the_patch_approval_card_carries_exactly_one_unkeyed_outcome(explanation):
+    """DECISION F032 D3 rule (h): this branch offers no options at all.
+
+    Its ``next_actions`` are two ``remedy patch`` command lines rather than two
+    option words, and amendment A3 puts growing an options list out of scope, so
+    the card keeps an EMPTY payload and owes one outcome for the decision.
+    """
+    decision = _patch_approval_decision(explanation)
+
+    assert decision.payload == {}
+    assert [(o.option, o.expected_outcome, o.downside)
+            for o in decision.evidence.outcomes] == [
+        (UNKEYED_OPTION, PATCH_APPROVAL_EXPECTED_OUTCOME, PATCH_APPROVAL_DOWNSIDE),
+    ]
+
+
+@pytest.mark.parametrize(
+    "explanation",
+    [_named_target_explanation(), _no_target_explanation()],
+    ids=["target-named", "no-target"],
+)
+def test_the_patch_approval_card_exports_the_present_status(explanation):
+    wire = export_decision_json(_patch_approval_decision(explanation))
+
+    assert wire["evidence_status"] == "present"
+    assert wire["evidence_status"] == DECISION_EVIDENCE_STATUS_PRESENT
+    assert wire["evidence_status"] != DECISION_EVIDENCE_STATUS_LEGACY
+
+
+def test_a_patch_approval_decision_without_a_triple_is_refused_by_the_gate():
+    """`patch_approval` is ENFORCED from this round, so a dropped triple raises."""
+    decision = _decision(
+        decision_id="pa:regression",
+        decision_type="patch_approval",
+        evidence=None,
+    )
+
+    with pytest.raises(DecisionEvidenceError) as excinfo:
+        enforce_decision_evidence([decision])
+
+    message = str(excinfo.value)
+    assert "pa:regression" in message
+    assert "patch_approval" in message
     assert "evidence_refs is empty: a decision must cite at least one ref." in message
