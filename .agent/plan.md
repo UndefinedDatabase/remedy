@@ -13,36 +13,34 @@ fails its own test. `docs/roadmap/features/T5_F032.md` holds Goal & Done, the
 task slicing and the design amendments that reconcile it with the source.
 
 ## Current Step
-T002 is COMPLETE: all eight producing types carry real triples and the emit
-gate is fully live. R13 opens T003 on the browser side, where nothing has read
-`evidence_refs`, `outcomes` or `evidence_status` since T001b put them on the
-wire. It projects all three in `apps/ui/src/api/decisionCard.ts` — the layer
-DECISION F031 D5 puts all branching in — and attaches each option's outcome to
-ITS OWN answer. No `.tsx` and no CSS this round.
+R14 renders what R13's model carries: the receipts as chips on the card, the
+honest note when a card has none, and each answer's expected outcome and
+downside under the answer they belong to. It is the first F032 round the
+canonical design reference binds, and §17 of its `ux_spec.md` decides the
+markup — a ref's scrubbed label is shown, its raw target never is. The
+component's existing contract guards read it as text, so this round adds its
+own guards rather than leaving new markup unpinned.
 
 | Item | Status | Reason |
 |------|--------|--------|
 | C0a and C0b, save and mirror the block | ordered | |
 | C1 the plan | ordered | first substantive commit |
-| C2 the R12 verdict | ordered | the record is touched first |
-| C3 the model and its types | ordered | S2 to S7 |
-| C4 its tests | ordered | S8 |
+| C2 the R13 verdict | ordered | the record is touched first |
+| C3 the component and its styles | ordered | S2 to S5, one commit |
+| C4 the contract guards | ordered | S6 |
 | C5 the handback | ordered | |
 
 ## Next Steps
-1. T003b: the card component projects what the model now carries — chips for
-   the refs, each option's outcome and downside under its own answer. It is
-   the round that touches `.tsx` and CSS, so it is bound by the canonical
-   design reference, and it must first read the source-counting guards in
-   `tests/ui_contracts/test_decision_answer_wiring.py`.
-2. T003c: the chips deep-link into the evidence panel.
-3. The integration gate, then the closure sequence.
+1. T003c: the chips become deep links into the evidence panel, the slice that
+   finally uses the `target` R14 deliberately does not render.
+2. The integration gate — the full suite, per docs/agents/integration_gate.md.
+3. The closure sequence: evidence job, a fresh review zip, the STATUS line and
+   the pull request, per docs/roadmap/STATUS_closure_protocol.md.
 
 ## Risks
-- §17 of `docs/ui/design_reference/ux_spec.md` forbids the UI to show raw ids
-  or present/missing signals, and a ref's `target` is often exactly a raw id.
-  The model therefore decides the display text and routes it through
-  `scrubUiText`; a renderer that reached for `target` instead would reintroduce
-  the leak the model exists to prevent.
-- The model is the only layer the shipped vitest config can cover, so keeping
-  the component out of this round is what makes every line of it testable.
+- The card's guards read the `.tsx` as TEXT, so a class name or an attribute
+  carrying the substring `hidden`, or an `aria-live` added after the outcome
+  paragraph, turns a guard red for a reason unrelated to what it protects.
+- The empty cases are collapsed out of flow rather than removed, because the
+  node has to stay in the accessibility tree; that is finding R-0686's lesson
+  and the neighbouring rules already carry it.
