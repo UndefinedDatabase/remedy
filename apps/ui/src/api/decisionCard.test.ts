@@ -76,8 +76,8 @@ describe("decisionAnswers", () => {
       payload: { options: ["retry", "skip"] },
     };
     expect(decisionAnswers(card)).toEqual([
-      { kind: "option", label: "retry", value: "retry" },
-      { kind: "option", label: "skip", value: "skip" },
+      { kind: "option", label: "retry", value: "retry", posts: false },
+      { kind: "option", label: "skip", value: "skip", posts: false },
     ]);
   });
 
@@ -87,14 +87,14 @@ describe("decisionAnswers", () => {
       next_actions: ["remedy resume", "remedy abort"],
     };
     expect(decisionAnswers(card)).toEqual([
-      { kind: "command", label: "remedy resume", value: "remedy resume" },
-      { kind: "command", label: "remedy abort", value: "remedy abort" },
+      { kind: "command", label: "remedy resume", value: "remedy resume", posts: false },
+      { kind: "command", label: "remedy abort", value: "remedy abort", posts: false },
     ]);
   });
 
   it("falls back to a single free-text answer when the card names neither", () => {
     expect(decisionAnswers({ type: "task_decision" })).toEqual([
-      { kind: "free_text", label: "Answer", value: "" },
+      { kind: "free_text", label: "Answer", value: "", posts: false },
     ]);
   });
 
@@ -105,14 +105,14 @@ describe("decisionAnswers", () => {
       next_actions: ["remedy resume"],
     };
     expect(decisionAnswers(card)).toEqual([
-      { kind: "command", label: "remedy resume", value: "remedy resume" },
+      { kind: "command", label: "remedy resume", value: "remedy resume", posts: false },
     ]);
   });
 
   it("falls through a missing payload without throwing", () => {
     expect(() => decisionAnswers({ type: "task_decision" })).not.toThrow();
     expect(decisionAnswers({ type: "task_decision", payload: null })).toEqual([
-      { kind: "free_text", label: "Answer", value: "" },
+      { kind: "free_text", label: "Answer", value: "", posts: false },
     ]);
   });
 
@@ -122,8 +122,8 @@ describe("decisionAnswers", () => {
       payload: { options: [7, true] },
     };
     expect(decisionAnswers(card)).toEqual([
-      { kind: "option", label: "7", value: "7" },
-      { kind: "option", label: "true", value: "true" },
+      { kind: "option", label: "7", value: "7", posts: false },
+      { kind: "option", label: "true", value: "true", posts: false },
     ]);
   });
 
@@ -134,8 +134,45 @@ describe("decisionAnswers", () => {
       payload: { options: ["realign now", "defer one cycle"] },
     };
     expect(decisionAnswers(card)).toEqual([
-      { kind: "option", label: "realign now", value: "realign now" },
-      { kind: "option", label: "defer one cycle", value: "defer one cycle" },
+      { kind: "option", label: "realign now", value: "realign now", posts: false },
+      { kind: "option", label: "defer one cycle", value: "defer one cycle", posts: false },
+    ]);
+  });
+
+  it("stamps posts TRUE on EVERY answer when the endpoint says the door can answer", () => {
+    const card: DecisionInboxEntry = {
+      type: "task_decision",
+      payload: { options: ["keep first", "keep second"] },
+      answerable_by_decision_resolve: true,
+    };
+    const answers = decisionAnswers(card);
+    expect(answers).toHaveLength(2);
+    expect(answers.map((answer) => answer.posts)).toEqual([true, true]);
+  });
+
+  it("stamps posts FALSE on EVERY answer when the endpoint says the door would refuse", () => {
+    const card: DecisionInboxEntry = {
+      type: NOVEL_TYPE,
+      next_actions: ["remedy resume", "remedy abort"],
+      answerable_by_decision_resolve: false,
+    };
+    const answers = decisionAnswers(card);
+    expect(answers).toHaveLength(2);
+    expect(answers.map((answer) => answer.posts)).toEqual([false, false]);
+  });
+
+  it("stamps posts FALSE when the key is ABSENT, so an older server posts nothing", () => {
+    // The reading is strict `=== true`. A server older than R43 sends no such
+    // key at all, and `undefined` must not be read as permission to post.
+    const card: DecisionInboxEntry = { type: "task_decision" };
+    expect(card.answerable_by_decision_resolve).toBeUndefined();
+    expect(decisionAnswers(card).map((answer) => answer.posts)).toEqual([false]);
+  });
+
+  it("stamps posts FALSE on the free-text fallback too, which has no payload to read", () => {
+    const answers = decisionAnswers({ type: NOVEL_TYPE, answerable_by_decision_resolve: false });
+    expect(answers).toEqual([
+      { kind: "free_text", label: "Answer", value: "", posts: false },
     ]);
   });
 
@@ -173,9 +210,10 @@ describe("buildDecisionCardModel", () => {
       blockedLabel: "blocks 3 tasks",
       blockedCount: 3,
       isOpen: true,
+      answerableByDecisionResolve: false,
       answers: [
-        { kind: "option", label: "keep first", value: "keep first" },
-        { kind: "option", label: "keep second", value: "keep second" },
+        { kind: "option", label: "keep first", value: "keep first", posts: false },
+        { kind: "option", label: "keep second", value: "keep second", posts: false },
       ],
     });
   });
@@ -203,6 +241,18 @@ describe("buildDecisionCardModel", () => {
     expect(buildDecisionCardModel({ id: "d-6", payload: { task_id: 7 } }).taskId).toBe("");
   });
 
+  it("projects the endpoint's answerability key under its camel-case name", () => {
+    const model = buildDecisionCardModel({ id: "d-7", answerable_by_decision_resolve: true });
+    expect(model.answerableByDecisionResolve).toBe(true);
+    expect(model.answers.every((answer) => answer.posts)).toBe(true);
+  });
+
+  it("reads an ABSENT answerability key as false rather than as unknown", () => {
+    const model = buildDecisionCardModel({ id: "d-8" });
+    expect(model.answerableByDecisionResolve).toBe(false);
+    expect(model.answers.every((answer) => answer.posts)).toBe(false);
+  });
+
   it("does not treat a resolved decision as open", () => {
     expect(buildDecisionCardModel({ status: "resolved" }).isOpen).toBe(false);
   });
@@ -221,7 +271,8 @@ describe("buildDecisionCardModel", () => {
       blockedLabel: "blocks nothing",
       blockedCount: 0,
       isOpen: false,
-      answers: [{ kind: "free_text", label: "Answer", value: "" }],
+      answerableByDecisionResolve: false,
+      answers: [{ kind: "free_text", label: "Answer", value: "", posts: false }],
     });
   });
 });

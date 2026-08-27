@@ -40,6 +40,12 @@ export interface DecisionAnswer {
   kind: DecisionAnswerKind;
   label: string;
   value: string;
+  /** WHETHER PRESSING THIS AFFORDANCE MAY POST. False when the write door would
+   *  refuse the decision — `decision.resolve` answers exactly one of the eight
+   *  producing types — and a renderer shows the `value` as PASTEABLE TEXT there
+   *  instead of a control, so the affordance never claims a send that the door
+   *  would turn away (finding R-0693). */
+  posts: boolean;
 }
 
 /** One decision card, flattened into exactly the fields a renderer projects.
@@ -64,11 +70,15 @@ export interface DecisionCardModel {
   blockedLabel: string;
   blockedCount: number;
   isOpen: boolean;
+  /** The camel-case projection of the endpoint's own
+   *  `answerable_by_decision_resolve`, carried on the model so the component
+   *  that projects it never has to read a raw endpoint entry. */
+  answerableByDecisionResolve: boolean;
   answers: DecisionAnswer[];
 }
 
 /** One entry of the endpoint's `decisions` array, in the endpoint's OWN key
- *  spellings — `export_decision_json` plus the two keys `build_decision_inbox`
+ *  spellings — `export_decision_json` plus the three keys `build_decision_inbox`
  *  adds. DECISION F031 D1 rules that the browser and the CLI describe one thing
  *  one way, so no key is renamed on the way in. Every field is optional and the
  *  untrusted ones are `unknown`, because the payload comes from a producer this
@@ -83,6 +93,11 @@ export interface DecisionInboxEntry {
   payload?: unknown;
   age_seconds?: number | null;
   blocked_count?: number;
+  /** WHETHER THE WRITE DOOR CAN REALLY ANSWER THIS CARD, as the server derived
+   *  it in `decision_inbox._answerable_by_decision_resolve`. Optional because a
+   *  server older than R43 does not send it, and the readings below are strict
+   *  so that its absence never renders a posting control. */
+  answerable_by_decision_resolve?: boolean;
 }
 
 /** The endpoint's inbox document. `decisions` is `unknown` for the same reason
@@ -157,11 +172,17 @@ function payloadTaskId(payload: unknown): unknown {
 }
 
 /** Entries rendered as answers of one kind. A non-string entry goes through
- *  `String` rather than being dropped, for the same reason. */
-function entriesAsAnswers(entries: unknown[], kind: DecisionAnswerKind): DecisionAnswer[] {
+ *  `String` rather than being dropped, for the same reason. `posts` is handed
+ *  in rather than derived here: it is one card-wide reading, so computing it
+ *  per entry would let two answers of one card disagree. */
+function entriesAsAnswers(
+  entries: unknown[],
+  kind: DecisionAnswerKind,
+  posts: boolean,
+): DecisionAnswer[] {
   return entries.map((entry) => {
     const text = String(entry);
-    return { kind, label: text, value: text };
+    return { kind, label: text, value: text, posts };
   });
 }
 
@@ -171,15 +192,21 @@ function entriesAsAnswers(entries: unknown[], kind: DecisionAnswerKind): Decisio
  *  here, never control flow — which is exactly what lets a decision type this
  *  repository has never produced render generically. */
 export function decisionAnswers(card: DecisionInboxEntry): DecisionAnswer[] {
+  // ONE READING, STAMPED ON EVERY BRANCH BELOW. The comparison is strict
+  // `=== true` on purpose: an ABSENT key must give false, so a payload from a
+  // server older than R43 renders no posting control at all. This is still not
+  // a branch on `card.type` — it is a boolean the SERVER derived, data here in
+  // exactly the way `blocked_count` is data.
+  const posts = card.answerable_by_decision_resolve === true;
   const options = nonEmptyEntries(payloadOptions(card.payload));
   if (options.length > 0) {
-    return entriesAsAnswers(options, "option");
+    return entriesAsAnswers(options, "option", posts);
   }
   const commands = nonEmptyEntries(card.next_actions);
   if (commands.length > 0) {
-    return entriesAsAnswers(commands, "command");
+    return entriesAsAnswers(commands, "command", posts);
   }
-  return [{ kind: "free_text", label: "Answer", value: "" }];
+  return [{ kind: "free_text", label: "Answer", value: "", posts }];
 }
 
 /** A string field of the endpoint's card, or the empty string when it is absent
@@ -212,6 +239,9 @@ export function buildDecisionCardModel(card: DecisionInboxEntry): DecisionCardMo
     blockedLabel: decisionBlockedLabel(blockedCount),
     blockedCount,
     isOpen: card.status === "open",
+    // The SAME strict reading `decisionAnswers` makes above, so a card and each
+    // of its answers can never disagree about whether the door would take them.
+    answerableByDecisionResolve: card.answerable_by_decision_resolve === true,
     answers: decisionAnswers(card),
   };
 }
