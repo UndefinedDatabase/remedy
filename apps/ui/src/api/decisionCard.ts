@@ -28,6 +28,17 @@
 // click, so a card built here is answerable end to end. This module reads no
 // clock either — an age arrives as the endpoint's own `age_seconds`, exactly as
 // `recency.ts` takes `nowMs`.
+//
+// THE EVIDENCE TRIPLE (T5_F032 T003a) is projected here for the same reason:
+// `evidence_refs`, `outcomes` and `evidence_status` arrive raw, and each needs a
+// rule before it can be shown. §17 of `docs/ui/design_reference/ux_spec.md`
+// forbids the default UI to show raw ids or a present/missing signal, so this
+// module decides the DISPLAY TEXT — a ref's scrubbed `label`, never its
+// `target`; a sentence, never a status string — and a renderer projects what it
+// is given. An option's outcome is attached to ITS OWN answer rather than left
+// on the card, so no component has to match an outcome key to a value.
+
+import { scrubUiText } from "../copy/humanCopy";
 
 /** What kind of affordance a card offers. `free_text` is the fallback the
  *  producer never has to ask for: a question is never shown without some way to
@@ -46,6 +57,17 @@ export interface DecisionAnswer {
    *  instead of a control, so the affordance never claims a send that the door
    *  would turn away (finding R-0693). */
   posts: boolean;
+  /** WHAT PRESSING THIS ANSWER IS EXPECTED TO DO, carried on the answer itself
+   *  rather than on the card. The triple's `outcomes` are keyed by option, so a
+   *  renderer holding only the card would have to match a key to show the right
+   *  sentence — that is a branch, and DECISION F031 D5 puts branches here. The
+   *  EMPTY STRING when the card carries no triple, or when no outcome of it
+   *  applies to this answer, so a renderer needs no test for `undefined`. */
+  expectedOutcome: string;
+  /** WHAT IT COSTS IF THE EXPECTATION IS WRONG — the other half of the same
+   *  outcome record, matched and defaulted exactly as `expectedOutcome` is, so
+   *  the two can never come from different outcomes of the same card. */
+  downside: string;
 }
 
 /** One still-open question the flight plan is waiting on, in the model's own
@@ -59,6 +81,21 @@ export interface DecisionClarification {
   question: string;
   defaultAnswer: string;
   impact: string;
+}
+
+/** ONE RECEIPT BEHIND A DECISION, projected for display. `kind` and `target`
+ *  are carried EXACTLY as the endpoint sent them — the next round's deep link
+ *  opens `target`, so trimming or reformatting it would break the link — but
+ *  `label` is ALREADY SCRUBBED and is the only one of the three a renderer may
+ *  show. §17 of `docs/ui/design_reference/ux_spec.md` forbids the default UI to
+ *  show raw ids, and a `target` is frequently exactly that: a test run id, an
+ *  escalation id like `td:1`, a stop record id. There is deliberately NO
+ *  `chipLabel` field beside these — `label` IS what a chip shows, and a second
+ *  spelling of one string is a way for two renderers to disagree. */
+export interface DecisionEvidenceRef {
+  kind: string;
+  target: string;
+  label: string;
 }
 
 /** One decision card, flattened into exactly the fields a renderer projects.
@@ -93,6 +130,19 @@ export interface DecisionCardModel {
    *  flight-plan approval — so a renderer needs no branch of its own and the
    *  model stays as total as every other field here. */
   clarifications: DecisionClarification[];
+  /** The receipts behind this decision, projected from the endpoint's own
+   *  `evidence_refs`. EMPTY for a card carrying no triple — a card recorded
+   *  before F032 required one, or a producer that sent none — so a renderer
+   *  iterates and needs no branch of its own. */
+  evidenceRefs: DecisionEvidenceRef[];
+  /** WHY THIS CARD HAS NO RECEIPTS, as a sentence, or the EMPTY STRING when it
+   *  has them. The endpoint's `evidence_status` is literally a present/missing
+   *  signal and §17 forbids the default UI to show one, so the raw status never
+   *  reaches the model and neither status constant appears in this text.
+   *  Remedy deliberately carries NO boolean beside this: the empty string
+   *  already tells a renderer there is nothing to say, and a second field would
+   *  let the two disagree. */
+  evidenceNote: string;
 }
 
 /** One entry of the endpoint's `decisions` array, in the endpoint's OWN key
@@ -116,6 +166,17 @@ export interface DecisionInboxEntry {
    *  server older than R43 does not send it, and the readings below are strict
    *  so that its absence never renders a posting control. */
   answerable_by_decision_resolve?: boolean;
+  /** THE EVIDENCE TRIPLE, in the endpoint's own spellings and UNTRUSTED, for
+   *  the reason this interface's own comment already gives: `export_decision_json`
+   *  writes all three onto every card, always present and EMPTY rather than
+   *  absent, but the payload still comes from a producer this module does not
+   *  control and must type-check anyway. `unknown` rather than a shaped type is
+   *  deliberate — the readers below narrow each at runtime exactly as `payload`
+   *  is narrowed, so a malformed triple costs the receipts and never the card.
+   *  No key is renamed on the way in. */
+  evidence_refs?: unknown;
+  outcomes?: unknown;
+  evidence_status?: unknown;
 }
 
 /** The endpoint's inbox document. `decisions` is `unknown` for the same reason
@@ -200,18 +261,95 @@ function payloadClarifications(payload: unknown): unknown {
   return (payload as { clarifications?: unknown }).clarifications;
 }
 
+/** The key an OPTIONLESS decision's single outcome carries — `UNKEYED_OPTION`
+ *  in `packages/orchestration/decision_evidence.py`, which is literally the
+ *  empty string. Named here so the match below reads as the rule it implements
+ *  rather than as a comparison against a bare `""`. */
+const UNKEYED_OPTION = "";
+
+/** What an outcome record says, once matched to an answer. Both halves travel
+ *  together so a card can never show one answer's expectation beside another
+ *  answer's downside. */
+interface DecisionOutcomeText {
+  expectedOutcome: string;
+  downside: string;
+}
+
+/** No outcome applies: the card carries no triple, or none of its outcomes
+ *  matches this answer. Two EMPTY STRINGS rather than `undefined`, so every
+ *  answer has the same shape and a renderer needs no test. */
+const NO_OUTCOME_TEXT: DecisionOutcomeText = { expectedOutcome: "", downside: "" };
+
+/** The card's `outcomes` narrowed to the records this module can read. A
+ *  non-array value gives none and a non-object entry is skipped, exactly as
+ *  `cardClarifications` does, so no producer's mistake makes the model throw. */
+function cardOutcomes(value: unknown): { option: string; text: DecisionOutcomeText }[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  const outcomes: { option: string; text: DecisionOutcomeText }[] = [];
+  value.forEach((entry) => {
+    if (typeof entry !== "object" || entry === null) {
+      return;
+    }
+    const record = entry as {
+      option?: unknown;
+      expected_outcome?: unknown;
+      downside?: unknown;
+    };
+    outcomes.push({
+      option: cardText(record.option),
+      text: {
+        expectedOutcome: cardText(record.expected_outcome),
+        downside: cardText(record.downside),
+      },
+    });
+  });
+  return outcomes;
+}
+
+/** HOW AN OUTCOME FINDS ITS ANSWER, as ONE card-wide reading handed to every
+ *  answer below. An answer's own `value` is matched against each outcome's
+ *  `option`. Failing that, a card carrying exactly one UNKEYED outcome applies
+ *  it to EVERY answer — that is the shape five of the eight producers emit,
+ *  because a decision with no options still has one expectation to state. When
+ *  neither holds the answer carries two empty strings. This is a match on the
+ *  decision's own DATA and never on its `type`. */
+function outcomeMatcher(value: unknown): (answerValue: string) => DecisionOutcomeText {
+  const outcomes = cardOutcomes(value);
+  const unkeyed = outcomes.filter((outcome) => outcome.option === UNKEYED_OPTION);
+  return (answerValue: string) => {
+    const keyed = outcomes.find((outcome) => outcome.option === answerValue);
+    if (keyed !== undefined) {
+      return keyed.text;
+    }
+    return unkeyed.length === 1 ? unkeyed[0].text : NO_OUTCOME_TEXT;
+  };
+}
+
 /** Entries rendered as answers of one kind. A non-string entry goes through
  *  `String` rather than being dropped, for the same reason. `posts` is handed
  *  in rather than derived here: it is one card-wide reading, so computing it
- *  per entry would let two answers of one card disagree. */
+ *  per entry would let two answers of one card disagree. `outcomeFor` is handed
+ *  in for exactly the same reason — it closes over the card's whole outcome
+ *  list, so every answer is matched against one and the same set. */
 function entriesAsAnswers(
   entries: unknown[],
   kind: DecisionAnswerKind,
   posts: boolean,
+  outcomeFor: (answerValue: string) => DecisionOutcomeText,
 ): DecisionAnswer[] {
   return entries.map((entry) => {
     const text = String(entry);
-    return { kind, label: text, value: text, posts };
+    const outcome = outcomeFor(text);
+    return {
+      kind,
+      label: text,
+      value: text,
+      posts,
+      expectedOutcome: outcome.expectedOutcome,
+      downside: outcome.downside,
+    };
   });
 }
 
@@ -227,15 +365,33 @@ export function decisionAnswers(card: DecisionInboxEntry): DecisionAnswer[] {
   // a branch on `card.type` — it is a boolean the SERVER derived, data here in
   // exactly the way `blocked_count` is data.
   const posts = card.answerable_by_decision_resolve === true;
+  // THE SECOND CARD-WIDE READING, for the same reason `posts` is one: the
+  // outcome list belongs to the CARD, so matching it here is what makes it
+  // impossible for a card and one of its answers to disagree about what
+  // pressing that answer is expected to do. Derived once, handed to each branch.
+  const outcomeFor = outcomeMatcher(card.outcomes);
   const options = nonEmptyEntries(payloadOptions(card.payload));
   if (options.length > 0) {
-    return entriesAsAnswers(options, "option", posts);
+    return entriesAsAnswers(options, "option", posts, outcomeFor);
   }
   const commands = nonEmptyEntries(card.next_actions);
   if (commands.length > 0) {
-    return entriesAsAnswers(commands, "command", posts);
+    return entriesAsAnswers(commands, "command", posts, outcomeFor);
   }
-  return [{ kind: "free_text", label: "Answer", value: "", posts }];
+  // The free-text fallback's `value` is the empty string, which IS
+  // `UNKEYED_OPTION`, so the one outcome an optionless decision carries reaches
+  // it through the same match every other answer uses rather than a special case.
+  const fallback = outcomeFor("");
+  return [
+    {
+      kind: "free_text",
+      label: "Answer",
+      value: "",
+      posts,
+      expectedOutcome: fallback.expectedOutcome,
+      downside: fallback.downside,
+    },
+  ];
 }
 
 /** A string field of the endpoint's card, or the empty string when it is absent
@@ -284,6 +440,65 @@ function cardClarifications(payload: unknown): DecisionClarification[] {
   return questions;
 }
 
+/** The word a chip shows when the producer's own label survives no scrubbing —
+ *  a label that was blank, or was itself a raw id. Showing this is deliberately
+ *  better than dropping the ref: losing a receipt entirely is a worse failure
+ *  than showing a generic word, and the chip still opens the right target. */
+const EVIDENCE_REF_FALLBACK_LABEL = "Receipt";
+
+/** THE STATUS THE ENDPOINT SENDS FOR A CARD THAT HAS ITS RECEIPTS —
+ *  `DECISION_EVIDENCE_STATUS_PRESENT` in
+ *  `packages/orchestration/decision_evidence.py`. Compared here and never shown:
+ *  a status string IS the present/missing signal §17 forbids. */
+const EVIDENCE_STATUS_PRESENT = "present";
+
+/** WHAT AN OPERATOR IS TOLD ABOUT A CARD WITH NO RECEIPTS. One sentence, in
+ *  words rather than in a status token, covering every reading that is not
+ *  `present` — including a card whose status key is absent altogether, which is
+ *  a record written before F032 required a triple. */
+const EVIDENCE_NOTE_WITHOUT_RECEIPTS = "Recorded before receipts were required.";
+
+/** THE REF PROJECTION, and the place §17 is enforced for this feature. A chip's
+ *  text is the ref's `label` routed through `scrubUiText`, NEVER its `target`,
+ *  because a target is frequently a raw id and `scrubUiText` is the only way
+ *  this app produces human phrasing. A REF WHOSE `target` IS BLANK AFTER
+ *  TRIMMING IS DROPPED: a chip that points at nothing cannot be followed, and
+ *  the deep link the next round adds would have nothing to open. The surviving
+ *  `target` is carried UNTRIMMED and unscrubbed, exactly as a clarification's
+ *  `id` is, because the link resolver compares it by equality. Total like every
+ *  reader above — a non-array value, a non-object entry and a non-string field
+ *  each fall back rather than raise. */
+function cardEvidenceRefs(value: unknown): DecisionEvidenceRef[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  const refs: DecisionEvidenceRef[] = [];
+  value.forEach((entry) => {
+    if (typeof entry !== "object" || entry === null) {
+      return;
+    }
+    const record = entry as { kind?: unknown; target?: unknown; label?: unknown };
+    const target = cardText(record.target);
+    if (target.trim() === "") {
+      return;
+    }
+    refs.push({
+      kind: cardText(record.kind),
+      target,
+      label: scrubUiText(record.label, EVIDENCE_REF_FALLBACK_LABEL),
+    });
+  });
+  return refs;
+}
+
+/** THE STATUS AS A SENTENCE, never as a signal. The empty string when the card
+ *  really carries its receipts, and one readable sentence otherwise. The
+ *  comparison is strict on purpose: an ABSENT, null or wrongly-typed status is
+ *  not evidence that the receipts exist, so it gets the sentence too. */
+function cardEvidenceNote(status: unknown): string {
+  return status === EVIDENCE_STATUS_PRESENT ? "" : EVIDENCE_NOTE_WITHOUT_RECEIPTS;
+}
+
 /** One endpoint card as the model a renderer projects. Total by construction:
  *  every field has a fallback, so a half-written card still renders. */
 export function buildDecisionCardModel(card: DecisionInboxEntry): DecisionCardModel {
@@ -317,6 +532,11 @@ export function buildDecisionCardModel(card: DecisionInboxEntry): DecisionCardMo
     // pending approval card — and the write door takes them back as
     // `args.answers`, so the form cannot exist until the model carries them.
     clarifications: cardClarifications(card.payload),
+    // WHY here: `evidence_refs` is the ONLY place the receipts behind a decision
+    // reach the browser — `export_decision_json` writes them onto every card —
+    // and the chips that show them cannot exist until the model carries them.
+    evidenceRefs: cardEvidenceRefs(card.evidence_refs),
+    evidenceNote: cardEvidenceNote(card.evidence_status),
   };
 }
 
