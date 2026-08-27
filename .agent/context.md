@@ -52,3 +52,22 @@ This order's own constraints:
 - `tests/docs/test_docs_consistency.py` resolves every markdown link in
   AGENTS.md against disk, so a new path is named in backticks or its file
   exists in the same commit.
+- THE FOUR STATE READERS ARE RUN AS FOUR, NOT AS THREE. The bullet above
+  names `tests/ui_server/` first for a reason: this order's own C0 rewrite of
+  this file dropped its `## Steps` section, and the gate that catches that —
+  `tests/ui_server/test_dashboard_contract.py::TestLiveReviewAndAgentStateRefs`
+  — was the one omitted from every gate run after the merge, so the defect
+  reached a hosted red. The full contract those readers hold over these three
+  files, so a rewrite can be checked against it directly: `.agent/context.md`
+  carries `## Active Branch`, a `feature/` branch name, a roadmap feature id
+  matching `\bF\d{3}\b` and the word `Steps`; `.agent/plan.md` carries
+  `## Goal`, `## Next Steps` and a feature id; `.agent/live_review.md` carries
+  `Steps`.
+
+## Steps
+This order has no round map: it is a single collection order, not a feature
+build. The six rules, the four candidate dispositions and the remaining
+actions live in the `## Current Step` table of `.agent/plan.md`, and the round
+map for feature work stays in the `## Steps` section of
+`.agent/live_review.md`, which this file deliberately does not restate — a
+second copy of the map is what fell out of step and cost F022 a finding.

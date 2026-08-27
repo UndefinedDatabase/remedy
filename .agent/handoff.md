@@ -162,6 +162,20 @@ request #215 which closed F031. HEAD is C7, the commit that writes this file.
   was never recorded, which is why the rule adds one. The rule-2 text called the
   open set "unreadable"; it now states what was counted — 270 findings, 253 open
   against 17 ever resolved when this order opened.
+- THE FIRST HOSTED RUN OF PR #216 WENT RED, ON THIS ORDER'S OWN C0, AND THE
+  GATE THAT WOULD HAVE CAUGHT IT WAS ONE I OMITTED. Run `33080035449`:
+  `1 failed, 13139 passed, 3 skipped, 4711 deselected`, the single failure
+  `tests/ui_server/test_dashboard_contract.py::TestLiveReviewAndAgentStateRefs::test_context_md_no_stale_steps`
+  — `assert "Steps" in ctx`. C0's rewrite of `.agent/context.md` dropped the
+  `## Steps` section that file is required to carry. THE CAUSE IS NOT THE
+  REWRITE, IT IS THE GATE: this file's own standing constraint names FOUR state
+  readers and lists `tests/ui_server/` first, and every gate run after the
+  `40ed12ba` merge ran the other three and dropped it. Fixed by restoring a
+  `## Steps` section, and the constraint now spells out the full contract those
+  readers hold over the three state files so the next rewrite can be checked
+  against it directly rather than rediscovered from a red. Re-run locally with
+  all four readers plus the docs gate, roadmap index and canary: `945 passed`,
+  and the previously failing class `4 passed`.
 - PART 1 PRODUCED NO DISK ARTIFACT. The round classification was ordered as a
   report to the operator and delivered as one; it is not written into `.agent/`
   because no rule asks for it and an unbidden state file is the kind of
