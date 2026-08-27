@@ -1,217 +1,300 @@
-# Handback — F032 R9 (T002d, the stop-reason card, and the session's close)
+# Handback — F032 R10 (T002e: the two producers that cite nothing)
 
 ## Session
 
-SESSION 2 of feature F032 · round R9 · rounds so far 9
+SESSION 3 of feature F032 · round R10 · rounds so far 10
 
-SESSION 2 ENDS HERE. It delegated four rounds, R6 through R9; session 1 was
-R1 through R5. Nine rounds across two sessions is inside the soft limit of 25
+Session 1 was R1 through R5, session 2 was R6 through R9, and session 3 opens
+here at R10. Ten rounds across three sessions is inside the soft limit of 25
 rounds or 7 sessions, so no limit report is owed.
+
+## State
+
+- Feature: F032, approval with the evidence triple. Round R10, task slice T002e.
+- Branch: `feature/f032-evidence-triple`, round base `0216c5bb` (the commit that
+  closed session 2).
+- Commits this round: `b1790261`, `83529164`, `aace7acb`, `c3bc8bb3`,
+  `68ff6d8c`, `e2e9471b`, `0a6c17bf`, plus this handback commit.
+- Open findings after C2: 250 (274 registered ids minus 24 resolved). Maximum id
+  `R-0713`, which C2 resolves.
+- SIX of the eight producing types are now enforced: `token_budget`,
+  `test_failure`, `patch_approval`, `stop_reason`, `repo_dirty`,
+  `memory_review`. `flight_plan_approval` and `task_decision` remain.
+- No pull request was created and nothing was merged.
 
 ## Range
 
-Review of `c23e7cc6` (round base) .. C5 `9aa51005`, plus C6, which is the
-commit writing this file and cannot table itself.
+Review of `0216c5bb`..HEAD.
 
 ## Commits
 
-### 3dee8a49 docs(agent): save the F032 R9 step block
-| Path | +/- | Reason |
-|------|-----|--------|
-| .agent/authored/f032-r9.md | +350 / -0 | C0a, the block saved byte for byte from `.remedy-wt/f032-r9.md` |
+Every `+/-` below is read from `git diff --numstat <sha>^ <sha>`, summed over the
+commit's files. The same reading produces the insertion counts reported under G8;
+the two were derived from one `git diff --numstat` pass and compared cell by
+cell, and they agree.
 
-### 80e3c96f docs(agent): mirror the R9 block into last_block
+### b1790261 docs(agent): save the F032 R10 step block
 | Path | +/- | Reason |
 |------|-----|--------|
-| .agent/last_block.md | +192 / -198 | C0b, the mirror; same git blob as C0a |
+| .agent/authored/f032-r10.md | +332 / -0 | C0a — byte-preserving copy of `.remedy-wt/f032-r10.md` |
 
-### de45b9e0 docs(agent): point the plan at R9 and the stop-reason producer
+### 83529164 docs(agent): mirror the R10 block into last_block
 | Path | +/- | Reason |
 |------|-----|--------|
-| .agent/plan.md | +21 / -19 | C1, slice PLANF032R9 |
+| .agent/last_block.md | +274 / -292 | C0b — same bytes as C0a; git resolves both to blob `a991368a` |
 
-### 298f25ce docs(agent): book the R8 verdict and register R-0713
+### aace7acb docs(agent): set the plan to the R10 round
 | Path | +/- | Reason |
 |------|-----|--------|
-| .agent/live_review.md | +4 / -0 | C2, slice LEDGER9 appended; `F032 R8` gate key and `R-0713` |
+| .agent/plan.md | +22 / -22 | C1 — the PLANF032R10 slice, applied byte for byte |
 
-### f0ec4b09 fix(orchestration): the patch card shows its placeholder again
+### c3bc8bb3 docs(agent): book the R9 verdict and resolve R-0713
 | Path | +/- | Reason |
 |------|-----|--------|
-| packages/orchestration/decision_queue.py | +9 / -1 | C3, the `R-0713` fix (S2) |
+| .agent/live_review.md | +4 / -0 | C2 — the LEDGER10 slice appended; the only commit touching the ledger |
 
-### e26e95e0 feat(orchestration): the stop-reason card cites its own record
+### 68ff6d8c feat(orchestration): the dirty-repo card cites the reading it came from
 | Path | +/- | Reason |
 |------|-----|--------|
-| packages/orchestration/decision_evidence.py | +1 / -1 | C4, `stop_reason` joins `TRIPLE_REQUIRED_TYPES` (S5) |
-| packages/orchestration/decision_queue.py | +53 / -0 | C4, the stop-reason refs and the unkeyed outcome (S3, S4) |
+| packages/orchestration/decision_queue.py | +47 / -0 | C3 — S2 and S3: the two repo-dirty refs and the one unkeyed outcome |
+| packages/orchestration/decision_evidence.py | +1 / -0 | C3 — `repo_dirty` joins `TRIPLE_REQUIRED_TYPES` in the same commit |
 
-### 9aa51005 test(orchestration): pin the stop-reason triple and the patch placeholder
+### e2e9471b feat(orchestration): the memory-review card cites the card and its flags
 | Path | +/- | Reason |
 |------|-----|--------|
-| tests/orchestration/test_decision_evidence.py | +176 / -2 | C5, S6 |
+| packages/orchestration/decision_queue.py | +54 / -0 | C4 — S4 and S5: three guarded refs and the one unkeyed outcome |
+| packages/orchestration/decision_evidence.py | +1 / -1 | C4 — `memory_review` joins `TRIPLE_REQUIRED_TYPES` in the same commit |
 
-### C6 docs(agent): hand back F032 R9 and close session 2
+### 0a6c17bf test(orchestration): pin the two thinnest triples and repoint the guards
 | Path | +/- | Reason |
 |------|-----|--------|
-| .agent/handoff.md | self | C6 cannot table its own numstat (R-0149) |
+| tests/orchestration/test_decision_evidence.py | +341 / -3 | C5 — S6 and S7: the new T002e tests, the two repointed guards, the exact-membership update |
+
+### C6 — this handback
+| Path | +/- | Reason |
+|------|-----|--------|
+| .agent/handoff.md | not tabled | A handoff cannot table the commit that writes it (R-0149 pattern); C6's own numstat is not a value this round writes anywhere |
 
 ## Item status
 
 | Item | Status | Reason |
 |------|--------|--------|
 | C0a save this block | done | |
-| C0b mirror it into `last_block` | done | |
+| C0b mirror into `last_block` | done | |
 | C1 the plan | done | |
-| C2 the R8 verdict and `R-0713` | done | |
-| C3 the `R-0713` fix | done | |
-| C4 the stop-reason triple and the gate set | done | |
-| C5 its tests | done | |
-| C6 the session-closing handback | done | this commit |
-| push | done | reported to the operator only; see `## External actions` |
-| S1 read the branch and the measured record first | done | branch, `StopReason` and `derive_stop_reasons` read before writing |
-| S2 the `R-0713` fix, one line | done | uses `_pa_target_path or '?'` |
-| S3 the refs come from the stop record | done | id always, reason code and related file guarded |
-| S4 the outcome is unkeyed | done | one outcome keyed `UNKEYED_OPTION`, no `payload` added |
-| S5 `stop_reason` joins the gate set | done | same commit as its triple, C4 |
-| S6 the tests | done | 63 tests in the file, up from 55 |
+| C2 the R9 verdict and `Done: R-0713` | done | |
+| C3 the repo-dirty triple and its gate entry | done | |
+| C4 the memory-review triple and its gate entry | done | |
+| C5 the tests and the two repointed guards | done | |
+| C6 the handback | done | this commit |
+| S1 read the emitter and the fixtures first | done | confirmed on disk; see Deviations for what the reading found |
+| S2 the repo-dirty refs | done | one unguarded event-name ref, one guarded `status_hash` ref |
+| S3 the repo-dirty unkeyed outcome | done | no `payload`; one outcome keyed `UNKEYED_OPTION` |
+| S4 the memory-review refs, all three guarded | done | the two booleans R5 computes are reused, not re-read |
+| S5 the memory-review unkeyed outcome | done | no `payload`; one outcome keyed `UNKEYED_OPTION` |
+| S6 the two guards repointed, never deleted | done | both moved to `flight_plan_approval`; docstring corrected; exact membership updated to six |
+| S7 the new tests | done | 22 new tests, all driving the real branches through `list_decisions` |
 
 ## External actions
 
-- `git worktree add --detach .remedy-wt/f032-r9-mut 9aa51005` — exit 0, used for
-  the two G7 mutation red-proofs only.
-- `git worktree remove .remedy-wt/f032-r9-mut` then `git worktree prune` — both
-  exit 0; `git worktree list` back to 1 line.
-- `gh pr list --state open --json number,headRefName,baseRefName,isDraft` —
-  exit 0, output `[]`. Nothing merged, nothing created.
-- `git push origin feature/f032-evidence-triple` — INTENT, run after this
-  commit. Its exit code and the resulting remote tip are not values any file
-  this round writes and are reported in the round report instead.
+- `git worktree add --detach .remedy-wt/f032-r10-mut 0a6c17bf` — created, used for
+  the three G7 mutations, then `git worktree remove` + `git worktree prune`.
+  `git worktree list` is back to 1 line.
+- `gh pr list --state open --json number,headRefName,baseRefName,isDraft` — `[]`.
+  Nothing merged, nothing created, as the block orders.
+- `git push -u origin feature/f032-evidence-triple` after this commit.
+- Gate scratch scripts were written under the gitignored `.remedy-wt/`;
+  `git ls-files .remedy-wt` is 0 lines.
 
 ## Verification
 
-- G1 hygiene, base and sentinel — `git rev-parse HEAD` before C0a
-  `c23e7cc633fb2adf8b6dce5b1c576a8440055e52`, the round base; branch
-  `feature/f032-evidence-triple`; `git status --porcelain` 0 lines after each of
-  C0a..C6; `.agent/STOP` ABSENT at both readings. Exit 0.
-- G2 transport — sha256
-  `80008f17ccd928a18b9530814ab7d805688e53eea89144e5f2ea0a2b6a933a33`, 29489
-  bytes, 350 lines, EQUAL across the scratch original, the committed
-  `.agent/authored/f032-r9.md` blob and the committed `.agent/last_block.md`
-  blob; both paths are the SAME git blob `31ca746bb33c`. This proves the
-  scratch original, the saved copy and the mirror agree; it says NOTHING about
-  the bytes of any prompt. Exit 0.
-- G3 extraction and caps — 2 regions from the committed C0a blob, PLANF032R9 48
-  content lines and LEDGER9 3; CONTENT 51, TOTAL 350, PROSE 299; PROSE under
-  400 TRUE, TOTAL under 490 TRUE. Exit 0.
-- G4 the plan — byte-equal to PLANF032R9 TRUE, minus-trailing-newline negative
-  control FALSE, `wc -l` 48 and under 50, `^## Goal$` 1, `^## Next Steps$` 1.
-  Exit 0.
-- G5 the ledger append — 1065424 + 1 + 6286 = 1071711, matching the file; the
-  pre-commit blob is a byte PREFIX. Second reader: N 2 paragraphs, the last 2
-  blank-line units EQUAL IN ORDER; one byte flipped inside the FIRST appended
-  paragraph was REJECTED by both readers, in memory only. Counts before → after
-  C2: `^Gate: F\d+ R\d+ — ` 60 → 61, `^- R-\d+ — ` 273 → 274,
-  `^Done: R-\d+ — ` 23 → 23, `^Landed: R-` 1 → 1, `^Gate: R\d+ — ` 19 → 19;
-  open set 250 → 251, maximum id `R-0712` → `R-0713`; ADDED gate keys
-  `{F032 R8}`, ADDED ids `{R-0713}`. Exit 0.
-- G6 the code, linted and read back — `python3 -m ruff check` over both modules
-  exit 0, output verbatim `All checks passed!`. `list_decisions` read back:
-  patch intent naming no file → `'Patch intent for ? awaits approval.'`,
-  naming `README.md` → `'Patch intent for README.md awaits approval.'`. Stop
-  reason with EMPTY `related_file`: id `'sr:derived_no_repo'`, payload `{}`,
-  refs `('failure', 'derived_no_repo', 'the stop record that raised this
-  decision')` and `('failure', 'no_target_repo', 'the reason code the run
-  recorded')`, ONE outcome `('', 'Clearing the named blocker lets the run
-  continue from where it stopped, with the work already done still in place.',
-  'Until it is cleared the run makes no further progress, and a blocker cleared
-  without understanding why it fired can fire again.')`, `evidence_status`
-  `'present'`. Stop reason naming a file: same shape plus
-  `('file', 'packages/core/models.py', 'the file this stop is about')`.
-  `TRIPLE_REQUIRED_TYPES` = `patch_approval`, `stop_reason`, `test_failure`,
-  `token_budget`. Exit 0.
-- G7 tests green, then red under mutation, guards unmoved —
-  `python3 -m pytest tests/orchestration/test_decision_evidence.py -q` in the
-  primary checkout exit 0, `63 passed in 0.30s`. In the disposable worktree at
-  C5: CONTROL exit 0 `63 passed in 0.29s`; mutation (a), the `R-0713` fix
-  reverted to `pi.get('target_path', '?')` (exact bytes counted 1 before
-  applying), exit 1 `1 failed, 62 passed in 0.31s`, 1 `^FAILED` line; mutation
-  (b), the `related_file` ref made unconditional (exact two-line string counted
-  1 before applying), exit 1 `4 failed, 59 passed in 0.37s`, 4 `^FAILED`
-  lines; CONTROL after both restorations exit 0 `63 passed in 0.29s` with the
-  worktree's `git status --porcelain` empty. `__pycache__` purged and `-B`
-  passed before every run. The nine decision-schema guard files as ONE pytest
-  process: exit 0, `324 passed in 6.87s`, `^FAILED` count 0, the extractor
-  sighted on a two-line probe string and returned 2.
-- G8 structure, canary, PR gate — `tests/cli/test_golden_path.py -q` exit 0,
-  `42 passed in 20.97s`. Path set of `git diff --name-only c23e7cc6..9aa51005`
-  against the expected seven-path set: BOTH residues EMPTY.
-  `git diff --stat c23e7cc6..9aa51005 -- apps/` EMPTY, `-- docs/` EMPTY.
-  Insertions 350, 192, 21, 4, 9, 54 and 176 across C0a..C5, each single-parent
-  and under 500. `^<<<SLICE ` and `^<<<END ` are 0 and 0 in `.agent/plan.md`,
-  `.agent/live_review.md`, `packages/orchestration/decision_queue.py`,
-  `packages/orchestration/decision_evidence.py` and
-  `tests/orchestration/test_decision_evidence.py`, against a CONTROL of 2 and 2
-  over the C0a blob. `git ls-files .remedy-wt` 0 lines, `git worktree list` 1
-  line, `git branch --list "tmp/*"` 0 lines. Open PR Gate `[]`.
+- G1 HYGIENE, BASE AND THE SENTINEL — `git rev-parse HEAD` before C0a printed
+  `0216c5bb9d4885e9120f64194c946847ed372bde`, the round base of constraint 12;
+  `git rev-parse --abbrev-ref HEAD` printed `feature/f032-evidence-triple`;
+  `git status --porcelain | wc -l` printed 0 after each of C0a, C0b, C1, C2, C3,
+  C4 and C5. `ls -la .agent/STOP` exited 2 with
+  `ls: cannot access '.agent/STOP': No such file or directory` at BOTH readings
+  constraint 9 orders — once before C0a and once before C6. See Deviations for
+  the one part of G1 that cannot be written into C6.
+- G2 TRANSPORT — sha256
+  `bd2560b02c3bfd65c497fcde4ce0811f30013658040703fdfd0f7aa950990a4a` over 27191
+  bytes and 332 lines is EQUAL for all three artefacts: the reviewer's scratch
+  original `.remedy-wt/f032-r10.md`, the committed `.agent/authored/f032-r10.md`
+  blob at `b1790261` and the committed `.agent/last_block.md` blob at `83529164`.
+  `git rev-parse` on both committed paths returns the SAME blob,
+  `a991368a80c90618c886fdc4d6df4903becc141d`. This proves the scratch original,
+  the saved copy and the mirror agree; it says NOTHING about the bytes of any
+  prompt.
+- G3 EXTRACTION AND CAPS — from the committed C0a blob: region `PLANF032R10`
+  with 48 content lines, region `LEDGER10` with 3 content lines; 2 regions;
+  CONTENT total 51; TOTAL 332 lines; PROSE 281. PROSE under 400 = True, TOTAL
+  under 490 = True.
+- G4 THE PLAN — `.agent/plan.md` at `aace7acb` is byte-equal to slice
+  PLANF032R10 under constraint 2 (True). NEGATIVE CONTROL with the trailing
+  newline removed: False, as required. `wc -l` = 48, under 50 = True.
+  `^## Goal` = 1, `^## Next Steps` = 1.
+- G5 THE LEDGER APPEND — `git show 0216c5bb:.agent/live_review.md` gives 1071711
+  bytes over 425 blank-line units, matching the reviewer's measurement exactly.
+  READER 1, byte identity: 1071711 + 1 + 4760 = 1076472, the C2 blob is 1076472
+  bytes, BYTE-EQUAL = True, and the pre-commit blob is a byte PREFIX of the
+  result = True. READER 2, structural: the LEDGER10 slice is 2 blank-line
+  paragraphs, and the LAST 2 units of the file match those 2 paragraphs IN ORDER
+  = True. NEGATIVE CONTROL, one byte flipped in memory at offset 1071752 inside
+  the FIRST appended paragraph: reader 1 rejects = True, reader 2 rejects = True.
+  Counts before → after C2: `^Gate: F\d+ R\d+ — ` 61 → 62; `^- R-\d+ — ` 274 →
+  274; `^Done: R-\d+ — ` 23 → 24; `^Landed: R-` 1 → 1; `^Gate: R\d+ — ` 19 → 19.
+  Open set 251 → 250. Maximum id `R-0713` both before and after. Gate key ADDED:
+  `F032 R9`, one key. Id ADDED to the resolved set: `R-0713`, one id. All five
+  base numbers and the base open set and maximum match what the block states.
+- G6 THE CODE, LINTED AND READ BACK —
+  `python3 -m ruff check packages/orchestration/decision_queue.py packages/orchestration/decision_evidence.py`
+  exit code 0, verbatim output `All checks passed!`. Calling `list_decisions` at
+  C4:
+  - repo-dirty from the THIN event of S1 (`metadata` = `{"dirty": True}`) —
+    refs `[('failure', 'git_status_read', 'the run-log event that reported the working tree dirty')]`;
+    outcomes `[('', "Committing or stashing the target repository's changes leaves a clean tree, so a later diff shows only what this job did.", "The job waits while that happens, and stashing work that is not this job's can hide changes their author still needs.")]`.
+  - repo-dirty from the FULL metadata of S1 — refs
+    `[('failure', 'git_status_read', 'the run-log event that reported the working tree dirty'), ('failure', '6f1c2d3e4a5b6c7d', 'the status fingerprint that reading recorded')]`;
+    the same one outcome.
+  - memory review, stale only — refs
+    `[('decision', 'deploy-target', 'the memory card this review is about'), ('failure', 'stale', 'the validity the card carries')]`;
+    outcomes `[('', 'Opening the named card shows what it claims and when that was last confirmed, so it can be re-approved, corrected or superseded instead of trusted blind.', 'Reading it takes time now, and a card left in place while it is checked keeps feeding whatever already reads it.')]`.
+  - memory review, flagged only — refs
+    `[('decision', 'api-contract', 'the memory card this review is about'), ('failure', 'needs_review', 'the review status the card carries')]`;
+    the same one outcome.
+  - memory review, stale AND flagged — refs
+    `[('decision', 'db-dsn', 'the memory card this review is about'), ('failure', 'stale', 'the validity the card carries'), ('failure', 'needs_review', 'the review status the card carries')]`;
+    the same one outcome.
+  - memory review, stale with an EMPTY key — refs
+    `[('failure', 'stale', 'the validity the card carries')]`; the same one
+    outcome. Rule (a) is satisfied with no key at all, which is the argument the
+    key's guard rests on.
+
+  `export_decision_json`'s `evidence_status` is `present` for the repo-dirty card
+  and `present` for the memory-review card. `sorted(TRIPLE_REQUIRED_TYPES)` =
+  `['memory_review', 'patch_approval', 'repo_dirty', 'stop_reason', 'test_failure', 'token_budget']`.
+- G7 TESTS GREEN, THEN RED UNDER MUTATION —
+  `python3 -B -m pytest tests/orchestration/test_decision_evidence.py -q` in the
+  PRIMARY checkout at C5: exit code 0, `86 passed in 0.32s`, 0 `^FAILED` lines.
+  In the disposable worktree at `0a6c17bf`, with `__pycache__` purged and `-B`
+  passed before every run, and each exact byte string counted 1 in its file
+  before it was applied and the file restored byte for byte afterwards:
+  - CONTROL before any mutation — exit 0, `86 passed in 0.32s`, 0 `^FAILED`.
+  - mutation (a), the `status_hash` ref of S2 made unconditional
+    (`            if _rd_status_hash:` → `            if True:` in
+    `decision_queue.py`, count 1) — exit 1, `3 failed, 83 passed in 0.39s`, 3
+    `^FAILED`: `test_the_thin_git_status_event_still_yields_a_valid_repo_dirty_card`,
+    `test_no_repo_dirty_ref_ever_points_at_nothing[thin-event]`,
+    `test_the_repo_dirty_card_carries_exactly_one_unkeyed_outcome[thin-event]`.
+  - mutation (b), the `review_status` ref of S4 made unconditional
+    (`            if is_flagged_for_review:` → `            if True:` in
+    `decision_queue.py`, count 1) — exit 1, `2 failed, 84 passed in 0.35s`, 2
+    `^FAILED`: `test_the_memory_review_card_cites_the_card_and_its_staleness`,
+    `test_the_memory_review_card_stays_valid_with_no_key_at_all`.
+  - mutation (c), `repo_dirty` removed from `TRIPLE_REQUIRED_TYPES`
+    (`    "repo_dirty", "memory_review",` → `    "memory_review",` in
+    `decision_evidence.py`, count 1) — exit 1, `2 failed, 84 passed in 0.35s`, 2
+    `^FAILED`: `test_the_shipped_required_type_set_holds_exactly_the_upgraded_producers`,
+    `test_a_repo_dirty_decision_without_a_triple_is_refused_by_the_gate`.
+  - CONTROL after all three restorations — exit 0, `86 passed in 0.32s`, 0
+    `^FAILED`, and the worktree's `git status --porcelain` was the empty string.
+
+  Then, as ONE pytest process in the primary checkout:
+  `python3 -B -m pytest tests/orchestration/test_decision_evidence.py tests/orchestration/test_decision_inbox.py tests/orchestration/test_approval_queue.py -q`
+  — exit code 0, `146 passed in 0.65s`, 0 `^FAILED` lines.
+- G8 STRUCTURE, CANARY AND THE PR GATE —
+  `python3 -B -m pytest tests/cli/test_golden_path.py -q` exit code 0,
+  `42 passed in 20.70s`. `git diff --name-only 0216c5bb..0a6c17bf` yields exactly
+  the seven Change-set paths other than `.agent/handoff.md`; BOTH residues are
+  EMPTY (actual-minus-change-set `[]`, change-set-minus-actual `[]`).
+  `git diff --stat 0216c5bb..0a6c17bf -- apps/` and the same for `-- docs/` are
+  both the empty string. Per-commit insertions, each single-parent and each under
+  500: `b1790261` 332, `83529164` 274, `aace7acb` 22, `c3bc8bb3` 4, `68ff6d8c`
+  48, `e2e9471b` 55, `0a6c17bf` 341. Those counts and the `+/-` column of the
+  `## Commits` section above are one reading written twice, derived from
+  `git diff --numstat`, compared cell by cell, and they AGREE. Marker sweep,
+  counts of `^<<<SLICE ` and `^<<<END `: `.agent/plan.md` 0/0,
+  `.agent/live_review.md` 0/0, `packages/orchestration/decision_queue.py` 0/0,
+  `packages/orchestration/decision_evidence.py` 0/0,
+  `tests/orchestration/test_decision_evidence.py` 0/0 — against the CONTROL over
+  the committed C0a blob, which is 2/2 and therefore non-zero.
+  `git ls-files .remedy-wt` 0 lines, `git worktree list` 1 line,
+  `git branch --list "tmp/*"` 0 lines.
+  `gh pr list --state open --json number,headRefName,baseRefName,isDraft`
+  printed `[]`; nothing was merged and nothing was created.
 
 ## Authored-text proofs
 
-- PLANF032R9 — extracted from the COMMITTED `.agent/authored/f032-r9.md` blob
-  and compared disk to disk against `.agent/plan.md` at C1: byte-equal TRUE,
-  negative control FALSE.
-- LEDGER9 — extracted from the same committed blob; `.agent/live_review.md` at
-  C2 equals its pre-commit blob plus one newline plus the slice, byte for byte,
-  confirmed twice by two independent readers.
-- The block itself — `.remedy-wt/f032-r9.md`, `.agent/authored/f032-r9.md` and
-  `.agent/last_block.md` all sha256
-  `80008f17ccd928a18b9530814ab7d805688e53eea89144e5f2ea0a2b6a933a33`.
+Two reviewer-authored slices were applied, plus the block itself.
+
+- The BLOCK — `.remedy-wt/f032-r10.md`, the committed `.agent/authored/f032-r10.md`
+  blob and the committed `.agent/last_block.md` blob all carry sha256
+  `bd2560b02c3bfd65c497fcde4ce0811f30013658040703fdfd0f7aa950990a4a` over 27191
+  bytes and 332 lines, and the two committed paths are the same git blob
+  `a991368a`. Disk-to-disk comparison: EQUAL.
+- Slice PLANF032R10 — `.agent/plan.md` at `aace7acb` is byte-equal to the slice
+  extracted from the committed C0a blob under convention 2. The negative control
+  (trailing newline removed) is False, so the comparison is not vacuous.
+- Slice LEDGER10 — `.agent/live_review.md` at `c3bc8bb3` is byte-equal to the
+  `0216c5bb` blob plus one newline plus the slice, proven by two independent
+  readers, with a one-byte negative control that both readers reject.
+
+No slice was edited. Nothing looked wrong enough to report under constraint 1.
 
 ## Deviations & assumptions
 
-- NO DEPARTURE FROM THE ORDERED COMMIT SEQUENCE. The commits are exactly C0a,
-  C0b, C1, C2, C3, C4, C5, C6 in that order, with no extra commit, no dropped
-  commit and no reordering. No commit was made beyond the ordered sequence, so
-  no extra `## Commits` row and no extra item-status row is owed.
-- No slice contradicted anything measured. Every numeral the block stated about
-  the round base reproduced exactly at `c23e7cc633fb`: 1065424 ledger bytes,
-  423 blank-line units, 60/273/23/1/19, open set 250, maximum `R-0712`,
-  `All checks passed!` at ruff exit 0, `324 passed`, `42 passed` and `[]` at
-  the Open PR Gate.
-- ASSUMPTION, declared because it is the one design choice S6 left open: no arm
-  of `derive_stop_reasons` sets `related_file`, so the related-file case is
-  driven by substituting `stop_reasons.derive_stop_reasons` for the duration of
-  the test — the same technique the memory-review tests in this file already
-  use for `local_gateway.list_memory`. The branch under test is still the
-  queue's real one, reached through `list_decisions`.
-- The `R-0713` fix carries an eight-line WHY comment above the changed line, so
-  C3's insertion count is 9 rather than 1. The changed expression is one line.
-- No new finding was authored. Nothing this round exposed looked like a defect
-  the reviewer has not already registered.
-
-## Gate enforcement after this round
-
-The emit gate enforces FOUR of the eight producing decision types:
-`token_budget`, `test_failure`, `patch_approval` and `stop_reason`. A card of
-any of those four that is built without a valid triple now RAISES
-`DecisionEvidenceError` at derivation.
-
-The remaining FOUR still carry the honest legacy placeholder
-`recorded_before_evidence_requirements`: `repo_dirty`, `memory_review`,
-`flight_plan_approval` and `task_decision`.
-
-`R-0713` is FIXED IN CODE at C3 but remains OPEN in the record until a reviewer
-authors its `Done:` text. Open findings after this round: 251.
+- ONE PART OF G1 IS NOT WRITABLE. G1 asks for the `git status --porcelain` line
+  count after each of C0a THROUGH C6, but the block's own "Done when" preamble
+  puts G1 at commits strictly earlier than C6, and a post-C6 reading cannot exist
+  in the file C6 writes. C0a through C5 are reported above, each 0. The post-C6
+  reading is reported in this round's session output instead of being invented
+  here.
+- ONE TEST BEYOND S7'S LIST. C5 also carries
+  `test_the_repo_dirty_card_cites_no_branch_no_commit_and_no_count`, which pins
+  the second half of S2 — that `branch`, `head_sha` and `changed_file_count` stay
+  UNCITED, per amendment A2. S7 orders the tests for what IS emitted; nothing
+  ordered a guard over what is deliberately absent, and without one a later round
+  could cite a branch name as a `file` ref and no test would notice.
+- ONE TYPE ANNOTATION NOT IN THE SPEC. `_mr_refs` is declared as
+  `list[DecisionEvidenceRef]` because, unlike the other four producers, its list
+  starts EMPTY (all three of its refs are guarded) and an unannotated empty list
+  gives the checker nothing to infer from. `python3 -m ruff check` is exit 0
+  either way; this is a readability choice, not a fix.
+- COMMIT ORDER WAS EXACTLY C0a, C0b, C1, C2, C3, C4, C5, C6, with no commit
+  between them, no extra commit and no reordering. C2 is the only commit touching
+  `.agent/live_review.md`, and each of C3 and C4 lands one producer's triple
+  together with that type's `TRIPLE_REQUIRED_TYPES` entry, per DECISION F032 D5.
+- THE SUITE WAS NOT RUN AT C3 OR C4, and no claim is made about its colour there.
+  S6's repointed guards and the exact-membership assertion are updated at C5, so
+  C3 and C4 are intermediate states of an ordered pair that constraint 7 requires
+  to be committed in that order. Every colour reported under G7 was measured at
+  C5 or later.
+- GATE SCRATCH LIVES IN `.remedy-wt/`. The G2 through G8 measurement scripts were
+  written there because it is gitignored; `git ls-files .remedy-wt` is 0 lines and
+  the primary checkout is clean at every commit.
+- S1 CONFIRMED ON DISK, with one addition worth recording. Everything S1 states
+  is true at `0216c5bb`: `apps/cli/commands/repo.py` passes `outcome` as a NAMED
+  field of `RunLogWriter.log` and writes `is_git_repo`, `git_available`,
+  `branch`, `head_sha`, `dirty`, `changed_file_count` and `status_hash` into
+  `metadata`; `_fixture_repo_dirty` writes `metadata` `{"dirty": True}` and
+  nothing else; `MemoryEntry.key` defaults to the empty string. The addition:
+  branch 6 sits inside `except (ImportError, ValueError, OSError)`, and
+  `DecisionEvidenceError` is a `ValueError` subclass — but the emit gate runs
+  AFTER that `try` block, at the end of `list_decisions`, so a memory-review
+  regression raises out of `list_decisions` and is not swallowed. Mutation (c)'s
+  sibling behaviour under G7 confirms the gate fires rather than being caught.
 
 ## Next
 
-1. Re-read `.agent/STOP` from disk — Phase 1 rule 1 of
-   `docs/agents/self_drive_protocol.md` — before anything else.
-2. Then the Open PR Gate: `gh pr list --state open --json
-   number,headRefName,baseRefName,isDraft`.
-3. Then the remaining T002 producers: `repo_dirty`, `memory_review`,
-   `flight_plan_approval` and `task_decision`. Repo-dirty's event carries the
-   thinnest evidence of the eight; the flight plan has two arms and only one
-   offers options, so enforcing that type needs a ruling on what a RESOLVED
-   decision owes. Along the way, author `Done: R-0713` against the fix this
-   round landed.
+1. Phase 1 rule 1 of `docs/agents/self_drive_protocol.md`: re-read `.agent/STOP`
+   FROM DISK before anything else. It does not exist as of this handback, but the
+   check is one-shot per round and binds at any point.
+2. The Open PR Gate —
+   `gh pr list --state open --json number,headRefName,baseRefName,isDraft`. It
+   returned `[]` at this handback; re-run it, do not assume.
+3. T002f, the flight-plan approval. Its PENDING arm carries `payload["options"]`
+   and its RESOLVED arm carries none, and the emit gate does not branch on
+   status, so enforcing that type needs a ruling on what a resolved card owes.
+4. T002g, the task decision, whose options come from the escalation record and
+   are arbitrary, so its outcomes are built per option rather than written out.
+   With it the gate set is complete and T002 ends.
