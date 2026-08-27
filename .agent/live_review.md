@@ -1,27 +1,29 @@
-# Live Review — F031 Decision inbox
+# Live Review — F032 Approval with the evidence triple
 
-> Round-by-round review record for the F031 branch, reset at the feature claim.
-> The F022 record closed with pull request #213, merged into `main` at this
-> feature's Open PR Gate as `6325ac2f` after CI run 32639191630 concluded
-> SUCCESS on `45e4691f`. That branch's LAST round, R19, has no gate entry in its
-> own record by construction, because a round's verdict is written by the NEXT
-> reviewed round (DECISION F085 D9) and R19 was the last round F022 had; its
-> entry is therefore the first `Gate:` paragraph below. Finding ids continue the
-> monotonic R-XXXX series across the reset, and every finding record F022
-> carried is carried forward unchanged.
+> Round-by-round review record for the F032 branch, reset at the feature claim.
+> The F031 record closed with pull request #215, merged into `main` as
+> `f4eae1d4`, and the operator collection order amend0827 which followed it
+> merged as pull request #216 at `a399a330`, this branch's point. F031's LAST
+> round has no gate entry in its own record by construction, because a round's
+> verdict is written by the NEXT reviewed round (DECISION F085 D9) and it was
+> the last round F031 had; the amend0827 order was a single-session micro-round
+> whose verdict lives in its own handback and in pull request #216, and it
+> appended its notes to this file without a gate entry for the same reason.
+> Finding ids continue the monotonic R-XXXX series across the reset, and every
+> finding record F031 carried is carried forward unchanged: measured at
+> `a399a330`, 270 findings, 21 resolved, 249 open, the maximum id `R-0709`.
 
 ## Steps
 
-R1 claim F031 in the roadmap ledger, create the branch, reset this record
-carrying every finding record forward, gate F022 R19 and register the one
-candidate F022 carried as R-0677, emptying the carrier in the same round → R2
-record the R1 verdict on disk and rule how the open set is to be derived, the
-gap R1's plan records → R3 the decision-inbox inventory: the file-based queue
-store and its CLI, every producer that writes a decision, the DAG module's
-blocked-subtree entry point, and the decision event kinds the stream carries
-today on the Python and the TypeScript side, each MEASURED in the source, plus
-whether F050 and F051 are built → the T-slices follow the feature file's Task
-slicing and are planned once that inventory is on disk.
+R1 claim F032 in the roadmap ledger, cut the branch, reset this record carrying
+every finding record forward, and put the F032 source inventory on disk — the
+eight producing branches of `decision_queue.list_decisions`, the record each
+derives from, whether any enqueue seam is common to them, the evidence-ref
+vocabulary and its resolver, the options a decision offers, the card's
+rendering surface, the migration precedent and the guards a schema change must
+satisfy → R2 book the R1 verdict and plan T001 against that inventory → T001
+the schema, the enforcement point, legacy rendering and the CI canary → T002
+the per-producer upgrades → T003 card enrichment and the chip deep links.
 
 ## Findings
 
