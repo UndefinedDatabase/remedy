@@ -8170,3 +8170,29 @@ question, which is the one thing this inbox exists not to do.
 
 REVERSE IT by stamping `posts: true` unconditionally in `decisionAnswers`, which
 the tests R45 adds will refuse; that refusal is the evidence for this entry.
+
+## DECISION F031 D23 (2026-08-27) — a record round takes R46, and the remaining programme moves by one
+
+SUPERSEDING A ROUND ATTRIBUTION IN DECISION F031 D21: that entry rules "the
+`fp:` dispatch R46 and the clarification FORM R47". The R45 gate produced a
+verdict and a finding, and `docs/agents/planner_reviewer_prompt.md` §4 item 4
+requires findings to persist FIRST, in their own commit, before any repair — so
+the record cannot wait for a round that also ships code without risking exactly
+what that rule exists to prevent.
+
+CHOSEN, THE RECORD GETS ITS OWN ROUND. R46 writes only `.agent/` state. The
+`fp:` dispatch becomes R47, which also retires the duplicate guard R-0696 names,
+and the clarification FORM becomes R48. Nothing any earlier entry CHOSE changes:
+not the answerability key, not the predicate it is computed from, not the
+refusal to branch on `card.type`, not the scope ruling that leaves six prefixes
+out of F031. Only the round numbers move, for the third time in this feature and
+for the same reason each time — a round is sized against the code, never against
+the sentence that named it.
+
+CONSIDERED AND REJECTED: folding the record commits into R47's block. It would
+put a finding's registration behind a code change in the same round, which is
+the ordering §4 item 4 forbids, and it would leave the R45 verdict off disk for
+the length of a session that might not survive to write it.
+
+REVERSE IT by merging R46's commits into R47 and renumbering back, which costs
+nothing on disk — this entry moves labels, not work.
