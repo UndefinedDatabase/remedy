@@ -16,7 +16,7 @@ import pytest
 from packages.core.models import Artifact, Job
 from packages.memory import local_gateway
 from packages.memory.models import MemoryEntry
-from packages.orchestration import decision_evidence
+from packages.orchestration import decision_evidence, stop_reasons
 from packages.orchestration.decision_evidence import (
     DECISION_EVIDENCE_STATUS_LEGACY,
     DECISION_EVIDENCE_STATUS_PRESENT,
@@ -36,6 +36,7 @@ from packages.orchestration.decision_queue import (
     export_decision_json,
     list_decisions,
 )
+from packages.orchestration.stop_reasons import StopReason
 
 OPTIONS = ["postgres", "sqlite"]
 
@@ -284,7 +285,7 @@ def test_the_shipped_required_type_set_holds_exactly_the_upgraded_producers():
     producer's upgrade fails here first.
     """
     assert TRIPLE_REQUIRED_TYPES == frozenset({
-        "token_budget", "test_failure", "patch_approval",
+        "token_budget", "test_failure", "patch_approval", "stop_reason",
     })
 
 
@@ -959,4 +960,177 @@ def test_a_patch_approval_decision_without_a_triple_is_refused_by_the_gate():
     message = str(excinfo.value)
     assert "pa:regression" in message
     assert "patch_approval" in message
+    assert "evidence_refs is empty: a decision must cite at least one ref." in message
+
+
+# ---------------------------------------------------------------------------
+# R-0713 — the patch-approval summary's placeholder, which could never fire
+#
+# `list_patch_intents` ALWAYS sets `target_path`, to the empty string when the
+# explanation named no `file`, so the key is present-and-empty and the old
+# `pi.get('target_path', '?')` default was unreachable.  Both cases are pinned
+# below: the summary is the only half of the card R-0713 touched, so the
+# no-file case is asserted on the RENDERED sentence rather than on the value it
+# was built from.
+# ---------------------------------------------------------------------------
+
+
+def test_the_patch_approval_summary_shows_the_placeholder_and_not_an_empty_gap():
+    """FAILS IF THE FIX IS REVERTED to ``pi.get('target_path', '?')``.
+
+    With that form the card rendered ``Patch intent for  awaits approval.`` —
+    two spaces and no subject — because the default only fires on an ABSENT
+    key and this key is present-and-empty.
+    """
+    decision = _patch_approval_decision(_no_target_explanation())
+
+    assert decision.safe_summary == "Patch intent for ? awaits approval."
+
+
+def test_the_patch_approval_summary_still_names_the_file_when_there_is_one():
+    """The discriminator: the case that already worked must keep working."""
+    decision = _patch_approval_decision(_named_target_explanation())
+
+    assert decision.safe_summary == "Patch intent for README.md awaits approval."
+
+
+# ---------------------------------------------------------------------------
+# F032 T002d — the stop-reason card, which copied a record and cited none of it
+#
+# These drive the REAL branch through `list_decisions`.  The no-target-repo
+# case comes from `derive_stop_reasons` itself and has an EMPTY `related_file`,
+# which is what makes the file ref's guard load-bearing; the related-file case
+# substitutes the record source the same way the memory-review tests above
+# substitute `local_gateway.list_memory`, because no derived arm sets that
+# field and the branch under test is the queue's, not the deriver's.
+# ---------------------------------------------------------------------------
+
+#: Neither half of the one unkeyed outcome varies with the record, so both are
+#: written once and pinned wherever the outcome is asserted.
+STOP_REASON_EXPECTED_OUTCOME = (
+    "Clearing the named blocker lets the run continue from where it stopped, "
+    "with the work already done still in place."
+)
+STOP_REASON_DOWNSIDE = (
+    "Until it is cleared the run makes no further progress, and a blocker "
+    "cleared without understanding why it fired can fire again."
+)
+
+
+def _no_repo_stop_decision() -> HumanDecision:
+    """The card the real branch builds from the derived no-target-repo stop."""
+    job = Job(
+        name="f032-t002d-job",
+        user_prompt="Drive the stop-reason branch",
+        tasks=[],
+        metadata={},
+    )
+    decisions = [d for d in list_decisions(job, []) if d.type == "stop_reason"]
+    assert len(decisions) == 1
+    return decisions[0]
+
+
+def _stop_record_naming_a_file() -> StopReason:
+    return StopReason(
+        id="derived_dirty_repo",
+        job_id="0123456789abcdef",
+        source="git_status",
+        reason_code="dirty_repo_blocks_level",
+        severity="warning",
+        status="active",
+        created_at="2026-08-28T00:00:00+00:00",
+        resolved_at=None,
+        related_node_id="",
+        related_intent_id="",
+        related_file="packages/core/models.py",
+        safe_summary="Target repository has uncommitted changes.",
+        next_actions=("Commit or stash changes in target repo.",),
+    )
+
+
+def _related_file_stop_decision(monkeypatch) -> HumanDecision:
+    monkeypatch.setattr(
+        stop_reasons,
+        "derive_stop_reasons",
+        lambda job, events: [_stop_record_naming_a_file()],
+    )
+    decisions = [d for d in list_decisions(_StubJob(), []) if d.type == "stop_reason"]
+    assert len(decisions) == 1
+    return decisions[0]
+
+
+def test_the_stop_reason_card_cites_the_record_and_its_reason_code():
+    """PINS THE CONDITIONAL: this record's ``related_file`` is EMPTY.
+
+    Made unconditional, the file ref of T002d would appear here targeting the
+    empty string, which rule (c) of ``evidence_triple_problems`` refuses
+    outright — and `_fixture_stop_reason` in the decision-inbox guard drives
+    exactly this record, so the whole inbox would raise instead of rendering.
+    """
+    decision = _no_repo_stop_decision()
+
+    assert decision.id == "sr:derived_no_repo"
+    assert [(r.kind, r.target, r.label) for r in decision.evidence.refs] == [
+        ("failure", "derived_no_repo",
+         "the stop record that raised this decision"),
+        ("failure", "no_target_repo", "the reason code the run recorded"),
+    ]
+
+
+def test_the_stop_reason_card_cites_the_file_when_the_record_names_one(monkeypatch):
+    decision = _related_file_stop_decision(monkeypatch)
+
+    assert [(r.kind, r.target, r.label) for r in decision.evidence.refs] == [
+        ("failure", "derived_dirty_repo",
+         "the stop record that raised this decision"),
+        ("failure", "dirty_repo_blocks_level",
+         "the reason code the run recorded"),
+        ("file", "packages/core/models.py", "the file this stop is about"),
+    ]
+
+
+def test_no_stop_reason_ref_ever_points_at_nothing(monkeypatch):
+    for decision in (_no_repo_stop_decision(), _related_file_stop_decision(monkeypatch)):
+        assert decision.evidence.refs
+        assert all(r.target for r in decision.evidence.refs)
+        assert evidence_triple_problems(decision.evidence, options=[]) == []
+
+
+def test_the_stop_reason_card_carries_exactly_one_unkeyed_outcome(monkeypatch):
+    """DECISION F032 D3 rule (h): this branch offers no options at all.
+
+    It copies the record's own ``next_actions``, which are command lines rather
+    than option words, and amendment A3 puts growing an options list out of
+    scope, so the card keeps an EMPTY payload and owes one outcome.
+    """
+    for decision in (_no_repo_stop_decision(), _related_file_stop_decision(monkeypatch)):
+        assert decision.payload == {}
+        assert [(o.option, o.expected_outcome, o.downside)
+                for o in decision.evidence.outcomes] == [
+            (UNKEYED_OPTION, STOP_REASON_EXPECTED_OUTCOME, STOP_REASON_DOWNSIDE),
+        ]
+
+
+def test_the_stop_reason_card_exports_the_present_status(monkeypatch):
+    for decision in (_no_repo_stop_decision(), _related_file_stop_decision(monkeypatch)):
+        wire = export_decision_json(decision)
+        assert wire["evidence_status"] == "present"
+        assert wire["evidence_status"] == DECISION_EVIDENCE_STATUS_PRESENT
+        assert wire["evidence_status"] != DECISION_EVIDENCE_STATUS_LEGACY
+
+
+def test_a_stop_reason_decision_without_a_triple_is_refused_by_the_gate():
+    """`stop_reason` is ENFORCED from this round, so a dropped triple raises."""
+    decision = _decision(
+        decision_id="sr:regression",
+        decision_type="stop_reason",
+        evidence=None,
+    )
+
+    with pytest.raises(DecisionEvidenceError) as excinfo:
+        enforce_decision_evidence([decision])
+
+    message = str(excinfo.value)
+    assert "sr:regression" in message
+    assert "stop_reason" in message
     assert "evidence_refs is empty: a decision must cite at least one ref." in message
