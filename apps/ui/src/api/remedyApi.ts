@@ -1,4 +1,5 @@
 import { humanLabel, isDiagnosticsOnly, scrubUiText } from "../copy/humanCopy";
+import { decisionCardModels } from "./decisionCard";
 import type { PipelineStep, PipelineStepState, RemedyActivityItem, RemedyContinuationSummary, RemedyDashboard, RemedyGraphEdge, RemedyGraphNode, RemedyJourneyItem, RemedyMetric, RemedyNextAction, RemedyPhase, RemedyPipeline, RemedyPromptKind, RemedyPromptRole, RemedyPromptTraceItem, RemedyPromptTraceSummary, RemedySnapshotSummary, RemedyState, RemedyTaskItem, RemedyTimelineEvent, RemedyTimelineEventKind, RemedyTimelinePhase } from "./types";
 
 interface ApiClientOptions { jobId: string; token: string; baseUrl?: string; }
@@ -46,11 +47,15 @@ function nextAction(label = "Review project state", command = "remedy dev status
 // Dashboard-first normalization (exported for testing)
 // ---------------------------------------------------------------------------
 
-/** Normalize a successful /dashboard payload into RemedyDashboard. */
+/** Normalize a successful /dashboard payload into RemedyDashboard.
+ *  `decisionsDocument` is the optional `/decisions` payload; absent means the
+ *  endpoint was not read or did not answer, which is an EMPTY inbox, not a
+ *  missing one. */
 export function normalizeDashboardPayload(
   jobId: string,
   dashboard: any,
   brainDetail?: any,
+  decisionsDocument?: any,
 ): RemedyDashboard {
   // Tasks from dashboard
   const tasks: RemedyTaskItem[] = (dashboard.tasks || []).map((t: any, idx: number) => {
@@ -185,6 +190,13 @@ export function normalizeDashboardPayload(
     snapshot: normalizeSnapshotSummary(dashboard.snapshot),
     continuation: normalizeContinuationSummary(dashboard.continuation),
     promptTrace: normalizePromptTrace(dashboard.prompt_trace),
+    // The decision inbox is projected HERE rather than in the component that
+    // renders it. DECISION F031 D5 keeps every branch a card needs inside
+    // `decisionCard.ts`, and the shipped vitest config reaches no markup — so a
+    // projection living in this mapper is the one that tests actually exercise,
+    // with no fetch mocked. `decisionCardModels` preserves the endpoint's order
+    // exactly; ordering is T002b's subject, not this call's.
+    decisionInbox: decisionCardModels(decisionsDocument ?? {}),
   };
 }
 
@@ -341,6 +353,10 @@ export function normalizeApiFailure(jobId: string, failedEndpoints: string[]): R
     workerStatus: null,
     snapshot: null,
     continuation: null,
+    // No endpoint answered, so there are no open questions to show. The empty
+    // array — never `undefined` — is what keeps the inbox a rendered "nothing
+    // waiting" rather than a hole the renderer has to branch around.
+    decisionInbox: [],
   };
 }
 
@@ -616,7 +632,18 @@ export async function loadRemedyDashboard(o: ApiClientOptions): Promise<RemedyDa
     failedEndpoints.push("brain-view-model");
   }
 
-  const result = normalizeDashboardPayload(o.jobId, dashboardData, brainData);
+  // Tertiary: the decision inbox (optional), read exactly as brain-view-model is
+  // read above. A failure therefore degrades the same way — the endpoint name
+  // joins apiHealth.failedEndpoints, the inbox comes back empty, and the
+  // dashboard still renders.
+  let decisionsData: Record<string, unknown> | undefined;
+  try {
+    decisionsData = await fetchJson<Record<string, unknown>>(`${base}/api/jobs/${o.jobId}/decisions?${q}`);
+  } catch {
+    failedEndpoints.push("decisions");
+  }
+
+  const result = normalizeDashboardPayload(o.jobId, dashboardData, brainData, decisionsData);
 
   // Propagate any secondary endpoint failures
   if (failedEndpoints.length > 0) {

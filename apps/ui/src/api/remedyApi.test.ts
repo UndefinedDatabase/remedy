@@ -533,3 +533,43 @@ describe("budget_final transport", () => {
     expect(normalizeApiFailure("abc-123", ["dashboard"]).budgetFinal).toBeNull();
   });
 });
+
+// ---------------------------------------------------------------------------
+// The decision inbox: the /decisions document projected through
+// `decisionCardModels` (T5_F031 T002a). Nothing is mocked and no fetch runs —
+// that is precisely why the projection lives in normalizeDashboardPayload.
+// ---------------------------------------------------------------------------
+
+describe("decisionInbox projection", () => {
+  it("projects every card of the document, in the endpoint's order", () => {
+    const inbox = {
+      decisions: [
+        { id: "d1", type: "approval", status: "open", severity: "high", safe_summary: "Approve the config patch", age_seconds: 90, blocked_count: 2 },
+        { id: "d2", type: "question", status: "answered", severity: "low", safe_summary: "Pick a module name", age_seconds: 5, blocked_count: 0 },
+      ],
+    };
+    const result = normalizeDashboardPayload("abc-123", makeDashboardPayload(), undefined, inbox);
+    expect(result.decisionInbox.map(c => c.id)).toEqual(["d1", "d2"]);
+    expect(result.decisionInbox[0].title).toBe("Approve the config patch");
+    expect(result.decisionInbox[0].ageLabel).toBe("1m");
+    expect(result.decisionInbox[0].blockedLabel).toBe("blocks 2 tasks");
+    expect(result.decisionInbox[0].isOpen).toBe(true);
+    expect(result.decisionInbox[1].ageLabel).toBe("5s");
+    expect(result.decisionInbox[1].blockedLabel).toBe("blocks nothing");
+    expect(result.decisionInbox[1].isOpen).toBe(false);
+  });
+
+  it("an absent decisions document yields the empty inbox, never undefined", () => {
+    const result = normalizeDashboardPayload("abc-123", makeDashboardPayload());
+    expect(result.decisionInbox).toEqual([]);
+  });
+
+  it("a decisions value that is not an array yields the empty inbox", () => {
+    const result = normalizeDashboardPayload("abc-123", makeDashboardPayload(), undefined, { decisions: "not-an-array" });
+    expect(result.decisionInbox).toEqual([]);
+  });
+
+  it("the failure dashboard carries the empty inbox", () => {
+    expect(normalizeApiFailure("abc-123", ["dashboard"]).decisionInbox).toEqual([]);
+  });
+});

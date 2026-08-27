@@ -1,0 +1,45 @@
+F031 R65 — THE BASE WORKTREE LIFECYCLE
+
+Every command below was run through subprocess.run and every code shown is the
+real .returncode of that call.
+
+ADD, ON A THROWAWAY BRANCH, NEVER DETACHED (constraint 7, DECISION D3)
+  git -C /home/decodeux/Repos/remedy worktree add -b tmp/f031-r65-base \
+      /home/decodeux/Repos/remedy/.remedy-wt/f031-r65-base 6325ac2f
+  exit code 0
+  output: Preparing worktree (new branch 'tmp/f031-r65-base')
+          HEAD is now at 6325ac2f Merge pull request #213 from UndefinedDatabase/feature/f022-live-cost-ticker
+  readings taken inside the new worktree:
+    git rev-parse HEAD        -> 6325ac2fad76ca94e23f7bd02c80427d28e05f1f
+    git branch --show-current -> tmp/f031-r65-base   (non-empty: NOT detached)
+
+  git worktree list, while the base worktree existed — 2 lines:
+    /home/decodeux/Repos/remedy                           6bb24ca5 [feature/f031-decision-inbox]
+    /home/decodeux/Repos/remedy/.remedy-wt/f031-r65-base  6325ac2f [tmp/f031-r65-base]
+  git branch --list "tmp/*", while it existed — 1 line:
+    + tmp/f031-r65-base
+
+REMOVE
+  git -C <repo> worktree remove --force /home/decodeux/Repos/remedy/.remedy-wt/f031-r65-base
+  exit code 0, no output
+
+PRUNE
+  git -C <repo> worktree prune
+  exit code 0, no output
+
+BRANCH DELETE
+  git -C <repo> branch -D tmp/f031-r65-base
+  exit code 0
+  output: Deleted branch tmp/f031-r65-base (was 6325ac2f).
+
+THE PROOF READINGS, AFTER ALL THREE
+  git worktree list                        -> 1 line
+    /home/decodeux/Repos/remedy  6bb24ca5 [feature/f031-decision-inbox]
+  git branch --list "tmp/*"                -> 0 lines
+  git status --porcelain                   -> 0 lines
+  git ls-files .remedy-wt                  -> 0 lines
+  git ls-files --others --exclude-standard -> 0 lines
+  the worktree path exists on disk         -> False
+
+Nothing this round did left a worktree, a branch, a tracked file or an
+untracked file behind.

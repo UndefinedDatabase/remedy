@@ -11,7 +11,7 @@ const dotClass: Record<string, string> = {
 
 export function GraphFilterChips({ value, onChange }: { value: GraphFilter; onChange: (value: GraphFilter) => void }) {
   return (
-    <div className={styles.chips} aria-label="Graph filters">
+    <div className={styles.chips} role="group" aria-label="Graph filters">
       {filters.map(([key, label]) => (
         <button
           key={key}

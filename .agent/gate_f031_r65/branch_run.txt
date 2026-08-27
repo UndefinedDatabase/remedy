@@ -1,0 +1,23 @@
+F031 R65 — THE BRANCH RUN (integration_gate.md step 1)
+
+command      python3 -m pytest -n auto -q
+cwd          /home/decodeux/Repos/remedy   (the PRIMARY checkout)
+commit       6bb24ca5 on feature/f031-decision-inbox, the tip after C2
+invocation   subprocess.run([...], cwd=repo, capture_output=True, text=True)
+             output held in process MEMORY for the whole run and written here
+             only after the process exited (constraint 11, R-0176)
+
+exit code    0        <- subprocess.run(...).returncode, not a summarised word
+wall time    170.8 s  <- measured around the call
+^FAILED      0 lines  <- see branch_failed.txt, which is empty
+
+raw tail, the last four lines exactly as printed:
+........................................................................ [ 99%]
+........................................................................ [ 99%]
+.....................................................                    [100%]
+17817 passed, 20 skipped in 170.27s (0:02:50)
+
+The counts 17817 passed and 20 skipped are EQUAL to the reviewer's own branch
+reading at 2d4001b4. The wall time is not: 170.27s here against 149.95s there.
+Nothing in this round pins wall time, and both runs are under the ~5 min
+threshold of integration_gate.md step 5, so no perf-pass note is raised.

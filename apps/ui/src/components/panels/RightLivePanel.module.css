@@ -208,3 +208,227 @@
 .advancedItem strong { color: var(--remedy-ink); }
 .delayedDot { width: 9px; height: 9px; border-radius: 50%; background: var(--remedy-orange-400); box-shadow: 0 0 8px rgba(245,163,78,.6); }
 .reconnectingDot { width: 9px; height: 9px; border-radius: 50%; background: var(--remedy-orange-400); opacity: .55; }
+
+/* The decision inbox's rows (T5_F031 T002a, DECISION F031 D4). The .card shell
+   above is reused unchanged: an inbox styled unlike the cards beside it would
+   read as a different surface. Every value below resolves to a custom property
+   apps/ui/src/styles/ already defines — an unresolved one renders nothing and
+   no suite in this repository would see it (R-0661). */
+.decisionRow { display: flex; flex-direction: column; gap: 8px; padding: 10px 2px; border-bottom: 1px solid var(--remedy-line); }
+.decisionRow:last-child { border-bottom: none; }
+.decisionTitle { display: block; font-size: 13px; color: var(--remedy-ink-strong); line-height: 1.45; }
+.decisionChips { display: flex; flex-wrap: wrap; gap: 6px; }
+.decisionChip {
+  padding: 2px 8px;
+  border-radius: var(--remedy-radius-pill);
+  background: var(--remedy-bg-2);
+  border: 1px solid var(--remedy-line);
+  font-size: 11px;
+  color: var(--remedy-muted);
+}
+/* The card's DEEP LINK chip (T5_F031 T003, DECISION F031 D15). It rides in the
+   .decisionChips strip above, so it takes .decisionFilterChip as its model —
+   that is this card's existing INTERACTIVE chip, and the scale both of them use
+   is the .decisionChip scale directly above rather than the glass dock. The
+   focus ring names --remedy-blue-strong and not the reference sheet's
+   --remedy-focus, for the reason .decisionFilterChip:focus-visible records
+   below: tokens.css has never adopted that name, and an unresolved custom
+   property would drop the whole declaration (R-0661). */
+.decisionJumpChip {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: var(--remedy-radius-pill);
+  background: var(--remedy-bg-2);
+  border: 1px solid var(--remedy-line-strong);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--remedy-muted);
+  cursor: pointer;
+}
+.decisionJumpChip:hover { border-color: var(--remedy-blue-strong); color: var(--remedy-ink); }
+.decisionJumpChip:focus-visible {
+  outline: 2px solid var(--remedy-blue-strong);
+  outline-offset: 2px;
+}
+
+/* THE CLARIFICATION FORM'S FIELDS (T5_F031 T003, DECISION F031 D24). One group
+   per still-open question the flight plan is waiting on, sitting ABOVE the
+   .decisionAnswers strip because the operator reads the questions before the
+   control that answers them. The field takes .chatInput above as its model —
+   that is this panel's own existing text input — at the .decisionChip scale the
+   rest of this card uses, and the focus ring takes .decisionFilterChip:focus-
+   visible's shape together with its --remedy-blue-strong for the reason
+   recorded there: tokens.css has never adopted --remedy-focus, and an
+   unresolved custom property drops the whole declaration (R-0661). The same
+   R-0661 rule as the blocks around it applies to every value here.
+   THE DEFAULT IS SHOWN AND NEVER PREFILLED, which is why there is a
+   .decisionClarificationMeta line at all: the server reads a blank answer as
+   "accept this question's default", so the default has to be READABLE beside
+   an empty field rather than sitting inside it, where it would post as though
+   the operator had typed it. NO POINTER CURSOR ON THE INPUT — it is a text
+   field and the browser's own caret is the honest affordance for one. */
+.decisionClarifications {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 2px;
+}
+.decisionClarification {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.decisionClarificationQuestion {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--remedy-ink-strong);
+  line-height: 1.45;
+}
+.decisionClarificationInput {
+  height: 32px;
+  border-radius: var(--remedy-radius-sm);
+  background: var(--remedy-bg-2);
+  border: 1px solid var(--remedy-line);
+  padding: 0 10px;
+  font: 500 12px/1.45 var(--remedy-font-ui);
+  color: var(--remedy-ink);
+}
+/* globals.css turns every input's outline off, so the ring has to be reinstated
+   by a rule specific enough to win — a class with a pseudo-class beats a bare
+   element selector — or these fields would be the one place in the right panel
+   a keyboard operator loses the focus indicator ux_spec.md §14 requires. */
+.decisionClarificationInput:focus-visible {
+  outline: 2px solid var(--remedy-blue-strong);
+  outline-offset: 2px;
+}
+.decisionClarificationMeta {
+  margin: 0;
+  font-size: 11px;
+  color: var(--remedy-muted);
+  line-height: 1.45;
+}
+
+.decisionAnswers { display: flex; flex-wrap: wrap; gap: 8px; }
+.decisionAnswer {
+  height: 30px;
+  padding: 0 12px;
+  border-radius: var(--remedy-radius-sm);
+  border: 1px solid var(--remedy-line-strong);
+  background: var(--remedy-blue-50);
+  color: var(--remedy-blue-strong);
+  font-size: 12px;
+  font-weight: 600;
+}
+/* A button is disabled only while ITS OWN answer is on the wire, so the dimming
+   below reads as "this one is being sent" and never as "answering is off". */
+.decisionAnswer:disabled { cursor: not-allowed; opacity: 0.55; }
+
+/* A REFUSED ANSWER IS TEXT, NOT A CONTROL (finding R-0693, DECISION F031 D22).
+   The write door `decision.resolve` answers exactly one of the eight producing
+   decision types, so decisionCard.ts stamps posts: false on every answer of the
+   other seven and this is what those render as. NO BUTTON CHROME ON PURPOSE —
+   no background, no border, no pointer cursor — because the chrome is precisely
+   what made the old affordance claim a send the door would refuse. The mono
+   face says it is a command, the muted colour says it is not the loudest thing
+   on the card, and user-select: all makes ONE click take the whole command,
+   which is the entire point of leaving it on screen. The same R-0661 rule as
+   the blocks around it applies — every value here resolves to a custom property
+   apps/ui/src/styles/tokens.css already defines. */
+.decisionAnswerText {
+  align-self: center;
+  font-family: var(--remedy-font-mono);
+  font-size: 12px;
+  color: var(--remedy-muted);
+  user-select: all;
+}
+
+/* What became of ONE sent answer (T5_F031 T003). The sentence is
+   decisionOutcome.ts's; only the colour and the placement are this card's, and
+   the three tones below are that module's closed union. flex-basis: 100% puts
+   the sentence on its own line inside the .decisionAnswers strip, under the
+   buttons rather than between them. The same R-0661 rule as the blocks above
+   applies — every colour resolves to a custom property
+   apps/ui/src/styles/tokens.css already defines. */
+.decisionOutcome { flex-basis: 100%; margin: 0; font-size: 12px; line-height: 1.45; }
+/* THE EMPTY REGION IS COLLAPSED, NEVER REMOVED (finding R-0686). The card
+   renders this paragraph from a decision row's FIRST render, before it has
+   anything to say, because assistive technology registers a live region when
+   the node ENTERS the accessibility tree and announces later MUTATIONS of it —
+   a region inserted already populated announces nothing. THREE MECHANISMS ARE
+   EXCLUDED HERE ON PURPOSE, so the next reader does not tidy this up with one
+   of them: display: none, visibility: hidden and the hidden attribute each
+   REMOVE the node from that tree, which would reinstate R-0686 in a form that
+   looks fixed. Taking the empty paragraph OUT OF FLOW collapses it instead —
+   it has no content, .decisionOutcome above gives it no margin, and an
+   out-of-flow box forces no flex line on the .decisionAnswers strip, whose
+   gap would otherwise show as a stray 8px after every button. */
+.decisionOutcomeQuiet { position: absolute; }
+.decisionOutcomeOk { color: var(--remedy-green-500); }
+.decisionOutcomeWarn { color: var(--remedy-orange-400); }
+.decisionOutcomeError { color: var(--remedy-red-500); }
+
+/* The inbox's TYPE FILTER chips (T5_F031 T002b, DECISION F031 D8). They take the
+   CARD's own chip scale that .decisionChip sets above, NOT the glass dock
+   ux_spec.md §13 gives the graph stage: the dock floats over the dark canvas,
+   while these sit inside .card, which already supplies the glass. The same
+   R-0661 rule as the block above applies — every value here resolves to a custom
+   property apps/ui/src/styles/tokens.css already defines. */
+.decisionFilterRow { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.decisionFilterChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: var(--remedy-radius-pill);
+  background: var(--remedy-bg-2);
+  border: 1px solid var(--remedy-line);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--remedy-muted);
+  cursor: pointer;
+}
+.decisionFilterChip:hover { border-color: var(--remedy-line-strong); color: var(--remedy-ink); }
+/* ux_spec.md §14 forbids color-only state: the chosen chip also gains weight and
+   a stronger border, so it stays legible without color perception. */
+.decisionFilterChipOn {
+  background: var(--remedy-blue-50);
+  border: 1px solid var(--remedy-blue-strong);
+  font-weight: 700;
+  color: var(--remedy-blue-strong);
+}
+/* The hover rule above is one class more specific than the selected rule, so
+   without this line hovering the chosen chip would repaint it as an unchosen
+   one. Same reason GraphFilterChips.module.css carries a .chipActive:hover. */
+.decisionFilterChipOn:hover { border-color: var(--remedy-blue-strong); color: var(--remedy-blue-strong); }
+/* §14 rules a 2px focus ring; these are the right panel's first interactive
+   chips, so they are the first place in it that ring has to exist. The ring
+   names --remedy-blue-strong and not the reference sheet's --remedy-focus,
+   which apps/ui/src/styles/tokens.css has never adopted: the two carry the same
+   #2f6fff, and an unadopted name would drop the whole declaration (R-0661) and
+   turn TestEveryCustomPropertyResolves red. Adopting the token is the better
+   fix, and belongs to whichever round next touches that sheet. */
+.decisionFilterChip:focus-visible {
+  outline: 2px solid var(--remedy-blue-strong);
+  outline-offset: 2px;
+}
+/* The count rides the chip's own color at reduced strength, so one rule covers
+   both the chosen chip and the rest. */
+.decisionFilterCount { opacity: 0.7; font-variant-numeric: tabular-nums; }
+
+/* The inbox header's OPEN COUNT (T5_F031 T002b, DECISION F031 D10). It takes the
+   CARD's own chip scale that .decisionChip sets above rather than inventing a
+   badge shape of its own, and it carries no state color at all: the number and
+   the word beside it are the whole signal, so ux_spec.md §14's color-only rule
+   has nothing here to bite on. The same R-0661 rule as the blocks above applies —
+   every value resolves to a custom property apps/ui/src/styles/tokens.css already
+   defines. */
+.decisionOpenCount {
+  padding: 2px 8px;
+  border-radius: var(--remedy-radius-pill);
+  background: var(--remedy-bg-2);
+  border: 1px solid var(--remedy-line);
+  font-size: 11px;
+  color: var(--remedy-muted);
+  font-variant-numeric: tabular-nums;
+}

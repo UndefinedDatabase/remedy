@@ -252,6 +252,49 @@ class TestDashboardTruthFieldsExist:
         assert '"stale"' in src
 
 
+def _decision_requested_events(count: int) -> list[dict]:
+    """`human_decision_requested` events — the ledger shape `metrics.open` no longer reads."""
+    return [
+        {"event": "human_decision_requested", "run_id": "r1", "job_id": "j1",
+         "timestamp": f"2026-01-01T00:0{i}:00", "outcome": "pending", "metadata": {}}
+        for i in range(count)
+    ]
+
+
+class TestMetricsOpenComesFromTheDecisionQueue:
+    """`metrics.open` re-derives from `decision_queue` (DECISION F031 D9)."""
+
+    @staticmethod
+    def _metrics_open(job, events):
+        from packages.orchestration.ui_server import _build_dashboard
+        with patch("packages.orchestration.ui_server._load_events", return_value=events):
+            return _build_dashboard(job)["metrics"]["open"]
+
+    @staticmethod
+    def _queue_count(job, events):
+        from packages.orchestration.decision_queue import list_decisions, open_decisions
+        return len(open_decisions(list_decisions(job, events)))
+
+    def test_repo_less_job_reports_its_open_decisions(self):
+        job = _make_job_s80()
+        expected = self._queue_count(job, [])
+        assert expected > 0, "a job with no target_repo must raise a stop-reason decision"
+        assert self._metrics_open(job, []) == expected
+
+    def test_job_with_nothing_open_reports_zero(self):
+        job = _make_job()
+        expected = self._queue_count(job, [])
+        assert expected == 0
+        assert self._metrics_open(job, []) == expected
+
+    def test_human_decision_requested_events_do_not_raise_the_count(self):
+        job = _make_job()
+        events = _decision_requested_events(3)
+        expected = self._queue_count(job, events)
+        assert expected == 0
+        assert self._metrics_open(job, events) == expected
+
+
 # ── Step 249: No-Fake UI State Pass ─────────────────────────────────────────
 
 

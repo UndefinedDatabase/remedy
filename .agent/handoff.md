@@ -1,115 +1,121 @@
-# Handoff — amend0825 dogfooding findings
-
-**Order:** operator collection order amend0825, no self-drive loop.
-**Branch:** `feature/amend0825-dogfood-findings`, cut from `main` at `6325ac2f`
-(the merge commit of pull request #213).
-
+# Handoff — F031 Decision inbox · CLOSURE 3 OF 3 · R72 · terminal branch state
+Branch `feature/f031-decision-inbox` · round base `f7cc2dd2`. F031 IS CLOSED, its
+`docs/roadmap/STATUS.md` line reads `[x]`, and PR #215 is OPEN, not a draft and
+NOT MERGED. SESSION: ONE round was delegated, this terminating CLOSURE ROUND,
+extended by a reviewer-ordered addendum and correction.
+## Range
+Review of `f7cc2dd2`..HEAD, HEAD being C7, the commit that writes this file.
 ## Commits
-
-| SHA | Subject |
-|-----|---------|
-| a653aedb | fix(do): budget the job-less ping-pong run without a job id |
-| 307ed926 | fix(doctor): resolve the test lanes against the installation, not the cwd |
-| c30e53fb | chore(models): repoint claude-flagship and claude-workhorse off dead ids |
-| ea3748ba | feat(do): print the effective model in the bare do run header |
-| 8222476e | fix(teach): resolve job ids across both job stores |
-| dba53a93 | docs(roadmap): record three operator dogfooding findings |
-| ecfd57e9 | docs(system): the shipped defaults are no longer on the dead list |
-
+### 995bd311 C0a docs(agent): save the F031 R72 closure block
+| Path | +/- | Reason |
+|---|---|---|
+| .agent/authored/f031-r72.md | +390/-0 | byte copy of the reviewer block |
+### 4879d3c9 C0b docs(agent): mirror the F031 R72 block into last_block
+| Path | +/- | Reason |
+|---|---|---|
+| .agent/last_block.md | +280/-158 | same git blob as C0a |
+### 50a3c6d2 C1 docs(agent): move the F031 plan to the closure round
+| Path | +/- | Reason |
+|---|---|---|
+| .agent/plan.md | +24/-29 | PLANF031R72, byte for byte |
+### 26c454ab C2 docs(agent): record the F031 R71 verdict and register R-0709
+| Path | +/- | Reason |
+|---|---|---|
+| .agent/live_review.md | +4/-0 | LEDGER72 appended |
+### 6cdf3236 C3 docs(agent): record DECISION F031 D27 on closure precondition 2
+| Path | +/- | Reason |
+|---|---|---|
+| .agent/decisions.md | +35/-0 | DECISION27 appended |
+### e00caa58 C4 docs(roadmap): close F031 and sync the README capability
+| Path | +/- | Reason |
+|---|---|---|
+| docs/roadmap/STATUS.md | +1/-1 | the F031 line `[~]` to `[x]` |
+| README.md | +6/-2 | RTO1, RTO2, RTO3 capability sync, same commit |
+| .agent/candidates.md | +12/-4 | CANDIDATES, the package-absence entry |
+| .agent/handoff.md | +77/-40 | the closure-round handback |
+### d803a304 C5 docs(agent): register the two closure candidates from the gate
+| Path | +/- | Reason |
+|---|---|---|
+| .agent/candidates.md | +34/-0 | CANDIDATES2 appended, reviewer-ordered |
+### ad90960b C6 docs(agent): correct the reach of the package-absence candidate
+| Path | +/- | Reason |
+|---|---|---|
+| .agent/candidates.md | +24/-0 | CORRECTION1 appended, reviewer-ordered |
+### C7 refresh the handoff over the whole branch — self, per R-0149
+| Path | +/- | Reason |
+|---|---|---|
+| .agent/handoff.md | self | this file; the C4 handback stopped at C4 |
 ## Item status
-
 | Item | Status | Reason |
-|------|--------|--------|
-| 1 — do run budget crash | done | repaired, red-proofed |
-| 2 — teacher blind to job runs | done | resolver repaired; narration residue recorded in T5_F255.md |
-| 3 — empty token ledger | deviated | design gap, not wiring — recorded in T2_F103.md |
-| 4 — promotion dead end | done | recorded in T0_F017.md; guard untouched, as ordered |
-| 5 — doctor lanes from a foreign cwd | done | repaired, red-proofed |
-| 6 — dead built-in model ids | done | repointed; header names the effective model |
-
-## Changed files
-
-| Path | What |
-|------|------|
-| apps/cli/commands/do_cmd.py | budget-only safe point; effective-model header |
-| apps/cli/commands/worker_facade_cmd.py | `remedy_scripts_dir`; advisory-tier docstring |
-| apps/cli/commands/teach_cmd.py | both commands use `resolve_any_job_id` |
-| packages/orchestration/data_paths.py | `task_jobs_dir`, `resolve_any_job_id`, shared matchers |
-| packages/orchestration/pingpong_job.py | `_jobs_dir` routes through `task_jobs_dir` |
-| packages/orchestration/model_aliases.py | two aliases repointed, dated |
-| scripts/dead_models.json | reasons re-stated; `superseded_by` filled |
-| docs/roadmap/features/{T0_F017,T2_F103,T5_F255}.md | the three recorded findings |
-| docs/system/model-defaults-and-dead-model-check-v0.md | stale sentence corrected |
-| tests/cli/test_do_cmd_pingpong_budget.py | new, 6 tests |
-| tests/cli/test_worker_facade_cmd.py | +5 tests, fixture id read from the table |
-| tests/cli/test_teach_cmd.py | +6 tests |
-
-## CI round 1 — RED, repaired
-
-Run `32893880088` failed with SEVEN failures, all this round's own, in two
-stages (`fast` 1, `standard` 6). Repairing them is this round's work per
-AGENTS.md amend0820 gate autonomy. Nothing was weakened to reach green.
-
-| Failure | Cause | Repair |
-|---------|-------|--------|
-| 5 x `tests/orchestration/test_role_config.py` | spelled `claude-opus-4-20250514` where it meant "the flagship alias" | read the id from `MODEL_ALIASES`, as the ollama cases in that file already did |
-| `test_dashboard_contract.py::test_context_md_no_stale_steps` | the `context.md` rewrite dropped its `## Steps` section | section restored, stating this order's truth |
-| `test_resource_safety.py::test_context_mentions_resource_safety` | the same rewrite dropped the STANDING constraint list | constraints carried forward and marked standing |
-
-The deleted constraint list NAMED the four state readers a `.agent/` rewrite
-must gate. The rule that would have prevented two of these failures was on
-disk, in the file the rewrite overwrote.
-
-Two process faults produced this, both the same habit — truncating output whose
-purpose was completeness:
-- `grep ... | head -20` hid `test_role_config.py` from the dead-id sweep.
-- `gh run view --log-failed | tail -80` showed only the `standard` stage's six
-  failures and hid the `fast` stage's one, which would have caused a second red
-  run.
-
+|---|---|---|
+| C0a save the block | done | |
+| C0b mirror into last_block | done | |
+| C1 the plan | done | |
+| C2 the ledger append | done | |
+| C3 the decision | done | |
+| C4 the closure commit | done | |
+| C5 the candidates append | done | reviewer-ordered addendum |
+| C6 the candidates correction | done | reviewer-ordered correction |
+| C7 this handoff refresh | done | reviewer-ordered |
+| push and PR #215 | done | pushed after C4, C5, C6; PR created, NOT merged |
+## External actions
+- `gh pr list --state open …` before C4: exit 0, verbatim `[]`. Merged nothing.
+- `git push origin feature/f031-decision-inbox` after C4, C5 and C6 — exit 0 each,
+  remote tip equal to the local tip at each. C7 is pushed after this commit, so
+  its outcome is in the round report, not in this file.
+- `gh pr create` exit 0 giving PR #215 into `main`; `gh pr edit 215 --body-file`
+  twice, exit 0 each. NOT MERGED. No worktree, no branch deletion, no rewrite.
 ## Verification
-
-| Gate | Command | Result |
-|------|---------|--------|
-| Canary | `pytest tests/cli/test_golden_path.py -q` | 42 passed |
-| Docs round | `pytest tests/docs/ -q` | 295 passed |
-| Fast lane | `scripts/remedy_test_fast.sh` | 594 passed |
-| Touched suites | 10 files incl. ledger, aliases, teach, budget | 399 passed |
-| Wider suites | pingpong_cli, do_job_flow, job_commands, do_run, safe_points | 529 passed |
-| State readers | the four this order's constraints name | 559 passed |
-| CI `fast` stage | `pytest -n auto -m "<fast marker>"` | 4040 passed, 7 skipped |
-| CI `standard` stage | `pytest -n auto -m "<standard marker>"` | 13087 passed, 2 skipped, 1 teardown error |
-| Lint | `ruff check` over every changed `.py` | All checks passed |
-
-The one `standard` error is a teardown leak in
-`tests/runtimes/test_supervisor_portability.py` — a `runtime stop` child
-outlived its file. It is environmental, not this change set: nothing here
-touches the supervisor path, the hosted run showed no such error, and the file
-re-run alone is 99 passed. Its cause was a pytest killed mid-run earlier in
-this session, which is the F085 R64 class of leaked port-bound supervisors.
-
-Red-proof: items 1, 2 and 5 each had their new tests run against the unfixed
-code and fail there (2/2, 3/3 and 1/1 respectively).
-
-Pre-existing and untouched: `tests/cli/test_plan_approval.py` carries 6 ruff
-findings at `main` and still carries exactly those 6.
-
-## Open
-
-- The three recorded findings are claimed by nobody. No STATUS line was
-  registered: each has an owning feature file.
-- `remedy plan next` reports **F031 — Decision inbox**, not F022. F022 closed
-  on 2026-08-23 with pull request #213.
-- `.agent/STOP` remains on disk, untracked, from the stopped F031 R10 round.
-
-## Deviations, declared
-
-This handoff is 115 lines, over both the 60-line cap and the 100-line
-allowance a per-commit table of more than five commits earns. The cause is
-mandated content, not prose: the per-commit table of eight commits, the
-item-status table the completion protocol requires for an ordered bundle of
-six, the changed-files table, the verification table, and the CI-round-1
-failure table that records a red gate and its repair. No section is dropped.
-
-## Next expected action
-Push, open the pull request, watch the hosted run to green, merge it.
+- G1 exit 0 — branch correct, status 0 lines after every commit, STOP absent twice.
+- G2 exit 0 — scratch, C0a, C0b and the C3 working copy ALL FOUR EQUAL at 31437 bytes and 390 lines, C0a and C0b the same blob; it covers those four points and NOT the bytes of any prompt.
+- G3 exit 0 — 12 slices, CONTENT 112, TOTAL 390, PROSE 278, both caps met.
+- G4 exit 0 — plan.md at C1 byte-equal to PLANF031R72, control FALSE, `wc -l` 43.
+- G5 exit 0 — 1012298 + 1 + 6596 = 1018895 committed, N 2, units 402 to 404, byte-offset flip 1012359 rejected by both readers.
+- G6 exit 0 — findings 269 to 270 adding only R-0709, `Done:` 17, `Landed:` 0, `Gate: R` 19, `Gate: F` 52 to 53 adding only F031 R71, open set 252 to 253.
+- G7 exit 0 — 615235 + 1 + 2192 = 617428 committed, prefix held, ADDED key exactly `## DECISION F031 D27`.
+- G8 REAL exit 0 — `620 passed in 67.56s (0:01:07)`, `^FAILED` 0, extractor sighted.
+- G9 REAL exit 0 — `325 passed in 0.61s`; at C4 the three REWRITE pairs read 0 and 1, the APPEND pair proved by its added lines.
+- G10 exit 0 — residues EMPTY, code trees EMPTY, insertions 390, 280, 24, 4, 35 single-parent and under 500, markers 0 against a CONTROL of 12.
+- H1 exit 0 — branch correct, status 0 lines after C5, STOP absent.
+- H2 exit 0 — 1274 + 1 + 2415 = 3690 committed, prefix held, N 2, units 3 to 5, byte-offset flip 1315 rejected by both readers.
+- H3 exit 0 — path set exactly `.agent/candidates.md`, 34 insertions, single-parent, under 500, code trees EMPTY.
+- H4 REAL exit 0 — `325 passed in 0.69s`, and neither STATUS.md nor README.md is in the path set.
+- H5 exit 0 — `.remedy-wt` 0 tracked, worktree 1 line, no `tmp/*` branch.
+- K1 exit 0 — branch correct, status 0 lines after C6, STOP absent.
+- K2 exit 0 — 3690 + 1 + 1693 = 5384 committed, prefix held, N 1, units 5 to 6, byte-offset flip 3721 rejected by both readers.
+- K3 exit 0 — path set exactly `.agent/candidates.md`, 24 insertions, single-parent, under 500, code trees EMPTY.
+- K4 exit 0 — the three landed candidate entries each still occur EXACTLY ONCE.
+- K5 exit 0 — `.remedy-wt` 0 tracked, worktree 1 line, no `tmp/*` branch.
+## Authored-text proofs
+C0a is a `shutil.copyfile` of `.remedy-wt/f031-r72.md`, proved by G2, and every
+slice came from the COMMITTED C0a blob applied byte for byte. The C5 and C6
+slices carry no authored copy by their own order; the reviewer holds the
+scratch originals and gates them by byte-equality.
+## Deviations & assumptions
+- C5, C6 AND C7 ARE THREE COMMITS BEYOND THE CLOSURE COMMIT. Each touches only
+  `.agent/`, each was reviewer-ordered, and together they are a DECLARED deviation
+  from the closure protocol rendering that makes the STATUS edit the last commit
+  on the branch. Rule A4 as stated in `docs/roadmap/ROADMAP.md` requires only
+  "STATUS.md updated in the same PR", which holds; the R-0154 pin that rendering
+  protects is README/STATUS agreement, which none of the three touches — both
+  blobs are bit-identical to C4.
+- DECLARED CONTRADICTION, APPLIED ANYWAY PER CONSTRAINT 2: DECISION27 and
+  PLANF031R72 route the `R-0708` repair away because "`tests/ui_server/` is outside
+  F031 change set", which the `Gate: F031 R69` ledger entry had already measured
+  FALSE and narrowed to the failing CLASS, its HELPER and the failing TEST.
+  Neither slice was edited; C5 and C6 carry the correction to disk instead.
+- DECISION D15 STATED-CAUSE OVERAGE: this file measures 121 lines against the
+  100-line cap its 9-commit range earns. The cause is mandated content only —
+  nine per-commit changed-files tables, a ten-row item-status table and twenty
+  one-line gate results across three reviewer-ordered bundles. No section was
+  dropped and no transcript is restated.
+## Closure values
+Evidence job `f031-closure` · package
+`remedy-review-20260827-122441-READY_FOR_REVIEW.zip` · SHA-256
+`4b862bf093f4082821662357d730042c28ad6c16078dfa5bced812aca0db4bfa` · status
+`READY_FOR_REVIEW` · manifest head `f0dad9a8076e8cfc4208dbe5a7097619a31d4cd5`,
+the accepted HEAD the STATUS line names. Open findings after this round: 253.
+`.agent/candidates.md` IS NON-EMPTY — three entries and one correction — and is a
+BLOCK CONDITION for the first reviewed round of the next feature.
+## Next
+MERGE PR #215 at the next feature start, through the AGENTS.md Open PR Gate.

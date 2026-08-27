@@ -765,6 +765,167 @@ end the response with:
       stated exactly this counter-measure in a finding BODY, and the class
       recurred in the next block the reviewer wrote.
 
+  33. **A colour ordered inside a worktree names the runner's configuration, SCOPES
+      its selection, and reports the UNMUTATED control beside the mutated one.**
+      Finding R-0703. A block may order a vitest red-proof in the disposable
+      worktree §4 item 10 and docs/agents/self_drive_protocol.md G5 require, only
+      when it ALSO names `--config <primary>/apps/ui/vitest.config.ts` and narrows
+      the run to the sources under proof. `apps/ui/node_modules` is gitignored, so
+      a fresh worktree carries neither the runner nor a config that can import it;
+      and an UNSCOPED run additionally collects
+      `src/components/prompt/promptTraceLens.test.ts`, which fails to resolve under
+      `--root` and is a worktree artifact rather than a result. Both halves were
+      already on disk, in R-0653's own RESOLUTION, and neither had been promoted
+      here — which is how a block came to reproduce a defect a RESOLVED finding had
+      already solved, the rule-in-a-finding-body class of R-0548 reaching a
+      resolution instead of a fix clause. Order the control in the SAME worktree
+      BEFORE the mutation and require its exit code beside the mutated one: a
+      colour with no baseline is not evidence. Item 5 decides WHETHER a colour may
+      be ordered and item 12 pairs the reviewer's own dry run with a red control;
+      this one governs whether the ordered command can produce a reading AT ALL in
+      the one environment the guardrails permit it to run in, which neither
+      reaches, because the recipe is sound and only the ENVIRONMENT defeats it.
+      Measured at `fd6e70a9`: as ordered the run exits 1 having loaded nothing;
+      with the config but the whole root the UNMUTATED control is still exit 1 at
+      466 passed, so red was the answer either way; scoped to `src/api/` the
+      unmutated control is a REAL exit 0 at 450 passed and the two mutations are
+      exit 1 at 6 and 5 failures. The gate that cannot fail and the gate that
+      cannot pass are the same defect wearing two faces.
+
+  34. **Every file a block orders a change against is READ at emission, for what it
+      already holds.** Findings R-0694, R-0695, R-0697 and R-0698, with R-0696 as the
+      resolved instance whose own `Done:` paragraph routes its root cause here. Before
+      a block orders an addition, a call, an import or a computed value into a file,
+      the reviewer reads that file and the guards that bind it, and writes what it
+      found beside the order. The kinds of target that have each cost this branch a
+      round are the ones to read. The TESTS that already guard the path, because a
+      guard may already assert what the order asks for: R45's item S10 ordered a
+      contract guard `tests/ui_contracts/test_decision_answer_wiring.py` already
+      carried, and the suite gained a second test calling the same reader over the
+      same source for the same property (R-0696). The EQUALITY GUARD that pins a
+      closed set the order widens: R47's items S1 and S3 ordered two imports into the
+      write door without naming `TestCommandDoorImportGuard` in
+      `tests/ui_server/test_command_channel.py`, so the branch tip shipped RED at 1
+      failed and 479 passed (R-0697). The CONSTANT a parametrized test compares the
+      changed behaviour against: `ANSWERABLE_DECISION_TYPES` in
+      `tests/orchestration/test_decision_inbox.py`, which the ordered predicate change
+      would have turned red for the `flight_plan_approval` parameter (R-0698). The
+      REFUSAL CONDITIONS of a predicate whose value the order computes, and not merely
+      its route to the data: `_answerable_by_decision_resolve` in
+      `packages/orchestration/decision_inbox.py` tested existence alone while
+      `escalation.answer_task_decision` returns None for any record not OPEN, so the
+      key read True in exactly the state the write door refuses (R-0695). And the OPEN
+      SET itself, which is a target of the same kind: a fix clause labelled binding on
+      the next block binds nothing unless the next block greps for it, so the open set
+      is read for such clauses before emission and each one is applied or named as
+      declined (R-0694 — whose own fix clause asks in addition for R-0631's
+      append-reader rule as an item of its own, which this item is not and does not
+      discharge). Items 6, 7 and 8 are the neighbours and none of them reaches this
+      one: item 6 binds a ZERO-GATE to the target's existing content, item 7 an
+      addition an existing count guard makes UNSATISFIABLE, and item 8 a gate whose
+      expected VALUE the code contradicts — each of those describes an order that
+      FAILS, while every instance here is an order that SUCCEEDS against a file the
+      block never read. Nothing is unsatisfiable when the target already satisfies the
+      order, and nothing goes red until a guard the block never named finally runs.
+
+  35. **A description and the enumeration it points at are read against each other,
+      and the enumeration is the half that gets executed.** Findings R-0699 and
+      R-0704. Where a block or a state slice both DESCRIBES work in prose and LISTS
+      it — a Bundle beside a SPEC, a Current Step beside a Next Steps list, a heading
+      beside its own body — the prose is resolved against the list before emission,
+      item by item, and anything the prose names that the list does not hold is added
+      to the list or struck from the prose. The list is the half that is executed: a
+      worker commits by the Bundle, and a resuming session reads `.agent/plan.md` by
+      its numbered steps, so a promise living only in the prose is a promise nothing
+      performs. R-0699 is that shape inside a block: R47's Bundle described C6 as the
+      door's `fp:` dispatch and gave no commit to the tests its own item S12
+      described, the worker followed the Bundle because the enumeration is what tells
+      it when to commit, and the dispatch landed with no test naming it — which also
+      left that round's ordered red control with nothing to bite on. R-0704 is the
+      same shape inside a state file: the PLANF031R54 slice's Current Step promised a
+      checklist round while its own Next Steps held neither, so the file AGENTS.md's
+      Session Resume tells the next session to read SECOND routed that session past
+      the round it had been re-sequenced to put first. A further instance was found at
+      the R55 gate in the reviewer's PLANF031R55 slice and recorded in that round's
+      ledger entry without a new id, per item 30: the list held an unnumbered
+      checklist round ahead of an item labelled R56, so that label was already wrong
+      by one before the round it named had begun. Items 16 and 17 are the neighbours.
+      Item 16 resolves a COUNT to the list it names, and item 17 makes a pair that
+      changes a structure's ARITY span the whole structure; neither reaches a prose
+      sentence naming an ITEM the list does not hold, because no numeral is stated and
+      no arity changes — the list is well-formed, correctly numbered, and simply
+      missing the thing the paragraph beside it promised.
+      The recurrence at R56 widens this item from a MISSING item to a WRONG LABEL, and
+      it is why the item is not yet a habit: the R56 block landed this very
+      counter-measure while its own PLANF031R56 slice reproduced the class inside the
+      same commit range. That slice's `## Next Steps` gave item 1 to an unnumbered
+      resolution sweep and labelled item 2 `R57`, while the sweep IS a round and takes
+      R57, so the markup is R58 and the label was wrong the moment it was written —
+      the same arithmetic as the R55 instance, one round later, under the rule written
+      to stop it. A state slice therefore assigns a round NUMBER to the round it is
+      written FOR and to no other: a step not yet begun is named by what it DOES, and
+      the number it will carry is not knowable while any step ahead of it can still be
+      inserted, split or dropped. The prose-versus-list reading above catches an item
+      the list does not hold; only this one catches a label the list holds in the
+      WRONG POSITION, because there the list is complete, correctly ordered, and every
+      sentence about it is true except the numeral — which is the half no reader
+      re-derives, since deriving it means counting the rounds that have not happened.
+
+  36. **A multi-paragraph append is proved by a second reader that covers the WHOLE
+      appended region, and its negative control sits on the FIRST appended
+      paragraph.** Findings R-0631 and R-0694. When a block orders an append to a
+      record file, reading (b) — the independent structural reader that exists
+      because a byte reader and a structural reader fail differently — compares the
+      LAST N blank-line units of the whole file against the slice's N paragraphs IN
+      ORDER, where N is a value the worker's script COUNTS and never a number the
+      block asserts, and the negative control flips a byte inside the FIRST appended
+      paragraph rather than the last. A single-paragraph append is the N=1 case of
+      that same sentence, so one wording covers both shapes and no block has to
+      decide which it is holding. A reader worded "the last unit equals the slice's
+      final paragraph" is a TOTAL check only at N=1, and against a longer slice it
+      degenerates to a check of one paragraph: R-0631 records a fifty-one-paragraph
+      append, measured at `f19abdfb`, in which a byte flipped in the FIRST appended
+      paragraph was REJECTED by reading (a) and ACCEPTED by reading (b) as worded,
+      so the independence the gate claimed covered one paragraph in fifty-one. A
+      control placed on the LAST paragraph hides the same gap from the other side,
+      because the byte reader rejects it alone and reading (b) is then never
+      exercised while the gate still reports a pass. Item 22 governs a sentence
+      quantifying across COMMITS and item 28 a value the handback template also
+      carries; neither reaches this one, because here every number is measured and
+      every range is right, and only the REGION the second reader covers is too
+      small. This is an item rather than a habit for the reason the list itself
+      exists: R-0631 stated exactly this counter-measure in a finding BODY and
+      labelled it binding on the next block that orders a multi-paragraph append,
+      and R-0694 is the record of the next such block ordering three of them with
+      both gates worded tail-only and no control on a first paragraph — because a
+      rule living in ledger prose binds nobody.
+
+  37. **A verdict states what its transport proof COVERS, and a block's frame carries
+      no run of repeated characters whose length is not stated.** Finding R-0705.
+      Under docs/agents/self_drive_protocol.md there is no paste relay: the block
+      travels inside the worker's prompt and the worker TYPES it into
+      `.agent/authored/`, so every transport gate this workflow can run compares the
+      saved copy to its mirror to the working copy — three artefacts that are all
+      the worker's own output. Such a chain proves the worker was SELF-CONSISTENT
+      and says nothing about whether it received what was sent. Two obligations
+      follow and neither is a new gate. FIRST, no line of a block is a run of a
+      single repeated character unless its length is stated beside it: a run has no
+      length a reader recovers by eye, so it is the one part of a block that fails
+      to survive retyping without leaving a trace, and a fixed short rule or a
+      stated count makes the bytes recoverable. SECOND, a verdict names the chain
+      its proof actually walked — the saved copy, its mirror, the working copy — and
+      never claims the EMITTED bytes, because that claim is unmeasurable in this
+      workflow and an unmeasurable claim in a verdict is the thing this record
+      exists to prevent. Item 12 governs the reviewer's own pre-emission runs and
+      item 33 whether an ordered command can produce a reading at all; neither
+      reaches this one, because here every ordered command runs and returns a true
+      reading, and the defect is that the property the reading is reported as
+      establishing is strictly larger than the property it establishes. LOW and
+      structural rather than lucky: nothing appliable travels in a block's frame —
+      the appliable bytes are the slices, each proved against its TARGET by its own
+      gate — so a frame line that drifts cannot reach any file this repository
+      keeps.
+
   Why this is on disk and not a habit: item 2 has recurred six times across
   F104 and F105, and R20 hit four of them in one block. A check that lives
   only in reviewer session memory is the A1 trap §0 names, and this list is the

@@ -382,7 +382,7 @@ class TestApprovalDecisionPayload:
             # The job id is the only legitimate difference between the two.
             return tuple(a.replace(str(job.id)[:8], "<job>") for a in d.next_actions)
 
-        assert bundled.payload == {}
+        assert bundled.payload == {"options": ["approve", "reject"]}
         assert bundled.safe_summary == plain.safe_summary
         assert _shape(bundled, bundled_job) == _shape(plain, plain_job)
         assert bundled.severity == plain.severity == "blocker"
@@ -403,4 +403,4 @@ class TestApprovalDecisionPayload:
         fp = legacy.model_dump()
         fp["_approval"] = "pending"
         d = self._fp_decision(Job(name="t", flight_plan=fp))
-        assert d.payload == {}
+        assert d.payload == {"options": ["approve", "reject"]}

@@ -1,0 +1,10 @@
+F031 R65 — THE CANARY
+
+command      python3 -m pytest tests/cli/test_golden_path.py -q
+cwd          /home/decodeux/Repos/remedy   (the PRIMARY checkout, at C3)
+exit code    0        <- subprocess.run(...).returncode
+wall time    22.5 s
+last line    42 passed in 20.39s
+
+count 42, EQUAL to the reference figure the reviewer measured at 2d4001b4.
+Run serially: no other pytest process was alive at the time.

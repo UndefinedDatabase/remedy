@@ -16,7 +16,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-57 of 255 registered items accepted. Next: F031 (Decision inbox).
+58 of 255 registered items accepted. Next: F032 (Approval with the evidence triple).
 
 | Tier | Name | Done | Total |
 |------|------|-----:|------:|
@@ -25,7 +25,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 | 2 | Minimal Self-Build Runtime | 14 | 14 |
 | 3 | Full Token Economy & Autonomy | 0 | 26 |
 | 4 | Memory & Learning | 0 | 16 |
-| 5 | Operator Cockpit | 5 | 29 |
+| 5 | Operator Cockpit | 6 | 29 |
 | 6 | Design-to-Code | 0 | 16 |
 | 7 | Quality & Trust | 0 | 15 |
 | 8 | Worker Ecosystem & Neutrality | 0 | 12 |
@@ -79,6 +79,10 @@ fill against the limit, a '~' prefix and tooltip whenever the basis is
 estimated, a warn band at 85 % of the token limit, a spent-only variant for
 limitless jobs, and the ledger's own final figure replacing the live one at
 terminal with any delta labelled).
+F031 decision inbox (every open question as a card carrying its type, age and
+blocked-subtree size, derived from the decision queue with no new storage,
+ordered by a documented rule over age and blocked size, filtered and badged
+live, and answerable from the card through the one existing write channel).
 
 Full per-feature state: [`docs/roadmap/STATUS.md`](docs/roadmap/STATUS.md)
 

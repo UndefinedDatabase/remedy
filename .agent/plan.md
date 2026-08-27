@@ -1,46 +1,43 @@
-# Plan — amend0825-dogfood-findings
+# Plan — F031 Decision inbox
 
-Branch: feature/amend0825-dogfood-findings, cut from `main` at `6325ac2f`, the
-merge commit of pull request #213. Operator collection order amend0825, no
-self-drive loop; the operator prompt carries the authorization for the alias
-repoint and for merging this branch's own pull request.
+Branch: feature/f031-decision-inbox, cut from `main` at `6325ac2f`, the pull
+request #213 merge closing F022. `.agent/live_review.md` is the record and the
+id ceiling, `.agent/decisions.md` D1-D27.
 
 ## Goal
-Six findings from the first operator dogfooding run (project ~/demo-remedy,
-jobs edbbc42bba4c4b00 and e984ec1943bb422f) triaged by ONE rule: repaired in
-code only when the repair is surgical AND a regression test proves it,
-otherwise recorded as a dated "Operator finding (2026-08-25, dogfooding)"
-paragraph in the owning file under docs/roadmap/features/.
+Every open question in one calm place: the inbox renders decision cards — type,
+age, blocked-subtree size — from the decision queue, live via the badge, with
+branch-only blocking semantics intact, ordered by a documented rule over age and
+blocked size, and answerable from the card through the write channel.
 
 ## Current Step
-All six items are decided and committed. The first hosted CI run was RED with
-seven failures, all of this round's own making, and repairing them is this
-round's work (AGENTS.md amend0820 gate autonomy). Remaining: land the repair,
-re-watch the hosted run to green, merge, and confirm zero open pull requests.
-
-The seven failures, their causes and their repairs are tabled in
-`.agent/handoff.md`; they are not restated here.
-
-| Item | Status | Reason |
-|------|--------|--------|
-| 1 — do run budget crash | done | repaired; tests/cli/test_do_cmd_pingpong_budget.py |
-| 2 — teacher blind to job runs | done | resolver repaired; narration residue recorded in T5_F255.md |
-| 3 — empty token ledger | deviated | design gap, not wiring — recorded in T2_F103.md |
-| 4 — promotion dead end | done | recorded in T0_F017.md, three facets, guard untouched |
-| 5 — doctor lanes from a foreign cwd | done | repaired; tests/cli/test_worker_facade_cmd.py |
-| 6 — dead built-in model ids | done | aliases repointed; do run header names the model |
+CLOSURE 3 OF 3. The RECORD ROUND passed every gate its block ordered and this
+round writes that verdict. It registers ONE new finding, `R-0709`, for a defect
+the open set does not hold: a block ordered its handback to put a ruling request
+to the operator, which `docs/agents/planner_reviewer_prompt.md` §2 forbids, and
+the session ended with nothing closed. It records DECISION F031 D27, which rules
+closure precondition 2 met on the evidence and carries `R-0708` as a documented
+open Medium risk. Then it flips the STATUS line to `[x]` with the README sync in
+the SAME commit and opens the pull request, which is NOT merged this session.
 
 ## Next Steps
-1. `gh pr create`, then `gh run watch` until the hosted run is green.
-2. Merge the pull request and delete the branch; end at zero open PRs.
-3. The next session's first reviewed round decides what to do with the three
-   recorded findings; none of them is claimed here.
+1. MERGE THE CLOSURE PULL REQUEST at the next feature's start, through the
+   AGENTS.md Open PR Gate. It is not merged in the session that creates it; the
+   gap is the operator's manual-review window.
 
 ## Risks
-- `.agent/STOP` is on disk, untracked, from the stopped F031 R10 round. It
-  governs the self-drive loop, not this order, and is never deleted here.
-- Finding 3 leaves job-path cost invisible until one of the three shapes the
-  F103 entry weighs is chosen. Nothing in this branch narrows that choice.
-- Finding 4 leaves a blocked promotion with no next step in the output. The
-  guardrail is correct and was deliberately not touched.
-- `remedy plan next` reports F031, not F022: F022 closed on 2026-08-23.
+- `R-0708` IS CARRIED OPEN AND IS NOT AN F031 DEFECT. Closure precondition 2
+  measured four GREEN and one RED in five runs at the reviewed head. The red is
+  a fixed five-second server-start budget in `tests/ui_server/test_live_state.py`
+  losing a CPU race under `-n auto`; the same test passes SOLO at exit 0 in
+  0.32s. DECISION F031 D27 rules the precondition met and routes the repair to a
+  follow-up, because `tests/ui_server/` is outside F031's change set.
+- R-0495 and R-0574 are inherited standing Highs from the already-closed F085
+  and F086, documented risks rather than F031 defects.
+- THE CLOSURE PACKAGE IS NOT ON DISK. It was built and verified at CLOSURE 2 and
+  its five values are carried unchanged; `.gitignore` excludes the archive and
+  the durable pointer is the STATUS line. This is registered as a closure
+  candidate rather than a finding.
+- Open findings, by the rule DECISION F009 D10 requires — every `^- R-\d+ — `
+  paragraph minus every `^Done: R-\d+ — ` line — the set is 253 after this
+  round, which mints `R-0709` and resolves nothing.

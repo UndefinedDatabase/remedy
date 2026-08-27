@@ -7404,3 +7404,1016 @@ non_empty_id` already pins it.
 REVERSE IT by deleting `a_builtin_model_id` from
 `tests/cli/test_worker_facade_cmd.py` and putting the current
 `resolve_model_alias("claude-flagship")` value back at its nine call sites.
+
+## DECISION F031 D1 (2026-08-23) — what "the decision queue" IS: a derived read view, and where its durability actually lives
+
+CHOSEN. The decision queue is a DERIVED READ VIEW, not a store.
+`packages/orchestration/decision_queue.py` performs no I/O — measured at
+`f4311bf6`, it imports only `dataclasses`, `typing` and `Job`, and the literals
+open-paren-preceded `open` and `Path` occur 0 times in it — and `list_decisions`
+re-derives every `HumanDecision` on each call from an already-loaded job plus
+its event list. Durability lives UPSTREAM: `enqueue_task_decision` in
+`packages/orchestration/escalation.py` stores task-decision records on the job,
+and `save_job` in `packages/orchestration/storage.py` writes the job to disk.
+
+The feature file's "the decision queue is and stays FILE-BASED (the established
+store with its CLI)" is therefore TRUE OF THE JOB RECORD and false of the
+module that bears the name. Both readings had a real referent, which is why the
+contradiction survived into the feature file.
+
+CONSEQUENCE FOR F031. T001 adds NO storage and NO second source of truth: the
+read endpoint calls `list_decisions` over a loaded job and computes the extra
+card fields on the way out. The feature file's "Do not touch — queue
+storage/format" binds the escalation record shape and `save_job`, and it does
+NOT freeze `decision_queue.py`, which is a view and may gain derived fields —
+the blocked-subtree size of D-nothing-else being the first.
+
+ALTERNATIVES CONSIDERED. Reading "FILE-BASED" as binding on the module and
+adding a real store: rejected, because the module's own docstring calls itself
+"a read-only aggregation" and "Not a second source of truth", and a store there
+would duplicate the job record. Treating the contradiction as a feature-file
+error to be deleted: rejected, because the sentence is true of the durable
+record and deleting it invites the database the sentence exists to prevent.
+
+REVERSE IT by deleting this DECISION and the D1 paragraph of the
+`## Design amendments` section of `docs/roadmap/features/T5_F031.md`. No code
+depends on it yet, because no T-slice has started.
+
+## DECISION F031 D2 (2026-08-23) — the badge is fed by RE-DERIVATION on refetch, and F031 introduces no new event kind
+
+CHOSEN. The inbox badge counts open decisions by RE-DERIVING them — the same
+`list_decisions` derivation the read endpoint uses — refetched when the existing
+SSE stream signals that the job changed. F031 emits NO `decision.requested` and
+NO `decision.resolved` event, and adds no kind to
+`packages/orchestration/event_schemas.py`.
+
+THE MEASUREMENT THAT FORCES IT, taken at `f4311bf6`. The kinds the feature file
+names do not exist: a repository-wide grep for `decision.requested`,
+`decision_requested`, `decision.resolved` and `decision_resolved` finds those
+strings only inside `docs/roadmap/features/T5_F031.md` itself. The differently
+named `human_decision_requested` has 7 occurrences across 3 files and NOT ONE IS
+AN EMITTER — they are a filter, three map keys, two counts and one test fixture
+— and `human_decision_resolved` has 0 occurrences anywhere. Consequently the
+`decision_count` local of `_build_dashboard` and the `open_decisions` sum of
+`_build_live_state_json`, both in `packages/orchestration/ui_server.py`, are a
+CONSTANT ZERO in production, and F031 must replace both rather than feed them.
+A third `decision_count`, in `_build_orchestrator_section` of that same file, is
+fed by `orchestrator_brain.list_decisions`, is not always zero, and is not part
+of this feature.
+
+WHY RE-DERIVATION AND NOT EMISSION. There is no producer to emit from. Every
+decision is constructed inside `list_decisions` across the eight branches of
+that one function, and each branch reads an upstream signal that ALREADY rides
+the stream — `test_run_completed`, `git_status_read`, `job_stopped`, the
+approval queue, the flight plan, the escalation records. Emitting a decision
+kind would mean adding a writer at eight sites whose only job is to restate,
+in a second vocabulary, something the stream already carries; the module
+docstring's "Not a second source of truth" names precisely that hazard. Two of
+the eight branches do have real upstream writers, so a partial emission design
+is available and is worse: it would make the badge correct for two types and
+silently wrong for six.
+
+CONSEQUENCE FOR F031. The feature file's "live via decision.requested/resolved
+events driving the badge" and its "(decision.requested/resolved kinds —
+envelope coordination if not yet present)" are AMENDED by the appended
+`## Design amendments` section rather than rewritten in place. The badge's
+liveness is a refetch on the existing stream, and its correctness is pinned by a
+test that derives the count from a fixture job rather than from an event kind.
+The snapshot-refetch fallback the feature file already names becomes the primary
+path rather than the fallback.
+
+ALTERNATIVES CONSIDERED. Emitting the two kinds at all eight branches: rejected
+above. Emitting only where a real writer exists: rejected as the partial design
+that is wrong for six types. Polling on a timer: rejected because the stream
+already delivers the signal and a timer would add latency and load for nothing.
+
+REVERSE IT by deleting this DECISION and the D2 paragraph of the
+`## Design amendments` section of `docs/roadmap/features/T5_F031.md`, which
+restores the feature file's original event-driven wording as the live spec.
+
+## DECISION F031 D3 (2026-08-23) — the acceptance loop covers PRODUCING types, and the two unproduced names stay declared
+
+CHOSEN. `DECISION_TYPES` keeps all ten members. The acceptance criterion "every
+producer type renders and answers correctly from fixtures" is read as the eight
+types that a branch of `list_decisions` actually produces, and the fixture set
+and its loop test are derived from THOSE BRANCHES rather than from the
+frozenset. `worker_approval` and `revert_missing` get no fixture.
+
+THE MEASUREMENT, taken at `f4311bf6`: a repository-wide grep over Python sources
+for either name returns exactly one line, the `DECISION_TYPES` declaration
+itself, so neither has a producer, a reader, or a test. The remaining eight each
+have a producing branch, named per type in `.agent/f031_inventory.md` under Q3.
+
+WHY THEY STAY DECLARED. Removing a member changes decision semantics, which the
+feature file's "Do not touch" forbids outright, and the set is advisory in any
+case — `HumanDecision.type` is annotated plain `str` and no production module
+imports `DECISION_TYPES`, so the two names constrain nothing at runtime and cost
+nothing by remaining. Deriving the fixture set from the frozenset instead would
+make the loop test unsatisfiable by construction for two of its ten members.
+
+WHY THIS COSTS NO COVERAGE. The renderer is generic over the decision's options
+payload, so an unproduced type needs no per-type work; the extensibility test —
+a novel fixture type with novel options rendering generically — is exactly the
+case that covers a type nobody produces yet. When a producer for either name
+lands, the loop test picks it up because it reads the branches.
+
+ALTERNATIVES CONSIDERED. Deleting the two names from the frozenset: rejected as
+a decision-semantics change the feature file forbids. Fixturing them anyway
+against a hand-written decision no code can produce: rejected because a fixture
+with no producer pins the fixture rather than the system, and the loop test's
+whole point is that new producers must join the set.
+
+REVERSE IT by deleting this DECISION and the D3 paragraph of the
+`## Design amendments` section of `docs/roadmap/features/T5_F031.md`.
+
+## DECISION F031 D4 (2026-08-26) — the inbox card reuses the SHIPPED shell, because the design reference carries no inbox component to follow
+
+CHOSEN. T002's decision card is built from the shell `apps/ui/src` already ships:
+the `card` and `cardHeader` classes of
+`apps/ui/src/components/panels/RightLivePanel.module.css`, a root `<section>`
+carrying its own `data-ui` value, mounted inside `RightLivePanel` beside the
+cards already there, and styled ONLY with the `--remedy-*` custom properties
+`apps/ui/src/styles/tokens.css` defines. The `decision` glyph of `assets_spec.md`
+is reused as the type mark rather than redrawn.
+
+THE MEASUREMENT, taken at `99d77d5c` and recorded per file and symbol in
+`.agent/f031_ui_inventory.md`: `component_spec.md` names no decision, inbox or
+queue COMPONENT — its one occurrence of the word `decision` is prose naming a
+renderer choice in `graph_tech_recommendation.md`; the only `inbox` string
+anywhere in `docs/ui/design_reference/` is `ux_spec.md:163`, which places mobile
+status, digest and inbox surfaces expressly OUT of scope; and the one piece of
+decision visual authority that does exist, `assets_spec.md:174`, is a glyph row
+for a GRAPH NODE rather than for a card. `tokens.css` defines 58 such properties
+and `globals.css` defines none; two of them, `--remedy-state-open` and
+`--remedy-state-blocked`, already name states a decision card shows.
+
+WHY REUSE RATHER THAN INVENT. The feature file's CANONICAL DESIGN REFERENCE
+banner forbids builders inventing a new visual language, and a component spec
+minted by a builder is exactly that. The shipped shell is not an invention: six
+components other than `NeedsAttentionCard` already import that same module, so
+reusing it adds no visual vocabulary at all.
+
+THE OVERLAP THIS DECISION ALSO SETTLES. `NeedsAttentionCard` already renders a
+card headed "Needs your decision", a string occurring 6 times across 4 files
+under `apps/ui/src`, while NOTHING under `apps/ui/src/api/` reads the T001 route
+— a surface answering to the inbox's name ships today and its data path does
+not. The two stay DISTINCT in T002: that card derives from
+`workerStatus.lifecycle_state` and offers a clipboard copy, while the inbox
+derives from the decision queue and answers through the write channel. The inbox
+card is therefore titled distinctly, and whether the older card's decision branch
+is retired is T003's question, when answering actually ships.
+
+ALTERNATIVES CONSIDERED. Extending `docs/ui/design_reference/` with an inbox
+component spec first: rejected because that folder is the operator's visual
+authority and a builder writing into it is the improvisation the banner names.
+Improvising a card from the reference tokens alone: rejected for the same reason,
+and with less precedent behind it than the shipped shell has. Deferring T002
+until the operator supplies a spec: rejected because it blocks the feature on an
+asynchronous human while a conforming shell already exists.
+
+REVERSE IT by deleting this DECISION and its bullet in the `## Design amendments`
+section of `docs/roadmap/features/T5_F031.md` that names R11. Should an inbox
+component later reach `component_spec.md`, the card is restyled to it; nothing
+else in F031 depends on this choice, because the read endpoint and the ordering
+rule are independent of the shell.
+
+## DECISION F031 D5 (2026-08-26) — the inbox is tested at the PURE layer, because the shipped UI toolchain collects no component test
+
+CHOSEN. F031 follows the UI test strategy the repository already has instead of
+changing the toolchain. T002's logic — the generic options renderer's model, the
+ordering rule over age and blocked size, and the badge count — lands as PURE
+functions under `apps/ui/src/api/` with `.test.ts` files beside them, and the
+extensibility test that a novel options payload renders generically is a test
+over that MODEL. The `.tsx` component becomes a thin projection of the model and
+carries no branching of its own.
+
+THE MEASUREMENT, taken at `99d77d5c` and recorded under Q4 and Q5 of
+`.agent/f031_ui_inventory.md`: `apps/ui/vitest.config.ts` sets the environment to
+`node` and carries the single include `src/**/*.test.ts`; 20 files match that
+glob and 0 match `src/**/*.test.tsx`, so a `.tsx` test would not even be
+COLLECTED; and `apps/ui/package.json` carries no line naming `jsdom`,
+`happy-dom` or `testing-library`, so no DOM exists to render into. Three sampled
+test files import pure functions and types only. The feature file's T002 asks for
+"component tests", and no round could have executed that phrase as written.
+
+ALTERNATIVES CONSIDERED. Adding a DOM harness and widening the include to
+`.test.tsx`: rejected FOR THIS FEATURE, not on merit — it changes
+`apps/ui/package.json`, `vitest.config.ts` and the lockfile, it needs an install
+that a round's own gates cannot perform in a fresh worktree, where
+`apps/ui/node_modules` is absent, and F031's scope does not authorize a toolchain
+migration. It is worth doing as its own feature, and this DECISION is the record
+that it is owed. Testing the cards only through the Python side: rejected because
+that reaches the endpoint, which T001 already covers, and never reaches the
+renderer's genericity, which the feature file calls the architecture line.
+Shipping the cards untested: rejected outright.
+
+WHAT THIS DELIBERATELY LEAVES UNTESTED, stated because DECISION F009 D16 forbids
+leaving a mechanism no test can reach without saying so. The card's rendered
+markup is reached by NO test under this decision. The gap is explicit and
+scheduled rather than discovered, and it is bounded by the same sentence that
+creates it: every branch lives in the pure model, so a branch migrating into the
+component is the event that makes this gap matter, and reviewers gate on it.
+
+REVERSE IT by deleting this DECISION and its bullet in the `## Design amendments`
+section of `docs/roadmap/features/T5_F031.md` that names R11. Should a later
+feature add a DOM harness to `apps/ui`, the component gains render tests without
+touching the pure layer or any test this decision orders.
+
+## DECISION F031 D6 (2026-08-26) — the urgency rule is `(blockedCount + 1) × ageSeconds`, ordered open-first and totalised by `id`
+
+CHOSEN. T002b orders the inbox by a rule stated here and pinned by a test, not
+by a tooltip sentence. A card's URGENCY is `(blockedCount + 1) * ageSeconds`.
+The inbox is ordered by three keys in this order: OPEN cards before closed ones;
+then urgency DESCENDING; then `id` ASCENDING. An `ageSeconds` of `null` — the
+endpoint's own answer for an unreadable `created_at`, which `decisionAgeLabel`
+already renders as "unknown age" — scores 0 and therefore sorts last within its
+group, because an unreadable stamp is not evidence of urgency.
+
+WHY THE `+ 1`, the only departure from the feature file's own words.
+`docs/roadmap/features/T5_F031.md` writes the rule as "age × blocked size" and
+as "urgency = f(age, blocked_count)". A literal product collapses every decision
+that blocks nothing to exactly 0 whatever its age, so an unblocking question
+asked a week ago and one asked a second ago TIE and their order becomes whatever
+the endpoint happened to send. DECISION F031 D3 fixes the acceptance set at the
+eight PRODUCING types, among which blocking nothing is ordinary rather than an
+edge, so the collapse would be the common case. Adding one keeps the product the
+file asks for, keeps blocked size dominant — one blocked task doubles a card's
+score — and leaves age as the total order among cards that block nothing.
+
+WHY THE OTHER TWO KEYS EXIST. Open-first is a SEPARATE key because a resolved
+decision is not urgent at any age or blocked size, and folding that into the
+score means picking a constant large enough to dominate every possible product,
+which a boolean key needs not. `id` is the FINAL key because without a total
+order the result depends on the input order, and the test pinning this rule must
+feed it a shuffled document and get exactly one answer back;
+`buildDecisionCardModel` defaults `id` to the empty string, so the comparator is
+total by construction.
+
+WHAT THIS DOES NOT CHANGE. `decisionCardModels` keeps the endpoint's order and
+so does the projection in `remedyApi.ts`: the two tests pinning that —
+`decisionCard.test.ts` "preserves the order the endpoint sent" and
+`remedyApi.test.ts` "projects every card of the document, in the endpoint's
+order" — stay true and keep meaning what their names say. The rule ships as its
+own comparator, applied where the inbox is handed to the card.
+
+WHAT IT COSTS, declared so the round paying it is not read as scope drift.
+`DecisionCardModel` gains a numeric age field, the model having a formatted
+`ageLabel` and no number to sort by; that is additive, and the two `toEqual`
+blocks in `decisionCard.test.ts` asserting the model's EXACT shape gain one line
+each. WHAT IS NOT BUILDABLE IS NOT RULED: the file asks for "filters by
+type/job", `DecisionInboxEntry` carries no job field at this commit, so T002b
+filters by TYPE only and the job filter waits on T003's deep links.
+
+ALTERNATIVES CONSIDERED. The literal product with no `+ 1`: rejected for the
+collapse above. A lexicographic rule ranking blocked size first and age second:
+rejected because it is not the multiplicative rule the file asks for and it puts
+an ancient unblocking decision permanently behind any card blocking one task. A
+tunable weighted sum: rejected because the weight is a number nobody can defend
+and every later reviewer would relitigate it.
+
+REVERSE IT by deleting this DECISION and its bullet in the `## Design
+amendments` section of `docs/roadmap/features/T5_F031.md` that names R18, and by
+restoring the literal product in the comparator this rule names.
+
+## DECISION F031 D7 (2026-08-26) — the finding ledger's gate key is feature-qualified from the R19 entry onward
+
+CHOSEN. Every `Gate:` entry `.agent/live_review.md` gains from this round onward
+is headed `Gate: F031 R<n> — the F031 R<n> entry.` The unqualified `Gate: R<n> — `
+form is retired for new entries on this branch, and no landed entry is touched.
+
+WHY. This branch's record carries a `Gate: R19` line whose body is F022's, a seed
+inherited when the ledger was reset from that feature's, alongside the keys `R1`
+through `R18` from F031's own rounds. The series is keyed by the round an entry is
+ABOUT, not by the round that writes it, and DECISION F085 D9 owes R19's verdict to
+the NEXT round's ledger commit — so the entry recording it keys `Gate: R19` and
+duplicates that seed on the exact string a later reader searches by. That is the
+§3 item 26 defect, whose earlier instance left two paragraphs answering to one key.
+
+WHY NOT REWRITE THE SEED. §3 item 20 forbids editing landed record text: a dated
+correction is how this record stays honest, and an overwritten entry is worse than
+a stale one. The seed also belongs to F022's history, which this branch has no
+standing to edit.
+
+WHY NOT SKIP THE ENTRY. R19's verdict would then live only in `.agent/handoff.md`,
+which every round rewrites, so it would be unrecoverable one round later. The §4
+item 13 terminator carve-out reaches only the LAST round of a branch, and R19 is
+not that round.
+
+CONSEQUENCE, declared so no later gate reads the split series as drift. The file
+carries two header shapes for the rest of this branch: `^Gate: R\d+ — ` stops
+growing where it stands, and `^Gate: F\d+ R\d+ — ` is the series that grows from
+here. A gate counting gate entries names BOTH patterns, because neither alone is
+the count.
+
+REVERSE IT. Delete this decision and its heading, and head later entries
+`Gate: R<n> — ` again, accepting the duplicate key. No code reads either shape.
+
+## DECISION F031 D8 (2026-08-26) — the inbox's filter chips take the CARD's chip scale, not the graph stage's glass dock
+
+CHOSEN. `DecisionInboxCard`'s type chips are styled on the scale `.decisionChip`
+already sets inside that card — pill radius, 11px type, the `--remedy-line`
+border — and NOT on the floating dock `docs/ui/design_reference/ux_spec.md` §13
+specifies. What is kept from §13 is everything that carries meaning: the selected
+chip's treatment, which under §14 is never colour alone and here gains weight and
+a stronger border as well, the 2px focus ring, and the `aria-pressed` shape
+`docs/ui/design_reference/component_spec.md` gives FilterChips.
+
+WHY. `.agent/context.md` makes `docs/ui/design_reference/` binding and asks for a
+technical reason behind any departure, and this is it: §13 specifies that dock for
+the GRAPH STAGE — a floating overlay on the dark canvas, radius 999, backdrop
+blur, 30px chips — while the inbox is a card inside the right panel. `.card`
+already supplies glass, a border and a shadow, so a dock nested in it would double
+the glass, and 30px chips would outweigh the 13px decision titles directly below
+them. The panel is 372px wide; a dock strip there would also wrap before the third
+chip on a real inbox.
+
+THE FOCUS RING NAMES A DIFFERENT TOKEN THAN §14 DOES, and this is why.
+`--remedy-focus` is defined in `docs/ui/design_reference/tokens.css` and has
+never been adopted into `apps/ui/src/styles/tokens.css`, which this round's
+change set does not include. A `var()` on an unadopted name makes the browser
+drop the whole declaration (R-0661), and
+`tests/ui_contracts/test_design_drift.py::TestEveryCustomPropertyResolves`
+measures exactly that — it turned RED on the first draft of this rule, including
+on the fallback form `var(--remedy-focus, var(--remedy-blue-strong))`, because it
+matches the NAME inside `var(` and does not read fallbacks. The ring therefore
+names `--remedy-blue-strong`, which the reference sheet gives the same `#2f6fff`
+it gives `--remedy-focus`, so the shipped colour is §14's colour. Adopting
+`--remedy-focus` into the shipped sheet is the better fix and belongs to
+whichever round next touches that sheet, the way F021 R32 adopted
+`--remedy-radius-pill`.
+
+ALTERNATIVES CONSIDERED. Reusing `GraphFilterChips` verbatim: rejected because its
+`GraphFilter` union is a FIXED four-value list, so adopting it would reintroduce
+the hardcoded type list `decisionFilter.ts` exists to refuse, while the inbox's
+choices are DERIVED from the models present. Adding `--remedy-focus` to the
+shipped token sheet: rejected as out of this round's change set, which names no
+file under `apps/ui/src/styles/`.
+
+REVERSE IT by deleting this decision and giving `.decisionFilterChip` and
+`.decisionFilterChipOn` in
+`apps/ui/src/components/panels/RightLivePanel.module.css` the dock values from
+`apps/ui/src/components/graph/GraphFilterChips.module.css`.
+
+## DECISION F031 D9 (2026-08-26) — `metrics.open` counts OPEN DECISIONS alone, and the blocker addend retires with its scan
+
+CHOSEN. `metrics.open` in the cockpit dashboard, and `open_decision_count` in the
+live-state payload, are BOTH the length of
+`decision_queue.open_decisions(decision_queue.list_decisions(job, events))`, computed
+by the one module-level helper `_count_open_decisions` in
+`packages/orchestration/ui_server.py`. The `blocker_count` local that used to be the
+other addend of `metrics.open` is REMOVED, and the `stop_reason_recorded` event scan
+that produced it goes with it. Both keys keep their name, their `int` type and their
+position in the payload; only the number they carry changes.
+
+WHY. `decision_queue` is already the aggregation of everything a human must act on,
+and its own branch 2 derives a `stop_reason` decision from
+`stop_reasons.derive_stop_reasons`. Keeping `blocker_count` as a second addend would
+therefore DOUBLE-COUNT the same blocker the day either event name gains an emitter.
+
+WHY NOTHING OBSERVABLE IS LOST TODAY. The measurement DECISION F031 D2 started is
+finished here: neither `human_decision_requested` nor `stop_reason_recorded` has any
+emitter anywhere in this repository outside `tests/` and `.agent/` — every occurrence
+in production code is a READER, and the only writers of either string are test
+fixtures. So both scans were CONSTANT ZERO in production, `metrics.open` and
+`open_decision_count` were constant zero with them, and removing the addend subtracts
+a measured zero. The derivation replacing them is cheap: 0.309 ms for a 50-task job
+against 500 events, per call.
+
+A FAILURE READS AS ZERO. `_count_open_decisions` catches the same narrow exception set
+`_build_orchestrator_section` catches and returns `0` rather than propagating, because
+both fields it feeds are typed `int` and carry no "unknown" state the way that richer
+section does. The WHY comment above the helper says so at the place a reader lands.
+
+ALTERNATIVE CONSIDERED. Keeping `blocker_count + <the new count>`: rejected as a
+latent double-count that NO test would catch while both addends are zero — the bug
+would ship green and surface only once an emitter existed.
+
+REVERSE IT by restoring the `blocker_count` local and its `stop_reason_recorded` scan
+in `_build_dashboard`, and summing it into `metrics.open` again.
+
+## DECISION F031 D10 (2026-08-26) — the badge is the inbox CARD's own header count, refreshed by the dashboard poll that already exists
+
+CHOSEN, THE SURFACE. The T002b badge is a count rendered in
+`DecisionInboxCard`'s existing `cardHeader`, beside the "Decision inbox" heading —
+not "the shell's inbox icon" the feature file's Design section names. Measured at
+this round's base: the shipped shell has NO inbox icon, and
+`docs/ui/design_reference/component_spec.md` specifies none, so there is no icon to
+hang a count on. Inventing one would be a new shell affordance the design reference
+does not order, on the same day the card that shows the decisions is already on
+screen. The number is `countOpenDecisions` in `apps/ui/src/api/decisionCard.ts`,
+computed from the UNFILTERED `decisions` prop — never from `view.visible`, or the
+badge would report what the chosen chip left rather than what the job waits on.
+
+CHOSEN, THE LIVENESS. DECISION F031 D2 rules the badge "refetched on an SSE
+signal". What ships is the five-second `window.setInterval(load, 5000)` reload in
+`apps/ui/src/RemedyApp.tsx`, which already reloads the whole dashboard and with it
+`decisionInbox`, so the badge is live with NO new wiring at all. D2's INTENT is met
+in full — no new event kind is added and the count is RE-DERIVED rather than
+emitted — and only its MECHANISM differs. Recording that measurement is honest;
+adding a second refetch path beside a working one is not.
+
+ALTERNATIVE CONSIDERED. A stream-driven refetch on the existing SSE channel:
+rejected as a second path to the same data whose only gain is latency under five
+seconds, on a panel that is read rather than raced. Two refetch paths to one
+payload is also two places for a future divergence to hide.
+
+WHY THE COUNT IS A PURE FUNCTION AND NOT A LINE OF MARKUP. Under DECISION F031 D5
+no test in this repository reaches this component's markup, so the badge's
+RENDERING is pinned by `tsc`, by structure and by review, while its NUMBER is
+pinned by `decisionCard.test.ts`. Keeping the derivation out of the `.tsx` is what
+keeps the number inside the tested region.
+
+REVERSE THE SURFACE by moving the count into a shell affordance once one exists in
+the design reference; REVERSE THE LIVENESS by subscribing the card to the stream
+and dropping the interval's claim on it.
+
+## DECISION F031 D11 (2026-08-26) — the answer path ships as a PURE builder now and a side-effecting sender later
+
+CHOSEN, THE SPLIT. `apps/ui/src/api/decisionAnswer.ts` turns a `DecisionCardModel`,
+the answer the operator chose and a caller-supplied nonce into the exact body
+`/api/jobs/<job_id>/commands` accepts — and does not post it. DECISION F031 D5 leaves
+this feature's markup reached by no test, so everything that CAN be a value is made
+one and the untested remainder shrinks to the single call that crosses the wire. The
+body's shape, its key spellings and every refusal are therefore pinned by
+`decisionAnswer.test.ts`; only the send is left to review.
+
+CHOSEN, THE NONCE IS THE CALLER'S. The builder takes a nonce rather than minting one,
+so it needs no clock, no random source and no injection seam — which is what makes it
+pure and every one of its answers a value a test can assert. Minting and replay belong
+to the sender round, where the nonce's lifetime is actually observable.
+
+CHOSEN, THE FOUR REFUSALS ARE A COURTESY, NEVER AN AUTHORITY. The builder answers
+`null` for an empty `id`, an empty answer, a nonce outside `safe_points._ID_RE`'s class
+and a decision that is not open — four bodies `packages/orchestration/ui_server.py`
+would refuse anyway, with 400 or 409. That duplication exists to spare the operator a
+round trip. The server's check stays the ONLY authority, and this decision records the
+drift risk rather than pretending the two cannot diverge.
+
+ALTERNATIVE CONSIDERED. One function that builds AND sends: rejected because it puts
+the body's shape beyond every test this repository can run — the shipped vitest config
+collects `src/**/*.test.ts` with no DOM and no server, so a fetch-bearing function is
+verified by review alone, and the key spellings the door depends on would be the part
+review is worst at checking.
+
+REVERSE IT by folding the builder into the sender once a DOM harness lands and the
+whole round trip can be asserted in one test.
+
+## DECISION F031 D12 (2026-08-26) — the decision's deep link resolves through the dashboard's OWN task list, by task id
+
+CHOSEN, THE MAPPING. A decision card's jump is resolved by
+`apps/ui/src/api/decisionFocus.ts`, which takes the decision's `taskId` and the
+readonly task list the dashboard already carries and answers that task's `nodeId`
+or `null`. It REUSES `FocusableTask` and the null-means-no-jump contract from
+`apps/ui/src/api/feedFocus.ts` rather than declaring either again. DECISION F021 D2
+already rejected inventing a second client-side mapping for the activity feed's
+jump, and the same reasoning binds here: two mappings to one graph is two places
+for a future divergence to hide, and one spelling per concept is AGENTS.md's rule.
+
+CHOSEN, THE PROJECTION. `DecisionCardModel` gains ONE plain string field, `taskId`,
+projected from the payload's own key spelling `task_id` — the spelling
+`decision_inbox._blocked_subtree_size` reads on the server, per DECISION F031 D1 —
+rather than the whole payload. The card therefore never reads an untyped blob and
+the resolver stays narrow enough that an unrelated model field cannot churn it. The
+projection is TOTAL like every other field of that model: an absent payload, a
+non-object payload and a non-string `task_id` each give the EMPTY STRING, and an
+empty task id resolves to `null`, so no card has to test for `undefined`.
+
+ALTERNATIVE CONSIDERED. Matching a decision's OWN id against the graph: rejected
+because a decision id is not a node id and nothing on the wire relates them, so
+such a link would jump somewhere arbitrary exactly when it looked like it worked.
+
+WHY A NULL IS NOT A FAILURE. A job-level question carries no task linkage at all,
+and the inbox and the dashboard are two reads of one job that can disagree for a
+moment. Both cases must render as a card that does not OFFER the jump.
+
+NOTHING CALLS THIS YET, deliberately, under DECISION F031 D5: the seam ships tested
+and the wiring follows in T003's sender round.
+
+REVERSE IT by projecting the payload wholesale once a card needs more of it than
+the task id.
+
+## DECISION F031 D13 (2026-08-26) — the write door takes the token the browser ALREADY holds, in both of its headers
+
+CHOSEN, NO NEW SECRET. The decision inbox authenticates its answer with the SAME
+per-run server token the browser has held since F008. `packages/orchestration/ui_server.py`
+mints it with `secrets.token_urlsafe(24)` and injects it into the served `index.html`;
+`apps/ui/src/RemedyApp.tsx` reads it out of `window.location.search` in `readUrlState`
+and REFUSES TO RENDER without it; `apps/ui/src/api/remedyApi.ts` already spends it on
+every dashboard read. So no new secret, no new endpoint and no server change is
+required, and the "design ruling" `.agent/plan.md` named as a blocker on T003's sender
+round is ruled UNNECESSARY. That blocker was an unrun absence claim — one module's
+deliberate absence written out as a property of the whole browser — and it is recorded
+as the second instance of finding R-0419 rather than quietly dropped.
+
+CHOSEN, ONE VALUE IN TWO HEADERS. `Authorization` carries `Bearer ` plus that token and
+`X-Remedy-CSRF` carries the token unmodified, because `_bearer_token_accepted` and the
+`COMMAND_CSRF_HEADER` check BOTH call `server_token_matches(supplied, self.server_token)`,
+and DECISION F009 D11 already rules that the double-submit header carries the server
+token itself — there is no cookie to double-submit against. Two headers, one secret.
+
+CHOSEN, THE REQUEST IS A VALUE. `apps/ui/src/api/decisionSend.ts` composes
+`buildDecisionResolveCommand` and `jobCommandsPath` into a path, a method, a header map
+and a body STRING, and issues nothing; the caller owns the origin, the nonce and the
+call. That is DECISION F031 D5's split applied one layer out, and it is what lets
+`decisionSend.test.ts` assert the header map that no test could reach inside a `fetch`.
+
+ALTERNATIVE CONSIDERED. Minting a SECOND, distinct CSRF secret, or adding a token
+endpoint for the browser to fetch: rejected because D11 already fixes that header's
+value, and a second secret is a second thing to mint, ship, rotate and get wrong for no
+gain in a single-origin, single-run server.
+
+ALTERNATIVE CONSIDERED. Carrying the token as a query parameter the way the READS do:
+rejected because the write door reads its credential from headers only — it
+authenticates before it looks at anything else — and a query string is the part of a URL
+that reaches access logs, shell history and referrers.
+
+REVERSE IT by changing that module's header map alone, should the server ever mint a
+CSRF secret distinct from the bearer token.
+
+## DECISION F031 D14 (2026-08-26) — the browser refuses a blank answer the server would accept, and the send builder takes ONE named target
+
+CHOSEN, A DELIBERATE DIVERGENCE RATHER THAN A MIRROR. `buildDecisionResolveCommand`
+in `apps/ui/src/api/decisionAnswer.ts` refuses a whitespace-only answer, although
+`packages/orchestration/ui_server.py` accepts one. Every other refusal that module
+makes is a second copy of a server-enforced rule; this one has no server counterpart
+at all. `_dispatch_decision_resolve` reads `args["answer"]` and hands it to
+`answer_task_decision`, which validates nothing and writes `record["answer"]` ONCE —
+its own docstring records that answers are written once so a late second answer
+cannot overwrite the one the run acted on. So a decision resolved with whitespace is
+answered 200, persisted, and the correction is answered 409. The browser is the only
+place left where a blank answer can still be stopped. Finding R-0685 records the
+trace.
+
+CHOSEN, THE ANSWER IS TRIMMED BEFORE IT IS SENT. The same trim that decides the
+refusal supplies `args.answer`, so the durable record carries no incidental leading
+or trailing whitespace. Inner spacing is the operator's and is left alone.
+
+CHOSEN, ONE NAMED TARGET INSTEAD OF TWO ADJACENT STRINGS.
+`buildDecisionSendRequest` in `apps/ui/src/api/decisionSend.ts` takes the job id and
+the per-run server token as the fields of one `DecisionSendTarget`, because two
+adjacent bare `string` parameters make a transposition type-check — and that swap
+spends the token as the job id, writing the credential into the request PATH, which
+is the one thing that module's header forbids. This is AGENTS.md's Code
+Discoverability rule "use distinct ID/value types where an argument swap is
+plausible" applied before the first call site exists. Finding R-0684 records it. The
+neighbouring `answerText`/`clientNonce` pair is deliberately left positional: a swap
+there fails loudly against `COMMAND_NONCE_PATTERN`, so the rule would buy nothing.
+
+ALTERNATIVE CONSIDERED. Validating the answer on the SERVER instead, in
+`answer_task_decision` or at the command door: that is the better long-term home,
+because a second client — the CLI included — would still write a blank answer, and
+the browser fix does not discharge that half. Rejected for THIS round because F031's
+change set is the browser and the write door belongs to F009. It is ROUTED to F009
+rather than reached across a feature boundary, and finding R-0685 stays open to
+carry it.
+
+ALTERNATIVE CONSIDERED. Branded string types for every id in this seam: rejected as
+more machinery than one swappable pair earns, and it would spread through modules
+this feature has no business editing.
+
+REVERSE THE DIVERGENCE by deleting the trim refusal, and the target by inlining its
+two fields back into the parameter list.
+
+## DECISION F031 D15 (2026-08-26) — the decision card's deep link is its OWN control in the chip row, and a card that cannot jump shows nothing
+
+CHOSEN, THE FEED'S RULE WITHOUT THE FEED'S SHAPE. A decision card's jump is a
+single `<button>` inside the existing `.decisionChips` strip of
+`apps/ui/src/components/panels/DecisionInboxCard.tsx`, after the age, blocked-size
+and type chips. `ActivityFeedCard` makes the ENTIRE row the button under the
+comment "Only a row that can really jump becomes a button, so the affordance never
+lies", and that RULE is copied here verbatim in intent. Its SHAPE is not: a
+decision row already contains the answer buttons, so wrapping the row would nest
+one interactive control inside another — invalid HTML, and a nesting no keyboard
+user can unpick, because the inner buttons stop being reachable as themselves.
+Two rows, two shapes, one rule.
+
+CHOSEN, A NULL RENDERS NOTHING AT ALL. When `nodeIdForDecisionCard` answers
+`null` — a decision naming no task, or naming one this dashboard does not carry —
+the card renders no control, not a disabled one and not a placeholder. That is
+`apps/ui/src/api/decisionFocus.ts`'s own contract ("a null is NOT a failure") and
+DECISION F031 D12's reasoning applied at the call site: an affordance that cannot
+act must not appear to offer the action. THE DISABLED ANSWER BUTTONS BESIDE IT ARE
+A DIFFERENT CASE and deliberately stay: there the action EXISTS and is merely not
+built yet, which is what `ANSWER_PENDING_TITLE` says on the control itself, so a
+disabled control is the honest rendering rather than a lie.
+
+ALTERNATIVE CONSIDERED. Making the card's TITLE the button: rejected because the
+title is CONTENT — the decision's own text, projected from its model — and turning
+it into a control erases the line between reading a decision and navigating away
+from it. A reader would lose the one string on the card that is purely the
+question being asked.
+
+WHAT GATES THIS. No test reaches this markup: the shipped vitest config collects
+`src/**/*.test.ts` and this repository has no DOM harness (DECISION F031 D5). The
+wiring is gated by `tsc` — the panel's hand-down is REQUIRED, not optional, so a
+dropped prop is a type error rather than a silent `undefined` — by
+`tests/ui_contracts/` for the new `.decisionJumpChip` rule, and by review. That is
+the known cost of D5, which is also why the resolver itself shipped tested first.
+
+REVERSE IT by deleting the control and its `.decisionJumpChip` rule; nothing else
+depends on either.
+
+## DECISION F031 D16 (2026-08-26) — the one network call lives in its own module and takes its send function as a defaulted parameter
+
+CHOSEN, THE IMPURE EDGE STAYS REACHABLE BY A TEST. F031's single network call is
+`apps/ui/src/api/decisionSubmit.ts`, and the function that actually touches the
+wire is a PARAMETER with a default rather than a global reached for inside the
+body. That is DECISION F031 D5's rule — the logic lives where the shipped vitest
+config can run it — followed to its last step instead of abandoned at the wire.
+The alternative was to let the one part of this feature that can fail in
+production be the one part no test ever executes.
+
+CHOSEN, A CLOSED THREE-VALUE OUTCOME PLUS A NUMERIC STATUS, never a `Response`.
+The module answers `accepted`, `refused` or `unreachable` with the status beside
+it, as a union of string literals so a fourth outcome costs no caller its arity.
+A body is not handed out because this feature has no use for one and returning it
+would invite a caller to read it. The status IS carried, because
+`packages/orchestration/ui_server.py` answers 403 for a credential, 409 for a
+decision already answered or closed and 429 for the rate budget, and a card that
+cannot tell those apart can only say "it did not work".
+
+CHOSEN, ONE ATTEMPT, NEVER A RETRY, AND NEVER A THROW. A rejected send becomes
+the unreachable result with status 0, because a promise that rejects inside a
+click handler is an unhandled rejection and a card that renders nothing. Judging
+when replaying a WRITE is safe belongs to whoever knows what the write meant, and
+that is not this module.
+
+ALTERNATIVE CONSIDERED, calling `fetch` directly in the component: rejected
+because nothing in the shipped test config reaches a component (DECISION F031
+D5), so the mapping from status to meaning would ship untested — which is exactly
+the mapping a reader of a failed answer depends on.
+
+ALTERNATIVE CONSIDERED, patching the global `fetch` in the tests: rejected
+because no test under `apps/ui/src` does that today, and a leaked global is a
+failure that shows up in an unrelated file. An injected parameter needs no
+teardown and cannot leak between tests.
+
+REVERSE IT by inlining the module at its single call site; nothing else depends
+on it.
+
+## DECISION F031 D17 (2026-08-26) — the client nonce is its own module, answers `null` when it cannot mint, and borrows the server's class rather than copying it
+
+CHOSEN, T003'S REMAINING WORK IS SPLIT ACROSS ROUNDS. The nonce minter lands here
+in `apps/ui/src/api/decisionNonce.ts`; the operator's outcome sentence and the
+wiring — the server token threaded from `RemedyApp` through `RemedyShell` and
+`RightLivePanel`, the async click handler, the enabled buttons and the three
+"nothing posts yet" sentences — land in R33. Specifying the nonce, that sentence
+vocabulary, the threading through three components and an async handler in ONE
+block exceeds the caps DECISION F085 D5 and D6 set: the reviewer measured a
+two-module draft of the R32 block at 435 prose lines against a cap of 400 and cut
+the ITEM rather than the wording, because a block that trims its own reasoning to
+fit is the failure mode those caps exist to prevent.
+
+CHOSEN, THE MINTER ANSWERS `null` RATHER THAN THROWING OR FALLING BACK TO A
+CONSTANT. Every other door in this chain already does: `buildDecisionResolveCommand`
+answers `null` for a card with no id, a blank answer, a nonce outside the class and
+a decision that is not open, and `buildDecisionSendRequest` adds an empty job id and
+an empty token. A caller already branching on `null` gains no new shape from a
+minter that cannot mint. A throw would become an unhandled rejection inside a click
+handler, and a constant fallback would make every unsendable answer collide on one
+nonce — which is the one property a nonce exists to deny.
+
+CHOSEN, THE CHARACTER CLASS KEEPS EXACTLY ONE MIRROR IN THIS BROWSER. The module
+imports `isUsableCommandNonce` from `./decisionAnswer` and gives it the LAST word
+over whatever it composed; it never restates `COMMAND_NONCE_PATTERN`, which is
+itself the single copy of `safe_points._ID_RE`. The sanitising step needs a
+per-CHARACTER verdict and the predicate judges a whole nonce, so a character is
+probed by asking the predicate about the shortest nonce that could hold it — one
+leading letter, then the character — rather than by a second regex literal. That
+costs one predicate call per character of a UUID and buys one authority instead of
+two.
+
+ALTERNATIVE CONSIDERED, minting the nonce inline in the click handler: rejected
+because the sanitising branch would then ship untested. Nothing in the shipped
+vitest config reaches a component (DECISION F031 D5), and an unfiltered nonce
+becomes a FILENAME in the job's control directory, so the untested branch would be
+the one that turns an id into a path.
+
+ALTERNATIVE CONSIDERED, a nonce built from a clock: rejected because a clock read
+twice in the same millisecond yields a reused value, and a reused value is a replay
+the write door would have to catch; and because a module that reads a clock cannot
+be tested without freezing one, while an injected source needs no teardown and
+cannot leak between tests.
+
+REVERSE IT by inlining the module at its single call site; nothing else depends on
+it.
+
+## DECISION F031 D18 (2026-08-26) — the answer flow owns the only clock in the chain, and a deadline win reuses the `unreachable` outcome
+
+CHOSEN, THE FLOW BOUNDS THE SEND AND THE SUBMIT STILL DOES NOT. DECISION F031
+D16 rules that `submitDecisionSendRequest` sets no timeout, reads no clock and
+never retries, and `decisionAnswer.ts`, `decisionSend.ts` and `decisionNonce.ts`
+each state in their own headers that they read no clock either. A send that
+never settles therefore had no deadline anywhere, which would leave a button
+disabled forever the moment R37 wires one. The deadline lands in
+`apps/ui/src/api/decisionAnswerFlow.ts` as an INJECTED SEAM with a default, so
+exactly one module in this chain creates a timer and every other module's
+no-clock claim stays true.
+
+CHOSEN, A DEADLINE WIN IS `unreachable` AT STATUS 0 RATHER THAN A FOURTH
+OUTCOME. `decisionSubmit.ts` declares its outcome union closed at three and
+fixes status 0 as the one number no door answers. From the operator's seat a
+request that was never answered and a request that never arrived are the same
+sentence, so a fourth member would add a branch every future caller must handle
+to say something nobody reads differently.
+
+CHOSEN, THE SEND IS NOT CANCELLED. The flow stops WAITING; the request may still
+arrive and be written. Judging when a write may be abandoned belongs to whoever
+knows what the write meant, which is not this layer, and an `AbortController`
+here would promise a withdrawal the server never agreed to.
+
+SUPERSEDING A ROUND ATTRIBUTION IN DECISION F031 D17: that entry says the
+outcome sentence and the wiring both land in R33. R33 and R35 became record
+rounds and R34 stopped on the `.agent/STOP` sentinel without starting, so the
+outcome sentence and the flow land in R36 and the component wiring is R37. The
+split D17 chose is unchanged; only the round numbers moved.
+
+REVERSE IT by deleting the deadline seam and awaiting the submit directly. The
+outcome vocabulary needs no change, because nothing was added to it.
+
+## DECISION F031 D19 (2026-08-27) — the card offers no answer the door will refuse, and the door learns the one verb F009 extracted for it
+
+CHOSEN, THE ENDPOINT DERIVES ANSWERABILITY AND THE BROWSER NEVER GUESSES IT.
+`packages/orchestration/decision_inbox.py::build_decision_inbox` gains a THIRD
+derived key beside `age_seconds` and `blocked_count`, computed with the SAME
+predicate the door runs — whether `escalation.find_task_decision` finds the
+decision's id — so the rule that decides what may be posted is written once, on
+the side that owns the record. The docstring's "exactly two extra keys" sentence
+moves with the code. The alternative of branching on `card.type` in
+`decisionCard.ts` is REJECTED: `decisionAnswers` carries the architecture line
+"MUST NOT branch on `card.type`", which is what lets a type this repository has
+never produced render generically, and a second copy of the door's rule in the
+browser is exactly the drift that line exists to prevent.
+
+CHOSEN, A CARD THE DOOR CANNOT TAKE SHOWS ITS CLI LINE AS TEXT, NOT AS A BUTTON.
+The `next_actions` strings are already the exact command an operator can paste —
+`escalation.task_decision_answer_command` and `decision_queue`'s own `_actions`
+build them for that purpose — so they stay visible and stop being posted. The
+alternative of posting anyway and rendering the 409 is REJECTED: that is
+R-0693's defect stated as a design, and it teaches the operator only by failing.
+
+CHOSEN, F031 BUILDS THE `fp:`-PREFIXED DISPATCH RATHER THAN ROUTING IT AWAY.
+`.agent/decisions.md` records under F009 that the door would dispatch an
+`fp:`-prefixed id to `resolve_flight_plan_approval`, and that function exists
+with a docstring saying it was extracted "so the UI write door can reach the
+SAME code the CLI has always run" — so this is an unshipped CALL SITE for a verb
+already built for this caller, not a new capability, and it touches neither the
+nonce nor the audit behaviour `.agent/context.md` puts out of scope. Routing it
+to F009 as DECISION F031 D14 routed the blank-answer check is REJECTED here for
+one reason: F009 is CLOSED, and without this dispatch T003's clarification form
+has no destination and the feature's own Acceptance stays unmeetable.
+
+CHOSEN, THE OTHER SIX PREFIXES STAY UNANSWERABLE IN THE BROWSER FOR NOW. `pa:`,
+`sr:`, `tf:`, `dirty_repo`, the budget id and `mem:` have no package-level
+resolve verb at all, so each is a feature rather than a call site. They render,
+they show their CLI line, and F031 claims nothing else about them.
+
+CHOSEN, THE PROGRAMME IS THREE ROUNDS AND THE FORM IS LAST. R43 the derived key
+and the card; R44 the `fp:` dispatch; R45 the clarification FORM over
+`payload.clarifications`, whose records are `id`, `question`, `default_answer`
+and `impact` and whose answers reach the CLI's `--answer <id>=<value>` semantics
+through `apps/cli/commands/decision.py::parse_answer_options`. Building the form
+first is REJECTED: it would post into a 409 and add a second false affordance.
+
+REVERSE IT by deleting the third derived key, restoring the unconditional button
+and dropping the `fp:` branch from the door. Nothing in the read endpoint's
+existing two keys or in the CLI changes, so the reversal touches no other
+feature.
+
+## DECISION F031 D20 (2026-08-27) — D19's programme splits the endpoint from the browser, and the round numbers move by one
+
+SUPERSEDING A ROUND ATTRIBUTION IN DECISION F031 D19: that entry's last CHOSEN
+paragraph reads "R43 the derived key and the card; R44 the `fp:` dispatch; R45
+the clarification FORM". Sized against the code rather than against the
+sentence, R43 as written spans two languages, six files and two test harnesses —
+the Python endpoint with its contract tests, the TypeScript model with its unit
+tests, and the component with a `tsc --noEmit` and a `vitest` gate on top of the
+state readers. That is not one reviewable round, and the block cap of 490 lines
+would decide the split by accident rather than by choice.
+
+CHOSEN, THE SPLIT IS AT THE WIRE. R43 lands the endpoint's third derived key and
+its tests alone, so the fact travels on the wire before anything renders it. R44
+lands the browser half — the model field and the card that renders a
+non-answerable decision's `next_actions` as text. R45 becomes the `fp:` dispatch
+and R46 the clarification FORM. Nothing D19 CHOSE changes: not the key, not the
+predicate it is computed from, not the refusal to branch on `card.type`, not the
+scope ruling that leaves six prefixes out of F031. Only the round numbers move.
+
+REVERSE IT by rejoining the two halves in one round, which the block cap will
+refuse; that refusal is the evidence for this entry.
+
+## DECISION F031 D21 (2026-08-27) — the answerability key mirrors the door's REFUSAL conditions, not its route to the record, and the browser half moves to R45
+
+SUPERSEDING A ROUND ATTRIBUTION IN DECISION F031 D20: that entry rules "R44
+lands the browser half — the model field and the card that renders a
+non-answerable decision's `next_actions` as text". The key R43 landed, read at
+`46ae059f`, is false for an answered task decision, so R44 becomes the endpoint
+repair, the browser half
+becomes R45, the `fp:` dispatch R46 and the clarification FORM R47. D20's split
+at the wire is not weakened by this — it is what made the repair cheap, because
+the fact was caught on the wire before any component rendered it.
+
+CHOSEN, THE KEY IS COMPUTED FROM WHAT THE DOOR REFUSES. A derived key that
+claims another module will accept something is computed from that module's
+REFUSAL conditions in full, not from its route to the data. `answer_task_decision`
+refuses on two conditions — no record, or a record that is not OPEN — so
+`_answerable_by_decision_resolve` tests both, reading the escalation record the
+door reads rather than the card's own `status` field, so the two cannot drift.
+Nothing else D19 CHOSE changes: not the key's name, not the refusal to branch on
+`card.type`, not the scope ruling that leaves six prefixes out of F031.
+
+CONSIDERED AND REJECTED: reading the card's `status` key instead. It is the same
+value today, derived by `list_decisions` from the same record, but it is a
+SECOND derivation of the door's input and would make the inbox agree with itself
+rather than with the door — which is the failure this entry exists to correct.
+
+REVERSE IT by narrowing the helper back to an existence test, which the test
+R44 adds will refuse; that refusal is the evidence for this entry.
+
+## DECISION F031 D22 (2026-08-27) — answerability reaches the renderer as a PER-ANSWER flag, and a refused affordance is pasteable text rather than a disabled button
+
+CHOSEN, THE FLAG IS STAMPED ON THE ANSWER, NOT READ FROM THE CARD BY THE
+MARKUP. `decisionAnswers` computes `posts` once from the endpoint's
+`answerable_by_decision_resolve` and stamps it on every affordance it returns,
+and the component projects that boolean. DECISION F031 D5 rules every real
+branch into `decisionCard.ts`, where the shipped vitest config can reach it, and
+a component reading the card's key directly would put the rule in markup no
+suite renders. The reading is strict `=== true`, so a payload from a server
+older than R43 renders no posting button at all.
+
+CHOSEN, A REFUSED AFFORDANCE IS SHOWN AS PASTEABLE TEXT. The value stays on
+screen — it is the exact `remedy` command that answers the question — and it is
+selectable, so the operator can still act on it in a terminal. The affordance
+simply stops claiming the browser will do it for them.
+
+CONSIDERED AND REJECTED: a DISABLED button. It keeps the control's shape while
+removing its function, which is the shape R-0693 already found dishonest, and a
+disabled control is skipped by keyboard navigation, so the command would become
+unreachable for exactly the operators most likely to want to paste it.
+
+CONSIDERED AND REJECTED: hiding a refused answer entirely. That loses the
+question, which is the one thing this inbox exists not to do.
+
+REVERSE IT by stamping `posts: true` unconditionally in `decisionAnswers`, which
+the tests R45 adds will refuse; that refusal is the evidence for this entry.
+
+## DECISION F031 D23 (2026-08-27) — a record round takes R46, and the remaining programme moves by one
+
+SUPERSEDING A ROUND ATTRIBUTION IN DECISION F031 D21: that entry rules "the
+`fp:` dispatch R46 and the clarification FORM R47". The R45 gate produced a
+verdict and a finding, and `docs/agents/planner_reviewer_prompt.md` §4 item 4
+requires findings to persist FIRST, in their own commit, before any repair — so
+the record cannot wait for a round that also ships code without risking exactly
+what that rule exists to prevent.
+
+CHOSEN, THE RECORD GETS ITS OWN ROUND. R46 writes only `.agent/` state. The
+`fp:` dispatch becomes R47, which also retires the duplicate guard R-0696 names,
+and the clarification FORM becomes R48. Nothing any earlier entry CHOSE changes:
+not the answerability key, not the predicate it is computed from, not the
+refusal to branch on `card.type`, not the scope ruling that leaves six prefixes
+out of F031. Only the round numbers move, for the third time in this feature and
+for the same reason each time — a round is sized against the code, never against
+the sentence that named it.
+
+CONSIDERED AND REJECTED: folding the record commits into R47's block. It would
+put a finding's registration behind a code change in the same round, which is
+the ordering §4 item 4 forbids, and it would leave the R45 verdict off disk for
+the length of a session that might not survive to write it.
+
+REVERSE IT by merging R46's commits into R47 and renumbering back, which costs
+nothing on disk — this entry moves labels, not work.
+
+## DECISION F031 D24 (2026-08-27) — the write door approves a flight plan on the defaults, and the inbox offers the two words the door takes
+
+THE GAP DECISION F009 D5 LEFT: that entry rules that `decision.resolve`
+dispatches "an `fp:`-prefixed id to `resolve_flight_plan_approval`, and the seam
+is gone when that round ends". The extraction shipped and the dispatch did not,
+which finding R-0693 measured — `resolve_flight_plan_approval` exists, its
+docstring says it was extracted "so the UI write door can reach the SAME code
+the CLI has always run", and the CLI remained its only caller.
+
+CHOSEN, THE DOOR APPROVES ON THE DEFAULTS. The `fp:` branch passes
+`answers={}`, so every open clarification takes its own `default_answer`. An
+operator approving from the inbox is accepting the defaults, the endpoint's
+docstring says exactly that, and R48's FORM over `payload.clarifications` is
+where any other choice comes from. The alternative — holding the dispatch back
+until the FORM exists — keeps a blocker decision unanswerable through the only
+surface the operator has, to protect a choice that today's card cannot offer
+anyway.
+
+CHOSEN, THE ANSWER VOCABULARY IS THE CLI'S. The door accepts exactly `approve`
+and `reject`, by strict equality, mirroring `apps/cli/commands/decision.py`'s
+own `reason not in ("approve", "reject")`. The pending decision therefore
+carries those two strings as `payload.options`, and `decisionAnswers` — which
+prefers options over next actions for every card, without branching on type —
+turns them into the card's affordances. That is why no component changes: the
+browser already renders whatever the payload offers.
+
+CONSIDERED AND REJECTED: parsing the `next_actions` CLI line the card used to
+post. It would make the door reverse-engineer its own help text, and a
+punctuation change in a printed hint would silently become a refused approval.
+
+REVERSE IT by deleting the `fp:` branch from `_dispatch_decision_resolve`, the
+`options` assignment from the pending arm of `decision_queue`, and the `fp:`
+mirror from `_answerable_by_decision_resolve` — the three land as three commits
+so that reversal is three reverts.
+
+## DECISION F031 D25 (2026-08-27) — a worker handing back early writes the blocker into the plan, and the reviewer's slice does not stop it
+
+THE CONFLICT R47 SURFACED, escalated by the worker rather than resolved
+silently, which is why it is being ruled at all: AGENTS.md's "If Blocked"
+section orders the agent to "update `.agent/plan.md` with the exact blocker",
+while R47's block constrained every slice — `.agent/plan.md` among them — to be
+the reviewer's text applied byte for byte and never edited. A worker that hands
+back mid-round therefore had two instructions it could not both obey.
+
+CHOSEN, AGENTS.md WINS AND THE CARVE-OUT IS EXPLICIT. AGENTS.md states that it
+has the highest priority and that conflicting files lose, so the question was
+already answered in principle; what was missing was permission specific enough
+that a worker under a byte-for-byte constraint could act on it. A worker ending
+a round early MAY append a section headed `## Blocked` to `.agent/plan.md`,
+after every section the reviewer's slice supplied, naming what stopped it and
+which ordered items it did and did not complete. It never edits the reviewer's
+text above that section, and the next round's slice replaces the whole file
+including the appended section.
+
+WHY APPEND RATHER THAN EDIT: the transport proof for a plan slice is a
+byte-for-byte comparison against the reviewer's original, and an edit inside it
+destroys that proof for no gain. An append leaves the original bytes intact as a
+prefix, so the same comparison still runs — against the file's first N bytes —
+and the blocker still reaches the next session through the file AGENTS.md names
+as the bridge.
+
+CONSIDERED AND REJECTED: leaving the blocker in the handback alone, which is
+what R47 did. It works only while `handoff.md` survives, and `plan.md` is the
+file the Session Resume protocol reads second and the one AGENTS.md calls the
+bridge. Two files disagreeing about whether a round finished is the state this
+repository has paid for before.
+
+REVERSE IT by deleting this entry and the `## Blocked` carve-out from the block
+template, which returns the worker to reporting blockers in the handback only.
+
+## DECISION F031 D26 (2026-08-27) — the write door takes the operator's clarification answers, and it refuses a question id it does not know
+
+THE GAP DECISION F031 D24 LEFT ON PURPOSE: that entry ruled that the `fp:`
+branch passes `answers={}`, so every open clarification takes its own
+`default_answer` and an operator approving from the inbox accepts them all, and
+it named a FORM over `payload.clarifications` as where any other choice would
+come from. The card has carried those questions all along — the pending arm of
+`decision_queue.py` exports `payload["clarifications"]` from
+`open_clarification_questions` — so the door was the only half that could not
+receive an answer.
+
+CHOSEN, `args.answers` IS OPTIONAL AND VALIDATED. ABSENT, the door behaves
+exactly as D24 ruled, so every client written against D24 stays correct and no
+existing test moves. PRESENT, it must be a map of OPEN question ids to strings,
+and `_validated_clarification_answers` refuses the whole request otherwise, with
+the same 409 and `rejected_state` the door's other refusals give. The
+alternative — dropping an unknown id and carrying on — is REJECTED because
+`apply_clarification_answers` would then write `answered_by="default"` for a
+question the operator really answered, and saying who decided is the one job the
+assumption log has.
+
+CHOSEN, THE FORM LANDS IN TWO ROUNDS, SERVER THEN BROWSER. R51 is the door plus
+the effect test that reads the operator's own words back off disk; R52 is the
+browser form together with the tests pinning the two refusals this entry rules.
+The split is forced by DECISION F085 D6's 490-line block cap — one block cannot
+carry both halves and their slices — and it is recorded here rather than left
+implicit because for one round the door refuses on a condition no test guards.
+The seam is real rather than convenient: the door is reachable by any client, so
+the capability is usable and provable before a component exists.
+
+## DECISION F031 D27 (2026-08-27) — closure precondition 2 is met on the evidence, and `R-0708` is carried as a documented open Medium risk
+
+THE QUESTION. Closure precondition 2 of `docs/roadmap/STATUS_closure_protocol.md`
+asks for a green relevant suite. At the reviewed head five runs of
+`python3 -m pytest -n auto -q` produced FOUR GREEN at a real exit 0 with
+`17817 passed, 20 skipped` and ONE RED at exit 1 with `1 failed, 17816 passed,
+20 skipped`. Whether an intermittently green precondition may carry `[x]` is the
+judgement this entry settles, under
+`docs/agents/planner_reviewer_prompt.md` §4 item 7.
+
+CHOSEN, THE PRECONDITION IS MET AND F031 CLOSES AS PASS_WITH_RISKS. Three
+readings carry it. The dedicated integration-gate round the precondition names
+PASSED at R65 with a real exit 0 at 17817 passed and 20 skipped, and BOTH
+differential sets — branch-only and base-only — EMPTY. The intermittency is in
+the instrument and not the feature: `_start_server` polls 50 times at 0.1s and
+then fails, so the budget is a flat five seconds of wall clock that competes with
+every xdist worker, and the same test passes SOLO at exit 0 in 0.32s. And
+precondition 1 already admits a finding "listed as a documented Medium/Low risk",
+which `R-0708` is — registered, mechanism read from source rather than guessed,
+and routed to a follow-up.
+
+REJECTED, A REPAIR ROUND ON THE HARNESS. `R-0708`'s own text routes the repair
+away from this feature because `tests/ui_server/` is outside F031's change set,
+and overturning that routing to unblock a closure would let a closure deadline
+decide a scope question. REJECTED, AN `[!]` BLOCKED LINE. Nothing about F031 is
+blocked: 17817 tests pass, the package was built and verified, and every other
+precondition holds — an `[!]` would be dishonest in the opposite direction to a
+false `[x]`.
+
+HOW TO REVERSE. Delete this entry and set the F031 STATUS line back to `[~]`.
+The closure commit is a single commit touching `docs/roadmap/STATUS.md`,
+`README.md` and `.agent/` state, so reverting it restores the prior state
+exactly; the pull request it opens is not merged in the session that creates it,
+which is the operator's window to do so.

@@ -1667,6 +1667,23 @@ def _build_job_plan_dashboard(job: Any) -> dict[str, Any]:
     }
 
 
+# WHY: `metrics.open` and `open_decision_count` are both typed `int` with no "unknown"
+# state, so a failure here reads as 0 instead of propagating — unlike
+# `_build_orchestrator_section`, the richer shape that can answer "unknown". The event
+# scans this replaces were constant zero in production: neither `human_decision_requested`
+# nor `stop_reason_recorded` has an emitter outside tests (DECISION F031 D2 / D9).
+def _count_open_decisions(job: Any, events: list[dict[str, Any]]) -> int:
+    """Number of still-open human decisions for a job, derived from the decision queue."""
+    try:
+        from packages.orchestration.decision_queue import (
+            list_decisions as list_queue_decisions,
+        )
+        from packages.orchestration.decision_queue import open_decisions
+        return len(open_decisions(list_queue_decisions(job, events)))
+    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
+        return 0
+
+
 def _build_dashboard(job: Any) -> dict[str, Any]:
     """Build safe dashboard payload for a job."""
     if getattr(job, "_is_job_plan", False):
@@ -1699,11 +1716,10 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
             if approval == "pending":
                 pending_approvals += 1
 
-    # Blockers / decisions
-    blocker_count = sum(1 for e in events if e.get("event") == "stop_reason_recorded"
-                        and e.get("outcome") != "resolved")
-    decision_count = sum(1 for e in events if e.get("event") == "human_decision_requested"
-                         and e.get("outcome") != "resolved")
+    # Decisions — re-derived from the decision queue, not counted off the event ledger.
+    # DECISION F031 D9 retires the blocker addend and its `stop_reason_recorded` scan
+    # with it: `decision_queue` already derives a `stop_reason` decision of its own.
+    decision_count = _count_open_decisions(job, events)
 
     # Latest proof
     proof_events = [e for e in events if e.get("event") == "proof_collected"]
@@ -1917,7 +1933,7 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
             "confidence": "high" if has_real_events else "none",
         },
         "metrics": {
-            "open": blocker_count + decision_count,
+            "open": decision_count,
             "planned": sum(1 for t in job.tasks if (t.status.value if hasattr(t.status, "value") else "") == "pending"),
             "done": sum(1 for t in job.tasks if (t.status.value if hasattr(t.status, "value") else "") == "completed"),
             "progress_percent": round((sum(1 for t in job.tasks if (t.status.value if hasattr(t.status, "value") else "") == "completed") / max(task_count, 1)) * 100),
@@ -2638,12 +2654,9 @@ def _build_live_state_json(job: Any) -> dict[str, Any]:
         }
         stage = stage_map.get(last_event, "active")
 
-    # Open decisions
-    open_decisions = sum(
-        1 for e in events
-        if e.get("event") == "human_decision_requested"
-        and e.get("outcome") != "resolved"
-    )
+    # Open decisions — re-derived from the decision queue, not counted off the event
+    # ledger (DECISION F031 D9). The old local shadowed `decision_queue.open_decisions`.
+    open_decision_count = _count_open_decisions(job, events)
 
     # Test status
     test_events = [e for e in events if e.get("event") == "test_run_completed"]
@@ -2712,7 +2725,7 @@ def _build_live_state_json(job: Any) -> dict[str, Any]:
         "latest_event_at": latest_at,
         "node_count": node_count,
         "edge_count": 0,
-        "open_decision_count": open_decisions,
+        "open_decision_count": open_decision_count,
         "active_task_id": active_task_id,
         "latest_completed_task_id": latest_completed_task_id,
         "test_status": test_status,
@@ -2739,6 +2752,13 @@ def _build_task_progress_json(job: Any) -> dict[str, Any]:
     from packages.orchestration.ui_view_model import build_task_progress
     events = _load_events(job)
     return build_task_progress(job, events)
+
+
+def _build_decisions_json(job: Any) -> dict[str, Any]:
+    """Build the decision inbox payload — every open question of one job."""
+    from packages.orchestration.decision_inbox import build_decision_inbox
+    events = _load_events(job)
+    return build_decision_inbox(job, events)
 
 
 def _build_next_action_json(job: Any) -> dict[str, Any]:
@@ -3314,6 +3334,42 @@ def accept_command_under_rate_limit(
 # HTTP Request Handler
 # ---------------------------------------------------------------------------
 
+def _validated_clarification_answers(
+    args: dict[str, Any], questions: list[dict[str, str]],
+) -> dict[str, str] | None:
+    """The `answers` a flight-plan approval may carry, or None to refuse it.
+
+    DECISION F031 D26. ABSENT means "accept every default": that is DECISION
+    F031 D24's original contract and the reading of every client written before
+    this form existed, so it stays valid and stays the default.
+
+    PRESENT means the operator chose, and it is then validated the way
+    `apps/cli/commands/decision.py::parse_answer_options` validates `--answer`,
+    because the CLI is the vocabulary this door mirrors: an unknown question id
+    is a spec error there rather than a silent default.
+
+    Remedy deliberately does NOT drop an unknown id and carry on, and a reader
+    looking for that leniency should stop here: `apply_clarification_answers`
+    would then write `answered_by="default"` for a question the operator really
+    answered, and an assumption log that misreports who decided is worse than a
+    refused request the client can correct.
+    """
+    raw = args.get("answers")
+    if raw is None:
+        return {}
+    if not isinstance(raw, dict):
+        return None
+    known = {str(q.get("id", "")) for q in questions}
+    out: dict[str, str] = {}
+    for qid, value in raw.items():
+        if not isinstance(qid, str) or qid not in known:
+            return None
+        if not isinstance(value, str):
+            return None
+        out[qid] = value
+    return out
+
+
 class _RemedyHandler(BaseHTTPRequestHandler):
     """Token-gated API handler with exactly one mutating door.
 
@@ -3376,6 +3432,7 @@ class _RemedyHandler(BaseHTTPRequestHandler):
                 "brain-view-model": _build_brain_view_model_json,
                 "live-state": _build_live_state_json,
                 "task-progress": _build_task_progress_json,
+                "decisions": _build_decisions_json,
                 "next-action": _build_next_action_json,
                 "guide": _build_guide_json,
                 "events": _build_events_json,
@@ -3647,7 +3704,7 @@ class _RemedyHandler(BaseHTTPRequestHandler):
 
     def _dispatch_decision_resolve(self, job: Any,
                                    payload: Any) -> dict[str, Any] | None:
-        """Answer one task decision and PERSIST it. None means the effect declined.
+        """Answer one decision and PERSIST it. None means the effect declined.
 
         DECISION F009 D21: `answer_task_decision` and `save_job` are BOTH the
         effect, because the answer is durable only once `save_job` returns, so a
@@ -3668,6 +3725,26 @@ class _RemedyHandler(BaseHTTPRequestHandler):
         the reason D20 gave for `reason`: D14 types `args` as an object and never
         types what is inside it. An empty id matches no record, so the refusal
         path answers it rather than an exception.
+
+        DECISION F031 D24 rules what an `fp:`-prefixed id means here: the door
+        approves or rejects the job's PENDING flight plan through
+        `flight_plan.resolve_flight_plan_approval`, and it accepts exactly
+        `approve` and `reject` by strict equality — the CLI's own vocabulary at
+        `apps/cli/commands/decision.py` — refusing every other answer, and every
+        plan that is not pending, with the same None the task-decision path
+        returns. `args.answers` is DECISION F031 D26's FORM over
+        `payload.clarifications`, and it is OPTIONAL. ABSENT, every open
+        clarification takes its own `default_answer` and an operator approving
+        from the inbox is ACCEPTING THE DEFAULTS, which is DECISION F031 D24's
+        contract unchanged. PRESENT, it is validated by
+        `_validated_clarification_answers`, and an unknown question id refuses
+        the whole request rather than defaulting one answer silently.
+
+        `--as-mission` is deliberately NOT reachable through this door, and a
+        reader searching for it should stop here: F056 makes the mission opt-in
+        an explicit flag whose default is NO, so a door that cannot carry the
+        flag creates no mission, and silently creating one would be the opposite
+        of that default.
         """
         from datetime import datetime, timezone
 
@@ -3677,6 +3754,36 @@ class _RemedyHandler(BaseHTTPRequestHandler):
         args = args if isinstance(args, dict) else {}
         decision_id = args.get("decision_id")
         answer = args.get("answer")
+        # DECISION F031 D24: an `fp:`-prefixed id names the FLIGHT PLAN's own
+        # approval, so it is dispatched HERE, before `answer_task_decision` —
+        # which reads escalation records alone and refuses every id that is not
+        # one. This closes the half of DECISION F009 D5 that shipped the
+        # extraction without the dispatch (finding R-0693).
+        if isinstance(decision_id, str) and decision_id.startswith("fp:"):
+            from packages.orchestration.flight_plan import (
+                open_clarification_questions,
+                resolve_flight_plan_approval,
+            )
+            fp = getattr(job, "flight_plan", None)
+            if not isinstance(fp, dict) or fp.get("_approval") != "pending":
+                return None
+            if answer not in ("approve", "reject"):
+                return None
+            questions = open_clarification_questions(
+                fp.get("clarifications_resolved"))
+            answers = _validated_clarification_answers(args, questions)
+            if answers is None:
+                return None
+            resolve_flight_plan_approval(
+                job, reason=answer, answers=answers, questions=questions)
+            # `save_job` is deliberately NOT called here, and a reader who came
+            # looking for it should stop here: `resolve_flight_plan_approval`
+            # saves on BOTH of its arms, at flight_plan.py:824 and :831, so a
+            # second save would write the same object twice. The task-decision
+            # path just below DOES call it, because `answer_task_decision` saves
+            # nothing itself, and the difference reads as a bug without this.
+            return {"command": payload["command"], "outcome": "accepted",
+                    "decision_id": str(decision_id)}
         record = answer_task_decision(
             job, decision_id if isinstance(decision_id, str) else "",
             answer=answer if isinstance(answer, str) else "",

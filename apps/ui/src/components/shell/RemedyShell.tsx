@@ -13,7 +13,7 @@ import { useBrainStream } from "../../api/useBrainStream";
 import { metricsWithCostTicker } from "../../api/costTicker";
 import { metricsWithCostReconciliation } from "../../api/costReconciliation";
 
-export function RemedyShell({ dashboard, selectedNodeId, onSelectNode }: { dashboard: RemedyDashboard; selectedNodeId: string | null; onSelectNode: (nodeId: string | null) => void }) {
+export function RemedyShell({ dashboard, serverToken, selectedNodeId, onSelectNode }: { dashboard: RemedyDashboard; serverToken: string; selectedNodeId: string | null; onSelectNode: (nodeId: string | null) => void }) {
   // The cockpit subscribes HERE rather than in RemedyApp: the shell renders
   // only once a dashboard has loaded, so `dashboard.jobId` is always a real
   // job, where RemedyApp would have to open a stream against an empty id on
@@ -62,7 +62,7 @@ export function RemedyShell({ dashboard, selectedNodeId, onSelectNode }: { dashb
           <BrainGraphStage dashboard={dashboard} selectedNodeId={selectedNodeId} onSelectNode={onSelectNode} />
           <PhaseTimeline phases={dashboard.phases} timelineEvents={dashboard.timelineEvents} />
         </main>
-        <RightLivePanel dashboard={dashboard} onSelectNode={onSelectNode} streamStatus={stream.status} recent={stream.recent} recentDropped={stream.recentDropped} />
+        <RightLivePanel dashboard={dashboard} serverToken={serverToken} onSelectNode={onSelectNode} streamStatus={stream.status} recent={stream.recent} recentDropped={stream.recentDropped} />
       </div>
       {selectedNode && <DetailPopover dashboard={dashboard} selectedNode={selectedNode} selectedPromptId={selectedPromptId} onClose={() => onSelectNode(null)} />}
     </div>
