@@ -1,187 +1,204 @@
-# Handoff — amend0827 process diet · operator collection order · terminal state
+# Handoff — F032 R1, approval with the evidence triple
 
 ## Session
-SESSION 1 of order amend0827 · round 1 · rounds so far 1. Not a feature, so
-no STATUS line is claimed and the 25-round / 7-session soft limit does not
-bind; this section is written because rule 6 of this very order makes it
-mandatory from 2026-08-27, and an order that exempts itself from its own
-first handback is not a rule.
+
+`SESSION 1 of feature F032 · round R1 · rounds so far 1`
+
+Feature F032, round R1. Branch `feature/f032-evidence-triple`, cut from `main`
+at the round base `a399a330`
+(`a399a3304f9d962cd920c251488c40c486b35fdc`). Soft limit 25 rounds / 7
+sessions — not approached.
 
 ## Range
-Review of `f4eae1d4`..HEAD, `f4eae1d4` being the merge commit of pull
-request #215 which closed F031. HEAD is C7, the commit that writes this file.
+
+Review of `a399a330..HEAD` (this round created every commit in the range).
 
 ## Commits
-### 68f52760 C0 docs(agent): open the amend0827 process-diet order
+
+### 9ae08cb8 chore(agent): save the F032 R1 block as authored text
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/context.md | +33/-23 | scope, assumptions, four standing constraints carried forward |
-| .agent/plan.md | +35/-33 | goal and item table for this order |
+| `.agent/authored/f032-r1.md` | +404 / -0 | C0a, byte-for-byte copy of `.remedy-wt/f032-r1.md` via `shutil.copyfile` |
 
-### 2c2ea885 C1 docs(agents): amend0827 rules 1, 2, 3 and 6 in AGENTS.md
+### 9359d743 chore(agent): mirror the F032 R1 block into last_block
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/prose_slips.md | +32/-0 | new standing file, rule 2; two slips from the F031 closure |
-| AGENTS.md | +66/-13 | handoff cap withdrawn, prose_slips registered, carrier rule, session number |
+| `.agent/last_block.md` | +337 / -323 | C0b, mirror of the C0a file; same git blob |
 
-### dab1347d C2 docs(agents): sweep the withdrawn handback cap out of the two remaining docs
+### 134244a7 chore(agent): open the F032 plan and context
 | Path | +/- | Reason |
 |---|---|---|
-| docs/agents/handback_template.md | +30/-20 | all three tiers withdrawn; write-once rule kept |
-| docs/agents/split_workflow.md | +8/-4 | the 60/100 pair removed from the handoff description |
+| `.agent/context.md` | +29 / -49 | C1, CTXF032R1 applied byte for byte |
+| `.agent/plan.md` | +34 / -35 | C1, PLANF032R1 applied byte for byte |
 
-### 01518381 C3 docs(agents): amend0827 rules 1 through 6 in the planner/reviewer prompt
+### afecb4ee docs(roadmap): claim F032 in the status ledger
 | Path | +/- | Reason |
 |---|---|---|
-| docs/agents/planner_reviewer_prompt.md | +107/-5 | all six rules at their §1, §3 and §4 homes |
+| `docs/roadmap/STATUS.md` | +1 / -1 | C2, SFROM/STO pair: F032 open to active |
 
-### 2fc22841 C4 docs(agents): amend0827 rules 1, 4, 5 and 6 in the self-drive protocol
+### 7db4d7ed chore(agent): reset the live review header for F032
 | Path | +/- | Reason |
 |---|---|---|
-| docs/agents/self_drive_protocol.md | +58/-4 | round loop, G7 and session end |
+| `.agent/live_review.md` | +23 / -21 | C3, LFROM/LTO pair, header region only |
 
-### 2e9d37a1 C5 docs(agent): work off the four F031 closure candidates and book rule 3's findings
+### 650bf1a7 docs(agent): put the F032 source inventory on disk
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/decisions.md | +72/-0 | DECISION amend0827 D1 and D2 appended |
-| .agent/live_review.md | +10/-0 | four Done: bookings and the disposition note appended |
-| .agent/candidates.md | +11/-70 | EMPTIED; block condition lifted |
-| docs/roadmap/STATUS_closure_protocol.md | +35/-2 | D1's package path, D2's carrier commit, rule 1's closure exception |
+| `.agent/f032_inventory.md` | +369 / -0 | C4, Q1-Q8 each measured |
 
-### a3764d13 C6 docs(agents): carry the session number where rule 6 says every handback carries it
+### C5 — this handoff
 | Path | +/- | Reason |
 |---|---|---|
-| docs/agents/handback_template.md | +14/-0 | mandatory `## Session` section |
-| docs/agents/planner_reviewer_prompt.md | +6/-1 | operator brief Feature row |
-
-### C7 docs(agent): close the amend0827 order in the state files — self, per R-0149
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/plan.md | self | item table to done |
-| .agent/handoff.md | self | this file |
-
-## Item status
-| Item | Status | Reason |
-|---|---|---|
-| Part 0(a) merge PR #215 | done | conflict resolved, CI green, merged as `f4eae1d4` |
-| Part 0(b) four candidates worked off | done | no id spent; file EMPTY |
-| Part 1 round measurement | done | reported to the operator; no disk artifact ordered |
-| Rule 1 verdict booking | done | AGENTS.md, §4 item 6, self-drive Phase 2, closure exception |
-| Rule 2 two-class findings | done | AGENTS.md section, prose_slips.md, §4 item 4 |
-| Rule 3 cap reform | done | four files swept; four findings booked |
-| Rule 4 checklist freeze | done | §3 header, self-drive session end; list measured at 37 |
-| Rule 5 gate budget | done | §3 gate-budget bullet, self-drive Phase 2 |
-| Rule 6 session budget | done | §3, §1, G7, session end, template, operator brief |
-| push and PR | done | PR #216 into `main` |
-| self-caught correction of the F031 reach claim | done | one correction, rule 2's limit |
+| `.agent/handoff.md` | self | a handoff cannot table the commit that writes it (R-0149) |
 
 ## External actions
-- `gh pr list` before the branch: exactly PR #215, `feature/*` → `main`, not a
-  draft, `mergeable: CONFLICTING`, `statusCheckRollup` EMPTY. Reported to the
-  operator, who ruled option 1.
-- Conflict resolved on `feature/f031-decision-inbox` as merge commit `40ed12ba`;
-  pushed; the first CI run PR #215 ever had, `33076078540`, completed `success`.
-- `gh pr merge 215 --merge --delete-branch` exit 0 → `f4eae1d4` on `main`;
-  `gh pr list --state open` then `[]`.
-- No worktree was left behind, no force-push, no history rewrite.
+
+- `gh pr list --state open --json number,headRefName,baseRefName,isDraft` → `[]`.
+  Open PR Gate clear. Nothing merged, nothing created.
+- `git checkout -b feature/f032-evidence-triple` from `main` at `a399a330` → branch created.
+- INTENT after C5: `git push -u origin feature/f032-evidence-triple`. C5 is
+  authored before the push exists, so no exit code and no remote tip is stated
+  here; both are in the round's completion report.
+- No worktree added or removed. No PR created. No merge.
 
 ## Verification
-- Conflict resolution, `.agent/decisions.md`: base is a byte PREFIX of the
-  result; the main delta (4972 B) and the branch delta (64490 B) each occur
-  verbatim and contiguously; result == base + main delta + branch delta at
-  622400 B; both seams `.\n` → `\n#`; keys 126/129/153 → 156 = 126 + 3 + 27,
-  zero duplicates, zero lost.
-- Local gates before the push of `40ed12ba`: canary + three state readers
-  `131 passed`; `tests/ui_server/` `489 passed`; docs + roadmap index
-  `325 passed`.
-- C1: `tests/docs/` + roadmap index + canary `367 passed`.
-- C2, C3, C6: `tests/docs/` + `tests/test_agent_tooling.py` + canary
-  `347 passed, 1 skipped` at each.
-- C4: same suite `347 passed, 1 skipped`; the six substrings
-  `tests/test_agent_tooling.py` pins in the self-drive protocol all survive
-  (Open PR Gate 2x, Never force-push 1x, .agent/STOP 3x, worker subagent 1x,
-  git worktree 1x, handoff 12x).
-- C5: `tests/docs/` + roadmap index + the four state readers + canary
-  `456 passed`.
-- Ledger movement at C5, measured against `HEAD~`: `^- R-\d+ — ` 270 unchanged,
-  `^Done: R-\d+ — ` 17 → 21 adding exactly R-0430, R-0582, R-0676, R-0700,
-  `^Landed: R-` 0, `^Gate: R\d+ — ` 19 unchanged, `^Gate: F\d+ R\d+ — ` 53
-  unchanged, open set 253 → 249, no duplicate resolved id, and both appended
-  files keep their pre-commit content as a byte prefix.
-- §3 pre-emission checklist re-counted after every edit: 37 items, numbered
-  1..37 with no gap — the number rule 4 freezes.
-- §4 item numbering re-counted after the rule 1 insertion: 1..13, strictly
-  increasing, no duplicate. Rule 1 was rewritten as a continuation of item 6
-  precisely so `§4 item 7` keeps meaning what STATUS_closure_protocol.md and
-  §1 of the same file say it means.
+
+One line per gate, with the real exit code.
+
+- G1 hygiene/branch/sentinel — exit 0. `git rev-parse HEAD` before the cut
+  `a399a3304f9d962cd920c251488c40c486b35fdc`; `git branch --show-current` after
+  C0a `feature/f032-evidence-triple`; `git status --porcelain` 0 lines after
+  each of C0a, C0b, C1, C2, C3, C4; `.agent/STOP` ABSENT before C0a and ABSENT
+  before C5.
+- G2 transport — exit 0. sha256
+  `ae44bcac6839ea2ec4d0242d3d18a54edf7f6b12dcac7d57407d4123d9e01b59`,
+  25032 bytes, 404 lines at ALL FOUR points (scratch, C0a, C0b, C4 working
+  copy). C0a and C0b are the SAME git blob
+  `dc9584b3f2228203d9b0f607495c817a3f5be8af`. Whole-line repeated-character runs
+  of length ≥ 4: none.
+- G3 extraction and caps — exit 0. 6 slices from the committed C0a blob:
+  PLANF032R1 46, CTXF032R1 53, LFROM 24, LTO 26, SFROM 1, STO 1. CONTENT 151,
+  TOTAL 404, PROSE 253. PROSE ≤ 400 and TOTAL ≤ 490 both hold.
+- G4 plan and context — exit 0. Both BYTE-EQUAL to their slices under the
+  newline-INCLUDED convention; both negative controls FALSE. `plan.md`:
+  `^## Goal$` 1, `^## Next Steps$` 1, `\bF\d{3}\b` matches `F032`, `wc -l` 46
+  (< 50). `context.md`: `^## Active Branch$` 1, `feature/` matches,
+  `\bF\d{3}\b` matches `F032`, `Steps` present.
+- G5 ledger reset — exit 0. LFROM 1→0, LTO 0→1. Findings region from the first
+  byte of `## Findings`: 1023923 bytes, sha256
+  `3c0dac3dd2b4a9292722f0ec94598b9aa4c34e0ba255a28aaf896865699081d1` at BOTH
+  points, EQUAL. Line-anchored counts unchanged at 270 / 21 / 0 / 19 / 53. All
+  four id delta sets EMPTY, ids DISTINCT at both points, max id `R-0709` at
+  both, open set 249 at both. `^## Findings$` 1 at both; `Steps` present at both.
+- G6 STATUS claim and docs gate — pytest exit 0,
+  `325 passed in 0.72s`. `docs/roadmap/STATUS.md` at C2: SFROM 0, STO 1;
+  `^- \[ \] ` 197 → 196, `^- \[x\] ` 58 → 58, `^- \[~\] ` 0 → 1; total `^- \[`
+  255 → 255, UNCHANGED.
+- G7 state readers and canary — pytest exit 0,
+  `620 passed in 73.84s (0:01:13)`, `^FAILED` count 0. The extractor was proved
+  not blind against a string containing a `FAILED` line.
+- G8 structure, artifacts, Open PR Gate — exit 0. Both path-set residues EMPTY.
+  `apps/`, `packages/`, `tests/` diffs EMPTY; `docs/` holds
+  `docs/roadmap/STATUS.md` alone (+1/-1). Every commit single-parent and under
+  500 insertions. `^<<<SLICE ` / `^<<<END ` 0/0 in plan, context and
+  live_review at their commits, against the C0a control 6/6.
+  `git ls-files .remedy-wt` 0, `git worktree list` 1, `git branch --list
+  "tmp/*"` 0. `gh pr list` → `[]`.
+
+## Authored-text proofs
+
+- `.agent/plan.md` == PLANF032R1: byte-equal, negative control (slice minus its
+  trailing newline) FALSE.
+- `.agent/context.md` == CTXF032R1: byte-equal, negative control FALSE.
+- LFROM/LTO and SFROM/STO applied as whole-file `bytes.replace`, each FROM
+  occurring exactly once before and zero times after.
+- `.agent/authored/f032-r1.md` == `.remedy-wt/f032-r1.md`: same sha256, same
+  byte count, same line count.
+
+## Item status
+
+Every ordered item, exactly once.
+
+| Item | Status | Reason |
+|---|---|---|
+| C0a save this block | done | |
+| C0b mirror into `last_block` | done | |
+| C1 plan and context | done | |
+| C2 STATUS claim | done | |
+| C3 live-review header reset | done | |
+| C4 the inventory | done | |
+| C5 the handback | done | this commit |
+| push | done | outcome reported in the round report, not here |
+| Q1 enforcement point | done | measured: there is NO enqueue seam |
+| Q2 schema as built | done | 13 fields; `payload` the only additive slot; 2 of 9 sites write it |
+| Q3 where a decision is persisted | done | measured: no decision store exists |
+| Q4 evidence-ref vocabulary | done | measured: the typed vocabulary and its resolver DO NOT EXIST |
+| Q5 the options list | done | only 2 of 8 branches carry an options list |
+| Q6 the card surface | done | attachment points named at model and render side |
+| Q7 migration precedent | done | `DECISION_INBOX_VERSION` has no reader at all |
+| Q8 guards a schema change must satisfy | done | `rg` unavailable; equivalent `grep -rlE` run, declared below |
 
 ## Deviations & assumptions
-- SINGLE-SESSION MICRO-ROUND, and the change set includes `AGENTS.md`, which
-  that round type does not name among its allowed paths (docs/, tests/,
-  .agent/**, roadmap files). The operator prompt authorizes the AGENTS.md
-  amendments by name. No file under `packages/` or `apps/` is touched and no
-  test is added, changed or deleted, so the production-code bar the type
-  protects is not approached.
-- RULE 3 REACHED FOUR FILES, NOT THE TWO THE ORDER NAMED. The withdrawn cap
-  lived in AGENTS.md, `docs/agents/handback_template.md`,
-  `docs/agents/split_workflow.md` and `docs/agents/planner_reviewer_prompt.md`.
-  Leaving any of them would have left the rule alive where a worker actually
-  reads it, so the sweep is wider than the order's file list and narrower than
-  its intent by nothing.
-- FINDING R-0700 IS PARTLY WRONG AND THE CORRECTION IS RECORDED RATHER THAN
-  QUIETLY DROPPED. It calls the >10-commit 160-line tier "a tier AGENTS.md does
-  not define"; the tier was defined in `docs/agents/handback_template.md`, a
-  file AGENTS.md itself makes mandatory. The finding resolves either way under
-  rule 3, but its Medium severity rested on a worker inventing a tier, and the
-  worker was applying one. Recorded in the Done: text and beside the withdrawn
-  tier in the template.
-- The four rule-3 findings are booked RESOLVED BY AMENDMENT, not by repair, and
-  each Done: text says so in those words. Nothing was fixed; a rule was
-  withdrawn.
-- SELF-CAUGHT AND CORRECTED IN THIS SAME ROUND, AND IT IS AN `R-0709` INSTANCE.
-  C1, C2 and C5 all wrote that "across F031 the declared overage was every round
-  and growing", leaning on the numerals 113, 165 and 223 — which are `R-0582`'s
-  own, taken on the branch that registered it and NOT on F031, whose R10 wrote no
-  handback at all. The claim was wider than any measurement this order had taken.
-  Re-measured over `6325ac2f..40ed12ba` across the 75 commits that wrote
-  `.agent/handoff.md`: 63 of 75 exceed the 60-line base tier and 12 exceed 100, at
-  a median of 93 and a maximum of 198 — 84 per cent, not every, and not
-  monotonic. The conclusion is untouched, since a cap 84 per cent of handbacks
-  pass by declaration is nominal, which is `R-0582`'s diagnosis either way; only
-  the REACH of one supporting sentence was wrong. `AGENTS.md` and
-  `docs/agents/handback_template.md` carry the corrected numbers directly; the
-  ledger, being append-only, carries an appended correction. ONE correction, per
-  rule 2's own limit of at most one per defect.
-- THREE MORE OF THIS ORDER'S OWN CLAIMS WERE RE-GROUNDED BEFORE THE PR WENT
-  GREEN, all found by re-reading the amendments rather than by a gate. The
-  self-drive rule-1 text said the 20 bookkeeping rounds were "each one five
-  commits"; measured, they are 106 commits — 15 rounds of five, 4 of six and 1
-  of seven. The rule-6 text said F031 ran "across far more sessions than the
-  target"; nothing recorded F031's session count, so the sentence now names the
-  70 rounds against a soft limit of 25 and says plainly that the session count
-  was never recorded, which is why the rule adds one. The rule-2 text called the
-  open set "unreadable"; it now states what was counted — 270 findings, 253 open
-  against 17 ever resolved when this order opened.
-- THE FIRST HOSTED RUN OF PR #216 WENT RED, ON THIS ORDER'S OWN C0, AND THE
-  GATE THAT WOULD HAVE CAUGHT IT WAS ONE I OMITTED. Run `33080035449`:
-  `1 failed, 13139 passed, 3 skipped, 4711 deselected`, the single failure
-  `tests/ui_server/test_dashboard_contract.py::TestLiveReviewAndAgentStateRefs::test_context_md_no_stale_steps`
-  — `assert "Steps" in ctx`. C0's rewrite of `.agent/context.md` dropped the
-  `## Steps` section that file is required to carry. THE CAUSE IS NOT THE
-  REWRITE, IT IS THE GATE: this file's own standing constraint names FOUR state
-  readers and lists `tests/ui_server/` first, and every gate run after the
-  `40ed12ba` merge ran the other three and dropped it. Fixed by restoring a
-  `## Steps` section, and the constraint now spells out the full contract those
-  readers hold over the three state files so the next rewrite can be checked
-  against it directly rather than rediscovered from a red. Re-run locally with
-  all four readers plus the docs gate, roadmap index and canary: `945 passed`,
-  and the previously failing class `4 passed`.
-- PART 1 PRODUCED NO DISK ARTIFACT. The round classification was ordered as a
-  report to the operator and delivered as one; it is not written into `.agent/`
-  because no rule asks for it and an unbidden state file is the kind of
-  bookkeeping this order exists to cut.
+
+1. **WHAT Q1 MEASURED ABOUT THE ENQUEUE SEAM — THERE IS NONE.** The feature
+   file states at `docs/roadmap/features/T5_F032.md:31-33` that "the enforcement
+   point is the enqueue seam every producer already funnels through (one gate)".
+   Measured against the source, that seam does not exist. All eight producing
+   branches mint their `HumanDecision` INLINE inside
+   `packages/orchestration/decision_queue.py::list_decisions`, which is a
+   read-only derivation over eight other subsystems' records — its own docstring
+   says so at `decision_queue.py:4-6`. The underlying records are created at 16
+   distinct sites across 12 modules, none shared by two branches. Only branch 8
+   has anything named like an enqueue (`escalation.enqueue_task_decision`,
+   `escalation.py:211`) and it serves that one branch. The one common point is
+   `list_decisions` itself — nine `HumanDecision(...)` calls in one function
+   body — but that is a DERIVATION point: a gate there can refuse to EMIT a
+   tripleless decision, not refuse to CREATE one, because nothing is created.
+   The feature file's Design does not survive contact with the source, and the
+   reviewer rules on it.
+2. Two further measurements bear on the same Design paragraph. Q4: the typed
+   provenance vocabulary and the resolver the file names
+   (`file/failure/decision` kinds, resolver badges) DO NOT EXIST in code —
+   `grep -rn "resolve_ref\|ProvenanceRef\|REF_KIND\|ref_kind" packages/ apps/`
+   returns zero lines; they are the unbuilt spec `T3_F066.md:24-40`, and F066 is
+   `[ ]` at `STATUS.md:136`. Q3: the "queue storage" the file's Do-not-touch
+   list names has no referent — there is no decision store.
+3. `rg` is not installed in this session. The Q8 command
+   `rg -ln 'decision_queue|HumanDecision|export_decision_json' tests/` raised
+   `FileNotFoundError: [Errno 2] No such file or directory: 'rg'`. The
+   equivalent `grep -rlE 'decision_queue|HumanDecision|export_decision_json'
+   tests/` was run and its real 17-file output is quoted verbatim in the
+   inventory. Declared rather than silently substituted.
+4. Latent defect measured while answering Q1, NOT fixed and no id minted
+   (constraint 7): `decision_queue.py:223` filters memory entries by
+   `e.validity in ("stale", "needs_review")`, but `validity` is
+   `Literal["active", "stale", "superseded", "contradicted"]`
+   (`packages/memory/models.py:44`) — `"needs_review"` is a `review_status`
+   value (`models.py:45`), so that half of the predicate can never match. The
+   reviewer rules on it.
+5. Scratch artifacts left in place, by exact path, under the gitignored
+   `.remedy-wt/f032r1/`: the six extracted slice files `PLANF032R1`,
+   `CTXF032R1`, `LFROM`, `LTO`, `SFROM`, `STO`. They are the bytes G4's
+   byte-equality was measured against; deleting them would remove the evidence.
+   `git ls-files .remedy-wt` reads 0.
+6. NO DEPARTURE FROM THE ORDERED COMMIT SEQUENCE. The commits are exactly C0a,
+   C0b, C1, C2, C3, C4, C5 in that order — no extra commit, none dropped, none
+   reordered. Had any commit been made beyond the ordered sequence it would
+   carry its own `## Commits` row and its own item-status row.
+7. Not measured, stated as a gap: no vitest ran this round, so the 53 `it(`
+   cases in `apps/ui/src/api/decisionCard.test.ts` are a source count, not
+   collected tests; and no test was run against a mutated schema, so every
+   "would turn red" in Q8 is read from the assertion text, not observed.
+
+## Open findings
+
+249 open, measured at both the pre-C3 blob and the C3 commit: 270 finding
+paragraphs minus 21 `Done:` lines, maximum id `R-0709`. NO finding was
+registered or resolved this round; all four id delta sets are empty.
 
 ## Next
-Push, open the pull request into `main`, watch the hosted run, and merge at the
-Open PR Gate. `.agent/candidates.md` is EMPTY, so the next session may claim the
-next feature per Rule A5 with no block condition standing.
+
+The reviewer reviews `a399a330..HEAD`, books R1's verdict into
+`.agent/live_review.md` in the first commit of R2, and rules on the Q1/Q3/Q4
+measurements — whether the feature file's Design paragraph is corrected by a
+DECISION before T001 is planned. Phase 1 rule 1 first: re-read `.agent/STOP`.
