@@ -1,0 +1,47 @@
+F031 R65 — THE AUTO-BUILD NEUTRALIZATION AND THE STALENESS REPAIR (constraints 9, 10)
+
+THE ENV VAR PASSED
+  REMEDY_UI_NO_AUTO_BUILD=1
+  delivered as env=<copy of os.environ with that one key set> on the
+  subprocess.run that started the base suite. No shell environment assignment
+  was used: this session's command guard rejects every form of it.
+
+THE FUNCTION WAS READ BEFORE IT WAS RELIED ON
+  packages/orchestration/ui_server.py lines 3050-3063. _frontend_is_stale()
+  resolves ui_root as Path(__file__).resolve().parent.parent.parent / apps / ui,
+  returns True when dist/index.html is missing, and otherwise returns True as
+  soon as any file under apps/ui/src has st_mtime strictly greater than
+  index.html's. Because ui_root is derived from __file__, the predicate
+  imported from the base worktree's own copy of the module reads the BASE
+  worktree's apps/ui and nothing else.
+
+THE REPAIR, MADE AFTER THE COPY AND BEFORE THE RUN
+  newest mtime under the base worktree's apps/ui/src : 1787816424.0177052
+  base worktree apps/ui/dist/index.html, before fix  : 1787816304.9906328
+  -> the copied dist was 119.0 s OLDER than the freshly checked-out src, which
+     is exactly the condition that cost F022 R15 sixty-three base failures.
+  os.utime(index.html, (newest_src + 120.0, newest_src + 120.0))
+  base worktree apps/ui/dist/index.html, after fix   : 1787816544.0177052
+  index.html strictly newer than EVERY file under that worktree's src: True
+
+THE READING, TAKEN IN THE BASE WORKTREE, BEFORE THE RUN
+  how it was obtained — a subprocess with the worktree as cwd and the worktree
+  root prepended to sys.path, importing the real function and calling it:
+    python3 -c "import sys; sys.path.insert(0, <wt>)
+                from packages.orchestration.ui_server import _frontend_is_stale as s
+                import packages.orchestration.ui_server as m
+                print('module_file', m.__file__); print('stale', s())"
+    cwd = /home/decodeux/Repos/remedy/.remedy-wt/f031-r65-base
+  exit code 0
+  module_file /home/decodeux/Repos/remedy/.remedy-wt/f031-r65-base/packages/orchestration/ui_server.py
+  stale       False
+
+  The module path printed by the run is the base worktree's own file, so the
+  False is that worktree's answer and not the primary's. This is the real
+  predicate called, not a re-implementation of its rule.
+
+WHAT THE ENV VAR DID NOT DO. It did not stop a build. parity.txt records a
+rebuild inside the base run window — two new content-addressed asset names and
+three mtimes in the window. That is the R-0169 class again: the flag is set and
+is not trusted alone, and the measurement is why the flag's word is not taken
+for it. The consequence is recorded in parity.txt as a VOID parity claim.

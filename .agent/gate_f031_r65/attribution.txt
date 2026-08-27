@@ -1,0 +1,4 @@
+F031 R65 — ATTRIBUTION OF THE BASE-ONLY SET
+
+The base-only set (comm -23) is EMPTY: 0 ids. There is nothing to attribute,
+and this file is complete at that line.

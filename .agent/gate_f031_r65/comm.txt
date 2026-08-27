@@ -1,0 +1,37 @@
+F031 R65 — THE COMPARE (integration_gate.md step 3)
+
+inputs
+  base_failed.txt    0 bytes, 0 lines
+  branch_failed.txt  0 bytes, 0 lines
+  both are the sorted list of every line of their run's output that begins with
+  "FAILED ", written WHOLE and never truncated (constraint 12)
+
+BRANCH-ONLY SET — comm -13 base_failed.txt branch_failed.txt
+  exit code 0
+  count 0
+  (the set is empty; there is nothing to list, and nothing was elided)
+
+BASE-ONLY SET — comm -23 base_failed.txt branch_failed.txt
+  exit code 0
+  count 0
+  (the set is empty; there is nothing to list, and nothing was elided)
+
+RED CONTROL — THE comm ROUTE REPORTS. An empty result from a comparison is
+worth nothing unless the comparison can produce a non-empty one. Synthetic pair
+written beside the real files, one shared id and one unique id per side:
+  ctl_base.txt    FAILED tests/a.py::t_shared
+                  FAILED tests/b.py::t_base_only
+  ctl_branch.txt  FAILED tests/a.py::t_shared
+                  FAILED tests/c.py::t_branch_only
+  comm -13 ctl_base.txt ctl_branch.txt -> FAILED tests/c.py::t_branch_only
+  comm -23 ctl_base.txt ctl_branch.txt -> FAILED tests/b.py::t_base_only
+So the two empty sets above are a measurement, not an artifact of the route.
+
+RED CONTROL — THE ^FAILED EXTRACTOR IS LIVE. The same startswith("FAILED ")
+extractor was pointed at a deliberately red two-test module OUTSIDE the
+repository, in /home/decodeux/remedy-gate-scratch/f031r65/ctl:
+  command  python3 -m pytest -q -rf --no-header -p no:cacheprovider .
+  exit code 1
+  summary  1 failed, 1 passed in 0.01s
+  extracted 1 line: FAILED test_control.py::test_fails_on_purpose - assert False
+So "0 ^FAILED lines" on both runs is a measurement, not a silent miss.

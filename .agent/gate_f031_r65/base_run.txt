@@ -1,0 +1,43 @@
+F031 R65 — THE BASE RUN (integration_gate.md step 2)
+
+command      python3 -m pytest -n auto -q
+cwd          /home/decodeux/Repos/remedy/.remedy-wt/f031-r65-base
+worktree     git worktree add -b tmp/f031-r65-base <path> 6325ac2f  -> rc 0
+             created ON A THROWAWAY BRANCH, never detached: the self-dogfood
+             branch guard refuses a detached HEAD by design (DECISION D3,
+             F053 R2). Readings taken in the worktree right after the add:
+               git rev-parse HEAD    -> 6325ac2fad76ca94e23f7bd02c80427d28e05f1f
+               git branch --show-current -> tmp/f031-r65-base
+merge base   6325ac2f, from git merge-base main HEAD run in the primary:
+             6325ac2fad76ca94e23f7bd02c80427d28e05f1f
+env          REMEDY_UI_NO_AUTO_BUILD=1, passed through env= on subprocess.run
+             (a copy of os.environ with the one key added); no shell
+             environment assignment was used anywhere
+parity       apps/ui/node_modules and apps/ui/dist copied in by
+             shutil.copytree(..., symlinks=True) — see parity.txt
+staleness    apps/ui/dist/index.html mtime raised above every file under the
+             worktree's apps/ui/src BEFORE the run, and the real predicate then
+             called IN the worktree — see auto_build_neutralization.txt
+invocation   subprocess.run([...], cwd=wt, capture_output=True, text=True,
+             env=env); output held in process MEMORY for the whole run and
+             written here only after the process exited (constraint 11)
+
+exit code    0        <- subprocess.run(...).returncode
+wall time    134.9 s
+^FAILED      0 lines  <- see base_failed.txt, which is empty
+
+raw tail, the last four lines exactly as printed:
+........................................................................ [ 99%]
+........................................................................ [ 99%]
+..............................                                           [100%]
+17722 passed, 20 skipped in 134.38s (0:02:14)
+
+17722 + 95 = 17817: the branch carries 95 tests the merge base does not, and
+the base run is green on every one of the 17722 it does carry. The 63 base-only
+failures F022 R15 had to attribute by hand do not occur here, because the
+staleness class that caused them was repaired before the run rather than
+explained after it.
+
+Worktree lifecycle after the run: remove --force rc 0, prune rc 0,
+branch -D tmp/f031-r65-base rc 0 ("Deleted branch tmp/f031-r65-base (was
+6325ac2f)"). Proof readings in controls.txt.

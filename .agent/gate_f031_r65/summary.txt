@@ -1,0 +1,45 @@
+F031 R65 — INTEGRATION GATE, THE RESULT ON ONE PAGE
+
+round base 2d4001b4 · gate run at C2 6bb24ca5 · merge base 6325ac2fad76ca94e23f7bd02c80427d28e05f1f
+
+BRANCH RUN   python3 -m pytest -n auto -q in the PRIMARY checkout
+             exit 0, 170.8 s, 17817 passed, 20 skipped in 170.27s (0:02:50)
+             ^FAILED lines: 0
+BASE RUN     the identical command in the branch worktree tmp/f031-r65-base at
+             6325ac2f, REMEDY_UI_NO_AUTO_BUILD=1 through env=, parity restored
+             by shutil.copytree(..., symlinks=True), and the staleness class
+             repaired BEFORE the run rather than attributed after it
+             exit 0, 134.9 s, 17722 passed, 20 skipped in 134.38s (0:02:14)
+             ^FAILED lines: 0
+COMPARE      branch-only (comm -13): 0
+             base-only  (comm -23): 0
+CANARY       exit 0, 42 passed in 20.39s — the block's reference figure is 42
+
+THE GATE'S READING
+1. THE BRANCH INTRODUCES NO FAILURE. The branch-only set is empty over a full
+   suite that ended `17817 passed, 20 skipped in 170.27s (0:02:50)`, and both
+   counts equal the reviewer's own reading at 2d4001b4.
+2. NO BLOCKER under step 4 of integration_gate.md. A blocker requires a
+   reproducible branch-only failure coupled to feature code; there is no
+   branch-only failure at all, so step 4's re-run and merge-base reproduction
+   have no input and S2 does not fire.
+3. THE BASE-ONLY SET IS EMPTY TOO, so no id is owed an attribution and none is
+   unattributed. That is a departure from every recent gate on this repository
+   — F022 R15 had 63 base-only ids to attribute by hand — and it is the direct
+   result of the staleness repair: the copied apps/ui/dist arrived 119.0 s
+   older than the freshly checked-out apps/ui/src, its index.html mtime was
+   raised above every src file before the run, and the real
+   `_frontend_is_stale()` called IN the base worktree then answered False.
+4. THE PARITY CLAIM IS VOID and is reported as void, not repaired. A rebuild
+   ran inside the base run window: two new content-addressed asset names and
+   three of three dist mtimes inside it. The primary checkout's dist was NOT
+   touched — copytree, not a symlink — and because the base-only set is empty,
+   the void claim leaves no id unaccounted for.
+5. BOTH EMPTY SETS ARE MEASUREMENTS, NOT SILENCE. The ^FAILED extractor found
+   the one FAILED line of a deliberately red control module outside the repo,
+   and the comm route reported one id on each side of a synthetic pair.
+6. WALL CLOCK: branch 170.8 s, base 134.9 s. Both under the ~5 min threshold of
+   integration_gate.md step 5, so no perf-pass note is raised.
+
+THE VERDICT ON THIS GATE IS THE REVIEWER'S, not this file's. What this file
+records is what was run and what it printed.

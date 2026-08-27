@@ -1,0 +1,62 @@
+F031 R65 — BASE PARITY BY COPY, AND THE R-0444 MTIME WINDOW (constraints 8, 10)
+
+WHAT WAS COPIED, BY WHAT CALL — exactly as it was made:
+  shutil.copytree('/home/decodeux/Repos/remedy/apps/ui/node_modules',
+                  '/home/decodeux/Repos/remedy/.remedy-wt/f031-r65-base/apps/ui/node_modules',
+                  symlinks=True)
+  shutil.copytree('/home/decodeux/Repos/remedy/apps/ui/dist',
+                  '/home/decodeux/Repos/remedy/.remedy-wt/f031-r65-base/apps/ui/dist',
+                  symlinks=True)
+  copy wall time 1.5 s. No symlink was created into the primary checkout: the
+  UI auto-build runs npm install and would write THROUGH one (F053 R3).
+
+THE RESTORE IS VISIBLE AS AN EVENT — symlinks under apps/ui/node_modules/.bin,
+which is where copytree's default symlinks=False dereferences the shims and
+caused seven base-only failures at F085 R23 (R-0591):
+  PRIMARY before: 23 entries, 23 symlinks, directory present True
+  BASE    before:  0 entries,  0 symlinks, directory present False
+  PRIMARY after:  23 entries, 23 symlinks, directory present True
+  BASE    after:  23 entries, 23 symlinks, directory present True
+The base side moved 0 -> 23 and now EQUALS the primary, so symlinks=True is
+demonstrably the call that ran.
+
+THE R-0444 READING — MEASURE THE EVENT, NOT THE OUTCOME. Every file under the
+base worktree's apps/ui/dist, mtime and size, before and after the base run.
+
+  base run window, from time.time() around subprocess.run:
+    window_start 1787816456.8740082
+    window_end   1787816591.8135624
+
+  files before: 3     files after: 3
+
+  path                       | before mtime      size   | after mtime       size
+  assets/index-CQ9qmyYl.css  | absent            -      | 1787816531.538253 29223
+  assets/index-D9dcd0E7.js   | 1787816304.990632 371727 | absent            -
+  assets/index-DKdEM9lB.js   | absent            -      | 1787816531.538253 361034
+  assets/index-Xx8vqzN3.css  | 1787816304.990632 32966  | absent            -
+  index.html                 | 1787816544.017705 414    | 1787816531.538253 414
+
+  mtimes falling INSIDE the window: 3 of 3 files after the run —
+    assets/index-CQ9qmyYl.css, assets/index-DKdEM9lB.js, index.html
+  names ADDED   : assets/index-CQ9qmyYl.css, assets/index-DKdEM9lB.js
+  names REMOVED : assets/index-D9dcd0E7.js, assets/index-Xx8vqzN3.css
+
+A rebuild ran inside the base run window. The asset filenames changed, which is
+a content-addressed rename and not a timestamp artefact, so no content hash is
+needed to reach the conclusion and none is offered as a substitute for it.
+Note also that index.html came out of the run OLDER than the mtime this round
+set on it before the run, which only a rewrite can produce.
+
+THE PRIMARY CHECKOUT WAS NOT TOUCHED BY THAT REBUILD — the point of copying
+rather than symlinking. Its apps/ui/dist read, after the base run:
+  assets/index-D9dcd0E7.js  mtime 1787816304.990632 size 371727  inside window False
+  assets/index-Xx8vqzN3.css mtime 1787816304.990632 size 32966   inside window False
+  index.html                mtime 1787816304.990632 size 414     inside window False
+All three names are the pre-copy names and no mtime is inside the window.
+
+THE PARITY CLAIM IS VOID. A build artefact the parity restore placed in the
+base worktree was rewritten while the base suite was running, so the artefacts
+the base run actually read are not, for their whole duration, the artefacts
+this round copied in. It is reported as void and is not repaired: the gate
+measures. What that costs is per-id attribution of the base-only set — and the
+base-only set is empty, so nothing is owed. See attribution.txt.
