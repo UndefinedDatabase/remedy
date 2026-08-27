@@ -1303,6 +1303,10 @@ class TestCommandDoorImportGuard:
         ("packages.orchestration.config", "get_key_spec"),          # D9's limit
         ("packages.orchestration.data_paths", "resolve_data_root"), # D23's root
         ("packages.orchestration.escalation", "answer_task_decision"),     # D5
+        ("packages.orchestration.flight_plan",
+         "open_clarification_questions"),                           # F031 D24
+        ("packages.orchestration.flight_plan",
+         "resolve_flight_plan_approval"),                           # F031 D24
         ("packages.orchestration.safe_points", "request_stop"),            # D5
         ("packages.orchestration.storage", "save_job"),                    # D21
         ("packages.orchestration.timeline", "append_run_event"),           # D23
