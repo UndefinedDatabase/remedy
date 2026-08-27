@@ -286,12 +286,19 @@ def test_the_shipped_required_type_set_holds_exactly_the_upgraded_producers():
     """
     assert TRIPLE_REQUIRED_TYPES == frozenset({
         "token_budget", "test_failure", "patch_approval", "stop_reason",
+        "repo_dirty", "memory_review",
     })
 
 
 def test_an_unenforced_tripleless_decision_is_left_alone():
-    """No existing producer changes behaviour: none of their types is enforced."""
-    decision = _decision(decision_type="memory_review", evidence=None)
+    """An UNENFORCED type is not read, not validated and not altered.
+
+    ``flight_plan_approval`` is the example because it is still outside
+    ``TRIPLE_REQUIRED_TYPES`` after T002e.  ``memory_review`` stood here until
+    that slice enforced it, which is why this guard is repointed rather than
+    deleted: the behaviour it pins is the gate's opt-in, not the type's.
+    """
+    decision = _decision(decision_type="flight_plan_approval", evidence=None)
     assert enforce_decision_evidence([decision]) is None
 
 
@@ -353,7 +360,7 @@ def test_an_enforced_optionless_decision_reads_no_options_from_the_payload(
 
 
 def test_a_tripleless_decision_exports_empty_lists_and_the_legacy_status():
-    wire = export_decision_json(_decision(decision_type="memory_review"))
+    wire = export_decision_json(_decision(decision_type="flight_plan_approval"))
 
     assert wire["evidence_refs"] == []
     assert wire["outcomes"] == []
@@ -1133,4 +1140,335 @@ def test_a_stop_reason_decision_without_a_triple_is_refused_by_the_gate():
     message = str(excinfo.value)
     assert "sr:regression" in message
     assert "stop_reason" in message
+    assert "evidence_refs is empty: a decision must cite at least one ref." in message
+
+
+# ---------------------------------------------------------------------------
+# F032 T002e — the dirty-repo card, whose whole evidence is one run-log event
+#
+# These drive the REAL branch through `list_decisions` from BOTH shapes the
+# `git_status_read` event actually takes.  The thin one is the metadata
+# `_fixture_repo_dirty` in `tests/orchestration/test_decision_inbox.py` writes —
+# `dirty` and nothing else — and the full one is what the only non-test emitter,
+# `apps/cli/commands/repo.py`, writes.  Pinning both is the point: `repo_dirty`
+# is ENFORCED from this round, so an unguarded fingerprint ref would refuse the
+# card on the thin event and take the inbox's per-type parametrization with it.
+# ---------------------------------------------------------------------------
+
+#: Neither half of the one unkeyed outcome varies with what the event carried,
+#: so both are written once and pinned wherever the outcome is asserted.
+REPO_DIRTY_EXPECTED_OUTCOME = (
+    "Committing or stashing the target repository's changes leaves a clean "
+    "tree, so a later diff shows only what this job did."
+)
+REPO_DIRTY_DOWNSIDE = (
+    "The job waits while that happens, and stashing work that is not this "
+    "job's can hide changes their author still needs."
+)
+
+#: The two event shapes, named after where each one comes from.
+THIN_GIT_STATUS_METADATA = {"dirty": True}
+FULL_GIT_STATUS_METADATA = {
+    "is_git_repo": True,
+    "git_available": True,
+    "branch": "feature/f032-evidence-triple",
+    "head_sha": "0216c5bb9d48",
+    "dirty": True,
+    "changed_file_count": 3,
+    "status_hash": "6f1c2d3e4a5b6c7d",
+}
+
+
+def _repo_dirty_decision(metadata: dict) -> HumanDecision:
+    """The card the real branch builds from one dirty `git_status_read`."""
+    events = [{
+        "event": "git_status_read",
+        "timestamp": "2026-08-28T09:00:00+00:00",
+        "metadata": metadata,
+    }]
+    decisions = [d for d in list_decisions(_StubJob(), events)
+                 if d.type == "repo_dirty"]
+    assert len(decisions) == 1
+    return decisions[0]
+
+
+def test_the_thin_git_status_event_still_yields_a_valid_repo_dirty_card():
+    """PINS THE CONDITIONAL: this event carries NO `status_hash`.
+
+    Made unconditional, the fingerprint ref would appear here targeting the
+    empty string, which rule (c) of ``evidence_triple_problems`` refuses
+    outright — and this is `_fixture_repo_dirty`'s own metadata, so the whole
+    inbox would raise instead of rendering.  The event NAME is the receipt that
+    keeps rule (a) satisfied with nothing else on the record.
+    """
+    decision = _repo_dirty_decision(THIN_GIT_STATUS_METADATA)
+
+    assert [(r.kind, r.target, r.label) for r in decision.evidence.refs] == [
+        ("failure", "git_status_read",
+         "the run-log event that reported the working tree dirty"),
+    ]
+    assert evidence_triple_problems(decision.evidence, options=[]) == []
+
+
+def test_the_repo_dirty_card_cites_the_event_and_the_status_fingerprint():
+    """The full metadata `apps/cli/commands/repo.py` writes yields both refs."""
+    decision = _repo_dirty_decision(FULL_GIT_STATUS_METADATA)
+
+    assert [(r.kind, r.target, r.label) for r in decision.evidence.refs] == [
+        ("failure", "git_status_read",
+         "the run-log event that reported the working tree dirty"),
+        ("failure", "6f1c2d3e4a5b6c7d",
+         "the status fingerprint that reading recorded"),
+    ]
+
+
+def test_the_repo_dirty_card_cites_no_branch_no_commit_and_no_count():
+    """A2 forbids inventing vocabulary, so three metadata keys stay uncited.
+
+    No kind in ``DECISION_EVIDENCE_REF_KINDS`` types a branch name, a commit or
+    a file count, and a ``file`` or ``failure`` ref pointing at one would lie
+    about what it is.  This fails if a later round cites them anyway.
+    """
+    decision = _repo_dirty_decision(FULL_GIT_STATUS_METADATA)
+    targets = [r.target for r in decision.evidence.refs]
+
+    assert "feature/f032-evidence-triple" not in targets
+    assert "0216c5bb9d48" not in targets
+    assert "3" not in targets
+
+
+@pytest.mark.parametrize(
+    "metadata",
+    [THIN_GIT_STATUS_METADATA, FULL_GIT_STATUS_METADATA],
+    ids=["thin-event", "full-metadata"],
+)
+def test_no_repo_dirty_ref_ever_points_at_nothing(metadata):
+    decision = _repo_dirty_decision(metadata)
+
+    assert decision.evidence.refs
+    assert all(r.target for r in decision.evidence.refs)
+    assert evidence_triple_problems(decision.evidence, options=[]) == []
+
+
+@pytest.mark.parametrize(
+    "metadata",
+    [THIN_GIT_STATUS_METADATA, FULL_GIT_STATUS_METADATA],
+    ids=["thin-event", "full-metadata"],
+)
+def test_the_repo_dirty_card_carries_exactly_one_unkeyed_outcome(metadata):
+    """DECISION F032 D3 rule (h): this branch offers no options at all.
+
+    Its one ``next_action`` is an instruction rather than an option word, so the
+    card keeps an EMPTY payload and owes exactly one outcome for the decision.
+    """
+    decision = _repo_dirty_decision(metadata)
+
+    assert decision.payload == {}
+    assert [(o.option, o.expected_outcome, o.downside)
+            for o in decision.evidence.outcomes] == [
+        (UNKEYED_OPTION, REPO_DIRTY_EXPECTED_OUTCOME, REPO_DIRTY_DOWNSIDE),
+    ]
+    outcome = decision.evidence.outcomes[0]
+    assert outcome.expected_outcome.strip()
+    assert outcome.downside.strip()
+
+
+def test_the_repo_dirty_card_exports_the_present_status():
+    wire = export_decision_json(_repo_dirty_decision(FULL_GIT_STATUS_METADATA))
+
+    assert wire["evidence_status"] == "present"
+    assert wire["evidence_status"] == DECISION_EVIDENCE_STATUS_PRESENT
+    assert wire["evidence_status"] != DECISION_EVIDENCE_STATUS_LEGACY
+
+
+def test_a_repo_dirty_decision_without_a_triple_is_refused_by_the_gate():
+    """`repo_dirty` is ENFORCED from this round, so a dropped triple raises."""
+    decision = _decision(
+        decision_id="dirty_repo",
+        decision_type="repo_dirty",
+        evidence=None,
+    )
+
+    with pytest.raises(DecisionEvidenceError) as excinfo:
+        enforce_decision_evidence([decision])
+
+    message = str(excinfo.value)
+    assert "dirty_repo" in message
+    assert "repo_dirty" in message
+    assert "evidence_refs is empty: a decision must cite at least one ref." in message
+
+
+# ---------------------------------------------------------------------------
+# F032 T002e — the memory-review card, which names a key and cites neither it
+# nor the field the reason was read off
+#
+# All three of its refs are guarded, so each is pinned in BOTH directions: the
+# stale-only card, the flagged-only card, the card that is both, and the card
+# with no key at all.  The last one is the argument the key's guard rests on —
+# rule (a) stays satisfied with no key, because the branch's own selecting
+# predicate guarantees at least one of the two field refs fires.
+# ---------------------------------------------------------------------------
+
+#: Neither half of the one unkeyed outcome varies with the card, so both are
+#: written once and pinned wherever the outcome is asserted.
+MEMORY_REVIEW_EXPECTED_OUTCOME = (
+    "Opening the named card shows what it claims and when that was last "
+    "confirmed, so it can be re-approved, corrected or superseded instead of "
+    "trusted blind."
+)
+MEMORY_REVIEW_DOWNSIDE = (
+    "Reading it takes time now, and a card left in place while it is checked "
+    "keeps feeding whatever already reads it."
+)
+
+
+def _stale_only_entry() -> MemoryEntry:
+    return MemoryEntry(key="deploy-target", validity="stale")
+
+
+def _flagged_only_entry() -> MemoryEntry:
+    return MemoryEntry(key="api-contract", review_status="needs_review")
+
+
+def _stale_and_flagged_entry() -> MemoryEntry:
+    return MemoryEntry(
+        key="db-dsn", validity="stale", review_status="needs_review")
+
+
+def _keyless_entry() -> MemoryEntry:
+    """``MemoryEntry.key`` defaults to the empty string, so this is reachable."""
+    return MemoryEntry(validity="stale")
+
+
+def _memory_review_decision(monkeypatch, entry: MemoryEntry) -> HumanDecision:
+    decisions = _memory_review_decisions(monkeypatch, entry)
+    assert len(decisions) == 1
+    return decisions[0]
+
+
+def test_the_memory_review_card_cites_the_card_and_its_staleness(monkeypatch):
+    decision = _memory_review_decision(monkeypatch, _stale_only_entry())
+
+    assert [(r.kind, r.target, r.label) for r in decision.evidence.refs] == [
+        ("decision", "deploy-target", "the memory card this review is about"),
+        ("failure", "stale", "the validity the card carries"),
+    ]
+
+
+def test_the_memory_review_card_cites_the_card_and_its_review_flag(monkeypatch):
+    """PINS THE VALIDITY GUARD: this card's ``validity`` is ``active``.
+
+    Made unconditional, the validity ref would appear here citing ``active`` as
+    a reason to look at a card — the same wrong fact R-0711 removed from the
+    summary, restated as a receipt.
+    """
+    entry = _flagged_only_entry()
+    assert entry.validity == "active"
+
+    decision = _memory_review_decision(monkeypatch, entry)
+
+    assert [(r.kind, r.target, r.label) for r in decision.evidence.refs] == [
+        ("decision", "api-contract", "the memory card this review is about"),
+        ("failure", "needs_review", "the review status the card carries"),
+    ]
+
+
+def test_the_memory_review_card_cites_both_flags_when_both_fired(monkeypatch):
+    """PINS THE REVIEW-STATUS GUARD from the other side: both arms fired here."""
+    decision = _memory_review_decision(monkeypatch, _stale_and_flagged_entry())
+
+    assert [(r.kind, r.target, r.label) for r in decision.evidence.refs] == [
+        ("decision", "db-dsn", "the memory card this review is about"),
+        ("failure", "stale", "the validity the card carries"),
+        ("failure", "needs_review", "the review status the card carries"),
+    ]
+
+
+def test_the_memory_review_card_stays_valid_with_no_key_at_all(monkeypatch):
+    """PINS THE KEY GUARD, and the argument it rests on.
+
+    ``MemoryEntry.key`` defaults to the empty string, so an unconditional key
+    ref would point at nothing and rule (c) would refuse the card.  Rule (a) is
+    still satisfied because the selecting predicate admits a card only when it
+    is stale or flagged, so at least one field ref always fires.
+    """
+    decision = _memory_review_decision(monkeypatch, _keyless_entry())
+
+    assert [(r.kind, r.target, r.label) for r in decision.evidence.refs] == [
+        ("failure", "stale", "the validity the card carries"),
+    ]
+    assert evidence_triple_problems(decision.evidence, options=[]) == []
+
+
+@pytest.mark.parametrize(
+    "make_entry",
+    [
+        _stale_only_entry,
+        _flagged_only_entry,
+        _stale_and_flagged_entry,
+        _keyless_entry,
+    ],
+    ids=["stale-only", "flagged-only", "stale-and-flagged", "no-key"],
+)
+def test_no_memory_review_ref_ever_points_at_nothing(monkeypatch, make_entry):
+    decision = _memory_review_decision(monkeypatch, make_entry())
+
+    assert decision.evidence.refs
+    assert all(r.target for r in decision.evidence.refs)
+    assert evidence_triple_problems(decision.evidence, options=[]) == []
+
+
+@pytest.mark.parametrize(
+    "make_entry",
+    [
+        _stale_only_entry,
+        _flagged_only_entry,
+        _stale_and_flagged_entry,
+        _keyless_entry,
+    ],
+    ids=["stale-only", "flagged-only", "stale-and-flagged", "no-key"],
+)
+def test_the_memory_review_card_carries_exactly_one_unkeyed_outcome(
+    monkeypatch, make_entry,
+):
+    """DECISION F032 D3 rule (h): this branch offers no options at all.
+
+    Its one ``next_action`` is a ``remedy memory card-show`` command rather than
+    an option word, so the card keeps an EMPTY payload and owes one outcome.
+    """
+    decision = _memory_review_decision(monkeypatch, make_entry())
+
+    assert decision.payload == {}
+    assert [(o.option, o.expected_outcome, o.downside)
+            for o in decision.evidence.outcomes] == [
+        (UNKEYED_OPTION, MEMORY_REVIEW_EXPECTED_OUTCOME, MEMORY_REVIEW_DOWNSIDE),
+    ]
+    outcome = decision.evidence.outcomes[0]
+    assert outcome.expected_outcome.strip()
+    assert outcome.downside.strip()
+
+
+def test_the_memory_review_card_exports_the_present_status(monkeypatch):
+    wire = export_decision_json(
+        _memory_review_decision(monkeypatch, _stale_only_entry()))
+
+    assert wire["evidence_status"] == "present"
+    assert wire["evidence_status"] == DECISION_EVIDENCE_STATUS_PRESENT
+    assert wire["evidence_status"] != DECISION_EVIDENCE_STATUS_LEGACY
+
+
+def test_a_memory_review_decision_without_a_triple_is_refused_by_the_gate():
+    """`memory_review` is ENFORCED from this round, so a dropped triple raises."""
+    decision = _decision(
+        decision_id="mem:regression",
+        decision_type="memory_review",
+        evidence=None,
+    )
+
+    with pytest.raises(DecisionEvidenceError) as excinfo:
+        enforce_decision_evidence([decision])
+
+    message = str(excinfo.value)
+    assert "mem:regression" in message
+    assert "memory_review" in message
     assert "evidence_refs is empty: a decision must cite at least one ref." in message
