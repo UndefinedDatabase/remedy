@@ -183,6 +183,23 @@ describe("decisionAnswers", () => {
     expect(decisionAnswers(novel)).toEqual(decisionAnswers(known));
     expect(decisionAnswers(novel)).toHaveLength(2);
   });
+
+  it("offers approve and reject as POSTABLE answers for a pending flight plan", () => {
+    // The endpoint's own shape for a PENDING `fp:approval` card once DECISION
+    // F031 D24 landed: `payload.options` carries the two words the write door
+    // accepts by strict equality, and the server has already decided the door
+    // would take them. No DOM harness reaches the inbox component, so this is
+    // the only evidence available that the browser half of the approval works.
+    const card: DecisionInboxEntry = {
+      type: "flight_plan_approval",
+      payload: { options: ["approve", "reject"] },
+      answerable_by_decision_resolve: true,
+    };
+    expect(decisionAnswers(card)).toEqual([
+      { kind: "option", label: "approve", value: "approve", posts: true },
+      { kind: "option", label: "reject", value: "reject", posts: true },
+    ]);
+  });
 });
 
 describe("buildDecisionCardModel", () => {
