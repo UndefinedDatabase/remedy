@@ -1,47 +1,46 @@
-# Plan — amend0827-process-diet
+# Plan — F032 Approval with the evidence triple
 
-Branch: feature/amend0827-process-diet, cut from `main` at `f4eae1d4`, the
-merge commit of pull request #215 which closed F031. Operator collection
-order amend0827, no self-drive loop; the operator prompt carries the
-authorization for every decision below, including the six process rules.
+Branch: feature/f032-evidence-triple, cut from `main` at `a399a330`, the merge
+commit of pull request #216 which closed the amend0827 process-diet order.
+`.agent/live_review.md` is the review record and the finding-id ceiling;
+`.agent/decisions.md` carries the DECISION series.
 
 ## Goal
-Cut the process overhead the F031 measurement exposed. Six operator-decided
-rules land as dated amendments in AGENTS.md,
-docs/agents/planner_reviewer_prompt.md and
-docs/agents/self_drive_protocol.md, each with one sentence of reason and a
-reversal instruction. The four `.agent/candidates.md` entries left by the
-F031 closure are worked off in the same order, which unblocks the next
-feature claim.
+No decision without its receipts. Every decision a human is asked to answer
+carries the evidence triple — `evidence_refs[]`, `expected_outcome` and
+`downside` — the inbox card renders all three, and a producer that omits one
+fails its own test. `docs/roadmap/features/T5_F032.md` holds Goal & Done, the
+task slicing and the orchestrator brief.
 
 ## Current Step
-All six rules are on disk and the candidates file is empty. C7 writes the
-state files and the branch is pushed for review.
+R1 claims F032 in the roadmap ledger, cuts the branch, resets this record set
+for the new feature and puts the F032 source inventory on disk. The inventory
+is the round's substance: the feature file's design names one enqueue seam
+"every producer already funnels through", while the eight producing branches of
+`decision_queue.list_decisions` derive from eight different subsystems, so
+where the gate can live at all is a measurement this feature takes before it
+plans T001.
 
 | Item | Status | Reason |
 |------|--------|--------|
-| C0 — plan and context | done | |
-| C1 — prose_slips.md + AGENTS.md (rules 1, 2, 3, 6) | done | |
-| C1b — cap sweep: handback_template, split_workflow | done | rule 3 lived in 4 files |
-| C2 — planner_reviewer_prompt.md (rules 1-6) | done | |
-| C3 — self_drive_protocol.md (rules 1, 4, 5, 6) | done | |
-| C4 — candidates worked off; R-0430/0582/0676/0700 resolved | done | rule 3 |
-| C5 — session number in template and operator brief | done | rule 6 |
-| C6 — state files, push, PR | in progress | |
+| C0a/C0b save and mirror the block | ordered | |
+| C1 plan and context for F032 | ordered | first substantive commit |
+| C2 STATUS claim, open to active | ordered | |
+| C3 live-review header reset | ordered | findings carried forward |
+| C4 the F032 source inventory | ordered | Q1-Q8, each measured |
+| C5 the handback | ordered | |
 
 ## Next Steps
-1. Push, open the pull request, watch the hosted run to green, merge at the
-   Open PR Gate.
-2. The next session claims the next feature per Rule A5. `.agent/candidates.md`
-   is EMPTY, so no block condition stands.
+1. Book R1's verdict into `.agent/live_review.md` and plan T001 against the
+   inventory — the schema, and the enforcement point the inventory names.
+2. T001: schema v2, the enforcement gate, legacy rendering, the CI canary and
+   its unit tests.
+3. T002 the per-producer upgrades, then T003 card enrichment and chip
+   deep links.
 
 ## Risks
-- The change set includes `AGENTS.md`, which the single-session micro-round
-  type does not name among its allowed paths. The operator prompt authorizes
-  it explicitly; it is declared in the handoff rather than assumed.
-- Rule 3 resolves four open findings by amendment rather than by repair.
-  That is the operator's decision and is recorded as such, so a later reader
-  does not read the `Done:` texts as evidence of a fix that never ran.
-- Open findings, by the rule DECISION F009 D10 requires — every `^- R-\d+ — `
-  paragraph minus every `^Done: R-\d+ — ` line — the set is 253 at this
-  branch point and 249 now, measured: findings 270 unchanged, Done 17 to 21.
+- The feature file's Design names one enqueue seam. If the inventory measures
+  none, the spec is wrong and the reviewer rules a DECISION under §4 item 7
+  rather than widening scope silently.
+- `.agent/live_review.md` is append-only below `## Findings`. R1 rewrites the
+  header region and nothing else, and that region is proved byte-identical.
