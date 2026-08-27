@@ -8296,3 +8296,38 @@ carry both halves and their slices — and it is recorded here rather than left
 implicit because for one round the door refuses on a condition no test guards.
 The seam is real rather than convenient: the door is reachable by any client, so
 the capability is usable and provable before a component exists.
+
+## DECISION F031 D27 (2026-08-27) — closure precondition 2 is met on the evidence, and `R-0708` is carried as a documented open Medium risk
+
+THE QUESTION. Closure precondition 2 of `docs/roadmap/STATUS_closure_protocol.md`
+asks for a green relevant suite. At the reviewed head five runs of
+`python3 -m pytest -n auto -q` produced FOUR GREEN at a real exit 0 with
+`17817 passed, 20 skipped` and ONE RED at exit 1 with `1 failed, 17816 passed,
+20 skipped`. Whether an intermittently green precondition may carry `[x]` is the
+judgement this entry settles, under
+`docs/agents/planner_reviewer_prompt.md` §4 item 7.
+
+CHOSEN, THE PRECONDITION IS MET AND F031 CLOSES AS PASS_WITH_RISKS. Three
+readings carry it. The dedicated integration-gate round the precondition names
+PASSED at R65 with a real exit 0 at 17817 passed and 20 skipped, and BOTH
+differential sets — branch-only and base-only — EMPTY. The intermittency is in
+the instrument and not the feature: `_start_server` polls 50 times at 0.1s and
+then fails, so the budget is a flat five seconds of wall clock that competes with
+every xdist worker, and the same test passes SOLO at exit 0 in 0.32s. And
+precondition 1 already admits a finding "listed as a documented Medium/Low risk",
+which `R-0708` is — registered, mechanism read from source rather than guessed,
+and routed to a follow-up.
+
+REJECTED, A REPAIR ROUND ON THE HARNESS. `R-0708`'s own text routes the repair
+away from this feature because `tests/ui_server/` is outside F031's change set,
+and overturning that routing to unblock a closure would let a closure deadline
+decide a scope question. REJECTED, AN `[!]` BLOCKED LINE. Nothing about F031 is
+blocked: 17817 tests pass, the package was built and verified, and every other
+precondition holds — an `[!]` would be dishonest in the opposite direction to a
+false `[x]`.
+
+HOW TO REVERSE. Delete this entry and set the F031 STATUS line back to `[~]`.
+The closure commit is a single commit touching `docs/roadmap/STATUS.md`,
+`README.md` and `.agent/` state, so reverting it restores the prior state
+exactly; the pull request it opens is not merged in the session that creates it,
+which is the operator's window to do so.
