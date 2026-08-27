@@ -8489,3 +8489,107 @@ is the reason `.agent/candidates.md` exists at all.
 REVERSAL. Delete the permitting paragraph from
 `docs/roadmap/STATUS_closure_protocol.md`; the disk-vehicle rule then reads as
 it did before this date.
+
+## DECISION F032 D1 (2026-08-27) — the triple is enforced at the DERIVATION point, because no enqueue seam exists
+
+THE QUESTION. `docs/roadmap/features/T5_F032.md:31-33` names the enforcement
+point as "the enqueue seam every producer already funnels through (one gate)".
+R1's inventory measured that seam and it does not exist. All nine
+`HumanDecision(...)` constructions in the repository outside `tests/` sit inside
+`packages/orchestration/decision_queue.py::list_decisions` (function at `:62`),
+which is a read-only derivation — its own module docstring says so at `:4-6`.
+The eight producing branches derive from sixteen distinct record-creation sites
+across twelve modules, and only branch 8 has an enqueue-shaped function,
+`escalation.enqueue_task_decision` at `escalation.py:211`, serving that one
+branch. There is nothing to gate on the way IN, because nothing is created.
+
+CHOSEN: THE GATE SITS AT `list_decisions`, WHICH IS THE EMIT POINT. It is the
+one function every decision passes through, and a decision that reaches a human
+without a triple is precisely what the feature exists to prevent — so refusing
+to EMIT is the property F032 actually wants, and refusing to CREATE was only
+ever a means to it. `evidence_refs`, `expected_outcome` and `downside` become
+required of every card the function yields, and the canary is a producing
+branch that omits one and is caught there.
+
+ALTERNATIVES CONSIDERED. Building an enqueue seam first, by routing all sixteen
+creation sites through one constructor: rejected as a refactor of twelve modules
+that F032 neither needs nor is scoped for, and one that AGENTS.md's own
+churn-is-the-enemy rule argues against. Gating at each of the sixteen sites:
+rejected because it multiplies the guard by sixteen and still cannot see a
+decision that is derived rather than created.
+
+CONSEQUENCE FOR THE FEATURE FILE'S DO-NOT-TOUCH LIST: "queue storage" names
+nothing — inventory Q3 measured that no decision store exists — so that item is
+vacuous rather than restrictive, and D2 settles the third name on that list.
+
+REVERSE by deleting this decision and the `## Design amendments` entry that
+mirrors it, and restoring the enqueue reading of the feature file.
+
+## DECISION F032 D2 (2026-08-27) — F032 defines its own minimal evidence ref and does NOT wait for F066
+
+THE QUESTION. The feature file says refs "use the typed provenance vocabulary
+(file/failure/decision kinds cover the current producers; the resolver's badges
+render on the chips)" and its Do-not-touch list names the "provenance resolver".
+Inventory Q4 measured that neither exists: `grep -rn
+"resolve_ref\|ProvenanceRef\|REF_KIND\|ref_kind" packages/ apps/` returns zero
+lines. Both are the unbuilt spec `docs/roadmap/features/T3_F066.md:24-40`, and
+F066 is unclaimed at `docs/roadmap/STATUS.md:136`, as is its own dependency
+F063 at `:133`. F032's header declares a dependency on F031 alone.
+
+CHOSEN: F032 DEFINES THE SMALLEST REF IT NEEDS AND SHIPS NO RESOLVER. A ref
+carries a kind, a target and a label, with the kind vocabulary held as a real
+constant rather than a comment — the failure mode both nearest precedents share,
+`ProviderVerificationEvidenceRef` at `provider_trust_verification.py:171-177`
+and `OrchestratorEvidenceRef` at `orchestrator_brain.py:87-95`, each of which
+states its vocabulary only in a comment. No badge is rendered, because a badge
+without a resolver would be a false live indicator; the chips render the label
+and the kind, and F066 supplies resolution when it lands.
+
+ALTERNATIVES CONSIDERED. Blocking F032 until F066 is built: rejected because
+F066 is not this feature's declared dependency and is not claimable ahead of
+F063, so blocking would stall a tier on an undeclared chain. Untyped strings:
+rejected because the whole point is that a ref be clickable later, and an
+untyped string cannot be resolved without re-parsing.
+
+REVERSE by deleting this decision and blocking F032 on F066. When F066 lands,
+the migration is a rename of this feature's kind constant onto F066's, which is
+why the constant is named in one place.
+
+## DECISION F032 D3 (2026-08-27) — the triple is per option only where options exist, and F032 grows no options list
+
+THE QUESTION. `docs/roadmap/features/T5_F032.md:43-45` specifies
+`expected_outcome: str per option` and `downside: str per option`, "keyed to the
+options list — outcomes are per-choice, that's the point". Inventory Q5
+measured that only two of the eight producing branches have an options list at
+all: branch 7's pending arm, `payload["options"] = ["approve", "reject"]` at
+`decision_queue.py:288`, and branch 8, which forwards the escalation record's
+own `options` at `:365`. The other six carry only `next_actions`, which are
+shell commands and prose, not choices. For six of eight, "per option" is
+undefined.
+
+CHOSEN: THE TRIPLE IS KEYED PER OPTION WHERE AN OPTIONS LIST EXISTS AND CARRIES
+EXACTLY ONE UNKEYED PAIR WHERE NONE DOES. A decision with options gets one
+`expected_outcome` and one `downside` per option; a decision without gets one of
+each for the decision as a whole, which is the honest reading of "what happens
+next" when the human is not being offered a choice. GIVING THE OTHER SIX
+BRANCHES AN OPTIONS LIST IS EXPLICITLY OUT OF F032's SCOPE — it changes what
+those decisions ARE, not what evidence they carry, and it belongs to the
+features that own them.
+
+ALTERNATIVES CONSIDERED. Growing options lists for all eight branches first:
+rejected as a behaviour change to six subsystems smuggled in under a
+documentation-shaped feature. Treating `next_actions` as the options list:
+rejected because inventory Q5 measured that
+`apps/ui/src/api/decisionCard.ts::decisionAnswers` at `:223` already falls back
+from `payload.options` to `next_actions`, so keying outcomes to commands would
+attach a consequence sentence to a shell invocation and read as though running
+it were the choice.
+
+ONE THING THIS DECISION DOES NOT SETTLE, recorded so T002 does not rediscover
+it: inventory Q2 measured that branch 8 drops the escalation record's `impact`
+field at `escalation.py:242` when deriving the card, and that field is the
+nearest thing to an `expected_outcome` already on disk. Whether T002 forwards it
+or writes a new one per producer is a T002 question, not a schema question.
+
+REVERSE by deleting this decision and requiring an options list of every
+producing branch as part of F032.
