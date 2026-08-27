@@ -11,19 +11,16 @@ branch-only blocking semantics intact, ordered by a documented rule over age and
 blocked size, and answerable from the card through the write channel.
 
 ## Current Step
-R57 is the resolution sweep. R-0695, R-0697, R-0698 and R-0699 carry code halves
-that landed at R44 and R48 and process halves that landed at R56, and every one
-of the four is measured on disk at this gate — each with an unmutated control
-and a mutation that names the guard the fix created — and resolved. The round
-also widens §3 item 35 from a MISSING list item to a WRONG round label, because
-the R56 block reproduced R-0704's class inside the very slice that landed that
-item's first half.
+R58 is a record round and touches no file outside `.agent/`. It writes the R57
+verdict, resolves R-0704 now that the widened §3 item 35 is on disk and the
+reviewer has measured it there, and registers R-0705, the transport gap the R57
+worker declared before review: a run of repeated characters in a block's frame
+has no length a reader can recover, so the committed block is not provably the
+emitted one. No production code, no `docs/` file and no decision this round.
 
 ## Next Steps
-1. R-0704 stays OPEN until its widened counter-measure has been measured on
-   disk at a later gate, rather than being resolved by the round that writes it.
-   That round also carries the item R-0694's own fix clause asks for, which
-   states R-0631's append-reader rule.
+1. The §3 item R-0694's own fix clause asks for, which states R-0631's
+   append-reader rule, landed together with R-0705's counter-measure.
 2. The COMPONENT half: the pending card renders a field per open clarification
    and the flow carries the map R53 built.
    `tests/ui_contracts/test_decision_answer_wiring.py` pins the card's call
@@ -40,8 +37,11 @@ item's first half.
   what it does, and its number is knowable only when it starts.
 - THE FORM IS REACHABLE ONLY BY A NON-BROWSER CLIENT until the component half
   lands. R53 moved the seam to the edge of the markup and no further.
+- NO GATE IN THIS WORKFLOW COMPARES THE EMITTED BLOCK TO THE COMMITTED ONE.
+  R-0705 states the limit; every transport claim is C0a to C0b to disk, and the
+  appliable bytes are proved separately, slice by slice, against their targets.
 - Open findings, by the rule DECISION F009 D10 requires — every `^- R-\d+ — `
-  paragraph minus every `^Done: R-\d+ — ` line — the set is 257 at `941b8966`
-  and the four resolutions this round lands take it to 253.
+  paragraph minus every `^Done: R-\d+ — ` line — the set is 253 at `75bd8210`,
+  and R-0704 closing beside R-0705 opening leaves it at 253.
 - BLOCK CAPS ARE TWO: 490 lines TOTAL (DECISION F085 D6) and 400 lines PROSE
   (DECISION F085 D5); every block states and re-measures both.
