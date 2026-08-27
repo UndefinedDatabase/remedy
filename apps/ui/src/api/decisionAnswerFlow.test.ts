@@ -27,6 +27,12 @@ const CHOSEN_ANSWER = "keep first";
 /** The status `decisionSubmit.ts` fixes for "there was no response at all". */
 const NO_RESPONSE_STATUS = 0;
 
+/** The operator's answers to the flight plan's own open questions, keyed by
+ *  question id. Nothing here matches it against the card, because this module
+ *  forwards the map and `decisionAnswer.ts` is the one that reads it — so the
+ *  value under test is the POSITION it arrives in, not its content. */
+const CLARIFICATION_ANSWERS: Record<string, string> = { q1: "sqlite" };
+
 function sendTarget(): DecisionSendTarget {
   return { jobId: JOB_ID, serverToken: SERVER_TOKEN };
 }
@@ -105,6 +111,7 @@ describe("answerDecisionCard", () => {
       sendTarget(),
       openCard(),
       CHOSEN_ANSWER,
+      undefined,
       workingSeams({ submit }),
     );
     expect(message).toEqual(
@@ -118,6 +125,7 @@ describe("answerDecisionCard", () => {
       sendTarget(),
       openCard(),
       CHOSEN_ANSWER,
+      undefined,
       workingSeams({ submit }),
     );
     expect(message).toEqual(
@@ -138,13 +146,14 @@ describe("answerDecisionCard", () => {
       sendTarget(),
       openCard(),
       CHOSEN_ANSWER,
+      undefined,
       workingSeams({ buildRequest: () => built, submit }),
     );
     expect(calls).toHaveLength(1);
     expect(calls[0]).toBe(built);
   });
 
-  it("hands the builder the target, the card, the answer and the minted nonce, unchanged", async () => {
+  it("hands the builder the target, the card, the answer, the minted nonce and the clarification answers, unchanged", async () => {
     const target = sendTarget();
     const model = openCard();
     const seen: unknown[][] = [];
@@ -153,23 +162,87 @@ describe("answerDecisionCard", () => {
       target,
       model,
       CHOSEN_ANSWER,
+      CLARIFICATION_ANSWERS,
       workingSeams({
         buildRequest: (
           builtTarget: DecisionSendTarget,
           builtModel: DecisionCardModel,
           answerText: string,
           clientNonce: string,
+          clarificationAnswers?: Record<string, string>,
         ) => {
-          seen.push([builtTarget, builtModel, answerText, clientNonce]);
+          seen.push([builtTarget, builtModel, answerText, clientNonce, clarificationAnswers]);
           return { path: "/p", method: "POST", headers: {}, body: answerText };
         },
         submit,
       }),
     );
     expect(seen).toHaveLength(1);
-    expect(seen[0]).toEqual([target, model, CHOSEN_ANSWER, GOOD_NONCE]);
+    expect(seen[0]).toEqual([target, model, CHOSEN_ANSWER, GOOD_NONCE, CLARIFICATION_ANSWERS]);
     expect(seen[0][0]).toBe(target);
     expect(seen[0][1]).toBe(model);
+  });
+
+  it("forwards the clarification answers as the builder's FIFTH argument, by identity", async () => {
+    // By identity on purpose: a copy would mean this module had touched a map
+    // it promises only to carry, and a deep-equal assertion could not tell the
+    // two apart. The POSITION matters just as much — the seams moved one place
+    // along to make room for it, so a map arriving fourth would be read as deps.
+    const answers = { q1: "  sqlite\n" };
+    const seen: unknown[][] = [];
+    const { submit } = recordingSubmit({ outcome: "accepted", status: 200 });
+    await answerDecisionCard(
+      sendTarget(),
+      openCard(),
+      CHOSEN_ANSWER,
+      answers,
+      workingSeams({
+        buildRequest: (
+          builtTarget: DecisionSendTarget,
+          builtModel: DecisionCardModel,
+          answerText: string,
+          clientNonce: string,
+          clarificationAnswers?: Record<string, string>,
+        ) => {
+          seen.push([builtTarget, builtModel, answerText, clientNonce, clarificationAnswers]);
+          return { path: "/p", method: "POST", headers: {}, body: answerText };
+        },
+        submit,
+      }),
+    );
+    expect(seen).toHaveLength(1);
+    expect(seen[0][4]).toBe(answers);
+    expect(answers).toEqual({ q1: "  sqlite\n" });
+  });
+
+  it("hands the builder undefined in that fifth place when no map is passed", async () => {
+    // What a caller that omits the map produces: the parameter is optional, so
+    // the three-argument call every existing click site makes arrives here
+    // exactly like this one, and the builder must see nothing rather than an
+    // empty object it would have to tell apart from a real choice.
+    const seen: unknown[][] = [];
+    const { submit } = recordingSubmit({ outcome: "accepted", status: 200 });
+    await answerDecisionCard(
+      sendTarget(),
+      openCard(),
+      CHOSEN_ANSWER,
+      undefined,
+      workingSeams({
+        buildRequest: (
+          builtTarget: DecisionSendTarget,
+          builtModel: DecisionCardModel,
+          answerText: string,
+          clientNonce: string,
+          clarificationAnswers?: Record<string, string>,
+        ) => {
+          seen.push([builtTarget, builtModel, answerText, clientNonce, clarificationAnswers]);
+          return { path: "/p", method: "POST", headers: {}, body: answerText };
+        },
+        submit,
+      }),
+    );
+    expect(seen).toHaveLength(1);
+    expect(seen[0][4]).toBeUndefined();
   });
 
   it("stops at a nonce that cannot be minted and NEVER reaches the network", async () => {
@@ -178,6 +251,7 @@ describe("answerDecisionCard", () => {
       sendTarget(),
       openCard(),
       CHOSEN_ANSWER,
+      undefined,
       { mintNonce: () => null, submit, deadline: deadlineNever },
     );
     expect(message).toEqual(describeUnsendableDecisionAnswer());
@@ -190,6 +264,7 @@ describe("answerDecisionCard", () => {
       sendTarget(),
       openCard(),
       CHOSEN_ANSWER,
+      undefined,
       workingSeams({ buildRequest: () => null, submit }),
     );
     expect(message).toEqual(describeUnsendableDecisionAnswer());
@@ -202,6 +277,7 @@ describe("answerDecisionCard", () => {
       sendTarget(),
       openCard(),
       "   ",
+      undefined,
       workingSeams({ submit }),
     );
     expect(message).toEqual(describeUnsendableDecisionAnswer());
@@ -210,7 +286,7 @@ describe("answerDecisionCard", () => {
 
   it("never asks the deadline when nothing was sendable, because no wait was started", async () => {
     const { asked, deadline } = recordingDeadline();
-    await answerDecisionCard(sendTarget(), openCard(), CHOSEN_ANSWER, {
+    await answerDecisionCard(sendTarget(), openCard(), CHOSEN_ANSWER, undefined, {
       mintNonce: () => null,
       deadline,
     });
@@ -223,6 +299,7 @@ describe("answerDecisionCard", () => {
       sendTarget(),
       openCard(),
       CHOSEN_ANSWER,
+      undefined,
       workingSeams({ submit, deadline: deadlineNow }),
     );
     expect(message).toEqual(
@@ -240,6 +317,7 @@ describe("answerDecisionCard", () => {
       sendTarget(),
       openCard(),
       CHOSEN_ANSWER,
+      undefined,
       workingSeams({ submit, deadline: deadlineNow }),
     );
     expect(message.tone).toBe("warn");
@@ -258,6 +336,7 @@ describe("answerDecisionCard", () => {
       sendTarget(),
       openCard(),
       CHOSEN_ANSWER,
+      undefined,
       workingSeams({ submit, deadline }),
     );
     expect(message).toEqual(
@@ -271,6 +350,7 @@ describe("answerDecisionCard", () => {
       sendTarget(),
       openCard(),
       CHOSEN_ANSWER,
+      undefined,
       workingSeams({
         submit: async () => {
           throw new Error("connection refused");

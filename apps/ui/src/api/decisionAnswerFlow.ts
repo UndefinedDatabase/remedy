@@ -40,6 +40,12 @@
 // only through the injected submit, which is still `decisionSubmit.ts`.
 // IT RENDERS NOTHING AND KNOWS NO COMPONENT. It answers a value; the card that
 // shows it is `DecisionInboxCard.tsx`.
+// IT NEITHER READS NOR VALIDATES THE CLARIFICATION ANSWERS. The map is DATA
+// this module forwards to the builder and nothing more: it is not trimmed, not
+// filtered against blanks, not checked against the card's own questions. Every
+// refusal it can earn belongs to `decisionAnswer.ts`, which is where the
+// `answers` key of the args is built, so a reader looking here for that rule is
+// looking one module too far down the chain. DECISION F031 D26 rules the form.
 import type { DecisionCardModel } from "./decisionCard";
 import { mintDecisionClientNonce } from "./decisionNonce";
 import { buildDecisionSendRequest } from "./decisionSend";
@@ -78,6 +84,7 @@ export interface DecisionAnswerFlowDeps {
     model: DecisionCardModel,
     answerText: string,
     clientNonce: string,
+    clarificationAnswers?: Record<string, string>,
   ) => DecisionSendRequest | null;
   /** The one call that crosses the wire. */
   submit?: (request: DecisionSendRequest) => Promise<DecisionSubmitResult>;
@@ -99,11 +106,15 @@ function waitForDefaultDeadline(): Promise<void> {
 /** THE FLOW: mint, build, send, and say what happened — in that order, and
  *  stopping at the first step that answers `null`. Neither `null` path touches
  *  the network, which is the whole reason the refusals live one round trip
- *  earlier than the door. */
+ *  earlier than the door. The clarification answers are DATA and the deps are
+ *  SEAMS, so the data sits BEFORE the seams — the same order
+ *  `buildDecisionResolveCommand` already uses, and the one that keeps
+ *  `answerDecisionCard(target, model, text)` the whole call at a click site. */
 export async function answerDecisionCard(
   target: DecisionSendTarget,
   model: DecisionCardModel,
   answerText: string,
+  clarificationAnswers?: Record<string, string>,
   deps: DecisionAnswerFlowDeps = {},
 ): Promise<DecisionOutcomeMessage> {
   const mintNonce = deps.mintNonce ?? mintDecisionClientNonce;
@@ -115,7 +126,7 @@ export async function answerDecisionCard(
   if (clientNonce === null) {
     return describeUnsendableDecisionAnswer();
   }
-  const request = buildRequest(target, model, answerText, clientNonce);
+  const request = buildRequest(target, model, answerText, clientNonce, clarificationAnswers);
   if (request === null) {
     return describeUnsendableDecisionAnswer();
   }
