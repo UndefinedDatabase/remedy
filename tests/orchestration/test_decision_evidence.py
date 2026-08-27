@@ -11,6 +11,8 @@ expected problem list is written out in full rather than searched.
 
 from __future__ import annotations
 
+from dataclasses import replace
+
 import pytest
 
 from packages.core.models import Artifact, Job
@@ -286,19 +288,24 @@ def test_the_shipped_required_type_set_holds_exactly_the_upgraded_producers():
     """
     assert TRIPLE_REQUIRED_TYPES == frozenset({
         "token_budget", "test_failure", "patch_approval", "stop_reason",
-        "repo_dirty", "memory_review",
+        "repo_dirty", "memory_review", "flight_plan_approval",
     })
 
 
 def test_an_unenforced_tripleless_decision_is_left_alone():
     """An UNENFORCED type is not read, not validated and not altered.
 
-    ``flight_plan_approval`` is the example because it is still outside
-    ``TRIPLE_REQUIRED_TYPES`` after T002e.  ``memory_review`` stood here until
-    that slice enforced it, which is why this guard is repointed rather than
-    deleted: the behaviour it pins is the gate's opt-in, not the type's.
+    ``revert_missing`` IS THE STABLE EXAMPLE AND THE CHURN ENDS HERE.  This
+    guard named ``memory_review`` until T002e enforced it and
+    ``flight_plan_approval`` until T002f enforced it, one move per round,
+    because every name it used had a producer waiting to be upgraded.
+    ``revert_missing`` does not: DECISION F031 D3 records that it and
+    ``worker_approval`` HAVE NO PRODUCER AT ALL, and a type joins
+    ``TRIPLE_REQUIRED_TYPES`` only in the same commit that gives its producer a
+    real triple (DECISION F032 D5), so neither can ever join.  The behaviour
+    pinned here is the gate's opt-in, not the type's.
     """
-    decision = _decision(decision_type="flight_plan_approval", evidence=None)
+    decision = _decision(decision_type="revert_missing", evidence=None)
     assert enforce_decision_evidence([decision]) is None
 
 
@@ -360,7 +367,11 @@ def test_an_enforced_optionless_decision_reads_no_options_from_the_payload(
 
 
 def test_a_tripleless_decision_exports_empty_lists_and_the_legacy_status():
-    wire = export_decision_json(_decision(decision_type="flight_plan_approval"))
+    """``revert_missing`` for the same reason as the guard above: it is the one
+    kind of name that cannot be enforced out from under this test, because
+    DECISION F031 D3 records that it has NO PRODUCER to upgrade.
+    """
+    wire = export_decision_json(_decision(decision_type="revert_missing"))
 
     assert wire["evidence_refs"] == []
     assert wire["outcomes"] == []
@@ -1471,4 +1482,340 @@ def test_a_memory_review_decision_without_a_triple_is_refused_by_the_gate():
     message = str(excinfo.value)
     assert "mem:regression" in message
     assert "memory_review" in message
+    assert "evidence_refs is empty: a decision must cite at least one ref." in message
+
+
+# ---------------------------------------------------------------------------
+# F032 T002f — the flight-plan approval, the first producing type with TWO ARMS
+#
+# These drive the REAL branches through `list_decisions`, as every T002 test
+# above does.  The PENDING arm is the first producer since the budget stop whose
+# outcomes are KEYED: it always sets `payload["options"]` to `approve` and
+# `reject`, so rule (g) applies and compares the outcome keys against that list
+# in both directions.  The RESOLVED arm passes no payload at all, so rule (h)
+# applies — DECISION F032 D7 records why an already-answered card owes a triple
+# and what its one outcome then means.  The emit gate selects by TYPE ALONE and
+# never reads `status`, so both arms are enforced together.
+# ---------------------------------------------------------------------------
+
+#: The card's own id, cited unguarded by BOTH arms: it is the one value each of
+#: them is guaranteed to hold.
+FLIGHT_PLAN_DECISION_ID = "fp:approval"
+
+#: Neither keyed outcome varies with what the plan carried, so all four halves
+#: are written once and pinned wherever the outcomes are asserted.
+FLIGHT_PLAN_APPROVE_EXPECTED_OUTCOME = (
+    "The run starts and the plan's tasks execute in the order it records, so "
+    "the work that follows is the work that was reviewed."
+)
+FLIGHT_PLAN_APPROVE_DOWNSIDE = (
+    "Work begins against whatever the plan assumed, and an assumption nobody "
+    "checked is paid for in rework."
+)
+FLIGHT_PLAN_REJECT_EXPECTED_OUTCOME = (
+    "Nothing executes and the plan goes back for revision, so a wrong scope "
+    "costs a replan rather than a run."
+)
+FLIGHT_PLAN_REJECT_DOWNSIDE = (
+    "The job makes no progress until a new plan is approved, and the context "
+    "this planning built is spent again."
+)
+
+#: The resolved arm's single unkeyed outcome, which speaks of the answer that
+#: WAS recorded rather than of one still to come (DECISION F032 D7).
+FLIGHT_PLAN_RESOLVED_EXPECTED_OUTCOME = (
+    "The run executes the plan this approval named, so the tasks it carries "
+    "out are the agreed scope."
+)
+FLIGHT_PLAN_RESOLVED_DOWNSIDE = (
+    "A plan approved on an assumption that has since changed keeps the run "
+    "pointed at the old scope until someone revisits it."
+)
+
+
+def _flight_plan_decision(flight_plan: dict) -> HumanDecision:
+    """The card the real branch builds from one stored flight plan."""
+    job = Job(name="t", flight_plan=flight_plan)
+    decisions = [d for d in list_decisions(job, [])
+                 if d.type == "flight_plan_approval"]
+    assert len(decisions) == 1
+    return decisions[0]
+
+
+def _minimal_pending_decision() -> HumanDecision:
+    """The plan `tests/orchestration/test_mission_state.py` builds: nothing else.
+
+    No clarifications, no intake.  A ref that depended on either would point at
+    nothing here, rule (c) would refuse the whole card, and that suite would go
+    red the moment this type joined the gate set.
+    """
+    return _flight_plan_decision({"_approval": "pending"})
+
+
+def _two_clarifications_decision() -> HumanDecision:
+    return _flight_plan_decision({
+        "_approval": "pending",
+        "clarifications_resolved": [
+            {"id": "q-db", "question": "Which database?",
+             "default_answer": "sqlite", "impact": "storage"},
+            {"id": "q-region", "question": "Which region?",
+             "default_answer": "eu", "impact": "latency"},
+        ],
+    })
+
+
+def _keyless_clarification_decision() -> HumanDecision:
+    """An open question whose ``id`` is the EMPTY STRING, which is reachable.
+
+    ``open_clarification_questions`` defaults that field to ``""``, so a record
+    that names no id still comes back as an open question.
+    """
+    return _flight_plan_decision({
+        "_approval": "pending",
+        "clarifications_resolved": [
+            {"question": "Which database?", "default_answer": "sqlite"},
+        ],
+    })
+
+
+def _resolved_decision(audit: dict) -> HumanDecision:
+    return _flight_plan_decision(
+        {"_approval": "approved", "_approval_audit": audit})
+
+
+def _reason_only_resolved_decision() -> HumanDecision:
+    """The audit `tests/orchestration/test_decision_inbox.py` drives: no ``mode``."""
+    return _resolved_decision({"reason": "approved"})
+
+
+def _reason_and_mode_resolved_decision() -> HumanDecision:
+    return _resolved_decision({"reason": "approved", "mode": "auto"})
+
+
+def test_the_minimal_pending_plan_still_yields_a_valid_card():
+    """PINS THE UNGUARDED REF: this plan carries nothing else to cite.
+
+    Rule (a) of ``evidence_triple_problems`` needs at least one ref, and the
+    card's own id is the only value this arm is guaranteed to have.
+    """
+    decision = _minimal_pending_decision()
+
+    assert [(r.kind, r.target, r.label) for r in decision.evidence.refs] == [
+        ("decision", FLIGHT_PLAN_DECISION_ID,
+         "the flight-plan approval this job is waiting on"),
+    ]
+    assert evidence_triple_problems(
+        decision.evidence, options=decision.payload["options"]) == []
+
+
+def test_the_pending_card_cites_every_open_question_that_has_an_id():
+    decision = _two_clarifications_decision()
+
+    assert [(r.kind, r.target, r.label) for r in decision.evidence.refs] == [
+        ("decision", FLIGHT_PLAN_DECISION_ID,
+         "the flight-plan approval this job is waiting on"),
+        ("decision", "q-db", "the open question that ships with this plan"),
+        ("decision", "q-region",
+         "the open question that ships with this plan"),
+    ]
+
+
+def test_the_pending_card_omits_a_question_ref_it_cannot_fill():
+    """PINS THE ID GUARD FROM THE OTHER SIDE.
+
+    Made unconditional, this question's ref would target the empty string, which
+    rule (c) of ``evidence_triple_problems`` refuses outright — so the card the
+    browser renders would raise instead.
+    """
+    decision = _keyless_clarification_decision()
+
+    assert decision.payload["clarifications"] == [
+        {"id": "", "question": "Which database?",
+         "default_answer": "sqlite", "impact": ""},
+    ]
+    assert [(r.kind, r.target, r.label) for r in decision.evidence.refs] == [
+        ("decision", FLIGHT_PLAN_DECISION_ID,
+         "the flight-plan approval this job is waiting on"),
+    ]
+    assert evidence_triple_problems(
+        decision.evidence, options=decision.payload["options"]) == []
+
+
+@pytest.mark.parametrize(
+    "make_decision",
+    [
+        _minimal_pending_decision,
+        _two_clarifications_decision,
+        _keyless_clarification_decision,
+    ],
+    ids=["minimal", "two-clarifications", "keyless-clarification"],
+)
+def test_the_pending_card_keys_one_outcome_to_each_option(make_decision):
+    """RULE (g), not rule (h): this arm's payload lists both option words.
+
+    ``evidence_triple_problems`` is given the card's OWN options rather than an
+    empty list, or the check would silently exercise the optionless rule instead
+    of the keyed one.
+    """
+    decision = make_decision()
+
+    assert decision.payload["options"] == ["approve", "reject"]
+    assert [o.option for o in decision.evidence.outcomes] == [
+        "approve", "reject"]
+    assert [(o.option, o.expected_outcome, o.downside)
+            for o in decision.evidence.outcomes] == [
+        (
+            "approve",
+            FLIGHT_PLAN_APPROVE_EXPECTED_OUTCOME,
+            FLIGHT_PLAN_APPROVE_DOWNSIDE,
+        ),
+        (
+            "reject",
+            FLIGHT_PLAN_REJECT_EXPECTED_OUTCOME,
+            FLIGHT_PLAN_REJECT_DOWNSIDE,
+        ),
+    ]
+    for outcome in decision.evidence.outcomes:
+        assert outcome.expected_outcome.strip()
+        assert outcome.downside.strip()
+    assert evidence_triple_problems(
+        decision.evidence, options=decision.payload["options"]) == []
+
+
+def test_the_resolved_card_cites_the_approval_and_the_recorded_reason():
+    """PINS THE MODE GUARD: this audit carries NO ``mode``.
+
+    Emitted unconditionally, that ref would target the empty string here, which
+    rule (c) refuses — and `tests/orchestration/test_decision_inbox.py` drives
+    exactly this audit, so the whole inbox would raise instead of rendering.
+    """
+    decision = _reason_only_resolved_decision()
+
+    assert [(r.kind, r.target, r.label) for r in decision.evidence.refs] == [
+        ("decision", FLIGHT_PLAN_DECISION_ID,
+         "the flight-plan approval this record answers"),
+        ("decision", "approved",
+         "the reason recorded when the plan was approved"),
+    ]
+
+
+def test_the_resolved_card_cites_how_the_approval_was_given_when_recorded():
+    decision = _reason_and_mode_resolved_decision()
+
+    assert [(r.kind, r.target, r.label) for r in decision.evidence.refs] == [
+        ("decision", FLIGHT_PLAN_DECISION_ID,
+         "the flight-plan approval this record answers"),
+        ("decision", "approved",
+         "the reason recorded when the plan was approved"),
+        ("decision", "auto", "how the approval was given"),
+    ]
+
+
+@pytest.mark.parametrize(
+    "make_decision",
+    [_reason_only_resolved_decision, _reason_and_mode_resolved_decision],
+    ids=["reason-only", "reason-and-mode"],
+)
+def test_the_resolved_card_carries_exactly_one_unkeyed_outcome(make_decision):
+    """DECISION F032 D7: the arm passes no payload, so rule (h) applies."""
+    decision = make_decision()
+
+    assert decision.status == "resolved"
+    assert decision.payload == {}
+    assert [(o.option, o.expected_outcome, o.downside)
+            for o in decision.evidence.outcomes] == [
+        (
+            UNKEYED_OPTION,
+            FLIGHT_PLAN_RESOLVED_EXPECTED_OUTCOME,
+            FLIGHT_PLAN_RESOLVED_DOWNSIDE,
+        ),
+    ]
+    assert evidence_triple_problems(decision.evidence, options=[]) == []
+
+
+@pytest.mark.parametrize(
+    "make_decision",
+    [
+        _minimal_pending_decision,
+        _two_clarifications_decision,
+        _keyless_clarification_decision,
+        _reason_only_resolved_decision,
+        _reason_and_mode_resolved_decision,
+    ],
+    ids=[
+        "minimal", "two-clarifications", "keyless-clarification",
+        "reason-only", "reason-and-mode",
+    ],
+)
+def test_no_flight_plan_ref_ever_points_at_nothing(make_decision):
+    decision = make_decision()
+
+    assert decision.evidence.refs
+    assert all(r.target.strip() for r in decision.evidence.refs)
+
+
+@pytest.mark.parametrize(
+    "make_decision",
+    [
+        _minimal_pending_decision,
+        _two_clarifications_decision,
+        _keyless_clarification_decision,
+        _reason_only_resolved_decision,
+        _reason_and_mode_resolved_decision,
+    ],
+    ids=[
+        "minimal", "two-clarifications", "keyless-clarification",
+        "reason-only", "reason-and-mode",
+    ],
+)
+def test_the_flight_plan_card_exports_the_present_status(make_decision):
+    wire = export_decision_json(make_decision())
+
+    assert wire["evidence_status"] == "present"
+    assert wire["evidence_status"] == DECISION_EVIDENCE_STATUS_PRESENT
+    assert wire["evidence_status"] != DECISION_EVIDENCE_STATUS_LEGACY
+
+
+def test_an_open_flight_plan_decision_without_a_triple_is_refused():
+    """`flight_plan_approval` is ENFORCED from this round, on the OPEN arm."""
+    decision = _decision(
+        decision_id="fp:approval",
+        decision_type="flight_plan_approval",
+        evidence=None,
+        payload={"options": ["approve", "reject"]},
+    )
+
+    with pytest.raises(DecisionEvidenceError) as excinfo:
+        enforce_decision_evidence([decision])
+
+    message = str(excinfo.value)
+    assert "fp:approval" in message
+    assert "flight_plan_approval" in message
+    assert "evidence_refs is empty: a decision must cite at least one ref." in message
+
+
+def test_a_resolved_flight_plan_decision_without_a_triple_is_refused():
+    """AND ON THE RESOLVED ARM, which is the whole point of DECISION F032 D7.
+
+    The gate selects by type alone and never reads ``status``, so a resolved
+    card that dropped its triple raises exactly as an open one does.  This fails
+    if the gate is ever guarded with ``status == "open"``.
+    """
+    decision = replace(
+        _decision(
+            decision_id="fp:approval",
+            decision_type="flight_plan_approval",
+            evidence=None,
+        ),
+        status="resolved",
+        next_actions=(),
+    )
+    assert decision.status == "resolved"
+
+    with pytest.raises(DecisionEvidenceError) as excinfo:
+        enforce_decision_evidence([decision])
+
+    message = str(excinfo.value)
+    assert "fp:approval" in message
+    assert "flight_plan_approval" in message
     assert "evidence_refs is empty: a decision must cite at least one ref." in message
