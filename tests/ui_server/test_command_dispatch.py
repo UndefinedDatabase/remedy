@@ -171,9 +171,12 @@ class TestFlightPlanApprovalDispatchEffects:
         self.job_id = str(self.job.id)
         self.tmp_path = tmp_path
 
-    def _approve(self, port, token, nonce):
+    def _approve(self, port, token, nonce, answers=None):
+        args = {"decision_id": "fp:approval", "answer": "approve"}
+        if answers is not None:
+            args["answers"] = answers
         payload = {"command": "decision.resolve", "client_nonce": nonce,
-                   "args": {"decision_id": "fp:approval", "answer": "approve"}}
+                   "args": args}
         conn = HTTPConnection("127.0.0.1", port, timeout=10)
         try:
             conn.request("POST", f"/api/jobs/{self.job_id}/commands",
@@ -196,6 +199,28 @@ class TestFlightPlanApprovalDispatchEffects:
         assert status == 200, body
         reloaded = load_job(self.job.id)
         assert reloaded.flight_plan["_approval"] == "approved", reloaded.flight_plan
+
+    def test_a_supplied_clarification_answer_is_recorded_as_human(self):
+        """DECISION F031 D26's whole point, read off disk rather than the wire.
+
+        A 200 proves only that the door took the request. What makes the form
+        real is that the operator's own words reach the stored record and that
+        `answered_by` says `human` — the field the assumption log reports, and
+        the one that stays `default` if the door drops the answers it was sent.
+        """
+        from packages.orchestration.storage import load_job, save_job
+
+        self.job.flight_plan = {"_approval": "pending", "clarifications_resolved": [
+            {"id": "q1", "question": "Which store?", "default_answer": "sqlite"}]}
+        save_job(self.job)
+        port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
+        status, body = self._approve(port, token, "nonce-fp-answered",
+                                     answers={"q1": "use PostgreSQL"})
+
+        assert status == 200, body
+        resolved = load_job(self.job.id).flight_plan["clarifications_resolved"]
+        assert resolved[0]["answer"] == "use PostgreSQL", resolved
+        assert resolved[0]["answered_by"] == "human", resolved
 
     def test_the_accepted_fp_approval_saves_the_job_exactly_once(self, monkeypatch):
         """The only guard on the door's DELIBERATE omission of its own `save_job`.
