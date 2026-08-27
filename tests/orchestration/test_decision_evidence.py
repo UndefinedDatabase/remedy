@@ -273,14 +273,16 @@ def _decision(
     )
 
 
-def test_the_shipped_required_type_set_is_empty():
-    """The whole safety argument of T001b in one assertion.
+def test_the_shipped_required_type_set_holds_exactly_the_upgraded_producers():
+    """The whole safety argument of the opt-in set in one assertion.
 
     A type joins this set in T002, in the same commit that gives its producer a
     real triple.  If this test goes red because a type was added without that
-    commit, every job carrying that type starts raising.
+    commit, every job carrying that type starts raising.  It is pinned to EXACT
+    membership rather than to containment, so adding a type ahead of its
+    producer's upgrade fails here first.
     """
-    assert TRIPLE_REQUIRED_TYPES == frozenset()
+    assert TRIPLE_REQUIRED_TYPES == frozenset({"token_budget"})
 
 
 def test_an_unenforced_tripleless_decision_is_left_alone():
@@ -456,3 +458,193 @@ def test_a_stale_and_flagged_card_names_both_reasons(monkeypatch):
     assert [d.safe_summary for d in decisions] == [
         "Memory 'db-dsn' is stale and flagged for review."
     ]
+
+
+# ---------------------------------------------------------------------------
+# F032 T002a — the budget stop, the first producer with a real triple
+#
+# These drive the REAL branch through `list_decisions` rather than constructing
+# a `HumanDecision` by hand: the point of the round is that the SHIPPED producer
+# emits the triple, and a hand-built card would pass while the producer stayed
+# tripleless.  They assert the RENDERED strings, because the triple's value to a
+# human is its wording and a shape-only assertion stays green on filler.
+# ---------------------------------------------------------------------------
+
+#: The two downsides do not vary with what the stop event carried, so they are
+#: written once and pinned in both cases.
+EXTEND_DOWNSIDE = (
+    "Spend continues past the ceiling that was set, and the same stop recurs "
+    "if the run is not converging."
+)
+ABANDON_DOWNSIDE = (
+    "The work in flight is left unfinished, and a later resume pays again for "
+    "the context this run had built."
+)
+
+
+def _budget_events(
+    reason: str,
+    exhausted_limit: str | None = None,
+    request_id: str | None = None,
+) -> list[dict]:
+    """One `job_stopped` event from the budget guard, as the branch reads it."""
+    metadata: dict = {"source": "budget", "reason": reason}
+    if exhausted_limit is not None:
+        metadata["exhausted_limit"] = exhausted_limit
+    if request_id is not None:
+        metadata["request_id"] = request_id
+    return [{
+        "event": "job_stopped",
+        "timestamp": "2026-08-27T10:00:00Z",
+        "metadata": metadata,
+    }]
+
+
+def _budget_decision(events: list[dict]) -> HumanDecision:
+    decisions = [d for d in list_decisions(_StubJob(), events)
+                 if d.type == "token_budget"]
+    assert len(decisions) == 1
+    return decisions[0]
+
+
+def test_the_budget_stop_cites_the_reason_the_limit_and_the_request():
+    decision = _budget_decision(_budget_events(
+        "budget_exhausted: 120000 of 100000 tokens",
+        exhausted_limit="100000",
+        request_id="req-7f3a",
+    ))
+
+    assert [(r.kind, r.target) for r in decision.evidence.refs] == [
+        ("failure", "budget_exhausted: 120000 of 100000 tokens"),
+        ("failure", "100000"),
+        ("decision", "req-7f3a"),
+    ]
+    assert [r.label for r in decision.evidence.refs] == [
+        "the stop reason the budget guard recorded",
+        "the budget limit that was exhausted",
+        "the request in flight when the budget was exhausted",
+    ]
+
+
+def test_the_budget_stop_keys_one_outcome_to_each_choice_and_names_the_limit():
+    decision = _budget_decision(_budget_events(
+        "budget_exhausted: 120000 of 100000 tokens",
+        exhausted_limit="100000",
+        request_id="req-7f3a",
+    ))
+
+    assert [(o.option, o.expected_outcome, o.downside)
+            for o in decision.evidence.outcomes] == [
+        (
+            "extend",
+            "The job resumes from its last safe point with the exhausted "
+            "limit of 100000 raised, and the work already paid for is kept.",
+            EXTEND_DOWNSIDE,
+        ),
+        (
+            "abandon",
+            "The job stops with the artifacts it has, and nothing further is "
+            "spent against the exhausted limit of 100000.",
+            ABANDON_DOWNSIDE,
+        ),
+    ]
+
+
+def test_the_budget_stop_states_its_options_where_the_gate_reads_them():
+    """DECISION F032 D6: the gate reads options from `payload`, not `next_actions`."""
+    decision = _budget_decision(_budget_events(
+        "budget_exhausted: 120000 of 100000 tokens",
+        exhausted_limit="100000",
+        request_id="req-7f3a",
+    ))
+
+    assert decision.payload == {"options": ["extend", "abandon"]}
+    assert decision.next_actions == ("extend", "abandon")
+
+
+def test_the_budget_stop_exports_the_present_status_not_the_legacy_literal():
+    decision = _budget_decision(_budget_events(
+        "budget_exhausted: 120000 of 100000 tokens",
+        exhausted_limit="100000",
+        request_id="req-7f3a",
+    ))
+    wire = export_decision_json(decision)
+
+    assert wire["evidence_status"] == DECISION_EVIDENCE_STATUS_PRESENT
+    assert wire["evidence_status"] != DECISION_EVIDENCE_STATUS_LEGACY
+    assert wire["evidence_refs"] != []
+    assert [o["option"] for o in wire["outcomes"]] == ["extend", "abandon"]
+
+
+def test_a_budget_stop_with_only_a_reason_drops_the_refs_it_cannot_fill():
+    """The optional two refs are OMITTED, never emitted with an empty target.
+
+    Rule (c) of `evidence_triple_problems` refuses a ref pointing at nothing, so
+    a branch that emitted all three unconditionally would raise at the emit gate
+    whenever the stop event carried no `exhausted_limit`.
+    """
+    decision = _budget_decision(
+        _budget_events("budget_exhausted: the run passed its ceiling"))
+
+    assert [(r.kind, r.target) for r in decision.evidence.refs] == [
+        ("failure", "budget_exhausted: the run passed its ceiling"),
+    ]
+
+
+def test_a_budget_stop_with_only_a_reason_still_names_a_limit_in_english():
+    """The fallback is a whole noun phrase, so neither sentence reads as a splice."""
+    decision = _budget_decision(
+        _budget_events("budget_exhausted: the run passed its ceiling"))
+
+    assert [(o.option, o.expected_outcome, o.downside)
+            for o in decision.evidence.outcomes] == [
+        (
+            "extend",
+            "The job resumes from its last safe point with the exhausted "
+            "limit raised, and the work already paid for is kept.",
+            EXTEND_DOWNSIDE,
+        ),
+        (
+            "abandon",
+            "The job stops with the artifacts it has, and nothing further is "
+            "spent against the exhausted limit.",
+            ABANDON_DOWNSIDE,
+        ),
+    ]
+
+
+@pytest.mark.parametrize(
+    "events",
+    [
+        _budget_events(
+            "budget_exhausted: 120000 of 100000 tokens",
+            exhausted_limit="100000",
+            request_id="req-7f3a",
+        ),
+        _budget_events("budget_exhausted: the run passed its ceiling"),
+    ],
+    ids=["all-three-present", "reason-only"],
+)
+def test_no_budget_ref_ever_points_at_nothing(events):
+    decision = _budget_decision(events)
+
+    assert decision.evidence.refs
+    assert [r for r in decision.evidence.refs if not r.target.strip()] == []
+
+
+def test_a_token_budget_decision_without_a_triple_is_refused_by_the_gate():
+    """`token_budget` is ENFORCED now, so a regression that drops the triple raises."""
+    decision = _decision(
+        decision_id="budget:regression",
+        decision_type="token_budget",
+        evidence=None,
+        payload={"options": ["extend", "abandon"]},
+    )
+
+    with pytest.raises(DecisionEvidenceError) as excinfo:
+        enforce_decision_evidence([decision])
+
+    message = str(excinfo.value)
+    assert "budget:regression" in message
+    assert "token_budget" in message
+    assert "evidence_refs is empty: a decision must cite at least one ref." in message
