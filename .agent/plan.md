@@ -11,36 +11,34 @@ branch-only blocking semantics intact, ordered by a documented rule over age and
 blocked size, and answerable from the card through the write channel.
 
 ## Current Step
-R65 records the R64 verdict and runs the INTEGRATION GATE of
-`docs/agents/integration_gate.md` over this branch, writing its evidence under
-`.agent/gate_f031_r65/`. It is the LAST round of its session: its handback is
-the session terminator and the next session resumes from it. The gate MEASURES
-and never repairs — no production file is touched and no finding moves.
+R66 is a record round and touches no file outside `.agent/`. It writes the R65
+verdict — the integration gate PASSED, with an EMPTY branch-only set and an
+EMPTY base-only set, both full-suite runs re-run by the reviewer itself — and it
+corrects one factual error the R65 handback carried. It is the LAST round of its
+session: its handback is the session terminator. No finding is resolved and none
+is registered, no production code and no decision this round.
 
 ## Next Steps
-1. Closure per `docs/roadmap/STATUS_closure_protocol.md`.
+1. Closure per `docs/roadmap/STATUS_closure_protocol.md`, whose first step is
+   the evidence bundle and the review zip.
 
 ## Risks
-- THE GATE MEASURES AND MUST NEVER REPAIR. A red branch run ends the round with
-  a report; no test is deleted, no assertion weakened and no ceiling raised to
-  make a run green, and the fix for any blocker is its own gated round.
-- THE BASE WORKTREE NEEDS A THROWAWAY BRANCH AND COPIED ARTIFACTS. A detached
-  HEAD fails the self-dogfood guard by design (DECISION D3), and a symlinked
-  `node_modules` lets an npm lifecycle write back into the primary checkout
-  (F053 R3), so both are copied and the branch is deleted afterwards.
-- THE STALENESS CLASS IS REPAIRED BEFORE THE BASE RUN, NOT ATTRIBUTED AFTER IT.
-  A fresh checkout writes `apps/ui/src` NOW while the copied `dist` keeps its
-  old mtime, so `_frontend_is_stale()` fires and the request path fails; that
-  cost F022 R15 sixty-three base-only failures to attribute by hand.
-- THE FORM IS ANSWERABLE BUT SIX OF THE EIGHT PRODUCING TYPES STILL CANNOT BE
-  ANSWERED THROUGH THE DOOR. R-0693 measures the gap; the rest are outside
-  F031's scope, and the inbox tells the truth about every one of them rather
-  than offering a refused button.
+- A SESSION LINE IS NOT DERIVABLE BY THE WORKER THAT WRITES IT. A worker runs
+  ONE round and cannot see a session boundary, so a block ordering that line
+  must SUPPLY the round list; R65's block did not, its worker reconstructed the
+  window from branch history, declared the assumption, and got it wrong by two
+  rounds. The repair is in the block, not in the worker.
+- THE PARITY CLAIM OF THE R65 GATE IS VOID AND STAYS VOID. A rebuild ran inside
+  the base run window and the evidence says so; it costs nothing only because
+  the base-only set is empty, so no id was owed an attribution.
+- SIX OF THE EIGHT PRODUCING TYPES STILL CANNOT BE ANSWERED THROUGH THE DOOR.
+  R-0693 measures the gap; the rest are outside F031's scope, and the inbox
+  tells the truth about every one of them rather than offering a refused button.
 - THIS FILE NAMES NO ROUND NUMBER IT HAS NOT BEGUN. Twice a pre-assigned label
   went stale the moment a round was inserted ahead of it; a step is named by
   what it does, and its number is knowable only when it starts.
 - Open findings, by the rule DECISION F009 D10 requires — every `^- R-\d+ — `
-  paragraph minus every `^Done: R-\d+ — ` line — the set is 252 at `2d4001b4`
+  paragraph minus every `^Done: R-\d+ — ` line — the set is 252 at `033484f6`
   and this round moves it by nothing.
 - BLOCK CAPS ARE TWO: 490 lines TOTAL (DECISION F085 D6) and 400 lines PROSE
   (DECISION F085 D5); every block states and re-measures both.
