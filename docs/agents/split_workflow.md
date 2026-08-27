@@ -119,10 +119,14 @@ feature is High and blocks until a compliant handback exists.
 
 ## .agent/handoff.md — the fast-resume file
 Rewritten (never appended) by the worker at EVERY handback. Contains only
-the latest state, ≤60 lines (≤100 when per-commit tables of >5 commits
-require it — sections are never dropped): feature + round, branch, last
-commit SHAs, changed-files table, verification results (real output,
-trimmed), open findings count, next expected action.
+the latest state: feature + round, the session number of the running
+feature, branch, last commit SHAs, changed-files table, verification
+results (real output, trimmed), open findings count, next expected action.
+Operator amendment amend0827-process-diet (2026-08-27), rule 3 — the line
+tiers that stood here are WITHDRAWN; a handback is valid when it carries
+its mandated sections and its length is never measured. Sections are still
+never dropped. Reverse by restoring the tiers from git history at
+`f4eae1d4`.
 Purpose: a restarted Window 1 bootstraps from STATUS.md + feature file +
 handoff.md + plan.md + live_review.md instead of re-reading the project.
 Git history is the archive of past handoffs.
