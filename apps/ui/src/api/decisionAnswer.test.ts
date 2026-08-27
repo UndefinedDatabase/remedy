@@ -147,3 +147,116 @@ describe("buildDecisionResolveCommand", () => {
     expect(buildDecisionResolveCommand(reopened, "keep first", GOOD_NONCE)).toBeNull();
   });
 });
+
+describe("buildDecisionResolveCommand clarification answers", () => {
+  /** The pending flight-plan approval this form exists for, with the two words
+   *  the write door accepts and one open question riding the same card. */
+  function pendingPlanEntry(): DecisionInboxEntry {
+    return {
+      id: "fp:approval",
+      type: "flight_plan_approval",
+      status: "open",
+      safe_summary: "Flight plan awaiting approval (1 open question).",
+      payload: {
+        options: ["approve", "reject"],
+        clarifications: [{ id: "q1", question: "Which store?", default_answer: "postgres" }],
+      },
+      answerable_by_decision_resolve: true,
+    };
+  }
+
+  it("sends NO answers key at all when the caller passes no fourth argument", () => {
+    const body = buildDecisionResolveCommand(modelFrom(pendingPlanEntry()), "approve", GOOD_NONCE);
+    expect(body).not.toBeNull();
+    expect(Object.keys(body!.args).sort()).toEqual(["answer", "decision_id"]);
+    expect(Object.keys(body!.args)).not.toContain("answers");
+    expect(body!.args.answers).toBeUndefined();
+  });
+
+  it("builds the byte-identical body a caller written before this form built", () => {
+    // The property the whole round rests on: adding an optional fourth argument
+    // may not move a single key of the body every existing call site already
+    // produces, because those call sites pass nothing.
+    const model = modelFrom(pendingPlanEntry());
+    const before = buildDecisionResolveCommand(model, "approve", GOOD_NONCE);
+    expect(JSON.stringify(before)).toBe(
+      JSON.stringify({
+        command: "decision.resolve",
+        client_nonce: GOOD_NONCE,
+        args: { decision_id: "fp:approval", answer: "approve" },
+      }),
+    );
+  });
+
+  it("carries a map that survives filtering under the server's own args key", () => {
+    const body = buildDecisionResolveCommand(
+      modelFrom(pendingPlanEntry()),
+      "approve",
+      GOOD_NONCE,
+      { q1: "sqlite" },
+    );
+    expect(body).not.toBeNull();
+    expect(Object.keys(body!.args).sort()).toEqual(["answer", "answers", "decision_id"]);
+    expect(body!.args.answers).toEqual({ q1: "sqlite" });
+    expect(body!.args.decision_id).toBe("fp:approval");
+    expect(body!.args.answer).toBe("approve");
+  });
+
+  it("keys the answers by the question id the card model carried out", () => {
+    const model = modelFrom(pendingPlanEntry());
+    expect(model.clarifications.map((question) => question.id)).toEqual(["q1"]);
+    const body = buildDecisionResolveCommand(model, "approve", GOOD_NONCE, {
+      [model.clarifications[0].id]: "sqlite",
+    });
+    expect(body?.args.answers).toEqual({ q1: "sqlite" });
+  });
+
+  it("OMITS the key rather than sending it empty for an all-blank map", () => {
+    // Absent already MEANS the default per question, so a form the operator
+    // never touched must post exactly what passing nothing posts.
+    const body = buildDecisionResolveCommand(modelFrom(pendingPlanEntry()), "approve", GOOD_NONCE, {
+      q1: "   ",
+      q2: "\n\t",
+      q3: "",
+    });
+    expect(body).not.toBeNull();
+    expect(Object.keys(body!.args)).not.toContain("answers");
+    expect(body!.args.answers).toBeUndefined();
+  });
+
+  it("OMITS the key for an empty map, which chose nothing at all", () => {
+    const body = buildDecisionResolveCommand(modelFrom(pendingPlanEntry()), "approve", GOOD_NONCE, {});
+    expect(Object.keys(body!.args)).not.toContain("answers");
+  });
+
+  it("drops only the blank entries, keeping the ones the operator did fill", () => {
+    const body = buildDecisionResolveCommand(modelFrom(pendingPlanEntry()), "approve", GOOD_NONCE, {
+      q1: "sqlite",
+      q2: "  ",
+      q3: "behind a flag",
+    });
+    expect(body?.args.answers).toEqual({ q1: "sqlite", q3: "behind a flag" });
+  });
+
+  it("trims the values it sends, for the reason it already trims the answer", () => {
+    const body = buildDecisionResolveCommand(modelFrom(pendingPlanEntry()), "approve", GOOD_NONCE, {
+      q1: "  sqlite\n",
+    });
+    expect(body?.args.answers).toEqual({ q1: "sqlite" });
+  });
+
+  it("trims only the edges, leaving the operator's own inner spacing alone", () => {
+    const body = buildDecisionResolveCommand(modelFrom(pendingPlanEntry()), "approve", GOOD_NONCE, {
+      q1: " the  primary store ",
+    });
+    expect(body?.args.answers).toEqual({ q1: "the  primary store" });
+  });
+
+  it("refuses the whole body for a reason above, answers or no answers", () => {
+    const resolved = modelFrom({ ...pendingPlanEntry(), status: "resolved" });
+    expect(buildDecisionResolveCommand(resolved, "approve", GOOD_NONCE, { q1: "sqlite" })).toBeNull();
+    expect(
+      buildDecisionResolveCommand(modelFrom(pendingPlanEntry()), "  ", GOOD_NONCE, { q1: "sqlite" }),
+    ).toBeNull();
+  });
+});

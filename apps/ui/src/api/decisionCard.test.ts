@@ -232,6 +232,7 @@ describe("buildDecisionCardModel", () => {
         { kind: "option", label: "keep first", value: "keep first", posts: false },
         { kind: "option", label: "keep second", value: "keep second", posts: false },
       ],
+      clarifications: [],
     });
   });
 
@@ -290,7 +291,127 @@ describe("buildDecisionCardModel", () => {
       isOpen: false,
       answerableByDecisionResolve: false,
       answers: [{ kind: "free_text", label: "Answer", value: "", posts: false }],
+      clarifications: [],
     });
+  });
+});
+
+describe("buildDecisionCardModel clarifications", () => {
+  /** The endpoint's OWN shape for a pending `fp:approval` card carrying open
+   *  questions: `decision_queue.py` writes `open_clarification_questions`'
+   *  records straight into `payload.clarifications`, and every one of them has
+   *  exactly the four snake-case keys asserted here. */
+  function pendingPlanEntry(): DecisionInboxEntry {
+    return {
+      id: "fp:approval",
+      type: "flight_plan_approval",
+      status: "open",
+      severity: "blocker",
+      safe_summary: "Flight plan awaiting approval (2 open questions).",
+      payload: {
+        options: ["approve", "reject"],
+        clarifications: [
+          {
+            id: "q1",
+            question: "Which database backs the export?",
+            default_answer: "postgres",
+            impact: "Chooses the migration path",
+          },
+          {
+            id: "q2",
+            question: "Ship behind a flag?",
+            default_answer: "yes",
+            impact: "Decides the rollout",
+          },
+        ],
+      },
+      answerable_by_decision_resolve: true,
+    };
+  }
+
+  it("projects every open question into the model's own camel case", () => {
+    expect(buildDecisionCardModel(pendingPlanEntry()).clarifications).toEqual([
+      {
+        id: "q1",
+        question: "Which database backs the export?",
+        defaultAnswer: "postgres",
+        impact: "Chooses the migration path",
+      },
+      {
+        id: "q2",
+        question: "Ship behind a flag?",
+        defaultAnswer: "yes",
+        impact: "Decides the rollout",
+      },
+    ]);
+  });
+
+  it("preserves the order the plan asked its questions in", () => {
+    const ids = buildDecisionCardModel(pendingPlanEntry()).clarifications.map((q) => q.id);
+    expect(ids).toEqual(["q1", "q2"]);
+  });
+
+  it("gives no clarifications for a card carrying no payload at all", () => {
+    expect(buildDecisionCardModel({ id: "d-9" }).clarifications).toEqual([]);
+  });
+
+  it("gives no clarifications for a null payload", () => {
+    expect(buildDecisionCardModel({ id: "d-10", payload: null }).clarifications).toEqual([]);
+  });
+
+  it("gives no clarifications for a payload that is not an object", () => {
+    expect(buildDecisionCardModel({ id: "d-11", payload: "q1" }).clarifications).toEqual([]);
+    expect(buildDecisionCardModel({ id: "d-12", payload: 7 }).clarifications).toEqual([]);
+  });
+
+  it("gives no clarifications when the key is present but not an array", () => {
+    const card: DecisionInboxEntry = { id: "d-13", payload: { clarifications: "q1" } };
+    expect(() => buildDecisionCardModel(card)).not.toThrow();
+    expect(buildDecisionCardModel(card).clarifications).toEqual([]);
+  });
+
+  it("drops a non-object entry rather than throwing on it", () => {
+    const card: DecisionInboxEntry = {
+      id: "d-14",
+      payload: { clarifications: [7, null, "q1", { id: "q2", question: "Real?" }] },
+    };
+    expect(buildDecisionCardModel(card).clarifications).toEqual([
+      { id: "q2", question: "Real?", defaultAnswer: "", impact: "" },
+    ]);
+  });
+
+  it("falls back to the empty string for a non-string field rather than raising", () => {
+    const card: DecisionInboxEntry = {
+      id: "d-15",
+      payload: { clarifications: [{ id: "q1", question: 7, default_answer: null, impact: true }] },
+    };
+    expect(buildDecisionCardModel(card).clarifications).toEqual([
+      { id: "q1", question: "", defaultAnswer: "", impact: "" },
+    ]);
+  });
+
+  it("DROPS an entry whose id is blank after trimming, keeping the answerable ones", () => {
+    // An id the write door cannot know refuses the WHOLE post, so a field the
+    // operator can fill but never submit would cost them every other answer.
+    const card: DecisionInboxEntry = {
+      id: "d-16",
+      payload: {
+        clarifications: [
+          { id: "", question: "No id at all" },
+          { id: "   ", question: "Whitespace only" },
+          { id: "q3", question: "Answerable" },
+        ],
+      },
+    };
+    expect(buildDecisionCardModel(card).clarifications).toEqual([
+      { id: "q3", question: "Answerable", defaultAnswer: "", impact: "" },
+    ]);
+  });
+
+  it("makes no payload throw, clarifications included", () => {
+    expect(() => buildDecisionCardModel({ payload: { clarifications: [[], {}, 0] } })).not.toThrow();
+    expect(buildDecisionCardModel({ payload: { clarifications: [[], {}, 0] } }).clarifications)
+      .toEqual([]);
   });
 });
 

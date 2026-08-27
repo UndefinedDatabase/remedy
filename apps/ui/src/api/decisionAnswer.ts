@@ -52,13 +52,21 @@ export const DECISION_RESOLVE_COMMAND_ID = "decision.resolve";
 const COMMAND_NONCE_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/;
 
 /** The `args` object the decision-resolve command carries, in the server's own
- *  key spellings: `_dispatch_decision_resolve` reads exactly these two and
- *  nothing else. Remedy deliberately does NOT send `source` here — DECISION F009
- *  D22 rules that omission, which lets the record take the `human` default;
- *  passing one would land it in neither tally. */
+ *  key spellings: `_dispatch_decision_resolve` reads exactly these three and
+ *  nothing else — `decision_id`, `answer`, and since R51 the OPTIONAL `answers`
+ *  it hands to `_validated_clarification_answers`. Remedy deliberately does NOT
+ *  send `source` here — DECISION F009 D22 rules that omission, which lets the
+ *  record take the `human` default; passing one would land it in neither tally. */
 export interface DecisionResolveArgs {
   decision_id: string;
   answer: string;
+  /** The operator's answers to the flight plan's own open questions, keyed by
+   *  the question id `payload.clarifications` carried out. OPTIONAL and OMITTED
+   *  rather than sent empty: `_validated_clarification_answers` reads an ABSENT
+   *  `answers` as "accept every default", which is DECISION F031 D24's original
+   *  contract, so omission is the one spelling that keeps a client written
+   *  before this form valid. */
+  answers?: Record<string, string>;
 }
 
 /** The whole request body the commands endpoint accepts, in that endpoint's own
@@ -86,17 +94,46 @@ export function jobCommandsPath(jobId: string): string {
   return `/api/jobs/${jobId}/commands`;
 }
 
+/** THE `answers` KEY OF THE ARGS, OR NO KEY AT ALL. The empty object is the
+ *  point: spread into the args literal it adds nothing, and an ABSENT `answers`
+ *  is what `_validated_clarification_answers` reads as "accept every default".
+ *  AN ENTRY WHOSE VALUE IS BLANK AFTER TRIMMING IS DROPPED rather than refused,
+ *  because per question absent ALREADY MEANS the default — so an untouched field
+ *  posts as the default the operator saw printed beside it, and a form full of
+ *  untouched fields posts exactly what a client written before this form posts.
+ *  The values that ARE sent are trimmed for the reason `answerText` below is:
+ *  the record is durable, so edge space is noise no later reader asked for. */
+function clarificationAnswersArg(
+  answers: Record<string, string> | undefined,
+): Pick<DecisionResolveArgs, "answers"> {
+  if (answers === undefined) {
+    return {};
+  }
+  const filled: Record<string, string> = {};
+  Object.entries(answers).forEach(([questionId, value]) => {
+    const trimmedValue = value.trim();
+    if (trimmedValue !== "") {
+      filled[questionId] = trimmedValue;
+    }
+  });
+  return Object.keys(filled).length > 0 ? { answers: filled } : {};
+}
+
 /** THE BUILDER: one card, one answer and one caller-supplied nonce become the
  *  exact body the commands endpoint accepts — or `null`, for the reasons named
  *  here and no others. The model has no `id`, so no record could match it; the
  *  answer text is blank once trimmed, so the decision would resolve with
  *  nothing; the nonce is outside the class the server enforces; or the decision
  *  is NOT open, which the server answers 409 because the record is absent or
- *  already resolved. The answer it does send is the TRIMMED one. */
+ *  already resolved. The answer it does send is the TRIMMED one. The fourth
+ *  argument is OPTIONAL and every call site written before DECISION F031 D26
+ *  omits it: passing nothing builds the byte-identical body those callers
+ *  already built, which is why adding the form breaks none of them. */
 export function buildDecisionResolveCommand(
   model: DecisionCardModel,
   answerText: string,
   clientNonce: string,
+  clarificationAnswers?: Record<string, string>,
 ): DecisionResolveCommandBody | null {
   // Trimmed once, then used for BOTH halves: the record is durable, so leading
   // and trailing space is noise no reader asked for.
@@ -121,6 +158,7 @@ export function buildDecisionResolveCommand(
     args: {
       decision_id: model.id,
       answer: trimmedAnswer,
+      ...clarificationAnswersArg(clarificationAnswers),
     },
   };
 }
