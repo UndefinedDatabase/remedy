@@ -115,8 +115,8 @@ cell by cell and they AGREE.
   `da6b64fc1f4bd46d6ff95f663cd29d0ebc8e2d75`, the round base of constraint 12;
   `git rev-parse --abbrev-ref HEAD` printed `feature/f032-evidence-triple`;
   `git status --porcelain | wc -l` printed 0 after each of C0a, C0b, C1, C2, C3
-  and C4 — five readings after the five commits G1 covers, plus the reading taken
-  before C0a, every one of them 0. `.agent/STOP` was re-read FROM DISK at both
+  and C4 — SIX readings after the six commits G1 covers (C0a, C0b, C1, C2, C3,
+  C4), plus the reading taken before C0a, every one of them 0. `.agent/STOP` was re-read FROM DISK at both
   readings constraint 9 orders — once before C0a and once before C5 — with
   `python3 -c "import os; print(os.path.exists('.agent/STOP'))"`, and printed
   `False` both times, so the sentinel does not exist.
@@ -291,8 +291,16 @@ No slice was edited. Nothing looked wrong enough to report under constraint 1.
 
 ## Deviations & assumptions
 
-- COMMIT ORDER WAS EXACTLY C0a, C0b, C1, C2, C3, C4, C5, with no commit between
-  them, no extra commit and no reordering. C2 is the only commit touching
+- ONE EXTRA COMMIT BEYOND THE ORDERED SEQUENCE, and this is its declaration.
+  `db638853` wrote this handback as C5; the self-review of that committed file
+  then found ONE false numeral in the G1 line — it said "five readings after the
+  five commits G1 covers" when G1 covers SIX commits (C0a, C0b, C1, C2, C3, C4)
+  and six post-commit readings were taken, every one of them 0. History rewriting
+  is not available to a worker, so the correction is a seventh commit rather than
+  an amend of `db638853`. It changes that one sentence and adds this bullet, and
+  nothing else. This is the round's ONLY correction commit.
+- COMMIT ORDER WAS OTHERWISE EXACTLY C0a, C0b, C1, C2, C3, C4, C5, with no commit
+  between them and no reordering. C2 is the only commit touching
   `.agent/live_review.md`; C3 carries the triple, the gate entry and the
   constant's comment together, as constraint 7 and DECISION F032 D5 require.
 - THE `answer` AND `answer_source` REFS ARE GUARDED ON EMPTINESS ALONE, with no
