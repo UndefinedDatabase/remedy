@@ -330,7 +330,7 @@ def test_an_enforced_decision_with_a_complete_triple_raises_nothing(monkeypatch)
 def test_an_enforced_optionless_decision_reads_no_options_from_the_payload(
     monkeypatch,
 ):
-    """A payload with no ``options`` key is the six-branch case (DECISION F032 D3)."""
+    """A payload with no ``options`` key is the five-branch case (DECISION F032 D3)."""
     monkeypatch.setattr(
         decision_evidence, "TRIPLE_REQUIRED_TYPES", frozenset({CANARY_TYPE})
     )
