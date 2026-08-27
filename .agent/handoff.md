@@ -1,96 +1,52 @@
-# Handback — F031 Decision inbox, round R61 (the SEAM half of the clarification form)
-Branch: `feature/f031-decision-inbox`. Base `486b3ef8`, seven commits C0a…C5. NO
-COMPONENT AND NO STYLESHEET CHANGED, and no file under `tests/`, `packages/` or
-`docs/` changed. NO FINDING WAS RESOLVED and none minted: the open set is
-UNCHANGED at 252, the number G5 measured before C2 and again after it.
-
+# Handback — F031 R62
+Feature F031 decision inbox, round R62, a RECORD round and the LAST ROUND OF ITS SESSION. Branch `feature/f031-decision-inbox`. NO FILE OUTSIDE `.agent/` CHANGED — no production code, no `docs/` file, no `.agent/decisions.md` entry.
+NO FINDING MOVED IN EITHER DIRECTION: none was resolved and none was registered. Open findings after this round: 252 — UNCHANGED at the number G5 measured, 252 before C2 and 252 after C2.
+SESSION: it delegated R59, R60, R61 and R62, and the reviewer recorded a PASS verdict for R58 at `816ef101`, for R59 at `798a75a0`, for R60 at `a2d7250f` and for R61 at `17b31a36` in this round. R61 was its only production round — the seam half of the clarification form; the rest were record and checklist rounds.
 ## Range
-Review of `486b3ef8`..HEAD.
-
+Review of 81a9fad6..HEAD.
 ## Commits
-### ffd400e9 docs(agent): save the F031 R61 step block
+### a537fc7c docs(agent): save the F031 R62 step block
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f031-r61.md | +273/-0 | the R61 block, saved verbatim |
-
-### 0e8d7a6b docs(agent): mirror the F031 R61 block into last_block
+| .agent/authored/f031-r62.md | +198/-0 | C0a — the block saved verbatim |
+### 068db25b docs(agent): mirror the F031 R62 block into last_block
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/last_block.md | +199/-132 | byte copy of the C0a blob |
-
-### e22ccf87 docs(agent): advance the plan to the F031 R61 seam round
+| .agent/last_block.md | +115/-190 | C0b — identical bytes, same git blob |
+### 676c4ab1 docs(agent): advance the plan to the F031 R62 record round
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/plan.md | +16/-16 | PLANF031R61 applied byte for byte |
-
-### a2d7250f docs(agent): record the F031 R60 verdict
+| .agent/plan.md | +13/-12 | C1 — PLANF031R62 applied whole-file |
+### 17b31a36 docs(agent): record the F031 R61 verdict
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/live_review.md | +2/-0 | LEDGER61 appended; the R60 gate entry alone |
-
-### dbb50836 feat(ui): forward clarification answers through the decision send request
+| .agent/live_review.md | +2/-0 | C2 — LEDGER62 appended |
+### C3 docs(agent): write the F031 R62 handback (this commit — R-0149 self-reference)
 | Path | +/- | Reason |
 |---|---|---|
-| apps/ui/src/api/decisionSend.ts | +17/-2 | S1: fifth optional param, passed as the command builder's fourth |
-| apps/ui/src/api/decisionSend.test.ts | +75/-0 | S2: 4 cases (omission, trimmed forward, all-blank, body-only) |
-
-### 88bacdc9 feat(ui): forward clarification answers through the decision answer flow
-| Path | +/- | Reason |
-|---|---|---|
-| apps/ui/src/api/decisionAnswerFlow.ts | +13/-2 | S3: map fourth, deps fifth, `buildRequest` widened, header extended |
-| apps/ui/src/api/decisionAnswerFlow.test.ts | +84/-4 | S4: 12 calls re-positioned, 1 case extended, 2 cases added |
-
-### C5 (this commit) docs(agent): write the F031 R61 handback
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/handoff.md | rewrite | a handback cannot table the commit that writes it (R-0149) |
-
+| .agent/handoff.md | rewrite | C3 — this file |
 ## Item status
 | Item | Status | Reason |
 |---|---|---|
-| C0a save the block | done | |
+| C0a save this block | done | |
 | C0b mirror into last_block | done | |
 | C1 the plan | done | |
-| C2 the R60 gate entry | done | |
-| C3 the send hop and its tests | done | |
-| C4 the flow hop and its tests | done | |
-| C5 handback | done | this commit |
-| push | done | ordered after C5; its reading is not written here |
-
+| C2 the R61 gate entry | done | |
+| C3 handback | done | |
+| push | done | ordered after C3 |
 ## External actions
-- `git worktree add .remedy-wt/f031-r61-red HEAD` → rc 0 (G7's disposable tree).
-- `git worktree remove --force .remedy-wt/f031-r61-red` → rc 0; `git worktree prune` → rc 0; list back to 1 line.
-- `git push origin feature/f031-decision-inbox` — ordered after this commit.
-
+`git push origin feature/f031-decision-inbox` — run after C3; the block orders its reading kept out of this handback. No PR, no other `gh` command, no worktree added or removed.
 ## Verification
-- G1 rc 0 — branch `feature/f031-decision-inbox`; `git status --porcelain` 0 lines after C0a, C0b, C1, C2, C3, C4; `.agent/STOP` ABSENT before C0a and before C5; block sha256 `4549d3f7…64cb1af7`, 22698 bytes, 273 lines at C0a, at C0b and off disk at C4, all three EQUAL, C0a and C0b the SAME blob `e3ff588d9222`; no line is a run of one repeated character. THIS PROOF COVERS the saved copy, its mirror and the working copy — all three my own output — and NOT the bytes emitted to me.
-- G2 rc 0 — extracted from the COMMITTED C0a blob by marker lines: 2 slices, PLANF031R61 45 content lines, LEDGER61 1 content line, CONTENT 46, TOTAL 273, PROSE 227 (≤400) and TOTAL 273 (≤490).
-- G3 rc 0 — `.agent/plan.md` at `e22ccf87` byte-equal to PLANF031R61 True; negative control against the slice minus its trailing newline FALSE; `^## Goal$` 1, `^## Next Steps$` 1, `wc -l` 45 (<50).
-- G4 rc 0 — reader A: 956513 + 1 + 4231 = 960745 and the committed blob is 960745. Reader B: N counted by my script is 1, units 389 → 390, the last 1 unit matches the slice's 1 paragraph in order. Byte flipped IN MEMORY inside appended paragraph 1: BOTH readers REJECT. The tracked file was never mutated.
-- G5 rc 0 — before C2 / after C2: `^- R-\d+ — ` 268/268, `^Done: R-\d+ — ` 16/16, `^Landed: R-` 0/0, `^Gate: R\d+ — ` 19/19, `^Gate: F\d+ R\d+ — ` 41/42. ADDED gate key exactly `F031 R60`; findings ADDED/REMOVED empty; resolved ADDED/REMOVED empty; nothing REMOVED anywhere; all ids DISTINCT; maximum `R-0707`; open set 252 before and 252 after.
-- G6 rc 0, 0, 0 — `npx tsc --noEmit` rc 0; `npx vitest run` rc 0 with 30 files and 481 tests, a rise of 6, which is MY OWN count of the cases added (4 in `decisionSend.test.ts`, 2 in `decisionAnswerFlow.test.ts`); `python3 -m pytest tests/ui_contracts/ -q` rc 0 with EXACTLY 561 passed and 4 skipped.
-- G7 rc 0 then rc 1 — control FIRST in the worktree: rc 0, 27 files, 456 tests. Then, in the worktree ONLY, the `clarificationAnswers` argument deleted from the single `buildDecisionResolveCommand(` call in `decisionSend.ts` (measured 1x): rc 1, 2 failed / 454 passed, failing "buildDecisionSendRequest clarification answers > forwards a filled map under the server's own args key, with its value TRIMMED" and "… > lets the map reach the BODY alone, never the path and never the headers" — both S2 cases. The other two S2 cases assert the ABSENCE of `answers`, which the mutation preserves. Worktree removed and pruned: `git worktree list` 1 line, `git ls-files .remedy-wt` 0 lines.
-- G8 rc 0 — both path residues EMPTY against the Change line minus `.agent/handoff.md`; `--stat` restricted to `packages/`, `tests/`, `docs/` and `apps/ui/src/components/` each EMPTY; `^<<<SLICE `/`^<<<END ` 0/0 in the plan at C1 and 0/0 in the ledger at C2 against a CONTROL of 2/2 over the C0a blob; insertions 273, 199, 16, 2, 92, 97 for C0a…C4, each single-parent and under 500. Serial readers, each a REAL exit 0 and each EQUAL to the base: canary 42, `tests/ui_server/` 489, `test_test_runner.py` 52, `test_resource_safety.py` 21, `test_integrity_gate.py` 16.
-
+G1 exit 0 — branch `feature/f031-decision-inbox`; `git status --porcelain` 0 lines after C0a, C0b, C1 and C2; `.agent/STOP` ABSENT at both ordered readings, before C0a and before C3; block sha256 `13557d48…72a53a6a`, 18240 bytes, 198 lines at C0a, at C0b and off disk at C2, all three EQUAL; C0a and C0b are the SAME git blob `471a17b5ed46`; lines that are a run of one repeated character: NONE. THIS PROOF COVERS THE SAVED COPY, ITS MIRROR AND THE WORKING COPY — all three my own output — AND NOT THE BYTES EMITTED TO ME, per §3 item 37.
+G2 exit 0 — the extractor read the COMMITTED C0a blob by its marker LINES and printed 2 slices: PLANF031R62 46 content lines, LEDGER62 1. CONTENT 47, TOTAL 198, PROSE 151 with markers counted as prose. 151 ≤ 400 and 198 ≤ 490.
+G3 exit 0 — `.agent/plan.md` at C1 byte-equal to PLANF031R62 TRUE under the newline-INCLUDED convention; negative control against the slice minus its trailing newline FALSE; `^## Goal$` 1; `^## Next Steps$` 1; `wc -l` 46, strictly under 50.
+G4 exit 0 — the pre-C2 blob is 960745 bytes over 390 blank-line units, exactly the reviewer's base reading at `81a9fad6`. Reader A: 960745 + 1 + 5010 = 965756 and the committed blob is 965756, equality TRUE. Reader B: N counted by my own script is 1, units 390 before and 391 after, and the last 1 unit equals the slice's 1 paragraph IN ORDER. Negative control flipped ONE byte IN MEMORY inside the FIRST appended paragraph: reader A REJECTS and reader B REJECTS. The tracked file was never mutated.
+G5 exit 0 — before→after C2: `^- R-\d+ — ` 268→268, `^Done: R-\d+ — ` 16→16, `^Landed: R-` 0→0, `^Gate: R\d+ — ` 19→19, `^Gate: F\d+ R\d+ — ` 42→43. Gate keys ADDED exactly `F031 R61` and REMOVED none; finding ids ADDED none, REMOVED none; RESOLVED ids ADDED none, REMOVED none. All ids DISTINCT, maximum id R-0707. Open set 252 before and 252 after.
+G6 exit 0 — both path residues over `81a9fad6..17b31a36` EMPTY against the expected set, the Change list MINUS `.agent/handoff.md`. `git diff --stat` restricted to `apps/`, `packages/`, `tests/` and `docs/` — the last WHOLE, not only its subtrees — each EMPTY. Markers `^<<<SLICE ` and `^<<<END ` 0 and 0 in `.agent/plan.md` at C1 and `.agent/live_review.md` at C2, against a CONTROL of 2 and 2 over the C0a blob. Insertions 198, 115, 13 and 2, each commit single-parent and under 500. `git ls-files .remedy-wt` 0 lines, `git worktree list` 1 line, `git ls-files --others --exclude-standard` 0 lines.
+G7 exit 0 — run SERIALLY in the PRIMARY checkout at C2, never two pytest processes alive at once, each a REAL `returncode` of 0: canary `tests/cli/test_golden_path.py` 42 passed; `tests/ui_server/` 489 passed; `tests/orchestration/test_test_runner.py` 52 passed; `tests/regression/test_resource_safety.py` 21 passed; `tests/orchestration/test_integrity_gate.py` 16 passed. Every count EQUAL to the reviewer's base reading at `81a9fad6`; nothing moved.
 ## Authored-text proofs
-Both slices applied byte for byte from the COMMITTED C0a blob, never retyped:
-PLANF031R61 → `.agent/plan.md` (G3 byte-equal True), LEDGER61 → appended to
-`.agent/live_review.md` (G4 readers A and B). Neither looked wrong.
-
+Both slices were extracted from the COMMITTED C0a blob by their `<<<SLICE`/`<<<END` marker lines and applied programmatically; neither was retyped, reflowed or corrected, and no marker line reached a target. PLANF031R62 → `.agent/plan.md` byte-equal TRUE (G3). LEDGER62 → `.agent/live_review.md` pre-blob + ONE newline + slice TRUE (G4).
 ## Deviations & assumptions
-The ordered sequence C0a…C5 was followed exactly: no extra commit, none dropped,
-none reordered. Beyond the two header paragraphs S1 and S3 order, I also extended
-the JSDoc directly above each widened function to name the new optional argument,
-because those comments enumerate the parameters and would otherwise describe a
-signature that no longer exists; no refusal, header map, path or serialisation was
-touched. The Bundle orders 7 commits, over five, so the cap is 100 lines and this
-file is inside it — no DECISION D15 declaration is needed or made.
-
+None. The ordered sequence C0a, C0b, C1, C2, C3 then push was followed exactly — no extra commit, none dropped, none reordered, none merged. NO SLICE LOOKED WRONG: every R61 value LEDGER62 quotes that is re-readable off disk checks out (block 22698 bytes over 273 lines at blob `e3ff588d9222`, plan 45 lines, handoff 96 lines), so nothing was applied against its own text. The Bundle orders FIVE commits, which is not MORE THAN FIVE, so the cap is 60 lines and this file meets it in the shape constraint 8 orders; no DECISION D15 declaration is made or needed.
 ## Next
-1. Re-read `.agent/STOP` from disk (Phase 1 rule 1) before anything else.
-2. The Open PR Gate.
-3. Review THIS round's handback and record its verdict.
-4. Then the MARKUP half: the card renders a field per open clarification, collects
-   them into the map and passes it to the widened flow, with
-   `tests/ui_contracts/test_decision_answer_wiring.py` moving with the call string
-   it pins.
+THIS IS THE LAST ROUND OF ITS SESSION, so this section is what the next session resumes from, in this order: (1) re-read `.agent/STOP` from disk first — Phase 1 rule 1 before rule 2; (2) the Open PR Gate per AGENTS.md; (3) review THIS round's handback and record its verdict; (4) the MARKUP half — the card renders a field per open clarification, collects them into the map and passes that map to the flow R61 widened, with `tests/ui_contracts/test_decision_answer_wiring.py` moving together with the call string it pins. No round number is given to any of them: §3 item 35 forbids numbering a round that has not begun.
