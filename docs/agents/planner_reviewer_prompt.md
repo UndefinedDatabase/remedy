@@ -855,6 +855,21 @@ end the response with:
       sentence naming an ITEM the list does not hold, because no numeral is stated and
       no arity changes — the list is well-formed, correctly numbered, and simply
       missing the thing the paragraph beside it promised.
+      The recurrence at R56 widens this item from a MISSING item to a WRONG LABEL, and
+      it is why the item is not yet a habit: the R56 block landed this very
+      counter-measure while its own PLANF031R56 slice reproduced the class inside the
+      same commit range. That slice's `## Next Steps` gave item 1 to an unnumbered
+      resolution sweep and labelled item 2 `R57`, while the sweep IS a round and takes
+      R57, so the markup is R58 and the label was wrong the moment it was written —
+      the same arithmetic as the R55 instance, one round later, under the rule written
+      to stop it. A state slice therefore assigns a round NUMBER to the round it is
+      written FOR and to no other: a step not yet begun is named by what it DOES, and
+      the number it will carry is not knowable while any step ahead of it can still be
+      inserted, split or dropped. The prose-versus-list reading above catches an item
+      the list does not hold; only this one catches a label the list holds in the
+      WRONG POSITION, because there the list is complete, correctly ordered, and every
+      sentence about it is true except the numeral — which is the half no reader
+      re-derives, since deriving it means counting the rounds that have not happened.
 
   Why this is on disk and not a habit: item 2 has recurred six times across
   F104 and F105, and R20 hit four of them in one block. A check that lives
