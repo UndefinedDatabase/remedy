@@ -1,20 +1,22 @@
-── STEP T001 the answerable key, repaired / F031 — ROUND R44 ──────────
-Goal:        Repair the key R43 landed. `answerable_by_decision_resolve` reports
-             True for an ALREADY-ANSWERED task decision, which the write door
-             refuses 409, so the helper gains the OPEN condition the door itself
-             applies — with the test that discriminates it. Also record R43's
-             verdict, register R-0695 and land DECISION F031 D21.
+── STEP T002 the browser half of D19 / F031 — ROUND R45 ───────────────
+Goal:        Carry answerability into the browser. `DecisionCardModel` gains the
+             endpoint's third key, every answer gains a `posts` flag derived
+             from it, and `DecisionInboxCard` renders a non-posting answer as
+             PASTEABLE TEXT instead of a button the door would refuse. Also
+             record R44's verdict and land DECISION F031 D22.
 Bundle:      C0a save this block · C0b mirror it into `last_block` · C1 the plan
-             · C2 the finding · C3 the R43 gate entry · C4 DECISION F031 D21 ·
-             C5 the repair with its test · C6 handback · then push.
-Change:      Exactly these paths, nothing else. `.agent/authored/f031-r44.md`,
+             · C2 the R44 gate entry · C3 DECISION F031 D22 · C4 the model half
+             · C5 the browser half · C6 handback · then push.
+Change:      Exactly these paths, nothing else. `.agent/authored/f031-r45.md`,
              `.agent/last_block.md`, `.agent/plan.md`, `.agent/live_review.md`,
-             `.agent/decisions.md`, `packages/orchestration/decision_inbox.py`,
-             `tests/orchestration/test_decision_inbox.py`, `.agent/handoff.md`.
-             NO FILE UNDER `apps/` and NO FILE UNDER `docs/` — the browser half
-             is R45's, and R-0694's and R-0695's shared repair in
-             `docs/agents/planner_reviewer_prompt.md` is a reviewer-file round
-             this block deliberately does not open.
+             `.agent/decisions.md`, `apps/ui/src/api/decisionCard.ts`,
+             `apps/ui/src/api/decisionCard.test.ts`,
+             `apps/ui/src/components/panels/DecisionInboxCard.tsx`,
+             `apps/ui/src/components/panels/RightLivePanel.module.css`,
+             `tests/ui_contracts/test_decision_answer_wiring.py`,
+             `.agent/handoff.md`. NO FILE UNDER `packages/` and NO FILE UNDER
+             `docs/` — the endpoint is done and R-0695's process half is a
+             reviewer-file round this block does not open.
 
 Constraints:
  1. EVERY SLICE IS APPLIED BYTE FOR BYTE. Never retype one, never reflow one,
@@ -22,81 +24,121 @@ Constraints:
     round anyway — a corrected slice destroys the transport proof, and stopping
     early would lose the record this round exists to write.
  2. THE CODE IS DESCRIBED, NOT SLICED. Section S below is a numbered SPEC, not
-    an authored text: you write the Python yourself to satisfy it, in the
-    surrounding file's own idiom. The byte-for-byte rule of constraint 1 binds
-    the marked SLICES and nothing else; report how many your extractor found.
- 3. THE COMMIT ORDER IS FIXED: C0a, C0b, C1, C2, C3, C4, C5, C6. The finding
-    lands at C2 BEFORE the gate entry at C3, and C5 lands after both. No pair
-    may be reordered. LEDGER44 and FINDINGS44 state facts about THIS round's
-    own commits, and this constraint is what makes them true on landing.
- 4. C0a AND C0b LAND WHILE `.agent/plan.md` STILL DESCRIBES R43. That is
+    an authored text: you write the TypeScript, the CSS and the Python yourself
+    to satisfy it, in each surrounding file's own idiom. The byte-for-byte rule
+    of constraint 1 binds the marked SLICES and nothing else; report how many
+    your extractor found.
+ 3. THE COMMIT ORDER IS FIXED: C0a, C0b, C1, C2, C3, C4, C5, C6. The model half
+    at C4 lands BEFORE the browser half at C5, so `vitest` is green again at C4
+    and the component consumes a field that already exists. No pair may be
+    reordered. LEDGER45 states facts about THIS round's own commits, and this
+    constraint is what makes them true on landing.
+ 4. C0a AND C0b LAND WHILE `.agent/plan.md` STILL DESCRIBES R44. That is
     ordered: the plan becomes current at C1, the first substantive commit.
- 5. THE FINDING AND THE DECISION ARE THE REVIEWER'S TEXT. You never write a
-    `Done:` paragraph, never edit a finding's wording, never edit D21. R-0695 is
-    registered here and its CODE half is fixed here at C5; its PROCESS half —
-    a `docs/agents/planner_reviewer_prompt.md` §3 item it shares with R-0694 —
-    is not in this round's change set and stays OPEN.
- 6. THE LEDGER SETS MOVE ONCE EACH. Across C2 `^- R-\d+ — ` moves 255 to 256
-    with the id ADDED exactly `R-0695` and none REMOVED. Across C3
-    `^Gate: F\d+ R\d+ — ` moves 24 to 25 with the ADDED key exactly `F031 R43`.
-    Across both, `^Done: R-\d+ — ` stays 5, `^Landed: R-` stays 0 and
-    `^Gate: R\d+ — ` stays 19. The open set is 250 before C2 and 251 after.
+ 5. THE GATE ENTRY AND THE DECISION ARE THE REVIEWER'S TEXT. You never write a
+    `Done:` paragraph, never edit LEDGER45, never edit D22. NO FINDING IS
+    REGISTERED THIS ROUND: R44 passed every gate and raised none, so
+    `^- R-\d+ — ` does not move and the open set stays where C2 finds it.
+ 6. THE LEDGER SETS MOVE ONCE. Across C2 `^Gate: F\d+ R\d+ — ` moves 25 to 26
+    with the ADDED key exactly `F031 R44`. Across C2, `^- R-\d+ — ` stays 256,
+    `^Done: R-\d+ — ` stays 5, `^Landed: R-` stays 0 and `^Gate: R\d+ — ` stays
+    19. The open set is 251 before C2 and 251 after. `^## DECISION F031 D\d+ `
+    is 21 before C3 and 22 after.
  7. RE-READ `.agent/STOP` FROM DISK before C0a and again before C6. If it exists
     at either reading, finish the commit in hand, write the handback and STOP.
     Never create it, never delete it.
- 8. DESTRUCTIVE VERIFICATION IS ISOLATED. Every mutation and every red control
-    of gate G7 runs inside a disposable `git worktree` under `.remedy-wt/`,
-    NEVER in the primary checkout, and the worktree is removed BY ITS EXACT PATH
-    when G7 ends. Nothing under `.remedy-wt/` is ever committed, and
-    `.remedy-wt/f031-r44-block.md` is the reviewer's scratch copy — leave it
-    alone, do not delete it. `git status --porcelain` reads 0 lines at every
-    commit, which is what isolation buys.
+ 8. DESTRUCTIVE VERIFICATION IS ISOLATED. Every red control of gate G7 runs
+    inside a disposable `git worktree` under `.remedy-wt/`, NEVER in the primary
+    checkout, and the worktree is removed BY ITS EXACT PATH when G7 ends. A
+    fresh worktree has NO `apps/ui/node_modules` and a symlink is refused in
+    this session, so populate it with
+    `shutil.copytree(src, dst, symlinks=True)` — `symlinks=True` is ORDERED, not
+    optional, because the default dereferences npm's bin shims and manufactures
+    failures the control would then report as real (finding R-0591). Nothing
+    under `.remedy-wt/` is ever committed, and `.remedy-wt/f031-r45-block.md` is
+    the reviewer's scratch copy — leave it alone, do not delete it.
+    `git status --porcelain` reads 0 lines at every commit.
  9. THIS SESSION'S COMMAND GUARD rejects shell loops, `$?`, `$( )` inside a
     compound, `cp`, brace literals containing a quote character, and every form
     of environment assignment. Route anything that counts, hashes or compares
     through `python3 - <<'PY'`, read real exit codes from
     `subprocess.run(...).returncode`, build dicts with `dict(key=value)`, and
-    copy with `shutil.copyfile`. Keep each heredoc modest in size.
+    copy with `shutil.copyfile` or `shutil.copytree`. Run `npx` through
+    `subprocess.run` with `cwd="apps/ui"`, never through a `cd` compound.
 
-S. THE SPEC for C5. Write both files to satisfy every numbered item; the item
-numbers are the contract, the wording is not a text to copy.
- S1. In `packages/orchestration/decision_inbox.py`, widen the existing import of
-     `find_task_decision` from `packages.orchestration.escalation` to also bring
-     in `ESCALATION_STATUS_OPEN`. Both names are module-level in that file and
-     the import stays acyclic for the reason R43's round measured.
- S2. `_answerable_by_decision_resolve` returns True only when the record EXISTS
-     AND its status is `ESCALATION_STATUS_OPEN` — the door's own two conditions,
-     read from the same record the door reads. Keep the helper's body to that
-     one reading and that one comparison; do not branch on the card's `type`,
-     and do not read the card's own `status` key, because the door reads the
-     escalation record and this helper exists to mirror the door.
- S3. Correct the helper's docstring where the new condition makes it stale. Its
-     present MEASURED paragraph stops at `find_task_decision`; the door's refusal
-     of a non-OPEN record lives in `escalation.answer_task_decision`, which
-     returns None unless `record.get("status")` is `ESCALATION_STATUS_OPEN`, and
-     `ui_server._dispatch_decision_resolve` answers that None 409
-     `rejected_state`. Say that the predicate is TWO conditions and name where
-     each is enforced. Finding R-0695 carries the measurement.
- S4. The deliberate-absence paragraph that R43 landed STAYS, and gains the one
-     fact that now distinguishes the two predicates: a type check and the door's
-     predicate no longer coincide, because an ANSWERED task decision still yields
-     a card of type `task_decision` while the door refuses it. That is the
-     fixture S6 builds, and it is why this file no longer relies on an absence.
- S5. `build_decision_inbox` and the module docstring are UNCHANGED — the key,
-     its spelling, its position and the two keys beside it all stay as R43 left
-     them. This round changes what the key SAYS, never what the document holds.
- S6. In `tests/orchestration/test_decision_inbox.py`, add to section (g) one
-     test that ANSWERS a task decision through `escalation.answer_task_decision`
-     and then asserts, on the card the SAME job yields afterwards, that
-     `status` is `resolved`, that a second `answer_task_decision` call returns
-     None — the door's real refusal, asserted rather than assumed — and that
-     `answerable_by_decision_resolve` is False. Assert it is True BEFORE the
-     answer in the same test, so the test pins the transition and not one state.
-     Widen that file's existing `escalation` import to bring in
-     `answer_task_decision`; build no new fixture, use `_fixture_task_decision`.
- S7. Nothing else changes in either file. No existing test is deleted, no
-     assertion is weakened, no fixture is edited, and
-     `ANSWERABLE_DECISION_TYPES` keeps its present value and its comment.
+S. THE SPEC. Write every file to satisfy every numbered item; the item numbers
+are the contract, the wording is not a text to copy. S1–S5 are C4, S6–S10 are C5.
+ S1. In `apps/ui/src/api/decisionCard.ts`, `DecisionInboxEntry` gains an optional
+     `answerable_by_decision_resolve?: boolean` — the endpoint's OWN spelling,
+     unrenamed, for the reason DECISION F031 D1 gives.
+ S2. `DecisionAnswer` gains `posts: boolean` with a WHY comment: whether pressing
+     this affordance may POST, false when the write door would refuse the
+     decision, in which case the value is shown as pasteable text instead.
+ S3. `DecisionCardModel` gains `answerableByDecisionResolve: boolean`, the
+     camel-case projection of S1's key, carried so the component never has to
+     read the raw entry.
+ S4. `decisionAnswers` computes `posts` ONCE from
+     `card.answerable_by_decision_resolve === true` and stamps it on EVERY answer
+     it returns, in all three branches — options, next actions and the free-text
+     fallback. The strict `=== true` is deliberate: an ABSENT key must give
+     false, so a payload from an older server never renders a posting button.
+     This function still MUST NOT branch on `card.type`; a derived boolean the
+     server computed is data, exactly as `blocked_count` is.
+ S5. `buildDecisionCardModel` sets `answerableByDecisionResolve` from the same
+     `=== true` reading. Then sweep this file for every sentence the third key
+     makes stale — the `DecisionInboxEntry` docstring says "plus the two keys
+     `build_decision_inbox` adds" — and correct each. Report in the handback how
+     many such sentences you found and where. In
+     `apps/ui/src/api/decisionCard.test.ts`, UPDATE every assertion the new
+     fields break: at the reviewer's dry run 9 tests in that file failed, 2 under
+     `buildDecisionCardModel` and 7 under `decisionAnswers`, all of them whole-
+     object or whole-array equalities. ADD the new fields to their expected
+     literals. DO NOT weaken an assertion to make it pass — `toMatchObject` is 0
+     across every file matching `apps/ui/src/**/*.test.ts` today and must still
+     be 0 when you are done. ADD tests pinning: the key TRUE gives `posts` true
+     on every answer, the key FALSE gives `posts` false on every answer, and the
+     key ABSENT gives `posts` false.
+ S6. In `apps/ui/src/components/panels/DecisionInboxCard.tsx`, an answer whose
+     `posts` is false renders NOT as a `<button>` but as pasteable text carrying
+     `answer.value`, in a `<code>` element with its own class. An answer whose
+     `posts` is true renders exactly the button it renders today, unchanged in
+     every attribute. Keep the `<p>` outcome paragraph EXACTLY where it is, one
+     per answer, rendered from the row's first render — finding R-0686 and the
+     guards `tests/ui_contracts/test_decision_answer_wiring.py` already carries
+     bind here and this round must leave every one of them green.
+ S7. THE CONDITIONAL GOES BEFORE THE BUTTON, NEVER BETWEEN THE BUTTON AND THE
+     PARAGRAPH. `jsx_between_answer_button_and_live_paragraph` in that contract
+     file reads everything between the LAST `</button>` and the outcome `<p` and
+     forbids `?`, `&&` and `||` in it. The reviewer measured the shape this
+     block asks for and it passes; a shape with the ternary's `?` after the
+     button's closing tag does not. If your rendering needs the other order, do
+     NOT reorder the guard — say so in the handback and keep this order.
+ S8. The component's HEADER comment currently promises that the buttons "ship
+     ENABLED and a press really reaches `/api/jobs/<job_id>/commands`". That is
+     now true only of a posting answer. Correct that paragraph to say what is
+     now true, and record the deliberate absence a reader will search for: this
+     component still does NOT branch on a decision's `type` or `status` — it
+     reads a per-answer boolean the model derived — so DECISION F031 D5's rule
+     is intact and the guard that pins it stays green.
+ S9. In `apps/ui/src/components/panels/RightLivePanel.module.css`, add the
+     rule for S6's class beside the existing `.decisionAnswer` rule at line 256.
+     It is TEXT, not a control: no button chrome, `--remedy-font-mono`, a muted
+     colour, and `user-select: all` so one click selects the whole command —
+     "pasteable" is the point of the affordance, not a description of it. Use
+     only tokens `apps/ui/src/styles/tokens.css` already defines; the reviewer
+     measured that no new token is owed.
+ S10. In `tests/ui_contracts/test_decision_answer_wiring.py`, ADD guards — do not
+     edit or delete an existing one — pinning what S6 and S7 establish: that the
+     component renders `answer.posts` as the discriminator, that a `<code>`
+     element carrying `answer.value` exists, that the class S9 adds really has a
+     rule in the stylesheet, and that the region between the last `</button>`
+     and the outcome `<p` still holds none of `?`, `&&`, `||`. The last one
+     re-uses the reader already in that file. WITHOUT S10 THE TEXT BRANCH IS
+     UNGUARDED: today's guards do not forbid the wrong order, they merely fail
+     to require the right one, and the reviewer measured that difference.
+ S11. Nothing else changes in any file. No existing test is deleted, no assertion
+     weakened, no fixture edited, and no file under `packages/` or `docs/` is
+     touched.
 
 Done when — run every gate yourself and record its REAL exit code. G1 through G9
 run at commits STRICTLY EARLIER than C6, so the handback can quote them; the
@@ -112,66 +154,67 @@ push is ordered after C6 and its reading is NOT written into the handback.
      extractor printed, the CONTENT line total, the TOTAL line count, and PROSE
      as TOTAL minus CONTENT. MARKERS ARE PROSE. PROSE must be at most 400 and
      TOTAL at most 490.
- G3. THE PLAN. `.agent/plan.md` at C1 is BYTE-EQUAL to PLANF031R44 under the
+ G3. THE PLAN. `.agent/plan.md` at C1 is BYTE-EQUAL to PLANF031R45 under the
      newline-INCLUDED convention. Run the negative control against the slice
      MINUS its trailing newline and report it FALSE. Report `^## Goal$` 1,
      `^## Next Steps$` 1, and `wc -l` STRICTLY UNDER 50.
  G4. THE APPENDS, EACH PROVED TWICE, THE SECOND READER COVERING THE WHOLE
      APPENDED REGION. Read every non-current revision with `git show <rev>:<path>`
      into memory; never write a past blob over a tracked file to read it.
-     `.agent/live_review.md` at C2 equals its pre-commit blob
-     plus ONE newline plus FINDINGS44; at C3 equals ITS pre-commit blob plus ONE
-     newline plus LEDGER44; `.agent/decisions.md` at C4 equals its pre-commit
-     blob plus ONE newline plus DECISION21. The pre-commit blob for C2 is 841494
-     bytes and for C4 is 603923 bytes. For EACH append report both byte counts
-     and the sum. Then confirm EACH with a SECOND, independent reader: split the
-     whole file on blank lines, let N be the number of paragraphs YOUR SCRIPT
-     COUNTS in that slice — never a number this block asserts — and compare the
-     LAST N units of the file against the slice's N paragraphs IN ORDER. Report
-     N and the unit count before and after for each. THE NEGATIVE CONTROL GOES
-     ON THE FIRST APPENDED PARAGRAPH, which is the position a tail-only reading
-     cannot see: flip ONE byte IN MEMORY inside paragraph 1 of each slice and
-     report that BOTH readers REJECT it. For any slice whose N is 1, say so and
-     note that paragraph 1 is also the last. Never mutate the tracked file.
- G5. THE LEDGER SETS. Report at three points — before C2, after C2, after C3 —
-     the line-anchored counts of `^- R-\d+ — `, `^Done: R-\d+ — `,
-     `^Landed: R-`, `^Gate: R\d+ — ` and `^Gate: F\d+ R\d+ — `, plus the ids
-     ADDED and REMOVED as SETS at each step, whether all ids are DISTINCT, and
-     the maximum id. Every movement constraint 6 names is checked here. Report
-     the open set as `^- R-\d+ — ` minus `^Done: R-\d+ — ` before C2 and after
-     C3. Also report `^## DECISION F031 D\d+ ` in `.agent/decisions.md` as 20
-     before C4 and 21 after.
- G6. THE SPEC, ITEM BY ITEM. For EACH of S1 through S7 report DONE or NOT DONE
-     with the file and line where it landed. For S5 report the evidence rather
-     than the word: `git diff` over C5 restricted to
-     `packages/orchestration/decision_inbox.py` must show NO change inside
-     `build_decision_inbox` and NO change to the module docstring, and you state
-     which hunks the diff actually contains. Report `python3 -m ruff check` on
-     both changed files at its REAL exit code, and the count of `assert`
-     statements the test file holds before and after.
- G7. THE TESTS, THE RED CONTROL AND THE MUTATIONS. In the PRIMARY checkout at C5
-     run `python3 -m pytest tests/orchestration/test_decision_inbox.py -q` and
-     report its REAL exit code and collected count; at `46ae059f` that file
-     collects 33. Then, INSIDE A DISPOSABLE WORKTREE and never in the primary
-     checkout, run these, one at a time, restoring the tree between them and
-     re-checking byte-equality with the original after each restore. EVERY ONE
-     of them edits `packages/orchestration/decision_inbox.py` and no other file,
-     and each names bytes that occur exactly once in it:
-     (a) THE RED CONTROL — keep S6's new test, and change ONLY the helper's
-         return so it reads `find_task_decision(job, str(decision_id)) is not
-         None` again, leaving the import and every other line in place;
-     (b) make `_answerable_by_decision_resolve` return `True` unconditionally;
-     (c) make it return `False` unconditionally.
-     For EACH report the REAL exit code and the `FAILED` NODE IDS the run
-     printed. Do NOT predict which test fails, do not predict how many fail, and
-     do not name an expected colour — report what the run printed. A mutation
-     that does not change the outcome is a finding you write into the handback,
-     not a number to adjust.
+     `.agent/live_review.md` at C2 equals its pre-commit blob plus ONE newline
+     plus LEDGER45; `.agent/decisions.md` at C3 equals ITS pre-commit blob plus
+     ONE newline plus DECISION22. The pre-commit blob for C2 is 849619 bytes and
+     for C3 is 605733 bytes. For EACH append report both byte counts and the sum.
+     Then confirm EACH with a SECOND, independent reader: split the whole file on
+     blank lines, let N be the number of paragraphs YOUR SCRIPT COUNTS in that
+     slice — never a number this block asserts — and compare the LAST N units of
+     the file against the slice's N paragraphs IN ORDER. Report N and the unit
+     count before and after for each. THE NEGATIVE CONTROL GOES ON THE FIRST
+     APPENDED PARAGRAPH, which is the position a tail-only reading cannot see:
+     flip ONE byte IN MEMORY inside paragraph 1 of each slice and report that
+     BOTH readers REJECT it. For any slice whose N is 1, say so and note that
+     paragraph 1 is also the last. Never mutate the tracked file.
+ G5. THE LEDGER SETS. Report before C2 and after C2 the line-anchored counts of
+     `^- R-\d+ — `, `^Done: R-\d+ — `, `^Landed: R-`, `^Gate: R\d+ — ` and
+     `^Gate: F\d+ R\d+ — `, plus the ids and gate keys ADDED and REMOVED as SETS,
+     whether all ids are DISTINCT, and the maximum id. Every movement constraint
+     6 names is checked here, INCLUDING the ones that must NOT move. Report the
+     open set as `^- R-\d+ — ` minus `^Done: R-\d+ — ` at both points. Also
+     report `^## DECISION F031 D\d+ ` in `.agent/decisions.md` before and after
+     C3.
+ G6. THE SPEC, ITEM BY ITEM. For EACH of S1 through S11 report DONE or NOT DONE
+     with the file and line where it landed. Report, over
+     `apps/ui/src/api/decisionCard.ts` at C4, every line containing the word
+     `two`, so the reviewer can see S5's staleness sweep rather than take it on
+     trust. Report `toMatchObject(` counted over every file matching
+     `apps/ui/src/**/*.test.ts` at C4 and at C5 — it is 0 today and must be 0 at
+     both. Report the count of `it(` in
+     `apps/ui/src/api/decisionCard.test.ts` before and after C4, and the count of
+     `def test_` in `tests/ui_contracts/test_decision_answer_wiring.py` before
+     and after C5; both must GROW and neither file may lose one.
+ G7. THE UI TOOLCHAIN AND ITS RED CONTROLS. In the PRIMARY checkout run, through
+     `subprocess.run` with `cwd="apps/ui"`: `npx tsc --noEmit` and
+     `npx vitest run --reporter=basic`, at C4 and again at C5, reporting the REAL
+     exit code and the test-file and test totals each time. At `f98a91cd` these
+     read exit 0 with 30 files and 448 tests. THEN, INSIDE A DISPOSABLE WORKTREE
+     populated per constraint 8 and never in the primary checkout, run these red
+     controls, one at a time, restoring the tree between them and re-checking
+     byte-equality with the original after each restore:
+     (a) in `apps/ui/src/api/decisionCard.ts`, change S4's `=== true` to
+         `!== false`, so an ABSENT key would render a posting button;
+     (b) in the same file, stamp `posts: true` on every answer unconditionally.
+     For EACH report the REAL exit code of `npx vitest run` and the FAILING TEST
+     NAMES the run printed. Do NOT predict which test fails, do not predict how
+     many fail, and do not name an expected colour — report what the run printed.
+     A control that does not change the outcome is a finding you write into the
+     handback, not a number to adjust: it means the tests S5 adds do not
+     discriminate, and the reviewer wants to know that far more than it wants a
+     green line.
  G8. MARKERS, PATHS, COMMITS. Line-anchored `^<<<SLICE ` and `^<<<END ` are 0
-     and 0 in `.agent/plan.md` at C1, `.agent/live_review.md` at C3,
-     `.agent/decisions.md` at C4 and BOTH files C5 touches, against a CONTROL
-     count over the C0a blob, which is not 0. Report
-     `git diff --name-only 46ae059f..C5` and compare it BOTH WAYS against this
+     and 0 in `.agent/plan.md` at C1, `.agent/live_review.md` at C2,
+     `.agent/decisions.md` at C3 and EVERY file C4 and C5 touch, against a
+     CONTROL count over the C0a blob, which is not 0. Report
+     `git diff --name-only f98a91cd..C5` and compare it BOTH WAYS against this
      round's expected path set. Report each commit's insertions from
      `git diff --numstat`, confirm each is single-parent and under 500. Report
      `git ls-files .remedy-wt` as 0 and `git worktree list` as 1 line at C5,
@@ -180,43 +223,42 @@ push is ordered after C6 and its reading is NOT written into the handback.
      those entries `amend`, `rebase` and `cherry` must be 0 each. Do not count
      those words over the whole reflog, which holds this repository's entire
      history and is not what this gate asks.
- G9. THE STATE READERS AND THE CANARY, in the PRIMARY checkout at C5 and
-     SERIALLY — never two pytest processes alive at once. Run and report the
-     real exit code and count of each: `tests/ui_server/`,
+ G9. THE STATE READERS, THE CONTRACTS AND THE CANARY, in the PRIMARY checkout at
+     C5 and SERIALLY — never two pytest processes alive at once. Run and report
+     the real exit code and count of each: `tests/ui_server/`,
      `tests/orchestration/test_test_runner.py`,
      `tests/regression/test_resource_safety.py`,
-     `tests/orchestration/test_integrity_gate.py`, and the canary
-     `tests/cli/test_golden_path.py`. At `46ae059f` these read 480, 52, 21, 16
-     and 42. ALSO run `tests/ui_contracts/`, which must be UNCHANGED at 556
-     passed with 4 skipped — this round touches no file under `apps/`. ON ANY
-     RED, capture the `FAILED` node ids BEFORE anything else and re-run that
-     suite ALONE five more times, reporting every reading and every node id; a
-     red you cannot reproduce is reported WITH its node ids, never absorbed.
+     `tests/orchestration/test_integrity_gate.py`, the canary
+     `tests/cli/test_golden_path.py`, and `tests/ui_contracts/`. At `f98a91cd`
+     these read 480, 52, 21, 16, 42 and 556 passed with 4 skipped;
+     `tests/ui_contracts/` MUST GROW by exactly the guards S10 adds and you
+     report both numbers. ON ANY RED, capture the `FAILED` node ids BEFORE
+     anything else and re-run that suite ALONE five more times, reporting every
+     reading and every node id; a red you cannot reproduce is reported WITH its
+     node ids, never absorbed.
 Handback:    Rewrite `.agent/handoff.md` per docs/agents/handback_template.md at
              C6: feature and round, branch, the per-commit changed-files table
              with the `+/-` column taken from `git diff --numstat` itself and
              agreeing cell for cell with G8, the item-status table covering C0a,
-             C0b, C1, C2, C3, C4, C5, C6, each of S1 through S7 and the push,
-             ONE LINE PER GATE for G1 through G9 with its real exit code, an
-             explicit line for R-0695 saying what was registered, that its CODE
-             half landed at C5 and that its PROCESS half stays OPEN, the
+             C0b, C1, C2, C3, C4, C5, C6, each of S1 through S11 and the push,
+             ONE LINE PER GATE for G1 through G9 with its real exit code, the
              open-findings count, and the next expected action. THE NEXT ACTION
              SECTION NAMES, IN THIS ORDER: re-read `.agent/STOP` from disk
              first, then the Open PR Gate, then review this round's handback,
-             then R45 — the browser half of D19, the model field and the card
-             that renders no button the door refuses. Derive your line cap from
-             AGENTS.md yourself, from the commit count you actually made; if the
-             mandated content genuinely does not fit, declare the DECISION D15
-             overage with its stated cause. Then push with
-             `git push origin feature/f031-decision-inbox`.
+             then R46 — the `fp:`-prefixed dispatch DECISION F009 D5 planned and
+             did not ship, reusing `flight_plan.resolve_flight_plan_approval`.
+             Derive your line cap from AGENTS.md yourself, from the commit count
+             you actually made; if the mandated content genuinely does not fit,
+             declare the DECISION D15 overage with its stated cause. Then push
+             with `git push origin feature/f031-decision-inbox`.
 ──────────────────────────────────────────────────────────────────────
 
-<<<SLICE PLANF031R44
+<<<SLICE PLANF031R45
 # Plan — F031 Decision inbox
 
 Branch: feature/f031-decision-inbox, cut from `main` at `6325ac2f`, the pull
 request #213 merge closing F022. `.agent/live_review.md` is the record and the
-id ceiling, `.agent/decisions.md` D1–D21.
+id ceiling, `.agent/decisions.md` D1–D22.
 
 ## Goal
 Every open question in one calm place: the inbox renders decision cards — type,
@@ -225,76 +267,72 @@ branch-only blocking semantics intact, ordered by a documented rule over age and
 blocked size, and answerable from the card through the write channel.
 
 ## Current Step
-R44 repairs the key R43 landed. `answerable_by_decision_resolve` reported True
-for an ALREADY-ANSWERED task decision, which the door refuses 409, so the helper
-gains the OPEN condition the door itself applies, with the test that
-discriminates it. The round also records R43's PASS, registers R-0695 and lands
-DECISION F031 D21, which moves the browser half to R45.
+R45 carries answerability into the browser, which is DECISION F031 D19's second
+clause and the half D20 split off. `DecisionCardModel` gains the endpoint's third
+key, every answer gains a `posts` flag derived from it, and `DecisionInboxCard`
+renders a non-posting answer as pasteable TEXT rather than as a button the write
+door would refuse. It also records R44's PASS and lands DECISION F031 D22.
 
 ## Next Steps
-1. R45: the browser half of D19 — `DecisionCardModel` gains the field and
-   `DecisionInboxCard` renders a non-answerable card's `next_actions` as
-   pasteable TEXT rather than as a posting button.
-2. R46: the `fp:`-prefixed dispatch DECISION F009 D5 planned and did not ship,
+1. R46: the `fp:`-prefixed dispatch DECISION F009 D5 planned and did not ship,
    reusing `flight_plan.resolve_flight_plan_approval`. Then R47: the
    clarification FORM over `payload.clarifications`.
-3. A reviewer-file round landing the §3 checklist item R-0694 and R-0695 share.
-4. The integration-gate round per `docs/agents/integration_gate.md`, then
+2. A reviewer-file round landing the §3 checklist item R-0694 and R-0695 share:
+   a block computing a value from another module's predicate reads that
+   predicate's OWN refusal conditions, not merely its route to the data.
+3. The integration-gate round per `docs/agents/integration_gate.md`, then
    closure per `docs/roadmap/STATUS_closure_protocol.md`.
 
 ## Risks
-- SEVEN OF THE EIGHT PRODUCING TYPES CANNOT BE ANSWERED THROUGH THE DOOR, and
-  every one still ships an enabled button until R45. R-0693 measures it, D19
-  rules it, and the wire carries the fact from R43 on.
-- THE DOOR'S PREDICATE IS TWO CONDITIONS, NOT ONE: the record must EXIST and be
-  OPEN. R43 encoded only the first, no fixture answered a decision before
-  reading the card, and the suite stayed green over a value that was false for
-  every answered task decision. R-0695 carries the measurement.
+- AFTER THIS ROUND THE INBOX STILL OFFERS NO WAY TO ANSWER SEVEN OF THE EIGHT
+  PRODUCING TYPES — it stops LYING about them, which is D19's whole claim, and
+  R46 is where the `fp:` prefix gains a real dispatch. R-0693 measures the gap.
 - NO DOM HARNESS REACHES THE INBOX MARKUP. `apps/ui/vitest.config.ts` collects
-  `src/**/*.test.ts`, so R45's component change will be gated by
-  comment-stripped SOURCE reading and by `tsc --noEmit`, never by a rendered
-  click. R-0689, R-0690 and R-0691 are the guards written against that gap.
+  `src/**/*.test.ts` and no DOM environment ships, so this round's component
+  change is gated by comment-stripped SOURCE reading in
+  `tests/ui_contracts/test_decision_answer_wiring.py` and by `tsc --noEmit`.
+- THE REGION GUARD FORBIDS AN OPERATOR, NOT AN ORDER: the reader between the
+  last `</button>` and the outcome `<p` rejects `?`, `&&` and `||`, so a correct
+  render written in the other order goes red for an unrelated-looking reason.
+- THE DEFAULT DEADLINE CREATES A TIMER IT CANNOT CANCEL, as
+  `decisionAnswerFlow.ts`'s own header records: the seam DECISION F031 D18 chose
+  carries no handle, so when the submit wins the 20-second timer still fires.
 - Open findings, by the rule DECISION F009 D10 requires — every `^- R-\d+ — `
-  paragraph minus every `^Done: R-\d+ — ` line — the set is 250 at `46ae059f`
-  and this round takes it to 251.
+  paragraph minus every `^Done: R-\d+ — ` line — the set is 251 at `f98a91cd`
+  and this round does not move it.
 - BLOCK CAPS ARE TWO: 490 lines TOTAL (DECISION F085 D6) and 400 lines PROSE
   (DECISION F085 D5); every block states and re-measures both.
-<<<END PLANF031R44
+<<<END PLANF031R45
 
-<<<SLICE FINDINGS44
-- R-0695 — Medium, THE ANSWERABILITY KEY REPORTS TRUE FOR AN ALREADY-ANSWERED TASK DECISION, WHICH THE WRITE DOOR REFUSES 409. Raised by the reviewer at the R43 gate against its OWN R43 block, whose section S item S2 ordered the helper's body verbatim, so the worker wrote exactly what it was given and the defect is the spec's. THE MEASUREMENT, run by the reviewer in memory at `46ae059f` against a `_fixture_task_decision`-shaped job and never against a stored job: the card reports `answerable_by_decision_resolve` True while its `status` reads `open`; after `escalation.answer_task_decision` accepts one answer, `decision_queue.list_decisions` still yields a card for that record — branch 8 appends unconditionally and lets `is_open` decide only the status, the severity and the next actions — the card's `status` reads `resolved`, a SECOND `answer_task_decision` call returns None, and `answerable_by_decision_resolve` STILL reads True. So the key is false in exactly the state the door refuses. THE CAUSE IS A PREDICATE OF TWO CONDITIONS ENCODED AS ONE: `ui_server._dispatch_decision_resolve` accepts only what `escalation.answer_task_decision` accepts, and that function returns None unless the record EXISTS and `record.get("status")` equals `ESCALATION_STATUS_OPEN`, while `_answerable_by_decision_resolve` tests existence alone through `find_task_decision`. R43's docstring traced the route to the record correctly and stopped one line short of the guard, and the conclusion it drew — that the key says whether the door can answer this card — does not follow from the premise it measured. NO TEST CATCHES IT, AND THE REVIEWER PROVED THAT RATHER THAN ASSUMING IT: adding the missing OPEN condition inside a disposable worktree leaves `tests/orchestration/test_decision_inbox.py` at 33 passed and REAL exit 0, so nothing in that file discriminates the door's predicate from mere existence — every one of the eight `PRODUCING_FIXTURES` builds an OPEN record and none answers one. THE FACT WAS ALREADY IN THE OPEN SET when the R43 block was written: R-0685 states in as many words that `answer_task_decision` is "enforced by returning `None` for any record not OPEN", so the measurement this finding reports was on disk, unread, in the same file the block appends to — which is the second consecutive round whose defect is a block emitted without consulting the open set, the root cause R-0694 and R-0692 both name. NOTHING FALSE HAS RENDERED YET AND THAT IS WHY THIS IS MEDIUM RATHER THAN HIGH: the key is one round old, no browser code reads it until R45, and DECISION F031 D20's split at the wire is what bought the round in which to catch it. THE FIX HAS TWO HALVES. The CODE half is R44's C5 — the helper takes the door's second condition, and a test answers a decision and pins the transition from True to False. The PROCESS half is the §3 checklist item this shares with R-0694, requiring a block that computes a value from another module's predicate to read that predicate's OWN refusal conditions and not merely its route to the data; that item lands in `docs/agents/planner_reviewer_prompt.md`, the reviewer's file, which is in no feature round's change set, and this finding stays OPEN until it does.
-<<<END FINDINGS44
+<<<SLICE LEDGER45
+Gate: F031 R44 — the F031 R44 entry. R44 PASSED ON EVERY ONE OF ITS NINE GATES, AND THE REVIEWER RE-RAN EVERY ONE ITSELF off disk rather than reading the handback back; every value that handback states reproduced cell for cell. TRANSPORT HELD IN ITS STRONGEST FORM AVAILABLE TO THIS WORKFLOW: the reviewer's OWN scratch original `.remedy-wt/f031-r44-block.md`, the C0a blob, the C0b blob and `.agent/last_block.md` read off disk at C5 are ALL FOUR byte-identical at sha256 `87e21495a88fef3c7aed52b8a6ec42f5a96e49859d4cda083cf04177d481275f` over 28458 bytes and 300 lines, with C0a and C0b resolving to the SAME git blob `d84e4272` — the reviewer compared its own scratch file against the committed blob rather than trusting the worker's reading of it. THE EXTRACTION printed 4 slices, CONTENT 76 and TOTAL 300, so PROSE was 224 against 400 and TOTAL 300 against 490. THE PLAN at `0cbf4911` is byte-equal to PLANF031R44 with the minus-newline control FALSE, `^## Goal$` 1, `^## Next Steps$` 1 and `wc -l` 47, strictly under 50. THE THREE APPENDS ARE EXACT AND R-0631'S CLAUSE WAS APPLIED AGAIN: 841494 + 1 + 3235 = 844730 and 844730 + 1 + 4888 = 849619 in the ledger and 603923 + 1 + 1809 = 605733 in `.agent/decisions.md`, blank-line units 348 to 349 to 350 and 1450 to 1455, N counted by the reviewer's own script at 1, 1 and 5, every whole-file identity TRUE, and the byte flip placed on the FIRST appended paragraph REJECTED by BOTH readers on all three. THE SETS MOVED ONLY WHERE CONSTRAINT 6 ALLOWED: `^- R-\d+ — ` 255 to 256 to 256 with ADDED across C2 exactly {`R-0695`} and REMOVED EMPTY, all ids DISTINCT and the maximum `R-0695`; `^Done: R-\d+ — ` 5, `^Landed: R-` 0 and `^Gate: R\d+ — ` 19 throughout; `^Gate: F\d+ R\d+ — ` 24 to 24 to 25 with the ADDED key exactly `F031 R43`; `^## DECISION F031 D\d+ ` 20 to 21; open set 250 before C2 and 251 after C3. MARKERS 0 and 0 in all five written targets against a live CONTROL of 4 and 4. THE CHANGE SET IS EXACT IN BOTH DIRECTIONS at 7 paths over `46ae059f`..`50e97f81`, with the range-minus-expected and expected-minus-range residues BOTH EMPTY, and NOT ONE PATH under `apps/` or `docs/`. THE EIGHT COMMITS ARE EACH SINGLE-PARENT at insertions 300, 194, 20, 2, 2, 28, 59 and 52, every one far under 500; the reviewer read the reflog for ALL EIGHT rather than the seven G8 scoped, and every entry reads `commit:`, so `amend`, `rebase` and `cherry` are 0 each among them; `git ls-files .remedy-wt` is 0 and `git worktree list` is 1 line. THE CODE IS WHAT SECTION S ORDERED, AND S5 WAS PROVED BY AST RATHER THAN BY EYE: the module docstring, `build_decision_inbox`, `_decision_age_seconds` and `_blocked_subtree_size` are all byte-identical between C4 and C5 under `ast.unparse`, only `_answerable_by_decision_resolve` changed, and the diff over that file holds exactly two hunks — so the round changed what the key SAYS and nothing the document HOLDS. `python3 -m ruff check` on both changed files is REAL exit 0, and the test file's `assert` statements counted by AST move 21 to 27. THE TESTS AND THE CONTROLS REPRODUCED EXACTLY: 34 passed at REAL exit 0 against 33 at `46ae059f`; the existence-only red control failed at REAL exit 1 with exactly one FAILED node id, `test_answerable_key_goes_false_once_the_decision_has_been_answered`, which is the new test and therefore the discriminator R-0695 said the suite lacked; `return True` failed 8 and `return False` failed 2, both at REAL exit 1. Every control ran only inside a disposable worktree, the tree was restored byte-equal after each, and the primary checkout read 0 porcelain lines throughout. THE SUITES THE REVIEWER RE-RAN SERIALLY IN THE PRIMARY CHECKOUT are `tests/ui_server/` 480, `tests/orchestration/test_test_runner.py` 52, `tests/regression/test_resource_safety.py` 21, `tests/orchestration/test_integrity_gate.py` 16, the canary 42 and `tests/ui_contracts/` 556 passed with 4 skipped — every reading at REAL exit 0 and identical to the `46ae059f` baseline. THE DEFECT R-0695 REGISTERED IS GONE, AND THE REVIEWER PROVED IT WITH THE SAME PROBE THAT FOUND IT: at `50e97f81` an answered task decision's card reads `status` `resolved` and `answerable_by_decision_resolve` FALSE while a second `answer_task_decision` returns None, where at `46ae059f` the same probe read TRUE against the same None. THE HANDBACK WAS AUDITED AS AN ARTIFACT: all eight `+/-` cells equal `git diff --numstat` exactly, the item-status table covers all sixteen ordered items, one line per gate carries a real exit code, and its 97 lines sit inside the 100-line tier eight tabled commits earn. THE WORKER ALSO CAUGHT ITS OWN DRAFT ERROR AND MEASURED RATHER THAN SHIPPED IT: a DECISION D15 stated-cause line claiming 106 lines against the cap was removed once the file measured 97, so a false declaration never reached disk — which is the R-0526 class defeated by measurement before emission rather than by a reviewer afterwards. NO BLOCK CONDITION AROSE: nothing fabricated, no false green, no missing table, no unverified completion claim and no silent scope change. R44 registered R-0695, repaired its CODE half in the same round, and left its PROCESS half OPEN and named.
+<<<END LEDGER45
 
-<<<SLICE LEDGER44
-Gate: F031 R43 — the F031 R43 entry. R43 PASSED ON EVERY ONE OF ITS NINE GATES, AND THE REVIEWER RE-RAN EVERY ONE ITSELF off disk rather than reading the handback back; every value that handback states reproduced cell for cell. TRANSPORT HELD IN ITS STRONGEST FORM: the C0a blob, the C0b blob, the working copy at C5 and the working copy at the gate are ALL FOUR byte-identical at sha256 `e75fd033eea7922a3d4c222c906a9ce3f84b7f0697aefaf314a54d566a3d4c70` over 26648 bytes and 293 lines, with C0a and C0b resolving to the SAME git blob `2b7bd186`. THE EXTRACTION printed 4 slices, CONTENT 72 and TOTAL 293, so PROSE was 221 against 400 and TOTAL 293 against 490. THE PLAN at `dfce9f74` is byte-equal to PLANF031R43 with the minus-newline control FALSE, `^## Goal$` 1, `^## Next Steps$` 1 and `wc -l` 49, strictly under 50. THE THREE APPENDS ARE EXACT AND R-0631'S CLAUSE WAS APPLIED BY HAND FOR THE FIRST TIME: 834598 + 1 + 2735 = 837334 and 837334 + 1 + 4159 = 841494 in the ledger and 602495 + 1 + 1427 = 603923 in `.agent/decisions.md`, blank-line units 346 to 347 to 348 and 1446 to 1450, N counted by the reviewer's own script at 1, 1 and 4, every whole-file identity TRUE, and the byte flip placed on the FIRST appended paragraph REJECTED by BOTH readers on all three — which is the position the tail-only wording R-0694 registered could not see. THE SETS MOVED ONLY WHERE CONSTRAINT 6 ALLOWED: `^- R-\d+ — ` 254 to 255 to 255 with ADDED across C2 exactly {`R-0694`} and REMOVED EMPTY, all ids DISTINCT and the maximum `R-0694`; `^Done: R-\d+ — ` 5, `^Landed: R-` 0 and `^Gate: R\d+ — ` 19 throughout; `^Gate: F\d+ R\d+ — ` 23 to 23 to 24 with the ADDED key exactly `F031 R42`; `^## DECISION F031 D\d+ ` 19 to 20; open set 249 before C2 and 250 after C3. MARKERS 0 and 0 in all five written targets against a live CONTROL of 4 and 4. THE CHANGE SET IS EXACT IN BOTH DIRECTIONS at 10 paths over `59521bf5`..`f86c0b8f`, the eight commits are each SINGLE-PARENT at insertions 293, 224, 22, 2, 2, 22, 65 and 61, every one far under 500, and every reflog entry for those eight reads `commit:`, so `amend`, `rebase` and `cherry` are 0 each among them; `git ls-files .remedy-wt` is 0 and `git worktree list` is 1 line. THE CODE IS WHAT SECTION S ORDERED, ITEM BY ITEM: the import is acyclic — `escalation.py` imports only `__future__` and `collections.abc` at module level — the helper's body is the single `is not None` expression S2 fixed, the deliberate absence is documented in as many words, the third key sits beside the two existing ones with their order untouched, and the reviewer's own sweep of `packages/orchestration/decision_inbox.py` for the word `two` or a standalone `2` returns 0 lines, so S5's staleness sweep really is complete. `python3 -m ruff check` on both changed files is REAL exit 0, and the test file's `assert` statements counted by AST move 18 to 21. THE TESTS AND THE MUTATIONS REPRODUCED EXACTLY: 33 passed at REAL exit 0 against 25 at `5b810e33`, mutation (a) 7 failed and 26 passed at REAL exit 1, mutation (b) 17 failed and 16 passed at REAL exit 1, both run only inside a disposable worktree with the primary checkout at 0 porcelain lines throughout. THE SUITES THE REVIEWER RE-RAN SERIALLY IN THE PRIMARY CHECKOUT are `tests/ui_server/` 480, `tests/orchestration/test_test_runner.py` 52, `tests/regression/test_resource_safety.py` 21, `tests/orchestration/test_integrity_gate.py` 16, the canary 42 and `tests/ui_contracts/` 556 passed with 4 skipped — every reading at REAL exit 0 and identical to the `5b810e33` baseline, and the unreproduced `test_test_runner.py` red of earlier rounds did not recur. THE HANDBACK WAS AUDITED AS AN ARTIFACT: all eight `+/-` cells equal `git diff --numstat` exactly, the item-status table covers every ordered item, one line per gate carries a real exit code, and its 117 lines carry the DECISION D15 stated-cause line the tier requires. THE WORKER ALSO CAUGHT THE BLOCK'S OWN DEFECT and reported it rather than correcting it, exactly as constraint 1 requires: R43's constraint 2 said "the five marked SLICES" over a block carrying four, which is the §3 item 32 class — a clause naming a KIND of the block's own parts and giving it a numeral — recurring under the very item written to forbid it, and the reviewer's extractor confirms 4 against a marker control of 4. NO BLOCK CONDITION AROSE: nothing fabricated, no false green, no missing table, no unverified completion claim and no silent scope change. THE ONE DEFECT OF SUBSTANCE IS THE REVIEWER'S OWN SPEC AND IS REGISTERED AS R-0695: S2 fixed the helper's body as an existence test, while the door refuses any record that is not OPEN, so the key R43 shipped is false for every answered task decision — routed to planning under §4.7 as a wrong spec rather than held against a worker that executed it faithfully, and repaired at R44's C5.
-<<<END LEDGER44
+<<<SLICE DECISION22
+## DECISION F031 D22 (2026-08-27) — answerability reaches the renderer as a PER-ANSWER flag, and a refused affordance is pasteable text rather than a disabled button
 
-<<<SLICE DECISION21
-## DECISION F031 D21 (2026-08-27) — the answerability key mirrors the door's REFUSAL conditions, not its route to the record, and the browser half moves to R45
+CHOSEN, THE FLAG IS STAMPED ON THE ANSWER, NOT READ FROM THE CARD BY THE
+MARKUP. `decisionAnswers` computes `posts` once from the endpoint's
+`answerable_by_decision_resolve` and stamps it on every affordance it returns,
+and the component projects that boolean. DECISION F031 D5 rules every real
+branch into `decisionCard.ts`, where the shipped vitest config can reach it, and
+a component reading the card's key directly would put the rule in markup no
+suite renders. The reading is strict `=== true`, so a payload from a server
+older than R43 renders no posting button at all.
 
-SUPERSEDING A ROUND ATTRIBUTION IN DECISION F031 D20: that entry rules "R44
-lands the browser half — the model field and the card that renders a
-non-answerable decision's `next_actions` as text". The key R43 landed, read at
-`46ae059f`, is false for an answered task decision, so R44 becomes the endpoint
-repair, the browser half
-becomes R45, the `fp:` dispatch R46 and the clarification FORM R47. D20's split
-at the wire is not weakened by this — it is what made the repair cheap, because
-the fact was caught on the wire before any component rendered it.
+CHOSEN, A REFUSED AFFORDANCE IS SHOWN AS PASTEABLE TEXT. The value stays on
+screen — it is the exact `remedy` command that answers the question — and it is
+selectable, so the operator can still act on it in a terminal. The affordance
+simply stops claiming the browser will do it for them.
 
-CHOSEN, THE KEY IS COMPUTED FROM WHAT THE DOOR REFUSES. A derived key that
-claims another module will accept something is computed from that module's
-REFUSAL conditions in full, not from its route to the data. `answer_task_decision`
-refuses on two conditions — no record, or a record that is not OPEN — so
-`_answerable_by_decision_resolve` tests both, reading the escalation record the
-door reads rather than the card's own `status` field, so the two cannot drift.
-Nothing else D19 CHOSE changes: not the key's name, not the refusal to branch on
-`card.type`, not the scope ruling that leaves six prefixes out of F031.
+CONSIDERED AND REJECTED: a DISABLED button. It keeps the control's shape while
+removing its function, which is the shape R-0693 already found dishonest, and a
+disabled control is skipped by keyboard navigation, so the command would become
+unreachable for exactly the operators most likely to want to paste it.
 
-CONSIDERED AND REJECTED: reading the card's `status` key instead. It is the same
-value today, derived by `list_decisions` from the same record, but it is a
-SECOND derivation of the door's input and would make the inbox agree with itself
-rather than with the door — which is the failure this entry exists to correct.
+CONSIDERED AND REJECTED: hiding a refused answer entirely. That loses the
+question, which is the one thing this inbox exists not to do.
 
-REVERSE IT by narrowing the helper back to an existence test, which the test
-R44 adds will refuse; that refusal is the evidence for this entry.
-<<<END DECISION21
+REVERSE IT by stamping `posts: true` unconditionally in `decisionAnswers`, which
+the tests R45 adds will refuse; that refusal is the evidence for this entry.
+<<<END DECISION22
